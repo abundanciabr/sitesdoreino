@@ -137,18 +137,14 @@ Três pontos, e só três, onde a leitura apressada do Padrão brigaria com uma 
 daqui. Em nenhum deles a resposta é "ignore o Padrão": é a leitura que faz os
 dois valerem ao mesmo tempo. Fora destes três, o Padrão vale como está escrito.
 
-**1. A regra 3 ("diga não", "menos, sempre") não autoriza entregar menos do que
-foi pedido.** A regra 3 proíbe **adição** não pedida: flag "para dar
-flexibilidade", abstração para futuro hipotético, dependência nova, arquivo
-`utils`, "melhoria" fora de escopo. A lei desta casa (seção "Este projeto é para
-ser feito completo") proíbe **subtração** do que foi pedido. As duas dizem a
-mesma coisa por lados opostos, e a própria regra 1 já fecha a costura: **"a
-versão MAIS SIMPLES que resolve o problema INTEIRO"**. A simplicidade é dos
-MEIOS; o alvo continua inteiro. Nenhum robô cita a regra 3, nem o passe de
-remoção da regra 7, para recomendar escopo cortado, versão reduzida ou "faz só
-o núcleo por enquanto" quando o mantenedor pediu a coisa completa — isso já
-custou caro em 03/09/2026, e a memória está em
-`docs/decisoes/DECISAO-filosofia-de-escopo.md`.
+**1. A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra no menor
+caminho funcional, na forma mais enxuta que já funciona e já tem lugar para
+crescer.** A regra 1 continua pedindo a versão mais simples que resolve o
+problema inteiro, isto é, o problema inteiro deste caminho. A simplicidade é
+dos meios; não autoriza cortar parte nomeada do pedido, criar protótipo que será
+reescrito nem construir o sistema inteiro antes de existir uma porta que abre.
+O que ficar fora desta entrega fica nomeado como degrau seguinte. O detalhe da
+lei está em `docs/decisoes/DECISAO-filosofia-de-escopo.md`.
 
 **2. A regra 4 ("não me entregue um cardápio") vale para as decisões que são
 SUAS, não para as que são dele.** Ela proíbe empurrar para o mantenedor escolha
@@ -573,36 +569,18 @@ não existe: não — e aí o rito é o de obra, sempre:
 `ci/leis-sem-mecanismo.txt`. Um portão que adivinhasse "isto devia ser uma tela"
 reprovaria trabalho honesto e deixaria o descuido passar.
 
-### Este projeto é para ser feito completo — nunca proponha a versão minimalista
+### Entregue o menor caminho que funciona de ponta a ponta
 
+Decisão do mantenedor em 22/09/2026. O pedido vira uma jornada testável do
+começo ao fim, com nomes, dados e fronteiras definitivos. O que foi pedido com
+nome entra nessa jornada; o sistema inteiro não precede uma porta usável, e o
+que ficar fora fica nomeado como o próximo degrau. A decisão completa, inclusive
+a ata revogada de 25/08, está em `docs/decisoes/DECISAO-filosofia-de-escopo.md`.
 
-Decisão do mantenedor em 25/08/2026 (lei completa, com as palavras dele:
-`docs/decisoes/DECISAO-filosofia-de-escopo.md`): **entre uma opção completa/robusta
-e uma reduzida/rápida, a completa é a escolha padrão — mesmo custando mais tempo,
-mais PRs, mais sessões dele.** Não é ingenuidade sobre custo: é decisão informada,
-depois de outros projetos dele terem falhado por seguir justamente o conselho de
-"comece pequeno e rápido".
-
-Na prática:
-
-- **Nenhum agente — nem uma "banca" convocada para dar segunda opinião —
-  recomenda escopo reduzido como forma de economizar tempo ou esforço.** Pode
-  registrar a análise; a recomendação final não escolhe uma opção só por ser
-  mais barata.
-- **Não use "isso vai levar dias/semanas" para desencorajar ambição.** O
-  mantenedor já viu, na prática, robôs deste projeto fazendo em minutos o que
-  esse vocabulário sugere levar semanas — não avalie por cronograma de equipe
-  humana.
-- **Isto não é desculpa para descuido.** PRs pequenos, orçamento de 15
-  arquivos de código (a escrituração obrigatória em `painel/` e `fila/` saiu da
-  conta no PR #1167, de 06/09/2026), Ritos de Contrato, evidência vermelho→verde —
-  nada disso muda. Fatiar em fases seguras não é reduzir escopo, é a forma
-  responsável de construir algo grande. "Completo" é o destino; a escada de
-  PRs é o caminho.
-- **Bloqueio real continua sendo bloqueio real** — custo de serviço pago,
-  credencial que só ele tem, limite legal, vulnerabilidade de segurança. Isso
-  é fato sobre o que é possível, não "conselho de ir devagar", e continua
-  reportado como sempre (`ARMADILHAS-OPERACAO.md` §1).
+A regra 1 continua exigindo a versão mais simples que resolve o problema
+inteiro, isto é, o problema inteiro deste caminho. Não autoriza cortar parte
+nomeada do pedido, nem fabricar uma base descartável para depois reescrever.
+PRs pequenos, Ritos, prova de vermelho para verde e bloqueios reais continuam.
 
 ### Nenhum texto publicado sai com travessão (desde 30/08/2026)
 
@@ -873,10 +851,10 @@ a sessão DIZ isso ao mantenedor, em uma linha, e sugere abrir conversa nova
 dizendo o que levar. Quem decide é ele: a sessão não fecha nada por conta
 própria, porque o histórico na tela é dele, não do robô.
 
-**O que isto NÃO é: corte de escopo.** Os 124 PRs daquele fim de semana eram
-trabalho legítimo e a lei "feito completo" continua inteira, palavra por
-palavra. O que muda é o preço unitário, nunca a ambição. Nenhum robô cita esta
-seção para recomendar fazer menos.
+**O que isto NÃO é: corte de escopo.** A lei de escopo de 22/09/2026 preserva a
+ambição como destino dos planos e exige uma entrega em degraus enxutos, cada um
+usável de ponta a ponta. Nenhum robô cita esta seção para recomendar fazer menos
+do que foi pedido com nome.
 
 **Quem faz valer:** `ci/tests/test_fichas_de_robo.py` (a ficha que só preenche molde declara o modelo dela, em vez de herdar o mais caro). A escolha do modelo a cada despacho e o aviso da conversa cara são julgamento da maestro e **não têm mecanismo**: nada no CI vê qual modelo uma sessão pediu, nem quanto contexto ela carregava quando rodou um comando. Está dito com todas as letras para ninguém tomar o teste da ficha por garantia da regra inteira.
 

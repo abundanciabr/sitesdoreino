@@ -1,0 +1,22 @@
+{
+  "arquivo": "616-conteudo-pedido-pelo-mantenedor-vai-para-o-site-por-padrao",
+  "id": "TAR-616",
+  "titulo": "Conteúdo pedido pelo mantenedor vai para o site por padrão",
+  "toca": [
+    "ci",
+    "docs",
+    "painel",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado alterando AGENTS.md, CLAUDE.md e docs/guia-mantenedor.md; regra explícita de publicação em /admin/documentos/; git diff --check e travessão staged PASS; nenhuma regra manda manual para docs/ no GitHub.",
+  "despacho": "Atualizar AGENTS.md, CLAUDE.md e docs/guia-mantenedor.md para que conteúdo pedido pelo mantenedor tenha o site como destino padrão, com publicação pelo editor de /admin/documentos/ e URL pública conferida. Reservar o GitHub a código, templates, testes, contratos, configuração, infraestrutura, workflows, leis mecânicas e registros obrigatórios. Se a publicação não puder ser executada, registrar bloqueio sem trocar silenciosamente por PR de documentação. Validar git diff --check e python ci/travessao.py --verificar-staged. Não alterar o manual do Crivo nesta tarefa.",
+  "origem": "Pedido direto do mantenedor nesta sessão em 22/09/2026, depois de o manual do Crivo ter sido entregue no GitHub em vez do site.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

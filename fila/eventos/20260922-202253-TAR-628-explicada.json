@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-202253-TAR-628-explicada",
+  "tarefa": "TAR-628",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:22:53+00:00",
+  "quem": "Comando do mantenedor para tocar a Fase 1 em 22/09/2026",
+  "o_que_e": "O plano mestre lista decisões L0-S necessárias, mas ainda não registra os valores aprovados para sandbox.",
+  "o_que_muda": "A equipe passa a executar a sandbox com parcelas, juros, acesso após reversão e instalação compartilhada definidos.",
+  "exemplo": "Uma compra de sandbox usa até 12 parcelas PP e um estorno suspende o acesso sem reabertura automática.",
+  "importancia": 90
+}

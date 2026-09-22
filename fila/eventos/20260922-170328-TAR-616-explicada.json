@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-170328-TAR-616-explicada",
+  "tarefa": "TAR-616",
+  "evento": "explicada",
+  "quando": "2026-09-22T17:03:28+00:00",
+  "quem": "Pedido direto do mantenedor nesta sessão em 22/09/2026, depois de o manual do Crivo ter sido entregue no GitHub em vez do site.",
+  "o_que_e": "Hoje um pedido de manual pode virar um arquivo Markdown no GitHub mesmo quando o mantenedor queria uma página publicada no site.",
+  "o_que_muda": "Manuais, documentos, páginas e conteúdos passam a ser criados e publicados no site por padrão; o GitHub fica para o código e os artefatos técnicos obrigatórios.",
+  "exemplo": "Pedir um manual passa a ser como pedir uma página pronta para o visitante, não como pedir um arquivo guardado na oficina.",
+  "importancia": 95
+}

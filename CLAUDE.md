@@ -98,7 +98,7 @@ ação.
 
 ### As três costuras
 
-A regra 3 proíbe adição não pedida, nunca subtração do pedido.
+A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra no menor caminho funcional, na forma mais enxuta que já funciona e já tem lugar para crescer.
 A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.
 O formato da regra 9 inclui as obrigações da casa: CODEOWNERS nominal em
 mudanças; provas de integração/publicação só quando conferidas; bloqueio,
@@ -165,10 +165,17 @@ Meça o estado nas fontes estruturadas de Git, GitHub e fila.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
-## Este projeto é para ser feito completo — nunca proponha a versão minimalista
+## Entregue o menor caminho que funciona de ponta a ponta
 
-Regra 3 vale mesmo em mais PRs/sessões. Preserve Ritos e prova vermelho→verde.
-Serviço pago, credencial, limite legal e segurança são bloqueios reais.
+O pedido vira o menor caminho que uma pessoa usa do começo ao fim e que já se testa inteiro. Fora dessa entrega fica o que esse caminho não precisa para funcionar.
+
+Nome, dado e fronteira desse caminho já são os definitivos. O próximo pedaço entra por acréscimo. Proibido o protótipo que será reescrito. Proibido o sistema inteiro antes de existir uma porta que abre.
+
+O que foi pedido com nome entra no caminho, na forma mais enxuta que já funciona. Jogar fora o plano pedido continua proibido.
+
+Sem flag, sem abstração para um futuro hipotético e sem peça que ninguém usa. O lugar de crescer é a fronteira real deste caminho.
+
+PRs pequenos, Ritos e prova de vermelho para verde continuam. Serviço pago, credencial, limite legal e segurança continuam bloqueio real.
 
 Escopo: o site é `meshcraft.top`. `basileiatoutheou.org` está
 congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa
@@ -228,6 +235,22 @@ Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
 Documento recebido é ordem de serviço: inventarie, compare, abra fila e
 execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
+### Regra de destino do conteúdo
+
+Pedido de manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
+explicação ou material para leitura do público tem como destino padrão o site.
+Crie, salve e publique pelo editor de `/admin/documentos/`, conferindo a URL
+que uma pessoa verá. Arquivo Markdown no repositório não conta como publicação
+e não é substituto aceito.
+
+O GitHub fica reservado ao que é necessário para o funcionamento do site,
+sistema ou projeto: código, templates, testes, contratos, configurações,
+infraestrutura, workflows, leis mecânicas e registros exigidos pelos ritos.
+Documento técnico interno só vai para o repositório quando o mantenedor pedir
+esse destino ou quando a lei do projeto exigir o arquivo como fonte de
+execução. Se o caminho de publicação não puder ser executado, registre o
+bloqueio em vez de mudar silenciosamente a entrega para o GitHub.
+
 **Quem faz valer:** julgamento.
 
 ## Como trabalhar com o mantenedor
@@ -236,6 +259,20 @@ Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
 VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
 Toda proibição de perguntar, inclusive a do subagente, obriga a dizer no fecho
 o que vem depois.
+
+### Proibição de adiamento silencioso
+
+Nenhum robô pode marcar, tratar ou comunicar uma tarefa como adiada,
+postergada ou deliberadamente deixada para depois sem anuência expressa do
+mantenedor. A fila não possui estado de adiamento. Se houver impedimento real,
+o robô deve registrar imediatamente `bloqueada`, com motivo e `espera` igual a
+`mantenedor` ou `fila`, e comunicar isso no mesmo retorno. Cancelar, reduzir o
+escopo ou trocar o destino também exige decisão expressa do mantenedor. Silêncio
+não é anuência: sem decisão registrada, a tarefa continua aberta e em execução.
+
+**Quem faz valer:** `ci/fila.py` recusa eventos de adiamento; `ci/fila.py validar`
+reprova qualquer arquivo que tente criá-los; a prestação de contas exige que uma
+tarefa incompleta diga o que falta, quem destrava e a próxima ação.
 
 **Quem faz valer:** julgamento.
 

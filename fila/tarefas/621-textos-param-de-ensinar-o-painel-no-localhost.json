@@ -1,0 +1,21 @@
+{
+  "arquivo": "621-textos-param-de-ensinar-o-painel-no-localhost",
+  "id": "TAR-621",
+  "titulo": "Textos param de ensinar o painel no localhost",
+  "toca": [
+    "admin",
+    "infra",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "textos vivos deixam de mandar ligar localhost e o registro mede /admin no site",
+  "despacho": "Reescrever os textos vivos que ainda ensinam python ci/ligar_administracao.py. Nao apagar o lancador. Nao editar registros historicos.",
+  "origem": "Pedido do mantenedor em 22/09/2026: atualizar documentacoes que ainda citam admin em localhost",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

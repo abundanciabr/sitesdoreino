@@ -1,0 +1,21 @@
+{
+  "arquivo": "622-atualizar-instrucoes-antigas-sobre-o-painel-de-administracao",
+  "id": "TAR-622",
+  "titulo": "Atualizar instruções antigas sobre o painel de administração",
+  "toca": [
+    "admin",
+    "docs",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com as orientações corrigidas, CI local verde e medição de /admin/ e /admin/documentos/ redirecionando para autenticação.",
+  "despacho": "Corrigir as orientações operacionais que ainda encaminham o mantenedor para localhost para usar a administração hospedada na VPS.\n\nAlvos: `docs/guia-mantenedor.md`, `docs/administracao-local/LEIA-ME.md`, `administracao-local/prompt-da-continuidade.md`, `docs/consultorias/equipe-especialista/RELATORIO.md`, `services/admin/config/settings_leitura.py`.\n\nAceite: nenhuma instrução operacional vigente manda iniciar o painel local; os guias apontam para `/admin/` e `/admin/documentos/`; o relatório registra a integração e as medições após o PR #1921; a automação local é marcada como aposentada; muralhas e validação de sintaxe verdes. Preservar referências históricas e não tocar `infra/`.",
+  "origem": "Pedido direto do mantenedor em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,34 +1,14 @@
 # =============================================================================
-# VIGIA DO POUSO — quem percebe que ninguém pediu pouso.
+# VIGIA DO POUSO — PR verde parado além da paciência, com remediação automática.
 #
-# O DEFEITO QUE ELE FECHA (TAR-167, medido em 05/09/2026): o PR #741 passou
-# CINCO DIAS aberto e verde, com zero comentários da pista. Não foi a pista que
-# falhou — ela nunca foi chamada. Ninguém pediu pouso, e ninguém percebeu que
-# ninguém tinha pedido. O raciocínio inteiro, e a régua de cada dispensa, moram
-# em `ci/vigia_do_pouso.py`.
+# O DEFEITO (TAR-167, medido em 05/09/2026): o PR #741 passou cinco dias aberto
+# e verde sem integrar. Hoje a pista mergeia sozinha (`pouso.yml` +
+# `ci/mergear.py --automatico`, decisão de 13/09/2026). Este workflow varre,
+# TENTA integrar o que couber, varre de novo e só então abre ou atualiza a issue
+# com o que SOBROU (falha da esteira ou PR que precisa de conserto/fechamento).
 #
-# POR QUE ELE PRECISA DE UM RELÓGIO. É o segundo workflow desta casa a acordar
-# pelo tempo, e pelo mesmo motivo do primeiro: o evento que ele vigia é uma
-# AUSÊNCIA. Um PR que ninguém pediu para pousar não dispara nada — o silêncio
-# não tem gatilho. Todo o resto aqui acorda em push, PR ou conclusão de check,
-# e nenhum desses eventos acontece quando a doença é justamente não acontecer
-# nada.
-#
-# DE DUAS EM DUAS HORAS, e não uma vez por dia como o vigia do cadeado: lá a
-# régua tem 21 dias de folga; aqui o custo medido foi de cinco dias, e o
-# despacho pede "algumas horas, não dias". Com a paciência em 6 h, um PR
-# esquecido é denunciado em 6 a 8 h depois de ficar verde.
-#
-# O QUE ELE FAZ: não substitui o portão. Ele mede PRs não rascunho, marca os que
-# estão verdes e parados e dispara a pista. O portão continua decidindo checks,
-# base, recibo e mandato. Assim a ausência de uma sessão não cria PR órfão.
-#
-# VERMELHO AQUI SIGNIFICA UMA COISA SÓ: **o vigia ficou cego.** Achar PRs
-# esquecidos é o trabalho dele, não uma falha dele — ele encaminha a pista. Se
-# ele concluísse `failure` toda vez que achasse alguém, a aba
-# Actions ganharia doze vermelhos por dia numa condição rotineira, e vermelho
-# rotineiro é vermelho que se aprende a ignorar. Fica vermelho quando não
-# consegue VARRER.
+# Não é portão de PR e não substitui `pouso.yml`: é rede de segurança no relógio
+# para ausência de merge quando os checks já fecharam verdes.
 # =============================================================================
 name: vigia-do-pouso
 on:
@@ -39,15 +19,14 @@ permissions:
   contents: read
   actions: write
   pull-requests: write
-# Grupo PRÓPRIO, nunca o `deploy`: naquele grupo o GitHub guarda um único run
-# pendente e CANCELA o anterior quando chega outro (armadilhas/173) — um vigia
-# cancelado em silêncio é pior que vigia nenhum, porque parece que rodou.
+# Grupo próprio, nunca o `deploy`: lá o GitHub cancela o run anterior
+# (armadilhas/173). Vigia cancelado em silêncio parece vigia que rodou.
 concurrency:
   group: vigia-do-pouso
   cancel-in-progress: false
 jobs:
   vigiar:
-    name: varrer os PRs abertos e acionar a pista automaticamente
+    name: varrer, remediar pela pista e denunciar o que sobrou
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,17 +34,16 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      # Sem `pip install`: o vigia usa só a biblioteca padrão e o `gh` que já
-      # vem no runner. Foi escolha, não acaso — um vigia que depende do
-      # registro de pacotes ganha um modo de falha novo justamente no dia em
-      # que ele precisa funcionar.
-      - name: Varrer e acionar a pista
+      - name: Varrer, remediar e abrir ou atualizar a issue
         env:
-          # O token do job basta para etiquetar o PR e disparar a pista. O
-          # workflow de pouso usa o segredo próprio para a operação protegida.
+          # Dois tokens, dois papéis. Nunca `secrets.PISTA_TOKEN || github.token`:
+          # o `||` faz o PAT sombrear o token do job (armadilhas/279).
           GH_TOKEN: ${{ github.token }}
           PISTA_TOKEN: ${{ secrets.PISTA_TOKEN }}
           REPO: ${{ github.repository }}
@@ -73,28 +51,71 @@ jobs:
         run: |
           set -euo pipefail
 
-          # O veredito vem do EXIT do vigia, capturado direto — nunca do exit
-          # de um cano, que é sempre o do último comando da linha.
           CODIGO=0
-          python ci/vigia_do_pouso.py --repo "$REPO" > vigia.log 2>&1 || CODIGO=$?
-          cat vigia.log
+          python ci/vigia_do_pouso.py --repo "$REPO" --corpo denuncia.md || CODIGO=$?
+
+          if [ "$CODIGO" = "3" ]; then
+            if [ -z "${PISTA_TOKEN:-}" ]; then
+              echo "PAROU: há PR verde parado e o PISTA_TOKEN não está no job."
+              echo "Sem o token da pista esta passagem não integra, e a issue não vai dizer que integrou."
+              exit 2
+            fi
+            python -m pip install --quiet -r requirements-ci.txt
+            PISTA=0
+            if GH_TOKEN="$PISTA_TOKEN" python ci/mergear.py --automatico; then
+              PISTA=0
+            else
+              PISTA=$?
+            fi
+            if [ "$PISTA" -ne 0 ]; then
+              echo "PAROU: mergear --automatico saiu $PISTA."
+              echo "A issue não foi publicada, porque ela diria que a pista rodou."
+              exit "$PISTA"
+            fi
+            CODIGO=0
+            python ci/vigia_do_pouso.py --repo "$REPO" --corpo denuncia.md || CODIGO=$?
+          fi
+
+          EXISTENTE="$(gh issue list --label pouso-esquecido --state open \
+            --json number --jq '.[0].number // empty')"
 
           case "$CODIGO" in
             0)
-              echo "Nenhum PR esquecido. Nada a acionar."
+              if [ -n "$EXISTENTE" ]; then
+                gh issue close "$EXISTENTE" --comment \
+                  "Nenhum PR verde parado além da paciência. Esta issue é quadro, não diário: ela se fecha sozinha quando o quadro esvazia."
+                echo "Issue #$EXISTENTE fechada — a fila voltou a andar."
+              else
+                echo "Nenhum PR esquecido, nenhuma issue aberta. Nada a fazer."
+              fi
               ;;
             3)
-              while IFS= read -r linha; do
-                PR="${linha#AUTORIZAR_POUSO=}"
-                gh pr edit "$PR" --repo "$REPO" --add-label pousar
-                echo "PR #$PR encaminhado à pista automaticamente."
-              done < <(grep '^AUTORIZAR_POUSO=' vigia.log)
-              GH_TOKEN="$PISTA_TOKEN" gh workflow run pouso.yml --repo "$REPO" --ref main
-              echo "Pista disparada para todos os PRs medidos como esquecidos."
+              if [ -n "$EXISTENTE" ]; then
+                ATUAL="$(gh issue view "$EXISTENTE" --json body --jq .body | tr -d '\r')"
+                NOVO="$(cat denuncia.md)"
+                if [ "$ATUAL" = "$NOVO" ]; then
+                  echo "Issue #$EXISTENTE já diz exatamente isto — não reescrevo."
+                else
+                  gh issue edit "$EXISTENTE" --body-file denuncia.md
+                  echo "Issue #$EXISTENTE atualizada com o quadro de agora."
+                fi
+              else
+                if ! gh label list --json name --jq '.[].name' | grep -qx pouso-esquecido; then
+                  gh label create pouso-esquecido \
+                    --color FBCA04 \
+                    --description "PR verde há horas e a integração automática não concluiu"
+                fi
+                gh issue create \
+                  --label pouso-esquecido \
+                  --title "Integração parada: PR verde há horas sem merge" \
+                  --body-file denuncia.md
+              fi
               ;;
             *)
-              echo "🧱 PAROU POR SEGURANÇA: o vigia não conseguiu medir os PRs (exit $CODIGO)."
-              echo "   Nenhum PR foi encaminhado. O log acima diz o que impediu a medição."
+              echo "🧱 PAROU POR SEGURANÇA: o vigia não conseguiu varrer os PRs (exit $CODIGO)."
+              echo "   Isto NÃO é 'nenhum PR esquecido' — é 'não consegui olhar'."
+              echo "   A saída acima diz o que impediu a medição. Reproduza com:"
+              echo "     python ci/vigia_do_pouso.py --repo $REPO"
               exit "$CODIGO"
               ;;
           esac

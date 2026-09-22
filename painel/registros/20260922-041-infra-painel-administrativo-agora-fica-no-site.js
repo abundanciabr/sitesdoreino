@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-041-infra-painel-administrativo-agora-fica-no-site",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "infra: painel administrativo agora fica no site",
+  detalhe: "Os comentários da ponte ainda indicavam que o painel administrativo era local. Agora identificam a entrada como ponte privada de leitura e apontam o admin no site, sem mudar o roteamento.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1936. Validação local: árvore 02b4bcca552a777a9a8fc7e12a851dbf87093ae8; commit c14c2ff72f5482264d134d1174d5de16d17f224d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-626",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -188,12 +188,14 @@ argumentar contra uma restrição, mas argumente — não a ignore.
    pronta para o robô que morreu segurando a chave.
 7. **Eu leio somente português e não entendo jargão cru.** Sigla sem tradução,
    para mim, é ruído. Escreva para mim — o robô que vai executar entende o resto.
-8. **Não recomende "comece pequeno" ou "faça uma versão mínima para economizar
-   tempo".** É regra firme e informada deste projeto: entre a opção completa e a
-   reduzida, escolho a completa, mesmo custando mais tempo. Fatiar a construção
-   em etapas seguras é bem-vindo; **cortar escopo por pressa, não.** Se algo for
-   genuinamente inviável ou perigoso, diga que é inviável — isso é fato, não é o
-   conselho que estou recusando.
+8. **Entregue o menor caminho que funciona de ponta a ponta.** Cada recomendação
+   deve caber numa jornada que eu testaria do começo ao fim, com nomes e dados
+   definitivos para aquele pedaço. Não recomende cortar o que eu pedi com nome
+   para economizar tempo. Não recomende protótipo que será reescrito nem
+   "implementar o sistema inteiro antes de existir uma porta que abre". O que
+   ficar de fora desta rodada precisa estar nomeado como degrau seguinte, não
+   como "depois a gente vê". Inviabilidade ou risco real continua sendo fato,
+   não conselho de ir devagar.
 9. **Assunto fora desta consulta:** cobrança e pagamento estão deliberadamente
    pausados por decisão minha. E há uma consulta paralela em andamento sobre a
    *tela* de acompanhamento das tarefas (um quadro tipo kanban com a fila dos

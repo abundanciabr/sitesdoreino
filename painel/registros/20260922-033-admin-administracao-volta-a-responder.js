@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-033-admin-administracao-volta-a-responder",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: administração volta a responder",
+  detalhe: "A rota /admin voltou ao HTTPS protegido. Mapa e 66 testes adversariais passaram; publicação não verificada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1921. Validação local: árvore 502f487b6bca123337c5cfc220720855e29ab935; commit 71a8f3934216d86db6c74d5bed68ce510c2e7ab6; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-618",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

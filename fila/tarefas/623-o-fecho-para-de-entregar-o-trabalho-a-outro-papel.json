@@ -1,0 +1,19 @@
+{
+  "arquivo": "623-o-fecho-para-de-entregar-o-trabalho-a-outro-papel",
+  "id": "TAR-623",
+  "titulo": "O fecho para de entregar o trabalho a outro papel",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "pytest dos testes do mandato e do fecho verde, guarda provada por mutação, e a frase antiga ausente de ci/pr.py, ci/mandato_por_faixa.py e CAMINHO-DOURADO.md",
+  "despacho": "Troque a frase de ci/pr.py, ci/mandato_por_faixa.py e CAMINHO-DOURADO.md. Atualize o teste que exigia a frase antiga e acrescente um guarda que fica vermelho se ela voltar. Não mexa na página solta da fila de tarefas.",
+  "origem": "Pedido do mantenedor em 22/09/2026 para fechar a porta que devolve a continuação a outro papel",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
