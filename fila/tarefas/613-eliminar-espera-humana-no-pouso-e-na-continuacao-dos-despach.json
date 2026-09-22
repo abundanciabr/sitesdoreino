@@ -3,7 +3,6 @@
   "id": "TAR-613",
   "titulo": "Eliminar espera humana no pouso e na continuação dos despachos",
   "toca": [
-    "fabrica",
     "ci",
     ".github",
     ".claude",
