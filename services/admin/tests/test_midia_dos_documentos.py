@@ -329,11 +329,7 @@ def test_a_pagina_publica_desenha_a_imagem_pelo_markdown(documento):
 def test_o_prefixo_publico_da_midia_tem_so_a_entrega():
     """O que impede a isenção por prefixo de virar uma fresta."""
     padroes = get_resolver().url_patterns
-    sob = {
-        p.name
-        for p in padroes
-        if str(p.pattern).lstrip("^").startswith("midia/")
-    }
+    sob = {p.name for p in padroes if str(p.pattern).lstrip("^").startswith("midia/")}
     assert sob == {"midia_servir"}, sob
 
 
