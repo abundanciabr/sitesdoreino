@@ -32,7 +32,7 @@ nunca vence os documentos abaixo, na ordem:
 1. **`CONSTITUICAO.md`** — a lei suprema da plataforma inteira.
 2. **`constituicoes/AGENTS.<celula>.md`** — lei local de cada célula (onde existir).
 3. **`RITOS.md`**, **`INVARIANTES.md`**, **`CAMINHO-DOURADO.md`** — operacionais, subordinados à Constituição.
-4. **`CLAUDE.md`** — a **1ª seção é o Padrão de Trabalho** (a Lei 10 aponta para ela: o padrão de exigência de toda tarefa, em forma compacta, sem perda das obrigações), seguida das instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor).
+4. **`CLAUDE.md`** — a **1ª seção é o Padrão de Trabalho** (a Lei 10 aponta para ela: o padrão de exigência de toda tarefa, em forma compacta, sem perda das obrigações), seguida das instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor). Desde 22/09/2026 nenhum robô adia tarefa sem anuência expressa do mantenedor (`docs/decisoes/DECISAO-adiar-so-com-anuencia.md`).
 5. **`armadilhas/`** e **`ARMADILHAS-OPERACAO.md`** — memória de campo, não lei.
 
 ## CONSTITUICAO.md — as 11 leis

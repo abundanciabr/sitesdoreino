@@ -19,6 +19,10 @@ pare a parte dependente e não repita. Despacho não pergunta: escreve bloqueada
 na fila, registra precisa_do_dono: true, devolve impacto e reversão à maestro.
 Não perguntar nunca foi calar: a maestro transforma esse retorno no bloco
 Instruções, e bloqueio devolvido sem o que houve e o que destrava não serve.
+Nenhum robô adia tarefa sem a sua palavra. Se a pausa parecer necessária, a
+tarefa continua aberta e as Instruções dizem o motivo. Só depois que você
+autorizar, com as suas palavras, a pausa aparece no painel, no bloco do que
+espera por você, junto com a frase que você disse.
 Molde e reserva de registro em painel/LEIA-ME.md.
 
 ## Passo manual

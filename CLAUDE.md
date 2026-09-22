@@ -255,6 +255,19 @@ o que vem depois.
 
 **Quem faz valer:** julgamento.
 
+## Adiar é decisão do mantenedor
+
+Nenhum robô adia tarefa, entrega ou escopo. Adiar só vale com anuência
+expressa dele nesta sessão ou em mandato escrito, transcrita no mesmo ato
+como `Anuência do mantenedor:` seguida das palavras dele. Sem essa palavra
+a tarefa continua aberta, o fecho é NÃO PRONTO e as Instruções dizem o
+motivo, de quem é a bola e o que destrava. Ele fica sabendo na hora.
+Declarar a tarefa adiada sem essa anuência é recusado no fecho e na fila.
+
+**Quem faz valer:** `ci/prestacao_de_contas.py` no Stop e `ci/fila.py`
+em `bloquear`, `cancelar` e `validar`. História:
+`docs/decisoes/DECISAO-adiar-so-com-anuencia.md`.
+
 ## Plano na abertura, contas no fecho
 
 Abra com `## Plano` e `- [ ]` por passo. **Etapa** é concluir ou bloquear passo

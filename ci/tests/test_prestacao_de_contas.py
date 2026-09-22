@@ -527,6 +527,61 @@ def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
 # valer não é regra, é intenção.
 
 
+def test_fala_que_adia_sem_anuencia_e_recusada_mesmo_sem_editar_arquivo(tmp_path):
+    """O caso de 22/09/2026: nenhum arquivo mudou, e mesmo assim a resposta
+    declarou a entrega adiada. Ele ficou esperando uma coisa que não ia ficar
+    pronta. O portão tem de morder essa fala, não só o diff."""
+    proc = _decidir(tmp_path, [
+        _humano("avalie se acabou"),
+        _fala("A plataforma foi deliberadamente adiada até existir a página real."),
+    ])
+    assert proc.returncode == 2, (proc.returncode, proc.stderr)
+    assert "ADIAMENTO SEM ANUÊNCIA" in proc.stderr
+    assert "Anuência do mantenedor" in proc.stderr
+
+
+def test_fala_que_adia_com_as_palavras_dele_passa(tmp_path):
+    _silencio(_decidir(tmp_path, [
+        _humano("avalie se acabou"),
+        _fala(
+            "A entrega fica adiada até a página real.\n"
+            "Anuência do mantenedor: pode esperar a página real ficar no ar."
+        ),
+    ]))
+
+
+def test_negar_o_adiamento_nao_e_adiar(tmp_path):
+    _silencio(_decidir(tmp_path, [
+        _humano("avalie se acabou"),
+        _fala("Não foi adiada. A tarefa continua aberta e segue agora."),
+    ]))
+
+
+def test_a_mesma_frase_de_adiamento_nao_recusa_em_laco(tmp_path):
+    transcript = tmp_path / "adiamento.jsonl"
+    transcript.write_text(
+        "\n".join(json.dumps(e, ensure_ascii=False) for e in [
+            _humano("avalie"),
+            _fala("A tarefa foi adiada até a página existir."),
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    carga = {"transcript_path": str(transcript), "stop_hook_active": False}
+    primeira = _rodar(["--contas"], carga)
+    segunda = _rodar(["--contas"], carga)
+    assert primeira.returncode == 2
+    assert segunda.returncode == 1
+    assert "sem nova recusa" in segunda.stderr
+
+
+def test_a_lei_de_adiamento_esta_no_claude_md():
+    texto = (RAIZ_DO_REPO / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "Nenhum robô adia tarefa, entrega ou escopo." in texto
+    assert "Anuência do mantenedor:" in texto
+    fila = (RAIZ_DO_REPO / "ci" / "fila.py").read_text(encoding="utf-8")
+    assert "Anuência do mantenedor:" in fila
+
+
 def test_nao_pronto_sem_instrucoes_e_recusado(tmp_path):
     """O caso exato do print que ele mandou: o veredito é a última palavra e a
     tela acaba ali. Ele fica sem saber o que acontece agora, e a tarefa para de

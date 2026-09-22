@@ -155,6 +155,11 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
 
 ## Os estados que o quadro calcula
 
+Não existe estado adiada. Adiar tarefa, entrega ou escopo só vale com a linha
+`Anuência do mantenedor:` e as palavras dele, no evento `bloqueada` com
+`espera: mantenedor`, para aparecer no bloco do que espera por ele. Sem essa
+palavra, `validar` reprova o motivo de adiamento e a tarefa continua aberta.
+
 - **na fila** — existe, ninguém pegou, dependências satisfeitas.
 - **bloqueada** — evento `bloqueada` (com motivo e `espera`), OU `depende_de`
   aberta (calculado — ninguém escreve isso, e o `espera` sai `fila`).
