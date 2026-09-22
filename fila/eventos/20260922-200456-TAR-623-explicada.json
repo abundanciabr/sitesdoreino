@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-200456-TAR-623-explicada",
+  "tarefa": "TAR-623",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:04:56+00:00",
+  "quem": "Pedido do mantenedor em 22/09/2026 para fechar a porta que devolve a continuação a outro papel",
+  "o_que_e": "Ao terminar um trabalho, a máquina ainda pede para entregar a continuação a um papel que já foi dissolvido.",
+  "o_que_muda": "Quem termina o trabalho para na própria sessão. A integração segue quando os portões ficam verdes.",
+  "exemplo": "O último aviso do comando deixa de nomear um papel ausente e diz que a sessão encerra ali.",
+  "importancia": 70
+}
