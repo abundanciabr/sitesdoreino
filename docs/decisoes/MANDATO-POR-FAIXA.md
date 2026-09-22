@@ -115,16 +115,21 @@ Ele não espera. Nesta ordem:
    exata que destrava (`python ci/fila.py bloquear TAR-NNN --quem <agente>
    --motivo "<o que trava, e o que destrava>" --espera mantenedor`), e deixa o
    registro com `precisa_do_dono: true`;
-3. devolve à maestro e encerra o seu turno.
+3. se for subagente, devolve o bloqueio à sessão responsável; se recebeu o
+   pedido diretamente, pede ao mantenedor a autorização nesta sessão, com o
+   caminho exato e o impacto. Sem resposta, encerra a parte dependente e
+   informa o que a destrava.
 
-Robô ocioso de ramo aberto é o custo que esta decisão existe para eliminar. Quem
-pergunta ao mantenedor é a maestro, e ela pergunta com o trabalho guardado.
+Robô ocioso de ramo aberto é o custo que esta decisão existe para eliminar.
+Quem recebeu o pedido pergunta ao mantenedor com o trabalho guardado;
+subagente nunca pergunta diretamente.
 
 ## A hora de parar
 
 A partir das 21h30 em `America/Sao_Paulo`, nenhum agente que constrói começa
 caixa nova do plano: fecha ou bloqueia a que está aberta, pelos três passos
-acima, e devolve à maestro.
+acima, e presta contas à sessão responsável ou ao mantenedor, conforme quem
+recebeu o pedido.
 
 A máquina do mantenedor desliga por volta das 22h. Trabalho pendurado nesse
 instante não perde só as horas da noite: perde o contexto da sessão e deixa ramo
@@ -150,8 +155,9 @@ python -c "import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneI
 ## Como se muda este documento
 
 As duas listas são do mantenedor e vieram fechadas em 20/09/2026. Acrescentar
-item a qualquer uma delas é decisão dele, não do despacho. Um despacho que
-receba pedido de acrescentar item recusa e devolve à maestro.
+item a qualquer uma delas é decisão dele, não do agente. Quem receber pedido
+de acrescentar item preserva a lista e encaminha a decisão ao mantenedor pela
+sessão responsável.
 
 ## Como se sabe se funcionou
 

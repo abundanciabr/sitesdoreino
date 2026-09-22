@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-214712-TAR-635-explicada",
+  "tarefa": "TAR-635",
+  "evento": "explicada",
+  "quando": "2026-09-22T21:47:12+00:00",
+  "quem": "Pedido direto do mantenedor na sessão Codex em 22/09/2026",
+  "o_que_e": "Orientações repetidas mandam a sessão do Codex não perguntar ao mantenedor e parar após abrir o PR.",
+  "o_que_muda": "A sessão que recebeu o pedido pergunta decisões exclusivas ao mantenedor e acompanha a entrega até o desfecho medido.",
+  "exemplo": "Ao tocar um caminho que exige mandato, o Codex pede autorização aqui; um subagente devolve a dúvida à sessão responsável.",
+  "importancia": 95
+}

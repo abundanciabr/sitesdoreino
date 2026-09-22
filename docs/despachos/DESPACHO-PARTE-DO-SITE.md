@@ -13,11 +13,8 @@
 
 ## §1 — Para o mantenedor: como usar
 
-Copie o bloco abaixo, troque as duas linhas de preencher e cole numa sessão
-nova do Claude Code, a maestro (pode ser na pasta principal). A maestro cria a
-tarefa na fila com o brief e o Codex constrói pela ficha `despacho`; para
-começar a obra, cole na sessão do Codex "pegue a TAR-NNN", com o número que a
-maestro devolver (`docs/decisoes/DECISAO-triade-de-ias.md`):
+Copie o bloco abaixo, preencha a parte desejada e cole numa sessão de trabalho
+do Codex ou do Claude Code. A sessão que recebe o pedido conduz a entrega.
 
 ```text
 Leia o arquivo docs/despachos/DESPACHO-PARTE-DO-SITE.md na versão mais nova do
@@ -35,12 +32,11 @@ COMO EU QUERO QUE SEJA (opcional): (detalhes; ou deixe em branco que o robô pro
 - **Sessões ao mesmo tempo: só de áreas diferentes do site.** Página inicial e
   fórum ao mesmo tempo = pode. Menu e rodapé ao mesmo tempo = **não** — os
   dois moram no mesmo arquivo e os robôs colidem. Na dúvida, uma de cada vez.
-- **O robô termina sozinho:** PR, atestado, pedido de pouso e registro no livro.
-  A pista mergeia e publica sem ninguém esperar; o endereço para você VER a
-  parte no ar vem na sessão seguinte, quando a maestro confere o merge e a
-  publicação. Se ele parar com uma pergunta de múltipla escolha, é porque a
-  decisão é sua mesmo. Quem te pergunta é só a maestro: o executor nunca fala
-  com você, devolve a dúvida à maestro.
+- **O robô termina sozinho:** PR, validação, medição do desfecho e registro no livro.
+  A pista integra pelos portões, e a sessão confere o resultado antes de fechar.
+  Se ele parar com uma pergunta de múltipla escolha, é porque a
+  decisão é sua mesmo. A sessão que recebeu seu pedido faz essa pergunta;
+  o subagente devolve a dúvida à sessão responsável.
 
 **Exemplos de preenchimento:**
 
@@ -59,19 +55,19 @@ COMO EU QUERO QUE SEJA (opcional): (detalhes; ou deixe em branco que o robô pro
 O mantenedor é leigo em código e lê SÓ português: **toda resposta em PT-BR**,
 relatório em linguagem de resultado ("o rodapé está no ar em…"), e qualquer
 decisão que sobrar para ele vira `AskUserQuestion` com opções explicadas sem
-jargão — nunca frase solta. Só a maestro (Claude Code) pergunta ao mantenedor;
-o executor (Codex) nunca pergunta, devolve a dúvida à maestro. As leis do
+jargão — nunca frase solta. A sessão que recebeu o pedido pergunta ao mantenedor;
+o subagente devolve a dúvida à sessão responsável. As leis do
 `CLAUDE.md` (que você já carregou ao abrir a sessão) valem inteiras. Três delas, repetidas porque já foram
 violadas: **escopo completo por padrão** (nunca propor a versão mínima para
 economizar); **nunca tocar nem propor pagamento/checkout** (diretiva ativa do
 mantenedor — pagamento fica por último); **prazo apertado é motivo para
 acelerar, nunca para recomendar esperar**.
 
-**A tríade** (`docs/decisoes/DECISAO-triade-de-ias.md`): papéis e limites das
-três IAs moram lá. O que muda o seu gesto aqui: você é o executor; dúvida que
-só o mantenedor decide vai à maestro por `python ci/fila.py bloquear`; tarefa
-que você descobrir no caminho vai para a fila (`python ci/fila.py criar`) e
-volta à maestro, que decide se entra no lote.
+**A tríade de papéis fixos foi revogada** (`docs/decisoes/DECISAO-triade-de-ias.md`).
+Quem recebeu o pedido pergunta ao mantenedor decisões exclusivas. O subagente
+registra o bloqueio por `python ci/fila.py bloquear` e devolve a dúvida à sessão
+responsável. Trabalho descoberto fora do pedido vai para a fila por
+`python ci/fila.py criar`, sem ampliar o mandato.
 
 ### Passo 1 — leituras (dieta de contexto; leia SEMPRE do `origin/main` — o espelho local envelhece sem avisar)
 
@@ -165,17 +161,12 @@ pela mesma entrada. A retomada preserva arquivos e estado da bancada.
 2. Feche por `make pr` conforme `painel/LEIA-ME.md`, informando os comandos de
    validação e `TAR=TAR-NNN`. O comando reserva e embarca recibo, eventos e
    metadados no próprio PR; não repita esses efeitos manualmente.
-3. O despacho mede os checks, aciona a pista e fecha o ciclo sozinho com
-   `python ci/esperar.py --checks <N> --teto 20 --e-pousar`, seguido de uma
-   consulta única de `python ci/esperar.py --entrega <N> --so-desfecho`.
-   Revisão independente continua obrigatória, mas não vira tarefa do mantenedor.
-4. Confirmado `MERGED` na fonte do GitHub, o despacho abre imediatamente a
-   próxima frente dependente na bancada própria. Não existe sessão seguinte
-   para pedir conferência, disparo ou autorização de PR.
-5. Depois do merge, a sentinela (Antigravity) verifica a entrega alheia contra
-   o aceite (`verificacao`); você não espera por isso. O revisor da casa lê
-   todo PR antes do pouso para o atestado que a maestro publica; check pendente
-   não impede o pedido de pouso, a pista aguarda.
+3. A sessão mede uma vez com `python ci/esperar.py --checks <N> --so-desfecho`
+   se houver checks pendentes, ou com `--entrega <N> --so-desfecho` se eles
+   terminaram. A pista integra automaticamente quando os portões passam.
+4. Confirme integração e publicação em fontes próprias antes de declarar a
+   parte entregue. Se houver bloqueio, registre o motivo e a próxima ação.
+5. Revisão independente é facultativa e não substitui os portões.
 6. Fato posterior, como deploy e verificação pública, exige registro novo no livro.
 7. Aprendeu algo que vai morder o próximo robô? `armadilhas/NNN-slug.md` novo
    + `make indice` (arquivo NOVO, nunca append). O que só o mantenedor resolve:
@@ -185,12 +176,10 @@ pela mesma entrada. A retomada preserva arquivos e estado da bancada.
 
 ### Passo 8 — relatório final
 
-Em linguagem de resultado, com: o número do PR e o SHA · o atestado publicado
-e o pedido de pouso feito · o que ficou de fora e por quê · e, se sobrou
-decisão dele, devolvida à maestro, que abre a `AskUserQuestion`. O endereço
-para VER a parte no ar e o veredito da publicação entram no registro da sessão
-seguinte (Passo 7, item 4). Marco entregue
-merece celebração — o ânimo do mantenedor é infraestrutura do projeto.
+Em linguagem de resultado, com: número do PR e SHA, validação executada,
+estado medido da integração e da publicação, endereço público quando confirmado,
+o que ficou de fora e por quê. A sessão responsável pergunta ao mantenedor
+qualquer decisão exclusiva que ainda impeça a entrega.
 
 ---
 
@@ -209,5 +198,5 @@ merece celebração — o ânimo do mantenedor é infraestrutura do projeto.
 
 Na dúvida entre duas células, o desempate é o `painel/mapa-do-site.json` + o
 `config/urls.py` de cada uma — e, persistindo a dúvida, ela vira
-`AskUserQuestion` para o mantenedor com as opções traduzidas, feita só pela
-maestro; o executor não pergunta, devolve a dúvida à maestro.
+pergunta ao mantenedor com as opções traduzidas, feita pela sessão responsável;
+o subagente devolve a dúvida a ela.
