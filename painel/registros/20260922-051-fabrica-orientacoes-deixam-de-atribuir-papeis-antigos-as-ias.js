@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-051-fabrica-orientacoes-deixam-de-atribuir-papeis-antigos-as-ias",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fabrica: orientações deixam de atribuir papéis antigos às IAs",
+  detalhe: "Os guias ativos voltam a atribuir decisões à sessão que recebeu o pedido. O despacho registra bloqueios.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1946. Validação local: árvore 080406cb967b57e020c90cba558ece1a26a576c1; commit d5358fe4295020841a45884d68c3555613d0d959; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-633",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
