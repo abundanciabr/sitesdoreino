@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-223856-TAR-646-concluida",
+  "tarefa": "TAR-646",
+  "evento": "concluida",
+  "quando": "2026-09-22T22:38:56+00:00",
+  "quem": "agent/admin/retirar-papeis-do-ranking-e-prompts",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1958",
+  "verificado_em": "2026-09-22"
+}
