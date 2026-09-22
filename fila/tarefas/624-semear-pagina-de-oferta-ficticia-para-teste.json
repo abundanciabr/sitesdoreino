@@ -1,0 +1,19 @@
+{
+  "arquivo": "624-semear-pagina-de-oferta-ficticia-para-teste",
+  "id": "TAR-624",
+  "titulo": "Semear página de oferta fictícia para teste",
+  "toca": [
+    "catalogo"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "Testes de migração vermelho-verde, mutação das guardas, suíte catalogo verde, migração idempotente e reversa segura, deploy e /oferta HTTP 200 com aviso visível de teste",
+  "despacho": "Célula `catalogo`. Crie um seed de banco idempotente que publique uma página de oferta de teste completa para `meshcraft.top`, usando somente a oferta de teste já cadastrada e sem alterar produto, preço ou checkout.\n\nA publicação deve conter as 11 seções e todos os slots textuais válidos do vocabulário. Todo conteúdo inventado precisa dizer claramente `TESTE FICTÍCIO` na própria tela; nenhum depoimento, número ou afirmação de teste pode parecer real. Não crie seção de garantia, campo proibido, desconto, promessa ou urgência. O preço e o destino do CTA vêm exclusivamente da oferta de teste cadastrada.\n\nImplemente o seed como migração de dados segura, de execução única e reversa sem apagar versões publicadas. Ela só deve semear quando encontrar o site `meshcraft.top`, a oferta padrão exata de teste e ainda não existir página publicada. Se a oferta não corresponder à oferta de teste, ou a página já existir, não altere nenhum dado existente. Não crie ou edite a oferta nem execute pagamento.\n\nAlvos exclusivos: `services/catalogo/apps/paginas/migrations/` e os testes da migração sob `services/catalogo/tests/`. Somente leitura: constituição da célula, `services/catalogo/apps/paginas/models.py`, `services/catalogo/apps/paginas/vocabulario.py`, modelos de oferta e site na própria célula, contrato congelado. Não leia nem toque outra célula, `infra/` ou segredos.\n\nProve em testes: seed cria exatamente uma página, rascunho e versão pública com seções na ordem canônica e slots válidos; cada valor fictício está marcado; segunda execução não duplica nem substitui versão; site ou oferta inexistente/não teste não escreve nada; página/rascunho/versão preexistente não é sobrescrita; preço e oferta permanecem iguais; reversão não tenta apagar a versão imutável. Teste vermelho antes da implementação, suíte `catalogo` verde depois, mutação de cada guarda nova reprovando. Depois do merge/deploy, confira no domínio público que `/oferta` responde 200 e exibe claramente o aviso de teste, sem enviar pagamento.",
+  "origem": "Pedido explícito do mantenedor nesta conversa, 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
