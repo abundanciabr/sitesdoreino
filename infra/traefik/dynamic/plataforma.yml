@@ -71,6 +71,18 @@ http:
         replacement: 'https://meshcraft.top/cursos/aulas/${1}${2}'
         permanent: true
 
+    appmax-retorno-headers:
+      headers:
+        referrerPolicy: no-referrer
+        customResponseHeaders:
+          Cache-Control: no-store
+
+    appmax-retorno-home:
+      redirectRegex:
+        regex: '^https://meshcraft\.top/api/pagamentos/appmax/retorno(\?.*)?$'
+        replacement: 'https://meshcraft.top/'
+        permanent: false
+
   routers:
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
@@ -104,6 +116,24 @@ http:
       entryPoints: [websecure]
       middlewares: [seguranca]
       service: pagamentos
+      tls: {}
+
+    appmax-retorno-instalacao:
+      # O consentimento da Appmax volta por GET com um token temporario na
+      # query. Ele fica na borda: o redirect usa destino fixo, nao encaminha
+      # ao backend e descarta a query. O acesso a esta rota nao entra em logs,
+      # metricas ou traces, pois a query pode conter credencial temporaria.
+      # O prefixo cobre o namespace exclusivo; o RedirectRegex ancora o URL
+      # completo. Um sufixo nao redireciona e permanece no noop interno.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/api/pagamentos/appmax/retorno`)"
+      priority: 101
+      entryPoints: [websecure]
+      middlewares: [seguranca, appmax-retorno-headers, appmax-retorno-home]
+      service: noop@internal
+      observability:
+        accessLogs: false
+        metrics: false
+        tracing: false
       tls: {}
 
     checkout-api:
