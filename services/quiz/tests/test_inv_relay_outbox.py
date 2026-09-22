@@ -40,7 +40,7 @@ def stream_limpo():
 
 
 def _completar_quiz(client, quiz):
-    pergunta = quiz.questions.get(order=1)
+    pergunta = quiz.versions.get().questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)
     return client.post(
         f"/{quiz.slug}/",

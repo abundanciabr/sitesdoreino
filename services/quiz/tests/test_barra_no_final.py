@@ -24,7 +24,15 @@ As fixtures moram aqui, e não num `conftest.py`, pela mesma razão declarada em
 
 import pytest
 
-from apps.quiz.models import Option, Question, Quiz, ResultBand, Site, Submission
+from apps.quiz.models import (
+    Option,
+    Question,
+    Quiz,
+    QuizVersion,
+    ResultBand,
+    Site,
+    Submission,
+)
 
 HOST = "quiz-barra.exemplo.com"
 
@@ -35,11 +43,14 @@ pytestmark = pytest.mark.django_db
 def quiz_a(db):
     site = Site.objects.create(id="site-barra", host=HOST, name="Site da Barra")
     quiz = Quiz.objects.create(site=site, slug="crivo", title="Crivo")
-    pergunta = Question.objects.create(quiz=quiz, order=1, text="Pergunta 1")
+    versao = QuizVersion.objects.create(
+        quiz=quiz, key="original", weight=100, active=True
+    )
+    pergunta = Question.objects.create(version=versao, order=1, text="Pergunta 1")
     Option.objects.create(question=pergunta, order=1, text="Zero", points=0)
     Option.objects.create(question=pergunta, order=2, text="Dez", points=10)
     ResultBand.objects.create(
-        quiz=quiz, key="alto", title="Alto", min_score=0, max_score=10
+        version=versao, key="alto", title="Alto", min_score=0, max_score=10
     )
     return quiz
 
@@ -95,7 +106,7 @@ def test_a_query_do_resultado_sobrevive_ao_redirecionamento(client, quiz_a):
     redirecionamento que a perdesse trocaria um 404 por outro 404 — a pessoa
     clicaria no link do próprio resultado e veria "não encontrado".
     """
-    pergunta = quiz_a.questions.get(order=1)
+    pergunta = quiz_a.versions.get().questions.get(order=1)
     envio = client.post(
         f"/{quiz_a.slug}/",
         {

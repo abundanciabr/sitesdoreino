@@ -1,9 +1,12 @@
 # apps/quiz/management/commands/seed_quiz.py  # [RECEITA:R9 v1]
+import json
+from pathlib import Path
+
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.core.middleware import CAMINHOS_SEM_SITE
-from apps.quiz.models import Option, Question, Quiz, ResultBand, Site
+from apps.quiz.models import Option, Question, Quiz, QuizVersion, ResultBand, Site
 
 PERGUNTAS = [
     (
@@ -76,6 +79,12 @@ def conferir_slug(slug: str) -> None:
     A lista vem do middleware, e não repetida aqui: dois nomes escritos à mão
     divergiriam no dia em que alguém isentasse um terceiro caminho.
     """
+    if slug == "telemetry":
+        raise CommandError(
+            "o slug 'telemetry' nasceria inalcançável: /quiz/telemetry/ é a "
+            "rota de telemetria desta célula, e o formulário responderia 404 "
+            "para sempre. Escolha outro slug."
+        )
     if f"/{slug}/".startswith(CAMINHOS_SEM_SITE):
         reservados = ", ".join(caminho.strip("/") for caminho in CAMINHOS_SEM_SITE)
         raise CommandError(
@@ -83,6 +92,95 @@ def conferir_slug(slug: str) -> None:
             f"de resolução de site do middleware desta célula (caminhos que "
             f"começam por {reservados}), e responderia 404 para sempre. "
             f"Escolha outro slug."
+        )
+
+
+def _plantar_variacao(quiz, original, caminho: str) -> None:
+    arquivo = Path(caminho)
+    if not arquivo.is_file():
+        raise CommandError(f"não achei o arquivo de variação: {caminho}")
+    try:
+        dados = json.loads(arquivo.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as erro:
+        raise CommandError(f"o JSON da variação não parseia: {erro}") from erro
+    if not isinstance(dados, dict):
+        raise CommandError("o JSON da variação precisa ser um objeto")
+    chave = dados.get("key")
+    if not isinstance(chave, str) or not chave or chave == "original":
+        raise CommandError("a variação precisa de key própria, diferente de 'original'")
+    peso = dados.get("weight", 100)
+    if not isinstance(peso, int) or isinstance(peso, bool) or peso < 0:
+        raise CommandError(
+            "weight da variação precisa ser um inteiro maior ou igual a zero"
+        )
+    perguntas = dados.get("perguntas")
+    if not isinstance(perguntas, list) or not perguntas:
+        raise CommandError("a variação precisa de uma lista de perguntas")
+    versao, _ = QuizVersion.objects.update_or_create(
+        quiz=quiz,
+        key=chave,
+        defaults={"weight": peso, "active": True},
+    )
+    for ordem, item in enumerate(perguntas, start=1):
+        if not isinstance(item, dict) or not isinstance(item.get("texto"), str):
+            raise CommandError(f"pergunta {ordem} da variação está sem texto")
+        opcoes = item.get("opcoes")
+        if not isinstance(opcoes, list) or not opcoes:
+            raise CommandError(f"pergunta {ordem} da variação está sem opções")
+        pergunta, _ = Question.objects.get_or_create(
+            version=versao, order=ordem, defaults={"text": item["texto"]}
+        )
+        for ordem_opt, opcao in enumerate(opcoes, start=1):
+            if not isinstance(opcao, dict) or not isinstance(opcao.get("texto"), str):
+                raise CommandError(
+                    f"opção {ordem_opt} da pergunta {ordem} está sem texto"
+                )
+            pontos = opcao.get("pontos")
+            if not isinstance(pontos, int) or isinstance(pontos, bool):
+                raise CommandError(
+                    f"opção {ordem_opt} da pergunta {ordem} está sem pontos inteiros"
+                )
+            Option.objects.get_or_create(
+                question=pergunta,
+                order=ordem_opt,
+                defaults={"text": opcao["texto"], "points": pontos},
+            )
+    faixas = dados.get("faixas")
+    if faixas is None:
+        for faixa in original.bands.all():
+            ResultBand.objects.get_or_create(
+                version=versao,
+                key=faixa.key,
+                defaults={
+                    "title": faixa.title,
+                    "description": faixa.description,
+                    "min_score": faixa.min_score,
+                    "max_score": faixa.max_score,
+                    "botao_destino": faixa.botao_destino,
+                    "botao_rotulo": faixa.botao_rotulo,
+                },
+            )
+        return
+    if not isinstance(faixas, list) or not faixas:
+        raise CommandError("faixas da variação, quando existem, são uma lista")
+    for faixa in faixas:
+        if not isinstance(faixa, dict) or not isinstance(faixa.get("key"), str):
+            raise CommandError("cada faixa da variação precisa de key")
+        destino = faixa.get("botao_destino") or ""
+        rotulo = faixa.get("botao_rotulo") or ""
+        if bool(destino) != bool(rotulo):
+            raise CommandError("destino e rótulo do botão da faixa andam juntos")
+        ResultBand.objects.update_or_create(
+            version=versao,
+            key=faixa["key"],
+            defaults={
+                "title": faixa.get("title") or faixa["key"],
+                "description": faixa.get("description") or "",
+                "min_score": faixa.get("min_score", 0),
+                "max_score": faixa.get("max_score", 0),
+                "botao_destino": destino,
+                "botao_rotulo": rotulo,
+            },
         )
 
 
@@ -109,6 +207,11 @@ class Command(BaseCommand):
                 "/checkout/curso-teste/ (caminho relativo vale em qualquer site)"
             ),
         )
+        parser.add_argument(
+            "--variacao",
+            default="",
+            help="JSON de uma versão extra da mesma campanha, além da original",
+        )
 
     def handle(
         self,
@@ -118,6 +221,7 @@ class Command(BaseCommand):
         site_name: str,
         slug: str,
         destino_do_botao: str,
+        variacao: str,
         **opts,
     ):
         conferir_slug(slug)
@@ -128,9 +232,14 @@ class Command(BaseCommand):
             quiz, _ = Quiz.objects.get_or_create(
                 site=site, slug=slug, defaults={"title": "Crivo"}
             )
+            versao, _ = QuizVersion.objects.get_or_create(
+                quiz=quiz,
+                key="original",
+                defaults={"weight": 100, "active": True},
+            )
             for ordem, (texto, opcoes) in enumerate(PERGUNTAS, start=1):
                 pergunta, _ = Question.objects.get_or_create(
-                    quiz=quiz, order=ordem, defaults={"text": texto}
+                    version=versao, order=ordem, defaults={"text": texto}
                 )
                 for ordem_opt, (texto_opt, pontos) in enumerate(opcoes, start=1):
                     Option.objects.get_or_create(
@@ -146,7 +255,7 @@ class Command(BaseCommand):
                 # nenhum para avisar. Idempotente continua sendo: rodar de novo
                 # converge a faixa para o que está escrito aqui.
                 ResultBand.objects.update_or_create(
-                    quiz=quiz,
+                    version=versao,
                     key=key,
                     defaults={
                         "title": title,
@@ -157,6 +266,8 @@ class Command(BaseCommand):
                         "botao_rotulo": rotulo,
                     },
                 )
+            if variacao:
+                _plantar_variacao(quiz, versao, variacao)
         self.stdout.write(
             self.style.SUCCESS(f"✅ seed do Crivo: {quiz.slug} @ {site.host}")
         )
