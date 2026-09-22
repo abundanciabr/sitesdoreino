@@ -1,0 +1,19 @@
+{
+  "arquivo": "633-orientacoes-deixam-de-atribuir-papeis-antigos-as-ias",
+  "id": "TAR-633",
+  "titulo": "Orientações deixam de atribuir papéis antigos às IAs",
+  "toca": [
+    "fabrica"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste das orientações ativas verde e PR integrado",
+  "despacho": "Remova papéis fixos das orientações ativas em 00-LEIA-PRIMEIRO.md, ARMADILHAS.md, ARMADILHAS-OPERACAO.md, CAMINHO-DOURADO.md e docs/guia-mantenedor.md. Preserve fatos históricos. Acrescente teste em ci/tests/test_fecho_sem_entrega_a_outro_papel.py, valide e entregue PR.",
+  "origem": "pedido direto do mantenedor em 22/09/2026 sobre bloqueio causado pela antiga tríade",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
