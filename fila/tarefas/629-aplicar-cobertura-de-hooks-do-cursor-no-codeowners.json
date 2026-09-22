@@ -1,0 +1,19 @@
+{
+  "arquivo": "629-aplicar-cobertura-de-hooks-do-cursor-no-codeowners",
+  "id": "TAR-629",
+  "titulo": "Aplicar cobertura de hooks do Cursor no CODEOWNERS",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR separado altera .github/CODEOWNERS, teste de CODEOWNERS verde e muralhas verdes",
+  "despacho": "Corrija a conclusão prematura de TAR-627 criando uma tarefa de implementação separada. Altere somente .github/CODEOWNERS para adicionar /.cursor/hooks.json com @abundanciabr. Rode o teste de CODEOWNERS e python ci/ci.py --apenas muralhas. Abra PR próprio. Não edite PR #1907.",
+  "origem": "correção append-only de TAR-627 concluída sem a implementação, observada após merge do PR #1939 em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
