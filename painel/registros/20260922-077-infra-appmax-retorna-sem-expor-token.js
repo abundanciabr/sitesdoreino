@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-077-infra-appmax-retorna-sem-expor-token",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "infra: Appmax retorna sem expor token",
+  detalhe: "O gateway redireciona o retorno de instalação para uma URL fixa, remove a query e desativa logs, métricas e traces só nessa rota para proteger o token temporário.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1964. Validação local: árvore 5b146ab38631579cf416ba4efe253102910c5a47; commit 816e4f769c481d985176b5ed219a70f312e1faa0; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-648",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
