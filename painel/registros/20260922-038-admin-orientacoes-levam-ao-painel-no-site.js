@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-038-admin-orientacoes-levam-ao-painel-no-site",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: orientações levam ao painel no site",
+  detalhe: "Atualizei as instruções para abrir o painel e os documentos no site da VPS, sem usar localhost.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1926. Validação local: árvore 0096bccdcac1e4b3ef1e03608ef70df7751a9ae6; commit 8a42dddd909e384e61080829d4e5554f2921e0c8; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-622",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
