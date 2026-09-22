@@ -103,19 +103,6 @@ def test_o_script_que_o_workflow_manda_rodar_existe_no_disco() -> None:
             for passo in corpo.get("steps") or []:
                 caminho = (passo.get("with") or {}).get("script_path")
                 if caminho:
-                    if caminho == "${{ steps.conferir.outputs.script }}":
-                        conferencia = next(
-                            (
-                                anterior
-                                for anterior in corpo.get("steps") or []
-                                if anterior.get("id") == "conferir"
-                            ),
-                            {},
-                        )
-                        assert 'if [ ! -f "$SCRIPT" ]' in conferencia.get("run", ""), (
-                            f"{nome}::{job} calcula script_path sem provar que o arquivo existe."
-                        )
-                        continue
                     assert (RAIZ / caminho).is_file(), (
                         f"{nome}::{job} aponta para {caminho}, que não existe "
                         "no repositório."
