@@ -18,6 +18,10 @@ from apps.core.caixa import (
 )
 from apps.core.divida import divida_json
 from apps.core.fila_do_painel import fila_json
+from apps.core.documento_em_pagina import (
+    doc_publico_moldura,
+    documento_admin_moldura,
+)
 from apps.core.editor_de_documentos import (
     documento_apagar,
     documento_arquivar,
@@ -25,12 +29,14 @@ from apps.core.editor_de_documentos import (
     documento_desarquivar,
     documento_despublicar,
     documento_editar,
+    documento_midia_enviar,
     documento_novo,
     documento_publicar,
     documento_restaurar,
     documento_salvar,
     documento_versoes,
 )
+from apps.core.midia import midia_servir
 from apps.core.livro import (
     livro,
     livro_baixar_tudo,
@@ -333,6 +339,22 @@ urlpatterns = [
     # segunda cerca esta em `documentos.py::_arquivo`, que resolve e confere.
     path("docs/", docs_publicos, name="docs_publicos"),
     re_path(r"^docs/(?P<nome>[a-z0-9-]+)$", doc_publico, name="doc_publico"),
+    # A MOLDURA (TAR-596, 21/09/2026) — o corpo CRU de um documento de formato
+    # `pagina`, que a pagina acima mostra dentro de um `<iframe>` cujo sandbox
+    # NAO tem `allow-same-origin`. O porque esta em
+    # `apps/core/documento_em_pagina.py`, e e a peca inteira: sem
+    # `allow-same-origin` o corpo tem origem OPACA, entao o script dele roda
+    # sem enxergar cookie de sessao, `localStorage` nem o DOM do meshcraft.
+    #
+    # Ela e a TERCEIRA rota sob o prefixo publico `/docs/`, e obedece a mesma
+    # lei que autoriza as outras duas a morar ali: confere `no_ar` antes de
+    # responder, e devolve 404 (nunca 403) para o privado. O guarda
+    # `test_o_prefixo_publico_tem_so_as_tres_rotas` mede a lista.
+    re_path(
+        r"^docs/(?P<nome>[a-z0-9-]+)/moldura$",
+        doc_publico_moldura,
+        name="doc_publico_moldura",
+    ),
     path("documentos/", documentos_admin, name="documentos_admin"),
     # AS QUATRO ROTAS DO EDITOR (`DECISAO-o-editor-de-documentos.md`,
     # 31/08/2026): mostrar o formulario vazio, criar, mostrar o formulario
@@ -350,6 +372,13 @@ urlpatterns = [
     path("documentos/criar", documento_criar, name="documento_criar"),
     re_path(
         r"^documentos/(?P<nome>[a-z0-9-]+)$", documento_admin, name="documento_admin"
+    ),
+    # A mesma moldura, atras da porta: serve o privado e o arquivado, porque e
+    # antes de publicar que o mantenedor precisa VER a pagina que escreveu.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/moldura$",
+        documento_admin_moldura,
+        name="documento_admin_moldura",
     ),
     # Estas duas nao disputam nada com a generica acima: o `/editar` e o
     # `/salvar` no fim as tornam caminhos diferentes.
@@ -392,6 +421,35 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/apagar$",
         documento_apagar,
         name="documento_apagar",
+    ),
+    # IMAGEM E VIDEO NO DOCUMENTO (TAR-597, 21/09/2026), as duas rotas do
+    # assunto: uma recebe e a outra devolve.
+    #
+    # O ENVIO fica sob `documentos/<nome>/`, com os outros gestos do editor,
+    # porque um arquivo aqui e sempre de um documento — e apagar o documento
+    # apaga o arquivo junto.
+    #
+    # A ENTREGA fica na raiz, e nao sob `documentos/`, porque ela nao e um
+    # gesto do editor: e um endereco que vai dentro do texto de uma pagina. Sob
+    # `SCRIPT_NAME=/admin` ela responde em `meshcraft.top/admin/midia/...`, e
+    # ATRAS DA PORTA — nada nesta celula e publico sem uma decisao propria, e
+    # o renderizador que poria estas imagens numa pagina publica ainda nao
+    # existe (TAR-598). Abrir o prefixo antes disso seria abrir um buraco para
+    # nada.
+    #
+    # Os dois pedacos do endereco sao apertados de proposito: 32 digitos
+    # hexadecimais e um nome de arquivo sem barra nem ponto-ponto. Mesmo assim
+    # o disco NAO e alcancado por eles — `midia_servir` procura a linha no
+    # banco e le o caminho de la (`apps/core/midia.py`).
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/midia$",
+        documento_midia_enviar,
+        name="documento_midia_enviar",
+    ),
+    re_path(
+        r"^midia/(?P<sorteio>[0-9a-f]{32})/(?P<nome>[a-z0-9-]+\.[a-z0-9]{2,4})$",
+        midia_servir,
+        name="midia_servir",
     ),
     # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
     # lugar do `git log` que os documentos tinham enquanto moravam no

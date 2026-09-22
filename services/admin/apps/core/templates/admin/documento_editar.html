@@ -10,6 +10,25 @@ renderizador escapa antes de formatar (documentos.para_html).
 {% endcomment %}
 {% block titulo %}{% if criando %}Documento novo{% else %}Editando {{ rascunho.titulo }}{% endif %} | Meshcraft{% endblock %}
 {% block corpo %}
+<style>
+  /* O painel de imagem e video (TAR-597). Nome proprio, e nao `.midia`, porque
+     nome curto e generico e o que faz um estilo de uma tela vestir a caixa de
+     outra sem ninguem perceber. */
+  .midia-do-documento { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--linha); }
+  .midia-do-documento .rotulo { font-size: 14px; color: var(--texto); margin-bottom: 10px; }
+  .midia-do-documento .borda-verde { border-color: var(--verde); }
+  .lista-de-midia { list-style: none; margin: 0 0 16px; padding: 0; }
+  .lista-de-midia li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--linha); font-size: 13px; }
+  .lista-de-midia .miniatura { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--linha); background: var(--painel); }
+  .lista-de-midia .etiqueta { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--linha); background: var(--painel); color: var(--texto-2); font-size: 12px; }
+  .lista-de-midia code { color: var(--texto-2); word-break: break-all; }
+  .midia-do-documento input[type="file"] { display: block; margin-bottom: 12px; color: var(--texto-2); font-size: 13px; }
+  /* Botao de aparencia PROPRIA, e nao o `.salvar` verde do texto: dois botoes
+     verdes iguais na mesma tela, um que grava o texto e outro que manda um
+     arquivo, e um convite a apertar o errado. */
+  .enviar-midia { background: transparent; color: var(--texto); border: 1px solid var(--linha); border-radius: 10px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+  .enviar-midia:hover { border-color: var(--azul); color: var(--azul); }
+</style>
 <div class="envolucro">
   {% if criando %}
   <a class="volta" href="{% url 'documentos_admin' %}">&larr; Documentos</a>
@@ -96,6 +115,34 @@ renderizador escapa antes de formatar (documentos.para_html).
     </p>
     {% endif %}
 
+    {% comment %}
+    O FORMATO (TAR-596). Dois rádios, e não uma caixa de marcar: são duas
+    escolhas nomeadas, e uma caixa obrigaria a pessoa a deduzir o que acontece
+    quando ela fica desmarcada. A frase de cada um diz QUANDO usar, que é a
+    única pergunta que ele tem aqui.
+    {% endcomment %}
+    <span class="rotulo">O que este documento é</span>
+    <label class="marcar">
+      <input type="radio" name="formato" value="texto"
+             {% if rascunho.formato != "pagina" %}checked{% endif %}>
+      <span>Texto escrito</span>
+    </label>
+    <p class="nota">
+      Para quando você vai escrever. Eu cuido da aparência, e o texto sai com o
+      visual do site, igual a todos os outros documentos.
+    </p>
+    <label class="marcar">
+      <input type="radio" name="formato" value="pagina"
+             {% if rascunho.formato == "pagina" %}checked{% endif %}>
+      <span>Página visual</span>
+    </label>
+    <p class="nota">
+      Para quando você vai desenhar. A caixa de baixo vira uma folha em branco
+      que aceita HTML, CSS, SVG, gráfico e animação, e a página sai exatamente
+      como você escreveu. Ela abre isolada do resto do site, então nada dentro
+      dela alcança a sua sessão.
+    </p>
+
     <label class="rotulo" for="corpo">O texto</label>
     <textarea id="corpo" name="corpo" rows="24" spellcheck="true">{{ rascunho.corpo }}</textarea>
     <p class="nota">
@@ -107,6 +154,8 @@ renderizador escapa antes de formatar (documentos.para_html).
       <code>![legenda](figura:recepcionista)</code>.
       Linha em branco separa parágrafos. Bloco de código usa três crases.
       Imagem por endereço da internet ainda não entra.
+      Em <b>página visual</b> nada disso vale: ali você escreve a página
+      inteira, e ela sai como está.
     </p>
 
     <label class="rotulo" for="ordem">Posição na lista</label>
@@ -137,6 +186,65 @@ renderizador escapa antes de formatar (documentos.para_html).
     <p class="nota">
       As duas datas só valem se a caixa acima estiver marcada.
     </p>
+
+  {% comment %}
+  IMAGEM E VIDEO (TAR-597, 21/09/2026). O bloco fica DENTRO do mesmo formulário
+  do texto, e o botão usa `formaction` para mandar o arquivo a outra rota. Sem
+  isso o rascunho não salvo do texto sumiria a cada envio, que é a mesma perda
+  que a recusa do travessão se recusa a causar.
+  {% endcomment %}
+  {% if not criando %}
+  <div class="midia-do-documento">
+    <h2 class="rotulo">Imagens e vídeos deste documento</h2>
+
+    {% if erro_da_midia %}
+    <p class="recado borda-vermelha">{{ erro_da_midia }}</p>
+    {% endif %}
+    {% if enviada %}
+    <p class="recado borda-verde">
+      Enviei <b>{{ enviada.nome }}</b> ({{ enviada.megabytes }}). O texto que
+      você estava escrevendo continua aqui embaixo, ainda sem salvar.
+    </p>
+    {% endif %}
+
+    {% if midias %}
+    <ul class="lista-de-midia">
+      {% for arquivo in midias %}
+      <li>
+        {% if arquivo.tipo == "video/mp4" %}
+        <span class="etiqueta">vídeo</span>
+        {% else %}
+        <img src="{% url 'midia_servir' arquivo.sorteio arquivo.nome %}"
+             alt="{{ arquivo.nome }}" class="miniatura">
+        {% endif %}
+        <b>{{ arquivo.nome }}</b>
+        <span class="nota">{{ arquivo.tipo }}, {{ arquivo.megabytes }}</span>
+        <code>{% url 'midia_servir' arquivo.sorteio arquivo.nome %}</code>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="nota">
+      Nenhuma imagem ou vídeo enviado ainda. Escolha um arquivo abaixo para
+      começar.
+    </p>
+    {% endif %}
+
+    <input type="file" id="arquivo" name="arquivo"
+           accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,video/mp4">
+    <button type="submit" class="enviar-midia"
+            formaction="{% url 'documento_midia_enviar' rascunho.nome %}"
+            formenctype="multipart/form-data">
+      Enviar o arquivo
+    </button>
+    <p class="nota">
+      Aceito {{ tipos_aceitos }}, até {{ teto_da_midia }} MB por arquivo. Eu
+      confiro o conteúdo do arquivo, e não o nome dele. Arquivo grande demora:
+      depois de apertar enviar, espere a página recarregar sozinha, sem fechar
+      a aba nem apertar o botão de novo.
+    </p>
+  </div>
+  {% endif %}
 
     <div class="gestos-do-editor">
       <button type="submit" class="salvar">

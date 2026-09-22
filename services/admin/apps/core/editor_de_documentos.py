@@ -52,7 +52,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
-from . import documentos, travessao
+from . import documentos, midia, travessao
 from .models import Documento, VersaoDoDocumento
 from .views import _auditar
 
@@ -96,12 +96,28 @@ def _do_formulario(request) -> dict:
         "nome": (request.POST.get("nome") or "").strip().lower(),
         "corpo": (request.POST.get("corpo") or "").replace("\r\n", "\n"),
         "ordem": _inteiro(request.POST.get("ordem"), documentos.ORDEM_PADRAO),
+        "formato": _formato(request.POST.get("formato")),
         "apendice_vivo": request.POST.get("apendice_vivo") == "sim",
         "verificado_em": (request.POST.get("verificado_em") or "").strip(),
         "proxima_verificacao_em": (
             request.POST.get("proxima_verificacao_em") or ""
         ).strip(),
     }
+
+
+def _formato(texto: str | None) -> str:
+    """O formato que o formulário mandou, ou `texto` se ele mandou outra coisa.
+
+    FAIL-CLOSED, como `publico`: só os dois valores que a tela oferece gravam,
+    e qualquer outra coisa cai no formato que passa pelo renderizador que
+    escapa. Um POST montado à mão não consegue criar um documento com um
+    formato que nenhuma tela sabe desenhar, e um campo esquecido no formulário
+    também não muda o formato por acidente.
+    """
+    escolhido = (texto or "").strip()
+    if escolhido in Documento.Formato.values:
+        return escolhido
+    return Documento.Formato.TEXTO
 
 
 def _erro_de_apendice_vivo(rascunho: dict) -> str | None:
@@ -147,8 +163,29 @@ def _campos_de_apendice_vivo(rascunho: dict) -> dict:
     }
 
 
-def _tela(request, rascunho, *, criando, erro="", riscas=(), status=200):
-    """O formulário, com o que o mantenedor digitou de volta dentro dele."""
+def _tela(
+    request,
+    rascunho,
+    *,
+    criando,
+    erro="",
+    riscas=(),
+    status=200,
+    documento=None,
+    erro_da_midia="",
+    enviada=None,
+):
+    """O formulário, com o que o mantenedor digitou de volta dentro dele.
+
+    `documento` é `None` enquanto ele está criando: não há onde pendurar um
+    arquivo antes de a página existir, e a tela diz isso em vez de mostrar um
+    botão que não teria para onde mandar nada.
+
+    O erro do ENVIO vem separado do erro do texto de propósito. Os dois podem
+    estar na tela ao mesmo tempo, falam de gestos diferentes, e misturá-los
+    faria "não salvei" aparecer quando o texto estava perfeito e só o arquivo
+    foi recusado.
+    """
     return render(
         request,
         "admin/documento_editar.html",
@@ -159,6 +196,15 @@ def _tela(request, rascunho, *, criando, erro="", riscas=(), status=200):
             "erro": erro,
             "riscas": riscas,
             "prefixo_publico": documentos.PREFIXO_PUBLICO,
+            "midias": (
+                documento.midias.order_by("-enviado_em", "-id")
+                if documento is not None
+                else ()
+            ),
+            "erro_da_midia": erro_da_midia,
+            "enviada": enviada,
+            "teto_da_midia": midia.TETO_POR_ARQUIVO // (1024 * 1024),
+            "tipos_aceitos": midia.ACEITOS_EM_PORTUGUES,
         },
         status=status,
     )
@@ -192,6 +238,7 @@ def documento_novo(request):
             "nome": "",
             "corpo": "",
             "ordem": documentos.ORDEM_PADRAO,
+            "formato": Documento.Formato.TEXTO,
             "publico": False,
             "apendice_vivo": False,
             "verificado_em": "",
@@ -279,6 +326,7 @@ def documento_criar(request):
         nome=nome,
         corpo=rascunho["corpo"],
         ordem=rascunho["ordem"],
+        formato=rascunho["formato"],
         publico=False,
         **_campos_de_apendice_vivo(rascunho),
     )
@@ -311,6 +359,7 @@ def documento_editar(request, nome):
             "nome": documento.nome,
             "corpo": documento.corpo,
             "ordem": documento.ordem,
+            "formato": documento.formato,
             "publico": documento.publico,
             "apendice_vivo": documento.apendice_vivo,
             "verificado_em": (
@@ -323,6 +372,7 @@ def documento_editar(request, nome):
             ),
         },
         criando=False,
+        documento=documento,
     )
 
 
@@ -350,20 +400,36 @@ def documento_salvar(request, nome):
             criando=False,
             erro="Escreva um título para o documento.",
             status=422,
+            documento=documento,
         )
 
     riscas = _riscas(rascunho)
     if riscas:
-        return _tela(request, rascunho, criando=False, riscas=riscas, status=422)
+        return _tela(
+            request,
+            rascunho,
+            criando=False,
+            riscas=riscas,
+            status=422,
+            documento=documento,
+        )
 
     erro_apendice = _erro_de_apendice_vivo(rascunho)
     if erro_apendice:
-        return _tela(request, rascunho, criando=False, erro=erro_apendice, status=422)
+        return _tela(
+            request,
+            rascunho,
+            criando=False,
+            erro=erro_apendice,
+            status=422,
+            documento=documento,
+        )
 
     era_apendice_vivo = documento.apendice_vivo
     documento.titulo = rascunho["titulo"]
     documento.corpo = rascunho["corpo"]
     documento.ordem = rascunho["ordem"]
+    documento.formato = rascunho["formato"]
     for campo, valor in _campos_de_apendice_vivo(rascunho).items():
         setattr(documento, campo, valor)
     documento.save()
@@ -388,6 +454,74 @@ def documento_salvar(request, nome):
     )
     return HttpResponseRedirect(
         f"{reverse('documento_admin', args=[documento.nome])}?recado=salvo"
+    )
+
+
+# --------------------------------------------------- imagem e vídeo no documento
+#
+# TAR-597, 21/09/2026: o mantenedor autorizou a plataforma a guardar arquivo no
+# disco da VPS, e pediu que o editor recebesse imagem e vídeo.
+#
+# O botão de enviar mora DENTRO do mesmo formulário do texto, e usa `formaction`
+# para mandar o envio a esta rota. É o que impede o gesto de destruir o outro:
+# um formulário separado para o arquivo faria o rascunho não salvo do texto
+# desaparecer a cada envio, que é a mesma perda que a recusa do travessão já se
+# recusa a causar (`DECISAO-o-editor-de-documentos` §3).
+#
+# Por isso esta rota NÃO redireciona: ela devolve a tela inteira, com o
+# rascunho de volta dentro dela. O preço é o aviso de reenvio do navegador ao
+# apertar F5, e ele é barato perto de perder o texto de alguém.
+
+
+@require_POST
+def documento_midia_enviar(request, nome):
+    """Guarda a imagem ou o vídeo que ele escolheu, sem perder o texto na volta."""
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    rascunho = _do_formulario(request)
+    rascunho["nome"] = documento.nome
+    rascunho["publico"] = documento.publico
+
+    try:
+        enviada = midia.guardar(
+            documento,
+            request.FILES.get("arquivo"),
+            request.admin.get("email") or "",
+        )
+    except midia.Recusa as recusa:
+        # A tentativa recusada ganha linha de auditoria, e é a única memória
+        # dela: nada é escrito em lugar nenhum quando o arquivo não entra.
+        _auditar(
+            request,
+            Registro.ENVIAR_MIDIA,
+            documento.nome,
+            Registro.RECUSADO_PELA_CELULA,
+            f"recusou o envio: {recusa}",
+        )
+        return _tela(
+            request,
+            rascunho,
+            criando=False,
+            status=422,
+            documento=documento,
+            erro_da_midia=str(recusa),
+        )
+
+    _auditar(
+        request,
+        Registro.ENVIAR_MIDIA,
+        documento.nome,
+        Registro.OK,
+        f"enviou {enviada.nome}, tipo={enviada.tipo}, bytes={enviada.tamanho}",
+    )
+    return _tela(
+        request,
+        rascunho,
+        criando=False,
+        documento=documento,
+        enviada=enviada,
     )
 
 
@@ -523,6 +657,7 @@ def documento_apagar(request, nome):
         Registro.OK,
         f"apagou o documento, publico={documento.publico}",
     )
+    midia.apagar_os_arquivos(documento)
     documento.delete()
     return HttpResponseRedirect(f"{reverse('documentos_admin')}?recado=apagado")
 

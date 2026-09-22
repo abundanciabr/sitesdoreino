@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260921-233217-TAR-500-devolvida",
+  "tarefa": "TAR-500",
+  "evento": "devolvida",
+  "quando": "2026-09-21T23:32:17+00:00",
+  "quem": "codex-infra-fechar-inventario-chaves-deploy",
+  "detalhe": "O mantenedor confirmou o inventario da VPS, classificou as quatro chaves e autorizou a retirada das duas sem uso."
+}

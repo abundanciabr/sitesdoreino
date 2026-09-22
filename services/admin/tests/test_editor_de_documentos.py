@@ -111,15 +111,21 @@ def test_nenhuma_rota_do_editor_responde_sem_cracha(metodo, caminho):
 
 
 def test_as_rotas_do_editor_nao_escaparam_para_o_prefixo_publico():
-    """O `/docs/` é isento na porta, e por isso ele tem exatamente duas rotas,
-    as duas de leitura. Uma rota de ESCRITA ali seria o site inteiro editável
-    por quem passasse na rua."""
+    """O `/docs/` é isento na porta, e por isso tudo que mora ali é LEITURA.
+    Uma rota de ESCRITA ali seria o site inteiro editável por quem passasse na
+    rua.
+
+    A lista ganhou a moldura em 21/09/2026 (TAR-596): ela serve o corpo cru de
+    um documento de formato `pagina`, é `require_GET` como as outras duas, e
+    confere `no_ar` antes de responder. Rota do EDITOR aqui continua reprovando,
+    que é o que este guarda existe para impedir.
+    """
     sob_docs = {
         p.name
         for p in get_resolver().url_patterns
         if str(p.pattern).lstrip("^").startswith("docs/")
     }
-    assert sob_docs == {"docs_publicos", "doc_publico"}
+    assert sob_docs == {"docs_publicos", "doc_publico", "doc_publico_moldura"}
 
 
 # --------------------------------- 2. a recusa do travessão, sem comer nada

@@ -1,0 +1,90 @@
+{% comment %}
+O corpo de um documento de formato `pagina`. Incluído pelas DUAS telas do
+documento (a pública e a administrativa), que só diferem no endereço da moldura
+e em haver ou não um caminho para editar.
+
+O PORQUÊ DO SANDBOX SEM `allow-same-origin` está escrito no atributo, e ele é a
+peça inteira desta tela: ver `apps/core/documento_em_pagina.py`.
+
+O estilo mora embutido aqui, e não em `base.html`, porque ele existe só nesta
+inclusão. O CSP desta resposta é montado por `documento_em_pagina.csp_da_pagina`,
+que hasheia todo `<style>` e todo `<script>` embutidos da página servida.
+{% endcomment %}
+<style>
+  .moldura-do-documento {
+    display: block; width: 100%; border: 0;
+    /* A ALTURA SEM JAVASCRIPT. O escutador abaixo ajusta a altura ao conteúdo
+       de verdade; sem script no navegador de quem lê, nada disso acontece e o
+       que fica é esta altura. Vê-se menos página de uma vez, com rolagem
+       dentro do quadro, e nunca uma tela em branco. */
+    min-height: 70vh;
+  }
+  /* As duas telas têm `--linha` e `--texto-2`; nenhuma das duas tem uma classe
+     de aviso em comum, e por isso esta é própria. */
+  .documento-vazio {
+    border: 1px dashed var(--linha); border-radius: 10px;
+    padding: 14px 16px; color: var(--texto-2);
+  }
+</style>
+{% if tem_corpo %}
+<iframe
+  id="moldura-do-documento"
+  class="moldura-do-documento"
+  title="{{ documento.titulo }}"
+  src="{{ endereco_da_moldura }}"
+  {% comment %}
+  NÃO ACRESCENTE `allow-same-origin` A ESTE SANDBOX.
+
+  A moldura é servida pela NOSSA origem. Num iframe de mesma origem,
+  `allow-same-origin` devolve ao conteúdo tudo o que o sandbox tirou: ele
+  volta a ser código do meshcraft rodando na origem do meshcraft, com acesso
+  ao cookie de sessão, ao `localStorage` e ao DOM desta página. Ou seja, o
+  atributo não "melhora o funcionamento": ele DESLIGA o isolamento.
+
+  É a ausência dele que dá ao documento uma origem opaca, e é por isso que dá
+  para entregar a folha em branco (HTML, CSS, SVG, Canvas, biblioteca por CDN)
+  sem entregar junto a chave da casa. Se alguma coisa dentro do documento
+  precisar de sessão ou de armazenamento, a resposta é que ela não vai ter:
+  documento é documento.
+
+  Guarda: `tests/test_pagina_visual_do_documento.py`, que mede a ausência na
+  página renderizada E na fonte de todo template desta área.
+  {% endcomment %}
+  sandbox="allow-scripts allow-popups allow-forms"></iframe>
+<script>
+(function () {
+  var moldura = document.getElementById("moldura-do-documento");
+  if (!moldura) { return; }
+  window.addEventListener("message", function (evento) {
+    // A PROCEDÊNCIA SE CONFERE PELO ELEMENTO, NUNCA PELO `origin`. O sandbox
+    // sem `allow-same-origin` dá ao documento uma origem opaca, e dela o
+    // `evento.origin` chega como a string "null": comparar com a nossa origem
+    // recusaria toda mensagem, e aceitar "null" aceitaria qualquer outro
+    // conteúdo sandboxed da página. O `contentWindow` deste iframe é a única
+    // procedência que distingue um do outro.
+    if (evento.source !== moldura.contentWindow) { return; }
+    var dados = evento.data;
+    if (!dados || dados.meshcraft !== "altura-do-documento") { return; }
+    var altura = parseInt(dados.altura, 10);
+    // Um teto, para que um documento com erro de medida não empurre a página
+    // para uma altura que o navegador não desenha.
+    if (!altura || altura < 1 || altura > 40000) { return; }
+    // O `min-height` do CSS existe para o caso SEM script. Assim que a altura
+    // de verdade chega, ele precisa sair do caminho: um documento curto num
+    // navegador alto ficaria com uma faixa morta embaixo, e a faixa tem a cor
+    // do documento, então parece parte dele.
+    moldura.style.minHeight = "0";
+    moldura.style.height = altura + "px";
+  });
+})();
+</script>
+{% else %}
+<p class="documento-vazio">
+  Este documento ainda não tem conteúdo.
+  {% if caminho_para_editar %}
+  Escreva a página em <a href="{{ caminho_para_editar }}">editar este documento</a>.
+  {% else %}
+  Assim que houver algo escrito, ele aparece aqui.
+  {% endif %}
+</p>
+{% endif %}
