@@ -40,6 +40,7 @@ def montar_funil(quiz) -> str:
             evento.session_id, (evento.version_key, _utm(evento.metadata))
         )
     viram = defaultdict(set)
+    abandonaram = defaultdict(set)
     cliques = defaultdict(list)
     primeira_vista = {}
     for evento in eventos:
@@ -52,6 +53,8 @@ def montar_funil(quiz) -> str:
             cliques[(evento.session_id, _pergunta_do_clique(evento))].append(
                 evento.occurred_at
             )
+        elif evento.event_type == "abandon":
+            abandonaram[evento.element_id].add(evento.session_id)
     vistas_por_grupo = defaultdict(set)
     for evento in eventos:
         if evento.event_type == "view_quiz":
@@ -90,7 +93,7 @@ def montar_funil(quiz) -> str:
             media = f"{sum(tempos) / len(tempos):.1f}s" if tempos else "sem amostra"
             linhas.append(
                 f"  pergunta {pergunta}: viram {len(quem_viu)}, "
-                f"sairam {len(quem_viu - completas)}, hesitaram {len(hesitaram)}, "
+                f"sairam {len(quem_viu & abandonaram[pergunta])}, hesitaram {len(hesitaram)}, "
                 f"tempo medio {media}"
             )
     return "\n".join(linhas)

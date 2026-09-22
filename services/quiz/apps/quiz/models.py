@@ -136,8 +136,6 @@ class Submission(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.PROTECT, related_name="submissions")
     version = models.ForeignKey(
         QuizVersion,
-        null=True,
-        blank=True,
         on_delete=models.PROTECT,
         related_name="submissions",
     )
@@ -156,6 +154,12 @@ class Submission(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["site_id", "quiz"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["quiz", "session_id"],
+                name="submission_quiz_session_unica",
+            )
+        ]
 
 
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
@@ -178,6 +182,7 @@ class TelemetryEvent(models.Model):
     """
 
     session_id = models.UUIDField()
+    stream_id = models.CharField(max_length=64, null=True, unique=True)
     site_id = models.CharField(max_length=64)
     quiz_slug = models.SlugField(max_length=100)
     version_key = models.SlugField(max_length=100)
