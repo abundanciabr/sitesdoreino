@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-222650-TAR-644-bloqueada",
+  "tarefa": "TAR-644",
+  "evento": "bloqueada",
+  "quando": "2026-09-22T22:26:50+00:00",
+  "quem": "agente-tecnico",
+  "detalhe": "A consulta oficial GET /v1/orders/{order_id} mostra total pago, amounts e refunded_at, mas não o valor efetivamente devolvido. POST /v1/orders/refund-request permite pedir estorno total ou parcial, mas a solicitação não prova o valor liquidado. Sem valor e identidade confirmados por resposta autenticada, não produzir pagamento.estornado.v2 nem amount_cents. Após instalar credenciais merchant no sandbox, fazer compra e estorno de teste, consultar e guardar resposta sanitizada; se GET não trouxer valor e identidade, buscar e testar endpoint oficial autenticado. Webhook não prova dinheiro.",
+  "espera": "fila"
+}

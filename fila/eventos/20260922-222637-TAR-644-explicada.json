@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-222637-TAR-644-explicada",
+  "tarefa": "TAR-644",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:26:37+00:00",
+  "quem": "Substitui o escopo tecnico da TAR-641, cuja conclusao automatica foi indevida; origem historica cancelada TAR-554, sem altera-la",
+  "o_que_e": "A Appmax permite solicitar estorno total ou parcial, mas a consulta oficial de pedido não informa quanto foi realmente devolvido. Sem esse valor e a identidade do pedido, o sistema não pode registrar um estorno financeiro.",
+  "o_que_muda": "O sistema só suspende o acesso e registra estorno ou contestação depois de confirmar, por consulta autenticada, o valor real e o pedido correto, sem depender do webhook.",
+  "exemplo": "Uma compra de R$ 120 pode ter estorno parcial de R$ 50. O evento só leva R$ 50 se a resposta autenticada provar essa devolução.",
+  "importancia": 78
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-222700-TAR-641-explicada",
+  "tarefa": "TAR-641",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:27:00+00:00",
+  "quem": "agente-tecnico",
+  "o_que_e": "A conclusão automática indevida da TAR-641 pelo rito do PR fechou a tarefa antes do trabalho financeiro. Nenhum critério técnico de estorno foi satisfeito: não há resposta autenticada com valor real e identidade, nem produtor v2, outbox ou testes.",
+  "o_que_muda": "A conclusão não comprova operação financeira. A TAR-644 preserva o escopo técnico pendente e continua bloqueada até existir prova autenticada do valor devolvido e do pedido correto.",
+  "exemplo": "O PR registrou a tarefa como concluída, mas ninguém consultou estorno em sandbox e nenhum pagamento.estornado.v2 foi implementado. TAR-644 é a substituta técnica bloqueada.",
+  "importancia": 78
+}
