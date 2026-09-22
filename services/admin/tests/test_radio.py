@@ -3,29 +3,43 @@
 import json
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
 from django.apps import apps
 from django.db.migrations.executor import MigrationExecutor
 from django.db.utils import ConnectionHandler
-from django.test import RequestFactory
 from django.urls import Resolver404, resolve
 
-from apps.core.views import acesso_local
+IDENTIDADE = "http://identidade:8000/interno"
+SESSAO = f"{IDENTIDADE}/sessao/completa"
+COOKIE = "meshcraft_sessao=qualquer"
+DONO = "dono@casa"
 
 
 @pytest.mark.parametrize(
     "caminho", ["/caixa/radio/", "/caixa/radio/api/", "/caixa/radio/radio.js"]
 )
-def test_rotas_do_radio_nao_existem(caminho, client, settings):
+@respx.mock
+def test_rotas_do_radio_nao_existem(caminho, client, settings, monkeypatch):
     with pytest.raises(Resolver404):
         resolve(caminho)
-    settings.ADMIN_LINK_TOKEN = "convite-teste"
-    settings.ADMIN_LOCAL_EMAIL = "dono@casa"
-    settings.ADMIN_EMAILS = "dono@casa"
-    entrada = acesso_local(
-        RequestFactory().get("/acesso-local/convite-teste/"), "convite-teste"
+    monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token")
+    settings.ADMIN_EMAILS = DONO
+    settings.URL_DE_ENTRADA = "/entrar/google"
+    respx.get(SESSAO).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "autenticado": True,
+                "id": "id-opaco",
+                "nome_exibido": "Dono",
+                "email": DONO,
+            },
+        )
     )
-    client.cookies.update(entrada.cookies)
+    client.defaults["HTTP_COOKIE"] = COOKIE
     assert client.get(caminho).status_code == 404
     assert (
         client.post(

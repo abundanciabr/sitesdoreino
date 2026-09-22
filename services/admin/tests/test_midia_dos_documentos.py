@@ -33,7 +33,6 @@ import httpx
 import pytest
 import respx
 from django.conf import settings
-from django.core import signing
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import get_resolver
@@ -273,14 +272,14 @@ def test_quem_esta_fora_da_porta_nao_le_o_arquivo(documento):
 
     resposta = Client().get(f"/midia/{guardada.sorteio}/{guardada.nome}")
 
-    # guarda: services/admin/apps/core/midia.py:249
+    # guarda: services/admin/apps/core/midia.py:250
     assert resposta.status_code == 404
 
 
 @respx.mock
 def test_arquivo_de_documento_no_ar_responde_sem_sessao(documento):
     """A página pública precisa alcançar a imagem sem login (TAR-598)."""
-    # guarda: services/admin/apps/core/porta.py:273
+    # guarda: services/admin/apps/core/porta.py:278
     documento.publico = True
     documento.save(update_fields=["publico"])
     _enviar(_dentro(), documento, "foto.png", PNG)
@@ -294,15 +293,42 @@ def test_arquivo_de_documento_no_ar_responde_sem_sessao(documento):
 
 
 @respx.mock
-def test_o_editor_local_ve_arquivo_de_documento_ainda_privado(documento):
-    """O crachá local, e só ele, vê a miniatura antes de publicar."""
+def test_a_sessao_do_admin_ve_arquivo_de_documento_ainda_privado(documento):
+    """Quem já entrou no admin vê a miniatura antes de publicar."""
+    # guarda: services/admin/apps/core/porta.py:331
     _enviar(_dentro(), documento, "foto.png", PNG)
     guardada = Midia.objects.get()
-    cliente = Client()
-    cookie = signing.TimestampSigner().sign_object(
-        {"id": "id-local", "nome": "Fulano", "email": DONO}
+
+    resposta = _dentro().get(f"/midia/{guardada.sorteio}/{guardada.nome}")
+
+    assert resposta.status_code == 200
+    assert b"".join(resposta.streaming_content) == PNG
+
+
+@respx.mock
+def test_o_cookie_local_nao_ve_arquivo_ainda_privado(documento):
+    _enviar(_dentro(), documento, "foto.png", PNG)
+    guardada = Midia.objects.get()
+    respx.get(SESSAO).mock(
+        return_value=httpx.Response(200, json={"autenticado": False})
     )
-    cliente.cookies[settings.ADMIN_LOCAL_COOKIE_NAME] = cookie
+    cliente = Client()
+    cliente.cookies["admin_acesso_local"] = "assinatura-que-nao-vale"
+
+    resposta = cliente.get(f"/midia/{guardada.sorteio}/{guardada.nome}")
+
+    assert resposta.status_code == 404
+
+
+@respx.mock
+def test_arquivo_publico_sai_quando_a_identidade_nao_responde(documento):
+    documento.publico = True
+    documento.save(update_fields=["publico"])
+    _enviar(_dentro(), documento, "foto.png", PNG)
+    guardada = Midia.objects.get()
+    respx.get(SESSAO).mock(side_effect=httpx.ConnectError("identidade fora"))
+    cliente = Client()
+    cliente.defaults["HTTP_COOKIE"] = COOKIE
 
     resposta = cliente.get(f"/midia/{guardada.sorteio}/{guardada.nome}")
 

@@ -1,4 +1,4 @@
-"""O acesso local continua fechado sem token; o comando usa o lançador medido."""
+"""A rota local não existe; o comando ainda chama o lançador medido."""
 
 import json
 import importlib.util
@@ -27,7 +27,7 @@ def test_cmd_chama_lancador_que_verifica_http():
     assert (RAIZ / "ci/ligar_administracao.py").is_file()
 
 
-def test_sem_token_a_rota_local_nao_e_registrada():
+def test_a_rota_local_nao_existe_mesmo_com_token():
     ambiente = os.environ.copy()
     ambiente.update(
         {
@@ -35,9 +35,9 @@ def test_sem_token_a_rota_local_nao_e_registrada():
             "DJANGO_SECRET_KEY": "teste-guarda",
             "DATABASE_URL": "sqlite:///teste-local.sqlite3",
             "SCRIPT_NAME": "",
+            "ADMIN_LINK_TOKEN": "convite-que-nao-abre",
         }
     )
-    ambiente.pop("ADMIN_LINK_TOKEN", None)
     script = """
 import django
 django.setup()
@@ -48,8 +48,10 @@ try:
 except NoReverseMatch:
     pass
 else:
-    raise SystemExit('reverse aceitou acesso_local sem token')
-assert Client().get('/acesso-local/qualquer-token/').status_code == 404
+    raise SystemExit('reverse aceitou acesso_local')
+resposta = Client().get('/acesso-local/convite-que-nao-abre/')
+assert resposta.status_code != 200
+assert 'admin_acesso_local' not in resposta.cookies
 """
     resultado = subprocess.run(
         [sys.executable, "-c", script],
