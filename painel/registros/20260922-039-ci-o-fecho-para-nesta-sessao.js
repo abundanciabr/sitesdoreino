@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-039-ci-o-fecho-para-nesta-sessao",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: o fecho para nesta sessão",
+  detalhe: "O fecho para nesta sessão. A integração segue pelos portões. O teste recusa a frase antiga.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1933. Validação local: árvore cc99b837e693522e3b428630cad4d6e1a260aa2f; commit cbc3aa03f502bf8da424d452b09785ffe097098a; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-623",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -65,7 +65,8 @@ def test_lista_a_sem_mandato_reprova(repo):
         "falta o mandato nominal para servicos/pagamentos/cobranca.py "
         "(pagamento e cobrança)"
     )
-    assert "devolva à maestro" in veredito.como_prosseguir
+    assert "escreva o bloqueio no balcão e pare" in veredito.como_prosseguir
+    assert "devolva à maestro" not in veredito.como_prosseguir
 
     com_mandato = mandato_por_faixa.conferir(
         ["servicos/pagamentos/cobranca.py"],

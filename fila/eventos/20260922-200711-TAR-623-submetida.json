@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-200711-TAR-623-submetida",
+  "tarefa": "TAR-623",
+  "evento": "submetida",
+  "quando": "2026-09-22T20:07:11+00:00",
+  "quem": "agent/ci/fecho-sem-devolucao-a-maestro",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1933",
+  "revisao": "cbc3aa03f502bf8da424d452b09785ffe097098a",
+  "arvore": "cc99b837e693522e3b428630cad4d6e1a260aa2f"
+}
