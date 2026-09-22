@@ -1,0 +1,19 @@
+{
+  "arquivo": "603-provisionar-pelo-botao-com-validacao-do-alvo",
+  "id": "TAR-603",
+  "titulo": "Provisionar pelo botão com validação do alvo",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR #1856 integrado com os três arquivos autorizados, testes focais e muralhas verdes; execução real na VPS é separada.",
+  "despacho": "Retomar provisionar-por-botao no ramo agent/infra/provisionar-por-botao e PR #1856. Alvos: .github/workflows/provisionar.yml ci/tests/test_provisionar_por_botao.py ci/tests/test_rollback_congela_ao_aplicar.py. Preservar histórico, validar e embarcar pelo rito canônico; não executar provisionamento na VPS. Mandatos nominais e de publicação recebidos na sessão de 21/09/2026. modelo_recomendado: gpt-5.6-sol; esforco_recomendado: medium.",
+  "origem": "Pedido Resolva isso e autorizações do mantenedor na sessão Codex de 21/09/2026; PR #1856.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}
