@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-193440-TAR-620-explicada",
+  "tarefa": "TAR-620",
+  "evento": "explicada",
+  "quando": "2026-09-22T19:34:40+00:00",
+  "quem": "Ordem do mantenedor nesta sessão de 22/09/2026",
+  "o_que_e": "Um parágrafo vivo ainda cita a regra revogada de escopo e contradiz a lei nova.",
+  "o_que_muda": "Quem lê a decisão entende que todo pedido com nome entra no menor caminho funcional já testável.",
+  "exemplo": "A primeira entrega abre uma porta que funciona e o próximo degrau fica nomeado, sem construir o sistema inteiro antes.",
+  "importancia": 90
+}
