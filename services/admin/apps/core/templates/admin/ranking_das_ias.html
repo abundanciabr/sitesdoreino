@@ -60,7 +60,7 @@
         {% for ia in participantes %}
           <tr class="ia{% if ia.posicao == 1 %} lidera{% endif %}{% if ia.sem_entrega %} parada{% endif %}">
             {% if not incompleto %}<td class="numero">{{ ia.posicao }}º</td>{% endif %}
-            <td><b>{{ ia.nome }}</b><span class="papel">{{ ia.papel }}</span></td>
+            <td><b>{{ ia.nome }}</b></td>
             <td class="numero">{{ ia.paginas }}</td>
             <td class="numero">{% if ia.custo_por_pagina is None %}<span class="nao-sei">sem página</span>{% else %}{{ ia.custo_por_pagina }}{% endif %}</td>
             <td class="numero">{{ ia.entregas }}</td>
