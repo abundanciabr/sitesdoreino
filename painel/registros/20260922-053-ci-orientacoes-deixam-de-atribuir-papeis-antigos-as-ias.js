@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-053-ci-orientacoes-deixam-de-atribuir-papeis-antigos-as-ias",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: orientações deixam de atribuir papéis antigos às IAs",
+  detalhe: "Os guias ativos atribuem decisões à sessão responsável pelo pedido. O despacho registra bloqueios.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1952. Validação local: árvore 17dd09bf02cfc25505182568f12e02ab27fc4146; commit 8ea386edf2cbd8e3e7d418da26892162355dc427; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-634",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
