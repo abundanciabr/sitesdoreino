@@ -234,9 +234,19 @@ def midia_servir(request, sorteio, nome):
     quando não gostar desse. O nome na URL existe para o arquivo ter nome ao
     ser baixado, e é conferido contra o banco justamente para não haver dois
     endereços para o mesmo arquivo.
+
+    Quem não passou pela porta só recebe arquivo de documento no ar. Documento
+    privado, arquivado ou inexistente responde 404, nunca 403: o sorteio não
+    confirma que o arquivo existe.
     """
-    midia = Midia.objects.filter(sorteio=sorteio, nome=nome).first()
+    midia = (
+        Midia.objects.filter(sorteio=sorteio, nome=nome)
+        .select_related("documento")
+        .first()
+    )
     if midia is None:
+        raise Http404("arquivo não encontrado")
+    if not getattr(request, "admin", None) and not midia.documento.no_ar:
         raise Http404("arquivo não encontrado")
 
     caminho = raiz() / midia.sorteio / midia.nome

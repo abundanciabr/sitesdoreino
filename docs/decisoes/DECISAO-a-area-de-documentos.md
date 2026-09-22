@@ -97,9 +97,10 @@ privado e um endereço inventado são **a mesma coisa**.
 ## §6 — Escapa primeiro, formata depois
 
 O renderizador aceita um subconjunto pequeno de Markdown (títulos, parágrafos,
-listas, negrito, código, citação, linha, links) e **escapa o texto inteiro antes
+listas, negrito, código, citação, aviso destacado, linha, links, tabela,
+imagem da casa em `/midia/` e figura nomeada) e **escapa o texto inteiro antes
 de aplicar qualquer regra**. HTML escrito dentro de um documento aparece na tela
-como texto.
+como texto. Imagem por endereço da internet não entra.
 
 Não é desconfiança de quem escreve — os documentos passam por PR. É a diferença
 entre *"não deve acontecer"* e *"não pode acontecer"*, e é o que torna o `|safe`

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-002-fila-recuperar-o-cartao-de-backup",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fila: recuperar o cartão de backup",
+  detalhe: "Cadastro do backup recuperado com sua explicação original. A execução na VPS segue pendente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1876. Validação local: árvore a7e88b5e9b859a3033e8dee975d5c321dfd61e7d; commit e49313ace204dee381ee1c9acd55cd766495a8d8; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-602",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

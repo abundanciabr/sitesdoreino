@@ -11,6 +11,7 @@ from apps.core.markdown import para_html
 
 
 def test_html_dentro_da_peca_sai_escapado():
+    # guarda: services/cursos/apps/core/markdown.py:89
     saida = para_html('<script>alert("oi")</script>\n\n<b>negrito</b>')
 
     assert "<script>" not in saida
@@ -69,3 +70,44 @@ def test_paragrafo_de_varias_linhas_vira_um_paragrafo_so():
 
 def test_multiplicacao_no_meio_da_frase_nao_vira_italico():
     assert "<em>" not in para_html("3 * 4 * 5")
+
+
+def test_tabela_vira_table_e_escapa_a_celula():
+    saida = para_html("| A | B |\n| --- | --- |\n| um | <script>x</script> |")
+    assert "<table>" in saida
+    assert "<th>A</th>" in saida
+    assert "<td>um</td>" in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+
+
+def test_imagem_da_casa_vira_img_e_escapa_a_legenda():
+    endereco = f"/midia/{'a' * 32}/foto.png"
+    saida = para_html(f"![A <b>casa</b>]({endereco})")
+    assert f'<img src="{endereco}"' in saida
+    assert "<b>casa</b>" not in saida
+    assert "&lt;b&gt;" in saida
+    assert '<figure class="midia">' in saida
+
+
+def test_aviso_destacado_vira_caixa_e_escapa_o_html():
+    saida = para_html(">! Atenção: <script>x</script>")
+    assert '<aside class="caixa-destaque">' in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+    assert "</aside>" in saida
+
+
+def test_o_mesmo_desenho_da_area_de_documentos():
+    """As duas células no mesmo PR: a mesma marcação produz o mesmo HTML."""
+    endereco = f"/midia/{'c' * 32}/foto.png"
+    texto = (
+        f"| A | B |\n| --- | --- |\n| um | dois |\n\n"
+        f"![casa]({endereco})\n\n"
+        ">! Atenção: o preço muda sexta."
+    )
+    saida = para_html(texto)
+    assert "<th>A</th>" in saida
+    assert f'<img src="{endereco}"' in saida
+    assert '<aside class="caixa-destaque">' in saida
+    assert "o preço muda sexta." in saida

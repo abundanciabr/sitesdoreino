@@ -430,6 +430,7 @@ def test_html_dentro_do_documento_sai_escapado():
     seguro — e se alguém trocar o renderizador por um que não escape, é aqui
     que a troca fica vermelha.
     """
+    # guarda: services/admin/apps/core/documentos.py:492
     saida = documentos.para_html('<script>alert("oi")</script>\n\n<b>negrito</b>')
 
     assert "<script>" not in saida
@@ -538,6 +539,37 @@ def test_as_figuras_da_casa_nao_carregam_script():
         baixo = svg.lower()
         for pedaco in proibidos:
             assert pedaco not in baixo, f"{nome} contém {pedaco}"
+
+
+def test_imagem_da_casa_vira_img_e_escapa_a_legenda():
+    # guarda: services/admin/apps/core/documentos.py:486
+    endereco = f"/midia/{'a' * 32}/foto.png"
+    saida = documentos.para_html(f"![A <b>casa</b>]({endereco})")
+    assert f'<img src="{endereco}"' in saida
+    assert "<b>casa</b>" not in saida
+    assert "&lt;b&gt;" in saida
+    assert '<figure class="midia">' in saida
+
+
+def test_video_da_casa_vira_video():
+    endereco = f"/midia/{'b' * 32}/clip.mp4"
+    saida = documentos.para_html(f"![um clipe]({endereco})")
+    assert f'<video controls src="{endereco}">' in saida
+    assert "<img" not in saida
+
+
+def test_aviso_destacado_vira_caixa_e_escapa_o_html():
+    saida = documentos.para_html(">! Atenção: <script>x</script>")
+    assert '<aside class="caixa-destaque">' in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+    assert "</aside>" in saida
+
+
+def test_citacao_comum_nao_vira_caixa_de_destaque():
+    saida = documentos.para_html("> só uma citação")
+    assert "caixa-destaque" not in saida
+    assert "<blockquote>" in saida
 
 
 def test_paragrafo_de_varias_linhas_vira_um_paragrafo_so():

@@ -430,12 +430,12 @@ urlpatterns = [
     # apaga o arquivo junto.
     #
     # A ENTREGA fica na raiz, e nao sob `documentos/`, porque ela nao e um
-    # gesto do editor: e um endereco que vai dentro do texto de uma pagina. Sob
-    # `SCRIPT_NAME=/admin` ela responde em `meshcraft.top/admin/midia/...`, e
-    # ATRAS DA PORTA — nada nesta celula e publico sem uma decisao propria, e
-    # o renderizador que poria estas imagens numa pagina publica ainda nao
-    # existe (TAR-598). Abrir o prefixo antes disso seria abrir um buraco para
-    # nada.
+    # gesto do editor: e um endereco que vai dentro do texto de uma pagina.
+    # Sob `SCRIPT_NAME=/admin` o `{% url %}` da miniatura responde em
+    # `/admin/midia/...`, atras do tunel da operacao. O endereco que o
+    # Markdown copia, e que a pagina publica pede, e `/midia/...` (TAR-598):
+    # o Traefik roteia esse prefixo para esta celula, a porta isenta, e
+    # `midia_servir` so entrega arquivo de documento no ar.
     #
     # Os dois pedacos do endereco sao apertados de proposito: 32 digitos
     # hexadecimais e um nome de arquivo sem barra nem ponto-ponto. Mesmo assim
