@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-043-fila-registra-decisoes-de-sandbox-do-cartao-appmax",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fila: registra decisões de sandbox do cartão Appmax",
+  detalhe: "A sequência Appmax precisa ter as escolhas de sandbox registradas em uma tarefa verificável antes que a integração possa avançar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1937. Validação local: árvore 4aa0b814ddc26d0fb5f239a80923d77b09c3d45c; commit 367a21ae363e61dd7e5ae788386a2e3adcaae687; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-628",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
