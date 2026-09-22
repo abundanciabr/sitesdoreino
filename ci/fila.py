@@ -222,6 +222,54 @@ ESPERA_O_MANTENEDOR = "mantenedor"
 ESPERA_A_FILA = "fila"
 QUEM_DESTRAVA = (ESPERA_O_MANTENEDOR, ESPERA_A_FILA)
 
+# Adiar não é estado. A pausa que o mantenedor não viu, em 22/09/2026, não
+# nasceu de um evento `adiada` (esse nome já era inválido). Nasceu da fala e
+# de um motivo que deixava o trabalho para depois sem a palavra dele. A marca
+# é a mesma que o Stop exige em ci/prestacao_de_contas.py.
+MARCA_DA_ANUENCIA = "Anuência do mantenedor:"
+PISO_DA_ANUENCIA = 20
+MOTIVO_QUE_ADIA = re.compile(r"adiad|adiar|posterg", re.I)
+
+
+def anuencia_valida(texto: str) -> bool:
+    """A linha traz as palavras dele, não um 'sim' de uma letra."""
+    bruto = texto or ""
+    inicio = bruto.lower().find(MARCA_DA_ANUENCIA.lower())
+    if inicio < 0:
+        return False
+    resto = bruto[inicio + len(MARCA_DA_ANUENCIA):]
+    return len(re.sub(r"\s+", "", resto)) >= PISO_DA_ANUENCIA
+
+
+def problemas_do_adiamento(tipo: str, detalhe: str, espera: str | None) -> list[str]:
+    """O motivo adia? Então só vale com a palavra dele, visível no painel."""
+    if not MOTIVO_QUE_ADIA.search(detalhe or ""):
+        return []
+    if tipo == "cancelada":
+        return [
+            "cancelar não adia: a tarefa continua na fila. "
+            "Pausa só existe com anuência do mantenedor, no evento bloqueada, "
+            "espera 'mantenedor', e a linha 'Anuência do mantenedor:' com as palavras dele."
+        ]
+    if tipo != "bloqueada":
+        return [
+            "adiamento sem a palavra do mantenedor não existe. "
+            "O motivo fala em adiar e este evento não é o bloqueio visível dele."
+        ]
+    erros: list[str] = []
+    if not anuencia_valida(detalhe or ""):
+        erros.append(
+            "adiamento sem a palavra do mantenedor não existe. "
+            "O detalhe precisa da linha 'Anuência do mantenedor:' seguida das "
+            "palavras dele (pelo menos 20 letras)."
+        )
+    if espera != ESPERA_O_MANTENEDOR:
+        erros.append(
+            "adiamento autorizado só entra no bloco do mantenedor: "
+            "'espera' tem de ser 'mantenedor'."
+        )
+    return erros
+
 RE_ID = re.compile(r"^TAR-(\d{3,})$")
 RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # Como um PR diz a que tarefa ele atende: citando `TAR-NNN` no título ou no
@@ -686,6 +734,8 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                 erros.append(f"{nome}: concluída exige 'verificado_em' (AAAA-MM-DD)")
         if tipo in ("bloqueada", "cancelada", "reivindicacao_expirada") and not str(dados.get("detalhe") or "").strip():
             erros.append(f"{nome}: '{tipo}' sem 'detalhe' não conta a história — diga o motivo")
+        for problema in problemas_do_adiamento(tipo, str(dados.get("detalhe") or ""), dados.get("espera")):
+            erros.append(f"{nome}: {problema}")
         espera = dados.get("espera")
         if espera is not None:
             if tipo != "bloqueada":
@@ -2488,9 +2538,22 @@ def cmd_bloquear(raiz: Path, args) -> int:
         print("O motivo é o que a caixa do painel e o próximo robô vão LER para")
         print("saber o que destrava — e `validar` reprova `bloqueada` sem detalhe.")
         return 1
+    detalhe = args.motivo.strip()
+    anuencia = (getattr(args, "anuencia", "") or "").strip()
+    if MOTIVO_QUE_ADIA.search(detalhe) and anuencia:
+        detalhe = f"{detalhe}\n{MARCA_DA_ANUENCIA} {anuencia}"
+    problemas = problemas_do_adiamento("bloqueada", detalhe, args.espera)
+    if problemas:
+        print("RECUSADO: " + problemas[0])
+        for extra in problemas[1:]:
+            print(extra)
+        print("A tarefa continua aberta. Sem a palavra dele, não adie:")
+        print("feche NÃO PRONTO e diga nas Instruções o motivo, de quem é a bola")
+        print("e o que destrava.")
+        return 1
     _soltar_reserva_se_houver(raiz, tid)
     caminho = _escrever_evento(
-        raiz, tid, "bloqueada", args.quem, detalhe=args.motivo, espera=args.espera
+        raiz, tid, "bloqueada", args.quem, detalhe=detalhe, espera=args.espera
     )
     print(f"⛔ {tid} bloqueada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
     if args.espera == ESPERA_O_MANTENEDOR:
@@ -2536,6 +2599,11 @@ def cmd_cancelar(raiz: Path, args) -> int:
         print("RECUSADO: cancelar sem motivo não existe.")
         print("O motivo é o que fica no lugar da tarefa para sempre — diga por que")
         print("ela não vai mais ser feita, e para onde foi o trabalho, se foi.")
+        return 1
+    problemas = problemas_do_adiamento("cancelada", args.motivo, None)
+    if problemas:
+        print("RECUSADO: " + problemas[0])
+        print("A tarefa continua na fila.")
         return 1
     # Quem depende dela trava para SEMPRE: `calcular_estados` só destrava
     # dependência CONCLUÍDA. Dizer isso antes é o que separa uma decisão de uma
@@ -3244,6 +3312,14 @@ def construir_parser() -> argparse.ArgumentParser:
             f"quem destrava: '{ESPERA_O_MANTENEDOR}' (autorização, decisão ou prova "
             f"que só ele pode dar) ou '{ESPERA_A_FILA}' (um robô resolve quando a vez "
             "dela chegar). O que for 'mantenedor' aparece em bloco próprio no painel"
+        ),
+    )
+    p.add_argument(
+        "--anuencia",
+        default="",
+        help=(
+            "palavras do mantenedor, obrigatórias quando o motivo adia a tarefa; "
+            "vão para o painel junto com o bloqueio"
         ),
     )
 

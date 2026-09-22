@@ -245,6 +245,10 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    balcão recusa, a mesma lei do verde do livro. Travou em algo que só o
    mantenedor decide? Evento `bloqueada` com o motivo e devolva à sessão responsável:
    abrir exceção é o resultado esperado, não falha.
+   Adiar não é exceção que o robô decida. Sem anuência expressa do mantenedor,
+   transcrita como `Anuência do mantenedor:` com as palavras dele, a tarefa
+   continua aberta. `bloquear` e `cancelar` recusam motivo de adiamento sem
+   essa palavra, e o Stop recusa o fecho que declara a tarefa adiada.
 4. **O evento viaja no PR do trabalho.** A referência no servidor vale AGORA;
    o evento em `fila/eventos/` vale para sempre. Antes de pedir pouso, confira
    com os olhos: `git diff --name-only origin/main...HEAD` tem TODOS os eventos

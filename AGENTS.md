@@ -68,7 +68,9 @@ No fecho, checklist atualizado e **O que mudou**, **O que foi verificado**,
 **Pendências**, **Veredito** PRONTO ou NÃO PRONTO, e **Instruções** com o que
 acontece agora. NÃO PRONTO exige lista em português de leigo: o que houve, de
 quem é a bola, o que destrava e o prazo, mesmo que nada dependa dele; o gancho
-recusa o fecho sem ela. Auditoria item a item
+recusa o fecho sem ela. Nenhum robô adia tarefa sem anuência expressa do
+mantenedor, transcrita como `Anuência do mantenedor:` com as palavras dele.
+Auditoria item a item
 somente quando relevante; cortes somente quando houver.
 Despacho devolve número do PR, ramo, SHA, arquivos, CODEOWNERS e provas.
 O PR pronto integra automaticamente quando muralhas e ci-celula-gate ficam

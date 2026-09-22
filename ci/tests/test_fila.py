@@ -669,6 +669,87 @@ def test_espera_fora_de_um_bloqueio_reprova(tmp_path):
     assert any("só existe em evento 'bloqueada'" in e for e in erros)
 
 
+def test_bloqueio_que_adia_sem_anuencia_reprova(tmp_path):
+    montar(tmp_path, [tarefa()], [evento(
+        tipo="bloqueada", detalhe="fica adiada até a página existir", espera="mantenedor",
+    )])
+    _, _, erros = carregar(tmp_path)
+    assert any("adiamento sem a palavra do mantenedor" in e for e in erros)
+
+
+def test_bloqueio_que_adia_fora_do_bloco_dele_reprova(tmp_path):
+    montar(tmp_path, [tarefa()], [evento(
+        tipo="bloqueada",
+        detalhe="adiada até a página\nAnuência do mantenedor: pode esperar a página real ficar no ar",
+        espera="fila",
+    )])
+    _, _, erros = carregar(tmp_path)
+    assert any("bloco do mantenedor" in e for e in erros)
+
+
+def test_bloqueio_com_anuencia_dele_passa(tmp_path):
+    montar(tmp_path, [tarefa()], [evento(
+        tipo="bloqueada",
+        detalhe="adiada até a página\nAnuência do mantenedor: pode esperar a página real ficar no ar",
+        espera="mantenedor",
+    )])
+    _, _, erros = carregar(tmp_path)
+    assert erros == [], erros
+
+
+def test_cancelamento_que_adia_reprova(tmp_path):
+    montar(tmp_path, [tarefa()], [evento(
+        tipo="cancelada", detalhe="cancelada porque fica adiada",
+    )])
+    _, _, erros = carregar(tmp_path)
+    assert any("cancelar não adia" in e for e in erros)
+
+
+def test_bloquear_adiando_sem_anuencia_nao_escreve_evento(tmp_path, monkeypatch, capsys):
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a",
+        motivo="fica adiada até existir a página",
+        espera=fila.ESPERA_O_MANTENEDOR, anuencia="",
+    )
+    assert fila.cmd_bloquear(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
+    assert "palavra do mantenedor" in capsys.readouterr().out
+
+
+def test_bloquear_adiando_com_a_palavra_dele_grava_no_bloco_dele(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a",
+        motivo="adiada até a página real",
+        espera=fila.ESPERA_O_MANTENEDOR,
+        anuencia="pode esperar a página real ficar no ar",
+    )
+    assert fila.cmd_bloquear(tmp_path, args) == 0
+    escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-bloqueada.json"))
+    dados = json.loads(escrito[0].read_text(encoding="utf-8"))
+    assert "Anuência do mantenedor:" in dados["detalhe"]
+    assert dados["espera"] == "mantenedor"
+    _, _, erros = carregar(tmp_path)
+    assert erros == [], erros
+
+
+def test_cancelar_com_motivo_de_adiamento_recusa(tmp_path, monkeypatch, capsys):
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a", motivo="fica adiada, não vamos fazer agora",
+    )
+    assert fila.cmd_cancelar(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*cancelada*"))
+    assert "não adia" in capsys.readouterr().out
+
+
 # ---------------------------------------------------------------------------
 # Cancelar: o segundo estado que não tinha verbo (06/09/2026)
 # ---------------------------------------------------------------------------

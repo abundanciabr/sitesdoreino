@@ -78,6 +78,47 @@ ACAO = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(?!\[[ xX]\])\S", re.M)
 # mentir (mesma razão da régua baixa de `_tem_substancia`).
 PISO_DAS_INSTRUCOES_EM_NAO_PRONTO = 50
 
+# Adiar sem a palavra dele, pedido de 22/09/2026. A fila já recusava um evento
+# de nome `adiada`, e foi por essa porta que ninguém passava: o robô declarava
+# a pausa na fala e a tarefa sumia do horizonte sem bloqueio e sem aviso.
+# A marca é a mesma de ci/fila.py (MARCA_DA_ANUENCIA).
+MARCA_DA_ANUENCIA = "Anuência do mantenedor:"
+PISO_DA_ANUENCIA = 20
+DECLARACAO_DE_ADIAMENTO = re.compile(
+    r"(?:"
+    r"deliberadamente\s+adiad"
+    r"|fica(?:m|r[aá]|r[aã]o)?\s+adiad"
+    r"|deix(?:o|ei|amos|a(?:rei|mos|do)?)\s+adiad"
+    r"|(?:eu\s+)?adi(?:ei|o|amos)\b"
+    r"|(?:tarefa|entrega|escopo)\s+(?:foi\s+|fica\s+|est[aá]\s+)?adiad"
+    r"|est[aá]\s+adiad"
+    r"|foi\s+adiad"
+    r"|adiad[oa]s?\s+at[eé]"
+    r"|posterg(?:o|uei|amos|ar|ad[oa])"
+    r"|deixad[oa]\s+para\s+depois"
+    r")",
+    re.I,
+)
+
+
+def anuencia_na_fala(texto: str) -> bool:
+    bruto = texto or ""
+    inicio = bruto.lower().find(MARCA_DA_ANUENCIA.lower())
+    if inicio < 0:
+        return False
+    resto = bruto[inicio + len(MARCA_DA_ANUENCIA):]
+    return len(re.sub(r"\s+", "", resto)) >= PISO_DA_ANUENCIA
+
+
+def trecho_de_adiamento(texto: str) -> str:
+    """A frase em que o robô adia, ou vazio se ele não adiou (ou negou)."""
+    for achado in DECLARACAO_DE_ADIAMENTO.finditer(texto or ""):
+        antes = (texto or "")[max(0, achado.start() - 16): achado.start()]
+        if re.search(r"n[ãa]o\s+$", antes, re.I):
+            continue
+        return achado.group(0).casefold()
+    return ""
+
 # O veredito que uma MEDIÇÃO imprime, lido da última linha da saída dela.
 # Vermelho é testado primeiro de propósito: "1 failed, 82 passed" casa com os
 # dois, e na ordem contrária a suíte reprovada passaria por verde.
@@ -302,6 +343,8 @@ def ler_estado_incremental(caminho: Path) -> dict:
                       "pr": 0, "ids_de_pr": [], "voo_cobrado": "",
                       "medicao": "", "medicoes_pendentes": [],
                       "pronto_sobre_vermelho": False, "vermelho_cobrado": -1}
+        estado.setdefault("adiamento", "")
+        estado.setdefault("adiamento_cobrado", "")
         fonte.seek(offset)
         while True:
             inicio = fonte.tell()
@@ -323,7 +366,17 @@ def ler_estado_incremental(caminho: Path) -> dict:
                     continue
             if (entrada.get("origin") or {}).get("kind") == "human":
                 estado["teve_plano"] = False
+                estado["adiamento"] = ""
+                estado["adiamento_cobrado"] = ""
             estado["teve_plano"] |= _teve_plano([entrada], 0)
+            fala = _texto_da_fala(entrada)
+            if fala:
+                if anuencia_na_fala(fala):
+                    estado["adiamento"] = ""
+                else:
+                    trecho = trecho_de_adiamento(fala)
+                    if trecho:
+                        estado["adiamento"] = trecho
             motivo = _mudanca_na_entrada(entrada)
             if motivo:
                 estado["motivo"] = motivo
@@ -1206,6 +1259,44 @@ def _portao_do_voo(entrada: dict, arquivo: Path, estado: dict, segunda_passada: 
     return 2
 
 
+def _portao_do_adiamento(arquivo: Path, estado: dict, segunda_passada: bool) -> int:
+    """2 recusa, 1 avisa de novo, 0 não havia adiamento nesta janela.
+
+    Recusa uma vez por frase. A segunda vez avisa e deixa os outros portões
+    falarem: portão que recusa em laço é espera em laço com outro nome.
+    """
+    texto = (estado.get("adiamento") or "").strip()
+    if not texto:
+        return 0
+    ja = bool(segunda_passada or estado.get("adiamento_cobrado") == texto)
+    estado["adiamento_cobrado"] = texto
+    try:
+        gravar_estado_incremental(arquivo, estado)
+    except OSError as erro:
+        print(f"ADIAMENTO SEM ANUÊNCIA: não gravei o estado ({erro}); a recusa pode repetir.",
+              file=sys.stderr)
+    if ja:
+        print("ADIAMENTO SEM ANUÊNCIA: o robô foi cobrado e encerrou assim mesmo; "
+              "a fala ainda trata a tarefa como adiada, sem nova recusa.",
+              file=sys.stderr)
+        return 1
+    print("🔴 ADIAMENTO SEM ANUÊNCIA: esta resposta trata tarefa, entrega ou "
+          "escopo como adiado e não traz a palavra do mantenedor.\n"
+          "Adiar sem a anuência expressa dele é recusado. A tarefa continua aberta.\n"
+          "Se ele autorizou, repita o fecho com a linha `Anuência do mantenedor:` "
+          "e as palavras dele.\n"
+          "Se ele não autorizou, apague o adiamento. Feche NÃO PRONTO e use "
+          "**Instruções** para dizer o motivo, de quem é a bola e o que destrava.",
+          file=sys.stderr)
+    return 2
+
+
+def _com_aviso_de_adiamento(aviso: int, codigo: int) -> int:
+    if aviso == 1 and codigo == 0:
+        return 1
+    return codigo
+
+
 def modo_contas(entrada: dict) -> int:
     # `stop_hook_active` diz só "já houve uma recusa neste fim de turno". Se ela
     # foi atendida, só o transcript sabe — e ele é relido com a MESMA régua
@@ -1250,17 +1341,22 @@ def modo_contas(entrada: dict) -> int:
             {"prs_criados": estado["prs"], "despachos": estado["despachos"]},
             cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
         )
+    aviso_de_adiamento = _portao_do_adiamento(arquivo, estado, segunda_passada)
+    if aviso_de_adiamento == 2:
+        return 2
     if not recusar:
         # A prova local vem antes da entrega em voo: não adianta perguntar ao
         # GitHub se a suíte desta máquina reprovou.
         if estado.get("pronto_sobre_vermelho"):
-            return _portao_do_vermelho(arquivo, estado, segunda_passada)
-        return _portao_do_voo(entrada, arquivo, estado, segunda_passada)
+            return _com_aviso_de_adiamento(
+                aviso_de_adiamento, _portao_do_vermelho(arquivo, estado, segunda_passada))
+        return _com_aviso_de_adiamento(
+            aviso_de_adiamento, _portao_do_voo(entrada, arquivo, estado, segunda_passada))
     if ja_cobrada:
         print("PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo; "
               "o relatório continua pendente, sem nova recusa. "
               "Escreva os quatro blocos e o checklist para concluir as contas.", file=sys.stderr)
-        return 1
+        return _com_aviso_de_adiamento(aviso_de_adiamento, 1)
     print(molde(faltou_o_plano=not estado["teve_plano"], transcript=str(arquivo),
                 motivo=estado["motivo"]), file=sys.stderr)
     return 2
