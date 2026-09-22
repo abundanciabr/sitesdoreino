@@ -72,24 +72,11 @@ def ao_pagamento_estornado(data: dict) -> None:
     a decisão, não esquecimento. O que difere entre os dois é o que a plataforma
     faz DEPOIS (contestação tem prazo de defesa), e isso não é desta célula.
 
-    **Matrícula que não existe não derruba o consumidor.** Vai acontecer, e por
-    motivos banais: pagamento de outra célula, compra que nunca matriculou
-    ninguém, linha criada pelo reprocesso manual (que não guarda o par do
-    pagamento). Estourar aqui prenderia a mensagem no PEL, a mandaria para a
-    fila morta depois de MAX_ENTREGAS e pararia a fila inteira por um fato que
-    não é desta célula. Fica o aviso no log, e o consumidor segue.
-
-    **O QUE ESTE CORTE NÃO ALCANÇA, e está dito na cara.** O estorno fecha o
-    acesso de uma matrícula que JÁ EXISTE. Se o aviso de estorno for consumido
-    ANTES do aviso de aprovação daquela mesma compra (as duas cartas viajam em
-    streams diferentes, e a reentrega do PEL pode atrasar uma delas), não há
-    matrícula para cortar: o estorno vira o aviso de log acima, e a aprovação que
-    chega depois cria uma matrícula ATIVA de um dinheiro que já voltou.
-
-    Fechar isso exige a célula guardar "este pagamento foi estornado" mesmo sem
-    matrícula nenhuma, e decidir onde esse estado mora: é superfície de dados
-    nova, e não um `if` a mais aqui. Está registrado como fronteira conhecida,
-    não como defeito escondido.
+    **Matrícula que não existe não derruba o consumidor.** O estado de estorno
+    fica registrado pela chave (site, provedor, referência), e a aprovação
+    tardia cria uma matrícula suspensa. Essa mesma chave serializa os dois
+    handlers quando chegam ao mesmo tempo. Compra que nunca matriculou ninguém
+    também fica registrada sem interromper a fila.
     """
     encontradas, suspensas = suspender_por_estorno(
         site_id=data["platform_site_id"],
@@ -102,10 +89,9 @@ def ao_pagamento_estornado(data: dict) -> None:
         # continua entrando?". Sem o par no texto, a linha não serve para achar
         # nem o pagamento nem a pessoa.
         logger.warning(
-            "pagamento.estornado de (%s, %s) no site %s não encontrou matrícula "
-            "nenhuma: nada foi suspenso e o consumidor segue. Se houver aluno "
-            "com acesso por esta compra, a matrícula dele nasceu sem o par do "
-            "pagamento e o corte é manual, pelo painel. [ESTORNO]",
+            "pagamento.estornado de (%s, %s) no site %s não encontrou matrícula. "
+            "O estorno ficou registrado e uma aprovação posterior nascerá "
+            "suspensa; o consumidor segue. [ESTORNO]",
             data["provider"],
             data["provider_reference_id"],
             data["platform_site_id"],

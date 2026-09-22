@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-214234-TAR-556-explicada",
+  "tarefa": "TAR-556",
+  "evento": "explicada",
+  "quando": "2026-09-22T21:42:34+00:00",
+  "quem": "agent/fila/appmax-fase1-reconstituir",
+  "o_que_e": "O cliente privado que obtém acesso temporário da Appmax e consulta o estado de um pedido.",
+  "o_que_muda": "O serviço confirma o estado com a Appmax sem expor credenciais nem tratar um aviso recebido como prova de pagamento.",
+  "exemplo": "Como consultar o caixa com uma chave guardada no servidor, sem mostrar a chave ao comprador.",
+  "importancia": 95
+}

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import uuid
 from pathlib import Path
 
@@ -148,7 +149,7 @@ def test_os_envelopes_de_exemplo_batem_com_os_contratos():
 
 
 def test_o_estorno_suspende_a_matricula_daquele_pagamento():
-    # guarda: services/alunos/apps/matriculas/services.py:161
+    # guarda: services/alunos/apps/matriculas/services.py:210
     matricula = _matricula()
     assert matricula.status == Matricula.STATUS_ATIVA
 
@@ -166,7 +167,7 @@ def test_a_contestacao_suspende_igual_ao_estorno():
     distinção. O contrato os separa porque o que vem DEPOIS difere (contestação
     tem prazo de defesa), e é fácil confundir essa separação com um tratamento
     diferente aqui dentro."""
-    # guarda: services/alunos/apps/matriculas/services.py:160
+    # guarda: services/alunos/apps/matriculas/services.py:210
     matricula = _matricula()
 
     processar_envelope(_estornado(motivo="contestacao"), HANDLERS)
@@ -179,7 +180,7 @@ def test_o_fato_do_corte_vai_para_o_livro():
     """Perder acesso não gera carta para o aluno (ele não conseguiria abrir a
     página de avisos), mas gera FATO: sem ele o livro não sabe dizer por que
     aquela pessoa parou de entrar."""
-    # guarda: services/alunos/apps/matriculas/services.py:162
+    # guarda: services/alunos/apps/matriculas/services.py:212
     matricula = _matricula()
 
     processar_envelope(_estornado(), HANDLERS)
@@ -227,7 +228,7 @@ def test_suspender_o_ja_suspenso_nao_e_erro_nem_efeito_novo():
     serviço, chamado duas vezes, corta uma só. Sem ela o livro ganharia um
     segundo fato de suspensão para uma matrícula que já estava suspensa, e a
     história daquele aluno passaria a mentir."""
-    # guarda: services/alunos/apps/matriculas/services.py:164
+    # guarda: services/alunos/apps/matriculas/services.py:210
     matricula = _matricula()
     chamada = {
         "site_id": SITE,
@@ -287,6 +288,15 @@ def test_o_painel_consegue_reabrir_o_acesso_suspenso():
     assert linha.status == Matricula.STATUS_ATIVA
     assert matriculas_que_valem(COMPRADOR["email"]).exists()
 
+    _, suspensas = suspender_por_estorno(
+        site_id=SITE,
+        provider=PROVEDOR,
+        provider_reference_id=REFERENCIA_NO_PROVEDOR,
+    )
+    linha.refresh_from_db()
+    assert suspensas == []
+    assert linha.status == Matricula.STATUS_ATIVA
+
 
 # --------------------------------------------------------------------------
 # §4 A TRANSIÇÃO É MONOTÔNICA: aprovação depois do estorno não reabre nada.
@@ -308,6 +318,71 @@ def test_uma_aprovacao_depois_do_estorno_nao_reabre_o_acesso():
     assert matricula.status == Matricula.STATUS_SUSPENSA
     assert not matriculas_que_valem(COMPRADOR["email"]).exists()
     assert Matricula.objects.filter(order_id=PEDIDO).count() == 1
+
+
+def test_estorno_antes_da_aprovacao_mantem_a_matricula_suspensa():
+    """Aprovação e estorno correm em streams independentes, sem ordem garantida.
+
+    O estorno órfão precisa deixar um estado persistente que a aprovação tardia
+    consulte antes de abrir o acesso.
+    """
+    # guarda: services/alunos/apps/matriculas/services.py:190
+    processar_envelope(_estornado(), HANDLERS)
+
+    processar_envelope(_aprovado(), HANDLERS)
+
+    matricula = Matricula.objects.get(order_id=PEDIDO)
+    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert not matriculas_que_valem(COMPRADOR["email"]).exists()
+    assert len(_cortes()) == 1
+
+
+def test_estorno_pendente_isola_site_e_reentregas():
+    """A chave do estado pendente inclui o site e sobrevive a eventos repetidos."""
+    estorno = _estornado()
+    for _ in range(3):
+        processar_envelope(estorno, HANDLERS)
+    processar_envelope(_aprovado(site="escola-b", pedido="pedido-escola-b"), HANDLERS)
+    processar_envelope(_aprovado(), HANDLERS)
+
+    suspensa = Matricula.objects.get(order_id=PEDIDO)
+    outra_escola = Matricula.objects.get(order_id="pedido-escola-b")
+    assert suspensa.status == Matricula.STATUS_SUSPENSA
+    assert outra_escola.status == Matricula.STATUS_ATIVA
+    assert len(_cortes()) == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_estorno_e_aprovacao_simultaneos_nao_abrem_acesso():
+    """A gravação e a leitura do estado do pagamento usam o mesmo lock real."""
+    from django.db import connection
+
+    barreira = threading.Barrier(2, timeout=10)
+    erros = []
+
+    def processar(envelope):
+        try:
+            barreira.wait()
+            processar_envelope(envelope, HANDLERS)
+        except Exception as exc:  # pragma: no cover - preserva a falha da thread
+            erros.append(exc)
+        finally:
+            connection.close()
+
+    threads = [
+        threading.Thread(target=processar, args=(envelope,))
+        for envelope in (_estornado(), _aprovado())
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    assert not erros, erros
+    assert not [thread for thread in threads if thread.is_alive()], "thread travada"
+    matricula = Matricula.objects.get(order_id=PEDIDO)
+    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert not matriculas_que_valem(COMPRADOR["email"]).exists()
 
 
 # --------------------------------------------------------------------------

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-054-fila-religar-o-oauth-appmax",
+  tipo: "nota",
+  quando: "2026-09-22",
+  titulo: "fila: OAuth Appmax segue depois do modelo financeiro",
+  detalhe: "A ordem explícita do mantenedor encerrou as tarefas de estorno e da tela de cartão. O cliente OAuth ainda é trabalho válido, mas a tarefa dele aguardava a tarefa de estorno cancelada. Pela exceção canônica da fila, que só permite corrigir depende_de, TAR-556 agora depende de TAR-551, que concluiu o modelo de tentativa e a outbox. O restante do brief ficou intacto. A sequência existente continua de OAuth para criação de cliente, pedido e cobrança, e depois para a consulta de parcelas.\n\nA mudança não executa cobrança nem ativa cartão. A ausência de TAR-554 deixa trabalho financeiro para um despacho próprio: pagamentos ainda precisa registrar estorno e contestação uma vez, emitir pagamento.estornado.v2 com outbox e atualizar o estado apenas após consulta autenticada. A decisão do mantenedor sobre suspensão do acesso já está no plano mestre. A TAR-553 existente cobre o efeito no acesso; a correção dos casos fora de ordem pertence a uma frente separada.\n\nA ausência de TAR-555 mantém a tela de cartão como etapa futura. As tarefas de infraestrutura e sandbox que dependem dessa tela continuam bloqueadas; a Fase 2 deverá criar uma tarefa substituta e reencadear essas dependências. O cartão permanece sem ativação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1948",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-556",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

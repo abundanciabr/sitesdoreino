@@ -34,6 +34,7 @@ def test_a_intent_leva_o_product_id_do_item_principal(api, rede, sessao_a):
     cobranca = json.loads(rede.calls.last.request.content)
     assert str(rede.calls.last.request.url) == f"{PAGAMENTOS}/intents"
     assert cobranca["metadata"]["product_id"] == OFERTA_A["product"]["id"]
+    assert "items" not in cobranca["metadata"]
 
 
 def test_com_bump_marcado_o_product_id_continua_sendo_o_do_principal(
@@ -53,6 +54,7 @@ def test_com_bump_marcado_o_product_id_continua_sendo_o_do_principal(
 
     cobranca = json.loads(rede.calls.last.request.content)
     assert cobranca["metadata"]["product_id"] == OFERTA_A["product"]["id"]
+    assert "items" not in cobranca["metadata"]
     assert cobranca["metadata"]["product_id"] != BUMP_A["product_id"]
 
 
@@ -65,13 +67,14 @@ def test_o_checkout_session_id_continua_na_metadata_junto_do_produto(
         {
             "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
             "bump_ids": [],
-            "method": "pix",
+            "method": "card",
         },
     )
     assert resp.status_code == 201, resp.content
 
     cobranca = json.loads(rede.calls.last.request.content)
     assert cobranca["metadata"]["checkout_session_id"] == sessao_a["id"]
+    assert cobranca["metadata"]["items"][0]["product_id"] == OFERTA_A["product"]["id"]
 
 
 def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
@@ -91,7 +94,7 @@ def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
         {
             "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
             "bump_ids": [],
-            "method": "pix",
+            "method": "card",
         },
         host=HOST_B,
     )
@@ -99,4 +102,12 @@ def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
 
     cobranca = json.loads(rede.calls.last.request.content)
     assert cobranca["metadata"]["product_id"] == OFERTA_B["product"]["id"]
+    assert cobranca["metadata"]["items"] == [
+        {
+            "product_id": OFERTA_B["product"]["id"],
+            "name": OFERTA_B["product"]["name"],
+            "price_cents": OFERTA_B["price_cents"],
+            "kind": "principal",
+        }
+    ]
     assert cobranca["metadata"]["product_id"] != OFERTA_A["product"]["id"]

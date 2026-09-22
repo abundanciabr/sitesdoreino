@@ -51,9 +51,9 @@ A política pretendida pelo mantenedor é alocar Premium 20x ao primeiro colocad
 
 Siga o percurso: fila e brief fechado -> worktree próprio -> implementação com reuso permitido -> testes e provas -> PR com recibo e eventos exigidos -> integração automática pelos checks -> deploy -> verificação externa -> registro das métricas e evidências pelos responsáveis.
 
-Antes de construir, confira o que já existe e as dependências. Reutilize comportamento pela API contratada ou pacote versionado; jamais importe código ou acesse o banco de outra célula. Compartilhe interfaces, provas e bloqueios pelos canais existentes. Preserve arquivos e reservas alheios. Se uma dependência sair do brief, devolva à maestro para encadeamento, sem ampliar o mandato.
+Antes de construir, confira o que já existe e as dependências. Reutilize comportamento pela API contratada ou pacote versionado; jamais importe código ou acesse o banco de outra célula. Compartilhe interfaces, provas e bloqueios pelos canais existentes. Preserve arquivos e reservas alheios. Se uma dependência sair do brief, devolva à sessão responsável para encadeamento, sem ampliar o mandato.
 
-Confira o baseline antes de editar e execute as provas exigidas pelo alvo. Falha de código é FAIL; instrumento indisponível é ERROR. Nenhum deles é aprovação. Faça no máximo duas correções técnicas sem sucesso antes de devolver diagnóstico e trabalho preservado à maestro. O executor não pede decisão ao mantenedor.
+Confira o baseline antes de editar e execute as provas exigidas pelo alvo. Falha de código é FAIL; instrumento indisponível é ERROR. Nenhum deles é aprovação. Faça no máximo duas correções técnicas sem sucesso antes de devolver diagnóstico e trabalho preservado à sessão responsável. A sessão que recebeu o pedido pede ao mantenedor decisões exclusivas; o subagente devolve a dúvida a ela.
 
 Mede-se o estado integrado em origin/main atualizado, nunca um clone local como prova de produção. Testes da bancada medem somente a mudança local. Publicação se confere pela borda do usuário. A integração segue o rito vigente, automaticamente após os checks obrigatórios, preservando mandato CODEOWNERS e contrato congelado. Ninguém espera em laço: entregue o artefato, registre o estado real e deixe a automação por eventos prosseguir.
 
