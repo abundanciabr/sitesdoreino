@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-037-admin-textos-param-de-ensinar-o-painel-no-localhost",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: textos param de ensinar o painel no localhost",
+  detalhe: "O PR 1921 já reabriu a porta. Estes textos ainda mandavam o robô ligar localhost e escondiam o endereço real. O registro 035 mede de fora que /admin/ voltou e fecha a entrega 033.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1930. Validação local: árvore 7d476eab9cbd0d52027cd64d821b5bded1393716; commit 065ea5ae795da4847ea5c5e3b18c2af8fd59026a; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-621",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,4 +1,4 @@
-"""Processo de leitura da VPS com acesso ao banco somente de leitura."""
+"""Processo de leitura da VPS. O painel administrativo mora em meshcraft.top/admin."""
 
 from copy import deepcopy
 
