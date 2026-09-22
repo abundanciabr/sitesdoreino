@@ -1,4 +1,4 @@
-"""Processo de leitura da VPS; o painel administrativo roda no localhost."""
+"""Processo de leitura da VPS com acesso ao banco somente de leitura."""
 
 from copy import deepcopy
 

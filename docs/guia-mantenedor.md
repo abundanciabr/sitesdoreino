@@ -38,6 +38,13 @@ e roteiros usam o editor /admin/documentos/. Para IA externa, /mapa-ia/planos/;
 artefato privado da conversa não substitui publicação. Prévia e resposta
 curta continuam permitidas.
 
+A administração é acessada no site da VPS, em `https://meshcraft.top/admin/`;
+documentos ficam em `https://meshcraft.top/admin/documentos/`. Não orientar o
+mantenedor a iniciar `ci/ligar_administracao.py` nem a abrir `localhost` para
+usar o painel. Se a rota não abrir depois do login, trate como problema de
+publicação ou acesso do site e corrija pelo PR e pipeline; não ofereça a cópia
+local como substituto.
+
 Regra de destino: quando o mantenedor pedir manual, documento, página, guia,
 roteiro, texto ou conteúdo, a entrega é criar e publicar no site pelo editor
 de documentos. Um arquivo em `docs/` no GitHub é apenas fonte técnica e não
