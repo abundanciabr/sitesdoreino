@@ -1,0 +1,20 @@
+{
+  "arquivo": "639-atualizar-o-registro-com-a-prova-publica-da-oferta-de-teste",
+  "id": "TAR-639",
+  "titulo": "Atualizar o registro com a prova pública da oferta de teste",
+  "toca": [
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro no painel informa PR integrado, URL /oferta HTTP 200, captura pública mobile/desktop, 11 seções, preço/CTA/UTM conferidos e checkout GET 200 sem pagamento",
+  "despacho": "Em bancada própria, acrescente um registro tipo resposta, sem editar nem apagar o registro painel/registros/20260922-050-catalogo-semear-oferta-ficticia-de-teste.js. Use responde_a para ligar o novo registro a esse arquivo. Registre as provas públicas obtidas em 22/09/2026: PR #1934 integrado, GET /oferta HTTP 200, título Curso de Teste | Meshcraft, 11 seções, preço R$ 9,90, CTA /checkout/curso-teste/ com UTM preservada, HOME HTTP 200 e checkout GET 200 sem enviar formulário nem pagamento. Acrescente as capturas mobile e desktop em painel/evidencias. Não toque no código de produção nem na HOME. Rode validação da fila e do painel e envie por make pr. Não declare pagamento ou evento de produção conferido sem prova direta.",
+  "origem": "Verificação pública pós-deploy de TAR-624 em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

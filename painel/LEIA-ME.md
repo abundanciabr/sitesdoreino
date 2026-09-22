@@ -80,7 +80,8 @@
 
    Preparação concluída, validação local e PR aberto são estados distintos.
    Revisão, integração e publicação permanecem não verificadas neste comando.
-   Ele devolve o número à maestro, sem armar espera ou pouso.
+   Ele devolve o número à sessão responsável, que mede o desfecho uma vez
+   conforme `RITOS.md` §2, sem armar espera em laço ou pedir pouso.
 
    `CONTINUAR=1` retoma commits existentes. Toda execução consulta o PR pelo
    ramo, recupera o recibo compatível e reexecuta a validação. A reserva usa

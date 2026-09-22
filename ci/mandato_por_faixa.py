@@ -218,11 +218,13 @@ def conferir(
                 False,
                 "A",
                 f"falta o mandato nominal para {caminho} ({item})",
-                "Pare antes de editar. Peça a ele, na própria sessão, a "
-                f"autorização para {item} e transcreva a resposta numa linha só: "
+                "Pare antes de editar. Se você é a sessão responsável, "
+                f"peça ao mantenedor autorização para {item} nesta sessão e "
+                "transcreva a resposta numa linha só: "
                 "Mandato-do-mantenedor: <o pedido dele> <os caminhos> ; origem: "
-                "sessão de DD/MM/AAAA. Enquanto não houver resposta, escreva o "
-                "bloqueio no balcão e pare; não espere de ramo aberto.",
+                "sessão de DD/MM/AAAA. Se você é subagente, registre o bloqueio "
+                "e devolva à sessão responsável. Sem resposta, registre o "
+                "bloqueio e encerre a parte dependente.",
                 motivos,
             )
         fora = sorted(alvo for alvo in motivos if alvo not in tokens)
@@ -233,7 +235,9 @@ def conferir(
                 f"o mandato não alcança {fora[0]}",
                 f"Acrescente {fora[0]} à linha Mandato-do-mantenedor: como token "
                 "separado por espaço, na MESMA linha, se a autorização dele cobre "
-                "esse caminho. Se não cobre, pergunte a ele.",
+                "esse caminho. Se a autorização não cobre, a sessão responsável "
+                "pede ao mantenedor nesta sessão; o subagente devolve o bloqueio "
+                "à sessão responsável.",
                 motivos,
             )
         return Veredito(
@@ -327,9 +331,11 @@ def main(argv: list[str] | None = None) -> int:
                 "exige mandato nominal antes de editar"
                 if motivos
                 else f"mandato prévio por faixa, concedido por {DOCUMENTO}",
-                "Só siga se o brief já trouxer a linha Mandato-do-mantenedor: "
-                "com esses caminhos. Se não trouxer, escreva o bloqueio no balcão "
-                "e pare, agora, antes de editar."
+                "Pare antes de editar se o mandato ainda não consta do pedido. "
+                "A sessão responsável pede a autorização ao mantenedor nesta "
+                "sessão; o subagente registra o bloqueio e devolve à sessão "
+                "responsável. Transcreva a resposta em Mandato-do-mantenedor: "
+                "com os caminhos autorizados."
                 if motivos
                 else "",
                 motivos,

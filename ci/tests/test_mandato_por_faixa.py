@@ -65,8 +65,11 @@ def test_lista_a_sem_mandato_reprova(repo):
         "falta o mandato nominal para servicos/pagamentos/cobranca.py "
         "(pagamento e cobrança)"
     )
-    assert "escreva o bloqueio no balcão e pare" in veredito.como_prosseguir
-    assert "devolva à maestro" not in veredito.como_prosseguir
+    assert "sessão responsável" in veredito.como_prosseguir
+    assert "peça ao mantenedor" in veredito.como_prosseguir
+    assert "subagente" in veredito.como_prosseguir
+    assert "devolva à sessão responsável" in veredito.como_prosseguir
+    assert "pare antes de editar" in veredito.como_prosseguir.lower()
 
     com_mandato = mandato_por_faixa.conferir(
         ["servicos/pagamentos/cobranca.py"],
@@ -76,6 +79,20 @@ def test_lista_a_sem_mandato_reprova(repo):
         repo,
     )
     assert com_mandato.aprovado and com_mandato.lista == "A", com_mandato.resumo
+
+
+def test_pre_voo_sem_corpo_orienta_a_sessao_responsavel(monkeypatch, capsys):
+    # guarda: ci/mandato_por_faixa.py:358
+    monkeypatch.setattr(
+        mandato_por_faixa,
+        "classificar",
+        lambda arquivos: {arquivos[0]: "pagamento e cobrança"},
+    )
+    saida = mandato_por_faixa.main(["--arquivos", "servicos/pagamentos/cobranca.py"])
+    texto = capsys.readouterr().out
+    assert saida == 1
+    assert "A sessão responsável pede a autorização ao mantenedor nesta sessão" in texto
+    assert "o subagente registra o bloqueio e devolve à sessão responsável" in texto
 
 
 def test_lista_b_que_cita_faixa_e_documento_aprova(repo):
@@ -91,7 +108,7 @@ def test_lista_b_que_cita_faixa_e_documento_aprova(repo):
 
 
 def test_lista_a_misturada_com_lista_b_e_tratada_como_lista_a(repo):
-    # guarda: ci/mandato_por_faixa.py:228
+    # guarda: ci/mandato_por_faixa.py:230
     veredito = mandato_por_faixa.conferir(
         ["painel/registros/20260920-001-nota.js", "servicos/pagamentos/cobranca.py"],
         LINHA_DA_FAIXA,
@@ -101,6 +118,8 @@ def test_lista_a_misturada_com_lista_b_e_tratada_como_lista_a(repo):
     assert veredito.lista == "A"
     assert not veredito.aprovado
     assert veredito.resumo == "o mandato não alcança servicos/pagamentos/cobranca.py"
+    assert "sessão responsável pede ao mantenedor" in veredito.como_prosseguir
+    assert "subagente devolve o bloqueio" in veredito.como_prosseguir
 
 
 def test_caminhos_da_lista_a_derivam_de_celulas_yml_e_nao_de_constante(repo):
