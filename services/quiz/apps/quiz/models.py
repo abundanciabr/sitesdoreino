@@ -34,8 +34,26 @@ class Quiz(models.Model):
         ]
 
 
+class QuizVersion(models.Model):
+    """Uma variação servida no mesmo slug. O quiz continua sendo a campanha."""
+
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="versions")
+    key = models.SlugField(max_length=100)
+    weight = models.PositiveSmallIntegerField(default=100)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["quiz", "key"], name="quiz_version_quiz_key_unico"
+            )
+        ]
+
+
 class Question(models.Model):
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="questions")
+    version = models.ForeignKey(
+        QuizVersion, on_delete=models.CASCADE, related_name="questions"
+    )
     order = models.PositiveSmallIntegerField()
     text = models.CharField(max_length=500)
 
@@ -43,7 +61,7 @@ class Question(models.Model):
         ordering = ["order"]
         constraints = [
             models.UniqueConstraint(
-                fields=["quiz", "order"], name="question_quiz_order_unico"
+                fields=["version", "order"], name="question_version_order_unico"
             )
         ]
 
@@ -80,7 +98,9 @@ class ResultBand(models.Model):
     vale em qualquer host da plataforma sem esta célula precisar saber por quê.
     """
 
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="bands")
+    version = models.ForeignKey(
+        QuizVersion, on_delete=models.CASCADE, related_name="bands"
+    )
     key = models.SlugField(max_length=100)
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, default="")
@@ -92,7 +112,9 @@ class ResultBand(models.Model):
     class Meta:
         ordering = ["min_score"]
         constraints = [
-            models.UniqueConstraint(fields=["quiz", "key"], name="band_quiz_key_unico"),
+            models.UniqueConstraint(
+                fields=["version", "key"], name="band_version_key_unico"
+            ),
             # Os dois campos do botão andam juntos ou não andam. Destino sem
             # rótulo é um link invisível; rótulo sem destino é um botão que não
             # leva a lugar nenhum. A regra é do banco, e não do template, porque
@@ -112,6 +134,14 @@ class Submission(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     quiz = models.ForeignKey(Quiz, on_delete=models.PROTECT, related_name="submissions")
+    version = models.ForeignKey(
+        QuizVersion,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="submissions",
+    )
+    session_id = models.UUIDField(null=True, blank=True)
     site_id = models.CharField(
         max_length=64
     )  # [INV-P11] snapshot do site, não FK cruzada
@@ -138,3 +168,29 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
     class Meta:
         indexes = [models.Index(fields=["published_at"])]
+
+
+class TelemetryEvent(models.Model):
+    """Clique e abandono antes do envio. Append-only e descartável.
+
+    Não substitui Submission: se o Redis perder o stream, o lead completo
+    continua na submissão. `site_id` separa o mesmo slug em dois hosts.
+    """
+
+    session_id = models.UUIDField()
+    site_id = models.CharField(max_length=64)
+    quiz_slug = models.SlugField(max_length=100)
+    version_key = models.SlugField(max_length=100)
+    event_type = models.CharField(max_length=32)
+    element_id = models.CharField(max_length=120, blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    occurred_at = models.DateTimeField()
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["quiz_slug", "event_type", "occurred_at"],
+                name="quiz_telemetria_funil",
+            )
+        ]

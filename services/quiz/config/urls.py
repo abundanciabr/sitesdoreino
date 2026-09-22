@@ -22,6 +22,8 @@ urlpatterns = [
     # Quem impede que isso vire 500 é o 404 de
     # `apps/quiz/views.py::_quiz_do_site`; sem ele o curinga trocaria dois 404
     # honestos por um erro de servidor.
+    # Antes do curinga: senão `telemetry` vira slug de quiz e a ingestão 404.
+    path("telemetry/", quiz_views.telemetria, name="quiz-telemetria"),
     path("<slug:slug>/", quiz_views.formulario, name="quiz-formulario"),
     path("<slug:slug>/resultado", quiz_views.resultado, name="quiz-resultado"),
 ]
