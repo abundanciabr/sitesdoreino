@@ -19,8 +19,8 @@ mede as promessas que o mantenedor não tem como conferir sozinho:
    é como uma credencial acaba num lugar errado.
 3. **O site vem do catálogo, não do teclado.** `APPMAX_INSTALACOES` leva o
    `site_id` interno, um UUID que o mantenedor não tem como saber de cabeça. O
-   `curl` de mentira responde lendo o env recém-escrito, então um app_id ou um
-   site errado viram 403 aqui, do mesmo jeito que virariam na VPS.
+   OAuth MERCHANT é validado por um transporte falso e não envia requisições
+   externas nem exibe as credenciais.
 4. **Cópia de segurança antes de qualquer edição**, e o resto do env sobrevive
    inteiro (`armadilhas/111`).
 5. **Rodar de novo TROCA, nunca duplica.** Duas linhas da mesma chave no mesmo
@@ -53,8 +53,10 @@ SITE_NOME = "Meshcraft"
 APP_ID = "1888"
 CLIENT_ID = "app-client-de-mentira-0001"
 SEGREDO = "s3gr3d0-de-mentira-que-nao-pode-aparecer-na-tela"
-AUTH_URL = "https://auth.exemplo-appmax.test/oauth/token"
-API_URL = "https://api.exemplo-appmax.test/v3"
+MERCHANT_CLIENT_ID = "merchant-client-de-mentira-0001"
+MERCHANT_SECRET = "merchant-secret-de-mentira-que-nao-pode-aparecer"
+AUTH_URL = "https://auth.sandboxappmax.com.br/oauth2/token"
+API_URL = "https://api.sandboxappmax.com.br"
 
 # O env da célula como o provisionamento o escreve, ANTES desta entrega.
 PAGAMENTOS_ENV = (
@@ -66,7 +68,7 @@ PAGAMENTOS_ENV = (
 )
 
 # As respostas do teclado, na ordem em que o roteiro pergunta.
-RESPOSTAS = f"{APP_ID}\n{SITE_NOME}\n{AUTH_URL}\n{API_URL}\n{CLIENT_ID}\n{SEGREDO}\n"
+RESPOSTAS = f"{APP_ID}\n{SITE_NOME}\n{CLIENT_ID}\n{SEGREDO}\n"
 
 
 def _bash() -> str:
@@ -105,36 +107,37 @@ esac
 exit 0
 """
 
-# O curl de mentira É a rota de instalação: ele lê o env que o roteiro acabou de
-# escrever e responde como `pagamentos/api/appmax.py` responderia. Assim o teste
-# MEDE em vez de afirmar: app_id fora do env vira 403 aqui, igual à VPS.
 CURL_DE_MENTIRA = r"""#!/usr/bin/env bash
-CORPO=""
-PROXIMO=""
-for ARG in "$@"; do
-  [ "$PROXIMO" = "data" ] && { CORPO="$ARG"; PROXIMO=""; }
-  [ "$ARG" = "--data" ] && PROXIMO="data"
-done
-if [ "${CURL_FALSO_FALHA:-0}" -ne 0 ]; then
-  printf 'curl: (7) Failed to connect\n' >&2
-  exit "$CURL_FALSO_FALHA"
+CONFIG=0
+for ARG in "$@"; do [ "$ARG" = "--config" ] && CONFIG=1; done
+cat >/dev/null
+if [ "$CONFIG" -eq 1 ]; then
+  case "${CURL_FALSO_API_RESULT:-OK}" in
+    OK) printf '{"data":{"products":[]}}
+200' ;;
+    HTTP_401) printf '{"message":"unauthorized"}
+401' ;;
+    HTTP_404) printf '{"message":"not found"}
+404' ;;
+    FALHA_DE_REDE) exit 7 ;;
+    *) printf '{"data":{"products":{}}}
+200' ;;
+  esac
+else
+  case "${CURL_FALSO_RESULT:-OK}" in
+    OK) printf '{"access_token":"token-de-mentira","token_type":"Bearer","expires_in":604800}
+200' ;;
+    HTTP_401) printf '{"error":"invalid_client"}
+401' ;;
+    FALHA_DE_REDE) exit 7 ;;
+    TOKEN_SEM_ACCESS) printf '{"token_type":"Bearer","expires_in":604800}
+200' ;;
+    CREDENCIAL_EXPORTADA) [ "${CLIENT_ID+x}${SEGREDO+x}${OAUTH+x}${VALOR+x}${TEMP+x}${LINHA+x}${linha+x}${saida+x}${valor+x}" = "" ] || exit 8; printf '{"access_token":"token-de-mentira","token_type":"Bearer","expires_in":604800}
+200' ;;
+    *) printf 'resposta quebrada
+200' ;;
+  esac
 fi
-if [ -n "${CURL_FALSO_CODIGO-}" ]; then
-  printf '{"detail": "app_id nao autorizado nesta instalacao"}\n%s\n' "$CURL_FALSO_CODIGO"
-  exit 0
-fi
-PEDIDO=$(printf '%s' "$CORPO" | sed 's/.*"app_id":"\([0-9]*\)".*/\1/')
-LINHA=$(grep '^APPMAX_INSTALACOES=' "$CURL_FALSO_ENV" | head -1 | cut -d= -f2-)
-case "$LINHA" in
-  *"\"$PEDIDO\":"*)
-    ALIAS=$(printf '%s' "$LINHA" | sed 's/.*"alias":"\([^"]*\)".*/\1/')
-    printf '{"external_id": "b1946ac9-2492-4a04-b4d6-4c1f9e9b0f77", "alias": "%s"}\n200\n' "$ALIAS"
-    ;;
-  *)
-    printf '{"detail": "app_id nao autorizado nesta instalacao"}\n403\n'
-    ;;
-esac
-exit 0
 """
 
 
@@ -149,10 +152,9 @@ def _plataforma(tmp_path: Path, *, env: str | None = PAGAMENTOS_ENV) -> Path:
 
 
 def _ambiente(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
-    """Instala o docker e o curl de mentira e devolve o ambiente do roteiro.
+    """Instala os comandos `docker` e `curl` falsos no ambiente do teste.
 
-    Sem ajuste nenhum os dois FUNCIONAM: o catálogo tem um site ativo, a célula
-    recarrega, e a rota responde lendo o env recém-escrito.
+    Sem ajuste nenhum, ambos os endpoints sandbox respondem no transporte falso.
     """
     pasta = tmp_path / "binarios-de-mentira"
     pasta.mkdir(exist_ok=True)
@@ -169,7 +171,8 @@ def _ambiente(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
         PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
         PLATAFORMA_DIR=str(raiz),
         DOCKER_FALSO_SITES=f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n",
-        CURL_FALSO_ENV=str(raiz / "env" / "pagamentos.env"),
+        CURL_FALSO_RESULT="OK",
+        CURL_FALSO_API_RESULT="OK",
     )
     ambiente.update(ajustes)
     return ambiente
@@ -179,21 +182,36 @@ def _rodar(
     raiz: Path,
     digitado: str = RESPOSTAS,
     ambiente: dict | None = None,
+    args: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess:
-    """Roda o roteiro SEM ARGUMENTO, com `digitado` chegando pelo teclado."""
+    """Roda o roteiro com as respostas chegando pelo teclado."""
     if ambiente is None:
         ambiente = _ambiente(raiz.parent, raiz)
-    return subprocess.run(
-        [_bash(), str(SCRIPT)],
-        input=digitado,
+    executavel = raiz.parent / "binarios-de-mentira"
+    bash = _bash()
+    comando = [
+        bash,
+        "-c",
+        'PATH="$1:$PATH"; export PATH; shift; exec "$@"',
+        "teste-appmax",
+        str(executavel),
+        bash,
+        str(SCRIPT),
+        *args,
+    ]
+    resultado = subprocess.run(
+        comando,
+        input=digitado.encode("utf-8"),
         capture_output=True,
-        text=True,
-        # O roteiro fala PORTUGUÊS, com acento e com o "PAROU POR SEGURANÇA".
-        # Sem dizer o encoding aqui, o Python de uma máquina Windows tenta
-        # cp1252 e a leitura da tela estoura antes de qualquer asserção.
-        encoding="utf-8",
-        errors="replace",
         env=ambiente,
+    )
+    # Bytes preservam LF no pipe em Windows; text=True traduziria as entradas
+    # em CRLF, que Bash lê como parte das credenciais invisíveis.
+    return subprocess.CompletedProcess(
+        resultado.args,
+        resultado.returncode,
+        resultado.stdout.decode("utf-8", errors="replace"),
+        resultado.stderr.decode("utf-8", errors="replace"),
     )
 
 
@@ -260,7 +278,8 @@ def test_a_recarga_force_recreate_e_mostra_o_erro():
     """
     fonte = SCRIPT.read_text(encoding="utf-8")
     recarga = [x for x in fonte.splitlines() if "docker compose up -d --" in x]
-    assert len(recarga) == 1, recarga
+    assert len(recarga) == 2, recarga
+    assert all("pagamentos" in x for x in recarga)
     assert "--force-recreate" in recarga[0]
     assert ">/dev/null" not in recarga[0]
     assert "pagamentos" in recarga[0], "recarregar tudo devolveria as outras células à tag :main"
@@ -359,8 +378,6 @@ def _com(**trocas: str) -> str:
     respostas = {
         "app_id": APP_ID,
         "alias": SITE_NOME,
-        "auth": AUTH_URL,
-        "api": API_URL,
         "client_id": CLIENT_ID,
         "segredo": SEGREDO,
     }
@@ -375,9 +392,7 @@ def _com(**trocas: str) -> str:
     "digitado,frase,porque",
     [
         (_com(app_id="meshcraft"), "só números", "o app_id da Appmax é numérico"),
-        ("\n" * 6, "você não respondeu", "tudo em branco e nada gravado para manter"),
-        (_com(auth="ftp://x"), "não parece um endereço", "endereço que não é https"),
-        (_com(api="nao-e-endereco"), "não parece um endereço", "o segundo endereço também é conferido"),
+        ("\n" * 4, "não colou o client_id", "campos opcionais vazios deixam o par obrigatório ausente"),
         (_com(client_id=""), "não colou o client_id", "client_id vazio"),
         (_com(segredo=""), "não colou o client_secret", "segredo vazio"),
         (
@@ -485,19 +500,21 @@ def test_site_escolhido_que_nao_existe_para_sem_escrever(tmp_path):
     assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
 
 
-def test_a_tela_final_mostra_a_rota_respondendo_200(tmp_path):
-    """É o que o mantenedor precisa VER: a porta que recusava passou a aceitar."""
+def test_prepara_instalacao_sem_post_publico_ou_declaracao_de_oauth(tmp_path):
     raiz = _plataforma(tmp_path)
 
     resultado = _rodar(raiz)
-
     tela = resultado.stdout
-    assert "200" in tela
-    assert "b1946ac9-2492-4a04-b4d6-4c1f9e9b0f77" in tela, (
-        "o external_id da resposta não apareceu na tela"
-    )
-    assert "403" not in tela
+
+    assert resultado.returncode == 0, tela
+    assert "CONFIGURAÇÃO DE INSTALAÇÃO PREPARADA" in tela
+    assert "não chamou a rota pública" in tela
+    assert "não comprova OAuth MERCHANT" in tela
+    assert "APPMAX_CARD_ENABLED_SITES" not in tela
     assert SEGREDO not in tela
+    fonte = SCRIPT.read_text(encoding="utf-8")
+    assert "-X POST" not in fonte
+    assert "APPMAX_CARD_ENABLED_SITES" in fonte
 
 
 def test_recarga_que_falha_para_dizendo_que_o_env_ja_esta_gravado(tmp_path):
@@ -514,37 +531,144 @@ def test_recarga_que_falha_para_dizendo_que_o_env_ja_esta_gravado(tmp_path):
     # O env JÁ está certo: mandar colar tudo de novo seria mentira.
     assert _valor(raiz, "APPMAX_APP_CLIENT_SECRET") == SEGREDO
 
-
-def test_rota_fora_do_ar_avisa_sem_desfazer_o_que_gravou(tmp_path):
+@pytest.mark.parametrize("codigo", ["HTTP_401", "FALHA_DE_REDE", "RESPOSTA_INVALIDA", "TOKEN_SEM_ACCESS"])
+def test_oauth_merchante_reprovado_nao_grava_credenciais(tmp_path, codigo):
     raiz = _plataforma(tmp_path)
-    ambiente = _ambiente(tmp_path, raiz, CURL_FALSO_FALHA="7")
+    assert _rodar(raiz).returncode == 0
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
+    copias_antes = _copias(raiz)
+    ambiente = _ambiente(tmp_path, raiz, CURL_FALSO_RESULT=codigo)
 
-    resultado = _rodar(raiz, ambiente=ambiente)
-    tela = resultado.stdout + resultado.stderr
-
-    assert resultado.returncode != 0
-    assert "não consegui falar com" in tela, (
-        "o site fora do ar e a porta recusando são duas telas diferentes, e "
-        "quem lê só sabe o que fazer se elas não se confundirem"
+    resultado = _rodar(
+        raiz,
+        digitado=f"{MERCHANT_CLIENT_ID}\n{MERCHANT_SECRET}\n",
+        ambiente=ambiente,
+        args=("--oauth-merchant",),
     )
-    assert SEGREDO not in tela
-    assert _valor(raiz, "APPMAX_APP_CLIENT_SECRET") == SEGREDO
-
-
-def test_porta_que_continua_recusando_manda_conferir_o_app_id(tmp_path):
-    """É o desfecho mais provável de um erro de digitação, e o único que o
-    mantenedor consegue consertar sozinho."""
-    raiz = _plataforma(tmp_path)
-    ambiente = _ambiente(tmp_path, raiz, CURL_FALSO_CODIGO="403")
-
-    resultado = _rodar(raiz, ambiente=ambiente)
     tela = resultado.stdout + resultado.stderr
 
     assert resultado.returncode != 0
     assert "PAROU POR SEGURANÇA" in tela
-    assert APP_ID in tela, "não disse qual app_id foi gravado, que é o que ele confere"
-    assert "NÃO é para colar as credenciais de novo" in tela
-    assert SEGREDO not in tela
+    assert MERCHANT_CLIENT_ID not in tela and MERCHANT_SECRET not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == copias_antes
+
+
+@pytest.mark.parametrize("codigo", ["HTTP_401", "HTTP_404", "FALHA_DE_REDE", "RESPOSTA_INVALIDA"])
+def test_token_sem_escopo_merchant_nao_grava_credenciais(tmp_path, codigo):
+    raiz = _plataforma(tmp_path)
+    assert _rodar(raiz).returncode == 0
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
+    copias_antes = _copias(raiz)
+    ambiente = _ambiente(tmp_path, raiz, CURL_FALSO_API_RESULT=codigo)
+
+    resultado = _rodar(
+        raiz,
+        digitado=f"{MERCHANT_CLIENT_ID}\n{MERCHANT_SECRET}\n",
+        ambiente=ambiente,
+        args=("--oauth-merchant",),
+    )
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "PAROU POR SEGURANÇA" in tela
+    assert "OAuth respondeu" in tela
+    assert MERCHANT_CLIENT_ID not in tela and MERCHANT_SECRET not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == copias_antes
+
+
+def test_oauth_merchante_sandbox_grava_fora_do_repo_sem_exibir_segredo(tmp_path):
+    raiz = _plataforma(tmp_path)
+    assert _rodar(raiz).returncode == 0
+    ambiente = _ambiente(tmp_path, raiz)
+
+    resultado = _rodar(
+        raiz,
+        digitado=f"{MERCHANT_CLIENT_ID}\n{MERCHANT_SECRET}\n",
+        ambiente=ambiente,
+        args=("--oauth-merchant",),
+    )
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode == 0, tela
+    assert "OAuth sandbox e leitura de produtos MERCHANT validados" in tela
+    assert "token-de-mentira" not in tela
+    assert "data" not in tela
+    assert MERCHANT_CLIENT_ID not in tela and MERCHANT_SECRET not in tela
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_ID") == MERCHANT_CLIENT_ID
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_SECRET") == MERCHANT_SECRET
+    assert len(_copias(raiz)) == 2
+
+
+def test_cobranca_habilitada_faz_o_script_parar_antes_de_pedir_segredo(tmp_path):
+    raiz = _plataforma(tmp_path, env=PAGAMENTOS_ENV + "APPMAX_CARD_ENABLED_SITES=site-de-teste\n")
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
+
+    resultado = _rodar(raiz)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "APPMAX_CARD_ENABLED_SITES" in tela
+    assert "client_secret" not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == []
+
+
+@pytest.mark.parametrize(
+    "linha",
+    [
+        "APPMAX_CARD_ENABLED_SITES = site-a",
+        "APPMAX_CARD_ENABLED_SITES: site-a",
+        "APPMAX_CARD_ENABLED_SITES=\nAPPMAX_CARD_ENABLED_SITES: site-a",
+        "APPMAX_CARD_ENABLED_SITES",
+        "APPMAX_CARD_ENABLED_SITES # sem delimitador",
+    ],
+)
+def test_guardia_reconhece_formatos_compose_e_duplicatas_da_trava(tmp_path, linha):
+    raiz = _plataforma(tmp_path, env=PAGAMENTOS_ENV + linha + "\n")
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
+
+    resultado = _rodar(raiz)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "APPMAX_CARD_ENABLED_SITES" in tela
+    assert "client_secret" not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == []
+
+
+def test_credenciais_exportadas_pelo_shell_nao_chegam_ao_curl(tmp_path):
+    raiz = _plataforma(tmp_path)
+    assert _rodar(raiz).returncode == 0
+    ambiente = _ambiente(
+        tmp_path,
+        raiz,
+        CURL_FALSO_RESULT="CREDENCIAL_EXPORTADA",
+        CLIENT_ID="herdado-id",
+        SEGREDO="herdado-segredo",
+        OAUTH="herdado-token",
+        VALOR="herdado-valor",
+        TEMP="herdado-arquivo-env",
+        linha="herdado-linha",
+        saida="herdado-saida",
+        valor="herdado-valor-lowercase",
+    )
+
+    resultado = _rodar(
+        raiz,
+        digitado=f"{MERCHANT_CLIENT_ID}\n{MERCHANT_SECRET}\n",
+        ambiente=ambiente,
+        args=("--oauth-merchant",),
+    )
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode == 0, tela
+    assert "OAuth sandbox e leitura de produtos MERCHANT validados" in tela
+    assert "herdado-segredo" not in tela
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_ID") == MERCHANT_CLIENT_ID
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_SECRET") == MERCHANT_SECRET
 
 
 # ---------------------------------------------------------------------------
@@ -604,7 +728,7 @@ def test_rodar_de_novo_troca_e_nao_duplica_nenhuma_linha(tmp_path):
     outro = "s3gund0-segredo-de-mentira"
 
     assert _rodar(raiz).returncode == 0
-    segunda = f"{APP_ID}\n{SITE_NOME}\n{AUTH_URL}\n{API_URL}\n{CLIENT_ID}\n{outro}\n"
+    segunda = f"{APP_ID}\n{SITE_NOME}\n{CLIENT_ID}\n{outro}\n"
     assert _rodar(raiz, digitado=segunda).returncode == 0
 
     for chave in (
@@ -638,7 +762,7 @@ def test_duas_trocas_no_mesmo_segundo_guardam_as_duas_copias(tmp_path):
     congelado.chmod(0o755)
 
     assert _rodar(raiz, ambiente=ambiente).returncode == 0
-    segunda = f"{APP_ID}\n{SITE_NOME}\n{AUTH_URL}\n{API_URL}\n{CLIENT_ID}\noutro-segredo\n"
+    segunda = f"{APP_ID}\n{SITE_NOME}\n{CLIENT_ID}\noutro-segredo\n"
     assert _rodar(raiz, digitado=segunda, ambiente=ambiente).returncode == 0
 
     assert len(_copias(raiz)) == 2, "a segunda troca apagou a cópia da primeira"
@@ -646,32 +770,34 @@ def test_duas_trocas_no_mesmo_segundo_guardam_as_duas_copias(tmp_path):
     assert len(guardados) == 2, "as duas cópias guardaram o mesmo conteúdo"
 
 
-def test_env_com_a_chave_repetida_volta_a_ter_uma_linha_so(tmp_path):
-    """O env que alguém já tentou configurar à mão antes deste roteiro existir.
-    Duas linhas da mesma chave fazem o valor depender da ordem de leitura."""
+def test_env_com_endereco_nao_sandbox_para_sem_escrever(tmp_path):
     raiz = _plataforma(
         tmp_path,
         env=(
             "DJANGO_SECRET_KEY=x\n"
-            "APPMAX_AUTH_URL=https://antigo.test/1\n"
+            "APPMAX_AUTH_URL=https://auth.appmax.com.br/oauth2/token\n"
+            "APPMAX_API_URL=https://api.appmax.com.br\n"
             "MP_ACCESS_TOKEN=TEST-nao-e-para-mexer\n"
-            "APPMAX_AUTH_URL=https://antigo.test/2\n"
         ),
     )
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
 
-    assert _rodar(raiz).returncode == 0
+    resultado = _rodar(raiz)
+    tela = resultado.stdout + resultado.stderr
 
-    assert _linhas(raiz, "APPMAX_AUTH_URL") == 1
-    assert _valor(raiz, "APPMAX_AUTH_URL") == AUTH_URL
-    assert _valor(raiz, "MP_ACCESS_TOKEN") == "TEST-nao-e-para-mexer"
+    assert resultado.returncode != 0
+    assert "outro endereço de autenticação" in tela
+    assert CLIENT_ID not in tela and SEGREDO not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == []
 
 
 def test_rodar_de_novo_aceita_enter_para_manter_os_enderecos(tmp_path):
-    """Trocar só o segredo não pode obrigar a redigitar o que já está certo."""
+    """Os destinos permanecem fixos no sandbox ao trocar só as credenciais."""
     raiz = _plataforma(tmp_path)
     assert _rodar(raiz).returncode == 0
 
-    segunda = f"\n\n\n\n{CLIENT_ID}\n{SEGREDO}\n"
+    segunda = f"\n\n{CLIENT_ID}\n{SEGREDO}\n"
     assert _rodar(raiz, digitado=segunda).returncode == 0
 
     assert _valor(raiz, "APPMAX_AUTH_URL") == AUTH_URL

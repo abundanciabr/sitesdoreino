@@ -1,0 +1,21 @@
+{
+  "arquivo": "638-preparar-e-comprovar-a-instalacao-sandbox-da-appmax",
+  "id": "TAR-638",
+  "titulo": "Preparar e comprovar a instalação sandbox da Appmax",
+  "toca": [
+    "infra",
+    "pagamentos",
+    "ci"
+  ],
+  "depende_de": ["TAR-643"],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "URL do PR integrado e prova de healthcheck inicial aceito pela rota, com OAuth e leitura MERCHANT sandbox validados; cobranças reais continuam desligadas.",
+  "despacho": "Executar a preparação da Appmax em sandbox fora do repositório e comprovar instalação inicial mais escopo MERCHANT sem cobranças reais. Ownership: infra/ligar-a-appmax.sh, infra/env/pagamentos.env.exemplo e ci/tests/test_ligar_a_appmax.py; services/ e contracts/ são somente leitura. Usar somente endpoints oficiais sandbox, segredos ocultos e nenhum segredo em histórico, argumentos ou artefatos. OAuth 200 sozinho não comprova acesso MERCHANT: exigir leitura de produtos antes de gravar o par. A rota pública atual devolveu 403 para app_id 1888 antes da nova configuração; só afirmar reconhecimento após executar preparo no VPS e receber healthcheck de instalação real. Não alterar callback nem prometer reinstalação do aplicativo.",
+  "origem": "mandato do mantenedor 2026-09-22",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-079-infra-prepara-credenciais-appmax-no-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "infra: prepara credenciais Appmax no sandbox",
+  detalhe: "Segredos não são exportados; travas ambíguas e tokens incompletos são recusados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1963. Validação local: árvore ca540beeeba8b5db644630857ec150a4b2a7ba77; commit 0479aecf34735e6a79dd11cdc5b8ae7a49590d38; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-643",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

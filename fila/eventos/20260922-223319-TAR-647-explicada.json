@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-223319-TAR-647-explicada",
+  "tarefa": "TAR-647",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:33:19+00:00",
+  "quem": "Sucessora operacional da conclusão automática indevida de TAR-638; mandato fase 1 de 2026-09-22",
+  "o_que_e": "A configuração publicada ainda rejeita o aplicativo e as credenciais APP de sandbox não provaram acesso de lojista.",
+  "o_que_muda": "A instalação inicial sandbox e o acesso MERCHANT são comprovados sem habilitar cobrança real.",
+  "exemplo": "O token APP pode ser obtido, mas uma lista de produtos só comprova o acesso de lojista quando a API devolve a estrutura esperada.",
+  "importancia": 82
+}

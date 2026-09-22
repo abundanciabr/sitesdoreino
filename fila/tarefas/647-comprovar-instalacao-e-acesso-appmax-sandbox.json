@@ -1,0 +1,23 @@
+{
+  "arquivo": "647-comprovar-instalacao-e-acesso-appmax-sandbox",
+  "id": "TAR-647",
+  "titulo": "Comprovar instalação e acesso Appmax sandbox",
+  "toca": [
+    "infra",
+    "pagamentos",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-643"
+  ],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "PR do roteiro integrado; healthcheck real da instalação sandbox aceito; OAuth MERCHANT e GET /v1/products com data.products validado; nenhuma cobrança real habilitada.",
+  "despacho": "Comprovar em VPS autorizada a instalação sandbox Appmax e acesso merchant com credenciais externas apropriadas. Não reutilizar credenciais APP para transações. Fazer a instalação inicial, comprovar healthcheck e GET de leitura de produtos com data.products lista. Não chamar fluxo de cobrança/cartão, não alterar callback nem prometer reinstalação. Guardar apenas saída sanitizada e manter segredos fora do repositório, histórico, argumentos e artefatos. Destravar somente com evidência real de healthcheck aceito e MERCHANT confirmado.",
+  "origem": "Sucessora operacional da conclusão automática indevida de TAR-638; mandato fase 1 de 2026-09-22",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}
