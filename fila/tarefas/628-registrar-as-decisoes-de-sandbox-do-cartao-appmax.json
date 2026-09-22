@@ -1,0 +1,19 @@
+{
+  "arquivo": "628-registrar-as-decisoes-de-sandbox-do-cartao-appmax",
+  "id": "TAR-628",
+  "titulo": "Registrar as decisões de sandbox do cartão Appmax",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Plano mestre contém as decisões L0-S e o PR do plano passa nas muralhas e no portão de travessões.",
+  "despacho": "Atualize somente docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md com as decisões L0-S sustentadas pelos registros existentes e documentação oficial. Não altere tarefas canceladas, produção ou cobrança real. Valide travessões e muralhas e publique PR próprio.",
+  "origem": "Comando do mantenedor para tocar a Fase 1 em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
