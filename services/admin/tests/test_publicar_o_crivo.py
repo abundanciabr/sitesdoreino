@@ -22,28 +22,25 @@ class _AppsFalso:
 
 
 def test_o_manual_do_quiz_fica_publico_sem_trocar_o_texto(db):
-    documento = Documento.objects.create(
-        nome=NOME,
-        titulo="O Crivo explicado do zero",
-        publico=False,
-        corpo="# Manual original\n",
-    )
+    documento = Documento.objects.get(nome=NOME)
+    corpo_original = documento.corpo
+    documento.publico = False
+    documento.save(update_fields=["publico"])
 
     _publicacao.publicar_o_crivo(_AppsFalso, None)
 
     documento.refresh_from_db()
     assert documento.publico is True
-    assert documento.corpo == "# Manual original\n"
+    assert documento.corpo == corpo_original
     assert Client().get(f"/docs/{NOME}").status_code == 200
 
 
 def test_publicar_o_manual_duas_vezes_preserva_o_documento(db):
-    documento = Documento.objects.create(
-        nome=NOME,
-        titulo="Título editado pelo mantenedor",
-        publico=True,
-        corpo="Texto editado pelo mantenedor",
-    )
+    documento = Documento.objects.get(nome=NOME)
+    documento.titulo = "Título editado pelo mantenedor"
+    documento.corpo = "Texto editado pelo mantenedor"
+    documento.publico = True
+    documento.save(update_fields=["titulo", "corpo", "publico"])
 
     _publicacao.publicar_o_crivo(_AppsFalso, None)
     _publicacao.publicar_o_crivo(_AppsFalso, None)
@@ -55,6 +52,8 @@ def test_publicar_o_manual_duas_vezes_preserva_o_documento(db):
 
 
 def test_publicar_o_manual_ausente_nao_cria_documento(db):
+    Documento.objects.filter(nome=NOME).delete()
+
     _publicacao.publicar_o_crivo(_AppsFalso, None)
 
     assert not Documento.objects.filter(nome=NOME).exists()
