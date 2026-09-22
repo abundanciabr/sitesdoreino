@@ -17,7 +17,7 @@ def pedido(api, rede, sessao_a):
         {
             "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
             "bump_ids": [BUMP_A["id"]],
-            "method": "pix",
+            "method": "card",
         },
     )
     assert resp.status_code == 201, resp.content
@@ -72,6 +72,7 @@ def test_refechar_a_mesma_sessao_devolve_o_pedido_existente_sem_tocar_o_snapshot
     api, rede, sessao_a, pedido
 ):
     antes = Order.objects.get(pk=pedido.pk)
+    chamadas_antes = len(rede.calls)
 
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
@@ -90,6 +91,7 @@ def test_refechar_a_mesma_sessao_devolve_o_pedido_existente_sem_tocar_o_snapshot
     assert depois.items == antes.items
     assert depois.customer == antes.customer
     assert depois.method == antes.method
+    assert len(rede.calls) == chamadas_antes
 
 
 def test_status_continua_atualizavel(pedido):

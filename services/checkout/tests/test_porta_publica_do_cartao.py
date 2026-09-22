@@ -50,6 +50,51 @@ def pedido_de_cartao(api, rede, sessao_a):
     return Order.objects.get(pk=resp.json()["order_id"])
 
 
+# guarda: services/checkout/apps/core/api.py:339
+def test_intent_de_cartao_usa_itens_e_total_calculados_pelo_catalogo(
+    api, rede, sessao_a
+):
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
+        {
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "bump_ids": [BUMP_A["id"]],
+            "method": "card",
+            "total_cents": 1,
+            "items": [{"product_id": "forjado", "price_cents": 1}],
+        },
+    )
+    assert resp.status_code == 201, resp.content
+    pedido = Order.objects.get(pk=resp.json()["order_id"])
+    chamada = next(
+        chamada
+        for chamada in rede.calls
+        if str(chamada.request.url) == f"{PAGAMENTOS}/intents"
+    )
+    cobranca = json.loads(chamada.request.content)
+
+    assert cobranca["method"] == "card"
+    itens_esperados = [
+        {
+            "product_id": OFERTA_A["product"]["id"],
+            "name": OFERTA_A["product"]["name"],
+            "price_cents": OFERTA_A["price_cents"],
+            "kind": "principal",
+        },
+        {
+            "product_id": BUMP_A["product_id"],
+            "name": BUMP_A["name"],
+            "price_cents": BUMP_A["price_cents"],
+            "kind": "bump",
+        },
+    ]
+    assert cobranca["metadata"]["product_id"] == itens_esperados[0]["product_id"]
+    assert cobranca["metadata"]["items"] == pedido.items == itens_esperados
+    assert cobranca["amount_cents"] == sum(
+        item["price_cents"] for item in itens_esperados
+    )
+
+
 def test_o_corpo_que_carrega_dinheiro_e_recusado_e_nada_sai_para_pagamentos(
     api, rede, pedido_de_cartao
 ):
