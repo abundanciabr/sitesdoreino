@@ -1263,6 +1263,15 @@
     },
     {
       "celula": "admin",
+      "rota": "^docs/(?P<nome>[a-z0-9-]+)/arquivo/(?P<ficheiro>[a-z0-9-]+\\.[a-z0-9]+)$",
+      "endereco": "/docs/(?P<nome>[a-z0-9-]+)/arquivo/(?P<ficheiro>[a-z0-9-]+\\.[a-z0-9]+)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Um arquivo de um documento",
+      "descricao": "A imagem ou o vídeo versionado com um documento. Documento privado responde como se o arquivo não existisse. Um formato desconhecido fica disponível para download."
+    },
+    {
+      "celula": "admin",
       "rota": "^documentos/(?P<nome>[a-z0-9-]+)/moldura$",
       "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/moldura$",
       "alcance": "publico",

@@ -34,6 +34,8 @@ uma coisa a filtrar e passa a ser uma coisa que não tem por onde entrar.
 
 from __future__ import annotations
 
+import hashlib
+import mimetypes
 import re
 import secrets
 import shutil
@@ -65,20 +67,42 @@ PNG = "image/png"
 JPEG = "image/jpeg"
 WEBP = "image/webp"
 GIF = "image/gif"
+AVIF = "image/avif"
 MP4 = "video/mp4"
+WEBM = "video/webm"
 SVG = "image/svg+xml"
+QUICKTIME = "video/quicktime"
+HEIC = "image/heic"
+OGG = "audio/ogg"
 
 EXTENSOES = {
     PNG: "png",
     JPEG: "jpg",
     WEBP: "webp",
     GIF: "gif",
+    AVIF: "avif",
     MP4: "mp4",
+    WEBM: "webm",
     SVG: "svg",
+    QUICKTIME: "mov",
+    HEIC: "heic",
+    OGG: "ogg",
 }
 
 #: O que a tela diz que aceita. Sai daqui para não haver duas listas.
-ACEITOS_EM_PORTUGUES = "PNG, JPEG, WebP, GIF, MP4 e SVG"
+ACEITOS_EM_PORTUGUES = "PNG, JPEG, WebP, GIF, AVIF, HEIC, SVG, MP4, WebM, MOV e OGG"
+
+#: Endereços `/midia/...` com estas extensões viram `<video>` no renderizador.
+EXTENSOES_DE_VIDEO = frozenset({"mp4", "webm", "mov"})
+
+#: Endereços `/midia/...` com estas extensões viram `<audio>`.
+EXTENSOES_DE_AUDIO = frozenset({"ogg"})
+
+EMAIL_DA_SEMENTE = "semente@repositorio"
+
+#: Uma linha de imagem ou vídeo na semente: `![legenda](anexo:apelido)`.
+#: O arquivo mora em `documentos/anexos/<nome-do-doc>/<apelido>.<ext>`.
+_REFERENCIA_ANEXO = re.compile(r"!\[([^\]]*)\]\(anexo:([a-z0-9-]+)\)")
 
 _APELIDO = re.compile(r"[^a-z0-9]+")
 _ABERTURA_DE_SVG = re.compile(rb"<svg[\s>/]", re.IGNORECASE)
@@ -100,11 +124,30 @@ def tipo_do_conteudo(cabeca: bytes) -> str | None:
     # isso que os dois olham a partir do byte 4 em vez do byte 0.
     if cabeca[:4] == b"RIFF" and cabeca[8:12] == b"WEBP":
         return WEBP
-    if cabeca[4:8] == b"ftyp":
-        return MP4
+    if cabeca.startswith(b"\x1a\x45\xdf\xa3") and b"webm" in cabeca[:1024].lower():
+        return WEBM
+    if cabeca.startswith(b"OggS"):
+        return OGG
+    ftyp = _tipo_ftyp(cabeca)
+    if ftyp is not None:
+        return ftyp
     if _e_svg(cabeca):
         return SVG
     return None
+
+
+def _tipo_ftyp(cabeca: bytes) -> str | None:
+    """ISO BMFF (`ftyp`): MP4, MOV, AVIF ou HEIC, lido da marca principal."""
+    if len(cabeca) < 12 or cabeca[4:8] != b"ftyp":
+        return None
+    marca = cabeca[8:12]
+    if marca in (b"avif", b"avis"):
+        return AVIF
+    if marca in (b"heic", b"heix", b"mif1", b"msf1"):
+        return HEIC
+    if marca == b"qt  ":
+        return QUICKTIME
+    return MP4
 
 
 def _e_svg(cabeca: bytes) -> bool:
@@ -148,6 +191,133 @@ class Recusa(Exception):
     """O envio não entrou, e a mensagem é o que o mantenedor vai ler."""
 
 
+def sorteio_deterministico(documento_nome: str, apelido: str) -> str:
+    """O mesmo sorteio em todo ambiente, para o mesmo documento e apelido."""
+    materia = f"{documento_nome}:{apelido}".encode("utf-8")
+    return hashlib.sha256(materia).hexdigest()[:32]
+
+
+def endereco_publico(sorteio: str, nome: str) -> str:
+    """O caminho que o Markdown do banco usa e que `midia_servir` entrega."""
+    return f"/midia/{sorteio}/{nome}"
+
+
+def pasta_de_anexos(documento_nome: str) -> Path | None:
+    """`documentos/anexos/<documento>/`, ou `None` se a semente não veio."""
+    from .documentos import diretorio
+
+    raiz_docs = diretorio()
+    if raiz_docs is None:
+        return None
+    pasta = raiz_docs / "anexos" / documento_nome
+    return pasta if pasta.is_dir() else None
+
+
+def _arquivo_do_anexo(pasta: Path, apelido: str) -> Path | None:
+    """O arquivo cujo stem é o apelido, qualquer extensão aceita."""
+    for candidato in sorted(pasta.iterdir()):
+        if candidato.is_file() and candidato.stem == apelido:
+            return candidato
+    return None
+
+
+def gravar_bytes(
+    documento,
+    conteudo: bytes,
+    nome_de_fora: str,
+    quem_email: str,
+    *,
+    sorteio: str | None = None,
+) -> Midia:
+    """Grava bytes já conferidos, ou levanta `Recusa`. Idempotente por sorteio."""
+    if not conteudo:
+        raise Recusa(
+            "Nenhum arquivo chegou. Escolha uma imagem ou um vídeo no botão de "
+            "escolher arquivo e aperte enviar de novo."
+        )
+    if len(conteudo) > TETO_POR_ARQUIVO:
+        raise Recusa(
+            f"Este arquivo tem {_em_megabytes(len(conteudo))} e o limite por "
+            f"arquivo é {_em_megabytes(TETO_POR_ARQUIVO)}. Reduza o tamanho da "
+            "imagem, ou corte o vídeo, e envie de novo."
+        )
+
+    tipo = tipo_do_conteudo(conteudo[:1024])
+    if tipo is None:
+        raise Recusa(
+            f"Este arquivo não é uma imagem nem um vídeo dos que eu aceito "
+            f"({ACEITOS_EM_PORTUGUES}). Eu confiro o conteúdo, e não o nome do "
+            "arquivo, então renomear não resolve. Envie o arquivo original da "
+            "imagem ou do vídeo."
+        )
+
+    sorteio = sorteio or secrets.token_hex(16)
+    nome = _apelido(nome_de_fora, tipo)
+    pasta = raiz() / sorteio
+    try:
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / nome).write_bytes(conteudo)
+    except OSError as erro:
+        shutil.rmtree(pasta, ignore_errors=True)
+        raise Recusa(
+            "Não consegui gravar o arquivo no disco do servidor, que pode "
+            "estar cheio. O texto do documento está a salvo. Avise o "
+            f"responsável pelo servidor e tente de novo depois. Detalhe: {erro}"
+        ) from erro
+
+    midia, _ = Midia.objects.update_or_create(
+        sorteio=sorteio,
+        defaults={
+            "documento": documento,
+            "nome": nome,
+            "tipo": tipo,
+            "tamanho": len(conteudo),
+            "enviado_por": quem_email,
+        },
+    )
+    return midia
+
+
+def publicar_anexos_referenciados(documento, corpo: str) -> str:
+    """Troca `anexo:…` por `/midia/…` e grava os arquivos da pasta-semente.
+
+    Referência sem pasta ou sem arquivo correspondente deixa a linha como
+    está: o renderizador mostra o Markdown cru e quem escreveu percebe.
+    """
+    pasta = pasta_de_anexos(documento.nome)
+    if pasta is None or "anexo:" not in corpo:
+        return corpo
+
+    def substituir(match: re.Match[str]) -> str:
+        legenda, apelido = match.group(1), match.group(2)
+        caminho = _arquivo_do_anexo(pasta, apelido)
+        if caminho is None:
+            return match.group(0)
+        sorteio = sorteio_deterministico(documento.nome, apelido)
+        guardada = gravar_bytes(
+            documento,
+            caminho.read_bytes(),
+            caminho.name,
+            EMAIL_DA_SEMENTE,
+            sorteio=sorteio,
+        )
+        return f"![{legenda}]({endereco_publico(guardada.sorteio, guardada.nome)})"
+
+    return _REFERENCIA_ANEXO.sub(substituir, corpo)
+
+
+def aplicar_anexos_ao_documento(documento) -> bool:
+    """Grava no banco o corpo com `/midia/…` no lugar de `anexo:…`. Devolve se mudou."""
+    if "anexo:" not in documento.corpo:
+        return False
+    novo = publicar_anexos_referenciados(documento, documento.corpo)
+    if novo == documento.corpo:
+        return False
+    documento.corpo = novo
+    documento.save(update_fields=["corpo"])
+    return True
+
+
 def guardar(documento, enviado, quem_email: str) -> Midia:
     """Grava um arquivo enviado, ou levanta `Recusa` dizendo o que fazer.
 
@@ -168,44 +338,11 @@ def guardar(documento, enviado, quem_email: str) -> Midia:
             "imagem, ou corte o vídeo, e envie de novo."
         )
 
-    cabeca = enviado.read(1024)
-    enviado.seek(0)
-    tipo = tipo_do_conteudo(cabeca)
-    if tipo is None:
-        raise Recusa(
-            f"Este arquivo não é uma imagem nem um vídeo dos que eu aceito "
-            f"({ACEITOS_EM_PORTUGUES}). Eu confiro o conteúdo, e não o nome do "
-            "arquivo, então renomear não resolve. Envie o arquivo original da "
-            "imagem ou do vídeo."
-        )
-
-    sorteio = secrets.token_hex(16)
-    nome = _apelido(enviado.name, tipo)
-    pasta = raiz() / sorteio
-    try:
-        pasta.mkdir(parents=True, exist_ok=True)
-        with (pasta / nome).open("wb") as destino:
-            for pedaco in enviado.chunks():
-                destino.write(pedaco)
-    except OSError as erro:
-        # Disco cheio, disco somente-leitura, pasta sem permissão: de fora são
-        # a mesma coisa (não consegui gravar) e têm a mesma saída (é o dono do
-        # servidor quem resolve). O arquivo pela metade sai junto — meia
-        # gravação servida depois é uma imagem quebrada sem explicação.
-        shutil.rmtree(pasta, ignore_errors=True)
-        raise Recusa(
-            "Não consegui gravar o arquivo no disco do servidor, que pode "
-            "estar cheio. O texto do documento está a salvo. Avise o "
-            f"responsável pelo servidor e tente de novo depois. Detalhe: {erro}"
-        ) from erro
-
-    return Midia.objects.create(
-        documento=documento,
-        sorteio=sorteio,
-        nome=nome,
-        tipo=tipo,
-        tamanho=enviado.size,
-        enviado_por=quem_email,
+    return gravar_bytes(
+        documento,
+        enviado.read(),
+        enviado.name,
+        quem_email,
     )
 
 
@@ -253,8 +390,50 @@ def midia_servir(request, sorteio, nome):
     if not caminho.is_file():
         raise Http404("arquivo não encontrado")
 
-    resposta = FileResponse(caminho.open("rb"), content_type=midia.tipo)
+    return resposta_do_arquivo(caminho, midia.tipo)
+
+
+def resposta_do_arquivo(caminho: Path, tipo: str) -> FileResponse:
+    """Devolve o arquivo com o tipo que NÓS lemos, nunca o que o nome disse."""
+    resposta = FileResponse(
+        caminho.open("rb"),
+        content_type=tipo,
+        as_attachment=tipo == "application/octet-stream",
+        filename=caminho.name,
+    )
     resposta["X-Content-Type-Options"] = "nosniff"
-    if midia.tipo == SVG:
+    if tipo == SVG:
         resposta["Content-Security-Policy"] = _CSP_DO_SVG
     return resposta
+
+
+@require_GET
+def arquivo_da_semente_servir(request, nome, ficheiro):
+    """Devolve o arquivo versionado junto do documento, ou 404.
+
+    O disco não é montado a partir da URL: o nome do documento e o do
+    arquivo passam pelo mesmo achado que o renderizador usa, e o tipo sai
+    dos bytes. Documento privado, arquivado ou inexistente responde 404,
+    nunca 403: a existência do arquivo não se confirma.
+    """
+    from .documentos import caminho_do_arquivo, ler
+
+    documento = ler(nome)
+    if documento is None:
+        raise Http404("arquivo não encontrado")
+    if not getattr(request, "admin", None) and not documento.no_ar:
+        raise Http404("arquivo não encontrado")
+
+    caminho = caminho_do_arquivo(documento.nome, ficheiro)
+    if caminho is None:
+        raise Http404("arquivo não encontrado")
+    with caminho.open("rb") as origem:
+        tipo = tipo_do_conteudo(origem.read(1024))
+    if tipo is None:
+        sugerido, _ = mimetypes.guess_type(caminho.name)
+        tipo = (
+            sugerido
+            if sugerido and sugerido.split("/", 1)[0] in {"image", "video", "audio"}
+            else "application/octet-stream"
+        )
+    return resposta_do_arquivo(caminho, tipo)

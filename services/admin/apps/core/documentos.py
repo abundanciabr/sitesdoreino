@@ -37,6 +37,7 @@ uma tela, isso deixou de ser cinto e virou o próprio cinto de segurança. Guard
 from __future__ import annotations
 
 import html
+import mimetypes
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -344,6 +345,11 @@ def semear_documento(modelo, nome: str) -> bool:
     cada documento que já existe, e um nome só não tem essa pergunta. Nunca
     sobrescreve, pela mesma razão de `importar_da_pasta`. Sem a pasta na imagem,
     ou sem o arquivo, não faz nada, e a subida continua.
+
+    Se o corpo referencia `anexo:apelido`, a pasta
+    `documentos/anexos/<nome>/<apelido>.<ext>` é publicada no semear (volume
+    `/midia/` + registro `Midia`). Documento que já existia no banco não
+    republica anexo; migração de conteúdo usa `midia.aplicar_anexos_ao_documento`.
     """
     pasta = diretorio()
     if pasta is None:
@@ -357,7 +363,7 @@ def semear_documento(modelo, nome: str) -> bool:
 def _semear(modelo, caminho: Path) -> bool:
     """Um arquivo vira linha, se a linha ainda não existir."""
     campos = de_texto(caminho.stem, caminho.read_text(encoding="utf-8"))
-    _, criado = modelo.objects.get_or_create(
+    documento, criado = modelo.objects.get_or_create(
         nome=campos.nome,
         defaults={
             "titulo": campos.titulo,
@@ -366,7 +372,92 @@ def _semear(modelo, caminho: Path) -> bool:
             "corpo": campos.corpo,
         },
     )
+    if criado and "anexo:" in campos.corpo:
+        try:
+            modelo._meta.apps.get_model("core", "Midia")
+        except LookupError:
+            return criado
+        from . import midia
+
+        novo_corpo = midia.publicar_anexos_referenciados(documento, campos.corpo)
+        if novo_corpo != documento.corpo:
+            documento.corpo = novo_corpo
+            documento.save(update_fields=["corpo"])
     return criado
+
+
+def caminho_do_arquivo(nome_do_documento: str, pedido: str) -> Path | None:
+    """O arquivo da semente deste documento, ou `None` se não há um só.
+
+    Mora ao lado do `.md`: `documentos/<nome>/<pedido>`. O pedido pode ser o
+    nome com extensão ou só o apelido; dois arquivos com o mesmo apelido
+    não resolvem, para o texto não apontar para um e a tela mostrar outro.
+    HTML com nome de imagem não passa. Arquivos desconhecidos são baixados.
+    """
+    from .midia import tipo_do_conteudo
+
+    if not RE_NOME.match(nome_do_documento):
+        return None
+    pasta = diretorio()
+    if pasta is None:
+        return None
+    raiz = (pasta / nome_do_documento).resolve()
+    try:
+        raiz.relative_to(pasta.resolve())
+    except ValueError:
+        return None
+    if not raiz.is_dir():
+        return None
+
+    if "." in pedido:
+        alvo = (raiz / pedido).resolve()
+        try:
+            alvo.relative_to(raiz)
+        except ValueError:
+            return None
+        candidatos = [alvo] if alvo.is_file() and alvo.parent == raiz else []
+    else:
+        candidatos = [
+            caminho
+            for caminho in raiz.iterdir()
+            if caminho.is_file() and caminho.stem == pedido
+        ]
+    if len(candidatos) != 1:
+        return None
+    caminho = candidatos[0]
+    with caminho.open("rb") as origem:
+        cabeca = origem.read(1024)
+    if tipo_do_conteudo(cabeca) is None and cabeca.lstrip(
+        b"\xef\xbb\xbf \t\r\n"
+    ).startswith(b"<"):
+        return None
+    return caminho
+
+
+def endereco_do_arquivo(documento: "Documento", pedido: str) -> str | None:
+    """O endereço público do arquivo, enviado ou da semente.
+
+    O envio do editor vence: se os dois existem com o mesmo apelido, a tela
+    mostra o que alguém colocou depois. Sem documento gravado, só a semente
+    responde.
+    """
+    if getattr(documento, "pk", None):
+        if "." in pedido:
+            midias = list(documento.midias.filter(nome=pedido))
+        else:
+            midias = [
+                item
+                for item in documento.midias.all()
+                if item.nome.rsplit(".", 1)[0] == pedido
+            ]
+        if len(midias) == 1:
+            return f"/midia/{midias[0].sorteio}/{midias[0].nome}"
+        if len(midias) > 1:
+            return None
+    caminho = caminho_do_arquivo(documento.nome, pedido)
+    if caminho is None:
+        return None
+    return f"{PREFIXO_PUBLICO}/{documento.nome}/arquivo/{caminho.name}"
 
 
 # ---------------------------------------------------------------------------
@@ -382,9 +473,10 @@ def _semear(modelo, caminho: Path) -> bool:
 # entraram em 21/09/2026 porque o documento do Crivo precisava deles para
 # ensinar: a conversa foi neste arquivo, nunca um contorno. Imagem por
 # endereço da internet continua recusada. Imagem e vídeo da casa entram
-# pelo endereço `/midia/<sorteio>/<nome>` (TAR-598), e a caixa de destaque
-# entra pela linha que começa com `>!`. Figura nomeada só existe se o nome
-# estiver em `figuras.FIGURAS`.
+# por `arquivo:nome` (semente ou envio) ou pelo endereço
+# `/midia/<sorteio>/<nome>` (TAR-598), e a caixa de destaque entra pela
+# linha que começa com `>!`. Figura nomeada só existe se o nome estiver
+# em `figuras.FIGURAS`.
 #
 # **Um renderizador só, para os documentos e para o livro** (04/09/2026). A
 # Biblioteca do Livro (`apps/core/livro.py`) desenha o texto do mantenedor com
@@ -426,6 +518,10 @@ _FIGURA = re.compile(r"^!\[([^\]]*)\]\(figura:([a-z0-9-]+)\)$")
 _MIDIA = re.compile(
     r"^!\[([^\]]*)\]\((/midia/[0-9a-f]{32}/[a-z0-9-]+\.[a-z0-9]{2,4})\)$"
 )
+#: Imagem ou vídeo da semente ou do editor, um nome só:
+#: `![legenda](arquivo:foto)` ou `![legenda](arquivo:foto.png)`.
+#: O tipo sai do conteúdo. URL, `data:` e `javascript:` não passam.
+_ARQUIVO = re.compile(r"^!\[([^\]]*)\]\(arquivo:([a-z0-9-]+(?:\.[a-z0-9]+)?)\)$")
 #: Caixa de destaque, uma linha que começa com `>! `: aviso amarelo no texto.
 _AVISO = re.compile(r"^>!\s+(.*)$")
 #: Célula de tabela: `| --- | :---: |` vira separador. Só hífen e dois-pontos.
@@ -480,11 +576,20 @@ def _midia_html(legenda: str, endereco: str) -> str:
     """Imagem ou vídeo da casa. O `src` já nasceu do padrão, não de texto livre."""
     alt = html.escape(legenda, quote=True)
     caption = _linha(legenda)
-    if endereco.endswith(".mp4"):
+    tipo, _ = mimetypes.guess_type(endereco)
+    if tipo and tipo.startswith("video/"):
         peca = f'<video controls src="{endereco}"></video>'
-    else:
+    elif tipo and tipo.startswith("audio/"):
+        peca = f'<audio controls src="{endereco}"></audio>'
+    elif tipo and tipo.startswith("image/"):
         peca = f'<img src="{endereco}" alt="{alt}">'
-    return f'<figure class="midia">{peca}<figcaption>{caption}</figcaption></figure>'
+    else:
+        peca = ""
+    baixar = f'<a href="{endereco}" download>Baixar arquivo</a>'
+    return (
+        f'<figure class="midia">{peca}<figcaption>{caption} '
+        f"{baixar}</figcaption></figure>"
+    )
 
 
 def _linha(texto: str) -> str:
@@ -498,8 +603,12 @@ def _linha(texto: str) -> str:
     return seguro
 
 
-def para_html(markdown: str) -> str:
-    """O documento como HTML — o subconjunto do `documentos/LEIA-ME.md`."""
+def para_html(markdown: str, *, documento=None) -> str:
+    """O documento como HTML — o subconjunto do `documentos/LEIA-ME.md`.
+
+    `documento` liga `arquivo:nome` ao arquivo daquele texto. Sem ele, a
+    marca fica visível como texto, o mesmo destino de uma figura sem dono.
+    """
     partes: list[str] = []
     # A lista aberta agora guarda QUAL lista está aberta ("ul" ou "ol"), e não
     # apenas se há uma. É o que faz uma lista numerada logo depois de uma com
@@ -601,6 +710,15 @@ def para_html(markdown: str) -> str:
             partes.append(_midia_html(arquivo.group(1), arquivo.group(2)))
             i += 1
             continue
+
+        semente = _ARQUIVO.match(nua)
+        if semente and documento is not None:
+            endereco = endereco_do_arquivo(documento, semente.group(2))
+            if endereco:
+                fechar_blocos()
+                partes.append(_midia_html(semente.group(1), endereco))
+                i += 1
+                continue
 
         if not nua:
             fechar_blocos()
