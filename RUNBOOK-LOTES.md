@@ -1,194 +1,48 @@
-# RUNBOOK DO LOTE — como reger vários despachos em paralelo
+# Execução de tarefas do projeto
 
-> **Para a SESSÃO-MAESTRO** — a janela raiz do Claude Code, a que conversa com o
-> mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
-> fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
-> Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é o Claude Code; o
-> agente de célula segue a ficha `despacho`, que o Codex pega na fila e que a
-> maestro também despacha em paralelo desde a emenda de 20/09/2026
-> (`ci/muralha_dos_sub_agentes.py`); a verificação depois do merge é do Antigravity.
->
-> Nascido em 22/08/2026, no dia em que as duas trancas do throughput caíram: o
-> merge passou ao agente (PR #58, Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`)
-> e a regra serial foi aposentada (PR #59, Alavanca 1). Este runbook é o **como**
-> que aquelas duas decisões destravaram.
+A sessão que recebe o pedido executa dentro do mandato e responde pela
+validação e entrega. Leia o Padrão de Trabalho em `CLAUDE.md`,
+`CONSTITUICAO.md`, `RITOS.md` e as instruções dos caminhos envolvidos.
 
----
+## Preparação e execução
 
-## §0 — Para você, humano: como pedir um lote
+1. Defina resultado, alvos, somente leitura, prova e fronteira do mandato.
+   Priorize o caminho de compra e aprendizado. Separe dependências reais;
+   trabalho paralelo exige alvos independentes e bancada própria.
+2. Abra `python ci/sessao.py --celula <area> --tarefa <slug>`; sem serviço,
+   use `--sem-container` e rode os testes dos alvos antes da primeira edição.
+   O clone principal é somente leitura, conforme `RITOS.md` §1.
+3. Consulte as armadilhas pertinentes. Declare modelo e esforço no brief por
+   `python ci/economia_da_fabrica.py brief`. Fichas descrevem competências
+   por tarefa, sem exclusividade por fornecedor. Subagente não cria outro
+   nem pergunta ao mantenedor: devolve bloqueio à sessão responsável.
+4. Preserve CODEOWNERS, contratos congelados, orçamento de arquivos e suítes
+   de todas as células tocadas. Não acrescente trabalho fora do pedido.
+   Falha de teste exige correção; ERROR exige diagnóstico do instrumento.
+   Após duas correções sem sucesso, preserve os arquivos e commits e reporte
+   o diagnóstico à sessão responsável, sem apagar trabalho.
+5. Faça a revisão e o passe de remoção. Prove a mudança com comando e saída.
+   Guardas novos exigem a prova de mutação de `ci/provar_guardas.py`.
 
-**Desde 05/09/2026 você não precisa pedir.** Todo pedido seu numa sessão é um
-lote: a maestro divide em pedaços independentes e cria uma tarefa na
-fila por pedaço, com o brief compilado inteiro no campo `despacho`, que o Codex
-executa, e só o que depende de outro pedaço fica em série (CLAUDE.md, "Todo pedido do mantenedor é um
-lote"; decisão sua no registro `20260905-013`). O texto abaixo continua
-valendo para quando você quer que a sessão tire o trabalho DA FILA em vez de
-receber um pedido novo.
+## Entrega
 
-Cole isto numa sessão nova (janela raiz do Claude Code, no seu PC — `PS C:\>`):
+Use `make pr`, conforme `painel/LEIA-ME.md`, com comandos de validação,
+mensagem, corpo e detalhe. Ele embarca recibo e eventos; não repita esses efeitos.
+Declare `Depende-de: #N` somente para dependência real, com número existente.
+A integração segue `RITOS.md` §2; revisão adicional não é requisito de merge.
+Validação local, integração e publicação exigem provas distintas.
 
-```
-Leia RUNBOOK-LOTES.md e toque um lote com a fila do painel.
-```
+A sessão continua responsável até o resultado terminal ou dívida registrada,
+conforme a Lei 11. Bloqueio informa fato medido, impacto, responsável, ação
+para destravar e prazo conhecido. Não devolva ao mantenedor um conserto técnico
+que cabe no mandato. Antes de gesto exclusivo dele, leia `docs/guia-mantenedor.md`.
 
-Variações que funcionam igual:
+## Histórico revogado do lote
 
-- `...com os despachos X, Y e Z` (você escolhe o conteúdo)
-- `...um lote menor (3 despachos)` (gasta a franquia mais devagar)
-- `...só o canário` (1 despacho, para ver a esteira rodar de ponta a ponta)
-
-Só isso. A sessão monta, dispara, revisa, pede pouso e te reporta no fim. As únicas
-coisas que podem voltar para você são as do §7 (segredos, VPS, contrato) — e virão
-como **um bloco único de colar, com a janela rotulada** (CLAUDE.md).
-
-**Sobre custo:** um lote consome a franquia do plano mais rápido *por hora* — é o
-mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
-
----
-
-## §1 — O que é um lote
-
-**1 lote = N despachos em PARALELO + 1 janela de merge serial no fim.**
-
-- Cada despacho tem alvos distintos e worktree próprio (RITOS §1). Prefira
-  uma célula por PR; CONSTITUICAO Lei 2.3 permite mais de uma, com as suítes
-  de todas as tocadas. O orçamento de 15 arquivos continua.
-- Duas tarefas na MESMA célula não rodam em paralelo: viram **fila interna**
-  (uma atrás da outra, no mesmo agente ou em agentes sucessivos).
-- Os merges saem **serial, um a um, pela pista** (RITOS §2 peça 4). A maestro
-  encaminha o PR revisado e confere o resultado observado.
-
-## §2 — Montagem (antes de disparar qualquer agente)
-
-1. **Fonte da fila:** o pedido do mantenedor > painel (`painel/painel.html`, a caixa
-   "Precisa de você" — que é CALCULADA dos registros, não uma lista mantida) >
-   PLANO-10X (ondas). O pedido dele é o **mandato** —
-   inclusive para os caminhos CODEOWNERS que o lote tocar (Lei 4).
-2. **Recorte por responsabilidade:** prefira uma célula por PR. Conte os arquivos NO
-   PAPEL antes de escrever o brief (orçamento de 15 é portão mecânico — ARMADILHAS §5.1).
-3. **Brief fechado por despacho** (template em CAMINHO-DOURADO §2, que já
-   carrega a linha do Padrão de Trabalho): célula, arquivos-
-   alvo, o que é somente-leitura, evidência exigida (vermelho→verde), receitas citadas
-   por número — e as **armadilhas daquela tarefa já injetadas** (§3, regra 3).
-4. **Pré-voo da maestro** (5 min): `git fetch` + main verde? `alarme-main` sem issue
-   `main-vermelha` aberta? plataforma saudável (último deploy verde)? `gh auth status`
-   ok? Docker de pé (H4 — suba já, não no meio)?
-
-## §3 — As sete regras de inteligência (o coração deste runbook)
-
-1. **Ordene pelo dinheiro.** A pergunta que ordena o lote: *"o que separa a
-   plataforma de alguém conseguir comprar?"* — o caminho crítico manda (Alavanca 5).
-2. **Canário na frente.** O 1º merge do lote é o despacho mais simples e inofensivo.
-   Se ele atravessa tudo (PR → portão → merge → deploy → saudável na VPS), a esteira
-   está provada HOJE — só então as células de dinheiro entram na janela.
-3. **Contexto sob medida.** Cada brief leva SÓ as receitas e armadilhas daquela
-   tarefa (ex.: consumer de evento ⇒ §4.12; célula com SCRIPT_NAME ⇒ §4.10; script
-   `.sh` ⇒ §3.12). Agente afogado em documentação erra mais e custa mais.
-4. **Prova proporcional ao risco.** Célula de dinheiro ⇒ evidência no transporte
-   (respx — §6.9) e/ou reprodução em ambiente prod-like; célula comum ⇒ suíte padrão.
-   "Deveria funcionar" não é evidência em lugar nenhum (Lei 6).
-5. **FAIL ≠ ERROR.** FAIL = código errado ⇒ o agente conserta. ERROR = instrumento
-   quebrou ⇒ problema de ambiente, NÃO se mexe no código ([INV-CI01]). Rotear o
-   vermelho certo para a resposta certa é metade da regência.
-6. **Sucesso parcial é sucesso.** 5 verdes + 1 travado ⇒ mergeiam-se os 5, o travado
-   é isolado com diagnóstico e reportado. O lote é colheita, não tudo-ou-nada.
-7. **Contenção (anti-metas do PLANO-10X).** Sem refatoração "de passagem", sem célula
-   ou rito novo, sem golpes de red-team fora dos de dinheiro. Orçamento estourou por
-   coesão legítima ⇒ **pare e avise**, nunca esprema arquivos.
-
-## §4 — Execução (a vigília)
-
-- Dispare os agentes em paralelo, um por despacho, cada um com seu brief. Se o brief
-  nomeia worktree, dispare **sem** isolamento de worktree do harness (ARMADILHAS §8.1)
-  — o agente cria o dele pelo RITOS §1. O Codex abre a própria bancada por
-  `make sessao` a partir da tarefa da fila.
-- **Regras anticolisão vão DENTRO de cada brief:** arquivo de texto compartilhado
-  (ARMADILHAS, tabela do red-team, bloco `env:` do `ci-celula.yml`) ⇒ cada sessão
-  escreve SÓ a própria entrada/linha e faz `git fetch origin && git rebase
-  origin/main` antes do push (§7.6). Conflito só de proximidade ⇒ as duas linhas
-  sobrevivem, nunca se descarta a alheia.
-- **Agente parado ≠ lote parado.** A maestro segue com os demais e volta ao parado.
-- **Regra de parada vale dentro do lote:** 2 correções consecutivas falharam ⇒ o
-  agente para. Nesse ponto, preserve os arquivos e commits e reporte o
-  diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
-  retira do lote.
-- **Depois de `--pousar`, a maestro NÃO espera checks, merge ou deploy.** O veredito do
-  deploy é conferido por cron ou na próxima sessão. A maestro reporta o
-  estado dos PRs ao mantenedor e encerra. O deploy leva 3.2 min de mediana;
-  a pista reporta sozinha no PR.
-
-## §5 — Encaminhamento à pista (na ordem do §3)
-
-Para cada PR com revisão independente e recibo, na ordem canário → comuns → dinheiro:
-
-```bash
-python ci/mergear.py <N> --pousar
-```
-
-O comando confere a etiqueta `pousar` e o SHA remoto antes de responder
-`ENFILEIRADO`. A maestro encerra; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
-`20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
-PR aberto, revisão aprovada, integração e publicação são estados distintos.
-
-- Vermelho ou erro de consulta recusa o pedido; checks pendentes ou ainda ausentes
-  aguardam na pista. Nenhum desses estados permite merge. O botão do site não é caminho (Lei 4).
-- **Merge que dispara deploy** (`services/**` ⇒ `deploy-celula`; `infra/**` ⇒
-  `deploy-infra`): antes do PRÓXIMO merge, leia o veredito REAL do run —
-  `gh run view <id> --json status,conclusion` — nunca o exit de um pipe (§5.10).
-  Deploy verde ⇒ próximo merge. Deploy vermelho ⇒ **pausa a janela**: diagnostique
-  (`gh run view <id> --log-failed`); causa externa (ex.: registry) ⇒
-  `gh run rerun <id> --failed`; causa no código ⇒ o raio de explosão é 1 célula —
-  os merges das OUTRAS células podem continuar, o da célula quebrada espera.
-- Se o GitHub acusar conflito num PR depois dos merges anteriores (raro entre
-  células distintas): o agente daquele PR faz rebase e o portão roda de novo.
-- **CODEOWNERS no lote** (`pagamentos`, `checkout`, `contracts/`, `infra/`, `ci/`,
-  `.github/`, arquivos-lei): merge só com o mandato do §2.1, e cada um **anunciado
-  nominalmente** no relatório final (Lei 4).
-
-## §6 — Fechamento (é parte do lote, não epílogo)
-
-1. **Livro de ocorrências** (`painel/registros/`, molde em `painel/LEIA-ME.md`):
-   `make pr` já reserva e embarca recibo, evento e metadados do fechamento;
-   não repita esses efeitos nem convoque escrivão para duplicá-los. Julgamento
-   de lições, deploy e incidente da janela continuam exigindo registro NOVO,
-   validado com `node painel/gerar_manifesto.js`. Registro nunca se edita:
-   correção ou resposta é outro registro, com `responde_a`.
-2. **Lições:** cada agente registrou as dele no próprio PR (só a própria linha);
-   a maestro registra as lições **de regência** (o que o lote ensinou sobre lotes).
-   Depois do merge, a maestro lê a verificação da sentinela (Antigravity), que
-   mede o aceite da ficha, não o diff.
-3. **Relatório único, em linguagem de resultado** ("os leads invisíveis agora
-   aparecem"), contendo: a tabela do placar (abaixo), os anúncios de fortaleza,
-   o que ficou de fora e por quê, e o que sobrou para o humano (§7) — em bloco
-   único de colar quando for comando.
-
-**Placar do lote (formato padrão do relatório):**
-
-| Despacho | Célula | PR | Portão | Merge | Deploy | Resultado em 1 frase |
-|---|---|---|---|---|---|---|
-| ... | ... | #N | PASS | ✅ pista | run verde | ... |
-
-## §7 — O que NUNCA entra num lote / o que fica com o humano
-
-- **Rito de Contrato** (RITOS §3): sessão de arquitetura com o mantenedor presente.
-  O lote pode *esperar* um contrato, nunca *mudá-lo*.
-- **Segredos, VPS/SSH, console do provedor, settings do GitHub**: só do mantenedor.
-- **e2e de fechamento e drill de rollback**: seriais por natureza — fecham um ciclo,
-  não entram no meio de um.
-- **Red-team fora dos golpes de dinheiro** (anti-meta do PLANO-10X).
-- **Refatoração oportunista** de qualquer coisa que funciona.
-
-## §8 — Modos de falha conhecidos e a resposta certa
-
-| Sintoma | Resposta |
-|---|---|
-| Check vermelho num PR do lote | FAIL ⇒ agente conserta (máx. 2 tentativas); ERROR ⇒ ambiente/instrumento, não toque no código |
-| Conflito em arquivo de texto compartilhado | rebase + as duas linhas sobrevivem (§7.6) |
-| Deploy vermelho após merge | pausa da janela; `--log-failed`; externa ⇒ rerun; código ⇒ só aquela célula espera |
-| Agente sumiu/travou | lote segue; re-brief com diagnóstico ou corte do despacho |
-| Orçamento de 15 estourou por coesão | **pare e avise** — nunca fundir arquivos para caber (anti-meta) |
-| Dois despachos precisam da MESMA célula | fila interna, nunca paralelo |
-| Algo exige aprovação/segredo do humano | isole o passo, termine o resto, entregue UM bloco de colar rotulado |
+As lições abaixo documentam lotes antigos. Nomes de papéis, canais e ritos
+antigos são histórico, sem efeito operacional. A decisão registrada em
+`painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js`
+encerrou o modelo anterior; as leis gerais acima permanecem vigentes.
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 

@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260922-105944-TAR-599-reivindicacao_expirada",
+  "tarefa": "TAR-599",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-22T10:59:44+00:00",
+  "quem": "agent/ci/remover-governanca-20260922",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}

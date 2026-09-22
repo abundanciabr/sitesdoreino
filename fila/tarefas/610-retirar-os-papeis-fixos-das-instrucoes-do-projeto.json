@@ -1,0 +1,20 @@
+{
+  "arquivo": "610-retirar-os-papeis-fixos-das-instrucoes-do-projeto",
+  "id": "TAR-610",
+  "titulo": "Retirar os papéis fixos das instruções do projeto",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de padrão e fichas verdes; busca dos alvos sem instruções do modelo dissolvido; leis gerais preservadas; PR com recibo.",
+  "despacho": "Executar a retirada dos papéis fixos das instruções do projeto, conforme decisão do mantenedor registrada em painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js e brief de 22/09/2026. Alvos: CLAUDE.md, AGENTS.md, CONSTITUICAO.md e RITOS.md somente trechos do modelo dissolvido; RUNBOOK-LOTES.md; docs/decisoes/DECISAO-triade-de-ias.md; os dois prompts de execução em mapa-ia/planos; fichas .claude/agents e .codex/agents; painel/ranking-ias.json; painel/ia/INDICE.md e entradas ligadas ao modelo antigo. Somente leitura: registro da decisão, ci/radio.py, ci/fila.py, administracao-local/continuidade.py e services/admin. Preservar leis gerais, histórico e dados medidos. Provas: padrão, tamanho e fichas verdes; busca operacional dos alvos sem papéis fixos; nenhum travessão novo. Publicar PR próprio com recibo e eventos pelo make pr. Modelo recomendado: gpt-6-astra; esforço recomendado: high. Não ampliar o mandato. Ramo: agent/ci/remover-governanca-20260922.",
+  "origem": "brief autorizado de 22/09/2026, sessão remover-governanca-20260922",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -23,18 +23,13 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 11 | Conversa é mudança real; interrompa loops. Nunca pergunte nem informe a outra IA o estado de Git, PR, checks, branches ou pouso: consulte a fonte e aja. |
 
 No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
-`python ci/economia_da_fabrica.py brief`. A maestro divide e delega;
-despacho não cria subagente nem pergunta ao mantenedor, e devolve por escrito o
-que houve e o que destrava: não perguntar nunca dispensou prestar contas.
-
-Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), o Codex é o EXECUTOR:
-constrói pela ficha `despacho`, um PR por tarefa, com evento na fila e
-registro no livro a bordo (`make pr`). Nunca pergunta ao mantenedor, nunca
-edita o clone principal, nunca arma espera, nunca amplia o mandato; não
-audita nem decide lei. Claude Code rege; a integração é automática;
-Antigravity audita `origin/main` e verifica depois do merge. Pedido colado
-direto nesta sessão é executado como um despacho; o que precisar dividir
-vira tarefa na fila, devolvida à maestro.
+`python ci/economia_da_fabrica.py brief`. A sessão executa o pedido dentro
+do mandato recebido, com validação, PR e registro pelo `make pr`.
+As competências das fichas são por tarefa, sem papéis fixos por fornecedor.
+Subagente não cria outro nem pergunta ao mantenedor; devolve por escrito
+bloqueio, impacto e ação para destravar à sessão responsável.
+Nunca edite o clone principal nem amplie o mandato. Trabalho descoberto
+fora do brief vira tarefa na fila. Integração é automática pelos portões.
 
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.
