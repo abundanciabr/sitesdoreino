@@ -162,6 +162,8 @@ def test_o_rito_inteiro_acontece_na_ordem(tmp_path, capsys):
 
     assert final.startswith("PR 1210 aberto com recibo")
     assert URL_DO_PR in final
+    assert "python ci/esperar.py --checks 1210 --so-desfecho" in final
+    assert "A sessão encerra aqui" not in final
     saida = capsys.readouterr().out
     assert saida.count("PASS") >= 4
     assert saida.strip().splitlines()[-1] == final

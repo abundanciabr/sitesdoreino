@@ -12,13 +12,13 @@ correções da VPS seguem PR e pipeline.
 
 Decida biblioteca, nome, desenho e o que o código responde. A regra 4 não
 autoriza decidir por ele em dinheiro, dados, acesso, produto ou ação
-irreversível/destrutiva/cara. A maestro reúne decisões em uma pergunta
-estruturada (AskUserQuestion), opções em português simples, porquê,
-consequência e recomendada marcada. Se fechar sem responder, é "não agora":
-pare a parte dependente e não repita. Despacho não pergunta: escreve bloqueada
-na fila, registra precisa_do_dono: true, devolve impacto e reversão à maestro.
-Não perguntar nunca foi calar: a maestro transforma esse retorno no bloco
-Instruções, e bloqueio devolvido sem o que houve e o que destrava não serve.
+irreversível/destrutiva/cara. A sessão que recebeu o pedido reúne decisões em
+uma pergunta estruturada, com opções em português simples, motivo,
+consequência e recomendação. Se fechar sem responder, é "não agora":
+pare a parte dependente e não repita. O subagente registra `bloqueada` na fila,
+marca `precisa_do_dono: true` e devolve impacto e reversão à sessão responsável.
+Essa sessão transforma o retorno no bloco Instruções, com o que houve e o que
+destrava o trabalho.
 Molde e reserva de registro em painel/LEIA-ME.md.
 
 ## Passo manual

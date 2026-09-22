@@ -819,7 +819,12 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
     dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
     dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
-    final = f"PR {numero} aberto com recibo: {url}. A sessão encerra aqui. A integração segue quando muralhas e ci-celula-gate ficam verdes."
+    final = (
+        f"PR {numero} aberto com recibo: {url}. Meça o desfecho nesta sessão: "
+        f"python ci/esperar.py --checks {numero} --so-desfecho se houver checks "
+        f"pendentes; caso contrário, python ci/esperar.py --entrega {numero} "
+        "--so-desfecho. Informe integração e publicação apenas com prova."
+    )
     dizer(final)
     return final
 
