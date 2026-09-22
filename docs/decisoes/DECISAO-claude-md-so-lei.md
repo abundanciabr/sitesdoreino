@@ -137,18 +137,14 @@ Três pontos, e só três, onde a leitura apressada do Padrão brigaria com uma 
 daqui. Em nenhum deles a resposta é "ignore o Padrão": é a leitura que faz os
 dois valerem ao mesmo tempo. Fora destes três, o Padrão vale como está escrito.
 
-**1. A regra 3 ("diga não", "menos, sempre") não autoriza entregar menos do que
-foi pedido.** A regra 3 proíbe **adição** não pedida: flag "para dar
-flexibilidade", abstração para futuro hipotético, dependência nova, arquivo
-`utils`, "melhoria" fora de escopo. A lei desta casa (seção "Este projeto é para
-ser feito completo") proíbe **subtração** do que foi pedido. As duas dizem a
-mesma coisa por lados opostos, e a própria regra 1 já fecha a costura: **"a
-versão MAIS SIMPLES que resolve o problema INTEIRO"**. A simplicidade é dos
-MEIOS; o alvo continua inteiro. Nenhum robô cita a regra 3, nem o passe de
-remoção da regra 7, para recomendar escopo cortado, versão reduzida ou "faz só
-o núcleo por enquanto" quando o mantenedor pediu a coisa completa — isso já
-custou caro em 03/09/2026, e a memória está em
-`docs/decisoes/DECISAO-filosofia-de-escopo.md`.
+**1. A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra no menor
+caminho funcional, na forma mais enxuta que já funciona e já tem lugar para
+crescer.** A regra 1 continua pedindo a versão mais simples que resolve o
+problema inteiro, isto é, o problema inteiro deste caminho. A simplicidade é
+dos meios; não autoriza cortar parte nomeada do pedido, criar protótipo que será
+reescrito nem construir o sistema inteiro antes de existir uma porta que abre.
+O que ficar fora desta entrega fica nomeado como degrau seguinte. O detalhe da
+lei está em `docs/decisoes/DECISAO-filosofia-de-escopo.md`.
 
 **2. A regra 4 ("não me entregue um cardápio") vale para as decisões que são
 SUAS, não para as que são dele.** Ela proíbe empurrar para o mantenedor escolha
