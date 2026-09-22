@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-104955-TAR-606-explicada",
+  "tarefa": "TAR-606",
+  "evento": "explicada",
+  "quando": "2026-09-22T10:49:55+00:00",
+  "quem": "sessao-20260922-remover-radio-admin",
+  "o_que_e": "O admin ainda oferece uma ferramenta de mensagens que o mantenedor encerrou.",
+  "o_que_muda": "Retira os acessos e o código exclusivo sem apagar as mensagens antigas.",
+  "exemplo": "O endereço antigo deixa de abrir o rádio, mas o histórico continua guardado no banco.",
+  "importancia": 60
+}

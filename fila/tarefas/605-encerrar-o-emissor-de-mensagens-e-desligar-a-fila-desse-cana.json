@@ -1,0 +1,19 @@
+{
+  "arquivo": "605-encerrar-o-emissor-de-mensagens-e-desligar-a-fila-desse-cana",
+  "id": "TAR-605",
+  "titulo": "Encerrar o emissor de mensagens e desligar a fila desse canal",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes vermelho e verde, fila válida e PR com emissor encerrado e fila independente.",
+  "despacho": "Retirar o emissor e a integração automática da fila. Célula ci. Alvos: ci/radio.py, ci/fila.py, ci/tests/test_radio_cli.py, ci/tests/test_fila_radio.py e testes CI diretamente ligados. Não tocar services/admin, administracao-local, leis, fichas ou documentos. Provas: focal vermelho/verde; fila sem importar ou chamar rádio; comando encerrado; suíte focal e python ci/fila.py validar. Bancada wt-ci-remover-radio-cli; ramo agent/ci/remover-radio-cli. Modelo gpt-6-astra, esforço high. Pedido recebido em 22/09/2026 na tarefa Codex 01a0c8b2-6335-7b90-9d04-1b72cadaa393, originada da tarefa 01a0c8ab-9069-77a1-84e7-6e093a02b565. Entregar PR com recibo e evento pelo make pr.",
+  "origem": "codex:remover-radio-cli:2026-09-22",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
