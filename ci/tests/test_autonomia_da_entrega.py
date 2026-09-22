@@ -32,6 +32,8 @@ def test_vigia_dispara_a_pista_em_vez_de_abrir_fila_humana():
 
     assert "pull-requests: write" in workflow
     assert "actions: write" in workflow
-    assert "gh pr edit" in workflow
-    assert "gh workflow run pouso.yml" in workflow
+    assert "ci/mergear.py --automatico" in workflow
+    assert "gh issue create" in workflow
+    assert "gh pr edit" not in workflow
+    assert "gh workflow run pouso.yml" not in workflow
     assert "issues: write" not in workflow

@@ -17,6 +17,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: write
+  pull-requests: write
 # Grupo próprio, nunca o `deploy`: lá o GitHub cancela o run anterior
 # (armadilhas/173). Vigia cancelado em silêncio parece vigia que rodou.
 concurrency:
@@ -28,8 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: write
+      actions: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
