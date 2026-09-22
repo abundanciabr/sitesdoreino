@@ -10,7 +10,6 @@
       "linhas": 550054,
       "nome": "Claude Code",
       "paginas": 112,
-      "papel": "Maestro",
       "retrabalho": 84,
       "ultima_entrega": "2026-09-17T22:04:04+00:00"
     },
@@ -21,7 +20,6 @@
       "linhas": 56424,
       "nome": "Codex",
       "paginas": 10,
-      "papel": "Executor",
       "retrabalho": 34,
       "ultima_entrega": "2026-09-17T21:49:55+00:00"
     },
@@ -32,7 +30,6 @@
       "linhas": 0,
       "nome": "Antigravity",
       "paginas": 0,
-      "papel": "Sentinela",
       "retrabalho": 0,
       "ultima_entrega": null
     }

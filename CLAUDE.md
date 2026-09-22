@@ -36,8 +36,8 @@ economizar esforço. Uma coisa completa vale mais que cinco pela metade.
 Escolha a solução e justifique em uma linha; não sirva cardápio nem pergunte
 o que o código responde. Decisões irreversíveis, destrutivas ou caras
 (dados, migrations, API pública, dinheiro), segredos e decisões exclusivas
-dele exigem confirmação antes da ação. A maestro pergunta; o despacho
-registra o bloqueio e devolve impacto e reversão.
+dele exigem confirmação antes da ação. Quem recebeu a tarefa registra o
+bloqueio, o impacto e a reversão para a decisão do mantenedor.
 
 #### 5. Responda pelo produto inteiro
 
@@ -141,17 +141,19 @@ limpa são permitidos switch main e pull.
 **Quem faz valer:** `ci/sessao.py`, `ci/muralha_pasta_compartilhada.py`
 (aviso SessionStart; a proibição de editar continua lei).
 
-## Todo pedido do mantenedor é um lote
+## Execução por tarefa
 
-Claude Code rege, nunca constrói nem mergeia; Codex usa `despacho`, não decide lei.
-Subagente constrói em paralelo, com model sonnet ou opus declarado; Workflow é recusado. Nenhum subagente pergunta ao mantenedor ou cria outro.
-Antigravity audita e verifica, nunca edita; confira PRs abertos.
-Dependências em série; uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
-Dependência fora do brief: maestro, `Depende-de: #N`.
-Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
-Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
-`gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
-Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md).
+O pedido define o resultado, os alvos e a prova. Quem o recebe executa dentro
+desse escopo, em bancada própria, sem atribuir competência por fornecedor.
+As fichas em `.claude/agents/` e `.codex/agents/` limitam ferramentas por tarefa.
+Subagente não pergunta ao mantenedor nem cria outro; devolve bloqueio explicado.
+Workflow é recusado. `gh pr comment` só em PR aberto; tarefa nova usa
+`fila.py criar`, decisão e mandato.
+Prefira uma célula por PR; mais de uma exige as suítes de todas as tocadas.
+Orçamento de 15 arquivos fora `painel/` e `fila/`; dependências reais usam
+`Depende-de: #N`. Trabalho fora do brief volta a quem definiu o escopo.
+`make pr` embarca reserva, recibo e eventos; não repita esses efeitos.
+`RUNBOOK-LOTES.md` orienta trabalhos com várias partes. A integração é automática.
 
 **Quem faz valer:** `ci/pr.py`, `ci/fila.py`, `ci/muralha_dos_sub_agentes.py` e testes das fichas.
 
@@ -160,7 +162,7 @@ Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISA
 Modelo e esforço: `python ci/economia_da_fabrica.py brief`; rotina usa
 econômico, arquitetura/dúvida usa superior. Sub-agente nasce só em `sonnet`
 ou `opus` declarado.
-Meça estado numa chamada: `python ci/resumo_maestro.py`.
+Consulte o estado na fonte estruturada pertinente à tarefa.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
@@ -208,7 +210,7 @@ Sem tipo específico, use nota.
 ## Integração automática
 
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
-atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
+atestado, etiqueta ou encaminhamento manual. `muralhas` e `ci-celula-gate` precisam
 passar no SHA atual. Contrato congelado e CODEOWNERS
 exigem a palavra do mantenedor, e ela vale onde ele a deu: dita na sessão vale
 tanto quanto digitada no site. Quem a recebeu transcreve `Mandato-do-mantenedor:`
@@ -260,7 +262,7 @@ e testes; checklist intermediário é julgamento.
 ## Mapa do projeto para IA
 
 `painel/ia/INDICE.md` é o mapa técnico para auditoria ampla/segunda opinião
-de arquitetura, não leitura de todo despacho. Fonte original vence divergência;
+de arquitetura, não leitura de toda tarefa. Fonte original vence divergência;
 quem detectar corrige mapa no mesmo PR.
 
 **Quem faz valer:** `ci/tests/test_painel_ia_atualizado.py`.

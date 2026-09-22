@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-012-ci-orientacoes-sem-papeis-fixos",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: orientações sem papéis fixos",
+  detalhe: "Papéis fixos retirados das fontes ativas. Leis e histórico preservados. 129 testes passaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1886. Validação local: árvore 1b3419586039dc219744db9eff8bfdb488a57fdf; commit ec6482ebad45b483851492888096ed7104e46087; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-607",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

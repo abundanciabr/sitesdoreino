@@ -2,14 +2,6 @@
 
 Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e antídoto.
 
-**A tríade e os ritos.** Desde 12/09/2026 (`docs/decisoes/DECISAO-triade-de-ias.md`)
-três agentes passam por estes ritos com papéis distintos. Claude Code, a maestro,
-escreve o brief e a tarefa (§5), define o escopo; a integração é automática (§2);
-nunca mergeia nem espera em laço (§2, peça 6). Codex, o executor, segue §1, §2 e §5
-pela ficha `despacho`, um PR por tarefa, e nunca pergunta ao mantenedor. Antigravity,
-a sentinela, só lê: audita `origin/main` e verifica cada entrega alheia depois do merge;
-nunca edita código nem lei.
-
 ---
 
 ## §1 — Rito de Abertura de Sessão (worktree por agente)
@@ -76,7 +68,7 @@ Decisão do mantenedor em 13/09/2026, registrada em
 
 1. A main continua protegida: somente PR, sem push direto ou bypass.
 2. O executor publica o PR pronto com a validação da mudança. Não há revisor
-   obrigatório, atestado, etiqueta de pouso ou encaminhamento pela maestro.
+   obrigatório, atestado, etiqueta de pouso ou encaminhamento manual.
 3. O workflow `pouso.yml` usa código da main, nunca código do PR com seu token.
    Cada conclusão de `muralhas` e `ci-celula` dispara uma passagem. Os checks
    `muralhas` e `ci-celula-gate` verdes no SHA atual permitem a integração.
@@ -243,15 +235,15 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    **recusam no espelho** desde 30/08/2026, com a recusa ensinando estas
    entradas de abertura; `listar`, `validar` e `soltar` continuam livres lá (devolver
    tarefa presa é gesto de emergência, e emergência não espera worktree).
-2. **Trabalho novo que um despacho descobre vira tarefa registrada**
-   (`python ci/fila.py criar ...`, número do almoxarife), e volta à maestro,
-   que decide se entra no lote: nunca item de memória de sessão, nunca lista
+2. **Trabalho novo fora do escopo vira tarefa registrada**
+   (`python ci/fila.py criar ...`, número do almoxarife), e volta a quem
+   definiu o pedido para priorização: nunca item de memória de sessão, nunca lista
    paralela num documento. A fila é a única
    casa do "o que está por fazer"; o livro continua sendo a única casa do
    "o que aconteceu".
 3. **Concluir exige evidência** (`concluir --evidencia <URL>`) — sem prova o
    balcão recusa, a mesma lei do verde do livro. Travou em algo que só o
-   mantenedor decide? Evento `bloqueada` com o motivo e devolva à maestro:
+   mantenedor decide? Evento `bloqueada` com o motivo e relatório para decisão:
    abrir exceção é o resultado esperado, não falha.
 4. **O evento viaja no PR do trabalho.** A referência no servidor vale AGORA;
    o evento em `fila/eventos/` vale para sempre. Antes de pedir pouso, confira

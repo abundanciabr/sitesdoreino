@@ -1,0 +1,19 @@
+{
+  "arquivo": "607-retirar-os-papeis-fixos-das-orientacoes-e-fichas-de-ia",
+  "id": "TAR-607",
+  "titulo": "Retirar os papéis fixos das orientações e fichas de IA",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Fontes operacionais sem papéis fixos; testes de padrão, fichas, mapa e tamanho verdes; leis gerais preservadas; nenhum travessão novo",
+  "despacho": "A orientação ativa ainda atribuía funções fixas a fornecedores mesmo após a dissolução registrada em 20/09/2026. Esta mudança retira essas atribuições das leis operacionais, fichas, prompts e mapa. A decisão antiga e a retrospectiva permanecem explicitamente históricas.\n\nEscopo: CLAUDE.md, AGENTS.md, trechos de CONSTITUICAO.md e RITOS.md, RUNBOOK-LOTES.md, docs/decisoes/DECISAO-triade-de-ias.md, os dois prompts de entrada, fichas Claude e Codex, mapa painel/ia e os rótulos no retrato ranking-ias.json. Identificadores nativos das fichas e URLs antigas são preservados para não quebrar consumidores. Não muda ci/radio.py, ci/fila.py, administracao-local/continuidade.py, services/admin nem o registro de dissolução.\n\nValidação executada:\n- python -m pytest ci/tests/test_fichas_de_robo.py ci/tests/test_padrao_de_trabalho.py ci/tests/test_codex_nativo.py ci/tests/test_painel_ia_atualizado.py -q: 129 passed.\n- python ci/padrao_de_trabalho.py: PASS, onze regras, 46 frases-chave, três costuras e tetos preservados.\n- python ci/economia_da_fabrica.py auditar-fichas: PASS.\n- git diff --check: sem erros.\n- Busca das fontes operacionais alteradas: sem papéis fixos; decisão revogada e retrospectiva excluídas por marcação histórica. Comparação com HEAD: nenhum aumento de travessões.\n\nLimites conhecidos: o conjunto tem 22 arquivos no orçamento e 4 de painel isentos. O teto vigente é 15. Mantido em rascunho para recorte, sem usar etiqueta arquitetural para contornar o contador. O ranking administrativo ainda fixa os rótulos em services/admin/apps/core/ranking_das_ias.py:58-62, alvo de outra frente; o retrato estático sozinho não altera essa tela. Integração e publicação não foram verificadas.\n\nMandato-do-mantenedor: frente fechada recebida na sessão Codex em 22/09/2026 para retirar a governança dissolvida dos alvos listados, preservando leis gerais. CODEOWNERS autorizado nominalmente: CLAUDE.md, CONSTITUICAO.md, RITOS.md e docs/decisoes/DECISAO-triade-de-ias.md, sob @abundanciabr. Faixa ci, Lista B de docs/decisoes/MANDATO-POR-FAIXA.md. Origem da decisão: painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js.",
+  "origem": "sessao-codex-20260922-remover-governanca-triade",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
