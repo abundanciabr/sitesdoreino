@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-223301-TAR-645-submetida",
+  "tarefa": "TAR-645",
+  "evento": "submetida",
+  "quando": "2026-09-22T22:33:01+00:00",
+  "quem": "agent/fila/appmax-estorno-correcao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1959",
+  "revisao": "fc70cf6fb65582a4fecb4c9597a25a4a33f64d73",
+  "arvore": "4e49babab86bec0ff9f5407c9f2664d807f4f1a6"
+}

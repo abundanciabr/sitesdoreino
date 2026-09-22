@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-072-admin-ranking-mostra-resultados-sem-papeis-fixos",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: ranking mostra resultados sem papéis fixos",
+  detalhe: "Roteiro e ranking exibiam papéis revogados. Esta entrega retira os rótulos e preserva as medidas e os planos do ranking.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1958. Validação local: árvore 8d564fcefadf57555a2671c77f5042d0a63496bc; commit dbf4ce00aaef8a1bd77705ce7e1a2764c423d29d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-646",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

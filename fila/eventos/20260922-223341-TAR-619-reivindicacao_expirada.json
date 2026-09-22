@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260922-223341-TAR-619-reivindicacao_expirada",
+  "tarefa": "TAR-619",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-22T22:33:41+00:00",
+  "quem": "codex-sessao-ranking",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}

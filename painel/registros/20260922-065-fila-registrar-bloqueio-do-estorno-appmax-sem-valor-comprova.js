@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-065-fila-registrar-bloqueio-do-estorno-appmax-sem-valor-comprova",
+  tipo: "nota",
+  quando: "2026-09-22",
+  titulo: "fila: registrar bloqueio do estorno Appmax sem valor comprovado",
+  detalhe: "O registro deixa explícito o dado financeiro que falta e a prova segura para destravar a construção dependente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1957. Validação local: árvore 6380e7a7ad11909c40807088b13197793072bd9f; commit 532c98eeafe1701ace78dc4a34bfb0a5069f0f92; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-641",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

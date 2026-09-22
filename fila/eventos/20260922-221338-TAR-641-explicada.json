@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-221338-TAR-641-explicada",
+  "tarefa": "TAR-641",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:13:38+00:00",
+  "quem": "Ordem do mantenedor para substituir a TAR-554 cancelada, despacho independente de fila em 22/09/2026",
+  "o_que_e": "A documentação oficial consultada mostra o total pago e a hora do estorno, mas não informa quanto foi devolvido. O webhook da Appmax não é autenticado e não comprova esse valor.",
+  "o_que_muda": "O sistema só suspende o acesso e registra um estorno quando confirmar, pela API autenticada, o valor realmente devolvido e a qual pedido pertence.",
+  "exemplo": "Uma compra de R$ 120 pode ter devolução parcial de R$ 50. O sistema registra R$ 50 apenas se a consulta autenticada confirmar esse valor, sem copiar os R$ 120 originais.",
+  "importancia": 75
+}
