@@ -1,6 +1,7 @@
 # =============================================================================
-# ENTRADA PRIVADA — a porta pela qual o painel localhost do mantenedor LÊ os
-# dados reais desta VPS. Ela não é pública: o compose publica a porta 8443
+# ENTRADA PRIVADA — porta de leitura de dados desta VPS para ferramentas locais
+# autorizadas. Não é uma forma de acessar o painel administrativo, que fica em
+# https://meshcraft.top/admin/. Ela não é pública: o compose publica a porta 8443
 # apenas em 127.0.0.1, e quem chega aqui vem pelo túnel SSH da fase 3.
 #
 # LISTA POSITIVA, E SÓ ELA. São QUATRO operações, todas `GET`, uma por chamada
