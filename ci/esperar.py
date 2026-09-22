@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Espera com teto vivo e consulta única da entrega até publicação.
 
-    python ci/esperar.py --checks PR --e-pousar
-    python ci/esperar.py --entrega PR
+    python ci/esperar.py --checks PR --so-desfecho
+    python ci/esperar.py --entrega PR --so-desfecho
     python ci/esperar.py --run ID
     python ci/esperar.py --deploy SHA
 
-`--entrega` retorna JSON sem laço; a maestro acompanha pelo mecanismo nativo
-ativo da sessão. Só PUBLICADO e SEM_PUBLICACAO retornam zero. Etiqueta não
-é integração, e merge não é publicação. Nova revisão, recusa, publicação
-pendente e falha devolvem diagnóstico acionável. Instrumento quebrado é ERROR.
+`--entrega` retorna JSON sem laço. A sessão responsável mede checks,
+integração e publicação sem exigir atestado nem etiqueta. Só PUBLICADO e
+SEM_PUBLICACAO retornam zero. PR aberto, recusa, publicação pendente e falha
+devolvem diagnóstico acionável. Instrumento quebrado é ERROR.
 
 As esperas usam a régua de `ci/tempos_esperados.json`, com voz e prazo finito.
 `--teto` é override explícito para espera sem régua. `--e-pousar` implica
