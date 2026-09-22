@@ -422,6 +422,8 @@ def test_o_editor_nao_promete_markdown_que_o_site_nao_renderiza():
 
     assert "figura:recepcionista" in fonte
     assert "Imagem por endereço da internet ainda não entra" in fonte
+    assert ">!" in fonte or "&gt;!" in fonte
+    assert "/midia/" in fonte
     saida = documentos.para_html("| a | b |\n| --- | --- |\n| c | d |")
     assert "<table>" in saida
     assert documentos.para_html("| a | b |").startswith("<p>")

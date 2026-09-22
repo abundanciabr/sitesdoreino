@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-050-admin-markdown-rico-e-midia-publico",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: markdown rico e /midia/ publico",
+  detalhe: "Markdown das duas celulas desenha tabela, /midia/ e aviso. HTML do autor continua texto na tela.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1873. Validação local: árvore 535db4ba03f1c9d0c0f785b93ec3fe877c34e9b2; commit 34e6f27b3fec0877f325ff213d72de39cb7cc014; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-598",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
