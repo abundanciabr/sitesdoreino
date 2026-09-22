@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-111138-TAR-609-concluida",
+  "tarefa": "TAR-609",
+  "evento": "concluida",
+  "quando": "2026-09-22T11:11:38+00:00",
+  "quem": "agent/ci/remover-papeis-documentos",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1895",
+  "verificado_em": "2026-09-22"
+}

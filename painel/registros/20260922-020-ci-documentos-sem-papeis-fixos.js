@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-020-ci-documentos-sem-papeis-fixos",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: documentos sem papéis fixos",
+  detalhe: "Leis e mapas sem papéis fixos. Ranking em tela depende da frente admin em ranking_das_ias.py.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1895. Validação local: árvore 8a5deb50453d70a66a1eef571dfda38a6f22dc4a; commit a806be826801f077d145d87d9551f36e19a98d4e; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-609",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

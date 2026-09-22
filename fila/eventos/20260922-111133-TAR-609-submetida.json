@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-111133-TAR-609-submetida",
+  "tarefa": "TAR-609",
+  "evento": "submetida",
+  "quando": "2026-09-22T11:11:33+00:00",
+  "quem": "agent/ci/remover-papeis-documentos",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1895",
+  "revisao": "a806be826801f077d145d87d9551f36e19a98d4e",
+  "arvore": "8a5deb50453d70a66a1eef571dfda38a6f22dc4a"
+}
