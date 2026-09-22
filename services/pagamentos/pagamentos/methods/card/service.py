@@ -99,6 +99,28 @@ def criar_intent_card(
         )
 
 
+def identificacao_do_titular(
+    payer_identification: dict[str, str] | None, holder_document_number: str
+) -> dict[str, str] | None:
+    """Uma identificação só, vinda de duas escritas do mesmo fato.
+
+    `payer_identification` é como o contrato sempre nomeou o documento do
+    pagador; `holder_document_number` é como a biblioteca do provedor de cartão
+    entrega o documento do TITULAR. São o mesmo dado com dois nomes, e deixar os
+    dois chegarem ao provedor seria escolher um por acidente. Quem foi escrito
+    por extenso vence; o número solto só preenche o vazio, e o tipo sai do
+    tamanho porque CPF tem 11 dígitos e CNPJ tem 14.
+    """
+    if payer_identification:
+        return payer_identification
+    digitos = "".join(c for c in holder_document_number if c.isdigit())
+    if len(digitos) == 11:
+        return {"type": "CPF", "number": digitos}
+    if len(digitos) == 14:
+        return {"type": "CNPJ", "number": digitos}
+    return None
+
+
 def confirmar_intent_card(
     intent: Intent,
     *,
@@ -106,6 +128,9 @@ def confirmar_intent_card(
     installments: int,
     payer_email: str,
     payer_identification: dict[str, str] | None,
+    ip: str = "",
+    holder_name: str = "",
+    holder_document_number: str = "",
 ) -> Intent:
     if intent.status != _STATUS_CONFIRMAVEL:
         raise IntentNaoConfirmavel(intent.status)
@@ -118,7 +143,11 @@ def confirmar_intent_card(
         card_token=card_token,
         installments=installments,
         payer_email=payer_email,
-        payer_identification=payer_identification,
+        payer_identification=identificacao_do_titular(
+            payer_identification, holder_document_number
+        ),
+        ip=ip,
+        holder_name=holder_name,
     )
     # O id do pagamento no provedor é gravado ANTES do fato financeiro: é por
     # ele que o webhook encontra esta intent depois, e uma cobrança que existe

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-155047-TAR-596-explicada",
+  "tarefa": "TAR-596",
+  "evento": "explicada",
+  "quando": "2026-09-21T15:50:47+00:00",
+  "quem": "Pedido do mantenedor em 21/09/2026: o agente escolhe o formato do documento conforme a tarefa.",
+  "o_que_e": "Hoje todo documento do site e desenhado por um renderizador de Markdown pequeno, e so aceita titulo, paragrafo, lista, negrito, codigo, citacao, linha e link.",
+  "o_que_muda": "O documento ganha um formato. No formato pagina, o corpo e um HTML completo servido numa moldura isolada, onde SVG, Canvas, CSS e biblioteca de grafico funcionam sem alcancar o resto do site.",
+  "exemplo": "Um mapa do curso com grafico interativo publicado em meshcraft.top/docs/mapa-do-curso, escrito pelo agente sem pedir codigo novo ao sistema.",
+  "importancia": 70
+}

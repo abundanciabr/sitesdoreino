@@ -121,6 +121,22 @@ class MensagemDoRadio(models.Model):
 class Documento(models.Model):
     """Um documento que o site publica. A ÚNICA fonte do texto, desde 31/08/2026."""
 
+    class Formato(models.TextChoices):
+        """Como o corpo deste documento vira tela. Ver o campo `formato`.
+
+        Dois valores, e não uma lista que cresce: o formato não é um tema nem
+        um estilo, é a resposta a UMA pergunta com duas respostas possíveis.
+        Quem escreve prosa quer o renderizador que escapa; quem quer desenhar
+        uma página inteira quer a folha em branco, e a folha em branco só é
+        segura dentro do sandbox.
+
+        Os rótulos aparecem na tela do editor, então são texto publicado: sem
+        risca comprida, como manda `ci/travessao.py`.
+        """
+
+        TEXTO = "texto", "Texto escrito"
+        PAGINA = "pagina", "Página visual"
+
     # O endereço, e a chave: `como-funciona-a-entrada` sai em
     # `meshcraft.top/docs/como-funciona-a-entrada`. `unique` porque dois
     # documentos com o mesmo nome seriam dois textos disputando um endereço.
@@ -165,6 +181,24 @@ class Documento(models.Model):
     apendice_vivo = models.BooleanField(default=False)
     verificado_em = models.DateField(null=True, blank=True)
     proxima_verificacao_em = models.DateField(null=True, blank=True)
+
+    # O FORMATO (TAR-596, 21/09/2026). Pedido dele: *"o documento pode ser uma
+    # página visual inteira, não só texto"*.
+    #
+    # A saída NÃO foi ampliar o renderizador de Markdown — ele continua
+    # escapando o texto inteiro antes de aplicar qualquer regra, e é isso que
+    # mantém o `|safe` dos dois templates seguro. O que este campo escolhe é
+    # ONDE o corpo é desenhado: `texto` na própria página, pelo renderizador;
+    # `pagina` dentro de um `<iframe>` de origem opaca, servido cru pela rota
+    # da moldura (`apps/core/documento_em_pagina.py`).
+    #
+    # `default=TEXTO`, e o default é a regra: todo documento que já existe, e
+    # todo documento novo criado sem ninguém pensar nisto, continua passando
+    # pelo renderizador que escapa. Virar página é um gesto de propósito no
+    # editor, como publicar.
+    formato = models.CharField(
+        max_length=6, choices=Formato.choices, default=Formato.TEXTO
+    )
 
     class Meta:
         # A pergunta que a área pública faz a cada visita: os que estão no ar,
@@ -261,6 +295,62 @@ class VersaoDoDocumento(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
         return f"{self.documento_id} @ {self.salvo_em:%Y-%m-%d %H:%M}"
+
+
+class Midia(models.Model):
+    """Uma imagem ou um vídeo que o mantenedor enviou para dentro de um documento.
+
+    Nasceu em 21/09/2026 (TAR-597), no dia em que ele autorizou a plataforma a
+    guardar arquivo no disco da VPS. Até então não havia `FileField` nenhum
+    nesta casa, e um documento só podia falar de uma imagem hospedada fora.
+
+    **O arquivo mora no disco e esta linha é o catálogo dele** — não há
+    `FileField`, e a ausência é a decisão: um `FileField` guarda o caminho que
+    lhe entregaram, e aqui o caminho é montado a partir de duas colunas que a
+    borda de escrita escreveu (`sorteio` e `nome`), nunca de texto que veio de
+    fora. `apps/core/midia.py` explica a conferência inteira.
+
+    **Presa ao documento**, e não numa biblioteca solta: a pergunta que a tela
+    faz é "que imagens este documento tem", e apagar o documento precisa apagar
+    os arquivos dele junto — o que uma biblioteca sem dono deixaria órfãos no
+    disco para sempre.
+    """
+
+    documento = models.ForeignKey(
+        "Documento", on_delete=models.CASCADE, related_name="midias"
+    )
+
+    # O endereço: 32 dígitos sorteados. É ele que impede o arquivo de uma
+    # pessoa de ser encontrado por tentativa, e é ele que substitui o caminho
+    # de disco na URL — a rota procura esta coluna e lê o resto do banco.
+    sorteio = models.CharField(max_length=32, unique=True)
+
+    # O nome com que o arquivo foi gravado: o apelido aparado do original, com
+    # a extensão REESCRITA a partir do tipo lido no conteúdo. O nome que o
+    # navegador mandou não sobrevive à passagem.
+    nome = models.CharField(max_length=80)
+
+    # O `Content-Type` que NÓS conferimos lendo os primeiros bytes, e o único
+    # que a rota devolve. Guardado, e não recalculado a cada leitura, porque a
+    # conferência é da hora do ENVIO: é ali que existe alguém para avisar.
+    tipo = models.CharField(max_length=32)
+
+    tamanho = models.PositiveIntegerField()
+    enviado_por = models.EmailField(blank=True, default="")
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # A pergunta da tela do editor: os arquivos deste documento, do mais
+        # novo para o mais velho.
+        indexes = [models.Index(fields=["documento", "-enviado_em"])]
+
+    @property
+    def megabytes(self) -> str:
+        """O tamanho do jeito que uma pessoa lê, para a lista da tela."""
+        return f"{self.tamanho / (1024 * 1024):.1f} MB".replace(".", ",")
+
+    def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
+        return f"{self.sorteio}/{self.nome}"
 
 
 class Livro(models.Model):

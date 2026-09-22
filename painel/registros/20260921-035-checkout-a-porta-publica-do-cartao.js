@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-035-checkout-a-porta-publica-do-cartao",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "checkout: a porta pública do cartão",
+  detalhe: "A porta publica do cartao so aceita token e parcela do navegador; valor vem do snapshot e duplo clique idempotente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1855. Validação local: árvore 0e462dcf842b8db7ec30c89d2cff348b945ca8d1; commit ec9ea8dce1949183fd6f58f0622e60d3d406b64d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-552",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

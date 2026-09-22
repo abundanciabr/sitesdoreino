@@ -16,8 +16,8 @@ descuido vira um texto interno no ar, e é isso que este arquivo trava.
 
 3. **Nenhuma rota nova escapa pelo prefixo público.** A porta isenta o prefixo
    `/docs/` inteiro (e o porquê está escrito lá). O que impede isso de virar
-   fresta é o guarda daqui: sob esse prefixo existem EXATAMENTE duas rotas, e
-   uma terceira reprova o CI.
+   fresta é o guarda daqui: sob esse prefixo existe uma lista EXATA de rotas, e
+   uma fora dela reprova o CI.
 
 4. **HTML dentro de um documento sai escapado.** O renderizador escapa o texto
    ANTES de formatar, então marcação escrita num `.md` chega à tela como texto.
@@ -290,12 +290,18 @@ def test_a_lista_do_admin_diz_qual_e_publico(pasta):
 # ------------------- 3. nenhuma rota nova escapa pelo prefixo público
 
 
-def test_o_prefixo_publico_tem_so_as_duas_rotas():
+def test_o_prefixo_publico_tem_so_as_tres_rotas():
     """O que impede a isenção por prefixo de virar uma fresta.
 
     A porta isenta `/docs/` inteiro — e isso só é seguro enquanto tudo que mora
-    ali confere `publico` antes de responder. Uma rota nova sob esse prefixo
+    ali confere `no_ar` antes de responder. Uma rota nova sob esse prefixo
     nasceria pública sem ninguém decidir isso; aqui ela reprova o CI.
+
+    Eram duas até 21/09/2026, quando a moldura do documento de formato `pagina`
+    entrou (TAR-596). O que autorizou a terceira NÃO foi mexer nesta lista: foi
+    ela obedecer à mesma regra das outras duas, conferindo `no_ar` e devolvendo
+    404 (nunca 403) para o privado — medido em
+    `test_pagina_visual_do_documento.py`.
 
     Se você chegou neste teste porque ele ficou vermelho: a pergunta não é como
     passar por ele, é se a rota nova deve mesmo responder sem sessão.
@@ -305,7 +311,11 @@ def test_o_prefixo_publico_tem_so_as_duas_rotas():
     sob_o_prefixo = {
         p.name for p in padroes if str(p.pattern).lstrip("^").startswith(prefixo + "/")
     }
-    assert sob_o_prefixo == {"docs_publicos", "doc_publico"}, sob_o_prefixo
+    assert sob_o_prefixo == {
+        "docs_publicos",
+        "doc_publico",
+        "doc_publico_moldura",
+    }, sob_o_prefixo
 
 
 def test_os_dois_enderecos_nao_colidem():
@@ -473,6 +483,63 @@ def test_o_subconjunto_de_markdown_que_o_site_aceita():
         assert pedaco in saida, pedaco
 
 
+def test_tabela_vira_table_e_escapa_a_celula():
+    saida = documentos.para_html(
+        "| A | B |\n| --- | --- |\n| um | <script>x</script> |"
+    )
+    assert "<table>" in saida
+    assert "<th>A</th>" in saida
+    assert "<td>um</td>" in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+
+
+def test_linha_com_pipe_sem_separador_continua_paragrafo():
+    """Tabela exige o separador. Sem ele, o pipe é texto, não grade."""
+    assert documentos.para_html("| a | b |").startswith("<p>")
+
+
+def test_bloco_de_codigo_escapa_e_nao_formata():
+    saida = documentos.para_html("```\n**nao-negrito**\n<script>\n```")
+    assert "<pre><code>" in saida
+    assert "<strong>" not in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+
+
+def test_figura_nomeada_entra_como_svg_com_legenda_escapada():
+    saida = documentos.para_html("![A <b>recepção</b>](figura:recepcionista)")
+    assert "<figure" in saida
+    assert "<svg" in saida
+    assert "<figcaption>" in saida
+    assert "<b>recepção</b>" not in saida
+    assert "&lt;b&gt;" in saida
+
+
+def test_figura_desconhecida_e_imagem_por_url_nao_viram_html():
+    for linha in (
+        "![x](figura:nao-existe)",
+        "![x](https://exemplo.com/x.png)",
+        "![x](javascript:alert(1))",
+    ):
+        saida = documentos.para_html(linha)
+        assert "<img" not in saida, linha
+        assert "<figure" not in saida, linha
+        assert "<svg" not in saida, linha
+
+
+def test_as_figuras_da_casa_nao_carregam_script():
+    from apps.core.figuras import FIGURAS, desenhar
+
+    proibidos = ("<script", "javascript:", "onerror=", "foreignObject")
+    for nome in FIGURAS:
+        svg = desenhar(nome)
+        assert svg is not None, nome
+        baixo = svg.lower()
+        for pedaco in proibidos:
+            assert pedaco not in baixo, f"{nome} contém {pedaco}"
+
+
 def test_paragrafo_de_varias_linhas_vira_um_paragrafo_so():
     """Quebra de linha no meio de uma frase é como se escreve markdown — e
     virar dois parágrafos deixaria todo documento cheio de buracos."""
@@ -516,6 +583,14 @@ def test_a_jornada_do_aluno_NAO_e_publica(semente):
     jornada = documentos.ler("jornada-do-aluno")
     assert jornada is not None, "o documento da jornada sumiu da pasta"
     assert jornada.publico is False
+
+
+def test_o_crivo_explicado_NAO_e_publico(semente):
+    """Pedido do mantenedor em 21/09/2026: "Só para admins". A semente nasce
+    fechada; quem muda o banco que já está no ar é a migração 0022."""
+    crivo = documentos.ler("o-crivo-explicado-do-zero")
+    assert crivo is not None, "o documento do Crivo sumiu da pasta"
+    assert crivo.publico is False
 
 
 def test_o_documento_da_entrada_E_publico(semente):

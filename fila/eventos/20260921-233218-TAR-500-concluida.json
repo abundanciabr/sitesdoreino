@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-233218-TAR-500-concluida",
+  "tarefa": "TAR-500",
+  "evento": "concluida",
+  "quando": "2026-09-21T23:32:18+00:00",
+  "quem": "codex-infra-fechar-inventario-chaves-deploy",
+  "evidencia": "VPS root: copia de seguranca em /home/deploy/.ssh/authorized_keys.backup.j73rdc4D. Apos a retirada autorizada, ssh-keygen -lf confirmou somente SHA256:0Lf5N3Voeus7tCpnqyjA8FQb9dApsCkOI5GhEQKd69g e SHA256:+eKOcjlz6oewBUEzrJcLy/jDsNI9j3aOrT0B8WyrBu0.",
+  "verificado_em": "2026-09-21"
+}

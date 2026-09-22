@@ -26,7 +26,7 @@ _COMPONENT_SCHEMAS = {
         "properties": {
             "site_id": {
                 "type": "string",
-                "description": "Atribuição OPACA — pagamentos armazena e ecoa nos eventos, nunca interpreta.",
+                "description": "Atribuição OPACA. Pagamentos armazena e ecoa nos eventos, nunca interpreta.",
             },
             "order_id": {"type": "string"},
             "amount_cents": {
@@ -49,7 +49,7 @@ _COMPONENT_SCHEMAS = {
             "metadata": {
                 "type": "object",
                 "additionalProperties": True,
-                "description": "Opaco para pagamentos — devolvido nos eventos, nunca interpretado.",
+                "description": "Opaco para pagamentos. Devolvido nos eventos, nunca interpretado.",
             },
         },
     },
@@ -60,7 +60,11 @@ _COMPONENT_SCHEMAS = {
         "properties": {
             "card_token": {
                 "type": "string",
-                "description": "Token de uso único gerado pelo Card Payment Brick no navegador",
+                "description": (
+                    "Token de uso único gerado no navegador pela biblioteca do "
+                    "provedor de cartão. Número, validade e código de segurança "
+                    "nunca chegam à plataforma."
+                ),
             },
             "installments": {"type": "integer", "minimum": 1, "maximum": 12},
             "payer_email": {"type": "string", "format": "email"},
@@ -70,6 +74,24 @@ _COMPONENT_SCHEMAS = {
                     "type": {"type": "string", "enum": ["CPF", "CNPJ"]},
                     "number": {"type": "string"},
                 },
+            },
+            "ip": {
+                "type": "string",
+                "description": (
+                    "Endereço IP do comprador, coletado no navegador pela "
+                    "biblioteca do provedor de cartão."
+                ),
+            },
+            "holder_name": {
+                "type": "string",
+                "description": "Nome do titular como ele o informou no cartão.",
+            },
+            "holder_document_number": {
+                "type": "string",
+                "description": (
+                    "CPF ou CNPJ do titular do cartão, somente dígitos. Quando "
+                    "payer_identification vem junto, ela vence."
+                ),
             },
         },
     },
@@ -148,7 +170,7 @@ _COMPONENT_RESPONSES = {
             "Falha do provedor de pagamento (Mercado Pago): não respondeu, ou "
             "respondeu algo que não descreve a cobrança pedida. A plataforma "
             "nunca devolve 2xx nesse caso. Ação do consumidor: repetir a "
-            "requisição com a MESMA X-Idempotency-Key — nunca gerar chave nova."
+            "requisição com a MESMA X-Idempotency-Key, nunca gerar chave nova."
         ),
         "content": {
             "application/json": {

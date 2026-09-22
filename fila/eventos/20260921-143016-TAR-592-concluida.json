@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-143016-TAR-592-concluida",
+  "tarefa": "TAR-592",
+  "evento": "concluida",
+  "quando": "2026-09-21T14:30:16+00:00",
+  "quem": "agent/pagamentos/cartao-appmax-campos-e-parcelas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1854",
+  "verificado_em": "2026-09-21"
+}

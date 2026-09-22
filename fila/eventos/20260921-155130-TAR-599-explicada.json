@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-155130-TAR-599-explicada",
+  "tarefa": "TAR-599",
+  "evento": "explicada",
+  "quando": "2026-09-21T15:51:30+00:00",
+  "quem": "Pedido do mantenedor em 21/09/2026.",
+  "o_que_e": "Sem lei escrita, um robo publica uma aplicacao inteira para dar um aviso de tres linhas, e outro publica texto cru onde cabia um grafico.",
+  "o_que_muda": "Uma decisao registra quando o documento e texto e quando e pagina, o que cada um pode usar, e por que o texto continua escapando HTML.",
+  "exemplo": "O agente le a lei antes de escrever e escolhe sozinho, sem perguntar ao mantenedor a cada documento.",
+  "importancia": 50
+}

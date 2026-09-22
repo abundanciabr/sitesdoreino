@@ -1,0 +1,19 @@
+{
+  "arquivo": "592-o-cartao-de-credito-passa-a-enviar-o-nome-e-o-documento-de-q",
+  "id": "TAR-592",
+  "titulo": "O cartao de credito passa a enviar o nome e o documento de quem paga",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Suite da celula pagamentos verde e a saida de python ci/contract_freeze.py pagamentos verde, mostrando que o codigo cumpre o contrato que ja pousou na main.",
+  "despacho": "Este trabalho ja foi feito e provado no ramo agent/pagamentos/cartao-appmax-campos-e-parcelas (PR #1854): o CardConfirm passa a enviar ip, holder_name e holder_document_number, cumprindo o contrato que pousou em contracts/pagamentos.openapi.yaml. Esta tarefa documenta a entrega e a fecha no mesmo PR.",
+  "origem": "Metade da escada do lote de 19/09/2026: PR #1853 levou o contrato, este PR leva o codigo.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-155319-TAR-600-concluida",
+  "tarefa": "TAR-600",
+  "evento": "concluida",
+  "quando": "2026-09-21T15:53:19+00:00",
+  "quem": "agent/fila/cartoes-da-area-de-documentos",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1862",
+  "verificado_em": "2026-09-21"
+}

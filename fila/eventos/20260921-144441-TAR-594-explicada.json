@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-144441-TAR-594-explicada",
+  "tarefa": "TAR-594",
+  "evento": "explicada",
+  "quando": "2026-09-21T14:44:41+00:00",
+  "quem": "Brief fechado da maestro em 21/09/2026 para fechar o rastro da TAR-583/PR#1853.",
+  "o_que_e": "A TAR-583 fechou concluida mas so entregou metade do pedido; a metade que falta (consulta de parcelas) nao tinha cartao na fila, e a licao do --detalhe medida no PR nao estava escrita.",
+  "o_que_muda": "A fila passa a ter o trabalho pendente das parcelas visivel e sequenciado, e a proxima pessoa que usar ci/pr.py --detalhe fora do make pr nao repete o erro do PR #1853.",
+  "exemplo": "Como fechar a ata de uma reuniao: o que ficou combinado para depois entra na pauta da proxima, em vez de sumir porque a reuniao de hoje terminou.",
+  "importancia": 30
+}

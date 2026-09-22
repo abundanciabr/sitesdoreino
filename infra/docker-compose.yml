@@ -198,6 +198,17 @@ services:
     env_file: [env/admin.env]
     volumes:
       - /opt/plataforma/admin-dados:/opt/plataforma/admin-dados:ro
+      # AS IMAGENS E OS VIDEOS DOS DOCUMENTOS (TAR-597, 21/09/2026), com
+      # autorizacao expressa do mantenedor para guardar arquivo no disco da
+      # VPS. E o UNICO ponto de escrita em disco desta celula, e por isso ele
+      # e um volume, e nao uma pasta da imagem: o disco do conteiner e
+      # remontado a cada atualizacao da plataforma, e o que estivesse dentro
+      # da imagem sumiria no deploy seguinte, em silencio.
+      #
+      # Sem `:ro`, ao contrario do volume de cima, porque o ponto inteiro
+      # deste e receber arquivo. O caminho de dentro tem de bater com
+      # `ADMIN_MIDIA_RAIZ` em `env/admin.env`.
+      - /opt/plataforma/admin-midia:/opt/plataforma/admin-midia
 
   quiz:
     <<: *celula

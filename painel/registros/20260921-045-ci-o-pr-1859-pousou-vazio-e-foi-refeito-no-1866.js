@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-045-ci-o-pr-1859-pousou-vazio-e-foi-refeito-no-1866",
+  tipo: "incidente",
+  quando: "2026-09-21",
+  titulo: "O PR 1859 pousou vazio, sem o trabalho que anunciava",
+  detalhe: "O PR 1859 foi mergeado vazio. O ramo agent/infra/ligar-a-appmax tinha so o commit de anuncio de sessao; o commit do trabalho existia apenas no worktree local e nunca foi empurrado. A maestro rodou gh pr ready 1859 vendo os 8 checks verdes e sem conferir a lista de arquivos do PR, e a pista integrou um PR sem conteudo (merge d78fcc183cba85c74c6cb64f6b4c98e8edec64ef). Os checks passam num PR vazio porque nao ha o que reprovar.\n\nO conserto foi levar o commit para o ramo agent/infra/ligar-a-appmax-de-verdade e abrir o PR 1866, que pousou com os arquivos. Nada foi perdido e nada quebrou na main.",
+  autoridade: "sessao",
+  evidencia: "gh pr view 1859 --json state,mergedBy,mergeCommit e gh api repos/abundanciabr/sitesdoreino/pulls/1859/files: MERGED, merge d78fcc183cba85c74c6cb64f6b4c98e8edec64ef, zero arquivos",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

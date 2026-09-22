@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-037-fila-as-parcelas-que-faltaram-e-uma-licao",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "fila: as parcelas que faltaram e uma licao",
+  detalhe: "Cria o cartao de fila da consulta de parcelas deixada de fora de proposito e lavra a licao do --detalhe de ci/pr.py.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1857. Validação local: árvore 42df14f4c6219bd44719451c558b9c7c6b7057a0; commit 2419b21349f87ee043f4bd41d2db17f4ab5ff9fa; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-594",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

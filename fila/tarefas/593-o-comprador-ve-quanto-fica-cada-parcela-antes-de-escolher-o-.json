@@ -1,0 +1,22 @@
+{
+  "arquivo": "593-o-comprador-ve-quanto-fica-cada-parcela-antes-de-escolher-o-",
+  "id": "TAR-593",
+  "titulo": "O comprador ve quanto fica cada parcela antes de escolher o cartao",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-556",
+    "TAR-557"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "python ci/contract_freeze.py PASS em pagamentos e checkout, com contrato e codigo do provedor na mesma arvore; ci/contrato_aditivo.py PASS; e o navegador recebendo os valores das parcelas prontos sem falar com o fornecedor nem ver credencial.",
+  "despacho": "O PR #1853 (TAR-583) levou ao contrato os campos do titular do cartao e a\nporta publica do cartao, mas deixou de fora, de proposito, a consulta de\nparcelas. Motivo: o valor de cada parcela, na modalidade PP com juros no\ncomprador, so existe na resposta de POST /v1/payments/installments do\nfornecedor, atras de Bearer, e a plataforma ainda nao sabe se autenticar\nnele. services/pagamentos/pagamentos/providers/ so tem mercadopago; quem\nensina OAuth com a Appmax e a TAR-556 (nao comecada), e quem cria\ncliente/pedido/cobranca e a TAR-557 (nao comecada). Escrever a operacao no\ncontrato sem codigo atras deixaria contrato/pagamentos e contrato/checkout\nvermelhos ate as duas pousarem, e com eles todo PR que tocasse as duas\ncelulas - o estado que o PR #1824 desfez em 20/09/2026.\n\nO que falta: a operacao de consulta de parcelas em\ncontracts/pagamentos.openapi.yaml, e a operacao pela qual o checkout\nrepassa a pergunta ao comprador, em contracts/checkout.openapi.yaml.\n\nSequencia obrigatoria (armadilhas/243, confirmada por um terceiro caso\nreal):\n1) Na bancada, escreva o codigo do provedor e monte o contrato A PARTIR do\n   export_openapi, nunca de cabeca, com python ci/contract_freeze.py PASS\n   nas duas celulas (pagamentos e checkout) na mesma arvore.\n2) PR so de contracts/, etiqueta contrato, mandato transcrito pela\n   maestro.\n3) PRs de codigo das celulas, em ramo criado depois do merge do passo 2.\n\nEntre o merge do passo 2 e os merges do passo 3 ha uma janela vermelha nas\nduas celulas: mantenha-a curta.\n\nEvidencia exigida: freeze PASS nas duas celulas com contrato e codigo na\nmesma arvore, contrato_aditivo.py PASS, e o navegador recebendo os valores\ndas parcelas prontos sem nunca falar com o fornecedor nem ver credencial.",
+  "origem": "TAR-583 (PR #1853) entregou so metade do pedido: faltou a consulta de parcelas, deixada de fora de proposito ate a TAR-556/TAR-557 pousarem.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
