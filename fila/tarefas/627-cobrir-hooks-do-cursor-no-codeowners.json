@@ -1,0 +1,15 @@
+{
+  "arquivo": "627-cobrir-hooks-do-cursor-no-codeowners",
+  "id": "TAR-627",
+  "titulo": "Cobrir hooks do Cursor no CODEOWNERS",
+  "toca": ["ci"],
+  "depende_de": [],
+  "cria": [],
+  "move": ["manutencao"],
+  "evidencia_exigida": "Teste de CODEOWNERS verde e muralhas verdes",
+  "despacho": "Altere somente .github/CODEOWNERS para adicionar a cobertura nominal de /.cursor/hooks.json com @abundanciabr. Rode o teste ci/tests/test_codeowners_ganchos.py::test_declaracoes_de_ganchos_e_codeowners_exigem_o_mantenedor e python ci/ci.py --apenas muralhas. Abra um PR próprio com o mandato do mantenedor desta sessão. Não edite PR #1907 nem seus arquivos.",
+  "origem": "pedido direto do mantenedor em 22/09/2026 para desbloquear o PR #1907",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
