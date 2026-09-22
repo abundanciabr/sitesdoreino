@@ -118,17 +118,26 @@ Validação local, PR aberto, revisão, integração e publicação não se equi
 Antes do push final, confira com os olhos: `git diff --name-only
 origin/main...HEAD` bate com os alvos do brief? Tem TODOS os eventos da tarefa?
 
-## 7. O pouso e a continuação são automáticos
+## 7. Feche a entrega medindo, sem devolver a conferência
 
-Depois de abrir o PR, rode `python ci/esperar.py --checks <N> --teto 20
---e-pousar` e confirme uma vez com `python ci/esperar.py --entrega <N>
---so-desfecho`. `pouso.yml` integra pelos checks obrigatórios, sem aprovação ou
-clique humano. Confirme `gh pr view <N> --json state,mergeCommit`; se estiver
-`MERGED` e o brief trouxer uma frente dependente, abra a próxima bancada
-imediatamente. Estado do GitHub nunca vira pedido manual.
-FAIL exige correção dentro do mandato; após duas tentativas sem sucesso,
-preserve os arquivos e commits e devolva diagnóstico. ERROR exige reparar o
-instrumento, sem alterar o código para esconder a falha.
+**Nunca use `Monitor` nem laço** esperando checks ou pouso. A espera em
+background morre com a sessão e deixa PR verde órfão (#1160, `armadilhas/364`).
+
+Depois do `make pr`:
+
+1. Garanta que o PR não é rascunho: `gh pr view <N> --json isDraft` e
+   `gh pr ready <N>` se precisar.
+2. **Uma consulta com teto**, na mesma sessão, antes do relatório final:
+   - checks ainda rodando: `python ci/esperar.py --checks <N> --so-desfecho`
+   - merge ou checks verdes, falta publicação: `python ci/esperar.py --entrega <N> --so-desfecho`
+3. Coloque comando e saída em **O que foi verificado**. Integrou ou publicou:
+   PRONTO com evidência. Estourou teto ou reprovou: NÃO PRONTO com diagnóstico.
+
+A pista integra sozinha (`pouso.yml` → `ci/mergear.py --automatico`). Você não
+pede pouso, não cola etiqueta `pousar` e não devolve o PR para outra sessão
+conferir. Esse intervalo reabriu o defeito medido no #1898.
+
+FAIL você conserta no máximo 2 tentativas; atingido o teto, preserve os arquivos e commits e reporte o diagnóstico. ERROR não se mexe no código para esconder falha de medição.
 
 ## 8. O relatório, e nada além dele
 

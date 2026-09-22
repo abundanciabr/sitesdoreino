@@ -7,8 +7,8 @@ horas, outro verde há uma, um rascunho e um com check ainda rodando. Aqui cada
 inventário é escrito à mão, e um deles é a fotografia REAL de 07/09/2026, o dia
 em que a TAR-167 foi feita — três PRs verdes e esquecidos ao mesmo tempo.
 
-O QUE ESTES TESTES PROTEGEM, em uma frase: **o PR verde que ninguém pediu para
-pousar é denunciado, e nenhum outro é.** A segunda metade dessa frase vale
+O QUE ESTES TESTES PROTEGEM, em uma frase: **o PR verde parado além da paciência
+é denunciado, e nenhum outro é.** A segunda metade dessa frase vale
 tanto quanto a primeira: um vigia que grita por qualquer PR aberto ensina a
 casa a ignorar o grito, e aí ele deixa de servir para o caso que importa.
 
@@ -100,7 +100,7 @@ def test_pr_verde_sem_pedido_de_pouso_e_mais_velho_que_a_paciencia_e_denunciado(
     assert len(vereditos) == 1
     acusado = vereditos[0]
     assert acusado.esquecido, (
-        "um PR verde há 7 h, sem a etiqueta `pousar`, com a paciência em 6 h, "
+        "um PR verde há 7 h, com a paciência em 6 h, "
         f"tinha de ser denunciado — veio '{acusado.motivo}'"
     )
     assert acusado.motivo == "esquecido"
@@ -127,10 +127,12 @@ def test_a_denuncia_diz_o_numero_o_instante_e_o_comando():
     assert "#741" in corpo
     # AGORA é 07/09 03:00 UTC; nove horas antes é 06/09 18:00 UTC.
     assert "06/09 18:00 UTC" in corpo
-    assert "python ci/mergear.py 741 --pousar" in corpo, (
-        "a denúncia precisa trazer o comando pronto: um aviso que não diz o "
-        "que fazer vira aviso que ninguém segue"
+    assert "python ci/mergear.py N --conferir" in corpo, (
+        "a denúncia precisa trazer o comando de diagnóstico da pista, não "
+        "pedido manual de pouso"
     )
+    assert "--pousar" not in corpo
+    assert "mergear.py --automatico" in corpo or "--automatico" in corpo
 
 
 def test_o_corpo_nao_muda_so_porque_o_relogio_andou():
@@ -174,10 +176,13 @@ def test_denuncia_sem_ninguem_esquecido_e_recusada():
 # (despacho da TAR-167). Estes testes são a metade do trabalho, não o resto
 # dele: sem eles, um vigia que denuncia TUDO passaria no teste de cima.
 # ---------------------------------------------------------------------------
-def test_pr_que_ja_pediu_pouso_nao_vira_alarme():
-    # Esse é o problema da TAR-165 (o pouso foi pedido e a pista não dá conta),
-    # e consertar uma doença não pode fazer a outra gritar.
-    assert motivo(pr(1080, verde_ha=30, etiquetas=("pousar",))) == "ja-pediu-pouso"
+def test_pr_com_etiqueta_pousar_mas_verde_ha_horas_continua_esquecido():
+    """Etiqueta legada não dispensa: verde parado é falha da esteira."""
+    veredito = vigia_do_pouso.julgar(
+        pr(1080, verde_ha=30, etiquetas=("pousar",)), AGORA, DONOS, 6
+    )
+    assert veredito.esquecido
+    assert veredito.motivo == "esquecido"
 
 
 def test_pr_em_rascunho_nao_vira_alarme():
@@ -402,3 +407,12 @@ def test_sem_repo_e_sem_inventario_e_ERROR():
 
     assert saida.returncode == 2
     assert "--repo" in saida.stdout
+
+
+def test_workflow_remediar_chama_a_pista_automatica_antes_da_issue():
+    # guarda: .github/workflows/vigia-do-pouso.yml
+    raiz = Path(__file__).resolve().parents[2]
+    texto = (raiz / ".github/workflows/vigia-do-pouso.yml").read_text(encoding="utf-8")
+    assert "mergear.py --automatico" in texto
+    assert "PISTA_TOKEN" in texto
+    assert '[ "$CODIGO" = "3" ]' in texto
