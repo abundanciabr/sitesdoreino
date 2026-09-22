@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-203514-TAR-630-explicada",
+  "tarefa": "TAR-630",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:35:14+00:00",
+  "quem": "Continuidade da TAR-628 por comando do mantenedor em 22/09/2026",
+  "o_que_e": "A tarefa de registrar a decisão foi concluída antes da atualização do plano mestre.",
+  "o_que_muda": "O plano mestre passa a carregar as decisões aprovadas de sandbox para orientar a execução.",
+  "exemplo": "A equipe consulta o plano e encontra 12 parcelas PP e a política de suspensão após estorno.",
+  "importancia": 90
+}

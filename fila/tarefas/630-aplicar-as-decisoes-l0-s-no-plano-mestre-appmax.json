@@ -1,0 +1,19 @@
+{
+  "arquivo": "630-aplicar-as-decisoes-l0-s-no-plano-mestre-appmax",
+  "id": "TAR-630",
+  "titulo": "Aplicar as decisões L0-S no plano mestre Appmax",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR do plano mestre contém as decisões de sandbox e passa nas muralhas e no portão de travessões.",
+  "despacho": "Atualize somente docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md com as decisões L0-S sustentadas pelos registros. Valide travessões e muralhas. Publique PR próprio.",
+  "origem": "Continuidade da TAR-628 por comando do mantenedor em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
