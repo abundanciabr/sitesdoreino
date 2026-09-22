@@ -1,0 +1,19 @@
+{
+  "arquivo": "626-corrigir-comentarios-antigos-sobre-painel-localhost",
+  "id": "TAR-626",
+  "titulo": "Corrigir comentários antigos sobre painel localhost",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com alteração apenas nos comentários dos dois arquivos Traefik autorizados e muralhas verdes",
+  "despacho": "Atualize somente comentários em infra/traefik/traefik.yml e infra/traefik/dynamic/entrada-privada.yml para deixar de caracterizar acesso ao admin como localhost. Não altere nenhuma chave, rota, porta, serviço, middleware, token ou outro comportamento. O admin é acessado em https://meshcraft.top/admin/.",
+  "origem": "Pedido do mantenedor na sessão Codex em 22/09/2026; autorização explícita para editar somente comentários nos dois arquivos infra/traefik.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}
