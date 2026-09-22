@@ -426,8 +426,14 @@ Entrada:
 
 Decisões exclusivas do mantenedor:
 
-- L0-S, exigidas para sandbox: máximo de parcelas, juros, política de acesso
-  após eventos reversos e confirmação da instalação única;
+- L0-S, sandbox Appmax: o máximo é de 12 parcelas e a modalidade é PP, com
+  os juros aplicados por parcela e repassados ao comprador;
+- L0-S, sandbox Appmax: estorno e contestação suspendem o acesso do aluno na
+  hora. A suspensão é reversível por decisão humana e uma aprovação posterior
+  não reabre o acesso sozinha;
+- L0-S, sandbox Appmax: uma única instalação compartilhada atende todos os
+  sites atuais. O vínculo mantém `platform_site_id` separado das identidades
+  Appmax e restringe cada tentativa ao site autorizado;
 - L0-P, exigidas somente para produção: valor da compra real, autorização da
   cobrança e autorização do estorno;
 

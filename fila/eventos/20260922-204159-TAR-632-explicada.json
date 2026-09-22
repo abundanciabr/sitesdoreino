@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-204159-TAR-632-explicada",
+  "tarefa": "TAR-632",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:41:59+00:00",
+  "quem": "Correção append-only da TAR-630 por comando do mantenedor em 22/09/2026",
+  "o_que_e": "A tarefa anterior foi concluída apenas com arquivos da fila e não entregou o plano mestre.",
+  "o_que_muda": "As decisões aprovadas de sandbox ficam disponíveis no documento que orienta a implementação.",
+  "exemplo": "O plano registra 12 parcelas PP e a suspensão imediata após estorno ou contestação.",
+  "importancia": 95
+}
