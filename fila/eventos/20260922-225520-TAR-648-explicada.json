@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-225520-TAR-648-explicada",
+  "tarefa": "TAR-648",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:55:20+00:00",
+  "quem": "Sessão do mantenedor em 22/09/2026, Fase 1 Appmax",
+  "o_que_e": "O consentimento da Appmax volta com um token na URL e a aplicação ainda não guarda essa chamada.",
+  "o_que_muda": "A pessoa volta ao site sem deixar o token em logs, e poderá finalizar a instalação depois.",
+  "exemplo": "Depois de autorizar, a Appmax abre a página inicial do Meshcraft sem mostrar o token na barra do endereço.",
+  "importancia": 70
+}
