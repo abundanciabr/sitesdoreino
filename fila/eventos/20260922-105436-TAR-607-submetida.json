@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-105436-TAR-607-submetida",
+  "tarefa": "TAR-607",
+  "evento": "submetida",
+  "quando": "2026-09-22T10:54:36+00:00",
+  "quem": "agent/ci/remover-governanca-triade",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1886",
+  "revisao": "ec6482ebad45b483851492888096ed7104e46087",
+  "arvore": "1b3419586039dc219744db9eff8bfdb488a57fdf"
+}
