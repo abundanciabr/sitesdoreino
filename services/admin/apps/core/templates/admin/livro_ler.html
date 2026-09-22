@@ -79,6 +79,22 @@ o HTML (`documentos.para_html`) escapa o texto ANTES de formatar.
     margin: 0 0 1.15em; padding-left: 1em; border-left: 3px solid var(--leitura-texto-2);
     color: var(--leitura-texto-2); font-style: italic;
   }
+  .leitura-papel pre {
+    overflow: auto; padding: 12px 14px; margin: 0 0 1.15em;
+    border-radius: 8px; background: var(--leitura-fundo);
+    border: 1px solid var(--leitura-texto-2); font-size: 0.85em;
+  }
+  .leitura-papel table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.15em; font-size: 0.9em;
+  }
+  .leitura-papel th, .leitura-papel td {
+    border: 1px solid var(--leitura-texto-2); padding: 6px 8px; vertical-align: top;
+  }
+  .leitura-papel figure.figura { margin: 0 0 1.3em; }
+  .leitura-papel .figura-desenho svg { display: block; width: 100%; height: auto; }
+  .leitura-papel figcaption {
+    margin-top: 8px; color: var(--leitura-texto-2); font-size: 0.85em; text-align: center;
+  }
   .leitura-nav {
     display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
     margin-top: 30px;

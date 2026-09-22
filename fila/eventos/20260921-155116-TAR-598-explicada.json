@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-155116-TAR-598-explicada",
+  "tarefa": "TAR-598",
+  "evento": "explicada",
+  "quando": "2026-09-21T15:51:16+00:00",
+  "quem": "Pedido do mantenedor em 21/09/2026.",
+  "o_que_e": "O renderizador de Markdown da casa desenha oito marcas e nenhuma delas mostra imagem, tabela ou aviso destacado.",
+  "o_que_muda": "Imagem, tabela e caixa de destaque passam a ser escritas em Markdown e desenhadas pelo proprio renderizador, que continua escapando o texto antes de qualquer regra.",
+  "exemplo": "Uma aula escrita com uma tabela de precos e um aviso amarelo de atencao, sem virar uma pagina de aplicacao.",
+  "importancia": 55
+}

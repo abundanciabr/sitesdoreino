@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-143010-TAR-592-submetida",
+  "tarefa": "TAR-592",
+  "evento": "submetida",
+  "quando": "2026-09-21T14:30:10+00:00",
+  "quem": "agent/pagamentos/cartao-appmax-campos-e-parcelas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1854",
+  "revisao": "bdf6ad26541e11613b07059bff1e53d5aa83a745",
+  "arvore": "e570b73bf9d7a933129dd101a83710bec3ae8eef"
+}

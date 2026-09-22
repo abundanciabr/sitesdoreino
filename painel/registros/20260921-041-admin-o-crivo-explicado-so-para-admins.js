@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-041-admin-o-crivo-explicado-so-para-admins",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: o Crivo explicado fica so para administradores",
+  detalhe: "Pedido: So para admins. Semente fechada e migracao 0022 fecha a linha publica do PR 1858. De fora a URL da 404. make ci da admin: 2113 passed. Publicacao nao verificada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1863. make ci admin: 2113 passed. Sabotagem: sem o save, /docs/ responde 200.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

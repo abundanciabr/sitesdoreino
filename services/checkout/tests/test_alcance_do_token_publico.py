@@ -224,6 +224,7 @@ def test_a_alcada_escrita_so_cita_operacao_que_existe_na_api():
         "createSession",
         "placeOrder",
         "getOrder",
+        "confirmOrderCard",
     }
 
 
