@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-202239-TAR-627-explicada",
+  "tarefa": "TAR-627",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:22:39+00:00",
+  "quem": "pedido direto do mantenedor em 22/09/2026 para desbloquear o PR #1907",
+  "o_que_e": "O arquivo de hooks do Cursor existe ou será introduzido pelo caminho Appmax, mas ainda não tem dono nominal no CODEOWNERS.",
+  "o_que_muda": "O portão passa a exigir autorização do mantenedor para alterações em .cursor/hooks.json.",
+  "exemplo": "Uma mudança em .cursor/hooks.json sem mandato passa a ser recusada como já ocorre com .codex/hooks.json.",
+  "importancia": 70
+}
