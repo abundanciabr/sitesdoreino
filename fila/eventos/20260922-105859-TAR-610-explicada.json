@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-105859-TAR-610-explicada",
+  "tarefa": "TAR-610",
+  "evento": "explicada",
+  "quando": "2026-09-22T10:58:59+00:00",
+  "quem": "brief autorizado de 22/09/2026, sessão remover-governanca-20260922",
+  "o_que_e": "As instruções ainda obrigam os assistentes a seguir papéis fixos que o mantenedor já encerrou.",
+  "o_que_muda": "Cada sessão executa a tarefa recebida sem depender da divisão antiga entre fornecedores.",
+  "exemplo": "Ao abrir uma tarefa, o assistente encontra as regras atuais e pode construir a entrega dentro do pedido.",
+  "importancia": 70
+}

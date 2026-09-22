@@ -1,140 +1,41 @@
-import json
-import pytest
-import importlib.util
+import runpy
+import sys
 from pathlib import Path
+from urllib.request import OpenerDirector
 
-_ESPECIFICACAO = importlib.util.spec_from_file_location(
-    "radio_cli", Path(__file__).parents[1] / "radio.py"
-)
-radio = importlib.util.module_from_spec(_ESPECIFICACAO)
-_ESPECIFICACAO.loader.exec_module(radio)
-
-
-class Resposta:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        return False
-
-    def read(self):
-        return json.dumps({"mensagens": [], "ultima_sequencia": 4}).encode()
-
-
-def test_dizer_sem_radio_local_nem_configuracao_explica(monkeypatch, capsys, tmp_path):
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    monkeypatch.delenv("ADMIN_RADIO_URL", raising=False)
-    monkeypatch.delenv("ADMIN_RADIO_TOKEN", raising=False)
-    assert radio.main(["dizer", "oi", "--quem", "codex"]) == 2
-    assert "ADMIN_RADIO_URL" in capsys.readouterr().err
-
-
-def test_ler_imprime_uma_vez_e_como_json(monkeypatch, capsys):
-    monkeypatch.setenv("ADMIN_RADIO_URL", "http://admin")
-    monkeypatch.setenv("ADMIN_RADIO_TOKEN", "segredo")
-    monkeypatch.setattr(
-        radio,
-        "build_opener",
-        lambda *args: type(
-            "Cliente", (), {"open": lambda self, request, timeout: Resposta()}
-        )(),
-    )
-    assert radio.main(["ler", "--desde", "3"]) == 0
-    saida = capsys.readouterr().out.splitlines()
-    assert saida == ['{"mensagens":[],"ultima_sequencia":4}', "última sequência: 4"]
-
-
-def test_dizer_novo_autor_e_tipo_via_cli(monkeypatch):
-    enviados = []
-    monkeypatch.setattr(
-        radio,
-        "_chamar",
-        lambda metodo, dados: enviados.append(dados) or {"sequencia": 1, **dados},
-    )
-    assert (
-        radio.main(
-            ["dizer", "Prova técnica", "--autor", "antigravity", "--tipo", "parecer"]
-        )
-        == 0
-    )
-    assert enviados == [
-        {"autor": "antigravity", "tipo": "parecer", "texto": "Prova técnica"}
-    ]
+import pytest
 
 
 @pytest.mark.parametrize(
-    "argumentos", [["--autor", "intruso"], ["--autor", "codex", "--tipo", "ordem"]]
+    "argumentos",
+    [[], ["--help"], ["ler"], ["ler", "--desde", "3"],
+     ["dizer", "oi", "--autor", "codex"],
+     ["dizer", "oi", "--quem", "fila", "--tipo", "boletim", "--tarefa", "TAR-001"],
+     ["comando-invalido"]],
 )
-def test_cli_recusa_valor_invalido_e_ensina(monkeypatch, capsys, argumentos):
-    monkeypatch.setattr(
-        radio, "_chamar", lambda *args, **kwargs: pytest.fail("nao deve enviar")
-    )
-    assert radio.main(["dizer", "oi", *argumentos]) == 2
-    assert "Use" in capsys.readouterr().err
+@pytest.mark.parametrize("configurado", [False, True])
+def test_cli_encerrada_recusa_sem_acessar_rede(
+    argumentos, configurado, monkeypatch, tmp_path, capsys
+):
+    # guarda: ci/radio.py:11
+    def rede_proibida(*args, **kwargs):
+        pytest.fail("O comando encerrado tentou acessar a rede")
 
-
-def test_configuracao_parcial_nao_cai_no_convite_local(monkeypatch):
-    monkeypatch.setenv("ADMIN_RADIO_URL", "http://radio/admin")
-    monkeypatch.delenv("ADMIN_RADIO_TOKEN", raising=False)
-    with pytest.raises(RuntimeError, match="juntos"):
-        radio._configuracao()
-
-
-def test_redirect_para_outra_origem_e_recusado():
-    with pytest.raises(RuntimeError, match="outra origem"):
-        radio._MesmaOrigem(radio.LOCAL).redirect_request(
-            None, None, 302, "", {}, "https://fora.example/convite"
-        )
-
-
-def test_convite_existente_autentica_cookie_e_csrf(monkeypatch, tmp_path):
-    from types import SimpleNamespace
-
+    monkeypatch.setattr(OpenerDirector, "open", rede_proibida)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    pasta = tmp_path / "SitesDoReino" / "administracao-local"
-    pasta.mkdir(parents=True)
-    (pasta / "servidor.json").write_text(
-        json.dumps({"token": "convite existente"}), encoding="utf-8"
-    )
-    cookies = [SimpleNamespace(name="admin_csrf", value="protecao")]
-    monkeypatch.setattr(radio.http.cookiejar, "CookieJar", lambda: cookies)
-    chamadas = []
-
-    class Entrada(Resposta):
-        status = 200
-        url = radio.LOCAL + "/caixa/radio/"
-
-    class Cliente:
-        def open(self, url, timeout):
-            chamadas.append((url, timeout))
-            return Entrada()
-
-    cliente = Cliente()
-    monkeypatch.setattr(radio, "build_opener", lambda *args: cliente)
-    recebido, headers = radio._cliente_local()
-    assert recebido is cliente
-    assert headers["X-CSRFToken"] == "protecao"
-    assert chamadas == [
-        (radio.LOCAL + "/acesso-local/convite%20existente/?next=/caixa/radio/", 15)
-    ]
-
-
-@pytest.mark.parametrize("corpo", ["<html>login</html>", "[]", '{"ok": true}'])
-def test_resposta_invalida_nao_vira_sucesso(monkeypatch, corpo):
-    monkeypatch.setenv("ADMIN_RADIO_URL", "http://radio/admin")
-    monkeypatch.setenv("ADMIN_RADIO_TOKEN", "segredo-de-teste")
-
-    class Invalida(Resposta):
-        def read(self):
-            return corpo.encode()
-
-    monkeypatch.setattr(
-        radio,
-        "build_opener",
-        lambda *args: type(
-            "Cliente", (), {"open": lambda self, request, timeout: Invalida()}
-        )(),
-    )
-    with pytest.raises(RuntimeError, match="não confirmou") as erro:
-        radio._chamar("GET")
-    assert "segredo-de-teste" not in str(erro.value)
+    if configurado:
+        monkeypatch.setenv("ADMIN_RADIO_URL", "http://admin.invalid")
+        monkeypatch.setenv("ADMIN_RADIO_TOKEN", "token-de-teste")
+    else:
+        monkeypatch.delenv("ADMIN_RADIO_URL", raising=False)
+        monkeypatch.delenv("ADMIN_RADIO_TOKEN", raising=False)
+    caminho = Path(__file__).parents[1] / "radio.py"
+    monkeypatch.setattr(sys, "argv", [str(caminho), *argumentos])
+    with pytest.raises(SystemExit) as saida:
+        runpy.run_path(str(caminho), run_name="__main__")
+    assert saida.value.code == 2
+    capturado = capsys.readouterr()
+    assert capturado.out == ""
+    assert "encerrado" in capturado.err
+    assert "Remova" in capturado.err
+    assert "token-de-teste" not in capturado.err

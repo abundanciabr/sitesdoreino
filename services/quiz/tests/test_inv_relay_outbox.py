@@ -102,6 +102,7 @@ def test_completar_o_quiz_publica_no_stream_via_on_commit(
     assert len(mensagens) == 1
     envelope = json.loads(mensagens[0][1][b"json"])
     assert envelope["data"]["lead"]["email"] == "lead@exemplo.com"
+    assert envelope["data"]["version_key"] == "original"
 
 
 @pytest.mark.django_db(transaction=True)

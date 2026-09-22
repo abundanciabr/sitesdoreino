@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-110238-TAR-610-concluida",
+  "tarefa": "TAR-610",
+  "evento": "concluida",
+  "quando": "2026-09-22T11:02:38+00:00",
+  "quem": "agent/ci/remover-governanca-20260922",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1892",
+  "verificado_em": "2026-09-22"
+}

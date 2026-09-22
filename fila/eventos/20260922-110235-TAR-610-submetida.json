@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-110235-TAR-610-submetida",
+  "tarefa": "TAR-610",
+  "evento": "submetida",
+  "quando": "2026-09-22T11:02:35+00:00",
+  "quem": "agent/ci/remover-governanca-20260922",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1892",
+  "revisao": "34d26fc5a3d9161234b1f751486ab885419dbc32",
+  "arvore": "7b89a0b06afd61b018d5061ef74a187bd1577550"
+}

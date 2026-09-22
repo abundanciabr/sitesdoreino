@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-010-ci-fila-deixa-de-enviar-mensagens-ao-canal-encerrado",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: fila deixa de enviar mensagens ao canal encerrado",
+  detalhe: "A fila grava tarefas e eventos sem enviar mensagens. O comando antigo foi encerrado e orienta retirar suas chamadas. Testes locais aprovados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1885. Validação local: árvore 56e392fd24469328816e691a51a42bc94272f1cf; commit c3f040e7b4f2f1b2a09e9fb25fc737abcb5a19ef; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-605",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

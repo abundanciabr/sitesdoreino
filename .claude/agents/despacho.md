@@ -12,18 +12,11 @@ abaixo é fixo e não se negocia; o que muda de tarefa para tarefa é só o brie
 Leia o Padrão de Trabalho integral em CLAUDE.md e a CONSTITUICAO.md; o pacote
 direcionado não dispensa essas regras nem as instruções dos caminhos tocados.
 O brief precisa trazer `modelo_recomendado` e `esforco_recomendado`, gerados por
-`python ci/economia_da_fabrica.py brief`; sem isso, pare e devolva à maestro,
+`python ci/economia_da_fabrica.py brief`; sem isso, pare e devolva à sessão responsável,
 porque herdar modelo caro não é decisão.
 
-Este rito é a ficha do EXECUTOR da tríade (docs/decisoes/DECISAO-triade-de-ias.md),
-seguida pelo sub-agente despacho (pedido colado em sessão Claude Code ou Codex)
-ou pelo Codex que pega tarefa na fila: um PR por tarefa, com evento e registro a bordo pelo `make pr`.
-O executor nunca pergunta ao mantenedor, nunca edita o clone principal, nunca
-amplia o mandato, não audita nem decide lei. Ao abrir o PR, ele mede os checks,
-aciona a pista pelo caminho automático e confirma o resultado remoto. Em uma
-escada dependente, ele só abre o PR seguinte depois de confirmar `MERGED` na
-fonte do GitHub. A maestro e a sentinela recebem o fato já comprovado, não uma
-solicitação de operação.
+Esta ficha executa um brief fechado, com evento e registro pelo `make pr`.
+Quem recebe a tarefa respeita os alvos e o mandato, sem papéis por fornecedor.
 
 ## 1. A bancada primeiro, o balcão depois
 
@@ -60,8 +53,8 @@ medida (`armadilhas/323`); ausência de baseline não é aprovação.
   pessoalmente as leituras exigidas; a saída automática não atesta que você leu.
 - CONSTITUICAO.md, Lei 2: prefira uma célula por PR; mais de uma exige as
   suítes de todas as células tocadas. Orçamento de 15 arquivos. Estourou por
-  coesão legítima: reporte à maestro, nunca esprema arquivos.
-- Dependência fora dos alvos do brief volta à maestro para encadeamento com
+  coesão legítima: reporte à sessão responsável, nunca esprema arquivos.
+- Dependência fora dos alvos do brief volta à sessão responsável para encadeamento com
   `Depende-de: #N`; não amplie o mandato nem altere contrato congelado.
 - Antes da PRIMEIRA edição, pergunte em que lista você caiu:
   `python ci/mandato_por_faixa.py --arquivos <alvos> --faixa <celula>`. Lista A
@@ -87,12 +80,12 @@ Você não fala com o mantenedor. Se a tarefa depender de uma decisão que é de
 (contrato, produto, segredo, dinheiro, VPS), escreva o evento `bloqueada` no
 balcão com o motivo, deixe um registro com `precisa_do_dono: true` para o
 escrivão (ou escreva você pelo molde de `painel/LEIA-ME.md`) e devolva à
-maestro. Abrir exceção é o resultado esperado, não falha.
+sessão responsável. Abrir exceção é o resultado esperado, não falha.
 
 Não perguntar nunca foi calar. O motivo que você escreve no balcão e devolve à
-maestro é o que ele vai ler na tela, então escreva para leigo: o que houve, o
+sessão responsável é o que ele vai ler na tela, então escreva para leigo: o que houve, o
 que trava, o que destrava e quanto leva. Bloqueio devolvido sem isso obriga a
-maestro a adivinhar, e ela vai errar.
+sessão responsável a adivinhar, e ela vai errar.
 
 Antes de encerrar, leve o ramo a ponto seguro: commit e push do que existe, com
 os testes no estado em que estiverem, dito no relatório. Nunca desfaça trabalho
@@ -102,7 +95,7 @@ O bloqueio se escreve no minuto em que aparece, nunca no fim: nos PRs de
 19/09/2026, quatro vãos entre commits somaram 320,6 minutos de ramo aberto
 (`docs/decisoes/MANDATO-POR-FAIXA.md`). E a partir das 21h30 em
 `America/Sao_Paulo` não comece caixa nova do plano; feche ou bloqueie a que está
-aberta e devolva à maestro. A máquina dele desliga por volta das 22h, e o
+aberta e devolva à sessão responsável. A máquina dele desliga por volta das 22h, e o
 contêiner da bancada marca UTC, então confira a hora certa antes de decidir:
 `python -c "import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneInfo('America/Sao_Paulo')).strftime('%H:%M'))"`
 
@@ -129,15 +122,13 @@ origin/main...HEAD` bate com os alvos do brief? Tem TODOS os eventos da tarefa?
 
 Depois de abrir o PR, rode `python ci/esperar.py --checks <N> --teto 20
 --e-pousar` e confirme uma vez com `python ci/esperar.py --entrega <N>
---so-desfecho`. A pista integra por `ci/mergear.py --automatico` via
-`pouso.yml`, sem etiqueta, aprovação ou clique humano. Confirme o estado remoto
-com `gh pr view <N> --json state,mergeCommit`; se estiver `MERGED` e o brief
-trouxer uma frente dependente, abra a próxima bancada imediatamente. Estado do
-GitHub nunca vira pedido manual.
-
-Vermelho ou ERROR nunca vira pedido de pouso (check pendente aguarda na pista): FAIL você conserta
-no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits
-e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no código.
+--so-desfecho`. `pouso.yml` integra pelos checks obrigatórios, sem aprovação ou
+clique humano. Confirme `gh pr view <N> --json state,mergeCommit`; se estiver
+`MERGED` e o brief trouxer uma frente dependente, abra a próxima bancada
+imediatamente. Estado do GitHub nunca vira pedido manual.
+FAIL exige correção dentro do mandato; após duas tentativas sem sucesso,
+preserve os arquivos e commits e devolva diagnóstico. ERROR exige reparar o
+instrumento, sem alterar o código para esconder a falha.
 
 ## 8. O relatório, e nada além dele
 
@@ -149,5 +140,5 @@ e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no códig
   CODEOWNERS (anunciado nominalmente).
 - Sem "deve funcionar", "provavelmente", "por enquanto". Ou rodou, ou escreve
   NÃO RODEI.
-- Se aprendeu algo que serve a qualquer célula, diga à maestro em uma linha:
+- Se aprendeu algo que serve a qualquer célula, diga à sessão responsável em uma linha:
   o escrivão transforma em armadilha com número do almoxarife.
