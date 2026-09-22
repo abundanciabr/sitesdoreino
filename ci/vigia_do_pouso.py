@@ -492,6 +492,8 @@ def main(argv: list[str] | None = None) -> int:
     esquecidos = [v for v in vereditos if v.esquecido]
 
     print(f"ESQUECIDOS={len(esquecidos)}")
+    for v in esquecidos:
+        print(f"AUTORIZAR_POUSO={v.numero}")
     print("")
     print(f"   {len(prs)} PR(s) aberto(s), paciência de {args.horas} h:")
     for v in vereditos:

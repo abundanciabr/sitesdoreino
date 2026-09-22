@@ -118,13 +118,14 @@ Validação local, PR aberto, revisão, integração e publicação não se equi
 Antes do push final, confira com os olhos: `git diff --name-only
 origin/main...HEAD` bate com os alvos do brief? Tem TODOS os eventos da tarefa?
 
-## 7. A integração é automática
+## 7. O pouso e a continuação são automáticos
 
-Confira que o PR não é rascunho (`gh pr view <N> --json isDraft` e
-`gh pr ready <N>` se for). `pouso.yml` integra pelos checks obrigatórios,
-sem atestado ou etiqueta. Não arme espera nem consulte checks em laço.
-Devolva PR, ramo, SHA e provas à sessão responsável, que responde pelo
-resultado terminal conforme `RITOS.md` §2 e a Lei 11.
+Depois de abrir o PR, rode `python ci/esperar.py --checks <N> --teto 20
+--e-pousar` e confirme uma vez com `python ci/esperar.py --entrega <N>
+--so-desfecho`. `pouso.yml` integra pelos checks obrigatórios, sem aprovação ou
+clique humano. Confirme `gh pr view <N> --json state,mergeCommit`; se estiver
+`MERGED` e o brief trouxer uma frente dependente, abra a próxima bancada
+imediatamente. Estado do GitHub nunca vira pedido manual.
 FAIL exige correção dentro do mandato; após duas tentativas sem sucesso,
 preserve os arquivos e commits e devolva diagnóstico. ERROR exige reparar o
 instrumento, sem alterar o código para esconder a falha.

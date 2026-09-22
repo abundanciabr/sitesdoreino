@@ -258,10 +258,9 @@ pousados (depois da graduação).
    Os serviços `postgres` e `redis` sobem como no `ci-celula.yml`, então a suíte
    da célula roda de verdade, no runner, antes de o PR existir.
 9. **A entrega.** O robô faz o rito inteiro: constrói, roda a suíte, abre o PR
-   pelo `gh`, escreve o registro citando o número, grava os eventos da fila, e:
-   em `sombra`, comenta no PR *"aberto pelo despachante em sombra, run <id>"* e
-   **não pede pouso**; em `ligado`, pede pouso com `esperar.py --checks N --teto
-   20 --e-pousar`, e a pista mergeia como mergeia qualquer PR.
+   pelo `gh`, escreve o registro citando o número, grava os eventos da fila,
+   encaminha com `esperar.py --checks N --teto 20 --e-pousar`, confirma o
+   desfecho remoto e abre a próxima frente dependente.
 10. **A autenticação.** Pela assinatura (`claude_code_oauth_token`, segredo
     `CLAUDE_CODE_OAUTH_TOKEN` gerado por `claude setup-token` no PC dele) ou por
     chave (`anthropic_api_key`). É a decisão 2 do §8. O Claude GitHub App precisa
@@ -271,19 +270,10 @@ pousados (depois da graduação).
     GitHub a quem editou a linha do `cron` por último, e essa pessoa tem de ser
     humana, senão a Action recusa o gatilho.
 
-**Nascimento em sombra e graduação** (lei do Sistema Imunológico: regra nova
-nasce em sombra dizendo o que teria feito).
-
-- **Fase A, `sombra`.** Uma tarefa por passagem, teto de 6 por dia. O canário é
-  uma tarefa de escrituração (documento, registro, armadilha), a mais inofensiva
-  da fila, disparada pelo **botão** `workflow_dispatch`, apertado de verdade
-  (`armadilhas/260`), e pela MESMA automação que vai rodar sozinha depois (RUNBOOK
-  §9, lote da fila do painel, lição 1). O robô abre o PR e para. A maestro (ou
-  ele) lê, e pede pouso à mão.
-- **Graduação para `ligado`.** Depois de 5 PRs do despachante pousados pela pista
-  sem devolução e sem revert, registrados no livro. A partir daí o robô pede
-  pouso sozinho e o teto sobe para 12 por dia. Não graduar em 30 dias é o
-  critério de morte (§9): sombra que não gradua é botão que ninguém aperta.
+**Operação contínua**. Não existe modo sombra para integração, conferência ou
+disparo. O workflow abre o trabalho, a pista mede o PR e o próprio despacho
+confirma o estado remoto. `workflow_dispatch` continua reservado a operações
+explicitamente manuais de produção, não ao fluxo normal de PR.
 
 **O que o despachante NÃO faz, por desenho.**
 
