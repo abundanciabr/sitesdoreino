@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-222755-TAR-645-explicada",
+  "tarefa": "TAR-645",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:27:55+00:00",
+  "quem": "Correção administrativa de fila solicitada pelo mantenedor após associação automática indevida de conclusão",
+  "o_que_e": "O rito automático marcou concluída uma tarefa técnica de estorno embora ainda faltassem autenticação, valor devolvido e testes. O evento não é prova financeira.",
+  "o_que_muda": "A explicação deixa o erro visível e a sucessora técnica bloqueada mantém o trabalho pendente até uma resposta autenticada comprovar valor e pedido.",
+  "exemplo": "A fila mostrava TAR-641 como concluída após registrar o PR. A correção explica que produtor e critérios não existem e deixa a TAR técnica substituta bloqueada.",
+  "importancia": 78
+}
