@@ -23,7 +23,7 @@ def linhas_ativas(relativo: str) -> list[str]:
 
 
 def test_os_caminhos_vivos_nao_entregam_a_continuacao_a_outro_papel():
-    # guarda: ci/pr.py:822
+    # guarda: ci/pr.py:832
     for relativo in ARQUIVOS:
         ativas = "\n".join(linhas_ativas(relativo))
         assert FRASE not in ativas, relativo
@@ -33,7 +33,8 @@ def test_os_caminhos_vivos_nao_entregam_a_continuacao_a_outro_papel():
         if "PR {numero} aberto com recibo" in linha
     ]
     assert len(fecho) == 1
-    assert "A sessão encerra aqui." in fecho[0]
+    assert "A sessão encerra aqui." not in "\n".join(linhas_ativas("ci/pr.py"))
+    assert "Meça o desfecho nesta sessão" in "\n".join(linhas_ativas("ci/pr.py"))
 
 
 @pytest.mark.parametrize("relativo", (

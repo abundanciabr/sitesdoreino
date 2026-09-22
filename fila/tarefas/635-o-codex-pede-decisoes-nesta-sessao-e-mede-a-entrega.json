@@ -1,0 +1,21 @@
+{
+  "arquivo": "635-o-codex-pede-decisoes-nesta-sessao-e-mede-a-entrega",
+  "id": "TAR-635",
+  "titulo": "O Codex pede decisões nesta sessão e mede a entrega",
+  "toca": [
+    "ci",
+    "docs",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Saída do mandato distingue sessão direta e subagente; 197 testes focais verdes; mutação das guardas; PR com recibo e desfecho medido",
+  "despacho": "Corrigir as instruções ativas do Codex, o comando de mandato e a mensagem final do PR. Preservar a exigência de autorização nominal na Lista A e a integração automática. Provar com testes focais e mutação.",
+  "origem": "Pedido direto do mantenedor na sessão Codex em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
