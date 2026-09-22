@@ -212,9 +212,10 @@ http:
       # continua fail-closed para todo o resto de `/mapa-ia` que não estiver
       # nomeado lá, e para toda a área administrativa de sempre.
       #
-      # Prefixo PRÓPRIO (fora de `/admin`) de propósito: nada sob `/admin`
-      # neste arquivo é público hoje, e misturar os dois criaria a
-      # expectativa errada para quem só ler as regras de roteamento.
+      # Prefixo PRÓPRIO (fora de `/admin`) de propósito: `/mapa-ia` é texto
+      # público para IA externa, sem login. A área humana continua em
+      # `/admin`, fail-closed, no mesmo serviço. Misturar os dois prefixos
+      # faria o mapa técnico exigir a porta administrativa.
       rule: "Host(`meshcraft.top`) && PathPrefix(`/mapa-ia`)"
       priority: 10
       entryPoints: [websecure]

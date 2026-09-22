@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-042-fila-registra-tarefa-de-cobertura-do-cursor",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fila: registra tarefa de cobertura do Cursor",
+  detalhe: "TAR-627 registra a cobertura de proprietário para `.cursor/hooks.json` e prepara o PR separado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1939. Validação local: árvore 204757f9549740d87e5d323dfd826b70dc898f4b; commit 181b59ff9558fcce12c2cc0728e070163255910f; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-627",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-200652-TAR-622-concluida",
+  "tarefa": "TAR-622",
+  "evento": "concluida",
+  "quando": "2026-09-22T20:06:52+00:00",
+  "quem": "agent/painel/remover-admin-localhost",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1926",
+  "verificado_em": "2026-09-22"
+}

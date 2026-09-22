@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-035-admin-voltou-no-site-medido-de-fora",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "A administração voltou no site, e eu medi de fora",
+  detalhe: "O PR 1921 integrou em 4a171b12. O deploy-infra 35776331747 ficou verde. De fora, /admin/ e /admin/documentos/ mandam ao login, nao 404. O caminho e meshcraft.top/admin/, nao localhost.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1921 merge 4a171b12; deploy-infra 35776331747 success; curl 2026-09-22T19:53Z",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: "20260922-033-admin-administracao-volta-a-responder",
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
