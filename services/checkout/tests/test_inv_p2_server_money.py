@@ -34,6 +34,11 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
         },
     )
     assert resp.status_code == 201, resp.content
+    assert resp.json()["payment"]["pix"] == {
+        "qr_code": "00020126-copia-e-cola-de-teste",
+        "qr_code_base64": "iVBORw0KGgo=",
+        "expires_at": "2026-08-18T23:59:59+00:00",
+    }
 
     esperado = OFERTA_A["price_cents"] + BUMP_A["price_cents"]  # 990 + 300
     pedido = Order.objects.get(pk=resp.json()["order_id"])
@@ -52,6 +57,10 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     cobranca = json.loads(rede.calls.last.request.content)
     assert str(rede.calls.last.request.url) == f"{PAGAMENTOS}/intents"
     assert cobranca["amount_cents"] == esperado
+    assert cobranca["metadata"] == {
+        "checkout_session_id": sessao_a["id"],
+        "product_id": OFERTA_A["product"]["id"],
+    }
 
 
 # `place_order` lê do corpo exatamente três chaves, e as três são INTENÇÃO:
