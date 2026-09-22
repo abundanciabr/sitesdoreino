@@ -58,8 +58,8 @@ ou é pacote versionado.
 Decisão do mantenedor de 13/09/2026: a main permanece protegida por PR,
 sem push direto, com `muralhas` e `ci-celula-gate` obrigatórios. O workflow
 `pouso.yml` integra automaticamente após esses checks verdes no SHA atual.
-Revisor obrigatório, atestado, etiqueta de pouso e encaminhamento pela
-maestro deixam de ser requisitos. CODEOWNERS e contrato congelado continuam
+Revisor obrigatório, atestado, etiqueta de pouso e encaminhamento manual
+deixam de ser requisitos. CODEOWNERS e contrato congelado continuam
 exigindo a palavra do mantenedor; o rito de contrato permanece.
 A automação só executa código da main, conserva a conferência de identidade
 do SHA e não declara publicação a partir de um merge.

@@ -117,7 +117,7 @@ guarda desligado.
 - qualquer ação contra produção, contra a VPS, contra credencial ou contra a
   proteção da `main`.
 
-Dependência fora dos alvos do brief volta à maestro para encadeamento com
+Dependência fora dos alvos do brief volta a quem definiu o pedido para encadeamento com
 `Depende-de: #N`.
 
 ## 8. Nunca pergunte. Bloqueie e registre.
@@ -132,14 +132,14 @@ python ci/fila.py bloquear TAR-NNN --quem "provador" --motivo "<o que trava, e o
 
 Mais um registro novo em `painel/registros/` com `precisa_do_dono: true`, pelo
 molde de `painel/LEIA-ME.md`, com `se_eu_nao_decidir`, `recomendacao`,
-`reversivel` e `impacto` preenchidos. Depois devolva à maestro. Abrir exceção é
+`reversivel` e `impacto` preenchidos. Depois devolva a quem definiu o pedido. Abrir exceção é
 o resultado esperado, não falha.
 
 Escreva o bloqueio no minuto em que ele aparece, nunca no fim, e antes de
 encerrar leve o ramo a ponto seguro: desfeita toda sabotagem (§9), commit e push
 do que existe. Ramo pela metade se preserva, não se apaga. E a partir das
 21h30 em `America/Sao_Paulo` não comece caixa nova do plano; feche ou bloqueie a
-que está aberta e devolva à maestro. O contêiner da bancada marca UTC, então
+que está aberta e devolva a quem definiu o pedido. O contêiner da bancada marca UTC, então
 confira a hora certa antes de decidir:
 `python -c "import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneInfo('America/Sao_Paulo')).strftime('%H:%M'))"`
 
