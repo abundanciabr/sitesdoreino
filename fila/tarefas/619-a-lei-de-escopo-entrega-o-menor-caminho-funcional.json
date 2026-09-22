@@ -1,0 +1,21 @@
+{
+  "arquivo": "619-a-lei-de-escopo-entrega-o-menor-caminho-funcional",
+  "id": "TAR-619",
+  "titulo": "A lei de escopo entrega o menor caminho funcional",
+  "toca": [
+    "ci",
+    "docs/decisoes",
+    "CLAUDE.md"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Portoes de lei, censo, travessao e testes passam; PR aberto com a decisao e os espelhos alinhados.",
+  "despacho": "Aplicar o mandato do mantenedor de 22/09/2026: substituir a regra operacional de escopo pelo menor caminho funcional de ponta a ponta nos doze arquivos indicados, registrar a decisao e provar os portoes.",
+  "origem": "Mandato do mantenedor na sessao de 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

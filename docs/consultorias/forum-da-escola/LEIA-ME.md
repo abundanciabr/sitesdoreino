@@ -57,10 +57,10 @@ ainda está em aberto:
 2. **O papel de professor nasce com o fórum**, com autoridade real.
 3. **Não existe comunidade nenhuma hoje** — nem Discord, nem grupo de mensagens.
    O fórum nasce em salão vazio, e isso é um problema de desenho, não um detalhe.
-4. **Escopo completo, nunca a versão reduzida** — a lei de
-   `docs/decisoes/DECISAO-filosofia-de-escopo.md`, repetida dentro do prompt
-   porque foi ela que impediu as rodadas anteriores de voltarem com "comece
-   pequeno".
+4. **Menor caminho funcional de ponta a ponta** — lei em
+   `docs/decisoes/DECISAO-filosofia-de-escopo.md` (atualizada 22/09/2026).
+   Estudos entregam o caminho enxuto que já funciona inteiro; não cortam o que
+   foi pedido com nome nem propõem base provisória descartável.
 
 ## O que acontece depois
 

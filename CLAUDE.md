@@ -98,7 +98,7 @@ ação.
 
 ### As três costuras
 
-A regra 3 proíbe adição não pedida, nunca subtração do pedido.
+A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra no menor caminho funcional, na forma mais enxuta que já funciona e já tem lugar para crescer.
 A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.
 O formato da regra 9 inclui as obrigações da casa: CODEOWNERS nominal em
 mudanças; provas de integração/publicação só quando conferidas; bloqueio,
@@ -165,10 +165,17 @@ Meça o estado nas fontes estruturadas de Git, GitHub e fila.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
-## Este projeto é para ser feito completo — nunca proponha a versão minimalista
+## Entregue o menor caminho que funciona de ponta a ponta
 
-Regra 3 vale mesmo em mais PRs/sessões. Preserve Ritos e prova vermelho→verde.
-Serviço pago, credencial, limite legal e segurança são bloqueios reais.
+O pedido vira o menor caminho que uma pessoa usa do começo ao fim e que já se testa inteiro. Fora dessa entrega fica o que esse caminho não precisa para funcionar.
+
+Nome, dado e fronteira desse caminho já são os definitivos. O próximo pedaço entra por acréscimo. Proibido o protótipo que será reescrito. Proibido o sistema inteiro antes de existir uma porta que abre.
+
+O que foi pedido com nome entra no caminho, na forma mais enxuta que já funciona. Jogar fora o plano pedido continua proibido.
+
+Sem flag, sem abstração para um futuro hipotético e sem peça que ninguém usa. O lugar de crescer é a fronteira real deste caminho.
+
+PRs pequenos, Ritos e prova de vermelho para verde continuam. Serviço pago, credencial, limite legal e segurança continuam bloqueio real.
 
 Escopo: o site é `meshcraft.top`. `basileiatoutheou.org` está
 congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa

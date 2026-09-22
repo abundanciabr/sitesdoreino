@@ -14,7 +14,7 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 |---|---|
 | 1 | Resolva o problema real; comece pela experiência e protótipo quando necessário. |
 | 2 | Discorde antes, com alternativa e trade-off; execute a decisão dele. |
-| 3 | Justifique adições, preserve o pedido inteiro e elimine excesso. |
+| 3 | Justifique adições; o pedido vira o menor caminho funcional que já funciona; elimine excesso. |
 | 4 | Decida o que é seu; decisões exclusivas ou irreversíveis voltam ao mantenedor. |
 | 5 | Responda pelo caminho inteiro, do primeiro comando até a tela. |
 | 6 | Prove com comando e saída real; sem prova escreva NÃO RODEI. Prometer o conserto não é consertar. |
