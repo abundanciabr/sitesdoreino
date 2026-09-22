@@ -1,0 +1,19 @@
+{
+  "arquivo": "648-appmax-retorna-sem-expor-ticket",
+  "id": "TAR-648",
+  "titulo": "Appmax retorna sem expor ticket",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste focal Traefik 3.4 com callback e logs inspecionados",
+  "despacho": "Criar rota exata HTTPS que encerra o callback Appmax sem encaminhar token ao backend nem registrar query, com teste focal e prova Traefik 3.4.",
+  "origem": "Sessão do mantenedor em 22/09/2026, Fase 1 Appmax",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

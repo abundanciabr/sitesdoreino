@@ -1,0 +1,20 @@
+{
+  "arquivo": "645-a-conclusao-automatica-e-corrigida-sem-declarar-estorno-feit",
+  "id": "TAR-645",
+  "titulo": "A conclusão automática é corrigida sem declarar estorno feito",
+  "toca": [
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Fila válida; explicação registra conclusão automática indevida de TAR-641 e ausência de critérios técnicos; sucessora técnica permanece bloqueada e depende de TAR-557; livro aponta prova sandbox pendente.",
+  "despacho": "Tarefa administrativa de correção da fila e do livro. Preserve sem edição os eventos existentes da TAR-641. A conclusão automática indevida da TAR-641 pelo rito do PR não significa que o produtor de estorno exista ou que qualquer prova financeira tenha sido obtida.\n\n1. Acrescente evento explicada à TAR-641 dizendo explicitamente que a conclusão automática foi indevida e que nenhum critério técnico de estorno foi satisfeito.\n2. Registre a sucessora técnica da TAR-641, com dependência TAR-557, bloqueada até resposta autenticada de sandbox mostrar montante efetivamente devolvido e identidade suficiente. A sucessora obedece L0-S e não inclui webhook, worker ou tela.\n3. Acrescente registro no painel que explique a correção, a TAR técnica bloqueada e o passo para provar os dados após a instalação merchant. Responda ao alerta anterior de registro sem apagar ou editar registros.\n\nEsta tarefa termina apenas o reparo de registro. Ela não implementa pagamentos, não realiza estorno e não declara prova financeira.\n\nEvidência: fila válida; evento explicada de TAR-641 chama a conclusão automática indevida e afirma que nenhum critério foi satisfeito; sucessora técnica aparece bloqueada com depende de TAR-557; registro novo responde ao alerta anterior e aponta o trabalho pendente; painel gera e teste lógico passa.",
+  "origem": "Correção administrativa de fila solicitada pelo mantenedor após associação automática indevida de conclusão",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
