@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-202647-TAR-626-submetida",
+  "tarefa": "TAR-626",
+  "evento": "submetida",
+  "quando": "2026-09-22T20:26:47+00:00",
+  "quem": "agent/infra/corrigir-comentarios-admin-localhost",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1936",
+  "revisao": "c14c2ff72f5482264d134d1174d5de16d17f224d",
+  "arvore": "02b4bcca552a777a9a8fc7e12a851dbf87093ae8"
+}
