@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-223311-TAR-646-explicada",
+  "tarefa": "TAR-646",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:33:11+00:00",
+  "quem": "Pedido do mantenedor de resolver a tríade revogada",
+  "o_que_e": "O roteiro antigo e a tela de ranking ainda atribuem papéis permanentes às três IAs.",
+  "o_que_muda": "Quem lê o roteiro ou o ranking deixa de receber uma regra de trabalho revogada.",
+  "exemplo": "Codex aparece pelo nome e entregas, sem o rótulo Executor que impedia decisões da sessão.",
+  "importancia": 90
+}
