@@ -85,6 +85,11 @@ from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 # arquivo inválido, não "vocabulário novo" — vocabulário muda por PR, aqui.
 EVENTOS_DE_CICLO = ("reivindicada", "devolvida", "bloqueada", "reivindicacao_expirada")
 EVENTOS_TERMINAIS = ("concluida", "cancelada")
+# Adiamento não é estado da fila. Uma palavra diferente não pode criar um
+# estado paralelo que o painel não mostre nem o mantenedor seja avisado.
+EVENTOS_DE_ADIAMENTO_PROIBIDOS = (
+    "adiada", "adiado", "postergada", "postergado", "deferida", "deferido"
+)
 
 # A EXPLICAÇÃO PARA GENTE — o evento que não é ciclo nem fim (06/09/2026)
 #
@@ -661,6 +666,12 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         if dados.get("arquivo") != caminho.stem:
             erros.append(f"{nome}: campo 'arquivo' ≠ nome do arquivo")
         tipo = dados.get("evento")
+        if tipo in EVENTOS_DE_ADIAMENTO_PROIBIDOS:
+            erros.append(
+                f"{nome}: adiamento silencioso não existe — registre o impedimento "
+                "como 'bloqueada', com motivo e 'espera' ('mantenedor' ou 'fila'), "
+                "e informe o mantenedor no mesmo retorno"
+            )
         if tipo not in EVENTOS_VALIDOS:
             erros.append(f"{nome}: evento {tipo!r} não existe (válidos: {', '.join(EVENTOS_VALIDOS)})")
             continue
@@ -2497,6 +2508,7 @@ def cmd_bloquear(raiz: Path, args) -> int:
         print("Ela vai aparecer em 'Esperando uma decisão sua' no /admin/caixa/robos/,")
         print("e o `motivo` é o texto que ele vai ler ali — escreva para leigo.")
     print("Para destravar: um evento `devolvida` (python ci/fila.py soltar ...).")
+    print("Isto não é adiamento: a tarefa continua registrada e visível na fila.")
     return 0
 
 

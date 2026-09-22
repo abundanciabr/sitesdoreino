@@ -253,6 +253,20 @@ VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md
 Toda proibição de perguntar, inclusive a do subagente, obriga a dizer no fecho
 o que vem depois.
 
+### Proibição de adiamento silencioso
+
+Nenhum robô pode marcar, tratar ou comunicar uma tarefa como adiada,
+postergada ou deliberadamente deixada para depois sem anuência expressa do
+mantenedor. A fila não possui estado de adiamento. Se houver impedimento real,
+o robô deve registrar imediatamente `bloqueada`, com motivo e `espera` igual a
+`mantenedor` ou `fila`, e comunicar isso no mesmo retorno. Cancelar, reduzir o
+escopo ou trocar o destino também exige decisão expressa do mantenedor. Silêncio
+não é anuência: sem decisão registrada, a tarefa continua aberta e em execução.
+
+**Quem faz valer:** `ci/fila.py` recusa eventos de adiamento; `ci/fila.py validar`
+reprova qualquer arquivo que tente criá-los; a prestação de contas exige que uma
+tarefa incompleta diga o que falta, quem destrava e a próxima ação.
+
 **Quem faz valer:** julgamento.
 
 ## Plano na abertura, contas no fecho
