@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-025-ci-direcionar-conteudo-do-mantenedor-para-o-site",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: direcionar conteúdo do mantenedor para o site",
+  detalhe: "Regra operacional que impede trocar publicação de conteúdo por arquivo no GitHub e preserva no repositório apenas artefatos necessários ao funcionamento.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1910. Validação local: árvore 1a250611c879a387dc6afbbf60c91f5764c1c777; commit a169108294220fe06dc2facd2b0b3927413fea3c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-616",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
