@@ -188,16 +188,19 @@ def _rodar(
     if ambiente is None:
         ambiente = _ambiente(raiz.parent, raiz)
     executavel = raiz.parent / "binarios-de-mentira"
+    bash = _bash()
+    comando = [
+        bash,
+        "-c",
+        'PATH="$1:$PATH"; export PATH; shift; exec "$@"',
+        "teste-appmax",
+        str(executavel),
+        bash,
+        str(SCRIPT),
+        *args,
+    ]
     resultado = subprocess.run(
-        [
-            _bash(),
-            "-c",
-            'PATH="$1:$PATH"; export PATH; shift; exec "$@"',
-            "teste-appmax",
-            str(executavel),
-            str(SCRIPT),
-            *args,
-        ],
+        comando,
         input=digitado.encode("utf-8"),
         capture_output=True,
         env=ambiente,
