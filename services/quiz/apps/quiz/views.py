@@ -245,6 +245,7 @@ def formulario(request, slug):
                     "quiz_slug": quiz.slug,
                     "result_key": submissao.result_key,
                     "score": submissao.score,
+                    "version_key": submissao.version.key,
                     "lead": lead,
                     "utm": submissao.utm,
                 },
