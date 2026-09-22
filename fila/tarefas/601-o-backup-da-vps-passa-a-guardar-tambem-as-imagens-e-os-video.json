@@ -1,0 +1,15 @@
+{
+  "arquivo": "601-o-backup-da-vps-passa-a-guardar-tambem-as-imagens-e-os-video",
+  "id": "TAR-601",
+  "titulo": "O backup da VPS passa a guardar também as imagens e os vídeos dos documentos",
+  "toca": ["infra"],
+  "depende_de": ["TAR-597"],
+  "cria": [],
+  "move": ["restricao-da-semana"],
+  "evidencia_exigida": "Na VPS, o diretório /opt/plataforma/admin-midia entra na rotina de backup com restauração de prova (um arquivo de teste volta). O passo de criar o diretório e ADMIN_MIDIA_RAIZ em env/admin.env só depois do pouso do PR #1865.",
+  "despacho": "Depois do pouso do PR 1865, os arquivos de imagem e video dos documentos moram em /opt/plataforma/admin-midia, fora do banco. Inclua esse diretorio na rotina de backup da VPS. A prova e um arquivo de teste que volta na restauracao. O diretorio e ADMIN_MIDIA_RAIZ em env/admin.env so existem depois daquele pouso. Nao misture com o codigo do editor. Celula infra. Depende de TAR-597.",
+  "origem": "lote documentos formato texto/pagina, sessão Cursor 21/09/2026",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}
