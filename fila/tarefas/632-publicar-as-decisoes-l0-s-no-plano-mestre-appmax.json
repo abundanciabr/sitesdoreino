@@ -1,0 +1,19 @@
+{
+  "arquivo": "632-publicar-as-decisoes-l0-s-no-plano-mestre-appmax",
+  "id": "TAR-632",
+  "titulo": "Publicar as decisões L0-S no plano mestre Appmax",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "O arquivo docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md contém os quatro valores L0-S e o PR passa nas muralhas e no portão de travessões.",
+  "despacho": "Atualize somente docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md com as decisões L0-S sustentadas pelos registros TAR-553, TAR-556 e §5.3. Valide travessões e muralhas. Publique PR próprio com a prova real.",
+  "origem": "Correção append-only da TAR-630 por comando do mantenedor em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
