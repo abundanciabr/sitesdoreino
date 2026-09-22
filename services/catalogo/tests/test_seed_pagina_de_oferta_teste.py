@@ -96,17 +96,108 @@ def test_repetir_o_seed_nao_cria_ou_sobrescreve_pagina_publicada(oferta_de_teste
     assert PageVersion.objects.get(pk=original.pk).secoes == original.secoes
 
 
-def test_oferta_fora_do_perfil_de_teste_nao_cria_dados():
+def test_site_inativo_nao_recebe_seed(oferta_de_teste):
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:132
+    site, _ = oferta_de_teste
+    site.active = False
+    site.save(update_fields=["active"])
+
+    assert migracao().site_ativo(site) is False
+    semear()
+
+    assert not Page.objects.filter(site=site, slug="oferta").exists()
+    assert not PageDraft.objects.exists()
+    assert not PageVersion.objects.exists()
+
+
+def test_site_sem_oferta_padrao_nao_recebe_seed(oferta_de_teste):
     # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:136
+    site, _ = oferta_de_teste
+    site.default_offer_slug = ""
+    site.save(update_fields=["default_offer_slug"])
+
+    assert migracao().site_tem_oferta_padrao(site) is False
+    semear()
+
+    assert not Page.objects.filter(site=site, slug="oferta").exists()
+    assert not PageDraft.objects.exists()
+    assert not PageVersion.objects.exists()
+
+
+def oferta_ficticia(site, *, slug, nome, preco):
+    produto = Product.objects.create(
+        slug=f"produto-{slug}", name=nome, price_cents=preco
+    )
+    return Offer.objects.create(
+        site=site, slug=slug, product=produto, price_cents=preco
+    )
+
+
+def test_nome_de_produto_diferente_nao_recebe_seed():
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:148
     site = Site.objects.create(
         host="meshcraft.top",
         name="Meshcraft",
         active=True,
-        default_offer_slug="curso-real",
+        default_offer_slug="curso-de-teste",
     )
-    produto = Product.objects.create(slug="curso-real", name="Curso", price_cents=19900)
-    Offer.objects.create(
-        site=site, slug="curso-real", product=produto, price_cents=19900
+    oferta = oferta_ficticia(site, slug="curso-de-teste", nome="Outro curso", preco=990)
+
+    assert migracao().oferta_tem_produto_de_teste(oferta) is False
+    semear()
+
+    assert not Page.objects.filter(site=site, slug="oferta").exists()
+    assert not PageDraft.objects.exists()
+    assert not PageVersion.objects.exists()
+
+
+def test_preco_de_oferta_diferente_nao_recebe_seed():
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:152
+    site = Site.objects.create(
+        host="meshcraft.top",
+        name="Meshcraft",
+        active=True,
+        default_offer_slug="curso-de-teste",
+    )
+    oferta = oferta_ficticia(
+        site, slug="curso-de-teste", nome="Curso de Teste", preco=19900
+    )
+
+    assert migracao().oferta_tem_preco_de_teste(oferta) is False
+    semear()
+
+    assert not Page.objects.filter(site=site, slug="oferta").exists()
+    assert not PageDraft.objects.exists()
+    assert not PageVersion.objects.exists()
+
+
+def test_oferta_fora_do_padrao_nao_recebe_seed():
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:144
+    site = Site.objects.create(
+        host="meshcraft.top",
+        name="Meshcraft",
+        active=True,
+        default_offer_slug="outro-slug",
+    )
+    oferta = oferta_ficticia(
+        site, slug="curso-de-teste", nome="Curso de Teste", preco=990
+    )
+
+    assert migracao().oferta_tem_slug_padrao(oferta, site) is False
+    semear()
+
+    assert not Page.objects.filter(site=site, slug="oferta").exists()
+    assert not PageDraft.objects.exists()
+    assert not PageVersion.objects.exists()
+
+
+def test_oferta_ausente_nao_cria_dados():
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:140
+    site = Site.objects.create(
+        host="meshcraft.top",
+        name="Meshcraft",
+        active=True,
+        default_offer_slug="curso-de-teste",
     )
 
     assert migracao().oferta_pode_receber_seed(None) is False
@@ -118,8 +209,6 @@ def test_oferta_fora_do_perfil_de_teste_nao_cria_dados():
 
 
 def test_site_ausente_nao_cria_dados():
-    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:132
-    assert migracao().site_pode_receber_seed(None) is False
     semear()
 
     assert not Page.objects.exists()
@@ -128,7 +217,7 @@ def test_site_ausente_nao_cria_dados():
 
 
 def test_pagina_preexistente_nao_e_tocada(oferta_de_teste):
-    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:140
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:156
     site, oferta = oferta_de_teste
     pagina = Page.objects.create(site=site, slug="oferta", offer=oferta)
     rascunho = PageDraft.objects.create(
@@ -145,7 +234,7 @@ def test_pagina_preexistente_nao_e_tocada(oferta_de_teste):
 
 
 def test_falha_no_rascunho_reverte_as_linhas_ja_criadas(oferta_de_teste, monkeypatch):
-    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:144
+    # guarda: services/catalogo/apps/paginas/migrations/0002_semear_pagina_de_oferta_teste.py:170
     site, _ = oferta_de_teste
     apps_anteriores = (
         MigrationLoader(connection).project_state([("paginas", "0001_initial")]).apps

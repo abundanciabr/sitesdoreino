@@ -128,12 +128,28 @@ def secoes_ficticias(slug_da_oferta):
     ]
 
 
-def site_pode_receber_seed(site):
-    return bool(site is not None and site.active and site.default_offer_slug)
+def site_ativo(site):
+    return bool(site is not None and site.active)
+
+
+def site_tem_oferta_padrao(site):
+    return bool(site is not None and site.default_offer_slug)
 
 
 def oferta_pode_receber_seed(oferta):
     return oferta is not None
+
+
+def oferta_tem_slug_padrao(oferta, site):
+    return oferta.slug == site.default_offer_slug
+
+
+def oferta_tem_produto_de_teste(oferta):
+    return oferta.product.name == NOME_DO_PRODUTO_DE_TESTE
+
+
+def oferta_tem_preco_de_teste(oferta):
+    return oferta.price_cents == PRECO_DO_TESTE_EM_CENTAVOS
 
 
 def pagina_ainda_nao_existe(pagina_existe):
@@ -162,22 +178,19 @@ def semear_pagina_de_oferta_teste(apps, schema_editor):
     PageVersion = apps.get_model("paginas", "PageVersion")
     banco = schema_editor.connection.alias if schema_editor else "default"
 
-    site = Site.objects.using(banco).filter(host=HOSTE, active=True).first()
-    if not site_pode_receber_seed(site):
+    site = Site.objects.using(banco).filter(host=HOSTE).first()
+    if not site_ativo(site) or not site_tem_oferta_padrao(site):
         return
 
-    oferta = (
-        Offer.objects.using(banco)
-        .select_related("product")
-        .filter(
-            site=site,
-            slug=site.default_offer_slug,
-            product__name=NOME_DO_PRODUTO_DE_TESTE,
-            price_cents=PRECO_DO_TESTE_EM_CENTAVOS,
-        )
-        .first()
+    ofertas = Offer.objects.using(banco).filter(site=site).select_related("product")
+    oferta = next(
+        (item for item in ofertas if oferta_tem_slug_padrao(item, site)), None
     )
     if not oferta_pode_receber_seed(oferta):
+        return
+    if not oferta_tem_produto_de_teste(oferta):
+        return
+    if not oferta_tem_preco_de_teste(oferta):
         return
 
     pagina_existe = (
