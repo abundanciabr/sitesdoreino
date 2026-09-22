@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-233442-TAR-651-explicada",
+  "tarefa": "TAR-651",
+  "evento": "explicada",
+  "quando": "2026-09-22T23:34:42+00:00",
+  "quem": "Desfecho PUBLICADO de ci/esperar.py --entrega 1961",
+  "o_que_e": "A correção final já está publicada, mas o livro ainda mostra só o recibo anterior ao deploy.",
+  "o_que_muda": "O mantenedor vê o desfecho comprovado da retirada dos papéis fixos.",
+  "exemplo": "O livro liga o PR 1961 ao run 35797633999 com quatro jobs verdes.",
+  "importancia": 80
+}

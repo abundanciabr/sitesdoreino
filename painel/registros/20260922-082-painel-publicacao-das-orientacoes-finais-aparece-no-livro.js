@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-082-painel-publicacao-das-orientacoes-finais-aparece-no-livro",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "painel: publicação das orientações finais aparece no livro",
+  detalhe: "As três orientações finais sem papéis fixos foram publicadas. Este registro liga o recibo do PR 1961 ao SHA integrado e ao run com quatro jobs verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1969. Validação local: árvore 1726d59660a9d9b8b19cf1a966d001c69ef0545e; commit 4854ea332ddd3689b35075a3f7f4820014eecc50; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-651",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
