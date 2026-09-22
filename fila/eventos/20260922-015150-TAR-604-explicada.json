@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-015150-TAR-604-explicada",
+  "tarefa": "TAR-604",
+  "evento": "explicada",
+  "quando": "2026-09-22T01:51:50+00:00",
+  "quem": "Mandato do mantenedor nesta sessão em 21/09/2026.",
+  "o_que_e": "As fichas autorizadas ainda seguem a regra geral de permanência da fila.",
+  "o_que_muda": "A remoção autorizada passa a ter cópia conferível e decisão limitada antes de apagar os caminhos canônicos.",
+  "exemplo": "Antes de retirar um conjunto de pastas de arquivo, a cópia lacrada fica guardada com a impressão digital conferível.",
+  "importancia": 75
+}
