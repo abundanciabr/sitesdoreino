@@ -1,0 +1,19 @@
+{
+  "arquivo": "640-estornos-recebidos-antes-da-aprovacao-mantem-a-matricula-sus",
+  "id": "TAR-640",
+  "titulo": "Estornos recebidos antes da aprovação mantêm a matrícula suspensa",
+  "toca": [
+    "alunos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Prova vermelha antes da correção e verde depois para ordem estorno-aprovação, aprovação-estorno, reentregas, concorrência real e isolamento de sites; suíte completa aprovada e compatibilidade preservada.",
+  "despacho": "Responsabilidade: célula alunos. Corrigir apenas o domínio e a API em `services/alunos/apps/matriculas/handlers.py`, `services.py`, `models.py`, uma migração aditiva se necessária e testes focais da matrícula. O estorno ou contestação deve suspender imediatamente; se chegar antes da aprovação, persistir estado idempotente por site, provedor e referência. A aprovação tardia cria matrícula suspensa. Somente ação humana explícita reabre; reentrega de estorno não desfaz essa reabertura. Preservar isolamento entre sites, concorrência real e compatibilidade dos consumidores v1/v2. Provar ordem inversa, ordem estorno→aprovação, reentregas, concorrência e isolamento de sites; rodar suíte completa de alunos e guardas oficiais antes e depois. Não alterar frontend, worker Appmax, contratos ou outras células; não apagar dados nem rodar migração em produção. Um PR pela cerimônia make pr, sem editar o clone principal.",
+  "origem": "Mandato do mantenedor na sessão de 22/09/2026: executar a Fase 1 Appmax e aplicar L0-S a efeitos de estorno sem quebrar consumidores.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
