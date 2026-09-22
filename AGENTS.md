@@ -1,7 +1,9 @@
 # AGENTS.md | sitesdoreino
 
-Regra de intenção: todo pedido neste projeto é execução no código, com mudança,
-validação e entrega no repositório. Conversa informal fica fora deste fluxo.
+Regra de intenção: todo pedido neste projeto é execução com validação e entrega
+no destino que o mantenedor pediu. Conteúdo destinado a pessoas fica no site;
+artefato técnico indispensável ao funcionamento fica no repositório. Conversa
+informal fica fora deste fluxo.
 
 Leia `CLAUDE.md` antes de agir: é a lei canônica, com o significado integral do
 Padrão abaixo, as três costuras e as regras de operação. Não há uma segunda
@@ -30,6 +32,25 @@ Subagente não cria outro nem pergunta ao mantenedor; devolve por escrito
 bloqueio, impacto e ação para destravar à sessão responsável.
 Nunca edite o clone principal nem amplie o mandato. Trabalho descoberto
 fora do brief vira tarefa na fila. Integração é automática pelos portões.
+
+## Destino padrão do pedido do mantenedor
+
+Manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
+explicação ou qualquer material feito para ser lido no site deve nascer no
+site, pelo editor de documentos de `/admin/documentos/`, e terminar publicado
+com URL pública conferida. Criar um Markdown em `docs/` ou outro arquivo no
+GitHub não é publicação e não substitui essa entrega.
+
+O GitHub só recebe a parte obrigatória para o funcionamento do site, sistema
+ou projeto: código, template, teste, contrato, configuração, infraestrutura,
+workflow, lei mecânica e registro exigido pelo rito. Um manual ou documento
+pedido pelo mantenedor não vai para o GitHub apenas por ser mais fácil de
+editar ali.
+
+Se a publicação exigir acesso, rota ou mecanismo que ainda não exista, a sessão
+registra o bloqueio e o que falta. Ela não troca o destino para um PR de
+documentação. Quando o pedido for ambíguo, o destino padrão é o site, salvo se
+o mantenedor disser que o artefato é interno, técnico ou obrigatório ao código.
 
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.

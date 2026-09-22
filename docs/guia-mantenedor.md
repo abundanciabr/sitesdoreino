@@ -38,6 +38,14 @@ e roteiros usam o editor /admin/documentos/. Para IA externa, /mapa-ia/planos/;
 artefato privado da conversa não substitui publicação. Prévia e resposta
 curta continuam permitidas.
 
+Regra de destino: quando o mantenedor pedir manual, documento, página, guia,
+roteiro, texto ou conteúdo, a entrega é criar e publicar no site pelo editor
+de documentos. Um arquivo em `docs/` no GitHub é apenas fonte técnica e não
+encerra o pedido. O GitHub só recebe código, testes, templates, contratos,
+configuração, infraestrutura, workflows, leis mecânicas ou registros que o
+projeto exige para funcionar. Se o site não puder ser publicado, informe o
+bloqueio e não apresente um PR de documentação como se fosse a entrega.
+
 Documento enviado pelo mantenedor é ordem de serviço, não conteúdo para
 arquivar. Inventarie o que precisa existir, compare código e site, abra
 lacunas na fila pelo RITOS §5 citando o documento e comece o despacho na

@@ -228,6 +228,22 @@ Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
 Documento recebido é ordem de serviço: inventarie, compare, abra fila e
 execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
+### Regra de destino do conteúdo
+
+Pedido de manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
+explicação ou material para leitura do público tem como destino padrão o site.
+Crie, salve e publique pelo editor de `/admin/documentos/`, conferindo a URL
+que uma pessoa verá. Arquivo Markdown no repositório não conta como publicação
+e não é substituto aceito.
+
+O GitHub fica reservado ao que é necessário para o funcionamento do site,
+sistema ou projeto: código, templates, testes, contratos, configurações,
+infraestrutura, workflows, leis mecânicas e registros exigidos pelos ritos.
+Documento técnico interno só vai para o repositório quando o mantenedor pedir
+esse destino ou quando a lei do projeto exigir o arquivo como fonte de
+execução. Se o caminho de publicação não puder ser executado, registre o
+bloqueio em vez de mudar silenciosamente a entrega para o GitHub.
+
 **Quem faz valer:** julgamento.
 
 ## Como trabalhar com o mantenedor
