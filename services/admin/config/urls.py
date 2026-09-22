@@ -36,7 +36,7 @@ from apps.core.editor_de_documentos import (
     documento_salvar,
     documento_versoes,
 )
-from apps.core.midia import midia_servir
+from apps.core.midia import arquivo_da_semente_servir, midia_servir
 from apps.core.livro import (
     livro,
     livro_baixar_tudo,
@@ -354,6 +354,15 @@ urlpatterns = [
         r"^docs/(?P<nome>[a-z0-9-]+)/moldura$",
         doc_publico_moldura,
         name="doc_publico_moldura",
+    ),
+    # ARQUIVO DA SEMENTE: imagem ou vídeo versionado ao lado do `.md`.
+    # Quarta rota sob `/docs/`, com a mesma lei das outras três: confere
+    # `no_ar` e devolve 404 (nunca 403) para o privado. O guarda
+    # `test_o_prefixo_publico_tem_so_as_rotas_de_leitura` mede a lista.
+    re_path(
+        r"^docs/(?P<nome>[a-z0-9-]+)/arquivo/(?P<ficheiro>[a-z0-9-]+\.[a-z0-9]+)$",
+        arquivo_da_semente_servir,
+        name="arquivo_da_semente",
     ),
     path("documentos/", documentos_admin, name="documentos_admin"),
     # AS QUATRO ROTAS DO EDITOR (`DECISAO-o-editor-de-documentos.md`,

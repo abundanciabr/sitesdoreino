@@ -125,7 +125,12 @@ def test_as_rotas_do_editor_nao_escaparam_para_o_prefixo_publico():
         for p in get_resolver().url_patterns
         if str(p.pattern).lstrip("^").startswith("docs/")
     }
-    assert sob_docs == {"docs_publicos", "doc_publico", "doc_publico_moldura"}
+    assert sob_docs == {
+        "docs_publicos",
+        "doc_publico",
+        "doc_publico_moldura",
+        "arquivo_da_semente",
+    }
 
 
 # --------------------------------- 2. a recusa do travessão, sem comer nada
@@ -423,7 +428,7 @@ def test_o_editor_nao_promete_markdown_que_o_site_nao_renderiza():
     assert "figura:recepcionista" in fonte
     assert "Imagem por endereço da internet ainda não entra" in fonte
     assert ">!" in fonte or "&gt;!" in fonte
-    assert "/midia/" in fonte
+    assert "arquivo:nome" in fonte
     saida = documentos.para_html("| a | b |\n| --- | --- |\n| c | d |")
     assert "<table>" in saida
     assert documentos.para_html("| a | b |").startswith("<p>")

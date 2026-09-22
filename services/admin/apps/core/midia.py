@@ -35,6 +35,7 @@ uma coisa a filtrar e passa a ser uma coisa que não tem por onde entrar.
 from __future__ import annotations
 
 import hashlib
+import mimetypes
 import re
 import secrets
 import shutil
@@ -66,11 +67,11 @@ PNG = "image/png"
 JPEG = "image/jpeg"
 WEBP = "image/webp"
 GIF = "image/gif"
-MP4 = "video/mp4"
-SVG = "image/svg+xml"
-WEBM = "video/webm"
-QUICKTIME = "video/quicktime"
 AVIF = "image/avif"
+MP4 = "video/mp4"
+WEBM = "video/webm"
+SVG = "image/svg+xml"
+QUICKTIME = "video/quicktime"
 HEIC = "image/heic"
 OGG = "audio/ogg"
 
@@ -79,19 +80,17 @@ EXTENSOES = {
     JPEG: "jpg",
     WEBP: "webp",
     GIF: "gif",
-    MP4: "mp4",
-    SVG: "svg",
-    WEBM: "webm",
-    QUICKTIME: "mov",
     AVIF: "avif",
+    MP4: "mp4",
+    WEBM: "webm",
+    SVG: "svg",
+    QUICKTIME: "mov",
     HEIC: "heic",
     OGG: "ogg",
 }
 
 #: O que a tela diz que aceita. Sai daqui para não haver duas listas.
-ACEITOS_EM_PORTUGUES = (
-    "PNG, JPEG, WebP, GIF, AVIF, HEIC, SVG, MP4, WebM, MOV e OGG"
-)
+ACEITOS_EM_PORTUGUES = "PNG, JPEG, WebP, GIF, AVIF, HEIC, SVG, MP4, WebM, MOV e OGG"
 
 #: Endereços `/midia/...` com estas extensões viram `<video>` no renderizador.
 EXTENSOES_DE_VIDEO = frozenset({"mp4", "webm", "mov"})
@@ -103,9 +102,7 @@ EMAIL_DA_SEMENTE = "semente@repositorio"
 
 #: Uma linha de imagem ou vídeo na semente: `![legenda](anexo:apelido)`.
 #: O arquivo mora em `documentos/anexos/<nome-do-doc>/<apelido>.<ext>`.
-_REFERENCIA_ANEXO = re.compile(
-    r"!\[([^\]]*)\]\(anexo:([a-z0-9-]+)\)"
-)
+_REFERENCIA_ANEXO = re.compile(r"!\[([^\]]*)\]\(anexo:([a-z0-9-]+)\)")
 
 _APELIDO = re.compile(r"[^a-z0-9]+")
 _ABERTURA_DE_SVG = re.compile(rb"<svg[\s>/]", re.IGNORECASE)
@@ -127,7 +124,7 @@ def tipo_do_conteudo(cabeca: bytes) -> str | None:
     # isso que os dois olham a partir do byte 4 em vez do byte 0.
     if cabeca[:4] == b"RIFF" and cabeca[8:12] == b"WEBP":
         return WEBP
-    if cabeca.startswith(b"\x1aE\xdf\xa3"):
+    if cabeca.startswith(b"\x1a\x45\xdf\xa3") and b"webm" in cabeca[:1024].lower():
         return WEBM
     if cabeca.startswith(b"OggS"):
         return OGG
@@ -393,8 +390,50 @@ def midia_servir(request, sorteio, nome):
     if not caminho.is_file():
         raise Http404("arquivo não encontrado")
 
-    resposta = FileResponse(caminho.open("rb"), content_type=midia.tipo)
+    return resposta_do_arquivo(caminho, midia.tipo)
+
+
+def resposta_do_arquivo(caminho: Path, tipo: str) -> FileResponse:
+    """Devolve o arquivo com o tipo que NÓS lemos, nunca o que o nome disse."""
+    resposta = FileResponse(
+        caminho.open("rb"),
+        content_type=tipo,
+        as_attachment=tipo == "application/octet-stream",
+        filename=caminho.name,
+    )
     resposta["X-Content-Type-Options"] = "nosniff"
-    if midia.tipo == SVG:
+    if tipo == SVG:
         resposta["Content-Security-Policy"] = _CSP_DO_SVG
     return resposta
+
+
+@require_GET
+def arquivo_da_semente_servir(request, nome, ficheiro):
+    """Devolve o arquivo versionado junto do documento, ou 404.
+
+    O disco não é montado a partir da URL: o nome do documento e o do
+    arquivo passam pelo mesmo achado que o renderizador usa, e o tipo sai
+    dos bytes. Documento privado, arquivado ou inexistente responde 404,
+    nunca 403: a existência do arquivo não se confirma.
+    """
+    from .documentos import caminho_do_arquivo, ler
+
+    documento = ler(nome)
+    if documento is None:
+        raise Http404("arquivo não encontrado")
+    if not getattr(request, "admin", None) and not documento.no_ar:
+        raise Http404("arquivo não encontrado")
+
+    caminho = caminho_do_arquivo(documento.nome, ficheiro)
+    if caminho is None:
+        raise Http404("arquivo não encontrado")
+    with caminho.open("rb") as origem:
+        tipo = tipo_do_conteudo(origem.read(1024))
+    if tipo is None:
+        sugerido, _ = mimetypes.guess_type(caminho.name)
+        tipo = (
+            sugerido
+            if sugerido and sugerido.split("/", 1)[0] in {"image", "video", "audio"}
+            else "application/octet-stream"
+        )
+    return resposta_do_arquivo(caminho, tipo)

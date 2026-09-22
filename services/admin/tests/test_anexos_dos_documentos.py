@@ -8,7 +8,7 @@ from apps.core import documentos, midia
 from apps.core.models import Documento, Midia
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 60
-WEBM = b"\x1aE\xdf\xa3" + b"\x00" * 60
+WEBM = b"\x1a\x45\xdf\xa3" + b"\x00" * 20 + b"webm" + b"\x00" * 40
 
 
 @pytest.fixture(autouse=True)

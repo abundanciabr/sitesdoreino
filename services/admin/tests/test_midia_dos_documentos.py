@@ -51,10 +51,10 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 60
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 60
 GIF = b"GIF89a" + b"\x00" * 60
 WEBP = b"RIFF" + b"\x00\x00\x00\x00" + b"WEBP" + b"\x00" * 60
+AVIF = b"\x00\x00\x00\x1cftypavif" + b"\x00" * 60
 MP4 = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 60
-WEBM = b"\x1aE\xdf\xa3" + b"\x00" * 60
+WEBM = b"\x1a\x45\xdf\xa3" + b"\x00" * 20 + b"webm" + b"\x00" * 40
 MOV = b"\x00\x00\x00\x14ftypqt  " + b"\x00" * 60
-AVIF = b"\x00\x00\x00\x18ftypavif" + b"\x00" * 60
 HEIC = b"\x00\x00\x00\x18ftypheic" + b"\x00" * 60
 OGG = b"OggS" + b"\x00" * 60
 SVG = (
@@ -158,7 +158,9 @@ def test_html_com_nome_de_png_e_recusado_e_nada_vai_para_o_disco(documento, sett
         (JPEG, "image/jpeg"),
         (GIF, "image/gif"),
         (WEBP, "image/webp"),
+        (AVIF, "image/avif"),
         (MP4, "video/mp4"),
+        (WEBM, "video/webm"),
         (SVG, "image/svg+xml"),
         (WEBM, "video/webm"),
         (MOV, "video/quicktime"),
