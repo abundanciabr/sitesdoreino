@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-214740-TAR-636-explicada",
+  "tarefa": "TAR-636",
+  "evento": "explicada",
+  "quando": "2026-09-22T21:47:40+00:00",
+  "quem": "Ordem do mantenedor para iniciar a Fase 1 Appmax em 22/09/2026, com cancelamentos explícitos registrados na fila",
+  "o_que_e": "Ajustar uma dependência que deixou a autenticação Appmax presa a uma tarefa cancelada.",
+  "o_que_muda": "O cliente Appmax pode começar após as garantias financeiras já concluídas, enquanto os trabalhos ainda necessários continuam visíveis.",
+  "exemplo": "Uma etapa de consulta volta a andar quando depende da base pronta, sem ressuscitar uma etapa que o mantenedor encerrou.",
+  "importancia": 95
+}
