@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260922-224630-TAR-643-devolvida",
+  "tarefa": "TAR-643",
+  "evento": "devolvida",
+  "quando": "2026-09-22T22:46:30+00:00",
+  "quem": "agent/infra/appmax-sandbox-credenciais",
+  "detalhe": "Transferida para abertura corretiva vinculada à mesma entrega em ramo novo após a tarefa inicial da sessão ter sido identificada como encerrada indevidamente."
+}

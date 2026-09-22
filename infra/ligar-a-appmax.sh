@@ -4,8 +4,8 @@
 # Guarda no env da célula pagamentos QUEM é o nosso aplicativo na Appmax e o
 # par de credenciais dele e prepara o cadastro sandbox para a rota de instalação.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS):
-#   bash /tmp/appmax.sh                 prepara instalação sandbox
+# COMO O MANTENEDOR RODA (na VPS, depois da integração deste roteiro):
+#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/ligar-a-appmax.sh -o /tmp/appmax.sh && bash /tmp/appmax.sh
 #   bash /tmp/appmax.sh --oauth-merchant valida e grava o par MERCHANT sandbox
 #
 # ELE PERGUNTA AS CREDENCIAIS, com digitação invisível, e essa é a decisão que
