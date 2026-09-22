@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-225603-TAR-643-submetida",
+  "tarefa": "TAR-643",
+  "evento": "submetida",
+  "quando": "2026-09-22T22:56:03+00:00",
+  "quem": "agent/infra/appmax-sandbox-validacao-corrigida",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1963",
+  "revisao": "49515b71e7e735da339d7be6bb18a75fe7f79403",
+  "arvore": "184f5656bb08960db743eb1cd703d0a0c45cca36"
+}
