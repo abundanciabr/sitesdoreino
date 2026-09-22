@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-015316-TAR-604-submetida",
+  "tarefa": "TAR-604",
+  "evento": "submetida",
+  "quando": "2026-09-22T01:53:16+00:00",
+  "quem": "agent/fila/eliminar-tars-autorizadas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1880",
+  "revisao": "7309d65f55dd4dc16349893aef02eb922c5bedc6",
+  "arvore": "9af6425b06148a09afec42af40916de6ec98a1f4"
+}

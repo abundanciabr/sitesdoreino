@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-015321-TAR-604-concluida",
+  "tarefa": "TAR-604",
+  "evento": "concluida",
+  "quando": "2026-09-22T01:53:21+00:00",
+  "quem": "agent/fila/eliminar-tars-autorizadas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1880",
+  "verificado_em": "2026-09-22"
+}
