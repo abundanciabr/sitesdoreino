@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-221351-TAR-641-bloqueada",
+  "tarefa": "TAR-641",
+  "evento": "bloqueada",
+  "quando": "2026-09-22T22:13:51+00:00",
+  "quem": "agente-tecnico",
+  "detalhe": "A consulta oficial GET /v1/orders/{order_id} documenta total pago, amounts e refunded_at, mas não o valor efetivamente devolvido; sem esse valor e identidade suficiente não se pode produzir pagamento.estornado.v2 nem amount_cents. Depois da instalação merchant no sandbox, fazer compra e estorno de teste, consultar a API autenticada e guardar resposta sanitizada. Se o GET não trouxer o valor, localizar e testar endpoint oficial autenticado. Webhook não prova dinheiro.",
+  "espera": "fila"
+}
