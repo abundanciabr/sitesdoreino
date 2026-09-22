@@ -21,12 +21,13 @@ dependências da fila calculada.
 ## Backup verificável
 
 O arquivo `fila/backups/20260922-fichas-e-eventos-tars-autorizadas.zip` guarda
-as 25 fichas e os 27 eventos canônicos, produzidos da revisão
-`441d1d8030f89a7aa2da4c8f643660ddb4706804` antes da remoção.
+as 25 fichas e os 52 eventos canônicos, produzidos da revisão
+`db55622c5ddc6b711a9a34fb3496d176644560dd` antes da remoção. Os 25 eventos
+de cancelamento que entraram nessa revisão também estão incluídos.
 
 SHA-256:
 
-`22eabed833f6b14946802abed98634d098a90ea55ddc33e7206971b6236249e7`
+`24f0a45d65ee780d4924545664e31258eee9cf9ae55da90fa9e6c91dfca38bd6`
 
 Confira o arquivo com:
 
@@ -36,7 +37,7 @@ tar -tf fila/backups/20260922-fichas-e-eventos-tars-autorizadas.zip
 ```
 
 O primeiro comando precisa devolver o SHA-256 acima. O segundo precisa listar
-52 arquivos de conteúdo, todos sob `fila-remocao-autorizada-20260922/fila/`.
+77 arquivos de conteúdo, todos sob `fila-remocao-autorizada-20260922/fila/`.
 
 ## Limite e reversão
 
