@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-111000-TAR-611-concluida",
+  "tarefa": "TAR-611",
+  "evento": "concluida",
+  "quando": "2026-09-22T11:10:00+00:00",
+  "quem": "agent/ci/remover-papeis-fichas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1894",
+  "verificado_em": "2026-09-22"
+}

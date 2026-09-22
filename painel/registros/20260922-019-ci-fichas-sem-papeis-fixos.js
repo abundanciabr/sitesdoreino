@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-019-ci-fichas-sem-papeis-fixos",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: fichas sem papéis fixos",
+  detalhe: "Fichas sem papéis fixos. Modelos e permissões preservados; 14 arquivos, com validação e prova de origem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1894. Validação local: árvore de9f99e0b942de3c77f89248d83ae8d24bb3c6b3; commit e0b768f5b6b58147677a96f6f6414823fff69049; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-611",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

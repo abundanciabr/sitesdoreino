@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-110957-TAR-611-submetida",
+  "tarefa": "TAR-611",
+  "evento": "submetida",
+  "quando": "2026-09-22T11:09:57+00:00",
+  "quem": "agent/ci/remover-papeis-fichas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1894",
+  "revisao": "e0b768f5b6b58147677a96f6f6414823fff69049",
+  "arvore": "de9f99e0b942de3c77f89248d83ae8d24bb3c6b3"
+}
