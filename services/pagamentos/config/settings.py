@@ -84,6 +84,14 @@ MP_ACCESS_TOKEN = env("MP_ACCESS_TOKEN")
 # [INV-P10] Segredo do HMAC de x-signature — nunca tem default, fail-hard.
 MP_WEBHOOK_SECRET = env("MP_WEBHOOK_SECRET")
 
+# Appmax permanece inativa sem credenciais; Pix não depende desta integração.
+APPMAX_MERCHANT_CLIENT_ID = os.environ.get("APPMAX_MERCHANT_CLIENT_ID", "")
+APPMAX_MERCHANT_CLIENT_SECRET = os.environ.get("APPMAX_MERCHANT_CLIENT_SECRET", "")
+APPMAX_AUTH_URL = os.environ.get(
+    "APPMAX_AUTH_URL", "https://auth.sandboxappmax.com.br/oauth2/token"
+)
+APPMAX_API_URL = os.environ.get("APPMAX_API_URL", "https://api.sandboxappmax.com.br")
+
 # [RECEITA:R3 v1] Redis Streams — destino do relay da outbox (pagamentos.core.
 # models.relay_outbox). Já provisionado em .github/workflows/ci-celula.yml e em
 # infra/env/pagamentos.env.exemplo por convenção da plataforma.
