@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-017-ci-instrucoes-sem-papeis-fixos",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: instruções sem papéis fixos",
+  detalhe: "Leis e fichas seguem o pedido sem papéis por fornecedor. Histórico preservado e testes verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1892. Validação local: árvore 7b89a0b06afd61b018d5061ef74a187bd1577550; commit 34d26fc5a3d9161234b1f751486ab885419dbc32; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-610",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

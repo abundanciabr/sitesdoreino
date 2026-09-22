@@ -1,3 +1,16 @@
+# Histórico revogado: a tríade de IAs
+
+**Sem efeito operacional desde 20/09/2026.** O mantenedor dissolveu os
+papéis fixos e o rádio. Fonte: registro
+`painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js`,
+com evidência no PR #1834. Esta decisão e suas emendas não autorizam nem
+impõem papéis, canais, revisão ou divisão de trabalho.
+
+As leis gerais continuam em `CLAUDE.md`, `CONSTITUICAO.md` e `RITOS.md`.
+O texto abaixo é preservado somente como histórico do protocolo revogado.
+
+## Histórico do protocolo revogado
+
 # DECISÃO: a tríade de IAs, papéis fixos em vez de disputa
 
 **Decidida pelo mantenedor em 12/09/2026.** O pedido dele, com as palavras dele:
