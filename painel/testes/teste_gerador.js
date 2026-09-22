@@ -593,7 +593,9 @@ var contextoFicha = {
 require("vm").runInNewContext(fonteFicha, contextoFicha);
 var fichaCompleta = contextoFicha.fichaDaDecisao({
   porque_so_voce: "Só você pode autorizar essa despesa.",
-  proximo_passo: "Aprovar ou recusar a contratação.",
+  proximo_passo: "A contratação cria uma despesa.",
+  acao_exata: "Responda AUTORIZO ou RECUSO nesta conversa.",
+  resposta_esperada: "A resposta será confirmada e o trabalho seguirá ou será encerrado.",
   se_eu_nao_decidir: "O serviço atual continua ativo.",
   recomendacao: "Manter o serviço atual.", reversivel: false, impacto: "alto"
 });
@@ -602,23 +604,30 @@ var linhasFicha = fichaCompleta.filhos.map(function (linha) {
 });
 caso("a ficha mostra a justificativa exclusiva do dono",
   linhasFicha.indexOf("Por que só você: Só você pode autorizar essa despesa.") !== -1);
-caso("a ficha mostra o próximo passo concreto",
-  linhasFicha.indexOf("Próximo passo: Aprovar ou recusar a contratação.") !== -1);
+caso("a ficha mostra a ação exata",
+  linhasFicha.indexOf("O que você precisa fazer: Responda AUTORIZO ou RECUSO nesta conversa.") !== -1);
+caso("a ficha mostra como a resposta será reconhecida",
+  linhasFicha.indexOf("Como vou reconhecer: A resposta será confirmada e o trabalho seguirá ou será encerrado.") !== -1);
 var fontePrioridade = templateDecisao.slice(templateDecisao.indexOf("function detalhesDePrioridade(i)"),
   templateDecisao.indexOf("  function itemDePrioridade(i, posicao)"));
 require("vm").runInNewContext(fontePrioridade, contextoFicha);
 var detalhesPedido = contextoFicha.detalhesDePrioridade({especie: "pedido", registro: {
-  porque_so_voce: "Só você pode autorizar essa despesa.", proximo_passo: "Aprovar ou recusar."
+  porque_so_voce: "Só você pode autorizar essa despesa.",
+  acao_exata: "Responda AUTORIZO ou RECUSO.",
+  resposta_esperada: "A resposta será confirmada.",
+  proximo_passo: "A contratação aguarda decisão."
 }});
 caso("a aba Prioridades mostra a justificativa exclusiva do dono",
   detalhesPedido.some(function (linha) { return linha[0] === "Por que só você" && linha[1] === "Só você pode autorizar essa despesa."; }));
-caso("a aba Prioridades mostra o próximo passo concreto",
-  detalhesPedido.some(function (linha) { return linha[0] === "Próximo passo" && linha[1] === "Aprovar ou recusar."; }));
+caso("a aba Prioridades mostra a ação exata",
+  detalhesPedido.some(function (linha) { return linha[0] === "O que você precisa fazer" && linha[1] === "Responda AUTORIZO ou RECUSO."; }));
+caso("a aba Prioridades mostra como a resposta será reconhecida",
+  detalhesPedido.some(function (linha) { return linha[0] === "Como vou reconhecer" && linha[1] === "A resposta será confirmada."; }));
 var fichaAntiga = contextoFicha.fichaDaDecisao({});
 caso("pedido antigo informa a ausência da justificativa sem desaparecer",
-  fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não explica por que esta decisão depende só de você."; }));
-caso("pedido antigo informa a ausência de próximo passo sem desaparecer",
-  fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não registra um próximo passo claro."; }));
+  fichaAntiga.filhos.some(function (linha) { return linha.filhos && linha.filhos[1] && linha.filhos[1].texto === "O pedido antigo não explica por que esta decisão depende só de você."; }));
+caso("pedido antigo informa a ausência da ação exata sem desaparecer",
+  fichaAntiga.filhos.some(function (linha) { return linha.filhos && linha.filhos[1] && linha.filhos[1].texto === "Pedido antigo: procure na descrição o gesto que faltava."; }));
 
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");

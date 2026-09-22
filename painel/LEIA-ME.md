@@ -169,10 +169,12 @@
   vence_em_dias: null,                  // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
                                         // obrigatório em "compromisso": o prazo da promessa, número maior que zero
 
-  // DECISÃO: os seis campos são obrigatórios em pedidos NOVOS ao dono.
+  // DECISÃO: os oito campos são obrigatórios em pedidos NOVOS ao dono.
   // Registros antigos continuam imutáveis e visíveis até resposta explícita.
   porque_so_voce: null,                 // por que esta decisão só pode ser dele
-  proximo_passo: null,                  // ação concreta para ele aprovar, recusar ou executar
+  proximo_passo: null,                  // contexto da decisão, para ele saber o que está em jogo
+  acao_exata: null,                     // gesto literal: o que ele deve responder ou fazer agora
+  resposta_esperada: null,              // como o robô reconhecerá a autorização ou recusa e o que fará depois
   se_eu_nao_decidir: null,              // o que acontece se isto ficar parado — ou null
   recomendacao: null,                   // o que você sugere, e por quê — ou null
   reversivel: null,                     // true/false SEM aspas ("false" seria verdadeiro em JS) — ou null
@@ -222,10 +224,12 @@
 - **Pedido novo chega decidível:** `precisa_do_dono: true` cabe quando falta
   uma decisão exclusiva do mantenedor, como autorizar despesa, fornecer segredo,
   destruir dados, definir produto ou ampliar acesso. O título nomeia a decisão;
-  `porque_so_voce` explica a exclusividade, `proximo_passo` diz o gesto concreto,
-  `se_eu_nao_decidir` registra a consequência de esperar e `recomendacao` traz a
-  sugestão com motivo. `reversivel` é booleano e `impacto` é alto, medio ou baixo.
-  `ci/encerramento_alertas.py`, já executado na muralha, exige os seis campos
+  `porque_so_voce` explica a exclusividade, `proximo_passo` dá o contexto,
+  `acao_exata` traz o gesto literal, `resposta_esperada` diz como a resposta será
+  reconhecida, `se_eu_nao_decidir` registra a consequência de esperar e
+  `recomendacao` traz a sugestão com motivo. `reversivel` é booleano e `impacto`
+  é alto, medio ou baixo.
+  `ci/encerramento_alertas.py`, já executado na muralha, exige os oito campos
   apenas em IDs novos contra `BASE_REF`. Escrever uma data antiga não dispensa o portão.
   O julgamento de que só ele pode decidir continua sendo da maestro; texto
   preenchido não prova exclusividade. A máquina confere presença e tipos.

@@ -259,7 +259,7 @@
       // não é reduzir o ritmo: é fazer cada pedido chegar decidível, em vez de
       // chegar como uma pergunta que exige reconstruir o contexto inteiro.
       //
-      // Os quatro são OPCIONAIS de propósito. Torná-los obrigatórios reprovaria
+      // Os campos continuam OPCIONAIS nesta camada. Torná-los obrigatórios aqui reprovaria
       // todo pedido antigo e obrigaria a reescrever o passado — que é a única
       // coisa que este livro proíbe acima de tudo. Quem não os traz aparece na
       // tela dizendo "não sei", que é honesto e visível.
@@ -953,12 +953,10 @@
   // orçamento fixo, tem data marcada. É a frase que se escreveu aqui em 02/09
   // sobre os incidentes, e ela valia igual para a caixa.
   //
-  // O CORTE É DE TEXTO, NUNCA DE FATO, e aqui isso tem nome próprio: os quatro
-  // campos da decisão (`se_eu_nao_decidir`, `recomendacao`, `reversivel`,
-  // `impacto`) já viajam em `CAMPOS_DO_TITULO`, então o pedido cortado continua
+  // O CORTE É DE TEXTO, NUNCA DE FATO, e aqui isso tem nome próprio: os campos
+  // da decisão já viajam em `CAMPOS_DO_TITULO`, então o pedido cortado continua
   // DECIDÍVEL — perde o parágrafo, não a decisão, e a ficha que a página desenha
-  // embaixo dele continua cheia. Os dez pedidos abertos em 04/09 foram medidos
-  // um a um antes deste corte: todos com os quatro campos.
+  // embaixo dele continua cheia.
   //
   // QUEM FICA COM O TEXTO SÃO OS MAIS RECENTES, e não os do topo do bloco: a
   // caixa é ordenada do mais velho para o mais novo ("pedido velho grita mais"),
@@ -987,7 +985,7 @@
     // sem eles apareceria como "não sei o que acontece" tendo a resposta
     // escrita no livro — pior do que não ter a resposta.
     "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto",
-    "porque_so_voce", "proximo_passo"];
+    "porque_so_voce", "proximo_passo", "acao_exata", "resposta_esperada"];
   // Os campos do EXPERIMENTO ficam de fora desta lista de propósito (05/09/2026,
   // degrau 12). O painel do dono não desenha o laboratório em canto nenhum — a
   // tela dele é `/admin/placar/laboratorio/`, e ela lê os registros de origem,
