@@ -332,6 +332,11 @@ def place_order(request, session_id: str):
         **({"phone": str(customer["phone"])} if customer.get("phone") else {}),
         **({"cpf": str(customer["cpf"])} if customer.get("cpf") else {}),
     }
+    metadata = {
+        "checkout_session_id": str(sessao.id),
+        "product_id": str(itens[0]["product_id"]),
+    }
+    metadata = dict(metadata, **({"items": itens} if method == "card" else {}))
     intent = PagamentosClient().criar_intent(
         # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
         idempotency_key=str(sessao.id),
@@ -350,10 +355,7 @@ def place_order(request, session_id: str):
             # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
             # bump comprado junto não ganha matrícula própria — é o mesmo
             # desenho que já existe hoje para `items` no evento `pedido.criado`.
-            "metadata": {
-                "checkout_session_id": str(sessao.id),
-                "product_id": str(itens[0]["product_id"]),
-            },
+            "metadata": metadata,
         },
     )
 
