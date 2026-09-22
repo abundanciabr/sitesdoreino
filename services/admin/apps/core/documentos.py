@@ -344,6 +344,11 @@ def semear_documento(modelo, nome: str) -> bool:
     cada documento que já existe, e um nome só não tem essa pergunta. Nunca
     sobrescreve, pela mesma razão de `importar_da_pasta`. Sem a pasta na imagem,
     ou sem o arquivo, não faz nada, e a subida continua.
+
+    Se o corpo referencia `anexo:apelido`, a pasta
+    `documentos/anexos/<nome>/<apelido>.<ext>` é publicada no semear (volume
+    `/midia/` + registro `Midia`). Documento que já existia no banco não
+    republica anexo; migração de conteúdo usa `midia.aplicar_anexos_ao_documento`.
     """
     pasta = diretorio()
     if pasta is None:
@@ -357,7 +362,7 @@ def semear_documento(modelo, nome: str) -> bool:
 def _semear(modelo, caminho: Path) -> bool:
     """Um arquivo vira linha, se a linha ainda não existir."""
     campos = de_texto(caminho.stem, caminho.read_text(encoding="utf-8"))
-    _, criado = modelo.objects.get_or_create(
+    documento, criado = modelo.objects.get_or_create(
         nome=campos.nome,
         defaults={
             "titulo": campos.titulo,
@@ -366,6 +371,13 @@ def _semear(modelo, caminho: Path) -> bool:
             "corpo": campos.corpo,
         },
     )
+    if criado and "anexo:" in campos.corpo:
+        from . import midia
+
+        novo_corpo = midia.publicar_anexos_referenciados(documento, campos.corpo)
+        if novo_corpo != documento.corpo:
+            documento.corpo = novo_corpo
+            documento.save(update_fields=["corpo"])
     return criado
 
 
@@ -478,10 +490,15 @@ def _figura_html(legenda: str, nome: str) -> str | None:
 
 def _midia_html(legenda: str, endereco: str) -> str:
     """Imagem ou vídeo da casa. O `src` já nasceu do padrão, não de texto livre."""
+    from . import midia as midia_mod
+
     alt = html.escape(legenda, quote=True)
     caption = _linha(legenda)
-    if endereco.endswith(".mp4"):
+    extensao = Path(endereco.rsplit("/", 1)[-1]).suffix.lstrip(".").lower()
+    if extensao in midia_mod.EXTENSOES_DE_VIDEO:
         peca = f'<video controls src="{endereco}"></video>'
+    elif extensao in midia_mod.EXTENSOES_DE_AUDIO:
+        peca = f'<audio controls src="{endereco}"></audio>'
     else:
         peca = f'<img src="{endereco}" alt="{alt}">'
     return f'<figure class="midia">{peca}<figcaption>{caption}</figcaption></figure>'

@@ -83,14 +83,18 @@ alguém guardou**.
 Um subconjunto pequeno e deliberado: títulos (`#` a `###`), parágrafos, listas
 com `-` ou números, `**negrito**`, `` `código` ``, bloco cercado com três
 crases, citação com `>`, aviso destacado com `>!`, linha `---`, links
-`[texto](endereço)`, tabela com `|`, figura nomeada `![legenda](figura:nome)`
-e imagem ou vídeo da casa `![legenda](/midia/sorteio/nome.png)`.
+`[texto](endereço)`, tabela com `|`, figura nomeada `![legenda](figura:nome)`,
+anexo versionado no repositório
+`![legenda](anexo:apelido)` (arquivo em `documentos/anexos/<endereço-do-doc>/`
+com o mesmo apelido) e imagem ou vídeo já publicados
+`![legenda](/midia/sorteio/nome.png)`.
 
 **Todo o texto é escapado ANTES de qualquer formatação.** HTML escrito dentro de
 um documento aparece como texto na tela, nunca como marcação, e é isso que torna
 impossível um documento injetar script na página, mesmo que alguém cole algo sem
-pensar. HTML cru e imagem por endereço da internet **não** são suportados. A
-imagem da casa só entra pelo endereço `/midia/sorteio/nome` copiado do editor, depois do
-envio. Figura nomeada só existe se o nome estiver em
+pensar. HTML cru e imagem por endereço da internet **não** são suportados.
+Anexo na semente vira `/midia/...` no semear ou na migração de conteúdo. Pela
+tela, a mídia da casa entra pelo endereço `/midia/sorteio/nome` copiado do
+editor, depois do envio. Figura nomeada só existe se o nome estiver em
 `services/admin/apps/core/figuras.py`. Nome desconhecido fica visível como
 texto, para quem escreveu perceber o erro.
