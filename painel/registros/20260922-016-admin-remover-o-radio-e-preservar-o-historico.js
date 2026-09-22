@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-016-admin-remover-o-radio-e-preservar-o-historico",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: remover o rádio e preservar o histórico",
+  detalhe: "Rádio retirado da administração. Tabela histórica preservada. Suíte admin: 2149 testes passaram. Publicação não verificada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1890. Validação local: árvore d2b2eedf57dda612e2dbdb32eb6c2040e79e5c9e; commit 857756bafe56da814de3b23a8f59d698878c6e49; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-608",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
