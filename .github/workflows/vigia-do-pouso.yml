@@ -59,10 +59,12 @@ jobs:
               exit 2
             fi
             python -m pip install --quiet -r requirements-ci.txt
-            set +e
-            GH_TOKEN="$PISTA_TOKEN" python ci/mergear.py --automatico
-            PISTA=$?
-            set -e
+            PISTA=0
+            if GH_TOKEN="$PISTA_TOKEN" python ci/mergear.py --automatico; then
+              PISTA=0
+            else
+              PISTA=$?
+            fi
             if [ "$PISTA" -ne 0 ]; then
               echo "PAROU: mergear --automatico saiu $PISTA."
               echo "A issue não foi publicada, porque ela diria que a pista rodou."
