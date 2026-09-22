@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-223507-TAR-556-submetida",
+  "tarefa": "TAR-556",
+  "evento": "submetida",
+  "quando": "2026-09-22T22:35:07+00:00",
+  "quem": "agent/pagamentos/appmax-oauth-leitura",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1951",
+  "revisao": "862a02779ccdfaa04b713698d952984a9917ea71",
+  "arvore": "c4b06d8d95576c6324caddce32cc5f451198a1f2"
+}

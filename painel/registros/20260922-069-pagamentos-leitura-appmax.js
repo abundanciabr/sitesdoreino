@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-069-pagamentos-leitura-appmax",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "pagamentos: leitura Appmax",
+  detalhe: "Consulta pedidos só no sandbox; resposta incompleta falha. Sem prova da API merchant, criação de cobrança segue fora deste lote.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1951. Validação local: árvore c4b06d8d95576c6324caddce32cc5f451198a1f2; commit 862a02779ccdfaa04b713698d952984a9917ea71; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-556",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
