@@ -617,11 +617,11 @@ def test_a_jornada_do_aluno_NAO_e_publica(semente):
     assert jornada.publico is False
 
 
-def test_o_crivo_explicado_e_publico(semente):
-    """O manual do quiz é uma página pública para orientar quem usa o Crivo."""
+def test_o_crivo_explicado_so_para_administradores(semente):
+    """O manual do quiz contém orientação interna do mantenedor."""
     crivo = documentos.ler("o-crivo-explicado-do-zero")
     assert crivo is not None, "o documento do Crivo sumiu da pasta"
-    assert crivo.publico is True
+    assert crivo.publico is False
 
 
 def test_o_documento_da_entrada_E_publico(semente):
