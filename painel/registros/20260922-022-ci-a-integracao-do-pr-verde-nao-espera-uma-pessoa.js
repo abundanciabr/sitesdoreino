@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-022-ci-a-integracao-do-pr-verde-nao-espera-uma-pessoa",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: a integração do PR verde não espera uma pessoa",
+  detalhe: "O vigia só denunciava e a ficha devolvia o desfecho. Agora a mesma passagem chama a pista, e o que sobra na issue é recusa medida, não pedido de gesto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1900. Validação local: árvore 5c09c26265bc6a43f641984f5e8a42d0d83b0a15; commit 6f881a0b3b49fb9219821c8f5e5725c24e3aff00; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-612",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

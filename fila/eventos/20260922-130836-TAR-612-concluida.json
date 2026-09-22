@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-130836-TAR-612-concluida",
+  "tarefa": "TAR-612",
+  "evento": "concluida",
+  "quando": "2026-09-22T13:08:36+00:00",
+  "quem": "agent/ci/integracao-sem-espera-humana",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1900",
+  "verificado_em": "2026-09-22"
+}
