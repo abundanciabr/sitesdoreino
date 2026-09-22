@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-076-painel-publicacao-do-ranking-sem-papeis-aparece-no-livro",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "painel: publicação do ranking sem papéis aparece no livro",
+  detalhe: "O ranking corrigido foi publicado pelo deploy da área admin. Este registro liga o recibo do PR 1958 ao SHA integrado e ao run concluído com sucesso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1968. Validação local: árvore cdd5353f78d45bef78507a73d24e8c37e91fdbc4; commit a6f95af8e5386ec0d635c87b9ad8b531dbfbd8d2; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-649",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
