@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-201256-TAR-624-explicada",
+  "tarefa": "TAR-624",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:12:56+00:00",
+  "quem": "Pedido explícito do mantenedor nesta conversa, 22/09/2026",
+  "o_que_e": "O seed atual só cria um rascunho mínimo; /oferta continua sem página pública.",
+  "o_que_muda": "O deploy cria no banco uma página pública de teste, completa e identificada como fictícia, sem depender de login no editor.",
+  "exemplo": "Depois do deploy, abrir meshcraft.top/oferta mostra a página identificada como teste.",
+  "importancia": 80
+}
