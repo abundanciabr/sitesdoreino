@@ -196,10 +196,10 @@ http:
     #
     # Ela abre agora so no PC do mantenedor, por `python ci/ligar_administracao.py`
     # (PR #1663), com o banco de producao por tunel SSH. O conteiner `admin`
-    # continua de pe, e continua servindo tres coisas que NAO sao tela humana:
-    # `/docs` e `/mapa-ia`, pelos routers proprios logo abaixo, e
-    # `/interno/administradores/consultar`, que a `pages` chama pela rede
-    # `interna` do Docker sem passar pela borda.
+    # continua de pe, e continua servindo quatro coisas que NAO sao tela humana
+    # de operacao: `/docs`, `/mapa-ia` e `/midia`, pelos routers proprios logo
+    # abaixo, e `/interno/administradores/consultar`, que a `pages` chama pela
+    # rede `interna` do Docker sem passar pela borda.
     #
     # REABRIR ESTE ROUTER REPROVA NO CI: as 133 entradas de `/admin` em
     # `painel/mapa-do-site.json` estao declaradas `interno`, e
@@ -247,6 +247,25 @@ http:
       # Mesma escala de prioridade do resto: 10 = prefixo de página, contra o
       # 1 do catch-all do funil.
       rule: "Host(`meshcraft.top`) && PathPrefix(`/docs`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca-admin]
+      service: admin
+      tls: {}
+
+    midia:
+      # IMAGEM E VIDEO PUBLICOS DOS DOCUMENTOS (TAR-598, 21/09/2026). MESMO
+      # backend da area administrativa. O arquivo so sai se o documento dono
+      # estiver no ar (`midia_servir` confere `no_ar` e responde 404 para o
+      # resto). Prefixo PROPRIO, fora de `/admin` e fora de `/docs`, porque o
+      # endereco vai DENTRO do Markdown e precisa ser o mesmo na aula e no
+      # documento: `/midia/<sorteio>/<nome>`.
+      #
+      # A isencao da porta alcanca exatamente este prefixo (`porta.py`,
+      # `PREFIXO_PUBLICO_DA_MIDIA`). `tls: {}` e obrigatorio: sem ele o
+      # deploy-infra fica verde e o endereco responde 404 pelo catch-all do
+      # funil, o mesmo falso-verde que `/docs` ja sofreu em 29/08/2026.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/midia`)"
       priority: 10
       entryPoints: [websecure]
       middlewares: [seguranca-admin]

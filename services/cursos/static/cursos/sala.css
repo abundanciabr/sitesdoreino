@@ -452,6 +452,27 @@ dialog.videoaula.com-script .videoaula-fundo { display: none; }
 
 .videoaula-texto { margin-top: 12px; }
 
+.peca .rolagem-tabela { overflow-x: auto; margin: 0 0 16px; }
+.peca table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.peca th, .peca td {
+  border: 1px solid var(--borda); padding: 8px 10px;
+  vertical-align: top; text-align: left;
+}
+.peca th { color: var(--tinta-fraca); font-size: 13px; }
+.peca figure.midia { margin: 0 0 16px; }
+.peca figure.midia img, .peca figure.midia video {
+  display: block; max-width: 100%; height: auto;
+}
+.peca figure.midia figcaption {
+  margin-top: 8px; color: var(--tinta-fraca); font-size: 14px; text-align: center;
+}
+.peca .caixa-destaque {
+  margin: 0 0 16px; padding: 12px 16px; border-radius: 10px;
+  border: 1px solid var(--amarelo); background: var(--amarelo-fraco);
+}
+.peca .caixa-destaque p { margin: 0 0 8px; }
+.peca .caixa-destaque p:last-child { margin: 0; }
+
 html:has(dialog.videoaula[open]), html:has(dialog.videoaula:not(.com-script):target) {
   overflow: hidden;
 }
