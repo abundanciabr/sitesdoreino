@@ -1000,8 +1000,8 @@ Os portões acima verificam **integridade**. Nenhum verifica se a tradução est
   `_fonte` não pode estar `pendente`. Sem isso é FAIL no CI **e o boot recusa
   subir**. A declaração **expira**: se o texto daquele idioma mudar no diff,
   ela tem de mudar junto. Você não inventa o nome que vai ali: **registre a
-  pendência com `precisa_do_dono: true` e devolva à maestro; ela pergunta ao
-  mantenedor e registra a resposta**.
+  pendência com `precisa_do_dono: true` e pare nesta sessão. A pergunta vai ao
+  mantenedor, e a resposta fica registrada**.
   ⛔ A outra guarda do D8.3, a **retrotradução**, continua NÃO implementada:
   depende de modelo externo (chave de API, custo) e é decisão do mantenedor —
   não escreva stub que finja fazê-la.
@@ -1210,9 +1210,9 @@ foreach ($consultaGit in @(@('diff', '--name-only', 'origin/main...HEAD'), @('di
 }
 $alterados = @($alterados | Sort-Object -Unique)
 $foraDoBrief = @($alterados | Where-Object { $_ -notin $alvos })
-if ($foraDoBrief.Count) { throw "PAROU POR SEGURANÇA: arquivos fora do brief: $($foraDoBrief -join ', '). Preserve-os e devolva à maestro." }
+if ($foraDoBrief.Count) { throw "PAROU POR SEGURANÇA: arquivos fora do brief: $($foraDoBrief -join ', '). Preserve-os e pare nesta sessão." }
 $codigoEntregue = @($alterados | Where-Object { $_ -notmatch '^(painel|fila)/' })
-if ($codigoEntregue.Count -gt 15) { throw 'PAROU POR SEGURANÇA: orçamento de 15 arquivos excedido; devolva à maestro.' }
+if ($codigoEntregue.Count -gt 15) { throw 'PAROU POR SEGURANÇA: orçamento de 15 arquivos excedido; pare nesta sessão e divida a entrega.' }
 $titulo = Get-Content -LiteralPath (Join-Path $preparo 'mensagem.txt') -Encoding UTF8 -TotalCount 1 -ErrorAction Stop
 python ci/pr.py --titulo $titulo --mensagem-arquivo (Join-Path $preparo 'mensagem.txt') --corpo-arquivo (Join-Path $preparo 'corpo.md') --arquivos $alvos --detalhe-arquivo (Join-Path $preparo 'detalhe.txt') --validacao-arquivo (Join-Path $preparo 'validacao.json') --tarefa $tarefaFila
 if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: leia o diagnóstico, preserve a bancada e retome com --continuar após corrigir a causa.' }
