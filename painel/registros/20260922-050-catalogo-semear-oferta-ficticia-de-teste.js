@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-050-catalogo-semear-oferta-ficticia-de-teste",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "catalogo: semear oferta ficticia de teste",
+  detalhe: "Seed fictícia idempotente, 11 seções; preserva oferta e preço. Tela depende do deploy.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1934. Validação local: árvore 7d4390e64917d71029a56e25f3f507c203cf4621; commit 64f8e99b0b51f26c9964d57edb954310e5ba6392; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-624",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -616,9 +616,8 @@ def test_a_jornada_do_aluno_NAO_e_publica(semente):
     assert jornada.publico is False
 
 
-def test_o_crivo_explicado_NAO_e_publico(semente):
-    """Pedido do mantenedor em 21/09/2026: "Só para admins". A semente nasce
-    fechada; quem muda o banco que já está no ar é a migração 0022."""
+def test_o_crivo_explicado_so_para_administradores(semente):
+    """O manual do quiz contém orientação interna do mantenedor."""
     crivo = documentos.ler("o-crivo-explicado-do-zero")
     assert crivo is not None, "o documento do Crivo sumiu da pasta"
     assert crivo.publico is False

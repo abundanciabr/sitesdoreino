@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-029-funil-orientar-404-de-oferta-nao-publicada",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "funil: orientar 404 de oferta não publicada",
+  detalhe: "Auditoria comprovou que o único furo era o 404 sem orientação quando a página não foi publicada. Ajuste mínimo na célula funil.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1920. Validação local: árvore cc3ed09da16151914173411e76097c030d48c079; commit b6e580217decfa9e28e306ef192db8cfc70a1d66; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-617",
+  gravidade: "info",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

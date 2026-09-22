@@ -154,12 +154,14 @@ argumentar contra uma restrição, mas argumente — não a ignore.
    recomendação é a que RECUSA, não a que PEDE.**
 6. **Eu leio somente português e não entendo jargão cru.** Sigla sem tradução,
    para mim, é ruído. Escreva para mim — o robô que vai executar entende o resto.
-7. **Não recomende "comece pequeno" ou "faça uma versão mínima para economizar
-   tempo".** É regra firme e informada deste projeto: entre a opção completa e a
-   reduzida, escolho a completa, mesmo custando mais tempo e mais sessões.
-   Fatiar a construção em etapas seguras é bem-vindo; **cortar escopo por pressa,
-   não.** Se algo for genuinamente inviável ou perigoso, diga que é inviável —
-   isso é fato, não é o conselho que estou recusando.
+7. **Entregue o menor caminho que funciona de ponta a ponta.** Cada recomendação
+   deve caber numa jornada que eu testaria do começo ao fim, com nomes e dados
+   definitivos para aquele pedaço. Não recomende cortar o que eu pedi com nome
+   para economizar tempo. Não recomende protótipo que será reescrito nem
+   "implementar o sistema inteiro antes de existir uma porta que abre". O que
+   ficar de fora desta rodada precisa estar nomeado como degrau seguinte, não
+   como "depois a gente vê". Inviabilidade ou risco real continua sendo fato,
+   não conselho de ir devagar.
 8. **Assunto fora desta consulta:** cobrança e pagamento estão deliberadamente
    pausados por decisão minha. Não desenhe fórum pago, assinatura de comunidade
    nem nível de acesso por plano.

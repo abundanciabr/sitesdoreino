@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-006-fila-retirar-cartoes-cancelados-pelo-mantenedor",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fila: retirar cartões cancelados pelo mantenedor",
+  detalhe: "O mantenedor revisou e autorizou cancelar estes 25 cartões. Os eventos preservam a data, o autor e o motivo, removendo-os do trabalho ativo sem apagar a história da fábrica.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1879. Validação local: árvore 3fd5bef50847b49e6fec398804d40ddbe969d9bf; commit ca2af8b9d24af2645db684cbe0623da4c1523654; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-421",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

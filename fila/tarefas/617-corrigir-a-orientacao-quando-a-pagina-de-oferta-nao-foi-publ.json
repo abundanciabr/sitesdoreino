@@ -1,0 +1,19 @@
+{
+  "arquivo": "617-corrigir-a-orientacao-quando-a-pagina-de-oferta-nao-foi-publ",
+  "id": "TAR-617",
+  "titulo": "Corrigir a orientação quando a página de oferta não foi publicada",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com teste vermelho antes da correção, suíte funil verde, mutação da guarda vermelha e tela local de /oferta conferida",
+  "despacho": "A página /oferta deve responder 404 renderizado e explicar que ainda não foi publicada, com orientação para voltar mais tarde. Não mudar a HOME, o catálogo, a oferta, o checkout ou a telemetria.",
+  "origem": "Auditoria da entrega integrada de TAR-520 em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

@@ -1,0 +1,157 @@
+# =============================================================================
+# PROVISIONAR POR BOTÃO — o mantenedor deixa de colar roteiro em terminal.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# Medido em 21/09/2026: `infra/` tem 30 scripts `provisionar-*.sh`, 14 nascidos
+# em agosto e 16 em setembro, e NENHUM workflow que os execute. Cada um chega
+# ao mantenedor como um roteiro para abrir a VPS e colar. Ao mesmo tempo, 21
+# workflows desta casa já rodam script na VPS por disparo manual, e o cabeçalho
+# do `semear-quiz.yml` diz a doutrina com todas as letras: "sem o mantenedor
+# colar nada em terminal nenhum". O provisionamento foi o único que ficou de
+# fora, e a fila tem 10 tarefas abertas cujo entregável é justamente mais um
+# roteiro de colar.
+#
+# NINGUÉM GANHA SSH. A Lei 5 diz que agentes não possuem chave da VPS, e isso
+# continua verdade: quem abre a conexão é o pipeline, com a mesma chave e o
+# mesmo usuário `deploy` que o deploy já usa. O que muda é a janela onde o
+# mantenedor clica: a tela do GitHub, no lugar do terminal do servidor.
+#
+# O ALVO É DIGITADO, NÃO ESCOLHIDO DE UMA LISTA, e isso é de propósito: lista
+# fixa de 30 nomes num YAML envelhece em silêncio a cada script novo (Classe 8).
+# O nome é validado pelo alfabeto permitido ANTES de tocar em qualquer shell, e
+# o arquivo precisa existir neste commit.
+#
+# O QUE ELE RECUSA, DE PROPÓSITO
+# -------------------------------
+# Script que toca em parâmetro de linha de comando não roda por aqui. São 14
+# dos 30 hoje, e o valor que eles pedem é login de SMTP, e-mail de aprovador,
+# host do site ou id do Google: segredo e decisão, que a Lei 5 não deixa viajar
+# por pipeline. A regra é deliberadamente LARGA, e recusa até quem só menciona
+# `$@`: recusar demais devolve o script ao caminho manual de hoje, enquanto
+# recusar de menos roda coisa pela metade dentro da produção. Esses continuam
+# manuais até ganharem leitura por ambiente, e o workflow diz isso na cara em
+# vez de falhar torto.
+#
+# NÃO faz deploy, não entrega código, não escreve segredo, não reinicia serviço.
+#
+# Guarda: ci/tests/test_provisionar_por_botao.py
+# =============================================================================
+name: provisionar
+on:
+  workflow_dispatch:
+    inputs:
+      alvo:
+        description: 'Nome do provisionador, sem "provisionar-" e sem ".sh". Exemplo: encomendas'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  # Grupo próprio, e isto foi aprendido caro (`armadilhas/173`): o GitHub guarda
+  # UM run pendente por grupo e o próximo CANCELA o pendente. Num grupo movimentado
+  # como `deploy`, um disparo manual morre antes de começar.
+  group: provisionar
+  cancel-in-progress: false
+jobs:
+  provisionar:
+    name: rodar um provisionador na VPS
+    # A trava de branch do GitHub mora neste ambiente, não no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # A CONFERÊNCIA QUE PRECEDE A CONEXÃO (TAR-461). Num disparo por
+      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
+      # escolhida, e não os da main: sem este passo, qualquer ramo empurrado
+      # levaria o próprio `infra/*.sh` para dentro da VPS com a chave de deploy.
+      - name: Recusar ref que não seja main
+        if: github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "::error::PAROU POR SEGURANÇA: este workflow abre conexão com a VPS e só roda pela main."
+          echo "O GitHub executa o script da ref escolhida, e não o da main: disparar por um ramo levaria o código do ramo para o servidor."
+          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      # O NOME VIAJA POR `env:`, NUNCA COSTURADO NO CORPO DO `run:`. Texto de
+      # fora interpolado direto em shell é a família da `armadilhas/047`.
+      - name: Conferir o alvo antes de abrir conexão
+        id: conferir
+        env:
+          ALVO: ${{ inputs.alvo }}
+        run: |
+          set -euo pipefail
+
+          if ! printf '%s' "$ALVO" | grep -qE '^[a-z0-9][a-z0-9-]*$'; then
+            echo "::error::PAROU POR SEGURANÇA: o nome do alvo só aceita letras minúsculas, números e hífen."
+            echo "Você digitou: $ALVO"
+            echo "O QUE FAZER: digite só o miolo do nome, sem 'provisionar-' e sem '.sh'. Exemplo: encomendas"
+            exit 1
+          fi
+
+          SCRIPT="infra/provisionar-${ALVO}.sh"
+
+          # `armadilhas/149`: a ssh-action com `script_path` apontando para
+          # arquivo inexistente AVISA e IGNORA, saindo com SUCESSO. Falso-verde
+          # conhecido, e por isso a existência se confere aqui.
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::error::PAROU POR SEGURANÇA: não existe $SCRIPT neste commit."
+            echo "O QUE FAZER: escolha um destes nomes."
+            ls infra/provisionar-*.sh | sed -E 's|infra/provisionar-(.*)\.sh|  \1|'
+            exit 1
+          fi
+
+          bash -n "$SCRIPT"
+
+          # Script que exige um valor do mantenedor não roda por aqui: o valor
+          # é segredo ou decisão, e a Lei 5 (INV-P8) não deixa env viajar por
+          # pipeline. Recusar dizendo o porquê é melhor que rodar pela metade.
+          if grep -qE '\$\{1:-|\$@|\$#' "$SCRIPT"; then
+            echo "::error::PAROU POR SEGURANÇA: $SCRIPT espera um valor que só o mantenedor conhece."
+            echo "Este workflow roda apenas os provisionadores que não pedem nada."
+            echo "O QUE FAZER: este continua pelo caminho manual, com a linha de colar que está no cabeçalho do próprio script."
+            exit 1
+          fi
+
+          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+          echo "✅ $SCRIPT existe, é sintaticamente válido e roda sem argumento."
+
+      - name: Provisionar na VPS
+        id: provisionar
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: ${{ steps.conferir.outputs.script }}
+
+      # A PROVA, E NÃO O ECO. `armadilhas/114`: o log da ssh-action ecoa os
+      # próprios inputs, e ler o eco como se fosse a execução já enganou esta
+      # casa. Todo provisionador desta pasta termina em "PRONTO:" no caminho
+      # feliz e em "PAROU POR SEGURANÇA:" quando desiste, e é isso que se lê.
+      - name: Provar que o provisionamento aconteceu
+        env:
+          SAIDA: ${{ steps.provisionar.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê, e nada ficou pela metade."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO:'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
+            echo "Ela só é impressa no fim do caminho feliz, depois de o próprio script conferir o que criou."
+            echo "Sem ela, nada está provado, e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ provisionado, conferido pela própria prova do script."

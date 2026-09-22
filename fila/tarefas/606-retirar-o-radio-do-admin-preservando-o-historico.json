@@ -1,0 +1,20 @@
+{
+  "arquivo": "606-retirar-o-radio-do-admin-preservando-o-historico",
+  "id": "TAR-606",
+  "titulo": "Retirar o rádio do admin preservando o histórico",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Rotas ausentes; regressão vermelho e verde; mensagens preservadas ao migrar e reverter; suíte admin, contrato e mapa verdes; PR com recibo.",
+  "despacho": "O rádio dissolvido ainda oferecia tela, API e escrita de mensagens no admin. Esta entrega remove esses acessos e mantém o histórico no banco.\n\nEscopo:\n- Remove `radio.py`, `radio.html`, `radio.js`, as três rotas e as entradas do mapa.\n- Retira `MensagemDoRadio`, o token exclusivo e a exceção de autenticação da porta.\n- Adiciona `0024_retirar_radio_preservando_historico` com `SeparateDatabaseAndState`, sem operação de banco. As migrations 0019, 0020 e 0021 permanecem intactas; a 0021 também semeia um documento independente.\n- Substitui os testes da funcionalidade encerrada por regressões de ausência das rotas/modelo/mapa e preservação dos dados na migração e reversão.\n\nProvas locais (Python 3.12, SQLite em memória):\n- `python -m pytest -q tests/test_radio.py`: baseline anterior, **28 passed**.\n- Novos testes antes da remoção: **6 failed** (rotas, modelo, mapa e migration ausente).\n- Mesmo focal após a remoção: **6 passed**.\n- `python -m pytest -q` em services/admin: **2142 passed, 4 warnings in 69.47s**.\n- `python services/admin/manage.py makemigrations --check --dry-run`: **No changes detected**.\n- `python services/admin/manage.py sqlmigrate core 0024`: **(no-op)**.\n- `python ci/mapa_do_site.py`: **PASS**, 292 rotas medidas e declaradas.\n- `python ci/contract_freeze.py admin`: **PASS**, contrato e autenticação.\n- `python -m black --check services/admin`: **241 files would be left unchanged**.\n- `git diff --check`: sem erros.\n\nCODEOWNERS: nenhum caminho alterado possui dono nominal. Mandato prévio da faixa admin, Lista B, conforme `docs/decisoes/MANDATO-POR-FAIXA.md`; o brief desta sessão autoriza a retirada do rádio sem apagar dados. Não altera contrato congelado, leis, fichas, CLI, fila ou administracao-local.\n\nValidação local não comprova integração nem publicação. Sem TAR de remoção fornecida no brief; o recibo é embarcado pelo rito de PR.",
+  "origem": "sessao-20260922-remover-radio-admin",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-004-infra-provisionar-por-botao-com-validacao-do-alvo",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "infra: provisionar por botão com validação do alvo",
+  detalhe: "O botão valida o provisionador antes da conexão. Testes e muralhas locais conferidos; execução na VPS não realizada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1856. Validação local: árvore ffe5bb7f8d8bac29e6906974b7cc3e1a7d42fa3b; commit 5d6713e0e568d139d8a4039a838f4094d2dccba1; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-603",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

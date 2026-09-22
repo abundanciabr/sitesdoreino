@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-005-fila-retirar-bloqueio-substituido",
+  tipo: "nota",
+  quando: "2026-09-22",
+  titulo: "fila: retirar bloqueio substituído",
+  detalhe: "TAR-421 foi dividida em tarefas próprias. O cancelamento remove o bloqueio sem encerrar TAR-488 e TAR-489.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1878. Validação local: árvore 1a50119af70697e4d303c59b8d54214f11ce9442; commit 4fa3e6e97526425c2c67ef8a94e03cf54cd536bd; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-421",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

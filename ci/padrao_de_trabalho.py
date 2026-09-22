@@ -84,7 +84,7 @@ PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
  'consulta diretamente a fonte estruturada (comandos, portões, scripts)',
  'imediatamente reconhecido, interrompido e redirecionado para ação.')
 
-COSTURAS = ('A regra 3 proíbe adição não pedida, nunca subtração do pedido.',
+COSTURAS = ('A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra no menor caminho funcional, na forma mais enxuta que já funciona e já tem lugar para crescer.',
  'A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.',
  'O formato da regra 9 inclui as obrigações da casa')
 

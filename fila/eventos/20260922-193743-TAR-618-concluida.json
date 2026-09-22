@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-193743-TAR-618-concluida",
+  "tarefa": "TAR-618",
+  "evento": "concluida",
+  "quando": "2026-09-22T19:37:43+00:00",
+  "quem": "agent/admin/corrigir-rota-admin",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1921",
+  "verificado_em": "2026-09-22"
+}

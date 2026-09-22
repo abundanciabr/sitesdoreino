@@ -57,6 +57,13 @@ data em que o foco passou a ser só o `meshcraft.top`, registrada em
 `docs/decisoes/DECISAO-foco-em-meshcraft.md`. O escopo continua na lei; a data de
 quando ele mudou é história.
 
+## Entregue o menor caminho que funciona de ponta a ponta
+
+Substitui a seção anterior em 22/09/2026. A entrega passou a ser o menor
+caminho que uma pessoa usa e testa inteiro, sem cortar o que foi pedido com
+nome e sem criar base descartável. O detalhe está em
+`docs/decisoes/DECISAO-filosofia-de-escopo.md`.
+
 ## Nenhum texto publicado sai com travessão
 
 Movido: "vírgula para explicação, parênteses para acessório, dois-pontos para

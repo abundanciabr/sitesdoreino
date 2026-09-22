@@ -84,7 +84,8 @@ def test_atualiza_base_com_sha_e_segue_sem_esperar(monkeypatch, tmp_path):
     assert chamadas[1] == 2
 
 
-def test_sem_mandato_nao_atualiza_nem_mergeia(monkeypatch, tmp_path):
+# guarda: ci/mergear.py:1599
+def test_sem_mandato_nao_atualiza_nem_mergeia(monkeypatch, tmp_path, capsys):
     chamadas = configurar(monkeypatch, [pr(1)], bloqueados=(1,))
     monkeypatch.setattr(
         mergear,
@@ -93,6 +94,7 @@ def test_sem_mandato_nao_atualiza_nem_mergeia(monkeypatch, tmp_path):
     )
     assert mergear.integrar_abertos(tmp_path) == 0
     assert chamadas == []
+    assert "PR #1 não foi integrado" in capsys.readouterr().out
 
 
 def test_falha_de_um_pr_nao_prende_o_seguinte(monkeypatch, tmp_path):

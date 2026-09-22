@@ -1,36 +1,14 @@
 # =============================================================================
-# VIGIA DO POUSO — quem percebe que ninguém pediu pouso.
+# VIGIA DO POUSO — PR verde parado além da paciência, com remediação automática.
 #
-# O DEFEITO QUE ELE FECHA (TAR-167, medido em 05/09/2026): o PR #741 passou
-# CINCO DIAS aberto e verde, com zero comentários da pista. Não foi a pista que
-# falhou — ela nunca foi chamada. Ninguém pediu pouso, e ninguém percebeu que
-# ninguém tinha pedido. O raciocínio inteiro, e a régua de cada dispensa, moram
-# em `ci/vigia_do_pouso.py`.
+# O DEFEITO (TAR-167, medido em 05/09/2026): o PR #741 passou cinco dias aberto
+# e verde sem integrar. Hoje a pista mergeia sozinha (`pouso.yml` +
+# `ci/mergear.py --automatico`, decisão de 13/09/2026). Este workflow varre,
+# TENTA integrar o que couber, varre de novo e só então abre ou atualiza a issue
+# com o que SOBROU (falha da esteira ou PR que precisa de conserto/fechamento).
 #
-# POR QUE ELE PRECISA DE UM RELÓGIO. É o segundo workflow desta casa a acordar
-# pelo tempo, e pelo mesmo motivo do primeiro: o evento que ele vigia é uma
-# AUSÊNCIA. Um PR que ninguém pediu para pousar não dispara nada — o silêncio
-# não tem gatilho. Todo o resto aqui acorda em push, PR ou conclusão de check,
-# e nenhum desses eventos acontece quando a doença é justamente não acontecer
-# nada.
-#
-# DE DUAS EM DUAS HORAS, e não uma vez por dia como o vigia do cadeado: lá a
-# régua tem 21 dias de folga; aqui o custo medido foi de cinco dias, e o
-# despacho pede "algumas horas, não dias". Com a paciência em 6 h, um PR
-# esquecido é denunciado em 6 a 8 h depois de ficar verde.
-#
-# O QUE ELE NÃO É: um portão. Ele não impede nada, não roda em PR e não mergeia
-# nada — denuncia, e quem olhar decide. Pedir pouso sozinho seria pior que o
-# defeito: um PR verde e parado pode ser trabalho pronto, trabalho em curso ou
-# trabalho que não deve entrar (o #741 acabou FECHADO a pedido do mantenedor).
-# O vigia não sabe qual dos três é, e agir sem saber mergearia o terceiro.
-#
-# VERMELHO AQUI SIGNIFICA UMA COISA SÓ: **o vigia ficou cego.** Achar PRs
-# esquecidos é o trabalho dele, não uma falha dele — sai na issue, que é onde a
-# ação está. Se ele concluísse `failure` toda vez que achasse alguém, a aba
-# Actions ganharia doze vermelhos por dia numa condição rotineira, e vermelho
-# rotineiro é vermelho que se aprende a ignorar. Fica vermelho quando não
-# consegue VARRER, que é a única coisa aqui que exige gente.
+# Não é portão de PR e não substitui `pouso.yml`: é rede de segurança no relógio
+# para ausência de merge quando os checks já fecharam verdes.
 # =============================================================================
 name: vigia-do-pouso
 on:
@@ -39,45 +17,64 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-# Grupo PRÓPRIO, nunca o `deploy`: naquele grupo o GitHub guarda um único run
-# pendente e CANCELA o anterior quando chega outro (armadilhas/173) — um vigia
-# cancelado em silêncio é pior que vigia nenhum, porque parece que rodou.
+  actions: write
+  pull-requests: write
+# Grupo próprio, nunca o `deploy`: lá o GitHub cancela o run anterior
+# (armadilhas/173). Vigia cancelado em silêncio parece vigia que rodou.
 concurrency:
   group: vigia-do-pouso
   cancel-in-progress: false
 jobs:
   vigiar:
-    name: varrer os PRs abertos e denunciar o que ninguém pediu para pousar
+    name: varrer, remediar pela pista e denunciar o que sobrou
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: write
+      actions: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      # Sem `pip install`: o vigia usa só a biblioteca padrão e o `gh` que já
-      # vem no runner. Foi escolha, não acaso — um vigia que depende do
-      # registro de pacotes ganha um modo de falha novo justamente no dia em
-      # que ele precisa funcionar.
-      - name: Varrer, e abrir, reescrever ou fechar a issue
+      - name: Varrer, remediar e abrir ou atualizar a issue
         env:
-          # `github.token` PURO, e nunca `secrets.X || github.token`: aquele
-          # `||` não é plano B, é o PAT sombreando o único token que recebe as
-          # permissões deste bloco (`armadilhas/279`). Aqui o token do job
-          # basta — o vigia lê PRs e escreve issue, e não abre PR nenhum.
+          # Dois tokens, dois papéis. Nunca `secrets.PISTA_TOKEN || github.token`:
+          # o `||` faz o PAT sombrear o token do job (armadilhas/279).
           GH_TOKEN: ${{ github.token }}
+          PISTA_TOKEN: ${{ secrets.PISTA_TOKEN }}
           REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # O veredito vem do EXIT do vigia, capturado direto — nunca do exit
-          # de um cano, que é sempre o do último comando da linha.
           CODIGO=0
           python ci/vigia_do_pouso.py --repo "$REPO" --corpo denuncia.md || CODIGO=$?
+
+          if [ "$CODIGO" = "3" ]; then
+            if [ -z "${PISTA_TOKEN:-}" ]; then
+              echo "PAROU: há PR verde parado e o PISTA_TOKEN não está no job."
+              echo "Sem o token da pista esta passagem não integra, e a issue não vai dizer que integrou."
+              exit 2
+            fi
+            python -m pip install --quiet -r requirements-ci.txt
+            PISTA=0
+            if GH_TOKEN="$PISTA_TOKEN" python ci/mergear.py --automatico; then
+              PISTA=0
+            else
+              PISTA=$?
+            fi
+            if [ "$PISTA" -ne 0 ]; then
+              echo "PAROU: mergear --automatico saiu $PISTA."
+              echo "A issue não foi publicada, porque ela diria que a pista rodou."
+              exit "$PISTA"
+            fi
+            CODIGO=0
+            python ci/vigia_do_pouso.py --repo "$REPO" --corpo denuncia.md || CODIGO=$?
+          fi
 
           EXISTENTE="$(gh issue list --label pouso-esquecido --state open \
             --json number --jq '.[0].number // empty')"
@@ -86,7 +83,7 @@ jobs:
             0)
               if [ -n "$EXISTENTE" ]; then
                 gh issue close "$EXISTENTE" --comment \
-                  "Nenhum PR verde sem pedido de pouso. Esta issue é quadro, não diário: ela se fecha sozinha quando o quadro esvazia."
+                  "Nenhum PR verde parado além da paciência. Esta issue é quadro, não diário: ela se fecha sozinha quando o quadro esvazia."
                 echo "Issue #$EXISTENTE fechada — a fila voltou a andar."
               else
                 echo "Nenhum PR esquecido, nenhuma issue aberta. Nada a fazer."
@@ -94,20 +91,6 @@ jobs:
               ;;
             3)
               if [ -n "$EXISTENTE" ]; then
-                # Reescrever o corpo, não comentar: doze passagens por dia
-                # comentando a mesma lista viram ruído, e ruído se ignora — que
-                # é o mesmo que não avisar. E só reescrever quando MUDOU, para
-                # que o histórico da issue conte alguma coisa.
-                #
-                # AS DUAS NORMALIZAÇÕES SÃO MEDIDAS, não precaução:
-                #   `tr -d '\r'` — o GitHub devolve o corpo com fim de linha do
-                #   Windows.
-                #   `$( )` — o `--jq .body` acrescenta UMA quebra no fim, que o
-                #   arquivo escrito pelo vigia não tem. Medido na primeira
-                #   passagem real (07/09/2026, run 34081787250): a lista era
-                #   idêntica e a issue foi reescrita assim mesmo, só por essa
-                #   quebra. Substituição de comando come as quebras finais dos
-                #   dois lados, então a comparação passa a ser do conteúdo.
                 ATUAL="$(gh issue view "$EXISTENTE" --json body --jq .body | tr -d '\r')"
                 NOVO="$(cat denuncia.md)"
                 if [ "$ATUAL" = "$NOVO" ]; then
@@ -117,17 +100,14 @@ jobs:
                   echo "Issue #$EXISTENTE atualizada com o quadro de agora."
                 fi
               else
-                # A label pode não existir ainda. `|| true` aqui esconderia
-                # "não consegui criar" junto com "já existe", então a pergunta
-                # é feita de forma explícita.
                 if ! gh label list --json name --jq '.[].name' | grep -qx pouso-esquecido; then
                   gh label create pouso-esquecido \
                     --color FBCA04 \
-                    --description "PR verde e parado que ninguém pediu para pousar"
+                    --description "PR verde há horas e a integração automática não concluiu"
                 fi
                 gh issue create \
                   --label pouso-esquecido \
-                  --title "Pouso esquecido: PR verde que ninguém pediu para pousar" \
+                  --title "Integração parada: PR verde há horas sem merge" \
                   --body-file denuncia.md
               fi
               ;;

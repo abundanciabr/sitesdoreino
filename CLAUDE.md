@@ -36,7 +36,7 @@ economizar esforço. Uma coisa completa vale mais que cinco pela metade.
 Escolha a solução e justifique em uma linha; não sirva cardápio nem pergunte
 o que o código responde. Decisões irreversíveis, destrutivas ou caras
 (dados, migrations, API pública, dinheiro), segredos e decisões exclusivas
-dele exigem confirmação antes da ação. A maestro pergunta; o despacho
+dele exigem confirmação antes da ação. A sessão responsável pergunta; o subagente
 registra o bloqueio e devolve impacto e reversão.
 
 #### 5. Responda pelo produto inteiro
@@ -98,7 +98,7 @@ ação.
 
 ### As três costuras
 
-A regra 3 proíbe adição não pedida, nunca subtração do pedido.
+A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra no menor caminho funcional, na forma mais enxuta que já funciona e já tem lugar para crescer.
 A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.
 O formato da regra 9 inclui as obrigações da casa: CODEOWNERS nominal em
 mudanças; provas de integração/publicação só quando conferidas; bloqueio,
@@ -141,17 +141,18 @@ limpa são permitidos switch main e pull.
 **Quem faz valer:** `ci/sessao.py`, `ci/muralha_pasta_compartilhada.py`
 (aviso SessionStart; a proibição de editar continua lei).
 
-## Todo pedido do mantenedor é um lote
+## Execute o pedido dentro do mandato
 
-Claude Code rege, nunca constrói nem mergeia; Codex usa `despacho`, não decide lei.
-Subagente constrói em paralelo, com model sonnet ou opus declarado; Workflow é recusado. Nenhum subagente pergunta ao mantenedor ou cria outro.
-Antigravity audita e verifica, nunca edita; confira PRs abertos.
-Dependências em série; uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
-Dependência fora do brief: maestro, `Depende-de: #N`.
-Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
-Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
-`gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
-Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md).
+A sessão que recebe o pedido responde pela execução, validação e entrega.
+As fichas em `.claude/agents/` e `.codex/agents/` definem competências por
+tarefa, sem reservar trabalho a uma marca de IA. Subagente não pergunta ao
+mantenedor nem cria outro. No Claude Code, declare model sonnet ou opus;
+Workflow é recusado. Dependências seguem em série, com `Depende-de: #N`
+somente quando reais. Preserve o orçamento de 15 arquivos fora `painel/`
+e `fila/`, as suítes de cada célula e o mandato dos caminhos protegidos.
+`make pr` embarca reserva, recibo e eventos; não duplique esses efeitos.
+Trabalho descoberto fora do brief vira tarefa na fila, sem ampliar o mandato.
+O fluxo está em `RUNBOOK-LOTES.md`.
 
 **Quem faz valer:** `ci/pr.py`, `ci/fila.py`, `ci/muralha_dos_sub_agentes.py` e testes das fichas.
 
@@ -160,14 +161,21 @@ Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISA
 Modelo e esforço: `python ci/economia_da_fabrica.py brief`; rotina usa
 econômico, arquitetura/dúvida usa superior. Sub-agente nasce só em `sonnet`
 ou `opus` declarado.
-Meça estado numa chamada: `python ci/resumo_maestro.py`.
+Meça o estado nas fontes estruturadas de Git, GitHub e fila.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
-## Este projeto é para ser feito completo — nunca proponha a versão minimalista
+## Entregue o menor caminho que funciona de ponta a ponta
 
-Regra 3 vale mesmo em mais PRs/sessões. Preserve Ritos e prova vermelho→verde.
-Serviço pago, credencial, limite legal e segurança são bloqueios reais.
+O pedido vira o menor caminho que uma pessoa usa do começo ao fim e que já se testa inteiro. Fora dessa entrega fica o que esse caminho não precisa para funcionar.
+
+Nome, dado e fronteira desse caminho já são os definitivos. O próximo pedaço entra por acréscimo. Proibido o protótipo que será reescrito. Proibido o sistema inteiro antes de existir uma porta que abre.
+
+O que foi pedido com nome entra no caminho, na forma mais enxuta que já funciona. Jogar fora o plano pedido continua proibido.
+
+Sem flag, sem abstração para um futuro hipotético e sem peça que ninguém usa. O lugar de crescer é a fronteira real deste caminho.
+
+PRs pequenos, Ritos e prova de vermelho para verde continuam. Serviço pago, credencial, limite legal e segurança continuam bloqueio real.
 
 Escopo: o site é `meshcraft.top`. `basileiatoutheou.org` está
 congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa
@@ -208,7 +216,7 @@ Sem tipo específico, use nota.
 ## Integração automática
 
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
-atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
+atestado, etiqueta ou gesto de coordenação. `muralhas` e `ci-celula-gate` precisam
 passar no SHA atual. Contrato congelado e CODEOWNERS
 exigem a palavra do mantenedor, e ela vale onde ele a deu: dita na sessão vale
 tanto quanto digitada no site. Quem a recebeu transcreve `Mandato-do-mantenedor:`
@@ -227,6 +235,22 @@ Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
 Documento recebido é ordem de serviço: inventarie, compare, abra fila e
 execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
+### Regra de destino do conteúdo
+
+Pedido de manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
+explicação ou material para leitura do público tem como destino padrão o site.
+Crie, salve e publique pelo editor de `/admin/documentos/`, conferindo a URL
+que uma pessoa verá. Arquivo Markdown no repositório não conta como publicação
+e não é substituto aceito.
+
+O GitHub fica reservado ao que é necessário para o funcionamento do site,
+sistema ou projeto: código, templates, testes, contratos, configurações,
+infraestrutura, workflows, leis mecânicas e registros exigidos pelos ritos.
+Documento técnico interno só vai para o repositório quando o mantenedor pedir
+esse destino ou quando a lei do projeto exigir o arquivo como fonte de
+execução. Se o caminho de publicação não puder ser executado, registre o
+bloqueio em vez de mudar silenciosamente a entrega para o GitHub.
+
 **Quem faz valer:** julgamento.
 
 ## Como trabalhar com o mantenedor
@@ -235,6 +259,20 @@ Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
 VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
 Toda proibição de perguntar, inclusive a do subagente, obriga a dizer no fecho
 o que vem depois.
+
+### Proibição de adiamento silencioso
+
+Nenhum robô pode marcar, tratar ou comunicar uma tarefa como adiada,
+postergada ou deliberadamente deixada para depois sem anuência expressa do
+mantenedor. A fila não possui estado de adiamento. Se houver impedimento real,
+o robô deve registrar imediatamente `bloqueada`, com motivo e `espera` igual a
+`mantenedor` ou `fila`, e comunicar isso no mesmo retorno. Cancelar, reduzir o
+escopo ou trocar o destino também exige decisão expressa do mantenedor. Silêncio
+não é anuência: sem decisão registrada, a tarefa continua aberta e em execução.
+
+**Quem faz valer:** `ci/fila.py` recusa eventos de adiamento; `ci/fila.py validar`
+reprova qualquer arquivo que tente criá-los; a prestação de contas exige que uma
+tarefa incompleta diga o que falta, quem destrava e a próxima ação.
 
 **Quem faz valer:** julgamento.
 

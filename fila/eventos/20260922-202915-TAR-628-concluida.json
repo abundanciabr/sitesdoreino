@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-202915-TAR-628-concluida",
+  "tarefa": "TAR-628",
+  "evento": "concluida",
+  "quando": "2026-09-22T20:29:15+00:00",
+  "quem": "agent/fila/registrar-decisoes-appmax",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1937",
+  "verificado_em": "2026-09-22"
+}

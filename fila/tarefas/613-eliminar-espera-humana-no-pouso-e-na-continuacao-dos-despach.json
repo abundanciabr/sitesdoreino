@@ -1,0 +1,23 @@
+{
+  "arquivo": "613-eliminar-espera-humana-no-pouso-e-na-continuacao-dos-despach",
+  "id": "TAR-613",
+  "titulo": "Eliminar espera humana no pouso e na continuação dos despachos",
+  "toca": [
+    "ci",
+    ".github",
+    ".claude",
+    ".codex",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR próprio mergeado, testes afetados verdes, mutação dos guardas verde e logs do GitHub confirmando encaminhamento automático",
+  "despacho": "Corrigir a causa do incidente do PR 1898: nenhum despacho pode devolver ao mantenedor o disparo do pouso, a conferência do GitHub ou a autorização de integração normal. O vigia deve acionar a pista automaticamente, o portão deve explicar qualquer recusa sem silêncio e o despacho deve confirmar MERGED e iniciar a próxima frente dependente. Fixar o modelo dos despachos Codex em gpt-5.6-luna.\n\nAlvos: .github/workflows/vigia-do-pouso.yml, ci/vigia_do_pouso.py, ci/mergear.py, ci/economia_da_fabrica.py, .claude/agents/despacho.md, .codex/agents/despacho.toml, instruções operacionais e testes correspondentes. Prove com suíte afetada e mutação dos guardas.",
+  "origem": "pedido do mantenedor nesta sessão em 22/09/2026 após o incidente do PR 1898",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

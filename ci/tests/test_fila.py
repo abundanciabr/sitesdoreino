@@ -669,6 +669,12 @@ def test_espera_fora_de_um_bloqueio_reprova(tmp_path):
     assert any("só existe em evento 'bloqueada'" in e for e in erros)
 
 
+def test_adiamento_nao_e_estado_e_exige_bloqueio_visivel(tmp_path):
+    montar(tmp_path, [tarefa()], [evento(tipo="adiada", detalhe="aguardar")])
+    _, _, erros = carregar(tmp_path)
+    assert any("adiamento silencioso não existe" in e for e in erros)
+
+
 # ---------------------------------------------------------------------------
 # Cancelar: o segundo estado que não tinha verbo (06/09/2026)
 # ---------------------------------------------------------------------------

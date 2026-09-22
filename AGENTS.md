@@ -1,7 +1,9 @@
 # AGENTS.md | sitesdoreino
 
-Regra de intenção: todo pedido neste projeto é execução no código, com mudança,
-validação e entrega no repositório. Conversa informal fica fora deste fluxo.
+Regra de intenção: todo pedido neste projeto é execução com validação e entrega
+no destino que o mantenedor pediu. Conteúdo destinado a pessoas fica no site;
+artefato técnico indispensável ao funcionamento fica no repositório. Conversa
+informal fica fora deste fluxo.
 
 Leia `CLAUDE.md` antes de agir: é a lei canônica, com o significado integral do
 Padrão abaixo, as três costuras e as regras de operação. Não há uma segunda
@@ -12,7 +14,7 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 |---|---|
 | 1 | Resolva o problema real; comece pela experiência e protótipo quando necessário. |
 | 2 | Discorde antes, com alternativa e trade-off; execute a decisão dele. |
-| 3 | Justifique adições, preserve o pedido inteiro e elimine excesso. |
+| 3 | Justifique adições; o pedido vira o menor caminho funcional que já funciona; elimine excesso. |
 | 4 | Decida o que é seu; decisões exclusivas ou irreversíveis voltam ao mantenedor. |
 | 5 | Responda pelo caminho inteiro, do primeiro comando até a tela. |
 | 6 | Prove com comando e saída real; sem prova escreva NÃO RODEI. Prometer o conserto não é consertar. |
@@ -23,18 +25,32 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 11 | Conversa é mudança real; interrompa loops. Nunca pergunte nem informe a outra IA o estado de Git, PR, checks, branches ou pouso: consulte a fonte e aja. |
 
 No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
-`python ci/economia_da_fabrica.py brief`. A maestro divide e delega;
-despacho não cria subagente nem pergunta ao mantenedor, e devolve por escrito o
-que houve e o que destrava: não perguntar nunca dispensou prestar contas.
+`python ci/economia_da_fabrica.py brief`. A sessão executa o pedido dentro
+do mandato recebido, com validação, PR e registro pelo `make pr`.
+As competências das fichas são por tarefa, sem papéis fixos por fornecedor.
+Subagente não cria outro nem pergunta ao mantenedor; devolve por escrito
+bloqueio, impacto e ação para destravar à sessão responsável.
+Nunca edite o clone principal nem amplie o mandato. Trabalho descoberto
+fora do brief vira tarefa na fila. Integração é automática pelos portões.
 
-Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), o Codex é o EXECUTOR:
-constrói pela ficha `despacho`, um PR por tarefa, com evento na fila e
-registro no livro a bordo (`make pr`). Nunca pergunta ao mantenedor, nunca
-edita o clone principal, nunca arma espera, nunca amplia o mandato; não
-audita nem decide lei. Claude Code rege; a integração é automática;
-Antigravity audita `origin/main` e verifica depois do merge. Pedido colado
-direto nesta sessão é executado como um despacho; o que precisar dividir
-vira tarefa na fila, devolvida à maestro.
+## Destino padrão do pedido do mantenedor
+
+Manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
+explicação ou qualquer material feito para ser lido no site deve nascer no
+site, pelo editor de documentos de `/admin/documentos/`, e terminar publicado
+com URL pública conferida. Criar um Markdown em `docs/` ou outro arquivo no
+GitHub não é publicação e não substitui essa entrega.
+
+O GitHub só recebe a parte obrigatória para o funcionamento do site, sistema
+ou projeto: código, template, teste, contrato, configuração, infraestrutura,
+workflow, lei mecânica e registro exigido pelo rito. Um manual ou documento
+pedido pelo mantenedor não vai para o GitHub apenas por ser mais fácil de
+editar ali.
+
+Se a publicação exigir acesso, rota ou mecanismo que ainda não exista, a sessão
+registra o bloqueio e o que falta. Ela não troca o destino para um PR de
+documentação. Quando o pedido for ambíguo, o destino padrão é o site, salvo se
+o mantenedor disser que o artefato é interno, técnico ou obrigatório ao código.
 
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.

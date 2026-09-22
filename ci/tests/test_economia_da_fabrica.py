@@ -22,6 +22,12 @@ def test_roteador_reserva_modelo_de_topo_para_contrato_e_produto() -> None:
     assert perfil_por_tipo("escrita").modelo == MODELO_ROTINA
 
 
+def test_despacho_codex_usa_gpt_56_luna() -> None:
+    from economia_da_fabrica import MODELOS_CODEX
+
+    assert MODELOS_CODEX["topo"] == "gpt-5.6-luna"
+
+
 def test_classificador_prefere_contrato_quando_o_texto_fala_de_freeze() -> None:
     perfil = classificar("congelar OpenAPI e ajustar freeze da célula cursos")
 

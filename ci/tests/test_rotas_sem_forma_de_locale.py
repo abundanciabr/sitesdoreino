@@ -230,10 +230,9 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # `forms` entrou com a Caixa de Sugestões (`PathPrefix(/forms/sugestoes)`,
     # EVO-22). `entrar` entrou com a célula de identidade
     # (`PathPrefix(/entrar)`, DECISAO-celula-de-identidade, 25/08/2026).
-    # `admin` SAIU em 20/09/2026 (TAR-418): a área administrativa deixou de
-    # ter router, e abre só no localhost do mantenedor. `mapa-ia` entrou com
-    # o mapa técnico público (`PathPrefix(/mapa-ia)`, INV-P14, 28/08/2026) e
-    # continua no ar, no mesmo backend que a `admin` usava.
+    # `admin` VOLTOU em 22/09/2026 (TAR-618), com autenticação preservada na
+    # célula. Tem cinco letras, portanto não casa a forma de locale, nem é
+    # idioma declarado. `mapa-ia` continua no mesmo backend, em rota própria.
     # `forum` entrou com o fórum da escola
     # (`PathPrefix(/forum)`, DECISAO-forum-da-escola, 28/08/2026) — e ali o
     # caminho é LEI, não preferência: em subdomínio o cookie de sessão não
@@ -313,6 +312,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "quiz",
         "checkout",
         "alunos",
+        "admin",
         "api",
         "mapa-ia",
         "forms",

@@ -222,7 +222,7 @@ def conferir(
                 f"autorização para {item} e transcreva a resposta numa linha só: "
                 "Mandato-do-mantenedor: <o pedido dele> <os caminhos> ; origem: "
                 "sessão de DD/MM/AAAA. Enquanto não houver resposta, escreva o "
-                "bloqueio no balcão e devolva à maestro; não espere de ramo aberto.",
+                "bloqueio no balcão e pare; não espere de ramo aberto.",
                 motivos,
             )
         fora = sorted(alvo for alvo in motivos if alvo not in tokens)
@@ -329,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
                 else f"mandato prévio por faixa, concedido por {DOCUMENTO}",
                 "Só siga se o brief já trouxer a linha Mandato-do-mantenedor: "
                 "com esses caminhos. Se não trouxer, escreva o bloqueio no balcão "
-                "e devolva à maestro, agora, antes de editar."
+                "e pare, agora, antes de editar."
                 if motivos
                 else "",
                 motivos,

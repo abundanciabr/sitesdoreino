@@ -819,7 +819,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
     dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
     dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
-    final = f"PR {numero} aberto com recibo: {url}; devolva à maestro para revisão e encaminhamento à pista."
+    final = f"PR {numero} aberto com recibo: {url}. A sessão encerra aqui. A integração segue quando muralhas e ci-celula-gate ficam verdes."
     dizer(final)
     return final
 

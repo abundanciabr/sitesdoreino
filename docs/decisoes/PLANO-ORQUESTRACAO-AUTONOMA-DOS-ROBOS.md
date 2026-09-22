@@ -21,6 +21,8 @@ publico-para-ia: true
 > previsto no degrau 2 passa a ser o Codex, pela ficha `despacho`; a auditoria
 > de `origin/main` e a verificação de cada entrega alheia depois do merge (a de
 > ficha dele, a maestro verifica) são do Antigravity. O corpo §0 a §11 é histórico e fica como estava.
+>
+> **Emenda 22/09/2026, integração sem espera humana** (`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`, intervalo do PR #1898): sombra não interrompe a integração e o merge não espera gente. O despachante abre o PR. `pouso.yml` integra. Se o PR seguir verde além da paciência, `vigia-do-pouso` chama `ci/mergear.py --automatico` antes de qualquer issue. As frases do degrau 2 que mandavam parar e disparar o merge à mão deixam de valer.
 
 **Escrito em 05/09/2026**, a partir de: a pergunta dele; a medição da fila, do
 runbook de lotes e da pista contra o `origin/main` (commit `540f6994`); o veredito
@@ -211,8 +213,8 @@ pousado pela pista, e o brief dele sem uma linha de rito.
 
 **O que é.** Um workflow do GitHub, irmão da pista, que acorda sozinho, pega a
 próxima tarefa disponível da fila e roda o Claude Code dentro do runner para
-construí-la de ponta a ponta. O mantenedor acorda com PRs abertos (em sombra) ou
-pousados (depois da graduação).
+construí-la de ponta a ponta. O mantenedor acorda com o PR já integrado pela
+pista, ou com a recusa medida quando o mandato falta.
 
 **O desenho, peça por peça.**
 
@@ -258,10 +260,11 @@ pousados (depois da graduação).
    Os serviços `postgres` e `redis` sobem como no `ci-celula.yml`, então a suíte
    da célula roda de verdade, no runner, antes de o PR existir.
 9. **A entrega.** O robô faz o rito inteiro: constrói, roda a suíte, abre o PR
-   pelo `gh`, escreve o registro citando o número, grava os eventos da fila, e:
-   em `sombra`, comenta no PR *"aberto pelo despachante em sombra, run <id>"* e
-   **não pede pouso**; em `ligado`, pede pouso com `esperar.py --checks N --teto
-   20 --e-pousar`, e a pista mergeia como mergeia qualquer PR.
+   pelo `gh`, escreve o registro citando o número, grava os eventos da fila e
+   comenta o `run_id`. Em `sombra` e em `ligado` a integração é a mesma: a pista
+   (`pouso.yml` → `ci/mergear.py --automatico`). Ele não para à espera de gente.
+   O que a pista recusar fica para o `vigia-do-pouso`, que chama a mesma pista
+   de novo antes de abrir issue.
 10. **A autenticação.** Pela assinatura (`claude_code_oauth_token`, segredo
     `CLAUDE_CODE_OAUTH_TOKEN` gerado por `claude setup-token` no PC dele) ou por
     chave (`anthropic_api_key`). É a decisão 2 do §8. O Claude GitHub App precisa
@@ -271,19 +274,10 @@ pousados (depois da graduação).
     GitHub a quem editou a linha do `cron` por último, e essa pessoa tem de ser
     humana, senão a Action recusa o gatilho.
 
-**Nascimento em sombra e graduação** (lei do Sistema Imunológico: regra nova
-nasce em sombra dizendo o que teria feito).
-
-- **Fase A, `sombra`.** Uma tarefa por passagem, teto de 6 por dia. O canário é
-  uma tarefa de escrituração (documento, registro, armadilha), a mais inofensiva
-  da fila, disparada pelo **botão** `workflow_dispatch`, apertado de verdade
-  (`armadilhas/260`), e pela MESMA automação que vai rodar sozinha depois (RUNBOOK
-  §9, lote da fila do painel, lição 1). O robô abre o PR e para. A maestro (ou
-  ele) lê, e pede pouso à mão.
-- **Graduação para `ligado`.** Depois de 5 PRs do despachante pousados pela pista
-  sem devolução e sem revert, registrados no livro. A partir daí o robô pede
-  pouso sozinho e o teto sobe para 12 por dia. Não graduar em 30 dias é o
-  critério de morte (§9): sombra que não gradua é botão que ninguém aperta.
+**Operação contínua**. Não existe modo sombra para integração, conferência ou
+disparo. O workflow abre o trabalho, a pista mede o PR e o próprio despacho
+confirma o estado remoto. `workflow_dispatch` continua reservado a operações
+explicitamente manuais de produção, não ao fluxo normal de PR.
 
 **O que o despachante NÃO faz, por desenho.**
 
@@ -410,8 +404,8 @@ quebra. Nada acelera.
    **Recomendação:** assinatura. É a mesma franquia que os lotes já gastam, só que
    em outro horário, e não existe conta surpresa. A chave entra só se a franquia
    deixar de bastar, e aí é decisão nova.
-3. **A confiança.** Quantos PRs em sombra antes de o robô pousar sozinho.
-   **Recomendação:** 5 pousados pela pista sem devolução.
+3. **A confiança.** Quantos PRs a pista integra sem devolução antes de subir o teto.
+   **Recomendação:** 5 integrados pela pista sem devolução. Sombra não adia o merge.
 4. **O teto do dia.** **Recomendação:** 6 em sombra, 12 em ligado.
 
 **O que só ele pode fazer**, e que chega como UM bloco de colar, com a janela
@@ -429,8 +423,9 @@ O despachante é desligado (`DESPACHANTE=desligado`, com registro no livro) se, 
 - ele não graduou (menos de 5 PRs pousados sem devolução);
 - os PRs dele devolvidos ou fechados como superados passaram dos pousados;
 - o tempo de fila (tarefa criada até PR aberto) não caiu, medido pelos eventos;
-- PRs dele ficaram 7 dias em sombra sem ninguém pedir pouso: sinal de que ninguém
-  os lê, e robô que ninguém lê é `armadilhas/260`.
+- PRs dele ficaram 7 dias verdes sem a pista integrar: o vigia deveria ter
+  chamado `mergear.py --automatico`. Silêncio de 7 dias é instrumento cego,
+  não fila esperando gente (`armadilhas/260`).
 
 Desligar não apaga nada: o workflow fica, o interruptor fecha, e o que foi
 aprendido vai para o `RUNBOOK-LOTES.md` §9 como lição de regência.

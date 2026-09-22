@@ -117,18 +117,17 @@ def test_toda_rota_do_site_tem_texto_para_uma_pessoa():
     assert not curtas, f"descrição de enfeite em: {curtas}"
 
 
-def test_a_biblioteca_publica_sobreviveu_a_retirada_do_admin():
-    """`/docs/` continua no ar depois que `/admin` saiu da borda.
+def test_a_biblioteca_publica_tem_router_proprio_e_admin_restaurado():
+    """`/docs/` e `/admin/docs/` chegam ao serviço de documentos públicos.
 
-    Até 20/09/2026 a MESMA rota respondia nos dois endereços, e este guarda
-    exigia os dois (medido na internet em 30/08/2026, 200 nas duas). A
-    TAR-418 tirou o router de `/admin`, e com ele o endereço de dentro da
-    área. O que este guarda protege continua sendo o mesmo: a biblioteca
-    pública tem router próprio e NÃO pode sumir junto.
+    A biblioteca tem router próprio em `/docs/` e, com a revogação da TAR-418,
+    a rota administrativa voltou a encaminhar `/admin/docs/` para o mesmo
+    serviço. Os dois endereços são medidos para que nenhum desapareça em
+    silêncio.
     """
     medido = mapa_do_site.medir(RAIZ)
     _, alcance = medido[("admin", "docs/")]
-    assert alcance.enderecos == ["/docs/"]
+    assert alcance.enderecos == ["/admin/docs/", "/docs/"]
 
 
 def test_o_prefixo_do_quiz_entra_uma_vez_so_no_endereco():
@@ -352,9 +351,7 @@ def test_as_portas_principais_estao_sondadas():
         for e in _mapa_real()["enderecos"]
         if e.get("sonda")
     }
-    # `/admin/` saiu em 20/09/2026 (TAR-418): sem router, não há porta de fora
-    # para acender. Quem quiser a administração abre `ci/ligar_administracao.py`.
-    for porta in ("/", "/login", "/forum/", "/forms/sugestoes/"):
+    for porta in ("/", "/login", "/admin/", "/forum/", "/forms/sugestoes/"):
         assert porta in sondadas, f"a porta {porta} deveria ter luz"
 
 
