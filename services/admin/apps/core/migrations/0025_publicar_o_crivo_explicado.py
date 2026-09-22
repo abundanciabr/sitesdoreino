@@ -32,6 +32,8 @@ def despublicar_o_crivo(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    # 0023 e 0024 eram folhas paralelas na main; esta migração as une antes
+    # de publicar o documento.
     dependencies = [
         ("core", "0023_o_formato_do_documento"),
         ("core", "0024_retirar_radio_preservando_historico"),
