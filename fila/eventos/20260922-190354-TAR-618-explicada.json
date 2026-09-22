@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-190354-TAR-618-explicada",
+  "tarefa": "TAR-618",
+  "evento": "explicada",
+  "quando": "2026-09-22T19:03:54+00:00",
+  "quem": "Pedido direto do mantenedor em 22/09/2026 para restaurar meshcraft.top/admin preservando a autenticação.",
+  "o_que_e": "A administração existe, mas a entrada pública protegida foi retirada e a equipe não consegue alcançá-la pelo endereço oficial.",
+  "o_que_muda": "A equipe autorizada volta a abrir a administração pelo endereço oficial, enquanto pessoas não autorizadas continuam barradas.",
+  "exemplo": "Ao abrir meshcraft.top/admin, uma pessoa autorizada chega ao login e depois ao painel; uma pessoa fora da lista não ganha acesso.",
+  "importancia": 75
+}
