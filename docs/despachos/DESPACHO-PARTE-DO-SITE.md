@@ -165,14 +165,13 @@ pela mesma entrada. A retomada preserva arquivos e estado da bancada.
 2. Feche por `make pr` conforme `painel/LEIA-ME.md`, informando os comandos de
    validação e `TAR=TAR-NNN`. O comando reserva e embarca recibo, eventos e
    metadados no próprio PR; não repita esses efeitos manualmente.
-3. O despacho devolve o PR à maestro; ela publica o atestado da revisão
-   independente, pede pouso com `python ci/mergear.py <N> --pousar` e encerra,
-   sem esperar check em laço (RUNBOOK §5). Revisão de código continua obrigatória.
-4. Na sessão seguinte (a maestro deixa registro `pendencia` com o PR e o que
-   conferir; o mantenedor cola "confira a entrega do PR N" numa sessão nova), a
-   maestro confere o merge por `gh pr view <N> --json state,mergeCommit` e,
-   tocando `services/**` ou `painel/**`, a publicação por consulta única:
-   `python ci/esperar.py --entrega <N>`.
+3. O despacho mede os checks, aciona a pista e fecha o ciclo sozinho com
+   `python ci/esperar.py --checks <N> --teto 20 --e-pousar`, seguido de uma
+   consulta única de `python ci/esperar.py --entrega <N> --so-desfecho`.
+   Revisão independente continua obrigatória, mas não vira tarefa do mantenedor.
+4. Confirmado `MERGED` na fonte do GitHub, o despacho abre imediatamente a
+   próxima frente dependente na bancada própria. Não existe sessão seguinte
+   para pedir conferência, disparo ou autorização de PR.
 5. Depois do merge, a sentinela (Antigravity) verifica a entrega alheia contra
    o aceite (`verificacao`); você não espera por isso. O revisor da casa lê
    todo PR antes do pouso para o atestado que a maestro publica; check pendente

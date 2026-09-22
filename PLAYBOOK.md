@@ -95,9 +95,11 @@ trabalho que já existe.
 **Proteção e integração:** o estado histórico acima não autoriza operações.
 RITOS.md §2 registra a proteção da `main` e o comando para conferir as regras
 no servidor. A emenda de 29/08/2026 da CONSTITUICAO Lei 4 atribui o merge à
-pista: a maestro publica o atestado e pede pouso com `python ci/mergear.py <N> --pousar`; a pista mergeia (check pendente não impede o pedido, a pista aguarda); `--confirmo` é
-reservado à pista. Siga RITOS.md §2 para os checks, recibo e encaminhamento,
-e CLAUDE.md para o veredito do deploy. Falha ao consultar não é aprovação.
+pista: o despacho mede os checks e aciona a pista com `python ci/esperar.py
+--checks <N> --teto 20 --e-pousar`; a pista mergeia (check pendente não impede
+o encaminhamento, a pista aguarda); `--confirmo` é reservado à pista. O mesmo
+despacho confirma `state,mergeCommit` e segue a próxima frente. Siga RITOS.md
+§2 para checks, recibo e encaminhamento. Falha ao consultar não é aprovação.
 
 ## 3. As 8 células
 

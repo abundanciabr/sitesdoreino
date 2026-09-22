@@ -75,7 +75,7 @@ def test_modelos_codex_sao_explicitos(monkeypatch, bancada):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
     brief = economia.compilar_brief(bancada, objetivo="registrar", tipo="escrita", celula="ci", alvos=["ci/a.py"], armadilhas=[])
     assert "modelo_recomendado: gpt-5.6-sol" in brief
-    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-6-astra"
+    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-5.6-luna"
 
 def test_auditoria_codex_nao_aprova_so_as_fichas_claude(monkeypatch, bancada):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")

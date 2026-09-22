@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-023-fabrica-elimina-espera-humana-no-pouso-de-prs",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fabrica: elimina espera humana no pouso de PRs",
+  detalhe: "O fluxo normal deixa de depender do mantenedor para etiquetar, disparar, conferir ou autorizar o pouso de PR. A pista continua protegida e o portão registra recusas com motivo explícito.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1902. Validação local: árvore 926c6d5d7ab428ea3a4b09e6163819a5bf07c8ef; commit b0f4bde6894ee8843de4e07fe73e540f7a52c867; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-613",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

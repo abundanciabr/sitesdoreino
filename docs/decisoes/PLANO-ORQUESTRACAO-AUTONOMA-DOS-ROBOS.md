@@ -274,19 +274,10 @@ pista, ou com a recusa medida quando o mandato falta.
     GitHub a quem editou a linha do `cron` por último, e essa pessoa tem de ser
     humana, senão a Action recusa o gatilho.
 
-**Nascimento em sombra e graduação** (lei do Sistema Imunológico: regra nova
-nasce em sombra dizendo o que teria feito).
-
-- **Fase A, `sombra`.** Uma tarefa por passagem, teto de 6 por dia. O canário é
-  uma tarefa de escrituração (documento, registro, armadilha), a mais inofensiva
-  da fila, disparada pelo **botão** `workflow_dispatch`, apertado de verdade
-  (`armadilhas/260`), e pela MESMA automação que vai rodar sozinha depois (RUNBOOK
-  §9, lote da fila do painel, lição 1). O robô abre o PR e a pista integra.
-  Ninguém lê o PR para disparar o merge.
-- **Graduação para `ligado`.** Depois de 5 PRs do despachante integrados pela
-  pista sem devolução e sem revert, registrados no livro, o teto sobe para 12
-  por dia. A pista é a mesma nos dois modos. Não graduar em 30 dias é o
-  critério de morte (§9): sombra que não gradua é botão que ninguém aperta.
+**Operação contínua**. Não existe modo sombra para integração, conferência ou
+disparo. O workflow abre o trabalho, a pista mede o PR e o próprio despacho
+confirma o estado remoto. `workflow_dispatch` continua reservado a operações
+explicitamente manuais de produção, não ao fluxo normal de PR.
 
 **O que o despachante NÃO faz, por desenho.**
 

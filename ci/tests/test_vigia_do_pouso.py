@@ -338,6 +338,7 @@ def _rodar(tmp_path: Path, inventario: list[dict], *extra: str):
     )
 
 
+# guarda: ci/vigia_do_pouso.py:496
 def test_saida_3_e_o_corpo_escrito_quando_ha_esquecido(tmp_path: Path):
     corpo = tmp_path / "denuncia.md"
     saida = _rodar(tmp_path, [pr(741, verde_ha=9)], "--corpo", str(corpo))
@@ -345,6 +346,7 @@ def test_saida_3_e_o_corpo_escrito_quando_ha_esquecido(tmp_path: Path):
     assert saida.returncode == 3, saida.stdout + saida.stderr
     assert "ESQUECIDOS=1" in saida.stdout
     assert "#741" in corpo.read_text(encoding="utf-8")
+    assert "AUTORIZAR_POUSO=741" in saida.stdout
 
 
 def test_saida_0_e_nenhum_corpo_quando_a_fila_anda(tmp_path: Path):

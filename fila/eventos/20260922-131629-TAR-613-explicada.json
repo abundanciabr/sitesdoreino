@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-131629-TAR-613-explicada",
+  "tarefa": "TAR-613",
+  "evento": "explicada",
+  "quando": "2026-09-22T13:16:29+00:00",
+  "quem": "pedido do mantenedor nesta sessão em 22/09/2026 após o incidente do PR 1898",
+  "o_que_e": "O vigia denuncia PR verde parado e o despacho ainda devolve conferência ou pouso para outra sessão.",
+  "o_que_muda": "PRs elegíveis são encaminhados pela máquina e a frente dependente continua após MERGED confirmado, sem espera humana.",
+  "exemplo": "Um PR termina às 9:03 e o robô segue o PR 2 quando a pista confirma o merge, sem pedir ação às 9:45.",
+  "importancia": 100
+}
