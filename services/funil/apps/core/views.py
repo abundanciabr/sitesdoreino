@@ -309,7 +309,13 @@ def pagina_de_oferta(request):
         resposta["Retry-After"] = "30"
         return resposta
     if pagina is None:
-        raise Http404("este site ainda não publicou a página de oferta")
+        pagina_inexistente = True
+        return render(
+            request,
+            "funil/oferta.html",
+            {"site": site, "pagina_inexistente": pagina_inexistente},
+            status=404,
+        )
 
     blocos = [
         bloco

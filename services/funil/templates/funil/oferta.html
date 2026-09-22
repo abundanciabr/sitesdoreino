@@ -31,7 +31,11 @@
     .aviso h1 { margin: 0 0 .5rem; font-size: 1.25rem; }
     .aviso p { margin: 0; line-height: 1.6; color: #3f3f46; }
 {% endblock %}
-{% block conteudo %}{% if catalogo_mudo %}
+{% block conteudo %}{% if pagina_inexistente %}
+<div class="card aviso">
+  <h1>A página de oferta ainda não foi publicada</h1>
+  <p>Este endereço existe, mas o catálogo ainda não entregou uma versão pública. Volte mais tarde ou abra a página inicial.</p>
+</div>{% elif catalogo_mudo %}
 <div class="card aviso">
   <h1>O texto desta página não carregou</h1>
   <p>A página existe, e o que faltou foi o conteúdo dela, que vem de outro serviço. Atualize a página em alguns instantes.</p>
