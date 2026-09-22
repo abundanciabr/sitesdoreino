@@ -1,0 +1,19 @@
+{
+  "arquivo": "649-registrar-a-publicacao-do-ranking-sem-papeis-fixos",
+  "id": "TAR-649",
+  "titulo": "Registrar a publicação do ranking sem papéis fixos",
+  "toca": [
+    "painel/registros/20260922-075-admin-ranking-sem-papeis-publicado.js"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro responde ao recibo do PR 1958 com SHA integrado e run de deploy bem-sucedido",
+  "despacho": "Registrar no livro a publicação comprovada do ranking sem papéis fixos do PR 1958, sem repetir o recibo da entrega.",
+  "origem": "Desfecho PUBLICADO de ci/esperar.py --entrega 1958",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
