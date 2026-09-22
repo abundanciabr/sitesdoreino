@@ -1,3 +1,7 @@
-Execute `administracao-local\abrir-a-administracao.cmd`.
-O navegador abre o Plano mestre e lista os arquivos Markdown de `sitesdoreino-docs\administracao-local`.
-Se não aparecer, confira a mensagem do terminal e restaure a pasta de documentos indicada nela.
+Este acesso local foi aposentado. Não execute `administracao-local\abrir-a-administracao.cmd`
+nem `ci/ligar_administracao.py` para abrir a administração.
+
+Acesse o painel no site da VPS em `https://meshcraft.top/admin/` e os documentos
+em `https://meshcraft.top/admin/documentos/`. Se a rota não abrir depois do
+login, corrija o acesso ou a publicação do site pelo PR e pipeline. Não use
+localhost como alternativa.
