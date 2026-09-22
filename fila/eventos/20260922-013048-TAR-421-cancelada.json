@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260922-013048-TAR-421-cancelada",
+  "tarefa": "TAR-421",
+  "evento": "cancelada",
+  "quando": "2026-09-22T01:30:48+00:00",
+  "quem": "maestro-2026-09-21",
+  "detalhe": "Substituída por TAR-487, TAR-488 e TAR-489. A TAR-487 foi concluída no PR #1849; as duas tarefas restantes entregam os serviços de leads e mensageria."
+}
