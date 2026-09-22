@@ -2654,7 +2654,7 @@
       "rota": "^midia/(?P<sorteio>[0-9a-f]{32})/(?P<nome>[a-z0-9-]+\\.[a-z0-9]{2,4})$",
       "endereco": "/midia/(?P<sorteio>[0-9a-f]{32})/(?P<nome>[a-z0-9-]+\\.[a-z0-9]{2,4})$",
       "alcance": "publico",
-      "para_quem": "visitante",
+      "para_quem": "maquina",
       "titulo": "Uma imagem ou um vídeo de um documento",
       "descricao": "O arquivo enviado por um documento que está no ar. Documento privado responde como se o arquivo não existisse, e o endereço sorteado não confirma nada."
     },

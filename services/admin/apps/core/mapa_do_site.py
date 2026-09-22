@@ -228,6 +228,7 @@ AREAS = (
         "para o Google, e os sinais de vida que o servidor consulta sozinho.",
         (
             "/static",
+            "/midia",
             "/sw.js",
             "/manifest.webmanifest",
             "/sitemap.xml",
