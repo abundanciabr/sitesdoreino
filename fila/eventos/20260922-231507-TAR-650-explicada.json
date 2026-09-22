@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-231507-TAR-650-explicada",
+  "tarefa": "TAR-650",
+  "evento": "explicada",
+  "quando": "2026-09-22T23:15:07+00:00",
+  "quem": "Busca final do pedido do mantenedor sobre a tríade revogada",
+  "o_que_e": "Três instruções operacionais ainda dizem que a antiga maestro decide ou recebe trabalho.",
+  "o_que_muda": "Sessões diretas deixam de devolver trabalho ao papel revogado e sabem como abrir tarefa adicional.",
+  "exemplo": "Ao ampliar caminhos de uma tarefa, o erro orienta criar outra tarefa pela sessão responsável.",
+  "importancia": 90
+}

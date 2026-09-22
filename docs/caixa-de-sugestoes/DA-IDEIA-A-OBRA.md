@@ -75,8 +75,8 @@ O exemplo real e completo: [`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`](../deci
 
 ## Estação 3 — O que só o mantenedor decide
 
-O estudo termina com bifurcações, e elas voltam para ele **numa pergunta
-estruturada só, na hora** (`CLAUDE.md`; em lote, quem pergunta é a maestro).
+O estudo termina com bifurcações, e a sessão responsável leva a decisão ao
+mantenedor **numa pergunta estruturada só, na hora** (`CLAUDE.md`).
 As três que aparecem quase sempre:
 
 - **a fronteira**: célula nova ou dentro de uma existente. É decisão de
