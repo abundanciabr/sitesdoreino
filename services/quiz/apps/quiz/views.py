@@ -217,38 +217,39 @@ def formulario(request, slug):
     utm = entrada.get("utm") or {}
 
     with transaction.atomic():
-        submissao = Submission.objects.create(
+        submissao, criada = Submission.objects.get_or_create(
             quiz=quiz,
-            version=versao,
             session_id=entrada["session_id"],
-            site_id=quiz.site_id,
-            score=score,
-            result_key=result_key,
-            answers=respostas,
-            lead_email=email,
-            lead_name=request.POST.get("nome", "").strip(),
-            lead_phone=request.POST.get("telefone", "").strip(),
-            utm=utm,
-        )
-        lead = {"email": submissao.lead_email}
-        if submissao.lead_name:
-            lead["name"] = submissao.lead_name
-        if submissao.lead_phone:
-            lead["phone"] = submissao.lead_phone
-        OutboxEvent.objects.create(  # [RECEITA:R3 v1] [INV-P6] mesma transação do resultado
-            event="quiz.completado",
-            payload={
-                "site_id": submissao.site_id,
-                "quiz_slug": quiz.slug,
-                "result_key": submissao.result_key,
-                "score": submissao.score,
-                "lead": lead,
-                "utm": submissao.utm,
+            defaults={
+                "version": versao,
+                "site_id": quiz.site_id,
+                "score": score,
+                "result_key": result_key,
+                "answers": respostas,
+                "lead_email": email,
+                "lead_name": request.POST.get("nome", "").strip(),
+                "lead_phone": request.POST.get("telefone", "").strip(),
+                "utm": utm,
             },
         )
-        # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
-        # do worker cobre qualquer falha aqui — o evento nunca se perde.
-        transaction.on_commit(relay_apos_commit)
+        if criada:
+            lead = {"email": submissao.lead_email}
+            if submissao.lead_name:
+                lead["name"] = submissao.lead_name
+            if submissao.lead_phone:
+                lead["phone"] = submissao.lead_phone
+            OutboxEvent.objects.create(  # [RECEITA:R3 v1] [INV-P6] mesma transação do resultado
+                event="quiz.completado",
+                payload={
+                    "site_id": submissao.site_id,
+                    "quiz_slug": quiz.slug,
+                    "result_key": submissao.result_key,
+                    "score": submissao.score,
+                    "lead": lead,
+                    "utm": submissao.utm,
+                },
+            )
+            transaction.on_commit(relay_apos_commit)
 
     destino = reverse("quiz-resultado", args=[slug])
     resposta = redirect(f"{destino}?lead={submissao.id}")

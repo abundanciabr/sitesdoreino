@@ -92,7 +92,7 @@ def publicar_telemetria(envelope: dict) -> None:
     )
 
 
-def _evento_da_mensagem(campos) -> TelemetryEvent | None:
+def _evento_da_mensagem(msg_id, campos) -> TelemetryEvent | None:
     cru = campos.get(b"json") or campos.get("json")
     if not cru:
         return None
@@ -127,6 +127,7 @@ def _evento_da_mensagem(campos) -> TelemetryEvent | None:
         return None
     return TelemetryEvent(
         session_id=session_id,
+        stream_id=msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
         site_id=site_id,
         quiz_slug=quiz_slug,
         version_key=version_key,
@@ -151,26 +152,36 @@ def drenar_telemetria(lote: int = LOTE_TELEMETRIA) -> int:
     except redis.ResponseError as erro:
         if "BUSYGROUP" not in str(erro):
             raise
+    pendentes = cliente.xautoclaim(
+        STREAM_TELEMETRIA,
+        GRUPO_TELEMETRIA,
+        CONSUMIDOR_TELEMETRIA,
+        min_idle_time=0,
+        start_id="0-0",
+        count=lote,
+    )[1]
     resposta = cliente.xreadgroup(
         GRUPO_TELEMETRIA,
         CONSUMIDOR_TELEMETRIA,
         {STREAM_TELEMETRIA: ">"},
         count=lote,
     )
-    if not resposta:
+    mensagens = list(pendentes)
+    for _stream, novas in resposta:
+        mensagens.extend(novas)
+    if not mensagens:
         return 0
     gravar = []
     confirmar = []
-    for _stream, mensagens in resposta:
-        for msg_id, campos in mensagens:
-            evento = _evento_da_mensagem(campos)
-            if evento is None:
-                logger.warning("telemetria descartada: %s", msg_id)
-            else:
-                gravar.append(evento)
-            confirmar.append(msg_id)
+    for msg_id, campos in mensagens:
+        evento = _evento_da_mensagem(msg_id, campos)
+        if evento is None:
+            logger.warning("telemetria descartada: %s", msg_id)
+        else:
+            gravar.append(evento)
+        confirmar.append(msg_id)
     if gravar:
-        TelemetryEvent.objects.bulk_create(gravar)
+        TelemetryEvent.objects.bulk_create(gravar, ignore_conflicts=True)
     if confirmar:
         cliente.xack(STREAM_TELEMETRIA, GRUPO_TELEMETRIA, *confirmar)
     return len(gravar)
