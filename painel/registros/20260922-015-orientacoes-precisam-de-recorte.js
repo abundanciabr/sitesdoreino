@@ -9,7 +9,7 @@
   "verificado_em": "2026-09-22",
   "precisa_do_dono": false,
   "responde_a": null,
-  "gravidade": "aviso",
+  "gravidade": "ambar",
   "frente": "fabrica",
   "area": "ci",
   "vence_em_dias": null
