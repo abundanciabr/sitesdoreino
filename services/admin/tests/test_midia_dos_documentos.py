@@ -15,8 +15,9 @@ aqui não havia `FileField` nenhum nesta casa. O que este arquivo trava:
 3. **O teto é conferido ANTES de escrever**, e a recusa não deixa nada no
    disco.
 
-4. **Nada disto responde a quem não passou pela porta**, nem o envio nem a
-   entrega.
+4. **O envio não responde a quem não passou pela porta.** A entrega de
+   arquivo de documento no ar responde sem sessão (TAR-598). Arquivo de
+   documento privado continua 404, e o sorteio não confirma que ele existe.
 
 5. **Todo estado do editor tem texto próprio**: nenhum arquivo ainda, nenhum
    arquivo escolhido, grande demais, tipo recusado, disco cheio. Cada um diz o
@@ -31,8 +32,11 @@ from pathlib import Path
 import httpx
 import pytest
 import respx
+from django.conf import settings
+from django.core import signing
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
+from django.urls import get_resolver
 
 from apps.auditoria.models import Registro
 from apps.core import midia
@@ -172,6 +176,8 @@ def test_um_xml_que_nao_abre_svg_nao_passa_por_svg():
 def test_o_arquivo_servido_volta_com_o_tipo_que_conferimos(documento):
     cliente = _dentro()
     _enviar(cliente, documento, "foto.png", PNG)
+    documento.publico = True
+    documento.save(update_fields=["publico"])
     guardada = Midia.objects.get()
 
     resposta = cliente.get(f"/midia/{guardada.sorteio}/{guardada.nome}")
@@ -186,6 +192,8 @@ def test_o_arquivo_servido_volta_com_o_tipo_que_conferimos(documento):
 def test_o_svg_sai_com_a_politica_que_mata_script_dentro_dele(documento):
     cliente = _dentro()
     _enviar(cliente, documento, "desenho.svg", SVG, "image/svg+xml")
+    documento.publico = True
+    documento.save(update_fields=["publico"])
     guardada = Midia.objects.get()
 
     resposta = cliente.get(f"/midia/{guardada.sorteio}/{guardada.nome}")
@@ -265,7 +273,76 @@ def test_quem_esta_fora_da_porta_nao_le_o_arquivo(documento):
 
     resposta = Client().get(f"/midia/{guardada.sorteio}/{guardada.nome}")
 
-    assert resposta.status_code != 200
+    # guarda: services/admin/apps/core/midia.py:249
+    assert resposta.status_code == 404
+
+
+@respx.mock
+def test_arquivo_de_documento_no_ar_responde_sem_sessao(documento):
+    """A página pública precisa alcançar a imagem sem login (TAR-598)."""
+    # guarda: services/admin/apps/core/porta.py:273
+    documento.publico = True
+    documento.save(update_fields=["publico"])
+    _enviar(_dentro(), documento, "foto.png", PNG)
+    guardada = Midia.objects.get()
+
+    resposta = Client().get(f"/midia/{guardada.sorteio}/{guardada.nome}")
+
+    assert resposta.status_code == 200
+    assert resposta["Content-Type"] == "image/png"
+    assert b"".join(resposta.streaming_content) == PNG
+
+
+@respx.mock
+def test_o_editor_local_ve_arquivo_de_documento_ainda_privado(documento):
+    """O crachá local, e só ele, vê a miniatura antes de publicar."""
+    _enviar(_dentro(), documento, "foto.png", PNG)
+    guardada = Midia.objects.get()
+    cliente = Client()
+    cookie = signing.TimestampSigner().sign_object(
+        {"id": "id-local", "nome": "Fulano", "email": DONO}
+    )
+    cliente.cookies[settings.ADMIN_LOCAL_COOKIE_NAME] = cookie
+
+    resposta = cliente.get(f"/midia/{guardada.sorteio}/{guardada.nome}")
+
+    assert resposta.status_code == 200
+    assert b"".join(resposta.streaming_content) == PNG
+
+
+@respx.mock
+def test_a_pagina_publica_desenha_a_imagem_pelo_markdown(documento):
+    documento.publico = True
+    documento.save(update_fields=["publico"])
+    _enviar(_dentro(), documento, "foto.png", PNG)
+    guardada = Midia.objects.get()
+    documento.corpo = f"![A <b>casa</b>](/midia/{guardada.sorteio}/{guardada.nome})"
+    documento.save(update_fields=["corpo"])
+
+    corpo = Client().get(f"/docs/{documento.nome}").content.decode()
+
+    assert f'<img src="/midia/{guardada.sorteio}/{guardada.nome}"' in corpo
+    assert "<b>casa</b>" not in corpo
+    assert "&lt;b&gt;" in corpo
+
+
+def test_o_prefixo_publico_da_midia_tem_so_a_entrega():
+    """O que impede a isenção por prefixo de virar uma fresta."""
+    padroes = get_resolver().url_patterns
+    sob = {p.name for p in padroes if str(p.pattern).lstrip("^").startswith("midia/")}
+    assert sob == {"midia_servir"}, sob
+
+
+def test_o_gateway_tem_o_prefixo_publico_da_midia():
+    rotas = (
+        Path(__file__).resolve().parents[3]
+        / "infra"
+        / "traefik"
+        / "dynamic"
+        / "plataforma.yml"
+    ).read_text(encoding="utf-8")
+    assert "PathPrefix(`/midia`)" in rotas
+    assert "tls: {}" in rotas.split("PathPrefix(`/midia`)")[1][:400]
 
 
 # -------------------------------------------- 5. os estados do editor

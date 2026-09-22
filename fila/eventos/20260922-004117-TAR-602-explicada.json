@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-004117-TAR-602-explicada",
+  "tarefa": "TAR-602",
+  "evento": "explicada",
+  "quando": "2026-09-22T00:41:17+00:00",
+  "quem": "Pedido Resolva isso, sessão Codex de 21/09/2026; recuperação dos arquivos que ficaram fora do PR #1870.",
+  "o_que_e": "O cartão que pede o backup das imagens e vídeos desapareceu ao remover a pasta de trabalho onde ainda estava sem publicação.",
+  "o_que_muda": "A tarefa volta ao inventário com seu texto original e pode ser executada sem depender da memória da conversa.",
+  "exemplo": "O responsável abre a fila e encontra novamente a tarefa de proteger as fotos dos documentos.",
+  "importancia": 85
+}

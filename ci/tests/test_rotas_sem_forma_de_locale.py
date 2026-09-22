@@ -302,6 +302,12 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # E o terceiro olhar, o do prefixo CRU: `/encomendasX` seria engolido por
     # este roteador. Nao existe rota assim, e quem criar uma vai encontrar esta
     # linha.
+    #
+    # `midia` entrou com a entrega pública de imagem e vídeo dos documentos
+    # (TAR-598, 21/09/2026, `PathPrefix(/midia)`). Passei pelas duas regras:
+    #   A (forma de locale): 5 letras, e a forma exige 2-3. Não casa.
+    #   B (idioma declarado): `midia` não está em `infra/sites.json`.
+    # O prefixo CRU engoliria `/midiaX`; não existe rota assim.
     assert segmentos == {
         "",
         "quiz",
@@ -318,6 +324,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "pages",
         "estudio",
         "encomendas",
+        "midia",
     }
 
 

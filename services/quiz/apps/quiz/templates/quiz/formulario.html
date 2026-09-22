@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ quiz.title }}</title>
+<script>document.documentElement.classList.add("com-passos")</script>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; }
   main { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem; }
@@ -18,16 +19,23 @@
   button { width: 100%; padding: .8rem; font-size: 1rem; border-radius: 8px; border: none;
            background: #111; color: #fff; }
   .erro { color: #b00020; }
+  .avancar { display: none; }
+  html.com-passos .avancar { display: block; }
+  html.com-passos .enviar { display: none; }
+  html.com-passos form.ultimo .avancar { display: none; }
+  html.com-passos form.ultimo .enviar { display: block; }
+  html.com-passos .passo { display: none; }
+  html.com-passos .passo.ativo { display: block; }
 </style>
 </head>
 <body>
 <main>
   <h1>{{ quiz.title }}</h1>
   {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
-  <form method="post">
+  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-telemetria="{% url 'quiz-telemetria' %}">
     {% csrf_token %}
     {% for question in questions %}
-    <fieldset>
+    <fieldset class="passo{% if forloop.first %} ativo{% endif %}" data-pergunta="{{ question.id }}">
       <legend>{{ question.text }}</legend>
       {% for option in question.options.all %}
       <label>
@@ -37,20 +45,97 @@
       {% endfor %}
     </fieldset>
     {% endfor %}
-    <label>
-      E-mail
-      <input type="email" name="email" required>
-    </label>
-    <label>
-      Nome
-      <input type="text" name="nome">
-    </label>
-    <label>
-      Telefone
-      <input type="tel" name="telefone">
-    </label>
-    <button type="submit">Ver resultado</button>
+    <fieldset class="passo{% if not questions %} ativo{% endif %}" data-pergunta="lead">
+      <label>
+        E-mail
+        <input type="email" name="email" required>
+      </label>
+      <label>
+        Nome
+        <input type="text" name="nome">
+      </label>
+      <label>
+        Telefone
+        <input type="tel" name="telefone">
+      </label>
+    </fieldset>
+    <button type="button" class="avancar">Continuar</button>
+    <button type="submit" class="enviar">Ver resultado</button>
   </form>
 </main>
+<script>
+(function () {
+  var form = document.querySelector("form.crivo");
+  if (!form) return;
+  var url = form.getAttribute("data-telemetria");
+  var slug = form.getAttribute("data-quiz");
+  var enviado = false;
+  var passos = Array.prototype.slice.call(form.querySelectorAll(".passo"));
+  var indice = 0;
+
+  function emitir(tipo, elementId, metadata) {
+    var corpo = JSON.stringify({
+      quiz_slug: slug,
+      event_type: tipo,
+      element_id: elementId || "",
+      occurred_at: new Date().toISOString(),
+      metadata: metadata || {}
+    });
+    if (tipo === "abandon" && navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([corpo], {type: "application/json"}));
+      return;
+    }
+    fetch(url, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: corpo,
+      keepalive: true
+    });
+  }
+
+  function mostrar(i) {
+    indice = i;
+    passos.forEach(function (passo, n) {
+      passo.classList.toggle("ativo", n === i);
+    });
+    var ultimo = i === passos.length - 1;
+    form.classList.toggle("ultimo", ultimo);
+    var pergunta = passos[i].getAttribute("data-pergunta");
+    if (pergunta && pergunta !== "lead") emitir("view_question", pergunta, {});
+  }
+
+  emitir("view_quiz", "", {});
+  mostrar(0);
+
+  form.addEventListener("change", function (ev) {
+    var input = ev.target;
+    if (!input || input.type !== "radio") return;
+    var campo = input.closest(".passo");
+    emitir("click_option", input.value, {
+      question_id: campo ? campo.getAttribute("data-pergunta") : ""
+    });
+  });
+
+  var avancar = form.querySelector(".avancar");
+  if (avancar) {
+    avancar.addEventListener("click", function () {
+      var atual = passos[indice];
+      var radios = atual.querySelectorAll("input[type=radio]");
+      if (radios.length && !atual.querySelector("input[type=radio]:checked")) return;
+      if (indice < passos.length - 1) mostrar(indice + 1);
+    });
+  }
+
+  form.addEventListener("submit", function () {
+    enviado = true;
+  });
+
+  window.addEventListener("pagehide", function () {
+    if (enviado) return;
+    var atual = passos[indice];
+    emitir("abandon", atual ? atual.getAttribute("data-pergunta") : "lead", {});
+  });
+})();
+</script>
 </body>
 </html>

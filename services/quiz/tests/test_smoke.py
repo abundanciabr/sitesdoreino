@@ -4,7 +4,15 @@
 # cadastro de sites é LOCAL (ver services/quiz/LICOES.md, AGENTS.quiz.md).
 import pytest
 
-from apps.quiz.models import Option, Question, Quiz, ResultBand, Site, Submission
+from apps.quiz.models import (
+    Option,
+    Question,
+    Quiz,
+    QuizVersion,
+    ResultBand,
+    Site,
+    Submission,
+)
 
 HOST_A = "quiz-a.exemplo.com"
 HOST_B = "quiz-b.exemplo.com"
@@ -27,14 +35,17 @@ def site_b(db):
 @pytest.fixture
 def quiz_a(site_a):
     quiz = Quiz.objects.create(site=site_a, slug="crivo", title="Crivo")
-    pergunta = Question.objects.create(quiz=quiz, order=1, text="Pergunta 1")
+    versao = QuizVersion.objects.create(
+        quiz=quiz, key="original", weight=100, active=True
+    )
+    pergunta = Question.objects.create(version=versao, order=1, text="Pergunta 1")
     Option.objects.create(question=pergunta, order=1, text="Zero pontos", points=0)
     Option.objects.create(question=pergunta, order=2, text="Dez pontos", points=10)
     ResultBand.objects.create(
-        quiz=quiz, key="baixo", title="Baixo", min_score=0, max_score=4
+        version=versao, key="baixo", title="Baixo", min_score=0, max_score=4
     )
     ResultBand.objects.create(
-        quiz=quiz, key="alto", title="Alto", min_score=5, max_score=10
+        version=versao, key="alto", title="Alto", min_score=5, max_score=10
     )
     return quiz
 
@@ -55,7 +66,7 @@ def test_host_desconhecido_e_404_nunca_um_site_padrao(client, quiz_a):
 @pytest.mark.django_db
 @pytest.mark.smoke_quiz
 def test_caminho_feliz_form_ate_resultado(client, quiz_a):
-    pergunta = quiz_a.questions.get(order=1)
+    pergunta = quiz_a.versions.get().questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)
 
     formulario = client.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST_A)

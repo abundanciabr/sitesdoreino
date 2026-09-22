@@ -1,0 +1,19 @@
+{
+  "arquivo": "602-restaurar-o-cartao-perdido-do-backup-de-midia",
+  "id": "TAR-602",
+  "titulo": "Restaurar o cartão perdido do backup de mídia",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "TAR-601 e evento explicada presentes e ci/fila.py validar PASS.",
+  "despacho": "Restaurar no inventário o cartão de backup de mídia perdido quando o worktree órfão foi removido. Recuperar os dois JSONs preservados no transcript, sem executar nem submeter a tarefa de infraestrutura. Validar fila e testes focais. modelo_recomendado: gpt-5.6-sol. esforco_recomendado: medium.",
+  "origem": "Pedido Resolva isso, sessão Codex de 21/09/2026; recuperação dos arquivos que ficaram fora do PR #1870.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

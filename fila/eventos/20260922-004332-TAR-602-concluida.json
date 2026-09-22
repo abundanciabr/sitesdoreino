@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-004332-TAR-602-concluida",
+  "tarefa": "TAR-602",
+  "evento": "concluida",
+  "quando": "2026-09-22T00:43:32+00:00",
+  "quem": "agent/fila/recuperar-backup-admin-midia",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1876",
+  "verificado_em": "2026-09-22"
+}

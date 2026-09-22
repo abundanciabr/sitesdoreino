@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-004326-TAR-602-submetida",
+  "tarefa": "TAR-602",
+  "evento": "submetida",
+  "quando": "2026-09-22T00:43:26+00:00",
+  "quem": "agent/fila/recuperar-backup-admin-midia",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1876",
+  "revisao": "e49313ace204dee381ee1c9acd55cd766495a8d8",
+  "arvore": "a7e88b5e9b859a3033e8dee975d5c321dfd61e7d"
+}

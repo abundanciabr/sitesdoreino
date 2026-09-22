@@ -82,12 +82,15 @@ alguém guardou**.
 
 Um subconjunto pequeno e deliberado: títulos (`#` a `###`), parágrafos, listas
 com `-` ou números, `**negrito**`, `` `código` ``, bloco cercado com três
-crases, citação com `>`, linha `---`, links `[texto](endereço)`, tabela com
-`|` e figura nomeada `![legenda](figura:nome)`.
+crases, citação com `>`, aviso destacado com `>!`, linha `---`, links
+`[texto](endereço)`, tabela com `|`, figura nomeada `![legenda](figura:nome)`
+e imagem ou vídeo da casa `![legenda](/midia/sorteio/nome.png)`.
 
 **Todo o texto é escapado ANTES de qualquer formatação.** HTML escrito dentro de
 um documento aparece como texto na tela, nunca como marcação, e é isso que torna
 impossível um documento injetar script na página, mesmo que alguém cole algo sem
-pensar. HTML cru e imagem por URL **não** são suportados. Figura só existe se o
-nome estiver em `services/admin/apps/core/figuras.py`. Nome desconhecido fica
-visível como texto, para quem escreveu perceber o erro.
+pensar. HTML cru e imagem por endereço da internet **não** são suportados. A
+imagem da casa só entra pelo endereço `/midia/sorteio/nome` copiado do editor, depois do
+envio. Figura nomeada só existe se o nome estiver em
+`services/admin/apps/core/figuras.py`. Nome desconhecido fica visível como
+texto, para quem escreveu perceber o erro.

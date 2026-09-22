@@ -60,7 +60,15 @@ from django.core.management.base import CommandError
 from django.test import Client
 from django.urls import clear_script_prefix, reverse, set_script_prefix
 
-from apps.quiz.models import Option, Question, Quiz, ResultBand, Site, Submission
+from apps.quiz.models import (
+    Option,
+    Question,
+    Quiz,
+    QuizVersion,
+    ResultBand,
+    Site,
+    Submission,
+)
 
 HOST = "quiz-publico.exemplo.com"
 PREFIXO = "/quiz"
@@ -115,17 +123,20 @@ def navegador():
 def quiz_a(db):
     site = Site.objects.create(id="site-publico", host=HOST, name="Site Público")
     quiz = Quiz.objects.create(site=site, slug="crivo", title="Crivo")
-    pergunta = Question.objects.create(quiz=quiz, order=1, text="Pergunta 1")
+    versao = QuizVersion.objects.create(
+        quiz=quiz, key="original", weight=100, active=True
+    )
+    pergunta = Question.objects.create(version=versao, order=1, text="Pergunta 1")
     Option.objects.create(question=pergunta, order=1, text="Zero", points=0)
     Option.objects.create(question=pergunta, order=2, text="Dez", points=10)
     ResultBand.objects.create(
-        quiz=quiz, key="alto", title="Alto", min_score=0, max_score=10
+        version=versao, key="alto", title="Alto", min_score=0, max_score=10
     )
     return quiz
 
 
 def _resposta_do_quiz(quiz):
-    pergunta = quiz.questions.get(order=1)
+    pergunta = quiz.versions.get().questions.get(order=1)
     return {
         f"pergunta_{pergunta.id}": pergunta.options.get(points=10).id,
         "email": "lead@exemplo.com",

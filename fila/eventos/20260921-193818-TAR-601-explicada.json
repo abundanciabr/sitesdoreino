@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-193818-TAR-601-explicada",
+  "tarefa": "TAR-601",
+  "evento": "explicada",
+  "quando": "2026-09-21T19:38:18+00:00",
+  "quem": "lote documentos formato texto/pagina, sessão Cursor 21/09/2026",
+  "o_que_e": "O backup da VPS hoje guarda o banco. Os arquivos de imagem e vídeo dos documentos vão morar em /opt/plataforma/admin-midia, fora do banco.",
+  "o_que_muda": "Se o disco falhar depois que o editor receber mídia, as imagens dos documentos somem e não há cópia.",
+  "exemplo": "Alguém coloca a foto de uma aula num documento público; no dia seguinte o disco queima; sem este backup a foto não volta.",
+  "importancia": 70
+}
