@@ -1,0 +1,19 @@
+{
+  "arquivo": "609-repartir-as-orientacoes-corrigidas-em-entregas-dentro-do-lim",
+  "id": "TAR-609",
+  "titulo": "Repartir as orientações corrigidas em entregas dentro do limite",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Dois PRs com até 15 arquivos contados cada, 129 testes verdes e união dos diffs preservando o conteúdo do PR 1886",
+  "despacho": "Recorte técnico do conteúdo já validado no PR 1886, branch agent/ci/remover-governanca-triade. Separe .claude/agents (9 arquivos) e .codex/agents (5 arquivos) em uma entrega de 14. Na outra, coloque CLAUDE.md, AGENTS.md, CONSTITUICAO.md, RITOS.md, RUNBOOK-LOTES.md, decisão revogada, dois prompts (8 contados) e painel/ia e ranking (4 isentos). Preserve o diff e a história; não use etiqueta arquitetural só para contornar o contador. Reexecute testes de fichas, padrão, Codex e mapa; declare dependência só se real. Respeite os alvos somente leitura do brief original. Modelo gpt-6-astra, esforço high.",
+  "origem": "recorte-orientacoes-20260922-pr1886",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

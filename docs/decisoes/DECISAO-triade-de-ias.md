@@ -1,3 +1,13 @@
+# Decisão revogada: divisão fixa entre fornecedores de IA
+
+**Sem vigência desde 20/09/2026, por decisão do mantenedor.**
+O registro [20260921-012](../../painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js)
+revogou os papéis fixos e o canal de comunicação que os acompanhava.
+As instruções abaixo são história; não autorizam tarefas nem definem papéis.
+Para trabalhar, use `CLAUDE.md`, `CONSTITUICAO.md` e `RITOS.md`.
+
+## Histórico da decisão revogada
+
 # DECISÃO: a tríade de IAs, papéis fixos em vez de disputa
 
 **Decidida pelo mantenedor em 12/09/2026.** O pedido dele, com as palavras dele:

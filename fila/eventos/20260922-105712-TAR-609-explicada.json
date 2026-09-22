@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-105712-TAR-609-explicada",
+  "tarefa": "TAR-609",
+  "evento": "explicada",
+  "quando": "2026-09-22T10:57:12+00:00",
+  "quem": "recorte-orientacoes-20260922-pr1886",
+  "o_que_e": "As correções foram construídas e verificadas, mas o pacote excede o limite de arquivos por entrega.",
+  "o_que_muda": "Separa a mesma correção em duas partes verificáveis, preservando os limites do projeto.",
+  "exemplo": "As fichas seguem em um pacote de 14 arquivos; os documentos e mapas seguem no outro.",
+  "importancia": 70
+}

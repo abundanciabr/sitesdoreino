@@ -9,8 +9,7 @@
 
 ## Por que este documento existe
 
-Este projeto é construído quase inteiramente por uma tríade de IAs (Claude
-Code maestro, Codex executor, Antigravity sentinela), e a
+Este projeto é construído com assistência de IA. A
 forma como essas sessões devem se comportar não é convenção solta: é um
 conjunto de documentos-lei, lidos (ou citados) no início de cada sessão. Uma
 IA que vai propor melhorias precisa conhecer essas leis antes de sugerir
@@ -43,7 +42,7 @@ nunca vence os documentos abaixo, na ordem:
 | 1 | Escada da Imposição | Toda regra sobe de esperança → documento → processo → portão mecânico → impossibilidade física. Prosa nova sem mecanismo é "dívida de mecanização". |
 | 2 | As Quatro Muralhas | (1) **Execução**: 1 processo/porta por célula; (2) **Dados**: database e role isolados; (3) **Código**: worktree por sessão, orçamento de 15 arquivos, matriz de testes de todas as células tocadas (Onda 5, 29/08/2026); (4) **Contrato**: HTTP e eventos versionados, sem acesso ao código ou banco alheio. |
 | 3 | Os Três Pecados e a Virtude | Pecados: importar código de outra célula, ler/escrever banco alheio, duplicar-e-divergir comportamento. Virtude: copiar **dados** (snapshot), nunca comportamento. |
-| 4 | Integração protegida e automática | **Reescrita em 13/09/2026** (`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`): a main continua protegida por PR, e `pouso.yml` integra sozinho assim que `muralhas` e `ci-celula-gate` ficam verdes no SHA atual. **Saíram** o revisor obrigatório, o atestado de revisão, a etiqueta de pouso e o encaminhamento pela maestro: **não existe mais "pedir pouso"**. CODEOWNERS e contrato congelado continuam exigindo a palavra do mantenedor. PR aberto não significa integração nem publicação. |
+| 4 | Integração protegida e automática | **Reescrita em 13/09/2026** (`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`): a main continua protegida por PR, e `pouso.yml` integra sozinho assim que `muralhas` e `ci-celula-gate` ficam verdes no SHA atual. **Saíram** o revisor obrigatório, o atestado de revisão, a etiqueta de pouso e o encaminhamento manual: **não existe mais "pedir pouso"**. CODEOWNERS e contrato congelado continuam exigindo a palavra do mantenedor. PR aberto não significa integração nem publicação. |
 | 5 | A Lei das 2h da Manhã | Emergência = rollback, nunca hotfix. **Agentes não têm chave SSH da VPS** — "não é proibição, é inexistência". |
 | 6 | Evidência Falsificável, Não Prosa | "Eu arrumei" não é aceito. Todo trabalho em invariante mostra saída crua de teste-guarda vermelho→verde. |
 | 7 | Zonas Quentes Nascem Vazias | Nenhum arquivo "que toda rota toca"; cada célula tem seus próprios settings/urls/templates/static. Exceção deliberada: `services/pagamentos/core/` (congelado, somente-leitura). |
@@ -73,7 +72,7 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   atestado, está REVOGADO): (1) a main só muda por PR, sem push direto nem
   bypass; (2) o executor publica o PR pronto com a validação da mudança, e
   **não há revisor obrigatório, atestado, etiqueta de pouso nem encaminhamento
-  pela maestro**; (3) `pouso.yml` roda código da main e integra quando
+  manual**; (3) `pouso.yml` roda código da main e integra quando
   `muralhas` e `ci-celula-gate` estão verdes no SHA atual; (4) CODEOWNERS e
   contrato congelado continuam exigindo `Mandato-do-mantenedor:` escrito na
   descrição, pela conta do dono; (5) base atrasada é atualizada e medida de
@@ -241,31 +240,10 @@ verde".
   drill de rollback real medido (76s). §7 é uma tabela de pendências
   herdadas conhecidas (ex.: checkout descarta parâmetros UTM, i18n do quiz
   ainda é local).
-- **`RUNBOOK-LOTES.md`** — rege a sessão-maestro quando vários despachos
-  rodam em paralelo (não é lido por sessões de célula individual). Define a
-  composição de um lote, as "sete regras de inteligência" (ordenar pelo
-  dinheiro, canário na frente, FAIL≠ERROR, sucesso parcial é sucesso...), a
-  mecânica da janela de merge serial, o que NUNCA entra num lote (Rito de
-  Contrato, segredos/VPS, red-team fora de dinheiro), e um log crescente de
-  lições de cada lote já executado.
-
-### A tríade de IAs
-
-Desde 12/09/2026 (`docs/decisoes/DECISAO-triade-de-ias.md`), três IAs em
-papéis fixos:
-
-- **Claude Code, a maestro.** Decide cada achado, cria a tarefa na fila com o
-  brief roteado, executa só o que é cirúrgico, revisa PR crítico e publica o
-  atestado da revisão independente. Nunca espera check em laço, nunca mergeia
-  (a pista mergeia), nunca delega arquitetura.
-- **Codex, o executor.** Constrói pela ficha `despacho`, um PR por tarefa,
-  com evento na fila e registro no livro a bordo (`make pr`). Nunca pergunta
-  ao mantenedor, nunca edita o clone principal, nunca amplia o mandato; não
-  audita nem decide lei.
-- **Antigravity, a sentinela.** Audita `origin/main` inteiro e escreve cada
-  achado medido como proposta (problema, baseline, aceite); verifica cada
-  entrega alheia depois do merge, presa ao SHA da implementação. Nunca edita
-  código ou lei, nunca escreve despacho, nunca grava evento ou registro, nunca mede a pasta local (só `origin/main`).
+- **`RUNBOOK-LOTES.md`** orienta pedidos com várias partes: alvos delimitados,
+  bancada própria, contexto direcionado, dependências reais, prova proporcional
+  ao risco e integração automática. As retrospectivas estão separadas das
+  instruções vigentes. Competências dependem da tarefa, sem papéis por fornecedor.
 
 ## .github/CODEOWNERS
 
