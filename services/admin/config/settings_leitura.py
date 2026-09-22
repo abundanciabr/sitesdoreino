@@ -1,4 +1,4 @@
-"""Processo de leitura da VPS; o painel administrativo roda no localhost."""
+"""Processo de leitura da VPS. O painel administrativo mora em meshcraft.top/admin."""
 
 from copy import deepcopy
 
