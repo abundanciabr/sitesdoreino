@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-215549-TAR-637-concluida",
+  "tarefa": "TAR-637",
+  "evento": "concluida",
+  "quando": "2026-09-22T21:55:49+00:00",
+  "quem": "agent/ci/registrar-publicacao-orientacoes",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1955",
+  "verificado_em": "2026-09-22"
+}
