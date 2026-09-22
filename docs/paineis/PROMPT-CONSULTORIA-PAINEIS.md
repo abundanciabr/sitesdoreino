@@ -81,13 +81,14 @@ Se a sua recomendação violar alguma delas, ela é inútil para mim:
    deliberadamente registrado em outro lugar.
 5. **Eu leio somente português** e não entendo jargão técnico. Sigla sem
    tradução, para mim, é ruído.
-6. **NÃO recomende "comece pequeno" ou "faça uma versão mínima para economizar
-   tempo".** Esta é uma regra firme e informada do projeto: entre a opção
-   completa e a reduzida, escolho a completa, mesmo custando mais tempo — outros
-   projetos meus falharam justamente por seguir o conselho de "comece
-   simples". Fatiar a construção em etapas seguras é bem-vindo; **cortar escopo
-   por pressa, não.** Se algo for genuinamente inviável ou perigoso, diga que é
-   inviável — isso é fato, não é o conselho que estou recusando.
+6. **Entregue o menor caminho que funciona de ponta a ponta.** Cada recomendação
+   deve caber numa jornada que eu testaria do começo ao fim, com nomes e dados
+   definitivos para aquele pedaço. Não recomende cortar o que eu pedi com nome
+   para economizar tempo. Não recomende protótipo que será reescrito nem
+   "implementar o sistema inteiro antes de existir uma porta que abre". O que
+   ficar de fora desta rodada precisa estar nomeado como degrau seguinte, não
+   como "depois a gente vê". Inviabilidade ou risco real continua sendo fato,
+   não conselho de ir devagar.
 7. **Pagamento/cobrança está deliberadamente pausado** por decisão minha e não
    é assunto desta consulta. Não sugira nada sobre vender, cobrar ou métricas
    de receita.
