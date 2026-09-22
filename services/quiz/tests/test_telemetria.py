@@ -29,6 +29,7 @@ from apps.quiz.models import (
     QuizVersion,
     Submission,
     TelemetryEvent,
+    OutboxEvent,
 )
 from apps.quiz.tasks import (
     GRUPO_TELEMETRIA,
@@ -138,6 +139,22 @@ def test_a_sessao_gruda_na_versao_e_a_utm_vem_da_chegada(client, quiz_a):
     assert submissao.utm == {"source": "ig", "content": "criativo"}
 
 
+def test_reenvio_da_mesma_sessao_nao_duplica_conversao_nem_outbox(client, quiz_a):
+    pergunta = quiz_a.versions.get().questions.get(order=1)
+    dados = {
+        f"pergunta_{pergunta.id}": pergunta.options.get(points=10).id,
+        "email": "lead@exemplo.com",
+    }
+    client.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST_A)
+
+    primeira = client.post(f"/{quiz_a.slug}/", dados, HTTP_HOST=HOST_A)
+    segunda = client.post(f"/{quiz_a.slug}/", dados, HTTP_HOST=HOST_A)
+
+    assert primeira.status_code == segunda.status_code == 302
+    assert Submission.objects.count() == 1
+    assert OutboxEvent.objects.count() == 1
+
+
 def test_a_ingestao_nao_grava_no_banco_e_a_drenagem_grava(client, quiz_a, stream_limpo):
     client.get(f"/{quiz_a.slug}/?utm_content=criativo", HTTP_HOST=HOST_A)
     corpo = _corpo(
@@ -197,6 +214,40 @@ def test_payload_invalido_nao_prende_o_grupo(stream_limpo):
     stream_limpo.xadd(STREAM_TELEMETRIA, {"json": "nao-e-json"})
     assert drenar_telemetria() == 0
     assert TelemetryEvent.objects.count() == 0
+    assert stream_limpo.xpending(STREAM_TELEMETRIA, GRUPO_TELEMETRIA)["pending"] == 0
+
+
+def test_a_drenagem_recupera_pendente_sem_duplicar_a_linha(stream_limpo, monkeypatch):
+    stream_limpo.xadd(
+        STREAM_TELEMETRIA,
+        {
+            "json": json.dumps(
+                {
+                    "session_id": str(uuid.uuid4()),
+                    "site_id": "site-teste",
+                    "quiz_slug": "crivo",
+                    "version_key": "original",
+                    "event_type": "view_quiz",
+                    "occurred_at": "2026-09-21T18:00:00Z",
+                }
+            )
+        },
+    )
+
+    monkeypatch.setattr("apps.quiz.tasks.redis.from_url", lambda _url: stream_limpo)
+    original = stream_limpo.xack
+    monkeypatch.setattr(
+        stream_limpo,
+        "xack",
+        lambda *args: (_ for _ in ()).throw(redis.RedisError("ack falhou")),
+    )
+    with pytest.raises(redis.RedisError):
+        drenar_telemetria()
+    monkeypatch.setattr(stream_limpo, "xack", original)
+
+    drenar_telemetria()
+
+    assert TelemetryEvent.objects.count() == 1
     assert stream_limpo.xpending(STREAM_TELEMETRIA, GRUPO_TELEMETRIA)["pending"] == 0
 
 
@@ -260,6 +311,13 @@ def test_o_funil_cruza_vista_hesitacao_tempo_e_conversao(quiz_a):
         event_type="view_question",
         element_id=str(pergunta.id),
         occurred_at=agora,
+        **comuns,
+    )
+    TelemetryEvent.objects.create(
+        session_id=saiu,
+        event_type="abandon",
+        element_id=str(pergunta.id),
+        occurred_at=agora + timedelta(seconds=2),
         **comuns,
     )
     Submission.objects.create(
