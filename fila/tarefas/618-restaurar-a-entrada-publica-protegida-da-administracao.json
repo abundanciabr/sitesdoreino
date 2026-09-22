@@ -1,0 +1,21 @@
+{
+  "arquivo": "618-restaurar-a-entrada-publica-protegida-da-administracao",
+  "id": "TAR-618",
+  "titulo": "Restaurar a entrada pública protegida da administração",
+  "toca": [
+    "infra",
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Router HTTPS de /admin restaurado com segurança administrativa, mapa e teste verdes, PR integrado e URL externa respondendo pela célula.",
+  "despacho": "Restaurar somente o router HTTPS de meshcraft.top/admin com seguranca-admin, declarar no mapa as rotas alcançáveis pela borda e cobrir a regressão no teste do mapa. Não alterar autenticação, ADMIN_EMAILS, contrato, serviços ou outras rotas. Provar YAML, mapa, teste focal e a URL externa após publicação. Caminhos CODEOWNERS infra/ e ci/ exigem o mandato direto desta sessão.",
+  "origem": "Pedido direto do mantenedor em 22/09/2026 para restaurar meshcraft.top/admin preservando a autenticação.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
