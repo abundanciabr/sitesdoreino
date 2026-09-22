@@ -6,7 +6,8 @@
     "pagamentos"
   ],
   "depende_de": [
-    "TAR-557"
+    "TAR-557",
+    "TAR-593"
   ],
   "cria": [],
   "move": [
