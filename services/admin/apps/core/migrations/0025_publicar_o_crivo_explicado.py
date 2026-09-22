@@ -32,5 +32,8 @@ def despublicar_o_crivo(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("core", "0022_midia")]
+    dependencies = [
+        ("core", "0023_o_formato_do_documento"),
+        ("core", "0024_retirar_radio_preservando_historico"),
+    ]
     operations = [migrations.RunPython(publicar_o_crivo, despublicar_o_crivo)]

@@ -8,7 +8,7 @@ from apps.core.models import Documento
 
 
 _publicacao = importlib.import_module(
-    "apps.core.migrations.0024_publicar_o_crivo_explicado"
+    "apps.core.migrations.0025_publicar_o_crivo_explicado"
 )
 
 NOME = "o-crivo-explicado-do-zero"
