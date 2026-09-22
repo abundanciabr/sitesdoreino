@@ -15,9 +15,6 @@ Confira primeiro os efeitos de `make pr`: não repita reserva, recibo, evento
 nem metadados do mesmo fechamento. As receitas abaixo servem para fatos adicionais
 e lições que exigem julgamento; sua convocação não é etapa obrigatória do comando.
 
-Na tríade (docs/decisoes/DECISAO-triade-de-ias.md) você nunca escreve proposta
-nem verificação da sentinela, nunca cria despacho.
-
 ## 1. O registro do livro (`painel/registros/`)
 
 - Número: `python ci/reservar.py numero registro` (nunca escolha; a saída é o
@@ -78,7 +75,7 @@ célula, vai no `services/<celula>/LICOES.md`.
 ## 4. A hora de parar
 
 A partir das 21h30 em `America/Sao_Paulo` não comece registro, evento ou
-armadilha novos: termine o que está aberto e devolva à maestro. A máquina dele
+armadilha novos: termine o que está aberto e devolva a quem definiu o pedido. A máquina dele
 desliga por volta das 22h, e entre 21h e 24h em Brasília o almoxarife numera
 pelo dia seguinte em UTC (`armadilhas/158`), então o seu arquivo nasce com a
 data errada justamente nessa faixa. Confira a hora certa antes de começar:

@@ -1,0 +1,19 @@
+{
+  "arquivo": "611-retirar-papeis-fixos-das-fichas-de-trabalho",
+  "id": "TAR-611",
+  "titulo": "Retirar papéis fixos das fichas de trabalho",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "14 arquivos contados, fichas válidas, ferramentas e modelos preservados, conteúdo idêntico ao recorte de fichas do PR 1886",
+  "despacho": "Parte de fichas da TAR-609. Transpor somente .claude/agents (9 arquivos) e .codex/agents (5 arquivos) do commit 85621b16b47493d6a5c85b20068cc41c5d44dceb. Não alterar leis, mapas, serviços ou portões. Validar as suítes de fichas, padrão, Codex e mapa; registrar e publicar pelo make pr. Modelo gpt-6-astra, esforço high.",
+  "origem": "TAR-609-recorte-fichas-20260922",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

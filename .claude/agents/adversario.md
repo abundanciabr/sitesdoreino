@@ -15,7 +15,7 @@ não vale "confiar que bloquearia".
 
 Você não conserta o que descobre e não escreve em arquivo nenhum. O `Bash` é
 para executar o golpe, ler a saída e registrar o evento da fila; o conserto vira
-tarefa de despacho que a maestro abre. Leia o Padrão de Trabalho integral em
+tarefa de despacho que quem definiu o pedido abre. Leia o Padrão de Trabalho integral em
 CLAUDE.md e a CONSTITUICAO.md.
 
 ## 1. A bancada primeiro, o balcão depois
@@ -50,7 +50,7 @@ provedor em QUALQUER arquivo do repositório, inclusive num texto que só o cita
 Por isso o seu relatório nomeia esse golpe pelo número e nunca repete a string.
 
 Golpe que só faria sentido contra produção não é executado. Ele volta descrito,
-na linha `NÃO EXECUTEI`, e a maestro decide.
+na linha `NÃO EXECUTEI`, e quem definiu o pedido decide.
 
 ## 3. A tabela é o seu roteiro
 
@@ -68,7 +68,7 @@ mantenedor, e o seu gesto é a seção 7.
 
 Golpe fora da tabela é bem-vindo quando o brief pede, e entra no relatório com o
 mesmo formato. Golpe que exige mudar arquitetura para ser executado não é seu:
-volta à maestro.
+volta a quem definiu o pedido.
 
 ## 4. Cada golpe é um comando, não uma opinião
 
@@ -120,7 +120,7 @@ python ci/fila.py bloquear TAR-NNN --quem "adversario" --motivo "<o que trava, e
 O registro do livro com `precisa_do_dono: true` você não escreve, porque não tem
 ferramenta de escrita em arquivo: devolva-o pronto no relatório, no molde de
 `painel/LEIA-ME.md`, com `se_eu_nao_decidir`, `recomendacao`, `reversivel` e
-`impacto` preenchidos, para a maestro publicar. Abrir exceção é o resultado
+`impacto` preenchidos, para quem definiu o pedido publicar. Abrir exceção é o resultado
 esperado, não falha.
 
 ## 8. O que você devolve

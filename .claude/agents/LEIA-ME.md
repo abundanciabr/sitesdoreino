@@ -14,10 +14,10 @@ sub-agente segue como rito.
 | Parte | Regra |
 |---|---|
 | `name` | igual ao nome do arquivo, sem `.md`; o teste confere |
-| `description` | obrigatória; é por ela que a maestro escolhe a ficha |
+| `description` | obrigatória; é por ela que quem definiu o pedido escolhe a ficha |
 | `tools` | a lista fechada do que aquele papel alcança; ficha sem lista herda tudo, inclusive escrita |
 | `disallowedTools` | precisa negar `AskUserQuestion` e `Agent`, sempre, em toda ficha |
-| `model` | declarado, nunca herdado; ficha sem `model` usa o modelo da maestro, que é o mais caro (CLAUDE.md, "O que uma chamada custa") |
+| `model` | declarado, nunca herdado; ficha sem `model` usa o modelo da sessão de origem, que é o mais caro (CLAUDE.md, "O que uma chamada custa") |
 | `effort`, `maxTurns` | o teto de esforço e de voltas daquele papel |
 
 Campo fora da tabela de campos conhecidos é **ignorado em silêncio** pelo
@@ -54,14 +54,9 @@ experiência" e de "Integridade comercial e transacional".
 | Ficha | Convoque quando | NÃO convoque quando |
 |---|---|---|
 | `despacho` | há um pedaço de trabalho fechado que vira um PR, com alvos e evidência já decididos | falta decidir o que fazer, ou o pedido ainda não foi repartido em pedaços independentes |
-| `revisor` | um PR existe e você quer a lista do que ele reprovaria, com arquivo e linha, antes do pedido de pouso | não há diff para ler, ou o que você quer é o conserto, e não o veredito |
+| `revisor` | um PR existe e você quer a lista do que ele reprovaria, com arquivo e linha, na revisão da entrega | não há diff para ler, ou o que você quer é o conserto, e não o veredito |
 | `escrivao` | sobrou um papel de julgamento depois do `make pr`: lição nova, bloqueio, incidente, decisão pedida ou respondida | é registro, recibo, evento ou reserva que o `make pr` já escreveu; ele não duplica o que a máquina fez |
 | `procurador` | antes de fechar a fila de um pedido, para medir para onde o trabalho foi e o que o comprador e o aluno perderam | a pergunta é sobre código quebrado, e não sobre valor que não existe |
-
-A ficha `procurador.md` nasce neste PR. Outras estão sendo escritas hoje, em
-PRs irmãos: `provador`, `adversario`, `conferente` e `maquinista`. Enquanto o
-PR de cada uma não pousar, a ficha não existe em `origin/main` e convocá-la
-pelo nome falha: confira a pasta antes de escrever um brief que dependa dela.
 
 ## As duas regras que nenhuma ficha derruba
 
@@ -71,14 +66,14 @@ papel, e nenhuma ficha cita marca para dizer quem manda; se citar, está
 descrevendo o acaso de quem estava livre, e isso não é lei.
 
 **Sub-agente não cria sub-agente e não fala com o mantenedor.** O time é plano:
-por isso toda ficha nega `Agent`. E quem pergunta ao mantenedor é a maestro; o
+por isso toda ficha nega `Agent`. E quem pergunta ao mantenedor é quem definiu o pedido; o
 sub-agente que esbarra numa decisão dele escreve o bloqueio no balcão da fila,
 deixa o registro com `precisa_do_dono: true` e devolve. Por isso toda ficha
 nega `AskUserQuestion`. Abrir exceção assim é o resultado esperado, não falha.
 
 **Não falar com ele nunca foi não prestar contas a ele.** Negar
 `AskUserQuestion` tira do sub-agente a decisão, não a obrigação de explicar: o
-bloqueio que ele devolve vira o bloco **Instruções** da maestro, que é o que o
+bloqueio que ele devolve vira o bloco **Instruções** da sessão de origem, que é o que o
 mantenedor lê. Devolver "bloqueada" sem dizer o que houve, o que destrava e
 quanto leva é a falha que fez o trabalho dele parar (20/09/2026).
 

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-110401-TAR-611-explicada",
+  "tarefa": "TAR-611",
+  "evento": "explicada",
+  "quando": "2026-09-22T11:04:01+00:00",
+  "quem": "TAR-609-recorte-fichas-20260922",
+  "o_que_e": "As fichas corrigidas foram entregues junto de documentos e o pacote excedeu o limite.",
+  "o_que_muda": "Entrega somente as fichas já verificadas, dentro do limite de arquivos.",
+  "exemplo": "A ficha de revisão mantém leitura restrita e deixa de atribuir funções a uma marca de IA.",
+  "importancia": 70
+}

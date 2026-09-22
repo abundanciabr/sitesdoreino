@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260922-110450-TAR-606-reivindicacao_expirada",
+  "tarefa": "TAR-606",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-22T11:04:50+00:00",
+  "quem": "agent/ci/remover-papeis-fichas",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}
