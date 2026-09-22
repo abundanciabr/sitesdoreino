@@ -299,9 +299,10 @@ def test_o_editor_local_ve_arquivo_de_documento_ainda_privado(documento):
     _enviar(_dentro(), documento, "foto.png", PNG)
     guardada = Midia.objects.get()
     cliente = Client()
-    cliente.cookies[settings.ADMIN_LOCAL_COOKIE_NAME] = signing.TimestampSigner().sign_object(
+    cookie = signing.TimestampSigner().sign_object(
         {"id": "id-local", "nome": "Fulano", "email": DONO}
     )
+    cliente.cookies[settings.ADMIN_LOCAL_COOKIE_NAME] = cookie
 
     resposta = cliente.get(f"/midia/{guardada.sorteio}/{guardada.nome}")
 
