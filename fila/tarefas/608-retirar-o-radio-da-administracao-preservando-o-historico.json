@@ -1,0 +1,20 @@
+{
+  "arquivo": "608-retirar-o-radio-da-administracao-preservando-o-historico",
+  "id": "TAR-608",
+  "titulo": "Retirar o rádio da administração preservando o histórico",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Rotas ausentes, tabela histórica preservada, focal vermelho e verde, suíte admin e mapa verdes; entrega em PR com recibo.",
+  "despacho": "Executar o brief remover-radio-20260922 na célula admin. Retirar API, tela, modelo ativo, script e rotas do rádio; preservar migrations históricas e dados. Não tocar em leis, fichas, ci/radio.py, ci/fila.py ou administracao-local. Branch agent/admin/remover-radio-20260922. Modelo gpt-6-astra, esforço high.",
+  "origem": "Brief recebido na sessão Codex de 22/09/2026; decisão registrada em painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

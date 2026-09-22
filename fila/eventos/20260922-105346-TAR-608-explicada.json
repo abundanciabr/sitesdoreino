@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-105346-TAR-608-explicada",
+  "tarefa": "TAR-608",
+  "evento": "explicada",
+  "quando": "2026-09-22T10:53:46+00:00",
+  "quem": "Brief recebido na sessão Codex de 22/09/2026; decisão registrada em painel/registros/20260921-012-fabrica-a-triade-e-o-radio-estao-dissolvidos.js",
+  "o_que_e": "O rádio continua acessível na administração apesar da decisão de retirá-lo.",
+  "o_que_muda": "A administração deixa de oferecer o rádio e conserva as mensagens antigas no banco.",
+  "exemplo": "Abrir o endereço antigo deixa de mostrar uma caixa para enviar mensagens.",
+  "importancia": 80
+}
