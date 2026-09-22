@@ -262,10 +262,11 @@ def test_esta_celula_nao_tem_tabela_de_cursos():
         for modelo in apps.get_models()
         if modelo._meta.app_config.name.startswith("apps.")
     }
-    assert daqui == {"Matricula", "OutboxEvent", "EventoProcessado"}, (
-        "tabela nova na célula `alunos`. Se for lista de cursos, ela não pode "
-        "existir aqui: a lista é do `catalogo`, e a matrícula guarda a "
-        "referência (`Matricula.product_id`), nunca a cópia. Lei: "
+    assert daqui == {"Matricula", "OutboxEvent", "EventoProcessado", "Pagamento"}, (
+        "inventário de tabelas inesperado na célula `alunos`. `Pagamento` "
+        "guarda o estado mínimo para serializar aprovação e estorno. Lista de "
+        "cursos não pode existir aqui: a lista é do `catalogo`, e a matrícula "
+        "guarda a referência (`Matricula.product_id`), nunca a cópia. Lei: "
         "docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md §7."
     )
 
