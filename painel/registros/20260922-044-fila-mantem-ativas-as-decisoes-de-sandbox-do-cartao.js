@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-044-fila-mantem-ativas-as-decisoes-de-sandbox-do-cartao",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fila: mantém ativas as decisões de sandbox do cartão",
+  detalhe: "A TAR-628 foi encerrada durante o cadastro da tarefa; esta correção mantém separada e ativa a entrega das decisões do plano mestre.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1940. Validação local: árvore b04430b5e22a8fb07cb835f28b4ed2e7cbc82c9c; commit 268bc01e8b36ed4899f6afb8a0a3afe0609ad8f6; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-630",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
