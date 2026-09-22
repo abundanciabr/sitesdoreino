@@ -52,6 +52,8 @@ if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then
 fi
 
 set -u
+set +a
+unset CLIENT_ID SEGREDO OAUTH VALOR TEMP LINHA linha saida valor
 
 AUTH_SANDBOX="https://auth.sandboxappmax.com.br"
 API_SANDBOX="https://api.sandboxappmax.com.br"
@@ -84,7 +86,20 @@ ler_de() {  # chave. Devolve o valor limpo, sem comentário nem espaços em volt
     | tr -d '\r' | sed 's/[[:space:]]*#.*$//; s/^[[:space:]]*//; s/[[:space:]]*$//'
 }
 
-if awk -F= '$1 == "APPMAX_CARD_ENABLED_SITES" { valor = $2; sub(/[[:space:]]*#.*/, "", valor); gsub(/[[:space:]]/, "", valor); if (valor != "") ativo = 1 } END { exit !ativo }' "$ENV_PAGAMENTOS"; then
+if awk '
+  {
+    linha = $0
+    sub(/^[[:space:]]*/, "", linha)
+    if (linha !~ /^APPMAX_CARD_ENABLED_SITES([[:space:]]*([=:])|[[:space:]]*(#.*)?$)/) next
+    quantidade++
+    if (linha !~ /[=:]/) { ativo = 1; next }
+    sub(/^[^=:]*[=:]/, "", linha)
+    sub(/[[:space:]]*#.*/, "", linha)
+    gsub(/[[:space:]]/, "", linha)
+    if (linha != "") ativo = 1
+  }
+  END { exit !(ativo || quantidade > 1) }
+' "$ENV_PAGAMENTOS"; then
   parar "há sites com cobrança Appmax habilitada. Este roteiro só prepara sandbox e não pode rodar nesse estado. Desative a lista APPMAX_CARD_ENABLED_SITES por um procedimento autorizado antes de continuar. Nada foi alterado."
 fi
 
@@ -135,8 +150,13 @@ try:
 except Exception:
     print("RESPOSTA_INVALIDA")
     raise SystemExit(0)
-token = payload.get("access_token")
-if not isinstance(token, str) or not token or payload.get("token_type") != "Bearer":
+try:
+    token = payload["access_token"]
+    tipo = payload["token_type"]
+except (KeyError, TypeError):
+    print("RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+if not isinstance(token, str) or not token or tipo != "Bearer":
     print("RESPOSTA_INVALIDA")
     raise SystemExit(0)
 config = "silent = true\nshow-error = true\nmax-time = 20\nurl = \"https://api.sandboxappmax.com.br/v1/products\"\nheader = " + json.dumps("Authorization: Bearer " + token) + "\nwrite-out = \"\\n%{http_code}\"\n"

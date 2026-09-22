@@ -130,6 +130,10 @@ else
     HTTP_401) printf '{"error":"invalid_client"}
 401' ;;
     FALHA_DE_REDE) exit 7 ;;
+    TOKEN_SEM_ACCESS) printf '{"token_type":"Bearer","expires_in":604800}
+200' ;;
+    CREDENCIAL_EXPORTADA) [ "${CLIENT_ID+x}${SEGREDO+x}${OAUTH+x}${VALOR+x}${TEMP+x}${LINHA+x}${linha+x}${saida+x}${valor+x}" = "" ] || exit 8; printf '{"access_token":"token-de-mentira","token_type":"Bearer","expires_in":604800}
+200' ;;
     *) printf 'resposta quebrada
 200' ;;
   esac
@@ -167,6 +171,8 @@ def _ambiente(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
         PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
         PLATAFORMA_DIR=str(raiz),
         DOCKER_FALSO_SITES=f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n",
+        CURL_FALSO_RESULT="OK",
+        CURL_FALSO_API_RESULT="OK",
     )
     ambiente.update(ajustes)
     return ambiente
@@ -181,17 +187,28 @@ def _rodar(
     """Roda o roteiro com as respostas chegando pelo teclado."""
     if ambiente is None:
         ambiente = _ambiente(raiz.parent, raiz)
-    return subprocess.run(
-        [_bash(), str(SCRIPT), *args],
-        input=digitado,
+    executavel = raiz.parent / "binarios-de-mentira"
+    resultado = subprocess.run(
+        [
+            _bash(),
+            "-c",
+            'PATH="$1:$PATH"; export PATH; shift; exec "$@"',
+            "teste-appmax",
+            str(executavel),
+            str(SCRIPT),
+            *args,
+        ],
+        input=digitado.encode("utf-8"),
         capture_output=True,
-        text=True,
-        # O roteiro fala PORTUGUÊS, com acento e com o "PAROU POR SEGURANÇA".
-        # Sem dizer o encoding aqui, o Python de uma máquina Windows tenta
-        # cp1252 e a leitura da tela estoura antes de qualquer asserção.
-        encoding="utf-8",
-        errors="replace",
         env=ambiente,
+    )
+    # Bytes preservam LF no pipe em Windows; text=True traduziria as entradas
+    # em CRLF, que Bash lê como parte das credenciais invisíveis.
+    return subprocess.CompletedProcess(
+        resultado.args,
+        resultado.returncode,
+        resultado.stdout.decode("utf-8", errors="replace"),
+        resultado.stderr.decode("utf-8", errors="replace"),
     )
 
 
@@ -511,7 +528,7 @@ def test_recarga_que_falha_para_dizendo_que_o_env_ja_esta_gravado(tmp_path):
     # O env JÁ está certo: mandar colar tudo de novo seria mentira.
     assert _valor(raiz, "APPMAX_APP_CLIENT_SECRET") == SEGREDO
 
-@pytest.mark.parametrize("codigo", ["HTTP_401", "FALHA_DE_REDE", "RESPOSTA_INVALIDA"])
+@pytest.mark.parametrize("codigo", ["HTTP_401", "FALHA_DE_REDE", "RESPOSTA_INVALIDA", "TOKEN_SEM_ACCESS"])
 def test_oauth_merchante_reprovado_nao_grava_credenciais(tmp_path, codigo):
     raiz = _plataforma(tmp_path)
     assert _rodar(raiz).returncode == 0
@@ -593,6 +610,62 @@ def test_cobranca_habilitada_faz_o_script_parar_antes_de_pedir_segredo(tmp_path)
     assert "client_secret" not in tela
     assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
     assert _copias(raiz) == []
+
+
+@pytest.mark.parametrize(
+    "linha",
+    [
+        "APPMAX_CARD_ENABLED_SITES = site-a",
+        "APPMAX_CARD_ENABLED_SITES: site-a",
+        "APPMAX_CARD_ENABLED_SITES=\nAPPMAX_CARD_ENABLED_SITES: site-a",
+        "APPMAX_CARD_ENABLED_SITES",
+        "APPMAX_CARD_ENABLED_SITES # sem delimitador",
+    ],
+)
+def test_guardia_reconhece_formatos_compose_e_duplicatas_da_trava(tmp_path, linha):
+    raiz = _plataforma(tmp_path, env=PAGAMENTOS_ENV + linha + "\n")
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
+
+    resultado = _rodar(raiz)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "APPMAX_CARD_ENABLED_SITES" in tela
+    assert "client_secret" not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == []
+
+
+def test_credenciais_exportadas_pelo_shell_nao_chegam_ao_curl(tmp_path):
+    raiz = _plataforma(tmp_path)
+    assert _rodar(raiz).returncode == 0
+    ambiente = _ambiente(
+        tmp_path,
+        raiz,
+        CURL_FALSO_RESULT="CREDENCIAL_EXPORTADA",
+        CLIENT_ID="herdado-id",
+        SEGREDO="herdado-segredo",
+        OAUTH="herdado-token",
+        VALOR="herdado-valor",
+        TEMP="herdado-arquivo-env",
+        linha="herdado-linha",
+        saida="herdado-saida",
+        valor="herdado-valor-lowercase",
+    )
+
+    resultado = _rodar(
+        raiz,
+        digitado=f"{MERCHANT_CLIENT_ID}\n{MERCHANT_SECRET}\n",
+        ambiente=ambiente,
+        args=("--oauth-merchant",),
+    )
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode == 0, tela
+    assert "OAuth sandbox e leitura de produtos MERCHANT validados" in tela
+    assert "herdado-segredo" not in tela
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_ID") == MERCHANT_CLIENT_ID
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_SECRET") == MERCHANT_SECRET
 
 
 # ---------------------------------------------------------------------------
