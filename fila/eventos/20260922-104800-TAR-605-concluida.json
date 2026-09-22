@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-104800-TAR-605-concluida",
+  "tarefa": "TAR-605",
+  "evento": "concluida",
+  "quando": "2026-09-22T10:48:00+00:00",
+  "quem": "agent/ci/remover-radio-cli",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1885",
+  "verificado_em": "2026-09-22"
+}

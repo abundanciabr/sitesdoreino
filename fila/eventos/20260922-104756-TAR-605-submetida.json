@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-104756-TAR-605-submetida",
+  "tarefa": "TAR-605",
+  "evento": "submetida",
+  "quando": "2026-09-22T10:47:56+00:00",
+  "quem": "agent/ci/remover-radio-cli",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1885",
+  "revisao": "c3f040e7b4f2f1b2a09e9fb25fc737abcb5a19ef",
+  "arvore": "56e392fd24469328816e691a51a42bc94272f1cf"
+}
