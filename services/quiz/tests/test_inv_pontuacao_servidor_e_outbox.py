@@ -7,7 +7,14 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from apps.quiz.models import Option, OutboxEvent, Question, Quiz, Submission
+from apps.quiz.models import (
+    Option,
+    OutboxEvent,
+    Question,
+    Quiz,
+    QuizVersion,
+    Submission,
+)
 from tests.test_smoke import HOST_A, quiz_a, site_a, site_b  # noqa: F401 (fixtures)
 
 pytestmark = pytest.mark.django_db
@@ -23,7 +30,7 @@ CONTRATO = json.loads(
 
 
 def test_cliente_nao_pode_enviar_pontuacao_o_servidor_recalcula(client, quiz_a):
-    pergunta = quiz_a.questions.get(order=1)
+    pergunta = quiz_a.versions.get().questions.get(order=1)
     opcao_zero = pergunta.options.get(points=0)
 
     resp = client.post(
@@ -43,12 +50,15 @@ def test_cliente_nao_pode_enviar_pontuacao_o_servidor_recalcula(client, quiz_a):
 
 def test_opcao_que_nao_pertence_a_pergunta_e_rejeitada(client, quiz_a, site_b):
     outro_quiz = Quiz.objects.create(site=site_b, slug="outro", title="Outro")
-    outra_pergunta = Question.objects.create(quiz=outro_quiz, order=1, text="X")
+    outra_versao = QuizVersion.objects.create(
+        quiz=outro_quiz, key="original", weight=100, active=True
+    )
+    outra_pergunta = Question.objects.create(version=outra_versao, order=1, text="X")
     opcao_de_fora = Option.objects.create(
         question=outra_pergunta, order=1, text="Y", points=999
     )
 
-    pergunta = quiz_a.questions.get(order=1)
+    pergunta = quiz_a.versions.get().questions.get(order=1)
     resp = client.post(
         f"/{quiz_a.slug}/",
         {f"pergunta_{pergunta.id}": opcao_de_fora.id, "email": "lead@exemplo.com"},
@@ -59,7 +69,7 @@ def test_opcao_que_nao_pertence_a_pergunta_e_rejeitada(client, quiz_a, site_b):
 
 
 def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
-    pergunta = quiz_a.questions.get(order=1)
+    pergunta = quiz_a.versions.get().questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)
 
     resp = client.post(
@@ -81,7 +91,7 @@ def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
 
 
 def test_envelope_do_evento_valida_contra_o_contrato_congelado(client, quiz_a):
-    pergunta = quiz_a.questions.get(order=1)
+    pergunta = quiz_a.versions.get().questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)
 
     resp = client.post(

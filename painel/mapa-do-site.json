@@ -2045,6 +2045,16 @@
     },
     {
       "celula": "quiz",
+      "rota": "telemetry/",
+      "endereco": "/quiz/telemetry/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "gesto": true,
+      "titulo": "Registrar o avanço no quiz",
+      "descricao": "Recebe os marcos da jornada do visitante para medir onde ele avança ou abandona o quiz. Não mostra uma página nem altera a nota."
+    },
+    {
+      "celula": "quiz",
       "rota": "healthz",
       "endereco": "/quiz/healthz",
       "alcance": "publico",

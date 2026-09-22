@@ -1,12 +1,26 @@
+import json
 import uuid
+from datetime import datetime
 
+from django.conf import settings
+from django.core import signing
 from django.db import transaction
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from redis.exceptions import RedisError
 
-from .models import OutboxEvent, Quiz, Submission
-from .tasks import relay_apos_commit
+from .models import OutboxEvent, Quiz, QuizVersion, Submission
+from .tasks import TIPOS_DE_EVENTO, publicar_telemetria, relay_apos_commit
+
+COOKIE_SESSAO = "quiz_session"
+SALT_SESSAO = "quiz-session"
+MAX_AGE_SESSAO = 7 * 24 * 60 * 60
+LIMITE_CORPO = 4096
+LIMITE_ELEMENTO = 120
 
 
 def _quiz_do_site(request, slug):
@@ -22,21 +36,157 @@ def _quiz_do_site(request, slug):
     return get_object_or_404(Quiz, site_id=site["id"], slug=slug, active=True)
 
 
+def escolher_versao(quiz, session_id: uuid.UUID) -> QuizVersion:
+    """Corte estável: o mesmo session_id cai sempre na mesma versão ativa."""
+    elegiveis = [
+        versao
+        for versao in quiz.versions.filter(active=True).order_by("id")
+        if versao.weight > 0
+    ]
+    if not elegiveis:
+        raise Http404("nenhuma versão ativa")
+    total = sum(versao.weight for versao in elegiveis)
+    ponto = session_id.int % total
+    acumulado = 0
+    for versao in elegiveis:
+        acumulado += versao.weight
+        if ponto < acumulado:
+            return versao
+    return elegiveis[-1]
+
+
+def _utm_da_query(request) -> dict:
+    saida = {}
+    for chave, valor in request.GET.items():
+        if not chave.startswith("utm_") or not valor:
+            continue
+        saida[chave[4:100]] = str(valor)[:200]
+        if len(saida) >= 8:
+            break
+    return saida
+
+
+def _ler_quizzes(request) -> dict:
+    cru = request.COOKIES.get(COOKIE_SESSAO)
+    if not cru:
+        return {}
+    try:
+        dados = signing.loads(cru, salt=SALT_SESSAO, max_age=MAX_AGE_SESSAO)
+    except signing.BadSignature:
+        return {}
+    quizzes = dados.get("quizzes") if isinstance(dados, dict) else None
+    if not isinstance(quizzes, dict):
+        return {}
+    return quizzes
+
+
+def _entrada_usavel(entrada) -> bool:
+    if not isinstance(entrada, dict):
+        return False
+    try:
+        uuid.UUID(str(entrada.get("session_id")))
+    except (ValueError, TypeError):
+        return False
+    return (
+        isinstance(entrada.get("version_key"), str)
+        and entrada.get("version_id")
+        and isinstance(entrada.get("site_id"), str)
+    )
+
+
+def resolver_sessao(request, quiz):
+    """Devolve a entrada do cookie e a versão que esta visita vai ver.
+
+    A UTM é a da chegada. Uma visita seguinte não troca o anúncio de origem
+    só porque a query sumiu.
+    """
+    atual = _ler_quizzes(request).get(quiz.slug)
+    versao = None
+    if _entrada_usavel(atual):
+        versao = quiz.versions.filter(pk=atual["version_id"]).first()
+    if versao is None:
+        session_id = uuid.uuid4()
+        if isinstance(atual, dict):
+            try:
+                session_id = uuid.UUID(str(atual.get("session_id")))
+            except (ValueError, TypeError):
+                session_id = uuid.uuid4()
+        versao = escolher_versao(quiz, session_id)
+        utm = _utm_da_query(request)
+        if (
+            isinstance(atual, dict)
+            and isinstance(atual.get("utm"), dict)
+            and atual.get("utm")
+        ):
+            utm = atual["utm"]
+        atual = {
+            "session_id": str(session_id),
+            "version_id": versao.id,
+            "version_key": versao.key,
+            "site_id": quiz.site_id,
+            "utm": utm,
+        }
+    else:
+        atual = {
+            "session_id": str(atual["session_id"]),
+            "version_id": versao.id,
+            "version_key": versao.key,
+            "site_id": quiz.site_id,
+            "utm": atual.get("utm") if isinstance(atual.get("utm"), dict) else {},
+        }
+    return atual, versao
+
+
+def _escrever_cookie(response, request, slug, entrada):
+    quizzes = _ler_quizzes(request)
+    quizzes[slug] = {
+        "session_id": entrada["session_id"],
+        "version_id": entrada["version_id"],
+        "version_key": entrada["version_key"],
+        "site_id": entrada["site_id"],
+        "utm": entrada.get("utm") or {},
+    }
+    response.set_cookie(
+        COOKIE_SESSAO,
+        signing.dumps({"quizzes": quizzes}, salt=SALT_SESSAO),
+        max_age=MAX_AGE_SESSAO,
+        httponly=True,
+        secure=request.is_secure(),
+        samesite="Lax",
+        path=settings.FORCE_SCRIPT_NAME or "/",
+    )
+    return response
+
+
+def _render_formulario(
+    request, quiz, versao, questions, entrada, erro=None, status=200
+):
+    resposta = render(
+        request,
+        "quiz/formulario.html",
+        {"quiz": quiz, "versao": versao, "questions": questions, "erro": erro},
+        status=status,
+    )
+    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+
+
 def formulario(request, slug):
     quiz = _quiz_do_site(request, slug)
-    questions = quiz.questions.prefetch_related("options")
+    entrada, versao = resolver_sessao(request, quiz)
+    questions = versao.questions.prefetch_related("options")
 
     if request.method != "POST":
-        return render(
-            request, "quiz/formulario.html", {"quiz": quiz, "questions": questions}
-        )
+        return _render_formulario(request, quiz, versao, questions, entrada)
 
     email = request.POST.get("email", "").strip()
     if not email:
-        return render(
+        return _render_formulario(
             request,
-            "quiz/formulario.html",
-            {"quiz": quiz, "questions": questions, "erro": "e-mail é obrigatório"},
+            quiz,
+            versao,
+            questions,
+            entrada,
+            erro="e-mail é obrigatório",
             status=422,
         )
 
@@ -45,14 +195,13 @@ def formulario(request, slug):
     for question in questions:
         valor = request.POST.get(f"pergunta_{question.id}")
         if valor is None:
-            return render(
+            return _render_formulario(
                 request,
-                "quiz/formulario.html",
-                {
-                    "quiz": quiz,
-                    "questions": questions,
-                    "erro": "responda todas as perguntas",
-                },
+                quiz,
+                versao,
+                questions,
+                entrada,
+                erro="responda todas as perguntas",
                 status=422,
             )
         # [pontuação só no servidor] a opção é buscada no banco pela pergunta;
@@ -63,13 +212,15 @@ def formulario(request, slug):
         respostas[question.id] = opcao.id
         score += opcao.points
 
-    banda = quiz.bands.filter(min_score__lte=score, max_score__gte=score).first()
+    banda = versao.bands.filter(min_score__lte=score, max_score__gte=score).first()
     result_key = banda.key if banda is not None else "sem_faixa"
-    utm = {k[4:]: v for k, v in request.GET.items() if k.startswith("utm_")}
+    utm = entrada.get("utm") or {}
 
     with transaction.atomic():
         submissao = Submission.objects.create(
             quiz=quiz,
+            version=versao,
+            session_id=entrada["session_id"],
             site_id=quiz.site_id,
             score=score,
             result_key=result_key,
@@ -100,7 +251,8 @@ def formulario(request, slug):
         transaction.on_commit(relay_apos_commit)
 
     destino = reverse("quiz-resultado", args=[slug])
-    return redirect(f"{destino}?lead={submissao.id}")
+    resposta = redirect(f"{destino}?lead={submissao.id}")
+    return _escrever_cookie(resposta, request, quiz.slug, entrada)
 
 
 def resultado(request, slug):
@@ -112,9 +264,67 @@ def resultado(request, slug):
     submissao = get_object_or_404(
         Submission, id=submissao_id, quiz=quiz, site_id=quiz.site_id
     )
-    banda = quiz.bands.filter(key=submissao.result_key).first()
+    banda = None
+    if submissao.version_id:
+        banda = submissao.version.bands.filter(key=submissao.result_key).first()
     return render(
         request,
         "quiz/resultado.html",
         {"quiz": quiz, "submissao": submissao, "banda": banda},
     )
+
+
+def _quando(valor):
+    if not isinstance(valor, str) or not valor:
+        return timezone.now()
+    try:
+        instante = datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        return timezone.now()
+    if timezone.is_naive(instante):
+        instante = timezone.make_aware(instante, timezone.utc)
+    return instante
+
+
+@csrf_exempt
+@require_POST
+def telemetria(request):
+    """Valida o cookie assinado e empurra o evento para o Redis. Sem banco."""
+    if len(request.body) > LIMITE_CORPO:
+        return HttpResponse(status=413)
+    try:
+        corpo = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+    if not isinstance(corpo, dict):
+        return HttpResponse(status=400)
+    slug = corpo.get("quiz_slug")
+    entrada = _ler_quizzes(request).get(slug)
+    if not isinstance(slug, str) or not _entrada_usavel(entrada):
+        return HttpResponse(status=401)
+    tipo = corpo.get("event_type")
+    if tipo not in TIPOS_DE_EVENTO:
+        return HttpResponse(status=400)
+    element_id = corpo.get("element_id") or ""
+    if not isinstance(element_id, str) or len(element_id) > LIMITE_ELEMENTO:
+        return HttpResponse(status=400)
+    metadata = corpo.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        return HttpResponse(status=400)
+    metadata = {chave: valor for chave, valor in metadata.items() if chave != "utm"}
+    metadata["utm"] = entrada.get("utm") or {}
+    envelope = {
+        "session_id": entrada["session_id"],
+        "site_id": entrada["site_id"],
+        "quiz_slug": slug,
+        "version_key": entrada["version_key"],
+        "event_type": tipo,
+        "element_id": element_id,
+        "occurred_at": _quando(corpo.get("occurred_at")).isoformat(),
+        "metadata": metadata,
+    }
+    try:
+        publicar_telemetria(envelope)
+    except (RedisError, KeyError, OSError):
+        return HttpResponse(status=503)
+    return HttpResponse(status=204)

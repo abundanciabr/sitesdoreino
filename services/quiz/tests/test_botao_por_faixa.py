@@ -15,7 +15,15 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 
-from apps.quiz.models import Option, Question, Quiz, ResultBand, Site, Submission
+from apps.quiz.models import (
+    Option,
+    Question,
+    Quiz,
+    QuizVersion,
+    ResultBand,
+    Site,
+    Submission,
+)
 
 HOST = "quiz-botao.exemplo.com"
 DESTINO = "/checkout/curso-teste/"
@@ -27,14 +35,17 @@ pytestmark = pytest.mark.django_db
 def quiz_a(db):
     site = Site.objects.create(id="site-botao", host=HOST, name="Site do Botão")
     quiz = Quiz.objects.create(site=site, slug="crivo", title="Crivo")
-    pergunta = Question.objects.create(quiz=quiz, order=1, text="Pergunta 1")
+    versao = QuizVersion.objects.create(
+        quiz=quiz, key="original", weight=100, active=True
+    )
+    pergunta = Question.objects.create(version=versao, order=1, text="Pergunta 1")
     Option.objects.create(question=pergunta, order=1, text="Zero", points=0)
     Option.objects.create(question=pergunta, order=2, text="Dez", points=10)
     return quiz
 
 
 def _submeter(client, quiz, pontos):
-    pergunta = quiz.questions.get(order=1)
+    pergunta = quiz.versions.get().questions.get(order=1)
     envio = client.post(
         f"/{quiz.slug}/",
         {
@@ -54,7 +65,7 @@ def _submeter(client, quiz, pontos):
 
 def test_o_resultado_mostra_o_botao_da_faixa_que_a_pessoa_caiu(client, quiz_a):
     ResultBand.objects.create(
-        quiz=quiz_a,
+        version=quiz_a.versions.get(),
         key="baixo",
         title="Baixo",
         min_score=0,
@@ -63,7 +74,7 @@ def test_o_resultado_mostra_o_botao_da_faixa_que_a_pessoa_caiu(client, quiz_a):
         botao_rotulo="Começar pelo básico",
     )
     ResultBand.objects.create(
-        quiz=quiz_a,
+        version=quiz_a.versions.get(),
         key="alto",
         title="Alto",
         min_score=5,
@@ -85,7 +96,11 @@ def test_faixa_sem_botao_mostra_o_diagnostico_e_nenhum_link(client, quiz_a):
     """O estado vazio. Um botão sem destino seria pior que nenhum botão: a
     pessoa clica e não sai do lugar."""
     ResultBand.objects.create(
-        quiz=quiz_a, key="alto", title="Alto", min_score=0, max_score=10
+        version=quiz_a.versions.get(),
+        key="alto",
+        title="Alto",
+        min_score=0,
+        max_score=10,
     )
 
     pagina = _submeter(client, quiz_a, pontos=10).content.decode()
@@ -101,7 +116,7 @@ def test_destino_sem_rotulo_e_recusado_pelo_banco(quiz_a):
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             ResultBand.objects.create(
-                quiz=quiz_a,
+                version=quiz_a.versions.get(),
                 key="torto",
                 title="Torto",
                 min_score=0,
@@ -130,7 +145,8 @@ def _semear(**extra):
 def test_o_seed_planta_as_tres_faixas_com_botao(db):
     quiz = _semear()
 
-    faixas = list(quiz.bands.all())
+    versao = quiz.versions.get(key="original")
+    faixas = list(versao.bands.all())
     assert [f.key for f in faixas] == ["iniciante", "intermediario", "avancado"]
     assert {f.botao_destino for f in faixas} == {DESTINO}
     # Rótulos distintos: é o que faz o botão ser diferente por faixa.
@@ -147,13 +163,16 @@ def test_o_seed_poe_botao_em_faixa_que_ja_existia_sem_ele(db):
     """
     site = Site.objects.create(id="site-semeado", host=HOST, name="Site Semeado")
     quiz = Quiz.objects.create(site=site, slug="crivo", title="Crivo")
+    versao = QuizVersion.objects.create(
+        quiz=quiz, key="original", weight=100, active=True
+    )
     ResultBand.objects.create(
-        quiz=quiz, key="iniciante", title="Antigo", min_score=0, max_score=9
+        version=versao, key="iniciante", title="Antigo", min_score=0, max_score=9
     )
 
     _semear()
 
-    faixa = quiz.bands.get(key="iniciante")
+    faixa = versao.bands.get(key="iniciante")
     assert faixa.botao_destino == DESTINO
     assert faixa.botao_rotulo
 
@@ -163,10 +182,11 @@ def test_o_seed_continua_idempotente(db):
     _semear()
 
     quiz = Quiz.objects.get(slug="crivo", site_id="site-semeado")
+    versao = quiz.versions.get(key="original")
     assert Quiz.objects.count() == 1
-    assert quiz.bands.count() == 3
-    assert quiz.questions.count() == 3
-    assert Option.objects.filter(question__quiz=quiz).count() == 9
+    assert versao.bands.count() == 3
+    assert versao.questions.count() == 3
+    assert Option.objects.filter(question__version=versao).count() == 9
     assert Submission.objects.count() == 0
 
 
