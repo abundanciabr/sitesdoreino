@@ -1590,7 +1590,12 @@ def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
             continue
         try:
             pr = carregar_pr_com_reconsulta(raiz, item["number"])
-            if checar_mandato(raiz, pr).estado is not Estado.PASS:
+            mandato = checar_mandato(raiz, pr)
+            if mandato.estado is not Estado.PASS:
+                print(
+                    f"PR #{item['number']} não foi integrado: {mandato.resumo}. "
+                    "O motivo está nesta varredura; nenhuma ação humana no GitHub é necessária para a medição."
+                )
                 continue
             # Só o PR que já está pronto ganha a base nova. Empurrar a main
             # para dentro de um PR vermelho re-dispara o CI inteiro, não o

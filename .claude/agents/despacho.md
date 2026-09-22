@@ -19,8 +19,11 @@ Este rito é a ficha do EXECUTOR da tríade (docs/decisoes/DECISAO-triade-de-ias
 seguida pelo sub-agente despacho (pedido colado em sessão Claude Code ou Codex)
 ou pelo Codex que pega tarefa na fila: um PR por tarefa, com evento e registro a bordo pelo `make pr`.
 O executor nunca pergunta ao mantenedor, nunca edita o clone principal, nunca
-amplia o mandato, não audita nem decide lei. A maestro (Claude Code) decide e
-publica o atestado; a sentinela (Antigravity) verifica depois do merge.
+amplia o mandato, não audita nem decide lei. Ao abrir o PR, ele mede os checks,
+aciona a pista pelo caminho automático e confirma o resultado remoto. Em uma
+escada dependente, ele só abre o PR seguinte depois de confirmar `MERGED` na
+fonte do GitHub. A maestro e a sentinela recebem o fato já comprovado, não uma
+solicitação de operação.
 
 ## 1. A bancada primeiro, o balcão depois
 
@@ -122,20 +125,15 @@ Validação local, PR aberto, revisão, integração e publicação não se equi
 Antes do push final, confira com os olhos: `git diff --name-only
 origin/main...HEAD` bate com os alvos do brief? Tem TODOS os eventos da tarefa?
 
-## 7. O pouso não é seu: devolva o número do PR
+## 7. O pouso e a continuação são automáticos
 
-**Você NUNCA arma o pouso automático**, tenha ou não a ferramenta `Monitor`. A
-espera armada dentro da sua sessão morre com ela, e o seu turno acaba em
-segundos: bem antes de os checks ficarem verdes, que é o único instante em que
-aquele comando faria alguma coisa. O resultado é um PR órfão, verde e parado,
-com um relatório seu dizendo que o pouso estava armado. Aconteceu com o PR
-#1160, que ficou 12h30 assim (`armadilhas/364`).
-
-Também NÃO fique em laço olhando checks. O gesto que fecha o seu trabalho é
-devolver o **número do PR** à maestro no relatório final. A maestro confere
-que o PR não é rascunho (`gh pr view <N> --json isDraft`, e `gh pr ready <N>`
-se for) e encerra; a pista integra sozinha por `ci/mergear.py --automatico`
-via `pouso.yml`, sem revisor, atestado, etiqueta ou gesto seu.
+Depois de abrir o PR, rode `python ci/esperar.py --checks <N> --teto 20
+--e-pousar` e confirme uma vez com `python ci/esperar.py --entrega <N>
+--so-desfecho`. A pista integra por `ci/mergear.py --automatico` via
+`pouso.yml`, sem etiqueta, aprovação ou clique humano. Confirme o estado remoto
+com `gh pr view <N> --json state,mergeCommit`; se estiver `MERGED` e o brief
+trouxer uma frente dependente, abra a próxima bancada imediatamente. Estado do
+GitHub nunca vira pedido manual.
 
 Vermelho ou ERROR nunca vira pedido de pouso (check pendente aguarda na pista): FAIL você conserta
 no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits

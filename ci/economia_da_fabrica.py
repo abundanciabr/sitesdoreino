@@ -28,7 +28,7 @@ from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa
 
 MODELO_ROTINA = "sonnet"
 MODELO_TOPO = "opus"
-MODELOS_CODEX = {"rotina": "gpt-5.6-sol", "topo": "gpt-6-astra"}
+MODELOS_CODEX = {"rotina": "gpt-5.6-sol", "topo": "gpt-5.6-luna"}
 
 
 def harness_ativo(raiz: Path | None = None) -> str:
@@ -190,7 +190,7 @@ def auditar_fichas(raiz: Path) -> list[str]:
         nome = campos.get("name") or caminho.stem
         relativo = caminho.relative_to(raiz).as_posix()
         if harness == "codex":
-            esperado = MODELOS_CODEX["topo" if nome == "despacho" else "rotina"]
+            esperado = "gpt-5.6-luna" if nome == "despacho" else MODELOS_CODEX["rotina"]
             if modelo != esperado:
                 falhas.append(f"{relativo}: model precisa ser {esperado}, recebido {modelo!r}")
             if campos.get("model_reasoning_effort") not in {"low", "medium", "high", "xhigh"}:

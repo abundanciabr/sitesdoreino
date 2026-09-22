@@ -103,8 +103,8 @@ pare e avise a maestro, nunca esprema arquivos (RUNBOOK §3.7).*
 - [ ] Lição nova registrada em `armadilhas/NNN-slug.md` ou `LICOES.md` da célula, quando aprendida
 - [ ] Fechamento por `make pr` conforme `painel/LEIA-ME.md`, com validação, recibo e eventos embarcados; não repetir manualmente
 
-**Depois do merge (a maestro confere):**
-- [ ] PR encaminhado pela maestro e mergeado pela pista (emenda da Lei 4); `gh pr view <N> --json state,mergeCommit` conferido
+**Depois do merge (o despacho confere):**
+- [ ] PR encaminhado pela pista e confirmado pelo próprio despacho com `gh pr view <N> --json state,mergeCommit`
 - [ ] Se disparou deploy: veredito REAL por `gh run view <id> --json status,conclusion`
 - [ ] Fatos posteriores registrados no livro, sem duplicar o recibo de `make pr`
 

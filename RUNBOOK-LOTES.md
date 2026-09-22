@@ -37,9 +37,10 @@ Variações que funcionam igual:
 - `...um lote menor (3 despachos)` (gasta a franquia mais devagar)
 - `...só o canário` (1 despacho, para ver a esteira rodar de ponta a ponta)
 
-Só isso. A sessão monta, dispara, revisa, pede pouso e te reporta no fim. As únicas
-coisas que podem voltar para você são as do §7 (segredos, VPS, contrato) — e virão
-como **um bloco único de colar, com a janela rotulada** (CLAUDE.md).
+Só isso. A sessão monta, dispara, revisa, aciona a pista e confirma o desfecho.
+As únicas coisas que podem voltar para você são as do §7 (segredos, VPS,
+contrato) — e virão como **um bloco único de colar, com a janela rotulada**
+(CLAUDE.md).
 
 **Sobre custo:** um lote consome a franquia do plano mais rápido *por hora* — é o
 mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
@@ -122,11 +123,11 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 Para cada PR com revisão independente e recibo, na ordem canário → comuns → dinheiro:
 
 ```bash
-python ci/mergear.py <N> --pousar
+python ci/esperar.py --checks <N> --teto 20 --e-pousar
 ```
 
-O comando confere a etiqueta `pousar` e o SHA remoto antes de responder
-`ENFILEIRADO`. A maestro encerra; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
+O comando confere os checks e o SHA remoto antes de encaminhar. O despacho
+confirma `state,mergeCommit`; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
 `20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
 PR aberto, revisão aprovada, integração e publicação são estados distintos.
 
