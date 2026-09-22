@@ -2631,6 +2631,25 @@
     },
     {
       "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/midia$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/midia$",
+      "alcance": "interno",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Enviar uma imagem ou um vídeo",
+      "descricao": "Não é uma página: é o que acontece quando você aperta enviar no editor do documento. O arquivo vai para o disco do servidor. Eu confiro o conteúdo do arquivo, e não o nome dele, então um arquivo que só finge ser imagem é recusado."
+    },
+    {
+      "celula": "admin",
+      "rota": "^midia/(?P<sorteio>[0-9a-f]{32})/(?P<nome>[a-z0-9-]+\\.[a-z0-9]{2,4})$",
+      "endereco": "/admin/midia/(?P<sorteio>[0-9a-f]{32})/(?P<nome>[a-z0-9-]+\\.[a-z0-9]{2,4})$",
+      "alcance": "interno",
+      "para_quem": "equipe",
+      "titulo": "Uma imagem ou um vídeo enviado",
+      "descricao": "O arquivo que você enviou por um documento, servido de volta. O endereço de cada arquivo é sorteado, e ele responde só para quem passou pela porta."
+    },
+    {
+      "celula": "admin",
       "rota": "livro/",
       "endereco": "/admin/livro/",
       "alcance": "interno",
