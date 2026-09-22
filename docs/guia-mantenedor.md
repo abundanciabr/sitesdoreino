@@ -19,6 +19,10 @@ pare a parte dependente e não repita. Despacho não pergunta: escreve bloqueada
 na fila, registra precisa_do_dono: true, devolve impacto e reversão à maestro.
 Não perguntar nunca foi calar: a maestro transforma esse retorno no bloco
 Instruções, e bloqueio devolvido sem o que houve e o que destrava não serve.
+Quando a bola for do MANTENEDOR, **Instruções** deve trazer a frase pronta para
+ele copiar e enviar. Use: `Autorize explicitamente: "Autorizo <ação> em <PR ou
+tarefa>, nos caminhos <escopo>. Depois disso, <efeito esperado>."` Não escreva
+apenas "autorize" nem peça resposta livre.
 Molde e reserva de registro em painel/LEIA-ME.md.
 
 ## Passo manual

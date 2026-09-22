@@ -152,8 +152,6 @@ PEDIDO = {
     "arquivo": "pedido", "precisa_do_dono": True, "gravidade": "info",
     "porque_so_voce": "A contratação cria uma despesa que só você pode autorizar.",
     "proximo_passo": "Autorizar ou recusar a contratação pelo valor apresentado.",
-    "acao_exata": "Responda nesta conversa: AUTORIZO a contratação de R$ 99.",
-    "resposta_esperada": "Vou confirmar a resposta e retomar a integração do PR.",
     "se_eu_nao_decidir": "O serviço atual continua funcionando com a capacidade atual.",
     "recomendacao": "Manter o serviço atual, pois atende à demanda medida.",
     "reversivel": False, "impacto": "alto",
@@ -168,8 +166,7 @@ def test_novo_pedido_completo_passa_sem_mudar_o_livro():
 
 
 @pytest.mark.parametrize("campo", [
-    "porque_so_voce", "proximo_passo", "acao_exata", "resposta_esperada",
-    "se_eu_nao_decidir", "recomendacao",
+    "porque_so_voce", "proximo_passo", "se_eu_nao_decidir", "recomendacao",
 ])
 @pytest.mark.parametrize("valor", [None, "", "  ", False, [], {}])
 def test_novo_pedido_exige_cada_texto_e_ensina_corrigir(campo, valor):

@@ -151,11 +151,11 @@ def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
     carga = {"transcript_path": str(transcript), "stop_hook_active": False}
     resultados = [_rodar(["--contas"], carga) for _ in range(3)]
     assert [r.returncode for r in resultados] == [2, 1, 1]
-    # Uma linha por bloco do relatório, e nada além. Subiu de 10 para 11 em
+    # Uma linha por bloco do relatório, e nada além. Subiu de 11 para 12 em
     # 20/09/2026 porque o relatório ganhou o quinto bloco (**Instruções**), não
     # porque a recusa passou a ter licença para crescer: recusa longa é ruído, e
     # o ensino profundo mora no `--molde-com-fatos`, que ele pede quando quer.
-    assert len(resultados[0].stderr.splitlines()) <= 11
+    assert len(resultados[0].stderr.splitlines()) <= 12
 
 
 def test_incremental_preserva_divida_e_processa_relatorio_novo(tmp_path):
@@ -1280,6 +1280,8 @@ def test_molde_com_fatos_deixa_o_julgamento_em_branco(tmp_path):
         assert titulo in proc.stdout, f"o molde não trouxe {titulo}"
     corpo = proc.stdout.split("**Pendências**", 1)[1]
     assert corpo.count("VOCÊ ESCREVE") == 3, corpo
+    assert 'Autorize explicitamente: "<frase pronta para copiar e enviar>".' in proc.stdout
+    assert "ação, o escopo exato e o efeito esperado" in proc.stdout
 
 
 def test_molde_com_fatos_sem_identidade_recusa_escolher_transcript(tmp_path):

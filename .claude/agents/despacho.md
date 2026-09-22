@@ -87,6 +87,15 @@ sessão responsável é o que ele vai ler na tela, então escreva para leigo: o 
 que trava, o que destrava e quanto leva. Bloqueio devolvido sem isso obriga a
 sessão responsável a adivinhar, e ela vai errar.
 
+Na prestação final, quando a bola for do MANTENEDOR, o bloco **Instruções** deve
+começar com uma autorização pronta para copiar e enviar, neste formato:
+
+`Autorize explicitamente: "Autorizo <ação> em <PR ou tarefa>, nos caminhos <escopo>. Depois disso, <efeito esperado>."`
+
+A frase precisa nomear a ação, o escopo exato e o efeito esperado. Não escreva
+somente "autorize", não peça resposta livre e não deixe o mantenedor descobrir
+qual texto deve enviar.
+
 Antes de encerrar, leve o ramo a ponto seguro: commit e push do que existe, com
 os testes no estado em que estiverem, dito no relatório. Nunca desfaça trabalho
 para deixar a bancada limpa; ramo pela metade se preserva, não se apaga.

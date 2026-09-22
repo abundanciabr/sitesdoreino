@@ -1035,6 +1035,10 @@ def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str
         "   o que houve para a tarefa não ter acabado; se a bola é dele ou sua;",
         "   e o que destrava, com o prazo se houver. Vale também quando NADA",
         "   depende dele: diga o que está sendo esperado e quanto leva.",
+        "   Se a pendência depender do MANTENEDOR, comece assim:",
+        '   Autorize explicitamente: "<frase pronta para copiar e enviar>".',
+        "   A frase deve dizer a ação, o escopo exato e o efeito esperado. Não escreva",
+        "   apenas 'autorize' e não peça que ele invente uma resposta.",
         "   Terminar no veredito é o fecho que ele mandou consertar em 20/09/2026.",
     ]
     return "\n".join(linhas)
@@ -1130,6 +1134,7 @@ def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "")
         "**Veredito:** PRONTO ou NÃO PRONTO, com o motivo.",
         "**Instruções**: para leigo, o que acontece agora. NÃO PRONTO exige lista: "
         "o que houve, de quem é a bola, o que destrava e o prazo — mesmo se nada depende dele.",
+        'Se depender do MANTENEDOR, comece com: Autorize explicitamente: "<frase pronta>".',
         f'Fatos: python ci/prestacao_de_contas.py --molde-com-fatos --transcript "{transcript or "caminho-da-sessao"}"',
     ]
     if faltou_o_plano:

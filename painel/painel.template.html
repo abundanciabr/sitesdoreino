@@ -208,7 +208,6 @@
 
   /* a ficha de decisão — o que um pedido precisa dizer para ser decidível */
   .decisao{margin-top:10px; border-top:1px solid var(--line-soft); padding-top:8px;}
-  .decisao-cab{color:var(--gold); font-family:'Space Grotesk',sans-serif; font-weight:700; margin-bottom:5px;}
   .decisao-linha{display:flex; gap:10px; flex-wrap:wrap; padding:3px 0; font-size:13.5px; line-height:1.55;}
   .decisao-rot{flex:0 0 170px; color:var(--gold); font-weight:600;}
   .decisao-val{flex:1 1 240px; color:var(--text);}
@@ -560,7 +559,6 @@ try {
   // "não sei" visível é o que cobra o robô que escreveu o pedido.
   function fichaDaDecisao(r) {
     var ficha = el("div", "decisao");
-    ficha.appendChild(el("div", "decisao-cab", "AUTORIZAÇÃO NECESSÁRIA"));
     function linha(rotulo, valor, ausente) {
       var l = el("div", "decisao-linha" + (valor ? "" : " vazia"));
       l.appendChild(el("span", "decisao-rot", rotulo));
@@ -569,12 +567,8 @@ try {
     }
     linha("Por que só você", r.porque_so_voce,
       "O pedido antigo não explica por que esta decisão depende só de você.");
-    linha("O que você precisa fazer", r.acao_exata,
-      "Pedido antigo: procure na descrição o gesto que faltava.");
-    linha("Como vou reconhecer", r.resposta_esperada,
-      "Pedido antigo: a forma de confirmar a resposta não foi registrada.");
-    linha("Contexto da decisão", r.proximo_passo,
-      "O pedido antigo não registra o contexto da decisão.");
+    linha("Próximo passo", r.proximo_passo,
+      "O pedido antigo não registra um próximo passo claro.");
     linha("Se você não decidir", r.se_eu_nao_decidir,
       "não sei — o pedido não diz o que acontece se ficar parado");
     linha("Minha recomendação", r.recomendacao,
@@ -815,9 +809,7 @@ try {
     var linhas = [];
     if (i.especie === "pedido") {
       if (i.registro.porque_so_voce) linhas.push(["Por que só você", i.registro.porque_so_voce]);
-      if (i.registro.acao_exata) linhas.push(["O que você precisa fazer", i.registro.acao_exata]);
-      if (i.registro.resposta_esperada) linhas.push(["Como vou reconhecer", i.registro.resposta_esperada]);
-      if (i.registro.proximo_passo) linhas.push(["Contexto da decisão", i.registro.proximo_passo]);
+      if (i.registro.proximo_passo) linhas.push(["Próximo passo", i.registro.proximo_passo]);
       if (i.registro.se_eu_nao_decidir) linhas.push(["Se você não decidir", i.registro.se_eu_nao_decidir]);
       if (i.registro.recomendacao) linhas.push(["Recomendação", i.registro.recomendacao]);
     } else if (i.especie === "tarefa") {

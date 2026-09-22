@@ -66,15 +66,11 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
     for ident in sorted(novos):
         registro = registros[ident]
         if registro.get("precisa_do_dono") is True:
-            for campo in (
-                "porque_so_voce", "proximo_passo", "acao_exata", "resposta_esperada",
-                "se_eu_nao_decidir", "recomendacao",
-            ):
+            for campo in ("porque_so_voce", "proximo_passo", "se_eu_nao_decidir", "recomendacao"):
                 valor = registro.get(campo)
                 if not isinstance(valor, str) or not valor.strip():
                     problemas.append(
                         f"{ident}: pedido novo ao dono exige {campo} com texto claro. "
-                        "A ação deve ser literal e a resposta precisa dizer como a autorização será reconhecida. "
                         "Preencha conforme painel/LEIA-ME.md. Falha técnica reparável pelo robô "
                         "é alerta com precisa_do_dono false e diagnóstico no detalhe."
                     )
