@@ -18,27 +18,23 @@ a mesma no dia 31; dá para saber que a pergunta chegou cinco dias atrasada.
 No mesmo dia a falha quase se repetiu com os PRs #1089 e #1090, salvos por
 acaso porque a sessão seguinte foi olhar.
 
-POR QUE A CURA DE 03/09 NÃO FECHA ISTO. O `--e-pousar` do `ci/esperar.py` faz a
-sessão pedir pouso sozinha ao ficar verde, e resolve o caso da sessão que CHEGA
-ao fim. Ele não resolve a sessão que morre entre abrir o PR e armar a espera,
-nem o PR aberto antes da regra existir. Lei que depende de a sessão chegar ao
-fim é lei que depende de lembrança, e essa é a doença-mãe desta casa.
+POR QUE A CURA DE 03/09 NÃO FECHA ISTO. Uma sessão que chega ao fim mede com
+`ci/esperar.py` e a pista integra sozinha. Isso não cobre a sessão que morre
+entre abrir o PR e a medição, nem o PR que a pista deixou passar. Lei que
+depende de a sessão chegar ao fim é lei que depende de lembrança.
 
-O QUE ESTE ARQUIVO NÃO É: não é a TAR-165. Lá o pouso FOI pedido e a pista não
-dá conta (inanição por teto de espera curto). Aqui o pouso NUNCA foi pedido.
-São duas doenças com o mesmo sintoma visto de longe, e consertar uma não toca
-na outra — por isso PR que JÁ tem a etiqueta `pousar` é dispensado aqui, com
-esse nome, e não vira alarme.
+O QUE ESTE ARQUIVO MEDE. Verde há mais que a paciência e ainda aberto. A
+etiqueta legada `pousar` não dispensa: desde 13/09/2026 ela não é pedido de
+integração. O workflow chama `ci/mergear.py --automatico` antes da issue. O
+que sobra na issue é o que a pista não integrou.
 
 O QUE ELE MEDE, e a régua de cada dispensa
 ------------------------------------------
-Varre os PRs abertos e denuncia UM caso só: **verde, sem a etiqueta `pousar`, e
-verde há mais que a paciência.** Todo o resto é dispensado com um motivo
-NOMEADO, impresso no log — um vigia que descarta PR em silêncio é um vigia que
-ninguém consegue auditar.
+Varre os PRs abertos e denuncia UM caso só: **verde há mais que a paciência e
+ainda aberto.** Todo o resto é dispensado com um motivo NOMEADO, impresso no
+log. Um vigia que descarta PR em silêncio é um vigia que ninguém audita.
 
     rascunho             o autor ainda está escrevendo; rascunho não pousa.
-    ja-pediu-pouso       tem a etiqueta `pousar` — é a TAR-165, não esta.
     nao-esta-verde       algum check reprovou; esse PR tem dono e tem conserto.
     verde-nao-confirmado check em andamento, ou check obrigatório que não
                          reportou. Esperar não é esquecer, e ausência não é
@@ -67,9 +63,8 @@ delas apodreça calada.
 A PACIÊNCIA, e por que 6 horas não é número solto
 -------------------------------------------------
 Medido em 07/09/2026, nos 5 PRs abertos do dia: o conjunto de checks leva de
-1,5 a 2,0 min (era 7 min antes da alavanca de 05/09). Uma sessão VIVA arma
-`ci/esperar.py --checks N --teto 20 --e-pousar`, então ela resolve o PR dela em
-no máximo ~20 min depois do verde. Seis horas é **dezoito vezes** esse teto:
+1,5 a 2,0 min (era 7 min antes da alavanca de 05/09). Uma sessão viva mede com `ci/esperar.py` e a pista integra em seguida, em
+no máximo cerca de 20 min depois do verde. Seis horas é **dezoito vezes** esse teto:
 abaixo disso o vigia disputaria com a sessão que ainda está trabalhando; em 6 h
 ele só consegue acusar sessão que já morreu. Do outro lado, com o relógio de 2
 em 2 horas, um PR esquecido é denunciado em 6 a 8 h — contra os 5 dias do #741.
@@ -102,7 +97,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import ErroDeInstrumentacao, Estado, configurar_saida  # noqa: E402
-from mergear import ETIQUETA_DE_POUSO, checar_checks  # noqa: E402
+from mergear import checar_checks  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[1]
 CODEOWNERS = RAIZ / ".github" / "CODEOWNERS"
@@ -227,10 +222,6 @@ def julgar(
     if pr.get("isDraft"):
         return veredito("rascunho")
 
-    etiquetas = {str(r.get("name") or "") for r in pr.get("labels") or []}
-    if ETIQUETA_DE_POUSO in etiquetas:
-        return veredito("ja-pediu-pouso")
-
     rollup = pr.get("statusCheckRollup") or []
     if not rollup:
         return veredito("sem-conferencia")
@@ -315,14 +306,14 @@ def corpo_da_denuncia(vereditos: list[Veredito], horas: int) -> str:
             "Só chame `corpo_da_denuncia` depois de `varrer` achar alguém.",
         )
     linhas = [
-        f"Estes PRs estão **verdes há mais de {horas} horas** e **ninguém pediu "
-        "pouso** para eles.",
+        f"Estes PRs estão **verdes há mais de {horas} horas** e **ainda abertos**.",
         "",
-        "Um PR verde sem a etiqueta `pousar` não está na fila da pista: ele não "
-        "está esperando nada, e nada vai acontecer com ele. Foi assim que o "
-        "#741 passou cinco dias parado, verde o tempo inteiro, até ser fechado "
-        "a pedido do mantenedor — a pergunta chegou a ele com cinco dias de "
-        "atraso.",
+        "Desde a decisão de integração automática (`docs/decisoes/"
+        "DECISAO-merge-sem-rito-de-pouso.md`), quem mergeia é a pista "
+        "(`pouso.yml` → `python ci/mergear.py --automatico`), sem etiqueta "
+        "`pousar` e sem gesto humano. Se aparecem aqui, a esteira não concluiu "
+        "a integração no prazo esperado (o #741 ficou cinco dias parado quando "
+        "ninguém percebia o silêncio).",
         "",
         "| PR | verde desde | precisa de mandato | título |",
         "|---|---|---|---|",
@@ -335,29 +326,33 @@ def corpo_da_denuncia(vereditos: list[Veredito], horas: int) -> str:
         )
     linhas += [
         "",
-        "## O que fazer com cada um",
+        "## O que a esteira já fez nesta passagem",
         "",
-        "São três desfechos, e escolher é o trabalho de quem olhar:",
+        "Antes de abrir ou atualizar esta issue, o workflow `vigia-do-pouso` "
+        "rodou `python ci/mergear.py --automatico` com o mesmo token da pista.",
         "",
-        "1. **Ele deve pousar.** Peça pouso, e a pista faz o resto:",
+        "## Se ainda aparecem aqui",
+        "",
+        "Leia a recusa da pista para cada PR (substitua N pelo número):",
         "",
         "   ```",
-        f"   python ci/mergear.py {esquecidos[0].numero} --pousar",
+        "   python ci/mergear.py N --conferir",
         "   ```",
         "",
-        "2. **Ele não deve pousar.** Feche o PR, com o motivo escrito. Foi o "
-        "desfecho do #741, e fechar no dia certo teria custado zero.",
-        "3. **A coluna `precisa de mandato` diz `sim`.** O PR toca caminho "
-        "com dono (`.github/CODEOWNERS`), e só pousa com mandato do despacho. "
-        "Se não houver mandato, a decisão é do mantenedor e a pergunta vai a "
-        "ele pelo caminho normal (registro com `precisa_do_dono: true`), nunca "
-        "por esta issue, que ele não lê.",
+        "Corrija o que reprovou (check vermelho, mandato CODEOWNERS ausente, "
+        "base envelhecida, dependência aberta) e deixe a pista tentar de novo. "
+        "A coluna `precisa de mandato` aponta caminho protegido: sem "
+        "`Mandato-do-mantenedor:` no corpo do PR, a integração automática "
+        "recusa por desenho.",
+        "",
+        "Se o PR **não deve** integrar, feche-o com o motivo escrito (foi o "
+        "desfecho do #741). Deixar verde parado não é estado válido.",
         "",
         "## Sobre esta issue",
         "",
         "Ela é **quadro, não diário**: o corpo é reescrito a cada varredura e a "
         "issue se fecha sozinha quando nenhum PR estiver esquecido. Não é "
-        "preciso responder nada aqui — resolva os PRs e ela some.",
+        "preciso responder nada aqui — integre, corrija ou feche os PRs e ela some.",
         "",
         "Conferir na mão: `python ci/vigia_do_pouso.py --repo <owner/repo>`",
     ]
@@ -514,13 +509,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if not esquecidos:
         print("")
-        print("   Nenhum PR verde sem pedido de pouso. A fila está andando.")
+        print("   Nenhum PR verde parado além da paciência. A fila está andando.")
         return 0
 
     print("")
-    print("   Cada 🔴 acima está verde e parado: ninguém pediu pouso, e ninguém")
-    print("   vai perceber sozinho. Peça pouso, ou feche o PR — as duas coisas")
-    print("   são desfecho; deixar aberto não é (o #741 custou cinco dias).")
+    print("   Cada 🔴 acima está verde há mais que a paciência e ainda aberto.")
+    print("   A pista deveria ter integrado sozinha; o workflow tenta")
+    print("   `mergear --automatico` antes de abrir a issue. O que sobrar aqui")
+    print("   é falha da esteira ou PR que precisa de conserto ou fechamento.")
     return 3
 
 

@@ -253,6 +253,43 @@ def test_ficha_fecha_pelo_comando_existente_sem_dispensa_de_revisao() -> None:
     assert "não se equivalem" in fechamento
 
 
+def _secao_7(texto: str) -> str:
+    return texto.split("## 7.", 1)[1].split("## 8.", 1)[0]
+
+
+def test_despacho_fecha_entrega_na_sessao_sem_devolver_conferencia_a_maestro() -> None:
+    """O intervalo PR aberto, outra sessão confere, a pista mergeia reabriu o #1898."""
+    fontes = [
+        (FICHAS / "despacho.md").read_text(encoding="utf-8"),
+        (RAIZ / ".codex" / "agents" / "despacho.toml").read_text(encoding="utf-8"),
+    ]
+    for texto in fontes:
+        secao = _secao_7(texto)
+        assert "ci/esperar.py --entrega" in secao
+        assert "ci/esperar.py --checks" in secao
+        assert "mergear.py --automatico" in secao
+        assert "maestro confere" not in secao.lower()
+        assert "que responde pelo resultado terminal" not in secao
+        assert "--pousar" not in secao
+        assert "Monitor" in secao
+
+
+def test_plano_nao_para_em_sombra_nem_devolve_o_pouso() -> None:
+    """Sombra que para e pede pouso à mão é o mesmo intervalo do #1898."""
+    texto = (
+        RAIZ / "docs" / "decisoes" / "PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md"
+    ).read_text(encoding="utf-8")
+    for frase in (
+        "não pede pouso",
+        "pede pouso à mão",
+        "pede pouso com `esperar.py",
+        "sem ninguém pedir pouso",
+        "O robô abre o PR e para.",
+        "PRs abertos (em sombra)",
+    ):
+        assert frase not in texto, frase
+
+
 def test_regra_de_parada_preserva_arquivos_e_commits() -> None:
     arquivos = ('RITOS.md', 'PLAYBOOK.md', 'RUNBOOK-LOTES.md',
                 '.claude/agents/despacho.md', 'painel/ia/01-leis-ritos-e-invariantes.md')
