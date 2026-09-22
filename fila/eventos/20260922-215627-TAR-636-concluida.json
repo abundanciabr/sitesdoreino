@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-215627-TAR-636-concluida",
+  "tarefa": "TAR-636",
+  "evento": "concluida",
+  "quando": "2026-09-22T21:56:27+00:00",
+  "quem": "agent/fila/appmax-fase1-reconstituir",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1948",
+  "verificado_em": "2026-09-22"
+}
