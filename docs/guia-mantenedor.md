@@ -12,13 +12,14 @@ correções da VPS seguem PR e pipeline.
 
 Decida biblioteca, nome, desenho e o que o código responde. A regra 4 não
 autoriza decidir por ele em dinheiro, dados, acesso, produto ou ação
-irreversível/destrutiva/cara. A sessão que recebeu o pedido reúne decisões em
-uma pergunta estruturada, com opções em português simples, motivo,
-consequência e recomendação. Se fechar sem responder, é "não agora":
-pare a parte dependente e não repita. O subagente registra `bloqueada` na fila,
-marca `precisa_do_dono: true` e devolve impacto e reversão à sessão responsável.
-Essa sessão transforma o retorno no bloco Instruções, com o que houve e o que
-destrava o trabalho.
+irreversível/destrutiva/cara. A sessão que recebeu o pedido reúne as decisões
+que faltam em uma pergunta estruturada, com opções em português simples,
+consequências e recomendação. Se fechar sem responder, é "não agora":
+pare a parte dependente e não repita. O subagente despacho não pergunta:
+escreve `bloqueada` na fila, registra `precisa_do_dono: true` e devolve
+caminhos, impacto, reversão e ação para destravar à sessão responsável.
+Não perguntar nunca foi calar: a sessão responsável explica o bloqueio em
+Instruções, com o que houve e o que destrava.
 Molde e reserva de registro em painel/LEIA-ME.md.
 
 ## Passo manual

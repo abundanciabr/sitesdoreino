@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-213852-TAR-634-explicada",
+  "tarefa": "TAR-634",
+  "evento": "explicada",
+  "quando": "2026-09-22T21:38:52+00:00",
+  "quem": "pedido direto do mantenedor em 22/09/2026 sobre bloqueio causado pela antiga tríade",
+  "o_que_e": "Guias ativos ainda atribuem papéis fixos a IAs, embora a tríade tenha sido revogada.",
+  "o_que_muda": "Cada sessão segue a ficha da tarefa e sabe quem registra bloqueios e quem conclui a entrega.",
+  "exemplo": "Ao encontrar mandato ausente, um despacho registra caminhos e impacto para a sessão responsável, sem assumir o papel de outra IA.",
+  "importancia": 85
+}
