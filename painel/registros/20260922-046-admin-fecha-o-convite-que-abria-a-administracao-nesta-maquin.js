@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-046-admin-fecha-o-convite-que-abria-a-administracao-nesta-maquin",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: fecha o convite que abria a administração nesta máquina",
+  detalhe: "O convite local deixa de abrir a administração. A sessão do site é a entrada. A imagem publicada continua saindo se a identidade cair.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1938. Validação local: árvore e436e5c9786f695a8fce3e9cbd991718c0be73e6; commit 7e36b8388e06ced8fc07526eebf042dc0746d6e7; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-631",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
