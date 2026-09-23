@@ -19,6 +19,7 @@ from django.http import HttpRequest, JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
 
+from pagamentos.core import gateway
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.models import Intent, PaymentAttempt
 from pagamentos.methods.card.service import (
@@ -432,3 +433,93 @@ def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any] | JsonR
     except FalhaNoProvedor as exc:
         return _falha_cartao_de_provedor(exc)
     return _intent_to_dict(intent)
+
+
+_CARD_INSTALLMENTS_OPENAPI = {
+    "responses": {
+        200: {
+            "description": "Parcelas calculadas no servidor, com juros " "incluídos",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["amount_cents", "modality", "options"],
+                        "properties": {
+                            "amount_cents": {"type": "integer", "minimum": 1},
+                            "modality": {"type": "string", "enum": ["PP"]},
+                            "options": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 12,
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "installments",
+                                        "total_cents",
+                                        "installment_cents",
+                                    ],
+                                    "properties": {
+                                        "installments": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 12,
+                                        },
+                                        "total_cents": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                        },
+                                        "installment_cents": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        404: {"description": "Pedido não encontrado"},
+        409: {"description": "Pedido não aceita cartão"},
+        502: {
+            "description": "Não foi possível consultar as parcelas; tente " "novamente"
+        },
+    }
+}
+
+
+@router.get(
+    "/intents/{intent_id}/installments",
+    operation_id="getCardInstallments",
+    summary="Consulta as parcelas Appmax para o valor gravado na intent",
+    openapi_extra=_CARD_INSTALLMENTS_OPENAPI,
+)
+def get_card_installments(request: HttpRequest, intent_id: str) -> dict[str, Any]:
+    intent = _get_intent_ou_404(intent_id)
+    if intent.method != "card":
+        raise HttpError(
+            409, "este pedido não é de cartão; volte à escolha do pagamento"
+        )
+    try:
+        cotacao = gateway.AppmaxGateway().consultar_parcelas(
+            total_value=intent.amount_cents
+        )
+    except FalhaNoProvedor:
+        raise HttpError(
+            502, "não foi possível consultar as parcelas; tente novamente"
+        ) from None
+    return {
+        "amount_cents": intent.amount_cents,
+        "modality": cotacao["modality"],
+        "options": [
+            {
+                "installments": quantidade,
+                "total_cents": total,
+                "installment_cents": (total + quantidade // 2) // quantidade,
+            }
+            for quantidade, total in sorted(cotacao["totals"].items())
+        ],
+    }
