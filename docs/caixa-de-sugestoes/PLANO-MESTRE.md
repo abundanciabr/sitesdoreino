@@ -134,8 +134,8 @@ Sai daqui: PR só de `contracts/` com a label `contrato`, mergeado com mandato.
 
 ### LOTE 1 — A célula nasce (`services/sugestoes/`, fila interna: 4 PRs seriais)
 
-> Mesma célula ⇒ nunca em paralelo (RUNBOOK §1). A maestro rege a fila e
-> mergeia um a um. Canário do lote = EVO-10 (o mais inofensivo).
+> Mesma célula ⇒ nunca em paralelo (RUNBOOK §1). A sessão responsável
+> acompanha a fila; a pista integra cada PR verde. Canário do lote = EVO-10.
 
 **EVO-10 — Scaffold** (~14 arquivos, contado):
 `manage.py`, `requirements.txt` (pinado), `Makefile` (o do `celula-template`,

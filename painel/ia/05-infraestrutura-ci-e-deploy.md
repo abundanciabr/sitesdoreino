@@ -215,6 +215,6 @@ com `ci/guarda-de-segredos.sh`. O mapa não reproduz valores de segredo nem
 endereços privados. Ver também a nota de segurança em
 [02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
 
-O protocolo, os estados e os limites de confiança do atestado estão em
-`docs/decisoes/DECISAO-revisao-e-publicacao.md`. IDs distintos não autenticam
-o runtime: a coordenação confere a procedência da avaliação independente.
+A revisão obrigatória e o atestado foram revogados. O merge segue
+`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`; uma revisão adicional
+pode apontar defeitos, mas não autoriza nem impede a integração.

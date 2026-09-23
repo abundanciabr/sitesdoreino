@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-026-checkout-impedir-a-espera-falsa-no-cartao",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "checkout: impedir a espera falsa no cartão",
+  detalhe: "Cartão não cria mais pedido pela tela sem pagamento. Pedidos já abertos mostram estado, indisponibilidade e retorno. Compra de teste segue pendente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1995. Validação local: árvore 0d667c336d103aaed540b797a28cda33a3df0ecc; commit e66884156f60bb5f8e0a4aca0f79a9da893f2bd6; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-666",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -845,45 +845,6 @@ class DiffDoPR:
         return self._remessas
 
 
-def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
-    from revisor_de_pouso import avaliar_atestado
-    from estado_da_entrega import correcoes_declaradas
-
-    try:
-        paginas = json.loads(
-            _gh(
-                [
-                    "api",
-                    f"repos/{{owner}}/{{repo}}/issues/{pr['number']}/comments",
-                    "--paginate",
-                    "--slurp",
-                ],
-                raiz,
-                "ler o atestado independente",
-            )
-        )
-        if not isinstance(paginas, list) or any(
-            not isinstance(p, list) for p in paginas
-        ):
-            raise ValueError("comentários sem páginas completas")
-        comentarios = [c for pagina in paginas for c in pagina]
-        if any(not isinstance(c, dict) for c in comentarios):
-            raise ValueError("comentário inválido")
-        return avaliar_atestado(
-            pr.get("headRefOid") or "",
-            comentarios,
-            correcoes=correcoes_declaradas(pr),
-            raiz=raiz,
-        )
-    except (ErroDeInstrumentacao, ValueError, TypeError) as erro:
-        return Resultado(
-            "revisão independente",
-            Estado.ERROR,
-            "não consegui medir a revisão independente",
-            str(erro),
-        )
-
-
 def checar_mandato(raiz: Path, pr: dict) -> Resultado:
     try:
         linhas = (raiz / ".github/CODEOWNERS").read_text(encoding="utf-8").splitlines()

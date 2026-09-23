@@ -214,11 +214,12 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     if caidos or cobertura_incompleta:
         run = caidos[0] if caidos else next(r for r in base["runs"] if r["jobs_sem_prova"])
         return dict(base, estado="FALHA_PUBLICACAO", terminal=False,
-                    acao=f"Maestro: leia gh run view {run['id']} --log-failed; corrija a causa "
+                    acao=f"A publicação falhou: veja gh run view {run['id']} --log-failed; corrija a causa "
                          f"ou reexecute gh run rerun {run['id']} --failed e confira este SHA novamente.")
     if any(r is None or r.get("status") != "completed" for r in escolhidos):
         return dict(base, estado="AGUARDANDO_PUBLICACAO", terminal=False,
-                    acao="Maestro: acompanhe pelo heartbeat nativo até todos os workflows exigidos concluírem; ausência não é sucesso.")
+                    acao=f"Publicação em andamento: execute python ci/esperar.py --deploy {sha} --so-desfecho; "
+                         "ausência de run não é sucesso.")
     return dict(base, estado="PUBLICADO", terminal=True,
                 acao="Publicação comprovada nos runs deste SHA; registre o veredito no livro.")
 

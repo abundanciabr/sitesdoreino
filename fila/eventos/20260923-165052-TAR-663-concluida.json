@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-165052-TAR-663-concluida",
+  "tarefa": "TAR-663",
+  "evento": "concluida",
+  "quando": "2026-09-23T16:50:52+00:00",
+  "quem": "agent/ci/remover-encaminhamento-maestro",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1993",
+  "verificado_em": "2026-09-23"
+}

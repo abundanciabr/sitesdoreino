@@ -2085,6 +2085,16 @@
     },
     {
       "celula": "pagamentos",
+      "rota": "api/pagamentos/appmax/webhook",
+      "endereco": "/api/pagamentos/appmax/webhook",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A Appmax avisa quando o dinheiro volta",
+      "descricao": "Recebe avisos de estorno e contestacao. Confere o pedido com a Appmax antes de atualizar o livro financeiro.",
+      "gesto": true
+    },
+    {
+      "celula": "pagamentos",
       "rota": "debug/simulate-webhook",
       "endereco": "-",
       "alcance": "interno",

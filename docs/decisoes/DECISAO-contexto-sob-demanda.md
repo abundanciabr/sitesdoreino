@@ -12,11 +12,9 @@ e a prestação de contas. O relatório passa aos quatro blocos aprovados:
 mudança, verificação, pendências e veredito. Checklist continua obrigatório;
 auditoria detalhada só se relevante e cortes só se houver.
 
-CLAUDE.md guarda a lei canônica. AGENTS.md aponta para ela e contém dez
-referências, além das particularidades do Codex. A tríade de IAs fica
-definida no CLAUDE.md com papel, trabalho e limites de cada uma
-(docs/decisoes/DECISAO-triade-de-ias.md); AGENTS.md leva só o recorte do
-Codex. O guia do mantenedor é
+CLAUDE.md guarda a lei canônica. AGENTS.md aponta para ela e contém onze
+referências, além das particularidades do Codex. A tríade de IAs foi revogada em
+20/09/2026. CLAUDE.md define o fluxo vigente; AGENTS.md leva o recorte operacional do Codex. O guia do mantenedor é
 lido antes de decisão, passo manual ou entrega durável. O portão confere
 obrigações, portas e tetos estritos de 12.000 e 10.000 bytes.
 

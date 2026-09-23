@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-021-painel-declarar-rota-de-estorno-da-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "painel: declarar rota de estorno da Appmax",
+  detalhe: "O mapa agora declara a rota pública de estorno da Appmax, com o seu gesto. O portão confirmou 294 rotas medidas e 294 declaradas; a muralha local voltou a PASS.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1992. Validação local: árvore 7bc1488d7be9483b155c9f428fe0f7adef35b9bf; commit 895151b9945cad9e8a2d0106d3680862fe9d3537; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-614",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

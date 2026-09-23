@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-029-retirar-protocolo-revogado",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "Retirar protocolo revogado",
+  detalhe: "Protocolos revogados saíram da leitura operacional. Os caminhos mostram a lei vigente e levam ao histórico sem reativar os papéis.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1999. Validação local: árvore 3340803ce11ef8c45a8fc8b79866194fdd4c4ab2; commit 214f2502c22ae644f23d46c56812dacec8bab117; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-668",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
