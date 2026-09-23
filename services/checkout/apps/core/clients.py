@@ -93,3 +93,12 @@ class PagamentosClient:
         if r.status_code >= 500:
             r.raise_for_status()
         return r.status_code, r.json()
+
+    def consultar_parcelas(self, *, intent_id: str) -> dict:
+        resposta = http().get(
+            f"{self.base}/intents/{intent_id}/installments",
+            headers=self._headers(),
+            timeout=15.0,
+        )
+        resposta.raise_for_status()
+        return resposta.json()

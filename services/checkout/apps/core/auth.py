@@ -11,7 +11,13 @@ from ninja.security import HttpBearer
 # acrescenta alcance por decisão escrita, nunca por descuido
 # (docs/consultorias/equipe-especialista/DIAGNOSTICO-TAR-458-bearer-do-checkout.md).
 ALCANCE_DO_TOKEN_PUBLICO = frozenset(
-    {"createSession", "placeOrder", "getOrder", "confirmOrderCard"}
+    {
+        "createSession",
+        "placeOrder",
+        "getOrder",
+        "confirmOrderCard",
+        "getOrderCardInstallments",
+    }
 )
 
 

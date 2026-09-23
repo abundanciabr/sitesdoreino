@@ -9,6 +9,8 @@
 import json
 import uuid
 
+import httpx
+
 from django.db import transaction
 from django.http import JsonResponse
 from ninja import Field, Router, Schema
@@ -681,5 +683,128 @@ def confirm_order_card(request, order_id: str):
                 pk=pedido.id
             ),
             "payment": pagamento,
+        }
+    )
+
+
+_CARD_INSTALLMENTS_OPENAPI = {
+    "responses": {
+        200: {
+            "description": "Parcelas calculadas no servidor, com juros " "incluídos",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["amount_cents", "modality", "options"],
+                        "properties": {
+                            "amount_cents": {"type": "integer", "minimum": 1},
+                            "modality": {"type": "string", "enum": ["PP"]},
+                            "options": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 12,
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "installments",
+                                        "total_cents",
+                                        "installment_cents",
+                                    ],
+                                    "properties": {
+                                        "installments": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 12,
+                                        },
+                                        "total_cents": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                        },
+                                        "installment_cents": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        404: {"description": "Pedido não encontrado"},
+        409: {"description": "Pedido não aceita cartão"},
+        502: {
+            "description": "Não foi possível consultar as parcelas; tente " "novamente"
+        },
+    }
+}
+
+
+@router.get(
+    "/pedidos/{order_id}/parcelas",
+    operation_id="getOrderCardInstallments",
+    summary="Consulta parcelas para o total congelado do pedido",
+    openapi_extra=_CARD_INSTALLMENTS_OPENAPI,
+)
+def get_order_card_installments(request, order_id: str):
+    try:
+        pedido = OrderModel.objects.get(
+            pk=uuid.UUID(order_id), site_id=request.site["id"]
+        )
+    except (OrderModel.DoesNotExist, ValueError):
+        raise HttpError(404, "pedido inexistente neste site; volte à página do pedido")
+    if pedido.method != "card":
+        raise HttpError(
+            409, "este pedido não é de cartão; volte à escolha do pagamento"
+        )
+    try:
+        cotacao = PagamentosClient().consultar_parcelas(intent_id=pedido.intent_id)
+        if (
+            not isinstance(cotacao, dict)
+            or type(cotacao.get("amount_cents")) is not int
+            or cotacao["amount_cents"] != pedido.total_cents
+            or cotacao.get("modality") != "PP"
+            or not isinstance(cotacao.get("options"), list)
+            or not 1 <= len(cotacao["options"]) <= 12
+        ):
+            raise ValueError("cotação incompatível com o pedido")
+        opcoes = []
+        quantidades = set()
+        for opcao in cotacao["options"]:
+            if not isinstance(opcao, dict):
+                raise ValueError("parcela inválida")
+            quantidade = opcao.get("installments")
+            total = opcao.get("total_cents")
+            parcela = opcao.get("installment_cents")
+            if (
+                type(quantidade) is not int
+                or not 1 <= quantidade <= 12
+                or quantidade in quantidades
+                or type(total) is not int
+                or total < pedido.total_cents
+                or type(parcela) is not int
+                or parcela != (total + quantidade // 2) // quantidade
+            ):
+                raise ValueError("parcela inválida")
+            quantidades.add(quantidade)
+            opcoes.append(
+                {
+                    "installments": quantidade,
+                    "total_cents": total,
+                    "installment_cents": parcela,
+                }
+            )
+    except (httpx.HTTPError, ValueError):
+        raise HttpError(
+            502, "não foi possível consultar as parcelas; tente novamente"
+        ) from None
+    return JsonResponse(
+        {
+            "amount_cents": pedido.total_cents,
+            "modality": "PP",
+            "options": sorted(opcoes, key=lambda item: item["installments"]),
         }
     )
