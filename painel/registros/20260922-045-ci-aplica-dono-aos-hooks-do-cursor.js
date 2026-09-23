@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-045-ci-aplica-dono-aos-hooks-do-cursor",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: aplica dono aos hooks do Cursor",
+  detalhe: "Cobertura de proprietário para `.cursor/hooks.json` adicionada em `.github/CODEOWNERS`, com `@abundanciabr`.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1929. Validação local: árvore 08a1674910e53339c762fe1e6a92942ff36d2215; commit db1c38316f40b0f2a8c512b0b475d3116d1b1c0d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-629",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
