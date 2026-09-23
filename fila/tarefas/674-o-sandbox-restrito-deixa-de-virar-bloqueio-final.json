@@ -1,0 +1,19 @@
+{
+  "arquivo": "674-o-sandbox-restrito-deixa-de-virar-bloqueio-final",
+  "id": "TAR-674",
+  "titulo": "O sandbox restrito deixa de virar bloqueio final",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado: o portao de prestacao de contas recusa bloqueio baseado so no sandbox restrito, aceita medicao fora dele e aceita fonte declarada como NAO MEDIDO; suite ci/tests/test_prestacao_de_contas.py verde.",
+  "despacho": "Implementar no portao de prestacao de contas uma recusa para falha de ambiente medida so no sandbox restrito. Alvos: ci/prestacao_de_contas.py e ci/tests/test_prestacao_de_contas.py. Prova: python -m pytest ci/tests/test_prestacao_de_contas.py -q verde. Mandato: Lista B para ci em docs/decisoes/MANDATO-POR-FAIXA.md.",
+  "origem": "Pedido direto do mantenedor em 2026-09-23: bloquear o sandbox restrito para que os robos so possam usa-lo em ultimo caso.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
