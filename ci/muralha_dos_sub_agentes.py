@@ -13,8 +13,8 @@ A ficha precisa de frontmatter e precisa fechar `Agent` e `AskUserQuestion`, por
 `tools` ou por `disallowedTools`: herdar tudo é poder criar sub-agente e
 perguntar ao mantenedor, que o CLAUDE.md proíbe. `Explore` não tem ficha.
 
-O banimento da escrita, que a TAR-376 tinha posto, caiu em 20/09/2026; a emenda
-está em `docs/decisoes/DECISAO-triade-de-ias.md`.
+O banimento da escrita, que a TAR-376 tinha posto, caiu em 20/09/2026.
+As regras vigentes para subagentes estão em `CLAUDE.md`.
 """
 from __future__ import annotations
 

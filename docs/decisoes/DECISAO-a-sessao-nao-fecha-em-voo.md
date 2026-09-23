@@ -40,11 +40,10 @@ técnica segura disponível, o relatório é atualização e o Stop recusa o fec
 - `gh` mudo é ERROR, não aprovação: o portão grita "isto NÃO é está tudo certo"
   e libera o turno (INV-CI01).
 
-## Por que isto não é a espera em laço que a tríade proibiu
+## Por que isto não é espera em laço
 
-`DECISAO-triade-de-ias.md`, regra 2, proíbe esperar em laço, e ela continua
-valendo. O portão não espera: mede uma vez, no fim do turno, e devolve um
-comando que tem teto e morre sozinho. Estourado o teto, o fecho honesto é NÃO
+`CLAUDE.md` e `RITOS.md` §2 exigem medição com teto, sem laço. O portão
+não espera: mede uma vez, no fim do turno, e devolve um comando que tem teto e morre sozinho. Estourado o teto, o fecho honesto é NÃO
 PRONTO com a dívida no livro, e o portão aceita. A diferença entre as duas
 coisas é quem segura a sessão: antes era o robô, olhando; agora é o teto.
 

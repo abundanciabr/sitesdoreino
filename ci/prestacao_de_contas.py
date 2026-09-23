@@ -788,9 +788,8 @@ def checks_do_pr(numero: int, cwd: Path) -> str:
 # **PR aberto é estado intermediário, nunca entrega final**, e enquanto houver
 # ação técnica segura disponível o relatório é atualização, não fecho.
 #
-# POR QUE ISTO NÃO É A ESPERA EM LAÇO QUE A TRÍADE PROIBIU
-# (`docs/decisoes/DECISAO-triade-de-ias.md`, regra 2): o portão não espera. Ele
-# mede UMA vez, no fim do turno, recusa UMA vez por situação e devolve o comando
+# POR QUE ISTO NÃO É ESPERA EM LAÇO (CLAUDE.md E RITOS.md §2):
+# O portão não espera: mede UMA vez, no fim do turno, recusa UMA vez por situação e devolve o comando
 # que tem teto e morre sozinho (`ci/esperar.py`). Estourou o teto, o vermelho é
 # do instrumento ou a decisão é exclusiva do mantenedor: o fecho honesto é NÃO
 # PRONTO com a dívida no livro, e o portão aceita.
