@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -11,6 +12,10 @@ from pagamentos.providers.appmax.client import AppmaxClient, AppmaxError
 
 _AUTH_URL = "https://auth.sandboxappmax.com.br/oauth2/token"
 _ORDER_URL = "https://api.sandboxappmax.com.br/v1/orders/3531"
+_CUSTOMER_URL = "https://api.sandboxappmax.com.br/v1/customers"
+_ORDERS_URL = "https://api.sandboxappmax.com.br/v1/orders"
+_INSTALLMENTS_URL = "https://api.sandboxappmax.com.br/v1/payments/installments"
+_CARD_URL = "https://api.sandboxappmax.com.br/v1/payments/credit-card"
 _CLIENT_ID = "merchant-client-id"
 _CLIENT_SECRET = "merchant-client-secret"
 _ACCESS_TOKEN = "merchant-access-token"
@@ -30,7 +35,14 @@ def _auth_response(token: str = _ACCESS_TOKEN) -> dict[str, Any]:
 
 
 def _order_response(order_id: int = 3531) -> dict[str, Any]:
-    return {"data": {"order": {"id": order_id, "status": "aprovado"}}}
+    return {
+        "data": {
+            "order": {"id": order_id, "status": "aprovado"},
+            "customer": {"id": 2023, "name": "Junior Almeida"},
+            "payment": {"method": "creditcard", "installments": 12},
+            "refund": {"refunded_at": "2025-02-13 14:11:55"},
+        }
+    }
 
 
 def _autenticacao(transport: respx.MockRouter, *, token: str = _ACCESS_TOKEN) -> Any:
@@ -58,7 +70,6 @@ def _consulta(
 def test_consultar_pedido_usa_oauth_form_urlencoded_e_cacheia_token(
     settings: Any,
 ) -> None:
-    # guarda: services/pagamentos/pagamentos/providers/appmax/client.py:230
     with respx.mock(assert_all_called=False) as transport:
         auth = _autenticacao(transport)
         consulta = _consulta(transport)
@@ -67,7 +78,13 @@ def test_consultar_pedido_usa_oauth_form_urlencoded_e_cacheia_token(
         primeiro = cliente.consultar_pedido(3531)
         segundo = cliente.consultar_pedido(3531)
 
-    assert primeiro == {"id": 3531, "status": "aprovado"}
+    assert primeiro == {
+        "id": 3531,
+        "status": "aprovado",
+        "customer": {"id": 2023, "name": "Junior Almeida"},
+        "payment": {"method": "creditcard", "installments": 12},
+        "refund": {"refunded_at": "2025-02-13 14:11:55"},
+    }
     assert segundo == primeiro
     assert auth.call_count == 1
     assert consulta.call_count == 2
@@ -211,7 +228,6 @@ def test_url_da_api_fora_do_sandbox_falha_sem_rede(settings: Any, url: str) -> N
 def test_oauth_exige_token_type_bearer_e_nao_repete_credencial(
     settings: Any, payload: dict[str, Any]
 ) -> None:
-    # guarda: services/pagamentos/pagamentos/providers/appmax/client.py:81
     with respx.mock(assert_all_called=False) as transport:
         auth = transport.post(_AUTH_URL).mock(
             return_value=httpx.Response(200, json=payload)
@@ -356,6 +372,35 @@ def test_2xx_invalido_e_recusado(settings: Any, resposta: httpx.Response) -> Non
 
 
 @pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "data": {
+                "order": {"id": 3531, "status": "aprovado", "customer": {"id": 7}},
+                "customer": {"id": 2023},
+            }
+        },
+        {
+            "data": {
+                "order": {"id": 3531, "status": "aprovado"},
+                "payment": [],
+            }
+        },
+    ],
+    ids=["campo-relacionado-colidido", "irmao-com-formato-invalido"],
+)
+def test_consultar_pedido_recusa_colisao_ou_irmao_adulterado(
+    settings: Any, payload: dict[str, Any]
+) -> None:
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.get(_ORDER_URL).mock(return_value=httpx.Response(200, json=payload))
+
+        with pytest.raises(AppmaxError, match="resposta Appmax"):
+            AppmaxClient().consultar_pedido(3531)
+
+
+@pytest.mark.parametrize(
     "falha", [httpx.ConnectTimeout("secret"), httpx.ReadTimeout("token")]
 )
 def test_timeout_na_consulta_e_sanitizado(
@@ -381,3 +426,334 @@ def test_id_invalido_nao_chama_rede(settings: Any, order_id: Any) -> None:
         AppmaxClient().consultar_pedido(order_id)
 
     assert not transport.calls
+
+
+def test_calcula_parcelas_pp_em_centavos_e_envia_corpo_oficial(settings: Any) -> None:
+    resposta = {
+        "data": {
+            "installments": {
+                str(n): {"total": total}
+                for n, total in enumerate(
+                    [
+                        20000,
+                        20400,
+                        20812,
+                        21228,
+                        21648,
+                        22072,
+                        22500,
+                        22932,
+                        23368,
+                        23808,
+                        24252,
+                        24700,
+                    ],
+                    start=1,
+                )
+            },
+            "settings": {
+                "modality": "PP",
+                "max_installments": 12,
+                "min_installment_value": 500,
+            },
+        }
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        calculo = transport.post(_INSTALLMENTS_URL).mock(
+            return_value=httpx.Response(200, json=resposta)
+        )
+        resultado = AppmaxClient().consultar_parcelas(20000)
+
+    assert resultado["totals"][3] == 20812
+    assert resultado["modality"] == "PP"
+    assert json.loads(calculo.calls[0].request.read()) == {
+        "installments": 12,
+        "total_value": 20000,
+        "settings": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("status_code", "body"),
+    [(503, {"message": _CLIENT_SECRET}), (200, {"data": {}})],
+    ids=["servidor-indisponivel", "resposta-2xx-incompleta"],
+)
+def test_post_ambiguous_nao_tenta_novamente_e_nao_expoe_corpo(
+    settings: Any, status_code: int, body: dict[str, Any]
+) -> None:
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        criar = transport.post(_CUSTOMER_URL).mock(
+            return_value=httpx.Response(status_code, json=body)
+        )
+
+        with pytest.raises(AppmaxError) as capturada:
+            AppmaxClient().criar_cliente({"email": "cliente@example.test"})
+
+    assert capturada.value.ambiguo
+    assert criar.call_count == 1
+    assert _CLIENT_SECRET not in str(capturada.value)
+
+
+def test_escritas_appmax_usam_endpoints_e_respostas_oficiais_sem_repetir(
+    settings: Any,
+) -> None:
+    customer_body = {
+        "first_name": "Ana",
+        "last_name": "Silva",
+        "email": "ana@example.test",
+        "phone": "5511999999999",
+        "document_number": "12345678901",
+        "ip": "203.0.113.7",
+    }
+    order_body = {
+        "customer_id": 42,
+        "products_value": 20812,
+        "discount_value": 0,
+        "shipping_value": 0,
+        "products": [
+            {"sku": "prod-1", "name": "Curso", "quantity": 1, "type": "digital"}
+        ],
+    }
+    payment_body = {
+        "order_id": 3531,
+        "customer_id": 42,
+        "payment_data": {
+            "credit_card": {
+                "token": "token-front",
+                "holder_name": "Ana Silva",
+                "holder_document_number": "12345678901",
+                "installments": 3,
+            }
+        },
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        customer = transport.post(_CUSTOMER_URL).mock(
+            return_value=httpx.Response(201, json={"data": {"customer": {"id": 42}}})
+        )
+        order = transport.post(_ORDERS_URL).mock(
+            return_value=httpx.Response(
+                201, json={"data": {"order": {"id": 3531, "status": "pendente"}}}
+            )
+        )
+        payment = transport.post(_CARD_URL).mock(
+            return_value=httpx.Response(
+                201, json={"data": {"payment": {"status": "autorizado"}}}
+            )
+        )
+
+        client = AppmaxClient()
+        assert client.criar_cliente(customer_body) == {"id": "42"}
+        assert client.criar_pedido(order_body) == {"id": "3531", "status": "pendente"}
+        client.criar_pagamento_cartao(payment_body)
+
+    assert customer.call_count == order.call_count == payment.call_count == 1
+    assert json.loads(customer.calls[0].request.read()) == customer_body
+    assert json.loads(order.calls[0].request.read()) == order_body
+    assert json.loads(payment.calls[0].request.read()) == payment_body
+    payment_text = payment.calls[0].request.content.decode()
+    assert "card_number" not in payment_text
+    assert '"cvv"' not in payment_text
+
+
+_ESCRITAS = [
+    (
+        "cliente",
+        _CUSTOMER_URL,
+        {"email": "cliente@example.test"},
+        {"data": {"customer": {"id": 42}}},
+    ),
+    (
+        "pedido",
+        _ORDERS_URL,
+        {"customer_id": 42},
+        {"data": {"order": {"id": 3531, "status": "pendente"}}},
+    ),
+    (
+        "cartao",
+        _CARD_URL,
+        {"order_id": 3531},
+        {"data": {"payment": {"status": "autorizado"}}},
+    ),
+]
+
+
+def _executar_escrita(cliente: AppmaxClient, nome: str, body: dict[str, Any]) -> Any:
+    operacoes = {
+        "cliente": cliente.criar_cliente,
+        "pedido": cliente.criar_pedido,
+        "cartao": cliente.criar_pagamento_cartao,
+    }
+    return operacoes[nome](body)
+
+
+@pytest.mark.parametrize("nome,url,body,resposta", _ESCRITAS)
+@pytest.mark.parametrize("status_code", [400, 401, 404, 422, 429, 503])
+def test_escrita_nunca_repete_status_http(
+    settings: Any,
+    nome: str,
+    url: str,
+    body: dict[str, Any],
+    resposta: dict[str, Any],
+    status_code: int,
+) -> None:
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        escrita = transport.post(url).mock(
+            return_value=httpx.Response(
+                status_code,
+                json={"secret": _CLIENT_SECRET, "token": _ACCESS_TOKEN},
+                headers={"Retry-After": "0"} if status_code == 429 else None,
+            )
+        )
+
+        with pytest.raises(AppmaxError) as capturada:
+            _executar_escrita(AppmaxClient(), nome, body)
+
+    assert escrita.call_count == 1
+    assert capturada.value.ambiguo is (status_code >= 500)
+    assert _CLIENT_SECRET not in str(capturada.value)
+    assert _ACCESS_TOKEN not in str(capturada.value)
+    assert capturada.value.__cause__ is None
+    assert capturada.value.__context__ is None
+
+
+@pytest.mark.parametrize("nome,url,body,resposta", _ESCRITAS)
+@pytest.mark.parametrize(
+    "falha", [httpx.ConnectTimeout(_CLIENT_SECRET), httpx.ReadTimeout(_ACCESS_TOKEN)]
+)
+def test_timeout_de_escrita_e_ambiguo_sem_repetir_ou_causa(
+    settings: Any,
+    nome: str,
+    url: str,
+    body: dict[str, Any],
+    resposta: dict[str, Any],
+    falha: httpx.TimeoutException,
+) -> None:
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        escrita = transport.post(url).mock(side_effect=falha)
+
+        with pytest.raises(AppmaxError) as capturada:
+            _executar_escrita(AppmaxClient(), nome, body)
+
+    assert escrita.call_count == 1
+    assert capturada.value.ambiguo
+    assert _CLIENT_SECRET not in str(capturada.value)
+    assert _ACCESS_TOKEN not in str(capturada.value)
+    assert capturada.value.__cause__ is None
+    assert capturada.value.__context__ is None
+
+
+@pytest.mark.parametrize("nome,url,body,resposta", _ESCRITAS)
+@pytest.mark.parametrize("conteudo", ["<html>proxy</html>", "[]", "{}"])
+def test_escrita_2xx_ilegivel_e_ambiguo_sem_repetir(
+    settings: Any,
+    nome: str,
+    url: str,
+    body: dict[str, Any],
+    resposta: dict[str, Any],
+    conteudo: str,
+) -> None:
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        escrita = transport.post(url).mock(
+            return_value=httpx.Response(200, text=conteudo)
+        )
+
+        with pytest.raises(AppmaxError) as capturada:
+            _executar_escrita(AppmaxClient(), nome, body)
+
+    assert escrita.call_count == 1
+    assert capturada.value.ambiguo
+    assert capturada.value.__cause__ is None
+    assert capturada.value.__context__ is None
+    assert "proxy" not in str(capturada.value)
+
+
+@pytest.mark.parametrize("nome,url,body,resposta", _ESCRITAS[:2])
+@pytest.mark.parametrize(
+    "external_id", [0, -1, True, 1.0, "0", "-1", "001", "1.0", None]
+)
+def test_escrita_recusa_id_externo_nao_canonico(
+    settings: Any,
+    nome: str,
+    url: str,
+    body: dict[str, Any],
+    resposta: dict[str, Any],
+    external_id: Any,
+) -> None:
+    invalid_response = (
+        {"data": {"customer": {"id": external_id}}}
+        if nome == "cliente"
+        else {"data": {"order": {"id": external_id, "status": "pendente"}}}
+    )
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        escrita = transport.post(url).mock(
+            return_value=httpx.Response(201, json=invalid_response)
+        )
+
+        with pytest.raises(AppmaxError) as capturada:
+            _executar_escrita(AppmaxClient(), nome, body)
+
+    assert escrita.call_count == 1
+    assert capturada.value.ambiguo
+    assert capturada.value.__cause__ is None
+    assert capturada.value.__context__ is None
+
+
+@pytest.mark.parametrize("valor", [True, 0, -1, 1.5, "100"])
+def test_parcelas_exige_centavos_inteiros_positivos_sem_rede(
+    settings: Any, valor: Any
+) -> None:
+    with respx.mock() as transport, pytest.raises(
+        AppmaxError, match="centavos inteiros"
+    ):
+        AppmaxClient().consultar_parcelas(valor)
+
+    assert not transport.calls
+
+
+def test_parcelas_aceita_limite_reduzido_sem_exigir_doze_opcoes(settings: Any) -> None:
+    payload = {
+        "data": {
+            "installments": {
+                "1": {"total": 20000},
+                "2": {"total": 20400},
+                "3": {"total": 20812},
+            },
+            "settings": {"modality": "PP", "max_installments": 6},
+        }
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.post(_INSTALLMENTS_URL).mock(
+            return_value=httpx.Response(200, json=payload)
+        )
+        resultado = AppmaxClient().consultar_parcelas(20000)
+
+    assert resultado == {
+        "totals": {1: 20000, 2: 20400, 3: 20812},
+        "modality": "PP",
+        "max_installments": 6,
+    }
+
+
+def test_parcelas_recusa_modalidade_fora_de_pp(settings: Any) -> None:
+    payload = {
+        "data": {
+            "installments": {"1": {"total": 20000}},
+            "settings": {"modality": "PPI", "max_installments": 1},
+        }
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.post(_INSTALLMENTS_URL).mock(
+            return_value=httpx.Response(200, json=payload)
+        )
+
+        with pytest.raises(AppmaxError, match="configuração inválida"):
+            AppmaxClient().consultar_parcelas(20000)

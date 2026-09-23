@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import threading
 import time
 from typing import Any
@@ -10,10 +11,23 @@ from django.conf import settings
 
 _MARGEM_EXPIRACAO_SEGUNDOS = 60
 _TENTATIVAS_GET = 3
+_ID_EXTERNO = re.compile(r"[1-9][0-9]*\Z")
+
+
+def _id_externo_valido(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value > 0
+    return isinstance(value, str) and _ID_EXTERNO.fullmatch(value) is not None
 
 
 class AppmaxError(Exception):
-    """Falha segura de autenticação ou consulta Appmax."""
+    """Falha segura Appmax, com indicação se um POST pode ter sido aceito."""
+
+    def __init__(self, message: str, *, ambiguo: bool = False) -> None:
+        super().__init__(message)
+        self.ambiguo = ambiguo
 
 
 class AppmaxClient:
@@ -112,6 +126,9 @@ class AppmaxClient:
             self._token_expira_em = expira_em
             return token
 
+    def preparar(self) -> None:
+        self._obter_token()
+
     def _renovar_token(self, token_rejeitado: str) -> str:
         with self._token_lock:
             if self._token and self._token != token_rejeitado:
@@ -199,11 +216,223 @@ class AppmaxClient:
                 raise AppmaxError(
                     "resposta Appmax incompleta ou referente a outro pedido; confira o ID e tente novamente"
                 )
-            return pedido
+            campos_relacionados = ("customer", "payment", "refund")
+            if any(campo in pedido for campo in campos_relacionados):
+                raise AppmaxError(
+                    "resposta Appmax com estrutura de pedido adulterada; confira a API"
+                )
+            resultado = dict(pedido)
+            for campo in campos_relacionados:
+                if campo not in data:
+                    continue
+                relacionado = data[campo]
+                if not isinstance(relacionado, dict):
+                    raise AppmaxError(
+                        f"resposta Appmax com {campo} inválido; confira a API"
+                    )
+                resultado[campo] = relacionado
+            return resultado
 
         raise AppmaxError(
             "consulta de pedido Appmax excedeu as tentativas permitidas; tente novamente"
         )
+
+    def consultar_parcelas(self, total_value: int) -> dict[str, Any]:
+        if (
+            isinstance(total_value, bool)
+            or not isinstance(total_value, int)
+            or total_value <= 0
+        ):
+            raise AppmaxError(
+                "valor para cálculo de parcelas inválido; use centavos inteiros positivos"
+            )
+        payload = self._post(
+            "/v1/payments/installments",
+            {"installments": 12, "total_value": total_value, "settings": True},
+            "cálculo de parcelas",
+        )
+        try:
+            parcelas = payload["data"]["installments"]
+            configuracao = payload["data"]["settings"]
+        except (KeyError, TypeError):
+            estrutura_invalida = True
+            parcelas = {}
+            configuracao = {}
+        else:
+            estrutura_invalida = False
+        if estrutura_invalida:
+            raise AppmaxError(
+                "Appmax cálculo de parcelas: resposta incompleta; confira a API"
+            )
+        if not isinstance(parcelas, dict) or not isinstance(configuracao, dict):
+            raise AppmaxError(
+                "Appmax cálculo de parcelas: resposta inválida; confira a API"
+            )
+        try:
+            modalidade = configuracao["modality"]
+            limite = configuracao["max_installments"]
+        except KeyError:
+            estrutura_invalida = True
+            modalidade = ""
+            limite = 0
+        else:
+            estrutura_invalida = False
+        if estrutura_invalida:
+            raise AppmaxError(
+                "Appmax cálculo de parcelas: resposta incompleta; confira a API"
+            )
+        if (
+            modalidade != "PP"
+            or isinstance(limite, bool)
+            or not isinstance(limite, int)
+            or not 1 <= limite <= 12
+        ):
+            raise AppmaxError(
+                "Appmax cálculo de parcelas: configuração inválida; confira a API"
+            )
+        totais: dict[int, int] = {}
+        for chave, valor in parcelas.items():
+            try:
+                numero = int(chave)
+                total = valor["total"]
+            except (ValueError, TypeError, KeyError):
+                opcao_invalida = True
+                numero = 0
+                total = 0
+            else:
+                opcao_invalida = False
+            if opcao_invalida:
+                raise AppmaxError(
+                    "Appmax cálculo de parcelas: opção inválida; confira a API"
+                )
+            if (
+                str(numero) != str(chave)
+                or not 1 <= numero <= limite
+                or isinstance(total, bool)
+                or not isinstance(total, int)
+                or total < total_value
+            ):
+                raise AppmaxError(
+                    "Appmax cálculo de parcelas: total inválido; confira a API"
+                )
+            totais[numero] = total
+        if not totais:
+            raise AppmaxError(
+                "Appmax cálculo de parcelas: opções incompletas; confira a API"
+            )
+        return {"totals": totais, "modality": modalidade, "max_installments": limite}
+
+    def criar_cliente(self, body: dict[str, Any]) -> dict[str, Any]:
+        payload = self._post("/v1/customers", body, "criação de cliente")
+        cliente: Any = {}
+        try:
+            cliente = payload["data"]["customer"]
+            customer_id = cliente["id"]
+        except (KeyError, TypeError):
+            estrutura_invalida = True
+            customer_id = None
+        else:
+            estrutura_invalida = False
+        if estrutura_invalida or not isinstance(cliente, dict):
+            raise AppmaxError(
+                "Appmax criação de cliente: resposta incompleta; reconciliação necessária",
+                ambiguo=True,
+            )
+        if not _id_externo_valido(customer_id):
+            raise AppmaxError(
+                "Appmax criação de cliente: identificador inválido; reconciliação necessária",
+                ambiguo=True,
+            )
+        return {"id": str(customer_id)}
+
+    def criar_pedido(self, body: dict[str, Any]) -> dict[str, Any]:
+        payload = self._post("/v1/orders", body, "criação de pedido")
+        try:
+            pedido = payload["data"]["order"]
+            order_id = pedido["id"]
+            status = pedido["status"]
+        except (KeyError, TypeError):
+            estrutura_invalida = True
+            pedido = {}
+            order_id = None
+            status = None
+        else:
+            estrutura_invalida = False
+        if estrutura_invalida or not isinstance(pedido, dict):
+            raise AppmaxError(
+                "Appmax criação de pedido: resposta incompleta; reconciliação necessária",
+                ambiguo=True,
+            )
+        if (
+            not _id_externo_valido(order_id)
+            or not isinstance(status, str)
+            or not status.strip()
+        ):
+            raise AppmaxError(
+                "Appmax criação de pedido: resposta inválida; reconciliação necessária",
+                ambiguo=True,
+            )
+        return {"id": str(order_id), "status": status}
+
+    def criar_pagamento_cartao(self, body: dict[str, Any]) -> dict[str, Any]:
+        payload = self._post("/v1/payments/credit-card", body, "pagamento com cartão")
+        data: Any = {}
+        try:
+            data = payload["data"]
+            pagamento = data["payment"]
+        except (KeyError, TypeError):
+            estrutura_invalida = True
+            pagamento = {}
+        else:
+            estrutura_invalida = False
+        if (
+            estrutura_invalida
+            or not isinstance(data, dict)
+            or not isinstance(pagamento, dict)
+        ):
+            raise AppmaxError(
+                "Appmax pagamento com cartão: resposta incompleta; reconciliação necessária",
+                ambiguo=True,
+            )
+        return payload
+
+    def _post(self, path: str, body: dict[str, Any], operacao: str) -> dict[str, Any]:
+        token = self._obter_token()
+        falha_rede: str | None = None
+        try:
+            response = httpx.post(
+                f"{self._api_url}{path}",
+                json=body,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self._timeout,
+                follow_redirects=False,
+            )
+        except httpx.TimeoutException:
+            falha_rede = (
+                f"timeout após enviar {operacao} Appmax; reconciliação necessária"
+            )
+        except httpx.HTTPError:
+            falha_rede = f"falha de transporte após enviar {operacao} Appmax; reconciliação necessária"
+        if falha_rede:
+            raise AppmaxError(falha_rede, ambiguo=True)
+        if response.status_code >= 500:
+            raise AppmaxError(
+                f"Appmax {operacao}: serviço indisponível (HTTP {response.status_code}); reconciliação necessária",
+                ambiguo=True,
+            )
+        self._validar_status(response, operacao)
+        resposta_invalida = False
+        try:
+            payload = self._json_objeto(response, operacao)
+        except AppmaxError:
+            resposta_invalida = True
+            payload = {}
+        if resposta_invalida:
+            raise AppmaxError(
+                f"Appmax {operacao}: resposta incompleta; reconciliação necessária",
+                ambiguo=True,
+            )
+        return payload
 
     @staticmethod
     def _retry_after(response: httpx.Response) -> float | None:
