@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-023-ci-retirar-comando-do-radio",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "ci: retirar comando do rádio",
+  detalhe: "Sai o comando que apenas recusava chamadas ao canal encerrado. A fila continua gravando tarefas sem depender dele.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1994. Validação local: árvore ead267e5f368f285258b6b2172c8f4087c3d7443; commit 3fcd4984d901871161668616b2e818ae7d689ea7; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-664",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
