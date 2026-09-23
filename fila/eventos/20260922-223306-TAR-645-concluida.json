@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-223306-TAR-645-concluida",
+  "tarefa": "TAR-645",
+  "evento": "concluida",
+  "quando": "2026-09-22T22:33:06+00:00",
+  "quem": "agent/fila/appmax-estorno-correcao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1959",
+  "verificado_em": "2026-09-22"
+}

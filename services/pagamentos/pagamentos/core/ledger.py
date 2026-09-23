@@ -103,6 +103,28 @@ def registrar_fato(
     return True
 
 
+def marcar_tentativa_pendente(intent: Intent) -> None:
+    """Marca uma nova cobrança em análise sem inventar um fato financeiro.
+
+    A tentativa e seus IDs externos já foram commitados antes desta chamada.
+    Um `rejected` anterior deixa de representar o pedido atual enquanto o novo
+    pagamento está em análise; a recusa histórica permanece no evento v2.
+    """
+    with transaction.atomic():
+        travada = Intent.objects.select_for_update().get(pk=intent.pk)
+        if travada.status not in {"created", "rejected", "pending"}:
+            raise ValueError(
+                f"tentativa de cartão não pode entrar em análise com intent em {travada.status!r}"
+            )
+        if travada.status == "pending" and not travada.provider_payment_id:
+            return
+        with models.transicao_do_ledger():
+            travada.status = "pending"
+            travada.provider_payment_id = ""
+            travada.save(update_fields=["status", "provider_payment_id", "updated_at"])
+    intent.refresh_from_db()
+
+
 def transicionar_e_emitir(
     *, mp_payment_id: str, novo_status: str, evento: str, dados: dict[str, Any]
 ) -> bool:

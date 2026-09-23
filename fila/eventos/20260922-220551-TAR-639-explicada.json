@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-220551-TAR-639-explicada",
+  "tarefa": "TAR-639",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:05:51+00:00",
+  "quem": "Verificação pública pós-deploy de TAR-624 em 22/09/2026",
+  "o_que_e": "O registro integrado ainda diz que a tela depende do deploy, apesar de a página pública já estar ativa.",
+  "o_que_muda": "O painel mostra evidência pós-deploy atual e confiável para o mantenedor.",
+  "exemplo": "A linha do registro aponta para a oferta pública HTTP 200 e inclui a prova de tela e o destino do botão.",
+  "importancia": 70
+}

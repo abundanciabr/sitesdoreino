@@ -297,11 +297,9 @@ def test_o_prefixo_publico_tem_so_as_tres_rotas():
     ali confere `no_ar` antes de responder. Uma rota nova sob esse prefixo
     nasceria pública sem ninguém decidir isso; aqui ela reprova o CI.
 
-    Eram duas até 21/09/2026, quando a moldura do documento de formato `pagina`
-    entrou (TAR-596). O que autorizou a terceira NÃO foi mexer nesta lista: foi
-    ela obedecer à mesma regra das outras duas, conferindo `no_ar` e devolvendo
-    404 (nunca 403) para o privado — medido em
-    `test_pagina_visual_do_documento.py`.
+    A quarta rota é o arquivo da semente. O que a autoriza NÃO é mexer nesta
+    lista: é ela obedecer à mesma regra, conferindo `no_ar` e devolvendo 404
+    (nunca 403) para o privado.
 
     Se você chegou neste teste porque ele ficou vermelho: a pergunta não é como
     passar por ele, é se a rota nova deve mesmo responder sem sessão.
@@ -315,6 +313,7 @@ def test_o_prefixo_publico_tem_so_as_tres_rotas():
         "docs_publicos",
         "doc_publico",
         "doc_publico_moldura",
+        "arquivo_da_semente",
     }, sob_o_prefixo
 
 

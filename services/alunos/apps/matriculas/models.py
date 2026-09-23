@@ -106,6 +106,23 @@ STATUS_DE_GESTAO = (
 )
 
 
+class Pagamento(models.Model):
+    """Identidade do pagamento e estado do estorno, mesmo antes da matrícula."""
+
+    site_id = models.CharField(max_length=64)
+    provider = models.CharField(max_length=32)
+    provider_reference_id = models.CharField(max_length=128)
+    estornado = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "provider", "provider_reference_id"],
+                name="pagamento_unico_por_site_provedor_referencia",
+            )
+        ]
+
+
 class Matricula(models.Model):
     """Uma linha por matrícula — e, desde 27/08/2026, também uma linha por pessoa
     que PEDIU entrada e ainda espera (`docs/decisoes/DECISAO-fila-de-liberacao.md`).

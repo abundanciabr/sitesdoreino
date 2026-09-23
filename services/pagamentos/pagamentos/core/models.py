@@ -39,6 +39,7 @@ PROVIDER_CHOICES = [("appmax", "appmax"), ("mercadopago", "mercadopago")]
 
 ATTEMPT_STATE_CHOICES = [
     ("sending", "sending"),
+    ("pending", "pending"),
     ("approved", "approved"),
     ("rejected", "rejected"),
     ("failed", "failed"),
@@ -50,8 +51,13 @@ ATTEMPT_STATE_CHOICES = [
 # duas vezes, e `approved` porque ja foi pago. Os que faltam liberam de
 # proposito: `rejected` (o comprador tem direito a tentar outro cartao) e
 # `failed` (nada saiu da nossa maquina, entao nao ha cobranca possivel la fora).
-ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO = ["sending", "reconciliation_required", "approved"]
-ESTADOS_EM_ABERTO = ["sending", "reconciliation_required"]
+ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO = [
+    "sending",
+    "pending",
+    "reconciliation_required",
+    "approved",
+]
+ESTADOS_EM_ABERTO = ["sending", "pending", "reconciliation_required"]
 
 # Os estados da Intent que SÃO um fato de dinheiro: a partir daqui existe algo a
 # contar para as outras células (matrícula a criar, acesso a cortar, cobrança a
@@ -236,9 +242,12 @@ class PaymentAttempt(models.Model):
     request_hash = models.CharField(max_length=64)
 
     provider_reference_id = models.CharField(max_length=255, blank=True, default="")
+    customer_id = models.CharField(max_length=255, blank=True, default="")
     external_order_id = models.CharField(max_length=255, blank=True, default="")
     installments = models.PositiveSmallIntegerField(default=1)
     amount_cents = models.PositiveIntegerField()  # dinheiro é inteiro sempre
+    effective_amount_cents = models.PositiveIntegerField()
+    previous_intent_status = models.CharField(max_length=10, default="created")
     state = models.CharField(
         max_length=30, choices=ATTEMPT_STATE_CHOICES, default="sending"
     )
@@ -253,7 +262,11 @@ class PaymentAttempt(models.Model):
                 fields=["intent"],
                 condition=models.Q(state__in=ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO),
                 name="uma_tentativa_viva_por_intent",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["intent", "request_hash"],
+                name="tentativa_idempotente_por_corpo",
+            ),
         ]
         # O webhook chega com a referência do provedor e precisa achar a
         # tentativa; sem índice isso é varredura na tabela de dinheiro.
@@ -261,6 +274,40 @@ class PaymentAttempt(models.Model):
 
     def __str__(self) -> str:
         return f"{self.provider}:{self.operation_id}:{self.state}"
+
+
+class PaymentOperation(models.Model):
+    """Uma linha por POST externo, commitada antes da chamada de escrita."""
+
+    attempt = models.ForeignKey(
+        PaymentAttempt, on_delete=models.PROTECT, related_name="operacoes"
+    )
+    platform_site_id = models.CharField(max_length=255)
+    operation_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    operation_type = models.CharField(
+        max_length=16,
+        choices=[("customer", "customer"), ("order", "order"), ("payment", "payment")],
+    )
+    request_hash = models.CharField(max_length=64)
+    state = models.CharField(
+        max_length=30,
+        choices=[
+            ("sending", "sending"),
+            ("completed", "completed"),
+            ("failed", "failed"),
+            ("reconciliation_required", "reconciliation_required"),
+        ],
+        default="sending",
+    )
+    provider_resource_id = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["attempt", "operation_type"])]
+
+    def __str__(self) -> str:
+        return f"{self.operation_type}:{self.operation_id}:{self.state}"
 
 
 class InstalacaoAppmax(models.Model):

@@ -1,4 +1,4 @@
-"""Mede, em `origin/main`, o que cada IA da tríade publicou e o que isso custou.
+"""Mede, em `origin/main`, o que cada IA publicou e o que isso custou.
 
 `/admin/ranking-ias/` mostra o ranking; este arquivo é quem conta. A conta mora
 num lugar só: a tela LÊ o JSON que sai daqui e não refaz soma nenhuma, pela
@@ -57,32 +57,27 @@ if str(CI) not in sys.path:
 
 from _nucleo import configurar_saida  # noqa: E402
 
-# A tríade e os papéis, como a `docs/decisoes/DECISAO-triade-de-ias.md` os
-# fixou em 12/09/2026. As três aparecem SEMPRE, inclusive zeradas: um ranking
-# que escondesse a IA sem entrega responderia "está tudo certo" justamente no
-# caso em que uma das três parou.
+# As três IAs medidas aparecem SEMPRE, inclusive zeradas: um ranking que
+# escondesse uma IA sem entrega omitiria justamente quem parou.
 #
 # `assinaturas` casa com o começo do trailer em minúsculas, e não com o nome
 # exato, porque o modelo muda dentro da mesma IA — `main` já tem "Claude Opus
 # 5", "Claude Fable 5.1", "Claude Sonnet 5" e "Claude Opus 4.8" assinando o
 # mesmo trabalho.
-TRIADE = (
+IAS_MEDIDAS = (
     {
         "chave": "claude-code",
         "nome": "Claude Code",
-        "papel": "Maestro",
         "assinaturas": ("claude",),
     },
     {
         "chave": "codex",
         "nome": "Codex",
-        "papel": "Executor",
         "assinaturas": ("codex",),
     },
     {
         "chave": "antigravity",
         "nome": "Antigravity",
-        "papel": "Sentinela",
         "assinaturas": ("antigravity",),
     },
 )
@@ -150,7 +145,7 @@ def _quem_assinou(trailers: str) -> str | None:
         nome = valor.strip().lower()
         if not nome:
             continue
-        for ia in TRIADE:
+        for ia in IAS_MEDIDAS:
             if nome.startswith(ia["assinaturas"]):
                 reconhecidas.add(ia["chave"])
     return reconhecidas.pop() if len(reconhecidas) == 1 else None
@@ -246,10 +241,9 @@ def medir(raiz: Path, base: str = "origin/main") -> dict:
             {
                 "chave": ia["chave"],
                 "nome": ia["nome"],
-                "papel": ia["papel"],
                 **_somar(por_quem.get(ia["chave"], [])),
             }
-            for ia in TRIADE
+            for ia in IAS_MEDIDAS
         ],
         "sem_assinatura": _somar(por_quem.get(None, [])),
     }

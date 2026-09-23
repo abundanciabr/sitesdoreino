@@ -41,6 +41,7 @@ from datetime import datetime, timezone
 import redis
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from apps.pedidos.models import FatoAplicado
 from apps.pedidos.models import Order as OrderModel
@@ -180,11 +181,13 @@ def aplicar(envelope: dict) -> bool:
     try:
         with transaction.atomic():
             FatoAplicado.objects.create(chave=aviso.chave)
+            estados_elegiveis = Q(status=OrderModel.AGUARDANDO)
+            if aviso.status == "pago":
+                estados_elegiveis |= Q(status="recusado", method="card")
             OrderModel.objects.filter(
                 pk=aviso.order_id,
                 site_id=aviso.site_id,  # [INV-P11] o site do evento tem de bater
-                status=OrderModel.AGUARDANDO,
-            ).update(status=aviso.status)
+            ).filter(estados_elegiveis).update(status=aviso.status)
     except IntegrityError:
         return False
     return True

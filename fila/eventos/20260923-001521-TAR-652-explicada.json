@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-001521-TAR-652-explicada",
+  "tarefa": "TAR-652",
+  "evento": "explicada",
+  "quando": "2026-09-23T00:15:21+00:00",
+  "quem": "Mantenedor, fase 1 Appmax em 22/09/2026, e erro de interpolação confirmado na VPS",
+  "o_que_e": "O roteiro de sandbox consulta o Compose sem os dois tokens de gateway necessários para interpolar o arquivo e converte qualquer falha em lista vazia.",
+  "o_que_muda": "O roteiro fornece ao Compose somente os tokens exigidos, explica falha de consulta separadamente e não orienta reiniciar a plataforma inteira.",
+  "exemplo": "Se ALUNOS_API_TOKEN ou TOKEN_CATALOGO faltar em env/admin.env, o roteiro para antes de pedir segredo Appmax. Com ambos presentes, uma falha de ps é identificada como falha de consulta; uma lista vazia válida continua sendo tratada como serviço ausente.",
+  "importancia": 90
+}

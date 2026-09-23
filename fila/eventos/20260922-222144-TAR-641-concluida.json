@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-222144-TAR-641-concluida",
+  "tarefa": "TAR-641",
+  "evento": "concluida",
+  "quando": "2026-09-22T22:21:44+00:00",
+  "quem": "agent/fila/appmax-estorno-prova-sandbox",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1957",
+  "verificado_em": "2026-09-22"
+}

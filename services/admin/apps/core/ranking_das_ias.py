@@ -1,4 +1,4 @@
-# apps/core/ranking_das_ias.py — o ranking da tríade
+# apps/core/ranking_das_ias.py — o ranking das IAs
 """`/admin/ranking-ias/` — quanto cada IA publicou em `main`, e o que custou.
 
 Pedido do mantenedor em 17/09/2026: uma tela que mostre qual das três IAs está
@@ -56,9 +56,9 @@ from .painel import dados_do_painel, diretorio_do_painel
 
 ARQUIVO = "ranking-ias.json"
 IDENTIDADES_IAS = {
-    "claude-code": ("Claude Code", "Maestro"),
-    "codex": ("Codex", "Executor"),
-    "antigravity": ("Antigravity", "Sentinela"),
+    "claude-code": "Claude Code",
+    "codex": "Codex",
+    "antigravity": "Antigravity",
 }
 
 # A regra de recompensa que o mantenedor escreveu em 17/09/2026. Mora aqui, e
@@ -75,7 +75,7 @@ PLANOS = (
 O_QUE_NAO_ENXERGO = (
     "Tokens consumidos: nenhuma das três registra consumo no repositório.",
     "Trabalho que não chegou na main: rascunho, PR aberto e ramo abandonado.",
-    "Auditoria e verificação da Sentinela, que por lei não viram commit.",
+    "Auditorias e verificações que não viraram commit.",
 )
 
 
@@ -88,7 +88,6 @@ class Participante:
     """
 
     nome: str
-    papel: str
     paginas: int
     entregas: int
     linhas: int
@@ -125,7 +124,7 @@ def _data(texto: "str | None") -> "datetime | None":
         return None
 
 
-def _participante(bruto: dict, nome: str, papel: str) -> "Participante | None":
+def _participante(bruto: dict, nome: str) -> "Participante | None":
     """Uma linha do retrato, ou `None` se ela não veio inteira.
 
     Campo faltando derruba a LINHA, e não a página: um ranking com duas das três
@@ -141,7 +140,6 @@ def _participante(bruto: dict, nome: str, papel: str) -> "Participante | None":
         return None
     return Participante(
         nome=nome,
-        papel=papel,
         ultima_entrega=ultima_entrega,
         **{campo: bruto[campo] for campo in numeros},
     )
@@ -170,7 +168,6 @@ def classificar(participantes: list[Participante]) -> list[Participante]:
                 campo: getattr(participante, campo)
                 for campo in (
                     "nome",
-                    "papel",
                     "paginas",
                     "entregas",
                     "linhas",
@@ -242,11 +239,9 @@ def ranking_das_ias(request):
         linha
         for bruto in dados.get("ias", [])
         if isinstance(bruto, dict)
-        and (linha := _participante(bruto, *IDENTIDADES_IAS[bruto["chave"]]))
+        and (linha := _participante(bruto, IDENTIDADES_IAS[bruto["chave"]]))
     ]
-    sem_assinatura = _participante(
-        dados.get("sem_assinatura"), "Sem autoria única", "fora da classificação"
-    )
+    sem_assinatura = _participante(dados.get("sem_assinatura"), "Sem autoria única")
     incompleto = len(participantes) != len(IDENTIDADES_IAS) or sem_assinatura is None
     linhas = participantes
     if not incompleto:

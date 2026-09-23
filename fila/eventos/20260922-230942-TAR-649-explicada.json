@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-230942-TAR-649-explicada",
+  "tarefa": "TAR-649",
+  "evento": "explicada",
+  "quando": "2026-09-22T23:09:42+00:00",
+  "quem": "Desfecho PUBLICADO de ci/esperar.py --entrega 1958",
+  "o_que_e": "A entrega está publicada mas o livro ainda não contém o veredito pós-deploy.",
+  "o_que_muda": "O mantenedor vê que o ranking sem papéis fixos já chegou ao admin.",
+  "exemplo": "O livro liga o PR 1958 ao run 35794906110 concluído com sucesso.",
+  "importancia": 80
+}

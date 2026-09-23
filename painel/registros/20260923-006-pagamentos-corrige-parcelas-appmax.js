@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-006-pagamentos-corrige-parcelas-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "pagamentos: corrige parcelas Appmax",
+  detalhe: "A sandbox retorna parcels em reais; o cliente agora os converte em centavos com exatidão.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1975. Validação local: árvore 45dd76f28e8522337bb5b681d385e33104040426; commit b32157c9f6b15b737e8fb26f9ab6af019452af5c; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-656",
+  gravidade: "info",
+  frente: null,
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

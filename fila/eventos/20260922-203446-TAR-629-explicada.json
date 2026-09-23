@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-203446-TAR-629-explicada",
+  "tarefa": "TAR-629",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:34:46+00:00",
+  "quem": "correção append-only de TAR-627 concluída sem a implementação, observada após merge do PR #1939 em 22/09/2026",
+  "o_que_e": "TAR-627 foi concluída com os arquivos da fila, mas a regra de propriedade ainda não entrou em .github/CODEOWNERS.",
+  "o_que_muda": "A implementação da proteção de .cursor/hooks.json será entregue em PR próprio e verificável.",
+  "exemplo": "O teste guarda deve encontrar .cursor/hooks.json e exigir @abundanciabr.",
+  "importancia": 70
+}

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-124826-TAR-660-concluida",
+  "tarefa": "TAR-660",
+  "evento": "concluida",
+  "quando": "2026-09-23T12:48:26+00:00",
+  "quem": "agent/ci/publicar-documento-sem-navegador",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1984",
+  "verificado_em": "2026-09-23"
+}

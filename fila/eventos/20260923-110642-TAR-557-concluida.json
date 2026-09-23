@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-110642-TAR-557-concluida",
+  "tarefa": "TAR-557",
+  "evento": "concluida",
+  "quando": "2026-09-23T11:06:42+00:00",
+  "quem": "agent/pagamentos/appmax-concluir-tentativas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1976",
+  "verificado_em": "2026-09-23"
+}

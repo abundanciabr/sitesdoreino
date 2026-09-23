@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-222334-TAR-643-explicada",
+  "tarefa": "TAR-643",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:23:34+00:00",
+  "quem": "filha de TAR-638 para entrega de código",
+  "o_que_e": "A configuração da Appmax precisa separar aplicativo, instalação e acesso do lojista para não confundir OAuth com permissão de pagamentos.",
+  "o_que_muda": "O roteiro prepara somente sandbox, impede cobranças e valida o par MERCHANT antes de gravá-lo fora do repositório.",
+  "exemplo": "Os testes simulam token válido com API sem acesso e confirmam que as credenciais não são gravadas.",
+  "importancia": 75
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-222354-TAR-638-explicada",
+  "tarefa": "TAR-638",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:23:54+00:00",
+  "quem": "agent/infra/appmax-sandbox-credenciais",
+  "o_que_e": "A configuração Appmax só fica comprovada após entregar o roteiro seguro, executar o preparo e receber a aceitação real do healthcheck e do acesso MERCHANT sandbox.",
+  "o_que_muda": "A tarefa geral aguarda primeiro o código validado da TAR-643 e depois a confirmação externa, sem cobranças reais.",
+  "exemplo": "Mesmo com os testes locais verdes, um HTTP 403 no backend mantém a instalação por comprovar até o healthcheck sandbox real.",
+  "importancia": 80
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-009-pagamentos-cartao-pela-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "pagamentos: cartão pela Appmax",
+  detalhe: "Cartão Appmax registra a tentativa antes do envio e consulta resultados incertos sem cobrar de novo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1976. Validação local: árvore bd61ed6b5aef3da056935c41446c260f5fc13486; commit d11c6f2786b0a349f3f5b8be5c28a388cfca6814; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-557",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

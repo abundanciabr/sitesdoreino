@@ -1,0 +1,19 @@
+{
+  "arquivo": "642-enviar-os-itens-calculados-pelo-site-na-intent-de-cartao",
+  "id": "TAR-642",
+  "titulo": "Enviar os itens calculados pelo site na intent de cartão",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Intent de cartão leva metadata.items com todos os itens e valores do catálogo; Pix conserva metadata e QR; provas server-money, cartão, snapshot e site passam junto com make ci.",
+  "despacho": "Implemente no checkout a transmissão server-side dos itens do pedido congelado para metadata.items apenas na intent de cartão. Preserve product_id existente, payload Pix e os contratos HTTP. Não confie em itens nem valores do navegador. Cubra produto principal e bump, total calculado, adulteração, retry com snapshot existente e site correto. Rode as provas focais, guarda de mutação e make ci. Entregue um único PR pelo rito.",
+  "origem": "Mandato do mantenedor: sessão de 22/09/2026, toque a fase 1 do checkout Appmax.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

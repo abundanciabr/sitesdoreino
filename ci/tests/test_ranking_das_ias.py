@@ -186,7 +186,6 @@ def test_o_arquivo_publicado_e_o_que_a_tela_espera(repo: Path):
         assert set(ia) == {
             "chave",
             "nome",
-            "papel",
             "entregas",
             "paginas",
             "linhas",

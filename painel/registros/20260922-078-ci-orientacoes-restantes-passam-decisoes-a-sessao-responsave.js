@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-078-ci-orientacoes-restantes-passam-decisoes-a-sessao-responsave",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: orientações restantes passam decisões à sessão responsável",
+  detalhe: "Três instruções davam decisões à antiga maestro. Agora a sessão responsável decide e cria tarefa adicional.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1961. Validação local: árvore c21998174eb6548edd1a5dfdc0b302992d774d35; commit 9d847e1ce95e02d0179c2d8603e47216832cdca0; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-650",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

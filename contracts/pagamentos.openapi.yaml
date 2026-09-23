@@ -103,6 +103,64 @@ paths:
         '200': { description: Recebido e enfileirado }
         '403': { description: Assinatura ausente/ inválida — ZERO efeito colateral }
         '502': { $ref: '#/components/responses/FalhaDoProvedor' }
+  /intents/{intent_id}/installments:
+    get:
+      operationId: getCardInstallments
+      summary: Consulta as parcelas Appmax para o valor gravado na intent
+      parameters:
+      - in: path
+        name: intent_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Parcelas calculadas no servidor, com juros incluídos
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - amount_cents
+                - modality
+                - options
+                properties:
+                  amount_cents:
+                    type: integer
+                    minimum: 1
+                  modality:
+                    type: string
+                    enum:
+                    - PP
+                  options:
+                    type: array
+                    minItems: 1
+                    maxItems: 12
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - installments
+                      - total_cents
+                      - installment_cents
+                      properties:
+                        installments:
+                          type: integer
+                          minimum: 1
+                          maximum: 12
+                        total_cents:
+                          type: integer
+                          minimum: 1
+                        installment_cents:
+                          type: integer
+                          minimum: 1
+        '404':
+          description: Pedido não encontrado
+        '409':
+          description: Pedido não aceita cartão
+        '502':
+          description: Não foi possível consultar as parcelas; tente novamente
 components:
   securitySchemes:
     bearerAuth:

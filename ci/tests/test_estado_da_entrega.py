@@ -74,13 +74,15 @@ def test_merge_com_deploy_ausente_nao_e_terminal(monkeypatch):
     assert estado["terminal"] is False
     assert estado["sha_integrado"] == SHA
 
-def test_novo_sha_diagnostica_nova_revisao(monkeypatch):
-    monkeypatch.setattr(entrega, "ler_pr", lambda *a: dict(number=99,state="OPEN",headRefOid=SHA,labels=[{"name":"pousar"}],files=[]))
-    monkeypatch.setattr(entrega, "_api", lambda *a, **kw: [])
+def test_pr_aberto_orienta_checks_sem_cobrar_atestado(monkeypatch):
+    monkeypatch.setattr(entrega, "ler_pr", lambda *a: dict(number=99,state="OPEN",headRefOid=SHA,isDraft=False,labels=[],files=[]))
+    def comentarios_nao_sao_requisito(*args, **kwargs):
+        raise AssertionError("PR aberto não exige comentário de revisão")
+    monkeypatch.setattr(entrega, "_api", comentarios_nao_sao_requisito)
     estado = entrega.consultar_entrega(RAIZ,99)
-    assert estado["estado"] == "REVISAO_NECESSARIA"
+    assert estado["estado"] == "AGUARDANDO_INTEGRACAO"
     assert estado["terminal"] is False
-    assert "revisão" in estado["acao"].lower()
+    assert "python ci/esperar.py --checks 99 --so-desfecho" in estado["acao"]
 
 def test_dependencias_transitivas_e_celulas_independentes():
     from mapa_de_celulas import Celula

@@ -1,0 +1,19 @@
+{
+  "arquivo": "651-registrar-publicacao-das-orientacoes-finais-sem-papeis-fixos",
+  "id": "TAR-651",
+  "titulo": "Registrar publicação das orientações finais sem papéis fixos",
+  "toca": [
+    "painel/registros/20260922-080-ci-orientacoes-finais-publicadas.js"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro responde ao recibo do PR 1961 com SHA integrado e run de deploy bem-sucedido",
+  "despacho": "Registrar no livro o desfecho publicado das três orientações residuais corrigidas pelo PR 1961.",
+  "origem": "Desfecho PUBLICADO de ci/esperar.py --entrega 1961",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

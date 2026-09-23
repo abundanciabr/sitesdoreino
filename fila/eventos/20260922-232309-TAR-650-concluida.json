@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-232309-TAR-650-concluida",
+  "tarefa": "TAR-650",
+  "evento": "concluida",
+  "quando": "2026-09-22T23:23:09+00:00",
+  "quem": "agent/ci/retirar-papeis-fixos-das-leis",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1961",
+  "verificado_em": "2026-09-22"
+}

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260923-130036-TAR-661-submetida",
+  "tarefa": "TAR-661",
+  "evento": "submetida",
+  "quando": "2026-09-23T13:00:36+00:00",
+  "quem": "agent/ci/liberar-publicacao-sem-editor",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1985",
+  "revisao": "a399f2116b8a304d80bb7ed420b912711c2eae6a",
+  "arvore": "e21058cecc7d2a087bd1b6961303bfbb34cf3c07"
+}

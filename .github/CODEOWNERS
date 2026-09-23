@@ -12,6 +12,7 @@
 /.github/                   @abundanciabr
 /.claude/settings.json      @abundanciabr
 /.codex/hooks.json          @abundanciabr
+/.cursor/                   @abundanciabr
 /.githooks/                 @abundanciabr
 /CONSTITUICAO.md            @abundanciabr
 /CLAUDE.md                  @abundanciabr

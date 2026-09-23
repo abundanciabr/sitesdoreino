@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-223338-TAR-638-explicada",
+  "tarefa": "TAR-638",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:33:38+00:00",
+  "quem": "codex-appmax-fase1",
+  "o_que_e": "A submissão automática de PR marcou TAR-638 como concluída sem healthcheck inicial aceito e sem prova de OAuth MERCHANT.",
+  "o_que_muda": "O registro histórico é preservado e identificado como conclusão indevida; a comprovação operacional continua pendente na sucessora TAR-647, que depende do roteiro TAR-643.",
+  "exemplo": "O evento de conclusão existe no PR aberto, mas a resposta pública medida foi HTTP 403 e o par APP de sandbox não comprovou leitura MERCHANT de produtos.",
+  "importancia": 82
+}

@@ -1,0 +1,21 @@
+{
+  "arquivo": "643-preparar-o-roteiro-seguro-appmax-sandbox",
+  "id": "TAR-643",
+  "titulo": "Preparar o roteiro seguro Appmax sandbox",
+  "toca": [
+    "infra",
+    "pagamentos",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "URL do PR integrado com os testes do roteiro e da rota local aprovados; sem alegar healthcheck remoto nem OAuth MERCHANT real.",
+  "despacho": "Entregar o código do preparo seguro Appmax sandbox e validar a suíte do roteiro e o teste local da rota. Ownership: infra/ligar-a-appmax.sh, infra/env/pagamentos.env.exemplo e ci/tests/test_ligar_a_appmax.py; services/ e contracts/ somente leitura. Não chamar a rota pública nem afirmar healthcheck aceito: essa prova é um gate separado da tarefa de instalação e MERCHANT. Segredos externos não entram no repositório, histórico nem artefatos. Cobranças reais permanecem desligadas.",
+  "origem": "filha de TAR-638 para entrega de código",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

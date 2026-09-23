@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-013301-TAR-653-concluida",
+  "tarefa": "TAR-653",
+  "evento": "concluida",
+  "quando": "2026-09-23T01:33:01+00:00",
+  "quem": "agent/pagamentos/appmax-cliente-operacoes",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1971",
+  "verificado_em": "2026-09-23"
+}

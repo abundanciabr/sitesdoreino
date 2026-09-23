@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-062-alunos-estorno-anterior-a-aprovacao-suspende-acesso",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "alunos: estorno anterior à aprovação suspende acesso",
+  detalhe: "Estorno anterior à aprovação era descartado; o estado persistido mantém a matrícula suspensa.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1950. Validação local: árvore 40317ddae89e65e1e98e4e5e5963dc0922cb0b00; commit d2c1de9a265c267e3c5f54ed6d186a41717782b0; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-640",
+  gravidade: "info",
+  frente: "curso",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-221920-TAR-642-explicada",
+  "tarefa": "TAR-642",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:19:20+00:00",
+  "quem": "Mandato do mantenedor: sessão de 22/09/2026, toque a fase 1 do checkout Appmax.",
+  "o_que_e": "Hoje a cobrança de cartão recebe o identificador do produto, mas não recebe a lista de itens que o próprio checkout já calculou e congelou no pedido.",
+  "o_que_muda": "A intent de cartão passa a carregar a lista autoritativa de itens do pedido, incluindo o produto principal e o adicional, sem aceitar valores enviados pelo navegador.",
+  "exemplo": "Se o cliente escolhe o produto e um adicional, a cobrança recebe os dois itens com os valores do catálogo; uma tentativa Pix mantém os dados que já recebe hoje.",
+  "importancia": 65
+}
