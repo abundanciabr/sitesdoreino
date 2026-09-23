@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260923-165047-TAR-663-submetida",
+  "tarefa": "TAR-663",
+  "evento": "submetida",
+  "quando": "2026-09-23T16:50:47+00:00",
+  "quem": "agent/ci/remover-encaminhamento-maestro",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1993",
+  "revisao": "628d7e0de0cceed7711e2a203e9cbbd48406eb93",
+  "arvore": "f088a510437c31a818dcdbbe20d6abfccf76b629"
+}
