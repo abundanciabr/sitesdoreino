@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-182549-TAR-671-explicada",
+  "tarefa": "TAR-671",
+  "evento": "explicada",
+  "quando": "2026-09-23T18:25:49+00:00",
+  "quem": "pedido-do-mantenedor:publicacao-imagens-conteudo:2026-09-23",
+  "o_que_e": "Os anexos versionados de documentos precisam ser publicados no volume persistente para continuarem disponíveis após a implantação.",
+  "o_que_muda": "O deploy valida, publica e vincula esses arquivos sem abrir uma rota pública de envio.",
+  "exemplo": "A capa versionada de um guia continua disponível depois que uma nova versão da administração sobe.",
+  "importancia": 90
+}

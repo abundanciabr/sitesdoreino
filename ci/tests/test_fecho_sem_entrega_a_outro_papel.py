@@ -61,6 +61,10 @@ def test_o_resumo_da_fabrica_nao_usa_o_papel_encerrado_no_nome():
     "docs/guia-mantenedor.md",
     "PLAYBOOK.md",
     "docs/caixa-de-sugestoes/MODELO-DESPACHO.md",
+    "RUNBOOK-LOTES.md",
+    "docs/decisoes/DECISAO-triade-de-ias.md",
+    "docs/decisoes/DECISAO-revisao-e-publicacao.md",
+    "docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md",
 ))
 def test_orientacao_ativa_nao_reativa_papeis_fixos(relativo):
     texto = (RAIZ / relativo).read_text(encoding="utf-8").lower()
@@ -69,3 +73,23 @@ def test_orientacao_ativa_nao_reativa_papeis_fixos(relativo):
     for frase in ("a maestro", "à maestro", "maestro (claude code)",
                   "codex, o executor", "codex executa", "antigravity audita"):
         assert frase not in texto, (relativo, frase)
+
+
+def test_protocolos_revogados_apontam_para_o_historico_sem_instruir_a_sessao():
+    for relativo in (
+        "RUNBOOK-LOTES.md",
+        "docs/decisoes/DECISAO-triade-de-ias.md",
+        "docs/decisoes/DECISAO-revisao-e-publicacao.md",
+        "docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md",
+    ):
+        texto = (RAIZ / relativo).read_text(encoding="utf-8").lower()
+        assert "históric" in texto, relativo
+        assert "https://github.com/abundanciabr/sitesdoreino/blob/" in texto, relativo
+        assert "a maestro entrega" not in texto, relativo
+
+
+def test_codigo_de_entrega_nao_convoca_papel_revogado():
+    for relativo in ("ci/estado_da_entrega.py", "ci/esperar.py",
+                     "ci/prestacao_de_contas.py"):
+        texto = (RAIZ / relativo).read_text(encoding="utf-8").lower()
+        assert "maestro" not in texto, relativo

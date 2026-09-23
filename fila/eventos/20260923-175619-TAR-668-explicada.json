@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-175619-TAR-668-explicada",
+  "tarefa": "TAR-668",
+  "evento": "explicada",
+  "quando": "2026-09-23T17:56:19+00:00",
+  "quem": "Continuação do pedido direto do mantenedor de 23/09/2026 para concluir a remoção dos papéis dissolvidos",
+  "o_que_e": "Documentos ainda mostram longas ordens de papéis e atestado revogados a quem abre o projeto.",
+  "o_que_muda": "A leitura operacional apresenta só o rito atual e identifica claramente onde consultar a história sem reaplicá-la.",
+  "exemplo": "Quem abre a antiga decisão de revisão vê que o atestado foi revogado e encontra o rito vigente, sem receber uma ordem para chamar a maestro.",
+  "importancia": 85
+}

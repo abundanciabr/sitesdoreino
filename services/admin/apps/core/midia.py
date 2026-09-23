@@ -39,6 +39,7 @@ import mimetypes
 import re
 import secrets
 import shutil
+import tempfile
 from pathlib import Path
 
 from django.conf import settings
@@ -254,11 +255,19 @@ def gravar_bytes(
     sorteio = sorteio or secrets.token_hex(16)
     nome = _apelido(nome_de_fora, tipo)
     pasta = raiz() / sorteio
+    temporario = None
     try:
         pasta.mkdir(parents=True, exist_ok=True)
-        (pasta / nome).write_bytes(conteudo)
+        with tempfile.NamedTemporaryFile(dir=pasta, delete=False) as arquivo:
+            temporario = Path(arquivo.name)
+            arquivo.write(conteudo)
+        temporario.replace(pasta / nome)
     except OSError as erro:
-        shutil.rmtree(pasta, ignore_errors=True)
+        try:
+            if temporario is not None:
+                temporario.unlink(missing_ok=True)
+        except OSError:
+            pass
         raise Recusa(
             "Não consegui gravar o arquivo no disco do servidor, que pode "
             "estar cheio. O texto do documento está a salvo. Avise o "
@@ -268,7 +277,7 @@ def gravar_bytes(
     midia, _ = Midia.objects.update_or_create(
         sorteio=sorteio,
         defaults={
-            "documento": documento,
+            "documento_id": documento.pk,
             "nome": nome,
             "tipo": tipo,
             "tamanho": len(conteudo),

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-182028-TAR-670-explicada",
+  "tarefa": "TAR-670",
+  "evento": "explicada",
+  "quando": "2026-09-23T18:20:28+00:00",
+  "quem": "Pedido direto do mantenedor nesta conversa em 23/09/2026",
+  "o_que_e": "As tarefas do cartão existem, mas a sequência restante e a apresentação de cada avanço não estão reunidas em um comando claro para o robô.",
+  "o_que_muda": "O mantenedor vê o que começou, avançou, travou e terminou, e o robô recebe uma ordem de execução guiada pelas dependências reais.",
+  "exemplo": "Quando o webhook é reivindicado, o robô mostra a lista inteira, marca essa tarefa iniciada e aponta a prova que falta para terminá-la.",
+  "importancia": 85
+}

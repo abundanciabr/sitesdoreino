@@ -238,8 +238,8 @@ def _entrada_codex(entrada: dict) -> dict | None:
 def ler_transcript(caminho: Path) -> list[dict]:
     """As entradas do transcript, sem as de sub-agente.
 
-    Sidechain é o time da maestro trabalhando por dentro: as escritas de um
-    sub-agente já contam pelo `Agent` que aparece no fio principal, e deixá-las
+    Sidechain registra os subagentes trabalhando por dentro: suas escritas
+    já contam pelo `Agent` que aparece no fio principal, e deixá-las
     aqui embaralharia a ordem entre mudança e prestação de contas.
     """
     entradas: list[dict] = []
@@ -601,7 +601,7 @@ def _saidas_por_id(entradas: list[dict]) -> dict[str, str]:
     return saidas
 
 
-# Teto de linhas por lista. A janela de uma sessão-maestro pode ter dezenas de
+# Teto de linhas por lista. Uma sessão pode ter dezenas de
 # escritas de bancadas diferentes, e um molde de 60 linhas de ruído é um molde
 # que ninguém lê (medido na prova de fora deste PR: 31 comandos numa lista só).
 TETO_DA_LISTA = 12
@@ -788,9 +788,8 @@ def checks_do_pr(numero: int, cwd: Path) -> str:
 # **PR aberto é estado intermediário, nunca entrega final**, e enquanto houver
 # ação técnica segura disponível o relatório é atualização, não fecho.
 #
-# POR QUE ISTO NÃO É A ESPERA EM LAÇO QUE A TRÍADE PROIBIU
-# (`docs/decisoes/DECISAO-triade-de-ias.md`, regra 2): o portão não espera. Ele
-# mede UMA vez, no fim do turno, recusa UMA vez por situação e devolve o comando
+# POR QUE ISTO NÃO É ESPERA EM LAÇO (CLAUDE.md E RITOS.md §2):
+# O portão não espera: mede UMA vez, no fim do turno, recusa UMA vez por situação e devolve o comando
 # que tem teto e morre sozinho (`ci/esperar.py`). Estourou o teto, o vermelho é
 # do instrumento ou a decisão é exclusiva do mantenedor: o fecho honesto é NÃO
 # PRONTO com a dívida no livro, e o portão aceita.

@@ -1,0 +1,28 @@
+{
+  "arquivo": "668-retirar-o-protocolo-revogado-da-leitura-operacional",
+  "id": "TAR-668",
+  "titulo": "Retirar o protocolo revogado da leitura operacional",
+  "toca": [
+    "RUNBOOK-LOTES.md",
+    "docs/decisoes/DECISAO-triade-de-ias.md",
+    "docs/decisoes/DECISAO-revisao-e-publicacao.md",
+    "docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md",
+    "docs/decisoes/DECISAO-a-sessao-nao-fecha-em-voo.md",
+    "docs/decisoes/DECISAO-contexto-sob-demanda.md",
+    "painel/ia/05-infraestrutura-ci-e-deploy.md",
+    "ci/muralha_dos_sub_agentes.py",
+    "ci/prestacao_de_contas.py",
+    "ci/tests/test_fecho_sem_entrega_a_outro_papel.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Protocolos antigos substituídos por aviso de revogação; links históricos resolvem; guardas, testes e muralhas verdes; PR integrado",
+  "despacho": "Retirar o protocolo histórico de tríade, lotes e atestado das fontes de leitura operacional sem perder referências a fatos antigos. Corrigir referências que os tratam como lei e provar a revogação.",
+  "origem": "Continuação do pedido direto do mantenedor de 23/09/2026 para concluir a remoção dos papéis dissolvidos",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
