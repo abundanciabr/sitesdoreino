@@ -420,10 +420,20 @@ def test_consulta_confiavel_fecha_a_reconciliacao_como_recusada_e_destrava() -> 
 
     assert fechada.state == "rejected"
     assert fechada.provider_reference_id == "pay-9"
-    nova = executar_tentativa(
+    replay = executar_tentativa(
         intent=intent, provider="appmax", corpo=_corpo(), enviar=_aprovar()
     )
+    assert replay.pk == fechada.pk
+    assert replay.state == "rejected"
+    nova = executar_tentativa(
+        intent=intent,
+        provider="appmax",
+        corpo=_corpo("token-novo-apos-recusa"),
+        enviar=_aprovar(),
+    )
     assert nova.state == "approved"
+    assert nova.pk != fechada.pk
+    assert PaymentAttempt.objects.filter(intent=intent).count() == 2
 
 
 @pytest.mark.smoke_card

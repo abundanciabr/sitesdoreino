@@ -20,13 +20,14 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from pagamentos.core.gateway import FalhaNoProvedor
-from pagamentos.core.models import Intent
+from pagamentos.core.models import Intent, PaymentAttempt
 from pagamentos.methods.card.service import (
     CartaoAppmaxDesativado,
     DadosCartaoInvalidos,
     IntentNaoConfirmavel,
     confirmar_intent_card,
     criar_intent_card,
+    reconciliar_intent_card,
 )
 from pagamentos.methods.pix.service import (
     completar_intent_pix,
@@ -307,7 +308,22 @@ def _get_intent_ou_404(intent_id: str) -> Intent:
     openapi_extra=_GET_INTENT_OPENAPI,
 )
 def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
-    return _intent_to_dict(_get_intent_ou_404(intent_id))
+    intent = _get_intent_ou_404(intent_id)
+    if (
+        intent.method == "card"
+        and PaymentAttempt.objects.filter(
+            intent=intent,
+            provider="appmax",
+            state__in=("pending", "reconciliation_required"),
+        )
+        .exclude(external_order_id="")
+        .exists()
+    ):
+        try:
+            reconciliar_intent_card(intent)
+        except (FalhaNoProvedor, IntentNaoConfirmavel):
+            intent.refresh_from_db()
+    return _intent_to_dict(intent)
 
 
 _CONFIRM_CARD_OPENAPI = {

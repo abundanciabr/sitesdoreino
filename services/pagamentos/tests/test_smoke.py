@@ -413,3 +413,199 @@ def test_debug_simulate_webhook_entrega_webhook_assinado_a_si_mesma(
     assert (
         Intent.objects.get(id=intent["id"]).status == "approved"
     )  # o caminho inteiro andou
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("etapa", ["customers", "orders", "payments/credit-card"])
+def test_timeout_appmax_nao_reenvia_cobranca(
+    client: Client, token_valido: str, settings: Any, etapa: str
+) -> None:
+    from pagamentos.core.models import PaymentAttempt, PaymentOperation
+
+    _configurar_appmax(settings)
+    criada = _post_intent(
+        client,
+        token_valido,
+        "77777777-7777-4777-8777-777777777777",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = criada.json()["id"]
+    corpo = {
+        "card_token": "token-appmax-teste",
+        "installments": 1,
+        "payer_email": "cliente@exemplo.com",
+        "ip": "203.0.113.7",
+        "holder_name": "Cliente Teste",
+        "holder_document_number": "12345678901",
+    }
+    with respx.mock(assert_all_called=False) as rede:
+        _appmax(rede, statuses=["aprovado"])
+        rota = rede.post(f"{_APP_API}/{etapa}").mock(
+            side_effect=httpx.ReadTimeout("timeout")
+        )
+        rede.get(url__regex=r"https://api\.sandboxappmax\.com\.br/v1/orders/\d+").mock(
+            return_value=httpx.Response(503)
+        )
+        resposta = client.post(
+            f"/api/pagamentos/intents/{intent_id}/card",
+            data=json.dumps(corpo),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+        )
+        assert resposta.status_code == 502
+        tentativa = PaymentAttempt.objects.get(intent_id=intent_id)
+        assert tentativa.state == "reconciliation_required"
+        operacoes = PaymentOperation.objects.filter(attempt=tentativa)
+        assert operacoes.filter(state="reconciliation_required").count() == 1
+        assert all(len(op.request_hash) == 64 for op in operacoes)
+        corpo["card_token"] = "outro-token-nao-pode-reenviar"
+        repetida = client.post(
+            f"/api/pagamentos/intents/{intent_id}/card",
+            data=json.dumps(corpo),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+        )
+        assert repetida.status_code in (409, 502)
+        assert rota.call_count == 1
+        assert PaymentAttempt.objects.filter(intent_id=intent_id).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("falha", ["credencial", "pedido_sem_status"])
+def test_appmax_com_resposta_invalida_nao_aprova_cartao(
+    client: Client, token_valido: str, settings: Any, falha: str
+) -> None:
+    from pagamentos.core.models import PaymentAttempt
+
+    _configurar_appmax(settings)
+    criada = _post_intent(
+        client,
+        token_valido,
+        "88888888-8888-4888-8888-888888888888",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = criada.json()["id"]
+    corpo = {
+        "card_token": "token-appmax-teste",
+        "installments": 1,
+        "payer_email": "cliente@exemplo.com",
+        "ip": "203.0.113.7",
+        "holder_name": "Cliente Teste",
+        "holder_document_number": "12345678901",
+    }
+    with respx.mock(assert_all_called=False) as rede:
+        _appmax(rede, statuses=["aprovado"])
+        if falha == "credencial":
+            rota = rede.post(_APP_AUTH).respond(401, json={"error": "invalid_client"})
+        else:
+            rota = rede.post(f"{_APP_API}/orders").respond(
+                201, json={"data": {"order": {"id": 3531}}}
+            )
+        resposta = client.post(
+            f"/api/pagamentos/intents/{intent_id}/card",
+            data=json.dumps(corpo),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+        )
+        assert resposta.status_code == 502
+        assert rota.call_count == 1
+        assert not any(
+            str(call.request.url).endswith("/payments/credit-card")
+            for call in rede.calls
+        )
+        if falha == "credencial":
+            assert Intent.objects.get(id=intent_id).status == "created"
+            assert not PaymentAttempt.objects.filter(intent_id=intent_id).exists()
+            _appmax(rede, statuses=["aprovado"])
+            retry = client.post(
+                f"/api/pagamentos/intents/{intent_id}/card",
+                data=json.dumps(corpo),
+                content_type="application/json",
+                HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+            )
+            assert retry.status_code == 200
+            assert retry.json()["status"] == "approved"
+        else:
+            assert Intent.objects.get(id=intent_id).status == "pending"
+            assert (
+                PaymentAttempt.objects.get(intent_id=intent_id).state
+                == "reconciliation_required"
+            )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_consulta_appmax_atualiza_aprovacao_sem_reenviar_cartao(
+    client: Client, token_valido: str, settings: Any
+) -> None:
+    from pagamentos.core.models import OutboxEvent, PaymentAttempt
+
+    # guarda: services/pagamentos/pagamentos/core/tentativas.py:330
+    _configurar_appmax(settings)
+    criada = _post_intent(
+        client,
+        token_valido,
+        "99999999-9999-4999-8999-999999999999",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = criada.json()["id"]
+    with respx.mock(assert_all_called=True) as rede:
+        clientes, pedidos, _ = _appmax(rede, statuses=["autorizado"])
+        resposta = client.post(
+            f"/api/pagamentos/intents/{intent_id}/card",
+            data=json.dumps(
+                {
+                    "card_token": "token-appmax",
+                    "installments": 1,
+                    "payer_email": "cliente@exemplo.com",
+                    "ip": "203.0.113.7",
+                    "holder_name": "Cliente Teste",
+                    "holder_document_number": "12345678901",
+                }
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+        )
+        assert resposta.status_code == 200
+        assert resposta.json()["status"] == "pending"
+        assert not OutboxEvent.objects.exists()
+        consulta = rede.get(
+            url__regex=r"https://api\.sandboxappmax\.com\.br/v1/orders/\d+"
+        ).respond(
+            200,
+            json={
+                "data": {
+                    "order": {
+                        "id": 3531,
+                        "status": "aprovado",
+                        "total_paid": 1990,
+                        "amounts": {"sub_total": 1990, "installment_fee": 0},
+                    },
+                    "customer": {"id": 42},
+                    "payment": {"installments": 1, "method": "creditcard"},
+                }
+            },
+        )
+        for _ in range(2):
+            resposta = client.get(
+                f"/api/pagamentos/intents/{intent_id}",
+                HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+            )
+            assert resposta.status_code == 200
+            assert resposta.json()["status"] == "approved"
+        assert consulta.call_count == 2
+        assert clientes.call_count == pedidos.call_count == 1
+        assert PaymentAttempt.objects.get(intent_id=intent_id).state == "approved"
+        assert (
+            OutboxEvent.objects.filter(event="pagamento.aprovado", version=2).count()
+            == 1
+        )
+        assert (
+            sum(
+                str(call.request.url).endswith("/payments/credit-card")
+                for call in rede.calls
+            )
+            == 1
+        )

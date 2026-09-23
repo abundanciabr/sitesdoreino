@@ -2,10 +2,11 @@
 
 import django.db.models.deletion
 import uuid
+from typing import Any
 from django.db import migrations, models
 
 
-def _copiar_valor_base(apps, schema_editor):
+def _copiar_valor_base(apps: Any, schema_editor: Any) -> None:
     Tentativa = apps.get_model("core", "PaymentAttempt")
     for tentativa in Tentativa.objects.filter(
         effective_amount_cents__isnull=True

@@ -8,10 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from pagamentos.providers.appmax.client import AppmaxClient, AppmaxError
 from pagamentos.providers.mercadopago.client import MercadoPagoClient, MercadoPagoError
+
+
+T = TypeVar("T")
 
 
 class FalhaNoProvedor(Exception):
@@ -95,7 +99,7 @@ class AppmaxGateway:
         return self._chamar(self._client.consultar_pedido, order_id)
 
     @staticmethod
-    def _chamar(funcao: Any, *args: Any) -> Any:
+    def _chamar(funcao: Callable[..., T], *args: Any) -> T:
         try:
             return funcao(*args)
         except AppmaxError as exc:

@@ -367,7 +367,7 @@ def _criar_operacao(
         resposta = enviar(body=corpo)
         resource_id = str(extrair_id(resposta))
     except (gateway.FalhaNoProvedor, KeyError, TypeError, ValueError) as exc:
-        ambiguo = isinstance(exc, gateway.FalhaNoProvedor) and exc.ambiguo
+        ambiguo = not isinstance(exc, gateway.FalhaNoProvedor) or exc.ambiguo
         finalizar_operacao(
             operacao,
             state="reconciliation_required" if ambiguo else "failed",

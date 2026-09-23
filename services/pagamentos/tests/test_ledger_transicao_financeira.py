@@ -205,8 +205,8 @@ def test_webhook_do_mesmo_pagamento_nao_avisa_uma_segunda_vez(
 ) -> None:
     """O mesmo fato chega duas vezes (resposta síncrona e depois webhook) e o
     ledger muda UMA vez só: um aviso, nunca dois."""
-    intent = _criar_intent_card(client, token_valido)
-    _confirmar_cartao(client, token_valido, intent)
+    intent = _intent_pendente(method="card", provider_payment_id=_MP_PAYMENT_ID)
+    _aprovar(intent)
 
     resp = _postar_webhook_card(client, status="approved")
 
