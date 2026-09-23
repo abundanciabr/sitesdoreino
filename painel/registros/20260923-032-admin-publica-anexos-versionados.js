@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-032-admin-publica-anexos-versionados",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "admin: publica anexos versionados",
+  detalhe: "A migração publica anexos versionados com vínculo compatível com modelos históricos. A cópia atômica preserva mídias existentes em falhas. Testes e mutação cobrem esses casos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1990. Validação local: árvore 086fdbc94a61031a052a80b5ae747c08b4ecb7a8; commit b9cc8f689261b01162b5f94f0535125e2e90cd8b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-671",
+  gravidade: "info",
+  frente: null,
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
