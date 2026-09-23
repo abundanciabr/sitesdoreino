@@ -1,0 +1,19 @@
+{
+  "arquivo": "667-a-correcao-da-espera-do-cartao-ganha-prova-publicada",
+  "id": "TAR-667",
+  "titulo": "A correção da espera do cartão ganha prova publicada",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro novo cita PR #1995 integrado, workflow de publicação success e leitura pública HTTP 200 das telas; gerador do painel e fila passam.",
+  "despacho": "Registrar no livro da plataforma a publicação confirmada do PR #1995 e a leitura pública das duas páginas de checkout. O registro deve responder ao recibo 20260923-026-checkout-impedir-a-espera-falsa-no-cartao, citar o SHA integrado e o workflow concluído. Não mudar código nem afirmar que a compra com cartão já funciona. Provar validade do registro pelo gerador do painel e pela fila.",
+  "origem": "Fecho técnico da TAR-666 após PR #1995 publicado e páginas públicas verificadas em 23/09/2026.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
