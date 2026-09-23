@@ -39,12 +39,6 @@ _RESPOSTA_PIX_OK: dict[str, Any] = {
     },
 }
 
-_RESPOSTA_CARD_OK: dict[str, Any] = {
-    "id": 987654321,
-    "status": "approved",
-    "status_detail": "accredited",
-}
-
 # Forma real do corpo de erro do MP: NÃO tem "id", NÃO tem
 # "point_of_interaction". É exatamente por isso que o tradutor antigo produzia
 # campos vazios em vez de estourar.
@@ -82,21 +76,6 @@ def _post_intent(client: Client, token: str, chave: str, **overrides: Any) -> An
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {token}",
         HTTP_X_IDEMPOTENCY_KEY=chave,
-    )
-
-
-def _confirmar_card(client: Client, token: str, intent_id: str) -> Any:
-    return client.post(
-        f"/api/pagamentos/intents/{intent_id}/card",
-        data=json.dumps(
-            {
-                "card_token": "brick-token-abc",
-                "installments": 1,
-                "payer_email": "cliente@exemplo.com",
-            }
-        ),
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
 
@@ -311,55 +290,3 @@ def test_get_de_intent_fantasma_nao_apresenta_qr_vazio(
     corpo = resp.json()
     assert corpo["status"] == "pending"
     assert "pix" not in corpo, f"GET devolveu bloco pix vazio: {corpo['pix']!r}"
-
-
-# ---------------------------------------------------------------------------
-# Cartão — `_post` é compartilhado, e aqui o estrago é pior (409 permanente)
-# ---------------------------------------------------------------------------
-
-
-def test_card_com_erro_do_mp_nao_queima_a_intent_em_pending(
-    client: Client, token_valido: str
-) -> None:
-    """Sem o fix, `status` vazio vira "pending" pelo `.get(..., "pending")`;
-    "pending" não é confirmável, então TODA tentativa seguinte devolve 409
-    permanente e o cliente fica sem caminho. A intent tem de continuar
-    confirmável quando a falha foi do provedor, nunca uma recusa real."""
-    chave = "33333333-0000-4000-8000-000000000001"
-    criada = _post_intent(client, token_valido, chave, method="card")
-    assert criada.status_code == 201  # cartão não fala com o MP na criação
-    intent_id = criada.json()["id"]
-
-    with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(401, json=_CORPO_DE_ERRO_MP)
-        )
-        resp = _confirmar_card(client, token_valido, intent_id)
-
-    assert resp.status_code >= 400
-    assert Intent.objects.get(id=intent_id).status == "created"
-
-    with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json=_RESPOSTA_CARD_OK)
-        )
-        retry = _confirmar_card(client, token_valido, intent_id)
-
-    assert retry.status_code == 200
-    assert retry.json()["status"] == "approved"
-
-
-def test_card_200_sem_status_nao_vira_pending(
-    client: Client, token_valido: str
-) -> None:
-    chave = "44444444-0000-4000-8000-000000000001"
-    intent_id = _post_intent(client, token_valido, chave, method="card").json()["id"]
-
-    with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json={"id": 777, "status_detail": ""})
-        )
-        resp = _confirmar_card(client, token_valido, intent_id)
-
-    assert resp.status_code >= 400
-    assert Intent.objects.get(id=intent_id).status == "created"

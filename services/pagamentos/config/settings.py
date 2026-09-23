@@ -91,6 +91,11 @@ APPMAX_AUTH_URL = os.environ.get(
     "APPMAX_AUTH_URL", "https://auth.sandboxappmax.com.br/oauth2/token"
 )
 APPMAX_API_URL = os.environ.get("APPMAX_API_URL", "https://api.sandboxappmax.com.br")
+APPMAX_CARD_ENABLED_SITES = frozenset(
+    site.strip()
+    for site in os.environ.get("APPMAX_CARD_ENABLED_SITES", "").split(",")
+    if site.strip()
+)
 
 # [RECEITA:R3 v1] Redis Streams — destino do relay da outbox (pagamentos.core.
 # models.relay_outbox). Já provisionado em .github/workflows/ci-celula.yml e em
