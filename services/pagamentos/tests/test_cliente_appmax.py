@@ -474,6 +474,91 @@ def test_calcula_parcelas_pp_em_centavos_e_envia_corpo_oficial(settings: Any) ->
     }
 
 
+def test_calcula_parcelas_resposta_observada_no_sandbox(settings: Any) -> None:
+    resposta = {
+        "data": {
+            "parcels": {
+                "1": 200,
+                "2": 207.96,
+                "3": 211.94,
+                "4": 215.92,
+                "5": 219.9,
+                "6": 223.88,
+                "7": 227.86,
+                "8": 231.84,
+                "9": 235.82,
+                "10": 239.8,
+                "11": 243.78,
+                "12": 247.76,
+            },
+            "settings": {
+                "type": "PP",
+                "settings": {
+                    str(n): taxa
+                    for n, taxa in enumerate(
+                        [
+                            0,
+                            3.98,
+                            5.97,
+                            7.96,
+                            9.95,
+                            11.94,
+                            13.93,
+                            15.92,
+                            17.91,
+                            19.9,
+                            21.89,
+                            23.88,
+                        ],
+                        start=1,
+                    )
+                },
+            },
+        }
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.post(_INSTALLMENTS_URL).mock(
+            return_value=httpx.Response(200, json=resposta)
+        )
+        resultado = AppmaxClient().consultar_parcelas(20000)
+
+    assert resultado == {
+        "totals": {
+            1: 20000,
+            2: 20796,
+            3: 21194,
+            4: 21592,
+            5: 21990,
+            6: 22388,
+            7: 22786,
+            8: 23184,
+            9: 23582,
+            10: 23980,
+            11: 24378,
+            12: 24776,
+        },
+        "modality": "PP",
+        "max_installments": 12,
+    }
+
+
+def test_parcelas_observadas_recusam_fracao_de_centavo(settings: Any) -> None:
+    resposta = {
+        "data": {
+            "parcels": {"1": 200.001},
+            "settings": {"type": "PP", "settings": {"1": 0}},
+        }
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.post(_INSTALLMENTS_URL).mock(
+            return_value=httpx.Response(200, json=resposta)
+        )
+        with pytest.raises(AppmaxError, match="opção inválida"):
+            AppmaxClient().consultar_parcelas(20000)
+
+
 @pytest.mark.parametrize(
     ("status_code", "body"),
     [(503, {"message": _CLIENT_SECRET}), (200, {"data": {}})],

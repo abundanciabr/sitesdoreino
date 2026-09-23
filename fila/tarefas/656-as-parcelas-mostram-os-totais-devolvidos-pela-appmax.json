@@ -1,0 +1,19 @@
+{
+  "arquivo": "656-as-parcelas-mostram-os-totais-devolvidos-pela-appmax",
+  "id": "TAR-656",
+  "titulo": "As parcelas mostram os totais devolvidos pela Appmax",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes cobrem os dois formatos documentados e observados, PP, opções retornadas, conversão decimal exata para centavos e rejeição de valor inválido; teste focal verde. A observação sandbox de 23/09/2026 foi sanitizada.",
+  "despacho": "A resposta sandbox observada para POST /v1/payments/installments usa data.parcels com valores decimais em reais e data.settings.type/settings, enquanto o cliente atual só lê data.installments e settings.modality/max_installments. Ajuste somente services/pagamentos/pagamentos/providers/appmax/client.py e services/pagamentos/tests/test_cliente_appmax.py. Preserve o formato documentado atual e acrescente suporte estrito ao formato realmente observado, convertendo reais em centavos com Decimal sem arredondar. Aceite somente modalidade PP e opções existentes, rejeite valores inválidos, híbridos ou fora de sequência. Use fixture com os campos e números sanitizados observados no sandbox; não invente resposta. Sem chamada de rede nos testes, sem nova dependência, sem PAN/CVV, sem ativar cobranças. Rode o teste focal, mypy, Black e muralha de pagamentos.",
+  "origem": "Resposta real da Appmax sandbox em 2026-09-23 divergiu da forma documentada e da expectativa do cliente integrado",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import threading
 import time
+from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import quote, urlsplit
 
@@ -251,35 +252,45 @@ class AppmaxClient:
             {"installments": 12, "total_value": total_value, "settings": True},
             "cálculo de parcelas",
         )
-        try:
-            parcelas = payload["data"]["installments"]
-            configuracao = payload["data"]["settings"]
-        except (KeyError, TypeError):
-            estrutura_invalida = True
-            parcelas = {}
-            configuracao = {}
-        else:
-            estrutura_invalida = False
-        if estrutura_invalida:
+        data = payload.get("data")
+        if not isinstance(data, dict):
             raise AppmaxError(
                 "Appmax cálculo de parcelas: resposta incompleta; confira a API"
             )
-        if not isinstance(parcelas, dict) or not isinstance(configuracao, dict):
-            raise AppmaxError(
-                "Appmax cálculo de parcelas: resposta inválida; confira a API"
-            )
-        try:
-            modalidade = configuracao["modality"]
-            limite = configuracao["max_installments"]
-        except KeyError:
-            estrutura_invalida = True
-            modalidade = ""
-            limite = 0
+
+        parcelas_em_centavos = False
+        if "installments" in data and "parcels" not in data:
+            parcelas = data["installments"]
+            configuracao = data.get("settings")
+            if not isinstance(parcelas, dict) or not isinstance(configuracao, dict):
+                raise AppmaxError(
+                    "Appmax cálculo de parcelas: resposta inválida; confira a API"
+                )
+            modalidade = configuracao.get("modality")
+            limite = configuracao.get("max_installments")
+            parcelas_em_centavos = True
+        elif "parcels" in data and "installments" not in data:
+            parcelas = data["parcels"]
+            configuracao = data.get("settings")
+            if not isinstance(parcelas, dict) or not isinstance(configuracao, dict):
+                raise AppmaxError(
+                    "Appmax cálculo de parcelas: resposta inválida; confira a API"
+                )
+            modalidade = configuracao.get("type")
+            taxas = configuracao.get("settings")
+            if not isinstance(taxas, dict) or not taxas:
+                raise AppmaxError(
+                    "Appmax cálculo de parcelas: resposta incompleta; confira a API"
+                )
+            limite = len(taxas)
+            chaves_taxas = {str(numero) for numero in range(1, limite + 1)}
+            if set(taxas) != chaves_taxas:
+                raise AppmaxError(
+                    "Appmax cálculo de parcelas: configuração inválida; confira a API"
+                )
         else:
-            estrutura_invalida = False
-        if estrutura_invalida:
             raise AppmaxError(
-                "Appmax cálculo de parcelas: resposta incompleta; confira a API"
+                "Appmax cálculo de parcelas: resposta ambígua; confira a API"
             )
         if (
             modalidade != "PP"
@@ -294,13 +305,35 @@ class AppmaxClient:
         for chave, valor in parcelas.items():
             try:
                 numero = int(chave)
-                total = valor["total"]
+                total_bruto = valor["total"] if parcelas_em_centavos else valor
             except (ValueError, TypeError, KeyError):
                 opcao_invalida = True
                 numero = 0
                 total = 0
             else:
                 opcao_invalida = False
+                if not parcelas_em_centavos:
+                    if type(total_bruto) not in (int, float):
+                        total = 0
+                        opcao_invalida = True
+                    else:
+                        try:
+                            total_decimal = Decimal(str(total_bruto))
+                            total_centavos = total_decimal * 100
+                        except (InvalidOperation, ValueError, TypeError):
+                            total = 0
+                            opcao_invalida = True
+                        else:
+                            if (
+                                not total_decimal.is_finite()
+                                or total_centavos != total_centavos.to_integral_value()
+                            ):
+                                total = 0
+                                opcao_invalida = True
+                            else:
+                                total = int(total_centavos)
+                else:
+                    total = total_bruto
             if opcao_invalida:
                 raise AppmaxError(
                     "Appmax cálculo de parcelas: opção inválida; confira a API"
