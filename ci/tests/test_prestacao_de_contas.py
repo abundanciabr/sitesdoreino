@@ -1134,6 +1134,64 @@ def _resultado(identificador: str, texto: str) -> dict:
                                      "content": texto}]}}
 
 
+def test_falha_do_sandbox_restrito_nao_vira_bloqueio_final(tmp_path):
+    relatorio = CONTAS_NAO_PRONTO.replace(
+        "sem a chave o teste de ponta a ponta não roda",
+        "Docker está bloqueado pelo socket no ambiente local",
+    ).replace(
+        "falta a chave de teste do provedor, e ela é sua",
+        "o Docker falhou no socket depois da medição local",
+    )
+    proc = _decidir(tmp_path, [
+        _humano("confira se ainda está bloqueado"),
+        _ferramenta("Edit", {"file_path": "ci/guarda.py"}),
+        _uso("Bash", {"command": "docker version"}, "s1"),
+        _resultado("s1", "permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine"),
+        _fala(relatorio),
+    ])
+    assert proc.returncode == 2, (proc.returncode, proc.stdout, proc.stderr)
+    assert "SANDBOX RESTRITO" in proc.stderr
+    assert "docker version" in proc.stderr
+
+
+def test_sandbox_restrito_libera_quando_ha_medicao_real_depois(tmp_path):
+    relatorio = CONTAS_NAO_PRONTO.replace(
+        "sem a chave o teste de ponta a ponta não roda",
+        "a muralha ainda está vermelha, mas Docker foi conferido fora do sandbox",
+    ).replace(
+        "falta a chave de teste do provedor, e ela é sua",
+        "a pendência real está na muralha, não no socket local",
+    )
+    proc = _decidir(tmp_path, [
+        _humano("confira se ainda está bloqueado"),
+        _ferramenta("Edit", {"file_path": "ci/guarda.py"}),
+        _uso("Bash", {"command": "docker version"}, "s1"),
+        _resultado("s1", "permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine"),
+        _uso("Bash", {"command": "docker version", "sandbox_permissions": "require_escalated"}, "s2"),
+        _resultado("s2", "Server: Docker Desktop 4.90.0"),
+        _fala(relatorio),
+    ])
+    _silencio(proc)
+
+
+def test_sandbox_restrito_permite_fonte_declarada_nao_medida(tmp_path):
+    relatorio = CONTAS_NAO_PRONTO.replace(
+        "sem a chave o teste de ponta a ponta não roda",
+        "a fonte Docker ficou NÃO MEDIDA nesta sessão",
+    ).replace(
+        "falta a chave de teste do provedor, e ela é sua",
+        "o bloqueio real é outro; Docker não entrou no veredito",
+    )
+    proc = _decidir(tmp_path, [
+        _humano("confira se ainda está bloqueado"),
+        _ferramenta("Edit", {"file_path": "ci/guarda.py"}),
+        _uso("Bash", {"command": "docker version"}, "s1"),
+        _resultado("s1", "permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine"),
+        _fala(relatorio),
+    ])
+    _silencio(proc)
+
+
 def _molde_com_fatos(tmp_path: Path, entradas: list[dict] | None,
                      cwd: Path | None = None, env: dict | None = None):
     argumentos = ["--molde-com-fatos"]

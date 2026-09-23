@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-037-ci-sandbox-restrito-vira-ultimo-caso",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "ci: sandbox restrito vira último caso",
+  detalhe: "Stop recusa bloqueio baseado so no sandbox restrito. Prova: pytest do portao e fila validar verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2005. Validação local: árvore 0c94a042f8cfe9aaa0becde0753fe80524caba48; commit 7377c04f925f1e14c0187e89b298abfbd175f8c8; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-674",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
