@@ -238,8 +238,8 @@ def _entrada_codex(entrada: dict) -> dict | None:
 def ler_transcript(caminho: Path) -> list[dict]:
     """As entradas do transcript, sem as de sub-agente.
 
-    Sidechain é o time da maestro trabalhando por dentro: as escritas de um
-    sub-agente já contam pelo `Agent` que aparece no fio principal, e deixá-las
+    Sidechain registra os subagentes trabalhando por dentro: suas escritas
+    já contam pelo `Agent` que aparece no fio principal, e deixá-las
     aqui embaralharia a ordem entre mudança e prestação de contas.
     """
     entradas: list[dict] = []
@@ -601,7 +601,7 @@ def _saidas_por_id(entradas: list[dict]) -> dict[str, str]:
     return saidas
 
 
-# Teto de linhas por lista. A janela de uma sessão-maestro pode ter dezenas de
+# Teto de linhas por lista. Uma sessão pode ter dezenas de
 # escritas de bancadas diferentes, e um molde de 60 linhas de ruído é um molde
 # que ninguém lê (medido na prova de fora deste PR: 31 comandos numa lista só).
 TETO_DA_LISTA = 12
