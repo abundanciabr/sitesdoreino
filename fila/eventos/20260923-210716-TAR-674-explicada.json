@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-210716-TAR-674-explicada",
+  "tarefa": "TAR-674",
+  "evento": "explicada",
+  "quando": "2026-09-23T21:07:16+00:00",
+  "quem": "Pedido direto do mantenedor em 2026-09-23: bloquear o sandbox restrito para que os robos so possam usa-lo em ultimo caso.",
+  "o_que_e": "Hoje o robo pode medir Python, Docker ou GitHub dentro de um sandbox restrito, receber erro de permissao ou PATH e transformar isso em bloqueio do produto.",
+  "o_que_muda": "O fecho passa a exigir prova no ambiente real antes de declarar bloqueio; quando a fonte nao puder ser medida, ela aparece como NAO MEDIDO em vez de virar diagnostico falso.",
+  "exemplo": "E como conferir uma porta trancada olhando por uma janela fechada: se a janela nao abre, isso nao prova que a porta esta quebrada.",
+  "importancia": 65
+}

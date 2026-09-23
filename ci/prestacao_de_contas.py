@@ -221,7 +221,10 @@ def _entrada_codex(entrada: dict) -> dict | None:
         if nome == "apply_patch":
             nome, argumentos = "Write", {"file_path": "(apply_patch)"}
         elif nome in {"exec_command", "shell_command"}:
-            nome, argumentos = "Bash", {"command": argumentos.get("cmd") or argumentos.get("command") or ""}
+            nome, argumentos = "Bash", {
+                "command": argumentos.get("cmd") or argumentos.get("command") or "",
+                "sandbox_permissions": argumentos.get("sandbox_permissions") or "",
+            }
         elif nome == "spawn_agent":
             nome, argumentos = "Agent", {"subagent_type": argumentos.get("agent_type") or "despacho"}
         return {"type": "assistant", "message": {"content": [{
@@ -547,6 +550,27 @@ COMANDOS_QUE_VERIFICAM = (
     re.compile(r"\bnpm\s+(?:test|run\s+\S*test)"),
 )
 
+COMANDOS_DE_AMBIENTE = (
+    ("docker", re.compile(r"\bdocker\b", re.I)),
+    ("python", re.compile(r"\b(?:python|python3|py)\b", re.I)),
+    ("github", re.compile(r"\bgh\b", re.I)),
+    ("testes", re.compile(r"\b(?:pytest|make)\b", re.I)),
+)
+
+FALHA_DO_SANDBOX_RESTRITO = re.compile(
+    r"permission denied|acesso negado|not recognized|"
+    r"docker_engine|docker API|npipe:|socket",
+    re.I,
+)
+
+BLOQUEIO_DE_AMBIENTE_NO_RELATORIO = re.compile(
+    r"sandbox|ambiente|docker|django|python|socket|bloquead|"
+    r"acesso negado|permission denied|n[ãa]o instalado",
+    re.I,
+)
+
+FONTE_NAO_MEDIDA = re.compile(r"n[ãa]o\s+medid", re.I)
+
 URL_DE_PR = re.compile(r"/pull/(\d+)\b")
 
 # Os rótulos do próprio molde. Se um deles sobrevive no relatório, o bloco foi
@@ -599,6 +623,59 @@ def _saidas_por_id(entradas: list[dict]) -> dict[str, str]:
                 corpo = "\n".join(_texto_do_bloco(b) for b in corpo)
             saidas[str(identificador)] = str(corpo or "")
     return saidas
+
+
+def _familia_do_comando_de_ambiente(comando: str) -> str:
+    for familia, padrao in COMANDOS_DE_AMBIENTE:
+        if padrao.search(comando):
+            return familia
+    return ""
+
+
+def _rodou_fora_do_sandbox_restrito(bloco: dict) -> bool:
+    entrada = bloco.get("input") if isinstance(bloco.get("input"), dict) else {}
+    return str(entrada.get("sandbox_permissions") or "") == "require_escalated"
+
+
+def bloqueio_por_sandbox_restrito(entradas: list[dict]) -> str:
+    """Comando de ambiente que falhou só no sandbox e virou bloqueio no fecho.
+
+    O sandbox restrito é uma tentativa barata, não uma fonte final de verdade.
+    Se ele acusa falta de Python, Docker ou acesso, o robô precisa medir a mesma
+    família de comando fora dele antes de usar isso como pendência.
+    """
+    saidas = _saidas_por_id(entradas)
+    falhas: dict[str, str] = {}
+    for entrada in entradas:
+        for nome, bloco in _usos_de_ferramenta(entrada):
+            if nome not in ("Bash", "PowerShell"):
+                continue
+            campos = bloco.get("input") if isinstance(bloco.get("input"), dict) else {}
+            comando = str(campos.get("command") or "")
+            familia = _familia_do_comando_de_ambiente(comando)
+            if not familia:
+                continue
+            if _rodou_fora_do_sandbox_restrito(bloco):
+                falhas.pop(familia, None)
+                continue
+            saida = saidas.get(str(bloco.get("id") or ""), "")
+            if FALHA_DO_SANDBOX_RESTRITO.search(saida):
+                falhas[familia] = _uma_linha(comando)
+
+    if not falhas:
+        return ""
+    for entrada in reversed(entradas):
+        texto = _texto_da_fala(entrada)
+        if not texto:
+            continue
+        if not _prestou_contas(entrada):
+            return ""
+        if FONTE_NAO_MEDIDA.search(texto):
+            return ""
+        if BLOQUEIO_DE_AMBIENTE_NO_RELATORIO.search(texto):
+            return next(iter(falhas.values()))
+        return ""
+    return ""
 
 
 # Teto de linhas por lista. A janela de uma sessão-maestro pode ter dezenas de
@@ -1171,6 +1248,33 @@ def _portao_do_vermelho(arquivo: Path, estado: dict, segunda_passada: bool) -> i
     return 2
 
 
+def _portao_do_sandbox_restrito(comando: str, arquivo: Path, estado: dict,
+                                segunda_passada: bool) -> int:
+    """Recusa diagnóstico de ambiente feito só pelo sandbox restrito."""
+    ja_cobrado = segunda_passada or estado.get("sandbox_cobrado") == estado["mudancas"]
+    estado["sandbox_cobrado"] = estado["mudancas"]
+    try:
+        gravar_estado_incremental(arquivo, estado)
+    except OSError as erro:
+        print(f"SANDBOX RESTRITO: não gravei o estado ({erro}); a recusa pode repetir.",
+              file=sys.stderr)
+    if ja_cobrado:
+        print("SANDBOX RESTRITO: o robô foi cobrado e encerrou assim mesmo; "
+              "o diagnóstico de ambiente continua sem contraprova fora do sandbox.",
+              file=sys.stderr)
+        return 1
+    print(
+        "🧱 SANDBOX RESTRITO NÃO FECHA BLOQUEIO: o relatório usou uma falha de "
+        "ambiente medida só no sandbox restrito.\n"
+        f"Comando afetado: `{comando}`.\n"
+        "Rode a medição fora do sandbox restrito com aprovação explícita, ou "
+        "marque essa fonte como NÃO MEDIDO se ela não estiver disponível. "
+        "Sandbox é tentativa barata; bloqueio final exige fonte real.",
+        file=sys.stderr,
+    )
+    return 2
+
+
 def _portao_do_voo(entrada: dict, arquivo: Path, estado: dict, segunda_passada: bool) -> int:
     """O segundo portão do Stop: as contas foram prestadas, mas a entrega chegou?
 
@@ -1251,6 +1355,10 @@ def modo_contas(entrada: dict) -> int:
             cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
         )
     if not recusar:
+        entradas = ler_transcript(arquivo)
+        comando_sandbox = bloqueio_por_sandbox_restrito(entradas)
+        if comando_sandbox:
+            return _portao_do_sandbox_restrito(comando_sandbox, arquivo, estado, segunda_passada)
         # A prova local vem antes da entrega em voo: não adianta perguntar ao
         # GitHub se a suíte desta máquina reprovou.
         if estado.get("pronto_sobre_vermelho"):
