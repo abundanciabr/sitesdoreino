@@ -1,0 +1,19 @@
+{
+  "arquivo": "671-publicar-imagens-de-conteudo-versionadas-no-deploy",
+  "id": "TAR-671",
+  "titulo": "Publicar imagens de conteúdo versionadas no deploy",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com recibo validado, integração e publicação conferidas separadamente.",
+  "despacho": "Conclua a publicação automática e idempotente dos anexos de conteúdo no deploy, preservando o trabalho já iniciado no worktree wt-admin-publicacao-imagens-conteudo. Rode os testes focados, a migração local, Black e a prova de guardas. Entregue por make pr com os arquivos do código e desta tarefa, depois meça separadamente integração e publicação.",
+  "origem": "pedido-do-mantenedor:publicacao-imagens-conteudo:2026-09-23",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
