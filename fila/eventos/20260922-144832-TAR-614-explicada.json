@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-144832-TAR-614-explicada",
+  "tarefa": "TAR-614",
+  "evento": "explicada",
+  "quando": "2026-09-22T14:48:32+00:00",
+  "quem": "Pedido do mantenedor em 22/09/2026 para levar o cartao Appmax ate a auditoria. Reabre o trabalho da TAR-554, cancelada na limpeza da lista, que deixou o resto da escada preso.",
+  "o_que_e": "O cartao ainda nao registra estorno nem contestacao no livro do pagamento, e o cartao antigo dessa etapa foi tirado da lista. O restante da escada ficou preso nele.",
+  "o_que_muda": "Dinheiro que volta passa a ser anotado uma vez, e a escada do cartao pode seguir ate a auditoria.",
+  "exemplo": "O aluno paga no cartao, o valor volta, e o acesso some uma unica vez.",
+  "importancia": 90
+}
