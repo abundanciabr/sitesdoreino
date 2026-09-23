@@ -1,4 +1,4 @@
-"""Estorno Appmax confirma o pedido antes de mudar o livro."""
+"""Avisos de estorno Appmax ficam na inbox sem mudar o livro."""
 
 import json
 import uuid
@@ -8,9 +8,14 @@ from unittest.mock import Mock, patch
 import pytest
 from django.test import Client
 
-from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.ledger import registrar_fato
-from pagamentos.core.models import InstalacaoAppmax, Intent, OutboxEvent, PaymentAttempt
+from pagamentos.core.models import (
+    AppmaxWebhookInbox,
+    InstalacaoAppmax,
+    Intent,
+    OutboxEvent,
+    PaymentAttempt,
+)
 
 pytestmark = pytest.mark.django_db
 URL = "/api/pagamentos/appmax/webhook"
@@ -59,22 +64,16 @@ def _evento(nome: str) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize(
-    ("nome", "status", "motivo"),
+    "nome",
     [
-        ("order_refund", "estornado", "estorno"),
-        ("order_chargeback_in_treatment", "chargeback_em_tratativa", "contestacao"),
+        "order_refund",
+        "order_chargeback_in_treatment",
     ],
 )
-def test_reversao_appmax_cria_um_aviso_e_reentrega_nao_duplica(
-    nome: str, status: str, motivo: str
-) -> None:
-    # guarda: services/pagamentos/pagamentos/core/ledger.py:99
+def test_reversao_appmax_guarda_um_aviso_e_reentrega_nao_duplica(nome: str) -> None:
     intent = _compra_aprovada()
     consulta = Mock()
-    consulta.consultar_pedido.return_value = {"id": 3531, "status": status}
-    with patch(
-        "pagamentos.api.appmax.gateway.nova_sessao_appmax", return_value=consulta
-    ):
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
         resposta = Client().post(
             URL, data=json.dumps(_evento(nome)), content_type="application/json"
         )
@@ -82,62 +81,51 @@ def test_reversao_appmax_cria_um_aviso_e_reentrega_nao_duplica(
             URL, data=json.dumps(_evento(nome)), content_type="application/json"
         )
     assert resposta.status_code == repetida.status_code == 200
+    assert consulta.consultar_pedido.call_count == 0
     intent.refresh_from_db()
-    assert intent.status == "refunded"
-    avisos = list(OutboxEvent.objects.filter(event="pagamento.estornado"))
-    assert len(avisos) == 1
-    assert avisos[0].version == 2
-    assert avisos[0].payload == {
-        "platform_site_id": "site-interno",
-        "provider": "appmax",
-        "provider_reference_id": "3531",
-        "motivo": motivo,
-        "amount_cents": 2000,
-    }
+    assert intent.status == "approved"
+    assert AppmaxWebhookInbox.objects.filter(event=nome).count() == 1
+    assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
 
 
-def test_aprovacao_atrasada_nao_reabre_estorno() -> None:
+def test_eventos_fora_de_ordem_nao_mudam_o_livro() -> None:
     intent = _compra_aprovada()
     consulta = Mock()
-    consulta.consultar_pedido.return_value = {"id": 3531, "status": "estornado"}
-    with patch(
-        "pagamentos.api.appmax.gateway.nova_sessao_appmax", return_value=consulta
-    ):
-        Client().post(
-            URL,
-            data=json.dumps(_evento("order_refund")),
-            content_type="application/json",
-        )
-    assert (
-        registrar_fato(
-            intent, novo_status="approved", evento="pagamento.aprovado", dados={}
-        )
-        is False
-    )
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
+        for nome in ("order_chargeback_in_treatment", "order_refund"):
+            Client().post(
+                URL,
+                data=json.dumps(_evento(nome)),
+                content_type="application/json",
+            )
+    assert consulta.consultar_pedido.call_count == 0
     intent.refresh_from_db()
-    assert intent.status == "refunded"
-    assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 1
+    assert intent.status == "approved"
+    assert set(AppmaxWebhookInbox.objects.values_list("event", flat=True)) == {
+        "order_chargeback_in_treatment",
+        "order_refund",
+    }
+    assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
 
 
 def test_webhook_nao_confia_em_status_do_corpo() -> None:
     intent = _compra_aprovada()
     consulta = Mock()
-    consulta.consultar_pedido.return_value = {"id": 3531, "status": "aprovado"}
     evento = _evento("order_refund")
     evento["data"]["status"] = "estornado"
-    with patch(
-        "pagamentos.api.appmax.gateway.nova_sessao_appmax", return_value=consulta
-    ):
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
         resposta = Client().post(
             URL, data=json.dumps(evento), content_type="application/json"
         )
-    assert resposta.status_code == 409
+    assert resposta.status_code == 200
+    assert consulta.consultar_pedido.call_count == 0
     intent.refresh_from_db()
     assert intent.status == "approved"
     assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
+    assert AppmaxWebhookInbox.objects.get().payload["data"]["status"] == "estornado"
 
 
-def test_site_alheio_e_erro_do_provedor_preservam_o_livro() -> None:
+def test_site_alheio_e_provedor_indisponivel_preservam_o_livro() -> None:
     intent = _compra_aprovada()
     evento = _evento("order_refund")
     evento["site_id"] = "site-alheio"
@@ -148,20 +136,19 @@ def test_site_alheio_e_erro_do_provedor_preservam_o_livro() -> None:
     assert origem_alheia.status_code == 403
 
     consulta = Mock()
-    consulta.consultar_pedido.side_effect = FalhaNoProvedor("consulta indisponível")
-    with patch(
-        "pagamentos.api.appmax.gateway.nova_sessao_appmax", return_value=consulta
-    ):
+    consulta.consultar_pedido.side_effect = RuntimeError("consulta indisponível")
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
         indisponivel = cliente.post(
             URL,
             data=json.dumps(_evento("order_refund")),
             content_type="application/json",
         )
-    assert indisponivel.status_code == 503
-    assert "Reenvie" in indisponivel.json()["detail"]
+    assert indisponivel.status_code == 200
+    assert consulta.consultar_pedido.call_count == 0
     intent.refresh_from_db()
     assert intent.status == "approved"
     assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
+    assert AppmaxWebhookInbox.objects.count() == 1
 
 
 def test_envelope_invalido_nao_muda_o_livro() -> None:

@@ -11,10 +11,17 @@ import uuid
 from typing import Any
 
 from django.conf import settings
+from django.db import transaction
 from django.http import Http404, HttpRequest, JsonResponse
 from django.test import Client as _DjangoClient
+from django.views.decorators.csrf import csrf_exempt
 from ninja import Router
 
+from pagamentos.core.models import (
+    AppmaxWebhookInbox,
+    InstalacaoAppmax,
+    PaymentAttempt,
+)
 from pagamentos.core.webhook_signature import assinar
 from pagamentos.methods.card.webhook import processar_webhook_card
 from pagamentos.methods.pix.webhook import processar_webhook_pix
@@ -75,6 +82,93 @@ _WEBHOOK_CARD_OPENAPI = {
 )
 def webhook_mp_card(request: HttpRequest) -> dict[str, Any]:
     return processar_webhook_card(request)
+
+
+def _resposta_appmax(detalhe: str, status: int) -> JsonResponse:
+    return JsonResponse({"detail": detalhe}, status=status)
+
+
+@csrf_exempt
+def webhook_appmax(request: HttpRequest) -> JsonResponse:
+    """Persiste o aviso e encerra a requisição sem consultar o provedor."""
+    if request.method != "POST":
+        return _resposta_appmax("Envie o aviso por POST.", 405)
+    try:
+        envelope = json.loads(request.body)
+    except (ValueError, UnicodeDecodeError):
+        return _resposta_appmax("JSON inválido. Reenvie o aviso completo.", 400)
+    if not isinstance(envelope, dict) or not isinstance(envelope.get("data"), dict):
+        return _resposta_appmax("Aviso inválido. Reenvie o envelope com data.", 400)
+
+    event = envelope.get("event")
+    event_type = envelope.get("event_type")
+    app_id_recebido = envelope.get("app_id")
+    site_id_recebido = envelope.get("site_id")
+    order_id = envelope["data"].get("order_id")
+    if not isinstance(event, str) or not event.strip() or len(event.strip()) > 100:
+        return _resposta_appmax(
+            "Evento ausente ou acima de 100 caracteres. Confira o aviso.", 400
+        )
+    if (
+        not isinstance(event_type, str)
+        or not event_type.strip()
+        or len(event_type.strip()) > 50
+    ):
+        return _resposta_appmax(
+            "Tipo de evento ausente ou acima de 50 caracteres. Confira o aviso.",
+            400,
+        )
+    if (
+        isinstance(app_id_recebido, bool)
+        or not isinstance(app_id_recebido, (int, str))
+        or not str(app_id_recebido).strip()
+        or isinstance(site_id_recebido, bool)
+        or not isinstance(site_id_recebido, (int, str))
+        or not str(site_id_recebido).strip()
+    ):
+        return _resposta_appmax("Origem inválida. Confira app_id e site_id.", 400)
+    if isinstance(order_id, bool) or not isinstance(order_id, int) or order_id <= 0:
+        return _resposta_appmax(
+            "order_id inválido. Reenvie o aviso com ID inteiro positivo.", 400
+        )
+
+    app_id = str(app_id_recebido).strip()
+    appmax_site_id = str(site_id_recebido).strip()
+    if len(app_id) > 64 or len(appmax_site_id) > 64 or len(str(order_id)) > 255:
+        return _resposta_appmax(
+            "Origem ou pedido excede o tamanho aceito. Confira o aviso.", 400
+        )
+    instalacao = InstalacaoAppmax.objects.filter(
+        app_id=app_id, appmax_site_id=appmax_site_id
+    ).first()
+    if instalacao is None:
+        return _resposta_appmax(
+            "Instalação desconhecida. Confira app_id e site_id.", 403
+        )
+
+    tentativas = list(
+        PaymentAttempt.objects.filter(
+            provider="appmax",
+            external_order_id=str(order_id),
+            platform_site_id__in=instalacao.platform_site_ids,
+        )[:2]
+    )
+    if len(tentativas) != 1:
+        return _resposta_appmax("Pedido sem vínculo único. Confira a tentativa.", 409)
+
+    with transaction.atomic():
+        _, criado = AppmaxWebhookInbox.objects.get_or_create(
+            app_id=app_id,
+            appmax_site_id=appmax_site_id,
+            event=event.strip(),
+            event_type=event_type.strip(),
+            external_order_id=str(order_id),
+            defaults={
+                "platform_site_id": tentativas[0].platform_site_id,
+                "payload": envelope,
+            },
+        )
+    return JsonResponse({"status": "recebido" if criado else "ja_recebido"})
 
 
 def simulate_webhook(request: HttpRequest) -> JsonResponse:
