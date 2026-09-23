@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-002-infra-appmax-distingue-erro-do-compose",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "infra: Appmax distingue erro do Compose",
+  detalhe: "O Compose falhava na interpolação; o roteiro separa erro de consulta e serviço ausente sem sugerir reinício global.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1970. Validação local: árvore b4df3ac478c8f87a6e54b1f6640588b770e2df1a; commit 0b133da769bb85f80cae67b59ab69a4a6db4eacf; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-652",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

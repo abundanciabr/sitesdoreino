@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-003603-TAR-652-concluida",
+  "tarefa": "TAR-652",
+  "evento": "concluida",
+  "quando": "2026-09-23T00:36:03+00:00",
+  "quem": "agent/infra/appmax-compose-ps-fail",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1970",
+  "verificado_em": "2026-09-23"
+}

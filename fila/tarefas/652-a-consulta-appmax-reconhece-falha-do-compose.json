@@ -1,0 +1,20 @@
+{
+  "arquivo": "652-a-consulta-appmax-reconhece-falha-do-compose",
+  "id": "TAR-652",
+  "titulo": "A consulta Appmax reconhece falha do Compose",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste focal comprova que os dois tokens do gateway são lidos sem exibição, falha de docker compose ps não vira serviço ausente, e mensagens não recomendam reinício global.",
+  "despacho": "Corrigir infra/ligar-a-appmax.sh e ci/tests/test_ligar_a_appmax.py para ler e exportar somente ALUNOS_API_TOKEN e TOKEN_CATALOGO de env/admin.env seguindo o padrão canônico do deploy de célula, sem source do arquivo e sem --env-file. Distinguir erro de docker compose ps de lista válida sem serviços; remover instrução para compose up sem serviço. Provar com docker falso sem segredos reais, incluindo chaves ausentes/vazias e falha de interpolação. Não executar na VPS, não chamar rota pública e não habilitar cobranças reais. Mandato-do-mantenedor: «TAREFA: toque a fase 1!», incluindo «Configurar as credenciais de sandbox fora do repositório e confirmar que a rota de instalação reconhece o aplicativo», sem ativar cobranças reais; autorização de caminhos para infra/ligar-a-appmax.sh e ci/tests/test_ligar_a_appmax.py.",
+  "origem": "Mantenedor, fase 1 Appmax em 22/09/2026, e erro de interpolação confirmado na VPS",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

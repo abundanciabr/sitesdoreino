@@ -53,7 +53,7 @@ fi
 
 set -u
 set +a
-unset CLIENT_ID SEGREDO OAUTH VALOR TEMP LINHA linha saida valor
+unset CLIENT_ID SEGREDO OAUTH VALOR TEMP LINHA linha saida valor ALUNOS_API_TOKEN TOKEN_CATALOGO VALOR_GATEWAY
 
 AUTH_SANDBOX="https://auth.sandboxappmax.com.br"
 API_SANDBOX="https://api.sandboxappmax.com.br"
@@ -80,6 +80,30 @@ cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o 
 [ -f "$ENV_PAGAMENTOS" ] || parar "não achei $RAIZ/$ENV_PAGAMENTOS. A célula de pagamentos ainda não foi provisionada nesta máquina: rode antes o infra/provisionamento-vps.sh. Nada foi alterado."
 [ -w "$ENV_PAGAMENTOS" ] || parar "não consigo escrever em $RAIZ/$ENV_PAGAMENTOS. Rode como root ou como o dono dos env. Nada foi alterado."
 command -v docker >/dev/null 2>&1 || parar "não achei o docker nesta máquina, e é por ele que eu falo com o catálogo e recarrego a célula. Você está na VPS certa? Nada foi alterado."
+
+# Compose interpola o arquivo inteiro antes de executar qualquer subcomando.
+# Só estes tokens do gateway são necessários para consultar a plataforma; não
+# carregue o admin.env inteiro, que também contém segredos não relacionados.
+ENV_ADMIN="env/admin.env"
+[ -f "$ENV_ADMIN" ] || parar "não achei $RAIZ/$ENV_ADMIN, necessário para o Compose consultar os serviços. Confira a presença de ALUNOS_API_TOKEN e TOKEN_CATALOGO sem compartilhar os valores. Nada foi alterado."
+for CHAVE_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR_GATEWAY="$(grep -m1 "^$CHAVE_GATEWAY=" "$ENV_ADMIN" | cut -d= -f2-)"
+  [ -n "$VALOR_GATEWAY" ] || parar "$CHAVE_GATEWAY está ausente ou vazia em $RAIZ/$ENV_ADMIN, e o Compose precisa dela antes de consultar os serviços. Confira a chave sem compartilhar o valor. Nada foi alterado."
+  if [ "$CHAVE_GATEWAY" = ALUNOS_API_TOKEN ]; then ALUNOS_API_TOKEN="$VALOR_GATEWAY"; else TOKEN_CATALOGO="$VALOR_GATEWAY"; fi
+done
+unset VALOR_GATEWAY CHAVE_GATEWAY
+
+# As atribuições exportam os tokens apenas para o processo Compose, sem deixá-
+# los no ambiente herdado pelo Python e pelo curl usados mais adiante.
+docker_compose() {
+  ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" docker compose "$@"
+}
+
+consultar_servicos_rodando() {
+  if ! RODANDO="$(docker_compose ps --services --status running 2>/dev/null)"; then
+    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Peça somente a saída de diagnóstico de 'docker compose version' e 'docker compose ps --services --status running'. Não envie env nem valores de tokens. Nada foi alterado."
+  fi
+}
 
 ler_de() {  # chave. Devolve o valor limpo, sem comentário nem espaços em volta.
   grep "^$1=" "$ENV_PAGAMENTOS" 2>/dev/null | head -1 | cut -d= -f2- \
@@ -109,8 +133,8 @@ if [ "$#" -eq 1 ]; then
   [ "$(ler_de APPMAX_API_URL)" = "$API_SANDBOX" ] \
     || parar "a API não está fixada no sandbox. Rode primeiro 'bash /tmp/appmax.sh' para preparar o aplicativo. Nada foi alterado."
   command -v python3 >/dev/null 2>&1 || parar "não achei python3 para validar OAuth sem pôr o segredo na linha de comando. Instale python3 e rode de novo. Nada foi alterado."
-  RODANDO="$(docker compose ps --status running --services 2>/dev/null || true)"
-  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não está rodando. Suba a plataforma e tente de novo. Nada foi alterado."
+  consultar_servicos_rodando
+  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não aparece na lista de serviços em execução. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
   printf 'Cole o client_id do MERCHANT sandbox e aperte Enter: '
   read -r -s CLIENT_ID
   echo
@@ -159,7 +183,7 @@ except (KeyError, TypeError):
 if not isinstance(token, str) or not token or tipo != "Bearer":
     print("RESPOSTA_INVALIDA")
     raise SystemExit(0)
-config = "silent = true\nshow-error = true\nmax-time = 20\nurl = \"https://api.sandboxappmax.com.br/v1/products\"\nheader = " + json.dumps("Authorization: Bearer " + token) + "\nwrite-out = \"\\n%{http_code}\"\n"
+config = "silent\nshow-error\nmax-time = 20\nurl = \"https://api.sandboxappmax.com.br/v1/products\"\nheader = " + json.dumps("Authorization: Bearer " + token) + "\nwrite-out = \"\\n%{http_code}\"\n"
 try:
     result = subprocess.run(["curl", "--config", "-"], input=config.encode(), capture_output=True, timeout=25, check=False)
 except Exception:
@@ -212,7 +236,7 @@ print("OK" if isinstance(products, list) else "API_RESPOSTA_INVALIDA")
     [ "$ENCONTRADA" -eq 1 ] || TEMP="$TEMP$CHAVE=$VALOR"$'\n'
     printf '%s' "$TEMP" > "$ENV_PAGAMENTOS" || parar "não consegui gravar o par MERCHANT. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
   done
-  SAIDA_UP="$(docker compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
+  SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
   CODIGO_UP=$?
   if [ "$CODIGO_UP" -ne 0 ]; then
     echo "$SAIDA_UP"
@@ -229,11 +253,11 @@ API_ATUAL="$(ler_de APPMAX_API_URL)"
 [ -z "$API_ATUAL" ] || [ "$API_ATUAL" = "$API_SANDBOX" ] \
   || parar "o env já aponta a Appmax para outra API. Este roteiro não substitui configuração existente. Nada foi alterado."
 
-RODANDO="$(docker compose ps --status running --services 2>/dev/null || true)"
+consultar_servicos_rodando
 printf '%s\n' "$RODANDO" | grep -qx catalogo \
-  || parar "o serviço 'catalogo' não está rodando, e é ele quem sabe o número interno do site. Suba a plataforma (cd $RAIZ && docker compose up -d) e cole a minha linha de novo. Nada foi alterado."
+  || parar "o serviço 'catalogo' não aparece na lista de serviços em execução, e é ele quem sabe o número interno do site. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
 printf '%s\n' "$RODANDO" | grep -qx pagamentos \
-  || parar "o serviço 'pagamentos' não está rodando, e é ele quem atende a Appmax. Suba a plataforma (cd $RAIZ && docker compose up -d) e cole a minha linha de novo. Nada foi alterado."
+  || parar "o serviço 'pagamentos' não aparece na lista de serviços em execução, e é ele quem atende a Appmax. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
 
 # -----------------------------------------------------------------------------
 # 2. QUAL SITE. Perguntado ao CATÁLOGO, que é onde dado de site mora.
@@ -244,7 +268,7 @@ printf '%s\n' "$RODANDO" | grep -qx pagamentos \
 #    consegui perguntar" quando o problema é outro (`armadilhas/240`).
 # -----------------------------------------------------------------------------
 echo "== 1/4: descobrindo o site no catálogo =="
-BRUTO="$(docker compose exec -T catalogo python manage.py shell -c \
+BRUTO="$(docker_compose exec -T catalogo python manage.py shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}\t{s.name}')" 2>/dev/null)" \
@@ -414,7 +438,7 @@ echo "  cópia do env ...... $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA"
 #
 # JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as células à
 # tag :main do compose (RITOS §4). Só `pagamentos`, pelo nome.
-SAIDA_UP="$(docker compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
+SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
 CODIGO_UP=$?
 if [ "$CODIGO_UP" -ne 0 ]; then
   echo "$SAIDA_UP"
