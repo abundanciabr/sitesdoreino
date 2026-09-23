@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-113540-TAR-657-explicada",
+  "tarefa": "TAR-657",
+  "evento": "explicada",
+  "quando": "2026-09-23T11:35:40+00:00",
+  "quem": "Desdobramento técnico obrigatório da TAR-593: contrato integrado no PR #1977; código separado conforme o próprio brief. Escopo já solicitado pelo mantenedor nesta sessão.",
+  "o_que_e": "A consulta de parcelas precisa chegar à página sem mostrar segredos do fornecedor.",
+  "o_que_muda": "O comprador recebe os valores corretos das parcelas do seu pedido.",
+  "exemplo": "Um pedido mostra o valor à vista e quanto fica em três vezes antes da escolha.",
+  "importancia": 100
+}
