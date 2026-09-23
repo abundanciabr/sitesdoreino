@@ -232,9 +232,67 @@ def test_recusa_nao_trava_o_comprador_e_aceita_token_novo() -> None:
     )
 
     assert aprovada.state == "approved"
-    assert aprovada.pk != recusada.pk
+
+
+@pytest.mark.smoke_card
+def test_replay_do_mesmo_corpo_recusado_nao_cria_nova_escrita() -> None:
+    intent = _criar_intent()
+    chamadas: list[str] = []
+
+    def recusar(tentativa: PaymentAttempt) -> ResultadoDoProvedor:
+        chamadas.append(str(tentativa.operation_id))
+        return ResultadoDoProvedor(
+            aprovada=False,
+            provider_reference_id="order-1",
+            external_order_id="order-1",
+            motivo="cancelado",
+        )
+
+    primeira = executar_tentativa(
+        intent=intent, provider="appmax", corpo=_corpo(), enviar=recusar
+    )
+    replay = executar_tentativa(
+        intent=intent, provider="appmax", corpo=_corpo(), enviar=recusar
+    )
+
+    assert primeira.pk == replay.pk
+    assert primeira.state == "rejected"
+    assert chamadas == [str(primeira.operation_id)]
+    assert PaymentAttempt.objects.filter(intent=intent).count() == 1
+    aprovada = executar_tentativa(
+        intent=intent, provider="appmax", corpo=_corpo("tok_novo"), enviar=_aprovar()
+    )
+    assert aprovada.state == "approved"
+    assert aprovada.pk != primeira.pk
+    assert aprovada.request_hash != primeira.request_hash
     assert PaymentAttempt.objects.filter(intent=intent).count() == 2
-    assert aprovada.request_hash != recusada.request_hash
+
+
+@pytest.mark.smoke_card
+def test_pending_bloqueia_nova_cobranca_ate_consulta_conclusiva() -> None:
+    intent = _criar_intent()
+    pendente = executar_tentativa(
+        intent=intent,
+        provider="appmax",
+        corpo=_corpo(),
+        enviar=lambda tentativa: ResultadoDoProvedor(
+            aprovada=None,
+            provider_reference_id="order-1",
+            external_order_id="order-1",
+            motivo="autorizado",
+        ),
+    )
+
+    assert pendente.state == "pending"
+    with pytest.raises(TentativaBloqueada) as capturada:
+        executar_tentativa(
+            intent=intent,
+            provider="appmax",
+            corpo=_corpo("tok_novo"),
+            enviar=_aprovar(),
+        )
+    assert capturada.value.estado == "pending"
+    assert PaymentAttempt.objects.filter(intent=intent).count() == 1
 
 
 @pytest.mark.smoke_card
@@ -255,7 +313,7 @@ def test_falha_antes_do_envio_nao_trava_o_comprador() -> None:
     assert falhada.state == "failed"
 
     aprovada = executar_tentativa(
-        intent=intent, provider="appmax", corpo=_corpo(), enviar=_aprovar()
+        intent=intent, provider="appmax", corpo=_corpo("tok_novo"), enviar=_aprovar()
     )
     assert aprovada.state == "approved"
 

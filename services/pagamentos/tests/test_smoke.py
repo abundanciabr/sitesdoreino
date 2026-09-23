@@ -24,6 +24,8 @@ from pagamentos.core.models import Intent
 pytestmark = pytest.mark.django_db
 
 _URL_PAGAMENTOS = "https://api.mercadopago.com/v1/payments"
+_APP_AUTH = "https://auth.sandboxappmax.com.br/oauth2/token"
+_APP_API = "https://api.sandboxappmax.com.br/v1"
 
 _RESPOSTA_PIX_MP = {
     "id": 123456789,
@@ -62,7 +64,11 @@ def _payload_intent(**overrides: Any) -> dict[str, Any]:
         "amount_cents": 1990,
         "currency": "BRL",
         "method": "pix",
-        "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste"},
+        "customer": {
+            "email": "cliente@exemplo.com",
+            "name": "Cliente Teste",
+            "phone": "5511999999999",
+        },
     }
     base.update(overrides)
     return base
@@ -76,6 +82,89 @@ def _post_intent(client: Client, token: str, chave: str, **overrides: Any) -> An
         HTTP_AUTHORIZATION=f"Bearer {token}",
         HTTP_X_IDEMPOTENCY_KEY=chave,
     )
+
+
+def _appmax(transport: Any, *, statuses: list[str]) -> tuple[Any, Any, Any]:
+    transport.post(_APP_AUTH).mock(
+        return_value=httpx.Response(
+            200,
+            json={"access_token": "fake", "token_type": "Bearer", "expires_in": 3600},
+        )
+    )
+    transport.post(f"{_APP_API}/payments/installments").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": {
+                    "installments": {"1": {"total": 1990}, "3": {"total": 20812}},
+                    "settings": {"modality": "PP", "max_installments": 12},
+                }
+            },
+        )
+    )
+    customers = transport.post(f"{_APP_API}/customers").mock(
+        side_effect=[
+            httpx.Response(201, json={"data": {"customer": {"id": 42 + n}}})
+            for n in range(len(statuses))
+        ]
+    )
+    orders = transport.post(f"{_APP_API}/orders").mock(
+        side_effect=[
+            httpx.Response(
+                201, json={"data": {"order": {"id": 3531 + n, "status": "pendente"}}}
+            )
+            for n in range(len(statuses))
+        ]
+    )
+    transport.post(f"{_APP_API}/payments/credit-card").mock(
+        side_effect=[
+            httpx.Response(201, json={"data": {"payment": {"status": "pendente"}}})
+            for _ in statuses
+        ]
+    )
+    transport.get(url__regex=r"https://api\.sandboxappmax\.com\.br/v1/orders/\d+").mock(
+        side_effect=[
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "order": {
+                            "id": 3531 + n,
+                            "status": status,
+                            "total_paid": 1990,
+                            "amounts": {"sub_total": 1990, "installment_fee": 0},
+                        },
+                        "customer": {"id": 42 + n},
+                        "payment": {"installments": 1, "method": "creditcard"},
+                    }
+                },
+            )
+            for n, status in enumerate(statuses)
+        ]
+    )
+    return customers, orders, transport
+
+
+def _card_metadata() -> dict[str, Any]:
+    return {
+        "items": [
+            {
+                "product_id": "produto-1",
+                "name": "Curso digital",
+                "price_cents": 1990,
+                "kind": "principal",
+            }
+        ],
+        "product_id": "produto-1",
+    }
+
+
+def _configurar_appmax(settings: Any) -> None:
+    settings.APPMAX_CARD_ENABLED_SITES = {"site-opaco-abc123"}
+    settings.APPMAX_MERCHANT_CLIENT_ID = "merchant-id-falso"
+    settings.APPMAX_MERCHANT_CLIENT_SECRET = "merchant-secret-falso"
+    settings.APPMAX_AUTH_URL = _APP_AUTH
+    settings.APPMAX_API_URL = "https://api.sandboxappmax.com.br"
 
 
 @pytest.mark.smoke_pix
@@ -189,11 +278,17 @@ def test_caminho_feliz_pix_gera_qr_e_expiracao(
 
 
 @pytest.mark.smoke_card
+@pytest.mark.django_db(transaction=True)
 def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
-    client: Client, token_valido: str
+    client: Client, token_valido: str, settings: Any
 ) -> None:
+    _configurar_appmax(settings)
     resp = _post_intent(
-        client, token_valido, "22222222-2222-2222-2222-222222222222", method="card"
+        client,
+        token_valido,
+        "22222222-2222-2222-2222-222222222222",
+        method="card",
+        metadata=_card_metadata(),
     )
     assert resp.status_code == 201
     corpo = resp.json()
@@ -204,9 +299,7 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
     )  # [INV-P9] sem chamada ao MP ainda
 
     with respx.mock(assert_all_called=True) as mp:
-        rota = mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json=_RESPOSTA_CARD_APROVADO_MP)
-        )
+        customers, orders, _ = _appmax(mp, statuses=["aprovado"])
         resp_confirm = client.post(
             f"/api/pagamentos/intents/{corpo['id']}/card",
             data=json.dumps(
@@ -214,6 +307,9 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
                     "card_token": "brick-token-abc",
                     "installments": 1,
                     "payer_email": "cliente@exemplo.com",
+                    "ip": "203.0.113.7",
+                    "holder_name": "Cliente Teste",
+                    "holder_document_number": "12345678901",
                 }
             ),
             content_type="application/json",
@@ -222,25 +318,27 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
     assert resp_confirm.status_code == 200
     corpo_confirmado = resp_confirm.json()
     assert corpo_confirmado["status"] == "approved"
-    assert rota.call_count == 1
-    # [INV-P4] escrita própria ao MP, nunca vazia — agora conferida no header do
-    # request de verdade, não nos kwargs de um método substituído.
-    assert rota.calls.last.request.headers["X-Idempotency-Key"] != ""
+    assert customers.call_count == orders.call_count == 1
+    assert Intent.objects.get(id=corpo["id"]).provider_payment_id == ""
 
 
 @pytest.mark.smoke_card
-def test_card_recusado_expoe_reason_code_e_confirmar_de_novo_e_409(
-    client: Client, token_valido: str
+@pytest.mark.django_db(transaction=True)
+def test_card_recusado_aceita_novo_token_e_confirma_aprovado(
+    client: Client, token_valido: str, settings: Any
 ) -> None:
+    _configurar_appmax(settings)
     resp = _post_intent(
-        client, token_valido, "33333333-3333-3333-3333-333333333333", method="card"
+        client,
+        token_valido,
+        "33333333-3333-3333-3333-333333333333",
+        method="card",
+        metadata=_card_metadata(),
     )
     intent_id = resp.json()["id"]
 
     with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json=_RESPOSTA_CARD_RECUSADO_MP)
-        )
+        _appmax(mp, statuses=["cancelado", "aprovado"])
         resp_confirm = client.post(
             f"/api/pagamentos/intents/{intent_id}/card",
             data=json.dumps(
@@ -248,32 +346,35 @@ def test_card_recusado_expoe_reason_code_e_confirmar_de_novo_e_409(
                     "card_token": "brick-token-xyz",
                     "installments": 1,
                     "payer_email": "cliente@exemplo.com",
+                    "ip": "203.0.113.7",
+                    "holder_name": "Cliente Teste",
+                    "holder_document_number": "12345678901",
                 }
             ),
             content_type="application/json",
             HTTP_AUTHORIZATION=f"Bearer {token_valido}",
         )
-    assert resp_confirm.status_code == 200
-    assert resp_confirm.json()["status"] == "rejected"
-    assert (
-        resp_confirm.json()["card"]["reason_code"] == "cc_rejected_insufficient_amount"
-    )
+        assert resp_confirm.status_code == 200
+        assert resp_confirm.json()["status"] == "rejected"
+        assert resp_confirm.json()["card"]["reason_code"] == "cancelado"
 
-    resp_segunda_tentativa = client.post(
-        f"/api/pagamentos/intents/{intent_id}/card",
-        data=json.dumps(
-            {
-                "card_token": "brick-token-outro",
-                "installments": 1,
-                "payer_email": "cliente@exemplo.com",
-            }
-        ),
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
-    )
-    assert (
-        resp_segunda_tentativa.status_code == 409
-    )  # já resolvida — nunca cobra de novo
+        resp_segunda_tentativa = client.post(
+            f"/api/pagamentos/intents/{intent_id}/card",
+            data=json.dumps(
+                {
+                    "card_token": "brick-token-outro",
+                    "installments": 1,
+                    "payer_email": "cliente@exemplo.com",
+                    "ip": "203.0.113.7",
+                    "holder_name": "Cliente Teste",
+                    "holder_document_number": "12345678901",
+                }
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+        )
+        assert resp_segunda_tentativa.status_code == 200
+        assert resp_segunda_tentativa.json()["status"] == "approved"
 
 
 @pytest.mark.smoke_pix

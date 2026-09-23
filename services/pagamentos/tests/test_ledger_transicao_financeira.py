@@ -29,16 +29,18 @@ pytestmark = pytest.mark.django_db
 
 _URL_PAGAMENTOS = "https://api.mercadopago.com/v1/payments"
 _MP_PAYMENT_ID = "987654321"
-_RESPOSTA_CARD_APROVADO_MP = {
-    "id": int(_MP_PAYMENT_ID),
-    "status": "approved",
-    "status_detail": "accredited",
-}
+_APP_AUTH = "https://auth.sandboxappmax.com.br/oauth2/token"
+_APP_API = "https://api.sandboxappmax.com.br/v1"
 
 
 @pytest.fixture
 def token_valido(settings: Any) -> str:
     settings.TOKENS_ACEITOS = {"token-de-teste"}
+    settings.APPMAX_CARD_ENABLED_SITES = {"site-opaco-abc123"}
+    settings.APPMAX_MERCHANT_CLIENT_ID = "merchant-id-falso"
+    settings.APPMAX_MERCHANT_CLIENT_SECRET = "merchant-secret-falso"
+    settings.APPMAX_AUTH_URL = _APP_AUTH
+    settings.APPMAX_API_URL = "https://api.sandboxappmax.com.br"
     return "token-de-teste"
 
 
@@ -52,8 +54,22 @@ def _criar_intent_card(client: Client, token: str) -> Intent:
                 "amount_cents": 1990,
                 "currency": "BRL",
                 "method": "card",
-                "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste"},
-                "metadata": {"product_id": "curso-primeiros-dolares"},
+                "customer": {
+                    "email": "cliente@exemplo.com",
+                    "name": "Cliente Teste",
+                    "phone": "5511999999999",
+                },
+                "metadata": {
+                    "product_id": "curso-primeiros-dolares",
+                    "items": [
+                        {
+                            "product_id": "produto-1",
+                            "name": "Curso",
+                            "price_cents": 1990,
+                            "kind": "principal",
+                        }
+                    ],
+                },
             }
         ),
         content_type="application/json",
@@ -66,8 +82,59 @@ def _criar_intent_card(client: Client, token: str) -> Intent:
 
 def _confirmar_cartao(client: Client, token: str, intent: Intent) -> Any:
     with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json=_RESPOSTA_CARD_APROVADO_MP)
+        mp.post(_APP_AUTH).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "access_token": "fake",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                },
+            )
+        )
+        mp.post(f"{_APP_API}/payments/installments").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "installments": {"1": {"total": 1990}},
+                        "settings": {"modality": "PP", "max_installments": 12},
+                    }
+                },
+            )
+        )
+        mp.post(f"{_APP_API}/customers").mock(
+            return_value=httpx.Response(201, json={"data": {"customer": {"id": 42}}})
+        )
+        mp.post(f"{_APP_API}/orders").mock(
+            return_value=httpx.Response(
+                201,
+                json={
+                    "data": {"order": {"id": int(_MP_PAYMENT_ID), "status": "pendente"}}
+                },
+            )
+        )
+        mp.post(f"{_APP_API}/payments/credit-card").mock(
+            return_value=httpx.Response(
+                201, json={"data": {"payment": {"status": "pendente"}}}
+            )
+        )
+        mp.get(f"{_APP_API}/orders/{_MP_PAYMENT_ID}").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "order": {
+                            "id": int(_MP_PAYMENT_ID),
+                            "status": "aprovado",
+                            "total_paid": 1990,
+                            "amounts": {"sub_total": 1990, "installment_fee": 0},
+                        },
+                        "customer": {"id": 42},
+                        "payment": {"installments": 1, "method": "creditcard"},
+                    }
+                },
+            )
         )
         return client.post(
             f"/api/pagamentos/intents/{intent.id}/card",
@@ -76,6 +143,9 @@ def _confirmar_cartao(client: Client, token: str, intent: Intent) -> Any:
                     "card_token": "brick-token-abc",
                     "installments": 1,
                     "payer_email": "cliente@exemplo.com",
+                    "ip": "203.0.113.7",
+                    "holder_name": "Cliente Teste",
+                    "holder_document_number": "12345678901",
                 }
             ),
             content_type="application/json",
@@ -118,10 +188,13 @@ def test_cartao_aprovado_no_ato_avisa_as_outras_celulas(
     aviso = OutboxEvent.objects.get(event="pagamento.aprovado")
     assert aviso.payload["payment_id"] == str(intent.id)
     assert aviso.payload["order_id"] == intent.order_id
-    assert aviso.payload["site_id"] == intent.site_id
+    assert aviso.payload["platform_site_id"] == intent.site_id
     assert aviso.payload["amount_cents"] == intent.amount_cents
     assert aviso.payload["method"] == "card"
-    assert aviso.payload["mp_payment_id"] == _MP_PAYMENT_ID
+    assert aviso.payload["provider"] == "appmax"
+    assert aviso.payload["provider_reference_id"] == _MP_PAYMENT_ID
+    assert aviso.version == 2
+    assert intent.provider_payment_id == ""
     assert aviso.payload["product_id"] == "curso-primeiros-dolares"
     assert aviso.published_at is not None  # o relay levou o aviso adiante
 
@@ -386,13 +459,57 @@ def test_cartao_em_analise_nao_e_fato_financeiro_e_nao_avisa(
     intent = _criar_intent_card(client, token_valido)
 
     with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
+        mp.post(_APP_AUTH).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "access_token": "fake",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                },
+            )
+        )
+        mp.post(f"{_APP_API}/payments/installments").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "installments": {"1": {"total": 1990}},
+                        "settings": {"modality": "PP", "max_installments": 12},
+                    }
+                },
+            )
+        )
+        mp.post(f"{_APP_API}/customers").mock(
+            return_value=httpx.Response(201, json={"data": {"customer": {"id": 42}}})
+        )
+        mp.post(f"{_APP_API}/orders").mock(
             return_value=httpx.Response(
                 201,
                 json={
-                    "id": int(_MP_PAYMENT_ID),
-                    "status": "in_process",
-                    "status_detail": "pending_review_manual",
+                    "data": {"order": {"id": int(_MP_PAYMENT_ID), "status": "pendente"}}
+                },
+            )
+        )
+        mp.post(f"{_APP_API}/payments/credit-card").mock(
+            return_value=httpx.Response(
+                201, json={"data": {"payment": {"status": "pendente"}}}
+            )
+        )
+        mp.get(f"{_APP_API}/orders/{_MP_PAYMENT_ID}").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "order": {
+                            "id": int(_MP_PAYMENT_ID),
+                            "status": "autorizado",
+                            "total_paid": 1990,
+                            "amounts": {"sub_total": 1990, "installment_fee": 0},
+                        },
+                        "customer": {"id": 42},
+                        "payment": {"installments": 1, "method": "creditcard"},
+                    }
                 },
             )
         )
@@ -403,6 +520,9 @@ def test_cartao_em_analise_nao_e_fato_financeiro_e_nao_avisa(
                     "card_token": "brick-token-abc",
                     "installments": 1,
                     "payer_email": "cliente@exemplo.com",
+                    "ip": "203.0.113.7",
+                    "holder_name": "Cliente Teste",
+                    "holder_document_number": "12345678901",
                 }
             ),
             content_type="application/json",
@@ -412,5 +532,5 @@ def test_cartao_em_analise_nao_e_fato_financeiro_e_nao_avisa(
     assert resp.status_code == 200
     intent.refresh_from_db()
     assert intent.status == "pending"
-    assert intent.provider_payment_id == _MP_PAYMENT_ID  # o webhook acha a intent
+    assert intent.provider_payment_id == ""
     assert OutboxEvent.objects.count() == 0

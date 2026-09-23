@@ -24,6 +24,7 @@ from pagamentos.core.models import (
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
     Intent,
     PaymentAttempt,
+    PaymentOperation,
 )
 
 _MOTIVO_MAX = 120
@@ -42,8 +43,14 @@ _CAMPOS_SENSIVEIS = frozenset(
         "security_code",
         "holder_document_number",
         "document",
+        "document_number",
         "cpf",
         "email",
+        "phone",
+        "first_name",
+        "last_name",
+        "holder_name",
+        "ip",
         "client_secret",
         "access_token",
         "authorization",
@@ -84,7 +91,7 @@ class ResultadoAmbiguo(Exception):
 class ResultadoDoProvedor:
     """O que o provedor respondeu, traduzido para o vocabulário desta casa."""
 
-    aprovada: bool
+    aprovada: bool | None
     provider_reference_id: str
     external_order_id: str = ""
     motivo: str = ""
@@ -98,6 +105,10 @@ def executar_tentativa(
     enviar: Callable[[PaymentAttempt], ResultadoDoProvedor],
     installments: int = 1,
     external_order_id: str = "",
+    effective_amount_cents: int | None = None,
+    registrar_resultado: (
+        Callable[[PaymentAttempt, ResultadoDoProvedor], None] | None
+    ) = None,
 ) -> PaymentAttempt:
     """Abre a tentativa, manda, e fecha com o que voltou.
 
@@ -111,13 +122,16 @@ def executar_tentativa(
     tentativa recusada NÃO bloqueia: é ela que devolve ao comprador o direito
     de pagar com outro cartão.
     """
-    tentativa = _abrir(
+    tentativa, nova = _abrir(
         intent=intent,
         provider=provider,
         corpo=corpo,
         installments=installments,
         external_order_id=external_order_id,
+        effective_amount_cents=effective_amount_cents,
     )
+    if not nova:
+        return tentativa
     try:
         resultado = enviar(tentativa)
     except EnvioNaoChegou as exc:
@@ -126,16 +140,30 @@ def executar_tentativa(
     except Exception as exc:
         _fechar(tentativa, state="reconciliation_required", motivo=str(exc))
         raise
-    return _fechar(
-        tentativa,
-        state="approved" if resultado.aprovada else "rejected",
-        motivo=resultado.motivo,
-        resultado=resultado,
+    estado = (
+        "approved"
+        if resultado.aprovada
+        else "rejected" if resultado.aprovada is False else "pending"
     )
+    with transaction.atomic():
+        finalizada = _fechar(
+            tentativa,
+            state=estado,
+            motivo=resultado.motivo,
+            resultado=resultado,
+        )
+        if registrar_resultado is not None:
+            registrar_resultado(finalizada, resultado)
+    return finalizada
 
 
 def fechar_reconciliacao(
-    tentativa: PaymentAttempt, *, resultado: ResultadoDoProvedor
+    tentativa: PaymentAttempt,
+    *,
+    resultado: ResultadoDoProvedor,
+    registrar_resultado: (
+        Callable[[PaymentAttempt, ResultadoDoProvedor], None] | None
+    ) = None,
 ) -> PaymentAttempt:
     """Fecha uma tentativa em aberto com o que uma CONSULTA ao provedor disse.
 
@@ -144,24 +172,35 @@ def fechar_reconciliacao(
     uma consulta de verdade: nunca se fecha por suposição, porque fechar como
     recusada uma cobrança que existe libera a segunda cobrança.
     """
-    if tentativa.state not in ESTADOS_EM_ABERTO:
-        raise ValueError(
-            f"tentativa {tentativa.operation_id} está em {tentativa.state}, "
-            "que já é estado final; reconciliação só fecha tentativa em "
-            f"{' ou '.join(ESTADOS_EM_ABERTO)}"
-        )
-    return _fechar(
-        tentativa,
-        state="approved" if resultado.aprovada else "rejected",
-        motivo=resultado.motivo,
-        resultado=resultado,
+    estado = (
+        "approved"
+        if resultado.aprovada
+        else "rejected" if resultado.aprovada is False else "pending"
     )
+    with transaction.atomic():
+        travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
+        if travada.state not in ESTADOS_EM_ABERTO:
+            tentativa.refresh_from_db()
+            return travada
+        finalizada = _fechar(
+            travada,
+            state=estado,
+            motivo=resultado.motivo,
+            resultado=resultado,
+        )
+        if registrar_resultado is not None:
+            registrar_resultado(finalizada, resultado)
+        return finalizada
 
 
 def tentativas_do_site(platform_site_id: str) -> QuerySet[PaymentAttempt]:
     """O caminho de leitura desta tabela. Toda consulta nasce presa a um site:
     uma loja não enxerga a tentativa de pagamento da loja vizinha (Lei 9)."""
     return PaymentAttempt.objects.filter(platform_site_id=platform_site_id)
+
+
+def hash_da_tentativa(corpo: Mapping[str, Any]) -> str:
+    return _hash_do_corpo(corpo)
 
 
 def _abrir(
@@ -171,34 +210,99 @@ def _abrir(
     corpo: Mapping[str, Any],
     installments: int,
     external_order_id: str,
-) -> PaymentAttempt:
+    effective_amount_cents: int | None,
+) -> tuple[PaymentAttempt, bool]:
     """`durable=True` é o guarda de "persistida ANTES do envio": ele recusa
     rodar dentro de uma transação já aberta, e é isso que garante que, ao sair
     daqui, a linha está COMMITADA de verdade. Sem ele, um chamador que
     envolvesse tudo num `atomic()` faria a chamada externa com a linha ainda
     invisível, e um crash apagaria o rastro da cobrança."""
-    bloqueadora = _tentativa_viva(intent)
-    if bloqueadora is not None:
-        raise TentativaBloqueada(bloqueadora)
+    request_hash = _hash_do_corpo(corpo)
     try:
         with transaction.atomic(durable=True):
-            return PaymentAttempt.objects.create(
-                intent=intent,
-                platform_site_id=intent.site_id,
-                provider=provider,
-                amount_cents=intent.amount_cents,
-                installments=installments,
-                external_order_id=external_order_id,
-                request_hash=_hash_do_corpo(corpo),
-                state="sending",
+            Intent.objects.select_for_update().get(pk=intent.pk)
+            bloqueadora = _tentativa_viva(intent)
+            if bloqueadora is not None:
+                raise TentativaBloqueada(bloqueadora)
+            anterior = PaymentAttempt.objects.filter(
+                intent=intent, request_hash=request_hash
+            ).first()
+            if anterior is not None:
+                return anterior, False
+            return (
+                PaymentAttempt.objects.create(
+                    intent=intent,
+                    platform_site_id=intent.site_id,
+                    provider=provider,
+                    amount_cents=intent.amount_cents,
+                    effective_amount_cents=(
+                        effective_amount_cents or intent.amount_cents
+                    ),
+                    previous_intent_status=intent.status,
+                    installments=installments,
+                    external_order_id=external_order_id,
+                    request_hash=request_hash,
+                    state="sending",
+                ),
+                True,
             )
     except IntegrityError:
         # A checagem acima perde a corrida do duplo clique; o índice único
         # parcial não perde. Quem chegou depois recebe a mesma recusa clara.
+        anterior = PaymentAttempt.objects.filter(
+            intent=intent, request_hash=request_hash
+        ).first()
+        if anterior is not None:
+            return anterior, False
         bloqueadora = _tentativa_viva(intent)
         if bloqueadora is None:
             raise
         raise TentativaBloqueada(bloqueadora) from None
+
+
+def abrir_operacao(
+    tentativa: PaymentAttempt, *, tipo: str, corpo: Mapping[str, Any]
+) -> PaymentOperation:
+    if tipo not in {"customer", "order", "payment"}:
+        raise ValueError(f"tipo de operação Appmax inválido: {tipo}")
+    with transaction.atomic(durable=True):
+        return PaymentOperation.objects.create(
+            attempt=tentativa,
+            platform_site_id=tentativa.platform_site_id,
+            operation_type=tipo,
+            request_hash=_hash_do_corpo(corpo),
+        )
+
+
+def finalizar_operacao(
+    operacao: PaymentOperation,
+    *,
+    state: str,
+    provider_resource_id: str = "",
+    customer_id: str = "",
+    external_order_id: str = "",
+) -> PaymentOperation:
+    if state not in {"completed", "failed", "reconciliation_required"}:
+        raise ValueError(f"estado de operação Appmax inválido: {state}")
+    with transaction.atomic():
+        tentativa = PaymentAttempt.objects.select_for_update().get(
+            pk=operacao.attempt_id
+        )
+        operacao.state = state
+        operacao.provider_resource_id = provider_resource_id
+        operacao.save(update_fields=["state", "provider_resource_id", "updated_at"])
+        if customer_id:
+            tentativa.customer_id = customer_id
+        if external_order_id:
+            tentativa.external_order_id = external_order_id
+        if customer_id or external_order_id:
+            campos = ["updated_at"]
+            if customer_id:
+                campos.append("customer_id")
+            if external_order_id:
+                campos.append("external_order_id")
+            tentativa.save(update_fields=campos)
+    return operacao
 
 
 def _tentativa_viva(intent: Intent) -> PaymentAttempt | None:

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from pagamentos.providers.appmax.client import AppmaxClient, AppmaxError
 from pagamentos.providers.mercadopago.client import MercadoPagoClient, MercadoPagoError
 
 
@@ -31,6 +32,10 @@ class FalhaNoProvedor(Exception):
     sobreviveu.
     """
 
+    def __init__(self, message: str, *, ambiguo: bool = False) -> None:
+        super().__init__(message)
+        self.ambiguo = ambiguo
+
 
 @dataclass(frozen=True)
 class ResultadoPix:
@@ -38,13 +43,6 @@ class ResultadoPix:
     qr_code: str
     qr_code_base64: str
     expires_at: datetime | None
-
-
-@dataclass(frozen=True)
-class ResultadoCard:
-    payment_id: str
-    status: str  # status cru do provider (approved/rejected/in_process/...)
-    reason_code: str
 
 
 @dataclass(frozen=True)
@@ -72,38 +70,40 @@ def criar_pagamento_pix(
     return _traduzir_resposta_pix(resposta)
 
 
-def criar_pagamento_card(
-    *,
-    idempotency_key: str,
-    amount_cents: int,
-    order_id: str,
-    card_token: str,
-    installments: int,
-    payer_email: str,
-    payer_identification: dict[str, str] | None,
-    ip: str = "",
-    holder_name: str = "",
-) -> ResultadoCard:
-    """`ip` e `holder_name` entram aqui porque são vocabulário do DOMÍNIO (quem
-    está pagando, de onde), e não do provedor: é nesta costura que cada provedor
-    decide o que faz com eles. O provedor de cartão de hoje não tem onde
-    colocá-los, e dizer isso por extenso é melhor do que a assinatura fingir que
-    eles não existem: quem ler o corpo desta função vê, num lugar só, quais
-    campos do contrato este provedor consome e quais ele não consome."""
-    del ip, holder_name
-    try:
-        resposta = MercadoPagoClient().criar_pagamento_card(
-            idempotency_key=idempotency_key,
-            amount_cents=amount_cents,
-            order_id=order_id,
-            card_token=card_token,
-            installments=installments,
-            payer_email=payer_email,
-            payer_identification=payer_identification,
-        )
-    except MercadoPagoError as exc:
-        raise FalhaNoProvedor(str(exc)) from exc
-    return _traduzir_resposta_card(resposta)
+class AppmaxGateway:
+    """Uma sessão por tentativa reaproveita o OAuth sem expor providers a methods."""
+
+    def __init__(self) -> None:
+        self._client = AppmaxClient()
+
+    def preparar(self) -> None:
+        self._chamar(self._client.preparar)
+
+    def consultar_parcelas(self, *, total_value: int) -> dict[str, Any]:
+        return self._chamar(self._client.consultar_parcelas, total_value)
+
+    def criar_cliente(self, *, body: dict[str, Any]) -> dict[str, Any]:
+        return self._chamar(self._client.criar_cliente, body)
+
+    def criar_pedido(self, *, body: dict[str, Any]) -> dict[str, Any]:
+        return self._chamar(self._client.criar_pedido, body)
+
+    def criar_pagamento_cartao(self, *, body: dict[str, Any]) -> dict[str, Any]:
+        return self._chamar(self._client.criar_pagamento_cartao, body)
+
+    def consultar_pedido(self, *, order_id: int) -> dict[str, Any]:
+        return self._chamar(self._client.consultar_pedido, order_id)
+
+    @staticmethod
+    def _chamar(funcao: Any, *args: Any) -> Any:
+        try:
+            return funcao(*args)
+        except AppmaxError as exc:
+            raise FalhaNoProvedor(str(exc), ambiguo=exc.ambiguo) from None
+
+
+def nova_sessao_appmax() -> AppmaxGateway:
+    return AppmaxGateway()
 
 
 def consultar_status_do_pagamento(*, payment_id: str) -> StatusDoPagamento:
@@ -188,24 +188,3 @@ def _traduzir_expiracao(bruto: Any) -> datetime | None:
         raise FalhaNoProvedor(
             f"date_of_expiration ilegivel na resposta do Mercado Pago: {bruto!r}"
         ) from exc
-
-
-def _traduzir_resposta_card(resposta: dict[str, Any]) -> ResultadoCard:
-    """`status` vazio é o caso mais caro desta célula: methods/card mapeia status
-    desconhecido para "pending", "pending" não é confirmável, e a intent passa a
-    devolver 409 em TODA tentativa seguinte — o cliente fica permanentemente sem
-    caminho, por causa de uma cobrança que nunca existiu. Falhar alto aqui deixa
-    a intent intocada em `created`, ou seja, ainda confirmável."""
-    payment_id = _exigir_id(resposta)
-    status = str(resposta.get("status") or "").strip()
-    if not status:
-        raise FalhaNoProvedor(
-            "resposta de cartao do Mercado Pago sem `status` "
-            f"(payment_id={payment_id}) — sem ele nao da para dizer se a "
-            "cobranca foi aprovada ou recusada."
-        )
-    return ResultadoCard(
-        payment_id=payment_id,
-        status=status,
-        reason_code=str(resposta.get("status_detail") or ""),
-    )
