@@ -112,7 +112,7 @@ devolve ERROR, nunca PASS.
 | `guarda_dos_guardas.py` | muralha/PR | Prova que `INVARIANTES.md` e o disco não divergem: todo teste-guarda citado existe e ainda morde (sem skip/xfail/corpo vazio) |
 | `muralha_pasta_compartilhada.py` | hook do harness | Recusa edição/git-de-estado quando a sessão roda no clone principal (não é CI de PR, é hook local) |
 | `mergear.py` | merge | **Corrigido em 18/09/2026.** No caminho de integração (`conferir()`), julga SEIS coisas: PR aberto e não-rascunho, mergeável e não-BEHIND com base `main`, SHA de 40 hex, os dois checks obrigatórios (`muralhas` e `ci-celula-gate`) verdes no SHA atual, o mandato CODEOWNERS e o congelamento de célula (`checar_congelamento`, TAR-462, 18/09/2026): com um rollback ativo em `refs/congelamentos/<celula>`, o PR daquela célula e qualquer PR que toque `infra/` são RECUSADOS, e não conseguir medir isso é ERROR, nunca PASS. Fixa o SHA com `--match-head-commit` e confere MERGED no GitHub. **O que a versão anterior desta linha prometia (atestado independente, labels, livro, publicações anteriores) está definido no arquivo e NUNCA é chamado** desde a integração automática de 13/09/2026: é uma segunda implementação de regras que o check `muralhas` já impõe, e o risco real dela é deriva entre as duas cópias. |
-| `revisor_de_pouso.py` | fila | **Não está mais no caminho do merge.** `DECISAO-merge-sem-rito-de-pouso.md` (13/09/2026) retirou o atestado e a maestro da integração. O módulo continua existindo e sendo chamado, mas por `ci/fila.py` e `ci/estado_da_entrega.py`, para derivar o estado de revisão de uma entrega, nunca para autorizar um merge. |
+| `revisor_de_pouso.py` | fila | **Não está mais no caminho do merge.** `DECISAO-merge-sem-rito-de-pouso.md` (13/09/2026) retirou o atestado e a coordenação da integração. O módulo continua existindo e sendo chamado, mas por `ci/fila.py` e `ci/estado_da_entrega.py`, para derivar o estado de revisão de uma entrega, nunca para autorizar um merge. |
 | `estado_da_entrega.py` | acompanhamento | Deriva revisão, integração e publicação do GitHub e dos gatilhos dos workflows; `esperar.py --entrega N` consulta uma vez e retorna JSON com SHA, células, runs e próxima ação |
 | `divida_do_livro.py` | merge/painel | Lista PRs mergeados sem registro citando o número, com graça de 90min |
 | `indice_de_armadilhas.py` | documentação | Gera `armadilhas/INDICE.md`; reprova (ERROR) se dois arquivos colidirem no mesmo número |
@@ -215,6 +215,6 @@ com `ci/guarda-de-segredos.sh`. O mapa não reproduz valores de segredo nem
 endereços privados. Ver também a nota de segurança em
 [02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
 
-O protocolo, os estados e os limites de confiança do atestado estão em
-`docs/decisoes/DECISAO-revisao-e-publicacao.md`. IDs distintos não autenticam
-o runtime: a maestro confere a procedência da avaliação independente.
+A revisão obrigatória e o atestado foram revogados. O merge segue
+`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`; uma revisão adicional
+pode apontar defeitos, mas não autoriza nem impede a integração.

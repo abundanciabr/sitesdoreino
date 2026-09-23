@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-030352-TAR-656-explicada",
+  "tarefa": "TAR-656",
+  "evento": "explicada",
+  "quando": "2026-09-23T03:03:52+00:00",
+  "quem": "Resposta real da Appmax sandbox em 2026-09-23 divergiu da forma documentada e da expectativa do cliente integrado",
+  "o_que_e": "O checkout tem um cliente Appmax que calcula quanto custa parcelar, mas a resposta real da loja de teste vem com nomes e valores diferentes do exemplo usado pelo código.",
+  "o_que_muda": "O comprador recebe somente totais de parcelas que o provedor realmente devolveu, convertidos para centavos sem arredondamento.",
+  "exemplo": "Na sandbox, uma consulta de 200 reais voltou como 200, 207.96 e demais totais em reais; o cliente atual procura outro campo e não consegue mostrar as opções.",
+  "importancia": 80
+}

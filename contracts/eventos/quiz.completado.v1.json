@@ -19,6 +19,11 @@
         "quiz_slug": { "type": "string" },
         "result_key": { "type": "string" },
         "score": { "type": "integer" },
+        "version_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
         "lead": {
           "type": "object",
           "required": ["email"],

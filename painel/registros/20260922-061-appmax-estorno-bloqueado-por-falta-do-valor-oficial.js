@@ -1,0 +1,17 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-061-appmax-estorno-bloqueado-por-falta-do-valor-oficial",
+  tipo: "nota",
+  quando: "2026-09-22",
+  titulo: "Appmax: estorno aguarda prova do valor",
+  detalhe: "Consulta oficial autenticada mostra total pago e data do estorno, sem valor devolvido. amount_cents exige esse valor. Não derive do total nem use webhook sem autenticação.\n\nTAR-641 depende de TAR-557 e está bloqueada. Após instalar credenciais merchant no sandbox, agente técnico faz compra e estorno, guardando resposta autenticada sanitizada com valor e identidade. Se GET não trouxer ambos, busca e testa endpoint oficial. Tela e worker ficam fora.",
+  autoridade: "sessao",
+  evidencia: "https://docs.appmax.com.br/api-reference/orders/consultar-pedido",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-641",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "fila",
+}); })();

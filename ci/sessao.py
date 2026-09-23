@@ -1202,7 +1202,7 @@ class Sessao:
                 detalhe=recortar(saida.texto, 2000)
                 + "\n\nA fala acima é do BALCÃO, não deste script. Quase sempre é\n"
                 "outro robô que pegou a tarefa primeiro, ou ela está trancada.\n"
-                "NÃO escreva um byte nesta bancada: pare e reporte à maestro.\n"
+                "NÃO escreva um byte nesta bancada: pare e informe o bloqueio ao mantenedor, com o que falta para retomar.\n"
                 "A bancada e o trabalho preexistente foram preservados.\n"
                 "O quadro de agora: python ci/fila.py listar --ao-vivo",
                 codigo=1,

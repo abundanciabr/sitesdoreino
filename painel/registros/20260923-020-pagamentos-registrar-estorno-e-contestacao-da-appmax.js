@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-020-pagamentos-registrar-estorno-e-contestacao-da-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "pagamentos: registrar estorno e contestação da Appmax",
+  detalhe: "A Appmax só estorna após consulta do pedido; o ledger grava o aviso junto ao estado e ignora reentregas. Suíte da célula e mutação do guarda verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1992. Validação local: árvore 7342c8098cff456c69da03511f05152061908fd8; commit 56561f4a38b6c592fde2a19feb107bb75dee95fd; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-614",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

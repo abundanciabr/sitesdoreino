@@ -1,0 +1,24 @@
+{
+  "arquivo": "615-a-tela-do-cartao-passa-a-cobrar-de-verdade-sem-o-cartao-toca",
+  "id": "TAR-615",
+  "titulo": "A tela do cartao passa a cobrar de verdade, sem o cartao tocar nosso servidor",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [
+    "TAR-552",
+    "TAR-557",
+    "TAR-593",
+    "TAR-559"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Captura de rede sanitizada provando que numero e CVV nunca saem para nosso dominio, Playwright cobrindo todos os estados visiveis, e o Pix provado sem carregar nada da Appmax.",
+  "despacho": "Celula checkout. Construa a tela do cartao de verdade.\n\nAlvos: services/checkout/templates/checkout/cartao.html, services/checkout/static/checkout/cartao.js e testes de navegador.\n\nO contrato do Appmax JS, conferido na documentacao oficial em 20/09/2026:\n- script em https://scripts.appmax.com.br/appmax.min.js, carregado SOMENTE nesta pagina;\n- window.AppmaxScripts.init(onSuccess, onError, externalId), onde externalId e o UUID que a nossa instalacao gerou e devolveu no health check;\n- o IP e coletado pelo proprio script e e OBRIGATORIO em toda integracao, sem alternativa por API. Use <span class=\"appmax-ip\" hidden></span>, que e a forma recomendada fora de formulario;\n- a tokenizacao dispara no submit de <form data-appmax-checkout> com os campos marcados appmax-form-element igual a number, holder_name, expiration_month, expiration_year e cvv;\n- onSuccess recebe {ip, token}. Os dados sensiveis nunca chegam ao nosso servidor.\n\n1. Envie ao nosso backend apenas {token, ip, holder_name, holder_document_number, installments}. NUNCA envie valor, produto ou total.\n2. Parcelas: consulte o proxy do lote anterior e mostre o valor real de cada parcela ja com juros (12x na modalidade PP, decisao do mantenedor). Nunca calcule juros no navegador.\n3. Todos os estados visiveis, cada um com acao: carregando, aguardando, em analise, recusado com nova tentativa, erro de rede, e aprovado. Em analise NAO libera acesso.\n4. Retomada: atualizar a pagina entre tokenizar e confirmar retoma o pedido sem cobrar de novo.\n5. O status na tela vem SEMPRE do servidor. Nenhuma transicao local para pago.\n6. A pagina do Pix NAO pode carregar nada da Appmax. Prove isso com teste.\n\nEvidencia: captura de rede sanitizada mostrando que numero e CVV so vao para o dominio da Appmax, nunca para o nosso, e Playwright cobrindo cada estado, inclusive em tela de celular.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Pedido do mantenedor em 22/09/2026 para levar o cartao Appmax ate a auditoria. Reabre o trabalho da TAR-555, cancelada na limpeza da lista. A tela so abre depois do motor, das parcelas e da recuperacao.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-011014-TAR-603-explicada",
+  "tarefa": "TAR-603",
+  "evento": "explicada",
+  "quando": "2026-09-22T01:10:14+00:00",
+  "quem": "Pedido Resolva isso e autorizações do mantenedor na sessão Codex de 21/09/2026; PR #1856.",
+  "o_que_e": "O botão de provisionamento já foi construído, mas sua entrega ainda precisa de validação e registro completos.",
+  "o_que_muda": "Permite preparar um recurso pelo botão com conferência prévia, reduzindo comandos manuais do mantenedor.",
+  "exemplo": "Ao informar um nome inexistente, o botão explica o erro antes de abrir conexão com o servidor.",
+  "importancia": 70
+}

@@ -6,7 +6,7 @@
     "e2e"
   ],
   "depende_de": [
-    "TAR-555",
+    "TAR-615",
     "TAR-561"
   ],
   "cria": [],

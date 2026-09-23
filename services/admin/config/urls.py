@@ -36,7 +36,7 @@ from apps.core.editor_de_documentos import (
     documento_salvar,
     documento_versoes,
 )
-from apps.core.midia import midia_servir
+from apps.core.midia import arquivo_da_semente_servir, midia_servir
 from apps.core.livro import (
     livro,
     livro_baixar_tudo,
@@ -101,7 +101,6 @@ from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
-from apps.core.radio import radio_api, radio_pagina, radio_script
 from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
@@ -355,6 +354,15 @@ urlpatterns = [
         doc_publico_moldura,
         name="doc_publico_moldura",
     ),
+    # ARQUIVO DA SEMENTE: imagem ou vídeo versionado ao lado do `.md`.
+    # Quarta rota sob `/docs/`, com a mesma lei das outras três: confere
+    # `no_ar` e devolve 404 (nunca 403) para o privado. O guarda
+    # `test_o_prefixo_publico_tem_so_as_rotas_de_leitura` mede a lista.
+    re_path(
+        r"^docs/(?P<nome>[a-z0-9-]+)/arquivo/(?P<ficheiro>[a-z0-9-]+\.[a-z0-9]+)$",
+        arquivo_da_semente_servir,
+        name="arquivo_da_semente",
+    ),
     path("documentos/", documentos_admin, name="documentos_admin"),
     # AS QUATRO ROTAS DO EDITOR (`DECISAO-o-editor-de-documentos.md`,
     # 31/08/2026): mostrar o formulario vazio, criar, mostrar o formulario
@@ -557,9 +565,6 @@ urlpatterns = [
     # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
     # contrato congelado (contracts/sugestoes.openapi.yaml).
     path("caixa/", mesa, name="caixa"),
-    path("caixa/radio/", radio_pagina, name="radio_pagina"),
-    path("caixa/radio/api/", radio_api, name="radio_api"),
-    path("caixa/radio/radio.js", radio_script, name="radio_script"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
     # A aba 4 — "Os robôs": o quadro da fila de trabalho (fila/ na raiz),

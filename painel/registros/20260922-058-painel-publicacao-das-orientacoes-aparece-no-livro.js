@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-058-painel-publicacao-das-orientacoes-aparece-no-livro",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "painel: publicação das orientações aparece no livro",
+  detalhe: "O livro passa a mostrar a publicação confirmada das orientações corrigidas, ligada ao recibo original e ao run do deploy.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1955. Validação local: árvore c75f3d2326787605cd39915da8816890711d7c06; commit 050c792ce2d22f440010f5923ee59cf689164fc4; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-637",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -74,7 +74,11 @@ def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
 
     resp = client.post(
         f"/{quiz_a.slug}/",
-        {f"pergunta_{pergunta.id}": opcao_dez.id, "email": "lead@exemplo.com"},
+        {
+            f"pergunta_{pergunta.id}": opcao_dez.id,
+            "email": "lead@exemplo.com",
+            "version_key": "injetada-pelo-navegador",
+        },
         HTTP_HOST=HOST_A,
     )
     assert resp.status_code == 302
@@ -87,6 +91,7 @@ def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
     assert dados["quiz_slug"] == quiz_a.slug
     assert dados["result_key"] == submissao.result_key
     assert dados["score"] == submissao.score
+    assert dados["version_key"] == submissao.version.key
     assert dados["lead"]["email"] == "lead@exemplo.com"
 
 

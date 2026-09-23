@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-182440-TAR-617-explicada",
+  "tarefa": "TAR-617",
+  "evento": "explicada",
+  "quando": "2026-09-22T18:24:40+00:00",
+  "quem": "Auditoria da entrega integrada de TAR-520 em 22/09/2026",
+  "o_que_e": "Quando não há versão publicada, /oferta usa o 404 padrão sem orientação porque a célula não tinha template de erro.",
+  "o_que_muda": "A pessoa entende o que aconteceu e o que fazer, mantendo o status 404.",
+  "exemplo": "Ao abrir /oferta antes da primeira publicação, a tela informa que a página ainda não foi publicada e orienta voltar mais tarde.",
+  "importancia": 80
+}

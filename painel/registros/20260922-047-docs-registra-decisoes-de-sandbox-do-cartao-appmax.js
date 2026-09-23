@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-047-docs-registra-decisoes-de-sandbox-do-cartao-appmax",
+  tipo: "decisao",
+  quando: "2026-09-22",
+  titulo: "docs: registra decisões de sandbox do cartão Appmax",
+  detalhe: "O fluxo de sandbox precisava registrar quatro escolhas antes da implementação: limite de parcelas, juros, efeito de estorno ou contestação e instalação compartilhada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1941. Validação local: árvore 4eae7b0ab55dfde7c1ff4c91d68c70b05c8738b4; commit 7cd12b5b273bca4365b1af4a188e0d4767fb9417; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-632",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-022-ci-fim-do-bloqueio-a-maestro",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "ci: fim do bloqueio à maestro",
+  detalhe: "A fila conclui sem atestado revogado. Bloqueios ficam na sessão responsável. Revisão segue consultiva.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1993. Validação local: árvore f088a510437c31a818dcdbbe20d6abfccf76b629; commit 628d7e0de0cceed7711e2a203e9cbbd48406eb93; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-663",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

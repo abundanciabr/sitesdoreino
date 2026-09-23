@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-011708-TAR-603-submetida",
+  "tarefa": "TAR-603",
+  "evento": "submetida",
+  "quando": "2026-09-22T01:17:08+00:00",
+  "quem": "agent/infra/provisionar-por-botao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1856",
+  "revisao": "5d6713e0e568d139d8a4039a838f4094d2dccba1",
+  "arvore": "ffe5bb7f8d8bac29e6906974b7cc3e1a7d42fa3b"
+}

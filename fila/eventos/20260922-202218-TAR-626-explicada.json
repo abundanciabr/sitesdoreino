@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-202218-TAR-626-explicada",
+  "tarefa": "TAR-626",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:22:18+00:00",
+  "quem": "Pedido do mantenedor na sessão Codex em 22/09/2026; autorização explícita para editar somente comentários nos dois arquivos infra/traefik.",
+  "o_que_e": "Dois comentários da ponte Traefik ainda dizem que ela dá acesso ao painel administrativo local.",
+  "o_que_muda": "A documentação da infraestrutura deixa claro que o painel é acessado no site e que a ponte privada não é um endereço alternativo do admin.",
+  "exemplo": "Quem lê o arquivo de entrada privada deixa de seguir instruções antigas para abrir o admin no computador.",
+  "importancia": 50
+}

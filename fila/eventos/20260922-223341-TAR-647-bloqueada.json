@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-223341-TAR-647-bloqueada",
+  "tarefa": "TAR-647",
+  "evento": "bloqueada",
+  "quando": "2026-09-22T22:33:41+00:00",
+  "quem": "codex-appmax-fase1",
+  "detalhe": "O PR #1949 registrou uma conclusão automática indevida de TAR-638 sem prova de healthcheck ou acesso MERCHANT. A configuração publicada recusou app_id 1888 com HTTP 403 e o par APP disponível obteve OAuth, mas não comprovou leitura MERCHANT. TAR-643 prepara o roteiro e não fecha o gate; depois da integração, falta executar instalação inicial em VPS e confirmar healthcheck, OAuth com credenciais MERCHANT e GET /v1/products com data.products. Cobranças reais permanecem desligadas.",
+  "espera": "mantenedor"
+}

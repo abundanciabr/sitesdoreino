@@ -50,11 +50,9 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
-Quem escreve o despacho é a maestro (Claude Code). Quem o executa é o Codex,
-um PR por tarefa, dentro dos ALVOS e do ORÇAMENTO. Quem verifica a entrega
-alheia depois do merge é a sentinela (Antigravity), que não escreve despacho nem
-código; entrega de ficha da própria sentinela, a maestro verifica
-(`docs/decisoes/DECISAO-triade-de-ias.md`).
+A sessão que recebe o pedido define o brief e responde pela entrega. O despacho
+executa uma tarefa dentro dos ALVOS e do ORÇAMENTO, com um PR por tarefa.
+As fichas definem competências por tarefa, sem papéis fixos por fornecedor.
 
 ```markdown
 # DESPACHO — <celula>: <tarefa em ≤5 palavras>
@@ -1000,8 +998,8 @@ Os portões acima verificam **integridade**. Nenhum verifica se a tradução est
   `_fonte` não pode estar `pendente`. Sem isso é FAIL no CI **e o boot recusa
   subir**. A declaração **expira**: se o texto daquele idioma mudar no diff,
   ela tem de mudar junto. Você não inventa o nome que vai ali: **registre a
-  pendência com `precisa_do_dono: true` e devolva à maestro; ela pergunta ao
-  mantenedor e registra a resposta**.
+  pendência com `precisa_do_dono: true` e pare nesta sessão. A pergunta vai ao
+  mantenedor, e a resposta fica registrada**.
   ⛔ A outra guarda do D8.3, a **retrotradução**, continua NÃO implementada:
   depende de modelo externo (chave de API, custo) e é decisão do mantenedor —
   não escreva stub que finja fazê-la.
@@ -1181,7 +1179,7 @@ silêncio. `armadilhas/481` é o relato.
 ## §5: Validar, entregar e consultar no PowerShell
 
 Roteiro dos agentes dentro da bancada aberta pelo RITOS §1. O mantenedor recebe
-resultado e prova; os comandos abaixo são trabalho do executor e da maestro.
+resultado e prova; os comandos abaixo são trabalho da sessão responsável.
 
 **1. Conferir o trabalho.** Rode os testes dos alvos do brief e guarde comando,
 saída e revisão. `--sem-container` deixa o baseline não medido e não dispensa testes.
@@ -1191,7 +1189,7 @@ Invariante tocado exige vermelho→verde e prova dos guardas conforme a ficha.
 Prepare o handoff com ramo, SHA, provas, pendências e título convencional.
 Caminho com dono exige o mandato no formato da [R14](#r14--abrir-pr-que-toca-caminho-codeowners).
 
-**2. Abrir o PR com validação e recibo no mesmo ramo.** O executor define `$alvos`
+**2. Abrir o PR com validação e recibo no mesmo ramo.** Quem executa define `$alvos`
 como lista dos caminhos autorizados no brief e `$preparo` como caminho absoluto
 da pasta local de preparação, fora dos arquivos entregues. `$tarefaFila` contém
 a TAR real vinculada a este trabalho pelo RITOS §5; sessões novas exigem esse
@@ -1210,9 +1208,9 @@ foreach ($consultaGit in @(@('diff', '--name-only', 'origin/main...HEAD'), @('di
 }
 $alterados = @($alterados | Sort-Object -Unique)
 $foraDoBrief = @($alterados | Where-Object { $_ -notin $alvos })
-if ($foraDoBrief.Count) { throw "PAROU POR SEGURANÇA: arquivos fora do brief: $($foraDoBrief -join ', '). Preserve-os e devolva à maestro." }
+if ($foraDoBrief.Count) { throw "PAROU POR SEGURANÇA: arquivos fora do brief: $($foraDoBrief -join ', '). Preserve-os e pare nesta sessão." }
 $codigoEntregue = @($alterados | Where-Object { $_ -notmatch '^(painel|fila)/' })
-if ($codigoEntregue.Count -gt 15) { throw 'PAROU POR SEGURANÇA: orçamento de 15 arquivos excedido; devolva à maestro.' }
+if ($codigoEntregue.Count -gt 15) { throw 'PAROU POR SEGURANÇA: orçamento de 15 arquivos excedido; pare nesta sessão e divida a entrega.' }
 $titulo = Get-Content -LiteralPath (Join-Path $preparo 'mensagem.txt') -Encoding UTF8 -TotalCount 1 -ErrorAction Stop
 python ci/pr.py --titulo $titulo --mensagem-arquivo (Join-Path $preparo 'mensagem.txt') --corpo-arquivo (Join-Path $preparo 'corpo.md') --arquivos $alvos --detalhe-arquivo (Join-Path $preparo 'detalhe.txt') --validacao-arquivo (Join-Path $preparo 'validacao.json') --tarefa $tarefaFila
 if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: leia o diagnóstico, preserve a bancada e retome com --continuar após corrigir a causa.' }
@@ -1226,8 +1224,8 @@ do mandato. Confira `git diff --name-only origin/main...HEAD`,
 inclusive recibo e eventos. O rito valida a revisão isolada e o SHA final.
 PR aberto e validação local não comprovam integração nem publicação.
 
-**3. Consultar uma vez, a partir do ramo da bancada.** O executor devolve o PR;
-a maestro consulta sem laço. A integração é automática pelos checks no SHA atual
+**3. Consultar uma vez, a partir do ramo da bancada.** A sessão responsável
+consulta sem laço. A integração é automática pelos checks no SHA atual
 (RITOS §2). A consulta composta não promete resposta em cinco segundos.
 
 ```powershell
@@ -1267,5 +1265,5 @@ etiqueta removidos por RITOS §2. Para diagnosticar PR aberto, a R14 usa
 termina com o texto ou aceite funcional conferido na URL pública e com o SHA
 publicado ligado à execução do deploy. Registre os instantes UTC de abertura,
 edição, PR, merge, deploy e verificação pública, além das falhas e do tempo
-gasto em cada etapa. PR aberto não encerra esse pedido: o executor entrega
-o ramo e as provas à maestro, que acompanha até a conferência pública.
+gasto em cada etapa. PR aberto não encerra esse pedido: a sessão responsável
+acompanha a entrega até a conferência pública.

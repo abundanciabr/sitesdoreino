@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-183300-TAR-672-explicada",
+  "tarefa": "TAR-672",
+  "evento": "explicada",
+  "quando": "2026-09-23T18:33:00+00:00",
+  "quem": "pedido-do-mantenedor:recuperacao-de-aprovacao-codex:2026-09-23",
+  "o_que_e": "Uma recusa de autorização do Codex pode acontecer antes do fechamento local começar, embora a revisão e as provas já estejam no worktree.",
+  "o_que_muda": "A ficha preserva a bancada e explica como retomar a entrega sem repetir commits ou iniciar outro envio sem autorização.",
+  "exemplo": "Depois de uma recusa, o agente mantém o mesmo ramo e só retoma com CONTINUAR=1 quando a autorização estiver disponível.",
+  "importancia": 90
+}

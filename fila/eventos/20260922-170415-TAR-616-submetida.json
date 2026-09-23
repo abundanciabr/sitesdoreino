@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260922-170415-TAR-616-submetida",
+  "tarefa": "TAR-616",
+  "evento": "submetida",
+  "quando": "2026-09-22T17:04:15+00:00",
+  "quem": "agent/ci/destino-site-por-padrao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1910",
+  "revisao": "a169108294220fe06dc2facd2b0b3927413fea3c",
+  "arvore": "1a250611c879a387dc6afbbf60c91f5764c1c777"
+}

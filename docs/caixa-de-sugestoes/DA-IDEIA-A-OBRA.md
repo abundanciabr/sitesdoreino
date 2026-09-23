@@ -67,16 +67,16 @@ ordem, e **nenhuma delas é "como implementar"**:
 5. a escada de entregas, degrau por degrau, com o que muda para o aluno;
 6. o que fica na mão do mantenedor.
 
-Escopo reduzido não é resposta aceitável aqui (`DECISAO-filosofia-de-escopo.md`):
-o estudo entrega o completo, fatiado. Fatiar é a forma responsável de construir
-grande; cortar é outra coisa.
+O estudo entrega o menor caminho que funciona de ponta a ponta, fatiado, com
+lugar explícito do que vem depois (`DECISAO-filosofia-de-escopo.md`). Cortar o
+que foi pedido com nome continua proibido; protótipo descartável também.
 
 O exemplo real e completo: [`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`](../decisoes/PLANO-PORTFOLIO-DO-ALUNO.md).
 
 ## Estação 3 — O que só o mantenedor decide
 
-O estudo termina com bifurcações, e elas voltam para ele **numa pergunta
-estruturada só, na hora** (`CLAUDE.md`; em lote, quem pergunta é a maestro).
+O estudo termina com bifurcações, e a sessão responsável leva a decisão ao
+mantenedor **numa pergunta estruturada só, na hora** (`CLAUDE.md`).
 As três que aparecem quase sempre:
 
 - **a fronteira**: célula nova ou dentro de uma existente. É decisão de

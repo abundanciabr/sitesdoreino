@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-056-fila-destravar-o-oauth-appmax",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "fila: destravar o OAuth Appmax",
+  detalhe: "Liga o OAuth às garantias prontas e conserva os cancelamentos e os bloqueios reais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1948. Validação local: árvore ea6628e16df037bd5f2a952722d5455dade92cef; commit 0c66e8f1f048940ceef8b9ef591abab12fbd9f00; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-636",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

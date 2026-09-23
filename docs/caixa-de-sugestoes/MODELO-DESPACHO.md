@@ -1,7 +1,7 @@
 # MODELO DE DESPACHO — Caixa de Sugestões
 
-> Template padrão para todo despacho desta iniciativa. A sessão-maestro copia,
-> preenche os `<campos>`, apaga as instruções em itálico e cola para o agente.
+> Template padrão para todo despacho desta iniciativa. A sessão responsável
+> preenche os `<campos>`, apaga as instruções em itálico e entrega ao executor.
 > Herdado do formato da casa (ver `docs/decisoes/DESPACHO-04-deploy-infra.md`
 > como exemplo real) + as regras do `RUNBOOK-LOTES.md`.
 >
@@ -28,7 +28,7 @@ por caminho e sintoma; abra as origens e `services/<celula>/LICOES.md` (se exist
 Para aprofundamento, refine a busca ou consulte `armadilhas/INDICE.md`.
 Leia também
 <documentos específicos desta tarefa — só os necessários; agente afogado em
-documentação erra mais (RUNBOOK §3.3)>. Declaração de abertura (RITOS §1) e
+documentação erra mais (CLAUDE.md, execução dentro do mandato)>. Declaração de abertura (RITOS §1) e
 baseline emitido pela abertura VERDE antes de tocar qualquer arquivo.
 
 ## CONTEXTO
@@ -77,7 +77,7 @@ Orçamento: gênese passa dos 15 arquivos por natureza — abra o PR **já** com
 - …
 
 *Conte NO PAPEL antes de escrever o brief. Estourou por coesão legítima ⇒
-pare e avise a maestro, nunca esprema arquivos (RUNBOOK §3.7).*
+pare e informe à sessão responsável; não esprema arquivos (CLAUDE.md).*
 
 ## FORA DE ESCOPO
 
@@ -103,8 +103,8 @@ pare e avise a maestro, nunca esprema arquivos (RUNBOOK §3.7).*
 - [ ] Lição nova registrada em `armadilhas/NNN-slug.md` ou `LICOES.md` da célula, quando aprendida
 - [ ] Fechamento por `make pr` conforme `painel/LEIA-ME.md`, com validação, recibo e eventos embarcados; não repetir manualmente
 
-**Depois do merge (a maestro confere):**
-- [ ] PR encaminhado pela maestro e mergeado pela pista (emenda da Lei 4); `gh pr view <N> --json state,mergeCommit` conferido
+**Depois do merge (o despacho confere):**
+- [ ] PR encaminhado pela pista e confirmado pelo próprio despacho com `gh pr view <N> --json state,mergeCommit`
 - [ ] Se disparou deploy: veredito REAL por `gh run view <id> --json status,conclusion`
 - [ ] Fatos posteriores registrados no livro, sem duplicar o recibo de `make pr`
 

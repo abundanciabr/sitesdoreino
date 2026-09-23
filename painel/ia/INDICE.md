@@ -47,13 +47,9 @@ O **sitesdoreino** é uma plataforma de cursos online vendidos por Pix/cartão
 (Mercado Pago), multissítio (N domínios, um único deploy), com destaque
 atual para uma escola de Roblox 3D ("Meshcraft Academy", em `meshcraft.top`)
 e um produto de baixo valor usado para provar a esteira ponta a ponta
-("Curso Esqueleto", R$9,90). É construído quase inteiramente por uma tríade
-de IAs em papéis fixos, Claude Code (maestro: decide, enfileira, executa o
-cirúrgico, revisa; nunca mergeia), Codex (executor: constrói pela ficha de
-despacho, um PR por tarefa) e Antigravity (sentinela: audita origin/main e
-verifica depois do merge; nunca edita), ver
-[01](01-leis-ritos-e-invariantes.md), para um mantenedor que é leigo em
-código e terminal: essa
+("Curso Esqueleto", R$9,90). É construído com assistência de IAs, sem papéis fixos por fornecedor,
+para um mantenedor que é leigo em código e terminal; veja
+[01](01-leis-ritos-e-invariantes.md). Essa
 única característica explica boa parte das escolhas de arquitetura do
 projeto: o que não pode ser mecanizado em portão de CI acaba exigindo um
 passo manual do único ser humano no projeto, então mecanizar é
@@ -164,7 +160,6 @@ documento deste repositório.
   chamadas DENTRO de `conferir()` em `ci/mergear.py`. Neste repositório,
   função definida não é função chamada, e três documentos deste mapa já
   ensinaram o contrário.
-- Estado da fábrica numa chamada: `python ci/resumo_maestro.py`.
 
 Se uma fonte não puder ser consultada, escreva `NÃO MEDIDO`. O teste de
 presença deste mapa não certifica seus fatos; `armadilhas/222` explica o limite.

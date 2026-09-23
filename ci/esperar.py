@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Espera com teto vivo e consulta única da entrega até publicação.
 
-    python ci/esperar.py --checks PR --e-pousar
-    python ci/esperar.py --entrega PR
+    python ci/esperar.py --checks PR --so-desfecho
+    python ci/esperar.py --entrega PR --so-desfecho
     python ci/esperar.py --run ID
     python ci/esperar.py --deploy SHA
 
-`--entrega` retorna JSON sem laço; a maestro acompanha pelo mecanismo nativo
-ativo da sessão. Só PUBLICADO e SEM_PUBLICACAO retornam zero. Etiqueta não
-é integração, e merge não é publicação. Nova revisão, recusa, publicação
-pendente e falha devolvem diagnóstico acionável. Instrumento quebrado é ERROR.
+`--entrega` retorna JSON sem laço. A sessão responsável mede checks,
+integração e publicação sem exigir atestado nem etiqueta. Só PUBLICADO e
+SEM_PUBLICACAO retornam zero. PR aberto, recusa, publicação pendente e falha
+devolvem diagnóstico acionável. Instrumento quebrado é ERROR.
 
 As esperas usam a régua de `ci/tempos_esperados.json`, com voz e prazo finito.
 `--teto` é override explícito para espera sem régua. `--e-pousar` implica
@@ -246,7 +246,7 @@ def resolver_sha_inteiro(valor: str, parser, bastidor=None) -> str:
     uma condição que nunca vai ser satisfeita. É a lição 2 do Lote A no
     `RUNBOOK-LOTES.md` §9: espera que mede a coisa errada é indistinguível de
     espera legítima, e só quem está de fora percebe. Medido em 04/09/2026, com
-    a maestro esperando 20 minutos por um deploy que já estava verde.
+    a sessão esperando 20 minutos por um deploy que já estava verde.
 
     Aqui a cura é resolver contra o próprio repositório, que é a fonte certa e
     está a um comando de distância. Se o objeto não existir localmente, a CLI
@@ -1119,7 +1119,7 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
         voz.desfecho(
             f"{prefixo}🛬 pedi pouso do PR {pr} pelo portão. A pista assume: "
             "a integração e a publicação ainda não foram comprovadas. "
-            f"A maestro acompanha com python ci/esperar.py --entrega {pr}."
+            f"Confira o desfecho nesta sessão com python ci/esperar.py --entrega {pr}."
         )
         return 0
     # A recusa é o desfecho, e desfecho não se sussurra: o motivo do portão vem

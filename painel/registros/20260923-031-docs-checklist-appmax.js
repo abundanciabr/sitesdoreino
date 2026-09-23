@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-031-docs-checklist-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "docs: checklist Appmax",
+  detalhe: "Fila ao vivo lida; o roteiro mostra a ordem real, os bloqueios e o checklist obrigatório a cada transição.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2001. Validação local: árvore f065581720d746dd8cf308b12fae98b60acb0ef2; commit 17714096512695257bbde7a56fa9fc6592dcbb49; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-670",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

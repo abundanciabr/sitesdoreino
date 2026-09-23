@@ -547,17 +547,21 @@ def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
     nossa = [e for e in finais if e["evento"] == "concluida" and e.get("evidencia") == url]
     if finais and not nossa:
         raise ParouPorSeguranca("tarefa já encerrada por outro fato", "Confira a cadeia da fila; não sobrescreva o encerramento.")
-    # A conclusão desta mesma entrega não conta como encerramento alheio: sem
-    # isto o `--continuar` congelaria a submissão na primeira revisão.
-    if len(finais) == len(nossa):
-        anterior = next((e for e in reversed(eventos) if e["tarefa"] == tarefa and e["evento"] == "submetida"), None)
-        if anterior and anterior.get("pr") == url:
-            diferenca = correr(["git", "diff", "--name-only", anterior["revisao"], revisao]).splitlines()
-            if all(c.startswith(("painel/registros/", "fila/eventos/")) for c in diferenca):
-                revisao, arvore = anterior["revisao"], anterior["arvore"]
-        correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
-                "--pr", url, "--revisao", revisao, "--arvore", arvore])
-        correr([sys.executable, "ci/fila.py", "fechar-pela-entrega", tarefa, "--quem", ramo, "--pr", url])
+    if nossa:
+        arquivos = [
+            caminho.relative_to(raiz).as_posix()
+            for caminho in (raiz / "fila/eventos").glob("*.json")
+            if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa
+        ]
+        return arquivos
+    anterior = next((e for e in reversed(eventos) if e["tarefa"] == tarefa and e["evento"] == "submetida"), None)
+    if anterior and anterior.get("pr") == url:
+        diferenca = correr(["git", "diff", "--name-only", anterior["revisao"], revisao]).splitlines()
+        if all(c.startswith(("painel/registros/", "fila/eventos/")) for c in diferenca):
+            revisao, arvore = anterior["revisao"], anterior["arvore"]
+    correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
+            "--pr", url, "--revisao", revisao, "--arvore", arvore])
+    correr([sys.executable, "ci/fila.py", "fechar-pela-entrega", tarefa, "--quem", ramo, "--pr", url])
     arquivos = []
     for caminho in (raiz / "fila/eventos").glob("*.json"):
         if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa:
@@ -819,7 +823,13 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
     dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
     dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
-    final = f"PR {numero} aberto com recibo: {url}; devolva à maestro para revisão e encaminhamento à pista."
+    instrucao_de_continuidade = (
+        "Meça o desfecho nesta sessão: "
+        f"python ci/esperar.py --checks {numero} --so-desfecho se houver checks "
+        f"pendentes; caso contrário, python ci/esperar.py --entrega {numero} "
+        "--so-desfecho. Informe integração e publicação apenas com prova."
+    )
+    final = f"PR {numero} aberto com recibo: {url}. {instrucao_de_continuidade}"
     dizer(final)
     return final
 

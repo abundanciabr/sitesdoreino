@@ -1,0 +1,19 @@
+{
+  "arquivo": "662-robos-contornam-falhas-locais-antes-de-pedir-intervencao",
+  "id": "TAR-662",
+  "titulo": "Robôs contornam falhas locais antes de pedir intervenção",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste reproduz o WSL quebrado, suíte completa verde no Windows, guarda contra busca direta de Bash e regra de recuperação na ficha do executor.",
+  "despacho": "Brief tipo teste, modelo_recomendado gpt-5.6-sol, esforco_recomendado medium. Corrigir a seleção de Bash nos testes da fábrica e exigir recuperação comprovada de erro de ambiente antes de bloquear. Alvos: ci/tests/ e .codex/agents/despacho.toml. Provar vermelho, verde e suíte completa.",
+  "origem": "Pedido do mantenedor nesta sessão em 23/09/2026 para eliminar bloqueios banais dos robôs.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

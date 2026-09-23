@@ -1,4 +1,4 @@
-"""Consulta revisão, integração e publicação; não agenda nem publica nada.
+"""Consulta integração e publicação; não agenda nem publica nada.
 
 A pista usa o mesmo leitor para impedir que uma célula ou seu consumidor
 avance antes da publicação anterior. Estado é derivado do Git e do GitHub,
@@ -14,8 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import mapa_de_celulas
-from _nucleo import ErroDeInstrumentacao, Estado, executar
-from revisor_de_pouso import avaliar_atestado
+from _nucleo import ErroDeInstrumentacao, executar
 
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
 MAX_PAGINAS_DO_HISTORICO = 100
@@ -215,11 +214,12 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     if caidos or cobertura_incompleta:
         run = caidos[0] if caidos else next(r for r in base["runs"] if r["jobs_sem_prova"])
         return dict(base, estado="FALHA_PUBLICACAO", terminal=False,
-                    acao=f"Maestro: leia gh run view {run['id']} --log-failed; corrija a causa "
+                    acao=f"A publicação falhou: veja gh run view {run['id']} --log-failed; corrija a causa "
                          f"ou reexecute gh run rerun {run['id']} --failed e confira este SHA novamente.")
     if any(r is None or r.get("status") != "completed" for r in escolhidos):
         return dict(base, estado="AGUARDANDO_PUBLICACAO", terminal=False,
-                    acao="Maestro: acompanhe pelo heartbeat nativo até todos os workflows exigidos concluírem; ausência não é sucesso.")
+                    acao=f"Publicação em andamento: execute python ci/esperar.py --deploy {sha} --so-desfecho; "
+                         "ausência de run não é sucesso.")
     return dict(base, estado="PUBLICADO", terminal=True,
                 acao="Publicação comprovada nos runs deste SHA; registre o veredito no livro.")
 
@@ -234,18 +234,12 @@ def consultar_entrega(raiz: Path, numero: int) -> dict:
     if pr["state"] == "CLOSED":
         return dict(base, estado="ENCERRADO_SEM_INTEGRAR", terminal=True,
                     acao="PR encerrado sem integração; a entrega não foi publicada.")
-    comentarios = _api(raiz, f"issues/{numero}/comments", paginas=True)
-    revisao = avaliar_atestado(pr.get("headRefOid") or "", comentarios, correcoes=correcoes_declaradas(pr))
-    if revisao.estado is not Estado.PASS:
-        return dict(base, estado="REVISAO_NECESSARIA", acao=revisao.resumo + ". " + revisao.detalhe)
     if pr.get("isDraft"):
-        return dict(base, estado="RASCUNHO", acao="Despacho: conclua a validação e o recibo pelo rito do PR.")
-    etiquetas = {l.get("name") for l in pr.get("labels", [])}
-    if "pousar" in etiquetas:
-        return dict(base, estado="AGUARDANDO_INTEGRACAO",
-                    acao="Maestro: mantenha o acompanhamento nativo; etiqueta não prova integração nem publicação.")
-    return dict(base, estado="POUSO_NAO_SOLICITADO_OU_RECUSADO",
-                acao=f"Maestro: execute python ci/mergear.py {numero} --conferir e corrija o diagnóstico antes de pedir pouso.")
+        return dict(base, estado="RASCUNHO", acao="Conclua a validação e o recibo pelo rito do PR.")
+    return dict(base, estado="AGUARDANDO_INTEGRACAO",
+                acao=f"Confira python ci/esperar.py --checks {numero} --so-desfecho. "
+                     "Corrija checks reprovados; a pista integra automaticamente "
+                     "quando os portões passam.")
 
 
 def celulas_requeridas(arquivos: list[str], mapa: dict) -> set[str]:

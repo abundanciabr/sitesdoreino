@@ -195,29 +195,3 @@ class MercadoPagoClient:
                 "payer": {"email": payer_email},
             },
         )
-
-    def criar_pagamento_card(
-        self,
-        *,
-        idempotency_key: str,
-        amount_cents: int,
-        order_id: str,
-        card_token: str,
-        installments: int,
-        payer_email: str,
-        payer_identification: dict[str, str] | None,
-    ) -> dict[str, Any]:
-        payer: dict[str, Any] = {"email": payer_email}
-        if payer_identification:
-            payer["identification"] = payer_identification
-        return self._post(
-            "/v1/payments",
-            idempotency_key=idempotency_key,
-            json_body={
-                "transaction_amount": _valor_em_reais(amount_cents),
-                "token": card_token,
-                "installments": installments,
-                "external_reference": order_id,
-                "payer": payer,
-            },
-        )

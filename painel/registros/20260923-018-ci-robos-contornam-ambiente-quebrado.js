@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-018-ci-robos-contornam-ambiente-quebrado",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "ci: robôs contornam ambiente quebrado",
+  detalhe: "Os testes usam o Bash funcional do computador; o robô verifica alternativas locais antes de pedir ajuda.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1986. Validação local: árvore 2d64016d2b3444f6608bd2315b6b8baf5f4d8b3c; commit 25e9c4f19c8d074da59fba7e828384e600144834; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-662",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

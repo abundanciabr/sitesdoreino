@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-134305-TAR-662-explicada",
+  "tarefa": "TAR-662",
+  "evento": "explicada",
+  "quando": "2026-09-23T13:43:05+00:00",
+  "quem": "Pedido do mantenedor nesta sessão em 23/09/2026 para eliminar bloqueios banais dos robôs.",
+  "o_que_e": "Os robôs param quando um programa local falha mesmo havendo outro programa funcional instalado no mesmo computador.",
+  "o_que_muda": "A entrega volta a avançar sem pedir ao mantenedor que conserte o computador por um erro que o próprio robô consegue contornar.",
+  "exemplo": "O atalho do WSL falha, mas o Git Bash instalado executa os mesmos testes.",
+  "importancia": 85
+}

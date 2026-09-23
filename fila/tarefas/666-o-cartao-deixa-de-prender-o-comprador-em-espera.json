@@ -1,0 +1,19 @@
+{
+  "arquivo": "666-o-cartao-deixa-de-prender-o-comprador-em-espera",
+  "id": "TAR-666",
+  "titulo": "O cartão deixa de prender o comprador em espera",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste prova que cartão indisponível não cria pedido pela tela; pedido antigo mostra explicação e link correto; suíte checkout verde; tela pública conferida após publicação.",
+  "despacho": "Corrigir somente a jornada pública em que o visitante escolhe cartão, informa seus dados e chega a uma página sem campos para pagar, com espera permanente. Impedir cartão na escolha antes de criar pedido; para pedidos já abertos, explicar a indisponibilidade, consultar a situação no servidor e dar retorno ao checkout. Preservar Pix, preço, contratos e a tarefa separada que construirá o cartão Appmax. Aceite: guarda vermelho e verde para as duas telas, suíte checkout verde e prova pública após publicação.",
+  "origem": "Relato e captura do mantenedor na sessão Codex de 23/09/2026, após preencher os dados na oferta de teste.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

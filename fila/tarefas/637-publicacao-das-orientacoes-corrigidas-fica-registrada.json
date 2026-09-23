@@ -1,0 +1,19 @@
+{
+  "arquivo": "637-publicacao-das-orientacoes-corrigidas-fica-registrada",
+  "id": "TAR-637",
+  "titulo": "Publicação das orientações corrigidas fica registrada",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro vinculado ao PR 1952 e ao run 35788502450 integrado no livro",
+  "despacho": "Crie registro novo em painel/registros com responde_a ao recibo 20260922-053, prova do PR 1952 integrado e run 35788502450 publicado. Valide o manifesto e entregue por PR, sem editar o recibo antigo.",
+  "origem": "desfecho confirmado do PR 1952 em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

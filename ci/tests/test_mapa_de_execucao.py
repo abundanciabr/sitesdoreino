@@ -186,7 +186,7 @@ def test_reserva_concorrente_recusa_sem_prompt_de_execucao(caso, capsys, monkeyp
     monkeypatch.setattr(caso[0].reservar, "confirmar_intencao", lambda *a: False)
     codigo, pacote = tar(caso, capsys)
     assert codigo == 1 and pacote["proximo_passo"]["id"] == "reserva_concorrente"
-    assert "maestro" in pacote["prompt"].lower()
+    assert "maestro" not in pacote["prompt"].lower()
 
 
 def test_contrato_sem_mandato_documento_nao_concede_autoridade(caso, capsys):

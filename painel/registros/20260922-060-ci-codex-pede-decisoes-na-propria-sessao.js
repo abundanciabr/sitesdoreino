@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-060-ci-codex-pede-decisoes-na-propria-sessao",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "ci: Codex pede decisões na própria sessão",
+  detalhe: "A saída de mandato e a ficha agora distinguem a sessão direta do subagente. O PR continua exigindo autorização nominal para Lista A e pede prova do resultado terminal antes do fecho.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1947. Validação local: árvore 2e6c1564e56b069c8a2a63ee5c63dd1609a5f468; commit 20f0eb739c7c1536b4ec209e8f344e101a3c6fe9; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-635",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

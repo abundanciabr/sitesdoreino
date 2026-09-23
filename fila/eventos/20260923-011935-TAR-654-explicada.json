@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-011935-TAR-654-explicada",
+  "tarefa": "TAR-654",
+  "evento": "explicada",
+  "quando": "2026-09-23T01:19:35+00:00",
+  "quem": "Filha da TAR-647; mandato Fase 1 registrado no PR #1970 autoriza os caminhos infra/ligar-a-appmax.sh e ci/tests/test_ligar_a_appmax.py para preparação sandbox sem cobrança real.",
+  "o_que_e": "A loja Appmax existente precisa de um novo identificador externo antes de reinstalar.",
+  "o_que_muda": "O comando privado troca somente o identificador da instalação da loja atual, com cartão desligado.",
+  "exemplo": "Uma preparação gera um UUID. Se o resultado falhar de forma ambígua, não tente outra vez.",
+  "importancia": 78
+}

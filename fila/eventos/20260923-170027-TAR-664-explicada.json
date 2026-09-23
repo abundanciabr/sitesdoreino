@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-170027-TAR-664-explicada",
+  "tarefa": "TAR-664",
+  "evento": "explicada",
+  "quando": "2026-09-23T17:00:27+00:00",
+  "quem": "Pedido direto do mantenedor em 23/09/2026 e decisão de 20/09/2026 sobre dissolução do rádio",
+  "o_que_e": "Ainda existe um arquivo de comando que apenas avisa que o rádio acabou.",
+  "o_que_muda": "O comando desativado sai do projeto; a fila segue gravando tarefas sem chamar o canal encerrado.",
+  "exemplo": "Ao procurar ferramentas do projeto, ninguém encontra mais um comando de rádio que não presta serviço.",
+  "importancia": 75
+}

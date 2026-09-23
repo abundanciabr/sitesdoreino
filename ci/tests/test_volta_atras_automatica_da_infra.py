@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "infra" / "sincronizar-infra-na-vps.sh"
@@ -25,22 +26,8 @@ NOME_DA_FUNCAO = "restaurar_o_que_estava_no_ar"
 
 
 def bash_de_verdade() -> str:
-    """O bash que roda scripts, e não o atalho do WSL.
-
-    No Windows, `bash` no PATH é `System32\bash.exe`, que entra no WSL e não
-    enxerga os caminhos deste teste. O bash do Git é o mesmo interpretador que
-    a VPS usa na prática para este script.
-    """
-    for candidato in (
-        r"C:\Program Files\Gitinash.exe",
-        r"C:\Program Files (x86)\Gitinash.exe",
-    ):
-        if Path(candidato).is_file():
-            return candidato
-    achado = shutil.which("bash")
-    if not achado:
-        raise AssertionError("nenhum bash disponível para provar a volta atrás")
-    return achado
+    assert BASH, "nenhum bash utilizável para provar a volta atrás"
+    return BASH
 
 
 def fonte() -> str:

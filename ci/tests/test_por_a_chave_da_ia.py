@@ -36,11 +36,12 @@ ERRO, nunca um OK silencioso.
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "infra" / "por-a-chave-da-ia-do-forum.sh"
@@ -61,7 +62,7 @@ FORUM_ENV = (
 
 
 def _bash() -> str:
-    caminho = shutil.which("bash")
+    caminho = BASH
     assert caminho, (
         "não achei `bash` nesta máquina. Este guarda EXECUTA o script; sem "
         "interpretador ele não tem o que medir, e isso não é um OK ([INV-CI01])."

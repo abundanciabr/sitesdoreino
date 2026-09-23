@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-220400-TAR-638-explicada",
+  "tarefa": "TAR-638",
+  "evento": "explicada",
+  "quando": "2026-09-22T22:04:00+00:00",
+  "quem": "mandato do mantenedor 2026-09-22",
+  "o_que_e": "O roteiro guarda credenciais do aplicativo, mas OAuth 200 não comprova acesso do lojista e a rota publicada ainda recusa app_id 1888.",
+  "o_que_muda": "A instalação inicial sandbox fica comprovada separadamente do acesso do lojista, sem ligar cobrança real.",
+  "exemplo": "A Appmax conclui a instalação sandbox e o teste de leitura de produtos valida o par MERCHANT antes de guardá-lo no env da VPS.",
+  "importancia": 80
+}

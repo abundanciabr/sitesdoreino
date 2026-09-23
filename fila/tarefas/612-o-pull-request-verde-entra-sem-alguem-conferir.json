@@ -1,0 +1,21 @@
+{
+  "arquivo": "612-o-pull-request-verde-entra-sem-alguem-conferir",
+  "id": "TAR-612",
+  "titulo": "O pull request verde entra sem alguém conferir",
+  "toca": [
+    "ci",
+    ".github",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "os testes da ficha e do vigia passam, e o workflow chama a integração automática antes de abrir a issue",
+  "despacho": "O pull request verde além da paciência entra pela pista, sem uma pessoa conferir.\n\nAlvos: ci/vigia_do_pouso.py, ci/tests/test_vigia_do_pouso.py, ci/tests/test_fichas_de_robo.py, .github/workflows/vigia-do-pouso.yml, docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md, .claude/agents/despacho.md, .codex/agents/despacho.toml.\n\nO workflow chama python ci/mergear.py --automatico com o token da pista antes da issue. Sem token, ou se a pista sair com erro, o job para e não publica um quadro mentindo que a pista rodou. A ficha mede com ci/esperar.py --checks e ci/esperar.py --entrega na mesma sessão. O plano não manda parar em sombra nem disparar o merge à mão.\n\nProva: python -m pytest ci/tests/test_fichas_de_robo.py ci/tests/test_vigia_do_pouso.py -q",
+  "origem": "sessão de 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

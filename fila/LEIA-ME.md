@@ -155,6 +155,11 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
 
 ## Os estados que o quadro calcula
 
+Não existe estado `adiada`, `postergada` ou equivalente. Se um robô não puder
+continuar, ele registra `bloqueada` com motivo e quem destrava. O mantenedor é
+avisado no mesmo retorno. Sem anuência expressa dele, a tarefa não pode ser
+cancelada, reduzida, redirecionada ou tratada como deixada para depois.
+
 - **na fila** — existe, ninguém pegou, dependências satisfeitas.
 - **bloqueada** — evento `bloqueada` (com motivo e `espera`), OU `depende_de`
   aberta (calculado — ninguém escreve isso, e o `espera` sai `fila`).

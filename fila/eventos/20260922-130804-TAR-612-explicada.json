@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-130804-TAR-612-explicada",
+  "tarefa": "TAR-612",
+  "evento": "explicada",
+  "quando": "2026-09-22T13:08:04+00:00",
+  "quem": "sessão de 22/09/2026",
+  "o_que_e": "Um trabalho pronto pode ficar parado porque o aviso só pede para uma pessoa olhar.",
+  "o_que_muda": "O sistema tenta integrar sozinho. Só sobra o caso recusado, com o motivo escrito.",
+  "exemplo": "O trabalho 1898 ficou esperando alguém conferir antes de entrar. Esse intervalo deixa de ser o caminho normal.",
+  "importancia": 80
+}

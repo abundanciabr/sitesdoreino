@@ -10,7 +10,7 @@
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
         --espera mantenedor|fila                         # trava, com o porquê e quem destrava
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
-    python ci/fila.py reconciliar TAR-001 --quem "maestro" \
+    python ci/fila.py reconciliar TAR-001 --quem "executor" \
         --aceite-registro painel/registros/AAAAMMDD-NNN-slug.js
     python ci/fila.py explicar TAR-001 --quem "sessao-x" \
         --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
@@ -66,8 +66,6 @@ import indice_de_armadilhas  # noqa: E402
 import provar_guardas  # noqa: E402
 import responsabilidades  # noqa: E402
 import estado_da_entrega  # noqa: E402
-import radio  # noqa: E402
-import revisor_de_pouso  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     Estado,
@@ -86,6 +84,11 @@ from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 # arquivo inválido, não "vocabulário novo" — vocabulário muda por PR, aqui.
 EVENTOS_DE_CICLO = ("reivindicada", "devolvida", "bloqueada", "reivindicacao_expirada")
 EVENTOS_TERMINAIS = ("concluida", "cancelada")
+# Adiamento não é estado da fila. Uma palavra diferente não pode criar um
+# estado paralelo que o painel não mostre nem o mantenedor seja avisado.
+EVENTOS_DE_ADIAMENTO_PROIBIDOS = (
+    "adiada", "adiado", "postergada", "postergado", "deferida", "deferido"
+)
 
 # A EXPLICAÇÃO PARA GENTE — o evento que não é ciclo nem fim (06/09/2026)
 #
@@ -662,6 +665,12 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         if dados.get("arquivo") != caminho.stem:
             erros.append(f"{nome}: campo 'arquivo' ≠ nome do arquivo")
         tipo = dados.get("evento")
+        if tipo in EVENTOS_DE_ADIAMENTO_PROIBIDOS:
+            erros.append(
+                f"{nome}: adiamento silencioso não existe — registre o impedimento "
+                "como 'bloqueada', com motivo e 'espera' ('mantenedor' ou 'fila'), "
+                "e informe o mantenedor no mesmo retorno"
+            )
         if tipo not in EVENTOS_VALIDOS:
             erros.append(f"{nome}: evento {tipo!r} não existe (válidos: {', '.join(EVENTOS_VALIDOS)})")
             continue
@@ -1179,19 +1188,6 @@ def provar_estado_terminal(estado: dict) -> None:
             )
 
 
-def provar_atestado(resultado) -> None:
-    if not isinstance(resultado, revisor_de_pouso.Resultado):
-        raise ErroDeInstrumentacao(
-            "o revisor devolveu um resultado inválido",
-            "A avaliação independente não pôde ser interpretada.",
-        )
-    if resultado.estado is not Estado.PASS:
-        raise RecusaDeReconciliacao(
-            "o atestado independente do HEAD final não foi aprovado: "
-            + resultado.resumo
-        )
-
-
 def provar_suite_no_head(raiz: Path, head: str) -> list[str]:
     """Os checks obrigatórios da integração, verdes no SHA que entrou na main.
 
@@ -1406,19 +1402,6 @@ def provar_reconciliacao(
             )
         linhagem = "linhagem comprovada"
 
-    comentarios = estado_da_entrega._api(  # uma leitura GitHub, sem segundo protocolo
-        raiz, f"issues/{numero}/comments", paginas=True
-    )
-    # A mesma régua do pouso: com a bancada em mãos, um atestado de outro SHA
-    # ainda passa quando a diferença é só a main recebida (`ci/mergear.py`).
-    atestado = revisor_de_pouso.avaliar_atestado(
-        head,
-        comentarios,
-        correcoes=estado_da_entrega.correcoes_declaradas(pr),
-        raiz=raiz,
-    )
-    provar_atestado(atestado)
-
     provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
     registro = carregar_aceite(raiz, aceite_registro, merge, provas)
     publicacao = ",".join(provas)
@@ -1426,8 +1409,7 @@ def provar_reconciliacao(
         f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
         f"arvore={submissao['arvore']}; head={head}; merge={merge}; "
         f"estado={estado['estado']}; publicacao={publicacao}; "
-        f"linhagem={linhagem}; "
-        f"atestado={atestado.resumo}; aceite={aceite_registro.replace('\\', '/')}"
+        f"linhagem={linhagem}; aceite={aceite_registro.replace('\\', '/')}"
     )
     return evidencia, registro["verificado_em"]
 
@@ -1500,33 +1482,6 @@ def _escrever_json(caminho: Path, dados: dict) -> None:
     )
 
 
-def _estados_para_boletim(raiz: Path) -> dict[str, dict] | None:
-    erros: list[str] = []
-    tarefas = carregar_tarefas(raiz, erros)
-    eventos = carregar_eventos(raiz, tarefas, erros)
-    return None if erros else calcular_estados(tarefas, eventos)
-
-
-def _gravar_fila(raiz: Path, caminho: Path, dados: dict) -> None:
-    antes = _estados_para_boletim(raiz)
-    _escrever_json(caminho, dados)
-    depois = _estados_para_boletim(raiz)
-    if antes is None or depois is None:
-        print("AVISO: registro preservado, mas não foi possível calcular o boletim. Execute python ci/fila.py validar e corrija os dados indicados.", file=sys.stderr)
-        return
-    quando = dados.get("quando") or datetime.now(timezone.utc).isoformat(timespec="seconds")
-    for tid in sorted(depois):
-        estado = depois[tid]["estado"]
-        if antes.get(tid, {}).get("estado") == estado:
-            continue
-        texto = f"{tid}: {estado} em {quando}"
-        try:
-            radio._chamar("POST", {"autor": "fila", "tipo": "boletim", "tarefa": tid, "texto": texto})
-        except RuntimeError as erro:
-            print(f"AVISO: estado de {tid} preservado; o rádio não confirmou o boletim. {erro}", file=sys.stderr)
-            print(f"Reenvie sem repetir a mudança de estado: python ci/radio.py dizer '{texto}' --autor fila --tipo boletim --tarefa {tid}", file=sys.stderr)
-
-
 def montar_evento(
     tid: str,
     evento: str,
@@ -1590,7 +1545,7 @@ def _escrever_evento(
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
     caminho = pasta / f"{dados['arquivo']}.json"
-    _gravar_fila(raiz, caminho, dados)
+    _escrever_json(caminho, dados)
     return caminho
 
 
@@ -2293,7 +2248,7 @@ def cmd_criar(raiz: Path, args) -> int:
             print(f"   Tarefa: fila/tarefas/{tarefas_agora[gemea]['arquivo']}.json")
             print(f"   Nada foi gravado; o número {numero} fica com a chave da origem.")
             return 0
-    _gravar_fila(raiz, caminho, dados)
+    _escrever_json(caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
     # ele). Separados porque a tarefa é imutável e a explicação se corrige.
     do_evento = _escrever_evento(
@@ -2525,6 +2480,7 @@ def cmd_bloquear(raiz: Path, args) -> int:
         print("Ela vai aparecer em 'Esperando uma decisão sua' no /admin/caixa/robos/,")
         print("e o `motivo` é o texto que ele vai ler ali — escreva para leigo.")
     print("Para destravar: um evento `devolvida` (python ci/fila.py soltar ...).")
+    print("Isto não é adiamento: a tarefa continua registrada e visível na fila.")
     return 0
 
 
@@ -2661,7 +2617,7 @@ def cmd_submeter(raiz: Path, args) -> int:
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
             raise ErroDeInstrumentacao("evento de submissão já existe", "Repita após conferir o evento; não sobrescreva a história.")
-        _gravar_fila(raiz, caminho, dados)
+        _escrever_json(caminho, dados)
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
     return 0

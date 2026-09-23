@@ -1,0 +1,20 @@
+{
+  "arquivo": "620-a-costura-da-lei-de-escopo-deixa-de-citar-a-regra-revogada",
+  "id": "TAR-620",
+  "titulo": "A costura da lei de escopo deixa de citar a regra revogada",
+  "toca": [
+    "ci",
+    "docs/decisoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Parágrafo alinhado à lei do menor caminho funcional, portões de lei e testes verdes, PR integrado.",
+  "despacho": "Editar somente o item 1 de Como este Padrão convive em docs/decisoes/DECISAO-claude-md-so-lei.md. Alinhar à costura de CLAUDE.md, validar e integrar.",
+  "origem": "Ordem do mantenedor nesta sessão de 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

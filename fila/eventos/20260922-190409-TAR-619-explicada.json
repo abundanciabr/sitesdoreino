@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-190409-TAR-619-explicada",
+  "tarefa": "TAR-619",
+  "evento": "explicada",
+  "quando": "2026-09-22T19:04:09+00:00",
+  "quem": "Mandato do mantenedor na sessao de 22/09/2026",
+  "o_que_e": "A lei de escopo ainda mandava construir o projeto completo antes de uma porta usavel.",
+  "o_que_muda": "Cada entrega passa a abrir uma jornada completa e testavel, sem cortar o que foi pedido com nome.",
+  "exemplo": "Em vez de construir todos os modulos antes, a pessoa recebe primeiro uma porta que abre, funciona e ja tem o proximo degrau nomeado.",
+  "importancia": 95
+}

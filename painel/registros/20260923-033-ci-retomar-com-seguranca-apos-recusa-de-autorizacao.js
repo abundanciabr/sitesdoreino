@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-033-ci-retomar-com-seguranca-apos-recusa-de-autorizacao",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "ci: retomar com segurança após recusa de autorização",
+  detalhe: "A ficha separa recusa externa de falha do script e preserva o mesmo worktree. O teste confirma parada após falha e retomada sem novo commit.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1998. Validação local: árvore d960e233a4b095e37f2768b387b37ca2b6f40d17; commit 8ec7ec3ea7633d06f188092093f21acb7c30e84d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-672",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

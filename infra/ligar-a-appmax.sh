@@ -2,11 +2,12 @@
 # =============================================================================
 # LIGAR A APPMAX NA PLATAFORMA. O passo do mantenedor.
 # Guarda no env da célula pagamentos QUEM é o nosso aplicativo na Appmax e o
-# par de credenciais dele, recarrega a célula, e mostra na tela a porta de
-# instalação deixando de recusar.
+# par de credenciais dele e prepara o cadastro sandbox para a rota de instalação.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só, SEM argumentos):
+# COMO O MANTENEDOR RODA (na VPS, depois da integração deste roteiro):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/ligar-a-appmax.sh -o /tmp/appmax.sh && bash /tmp/appmax.sh
+#   bash /tmp/appmax.sh --oauth-merchant valida e grava o par MERCHANT sandbox
+#   bash /tmp/appmax.sh --preparar-reinstalacao prepara um novo external_id privado
 #
 # ELE PERGUNTA AS CREDENCIAIS, com digitação invisível, e essa é a decisão que
 # dá nome ao arquivo. Elas NUNCA vêm como argumento: argumento de linha de
@@ -15,14 +16,21 @@
 # para provar que funcionou. Foi assim que o segredo do OAuth do Google vazou em
 # 24/08/2026 (`armadilhas/090`). Pelo mesmo motivo, aqui o valor também não
 # viaja por variável de ambiente de processo filho nem por arquivo temporário:
-# ele nasce no `read`, mora numa variável deste shell, e morre com ele.
+# ele nasce no `read` e mora numa variável deste shell. Na validação MERCHANT,
+# o par segue pela entrada padrão do Python, nunca por argumento ou ambiente.
 #
-# O QUE ELE ESCREVE em `env/pagamentos.env`, e só isto:
+# NO MODO DE INSTALAÇÃO, escreve em `env/pagamentos.env`:
 #   APPMAX_INSTALACOES        quem é o nosso aplicativo (montado aqui)
-#   APPMAX_AUTH_URL           endereço de autenticação da API
-#   APPMAX_API_URL            endereço base da API
+#   APPMAX_AUTH_URL           endereço de autenticação sandbox, fixo
+#   APPMAX_API_URL            endereço base sandbox, fixo
 #   APPMAX_APP_CLIENT_ID      o par OAuth do aplicativo
 #   APPMAX_APP_CLIENT_SECRET
+# No modo `--oauth-merchant`, escreve somente as duas chaves MERCHANT após
+# provar acesso OAuth e leitura de produtos no sandbox.
+# `--preparar-reinstalacao` não grava env nem chama a Appmax: sob transação e
+# bloqueio da linha existente, troca somente `external_id` para a futura
+# instalação consentida. Se a confirmação da operação for ambígua, não rode de
+# novo até conferir o estado; cartão e endpoints devem continuar em sandbox.
 #
 # `APPMAX_INSTALACOES` é a variável que `services/pagamentos/config/settings.py`
 # lê de verdade, no formato `{"<app_id>":{"alias":"Loja","sites":["<site_id>"]}}`.
@@ -37,9 +45,8 @@
 # em site nenhum. Ligar um site ali é outra decisão, sua, em outro dia.
 #
 # IDEMPOTENTE: rodar de novo é seguro e serve para TROCAR a credencial. O env
-# antigo vira `.bak-<epoch>` antes de qualquer edição, e só estas cinco linhas
-# mudam. Nas perguntas de endereço, Enter mantém o que já está gravado, para que
-# trocar só o segredo não obrigue a redigitar o que já estava certo.
+# antigo vira `.bak-<epoch>` antes de qualquer edição. Endereços preexistentes
+# fora do sandbox fazem o roteiro parar sem sobrescrever configuração alguma.
 # =============================================================================
 
 # O modo de falha de 24/08 em pessoa: carregado com `source`/`.`, um `exit` daqui
@@ -50,12 +57,27 @@ if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then
 fi
 
 set -u
+set +a
+unset CLIENT_ID SEGREDO OAUTH VALOR TEMP LINHA linha saida valor ALUNOS_API_TOKEN TOKEN_CATALOGO VALOR_GATEWAY
+
+AUTH_SANDBOX="https://auth.sandboxappmax.com.br"
+API_SANDBOX="https://api.sandboxappmax.com.br"
+MODO="instalacao"
+if [ "$#" -eq 1 ]; then
+  case "$1" in
+    --oauth-merchant) MODO="oauth-merchant" ;;
+    --preparar-reinstalacao) MODO="preparar-reinstalacao" ;;
+    *) MODO="invalido" ;;
+  esac
+elif [ "$#" -gt 1 ]; then
+  MODO="invalido"
+fi
 
 parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 # Nada escrito na linha, nunca. Não é preciosismo de formato: é a única maneira
 # de garantir que a credencial não passou por aqui (`armadilhas/090`).
-if [ "$#" -gt 0 ]; then
+if [ "$MODO" = "invalido" ]; then
   parar "este comando não recebe nada escrito na linha, e você escreveu algo. Se era a credencial, NÃO cole aqui: ela apareceria na tela, ficaria no histórico do terminal e qualquer processo da máquina conseguiria lê-la. Rode 'bash /tmp/appmax.sh' sem mais nada, que eu pergunto uma a uma, com a digitação invisível. Nada foi alterado."
 fi
 
@@ -74,11 +96,253 @@ cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o 
 [ -w "$ENV_PAGAMENTOS" ] || parar "não consigo escrever em $RAIZ/$ENV_PAGAMENTOS. Rode como root ou como o dono dos env. Nada foi alterado."
 command -v docker >/dev/null 2>&1 || parar "não achei o docker nesta máquina, e é por ele que eu falo com o catálogo e recarrego a célula. Você está na VPS certa? Nada foi alterado."
 
-RODANDO="$(docker compose ps --status running --services 2>/dev/null || true)"
+# Compose interpola o arquivo inteiro antes de executar qualquer subcomando.
+# Só estes tokens do gateway são necessários para consultar a plataforma; não
+# carregue o admin.env inteiro, que também contém segredos não relacionados.
+ENV_ADMIN="env/admin.env"
+[ -f "$ENV_ADMIN" ] || parar "não achei $RAIZ/$ENV_ADMIN, necessário para o Compose consultar os serviços. Confira a presença de ALUNOS_API_TOKEN e TOKEN_CATALOGO sem compartilhar os valores. Nada foi alterado."
+for CHAVE_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR_GATEWAY="$(grep -m1 "^$CHAVE_GATEWAY=" "$ENV_ADMIN" | cut -d= -f2-)"
+  [ -n "$VALOR_GATEWAY" ] || parar "$CHAVE_GATEWAY está ausente ou vazia em $RAIZ/$ENV_ADMIN, e o Compose precisa dela antes de consultar os serviços. Confira a chave sem compartilhar o valor. Nada foi alterado."
+  if [ "$CHAVE_GATEWAY" = ALUNOS_API_TOKEN ]; then ALUNOS_API_TOKEN="$VALOR_GATEWAY"; else TOKEN_CATALOGO="$VALOR_GATEWAY"; fi
+done
+unset VALOR_GATEWAY CHAVE_GATEWAY
+
+# As atribuições exportam os tokens apenas para o processo Compose, sem deixá-
+# los no ambiente herdado pelo Python e pelo curl usados mais adiante.
+docker_compose() {
+  ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" docker compose "$@"
+}
+
+consultar_servicos_rodando() {
+  if ! RODANDO="$(docker_compose ps --services --status running 2>/dev/null)"; then
+    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Peça somente a saída de diagnóstico de 'docker compose version' e 'docker compose ps --services --status running'. Não envie env nem valores de tokens. Nada foi alterado."
+  fi
+}
+
+ler_de() {  # chave. Devolve o valor limpo, sem comentário nem espaços em volta.
+  grep "^$1=" "$ENV_PAGAMENTOS" 2>/dev/null | head -1 | cut -d= -f2- \
+    | tr -d '\r' | sed 's/[[:space:]]*#.*$//; s/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+if awk '
+  {
+    linha = $0
+    sub(/^[[:space:]]*/, "", linha)
+    if (linha !~ /^APPMAX_CARD_ENABLED_SITES([[:space:]]*([=:])|[[:space:]]*(#.*)?$)/) next
+    quantidade++
+    if (linha !~ /[=:]/) { ativo = 1; next }
+    sub(/^[^=:]*[=:]/, "", linha)
+    sub(/[[:space:]]*#.*/, "", linha)
+    gsub(/[[:space:]]/, "", linha)
+    if (linha != "") ativo = 1
+  }
+  END { exit !(ativo || quantidade > 1) }
+' "$ENV_PAGAMENTOS"; then
+  parar "há sites com cobrança Appmax habilitada. Este roteiro só prepara sandbox e não pode rodar nesse estado. Desative a lista APPMAX_CARD_ENABLED_SITES por um procedimento autorizado antes de continuar. Nada foi alterado."
+fi
+
+if [ "$MODO" = "oauth-merchant" ]; then
+  [ "$(ler_de APPMAX_AUTH_URL)" = "$AUTH_SANDBOX/oauth2/token" ] \
+    || parar "a autenticação não está fixada no sandbox. Rode primeiro 'bash /tmp/appmax.sh' para preparar o aplicativo. Nada foi alterado."
+  [ "$(ler_de APPMAX_API_URL)" = "$API_SANDBOX" ] \
+    || parar "a API não está fixada no sandbox. Rode primeiro 'bash /tmp/appmax.sh' para preparar o aplicativo. Nada foi alterado."
+  command -v python3 >/dev/null 2>&1 || parar "não achei python3 para validar OAuth sem pôr o segredo na linha de comando. Instale python3 e rode de novo. Nada foi alterado."
+  consultar_servicos_rodando
+  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não aparece na lista de serviços em execução. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
+  printf 'Cole o client_id do MERCHANT sandbox e aperte Enter: '
+  read -r -s CLIENT_ID
+  echo
+  printf 'Cole o client_secret do MERCHANT sandbox e aperte Enter: '
+  read -r -s SEGREDO
+  echo
+  [ -n "$CLIENT_ID" ] && [ -n "$SEGREDO" ] || parar "faltou uma das credenciais MERCHANT. Conclua a instalação no painel Appmax sandbox e copie o par retornado. Nada foi alterado."
+  case "$CLIENT_ID$SEGREDO" in *[![:print:]]*) parar "as credenciais têm caracteres inválidos. Copie novamente o par do painel Appmax sandbox. Nada foi alterado." ;; esac
+  command -v curl >/dev/null 2>&1 || parar "não achei curl para falar com OAuth sandbox sem expor as credenciais. Instale curl e rode de novo. Nada foi alterado."
+  OAUTH="$(printf '%s\n%s' "$CLIENT_ID" "$SEGREDO" | python3 -c '
+import json
+import subprocess
+import sys
+import urllib.parse
+
+client_id, client_secret = sys.stdin.read().splitlines()
+body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}).encode()
+try:
+    result = subprocess.run(["curl", "-sS", "--max-time", "20", "-H", "Content-Type: application/x-www-form-urlencoded", "--data-binary", "@-", "-w", "\n%{http_code}", "https://auth.sandboxappmax.com.br/oauth2/token"], input=body, capture_output=True, timeout=25, check=False)
+except Exception:
+    print("FALHA_DE_REDE")
+    raise SystemExit(0)
+if result.returncode != 0:
+    print("FALHA_DE_REDE")
+    raise SystemExit(0)
+try:
+    response_body, status = result.stdout.rsplit(b"\n", 1)
+    status = status.decode("ascii")
+except Exception:
+    print("RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+if status != "200":
+    print("HTTP_" + status if status.isdigit() else "RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+try:
+    payload = json.loads(response_body)
+except Exception:
+    print("RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+try:
+    token = payload["access_token"]
+    tipo = payload["token_type"]
+except (KeyError, TypeError):
+    print("RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+if not isinstance(token, str) or not token or tipo != "Bearer":
+    print("RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+config = "silent\nshow-error\nmax-time = 20\nurl = \"https://api.sandboxappmax.com.br/v1/products\"\nheader = " + json.dumps("Authorization: Bearer " + token) + "\nwrite-out = \"\\n%{http_code}\"\n"
+try:
+    result = subprocess.run(["curl", "--config", "-"], input=config.encode(), capture_output=True, timeout=25, check=False)
+except Exception:
+    print("API_FALHA_DE_REDE")
+    raise SystemExit(0)
+if result.returncode != 0:
+    print("API_FALHA_DE_REDE")
+    raise SystemExit(0)
+try:
+    response_body, status = result.stdout.rsplit(b"\n", 1)
+    status = status.decode("ascii")
+except Exception:
+    print("API_RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+if status != "200":
+    print("API_HTTP_" + status if status.isdigit() else "API_RESPOSTA_INVALIDA")
+    raise SystemExit(0)
+try:
+    products = json.loads(response_body).get("data", {}).get("products")
+except Exception:
+    products = None
+print("OK" if isinstance(products, list) else "API_RESPOSTA_INVALIDA")
+')" || parar "não consegui executar a validação OAuth sandbox. Nada foi alterado."
+  case "$OAUTH" in
+    OK) ;;
+    HTTP_401) parar "a Appmax sandbox recusou as credenciais MERCHANT. Confira se copiou o par retornado ao concluir a instalação sandbox. Nada foi alterado." ;;
+    HTTP_*) parar "a Appmax sandbox respondeu com erro HTTP ${OAUTH#HTTP_}. Confira o ambiente e tente novamente. Nada foi alterado." ;;
+    FALHA_DE_REDE) parar "não consegui alcançar OAuth sandbox. Confira a conexão e tente novamente. Nada foi alterado." ;;
+    API_HTTP_401|API_HTTP_404) parar "OAuth respondeu, mas a API sandbox não confirmou acesso aos produtos do merchant. Conclua a instalação Appmax sandbox e use o par MERCHANT retornado. Nenhuma credencial foi gravada." ;;
+    API_HTTP_*) parar "o teste de leitura MERCHANT respondeu com erro HTTP ${OAUTH#API_HTTP_}. Confira a instalação sandbox e tente novamente. Nenhuma credencial foi gravada." ;;
+    API_FALHA_DE_REDE) parar "OAuth respondeu, mas não consegui alcançar a API sandbox de produtos. Confira a conexão e tente novamente. Nenhuma credencial foi gravada." ;;
+    API_RESPOSTA_INVALIDA) parar "OAuth respondeu, mas a API sandbox não retornou a lista esperada de produtos. Confira a instalação sandbox. Nenhuma credencial foi gravada." ;;
+    *) parar "OAuth sandbox respondeu sem um token válido. Confira a instalação sandbox antes de tentar de novo. Nada foi alterado." ;;
+  esac
+  MARCA="$(date +%s)"
+  REPETICAO=1
+  while [ -e "$ENV_PAGAMENTOS.bak-$MARCA" ]; do REPETICAO=$((REPETICAO + 1)); MARCA="$(date +%s)-$REPETICAO"; done
+  cp -a "$ENV_PAGAMENTOS" "$ENV_PAGAMENTOS.bak-$MARCA" || parar "não consegui guardar a cópia do env antes da edição. Nada foi alterado."
+  for CHAVE in APPMAX_MERCHANT_CLIENT_ID APPMAX_MERCHANT_CLIENT_SECRET; do
+    VALOR="$CLIENT_ID"
+    [ "$CHAVE" = APPMAX_MERCHANT_CLIENT_SECRET ] && VALOR="$SEGREDO"
+    TEMP=""
+    ENCONTRADA=0
+    while IFS= read -r LINHA || [ -n "$LINHA" ]; do
+      case "$LINHA" in
+        "$CHAVE="*) if [ "$ENCONTRADA" -eq 0 ]; then TEMP="$TEMP$CHAVE=$VALOR"$'\n'; ENCONTRADA=1; fi ;;
+        *) TEMP="$TEMP$LINHA"$'\n' ;;
+      esac
+    done < "$ENV_PAGAMENTOS"
+    [ "$ENCONTRADA" -eq 1 ] || TEMP="$TEMP$CHAVE=$VALOR"$'\n'
+    printf '%s' "$TEMP" > "$ENV_PAGAMENTOS" || parar "não consegui gravar o par MERCHANT. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
+  done
+  SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
+  CODIGO_UP=$?
+  if [ "$CODIGO_UP" -ne 0 ]; then
+    echo "$SAIDA_UP"
+    parar "OAuth sandbox foi validado e as credenciais MERCHANT já estão gravadas. A célula não recarregou; confira 'docker compose ps pagamentos'. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
+  fi
+  echo "OAuth sandbox e leitura de produtos MERCHANT validados; credenciais gravadas fora do repositório e célula pagamentos recarregada. O token não foi exibido nem armazenado."
+  exit 0
+fi
+
+if [ "$MODO" = "preparar-reinstalacao" ]; then
+  [ "$(ler_de APPMAX_AUTH_URL)" = "$AUTH_SANDBOX/oauth2/token" ] \
+    || parar "a autenticação não está fixada no sandbox. Nada foi alterado."
+  [ "$(ler_de APPMAX_API_URL)" = "$API_SANDBOX" ] \
+    || parar "a API não está fixada no sandbox. Nada foi alterado."
+  consultar_servicos_rodando
+  printf '%s\n' "$RODANDO" | grep -qx catalogo \
+    || parar "o catálogo não está em execução. Nada foi alterado. Confira somente 'docker compose ps --services --status running'."
+  printf '%s\n' "$RODANDO" | grep -qx pagamentos \
+    || parar "pagamentos não está em execução. Nada foi alterado. Confira somente 'docker compose ps --services --status running'."
+
+  SITES_ATIVOS="$(docker_compose exec -T catalogo python manage.py shell -c \
+    "from apps.sites.models import Site
+for s in Site.objects.filter(active=True).order_by('host'):
+    print(s.id)" 2>/dev/null)" \
+    || parar "não consegui confirmar os sites ativos no catálogo; nenhuma rotação foi solicitada. Confira somente 'docker compose ps --services --status running'."
+  SITES_ATIVOS="$(printf '%s\n' "$SITES_ATIVOS" | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}$' || true)"
+  [ -n "$SITES_ATIVOS" ] \
+    || parar "o catálogo não confirmou site ativo algum. Nada foi alterado."
+
+  CODIGO_ROTACAO="$(cat <<'PYTHON'
+import os
+import sys
+import uuid
+from django.conf import settings
+from django.db import transaction
+from pagamentos.core.models import InstalacaoAppmax
+
+sites_ativos = {linha.strip() for linha in sys.stdin if linha.strip()}
+configuracoes = settings.APPMAX_INSTALACOES
+if not isinstance(configuracoes, dict) or len(configuracoes) != 1: print("CONFIGURACAO_AMBIGUA"); raise SystemExit(20)
+app_id, configuracao = next(iter(configuracoes.items()))
+alias = configuracao.get("alias") if isinstance(configuracao, dict) else None
+sites = configuracao.get("sites") if isinstance(configuracao, dict) else None
+if not isinstance(alias, str) or not alias.strip() or not isinstance(sites, list) or not sites: print("SITE_NAO_AUTORIZADO"); raise SystemExit(21)
+sites = [str(site) for site in sites]
+if len(set(sites)) != len(sites) or not set(sites).issubset(sites_ativos): print("SITE_NAO_AUTORIZADO"); raise SystemExit(21)
+
+with transaction.atomic():
+    instalacoes = list(InstalacaoAppmax.objects.select_for_update().filter(app_id=app_id))
+    if len(instalacoes) != 1: print("INSTALACAO_AUSENTE_OU_AMBIGUA"); raise SystemExit(22)
+    instalacao = instalacoes[0]
+    if instalacao.alias != alias or not isinstance(instalacao.platform_site_ids, list) or len(instalacao.platform_site_ids) != len(sites) or set(instalacao.platform_site_ids) != set(sites): print("SITE_NAO_AUTORIZADO"); raise SystemExit(21)
+    if settings.APPMAX_AUTH_URL != "https://auth.sandboxappmax.com.br/oauth2/token": print("AUTH_FORA_SANDBOX"); raise SystemExit(23)
+    if settings.APPMAX_API_URL != "https://api.sandboxappmax.com.br": print("API_FORA_SANDBOX"); raise SystemExit(24)
+    if os.environ.get("APPMAX_CARD_ENABLED_SITES", "").strip() or getattr(settings, "APPMAX_CARD_ENABLED_SITES", ()): print("CARTAO_ATIVO"); raise SystemExit(25)
+    instalacao.external_id = uuid.uuid4()
+    instalacao.save(update_fields=["external_id"])
+print("ROTACAO_SANDBOX_OK")
+PYTHON
+  )"
+  ROTACAO_SAIDA=""
+  if ROTACAO_SAIDA="$(printf '%s\n' "$SITES_ATIVOS" | docker_compose exec -T pagamentos python manage.py shell -c "$CODIGO_ROTACAO" 2>/dev/null)"; then
+    [ "$ROTACAO_SAIDA" = "ROTACAO_SANDBOX_OK" ] \
+      || parar "a consulta privada não confirmou a rotação. Não execute novamente; mantenha o cartão desligado e peça conferência do estado antes de nova tentativa."
+  else
+    case "$ROTACAO_SAIDA" in
+      CONFIGURACAO_AMBIGUA) parar "há mais de uma configuração Appmax e não escolhi uma loja. Nada foi alterado." ;;
+      SITE_NAO_AUTORIZADO) parar "a instalação existente não corresponde a um site ativo autorizado. Nada foi alterado." ;;
+      INSTALACAO_AUSENTE_OU_AMBIGUA) parar "não encontrei uma instalação existente única. Nada foi alterado." ;;
+      AUTH_FORA_SANDBOX) parar "a autenticação do processo pagamentos não está fixada no sandbox. Nada foi alterado." ;;
+      API_FORA_SANDBOX) parar "a API do processo pagamentos não está fixada no sandbox. Nada foi alterado." ;;
+      CARTAO_ATIVO) parar "há sites com cobrança Appmax habilitada no processo pagamentos. Nada foi alterado." ;;
+      *) parar "não consegui confirmar se o identificador foi trocado. Não execute novamente; mantenha o cartão desligado e peça conferência do estado antes de nova tentativa." ;;
+    esac
+  fi
+  echo "preparação de reinstalação sandbox concluída; finalize consentimento e OAuth MERCHANT; cartão permanece desligado"
+  exit 0
+fi
+
+AUTH_ATUAL="$(ler_de APPMAX_AUTH_URL)"
+API_ATUAL="$(ler_de APPMAX_API_URL)"
+[ -z "$AUTH_ATUAL" ] || [ "$AUTH_ATUAL" = "$AUTH_SANDBOX/oauth2/token" ] \
+  || parar "o env já aponta a Appmax para outro endereço de autenticação. Este roteiro não substitui configuração existente. Nada foi alterado."
+[ -z "$API_ATUAL" ] || [ "$API_ATUAL" = "$API_SANDBOX" ] \
+  || parar "o env já aponta a Appmax para outra API. Este roteiro não substitui configuração existente. Nada foi alterado."
+
+consultar_servicos_rodando
 printf '%s\n' "$RODANDO" | grep -qx catalogo \
-  || parar "o serviço 'catalogo' não está rodando, e é ele quem sabe o número interno do site. Suba a plataforma (cd $RAIZ && docker compose up -d) e cole a minha linha de novo. Nada foi alterado."
+  || parar "o serviço 'catalogo' não aparece na lista de serviços em execução, e é ele quem sabe o número interno do site. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
 printf '%s\n' "$RODANDO" | grep -qx pagamentos \
-  || parar "o serviço 'pagamentos' não está rodando, e é ele quem atende a Appmax. Suba a plataforma (cd $RAIZ && docker compose up -d) e cole a minha linha de novo. Nada foi alterado."
+  || parar "o serviço 'pagamentos' não aparece na lista de serviços em execução, e é ele quem atende a Appmax. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
 
 # -----------------------------------------------------------------------------
 # 2. QUAL SITE. Perguntado ao CATÁLOGO, que é onde dado de site mora.
@@ -89,7 +353,7 @@ printf '%s\n' "$RODANDO" | grep -qx pagamentos \
 #    consegui perguntar" quando o problema é outro (`armadilhas/240`).
 # -----------------------------------------------------------------------------
 echo "== 1/4: descobrindo o site no catálogo =="
-BRUTO="$(docker compose exec -T catalogo python manage.py shell -c \
+BRUTO="$(docker_compose exec -T catalogo python manage.py shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}\t{s.name}')" 2>/dev/null)" \
@@ -124,10 +388,6 @@ echo "  site .............. $SITE_HOST"
 echo "  número interno .... $SITE_ID"
 echo
 
-ler_de() {  # chave. Devolve o valor limpo, sem comentário nem espaços em volta.
-  grep "^$1=" "$ENV_PAGAMENTOS" 2>/dev/null | head -1 | cut -d= -f2- \
-    | tr -d '\r' | sed 's/[[:space:]]*#.*$//; s/^[[:space:]]*//; s/[[:space:]]*$//'
-}
 
 echo "== estado ANTES =="
 if [ -n "$(ler_de APPMAX_INSTALACOES)" ]; then
@@ -143,10 +403,9 @@ echo
 #    depois o par de credenciais, invisível.
 # -----------------------------------------------------------------------------
 echo "== 2/4: as perguntas =="
-echo "São seis perguntas: o número do nosso aplicativo, o nome com que a loja"
-echo "se apresenta, os dois endereços da API da Appmax, e o par de credenciais."
-echo "As quatro primeiras aparecem enquanto você digita, porque não são segredo."
-echo "As duas últimas não aparecem."
+echo "São quatro perguntas: o número do nosso aplicativo, o nome da loja e o par"
+echo "de credenciais do APP. Os endereços ficam fixos no sandbox."
+echo "As duas credenciais não aparecem enquanto você digita."
 echo
 
 printf 'Qual o app_id do nosso aplicativo? (só números; Enter usa 1888, o da Meshcraft) '
@@ -169,29 +428,6 @@ case "$ALIAS" in
   *[\"\\]*) parar "o nome da loja não pode ter aspas nem barra invertida: esses dois caracteres quebrariam a configuração por dentro e a porta voltaria a recusar tudo. Escreva o nome sem eles. Nada foi alterado." ;;
 esac
 
-perguntar_endereco() {  # rótulo, chave no env. Ecoa o valor atual e aceita Enter.
-  local atual
-  atual="$(ler_de "$2")"
-  if [ -n "$atual" ]; then
-    printf '%s (Enter mantém %s) ' "$1" "$atual"
-  else
-    printf '%s ' "$1"
-  fi
-  read -r RESPOSTA
-  RESPOSTA="$(printf '%s' "$RESPOSTA" | tr -d '[:space:]')"
-  [ -n "$RESPOSTA" ] || RESPOSTA="$atual"
-  case "$RESPOSTA" in
-    https://?*) : ;;
-    "") parar "você não respondeu, e não há nada gravado para eu manter. Copie o endereço da documentação da Appmax (docs.appmax.com.br, na parte de autenticação) e cole aqui. Nada foi alterado." ;;
-    *) parar "'$RESPOSTA' não parece um endereço: ele começa com https:// e vem inteiro, sem barra no fim. Nada foi alterado." ;;
-  esac
-}
-
-perguntar_endereco 'Endereço de autenticação da API:' APPMAX_AUTH_URL
-AUTH_URL="$RESPOSTA"
-perguntar_endereco 'Endereço base da API:' APPMAX_API_URL
-API_URL="$RESPOSTA"
-echo
 
 echo "Agora o par de credenciais do aplicativo. Os dois são segredo, então NADA"
 echo "vai aparecer na tela enquanto você cola. Isso é normal."
@@ -217,7 +453,7 @@ conferir_credencial "$CLIENT_ID" "client_id"
 conferir_credencial "$SEGREDO" "client_secret"
 
 # -----------------------------------------------------------------------------
-# 4. GRAVAR, com cópia do arquivo antes e só as cinco linhas mudando.
+# 4. GRAVAR, com cópia do arquivo antes e só as chaves deste modo mudando.
 #
 #    A escrita é feita AQUI DENTRO, sem `sed`, sem `awk` e sem arquivo
 #    temporário: o valor nunca vira argumento de outro programa (que o `ps` de
@@ -264,8 +500,8 @@ gravar() {  # chave, valor
 }
 
 gravar APPMAX_INSTALACOES "{\"$APP_ID\":{\"alias\":\"$ALIAS\",\"sites\":[\"$SITE_ID\"]}}"
-gravar APPMAX_AUTH_URL "$AUTH_URL"
-gravar APPMAX_API_URL "$API_URL"
+gravar APPMAX_AUTH_URL "$AUTH_SANDBOX/oauth2/token"
+gravar APPMAX_API_URL "$API_SANDBOX"
 gravar APPMAX_APP_CLIENT_ID "$CLIENT_ID"
 gravar APPMAX_APP_CLIENT_SECRET "$SEGREDO"
 
@@ -287,7 +523,7 @@ echo "  cópia do env ...... $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA"
 #
 # JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as células à
 # tag :main do compose (RITOS §4). Só `pagamentos`, pelo nome.
-SAIDA_UP="$(docker compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
+SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
 CODIGO_UP=$?
 if [ "$CODIGO_UP" -ne 0 ]; then
   echo "$SAIDA_UP"
@@ -297,43 +533,14 @@ echo "  célula recarregada"
 echo
 
 # -----------------------------------------------------------------------------
-# 5. A PROVA, na tela. Uma chamada de verdade à porta de instalação, com o
-#    app_id que acabou de ser configurado, pelo mesmo endereço público que a
-#    Appmax usa. Ela é segura de repetir: a porta devolve sempre o MESMO
-#    external_id para o mesmo app_id, e é justamente isso que a Appmax exige.
-#    Nada de segredo entra nesta chamada nem sai nesta tela.
+# 5. Nenhuma chamada pública é feita aqui. A Appmax envia o health check à URL
+#    de instalação durante o fluxo real. Um HTTP 200 nessa etapa não valida
+#    OAuth MERCHANT; essa validação é um comando separado após a instalação.
 # -----------------------------------------------------------------------------
-echo "== 4/4: batendo na porta de instalação =="
 ROTA="https://$SITE_HOST/api/pagamentos/appmax/instalacao"
-echo "  $ROTA"
-RESPOSTA_HTTP="$(curl -sS -m 20 -w '\n%{http_code}' -X POST \
-  -H 'Content-Type: application/json' \
-  --data "{\"app_id\":\"$APP_ID\"}" \
-  "$ROTA" 2>&1)" \
-  || parar "não consegui falar com $ROTA de dentro desta máquina. O env JÁ está gravado e correto, e NÃO é para colar as credenciais de novo. Confira se o site responde (curl -I https://$SITE_HOST) e mande esta tela ao agente."
-
-CODIGO="$(printf '%s\n' "$RESPOSTA_HTTP" | tail -n 1 | tr -d '[:space:]')"
-CORPO="$(printf '%s\n' "$RESPOSTA_HTTP" | sed '$d')"
-echo "  HTTP $CODIGO"
-echo "  $CORPO"
-echo
-
-case "$CODIGO" in
-  200)
-    echo "== PRONTO =="
-    echo "A porta que recusava a Appmax passou a aceitar. O 'external_id' aí em"
-    echo "cima é o nosso número desta instalação: ele nunca muda, e é o mesmo que"
-    echo "a Appmax vai receber quando instalar o aplicativo de verdade."
-    echo
-    echo "O que fazer agora: volte ao painel da Appmax e instale o aplicativo na"
-    echo "sua loja. Se ela pedir o endereço de instalação, é este mesmo:"
-    echo "  $ROTA"
-    echo
-    echo "Lembre: nenhuma cobrança nova no cartão sai enquanto"
-    echo "APPMAX_CARD_ENABLED_SITES estiver vazia, e este comando não encostou"
-    echo "nela. Ligar a venda no cartão é outra decisão, sua."
-    ;;
-  *)
-    parar "gravei tudo e recarreguei a célula, mas a porta respondeu '$CODIGO' em vez de aceitar. O env JÁ está gravado e NÃO é para colar as credenciais de novo. O caso mais comum é o app_id: confira no painel da Appmax se o número do nosso aplicativo é mesmo $APP_ID e, se não for, rode esta linha outra vez com o número certo. Se for, mande esta tela ao agente."
-    ;;
-esac
+echo "== CONFIGURAÇÃO DE INSTALAÇÃO PREPARADA =="
+echo "App $APP_ID associado a $SITE_HOST. Esta execução não chamou a rota pública."
+echo "A Appmax fará o health check ao concluir a instalação sandbox: $ROTA"
+echo "HTTP 200 nessa etapa não comprova OAuth MERCHANT. Depois da instalação, rode:"
+echo "  bash /tmp/appmax.sh --oauth-merchant"
+echo "Esse comando valida o par MERCHANT no OAuth sandbox antes de guardá-lo."

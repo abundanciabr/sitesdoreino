@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-104533-TAR-605-explicada",
+  "tarefa": "TAR-605",
+  "evento": "explicada",
+  "quando": "2026-09-22T10:45:33+00:00",
+  "quem": "codex:remover-radio-cli:2026-09-22",
+  "o_que_e": "O canal de mensagens encerrado pelo dono ainda recebe avisos automáticos quando uma tarefa muda.",
+  "o_que_muda": "A fila continua registrando tarefas e acontecimentos sem enviar mensagens para esse canal.",
+  "exemplo": "Criar uma tarefa grava o pedido e sua explicação sem tentar falar com outro servidor.",
+  "importancia": 70
+}

@@ -1,0 +1,19 @@
+{
+  "arquivo": "655-permitir-retomar-pagamento-de-cartao-apos-recusa",
+  "id": "TAR-655",
+  "titulo": "Permitir retomar pagamento de cartão após recusa",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cartão recusado aceita nova confirmação sem alterar o snapshot; aprovação posterior promove recusado para pago; recusa tardia ou duplicada nunca rebaixa pago; Pix e expirado permanecem iguais; isolamento por site e atomicidade de FatoAplicado/Order provados; make ci e freeze passam.",
+  "despacho": "Ajuste somente services/checkout/apps/core/api.py na regra de estado de confirm_order_card, services/checkout/apps/pedidos/management/commands/consume_eventos.py e testes checkout focais. Permita nova confirmação de pedido cartão recusado sem alterar snapshot, valor ou site, e sem atualizar status pela resposta síncrona. No consumer, aprovação pode promover AGUARDANDO ou RECUSADO para PAGO; recusa e expiração só saem de AGUARDANDO, sem rebaixar pedido pago. Preserve Pix, estados expirado, contratos v1/v2 e FatoAplicado. Prove recusa seguida de aprovação, recusa tardia após aprovação, duplicatas, site errado, rollback da transação, retry de cartão recusado, recusas de pago/Pix, snapshot imutável e regressão Pix. Rode provas focais, mutação quando aplicável e make ci/freeze. Um único PR, sem cobrança real.",
+  "origem": "Mandato do mantenedor: Fase 1 do checkout, sessão de 22/09/2026; API checkout, domínio e consumidor de eventos, preservando Pix.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

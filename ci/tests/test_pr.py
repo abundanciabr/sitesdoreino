@@ -162,6 +162,8 @@ def test_o_rito_inteiro_acontece_na_ordem(tmp_path, capsys):
 
     assert final.startswith("PR 1210 aberto com recibo")
     assert URL_DO_PR in final
+    assert "python ci/esperar.py --checks 1210 --so-desfecho" in final
+    assert "A sessão encerra aqui" not in final
     saida = capsys.readouterr().out
     assert saida.count("PASS") >= 4
     assert saida.strip().splitlines()[-1] == final
@@ -339,6 +341,35 @@ def test_continuar_com_o_registro_ja_embarcado_nao_pede_outro_numero(tmp_path):
 
     assert not dub.pediu("reservar.py numero registro")
     assert len(list((raiz / "painel" / "registros").glob("*.js"))) == 1
+
+
+def test_push_falha_para_ate_retomada_explicita_com_continuar(tmp_path):
+    raiz = bancada(tmp_path)
+    primeira = Duble(RESPOSTAS_FELIZES)
+    primeira.explode_em = 'git push -u origin'
+
+    with pytest.raises(pr.ErroDeInstrumentacao):
+        pr.abrir(raiz, pedido(raiz), rodar=primeira, hoje=HOJE)
+
+    assert primeira.pediu('git commit -F')
+    assert primeira.pediu('pytest ci/tests')
+    assert primeira.pediu('git push -u origin')
+    assert not primeira.pediu('gh pr create')
+    assert not list((raiz / 'painel' / 'registros').glob('*.js'))
+
+    segunda = Duble({
+        **RESPOSTAS_FELIZES,
+        'status --porcelain': '\n',
+        'diff --cached --name-only': '',
+        'gh pr list': '[]\n',
+    })
+    final = pr.abrir(raiz, pedido(raiz, continuar=True), rodar=segunda, hoje=HOJE)
+
+    assert '1210' in final
+    assert not segunda.pediu('git commit -F')
+    assert segunda.pediu('git push -u origin')
+    assert segunda.pediu('gh pr create')
+    assert len(list((raiz / 'painel' / 'registros').glob('*.js'))) == 1
 
 
 # ------------------------------------------------------- (d) o clone principal --
@@ -616,7 +647,7 @@ def _acoes_da_fila(dub):
 
 def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
     """O "feito" viaja na entrega: um PR de entrega submete E fecha."""
-    # guarda: ci/pr.py:560
+    # guarda: ci/pr.py:564
     raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [])
     dub = Duble()
     pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
@@ -625,13 +656,9 @@ def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch)
     assert fechamento[-2:] == ['--pr', URL_DO_PR]
 
 
-def test_continuar_nao_duplica_o_feito_e_segue_atualizando_a_submissao(tmp_path, monkeypatch):
-    """A conclusão desta entrega não congela a submissão nem se repete.
-
-    O guarda antigo (`if not finais`) parava de chamar a fila no primeiro
-    `--continuar`, e a submissão ficava presa na revisão de estreia.
-    """
-    # guarda: ci/pr.py:547
+def test_continuar_preserva_a_conclusao_sem_criar_evento_posterior(tmp_path, monkeypatch):
+    """Uma revisão nova do mesmo PR não escreve depois do evento terminal."""
+    # guarda: ci/pr.py:556
     evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR}
     caminho_conclusao = 'fila/eventos/concluida.json'
     raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
@@ -639,7 +666,7 @@ def test_continuar_nao_duplica_o_feito_e_segue_atualizando_a_submissao(tmp_path,
     dub = Duble()
     arquivos = pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
     assert arquivos == [caminho_conclusao]
-    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+    assert _acoes_da_fila(dub) == []
 
 
 def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch):

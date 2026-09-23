@@ -11,7 +11,10 @@
 > (`wt-<celula>-<tarefa>`), seu despacho já cita o que você precisa — mas a
 > §2 e a §9 abaixo valem para você também.
 
-Desde 12/09/2026 a casa opera com a tríade de IAs, em papéis fixos (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code é a maestro (decide cada achado, despacha a tarefa na fila com o brief roteado, executa o que é cirúrgico com as próprias mãos e despacha sub-agente construtor nas frentes paralelas, revisa PR crítico e publica o atestado; nunca mergeia, a pista mergeia); Codex é o executor (um PR por tarefa, com evento na fila e registro no livro pelo `make pr`; nunca pergunta ao mantenedor, devolve a dúvida à maestro); Antigravity é a sentinela (escreve proposta medida contra `origin/main` e verifica cada entrega alheia depois do merge; nunca edita código ou lei). Pedido colado no Claude Code vira tarefas na fila para o Codex; pedido colado no Codex é executado como um despacho; só a maestro pergunta ao mantenedor.
+A tríade de papéis fixos foi revogada em 20/09/2026, como registra
+`docs/decisoes/DECISAO-triade-de-ias.md`. A sessão que recebeu o pedido
+responde pela execução e pergunta ao mantenedor quando falta uma decisão
+exclusiva dele. O subagente devolve a dúvida à sessão responsável.
 
 ## 0. O que é este projeto, em 1 parágrafo
 
@@ -29,7 +32,7 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 |---|---|---|
 | **`ARMADILHAS.md`** | **Sempre, primeiro** — é curto: a regra de uso + a partida rápida (§2). | Explica o contexto direcionado e o aprofundamento. Desde 23/08/2026 o conteúdo é **uma entrada por arquivo** em `armadilhas/`, não um monólito. |
 | **`armadilhas/INDICE.md`** | **Para aprofundamento após o contexto direcionado.** | Uma linha por armadilha, com a mensagem de erro crua. Ctrl+F pelo seu erro e **abra só a entrada que casar** — nunca a pasta inteira. |
-| `ARMADILHAS-OPERACAO.md` | A maestro (Claude Code), a sentinela (Antigravity) e o mantenedor; o executor recebe só o brief. | §1 o que só o mantenedor resolve · como se mergeia (§5.8–§5.9) · painéis (§7.1–§7.4) · §9 dívidas abertas. |
+| `ARMADILHAS-OPERACAO.md` | A sessão responsável pela entrega; o subagente recebe o recorte do brief. | §1 o que só o mantenedor resolve · como se mergeia (§5.8–§5.9) · painéis (§7.1–§7.4) · §9 dívidas abertas. |
 | `docs/historico/RESOLVIDAS.md` | Só quando precisar do histórico de um item já encerrado. | Armadilhas resolvidas — fora da dieta de um despacho normal. |
 | `CLAUDE.md` | Sempre (Claude Code lê sozinho; outras ferramentas, leia à mão). | Instruções de operação específicas deste harness — painel obrigatório, etc. |
 | `CONSTITUICAO.md` | Antes de qualquer código. | As leis que não se negociam (4 muralhas, escada da imposição). |
@@ -50,8 +53,9 @@ este arquivo → `ARMADILHAS.md` (§2 abertura e contexto direcionado) →
 `docs/decisoes/RETROSPECTIVA-FASE-D.md` (os 8 padrões — leitura curta, evita
 repetir a CATEGORIA de erro que o catálogo já cobre caso a caso) →
 `ARMADILHAS-OPERACAO.md` §1 → `CONSTITUICAO.md` → `RITOS.md` §1 →
-se você é a maestro, pergunte ao mantenedor qual é a tarefa; se você é um despacho, devolva a dúvida à maestro; ou veja `git log`/`gh pr list` para inferir
-onde o projeto parou.
+se você recebeu o pedido, pergunte ao mantenedor qual é a tarefa; se você é
+subagente, devolva a dúvida à sessão responsável. Use `git log` e `gh pr list`
+para conferir o trabalho em andamento, sem inferir uma ordem de serviço.
 
 ## 2. Estado do projeto (fato registrado em 21/08/2026 — **verifique antes de confiar**)
 
@@ -95,9 +99,11 @@ trabalho que já existe.
 **Proteção e integração:** o estado histórico acima não autoriza operações.
 RITOS.md §2 registra a proteção da `main` e o comando para conferir as regras
 no servidor. A emenda de 29/08/2026 da CONSTITUICAO Lei 4 atribui o merge à
-pista: a maestro publica o atestado e pede pouso com `python ci/mergear.py <N> --pousar`; a pista mergeia (check pendente não impede o pedido, a pista aguarda); `--confirmo` é
-reservado à pista. Siga RITOS.md §2 para os checks, recibo e encaminhamento,
-e CLAUDE.md para o veredito do deploy. Falha ao consultar não é aprovação.
+pista: o despacho mede os checks e aciona a pista com `python ci/esperar.py
+--checks <N> --teto 20 --e-pousar`; a pista mergeia (check pendente não impede
+o encaminhamento, a pista aguarda); `--confirmo` é reservado à pista. O mesmo
+despacho confirma `state,mergeCommit` e segue a próxima frente. Siga RITOS.md
+§2 para checks, recibo e encaminhamento. Falha ao consultar não é aprovação.
 
 ## 3. As 8 células
 
@@ -118,9 +124,9 @@ exigindo mandato do despacho e anúncio nominal dos merges observados.
 
 ## 4. Como operar uma sessão (RITOS.md §1, resumo executável)
 
-> **Vários despachos em paralelo?** A sessão-maestro (janela raiz) rege pelo
-> `RUNBOOK-LOTES.md` — este §4 descreve UMA sessão de célula; o runbook descreve
-> como N delas rodam juntas e como a janela de merge fecha o lote.
+> **Vários trabalhos em paralelo?** A sessão responsável coordena alvos
+> independentes pelo `RUNBOOK-LOTES.md`. Este §4 descreve uma sessão de célula;
+> cada bancada valida e entrega seu próprio resultado.
 
 ```bash
 make sessao CELULA=<celula> TAREFA=<slug>
@@ -228,14 +234,15 @@ próprio bug que `ci/contract_freeze.py` foi reescrito para eliminar
 
 1. Este arquivo, inteiro.
 2. `ARMADILHAS.md` §2 (abertura e contexto direcionado); abra as origens
-   recuperadas e citadas no brief; `ARMADILHAS-OPERACAO.md` §1 se for maestro
-   de lote ou for mergear (o que só o humano resolve).
+   recuperadas e citadas no brief; `ARMADILHAS-OPERACAO.md` §1 quando
+   a tarefa exigir uma decisão exclusiva do mantenedor.
 3. Se a tarefa já é conhecida: `constituicoes/AGENTS.<celula>.md` +
    `services/<celula>/LICOES.md` (se existir).
 4. Confira o baseline emitido pela abertura ANTES de tocar qualquer arquivo. Vermelho ⇒
    pare e reporte.
 5. Se não há tarefa definida ainda: rode os comandos da §2 acima para saber
-   de fato onde o projeto parou; a maestro pergunta ao mantenedor, o despacho devolve a dúvida à maestro; nunca assuma.
+   onde o projeto parou. A sessão que recebeu o pedido pergunta ao mantenedor;
+   o subagente devolve a dúvida à sessão responsável.
 
 ## 10. Ao terminar uma tarefa
 

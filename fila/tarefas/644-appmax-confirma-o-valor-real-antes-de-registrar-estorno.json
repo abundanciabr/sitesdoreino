@@ -1,0 +1,21 @@
+{
+  "arquivo": "644-appmax-confirma-o-valor-real-antes-de-registrar-estorno",
+  "id": "TAR-644",
+  "titulo": "Appmax confirma o valor real antes de registrar estorno",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-557"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Documentação e resposta oficial autenticada de sandbox provam o valor realmente devolvido e a identidade; testes de devolução parcial e total, resposta sem valor, identidade incompatível, idempotência e outbox; produtor v2 aplica L0-S e suite pagamentos passa.",
+  "despacho": "Celula pagamentos. Implemente o produtor autenticado de pagamento.estornado.v2 e a traducao do resultado de estorno ou contestacao a partir de resposta autenticada Appmax.\n\nEsta tarefa substitui o escopo tecnico da TAR-641, cuja conclusao automatica foi indevida; ela nao altera nem reescreve o historico da TAR-554 cancelada. Depende da TAR-557. A decisao L0-S do plano mestre ja define suspensao imediata do acesso para estorno ou contestacao e proibe reabertura automatica por aprovacao posterior. Nao decida parcelamento, juros, estorno ou politica de acesso.\n\nPortao obrigatorio antes de implementar tradutor ou produtor: obtenha em sandbox prova de documentacao oficial e resposta de consulta autenticada que exponha o valor realmente devolvido e identidade suficiente para localizar o pedido/tentativa. GET /v1/orders/{order_id} documentado mostra total pago, amounts e refunded_at, sem valor efetivamente devolvido. POST /v1/orders/refund-request aceita solicitacao total ou parcial, mas solicitar estorno nao prova quanto foi efetivamente devolvido. Nao derive amount_cents do valor original nem use corpo de webhook sem autenticacao como prova.\n\nDepois da instalacao merchant no sandbox, o agente tecnico deve executar compra e estorno de teste, consultar a API autenticada e guardar resposta sanitizada. Se a consulta do pedido nao trouxer valor e identidade, localizar e testar endpoint oficial autenticado que os forneca. Sem essa evidencia, mantenha a tarefa bloqueada e nao implemente tradutor.\n\nCom o portao provado, grave o efeito uma vez via tentativa e outbox existentes. Webhook e worker ficam fora do escopo, pertencem a Fase 2; tela tambem nao entra.\n\nEvidencia para concluir: documentacao oficial e resposta autenticada sanitizada mostrando valor realmente devolvido e identidade suficiente; testes para valor parcial e total, resposta sem montante, identidade divergente, idempotencia e outbox; produtor v2 aplica L0-S; suite da celula pagamentos verde.",
+  "origem": "Substitui o escopo tecnico da TAR-641, cuja conclusao automatica foi indevida; origem historica cancelada TAR-554, sem altera-la",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,6 +1,7 @@
 """Eventos nativos do Codex: guardas exercitados pela borda pública."""
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,34 @@ import muralha_do_travessao_na_escrita as texto
 import economia_da_fabrica as economia
 
 RAIZ = Path(__file__).resolve().parents[2]
+
+
+def test_despacho_codex_distingue_sessao_direta_de_subagente():
+    ficha = tomllib.loads(
+        (RAIZ / ".codex/agents/despacho.toml").read_text(encoding="utf-8")
+    )["developer_instructions"]
+    texto = " ".join(ficha.split())
+    assert "sessão responsável pede ao mantenedor" in texto
+    assert "subagente não pergunta ao mantenedor" in texto.lower()
+    assert "Você não fala com o mantenedor" not in ficha
+
+
+def test_playbook_nao_reserva_pergunta_a_outra_ia():
+    texto = " ".join((RAIZ / "PLAYBOOK.md").read_text(encoding="utf-8").split())
+    assert "A sessão que recebeu o pedido pergunta ao mantenedor" in texto
+    assert "só a maestro pergunta ao mantenedor" not in texto
+
+
+def test_guias_de_entrada_nao_bloqueiam_sessao_direta():
+    for caminho in (
+        "docs/guia-mantenedor.md",
+        "docs/despachos/DESPACHO-PARTE-DO-SITE.md",
+        "docs/decisoes/PROMPT-REGRAS-DE-COOPERACAO-E-EFICIENCIA-DAS-IAS.md",
+    ):
+        texto = (RAIZ / caminho).read_text(encoding="utf-8")
+        assert "sessão responsável" in texto, caminho
+        assert "devolve a dúvida à maestro" not in texto, caminho
+        assert "O executor não pede decisão ao mantenedor" not in texto, caminho
 
 @pytest.fixture
 def bancada(tmp_path):
@@ -75,7 +104,7 @@ def test_modelos_codex_sao_explicitos(monkeypatch, bancada):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
     brief = economia.compilar_brief(bancada, objetivo="registrar", tipo="escrita", celula="ci", alvos=["ci/a.py"], armadilhas=[])
     assert "modelo_recomendado: gpt-5.6-sol" in brief
-    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-6-astra"
+    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-5.6-luna"
 
 def test_auditoria_codex_nao_aprova_so_as_fichas_claude(monkeypatch, bancada):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")

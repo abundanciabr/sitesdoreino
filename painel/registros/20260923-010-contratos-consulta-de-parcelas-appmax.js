@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-010-contratos-consulta-de-parcelas-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "contratos: consulta de parcelas Appmax",
+  detalhe: "Publica contratos aditivos das parcelas calculadas no servidor; as implementações seguem em PRs próprios.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1977. Validação local: árvore e8683f985a0330c9eb5513cbb288b5f984b70bd6; commit 8937acd99125f82a36718e8aba77ee01e888365e; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-593",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
