@@ -41,7 +41,7 @@ def decidir(dados: dict) -> int:
     if evento == "PreToolUse":
         if ferramenta == "Monitor":
             return 2 if executar("muralha_da_espera.py", dados) else 0
-        return 0
+        return 2 if executar("muralha_pasta_compartilhada.py", dados) else 0
     if evento == "SessionStart":
         from economia_da_fabrica import auditar_fichas
         falhas = auditar_fichas(CI.parent)

@@ -54,6 +54,10 @@ o mantenedor disser que o artefato é interno, técnico ou obrigatório ao códi
 
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.
+Na primeira resposta de qualquer sessão que vá trabalhar no projeto, declare
+o caminho absoluto da pasta ativa. Se for
+`C:\Users\davia\abundanciabr\sitesdoreino`, pare: é a pasta antiga preservada.
+Use `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923` para trabalho novo.
 `python ci/sessao.py --celula <area> --tarefa <slug>` abre a bancada;
 sem serviço, acrescente `--sem-container`. Principal é somente leitura,
 salvas as operações permitidas na lei canônica.
