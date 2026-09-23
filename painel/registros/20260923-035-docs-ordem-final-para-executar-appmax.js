@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-035-docs-ordem-final-para-executar-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "docs: ordem final para executar Appmax",
+  detalhe: "O roteiro e o livro registram a ordem do mantenedor: continuar a primeira tarefa Appmax elegível sem desviar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2003. Validação local: árvore e7a406d8df5faddc712a7537b0c66ed401ec0956; commit 9e8e6845f05597f09bb3b8b21386b4e6168cfae5; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-673",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
