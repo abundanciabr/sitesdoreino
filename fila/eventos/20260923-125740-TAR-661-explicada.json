@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-125740-TAR-661-explicada",
+  "tarefa": "TAR-661",
+  "evento": "explicada",
+  "quando": "2026-09-23T12:57:40+00:00",
+  "quem": "Mandato do mantenedor nesta sessão, 23/09/2026",
+  "o_que_e": "A regra exigia o editor mesmo quando o robo podia criar a pagina por migracao.",
+  "o_que_muda": "O robo escolhe um caminho autorizado e entrega a pagina publicada no site.",
+  "exemplo": "Sem navegador autenticado, o robo cria o documento novo por migracao e confere a URL publica.",
+  "importancia": 85
+}

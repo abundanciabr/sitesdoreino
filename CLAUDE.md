@@ -231,7 +231,7 @@ publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 
 ## O que você entrega para ele mora no site
 
-Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
+Entrega durável vai ao site: fatos em tela calculada, conteúdo em página.
 Documento recebido é ordem de serviço: inventarie, compare, abra fila e
 execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
@@ -239,9 +239,9 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 Pedido de manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
 explicação ou material para leitura do público tem como destino padrão o site.
-Crie, salve e publique pelo editor de `/admin/documentos/`, conferindo a URL
-que uma pessoa verá. Arquivo Markdown no repositório não conta como publicação
-e não é substituto aceito.
+Publique por qualquer caminho autorizado, inclusive editor ou migração de
+documento novo. Confira a URL pública; arquivo Markdown isolado não conta
+como publicação.
 
 O GitHub fica reservado ao que é necessário para o funcionamento do site,
 sistema ou projeto: código, templates, testes, contratos, configurações,
@@ -255,7 +255,8 @@ bloqueio em vez de mudar silenciosamente a entrega para o GitHub.
 
 ## Como trabalhar com o mantenedor
 
-Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
+Sempre PT-BR. Tudo aqui é feito por robôs: execute até a entrega. Ferramenta
+ausente exige outro caminho autorizado; ele entra só no insubstituível. Sem SSH da
 VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
 Toda proibição de perguntar, inclusive a do subagente, obriga a dizer no fecho
 o que vem depois.
