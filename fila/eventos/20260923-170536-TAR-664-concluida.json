@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-170536-TAR-664-concluida",
+  "tarefa": "TAR-664",
+  "evento": "concluida",
+  "quando": "2026-09-23T17:05:36+00:00",
+  "quem": "agent/ci/apagar-aviso-radio",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1994",
+  "verificado_em": "2026-09-23"
+}
