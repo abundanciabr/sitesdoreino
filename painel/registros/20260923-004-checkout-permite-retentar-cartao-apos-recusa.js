@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-004-checkout-permite-retentar-cartao-apos-recusa",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "checkout: permite retentar cartão após recusa",
+  detalhe: "O cartão aceita nova tentativa; somente aprovação de evento paga o pedido, sem rebaixamento tardio.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1974. Validação local: árvore a001ee16fc41ecadbf419d2bc0c6f4a1931dae21; commit ee1b06acfb5a29565d716f91604677161773087c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-655",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
