@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260923-021307-TAR-654-submetida",
+  "tarefa": "TAR-654",
+  "evento": "submetida",
+  "quando": "2026-09-23T02:13:07+00:00",
+  "quem": "agent/infra/appmax-reinstalacao-sandbox",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1973",
+  "revisao": "e2bfd0bbb12c13c8f6d5285133d0cf07da90ef22",
+  "arvore": "876e655d40b81bf12cd8bb6d9652744fc07ea25b"
+}

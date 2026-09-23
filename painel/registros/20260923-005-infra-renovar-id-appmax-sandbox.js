@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-005-infra-renovar-id-appmax-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "infra: renovar ID Appmax sandbox",
+  detalhe: "O modo privado renova somente o ID existente no sandbox e mantém o cartão desligado; consentimento e OAuth MERCHANT ainda faltam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1973. Validação local: árvore 876e655d40b81bf12cd8bb6d9652744fc07ea25b; commit e2bfd0bbb12c13c8f6d5285133d0cf07da90ef22; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-654",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
