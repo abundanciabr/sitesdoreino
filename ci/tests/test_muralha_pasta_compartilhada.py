@@ -107,6 +107,20 @@ def test_caminho_relativo_resolve_contra_o_cwd(reino):
     assert r.returncode == 2
 
 
+def test_marcador_de_pasta_antiga_recusa_edicao(reino):
+    principal, _, _ = reino
+    (principal / muralha.MARCADOR_DE_PASTA_ANTIGA).write_text(
+        "Use C:/Users/davia/abundanciabr/sitesdoreino-limpo-20260923.",
+        encoding="utf-8",
+    )
+
+    r = decidir("Write", {"file_path": str(principal / "novo.py")}, principal)
+
+    assert r.returncode == 2
+    assert "PASTA ANTIGA" in r.stderr
+    assert "sitesdoreino-limpo-20260923" in r.stderr
+
+
 # ---------- git que muda estado ----------
 
 @pytest.mark.parametrize("comando", [
@@ -144,6 +158,18 @@ def test_permite_git_de_estado_no_worktree(reino):
     _, irmao, _ = reino
     assert decidir("Bash", {"command": "git commit -m ok"}, irmao).returncode == 0
     assert decidir("Bash", {"command": "git rebase origin/main"}, irmao).returncode == 0
+
+
+def test_marcador_de_pasta_antiga_recusa_shell_inteiro(reino):
+    principal, _, _ = reino
+    (principal / muralha.MARCADOR_DE_PASTA_ANTIGA).write_text(
+        "Use a pasta nova.", encoding="utf-8"
+    )
+
+    r = decidir("PowerShell", {"command": "git status --short"}, principal)
+
+    assert r.returncode == 2
+    assert "PASTA ANTIGA" in r.stderr
 
 
 # ---------- exceções de espelho (voltar/atualizar a main) ----------
@@ -259,6 +285,20 @@ def test_aviso_aparece_no_principal_e_cala_no_worktree(reino):
     no_worktree = _aviso(irmao)
     assert no_worktree.returncode == 0
     assert no_worktree.stdout.strip() == ""
+
+
+def test_aviso_da_pasta_antiga_manda_parar_antes_do_trabalho(reino):
+    principal, _, _ = reino
+    (principal / muralha.MARCADOR_DE_PASTA_ANTIGA).write_text(
+        "Use C:/Users/davia/abundanciabr/sitesdoreino-limpo-20260923.",
+        encoding="utf-8",
+    )
+
+    r = _aviso(principal)
+
+    assert r.returncode == 0
+    assert "PASTA ANTIGA" in r.stdout
+    assert "declare o caminho absoluto" in r.stdout
 
 
 # ---------- o aviso mede a IDADE do espelho (TAR-045, armadilhas/148) ----------
@@ -411,10 +451,10 @@ def test_o_atraso_nao_e_medido_em_worktree(tmp_path):
 
 # ---------- a fiação: sem o hook no settings, a muralha é decoração ----------
 
-def test_settings_preserva_aviso_sem_rodar_muralha_por_acao():
+def test_settings_roda_muralha_no_aviso_e_nas_acoes_que_podem_trabalhar():
     fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))["hooks"]
     comandos = [h["command"] for e in fiacao["PreToolUse"] for h in e["hooks"]]
-    assert not any("muralha_pasta_compartilhada.py" in c for c in comandos)
+    assert any("muralha_pasta_compartilhada.py" in c for c in comandos)
     avisos = [h["command"] for e in fiacao["SessionStart"] for h in e["hooks"]]
     assert any("muralha_pasta_compartilhada.py" in c and "--aviso" in c for c in avisos)
 

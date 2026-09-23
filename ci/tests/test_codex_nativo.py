@@ -142,14 +142,25 @@ def test_dispatcher_fecha_entrada_nao_medida(entrada):
     assert "PAROU POR SEGURANÇA" in resultado.stderr
 
 @pytest.mark.parametrize("nome", ["apply_patch", "Edit", "Write", "Bash", "PowerShell"])
-@pytest.mark.parametrize("evento_hook", ["PreToolUse", "PostToolUse"])
-def test_acao_comum_nao_executa_scripts_nem_le_transcript(monkeypatch, nome, evento_hook):
+def test_acao_comum_roda_so_a_muralha_da_pasta(monkeypatch, nome):
     # guarda: ci/hook_codex.py:44
     import hook_codex
+    chamadas = []
+    def executar(script, dados):
+        chamadas.append(script)
+        return 0
+    monkeypatch.setattr(hook_codex, "executar", executar)
+    assert hook_codex.decidir({"hook_event_name": "PreToolUse", "tool_name": nome}) == 0
+    assert chamadas == ["muralha_pasta_compartilhada.py"]
+
+
+@pytest.mark.parametrize("nome", ["apply_patch", "Edit", "Write", "Bash", "PowerShell"])
+def test_post_tool_use_nao_executa_scripts_nem_le_transcript(monkeypatch, nome):
+    import hook_codex
     def proibido(*args, **kwargs):
-        pytest.fail("ação comum disparou processamento de hook")
+        pytest.fail("PostToolUse comum disparou processamento de hook")
     monkeypatch.setattr(hook_codex, "executar", proibido)
-    assert hook_codex.decidir({"hook_event_name": evento_hook, "tool_name": nome}) == 0
+    assert hook_codex.decidir({"hook_event_name": "PostToolUse", "tool_name": nome}) == 0
 
 
 def test_monitor_preserva_guarda_da_espera(monkeypatch):
@@ -170,8 +181,8 @@ def test_monitor_preserva_guarda_da_espera(monkeypatch):
 # só o Claude Code lê. Lista exata dos dois lados: gancho a mais não passa
 # despercebido, e gancho a menos reprova.
 GANCHOS_POR_ACAO = {
-    ".codex/hooks.json": ["Monitor"],
-    ".claude/settings.json": ["Monitor", "Agent|Workflow"],
+    ".codex/hooks.json": ["Bash|PowerShell|Edit|Write|NotebookEdit|apply_patch", "Monitor"],
+    ".claude/settings.json": ["Bash|PowerShell|Edit|Write|NotebookEdit|apply_patch", "Monitor", "Agent|Workflow"],
 }
 
 

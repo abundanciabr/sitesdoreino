@@ -1,0 +1,20 @@
+{
+  "arquivo": "673-os-robos-recebem-a-ordem-final-de-executar-o-plano-appmax",
+  "id": "TAR-673",
+  "titulo": "Os robôs recebem a ordem final de executar o plano Appmax",
+  "toca": [
+    "docs",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "O roteiro Appmax e o livro de ocorrências registram a ordem do mantenedor, e os verificadores do painel passam.",
+  "despacho": "Registrar no roteiro Appmax e no livro a ordem expressa do mantenedor para executar o plano aprovado, sem nova rodada de arquitetura ou desvio, preservando o relato sobre a perda de confiança.",
+  "origem": "Pedido direto do mantenedor nesta sessão em 23/09/2026",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
