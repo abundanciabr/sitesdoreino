@@ -114,7 +114,49 @@ EVENTOS_DE_ADIAMENTO_PROIBIDOS = (
 #     acrescentar, como em todo o resto desta casa.
 EXPLICADA = "explicada"
 
-EVENTOS_VALIDOS = EVENTOS_DE_CICLO + EVENTOS_TERMINAIS + (EXPLICADA, "submetida")
+CONTRATO_EXECUCAO = "contrato_execucao"
+DESCOBERTA = "descoberta"
+CHECKPOINT = "checkpoint"
+TENTATIVA_SEM_PROGRESSO = "tentativa_sem_progresso"
+EVENTOS_DE_EXECUCAO = (
+    CONTRATO_EXECUCAO,
+    DESCOBERTA,
+    CHECKPOINT,
+    TENTATIVA_SEM_PROGRESSO,
+)
+EVENTOS_VALIDOS = (
+    EVENTOS_DE_CICLO
+    + EVENTOS_TERMINAIS
+    + (EXPLICADA, "submetida")
+    + EVENTOS_DE_EXECUCAO
+)
+LIMITE_TENTATIVAS_SEM_PROGRESSO = int(
+    os.environ.get("FILA_LIMITE_TENTATIVAS_SEM_PROGRESSO", "3")
+)
+CLASSIFICACOES_DA_DESCOBERTA = {
+    "A": "bloqueio necessário",
+    "B": "regressão introduzida",
+    "C": "problema preexistente independente",
+    "D": "melhoria opcional",
+    "E": "mudança material de escopo",
+}
+CAMPOS_DO_CONTRATO_EXECUCAO = (
+    "plano",
+    "versao",
+    "objetivo",
+    "entregaveis",
+    "escopo_incluido",
+    "nao_objetivos",
+    "restricoes",
+    "decisoes_aprovadas",
+    "etapas",
+    "criterios_entrada",
+    "criterios_aceite",
+    "evidencias_exigidas",
+    "condicao_encerramento",
+    "limites_autonomia",
+    "acoes_do_mantenedor",
+)
 
 # Os quatro campos, e só eles. O contrato é fechado aqui porque a célula `admin`
 # o consome pelo `estados.json` que `listar --json` gera no build: campo novo
@@ -199,6 +241,22 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     # Só em `concluida` de tarefa da medição: a cadeia que provou a guarda da
     # armadilha da origem. Quem a confere é `problemas_da_cadeia_automatica`.
     "prova_da_guarda": dict,
+    # Eventos do protocolo de execução. Eles não mudam a coluna da tarefa: só
+    # preservam contrato, descoberta, retomada e ausência de progresso dentro
+    # da mesma fonte append-only da fila.
+    "contrato": dict,
+    "classificacao": str,
+    "criterio": str,
+    "encaminhamento": str,
+    "plano": str,
+    "ultimo_avanco": str,
+    "proxima_acao": str,
+    "verificacoes": list,
+    "contexto": dict,
+    "bloqueio": str,
+    "hipotese": str,
+    "resultado": str,
+    "tentativa": int,
 }
 
 # QUEM DESTRAVA UMA TAREFA PARADA — o campo que faltava (06/09/2026)
@@ -503,6 +561,167 @@ def problemas_da_explicacao(
     return problemas
 
 
+def _texto_nao_vazio(dados: dict, campo: str, nome: str, erros: list[str]) -> None:
+    if not str(dados.get(campo) or "").strip():
+        erros.append(f"{nome}: '{campo}' precisa ser texto não vazio")
+
+
+def problemas_do_contrato_execucao(contrato) -> list[str]:
+    problemas: list[str] = []
+    if not isinstance(contrato, dict):
+        return ["contrato precisa ser um objeto JSON"]
+    faltando = [campo for campo in CAMPOS_DO_CONTRATO_EXECUCAO if campo not in contrato]
+    if faltando:
+        problemas.append(
+            "contrato sem "
+            + ", ".join(repr(campo) for campo in faltando)
+            + " — o plano ativo precisa caber inteiro na tarefa"
+        )
+        return problemas
+    if not str(contrato.get("plano") or "").strip():
+        problemas.append("contrato.plano precisa identificar o plano")
+    if isinstance(contrato.get("versao"), bool) or not isinstance(
+        contrato.get("versao"), int
+    ) or contrato["versao"] < 1:
+        problemas.append("contrato.versao precisa ser inteiro positivo")
+    for campo in (
+        "objetivo",
+        "condicao_encerramento",
+        "limites_autonomia",
+        "acoes_do_mantenedor",
+    ):
+        if not str(contrato.get(campo) or "").strip():
+            problemas.append(f"contrato.{campo} precisa ser texto não vazio")
+    for campo in (
+        "entregaveis",
+        "escopo_incluido",
+        "nao_objetivos",
+        "restricoes",
+        "decisoes_aprovadas",
+        "etapas",
+        "criterios_entrada",
+        "criterios_aceite",
+        "evidencias_exigidas",
+    ):
+        valor = contrato.get(campo)
+        if not isinstance(valor, list) or not valor:
+            problemas.append(f"contrato.{campo} precisa ser lista não vazia")
+        elif not all(isinstance(item, str) and item.strip() for item in valor):
+            problemas.append(f"contrato.{campo} aceita só textos não vazios")
+    return problemas
+
+
+def _conferir_evento_de_execucao(nome: str, dados: dict, erros: list[str]) -> None:
+    tipo = dados.get("evento")
+    if tipo == CONTRATO_EXECUCAO:
+        problemas = problemas_do_contrato_execucao(dados.get("contrato"))
+        erros.extend(f"{nome}: {problema}" for problema in problemas)
+        return
+    if tipo == DESCOBERTA:
+        classificacao = dados.get("classificacao")
+        if classificacao not in CLASSIFICACOES_DA_DESCOBERTA:
+            erros.append(
+                f"{nome}: classificação precisa ser uma de "
+                + ", ".join(CLASSIFICACOES_DA_DESCOBERTA)
+            )
+        for campo in ("criterio", "evidencia", "detalhe", "encaminhamento"):
+            _texto_nao_vazio(dados, campo, nome, erros)
+        return
+    if tipo == CHECKPOINT:
+        for campo in ("plano", "ultimo_avanco", "proxima_acao"):
+            _texto_nao_vazio(dados, campo, nome, erros)
+        verificacoes = dados.get("verificacoes")
+        if not isinstance(verificacoes, list) or not verificacoes:
+            erros.append(f"{nome}: 'verificacoes' precisa ser lista não vazia")
+        elif not all(isinstance(item, str) and item.strip() for item in verificacoes):
+            erros.append(f"{nome}: 'verificacoes' aceita só textos não vazios")
+        return
+    if tipo == TENTATIVA_SEM_PROGRESSO:
+        for campo in ("bloqueio", "hipotese", "resultado"):
+            _texto_nao_vazio(dados, campo, nome, erros)
+        tentativa = dados.get("tentativa")
+        if isinstance(tentativa, bool) or not isinstance(tentativa, int) or tentativa < 1:
+            erros.append(f"{nome}: 'tentativa' precisa ser inteiro positivo")
+        return
+
+
+def _conferir_tentativas_sem_progresso(eventos: list[dict], erros: list[str]) -> None:
+    por_tarefa: dict[str, list[dict]] = {}
+    for evento in eventos:
+        if evento.get("tarefa"):
+            por_tarefa.setdefault(evento["tarefa"], []).append(evento)
+    for tid, cadeia in por_tarefa.items():
+        bloqueio_atual = ""
+        contagem = 0
+        for evento in cadeia:
+            if evento.get("evento") == TENTATIVA_SEM_PROGRESSO:
+                bloqueio = str(evento.get("bloqueio") or "").strip()
+                if bloqueio == bloqueio_atual:
+                    contagem += 1
+                else:
+                    bloqueio_atual = bloqueio
+                    contagem = 1
+                if contagem > LIMITE_TENTATIVAS_SEM_PROGRESSO:
+                    erros.append(
+                        f"{evento['arquivo']}: {tid} repetiu {contagem} tentativas "
+                        f"sem avanço no mesmo bloqueio. Registre checkpoint com "
+                        "mudança de abordagem ou bloqueie a tarefa com a menor "
+                        "ação que destrava."
+                    )
+            elif evento.get("evento") in (CHECKPOINT, "bloqueada", "devolvida"):
+                bloqueio_atual = ""
+                contagem = 0
+
+
+def resumo_da_execucao(eventos: list[dict], tid: str) -> dict:
+    cadeia = [e for e in _em_ordem(eventos) if e.get("tarefa") == tid]
+    contratos = [e for e in cadeia if e.get("evento") == CONTRATO_EXECUCAO]
+    checkpoints = [e for e in cadeia if e.get("evento") == CHECKPOINT]
+    descobertas = [e for e in cadeia if e.get("evento") == DESCOBERTA]
+    tentativas = [e for e in cadeia if e.get("evento") == TENTATIVA_SEM_PROGRESSO]
+    consecutivas = 0
+    bloqueio = ""
+    for evento in reversed(cadeia):
+        if evento.get("evento") != TENTATIVA_SEM_PROGRESSO:
+            break
+        atual = str(evento.get("bloqueio") or "").strip()
+        if not bloqueio:
+            bloqueio = atual
+        if atual != bloqueio:
+            break
+        consecutivas += 1
+    return {
+        "contrato": contratos[-1].get("contrato") if contratos else None,
+        "checkpoint": (
+            {
+                "plano": checkpoints[-1].get("plano"),
+                "ultimo_avanco": checkpoints[-1].get("ultimo_avanco"),
+                "proxima_acao": checkpoints[-1].get("proxima_acao"),
+                "verificacoes": checkpoints[-1].get("verificacoes"),
+                "quando": checkpoints[-1].get("quando"),
+                "quem": checkpoints[-1].get("quem"),
+            }
+            if checkpoints
+            else None
+        ),
+        "descobertas_abertas": [
+            {
+                "classificacao": e.get("classificacao"),
+                "tipo": CLASSIFICACOES_DA_DESCOBERTA.get(e.get("classificacao"), ""),
+                "detalhe": e.get("detalhe"),
+                "encaminhamento": e.get("encaminhamento"),
+            }
+            for e in descobertas
+        ],
+        "tentativas_sem_progresso": {
+            "limite": LIMITE_TENTATIVAS_SEM_PROGRESSO,
+            "consecutivas_no_mesmo_bloqueio": consecutivas,
+            "bloqueio": bloqueio,
+            "total": len(tentativas),
+        },
+    }
+
+
 def cartoes_do_placar(raiz: Path) -> set[str] | None:
     """Os nomes de `painel/cartoes/`. `None` quando a pasta não existe."""
     pasta = raiz / "painel" / "cartoes"
@@ -730,6 +949,8 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                         f"{nome}: {campo!r} só existe em evento 'explicada' — a "
                         f"explicação diz o que a tarefa É, e veio em '{tipo}'"
                     )
+        if tipo in EVENTOS_DE_EXECUCAO:
+            _conferir_evento_de_execucao(nome, dados, erros)
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
     _conferir_cadeias_de_submissao(eventos, erros)
@@ -751,6 +972,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             )
         elif ev["evento"] in EVENTOS_TERMINAIS:
             fim[tid] = ev["evento"]
+    _conferir_tentativas_sem_progresso(eventos, erros)
     return eventos
 
 
@@ -1493,6 +1715,7 @@ def montar_evento(
     explicacao: dict | None = None,
     agora: datetime | None = None,
     prova_da_guarda: dict | None = None,
+    extra: dict | None = None,
 ) -> dict:
     """O conteúdo de um evento, sem tocar no disco.
 
@@ -1507,7 +1730,9 @@ def montar_evento(
         "arquivo": stem,
         "tarefa": tid,
         "evento": evento,
-        "quando": agora.isoformat(timespec="seconds"),
+        "quando": agora.isoformat(
+            timespec="microseconds" if agora.microsecond else "seconds"
+        ),
         "quem": quem,
     }
     if detalhe:
@@ -1522,6 +1747,8 @@ def montar_evento(
         dados.update({c: explicacao[c] for c in CAMPOS_DA_EXPLICACAO})
     if prova_da_guarda:
         dados["prova_da_guarda"] = prova_da_guarda
+    if extra:
+        dados.update(extra)
     return dados
 
 
@@ -1537,14 +1764,32 @@ def _escrever_evento(
     explicacao: dict | None = None,
     agora: datetime | None = None,
     prova_da_guarda: dict | None = None,
+    extra: dict | None = None,
 ) -> Path:
     dados = montar_evento(
         tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao,
-        agora, prova_da_guarda,
+        agora, prova_da_guarda, extra,
     )
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
     caminho = pasta / f"{dados['arquivo']}.json"
+    if caminho.exists():
+        original = dados["arquivo"]
+        for contador in range(2, 100):
+            dados["arquivo"] = f"{original}-{contador}"
+            caminho = pasta / f"{dados['arquivo']}.json"
+            if not caminho.exists():
+                break
+        else:
+            dados["arquivo"] = original
+            caminho = pasta / f"{dados['arquivo']}.json"
+    if caminho.exists():
+        raise ErroDeInstrumentacao(
+            "evento da fila já existe",
+            f"O arquivo {caminho.relative_to(raiz)} já existe. "
+            "A fila é append-only; repita o comando para gerar outro instante, "
+            "sem sobrescrever história.",
+        )
     _escrever_json(caminho, dados)
     return caminho
 
@@ -2316,6 +2561,150 @@ def cmd_explicar(raiz: Path, args) -> int:
     return 0
 
 
+def _json_arquivo(caminho: str, campo: str) -> dict:
+    try:
+        dados = json.loads(Path(caminho).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as erro:
+        raise ErroDeInstrumentacao(
+            f"{campo} não pôde ser lido",
+            f"{erro}\nInforme um arquivo JSON válido.",
+        ) from erro
+    if not isinstance(dados, dict):
+        raise ErroDeInstrumentacao(
+            f"{campo} inválido",
+            "O conteúdo precisa ser um objeto JSON.",
+        )
+    return dados
+
+
+def cmd_contrato_execucao(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("contrato", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    contrato = _json_arquivo(args.arquivo, "--arquivo")
+    problemas = problemas_do_contrato_execucao(contrato)
+    if problemas:
+        for problema in problemas:
+            print(f"RECUSADO: {problema}")
+        return 1
+    caminho = _escrever_evento(
+        raiz, tid, CONTRATO_EXECUCAO, args.quem, extra={"contrato": contrato}
+    )
+    print(f"{tid}: contrato de execução registrado. Evento: {caminho.relative_to(raiz)}")
+    return 0
+
+
+def cmd_descoberta(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("descoberta", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    extra = {
+        "classificacao": args.classificacao,
+        "criterio": args.criterio,
+        "encaminhamento": args.encaminhamento,
+    }
+    caminho = _escrever_evento(
+        raiz,
+        tid,
+        DESCOBERTA,
+        args.quem,
+        detalhe=args.detalhe,
+        evidencia=args.evidencia,
+        extra=extra,
+    )
+    print(
+        f"{tid}: descoberta {args.classificacao} registrada. "
+        f"Evento: {caminho.relative_to(raiz)}"
+    )
+    if args.classificacao in ("C", "D"):
+        print("Ela não amplia o plano ativo; registre trabalho novo separado se precisar.")
+    if args.classificacao == "E":
+        print("Mudança material de escopo: preserve o contrato anterior e peça decisão.")
+    return 0
+
+
+def cmd_checkpoint(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("checkpoint", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    extra = {
+        "plano": args.plano,
+        "ultimo_avanco": args.ultimo_avanco,
+        "proxima_acao": args.proxima_acao,
+        "verificacoes": args.verificacao,
+    }
+    if args.contexto:
+        extra["contexto"] = _json_arquivo(args.contexto, "--contexto")
+    caminho = _escrever_evento(raiz, tid, CHECKPOINT, args.quem, extra=extra)
+    print(f"{tid}: checkpoint registrado. Evento: {caminho.relative_to(raiz)}")
+    print(f"Próxima ação: {args.proxima_acao}")
+    return 0
+
+
+def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("tentativa-sem-progresso", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    execucao = resumo_da_execucao(eventos, tid)
+    if (
+        execucao["tentativas_sem_progresso"]["bloqueio"] == args.bloqueio
+        and execucao["tentativas_sem_progresso"]["consecutivas_no_mesmo_bloqueio"]
+        >= LIMITE_TENTATIVAS_SEM_PROGRESSO
+    ):
+        print(
+            "RECUSADO: limite de tentativas sem avanço atingido para este bloqueio."
+        )
+        print("Registre um checkpoint com mudança de abordagem ou bloqueie a tarefa.")
+        return 1
+    tentativa = (
+        execucao["tentativas_sem_progresso"]["consecutivas_no_mesmo_bloqueio"] + 1
+        if execucao["tentativas_sem_progresso"]["bloqueio"] == args.bloqueio
+        else 1
+    )
+    caminho = _escrever_evento(
+        raiz,
+        tid,
+        TENTATIVA_SEM_PROGRESSO,
+        args.quem,
+        extra={
+            "bloqueio": args.bloqueio,
+            "hipotese": args.hipotese,
+            "resultado": args.resultado,
+            "tentativa": tentativa,
+        },
+    )
+    print(
+        f"{tid}: tentativa sem progresso {tentativa}/"
+        f"{LIMITE_TENTATIVAS_SEM_PROGRESSO} registrada. "
+        f"Evento: {caminho.relative_to(raiz)}"
+    )
+    return 0
+
+
 def cmd_listar(raiz: Path, args) -> int:
     tarefas, eventos = _carregar_ou_parar(raiz)
     reservas: set[str] = set()
@@ -2326,7 +2715,12 @@ def cmd_listar(raiz: Path, args) -> int:
     estados = calcular_estados(tarefas, eventos, reservas, prs)
     if args.json:
         visao = {
-            tid: {**estados[tid], "titulo": tarefas[tid]["titulo"], "toca": tarefas[tid]["toca"]}
+            tid: {
+                **estados[tid],
+                "titulo": tarefas[tid]["titulo"],
+                "toca": tarefas[tid]["toca"],
+                "execucao": resumo_da_execucao(eventos, tid),
+            }
             for tid in sorted(tarefas)
         }
         print(json.dumps(visao, ensure_ascii=False, indent=2))
@@ -3200,6 +3594,44 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--quem", required=True)
     _argumentos_da_explicacao(p)
 
+    p = sub.add_parser("contrato", help="registra a versão do contrato de execução")
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--arquivo", required=True, help="JSON com o contrato completo")
+
+    p = sub.add_parser("descoberta", help="classifica uma descoberta sem ampliar o plano")
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--classificacao", required=True, choices=sorted(CLASSIFICACOES_DA_DESCOBERTA))
+    p.add_argument("--criterio", required=True, help="critério de aceite ou limite afetado")
+    p.add_argument("--detalhe", required=True, help="o que foi descoberto")
+    p.add_argument("--evidencia", required=True, help="prova da relação com o critério")
+    p.add_argument("--encaminhamento", required=True, help="ação mínima ou backlog")
+
+    p = sub.add_parser("checkpoint", help="registra ponto de retomada verificável")
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--plano", required=True, help="plano e etapa atuais")
+    p.add_argument("--ultimo-avanco", required=True, help="último avanço comprovado")
+    p.add_argument("--proxima-acao", required=True, help="próxima ação executável")
+    p.add_argument(
+        "--verificacao",
+        action="append",
+        required=True,
+        help="comando ou conferência executada; repita para várias",
+    )
+    p.add_argument("--contexto", default="", help="JSON opcional com branch, worktree e SHA")
+
+    p = sub.add_parser(
+        "tentativa-sem-progresso",
+        help="registra tentativa que não moveu o critério afetado",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--bloqueio", required=True)
+    p.add_argument("--hipotese", required=True)
+    p.add_argument("--resultado", required=True)
+
     p = sub.add_parser("listar", help="o quadro, com estados calculados")
     p.add_argument("--ao-vivo", action="store_true", help="soma reservas do servidor e PRs abertos")
     p.add_argument("--json", action="store_true")
@@ -3324,6 +3756,14 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_reconciliar(raiz, args)
         if args.acao == "explicar":
             return cmd_explicar(raiz, args)
+        if args.acao == "contrato":
+            return cmd_contrato_execucao(raiz, args)
+        if args.acao == "descoberta":
+            return cmd_descoberta(raiz, args)
+        if args.acao == "checkpoint":
+            return cmd_checkpoint(raiz, args)
+        if args.acao == "tentativa-sem-progresso":
+            return cmd_tentativa_sem_progresso(raiz, args)
         if args.acao == "imutabilidade":
             return cmd_imutabilidade(raiz, args.base)
         return cmd_validar(raiz)

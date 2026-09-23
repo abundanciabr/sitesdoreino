@@ -122,6 +122,26 @@ def evento(caso, tipo, **extra):
     gravar(raiz, f"fila/eventos/{nome}.json", dado)
 
 
+def contrato_execucao():
+    return {
+        "plano": "mapa-de-execucao",
+        "versao": 1,
+        "objetivo": "Retomar a tarefa sem repetir investigação.",
+        "entregaveis": ["pacote do mapa"],
+        "escopo_incluido": ["ci/mapa_de_execucao.py"],
+        "nao_objetivos": ["novo painel"],
+        "restricoes": ["usar fila"],
+        "decisoes_aprovadas": ["eventos são fonte"],
+        "etapas": ["medir", "executar"],
+        "criterios_entrada": ["TAR identificada"],
+        "criterios_aceite": ["próxima ação calculada"],
+        "evidencias_exigidas": ["teste verde"],
+        "condicao_encerramento": "Pacote válido e fresco.",
+        "limites_autonomia": "Sem ampliar escopo.",
+        "acoes_do_mantenedor": "Nenhuma enquanto não houver mudança material.",
+    }
+
+
 def test_tarefa_nova_tem_prompt_fonte_e_plano_na_porta(caso, capsys):
     codigo, pacote = tar(caso, capsys)
     assert codigo == 0
@@ -146,6 +166,35 @@ def test_tarefa_nova_tem_prompt_fonte_e_plano_na_porta(caso, capsys):
         for n in pacote["grafo"]["nos"]
     )
     assert caso[4] == ["panorama"]
+
+
+def test_mapa_embarca_contrato_checkpoint_e_descobertas(caso, capsys):
+    evento(caso, "contrato_execucao", contrato=contrato_execucao())
+    evento(
+        caso,
+        "checkpoint",
+        plano="fase 1",
+        ultimo_avanco="inventário medido",
+        proxima_acao="implementar controle",
+        verificacoes=["python ci/fila.py validar"],
+    )
+    evento(
+        caso,
+        "descoberta",
+        classificacao="C",
+        criterio="fora do aceite",
+        detalhe="dívida antiga observada",
+        evidencia="não toca o arquivo da TAR",
+        encaminhamento="registrar backlog",
+    )
+
+    codigo, pacote = tar(caso, capsys)
+
+    assert codigo == 0
+    assert pacote["execucao"]["contrato"]["plano"] == "mapa-de-execucao"
+    assert pacote["execucao"]["checkpoint"]["proxima_acao"] == "implementar controle"
+    assert pacote["execucao"]["descobertas_abertas"][0]["classificacao"] == "C"
+    assert "execucao: sha256:" in pacote["prompt"]
 
 
 def test_pedido_novo_reconcilia_sem_criar_tarefa(caso, capsys):
