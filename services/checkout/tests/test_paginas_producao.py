@@ -54,6 +54,16 @@ def test_pagina_de_dados_define_api_base_do_prefixo_real(client, rede, env_de_pr
     assert "window.API_BASE" in html
 
 
+def test_formulario_nao_oferece_cartao_sem_campo_para_pagar(
+    client, rede, env_de_producao
+):
+    resp = client.get(f"/{SLUG}/", HTTP_HOST=HOST_A)
+    assert resp.status_code == 200
+    html = resp.content.decode("utf-8")
+    assert "Cartão indisponível" in html
+    assert 'disabled aria-disabled="true"' in html
+
+
 def test_rota_com_prefixo_dentro_morreu_junto_com_o_bug(client, rede, env_de_producao):
     """Guarda do bug de 22/08/2026: se alguém devolver o prefixo "checkout/"
     para dentro das rotas de página, este path_info (que em produção só nasce
@@ -105,7 +115,12 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao):
     )
     resp = client.get(f"/pedido/{pedido.id}/cartao/", HTTP_HOST=HOST_A)
     assert resp.status_code == 200, resp.content
-    assert "window.API_BASE" in resp.content.decode("utf-8")
+    html = resp.content.decode("utf-8")
+    assert "window.API_BASE" in html
+    assert "O pagamento com cartão ainda não está disponível" in html
+    assert f'href="/checkout/{SLUG}/"' in html
+    assert "Formulário de cartão" not in html
+    assert "Aguardando confirmação do pagamento" not in html
 
 
 @pytest.mark.parametrize("nome", ARQUIVOS_JS)

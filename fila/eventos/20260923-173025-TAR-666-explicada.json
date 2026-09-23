@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-173025-TAR-666-explicada",
+  "tarefa": "TAR-666",
+  "evento": "explicada",
+  "quando": "2026-09-23T17:30:25+00:00",
+  "quem": "Relato e captura do mantenedor na sessão Codex de 23/09/2026, após preencher os dados na oferta de teste.",
+  "o_que_e": "Ao escolher cartão, a pessoa informa seus dados e chega a uma página vazia que continua aguardando pagamento.",
+  "o_que_muda": "O site avisa antes que cartão ainda não está disponível e dá saída a quem já abriu um pedido.",
+  "exemplo": "Na oferta fictícia de R$ 9,90, o comprador não ficará olhando uma espera sem botão de pagar.",
+  "importancia": 80
+}
