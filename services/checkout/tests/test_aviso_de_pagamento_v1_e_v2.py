@@ -39,8 +39,14 @@ from apps.pedidos.management.commands.consume_eventos import (
     _processar,
     aplicar,
 )
-from apps.pedidos.models import FatoAplicado, Order
-from conftest import aprovado_v1, aprovado_v2, recusado_v1, recusado_v2
+from apps.pedidos.models import FatoAplicado, Order, OrderQuerySet
+from conftest import (
+    aprovado_v1,
+    aprovado_v2,
+    pix_expirado_v1,
+    recusado_v1,
+    recusado_v2,
+)
 
 CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 STREAM_APROVADO = "eventos.pagamento.aprovado"
@@ -51,12 +57,12 @@ TODOS_OS_STREAMS = (
 )
 
 
-def _pedido(api, sessao_a) -> Order:
+def _pedido(api, sessao_a, method="pix") -> Order:
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
             "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
-            "method": "pix",
+            "method": method,
         },
     )
     assert resp.status_code == 201, resp.content
@@ -203,6 +209,86 @@ def test_a_recusa_atravessa_as_versoes_pelo_payment_id(api, rede, sessao_a):
     assert FatoAplicado.objects.count() == 1
 
 
+# guarda: services/checkout/apps/pedidos/management/commands/consume_eventos.py:184
+@pytest.mark.django_db
+def test_aprovacao_posterior_retomada_de_cartao_recusado_paga_uma_vez(
+    api, rede, sessao_a
+):
+    order = _pedido(api, sessao_a, method="card")
+    aprovada_v2 = aprovado_v2(order, provider_reference_id="appmax-42")
+    aprovada_v2["data"]["method"] = "card"
+    aprovada_v1 = aprovado_v1(order, mp_payment_id="appmax-42")
+    aprovada_v1["data"]["method"] = "card"
+
+    assert aplicar(recusado_v1(order, payment_id="tentativa-1")) is True
+    order.refresh_from_db()
+    assert order.status == "recusado"
+
+    assert aplicar(aprovada_v2) is True
+    assert aplicar(aprovada_v1) is False
+    assert aplicar(aprovada_v2) is False
+    order.refresh_from_db()
+    assert order.status == "pago"
+    assert FatoAplicado.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_recusa_tardia_de_cartao_nao_rebaixa_pedido_pago(api, rede, sessao_a):
+    order = _pedido(api, sessao_a, method="card")
+    aprovada = aprovado_v2(order, provider_reference_id="appmax-42")
+    aprovada["data"]["method"] = "card"
+
+    assert aplicar(aprovada) is True
+    assert aplicar(recusado_v1(order, payment_id="tentativa-1")) is True
+    assert aplicar(recusado_v2(order, payment_id="tentativa-1")) is False
+    order.refresh_from_db()
+    assert order.status == "pago"
+    assert FatoAplicado.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_aprovacao_com_site_errado_nao_promove_cartao_recusado(api, rede, sessao_a):
+    order = _pedido(api, sessao_a, method="card")
+    aprovada = aprovado_v2(order, provider_reference_id="appmax-42")
+    aprovada["data"]["method"] = "card"
+    errada = json.loads(json.dumps(aprovada))
+    errada["data"]["platform_site_id"] = "site-de-outro-lugar"
+
+    assert aplicar(recusado_v1(order, payment_id="tentativa-1")) is True
+    assert aplicar(errada) is True
+    order.refresh_from_db()
+    assert order.status == "recusado"
+
+    assert aplicar(aprovada) is True
+    order.refresh_from_db()
+    assert order.status == "pago"
+    assert FatoAplicado.objects.count() == 3
+
+
+@pytest.mark.django_db
+def test_aprovacao_nao_reabre_pix_recusado_ou_expirado(api, rede, sessao_a):
+    order_recusado = _pedido(api, sessao_a, method="pix")
+    assert aplicar(recusado_v1(order_recusado, payment_id="tentativa-pix")) is True
+    aprovada_recusado = aprovado_v2(
+        order_recusado, provider_reference_id="pix-aprovado"
+    )
+    assert aplicar(aprovada_recusado) is True
+    order_recusado.refresh_from_db()
+    assert order_recusado.status == "recusado"
+
+    outra_sessao = api.post(
+        "/api/checkout/sessoes", {"offer_slug": "curso-esqueleto"}
+    ).json()
+    order_expirado = _pedido(api, outra_sessao, method="pix")
+    assert aplicar(pix_expirado_v1(order_expirado, payment_id="pix-expirado")) is True
+    aprovada_expirado = aprovado_v2(
+        order_expirado, provider_reference_id="expirado-aprovado"
+    )
+    assert aplicar(aprovada_expirado) is True
+    order_expirado.refresh_from_db()
+    assert order_expirado.status == "expirado"
+
+
 @pytest.mark.django_db
 def test_aviso_de_versao_desconhecida_estoura_com_instrucao(api, rede, sessao_a):
     """Versão fora do contrato não pode ser engolida em silêncio: estourar
@@ -231,14 +317,19 @@ def test_efeito_que_estoura_nao_deixa_o_fato_marcado(api, rede, sessao_a, monkey
     order = _pedido(api, sessao_a)
     envelope = aprovado_v1(order, mp_payment_id="mp-1")
 
-    def cair(*args, **kwargs):
-        raise RuntimeError("o efeito estourou no meio da transação")
+    atualizar = OrderQuerySet.update
 
-    monkeypatch.setattr(consume_eventos.OrderModel.objects, "filter", cair)
+    def atualizar_e_cair(queryset, **mudancas):
+        atualizar(queryset, **mudancas)
+        raise RuntimeError("o efeito estourou depois de mover o pedido")
+
+    monkeypatch.setattr(OrderQuerySet, "update", atualizar_e_cair)
     with pytest.raises(RuntimeError):
         aplicar(envelope)
 
     assert FatoAplicado.objects.count() == 0, "o fato ficou marcado sem o efeito"
+    order.refresh_from_db()
+    assert order.status == "aguardando_pagamento", "a mudança de pedido não recuou"
 
     monkeypatch.undo()  # a reentrega, mais tarde, com o banco de volta
     assert aplicar(envelope) is True

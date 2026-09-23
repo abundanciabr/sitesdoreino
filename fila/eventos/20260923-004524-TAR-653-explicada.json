@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-004524-TAR-653-explicada",
+  "tarefa": "TAR-653",
+  "evento": "explicada",
+  "quando": "2026-09-23T00:45:24+00:00",
+  "quem": "Mandato nominal Fase 1 Appmax de 22/09/2026; predecessora tecnica de TAR-557",
+  "o_que_e": "O cliente Appmax ja consulta pedidos, mas cotacao e operacoes de escrita ainda precisam de garantias contra repeticao e respostas incompletas.",
+  "o_que_muda": "Uma falha apos o envio nao duplica cobranca e a loja recebe apenas opcoes de parcelas validas, sem afetar o Pix.",
+  "exemplo": "Se a conexao cair depois de enviar um pagamento, o cliente informa que o resultado e ambiguo em vez de mandar o cartao de novo.",
+  "importancia": 85
+}

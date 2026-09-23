@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-004639-TAR-647-explicada",
+  "tarefa": "TAR-647",
+  "evento": "explicada",
+  "quando": "2026-09-23T00:46:39+00:00",
+  "quem": "agent/pagamentos/appmax-cliente-operacoes",
+  "o_que_e": "A instalação sandbox foi aceita, mas o acesso merchant ainda não foi comprovado.",
+  "o_que_muda": "O resultado da instalação fica registrado sem declarar acesso merchant pronto nem liberar cobrança.",
+  "exemplo": "A instalação respondeu HTTP 200, mostrou o alias da loja e persistiu um identificador de site válido; OAuth merchant e leitura de produtos seguem pendentes, sem cobrança.",
+  "importancia": 82
+}

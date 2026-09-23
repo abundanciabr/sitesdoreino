@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-003-pagamentos-appmax-evita-escritas-duplicadas",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "pagamentos: Appmax evita escritas duplicadas",
+  detalhe: "Cliente sandbox é predecessora técnica; TAR-557 depende deste cliente e TAR-647 segue aberta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1971. Validação local: árvore 7f89deb6235307197cde470868ffaba50c557bdc; commit a8024cf2210817ecb9087e0c28c142eef34bfa4b; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-653",
+  gravidade: "verde",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

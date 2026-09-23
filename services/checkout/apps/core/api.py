@@ -610,7 +610,8 @@ def confirm_order_card(request, order_id: str):
         raise HttpError(404, "pedido inexistente neste site")
     if pedido.method != "card":
         raise HttpError(409, "este pedido não é de cartão")
-    if pedido.status != _ESTADO_QUE_ACEITA_CARTAO:
+    estados_que_aceitam_cartao = (_ESTADO_QUE_ACEITA_CARTAO, "recusado")
+    if pedido.status not in estados_que_aceitam_cartao:
         raise HttpError(
             409, f"o pedido está em {pedido.status} e não aceita nova cobrança"
         )
