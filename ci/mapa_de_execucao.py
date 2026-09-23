@@ -450,6 +450,7 @@ def _fechar(pacote: dict, resultado: str, passo: dict) -> dict:
         "ambiente",
         "dependencias",
         "candidatos",
+        "execucao",
     ):
         if campo in pacote:
             linhas += [campo + ": sha256:" + _hash(pacote[campo])]
@@ -501,6 +502,17 @@ def materializar_pacote(
         grafo={"nos": [], "arestas": []},
         plano=[],
         criterios=[],
+        execucao={
+            "contrato": None,
+            "checkpoint": None,
+            "descobertas_abertas": [],
+            "tentativas_sem_progresso": {
+                "limite": fila.LIMITE_TENTATIVAS_SEM_PROGRESSO,
+                "consecutivas_no_mesmo_bloqueio": 0,
+                "bloqueio": "",
+                "total": 0,
+            },
+        },
     )
     fonte_atual = "entrada"
 
@@ -708,6 +720,8 @@ def materializar_pacote(
                 "Tarefa não encontrada. Confira python ci/fila.py listar antes de criar outra."
             )
         tarefa = tarefas.get(tar, {})
+        if tar:
+            base["execucao"] = fila.resumo_da_execucao(eventos, tar)
         declarados = (
             sessao.caminhos_da_tarefa(tarefa, list(celulas)) if tar else caminhos
         )

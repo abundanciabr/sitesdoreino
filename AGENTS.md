@@ -57,6 +57,9 @@ decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.
 `python ci/sessao.py --celula <area> --tarefa <slug>` abre a bancada;
 sem serviço, acrescente `--sem-container`. Principal é somente leitura,
 salvas as operações permitidas na lei canônica.
+Para execução, descobertas, checkpoints, retomada e ausência de progresso,
+use `docs/decisoes/ROTEIRO-EXECUCAO-DOS-AGENTES.md`; o estado continua vindo
+da fila e de seus eventos, não do roteiro.
 
 Hooks nativos estão em `.codex/hooks.json`: SessionStart, UserPromptSubmit,
 Stop e a guarda de Monitor. Ações comuns não injetam documentos nem leem

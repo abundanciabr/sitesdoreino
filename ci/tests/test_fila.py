@@ -62,6 +62,28 @@ def evento(tid="TAR-001", tipo="reivindicada", hora="10:00:00", quem="sessao-a",
     return dados
 
 
+def contrato_execucao(**extra):
+    dados = {
+        "plano": "protocolo-execucao",
+        "versao": 1,
+        "objetivo": "Manter o agente no escopo até concluir com prova.",
+        "entregaveis": ["controles na fila", "roteiro de uso"],
+        "escopo_incluido": ["ci/fila.py", "ci/mapa_de_execucao.py"],
+        "nao_objetivos": ["novo gerenciador de tarefas"],
+        "restricoes": ["usar eventos append-only"],
+        "decisoes_aprovadas": ["estado operacional vem da fila"],
+        "etapas": ["diagnosticar", "implementar", "validar"],
+        "criterios_entrada": ["bancada isolada"],
+        "criterios_aceite": ["tentativa inválida recusada"],
+        "evidencias_exigidas": ["pytest verde"],
+        "condicao_encerramento": "Critérios atendidos e evento terminal com evidência.",
+        "limites_autonomia": "Decisões técnicas reversíveis cabem ao agente.",
+        "acoes_do_mantenedor": "Apenas decisões de escopo material.",
+    }
+    dados.update(extra)
+    return dados
+
+
 def montar(tmp_path, tarefas=(), eventos=(), com_pasta_de_eventos=True):
     (tmp_path / "fila" / "tarefas").mkdir(parents=True)
     if com_pasta_de_eventos:
@@ -433,6 +455,136 @@ def test_reserva_viva_no_servidor_conta_como_reivindicada(tmp_path):
 def test_pr_aberto_conta_como_em_execucao(tmp_path):
     e = estados_de(tmp_path, [tarefa()], [evento()], prs={"TAR-001": "PR #77"})
     assert e["TAR-001"] == {"estado": fila.EM_EXECUCAO, "motivo": "PR #77", "quem": "sessao-a"}
+
+
+def test_contrato_de_execucao_viaja_no_resumo_sem_mudar_estado(tmp_path):
+    contrato = contrato_execucao()
+    eventos = [
+        evento(tipo=fila.CONTRATO_EXECUCAO, contrato=contrato),
+        evento(
+            tipo=fila.CHECKPOINT,
+            hora="10:01:00",
+            plano="fase 1",
+            ultimo_avanco="contrato registrado",
+            proxima_acao="rodar validação",
+            verificacoes=["python ci/fila.py validar"],
+        ),
+    ]
+
+    estado = estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]
+    _, carregados, erros = carregar(tmp_path)
+    resumo = fila.resumo_da_execucao(carregados, "TAR-001")
+
+    assert erros == []
+    assert estado["estado"] == fila.NA_FILA
+    assert resumo["contrato"]["plano"] == "protocolo-execucao"
+    assert resumo["checkpoint"]["proxima_acao"] == "rodar validação"
+
+
+def test_descoberta_opcional_nao_amplia_o_plano_ativo(tmp_path):
+    eventos = [
+        evento(
+            tipo=fila.DESCOBERTA,
+            classificacao="D",
+            criterio="fora do aceite atual",
+            detalhe="melhoria de texto encontrada",
+            evidencia="não afeta teste-alvo",
+            encaminhamento="registrar no backlog",
+        )
+    ]
+
+    estado = estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]
+    _, carregados, erros = carregar(tmp_path)
+    resumo = fila.resumo_da_execucao(carregados, "TAR-001")
+
+    assert erros == []
+    assert estado["estado"] == fila.NA_FILA
+    assert resumo["descobertas_abertas"][0]["classificacao"] == "D"
+    assert "opcional" in resumo["descobertas_abertas"][0]["tipo"]
+
+
+def test_quarta_tentativa_sem_progresso_no_mesmo_bloqueio_reprova(tmp_path):
+    eventos = [
+        evento(
+            tipo=fila.TENTATIVA_SEM_PROGRESSO,
+            hora=f"10:0{n}:00",
+            bloqueio="pytest quebra no mesmo erro",
+            hipotese=f"hipótese {n}",
+            resultado="nenhum critério avançou",
+            tentativa=n,
+        )
+        for n in range(1, 5)
+    ]
+    montar(tmp_path, [tarefa()], eventos)
+
+    _, _, erros = carregar(tmp_path)
+
+    assert any("repetiu 4 tentativas sem avanço" in erro for erro in erros)
+
+
+def test_checkpoint_reseta_tentativas_sem_progresso(tmp_path):
+    eventos = [
+        evento(
+            tipo=fila.TENTATIVA_SEM_PROGRESSO,
+            hora=f"10:0{n}:00",
+            bloqueio="pytest quebra no mesmo erro",
+            hipotese=f"hipótese {n}",
+            resultado="nenhum critério avançou",
+            tentativa=n,
+        )
+        for n in range(1, 4)
+    ]
+    eventos.append(
+        evento(
+            tipo=fila.CHECKPOINT,
+            hora="10:04:00",
+            plano="mudar abordagem",
+            ultimo_avanco="três tentativas medidas",
+            proxima_acao="isolar fixture",
+            verificacoes=["pytest falhou no mesmo ponto"],
+        )
+    )
+    eventos.append(
+        evento(
+            tipo=fila.TENTATIVA_SEM_PROGRESSO,
+            hora="10:05:00",
+            bloqueio="pytest quebra no mesmo erro",
+            hipotese="fixture isolada",
+            resultado="a causa mudou para outro arquivo",
+            tentativa=1,
+        )
+    )
+    montar(tmp_path, [tarefa()], eventos)
+
+    _, _, erros = carregar(tmp_path)
+
+    assert erros == []
+
+
+def test_comando_recusa_tentativa_sem_progresso_acima_do_limite(tmp_path, monkeypatch, capsys):
+    eventos = [
+        evento(
+            tipo=fila.TENTATIVA_SEM_PROGRESSO,
+            hora=f"10:0{n}:00",
+            bloqueio="sem runtime python",
+            hipotese=f"hipótese {n}",
+            resultado="não avançou",
+            tentativa=n,
+        )
+        for n in range(1, 4)
+    ]
+    montar(tmp_path, [tarefa()], eventos)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001",
+        quem="sessao-a",
+        bloqueio="sem runtime python",
+        hipotese="tentar outro launcher",
+        resultado="não avançou",
+    )
+
+    assert fila.cmd_tentativa_sem_progresso(tmp_path, args) == 1
+    assert "limite de tentativas" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
