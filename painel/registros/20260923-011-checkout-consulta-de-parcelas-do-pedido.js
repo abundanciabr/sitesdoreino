@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-011-checkout-consulta-de-parcelas-do-pedido",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "checkout: consulta de parcelas do pedido",
+  detalhe: "Consulta parcelas pelo total gravado no servidor, com erros tratados e credenciais fora da resposta pública.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1979. Validação local: árvore 7463300891ffa09e80b736ece0c696c5bb5794df; commit 8af41189bf3048e8cfc14c5587d4d990faf6d49a; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-593",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
