@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-011953-TAR-655-explicada",
+  "tarefa": "TAR-655",
+  "evento": "explicada",
+  "quando": "2026-09-23T01:19:53+00:00",
+  "quem": "Mandato do mantenedor: Fase 1 do checkout, sessão de 22/09/2026; API checkout, domínio e consumidor de eventos, preservando Pix.",
+  "o_que_e": "Quando uma tentativa de cartão é recusada, o pedido fica recusado e o endpoint impede qualquer nova tentativa, mesmo que o cliente possa pagar depois.",
+  "o_que_muda": "Uma aprovação posterior pode concluir o pedido; recusas atrasadas não desfazem uma aprovação, e o snapshot original continua intacto.",
+  "exemplo": "Uma pessoa recebe uma recusa inicial e tenta novamente. Se o segundo pagamento for aprovado, o pedido passa a pago mesmo que a primeira recusa chegue atrasada.",
+  "importancia": 70
+}
