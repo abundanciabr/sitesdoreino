@@ -1,0 +1,20 @@
+{
+  "arquivo": "664-apagar-o-comando-encerrado-do-radio",
+  "id": "TAR-664",
+  "titulo": "Apagar o comando encerrado do rádio",
+  "toca": [
+    "ci/radio.py",
+    "ci/tests/test_radio_cli.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Comando e teste obsoletos removidos; fila sem rede; testes focais e muralhas verdes; PR com recibo",
+  "despacho": "Apagar ci/radio.py, que só devolve erro desde a dissolução do rádio, e seu teste da interface revogada. Conservar o teste de independência da fila em ci/tests/test_fila_radio.py. Etiqueta remove-teste com justificativa.",
+  "origem": "Pedido direto do mantenedor em 23/09/2026 e decisão de 20/09/2026 sobre dissolução do rádio",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
