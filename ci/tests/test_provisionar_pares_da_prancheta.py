@@ -62,12 +62,13 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import stat
 import subprocess
 from pathlib import Path
 
 import pytest
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "infra" / "provisionar-pares-da-prancheta.sh"
@@ -178,7 +179,7 @@ def _escrever(caminho: Path, conteudo: str) -> None:
 
 
 def _bash() -> str:
-    caminho = shutil.which("bash")
+    caminho = BASH
     assert caminho, (
         "não achei `bash` nesta máquina. Este guarda EXECUTA o roteiro; sem "
         "interpretador ele não tem o que medir, e isso não é um OK ([INV-CI01])."
