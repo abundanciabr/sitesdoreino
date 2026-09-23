@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-203815-TAR-629-concluida",
+  "tarefa": "TAR-629",
+  "evento": "concluida",
+  "quando": "2026-09-22T20:38:15+00:00",
+  "quem": "agent/ci/codeowners-cursor-appmax",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1929",
+  "verificado_em": "2026-09-22"
+}

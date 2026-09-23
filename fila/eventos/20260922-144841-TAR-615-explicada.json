@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-144841-TAR-615-explicada",
+  "tarefa": "TAR-615",
+  "evento": "explicada",
+  "quando": "2026-09-22T14:48:41+00:00",
+  "quem": "Pedido do mantenedor em 22/09/2026 para levar o cartao Appmax ate a auditoria. Reabre o trabalho da TAR-555, cancelada na limpeza da lista. A tela so abre depois do motor, das parcelas e da recuperacao.",
+  "o_que_e": "A pagina do cartao ainda e um formulario vazio, e o cartao antigo dessa tela foi tirado da lista. Sem tela nova, o comprador nao consegue pagar.",
+  "o_que_muda": "Quem escolhe cartao tokeniza no fornecedor, sem o numero passar pelo nosso servidor, e ve o estado real do pagamento.",
+  "exemplo": "A pessoa digita o cartao, a tela fica em analise, e so libera o acesso quando o servidor confirma.",
+  "importancia": 90
+}
