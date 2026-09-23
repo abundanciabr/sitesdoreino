@@ -120,7 +120,12 @@ def consultar_status_do_pagamento(*, payment_id: str) -> StatusDoPagamento:
     except MercadoPagoError as exc:
         raise FalhaNoProvedor(str(exc)) from exc
     payment_id_confirmado = _exigir_id(resposta)
-    status = str(resposta.get("status") or "").strip()
+    try:
+        status = str(resposta["status"] or "").strip()
+    except KeyError as exc:
+        raise FalhaNoProvedor(
+            "consulta ao Mercado Pago sem status; confira a resposta do provedor"
+        ) from exc
     if not status:
         raise FalhaNoProvedor(
             "consulta ao Mercado Pago sem `status` no corpo "
@@ -144,7 +149,12 @@ def consultar_status_do_pagamento(*, payment_id: str) -> StatusDoPagamento:
 
 
 def _exigir_id(resposta: dict[str, Any]) -> str:
-    payment_id = str(resposta.get("id") or "").strip()
+    try:
+        payment_id = str(resposta["id"] or "").strip()
+    except KeyError as exc:
+        raise FalhaNoProvedor(
+            "resposta do Mercado Pago sem id; confira a resposta antes de reconciliar"
+        ) from exc
     if not payment_id:
         # Só as CHAVES do corpo entram na mensagem — nunca os valores, que podem
         # carregar dado do pagador para o log.
