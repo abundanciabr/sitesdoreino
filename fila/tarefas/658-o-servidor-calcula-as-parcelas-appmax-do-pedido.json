@@ -1,0 +1,22 @@
+{
+  "arquivo": "658-o-servidor-calcula-as-parcelas-appmax-do-pedido",
+  "id": "TAR-658",
+  "titulo": "O servidor calcula as parcelas Appmax do pedido",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-557",
+    "TAR-593"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Consulta de parcelas usa total gravado, retorna centavos, autenticação e erros seguros testados, contrato pagamentos sem divergência e publicação comprovada.",
+  "despacho": "Concluir a implementação de pagamentos já validada na bancada appmax-parcelas-api, PR #1978, como etapa de código da TAR-593. Alvos: services/pagamentos/pagamentos/api/intents.py e tests/test_parcelas_appmax_api.py. Contratos somente leitura. Consultar Appmax sem criar cobrança, usar valor da intent e não expor credenciais. Validar e publicar pelo rito. Mandato: pedido do mantenedor nesta sessão de 23/09/2026 para concluir parcelas Appmax após TAR-557; testes Mercado Pago dispensados.",
+  "origem": "Desdobramento técnico obrigatório da TAR-593: contrato integrado no PR #1977; código separado conforme o próprio brief. Escopo já solicitado pelo mantenedor nesta sessão.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
