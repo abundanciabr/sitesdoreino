@@ -1,0 +1,23 @@
+{
+  "arquivo": "669-tirar-a-maestro-das-acoes-de-publicacao",
+  "id": "TAR-669",
+  "titulo": "Tirar a maestro das ações de publicação",
+  "toca": [
+    "ci/estado_da_entrega.py",
+    "ci/esperar.py",
+    "ci/prestacao_de_contas.py",
+    "ci/tests/test_estado_da_entrega.py",
+    "ci/tests/test_fecho_sem_entrega_a_outro_papel.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Falha e espera de publicação orientam a sessão sem maestro; testes e muralhas verdes; PR integrado",
+  "despacho": "Corrigir as duas ações de publicação que ainda invocam a maestro, limpar o vocabulário residual em ci/ e proteger o comportamento nos testes.",
+  "origem": "Continuação do pedido do mantenedor para concluir a remoção dos papéis dissolvidos",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
