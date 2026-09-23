@@ -50,7 +50,7 @@ def pedido_de_cartao(api, rede, sessao_a):
     return Order.objects.get(pk=resp.json()["order_id"])
 
 
-# guarda: services/checkout/apps/core/api.py:339
+# guarda: services/checkout/apps/core/api.py:341
 def test_intent_de_cartao_usa_itens_e_total_calculados_pelo_catalogo(
     api, rede, sessao_a
 ):
@@ -162,7 +162,7 @@ def test_a_recusa_do_provedor_volta_com_o_motivo_e_o_pedido_nao_muda(
     assert pedido_de_cartao.status == "aguardando_pagamento"
 
 
-# guarda: services/checkout/apps/core/api.py:613
+# guarda: services/checkout/apps/core/api.py:615
 def test_pedido_de_cartao_recusado_aceita_nova_confirmacao_sem_mover_snapshot(
     api, rede, pedido_de_cartao
 ):
@@ -319,3 +319,101 @@ def test_a_oferta_continua_fechando_pedido_de_cartao(api, rede, sessao_a):
     assert resp.status_code == 201, resp.content
     assert resp.json()["payment"]["method"] == "card"
     assert SLUG  # a oferta do site A é a que fechou o pedido
+
+
+def _cotacao(pedido):
+    total = pedido.total_cents
+    return {
+        "amount_cents": total,
+        "modality": "PP",
+        "options": [
+            {"installments": 1, "total_cents": total, "installment_cents": total},
+            {
+                "installments": 3,
+                "total_cents": total + 120,
+                "installment_cents": (total + 121) // 3,
+            },
+        ],
+    }
+
+
+def test_parcelas_publicas_usam_total_do_pedido_e_filtram_resposta(
+    api, rede, pedido_de_cartao, settings, token_valido
+):
+    settings.TOKENS_PUBLICOS = {token_valido}
+    cotacao = _cotacao(pedido_de_cartao)
+    rota = rede.get(
+        f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/installments"
+    ).respond(200, json={**cotacao, "segredo_interno": "nao-expor"})
+    resp = api.get(
+        f"/api/checkout/pedidos/{pedido_de_cartao.id}/parcelas?amount_cents=1"
+    )
+    assert resp.status_code == 200, resp.content
+    assert resp.json() == cotacao
+    assert rota.call_count == 1
+    assert not rota.calls[0].request.url.query
+
+
+def test_parcelas_nao_leem_pedido_de_outro_site(api, rede, pedido_de_cartao):
+    rota = rede.get(
+        f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/installments"
+    ).respond(200, json=_cotacao(pedido_de_cartao))
+    resp = api.get(f"/api/checkout/pedidos/{pedido_de_cartao.id}/parcelas", host=HOST_B)
+    assert resp.status_code == 404
+    assert not rota.called
+
+
+@pytest.mark.parametrize(
+    "falha", ["vazia", "total", "duplicada", "tipo", "parcela", "modalidade", "objeto"]
+)
+def test_parcelas_inconsistentes_sao_recusadas(api, rede, pedido_de_cartao, falha):
+    cotacao = _cotacao(pedido_de_cartao)
+    if falha == "vazia":
+        cotacao["options"] = []
+    elif falha == "total":
+        cotacao["amount_cents"] = 1
+    elif falha == "duplicada":
+        cotacao["options"].append(cotacao["options"][0])
+    elif falha == "tipo":
+        cotacao["options"][0]["installments"] = True
+    elif falha == "parcela":
+        cotacao["options"][0]["installment_cents"] = 1
+    elif falha == "modalidade":
+        cotacao["modality"] = "PS"
+    else:
+        cotacao = None
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/installments").respond(
+        200, json=cotacao
+    )
+    resp = api.get(f"/api/checkout/pedidos/{pedido_de_cartao.id}/parcelas")
+    assert resp.status_code == 502
+    assert resp.json() == {
+        "detail": "não foi possível consultar as parcelas; tente novamente"
+    }
+
+
+@pytest.mark.parametrize("falha", ["timeout", "http", "html"])
+def test_falha_na_consulta_de_parcelas_orienta_nova_tentativa(
+    api, rede, pedido_de_cartao, falha
+):
+    rota = rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/installments")
+    if falha == "timeout":
+        rota.mock(side_effect=httpx.ReadTimeout("segredo-interno"))
+    elif falha == "http":
+        rota.respond(500, text="segredo-interno")
+    else:
+        rota.respond(200, text="segredo-interno")
+    resp = api.get(f"/api/checkout/pedidos/{pedido_de_cartao.id}/parcelas")
+    assert resp.status_code == 502
+    assert "tente novamente" in resp.json()["detail"]
+    assert "segredo-interno" not in resp.content.decode()
+
+
+def test_parcelas_recusam_pedido_pix_e_id_invalido(api, rede, pedido_de_cartao):
+    pedido_de_cartao.method = "pix"
+    pedido_de_cartao.save(update_fields=["method"])
+    assert (
+        api.get(f"/api/checkout/pedidos/{pedido_de_cartao.id}/parcelas").status_code
+        == 409
+    )
+    assert api.get("/api/checkout/pedidos/invalido/parcelas").status_code == 404
