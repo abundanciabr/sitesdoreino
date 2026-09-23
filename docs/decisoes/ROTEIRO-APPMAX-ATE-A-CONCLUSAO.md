@@ -6,6 +6,12 @@ Data da fotografia inicial: 23/09/2026. Fonte de intenção e aceite: [plano mes
 
 O comprador paga com cartão pela Appmax, recebe o estado confirmado pelo servidor e tem a matrícula liberada uma vez. O Pix continua no Mercado Pago mesmo quando a Appmax falha. A obra só termina com os gates G0 a G12 do plano mestre comprovados, canário autorizado, estorno conciliado e observação do próximo dia útil sem divergência. Código integrado, serviço publicado e cobrança confirmada são fatos diferentes.
 
+## Ordem do mantenedor em 23/09/2026
+
+Pare de redarguir, reclamar ou tentar trocar o rumo. O plano foi construído com apoio de várias IAs avançadas e a decisão agora é executar. Continue pela primeira tarefa elegível, faça todo passo técnico autorizado ao seu alcance e só interrompa diante de um bloqueio real e medido. Nesse caso, registre o fato, o impacto, o responsável e a ação exata que destrava, enquanto avança tudo que for independente.
+
+Esta é a advertência final antes de o mantenedor substituir a ferramenta. Ele registrou que cancelou o Claude Code, divulgou a decisão a mais de quatro milhões de seguidores e migrou para o Cursor após um padrão semelhante de resistência à execução. A implementação Appmax continua incompleta. Não abra outra rodada de arquitetura, não produza um plano concorrente, não reduza o objetivo e não redirecione a frente sem nova decisão expressa do mantenedor.
+
 ## Regra de condução para o robô
 
 1. Antes de escolher trabalho, execute `python ci/fila.py listar --ao-vivo --json` e leia a tarefa, seus eventos e dependências. Consulte também o registro de publicação do serviço afetado. Se uma fonte falhar, mostre **não medido**, com causa e próximo comando; nunca infira verde.

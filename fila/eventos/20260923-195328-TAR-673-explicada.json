@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-195328-TAR-673-explicada",
+  "tarefa": "TAR-673",
+  "evento": "explicada",
+  "quando": "2026-09-23T19:53:28+00:00",
+  "quem": "Pedido direto do mantenedor nesta sessão em 23/09/2026",
+  "o_que_e": "A execução do cartão Appmax continua incompleta e um robô voltou a discutir o rumo em vez de seguir o plano aprovado.",
+  "o_que_muda": "Os próximos executores veem a ordem final no roteiro que precisam seguir e no histórico permanente do projeto.",
+  "exemplo": "Ao abrir o roteiro, o robô encontra primeiro a ordem de continuar pela primeira tarefa elegível e só parar diante de bloqueio real e medido.",
+  "importancia": 100
+}
