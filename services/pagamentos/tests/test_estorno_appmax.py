@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from django.test import Client
 
+import pagamentos.core.gateway as gateway
 from pagamentos.core.ledger import registrar_fato
 from pagamentos.core.models import (
     AppmaxWebhookInbox,
@@ -73,7 +74,7 @@ def _evento(nome: str) -> dict[str, Any]:
 def test_reversao_appmax_guarda_um_aviso_e_reentrega_nao_duplica(nome: str) -> None:
     intent = _compra_aprovada()
     consulta = Mock()
-    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
+    with patch.object(gateway, "nova_sessao_appmax", return_value=consulta):
         resposta = Client().post(
             URL, data=json.dumps(_evento(nome)), content_type="application/json"
         )
@@ -91,7 +92,7 @@ def test_reversao_appmax_guarda_um_aviso_e_reentrega_nao_duplica(nome: str) -> N
 def test_eventos_fora_de_ordem_nao_mudam_o_livro() -> None:
     intent = _compra_aprovada()
     consulta = Mock()
-    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
+    with patch.object(gateway, "nova_sessao_appmax", return_value=consulta):
         for nome in ("order_chargeback_in_treatment", "order_refund"):
             Client().post(
                 URL,
@@ -113,7 +114,7 @@ def test_webhook_nao_confia_em_status_do_corpo() -> None:
     consulta = Mock()
     evento = _evento("order_refund")
     evento["data"]["status"] = "estornado"
-    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
+    with patch.object(gateway, "nova_sessao_appmax", return_value=consulta):
         resposta = Client().post(
             URL, data=json.dumps(evento), content_type="application/json"
         )
@@ -137,7 +138,7 @@ def test_site_alheio_e_provedor_indisponivel_preservam_o_livro() -> None:
 
     consulta = Mock()
     consulta.consultar_pedido.side_effect = RuntimeError("consulta indisponível")
-    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
+    with patch.object(gateway, "nova_sessao_appmax", return_value=consulta):
         indisponivel = cliente.post(
             URL,
             data=json.dumps(_evento("order_refund")),

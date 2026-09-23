@@ -3,12 +3,14 @@
 import json
 import time
 import uuid
+from collections.abc import Callable
 from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 from django.test import Client
 
+import pagamentos.core.gateway as gateway
 from pagamentos.core.ledger import registrar_fato
 from pagamentos.core.models import (
     AppmaxWebhookInbox,
@@ -22,7 +24,10 @@ pytestmark = pytest.mark.django_db
 URL = "/api/pagamentos/appmax/webhook"
 
 
-def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro() -> None:
+@pytest.mark.parametrize("aprovada", [False, True])
+def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro(
+    aprovada: bool, record_property: Callable[[str, object], None]
+) -> None:
     intent = Intent.objects.create(
         idempotency_key=str(uuid.uuid4()),
         site_id="site-interno",
@@ -31,9 +36,11 @@ def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro() -> None:
         amount_cents=2000,
         customer={"email": "cliente@exemplo.com"},
     )
-    registrar_fato(
-        intent, novo_status="approved", evento="pagamento.aprovado", dados={}
-    )
+    if aprovada:
+        registrar_fato(
+            intent, novo_status="approved", evento="pagamento.aprovado", dados={}
+        )
+    estado_inicial = intent.status
     PaymentAttempt.objects.create(
         intent=intent,
         platform_site_id=intent.site_id,
@@ -43,7 +50,7 @@ def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro() -> None:
         provider_reference_id="3531",
         amount_cents=2000,
         effective_amount_cents=2000,
-        state="approved",
+        state="approved" if aprovada else "pending",
     )
     InstalacaoAppmax.objects.create(
         app_id="123",
@@ -62,18 +69,22 @@ def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro() -> None:
     }
 
     inicio = time.perf_counter()
-    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=consulta):
+    with patch.object(gateway, "nova_sessao_appmax", return_value=consulta):
         resposta = Client().post(
             URL, data=json.dumps(aviso_forjado), content_type="application/json"
         )
     duracao = time.perf_counter() - inicio
+    record_property("tempo_resposta_segundos", duracao)
 
     assert resposta.status_code == 200
     assert duracao < 5
     assert consulta.consultar_pedido.call_count == 0
     intent.refresh_from_db()
-    assert intent.status == "approved"
-    assert OutboxEvent.objects.filter(event="pagamento.aprovado").count() == 1
+    assert intent.status == estado_inicial
+    assert PaymentAttempt.objects.get().state == ("approved" if aprovada else "pending")
+    assert OutboxEvent.objects.filter(event="pagamento.aprovado").count() == int(
+        aprovada
+    )
     assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
     aviso = AppmaxWebhookInbox.objects.get()
     assert aviso.payload == aviso_forjado
@@ -300,3 +311,35 @@ def test_evento_acima_do_limite_explica_como_corrigir() -> None:
     assert resposta.json() == {
         "detail": "Evento ausente ou acima de 100 caracteres. Confira o aviso."
     }
+
+
+@pytest.mark.parametrize(
+    "dados",
+    [
+        {},
+        {"order_id": None},
+        {"order_id": True},
+        {"order_id": -1},
+        {"order_id": 0},
+        {"order_id": "3531"},
+    ],
+)
+def test_pedido_invalido_nao_entra_na_inbox(dados: dict[str, Any]) -> None:
+    resposta = Client().post(
+        URL,
+        data=json.dumps(
+            {
+                "event": "order_refund",
+                "event_type": "order",
+                "app_id": "123",
+                "site_id": "site-appmax",
+                "data": dados,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 400
+    assert "Reenvie" in resposta.json()["detail"]
+    assert AppmaxWebhookInbox.objects.count() == 0
+    assert OutboxEvent.objects.count() == 0

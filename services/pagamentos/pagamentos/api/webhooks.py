@@ -104,7 +104,11 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
     event_type = envelope.get("event_type")
     app_id_recebido = envelope.get("app_id")
     site_id_recebido = envelope.get("site_id")
-    order_id = envelope["data"].get("order_id")
+    if "order_id" not in envelope["data"]:
+        return _resposta_appmax(
+            "order_id ausente. Reenvie o aviso com o ID do pedido.", 400
+        )
+    order_id = envelope["data"]["order_id"]
     if not isinstance(event, str) or not event.strip() or len(event.strip()) > 100:
         return _resposta_appmax(
             "Evento ausente ou acima de 100 caracteres. Confira o aviso.", 400
@@ -179,10 +183,10 @@ def simulate_webhook(request: HttpRequest) -> JsonResponse:
     outbox → relay). Usa django.test.Client (não um round-trip de socket
     literal) para atravessar toda a pilha real de URLconf+middleware+view sem
     o risco de um self-call de rede recursivo dentro do mesmo processo — ver
-    LICOES.md. Body esperado:
-    {"method": "pix"|"card", "mp_payment_id": "...", "status": "approved"|
-     "rejected"|"expired", "reason_code": "..." (opcional)}.
+    LICOES.md.
     """
+    # Body esperado: {"method": "pix"|"card", "mp_payment_id": "...",
+    # "status": "approved"|"rejected"|"expired", "reason_code": "..." (opcional).
     if not settings.DEBUG:
         raise Http404("disponivel somente com DEBUG=1")
     if request.method != "POST":
