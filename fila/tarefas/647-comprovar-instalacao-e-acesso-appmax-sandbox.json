@@ -8,7 +8,8 @@
     "ci"
   ],
   "depende_de": [
-    "TAR-643"
+    "TAR-643",
+    "TAR-654"
   ],
   "cria": [],
   "move": [

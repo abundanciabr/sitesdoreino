@@ -7,6 +7,7 @@
 # COMO O MANTENEDOR RODA (na VPS, depois da integração deste roteiro):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/ligar-a-appmax.sh -o /tmp/appmax.sh && bash /tmp/appmax.sh
 #   bash /tmp/appmax.sh --oauth-merchant valida e grava o par MERCHANT sandbox
+#   bash /tmp/appmax.sh --preparar-reinstalacao prepara um novo external_id privado
 #
 # ELE PERGUNTA AS CREDENCIAIS, com digitação invisível, e essa é a decisão que
 # dá nome ao arquivo. Elas NUNCA vêm como argumento: argumento de linha de
@@ -26,6 +27,10 @@
 #   APPMAX_APP_CLIENT_SECRET
 # No modo `--oauth-merchant`, escreve somente as duas chaves MERCHANT após
 # provar acesso OAuth e leitura de produtos no sandbox.
+# `--preparar-reinstalacao` não grava env nem chama a Appmax: sob transação e
+# bloqueio da linha existente, troca somente `external_id` para a futura
+# instalação consentida. Se a confirmação da operação for ambígua, não rode de
+# novo até conferir o estado; cartão e endpoints devem continuar em sandbox.
 #
 # `APPMAX_INSTALACOES` é a variável que `services/pagamentos/config/settings.py`
 # lê de verdade, no formato `{"<app_id>":{"alias":"Loja","sites":["<site_id>"]}}`.
@@ -57,12 +62,22 @@ unset CLIENT_ID SEGREDO OAUTH VALOR TEMP LINHA linha saida valor ALUNOS_API_TOKE
 
 AUTH_SANDBOX="https://auth.sandboxappmax.com.br"
 API_SANDBOX="https://api.sandboxappmax.com.br"
+MODO="instalacao"
+if [ "$#" -eq 1 ]; then
+  case "$1" in
+    --oauth-merchant) MODO="oauth-merchant" ;;
+    --preparar-reinstalacao) MODO="preparar-reinstalacao" ;;
+    *) MODO="invalido" ;;
+  esac
+elif [ "$#" -gt 1 ]; then
+  MODO="invalido"
+fi
 
 parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 # Nada escrito na linha, nunca. Não é preciosismo de formato: é a única maneira
 # de garantir que a credencial não passou por aqui (`armadilhas/090`).
-if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != "--oauth-merchant" ]; }; then
+if [ "$MODO" = "invalido" ]; then
   parar "este comando não recebe nada escrito na linha, e você escreveu algo. Se era a credencial, NÃO cole aqui: ela apareceria na tela, ficaria no histórico do terminal e qualquer processo da máquina conseguiria lê-la. Rode 'bash /tmp/appmax.sh' sem mais nada, que eu pergunto uma a uma, com a digitação invisível. Nada foi alterado."
 fi
 
@@ -127,7 +142,7 @@ if awk '
   parar "há sites com cobrança Appmax habilitada. Este roteiro só prepara sandbox e não pode rodar nesse estado. Desative a lista APPMAX_CARD_ENABLED_SITES por um procedimento autorizado antes de continuar. Nada foi alterado."
 fi
 
-if [ "$#" -eq 1 ]; then
+if [ "$MODO" = "oauth-merchant" ]; then
   [ "$(ler_de APPMAX_AUTH_URL)" = "$AUTH_SANDBOX/oauth2/token" ] \
     || parar "a autenticação não está fixada no sandbox. Rode primeiro 'bash /tmp/appmax.sh' para preparar o aplicativo. Nada foi alterado."
   [ "$(ler_de APPMAX_API_URL)" = "$API_SANDBOX" ] \
@@ -243,6 +258,76 @@ print("OK" if isinstance(products, list) else "API_RESPOSTA_INVALIDA")
     parar "OAuth sandbox foi validado e as credenciais MERCHANT já estão gravadas. A célula não recarregou; confira 'docker compose ps pagamentos'. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
   fi
   echo "OAuth sandbox e leitura de produtos MERCHANT validados; credenciais gravadas fora do repositório e célula pagamentos recarregada. O token não foi exibido nem armazenado."
+  exit 0
+fi
+
+if [ "$MODO" = "preparar-reinstalacao" ]; then
+  [ "$(ler_de APPMAX_AUTH_URL)" = "$AUTH_SANDBOX/oauth2/token" ] \
+    || parar "a autenticação não está fixada no sandbox. Nada foi alterado."
+  [ "$(ler_de APPMAX_API_URL)" = "$API_SANDBOX" ] \
+    || parar "a API não está fixada no sandbox. Nada foi alterado."
+  consultar_servicos_rodando
+  printf '%s\n' "$RODANDO" | grep -qx catalogo \
+    || parar "o catálogo não está em execução. Nada foi alterado. Confira somente 'docker compose ps --services --status running'."
+  printf '%s\n' "$RODANDO" | grep -qx pagamentos \
+    || parar "pagamentos não está em execução. Nada foi alterado. Confira somente 'docker compose ps --services --status running'."
+
+  SITES_ATIVOS="$(docker_compose exec -T catalogo python manage.py shell -c \
+    "from apps.sites.models import Site
+for s in Site.objects.filter(active=True).order_by('host'):
+    print(s.id)" 2>/dev/null)" \
+    || parar "não consegui confirmar os sites ativos no catálogo; nenhuma rotação foi solicitada. Confira somente 'docker compose ps --services --status running'."
+  SITES_ATIVOS="$(printf '%s\n' "$SITES_ATIVOS" | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}$' || true)"
+  [ -n "$SITES_ATIVOS" ] \
+    || parar "o catálogo não confirmou site ativo algum. Nada foi alterado."
+
+  CODIGO_ROTACAO="$(cat <<'PYTHON'
+import os
+import sys
+import uuid
+from django.conf import settings
+from django.db import transaction
+from pagamentos.core.models import InstalacaoAppmax
+
+sites_ativos = {linha.strip() for linha in sys.stdin if linha.strip()}
+configuracoes = settings.APPMAX_INSTALACOES
+if not isinstance(configuracoes, dict) or len(configuracoes) != 1: print("CONFIGURACAO_AMBIGUA"); raise SystemExit(20)
+app_id, configuracao = next(iter(configuracoes.items()))
+alias = configuracao.get("alias") if isinstance(configuracao, dict) else None
+sites = configuracao.get("sites") if isinstance(configuracao, dict) else None
+if not isinstance(alias, str) or not alias.strip() or not isinstance(sites, list) or not sites: print("SITE_NAO_AUTORIZADO"); raise SystemExit(21)
+sites = [str(site) for site in sites]
+if len(set(sites)) != len(sites) or not set(sites).issubset(sites_ativos): print("SITE_NAO_AUTORIZADO"); raise SystemExit(21)
+
+with transaction.atomic():
+    instalacoes = list(InstalacaoAppmax.objects.select_for_update().filter(app_id=app_id))
+    if len(instalacoes) != 1: print("INSTALACAO_AUSENTE_OU_AMBIGUA"); raise SystemExit(22)
+    instalacao = instalacoes[0]
+    if instalacao.alias != alias or not isinstance(instalacao.platform_site_ids, list) or len(instalacao.platform_site_ids) != len(sites) or set(instalacao.platform_site_ids) != set(sites): print("SITE_NAO_AUTORIZADO"); raise SystemExit(21)
+    if settings.APPMAX_AUTH_URL != "https://auth.sandboxappmax.com.br/oauth2/token": print("AUTH_FORA_SANDBOX"); raise SystemExit(23)
+    if settings.APPMAX_API_URL != "https://api.sandboxappmax.com.br": print("API_FORA_SANDBOX"); raise SystemExit(24)
+    if os.environ.get("APPMAX_CARD_ENABLED_SITES", "").strip() or getattr(settings, "APPMAX_CARD_ENABLED_SITES", ()): print("CARTAO_ATIVO"); raise SystemExit(25)
+    instalacao.external_id = uuid.uuid4()
+    instalacao.save(update_fields=["external_id"])
+print("ROTACAO_SANDBOX_OK")
+PYTHON
+  )"
+  ROTACAO_SAIDA=""
+  if ROTACAO_SAIDA="$(printf '%s\n' "$SITES_ATIVOS" | docker_compose exec -T pagamentos python manage.py shell -c "$CODIGO_ROTACAO" 2>/dev/null)"; then
+    [ "$ROTACAO_SAIDA" = "ROTACAO_SANDBOX_OK" ] \
+      || parar "a consulta privada não confirmou a rotação. Não execute novamente; mantenha o cartão desligado e peça conferência do estado antes de nova tentativa."
+  else
+    case "$ROTACAO_SAIDA" in
+      CONFIGURACAO_AMBIGUA) parar "há mais de uma configuração Appmax e não escolhi uma loja. Nada foi alterado." ;;
+      SITE_NAO_AUTORIZADO) parar "a instalação existente não corresponde a um site ativo autorizado. Nada foi alterado." ;;
+      INSTALACAO_AUSENTE_OU_AMBIGUA) parar "não encontrei uma instalação existente única. Nada foi alterado." ;;
+      AUTH_FORA_SANDBOX) parar "a autenticação do processo pagamentos não está fixada no sandbox. Nada foi alterado." ;;
+      API_FORA_SANDBOX) parar "a API do processo pagamentos não está fixada no sandbox. Nada foi alterado." ;;
+      CARTAO_ATIVO) parar "há sites com cobrança Appmax habilitada no processo pagamentos. Nada foi alterado." ;;
+      *) parar "não consegui confirmar se o identificador foi trocado. Não execute novamente; mantenha o cartão desligado e peça conferência do estado antes de nova tentativa." ;;
+    esac
+  fi
+  echo "preparação de reinstalação sandbox concluída; finalize consentimento e OAuth MERCHANT; cartão permanece desligado"
   exit 0
 fi
 
