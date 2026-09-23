@@ -54,6 +54,16 @@ def test_pendente_e_outro_evento_nao_aprovam(monkeypatch, mudancas):
 def test_vermelho_pulado_e_cancelado_recusam(monkeypatch, conclusao):
     assert medir(monkeypatch, [run(conclusion=conclusao)])["estado"] == "FALHA_PUBLICACAO"
 
+def test_publicacao_orienta_sem_invocar_papel_revogado(monkeypatch):
+    falha = medir(monkeypatch, [run(conclusion="failure")])
+    assert falha["estado"] == "FALHA_PUBLICACAO"
+    assert "gh run view 10 --log-failed" in falha["acao"]
+    espera = medir(monkeypatch, [run(status="in_progress")])
+    assert espera["estado"] == "AGUARDANDO_PUBLICACAO"
+    assert f"python ci/esperar.py --deploy {SHA} --so-desfecho" in espera["acao"]
+    assert all("maestro" not in estado["acao"].lower() for estado in (falha, espera))
+
+
 def test_todos_workflows_exigidos_precisam_aparecer(monkeypatch):
     arquivos = ["services/quiz/app.py", "infra/docker-compose.yml"]
     assert medir(monkeypatch, [run()], arquivos)["estado"] == "AGUARDANDO_PUBLICACAO"
