@@ -124,9 +124,9 @@ exigindo mandato do despacho e anúncio nominal dos merges observados.
 
 ## 4. Como operar uma sessão (RITOS.md §1, resumo executável)
 
-> **Vários despachos em paralelo?** A sessão-maestro (janela raiz) rege pelo
-> `RUNBOOK-LOTES.md` — este §4 descreve UMA sessão de célula; o runbook descreve
-> como N delas rodam juntas e como a janela de merge fecha o lote.
+> **Vários trabalhos em paralelo?** A sessão responsável coordena alvos
+> independentes pelo `RUNBOOK-LOTES.md`. Este §4 descreve uma sessão de célula;
+> cada bancada valida e entrega seu próprio resultado.
 
 ```bash
 make sessao CELULA=<celula> TAREFA=<slug>
@@ -234,8 +234,8 @@ próprio bug que `ci/contract_freeze.py` foi reescrito para eliminar
 
 1. Este arquivo, inteiro.
 2. `ARMADILHAS.md` §2 (abertura e contexto direcionado); abra as origens
-   recuperadas e citadas no brief; `ARMADILHAS-OPERACAO.md` §1 se for maestro
-   de lote ou for mergear (o que só o humano resolve).
+   recuperadas e citadas no brief; `ARMADILHAS-OPERACAO.md` §1 quando
+   a tarefa exigir uma decisão exclusiva do mantenedor.
 3. Se a tarefa já é conhecida: `constituicoes/AGENTS.<celula>.md` +
    `services/<celula>/LICOES.md` (se existir).
 4. Confira o baseline emitido pela abertura ANTES de tocar qualquer arquivo. Vermelho ⇒

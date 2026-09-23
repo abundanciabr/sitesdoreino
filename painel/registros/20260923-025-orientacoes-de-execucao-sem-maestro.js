@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-025-orientacoes-de-execucao-sem-maestro",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "Orientações de execução sem maestro",
+  detalhe: "Três textos operacionais deixaram de encaminhar trabalho à maestro. A sessão acompanha bloqueios e a pista integra PRs verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1996. Validação local: árvore 789db1d0424f481bdb77dcc0bc420d4c37c533f0; commit 94dce1708dde6b98fc8d375b9798eb78cfa91871; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-665",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

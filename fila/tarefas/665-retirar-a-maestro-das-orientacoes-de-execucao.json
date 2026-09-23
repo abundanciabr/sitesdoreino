@@ -1,0 +1,22 @@
+{
+  "arquivo": "665-retirar-a-maestro-das-orientacoes-de-execucao",
+  "id": "TAR-665",
+  "titulo": "Retirar a maestro das orientações de execução",
+  "toca": [
+    "PLAYBOOK.md",
+    "docs/caixa-de-sugestoes/MODELO-DESPACHO.md",
+    "docs/caixa-de-sugestoes/PLANO-MESTRE.md",
+    "ci/tests/test_fecho_sem_entrega_a_outro_papel.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Textos operacionais sem ordens à maestro; teste de regressão e muralhas verdes; PR integrado",
+  "despacho": "Corrigir as orientações vivas que ainda atribuem regência e merge à maestro, preservando o histórico revogado e suas referências. Provar com testes e muralhas.",
+  "origem": "Pedido direto do mantenedor em 23/09/2026 sobre a dissolução dos papéis",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

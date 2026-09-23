@@ -59,6 +59,8 @@ def test_o_resumo_da_fabrica_nao_usa_o_papel_encerrado_no_nome():
     "ARMADILHAS-OPERACAO.md",
     "CAMINHO-DOURADO.md",
     "docs/guia-mantenedor.md",
+    "PLAYBOOK.md",
+    "docs/caixa-de-sugestoes/MODELO-DESPACHO.md",
 ))
 def test_orientacao_ativa_nao_reativa_papeis_fixos(relativo):
     texto = (RAIZ / relativo).read_text(encoding="utf-8").lower()

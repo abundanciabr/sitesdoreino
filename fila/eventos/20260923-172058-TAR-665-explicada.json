@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-172058-TAR-665-explicada",
+  "tarefa": "TAR-665",
+  "evento": "explicada",
+  "quando": "2026-09-23T17:20:58+00:00",
+  "quem": "Pedido direto do mantenedor em 23/09/2026 sobre a dissolução dos papéis",
+  "o_que_e": "Orientações de trabalho ainda dizem que a maestro organiza a fila e recebe bloqueios.",
+  "o_que_muda": "A sessão responsável executa e informa bloqueios diretamente; nenhum agente espera uma maestro para continuar.",
+  "exemplo": "Ao passar do limite de arquivos, o modelo de despacho manda avisar a sessão responsável, e não uma função dissolvida.",
+  "importancia": 80
+}
