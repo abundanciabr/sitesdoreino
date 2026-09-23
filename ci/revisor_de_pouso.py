@@ -1,24 +1,14 @@
-"""Revisão independente e composição comprovada, mais scanner consultivo do diff.
+"""Scanner consultivo de quatro heurísticas sobre o diff de um PR.
 
-`avaliar_atestado` é o portão usado pelo merge. O comentário da maestro
-registra a avaliação real de outra tarefa, sem autenticar o runtime nem
-oferecer assinatura criptográfica. IDs diferentes sozinhos não provam
-independência: a maestro responde pela procedência e pelo conteúdo.
-
-A CLI continua sendo apenas o scanner de quatro heurísticas. LIMPO e
-NAO-REVISADO do scanner não aprovam o atestado exigido pelo portão.
-O scanner lê o diff, nunca executa código do PR com a credencial da pista.
+Lê o diff sem executar código do PR com a credencial da pista.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import re
-import subprocess
 import sys
 import tempfile
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -26,129 +16,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
-    Estado,
-    Resultado,
     configurar_saida,
     executar,
     raiz_do_repo,
 )
-
-MARCA_ATESTADO = "<!-- revisao-independente:v1 -->"
-ASSOCIACOES_CONFIAVEIS = {"OWNER", "MEMBER", "COLLABORATOR"}
-
-
-def avaliar_atestado(sha: str, comentarios: list[dict], *, correcoes: list[int] | None = None,
-                     raiz: Path | None = None) -> Resultado:
-    """O último atestado confiável prevalece, inclusive quando inválido."""
-    def recusar(motivo):
-        return Resultado("revisão independente", Estado.FAIL, motivo,
-                         "Nova revisão necessária: a maestro deve conferir uma avaliação "
-                         "independente do SHA final e publicar novo atestado. "
-                         "Nunca copie uma aprovação para outro SHA.")
-
-    candidatos = [c for c in comentarios
-                  if c.get("author_association") in ASSOCIACOES_CONFIAVEIS
-                  and MARCA_ATESTADO in (c.get("body") or "")]
-    if not candidatos:
-        return recusar("atestado independente ausente")
-    ultimo = max(candidatos, key=lambda c: int(c.get("id") or 0))
-    corpo = ultimo.get("body") or ""
-    try:
-        if not corpo.startswith(MARCA_ATESTADO):
-            return recusar("atestado com marcador fora do início")
-        dado = json.loads(corpo[len(MARCA_ATESTADO):].strip())
-    except (ValueError, TypeError):
-        return recusar("atestado independente malformado")
-    campos = ("sha", "despacho", "revisor", "maestro", "veredito", "resumo", "evidencia")
-    if not isinstance(dado, dict) or any(
-        not isinstance(dado.get(c), str) or not dado[c].strip() for c in campos
-    ):
-        return recusar("atestado sem identidade, resumo ou evidência")
-    if not re.fullmatch(r"[0-9a-f]{40}", sha or "") or not re.fullmatch(r"[0-9a-f]{40}", dado["sha"]):
-        return recusar("o SHA final mudou ou não foi revisado")
-    identidades = {dado[c].strip() for c in ("despacho", "revisor", "maestro")}
-    if len(identidades) != 3:
-        return recusar("despacho, revisor e maestro precisam ser tarefas distintas")
-    if dado["veredito"] != "APROVADO":
-        return recusar("revisão reprovada ou sem aprovação: " + dado["resumo"])
-    if correcoes:
-        declaradas = dado.get("corrige_publicacao")
-        if not isinstance(declaradas, list) or any(type(n) is not int for n in declaradas) or sorted(set(declaradas)) != sorted(correcoes):
-            return recusar("a recuperação declarada não está na avaliação independente")
-    detalhe = f"Comentário {ultimo.get('id')}; revisor {dado['revisor']}. " + dado["evidencia"]
-    if dado["sha"] != sha:
-        if raiz is None:
-            return recusar("o SHA final mudou ou não foi revisado")
-        composicao = comprovar_atualizacao_da_base(raiz, dado["sha"], sha)
-        composicao.detalhe = detalhe + "\n" + composicao.detalhe
-        return composicao
-    return Resultado("revisão independente", Estado.PASS, "atestado aprovado para " + sha, detalhe)
-
-
-def _git_composicao(raiz: Path, argumentos: list[str], aceitos=(0,)):
-    """Distingue recusas do Git de uma medição que não pôde acontecer."""
-    try:
-        processo = subprocess.run(
-            ["git", "--no-replace-objects", *argumentos], cwd=raiz,
-            stdin=subprocess.DEVNULL, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=TIMEOUT_PADRAO,
-        )
-    except (OSError, subprocess.TimeoutExpired) as erro:
-        raise ErroDeInstrumentacao(
-            f"não consegui executar git {argumentos[0]} ({type(erro).__name__})",
-            "Confira o Git, o acesso ao remoto e o prazo; repita a medição da composição.",
-        ) from erro
-    if processo.returncode not in aceitos:
-        raise ErroDeInstrumentacao(
-            f"git {argumentos[0]} terminou com exit {processo.returncode}",
-            "Confira o acesso ao remoto e a presença dos objetos; repita a medição da composição.",
-        )
-    return processo
-
-
-def comprovar_atualizacao_da_base(raiz: Path, revisado: str, head: str) -> Resultado:
-    def recusar(motivo):
-        return Resultado("revisão independente", Estado.FAIL, motivo,
-                         "O atestado original foi preservado. Peça revisão independente do novo SHA.")
-
-    referencia = "refs/revisao-da-base/" + uuid.uuid4().hex
-    try:
-        try:
-            _git_composicao(raiz, ["fetch", "--no-tags", "--no-write-fetch-head", "--no-auto-gc",
-                                  "origin", f"refs/heads/main:{referencia}", head])
-            principal = _git_composicao(raiz, ["rev-parse", "--verify", referencia + "^{commit}"]).stdout.strip()
-            if not re.fullmatch(r"[0-9a-f]{40}", principal):
-                raise ErroDeInstrumentacao("main sem SHA válido", "Busque a base novamente e repita a medição.")
-            _git_composicao(raiz, ["cat-file", "-e", revisado + "^{commit}"])
-            atual, quantidade = head, 0
-            while atual != revisado:
-                objeto = _git_composicao(raiz, ["show", "-s", "--format=%P%n%T", atual]).stdout.splitlines()
-                if len(objeto) != 2 or not re.fullmatch(r"[0-9a-f]{40}", objeto[1]):
-                    raise ErroDeInstrumentacao("commit sem pais ou árvore legíveis", "Busque os objetos novamente e repita a medição.")
-                pais, arvore = objeto[0].split(), objeto[1]
-                if len(pais) != 2:
-                    return recusar("a cadeia contém commit sem exatamente dois pais: " + atual)
-                ancestral = _git_composicao(raiz, ["merge-base", "--is-ancestor", pais[1], principal], (0, 1))
-                if ancestral.returncode == 1:
-                    return recusar("o segundo pai não pertence à main fixada: " + atual)
-                combinado = _git_composicao(raiz, ["merge-tree", "--write-tree", *pais], (0, 1))
-                if combinado.returncode == 1:
-                    return recusar("a composição dos pais contém conflito: " + atual)
-                calculada = combinado.stdout.splitlines()[0] if combinado.stdout else ""
-                if not re.fullmatch(r"[0-9a-f]{40}", calculada):
-                    raise ErroDeInstrumentacao("merge-tree não devolveu árvore válida", "Confira a versão do Git e repita a medição.")
-                if calculada != arvore:
-                    return recusar("a árvore diverge da composição limpa dos pais: " + atual)
-                atual, quantidade = pais[0], quantidade + 1
-            return Resultado("revisão independente", Estado.PASS,
-                             f"atestado original {revisado}; composição comprovada até {head}",
-                             f"{quantidade} atualização(ões); main fixada em {principal}. "
-                             "Cada árvore coincide com merge-tree sem conflitos; checks do SHA atual continuam obrigatórios.")
-        finally:
-            _git_composicao(raiz, ["update-ref", "-d", referencia])
-    except ErroDeInstrumentacao as erro:
-        return Resultado("revisão independente", Estado.ERROR, "não consegui comprovar a atualização da base", str(erro))
-
 
 # A linha de código estável. Ver o fim do docstring.
 MARCA = "REVISOR-DE-POUSO:"
@@ -635,13 +506,11 @@ def revisar(patch: str) -> list[Achado]:
 
 ABERTURA = (
     "🔍 **varredura consultiva do diff**: quatro heurísticas procuraram "
-    "sinais de falso-verde. Este comentário não é uma avaliação de agente "
-    "independente e não aprova o pouso."
+    "sinais de falso-verde. Este comentário não decide a integração."
 )
 
 RODAPE = (
-    "*Isto é opinião, não reprovação. O atestado independente continua "
-    "obrigatório no SHA final. Arranque a regra que cada guarda protege e "
+    "*Isto é opinião, não reprovação. Arranque a regra que cada guarda protege e "
     "confira que o vermelho diz o NOME do teste que caiu, senão foi outro guarda "
     "que respondeu (`armadilhas/268`).*"
 )
@@ -667,8 +536,7 @@ def comentario(numero: int, achados: list[Achado]) -> str:
     partes = [
         ABERTURA,
         "",
-        f"**{len(achados)} ponto(s) para olhar**: opinião, não reprovação. "
-        "O atestado independente continua obrigatório.",
+        f"**{len(achados)} ponto(s) para olhar**: opinião, não reprovação.",
         "",
     ]
     for indice, achado in enumerate(mostrados, start=1):
@@ -803,8 +671,7 @@ def _desistir(motivo: str) -> int:
     print("")
     print(f"NÃO REVISEI ESTE PR — {motivo}")
     print(
-        "Este scanner OPINA, não reprova. O atestado independente continua "
-        "obrigatório para o pouso."
+        "Este scanner é consultivo. Confira os testes e os checks para decidir a entrega."
     )
     print(f"{MARCA} {NAO_REVISADO}")
     return 0

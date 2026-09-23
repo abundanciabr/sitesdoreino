@@ -1119,7 +1119,7 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
         voz.desfecho(
             f"{prefixo}🛬 pedi pouso do PR {pr} pelo portão. A pista assume: "
             "a integração e a publicação ainda não foram comprovadas. "
-            f"A maestro acompanha com python ci/esperar.py --entrega {pr}."
+            f"Confira o desfecho nesta sessão com python ci/esperar.py --entrega {pr}."
         )
         return 0
     # A recusa é o desfecho, e desfecho não se sussurra: o motivo do portão vem

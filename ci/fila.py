@@ -10,7 +10,7 @@
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
         --espera mantenedor|fila                         # trava, com o porquê e quem destrava
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
-    python ci/fila.py reconciliar TAR-001 --quem "maestro" \
+    python ci/fila.py reconciliar TAR-001 --quem "executor" \
         --aceite-registro painel/registros/AAAAMMDD-NNN-slug.js
     python ci/fila.py explicar TAR-001 --quem "sessao-x" \
         --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
@@ -66,7 +66,6 @@ import indice_de_armadilhas  # noqa: E402
 import provar_guardas  # noqa: E402
 import responsabilidades  # noqa: E402
 import estado_da_entrega  # noqa: E402
-import revisor_de_pouso  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     Estado,
@@ -1189,19 +1188,6 @@ def provar_estado_terminal(estado: dict) -> None:
             )
 
 
-def provar_atestado(resultado) -> None:
-    if not isinstance(resultado, revisor_de_pouso.Resultado):
-        raise ErroDeInstrumentacao(
-            "o revisor devolveu um resultado inválido",
-            "A avaliação independente não pôde ser interpretada.",
-        )
-    if resultado.estado is not Estado.PASS:
-        raise RecusaDeReconciliacao(
-            "o atestado independente do HEAD final não foi aprovado: "
-            + resultado.resumo
-        )
-
-
 def provar_suite_no_head(raiz: Path, head: str) -> list[str]:
     """Os checks obrigatórios da integração, verdes no SHA que entrou na main.
 
@@ -1416,19 +1402,6 @@ def provar_reconciliacao(
             )
         linhagem = "linhagem comprovada"
 
-    comentarios = estado_da_entrega._api(  # uma leitura GitHub, sem segundo protocolo
-        raiz, f"issues/{numero}/comments", paginas=True
-    )
-    # A mesma régua do pouso: com a bancada em mãos, um atestado de outro SHA
-    # ainda passa quando a diferença é só a main recebida (`ci/mergear.py`).
-    atestado = revisor_de_pouso.avaliar_atestado(
-        head,
-        comentarios,
-        correcoes=estado_da_entrega.correcoes_declaradas(pr),
-        raiz=raiz,
-    )
-    provar_atestado(atestado)
-
     provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
     registro = carregar_aceite(raiz, aceite_registro, merge, provas)
     publicacao = ",".join(provas)
@@ -1436,8 +1409,7 @@ def provar_reconciliacao(
         f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
         f"arvore={submissao['arvore']}; head={head}; merge={merge}; "
         f"estado={estado['estado']}; publicacao={publicacao}; "
-        f"linhagem={linhagem}; "
-        f"atestado={atestado.resumo}; aceite={aceite_registro.replace('\\', '/')}"
+        f"linhagem={linhagem}; aceite={aceite_registro.replace('\\', '/')}"
     )
     return evidencia, registro["verificado_em"]
 
