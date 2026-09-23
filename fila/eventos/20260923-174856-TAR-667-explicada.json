@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-174856-TAR-667-explicada",
+  "tarefa": "TAR-667",
+  "evento": "explicada",
+  "quando": "2026-09-23T17:48:56+00:00",
+  "quem": "Fecho técnico da TAR-666 após PR #1995 publicado e páginas públicas verificadas em 23/09/2026.",
+  "o_que_e": "A correção da tela do cartão já foi publicada, mas o livro ainda mostra somente a validação local anterior ao deploy.",
+  "o_que_muda": "O mantenedor encontra no painel a prova de que a mensagem corrigida apareceu no site.",
+  "exemplo": "O pedido que antes ficava esperando agora abre com explicação e link de volta; a prova fica ligada à entrega.",
+  "importancia": 55
+}
