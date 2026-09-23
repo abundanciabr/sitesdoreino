@@ -339,6 +339,36 @@ class InstalacaoAppmax(models.Model):
         return f"appmax:{self.app_id}:{self.alias}"
 
 
+class AppmaxWebhookInbox(models.Model):
+    """Aviso Appmax persistido sem interpretar o estado financeiro do corpo."""
+
+    app_id = models.CharField(max_length=64)
+    appmax_site_id = models.CharField(max_length=64)
+    platform_site_id = models.CharField(max_length=255)
+    event = models.CharField(max_length=100)
+    event_type = models.CharField(max_length=50)
+    external_order_id = models.CharField(max_length=255)
+    payload = models.JSONField()
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "app_id",
+                    "appmax_site_id",
+                    "event",
+                    "event_type",
+                    "external_order_id",
+                ],
+                name="appmax_aviso_unico",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"appmax:{self.event}:{self.external_order_id}"
+
+
 class OutboxEvent(models.Model):
     """[RECEITA:R3 v1] Uma linha por evento emitido. `emitir()` grava SEMPRE na
     MESMA transação da mudança de estado que a justifica (INV-P6) — o relay
