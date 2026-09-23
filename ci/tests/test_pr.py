@@ -343,6 +343,35 @@ def test_continuar_com_o_registro_ja_embarcado_nao_pede_outro_numero(tmp_path):
     assert len(list((raiz / "painel" / "registros").glob("*.js"))) == 1
 
 
+def test_push_falha_para_ate_retomada_explicita_com_continuar(tmp_path):
+    raiz = bancada(tmp_path)
+    primeira = Duble(RESPOSTAS_FELIZES)
+    primeira.explode_em = 'git push -u origin'
+
+    with pytest.raises(pr.ErroDeInstrumentacao):
+        pr.abrir(raiz, pedido(raiz), rodar=primeira, hoje=HOJE)
+
+    assert primeira.pediu('git commit -F')
+    assert primeira.pediu('pytest ci/tests')
+    assert primeira.pediu('git push -u origin')
+    assert not primeira.pediu('gh pr create')
+    assert not list((raiz / 'painel' / 'registros').glob('*.js'))
+
+    segunda = Duble({
+        **RESPOSTAS_FELIZES,
+        'status --porcelain': '\n',
+        'diff --cached --name-only': '',
+        'gh pr list': '[]\n',
+    })
+    final = pr.abrir(raiz, pedido(raiz, continuar=True), rodar=segunda, hoje=HOJE)
+
+    assert '1210' in final
+    assert not segunda.pediu('git commit -F')
+    assert segunda.pediu('git push -u origin')
+    assert segunda.pediu('gh pr create')
+    assert len(list((raiz / 'painel' / 'registros').glob('*.js'))) == 1
+
+
 # ------------------------------------------------------- (d) o clone principal --
 
 
