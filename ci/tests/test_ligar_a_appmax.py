@@ -32,10 +32,12 @@ ERRO, nunca um OK silencioso.
 
 from __future__ import annotations
 
+import http.server
 import json
 import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -67,6 +69,10 @@ PAGAMENTOS_ENV = (
     "APPMAX_CARD_ENABLED_SITES=\n"
 )
 
+# Compose interpola o arquivo inteiro antes de executar qualquer subcomando.
+# Estes dois marcadores falsos permitem provar o caminho sem ler segredos reais.
+ADMIN_ENV = "ALUNOS_API_TOKEN=token-alunos-falso\nTOKEN_CATALOGO=token-catalogo-falso\n"
+
 # As respostas do teclado, na ordem em que o roteiro pergunta.
 RESPOSTAS = f"{APP_ID}\n{SITE_NOME}\n{CLIENT_ID}\n{SEGREDO}\n"
 
@@ -89,6 +95,14 @@ DOCKER_DE_MENTIRA = r"""#!/usr/bin/env bash
 shift
 case "${1:-}" in
   ps)
+    [ "${ALUNOS_API_TOKEN:-}" = "token-alunos-falso" ] && [ "${TOKEN_CATALOGO:-}" = "token-catalogo-falso" ] || {
+      printf 'required gateway token missing\n' >&2
+      exit 78
+    }
+    [ "${DOCKER_FALSO_PS:-OK}" = "FALHA" ] && {
+      printf 'compose interpolation failed\n' >&2
+      exit 1
+    }
     printf '%s\n' ${DOCKER_FALSO_SERVICOS-catalogo pagamentos}
     exit 0
     ;;
@@ -108,6 +122,7 @@ exit 0
 """
 
 CURL_DE_MENTIRA = r"""#!/usr/bin/env bash
+[ "${ALUNOS_API_TOKEN+x}${TOKEN_CATALOGO+x}${VALOR_GATEWAY+x}" = "" ] || exit 9
 CONFIG=0
 for ARG in "$@"; do [ "$ARG" = "--config" ] && CONFIG=1; done
 cat >/dev/null
@@ -141,13 +156,20 @@ fi
 """
 
 
-def _plataforma(tmp_path: Path, *, env: str | None = PAGAMENTOS_ENV) -> Path:
+def _plataforma(
+    tmp_path: Path,
+    *,
+    env: str | None = PAGAMENTOS_ENV,
+    admin_env: str | None = ADMIN_ENV,
+) -> Path:
     """Uma /opt/plataforma de mentira. `env=None` = célula não provisionada."""
     raiz = tmp_path / "plataforma"
     (raiz / "env").mkdir(parents=True, exist_ok=True)
     (raiz / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
     if env is not None:
         (raiz / "env" / "pagamentos.env").write_text(env, encoding="utf-8")
+    if admin_env is not None:
+        (raiz / "env" / "admin.env").write_text(admin_env, encoding="utf-8")
     return raiz
 
 
@@ -277,7 +299,7 @@ def test_a_recarga_force_recreate_e_mostra_o_erro():
     recarga apaga a única prova de que a célula caiu (`armadilhas/377`).
     """
     fonte = SCRIPT.read_text(encoding="utf-8")
-    recarga = [x for x in fonte.splitlines() if "docker compose up -d --" in x]
+    recarga = [x for x in fonte.splitlines() if "docker_compose up -d --" in x]
     assert len(recarga) == 2, recarga
     assert all("pagamentos" in x for x in recarga)
     assert "--force-recreate" in recarga[0]
@@ -341,8 +363,112 @@ def test_sem_o_catalogo_de_pe_ele_para_sem_pedir_nada(tmp_path):
     assert resultado.returncode != 0
     assert "PAROU POR SEGURANÇA" in (resultado.stdout + resultado.stderr)
     assert "client_secret" not in resultado.stdout
+    assert "docker compose up -d" not in resultado.stdout
     assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
     assert _copias(raiz) == [], "guardou cópia de um arquivo que nem chegou a mudar"
+
+
+@pytest.mark.parametrize(
+    "admin_env",
+    [
+        None,
+        "TOKEN_CATALOGO=token-catalogo-falso\n",
+        "ALUNOS_API_TOKEN=token-alunos-falso\n",
+        "ALUNOS_API_TOKEN=token-alunos-falso\nTOKEN_CATALOGO=\n",
+    ],
+)
+def test_sem_tokens_de_interpolacao_do_compose_para_antes_de_pedir_segredo(tmp_path, admin_env):
+    raiz = _plataforma(tmp_path, admin_env=admin_env)
+    antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
+
+    resultado = _rodar(raiz)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "ALUNOS_API_TOKEN" in tela or "TOKEN_CATALOGO" in tela
+    assert "client_secret" not in tela
+    assert "token-alunos-falso" not in tela and "token-catalogo-falso" not in tela
+    assert "compose ps" not in tela
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == antes
+    assert _copias(raiz) == []
+
+
+def test_falha_de_ps_nao_vira_servico_ausente_nem_recomenda_reinicio_global(tmp_path):
+    raiz = _plataforma(tmp_path)
+    ambiente = _ambiente(tmp_path, raiz, DOCKER_FALSO_PS="FALHA")
+
+    resultado = _rodar(raiz, ambiente=ambiente)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "não consegui consultar" in tela
+    assert "não está rodando" not in tela
+    assert "docker compose version" in tela
+    assert "docker compose ps --services --status running" in tela
+    assert "docker compose up -d" not in tela
+    assert "token-alunos-falso" not in tela and "token-catalogo-falso" not in tela
+    assert "client_secret" not in tela
+    assert _copias(raiz) == []
+
+
+def test_falha_de_ps_no_modo_merchant_para_antes_de_pedir_credenciais(tmp_path):
+    raiz = _plataforma(tmp_path)
+    assert _rodar(raiz).returncode == 0
+    copias_antes = _copias(raiz)
+    ambiente = _ambiente(tmp_path, raiz, DOCKER_FALSO_PS="FALHA")
+
+    resultado = _rodar(raiz, ambiente=ambiente, args=("--oauth-merchant",))
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "não consegui consultar" in tela
+    assert "MERCHANT sandbox" not in tela
+    assert "não está rodando" not in tela
+    assert "docker compose up -d" not in tela
+    assert MERCHANT_CLIENT_ID not in tela and MERCHANT_SECRET not in tela
+    assert _copias(raiz) == copias_antes
+
+
+def test_tokens_preexportados_sao_substituidos_e_nao_herdados_pelo_curl(tmp_path):
+    raiz = _plataforma(tmp_path)
+    ambiente = _ambiente(
+        tmp_path,
+        raiz,
+        ALUNOS_API_TOKEN="token-herdado-indevido",
+        TOKEN_CATALOGO="catalogo-herdado-indevido",
+        VALOR_GATEWAY="buffer-herdado-indevido",
+    )
+
+    instalacao = _rodar(raiz, ambiente=ambiente)
+    assert instalacao.returncode == 0, instalacao.stdout + instalacao.stderr
+
+    oauth = _rodar(
+        raiz,
+        digitado=f"{MERCHANT_CLIENT_ID}\n{MERCHANT_SECRET}\n",
+        ambiente=ambiente,
+        args=("--oauth-merchant",),
+    )
+    tela = oauth.stdout + oauth.stderr
+    assert oauth.returncode == 0, tela
+    assert "token-herdado-indevido" not in tela
+    assert "catalogo-herdado-indevido" not in tela
+    assert "buffer-herdado-indevido" not in tela
+    assert _valor(raiz, "APPMAX_MERCHANT_CLIENT_ID") == MERCHANT_CLIENT_ID
+
+
+def test_lista_valida_sem_catalogo_informa_ausencia_sem_reinicio_global(tmp_path):
+    raiz = _plataforma(tmp_path)
+    ambiente = _ambiente(tmp_path, raiz, DOCKER_FALSO_SERVICOS="")
+
+    resultado = _rodar(raiz, ambiente=ambiente)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "não aparece na lista de serviços em execução" in tela
+    assert "não consegui consultar" not in tela
+    assert "docker compose up -d" not in tela
+    assert "client_secret" not in tela
+    assert _copias(raiz) == []
 
 
 def test_catalogo_sem_site_ativo_para_sem_escrever(tmp_path):
@@ -704,6 +830,49 @@ def test_o_resto_do_env_sobrevive_inteiro(tmp_path):
     assert _valor(raiz, "DATABASE_URL") == (
         "postgres://pagamentos_user:senha@postgres:5432/pagamentos_db"
     )
+
+
+def test_configuracao_curl_do_oauth_e_aceita_pelo_curl_real_no_localhost():
+    curl = shutil.which("curl")
+    if not curl:
+        pytest.skip("imagem mínima de CI não inclui curl real para testar a opção --config")
+
+    class RespostaLocal(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'{"data":{"products":[]}}')
+
+        def log_message(self, *_):
+            pass
+
+    servidor = http.server.HTTPServer(("127.0.0.1", 0), RespostaLocal)
+    thread = threading.Thread(target=servidor.serve_forever, daemon=True)
+    thread.start()
+    try:
+        endereco = f"http://127.0.0.1:{servidor.server_port}/products"
+        configuracao = (
+            "silent\nshow-error\nmax-time = 5\n"
+            f'url = "{endereco}"\n'
+            'header = "Authorization: Bearer token-falso"\n'
+            'write-out = "\\n%{http_code}"\n'
+        )
+        resultado = subprocess.run(
+            [curl, "--config", "-"],
+            input=configuracao.encode(),
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    finally:
+        servidor.shutdown()
+        thread.join(timeout=5)
+        servidor.server_close()
+
+    assert resultado.returncode == 0, resultado.stderr.decode(errors="replace")
+    assert resultado.stdout.endswith(b"200")
+    fonte = SCRIPT.read_text(encoding="utf-8")
+    assert 'config = "silent\\nshow-error\\n' in fonte
 
 
 def test_env_sem_quebra_de_linha_no_fim_nao_gruda_no_ultimo_valor(tmp_path):
