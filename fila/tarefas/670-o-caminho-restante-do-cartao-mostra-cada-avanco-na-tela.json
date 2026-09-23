@@ -1,0 +1,19 @@
+{
+  "arquivo": "670-o-caminho-restante-do-cartao-mostra-cada-avanco-na-tela",
+  "id": "TAR-670",
+  "titulo": "O caminho restante do cartão mostra cada avanço na tela",
+  "toca": [
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Roteiro no repositório conferido contra a fila ao vivo, com ordem, bloqueios, prova por etapa e checklist exibido a cada transição.",
+  "despacho": "Registre um roteiro executável do Appmax com a fila como fonte de estado, a sequência atual e o formato obrigatório do checklist na conversa a cada transição. Não reescreva o plano mestre nem declare publicação sem prova. Alvo: docs/decisoes/ROTEIRO-APPMAX-ATE-A-CONCLUSAO.md.",
+  "origem": "Pedido direto do mantenedor nesta conversa em 23/09/2026",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
