@@ -41,6 +41,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import BASH
+
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "infra" / "provisionar-aviso-no-celular.sh"
 
@@ -71,7 +73,7 @@ def _rodar(raiz: Path, ambiente_extra=None) -> subprocess.CompletedProcess:
     # arquivos e devolve um erro que não tem nada a ver com o script. Mesma
     # forma do guarda irmão `test_provisionar_pares_de_categorias.py`.
     return subprocess.run(
-        [shutil.which("bash"), str(SCRIPT)],
+        [BASH, str(SCRIPT)],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -89,7 +91,7 @@ def _valor(raiz: Path, arquivo: str, chave: str) -> str:
 
 
 bash_ausente = pytest.mark.skipif(
-    shutil.which("bash") is None or shutil.which("openssl") is None,
+    BASH is None or shutil.which("openssl") is None,
     reason="sem bash ou sem openssl nesta máquina — o guarda não tem como medir",
 )
 

@@ -37,12 +37,15 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import textwrap
 import threading
 import uuid
 from pathlib import Path
 
 import pytest
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "infra" / "ligar-a-appmax.sh"
@@ -80,7 +83,7 @@ RESPOSTAS = f"{APP_ID}\n{SITE_NOME}\n{CLIENT_ID}\n{SEGREDO}\n"
 
 
 def _bash() -> str:
-    caminho = shutil.which("bash")
+    caminho = BASH
     assert caminho, (
         "não achei `bash` nesta máquina. Este guarda EXECUTA o roteiro; sem "
         "interpretador ele não tem o que medir, e isso não é um OK ([INV-CI01])."
@@ -285,12 +288,32 @@ def _ambiente(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
         # command not found", que é um erro que não se parece com a sua causa.
         executavel.write_bytes(fonte.encode("utf-8"))
         executavel.chmod(0o755)
+    python3 = pasta / "python3"
+    python3.write_bytes(
+        f'#!/usr/bin/env bash\nexec "{Path(sys.executable).as_posix()}" "$@"\n'.encode("utf-8")
+    )
+    python3.chmod(0o755)
+    if os.name == "nt":
+        # O Python nativo procura curl.exe e ignoraria o curl falso do Git Bash.
+        (pasta / "sitecustomize.py").write_text(
+            "import os, subprocess\n"
+            "original = subprocess.run\n"
+            "def usar_curl_falso(args, *outros, **opcoes):\n"
+            "    if isinstance(args, (list, tuple)) and args and args[0] == 'curl':\n"
+            "        args = [os.environ['BASH_DO_TESTE'], os.environ['CURL_DO_TESTE'], *args[1:]]\n"
+            "    return original(args, *outros, **opcoes)\n"
+            "subprocess.run = usar_curl_falso\n",
+            encoding="utf-8",
+        )
     fake_django = pasta / "django_falso.py"
     fake_django.write_text(textwrap.dedent(DJANGO_DE_MENTIRA), encoding="utf-8")
 
     ambiente = dict(
         os.environ,
         PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
+        PYTHONPATH=str(pasta) + os.pathsep + os.environ.get("PYTHONPATH", ""),
+        BASH_DO_TESTE=_bash(),
+        CURL_DO_TESTE=str(pasta / "curl"),
         PLATAFORMA_DIR=str(raiz),
         DOCKER_FALSO_SITES=f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n",
         DOCKER_FALSO_ACTIVE_IDS=f"{SITE_ID}\n",
