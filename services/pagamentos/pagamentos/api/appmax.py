@@ -21,8 +21,10 @@ from typing import Any
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
-from pagamentos.core.models import InstalacaoAppmax
+from pagamentos.core import gateway, ledger
+from pagamentos.core.models import InstalacaoAppmax, PaymentAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -120,3 +122,103 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
         {"external_id": str(instalacao.external_id), "alias": instalacao.alias},
         status=200,
     )
+
+
+@csrf_exempt
+def estorno_appmax(request: HttpRequest) -> JsonResponse:
+    if request.method != "POST":
+        return JsonResponse({"detail": "Envie o evento por POST."}, status=405)
+    try:
+        envelope = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse(
+            {"detail": "JSON inválido. Reenvie o evento completo."}, status=400
+        )
+    if not isinstance(envelope, dict) or not isinstance(envelope.get("data"), dict):
+        return JsonResponse(
+            {"detail": "Evento inválido. Reenvie o envelope completo."}, status=400
+        )
+    motivos = {
+        "order_refund": ("estorno", {"estornado"}),
+        "order_chargeback_in_treatment": (
+            "contestacao",
+            {"chargeback_em_tratativa", "chargeback_em_disputa", "chargeback_perdido"},
+        ),
+    }
+    nome = envelope.get("event")
+    if (
+        not isinstance(nome, str)
+        or nome not in motivos
+        or envelope.get("event_type") != "order"
+    ):
+        return JsonResponse(
+            {"detail": "Evento sem transição financeira nesta rota."}, status=200
+        )
+    order_id = envelope["data"].get("order_id")
+    if isinstance(order_id, bool) or not isinstance(order_id, int) or order_id <= 0:
+        return JsonResponse(
+            {"detail": "order_id inválido. Reenvie o evento com ID inteiro positivo."},
+            status=400,
+        )
+    app_id = envelope.get("app_id")
+    site_id = envelope.get("site_id")
+    if (
+        not isinstance(app_id, str)
+        or not isinstance(site_id, str)
+        or not app_id
+        or not site_id
+    ):
+        return JsonResponse(
+            {"detail": "Origem inválida. Confira app_id e site_id."}, status=400
+        )
+    instalacao = InstalacaoAppmax.objects.filter(
+        app_id=app_id, appmax_site_id=site_id
+    ).first()
+    if instalacao is None:
+        return JsonResponse(
+            {"detail": "Instalação desconhecida. Confira app_id e site_id."}, status=403
+        )
+    tentativas = list(
+        PaymentAttempt.objects.filter(
+            provider="appmax",
+            external_order_id=str(order_id),
+            platform_site_id__in=instalacao.platform_site_ids,
+        ).select_related("intent")[:2]
+    )
+    if len(tentativas) != 1:
+        return JsonResponse(
+            {"detail": "Pedido sem vínculo único. Confira a tentativa registrada."},
+            status=409,
+        )
+    tentativa = tentativas[0]
+    if tentativa.intent.status == "refunded":
+        return JsonResponse({"status": "ja_registrado"})
+    try:
+        pedido = gateway.nova_sessao_appmax().consultar_pedido(order_id=order_id)
+    except gateway.FalhaNoProvedor:
+        return JsonResponse(
+            {"detail": "Appmax não confirmou o pedido. Reenvie o evento."}, status=503
+        )
+    motivo, estados_confirmados = motivos[nome]
+    if pedido["status"].strip().lower() not in estados_confirmados:
+        return JsonResponse(
+            {
+                "detail": "Estado do pedido ainda não confirma a reversão. Reenvie o evento."
+            },
+            status=409,
+        )
+    dados = {
+        "platform_site_id": tentativa.platform_site_id,
+        "provider": "appmax",
+        "provider_reference_id": tentativa.provider_reference_id or str(order_id),
+        "motivo": motivo,
+        "amount_cents": tentativa.effective_amount_cents,
+    }
+    ledger.registrar_fato(
+        tentativa.intent,
+        novo_status="refunded",
+        evento="pagamento.estornado",
+        dados=dados,
+        version=2,
+    )
+    return JsonResponse({"status": "registrado"})
