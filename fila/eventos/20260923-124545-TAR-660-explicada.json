@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-124545-TAR-660-explicada",
+  "tarefa": "TAR-660",
+  "evento": "explicada",
+  "quando": "2026-09-23T12:45:45+00:00",
+  "quem": "Pedido do mantenedor nesta sessão, 23/09/2026",
+  "o_que_e": "Pedido de documento podia parar quando a ferramenta web recusava o painel privado.",
+  "o_que_muda": "O robô passa a seguir a publicação de documento novo até conferir a página no site.",
+  "exemplo": "Ao pedir um manual, o robô usa a migração existente se não tiver editor autenticado e confere o endereço público.",
+  "importancia": 75
+}
