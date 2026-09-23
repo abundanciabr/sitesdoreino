@@ -37,7 +37,9 @@ import json
 import os
 import shutil
 import subprocess
+import textwrap
 import threading
+import uuid
 from pathlib import Path
 
 import pytest
@@ -108,9 +110,19 @@ case "${1:-}" in
     ;;
   exec)
     if [ "${DOCKER_FALSO_EXEC:-0}" -ne 0 ]; then
-      printf 'service "catalogo" is not running\n' >&2
+      printf 'compose exec failed\n' >&2
       exit "${DOCKER_FALSO_EXEC}"
     fi
+    if [ "${DOCKER_FALSO_ROTACAO_EXEC:-0}" -ne 0 ] && { [ "${3:-}" = "pagamentos" ] || [ "${4:-}" = "pagamentos" ]; }; then
+      printf 'compose exec failed after dispatch\n' >&2
+      exit "${DOCKER_FALSO_ROTACAO_EXEC}"
+    fi
+    if [ "${3:-}" = "pagamentos" ] || [ "${4:-}" = "pagamentos" ]; then
+      exec python3 "$DOCKER_FALSO_DJANGO" "$@"
+    fi
+    case "$*" in
+      *"print(s.id)"*) printf '%s' "${DOCKER_FALSO_ACTIVE_IDS-}"; exit 0 ;;
+    esac
     printf '%s' "${DOCKER_FALSO_SITES-}"
     exit 0
     ;;
@@ -120,6 +132,92 @@ case "${1:-}" in
 esac
 exit 0
 """
+
+DJANGO_DE_MENTIRA = r'''import contextlib
+import json
+import os
+import sys
+import types
+from pathlib import Path
+
+rows = json.loads(os.environ.get("DOCKER_FALSO_DB_ROWS", "[]"))
+saved = []
+em_transacao = False
+bloqueio_solicitado = False
+
+class Instalacao:
+    def __init__(self, dados):
+        self.__dict__.update(dados)
+    def save(self, *, update_fields):
+        if not em_transacao:
+            raise AssertionError("save sem transaction.atomic")
+        self.update_fields = list(update_fields)
+        saved.append(self)
+
+objetos = [Instalacao(dados) for dados in rows]
+
+class Gerenciador:
+    def select_for_update(self):
+        global bloqueio_solicitado
+        if not em_transacao:
+            raise AssertionError("select_for_update fora de transaction.atomic")
+        bloqueio_solicitado = True
+        return self
+    def filter(self, **filtros):
+        if not bloqueio_solicitado:
+            raise AssertionError("a instalação não foi bloqueada antes da leitura")
+        return [obj for obj in objetos if all(getattr(obj, chave) == valor for chave, valor in filtros.items())]
+
+@contextlib.contextmanager
+def atomic():
+    global em_transacao
+    if em_transacao:
+        raise AssertionError("transação aninhada inesperada")
+    em_transacao = True
+    try:
+        yield
+    finally:
+        em_transacao = False
+
+transaction = types.SimpleNamespace(atomic=atomic)
+settings = types.SimpleNamespace(
+    APPMAX_INSTALACOES=json.loads(os.environ.get("DOCKER_FALSO_APP_CONFIG", "{}")),
+    APPMAX_AUTH_URL=os.environ.get("DOCKER_FALSO_AUTH_URL", "https://auth.sandboxappmax.com.br/oauth2/token"),
+    APPMAX_API_URL=os.environ.get("DOCKER_FALSO_API_URL", "https://api.sandboxappmax.com.br"),
+    APPMAX_CARD_ENABLED_SITES=os.environ.get("DOCKER_FALSO_SETTING_CARD_ENABLED_SITES", ""),
+)
+os.environ["APPMAX_CARD_ENABLED_SITES"] = os.environ.get("DOCKER_FALSO_CARD_ENABLED_SITES", "")
+django = types.ModuleType("django")
+django_conf = types.ModuleType("django.conf")
+django_conf.settings = settings
+django_db = types.ModuleType("django.db")
+django_db.transaction = transaction
+sys.modules.update({"django": django, "django.conf": django_conf, "django.db": django_db})
+for nome in ("pagamentos", "pagamentos.core"):
+    sys.modules[nome] = types.ModuleType(nome)
+modelos = types.ModuleType("pagamentos.core.models")
+modelos.InstalacaoAppmax = types.SimpleNamespace(objects=Gerenciador())
+sys.modules["pagamentos.core.models"] = modelos
+
+argumentos = sys.argv[1:]
+codigo = argumentos[argumentos.index("-c") + 1]
+estado = {"rows": rows, "saved": []}
+exit_code = 0
+try:
+    exec(compile(codigo, "manage.py shell -c", "exec"), {})
+except SystemExit as erro:
+    estado["exit"] = erro.code
+    exit_code = erro.code if isinstance(erro.code, int) else 1
+except Exception as erro:
+    estado["exception"] = erro.__class__.__name__
+    print("FAKE_DJANGO_EXCEPTION")
+    exit_code = 1
+finally:
+    estado["rows"] = [obj.__dict__ for obj in objetos]
+    estado["saved"] = [obj.update_fields for obj in saved]
+    Path(os.environ["DOCKER_FALSO_DB_STATE"]).write_text(json.dumps(estado, default=str), encoding="utf-8")
+sys.exit(exit_code)
+'''
 
 CURL_DE_MENTIRA = r"""#!/usr/bin/env bash
 [ "${ALUNOS_API_TOKEN+x}${TOKEN_CATALOGO+x}${VALOR_GATEWAY+x}" = "" ] || exit 9
@@ -187,14 +285,26 @@ def _ambiente(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
         # command not found", que é um erro que não se parece com a sua causa.
         executavel.write_bytes(fonte.encode("utf-8"))
         executavel.chmod(0o755)
+    fake_django = pasta / "django_falso.py"
+    fake_django.write_text(textwrap.dedent(DJANGO_DE_MENTIRA), encoding="utf-8")
 
     ambiente = dict(
         os.environ,
         PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
         PLATAFORMA_DIR=str(raiz),
         DOCKER_FALSO_SITES=f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n",
+        DOCKER_FALSO_ACTIVE_IDS=f"{SITE_ID}\n",
         CURL_FALSO_RESULT="OK",
         CURL_FALSO_API_RESULT="OK",
+        DOCKER_FALSO_DJANGO=str(fake_django),
+        DOCKER_FALSO_DB_STATE=str(tmp_path / "django-falso-state.json"),
+        DOCKER_FALSO_APP_CONFIG=json.dumps({"1888": {"alias": SITE_NOME, "sites": [SITE_ID]}}),
+        DOCKER_FALSO_DB_ROWS=json.dumps([{
+            "app_id": "1888",
+            "alias": SITE_NOME,
+            "platform_site_ids": [SITE_ID],
+            "external_id": "00000000-0000-4000-8000-000000000001",
+        }]),
     )
     ambiente.update(ajustes)
     return ambiente
@@ -252,6 +362,23 @@ def _linhas(raiz: Path, chave: str) -> int:
 
 def _copias(raiz: Path) -> list[Path]:
     return sorted((raiz / "env").glob("pagamentos.env.bak-*"))
+
+
+def _env_preparacao(**trocas: str) -> str:
+    env = PAGAMENTOS_ENV.replace(
+        "APPMAX_CARD_ENABLED_SITES=\n",
+        f"APPMAX_AUTH_URL={AUTH_URL}\nAPPMAX_API_URL={API_URL}\nAPPMAX_CARD_ENABLED_SITES=\n",
+    )
+    for chave, valor in trocas.items():
+        linhas = env.splitlines()
+        if any(linha.startswith(chave + "=") for linha in linhas):
+            env = "\n".join(
+                f"{chave}={valor}" if linha.startswith(chave + "=") else linha
+                for linha in linhas
+            ) + "\n"
+        else:
+            env += f"{chave}={valor}\n"
+    return env
 
 
 # ---------------------------------------------------------------------------
@@ -728,7 +855,9 @@ def test_oauth_merchante_sandbox_grava_fora_do_repo_sem_exibir_segredo(tmp_path)
 
 
 def test_cobranca_habilitada_faz_o_script_parar_antes_de_pedir_segredo(tmp_path):
-    raiz = _plataforma(tmp_path, env=PAGAMENTOS_ENV + "APPMAX_CARD_ENABLED_SITES=site-de-teste\n")
+    # guarda: infra/ligar-a-appmax.sh:138
+    env = PAGAMENTOS_ENV.replace("APPMAX_CARD_ENABLED_SITES=\n", "APPMAX_CARD_ENABLED_SITES=site-de-teste\n")
+    raiz = _plataforma(tmp_path, env=env)
     antes = (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8")
 
     resultado = _rodar(raiz)
@@ -1008,3 +1137,108 @@ def test_nenhuma_variavel_appmax_morta_sobrou_no_exemplo():
         "APPMAX_APP_ID não é lido por nenhuma linha do código: quem preencher "
         "só ele vê a rota de instalação continuar respondendo 403."
     )
+
+
+def test_prepara_uuid_novo_na_instalacao_existente_sem_ativar_cobranca(tmp_path):
+    # guarda: infra/ligar-a-appmax.sh:303
+    # guarda: infra/ligar-a-appmax.sh:311
+    raiz = _plataforma(tmp_path, env=_env_preparacao())
+    ambiente = _ambiente(tmp_path, raiz)
+
+    resultado = _rodar(raiz, digitado="", ambiente=ambiente, args=("--preparar-reinstalacao",))
+
+    assert resultado.returncode == 0, (
+        resultado.stdout
+        + resultado.stderr
+        + (Path(ambiente["DOCKER_FALSO_DB_STATE"]).read_text(encoding="utf-8") if Path(ambiente["DOCKER_FALSO_DB_STATE"]).exists() else "STATE_ABSENT")
+    )
+    assert "preparação de reinstalação sandbox concluída" in resultado.stdout
+    assert "finalize consentimento e OAuth MERCHANT" in resultado.stdout
+    assert "cartão permanece desligado" in resultado.stdout
+    estado = json.loads(Path(ambiente["DOCKER_FALSO_DB_STATE"]).read_text(encoding="utf-8"))
+    assert len(estado["rows"]) == 1
+    assert estado["rows"][0]["external_id"] != "00000000-0000-4000-8000-000000000001"
+    assert estado["saved"] == [["external_id"]]
+    uuid.UUID(estado["rows"][0]["external_id"])
+    assert (raiz / "env" / "pagamentos.env").read_text(encoding="utf-8") == _env_preparacao()
+    tela = resultado.stdout + resultado.stderr
+    assert MERCHANT_SECRET not in tela
+    assert "curl" not in tela.lower()
+
+
+@pytest.mark.parametrize(
+    ("rows", "catalogo", "config", "esperado"),
+    [
+        ([], f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n", {"1888": {"alias": SITE_NOME, "sites": [SITE_ID]}}, "instalação existente"),
+        ([
+            {"app_id": "1888", "alias": SITE_NOME, "platform_site_ids": [SITE_ID], "external_id": "00000000-0000-4000-8000-000000000001"},
+            {"app_id": "1888", "alias": SITE_NOME, "platform_site_ids": [SITE_ID], "external_id": "00000000-0000-4000-8000-000000000002"},
+        ], f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n", {"1888": {"alias": SITE_NOME, "sites": [SITE_ID]}}, "instalação existente"),
+        ([{"app_id": "1888", "alias": SITE_NOME, "platform_site_ids": [SITE_ID], "external_id": "00000000-0000-4000-8000-000000000001"}], "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\tother.example\tOutra\n", {"1888": {"alias": SITE_NOME, "sites": [SITE_ID]}}, "site ativo autorizado"),
+        ([{"app_id": "1888", "alias": SITE_NOME, "platform_site_ids": [SITE_ID], "external_id": "00000000-0000-4000-8000-000000000001"}], f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n", {"1888": {"alias": SITE_NOME, "sites": [SITE_ID]}, "1889": {"alias": "Outra", "sites": [SITE_ID]}}, "configuração Appmax"),
+        ([{"app_id": "1888", "alias": SITE_NOME, "platform_site_ids": ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"], "external_id": "00000000-0000-4000-8000-000000000001"}], f"{SITE_ID}\t{SITE_HOST}\t{SITE_NOME}\n", {"1888": {"alias": SITE_NOME, "sites": [SITE_ID]}}, "site ativo autorizado"),
+    ],
+)
+def test_recusa_estado_ausente_ambiguo_ou_site_nao_autorizado_sem_rotacionar(
+    tmp_path, rows, catalogo, config, esperado
+):
+    # guarda: infra/ligar-a-appmax.sh:294
+    # guarda: infra/ligar-a-appmax.sh:300
+    # guarda: infra/ligar-a-appmax.sh:304
+    # guarda: infra/ligar-a-appmax.sh:306
+    raiz = _plataforma(tmp_path, env=_env_preparacao())
+    ambiente = _ambiente(
+        tmp_path,
+        raiz,
+        DOCKER_FALSO_DB_ROWS=json.dumps(rows),
+        DOCKER_FALSO_SITES=catalogo,
+        DOCKER_FALSO_ACTIVE_IDS="\n".join(
+            linha.split("\t", 1)[0] for linha in catalogo.splitlines() if linha.strip()
+        ),
+        DOCKER_FALSO_APP_CONFIG=json.dumps(config),
+    )
+
+    resultado = _rodar(raiz, digitado="", ambiente=ambiente, args=("--preparar-reinstalacao",))
+
+    assert resultado.returncode != 0
+    assert esperado in (resultado.stdout + resultado.stderr), (
+        resultado.stdout
+        + resultado.stderr
+        + (Path(ambiente["DOCKER_FALSO_DB_STATE"]).read_text(encoding="utf-8") if Path(ambiente["DOCKER_FALSO_DB_STATE"]).exists() else "STATE_ABSENT")
+    )
+    assert "nada foi alterado" in (resultado.stdout + resultado.stderr).lower()
+    estado = json.loads(Path(ambiente["DOCKER_FALSO_DB_STATE"]).read_text(encoding="utf-8"))
+    assert estado["saved"] == []
+    assert [r["external_id"] for r in estado["rows"]] == [r["external_id"] for r in rows]
+
+
+@pytest.mark.parametrize(
+    ("env", "ajustes", "esperado"),
+    [
+        (_env_preparacao(APPMAX_AUTH_URL="https://auth.appmax.com.br/oauth2/token"), {}, "autenticação não está fixada no sandbox"),
+        (_env_preparacao(APPMAX_API_URL="https://api.appmax.com.br"), {}, "API não está fixada no sandbox"),
+        (_env_preparacao(APPMAX_CARD_ENABLED_SITES="site-a"), {}, "há sites com cobrança Appmax habilitada"),
+        (_env_preparacao(), {"DOCKER_FALSO_AUTH_URL": "https://auth.appmax.com.br/oauth2/token"}, "autenticação do processo pagamentos não está fixada no sandbox"),
+        (_env_preparacao(), {"DOCKER_FALSO_API_URL": "https://api.appmax.com.br"}, "API do processo pagamentos não está fixada no sandbox"),
+        (_env_preparacao(), {"DOCKER_FALSO_CARD_ENABLED_SITES": "site-a"}, "há sites com cobrança Appmax habilitada no processo pagamentos"),
+        (_env_preparacao(), {"DOCKER_FALSO_SETTING_CARD_ENABLED_SITES": "site-a"}, "há sites com cobrança Appmax habilitada no processo pagamentos"),
+        (_env_preparacao(), {"DOCKER_FALSO_EXEC": "17"}, "não consegui confirmar os sites ativos no catálogo"),
+        (_env_preparacao(), {"DOCKER_FALSO_ROTACAO_EXEC": "17"}, "não consegui confirmar se o identificador foi trocado"),
+    ],
+)
+def test_guardas_da_preparacao_bloqueiam_sem_confirmacao_de_rotacao(tmp_path, env, ajustes, esperado):
+    # guarda: infra/ligar-a-appmax.sh:266
+    # guarda: infra/ligar-a-appmax.sh:268
+    # guarda: infra/ligar-a-appmax.sh:307
+    # guarda: infra/ligar-a-appmax.sh:308
+    # guarda: infra/ligar-a-appmax.sh:309
+    raiz = _plataforma(tmp_path, env=env)
+    ambiente = _ambiente(tmp_path, raiz, **ajustes)
+
+    resultado = _rodar(raiz, digitado="", ambiente=ambiente, args=("--preparar-reinstalacao",))
+
+    assert resultado.returncode != 0
+    assert esperado in (resultado.stdout + resultado.stderr)
+    estado = Path(ambiente["DOCKER_FALSO_DB_STATE"])
+    if estado.exists():
+        assert json.loads(estado.read_text(encoding="utf-8"))["saved"] == []
