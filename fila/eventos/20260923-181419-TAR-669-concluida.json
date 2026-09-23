@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-181419-TAR-669-concluida",
+  "tarefa": "TAR-669",
+  "evento": "concluida",
+  "quando": "2026-09-23T18:14:19+00:00",
+  "quem": "agent/ci/sem-maestro-na-entrega",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2000",
+  "verificado_em": "2026-09-23"
+}

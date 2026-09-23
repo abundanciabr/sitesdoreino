@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-030-publicacao-sem-maestro",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "Publicação sem maestro",
+  detalhe: "Falha e espera de publicação agora orientam a sessão com comandos concretos. O texto de operação em ci/ não convoca mais a maestro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2000. Validação local: árvore e89cd8305195aee7053e397fe07d6ebc9c3b1c74; commit 0a7c7ac81fadbef0fb57c7e00ec6cff7d803d97f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-669",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
