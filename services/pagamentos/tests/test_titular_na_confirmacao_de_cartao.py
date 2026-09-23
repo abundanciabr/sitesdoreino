@@ -11,7 +11,6 @@ import json
 import uuid
 from typing import Any
 
-import httpx
 import pytest
 import respx
 from django.test import Client
@@ -19,14 +18,8 @@ from django.test import Client
 from pagamentos.core.models import Intent
 from pagamentos.methods.card.service import identificacao_do_titular
 
-pytestmark = pytest.mark.django_db
+pytestmark = pytest.mark.django_db(transaction=True)
 
-_URL_PAGAMENTOS = "https://api.mercadopago.com/v1/payments"
-_RESPOSTA_APROVADA = {
-    "id": 424242,
-    "status": "approved",
-    "status_detail": "accredited",
-}
 CPF = "39053344705"
 CNPJ = "19131243000197"
 
@@ -34,6 +27,9 @@ CNPJ = "19131243000197"
 @pytest.fixture
 def token(settings: Any) -> str:
     settings.TOKENS_ACEITOS = {"token-de-teste"}
+    settings.APPMAX_CARD_ENABLED_SITES = {"site-opaco-abc123"}
+    settings.APPMAX_MERCHANT_CLIENT_ID = "merchant-falso"
+    settings.APPMAX_MERCHANT_CLIENT_SECRET = "segredo-falso"
     return "token-de-teste"
 
 
@@ -48,7 +44,21 @@ def intent_de_cartao(client: Client, token: str) -> Intent:
                 "amount_cents": 1990,
                 "currency": "BRL",
                 "method": "card",
-                "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+                "customer": {
+                    "email": "cliente@exemplo.com",
+                    "name": "Cliente Teste",
+                    "phone": "5511999999999",
+                },
+                "metadata": {
+                    "items": [
+                        {
+                            "product_id": "curso",
+                            "name": "Curso",
+                            "price_cents": 1990,
+                            "kind": "principal",
+                        }
+                    ]
+                },
             }
         ),
         content_type="application/json",
@@ -62,9 +72,47 @@ def intent_de_cartao(client: Client, token: str) -> Intent:
 def _confirmar(
     client: Client, token: str, intent: Intent, corpo: dict[str, Any]
 ) -> Any:
-    with respx.mock(assert_all_called=False) as mp:
-        rota = mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json=_RESPOSTA_APROVADA)
+    api = "https://api.sandboxappmax.com.br/v1"
+    with respx.mock(assert_all_called=False) as rede:
+        rede.post("https://auth.sandboxappmax.com.br/oauth2/token").respond(
+            200,
+            json={"access_token": "fake", "token_type": "Bearer", "expires_in": 3600},
+        )
+        rede.post(f"{api}/payments/installments").respond(
+            200,
+            json={
+                "data": {
+                    "installments": {str(corpo["installments"]): {"total": 1990}},
+                    "settings": {"modality": "PP", "max_installments": 12},
+                }
+            },
+        )
+        rede.post(f"{api}/customers").respond(
+            201, json={"data": {"customer": {"id": 42}}}
+        )
+        rede.post(f"{api}/orders").respond(
+            201, json={"data": {"order": {"id": 3531, "status": "pendente"}}}
+        )
+        rota = rede.post(f"{api}/payments/credit-card").respond(
+            201, json={"data": {"payment": {"status": "pendente"}}}
+        )
+        rede.get(f"{api}/orders/3531").respond(
+            200,
+            json={
+                "data": {
+                    "order": {
+                        "id": 3531,
+                        "status": "aprovado",
+                        "total_paid": 1990,
+                        "amounts": {"sub_total": 1990, "installment_fee": 0},
+                    },
+                    "customer": {"id": 42},
+                    "payment": {
+                        "installments": corpo["installments"],
+                        "method": "creditcard",
+                    },
+                }
+            },
         )
         resposta = client.post(
             f"/api/pagamentos/intents/{intent.id}/card",
@@ -95,7 +143,7 @@ def test_o_documento_do_titular_vira_a_identificacao_do_pagador(
     )
 
     assert resposta.status_code == 200, resposta.content
-    assert enviado["payer"]["identification"] == {"type": "CPF", "number": CPF}
+    assert enviado["payment_data"]["credit_card"]["holder_document_number"] == CPF
 
 
 def test_a_identificacao_escrita_por_extenso_vence_o_numero_solto(
@@ -114,19 +162,20 @@ def test_a_identificacao_escrita_por_extenso_vence_o_numero_solto(
             "installments": 1,
             "payer_email": "cliente@exemplo.com",
             "payer_identification": {"type": "CNPJ", "number": CNPJ},
+            "ip": "203.0.113.7",
+            "holder_name": "Fulano de Tal",
             "holder_document_number": CPF,
         },
     )
 
     assert resposta.status_code == 200, resposta.content
-    assert enviado["payer"]["identification"] == {"type": "CNPJ", "number": CNPJ}
+    assert enviado["payment_data"]["credit_card"]["holder_document_number"] == CNPJ
 
 
-def test_confirmacao_sem_os_campos_novos_continua_funcionando(
+def test_appmax_sem_dados_obrigatorios_nao_envia_cobranca(
     client: Client, token: str, intent_de_cartao: Intent
 ) -> None:
-    """Regressão: os três campos são OPCIONAIS, e quem já consome esta rota sem
-    eles não pode ter sido quebrado pela mudança de contrato."""
+    """Campos opcionais no transporte não autorizam uma cobrança incompleta."""
     resposta, enviado = _confirmar(
         client,
         token,
@@ -138,8 +187,9 @@ def test_confirmacao_sem_os_campos_novos_continua_funcionando(
         },
     )
 
-    assert resposta.status_code == 200, resposta.content
-    assert "identification" not in enviado["payer"]
+    assert resposta.status_code == 422, resposta.content
+    assert "ip" in resposta.json()["detail"]
+    assert enviado is None
 
 
 @pytest.mark.parametrize(

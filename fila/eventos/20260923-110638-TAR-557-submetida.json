@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260923-110638-TAR-557-submetida",
+  "tarefa": "TAR-557",
+  "evento": "submetida",
+  "quando": "2026-09-23T11:06:38+00:00",
+  "quem": "agent/pagamentos/appmax-concluir-tentativas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1976",
+  "revisao": "ce4522a81559db5bc1aa6516afcc3e4817b07e12",
+  "arvore": "774722af58e0f228f88aa4036b7935c5b0092870"
+}
