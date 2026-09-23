@@ -47,25 +47,23 @@ publicação ou acesso do site e corrija pelo PR e pipeline; não ofereça a có
 local como substituto.
 
 Regra de destino: quando o mantenedor pedir manual, documento, página, guia,
-roteiro, texto ou conteúdo, a entrega é criar e publicar no site pelo editor
-de documentos. Um arquivo em `docs/` no GitHub é apenas fonte técnica e não
+roteiro, texto ou conteúdo, a entrega é criar e publicar no site. O editor e
+a migração própria de documento novo são caminhos válidos. Um arquivo em
+`docs/` no GitHub é apenas fonte técnica e não
 encerra o pedido. O GitHub só recebe código, testes, templates, contratos,
 configuração, infraestrutura, workflows, leis mecânicas ou registros que o
 projeto exige para funcionar. Se o site não puder ser publicado, informe o
 bloqueio e não apresente um PR de documentação como se fosse a entrega.
 
 Pedido de criar documento é ordem para o robô produzir o texto, gravá-lo no
-banco e conferir a URL pública. Primeiro procure acesso autorizado ao editor
-autenticado; abrir a página sem poder enviar o formulário não é acesso de
-escrita. Para documento novo, se a sessão não opera o editor, use a receita já
-existente de `armadilhas/347`: arquivo em `documentos/` e migração própria que
-chama `semear_documento` apenas para esse nome. Isso é publicação pelo deploy,
-não uma edição feita no painel; declare o caminho usado. Confira a URL depois
-do deploy, pois PR, migração e pipeline verdes não provam que a página está no
-ar. Se o nome já existe no banco, a receita não altera o texto: procure um
-meio autorizado de editar a linha existente e registre o bloqueio concreto
-quando ele faltar. Falha da ferramenta web em uma URL privada, sozinha, não
-prova que todos os caminhos de publicação falharam.
+banco e conferir a URL pública. Escolha um caminho executável: editor
+autenticado ou, para documento novo, a receita de `armadilhas/347`, com arquivo
+em `documentos/` e migração própria que chama `semear_documento` apenas para
+esse nome. Confira a URL depois do deploy; PR, migração e pipeline verdes não
+provam que a página está no ar. Se o nome já existe no banco, essa receita
+não altera o texto: procure um meio autorizado de editar a linha existente e
+registre o bloqueio concreto quando ele faltar. Uma falha da ferramenta web
+em página privada não impede a publicação por migração.
 
 Documento enviado pelo mantenedor é ordem de serviço, não conteúdo para
 arquivar. Inventarie o que precisa existir, compare código e site, abra
