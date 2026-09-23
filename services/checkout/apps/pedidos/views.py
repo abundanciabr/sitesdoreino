@@ -65,6 +65,10 @@ def cartao(request, order_id: uuid.UUID):
         {
             "order_id": str(pedido.id),
             "total_cents": pedido.total_cents,
+            "offer_url": (
+                request.META.get("SCRIPT_NAME", "").rstrip("/")
+                + f"/{pedido.session.offer_slug}/"
+            ),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
         },
