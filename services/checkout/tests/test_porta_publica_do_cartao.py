@@ -162,6 +162,40 @@ def test_a_recusa_do_provedor_volta_com_o_motivo_e_o_pedido_nao_muda(
     assert pedido_de_cartao.status == "aguardando_pagamento"
 
 
+# guarda: services/checkout/apps/core/api.py:613
+def test_pedido_de_cartao_recusado_aceita_nova_confirmacao_sem_mover_snapshot(
+    api, rede, pedido_de_cartao
+):
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status="recusado")
+    pedido_de_cartao.refresh_from_db()
+    snapshot = (
+        pedido_de_cartao.site_id,
+        pedido_de_cartao.items,
+        pedido_de_cartao.total_cents,
+        pedido_de_cartao.customer,
+    )
+    rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        return_value=_intent_confirmada()
+    )
+
+    resp = api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+
+    assert resp.status_code == 200, resp.content
+    assert resp.json()["payment"]["status"] == "approved"
+    assert resp.json()["status"] == "recusado"
+    assert str(rota.calls[0].request.url) == (
+        f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card"
+    )
+    pedido_de_cartao.refresh_from_db()
+    assert pedido_de_cartao.status == "recusado"
+    assert (
+        pedido_de_cartao.site_id,
+        pedido_de_cartao.items,
+        pedido_de_cartao.total_cents,
+        pedido_de_cartao.customer,
+    ) == snapshot
+
+
 def test_o_409_de_pagamentos_atravessa_como_409_em_vez_de_virar_erro_mudo(
     api, rede, pedido_de_cartao
 ):
