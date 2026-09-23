@@ -721,7 +721,7 @@ def materializar_pacote(
             )
         ):
             raise EntradaRecusada(
-                "Os caminhos saem da cerca da tarefa. Devolva a ampliação à maestro."
+                "Os caminhos saem da cerca da tarefa. A sessão responsável deve criar outra tarefa para os caminhos adicionais."
             )
         caminhos = caminhos or declarados
         objetivo = _texto(tarefa.get("titulo") or pedido, "Objetivo")

@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .eventos import carta_de_situacao, fato_de_situacao
-from .models import Matricula
+from .models import Matricula, Pagamento
 from .tasks import relay_apos_commit
 
 
@@ -16,6 +16,23 @@ class OrderIdReservado(ValueError):
     certo: envelope com `order_id` assim é mensagem envenenada, e o caminho da
     PEL/fila morta existe exatamente para ela).
     """
+
+
+def _pagamento_bloqueado(*, site_id: str, provider: str, provider_reference_id: str):
+    """Cria ou trava a identidade que serializa aprovação e estorno."""
+    try:
+        with transaction.atomic():
+            return Pagamento.objects.create(
+                site_id=site_id,
+                provider=provider,
+                provider_reference_id=provider_reference_id,
+            )
+    except IntegrityError:
+        return Pagamento.objects.select_for_update().get(
+            site_id=site_id,
+            provider=provider,
+            provider_reference_id=provider_reference_id,
+        )
 
 
 def matriculas_que_valem(email: str):
@@ -75,6 +92,15 @@ def matricular(
             "esse prefixo é reservado às linhas da fila de liberação"
         )
     with transaction.atomic():
+        pagamento = None
+        if provider and provider_reference_id:
+            # A aprovação e o estorno travam primeiro a mesma chave; assim a
+            # ordem da fila nunca decide se uma matrícula abre acesso.
+            pagamento = _pagamento_bloqueado(
+                site_id=site_id,
+                provider=provider,
+                provider_reference_id=provider_reference_id,
+            )
         existente = (
             Matricula.objects.select_for_update().filter(order_id=order_id).first()
         )
@@ -90,9 +116,14 @@ def matricular(
                     name=name,
                     provider=provider,
                     provider_reference_id=provider_reference_id,
+                    status=(
+                        Matricula.STATUS_SUSPENSA
+                        if pagamento is not None and pagamento.estornado
+                        else Matricula.STATUS_ATIVA
+                    ),
                 )
-                # [FATO] Nasceu ativa: e a matricula que a compra criou, e o
-                # unico caminho pelo qual uma VENDA chega ao livro de fatos.
+                # [FATO] A matrícula nasce ativa, exceto quando um estorno já
+                # foi registrado para este pagamento.
                 fato_de_situacao(nova)
             return nova, True
         except IntegrityError:
@@ -140,6 +171,25 @@ def suspender_por_estorno(
         return [], []
 
     with transaction.atomic():
+        pagamento = _pagamento_bloqueado(
+            site_id=site_id,
+            provider=provider,
+            provider_reference_id=provider_reference_id,
+        )
+        if pagamento.estornado:
+            return (
+                list(
+                    Matricula.objects.filter(
+                        site_id=site_id,
+                        provider=provider,
+                        provider_reference_id=provider_reference_id,
+                    ).order_by("pk")
+                ),
+                [],
+            )
+        pagamento.estornado = True
+        pagamento.save(update_fields=["estornado"])
+
         # [INV-P11] O site entra no casamento: `provider_reference_id` é o id da
         # cobrança NA CONTA do fornecedor, e cada escola tem a sua. Duas escolas
         # podem receber a mesma referência no mesmo dia, de pagamentos que nada

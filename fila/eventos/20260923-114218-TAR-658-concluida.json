@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-114218-TAR-658-concluida",
+  "tarefa": "TAR-658",
+  "evento": "concluida",
+  "quando": "2026-09-23T11:42:18+00:00",
+  "quem": "agent/pagamentos/appmax-parcelas-api",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1978",
+  "verificado_em": "2026-09-23"
+}

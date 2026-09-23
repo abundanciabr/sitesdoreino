@@ -77,7 +77,7 @@ def _dentro() -> Client:
     return cliente
 
 
-def _ia(chave: str, nome: str, papel: str, **medidas) -> dict:
+def _ia(chave: str, nome: str, **medidas) -> dict:
     base = {
         "entregas": 0,
         "paginas": 0,
@@ -86,7 +86,7 @@ def _ia(chave: str, nome: str, papel: str, **medidas) -> dict:
         "dias_ativos": 0,
         "ultima_entrega": None,
     }
-    return {"chave": chave, "nome": nome, "papel": papel, **base, **medidas}
+    return {"chave": chave, "nome": nome, **base, **medidas}
 
 
 def publicar(tmp_path: Path, monkeypatch, retrato: "dict | None") -> Path:
@@ -111,7 +111,6 @@ def retrato_de_exemplo(**trocas) -> dict:
             _ia(
                 "claude-code",
                 "Claude Code",
-                "Maestro",
                 paginas=112,
                 entregas=2305,
                 linhas=549919,
@@ -122,7 +121,6 @@ def retrato_de_exemplo(**trocas) -> dict:
             _ia(
                 "codex",
                 "Codex",
-                "Executor",
                 paginas=10,
                 entregas=633,
                 linhas=56076,
@@ -130,7 +128,7 @@ def retrato_de_exemplo(**trocas) -> dict:
                 dias_ativos=10,
                 ultima_entrega="2026-09-17T14:59:22+00:00",
             ),
-            _ia("antigravity", "Antigravity", "Sentinela"),
+            _ia("antigravity", "Antigravity"),
         ],
         "sem_assinatura": {
             "entregas": 437,
@@ -188,7 +186,6 @@ def test_empate_em_paginas_e_desempatado_pelo_custo():
     """Regra do mantenedor: entre duas que publicaram o mesmo, ganha a mais barata."""
     cara = tela.Participante(
         "Cara",
-        "x",
         paginas=5,
         entregas=1,
         linhas=5000,
@@ -198,7 +195,6 @@ def test_empate_em_paginas_e_desempatado_pelo_custo():
     )
     barata = tela.Participante(
         "Barata",
-        "x",
         paginas=5,
         entregas=1,
         linhas=500,
@@ -217,7 +213,6 @@ def test_quem_nao_publicou_pagina_fica_atras_de_quem_publicou_uma():
     """Commit não é entrega. Movimento sem publicação não sobe no tela."""
     ocupada = tela.Participante(
         "Ocupada",
-        "x",
         paginas=0,
         entregas=900,
         linhas=90000,
@@ -227,7 +222,6 @@ def test_quem_nao_publicou_pagina_fica_atras_de_quem_publicou_uma():
     )
     publicou = tela.Participante(
         "Publicou",
-        "x",
         paginas=1,
         entregas=2,
         linhas=40,
@@ -245,7 +239,6 @@ def test_quem_nao_publicou_pagina_fica_atras_de_quem_publicou_uma():
 def test_sem_pagina_o_custo_por_pagina_nao_existe_e_nao_e_zero():
     parada = tela.Participante(
         "Parada",
-        "x",
         paginas=0,
         entregas=0,
         linhas=0,
@@ -290,7 +283,7 @@ def test_a_tela_declara_o_que_nao_enxerga(tmp_path, monkeypatch):
 @respx.mock
 def test_linha_incompleta_cai_sozinha_e_a_pagina_continua(tmp_path, monkeypatch):
     quebrado = retrato_de_exemplo()
-    quebrado["ias"][1] = {"chave": "codex", "nome": "Codex", "papel": "Executor"}
+    quebrado["ias"][1] = {"chave": "codex", "nome": "Codex"}
     publicar(tmp_path, monkeypatch, quebrado)
 
     pagina = _texto(_dentro().get(TELA))
@@ -367,8 +360,8 @@ def test_linha_invalida_nao_quebra_a_pagina(tmp_path, monkeypatch, campo, valor)
 
 
 def test_custo_zero_ganha_de_custo_positivo():
-    sem_custo = tela.Participante("Zero", "x", 1, 1, 0, 0, 0, None)
-    com_custo = tela.Participante("Cara", "x", 1, 1, 5, 0, 1, None)
+    sem_custo = tela.Participante("Zero", 1, 1, 0, 0, 0, None)
+    com_custo = tela.Participante("Cara", 1, 1, 5, 0, 1, None)
 
     assert tela.classificar([com_custo, sem_custo])[0].nome == "Zero"
 
@@ -433,12 +426,16 @@ def test_sem_a_lider_o_retrato_parcial_nao_atribui_planos(tmp_path, monkeypatch)
     [{}, {"nome": None, "papel": None}, {"nome": "Codex", "papel": "Executor"}],
 )
 @respx.mock
-def test_nome_e_papel_vem_da_identidade_canonica(tmp_path, monkeypatch, identidade):
+def test_nome_vem_da_identidade_canonica_sem_papel_fixo(
+    tmp_path, monkeypatch, identidade
+):
     dados = retrato_de_exemplo()
     dados["ias"][0].pop("nome")
-    dados["ias"][0].pop("papel")
     dados["ias"][0].update(identidade)
     publicar(tmp_path, monkeypatch, dados)
 
     pagina = _texto(_dentro().get(TELA))
-    assert '<b>Claude Code</b><span class="papel">Maestro</span>' in pagina
+    assert "<b>Claude Code</b>" in pagina
+    assert "Maestro" not in pagina
+    assert "Executor" not in pagina
+    assert "Sentinela" not in pagina

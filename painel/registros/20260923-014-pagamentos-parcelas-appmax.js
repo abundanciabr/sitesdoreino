@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-014-pagamentos-parcelas-appmax",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "pagamentos: parcelas Appmax",
+  detalhe: "Consulta parcelas pelo total gravado no servidor, com erros tratados e credenciais fora da resposta pública.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1978. Validação local: árvore 7d26dc88175b25411742b27ed7ff0438ad0f9ff5; commit 40edf24e8e7ced08dc9fa235cdf7c0487c5c4123; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-658",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

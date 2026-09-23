@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260922-222722-TAR-642-concluida",
+  "tarefa": "TAR-642",
+  "evento": "concluida",
+  "quando": "2026-09-22T22:27:22+00:00",
+  "quem": "agent/checkout/appmax-itens-da-intent",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1954",
+  "verificado_em": "2026-09-22"
+}

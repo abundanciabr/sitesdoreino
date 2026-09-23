@@ -1,0 +1,25 @@
+{
+  "arquivo": "646-retirar-papeis-fixos-do-roteiro-e-do-ranking-das-ias",
+  "id": "TAR-646",
+  "titulo": "Retirar papéis fixos do roteiro e do ranking das IAs",
+  "toca": [
+    "PROMPTS-INICIAIS.md",
+    "ci/ranking_das_ias.py",
+    "ci/tests/test_ranking_das_ias.py",
+    "painel/ranking-ias.json",
+    "services/admin/apps/core/ranking_das_ias.py",
+    "services/admin/apps/core/templates/admin/ranking_das_ias.html",
+    "services/admin/tests/test_ranking_das_ias.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Roteiro sem instruções revogadas, ranking sem papel fixo, testes do gerador e admin verdes",
+  "despacho": "Remover instruções de papéis fixos do roteiro inicial e rótulos fixos do ranking, mantendo métricas e planos; validar gerador e tela.",
+  "origem": "Pedido do mantenedor de resolver a tríade revogada",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-070-fila-corrigir-conclusao-automatica-sem-atestar-estorno",
+  tipo: "nota",
+  quando: "2026-09-22",
+  titulo: "fila: corrigir conclusão automática sem atestar estorno",
+  detalhe: "A explicação registra que o encerramento automático não comprova estorno; a fila e o livro deixam a prova financeira pendente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1959. Validação local: árvore 4e49babab86bec0ff9f5407c9f2664d807f4f1a6; commit fc70cf6fb65582a4fecb4c9597a25a4a33f64d73; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-645",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

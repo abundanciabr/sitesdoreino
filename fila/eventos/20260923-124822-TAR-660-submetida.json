@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260923-124822-TAR-660-submetida",
+  "tarefa": "TAR-660",
+  "evento": "submetida",
+  "quando": "2026-09-23T12:48:22+00:00",
+  "quem": "agent/ci/publicar-documento-sem-navegador",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1984",
+  "revisao": "2f882be9a2d6c2fd7ca32be951f6b0df23d7e826",
+  "arvore": "1dc4351d51f17013e15a4630443d1a19f04e9e9a"
+}

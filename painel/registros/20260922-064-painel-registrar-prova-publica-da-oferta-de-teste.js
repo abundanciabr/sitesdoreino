@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-064-painel-registrar-prova-publica-da-oferta-de-teste",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "painel: registrar prova pública da oferta de teste",
+  detalhe: "Registro de resposta e duas capturas comprovam a publicação pública sem reescrever o registro histórico.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1956. Validação local: árvore 2a7fd4b74fd36cda45562a0b1b7b032feb406dea; commit 16ae256380925b90b0f8f51ab8832fa65d932795; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-639",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

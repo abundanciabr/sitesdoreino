@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-067-checkout-leva-itens-do-pedido-a-intent",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "checkout: leva itens do pedido à intent",
+  detalhe: "A intent de cartão recebe os itens server-side do pedido; o Pix preserva seu payload.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1954. Validação local: árvore 711a89eeb6d7fedf9241a8aa189921b43d101ff4; commit 815cda87852e79aacf41c7bec0cb6fc6e289009b; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-642",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

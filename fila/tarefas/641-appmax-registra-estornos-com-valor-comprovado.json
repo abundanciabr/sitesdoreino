@@ -1,0 +1,21 @@
+{
+  "arquivo": "641-appmax-registra-estornos-com-valor-comprovado",
+  "id": "TAR-641",
+  "titulo": "Appmax registra estornos com valor comprovado",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-557"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Prova oficial autenticada em sandbox de valor realmente devolvido e identidade suficiente; testes de estorno parcial e total, ausências, identidade incompatível, idempotência e outbox; produtor pagamento.estornado.v2 e suite pagamentos verde.",
+  "despacho": "Celula pagamentos. Registre um estorno ou contestacao da Appmax somente depois de confirmar o fato financeiro em consulta autenticada.\n\nA tarefa depende da TAR-557. Abrange o produtor de pagamento.estornado.v2 e a traducao de estado a partir de consulta autenticada, com gravacao idempotente via tentativa e outbox ja existentes. Webhook e worker estao fora deste escopo e pertencem a Fase 2. Nunca use corpo de webhook para provar valor, identidade ou estorno.\n\nAntes de implementar a traducao, prove em sandbox que uma resposta autenticada da Appmax ou um endpoint oficial informa o valor efetivamente devolvido e identidade suficiente para associar o resultado ao pedido e a tentativa corretos. A documentacao oficial consultada em 22/09/2026 para GET /v1/orders/{order_id} mostra data.order.total_paid, data.order.amounts e data.refund.refunded_at, mas nao documenta valor devolvido. total_pago e horario nao provam valor reembolsado. Nao derive amount_cents do valor original da compra. O evento existente aceita valor efetivamente devolvido, inclusive parcial.\n\nSe a prova oficial autenticada faltar, mantenha a tarefa bloqueada e registre a evidencia observada e o proximo passo concreto. Depois da instalacao das credenciais merchant no sandbox, execute uma compra e um estorno ou contestacao de teste, consulte a API autenticada, preserve resposta sanitizada sem segredo ou dado pessoal e confira o valor devolvido e a identidade retornados. Se a consulta do pedido nao expuser o valor, localize documentacao oficial e exercite o endpoint autenticado que o fornece. So entao implemente produtor e testes.\n\nImplemente a politica L0-S ja decidida no plano mestre: estorno ou contestacao suspende acesso imediatamente; a suspensao nao se desfaz automaticamente por aprovacao posterior. Nao altere politica financeira ou contrato.\n\nEvidencia: resposta ou documentacao oficial autenticada de sandbox mostrando valor efetivamente devolvido e identidade suficiente; testes cobrindo estorno parcial e total, identidade incompatível, resposta sem valor, idempotencia e outbox; evento v2 produzido apenas com valor confirmado; suite da celula pagamentos verde.",
+  "origem": "Ordem do mantenedor para substituir a TAR-554 cancelada, despacho independente de fila em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

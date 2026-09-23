@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260923-003559-TAR-652-submetida",
+  "tarefa": "TAR-652",
+  "evento": "submetida",
+  "quando": "2026-09-23T00:35:59+00:00",
+  "quem": "agent/infra/appmax-compose-ps-fail",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1970",
+  "revisao": "0b133da769bb85f80cae67b59ab69a4a6db4eacf",
+  "arvore": "b4df3ac478c8f87a6e54b1f6640588b770e2df1a"
+}

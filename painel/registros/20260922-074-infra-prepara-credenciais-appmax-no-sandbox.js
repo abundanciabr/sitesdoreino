@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-074-infra-prepara-credenciais-appmax-no-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "infra: prepara credenciais Appmax no sandbox",
+  detalhe: "Roteiro local validado; faltam healthcheck de instalação e prova MERCHANT. TAR-647 permanece bloqueada. Cobranças reais desligadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1963. Validação local: árvore 184f5656bb08960db743eb1cd703d0a0c45cca36; commit 49515b71e7e735da339d7be6bb18a75fe7f79403; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-643",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

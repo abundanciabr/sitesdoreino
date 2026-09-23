@@ -1,0 +1,21 @@
+{
+  "arquivo": "657-o-comprador-recebe-as-parcelas-do-pedido",
+  "id": "TAR-657",
+  "titulo": "O comprador recebe as parcelas do pedido",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [
+    "TAR-593"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Contrato checkout sem divergência, suíte checkout verde, Chromium recebendo HTTP 200 sem chamar o fornecedor e publicação comprovada.",
+  "despacho": "Concluir a implementação de checkout já validada na bancada appmax-parcelas-api, PR #1979, como etapa de código da TAR-593. Alvos: services/checkout/apps/core/api.py, clients.py, auth.py e testes de cartão e alcance público. Contratos somente leitura. Preservar total do servidor, isolamento por site e proteção de credenciais. Validar e publicar pelo rito. Mandato: pedido do mantenedor nesta sessão de 23/09/2026 para concluir parcelas Appmax após TAR-557.",
+  "origem": "Desdobramento técnico obrigatório da TAR-593: contrato integrado no PR #1977; código separado conforme o próprio brief. Escopo já solicitado pelo mantenedor nesta sessão.",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

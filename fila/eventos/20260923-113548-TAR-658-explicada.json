@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-113548-TAR-658-explicada",
+  "tarefa": "TAR-658",
+  "evento": "explicada",
+  "quando": "2026-09-23T11:35:48+00:00",
+  "quem": "Desdobramento técnico obrigatório da TAR-593: contrato integrado no PR #1977; código separado conforme o próprio brief. Escopo já solicitado pelo mantenedor nesta sessão.",
+  "o_que_e": "O servidor precisa consultar a Appmax para saber os juros de cada parcela.",
+  "o_que_muda": "A consulta usa o preço do pedido e devolve valores prontos para a página.",
+  "exemplo": "Uma compra de duzentos reais retorna o total com juros e o valor de cada parcela.",
+  "importancia": 100
+}

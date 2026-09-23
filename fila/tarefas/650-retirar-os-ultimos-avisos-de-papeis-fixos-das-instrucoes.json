@@ -1,0 +1,21 @@
+{
+  "arquivo": "650-retirar-os-ultimos-avisos-de-papeis-fixos-das-instrucoes",
+  "id": "TAR-650",
+  "titulo": "Retirar os últimos avisos de papéis fixos das instruções",
+  "toca": [
+    "ci/mapa_de_execucao.py",
+    "docs/caixa-de-sugestoes/DA-IDEIA-A-OBRA.md",
+    "painel/LEIA-ME.md"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Planejador, guia da caixa e livro sem atribuir decisão à antiga maestro; 101 testes do planejador verdes",
+  "despacho": "Corrigir três instruções operacionais residuais que ainda atribuem decisões e registros a papéis fixos da tríade; preservar o fluxo por sessão responsável.",
+  "origem": "Busca final do pedido do mantenedor sobre a tríade revogada",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

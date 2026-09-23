@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-015-docs-orientar-publicacao-no-site",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "docs: orientar publicação no site",
+  detalhe: "Falha da ferramenta web não encerra o pedido. Documento novo pode entrar pela migração existente; a URL pública deve confirmar a entrega.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1984. Validação local: árvore 1dc4351d51f17013e15a4630443d1a19f04e9e9a; commit 2f882be9a2d6c2fd7ca32be951f6b0df23d7e826; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-660",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

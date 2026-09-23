@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-215157-TAR-637-explicada",
+  "tarefa": "TAR-637",
+  "evento": "explicada",
+  "quando": "2026-09-22T21:51:57+00:00",
+  "quem": "desfecho confirmado do PR 1952 em 22/09/2026",
+  "o_que_e": "O recibo da entrega ainda informa que a publicação não havia sido verificada no momento da abertura.",
+  "o_que_muda": "A tela do projeto mostra que a orientação corrigida foi integrada e publicada.",
+  "exemplo": "O registro de confirmação aponta para o PR e o run de deploy verde.",
+  "importancia": 60
+}

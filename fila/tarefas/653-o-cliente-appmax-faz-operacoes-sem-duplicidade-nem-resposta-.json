@@ -1,0 +1,21 @@
+{
+  "arquivo": "653-o-cliente-appmax-faz-operacoes-sem-duplicidade-nem-resposta-",
+  "id": "TAR-653",
+  "titulo": "O cliente Appmax faz operacoes sem duplicidade nem resposta falsa",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-556"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de transporte provam PP, centavos e IDs validos, uso das parcelas disponiveis e no maximo um POST por escrita diante de timeout, 5xx ou 2xx invalido; 42 testes focais preservados; suite pagamentos, mypy, Black, import-linter, guarda do cartao e mutacao passam.",
+  "despacho": "Cliente de operacoes Appmax, predecessora tecnica de TAR-557.\n\nAlvos exclusivos: services/pagamentos/pagamentos/providers/appmax/client.py e services/pagamentos/tests/test_cliente_appmax.py. Preserve as interfaces já usadas pelo dominio: consultar_parcelas(total_value) devolve totals, modality e max_installments; criar_cliente(body) devolve id decimal canonico; criar_pedido(body) devolve id e status; criar_pagamento_cartao(body) devolve o payload.\n\nA leitura OAuth e consultar_pedido de TAR-556 já estao entregues e congeladas como base. Complete a qualidade destas operacoes: PP exclusivo, centavos inteiros positivos sem float, usar apenas parcelas retornadas e aceitar limite reduzido, IDs externos positivos decimais canonicos. POST de escrita nunca repete em timeout, 5xx ou 2xx ilegivel. Erros sao sanitizados, sem causa/contexto bruto, sem PAN/CVV e sem log de corpo. Redirects ficam negados e host sandbox fixo. OAuth continua lazy para preservar Pix.\n\nUse respx para 400, 401, 422, 429, 5xx, timeouts, respostas malformadas e IDs invalidos. Prove que cada escrita envia no maximo um POST. Preserve os 42 testes focais existentes e acrescente casos coerentes. Rode suite pagamentos, mypy, Black, import-linter, guarda de cartao nas nove leis e mutacao relevante.\n\nNao chame API real nem leia arquivo de credencial de usuario. Nao ative cobranca real. Nao edite dominio, tentativas, API, migracoes, contratos, infraestrutura ou guardas; nao conclua TAR-557 nem TAR-647. Esta tarefa e so cliente/testes e deixa a integracao de dominio para a sucessora.\n\nMandato nominal informado pelo mantenedor em 22/09/2026, para services/pagamentos/, incluindo dominio, tentativas, cliente Appmax, API, migracoes aditivas e testes; Fase 1 em sandbox, Pix preservado, cobrancas reais desativadas.",
+  "origem": "Mandato nominal Fase 1 Appmax de 22/09/2026; predecessora tecnica de TAR-557",
+  "criada_em": "2026-09-23",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,22 @@
+{
+  "arquivo": "636-reconstituir-a-sequencia-appmax-sem-reativar-tarefas-cancela",
+  "id": "TAR-636",
+  "titulo": "Reconstituir a sequência Appmax sem reativar tarefas canceladas",
+  "toca": [
+    "fila",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-632"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Fila válida e imutável exceto pela relação depende_de; teste focal passa; TAR-556 volta à fila depois da base financeira concluída; tarefas canceladas permanecem terminais; painel registra o bloqueio de fase 2.",
+  "despacho": "Tarefa de fila e livro, sem alterar código de pagamentos.\n\n1. Mude somente `depende_de` da tarefa OAuth existente para apontar ao fundamento de modelo e outbox já concluído. Não mexa nos demais campos.\n2. Preserve as tarefas canceladas e toda a história append-only.\n3. Acrescente explicação legível para a tarefa OAuth e registre no painel a relação corrigida e os bloqueios reais que permanecem: domínio de estorno/contestação sem despacho substituto e tela de cartão cancelada, que impede infraestrutura e ponta a ponta.\n4. Não abra tarefas de implementação de tela ou de domínio que pertencem a outras frentes. Não altere contrato, pagamentos, checkout, infra, ativação ou compra real.\n\nEvidência: `python ci/fila.py validar`; `python ci/fila.py imutabilidade --base origin/main`; teste focal da exceção de mudança de `depende_de`; `node painel/gerar_manifesto.js`; `node painel/testes/teste_logica.js`; estados calculados mostram OAuth pronto após TAR-551, com escrita e parcelas em série.",
+  "origem": "Ordem do mantenedor para iniciar a Fase 1 Appmax em 22/09/2026, com cancelamentos explícitos registrados na fila",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

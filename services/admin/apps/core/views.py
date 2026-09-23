@@ -152,7 +152,11 @@ def doc_publico(request, nome):
             # documento de formato `pagina` não é desenhado aqui dentro: ele
             # vem por um `<iframe>` de origem opaca, servido por
             # `documento_em_pagina.doc_publico_moldura`.
-            "corpo": "" if pagina_visual else documentos.para_html(documento.corpo),
+            "corpo": (
+                ""
+                if pagina_visual
+                else documentos.para_html(documento.corpo, documento=documento)
+            ),
             "pagina_visual": pagina_visual,
             "tem_corpo": bool(documento.corpo.strip()),
             "endereco_da_moldura": (
@@ -217,7 +221,11 @@ def documento_admin(request, nome):
         {
             "admin": request.admin,
             "documento": documento,
-            "corpo": "" if pagina_visual else documentos.para_html(documento.corpo),
+            "corpo": (
+                ""
+                if pagina_visual
+                else documentos.para_html(documento.corpo, documento=documento)
+            ),
             "pagina_visual": pagina_visual,
             "tem_corpo": bool(documento.corpo.strip()),
             "endereco_da_moldura": reverse(

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-031944-TAR-656-concluida",
+  "tarefa": "TAR-656",
+  "evento": "concluida",
+  "quando": "2026-09-23T03:19:44+00:00",
+  "quem": "agent/pagamentos/normalizar-resposta-parcelas-appmax",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1975",
+  "verificado_em": "2026-09-23"
+}
