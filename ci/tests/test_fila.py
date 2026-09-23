@@ -28,9 +28,8 @@ from pathlib import Path
 import pytest
 
 import fila
-import revisor_de_pouso
 import responsabilidades
-from _nucleo import ErroDeInstrumentacao, Estado, Resultado
+from _nucleo import ErroDeInstrumentacao, Estado
 
 
 def tarefa(numero="001", slug="exemplo", deps=(), **sobrescreve):
@@ -1909,7 +1908,7 @@ def test_submissao_publicada_continua_visivel_nos_grupos_atuais_do_admin(tmp_pat
 # RECONCILIAR UMA ENTREGA SUBMETIDA
 #
 # A URL do PR não fecha a tarefa. Este caminho só escreve depois de conferir a
-# árvore revisada, o HEAD, o merge, a publicação, o atestado e o aceite que já
+# árvore revisada, o HEAD, o merge, a publicação e o aceite que já
 # mora no livro.
 # ---------------------------------------------------------------------------
 
@@ -2059,15 +2058,6 @@ def test_reconciliacao_exige_shas_terminais_completos(campo):
     estado[campo] = "curto"
     with pytest.raises(ErroDeInstrumentacao, match="ausente"):
         fila.provar_estado_terminal(estado)
-
-
-def test_reconciliacao_recusa_atestado_ausente_ou_de_outro_sha():
-    for resultado in (
-        Resultado("revisão", Estado.FAIL, "atestado ausente"),
-        Resultado("revisão", Estado.FAIL, "SHA mudou"),
-    ):
-        with pytest.raises(fila.RecusaDeReconciliacao, match="atestado"):
-            fila.provar_atestado(resultado)
 
 
 @pytest.mark.parametrize(
@@ -2225,7 +2215,7 @@ def test_reconciliacao_confronta_a_url_com_o_repositorio_corrente(
         )
 
 
-def test_reconciliacao_exige_as_correcoes_de_publicacao_no_atestado(
+def test_reconciliacao_nao_exige_atestado(
     tmp_path, monkeypatch
 ):
     pr = {
@@ -2244,21 +2234,20 @@ def test_reconciliacao_exige_as_correcoes_de_publicacao_no_atestado(
     monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
     monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
     monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
-    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda *a, **k: [])
-    correcoes = []
-
-    def avaliar(*args, **kwargs):
-        correcoes.extend(kwargs["correcoes"])
-        return Resultado("revisão", Estado.PASS, "atestado aprovado")
-
-    monkeypatch.setattr(fila.revisor_de_pouso, "avaliar_atestado", avaliar)
+    monkeypatch.setattr(
+        fila.estado_da_entrega, "_api",
+        lambda *a, **k: pytest.fail("reconciliação não consulta comentários para atestado"),
+    )
     monkeypatch.setattr(
         fila,
         "carregar_aceite",
         lambda *a: {"verificado_em": "2026-09-10"},
     )
-    fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
-    assert correcoes == [34430133801]
+    evidencia, _ = fila.provar_reconciliacao(
+        tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
+    )
+    assert "atestado=" not in evidencia
+    assert f"head={HEAD_RECONCILIADO}" in evidencia
 
 
 def test_aceite_precisa_existir_na_main_e_ser_posterior_ao_merge(
@@ -3492,13 +3481,7 @@ def test_o_feito_que_viaja_na_entrega_passa_pelo_MESMO_portao(
 
 
 # ---------------------------------------------------------------------------
-# A MESMA RÉGUA DO POUSO, NO FECHO DA TAREFA
-#
-# `ci/mergear.py` mede o atestado com a bancada em mãos: quando o SHA revisado
-# não é o HEAD final, `comprovar_atualizacao_da_base` diz se a diferença é só
-# main recebida. A fila media o mesmo atestado SEM a bancada, então recusava
-# como "não revisado" toda entrega que ficou aberta tempo bastante para receber
-# a main. Sete tarefas entregues, integradas e publicadas ficaram presas assim.
+# A RECONCILIAÇÃO CONFERE A ENTREGA SEM O ATESTADO REVOGADO
 # ---------------------------------------------------------------------------
 
 
@@ -3517,42 +3500,6 @@ def pr_e_estado_reconciliaveis():
         "runs": [{"url": RUN_RECONCILIADO}],
     }
     return pr, estado
-
-
-def atestado_de_outro_sha(sha):
-    corpo = revisor_de_pouso.MARCA_ATESTADO + json.dumps({
-        "sha": sha,
-        "despacho": "despacho",
-        "revisor": "revisor",
-        "maestro": "maestro",
-        "veredito": "APROVADO",
-        "resumo": "entrega revisada",
-        "evidencia": "suíte verde",
-    })
-    return [{"id": 9, "author_association": "OWNER", "body": corpo}]
-
-
-def test_reconciliacao_mede_a_atualizacao_da_base_como_o_pouso_mede(
-    tmp_path, monkeypatch
-):
-    """Sem a bancada, o atestado de outro SHA é recusado sem sequer ser medido."""
-    pr, estado = pr_e_estado_reconciliaveis()
-    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
-    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
-    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
-    monkeypatch.setattr(
-        fila.estado_da_entrega,
-        "_api",
-        lambda *a, **k: atestado_de_outro_sha(REVISAO_RECONCILIADA),
-    )
-    # tmp_path não é repositório: a composição não pode ser provada e o veredito
-    # vira ERRO de instrumento. O que este teste prova é que ela foi TENTADA.
-    with pytest.raises(
-        fila.RecusaDeReconciliacao, match="comprovar a atualização da base"
-    ):
-        fila.provar_reconciliacao(
-            tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -3584,11 +3531,6 @@ def reconciliar_com_linhagem_recusada(tmp_path, monkeypatch, checks, **extra):
         raise fila.RecusaDeReconciliacao("há código posterior à revisão: app.py")
 
     monkeypatch.setattr(fila, "medir_linhagem", extra.pop("linhagem", recusar))
-    monkeypatch.setattr(
-        fila.revisor_de_pouso,
-        "avaliar_atestado",
-        lambda *a, **k: Resultado("revisão", Estado.PASS, "atestado aprovado"),
-    )
     monkeypatch.setattr(
         fila,
         "carregar_aceite",

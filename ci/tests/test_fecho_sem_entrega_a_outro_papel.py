@@ -9,6 +9,10 @@ FRASE = "devolva à maestro"
 ARQUIVOS = (
     "ci/pr.py",
     "ci/mandato_por_faixa.py",
+    "ci/sessao.py",
+    "ci/esperar.py",
+    "ci/mapa_de_execucao.py",
+    ".codex/agents/despacho.toml",
     "CAMINHO-DOURADO.md",
 )
 
@@ -35,6 +39,18 @@ def test_os_caminhos_vivos_nao_entregam_a_continuacao_a_outro_papel():
     assert len(fecho) == 1
     assert "A sessão encerra aqui." not in "\n".join(linhas_ativas("ci/pr.py"))
     assert "Meça o desfecho nesta sessão" in "\n".join(linhas_ativas("ci/pr.py"))
+
+
+def test_o_mapa_atribui_acompanhamento_a_quem_executa():
+    texto = (RAIZ / "ci/mapa_de_execucao.py").read_text(encoding="utf-8")
+    assert 'dono="executor"' in texto
+    assert 'dono="maestro"' not in texto
+    assert '"Maestro:' not in texto
+
+
+def test_o_resumo_da_fabrica_nao_usa_o_papel_encerrado_no_nome():
+    assert (RAIZ / "ci/resumo_da_fabrica.py").is_file()
+    assert not (RAIZ / "ci/resumo_maestro.py").exists()
 
 
 @pytest.mark.parametrize("relativo", (

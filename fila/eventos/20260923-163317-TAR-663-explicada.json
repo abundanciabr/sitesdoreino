@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260923-163317-TAR-663-explicada",
+  "tarefa": "TAR-663",
+  "evento": "explicada",
+  "quando": "2026-09-23T16:33:17+00:00",
+  "quem": "Pedido direto do mantenedor em 23/09/2026 e decisão registrada em 20/09/2026",
+  "o_que_e": "Alguns comandos ainda enviam bloqueios a um papel encerrado e a fila exige atestado revogado para fechar entregas.",
+  "o_que_muda": "O agente informa o bloqueio na sessão responsável e a fila fecha entregas comprovadas sem depender de um papel que acabou.",
+  "exemplo": "Uma entrega integrada e publicada deixa de ficar presa porque falta um atestado que a lei dispensou.",
+  "importancia": 90
+}
