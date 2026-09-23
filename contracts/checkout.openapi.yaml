@@ -147,6 +147,64 @@ paths:
             aguardando_pagamento)
         '422': { description: Payload inválido }
         '502': { description: O provedor de pagamento não concluiu a tentativa }
+  /pedidos/{order_id}/parcelas:
+    get:
+      operationId: getOrderCardInstallments
+      summary: Consulta parcelas para o total congelado do pedido
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Parcelas calculadas no servidor, com juros incluídos
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - amount_cents
+                - modality
+                - options
+                properties:
+                  amount_cents:
+                    type: integer
+                    minimum: 1
+                  modality:
+                    type: string
+                    enum:
+                    - PP
+                  options:
+                    type: array
+                    minItems: 1
+                    maxItems: 12
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - installments
+                      - total_cents
+                      - installment_cents
+                      properties:
+                        installments:
+                          type: integer
+                          minimum: 1
+                          maximum: 12
+                        total_cents:
+                          type: integer
+                          minimum: 1
+                        installment_cents:
+                          type: integer
+                          minimum: 1
+        '404':
+          description: Pedido não encontrado
+        '409':
+          description: Pedido não aceita cartão
+        '502':
+          description: Não foi possível consultar as parcelas; tente novamente
 components:
   securitySchemes:
     bearerAuth:

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-112302-TAR-593-concluida",
+  "tarefa": "TAR-593",
+  "evento": "concluida",
+  "quando": "2026-09-23T11:23:02+00:00",
+  "quem": "agent/contracts/appmax-parcelas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1977",
+  "verificado_em": "2026-09-23"
+}
