@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-154354-TAR-614-concluida",
+  "tarefa": "TAR-614",
+  "evento": "concluida",
+  "quando": "2026-09-23T15:43:54+00:00",
+  "quem": "agent/pagamentos/estorno-e-contestacao-appmax",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1992",
+  "verificado_em": "2026-09-23"
+}
