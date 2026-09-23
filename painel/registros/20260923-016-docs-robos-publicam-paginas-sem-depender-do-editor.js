@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260923-016-docs-robos-publicam-paginas-sem-depender-do-editor",
+  tipo: "entrega",
+  quando: "2026-09-23",
+  titulo: "docs: robôs publicam páginas sem depender do editor",
+  detalhe: "O editor deixa de ser passagem obrigatória para criar documento novo. O agente escolhe um caminho autorizado, publica e confere a URL; a decisão do mantenedor fica registrada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1985. Validação local: árvore e21058cecc7d2a087bd1b6961303bfbb34cf3c07; commit a399f2116b8a304d80bb7ed420b912711c2eae6a; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-23",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-661",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
