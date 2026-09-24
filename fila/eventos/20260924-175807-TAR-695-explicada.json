@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-175807-TAR-695-explicada",
+  "tarefa": "TAR-695",
+  "evento": "explicada",
+  "quando": "2026-09-24T17:58:07.632533+00:00",
+  "quem": "Pedido explícito do mantenedor em 24/09/2026 para concluir a publicação pública sem intervenção manual.",
+  "o_que_e": "A prévia existe na administração, mas o endereço público ainda devolve erro 404.",
+  "o_que_muda": "Visitantes conseguem ver a página original sem login, com a edição encerrada apresentada claramente e sem botão de compra enganoso.",
+  "exemplo": "Quem abre meshcraft.top/flp-0 vê a página no celular e entende que as inscrições desta edição estão encerradas.",
+  "importancia": 90
+}

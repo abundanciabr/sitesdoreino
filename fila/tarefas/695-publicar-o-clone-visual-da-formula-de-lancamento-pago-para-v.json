@@ -1,0 +1,20 @@
+{
+  "arquivo": "695-publicar-o-clone-visual-da-formula-de-lancamento-pago-para-v",
+  "id": "TAR-695",
+  "titulo": "Publicar o clone visual da Fórmula de Lançamento Pago para visitantes",
+  "toca": [
+    "funil",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, deploy do funil aprovado e /flp-0 carregando sem login em desktop e celular, com compra bloqueada enquanto o checkout original estiver encerrado.",
+  "despacho": "No ramo agent/funil/flp-0-clone-publico e PR #2046, conclua o clone original no funil, com sandbox, CSP, mapa e testes. Preserve os dados, apresente a edição encerrada e desative a compra pois o checkout retorna erro 049. Use make pr, acompanhe integração e deploy, verifique a URL anônima e registre o veredito.",
+  "origem": "Pedido explícito do mantenedor em 24/09/2026 para concluir a publicação pública sem intervenção manual.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

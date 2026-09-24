@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-044-funil-flp-0-publica-encerrada",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "funil: FLP-0 pública encerrada",
+  detalhe: "Página FLP-0 pública com visual original, isolamento e compra desativada; checkout fechado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2046. Validação local: árvore dc5d452ad311c9e196e83c9ff8010ca8597e8d82; commit 57347f09531561d0f193e5527b02c901777e4dcc; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-695",
+  gravidade: "info",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
