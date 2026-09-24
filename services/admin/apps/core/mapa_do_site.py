@@ -143,7 +143,16 @@ AREAS = (
         "vitrine",
         "A vitrine e a porta de entrada",
         "As páginas que qualquer pessoa do mundo abre, e por onde se entra na conta.",
-        ("/", "/oferta", "/cadastro", "/login", "/leads", "/ver-como", "/entrar"),
+        (
+            "/",
+            "/oferta",
+            "/series-flp-gpt",
+            "/cadastro",
+            "/login",
+            "/leads",
+            "/ver-como",
+            "/entrar",
+        ),
     ),
     (
         "quiz",

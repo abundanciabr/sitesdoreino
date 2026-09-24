@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-143804-TAR-689-explicada",
+  "tarefa": "TAR-689",
+  "evento": "explicada",
+  "quando": "2026-09-24T14:38:04.088101+00:00",
+  "quem": "Pedido do mantenedor em 24/09/2026 após a publicação administrativa da série",
+  "o_que_e": "A série existe apenas dentro da administração; quem recebe o endereço público encontra página não encontrada.",
+  "o_que_muda": "Qualquer visitante pode abrir e acompanhar a série no endereço público pedido, sem entrar na administração.",
+  "exemplo": "Uma pessoa recebe meshcraft.top/series-flp-gpt e vê os episódios no celular sem fazer login.",
+  "importancia": 85
+}
