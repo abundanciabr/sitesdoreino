@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-222001-TAR-707-explicada",
+  "tarefa": "TAR-707",
+  "evento": "explicada",
+  "quando": "2026-09-24T22:20:01.677646+00:00",
+  "quem": "Pedido explícito do mantenedor nesta sessão em 24/09/2026.",
+  "o_que_e": "A página pública ainda usa o endereço flp-0 e abre com texto de outro produto.",
+  "o_que_muda": "Quem chega pelo link do curso vê a nova apresentação na abertura, e o link antigo leva ao novo sem perder a origem da campanha.",
+  "exemplo": "Uma visita a /flp-0?utm_source=instagram chega a /primeiros-dolares-com-roblox?utm_source=instagram e lê a abertura de Roblox.",
+  "importancia": 85
+}

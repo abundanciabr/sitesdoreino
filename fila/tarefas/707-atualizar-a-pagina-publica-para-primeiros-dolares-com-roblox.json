@@ -1,0 +1,20 @@
+{
+  "arquivo": "707-atualizar-a-pagina-publica-para-primeiros-dolares-com-roblox",
+  "id": "TAR-707",
+  "titulo": "Atualizar a página pública para Primeiros Dólares com Roblox",
+  "toca": [
+    "funil",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, deploy do funil aprovado, novo endereço com a abertura pedida e endereço antigo redirecionando com a campanha preservada.",
+  "despacho": "Nesta bancada, concluir a mudança já implementada em services/funil e painel/mapa-do-site.json: nova URL, redirecionamento e abertura de Roblox. Validar a suíte do funil e o mapa, abrir PR pelo ci/pr.py, acompanhar integração e conferir a URL pública. Compra segue bloqueada.",
+  "origem": "Pedido explícito do mantenedor nesta sessão em 24/09/2026.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
