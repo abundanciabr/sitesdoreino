@@ -1264,6 +1264,15 @@ def _caminho_igual(a: str | Path, b: str | Path) -> bool:
     return esquerda == direita
 
 
+def _python_base_igual(a: str | Path, b: str | Path) -> bool:
+    if _caminho_igual(a, b):
+        return True
+    try:
+        return Path(a).samefile(Path(b))
+    except OSError:
+        return False
+
+
 def _python_base_da_sessao(dados: dict[str, object], env_sessao: dict[str, str]) -> tuple[str, str] | None:
     executavel = env_sessao.get("SESSAO_PYTHON_BASE_EXECUTABLE")
     versao = env_sessao.get("SESSAO_PYTHON_BASE_VERSION")
@@ -1354,7 +1363,7 @@ def plano_da_bancada_atual(cwd: Path) -> tuple[Plano, dict[str, object], dict[st
         if info.get("version") != python_base[1]:
             raise ErroDeSessao("executor da sessão", "versão do Python da sessão mudou", detalhe="Trabalho preservado; nenhum filho executou.")
         base_medida = info.get("base_executable")
-        if base_medida and not _caminho_igual(base_medida, python_base[0]):
+        if base_medida and not _python_base_igual(base_medida, python_base[0]):
             raise ErroDeSessao("executor da sessão", "Python base da sessão mudou", detalhe=f"esperado: {python_base[0]}\nmedido: {base_medida}")
     return plano, dados, env_sessao
 

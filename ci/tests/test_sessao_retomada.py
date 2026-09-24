@@ -970,6 +970,25 @@ def test_python_base_da_sessao_reaproveita_env_final_quando_snapshot_antigo():
     )
 
 
+def test_python_base_aceita_alias_fisico_do_venv_real_linux(tmp_path):
+    if sys.platform != "linux":
+        pytest.skip("alias físico da base foi medido em venv Linux")
+    plano = plano_de_teste(raiz=tmp_path / "repo", base_de_scratch=tmp_path / "scratch")
+    plano.requisitos.parent.mkdir(parents=True)
+    plano.requisitos.write_text("pytest==8.3.3\n", encoding="utf-8")
+    plano.requisitos_ci.write_text("pytest-json-report==1.5.0\n", encoding="utf-8")
+    identidade = sessao.identidade_do_venv(sessao.requisitos_do_venv(plano))
+    plano = sessao.replace(plano, venv=tmp_path / "venvs" / identidade)
+    subprocess.run([sys.executable, "-m", "venv", str(plano.venv)], check=True, timeout=60)
+
+    info = sessao._info_do_python_da_sessao(plano)
+    base = sessao.python_base_atual()
+
+    assert info["version"] == base[1]
+    assert sessao._python_base_igual(info["base_executable"], base[0])
+    assert not sessao._caminho_igual(plano.python_do_venv, base[0])
+
+
 def test_sair_do_processo_linux_envia_sinal_real():
     if sys.platform != "linux":
         pytest.skip("prova real de sinal só existe em Linux")
