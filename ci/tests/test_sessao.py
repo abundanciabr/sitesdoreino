@@ -567,14 +567,60 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     assert any("já existia" in linha for linha in mundo.log)
 
 
-def test_ramo_com_pr_encerrado_nao_e_reutilizado():
+def test_ramo_com_pr_fechado_sem_merge_diagnostica_sem_aceite():
     mundo = MundoFalso(
         plano_de_teste(),
         falhar={"rev-parse --verify": 1},
         gh_pr_list='[{"number": 91, "state": "CLOSED", "isDraft": true}]',
     )
-    with pytest.raises(sessao.ErroDeSessao, match="PR fechado"):
+    with pytest.raises(sessao.ErroDeSessao, match="PR fechado") as erro:
         mundo.sessao().rodar()
+    assert "fechado sem merge" in erro.value.detalhe
+    assert "não prova publicação nem aceite" in erro.value.detalhe
+
+
+def test_ramo_com_pr_integrado_retorna_entrega_sem_nova_aquisicao_nem_preparo(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "state": "MERGED", "isDraft": false}]',
+    )
+    import estado_da_entrega
+    consultas = []
+    monkeypatch.setattr(
+        estado_da_entrega,
+        "consultar_entrega",
+        lambda raiz, numero: consultas.append((raiz, numero)) or {"estado": "PUBLICADO"},
+    )
+
+    texto = mundo.sessao().rodar()
+
+    assert consultas == [(mundo.plano.raiz, 91)]
+    assert "PR #91 já integrado" in texto
+    assert "Estado da entrega: PUBLICADO" in texto
+    assert "python ci/esperar.py --entrega 91 --so-desfecho" in texto
+    juntas = "\n".join(mundo.chamadas)
+    assert "fila.py pegar" not in juntas
+    assert "worktree add" not in juntas
+    assert "-m venv" not in juntas
+    assert "pip install" not in juntas
+    assert "/usr/bin/make" not in juntas
+
+
+def test_pr_integrado_com_fonte_indisponivel_recusa_sem_nova_aquisicao(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "state": "MERGED", "isDraft": false}]',
+    )
+    import estado_da_entrega
+    monkeypatch.setattr(estado_da_entrega, "consultar_entrega", lambda *a: (_ for _ in ()).throw(RuntimeError("sem rede")))
+
+    with pytest.raises(sessao.ErroDeSessao, match="fonte da entrega integrada indisponível") as erro:
+        mundo.sessao().rodar()
+
+    assert "não autoriza nova aquisição" in erro.value.detalhe
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
 
 
 def test_container_parado_e_reiniciado_e_nao_recriado():

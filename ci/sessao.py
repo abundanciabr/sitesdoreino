@@ -1513,6 +1513,71 @@ class Sessao:
         finally:
             indice.unlink(missing_ok=True)
 
+    def retomar_entrega_integrada(self, gh: str) -> str | None:
+        passo = self._abrir(P_ANUNCIO)
+        consulta = self._correr(
+            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
+             "--json", "number,url,state,isDraft"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        )
+        try:
+            prs = json.loads(consulta.stdout or "")
+        except (TypeError, ValueError) as erro:
+            raise ErroDeSessao(
+                passo,
+                "a consulta de PR devolveu JSON inválido",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira o acesso ao GitHub e repita a abertura. Nenhum anúncio foi declarado.",
+            ) from erro
+        if not isinstance(prs, list) or len(prs) > 1:
+            raise ErroDeSessao(
+                passo,
+                "o ramo tem zero ou mais de um PR aberto de forma inconclusiva",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
+            )
+        if not prs:
+            return None
+        numero = prs[0].get("number")
+        if not isinstance(numero, int):
+            raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
+        estado_pr = prs[0].get("state", "OPEN")
+        if estado_pr == "OPEN":
+            return None
+        tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+        if estado_pr == "MERGED":
+            try:
+                import estado_da_entrega
+
+                medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+            except Exception as erro:  # noqa: BLE001 - fronteira de fonte externa
+                raise ErroDeSessao(
+                    passo,
+                    f"fonte da entrega integrada indisponível para o PR #{numero}",
+                    detalhe=(
+                        f"O PR #{numero} já foi integrado, mas não consegui medir estado_da_entrega. "
+                        f"Sem essa fonte, a sessão não autoriza nova aquisição de {tarefa} nem declara aceite. "
+                        f"Erro: {erro}"
+                    ),
+                ) from erro
+            estado_entrega = medicao.get("estado", "NÃO MEDIDO") if isinstance(medicao, dict) else "NÃO MEDIDO"
+            self._pass(f"PR #{numero} integrado; entrega medida: {estado_entrega}")
+            return (
+                f"PR #{numero} já integrado para {tarefa}. Estado da entrega: {estado_entrega}. "
+                f"Bancada preservada; nenhuma nova aquisição foi feita. "
+                f"Próximo comando seguro: python ci/esperar.py --entrega {numero} --so-desfecho. "
+                "Reconcilie aceite somente quando o fluxo de entrega publicar prova real."
+            )
+        raise ErroDeSessao(
+            passo,
+            f"PR fechado sem merge #{numero}",
+            detalhe=(
+                f"O PR #{numero} está fechado sem merge para este ramo. "
+                "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+            ),
+        )
+
     def anunciar_pr(self, gh: str) -> None:
         """Publica a intenção antes de o agente começar a construir.
 
@@ -1560,11 +1625,32 @@ class Sessao:
             numero = prs[0].get("number")
             if not isinstance(numero, int):
                 raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            if prs[0].get("state", "OPEN") != "OPEN":
+            estado_pr = prs[0].get("state", "OPEN")
+            if estado_pr != "OPEN":
+                tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+                if estado_pr == "MERGED":
+                    try:
+                        import estado_da_entrega
+
+                        medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+                        estado_entrega = medicao.get("estado", "NÃO MEDIDO")
+                    except Exception as erro:  # noqa: BLE001 - diagnóstico de abertura
+                        estado_entrega = f"NÃO MEDIDO ({erro})"
+                    detalhe = (
+                        f"O PR #{numero} já foi integrado; preserve esta bancada e continue pela entrega existente. "
+                        f"Estado da entrega: {estado_entrega}. "
+                        f"Confira: python ci/esperar.py --entrega {numero}. "
+                        f"Quando houver aceite publicado, reconcilie {tarefa} com o registro real medido pelo fluxo de entrega."
+                    )
+                else:
+                    detalhe = (
+                        f"O PR #{numero} está fechado sem merge para este ramo. "
+                        "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+                    )
                 raise ErroDeSessao(
                     passo,
                     f"o ramo já tem o PR fechado #{numero}",
-                    detalhe="Use uma nova sessão e um novo ramo para não misturar trabalhos.",
+                    detalhe=detalhe,
                 )
             self._pass(f"PR #{numero} já anuncia esta sessão")
             return
@@ -2148,12 +2234,15 @@ class Sessao:
         git = ferramentas["git"]
         self.conferir()
         self.buscar(git)
+        gh = ferramentas["gh"]
         with trava_da_bancada(self.plano.worktree):
+            retomada = self.retomar_entrega_integrada(gh)
+            if retomada is not None:
+                return retomada
             self.preparar_worktree(git)
             registrar_estado_inicial(self.plano, git, correr=self._correr)
             if self.plano.tarefa_da_fila:
                 self.pegar_a_tarefa()
-            gh = ferramentas["gh"]
             self.anunciar_pr(gh)
             self.gerar_indice(git)
             if not self.plano.sobe_ambiente:
