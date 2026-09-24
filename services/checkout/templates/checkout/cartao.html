@@ -28,18 +28,20 @@
   {{ total_cents|json_script:"total-cents" }}
   {{ api_token|json_script:"api-token" }}
   {{ api_base|json_script:"api-base" }}
+  {{ appmax_external_id|json_script:"appmax-external-id" }}
   <div class="wrap" x-data="cartaoIsland()" x-init="init()">
     <div class="card">
       <h1>Pague com cartão</h1>
       <p class="total" x-text="`Total: R$ ${(totalCents / 100).toFixed(2)}`"></p>
-      <form data-appmax-checkout x-show="podeTentar()">
+      <form data-appmax-customer hidden></form>
+      <form data-appmax-checkout x-show="podeTentar()" onsubmit="event.preventDefault()">
         <label>
           Número do cartão
-          <input appmax-form-element="number" inputmode="numeric" autocomplete="cc-number" required>
+          <input name="card-number" appmax-form-element="number" inputmode="numeric" autocomplete="cc-number" required>
         </label>
         <label>
           Nome impresso no cartão
-          <input appmax-form-element="holder_name" x-model.trim="holderName" autocomplete="cc-name" required>
+          <input name="card-holder-name" appmax-form-element="holder_name" x-model.trim="holderName" autocomplete="cc-name" required>
         </label>
         <label>
           CPF ou CNPJ do titular
@@ -48,17 +50,17 @@
         <div class="linha">
           <label>
             Mês
-            <input appmax-form-element="expiration_month" inputmode="numeric" autocomplete="cc-exp-month" required>
+            <input name="exp-month" appmax-form-element="expiration_month" inputmode="numeric" autocomplete="cc-exp-month" required>
           </label>
           <label>
             Ano
-            <input appmax-form-element="expiration_year" inputmode="numeric" autocomplete="cc-exp-year" required>
+            <input name="exp-year" appmax-form-element="expiration_year" inputmode="numeric" autocomplete="cc-exp-year" required>
           </label>
         </div>
         <div class="linha">
           <label>
             CVV
-            <input appmax-form-element="cvv" inputmode="numeric" autocomplete="cc-csc" required>
+            <input name="cvv" appmax-form-element="cvv" inputmode="numeric" autocomplete="cc-csc" required>
           </label>
           <label>
             Parcelas
@@ -70,7 +72,6 @@
             </select>
           </label>
         </div>
-        <span class="appmax-ip" hidden></span>
         <button class="acao" type="submit" :disabled="enviando || !appmaxPronto || !installments" x-text="botaoLabel()"></button>
       </form>
       <p class="status" x-text="statusLabel()"></p>
@@ -85,7 +86,7 @@
     window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
   </script>
   <script src="{% static 'checkout/api.js' %}"></script>
-  <script src="https://scripts.appmax.com.br/appmax.min.js"></script>
+  <script src="{{ appmax_script_url }}"></script>
   <script src="{% static 'checkout/cartao.js' %}"></script>
 </body>
 </html>
