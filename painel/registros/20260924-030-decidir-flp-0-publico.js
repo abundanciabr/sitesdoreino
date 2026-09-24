@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-030-decidir-flp-0-publico",
+  tipo: "decisao",
+  quando: "2026-09-24",
+  titulo: "Decidir FLP-0 publico",
+  detalhe: "Decisao FLP-0: pagina publica pelo Catalogo versionado, modelo do admin privado, proximas frentes separadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2039. Validação local: árvore 6dfef535d1e84d2559bf0da05a4878e780244d0a; commit b8ee0352003558754e4e4f60f7319ba658a44e46; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-688",
+  gravidade: "verde",
+  frente: "site",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

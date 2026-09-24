@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-142215-TAR-688-explicada",
+  "tarefa": "TAR-688",
+  "evento": "explicada",
+  "quando": "2026-09-24T14:22:15.017825+00:00",
+  "quem": "continuidade da Fase 0 de arquitetura FLP-0",
+  "o_que_e": "A administracao ja mostra a copia privada, mas o caminho publico da pagina ainda precisa de uma decisao unica para catalogo, admin e funil.",
+  "o_que_muda": "Os proximos robos seguem um plano medido, sem duplicar a pagina nem criar uma rota paralela para a oferta.",
+  "exemplo": "Abrir a decisao e saber qual robo muda contrato, catalogo, admin e funil, com a prova que encerra cada frente.",
+  "importancia": 80
+}
