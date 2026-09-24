@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-043-registrar-deploys-da-flp-e-ausencia-de-conteudo-publico",
+  tipo: "medicao",
+  quando: "2026-09-24",
+  titulo: "Registrar deploys da FLP e ausência de conteúdo público",
+  detalhe: "Registra os três deploys comprovados e a resposta 404 da página pública, sem confundir implantação de código com publicação de conteúdo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2048. Validação local: árvore 9041db1048432b59e5393e73c8b640f6a0cf4bfd; commit e4526f6e536e36659b490be6b2d50dbff6be21c8; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-694",
+  gravidade: "info",
+  frente: "site",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
