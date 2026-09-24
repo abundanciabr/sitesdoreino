@@ -125,6 +125,7 @@ RITO = (
     "git fetch origin && git worktree add ../wt-<area>-<tarefa> "
     "-b agent/<area>/<tarefa> origin/main"
 )
+MARCADOR_DE_PASTA_ANTIGA = "NAO_USAR_PASTA_ANTIGA.txt"
 
 # A régua da idade do espelho. `origin/main` é lido do CACHE local do git —
 # nenhuma rede, nenhuma espera: o que estiver ali é o que o último `git fetch`
@@ -185,6 +186,29 @@ def _caminho_liberado_no_principal(alvo: Path, raiz: Path) -> bool:
     except (ValueError, OSError):
         return False
     return relativo == ".claude/settings.local.json"
+
+
+def _marcador_da_pasta_antiga(raiz: Path) -> str | None:
+    marcador = raiz / MARCADOR_DE_PASTA_ANTIGA
+    if not marcador.exists():
+        return None
+    try:
+        texto = marcador.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        texto = ""
+    return texto or (
+        "Pasta antiga preservada. Abra o clone limpo antes de trabalhar."
+    )
+
+
+def _recusa_pasta_antiga(raiz: Path) -> str:
+    destino = _marcador_da_pasta_antiga(raiz)
+    return (
+        "🧱 MURALHA DA PASTA ANTIGA: esta raiz está marcada como preservada, "
+        f"não como bancada de trabalho ({raiz}). {destino} Nenhum robô deve "
+        "editar, executar shell ou mudar estado de Git daqui. Abra a pasta "
+        "nova e declare o caminho absoluto antes de continuar."
+    )
 
 
 def _tokens(segmento: str) -> list[str]:
@@ -512,6 +536,11 @@ def _avaliar_git(argumentos: list[str], pasta: Path) -> str | None:
 
 def _avaliar_shell(comando: str, cwd: str) -> str | None:
     pasta = Path(cwd)
+    encontrado_inicial = raiz_do_checkout(pasta)
+    if encontrado_inicial is not None:
+        raiz_inicial, _ = encontrado_inicial
+        if _marcador_da_pasta_antiga(raiz_inicial):
+            return _recusa_pasta_antiga(raiz_inicial)
     for segmento in SEPARADOR_DE_SEGMENTOS.split(comando):
         toks = _tokens(segmento)
         if not toks:
@@ -562,6 +591,8 @@ def decidir(dados: dict) -> str | None:
         if encontrado is None:
             return None
         raiz, principal = encontrado
+        if _marcador_da_pasta_antiga(raiz):
+            return _recusa_pasta_antiga(raiz)
         if not principal or _caminho_liberado_no_principal(alvo, raiz):
             return None
         return (
@@ -610,6 +641,16 @@ def _hook_aviso_de_sessao() -> int:
     if encontrado is None:
         return 0
     raiz, principal = encontrado
+    marcador = _marcador_da_pasta_antiga(raiz)
+    if marcador:
+        print(
+            "🧱 AVISO DA MURALHA: esta sessão nasceu numa PASTA ANTIGA "
+            f"PRESERVADA ({raiz}). {marcador} Pare aqui para trabalho de "
+            "código: abra a pasta nova, declare o caminho absoluto no início "
+            "da resposta e só então continue. A muralha recusará edição, shell "
+            "e mudança de Git nesta raiz."
+        )
+        return 0
     if not principal:
         return 0
     ramo = _ramo_atual(raiz) or "(desconhecido)"

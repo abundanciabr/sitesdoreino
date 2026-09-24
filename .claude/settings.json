@@ -2,6 +2,16 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Bash|PowerShell|Edit|Write|NotebookEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_pasta_compartilhada.py\"",
+            "timeout": 20
+          }
+        ]
+      },
+      {
         "matcher": "Monitor",
         "hooks": [
           {

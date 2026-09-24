@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-001-pagamentos-recupera-appmax",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "pagamentos: recupera Appmax",
+  detalhe: "Recuperação Appmax: inbox fecha só após consulta autenticada, webhook perdido é reconciliado, Redis fora preserva outbox e fila morta indica reabertura.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2010. Validação local: árvore 8749b47ad272eb714cbf74a52f5346f085036819; commit c0d60e3ea56edc963a65b1795568706fa69e4b12; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-559",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

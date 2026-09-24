@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260923-235302-TAR-558-concluida",
+  "tarefa": "TAR-558",
+  "evento": "concluida",
+  "quando": "2026-09-23T23:53:02.605884+00:00",
+  "quem": "codex-retomada-tar558",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/2002; revisao=8af5919ffc831d4d74dd2afbcb971f0772538099; arvore=ca9b5f39c196bc09bdb8403f3f38c9574a0754a9; head=7d210faaf8fad9fb67af4038af13735ad7d52e44; merge=10ff69c7bab6e164304588ad032759ddf906cb9f; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/35934798664; linhagem=linhagem comprovada; aceite=painel/registros/20260923-039-aceite-publicacao-tar558.js",
+  "verificado_em": "2026-09-23"
+}
