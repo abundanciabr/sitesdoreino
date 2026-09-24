@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-047-fila-corrige-falso-aceite-do-pix-appmax",
+  tipo: "incidente",
+  quando: "2026-09-24",
+  titulo: "fila: corrige falso aceite do Pix Appmax",
+  detalhe: "O PR 2050 apenas criou as tarefas Appmax. Seu fechamento automático declarou Pix pronto sem código. Removo os dois eventos falsos; a fila volta a exigir a instalação e o teste real.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2053. Validação local: árvore e34bdde5825380d27b395fb71ab35d0b5a3b3ab8; commit 8f8d48011d7bf2cac3410f7cf713ce2ca1fb7b83; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-699",
+  gravidade: "vermelho",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
