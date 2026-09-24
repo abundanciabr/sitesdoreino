@@ -4,13 +4,15 @@
 function dadosIsland() {
   return {
     offerSlug: JSON.parse(document.getElementById("offer-slug").textContent),
+    appmaxPix: JSON.parse(document.getElementById("appmax-pix-enabled").textContent),
+    appmaxCard: JSON.parse(document.getElementById("appmax-card-enabled").textContent),
     carregando: true,
     enviando: false,
     erro: "",
     session: null,
     offer: { product_name: "", price_cents: 0, bumps: [] },
     bumpIds: [],
-    customer: { name: "", email: "", phone: "" },
+    customer: { name: "", email: "", phone: "", cpf: "" },
     method: "pix",
 
     async init() {
@@ -40,6 +42,14 @@ function dadosIsland() {
 
     async finalizar() {
       this.erro = "";
+      if (this.appmaxPix && this.method === "pix") {
+        const telefone = this.customer.phone.replace(/\D/g, "");
+        const cpf = this.customer.cpf.replace(/\D/g, "");
+        if (this.customer.name.trim().split(/\s+/).length < 2 || ![10, 11].includes(telefone.length) || cpf.length !== 11) {
+          this.erro = "Informe nome completo, telefone com DDD e CPF com 11 dígitos para pagar por Pix.";
+          return;
+        }
+      }
       this.enviando = true;
       try {
         const pedido = await api.post(`/sessoes/${this.session.id}/pedido`, {

@@ -6,11 +6,13 @@
 # response= para o status devolvido estoura ConfigError no django-ninja, e
 # declarar mais status em response= criaria Schema dinâmico que vaza para
 # components.schemas e quebra o freeze.
+import ipaddress
 import json
 import uuid
 
 import httpx
 
+from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from ninja import Field, Router, Schema
@@ -309,6 +311,19 @@ def place_order(request, session_id: str):
     method = corpo.get("method")
     if method not in ("pix", "card"):
         raise HttpError(422, "method deve ser pix ou card")
+    pix_appmax = method == "pix" and site["id"] in settings.APPMAX_PIX_ENABLED_SITES
+    if pix_appmax:
+        telefone = "".join(c for c in str(customer.get("phone") or "") if c.isdigit())
+        cpf = "".join(c for c in str(customer.get("cpf") or "") if c.isdigit())
+        if (
+            len(str(customer["name"]).split()) < 2
+            or len(telefone) not in {10, 11}
+            or len(cpf) != 11
+        ):
+            raise HttpError(
+                422,
+                "Informe nome completo, telefone com DDD e CPF com 11 dígitos para pagar por Pix",
+            )
     bump_ids = corpo.get("bump_ids") or []
     if not isinstance(bump_ids, list):
         raise HttpError(422, "bump_ids deve ser uma lista de ids")
@@ -338,7 +353,22 @@ def place_order(request, session_id: str):
         "checkout_session_id": str(sessao.id),
         "product_id": str(itens[0]["product_id"]),
     }
-    metadata = dict(metadata, **({"items": itens} if method == "card" else {}))
+    metadata = dict(
+        metadata, **({"items": itens} if method == "card" or pix_appmax else {})
+    )
+    comprador_pagamento = dict(comprador)
+    if pix_appmax:
+        ip_bruto = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
+            -1
+        ].strip() or request.META.get("REMOTE_ADDR", "")
+        try:
+            comprador_pagamento["ip"] = str(ipaddress.ip_address(ip_bruto))
+        except ValueError:
+            raise HttpError(
+                422,
+                "Não foi possível identificar sua conexão; recarregue a página e tente novamente",
+            ) from None
+        comprador_pagamento["document_number"] = cpf
     intent = PagamentosClient().criar_intent(
         # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
         idempotency_key=str(sessao.id),
@@ -348,7 +378,7 @@ def place_order(request, session_id: str):
             "amount_cents": total_cents,
             "currency": "BRL",
             "method": method,
-            "customer": comprador,
+            "customer": comprador_pagamento,
             # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
             # para ecoar dado que não é dele (mesma técnica de
             # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
