@@ -60,6 +60,24 @@
       "descricao": "A página carregada dentro do modelo, isolada dos dados da administração e disponível somente para a equipe autorizada."
     },
     {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/series-flp-gpt",
+      "endereco": "/admin/modelos-de-paginas/series-flp-gpt",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Série Se Vender, Não Pare",
+      "descricao": "Os episódios da série, com vídeos nos dois primeiros e aviso dos próximos. Disponível somente para a equipe autorizada."
+    },
+    {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/series-flp-gpt/conteudo",
+      "endereco": "/admin/modelos-de-paginas/series-flp-gpt/conteudo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Conteúdo da série Se Vender, Não Pare",
+      "descricao": "A página da série carregada em área isolada dos dados da administração, disponível somente para a equipe autorizada."
+    },
+    {
       "celula": "funil",
       "rota": "",
       "endereco": "/",

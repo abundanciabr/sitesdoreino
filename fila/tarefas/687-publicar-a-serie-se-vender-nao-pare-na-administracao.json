@@ -1,0 +1,19 @@
+{
+  "arquivo": "687-publicar-a-serie-se-vender-nao-pare-na-administracao",
+  "id": "TAR-687",
+  "titulo": "Publicar a série Se Vender, Não Pare na administração",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, deploy admin concluído e https://meshcraft.top/admin/modelos-de-paginas/series-flp-gpt conferida autenticada e protegida sem sessão",
+  "despacho": "Publicar o clone revisado de C:/Users/davia/paginas/series-flp-gpt na rota exata https://meshcraft.top/admin/modelos-de-paginas/series-flp-gpt. Preservar autenticação, isolar scripts e player, validar desktop, celular, episódios, reprodução, testes, integração e publicação.",
+  "origem": "pedido do mantenedor nesta sessão Codex, 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
