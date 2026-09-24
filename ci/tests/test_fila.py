@@ -2782,10 +2782,15 @@ def _sha(cwd, revisao):
     ).stdout.strip()
 
 
-def test_leitura_publicada_soma_evento_local_sem_merge(tmp_path):
-    remoto = tmp_path / "remoto.git"
+def _init_bare_main(remoto):
     remoto.mkdir()
     _git("init", "--bare", cwd=remoto)
+    _git("symbolic-ref", "HEAD", "refs/heads/main", cwd=remoto)
+
+
+def test_leitura_publicada_soma_evento_local_sem_merge(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2822,8 +2827,7 @@ def test_leitura_publicada_soma_evento_local_sem_merge(tmp_path):
 
 def test_leitura_publicada_aceita_copia_local_identica_de_tarefa_nova_no_remoto(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2854,8 +2858,7 @@ def test_leitura_publicada_aceita_copia_local_identica_de_tarefa_nova_no_remoto(
 
 def test_leitura_publicada_recusa_conflito_em_tarefa_imutavel(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2880,8 +2883,7 @@ def test_leitura_publicada_recusa_conflito_em_tarefa_imutavel(tmp_path):
 
 def test_leitura_publicada_usa_remoto_quando_bancada_antiga_esta_limpa(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2919,8 +2921,7 @@ def test_leitura_publicada_usa_remoto_quando_bancada_antiga_esta_limpa(tmp_path)
 
 def test_leitura_publicada_recusa_alteracao_commitada_em_item_publicado(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2949,8 +2950,7 @@ def test_leitura_publicada_recusa_alteracao_commitada_em_item_publicado(tmp_path
 
 def test_leitura_publicada_nao_ressuscita_item_removido_no_remoto(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -3064,8 +3064,7 @@ def test_evento_terminal_exato_compara_datetime_e_campos_internos_do_loader():
 
 def test_pegar_com_loader_real_libera_publicacao_pendente_exata_no_servidor(tmp_path, monkeypatch, capsys):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -3185,8 +3184,7 @@ def test_pegar_nao_libera_publicacao_pendente_com_terminal_diferente(tmp_path, m
 
 def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -3242,8 +3240,7 @@ def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
 
 def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -3380,8 +3377,7 @@ def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
     tmp_path, monkeypatch, capsys
 ):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     primeira = tmp_path / "primeira"
     primeira.mkdir()
     _git("init", "-b", "main", cwd=primeira)
