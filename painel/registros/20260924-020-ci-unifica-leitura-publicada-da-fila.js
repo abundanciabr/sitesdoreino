@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-020-ci-unifica-leitura-publicada-da-fila",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "ci: unifica leitura publicada da fila",
+  detalhe: "R1 da TAR-677: origin/main vira fonte medida, terminal local fica explícito e reserva pendente só cai quando o mesmo evento aparece publicado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2027. Validação local: árvore 152f98fb570449bd26a01b11a4c7c5a3e17ea04b; commit de1b4a42305ee14ecbfe48ab2c797c605993eb4c; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-677",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

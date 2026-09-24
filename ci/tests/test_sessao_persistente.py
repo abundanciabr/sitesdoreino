@@ -20,6 +20,7 @@ def ambiente(tmp_path, monkeypatch):
                                 celulas=["quiz"], usa_redis=False)
     plano.requisitos.parent.mkdir(parents=True)
     plano.requisitos.write_text("pytest==8.3.4", encoding="utf-8")
+    plano.requisitos_ci.write_text("pytest-json-report==1.5.0", encoding="utf-8")
     return plano
 
 
@@ -120,12 +121,19 @@ def baseline(ambiente):
         if "status" in comando:
             return sessao.Saida(comando, 0, estado["dirty"] if "-C" in comando else estado.get("base_dirty", ""), "")
         if "show" in comando:
+            alvo = comando[-1]
+            if alvo.endswith("requirements-ci.txt"):
+                return sessao.Saida(comando, 0, ambiente.requisitos_ci.read_text(), "")
             return sessao.Saida(comando, 0, ambiente.requisitos.read_text(), "")
         if "rev-parse" in comando:
             return sessao.Saida(comando, 0, estado.get("base_revision", estado["main"]) if comando[-1] == "HEAD" else estado["main"], "")
         if "worktree" in comando:
             if "add" in comando:
+                isolada = Path(comando[-2])
                 estado["isoladas"].append(comando[-2])
+                (isolada / "services" / "quiz").mkdir(parents=True, exist_ok=True)
+                (isolada / "services" / "quiz" / "requirements.txt").write_text(ambiente.requisitos.read_text(), encoding="utf-8")
+                (isolada / "requirements-ci.txt").write_text(ambiente.requisitos_ci.read_text(), encoding="utf-8")
             return sessao.Saida(comando, 0, "", "")
         if comando[0] == "make":
             assert Path(kwargs["cwd"]) != a.plano.worktree
@@ -165,14 +173,19 @@ def test_baseline_da_base_independe_do_ramo_da_tarefa(baseline):
     assert len(estado["isoladas"]) == 1
 
 
-def test_baseline_dirty_recusa_antes_de_reutilizar(baseline):
+def test_baseline_reutilizado_preserva_dirty_da_tarefa_sem_revalidar_arvore(baseline):
     a, estado = baseline
-    a.rodar_baseline("git")
-    estado["dirty"] = " M services/quiz/config.py"
-    with pytest.raises(sessao.ErroDeSessao, match="NÃO está limpa"):
-        a.rodar_baseline("git")
-    assert estado["make"] == 1
+    assert a.rodar_baseline("git") == "6 passed"
+    isolada = estado["isoladas"][0]
 
+    estado["dirty"] = " M services/quiz/config.py"
+
+    assert a.rodar_baseline("git") == "6 passed"
+    assert estado["make"] == 1
+    assert estado["isoladas"] == [isolada]
+    assert estado["dirty"] == " M services/quiz/config.py"
+    assert a._estado_git == "alterações preexistentes preservadas (1)"
+    assert a.plano.log_do_baseline.read_text().endswith("6 passed in 1s")
 
 def test_baseline_com_ambiente_diferente_nao_reutiliza(baseline, monkeypatch):
     a, estado = baseline
@@ -262,7 +275,9 @@ def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_div
         + '" -m pytest -q; else exit 1; fi\n'
     )
     (celula / "requirements.txt").write_text(ambiente.requisitos.read_text())
-    hash_base = sessao.identidade_do_venv(celula / "requirements.txt")
+    (repo / "requirements-ci.txt").write_text(ambiente.requisitos_ci.read_text())
+    plano_base = sessao.replace(ambiente, worktree=repo)
+    hash_base = sessao.identidade_do_venv(sessao.requisitos_do_venv(plano_base))
     (celula / "test_base.py").write_text(f'import os\ndef test_base(): assert os.environ["SESSAO_VENV"].endswith("{hash_base}")\n')
     (repo / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n")
     git("add", ".")

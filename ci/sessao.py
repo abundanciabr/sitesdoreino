@@ -26,9 +26,9 @@ duplica nada — o que já existe é reusado, e reusar não é falhar):
      2. git fetch origin
      3. worktree ../wt-<celula>-<tarefa> na branch agent/<celula>/<tarefa>
      4. balcão: `ci/fila.py pegar TAR-NNN`, quando --tar vem — e é o PRIMEIRO
-        gesto depois de a pasta existir (`armadilhas/357`), rodado pelo
-        `fila.py` DA BANCADA para o comprovante não nascer órfão no clone
-        principal (`armadilhas/192`)
+        gesto depois de a pasta existir (`armadilhas/357`), chamado no mesmo
+        processo e apontado para a BANCADA para o comprovante não nascer órfão
+        no clone principal (`armadilhas/192`)
      5. abre e confere um PR em rascunho no primeiro minuto, antes do código,
         para anunciar a intenção e impedir trabalho duplicado invisível
      6. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
@@ -73,17 +73,19 @@ local e não pode virar requisito arquitetural (mesma regra do Makefile da raiz)
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import hashlib
 import platform
 import secrets
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from dataclasses import dataclass, replace
@@ -92,6 +94,8 @@ from pathlib import Path, PureWindowsPath
 from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+if __name__ == "__main__":
+    sys.modules.setdefault("sessao", sys.modules[__name__])
 
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
@@ -158,6 +162,8 @@ LIMITE_DE_NOME = 40
 # rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
 # medir" — qualquer outro número veio do programa e é veredito dele.
 SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
+INTERVALO_CONFERENCIA_POSSE_SEGUNDOS = 30.0
+TIMEOUT_EXECUTOR_SEGUNDOS = 3600
 
 PASSOS = (
     "conferir o repositório e a célula",
@@ -463,6 +469,10 @@ class Plano:
         return self.celula_no_worktree / "requirements.txt"
 
     @property
+    def requisitos_ci(self) -> Path:
+        return self.worktree / "requirements-ci.txt"
+
+    @property
     def bin_do_venv(self) -> Path:
         return self.venv / ("Scripts" if os.name == "nt" else "bin")
 
@@ -558,8 +568,9 @@ def passos_do_plano(plano: Plano) -> tuple[str, ...]:
         passos.append(P_BALCAO)
     passos.append(P_ANUNCIO)
     passos.append(P_INDICE)
+    passos.extend((P_VENV, P_DEPS, P_ENV))
     if plano.sobe_ambiente:
-        passos.extend(PASSOS_DO_AMBIENTE)
+        passos.extend((P_SERVICOS, P_DOCTOR, P_BASELINE))
     return tuple(passos)
 
 
@@ -571,6 +582,11 @@ def bancada_pronta(plano: Plano) -> str:
             f"BANCADA PRONTA: {plano.worktree}",
         ]
     )
+
+
+def python_base_atual() -> tuple[str, str]:
+    executavel = getattr(sys, "base_executable", "") or getattr(sys, "_base_executable", "") or sys.executable
+    return str(executavel), sys.version
 
 
 def variaveis_de_sessao(
@@ -585,19 +601,23 @@ def variaveis_de_sessao(
     variaveis = {
         "PYTHONUTF8": "1",
         "DJANGO_SECRET_KEY": SEGREDO_DE_DESENVOLVIMENTO,
-        "DATABASE_URL": (
+    }
+    if plano.sobe_ambiente:
+        variaveis["DATABASE_URL"] = (
             f"postgres://{plano.banco}:{plano.senha_banco}"
             f"@localhost:{porta_postgres}/{plano.banco}"
-        ),
-    }
-    if plano.usa_redis:
-        variaveis["REDIS_STREAMS_URL"] = f"redis://localhost:{porta_redis}/0"
-        variaveis["HUEY_REDIS_URL"] = f"redis://localhost:{porta_redis}/1"
+        )
+        if plano.usa_redis:
+            variaveis["REDIS_STREAMS_URL"] = f"redis://localhost:{porta_redis}/0"
+            variaveis["HUEY_REDIS_URL"] = f"redis://localhost:{porta_redis}/1"
     variaveis["MP_ACCESS_TOKEN"] = TOKEN_FALSO_DO_MERCADO_PAGO
     variaveis["MP_WEBHOOK_SECRET"] = f"{SEGREDO_DE_DESENVOLVIMENTO}-webhook-secret"
     variaveis["SESSAO_SCRATCH"] = str(plano.scratch)
     variaveis["SESSAO_VENV"] = str(plano.venv)
     variaveis["SESSAO_WORKTREE"] = str(plano.worktree)
+    python_executavel, python_versao = python_base_atual()
+    variaveis["SESSAO_PYTHON_BASE_EXECUTABLE"] = python_executavel
+    variaveis["SESSAO_PYTHON_BASE_VERSION"] = python_versao
     return variaveis
 
 
@@ -678,7 +698,9 @@ def cabecalho(plano: Plano) -> str:
         linhas.append(f"  fila          {plano.tarefa_da_fila} (pegar no balcão)")
     if not plano.sobe_ambiente:
         linhas += [
-            "  ambiente      NENHUM (--sem-container: sem venv, Docker nem baseline)",
+            "  ambiente      Python da sessão (--sem-container: sem Docker nem baseline)",
+            f"  venv          {plano.venv}   (FORA do worktree)",
+            f"  .env          {plano.arquivo_env} (FORA do worktree)",
             "",
         ]
         return "\n".join(linhas)
@@ -813,7 +835,7 @@ def escrever_de_verdade(caminho: Path, texto: str) -> None:
 
 
 @contextmanager
-def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
+def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV, esperar: bool = True):
     """O SO libera a trava também se o processo morrer, sem apagar lock alheio."""
     caminho.parent.mkdir(parents=True, exist_ok=True)
     with caminho.open("a+b") as arquivo:
@@ -832,6 +854,12 @@ def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
                     fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError as erro:
+                if not esperar:
+                    raise ErroDeSessao(
+                        passo,
+                        "bancada já tem execução em andamento",
+                        detalhe=f"Outra execução segura a trava {caminho}. Trabalho preservado; nenhum filho novo executou.",
+                    ) from erro
                 if time.monotonic() >= limite:
                     raise ErroDeSessao(passo, "ambiente em preparação por outra sessão",
                                        detalhe=f"Aguarde e repita a abertura. Trava: {caminho}") from erro
@@ -846,9 +874,250 @@ def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
                 fcntl.flock(arquivo.fileno(), fcntl.LOCK_UN)
 
 
-def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
+def _gitdir_da_bancada(bancada: Path) -> Path | None:
+    """Localiza o gitdir sem executar Git nem tocar na árvore de trabalho."""
+    dotgit = Path(bancada).resolve() / ".git"
+    if dotgit.is_dir():
+        return dotgit
+    if not dotgit.is_file():
+        return None
+    try:
+        linha = dotgit.read_text(encoding="utf-8").strip()
+        prefixo = "gitdir:"
+        if not linha.lower().startswith(prefixo):
+            return None
+        alvo = linha[len(prefixo):].strip()
+        return (dotgit.parent / alvo).resolve() if not Path(alvo).is_absolute() else Path(alvo).resolve()
+    except (OSError, UnicodeError):
+        return None
+
+
+def identidade_duravel_da_bancada(bancada: Path) -> str:
+    """Identidade estável do checkout, distinta do processo que o usa."""
+    caminho = str(Path(bancada).resolve())
+    if platform.system() == "Windows":
+        caminho = os.path.normcase(caminho)
+    base = f"caminho:{caminho}"
+    return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+
+def caminho_da_trava_da_bancada(bancada: Path) -> Path:
+    """Arquivo externo cuja trava é do SO e não um prazo escrito em disco."""
+    return (
+        Path.home()
+        / ".sitesdoreino"
+        / "sessoes"
+        / "locks"
+        / f"bancada-{identidade_duravel_da_bancada(bancada)[:32]}.lock"
+    )
+
+
+def arquivo_de_estado_inicial(bancada: Path) -> Path:
+    """Metadado externo e mínimo da árvore herdada, sem conteúdo de arquivos."""
+    gitdir = _gitdir_da_bancada(bancada)
+    if gitdir:
+        return gitdir / "codex-estado-inicial.json"
+    return (
+        Path.home()
+        / ".sitesdoreino"
+        / "sessoes"
+        / "estado"
+        / f"{identidade_duravel_da_bancada(bancada)}.json"
+    )
+
+
+_TRAVAS_DA_BANCADA_NO_PROCESSO: dict[str, int] = {}
+
+
+@contextmanager
+def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE, esperar: bool = True):
+    """Exclusividade ativa da bancada; arquivo antigo nunca autoriza a entrada."""
+    identidade = identidade_duravel_da_bancada(bancada)
+    if _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 0):
+        _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] += 1
+        try:
+            yield {
+                "schema_version": 1,
+                "identidade": identidade,
+                "bancada": str(Path(bancada).resolve()),
+                "processo": "reentrante",
+                "pid": os.getpid(),
+                "iniciada_em": datetime.now(timezone.utc).isoformat(),
+            }
+        finally:
+            restante = _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 1) - 1
+            if restante:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] = restante
+            else:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO.pop(identidade, None)
+        return
+    caminho = caminho_da_trava_da_bancada(bancada)
+    ativo = caminho.with_suffix(".json")
+    token = uuid.uuid4().hex
+    with trava_de_ambiente(caminho, passo=passo, esperar=esperar):
+        ativo.parent.mkdir(parents=True, exist_ok=True)
+        estado = {
+            "schema_version": 1,
+            "identidade": identidade_duravel_da_bancada(bancada),
+            "bancada": str(Path(bancada).resolve()),
+            "processo": token,
+            "pid": os.getpid(),
+            "iniciada_em": datetime.now(timezone.utc).isoformat(),
+        }
+        temporario = ativo.with_suffix(f".{token}.tmp")
+        temporario.write_text(json.dumps(estado, ensure_ascii=False) + "\n", encoding="utf-8")
+        temporario.replace(ativo)
+        _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] = 1
+        try:
+            yield estado
+        finally:
+            restante = _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 1) - 1
+            if restante:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] = restante
+            else:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO.pop(identidade, None)
+            try:
+                atual = json.loads(ativo.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                atual = {}
+            if atual.get("processo") == token:
+                ativo.unlink(missing_ok=True)
+
+
+def _resumo_do_status(status: str) -> dict[str, int | str]:
+    entradas = [parte for parte in status.split("\0") if parte]
+    staged = unstaged = untracked = 0
+    indice = 0
+    while indice < len(entradas):
+        entrada = entradas[indice]
+        codigo = entrada[:2]
+        if codigo == "??":
+            untracked += 1
+        else:
+            staged += int(len(codigo) > 0 and codigo[0] not in (" ", "?") )
+            unstaged += int(len(codigo) > 1 and codigo[1] not in (" ", "?") )
+        if codigo[:1] in ("R", "C") or codigo[1:2] in ("R", "C"):
+            indice += 2
+        else:
+            indice += 1
+    return {
+        "staged": staged,
+        "unstaged": unstaged,
+        "untracked": untracked,
+        "total": len(entradas),
+        "status_sha256": hashlib.sha256(status.encode("utf-8")).hexdigest(),
+    }
+
+
+def metadados_da_bancada(plano: Plano) -> dict[str, object]:
+    """Contrato mínimo para outro executor retomar sem adivinhar o ambiente."""
+    return {
+        "schema_version": 1,
+        "celula": plano.celula,
+        "tarefa": plano.tarefa,
+        "frase": plano.frase,
+        "sobe_ambiente": plano.sobe_ambiente,
+        "tarefa_da_fila": plano.tarefa_da_fila,
+        "raiz": str(plano.raiz.resolve()),
+        "worktree": str(plano.worktree.resolve()),
+        "branch": plano.branch,
+        "scratch": str(plano.scratch.resolve()),
+        "arquivo_env": str(plano.arquivo_env.resolve()),
+        "venv": str(plano.venv.resolve()),
+        "postgres": plano.postgres,
+        "porta_postgres": plano.porta_postgres,
+        "redis": plano.redis,
+        "porta_redis": plano.porta_redis,
+        "quem_no_balcao": plano.quem_no_balcao,
+        "python_base": {
+            "executable": python_base_atual()[0],
+            "version": python_base_atual()[1],
+            "prefix": sys.prefix,
+            "platform": platform.platform(),
+        },
+    }
+
+
+def registrar_estado_inicial(
+    plano: Plano,
+    git: str,
+    *,
+    correr: Callable[..., Saida] = correr_de_verdade,
+) -> Path:
+    """Registra uma vez o estado herdado, fora do repositório e sem segredos."""
+    caminho = arquivo_de_estado_inicial(plano.worktree)
+    identidade = identidade_duravel_da_bancada(plano.worktree)
+    if caminho.exists():
+        try:
+            existente = json.loads(caminho.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as erro:
+            raise ErroDeSessao(
+                P_WORKTREE,
+                "o registro inicial da bancada está ilegível",
+                detalhe=f"Preserve a bancada e corrija {caminho} antes de retomar.",
+            ) from erro
+        if existente.get("identidade") != identidade:
+            raise ErroDeSessao(
+                P_WORKTREE,
+                "o registro inicial pertence a outra bancada",
+                detalhe=f"Preserve os arquivos e confira {caminho} antes de retomar.",
+            )
+        return caminho
+    status = correr(
+        [git, "-C", str(plano.worktree), "status", "--porcelain=v1", "-z"],
+        cwd=plano.raiz,
+        timeout=300,
+    )
+    if status.exit_code != 0:
+        raise ErroDeSessao(
+            P_WORKTREE,
+            "não consegui registrar o estado inicial da bancada",
+            comando="git status --porcelain=v1 -z",
+            detalhe=recortar(status.texto, 2000),
+        )
+    head = correr(
+        [git, "-C", str(plano.worktree), "rev-parse", "HEAD"], cwd=plano.raiz, timeout=300
+    )
+    branch = correr(
+        [git, "-C", str(plano.worktree), "symbolic-ref", "--short", "HEAD"],
+        cwd=plano.raiz,
+        timeout=300,
+    )
+    if head.exit_code != 0 or branch.exit_code != 0:
+        raise ErroDeSessao(
+            P_WORKTREE,
+            "não consegui identificar a revisão inicial da bancada",
+            detalhe="Preserve os arquivos e confira o checkout antes de retomar.",
+        )
+    dados = {
+        "schema_version": 1,
+        "identidade": identidade,
+        "bancada": str(plano.worktree.resolve()),
+        "branch": branch.stdout.strip(),
+        "head": head.stdout.strip(),
+        "capturado_em": datetime.now(timezone.utc).isoformat(),
+        "estado": _resumo_do_status(status.stdout),
+        "plano": metadados_da_bancada(plano),
+    }
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_suffix(f".{uuid.uuid4().hex}.tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporario.replace(caminho)
+    return caminho
+
+
+def requisitos_do_venv(plano: Plano) -> tuple[Path, ...]:
+    arquivos = []
+    if plano.sobe_ambiente:
+        arquivos.append(plano.requisitos)
+    arquivos.append(plano.requisitos_ci)
+    return tuple(arquivos)
+
+
+def identidade_do_venv(requisitos: Path | Sequence[Path], *, ler=None, python_base: tuple[str, str] | None = None) -> str:
     identidade = hashlib.sha256()
-    identidade.update(repr((sys.executable, sys.version, platform.system(), platform.release(), platform.machine(),
+    executavel, versao = python_base or python_base_atual()
+    identidade.update(repr((executavel, versao, platform.system(), platform.release(), platform.machine(),
                             FERRAMENTAS_DE_PORTAO)).encode())
     visitados = set()
 
@@ -858,6 +1127,7 @@ def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
             return
         visitados.add(arquivo)
         conteudo = (ler(arquivo) if ler else arquivo.read_bytes()).replace(b"\r\n", b"\n")
+        identidade.update(str(arquivo.name).encode("utf-8"))
         identidade.update(len(conteudo).to_bytes(8, "big"))
         identidade.update(conteudo)
         for linha in conteudo.decode("utf-8").splitlines():
@@ -872,11 +1142,458 @@ def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
                 raise ErroDeSessao(P_VENV, "dependência local sem identidade imutável",
                                    detalhe=f"Use uma versão publicada antes de reutilizar o ambiente: {linha}")
     try:
-        incluir(requisitos)
+        if isinstance(requisitos, (str, Path)):
+            incluir(Path(requisitos))
+        else:
+            for arquivo in requisitos:
+                incluir(Path(arquivo))
     except (OSError, UnicodeError) as erro:
         raise ErroDeSessao(P_VENV, "não foi possível ler as dependências",
-                           detalhe=f"Confira {requisitos} e repita a abertura: {erro}") from erro
+                           detalhe=f"Confira os requirements da sessão e repita a abertura: {erro}") from erro
     return identidade.hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Executor oficial da sessão
+# ---------------------------------------------------------------------------
+
+CHAVES_SENSIVEIS_DO_ENV = re.compile(r"(SECRET|TOKEN|PASSWORD|SENHA|DATABASE_URL|REDIS.*URL|API_KEY|PRIVATE_KEY|ACCESS_KEY|_KEY$)", re.I)
+
+
+
+def comando_abrir_seguro(plano: Plano) -> str:
+    comando = ["python", "ci/sessao.py", "abrir", "--celula", plano.celula, "--tarefa", plano.tarefa]
+    if plano.tarefa_da_fila:
+        comando += ["--tar", plano.tarefa_da_fila]
+    if not plano.sobe_ambiente:
+        comando.append("--sem-container")
+    comando += ["--scratch", str(plano.scratch.parent)]
+    return subprocess.list2cmdline(comando)
+
+def carregar_env_de_sessao(arquivo: Path) -> dict[str, str]:
+    try:
+        linhas = arquivo.read_text(encoding="utf-8").splitlines()
+    except OSError as erro:
+        raise ErroDeSessao(
+            "executor da sessão",
+            ".env da sessão indisponível",
+            detalhe=f"Esperado em {arquivo}. Trabalho preservado; nenhum filho executou. Reabra pelo comando original da sessão ou rode `python ci/sessao.py --help` para conferir a sintaxe antes de tentar de novo.",
+        ) from erro
+    env: dict[str, str] = {}
+    for numero, linha in enumerate(linhas, 1):
+        if not linha.strip() or linha.startswith("#"):
+            continue
+        casou = re.fullmatch(r"([A-Z0-9_]+)='([^'\n]*)'", linha)
+        if not casou:
+            raise ErroDeSessao(
+                "executor da sessão",
+                ".env da sessão tem formato inválido",
+                detalhe=f"Linha {numero} não segue KEY='valor'. Preserve o arquivo e rode a abertura para regenerar.",
+            )
+        chave = casou.group(1)
+        if chave in env:
+            raise ErroDeSessao(
+                "executor da sessão",
+                ".env da sessão tem chave duplicada",
+                detalhe=f"Linha {numero} repete {chave}. Preserve o arquivo e rode a abertura para regenerar.",
+            )
+        env[chave] = casou.group(2)
+    return env
+
+
+def _redigir_com_env(texto: str, env: dict[str, str]) -> str:
+    try:
+        from telemetria import redigir
+        texto = redigir(texto)
+    except Exception:
+        pass
+    for chave, valor in env.items():
+        if not valor or not CHAVES_SENSIVEIS_DO_ENV.search(chave):
+            continue
+        texto = texto.replace(valor, f"[redigido:{chave}]")
+    return texto
+
+
+def _ambiente_do_executor(plano: Plano, env_sessao: dict[str, str]) -> dict[str, str]:
+    base = {
+        chave: valor
+        for chave, valor in os.environ.items()
+        if chave.upper() in {"SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA"}
+    }
+    for chave in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV", "DJANGO_SETTINGS_MODULE"):
+        base.pop(chave, None)
+    for chave in list(base):
+        if chave.startswith("PYTEST_"):
+            base.pop(chave, None)
+    base.update(env_sessao)
+    for chave in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV"):
+        base.pop(chave, None)
+    for chave in list(base):
+        if chave.startswith("PYTEST_"):
+            base.pop(chave, None)
+    base["PYTHONUTF8"] = "1"
+    base["PYTHONDONTWRITEBYTECODE"] = "1"
+    base["VIRTUAL_ENV"] = str(plano.venv)
+    resto_path = os.environ.get("PATH", "")
+    base["PATH"] = str(plano.bin_do_venv) + (os.pathsep + resto_path if resto_path else "")
+    return base
+
+
+def _plano_do_estado(dados: dict[str, object]) -> Plano:
+    bruto = dados.get("plano")
+    if not isinstance(bruto, dict):
+        raise ErroDeSessao("executor da sessão", "registro inicial sem plano", detalhe="Rode a abertura da sessão de novo; a bancada foi preservada.")
+    try:
+        return Plano(
+            celula=str(bruto["celula"]), tarefa=str(bruto["tarefa"]), frase=str(bruto.get("frase") or ""),
+            sobe_ambiente=bool(bruto["sobe_ambiente"]), tarefa_da_fila=str(bruto.get("tarefa_da_fila") or ""),
+            raiz=Path(str(bruto["raiz"])), worktree=Path(str(bruto["worktree"])), branch=str(bruto["branch"]),
+            scratch=Path(str(bruto["scratch"])), venv=Path(str(bruto["venv"])), arquivo_env=Path(str(bruto["arquivo_env"])),
+            postgres=str(bruto.get("postgres") or ""), porta_postgres=int(bruto.get("porta_postgres") or 0),
+            redis=str(bruto.get("redis") or ""), porta_redis=int(bruto.get("porta_redis") or 0),
+        )
+    except (KeyError, TypeError, ValueError) as erro:
+        raise ErroDeSessao("executor da sessão", "registro inicial incompleto", detalhe="Rode a abertura da sessão de novo; a bancada foi preservada.") from erro
+
+
+def _caminho_igual(a: str | Path, b: str | Path) -> bool:
+    esquerda = str(Path(a))
+    direita = str(Path(b))
+    if platform.system() == "Windows":
+        return esquerda.casefold() == direita.casefold()
+    return esquerda == direita
+
+
+def _python_base_igual(a: str | Path, b: str | Path) -> bool:
+    if _caminho_igual(a, b):
+        return True
+    try:
+        return Path(a).samefile(Path(b))
+    except OSError:
+        return False
+
+
+def _python_base_da_sessao(dados: dict[str, object], env_sessao: dict[str, str]) -> tuple[str, str] | None:
+    executavel = env_sessao.get("SESSAO_PYTHON_BASE_EXECUTABLE")
+    versao = env_sessao.get("SESSAO_PYTHON_BASE_VERSION")
+    if executavel and versao:
+        return executavel, versao
+    plano = dados.get("plano")
+    if isinstance(plano, dict):
+        base = plano.get("python_base")
+        if isinstance(base, dict) and base.get("executable") and base.get("version"):
+            return str(base["executable"]), str(base["version"])
+    return None
+
+
+def _info_do_python_da_sessao(plano: Plano) -> dict[str, str]:
+    codigo = (
+        "import json,sys;"
+        "print(json.dumps({"
+        "'executable':sys.executable,"
+        "'base_executable':getattr(sys,'base_executable',getattr(sys,'_base_executable','')),"
+        "'version':sys.version"
+        "}, ensure_ascii=False))"
+    )
+    saida = correr_de_verdade(
+        [str(plano.python_do_venv), "-c", codigo],
+        cwd=plano.worktree,
+        env=_ambiente_do_executor(plano, {}),
+        timeout=30,
+    )
+    if saida.exit_code != 0:
+        raise ErroDeSessao("executor da sessão", "Python da sessão não executa", detalhe=recortar(saida.texto, 2000))
+    try:
+        info = json.loads(saida.stdout.strip())
+    except ValueError as erro:
+        raise ErroDeSessao("executor da sessão", "Python da sessão devolveu identidade ilegível", detalhe=recortar(saida.texto, 2000)) from erro
+    return {str(chave): str(valor) for chave, valor in info.items()}
+
+
+def plano_da_bancada_atual(cwd: Path) -> tuple[Plano, dict[str, object], dict[str, str]]:
+    git = correr_de_verdade(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], timeout=60)
+    if git.exit_code != 0:
+        raise ErroDeSessao("executor da sessão", "diretório atual não é uma bancada Git", detalhe=recortar(git.texto, 2000))
+    worktree = Path(git.stdout.strip()).resolve()
+    if (worktree / ".git").is_dir():
+        raise ErroDeSessao(
+            "executor da sessão",
+            "execução recusada no clone principal",
+            detalhe="A execução oficial exige Git worktree vinculado (.git como arquivo gitdir). Trabalho preservado; nenhum filho executou.",
+        )
+    estado = arquivo_de_estado_inicial(worktree)
+    if not estado.exists():
+        raise ErroDeSessao("executor da sessão", "esta bancada não tem registro inicial da sessão", detalhe="Trabalho preservado; nenhum filho executou. Entre no worktree impresso em `BANCADA PRONTA:` na abertura original. Para conferir a sintaxe de reabertura, rode `python ci/sessao.py --help`.")
+    try:
+        dados = json.loads(estado.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as erro:
+        raise ErroDeSessao("executor da sessão", "registro inicial ilegível", detalhe=f"Preserve {estado} e repita a abertura.") from erro
+    if dados.get("identidade") != identidade_duravel_da_bancada(worktree):
+        raise ErroDeSessao("executor da sessão", "registro inicial pertence a outra bancada", detalhe="Preserve os arquivos e confira o worktree antes de executar.")
+    plano = _plano_do_estado(dados)
+    if plano.worktree.resolve() != worktree:
+        raise ErroDeSessao("executor da sessão", "cwd não corresponde à bancada registrada", detalhe=f"cwd real: {worktree}\nregistro: {plano.worktree}")
+    env_sessao = carregar_env_de_sessao(plano.arquivo_env)
+    if env_sessao.get("SESSAO_WORKTREE") and Path(env_sessao["SESSAO_WORKTREE"]).resolve() != worktree:
+        raise ErroDeSessao("executor da sessão", ".env pertence a outra bancada", detalhe="Rode a abertura da sessão nesta bancada; nada foi executado.")
+    venv_env = env_sessao.get("SESSAO_VENV")
+    if not venv_env:
+        raise ErroDeSessao("executor da sessão", ".env sem SESSAO_VENV definitivo", detalhe=f"O snapshot inicial antecede o hash do venv. Trabalho preservado; nenhum filho executou. Reabra com: {comando_abrir_seguro(plano)}")
+    plano = replace(plano, venv=Path(venv_env))
+    marca = plano.venv / ".instalado"
+    try:
+        instalado = marca.read_text(encoding="utf-8")
+    except OSError as erro:
+        raise ErroDeSessao("executor da sessão", "ambiente sem marcador de instalação", detalhe=f"Esperado em {marca}. Rode a abertura para concluir a instalação.") from erro
+    python_base = _python_base_da_sessao(dados, env_sessao)
+    if python_base is not None:
+        esperado = identidade_do_venv(requisitos_do_venv(plano), python_base=python_base)
+        if plano.venv.name != esperado:
+            raise ErroDeSessao("executor da sessão", "venv não corresponde aos requisitos atuais", detalhe=f"requirements, Python da abertura ou plataforma mudaram. Trabalho preservado; nenhum filho executou. Reabra com: {comando_abrir_seguro(plano)}")
+        if instalado != esperado:
+            raise ErroDeSessao("executor da sessão", "marcador de instalação incompatível", detalhe=f"{marca} não confirma o ambiente {esperado[:12]}.")
+    elif instalado != plano.venv.name:
+        raise ErroDeSessao("executor da sessão", "ambiente antigo sem identidade verificável", detalhe=f"{marca} não confirma o nome do venv. Trabalho preservado; nenhum filho executou.")
+    if not plano.python_do_venv.exists():
+        raise ErroDeSessao("executor da sessão", "Python da sessão não existe", detalhe=f"Esperado em {plano.python_do_venv}. Trabalho preservado; nenhum filho executou. Reabra com: {comando_abrir_seguro(plano)}")
+    info = _info_do_python_da_sessao(plano)
+    if not _caminho_igual(info.get("executable", ""), plano.python_do_venv):
+        raise ErroDeSessao("executor da sessão", "Python executado não é o venv da sessão", detalhe=f"esperado: {plano.python_do_venv}\nmedido: {info.get('executable', '')}")
+    if python_base is not None:
+        if info.get("version") != python_base[1]:
+            raise ErroDeSessao("executor da sessão", "versão do Python da sessão mudou", detalhe="Trabalho preservado; nenhum filho executou.")
+        base_medida = info.get("base_executable")
+        if base_medida and not _python_base_igual(base_medida, python_base[0]):
+            raise ErroDeSessao("executor da sessão", "Python base da sessão mudou", detalhe=f"esperado: {python_base[0]}\nmedido: {base_medida}")
+    return plano, dados, env_sessao
+
+
+def _base_do_ci(dados: dict[str, object]) -> str:
+    head = str(dados.get("head") or "")
+    if not re.fullmatch(r"[0-9a-f]{40,64}", head):
+        raise ErroDeSessao("executor da sessão", "registro inicial sem base Git", detalhe="Sem a revisão inicial não há como executar `ci` com --base seguro.")
+    return head
+
+
+def comando_do_executor(plano: Plano, dados: dict[str, object], argumentos: Sequence[str]) -> tuple[list[str], Path, str]:
+    args = list(argumentos)
+    if args and args[0] == "--":
+        args = args[1:]
+    if not args:
+        raise ErroDeSessao("executor da sessão", "comando ausente", detalhe="Use um comando completo, por exemplo `python ci/sessao.py executar -- pytest -q` ou `python ci/sessao.py executar -- ci`. Trabalho preservado; nenhum filho executou.")
+    alvo, resto = args[0], args[1:]
+    if alvo == "pytest":
+        cwd = plano.celula_no_worktree if plano.sobe_ambiente else plano.worktree
+        return [str(plano.python_do_venv), "-m", "pytest", *resto], cwd, "pytest"
+    if alvo == "ci":
+        if resto:
+            raise ErroDeSessao(
+                "executor da sessão",
+                "argumento recusado no runner ci",
+                detalhe="Use `python ci/sessao.py executar -- ci` para os gates oficiais; para foco manual, use `pytest` ou comando literal.",
+            )
+        base = _base_do_ci(dados)
+        comando = [str(plano.python_do_venv), "ci/ci.py"]
+        if plano.sobe_ambiente:
+            comando += ["--apenas", "celula", "--celula", plano.celula]
+        comando += ["--base", base, *resto]
+        return comando, plano.worktree, "ci"
+    return args, plano.worktree, "literal"
+
+
+def _grupo_de_processos():
+    if platform.system() == "Windows":
+        from pr_processos_windows import GrupoWindows
+        return GrupoWindows()
+    if platform.system() == "Linux":
+        from pr_processos_linux import GrupoLinux
+        return GrupoLinux()
+    raise ErroDeSessao("executor da sessão", "plataforma sem grupo de processos", detalhe="A contenção oficial existe em Windows e Linux.")
+
+
+def _executavel_candidato(caminho: Path) -> bool:
+    if not caminho.is_file():
+        return False
+    if platform.system() == "Windows":
+        return True
+    return os.access(caminho, os.X_OK)
+
+
+def _nomes_executaveis(nome: str, env: dict[str, str]) -> list[str]:
+    if platform.system() != "Windows":
+        return [nome]
+    sufixos = [s.lower() for s in Path(nome).suffixes]
+    pathext = env.get("PATHEXT") or os.environ.get("PATHEXT") or ".COM;.EXE;.BAT;.CMD"
+    extensoes = [ext for ext in pathext.split(os.pathsep) if ext]
+    if sufixos and sufixos[-1] in {ext.lower() for ext in extensoes}:
+        return [nome]
+    return [nome, *(nome + ext for ext in extensoes)]
+
+
+def _resolver_executavel_no_ambiente(comando: list[str], env: dict[str, str]) -> list[str]:
+    if not comando:
+        return comando
+    primeiro = str(comando[0])
+    if Path(primeiro).is_absolute() or any(sep in primeiro for sep in ("/", "\\")):
+        return comando
+    for pasta in (env.get("PATH") or os.defpath).split(os.pathsep):
+        if not pasta:
+            continue
+        for nome in _nomes_executaveis(primeiro, env):
+            candidato = Path(pasta) / nome
+            if _executavel_candidato(candidato):
+                return [str(candidato), *comando[1:]]
+    raise ErroDeSessao(
+        "executor da sessão",
+        "executável não encontrado no PATH da sessão",
+        detalhe=f"Comando: {primeiro}. Trabalho preservado; nenhum filho executou.",
+        codigo=127,
+    )
+
+
+def _iniciar_no_grupo(grupo, comando: list[str], *, cwd: Path, env: dict[str, str]):
+    if not hasattr(grupo, "iniciar"):
+        raise ErroDeSessao(
+            "executor da sessão",
+            "API de grupo de processos incompatível",
+            detalhe="Esta frente depende da API `GrupoWindows/GrupoLinux.iniciar(comando, raiz, ambiente)` do PR de processos; sem ela haveria janela de órfãos.",
+        )
+    return grupo.iniciar(comando, raiz=cwd, ambiente=env)
+
+
+def _signed32(codigo: int) -> int:
+    codigo = codigo & 0xFFFFFFFF
+    return codigo - 0x100000000 if codigo & 0x80000000 else codigo
+
+
+def _codigo_cli(codigo: int) -> int:
+    if platform.system() == "Windows":
+        return _signed32(codigo)
+    return codigo
+
+
+def sair_do_processo(codigo: int) -> int:
+    codigo = _codigo_cli(codigo)
+    if platform.system() == "Linux" and codigo < 0:
+        os.kill(os.getpid(), -codigo)
+        return 128 + (-codigo)
+    return codigo
+
+
+class MonitorDePosse:
+    def __init__(self, plano: Plano, grupo, *, intervalo: float = INTERVALO_CONFERENCIA_POSSE_SEGUNDOS):
+        self.plano = plano
+        self.grupo = grupo
+        self.intervalo = intervalo
+        self.parar = threading.Event()
+        self.perda = ""
+        self.thread: threading.Thread | None = None
+
+    def _conferir(self) -> bool:
+        if not self.plano.tarefa_da_fila:
+            return True
+        try:
+            import reservar
+            leitura = reservar.ler_reserva(self.plano.worktree, f"tarefa-{self.plano.tarefa_da_fila}")
+            if leitura is None:
+                self.perda = "reserva da tarefa ausente"
+                return False
+            _, corpo = leitura
+            if corpo.get("estado") == "publicacao_pendente":
+                self.perda = "reserva protege publicação pendente; não autoriza nova execução"
+                return False
+            if corpo.get("tipo") != "intencao" or corpo.get("chave") != f"tarefa-{self.plano.tarefa_da_fila}" or corpo.get("dono") != reservar.identidade_da_bancada(self.plano.worktree):
+                self.perda = "reserva da tarefa não pertence a esta bancada"
+                return False
+            expira = datetime.fromisoformat(str(corpo.get("expira_em") or ""))
+            if expira.tzinfo is None or expira <= datetime.now(timezone.utc):
+                self.perda = "reserva da tarefa expirou"
+                return False
+            return True
+        except Exception as erro:
+            if not self.perda:
+                self.perda = f"não consegui reconferir a reserva durante a execução: {erro}"
+            return False
+
+    def iniciar(self) -> None:
+        if not self.plano.tarefa_da_fila:
+            return
+        if not self._conferir():
+            raise ErroDeSessao("executor da sessão", "posse da tarefa indisponível", detalhe=self.perda)
+
+        def vigiar():
+            while not self.parar.wait(self.intervalo):
+                if not self._conferir():
+                    try:
+                        self.grupo.encerrar()
+                    finally:
+                        self.parar.set()
+                    return
+
+        self.thread = threading.Thread(target=vigiar, name="sessao-posse", daemon=True)
+        self.thread.start()
+
+    def encerrar(self) -> None:
+        self.parar.set()
+        if self.thread is not None:
+            self.thread.join(timeout=1)
+
+
+def executar_na_sessao(argv: Sequence[str], *, cwd: Path | None = None, intervalo_posse: float = INTERVALO_CONFERENCIA_POSSE_SEGUNDOS) -> int:
+    cwd = (cwd or Path.cwd()).resolve()
+    plano, dados, env_sessao = plano_da_bancada_atual(cwd)
+    comando, cwd_comando, apelido = comando_do_executor(plano, dados, argv)
+    env = _ambiente_do_executor(plano, env_sessao)
+    comando = _resolver_executavel_no_ambiente(comando, env)
+    comando_texto = subprocess.list2cmdline(comando)
+    inicio = datetime.now(timezone.utc)
+    pasta_logs = plano.scratch / "execucoes"
+    pasta_logs.mkdir(parents=True, exist_ok=True)
+    log = pasta_logs / f"{inicio.strftime('%Y%m%d-%H%M%S-%f')}-{uuid.uuid4().hex[:8]}-{apelido}.log"
+    stdout = stderr = ""
+    codigo = 2
+    with trava_da_bancada(plano.worktree, passo="executor da sessão", esperar=False):
+        grupo = _grupo_de_processos()
+        monitor = MonitorDePosse(plano, grupo, intervalo=intervalo_posse)
+        try:
+            monitor.iniciar()
+            processo = _iniciar_no_grupo(grupo, comando, cwd=cwd_comando, env=env)
+            try:
+                stdout, stderr = processo.communicate(timeout=TIMEOUT_EXECUTOR_SEGUNDOS)
+                codigo = int(processo.returncode or 0)
+            except subprocess.TimeoutExpired:
+                grupo.encerrar()
+                stdout, stderr = processo.communicate(timeout=5)
+                stderr = (stderr or "") + f"\nTimeout de {TIMEOUT_EXECUTOR_SEGUNDOS}s; filhos encerrados pelo grupo de processos.\n"
+                codigo = 124
+            except KeyboardInterrupt:
+                grupo.encerrar()
+                stderr = "Interrompido por Ctrl+C; filhos encerrados pelo grupo de processos.\n"
+                codigo = 130
+            finally:
+                monitor.encerrar()
+            if monitor.perda:
+                codigo = 2
+                stderr = (stderr or "") + f"\nExecução interrompida: {monitor.perda}\n"
+        finally:
+            try:
+                grupo.encerrar()
+            except Exception as erro:
+                stderr = (stderr or "") + f"\nFalha ao encerrar grupo de processos: {erro}\n"
+                codigo = 2
+    fim = datetime.now(timezone.utc)
+    texto = "\n".join([
+        f"inicio={inicio.isoformat()}", f"fim={fim.isoformat()}", f"worktree={plano.worktree}",
+        f"cwd={cwd_comando}", f"python={plano.python_do_venv}", f"comando={comando_texto}", f"exit_code={codigo}",
+        "--- stdout ---", stdout or "", "--- stderr ---", stderr or "",
+    ])
+    log.write_text(_redigir_com_env(texto, env_sessao), encoding="utf-8")
+    if stdout:
+        print(_redigir_com_env(stdout, env_sessao), end="")
+    if stderr:
+        print(_redigir_com_env(stderr, env_sessao), end="", file=sys.stderr)
+    print(f"Log da execução: {log}", file=sys.stderr)
+    return _codigo_cli(codigo)
 
 
 class Sessao:
@@ -959,12 +1676,8 @@ class Sessao:
             )
         return caminho
 
-    def conferir_pecas_locais(self) -> dict[str, str]:
-        """Confere ferramentas e hooks locais antes de criar qualquer estado."""
+    def _conferir_ferramentas(self, ferramentas: dict[str, str]) -> dict[str, str]:
         passo = P_CONFERIR
-        ferramentas = dict(FERRAMENTAS_LOCAIS)
-        if self.plano.sobe_ambiente:
-            ferramentas.update(FERRAMENTAS_LOCAIS_COM_AMBIENTE)
         encontrados = {}
         ausentes = []
         for nome, para_que in ferramentas.items():
@@ -982,7 +1695,12 @@ class Sessao:
                     + "\n".join(f"  - {item}" for item in ausentes)
                 ),
             )
+        return encontrados
 
+    def conferir_pecas_locais(self) -> dict[str, str]:
+        """Confere git/gh e hooks antes de consultar ou criar estado."""
+        passo = P_CONFERIR
+        encontrados = self._conferir_ferramentas(dict(FERRAMENTAS_LOCAIS))
         git = encontrados["git"]
         config = self._correr(
             [git, "-C", str(self.plano.raiz), "config", "--get", "core.hooksPath"],
@@ -1016,6 +1734,11 @@ class Sessao:
                 ),
             )
         return encontrados
+
+    def conferir_pecas_do_ambiente(self) -> None:
+        """Confere Docker/Make só quando a sessão vai preparar implementação."""
+        if self.plano.sobe_ambiente:
+            self._conferir_ferramentas(dict(FERRAMENTAS_LOCAIS_COM_AMBIENTE))
 
     def _ambiente(self) -> dict[str, str]:
         env = dict(os.environ)
@@ -1172,34 +1895,34 @@ class Sessao:
         """Reivindica a tarefa no balcão, de DENTRO da bancada.
 
         `armadilhas/192`: `ci/fila.py` escreve o comprovante relativo ao
-        repositório em que ELE foi executado. Chamar o `fila.py` do clone
+        repositório informado ao comando. Chamar a fila apontando para o clone
         principal faria o evento nascer órfão no espelho, com o validador da
-        fila respondendo "válida" sem ele. Por isso o caminho do script é o da
-        bancada, e não o `ci/fila.py` que estamos rodando.
+        fila respondendo "válida" sem ele. Por isso a raiz entregue ao balcão é
+        a bancada.
 
         `armadilhas/357`: e é o PRIMEIRO passo depois de a pasta existir. A
-        trava do balcão é de TAREFA, não de pasta; entre criar a bancada e
-        perguntar quem ganhou existe uma janela, e o que se pode fazer é
-        encurtá-la até o único byte que ela ainda custa: um diretório vazio.
+        mesma trava da bancada cobre o balcão e é reentrante no processo atual,
+        então a abertura não cria uma janela entre reivindicar, anunciar PR,
+        gerar índice e escrever metadados de ambiente.
         """
         passo = self._abrir(P_BALCAO)
         tid = self.plano.tarefa_da_fila
         quem = self.plano.quem_no_balcao
-        comando = [
-            sys.executable,
-            str(self.plano.worktree / "ci" / "fila.py"),
-            "pegar",
-            tid,
-            "--quem",
-            quem,
-        ]
-        saida = self._correr(comando, cwd=self.plano.worktree, timeout=600)
-        if saida.exit_code != 0:
+        import fila
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            codigo = fila.cmd_pegar(
+                self.plano.worktree,
+                argparse.Namespace(tarefa=tid, quem=quem),
+            )
+        texto = buffer.getvalue()
+        if codigo != 0:
             raise ErroDeSessao(
                 passo,
                 f"o balcão recusou {tid} — a tarefa NÃO é sua",
                 comando=f'python ci/fila.py pegar {tid} --quem "{quem}"',
-                detalhe=recortar(saida.texto, 2000)
+                detalhe=recortar(texto, 2000)
                 + "\n\nA fala acima é do BALCÃO, não deste script. Quase sempre é\n"
                 "outro robô que pegou a tarefa primeiro, ou ela está trancada.\n"
                 "NÃO escreva um byte nesta bancada: pare e informe o bloqueio ao mantenedor, com o que falta para retomar.\n"
@@ -1209,12 +1932,254 @@ class Sessao:
             )
         self._pass(f"{tid} é sua · o comprovante nasceu na bancada (commite-o no PR)")
 
+    def _commit_de_anuncio(self, passo: str, eventos: Sequence[str]) -> None:
+        head = self._exigir(
+            passo,
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.plano.worktree,
+            timeout=120,
+        ).stdout.strip()
+        indice = self.plano.scratch / f"anuncio-{uuid.uuid4().hex}.index"
+        env = {**os.environ, "GIT_INDEX_FILE": str(indice)}
+        try:
+            self._exigir(
+                passo,
+                ["git", "read-tree", head],
+                cwd=self.plano.worktree,
+                env=env,
+                timeout=120,
+            )
+            if eventos:
+                self._exigir(
+                    passo,
+                    ["git", "add", "--", *eventos],
+                    cwd=self.plano.worktree,
+                    env=env,
+                    timeout=120,
+                )
+            arvore = self._exigir(
+                passo,
+                ["git", "write-tree"],
+                cwd=self.plano.worktree,
+                env=env,
+                timeout=120,
+            ).stdout.strip()
+            mensagem = (
+                f"chore: embarcar o comprovante de {self.plano.tarefa_da_fila}"
+                if eventos
+                else "chore: anunciar intenção da sessão"
+            )
+            commit = self._exigir(
+                passo,
+                [
+                    "git",
+                    "commit-tree",
+                    arvore,
+                    "-p",
+                    head,
+                    "-m",
+                    mensagem,
+                    "-m",
+                    "Co-Authored-By: Codex <noreply@openai.com>",
+                ],
+                cwd=self.plano.worktree,
+                timeout=120,
+            ).stdout.strip()
+            self._exigir(
+                passo,
+                ["git", "update-ref", f"refs/heads/{self.plano.branch}", commit, head],
+                cwd=self.plano.worktree,
+                timeout=120,
+            )
+            if eventos:
+                self._exigir(
+                    passo,
+                    ["git", "add", "--", *eventos],
+                    cwd=self.plano.worktree,
+                    timeout=120,
+                )
+        finally:
+            indice.unlink(missing_ok=True)
+
+    def _conferir_bancada_da_entrega_integrada(self, git: str, passo: str) -> None:
+        lista = self._exigir(
+            passo,
+            [git, "-C", str(self.plano.raiz), "worktree", "list", "--porcelain"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        )
+        if not (worktree_ja_existe(lista.stdout, self.plano.worktree) and self._existe(self.plano.worktree / ".git")):
+            raise ErroDeSessao(
+                passo,
+                "bancada da entrega integrada não está disponível",
+                detalhe=(
+                    f"Worktree esperado: {self.plano.worktree}\n"
+                    "Sem essa identidade local, um PR achado só pelo ramo poderia ser associado à TAR errada."
+                ),
+            )
+        atual = self._exigir(
+            passo,
+            [git, "-C", str(self.plano.worktree), "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        ).stdout.strip()
+        if atual != self.plano.branch:
+            raise ErroDeSessao(
+                passo,
+                "bancada da entrega integrada tem identidade diferente",
+                detalhe=f"Branch esperada: {self.plano.branch}\nBranch encontrada: {atual}\nWorktree: {self.plano.worktree}",
+            )
+
+    @staticmethod
+    def _mesmo_pr_submetido(valor: object, numero: int, url: str) -> bool:
+        texto = str(valor or "").rstrip("/")
+        return texto == url.rstrip("/")
+
+    def _conferir_submissao_da_tarefa_integrada(self, passo: str, numero: int, url: str) -> None:
+        tarefa = self.plano.tarefa_da_fila
+        if not tarefa:
+            raise ErroDeSessao(
+                passo,
+                "TAR ausente para retomar entrega integrada",
+                detalhe="Informe --tar TAR-NNN; PR integrado sem vínculo de fila não autoriza retomada de tarefa.",
+            )
+        try:
+            from fila import carregar_fila_publicada_e_local
+
+            tarefas, eventos, fonte = carregar_fila_publicada_e_local(self.plano.worktree)
+        except Exception as erro:  # noqa: BLE001 - fonte de fila é externa ao bootstrap
+            raise ErroDeSessao(
+                passo,
+                "fonte da fila indisponível para retomar entrega integrada",
+                detalhe=f"Não consegui medir a fila publicada/local desta bancada. Erro: {erro}",
+            ) from erro
+        if fonte.get("modo") != "origin-main-mais-local" or not fonte.get("origin_main"):
+            raise ErroDeSessao(
+                passo,
+                "fonte da fila indisponível para retomar entrega integrada",
+                detalhe="A fila publicada em origin/main não foi medida; sem isso, PR por ramo vira chute.",
+            )
+        if tarefa not in tarefas:
+            raise ErroDeSessao(
+                passo,
+                "TAR ausente no snapshot medido da fila",
+                detalhe=f"TAR recebida: {tarefa}. Não associo PR integrado a tarefa que não está na fila medida.",
+            )
+        submetida = any(
+            ev.get("evento") == "submetida"
+            and ev.get("tarefa") == tarefa
+            and self._mesmo_pr_submetido(ev.get("pr"), numero, url)
+            for ev in eventos
+        )
+        if not submetida:
+            raise ErroDeSessao(
+                passo,
+                "PR integrado não está submetido para a TAR recebida",
+                detalhe=(
+                    f"TAR recebida: {tarefa}. PR encontrado: #{numero}. "
+                    "A retomada exige evento submetida dessa TAR apontando para esse PR no snapshot medido."
+                ),
+            )
+
+    def retomar_entrega_integrada(self, git: str, gh: str) -> str | None:
+        passo = self._abrir(P_ANUNCIO)
+        consulta = self._exigir(
+            passo,
+            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
+             "--json", "number,url,state,isDraft"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        )
+        try:
+            prs = json.loads(consulta.stdout or "")
+        except (TypeError, ValueError) as erro:
+            raise ErroDeSessao(
+                passo,
+                "a consulta de PR devolveu JSON inválido",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira o acesso ao GitHub e repita a abertura. Nenhum anúncio foi declarado.",
+            ) from erro
+        if not isinstance(prs, list) or len(prs) > 1:
+            raise ErroDeSessao(
+                passo,
+                "o ramo tem zero ou mais de um PR aberto de forma inconclusiva",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
+            )
+        if not prs:
+            return None
+        pr = prs[0]
+        if not isinstance(pr, dict):
+            raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
+        numero = pr.get("number")
+        url = str(pr.get("url") or "").rstrip("/")
+        estado_pr = pr.get("state")
+        if not isinstance(numero, int) or not url:
+            raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
+        if estado_pr == "OPEN":
+            return None
+        if estado_pr not in {"MERGED", "CLOSED"}:
+            raise ErroDeSessao(
+                passo,
+                "estado do PR existente não foi medido",
+                detalhe=f"PR #{numero} devolveu state={estado_pr!r}. Sem estado explícito, não retomo nem reabro tarefa.",
+            )
+        tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+        if estado_pr == "MERGED":
+            self._conferir_bancada_da_entrega_integrada(git, passo)
+            self._conferir_submissao_da_tarefa_integrada(passo, numero, url)
+            try:
+                import estado_da_entrega
+
+                medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+            except Exception as erro:  # noqa: BLE001 - fronteira de fonte externa
+                raise ErroDeSessao(
+                    passo,
+                    f"fonte da entrega integrada indisponível para o PR #{numero}",
+                    detalhe=(
+                        f"O PR #{numero} já foi integrado, mas não consegui medir estado_da_entrega. "
+                        f"Sem essa fonte, a sessão não autoriza nova aquisição de {tarefa} nem declara aceite. "
+                        f"Erro: {erro}"
+                    ),
+                ) from erro
+            if (
+                not isinstance(medicao, dict)
+                or not isinstance(medicao.get("estado"), str)
+                or not medicao["estado"].strip()
+                or medicao["estado"].strip() == "NÃO MEDIDO"
+            ):
+                raise ErroDeSessao(
+                    passo,
+                    f"fonte da entrega integrada indisponível para o PR #{numero}",
+                    detalhe=(
+                        "estado_da_entrega não devolveu um estado medido. "
+                        f"Sem essa fonte, a sessão não autoriza nova aquisição de {tarefa} nem declara aceite."
+                    ),
+                )
+            estado_entrega = medicao["estado"].strip()
+            self._pass(f"PR #{numero} integrado; entrega medida: {estado_entrega}")
+            return (
+                f"PR #{numero} já integrado para {tarefa}. Estado da entrega: {estado_entrega}. "
+                f"Bancada preservada; nenhuma nova aquisição foi feita. "
+                f"Próximo comando seguro: python ci/esperar.py --entrega {numero} --so-desfecho. "
+                "Reconcilie aceite somente quando o fluxo de entrega publicar prova real."
+            )
+        raise ErroDeSessao(
+            passo,
+            f"PR fechado sem merge #{numero}",
+            detalhe=(
+                f"O PR #{numero} está fechado sem merge para este ramo. "
+                "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+            ),
+        )
+
     def anunciar_pr(self, gh: str) -> None:
         """Publica a intenção antes de o agente começar a construir.
 
         O primeiro commit é vazio quando não há comprovante da fila. Quando há,
-        ele embarca só o evento que o balcão acabou de criar. Assim o PR existe
-        antes do código, sem transformar alterações do agente em anúncio.
+        ele embarca só o evento que o balcão acabou de criar por índice
+        temporário e `update-ref` com SHA esperado. Assim o PR existe antes do
+        código, sem transformar alterações herdadas em anúncio.
         """
         passo = self._abrir(P_ANUNCIO)
         titulo = f"rascunho: {self.plano.frase or self.plano.tarefa_da_fila or self.plano.tarefa}"
@@ -1252,14 +2217,44 @@ class Sessao:
                 detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
             )
         if prs:
-            numero = prs[0].get("number")
+            pr = prs[0]
+            if not isinstance(pr, dict):
+                raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
+            numero = pr.get("number")
             if not isinstance(numero, int):
                 raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            if prs[0].get("state", "OPEN") != "OPEN":
+            estado_pr = pr.get("state")
+            if estado_pr not in {"OPEN", "MERGED", "CLOSED"}:
+                raise ErroDeSessao(
+                    passo,
+                    "estado do PR existente não foi medido",
+                    detalhe=f"PR #{numero} devolveu state={estado_pr!r}. Sem estado explícito, não retomo nem reabro tarefa.",
+                )
+            if estado_pr != "OPEN":
+                tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+                if estado_pr == "MERGED":
+                    try:
+                        import estado_da_entrega
+
+                        medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+                        estado_entrega = medicao.get("estado", "NÃO MEDIDO")
+                    except Exception as erro:  # noqa: BLE001 - diagnóstico de abertura
+                        estado_entrega = f"NÃO MEDIDO ({erro})"
+                    detalhe = (
+                        f"O PR #{numero} já foi integrado; preserve esta bancada e continue pela entrega existente. "
+                        f"Estado da entrega: {estado_entrega}. "
+                        f"Confira: python ci/esperar.py --entrega {numero}. "
+                        f"Quando houver aceite publicado, reconcilie {tarefa} com o registro real medido pelo fluxo de entrega."
+                    )
+                else:
+                    detalhe = (
+                        f"O PR #{numero} está fechado sem merge para este ramo. "
+                        "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+                    )
                 raise ErroDeSessao(
                     passo,
                     f"o ramo já tem o PR fechado #{numero}",
-                    detalhe="Use uma nova sessão e um novo ramo para não misturar trabalhos.",
+                    detalhe=detalhe,
                 )
             self._pass(f"PR #{numero} já anuncia esta sessão")
             return
@@ -1276,29 +2271,8 @@ class Sessao:
                 if linha[3:].replace("\\", "/").startswith("fila/eventos/")
                 and self.plano.tarefa_da_fila in linha
             ]
-        permitidos = set(eventos)
-        alheios = set(linhas) - {f"?? {caminho}" for caminho in permitidos}
-        if alheios:
-            raise ErroDeSessao(
-                passo,
-                "a bancada tem alterações antes do anúncio",
-                detalhe="Preserve o trabalho existente e abra uma nova sessão; o anúncio não vai incluí-lo.\n"
-                + "\n".join(sorted(alheios)),
-            )
         if eventos:
-            self._exigir(
-                passo,
-                ["git", "add", "--", *eventos],
-                cwd=self.plano.worktree,
-                timeout=120,
-            )
-            self._exigir(
-                passo,
-                ["git", "commit", "-m",
-                 f"chore: embarcar o comprovante de {self.plano.tarefa_da_fila}"],
-                cwd=self.plano.worktree,
-                timeout=120,
-            )
+            self._commit_de_anuncio(passo, eventos)
         else:
             adiante = self._correr(
                 ["git", "rev-list", "--count", f"origin/main..{self.plano.branch}"],
@@ -1306,13 +2280,7 @@ class Sessao:
                 timeout=120,
             )
             if adiante.stdout.strip() == "0":
-                self._exigir(
-                    passo,
-                    ["git", "commit", "--allow-empty", "-m", "chore: anunciar intenção da sessão",
-                     "-m", "Co-Authored-By: Codex <noreply@openai.com>"],
-                    cwd=self.plano.worktree,
-                    timeout=120,
-                )
+                self._commit_de_anuncio(passo, [])
         self._exigir(
             passo,
             ["git", "push", "-u", "origin", self.plano.branch],
@@ -1381,18 +2349,8 @@ class Sessao:
                 self._estado_git = "comprovante da reivindicação pendente de commit"
                 return
         if sujo:
-            self._estado_git = "alterações preexistentes preservadas"
-            raise ErroDeSessao(
-                passo,
-                "a bancada NÃO está limpa",
-                comando=f"git -C {self.plano.worktree} status --porcelain",
-                detalhe=recortar(sujo, 2000)
-                + "\n\nA Declaração de Abertura afirma `git status: limpo`. Imprimi-la\n"
-                "com o workspace sujo seria assinar uma coisa que não é verdade.\n"
-                "Seu trabalho foi preservado. Revise e commite as alterações antes\n"
-                "de repetir a abertura; não remova a bancada para destravar.",
-                codigo=1,
-            )
+            total = len(sujo.splitlines())
+            self._estado_git = f"alterações preexistentes preservadas ({total})"
 
     def gerar_indice(self, git: str) -> None:
         """Materializa `armadilhas/INDICE.md` DENTRO da bancada.
@@ -1435,7 +2393,7 @@ class Sessao:
 
     def preparar_venv(self) -> None:
         passo = self._abrir(P_VENV)
-        chave = identidade_do_venv(self.plano.requisitos)
+        chave = identidade_do_venv(requisitos_do_venv(self.plano))
         self.plano = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / chave)
         with trava_de_ambiente(self.plano.venv.with_suffix(".lock")):
             if self._existe(self.plano.python_do_venv):
@@ -1457,7 +2415,7 @@ class Sessao:
 
     def instalar(self) -> None:
         passo = self._abrir(P_DEPS)
-        chave = identidade_do_venv(self.plano.requisitos)
+        chave = identidade_do_venv(requisitos_do_venv(self.plano))
         if self.plano.venv.name != chave:
             raise ErroDeSessao(passo, "dependências mudaram durante a preparação",
                                detalhe="Repita a abertura para preparar o novo ambiente.")
@@ -1470,7 +2428,9 @@ class Sessao:
             comando = ([uv, "pip", "install", "--python", str(self.plano.python_do_venv)]
                        if uv else [str(self.plano.python_do_venv), "-m", "pip", "install",
                                    "--disable-pip-version-check"])
-            comando += ["-r", str(self.plano.requisitos), *FERRAMENTAS_DE_PORTAO]
+            for requisitos in requisitos_do_venv(self.plano):
+                comando += ["-r", str(requisitos)]
+            comando += list(FERRAMENTAS_DE_PORTAO)
             self._exigir(passo, comando, cwd=self.plano.worktree, timeout=3600,
                           dica="Confira o acesso ao índice de pacotes e repita a abertura.")
             temporario = marca.with_suffix(f".{uuid.uuid4().hex}.tmp")
@@ -1760,7 +2720,7 @@ class Sessao:
             relativo = arquivo.relative_to(self.plano.worktree.resolve()).as_posix()
             return self._exigir(P_BASELINE, [git, "show", f"{revisao}:{relativo}"],
                                  cwd=self.plano.worktree).stdout.encode("utf-8")
-        identidade_base = identidade_do_venv(self.plano.requisitos, ler=ler_da_base)
+        identidade_base = identidade_do_venv(requisitos_do_venv(self.plano), ler=ler_da_base)
         plano_base = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / identidade_base)
         base = Sessao(plano_base, correr=self._correr, escrever=self._escrever,
                       existe=self._existe, localizar=self._localizar, dormir=self._dormir,
@@ -1875,31 +2835,39 @@ class Sessao:
     # -- orquestração -------------------------------------------------------
 
     def rodar(self) -> str:
+        """Abre ou retoma a bancada sob a mesma trava usada pelo executor."""
         ferramentas = self.conferir_pecas_locais()
         git = ferramentas["git"]
         self.conferir()
         self.buscar(git)
-        self.preparar_worktree(git)
-        if self.plano.tarefa_da_fila:
-            self.pegar_a_tarefa()
         gh = ferramentas["gh"]
-        self.anunciar_pr(gh)
-        self.gerar_indice(git)
-        if not self.plano.sobe_ambiente:
-            return declaracao(self.plano, resumo="", estado_git=self._estado_git)
-        self.preparar_venv()
-        self.instalar()
-        porta_pg, porta_redis = self.preparar_servicos()
-        self.escrever_env(porta_pg, porta_redis)
-        self.rodar_doctor()
-        resumo = self.rodar_baseline(git)
-        constituicao = f"constituicoes/AGENTS.{self.plano.celula}.md"
-        if not self._existe(self.plano.worktree / constituicao):
-            constituicao = ""
-        return declaracao(
-            self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git,
-            metodo_baseline=self._metodo_baseline,
-        )
+        with trava_da_bancada(self.plano.worktree):
+            retomada = self.retomar_entrega_integrada(git, gh)
+            if retomada is not None:
+                return retomada
+            self.conferir_pecas_do_ambiente()
+            self.preparar_worktree(git)
+            registrar_estado_inicial(self.plano, git, correr=self._correr)
+            if self.plano.tarefa_da_fila:
+                self.pegar_a_tarefa()
+            self.anunciar_pr(gh)
+            self.gerar_indice(git)
+            self.preparar_venv()
+            self.instalar()
+            if not self.plano.sobe_ambiente:
+                self.escrever_env(0, 0)
+                return declaracao(self.plano, resumo="", estado_git=self._estado_git)
+            porta_pg, porta_redis = self.preparar_servicos()
+            self.escrever_env(porta_pg, porta_redis)
+            self.rodar_doctor()
+            resumo = self.rodar_baseline(git)
+            constituicao = f"constituicoes/AGENTS.{self.plano.celula}.md"
+            if not self._existe(self.plano.worktree / constituicao):
+                constituicao = ""
+            return declaracao(
+                self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git,
+                metodo_baseline=self._metodo_baseline,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -2131,7 +3099,16 @@ def raiz_do_clone(checkout: Path) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
-    args = construir_parser().parse_args(argv)
+    bruto = list(sys.argv[1:] if argv is None else argv)
+    if bruto and bruto[0] == "executar":
+        try:
+            return executar_na_sessao(bruto[1:])
+        except ErroDeSessao as erro:
+            print(erro.render(), file=sys.stderr)
+            return erro.codigo
+    if bruto and bruto[0] == "abrir":
+        bruto = bruto[1:]
+    args = construir_parser().parse_args(bruto)
     try:
         raiz = raiz_declarada(Path(args.raiz)) if args.raiz else raiz_do_repo()
         if not args.contexto:
@@ -2246,12 +3223,16 @@ def main(argv: list[str] | None = None) -> int:
     escrever_de_verdade(log_abertura, "\n".join(detalhes))
     print(f"Preparação concluída; log detalhado: {log_abertura}")
     medir_fase(plano, tentativa, "abertura", "concluido")
+    print(moldura_da_declaracao(texto))
+    entrega_integrada = "já integrado" in texto and "Estado da entrega:" in texto
+    if entrega_integrada:
+        print("Próxima ação autorizada: acompanhar a entrega integrada pelo comando acima; não execute o brief novamente sem nova tarefa.")
+        return 0
     inicio_fase4 = datetime.now(timezone.utc).isoformat()
     medir_tarefa_fase4(
         plano, tentativa, estado="pendente", inicio=inicio_fase4,
         fim=None, pr=None,
     )
-    print(moldura_da_declaracao(texto))
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
         print("A prova da base está no log; mudanças da tarefa ainda exigem validação própria.")
@@ -2286,4 +3267,4 @@ def _blindar(rotulo: str, funcao: Callable[..., int]) -> Callable[..., int]:
 
 
 if __name__ == "__main__":
-    raise SystemExit(_blindar("sessao", main)())
+    raise SystemExit(sair_do_processo(_blindar("sessao", main)()))
