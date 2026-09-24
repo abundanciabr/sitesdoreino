@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-011-docs-publica-matriz-l0-do-caminho-unico-dos-robos",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "docs: publica matriz L0 do caminho unico dos robos",
+  detalhe: "Publica a matriz L0 como pre-condicao das TARs seguintes, com limite explicito de que baseline frio nao foi medido e com a fila como unica fonte de progresso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2011. Validação local: árvore 7c7e6cad16f3052e4809ff9e3b363cbf9d57aae4; commit 351824a954fde95ce39a7ec165d76f39a91953cb; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-676",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
