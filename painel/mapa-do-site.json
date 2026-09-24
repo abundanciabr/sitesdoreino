@@ -42,6 +42,24 @@
   ],
   "enderecos": [
     {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/flp-0",
+      "endereco": "/admin/modelos-de-paginas/flp-0",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Modelo Fórmula de Lançamento Pago",
+      "descricao": "A cópia completa da página de referência, disponível somente para a equipe autorizada."
+    },
+    {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/flp-0/conteudo",
+      "endereco": "/admin/modelos-de-paginas/flp-0/conteudo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Conteúdo do modelo Fórmula de Lançamento Pago",
+      "descricao": "A página carregada dentro do modelo, isolada dos dados da administração e disponível somente para a equipe autorizada."
+    },
+    {
       "celula": "funil",
       "rota": "",
       "endereco": "/",
