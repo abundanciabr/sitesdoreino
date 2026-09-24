@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-030447-TAR-561-bloqueada",
+  "tarefa": "TAR-561",
+  "evento": "bloqueada",
+  "quando": "2026-09-24T03:04:47.198924+00:00",
+  "quem": "despacho-pagamentos-appmax-e2e-sandbox",
+  "detalhe": "Bloqueio real: a lista oficial de cartoes sandbox foi confirmada em https://docs.appmax.com.br/api-reference/payments/cartao-credito, mas a execucao exigida da TAR-561 depende de credenciais sandbox Appmax reais. Medido sem imprimir segredo: services/pagamentos/.env.dev ausente, services/pagamentos/.env ausente, infra/env/pagamentos.env ausente, variaveis APPMAX_MERCHANT_CLIENT_ID, APPMAX_MERCHANT_CLIENT_SECRET, APPMAX_EXTERNAL_ID, APPMAX_APP_CLIENT_ID e APPMAX_APP_CLIENT_SECRET ausentes ou vazias no ambiente. Impacto: nao e possivel executar matriz oficial, webhook real nem reconciliacao real; qualquer teste seria simulado e nao aceitaria a TAR. Responsavel: mantenedor/Appmax. Gesto que destrava: fornecer credenciais sandbox do merchant e external_id por canal seguro de ambiente local ou confirmar acesso a uma conta sandbox configurada; se a documentacao/suporte exigir outro dado, encaminhar a resposta oficial.",
+  "espera": "mantenedor"
+}
