@@ -1,10 +1,10 @@
-"""Classificação comum dos exits inventados pelo executor.
+"""Classificacao comum dos exits inventados pelo executor.
 
-`ci/ci.py` não delega mais a validação da célula para `make ci`; a célula
-passou a ser medida pela lista obrigatória do runner canônico. Ainda assim,
+`ci/ci.py` nao delega mais a validacao da celula para `make ci`; a celula
+passou a ser medida pela lista obrigatoria do runner canonico. Ainda assim,
 `ci/ci.py` e `ci/sessao.py` compartilham a fronteira que distingue "programa
 rodou e reprovou" de "o instrumento nem mediu": 124, 126 e 127 continuam sendo
-falha de instrumentação.
+falha de instrumentacao.
 """
 
 from __future__ import annotations
@@ -23,21 +23,51 @@ import sessao  # noqa: E402
 from _nucleo import Estado  # noqa: E402
 
 
-@pytest.mark.parametrize("codigo", [124, 126, 127])
-def test_as_sentinelas_do_executor_sao_ERROR(codigo):
-    assert runner.classificar_exit_do_make(codigo) is Estado.ERROR
+def test_timeout_124_e_ERRO_de_instrumentacao():
+    assert runner.classificar_exit_do_make(124) is Estado.ERROR
 
 
-@pytest.mark.parametrize("codigo", [1, 2, 3, 7, 42, 130, 255])
-def test_todo_outro_nao_zero_e_veredito_do_programa_logo_FAIL(codigo):
-    assert runner.classificar_exit_do_make(codigo) is Estado.FAIL
+def test_comando_nao_executavel_126_e_ERRO_de_instrumentacao():
+    assert runner.classificar_exit_do_make(126) is Estado.ERROR
+
+
+def test_comando_ausente_127_e_ERRO_de_instrumentacao():
+    assert runner.classificar_exit_do_make(127) is Estado.ERROR
+
+
+def test_saida_1_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(1) is Estado.FAIL
+
+
+def test_saida_2_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(2) is Estado.FAIL
+
+
+def test_saida_3_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(3) is Estado.FAIL
+
+
+def test_saida_7_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(7) is Estado.FAIL
+
+
+def test_saida_42_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(42) is Estado.FAIL
+
+
+def test_saida_130_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(130) is Estado.FAIL
+
+
+def test_saida_255_e_FAIL_do_programa_medido():
+    assert runner.classificar_exit_do_make(255) is Estado.FAIL
 
 
 def test_as_duas_copias_da_sentinela_nao_derivaram():
     assert (
         runner.SENTINELAS_DE_INSTRUMENTACAO == sessao.SENTINELAS_DE_INSTRUMENTACAO
     ), (
-        "As sentinelas de instrumentação divergiram entre ci/ci.py "
+        "As sentinelas de instrumentacao divergiram entre ci/ci.py "
         f"({sorted(runner.SENTINELAS_DE_INSTRUMENTACAO)}) e ci/sessao.py "
         f"({sorted(sessao.SENTINELAS_DE_INSTRUMENTACAO)})."
     )
