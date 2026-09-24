@@ -308,6 +308,56 @@ def test_intencao_ganha_leva_prazo_dentro(tmp_path, monkeypatch):
     assert ganhou is True
     assert corpos[0]["expira_em"] > corpos[0]["criado_em"]
 
+
+def test_soltar_nao_apaga_reserva_que_mudou_de_dono_antes_da_leitura(tmp_path, monkeypatch):
+    sha = "a" * 40
+    ref = "refs/reservas/tarefa-TAR-001"
+
+    class Exec:
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def ler(comando, **kwargs):
+        if comando[1] == "ls-remote":
+            return Exec(f"{sha}\t{ref}\n")
+        if comando[1] == "show":
+            return Exec(json.dumps({"tipo": "intencao", "chave": "tarefa-TAR-001", "dono": "outra"}))
+        return Exec("")
+
+    monkeypatch.setattr(reservar, "executar", ler)
+    monkeypatch.setattr(
+        reservar,
+        "_git",
+        lambda *a, **k: pytest.fail("a reserva de outra bancada nunca é apagada"),
+    )
+    assert reservar.soltar(tmp_path, "tarefa-TAR-001", dono="minha-bancada") is False
+
+
+def test_soltar_usa_lease_e_preserva_se_o_dono_mudar_depois_da_leitura(tmp_path, monkeypatch):
+    sha = "b" * 40
+    ref = "refs/reservas/tarefa-TAR-001"
+
+    class Exec:
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def ler(comando, **kwargs):
+        if comando[1] == "ls-remote":
+            return Exec(f"{sha}\t{ref}\n")
+        if comando[1] == "show":
+            return Exec(json.dumps({"tipo": "intencao", "chave": "tarefa-TAR-001", "dono": "minha-bancada"}))
+        return Exec("")
+
+    vistos = []
+    monkeypatch.setattr(reservar, "executar", ler)
+    monkeypatch.setattr(
+        reservar,
+        "_git",
+        lambda raiz, comando: (vistos.append(comando), Saida(1, stderr="[rejected] (stale info)"))[1],
+    )
+    assert reservar.soltar(tmp_path, "tarefa-TAR-001", dono="minha-bancada") is False
+    assert any(f"--force-with-lease={ref}:{sha}" in parte for parte in vistos[0])
+
 def test_reserva_com_chave_recupera_numero_sem_alocar(tmp_path, monkeypatch):
     monkeypatch.setattr(reservar, 'numero_da_chave', lambda *a: {'numero': '008', 'dia': '20260828'})
     monkeypatch.setattr(reservar, 'numeros_em_uso', lambda *a: pytest.fail('não deve alocar de novo'))

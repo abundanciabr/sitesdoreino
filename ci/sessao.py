@@ -26,9 +26,9 @@ duplica nada — o que já existe é reusado, e reusar não é falhar):
      2. git fetch origin
      3. worktree ../wt-<celula>-<tarefa> na branch agent/<celula>/<tarefa>
      4. balcão: `ci/fila.py pegar TAR-NNN`, quando --tar vem — e é o PRIMEIRO
-        gesto depois de a pasta existir (`armadilhas/357`), rodado pelo
-        `fila.py` DA BANCADA para o comprovante não nascer órfão no clone
-        principal (`armadilhas/192`)
+        gesto depois de a pasta existir (`armadilhas/357`), chamado no mesmo
+        processo e apontado para a BANCADA para o comprovante não nascer órfão
+        no clone principal (`armadilhas/192`)
      5. abre e confere um PR em rascunho no primeiro minuto, antes do código,
         para anunciar a intenção e impedir trabalho duplicado invisível
      6. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
@@ -73,11 +73,12 @@ local e não pode virar requisito arquitetural (mesma regra do Makefile da raiz)
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import hashlib
 import platform
 import secrets
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 import os
 import re
 import shutil
@@ -92,6 +93,8 @@ from pathlib import Path, PureWindowsPath
 from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+if __name__ == "__main__":
+    sys.modules.setdefault("sessao", sys.modules[__name__])
 
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
@@ -846,6 +849,238 @@ def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
                 fcntl.flock(arquivo.fileno(), fcntl.LOCK_UN)
 
 
+def _gitdir_da_bancada(bancada: Path) -> Path | None:
+    """Localiza o gitdir sem executar Git nem tocar na árvore de trabalho."""
+    dotgit = Path(bancada).resolve() / ".git"
+    if dotgit.is_dir():
+        return dotgit
+    if not dotgit.is_file():
+        return None
+    try:
+        linha = dotgit.read_text(encoding="utf-8").strip()
+        prefixo = "gitdir:"
+        if not linha.lower().startswith(prefixo):
+            return None
+        alvo = linha[len(prefixo):].strip()
+        return (dotgit.parent / alvo).resolve() if not Path(alvo).is_absolute() else Path(alvo).resolve()
+    except (OSError, UnicodeError):
+        return None
+
+
+def identidade_duravel_da_bancada(bancada: Path) -> str:
+    """Identidade estável do checkout, distinta do processo que o usa."""
+    caminho = str(Path(bancada).resolve())
+    if platform.system() == "Windows":
+        caminho = os.path.normcase(caminho)
+    base = f"caminho:{caminho}"
+    return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+
+def caminho_da_trava_da_bancada(bancada: Path) -> Path:
+    """Arquivo externo cuja trava é do SO e não um prazo escrito em disco."""
+    return (
+        Path.home()
+        / ".sitesdoreino"
+        / "sessoes"
+        / "locks"
+        / f"bancada-{identidade_duravel_da_bancada(bancada)[:32]}.lock"
+    )
+
+
+def arquivo_de_estado_inicial(bancada: Path) -> Path:
+    """Metadado externo e mínimo da árvore herdada, sem conteúdo de arquivos."""
+    gitdir = _gitdir_da_bancada(bancada)
+    if gitdir:
+        return gitdir / "codex-estado-inicial.json"
+    return (
+        Path.home()
+        / ".sitesdoreino"
+        / "sessoes"
+        / "estado"
+        / f"{identidade_duravel_da_bancada(bancada)}.json"
+    )
+
+
+_TRAVAS_DA_BANCADA_NO_PROCESSO: dict[str, int] = {}
+
+
+@contextmanager
+def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE):
+    """Exclusividade ativa da bancada; arquivo antigo nunca autoriza a entrada."""
+    identidade = identidade_duravel_da_bancada(bancada)
+    if _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 0):
+        _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] += 1
+        try:
+            yield {
+                "schema_version": 1,
+                "identidade": identidade,
+                "bancada": str(Path(bancada).resolve()),
+                "processo": "reentrante",
+                "pid": os.getpid(),
+                "iniciada_em": datetime.now(timezone.utc).isoformat(),
+            }
+        finally:
+            restante = _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 1) - 1
+            if restante:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] = restante
+            else:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO.pop(identidade, None)
+        return
+    caminho = caminho_da_trava_da_bancada(bancada)
+    ativo = caminho.with_suffix(".json")
+    token = uuid.uuid4().hex
+    with trava_de_ambiente(caminho, passo=passo):
+        ativo.parent.mkdir(parents=True, exist_ok=True)
+        estado = {
+            "schema_version": 1,
+            "identidade": identidade_duravel_da_bancada(bancada),
+            "bancada": str(Path(bancada).resolve()),
+            "processo": token,
+            "pid": os.getpid(),
+            "iniciada_em": datetime.now(timezone.utc).isoformat(),
+        }
+        temporario = ativo.with_suffix(f".{token}.tmp")
+        temporario.write_text(json.dumps(estado, ensure_ascii=False) + "\n", encoding="utf-8")
+        temporario.replace(ativo)
+        _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] = 1
+        try:
+            yield estado
+        finally:
+            restante = _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 1) - 1
+            if restante:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO[identidade] = restante
+            else:
+                _TRAVAS_DA_BANCADA_NO_PROCESSO.pop(identidade, None)
+            try:
+                atual = json.loads(ativo.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                atual = {}
+            if atual.get("processo") == token:
+                ativo.unlink(missing_ok=True)
+
+
+def _resumo_do_status(status: str) -> dict[str, int | str]:
+    entradas = [parte for parte in status.split("\0") if parte]
+    staged = unstaged = untracked = 0
+    indice = 0
+    while indice < len(entradas):
+        entrada = entradas[indice]
+        codigo = entrada[:2]
+        if codigo == "??":
+            untracked += 1
+        else:
+            staged += int(len(codigo) > 0 and codigo[0] not in (" ", "?") )
+            unstaged += int(len(codigo) > 1 and codigo[1] not in (" ", "?") )
+        if codigo[:1] in ("R", "C") or codigo[1:2] in ("R", "C"):
+            indice += 2
+        else:
+            indice += 1
+    return {
+        "staged": staged,
+        "unstaged": unstaged,
+        "untracked": untracked,
+        "total": len(entradas),
+        "status_sha256": hashlib.sha256(status.encode("utf-8")).hexdigest(),
+    }
+
+
+def metadados_da_bancada(plano: Plano) -> dict[str, object]:
+    """Contrato mínimo para outro executor retomar sem adivinhar o ambiente."""
+    return {
+        "schema_version": 1,
+        "celula": plano.celula,
+        "tarefa": plano.tarefa,
+        "frase": plano.frase,
+        "sobe_ambiente": plano.sobe_ambiente,
+        "tarefa_da_fila": plano.tarefa_da_fila,
+        "raiz": str(plano.raiz.resolve()),
+        "worktree": str(plano.worktree.resolve()),
+        "branch": plano.branch,
+        "scratch": str(plano.scratch.resolve()),
+        "arquivo_env": str(plano.arquivo_env.resolve()),
+        "venv": str(plano.venv.resolve()),
+        "postgres": plano.postgres,
+        "porta_postgres": plano.porta_postgres,
+        "redis": plano.redis,
+        "porta_redis": plano.porta_redis,
+        "quem_no_balcao": plano.quem_no_balcao,
+        "python_base": {
+            "executable": sys.executable,
+            "version": sys.version,
+            "prefix": sys.prefix,
+            "platform": platform.platform(),
+        },
+    }
+
+
+def registrar_estado_inicial(
+    plano: Plano,
+    git: str,
+    *,
+    correr: Callable[..., Saida] = correr_de_verdade,
+) -> Path:
+    """Registra uma vez o estado herdado, fora do repositório e sem segredos."""
+    caminho = arquivo_de_estado_inicial(plano.worktree)
+    identidade = identidade_duravel_da_bancada(plano.worktree)
+    if caminho.exists():
+        try:
+            existente = json.loads(caminho.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as erro:
+            raise ErroDeSessao(
+                P_WORKTREE,
+                "o registro inicial da bancada está ilegível",
+                detalhe=f"Preserve a bancada e corrija {caminho} antes de retomar.",
+            ) from erro
+        if existente.get("identidade") != identidade:
+            raise ErroDeSessao(
+                P_WORKTREE,
+                "o registro inicial pertence a outra bancada",
+                detalhe=f"Preserve os arquivos e confira {caminho} antes de retomar.",
+            )
+        return caminho
+    status = correr(
+        [git, "-C", str(plano.worktree), "status", "--porcelain=v1", "-z"],
+        cwd=plano.raiz,
+        timeout=300,
+    )
+    if status.exit_code != 0:
+        raise ErroDeSessao(
+            P_WORKTREE,
+            "não consegui registrar o estado inicial da bancada",
+            comando="git status --porcelain=v1 -z",
+            detalhe=recortar(status.texto, 2000),
+        )
+    head = correr(
+        [git, "-C", str(plano.worktree), "rev-parse", "HEAD"], cwd=plano.raiz, timeout=300
+    )
+    branch = correr(
+        [git, "-C", str(plano.worktree), "symbolic-ref", "--short", "HEAD"],
+        cwd=plano.raiz,
+        timeout=300,
+    )
+    if head.exit_code != 0 or branch.exit_code != 0:
+        raise ErroDeSessao(
+            P_WORKTREE,
+            "não consegui identificar a revisão inicial da bancada",
+            detalhe="Preserve os arquivos e confira o checkout antes de retomar.",
+        )
+    dados = {
+        "schema_version": 1,
+        "identidade": identidade,
+        "bancada": str(plano.worktree.resolve()),
+        "branch": branch.stdout.strip(),
+        "head": head.stdout.strip(),
+        "capturado_em": datetime.now(timezone.utc).isoformat(),
+        "estado": _resumo_do_status(status.stdout),
+        "plano": metadados_da_bancada(plano),
+    }
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_suffix(f".{uuid.uuid4().hex}.tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporario.replace(caminho)
+    return caminho
+
+
 def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
     identidade = hashlib.sha256()
     identidade.update(repr((sys.executable, sys.version, platform.system(), platform.release(), platform.machine(),
@@ -1172,34 +1407,34 @@ class Sessao:
         """Reivindica a tarefa no balcão, de DENTRO da bancada.
 
         `armadilhas/192`: `ci/fila.py` escreve o comprovante relativo ao
-        repositório em que ELE foi executado. Chamar o `fila.py` do clone
+        repositório informado ao comando. Chamar a fila apontando para o clone
         principal faria o evento nascer órfão no espelho, com o validador da
-        fila respondendo "válida" sem ele. Por isso o caminho do script é o da
-        bancada, e não o `ci/fila.py` que estamos rodando.
+        fila respondendo "válida" sem ele. Por isso a raiz entregue ao balcão é
+        a bancada.
 
         `armadilhas/357`: e é o PRIMEIRO passo depois de a pasta existir. A
-        trava do balcão é de TAREFA, não de pasta; entre criar a bancada e
-        perguntar quem ganhou existe uma janela, e o que se pode fazer é
-        encurtá-la até o único byte que ela ainda custa: um diretório vazio.
+        mesma trava da bancada cobre o balcão e é reentrante no processo atual,
+        então a abertura não cria uma janela entre reivindicar, anunciar PR,
+        gerar índice e escrever metadados de ambiente.
         """
         passo = self._abrir(P_BALCAO)
         tid = self.plano.tarefa_da_fila
         quem = self.plano.quem_no_balcao
-        comando = [
-            sys.executable,
-            str(self.plano.worktree / "ci" / "fila.py"),
-            "pegar",
-            tid,
-            "--quem",
-            quem,
-        ]
-        saida = self._correr(comando, cwd=self.plano.worktree, timeout=600)
-        if saida.exit_code != 0:
+        import fila
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            codigo = fila.cmd_pegar(
+                self.plano.worktree,
+                argparse.Namespace(tarefa=tid, quem=quem),
+            )
+        texto = buffer.getvalue()
+        if codigo != 0:
             raise ErroDeSessao(
                 passo,
                 f"o balcão recusou {tid} — a tarefa NÃO é sua",
                 comando=f'python ci/fila.py pegar {tid} --quem "{quem}"',
-                detalhe=recortar(saida.texto, 2000)
+                detalhe=recortar(texto, 2000)
                 + "\n\nA fala acima é do BALCÃO, não deste script. Quase sempre é\n"
                 "outro robô que pegou a tarefa primeiro, ou ela está trancada.\n"
                 "NÃO escreva um byte nesta bancada: pare e informe o bloqueio ao mantenedor, com o que falta para retomar.\n"
@@ -1209,12 +1444,82 @@ class Sessao:
             )
         self._pass(f"{tid} é sua · o comprovante nasceu na bancada (commite-o no PR)")
 
+    def _commit_de_anuncio(self, passo: str, eventos: Sequence[str]) -> None:
+        head = self._exigir(
+            passo,
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.plano.worktree,
+            timeout=120,
+        ).stdout.strip()
+        indice = self.plano.scratch / f"anuncio-{uuid.uuid4().hex}.index"
+        env = {**os.environ, "GIT_INDEX_FILE": str(indice)}
+        try:
+            self._exigir(
+                passo,
+                ["git", "read-tree", head],
+                cwd=self.plano.worktree,
+                env=env,
+                timeout=120,
+            )
+            if eventos:
+                self._exigir(
+                    passo,
+                    ["git", "add", "--", *eventos],
+                    cwd=self.plano.worktree,
+                    env=env,
+                    timeout=120,
+                )
+            arvore = self._exigir(
+                passo,
+                ["git", "write-tree"],
+                cwd=self.plano.worktree,
+                env=env,
+                timeout=120,
+            ).stdout.strip()
+            mensagem = (
+                f"chore: embarcar o comprovante de {self.plano.tarefa_da_fila}"
+                if eventos
+                else "chore: anunciar intenção da sessão"
+            )
+            commit = self._exigir(
+                passo,
+                [
+                    "git",
+                    "commit-tree",
+                    arvore,
+                    "-p",
+                    head,
+                    "-m",
+                    mensagem,
+                    "-m",
+                    "Co-Authored-By: Codex <noreply@openai.com>",
+                ],
+                cwd=self.plano.worktree,
+                timeout=120,
+            ).stdout.strip()
+            self._exigir(
+                passo,
+                ["git", "update-ref", f"refs/heads/{self.plano.branch}", commit, head],
+                cwd=self.plano.worktree,
+                timeout=120,
+            )
+            if eventos:
+                self._exigir(
+                    passo,
+                    ["git", "add", "--", *eventos],
+                    cwd=self.plano.worktree,
+                    timeout=120,
+                )
+        finally:
+            indice.unlink(missing_ok=True)
+
     def anunciar_pr(self, gh: str) -> None:
         """Publica a intenção antes de o agente começar a construir.
 
         O primeiro commit é vazio quando não há comprovante da fila. Quando há,
-        ele embarca só o evento que o balcão acabou de criar. Assim o PR existe
-        antes do código, sem transformar alterações do agente em anúncio.
+        ele embarca só o evento que o balcão acabou de criar por índice
+        temporário e `update-ref` com SHA esperado. Assim o PR existe antes do
+        código, sem transformar alterações herdadas em anúncio.
         """
         passo = self._abrir(P_ANUNCIO)
         titulo = f"rascunho: {self.plano.frase or self.plano.tarefa_da_fila or self.plano.tarefa}"
@@ -1276,29 +1581,8 @@ class Sessao:
                 if linha[3:].replace("\\", "/").startswith("fila/eventos/")
                 and self.plano.tarefa_da_fila in linha
             ]
-        permitidos = set(eventos)
-        alheios = set(linhas) - {f"?? {caminho}" for caminho in permitidos}
-        if alheios:
-            raise ErroDeSessao(
-                passo,
-                "a bancada tem alterações antes do anúncio",
-                detalhe="Preserve o trabalho existente e abra uma nova sessão; o anúncio não vai incluí-lo.\n"
-                + "\n".join(sorted(alheios)),
-            )
         if eventos:
-            self._exigir(
-                passo,
-                ["git", "add", "--", *eventos],
-                cwd=self.plano.worktree,
-                timeout=120,
-            )
-            self._exigir(
-                passo,
-                ["git", "commit", "-m",
-                 f"chore: embarcar o comprovante de {self.plano.tarefa_da_fila}"],
-                cwd=self.plano.worktree,
-                timeout=120,
-            )
+            self._commit_de_anuncio(passo, eventos)
         else:
             adiante = self._correr(
                 ["git", "rev-list", "--count", f"origin/main..{self.plano.branch}"],
@@ -1306,13 +1590,7 @@ class Sessao:
                 timeout=120,
             )
             if adiante.stdout.strip() == "0":
-                self._exigir(
-                    passo,
-                    ["git", "commit", "--allow-empty", "-m", "chore: anunciar intenção da sessão",
-                     "-m", "Co-Authored-By: Codex <noreply@openai.com>"],
-                    cwd=self.plano.worktree,
-                    timeout=120,
-                )
+                self._commit_de_anuncio(passo, [])
         self._exigir(
             passo,
             ["git", "push", "-u", "origin", self.plano.branch],
@@ -1381,18 +1659,8 @@ class Sessao:
                 self._estado_git = "comprovante da reivindicação pendente de commit"
                 return
         if sujo:
-            self._estado_git = "alterações preexistentes preservadas"
-            raise ErroDeSessao(
-                passo,
-                "a bancada NÃO está limpa",
-                comando=f"git -C {self.plano.worktree} status --porcelain",
-                detalhe=recortar(sujo, 2000)
-                + "\n\nA Declaração de Abertura afirma `git status: limpo`. Imprimi-la\n"
-                "com o workspace sujo seria assinar uma coisa que não é verdade.\n"
-                "Seu trabalho foi preservado. Revise e commite as alterações antes\n"
-                "de repetir a abertura; não remova a bancada para destravar.",
-                codigo=1,
-            )
+            total = len(sujo.splitlines())
+            self._estado_git = f"alterações preexistentes preservadas ({total})"
 
     def gerar_indice(self, git: str) -> None:
         """Materializa `armadilhas/INDICE.md` DENTRO da bancada.
@@ -1875,31 +2143,34 @@ class Sessao:
     # -- orquestração -------------------------------------------------------
 
     def rodar(self) -> str:
+        """Abre ou retoma a bancada sob a mesma trava usada pelo executor."""
         ferramentas = self.conferir_pecas_locais()
         git = ferramentas["git"]
         self.conferir()
         self.buscar(git)
-        self.preparar_worktree(git)
-        if self.plano.tarefa_da_fila:
-            self.pegar_a_tarefa()
-        gh = ferramentas["gh"]
-        self.anunciar_pr(gh)
-        self.gerar_indice(git)
-        if not self.plano.sobe_ambiente:
-            return declaracao(self.plano, resumo="", estado_git=self._estado_git)
-        self.preparar_venv()
-        self.instalar()
-        porta_pg, porta_redis = self.preparar_servicos()
-        self.escrever_env(porta_pg, porta_redis)
-        self.rodar_doctor()
-        resumo = self.rodar_baseline(git)
-        constituicao = f"constituicoes/AGENTS.{self.plano.celula}.md"
-        if not self._existe(self.plano.worktree / constituicao):
-            constituicao = ""
-        return declaracao(
-            self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git,
-            metodo_baseline=self._metodo_baseline,
-        )
+        with trava_da_bancada(self.plano.worktree):
+            self.preparar_worktree(git)
+            registrar_estado_inicial(self.plano, git, correr=self._correr)
+            if self.plano.tarefa_da_fila:
+                self.pegar_a_tarefa()
+            gh = ferramentas["gh"]
+            self.anunciar_pr(gh)
+            self.gerar_indice(git)
+            if not self.plano.sobe_ambiente:
+                return declaracao(self.plano, resumo="", estado_git=self._estado_git)
+            self.preparar_venv()
+            self.instalar()
+            porta_pg, porta_redis = self.preparar_servicos()
+            self.escrever_env(porta_pg, porta_redis)
+            self.rodar_doctor()
+            resumo = self.rodar_baseline(git)
+            constituicao = f"constituicoes/AGENTS.{self.plano.celula}.md"
+            if not self._existe(self.plano.worktree / constituicao):
+                constituicao = ""
+            return declaracao(
+                self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git,
+                metodo_baseline=self._metodo_baseline,
+            )
 
 
 # ---------------------------------------------------------------------------
