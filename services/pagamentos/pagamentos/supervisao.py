@@ -21,6 +21,7 @@ from pagamentos.methods.card.service import (
     IntentNaoConfirmavel,
     reconciliar_intent_card,
 )
+from pagamentos.methods.pix.appmax import reconciliar as reconciliar_pix_appmax
 
 _INTERVALO = timedelta(minutes=5)
 _LIMITE_FALHAS = 3
@@ -70,7 +71,10 @@ def _processar_aviso(aviso_id: int) -> bool:
             _registrar_falha(aviso, "tentativa_nao_ativa", definitiva=True)
             return False
         try:
-            reconciliar_intent_card(tentativa.intent)
+            if tentativa.intent.method == "pix":
+                reconciliar_pix_appmax(tentativa.intent)
+            else:
+                reconciliar_intent_card(tentativa.intent)
         except (gateway.FalhaNoProvedor, IntentNaoConfirmavel, ValueError) as exc:
             _registrar_falha(aviso, type(exc).__name__, definitiva=False)
             PaymentAttempt.objects.filter(pk=tentativa.pk).update(
@@ -103,7 +107,10 @@ def _reconciliar_tentativa(tentativa_id: int) -> bool:
         )
         return False
     try:
-        reconciliar_intent_card(tentativa.intent)
+        if tentativa.intent.method == "pix":
+            reconciliar_pix_appmax(tentativa.intent)
+        else:
+            reconciliar_intent_card(tentativa.intent)
     except (gateway.FalhaNoProvedor, IntentNaoConfirmavel, ValueError):
         PaymentAttempt.objects.filter(pk=tentativa_id).update(updated_at=timezone.now())
         return False

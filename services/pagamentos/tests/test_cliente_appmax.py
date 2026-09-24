@@ -16,6 +16,7 @@ _CUSTOMER_URL = "https://api.sandboxappmax.com.br/v1/customers"
 _ORDERS_URL = "https://api.sandboxappmax.com.br/v1/orders"
 _INSTALLMENTS_URL = "https://api.sandboxappmax.com.br/v1/payments/installments"
 _CARD_URL = "https://api.sandboxappmax.com.br/v1/payments/credit-card"
+_PIX_URL = "https://api.sandboxappmax.com.br/v1/payments/pix"
 _CLIENT_ID = "merchant-client-id"
 _CLIENT_SECRET = "merchant-client-secret"
 _ACCESS_TOKEN = "merchant-access-token"
@@ -641,6 +642,67 @@ def test_escritas_appmax_usam_endpoints_e_respostas_oficiais_sem_repetir(
     payment_text = payment.calls[0].request.content.decode()
     assert "card_number" not in payment_text
     assert '"cvv"' not in payment_text
+
+
+@pytest.mark.parametrize(
+    "resposta",
+    [
+        {
+            "data": {
+                "payment": {
+                    "pix_qrcode": "aW1hZ2Vt",
+                    "pix_emv": "000201",
+                    "pix_expiration_date": "2026-09-25 15:30:00",
+                }
+            }
+        },
+        {
+            "data": {
+                "pix": {
+                    "qr_code": "data:image/png;base64,aW1hZ2Vt",
+                    "emv_code": "000201",
+                    "expires_at": "2026-09-25 15:30:00",
+                }
+            }
+        },
+    ],
+)
+def test_pix_appmax_preserva_qr_codigo_vencimento_e_pedido(
+    settings: Any, resposta: dict[str, Any]
+) -> None:
+    body = {
+        "order_id": 3531,
+        "payment_data": {"pix": {"document_number": "19100000000"}},
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        pagamento = transport.post(_PIX_URL).mock(
+            return_value=httpx.Response(200, json=resposta)
+        )
+        resultado = AppmaxClient().criar_pagamento_pix(body)
+
+    assert pagamento.call_count == 1
+    assert json.loads(pagamento.calls[0].request.read()) == body
+    assert resultado == {
+        "qr_code_base64": "aW1hZ2Vt",
+        "qr_code": "000201",
+        "expires_at": "2026-09-25 15:30:00",
+    }
+
+
+def test_pix_appmax_sem_codigo_pagavel_exige_reconciliacao(settings: Any) -> None:
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        pagamento = transport.post(_PIX_URL).mock(
+            return_value=httpx.Response(
+                200, json={"data": {"payment": {"pix_qrcode": "aW1hZ2Vt"}}}
+            )
+        )
+        with pytest.raises(AppmaxError) as capturada:
+            AppmaxClient().criar_pagamento_pix({"order_id": 3531})
+
+    assert pagamento.call_count == 1
+    assert capturada.value.ambiguo
 
 
 _ESCRITAS = [

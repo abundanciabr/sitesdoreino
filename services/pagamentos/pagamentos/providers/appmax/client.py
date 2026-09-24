@@ -429,6 +429,43 @@ class AppmaxClient:
             )
         return payload
 
+    def criar_pagamento_pix(self, body: dict[str, Any]) -> dict[str, str]:
+        payload = self._post("/v1/payments/pix", body, "pagamento Pix")
+        try:
+            data = payload["data"]
+            if "payment" in data:
+                payment = data["payment"]
+                imagem = payment["pix_qrcode"]
+                codigo = payment["pix_emv"]
+                vencimento = payment["pix_expiration_date"]
+            else:
+                payment = data["pix"]
+                imagem = payment["qr_code"]
+                codigo = payment["emv_code"]
+                vencimento = payment["expires_at"]
+        except (KeyError, TypeError):
+            raise AppmaxError(
+                "Appmax pagamento Pix: QR, código ou vencimento ausente; reconciliação necessária",
+                ambiguo=True,
+            ) from None
+        if not all(
+            isinstance(value, str) and value.strip()
+            for value in (imagem, codigo, vencimento)
+        ):
+            raise AppmaxError(
+                "Appmax pagamento Pix: QR, código ou vencimento inválido; reconciliação necessária",
+                ambiguo=True,
+            )
+        prefixo = "data:image/png;base64,"
+        if imagem.startswith(prefixo):
+            imagem = imagem[len(prefixo) :]
+        if not re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", imagem):
+            raise AppmaxError(
+                "Appmax pagamento Pix: imagem QR inválida; reconciliação necessária",
+                ambiguo=True,
+            )
+        return {"qr_code_base64": imagem, "qr_code": codigo, "expires_at": vencimento}
+
     def _post(self, path: str, body: dict[str, Any], operacao: str) -> dict[str, Any]:
         token = self._obter_token()
         falha_rede: str | None = None

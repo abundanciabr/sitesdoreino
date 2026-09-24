@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-050-pix-appmax-cobranca-e-confirmacao-pelo-pedido-autenticado",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Pix Appmax: cobrança e confirmação pelo pedido autenticado",
+  detalhe: "Pix Appmax cria QR e confirma por consulta autenticada. Testes locais passaram; falta a compra completa no sandbox.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2054. Validação local: árvore 5e5eec9534bb410289cf4fc1ff62b97bdcf5079a; commit 8c2d8ddd9717fe779a094b0730d435b770eb6e62; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-697",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

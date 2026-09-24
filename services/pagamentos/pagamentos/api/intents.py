@@ -35,6 +35,10 @@ from pagamentos.methods.pix.service import (
     criar_intent_pix,
     intent_pix_incompleta,
 )
+from pagamentos.methods.pix.appmax import (
+    DadosPixInvalidos,
+    reconciliar as reconciliar_pix_appmax,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +72,13 @@ def _falha_de_provedor(exc: FalhaNoProvedor) -> JsonResponse:
     `make ci` da célula: o freeze compara este export com o congelado, e é esse
     o mecanismo que impede a promessa de apodrecer (RETROSPECTIVA-FASE-D §2)."""
     logger.warning("falha do provedor de pagamento: %s", exc)
+    if exc.ambiguo:
+        return JsonResponse(
+            {
+                "detail": "O resultado ainda não foi confirmado; consulte o status desta cobrança antes de tentar novamente."
+            },
+            status=502,
+        )
     return JsonResponse({"detail": _ERRO_PROVEDOR}, status=502)
 
 
@@ -245,8 +256,17 @@ def create_intent(request: HttpRequest) -> JsonResponse:
         if existente.method == "pix" and intent_pix_incompleta(existente):
             try:
                 existente = completar_intent_pix(existente)
+            except DadosPixInvalidos as exc:
+                raise HttpError(422, str(exc)) from None
             except FalhaNoProvedor as exc:
                 return _falha_de_provedor(exc)
+            if intent_pix_incompleta(existente):
+                return JsonResponse(
+                    {
+                        "detail": "O Pix ainda não tem QR pagável; consulte o status desta cobrança."
+                    },
+                    status=502,
+                )
         return JsonResponse(_intent_to_dict(existente), status=200)
 
     payload = _parse_intent_create(request.body)
@@ -269,6 +289,8 @@ def create_intent(request: HttpRequest) -> JsonResponse:
         return JsonResponse(
             _intent_to_dict(Intent.objects.get(idempotency_key=idem_key)), status=200
         )
+    except DadosPixInvalidos as exc:
+        raise HttpError(422, str(exc)) from None
     except FalhaNoProvedor as exc:
         # A linha da intent SOBREVIVE de propósito (ver `completar_intent_pix`):
         # é o registro de que uma cobrança pode ter sido iniciada no MP, e é o
@@ -311,8 +333,7 @@ def _get_intent_ou_404(intent_id: str) -> Intent:
 def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
     intent = _get_intent_ou_404(intent_id)
     if (
-        intent.method == "card"
-        and PaymentAttempt.objects.filter(
+        PaymentAttempt.objects.filter(
             intent=intent,
             provider="appmax",
             state__in=("pending", "reconciliation_required"),
@@ -321,7 +342,10 @@ def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
         .exists()
     ):
         try:
-            reconciliar_intent_card(intent)
+            if intent.method == "card":
+                reconciliar_intent_card(intent)
+            else:
+                reconciliar_pix_appmax(intent)
         except (FalhaNoProvedor, IntentNaoConfirmavel):
             intent.refresh_from_db()
     return _intent_to_dict(intent)
