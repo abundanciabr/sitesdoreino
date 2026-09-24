@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-049-corrigir-o-oauth-do-instalador-appmax-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Corrigir o OAuth do instalador Appmax sandbox",
+  detalhe: "OAuth APP deu 403 com urllib e 200 com curl na VPS. O instalador agora usa curl e preserva os segredos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2056. Validação local: árvore 20ee8c21ed865ec4d8468f2cde71d760432aabce; commit e5f8f6fcec86ecf504d71ef9dcb0c8019e980907; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-701",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

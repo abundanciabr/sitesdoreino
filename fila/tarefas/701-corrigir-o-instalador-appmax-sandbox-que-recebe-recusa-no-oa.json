@@ -1,0 +1,21 @@
+{
+  "arquivo": "701-corrigir-o-instalador-appmax-sandbox-que-recebe-recusa-no-oa",
+  "id": "TAR-701",
+  "titulo": "Corrigir o instalador Appmax sandbox que recebe recusa no OAuth",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-700"
+  ],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "OAuth APP na VPS retorna HTTP 200 com curl; instalador passa do OAuth à autorização sem expor credenciais, e testes locais cobrem transporte e erro por etapa. Instalação real permanece TAR-647.",
+  "despacho": "Corrija somente infra/instalar-appmax-meshcraft-sandbox.py e seu teste. Na VPS, OAuth APP com urllib deu HTTP 403 e com curl deu 200 usando o mesmo env e endpoint sandbox. Use curl para as três chamadas de instalação sem expor segredos em argv, logs ou artefatos. Diferencie a etapa em erros HTTP. Prove transporte e credenciais no stdin com teste local e mantenha a instalação real na TAR-647.",
+  "origem": "HTTP 403 real relatado pelo mantenedor em 24/09/2026; o mesmo par e endpoint retornaram HTTP 200 com curl.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}
