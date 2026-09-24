@@ -12,6 +12,7 @@ import uuid
 from typing import Any
 
 from django.conf import settings
+from django.core.exceptions import RequestDataTooBig
 from django.db import transaction
 from django.http import Http404, HttpRequest, JsonResponse
 from django.test import Client as _DjangoClient
@@ -28,16 +29,6 @@ from pagamentos.methods.card.webhook import processar_webhook_card
 from pagamentos.methods.pix.webhook import processar_webhook_pix
 
 router = Router()
-
-_CHAVE_SENSIVEL_APPMAX = frozenset(
-    {"cardnumber", "cvv", "cvc", "securitycode", "securitycod"}
-)
-_CONTEXTO_CARTAO_APPMAX = frozenset(
-    {"card", "cartao", "creditcard", "creditcardpayment"}
-)
-_CHAVE_NUMERO_CARTAO_APPMAX = frozenset({"number", "numero"})
-_NORMALIZAR_CHAVE_APPMAX = re.compile(r"[^a-z0-9]+")
-_VALOR_REMOVIDO_APPMAX = "[removido]"
 
 _WEBHOOK_PIX_OPENAPI = {
     "security": [],
@@ -99,42 +90,21 @@ def _resposta_appmax(detalhe: str, status: int) -> JsonResponse:
     return JsonResponse({"detail": detalhe}, status=status)
 
 
-def _normalizar_chave_appmax(chave: Any) -> str:
-    return _NORMALIZAR_CHAVE_APPMAX.sub("", str(chave).lower())
-
-
-def _sanitizar_payload_appmax(valor: Any, *, ancestral_cartao: bool = False) -> Any:
-    if isinstance(valor, dict):
-        sanitizado: dict[str, Any] = {}
-        for chave, item in valor.items():
-            chave_normalizada = _normalizar_chave_appmax(chave)
-            if chave_normalizada in _CHAVE_SENSIVEL_APPMAX or (
-                ancestral_cartao and chave_normalizada in _CHAVE_NUMERO_CARTAO_APPMAX
-            ):
-                sanitizado[str(chave)] = _VALOR_REMOVIDO_APPMAX
-                continue
-            sanitizado[str(chave)] = _sanitizar_payload_appmax(
-                item,
-                ancestral_cartao=(
-                    ancestral_cartao or chave_normalizada in _CONTEXTO_CARTAO_APPMAX
-                ),
-            )
-        return sanitizado
-    if isinstance(valor, list):
-        return [
-            _sanitizar_payload_appmax(item, ancestral_cartao=ancestral_cartao)
-            for item in valor
-        ]
-    return valor
-
-
 @csrf_exempt
 def webhook_appmax(request: HttpRequest) -> JsonResponse:
     """Persiste o aviso e encerra a requisição sem consultar o provedor."""
     if request.method != "POST":
         return _resposta_appmax("Envie o aviso por POST.", 405)
     try:
-        envelope = json.loads(request.body)
+        corpo = request.body
+        if len(corpo) > 1_048_576:
+            raise RequestDataTooBig
+    except RequestDataTooBig:
+        return _resposta_appmax(
+            "Aviso acima de 1.048.576 bytes. Envie um corpo menor.", 413
+        )
+    try:
+        envelope = json.loads(corpo)
     except (ValueError, UnicodeDecodeError):
         return _resposta_appmax("JSON inválido. Reenvie o aviso completo.", 400)
     if not isinstance(envelope, dict) or not isinstance(envelope.get("data"), dict):
@@ -160,6 +130,16 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
     ):
         return _resposta_appmax(
             "Tipo de evento ausente ou acima de 50 caracteres. Confira o aviso.",
+            400,
+        )
+    if not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", event.strip()):
+        return _resposta_appmax(
+            "Evento inválido. Use letras minúsculas e sublinhados no identificador.",
+            400,
+        )
+    if event_type.strip() not in {"order", "customer", "payment", "subscription"}:
+        return _resposta_appmax(
+            "Tipo de evento inválido. Use order, customer, payment ou subscription.",
             400,
         )
     if (
@@ -209,7 +189,7 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
             external_order_id=str(order_id),
             defaults={
                 "platform_site_id": tentativas[0].platform_site_id,
-                "payload": _sanitizar_payload_appmax(envelope),
+                "payload": {"data": {"order_id": order_id}},
             },
         )
     return JsonResponse({"status": "recebido" if criado else "ja_recebido"})

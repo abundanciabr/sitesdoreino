@@ -87,7 +87,7 @@ def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro(
     )
     assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
     aviso = AppmaxWebhookInbox.objects.get()
-    assert aviso.payload == aviso_forjado
+    assert aviso.payload == {"data": {"order_id": 3531}}
     assert aviso.platform_site_id == "site-interno"
     assert aviso.platform_site_id != aviso_forjado.get("platform_site_id")
 
@@ -208,6 +208,9 @@ def test_webhook_nao_persiste_dados_brutos_de_cartao_no_payload() -> None:
         ("cvv", "321"),
         ("cardNumber", "5555555555554444"),
         ("cvc", "654"),
+        ("pan", "4012888888881881"),
+        ("card_cvv", "123"),
+        ("expiration_date", "12/30"),
     ]
     numero_aninhado = "4000000000000002"
     codigo_aninhado = "987"
@@ -248,6 +251,7 @@ def test_webhook_nao_persiste_dados_brutos_de_cartao_no_payload() -> None:
                 **dict(campos_sensiveis[2:]),
                 "card": {"number": numero_aninhado, "security-code": codigo_aninhado},
             },
+            "unknown_fields": [{"secret": "378282246310005"}],
         },
     }
 
@@ -257,13 +261,34 @@ def test_webhook_nao_persiste_dados_brutos_de_cartao_no_payload() -> None:
 
     assert resposta.status_code == 200
     payload = AppmaxWebhookInbox.objects.get().payload
-    serializado = json.dumps(payload, sort_keys=True)
-    for _, valor in campos_sensiveis:
-        assert valor not in serializado
-    assert numero_aninhado not in serializado
-    assert codigo_aninhado not in serializado
-    assert payload["data"]["order_id"] == 3531
-    assert payload["data"]["status"] == "approved"
+    assert payload == {"data": {"order_id": 3531}}
+
+    for campo, valor in (
+        ("event", "order_approved_4111111111111111"),
+        ("event_type", "order_321"),
+    ):
+        resposta_sensivel = Client().post(
+            URL,
+            data=json.dumps({**aviso, campo: valor}),
+            content_type="application/json",
+        )
+        assert resposta_sensivel.status_code == 400
+        assert AppmaxWebhookInbox.objects.count() == 1
+
+
+@pytest.mark.parametrize("tamanho", [1_048_577, 3_000_000])
+def test_webhook_recusa_corpo_acima_de_um_megabyte(tamanho: int) -> None:
+    resposta = Client().post(
+        URL,
+        data=b" " * tamanho,
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 413
+    assert resposta.json() == {
+        "detail": "Aviso acima de 1.048.576 bytes. Envie um corpo menor."
+    }
+    assert AppmaxWebhookInbox.objects.count() == 0
 
 
 def test_campo_appmax_nao_vira_platform_site_id() -> None:
