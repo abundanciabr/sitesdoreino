@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Se Vender, Não Pare | Meshcraft</title>
+<style>html,body{margin:0;height:100%;background:#0b0a0f}iframe{display:block;width:100%;height:100%;border:0}</style>
+</head>
+<body>
+<iframe title="Se Vender, Não Pare" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" src="{% url 'modelo_series_flp_conteudo' %}{% if consulta %}?{{ consulta }}{% endif %}"></iframe>
+<script>
+const quadro = document.querySelector('iframe');
+addEventListener('message', event => {
+  const episodio = event.data?.episodio;
+  if (event.source !== quadro.contentWindow || !Number.isInteger(episodio) || episodio < 1 || episodio > 5) return;
+  location.assign('?ep=' + episodio);
+});
+</script>
+</body>
+</html>

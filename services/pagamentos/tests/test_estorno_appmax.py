@@ -123,7 +123,7 @@ def test_webhook_nao_confia_em_status_do_corpo() -> None:
     intent.refresh_from_db()
     assert intent.status == "approved"
     assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
-    assert AppmaxWebhookInbox.objects.get().payload["data"]["status"] == "estornado"
+    assert AppmaxWebhookInbox.objects.get().payload == {"data": {"order_id": 3531}}
 
 
 def test_site_alheio_e_provedor_indisponivel_preservam_o_livro() -> None:

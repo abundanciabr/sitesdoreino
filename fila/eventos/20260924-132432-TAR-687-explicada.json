@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-132432-TAR-687-explicada",
+  "tarefa": "TAR-687",
+  "evento": "explicada",
+  "quando": "2026-09-24T13:24:32.561952+00:00",
+  "quem": "pedido do mantenedor nesta sessão Codex, 24/09/2026",
+  "o_que_e": "A página revisada dos episódios existe como clone local, mas ainda não está disponível na administração do site.",
+  "o_que_muda": "O mantenedor consegue abrir e revisar os cinco episódios na administração, com vídeos reais nos dois primeiros e aviso nos demais.",
+  "exemplo": "Ao abrir o segundo episódio e atualizar a página, o segundo episódio continua selecionado e o vídeo pode ser reproduzido.",
+  "importancia": 75
+}

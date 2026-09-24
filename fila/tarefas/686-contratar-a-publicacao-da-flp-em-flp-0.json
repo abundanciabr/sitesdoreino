@@ -1,0 +1,21 @@
+{
+  "arquivo": "686-contratar-a-publicacao-da-flp-em-flp-0",
+  "id": "TAR-686",
+  "titulo": "Contratar a publicacao da FLP em /flp-0",
+  "toca": [
+    "docs/decisoes",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com decisao tecnica, livro valido e proximas frentes separadas",
+  "despacho": "Produzir o contrato técnico da Fase 0 para gestão de modelos de páginas e publicação pública da FLP em /flp-0, com inventário do existente, regra de caminhos, frentes seguintes e provas exigidas.",
+  "origem": "despacho da sessao arquitetura/modelos-de-paginas",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

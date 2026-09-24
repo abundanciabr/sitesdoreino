@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260924-120907-TAR-564-submetida",
+  "tarefa": "TAR-564",
+  "evento": "submetida",
+  "quando": "2026-09-24T12:09:07.759373+00:00",
+  "quem": "codex-pagamentos-appmax-sanitiza-payload-webhook",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2033",
+  "revisao": "808c87a66db25277d6b0beba16163dbcd1a43d8f",
+  "arvore": "f0b2847520904a7ba1c077fcdfa47300eac399f1"
+}
