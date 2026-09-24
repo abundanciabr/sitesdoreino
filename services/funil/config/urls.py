@@ -14,6 +14,7 @@ from apps.core.views import (
     manifesto_do_app,
     notificacoes,
     pagina_de_oferta,
+    pagina_flp,
     service_worker,
     servir_estatico,
     sitemap_xml,
@@ -71,6 +72,7 @@ urlpatterns = [
     # idioma, entao nao colide com a matriz do resolver
     # (`ci/tests/test_rotas_sem_forma_de_locale.py`).
     path("oferta", pagina_de_oferta, name="pagina_de_oferta"),
+    path("flp-0", pagina_flp, name="pagina_flp"),
     path("series-flp-gpt", modelo_series_flp, name="modelo_series_flp"),
     path(
         "series-flp-gpt/conteudo",

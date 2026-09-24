@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
 from django import forms
@@ -160,6 +160,7 @@ def landing(request):
 #: de dois lados, e separá-los num parâmetro criaria um jeito de eles
 #: discordarem.
 SLUG_DA_PAGINA_DE_OFERTA = "oferta"
+SLUG_DA_FLP = "flp-0"
 
 #: Os slots que esta página desenha num lugar PRÓPRIO, e que por isso não
 #: entram no corpo corrido da seção. O resto vira parágrafo ou lista.
@@ -360,6 +361,73 @@ def pagina_de_oferta(request):
         },
     )
     _medir_visita(request, pagina, offer_slug)
+    return resposta
+
+
+def _destino_da_flp(destino: str, request) -> str:
+    """Aceita âncora, caminho interno ou HTTPS e leva a atribuição ao destino."""
+    destino = destino.strip()
+    try:
+        partes = urlsplit(destino)
+    except ValueError:
+        return ""
+    if destino.startswith("#") and not partes.scheme:
+        return destino
+    if not (
+        (partes.scheme == "https" and partes.netloc)
+        or (not partes.scheme and not partes.netloc and destino.startswith("/"))
+    ) or destino.startswith("//"):
+        return ""
+    parametros = dict(parse_qsl(partes.query, keep_blank_values=True))
+    for chave, valor in _utm_da_requisicao(request).items():
+        parametros.setdefault(chave, valor)
+    return urlunsplit(partes._replace(query=urlencode(parametros)))
+
+
+@require_safe
+def pagina_flp(request):
+    """Mostra somente a versão publicada de `flp-0` do site do Host."""
+    pagina = CatalogoClient().obter_pagina(request.site["id"], SLUG_DA_FLP)
+    if pagina is None:
+        return render(
+            request,
+            "funil/flp.html",
+            {"site": request.site, "sem_publicacao": True},
+            status=404,
+        )
+    if (
+        pagina is SEM_RESPOSTA
+        or pagina.get("slug") != SLUG_DA_FLP
+        or pagina.get("tipo") != "flp"
+    ):
+        resposta = render(
+            request,
+            "funil/flp.html",
+            {"site": request.site, "catalogo_mudo": True},
+            status=503,
+        )
+        resposta["Retry-After"] = "30"
+        return resposta
+
+    blocos = []
+    for secao in pagina["secoes"]:
+        bloco = _bloco_da_secao(secao)
+        if bloco is not None:
+            bloco["cta_url"] = _destino_da_flp(bloco["cta_destino"], request)
+            blocos.append(bloco)
+    if not blocos:
+        resposta = render(
+            request,
+            "funil/flp.html",
+            {"site": request.site, "catalogo_mudo": True},
+            status=503,
+        )
+        resposta["Retry-After"] = "30"
+        return resposta
+    resposta = render(
+        request, "funil/flp.html", {"site": request.site, "blocos": blocos}
+    )
+    _medir_visita(request, pagina, pagina.get("offer_slug") or "")
     return resposta
 
 

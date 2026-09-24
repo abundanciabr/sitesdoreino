@@ -190,6 +190,7 @@ ROTAS_LOCALIZAVEIS = (
     # do catalogo num idioma so nao muda a classificacao, que e sobre
     # LOCALIZACAO da rota, nunca sobre o idioma do texto que chega nela.
     "/oferta",
+    "/flp-0",
     "/series-flp-gpt",
     "/series-flp-gpt/conteudo",
 )

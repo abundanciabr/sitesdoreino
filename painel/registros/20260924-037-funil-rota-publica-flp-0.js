@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-037-funil-rota-publica-flp-0",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "funil: rota publica FLP-0",
+  detalhe: "A rota mostra somente a FLP publicada e mantém UTM nos botões. Sem publicação responde 404; catálogo indisponível responde 503.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2045. Validação local: árvore d1344f3339b1652d6313070965dc2ec70ee93be5; commit 49dc1726538ee553e8450911224a040a3055689c; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-692",
+  gravidade: "info",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
