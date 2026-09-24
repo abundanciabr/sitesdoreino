@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import json
+import shutil
 import tempfile
 import unittest
 import urllib.error
 from contextlib import redirect_stdout
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
 from unittest.mock import Mock, patch
 
 ARQUIVO = Path(__file__).with_name("instalar-appmax-meshcraft-sandbox.py")
@@ -19,6 +23,59 @@ SPEC.loader.exec_module(instalador)
 
 
 class InstalacaoSandboxTest(unittest.TestCase):
+    def test_http_403_informa_etapa_sem_expor_credenciais(self) -> None:
+        with patch.object(
+            instalador.subprocess,
+            "run",
+            return_value=Mock(returncode=0, stdout=b"{}\n403"),
+        ) as executar:
+            with self.assertRaisesRegex(
+                instalador.FalhaDeInstalacao, "HTTP 403 em OAuth APP"
+            ):
+                instalador.postar(
+                    instalador.AUTH,
+                    b"client_secret=segredo-falso",
+                    form=True,
+                )
+        self.assertNotIn("segredo-falso", " ".join(executar.call_args.args[0]))
+        self.assertIn(b"segredo-falso", executar.call_args.kwargs["input"])
+
+    def test_curl_envia_json_e_bearer_sem_segredos_na_linha_de_comando(self) -> None:
+        if not shutil.which("curl"):
+            self.skipTest("curl indisponível")
+
+        recebido = {}
+
+        class Resposta(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                recebido["body"] = self.rfile.read(int(self.headers["Content-Length"]))
+                recebido["authorization"] = self.headers["Authorization"]
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"data":{"token":"ok"}}')
+
+            def log_message(self, *args: object) -> None:
+                pass
+
+        servidor = ThreadingHTTPServer(("127.0.0.1", 0), Resposta)
+        servidor_thread = Thread(target=servidor.serve_forever, daemon=True)
+        servidor_thread.start()
+        body = json.dumps({"nome": 'Loja "Meshcraft"'}).encode()
+        try:
+            resposta = instalador.postar(
+                f"http://127.0.0.1:{servidor.server_port}/app/authorize",
+                body,
+                bearer="token-app-falso",
+            )
+        finally:
+            servidor.shutdown()
+            servidor.server_close()
+            servidor_thread.join()
+        self.assertEqual(resposta, {"data": {"token": "ok"}})
+        self.assertEqual(recebido["body"], body)
+        self.assertEqual(recebido["authorization"], "Bearer token-app-falso")
+
     def test_somente_env_sandbox_da_loja_autorizada(self) -> None:
         with tempfile.TemporaryDirectory() as pasta:
             env = Path(pasta) / "pagamentos.env"

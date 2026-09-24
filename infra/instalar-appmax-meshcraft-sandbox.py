@@ -71,30 +71,56 @@ def conferir_ambiente() -> tuple[str, str, str]:
 
 
 def postar(url: str, body: bytes, *, bearer: str = "", form: bool = False) -> dict:
-    cabecalhos = {
-        "Content-Type": (
-            "application/x-www-form-urlencoded" if form else "application/json"
+    etapa = (
+        "OAuth APP"
+        if form
+        else (
+            "autorização do aplicativo"
+            if url.endswith("/app/authorize")
+            else "geração das credenciais MERCHANT"
         )
-    }
+    )
+    configuracao = (
+        'silent\nshow-error\nmax-time = 20\nrequest = "POST"\n'
+        f"url = {json.dumps(url)}\n"
+        f"header = {json.dumps('Content-Type: application/x-www-form-urlencoded' if form else 'Content-Type: application/json')}\n"
+        f"data-binary = {json.dumps(body.decode('utf-8'))}\n"
+        'write-out = "\\n%{http_code}"\n'
+    )
     if bearer:
-        cabecalhos["Authorization"] = f"Bearer {bearer}"
-    request = urllib.request.Request(url, data=body, headers=cabecalhos, method="POST")
+        configuracao += f"header = {json.dumps('Authorization: Bearer ' + bearer)}\n"
     try:
-        with urllib.request.build_opener(SemRedirecionamento()).open(
-            request, timeout=20
-        ) as response:
-            if response.status not in {200, 201}:
-                raise FalhaDeInstalacao(
-                    f"A Appmax respondeu HTTP {response.status}; confira a etapa no painel."
-                )
-            payload = json.loads(response.read(65536))
-    except urllib.error.HTTPError as exc:
+        resultado = subprocess.run(
+            ["curl", "-q", "--config", "-"],
+            input=configuracao.encode(),
+            capture_output=True,
+            timeout=25,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         raise FalhaDeInstalacao(
-            f"A Appmax respondeu HTTP {exc.code}; confira credenciais APP, consentimento e health check."
+            f"Falha de rede em {etapa}; confira a conexão da VPS com o sandbox e tente novamente."
         ) from None
-    except (urllib.error.URLError, TimeoutError):
+    if resultado.returncode:
         raise FalhaDeInstalacao(
-            "Não foi possível alcançar o sandbox; confira a rede e tente novamente."
+            f"Falha de rede em {etapa}; confira a conexão da VPS com o sandbox e tente novamente."
+        )
+    try:
+        resposta, codigo = resultado.stdout.rsplit(b"\n", 1)
+        status = int(codigo)
+    except (ValueError, TypeError):
+        raise FalhaDeInstalacao(
+            f"Resposta HTTP inválida em {etapa}; confira a disponibilidade do sandbox."
+        ) from None
+    if status not in {200, 201}:
+        raise FalhaDeInstalacao(
+            f"HTTP {status} em {etapa}; confira as credenciais e permissões no painel sandbox da Appmax."
+        )
+    try:
+        payload = json.loads(resposta)
+    except json.JSONDecodeError:
+        raise FalhaDeInstalacao(
+            f"JSON inválido em {etapa}; confira a disponibilidade da API sandbox."
         ) from None
     if not isinstance(payload, dict):
         raise FalhaDeInstalacao(
