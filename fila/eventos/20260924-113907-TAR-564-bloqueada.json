@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-113907-TAR-564-bloqueada",
+  "tarefa": "TAR-564",
+  "evento": "bloqueada",
+  "quando": "2026-09-24T11:39:07.302741+00:00",
+  "quem": "despacho-painel-appmax-auditoria-independente",
+  "detalhe": "Bloqueio real da auditoria Appmax: o webhook público Appmax persiste payload bruto com card_number e cvv em AppmaxWebhookInbox.payload. Impacto: antes de dinheiro real entrar, um aviso malformado ou fornecedor divergente pode colocar dado de cartão no banco da plataforma, violando o critério de PAN/CVV ausentes de requests internos, banco, logs e eventos. Responsável: lote dono pagamentos/TAR-558. Gesto que destrava: corrigir services/pagamentos/pagamentos/api/webhooks.py para recusar e não persistir campos de cartão bruto/segredo, impor limite de corpo, adicionar guarda vermelho/verde e reexecutar test_inbox_appmax.py, test_supervisao_appmax.py e ci/guarda_do_cartao.py.",
+  "espera": "fila"
+}

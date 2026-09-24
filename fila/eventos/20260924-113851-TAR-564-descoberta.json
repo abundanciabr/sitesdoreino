@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260924-113851-TAR-564-descoberta",
+  "tarefa": "TAR-564",
+  "evento": "descoberta",
+  "quando": "2026-09-24T11:38:51.583808+00:00",
+  "quem": "despacho-painel-appmax-auditoria-independente",
+  "detalhe": "Achado crítico: o webhook público Appmax aceita payload com card_number e cvv, responde 200 e persiste o envelope bruto em AppmaxWebhookInbox.payload. services/pagamentos/pagamentos/api/webhooks.py:163-175 grava payload=envelope sem limite de corpo e sem recusar campos de cartão; services/pagamentos/pagamentos/core/models.py:342-351 guarda JSON bruto.",
+  "evidencia": "Reprodução local em SQLite descartável: POST /api/pagamentos/appmax/webhook com data.card_number=4111111111111111 e data.cvv=123 retornou {'status_code': 200, 'inbox_count': 1, 'card_number_persistido': '4111111111111111', 'cvv_persistido': '123'}. rg não encontrou guarda para PAN/CVV no webhook Appmax; test_inbox_appmax.py passou 13 testes mas afirma payload bruto.",
+  "classificacao": "A",
+  "criterio": "Plano mestre Appmax §§8 e 19; TAR-564 exige PAN, validade e CVV ausentes de requests internos, banco, logs e eventos",
+  "encaminhamento": "Bloquear ativação Appmax. Lote dono pagamentos/TAR-558 deve rejeitar e não persistir qualquer campo de cartão bruto ou segredo no webhook, impor limite explícito de corpo, adicionar guarda vermelho/verde e rerodar ci/guarda_do_cartao.py, test_inbox_appmax.py e supervisão."
+}
