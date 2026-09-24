@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-027-admin-publicar-serie-se-vender-nao-pare-no-painel",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "admin: publicar série Se Vender, Não Pare no painel",
+  detalhe: "A série usa o clone revisado, conserva os vídeos originais e isola scripts e player da sessão do admin. Rotas e testes da célula passaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2034. Validação local: árvore b576429bdbad0cb24e1cc3c5e25ca98fab1240e1; commit 84093865ba5c6e53e376d7043c4fccf79d6c1cf1; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-687",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
