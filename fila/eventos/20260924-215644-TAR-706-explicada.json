@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-215644-TAR-706-explicada",
+  "tarefa": "TAR-706",
+  "evento": "explicada",
+  "quando": "2026-09-24T21:56:44.970180+00:00",
+  "quem": "Pedido do mantenedor de concluir Appmax sandbox em 24/09/2026",
+  "o_que_e": "O ativador procura em um arquivo o identificador que a instalação Appmax guarda no banco.",
+  "o_que_muda": "A ativação da Meshcraft encontra a instalação autorizada e libera o cartão de teste.",
+  "exemplo": "A loja já foi instalada, mas o comando de ativação não reconhece o vínculo até consultar o banco.",
+  "importancia": 99
+}

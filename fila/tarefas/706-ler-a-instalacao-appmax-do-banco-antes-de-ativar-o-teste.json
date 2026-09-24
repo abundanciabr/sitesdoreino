@@ -1,0 +1,19 @@
+{
+  "arquivo": "706-ler-a-instalacao-appmax-do-banco-antes-de-ativar-o-teste",
+  "id": "TAR-706",
+  "titulo": "Ler a instalação Appmax do banco antes de ativar o teste",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Ativador lê o UUID público da instalação 1888 no banco, recusa loja divergente e sem instalação; cinco testes e guardas verdes",
+  "despacho": "Corrija o ativador para ler e validar external_id no banco de pagamentos sem expor segredos; prove falha fechada e publique PR com recibo.",
+  "origem": "Pedido do mantenedor de concluir Appmax sandbox em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
