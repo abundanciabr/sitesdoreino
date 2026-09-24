@@ -1,0 +1,20 @@
+{
+  "arquivo": "702-migrar-a-selecao-de-modelos-das-sessoes-de-ia",
+  "id": "TAR-702",
+  "titulo": "Migrar a seleção de modelos das sessões de IA",
+  "toca": [
+    "admin",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com auditoria das configurações e prova de roteamento gpt-6-sol e gpt-6-luna",
+  "despacho": "# DESPACHO: migrar seleção de modelos da operação\n\nCÉLULA: admin · TAREFA: migrar-modelos-gpt55 · TAR: esta tarefa\n\nMANDATO: pedido direto do mantenedor, em 24/09/2026. Migrar regras ativas para gpt-6-sol como padrão e gpt-6-luna somente para tarefas simples, delimitadas e verificáveis.\n\nALVOS: ci/economia_da_fabrica.py; ci/tests/test_economia_da_fabrica.py; ci/tests/test_codex_nativo.py; .codex/agents/*.toml. Atualizar a configuração local em C:/Users/davia/.codex/config.toml sem incluir arquivo pessoal no PR.\n\nCRITÉRIOS: roteamento Codex explícito e validado; esforço Sol medium por padrão e Luna high; preservar referências históricas concluídas; auditar referências antigas e registrar pendências externas; provar os roteamentos por teste e mutação; PR pelo make pr.\n\nFORA DE ESCOPO: alterar histórico da fila, chamadas pagas, reinício, publicação ou configuração de outras máquinas.\n\nMODELO RECOMENDADO: gpt-6-sol · ESFORÇO: high, por envolver roteamento e resolução efetiva de configuração.",
+  "origem": "Pedido direto do mantenedor em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
