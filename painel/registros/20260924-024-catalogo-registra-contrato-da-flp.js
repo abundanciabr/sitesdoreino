@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-024-catalogo-registra-contrato-da-flp",
+  tipo: "decisao",
+  quando: "2026-09-24",
+  titulo: "catalogo: registra contrato da FLP",
+  detalhe: "Registra a decisao da Fase 0 para a FLP: catalogo publica, admin opera, funil renderiza /flp-0, com TAR e provas locais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2030. Validação local: árvore f80055c09d9a80298b352b5f1685c6929fa955d6; commit f9f3a686a7c650b89f89ffcfea287be7fb85db80; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-686",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
