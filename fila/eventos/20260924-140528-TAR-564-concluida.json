@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-140528-TAR-564-concluida",
+  "tarefa": "TAR-564",
+  "evento": "concluida",
+  "quando": "2026-09-24T14:05:28.055257+00:00",
+  "quem": "codex-appmax-tar564",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/2033; revisao=808c87a66db25277d6b0beba16163dbcd1a43d8f; arvore=f0b2847520904a7ba1c077fcdfa47300eac399f1; head=2413caaed9c886c58123116558697fca257275f6; merge=fee4d80691a916c77d04727fcf2acff821b5e182; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/36002589535; linhagem=retroativa: O PR 2033 recebeu reforco de sanitizacao e testes apos a submissao; o HEAD final passou nos checks obrigatorios e foi publicado; linhagem recusada (há código posterior à revisão: services/pagamentos/pagamentos/api/webhooks.py, services/pagamentos/tests/test_estorno_appmax.py, services/pagamentos/tests/test_inbox_appmax.py); suíte verde no HEAD entregue: muralhas=1x success, ci-celula-gate=1x success; aceite=painel/registros/20260924-028-aceite-auditoria-appmax.js",
+  "verificado_em": "2026-09-24"
+}
