@@ -74,7 +74,7 @@ def test_instalacao_responde_200_com_external_id_e_alias_e_persiste_o_vinculo(
     assert instalacao.client_secret_recebido is True
 
 
-def test_mesmo_app_id_duas_vezes_devolve_o_mesmo_external_id(
+def test_mesmo_app_id_duas_vezes_renova_o_external_id_no_sandbox(
     instalacoes_configuradas: None,
 ) -> None:
     primeira = _postar(_corpo())
@@ -82,8 +82,22 @@ def test_mesmo_app_id_duas_vezes_devolve_o_mesmo_external_id(
 
     assert primeira.status_code == 200
     assert segunda.status_code == 200
-    assert segunda.json()["external_id"] == primeira.json()["external_id"]
+    assert segunda.json()["external_id"] != primeira.json()["external_id"]
     assert InstalacaoAppmax.objects.filter(app_id=_APP_ID).count() == 1
+    assert (
+        str(InstalacaoAppmax.objects.get(app_id=_APP_ID).external_id)
+        == segunda.json()["external_id"]
+    )
+
+
+def test_producao_conserva_external_id_existente(
+    instalacoes_configuradas: None, settings: Any
+) -> None:
+    settings.APPMAX_API_URL = "https://api.appmax.com.br"
+    primeira = _postar(_corpo())
+    segunda = _postar(_corpo())
+
+    assert segunda.json()["external_id"] == primeira.json()["external_id"]
 
 
 def test_corpo_sem_app_id_recusa_e_nao_cria_vinculo(
