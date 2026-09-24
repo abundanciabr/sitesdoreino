@@ -5,10 +5,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 
 from pagamentos.core import gateway
 from pagamentos.core.models import Intent
+from pagamentos.methods.pix import appmax
 
 
 def criar_intent_pix(
@@ -26,6 +28,16 @@ def criar_intent_pix(
     e NUNCA chega a chamar o Mercado Pago. `transaction.atomic()` isola essa
     tentativa num savepoint: se falhar, quem chamou (api/intents.py) ainda
     consegue consultar o banco normalmente para devolver a intent vencedora."""
+    if site_id in settings.APPMAX_PIX_ENABLED_SITES:
+        candidato = Intent(
+            site_id=site_id,
+            order_id=order_id,
+            method="pix",
+            amount_cents=amount_cents,
+            customer=customer,
+            metadata=metadata,
+        )
+        appmax.validar(candidato)
     with transaction.atomic():
         intent = Intent.objects.create(
             idempotency_key=idempotency_key,
@@ -60,6 +72,8 @@ def completar_intent_pix(intent: Intent) -> Intent:
     Levanta `gateway.FalhaNoProvedor` se o provedor não devolver um Pix pagável.
     O `save()` só acontece depois de um resultado válido: numa falha, a linha
     permanece como estava, nunca meio preenchida."""
+    if intent.site_id in settings.APPMAX_PIX_ENABLED_SITES:
+        return appmax.completar(intent)
     resultado = gateway.criar_pagamento_pix(
         idempotency_key=intent.idempotency_key,
         amount_cents=intent.amount_cents,

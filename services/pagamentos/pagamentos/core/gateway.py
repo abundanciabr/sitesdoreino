@@ -95,6 +95,9 @@ class AppmaxGateway:
     def criar_pagamento_cartao(self, *, body: dict[str, Any]) -> dict[str, Any]:
         return self._chamar(self._client.criar_pagamento_cartao, body)
 
+    def criar_pagamento_pix(self, *, body: dict[str, Any]) -> dict[str, str]:
+        return self._chamar(self._client.criar_pagamento_pix, body)
+
     def consultar_pedido(self, *, order_id: int) -> dict[str, Any]:
         return self._chamar(self._client.consultar_pedido, order_id)
 

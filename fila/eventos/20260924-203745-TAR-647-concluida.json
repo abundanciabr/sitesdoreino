@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-203745-TAR-647-concluida",
+  "tarefa": "TAR-647",
+  "evento": "concluida",
+  "quando": "2026-09-24T20:37:45.148203+00:00",
+  "quem": "agent/pagamentos/appmax-pix-api",
+  "evidencia": "24/09/2026: mantenedor executou na VPS o instalador Appmax sandbox do PR #2056 e informou INSTALACAO_SANDBOX_OK: health check, OAuth MERCHANT e leitura de produtos concluídos. O comando também informou credenciais guardadas fora do repositório e célula pagamentos recarregada; sem cobrança real.",
+  "verificado_em": "2026-09-24"
+}
