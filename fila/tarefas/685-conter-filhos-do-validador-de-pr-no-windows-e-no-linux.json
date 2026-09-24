@@ -1,0 +1,23 @@
+{
+  "arquivo": "685-conter-filhos-do-validador-de-pr-no-windows-e-no-linux",
+  "id": "TAR-685",
+  "titulo": "Conter filhos do validador de PR no Windows e no Linux",
+  "toca": [
+    "ci/pr.py",
+    "ci/pr_processos_windows.py",
+    "ci/pr_processos_linux.py"
+  ],
+  "depende_de": [
+    "TAR-676"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR #2020 integrado pelo rito com suites Windows/Linux verdes, kill do executor sem orfaos, mutacoes restauradas e parecer independente aceito.",
+  "despacho": "Mandato: desdobramento tecnico de TAR-679 para conter processos filhos e netos nas validacoes do PR, sem concluir TAR-679. Dependencia oficial: TAR-676, porque a matriz L0 publicada e a pre-condicao; nao depende de L2.\n\nExecutor: processos_gpt55.\nPR existente vinculado: https://github.com/abundanciabr/sitesdoreino/pull/2020\nBranch existente: agent/ci/caminho-unico-processos\nHead candidato a auditoria: d923b0ca46eb0062722096afc7888867cbc7cff4\nTree candidata a auditoria: fab3abe07ae14a0f4ef2a4bb57483625ed462200\nArquivos da entrega: ci/pr.py, ci/pr_processos_windows.py, ci/pr_processos_linux.py, ci/tests/test_pr.py, ci/tests/test_pr_processos_windows.py, ci/tests/test_pr_processos_linux.py.\n\nEscopo fechado desta filha: contenção Windows/Linux para ci/pr.py, com integração mínima no caminho de validação do PR. Nao ampliar para o executor oficial inteiro de ci/sessao.py; essa parte continua em TAR-679.\n\nAceite obrigatorio do PR #2020: suites Windows/Linux verdes, kill do executor sem orfaos, mutacoes restauradas, parecer independente aceito e integracao pelo rito. As medicoes atuais declaradas no PR #2020 sao evidencias, nao o criterio congelado.\n\nProxima acao do processos_gpt55: no worktree do PR #2020, executar o rito com esta tarefa, atualizar corpo do PR com a TAR concreta e deixar os portoes integrarem sem bypass.",
+  "origem": "Desdobramento tecnico de TAR-679 no pedido do caminho unico dos robos para destravar o PR #2020 sem encerrar o executor L3 inteiro.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
