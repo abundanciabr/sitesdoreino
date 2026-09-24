@@ -16,6 +16,7 @@ from pagamentos.core.models import (
     Intent,
     OutboxEvent,
     PaymentAttempt,
+    emitir,
     relay_outbox,
 )
 from pagamentos.supervisao import medir_pendencias, processar_rodada
@@ -210,7 +211,7 @@ def test_pedido_sem_vinculo_unico_nao_aprova_nenhuma_tentativa() -> None:
 
 
 def test_redis_fora_do_ar_mantem_evento_para_republicacao() -> None:
-    evento = OutboxEvent.objects.create(event="pagamento.teste", payload={})
+    evento = emitir("pagamento.teste", {})
     with patch(
         "pagamentos.core.models.redis.from_url", side_effect=redis.ConnectionError
     ):
@@ -226,7 +227,7 @@ def test_redis_fora_do_ar_mantem_evento_para_republicacao() -> None:
 
 def test_queda_apos_publicar_redis_nao_duplica_stream() -> None:
     nome = f"pagamento.teste.{uuid.uuid4()}"
-    evento = OutboxEvent.objects.create(event=nome, payload={})
+    evento = emitir(nome, {})
     cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
     with patch.object(OutboxEvent, "save", side_effect=RuntimeError("queda")):
         with pytest.raises(RuntimeError, match="queda"):
