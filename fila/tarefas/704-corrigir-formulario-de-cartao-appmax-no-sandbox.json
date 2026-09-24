@@ -1,0 +1,19 @@
+{
+  "arquivo": "704-corrigir-formulario-de-cartao-appmax-no-sandbox",
+  "id": "TAR-704",
+  "titulo": "Corrigir formulário de cartão Appmax no sandbox",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "HTML com script sandbox, external ID e nomes de campos corretos; teste da página e suíte checkout verdes",
+  "despacho": "Corrija apenas a página de cartão da célula checkout conforme a documentação Appmax JS; prove com teste da página e suíte da célula; entregue PR com recibo.",
+  "origem": "Pedido do mantenedor de concluir Appmax sandbox em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

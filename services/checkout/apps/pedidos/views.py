@@ -63,6 +63,7 @@ def pix(request, order_id: uuid.UUID):
 
 def cartao(request, order_id: uuid.UUID):
     pedido = _pedido_do_site(request, order_id, "card")
+    appmax_sandbox = request.site["id"] in settings.APPMAX_CARD_ENABLED_SITES
     return render(
         request,
         "checkout/cartao.html",
@@ -75,5 +76,11 @@ def cartao(request, order_id: uuid.UUID):
             ),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
+            "appmax_external_id": settings.APPMAX_EXTERNAL_ID,
+            "appmax_script_url": (
+                "https://scripts.sandboxappmax.com.br/appmax.min.js"
+                if appmax_sandbox
+                else "https://scripts.appmax.com.br/appmax.min.js"
+            ),
         },
     )

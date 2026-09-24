@@ -48,6 +48,7 @@ APPMAX_CARD_ENABLED_SITES = frozenset(
     for site in os.environ.get("APPMAX_CARD_ENABLED_SITES", "").split(",")
     if site.strip()
 )
+APPMAX_EXTERNAL_ID = os.environ.get("APPMAX_EXTERNAL_ID", "")
 
 # Os tokens válidos que são públicos, e por isso valem menos que os outros.
 # Derivado, nunca declarado à parte: uma variável de ambiente nova esquecida

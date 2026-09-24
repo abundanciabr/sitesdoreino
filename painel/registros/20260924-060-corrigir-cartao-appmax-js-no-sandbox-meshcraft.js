@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-060-corrigir-cartao-appmax-js-no-sandbox-meshcraft",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Corrigir cartão Appmax JS no sandbox Meshcraft",
+  detalhe: "O cartão da Meshcraft agora carrega o SDK sandbox, envia os campos com os nomes exigidos e usa o identificador da instalação para receber IP e token sem expor dados sensíveis.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2060. Validação local: árvore 1842ee766ce802a62fbabbf99f4cc327229420ea; commit 07b55f4d8ddfd124a186347b8b49eb4ad12a9861; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-704",
+  gravidade: "verde",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
