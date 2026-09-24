@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-152305-TAR-690-explicada",
+  "tarefa": "TAR-690",
+  "evento": "explicada",
+  "quando": "2026-09-24T15:23:05.572389+00:00",
+  "quem": "Veredito após a publicação da TAR-689 em 24/09/2026",
+  "o_que_e": "A série já está pública, mas o livro ainda não registra a prova do deploy e do acesso sem login.",
+  "o_que_muda": "O mantenedor vê no livro o endereço público e a prova de que a página foi publicada.",
+  "exemplo": "Ao abrir o livro, a entrega aponta a URL da série, o deploy e a conferência dos episódios.",
+  "importancia": 65
+}

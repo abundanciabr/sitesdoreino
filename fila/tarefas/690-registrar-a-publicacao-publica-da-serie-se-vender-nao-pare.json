@@ -1,0 +1,19 @@
+{
+  "arquivo": "690-registrar-a-publicacao-publica-da-serie-se-vender-nao-pare",
+  "id": "TAR-690",
+  "titulo": "Registrar a publicação pública da série Se Vender, Não Pare",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro no livro integrado com PR #2040, deploy verde e URL pública sem login conferida",
+  "despacho": "Registre somente o veredito pós-publicação da TAR-689. Aponte PR #2040, deploy 36018458177, HTTP 200 anônimo e conferência no navegador dos episódios 2 e 5. Integre o registro e reconcilie a tarefa de origem quando permitido.",
+  "origem": "Veredito após a publicação da TAR-689 em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
