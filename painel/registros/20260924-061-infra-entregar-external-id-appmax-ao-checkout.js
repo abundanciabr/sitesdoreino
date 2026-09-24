@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-061-infra-entregar-external-id-appmax-ao-checkout",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Infra: entregar external ID Appmax ao checkout",
+  detalhe: "O ativador da Meshcraft leva o identificador público da instalação sandbox ao checkout, impede a troca por outra loja e confirma a leitura no contêiner antes de declarar a ativação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2061. Validação local: árvore 46655cd03f8e8ff9f882c9904efe12654829af23; commit 2932d338ac4c157a5bfd93c77ecdca0a32790401; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-705",
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
