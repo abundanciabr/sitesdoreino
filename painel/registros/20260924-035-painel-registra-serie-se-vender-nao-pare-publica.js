@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-035-painel-registra-serie-se-vender-nao-pare-publica",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "painel: registra série Se Vender, Não Pare pública",
+  detalhe: "O veredito no livro aponta a URL pública da série, o deploy concluído e a conferência sem login dos episódios 2 e 5.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2044. Validação local: árvore f7df7d9eb78e13e6d35de20795778ead7b3597ca; commit fa8e42fcac406fae3512ae3449499d1b0ad1e2f4; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-690",
+  gravidade: "verde",
+  frente: "vender",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
