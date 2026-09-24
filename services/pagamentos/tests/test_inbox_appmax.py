@@ -202,6 +202,70 @@ def test_origem_e_pedido_precisam_bater_com_a_instalacao() -> None:
     assert AppmaxWebhookInbox.objects.count() == 0
 
 
+def test_webhook_nao_persiste_dados_brutos_de_cartao_no_payload() -> None:
+    campos_sensiveis = [
+        ("card_number", "4111111111111111"),
+        ("cvv", "321"),
+        ("cardNumber", "5555555555554444"),
+        ("cvc", "654"),
+    ]
+    numero_aninhado = "4000000000000002"
+    codigo_aninhado = "987"
+    intent = Intent.objects.create(
+        idempotency_key=str(uuid.uuid4()),
+        site_id="site-interno",
+        order_id="pedido-interno",
+        method="card",
+        amount_cents=2000,
+        customer={"email": "cliente@exemplo.com"},
+    )
+    PaymentAttempt.objects.create(
+        intent=intent,
+        platform_site_id=intent.site_id,
+        provider="appmax",
+        request_hash="e" * 64,
+        external_order_id="3531",
+        amount_cents=2000,
+        effective_amount_cents=2000,
+        state="pending",
+    )
+    InstalacaoAppmax.objects.create(
+        app_id="123",
+        appmax_site_id="site-appmax",
+        alias="Loja",
+        platform_site_ids=["site-interno"],
+    )
+    aviso = {
+        "event": "order_approved",
+        "event_type": "order",
+        "site_id": "site-appmax",
+        "app_id": "123",
+        "data": {
+            "order_id": 3531,
+            "status": "approved",
+            **dict(campos_sensiveis[:2]),
+            "payment": {
+                **dict(campos_sensiveis[2:]),
+                "card": {"number": numero_aninhado, "security-code": codigo_aninhado},
+            },
+        },
+    }
+
+    resposta = Client().post(
+        URL, data=json.dumps(aviso), content_type="application/json"
+    )
+
+    assert resposta.status_code == 200
+    payload = AppmaxWebhookInbox.objects.get().payload
+    serializado = json.dumps(payload, sort_keys=True)
+    for _, valor in campos_sensiveis:
+        assert valor not in serializado
+    assert numero_aninhado not in serializado
+    assert codigo_aninhado not in serializado
+    assert payload["data"]["order_id"] == 3531
+    assert payload["data"]["status"] == "approved"
+
+
 def test_campo_appmax_nao_vira_platform_site_id() -> None:
     intent = Intent.objects.create(
         idempotency_key=str(uuid.uuid4()),

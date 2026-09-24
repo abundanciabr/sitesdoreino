@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260924-120638-TAR-564-checkpoint",
+  "tarefa": "TAR-564",
+  "evento": "checkpoint",
+  "quando": "2026-09-24T12:06:38.044902+00:00",
+  "quem": "codex-pagamentos-appmax-sanitiza-payload-webhook",
+  "plano": "Corrigir webhook Appmax para sanitizar payload bruto antes de AppmaxWebhookInbox.payload",
+  "ultimo_avanco": "Teste vermelho reproduziu PAN bruto em AppmaxWebhookInbox.payload; correção em services/pagamentos/pagamentos/api/webhooks.py sanitiza card_number, cvv, cvc, security_code e número dentro de card antes da persistência; validações locais verdes no branch agent/pagamentos/appmax-sanitiza-payload-webhook.",
+  "proxima_acao": "Abrir PR do branch agent/pagamentos/appmax-sanitiza-payload-webhook e aguardar checks; não liberar TAR-565 antes de checks verdes.",
+  "verificacoes": [
+    "python -m pytest tests/test_inbox_appmax.py tests/test_supervisao_appmax.py tests/test_smoke.py::test_cross_smoke_prova_isolamento_pix_appmax_e_rollback tests/test_tentativa_de_pagamento.py tests/test_inv_p4_intent_idempotente.py -q => 42 passed",
+    "python ci/guarda_do_cartao.py => RESULTADO PASS",
+    "python ci/provar_guardas.py ci/tests/test_guarda_do_cartao.py => estado PASS"
+  ]
+}
