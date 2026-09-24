@@ -146,6 +146,7 @@ AREAS = (
         (
             "/",
             "/oferta",
+            "/flp-0",
             "/series-flp-gpt",
             "/cadastro",
             "/login",
