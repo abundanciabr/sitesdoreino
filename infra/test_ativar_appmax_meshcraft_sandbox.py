@@ -55,12 +55,18 @@ def test_liga_e_desliga_so_o_site_instalado(tmp_path, monkeypatch, capsys):
         texto = (raiz / f"env/{nome}.env").read_text(encoding="utf-8")
         assert f"APPMAX_PIX_ENABLED_SITES={SITE}" in texto
         assert f"APPMAX_CARD_ENABLED_SITES={SITE}" in texto
+    assert "APPMAX_EXTERNAL_ID=externo-de-teste" in (
+        raiz / "env/checkout.env"
+    ).read_text(encoding="utf-8")
     assert "segredo-de-teste" not in capsys.readouterr().out
     ativacao.executar(raiz, ligar=False)
     for nome in ("pagamentos", "checkout"):
         texto = (raiz / f"env/{nome}.env").read_text(encoding="utf-8")
         assert "APPMAX_PIX_ENABLED_SITES=\n" in texto
         assert "APPMAX_CARD_ENABLED_SITES=\n" in texto
+    assert "APPMAX_EXTERNAL_ID=\n" in (raiz / "env/checkout.env").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_recusa_destino_fora_do_sandbox_antes_de_gravar(tmp_path, monkeypatch):
@@ -73,6 +79,16 @@ def test_recusa_destino_fora_do_sandbox_antes_de_gravar(tmp_path, monkeypatch):
     with pytest.raises(ativacao.ParouPorSeguranca, match="sandbox"):
         ativacao.executar(raiz, ligar=True)
     assert caminho.read_text(encoding="utf-8") == original
+    assert not list((raiz / "env").glob("*.bak-*"))
+
+
+def test_recusa_external_id_diferente_no_checkout(tmp_path, monkeypatch):
+    raiz = preparar(tmp_path, monkeypatch)
+    checkout = raiz / "env/checkout.env"
+    checkout.write_text("APPMAX_EXTERNAL_ID=outra-loja\n", encoding="utf-8")
+    with pytest.raises(ativacao.ParouPorSeguranca, match="outra instalação"):
+        ativacao.executar(raiz, ligar=True)
+    assert checkout.read_text(encoding="utf-8") == "APPMAX_EXTERNAL_ID=outra-loja\n"
     assert not list((raiz / "env").glob("*.bak-*"))
 
 

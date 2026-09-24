@@ -96,11 +96,16 @@ def conferir_travas(dados: dict[str, str], site_id: str, nome: str) -> None:
             )
 
 
-def trocar_travas(caminho: Path, site_id: str, ligar: bool) -> None:
+def trocar_travas(
+    caminho: Path, site_id: str, ligar: bool, external_id: str | None = None
+) -> None:
     original = caminho.read_text(encoding="utf-8")
     novo = original
-    for chave in CHAVES:
-        linha = f"{chave}={site_id if ligar else ''}"
+    alteracoes = {chave: site_id if ligar else "" for chave in CHAVES}
+    if external_id is not None:
+        alteracoes["APPMAX_EXTERNAL_ID"] = external_id if ligar else ""
+    for chave, valor in alteracoes.items():
+        linha = f"{chave}={valor}"
         padrao = re.compile(rf"^{chave}=.*$", re.MULTILINE)
         if padrao.search(novo):
             novo = padrao.sub(linha, novo)
@@ -172,6 +177,13 @@ def executar(raiz: Path, ligar: bool) -> None:
     site_id = conferir_site(pagamentos)
     conferir_travas(pagamentos, site_id, pagamentos_path.name)
     conferir_travas(checkout, site_id, checkout_path.name)
+    if checkout.get("APPMAX_EXTERNAL_ID", pagamentos["APPMAX_EXTERNAL_ID"]) not in (
+        "",
+        pagamentos["APPMAX_EXTERNAL_ID"],
+    ):
+        raise ParouPorSeguranca(
+            "checkout.env contém outra instalação Appmax; nenhuma configuração foi alterada"
+        )
     if not admin.get("ALUNOS_API_TOKEN") or not admin.get("TOKEN_CATALOGO"):
         raise ParouPorSeguranca(
             "tokens de operação do Compose ausentes em admin.env; nada foi alterado"
@@ -201,8 +213,8 @@ def executar(raiz: Path, ligar: bool) -> None:
     try:
         for caminho, copia in copias:
             shutil.copy2(caminho, copia)
-        for caminho, _ in copias:
-            trocar_travas(caminho, site_id, ligar)
+        trocar_travas(pagamentos_path, site_id, ligar)
+        trocar_travas(checkout_path, site_id, ligar, pagamentos["APPMAX_EXTERNAL_ID"])
         if not recarregar(raiz, ambiente):
             raise ParouPorSeguranca("recriação das células falhou")
         alvo = site_id if ligar else ""
@@ -225,6 +237,21 @@ def executar(raiz: Path, ligar: bool) -> None:
                 raise ParouPorSeguranca(
                     f"{servico} não leu as duas travas; restaurando a configuração anterior"
                 )
+        prova_id = compose(
+            raiz,
+            ambiente,
+            "exec",
+            "-T",
+            "checkout",
+            "python",
+            "-c",
+            "import os; assert os.environ.get('APPMAX_EXTERNAL_ID') == "
+            + repr(pagamentos["APPMAX_EXTERNAL_ID"] if ligar else ""),
+        )
+        if prova_id.returncode != 0:
+            raise ParouPorSeguranca(
+                "checkout não leu a instalação Appmax; restaurando a configuração anterior"
+            )
     except (OSError, subprocess.TimeoutExpired, ParouPorSeguranca) as erro:
         for caminho, copia in copias:
             if copia.exists():
