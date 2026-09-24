@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-004-admin-publica-manual-de-experimentacao",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "admin: publica manual de experimentação",
+  detalhe: "Manual completo criado com fonte em documentos, semeadura idempotente no banco da admin, teste focal da publicação e registro no livro; a entrega fica pronta para o site assim que o PR integrar e publicar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2014. Validação local: árvore 08a7f8ac1cb268fa2e81d4a995cbffdba9c2962e; commit 3118c76546873d9ba87051b675595a3991064a30; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-675",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
