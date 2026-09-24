@@ -80,7 +80,8 @@ def test_pagina_cartao_carrega_sdk_e_formulario_appmax(client, api, rede, sessao
     corpo = resp.content.decode()
     assert "https://scripts.appmax.com.br/appmax.min.js" in corpo
     assert "data-appmax-checkout" in corpo
-    assert '<span class="appmax-ip" hidden></span>' in corpo
+    assert "<form data-appmax-customer hidden></form>" in corpo
+    assert "appmax-ip" not in corpo
     for campo in (
         "number",
         "holder_name",

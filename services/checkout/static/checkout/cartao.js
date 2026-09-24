@@ -1,6 +1,7 @@
 function cartaoIsland() {
   return {
     orderId: JSON.parse(document.getElementById("order-id").textContent),
+    externalId: JSON.parse(document.getElementById("appmax-external-id").textContent),
     totalCents: JSON.parse(document.getElementById("total-cents").textContent),
     status: "carregando",
     parcelas: [],
@@ -8,6 +9,7 @@ function cartaoIsland() {
     holderName: "",
     holderDocumentNumber: "",
     appmaxPronto: false,
+    ip: "",
     carregandoParcelas: false,
     enviando: false,
     erro: "",
@@ -57,29 +59,42 @@ function cartaoIsland() {
     },
 
     iniciarAppmax() {
+      if (!this.externalId) {
+        this.erro = "A instalação da Appmax está incompleta. Avise a loja para configurar o pagamento.";
+        return;
+      }
       if (!window.AppmaxScripts?.init) {
         this.erro = "Não foi possível carregar o pagamento com cartão. Recarregue a página.";
         return;
       }
-      window.AppmaxScripts.init(
-        (dados) => this.confirmarCartao(dados),
-        () => {
-          this.enviando = false;
-          this.erro = "Não foi possível validar o cartão. Confira os dados e tente novamente.";
+      window.AppmaxScripts.init({
+        externalId: this.externalId,
+        onIp: ({ ip }) => {
+          this.ip = ip;
+          this.appmaxPronto = true;
         },
-        this.orderId
-      );
-      this.appmaxPronto = true;
+        onTokenize: ({ token }) => this.confirmarCartao(token),
+        onError: (falha) => {
+          this.enviando = false;
+          if (falha.stage === "ip") {
+            this.erro = "Não foi possível identificar esta conexão. Recarregue a página e tente novamente.";
+          } else if (falha.stage === "tokenize") {
+            this.erro = "Não foi possível validar o cartão. Confira os dados e tente novamente.";
+          } else if (falha.stage === "setup") {
+            this.erro = "Não foi possível iniciar o pagamento. Recarregue a página e tente novamente.";
+          }
+        },
+      });
     },
 
-    async confirmarCartao(dadosTokenizados) {
+    async confirmarCartao(token) {
       if (this.enviando) return;
       this.enviando = true;
       this.erro = "";
       try {
         const resposta = await api.post(`/pedidos/${this.orderId}/cartao`, {
-          token: dadosTokenizados.token,
-          ...(dadosTokenizados.ip ? { ip: dadosTokenizados.ip } : {}),
+          token,
+          ip: this.ip,
           holder_name: this.holderName,
           holder_document_number: this.holderDocumentNumber.replace(/\D/g, ""),
           installments: Number(this.installments),

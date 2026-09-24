@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-214441-TAR-704-explicada",
+  "tarefa": "TAR-704",
+  "evento": "explicada",
+  "quando": "2026-09-24T21:44:41.165541+00:00",
+  "quem": "Pedido do mantenedor de concluir Appmax sandbox em 24/09/2026",
+  "o_que_e": "A página do cartão usa o script e os campos errados para a instalação sandbox.",
+  "o_que_muda": "O comprador consegue enviar o cartão de teste à Appmax e acompanhar o pedido.",
+  "exemplo": "O cartão preenchido deixa de chegar vazio à Appmax.",
+  "importancia": 99
+}

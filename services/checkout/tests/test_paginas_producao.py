@@ -98,8 +98,10 @@ def test_pagina_do_pix_define_api_base_do_prefixo_real(client, rede, env_de_prod
 
 
 @pytest.mark.django_db
-def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao):
+def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settings):
     """A terceira rota de página, mesma semântica de produção das outras duas."""
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
+    settings.APPMAX_EXTERNAL_ID = "instalacao-sandbox-de-teste"
     sessao = SessionModel.objects.create(
         site_id=SITE_A["id"], offer_slug=SLUG, offer={"price_cents": 990}
     )
@@ -117,10 +119,13 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao):
     assert resp.status_code == 200, resp.content
     html = resp.content.decode("utf-8")
     assert "window.API_BASE" in html
-    assert "https://scripts.appmax.com.br/appmax.min.js" in html
+    assert "https://scripts.sandboxappmax.com.br/appmax.min.js" in html
+    assert '"instalacao-sandbox-de-teste"' in html
+    assert "data-appmax-customer" in html
     assert "data-appmax-checkout" in html
-    assert 'appmax-form-element="number"' in html
-    assert 'appmax-form-element="cvv"' in html
+    for nome in ("card-number", "card-holder-name", "exp-month", "exp-year", "cvv"):
+        assert f'name="{nome}"' in html
+    assert "appmax-ip" not in html
     assert f'href="/checkout/{SLUG}/"' in html
     assert "Aguardando confirmação do pagamento" not in html
 
