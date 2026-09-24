@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-165618-TAR-694-explicada",
+  "tarefa": "TAR-694",
+  "evento": "explicada",
+  "quando": "2026-09-24T16:56:18.238305+00:00",
+  "quem": "Medição pós-merge de 24/09/2026",
+  "o_que_e": "Os três componentes da página FLP já estão implantados, mas o livro ainda não contém os resultados finais dos deploys.",
+  "o_que_muda": "O mantenedor verá claramente o que entrou no site e que a página pública ainda espera conteúdo publicado.",
+  "exemplo": "A rota abre, mas responde página não publicada: o livro registra os dois fatos sem chamar isso de página pronta.",
+  "importancia": 70
+}
