@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-054-checkout-appmax-sandbox-dados-pix-e-opcao-de-cartao",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Checkout Appmax sandbox: dados Pix e opção de cartão",
+  detalhe: "Checkout coleta os dados do Pix Appmax e libera cartão somente por site habilitado. A prova de compra sandbox continua aberta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2058. Validação local: árvore 10b59fa998e6e2818608e901b047ed9c9ce91f90; commit 19b11c0d0229965a2451f72a02aad1f95b1c669b; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-698",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
