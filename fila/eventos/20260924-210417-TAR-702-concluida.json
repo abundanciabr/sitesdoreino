@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-210417-TAR-702-concluida",
+  "tarefa": "TAR-702",
+  "evento": "concluida",
+  "quando": "2026-09-24T21:04:17.810577+00:00",
+  "quem": "agent/admin/migrar-modelos-gpt55",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2057",
+  "verificado_em": "2026-09-24"
+}

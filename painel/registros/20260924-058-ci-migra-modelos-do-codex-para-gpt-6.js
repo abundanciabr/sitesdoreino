@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-058-ci-migra-modelos-do-codex-para-gpt-6",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "ci: migra modelos do Codex para GPT-6",
+  detalhe: "O roteador, as cinco fichas e a configuração local foram conferidos. Duas mutações reprovaram nos testes focais e a auditoria aceitou todas as fichas Codex.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2057. Validação local: árvore 751ac469ec0a92ca41df008eb47b8dc74925da71; commit bdaac9212db10e69c333017977ac8f3cf57e09d9; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-702",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

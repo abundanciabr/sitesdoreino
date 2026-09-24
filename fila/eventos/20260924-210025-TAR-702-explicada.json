@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-210025-TAR-702-explicada",
+  "tarefa": "TAR-702",
+  "evento": "explicada",
+  "quando": "2026-09-24T21:00:25.278552+00:00",
+  "quem": "Pedido direto do mantenedor em 24/09/2026",
+  "o_que_e": "As regras do projeto e a configuração local do Codex ainda escolhem versões antigas dos modelos, e Luna aparece como padrão para trabalho geral.",
+  "o_que_muda": "Sol vira o padrão de programação e coordenação; Luna fica restrita a tarefas simples, claras e conferíveis.",
+  "exemplo": "Uma mudança de arquitetura recebe Sol; preencher um registro estruturado recebe Luna.",
+  "importancia": 88
+}

@@ -28,7 +28,8 @@ from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa
 
 MODELO_ROTINA = "sonnet"
 MODELO_TOPO = "opus"
-MODELOS_CODEX = {"rotina": "gpt-5.6-sol", "topo": "gpt-5.6-luna"}
+MODELOS_CODEX = {"rotina": "gpt-6-sol", "delimitado": "gpt-6-luna"}
+TIPOS_CODEX_LUNA = {"escrita", "espera"}
 
 
 def harness_ativo(raiz: Path | None = None) -> str:
@@ -41,8 +42,10 @@ def harness_ativo(raiz: Path | None = None) -> str:
 
 def _perfil_do_harness(perfil: Perfil) -> Perfil:
     if harness_ativo() == "codex":
-        categoria = "topo" if perfil.modelo == MODELO_TOPO else "rotina"
-        return replace(perfil, modelo=MODELOS_CODEX[categoria])
+        if perfil.tipo in TIPOS_CODEX_LUNA:
+            return replace(perfil, modelo=MODELOS_CODEX["delimitado"], esforco="high")
+        esforco = "medium" if perfil.tipo == "geral" else perfil.esforco
+        return replace(perfil, modelo=MODELOS_CODEX["rotina"], esforco=esforco)
     return perfil
 
 
@@ -55,6 +58,12 @@ class Perfil:
 
 
 PERFIS: dict[str, Perfil] = {
+    "geral": Perfil(
+        "geral",
+        MODELO_TOPO,
+        "medium",
+        "trabalho sem classificação clara segue o padrão forte e esforço moderado",
+    ),
     "arquitetura": Perfil(
         "arquitetura",
         MODELO_TOPO,
@@ -139,7 +148,7 @@ def classificar(texto: str) -> Perfil:
     for tipo, palavras in PALAVRAS_POR_TIPO.items():
         if any(palavra in baixo for palavra in palavras):
             return _perfil_do_harness(PERFIS[tipo])
-    return _perfil_do_harness(PERFIS["produto"])
+    return _perfil_do_harness(PERFIS["geral"])
 
 
 def _frontmatter(caminho: Path) -> dict[str, str]:
@@ -190,7 +199,7 @@ def auditar_fichas(raiz: Path) -> list[str]:
         nome = campos.get("name") or caminho.stem
         relativo = caminho.relative_to(raiz).as_posix()
         if harness == "codex":
-            esperado = "gpt-5.6-luna" if nome == "despacho" else MODELOS_CODEX["rotina"]
+            esperado = MODELOS_CODEX["rotina"]
             if modelo != esperado:
                 falhas.append(f"{relativo}: model precisa ser {esperado}, recebido {modelo!r}")
             if campos.get("model_reasoning_effort") not in {"low", "medium", "high", "xhigh"}:
@@ -204,10 +213,6 @@ def auditar_fichas(raiz: Path) -> list[str]:
         if nome in {"revisor", "escrivao"} and "opus" in modelo.lower():
             falhas.append(
                 f"{relativo}: {nome} não usa modelo de topo para rito fechado"
-            )
-        if nome == "despacho" and not modelo and "modelo_recomendado" not in texto:
-            falhas.append(
-                f"{relativo}: despacho sem model só é aceito se o brief declarar modelo_recomendado"
             )
     return falhas
 

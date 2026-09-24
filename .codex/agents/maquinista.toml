@@ -151,4 +151,4 @@ NÃO MEDI: <o que não deu para medir, e por quê>\r
 Número sem comando que o produziu não conta. Estimativa não conta. Se um dado\r
 não foi medido nesta convocação, ele aparece como NÃO MEDIDO, nunca como o\r
 valor da última vez."""
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
