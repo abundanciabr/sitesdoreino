@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-212851-TAR-703-explicada",
+  "tarefa": "TAR-703",
+  "evento": "explicada",
+  "quando": "2026-09-24T21:28:51.774906+00:00",
+  "quem": "Pedido do mantenedor de concluir Pix e cartão Appmax no sandbox em 24/09/2026",
+  "o_que_e": "A instalação da Appmax sandbox está pronta, mas ainda falta um comando seguro para ligar Pix e cartão somente no site escolhido.",
+  "o_que_muda": "Permite iniciar e encerrar os testes sem editar credenciais manualmente nem abrir outros sites.",
+  "exemplo": "Na VPS, um comando liga ambos os métodos apenas na Meshcraft e volta à configuração anterior se a recarga falhar.",
+  "importancia": 90
+}
