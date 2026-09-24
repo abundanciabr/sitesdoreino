@@ -1,0 +1,19 @@
+{
+  "arquivo": "691-permitir-que-robos-criem-paginas-flp-pelo-catalogo",
+  "id": "TAR-691",
+  "titulo": "Permitir que robos criem paginas FLP pelo catalogo",
+  "toca": [
+    "catalogo"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com 164 testes do catalogo e freeze do contrato aprovados; primeiro PUT com tipo flp cria rascunho sem publicar.",
+  "despacho": "Na bancada agent/catalogo/paginas-tipadas-flp, entregue Page.tipo com default oferta, vocabulário FLP, API de rascunho com tipo opcional e respostas tipadas, migração e testes; mantenha o contrato congelado do PR 2042 idêntico. Valide 164 testes, freeze, muralhas e envie pelo ci/pr.py.",
+  "origem": "DECISAO-modelos-de-paginas-flp-0, frente 2; autorizacao do mantenedor em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

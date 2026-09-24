@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-036-catalogo-paginas-flp-tipadas",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "catalogo: paginas FLP tipadas",
+  detalhe: "O primeiro PUT cria a pagina FLP com secoes proprias. Paginas antigas seguem como oferta. Publicar exige gesto separado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2043. Validação local: árvore 2d073380bd864dece941df75da9ae5d885128745; commit cb728d93336fcf38f6864d44d39b381e8125dfeb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-691",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

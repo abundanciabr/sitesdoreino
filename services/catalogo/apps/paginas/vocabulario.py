@@ -68,6 +68,16 @@ SECOES: dict[str, tuple[str, ...]] = {
     "perguntas": ("headline", "perguntas"),
 }
 
+SECOES_FLP: dict[str, tuple[str, ...]] = {
+    "abertura": ("headline", "subheadline", "cta_texto", "cta_destino", "imagem"),
+    "entrega": ("headline", "dashboard", "skills_ia", "checklists", "playbook"),
+    "convite": ("headline", "texto", "cta_texto", "cta_destino"),
+    "prova": ("headline", "texto"),
+    "perguntas": ("headline", "perguntas"),
+}
+
+VOCABULARIOS = {"oferta": SECOES, "flp": SECOES_FLP}
+
 ORDEM_CANONICA: tuple[str, ...] = tuple(SECOES)
 
 #: Os nomes que a ferramenta 74 proíbe numa peça, e que por isso não podem
@@ -87,7 +97,7 @@ SLOTS_PROIBIDOS: tuple[str, ...] = (
 )
 
 
-def normalizar_secoes(secoes) -> list[dict]:
+def normalizar_secoes(secoes, tipo: str = "oferta") -> list[dict]:
     """Confere o vocabulário e devolve as seções na forma canônica.
 
     Fonte única da regra: chamada pelo `save()` da `PageVersion` e da
@@ -99,6 +109,14 @@ def normalizar_secoes(secoes) -> list[dict]:
     está vazio sai fora, e seção sem nenhum slot preenchido não aparece, porque
     página que ainda não tem a prova é página sem a seção que ia afirmar.
     """
+    if tipo not in VOCABULARIOS:
+        raise ValidationError(
+            f"tipo de página desconhecido: {tipo!r}. Os tipos válidos são: "
+            "oferta, flp. Escolha um deles antes de gravar."
+        )
+    secoes_do_tipo = VOCABULARIOS[tipo]
+    ordem_do_tipo = tuple(secoes_do_tipo)
+
     if not isinstance(secoes, list):
         raise ValidationError(
             f"'secoes' precisa ser uma lista de objetos {{nome, slots}}, veio "
@@ -115,10 +133,10 @@ def normalizar_secoes(secoes) -> list[dict]:
         if not isinstance(nome, str) or not nome.strip():
             raise ValidationError(f"seção sem 'nome': {item!r}.")
         nome = nome.strip()
-        if nome not in SECOES:
+        if nome not in secoes_do_tipo:
             raise ValidationError(
                 f"seção desconhecida: {nome!r}. As seções válidas são: "
-                f"{', '.join(ORDEM_CANONICA)}."
+                f"{', '.join(ordem_do_tipo)}."
             )
         if nome in por_nome:
             raise ValidationError(
@@ -135,10 +153,10 @@ def normalizar_secoes(secoes) -> list[dict]:
 
         preenchidos: dict[str, str] = {}
         for slot, valor in slots.items():
-            if slot not in SECOES[nome]:
+            if slot not in secoes_do_tipo[nome]:
                 raise ValidationError(
                     f"slot desconhecido na seção {nome!r}: {slot!r}. Os slots de "
-                    f"{nome!r} são: {', '.join(SECOES[nome])}."
+                    f"{nome!r} são: {', '.join(secoes_do_tipo[nome])}."
                 )
             if not isinstance(valor, str):
                 raise ValidationError(
@@ -153,7 +171,7 @@ def normalizar_secoes(secoes) -> list[dict]:
             por_nome[nome] = preenchidos
 
     return [
-        {"nome": nome, "ordem": ORDEM_CANONICA.index(nome), "slots": por_nome[nome]}
-        for nome in ORDEM_CANONICA
+        {"nome": nome, "ordem": ordem_do_tipo.index(nome), "slots": por_nome[nome]}
+        for nome in ordem_do_tipo
         if nome in por_nome
     ]

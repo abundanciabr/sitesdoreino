@@ -23,6 +23,7 @@ levaria as versões junto.
 
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.paginas.vocabulario import normalizar_secoes
@@ -68,7 +69,15 @@ class PageDraftQuerySet(models.QuerySet):
 
     def update(self, **kwargs):
         if "secoes" in kwargs:
-            kwargs["secoes"] = normalizar_secoes(kwargs["secoes"])
+            tipos = set(self.values_list("page__tipo", flat=True))
+            if len(tipos) > 1:
+                raise ValidationError(
+                    "rascunhos de tipos diferentes não recebem as mesmas seções. "
+                    "Filtre por tipo e grave cada conjunto separadamente."
+                )
+            kwargs["secoes"] = normalizar_secoes(
+                kwargs["secoes"], next(iter(tipos), "oferta")
+            )
         return super().update(**kwargs)
 
 
@@ -80,6 +89,12 @@ class Page(models.Model):
         "sites.Site", on_delete=models.CASCADE, related_name="paginas"
     )
     slug = models.SlugField(max_length=255)
+    tipo = models.CharField(
+        max_length=6,
+        choices=[("oferta", "Oferta"), ("flp", "FLP")],
+        default="oferta",
+        db_default="oferta",
+    )
     #: A oferta que esta página vende, quando ela vende alguma. Opcional porque
     #: nem toda página é de venda. `PROTECT` pela mesma razão de `Offer.product`:
     #: sumir com a oferta por baixo de uma página é decisão, não efeito colateral.
@@ -159,7 +174,7 @@ class PageVersion(models.Model):
         # para distinguir criação de reescrita.
         if not self._state.adding:
             raise VersaoPublicadaImutavel(RECADO_IMUTAVEL)
-        self.secoes = normalizar_secoes(self.secoes)
+        self.secoes = normalizar_secoes(self.secoes, self.page.tipo)
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -184,5 +199,5 @@ class PageDraft(models.Model):
         return f"rascunho de {self.page}"
 
     def save(self, *args, **kwargs):
-        self.secoes = normalizar_secoes(self.secoes)
+        self.secoes = normalizar_secoes(self.secoes, self.page.tipo)
         return super().save(*args, **kwargs)
