@@ -53,8 +53,23 @@ ARVORES = ("services", "contracts", "infra")
 
 SUFIXOS = frozenset(
     {
-        ".py", ".js", ".mjs", ".ts", ".json", ".yml", ".yaml", ".sh",
-        ".html", ".sql", ".toml", ".cfg", ".ini", ".txt", ".conf", ".env", ".exemplo",
+        ".py",
+        ".js",
+        ".mjs",
+        ".ts",
+        ".json",
+        ".yml",
+        ".yaml",
+        ".sh",
+        ".html",
+        ".sql",
+        ".toml",
+        ".cfg",
+        ".ini",
+        ".txt",
+        ".conf",
+        ".env",
+        ".exemplo",
     }
 )
 NOMES = frozenset({"Dockerfile", "Makefile"})
@@ -65,8 +80,6 @@ NOMES = frozenset({"Dockerfile", "Makefile"})
 ABERTURAS_DE_COMENTARIO = ("#", "//", "*", "<!--", "/*")
 
 CELULA_DONA_DO_SEGREDO = "services/pagamentos/"
-
-CAMINHO_DO_PIX = re.compile(r"(?:^|/)pix(?:[/._-]|$)")
 
 CHAVE_QUE_ESCOLHE_PROVEDOR = re.compile(
     r"\b(?:PIX|CARTAO|CARD|CREDITO|CREDIT)[A-Z0-9_]*"
@@ -186,9 +199,7 @@ def ler_arvores(raiz: Path) -> list[Arquivo]:
                 for numero, linha in enumerate(texto.splitlines(), start=1)
                 if linha.strip() and not _e_comentario(linha)
             )
-            arquivos.append(
-                Arquivo(caminho.relative_to(raiz).as_posix(), texto, uteis)
-            )
+            arquivos.append(Arquivo(caminho.relative_to(raiz).as_posix(), texto, uteis))
     if not arquivos:
         raise ErroDeInstrumentacao(
             "nenhum arquivo lido nas três árvores",
@@ -232,7 +243,9 @@ def a2_dado_do_cartao_fora(todos: list[Arquivo], _: list[Arquivo]) -> list[str]:
     return achados
 
 
-def a3_autorizado_nao_e_aprovado(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
+def a3_autorizado_nao_e_aprovado(
+    _: list[Arquivo], superficie: list[Arquivo]
+) -> list[str]:
     """Autorização e aprovação não se encontram na mesma expressão."""
     achados: list[str] = []
     for arquivo in superficie:
@@ -242,7 +255,9 @@ def a3_autorizado_nao_e_aprovado(_: list[Arquivo], superficie: list[Arquivo]) ->
     return achados
 
 
-def a4_webhook_nao_decide_dinheiro(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
+def a4_webhook_nao_decide_dinheiro(
+    _: list[Arquivo], superficie: list[Arquivo]
+) -> list[str]:
     """O arquivo de webhook da Appmax não contém verbo que mexa em dinheiro."""
     achados: list[str] = []
     for arquivo in superficie:
@@ -264,7 +279,9 @@ def a5_sem_retry_cego(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
     return achados
 
 
-def a6_outbox_na_mesma_transacao(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
+def a6_outbox_na_mesma_transacao(
+    _: list[Arquivo], superficie: list[Arquivo]
+) -> list[str]:
     """Quem CRIA linha de outbox na superfície Appmax o faz dentro da transação.
 
     A medição é da escrita, nunca da palavra: o módulo que só cita a outbox num
@@ -298,30 +315,30 @@ def a7_segredo_so_em_pagamentos(todos: list[Arquivo], _: list[Arquivo]) -> list[
     return achados
 
 
-def a8_provedores_sem_destino_comum(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
-    """O caminho do Pix ignora a Appmax, e o caminho da Appmax ignora o outro.
-
-    A medição é do CÓDIGO de cada caminho. Contrato que ENUMERA os provedores
-    aceitos, e teste que compara os dois, são declaração, não acoplamento: o que
-    derruba um método junto com o outro é o módulo de um provedor chamando o
-    outro.
-    """
+def a8_provedores_sem_destino_comum(
+    todos: list[Arquivo], _: list[Arquivo]
+) -> list[str]:
+    """O módulo de um provedor nunca chama o módulo do outro."""
     achados: list[str] = []
-    for arquivo in superficie:
+    for arquivo in todos:
         caminho = arquivo.caminho.lower()
-        if CAMINHO_DO_PIX.search(caminho):
-            proibido, lado = APPMAX_NOMEADO, "o caminho do Pix nomeia a Appmax"
-        elif "appmax" in caminho:
+        if "/providers/appmax/" in caminho:
             proibido, lado = MERCADO_PAGO, "o caminho da Appmax nomeia o Mercado Pago"
+        elif "/providers/mercadopago/" in caminho:
+            proibido, lado = APPMAX_NOMEADO, "o caminho do Mercado Pago nomeia a Appmax"
         else:
             continue
         for numero, linha in arquivo.uteis:
             for encontro in proibido.finditer(linha):
-                achados.append(_citar(arquivo, numero, linha, f"{lado}: {encontro.group(0)}"))
+                achados.append(
+                    _citar(arquivo, numero, linha, f"{lado}: {encontro.group(0)}")
+                )
     return achados
 
 
-def a9_payload_incompleto_e_erro(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
+def a9_payload_incompleto_e_erro(
+    _: list[Arquivo], superficie: list[Arquivo]
+) -> list[str]:
     """Campo obrigatório de resposta Appmax não é lido com leitura tolerante."""
     achados: list[str] = []
     for arquivo in superficie:
@@ -335,10 +352,10 @@ CHECAGENS = (
     (
         "INV-CARD-A1",
         a1_provedor_por_construcao,
-        "Pix é Mercado Pago e cartão é Appmax por construção",
+        "nenhum ajuste escolhe livremente o provedor da cobrança",
         "Apague o ajuste que escolhe provedor e deixe a escolha no código. "
-        "A única trava prevista é APPMAX_CARD_ENABLED_SITES, que desliga "
-        "tentativas novas de cartão e nunca troca de provedor.",
+        "As listas de sites autorizam a migração explícita, sem um seletor "
+        "livre de provedor no ambiente.",
     ),
     (
         "INV-CARD-A2",
