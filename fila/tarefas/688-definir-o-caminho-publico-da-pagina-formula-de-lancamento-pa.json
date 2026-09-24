@@ -1,0 +1,22 @@
+{
+  "arquivo": "688-definir-o-caminho-publico-da-pagina-formula-de-lancamento-pa",
+  "id": "TAR-688",
+  "titulo": "Definir o caminho publico da pagina Formula de Lancamento Pago",
+  "toca": [
+    "docs/decisoes",
+    "catalogo",
+    "admin",
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com a decisao de arquitetura validada e vinculo das proximas frentes para /admin/modelos-de-paginas/flp-0 e /flp-0.",
+  "despacho": "Retome a bancada do ramo agent/catalogo/modelos-de-paginas-flp-0-decisao. Publique a decisao docs/decisoes/DECISAO-modelos-de-paginas-flp-0.md em PR pelo ci/pr.py, sem editar services nesta fase. Provas esperadas: mapa_do_site PASS, travessao PASS, busca sem frases proibidas, git diff check limpo e PR aberto.",
+  "origem": "continuidade da Fase 0 de arquitetura FLP-0",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
