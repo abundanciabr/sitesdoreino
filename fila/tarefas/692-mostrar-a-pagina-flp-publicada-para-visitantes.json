@@ -4,7 +4,8 @@
   "titulo": "Mostrar a pagina FLP publicada para visitantes",
   "toca": [
     "funil",
-    "painel"
+    "painel",
+    "admin"
   ],
   "depende_de": [
     "TAR-691"
