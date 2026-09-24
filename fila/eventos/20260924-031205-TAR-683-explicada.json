@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031205-TAR-683-explicada",
+  "tarefa": "TAR-683",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:12:05.367185+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-682",
+  "o_que_e": "Uma entrega pode parecer completa enquanto um caminho alternativo, uma falha ou uma prova ausente permanece.",
+  "o_que_muda": "A conclusão só passa quando uma pessoa independente repete os cenários e confirma a revisão exata.",
+  "exemplo": "O auditor quebra de propósito a verificação obrigatória e confere que o caminho acusa ERROR em vez de aprovar.",
+  "importancia": 95
+}

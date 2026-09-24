@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031133-TAR-681-explicada",
+  "tarefa": "TAR-681",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:11:33.171779+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-679 e TAR-680",
+  "o_que_e": "Mesmo com os componentes prontos, orientações antigas podem fazer o robô escolher venv, parser ou comando incompatível.",
+  "o_que_muda": "Uma única entrada guia o robô do pedido à validação e deixa números comparáveis do custo operacional.",
+  "exemplo": "Ao retomar uma bancada com cache válido, o robô executa o próximo comando útil sem reinstalar nem consultar tudo novamente.",
+  "importancia": 90
+}

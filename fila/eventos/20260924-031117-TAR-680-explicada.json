@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031117-TAR-680-explicada",
+  "tarefa": "TAR-680",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:11:17.062799+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-676; executor indicado l4_gpt55",
+  "o_que_e": "A validação precisa dar o mesmo resultado obrigatório no Windows e no CI, separando reprovação de instrumento que não mediu.",
+  "o_que_muda": "O executor recebe uma aprovação completa comprovável sem perder uma etapa específica da célula.",
+  "exemplo": "Se o contrato não puder ser lido, o resultado vira ERROR e o lote não é aprovado, em vez de um OK vazio.",
+  "importancia": 95
+}

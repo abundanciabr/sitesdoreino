@@ -1,0 +1,22 @@
+{
+  "arquivo": "678-l2-retomada-idempotente-e-exclusividade-da-bancada",
+  "id": "TAR-678",
+  "titulo": "L2 retomada idempotente e exclusividade da bancada",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-677"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Interrupções em cada ponto relevante retomam a mesma bancada, evento e PR; dois executores na mesma bancada têm um vencedor; alterações e arquivos não rastreados permanecem.",
+  "despacho": "L2 do brief. Executor coordenado por l2_gpt55, responsável por ci/sessao.py, ci/fila.py e ci/reservar.py. Implementar retomada idempotente, identidade da bancada, trava local e preservação de estado. Integrar com L1 e não alterar contrato comercial.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-677; executor indicado l2_gpt55",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031011-TAR-676-explicada",
+  "tarefa": "TAR-676",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:10:11.129726+00:00",
+  "quem": "Brief Implementar o caminho único de execução dos robôs recebido em 24/09/2026",
+  "o_que_e": "O pedido tem oito lotes e a fila atual não os vincula a uma escada única.",
+  "o_que_muda": "Cada requisito passa a ter uma entrega, dependência e prova identificáveis antes da implementação.",
+  "exemplo": "Ao retomar a tarefa, o executor encontra o lote certo e a prova exigida, em vez de reconstruir o plano na conversa.",
+  "importancia": 90
+}

@@ -1,0 +1,22 @@
+{
+  "arquivo": "677-l1-estado-coerente-e-aquisicao-protegida",
+  "id": "TAR-677",
+  "titulo": "L1 estado coerente e aquisição protegida",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-676"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cenários reais ou descartáveis provam que tarefa encerrada, estado remoto mutável, disputa de duas bancadas, rede indisponível e posse alheia não liberam execução indevida.",
+  "despacho": "L1 do brief. Corrigir a leitura de estado e a aquisição protegida usando ci/fila.py e ci/reservar.py existentes. Separar estado remoto, eventos locais, reservas e PRs; revalidar após adquirir. Não criar fila, reserva ou status paralelo.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-676",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
