@@ -1,0 +1,22 @@
+{
+  "arquivo": "692-mostrar-a-pagina-flp-publicada-para-visitantes",
+  "id": "TAR-692",
+  "titulo": "Mostrar a pagina FLP publicada para visitantes",
+  "toca": [
+    "funil",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-691"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado e deploy do funil aprovado; /flp-0 serve a versao publicada, mostra 404 sem publicacao e 503 sem catalogo.",
+  "despacho": "Na bancada agent/funil/flp-0-publico, implemente rota publica /flp-0 via getPage do catalogo, template proprio, estados 404 e 503, links seguros com UTM, telemetria de slug e versao e testes. Contrato e clone privado somente leitura. Valide a suite completa do funil e feche pelo ci/pr.py.",
+  "origem": "DECISAO-modelos-de-paginas-flp-0, frente 4; continuidade autorizada em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

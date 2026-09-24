@@ -1,0 +1,29 @@
+{% extends "base_mobile.html" %}
+{% block titulo %}FLP | {{ site.name }}{% endblock %}
+{% block estilo %}
+    .flp-hero { background: #101827; color: #fff; padding: 2rem 1.25rem; border-radius: 1rem; }
+    .flp-hero h1 { font-size: clamp(2rem, 8vw, 3.25rem); line-height: 1.1; margin: 0 0 1rem; }
+    .flp-hero p { color: #d5dce8; }
+    .flp-secao { margin: 1rem 0; padding: 1.5rem 1.25rem; }
+    .flp-secao h2 { margin: 0 0 1rem; font-size: 1.5rem; }
+    .flp-secao p { line-height: 1.65; }
+    .flp-secao img { display: block; width: 100%; height: auto; border-radius: .75rem; }
+    .flp-cta { display: inline-block; margin-top: 1rem; padding: .9rem 1.25rem; border-radius: .5rem; background: #16a34a; color: #fff; font-weight: 700; text-decoration: none; }
+{% endblock %}
+{% block conteudo %}
+{% if sem_publicacao %}
+<div class="card flp-secao"><h1>Esta página ainda não foi publicada</h1><p>Volte mais tarde ou abra a página inicial.</p></div>
+{% elif catalogo_mudo %}
+<div class="card flp-secao"><h1>O conteúdo não carregou</h1><p>Atualize a página em alguns instantes.</p></div>
+{% else %}
+{% for bloco in blocos %}
+<section class="{% if bloco.nome == 'abertura' %}flp-hero{% else %}card flp-secao{% endif %}" data-secao="{{ bloco.nome }}">
+  {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt="">{% endif %}
+  {% if bloco.headline %}{% if bloco.nome == 'abertura' %}<h1>{{ bloco.headline }}</h1>{% else %}<h2>{{ bloco.headline }}</h2>{% endif %}{% endif %}
+  {% for texto in bloco.paragrafos %}<p>{{ texto|linebreaksbr }}</p>{% endfor %}
+  {% if bloco.prova %}<p>{{ bloco.prova|linebreaksbr }}</p>{% endif %}
+  {% if bloco.cta_texto and bloco.cta_url %}<a class="flp-cta" href="{{ bloco.cta_url }}">{{ bloco.cta_texto }}</a>{% endif %}
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

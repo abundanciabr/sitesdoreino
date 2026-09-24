@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-155107-TAR-692-explicada",
+  "tarefa": "TAR-692",
+  "evento": "explicada",
+  "quando": "2026-09-24T15:51:07.127588+00:00",
+  "quem": "DECISAO-modelos-de-paginas-flp-0, frente 4; continuidade autorizada em 24/09/2026",
+  "o_que_e": "O catalogo aceita paginas FLP, mas o visitante ainda nao tem um endereco publico para le-las.",
+  "o_que_muda": "Quando o robo publicar a FLP, visitantes poderao abrir /flp-0 com texto, botoes e atribuicao de campanha.",
+  "exemplo": "Uma visita a /flp-0 com utm_source=instagram recebe a pagina publicada e mantem a UTM no botao.",
+  "importancia": 95
+}

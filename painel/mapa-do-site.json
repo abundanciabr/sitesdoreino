@@ -119,6 +119,15 @@
     },
     {
       "celula": "funil",
+      "rota": "flp-0",
+      "endereco": "/flp-0",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Página Fórmula de Lançamento Pago",
+      "descricao": "A página que mostra o conteúdo publicado da Fórmula de Lançamento Pago. Antes da publicação, este endereço informa que a página ainda não está no ar."
+    },
+    {
+      "celula": "funil",
       "rota": "login",
       "endereco": "/login",
       "alcance": "publico",
