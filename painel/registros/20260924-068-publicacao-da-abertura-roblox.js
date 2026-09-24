@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-068-publicacao-da-abertura-roblox",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Funil: publicação da abertura Roblox",
+  detalhe: "A nova URL mostra a abertura de Primeiros Dólares com Roblox. A URL antiga redireciona e preserva os parâmetros de campanha.",
+  autoridade: "github",
+  evidencia: "PR https://github.com/abundanciabr/sitesdoreino/pull/2062 integrado em b27e1312c6e249c1233f68b55f08f2f632612d90. Deploy https://github.com/abundanciabr/sitesdoreino/actions/runs/36070404372 concluído com sucesso. Em https://meshcraft.top/primeiros-dolares-com-roblox a abertura solicitada está visível e o HTML público contém os três novos trechos, sem o texto anterior. https://meshcraft.top/flp-0?utm_source=teste responde 301 para a nova URL com o parâmetro preservado.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-707",
+  gravidade: "verde",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
