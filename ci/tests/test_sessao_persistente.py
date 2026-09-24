@@ -165,14 +165,19 @@ def test_baseline_da_base_independe_do_ramo_da_tarefa(baseline):
     assert len(estado["isoladas"]) == 1
 
 
-def test_baseline_dirty_recusa_antes_de_reutilizar(baseline):
+def test_baseline_reutilizado_preserva_dirty_da_tarefa_sem_revalidar_arvore(baseline):
     a, estado = baseline
-    a.rodar_baseline("git")
-    estado["dirty"] = " M services/quiz/config.py"
-    with pytest.raises(sessao.ErroDeSessao, match="NÃO está limpa"):
-        a.rodar_baseline("git")
-    assert estado["make"] == 1
+    assert a.rodar_baseline("git") == "6 passed"
+    isolada = estado["isoladas"][0]
 
+    estado["dirty"] = " M services/quiz/config.py"
+
+    assert a.rodar_baseline("git") == "6 passed"
+    assert estado["make"] == 1
+    assert estado["isoladas"] == [isolada]
+    assert estado["dirty"] == " M services/quiz/config.py"
+    assert a._estado_git == "alterações preexistentes preservadas (1)"
+    assert a.plano.log_do_baseline.read_text().endswith("6 passed in 1s")
 
 def test_baseline_com_ambiente_diferente_nao_reutiliza(baseline, monkeypatch):
     a, estado = baseline
