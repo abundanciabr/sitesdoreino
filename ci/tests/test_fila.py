@@ -607,6 +607,14 @@ def aquisicao_ok(monkeypatch, tid="TAR-001"):
         return True, "é sua"
 
     monkeypatch.setattr(fila.reservar, "reservar_intencao", reservar)
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "a" * 40,
+            {"tipo": "intencao", "chave": chave, "dono": fila.reservar.identidade_da_bancada(raiz)},
+        ),
+    )
     monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
     monkeypatch.setattr(
         fila.reservar,
@@ -639,13 +647,18 @@ def test_pegar_revalida_estado_depois_da_reserva_e_libera_se_mudou(
         lambda raiz: {"TAR-001": "PR #99"} if not leituras else {},
     )
     monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: ("b" * 40, {"tipo": "intencao", "dono": fila.reservar.identidade_da_bancada(raiz)}),
+    )
     monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
-    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave: soltas.append(chave))
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave, **kw: soltas.append((chave, kw)))
 
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
 
     assert fila.cmd_pegar(tmp_path, args) == 1
-    assert soltas == ["tarefa-TAR-001"]
+    assert soltas == [("tarefa-TAR-001", {"esperado": "b" * 40, "dono": fila.reservar.identidade_da_bancada(tmp_path)})]
     assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
     assert "mudou para 'em execução'" in capsys.readouterr().out
 
@@ -660,12 +673,17 @@ def test_pegar_bancada_obsoleta_apos_reserva_libera_sem_evento(
     sem_rede(monkeypatch)
     monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda raiz: next(frescor))
     monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
-    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave: soltas.append(chave))
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: ("d" * 40, {"tipo": "intencao", "dono": fila.reservar.identidade_da_bancada(raiz)}),
+    )
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave, **kw: soltas.append((chave, kw)))
 
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
 
     assert fila.cmd_pegar(tmp_path, args) == 1
-    assert soltas == ["tarefa-TAR-001"]
+    assert soltas == [("tarefa-TAR-001", {"esperado": "d" * 40, "dono": fila.reservar.identidade_da_bancada(tmp_path)})]
     assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
     assert "fila publicada mudou" in capsys.readouterr().out
 

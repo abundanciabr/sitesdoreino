@@ -46,10 +46,12 @@ Dialeto de exit (RETROSPECTIVA-FASE-D §1): 0 = OK · 1 = recusa/violação ·
 from __future__ import annotations
 
 import argparse
+from functools import wraps
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import unicodedata
@@ -309,6 +311,39 @@ CAMINHOS_POSTERIORES_PERMITIDOS = ("fila/eventos/", "painel/registros/")
 # exato que integrou, eles são a suíte medida pela pista sobre o conteúdo que
 # entrou — e é isso que o fechamento retroativo põe no lugar da linhagem.
 CHECKS_DA_INTEGRACAO = ("muralhas", "ci-celula-gate")
+
+
+def _trava_da_bancada(raiz: Path):
+    """A fila usa a mesma trava ativa da abertura e do executor."""
+    from sessao import trava_da_bancada
+
+    return trava_da_bancada(raiz)
+
+
+def _transicao_exclusiva(func):
+    @wraps(func)
+    def protegida(raiz: Path, args):
+        with _trava_da_bancada(raiz):
+            return func(raiz, args)
+
+    return protegida
+
+
+def _soltar_reserva_condicionado(
+    raiz: Path,
+    chave: str,
+    *,
+    esperado: str = "",
+    dono: str = "",
+) -> bool:
+    """Passa a identidade da bancada e o SHA esperado para soltura segura."""
+    dono = dono or reservar.identidade_da_bancada(raiz)
+    return reservar.soltar(
+        raiz,
+        chave,
+        esperado=esperado,
+        dono=dono,
+    )
 
 
 class RecusaDeReconciliacao(ValueError):
@@ -1200,7 +1235,15 @@ def reservas_no_servidor(raiz: Path) -> set[str]:
 def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
     """id → 'PR #N' para todo PR ABERTO cujo título ou ramo cita TAR-NNN."""
     proc = subprocess.run(
-        ["gh", "pr", "list", "--state", "open", "--json", "number,title,headRefName"],
+        [
+            shutil.which("gh") or "gh",
+            "pr",
+            "list",
+            "--state",
+            "open",
+            "--json",
+            "number,title,headRefName",
+        ],
         cwd=str(raiz),
         capture_output=True,
         text=True,
@@ -2768,6 +2811,7 @@ def cmd_zelar(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_pegar(raiz: Path, args) -> int:
     # Antes de tudo — antes até de ler a fila e de tocar no servidor: se a
     # pasta é o espelho, o comprovante nasceria órfão (armadilhas/192).
@@ -2799,22 +2843,54 @@ def cmd_pegar(raiz: Path, args) -> int:
         coerente = ultimo is None or (ultimo["evento"] == "reivindicada" and ultimo.get("quem") == args.quem)
         if coerente and reservar.confirmar_intencao(raiz, f"{PREFIXO_DA_RESERVA}{tid}"):
             if ultimo is None:
-                _escrever_evento(raiz, tid, "reivindicada", args.quem)
-            print(f"PASS {tid}: reserva própria conferida no servidor; reivindicação retomada.")
+                caminho = _escrever_evento(raiz, tid, "reivindicada", args.quem)
+                print(
+                    f"PASS {tid}: reserva própria conferida no servidor; "
+                    f"evento ausente recuperado em {caminho.relative_to(raiz)}."
+                )
+            else:
+                print(
+                    f"PASS {tid}: reserva própria e evento existente conferidos; "
+                    "nada foi duplicado."
+                )
+            print(
+                "Preservado: bancada, reserva, PR existente se houver, staged, "
+                "unstaged e untracked."
+            )
+            print(
+                f"Próximo comando seguro: python ci/sessao.py --celula <area> "
+                f"--tarefa <slug> --tar {tid}"
+            )
             print(tarefas[tid]["despacho"])
             return 0
     if estado["estado"] != NA_FILA:
         print(f"RECUSADO: {tid} está '{estado['estado']}'" + (f" ({estado['motivo']})" if estado["motivo"] else "") + ".")
-        print("Só tarefa NA FILA se pega. Veja o quadro: python ci/fila.py listar --ao-vivo")
+        print(
+            "Preservado: nenhuma reserva, evento, PR, staged, unstaged ou "
+            "untracked foi alterado por esta recusa."
+        )
+        print("Próximo comando seguro: python ci/fila.py listar --ao-vivo")
         return 1
-    ganhou, recado = reservar.reservar_intencao(
-        raiz, f"{PREFIXO_DA_RESERVA}{tid}", objetivo=tarefas[tid]["titulo"]
-    )
+    chave_reserva = f"{PREFIXO_DA_RESERVA}{tid}"
+    ganhou, recado = reservar.reservar_intencao(raiz, chave_reserva, objetivo=tarefas[tid]["titulo"])
     if not ganhou:
         print(f"RECUSADO PELO SERVIDOR: {recado}")
         return 1
+    reserva_adquirida = reservar.ler_reserva(raiz, chave_reserva)
+    if reserva_adquirida is None:
+        print("RECUSADO: a reserva recém-obtida não pôde ser relida no servidor.")
+        print("Preservado: nenhum evento foi escrito; confira a rede antes de retomar.")
+        return 1
+    reserva_sha, reserva_corpo = reserva_adquirida
+    reserva_dono = str(reserva_corpo.get("dono") or "")
+    if reserva_dono != reservar.identidade_da_bancada(raiz):
+        print("RECUSADO: a reserva recém-obtida não pertence a esta bancada.")
+        print("Preservado: nenhum evento foi escrito; confira a reserva antes de retomar.")
+        return 1
     if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
-        reservar.soltar(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        _soltar_reserva_condicionado(
+            raiz, chave_reserva, esperado=reserva_sha, dono=reserva_dono
+        )
         print("RECUSADO: a fila publicada mudou durante a aquisição.")
         print("A reserva recém-obtida foi liberada; atualize a bancada e consulte de novo.")
         return 1
@@ -2829,7 +2905,9 @@ def cmd_pegar(raiz: Path, args) -> int:
         and reserva_propria
         and estado.get("quem") == "reserva ativa no almoxarife"
     ):
-        reservar.soltar(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        _soltar_reserva_condicionado(
+            raiz, chave_reserva, esperado=reserva_sha, dono=reserva_dono
+        )
         print(
             f"RECUSADO: {tid} mudou para '{estado['estado']}'"
             + (f" ({estado['motivo']})" if estado.get("motivo") else "")
@@ -2847,6 +2925,7 @@ def cmd_pegar(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_soltar(raiz: Path, args) -> int:
     tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
@@ -2862,6 +2941,7 @@ def cmd_soltar(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_bloquear(raiz: Path, args) -> int:
     """Escreve o evento `bloqueada` — o estado que existia sem ninguém para criá-lo.
 
@@ -2916,6 +2996,7 @@ def cmd_bloquear(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_cancelar(raiz: Path, args) -> int:
     """Escreve o evento `cancelada` — o segundo estado que não tinha verbo.
 
@@ -2976,6 +3057,7 @@ def cmd_cancelar(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_submeter(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("submeter", raiz)
     if recusa:
@@ -3187,6 +3269,7 @@ def _concluir_com_prova(
     return 0
 
 
+@_transicao_exclusiva
 def cmd_concluir(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("concluir", raiz)
     if recusa:
@@ -3225,6 +3308,7 @@ def cmd_concluir(raiz: Path, args) -> int:
     )
 
 
+@_transicao_exclusiva
 def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     """O "feito" que viaja na entrega, escrito por `ci/pr.py`.
 
@@ -3263,6 +3347,7 @@ def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
     """Somente tarefas criadas pela guarda exigem responsabilidade."""
     return tarefa.get("responsabilidade_obrigatoria") is True
 
+@_transicao_exclusiva
 def cmd_reconciliar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("reconciliar", raiz)
     if recusa:
@@ -3312,9 +3397,17 @@ def cmd_reconciliar(raiz: Path, args) -> int:
     )
 
 def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:
-    """Solta a referência no servidor; se ela não existir, não é erro."""
+    """Solta apenas a referência que ainda pertence a esta bancada."""
     try:
-        reservar.soltar(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        reservada = _soltar_reserva_condicionado(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        if not reservada:
+            atual = reservar.ler_reserva(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+            if atual is not None and atual[1].get("dono") != reservar.identidade_da_bancada(raiz):
+                raise ErroDeInstrumentacao(
+                    "a reserva mudou de dono durante a transição",
+                    f"A conclusão foi preservada, mas a reserva de {tid} não foi apagada. "
+                    "Confira `python ci/fila.py listar --ao-vivo` antes de retomar.",
+                )
     except ErroDeInstrumentacao as erro:
         texto = f"{erro.resumo}\n{erro.detalhe or ''}"
         if "remote ref does not exist" in texto or "unable to delete" in texto:
