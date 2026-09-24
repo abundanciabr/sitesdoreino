@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260924-194817-TAR-700-submetida",
+  "tarefa": "TAR-700",
+  "evento": "submetida",
+  "quando": "2026-09-24T19:48:17.056901+00:00",
+  "quem": "agent/infra/appmax-instalar-sandbox",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2055",
+  "revisao": "e0408173444ea54ea4bf2a9e1d68c614b6a214e3",
+  "arvore": "34ba83e9e7ce20e2e8ee456966ff5965bf90b188"
+}

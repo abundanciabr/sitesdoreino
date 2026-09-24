@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-048-infra-iniciar-instalacao-appmax-da-meshcraft-no-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "infra: iniciar instalação Appmax da Meshcraft no sandbox",
+  detalhe: "A página do aplicativo não gera o vínculo MERCHANT; este comando conclui a autorização e valida as credenciais no sandbox sem expor segredos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2055. Validação local: árvore 34ba83e9e7ce20e2e8ee456966ff5965bf90b188; commit e0408173444ea54ea4bf2a9e1d68c614b6a214e3; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-700",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
