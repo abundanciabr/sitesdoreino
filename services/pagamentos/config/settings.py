@@ -96,6 +96,11 @@ APPMAX_CARD_ENABLED_SITES = frozenset(
     for site in os.environ.get("APPMAX_CARD_ENABLED_SITES", "").split(",")
     if site.strip()
 )
+APPMAX_PIX_ENABLED_SITES = frozenset(
+    site.strip()
+    for site in os.environ.get("APPMAX_PIX_ENABLED_SITES", "").split(",")
+    if site.strip()
+)
 
 # [RECEITA:R3 v1] Redis Streams — destino do relay da outbox (pagamentos.core.
 # models.relay_outbox). Já provisionado em .github/workflows/ci-celula.yml e em
