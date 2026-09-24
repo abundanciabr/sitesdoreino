@@ -67,6 +67,44 @@ def test_pix_nao_carrega_sdk_do_mercado_pago(client, api, rede, sessao_a):
     assert "mercadopago" not in corpo
 
 
+def test_pagina_pix_nao_carrega_appmax(client, api, rede, sessao_a):
+    order_id = _abrir_pedido(api, sessao_a, "pix")
+    resp = client.get(f"/pedido/{order_id}/pix/", HTTP_HOST=HOST_A)
+    corpo = resp.content.decode().lower()
+    assert "appmax" not in corpo
+
+
+def test_pagina_cartao_carrega_sdk_e_formulario_appmax(client, api, rede, sessao_a):
+    order_id = _abrir_pedido(api, sessao_a, "card")
+    resp = client.get(f"/pedido/{order_id}/cartao/", HTTP_HOST=HOST_A)
+    corpo = resp.content.decode()
+    assert "https://scripts.appmax.com.br/appmax.min.js" in corpo
+    assert "data-appmax-checkout" in corpo
+    assert '<span class="appmax-ip" hidden></span>' in corpo
+    for campo in (
+        "number",
+        "holder_name",
+        "expiration_month",
+        "expiration_year",
+        "cvv",
+    ):
+        assert f'appmax-form-element="{campo}"' in corpo
+
+
+def test_js_do_cartao_nao_envia_numero_cvv_valor_ou_produto_para_checkout():
+    with open("static/checkout/cartao.js", encoding="utf-8") as arquivo:
+        js = arquivo.read()
+    assert "AppmaxScripts.init" in js
+    assert "confirmarCartao" in js
+    assert "/cartao" in js
+    assert "/parcelas" in js
+    assert "total_cents" not in js
+    assert "amount_cents" not in js
+    assert "product" not in js.lower()
+    assert re.search(r"\bnumber\s*:", js) is None
+    assert re.search(r"\bcvv\s*:", js) is None
+
+
 def test_pagina_pix_de_pedido_de_cartao_e_404(client, api, rede, sessao_a):
     """Doutrina: dados/pix/cartão são ilhas — a página do método errado não
     pode nem renderizar o snapshot do pedido."""
