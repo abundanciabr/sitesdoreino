@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-162829-TAR-693-explicada",
+  "tarefa": "TAR-693",
+  "evento": "explicada",
+  "quando": "2026-09-24T16:28:29.427120+00:00",
+  "quem": "DECISAO-modelos-de-paginas-flp-0, frente 3; continuidade autorizada em 24/09/2026",
+  "o_que_e": "A pagina FLP pode ser publicada pelo catalogo, mas a equipe ainda nao tem formulario para escrever, conferir e publicar o rascunho.",
+  "o_que_muda": "A equipe abre uma lista, edita a FLP, confere a previa privada e publica sem misturar rascunho com a pagina visivel.",
+  "exemplo": "Ao salvar uma headline, o site continua igual; ao clicar Publicar, uma nova versao fica no ar e o gesto entra na auditoria.",
+  "importancia": 90
+}

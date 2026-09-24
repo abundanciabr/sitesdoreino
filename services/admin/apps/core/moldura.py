@@ -108,6 +108,7 @@ SECOES = (
     # "Menu do site", faria as duas parecerem configuração do mesmo assunto
     # (19/09/2026).
     ("pagina_de_venda", "Página de venda"),
+    ("modelos_de_paginas", "Modelos de páginas"),
     ("perpetuo", "Lançamento"),
     # "Placar", e não "Metas": é UMA meta por vez (4DX), e o que a tela mostra
     # é o número contra o alvo, não uma lista (03/09/2026).
