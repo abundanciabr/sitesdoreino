@@ -1,0 +1,19 @@
+{
+  "arquivo": "705-entregar-identificador-da-instalacao-appmax-ao-cartao",
+  "id": "TAR-705",
+  "titulo": "Entregar identificador da instalação Appmax ao cartão",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Ativador copia o identificador público para checkout.env e restaura env anterior em falha; testes e guarda do cartão verdes",
+  "despacho": "Ajuste o ativador sandbox para copiar APPMAX_EXTERNAL_ID público ao checkout.env com rollback; prove com testes e PR com recibo.",
+  "origem": "Pedido do mantenedor de concluir Appmax sandbox em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
