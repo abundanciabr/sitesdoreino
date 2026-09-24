@@ -5,8 +5,7 @@ from zipfile import ZipFile
 
 import httpx
 import pytest
-import re
-from io import BytesIOspx
+import respx
 from django.test import Client
 from django.urls import get_script_prefix, set_script_prefix
 
