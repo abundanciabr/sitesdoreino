@@ -312,3 +312,65 @@ def test_site_id_sem_forma_de_uuid_e_404_e_nao_500(client, token_valido, cenario
     )
 
     assert resp.status_code == 404
+
+
+def test_flp_usa_vocabulario_proprio_e_so_publica_com_gesto(client, token_valido):
+    site = Site.objects.create(host="flp.com.br", name="FLP", active=True)
+    rascunho = f"/api/catalogo/sites/{site.id}/paginas/flp-0/rascunho"
+    publicado = f"/api/catalogo/sites/{site.id}/paginas/flp-0"
+    corpo = {
+        "tipo": "flp",
+        "secoes": [
+            {"nome": "abertura", "ordem": 0, "slots": {"headline": "Comece aqui"}}
+        ],
+    }
+
+    gravado = _put(client, token_valido, rascunho, corpo)
+
+    assert gravado.status_code == 200, gravado.content
+    assert gravado.json()["tipo"] == "flp"
+    assert Page.objects.get(site=site, slug="flp-0").tipo == "flp"
+    assert _get(client, token_valido, publicado).status_code == 404
+
+    resposta = _post(client, token_valido, f"{publicado}/publicar")
+    assert resposta.status_code == 200, resposta.content
+    assert resposta.json()["tipo"] == "flp"
+    assert _get(client, token_valido, publicado).json()["tipo"] == "flp"
+
+
+def test_flp_recusa_secao_de_oferta_sem_criar_pagina(client, token_valido):
+    site = Site.objects.create(host="flp-invalida.com.br", name="FLP", active=True)
+
+    resposta = _put(
+        client,
+        token_valido,
+        f"/api/catalogo/sites/{site.id}/paginas/flp-0/rascunho",
+        {
+            "tipo": "flp",
+            "secoes": [{"nome": "cubo", "ordem": 0, "slots": {"headline": "Não cabe"}}],
+        },
+    )
+
+    assert resposta.status_code == 422
+    assert "abertura" in resposta.json()["detail"]
+    assert not Page.objects.filter(site=site, slug="flp-0").exists()
+
+
+def test_tipo_da_pagina_nao_muda_ao_salvar_outro_rascunho(client, token_valido):
+    site = Site.objects.create(host="tipo-fixo.com.br", name="FLP", active=True)
+    rota = f"/api/catalogo/sites/{site.id}/paginas/flp-0/rascunho"
+    original = {
+        "tipo": "flp",
+        "secoes": [{"nome": "abertura", "ordem": 0, "slots": {"headline": "Original"}}],
+    }
+    assert _put(client, token_valido, rota, original).status_code == 200
+
+    recusado = _put(client, token_valido, rota, {"secoes": []})
+
+    assert recusado.status_code == 422
+    assert "tipo" in recusado.json()["detail"]
+    assert (
+        _get(client, token_valido, rota).json()["secoes"][0]["slots"]["headline"]
+        == "Original"
+    )
+    assert Page.objects.get(site=site, slug="flp-0").tipo == "flp"

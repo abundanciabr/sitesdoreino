@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-152731-TAR-691-explicada",
+  "tarefa": "TAR-691",
+  "evento": "explicada",
+  "quando": "2026-09-24T15:27:31.887535+00:00",
+  "quem": "DECISAO-modelos-de-paginas-flp-0, frente 2; autorizacao do mantenedor em 24/09/2026",
+  "o_que_e": "Hoje o catalogo so aceita as secoes da pagina de oferta; um robo nao consegue salvar uma FLP.",
+  "o_que_muda": "O robo podera criar varias paginas FLP pelo primeiro salvamento, sem pedir intervencao, mantendo publicacao como gesto separado.",
+  "exemplo": "Ao salvar o rascunho flp-0 com tipo flp, o catalogo cria a pagina e devolve o rascunho; visitantes continuam sem ve-la ate publicar.",
+  "importancia": 90
+}

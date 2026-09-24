@@ -5,6 +5,7 @@
 # palavra: aqui o código é o espelho, e o contrato é a fonte.
 import datetime as dt
 import uuid
+from typing import Literal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -89,6 +90,10 @@ class PaginaPublicada(Schema):
         ...,
         description="Apelido da página dentro do site (ex. oferta); único por site",
     )
+    tipo: Literal["oferta", "flp"] = Field(
+        default_factory=lambda: "oferta",
+        description="Escolhe o vocabulário de seções da página. Ausente: oferta.",
+    )
     version: int = Field(
         ...,
         ge=1,
@@ -118,6 +123,10 @@ class RascunhoDaPagina(Schema):
 
     site_id: uuid.UUID
     slug: str
+    tipo: Literal["oferta", "flp"] = Field(
+        default_factory=lambda: "oferta",
+        description="Escolhe o vocabulário de seções da página. Ausente: oferta.",
+    )
     base_version: int = Field(
         ...,
         ge=0,
@@ -137,6 +146,10 @@ class CorpoDoRascunho(Schema):
     assim que o provedor consegue emitir uma referência só em vez de referência
     e objeto ao mesmo tempo."""
 
+    tipo: Literal["oferta", "flp"] = Field(
+        default_factory=lambda: "oferta",
+        description="Escolhe o vocabulário de seções da página. Ausente: oferta.",
+    )
     secoes: list[Secao]
 
 
@@ -210,7 +223,7 @@ def _oferta_padrao(site: Site) -> Offer:
     return oferta
 
 
-def _criar_pagina(site: Site, slug: str) -> Page:
+def _criar_pagina(site: Site, slug: str, tipo: str) -> Page:
     """Cria a página deste site, com o vínculo que o slug pede, uma vez só.
 
     **A unicidade é do banco, nunca de uma checagem em Python:** entre um
@@ -226,7 +239,7 @@ def _criar_pagina(site: Site, slug: str) -> Page:
     oferta = _oferta_padrao(site) if slug == SLUG_DA_OFERTA else None
     with transaction.atomic():
         pagina, _ = Page.objects.get_or_create(
-            site=site, slug=slug, defaults={"offer": oferta}
+            site=site, slug=slug, defaults={"offer": oferta, "tipo": tipo}
         )
         PageDraft.objects.get_or_create(page=pagina)
     return pagina
@@ -237,6 +250,7 @@ def _corpo_publicada(versao) -> dict:
         "id": versao.id,
         "site_id": versao.page.site_id,
         "slug": versao.page.slug,
+        "tipo": versao.page.tipo,
         "version": versao.version,
         "offer_slug": versao.page.offer.slug if versao.page.offer_id else "",
         "published_at": versao.published_at,
@@ -248,6 +262,7 @@ def _corpo_rascunho(rascunho) -> dict:
     return {
         "site_id": rascunho.page.site_id,
         "slug": rascunho.page.slug,
+        "tipo": rascunho.page.tipo,
         "base_version": rascunho.base_version,
         "secoes": rascunho.secoes,
         "atualizado_em": rascunho.atualizado_em,
@@ -343,15 +358,27 @@ def put_page_draft(request, site_id: str, slug: str, payload: CorpoDoRascunho):
     # Validar depois de criar deixaria `Page` órfã atrás de cada texto torto.
     site = _site(site_id)
     try:
-        secoes = normalizar_secoes([secao.model_dump() for secao in payload.secoes])
+        secoes = normalizar_secoes(
+            [secao.model_dump() for secao in payload.secoes], payload.tipo
+        )
     except ValidationError as erro:
         # A mensagem do vocabulário é escrita para quem está montando a página
         # ler na tela, então ela atravessa a fronteira em vez de virar um 422 mudo.
         raise HttpError(422, "; ".join(erro.messages))
 
+    if slug == SLUG_DA_OFERTA and payload.tipo != "oferta":
+        raise HttpError(
+            422, "a página 'oferta' deve ter tipo 'oferta'; use outro slug para a FLP"
+        )
+
     pagina = Page.objects.filter(site=site, slug=slug).first()
     if pagina is None:
-        pagina = _criar_pagina(site, slug)
+        pagina = _criar_pagina(site, slug, payload.tipo)
+    if pagina.tipo != payload.tipo:
+        raise HttpError(
+            422,
+            f"a página '{slug}' tem tipo '{pagina.tipo}'; envie esse tipo no rascunho ou use outro slug",
+        )
     # Página que já existe não tem a oferta trocada: o vínculo é decisão de quem
     # criou a página, e regravar texto não é motivo para mudar o que ela vende.
 
