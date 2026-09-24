@@ -1,0 +1,49 @@
+{
+  "arquivo": "20260924-031648-TAR-684-contrato_execucao",
+  "tarefa": "TAR-684",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-24T03:16:48.646050+00:00",
+  "quem": "agent/admin/modelo-flp-0",
+  "contrato": {
+    "plano": "Publicação do clone FLP",
+    "versao": 1,
+    "objetivo": "Publicar https://meshcraft.top/admin/modelos-de-paginas/flp-0",
+    "condicao_encerramento": "Página publicada e conferida no navegador com recursos e interações funcionais.",
+    "limites_autonomia": "Código admin, ambiente local, validação e fluxo de publicação autorizado. Sem compras ou inscrições.",
+    "acoes_do_mantenedor": "Nenhuma ação exigida no estado atual.",
+    "entregaveis": [
+      "Página completa no endereço solicitado"
+    ],
+    "escopo_incluido": [
+      "services/admin e registros obrigatórios do rito"
+    ],
+    "nao_objetivos": [
+      "Editar clone principal, outras sessões, oferta ou destino externo"
+    ],
+    "restricoes": [
+      "Autenticação preservada e scripts sem acesso à sessão"
+    ],
+    "decisoes_aprovadas": [
+      "Retomar bancada e PR 2018; publicar pelo fluxo existente"
+    ],
+    "etapas": [
+      "Retomar e conferir baseline",
+      "Implementar e validar",
+      "Integrar e publicar",
+      "Conferir endereço final"
+    ],
+    "criterios_entrada": [
+      "Baseline admin verde e clone local validado"
+    ],
+    "criterios_aceite": [
+      "Visual desktop e celular",
+      "Recursos carregados e formulário e FAQ operantes",
+      "Autenticação e sandbox testados"
+    ],
+    "evidencias_exigidas": [
+      "Suíte admin verde",
+      "Mutação do sandbox rejeitada",
+      "Publicação conferida no navegador"
+    ]
+  }
+}
