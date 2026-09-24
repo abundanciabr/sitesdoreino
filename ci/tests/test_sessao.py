@@ -646,6 +646,24 @@ def test_pr_integrado_com_fonte_indisponivel_recusa_sem_nova_aquisicao(monkeypat
     assert "fila.py pegar" not in "\n".join(mundo.chamadas)
 
 
+@pytest.mark.parametrize("medicao", [{}, "NÃO MEDIDO", {"estado": "NÃO MEDIDO"}])
+def test_pr_integrado_recusa_estado_da_entrega_nao_medido(monkeypatch, medicao):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+    )
+    _preparar_retomada_integrada(mundo, monkeypatch)
+    import estado_da_entrega
+    monkeypatch.setattr(estado_da_entrega, "consultar_entrega", lambda raiz, numero: medicao)
+
+    with pytest.raises(sessao.ErroDeSessao, match="fonte da entrega integrada indisponível") as erro:
+        mundo.sessao().rodar()
+
+    assert "não devolveu um estado medido" in erro.value.detalhe
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
 def test_pr_integrado_recusa_tar_divergente_do_evento_submetido(monkeypatch):
     mundo = MundoFalso(
         plano_de_teste(tarefa_da_fila="TAR-677"),
@@ -658,6 +676,34 @@ def test_pr_integrado_recusa_tar_divergente_do_evento_submetido(monkeypatch):
         mundo.sessao().rodar()
 
     assert "TAR recebida: TAR-677" in erro.value.detalhe
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_integrado_recusa_mesmo_numero_em_outro_repositorio(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+    )
+    mundo.existentes.add(_n(mundo.plano.worktree / ".git"))
+    mundo.saidas["worktree_list"] = (
+        f"worktree {mundo.plano.worktree.as_posix()}\n"
+        f"branch refs/heads/{mundo.plano.branch}\n"
+    )
+    import fila
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (
+            {"TAR-677": {"id": "TAR-677", "titulo": "L1", "toca": ["ci"]}},
+            [{"evento": "submetida", "tarefa": "TAR-677", "pr": "https://github.com/outro/projeto/pull/91"}],
+            {"modo": "origin-main-mais-local", "origin_main": "a" * 40},
+        ),
+    )
+
+    with pytest.raises(sessao.ErroDeSessao, match="não está submetido para a TAR"):
+        mundo.sessao().rodar()
+
     assert "fila.py pegar" not in "\n".join(mundo.chamadas)
 
 
@@ -697,6 +743,19 @@ def test_pr_list_falha_nao_vira_sem_pr_nem_autoriza_aquisicao():
     )
 
     with pytest.raises(sessao.ErroDeSessao, match="exit code 1"):
+        mundo.sessao().rodar()
+
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_list_item_invalido_nao_gera_attribute_error():
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list="[91]",
+    )
+
+    with pytest.raises(sessao.ErroDeSessao, match="identidade válida"):
         mundo.sessao().rodar()
 
     assert "fila.py pegar" not in "\n".join(mundo.chamadas)
@@ -743,7 +802,7 @@ def test_main_com_entrega_integrada_nao_manda_executar_o_brief(tmp_path, monkeyp
     monkeypatch.setattr(sessao, "celulas_declaradas", lambda _raiz: ["quiz"])
     monkeypatch.setattr(sessao, "Sessao", SessaoIntegrada)
     monkeypatch.setattr(sessao, "medir_fase", lambda *a, **k: None)
-    monkeypatch.setattr(sessao, "medir_tarefa_fase4", lambda *a, **k: None)
+    monkeypatch.setattr(sessao, "medir_tarefa_fase4", lambda *a, **k: pytest.fail("entrega integrada não abre fase 4 pendente"))
     monkeypatch.setattr(sessao, "emitir_contexto", lambda *a, **k: pytest.fail("entrega integrada não prepara contexto de implementação"))
 
     rc = sessao.main([

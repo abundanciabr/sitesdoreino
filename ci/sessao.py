@@ -1551,7 +1551,7 @@ class Sessao:
     @staticmethod
     def _mesmo_pr_submetido(valor: object, numero: int, url: str) -> bool:
         texto = str(valor or "").rstrip("/")
-        return texto == url.rstrip("/") or texto.endswith(f"/pull/{numero}")
+        return texto == url.rstrip("/")
 
     def _conferir_submissao_da_tarefa_integrada(self, passo: str, numero: int, url: str) -> None:
         tarefa = self.plano.tarefa_da_fila
@@ -1626,9 +1626,12 @@ class Sessao:
             )
         if not prs:
             return None
-        numero = prs[0].get("number")
-        url = str(prs[0].get("url") or "").rstrip("/")
-        estado_pr = prs[0].get("state")
+        pr = prs[0]
+        if not isinstance(pr, dict):
+            raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
+        numero = pr.get("number")
+        url = str(pr.get("url") or "").rstrip("/")
+        estado_pr = pr.get("state")
         if not isinstance(numero, int) or not url:
             raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
         if estado_pr == "OPEN":
@@ -1657,7 +1660,21 @@ class Sessao:
                         f"Erro: {erro}"
                     ),
                 ) from erro
-            estado_entrega = medicao.get("estado", "NÃO MEDIDO") if isinstance(medicao, dict) else "NÃO MEDIDO"
+            if (
+                not isinstance(medicao, dict)
+                or not isinstance(medicao.get("estado"), str)
+                or not medicao["estado"].strip()
+                or medicao["estado"].strip() == "NÃO MEDIDO"
+            ):
+                raise ErroDeSessao(
+                    passo,
+                    f"fonte da entrega integrada indisponível para o PR #{numero}",
+                    detalhe=(
+                        "estado_da_entrega não devolveu um estado medido. "
+                        f"Sem essa fonte, a sessão não autoriza nova aquisição de {tarefa} nem declara aceite."
+                    ),
+                )
+            estado_entrega = medicao["estado"].strip()
             self._pass(f"PR #{numero} integrado; entrega medida: {estado_entrega}")
             return (
                 f"PR #{numero} já integrado para {tarefa}. Estado da entrega: {estado_entrega}. "
@@ -1718,10 +1735,13 @@ class Sessao:
                 detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
             )
         if prs:
-            numero = prs[0].get("number")
+            pr = prs[0]
+            if not isinstance(pr, dict):
+                raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
+            numero = pr.get("number")
             if not isinstance(numero, int):
                 raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            estado_pr = prs[0].get("state", "OPEN")
+            estado_pr = pr.get("state", "OPEN")
             if estado_pr != "OPEN":
                 tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
                 if estado_pr == "MERGED":
@@ -2703,16 +2723,16 @@ def main(argv: list[str] | None = None) -> int:
     escrever_de_verdade(log_abertura, "\n".join(detalhes))
     print(f"Preparação concluída; log detalhado: {log_abertura}")
     medir_fase(plano, tentativa, "abertura", "concluido")
-    inicio_fase4 = datetime.now(timezone.utc).isoformat()
-    medir_tarefa_fase4(
-        plano, tentativa, estado="pendente", inicio=inicio_fase4,
-        fim=None, pr=None,
-    )
     print(moldura_da_declaracao(texto))
     entrega_integrada = "já integrado" in texto and "Estado da entrega:" in texto
     if entrega_integrada:
         print("Próxima ação autorizada: acompanhar a entrega integrada pelo comando acima; não execute o brief novamente sem nova tarefa.")
         return 0
+    inicio_fase4 = datetime.now(timezone.utc).isoformat()
+    medir_tarefa_fase4(
+        plano, tentativa, estado="pendente", inicio=inicio_fase4,
+        fim=None, pr=None,
+    )
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
         print("A prova da base está no log; mudanças da tarefa ainda exigem validação própria.")
