@@ -61,7 +61,6 @@ def conferir_site(pagamentos: dict[str, str]) -> str:
         for chave in (
             "APPMAX_MERCHANT_CLIENT_ID",
             "APPMAX_MERCHANT_CLIENT_SECRET",
-            "APPMAX_EXTERNAL_ID",
         )
     ):
         raise ParouPorSeguranca(
@@ -161,6 +160,36 @@ def recarregar(raiz: Path, ambiente: dict[str, str]) -> bool:
     )
 
 
+def consultar_instalacao(raiz: Path, ambiente: dict[str, str], site_id: str) -> str:
+    script = (
+        "from pagamentos.core.models import InstalacaoAppmax; "
+        "i = InstalacaoAppmax.objects.get(app_id='1888'); "
+        "assert i.alias == 'Meshcraft' and i.platform_site_ids == "
+        + repr([site_id])
+        + "; print(i.external_id)"
+    )
+    try:
+        resposta = compose(
+            raiz,
+            ambiente,
+            "exec",
+            "-T",
+            "pagamentos",
+            "python",
+            "manage.py",
+            "shell",
+            "-c",
+            script,
+        )
+        if resposta.returncode != 0:
+            raise ValueError("consulta recusada")
+        return str(uuid.UUID(resposta.stdout.strip()))
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        raise ParouPorSeguranca(
+            "instalação Appmax 1888 não confirmada no banco; nenhuma configuração foi alterada"
+        ) from None
+
+
 def executar(raiz: Path, ligar: bool) -> None:
     if not (raiz / "docker-compose.yml").is_file():
         raise ParouPorSeguranca(
@@ -177,13 +206,6 @@ def executar(raiz: Path, ligar: bool) -> None:
     site_id = conferir_site(pagamentos)
     conferir_travas(pagamentos, site_id, pagamentos_path.name)
     conferir_travas(checkout, site_id, checkout_path.name)
-    if checkout.get("APPMAX_EXTERNAL_ID", pagamentos["APPMAX_EXTERNAL_ID"]) not in (
-        "",
-        pagamentos["APPMAX_EXTERNAL_ID"],
-    ):
-        raise ParouPorSeguranca(
-            "checkout.env contém outra instalação Appmax; nenhuma configuração foi alterada"
-        )
     if not admin.get("ALUNOS_API_TOKEN") or not admin.get("TOKEN_CATALOGO"):
         raise ParouPorSeguranca(
             "tokens de operação do Compose ausentes em admin.env; nada foi alterado"
@@ -205,6 +227,17 @@ def executar(raiz: Path, ligar: bool) -> None:
         raise ParouPorSeguranca(
             "checkout, pagamentos ou consumidores não estão todos ativos; nada foi alterado"
         )
+    external_id = consultar_instalacao(raiz, ambiente, site_id)
+    if any(
+        valor not in ("", external_id)
+        for valor in (
+            pagamentos.get("APPMAX_EXTERNAL_ID", ""),
+            checkout.get("APPMAX_EXTERNAL_ID", ""),
+        )
+    ):
+        raise ParouPorSeguranca(
+            "env contém outra instalação Appmax; nenhuma configuração foi alterada"
+        )
     marca = str(time.time_ns())
     copias = [
         (caminho, caminho.with_name(caminho.name + ".bak-" + marca))
@@ -214,7 +247,7 @@ def executar(raiz: Path, ligar: bool) -> None:
         for caminho, copia in copias:
             shutil.copy2(caminho, copia)
         trocar_travas(pagamentos_path, site_id, ligar)
-        trocar_travas(checkout_path, site_id, ligar, pagamentos["APPMAX_EXTERNAL_ID"])
+        trocar_travas(checkout_path, site_id, ligar, external_id)
         if not recarregar(raiz, ambiente):
             raise ParouPorSeguranca("recriação das células falhou")
         alvo = site_id if ligar else ""
@@ -246,7 +279,7 @@ def executar(raiz: Path, ligar: bool) -> None:
             "python",
             "-c",
             "import os; assert os.environ.get('APPMAX_EXTERNAL_ID') == "
-            + repr(pagamentos["APPMAX_EXTERNAL_ID"] if ligar else ""),
+            + repr(external_id if ligar else ""),
         )
         if prova_id.returncode != 0:
             raise ParouPorSeguranca(
