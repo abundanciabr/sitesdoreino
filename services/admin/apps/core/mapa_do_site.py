@@ -146,6 +146,7 @@ AREAS = (
         (
             "/",
             "/oferta",
+            "/primeiros-dolares-com-roblox",
             "/flp-0",
             "/series-flp-gpt",
             "/cadastro",
