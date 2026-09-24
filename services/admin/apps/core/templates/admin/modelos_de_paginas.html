@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Modelos de páginas | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro copy">
+  {% if lista %}
+  <h1>Modelos de páginas</h1>
+  <p class="subtitulo">Crie o texto, veja a prévia e publique cada página quando estiver pronta.</p>
+  <div class="cartao">
+    <h2>Fórmula de Lançamento Pago</h2>
+    <p><a href="{% url 'modelo_flp_editar' %}">Editar esta página</a> · <a href="{% url 'modelo_flp' %}">Ver a referência fechada</a></p>
+  </div>
+  {% else %}
+  <h1>{% if previa %}Prévia privada{% else %}Fórmula de Lançamento Pago{% endif %}</h1>
+  <p class="subtitulo"><a href="{% url 'modelos_de_paginas' %}">Voltar aos modelos</a> · <a href="{% url 'modelo_flp' %}">Ver a referência fechada</a></p>
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+  {% if estado == 'salvo' %}<p class="recado">Rascunho salvo. A página pública continua como estava.</p>{% endif %}
+  {% if estado == 'publicado' %}<p class="recado">Versão publicada. <a href="/flp-0">Abrir a página pública</a>.</p>{% endif %}
+  {% if secoes %}
+    {% if previa %}
+      <p class="lei">Esta é a prévia do rascunho. Abrir esta tela não publica nada.</p>
+      {% for secao in secoes %}{% if secao.preenchida %}
+      <section class="cartao"><h2>{{ secao.titulo }}</h2>
+        {% for campo in secao.campos %}{% if campo.valor %}<p><b>{{ campo.titulo }}:</b> {{ campo.valor|linebreaksbr }}</p>{% endif %}{% endfor %}
+      </section>
+      {% endif %}{% endfor %}
+      <p><a href="{% url 'modelo_flp_editar' %}">Voltar à edição</a></p>
+    {% else %}
+      <p class="lei">Salvar guarda o rascunho e não muda o site. Publicar cria uma nova versão pública. {% if versao %}No ar: versão {{ versao }}.{% else %}Esta página ainda não foi publicada.{% endif %}</p>
+      <form method="post" action="{% url 'modelo_flp_salvar' %}">{% csrf_token %}
+        {% for secao in secoes %}
+        <section class="cartao"><h2>{{ secao.titulo }}</h2>
+          {% for campo in secao.campos %}
+          <p><label for="{{ campo.chave }}">{{ campo.titulo }}</label><br>
+          <textarea id="{{ campo.chave }}" name="{{ campo.chave }}" rows="3">{{ campo.valor }}</textarea></p>
+          {% endfor %}
+        </section>
+        {% endfor %}
+        <button type="submit">Salvar rascunho</button>
+      </form>
+      <p><a href="{% url 'modelo_flp_previa' %}">Ver prévia privada do rascunho salvo</a></p>
+      <form method="post" action="{% url 'modelo_flp_publicar' %}">{% csrf_token %}<button type="submit">Publicar a versão salva</button></form>
+    {% endif %}
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
