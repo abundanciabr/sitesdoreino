@@ -367,6 +367,26 @@ VERIFICACOES_OBRIGATORIAS_DA_CELULA = (
 )
 
 
+def verificacoes_da_celula(destino: Path, celula: str) -> tuple[VerificacaoDeCelula, ...]:
+    """Retorna a definição única da célula e seus portões específicos.
+
+    Os cinco portões de base correspondem aos alvos históricos dos Makefiles.
+    O cross-smoke entra somente em pagamentos. As células não declaram
+    `manage.py check` nem `makemigrations --check` nos Makefiles atuais, então
+    esses comandos não são inventados nesta entrega.
+    """
+    verificacoes = list(VERIFICACOES_OBRIGATORIAS_DA_CELULA)
+    if celula == "pagamentos":
+        verificacoes.append(
+            VerificacaoDeCelula(
+                "e2e/cross-smoke",
+                None,
+                "cross-smoke Pix↔Cartão reprovou",
+            )
+        )
+    return tuple(verificacoes)
+
+
 def _cancelado(codigo: int) -> bool:
     return codigo in (-2, -15, 130, 3221225786)
 
@@ -437,7 +457,69 @@ def _rodar_comando_da_celula(
     )
 
 
-def rodar_celula(raiz: Path, celula: str) -> Relatorio:
+def _marcadores_do_cross_smoke(
+    raiz: Path, base: str | None
+) -> tuple[tuple[str, ...], Resultado | None]:
+    """Calcula os testes complementares sem depender de um shell."""
+    if not base:
+        return ("smoke_pix", "smoke_card"), None
+    try:
+        execucao = executar(
+            [
+                "git",
+                "diff",
+                "--name-only",
+                f"{base}...HEAD",
+                "--",
+                "services/pagamentos",
+            ],
+            cwd=raiz,
+            descricao=f"calcular diff do cross-smoke contra '{base}'",
+            exigir_stdout=False,
+        )
+    except ErroDeInstrumentacao as erro:
+        return (), Resultado.de_erro("celula/pagamentos/e2e/cross-smoke", erro)
+    arquivos = tuple(ln.strip() for ln in execucao.stdout.splitlines() if ln.strip())
+    if not arquivos:
+        return (), Resultado(
+            "celula/pagamentos/e2e/cross-smoke",
+            Estado.SKIP,
+            "pagamentos não foi tocado no diff medido",
+        )
+    marcadores: list[str] = []
+    if any("methods/pix" in arquivo for arquivo in arquivos):
+        marcadores.append("smoke_card")
+    if any("methods/card" in arquivo for arquivo in arquivos):
+        marcadores.append("smoke_pix")
+    if any(
+        trecho in arquivo
+        for arquivo in arquivos
+        for trecho in (
+            "services/pagamentos/core/",
+            "services/pagamentos/providers/",
+            "services/pagamentos/api/",
+        )
+    ):
+        marcadores = ["smoke_pix", "smoke_card"]
+    if not marcadores:
+        marcadores = ["smoke_pix", "smoke_card"]
+    return tuple(marcadores), None
+
+
+def _rodar_cross_smoke(raiz: Path, base: str | None) -> Resultado:
+    marcadores, resultado = _marcadores_do_cross_smoke(raiz, base)
+    if resultado is not None:
+        return resultado
+    expressao = " or ".join(marcadores)
+    verificacao = VerificacaoDeCelula(
+        "e2e/cross-smoke",
+        (sys.executable, "-m", "pytest", "-m", expressao, "-q"),
+        "cross-smoke Pix↔Cartão reprovou",
+    )
+    return _rodar_comando_da_celula(verificacao, raiz / "services" / "pagamentos", 1800)
+
+
+def rodar_celula(raiz: Path, celula: str, base: str | None = None) -> Relatorio:
     """Executa a Definição de Pronto da célula sem depender de make ou shell."""
     relatorio = Relatorio(f"CI da célula {celula}")
     destino = raiz / "services" / celula
@@ -452,7 +534,7 @@ def rodar_celula(raiz: Path, celula: str) -> Relatorio:
         )
         return relatorio
 
-    for verificacao in VERIFICACOES_OBRIGATORIAS_DA_CELULA:
+    for verificacao in verificacoes_da_celula(destino, celula):
         if verificacao.requer_arquivo and not (
             destino / verificacao.requer_arquivo
         ).is_file():
@@ -486,6 +568,9 @@ def rodar_celula(raiz: Path, celula: str) -> Relatorio:
                         resultado.detalhe,
                     )
                 )
+            continue
+        if verificacao.nome == "e2e/cross-smoke":
+            relatorio.registrar(_rodar_cross_smoke(raiz, base))
             continue
         relatorio.registrar(_rodar_comando_da_celula(verificacao, destino, 1800))
     return relatorio
@@ -524,9 +609,15 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
 PORTOES = ("freeze", "muralhas", "guardas", "testador")
 
 
-def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relatorio:
+def rodar(
+    apenas: list[str] | None = None,
+    celula: str | None = None,
+    base: str | None = None,
+) -> Relatorio:
     relatorio = Relatorio("SITE DO REINO — CI LOCAL (runner canônico)")
-    escolhidos = apenas or list(PORTOES)
+    escolhidos = list(PORTOES) if apenas is None else list(apenas)
+    somente_celula = "celula" in escolhidos
+    escolhidos = [p for p in escolhidos if p != "celula"]
 
     try:
         raiz = raiz_do_repo()
@@ -558,8 +649,16 @@ def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relator
     if "testador" in escolhidos:
         relatorio.registrar(rodar_testes_do_testador(raiz))
     if celula:
-        for resultado in rodar_celula(raiz, celula).resultados:
+        for resultado in rodar_celula(raiz, celula, base=base).resultados:
             relatorio.registrar(resultado)
+    elif somente_celula:
+        relatorio.registrar(
+            Resultado(
+                "celula",
+                Estado.ERROR,
+                "a seleção `celula` exige `--celula <nome>`",
+            )
+        )
     return relatorio
 
 
@@ -571,10 +670,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--apenas",
         default="",
-        help=f"portões separados por vírgula ({', '.join(PORTOES)})",
+        help=f"portões separados por vírgula ({', '.join(PORTOES)}; celula)",
     )
     parser.add_argument(
-        "--celula", default=None, help="também roda o `make ci` da célula"
+        "--celula", default=None, help="roda a definição completa da célula"
     )
     parser.add_argument("--listar", action="store_true", help="lista os portões e sai")
     parser.add_argument(
@@ -627,7 +726,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     apenas = [p.strip() for p in args.apenas.split(",") if p.strip()] or None
-    relatorio = rodar(apenas=apenas, celula=args.celula)
+    if "celula" in (apenas or []) and not args.celula:
+        parser.error("--apenas celula exige --celula <nome>")
+    relatorio = rodar(apenas=apenas, celula=args.celula, base=args.base)
     print(relatorio.render())
     return relatorio.exit_code
 

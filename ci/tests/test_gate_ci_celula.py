@@ -300,6 +300,186 @@ def test_a_matriz_sai_da_lista_detectada():
     )
 
 
+def test_workflow_delega_a_validacao_da_celula_ao_runner_python():
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    scripts = "\n".join(
+        passo["run"]
+        for passo in doc["jobs"]["rodar"]["steps"]
+        if "run" in passo
+    )
+    assert "python ci/ci.py --apenas celula --celula" in scripts
+    assert "make -C" not in scripts
+    assert "cross-smoke.sh" not in scripts
+
+
+def test_catalogo_deixa_o_cross_smoke_na_mesma_definicao():
+    pagamentos = runner_ci.verificacoes_da_celula(
+        Path("services/pagamentos"), "pagamentos"
+    )
+    catalogo = runner_ci.verificacoes_da_celula(
+        Path("services/catalogo"), "catalogo"
+    )
+    assert pagamentos[-1].nome == "e2e/cross-smoke"
+    assert all(verificacao.nome != "e2e/cross-smoke" for verificacao in catalogo)
+
+
+def test_cross_smoke_reprova_se_o_git_nao_medir_o_diff(monkeypatch, tmp_path):
+    def git_quebrado(*args, **kwargs):
+        raise runner_ci.ErroDeInstrumentacao("git indisponível", "diff não medido")
+
+    monkeypatch.setattr(runner_ci, "executar", git_quebrado)
+    resultado = runner_ci._rodar_cross_smoke(tmp_path, "origin/main")
+    assert resultado.estado is Estado.ERROR
+    assert "não medido" in resultado.detalhe
+
+
+def test_makefiles_preservam_os_portoes_que_o_catalogo_python_mede():
+    makefiles = sorted((WORKFLOW.parents[2] / "services").glob("*/Makefile"))
+    assert makefiles
+    for makefile in makefiles:
+        _assert_makefile_equivalente_ao_catalogo_python(
+            makefile.read_text(encoding="utf-8"), origem=str(makefile)
+        )
+
+
+def test_makefile_com_alvo_obrigatorio_extra_exige_catalogo_python_equivalente():
+    texto = (WORKFLOW.parents[2] / "services" / "catalogo" / "Makefile").read_text(
+        encoding="utf-8"
+    )
+    mutante = texto.replace(
+        "ci: lint type test contrato-check",
+        "ci: lint type test contrato-check seguranca",
+    )
+
+    with pytest.raises(AssertionError, match="dependências exatas"):
+        _assert_makefile_equivalente_ao_catalogo_python(mutante, origem="mutante")
+
+
+@pytest.mark.parametrize(
+    "mutacao",
+    [
+        lambda texto: texto.replace(
+            "black --check .",
+            "black --check .\n\tpython seguranca.py",
+        ),
+        lambda texto: texto.replace(
+            "\t@if [ -f .importlinter ]; then lint-imports; fi\n",
+            "",
+        ),
+        lambda texto: texto.replace(
+            "python -m pytest -q",
+            "pytest -q",
+        ),
+    ],
+    ids=("comando-extra", "comando-omitido", "comando-trocado"),
+)
+def test_makefile_com_receita_obrigatoria_alterada_reprova(mutacao):
+    texto = (WORKFLOW.parents[2] / "services" / "catalogo" / "Makefile").read_text(
+        encoding="utf-8"
+    )
+
+    with pytest.raises(AssertionError, match="receita exata"):
+        _assert_makefile_equivalente_ao_catalogo_python(
+            mutacao(texto), origem="mutante"
+        )
+
+
+def _assert_makefile_equivalente_ao_catalogo_python(texto: str, origem: str) -> None:
+    receitas = _receitas_do_makefile(texto)
+    dependencias = _dependencias_do_alvo_ci(receitas, origem)
+    esperadas = tuple(
+        verificacao.nome
+        for verificacao in runner_ci.VERIFICACOES_OBRIGATORIAS_DA_CELULA
+    )
+    alvos_equivalentes = {
+        "lint": ("lint/black", "lint/import-linter"),
+        "type": ("type/mypy",),
+        "test": ("test/pytest",),
+        "contrato-check": ("contrato/freeze",),
+    }
+    assert dependencias == tuple(alvos_equivalentes), (
+        f"{origem}: dependências exatas do alvo ci divergem do catálogo Python; "
+        f"make={dependencias}, esperado={tuple(alvos_equivalentes)}"
+    )
+    medidos_pelo_make = tuple(
+        item for alvo in dependencias for item in alvos_equivalentes[alvo]
+    )
+    assert medidos_pelo_make == esperadas, (
+        f"{origem}: dependências exatas do alvo ci divergem do catálogo Python; "
+        f"make={dependencias}, catálogo={esperadas}"
+    )
+    receitas_autorizadas = {
+        "lint": (
+            (
+                "black --check .",
+                "@if [ -f .importlinter ]; then lint-imports; fi",
+            ),
+            (
+                "black --check .",
+                "$(if $(wildcard .importlinter),lint-imports)",
+            ),
+        ),
+        "type": (
+            (
+                '@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi',
+            ),
+            (
+                '$(if $(wildcard mypy.ini),mypy .,@echo "ℹ sem mypy nesta célula")',
+            ),
+        ),
+        "test": (("python -m pytest -q",),),
+        "contrato-check": (
+            ("bash ../../ci/freeze-de-contrato.sh $(CELULA)",),
+            (
+                'python ../../ci/contract_freeze.py $(CELULA) && echo "✅ ci/contract_freeze.py: portão verificado (adaptador: ci/freeze-de-contrato.sh)"',
+            ),
+        ),
+    }
+    for alvo, autorizadas in receitas_autorizadas.items():
+        assert receitas.get(alvo) in autorizadas, (
+            f"{origem}: receita exata de {alvo} diverge do catálogo Python; "
+            f"make={receitas.get(alvo)}, autorizado={autorizadas}"
+        )
+
+
+def _dependencias_do_alvo_ci(
+    receitas: dict[str, tuple[str, ...]], origem: str
+) -> tuple[str, ...]:
+    for linha in receitas.get("ci", ()):
+        if linha.startswith("@echo "):
+            continue
+        raise AssertionError(f"{origem}: receita exata de ci contém comando estranho")
+    cabecalho = receitas.get("__ci_deps__")
+    if cabecalho is not None:
+        return cabecalho
+    raise AssertionError(f"{origem}: alvo ci ausente")
+
+
+def _receitas_do_makefile(texto: str) -> dict[str, tuple[str, ...]]:
+    receitas: dict[str, list[str]] = {}
+    alvo_atual: str | None = None
+    for bruto in texto.splitlines():
+        linha = bruto.rstrip()
+        if not linha or linha.lstrip().startswith("#"):
+            continue
+        if not linha.startswith(("\t", " ")):
+            alvo_atual = None
+            if ":" not in linha or linha.startswith(".PHONY:"):
+                continue
+            alvo, resto = linha.split(":", 1)
+            alvo = alvo.strip()
+            if not alvo:
+                continue
+            alvo_atual = alvo
+            receitas.setdefault(alvo, [])
+            if alvo == "ci":
+                receitas["__ci_deps__"] = resto.split()
+            continue
+        if alvo_atual is not None:
+            receitas.setdefault(alvo_atual, []).append(linha.strip())
+    return {alvo: tuple(linhas) for alvo, linhas in receitas.items()}
+
+
 def _raiz_com_celula(tmp_path: Path, celula: str = "catalogo") -> Path:
     raiz = tmp_path
     destino = raiz / "services" / celula

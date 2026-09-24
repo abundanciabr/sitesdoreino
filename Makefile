@@ -88,9 +88,9 @@ economia:       ## make economia TIPO=revisao OBJETIVO="..." ALVO=ci/x.py [ARMAD
 indice:         ## regenera armadilhas/INDICE.md (rode ao criar uma entrada nova)
 	$(PYTHON) ci/indice_de_armadilhas.py
 
-celula:         ## make celula CELULA=pagamentos
+celula:         ## make celula CELULA=pagamentos [BASE_REF=origin/main]
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
-	$(PYTHON) ci/ci.py --celula $(CELULA)
+	$(PYTHON) ci/ci.py --apenas celula --celula $(CELULA) $(if $(BASE_REF),--base $(BASE_REF))
 
 mergear:        ## make mergear PR=22: confere os portões; integração pertence à pista
 	@test -n "$(PR)" || { echo "ERROR: informe PR=<numero>"; exit 2; }
