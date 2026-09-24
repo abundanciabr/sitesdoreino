@@ -109,4 +109,5 @@ def test_flp_respeita_caminho_localizado_do_site(client, rede):
     resposta = client.get(caminho_mesh("pt-br", "/flp-0"), HTTP_HOST=HOST_MESH)
 
     assert resposta.status_code == 200
-    assert "Comece seu negócio digital" in resposta.content.decode()
+    assert "inscrições não estão disponíveis" in resposta.content.decode()
+    assert "Comece seu negócio digital" not in resposta.content.decode()

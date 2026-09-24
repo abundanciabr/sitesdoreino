@@ -1,5 +1,10 @@
 from django.urls import path, re_path
 
+from apps.core.modelo_flp import (
+    modelo_flp_conteudo,
+    modelo_flp_imagem,
+    modelo_flp_publico,
+)
 from apps.core.modelo_series_flp import modelo_series_flp, modelo_series_flp_conteudo
 from apps.core.views import (
     cadastro,
@@ -14,7 +19,6 @@ from apps.core.views import (
     manifesto_do_app,
     notificacoes,
     pagina_de_oferta,
-    pagina_flp,
     service_worker,
     servir_estatico,
     sitemap_xml,
@@ -72,7 +76,9 @@ urlpatterns = [
     # idioma, entao nao colide com a matriz do resolver
     # (`ci/tests/test_rotas_sem_forma_de_locale.py`).
     path("oferta", pagina_de_oferta, name="pagina_de_oferta"),
-    path("flp-0", pagina_flp, name="pagina_flp"),
+    path("flp-0", modelo_flp_publico, name="pagina_flp"),
+    path("flp-0/conteudo", modelo_flp_conteudo, name="modelo_flp_conteudo"),
+    path("flp-0/og.jpg", modelo_flp_imagem, name="modelo_flp_imagem"),
     path("series-flp-gpt", modelo_series_flp, name="modelo_series_flp"),
     path(
         "series-flp-gpt/conteudo",
