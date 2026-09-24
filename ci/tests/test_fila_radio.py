@@ -2,12 +2,13 @@ import importlib.util
 import json
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.request import OpenerDirector
 
 import pytest
 import fila
 from test_fila import (
-    args_de_submeter, carregar, evento, montar, tarefa,
+    _git, _init_bare_main, args_de_submeter, carregar, evento, montar, tarefa,
     test_criar_grava_a_tarefa_E_a_explicacao_dela as criar_tarefa,
 )
 
@@ -58,13 +59,27 @@ def test_concluir_destrava_dependencia_sem_emitir(tmp_path, capsys):
 
 
 def test_submissao_preserva_idempotencia_sem_emitir(tmp_path, monkeypatch, capsys):
-    montar(tmp_path, [tarefa()], [evento()])
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()], [evento()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+    casa = tmp_path / "home"
+    casa.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: casa)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *args: None)
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: None)
     args = args_de_submeter()
-    assert fila.cmd_submeter(tmp_path, args) == 0
-    assert fila.cmd_submeter(tmp_path, args) == 0
-    tarefas, eventos, erros = carregar(tmp_path)
+    assert fila.cmd_submeter(repo, args) == 0
+    assert fila.cmd_submeter(repo, args) == 0
+    tarefas, eventos, erros = carregar(repo)
     assert erros == []
     assert len([e for e in eventos if e["evento"] == "submetida"]) == 1
     assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.EM_EXECUCAO
