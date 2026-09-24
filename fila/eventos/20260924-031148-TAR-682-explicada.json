@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031148-TAR-682-explicada",
+  "tarefa": "TAR-682",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:11:48.777058+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-681",
+  "o_que_e": "O caminho só prova valor quando outro robô o usa em tarefas reais e atravessa retomada, falha e aceite.",
+  "o_que_muda": "A casa sabe se o fluxo funciona fora do cenário descartável e enxerga exatamente o que ainda não foi medido.",
+  "exemplo": "Uma tarefa de infraestrutura sem contêiner é aberta, interrompida, retomada e fechada com a prova real do destino.",
+  "importancia": 90
+}

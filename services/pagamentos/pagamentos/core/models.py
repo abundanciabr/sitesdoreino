@@ -21,7 +21,7 @@ from typing import Any
 
 import redis
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -339,6 +339,42 @@ class InstalacaoAppmax(models.Model):
         return f"appmax:{self.app_id}:{self.alias}"
 
 
+class AppmaxWebhookInbox(models.Model):
+    """Aviso Appmax persistido sem interpretar o estado financeiro do corpo."""
+
+    app_id = models.CharField(max_length=64)
+    appmax_site_id = models.CharField(max_length=64)
+    platform_site_id = models.CharField(max_length=255)
+    event = models.CharField(max_length=100)
+    event_type = models.CharField(max_length=50)
+    external_order_id = models.CharField(max_length=255)
+    payload = models.JSONField()
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
+    dead_lettered_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=120, blank=True, default="")
+    operational_action = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "app_id",
+                    "appmax_site_id",
+                    "event",
+                    "event_type",
+                    "external_order_id",
+                ],
+                name="appmax_aviso_unico",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"appmax:{self.event}:{self.external_order_id}"
+
+
 class OutboxEvent(models.Model):
     """[RECEITA:R3 v1] Uma linha por evento emitido. `emitir()` grava SEMPRE na
     MESMA transação da mudança de estado que a justifica (INV-P6) — o relay
@@ -378,34 +414,37 @@ def emitir(event: str, data: dict[str, Any], *, version: int = 1) -> OutboxEvent
 
 
 def relay_outbox() -> int:
-    """[RECEITA:R3 v1] Publica os eventos pendentes em `eventos.<nome>` no Redis
-    Streams e marca `published_at`. Chamada via `transaction.on_commit` logo após
-    a transação que gravou o evento (latência sub-segundo). Nesta fase do
-    esqueleto não há worker/periodic task de "rede de segurança" (Huey) — ver
-    LICOES.md; a função é idempotente e segura de chamar de novo manualmente
-    (um evento com `published_at` preenchido é ignorado pelo filtro abaixo)."""
-    pendentes = list(
-        OutboxEvent.objects.filter(published_at__isnull=True).order_by("id")[:200]
-    )
-    if not pendentes:
-        return 0
-    cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
+    """Publica a outbox; uma repetição após queda não duplica o stream."""
     publicados = 0
-    for evento in pendentes:
-        envelope = {
-            "event": evento.event,
-            "version": evento.version,
-            "event_id": str(evento.event_id),
-            "occurred_at": evento.occurred_at.isoformat(),
-            "data": evento.payload,
-        }
-        cliente.xadd(
-            f"eventos.{evento.event}",
-            {"json": json.dumps(envelope, ensure_ascii=False)},
+    with transaction.atomic():
+        pendentes = (
+            OutboxEvent.objects.select_for_update(skip_locked=True)
+            .filter(published_at__isnull=True)
+            .order_by("id")[:200]
         )
-        evento.published_at = timezone.now()
-        evento.save(update_fields=["published_at"])
-        publicados += 1
+        if not pendentes:
+            return 0
+        cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
+        for evento in pendentes:
+            envelope = {
+                "event": evento.event,
+                "version": evento.version,
+                "event_id": str(evento.event_id),
+                "occurred_at": evento.occurred_at.isoformat(),
+                "data": evento.payload,
+            }
+            cliente.eval(
+                "if redis.call('EXISTS', KEYS[1]) == 1 then return 0 end "
+                "redis.call('XADD', KEYS[2], '*', 'json', ARGV[1]) "
+                "redis.call('SET', KEYS[1], '1') return 1",
+                2,
+                f"outbox.publicada.{evento.event_id}",
+                f"eventos.{evento.event}",
+                json.dumps(envelope, ensure_ascii=False),
+            )
+            evento.published_at = timezone.now()
+            evento.save(update_fields=["published_at"])
+            publicados += 1
     return publicados
 
 

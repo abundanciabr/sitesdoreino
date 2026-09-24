@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-042011-TAR-563-concluida",
+  "tarefa": "TAR-563",
+  "evento": "concluida",
+  "quando": "2026-09-24T04:20:11.093933+00:00",
+  "quem": "agent/e2e/appmax-regressao-cruzada",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2022",
+  "verificado_em": "2026-09-24"
+}

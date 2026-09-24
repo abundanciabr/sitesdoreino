@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-030621-TAR-561-concluida",
+  "tarefa": "TAR-561",
+  "evento": "concluida",
+  "quando": "2026-09-24T03:06:21.956559+00:00",
+  "quem": "agent/pagamentos/appmax-e2e-sandbox",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2019",
+  "verificado_em": "2026-09-24"
+}

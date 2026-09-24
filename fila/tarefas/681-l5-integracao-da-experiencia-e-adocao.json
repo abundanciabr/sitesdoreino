@@ -1,0 +1,24 @@
+{
+  "arquivo": "681-l5-integracao-da-experiencia-e-adocao",
+  "id": "TAR-681",
+  "titulo": "L5 integração da experiência e adoção",
+  "toca": [
+    "ci",
+    "docs/decisoes",
+    ".codex"
+  ],
+  "depende_de": [
+    "TAR-679",
+    "TAR-680"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Abertura, retomada, execução e validação percorrem uma entrada oficial; mensagens, cache, documentação e adoção convergem; métricas comparáveis registram comandos, consultas e tempo.",
+  "despacho": "L5 do brief. Integrar a experiência completa usando L3 e L4, atualizar entradas e mensagens que ainda ensinam ambiente manual, e medir abertura fria, cache e retomada. Reusar fila, reservas, livro, mapas e mecanismos existentes; não criar status ou inventário paralelo.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-679 e TAR-680",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

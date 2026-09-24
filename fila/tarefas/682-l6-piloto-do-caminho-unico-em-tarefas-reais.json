@@ -1,0 +1,22 @@
+{
+  "arquivo": "682-l6-piloto-do-caminho-unico-em-tarefas-reais",
+  "id": "TAR-682",
+  "titulo": "L6 piloto do caminho único em tarefas reais",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-681"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Pilotos autorizados cobrem serviço, célula com validação diferente, infraestrutura sem contêiner, interrupção retomada, falha de instrumento recuperada e entrega acompanhada até aceite; lacunas ficam explícitas.",
+  "despacho": "L6 do brief. Executar pilotos somente em tarefas reais já autorizadas, sem disputar reservas alheias nem alterar produto para simular. Medir cada etapa e registrar quando um piloto não tiver tarefa elegível ou aceite externo.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-681",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

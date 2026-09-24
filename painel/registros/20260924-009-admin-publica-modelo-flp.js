@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-009-admin-publica-modelo-flp",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "admin: publica modelo FLP",
+  detalhe: "Clone completo na administração, com scripts em origem opaca e recursos incorporados. Publicação exige conferência separada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2018. Validação local: árvore 1a5727f191116702864682ea2a978ff490f1290b; commit 79a25e96da2da0e1ccc60f83c37b616dc426b08b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-684",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

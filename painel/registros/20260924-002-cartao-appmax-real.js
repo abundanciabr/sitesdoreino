@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-002-cartao-appmax-real",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Cartão Appmax real",
+  detalhe: "Cartão Appmax real: SDK na página, Pix isolado e confirmação só com token/IP/titular/parcela. Provas: Black checkout, pytest checkout completo com Postgres+Redis e contract_freeze checkout.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2012. Validação local: árvore aa79b0feae318ae718b09eb3824bb1dff7eba331; commit f592d4a24df3fb03ba872da8d57dd1facebfc1bb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-615",
+  gravidade: "verde",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

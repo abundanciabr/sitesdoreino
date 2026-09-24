@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-012-pagamentos-prova-isolamento-cruzado-pix-e-appmax",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "pagamentos: prova isolamento cruzado Pix e Appmax",
+  detalhe: "Guarda cross-smoke cobre a independência operacional entre Mercado Pago e Appmax, incluindo quedas de fornecedor e rollback da trava do cartão com reconciliação terminal.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2022. Validação local: árvore e828d5a80de207a930c2b852a4cb7dde61ad31e2; commit a612a713d2feea9866b46e88eec96cb1254bf717; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-563",
+  gravidade: "verde",
+  frente: "vender",
+  area: "e2e",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

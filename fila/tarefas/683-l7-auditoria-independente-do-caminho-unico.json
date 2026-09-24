@@ -1,0 +1,22 @@
+{
+  "arquivo": "683-l7-auditoria-independente-do-caminho-unico",
+  "id": "TAR-683",
+  "titulo": "L7 auditoria independente do caminho único",
+  "toca": [
+    "ci",
+    "docs/decisoes"
+  ],
+  "depende_de": [
+    "TAR-682"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Auditor que não implementou os lotes reproduz cenários e confere revisão, provas, Windows, CI, retomada, concorrência, cache, falhas e integração, registrando achados e nova medição das correções.",
+  "despacho": "L7 do brief. Auditar de forma independente a revisão final dos lotes, sem aceitar declarações do executor como prova. Conferir cada R1 a R8, reproduzir cenários obrigatórios, registrar achados com impacto e correção, e repetir medições após cada correção.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-682",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

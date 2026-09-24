@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-024631-TAR-560-concluida",
+  "tarefa": "TAR-560",
+  "evento": "concluida",
+  "quando": "2026-09-24T02:46:31.190265+00:00",
+  "quem": "agent/infra/worker-appmax-dormente",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2016",
+  "verificado_em": "2026-09-24"
+}
