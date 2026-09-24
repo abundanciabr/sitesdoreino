@@ -228,13 +228,7 @@ def executar(raiz: Path, ligar: bool) -> None:
             "checkout, pagamentos ou consumidores não estão todos ativos; nada foi alterado"
         )
     external_id = consultar_instalacao(raiz, ambiente, site_id)
-    if any(
-        valor not in ("", external_id)
-        for valor in (
-            pagamentos.get("APPMAX_EXTERNAL_ID", ""),
-            checkout.get("APPMAX_EXTERNAL_ID", ""),
-        )
-    ):
+    if checkout.get("APPMAX_EXTERNAL_ID", "") not in ("", external_id):
         raise ParouPorSeguranca(
             "env contém outra instalação Appmax; nenhuma configuração foi alterada"
         )

@@ -53,6 +53,11 @@ def preparar(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_liga_e_desliga_so_o_site_instalado(tmp_path, monkeypatch, capsys):
     raiz = preparar(tmp_path, monkeypatch)
+    pagamentos = raiz / "env/pagamentos.env"
+    pagamentos.write_text(
+        PAGAMENTOS.replace("APPMAX_EXTERNAL_ID=", "APPMAX_EXTERNAL_ID=legado-ignorado"),
+        encoding="utf-8",
+    )
     ativacao.executar(raiz, ligar=True)
     for nome in ("pagamentos", "checkout"):
         texto = (raiz / f"env/{nome}.env").read_text(encoding="utf-8")
