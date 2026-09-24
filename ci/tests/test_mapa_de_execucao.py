@@ -922,6 +922,7 @@ def test_reserva_ativa_da_bancada_externa_e_reconciliada(
     servidor = tmp_path / "servidor.git"
     git(caso[1], "init", "--bare", str(servidor))
     git(caso[1], "remote", "add", "origin", str(servidor))
+    git(caso[1], "push", "-u", "origin", "main")
     ganhou, _ = caso[0].reservar.reservar_intencao(
         bancada if dono_legitimo else caso[1], "tarefa-TAR-001", "Prova local isolada"
     )

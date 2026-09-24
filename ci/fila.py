@@ -335,6 +335,7 @@ def _soltar_reserva_condicionado(
     *,
     esperado: str = "",
     dono: str = "",
+    permitir_pendente: bool = False,
 ) -> bool:
     """Passa a identidade da bancada e o SHA esperado para soltura segura."""
     dono = dono or reservar.identidade_da_bancada(raiz)
@@ -343,6 +344,7 @@ def _soltar_reserva_condicionado(
         chave,
         esperado=esperado,
         dono=dono,
+        permitir_pendente=permitir_pendente,
     )
 
 
@@ -828,20 +830,16 @@ def _conferir_medicao_fase4(nome: str, medicao: object, erros: list[str]) -> Non
         erros.append(f"{nome}: 'medicao_fase4.par_id' precisa ser texto ou null")
 
 
-def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
-    """Todas as tarefas, validadas uma a uma. Erro entra em `erros`, não explode."""
-    pasta = pasta_tarefas(raiz)
+def _carregar_tarefas_lidas(
+    raiz: Path,
+    itens: list[tuple[str, dict]],
+    erros: list[str],
+) -> dict[str, dict]:
     tarefas: dict[str, dict] = {}
     numeros: dict[str, str] = {}
-    if not pasta.is_dir():
-        return tarefas
-    for caminho in sorted(pasta.glob("*.json")):
-        dados = _ler_json(caminho, erros)
-        if dados is None:
-            continue
-        nome = caminho.name
+    for nome, dados in sorted(itens):
         _conferir_campos(nome, dados, CAMPOS_DA_TAREFA, CAMPOS_OPCIONAIS_DA_TAREFA, erros)
-        stem = caminho.stem
+        stem = Path(nome).stem
         if dados.get("arquivo") != stem:
             erros.append(f"{nome}: campo 'arquivo' ({dados.get('arquivo')!r}) ≠ nome do arquivo")
         numero = stem.split("-", 1)[0]
@@ -883,6 +881,19 @@ def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
     return tarefas
 
 
+def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
+    """Todas as tarefas, validadas uma a uma. Erro entra em `erros`, não explode."""
+    pasta = pasta_tarefas(raiz)
+    if not pasta.is_dir():
+        return {}
+    itens: list[tuple[str, dict]] = []
+    for caminho in sorted(pasta.glob("*.json")):
+        dados = _ler_json(caminho, erros)
+        if dados is not None:
+            itens.append((caminho.name, dados))
+    return _carregar_tarefas_lidas(raiz, itens, erros)
+
+
 def _conferir_ciclos(tarefas: dict[str, dict], erros: list[str]) -> None:
     VISITANDO, PRONTO = 1, 2
     marca: dict[str, int] = {}
@@ -904,19 +915,15 @@ def _conferir_ciclos(tarefas: dict[str, dict], erros: list[str]) -> None:
             visitar(tid, [])
 
 
-def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> list[dict]:
-    """Todos os eventos, validados e em ordem cronológica (quando, arquivo)."""
-    pasta = pasta_eventos(raiz)
+def _carregar_eventos_lidos(
+    itens: list[tuple[str, dict]],
+    tarefas: dict[str, dict],
+    erros: list[str],
+) -> list[dict]:
     eventos: list[dict] = []
-    if not pasta.is_dir():
-        return eventos
-    for caminho in sorted(pasta.glob("*.json")):
-        dados = _ler_json(caminho, erros)
-        if dados is None:
-            continue
-        nome = caminho.name
+    for nome, dados in sorted(itens):
         _conferir_campos(nome, dados, CAMPOS_DO_EVENTO, CAMPOS_OPCIONAIS_DO_EVENTO, erros)
-        if dados.get("arquivo") != caminho.stem:
+        if dados.get("arquivo") != Path(nome).stem:
             erros.append(f"{nome}: campo 'arquivo' ≠ nome do arquivo")
         tipo = dados.get("evento")
         if tipo in EVENTOS_DE_ADIAMENTO_PROIBIDOS:
@@ -1009,6 +1016,19 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             fim[tid] = ev["evento"]
     _conferir_tentativas_sem_progresso(eventos, erros)
     return eventos
+
+
+def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> list[dict]:
+    """Todos os eventos, validados e em ordem cronológica (quando, arquivo)."""
+    pasta = pasta_eventos(raiz)
+    if not pasta.is_dir():
+        return []
+    itens: list[tuple[str, dict]] = []
+    for caminho in sorted(pasta.glob("*.json")):
+        dados = _ler_json(caminho, erros)
+        if dados is not None:
+            itens.append((caminho.name, dados))
+    return _carregar_eventos_lidos(itens, tarefas, erros)
 
 
 def problemas_da_submissao(dados: dict) -> list[str]:
@@ -1227,7 +1247,7 @@ def reservas_no_servidor(raiz: Path) -> set[str]:
                 "reserva de tarefa incompatível",
                 f"O comprovante remoto {ref} não informa fuso horário na expiração.",
             )
-        if expira > datetime.now(timezone.utc):
+        if dados.get("estado") == "publicacao_pendente" or expira > datetime.now(timezone.utc):
             ativos.add(cauda[len(PREFIXO_DA_RESERVA):])
     return ativos
 
@@ -1847,6 +1867,22 @@ def _escrever_evento(
     return caminho
 
 
+def _escrever_evento_pronto(raiz: Path, dados: dict) -> Path:
+    pasta = pasta_eventos(raiz)
+    pasta.mkdir(parents=True, exist_ok=True)
+    caminho = pasta / f"{dados['arquivo']}.json"
+    if caminho.exists():
+        atual = json.loads(caminho.read_text(encoding="utf-8"))
+        if atual == dados:
+            return caminho
+        raise ErroDeInstrumentacao(
+            "evento terminal já existe com outro conteúdo",
+            f"Arquivo: {caminho.relative_to(raiz)}",
+        )
+    _escrever_json(caminho, dados)
+    return caminho
+
+
 # ---------------------------------------------------------------------------
 # O EVENTO "CONCLUÍDA" PELA PORTA DO POUSO — nasce EM SOMBRA (06/09/2026)
 #
@@ -2066,7 +2102,7 @@ def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
     return bool(finais) and len(finais) == len(nossas)
 
 
-def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str) -> bool:
+def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str, tarefa: dict | None = None) -> bool:
     """Escreve o "feito" desta tarefa no ramo da entrega. Devolve se escreveu.
 
     A evidência é a URL do PR, exata: é por ela que `ci/pr.py` reconhece a
@@ -2080,7 +2116,7 @@ def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str) -> bool:
     if ja_tem_conclusao(raiz, tid):
         return False
     hoje = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    codigo = _concluir_com_prova(raiz, tid, quem, pr, hoje)
+    codigo = _concluir_com_prova(raiz, tid, quem, pr, hoje, tarefa=tarefa)
     if codigo != 0:
         raise ErroDeInstrumentacao(
             f"a entrega de {tid} não pôde escrever a conclusão",
@@ -2100,6 +2136,428 @@ def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
             "\n".join(f"  - {e}" for e in erros),
         )
     return tarefas, eventos
+
+
+def _checkout_git(raiz: Path) -> bool:
+    return (raiz / ".git").exists()
+
+
+def _tem_origin(raiz: Path) -> bool:
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(raiz), "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0
+
+
+def _fonte_publicada_medida(fonte: dict) -> bool:
+    return fonte.get("modo") == "origin-main-mais-local" and bool(fonte.get("origin_main"))
+
+
+def _caminhos_sujos_da_fila(raiz: Path) -> set[str]:
+    bruto = _git_da_fila(
+        raiz,
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--",
+        "fila/tarefas",
+        "fila/eventos",
+        para_que="medir alterações locais da fila",
+    )
+    sujos: set[str] = set()
+    partes = [p for p in bruto.split("\0") if p]
+    i = 0
+    while i < len(partes):
+        registro = partes[i]
+        status = registro[:2]
+        caminho = registro[3:].replace("\\", "/")
+        if caminho:
+            sujos.add(caminho)
+        i += 1
+        if status.startswith("R") or status.startswith("C"):
+            if i < len(partes):
+                sujos.add(partes[i].replace("\\", "/"))
+                i += 1
+    return sujos
+
+
+def _ler_json_publicado(caminho: str, texto: str, erros: list[str]) -> dict | None:
+    try:
+        dados = json.loads(texto)
+    except json.JSONDecodeError as erro:
+        erros.append(f"{caminho}: JSON inválido em origin/main ({erro})")
+        return None
+    if not isinstance(dados, dict):
+        erros.append(f"{caminho}: JSON publicado precisa ser objeto")
+        return None
+    return dados
+
+
+def _hash_fontes(fontes: dict[str, str]) -> str:
+    h = hashlib.sha256()
+    for caminho in sorted(fontes):
+        h.update(caminho.encode("utf-8"))
+        h.update(b"\0")
+        h.update(fontes[caminho].encode("utf-8"))
+        h.update(b"\0")
+    return h.hexdigest()
+
+
+def _cat_file_lote(raiz: Path, objetos: list[str]) -> dict[str, str]:
+    if not objetos:
+        return {}
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(raiz), "cat-file", "--batch"],
+            input=("".join(f"{sha}\n" for sha in objetos)).encode("ascii"),
+            capture_output=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ErroDeInstrumentacao(
+            "o git não respondeu ao ler a fila publicada",
+            "Sem os blobs de origin/main eu não sei distinguir fila vazia de fonte indisponível.",
+        ) from exc
+    if proc.returncode != 0:
+        raise ErroDeInstrumentacao(
+            "o git recusou a leitura da fila publicada",
+            proc.stderr.decode("utf-8", "replace").strip()[:600]
+            or "cat-file --batch falhou sem mensagem.",
+        )
+    saida = proc.stdout
+    pos = 0
+    lidos: dict[str, str] = {}
+    for esperado in objetos:
+        fim = saida.find(b"\n", pos)
+        if fim < 0:
+            raise ErroDeInstrumentacao(
+                "resposta truncada ao ler a fila publicada",
+                "cat-file não devolveu o cabeçalho completo do blob.",
+            )
+        cabecalho = saida[pos:fim].decode("ascii", "replace").split()
+        pos = fim + 1
+        if len(cabecalho) != 3 or cabecalho[0] != esperado or cabecalho[1] != "blob":
+            raise ErroDeInstrumentacao(
+                "objeto inesperado na fila publicada",
+                "origin/main apontou para um conteúdo que não é blob confiável.",
+            )
+        tamanho = int(cabecalho[2])
+        corpo = saida[pos:pos + tamanho]
+        pos += tamanho
+        if pos < len(saida) and saida[pos:pos + 1] == b"\n":
+            pos += 1
+        lidos[esperado] = corpo.decode("utf-8")
+    return lidos
+
+
+def _arquivos_publicados_da_fila(raiz: Path, revisao: str) -> dict[str, dict]:
+    bruto = _git_da_fila(
+        raiz,
+        "ls-tree",
+        "-r",
+        "-z",
+        revisao,
+        "--",
+        "fila/tarefas",
+        "fila/eventos",
+        para_que="listar a fila publicada em origin/main",
+    )
+    itens: dict[str, dict] = {}
+    por_sha: dict[str, list[str]] = {}
+    for registro in [p for p in bruto.split("\0") if p]:
+        meta, caminho = registro.split("\t", 1)
+        partes = meta.split()
+        if len(partes) != 3 or partes[1] != "blob":
+            continue
+        caminho = caminho.replace("\\", "/")
+        if not (
+            caminho.endswith(".json")
+            and (
+                caminho.startswith("fila/tarefas/")
+                or caminho.startswith("fila/eventos/")
+            )
+        ):
+            continue
+        sha = partes[2]
+        por_sha.setdefault(sha, []).append(caminho)
+        itens[caminho] = {"sha": sha, "texto": ""}
+    textos = _cat_file_lote(raiz, sorted(por_sha))
+    for sha, caminhos in por_sha.items():
+        for caminho in caminhos:
+            itens[caminho]["texto"] = textos[sha]
+    return itens
+
+
+def _git_blob_sha(texto: str) -> str:
+    bruto = texto.encode("utf-8")
+    return hashlib.sha1(f"blob {len(bruto)}\0".encode("ascii") + bruto).hexdigest()
+
+
+def _arquivos_locais_da_fila(raiz: Path) -> dict[str, dict]:
+    achados: dict[str, dict] = {}
+    for pasta in (pasta_tarefas(raiz), pasta_eventos(raiz)):
+        if not pasta.is_dir():
+            continue
+        for caminho in sorted(pasta.glob("*.json")):
+            rel = caminho.relative_to(raiz).as_posix()
+            texto = caminho.read_text(encoding="utf-8")
+            achados[rel] = {"sha": _git_blob_sha(texto), "texto": texto}
+    return achados
+
+
+def carregar_fila_publicada_e_local(raiz: Path) -> tuple[dict[str, dict], list[dict], dict]:
+    """origin/main medido + arquivos locais ainda não publicados."""
+    if not _checkout_git(raiz) or not _tem_origin(raiz):
+        tarefas, eventos = _carregar_ou_parar(raiz)
+        return tarefas, eventos, {"modo": "local-sem-origin"}
+
+    _git_da_fila(
+        raiz,
+        "fetch",
+        "--no-tags",
+        "origin",
+        "refs/heads/main:refs/remotes/origin/main",
+        para_que="medir origin/main antes de ler a fila",
+    )
+    remoto = _git_da_fila(
+        raiz,
+        "rev-parse",
+        "origin/main^{commit}",
+        para_que="identificar origin/main medido",
+    ).strip()
+    head = _git_da_fila(
+        raiz,
+        "rev-parse",
+        "HEAD",
+        para_que="identificar o HEAD local da bancada",
+    ).strip()
+    base = _git_da_fila(
+        raiz,
+        "merge-base",
+        "HEAD",
+        remoto,
+        para_que="identificar a base comum da fila publicada",
+    ).strip()
+    publicados = _arquivos_publicados_da_fila(raiz, remoto)
+    baseados = _arquivos_publicados_da_fila(raiz, base) if base else {}
+    no_head = _arquivos_publicados_da_fila(raiz, head)
+    locais = _arquivos_locais_da_fila(raiz)
+    sujos = _caminhos_sujos_da_fila(raiz)
+    combinados = dict(publicados)
+    conflitos: list[str] = []
+    locais_novos: list[str] = []
+    for caminho, item in locais.items():
+        base_item = baseados.get(caminho)
+        head_item = no_head.get(caminho)
+        if caminho in publicados:
+            mudou_no_head = bool(
+                base_item
+                and head_item
+                and head_item.get("sha") != base_item.get("sha")
+            )
+            if caminho in sujos or mudou_no_head:
+                conflitos.append(caminho)
+            continue
+        if base_item:
+            mudou_no_head = bool(
+                head_item and head_item.get("sha") != base_item.get("sha")
+            )
+            if caminho in sujos or mudou_no_head:
+                conflitos.append(caminho)
+            continue
+        combinados[caminho] = item
+        locais_novos.append(caminho)
+    if conflitos:
+        raise ErroDeInstrumentacao(
+            "fila local conflita com origin/main",
+            "Arquivos imutáveis já publicados foram alterados nesta bancada: "
+            + ", ".join(conflitos)
+            + ". Preserve o trabalho e substitua isso por novos eventos ou nova tarefa.",
+        )
+
+    erros: list[str] = []
+    tarefas_lidas: list[tuple[str, dict]] = []
+    eventos_lidos: list[tuple[str, dict]] = []
+    for caminho, item in sorted(combinados.items()):
+        dados = _ler_json_publicado(caminho, item["texto"], erros)
+        if dados is None:
+            continue
+        if caminho.startswith("fila/tarefas/"):
+            tarefas_lidas.append((Path(caminho).name, dados))
+        else:
+            eventos_lidos.append((Path(caminho).name, dados))
+    tarefas = _carregar_tarefas_lidas(raiz, tarefas_lidas, erros)
+    eventos = _carregar_eventos_lidos(eventos_lidos, tarefas, erros)
+    if erros:
+        raise ErroDeInstrumentacao(
+            "fila publicada ou local inválida",
+            "\n".join(erros[:20]),
+        )
+    fonte = {
+        "modo": "origin-main-mais-local",
+        "origin_main": remoto,
+        "head_local": head,
+        "base_comum": base,
+        "digest_publicado": _hash_fontes({c: v["sha"] for c, v in publicados.items()}),
+        "digest_combinado": _hash_fontes({c: v["sha"] for c, v in combinados.items()}),
+        "locais_nao_publicados": sorted(locais_novos),
+        "eventos_locais_nao_publicados": sorted(
+            c for c in locais_novos if c.startswith("fila/eventos/")
+        ),
+    }
+    return tarefas, eventos, fonte
+
+
+def _evento_ainda_local(fonte: dict, evento: dict) -> bool:
+    caminho = f"fila/eventos/{evento.get('arquivo')}.json"
+    return caminho in set(fonte.get("eventos_locais_nao_publicados") or [])
+
+
+def _terminal_local(fonte: dict, eventos: list[dict], tid: str) -> bool:
+    terminal = next(
+        (
+            ev
+            for ev in reversed(eventos)
+            if ev.get("tarefa") == tid and ev.get("evento") in EVENTOS_TERMINAIS
+        ),
+        None,
+    )
+    return bool(terminal and _evento_ainda_local(fonte, terminal))
+
+
+def _digest_tarefa_para_aquisicao(tarefa: dict | None) -> str:
+    if tarefa is None:
+        return ""
+    return hashlib.sha256(
+        json.dumps(tarefa, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _canonico_para_evento(valor):
+    if isinstance(valor, datetime):
+        return valor.isoformat()
+    if isinstance(valor, dict):
+        return {
+            str(k): _canonico_para_evento(v)
+            for k, v in sorted(valor.items())
+            if not str(k).startswith("_")
+        }
+    if isinstance(valor, list):
+        return [_canonico_para_evento(v) for v in valor]
+    return valor
+
+
+def _evento_terminal_igual(publicado: dict, pendente: dict) -> bool:
+    return json.dumps(
+        _canonico_para_evento(publicado),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ) == json.dumps(
+        _canonico_para_evento(pendente),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _reserva_terminal_publicada_exata(raiz: Path, tid: str, eventos: list[dict]) -> bool:
+    leitura = reservar.ler_reserva(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+    if leitura is None:
+        return False
+    _sha, corpo = leitura
+    if corpo.get("estado") != "publicacao_pendente":
+        return True
+    pendente = corpo.get("evento")
+    if not isinstance(pendente, dict):
+        return False
+    return any(
+        ev.get("arquivo") == pendente.get("arquivo")
+        and _evento_terminal_igual(ev, pendente)
+        for ev in eventos
+    )
+
+
+def _validar_reserva_terminal(raiz: Path, tid: str) -> tuple[str, dict] | None:
+    if not _checkout_git(raiz):
+        print("RECUSADO: transição terminal exige checkout Git com origin/main medido.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return None
+    chave = f"{PREFIXO_DA_RESERVA}{tid}"
+    leitura = reservar.ler_reserva(raiz, chave)
+    if leitura is None:
+        print(f"RECUSADO: {tid} não tem reserva ativa para transição terminal.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return None
+    sha, corpo = leitura
+    dono = reservar.identidade_da_bancada(raiz)
+    try:
+        expira = datetime.fromisoformat(str(corpo.get("expira_em") or ""))
+    except ValueError:
+        expira = None
+    pendente = corpo.get("estado") == "publicacao_pendente"
+    valido = (
+        corpo.get("tipo") == "intencao"
+        and corpo.get("chave") == chave
+        and corpo.get("dono") == dono
+        and (
+            pendente
+            or (
+                expira is not None
+                and expira.tzinfo is not None
+                and expira > datetime.now(timezone.utc)
+            )
+        )
+    )
+    if not valido:
+        print(f"RECUSADO: a reserva de {tid} não pertence a esta bancada ou expirou.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return None
+    return sha, corpo
+
+
+def _preparar_publicacao_pendente(raiz: Path, tid: str, dados: dict) -> dict | None:
+    reserva = _validar_reserva_terminal(raiz, tid)
+    if reserva is None:
+        return None
+    sha, corpo = reserva
+    chave = f"{PREFIXO_DA_RESERVA}{tid}"
+    dono = reservar.identidade_da_bancada(raiz)
+    if corpo.get("estado") == "publicacao_pendente":
+        pendente = corpo.get("evento")
+        if not (
+            isinstance(pendente, dict)
+            and pendente.get("tarefa") == tid
+            and pendente.get("evento") in EVENTOS_TERMINAIS
+        ):
+            print("RECUSADO: a reserva tem publicação pendente ilegível.")
+            print("Preservado: nenhum evento terminal foi escrito.")
+            return None
+        return pendente
+    novo_corpo = dict(corpo)
+    novo_corpo["estado"] = "publicacao_pendente"
+    novo_corpo["evento"] = dados
+    novo_corpo["publicacao_pendente_em"] = datetime.now(timezone.utc).isoformat()
+    if not reservar.atualizar_reserva(
+        raiz,
+        chave,
+        esperado=sha,
+        dono=dono,
+        corpo=novo_corpo,
+    ):
+        print("RECUSADO: a reserva mudou antes da transição terminal.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return None
+    return dados
 
 
 def normalizar_responsabilidade(valor: object) -> str:
@@ -2439,12 +2897,8 @@ def cmd_criar(raiz: Path, args) -> int:
         print("RECUSADO: tarefa sem despacho pronto não entra na fila —")
         print("é o prompt de colar que os três consultores pediram. Use --despacho.")
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
-    for dep in args.depende_de:
-        if dep not in tarefas:
-            print(f"RECUSADO: --depende-de {dep} não existe na fila.")
-            return 1
-    # Antes de gastar número do almoxarife: o elo com o placar tem de fechar.
+    # Antes de medir a fila e gastar número do almoxarife: o elo com o placar
+    # tem de fechar. Erro local de formulário não consulta rede nem queima número.
     recusa_do_move: list[str] = []
     _conferir_move("--move", args.move, raiz, recusa_do_move)
     if recusa_do_move:
@@ -2469,6 +2923,15 @@ def cmd_criar(raiz: Path, args) -> int:
         print("A tarefa vive no painel do dono, e ele é leigo em código: sem estes")
         print("quatro campos ela chega lá como um título que ninguém entende.")
         return 1
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento foi escrito.")
+        return 1
+    for dep in args.depende_de:
+        if dep not in tarefas:
+            print(f"RECUSADO: --depende-de {dep} não existe na fila.")
+            return 1
     if not responsabilidade:
         print("RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada.")
         return 1
@@ -2717,7 +3180,11 @@ def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return 1
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -2759,7 +3226,11 @@ def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
 
 
 def cmd_listar(raiz: Path, args) -> int:
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    if args.ao_vivo:
+        tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    else:
+        tarefas, eventos = _carregar_ou_parar(raiz)
+        fonte = {"modo": "local"}
     reservas: set[str] = set()
     prs: dict[str, str] = {}
     if args.ao_vivo:
@@ -2776,16 +3247,35 @@ def cmd_listar(raiz: Path, args) -> int:
             }
             for tid in sorted(tarefas)
         }
+        if args.ao_vivo:
+            visao["_fonte"] = fonte
         print(json.dumps(visao, ensure_ascii=False, indent=2))
         return 0
     if not tarefas:
         print("a fila está vazia.")
         return 0
     modo = "ao vivo (arquivos + reservas + PRs)" if args.ao_vivo else "só arquivos (use --ao-vivo para reservas e PRs)"
-    print(f"A FILA DE TRABALHO — {len(tarefas)} tarefa(s) · {modo}\n")
+    print(f"A FILA DE TRABALHO — {len(tarefas)} tarefa(s) · {modo}")
+    if args.ao_vivo:
+        origin = str(fonte.get("origin_main") or "não medida")
+        head = str(fonte.get("head_local") or "não medido")
+        eventos_locais = fonte.get("eventos_locais_nao_publicados") or []
+        print(
+            f"Fonte: origin/main {origin[:12]}; HEAD local {head[:12]}; "
+            f"eventos locais não publicados: {len(eventos_locais)}"
+        )
+    print()
     for tid in sorted(tarefas):
         t, e = tarefas[tid], estados[tid]
-        extra = f" · {e['quem']}" if e.get("quem") else ""
+        marcadores = []
+        if e.get("quem"):
+            marcadores.append(e["quem"])
+        if args.ao_vivo and e["estado"] in (CONCLUIDA, CANCELADA):
+            if _terminal_local(fonte, eventos, tid):
+                marcadores.append("terminal local não publicado")
+            elif _fonte_publicada_medida(fonte):
+                marcadores.append("publicado em origin/main")
+        extra = " · " + " · ".join(marcadores) if marcadores else ""
         motivo = f" — {e['motivo']}" if e.get("motivo") else ""
         print(f"  {tid}  [{e['estado']}{extra}]{motivo}")
         print(f"         {t['titulo']}  (toca: {', '.join(t['toca'])})")
@@ -2819,11 +3309,11 @@ def cmd_pegar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
-        print("RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou.")
-        print("Atualize a bancada antes de pegar a tarefa; nenhuma reserva ou evento foi alterado.")
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhuma reserva ou evento foi alterado.")
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -2864,6 +3354,24 @@ def cmd_pegar(raiz: Path, args) -> int:
             print(tarefas[tid]["despacho"])
             return 0
     if estado["estado"] != NA_FILA:
+        if estado["estado"] in (CONCLUIDA, CANCELADA) and reservar.confirmar_intencao(
+            raiz, f"{PREFIXO_DA_RESERVA}{tid}"
+        ):
+            if _terminal_local(fonte, eventos, tid):
+                print(
+                    f"{tid}: evento terminal ainda é local; reserva própria preservada "
+                    "até origin/main publicar o mesmo evento."
+                )
+            elif _reserva_terminal_publicada_exata(raiz, tid, eventos):
+                _soltar_reserva_se_houver(raiz, tid, permitir_pendente=True)
+                print(
+                    f"{tid}: estado terminal medido em origin/main; reserva própria liberada."
+                )
+            else:
+                print(
+                    f"{tid}: há terminal publicado, mas não é o evento pendente desta reserva; "
+                    "reserva preservada para reconciliação segura."
+                )
         print(f"RECUSADO: {tid} está '{estado['estado']}'" + (f" ({estado['motivo']})" if estado["motivo"] else "") + ".")
         print(
             "Preservado: nenhuma reserva, evento, PR, staged, unstaged ou "
@@ -2871,6 +3379,7 @@ def cmd_pegar(raiz: Path, args) -> int:
         )
         print("Próximo comando seguro: python ci/fila.py listar --ao-vivo")
         return 1
+    digest_tarefa_antes = _digest_tarefa_para_aquisicao(tarefas.get(tid))
     chave_reserva = f"{PREFIXO_DA_RESERVA}{tid}"
     ganhou, recado = reservar.reservar_intencao(raiz, chave_reserva, objetivo=tarefas[tid]["titulo"])
     if not ganhou:
@@ -2887,14 +3396,14 @@ def cmd_pegar(raiz: Path, args) -> int:
         print("RECUSADO: a reserva recém-obtida não pertence a esta bancada.")
         print("Preservado: nenhum evento foi escrito; confira a reserva antes de retomar.")
         return 1
-    if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
+    tarefas, eventos, fonte_agora = carregar_fila_publicada_e_local(raiz)
+    if _digest_tarefa_para_aquisicao(tarefas.get(tid)) != digest_tarefa_antes:
         _soltar_reserva_condicionado(
             raiz, chave_reserva, esperado=reserva_sha, dono=reserva_dono
         )
-        print("RECUSADO: a fila publicada mudou durante a aquisição.")
-        print("A reserva recém-obtida foi liberada; atualize a bancada e consulte de novo.")
+        print(f"RECUSADO: {tid} mudou na fila publicada durante a aquisição.")
+        print("A reserva recém-obtida foi liberada; consulte de novo antes de executar.")
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
     estados, reservas, prs = estado_ao_vivo(raiz, tarefas, eventos)
     estado = estados[tid]
     reserva_propria = tid in reservas and reservar.confirmar_intencao(
@@ -2968,7 +3477,11 @@ def cmd_bloquear(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento foi escrito.")
+        return 1
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -3019,7 +3532,11 @@ def cmd_cancelar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return 1
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -3050,8 +3567,11 @@ def cmd_cancelar(raiz: Path, args) -> int:
         print(f"⚠️  Estas dependem de {tid} e vão ficar presas para sempre:")
         print(f"   {', '.join(presas)}")
         print("   Dependência só se destrava CONCLUÍDA. Cancele-as ou dê substituta.")
-    _soltar_reserva_se_houver(raiz, tid)
-    caminho = _escrever_evento(raiz, tid, "cancelada", args.quem, detalhe=args.motivo)
+    dados = montar_evento(tid, "cancelada", args.quem, detalhe=args.motivo)
+    dados = _preparar_publicacao_pendente(raiz, tid, dados)
+    if dados is None:
+        return 1
+    caminho = _escrever_evento_pronto(raiz, dados)
     print(f"🗑️  {tid} cancelada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
     print("Não há volta: depois do terminal, a fila não aceita mais nenhum evento.")
     return 0
@@ -3063,7 +3583,11 @@ def cmd_submeter(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento de submissão foi escrito.")
+        return 1
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe. Confira python ci/fila.py listar.")
@@ -3086,10 +3610,9 @@ def cmd_submeter(raiz: Path, args) -> int:
     if mesmo_vinculo and substitui:
         if (anterior.get("substitui") == substitui
                 and str(anterior.get("detalhe") or "").strip() == motivo):
-            _soltar_reserva_se_houver(raiz, tid)
             print(
                 f"{tid}: esta substituição já está registrada em {args.pr}; "
-                "reserva liberada."
+                "reserva preservada para a conclusão da entrega."
             )
             return 0
         print("RECUSADO: o elo substitui não pode atualizar o mesmo PR.")
@@ -3132,8 +3655,8 @@ def cmd_submeter(raiz: Path, args) -> int:
         if caminho.exists():
             raise ErroDeInstrumentacao("evento de submissão já existe", "Repita após conferir o evento; não sobrescreva a história.")
         _escrever_json(caminho, dados)
-    _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
+    print("Reserva preservada para a conclusão da entrega.")
     return 0
 
 
@@ -3195,17 +3718,20 @@ def _concluir_com_prova(
     quem: str,
     evidencia: str,
     verificado_em: str,
+    *,
+    tarefa: dict | None = None,
 ) -> int:
     """Único ponto terminal para `concluir` e `reconciliar`.
 
     Guardas sobre a responsabilidade da entrega pertencem aqui, antes da
     soltura da reserva e da escrita do evento, para valer nos dois caminhos.
     """
-    tarefas, _ = _carregar_ou_parar(raiz)
-    tarefa = tarefas.get(tid)
     if tarefa is None and (raiz / "fila" / "tarefas").exists():
-        print(f"RECUSADO: {tid} não existe na fila.")
-        return 1
+        erros: list[str] = []
+        tarefa = carregar_tarefas(raiz, erros).get(tid)
+        if erros or tarefa is None:
+            print(f"RECUSADO: {tid} não existe na fila medida.")
+            return 1
     responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
     if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:
         print("RECUSADO: tarefa nova sem responsabilidade declarada.")
@@ -3245,8 +3771,7 @@ def _concluir_com_prova(
             for problema in problemas:
                 print(f"   - {problema}")
             return 1
-    caminho = _escrever_evento(
-        raiz,
+    dados = montar_evento(
         tid,
         "concluida",
         quem,
@@ -3254,18 +3779,15 @@ def _concluir_com_prova(
         verificado_em=verificado_em,
         prova_da_guarda=prova_da_guarda,
     )
-    try:
-        _soltar_reserva_se_houver(raiz, tid)
-    except ErroDeInstrumentacao as erro:
-        raise ErroDeInstrumentacao(
-            "a conclusão foi registrada, mas a reserva não foi liberada",
-            f"Evento: {caminho.relative_to(raiz)}\n"
-            f"Rode python ci/fila.py soltar {tid} --quem {quem} e confira a reserva.\n"
-            f"Causa original: {erro.resumo}",
-        ) from erro
+    dados = _preparar_publicacao_pendente(raiz, tid, dados)
+    if dados is None:
+        return 1
+    caminho = _escrever_evento_pronto(raiz, dados)
     print(
         f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
     )
+    if _checkout_git(raiz):
+        print("Reserva preservada até este evento aparecer em origin/main.")
     return 0
 
 
@@ -3275,7 +3797,11 @@ def cmd_concluir(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return 1
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -3305,6 +3831,7 @@ def cmd_concluir(raiz: Path, args) -> int:
         args.quem,
         args.evidencia,
         args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        tarefa=tarefas[tid],
     )
 
 
@@ -3322,7 +3849,11 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento terminal foi escrito.")
+        return 1
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -3338,7 +3869,7 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     if alheio:
         print(f"RECUSADO: {tid} já terminou por outro fato; nada foi escrito.")
         return 1
-    if not fechar_pela_entrega(raiz, tid, args.quem, args.pr):
+    if not fechar_pela_entrega(raiz, tid, args.quem, args.pr, tarefa=tarefas[tid]):
         print(f"{tid}: o feito desta entrega já está no ramo; nada repetido.")
     return 0
 
@@ -3353,16 +3884,11 @@ def cmd_reconciliar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    if not bancada_contem_main_publicada(raiz):
-        print(
-            "RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou."
-        )
-        print(
-            "Faça merge de origin/main nesta bancada e repita reconciliar; "
-            "nenhuma reserva ou evento foi alterado."
-        )
+    tarefas, eventos, fonte = carregar_fila_publicada_e_local(raiz)
+    if not _fonte_publicada_medida(fonte):
+        print("RECUSADO: a fila publicada em origin/main não foi medida.")
+        print("Preservado: nenhum evento terminal foi escrito.")
         return 1
-    tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
@@ -3394,12 +3920,17 @@ def cmd_reconciliar(raiz: Path, args) -> int:
         args.quem,
         evidencia,
         verificado_em,
+        tarefa=tarefas[tid],
     )
 
-def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:
+def _soltar_reserva_se_houver(raiz: Path, tid: str, *, permitir_pendente: bool = False) -> None:
     """Solta apenas a referência que ainda pertence a esta bancada."""
     try:
-        reservada = _soltar_reserva_condicionado(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        reservada = _soltar_reserva_condicionado(
+            raiz,
+            f"{PREFIXO_DA_RESERVA}{tid}",
+            permitir_pendente=permitir_pendente,
+        )
         if not reservada:
             atual = reservar.ler_reserva(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
             if atual is not None and atual[1].get("dono") != reservar.identidade_da_bancada(raiz):

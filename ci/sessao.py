@@ -1560,11 +1560,32 @@ class Sessao:
             numero = prs[0].get("number")
             if not isinstance(numero, int):
                 raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            if prs[0].get("state", "OPEN") != "OPEN":
+            estado_pr = prs[0].get("state", "OPEN")
+            if estado_pr != "OPEN":
+                tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+                if estado_pr == "MERGED":
+                    try:
+                        import estado_da_entrega
+
+                        medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+                        estado_entrega = medicao.get("estado", "NÃO MEDIDO")
+                    except Exception as erro:  # noqa: BLE001 - diagnóstico de abertura
+                        estado_entrega = f"NÃO MEDIDO ({erro})"
+                    detalhe = (
+                        f"O PR #{numero} já foi integrado; preserve esta bancada e continue pela entrega existente. "
+                        f"Estado da entrega: {estado_entrega}. "
+                        f"Confira: python ci/esperar.py --entrega {numero}. "
+                        f"Quando houver aceite publicado, reconcilie {tarefa} com o registro real medido pelo fluxo de entrega."
+                    )
+                else:
+                    detalhe = (
+                        f"O PR #{numero} está fechado sem merge para este ramo. "
+                        "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+                    )
                 raise ErroDeSessao(
                     passo,
                     f"o ramo já tem o PR fechado #{numero}",
-                    detalhe="Use uma nova sessão e um novo ramo para não misturar trabalhos.",
+                    detalhe=detalhe,
                 )
             self._pass(f"PR #{numero} já anuncia esta sessão")
             return

@@ -567,14 +567,32 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     assert any("já existia" in linha for linha in mundo.log)
 
 
-def test_ramo_com_pr_encerrado_nao_e_reutilizado():
+def test_ramo_com_pr_fechado_sem_merge_diagnostica_sem_aceite():
     mundo = MundoFalso(
         plano_de_teste(),
         falhar={"rev-parse --verify": 1},
         gh_pr_list='[{"number": 91, "state": "CLOSED", "isDraft": true}]',
     )
-    with pytest.raises(sessao.ErroDeSessao, match="PR fechado"):
+    with pytest.raises(sessao.ErroDeSessao, match="PR fechado") as erro:
         mundo.sessao().rodar()
+    assert "fechado sem merge" in erro.value.detalhe
+    assert "não prova publicação nem aceite" in erro.value.detalhe
+
+
+def test_ramo_com_pr_integrado_aponta_entrega_existente(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "state": "MERGED", "isDraft": false}]',
+    )
+    import estado_da_entrega
+    monkeypatch.setattr(estado_da_entrega, "consultar_entrega", lambda *a: {"estado": "PUBLICADO"})
+    with pytest.raises(sessao.ErroDeSessao, match="PR fechado") as erro:
+        mundo.sessao().rodar()
+    assert "já foi integrado" in erro.value.detalhe
+    assert "Estado da entrega: PUBLICADO" in erro.value.detalhe
+    assert "ci/esperar.py --entrega 91" in erro.value.detalhe
+    assert "nova sessão" not in erro.value.detalhe
 
 
 def test_container_parado_e_reiniciado_e_nao_recriado():

@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -290,9 +290,77 @@ def test_desiste_depois_de_muitas_recusas_em_vez_de_girar_para_sempre(
 
 def test_intencao_perdida_explica_que_o_mecanismo_funcionou(tmp_path, monkeypatch):
     monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: False)
+    monkeypatch.setattr(reservar, "ler_reserva", lambda *a, **k: None)
     ganhou, recado = reservar.reservar_intencao(tmp_path, "onda2", "o cofre")
     assert ganhou is False
     assert "não é erro" in recado
+
+
+def test_intencao_reusa_reserva_propria_ainda_valida(tmp_path, monkeypatch):
+    dono = reservar.identidade_da_bancada(tmp_path)
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: False)
+    monkeypatch.setattr(
+        reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "a" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": dono,
+                "expira_em": (AGORA + timedelta(hours=1)).isoformat(),
+            },
+        ),
+    )
+    ganhou, recado = reservar.reservar_intencao(tmp_path, "onda2", "o cofre", agora=AGORA)
+    assert ganhou is True
+    assert "continua válida" in recado
+
+
+def test_intencao_renova_reserva_propria_vencida_com_lease(tmp_path, monkeypatch):
+    dono = reservar.identidade_da_bancada(tmp_path)
+    corpo_antigo = {
+        "tipo": "intencao",
+        "chave": "onda2",
+        "dono": dono,
+        "expira_em": (AGORA - timedelta(minutes=1)).isoformat(),
+    }
+    atualizacoes = []
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: False)
+    monkeypatch.setattr(reservar, "ler_reserva", lambda *a, **k: ("b" * 40, corpo_antigo))
+    monkeypatch.setattr(
+        reservar,
+        "atualizar_reserva",
+        lambda raiz, chave, **kw: (atualizacoes.append((chave, kw)), True)[1],
+    )
+
+    ganhou, recado = reservar.reservar_intencao(tmp_path, "onda2", "o cofre", agora=AGORA)
+
+    assert ganhou is True
+    assert "renovada" in recado
+    assert atualizacoes[0][0] == "onda2"
+    assert atualizacoes[0][1]["esperado"] == "b" * 40
+    assert atualizacoes[0][1]["dono"] == dono
+
+
+def test_intencao_nao_renova_reserva_de_nova_dona(tmp_path, monkeypatch):
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: False)
+    monkeypatch.setattr(
+        reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "c" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": "outra-bancada",
+                "expira_em": (AGORA - timedelta(hours=1)).isoformat(),
+            },
+        ),
+    )
+    ganhou, recado = reservar.reservar_intencao(tmp_path, "onda2", "o cofre", agora=AGORA)
+    assert ganhou is False
+    assert "RESERVADA por outra sessão" in recado
 
 
 def test_intencao_ganha_leva_prazo_dentro(tmp_path, monkeypatch):
@@ -307,6 +375,62 @@ def test_intencao_ganha_leva_prazo_dentro(tmp_path, monkeypatch):
     )
     assert ganhou is True
     assert corpos[0]["expira_em"] > corpos[0]["criado_em"]
+
+
+def test_soltar_nao_apaga_publicacao_pendente_sem_permissao(tmp_path, monkeypatch):
+    dono = reservar.identidade_da_bancada(tmp_path)
+    chamadas = []
+    monkeypatch.setattr(
+        reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "a" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": dono,
+                "estado": "publicacao_pendente",
+                "evento": {"tarefa": "TAR-001", "evento": "concluida"},
+            },
+        ),
+    )
+    monkeypatch.setattr(reservar, "_git", lambda *a, **k: chamadas.append(a))
+
+    assert reservar.soltar(tmp_path, "tarefa-TAR-001", esperado="a" * 40, dono=dono) is False
+    assert chamadas == []
+
+
+def test_soltar_apaga_publicacao_pendente_quando_chamador_ja_validou_evento(tmp_path, monkeypatch):
+    dono = reservar.identidade_da_bancada(tmp_path)
+
+    class Resultado:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    monkeypatch.setattr(
+        reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "a" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": dono,
+                "estado": "publicacao_pendente",
+                "evento": {"tarefa": "TAR-001", "evento": "concluida"},
+            },
+        ),
+    )
+    monkeypatch.setattr(reservar, "_git", lambda *a, **k: Resultado())
+
+    assert reservar.soltar(
+        tmp_path,
+        "tarefa-TAR-001",
+        esperado="a" * 40,
+        dono=dono,
+        permitir_pendente=True,
+    ) is True
 
 
 def test_soltar_nao_apaga_reserva_que_mudou_de_dono_antes_da_leitura(tmp_path, monkeypatch):
