@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-062-infra-ler-external-id-appmax-no-banco",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Infra: ler external ID Appmax no banco",
+  detalhe: "O ativador da Meshcraft leva o identificador público da instalação sandbox ao checkout, impede a troca por outra loja e confirma a leitura no contêiner antes de declarar a ativação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2063. Validação local: árvore 3fc36ccf7c0c5d9195b16c221e75c3fcd47c403e; commit c3de34ac763a6985649f7cc377edb3e21c7ae583; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-706",
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -15,13 +15,14 @@ ativacao = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ativacao)
 
 SITE = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
+EXTERNAL_ID = "11111111-2222-4333-8444-555555555555"
 PAGAMENTOS = (
     'APPMAX_INSTALACOES={"1888":{"alias":"Meshcraft","sites":["' + SITE + '"]}}\n'
     "APPMAX_AUTH_URL=https://auth.sandboxappmax.com.br/oauth2/token\n"
     "APPMAX_API_URL=https://api.sandboxappmax.com.br\n"
     "APPMAX_MERCHANT_CLIENT_ID=cliente-de-teste\n"
     "APPMAX_MERCHANT_CLIENT_SECRET=segredo-de-teste\n"
-    "APPMAX_EXTERNAL_ID=externo-de-teste\n"
+    "APPMAX_EXTERNAL_ID=\n"
     "APPMAX_CARD_ENABLED_SITES=\n"
 )
 
@@ -41,6 +42,8 @@ def preparar(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             return subprocess.CompletedProcess(
                 args, 0, "\n".join(ativacao.SERVICOS), ""
             )
+        if args[:5] == ("exec", "-T", "pagamentos", "python", "manage.py"):
+            return subprocess.CompletedProcess(args, 0, EXTERNAL_ID + "\n", "")
         return subprocess.CompletedProcess(args, 0, "", "")
 
     monkeypatch.setattr(ativacao, "compose", compose)
@@ -50,14 +53,19 @@ def preparar(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_liga_e_desliga_so_o_site_instalado(tmp_path, monkeypatch, capsys):
     raiz = preparar(tmp_path, monkeypatch)
+    pagamentos = raiz / "env/pagamentos.env"
+    pagamentos.write_text(
+        PAGAMENTOS.replace("APPMAX_EXTERNAL_ID=", "APPMAX_EXTERNAL_ID=legado-ignorado"),
+        encoding="utf-8",
+    )
     ativacao.executar(raiz, ligar=True)
     for nome in ("pagamentos", "checkout"):
         texto = (raiz / f"env/{nome}.env").read_text(encoding="utf-8")
         assert f"APPMAX_PIX_ENABLED_SITES={SITE}" in texto
         assert f"APPMAX_CARD_ENABLED_SITES={SITE}" in texto
-    assert "APPMAX_EXTERNAL_ID=externo-de-teste" in (
-        raiz / "env/checkout.env"
-    ).read_text(encoding="utf-8")
+    assert f"APPMAX_EXTERNAL_ID={EXTERNAL_ID}" in (raiz / "env/checkout.env").read_text(
+        encoding="utf-8"
+    )
     assert "segredo-de-teste" not in capsys.readouterr().out
     ativacao.executar(raiz, ligar=False)
     for nome in ("pagamentos", "checkout"):
@@ -89,6 +97,21 @@ def test_recusa_external_id_diferente_no_checkout(tmp_path, monkeypatch):
     with pytest.raises(ativacao.ParouPorSeguranca, match="outra instalação"):
         ativacao.executar(raiz, ligar=True)
     assert checkout.read_text(encoding="utf-8") == "APPMAX_EXTERNAL_ID=outra-loja\n"
+    assert not list((raiz / "env").glob("*.bak-*"))
+
+
+def test_recusa_instalacao_ausente_no_banco(tmp_path, monkeypatch):
+    raiz = preparar(tmp_path, monkeypatch)
+    compose_anterior = ativacao.compose
+
+    def sem_instalacao(raiz_compose, ambiente, *args):
+        if args[:5] == ("exec", "-T", "pagamentos", "python", "manage.py"):
+            return subprocess.CompletedProcess(args, 1, "", "instalação ausente")
+        return compose_anterior(raiz_compose, ambiente, *args)
+
+    monkeypatch.setattr(ativacao, "compose", sem_instalacao)
+    with pytest.raises(ativacao.ParouPorSeguranca, match="não confirmada no banco"):
+        ativacao.executar(raiz, ligar=True)
     assert not list((raiz / "env").glob("*.bak-*"))
 
 
