@@ -138,6 +138,15 @@
     },
     {
       "celula": "funil",
+      "rota": "flp-0/og.jpg",
+      "endereco": "/flp-0/og.jpg",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Imagem da Fórmula de Lançamento Pago",
+      "descricao": "Imagem original de compartilhamento da página pública."
+    },
+    {
+      "celula": "funil",
       "rota": "login",
       "endereco": "/login",
       "alcance": "publico",

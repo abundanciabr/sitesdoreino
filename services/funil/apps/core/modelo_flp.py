@@ -125,3 +125,14 @@ def modelo_flp_conteudo(request):
     resposta["Referrer-Policy"] = "no-referrer"
     resposta["X-Robots-Tag"] = "noindex"
     return resposta
+
+
+@require_safe
+def modelo_flp_imagem(request):
+    if request.get_host().split(":")[0].lower() != "meshcraft.top":
+        raise Http404("imagem disponível apenas em meshcraft.top")
+    with ZipFile(BytesIO(base64.b64decode(PACOTE.read_bytes()))) as pacote:
+        imagem = pacote.read("formula-de-lancamento-pago/images/og-v1.jpg")
+    resposta = HttpResponse(imagem, content_type="image/jpeg")
+    resposta["Cache-Control"] = "public, max-age=86400"
+    return resposta

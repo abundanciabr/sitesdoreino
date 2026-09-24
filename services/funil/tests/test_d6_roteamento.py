@@ -192,6 +192,7 @@ ROTAS_LOCALIZAVEIS = (
     "/oferta",
     "/flp-0",
     "/flp-0/conteudo",
+    "/flp-0/og.jpg",
     "/series-flp-gpt",
     "/series-flp-gpt/conteudo",
 )

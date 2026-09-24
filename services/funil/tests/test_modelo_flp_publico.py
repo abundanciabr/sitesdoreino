@@ -24,6 +24,7 @@ def test_visitante_anonimo_ve_edicao_encerrada(rede):
     assert "frame-src 'self'" in resposta["Content-Security-Policy"]
     assert "'sha256-" in resposta["Content-Security-Policy"]
     assert "https://meshcraft.top/flp-0" in html
+    assert 'content="https://meshcraft.top/flp-0/og.jpg"' in html
 
 
 def test_conteudo_direto_mantem_sandbox_e_bloqueia_compra(rede):
@@ -65,4 +66,15 @@ def test_conteudo_privado_de_outro_host_e_metodos_de_escrita_recusados(rede):
     cliente = Client(HTTP_HOST=HOST_MESH)
     assert cliente.post("/flp-0").status_code == 405
     assert cliente.post("/flp-0/conteudo").status_code == 405
+    assert cliente.post("/flp-0/og.jpg").status_code == 405
     assert Client(HTTP_HOST=HOST_A).get("/flp-0/conteudo").status_code == 404
+    assert Client(HTTP_HOST=HOST_A).get("/flp-0/og.jpg").status_code == 404
+
+
+def test_imagem_publica_corresponde_ao_pacote_original(rede):
+    resposta = Client(HTTP_HOST=HOST_MESH).get("/flp-0/og.jpg")
+    with ZipFile(BytesIO(base64.b64decode(PACOTE.read_bytes()))) as pacote:
+        original = pacote.read("formula-de-lancamento-pago/images/og-v1.jpg")
+    assert resposta.status_code == 200
+    assert resposta["Content-Type"] == "image/jpeg"
+    assert resposta.content == original
