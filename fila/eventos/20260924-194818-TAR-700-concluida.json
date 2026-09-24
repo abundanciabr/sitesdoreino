@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-194818-TAR-700-concluida",
+  "tarefa": "TAR-700",
+  "evento": "concluida",
+  "quando": "2026-09-24T19:48:18.962874+00:00",
+  "quem": "agent/infra/appmax-instalar-sandbox",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2055",
+  "verificado_em": "2026-09-24"
+}
