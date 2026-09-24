@@ -1,0 +1,23 @@
+{
+  "arquivo": "694-registrar-os-deploys-da-flp-sem-confundir-rota-com-pagina",
+  "id": "TAR-694",
+  "titulo": "Registrar os deploys da FLP sem confundir rota com página",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-691",
+    "TAR-692",
+    "TAR-693"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR do livro integrado com os três deploys conferidos e a resposta pública HTTP 404 declarada",
+  "despacho": "Registre no livro os vereditos pós-merge das TAR-691, TAR-692 e TAR-693. Use os PRs 2043, 2045 e 2047, os runs de deploy comprovados e a medição HTTP 404 de /flp-0. Não declare conteúdo público publicado.",
+  "origem": "Medição pós-merge de 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

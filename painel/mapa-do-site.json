@@ -61,6 +61,53 @@
     },
     {
       "celula": "admin",
+      "rota": "modelos-de-paginas/",
+      "endereco": "/admin/modelos-de-paginas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Modelos de páginas",
+      "descricao": "A lista das páginas que a equipe pode editar e publicar."
+    },
+    {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/flp-0/editar",
+      "endereco": "/admin/modelos-de-paginas/flp-0/editar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Editar a Fórmula de Lançamento Pago",
+      "descricao": "Escreve o rascunho da página e mostra qual versão está publicada."
+    },
+    {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/flp-0/previa",
+      "endereco": "/admin/modelos-de-paginas/flp-0/previa",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Prévia da Fórmula de Lançamento Pago",
+      "descricao": "Mostra o rascunho somente à equipe sem colocar o texto no ar."
+    },
+    {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/flp-0/salvar",
+      "endereco": "/admin/modelos-de-paginas/flp-0/salvar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Salvar rascunho da Fórmula de Lançamento Pago",
+      "descricao": "Guarda o texto em edição sem mudar a página pública.",
+      "gesto": true
+    },
+    {
+      "celula": "admin",
+      "rota": "modelos-de-paginas/flp-0/publicar",
+      "endereco": "/admin/modelos-de-paginas/flp-0/publicar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Publicar a Fórmula de Lançamento Pago",
+      "descricao": "Coloca o rascunho salvo no ar como uma nova versão.",
+      "gesto": true
+    },
+    {
+      "celula": "admin",
       "rota": "modelos-de-paginas/series-flp-gpt",
       "endereco": "/admin/modelos-de-paginas/series-flp-gpt",
       "alcance": "publico",

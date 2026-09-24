@@ -1342,7 +1342,7 @@ class CatalogoClient:
         )
 
     def gravar_rascunho_da_pagina(
-        self, site_id: str, slug: str, secoes: list
+        self, site_id: str, slug: str, secoes: list, *, tipo: str = "oferta"
     ) -> "tuple[str, dict | str]":
         """`putPageDraft`: grava as seções inteiras. Não publica nada.
 
@@ -1355,7 +1355,7 @@ class CatalogoClient:
             site_id,
             slug,
             "/rascunho",
-            corpo={"secoes": secoes},
+            corpo={"secoes": secoes, **({"tipo": tipo} if tipo != "oferta" else {})},
             especiais=((422, self.RECUSADO), (404, self.SEM_PAGINA)),
         )
 

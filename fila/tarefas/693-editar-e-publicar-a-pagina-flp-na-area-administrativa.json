@@ -1,0 +1,23 @@
+{
+  "arquivo": "693-editar-e-publicar-a-pagina-flp-na-area-administrativa",
+  "id": "TAR-693",
+  "titulo": "Editar e publicar a pagina FLP na area administrativa",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-691",
+    "TAR-692"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, testes do admin e deploy aprovados; /admin/modelos-de-paginas/ salva rascunho flp e publica com auditoria, sem alterar a referencia fechada.",
+  "despacho": "Na bancada agent/admin/modelos-de-paginas, entregue lista, editor, salvar, previa privada e publicar flp-0 pelas operacoes congeladas do catalogo; mantenha modelo fechado intacto. Audite todas as escritas, preserve texto quando falhar, teste porta, rode suite admin, mapa e muralhas e feche pelo ci/pr.py.",
+  "origem": "DECISAO-modelos-de-paginas-flp-0, frente 3; continuidade autorizada em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -2,6 +2,13 @@ from django.conf import settings
 from django.urls import path, re_path
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
+from apps.core.modelos_de_paginas import (
+    modelo_flp_editar,
+    modelo_flp_previa,
+    modelo_flp_publicar,
+    modelo_flp_salvar,
+    modelos_de_paginas,
+)
 from apps.core.modelo_series_flp import modelo_series_flp, modelo_series_flp_conteudo
 from apps.core.diagnostico import diag_json
 from apps.core.analise_da_caixa import analise, desfazer_fusao, fundir
@@ -171,6 +178,21 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
+    path("modelos-de-paginas/", modelos_de_paginas, name="modelos_de_paginas"),
+    path(
+        "modelos-de-paginas/flp-0/editar", modelo_flp_editar, name="modelo_flp_editar"
+    ),
+    path(
+        "modelos-de-paginas/flp-0/salvar", modelo_flp_salvar, name="modelo_flp_salvar"
+    ),
+    path(
+        "modelos-de-paginas/flp-0/publicar",
+        modelo_flp_publicar,
+        name="modelo_flp_publicar",
+    ),
+    path(
+        "modelos-de-paginas/flp-0/previa", modelo_flp_previa, name="modelo_flp_previa"
+    ),
     path(
         "modelos-de-paginas/series-flp-gpt", modelo_series_flp, name="modelo_series_flp"
     ),
