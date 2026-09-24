@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-005-tar-560-processo-appmax-dormente",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "TAR-560: processo Appmax dormente",
+  detalhe: "Sobe o processo auxiliar dormente da Appmax na célula pagamentos, mantém o cartão desligado pela lista vazia e preserva Pix fora do caminho Appmax.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2016. Validação local: árvore 98a67611ad7961f19018f205c108ff90c74d793c; commit 2161077b46cab8951de6d589dbdac196ed635e1f; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-560",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,19 @@
+{
+  "arquivo": "684-publicar-o-modelo-formula-de-lancamento-pago-na-administraca",
+  "id": "TAR-684",
+  "titulo": "Publicar o modelo Fórmula de Lançamento Pago na administração",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Suíte admin verde; endereço exato no ar; visual, recursos, formulário e FAQ conferidos; scripts isolados da sessão.",
+  "despacho": "Retomar a bancada wt-admin-modelo-flp-0 e o PR 2018. Publicar o clone fornecido em C:/Users/davia/paginas/fl-gpt no endereço https://meshcraft.top/admin/modelos-de-paginas/flp-0. Escopo services/admin. Preservar autenticação, isolar scripts, executar suíte e conferir publicação real. Não enviar inscrições ou compras.",
+  "origem": "Pedido do mantenedor nesta sessão Codex, 24/09/2026; retomada do PR 2018.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

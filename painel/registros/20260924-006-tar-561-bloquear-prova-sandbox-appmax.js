@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-006-tar-561-bloquear-prova-sandbox-appmax",
+  tipo: "pendencia",
+  quando: "2026-09-24",
+  titulo: "TAR-561: bloquear prova sandbox Appmax",
+  detalhe: "Registra bloqueio real da TAR-561: cartões sandbox oficiais confirmados, mas execução exigida depende de credenciais sandbox Appmax ausentes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2019. Validação local: árvore 5c76b3437687ae5d5ffc801069dd7ad6dd4a9bb4; commit 667abbcbf3ddd457e6a131f5fa7c2e4864a514fd; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-561",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-022305-TAR-675-explicada",
+  "tarefa": "TAR-675",
+  "evento": "explicada",
+  "quando": "2026-09-24T02:23:05.053370+00:00",
+  "quem": "pedido do mantenedor em 2026-09-23",
+  "o_que_e": "Ainda não há um manual publicado que explique a plataforma de experimentação de conversão com o estado real do código.",
+  "o_que_muda": "O mantenedor e os próximos agentes passam a ter uma página publicada que separa o que existe, o que falta e a ordem correta de implementação.",
+  "exemplo": "Como o manual do Crivo, mas para a cozinha de testes de conversão: hipótese, variante, exposição, decisão e aprendizado.",
+  "importancia": 82
+}
