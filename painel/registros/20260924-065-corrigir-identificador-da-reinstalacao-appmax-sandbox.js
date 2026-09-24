@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-065-corrigir-identificador-da-reinstalacao-appmax-sandbox",
+  tipo: "incidente",
+  quando: "2026-09-24",
+  titulo: "Corrigir identificador da reinstalação Appmax sandbox",
+  detalhe: "Cartão sandbox retornou HTTP 404 porque a instalação repetiu o UUID público. O health check agora gera um UUID novo apenas no sandbox; produção não muda.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2064. Validação local: árvore 2a905ec323d2c19448945368cc627228c9d2ad81; commit 059a9288167f9207fab67754f9fb6e9afdcc007b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-708",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
