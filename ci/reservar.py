@@ -112,7 +112,10 @@ EVENTO_DO_RECIBO = "numero_reservado"
 
 def bancada(raiz: Path) -> str:
     """O checkout, num formato que os dois lados comparam sem discordar."""
-    return os.path.normcase(str(Path(raiz).resolve()))
+    caminho = str(Path(raiz).resolve())
+    if os.name == "nt":
+        caminho = os.path.normcase(caminho)
+    return caminho
 
 
 def _git(raiz: Path, args: list[str]) -> subprocess.CompletedProcess:
@@ -386,24 +389,47 @@ def identidade_da_bancada(raiz: Path) -> str:
     return hashlib.sha256(bancada(raiz).encode("utf-8")).hexdigest()
 
 
-def confirmar_intencao(raiz: Path, chave: str) -> bool:
-    """Confere posse e validade na referência remota; nunca usa recibo velho."""
+def ler_reserva(raiz: Path, chave: str) -> tuple[str, dict] | None:
+    """Lê a versão atual da reserva, junto com o corpo que o servidor publicou."""
     ref = f"{NS_RESERVA}/{chave}"
     leitura = executar(["git", "ls-remote", "origin", ref], cwd=raiz,
                        descricao="conferir a reserva existente no servidor").stdout.strip()
     if not leitura:
-        return False
-    sha = leitura.split()[0]
+        return None
+    partes = leitura.split()
+    if len(partes) != 2 or partes[1] != ref or not re.fullmatch(r"[0-9a-f]{40}", partes[0]):
+        raise ErroDeInstrumentacao(
+            "resposta da reserva inválida",
+            f"O servidor devolveu uma referência inesperada para {ref}. Sem isso, não libero a bancada.",
+        )
+    sha = partes[0]
     executar(["git", "fetch", "--no-tags", "origin", sha], cwd=raiz,
              descricao="ler o comprovante remoto da reserva")
     mensagem = executar(["git", "show", "-s", "--format=%B", sha], cwd=raiz,
                         descricao="conferir o dono da reserva").stdout
     try:
         corpo = json.loads(mensagem)
+    except (json.JSONDecodeError, TypeError) as erro:
+        raise ErroDeInstrumentacao(
+            "reserva remota ilegível",
+            f"O comprovante de {ref} não é JSON. Preserve a bancada e confira a rede antes de retomar.",
+        ) from erro
+    if not isinstance(corpo, dict):
+        raise ErroDeInstrumentacao("reserva remota incompatível", f"O comprovante de {ref} não é um objeto JSON.")
+    return sha, corpo
+
+
+def confirmar_intencao(raiz: Path, chave: str) -> bool:
+    """Confere posse e validade na referência remota; nunca usa recibo velho."""
+    leitura = ler_reserva(raiz, chave)
+    if leitura is None:
+        return False
+    _, corpo = leitura
+    try:
         expira = datetime.fromisoformat(corpo.get("expira_em", ""))
         return (corpo.get("tipo") == "intencao" and corpo.get("chave") == chave
                 and corpo.get("dono") == identidade_da_bancada(raiz)
-                and expira > datetime.now(timezone.utc))
+                and expira.tzinfo is not None and expira > datetime.now(timezone.utc))
     except (ValueError, TypeError, AttributeError):
         return False
 
@@ -449,13 +475,43 @@ def listar(raiz: Path) -> list[str]:
     return sorted(refs_existentes(raiz, NS_RESERVA) + refs_existentes(raiz, NS_NUMERO))
 
 
-def soltar(raiz: Path, chave: str) -> None:
-    resultado = _git(raiz, ["push", "origin", f":{NS_RESERVA}/{chave}"])
+def soltar(
+    raiz: Path,
+    chave: str,
+    *,
+    esperado: str = "",
+    dono: str = "",
+) -> bool:
+    """Libera só a versão que foi lida e cujo dono ainda é o chamador."""
+    if not esperado and not dono:
+        raise ErroDeInstrumentacao(
+            "soltura sem identidade recusada",
+            "Informe o SHA lido ou o dono durável da bancada; sem isso uma sessão poderia apagar a reserva de outra.",
+        )
+    ref = f"{NS_RESERVA}/{chave}"
+    atual = ler_reserva(raiz, chave)
+    if atual is None:
+        return False
+    sha, corpo = atual
+    if esperado and sha != esperado:
+        return False
+    if dono and corpo.get("dono") != dono:
+        return False
+    resultado = _git(
+        raiz,
+        ["push", f"--force-with-lease={ref}:{sha}", "origin", f":{ref}"],
+    )
     if resultado.returncode != 0:
+        saida = f"{resultado.stdout}\n{resultado.stderr}"
+        if any(marca in saida for marca in MARCAS_DE_RECUSA):
+            return False
         raise ErroDeInstrumentacao(
             f"não consegui soltar a reserva '{chave}'",
-            f"{resultado.stdout}\n{resultado.stderr}".strip()[:600],
+            saida.strip()[:600],
         )
+    if "Everything up-to-date" in f"{resultado.stdout}\n{resultado.stderr}":
+        return False
+    return True
 
 
 def construir_parser() -> argparse.ArgumentParser:
@@ -478,6 +534,8 @@ def construir_parser() -> argparse.ArgumentParser:
 
     p_sol = sub.add_parser("soltar", help="libera uma reserva de intenção")
     p_sol.add_argument("chave")
+    p_sol.add_argument("--esperado", default="", help="SHA atual da reserva que pode ser apagada")
+    p_sol.add_argument("--dono", default="", help="dono durável esperado; padrão: esta bancada")
     return parser
 
 
@@ -499,9 +557,12 @@ def main(argv: list[str] | None = None) -> int:
             refs = listar(raiz)
             print("\n".join(refs) if refs else "nada reservado agora.")
             return 0
-        soltar(raiz, args.chave)
-        print(f"reserva '{args.chave}' solta.")
-        return 0
+        dono = args.dono or identidade_da_bancada(raiz)
+        if soltar(raiz, args.chave, esperado=args.esperado, dono=dono):
+            print(f"reserva '{args.chave}' solta.")
+            return 0
+        print(f"reserva '{args.chave}' não foi alterada; dono ou SHA divergente.")
+        return 1
     except ErroDeInstrumentacao as erro:
         print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n")
         if erro.detalhe:
