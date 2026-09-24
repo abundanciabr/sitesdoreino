@@ -658,7 +658,7 @@ def confirm_order_card(request, order_id: str):
             + "; valor, produto e total vêm do pedido. Campos recusados: "
             + ", ".join(sobrando),
         )
-    token = corpo.get("token")
+    token = corpo["token"] if "token" in corpo else None
     if not isinstance(token, str) or not token.strip():
         raise HttpError(422, "token é obrigatório")
     parcelas = corpo.get("installments")
