@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-021502-TAR-615-concluida",
+  "tarefa": "TAR-615",
+  "evento": "concluida",
+  "quando": "2026-09-24T02:15:02.255564+00:00",
+  "quem": "agent/checkout/appmax-tela-cartao-real",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2012",
+  "verificado_em": "2026-09-24"
+}

@@ -117,9 +117,11 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao):
     assert resp.status_code == 200, resp.content
     html = resp.content.decode("utf-8")
     assert "window.API_BASE" in html
-    assert "O pagamento com cartão ainda não está disponível" in html
+    assert "https://scripts.appmax.com.br/appmax.min.js" in html
+    assert "data-appmax-checkout" in html
+    assert 'appmax-form-element="number"' in html
+    assert 'appmax-form-element="cvv"' in html
     assert f'href="/checkout/{SLUG}/"' in html
-    assert "Formulário de cartão" not in html
     assert "Aguardando confirmação do pagamento" not in html
 
 

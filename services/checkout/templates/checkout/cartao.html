@@ -10,10 +10,17 @@
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { max-width: 28rem; margin: 0 auto; padding: 1rem; }
-    .card { background: #fff; border-radius: .75rem; padding: 1.25rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .card { background: #fff; border-radius: .75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h1 { margin: 0 0 .75rem; text-align: center; }
     .total { font-size: 1.25rem; font-weight: 600; margin: .5rem 0 1rem; }
-    .status { margin-top: 1rem; font-weight: 600; }
-    .acao { display: inline-block; margin-top: 1rem; color: #1a1a1a; }
+    label { display: block; font-size: .9rem; font-weight: 600; margin-top: .85rem; }
+    input, select { width: 100%; margin-top: .35rem; padding: .75rem; border: 1px solid #c9c9cf; border-radius: .5rem; font: inherit; background: #fff; }
+    .linha { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .status { margin-top: 1rem; font-weight: 600; text-align: center; }
+    .erro { color: #9f1239; }
+    .acao { display: inline-block; width: 100%; margin-top: 1rem; padding: .85rem 1rem; border: 0; border-radius: .5rem; background: #1a1a1a; color: #fff; font: inherit; font-weight: 700; text-align: center; text-decoration: none; }
+    .acao[disabled] { opacity: .55; }
+    .link { display: block; margin-top: 1rem; color: #1a1a1a; text-align: center; }
   </style>
 </head>
 <body>
@@ -23,11 +30,52 @@
   {{ api_base|json_script:"api-base" }}
   <div class="wrap" x-data="cartaoIsland()" x-init="init()">
     <div class="card">
-      <h1>Situação do pedido</h1>
+      <h1>Pague com cartão</h1>
       <p class="total" x-text="`Total: R$ ${(totalCents / 100).toFixed(2)}`"></p>
+      <form data-appmax-checkout x-show="podeTentar()">
+        <label>
+          Número do cartão
+          <input appmax-form-element="number" inputmode="numeric" autocomplete="cc-number" required>
+        </label>
+        <label>
+          Nome impresso no cartão
+          <input appmax-form-element="holder_name" x-model.trim="holderName" autocomplete="cc-name" required>
+        </label>
+        <label>
+          CPF ou CNPJ do titular
+          <input x-model.trim="holderDocumentNumber" inputmode="numeric" autocomplete="off" required>
+        </label>
+        <div class="linha">
+          <label>
+            Mês
+            <input appmax-form-element="expiration_month" inputmode="numeric" autocomplete="cc-exp-month" required>
+          </label>
+          <label>
+            Ano
+            <input appmax-form-element="expiration_year" inputmode="numeric" autocomplete="cc-exp-year" required>
+          </label>
+        </div>
+        <div class="linha">
+          <label>
+            CVV
+            <input appmax-form-element="cvv" inputmode="numeric" autocomplete="cc-csc" required>
+          </label>
+          <label>
+            Parcelas
+            <select x-model.number="installments" :disabled="carregandoParcelas" required>
+              <option value="" disabled>Escolha</option>
+              <template x-for="opcao in parcelas" :key="opcao.installments">
+                <option :value="opcao.installments" x-text="parcelaLabel(opcao)"></option>
+              </template>
+            </select>
+          </label>
+        </div>
+        <span class="appmax-ip" hidden></span>
+        <button class="acao" type="submit" :disabled="enviando || !appmaxPronto || !installments" x-text="botaoLabel()"></button>
+      </form>
       <p class="status" x-text="statusLabel()"></p>
-      <p x-show="status === 'aguardando_pagamento'">O pagamento com cartão ainda não está disponível. Este pedido não pode ser pago nesta página.</p>
-      <a class="acao" href="{{ offer_url }}" x-show="status !== 'pago' && status !== 'reembolsado' && status !== 'carregando'">Voltar à escolha do pagamento</a>
+      <p class="erro" x-show="erro" x-text="erro"></p>
+      <a class="link" href="{{ offer_url }}" x-show="status !== 'pago' && status !== 'reembolsado' && status !== 'carregando'">Voltar à escolha do pagamento</a>
       <button class="acao" type="button" x-show="status === 'erro'" @click="poll()">Tentar consultar novamente</button>
     </div>
   </div>
@@ -37,6 +85,7 @@
     window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
   </script>
   <script src="{% static 'checkout/api.js' %}"></script>
+  <script src="https://scripts.appmax.com.br/appmax.min.js"></script>
   <script src="{% static 'checkout/cartao.js' %}"></script>
 </body>
 </html>
