@@ -1,0 +1,19 @@
+{
+  "arquivo": "708-renovar-o-vinculo-appmax-a-cada-reinstalacao-sandbox",
+  "id": "TAR-708",
+  "titulo": "Renovar o vínculo Appmax a cada reinstalação sandbox",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Health check sandbox devolve UUID novo na reinstalação, mantém produção intacta, testes verdes e compra de cartão sandbox concluída",
+  "despacho": "Corrija somente o health check sandbox para renovar external_id na reinstalação da mesma loja. Teste com Django, instale novamente a Meshcraft no painel Appmax sandbox, atualize o checkout e prove compra com cartão de teste.",
+  "origem": "Teste E2E Appmax sandbox em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
