@@ -22,10 +22,37 @@ def test_roteador_reserva_modelo_de_topo_para_contrato_e_produto() -> None:
     assert perfil_por_tipo("escrita").modelo == MODELO_ROTINA
 
 
-def test_despacho_codex_usa_gpt_56_luna() -> None:
+def test_codex_usa_sol_por_padrao_e_luna_so_em_tarefas_delimitadas(monkeypatch) -> None:
     from economia_da_fabrica import MODELOS_CODEX
 
-    assert MODELOS_CODEX["topo"] == "gpt-5.6-luna"
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+    assert MODELOS_CODEX == {"rotina": "gpt-6-sol", "delimitado": "gpt-6-luna"}
+    assert perfil_por_tipo("geral").modelo == "gpt-6-sol"
+    assert perfil_por_tipo("geral").esforco == "medium"
+    assert classificar("trabalho sem categoria indicada").modelo == "gpt-6-sol"
+    assert classificar("trabalho sem categoria indicada").esforco == "medium"
+    # guarda: ci/economia_da_fabrica.py:46
+    for tipo in (
+        "arquitetura",
+        "contrato",
+        "produto",
+        "revisao",
+        "diagnostico",
+        "teste",
+        "texto",
+    ):
+        assert perfil_por_tipo(tipo).modelo == "gpt-6-sol"
+    # guarda: ci/economia_da_fabrica.py:48
+    for tipo in ("escrita", "espera"):
+        assert perfil_por_tipo(tipo).modelo == "gpt-6-luna"
+        assert perfil_por_tipo(tipo).esforco == "high"
+
+
+def test_fichas_codex_fixam_sol_e_despacho_exige_brief_roteado(monkeypatch) -> None:
+    raiz = Path(__file__).resolve().parents[2]
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+
+    assert auditar_fichas(raiz) == []
 
 
 def test_classificador_prefere_contrato_quando_o_texto_fala_de_freeze() -> None:
