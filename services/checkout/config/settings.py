@@ -38,6 +38,17 @@ TOKENS_ACEITOS = {
 # a variável as páginas ainda renderizam, e a chamada à API volta 401.
 TOKEN_DA_PAGINA = os.environ.get("TOKENS_ACEITOS_PAGINAS", "")
 
+APPMAX_PIX_ENABLED_SITES = frozenset(
+    site.strip()
+    for site in os.environ.get("APPMAX_PIX_ENABLED_SITES", "").split(",")
+    if site.strip()
+)
+APPMAX_CARD_ENABLED_SITES = frozenset(
+    site.strip()
+    for site in os.environ.get("APPMAX_CARD_ENABLED_SITES", "").split(",")
+    if site.strip()
+)
+
 # Os tokens válidos que são públicos, e por isso valem menos que os outros.
 # Derivado, nunca declarado à parte: uma variável de ambiente nova esquecida
 # num ambiente devolveria ali o alcance total sem ninguém perceber. O que um

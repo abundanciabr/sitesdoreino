@@ -29,6 +29,8 @@
   {{ offer_slug|json_script:"offer-slug" }}
   {{ api_token|json_script:"api-token" }}
   {{ api_base|json_script:"api-base" }}
+  {{ appmax_pix_enabled|json_script:"appmax-pix-enabled" }}
+  {{ appmax_card_enabled|json_script:"appmax-card-enabled" }}
   <div class="wrap" x-data="dadosIsland()" x-init="init()">
     <div class="card" x-show="!carregando">
       <h1 x-text="offer.product_name"></h1>
@@ -51,15 +53,22 @@
       <input id="name" type="text" x-model="customer.name" required>
       <label for="email">E-mail</label>
       <input id="email" type="email" x-model="customer.email" required>
-      <label for="phone">Telefone (opcional)</label>
-      <input id="phone" type="tel" x-model="customer.phone">
+      <label for="phone">Telefone</label>
+      <input id="phone" type="tel" x-model="customer.phone" :required="appmaxPix && method === 'pix'">
+      <template x-if="appmaxPix && method === 'pix'">
+        <div>
+          <label for="cpf">CPF</label>
+          <input id="cpf" type="text" inputmode="numeric" autocomplete="off" x-model="customer.cpf" required>
+        </div>
+      </template>
 
       <label>Forma de pagamento</label>
       <div class="metodo">
         <button type="button" :aria-pressed="method === 'pix'" @click="method = 'pix'">Pix</button>
-        <button type="button" disabled aria-disabled="true">Cartão indisponível</button>
+        <button type="button" x-show="appmaxCard" :aria-pressed="method === 'card'" @click="method = 'card'">Cartão</button>
+        <button type="button" x-show="!appmaxCard" disabled aria-disabled="true">Cartão indisponível</button>
       </div>
-      <p>O cartão ainda não pode ser concluído neste site. O Pix gera uma cobrança real.</p>
+      <p x-show="!appmaxCard">O cartão ainda não pode ser concluído neste site.</p>
 
       <p class="erro" x-show="erro" x-text="erro"></p>
       <button class="cta" type="submit" :disabled="enviando">
