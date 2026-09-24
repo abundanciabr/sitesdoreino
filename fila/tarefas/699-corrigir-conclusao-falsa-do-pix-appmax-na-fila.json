@@ -1,0 +1,19 @@
+{
+  "arquivo": "699-corrigir-conclusao-falsa-do-pix-appmax-na-fila",
+  "id": "TAR-699",
+  "titulo": "Corrigir conclusão falsa do Pix Appmax na fila",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Fila publicada mostra implementação Pix Appmax bloqueada pela instalação sandbox, e não concluída; eventos errados do PR 2050 são retirados com explicação pública e testes da fila verdes.",
+  "despacho": "Corrigir o efeito do fechamento automático indevido: PR 2050 apenas criou TAR-697, sem código Pix. Remover os eventos de submissão e conclusão que alegam entrega, preservando a trilha no histórico Git e no recibo corretivo. Validar que TAR-697 volta ao estado bloqueado por TAR-647 e TAR-698 também permanece não concluída.",
+  "origem": "Auditoria desta sessão Appmax em 24/09/2026: TAR-697 foi marcada concluída indevidamente pelo rito de PR da criação.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

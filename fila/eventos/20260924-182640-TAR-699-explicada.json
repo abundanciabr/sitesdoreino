@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-182640-TAR-699-explicada",
+  "tarefa": "TAR-699",
+  "evento": "explicada",
+  "quando": "2026-09-24T18:26:40.279516+00:00",
+  "quem": "Auditoria desta sessão Appmax em 24/09/2026: TAR-697 foi marcada concluída indevidamente pelo rito de PR da criação.",
+  "o_que_e": "O quadro diz que o Pix Appmax está pronto, mas nenhuma cobrança Pix pela Appmax foi implementada.",
+  "o_que_muda": "O quadro volta a mostrar a pendência real e impede que a produção se apoie num teste inexistente.",
+  "exemplo": "O recibo de criação de uma tarefa não pode valer como recibo de uma compra de teste concluída.",
+  "importancia": 99
+}
