@@ -755,8 +755,9 @@ def test_comando_executor_mapeia_pytest_e_ci_para_python_da_sessao():
     assert comando == [str(plano.python_do_venv), "ci/ci.py", "--base", "a" * 40]
     assert cwd == plano.worktree
     assert apelido == "ci"
-    with pytest.raises(sessao.ErroDeSessao, match="argumento reservado"):
-        sessao.comando_do_executor(plano, dados, ["ci", "--celula", "outra"])
+    for proibido in ("--celula", "--lis", "--bas", "-h"):
+        with pytest.raises(sessao.ErroDeSessao, match="argumento recusado"):
+            sessao.comando_do_executor(plano, dados, ["ci", proibido])
 
 
 def test_ambiente_do_executor_usa_env_final_e_neutraliza_terminal(monkeypatch):
@@ -805,7 +806,10 @@ def test_plano_da_bancada_atual_usa_cwd_estado_e_env_final(tmp_path, monkeypatch
     worktree = tmp_path / "bancada"
     scratch = tmp_path / "scratch"
     venv = tmp_path / "venv-hash"
-    (worktree / ".git").mkdir(parents=True)
+    worktree.mkdir(parents=True)
+    gitdir = tmp_path / "gitdir-bancada"
+    gitdir.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
     (worktree / "services" / "quiz").mkdir(parents=True)
     (worktree / "services" / "quiz" / "requirements.txt").write_text("Django==5.0.9\n", encoding="utf-8")
     (worktree / "requirements-ci.txt").write_text("pytest-json-report==1.5.0\n", encoding="utf-8")
@@ -834,6 +838,12 @@ def test_plano_da_bancada_atual_usa_cwd_estado_e_env_final(tmp_path, monkeypatch
         "head": "b" * 40,
         "estado": {"total": 0},
         "plano": sessao.metadados_da_bancada(sessao.replace(plano, venv=tmp_path / "venv-antigo")),
+    }
+    estado["plano"]["python_base"] = {
+        "executable": "C:/Python/antigo/python.exe",
+        "version": "3.12-antigo",
+        "prefix": "C:/Python/antigo",
+        "platform": "antiga",
     }
     sessao.arquivo_de_estado_inicial(worktree).write_text(json.dumps(estado), encoding="utf-8")
     monkeypatch.setattr(
@@ -911,13 +921,50 @@ def test_identidade_do_executor_usa_python_base_da_abertura(tmp_path):
     assert sessao.identidade_do_venv(req, python_base=sessao.python_base_atual()) != esperado
 
 
+def test_sondagem_do_python_da_sessao_nao_herda_pythonhome_do_terminal(monkeypatch):
+    plano = plano_de_teste()
+    visto = {}
+
+    def fake_correr(comando, *, cwd=None, env=None, timeout=0):
+        visto["env"] = env
+        return sessao.Saida(
+            list(comando),
+            0,
+            json.dumps({
+                "executable": str(plano.python_do_venv),
+                "base_executable": sessao.python_base_atual()[0],
+                "version": sessao.python_base_atual()[1],
+            }),
+            "",
+        )
+
+    monkeypatch.setenv("PYTHONHOME", "C:/pythonhome-invalido")
+    monkeypatch.setenv("PYTHONPATH", "C:/pythonpath-invalido")
+    monkeypatch.setenv("VIRTUAL_ENV", "C:/venv-terminal-errado")
+    monkeypatch.setattr(sessao, "correr_de_verdade", fake_correr)
+
+    assert sessao._info_do_python_da_sessao(plano)["executable"] == str(plano.python_do_venv)
+    assert "PYTHONHOME" not in visto["env"]
+    assert "PYTHONPATH" not in visto["env"]
+    assert visto["env"]["VIRTUAL_ENV"] == str(plano.venv)
+    assert visto["env"]["PATH"].split(os.pathsep)[0] == str(plano.bin_do_venv)
+
+
 def test_python_base_da_sessao_reaproveita_env_final_quando_snapshot_antigo():
     env = {
         "SESSAO_PYTHON_BASE_EXECUTABLE": "C:/Python/base/python.exe",
         "SESSAO_PYTHON_BASE_VERSION": "3.12-final",
     }
+    dados = {
+        "plano": {
+            "python_base": {
+                "executable": "C:/Python/antigo/python.exe",
+                "version": "3.12-antigo",
+            }
+        }
+    }
 
-    assert sessao._python_base_da_sessao({"plano": {}}, env) == (
+    assert sessao._python_base_da_sessao(dados, env) == (
         "C:/Python/base/python.exe",
         "3.12-final",
     )
@@ -936,6 +983,100 @@ def test_sair_do_processo_linux_envia_sinal_real():
     resultado = subprocess.run([sys.executable, "-c", codigo], timeout=5)
 
     assert resultado.returncode == -15
+
+
+def test_executor_resolve_literal_no_path_da_sessao(tmp_path):
+    binario = tmp_path / "bin"
+    binario.mkdir()
+    nome = "python.exe" if os.name == "nt" else "python"
+    falso = binario / nome
+    falso.write_text("", encoding="utf-8")
+    if os.name != "nt":
+        falso.chmod(0o755)
+
+    comando = sessao._resolver_executavel_no_ambiente(["python", "-V"], {"PATH": str(binario)})
+
+    assert Path(comando[0]).resolve() == falso.resolve()
+    assert comando[1:] == ["-V"]
+
+
+def test_resolver_literal_ignora_homonimo_no_cwd_windows(tmp_path, monkeypatch):
+    cwd = tmp_path / "cwd"
+    canonico = tmp_path / "canonico"
+    cwd.mkdir()
+    canonico.mkdir()
+    if os.name == "nt":
+        (cwd / "python.exe").write_text("cwd", encoding="utf-8")
+        esperado_python = canonico / "python.exe"
+        esperado_python.write_text("canonico", encoding="utf-8")
+        (cwd / "black.cmd").write_text("@echo cwd", encoding="utf-8")
+        esperado_black = canonico / "black.CMD"
+        esperado_black.write_text("@echo canonico", encoding="utf-8")
+    else:
+        (cwd / "python").write_text("cwd", encoding="utf-8")
+        (cwd / "python").chmod(0o755)
+        esperado_python = canonico / "python"
+        esperado_python.write_text("canonico", encoding="utf-8")
+        esperado_python.chmod(0o755)
+        (cwd / "black").write_text("cwd", encoding="utf-8")
+        (cwd / "black").chmod(0o755)
+        esperado_black = canonico / "black"
+        esperado_black.write_text("canonico", encoding="utf-8")
+        esperado_black.chmod(0o755)
+    monkeypatch.chdir(cwd)
+    env = {"PATH": str(canonico), "PATHEXT": ".COM;.EXE;.BAT;.CMD"}
+
+    python = sessao._resolver_executavel_no_ambiente(["python", "-V"], env)
+    black = sessao._resolver_executavel_no_ambiente(["black", "--version"], env)
+
+    assert Path(python[0]).resolve() == esperado_python.resolve()
+    assert Path(black[0]).resolve() == esperado_black.resolve()
+
+
+def test_executor_recusa_clone_principal_mesmo_com_registro_coerente(tmp_path, monkeypatch):
+    principal = tmp_path / "principal"
+    (principal / ".git").mkdir(parents=True)
+    monkeypatch.setattr(
+        sessao,
+        "correr_de_verdade",
+        lambda *a, **k: sessao.Saida([], 0, str(principal), ""),
+    )
+
+    with pytest.raises(sessao.ErroDeSessao, match="clone principal"):
+        sessao.plano_da_bancada_atual(principal)
+
+
+def test_executor_recusa_segunda_trava_sem_esperar(tmp_path):
+    bancada = tmp_path / "bancada"
+    bancada.mkdir()
+    trava = sessao.caminho_da_trava_da_bancada(bancada)
+    pronto = tmp_path / "pronto"
+    script = "\n".join([
+        "import sys, time",
+        f"sys.path.insert(0, {str(Path(sessao.__file__).parent)!r})",
+        "from pathlib import Path",
+        "import sessao",
+        f"p = {str(trava)!r}",
+        f"r = {str(pronto)!r}",
+        "with sessao.trava_de_ambiente(Path(p)):",
+        "    Path(r).write_text('1', encoding='utf-8')",
+        "    time.sleep(3)",
+    ])
+    proc = subprocess.Popen([sys.executable, "-c", script])
+    try:
+        limite = datetime.now(timezone.utc) + timedelta(seconds=5)
+        while not pronto.exists() and datetime.now(timezone.utc) < limite:
+            import time
+            time.sleep(0.05)
+        assert pronto.exists(), "processo auxiliar não segurou a trava"
+        inicio = datetime.now(timezone.utc)
+        with pytest.raises(sessao.ErroDeSessao, match="execução em andamento"):
+            with sessao.trava_da_bancada(bancada, passo="executor da sessão", esperar=False):
+                pass
+        assert (datetime.now(timezone.utc) - inicio).total_seconds() < 1
+    finally:
+        proc.terminate()
+        proc.wait(timeout=5)
 
 
 def test_executor_recusa_api_antiga_de_processos_sem_iniciar():

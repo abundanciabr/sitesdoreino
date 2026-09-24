@@ -835,7 +835,7 @@ def escrever_de_verdade(caminho: Path, texto: str) -> None:
 
 
 @contextmanager
-def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
+def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV, esperar: bool = True):
     """O SO libera a trava também se o processo morrer, sem apagar lock alheio."""
     caminho.parent.mkdir(parents=True, exist_ok=True)
     with caminho.open("a+b") as arquivo:
@@ -854,6 +854,12 @@ def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
                     fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError as erro:
+                if not esperar:
+                    raise ErroDeSessao(
+                        passo,
+                        "bancada já tem execução em andamento",
+                        detalhe=f"Outra execução segura a trava {caminho}. Trabalho preservado; nenhum filho novo executou.",
+                    ) from erro
                 if time.monotonic() >= limite:
                     raise ErroDeSessao(passo, "ambiente em preparação por outra sessão",
                                        detalhe=f"Aguarde e repita a abertura. Trava: {caminho}") from erro
@@ -924,7 +930,7 @@ _TRAVAS_DA_BANCADA_NO_PROCESSO: dict[str, int] = {}
 
 
 @contextmanager
-def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE):
+def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE, esperar: bool = True):
     """Exclusividade ativa da bancada; arquivo antigo nunca autoriza a entrada."""
     identidade = identidade_duravel_da_bancada(bancada)
     if _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 0):
@@ -948,7 +954,7 @@ def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE):
     caminho = caminho_da_trava_da_bancada(bancada)
     ativo = caminho.with_suffix(".json")
     token = uuid.uuid4().hex
-    with trava_de_ambiente(caminho, passo=passo):
+    with trava_de_ambiente(caminho, passo=passo, esperar=esperar):
         ativo.parent.mkdir(parents=True, exist_ok=True)
         estado = {
             "schema_version": 1,
@@ -1259,15 +1265,15 @@ def _caminho_igual(a: str | Path, b: str | Path) -> bool:
 
 
 def _python_base_da_sessao(dados: dict[str, object], env_sessao: dict[str, str]) -> tuple[str, str] | None:
+    executavel = env_sessao.get("SESSAO_PYTHON_BASE_EXECUTABLE")
+    versao = env_sessao.get("SESSAO_PYTHON_BASE_VERSION")
+    if executavel and versao:
+        return executavel, versao
     plano = dados.get("plano")
     if isinstance(plano, dict):
         base = plano.get("python_base")
         if isinstance(base, dict) and base.get("executable") and base.get("version"):
             return str(base["executable"]), str(base["version"])
-    executavel = env_sessao.get("SESSAO_PYTHON_BASE_EXECUTABLE")
-    versao = env_sessao.get("SESSAO_PYTHON_BASE_VERSION")
-    if executavel and versao:
-        return executavel, versao
     return None
 
 
@@ -1280,7 +1286,12 @@ def _info_do_python_da_sessao(plano: Plano) -> dict[str, str]:
         "'version':sys.version"
         "}, ensure_ascii=False))"
     )
-    saida = correr_de_verdade([str(plano.python_do_venv), "-c", codigo], cwd=plano.worktree, timeout=30)
+    saida = correr_de_verdade(
+        [str(plano.python_do_venv), "-c", codigo],
+        cwd=plano.worktree,
+        env=_ambiente_do_executor(plano, {}),
+        timeout=30,
+    )
     if saida.exit_code != 0:
         raise ErroDeSessao("executor da sessão", "Python da sessão não executa", detalhe=recortar(saida.texto, 2000))
     try:
@@ -1295,6 +1306,12 @@ def plano_da_bancada_atual(cwd: Path) -> tuple[Plano, dict[str, object], dict[st
     if git.exit_code != 0:
         raise ErroDeSessao("executor da sessão", "diretório atual não é uma bancada Git", detalhe=recortar(git.texto, 2000))
     worktree = Path(git.stdout.strip()).resolve()
+    if (worktree / ".git").is_dir():
+        raise ErroDeSessao(
+            "executor da sessão",
+            "execução recusada no clone principal",
+            detalhe="A execução oficial exige Git worktree vinculado (.git como arquivo gitdir). Trabalho preservado; nenhum filho executou.",
+        )
     estado = arquivo_de_estado_inicial(worktree)
     if not estado.exists():
         raise ErroDeSessao("executor da sessão", "esta bancada não tem registro inicial da sessão", detalhe="Trabalho preservado; nenhum filho executou. Entre no worktree impresso em `BANCADA PRONTA:` na abertura original. Para conferir a sintaxe de reabertura, rode `python ci/sessao.py --help`.")
@@ -1360,10 +1377,12 @@ def comando_do_executor(plano: Plano, dados: dict[str, object], argumentos: Sequ
         cwd = plano.celula_no_worktree if plano.sobe_ambiente else plano.worktree
         return [str(plano.python_do_venv), "-m", "pytest", *resto], cwd, "pytest"
     if alvo == "ci":
-        proibidos = {"--apenas", "--celula", "--base", "--detectar-celulas", "--listar"}
-        usados = [arg for arg in resto if arg.split("=", 1)[0] in proibidos]
-        if usados:
-            raise ErroDeSessao("executor da sessão", "argumento reservado do runner", detalhe=f"A sessão fixa {', '.join(sorted(proibidos))}; removido: {', '.join(usados)}")
+        if resto:
+            raise ErroDeSessao(
+                "executor da sessão",
+                "argumento recusado no runner ci",
+                detalhe="Use `python ci/sessao.py executar -- ci` para os gates oficiais; para foco manual, use `pytest` ou comando literal.",
+            )
         base = _base_do_ci(dados)
         comando = [str(plano.python_do_venv), "ci/ci.py"]
         if plano.sobe_ambiente:
@@ -1381,6 +1400,46 @@ def _grupo_de_processos():
         from pr_processos_linux import GrupoLinux
         return GrupoLinux()
     raise ErroDeSessao("executor da sessão", "plataforma sem grupo de processos", detalhe="A contenção oficial existe em Windows e Linux.")
+
+
+def _executavel_candidato(caminho: Path) -> bool:
+    if not caminho.is_file():
+        return False
+    if platform.system() == "Windows":
+        return True
+    return os.access(caminho, os.X_OK)
+
+
+def _nomes_executaveis(nome: str, env: dict[str, str]) -> list[str]:
+    if platform.system() != "Windows":
+        return [nome]
+    sufixos = [s.lower() for s in Path(nome).suffixes]
+    pathext = env.get("PATHEXT") or os.environ.get("PATHEXT") or ".COM;.EXE;.BAT;.CMD"
+    extensoes = [ext for ext in pathext.split(os.pathsep) if ext]
+    if sufixos and sufixos[-1] in {ext.lower() for ext in extensoes}:
+        return [nome]
+    return [nome, *(nome + ext for ext in extensoes)]
+
+
+def _resolver_executavel_no_ambiente(comando: list[str], env: dict[str, str]) -> list[str]:
+    if not comando:
+        return comando
+    primeiro = str(comando[0])
+    if Path(primeiro).is_absolute() or any(sep in primeiro for sep in ("/", "\\")):
+        return comando
+    for pasta in (env.get("PATH") or os.defpath).split(os.pathsep):
+        if not pasta:
+            continue
+        for nome in _nomes_executaveis(primeiro, env):
+            candidato = Path(pasta) / nome
+            if _executavel_candidato(candidato):
+                return [str(candidato), *comando[1:]]
+    raise ErroDeSessao(
+        "executor da sessão",
+        "executável não encontrado no PATH da sessão",
+        detalhe=f"Comando: {primeiro}. Trabalho preservado; nenhum filho executou.",
+        codigo=127,
+    )
 
 
 def _iniciar_no_grupo(grupo, comando: list[str], *, cwd: Path, env: dict[str, str]):
@@ -1476,6 +1535,7 @@ def executar_na_sessao(argv: Sequence[str], *, cwd: Path | None = None, interval
     plano, dados, env_sessao = plano_da_bancada_atual(cwd)
     comando, cwd_comando, apelido = comando_do_executor(plano, dados, argv)
     env = _ambiente_do_executor(plano, env_sessao)
+    comando = _resolver_executavel_no_ambiente(comando, env)
     comando_texto = subprocess.list2cmdline(comando)
     inicio = datetime.now(timezone.utc)
     pasta_logs = plano.scratch / "execucoes"
@@ -1483,7 +1543,7 @@ def executar_na_sessao(argv: Sequence[str], *, cwd: Path | None = None, interval
     log = pasta_logs / f"{inicio.strftime('%Y%m%d-%H%M%S-%f')}-{uuid.uuid4().hex[:8]}-{apelido}.log"
     stdout = stderr = ""
     codigo = 2
-    with trava_da_bancada(plano.worktree, passo="executor da sessão"):
+    with trava_da_bancada(plano.worktree, passo="executor da sessão", esperar=False):
         grupo = _grupo_de_processos()
         monitor = MonitorDePosse(plano, grupo, intervalo=intervalo_posse)
         try:
