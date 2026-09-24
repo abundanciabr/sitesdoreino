@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import reservar
 import sessao
-from test_fila import evento, montar, sem_rede, tarefa
+from test_fila import evento, fonte_publicada, montar, sem_rede, tarefa
 from test_sessao import MundoFalso, plano_de_teste
 
 import fila
@@ -122,6 +122,8 @@ def test_retomada_nao_contorna_dono_nem_estado(tmp_path, monkeypatch, dono, quem
         ],
     )
     sem_rede(monkeypatch, reservas={"TAR-001"})
+    if tipo == "concluida":
+        monkeypatch.setattr(reservar, "ler_reserva", lambda *a, **k: None)
     monkeypatch.setattr(reservar, "confirmar_intencao", lambda *a: dono)
     assert (
         fila.cmd_pegar(tmp_path, argparse.Namespace(tarefa="TAR-001", quem="sessao-a"))
@@ -230,7 +232,7 @@ def test_snapshot_inicial_externo_preserva_estado_sem_segredos(tmp_path):
     assert dados["plano"]["sobe_ambiente"] is False
     assert dados["plano"]["scratch"] == str(plano.scratch.resolve())
     assert dados["plano"]["worktree"] == str(bancada.resolve())
-    assert dados["plano"]["python_base"]["executable"] == sys.executable
+    assert dados["plano"]["python_base"]["executable"] == sessao.python_base_atual()[0]
     assert dados["estado"]["staged"] == 1
     assert dados["estado"]["unstaged"] == 1
     assert dados["estado"]["untracked"] == 2
@@ -243,6 +245,7 @@ def test_aquisicao_interrompida_solta_apenas_sha_e_dono_adquiridos(
     tmp_path, monkeypatch
 ):
     montar(tmp_path, [tarefa()])
+    fonte_publicada(monkeypatch)
     (tmp_path / ".git").mkdir()
     dono = reservar.identidade_da_bancada(tmp_path)
     vistos = []
@@ -270,7 +273,7 @@ def test_aquisicao_interrompida_solta_apenas_sha_e_dono_adquiridos(
     monkeypatch.setattr(
         reservar,
         "soltar",
-        lambda raiz, chave, *, esperado="", dono="": vistos.append(
+        lambda raiz, chave, *, esperado="", dono="", permitir_pendente=False: vistos.append(
             (chave, esperado, dono)
         )
         or True,
@@ -380,6 +383,9 @@ def bancada_git_real(repo, tmp_path):
     (raiz / ".gitignore").write_text(
         "armadilhas/INDICE.md\n__pycache__/\n", encoding="utf-8"
     )
+    (raiz / "requirements-ci.txt").write_text(
+        "pytest==8.3.3\npytest-json-report==1.5.0\n", encoding="utf-8"
+    )
     for nome in (
         "sessao.py",
         "_nucleo.py",
@@ -440,7 +446,7 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     estado_pr = tmp_path / "pr-aberto"
     (binario / "gh").write_text(
         "#!/bin/sh\n"
-        f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
+        f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"url\":\"https://github.com/abundanciabr/sitesdoreino/pull/91\",\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
         f"if [ \"$2\" = \"create\" ]; then touch \"{estado_pr}\"; echo 'https://github.com/abundanciabr/sitesdoreino/pull/91'; exit 0; fi\n"
         "if [ \"$2\" = \"view\" ]; then echo '{\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"}'; exit 0; fi\n",
         encoding="utf-8",
@@ -449,7 +455,7 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     (binario / "gh.cmd").write_text(
         "@echo off\n"
         "if \"%2\"==\"list\" (\n"
-        f"  if exist \"{estado_pr}\" (echo [{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]) else (echo [])\n"
+        f"  if exist \"{estado_pr}\" (echo [{{\"number\":91,\"url\":\"https://github.com/abundanciabr/sitesdoreino/pull/91\",\"state\":\"OPEN\",\"isDraft\":true}}]) else (echo [])\n"
         "  exit /b 0\n"
         ")\n"
         f"if \"%2\"==\"create\" (echo x > \"{estado_pr}\" & echo https://github.com/abundanciabr/sitesdoreino/pull/91 & exit /b 0)\n"
@@ -713,3 +719,268 @@ def test_comprovante_da_fila_vira_commit_antes_do_push(
         in git(bancada, "show", "--name-only", "--format=", "HEAD")
     )
     assert git(bancada, "status", "--porcelain") == ""
+
+
+
+def test_requirements_ci_entra_na_identidade_do_venv(tmp_path):
+    app = tmp_path / "requirements.txt"
+    req_ci = tmp_path / "requirements-ci.txt"
+    app.write_text("Django==5.0.9\n", encoding="utf-8")
+    req_ci.write_text("pytest-json-report==1.5.0\n", encoding="utf-8")
+    primeira = sessao.identidade_do_venv((app, req_ci))
+
+    req_ci.write_text("pytest-json-report==1.5.1\n", encoding="utf-8")
+
+    assert sessao.identidade_do_venv((app, req_ci)) != primeira
+
+
+def test_comando_executor_mapeia_pytest_e_ci_para_python_da_sessao():
+    plano = plano_de_teste()
+    dados = {"head": "a" * 40}
+
+    comando, cwd, apelido = sessao.comando_do_executor(
+        plano, dados, ["--", "pytest", "tests/test_um.py", "-q"]
+    )
+    assert comando == [str(plano.python_do_venv), "-m", "pytest", "tests/test_um.py", "-q"]
+    assert cwd == plano.celula_no_worktree
+    assert apelido == "pytest"
+
+    comando, cwd, apelido = sessao.comando_do_executor(plano, dados, ["ci"])
+    assert comando == [str(plano.python_do_venv), "ci/ci.py", "--apenas", "celula", "--celula", plano.celula, "--base", "a" * 40]
+    assert cwd == plano.worktree
+    assert apelido == "ci"
+
+    plano_infra = sessao.replace(plano, sobe_ambiente=False)
+    comando, cwd, apelido = sessao.comando_do_executor(plano_infra, dados, ["ci"])
+    assert comando == [str(plano.python_do_venv), "ci/ci.py", "--base", "a" * 40]
+    assert cwd == plano.worktree
+    assert apelido == "ci"
+    with pytest.raises(sessao.ErroDeSessao, match="argumento reservado"):
+        sessao.comando_do_executor(plano, dados, ["ci", "--celula", "outra"])
+
+
+def test_ambiente_do_executor_usa_env_final_e_neutraliza_terminal(monkeypatch):
+    plano = plano_de_teste()
+    env_sessao = sessao.variaveis_de_sessao(plano, porta_postgres=55460, porta_redis=16460)
+    env_sessao["DJANGO_SETTINGS_MODULE"] = "canonico.settings"
+    monkeypatch.setenv("PYTHONPATH", "C:/venv-errado")
+    monkeypatch.setenv("VIRTUAL_ENV", "C:/venv-errado")
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "x")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "errado.settings")
+
+    env = sessao._ambiente_do_executor(plano, env_sessao)
+
+    assert env["VIRTUAL_ENV"] == str(plano.venv)
+    assert env["PATH"].split(os.pathsep)[0] == str(plano.bin_do_venv)
+    assert "PYTHONPATH" not in env
+    assert "PYTEST_CURRENT_TEST" not in env
+    assert env["DATABASE_URL"] == env_sessao["DATABASE_URL"]
+    assert env["DJANGO_SETTINGS_MODULE"] == "canonico.settings"
+
+
+def test_redigir_log_oculta_segredo_arbitrario_sem_apagar_valor_trivial():
+    env = {
+        "API_TOKEN": "segredo-sem-formato",
+        "SERVICE_API_KEY": "chave-arbitraria-sem-padrao",
+        "PRIVATE_KEY": "privada-arbitraria-sem-padrao",
+        "REDIS_STREAMS_URL": "redis://segredo-arbitrario",
+        "MODO": "dev",
+        "DATABASE_URL": "postgres://dev:dev@localhost:55460/app",
+    }
+    texto = sessao._redigir_com_env(
+        "token=segredo-sem-formato key=chave-arbitraria-sem-padrao private=privada-arbitraria-sem-padrao redis=redis://segredo-arbitrario modo=dev db=postgres://dev:dev@localhost:55460/app",
+        env,
+    )
+
+    assert "segredo-sem-formato" not in texto
+    assert "chave-arbitraria-sem-padrao" not in texto
+    assert "privada-arbitraria-sem-padrao" not in texto
+    assert "redis://segredo-arbitrario" not in texto
+    assert "postgres://dev:dev" not in texto
+    assert "modo=dev" in texto
+
+
+def test_plano_da_bancada_atual_usa_cwd_estado_e_env_final(tmp_path, monkeypatch):
+    raiz = tmp_path / "repo"
+    worktree = tmp_path / "bancada"
+    scratch = tmp_path / "scratch"
+    venv = tmp_path / "venv-hash"
+    (worktree / ".git").mkdir(parents=True)
+    (worktree / "services" / "quiz").mkdir(parents=True)
+    (worktree / "services" / "quiz" / "requirements.txt").write_text("Django==5.0.9\n", encoding="utf-8")
+    (worktree / "requirements-ci.txt").write_text("pytest-json-report==1.5.0\n", encoding="utf-8")
+    plano = plano_de_teste(raiz=raiz, base_de_scratch=scratch)
+    plano = sessao.replace(plano, worktree=worktree, scratch=scratch, arquivo_env=scratch / ".env", venv=venv)
+    plano.arquivo_env.parent.mkdir(parents=True)
+    plano.arquivo_env.write_text(
+        sessao.renderizar_env(plano, sessao.variaveis_de_sessao(plano, porta_postgres=55460, porta_redis=16460)),
+        encoding="utf-8",
+    )
+    esperado = sessao.identidade_do_venv(sessao.requisitos_do_venv(plano))
+    plano = sessao.replace(plano, venv=venv.parent / esperado)
+    (plano.venv / ("Scripts" if os.name == "nt" else "bin")).mkdir(parents=True)
+    python = plano.venv / ("Scripts" if os.name == "nt" else "bin") / ("python.exe" if os.name == "nt" else "python")
+    python.write_text("", encoding="utf-8")
+    (plano.venv / ".instalado").write_text(esperado, encoding="utf-8")
+    plano.arquivo_env.write_text(
+        sessao.renderizar_env(plano, sessao.variaveis_de_sessao(plano, porta_postgres=55460, porta_redis=16460)),
+        encoding="utf-8",
+    )
+    estado = {
+        "schema_version": 1,
+        "identidade": sessao.identidade_duravel_da_bancada(worktree),
+        "bancada": str(worktree),
+        "branch": plano.branch,
+        "head": "b" * 40,
+        "estado": {"total": 0},
+        "plano": sessao.metadados_da_bancada(sessao.replace(plano, venv=tmp_path / "venv-antigo")),
+    }
+    sessao.arquivo_de_estado_inicial(worktree).write_text(json.dumps(estado), encoding="utf-8")
+    monkeypatch.setattr(
+        sessao,
+        "correr_de_verdade",
+        lambda *a, **k: sessao.Saida([], 0, str(worktree), ""),
+    )
+    monkeypatch.setattr(
+        sessao,
+        "_info_do_python_da_sessao",
+        lambda p: {
+            "executable": str(p.python_do_venv),
+            "base_executable": sessao.python_base_atual()[0],
+            "version": sessao.python_base_atual()[1],
+        },
+    )
+
+    retomado, dados, env = sessao.plano_da_bancada_atual(worktree / "services" / "quiz")
+
+    assert retomado.worktree == worktree
+    assert retomado.venv == plano.venv
+    assert dados["head"] == "b" * 40
+    assert env["SESSAO_VENV"] == str(plano.venv)
+
+
+def test_monitor_de_posse_interrompe_grupo_quando_reserva_some(monkeypatch):
+    plano = plano_de_teste(tarefa_da_fila="TAR-001")
+    dono = reservar.identidade_da_bancada(plano.worktree)
+    chamadas = iter([
+        ("c" * 40, {"tipo": "intencao", "chave": "tarefa-TAR-001", "dono": dono, "expira_em": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()}),
+        None,
+    ])
+
+    class Grupo:
+        encerrado = False
+
+        def encerrar(self):
+            self.encerrado = True
+
+    grupo = Grupo()
+    monkeypatch.setattr(reservar, "ler_reserva", lambda *a, **k: next(chamadas))
+
+    monitor = sessao.MonitorDePosse(plano, grupo, intervalo=0.01)
+    monitor.iniciar()
+    import time
+    limite = time.monotonic() + 1
+    while not grupo.encerrado and time.monotonic() < limite:
+        time.sleep(0.01)
+    monitor.encerrar()
+
+    assert grupo.encerrado
+    assert "ausente" in monitor.perda
+
+
+def test_codigo_cli_windows_preserva_dword(monkeypatch):
+    monkeypatch.setattr(sessao.platform, "system", lambda: "Windows")
+    assert sessao._codigo_cli(4294967295) == -1
+    assert sessao._codigo_cli(4026531841) == -268435455
+
+
+def test_codigo_cli_linux_distingue_sinal_real_de_exit_literal(monkeypatch):
+    monkeypatch.setattr(sessao.platform, "system", lambda: "Linux")
+    assert sessao._codigo_cli(241) == 241
+    assert sessao._codigo_cli(-15) == -15
+
+
+def test_identidade_do_executor_usa_python_base_da_abertura(tmp_path):
+    req = tmp_path / "requirements.txt"
+    req.write_text("pytest==8.3.3\n", encoding="utf-8")
+    base = ("C:/Python-da-abertura/python.exe", "3.12-abertura")
+
+    esperado = sessao.identidade_do_venv(req, python_base=base)
+
+    assert sessao.identidade_do_venv(req, python_base=base) == esperado
+    assert sessao.identidade_do_venv(req, python_base=sessao.python_base_atual()) != esperado
+
+
+def test_python_base_da_sessao_reaproveita_env_final_quando_snapshot_antigo():
+    env = {
+        "SESSAO_PYTHON_BASE_EXECUTABLE": "C:/Python/base/python.exe",
+        "SESSAO_PYTHON_BASE_VERSION": "3.12-final",
+    }
+
+    assert sessao._python_base_da_sessao({"plano": {}}, env) == (
+        "C:/Python/base/python.exe",
+        "3.12-final",
+    )
+
+
+def test_sair_do_processo_linux_envia_sinal_real():
+    if sys.platform != "linux":
+        pytest.skip("prova real de sinal só existe em Linux")
+    codigo = (
+        "import sys;"
+        f"sys.path.insert(0, {str(Path(__file__).parents[1])!r});"
+        "import sessao;"
+        "sessao.sair_do_processo(-15)"
+    )
+
+    resultado = subprocess.run([sys.executable, "-c", codigo], timeout=5)
+
+    assert resultado.returncode == -15
+
+
+def test_executor_recusa_api_antiga_de_processos_sem_iniciar():
+    class GrupoAntigo:
+        def associar_e_iniciar(self, processo):
+            raise AssertionError("não deve cair no contrato antigo")
+
+        def encerrar(self):
+            pass
+
+    with pytest.raises(sessao.ErroDeSessao, match="API de grupo de processos incompatível"):
+        sessao._iniciar_no_grupo(GrupoAntigo(), [sys.executable, "-c", "print(1)"], cwd=Path.cwd(), env=os.environ.copy())
+
+
+def test_executor_usa_api_nova_de_processos_iniciar(tmp_path):
+    chamadas = []
+
+    class GrupoNovo:
+        def iniciar(self, comando, *, raiz, ambiente):
+            chamadas.append((comando, raiz, ambiente))
+            return "processo"
+
+    env = {"X": "1"}
+    assert sessao._iniciar_no_grupo(GrupoNovo(), ["cmd"], cwd=tmp_path, env=env) == "processo"
+    assert chamadas == [(["cmd"], tmp_path, env)]
+
+
+def test_env_recusa_chave_duplicada_sem_imprimir_valor(tmp_path):
+    arquivo = tmp_path / ".env"
+    arquivo.write_text("TOKEN='primeiro-segredo'\nTOKEN='segundo-segredo'\n", encoding="utf-8")
+
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        sessao.carregar_env_de_sessao(arquivo)
+
+    assert "TOKEN" in erro.value.detalhe
+    assert "segundo-segredo" not in erro.value.detalhe
+    assert "primeiro-segredo" not in erro.value.detalhe
+
+
+def test_erros_de_recuperacao_do_executor_nao_usam_reticencias(tmp_path):
+    plano = plano_de_teste(sobe_ambiente=False, usa_redis=False, celula="ci")
+    comando = sessao.comando_abrir_seguro(plano)
+    assert "..." not in comando
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        sessao.comando_do_executor(plano, {"head": "a" * 40}, [])
+    renderizado = erro.value.render()
+    assert "..." not in renderizado
+    assert "Trabalho preservado" in renderizado

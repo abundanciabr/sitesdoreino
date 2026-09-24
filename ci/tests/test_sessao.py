@@ -1267,7 +1267,7 @@ def plano_sem_ambiente(**extra) -> sessao.Plano:
     return plano_de_teste(sobe_ambiente=False, usa_redis=False, **extra)
 
 
-def test_sem_container_faz_a_bancada_e_o_indice_e_para_por_ali():
+def test_sem_container_faz_bancada_indice_venv_e_env_sem_docker_nem_baseline():
     plano = plano_sem_ambiente()
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
     texto = mundo.sessao().rodar()
@@ -1275,7 +1275,10 @@ def test_sem_container_faz_a_bancada_e_o_indice_e_para_por_ali():
     assert "fetch origin" in juntas
     assert "worktree add" in juntas
     assert "indice_de_armadilhas.py" in juntas
-    for proibido in ("-m venv", "pip install", "docker", "doctor.py", "/usr/bin/make"):
+    assert "-m venv" in juntas
+    assert "pip install" in juntas
+    assert _n(mundo.plano.arquivo_env) in mundo.escritos
+    for proibido in ("docker", "doctor.py", "/usr/bin/make"):
         assert proibido not in juntas, "--sem-container ainda executa " + proibido
     assert any("anuncio-fuso-horario.md" in caminho for caminho in mundo.escritos)
     assert "não medido" in texto
@@ -1364,7 +1367,7 @@ def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
     mundo.sessao().rodar()
     passes = [linha for linha in mundo.log if "PASS" in linha]
-    assert len(passes) == len(sessao.passos_do_plano(plano)) == 5
+    assert len(passes) == len(sessao.passos_do_plano(plano)) == 8
 
 
 def test_bancos_de_tarefas_distintas_nao_colidem():

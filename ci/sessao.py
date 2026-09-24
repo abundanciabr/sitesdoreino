@@ -85,6 +85,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from dataclasses import dataclass, replace
@@ -161,6 +162,8 @@ LIMITE_DE_NOME = 40
 # rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
 # medir" — qualquer outro número veio do programa e é veredito dele.
 SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
+INTERVALO_CONFERENCIA_POSSE_SEGUNDOS = 30.0
+TIMEOUT_EXECUTOR_SEGUNDOS = 3600
 
 PASSOS = (
     "conferir o repositório e a célula",
@@ -466,6 +469,10 @@ class Plano:
         return self.celula_no_worktree / "requirements.txt"
 
     @property
+    def requisitos_ci(self) -> Path:
+        return self.worktree / "requirements-ci.txt"
+
+    @property
     def bin_do_venv(self) -> Path:
         return self.venv / ("Scripts" if os.name == "nt" else "bin")
 
@@ -561,8 +568,9 @@ def passos_do_plano(plano: Plano) -> tuple[str, ...]:
         passos.append(P_BALCAO)
     passos.append(P_ANUNCIO)
     passos.append(P_INDICE)
+    passos.extend((P_VENV, P_DEPS, P_ENV))
     if plano.sobe_ambiente:
-        passos.extend(PASSOS_DO_AMBIENTE)
+        passos.extend((P_SERVICOS, P_DOCTOR, P_BASELINE))
     return tuple(passos)
 
 
@@ -574,6 +582,11 @@ def bancada_pronta(plano: Plano) -> str:
             f"BANCADA PRONTA: {plano.worktree}",
         ]
     )
+
+
+def python_base_atual() -> tuple[str, str]:
+    executavel = getattr(sys, "base_executable", "") or getattr(sys, "_base_executable", "") or sys.executable
+    return str(executavel), sys.version
 
 
 def variaveis_de_sessao(
@@ -588,19 +601,23 @@ def variaveis_de_sessao(
     variaveis = {
         "PYTHONUTF8": "1",
         "DJANGO_SECRET_KEY": SEGREDO_DE_DESENVOLVIMENTO,
-        "DATABASE_URL": (
+    }
+    if plano.sobe_ambiente:
+        variaveis["DATABASE_URL"] = (
             f"postgres://{plano.banco}:{plano.senha_banco}"
             f"@localhost:{porta_postgres}/{plano.banco}"
-        ),
-    }
-    if plano.usa_redis:
-        variaveis["REDIS_STREAMS_URL"] = f"redis://localhost:{porta_redis}/0"
-        variaveis["HUEY_REDIS_URL"] = f"redis://localhost:{porta_redis}/1"
+        )
+        if plano.usa_redis:
+            variaveis["REDIS_STREAMS_URL"] = f"redis://localhost:{porta_redis}/0"
+            variaveis["HUEY_REDIS_URL"] = f"redis://localhost:{porta_redis}/1"
     variaveis["MP_ACCESS_TOKEN"] = TOKEN_FALSO_DO_MERCADO_PAGO
     variaveis["MP_WEBHOOK_SECRET"] = f"{SEGREDO_DE_DESENVOLVIMENTO}-webhook-secret"
     variaveis["SESSAO_SCRATCH"] = str(plano.scratch)
     variaveis["SESSAO_VENV"] = str(plano.venv)
     variaveis["SESSAO_WORKTREE"] = str(plano.worktree)
+    python_executavel, python_versao = python_base_atual()
+    variaveis["SESSAO_PYTHON_BASE_EXECUTABLE"] = python_executavel
+    variaveis["SESSAO_PYTHON_BASE_VERSION"] = python_versao
     return variaveis
 
 
@@ -681,7 +698,9 @@ def cabecalho(plano: Plano) -> str:
         linhas.append(f"  fila          {plano.tarefa_da_fila} (pegar no balcão)")
     if not plano.sobe_ambiente:
         linhas += [
-            "  ambiente      NENHUM (--sem-container: sem venv, Docker nem baseline)",
+            "  ambiente      Python da sessão (--sem-container: sem Docker nem baseline)",
+            f"  venv          {plano.venv}   (FORA do worktree)",
+            f"  .env          {plano.arquivo_env} (FORA do worktree)",
             "",
         ]
         return "\n".join(linhas)
@@ -1005,8 +1024,8 @@ def metadados_da_bancada(plano: Plano) -> dict[str, object]:
         "porta_redis": plano.porta_redis,
         "quem_no_balcao": plano.quem_no_balcao,
         "python_base": {
-            "executable": sys.executable,
-            "version": sys.version,
+            "executable": python_base_atual()[0],
+            "version": python_base_atual()[1],
             "prefix": sys.prefix,
             "platform": platform.platform(),
         },
@@ -1081,9 +1100,18 @@ def registrar_estado_inicial(
     return caminho
 
 
-def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
+def requisitos_do_venv(plano: Plano) -> tuple[Path, ...]:
+    arquivos = []
+    if plano.sobe_ambiente:
+        arquivos.append(plano.requisitos)
+    arquivos.append(plano.requisitos_ci)
+    return tuple(arquivos)
+
+
+def identidade_do_venv(requisitos: Path | Sequence[Path], *, ler=None, python_base: tuple[str, str] | None = None) -> str:
     identidade = hashlib.sha256()
-    identidade.update(repr((sys.executable, sys.version, platform.system(), platform.release(), platform.machine(),
+    executavel, versao = python_base or python_base_atual()
+    identidade.update(repr((executavel, versao, platform.system(), platform.release(), platform.machine(),
                             FERRAMENTAS_DE_PORTAO)).encode())
     visitados = set()
 
@@ -1093,6 +1121,7 @@ def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
             return
         visitados.add(arquivo)
         conteudo = (ler(arquivo) if ler else arquivo.read_bytes()).replace(b"\r\n", b"\n")
+        identidade.update(str(arquivo.name).encode("utf-8"))
         identidade.update(len(conteudo).to_bytes(8, "big"))
         identidade.update(conteudo)
         for linha in conteudo.decode("utf-8").splitlines():
@@ -1107,11 +1136,395 @@ def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
                 raise ErroDeSessao(P_VENV, "dependência local sem identidade imutável",
                                    detalhe=f"Use uma versão publicada antes de reutilizar o ambiente: {linha}")
     try:
-        incluir(requisitos)
+        if isinstance(requisitos, (str, Path)):
+            incluir(Path(requisitos))
+        else:
+            for arquivo in requisitos:
+                incluir(Path(arquivo))
     except (OSError, UnicodeError) as erro:
         raise ErroDeSessao(P_VENV, "não foi possível ler as dependências",
-                           detalhe=f"Confira {requisitos} e repita a abertura: {erro}") from erro
+                           detalhe=f"Confira os requirements da sessão e repita a abertura: {erro}") from erro
     return identidade.hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Executor oficial da sessão
+# ---------------------------------------------------------------------------
+
+CHAVES_SENSIVEIS_DO_ENV = re.compile(r"(SECRET|TOKEN|PASSWORD|SENHA|DATABASE_URL|REDIS.*URL|API_KEY|PRIVATE_KEY|ACCESS_KEY|_KEY$)", re.I)
+
+
+
+def comando_abrir_seguro(plano: Plano) -> str:
+    comando = ["python", "ci/sessao.py", "abrir", "--celula", plano.celula, "--tarefa", plano.tarefa]
+    if plano.tarefa_da_fila:
+        comando += ["--tar", plano.tarefa_da_fila]
+    if not plano.sobe_ambiente:
+        comando.append("--sem-container")
+    comando += ["--scratch", str(plano.scratch.parent)]
+    return subprocess.list2cmdline(comando)
+
+def carregar_env_de_sessao(arquivo: Path) -> dict[str, str]:
+    try:
+        linhas = arquivo.read_text(encoding="utf-8").splitlines()
+    except OSError as erro:
+        raise ErroDeSessao(
+            "executor da sessão",
+            ".env da sessão indisponível",
+            detalhe=f"Esperado em {arquivo}. Trabalho preservado; nenhum filho executou. Reabra pelo comando original da sessão ou rode `python ci/sessao.py --help` para conferir a sintaxe antes de tentar de novo.",
+        ) from erro
+    env: dict[str, str] = {}
+    for numero, linha in enumerate(linhas, 1):
+        if not linha.strip() or linha.startswith("#"):
+            continue
+        casou = re.fullmatch(r"([A-Z0-9_]+)='([^'\n]*)'", linha)
+        if not casou:
+            raise ErroDeSessao(
+                "executor da sessão",
+                ".env da sessão tem formato inválido",
+                detalhe=f"Linha {numero} não segue KEY='valor'. Preserve o arquivo e rode a abertura para regenerar.",
+            )
+        chave = casou.group(1)
+        if chave in env:
+            raise ErroDeSessao(
+                "executor da sessão",
+                ".env da sessão tem chave duplicada",
+                detalhe=f"Linha {numero} repete {chave}. Preserve o arquivo e rode a abertura para regenerar.",
+            )
+        env[chave] = casou.group(2)
+    return env
+
+
+def _redigir_com_env(texto: str, env: dict[str, str]) -> str:
+    try:
+        from telemetria import redigir
+        texto = redigir(texto)
+    except Exception:
+        pass
+    for chave, valor in env.items():
+        if not valor or not CHAVES_SENSIVEIS_DO_ENV.search(chave):
+            continue
+        texto = texto.replace(valor, f"[redigido:{chave}]")
+    return texto
+
+
+def _ambiente_do_executor(plano: Plano, env_sessao: dict[str, str]) -> dict[str, str]:
+    base = {
+        chave: valor
+        for chave, valor in os.environ.items()
+        if chave.upper() in {"SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA"}
+    }
+    for chave in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV", "DJANGO_SETTINGS_MODULE"):
+        base.pop(chave, None)
+    for chave in list(base):
+        if chave.startswith("PYTEST_"):
+            base.pop(chave, None)
+    base.update(env_sessao)
+    for chave in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV"):
+        base.pop(chave, None)
+    for chave in list(base):
+        if chave.startswith("PYTEST_"):
+            base.pop(chave, None)
+    base["PYTHONUTF8"] = "1"
+    base["PYTHONDONTWRITEBYTECODE"] = "1"
+    base["VIRTUAL_ENV"] = str(plano.venv)
+    resto_path = os.environ.get("PATH", "")
+    base["PATH"] = str(plano.bin_do_venv) + (os.pathsep + resto_path if resto_path else "")
+    return base
+
+
+def _plano_do_estado(dados: dict[str, object]) -> Plano:
+    bruto = dados.get("plano")
+    if not isinstance(bruto, dict):
+        raise ErroDeSessao("executor da sessão", "registro inicial sem plano", detalhe="Rode a abertura da sessão de novo; a bancada foi preservada.")
+    try:
+        return Plano(
+            celula=str(bruto["celula"]), tarefa=str(bruto["tarefa"]), frase=str(bruto.get("frase") or ""),
+            sobe_ambiente=bool(bruto["sobe_ambiente"]), tarefa_da_fila=str(bruto.get("tarefa_da_fila") or ""),
+            raiz=Path(str(bruto["raiz"])), worktree=Path(str(bruto["worktree"])), branch=str(bruto["branch"]),
+            scratch=Path(str(bruto["scratch"])), venv=Path(str(bruto["venv"])), arquivo_env=Path(str(bruto["arquivo_env"])),
+            postgres=str(bruto.get("postgres") or ""), porta_postgres=int(bruto.get("porta_postgres") or 0),
+            redis=str(bruto.get("redis") or ""), porta_redis=int(bruto.get("porta_redis") or 0),
+        )
+    except (KeyError, TypeError, ValueError) as erro:
+        raise ErroDeSessao("executor da sessão", "registro inicial incompleto", detalhe="Rode a abertura da sessão de novo; a bancada foi preservada.") from erro
+
+
+def _caminho_igual(a: str | Path, b: str | Path) -> bool:
+    esquerda = str(Path(a))
+    direita = str(Path(b))
+    if platform.system() == "Windows":
+        return esquerda.casefold() == direita.casefold()
+    return esquerda == direita
+
+
+def _python_base_da_sessao(dados: dict[str, object], env_sessao: dict[str, str]) -> tuple[str, str] | None:
+    plano = dados.get("plano")
+    if isinstance(plano, dict):
+        base = plano.get("python_base")
+        if isinstance(base, dict) and base.get("executable") and base.get("version"):
+            return str(base["executable"]), str(base["version"])
+    executavel = env_sessao.get("SESSAO_PYTHON_BASE_EXECUTABLE")
+    versao = env_sessao.get("SESSAO_PYTHON_BASE_VERSION")
+    if executavel and versao:
+        return executavel, versao
+    return None
+
+
+def _info_do_python_da_sessao(plano: Plano) -> dict[str, str]:
+    codigo = (
+        "import json,sys;"
+        "print(json.dumps({"
+        "'executable':sys.executable,"
+        "'base_executable':getattr(sys,'base_executable',getattr(sys,'_base_executable','')),"
+        "'version':sys.version"
+        "}, ensure_ascii=False))"
+    )
+    saida = correr_de_verdade([str(plano.python_do_venv), "-c", codigo], cwd=plano.worktree, timeout=30)
+    if saida.exit_code != 0:
+        raise ErroDeSessao("executor da sessão", "Python da sessão não executa", detalhe=recortar(saida.texto, 2000))
+    try:
+        info = json.loads(saida.stdout.strip())
+    except ValueError as erro:
+        raise ErroDeSessao("executor da sessão", "Python da sessão devolveu identidade ilegível", detalhe=recortar(saida.texto, 2000)) from erro
+    return {str(chave): str(valor) for chave, valor in info.items()}
+
+
+def plano_da_bancada_atual(cwd: Path) -> tuple[Plano, dict[str, object], dict[str, str]]:
+    git = correr_de_verdade(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], timeout=60)
+    if git.exit_code != 0:
+        raise ErroDeSessao("executor da sessão", "diretório atual não é uma bancada Git", detalhe=recortar(git.texto, 2000))
+    worktree = Path(git.stdout.strip()).resolve()
+    estado = arquivo_de_estado_inicial(worktree)
+    if not estado.exists():
+        raise ErroDeSessao("executor da sessão", "esta bancada não tem registro inicial da sessão", detalhe="Trabalho preservado; nenhum filho executou. Entre no worktree impresso em `BANCADA PRONTA:` na abertura original. Para conferir a sintaxe de reabertura, rode `python ci/sessao.py --help`.")
+    try:
+        dados = json.loads(estado.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as erro:
+        raise ErroDeSessao("executor da sessão", "registro inicial ilegível", detalhe=f"Preserve {estado} e repita a abertura.") from erro
+    if dados.get("identidade") != identidade_duravel_da_bancada(worktree):
+        raise ErroDeSessao("executor da sessão", "registro inicial pertence a outra bancada", detalhe="Preserve os arquivos e confira o worktree antes de executar.")
+    plano = _plano_do_estado(dados)
+    if plano.worktree.resolve() != worktree:
+        raise ErroDeSessao("executor da sessão", "cwd não corresponde à bancada registrada", detalhe=f"cwd real: {worktree}\nregistro: {plano.worktree}")
+    env_sessao = carregar_env_de_sessao(plano.arquivo_env)
+    if env_sessao.get("SESSAO_WORKTREE") and Path(env_sessao["SESSAO_WORKTREE"]).resolve() != worktree:
+        raise ErroDeSessao("executor da sessão", ".env pertence a outra bancada", detalhe="Rode a abertura da sessão nesta bancada; nada foi executado.")
+    venv_env = env_sessao.get("SESSAO_VENV")
+    if not venv_env:
+        raise ErroDeSessao("executor da sessão", ".env sem SESSAO_VENV definitivo", detalhe=f"O snapshot inicial antecede o hash do venv. Trabalho preservado; nenhum filho executou. Reabra com: {comando_abrir_seguro(plano)}")
+    plano = replace(plano, venv=Path(venv_env))
+    marca = plano.venv / ".instalado"
+    try:
+        instalado = marca.read_text(encoding="utf-8")
+    except OSError as erro:
+        raise ErroDeSessao("executor da sessão", "ambiente sem marcador de instalação", detalhe=f"Esperado em {marca}. Rode a abertura para concluir a instalação.") from erro
+    python_base = _python_base_da_sessao(dados, env_sessao)
+    if python_base is not None:
+        esperado = identidade_do_venv(requisitos_do_venv(plano), python_base=python_base)
+        if plano.venv.name != esperado:
+            raise ErroDeSessao("executor da sessão", "venv não corresponde aos requisitos atuais", detalhe=f"requirements, Python da abertura ou plataforma mudaram. Trabalho preservado; nenhum filho executou. Reabra com: {comando_abrir_seguro(plano)}")
+        if instalado != esperado:
+            raise ErroDeSessao("executor da sessão", "marcador de instalação incompatível", detalhe=f"{marca} não confirma o ambiente {esperado[:12]}.")
+    elif instalado != plano.venv.name:
+        raise ErroDeSessao("executor da sessão", "ambiente antigo sem identidade verificável", detalhe=f"{marca} não confirma o nome do venv. Trabalho preservado; nenhum filho executou.")
+    if not plano.python_do_venv.exists():
+        raise ErroDeSessao("executor da sessão", "Python da sessão não existe", detalhe=f"Esperado em {plano.python_do_venv}. Trabalho preservado; nenhum filho executou. Reabra com: {comando_abrir_seguro(plano)}")
+    info = _info_do_python_da_sessao(plano)
+    if not _caminho_igual(info.get("executable", ""), plano.python_do_venv):
+        raise ErroDeSessao("executor da sessão", "Python executado não é o venv da sessão", detalhe=f"esperado: {plano.python_do_venv}\nmedido: {info.get('executable', '')}")
+    if python_base is not None:
+        if info.get("version") != python_base[1]:
+            raise ErroDeSessao("executor da sessão", "versão do Python da sessão mudou", detalhe="Trabalho preservado; nenhum filho executou.")
+        base_medida = info.get("base_executable")
+        if base_medida and not _caminho_igual(base_medida, python_base[0]):
+            raise ErroDeSessao("executor da sessão", "Python base da sessão mudou", detalhe=f"esperado: {python_base[0]}\nmedido: {base_medida}")
+    return plano, dados, env_sessao
+
+
+def _base_do_ci(dados: dict[str, object]) -> str:
+    head = str(dados.get("head") or "")
+    if not re.fullmatch(r"[0-9a-f]{40,64}", head):
+        raise ErroDeSessao("executor da sessão", "registro inicial sem base Git", detalhe="Sem a revisão inicial não há como executar `ci` com --base seguro.")
+    return head
+
+
+def comando_do_executor(plano: Plano, dados: dict[str, object], argumentos: Sequence[str]) -> tuple[list[str], Path, str]:
+    args = list(argumentos)
+    if args and args[0] == "--":
+        args = args[1:]
+    if not args:
+        raise ErroDeSessao("executor da sessão", "comando ausente", detalhe="Use um comando completo, por exemplo `python ci/sessao.py executar -- pytest -q` ou `python ci/sessao.py executar -- ci`. Trabalho preservado; nenhum filho executou.")
+    alvo, resto = args[0], args[1:]
+    if alvo == "pytest":
+        cwd = plano.celula_no_worktree if plano.sobe_ambiente else plano.worktree
+        return [str(plano.python_do_venv), "-m", "pytest", *resto], cwd, "pytest"
+    if alvo == "ci":
+        proibidos = {"--apenas", "--celula", "--base", "--detectar-celulas", "--listar"}
+        usados = [arg for arg in resto if arg.split("=", 1)[0] in proibidos]
+        if usados:
+            raise ErroDeSessao("executor da sessão", "argumento reservado do runner", detalhe=f"A sessão fixa {', '.join(sorted(proibidos))}; removido: {', '.join(usados)}")
+        base = _base_do_ci(dados)
+        comando = [str(plano.python_do_venv), "ci/ci.py"]
+        if plano.sobe_ambiente:
+            comando += ["--apenas", "celula", "--celula", plano.celula]
+        comando += ["--base", base, *resto]
+        return comando, plano.worktree, "ci"
+    return args, plano.worktree, "literal"
+
+
+def _grupo_de_processos():
+    if platform.system() == "Windows":
+        from pr_processos_windows import GrupoWindows
+        return GrupoWindows()
+    if platform.system() == "Linux":
+        from pr_processos_linux import GrupoLinux
+        return GrupoLinux()
+    raise ErroDeSessao("executor da sessão", "plataforma sem grupo de processos", detalhe="A contenção oficial existe em Windows e Linux.")
+
+
+def _iniciar_no_grupo(grupo, comando: list[str], *, cwd: Path, env: dict[str, str]):
+    if not hasattr(grupo, "iniciar"):
+        raise ErroDeSessao(
+            "executor da sessão",
+            "API de grupo de processos incompatível",
+            detalhe="Esta frente depende da API `GrupoWindows/GrupoLinux.iniciar(comando, raiz, ambiente)` do PR de processos; sem ela haveria janela de órfãos.",
+        )
+    return grupo.iniciar(comando, raiz=cwd, ambiente=env)
+
+
+def _signed32(codigo: int) -> int:
+    codigo = codigo & 0xFFFFFFFF
+    return codigo - 0x100000000 if codigo & 0x80000000 else codigo
+
+
+def _codigo_cli(codigo: int) -> int:
+    if platform.system() == "Windows":
+        return _signed32(codigo)
+    return codigo
+
+
+def sair_do_processo(codigo: int) -> int:
+    codigo = _codigo_cli(codigo)
+    if platform.system() == "Linux" and codigo < 0:
+        os.kill(os.getpid(), -codigo)
+        return 128 + (-codigo)
+    return codigo
+
+
+class MonitorDePosse:
+    def __init__(self, plano: Plano, grupo, *, intervalo: float = INTERVALO_CONFERENCIA_POSSE_SEGUNDOS):
+        self.plano = plano
+        self.grupo = grupo
+        self.intervalo = intervalo
+        self.parar = threading.Event()
+        self.perda = ""
+        self.thread: threading.Thread | None = None
+
+    def _conferir(self) -> bool:
+        if not self.plano.tarefa_da_fila:
+            return True
+        try:
+            import reservar
+            leitura = reservar.ler_reserva(self.plano.worktree, f"tarefa-{self.plano.tarefa_da_fila}")
+            if leitura is None:
+                self.perda = "reserva da tarefa ausente"
+                return False
+            _, corpo = leitura
+            if corpo.get("estado") == "publicacao_pendente":
+                self.perda = "reserva protege publicação pendente; não autoriza nova execução"
+                return False
+            if corpo.get("tipo") != "intencao" or corpo.get("chave") != f"tarefa-{self.plano.tarefa_da_fila}" or corpo.get("dono") != reservar.identidade_da_bancada(self.plano.worktree):
+                self.perda = "reserva da tarefa não pertence a esta bancada"
+                return False
+            expira = datetime.fromisoformat(str(corpo.get("expira_em") or ""))
+            if expira.tzinfo is None or expira <= datetime.now(timezone.utc):
+                self.perda = "reserva da tarefa expirou"
+                return False
+            return True
+        except Exception as erro:
+            if not self.perda:
+                self.perda = f"não consegui reconferir a reserva durante a execução: {erro}"
+            return False
+
+    def iniciar(self) -> None:
+        if not self.plano.tarefa_da_fila:
+            return
+        if not self._conferir():
+            raise ErroDeSessao("executor da sessão", "posse da tarefa indisponível", detalhe=self.perda)
+
+        def vigiar():
+            while not self.parar.wait(self.intervalo):
+                if not self._conferir():
+                    try:
+                        self.grupo.encerrar()
+                    finally:
+                        self.parar.set()
+                    return
+
+        self.thread = threading.Thread(target=vigiar, name="sessao-posse", daemon=True)
+        self.thread.start()
+
+    def encerrar(self) -> None:
+        self.parar.set()
+        if self.thread is not None:
+            self.thread.join(timeout=1)
+
+
+def executar_na_sessao(argv: Sequence[str], *, cwd: Path | None = None, intervalo_posse: float = INTERVALO_CONFERENCIA_POSSE_SEGUNDOS) -> int:
+    cwd = (cwd or Path.cwd()).resolve()
+    plano, dados, env_sessao = plano_da_bancada_atual(cwd)
+    comando, cwd_comando, apelido = comando_do_executor(plano, dados, argv)
+    env = _ambiente_do_executor(plano, env_sessao)
+    comando_texto = subprocess.list2cmdline(comando)
+    inicio = datetime.now(timezone.utc)
+    pasta_logs = plano.scratch / "execucoes"
+    pasta_logs.mkdir(parents=True, exist_ok=True)
+    log = pasta_logs / f"{inicio.strftime('%Y%m%d-%H%M%S-%f')}-{uuid.uuid4().hex[:8]}-{apelido}.log"
+    stdout = stderr = ""
+    codigo = 2
+    with trava_da_bancada(plano.worktree, passo="executor da sessão"):
+        grupo = _grupo_de_processos()
+        monitor = MonitorDePosse(plano, grupo, intervalo=intervalo_posse)
+        try:
+            monitor.iniciar()
+            processo = _iniciar_no_grupo(grupo, comando, cwd=cwd_comando, env=env)
+            try:
+                stdout, stderr = processo.communicate(timeout=TIMEOUT_EXECUTOR_SEGUNDOS)
+                codigo = int(processo.returncode or 0)
+            except subprocess.TimeoutExpired:
+                grupo.encerrar()
+                stdout, stderr = processo.communicate(timeout=5)
+                stderr = (stderr or "") + f"\nTimeout de {TIMEOUT_EXECUTOR_SEGUNDOS}s; filhos encerrados pelo grupo de processos.\n"
+                codigo = 124
+            except KeyboardInterrupt:
+                grupo.encerrar()
+                stderr = "Interrompido por Ctrl+C; filhos encerrados pelo grupo de processos.\n"
+                codigo = 130
+            finally:
+                monitor.encerrar()
+            if monitor.perda:
+                codigo = 2
+                stderr = (stderr or "") + f"\nExecução interrompida: {monitor.perda}\n"
+        finally:
+            try:
+                grupo.encerrar()
+            except Exception as erro:
+                stderr = (stderr or "") + f"\nFalha ao encerrar grupo de processos: {erro}\n"
+                codigo = 2
+    fim = datetime.now(timezone.utc)
+    texto = "\n".join([
+        f"inicio={inicio.isoformat()}", f"fim={fim.isoformat()}", f"worktree={plano.worktree}",
+        f"cwd={cwd_comando}", f"python={plano.python_do_venv}", f"comando={comando_texto}", f"exit_code={codigo}",
+        "--- stdout ---", stdout or "", "--- stderr ---", stderr or "",
+    ])
+    log.write_text(_redigir_com_env(texto, env_sessao), encoding="utf-8")
+    if stdout:
+        print(_redigir_com_env(stdout, env_sessao), end="")
+    if stderr:
+        print(_redigir_com_env(stderr, env_sessao), end="", file=sys.stderr)
+    print(f"Log da execução: {log}", file=sys.stderr)
+    return _codigo_cli(codigo)
 
 
 class Sessao:
@@ -1911,7 +2324,7 @@ class Sessao:
 
     def preparar_venv(self) -> None:
         passo = self._abrir(P_VENV)
-        chave = identidade_do_venv(self.plano.requisitos)
+        chave = identidade_do_venv(requisitos_do_venv(self.plano))
         self.plano = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / chave)
         with trava_de_ambiente(self.plano.venv.with_suffix(".lock")):
             if self._existe(self.plano.python_do_venv):
@@ -1933,7 +2346,7 @@ class Sessao:
 
     def instalar(self) -> None:
         passo = self._abrir(P_DEPS)
-        chave = identidade_do_venv(self.plano.requisitos)
+        chave = identidade_do_venv(requisitos_do_venv(self.plano))
         if self.plano.venv.name != chave:
             raise ErroDeSessao(passo, "dependências mudaram durante a preparação",
                                detalhe="Repita a abertura para preparar o novo ambiente.")
@@ -1946,7 +2359,9 @@ class Sessao:
             comando = ([uv, "pip", "install", "--python", str(self.plano.python_do_venv)]
                        if uv else [str(self.plano.python_do_venv), "-m", "pip", "install",
                                    "--disable-pip-version-check"])
-            comando += ["-r", str(self.plano.requisitos), *FERRAMENTAS_DE_PORTAO]
+            for requisitos in requisitos_do_venv(self.plano):
+                comando += ["-r", str(requisitos)]
+            comando += list(FERRAMENTAS_DE_PORTAO)
             self._exigir(passo, comando, cwd=self.plano.worktree, timeout=3600,
                           dica="Confira o acesso ao índice de pacotes e repita a abertura.")
             temporario = marca.with_suffix(f".{uuid.uuid4().hex}.tmp")
@@ -2236,7 +2651,7 @@ class Sessao:
             relativo = arquivo.relative_to(self.plano.worktree.resolve()).as_posix()
             return self._exigir(P_BASELINE, [git, "show", f"{revisao}:{relativo}"],
                                  cwd=self.plano.worktree).stdout.encode("utf-8")
-        identidade_base = identidade_do_venv(self.plano.requisitos, ler=ler_da_base)
+        identidade_base = identidade_do_venv(requisitos_do_venv(self.plano), ler=ler_da_base)
         plano_base = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / identidade_base)
         base = Sessao(plano_base, correr=self._correr, escrever=self._escrever,
                       existe=self._existe, localizar=self._localizar, dormir=self._dormir,
@@ -2368,10 +2783,11 @@ class Sessao:
                 self.pegar_a_tarefa()
             self.anunciar_pr(gh)
             self.gerar_indice(git)
-            if not self.plano.sobe_ambiente:
-                return declaracao(self.plano, resumo="", estado_git=self._estado_git)
             self.preparar_venv()
             self.instalar()
+            if not self.plano.sobe_ambiente:
+                self.escrever_env(0, 0)
+                return declaracao(self.plano, resumo="", estado_git=self._estado_git)
             porta_pg, porta_redis = self.preparar_servicos()
             self.escrever_env(porta_pg, porta_redis)
             self.rodar_doctor()
@@ -2614,7 +3030,16 @@ def raiz_do_clone(checkout: Path) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
-    args = construir_parser().parse_args(argv)
+    bruto = list(sys.argv[1:] if argv is None else argv)
+    if bruto and bruto[0] == "executar":
+        try:
+            return executar_na_sessao(bruto[1:])
+        except ErroDeSessao as erro:
+            print(erro.render(), file=sys.stderr)
+            return erro.codigo
+    if bruto and bruto[0] == "abrir":
+        bruto = bruto[1:]
+    args = construir_parser().parse_args(bruto)
     try:
         raiz = raiz_declarada(Path(args.raiz)) if args.raiz else raiz_do_repo()
         if not args.contexto:
@@ -2773,4 +3198,4 @@ def _blindar(rotulo: str, funcao: Callable[..., int]) -> Callable[..., int]:
 
 
 if __name__ == "__main__":
-    raise SystemExit(_blindar("sessao", main)())
+    raise SystemExit(sair_do_processo(_blindar("sessao", main)()))
