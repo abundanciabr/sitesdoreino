@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-013-l0-publicado-e-matriz-disponivel",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "L0 do caminho unico dos robos publicado",
+  detalhe: "O PR 2011 integrou a matriz L0 do caminho unico dos robos, as TARs 676 a 683 e os eventos oficiais da TAR-676. A publicacao da celula admin terminou verde no workflow deploy-celula do merge bf0d4744a8388774b52e8c09ae511a5531d2a779.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2011 e https://github.com/abundanciabr/sitesdoreino/actions/runs/35954902384",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: "20260924-011-docs-publica-matriz-l0-do-caminho-unico-dos-robos",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
