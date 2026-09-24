@@ -601,12 +601,60 @@ def sem_rede(monkeypatch, reservas=frozenset(), prs=None):
 def test_pegar_ganha_escreve_o_evento_e_mostra_o_despacho(tmp_path, monkeypatch, capsys):
     montar(tmp_path, [tarefa()])
     sem_rede(monkeypatch)
+    leituras = [set(), {"TAR-001"}]
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: leituras.pop(0))
     monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
+    monkeypatch.setattr(fila.reservar, "soltar", lambda *a: pytest.fail("soltou reserva válida"))
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
     assert fila.cmd_pegar(tmp_path, args) == 0
     eventos = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))
     assert len(eventos) == 1
     assert "faça a coisa" in capsys.readouterr().out
+
+
+def test_pegar_revalida_estado_depois_da_reserva_e_libera_se_mudou(
+    tmp_path, monkeypatch, capsys
+):
+    montar(tmp_path, [tarefa()])
+    leituras = [set(), {"TAR-001"}]
+    soltas = []
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: leituras.pop(0))
+    monkeypatch.setattr(
+        fila,
+        "prs_citando_tarefas",
+        lambda raiz: {"TAR-001": "PR #99"} if not leituras else {},
+    )
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave: soltas.append(chave))
+
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
+
+    assert fila.cmd_pegar(tmp_path, args) == 1
+    assert soltas == ["tarefa-TAR-001"]
+    assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
+    assert "mudou para 'em execução'" in capsys.readouterr().out
+
+
+def test_pegar_bancada_obsoleta_apos_reserva_libera_sem_evento(
+    tmp_path, monkeypatch, capsys
+):
+    montar(tmp_path, [tarefa()])
+    (tmp_path / ".git").write_text("gitdir: ../repo/.git/worktrees/tarefa\n", encoding="utf-8")
+    frescor = iter([True, False])
+    soltas = []
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda raiz: next(frescor))
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave: soltas.append(chave))
+
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
+
+    assert fila.cmd_pegar(tmp_path, args) == 1
+    assert soltas == ["tarefa-TAR-001"]
+    assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
+    assert "fila publicada mudou" in capsys.readouterr().out
 
 
 def test_pegar_perde_a_corrida_e_recusado_e_NAO_escreve_evento(tmp_path, monkeypatch, capsys):

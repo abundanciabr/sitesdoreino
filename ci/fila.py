@@ -1221,6 +1221,16 @@ def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
     return achados
 
 
+def estado_ao_vivo(
+    raiz: Path,
+    tarefas: dict[str, dict],
+    eventos: list[dict],
+) -> tuple[dict[str, dict], set[str], dict[str, str]]:
+    reservas = reservas_no_servidor(raiz)
+    prs = prs_citando_tarefas(raiz)
+    return calcular_estados(tarefas, eventos, reservas, prs), reservas, prs
+
+
 def consultar_pr_submetido(raiz: Path, url: str) -> dict:
     try:
         proc = subprocess.run(
@@ -2765,20 +2775,24 @@ def cmd_pegar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
+    if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
+        print("RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou.")
+        print("Atualize a bancada antes de pegar a tarefa; nenhuma reserva ou evento foi alterado.")
+        return 1
     tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
         return 1
-    reservas = reservas_no_servidor(raiz)
-    prs = prs_citando_tarefas(raiz)
+    estados, reservas, prs = estado_ao_vivo(raiz, tarefas, eventos)
     escritos = rotular_orfaos(raiz, tarefas, eventos, reservas, prs, args.quem)
     if escritos:
         eventos = _carregar_ou_parar(raiz)[1]
         print(f"🏷️  Zelador: {len(escritos)} reivindicação(ões) órfã(s) rotulada(s) antes da aquisição.")
         for caminho in escritos:
             print(f"   {caminho.relative_to(raiz)}")
-    estado = calcular_estados(tarefas, eventos, reservas, prs)[tid]
+        estados = calcular_estados(tarefas, eventos, reservas, prs)
+    estado = estados[tid]
     if estado["estado"] == REIVINDICADA and tid in reservas:
         cadeia = [ev for ev in eventos if ev.get("tarefa") == tid and ev.get("evento") in EVENTOS_DE_CICLO]
         ultimo = cadeia[-1] if cadeia else None
@@ -2798,6 +2812,30 @@ def cmd_pegar(raiz: Path, args) -> int:
     )
     if not ganhou:
         print(f"RECUSADO PELO SERVIDOR: {recado}")
+        return 1
+    if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
+        reservar.soltar(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        print("RECUSADO: a fila publicada mudou durante a aquisição.")
+        print("A reserva recém-obtida foi liberada; atualize a bancada e consulte de novo.")
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    estados, reservas, prs = estado_ao_vivo(raiz, tarefas, eventos)
+    estado = estados[tid]
+    reserva_propria = tid in reservas and reservar.confirmar_intencao(
+        raiz, f"{PREFIXO_DA_RESERVA}{tid}"
+    )
+    if not (
+        estado["estado"] == REIVINDICADA
+        and reserva_propria
+        and estado.get("quem") == "reserva ativa no almoxarife"
+    ):
+        reservar.soltar(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
+        print(
+            f"RECUSADO: {tid} mudou para '{estado['estado']}'"
+            + (f" ({estado['motivo']})" if estado.get("motivo") else "")
+            + " durante a aquisição."
+        )
+        print("A reserva recém-obtida foi liberada; consulte python ci/fila.py listar --ao-vivo.")
         return 1
     caminho = _escrever_evento(raiz, tid, "reivindicada", args.quem)
     print(f"✅ {tid} é sua — {recado}")
