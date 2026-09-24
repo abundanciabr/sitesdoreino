@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031521-TAR-684-explicada",
+  "tarefa": "TAR-684",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:15:21.577172+00:00",
+  "quem": "Pedido do mantenedor nesta sessão Codex, 24/09/2026; retomada do PR 2018.",
+  "o_que_e": "A cópia da página existe no computador e o endereço solicitado ainda retorna página não encontrada.",
+  "o_que_muda": "O mantenedor abre a página completa na administração, sem expor sua sessão aos scripts da cópia.",
+  "exemplo": "Abrir /admin/modelos-de-paginas/flp-0, ver as imagens, abrir o formulário e expandir uma pergunta.",
+  "importancia": 70
+}

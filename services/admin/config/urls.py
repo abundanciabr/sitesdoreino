@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.urls import path, re_path
 
+from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
 from apps.core.diagnostico import diag_json
 from apps.core.analise_da_caixa import analise, desfazer_fusao, fundir
 from apps.core.caixa import (
@@ -169,6 +170,12 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
+    path("modelos-de-paginas/flp-0", modelo_flp, name="modelo_flp"),
+    path(
+        "modelos-de-paginas/flp-0/conteudo",
+        modelo_flp_conteudo,
+        name="modelo_flp_conteudo",
+    ),
     path("healthz", healthz),
     # A PORTA DE MAQUINA (06/09/2026), no mesmo endereco que o `forum`, a
     # `identidade`, a `sugestoes` e a `pages` usam. Nesta celula esse caminho
