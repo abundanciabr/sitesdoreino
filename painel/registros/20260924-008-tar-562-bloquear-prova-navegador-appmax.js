@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-008-tar-562-bloquear-prova-navegador-appmax",
+  tipo: "pendencia",
+  quando: "2026-09-24",
+  titulo: "TAR-562: bloquear prova navegador Appmax",
+  detalhe: "Registra bloqueio real da TAR-562: prova Playwright depende de credenciais sandbox Appmax e de site liberado para cartão, ausentes no ambiente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2021. Validação local: árvore f2f89ff3da8b261006ad4c2ec98c5153aae1aaff; commit aaacc83534fa0e8efe26ffd16f8725550987dd23; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-562",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "e2e",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
