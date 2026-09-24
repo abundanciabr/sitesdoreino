@@ -151,6 +151,7 @@ def rodar(comando: list[str], raiz: Path, *, log: Path | None = None,
     if log is None:
         return executar(comando, cwd=raiz, descricao=f"rodar `{' '.join(comando)}`", timeout=300).stdout
     _conferir_prazo(prazo_segundos)
+    log.parent.mkdir(parents=True, exist_ok=True)
     cabecalho = f"Comando: {json.dumps(comando)}\nPrazo por comando: {prazo_segundos}s\nInício UTC: {datetime.now(timezone.utc).isoformat()}\n"
     ambiente = {**os.environ, "PYTHONPATH": str(raiz), "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     processo = grupo = None
@@ -167,14 +168,16 @@ def rodar(comando: list[str], raiz: Path, *, log: Path | None = None,
             from pr_processos_linux import GrupoLinux
             grupo = GrupoLinux()
         try:
-            processo = subprocess.Popen(
-                comando, cwd=raiz, env=ambiente, stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                text=True, encoding='utf-8', errors='replace',
-                creationflags=0x00000004 if os.name == 'nt' else 0,
-                start_new_session=os.name != 'nt',
-            )
-            if grupo is not None:
+            if hasattr(grupo, 'iniciar'):
+                processo = grupo.iniciar(comando, raiz, ambiente)
+            else:
+                processo = subprocess.Popen(
+                    comando, cwd=raiz, env=ambiente, stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    text=True, encoding='utf-8', errors='replace',
+                    creationflags=0x00000004 if os.name == 'nt' else 0,
+                    start_new_session=os.name != 'nt',
+                )
                 grupo.associar_e_iniciar(processo)
             try:
                 stdout, stderr = processo.communicate(timeout=prazo_segundos)

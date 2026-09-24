@@ -986,7 +986,19 @@ if profundidade == 2 and sys.argv[2] == "sair":
 print("token=SEGREDO_CONTROLADO", file=sys.stderr, flush=True)
 time.sleep(60)
 ''', encoding='utf-8')
-    comunicar = subprocess.Popen.communicate
+    comunicar_popen = subprocess.Popen.communicate
+    try:
+        from pr_processos_windows import ProcessoWindows
+    except ImportError:
+        ProcessoWindows = None
+        comunicar_windows = None
+    else:
+        comunicar_windows = ProcessoWindows.communicate
+
+    def comunicar_original(processo, input=None, timeout=None):
+        if ProcessoWindows is not None and isinstance(processo, ProcessoWindows):
+            return comunicar_windows(processo, input=input, timeout=timeout)
+        return comunicar_popen(processo, input=input, timeout=timeout)
 
     def comunicar_com_arvore_pronta(processo, input=None, timeout=None):
         if timeout == 2:
@@ -996,13 +1008,15 @@ time.sleep(60)
                     'preparação incompleta: pai, filho e neto não nasceram em 30s'
                 )
                 try:
-                    comunicar(processo, input=input, timeout=.05)
+                    comunicar_original(processo, input=input, timeout=.05)
                 except subprocess.TimeoutExpired:
                     continue
                 pytest.fail('a preparação encerrou sem pai, filho e neto')
-        return comunicar(processo, input=input, timeout=timeout)
+        return comunicar_original(processo, input=input, timeout=timeout)
 
     monkeypatch.setattr(subprocess.Popen, 'communicate', comunicar_com_arvore_pronta)
+    if ProcessoWindows is not None:
+        monkeypatch.setattr(ProcessoWindows, 'communicate', comunicar_com_arvore_pronta)
 
     def vivo(pid):
         if os.name == 'nt':
