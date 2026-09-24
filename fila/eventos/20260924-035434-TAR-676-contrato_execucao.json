@@ -1,0 +1,64 @@
+{
+  "arquivo": "20260924-035434-TAR-676-contrato_execucao",
+  "tarefa": "TAR-676",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-24T03:54:34.202191+00:00",
+  "quem": "matriz_gpt55",
+  "contrato": {
+    "plano": "caminho-unico-robos-l0",
+    "versao": 1,
+    "objetivo": "Recriar a matriz L0 completa do caminho unico dos robos, vinculando R1 a R8 as TARs 676 a 683 sem criar fila ou status paralelo.",
+    "entregaveis": [
+      "docs/decisoes/MATRIZ-CAMINHO-UNICO-ROBOS-L0.md com R1 a R8",
+      "Tarefas 676 a 683 conferidas e sem duplicacao",
+      "Eventos de contrato e checkpoint da TAR-676",
+      "Validacao local da fila e da matriz"
+    ],
+    "escopo_incluido": [
+      "docs/decisoes/MATRIZ-CAMINHO-UNICO-ROBOS-L0.md",
+      "fila/tarefas/676-683",
+      "fila/eventos deste pedido"
+    ],
+    "nao_objetivos": [
+      "Implementar L1 a L7 nesta sessao",
+      "Criar segunda fila",
+      "Disputar tarefas de outros executores",
+      "Fabricar piloto de produto"
+    ],
+    "restricoes": [
+      "Usar a fila e seus eventos como fonte de progresso",
+      "Preservar trabalho existente na bancada",
+      "Nao declarar aceite de servico sem tarefa real elegivel"
+    ],
+    "decisoes_aprovadas": [
+      "L2 corresponde a TAR-678 e equipe l2_gpt55",
+      "L3 corresponde a TAR-679 e subfrente processos_gpt55",
+      "L4 corresponde a TAR-680 e equipe l4_gpt55",
+      "L6 mantem aceites de servico pendentes ate piloto real elegivel"
+    ],
+    "etapas": [
+      "Recriar matriz completa",
+      "Conferir tarefas e eventos existentes",
+      "Registrar contrato e checkpoint",
+      "Validar fila e arquivos tocados"
+    ],
+    "criterios_entrada": [
+      "Worktree L0 existente",
+      "Anexo do brief disponivel",
+      "Tarefas TAR-676 a TAR-683 ja alocadas localmente"
+    ],
+    "criterios_aceite": [
+      "Matriz contem campos requisito, diagnostico, entrega, responsavel, dependencia, caminhos, aceite, teste, evidencia e auditoria",
+      "R1 a R8 refletem o anexo e diagnostico concreto do codigo",
+      "Nao ha duplicacao de TARs 676 a 683"
+    ],
+    "evidencias_exigidas": [
+      "Comando de validacao da fila",
+      "Comando ou leitura que confirma a matriz gravada",
+      "git status mostrando arquivos tocados"
+    ],
+    "condicao_encerramento": "L0 fica concluido nesta sessao apenas se matriz, tarefas, eventos e validacao local estiverem gravados e reportados com prova.",
+    "limites_autonomia": "Alteracoes de matriz, fila local do pedido e registros do rito cabem nesta sessao; mudancas de contrato congelado, produto e pilotos reais ficam para os lotes dependentes.",
+    "acoes_do_mantenedor": "Nenhuma acao agora enquanto a validacao local da matriz e da fila puder ser executada."
+  }
+}

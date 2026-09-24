@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031100-TAR-679-explicada",
+  "tarefa": "TAR-679",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:11:00.742833+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-678",
+  "o_que_e": "Os comandos atuais ainda podem depender do terminal, do venv ativo ou de uma escolha manual de ambiente.",
+  "o_que_muda": "Um comando oficial executa exatamente na bancada e no interpretador que a sessão registrou.",
+  "exemplo": "Com um venv de outra célula ativo, o teste continua usando o Python da sessão, e Ctrl+C não deixa filho órfão.",
+  "importancia": 95
+}

@@ -1,0 +1,22 @@
+{
+  "arquivo": "680-l4-validacao-completa-no-windows-e-no-ci",
+  "id": "TAR-680",
+  "titulo": "L4 validação completa no Windows e no CI",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [
+    "TAR-676"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "A mesma definição de validação mede as verificações obrigatórias no Windows e no CI, incluindo contrato, célula e estados PASS FAIL ERROR SKIP, com instrumento quebrado distinguido.",
+  "despacho": "L4 do brief. Executor coordenado por l4_gpt55, responsável por ci/ci.py, workflows e testes. Reutilizar ci/contract_freeze.py e preservar validações específicas das células. Integrar a definição comum com L3 sem colidir em ci/sessao.py. Não aceitar ausência de medição como aprovação.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-676; executor indicado l4_gpt55",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
