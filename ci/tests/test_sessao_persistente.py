@@ -260,6 +260,9 @@ def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
 def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_divergentes):
     make = shutil.which("make")
     assert make, "prova de integração exige GNU Make"
+    versao_make = subprocess.run([make, "--version"], check=False, capture_output=True, text=True, timeout=10)
+    if "GNU Make" not in (versao_make.stdout + versao_make.stderr):
+        pytest.skip("prova de integração exige GNU Make real")
     repo = ambiente.raiz
     repo.mkdir(parents=True)
     def git(*args):
@@ -275,7 +278,9 @@ def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_div
         + '" -m pytest -q; else exit 1; fi\n'
     )
     (celula / "requirements.txt").write_text(ambiente.requisitos.read_text())
-    hash_base = sessao.identidade_do_venv(celula / "requirements.txt")
+    (repo / "requirements-ci.txt").write_text(ambiente.requisitos_ci.read_text())
+    plano_base = sessao.replace(ambiente, worktree=repo)
+    hash_base = sessao.identidade_do_venv(sessao.requisitos_do_venv(plano_base))
     (celula / "test_base.py").write_text(f'import os\ndef test_base(): assert os.environ["SESSAO_VENV"].endswith("{hash_base}")\n')
     (repo / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n")
     git("add", ".")
