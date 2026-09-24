@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-194707-TAR-700-explicada",
+  "tarefa": "TAR-700",
+  "evento": "explicada",
+  "quando": "2026-09-24T19:47:07.292486+00:00",
+  "quem": "Pedido do mantenedor de concluir Appmax sandbox e tela do app Meshcraft em desenvolvimento, 24/09/2026.",
+  "o_que_e": "O aplicativo está cadastrado, mas ainda falta o comando que o vincula à loja sandbox.",
+  "o_que_muda": "O mantenedor recebe um único comando para autorizar a loja e validar o acesso de testes.",
+  "exemplo": "Como conectar uma loja a um aplicativo já criado, sem copiar segredos para a conversa.",
+  "importancia": 95
+}

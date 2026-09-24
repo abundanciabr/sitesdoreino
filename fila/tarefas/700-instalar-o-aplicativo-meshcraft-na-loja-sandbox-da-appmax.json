@@ -1,0 +1,19 @@
+{
+  "arquivo": "700-instalar-o-aplicativo-meshcraft-na-loja-sandbox-da-appmax",
+  "id": "TAR-700",
+  "titulo": "Instalar o aplicativo Meshcraft na loja sandbox da Appmax",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "Comando sandbox versionado gera link de consentimento, usa retorno seguro e transfere o par MERCHANT para validação OAuth e leitura de produtos; testes sem rede provam guardas e ausência de segredo em tela. A instalação real continua na TAR-647.",
+  "despacho": "Entregar comando de instalação sandbox da Appmax para a loja Meshcraft. O roteiro atual só prepara APP e a página do aplicativo não instala a loja. Usar o UUID público do app na autorização, conservar o hash em memória enquanto o merchant consente, usar o retorno seguro existente da borda, chamar client/generate para acionar o health check e passar o par MERCHANT pela entrada padrão ao roteiro de validação OAuth e GET de produtos. Fixar app 1888, loja meshcraft.top, site interno conhecido e URLs sandbox. Não mostrar, gravar em artefatos ou passar por argumentos os segredos. Provar com testes sem rede a seleção da loja, descarte do token no retorno e destino das credenciais. Não ligar cobrança e não marcar a instalação real TAR-647 como concluída; ela depende de execução na VPS pelo mantenedor.",
+  "origem": "Pedido do mantenedor de concluir Appmax sandbox e tela do app Meshcraft em desenvolvimento, 24/09/2026.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-201320-TAR-701-explicada",
+  "tarefa": "TAR-701",
+  "evento": "explicada",
+  "quando": "2026-09-24T20:13:20.318331+00:00",
+  "quem": "HTTP 403 real relatado pelo mantenedor em 24/09/2026; o mesmo par e endpoint retornaram HTTP 200 com curl.",
+  "o_que_e": "O instalador usa um cliente HTTP que a autenticação sandbox recusou com 403, embora as credenciais estejam corretas.",
+  "o_que_muda": "O mantenedor consegue avançar à tela de autorização do aplicativo sem recolocar credenciais ou expor segredos.",
+  "exemplo": "O mesmo pedido de token falhou com Python e passou com curl na VPS.",
+  "importancia": 95
+}
