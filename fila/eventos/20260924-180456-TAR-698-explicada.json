@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-180456-TAR-698-explicada",
+  "tarefa": "TAR-698",
+  "evento": "explicada",
+  "quando": "2026-09-24T18:04:56.656291+00:00",
+  "quem": "Ordem expressa do mantenedor nesta sessão de 24/09/2026: concluir Pix e cartão Appmax no sandbox antes de produção.",
+  "o_que_e": "A tela pública ainda mostra cartão indisponível e as tarefas antigas de sandbox foram encerradas com registros de falta de credencial, sem teste real.",
+  "o_que_muda": "O comprador de teste consegue usar Pix e cartão da Appmax do começo ao fim e a matrícula só abre uma vez quando o servidor confirma.",
+  "exemplo": "Uma compra de teste com Pix mostra QR da Appmax; outra com cartão oficial passa pela tokenização; as duas chegam a um pedido e uma matrícula, sem Mercado Pago.",
+  "importancia": 99
+}

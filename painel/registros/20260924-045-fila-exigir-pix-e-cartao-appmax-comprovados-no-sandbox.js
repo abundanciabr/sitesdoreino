@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-045-fila-exigir-pix-e-cartao-appmax-comprovados-no-sandbox",
+  tipo: "pendencia",
+  quando: "2026-09-24",
+  titulo: "fila: exigir Pix e cartão Appmax comprovados no sandbox",
+  detalhe: "Pix e cartão Appmax no sandbox ainda não foram provados. Este PR registra duas tarefas para concluir e validar o fluxo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2050. Validação local: árvore b349711da7ea6c9a2d20edfd09b836cb98b17420; commit d5641c16fea8d00ac7050fdf49a5e6494f482cbc; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-697",
+  gravidade: "vermelho",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
