@@ -288,6 +288,27 @@ services:
     image: ghcr.io/abundanciabr/plataforma-pagamentos:${PAGAMENTOS_TAG:-main}
     env_file: [env/pagamentos.env]
 
+  # Processa a inbox Appmax e a reconciliação autenticada sem abrir cartão por
+  # si só. A trava financeira continua sendo APPMAX_CARD_ENABLED_SITES vazia.
+  pagamentos-appmax:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-pagamentos:${PAGAMENTOS_TAG:-main}
+    env_file: [env/pagamentos.env]
+    command: ["sh", "-c", "while true; do python manage.py processar_appmax; sleep 30; done"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      pagamentos:
+        condition: service_healthy
+
   alunos:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
