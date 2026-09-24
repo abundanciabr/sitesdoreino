@@ -427,11 +427,37 @@ def confirmar_intencao(raiz: Path, chave: str) -> bool:
     _, corpo = leitura
     try:
         expira = datetime.fromisoformat(corpo.get("expira_em", ""))
-        return (corpo.get("tipo") == "intencao" and corpo.get("chave") == chave
-                and corpo.get("dono") == identidade_da_bancada(raiz)
-                and expira.tzinfo is not None and expira > datetime.now(timezone.utc))
+        pendente = corpo.get("estado") == "publicacao_pendente"
+        return (
+            corpo.get("tipo") == "intencao"
+            and corpo.get("chave") == chave
+            and corpo.get("dono") == identidade_da_bancada(raiz)
+            and (pendente or (expira.tzinfo is not None and expira > datetime.now(timezone.utc)))
+        )
     except (ValueError, TypeError, AttributeError):
         return False
+
+
+def atualizar_reserva(
+    raiz: Path,
+    chave: str,
+    *,
+    esperado: str,
+    dono: str,
+    corpo: dict,
+) -> bool:
+    """Troca a mesma reserva com lease; False significa que alguém chegou antes."""
+    atual = ler_reserva(raiz, chave)
+    if atual is None:
+        return False
+    sha, remoto = atual
+    if sha != esperado or remoto.get("dono") != dono:
+        return False
+    novo = dict(corpo)
+    novo["tipo"] = "intencao"
+    novo["chave"] = chave
+    novo["dono"] = dono
+    return criar_ref_atomica(raiz, f"{NS_RESERVA}/{chave}", novo, lease=esperado)
 
 
 def reservar_intencao(
@@ -450,20 +476,39 @@ def reservar_intencao(
     """
     agora = agora or datetime.now(timezone.utc)
     ref = f"{NS_RESERVA}/{chave}"
-    ganhou = criar_ref_atomica(
-        raiz,
-        ref,
-        {
-            "tipo": "intencao",
-            "dono": identidade_da_bancada(raiz),
-            "chave": chave,
-            "objetivo": objetivo,
-            "criado_em": agora.isoformat(),
-            "expira_em": (agora + timedelta(hours=horas)).isoformat(),
-        },
-    )
+    dono = identidade_da_bancada(raiz)
+    corpo = {
+        "tipo": "intencao",
+        "dono": dono,
+        "chave": chave,
+        "objetivo": objetivo,
+        "criado_em": agora.isoformat(),
+        "expira_em": (agora + timedelta(hours=horas)).isoformat(),
+    }
+    ganhou = criar_ref_atomica(raiz, ref, corpo)
     if ganhou:
         return True, f"reserva '{chave}' é sua até {horas}h a partir de agora."
+    leitura = ler_reserva(raiz, chave)
+    if leitura is not None:
+        sha, existente = leitura
+        if (
+            existente.get("tipo") == "intencao"
+            and existente.get("chave") == chave
+            and existente.get("dono") == dono
+        ):
+            if existente.get("estado") == "publicacao_pendente":
+                return True, f"reserva '{chave}' já protege publicação pendente desta bancada."
+            try:
+                expira = datetime.fromisoformat(str(existente.get("expira_em") or ""))
+            except ValueError:
+                expira = None
+            if expira is not None and expira.tzinfo is not None and expira > agora:
+                return True, f"reserva '{chave}' já era sua e continua válida."
+            renovada = dict(existente)
+            renovada.update(corpo)
+            renovada["renovada_em"] = agora.isoformat()
+            if atualizar_reserva(raiz, chave, esperado=sha, dono=dono, corpo=renovada):
+                return True, f"reserva '{chave}' era sua e foi renovada por {horas}h."
     return False, (
         f"'{chave}' JÁ ESTÁ RESERVADA por outra sessão.\n"
         "Isto não é erro: é o mecanismo funcionando. Fale com quem despachou, ou\n"
@@ -481,6 +526,7 @@ def soltar(
     *,
     esperado: str = "",
     dono: str = "",
+    permitir_pendente: bool = False,
 ) -> bool:
     """Libera só a versão que foi lida e cujo dono ainda é o chamador."""
     if not esperado and not dono:
@@ -496,6 +542,8 @@ def soltar(
     if esperado and sha != esperado:
         return False
     if dono and corpo.get("dono") != dono:
+        return False
+    if corpo.get("estado") == "publicacao_pendente" and not permitir_pendente:
         return False
     resultado = _git(
         raiz,
@@ -557,7 +605,11 @@ def main(argv: list[str] | None = None) -> int:
             refs = listar(raiz)
             print("\n".join(refs) if refs else "nada reservado agora.")
             return 0
-        dono = args.dono or identidade_da_bancada(raiz)
+        dono = identidade_da_bancada(raiz)
+        if args.dono and args.dono != dono:
+            print("recusado: --dono não autoriza personificar outra bancada.")
+            print("Use a própria bancada ou uma rotina de emergência com lease medido.")
+            return 1
         if soltar(raiz, args.chave, esperado=args.esperado, dono=dono):
             print(f"reserva '{args.chave}' solta.")
             return 0

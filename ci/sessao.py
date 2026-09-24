@@ -1194,12 +1194,8 @@ class Sessao:
             )
         return caminho
 
-    def conferir_pecas_locais(self) -> dict[str, str]:
-        """Confere ferramentas e hooks locais antes de criar qualquer estado."""
+    def _conferir_ferramentas(self, ferramentas: dict[str, str]) -> dict[str, str]:
         passo = P_CONFERIR
-        ferramentas = dict(FERRAMENTAS_LOCAIS)
-        if self.plano.sobe_ambiente:
-            ferramentas.update(FERRAMENTAS_LOCAIS_COM_AMBIENTE)
         encontrados = {}
         ausentes = []
         for nome, para_que in ferramentas.items():
@@ -1217,7 +1213,12 @@ class Sessao:
                     + "\n".join(f"  - {item}" for item in ausentes)
                 ),
             )
+        return encontrados
 
+    def conferir_pecas_locais(self) -> dict[str, str]:
+        """Confere git/gh e hooks antes de consultar ou criar estado."""
+        passo = P_CONFERIR
+        encontrados = self._conferir_ferramentas(dict(FERRAMENTAS_LOCAIS))
         git = encontrados["git"]
         config = self._correr(
             [git, "-C", str(self.plano.raiz), "config", "--get", "core.hooksPath"],
@@ -1251,6 +1252,11 @@ class Sessao:
                 ),
             )
         return encontrados
+
+    def conferir_pecas_do_ambiente(self) -> None:
+        """Confere Docker/Make só quando a sessão vai preparar implementação."""
+        if self.plano.sobe_ambiente:
+            self._conferir_ferramentas(dict(FERRAMENTAS_LOCAIS_COM_AMBIENTE))
 
     def _ambiente(self) -> dict[str, str]:
         env = dict(os.environ)
@@ -1513,6 +1519,161 @@ class Sessao:
         finally:
             indice.unlink(missing_ok=True)
 
+    def _conferir_bancada_da_entrega_integrada(self, git: str, passo: str) -> None:
+        lista = self._exigir(
+            passo,
+            [git, "-C", str(self.plano.raiz), "worktree", "list", "--porcelain"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        )
+        if not (worktree_ja_existe(lista.stdout, self.plano.worktree) and self._existe(self.plano.worktree / ".git")):
+            raise ErroDeSessao(
+                passo,
+                "bancada da entrega integrada não está disponível",
+                detalhe=(
+                    f"Worktree esperado: {self.plano.worktree}\n"
+                    "Sem essa identidade local, um PR achado só pelo ramo poderia ser associado à TAR errada."
+                ),
+            )
+        atual = self._exigir(
+            passo,
+            [git, "-C", str(self.plano.worktree), "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        ).stdout.strip()
+        if atual != self.plano.branch:
+            raise ErroDeSessao(
+                passo,
+                "bancada da entrega integrada tem identidade diferente",
+                detalhe=f"Branch esperada: {self.plano.branch}\nBranch encontrada: {atual}\nWorktree: {self.plano.worktree}",
+            )
+
+    @staticmethod
+    def _mesmo_pr_submetido(valor: object, numero: int, url: str) -> bool:
+        texto = str(valor or "").rstrip("/")
+        return texto == url.rstrip("/") or texto.endswith(f"/pull/{numero}")
+
+    def _conferir_submissao_da_tarefa_integrada(self, passo: str, numero: int, url: str) -> None:
+        tarefa = self.plano.tarefa_da_fila
+        if not tarefa:
+            raise ErroDeSessao(
+                passo,
+                "TAR ausente para retomar entrega integrada",
+                detalhe="Informe --tar TAR-NNN; PR integrado sem vínculo de fila não autoriza retomada de tarefa.",
+            )
+        try:
+            from fila import carregar_fila_publicada_e_local
+
+            tarefas, eventos, fonte = carregar_fila_publicada_e_local(self.plano.worktree)
+        except Exception as erro:  # noqa: BLE001 - fonte de fila é externa ao bootstrap
+            raise ErroDeSessao(
+                passo,
+                "fonte da fila indisponível para retomar entrega integrada",
+                detalhe=f"Não consegui medir a fila publicada/local desta bancada. Erro: {erro}",
+            ) from erro
+        if fonte.get("modo") != "origin-main-mais-local" or not fonte.get("origin_main"):
+            raise ErroDeSessao(
+                passo,
+                "fonte da fila indisponível para retomar entrega integrada",
+                detalhe="A fila publicada em origin/main não foi medida; sem isso, PR por ramo vira chute.",
+            )
+        if tarefa not in tarefas:
+            raise ErroDeSessao(
+                passo,
+                "TAR ausente no snapshot medido da fila",
+                detalhe=f"TAR recebida: {tarefa}. Não associo PR integrado a tarefa que não está na fila medida.",
+            )
+        submetida = any(
+            ev.get("evento") == "submetida"
+            and ev.get("tarefa") == tarefa
+            and self._mesmo_pr_submetido(ev.get("pr"), numero, url)
+            for ev in eventos
+        )
+        if not submetida:
+            raise ErroDeSessao(
+                passo,
+                "PR integrado não está submetido para a TAR recebida",
+                detalhe=(
+                    f"TAR recebida: {tarefa}. PR encontrado: #{numero}. "
+                    "A retomada exige evento submetida dessa TAR apontando para esse PR no snapshot medido."
+                ),
+            )
+
+    def retomar_entrega_integrada(self, git: str, gh: str) -> str | None:
+        passo = self._abrir(P_ANUNCIO)
+        consulta = self._exigir(
+            passo,
+            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
+             "--json", "number,url,state,isDraft"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        )
+        try:
+            prs = json.loads(consulta.stdout or "")
+        except (TypeError, ValueError) as erro:
+            raise ErroDeSessao(
+                passo,
+                "a consulta de PR devolveu JSON inválido",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira o acesso ao GitHub e repita a abertura. Nenhum anúncio foi declarado.",
+            ) from erro
+        if not isinstance(prs, list) or len(prs) > 1:
+            raise ErroDeSessao(
+                passo,
+                "o ramo tem zero ou mais de um PR aberto de forma inconclusiva",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
+            )
+        if not prs:
+            return None
+        numero = prs[0].get("number")
+        url = str(prs[0].get("url") or "").rstrip("/")
+        estado_pr = prs[0].get("state")
+        if not isinstance(numero, int) or not url:
+            raise ErroDeSessao(passo, "o PR existente não tem identidade válida", detalhe="Confira gh pr list e repita.")
+        if estado_pr == "OPEN":
+            return None
+        if estado_pr not in {"MERGED", "CLOSED"}:
+            raise ErroDeSessao(
+                passo,
+                "estado do PR existente não foi medido",
+                detalhe=f"PR #{numero} devolveu state={estado_pr!r}. Sem estado explícito, não retomo nem reabro tarefa.",
+            )
+        tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+        if estado_pr == "MERGED":
+            self._conferir_bancada_da_entrega_integrada(git, passo)
+            self._conferir_submissao_da_tarefa_integrada(passo, numero, url)
+            try:
+                import estado_da_entrega
+
+                medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+            except Exception as erro:  # noqa: BLE001 - fronteira de fonte externa
+                raise ErroDeSessao(
+                    passo,
+                    f"fonte da entrega integrada indisponível para o PR #{numero}",
+                    detalhe=(
+                        f"O PR #{numero} já foi integrado, mas não consegui medir estado_da_entrega. "
+                        f"Sem essa fonte, a sessão não autoriza nova aquisição de {tarefa} nem declara aceite. "
+                        f"Erro: {erro}"
+                    ),
+                ) from erro
+            estado_entrega = medicao.get("estado", "NÃO MEDIDO") if isinstance(medicao, dict) else "NÃO MEDIDO"
+            self._pass(f"PR #{numero} integrado; entrega medida: {estado_entrega}")
+            return (
+                f"PR #{numero} já integrado para {tarefa}. Estado da entrega: {estado_entrega}. "
+                f"Bancada preservada; nenhuma nova aquisição foi feita. "
+                f"Próximo comando seguro: python ci/esperar.py --entrega {numero} --so-desfecho. "
+                "Reconcilie aceite somente quando o fluxo de entrega publicar prova real."
+            )
+        raise ErroDeSessao(
+            passo,
+            f"PR fechado sem merge #{numero}",
+            detalhe=(
+                f"O PR #{numero} está fechado sem merge para este ramo. "
+                "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+            ),
+        )
+
     def anunciar_pr(self, gh: str) -> None:
         """Publica a intenção antes de o agente começar a construir.
 
@@ -1560,11 +1721,32 @@ class Sessao:
             numero = prs[0].get("number")
             if not isinstance(numero, int):
                 raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            if prs[0].get("state", "OPEN") != "OPEN":
+            estado_pr = prs[0].get("state", "OPEN")
+            if estado_pr != "OPEN":
+                tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
+                if estado_pr == "MERGED":
+                    try:
+                        import estado_da_entrega
+
+                        medicao = estado_da_entrega.consultar_entrega(self.plano.raiz, numero)
+                        estado_entrega = medicao.get("estado", "NÃO MEDIDO")
+                    except Exception as erro:  # noqa: BLE001 - diagnóstico de abertura
+                        estado_entrega = f"NÃO MEDIDO ({erro})"
+                    detalhe = (
+                        f"O PR #{numero} já foi integrado; preserve esta bancada e continue pela entrega existente. "
+                        f"Estado da entrega: {estado_entrega}. "
+                        f"Confira: python ci/esperar.py --entrega {numero}. "
+                        f"Quando houver aceite publicado, reconcilie {tarefa} com o registro real medido pelo fluxo de entrega."
+                    )
+                else:
+                    detalhe = (
+                        f"O PR #{numero} está fechado sem merge para este ramo. "
+                        "Ele não prova publicação nem aceite; confira a causa do fechamento antes de retomar."
+                    )
                 raise ErroDeSessao(
                     passo,
                     f"o ramo já tem o PR fechado #{numero}",
-                    detalhe="Use uma nova sessão e um novo ramo para não misturar trabalhos.",
+                    detalhe=detalhe,
                 )
             self._pass(f"PR #{numero} já anuncia esta sessão")
             return
@@ -2148,12 +2330,16 @@ class Sessao:
         git = ferramentas["git"]
         self.conferir()
         self.buscar(git)
+        gh = ferramentas["gh"]
         with trava_da_bancada(self.plano.worktree):
+            retomada = self.retomar_entrega_integrada(git, gh)
+            if retomada is not None:
+                return retomada
+            self.conferir_pecas_do_ambiente()
             self.preparar_worktree(git)
             registrar_estado_inicial(self.plano, git, correr=self._correr)
             if self.plano.tarefa_da_fila:
                 self.pegar_a_tarefa()
-            gh = ferramentas["gh"]
             self.anunciar_pr(gh)
             self.gerar_indice(git)
             if not self.plano.sobe_ambiente:
@@ -2523,6 +2709,10 @@ def main(argv: list[str] | None = None) -> int:
         fim=None, pr=None,
     )
     print(moldura_da_declaracao(texto))
+    entrega_integrada = "já integrado" in texto and "Estado da entrega:" in texto
+    if entrega_integrada:
+        print("Próxima ação autorizada: acompanhar a entrega integrada pelo comando acima; não execute o brief novamente sem nova tarefa.")
+        return 0
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
         print("A prova da base está no log; mudanças da tarefa ainda exigem validação própria.")

@@ -567,14 +567,199 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     assert any("já existia" in linha for linha in mundo.log)
 
 
-def test_ramo_com_pr_encerrado_nao_e_reutilizado():
+def test_ramo_com_pr_fechado_sem_merge_diagnostica_sem_aceite():
     mundo = MundoFalso(
         plano_de_teste(),
         falhar={"rev-parse --verify": 1},
-        gh_pr_list='[{"number": 91, "state": "CLOSED", "isDraft": true}]',
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "CLOSED", "isDraft": true}]',
     )
-    with pytest.raises(sessao.ErroDeSessao, match="PR fechado"):
+    with pytest.raises(sessao.ErroDeSessao, match="PR fechado") as erro:
         mundo.sessao().rodar()
+    assert "fechado sem merge" in erro.value.detalhe
+    assert "não prova publicação nem aceite" in erro.value.detalhe
+
+
+def _preparar_retomada_integrada(mundo, monkeypatch, *, tarefa="TAR-677", pr=91, fonte=True):
+    mundo.existentes.add(_n(mundo.plano.worktree / ".git"))
+    mundo.saidas["worktree_list"] = (
+        f"worktree {mundo.plano.worktree.as_posix()}\n"
+        f"branch refs/heads/{mundo.plano.branch}\n"
+    )
+    import fila
+    if fonte:
+        monkeypatch.setattr(
+            fila,
+            "carregar_fila_publicada_e_local",
+            lambda raiz: (
+                {"TAR-677": {"id": "TAR-677", "titulo": "L1", "toca": ["ci"]}},
+                [{"evento": "submetida", "tarefa": tarefa, "pr": f"https://github.com/abundanciabr/sitesdoreino/pull/{pr}"}],
+                {"modo": "origin-main-mais-local", "origin_main": "a" * 40},
+            ),
+        )
+
+def test_ramo_com_pr_integrado_retorna_entrega_sem_nova_aquisicao_nem_preparo(monkeypatch):
+    plano = plano_de_teste(tarefa_da_fila="TAR-677")
+    mundo = MundoFalso(
+        plano,
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+        sem_ferramenta=("docker",),
+    )
+    _preparar_retomada_integrada(mundo, monkeypatch)
+    import estado_da_entrega
+    consultas = []
+    monkeypatch.setattr(
+        estado_da_entrega,
+        "consultar_entrega",
+        lambda raiz, numero: consultas.append((raiz, numero)) or {"estado": "PUBLICADO"},
+    )
+
+    texto = mundo.sessao().rodar()
+
+    assert consultas == [(mundo.plano.raiz, 91)]
+    assert "PR #91 já integrado" in texto
+    assert "Estado da entrega: PUBLICADO" in texto
+    assert "python ci/esperar.py --entrega 91 --so-desfecho" in texto
+    juntas = "\n".join(mundo.chamadas)
+    assert "fila.py pegar" not in juntas
+    assert "worktree add" not in juntas
+    assert "-m venv" not in juntas
+    assert "pip install" not in juntas
+    assert "/usr/bin/make" not in juntas
+    assert "docker" not in juntas
+
+
+def test_pr_integrado_com_fonte_indisponivel_recusa_sem_nova_aquisicao(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+    )
+    _preparar_retomada_integrada(mundo, monkeypatch)
+    import estado_da_entrega
+    monkeypatch.setattr(estado_da_entrega, "consultar_entrega", lambda *a: (_ for _ in ()).throw(RuntimeError("sem rede")))
+
+    with pytest.raises(sessao.ErroDeSessao, match="fonte da entrega integrada indisponível") as erro:
+        mundo.sessao().rodar()
+
+    assert "não autoriza nova aquisição" in erro.value.detalhe
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_integrado_recusa_tar_divergente_do_evento_submetido(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+    )
+    _preparar_retomada_integrada(mundo, monkeypatch, tarefa="TAR-999")
+
+    with pytest.raises(sessao.ErroDeSessao, match="não está submetido para a TAR") as erro:
+        mundo.sessao().rodar()
+
+    assert "TAR recebida: TAR-677" in erro.value.detalhe
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_integrado_recusa_worktree_inexistente_antes_de_associar_tar(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+    )
+
+    with pytest.raises(sessao.ErroDeSessao, match="bancada da entrega integrada"):
+        mundo.sessao().rodar()
+
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_integrado_recusa_branch_diferente_na_bancada(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "state": "MERGED", "isDraft": false}]',
+        branch_atual="agent/quiz/outra",
+    )
+    _preparar_retomada_integrada(mundo, monkeypatch)
+
+    with pytest.raises(sessao.ErroDeSessao, match="identidade diferente"):
+        mundo.sessao().rodar()
+
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_list_falha_nao_vira_sem_pr_nem_autoriza_aquisicao():
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1, "gh pr list": 1},
+        gh_pr_list="[]",
+    )
+
+    with pytest.raises(sessao.ErroDeSessao, match="exit code 1"):
+        mundo.sessao().rodar()
+
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_pr_state_ausente_nao_vira_open(monkeypatch):
+    mundo = MundoFalso(
+        plano_de_teste(tarefa_da_fila="TAR-677"),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "url": "https://github.com/abundanciabr/sitesdoreino/pull/91", "isDraft": false}]',
+    )
+
+    with pytest.raises(sessao.ErroDeSessao, match="estado do PR existente não foi medido"):
+        mundo.sessao().rodar()
+
+    assert "fila.py pegar" not in "\n".join(mundo.chamadas)
+
+
+def test_main_com_entrega_integrada_nao_manda_executar_o_brief(tmp_path, monkeypatch, capsys):
+    raiz = tmp_path / "repo"
+    (raiz / "services" / "quiz").mkdir(parents=True)
+    (raiz / "ci").mkdir(parents=True)
+    (raiz / "contracts").mkdir(parents=True)
+    (raiz / "CONSTITUICAO.md").write_text("lei", encoding="utf-8")
+    (raiz / "INVARIANTES.md").write_text("invariantes", encoding="utf-8")
+    class BoletimFalso:
+        @staticmethod
+        def coletar(_raiz):
+            return {}
+        @staticmethod
+        def montar(_dados):
+            return "Boletim medido"
+    class SessaoIntegrada:
+        def __init__(self, plano, log=None):
+            self.plano = plano
+        def rodar(self):
+            return (
+                "PR #91 já integrado para TAR-677. Estado da entrega: PUBLICADO. "
+                "Bancada preservada; nenhuma nova aquisição foi feita. "
+                "Próximo comando seguro: python ci/esperar.py --entrega 91 --so-desfecho."
+            )
+    monkeypatch.setitem(sys.modules, "boletim", BoletimFalso)
+    monkeypatch.setattr(sessao, "raiz_do_clone", lambda checkout: raiz)
+    monkeypatch.setattr(sessao, "celulas_declaradas", lambda _raiz: ["quiz"])
+    monkeypatch.setattr(sessao, "Sessao", SessaoIntegrada)
+    monkeypatch.setattr(sessao, "medir_fase", lambda *a, **k: None)
+    monkeypatch.setattr(sessao, "medir_tarefa_fase4", lambda *a, **k: None)
+    monkeypatch.setattr(sessao, "emitir_contexto", lambda *a, **k: pytest.fail("entrega integrada não prepara contexto de implementação"))
+
+    rc = sessao.main([
+        "--celula", "quiz",
+        "--tarefa", "fuso-horario",
+        "--tar", "TAR-677",
+        "--sem-container",
+        "--raiz", str(raiz),
+    ])
+
+    saida = capsys.readouterr().out
+    assert rc == 0
+    assert "PR #91 já integrado" in saida
+    assert "acompanhar a entrega integrada" in saida
+    assert "executar o brief" not in saida
+    assert "revisão, integração e publicação não foram realizadas" not in saida
 
 
 def test_container_parado_e_reiniciado_e_nao_recriado():
