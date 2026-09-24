@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from typing import Any
 
 from django.conf import settings
@@ -43,9 +44,7 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
     não um UUID.
 
     Resposta 200 com {external_id, alias}. O `external_id` é um UUID gerado por
-    NÓS, único por instalação e imutável: a Appmax recusa a instalação inteira
-    se ele voltar repetido entre contas ou diferente do que ela já registrou.
-    Por isso a segunda chamada do mesmo `app_id` devolve o MESMO UUID.
+    NÓS. No sandbox, uma reinstalação na mesma loja precisa de UUID novo.
 
     Qualquer resposta diferente de 200 faz a Appmax devolver 500 e NÃO emitir
     credencial nenhuma. É esse o comportamento desejado nas recusas: melhor
@@ -84,6 +83,10 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
     for chave in ("client_secret", "client_key", "external_key"):
         corpo.pop(chave, None)
 
+    sandbox = (
+        settings.APPMAX_AUTH_URL == "https://auth.sandboxappmax.com.br/oauth2/token"
+        and settings.APPMAX_API_URL == "https://api.sandboxappmax.com.br"
+    )
     with transaction.atomic():
         instalacao, criada = InstalacaoAppmax.objects.get_or_create(
             app_id=app_id,
@@ -95,26 +98,27 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
             },
         )
         if not criada:
-            # `external_id` fica de fora de propósito: é o único campo que não
-            # pode mudar depois de a Appmax tê-lo aceitado. O resto vem da
-            # configuração, que é a fonte do nome da loja e dos sites
-            # autorizados; sem este acerto, mudar o env não teria efeito e a
-            # resposta devolveria um alias velho.
+            if sandbox:
+                instalacao = InstalacaoAppmax.objects.select_for_update().get(
+                    pk=instalacao.pk
+                )
+                instalacao.external_id = uuid.uuid4()
             instalacao.alias = configurada["alias"]
             instalacao.platform_site_ids = list(configurada["sites"])
             instalacao.appmax_site_id = appmax_site_id or instalacao.appmax_site_id
             instalacao.client_secret_recebido = (
                 instalacao.client_secret_recebido or segredo_chegou
             )
-            instalacao.save(
-                update_fields=[
-                    "alias",
-                    "platform_site_ids",
-                    "appmax_site_id",
-                    "client_secret_recebido",
-                    "updated_at",
-                ]
-            )
+            campos = [
+                "alias",
+                "platform_site_ids",
+                "appmax_site_id",
+                "client_secret_recebido",
+                "updated_at",
+            ]
+            if sandbox:
+                campos.append("external_id")
+            instalacao.save(update_fields=campos)
 
     return JsonResponse(
         {"external_id": str(instalacao.external_id), "alias": instalacao.alias},

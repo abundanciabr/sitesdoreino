@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-222843-TAR-708-explicada",
+  "tarefa": "TAR-708",
+  "evento": "explicada",
+  "quando": "2026-09-24T22:28:43.000402+00:00",
+  "quem": "Teste E2E Appmax sandbox em 24/09/2026",
+  "o_que_e": "O cartão de teste recebe HTTP 404 da Appmax após a instalação porque o vínculo público foi repetido.",
+  "o_que_muda": "A loja pode reinstalar o aplicativo sandbox e tokenizar o cartão com o vínculo novo.",
+  "exemplo": "Uma segunda instalação da Meshcraft precisa receber outro identificador para o cartão ser reconhecido.",
+  "importancia": 95
+}
