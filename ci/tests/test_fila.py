@@ -390,7 +390,7 @@ def test_pegar_roda_o_zelador_antes_de_travar_a_proxima_tarefa(tmp_path, monkeyp
         [evento("TAR-001")],
     )
     sem_rede(monkeypatch)
-    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    aquisicao_ok(monkeypatch, "TAR-002")
 
     args = argparse.Namespace(tarefa="TAR-002", quem="sessao-nova")
     assert fila.cmd_pegar(raiz, args) == 0
@@ -598,14 +598,27 @@ def sem_rede(monkeypatch, reservas=frozenset(), prs=None):
     monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: dict(prs or {}))
 
 
+def aquisicao_ok(monkeypatch, tid="TAR-001"):
+    reservas = set()
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: set(reservas))
+
+    def reservar(*args, **kwargs):
+        reservas.add(tid)
+        return True, "é sua"
+
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", reservar)
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
+    monkeypatch.setattr(
+        fila.reservar,
+        "soltar",
+        lambda *a: pytest.fail("soltou reserva válida"),
+    )
+
+
 def test_pegar_ganha_escreve_o_evento_e_mostra_o_despacho(tmp_path, monkeypatch, capsys):
     montar(tmp_path, [tarefa()])
     sem_rede(monkeypatch)
-    leituras = [set(), {"TAR-001"}]
-    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: leituras.pop(0))
-    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
-    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
-    monkeypatch.setattr(fila.reservar, "soltar", lambda *a: pytest.fail("soltou reserva válida"))
+    aquisicao_ok(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
     assert fila.cmd_pegar(tmp_path, args) == 0
     eventos = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))
@@ -1095,7 +1108,8 @@ def test_pegar_NA_BANCADA_passa(espelho_e_bancada, monkeypatch):
     commitado."""
     _, bancada = espelho_e_bancada
     sem_rede(monkeypatch)
-    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    aquisicao_ok(monkeypatch)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda raiz: True)
     assert fila.cmd_pegar(bancada, _args_pegar()) == 0
     assert len(list((bancada / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))) == 1
 
@@ -1105,7 +1119,7 @@ def test_pegar_FORA_DE_CHECKOUT_GIT_passa(tmp_path, monkeypatch):
     'não há repositório aqui' — e sem repositório não há PR a perder."""
     montar(tmp_path, [tarefa()])
     sem_rede(monkeypatch)
-    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    aquisicao_ok(monkeypatch)
     assert fila.cmd_pegar(tmp_path, _args_pegar()) == 0
 
 
@@ -1144,7 +1158,7 @@ def test_nao_conseguir_medir_a_pasta_vira_ERROR_nunca_PASS(tmp_path, monkeypatch
     """
     montar(tmp_path, [tarefa()])
     sem_rede(monkeypatch)
-    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    aquisicao_ok(monkeypatch)
 
     def instrumento_quebrado(_caminho):
         raise OSError("o disco sumiu no meio da medição")
