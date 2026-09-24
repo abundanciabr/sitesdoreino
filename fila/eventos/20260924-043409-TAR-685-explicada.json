@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-043409-TAR-685-explicada",
+  "tarefa": "TAR-685",
+  "evento": "explicada",
+  "quando": "2026-09-24T04:34:09.463108+00:00",
+  "quem": "Desdobramento tecnico de TAR-679 no pedido do caminho unico dos robos para destravar o PR #2020 sem encerrar o executor L3 inteiro.",
+  "o_que_e": "O validador de PR ja tem uma frente isolada pronta para conter processos filhos, mas a fila ainda nao tinha uma tarefa menor que TAR-679 para receber essa entrega.",
+  "o_que_muda": "A entrega de contenção do PR #2020 passa a ter uma identidade propria, enquanto TAR-679 continua cobrindo o executor oficial inteiro.",
+  "exemplo": "E como separar a instalacao do disjuntor da reforma eletrica completa: o disjuntor pode ser conferido e ligado sem declarar a reforma terminada.",
+  "importancia": 96
+}
