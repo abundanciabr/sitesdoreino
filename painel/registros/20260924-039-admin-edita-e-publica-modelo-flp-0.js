@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-039-admin-edita-e-publica-modelo-flp-0",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "admin: edita e publica modelo FLP-0",
+  detalhe: "A equipe salva o rascunho FLP, confere a previa privada e publica por gesto separado. Falhas preservam texto e toda escrita deixa auditoria.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2047. Validação local: árvore 96c628f59169f482541d06734dbc4f590d6372e5; commit 95b0ba775b0029cbed759c40d797bb7b70d1cc9e; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-693",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
