@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import reservar
 import sessao
-from test_fila import evento, montar, sem_rede, tarefa
+from test_fila import evento, fonte_publicada, montar, sem_rede, tarefa
 from test_sessao import MundoFalso, plano_de_teste
 
 import fila
@@ -122,6 +122,8 @@ def test_retomada_nao_contorna_dono_nem_estado(tmp_path, monkeypatch, dono, quem
         ],
     )
     sem_rede(monkeypatch, reservas={"TAR-001"})
+    if tipo == "concluida":
+        monkeypatch.setattr(reservar, "ler_reserva", lambda *a, **k: None)
     monkeypatch.setattr(reservar, "confirmar_intencao", lambda *a: dono)
     assert (
         fila.cmd_pegar(tmp_path, argparse.Namespace(tarefa="TAR-001", quem="sessao-a"))
@@ -243,6 +245,7 @@ def test_aquisicao_interrompida_solta_apenas_sha_e_dono_adquiridos(
     tmp_path, monkeypatch
 ):
     montar(tmp_path, [tarefa()])
+    fonte_publicada(monkeypatch)
     (tmp_path / ".git").mkdir()
     dono = reservar.identidade_da_bancada(tmp_path)
     vistos = []
@@ -270,7 +273,7 @@ def test_aquisicao_interrompida_solta_apenas_sha_e_dono_adquiridos(
     monkeypatch.setattr(
         reservar,
         "soltar",
-        lambda raiz, chave, *, esperado="", dono="": vistos.append(
+        lambda raiz, chave, *, esperado="", dono="", permitir_pendente=False: vistos.append(
             (chave, esperado, dono)
         )
         or True,
@@ -440,7 +443,7 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     estado_pr = tmp_path / "pr-aberto"
     (binario / "gh").write_text(
         "#!/bin/sh\n"
-        f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
+        f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"url\":\"https://github.com/abundanciabr/sitesdoreino/pull/91\",\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
         f"if [ \"$2\" = \"create\" ]; then touch \"{estado_pr}\"; echo 'https://github.com/abundanciabr/sitesdoreino/pull/91'; exit 0; fi\n"
         "if [ \"$2\" = \"view\" ]; then echo '{\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"}'; exit 0; fi\n",
         encoding="utf-8",
@@ -449,7 +452,7 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     (binario / "gh.cmd").write_text(
         "@echo off\n"
         "if \"%2\"==\"list\" (\n"
-        f"  if exist \"{estado_pr}\" (echo [{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]) else (echo [])\n"
+        f"  if exist \"{estado_pr}\" (echo [{{\"number\":91,\"url\":\"https://github.com/abundanciabr/sitesdoreino/pull/91\",\"state\":\"OPEN\",\"isDraft\":true}}]) else (echo [])\n"
         "  exit /b 0\n"
         ")\n"
         f"if \"%2\"==\"create\" (echo x > \"{estado_pr}\" & echo https://github.com/abundanciabr/sitesdoreino/pull/91 & exit /b 0)\n"
