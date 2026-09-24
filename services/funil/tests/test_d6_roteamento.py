@@ -191,6 +191,7 @@ ROTAS_LOCALIZAVEIS = (
     # LOCALIZACAO da rota, nunca sobre o idioma do texto que chega nela.
     "/oferta",
     "/flp-0",
+    "/flp-0/conteudo",
     "/series-flp-gpt",
     "/series-flp-gpt/conteudo",
 )

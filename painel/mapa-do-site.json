@@ -124,7 +124,17 @@
       "alcance": "publico",
       "para_quem": "visitante",
       "titulo": "Página Fórmula de Lançamento Pago",
-      "descricao": "A página que mostra o conteúdo publicado da Fórmula de Lançamento Pago. Antes da publicação, este endereço informa que a página ainda não está no ar."
+      "descricao": "O clone visual da Fórmula de Lançamento Pago, preservado como edição encerrada com as inscrições indisponíveis.",
+      "sonda": true
+    },
+    {
+      "celula": "funil",
+      "rota": "flp-0/conteudo",
+      "endereco": "/flp-0/conteudo",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Conteúdo isolado da Fórmula de Lançamento Pago",
+      "descricao": "Documento incorporado em origem opaca para manter o visual da página sem acesso à sessão do visitante."
     },
     {
       "celula": "funil",
