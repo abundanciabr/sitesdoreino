@@ -531,6 +531,12 @@ components:
         id: { type: string, format: uuid }
         site_id: { type: string, format: uuid }
         slug: { type: string, description: 'Apelido da página dentro do site (ex. oferta); único por site' }
+        tipo:
+          description: 'Escolhe o vocabulário de seções da página. Ausente: oferta.'
+          enum:
+          - oferta
+          - flp
+          type: string
         version:
           type: integer
           minimum: 1
@@ -551,6 +557,12 @@ components:
       properties:
         site_id: { type: string, format: uuid }
         slug: { type: string }
+        tipo:
+          description: 'Escolhe o vocabulário de seções da página. Ausente: oferta.'
+          enum:
+          - oferta
+          - flp
+          type: string
         base_version:
           type: integer
           minimum: 0
@@ -568,6 +580,12 @@ components:
         e objeto ao mesmo tempo.
       required: [secoes]
       properties:
+        tipo:
+          description: 'Escolhe o vocabulário de seções da página. Ausente: oferta.'
+          enum:
+          - oferta
+          - flp
+          type: string
         secoes:
           type: array
           items: { $ref: '#/components/schemas/Secao' }
