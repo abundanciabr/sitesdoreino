@@ -28,6 +28,10 @@ def dados(request, offer_slug: str):
             "offer_slug": offer_slug,
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
+            "appmax_pix_enabled": request.site["id"]
+            in settings.APPMAX_PIX_ENABLED_SITES,
+            "appmax_card_enabled": request.site["id"]
+            in settings.APPMAX_CARD_ENABLED_SITES,
         },
     )
 
