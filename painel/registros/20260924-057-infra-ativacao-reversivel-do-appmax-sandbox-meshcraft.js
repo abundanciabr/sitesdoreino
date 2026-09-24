@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-057-infra-ativacao-reversivel-do-appmax-sandbox-meshcraft",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Infra: ativação reversível do Appmax sandbox Meshcraft",
+  detalhe: "Ativação Appmax sandbox confere a loja Meshcraft, grava as duas travas por site e restaura os env se a recarga falhar. A VPS ainda não executou o roteiro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2059. Validação local: árvore f8e0c4dca35750a0a7b9ae50a35aea4b58a0add0; commit 0b4fd22deded3918a54d072815e715145bd2da1e; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-703",
+  gravidade: "info",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

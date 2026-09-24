@@ -1,0 +1,19 @@
+{
+  "arquivo": "703-preparar-a-ativacao-reversivel-da-appmax-sandbox-na-meshcraf",
+  "id": "TAR-703",
+  "titulo": "Preparar a ativação reversível da Appmax sandbox na Meshcraft",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Roteiro falha antes de gravar fora do sandbox ou para outro site, ativa somente a Meshcraft e restaura os dois env em falha; testes locais e guarda do cartão verdes. A execução real fica na tarefa de prova E2E.",
+  "despacho": "Criar em infra o roteiro Python específico para ligar e desligar Pix e cartão Appmax sandbox somente no site Meshcraft 1888. Ler os env locais da VPS sem mostrar segredos, validar URLs sandbox e instalação MERCHANT, fazer backup e editar as duas travas de checkout e pagamentos, recriar somente os cinco serviços envolvidos, verificar os env carregados e restaurar em falha. Atualizar env de exemplo e testar localmente ativação, recusa de produção e rollback. Não executar na VPS nem marcar a compra E2E como provada.",
+  "origem": "Pedido do mantenedor de concluir Pix e cartão Appmax no sandbox em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
