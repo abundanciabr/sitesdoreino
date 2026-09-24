@@ -1741,7 +1741,13 @@ class Sessao:
             numero = pr.get("number")
             if not isinstance(numero, int):
                 raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            estado_pr = pr.get("state", "OPEN")
+            estado_pr = pr.get("state")
+            if estado_pr not in {"OPEN", "MERGED", "CLOSED"}:
+                raise ErroDeSessao(
+                    passo,
+                    "estado do PR existente não foi medido",
+                    detalhe=f"PR #{numero} devolveu state={estado_pr!r}. Sem estado explícito, não retomo nem reabro tarefa.",
+                )
             if estado_pr != "OPEN":
                 tarefa = self.plano.tarefa_da_fila or self.plano.tarefa
                 if estado_pr == "MERGED":
