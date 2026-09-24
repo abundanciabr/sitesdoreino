@@ -106,7 +106,10 @@ def test_flp_sem_secao_util_e_503_em_vez_de_tela_vazia(client, rede):
 def test_flp_respeita_caminho_localizado_do_site(client, rede):
     publicar(rede, pagina(), site_id=SITE_MESH["id"])
 
-    resposta = client.get(caminho_mesh("pt-br", "/flp-0"), HTTP_HOST=HOST_MESH)
+    resposta = client.get(
+        caminho_mesh("pt-br", "/primeiros-dolares-com-roblox"),
+        HTTP_HOST=HOST_MESH,
+    )
 
     assert resposta.status_code == 200
     assert "inscrições não estão disponíveis" in resposta.content.decode()

@@ -191,8 +191,9 @@ ROTAS_LOCALIZAVEIS = (
     # LOCALIZACAO da rota, nunca sobre o idioma do texto que chega nela.
     "/oferta",
     "/flp-0",
-    "/flp-0/conteudo",
-    "/flp-0/og.jpg",
+    "/primeiros-dolares-com-roblox",
+    "/primeiros-dolares-com-roblox/conteudo",
+    "/primeiros-dolares-com-roblox/og.jpg",
     "/series-flp-gpt",
     "/series-flp-gpt/conteudo",
 )

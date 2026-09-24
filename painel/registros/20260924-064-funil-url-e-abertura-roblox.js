@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-064-funil-url-e-abertura-roblox",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "funil: URL e abertura Roblox",
+  detalhe: "A nova URL mostra a abertura do curso Roblox. O link antigo redireciona e preserva UTM.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2062. Validação local: árvore a92e9ca6429a014e056c436dd8a714f871597bd4; commit 6b1a4b567988cece5945688c5a7e4c1e710f1488; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-707",
+  gravidade: "info",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

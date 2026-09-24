@@ -1,14 +1,15 @@
-"""Clone público da FLP-0 em origem opaca, com a edição encerrada."""
+"""Página pública do Roblox a partir da referência FLP-0 em origem opaca."""
 
 import base64
 import hashlib
+import json
 import re
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponsePermanentRedirect
 from django.shortcuts import render
 from django.views.decorators.gzip import gzip_page
 from django.views.decorators.http import require_safe
@@ -16,6 +17,20 @@ from django.views.decorators.http import require_safe
 from .views import pagina_flp
 
 PACOTE = Path(__file__).with_name("modelos") / "flp-0.zip.b64"
+TITULO_ROBLOX = (
+    "Do absoluto zero ao primeiro dólar, sem inglês, sem PC caro, sem experiência."
+)
+PARAGRAFOS_ROBLOX = (
+    "O Primeiros Dólares com Roblox é o único método no Brasil que te ensina a "
+    "criar itens 3D para o Roblox e transformar essa habilidade em renda real, "
+    "trabalhando de casa no seu horário.",
+    "Descubra como pessoas comuns estão ganhando em dólar, de casa, trabalhando "
+    "com Roblox, aquele joguinho de criança que movimenta US$ 3,6 bilhões por ano.",
+)
+CLASSES_ABERTURA = (
+    "text-[clamp(19px,2.05vw,23.5px)] font-bold leading-[1.45] text-ink",
+    "text-[clamp(16.5px,1.7vw,19.5px)] leading-[1.55] text-body",
+)
 TIPOS = {
     ".js": "text/javascript",
     ".css": "text/css",
@@ -60,10 +75,55 @@ def _uri(nome, corpo):
     )
 
 
+def _abertura_do_roblox(nome, corpo):
+    if nome == "index.html":
+        html = corpo.decode("utf-8")
+        antigo = "Como começar um negócio digital do\xa0zero."
+        inicio = '<div class="flex max-w-[57ch] flex-col gap-3" style="opacity:1;filter:blur(0px);transform:none">'
+        fim = '</div><div class="relative mt-2"'
+        if html.count(antigo) != 1 or html.count(inicio) != 1 or html.count(fim) != 1:
+            raise ValueError(
+                "A abertura da referência FLP mudou; revise o texto do Roblox"
+            )
+        html = html.replace(antigo, TITULO_ROBLOX, 1)
+        a = html.index(inicio) + len(inicio)
+        b = html.index(fim, a)
+        paragrafos = "".join(
+            f'<p class="{classe}">{texto}</p>'
+            for classe, texto in zip(CLASSES_ABERTURA, PARAGRAFOS_ROBLOX)
+        )
+        return (html[:a] + paragrafos + html[b:]).encode("utf-8")
+    if nome.endswith("/page-32fcd59f76bc98c5.js"):
+        js = corpo.decode("utf-8")
+        antigo = r"Como come\xe7ar um neg\xf3cio digital do\xa0zero."
+        inicio = 'className:"flex max-w-[57ch] flex-col gap-3",children:['
+        fim = "]}),(0,i.jsxs)(l.P.div,{variants:f,transition:{duration:.8"
+        if js.count(antigo) != 1 or js.count(inicio) != 1 or js.count(fim) != 1:
+            raise ValueError(
+                "O código da referência FLP mudou; revise o texto do Roblox"
+            )
+        js = js.replace(antigo, json.dumps(TITULO_ROBLOX, ensure_ascii=True)[1:-1], 1)
+        a = js.index(inicio) + len(inicio)
+        b = js.index(fim, a)
+        paragrafos = ",".join(
+            '(0,i.jsx)("p",{className:'
+            + json.dumps(classe)
+            + ",children:"
+            + json.dumps(texto, ensure_ascii=True)
+            + "})"
+            for classe, texto in zip(CLASSES_ABERTURA, PARAGRAFOS_ROBLOX)
+        )
+        return (js[:a] + paragrafos + js[b:]).encode("utf-8")
+    return corpo
+
+
 @lru_cache(maxsize=1)
 def pagina_embutida():
     with ZipFile(BytesIO(base64.b64decode(PACOTE.read_bytes()))) as pacote:
-        arquivos = {nome: pacote.read(nome) for nome in pacote.namelist()}
+        arquivos = {
+            nome: _abertura_do_roblox(nome, pacote.read(nome))
+            for nome in pacote.namelist()
+        }
     recursos = {}
     for extensoes in (
         {".woff2", ".svg", ".webp", ".jpg", ".png", ".ico"},
@@ -95,7 +155,7 @@ def pagina_embutida():
 @require_safe
 def modelo_flp_publico(request):
     if request.get_host().split(":")[0].lower() != "meshcraft.top":
-        return pagina_flp(request)
+        raise Http404("página disponível apenas em meshcraft.top")
     resposta = render(request, "funil/modelo_flp.html")
     estilo = re.search(rb"<style>(.*?)</style>", resposta.content, re.DOTALL).group(1)
     hash_estilo = base64.b64encode(hashlib.sha256(estilo).digest()).decode("ascii")
@@ -107,6 +167,16 @@ def modelo_flp_publico(request):
     )
     resposta["Referrer-Policy"] = "no-referrer"
     return resposta
+
+
+@require_safe
+def redirecionar_flp_antiga(request):
+    if request.get_host().split(":")[0].lower() != "meshcraft.top":
+        return pagina_flp(request)
+    destino = request.get_full_path().replace(
+        "/flp-0", "/primeiros-dolares-com-roblox", 1
+    )
+    return HttpResponsePermanentRedirect(destino)
 
 
 @gzip_page

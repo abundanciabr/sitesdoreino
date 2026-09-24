@@ -1,0 +1,57 @@
+{
+  "arquivo": "20260924-222152-TAR-707-contrato_execucao",
+  "tarefa": "TAR-707",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-24T22:21:52.517898+00:00",
+  "quem": "agent/funil/renomear-flp-roblox",
+  "contrato": {
+    "plano": "URL e abertura da página de Roblox",
+    "versao": 1,
+    "objetivo": "Publicar https://meshcraft.top/primeiros-dolares-com-roblox com a abertura enviada pelo mantenedor.",
+    "condicao_encerramento": "Nova URL e redirecionamento antigo conferidos no site público após deploy.",
+    "limites_autonomia": "Editar a rota pública, o texto da abertura e as provas necessárias; nenhuma compra, inscrição ou alteração das demais seções.",
+    "acoes_do_mantenedor": "Nenhuma nesta etapa.",
+    "entregaveis": [
+      "Nova URL pública",
+      "Abertura com três parágrafos",
+      "Redirecionamento do endereço antigo"
+    ],
+    "escopo_incluido": [
+      "services/funil",
+      "painel/mapa-do-site.json",
+      "fila e registro exigidos pelo rito"
+    ],
+    "nao_objetivos": [
+      "Reescrever as demais seções da referência",
+      "Abrir inscrições",
+      "Alterar a oferta"
+    ],
+    "restricoes": [
+      "Preservar compra bloqueada",
+      "Preservar parâmetros de campanha",
+      "Texto publicado sem travessão"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor nesta sessão em 24/09/2026"
+    ],
+    "etapas": [
+      "Alterar rota e abertura",
+      "Validar",
+      "Publicar PR",
+      "Conferir deploy e URL"
+    ],
+    "criterios_entrada": [
+      "Página atual localizada e texto antigo encontrado"
+    ],
+    "criterios_aceite": [
+      "Nova URL abre",
+      "Texto de Roblox aparece na abertura",
+      "URL antiga redireciona com UTM"
+    ],
+    "evidencias_exigidas": [
+      "Suíte funil verde",
+      "Mapa de rotas verde",
+      "URL pública conferida"
+    ]
+  }
+}
