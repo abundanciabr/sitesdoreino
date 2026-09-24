@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-023-parecer-auditoria-appmax-tar564",
+  tipo: "medicao",
+  quando: "2026-09-24",
+  titulo: "Auditoria Appmax bloqueou dado bruto de cartao",
+  detalhe: "Achado critico aberto: o webhook publico da Appmax aceita card_number e cvv e persiste o envelope bruto em AppmaxWebhookInbox.payload. Responsavel: pagamentos/TAR-558. Destrava ao recusar dado bruto ou segredo no webhook, limitar corpo e provar vermelho/verde.",
+  autoridade: "sessao",
+  evidencia: "POST local com card_number e cvv retornou 200, inbox_count=1 e persistiu os dois campos; ci/provar_guardas.py mordeu 9/9, mas nao cobre payload bruto.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "vermelho",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
