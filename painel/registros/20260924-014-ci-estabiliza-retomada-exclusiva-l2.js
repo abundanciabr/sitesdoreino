@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-014-ci-estabiliza-retomada-exclusiva-l2",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "ci: estabiliza retomada exclusiva L2",
+  detalhe: "L2 estabiliza a abertura: trava cobre a sessão inteira, fila é reentrante no processo e anúncio preserva alterações herdadas. Depende de #2015/TAR-677.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2025. Validação local: árvore 3ec524dcbf0cda6558afa85468c3f24692da197d; commit 16964d30db57b03b7f2aa9510f1d6c3d355d324a; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-678",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

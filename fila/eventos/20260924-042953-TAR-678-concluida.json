@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-042953-TAR-678-concluida",
+  "tarefa": "TAR-678",
+  "evento": "concluida",
+  "quando": "2026-09-24T04:29:53.357566+00:00",
+  "quem": "agent/ci/l2-retomada-exclusividade",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2025",
+  "verificado_em": "2026-09-24"
+}
