@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031028-TAR-677-explicada",
+  "tarefa": "TAR-677",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:10:28.923433+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-676",
+  "o_que_e": "A consulta e a aquisição ainda precisam provar que a tarefa continua elegível no instante em que a posse é obtida.",
+  "o_que_muda": "Nenhuma bancada inicia tarefa encerrada ou alheia, mesmo quando o estado muda durante a consulta.",
+  "exemplo": "Duas bancadas chegam à mesma tarefa e apenas a reserva confirmada pode prosseguir.",
+  "importancia": 95
+}

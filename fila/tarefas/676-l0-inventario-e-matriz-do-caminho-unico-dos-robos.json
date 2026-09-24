@@ -1,0 +1,21 @@
+{
+  "arquivo": "676-l0-inventario-e-matriz-do-caminho-unico-dos-robos",
+  "id": "TAR-676",
+  "titulo": "L0 inventário e matriz do caminho único dos robôs",
+  "toca": [
+    "ci",
+    "docs/decisoes",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Matriz com R1 a R8, diagnóstico reproduzido, campos completos, tarefas L0 a L7 vinculadas e baseline mensurado sem declarar prova ausente.",
+  "despacho": "L0 do brief Implementar o caminho único de execução dos robôs. Inventariar o existente, reproduzir lacunas em cenários descartáveis, construir a matriz de rastreabilidade e registrar a escada sem segunda fila. Não implementar código de produto.",
+  "origem": "Brief Implementar o caminho único de execução dos robôs recebido em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

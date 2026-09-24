@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-031045-TAR-678-explicada",
+  "tarefa": "TAR-678",
+  "evento": "explicada",
+  "quando": "2026-09-24T03:10:45.410733+00:00",
+  "quem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-677; executor indicado l2_gpt55",
+  "o_que_e": "Uma interrupção pode deixar reserva, evento, PR ou preparação em estado parcial e a retomada precisa reconhecer o que já aconteceu.",
+  "o_que_muda": "O robô continua do ponto certo sem duplicar efeitos ou apagar a bancada de outro executor.",
+  "exemplo": "Depois de uma queda logo após reservar, a segunda abertura reutiliza a mesma identidade e escreve só o acontecimento que faltava.",
+  "importancia": 100
+}

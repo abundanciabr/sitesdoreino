@@ -1,0 +1,21 @@
+{
+  "arquivo": "679-l3-executor-oficial-da-sessao",
+  "id": "TAR-679",
+  "titulo": "L3 executor oficial da sessão",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-678"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Comandos de execução selecionam interpretador e diretório da bancada, preservam argumentos e código de saída, encaminham interrupção e encerram filhos sem órfãos em Windows e CI.",
+  "despacho": "L3 do brief. Estender o executor oficial em ci/sessao.py após L2. processos_gpt55 cobre ci/pr.py e ci/pr_processos_*.py para reaproveitar a contenção de filhos no executor oficial quando cabível. Usar ambiente canônico, carregar variáveis pelo mecanismo existente, preservar segredos e suportar Ctrl+C, timeout, caminhos com espaços e terminal com venv de outra célula. Não criar wrapper concorrente.",
+  "origem": "Escada L0-L7 do brief recebido em 24/09/2026; depende de TAR-678; subfrente indicada processos_gpt55",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

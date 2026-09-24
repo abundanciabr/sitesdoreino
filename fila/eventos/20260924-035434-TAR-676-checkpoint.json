@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260924-035434-TAR-676-checkpoint",
+  "tarefa": "TAR-676",
+  "evento": "checkpoint",
+  "quando": "2026-09-24T03:54:34.553928+00:00",
+  "quem": "matriz_gpt55",
+  "plano": "L0 matriz e vinculos",
+  "ultimo_avanco": "Matriz recriada em docs/decisoes/MATRIZ-CAMINHO-UNICO-ROBOS-L0.md com diagnostico de codigo e vinculo das TARs 676 a 683.",
+  "proxima_acao": "Validar fila e matriz, corrigir qualquer divergencia apontada pelos portoes locais.",
+  "verificacoes": [
+    "Matriz gravada; validacao ainda em execucao nesta sessao."
+  ]
+}
