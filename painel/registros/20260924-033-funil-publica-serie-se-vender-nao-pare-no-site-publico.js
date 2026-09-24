@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-033-funil-publica-serie-se-vender-nao-pare-no-site-publico",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "funil: publica série Se Vender, Não Pare no site público",
+  detalhe: "Publicada a série Se Vender, Não Pare no funil para visitantes de meshcraft.top, com cinco episódios e vídeos isolados dos dados do site.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2040. Validação local: árvore c9a327651152b520415ddc284fb2bcb7cb160dc8; commit 862c07c271c88bef06dd7cc1e3062f4a34c04921; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-689",
+  gravidade: "verde",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
