@@ -7,10 +7,12 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from typing import Any
 
 from django.conf import settings
+from django.core.exceptions import RequestDataTooBig
 from django.db import transaction
 from django.http import Http404, HttpRequest, JsonResponse
 from django.test import Client as _DjangoClient
@@ -94,7 +96,15 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
     if request.method != "POST":
         return _resposta_appmax("Envie o aviso por POST.", 405)
     try:
-        envelope = json.loads(request.body)
+        corpo = request.body
+        if len(corpo) > 1_048_576:
+            raise RequestDataTooBig
+    except RequestDataTooBig:
+        return _resposta_appmax(
+            "Aviso acima de 1.048.576 bytes. Envie um corpo menor.", 413
+        )
+    try:
+        envelope = json.loads(corpo)
     except (ValueError, UnicodeDecodeError):
         return _resposta_appmax("JSON inválido. Reenvie o aviso completo.", 400)
     if not isinstance(envelope, dict) or not isinstance(envelope.get("data"), dict):
@@ -120,6 +130,16 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
     ):
         return _resposta_appmax(
             "Tipo de evento ausente ou acima de 50 caracteres. Confira o aviso.",
+            400,
+        )
+    if not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", event.strip()):
+        return _resposta_appmax(
+            "Evento inválido. Use letras minúsculas e sublinhados no identificador.",
+            400,
+        )
+    if event_type.strip() not in {"order", "customer", "payment", "subscription"}:
+        return _resposta_appmax(
+            "Tipo de evento inválido. Use order, customer, payment ou subscription.",
             400,
         )
     if (
@@ -169,7 +189,7 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
             external_order_id=str(order_id),
             defaults={
                 "platform_site_id": tentativas[0].platform_site_id,
-                "payload": envelope,
+                "payload": {"data": {"order_id": order_id}},
             },
         )
     return JsonResponse({"status": "recebido" if criado else "ja_recebido"})

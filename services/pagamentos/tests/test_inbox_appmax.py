@@ -87,7 +87,7 @@ def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro(
     )
     assert OutboxEvent.objects.filter(event="pagamento.estornado").count() == 0
     aviso = AppmaxWebhookInbox.objects.get()
-    assert aviso.payload == aviso_forjado
+    assert aviso.payload == {"data": {"order_id": 3531}}
     assert aviso.platform_site_id == "site-interno"
     assert aviso.platform_site_id != aviso_forjado.get("platform_site_id")
 
@@ -199,6 +199,95 @@ def test_origem_e_pedido_precisam_bater_com_a_instalacao() -> None:
 
     assert origem_alheia.status_code == 403
     assert pedido_desconhecido.status_code == 409
+    assert AppmaxWebhookInbox.objects.count() == 0
+
+
+def test_webhook_nao_persiste_dados_brutos_de_cartao_no_payload() -> None:
+    campos_sensiveis = [
+        ("card_number", "4111111111111111"),
+        ("cvv", "321"),
+        ("cardNumber", "5555555555554444"),
+        ("cvc", "654"),
+        ("pan", "4012888888881881"),
+        ("card_cvv", "123"),
+        ("expiration_date", "12/30"),
+    ]
+    numero_aninhado = "4000000000000002"
+    codigo_aninhado = "987"
+    intent = Intent.objects.create(
+        idempotency_key=str(uuid.uuid4()),
+        site_id="site-interno",
+        order_id="pedido-interno",
+        method="card",
+        amount_cents=2000,
+        customer={"email": "cliente@exemplo.com"},
+    )
+    PaymentAttempt.objects.create(
+        intent=intent,
+        platform_site_id=intent.site_id,
+        provider="appmax",
+        request_hash="e" * 64,
+        external_order_id="3531",
+        amount_cents=2000,
+        effective_amount_cents=2000,
+        state="pending",
+    )
+    InstalacaoAppmax.objects.create(
+        app_id="123",
+        appmax_site_id="site-appmax",
+        alias="Loja",
+        platform_site_ids=["site-interno"],
+    )
+    aviso = {
+        "event": "order_approved",
+        "event_type": "order",
+        "site_id": "site-appmax",
+        "app_id": "123",
+        "data": {
+            "order_id": 3531,
+            "status": "approved",
+            **dict(campos_sensiveis[:2]),
+            "payment": {
+                **dict(campos_sensiveis[2:]),
+                "card": {"number": numero_aninhado, "security-code": codigo_aninhado},
+            },
+            "unknown_fields": [{"secret": "378282246310005"}],
+        },
+    }
+
+    resposta = Client().post(
+        URL, data=json.dumps(aviso), content_type="application/json"
+    )
+
+    assert resposta.status_code == 200
+    payload = AppmaxWebhookInbox.objects.get().payload
+    assert payload == {"data": {"order_id": 3531}}
+
+    for campo, valor in (
+        ("event", "order_approved_4111111111111111"),
+        ("event_type", "order_321"),
+    ):
+        resposta_sensivel = Client().post(
+            URL,
+            data=json.dumps({**aviso, campo: valor}),
+            content_type="application/json",
+        )
+        assert resposta_sensivel.status_code == 400
+        assert AppmaxWebhookInbox.objects.count() == 1
+
+
+@pytest.mark.parametrize("tamanho", [1_048_577, 3_000_000])
+def test_webhook_recusa_corpo_acima_de_um_megabyte(tamanho: int) -> None:
+    resposta = Client().post(
+        URL,
+        data=b" " * tamanho,
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 413
+    assert resposta.json() == {
+        "detail": "Aviso acima de 1.048.576 bytes. Envie um corpo menor."
+    }
     assert AppmaxWebhookInbox.objects.count() == 0
 
 
