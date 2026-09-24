@@ -575,6 +575,7 @@ def test_comando_recusa_tentativa_sem_progresso_acima_do_limite(tmp_path, monkey
     ]
     montar(tmp_path, [tarefa()], eventos)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(
         tarefa="TAR-001",
         quem="sessao-a",
@@ -596,6 +597,30 @@ def sem_rede(monkeypatch, reservas=frozenset(), prs=None):
     monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: False)
     monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: set(reservas))
     monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: dict(prs or {}))
+    fonte_publicada(monkeypatch)
+
+
+def fonte_publicada(monkeypatch):
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (
+            *fila._carregar_ou_parar(raiz),
+            {
+                "modo": "origin-main-mais-local",
+                "origin_main": "a" * 40,
+                "eventos_locais_nao_publicados": [],
+            },
+        ),
+    )
+
+
+def terminal_autorizado(monkeypatch):
+    monkeypatch.setattr(
+        fila,
+        "_preparar_publicacao_pendente",
+        lambda raiz, tid, dados: dados,
+    )
 
 
 def aquisicao_ok(monkeypatch, tid="TAR-001"):
@@ -607,6 +632,14 @@ def aquisicao_ok(monkeypatch, tid="TAR-001"):
         return True, "é sua"
 
     monkeypatch.setattr(fila.reservar, "reservar_intencao", reservar)
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "a" * 40,
+            {"tipo": "intencao", "chave": chave, "dono": fila.reservar.identidade_da_bancada(raiz)},
+        ),
+    )
     monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
     monkeypatch.setattr(
         fila.reservar,
@@ -632,6 +665,7 @@ def test_pegar_revalida_estado_depois_da_reserva_e_libera_se_mudou(
     montar(tmp_path, [tarefa()])
     leituras = [set(), {"TAR-001"}]
     soltas = []
+    fonte_publicada(monkeypatch)
     monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: leituras.pop(0))
     monkeypatch.setattr(
         fila,
@@ -639,35 +673,85 @@ def test_pegar_revalida_estado_depois_da_reserva_e_libera_se_mudou(
         lambda raiz: {"TAR-001": "PR #99"} if not leituras else {},
     )
     monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: ("b" * 40, {"tipo": "intencao", "dono": fila.reservar.identidade_da_bancada(raiz)}),
+    )
     monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
-    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave: soltas.append(chave))
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave, **kw: soltas.append((chave, kw)))
 
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
 
     assert fila.cmd_pegar(tmp_path, args) == 1
-    assert soltas == ["tarefa-TAR-001"]
+    assert soltas == [("tarefa-TAR-001", {"esperado": "b" * 40, "dono": fila.reservar.identidade_da_bancada(tmp_path), "permitir_pendente": False})]
     assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
     assert "mudou para 'em execução'" in capsys.readouterr().out
 
 
-def test_pegar_bancada_obsoleta_apos_reserva_libera_sem_evento(
+def test_pegar_aceita_avanco_remoto_sem_relacao_apos_reserva(
     tmp_path, monkeypatch, capsys
 ):
     montar(tmp_path, [tarefa()])
-    (tmp_path / ".git").write_text("gitdir: ../repo/.git/worktrees/tarefa\n", encoding="utf-8")
-    frescor = iter([True, False])
+    tarefas, eventos = fila._carregar_ou_parar(tmp_path)
+    fontes = iter([
+        {"modo": "origin-main-mais-local", "origin_main": "1" * 40},
+        {"modo": "origin-main-mais-local", "origin_main": "2" * 40},
+    ])
     soltas = []
     sem_rede(monkeypatch)
-    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda raiz: next(frescor))
+    reservas_medidas = iter([set(), {"TAR-001"}])
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: next(reservas_medidas))
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (tarefas, eventos, next(fontes)),
+    )
     monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
-    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave: soltas.append(chave))
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: ("d" * 40, {"tipo": "intencao", "dono": fila.reservar.identidade_da_bancada(raiz)}),
+    )
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave, **kw: soltas.append((chave, kw)))
+
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
+
+    assert fila.cmd_pegar(tmp_path, args) == 0
+    assert soltas == []
+    assert len(list((tmp_path / "fila" / "eventos").glob("*.json"))) == 1
+    assert "✅ TAR-001 é sua" in capsys.readouterr().out
+
+
+def test_pegar_recusa_alteracao_da_tarefa_apos_reserva(
+    tmp_path, monkeypatch, capsys
+):
+    montar(tmp_path, [tarefa()])
+    tarefas, eventos = fila._carregar_ou_parar(tmp_path)
+    alteradas = dict(tarefas)
+    alteradas["TAR-001"] = dict(tarefas["TAR-001"], depende_de=["TAR-999"])
+    leituras = iter([
+        (tarefas, eventos, {"modo": "origin-main-mais-local", "origin_main": "1" * 40}),
+        (alteradas, eventos, {"modo": "origin-main-mais-local", "origin_main": "2" * 40}),
+    ])
+    soltas = []
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila, "carregar_fila_publicada_e_local", lambda raiz: next(leituras))
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: ("d" * 40, {"tipo": "intencao", "dono": fila.reservar.identidade_da_bancada(raiz)}),
+    )
+    monkeypatch.setattr(fila.reservar, "soltar", lambda raiz, chave, **kw: soltas.append((chave, kw)))
 
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
 
     assert fila.cmd_pegar(tmp_path, args) == 1
-    assert soltas == ["tarefa-TAR-001"]
+    assert soltas == [("tarefa-TAR-001", {"esperado": "d" * 40, "dono": fila.reservar.identidade_da_bancada(tmp_path), "permitir_pendente": False})]
     assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
-    assert "fila publicada mudou" in capsys.readouterr().out
+    assert "TAR-001 mudou na fila publicada" in capsys.readouterr().out
 
 
 def test_pegar_perde_a_corrida_e_recusado_e_NAO_escreve_evento(tmp_path, monkeypatch, capsys):
@@ -728,6 +812,7 @@ def test_bloquear_sem_motivo_recusa_e_NAO_escreve_evento(tmp_path, monkeypatch, 
     montar(tmp_path, [tarefa()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="   ")
     assert fila.cmd_bloquear(tmp_path, args) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
@@ -744,6 +829,7 @@ def test_bloquear_com_motivo_escreve_o_evento_e_o_estado_calculado_muda(tmp_path
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(
         tarefa="TAR-001", quem="sessao-a",
         motivo="espera o passo do mantenedor na VPS",
@@ -772,6 +858,7 @@ def test_bloquear_tarefa_que_ja_terminou_recusa(tmp_path, monkeypatch, capsys):
     )
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(
         tarefa="TAR-001", quem="sessao-a", motivo="tarde demais",
         espera=fila.ESPERA_A_FILA,
@@ -787,6 +874,7 @@ def test_bloquear_solta_a_reserva_no_servidor(tmp_path, monkeypatch):
     diferentes sobre a mesma tarefa até a trava expirar sozinha em 3 horas."""
     montar(tmp_path, [tarefa()])
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     soltas = []
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda raiz, tid: soltas.append(tid))
     args = argparse.Namespace(
@@ -896,6 +984,8 @@ def test_cancelar_escreve_o_evento_e_o_estado_calculado_muda(tmp_path, monkeypat
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     args = argparse.Namespace(
         tarefa="TAR-001", quem="sessao-a", motivo="o plano mudou, substituta já criada"
     )
@@ -912,6 +1002,7 @@ def test_cancelar_sem_motivo_recusa(tmp_path, monkeypatch, capsys):
     montar(tmp_path, [tarefa()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="   ")
     assert fila.cmd_cancelar(tmp_path, args) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*cancelada*"))
@@ -925,6 +1016,8 @@ def test_cancelar_avisa_quem_vai_ficar_preso_para_sempre(tmp_path, monkeypatch, 
     montar(tmp_path, [tarefa("001", "a"), tarefa("002", "b", deps=["TAR-001"])])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="não vai mais ser feita")
     assert fila.cmd_cancelar(tmp_path, args) == 0
     assert "TAR-002" in capsys.readouterr().out
@@ -939,6 +1032,7 @@ def test_cancelar_tarefa_que_ja_terminou_recusa(tmp_path, monkeypatch, capsys):
     )
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="tarde demais")
     assert fila.cmd_cancelar(tmp_path, args) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*cancelada*"))
@@ -968,6 +1062,7 @@ def test_cancelar_recusa_no_espelho(tmp_path, monkeypatch, capsys):
 def test_concluir_sem_evidencia_recusa(tmp_path, monkeypatch, capsys):
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="  ", verificado_em="")
     assert fila.cmd_concluir(tmp_path, args) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*concluida*"))
@@ -977,6 +1072,8 @@ def test_concluir_sem_evidencia_recusa(tmp_path, monkeypatch, capsys):
 def test_concluir_com_evidencia_escreve_o_evento(tmp_path, monkeypatch):
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     args = argparse.Namespace(
         tarefa="TAR-001", quem="sessao-a",
         evidencia="https://github.com/x/y/pull/9", verificado_em="2026-08-29",
@@ -1032,6 +1129,8 @@ def test_guarda_comum_permite_concluir_tarefa_nova_com_cadastro_valido(tmp_path,
         }],
     }, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
     assert fila.cmd_concluir(tmp_path, args) == 0
 
@@ -1109,18 +1208,30 @@ def test_pegar_NA_BANCADA_passa(espelho_e_bancada, monkeypatch):
     _, bancada = espelho_e_bancada
     sem_rede(monkeypatch)
     aquisicao_ok(monkeypatch)
-    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda raiz: True)
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (
+            *fila._carregar_ou_parar(raiz),
+            {"modo": "origin-main-mais-local", "origin_main": "a" * 40},
+        ),
+    )
     assert fila.cmd_pegar(bancada, _args_pegar()) == 0
     assert len(list((bancada / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))) == 1
 
 
-def test_pegar_FORA_DE_CHECKOUT_GIT_passa(tmp_path, monkeypatch):
-    """Pasta sem `.git` nenhum não é 'não consegui medir': é medição que deu
-    'não há repositório aqui' — e sem repositório não há PR a perder."""
+def test_pegar_FORA_DE_CHECKOUT_GIT_recusa_sem_autorizar(tmp_path, monkeypatch):
+    """Sem origin/main medido, a fila local pode ser lida, mas não autoriza posse."""
     montar(tmp_path, [tarefa()])
     sem_rede(monkeypatch)
     aquisicao_ok(monkeypatch)
-    assert fila.cmd_pegar(tmp_path, _args_pegar()) == 0
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (*fila._carregar_ou_parar(raiz), {"modo": "local-sem-origin"}),
+    )
+    assert fila.cmd_pegar(tmp_path, _args_pegar()) == 1
+    assert not list((tmp_path / "fila/eventos").glob("*-TAR-001-reivindicada.json"))
 
 
 def test_criar_e_concluir_TAMBEM_recusam_no_espelho(espelho_e_bancada, monkeypatch):
@@ -1682,6 +1793,33 @@ def test_tarefa_SEM_explicacao_vem_sem_os_campos_nunca_com_desculpa(tmp_path):
     assert not any(c in estado for c in fila.CAMPOS_DA_EXPLICACAO)
 
 
+def test_listar_ao_vivo_mostra_fonte_e_terminal_local_na_saida_textual(tmp_path, monkeypatch, capsys):
+    concluida = evento(
+        tipo="concluida",
+        hora="11:00:00",
+        evidencia="prova local",
+        verificado_em="2026-09-10",
+    )
+    tarefas = {"TAR-001": tarefa()}
+    eventos = [concluida]
+    fonte = {
+        "modo": "origin-main-mais-local",
+        "origin_main": "a" * 40,
+        "head_local": "b" * 40,
+        "eventos_locais_nao_publicados": [f"fila/eventos/{concluida['arquivo']}.json"],
+    }
+    monkeypatch.setattr(fila, "carregar_fila_publicada_e_local", lambda raiz: (tarefas, eventos, fonte))
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: set())
+    monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: {})
+
+    assert fila.cmd_listar(tmp_path, argparse.Namespace(ao_vivo=True, json=False)) == 0
+
+    saida = capsys.readouterr().out
+    assert "Fonte: origin/main aaaaaaaaaaaa; HEAD local bbbbbbbbbbbb" in saida
+    assert "eventos locais não publicados: 1" in saida
+    assert "terminal local não publicado" in saida
+
+
 def test_listar_json_entrega_a_explicacao_junto_do_estado(tmp_path, capsys):
     """É este JSON que vira o `estados.json` que a célula admin lê no build."""
     raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada", **explicacao())])
@@ -1745,6 +1883,7 @@ def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
     }), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(tmp_path, args_de_criar()) == 0
     tarefas, eventos, erros = carregar(tmp_path)
     assert erros == []
@@ -1837,6 +1976,7 @@ def test_submeter_persiste_antes_de_soltar_e_retomada_nao_duplica(tmp_path, monk
     def soltar(raiz, tid):
         assert list((raiz / "fila/eventos").glob("*submetida*"))
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    fonte_publicada(monkeypatch)
     args = args_de_submeter()
     assert fila.cmd_submeter(tmp_path, args) == 0
     assert fila.cmd_submeter(tmp_path, args) == 0
@@ -1873,6 +2013,7 @@ def test_submeter_substitui_pr_fechado_sem_merge_com_elo_auditavel(tmp_path, mon
         assert atual["detalhe"] == "trabalho inteiro recuperado"
         liberadas.append(tid)
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    fonte_publicada(monkeypatch)
     args = args_de_submeter(
         pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
         substitui=URL_SUBMISSAO, motivo=" trabalho inteiro recuperado ",
@@ -1880,7 +2021,7 @@ def test_submeter_substitui_pr_fechado_sem_merge_com_elo_auditavel(tmp_path, mon
 
     assert fila.cmd_submeter(tmp_path, args) == 0
     assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
-    assert liberadas == ["TAR-001"]
+    assert liberadas == []
     tarefas, eventos, erros = carregar(tmp_path)
     assert erros == []
     estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
@@ -1909,6 +2050,7 @@ def test_submeter_substituicao_recusa_estado_ou_vinculo_sem_efeito(
     )
     liberadas = []
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    fonte_publicada(monkeypatch)
     args = args_de_submeter(
         pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
         substitui=mudanca.get("substitui", URL_SUBMISSAO),
@@ -1928,6 +2070,7 @@ def test_submeter_substituicao_com_instrumento_quebrado_e_error_sem_efeito(
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     liberadas = []
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    fonte_publicada(monkeypatch)
     if instrumento == "github":
         monkeypatch.setattr(fila, "consultar_pr_submetido", lambda *args: (_ for _ in ()).throw(
             ErroDeInstrumentacao("GitHub indisponível", "repita depois")
@@ -1955,6 +2098,7 @@ def test_submeter_substituicao_recusa_medicao_ausente_com_error_sem_efeito(
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     liberadas = []
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    fonte_publicada(monkeypatch)
     def consultar(_raiz, url):
         if url == URL_SUBMISSAO:
             dados = {"url": url, "state": "CLOSED", "mergeCommit": None}
@@ -1992,12 +2136,13 @@ def test_submeter_substituicao_repetida_e_idempotente(tmp_path, monkeypatch):
         fila, "_soltar_reserva_se_houver",
         lambda _raiz, tid: liberadas.append(tid),
     )
+    fonte_publicada(monkeypatch)
 
     assert fila.cmd_submeter(tmp_path, args_de_submeter(
         pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
         substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
     )) == 0
-    assert liberadas == ["TAR-001"]
+    assert liberadas == []
     assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
 
 
@@ -2014,18 +2159,18 @@ def test_submeter_substituicao_retomada_libera_sem_duplicar_evento(
             raise ErroDeInstrumentacao("reserva não liberada", "repita a submissão")
 
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    fonte_publicada(monkeypatch)
     args = args_de_submeter(
         pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
         substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
     )
 
-    with pytest.raises(ErroDeInstrumentacao, match="reserva não liberada"):
-        fila.cmd_submeter(tmp_path, args)
+    assert fila.cmd_submeter(tmp_path, args) == 0
     assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
 
     assert fila.cmd_submeter(tmp_path, args) == 0
     assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
-    assert liberacoes == ["TAR-001", "TAR-001"]
+    assert liberacoes == []
     assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
 
 
@@ -2049,6 +2194,7 @@ def test_validador_recusa_submissao_manual_que_quebra_a_cadeia(tmp_path, eventos
 def test_url_de_pr_nao_conclui_submissao_sem_prova_do_aceite(tmp_path, monkeypatch, capsys):
     montar(tmp_path, [tarefa(evidencia_exigida="publicação e teste funcional")], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: pytest.fail("não solte sem prova"))
+    fonte_publicada(monkeypatch)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia=URL_SUBMISSAO, verificado_em="2026-09-09")
     assert fila.cmd_concluir(tmp_path, args) == 1
     assert "comprovação" in capsys.readouterr().out
@@ -2173,6 +2319,8 @@ def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypa
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     evidencia = (
         f"{URL_SUBMISSAO}; revisão {REVISAO_RECONCILIADA}; árvore {ARVORE_RECONCILIADA}; "
         f"HEAD {HEAD_RECONCILIADO}; merge {MERGE_RECONCILIADO}; publicação {RUN_RECONCILIADO}; "
@@ -2523,6 +2671,7 @@ def test_reconciliacao_instrumento_quebrado_e_error_nao_fail(
     monkeypatch.setattr(fila, "raiz_do_repo", lambda: tmp_path)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    fonte_publicada(monkeypatch)
     liberadas = []
     monkeypatch.setattr(
         fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
@@ -2580,11 +2729,12 @@ def test_conclusao_escreve_antes_de_liberar_e_falha_de_escrita_preserva_reserva(
     )
     monkeypatch.setattr(
         fila,
-        "_escrever_evento",
+        "_escrever_evento_pronto",
         lambda *a, **k: (_ for _ in ()).throw(
             ErroDeInstrumentacao("disco recusou a escrita")
         ),
     )
+    terminal_autorizado(monkeypatch)
     with pytest.raises(ErroDeInstrumentacao, match="disco recusou"):
         fila._concluir_com_prova(
             tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
@@ -2592,19 +2742,33 @@ def test_conclusao_escreve_antes_de_liberar_e_falha_de_escrita_preserva_reserva(
     assert liberadas == []
 
 
-def test_falha_ao_liberar_explica_como_preservar_a_conclusao(tmp_path, monkeypatch):
+def test_conclusao_local_preserva_reserva_ate_publicacao(tmp_path, monkeypatch, capsys):
     (tmp_path / "fila/eventos").mkdir(parents=True)
-
-    def falhar(*args):
-        assert list((tmp_path / "fila/eventos").glob("*-concluida.json"))
-        raise ErroDeInstrumentacao("servidor recusou a soltura")
-
-    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", falhar)
-    with pytest.raises(ErroDeInstrumentacao, match="conclusão foi registrada") as erro:
-        fila._concluir_com_prova(
-            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
-        )
-    assert "fila.py soltar TAR-001" in erro.value.detalhe
+    (tmp_path / ".git").write_text("gitdir: ../repo/.git/worktrees/tarefa\n", encoding="utf-8")
+    dono = fila.reservar.identidade_da_bancada(tmp_path)
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "e" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": dono,
+                "expira_em": "2099-01-01T00:00:00+00:00",
+            },
+        ),
+    )
+    monkeypatch.setattr(fila.reservar, "atualizar_reserva", lambda *a, **k: True)
+    monkeypatch.setattr(
+        fila,
+        "_soltar_reserva_se_houver",
+        lambda *a: pytest.fail("terminal local não libera reserva"),
+    )
+    assert fila._concluir_com_prova(
+        tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+    ) == 0
+    assert "Reserva preservada" in capsys.readouterr().out
     assert len(list((tmp_path / "fila/eventos").glob("*-concluida.json"))) == 1
 
 
@@ -2618,10 +2782,409 @@ def _sha(cwd, revisao):
     ).stdout.strip()
 
 
-def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
-    remoto = tmp_path / "remoto.git"
+def _init_bare_main(remoto):
     remoto.mkdir()
     _git("init", "--bare", cwd=remoto)
+    _git("symbolic-ref", "HEAD", "refs/heads/main", cwd=remoto)
+
+
+def test_leitura_publicada_soma_evento_local_sem_merge(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()], [evento()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    local = evento(
+        tipo="concluida",
+        hora="11:00:00",
+        evidencia="prova local",
+        verificado_em="2026-09-10",
+    )
+    (bancada / "fila/eventos" / f"{local['arquivo']}.json").write_text(
+        json.dumps(local), encoding="utf-8"
+    )
+
+    tarefas, eventos, fonte = fila.carregar_fila_publicada_e_local(bancada)
+
+    assert fonte["origin_main"] == _sha(repo, "HEAD")
+    assert fonte["head_local"] == _sha(bancada, "HEAD")
+    assert fonte["eventos_locais_nao_publicados"] == [
+        f"fila/eventos/{local['arquivo']}.json"
+    ]
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CONCLUIDA
+    assert fila._terminal_local(fonte, eventos, "TAR-001") is True
+
+
+def test_leitura_publicada_aceita_copia_local_identica_de_tarefa_nova_no_remoto(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    nova = tarefa("002", "nova")
+    caminho = repo / "fila/tarefas/002-nova.json"
+    caminho.write_text(json.dumps(nova, ensure_ascii=False), encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "tarefa nova", cwd=repo)
+    _git("push", "origin", "main", cwd=repo)
+    destino = bancada / "fila/tarefas/002-nova.json"
+    destino.write_bytes(subprocess.check_output(["git", "show", "origin/main:fila/tarefas/002-nova.json"], cwd=repo))
+
+    tarefas, eventos, fonte = fila.carregar_fila_publicada_e_local(bancada)
+
+    assert "TAR-002" in tarefas
+    assert fonte["eventos_locais_nao_publicados"] == []
+
+
+def test_leitura_publicada_recusa_conflito_em_tarefa_imutavel(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    caminho = bancada / "fila/tarefas/001-exemplo.json"
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    dados["titulo"] = "editada"
+    caminho.write_text(json.dumps(dados), encoding="utf-8")
+
+    with pytest.raises(ErroDeInstrumentacao, match="conflita com origin/main"):
+        fila.carregar_fila_publicada_e_local(bancada)
+
+
+def test_leitura_publicada_usa_remoto_quando_bancada_antiga_esta_limpa(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    caminho = repo / "fila/tarefas/001-exemplo.json"
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    dados["titulo"] = "Atualizada no remoto"
+    caminho.write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
+    terminado = evento(tipo="concluida", hora="11:00:00", evidencia="prova", verificado_em="2026-09-10")
+    (repo / "fila/eventos").mkdir(exist_ok=True)
+    (repo / "fila/eventos" / f"{terminado['arquivo']}.json").write_text(
+        json.dumps(terminado, ensure_ascii=False), encoding="utf-8"
+    )
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "atualiza fila", cwd=repo)
+    _git("push", "origin", "main", cwd=repo)
+    (bancada / "rascunho.txt").write_text("não tocar", encoding="utf-8")
+
+    tarefas, eventos, fonte = fila.carregar_fila_publicada_e_local(bancada)
+
+    assert fonte["origin_main"] == _sha(repo, "HEAD")
+    assert tarefas["TAR-001"]["titulo"] == "Atualizada no remoto"
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CONCLUIDA
+    assert (bancada / "rascunho.txt").read_text(encoding="utf-8") == "não tocar"
+
+
+def test_leitura_publicada_recusa_alteracao_commitada_em_item_publicado(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    _git("config", "user.email", "teste@teste", cwd=bancada)
+    _git("config", "user.name", "Teste", cwd=bancada)
+    caminho = bancada / "fila/tarefas/001-exemplo.json"
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    dados["titulo"] = "editada e commitada"
+    caminho.write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
+    _git("add", ".", cwd=bancada)
+    _git("commit", "-m", "edita item imutavel", cwd=bancada)
+
+    with pytest.raises(ErroDeInstrumentacao, match="conflita com origin/main"):
+        fila.carregar_fila_publicada_e_local(bancada)
+
+
+def test_leitura_publicada_nao_ressuscita_item_removido_no_remoto(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    (repo / "fila/tarefas/001-exemplo.json").unlink()
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "remove item", cwd=repo)
+    _git("push", "origin", "main", cwd=repo)
+
+    tarefas, eventos, fonte = fila.carregar_fila_publicada_e_local(bancada)
+
+    assert fonte["origin_main"] == _sha(repo, "HEAD")
+    assert tarefas == {}
+    assert eventos == []
+
+
+def test_terminal_com_reserva_alheia_nao_escreve_evento(tmp_path, monkeypatch):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+    (tmp_path / ".git").write_text("gitdir: ../repo/.git/worktrees/tarefa\n", encoding="utf-8")
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "f" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": "outra-bancada",
+                "expira_em": "2099-01-01T00:00:00+00:00",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        fila,
+        "_escrever_evento",
+        lambda *a, **k: pytest.fail("reserva alheia não escreve terminal"),
+    )
+
+    assert fila._concluir_com_prova(
+        tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+    ) == 1
+
+
+def test_pegar_libera_reserva_quando_terminal_ja_esta_publicado(tmp_path, monkeypatch):
+    concluida = evento(
+        tipo="concluida",
+        hora="11:00:00",
+        evidencia="prova publicada",
+        verificado_em="2026-09-10",
+    )
+    tarefas = {"TAR-001": tarefa()}
+    eventos = [concluida]
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (
+            tarefas,
+            eventos,
+                {
+                    "modo": "origin-main-mais-local",
+                    "origin_main": "a" * 40,
+                    "eventos_locais_nao_publicados": [],
+                },
+        ),
+    )
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: {"TAR-001"})
+    monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: {})
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "f" * 40,
+            {"tipo": "intencao", "chave": chave, "dono": fila.reservar.identidade_da_bancada(raiz)},
+        ),
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a, **kw: liberadas.append((a, kw))
+    )
+
+    assert fila.cmd_pegar(
+        tmp_path, argparse.Namespace(tarefa="TAR-001", quem="sessao-a")
+    ) == 1
+    assert liberadas == [((tmp_path, "TAR-001"), {"permitir_pendente": True})]
+
+
+def test_evento_terminal_exato_compara_datetime_e_campos_internos_do_loader():
+    pendente = evento(
+        tipo="concluida",
+        hora="11:00:00",
+        evidencia="prova",
+        verificado_em="2026-09-10",
+    )
+    publicado = dict(pendente)
+    publicado["quando"] = fila.datetime.fromisoformat(pendente["quando"])
+    publicado["_quando"] = fila.datetime.fromisoformat(pendente["quando"])
+
+    assert fila._evento_terminal_igual(publicado, pendente) is True
+
+
+def test_pegar_com_loader_real_libera_publicacao_pendente_exata_no_servidor(tmp_path, monkeypatch, capsys):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    montar(repo, [tarefa()])
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "fila publicada", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    bancada = tmp_path / "bancada"
+    subprocess.run(["git", "clone", str(remoto), str(bancada)], check=True, capture_output=True)
+    _git("config", "user.email", "teste@teste", cwd=bancada)
+    _git("config", "user.name", "Teste", cwd=bancada)
+
+    publicado = evento(
+        tipo="concluida",
+        hora="11:00:00",
+        evidencia="prova publicada",
+        verificado_em="2026-09-10",
+    )
+    ganhou, _ = fila.reservar.reservar_intencao(
+        bancada, "tarefa-TAR-001", objetivo="Uma tarefa de exemplo"
+    )
+    assert ganhou is True
+    sha, corpo = fila.reservar.ler_reserva(bancada, "tarefa-TAR-001")
+    pendente = dict(corpo)
+    pendente["estado"] = "publicacao_pendente"
+    pendente["evento"] = publicado
+    pendente["publicacao_pendente_em"] = "2026-09-10T11:00:01+00:00"
+    assert fila.reservar.atualizar_reserva(
+        bancada,
+        "tarefa-TAR-001",
+        esperado=sha,
+        dono=fila.reservar.identidade_da_bancada(bancada),
+        corpo=pendente,
+    ) is True
+
+    caminho = repo / "fila/eventos" / f"{publicado['arquivo']}.json"
+    caminho.write_text(json.dumps(publicado, ensure_ascii=False), encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "conclusao publicada", cwd=repo)
+    _git("push", "origin", "main", cwd=repo)
+
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: {})
+
+    assert fila.cmd_pegar(
+        bancada, argparse.Namespace(tarefa="TAR-001", quem="sessao-a")
+    ) == 1
+
+    saida = capsys.readouterr().out
+    assert "estado terminal medido em origin/main" in saida
+    assert subprocess.run(
+        ["git", "ls-remote", "origin", "refs/reservas/tarefa-TAR-001"],
+        cwd=bancada,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip() == ""
+
+
+def test_pegar_nao_libera_publicacao_pendente_com_terminal_diferente(tmp_path, monkeypatch, capsys):
+    reservado = evento(
+        tipo="concluida",
+        hora="11:00:00",
+        evidencia="prova esperada",
+        verificado_em="2026-09-10",
+    )
+    publicado = dict(reservado, evidencia="outra prova")
+    tarefas = {"TAR-001": tarefa()}
+    eventos = [publicado]
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(
+        fila,
+        "carregar_fila_publicada_e_local",
+        lambda raiz: (
+            tarefas,
+            eventos,
+            {
+                "modo": "origin-main-mais-local",
+                "origin_main": "a" * 40,
+                "eventos_locais_nao_publicados": [],
+            },
+        ),
+    )
+    monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: {"TAR-001"})
+    monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: {})
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: True)
+    monkeypatch.setattr(
+        fila.reservar,
+        "ler_reserva",
+        lambda raiz, chave: (
+            "f" * 40,
+            {
+                "tipo": "intencao",
+                "chave": chave,
+                "dono": fila.reservar.identidade_da_bancada(raiz),
+                "estado": "publicacao_pendente",
+                "evento": reservado,
+            },
+        ),
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+
+    assert fila.cmd_pegar(
+        tmp_path, argparse.Namespace(tarefa="TAR-001", quem="sessao-a")
+    ) == 1
+
+    assert liberadas == []
+    assert "não é o evento pendente" in capsys.readouterr().out
+
+
+def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2677,8 +3240,7 @@ def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
 
 def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-b", "main", cwd=repo)
@@ -2815,8 +3377,7 @@ def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
     tmp_path, monkeypatch, capsys
 ):
     remoto = tmp_path / "remoto.git"
-    remoto.mkdir()
-    _git("init", "--bare", cwd=remoto)
+    _init_bare_main(remoto)
     primeira = tmp_path / "primeira"
     primeira.mkdir()
     _git("init", "-b", "main", cwd=primeira)
@@ -2854,7 +3415,7 @@ def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
     )
 
     assert fila.cmd_reconciliar(atrasada, args_de_reconciliar()) == 1
-    assert "merge de origin/main" in capsys.readouterr().out
+    assert "já terminou" in capsys.readouterr().out
     assert liberadas == []
     assert not list((atrasada / "fila/eventos").glob("*-concluida.json"))
     assert _sha(atrasada, "origin/main") == _sha(primeira, "HEAD")
@@ -2883,6 +3444,8 @@ def test_entrega_escreve_o_feito_e_a_fila_mostra_concluida(tmp_path, monkeypatch
     # guarda: ci/fila.py:1724
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
     escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
     assert len(escrito) == 1
@@ -2905,6 +3468,7 @@ def test_fechar_pela_entrega_exige_a_submissao_daquele_pr(tmp_path, monkeypatch,
     # guarda: ci/fila.py:2376
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr="prova inventada")) == 1
     assert "não é a entrega submetida" in capsys.readouterr().out
     assert not list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
@@ -2914,6 +3478,7 @@ def test_fechar_pela_entrega_recusa_pr_diferente_da_submissao(tmp_path, monkeypa
     """Submissão existe, mas para outro PR: também não fecha."""
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr=URL_SUBMISSAO + "9")) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
 
@@ -2923,6 +3488,8 @@ def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys)
     # guarda: ci/fila.py:1695
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
+    terminal_autorizado(monkeypatch)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
     capsys.readouterr()
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
@@ -2937,6 +3504,7 @@ def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, c
                     evidencia="outro aceite", verificado_em="2026-09-11")
     montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 1
     assert "já terminou por outro fato" in capsys.readouterr().out
     assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))) == 1
@@ -3094,6 +3662,7 @@ def test_criar_com_origem_do_termometro_pede_o_numero_pela_CHAVE_da_origem(
         return "099"
 
     monkeypatch.setattr(fila.reservar, "alocar_numero", alocar)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
     chave = fila.chave_da_origem(ORIGEM_AUTOMATICA)
     assert pedidos == [("tarefa", chave)]
@@ -3111,6 +3680,7 @@ def test_criar_com_origem_comum_continua_sem_chave(tmp_path, monkeypatch):
         return "099"
 
     monkeypatch.setattr(fila.reservar, "alocar_numero", alocar)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(tmp_path, args_de_criar()) == 0
     assert pedidos == [None]
 
@@ -3121,6 +3691,7 @@ def test_segunda_medicao_da_mesma_origem_NAO_duplica_nem_pede_numero(
     cadastro_para_criar(montar(tmp_path, []))
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
     capsys.readouterr()
 
@@ -3138,6 +3709,7 @@ def test_origem_diferente_continua_criando_tarefa_nova(tmp_path, monkeypatch):
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     numeros = iter(["099", "100"])
     monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: next(numeros))
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
     assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_DE_OUTRA)) == 0
     tarefas, _, erros = carregar(tmp_path)
@@ -3163,6 +3735,7 @@ def test_duas_medicoes_concorrentes_deixam_UMA_origem_na_fila(
         return "099"
 
     monkeypatch.setattr(fila.reservar, "alocar_numero", alocar_perdendo_a_corrida)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
     assert "TAR-098" in capsys.readouterr().out
     tarefas, _, erros = carregar(tmp_path)
@@ -3223,6 +3796,7 @@ def test_concluir_com_a_prova_certa_grava_a_cadeia_dentro_do_evento(
     monkeypatch.setattr(
         fila, "provar_guarda_da_armadilha", lambda *a: ([], cadeia(raiz))
     )
+    terminal_autorizado(monkeypatch)
     assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 0
     escritos = list((raiz / "fila" / "eventos").glob("*-concluida.json"))
     assert len(escritos) == 1
@@ -3240,6 +3814,7 @@ def test_tarefa_COMUM_nao_ganha_a_regra_da_cadeia(tmp_path, monkeypatch):
         raise AssertionError("tarefa de gente não prova guarda de armadilha")
 
     monkeypatch.setattr(fila, "provar_guarda_da_armadilha", nunca)
+    terminal_autorizado(monkeypatch)
     assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 0
     escritos = list((raiz / "fila" / "eventos").glob("*-concluida.json"))
     gravado = json.loads(escritos[0].read_text(encoding="utf-8"))
@@ -3264,6 +3839,7 @@ def test_origem_ja_concluida_sem_cadeia_para_a_medicao_com_ERROR(
         raise AssertionError("não deveria pedir número sobre uma conclusão falsa")
 
     monkeypatch.setattr(fila.reservar, "alocar_numero", nunca)
+    fonte_publicada(monkeypatch)
     assert fila.cmd_criar(raiz, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 2
     assert "PAROU POR SEGURANÇA" in capsys.readouterr().out
     assert len(list((raiz / "fila" / "tarefas").glob("*.json"))) == 1
@@ -3688,6 +4264,7 @@ def test_o_feito_que_viaja_na_entrega_passa_pelo_MESMO_portao(
         "provar_guarda_da_armadilha",
         lambda *a: (["a guarda sabotada continuou verde"], {}),
     )
+    fonte_publicada(monkeypatch)
     with pytest.raises(ErroDeInstrumentacao, match="não pôde escrever a conclusão"):
         fila.cmd_fechar_pela_entrega(raiz, args_de_fechar())
     assert "continuou verde" in capsys.readouterr().out

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260924-021-corrige-leitura-publicada-e-retomada-da-fila",
+  tipo: "entrega",
+  quando: "2026-09-24",
+  titulo: "Corrige leitura publicada e retomada da fila",
+  detalhe: "Retomada confere a entrega integrada sem nova aquisição. Auditorias mediram 137 testes de sessão e 389 de fila, reservas e mapa no Linux. Publicação e aceite seguem separados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2027. Validação local: árvore a44161a4088a858230e813ccb87347ca4bf0e626; commit 8166a2ec971205e44e4215622af24eee79d8d180; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-24",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-677",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

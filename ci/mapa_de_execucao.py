@@ -595,19 +595,33 @@ def materializar_pacote(
         for nome in [*obrigatorias, *GLOBAIS]:
             local(nome)
         erros = []
-        tarefas = (
-            _coleta["tarefas"]
-            if _coleta is not None
-            else fila.carregar_tarefas(raiz, erros)
-        )
-        eventos = (
-            _coleta["eventos"]
-            if _coleta is not None
-            else fila.carregar_eventos(raiz, tarefas, erros)
-        )
+        fonte_fila = None
+        if _coleta is not None:
+            tarefas = _coleta["tarefas"]
+            eventos = _coleta["eventos"]
+        elif snapshot:
+            tarefas = fila.carregar_tarefas(raiz, erros)
+            eventos = fila.carregar_eventos(raiz, tarefas, erros)
+        else:
+            tarefas, eventos, fonte_fila = fila.carregar_fila_publicada_e_local(raiz)
         if erros:
             raise ErroDeInstrumentacao(
                 "Fila inválida; execute python ci/fila.py validar e corrija o diagnóstico."
+            )
+        if fonte_fila is not None:
+            base["fontes"].append(
+                _fonte(
+                    "fila publicada + eventos locais",
+                    fonte_fila,
+                    fonte_fila.get("origin_main") or base["revisao"],
+                    agora,
+                    digest=fonte_fila.get("digest_combinado"),
+                    local=False,
+                    limite=(
+                        "origin/main medido por objetos Git; eventos locais listados "
+                        "separadamente e ainda não contam como aceite publicado."
+                    ),
+                )
             )
         estados = fila.calcular_estados(tarefas, eventos)
         celulas = mapa_de_celulas.carregar(raiz)
@@ -668,7 +682,11 @@ def materializar_pacote(
             candidatos = _candidatos(
                 tarefas, estados, celulas, caminhos, pedido or sintoma
             )
-            if not pedido and len(candidatos) == 1:
+            if (
+                not pedido
+                and len(candidatos) == 1
+                and candidatos[0].get("estado") != fila.BLOQUEADA
+            ):
                 tar = base["tar"] = candidatos[0]["tar"]
             elif not pedido or not caminhos or not aceite:
                 base.update(

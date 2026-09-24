@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-062436-TAR-677-concluida",
+  "tarefa": "TAR-677",
+  "evento": "concluida",
+  "quando": "2026-09-24T06:24:36.333961+00:00",
+  "quem": "agent/ci/caminho-unico-r1-coerente",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2027",
+  "verificado_em": "2026-09-24"
+}
