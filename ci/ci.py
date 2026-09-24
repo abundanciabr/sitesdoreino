@@ -38,6 +38,7 @@ conserta nada para ficar verde.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -327,106 +328,167 @@ def classificar_exit_do_make(codigo: int) -> Estado:
     return Estado.FAIL
 
 
-def rodar_celula(raiz: Path, celula: str) -> Resultado:
-    """Delega o `make ci` da célula — sem reimplementar lint/type/test aqui."""
-    destino = raiz / "services" / celula
-    if not destino.is_dir():
-        return Resultado(
-            f"celula/{celula}",
-            Estado.ERROR,
-            "célula inexistente",
-            f"Esperada em:\n  {destino}",
+@dataclass(frozen=True)
+class VerificacaoDeCelula:
+    nome: str
+    comando: tuple[str, ...] | None
+    resumo_fail: str
+    requer_arquivo: str | None = None
+
+
+VERIFICACOES_OBRIGATORIAS_DA_CELULA = (
+    VerificacaoDeCelula(
+        "lint/black",
+        ("black", "--check", "."),
+        "black encontrou formatação fora do padrão",
+    ),
+    VerificacaoDeCelula(
+        "lint/import-linter",
+        ("lint-imports",),
+        "import-linter encontrou dependência proibida",
+        ".importlinter",
+    ),
+    VerificacaoDeCelula(
+        "type/mypy",
+        ("mypy", "."),
+        "mypy encontrou erro de tipo",
+        "mypy.ini",
+    ),
+    VerificacaoDeCelula(
+        "test/pytest",
+        (sys.executable, "-m", "pytest", "-q"),
+        "pytest reprovou",
+    ),
+    VerificacaoDeCelula(
+        "contrato/freeze",
+        None,
+        "contrato vivo divergiu do congelado",
+    ),
+)
+
+
+def _cancelado(codigo: int) -> bool:
+    return codigo in (-2, -15, 130, 3221225786)
+
+
+def _comando_legivel(comando: tuple[str, ...]) -> str:
+    return " ".join(comando)
+
+
+def _rodar_comando_da_celula(
+    verificacao: VerificacaoDeCelula, destino: Path, prazo: int
+) -> Resultado:
+    assert verificacao.comando is not None
+    try:
+        proc = subprocess.run(
+            list(verificacao.comando),
+            cwd=str(destino),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env={**os.environ, "PYTHONUTF8": "1"},
+            timeout=prazo,
+            check=False,
         )
-    if not (destino / "Makefile").is_file():
+    except subprocess.TimeoutExpired as erro:
         return Resultado(
-            f"celula/{celula}",
-            Estado.ERROR,
-            "a célula não tem Makefile",
-            f"Esperado em:\n  {destino / 'Makefile'}\n\n"
-            "A Definição de Pronto da célula mora no `make ci` dela. Portão\n"
-            "ausente não é portão satisfeito.",
+            f"celula/{destino.name}/{verificacao.nome}",
+            Estado.TIMEOUT,
+            f"a verificação estourou o prazo de {prazo}s",
+            f"Comando:\n  {_comando_legivel(verificacao.comando)}\n\n{erro}",
         )
-    make = shutil.which("make")
-    if make is None:
+    except FileNotFoundError as erro:
         return Resultado(
-            f"celula/{celula}",
+            f"celula/{destino.name}/{verificacao.nome}",
             Estado.ERROR,
-            "GNU Make ausente — a CI da célula ainda depende dele",
-            "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
-            "Enquanto essa camada não for portada, rodar a CI de UMA célula exige make.\n"
-            "Os portões de repositório (`python ci/ci.py --apenas freeze,muralhas`)\n"
-            "continuam disponíveis sem make.",
+            "ferramenta ausente",
+            f"Comando:\n  {_comando_legivel(verificacao.comando)}\n\n{erro}\n\n"
+            "Ferramenta ausente não é reprovação da célula: é medição não feita.",
+        )
+    except OSError as erro:
+        return Resultado(
+            f"celula/{destino.name}/{verificacao.nome}",
+            Estado.ERROR,
+            "falha ao executar a ferramenta",
+            f"Comando:\n  {_comando_legivel(verificacao.comando)}\n\n{erro}",
         )
 
-    def _correr(argumentos: list[str], limite: int) -> subprocess.CompletedProcess | int:
-        """Roda o make; devolve o processo, ou 124 se estourou o tempo.
-
-        `subprocess.run(timeout=...)` LEVANTA em vez de devolver um código —
-        deixar a exceção subir derrubaria o runner inteiro com traceback, que é
-        o oposto de fail-closed legível. 124 é a sentinela de timeout, a mesma
-        que `ci/sessao.py` usa.
-        """
-        try:
-            return subprocess.run(
-                [make, "-C", str(destino), *argumentos],
-                cwd=str(raiz),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=limite,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            return 124
-
-    # ENSAIO: `make -n ci` planeja sem executar. Ele existe para desambiguar o
-    # exit 2 do make — se o alvo `ci` não existe, ou o Makefile não é analisável,
-    # é AQUI que se descobre, e isso é ERROR de verdade. Nenhum Makefile de
-    # célula recorre com `$(MAKE)`, então o ensaio não dispara trabalho real.
-    ensaio = _correr(["-n", "ci"], 120)
-    if isinstance(ensaio, int) or ensaio.returncode != 0:
-        codigo = ensaio if isinstance(ensaio, int) else ensaio.returncode
-        detalhe = "" if isinstance(ensaio, int) else (ensaio.stdout or "") + (
-            ensaio.stderr or ""
-        )
-        return Resultado(
-            f"celula/{celula}",
-            Estado.ERROR,
-            f"o alvo `ci` da célula não é sequer planejável (make -n saiu {codigo})",
-            f"Comando:\n  {make} -C {destino} -n ci\n\n"
-            + recortar(detalhe, 4000)
-            + "\n\nIsto NÃO é uma reprovação da célula: o `make ci` não chegou a\n"
-            "rodar. Alvo ausente, Makefile ilegível ou make quebrado.",
-        )
-
-    proc = _correr(["ci"], 1800)
-    if isinstance(proc, int):
-        return Resultado(
-            f"celula/{celula}",
-            Estado.ERROR,
-            "o `make ci` da célula estourou o tempo (30 min)",
-            f"Comando:\n  {make} -C {destino} ci\n\n"
-            "Nada foi provado sobre o código — este resultado NÃO é um FAIL.",
-        )
     saida = (proc.stdout or "") + (proc.stderr or "")
     if proc.returncode == 0:
-        return Resultado(f"celula/{celula}", Estado.PASS, "make ci verde")
-    estado = classificar_exit_do_make(proc.returncode)
-    if estado is Estado.ERROR:
         return Resultado(
-            f"celula/{celula}",
-            Estado.ERROR,
-            f"o `make ci` da célula não chegou a rodar (exit {proc.returncode})",
-            recortar(saida, 4000)
-            + "\n\nNada foi provado sobre o código — este resultado NÃO é um FAIL.",
+            f"celula/{destino.name}/{verificacao.nome}",
+            Estado.PASS,
+            "verificação verde",
+        )
+    if _cancelado(proc.returncode):
+        return Resultado(
+            f"celula/{destino.name}/{verificacao.nome}",
+            Estado.CANCELLED,
+            f"verificação cancelada (exit {proc.returncode})",
+            recortar(saida, 4000),
         )
     return Resultado(
-        f"celula/{celula}",
+        f"celula/{destino.name}/{verificacao.nome}",
         Estado.FAIL,
-        f"make ci reprovou (exit {proc.returncode})",
+        f"{verificacao.resumo_fail} (exit {proc.returncode})",
         recortar(saida, 4000),
     )
+
+
+def rodar_celula(raiz: Path, celula: str) -> Relatorio:
+    """Executa a Definição de Pronto da célula sem depender de make ou shell."""
+    relatorio = Relatorio(f"CI da célula {celula}")
+    destino = raiz / "services" / celula
+    if not destino.is_dir():
+        relatorio.registrar(
+            Resultado(
+                f"celula/{celula}",
+                Estado.ERROR,
+                "célula inexistente",
+                f"Esperada em:\n  {destino}",
+            )
+        )
+        return relatorio
+
+    for verificacao in VERIFICACOES_OBRIGATORIAS_DA_CELULA:
+        if verificacao.requer_arquivo and not (
+            destino / verificacao.requer_arquivo
+        ).is_file():
+            relatorio.registrar(
+                Resultado(
+                    f"celula/{celula}/{verificacao.nome}",
+                    Estado.SKIP,
+                    f"skip declarado: {verificacao.requer_arquivo} ausente",
+                )
+            )
+            continue
+        if verificacao.nome == "contrato/freeze":
+            freeze = contract_freeze.rodar(raiz=raiz, celula=celula)
+            if not freeze.resultados:
+                relatorio.registrar(
+                    Resultado(
+                        f"celula/{celula}/{verificacao.nome}",
+                        Estado.ERROR,
+                        "freeze não produziu resultado",
+                        "contract_freeze.rodar retornou relatório vazio. "
+                        "Sem resultado não há evidência de contrato preservado.",
+                    )
+                )
+                continue
+            for resultado in freeze.resultados:
+                relatorio.registrar(
+                    Resultado(
+                        f"celula/{celula}/{verificacao.nome}/{resultado.nome}",
+                        resultado.estado,
+                        resultado.resumo,
+                        resultado.detalhe,
+                    )
+                )
+            continue
+        relatorio.registrar(_rodar_comando_da_celula(verificacao, destino, 1800))
+    return relatorio
 
 
 def celulas_tocadas(raiz: Path, base: str) -> list[str]:
@@ -496,7 +558,8 @@ def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relator
     if "testador" in escolhidos:
         relatorio.registrar(rodar_testes_do_testador(raiz))
     if celula:
-        relatorio.registrar(rodar_celula(raiz, celula))
+        for resultado in rodar_celula(raiz, celula).resultados:
+            relatorio.registrar(resultado)
     return relatorio
 
 
@@ -560,7 +623,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "  testador   — a suíte adversarial que prova que o freeze falha quando deve"
         )
-        print("\nAlém deles: --celula <nome> encadeia o `make ci` daquela célula.")
+        print("\nAlém deles: --celula <nome> roda a lista obrigatória da célula.")
         return 0
 
     apenas = [p.strip() for p in args.apenas.split(",") if p.strip()] or None

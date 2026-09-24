@@ -19,12 +19,15 @@ da plataforma e só a CI canônica confirma. Aqui provamos a tabela de decisão.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
 from conftest import BASH
+from _nucleo import Estado, Relatorio, Resultado
+import ci as runner_ci
 
 CI = Path(__file__).resolve().parents[1]
 WORKFLOW = CI.parent / ".github" / "workflows" / "ci-celula.yml"
@@ -295,3 +298,144 @@ def test_a_matriz_sai_da_lista_detectada():
     assert rodar["strategy"]["fail-fast"] is False, (
         "com duas células tocadas, parar na primeira falha esconde a segunda"
     )
+
+
+def _raiz_com_celula(tmp_path: Path, celula: str = "catalogo") -> Path:
+    raiz = tmp_path
+    destino = raiz / "services" / celula
+    destino.mkdir(parents=True)
+    for marca in ("CONSTITUICAO.md", "INVARIANTES.md"):
+        (raiz / marca).write_text("fonte\n", encoding="utf-8")
+    for pasta in ("ci", "contracts"):
+        (raiz / pasta).mkdir()
+    return raiz
+
+
+def _freeze_verde(nome: str = "contrato/catalogo") -> Relatorio:
+    relatorio = Relatorio("freeze")
+    relatorio.registrar(Resultado(nome, Estado.PASS, "idêntico"))
+    return relatorio
+
+
+def test_ci_da_celula_declara_todas_as_verificacoes_obrigatorias() -> None:
+    nomes = [v.nome for v in runner_ci.VERIFICACOES_OBRIGATORIAS_DA_CELULA]
+    assert nomes == [
+        "lint/black",
+        "lint/import-linter",
+        "type/mypy",
+        "test/pytest",
+        "contrato/freeze",
+    ]
+
+
+def test_ci_da_celula_sem_lista_obrigatoria_nao_vira_pass(
+    tmp_path: Path, monkeypatch
+) -> None:
+    raiz = _raiz_com_celula(tmp_path)
+    monkeypatch.setattr(runner_ci, "VERIFICACOES_OBRIGATORIAS_DA_CELULA", ())
+
+    relatorio = runner_ci.rodar_celula(raiz, "catalogo")
+
+    assert relatorio.estado is Estado.ERROR
+    assert relatorio.exit_code == 2
+
+
+def test_ci_da_celula_roda_sem_make_e_preserva_o_freeze(
+    tmp_path: Path, monkeypatch
+) -> None:
+    raiz = _raiz_com_celula(tmp_path)
+    chamadas: list[str] = []
+
+    def rodar(verificacao, destino, prazo):
+        chamadas.append(verificacao.nome)
+        assert verificacao.nome != "make"
+        return Resultado(
+            f"celula/{destino.name}/{verificacao.nome}",
+            Estado.PASS,
+            "verificação verde",
+        )
+
+    def freeze(**kwargs):
+        assert kwargs["celula"] == "catalogo"
+        return _freeze_verde()
+
+    monkeypatch.setattr(runner_ci, "_rodar_comando_da_celula", rodar)
+    monkeypatch.setattr(runner_ci.contract_freeze, "rodar", freeze)
+
+    relatorio = runner_ci.rodar_celula(raiz, "catalogo")
+
+    assert relatorio.estado is Estado.PASS
+    assert "lint/black" in chamadas
+    assert "test/pytest" in chamadas
+    assert any(
+        r.nome == "celula/catalogo/contrato/freeze/contrato/catalogo"
+        for r in relatorio.resultados
+    )
+
+
+def test_ci_da_celula_skip_e_declarado_por_arquivo_ausente(
+    tmp_path: Path, monkeypatch
+) -> None:
+    raiz = _raiz_com_celula(tmp_path)
+    chamadas: list[str] = []
+
+    def rodar(verificacao, destino, prazo):
+        chamadas.append(verificacao.nome)
+        return Resultado(
+            f"celula/{destino.name}/{verificacao.nome}",
+            Estado.PASS,
+            "verificação verde",
+        )
+
+    monkeypatch.setattr(runner_ci, "_rodar_comando_da_celula", rodar)
+    monkeypatch.setattr(
+        runner_ci.contract_freeze, "rodar", lambda **kwargs: _freeze_verde()
+    )
+
+    relatorio = runner_ci.rodar_celula(raiz, "catalogo")
+
+    por_nome = {r.nome: r.estado for r in relatorio.resultados}
+    assert por_nome["celula/catalogo/lint/import-linter"] is Estado.SKIP
+    assert por_nome["celula/catalogo/type/mypy"] is Estado.SKIP
+    assert "lint/import-linter" not in chamadas
+    assert "type/mypy" not in chamadas
+
+
+def test_ci_da_celula_timeout_nao_vira_fail(tmp_path: Path, monkeypatch) -> None:
+    raiz = _raiz_com_celula(tmp_path)
+
+    def run(comando, **kwargs):
+        if comando[:3] == [sys.executable, "-m", "pytest"]:
+            raise subprocess.TimeoutExpired(comando, kwargs["timeout"])
+        return subprocess.CompletedProcess(comando, 0, "ok\n", "")
+
+    monkeypatch.setattr(runner_ci.subprocess, "run", run)
+    monkeypatch.setattr(
+        runner_ci.contract_freeze, "rodar", lambda **kwargs: _freeze_verde()
+    )
+
+    relatorio = runner_ci.rodar_celula(raiz, "catalogo")
+
+    assert relatorio.estado is Estado.TIMEOUT
+    assert any(r.estado is Estado.TIMEOUT for r in relatorio.resultados)
+
+
+def test_ci_da_celula_cancelamento_nao_vira_fail(
+    tmp_path: Path, monkeypatch
+) -> None:
+    raiz = _raiz_com_celula(tmp_path)
+
+    def run(comando, **kwargs):
+        if comando[:3] == [sys.executable, "-m", "pytest"]:
+            return subprocess.CompletedProcess(comando, 130, "", "cancelado")
+        return subprocess.CompletedProcess(comando, 0, "ok\n", "")
+
+    monkeypatch.setattr(runner_ci.subprocess, "run", run)
+    monkeypatch.setattr(
+        runner_ci.contract_freeze, "rodar", lambda **kwargs: _freeze_verde()
+    )
+
+    relatorio = runner_ci.rodar_celula(raiz, "catalogo")
+
+    assert relatorio.estado is Estado.CANCELLED
+    assert any(r.estado is Estado.CANCELLED for r in relatorio.resultados)
