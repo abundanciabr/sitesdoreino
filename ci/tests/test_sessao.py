@@ -28,12 +28,14 @@ CI = Path(__file__).resolve().parents[1]
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
+import fila  # noqa: E402
 import sessao  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def ambiente_falso_isolado(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
     monkeypatch.setattr(sessao, "identidade_do_venv", lambda _, **kwargs: "f" * 64)
+    monkeypatch.setattr(fila, "cmd_pegar", lambda raiz, args: 0)
 
 
 CELULAS = [
@@ -406,6 +408,12 @@ class MundoFalso:
             self.existentes.add(_n(self.plano.python_do_venv))
         if "indice_de_armadilhas" in linha:
             self.existentes.add(_n(self.plano.worktree / "armadilhas" / "INDICE.md"))
+        if (
+            "status --porcelain" in linha
+            and str(self.plano.worktree) not in linha
+            and self.plano.worktree.as_posix() not in linha
+        ):
+            return sessao.Saida(comando, 0, "", "")
         return sessao.Saida(comando, 0, self._stdout(linha), "")
 
     def existe(self, caminho) -> bool:
@@ -474,7 +482,10 @@ class MundoFalso:
         if linha.startswith("/usr/bin/make"):
             return self.saidas.get("baseline", "6 passed in 1.23s\n✅ quiz: ok")
         if "status --porcelain" in linha:
-            return self.saidas.get("porcelain", "")
+            porcelain = self.saidas.get("porcelain", "")
+            if isinstance(porcelain, list):
+                return porcelain.pop(0) if porcelain else ""
+            return porcelain
         if "fila.py pegar" in linha:
             return self.saidas.get(
                 "balcao", f"OK {self.plano.tarefa_da_fila} e sua - reserva criada"
@@ -660,16 +671,18 @@ def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL(sentinela):
     assert "NÃO chegou a rodar" in erro.value.resumo
 
 
-def test_worktree_sujo_depois_do_baseline_recusa_a_declaracao():
+def test_worktree_sujo_depois_do_baseline_declara_estado_medido():
     mundo = MundoFalso(
         plano_de_teste(),
         falhar={"rev-parse --verify": 1},
-        porcelain=" M services/quiz/config/settings.py",
+        porcelain=[
+            " M services/quiz/config/settings.py",
+            " M services/quiz/config/settings.py",
+            " M services/quiz/config/settings.py",
+        ],
     )
-    with pytest.raises(sessao.ErroDeSessao) as erro:
-        mundo.sessao().rodar()
-    assert erro.value.codigo == 2
-    assert erro.value.passo == sessao.P_ANUNCIO
+    texto = mundo.sessao().rodar()
+    assert "git status: alterações preexistentes preservadas (1)" in texto
 
 
 def test_worktree_existente_em_OUTRA_branch_recusa_em_vez_de_misturar_despachos():
@@ -891,7 +904,7 @@ def test_balcao_e_indice_entram_no_rito_e_o_contador_de_passos_nao_mente():
     mundo.sessao().rodar()
     juntas = "\n".join(mundo.chamadas)
     total = len(sessao.passos_do_plano(plano))
-    assert "fila.py pegar TAR-178" in juntas
+    assert sessao.P_BALCAO in "\n".join(mundo.log)
     assert "indice_de_armadilhas.py" in juntas
     assert "[1/%d]" % total in "\n".join(mundo.log)
     assert "[%d/%d]" % (total, total) in "\n".join(mundo.log)
@@ -914,33 +927,43 @@ def test_o_indice_e_gerado_DENTRO_da_bancada_e_nunca_no_clone_principal():
     assert _n(plano.raiz / "ci" / "indice_de_armadilhas.py") not in _n(gerador[0])
 
 
-def test_o_balcao_e_chamado_pelo_fila_py_DA_BANCADA_e_nao_do_espelho():
-    """`armadilhas/192`: o `fila.py` do clone principal escreve o evento órfão."""
+def test_o_balcao_recebe_a_bancada_e_nao_o_espelho(monkeypatch):
+    """`armadilhas/192`: apontar para o clone principal escreve evento órfão."""
     plano = plano_de_teste(tarefa_da_fila="TAR-178")
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    chamadas = []
+    monkeypatch.setattr(
+        fila,
+        "cmd_pegar",
+        lambda raiz, args: chamadas.append((raiz, args.tarefa, args.quem)) or 0,
+    )
     mundo.sessao().rodar()
-    balcao = [c for c in mundo.chamadas if "fila.py pegar" in c]
-    assert len(balcao) == 1
-    assert _n(plano.worktree / "ci" / "fila.py") in _n(balcao[0])
-    assert "--quem" in balcao[0]
+    assert chamadas == [(plano.worktree, "TAR-178", plano.quem_no_balcao)]
 
 
-def test_o_balcao_e_perguntado_ANTES_de_gerar_qualquer_conteudo_na_bancada():
+def test_o_balcao_e_perguntado_ANTES_de_gerar_qualquer_conteudo_na_bancada(monkeypatch):
     """`armadilhas/357`: perder a tarefa depois de escrever é a janela cara."""
     plano = plano_de_teste(tarefa_da_fila="TAR-178")
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    ordem = []
+    monkeypatch.setattr(fila, "cmd_pegar", lambda raiz, args: ordem.append("balcao") or 0)
+    correr_original = mundo.correr
+    def correr(comando, **kwargs):
+        if "indice_de_armadilhas" in " ".join(str(c) for c in comando):
+            ordem.append("indice")
+        return correr_original(comando, **kwargs)
+    mundo.correr = correr
     mundo.sessao().rodar()
-    marcos = [
-        linha
-        for linha in mundo.chamadas
-        if "fila.py pegar" in linha or "indice_de_armadilhas" in linha
-    ]
-    assert "fila.py pegar" in marcos[0]
+    assert ordem[:2] == ["balcao", "indice"]
 
 
-def test_balcao_que_recusa_e_FAIL_com_a_mensagem_DELE_e_para_o_rito():
+def test_balcao_que_recusa_e_FAIL_com_a_mensagem_DELE_e_para_o_rito(monkeypatch):
     plano = plano_de_teste(tarefa_da_fila="TAR-178")
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1, "fila.py pegar": 1})
+    def recusar(raiz, args):
+        print("falha simulada: fila.py pegar")
+        return 1
+    monkeypatch.setattr(fila, "cmd_pegar", recusar)
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
     assert erro.value.passo == sessao.P_BALCAO
@@ -1060,22 +1083,15 @@ def test_makefile_repassa_a_tarefa_da_fila_e_o_sem_container():
     assert "--sem-container" in corpo and "$(SEM_CONTAINER)" in corpo
 
 
-def test_sem_ambiente_a_bancada_suja_recusa_a_declaracao_de_limpa():
-    """A Declaração afirma `git status: limpo` também sem baseline.
-
-    Sem este passo, `--sem-container` assinaria limpeza que ninguém mediu: a
-    checagem morava dentro do baseline, e o baseline não roda aqui.
-    """
+def test_sem_ambiente_a_bancada_suja_declara_estado_medido():
     plano = plano_sem_ambiente()
     mundo = MundoFalso(
         plano,
         falhar={"rev-parse --verify": 1},
         porcelain=" M ci/sessao.py",
     )
-    with pytest.raises(sessao.ErroDeSessao) as erro:
-        mundo.sessao().rodar()
-    assert erro.value.passo == sessao.P_ANUNCIO
-    assert erro.value.codigo == 2
+    texto = mundo.sessao().rodar()
+    assert "git status: alterações preexistentes preservadas (1)" in texto
 
 
 def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
