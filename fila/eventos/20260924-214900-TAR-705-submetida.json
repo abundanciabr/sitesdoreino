@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260924-214900-TAR-705-submetida",
+  "tarefa": "TAR-705",
+  "evento": "submetida",
+  "quando": "2026-09-24T21:49:00.761675+00:00",
+  "quem": "agent/infra/appmax-external-id-checkout",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2061",
+  "revisao": "2932d338ac4c157a5bfd93c77ecdca0a32790401",
+  "arvore": "46655cd03f8e8ff9f882c9904efe12654829af23"
+}

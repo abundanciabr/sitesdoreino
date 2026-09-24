@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-214549-TAR-705-explicada",
+  "tarefa": "TAR-705",
+  "evento": "explicada",
+  "quando": "2026-09-24T21:45:49.343389+00:00",
+  "quem": "Pedido do mantenedor de concluir Appmax sandbox em 24/09/2026",
+  "o_que_e": "O checkout ainda não recebe o identificador da instalação Appmax guardado em pagamentos.env.",
+  "o_que_muda": "O formulário de cartão consegue tokenizar na instalação sandbox da Meshcraft.",
+  "exemplo": "A página usa a instalação autorizada da loja, sem pedir ao comprador outra credencial.",
+  "importancia": 99
+}
