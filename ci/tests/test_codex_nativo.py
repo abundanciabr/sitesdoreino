@@ -100,11 +100,13 @@ def test_contexto_ausente_recusa_medicao(bancada):
     e = evento(bancada, "*** Update File: a.txt\n@@\n-ausente\n+novo\n")
     assert texto.decidir(e) == 2
 
-def test_modelos_codex_sao_explicitos(monkeypatch, bancada):
+def test_modelos_codex_sao_explicitos(monkeypatch):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
-    brief = economia.compilar_brief(bancada, objetivo="registrar", tipo="escrita", celula="ci", alvos=["ci/a.py"], armadilhas=[])
-    assert "modelo_recomendado: gpt-5.6-sol" in brief
-    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-5.6-luna"
+    brief = economia.compilar_brief(RAIZ, objetivo="registrar", tipo="escrita", celula="ci", alvos=["ci/a.py"], armadilhas=[])
+    assert "modelo_recomendado: gpt-6-luna" in brief
+    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-6-sol"
+    assert economia.perfil_por_tipo("escrita").modelo == "gpt-6-luna"
+    assert economia.perfil_por_tipo("escrita").esforco == "high"
 
 def test_auditoria_codex_nao_aprova_so_as_fichas_claude(monkeypatch, bancada):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
