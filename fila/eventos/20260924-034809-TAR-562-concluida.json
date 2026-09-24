@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-034809-TAR-562-concluida",
+  "tarefa": "TAR-562",
+  "evento": "concluida",
+  "quando": "2026-09-24T03:48:09.046033+00:00",
+  "quem": "agent/e2e/appmax-navegador-ate-matricula",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2021",
+  "verificado_em": "2026-09-24"
+}

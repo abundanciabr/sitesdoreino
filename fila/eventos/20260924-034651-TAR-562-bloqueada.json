@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260924-034651-TAR-562-bloqueada",
+  "tarefa": "TAR-562",
+  "evento": "bloqueada",
+  "quando": "2026-09-24T03:46:51.191640+00:00",
+  "quem": "despacho-e2e-appmax-navegador-ate-matricula",
+  "detalhe": "Bloqueio real: a TAR-562 exige Playwright com Appmax JS, tokenizacao real, backend, Appmax real, webhook/efeitos e trace sanitizado em desktop e celular. Medido sem imprimir segredo: variaveis APPMAX_MERCHANT_CLIENT_ID, APPMAX_MERCHANT_CLIENT_SECRET, APPMAX_EXTERNAL_ID, APPMAX_APP_CLIENT_ID, APPMAX_APP_CLIENT_SECRET e APPMAX_CARD_ENABLED_SITES ausentes ou vazias no ambiente; services/pagamentos/.env.dev, services/pagamentos/.env, infra/env/pagamentos.env, e2e/.env e e2e/.env.dev ausentes; infra/env/pagamentos.env.exemplo tem credenciais vazias e APPMAX_CARD_ENABLED_SITES vazio. Impacto: o navegador nao consegue fazer cobranca real nem sair do cartao desligado, e qualquer trace seria simulado, sem aceite da TAR. Responsavel: mantenedor/Appmax. Gesto que destrava: fornecer por canal seguro as credenciais sandbox Appmax, external_id e site_id a liberar em APPMAX_CARD_ENABLED_SITES para canario, ou confirmar ambiente e2e/VPS ja configurado com esses valores.",
+  "espera": "mantenedor"
+}
