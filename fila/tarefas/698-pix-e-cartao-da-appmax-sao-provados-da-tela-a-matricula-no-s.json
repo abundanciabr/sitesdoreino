@@ -1,0 +1,23 @@
+{
+  "arquivo": "698-pix-e-cartao-da-appmax-sao-provados-da-tela-a-matricula-no-s",
+  "id": "TAR-698",
+  "titulo": "Pix e cartão da Appmax são provados da tela à matrícula no sandbox",
+  "toca": [
+    "checkout",
+    "e2e",
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-697"
+  ],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "Na instalação sandbox comprovada, navegador desktop e celular concluem Pix e cartão Appmax com API real; QR e cópia Pix aparecem; estados aprovado, autorizado, recusado, erro e retomada são visíveis; webhook real e reconciliação confirmam uma matrícula por pagamento; captura de rede sanitizada não mostra cartão bruto; nenhuma chamada Mercado Pago participa.",
+  "despacho": "Depois da TAR-697 e da instalação MERCHANT sandbox, habilitar somente o site de teste para os dois métodos Appmax, sem ativar produção. Corrigir a escolha de cartão hoje desabilitada no checkout e entregar a jornada Pix Appmax. Exercitar os cartões oficiais da Appmax, Pix sandbox, webhook real, reconciliação sem aviso, refresh, falha de provedor e efeitos downstream. Não chamar Mercado Pago neste teste. Provar pela tela e pela borda pública, com IDs e horários sanitizados, sem credenciais ou cartão nos artefatos. Testes de navegador e serviços devem reprovar antes do conserto e passar depois.",
+  "origem": "Ordem expressa do mantenedor nesta sessão de 24/09/2026: concluir Pix e cartão Appmax no sandbox antes de produção.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

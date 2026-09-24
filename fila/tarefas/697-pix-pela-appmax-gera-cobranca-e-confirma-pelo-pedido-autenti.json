@@ -1,0 +1,22 @@
+{
+  "arquivo": "697-pix-pela-appmax-gera-cobranca-e-confirma-pelo-pedido-autenti",
+  "id": "TAR-697",
+  "titulo": "Pix pela Appmax gera cobrança e confirma pelo pedido autenticado",
+  "toca": [
+    "pagamentos",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-647"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Pix sandbox Appmax cria cliente, pedido e QR; consulta autenticada confirma aprovado; webhook forjado não aprova; repetição não cria segunda cobrança; erros e expiração tratados; testes vermelho para verde e suíte pagamentos verde.",
+  "despacho": "Implementar Pix Appmax na célula pagamentos sem chamar Mercado Pago neste caminho. Reusar cliente OAuth merchant e domínio de tentativa, registrar operação antes do POST externo, reconciliar resposta ambígua por GET autenticado, validar data.payment.pix_qrcode, pix_emv e pix_expiration_date conforme resposta oficial, emitir aprovação via outbox uma vez. Ajustar o guarda que proíbe Appmax no Pix sob o mandato do mantenedor de 24/09/2026. Preservar o Pix existente até a prova sandbox, sem ativar produção. Contratos congelados exigem rito próprio se mudança for necessária.",
+  "origem": "Ordem expressa do mantenedor nesta sessão de 24/09/2026: Pix e cartão pela Appmax no sandbox; Mercado Pago fora desta rodada.",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

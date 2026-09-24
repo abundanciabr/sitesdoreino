@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-180412-TAR-697-explicada",
+  "tarefa": "TAR-697",
+  "evento": "explicada",
+  "quando": "2026-09-24T18:04:12.600423+00:00",
+  "quem": "Ordem expressa do mantenedor nesta sessão de 24/09/2026: Pix e cartão pela Appmax no sandbox; Mercado Pago fora desta rodada.",
+  "o_que_e": "Hoje o Pix do site usa outro fornecedor e não existe cobrança Pix Appmax.",
+  "o_que_muda": "A compra de teste passa a gerar o QR Pix pela Appmax e só libera o aluno após confirmação consultada na Appmax.",
+  "exemplo": "Uma aluna escolhe Pix, copia o código da Appmax e recebe a matrícula uma vez quando o pedido é confirmado.",
+  "importancia": 98
+}
