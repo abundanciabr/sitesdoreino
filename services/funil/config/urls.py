@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from apps.core.modelo_series_flp import modelo_series_flp, modelo_series_flp_conteudo
 from apps.core.views import (
     cadastro,
     capturar_lead,
@@ -70,6 +71,12 @@ urlpatterns = [
     # idioma, entao nao colide com a matriz do resolver
     # (`ci/tests/test_rotas_sem_forma_de_locale.py`).
     path("oferta", pagina_de_oferta, name="pagina_de_oferta"),
+    path("series-flp-gpt", modelo_series_flp, name="modelo_series_flp"),
+    path(
+        "series-flp-gpt/conteudo",
+        modelo_series_flp_conteudo,
+        name="modelo_series_flp_conteudo",
+    ),
     # A previa da equipe ("ver como", 02/09/2026). Localizada como as
     # outras paginas da celula: a tarja e os rotulos sao texto de tela, e
     # uma rota crua faria a previa sair sempre no idioma padrao.

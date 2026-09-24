@@ -79,6 +79,24 @@
     },
     {
       "celula": "funil",
+      "rota": "series-flp-gpt",
+      "endereco": "/series-flp-gpt",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Série Se Vender, Não Pare",
+      "descricao": "Os episódios da série para qualquer visitante, com vídeos nos dois primeiros e aviso dos próximos."
+    },
+    {
+      "celula": "funil",
+      "rota": "series-flp-gpt/conteudo",
+      "endereco": "/series-flp-gpt/conteudo",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Conteúdo da série Se Vender, Não Pare",
+      "descricao": "A página dos episódios carregada dentro da série, em uma área isolada do restante do site."
+    },
+    {
+      "celula": "funil",
       "rota": "",
       "endereco": "/",
       "alcance": "publico",

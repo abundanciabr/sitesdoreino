@@ -1,0 +1,20 @@
+{
+  "arquivo": "689-publicar-a-serie-se-vender-nao-pare-para-visitantes",
+  "id": "TAR-689",
+  "titulo": "Publicar a série Se Vender, Não Pare para visitantes",
+  "toca": [
+    "funil",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Rota https://meshcraft.top/series-flp-gpt abre sem login, cinco episódios navegáveis, vídeos disponíveis e deploy concluído",
+  "despacho": "Publicar no funil a série já empacotada no admin em /series-flp-gpt, sem login; manter a navegação dos cinco episódios, o player e o isolamento dos scripts. Cobrir rota e mapa do site, validar sem sessão e conferir produção após deploy.",
+  "origem": "Pedido do mantenedor em 24/09/2026 após a publicação administrativa da série",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

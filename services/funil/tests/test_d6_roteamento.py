@@ -190,6 +190,8 @@ ROTAS_LOCALIZAVEIS = (
     # do catalogo num idioma so nao muda a classificacao, que e sobre
     # LOCALIZACAO da rota, nunca sobre o idioma do texto que chega nela.
     "/oferta",
+    "/series-flp-gpt",
+    "/series-flp-gpt/conteudo",
 )
 
 # Um urlconf tem `path()` e `re_path()`, e o guarda precisa comparar os dois com
