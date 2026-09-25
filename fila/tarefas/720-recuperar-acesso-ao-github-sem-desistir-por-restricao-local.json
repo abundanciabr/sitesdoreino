@@ -1,0 +1,19 @@
+{
+  "arquivo": "720-recuperar-acesso-ao-github-sem-desistir-por-restricao-local",
+  "id": "TAR-720",
+  "titulo": "Recuperar acesso ao GitHub sem desistir por restrição local",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de regressão, mutação, revisão independente e integração; falha isolada recusa e recuperação real libera.",
+  "despacho": "Corrigir ci/prestacao_de_contas.py e cobrir eventos nativos Codex em ci/tests/test_recuperacao_github.py. Respeitar recusas de aprovação e não alterar credenciais ou limites do computador.",
+  "origem": "Pedido do mantenedor na sessão Codex em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

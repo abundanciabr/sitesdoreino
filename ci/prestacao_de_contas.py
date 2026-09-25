@@ -196,7 +196,11 @@ def _entrada_codex(entrada: dict) -> dict | None:
         if item.get("type") == "CommandExecution":
             return {"type": "assistant", "message": {"content": [{
                 "type": "tool_use", "name": "Bash",
-                "input": {"command": item.get("command") or ""}, "id": item.get("id")
+                "input": {"command": item.get("command") or "",
+                          "exit_code": item.get("exit_code")}, "id": item.get("id")
+            }, {
+                "type": "tool_result", "tool_use_id": item.get("id"),
+                "content": item.get("aggregated_output") or item.get("formatted_output") or "",
             }]}}
         return None
     if entrada.get("type") != "response_item":
@@ -554,17 +558,19 @@ COMANDOS_DE_AMBIENTE = (
     ("docker", re.compile(r"\bdocker\b", re.I)),
     ("python", re.compile(r"\b(?:python|python3|py)\b", re.I)),
     ("github", re.compile(r"\bgh\b", re.I)),
+    ("git-remoto", re.compile(r"\bgit\s+(?:ls-remote|fetch|pull|push)\b", re.I)),
     ("testes", re.compile(r"\b(?:pytest|make)\b", re.I)),
 )
 
 FALHA_DO_SANDBOX_RESTRITO = re.compile(
-    r"permission denied|acesso negado|not recognized|"
+    r"permission denied|access denied|acesso negado|not recognized|"
+    r"failed to connect|could not connect|could not resolve host|connection timed out|"
     r"docker_engine|docker API|npipe:|socket",
     re.I,
 )
 
 BLOQUEIO_DE_AMBIENTE_NO_RELATORIO = re.compile(
-    r"sandbox|ambiente|docker|django|python|socket|bloquead|"
+    r"sandbox|ambiente|docker|django|python|socket|bloquead|github|\bgh\b|remoto|conex[ãa]o|rede|"
     r"acesso negado|permission denied|n[ãa]o instalado",
     re.I,
 )
@@ -642,10 +648,10 @@ def bloqueio_por_sandbox_restrito(entradas: list[dict]) -> str:
 
     O sandbox restrito é uma tentativa barata, não uma fonte final de verdade.
     Se ele acusa falta de Python, Docker ou acesso, o robô precisa medir a mesma
-    família de comando fora dele antes de usar isso como pendência.
+    consulta pelo mecanismo de aprovação antes de usar isso como pendência.
     """
     saidas = _saidas_por_id(entradas)
-    falhas: dict[str, str] = {}
+    falhas: dict[tuple[str, str], str] = {}
     for entrada in entradas:
         for nome, bloco in _usos_de_ferramenta(entrada):
             if nome not in ("Bash", "PowerShell"):
@@ -655,12 +661,15 @@ def bloqueio_por_sandbox_restrito(entradas: list[dict]) -> str:
             familia = _familia_do_comando_de_ambiente(comando)
             if not familia:
                 continue
-            if _rodou_fora_do_sandbox_restrito(bloco):
-                falhas.pop(familia, None)
-                continue
+            chave = (familia, comando.strip())
             saida = saidas.get(str(bloco.get("id") or ""), "")
+            if saida and (_rodou_fora_do_sandbox_restrito(bloco)
+                          or (campos.get("exit_code") == 0
+                              and not FALHA_DO_SANDBOX_RESTRITO.search(saida))):
+                falhas.pop(chave, None)
+                continue
             if FALHA_DO_SANDBOX_RESTRITO.search(saida):
-                falhas[familia] = _uma_linha(comando)
+                falhas[chave] = _uma_linha(comando)
 
     if not falhas:
         return ""
@@ -670,7 +679,10 @@ def bloqueio_por_sandbox_restrito(entradas: list[dict]) -> str:
             continue
         if not _prestou_contas(entrada):
             return ""
-        if FONTE_NAO_MEDIDA.search(texto):
+        if FONTE_NAO_MEDIDA.search(texto) and (
+            not any(familia in {"github", "git-remoto"} for familia, _ in falhas)
+            or re.search(r"(?:github|git|remoto)[^\n]*n[ãa]o entrou no veredito", texto, re.I)
+        ):
             return ""
         if BLOQUEIO_DE_AMBIENTE_NO_RELATORIO.search(texto):
             return next(iter(falhas.values()))
@@ -1266,9 +1278,11 @@ def _portao_do_sandbox_restrito(comando: str, arquivo: Path, estado: dict,
         "🧱 SANDBOX RESTRITO NÃO FECHA BLOQUEIO: o relatório usou uma falha de "
         "ambiente medida só no sandbox restrito.\n"
         f"Comando afetado: `{comando}`.\n"
-        "Rode a medição fora do sandbox restrito com aprovação explícita, ou "
-        "marque essa fonte como NÃO MEDIDO se ela não estiver disponível. "
-        "Sandbox é tentativa barata; bloqueio final exige fonte real.",
+        "Solicite a mesma consulta pelo mecanismo de aprovação da ferramenta "
+        "(sandbox_permissions=require_escalated), se permitido nesta sessão. "
+        "Se a aprovação for recusada ou indisponível, respeite o limite e informe "
+        "o motivo e a ação necessária; não repita nem contorne a recusa. "
+        "Não atribua a falha ao GitHub sem contraprova.",
         file=sys.stderr,
     )
     return 2
@@ -1380,7 +1394,13 @@ quando uma caixa mudou ou surgiu bloqueio; se não mudou, não o copie.
 No fecho: checklist final, O que mudou, O que foi verificado, Pendências e
 Veredito PRONTO/NÃO PRONTO com motivo. PRONTO não admite caixinha aberta.
 Fatos sob demanda: python ci/prestacao_de_contas.py --molde-com-fatos
---transcript <caminho-da-sessao>. Não escolha o transcript de outra sessão."""
+--transcript <caminho-da-sessao>. Não escolha o transcript de outra sessão.
+Acesso ao GitHub: falha de gh/Git remoto no sandbox não prova falta de login ou
+queda de rede. Quando permitido, solicite a mesma consulta de leitura com
+sandbox_permissions=require_escalated pelo mecanismo de aprovação da ferramenta.
+Confira o resultado e continue se funcionar. Se houver recusa ou proibição,
+respeite-a, informe motivo e ação necessária e continue só o trabalho independente.
+Não copie tokens, altere ACLs nem desative o sandbox para recuperar o acesso."""
 
 
 def modo_plano(entrada: dict) -> int:
