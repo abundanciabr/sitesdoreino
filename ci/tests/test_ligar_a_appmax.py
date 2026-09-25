@@ -553,8 +553,10 @@ def test_falha_de_ps_nao_vira_servico_ausente_nem_recomenda_reinicio_global(tmp_
     assert resultado.returncode != 0
     assert "não consegui consultar" in tela
     assert "não está rodando" not in tela
-    assert "docker compose version" in tela
-    assert "docker compose ps --services --status running" in tela
+    assert "operacoes-vps.yml" in tela
+    assert "versao-compose" in tela and "estado-servico" in tela
+    assert "docker compose version" not in tela
+    assert "docker compose ps" not in tela
     assert "docker compose up -d" not in tela
     assert "token-alunos-falso" not in tela and "token-catalogo-falso" not in tela
     assert "client_secret" not in tela

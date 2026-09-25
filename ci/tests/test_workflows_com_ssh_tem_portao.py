@@ -38,19 +38,12 @@ consegue apaga-lo no mesmo empurrao. So o GitHub fecha isso, e so o mantenedor
 configura o GitHub. Ele decidiu a ordem, e ela e esta:
 
   1. todo job que usa a chave declara `environment: vps` (este guarda cobra)
-  2. ele cria o Environment `vps` com a trava de branch em `main` e a chave
-     dentro
-  3. depois de um deploy real terminar verde, ele apaga o segredo antigo do
-     repositorio
+  2. o Environment `vps` limita a execucao a branch `main` e guarda a chave
+  3. o segredo antigo do repositorio deixa de existir depois da prova real
 
-Entre o passo 1 e o 2 nada quebra, e isso foi medido, nao suposto: o
-Environment `vps` ainda nao existe (`gh api repos/.../environments` devolveu
-`total_count: 0`), e a documentacao do GitHub diz que rodar um workflow que
-cita um environment inexistente cria esse environment, e que o environment
-assim criado nasce sem regra de protecao e sem segredo proprio. Sem segredo
-proprio, `secrets.DEPLOY_SSH_KEY` continua vindo do segredo do repositorio,
-porque o segredo do environment so vence quando existe. Sem regra de protecao,
-nenhum job fica pendurado esperando aprovacao humana.
+Esses tres passos foram concluidos em 19/09/2026. A politica efetiva se mede
+pela API do GitHub; `environment:` no YAML continua sendo a guarda local que
+impede um workflow novo de acessar a chave fora dessa fronteira.
 
 Declarar `environment:` nao exige `deployments: write` no GITHUB_TOKEN: os
 proprios workflows-modelo do GitHub (`actions/starter-workflows`, pasta

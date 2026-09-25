@@ -9,7 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-OPERACOES = {"estado-servico", "espaco-disco"}
+OPERACOES = {"estado-servico", "espaco-disco", "versao-compose"}
+OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
 FORMATO = ('{"estado":{{json .State.Status}},'
@@ -32,7 +33,7 @@ def validar(operacao, servico, permitidos):
         raise Falha("entrada")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", servico):
         raise Falha("entrada")
-    if (operacao == "espaco-disco") != (servico == "plataforma"):
+    if (operacao in OPERACOES_DA_PLATAFORMA) != (servico == "plataforma"):
         raise Falha("entrada")
 
 
@@ -59,13 +60,20 @@ def conferir_medicao(operacao, dados):
             raise Falha("formato")
         if not isinstance(dados["imagem"], str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", dados["imagem"]):
             raise Falha("formato")
-    else:
+    elif operacao == "espaco-disco":
         if set(dados) != {"total_bytes", "livres_bytes"}:
             raise Falha("formato")
         if any(type(v) is not int or v < 0 for v in dados.values()):
             raise Falha("formato")
         if not 0 < dados["total_bytes"] or dados["livres_bytes"] > dados["total_bytes"]:
             raise Falha("formato")
+    elif operacao == "versao-compose":
+        if set(dados) != {"versao"} or not isinstance(dados["versao"], str):
+            raise Falha("formato")
+        if not re.fullmatch(r"v?[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}", dados["versao"]):
+            raise Falha("formato")
+    else:
+        raise Falha("formato")
     return dados
 
 
@@ -76,6 +84,9 @@ def medir(operacao, servico):
         except OSError:
             raise Falha("instrumento") from None
         return conferir_medicao(operacao, {"total_bytes": disco.total, "livres_bytes": disco.free})
+    if operacao == "versao-compose":
+        versao = comando(["docker", "compose", "version", "--short"]).strip()
+        return conferir_medicao(operacao, {"versao": versao})
     identificador = comando(["docker", "ps", "--all", "--quiet", "--no-trunc",
                             "--filter", "label=com.docker.compose.project=plataforma",
                             "--filter", "label=com.docker.compose.service=" + servico]).strip()
