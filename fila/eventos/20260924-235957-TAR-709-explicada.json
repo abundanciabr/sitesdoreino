@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260924-235957-TAR-709-explicada",
+  "tarefa": "TAR-709",
+  "evento": "explicada",
+  "quando": "2026-09-24T23:59:57.376821+00:00",
+  "quem": "Teste real Appmax sandbox em meshcraft.top em 24/09/2026",
+  "o_que_e": "Appmax confirmou cartão de uma parcela sem campo de taxa e o sistema deixou o pedido pendente; o Pix criado ficou sem QR na tela.",
+  "o_que_muda": "Comprador de teste vê aprovação do cartão e consegue usar o QR Pix da Appmax.",
+  "exemplo": "Compra sandbox de R$ 9,90: cartão integrado na Appmax, mas pendente na Meshcraft; Pix pendente sem QR.",
+  "importancia": 95
+}

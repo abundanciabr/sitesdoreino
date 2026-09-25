@@ -132,7 +132,7 @@ def _appmax(transport: Any, *, statuses: list[str]) -> tuple[Any, Any, Any]:
                             "id": 3531 + n,
                             "status": status,
                             "total_paid": 1990,
-                            "amounts": {"sub_total": 1990, "installment_fee": 0},
+                            "amounts": {"sub_total": 1990},
                         },
                         "customer": {"id": 42 + n},
                         "payment": {"installments": 1, "method": "creditcard"},
@@ -167,13 +167,15 @@ def _configurar_appmax(settings: Any) -> None:
     settings.APPMAX_API_URL = "https://api.sandboxappmax.com.br"
 
 
-def _confirmar_cartao_appmax(client: Client, token: str, intent_id: str) -> Any:
+def _confirmar_cartao_appmax(
+    client: Client, token: str, intent_id: str, *, installments: int = 1
+) -> Any:
     return client.post(
         f"/api/pagamentos/intents/{intent_id}/card",
         data=json.dumps(
             {
                 "card_token": "token-appmax",
-                "installments": 1,
+                "installments": installments,
                 "payer_email": "cliente@exemplo.com",
                 "ip": "203.0.113.7",
                 "holder_name": "Cliente Teste",
@@ -491,6 +493,53 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
     assert corpo_confirmado["status"] == "approved"
     assert customers.call_count == orders.call_count == 1
     assert Intent.objects.get(id=corpo["id"]).provider_payment_id == ""
+
+
+@pytest.mark.smoke_card
+@pytest.mark.django_db(transaction=True)
+def test_cartao_com_juros_exige_taxa_na_consulta_appmax(
+    client: Client, token_valido: str, settings: Any
+) -> None:
+    from pagamentos.core.models import PaymentAttempt
+
+    _configurar_appmax(settings)
+    criada = _post_intent(
+        client,
+        token_valido,
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = criada.json()["id"]
+    with respx.mock(assert_all_called=False) as rede:
+        _appmax(rede, statuses=["integrado"])
+        rede.get(
+            url__regex=r"https://api\.sandboxappmax\.com\.br/v1/orders/\d+"
+        ).respond(
+            200,
+            json={
+                "data": {
+                    "order": {
+                        "id": 3531,
+                        "status": "integrado",
+                        "total_paid": 20812,
+                        "amounts": {"sub_total": 1990},
+                    },
+                    "customer": {"id": 42},
+                    "payment": {"installments": 3, "method": "creditcard"},
+                }
+            },
+        )
+        resposta = _confirmar_cartao_appmax(
+            client, token_valido, intent_id, installments=3
+        )
+
+    assert resposta.status_code == 502
+    assert (
+        PaymentAttempt.objects.get(intent_id=intent_id).state
+        == "reconciliation_required"
+    )
+    assert Intent.objects.get(id=intent_id).status != "approved"
 
 
 @pytest.mark.smoke_card

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -182,9 +182,19 @@ def completar(intent: Intent) -> Intent:
             enviar=sessao.criar_pedido,
             customer_id=customer_id,
         )
+        vencimento_solicitado = timezone.localtime(timezone.now(), _FUSO) + timedelta(
+            minutes=30
+        )
         corpo = {
             "order_id": int(order_id),
-            "payment_data": {"pix": {"document_number": cliente["document_number"]}},
+            "payment_data": {
+                "pix": {
+                    "document_number": cliente["document_number"],
+                    "expiration_date": vencimento_solicitado.strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                }
+            },
         }
         operacao = abrir_operacao(tentativa, tipo="payment", corpo=corpo)
         try:
