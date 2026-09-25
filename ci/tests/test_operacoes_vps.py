@@ -292,7 +292,9 @@ def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("SERVICO", "admin")
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
-    monkeypatch.setenv("REFERENCIA", "")
+    evento = tmp_path / "evento.json"
+    evento.write_text(json.dumps({"inputs": {"referencia": ""}}), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(evento))
     ops.preparar()
     script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
     assert script.startswith("set -eu\npython3 - <<'PY_OPERACAO_VPS'\n")
@@ -303,6 +305,27 @@ def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("SERVICO", PRIVADO)
     with pytest.raises(ops.Falha):
         ops.preparar()
+
+
+def test_preparar_appmax_le_referencia_do_evento_sem_expor_em_env(
+    monkeypatch, tmp_path
+):
+    evento = tmp_path / "evento.json"
+    evento.write_text(
+        json.dumps({"inputs": {"referencia": REFERENCIA}}), encoding="utf-8"
+    )
+    monkeypatch.setenv("OPERACAO", "appmax-pix")
+    monkeypatch.setenv("SERVICO", "pagamentos")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(evento))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    monkeypatch.setenv("REFERENCIA", PRIVADO)
+
+    ops.preparar()
+
+    script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
+    assert REFERENCIA in script
+    assert PRIVADO not in script
 
 
 @pytest.mark.parametrize(
@@ -372,7 +395,8 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     entradas = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
     assert set(entradas) == {"operacao", "servico", "referencia"}
     assert set(entradas["operacao"]["options"]) == ops.OPERACOES
-    assert passos[4]["env"]["REFERENCIA"] == "${{ inputs.referencia }}"
+    assert "REFERENCIA" not in passos[4]["env"]
+    assert "inputs.referencia" not in passos[4]["run"]
 
 
 @pytest.mark.parametrize(

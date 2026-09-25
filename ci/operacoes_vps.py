@@ -250,7 +250,10 @@ def preparar():
     )
     permitidos = sorted(set(compose["services"]) | {"plataforma"})
     operacao, servico = os.environ.get("OPERACAO", ""), os.environ.get("SERVICO", "")
-    referencia = os.environ.get("REFERENCIA", "")
+    evento = json.loads(
+        Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8")
+    )
+    referencia = evento.get("inputs", {}).get("referencia", "")
     validar(operacao, servico, permitidos, referencia)
     fonte = Path(__file__).read_text(encoding="utf-8").split("\ndef preparar():")[0]
     chamada = (

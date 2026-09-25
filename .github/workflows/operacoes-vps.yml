@@ -47,7 +47,6 @@ jobs:
         env:
           OPERACAO: ${{ inputs.operacao }}
           SERVICO: ${{ inputs.servico }}
-          REFERENCIA: ${{ inputs.referencia }}
         run: |
           set -euo pipefail
           python ci/operacoes_vps.py preparar
