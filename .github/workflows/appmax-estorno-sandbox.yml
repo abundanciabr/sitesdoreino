@@ -1,0 +1,49 @@
+name: appmax-estorno-sandbox
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: appmax-estorno-sandbox
+  cancel-in-progress: false
+  queue: max
+jobs:
+  solicitar:
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo '::error::Esta solicitação sandbox só executa na main.'
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Preparar solicitação fixa deste SHA
+        id: preparar
+        run: |
+          set -euo pipefail
+          python ci/appmax_estorno_sandbox.py preparar
+          bash -n "$RUNNER_TEMP/appmax-estorno-sandbox.sh"
+      - name: Solicitar estorno parcial único no sandbox
+        id: remoto
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 2m
+          script_path: ${{ steps.preparar.outputs.script }}
+      - name: Conferir saída e publicar resumo
+        if: always() && steps.remoto.outcome != 'skipped'
+        env:
+          SAIDA: ${{ steps.remoto.outputs.stdout }}
+        run: python ci/appmax_estorno_sandbox.py conferir
