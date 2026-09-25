@@ -1,0 +1,20 @@
+{
+  "arquivo": "711-resolver-pix-appmax-sem-qr-apos-pedido-sandbox",
+  "id": "TAR-711",
+  "titulo": "Resolver Pix Appmax sem QR após pedido sandbox",
+  "toca": [
+    "pagamentos",
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Resposta real do POST Pix medida sem segredos; compra sandbox nova mostra QR e código copiável no checkout ou bloqueio externo documentado com prova da Appmax e ação para destravar.",
+  "despacho": "Medir a resposta real e sanitizada do POST Pix Appmax após o deploy, identificar timeout, recusa ou formato inesperado; corrigir o menor caminho seguro, sem reenviar pedidos ambíguos; testar QR e código no checkout sandbox e publicar pelo rito.",
+  "origem": "Compra Pix E2E após deploy do PR #2067 em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

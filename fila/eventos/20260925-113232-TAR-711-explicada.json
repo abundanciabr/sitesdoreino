@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-113232-TAR-711-explicada",
+  "tarefa": "TAR-711",
+  "evento": "explicada",
+  "quando": "2026-09-25T11:32:32.460229+00:00",
+  "quem": "Compra Pix E2E após deploy do PR #2067 em 25/09/2026",
+  "o_que_e": "A compra Pix cria cliente e pedido na Appmax, mas o pagamento fica em reconciliação e o checkout não mostra QR.",
+  "o_que_muda": "O comprador vê QR e código Pix pagáveis, ou uma orientação verdadeira quando a Appmax não confirma a cobrança.",
+  "exemplo": "Após clicar em Continuar na oferta de R$ 9,90, o pedido fica pendente e a tela manda conferir dados mesmo sem QR.",
+  "importancia": 95
+}
