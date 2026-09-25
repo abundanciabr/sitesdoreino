@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-152432-TAR-717-explicada",
+  "tarefa": "TAR-717",
+  "evento": "explicada",
+  "quando": "2026-09-25T15:24:32.125864+00:00",
+  "quem": "Revisao independente do PR 2075",
+  "o_que_e": "A primeira entrega provisiona a Evolution, mas a revisao encontrou caminhos de falha que poderiam deixar arquivo ou banco em estado parcial.",
+  "o_que_muda": "O provisionamento passa a parar sem expor segredo e desfaz tudo que criou quando uma etapa falha.",
+  "exemplo": "Se o banco recusar a senha ou duas execucoes comecarem juntas, a segunda para e a primeira nao deixa metade da configuracao instalada.",
+  "importancia": 95
+}
