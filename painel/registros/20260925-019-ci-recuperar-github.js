@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-019-ci-recuperar-github",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: recuperar GitHub",
+  detalhe: "Recupera consultas ao GitHub pelo fluxo autorizado e recusa diagnóstico baseado só no sandbox.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2083. Validação local: árvore 093f52bb57d8d73b82cd50e9a44e13b0c973ac13; commit c91817559fc0cfea2e049a2f106cb9cbd43ec560; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-720",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
