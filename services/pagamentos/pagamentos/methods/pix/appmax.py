@@ -200,7 +200,13 @@ def completar(intent: Intent) -> Intent:
         try:
             resposta_pix = sessao.criar_pagamento_pix(body=corpo)
             vencimento = _vencimento(resposta_pix["expires_at"])
-        except (gateway.FalhaNoProvedor, KeyError, TypeError, ResultadoAmbiguo):
+        except gateway.FalhaNoProvedor as exc:
+            finalizar_operacao(
+                operacao, state="reconciliation_required", provider_resource_id=order_id
+            )
+            codigo = exc.diagnostico or "indisponivel"
+            raise ResultadoAmbiguo(f"appmax_pix_diagnostico_{codigo}") from None
+        except (KeyError, TypeError, ResultadoAmbiguo):
             finalizar_operacao(
                 operacao, state="reconciliation_required", provider_resource_id=order_id
             )

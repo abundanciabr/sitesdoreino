@@ -26,9 +26,12 @@ def _id_externo_valido(value: Any) -> bool:
 class AppmaxError(Exception):
     """Falha segura Appmax, com indicação se um POST pode ter sido aceito."""
 
-    def __init__(self, message: str, *, ambiguo: bool = False) -> None:
+    def __init__(
+        self, message: str, *, ambiguo: bool = False, diagnostico: str = ""
+    ) -> None:
         super().__init__(message)
         self.ambiguo = ambiguo
+        self.diagnostico = diagnostico
 
 
 class AppmaxClient:
@@ -570,11 +573,46 @@ class AppmaxClient:
                 if espera is not None
                 else "aguarde antes de tentar novamente"
             )
+        elif response.status_code in {400, 422}:
+            acao = "consulte o diagnóstico antes de qualquer novo envio"
         else:
             acao = "tente novamente"
+        diagnostico = AppmaxClient._diagnostico_rejeicao(response)
         raise AppmaxError(
-            f"Appmax {operacao}: {motivo} (HTTP {response.status_code}); {acao}"
+            f"Appmax {operacao}: {motivo} (HTTP {response.status_code}); "
+            f"{acao}{'; diagnostico=' + diagnostico if diagnostico else ''}",
+            diagnostico=diagnostico,
         )
+
+    @staticmethod
+    def _diagnostico_rejeicao(response: httpx.Response) -> str:
+        """Classifica a recusa sem guardar nenhum valor devolvido pelo provedor."""
+        try:
+            payload = response.json()
+        except ValueError:
+            return "sem_json"
+        campos = (
+            "expiration_date",
+            "document_number",
+            "customer_id",
+            "order_id",
+            "payment_data",
+        )
+
+        def contem(valor: Any, campo: str) -> bool:
+            if isinstance(valor, dict):
+                return any(
+                    campo in str(chave).lower() or contem(item, campo)
+                    for chave, item in valor.items()
+                )
+            if isinstance(valor, list):
+                return any(contem(item, campo) for item in valor)
+            return isinstance(valor, str) and campo in valor.lower()
+
+        for campo in campos:
+            if contem(payload, campo):
+                return f"campo_{campo}"
+        return "sem_campo_identificavel"
 
     @staticmethod
     def _json_objeto(response: httpx.Response, operacao: str) -> dict[str, Any]:
