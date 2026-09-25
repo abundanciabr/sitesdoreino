@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-121025-TAR-712-concluida",
+  "tarefa": "TAR-712",
+  "evento": "concluida",
+  "quando": "2026-09-25T12:10:25.280383+00:00",
+  "quem": "agent/ci/operacoes-vps-delimitadas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2068",
+  "verificado_em": "2026-09-25"
+}
