@@ -1,0 +1,21 @@
+{
+  "arquivo": "716-ligar-o-whatsapp-transacional-sem-duplicar-nem-expor-dados",
+  "id": "TAR-716",
+  "titulo": "Ligar o WhatsApp transacional sem duplicar nem expor dados",
+  "toca": [
+    "infra",
+    "mensageria",
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Provisionamento, backup, restauracao, healthcheck, pareamento, reinicio e envio autorizado medidos separadamente em producao",
+  "despacho": "Integrar Evolution API 2.3.7 ao Compose existente e a mensageria, com banco e Redis isolados, segredos gerados na VPS, backup e restauracao, cliente HTTP fail-closed, estados de aceitacao, entrega e resultado incerto, webhook interno autenticado, n8n apenas pela porta contratada, ativacao bloqueada ate consentimento e envio real somente a numero autorizado. Separar provisionamento, infraestrutura, contrato e consumidor conforme os ritos; provar local, pipeline, producao, reinicio e envio sem expor telefone, mensagem, QR ou segredo.",
+  "origem": "Pedido do mantenedor nesta sessao em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
