@@ -6,13 +6,13 @@ on:
         description: 'Operação somente de leitura, sem comandos livres'
         required: true
         type: choice
-        options: [estado-servico, espaco-disco, versao-compose, appmax-pix]
+        options: [estado-servico, espaco-disco, versao-compose, appmax-pix, appmax-estorno]
       servico:
         description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true
         type: string
       referencia:
-        description: 'SHA-256 do intent, exigido apenas em appmax-pix; nunca informe o ID original.'
+        description: 'SHA-256 do intent: exigido em appmax-pix, opcional em appmax-estorno; nunca informe o ID original.'
         required: false
         default: ''
         type: string
