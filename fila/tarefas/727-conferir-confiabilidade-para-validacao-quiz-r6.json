@@ -1,0 +1,19 @@
+{
+  "arquivo": "727-conferir-confiabilidade-para-validacao-quiz-r6",
+  "id": "TAR-727",
+  "titulo": "Conferir confiabilidade para validacao quiz R6",
+  "toca": [
+    "site"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Devolucao com fontes, revisao, limites, incognitas e evidencia reproduzivel; contrato antes da retomada",
+  "despacho": "Retomar a devolucao existente da frente B, tarefa Codex 01a0d9cc-2dc8-7671-bb06-4715a1a1183e. Investigar somente salvamento e retomada, idempotencia, confirmacao, reprocessamento e interrupcao de mensagens. Separar falha observada, codigo inspecionado, teste executado, hipotese e NAO MEDIDO. Leia as leis e o plano mestre. Apenas leitura, sem transacoes, instrumentacao, produto, campanhas ou integracoes. Nao criar agentes. Modelo gpt-6-luna, esforco high. Reutilizar evidencia anterior sem duplicar a investigacao. Contrato prospectivo nao supre ausencia historica.",
+  "origem": "Plano quiz R6 e pedido do mantenedor em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

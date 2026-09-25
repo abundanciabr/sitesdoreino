@@ -1,0 +1,51 @@
+{
+  "arquivo": "20260925-211357-TAR-728-contrato_execucao",
+  "tarefa": "TAR-728",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-25T21:13:57.801047+00:00",
+  "quem": "agent/site/validacao-quiz-r6",
+  "contrato": {
+    "decisoes_aprovadas": [
+      "Mandato do mantenedor nesta sessao em 25/09/2026: investigar, sintetizar apos A B C e revisar independentemente"
+    ],
+    "criterios_entrada": [
+      "Contrato registrado na fila antes de retomar executor",
+      "Leis e plano lidos; fontes anteriores identificadas"
+    ],
+    "entregaveis": [
+      "Devolucao rastreavel, fontes com revisao, limites, incognitas, riscos e proximo passo de planejamento"
+    ],
+    "escopo_incluido": [
+      "Somente a frente atribuida no despacho da tarefa; reaproveitar devolucao existente e conferir limites na retomada"
+    ],
+    "acoes_do_mantenedor": "Nenhuma para leitura autorizada. Acesso novo, dinheiro, produto e mudanca material de escopo exigem decisao propria.",
+    "limites_autonomia": "Somente investigar e recomendar planejamento. Nao mudar contrato unilateralmente. Nenhuma implementacao ou transacao.",
+    "objetivo": "Retomar frente C: protocolo em papel quiz versus pagina direta, sem baseline inventado.",
+    "versao": 1,
+    "restricoes": [
+      "gpt-6-luna com esforco high explicitos; executores nao criam agentes",
+      "Preservar alteracoes alheias; acesso somente leitura; nao expor dados pessoais",
+      "Duas tentativas sem progresso exigem mudar abordagem e checkpoint",
+      "Contrato prospectivo: nao corrige retroativamente a ausencia de contrato antes das investigacoes anteriores"
+    ],
+    "etapas": [
+      "Ler contrato e devolucao anterior",
+      "Conferir evidencias pertinentes e limites",
+      "Devolver resultado sem implementar recomendacoes"
+    ],
+    "evidencias_exigidas": [
+      "Identidade da devolucao anterior, revisao dos arquivos, comandos de leitura e resultados",
+      "Relato explicito de fontes indisponiveis e do que nao foi executado"
+    ],
+    "nao_objetivos": [
+      "Implementar instrumentacao, campanhas, integracoes, produto ou operar pagamentos"
+    ],
+    "criterios_aceite": [
+      "Cada afirmacao tem fonte e limite",
+      "Ausencia de prova registrada NAO MEDIDO",
+      "Conclusao restrita a planejamento; sintese so apos A B C e revisao por nao autor"
+    ],
+    "condicao_encerramento": "Devolucao recebida e conferida; coordenacao so encerra apos revisao e destino aprovado comprovados.",
+    "plano": "docs/decisoes/PLANO-MESTRE-VALIDACAO-QUIZ-R6.md"
+  }
+}

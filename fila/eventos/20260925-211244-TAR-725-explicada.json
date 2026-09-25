@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-211244-TAR-725-explicada",
+  "tarefa": "TAR-725",
+  "evento": "explicada",
+  "quando": "2026-09-25T21:12:44.086658+00:00",
+  "quem": "Pedido do mantenedor em 25/09/2026",
+  "o_que_e": "Existem tres investigacoes e uma sintese local sem contratos previos na fila.",
+  "o_que_muda": "Reune evidencias rastreaveis para recomendar planejamento sem executar mudancas de produto.",
+  "exemplo": "Um evento definido no codigo nao sera apresentado como venda medida.",
+  "importancia": 70
+}

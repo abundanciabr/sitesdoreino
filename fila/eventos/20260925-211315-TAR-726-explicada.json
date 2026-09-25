@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-211315-TAR-726-explicada",
+  "tarefa": "TAR-726",
+  "evento": "explicada",
+  "quando": "2026-09-25T21:13:15.796174+00:00",
+  "quem": "Plano quiz R6 e pedido do mantenedor em 25/09/2026",
+  "o_que_e": "Ha uma devolucao anterior sem contrato previo registrado na fila.",
+  "o_que_muda": "Permite conferir evidencias e limites antes da sintese de planejamento.",
+  "exemplo": "Dado indisponivel continua NAO MEDIDO, sem virar hipotese confirmada.",
+  "importancia": 70
+}

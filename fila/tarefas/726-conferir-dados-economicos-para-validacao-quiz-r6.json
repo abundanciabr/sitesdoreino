@@ -1,0 +1,19 @@
+{
+  "arquivo": "726-conferir-dados-economicos-para-validacao-quiz-r6",
+  "id": "TAR-726",
+  "titulo": "Conferir dados economicos para validacao quiz R6",
+  "toca": [
+    "site"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Devolucao com fontes, revisao, limites, incognitas e evidencia reproduzivel; contrato antes da retomada",
+  "despacho": "Retomar a devolucao existente da frente A, tarefa Codex 01a0d9cc-0aeb-73e3-9d7c-82afcac3b993. Investigar somente cobertura e qualidade da cadeia campanha, quiz, oferta, lead, pagamento, reembolso, custos e ativacao. Fontes exatas, revisao, limites e NAO MEDIDO onde faltar prova. Leia as leis e o plano mestre. Apenas leitura, sem transacoes, instrumentacao, produto, campanhas ou integracoes. Nao criar agentes. Modelo gpt-6-luna, esforco high. Reutilizar evidencia anterior sem duplicar a investigacao. Contrato prospectivo nao supre ausencia historica.",
+  "origem": "Plano quiz R6 e pedido do mantenedor em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

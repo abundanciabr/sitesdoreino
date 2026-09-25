@@ -1,0 +1,19 @@
+{
+  "arquivo": "728-conferir-protocolo-do-experimento-quiz-r6",
+  "id": "TAR-728",
+  "titulo": "Conferir protocolo do experimento quiz R6",
+  "toca": [
+    "site"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Devolucao com fontes, revisao, limites, incognitas e evidencia reproduzivel; contrato antes da retomada",
+  "despacho": "Retomar a devolucao existente da frente C, tarefa Codex 01a0d9cc-508a-7072-a98e-968cb0793c4b. Especificar somente protocolo em papel quiz versus pagina direta: hipotese, populacao, atribuicao persistente, exposicao, margem por visitante, protecoes, janela e inconclusao. Nao inventar baseline, amostra ou duracao. Leia as leis e o plano mestre. Apenas leitura, sem transacoes, instrumentacao, produto, campanhas ou integracoes. Nao criar agentes. Modelo gpt-6-luna, esforco high. Reutilizar evidencia anterior sem duplicar a investigacao. Contrato prospectivo nao supre ausencia historica.",
+  "origem": "Plano quiz R6 e pedido do mantenedor em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}
