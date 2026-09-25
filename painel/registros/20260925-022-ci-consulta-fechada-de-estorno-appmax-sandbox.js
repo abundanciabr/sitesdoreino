@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-022-ci-consulta-fechada-de-estorno-appmax-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: consulta fechada de estorno Appmax sandbox",
+  detalhe: "A consulta fica restrita ao site Meshcraft e ao host sandbox do cliente Appmax; a saída aceita somente campos conhecidos e uma referência opaca. A prova do valor financeiro permanece na TAR-644.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2086. Validação local: árvore 9d9069e47345a187a614bd82fdf4fa9ece5f6174; commit f3e4976513811888d306c4d5d96b3c23b6b50d04; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-721",
+  gravidade: "info",
+  frente: "vender",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
