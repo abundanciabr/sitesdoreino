@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-028-painel-registra-ativacao-da-recuperacao",
+  tipo: "medicao",
+  quando: "2026-09-25",
+  titulo: "painel: registra ativacao da recuperacao",
+  detalhe: "Ativacao local autorizada e comprovada pelo launcher Windows nos dois historicos. O registro distingue integracao de ativacao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2091. Validação local: árvore 2304324ff910e1365304e31c01cc467b910c27c4; commit 7c04d06e65da5bb628e811fec2d1b053a180b338; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-729",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
