@@ -1,0 +1,19 @@
+{
+  "arquivo": "719-usar-luna-em-todos-os-agentes-criados-no-projeto",
+  "id": "TAR-719",
+  "titulo": "Usar Luna em todos os agentes criados no projeto",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Configuração nativa carregada e cinco fichas Luna high; testes e mutação; dois filhos e um neto reais Luna high; raiz preservada; revisão independente e PR integrado.",
+  "despacho": "Pedido do mantenedor de 25/09/2026. Responsável imediato: sessão principal. Alterar .codex/config.toml, cinco fichas .codex/agents, ci/economia_da_fabrica.py e testes associados, CAMINHO-DOURADO.md, CONSTITUICAO.md, RITOS.md e docs/decisoes/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md. Fixar todos os descendentes Codex em gpt-6-luna high sem alterar modelo da raiz nem configuração global. Briefs com objetivo, pai, alvos, dependências, aceite e prova. Preservar limites válidos de runtime e controles. Integração depende do PR #2080 de governança. Aceite: testes, mutação, configuração nativa e teste real em dois níveis comprovados por metadados, revisão independente Luna e PR pelo rito.",
+  "origem": "Pedido direto do mantenedor em 25/09/2026: configuração Luna em todos os níveis",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

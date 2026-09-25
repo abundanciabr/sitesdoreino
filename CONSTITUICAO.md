@@ -29,7 +29,8 @@ Documento não impõe nada a um agente sob pressão de erro; portão impõe.
    pública — só o que precisa da internet passa pelo gateway.
 2. **Dados:** um database e um role Postgres por célula. Acesso cruzado não é proibido —
    é `permission denied`. A connection string do quiz não *consegue* ler pagamentos.
-3. **Código:** uma sessão de agente = um worktree (RITOS.md §1). **A cerca "1 PR = 1
+3. **Código:** frentes independentes de escrita usam worktrees próprios; agentes
+   de leitura podem compartilhar a bancada sem editar (RITOS.md §1). **A cerca "1 PR = 1
    célula" caiu em 29/08/2026** (Onda 5 do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`,
    decisão do mantenedor): ela restringia LARGURA para comprar EXCLUSIVIDADE, que é
    outro eixo — e não teria evitado o pior incidente já medido aqui. No lugar dela,

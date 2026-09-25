@@ -28,8 +28,8 @@ from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa
 
 MODELO_ROTINA = "sonnet"
 MODELO_TOPO = "opus"
-MODELOS_CODEX = {"rotina": "gpt-6-sol", "delimitado": "gpt-6-luna"}
-TIPOS_CODEX_LUNA = {"escrita", "espera"}
+MODELO_CODEX = "gpt-6-luna"
+ESFORCO_CODEX = "high"
 
 
 def harness_ativo(raiz: Path | None = None) -> str:
@@ -42,10 +42,7 @@ def harness_ativo(raiz: Path | None = None) -> str:
 
 def _perfil_do_harness(perfil: Perfil) -> Perfil:
     if harness_ativo() == "codex":
-        if perfil.tipo in TIPOS_CODEX_LUNA:
-            return replace(perfil, modelo=MODELOS_CODEX["delimitado"], esforco="high")
-        esforco = "medium" if perfil.tipo == "geral" else perfil.esforco
-        return replace(perfil, modelo=MODELOS_CODEX["rotina"], esforco=esforco)
+        return replace(perfil, modelo=MODELO_CODEX, esforco=ESFORCO_CODEX, motivo="delegação Codex usa Luna/high por decisão do mantenedor")
     return perfil
 
 
@@ -186,6 +183,17 @@ def auditar_fichas(raiz: Path) -> list[str]:
     if not caminhos:
         raise ErroDeInstrumentacao("pasta de fichas vazia", f"Crie as fichas nativas em {pasta}.")
     if harness == "codex":
+        configuracao = raiz / ".codex" / "config.toml"
+        try:
+            agentes = tomllib.loads(configuracao.read_text(encoding="utf-8")).get("agents", {})
+        except (OSError, tomllib.TOMLDecodeError) as erro:
+            raise ErroDeInstrumentacao("configuração de agentes indisponível",
+                                       f"Confira {configuracao}: {erro}") from erro
+        esperados = {"enabled": True, "default_subagent_model": MODELO_CODEX,
+                     "default_subagent_reasoning_effort": ESFORCO_CODEX}
+        for campo, esperado in esperados.items():
+            if not isinstance(agentes, dict) or agentes.get(campo) != esperado:
+                falhas.append(f".codex/config.toml: agents.{campo} precisa ser {esperado!r}")
         for nome in ("despacho", "revisor", "escrivao"):
             if not (pasta / f"{nome}.toml").is_file():
                 falhas.append(f"{pasta.name}: falta a ficha nativa {nome}.toml")
@@ -199,11 +207,11 @@ def auditar_fichas(raiz: Path) -> list[str]:
         nome = campos.get("name") or caminho.stem
         relativo = caminho.relative_to(raiz).as_posix()
         if harness == "codex":
-            esperado = MODELOS_CODEX["rotina"]
+            esperado = MODELO_CODEX
             if modelo != esperado:
                 falhas.append(f"{relativo}: model precisa ser {esperado}, recebido {modelo!r}")
-            if campos.get("model_reasoning_effort") not in {"low", "medium", "high", "xhigh"}:
-                falhas.append(f"{relativo}: declare model_reasoning_effort suportado")
+            if campos.get("model_reasoning_effort") != ESFORCO_CODEX:
+                falhas.append(f"{relativo}: model_reasoning_effort precisa ser {ESFORCO_CODEX}")
             if nome == "revisor" and campos.get("sandbox_mode") != "read-only":
                 falhas.append(f"{relativo}: revisor exige sandbox_mode read-only")
             if not campos.get("developer_instructions") or campos.get("name") != caminho.stem:
@@ -278,6 +286,15 @@ def compilar_brief(
         "",
         "## Armadilhas injetadas",
         *linhas_armadilhas,
+        "",
+        "## Delegação",
+        "- Antes de criar um agente, declare pai responsável, dependências, aceite e evidência.",
+        "- O pai consolida os resultados; delegação não amplia escopo nem permissões.",
+        "- Use os parâmetros de modelo e esforço na ferramenta; confira a precedência da ficha.",
+        *(["- No Codex, use model gpt-6-luna e reasoning_effort high na criação.",
+           "- Com collaboration.spawn_agent, use fork_turns none para permitir o modelo explícito.",
+           "- Não altere a conversa principal. Se nenhum mecanismo resolver Luna, devolva o bloqueio."]
+          if harness_ativo(raiz) == "codex" else []),
         "",
         "## Prova exigida",
         "- Rode a suíte ou o teste focal que prova a mudança.",
