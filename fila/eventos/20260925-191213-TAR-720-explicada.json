@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-191213-TAR-720-explicada",
+  "tarefa": "TAR-720",
+  "evento": "explicada",
+  "quando": "2026-09-25T19:12:13.819424+00:00",
+  "quem": "Pedido do mantenedor na sessão Codex em 25/09/2026",
+  "o_que_e": "Robôs confundem a restrição local com falta de acesso ao GitHub.",
+  "o_que_muda": "O robô usa a recuperação autorizada antes de encerrar o trabalho por falta de acesso.",
+  "exemplo": "A consulta falha no ambiente restrito e passa com aprovação; o robô continua.",
+  "importancia": 95
+}
