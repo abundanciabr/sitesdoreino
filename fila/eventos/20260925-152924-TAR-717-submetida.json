@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260925-152924-TAR-717-submetida",
+  "tarefa": "TAR-717",
+  "evento": "submetida",
+  "quando": "2026-09-25T15:29:24.549086+00:00",
+  "quem": "agent/infra/evolution-provisionador-fail-closed",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2077",
+  "revisao": "9c677ded1a341d0ba6fb7b16e81b1192a62d550f",
+  "arvore": "84f1c0e2e91db867ec333b5eb3866ad4bf58ffb1"
+}

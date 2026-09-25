@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-016-infra-fechar-falhas-do-provisionador-evolution",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "infra: fechar falhas do provisionador Evolution",
+  detalhe: "O provisionador agora falha fechado diante de concorrência, erro SQL, credencial fraca ou banco com dono inesperado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2077. Validação local: árvore 84f1c0e2e91db867ec333b5eb3866ad4bf58ffb1; commit 9c677ded1a341d0ba6fb7b16e81b1192a62d550f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-717",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-152933-TAR-717-concluida",
+  "tarefa": "TAR-717",
+  "evento": "concluida",
+  "quando": "2026-09-25T15:29:33.249473+00:00",
+  "quem": "agent/infra/evolution-provisionador-fail-closed",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2077",
+  "verificado_em": "2026-09-25"
+}

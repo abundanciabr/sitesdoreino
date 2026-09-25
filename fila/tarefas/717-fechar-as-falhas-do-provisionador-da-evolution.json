@@ -1,0 +1,22 @@
+{
+  "arquivo": "717-fechar-as-falhas-do-provisionador-da-evolution",
+  "id": "TAR-717",
+  "titulo": "Fechar as falhas do provisionador da Evolution",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-716"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes provam falha fechada em concorrencia, erro SQL, segredo fraco e banco com dono inesperado; PR integrado com muralhas verdes",
+  "despacho": "Corrija infra/provisionar-evolution.sh e seu teste para serializar execucoes, manter segredos fora do argv, usar ON_ERROR_STOP, rejeitar segredo fraco, conferir o dono do banco, preservar credenciais em reexecucoes e reverter arquivos, banco e usuario criados em qualquer falha. Nao reinicie servicos nem ative envios. Prove com a suite de provisionamento e as muralhas.",
+  "origem": "Revisao independente do PR 2075",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
