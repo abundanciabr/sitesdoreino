@@ -73,9 +73,14 @@ do SHA e não declara publicação a partir de um merge.
 O caminho seguro deve ser o mais rápido. A resposta canônica a qualquer emergência é
 **rollback** (re-apontar a tag de imagem anterior — comando em RITOS.md §4), nunca
 hotfix no servidor. Agentes não possuem chave SSH da VPS — não é proibição, é
-inexistência. A correção definitiva viaja sempre por PR + pipeline.
+inexistência no ambiente do agente. O pipeline possui a chave e executa
+operações delimitadas pelo agente, com ambiente protegido, código da main e
+saída sanitizada. Use `operacoes-vps.yml` para diagnóstico; operação ausente
+ganha implementação e testes por PR, nunca shell livre ou roteiro para colar.
+A correção definitiva viaja sempre por PR + pipeline.
 
-**Quem faz valer:** `ci/rollback.py` e `.github/workflows/rollback.yml` (o rollback manual, validado antes de qualquer SSH) · `ci/reversao.py` (a reversão automática quando a entrega falha).
+**Quem faz valer:** `ci/operacoes_vps.py`, `.github/workflows/operacoes-vps.yml` e
+`ci/tests/test_operacoes_vps.py` (catálogo e evidência sanitizada) · `ci/rollback.py` e `.github/workflows/rollback.yml` (o rollback manual, validado antes de qualquer SSH) · `ci/reversao.py` (a reversão automática quando a entrega falha).
 
 ## Lei 6 — Evidência Falsificável, Não Prosa
 

@@ -6,7 +6,8 @@ Sempre PT-BR e linguagem de resultado, celebrando marcos comprovados.
 Execute tudo que estiver ao alcance no projeto, GitHub e ambiente local.
 Ele só entra onde é insubstituível: segredos, decisão própria, console do
 provedor ou capacidade que o agente realmente não tem. Sem SSH para agentes;
-correções da VPS seguem PR e pipeline.
+correções da VPS seguem PR e pipeline. Ausência de chave local não significa
+ausência de acesso operacional: o agente dispara a esteira autenticada.
 
 ## Decisões
 
@@ -22,9 +23,42 @@ Não perguntar nunca foi calar: a sessão responsável explica o bloqueio em
 Instruções, com o que houve e o que destrava.
 Molde e reserva de registro em painel/LEIA-ME.md.
 
+## Operações da VPS pelo agente
+
+O agente executa `gh workflow run operacoes-vps.yml --ref main -f operacao=estado-servico -f servico=admin`.
+Para espaço em disco, usa `operacao=espaco-disco` e `servico=plataforma`.
+Os serviços aceitos vêm de `infra/docker-compose.yml` no SHA do disparo,
+incluindo auxiliares. O canal é somente leitura: estado, saúde, reinícios,
+digest da imagem ou bytes de disco. Não lê logs, ambiente ou dados de compradores.
+Não envie segredos nem dados pessoais em inputs do GitHub, mesmo inválidos.
+
+Acompanhe o run identificado pelo workflow, ator, horário e SHA com
+`gh run view <id> --json status,conclusion,url,headSha` e consulte seu resumo.
+Entregue URL, SHA e medição. PASS prova a coleta, não a saúde do serviço:
+`exited` e `unhealthy` são achados. Erro, saída vazia ou run cancelado não são prova.
+
+Correções continuam por PR e deploy; emergência usa `rollback.yml` (RITOS §4).
+Provisionamento autorizado usa `provisionar.yml`. Antes de qualquer operação
+com efeito, confira o mandato e os parâmetros do workflow correspondente.
+Se a investigação exigir algo ainda ausente, acrescente uma operação fechada
+por PR em `ci/operacoes_vps.py`, com teste de saída sanitizada, e dispare após
+integração. Nunca aceite shell, Python, SQL, caminhos ou URLs livres como input.
+Recusa do catálogo exige estender o canal, não repassar um script ao mantenedor.
+
+O job usa `environment: vps`; `DEPLOY_SSH_KEY` fica somente nesse ambiente,
+restrito à main protegida. O workflow recusa outras refs e usa o SHA do disparo.
+A impressão digital pública da VPS fica fixada no workflow; divergência
+interrompe a conexão. Rotação exige conferir por canal confiável e atualizar
+por PR, nunca aceitar automaticamente a chave observada na rede.
+Não copie a chave para a sessão. Falha de acesso exige medir a configuração do
+GitHub; peça somente o ajuste exclusivo da conta que realmente faltar, com
+local e resultado esperado. Nenhum diagnóstico deste canal altera a produção.
+
 ## Passo manual
 
-Só peça comando quando faltar capacidade real. Entregue UM bloco de colar,
+Só peça comando na VPS se a esteira estiver comprovadamente indisponível e
+nenhum caminho autorizado resolver. Canal ainda não implementado exige PR,
+não trabalho de terminal para o mantenedor. Registre a evidência da exceção. Entregue UM bloco de colar,
 fail-closed com "PAROU POR SEGURANÇA". Diga a janela: PS C:\> é PC;
 deploy@srv... ou root@srv... é VPS. Avise surpresas antes: senha invisível,
 silêncio pode ser sucesso, >> acrescenta e > apaga. Não obrigue o mantenedor

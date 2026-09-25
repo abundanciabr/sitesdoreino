@@ -1,0 +1,63 @@
+name: operacoes-vps
+on:
+  workflow_dispatch:
+    inputs:
+      operacao:
+        description: 'Operação somente de leitura, sem comandos livres'
+        required: true
+        type: choice
+        options: [estado-servico, espaco-disco]
+      servico:
+        description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: operacoes-vps
+  cancel-in-progress: false
+  queue: max
+jobs:
+  medir:
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo '::error::Operações da VPS só executam na main. Integre o PR e dispare com --ref main.'
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar leitor do catálogo
+        run: python -m pip install PyYAML==6.0.2
+      - name: Validar operação e preparar código deste SHA
+        id: preparar
+        env:
+          OPERACAO: ${{ inputs.operacao }}
+          SERVICO: ${{ inputs.servico }}
+        run: python ci/operacoes_vps.py preparar
+      - name: Medir na VPS com saída sanitizada na origem
+        id: remoto
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          # Chave pública ECDSA da VPS já confiada no known_hosts do mantenedor (25/09/2026).
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 2m
+          script_path: ${{ steps.preparar.outputs.script }}
+      - name: Conferir evidência e publicar resumo
+        env:
+          SAIDA: ${{ steps.remoto.outputs.stdout }}
+          OPERACAO: ${{ inputs.operacao }}
+          SERVICO: ${{ inputs.servico }}
+        run: python ci/operacoes_vps.py conferir
