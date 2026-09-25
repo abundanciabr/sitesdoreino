@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-200856-TAR-722-explicada",
+  "tarefa": "TAR-722",
+  "evento": "explicada",
+  "quando": "2026-09-25T20:08:56.747970+00:00",
+  "quem": "Retomada da TAR-644 apos run 36183560727 encontrar pedido sandbox integrado e ainda sem estorno.",
+  "o_que_e": "A Appmax confirmou uma compra de teste, mas falta um estorno de teste para verificar o valor devolvido.",
+  "o_que_muda": "O ensaio parcial fica pronto para acontecer uma vez, sem risco de reenvio e sem tocar em dinheiro real.",
+  "exemplo": "O pedido sandbox de R$ 9,90 recebe uma unica solicitacao de devolucao de R$ 4,95; uma segunda execucao e recusada.",
+  "importancia": 80
+}

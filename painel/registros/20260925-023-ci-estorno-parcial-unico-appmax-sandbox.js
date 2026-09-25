@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-023-ci-estorno-parcial-unico-appmax-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: estorno parcial único Appmax sandbox",
+  detalhe: "O pedido sandbox de 990 centavos receberá uma só solicitação parcial de 495 centavos, com marcador anterior ao POST e saída sem dados sensíveis.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2087. Validação local: árvore e0e24aa49084cc1dadc83438bcc38acf35b89fa8; commit 679fbcc56608033c43d11ca315189e79ebca1b8c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-722",
+  gravidade: "info",
+  frente: "vender",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
