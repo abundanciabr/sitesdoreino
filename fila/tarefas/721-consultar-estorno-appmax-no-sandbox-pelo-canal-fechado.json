@@ -1,0 +1,22 @@
+{
+  "arquivo": "721-consultar-estorno-appmax-no-sandbox-pelo-canal-fechado",
+  "id": "TAR-721",
+  "titulo": "Consultar estorno Appmax no sandbox pelo canal fechado",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [
+    "TAR-647"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes da lista permitida e da sanitizacao, muralhas e PR com codigo validado; a resposta autenticada real continua criterio da TAR-644.",
+  "despacho": "Acrescentar ao canal operacoes-vps uma consulta somente de leitura de pedido de cartao Appmax no sandbox da Meshcraft. Selecionar candidato de teste com limite temporal e responder com estado, campo de valor no objeto refund se a API o trouxer e referencia opaca do intent; recusar formato inesperado. Nao solicitar estorno, nao ativar cartao real e nao emitir evento financeiro. Validar testes. A operacao real na main sera medida sob a TAR-644, depois da integracao deste codigo.",
+  "origem": "Descoberta na retomada da TAR-644; docs/guia-mantenedor.md orienta estender o canal fechado quando falta uma medicao.",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

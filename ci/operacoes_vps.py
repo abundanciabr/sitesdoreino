@@ -10,7 +10,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-OPERACOES = {"estado-servico", "espaco-disco", "versao-compose", "appmax-pix"}
+OPERACOES = {
+    "estado-servico",
+    "espaco-disco",
+    "versao-compose",
+    "appmax-pix",
+    "appmax-estorno",
+}
 OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
@@ -34,6 +40,16 @@ MOTIVOS_APPMAX_PIX = {
     "indisponivel",
 }
 SITE_MESHCRAFT = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
+CAMPOS_VALOR_ESTORNO = {
+    "amount",
+    "value",
+    "refunded_amount",
+    "refund_amount",
+    "refund_value",
+    "refunded_value",
+    "total",
+    "total_refunded",
+}
 FORMATO = (
     '{"estado":{{json .State.Status}},'
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
@@ -58,10 +74,13 @@ def validar(operacao, servico, permitidos, referencia=""):
         raise Falha("entrada")
     if (operacao in OPERACOES_DA_PLATAFORMA) != (servico == "plataforma"):
         raise Falha("entrada")
-    if operacao == "appmax-pix" and servico != "pagamentos":
+    if operacao in {"appmax-pix", "appmax-estorno"} and servico != "pagamentos":
         raise Falha("entrada")
     if operacao == "appmax-pix":
         if not re.fullmatch(r"[0-9a-f]{64}", referencia):
+            raise Falha("entrada")
+    elif operacao == "appmax-estorno":
+        if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
             raise Falha("entrada")
     elif referencia:
         raise Falha("entrada")
@@ -137,6 +156,70 @@ def conferir_medicao(operacao, dados):
             for valor in dados["operacoes"].values()
         ):
             raise Falha("formato")
+    elif operacao == "appmax-estorno":
+        if set(dados) != {
+            "pedido",
+            "referencia",
+            "status",
+            "pedido_confere",
+            "refunded_at",
+            "campos_observados",
+            "campo_valor",
+            "valor_no_refund_centavos",
+        }:
+            raise Falha("formato")
+        if dados["pedido"] == "ausente":
+            if (
+                any(
+                    dados[campo] is not None
+                    for campo in (
+                        "referencia",
+                        "status",
+                        "campo_valor",
+                        "valor_no_refund_centavos",
+                    )
+                )
+                or dados["pedido_confere"] is not False
+                or dados["refunded_at"] is not False
+                or dados["campos_observados"] != []
+            ):
+                raise Falha("formato")
+        elif dados["pedido"] == "encontrado":
+            if not isinstance(dados["referencia"], str) or not re.fullmatch(
+                r"[0-9a-f]{64}", dados["referencia"]
+            ):
+                raise Falha("formato")
+            if dados["status"] not in {
+                "aprovado",
+                "integrado",
+                "estornado",
+                "pendente",
+                "outro",
+            }:
+                raise Falha("formato")
+            if (
+                dados["pedido_confere"] is not True
+                or type(dados["refunded_at"]) is not bool
+            ):
+                raise Falha("formato")
+            campos = dados["campos_observados"]
+            if (
+                not isinstance(campos, list)
+                or len(campos) != len(set(campos))
+                or any(campo not in CAMPOS_VALOR_ESTORNO for campo in campos)
+            ):
+                raise Falha("formato")
+            if dados["campo_valor"] is None:
+                if dados["valor_no_refund_centavos"] is not None:
+                    raise Falha("formato")
+            elif (
+                dados["campo_valor"] not in campos
+                or type(dados["valor_no_refund_centavos"]) is not int
+                or dados["valor_no_refund_centavos"] <= 0
+            ):
+                raise Falha("formato")
+        else:
+            raise Falha("formato")
     elif operacao == "versao-compose":
         if set(dados) != {"versao"} or not isinstance(dados["versao"], str):
             raise Falha("formato")
@@ -186,6 +269,50 @@ def medir(operacao, servico, referencia=""):
             "bruto=t.reason or ''; motivo=next((c for c in codigos if bruto.endswith('diagnostico_'+c)),'indisponivel'); "
             "o={x:'not_started' for x in ('customer','order','payment')}; o.update({x.operation_type:x.state for x in t.operacoes.all()}); "
             "print(json.dumps({'tentativa':t.state,'intent':t.intent.status,'motivo':motivo,'qr_presente':bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64),'operacoes':o},sort_keys=True))"
+        )
+        try:
+            dados = json.loads(
+                comando(
+                    [
+                        "docker",
+                        "exec",
+                        identificador,
+                        "python",
+                        "manage.py",
+                        "shell",
+                        "-c",
+                        codigo,
+                    ]
+                )
+            )
+        except (ValueError, TypeError):
+            raise Falha("formato") from None
+        return conferir_medicao(operacao, dados)
+    if operacao == "appmax-estorno":
+        codigo = (
+            "import hashlib,json\n"
+            "from datetime import timedelta\n"
+            "from django.utils import timezone\n"
+            "from pagamentos.core.models import PaymentAttempt\n"
+            "from pagamentos.providers.appmax.client import AppmaxClient\n"
+            f"referencia = {referencia!r}\n"
+            f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='card',created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
+            "tentativas = [t for t in tentativas if t.external_order_id.isdecimal() and int(t.external_order_id)>0]\n"
+            "if referencia:\n"
+            "    tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent_id).encode()).hexdigest()==referencia]\n"
+            "if not tentativas:\n"
+            "    resultado = {'pedido':'ausente','referencia':None,'status':None,'pedido_confere':False,'refunded_at':False,'campos_observados':[],'campo_valor':None,'valor_no_refund_centavos':None}\n"
+            "else:\n"
+            "    tentativa = tentativas[0]\n"
+            "    pedido = AppmaxClient().consultar_pedido(int(tentativa.external_order_id))\n"
+            "    refund = pedido.get('refund') or {}\n"
+            "    campos = ('amount','value','refunded_amount','refund_amount','refund_value','refunded_value','total','total_refunded')\n"
+            "    observados = [campo for campo in campos if campo in refund]\n"
+            "    numericos = [(campo,refund[campo]) for campo in observados if type(refund[campo]) is int and refund[campo]>0]\n"
+            "    campo,valor = numericos[0] if len(numericos)==1 else (None,None)\n"
+            "    status = pedido['status'] if pedido['status'] in ('aprovado','integrado','estornado','pendente') else 'outro'\n"
+            "    resultado = {'pedido':'encontrado','referencia':hashlib.sha256(str(tentativa.intent_id).encode()).hexdigest(),'status':status,'pedido_confere':True,'refunded_at':bool(refund.get('refunded_at')),'campos_observados':observados,'campo_valor':campo,'valor_no_refund_centavos':valor}\n"
+            "print(json.dumps(resultado,sort_keys=True))\n"
         )
         try:
             dados = json.loads(
