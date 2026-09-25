@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260925-204611-TAR-644-checkpoint",
+  "tarefa": "TAR-644",
+  "evento": "checkpoint",
+  "quando": "2026-09-25T20:46:11.289194+00:00",
+  "quem": "agent/ci/registrar-estorno-sandbox",
+  "plano": "TAR-644: prova oficial do valor devolvido continua bloqueada",
+  "ultimo_avanco": "Run 36187651464, cerca de dez minutos após o POST sandbox, ainda mostrou pedido integrado, refunded_at falso e valor_no_refund_centavos null; nenhuma nova solicitação de estorno foi feita.",
+  "proxima_acao": "Obter da Appmax a janela de processamento e um endpoint oficial autenticado que informe valor efetivamente devolvido e identidade; consultar o pedido sem repetir POST e só então implementar produtor v2.",
+  "verificacoes": [
+    "gh run view 36187651464 --log: PASS da leitura, sem refunded_at e sem campo de valor"
+  ]
+}

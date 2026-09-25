@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-025-fila-medicao-do-estorno-appmax-sandbox",
+  tipo: "medicao",
+  quando: "2026-09-25",
+  titulo: "fila: medição do estorno Appmax sandbox",
+  detalhe: "O pedido sandbox foi aceito, mas três consultas autenticadas ainda não mostram montante devolvido. A fila guarda a prova e mantém o produtor financeiro bloqueado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2089. Validação local: árvore 2d1b7fb23e66ae5e3f78819fe66edf42969dd244; commit f39daed7ce1b85d442a0a0b54f79dbcdbc583f68; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-723",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

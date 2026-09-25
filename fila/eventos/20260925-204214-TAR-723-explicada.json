@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-204214-TAR-723-explicada",
+  "tarefa": "TAR-723",
+  "evento": "explicada",
+  "quando": "2026-09-25T20:42:14.393380+00:00",
+  "quem": "Retomada da TAR-644 após PR #2087 e runs sandbox de 25/09/2026.",
+  "o_que_e": "O pedido de devolução de teste foi aceito, mas a Appmax ainda não confirmou o dinheiro devolvido.",
+  "o_que_muda": "A fila distingue pedido aceito de devolução comprovada e aponta a prova que falta para avançar.",
+  "exemplo": "Pedir R$ 4,95 de volta não é o mesmo que ver a Appmax confirmar R$ 4,95 devolvidos.",
+  "importancia": 80
+}

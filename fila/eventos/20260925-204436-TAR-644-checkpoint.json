@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260925-204436-TAR-644-checkpoint",
+  "tarefa": "TAR-644",
+  "evento": "checkpoint",
+  "quando": "2026-09-25T20:44:36.633824+00:00",
+  "quem": "agent/ci/registrar-estorno-sandbox",
+  "plano": "TAR-644: portão de prova oficial do valor devolvido em sandbox",
+  "ultimo_avanco": "PR #2087 integrado; POST único sandbox 201 aceito para 495 centavos; GET autenticados 36186779897 e 36187037843 sem refunded_at nem montante.",
+  "proxima_acao": "Consultar novamente o pedido sandbox sem repetir o POST; se o valor continuar ausente, obter contrato de endpoint oficial autenticado da Appmax e testar resposta sanitizada antes de implementar o produtor v2.",
+  "verificacoes": [
+    "gh run view 36186686315 --log: resultado PASS, solicitacao aceita, valor_solicitado_centavos 495",
+    "gh run view 36186779897 --log e 36187037843 --log: pedido integrado, refunded_at false, valor_no_refund_centavos null"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-204917-TAR-644-bloqueada",
+  "tarefa": "TAR-644",
+  "evento": "bloqueada",
+  "quando": "2026-09-25T20:49:17.208400+00:00",
+  "quem": "agente-tecnico",
+  "detalhe": "Run 36186686315: solicitação parcial sandbox de 495 centavos aceita. GETs autenticados 36186779897, 36187037843 e 36187651464: pedido integrado, refunded_at falso e nenhum valor devolvido. Falta resposta oficial autenticada com valor efetivo e identidade; agente técnico reconsulta sem repetir POST e obtém da Appmax o endpoint e janela de processamento. Até essa prova, produtor v2 e canário real seguem bloqueados.",
+  "espera": "fila"
+}

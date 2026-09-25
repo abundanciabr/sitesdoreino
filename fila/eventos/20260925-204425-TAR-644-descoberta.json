@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260925-204425-TAR-644-descoberta",
+  "tarefa": "TAR-644",
+  "evento": "descoberta",
+  "quando": "2026-09-25T20:44:25.800953+00:00",
+  "quem": "agent/ci/registrar-estorno-sandbox",
+  "detalhe": "POST sandbox aceitou estorno parcial solicitado de 495 centavos; duas consultas autenticadas posteriores ainda retornaram pedido integrado, refunded_at falso e nenhum campo de montante. Não há prova de valor devolvido.",
+  "evidencia": "POST: https://github.com/abundanciabr/sitesdoreino/actions/runs/36186686315 ; GET: https://github.com/abundanciabr/sitesdoreino/actions/runs/36186779897 e https://github.com/abundanciabr/sitesdoreino/actions/runs/36187037843 ; documentação oficial: https://docs.appmax.com.br/api-reference/orders/consultar-pedido e https://docs.appmax.com.br/api-reference/refunds/criar-estorno",
+  "classificacao": "A",
+  "criterio": "valor realmente devolvido e identidade em resposta oficial autenticada",
+  "encaminhamento": "Reconsultar o mesmo pedido após processamento sem repetir POST; se a API continuar sem montante, obter da Appmax endpoint oficial autenticado com valor liquidado e identidade. Manter produtor pagamento.estornado.v2 bloqueado."
+}

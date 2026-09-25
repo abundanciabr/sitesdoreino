@@ -1,8 +1,14 @@
 import importlib.util
 import json
 import re
+import builtins
+from contextlib import redirect_stdout
+from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 import yaml
@@ -33,6 +39,7 @@ REFERENCIA = "b" * 64
         ("espaco-disco", "admin"),
         ("estado-servico", "plataforma"),
         ("appmax-pix", "admin"),
+        ("appmax-estorno", "admin"),
         ("versao-compose", "admin"),
     ],
 )
@@ -46,6 +53,13 @@ def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico
 def test_appmax_pix_exige_referencia_opaca(monkeypatch, capsys, referencia):
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
     assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, referencia) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+@pytest.mark.parametrize("referencia", ["x" * 64, PRIVADO])
+def test_appmax_estorno_recusa_referencia_livre(monkeypatch, capsys, referencia):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert ops.executar("appmax-estorno", "pagamentos", {"pagamentos"}, referencia) == 2
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
 
 
@@ -250,6 +264,172 @@ def test_appmax_pix_recusa_saida_livre_do_container(monkeypatch, capsys):
     assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, REFERENCIA) == 2
     saida = capsys.readouterr()
     assert PRIVADO not in saida.out + saida.err
+
+
+def test_appmax_estorno_consulta_somente_sandbox_sem_expor_pedido(monkeypatch, capsys):
+    medicao = {
+        "pedido": "encontrado",
+        "referencia": REFERENCIA,
+        "status": "estornado",
+        "pedido_confere": True,
+        "refunded_at": True,
+        "campos_observados": ["amount"],
+        "campo_valor": "amount",
+        "valor_no_refund_centavos": 495,
+    }
+    chamadas = []
+
+    def rodar(args, **kwargs):
+        chamadas.append(args)
+        valor = "a" * 64 if len(chamadas) == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-estorno", "pagamentos", {"pagamentos"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == medicao
+    assert PRIVADO not in saida.out + saida.err
+    codigo = chamadas[1][-1]
+    assert chamadas[1][:4] == ["docker", "exec", "a" * 64, "python"]
+    assert "AppmaxClient().consultar_pedido" in codigo
+    assert "intent__method='card'" in codigo
+    assert "platform_site_id='cc06b8c3-043b-4c06-92c5-5ea624e00586'" in codigo
+    assert "timedelta(days=7)" in codigo
+    assert "/v1/orders/refund-request" not in codigo
+    compile(codigo, "consulta_appmax_estorno", "exec")
+
+
+def test_appmax_estorno_sem_pedido_nao_inventa_valor():
+    medicao = {
+        "pedido": "ausente",
+        "referencia": None,
+        "status": None,
+        "pedido_confere": False,
+        "refunded_at": False,
+        "campos_observados": [],
+        "campo_valor": None,
+        "valor_no_refund_centavos": None,
+    }
+    assert ops.conferir_medicao("appmax-estorno", medicao) == medicao
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao(
+            "appmax-estorno", {**medicao, "valor_no_refund_centavos": 990}
+        )
+
+
+def test_appmax_estorno_nao_confunde_total_pago_com_valor_devolvido(monkeypatch):
+    referencia = UUID("12345678-1234-5678-1234-567812345678")
+    tentativa = SimpleNamespace(external_order_id="3531", intent_id=referencia)
+    capturado = {}
+    medicao = {
+        "pedido": "ausente",
+        "referencia": None,
+        "status": None,
+        "pedido_confere": False,
+        "refunded_at": False,
+        "campos_observados": [],
+        "campo_valor": None,
+        "valor_no_refund_centavos": None,
+    }
+
+    def comando(args):
+        if args[1] == "ps":
+            return "a" * 64
+        capturado["codigo"] = args[-1]
+        return json.dumps(medicao)
+
+    monkeypatch.setattr(ops, "comando", comando)
+    ops.medir("appmax-estorno", "pagamentos")
+
+    class Consulta:
+        def filter(self, **kwargs):
+            assert kwargs["provider"] == "appmax"
+            return self
+
+        def select_related(self, *_):
+            return self
+
+        def order_by(self, *_):
+            return self
+
+        def __getitem__(self, _):
+            return [tentativa]
+
+    resposta = {
+        "status": "estornado",
+        "total_paid": 990,
+        "customer": {"email": PRIVADO},
+        "refund": {"refunded_at": "2026-09-25 12:00:00"},
+    }
+    importador_real = builtins.__import__
+
+    def importar(nome, *args, **kwargs):
+        falsos = {
+            "django.utils": SimpleNamespace(
+                timezone=SimpleNamespace(now=lambda: datetime.now(timezone.utc))
+            ),
+            "pagamentos.core.models": SimpleNamespace(
+                PaymentAttempt=SimpleNamespace(objects=Consulta())
+            ),
+            "pagamentos.providers.appmax.client": SimpleNamespace(
+                AppmaxClient=lambda: SimpleNamespace(
+                    consultar_pedido=lambda order_id: resposta
+                )
+            ),
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    saida = StringIO()
+    with redirect_stdout(saida):
+        exec(
+            capturado["codigo"],
+            {"__builtins__": {**vars(builtins), "__import__": importar}},
+        )
+    resultado = json.loads(saida.getvalue())
+    assert resultado["pedido_confere"] is True
+    assert resultado["valor_no_refund_centavos"] is None
+    assert PRIVADO not in saida.getvalue()
+
+    resposta["refund"]["amount"] = 495
+    saida = StringIO()
+    with redirect_stdout(saida):
+        exec(
+            capturado["codigo"],
+            {"__builtins__": {**vars(builtins), "__import__": importar}},
+        )
+    assert json.loads(saida.getvalue())["valor_no_refund_centavos"] == 495
+
+
+def test_appmax_estorno_recusa_saida_livre_ou_valor_sem_campo(monkeypatch, capsys):
+    for resposta in (
+        PRIVADO,
+        json.dumps(
+            {
+                "pedido": "encontrado",
+                "referencia": REFERENCIA,
+                "status": "estornado",
+                "pedido_confere": True,
+                "refunded_at": True,
+                "campos_observados": [],
+                "campo_valor": None,
+                "valor_no_refund_centavos": 495,
+            }
+        ),
+    ):
+        chamadas = 0
+
+        def rodar(args, **kwargs):
+            nonlocal chamadas
+            chamadas += 1
+            return subprocess.CompletedProcess(
+                args, 0, "a" * 64 if chamadas == 1 else resposta, PRIVADO
+            )
+
+        monkeypatch.setattr(ops.subprocess, "run", rodar)
+        assert ops.executar("appmax-estorno", "pagamentos", {"pagamentos"}) == 2
+        saida = capsys.readouterr()
+        assert json.loads(saida.out)["resultado"] == "ERROR"
+        assert PRIVADO not in saida.out + saida.err
 
 
 def test_compose_emite_so_versao_validada(monkeypatch, capsys):

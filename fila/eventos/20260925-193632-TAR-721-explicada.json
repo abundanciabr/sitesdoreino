@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-193632-TAR-721-explicada",
+  "tarefa": "TAR-721",
+  "evento": "explicada",
+  "quando": "2026-09-25T19:36:32.073722+00:00",
+  "quem": "Descoberta na retomada da TAR-644; docs/guia-mantenedor.md orienta estender o canal fechado quando falta uma medicao.",
+  "o_que_e": "O teste de estorno exige consultar a Appmax com credenciais que estao apenas na VPS; o canal atual nao permite essa leitura.",
+  "o_que_muda": "O agente consegue ver se a resposta autenticada do pedido de teste comprova quanto foi devolvido, sem pedir credenciais nem expor dados do comprador.",
+  "exemplo": "Depois de um estorno sandbox de R$ 4,95, a consulta mostra se a Appmax confirma 495 centavos para a tentativa correta.",
+  "importancia": 78
+}
