@@ -39,7 +39,7 @@ def validar(operacao, servico, permitidos):
 def comando(argumentos):
     try:
         resultado = subprocess.run(argumentos, cwd="/opt/plataforma", capture_output=True,
-                                   text=True, timeout=30, check=False)
+                                   text=True, encoding="utf-8", timeout=30, check=False)
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
         raise Falha("instrumento") from None
     if resultado.returncode:

@@ -31,6 +31,7 @@ def test_estado_so_emite_campos_permitidos(monkeypatch, capsys):
     def rodar(args, **kwargs):
         chamadas.append(args)
         assert kwargs["capture_output"] and kwargs["timeout"] == 30
+        assert kwargs["encoding"] == "utf-8"
         return subprocess.CompletedProcess(args, 0, "a" * 64 if len(chamadas) == 1 else json.dumps(MEDICAO), PRIVADO)
     monkeypatch.setattr(ops.subprocess, "run", rodar)
     assert ops.executar("estado-servico", "admin", {"admin"}) == 0
@@ -131,12 +132,12 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     assert passos[0]["if"] == "github.ref != 'refs/heads/main'"
     assert "exit 1" in passos[0]["run"]
     assert passos[1]["with"] == {"ref": "${{ github.sha }}", "persist-credentials": False}
-    preparar = next(i for i, p in enumerate(passos) if p.get("id") == "preparar")
+    preparar = next(i for i, p in enumerate(passos) if p.get("id") == "conferir")
     remoto = next(i for i, p in enumerate(passos) if p.get("id") == "remoto")
     assert preparar < remoto
     assert re.fullmatch(r"SHA256:[A-Za-z0-9+/]{43}", passos[remoto]["with"]["fingerprint"])
     assert passos[remoto]["with"]["capture_stdout"] is True
-    assert passos[remoto]["with"]["script_path"] == "${{ steps.preparar.outputs.script }}"
+    assert passos[remoto]["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
     assert passos[-1]["run"] == "python ci/operacoes_vps.py conferir"
     for passo in passos:
         assert "inputs." not in passo.get("run", "")
