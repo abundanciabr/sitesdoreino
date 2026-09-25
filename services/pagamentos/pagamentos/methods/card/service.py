@@ -415,11 +415,11 @@ def _consultar_resultado(
         total = pedido["total_paid"]
         amounts = pedido["amounts"]
         base = amounts["sub_total"]
-        taxa = amounts["installment_fee"]
+        taxa = amounts.get("installment_fee", 0)
         payment = pedido["payment"]
         parcelas = payment["installments"]
         metodo = payment["method"]
-    except (KeyError, TypeError):
+    except (AttributeError, KeyError, TypeError):
         _registrar_motivo(intent, "reconciliation_required")
         ledger.marcar_tentativa_pendente(intent)
         raise ResultadoAmbiguo("consulta Appmax incompleta") from None

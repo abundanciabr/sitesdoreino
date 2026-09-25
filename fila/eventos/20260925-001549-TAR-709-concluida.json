@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-001549-TAR-709-concluida",
+  "tarefa": "TAR-709",
+  "evento": "concluida",
+  "quando": "2026-09-25T00:15:49.602143+00:00",
+  "quem": "agent/pagamentos/appmax-reconciliacao-sandbox",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2066",
+  "verificado_em": "2026-09-25"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-002-appmax-sandbox-conciliar-cartao-e-gerar-pix",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "Appmax sandbox: conciliar cartão e gerar Pix",
+  detalhe: "O cartão sandbox de R$ 9,90 foi integrado sem taxa explícita; aceitar zero só quando o total confere. O Pix novo terá vencimento explícito.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2066. Validação local: árvore fcb217a4f3410b26ab21e78fe4e3cbcc781cc35b; commit 828805f3aff67428a3fd7390ffbbf4855d1fdceb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-709",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

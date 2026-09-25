@@ -1,0 +1,19 @@
+{
+  "arquivo": "709-concluir-reconciliacao-sandbox-de-cartao-sem-taxa-e-qr-pix-a",
+  "id": "TAR-709",
+  "titulo": "Concluir reconciliação sandbox de cartão sem taxa e QR Pix Appmax",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cartão já integrado confirmado sem nova cobrança; Pix sandbox mostra QR no checkout e mantém pedido pendente sem duplicar pagamento; testes e deploy da célula verdes.",
+  "despacho": "Corrigir somente a célula pagamentos no sandbox Appmax: aceitar ausência de taxa apenas quando total coincide, manter guardas de valor e vínculo, testar reconciliação do pedido existente sem reenvio; diagnosticar e corrigir QR Pix com dados sanitizados, testar ponta a ponta, publicar PR pelo rito.",
+  "origem": "Teste real Appmax sandbox em meshcraft.top em 24/09/2026",
+  "criada_em": "2026-09-24",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

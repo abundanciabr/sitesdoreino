@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta
 from typing import Any
 from unittest.mock import Mock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -96,10 +98,16 @@ def test_pix_gera_qr_uma_vez_com_cliente_pedido_e_tentativa_persistida(
         cliente.criar_pedido.call_args.kwargs["body"]["products"][0]["unit_value"]
         == 1005
     )
-    assert cliente.criar_pagamento_pix.call_args.kwargs["body"] == {
-        "order_id": 3531,
-        "payment_data": {"pix": {"document_number": "12345678909"}},
-    }
+    pagamento_enviado = cliente.criar_pagamento_pix.call_args.kwargs["body"]
+    assert pagamento_enviado["order_id"] == 3531
+    pix_enviado = pagamento_enviado["payment_data"]["pix"]
+    assert pix_enviado["document_number"] == "12345678909"
+    vencimento = datetime.fromisoformat(pix_enviado["expiration_date"]).replace(
+        tzinfo=ZoneInfo("America/Sao_Paulo")
+    )
+    assert timedelta(minutes=29) < vencimento - datetime.now(
+        ZoneInfo("America/Sao_Paulo")
+    )
     with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
         assert completar_intent_pix(intent).pk == intent.pk
     assert cliente.criar_pagamento_pix.call_count == 1
