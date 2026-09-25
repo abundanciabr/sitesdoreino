@@ -19,6 +19,7 @@ PRIVADO = "comprador@example.com token-super-secreto ::warning::nao-publicar"
     ("shell", "admin"), ("estado-servico", "admin;id"),
     ("estado-servico", "../../env"), ("estado-servico", "--help"),
     ("espaco-disco", "admin"), ("estado-servico", "plataforma"),
+    ("versao-compose", "admin"),
 ])
 def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico):
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
@@ -85,6 +86,28 @@ def test_disco_mede_so_o_caminho_fixo(monkeypatch, capsys):
     assert json.loads(capsys.readouterr().out)["medicao"] == {"total_bytes": 100, "livres_bytes": 40}
 
 
+def test_compose_emite_so_versao_validada(monkeypatch, capsys):
+    def rodar(args, **kwargs):
+        assert args == ["docker", "compose", "version", "--short"]
+        return subprocess.CompletedProcess(args, 0, "v2.40.3\n", PRIVADO)
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("versao-compose", "plataforma", {"plataforma"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == {"versao": "v2.40.3"}
+    assert PRIVADO not in saida.out + saida.err
+
+
+@pytest.mark.parametrize("versao", ["", PRIVADO, "2.40", "2.40.3\nsegredo",
+                                     "v2.40.3+token-super-secreto", "12345.1.1"])
+def test_compose_recusa_saida_livre(monkeypatch, capsys, versao):
+    monkeypatch.setattr(ops.subprocess, "run", lambda args, **kwargs:
+                        subprocess.CompletedProcess(args, 0, versao, PRIVADO))
+    assert ops.executar("versao-compose", "plataforma", {"plataforma"}) == 2
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["resultado"] == "ERROR"
+    assert PRIVADO not in saida.out + saida.err
+
+
 def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("OPERACAO", "estado-servico")
     monkeypatch.setenv("SERVICO", "admin")
@@ -132,6 +155,9 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     assert passos[0]["if"] == "github.ref != 'refs/heads/main'"
     assert "exit 1" in passos[0]["run"]
     assert passos[1]["with"] == {"ref": "${{ github.sha }}", "persist-credentials": False}
+    for passo in passos:
+        if "uses" in passo:
+            assert re.fullmatch(r"[^@]+@[0-9a-f]{40}", passo["uses"])
     preparar = next(i for i, p in enumerate(passos) if p.get("id") == "conferir")
     remoto = next(i for i, p in enumerate(passos) if p.get("id") == "remoto")
     assert preparar < remoto
