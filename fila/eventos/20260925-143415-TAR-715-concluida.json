@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-143415-TAR-715-concluida",
+  "tarefa": "TAR-715",
+  "evento": "concluida",
+  "quando": "2026-09-25T14:34:15.450058+00:00",
+  "quem": "agent/infra/canal-operacoes-vps",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2073",
+  "verificado_em": "2026-09-25"
+}

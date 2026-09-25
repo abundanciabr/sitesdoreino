@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-142219-TAR-715-explicada",
+  "tarefa": "TAR-715",
+  "evento": "explicada",
+  "quando": "2026-09-25T14:22:19.213178+00:00",
+  "quem": "Pedido explicito do mantenedor em 25/09/2026",
+  "o_que_e": "O canal da VPS ja mede servicos, mas o roteiro ainda manda o mantenedor conferir o Docker Compose no terminal.",
+  "o_que_muda": "O agente mede tambem o Compose pela esteira e nenhuma falha do roteiro pede diagnostico manual.",
+  "exemplo": "Se o Compose falhar, o agente recebe uma versao validada ou um erro seguro pelo GitHub, sem pedir tela da VPS.",
+  "importancia": 95
+}

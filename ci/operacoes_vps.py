@@ -10,7 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-OPERACOES = {"estado-servico", "espaco-disco", "appmax-pix"}
+OPERACOES = {"estado-servico", "espaco-disco", "versao-compose", "appmax-pix"}
+OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
 ESTADOS_TENTATIVA = {
@@ -22,6 +23,16 @@ ESTADOS_TENTATIVA = {
     "failed",
 }
 ESTADOS_OPERACAO = {"sending", "reconciliation_required", "completed", "failed"}
+MOTIVOS_APPMAX_PIX = {
+    "campo_expiration_date",
+    "campo_document_number",
+    "campo_customer_id",
+    "campo_order_id",
+    "campo_payment_data",
+    "sem_json",
+    "sem_campo_identificavel",
+    "indisponivel",
+}
 SITE_MESHCRAFT = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
 FORMATO = (
     '{"estado":{{json .State.Status}},'
@@ -45,7 +56,7 @@ def validar(operacao, servico, permitidos):
         raise Falha("entrada")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", servico):
         raise Falha("entrada")
-    if (operacao == "espaco-disco") != (servico == "plataforma"):
+    if (operacao in OPERACOES_DA_PLATAFORMA) != (servico == "plataforma"):
         raise Falha("entrada")
     if operacao == "appmax-pix" and servico != "pagamentos":
         raise Falha("entrada")
@@ -108,9 +119,7 @@ def conferir_medicao(operacao, dados):
             raise Falha("formato")
         if type(dados["qr_presente"]) is not bool:
             raise Falha("formato")
-        if not isinstance(dados["motivo"], str) or not re.fullmatch(
-            r"[a-z0-9_]{0,120}", dados["motivo"]
-        ):
+        if dados["motivo"] not in MOTIVOS_APPMAX_PIX:
             raise Falha("formato")
         if not isinstance(dados["operacoes"], dict) or set(dados["operacoes"]) != {
             "customer",
@@ -118,7 +127,15 @@ def conferir_medicao(operacao, dados):
             "payment",
         }:
             raise Falha("formato")
-        if any(valor not in ESTADOS_OPERACAO for valor in dados["operacoes"].values()):
+        if any(
+            valor not in ESTADOS_OPERACAO | {"not_started"}
+            for valor in dados["operacoes"].values()
+        ):
+            raise Falha("formato")
+    elif operacao == "versao-compose":
+        if set(dados) != {"versao"} or not isinstance(dados["versao"], str):
+            raise Falha("formato")
+        if not re.fullmatch(r"v?[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}", dados["versao"]):
             raise Falha("formato")
     else:
         raise Falha("formato")
@@ -134,6 +151,9 @@ def medir(operacao, servico):
         return conferir_medicao(
             operacao, {"total_bytes": disco.total, "livres_bytes": disco.free}
         )
+    if operacao == "versao-compose":
+        versao = comando(["docker", "compose", "version", "--short"]).strip()
+        return conferir_medicao(operacao, {"versao": versao})
     identificador = comando(
         [
             "docker",
@@ -153,10 +173,13 @@ def medir(operacao, servico):
         raise Falha("formato")
     if operacao == "appmax-pix":
         codigo = (
-            "import json; from pagamentos.core.models import PaymentAttempt; "
-            f"t=PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix').order_by('-created_at').first(); "
-            "assert t is not None; o={x.operation_type:x.state for x in t.operacoes.all()}; "
-            "print(json.dumps({'tentativa':t.state,'intent':t.intent.status,'motivo':t.reason,'qr_presente':bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64),'operacoes':o},sort_keys=True))"
+            "import json; from datetime import timedelta; from django.utils import timezone; "
+            "from pagamentos.core.models import PaymentAttempt; "
+            f"t=PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix',created_at__gte=timezone.now()-timedelta(minutes=15)).order_by('-created_at').first(); "
+            "assert t is not None; codigos=('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel'); "
+            "bruto=t.reason or ''; motivo=next((c for c in codigos if bruto.endswith('diagnostico_'+c)),'indisponivel'); "
+            "o={x:'not_started' for x in ('customer','order','payment')}; o.update({x.operation_type:x.state for x in t.operacoes.all()}); "
+            "print(json.dumps({'tentativa':t.state,'intent':t.intent.status,'motivo':motivo,'qr_presente':bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64),'operacoes':o},sort_keys=True))"
         )
         try:
             dados = json.loads(

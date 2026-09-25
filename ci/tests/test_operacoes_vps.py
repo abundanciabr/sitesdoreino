@@ -32,6 +32,7 @@ PRIVADO = "comprador@example.com token-super-secreto ::warning::nao-publicar"
         ("espaco-disco", "admin"),
         ("estado-servico", "plataforma"),
         ("appmax-pix", "admin"),
+        ("versao-compose", "admin"),
     ],
 )
 def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico):
@@ -136,7 +137,7 @@ def test_appmax_pix_emite_so_estados_e_presenca_sem_ids_qr_ou_dados(
     medicao = {
         "tentativa": "reconciliation_required",
         "intent": "pending",
-        "motivo": "appmax_pagamento_pix_requisicao_recusada_http_400_diagnostico_campo_expiration_date",
+        "motivo": "campo_expiration_date",
         "qr_presente": False,
         "operacoes": {
             "customer": "completed",
@@ -157,6 +158,66 @@ def test_appmax_pix_emite_so_estados_e_presenca_sem_ids_qr_ou_dados(
     assert json.loads(saida.out)["medicao"] == medicao
     assert PRIVADO not in saida.out + saida.err
     assert chamadas[1][0:4] == ["docker", "exec", "a" * 64, "python"]
+    assert "created_at__gte" in chamadas[1][-1]
+    assert "timedelta(minutes=15)" in chamadas[1][-1]
+
+
+def test_appmax_pix_expoe_etapas_ainda_nao_iniciadas(monkeypatch, capsys):
+    medicao = {
+        "tentativa": "reconciliation_required",
+        "intent": "pending",
+        "motivo": "campo_customer_id",
+        "qr_presente": False,
+        "operacoes": {
+            "customer": "failed",
+            "order": "not_started",
+            "payment": "not_started",
+        },
+    }
+    chamadas = 0
+
+    def rodar(args, **kwargs):
+        nonlocal chamadas
+        chamadas += 1
+        valor = "a" * 64 if chamadas == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 0
+    assert json.loads(capsys.readouterr().out)["medicao"] == medicao
+
+
+def test_appmax_pix_recusa_motivo_livre_mesmo_transformado_em_slug():
+    medicao = {
+        "tentativa": "reconciliation_required",
+        "intent": "pending",
+        "motivo": "cliente_example_com_token_super_secreto",
+        "qr_presente": False,
+        "operacoes": {
+            "customer": "completed",
+            "order": "completed",
+            "payment": "reconciliation_required",
+        },
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix", medicao)
+
+
+def test_appmax_pix_sem_tentativa_recente_falha_fechado(monkeypatch, capsys):
+    chamadas = 0
+
+    def rodar(args, **kwargs):
+        nonlocal chamadas
+        chamadas += 1
+        if chamadas == 1:
+            return subprocess.CompletedProcess(args, 0, "a" * 64, PRIVADO)
+        return subprocess.CompletedProcess(args, 1, PRIVADO, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 2
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["erro"] == "instrumento"
+    assert PRIVADO not in saida.out + saida.err
 
 
 def test_appmax_pix_recusa_saida_livre_do_container(monkeypatch, capsys):
@@ -172,6 +233,41 @@ def test_appmax_pix_recusa_saida_livre_do_container(monkeypatch, capsys):
     monkeypatch.setattr(ops.subprocess, "run", rodar)
     assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 2
     saida = capsys.readouterr()
+    assert PRIVADO not in saida.out + saida.err
+
+
+def test_compose_emite_so_versao_validada(monkeypatch, capsys):
+    def rodar(args, **kwargs):
+        assert args == ["docker", "compose", "version", "--short"]
+        return subprocess.CompletedProcess(args, 0, "v2.40.3\n", PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("versao-compose", "plataforma", {"plataforma"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == {"versao": "v2.40.3"}
+    assert PRIVADO not in saida.out + saida.err
+
+
+@pytest.mark.parametrize(
+    "versao",
+    [
+        "",
+        PRIVADO,
+        "2.40",
+        "2.40.3\nsegredo",
+        "v2.40.3+token-super-secreto",
+        "12345.1.1",
+    ],
+)
+def test_compose_recusa_saida_livre(monkeypatch, capsys, versao):
+    monkeypatch.setattr(
+        ops.subprocess,
+        "run",
+        lambda args, **kwargs: subprocess.CompletedProcess(args, 0, versao, PRIVADO),
+    )
+    assert ops.executar("versao-compose", "plataforma", {"plataforma"}) == 2
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["resultado"] == "ERROR"
     assert PRIVADO not in saida.out + saida.err
 
 
@@ -239,6 +335,9 @@ def test_workflow_fecha_ref_credencial_e_entrada():
         "ref": "${{ github.sha }}",
         "persist-credentials": False,
     }
+    for passo in passos:
+        if "uses" in passo:
+            assert re.fullmatch(r"[^@]+@[0-9a-f]{40}", passo["uses"])
     preparar = next(i for i, p in enumerate(passos) if p.get("id") == "conferir")
     remoto = next(i for i, p in enumerate(passos) if p.get("id") == "remoto")
     assert preparar < remoto

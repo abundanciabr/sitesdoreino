@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-012-infra-fechar-diagnostico-da-vps",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "infra: fechar diagnostico da VPS",
+  detalhe: "O agente mede Docker Compose pela esteira, sem pedir comandos da VPS nem expor saida livre.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2073. Validação local: árvore edf869784dc89b07fcd001351ef72e610cf8ddcc; commit 6026d770770db099d9a7d580f64ac27d86516f42; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-715",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

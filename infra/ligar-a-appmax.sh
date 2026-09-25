@@ -116,7 +116,7 @@ docker_compose() {
 
 consultar_servicos_rodando() {
   if ! RODANDO="$(docker_compose ps --services --status running 2>/dev/null)"; then
-    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Peça somente a saída de diagnóstico de 'docker compose version' e 'docker compose ps --services --status running'. Não envie env nem valores de tokens. Nada foi alterado."
+    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Não rode diagnóstico no terminal: o agente deve usar operacoes-vps.yml, primeiro versao-compose e depois estado-servico para o serviço necessário. Não envie env nem valores de tokens. Nada foi alterado."
   fi
 }
 
@@ -149,7 +149,7 @@ if [ "$MODO" = "oauth-merchant" ]; then
     || parar "a API não está fixada no sandbox. Rode primeiro 'bash /tmp/appmax.sh' para preparar o aplicativo. Nada foi alterado."
   command -v python3 >/dev/null 2>&1 || parar "não achei python3 para validar OAuth sem pôr o segredo na linha de comando. Instale python3 e rode de novo. Nada foi alterado."
   consultar_servicos_rodando
-  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não aparece na lista de serviços em execução. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
+  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não aparece na lista de serviços em execução. Nada foi alterado. Não rode diagnóstico no terminal: o agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
   printf 'Cole o client_id do MERCHANT sandbox e aperte Enter: '
   read -r -s CLIENT_ID
   echo
@@ -255,7 +255,7 @@ print("OK" if isinstance(products, list) else "API_RESPOSTA_INVALIDA")
   CODIGO_UP=$?
   if [ "$CODIGO_UP" -ne 0 ]; then
     echo "$SAIDA_UP"
-    parar "OAuth sandbox foi validado e as credenciais MERCHANT já estão gravadas. A célula não recarregou; confira 'docker compose ps pagamentos'. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
+    parar "OAuth sandbox foi validado e as credenciais MERCHANT já estão gravadas. A célula não recarregou; não rode diagnóstico no terminal. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
   fi
   echo "OAuth sandbox e leitura de produtos MERCHANT validados; credenciais gravadas fora do repositório e célula pagamentos recarregada. O token não foi exibido nem armazenado."
   exit 0
@@ -268,15 +268,15 @@ if [ "$MODO" = "preparar-reinstalacao" ]; then
     || parar "a API não está fixada no sandbox. Nada foi alterado."
   consultar_servicos_rodando
   printf '%s\n' "$RODANDO" | grep -qx catalogo \
-    || parar "o catálogo não está em execução. Nada foi alterado. Confira somente 'docker compose ps --services --status running'."
+    || parar "o catálogo não está em execução. Nada foi alterado. O agente deve usar estado-servico para catalogo em operacoes-vps.yml."
   printf '%s\n' "$RODANDO" | grep -qx pagamentos \
-    || parar "pagamentos não está em execução. Nada foi alterado. Confira somente 'docker compose ps --services --status running'."
+    || parar "pagamentos não está em execução. Nada foi alterado. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
 
   SITES_ATIVOS="$(docker_compose exec -T catalogo python manage.py shell -c \
     "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(s.id)" 2>/dev/null)" \
-    || parar "não consegui confirmar os sites ativos no catálogo; nenhuma rotação foi solicitada. Confira somente 'docker compose ps --services --status running'."
+    || parar "não consegui confirmar os sites ativos no catálogo; nenhuma rotação foi solicitada. O agente deve medir catalogo com estado-servico em operacoes-vps.yml e corrigir por PR."
   SITES_ATIVOS="$(printf '%s\n' "$SITES_ATIVOS" | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}$' || true)"
   [ -n "$SITES_ATIVOS" ] \
     || parar "o catálogo não confirmou site ativo algum. Nada foi alterado."
@@ -340,9 +340,9 @@ API_ATUAL="$(ler_de APPMAX_API_URL)"
 
 consultar_servicos_rodando
 printf '%s\n' "$RODANDO" | grep -qx catalogo \
-  || parar "o serviço 'catalogo' não aparece na lista de serviços em execução, e é ele quem sabe o número interno do site. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
+  || parar "o serviço 'catalogo' não aparece na lista de serviços em execução, e é ele quem sabe o número interno do site. Nada foi alterado. O agente deve usar estado-servico para catalogo em operacoes-vps.yml."
 printf '%s\n' "$RODANDO" | grep -qx pagamentos \
-  || parar "o serviço 'pagamentos' não aparece na lista de serviços em execução, e é ele quem atende a Appmax. Nada foi alterado. Para diagnóstico, consulte 'docker compose ps --services --status running' sem compartilhar env ou tokens."
+  || parar "o serviço 'pagamentos' não aparece na lista de serviços em execução, e é ele quem atende a Appmax. Nada foi alterado. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
 
 # -----------------------------------------------------------------------------
 # 2. QUAL SITE. Perguntado ao CATÁLOGO, que é onde dado de site mora.
@@ -527,7 +527,7 @@ SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 paga
 CODIGO_UP=$?
 if [ "$CODIGO_UP" -ne 0 ]; then
   echo "$SAIDA_UP"
-  parar "não consegui recarregar a célula de pagamentos, e ela pode ter ficado fora do ar. O env JÁ está gravado e correto, e há cópia do anterior em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA. NÃO cole as credenciais de novo: rode 'docker compose ps pagamentos' para ver como ela está, e mande esta tela ao agente."
+  parar "não consegui recarregar a célula de pagamentos, e ela pode ter ficado fora do ar. O env JÁ está gravado e correto, e há cópia do anterior em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA. NÃO cole as credenciais de novo nem rode diagnóstico no terminal: o agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
 fi
 echo "  célula recarregada"
 echo

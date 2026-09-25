@@ -1,0 +1,22 @@
+{
+  "arquivo": "715-fechar-os-ultimos-pedidos-manuais-de-diagnostico-da-vps",
+  "id": "TAR-715",
+  "titulo": "Fechar os ultimos pedidos manuais de diagnostico da VPS",
+  "toca": [
+    "ci",
+    "infra",
+    "docs",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado e run versao-compose na main com saida sanitizada",
+  "despacho": "Fixar as actions por commit, acrescentar versao-compose sanitizada e retirar instrucoes manuais do roteiro Appmax, sem alterar pagamentos.",
+  "origem": "Pedido explicito do mantenedor em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

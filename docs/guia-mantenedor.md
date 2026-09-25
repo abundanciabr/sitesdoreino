@@ -71,6 +71,8 @@ Molde e reserva de registro em painel/LEIA-ME.md.
 
 O agente executa `gh workflow run operacoes-vps.yml --ref main -f operacao=estado-servico -f servico=admin`.
 Para espaço em disco, usa `operacao=espaco-disco` e `servico=plataforma`.
+Para conferir se o Docker Compose está disponível, usa
+`operacao=versao-compose` e `servico=plataforma`.
 Os serviços aceitos vêm de `infra/docker-compose.yml` no SHA do disparo,
 incluindo auxiliares. O canal é somente leitura: estado, saúde, reinícios,
 digest da imagem ou bytes de disco. Não lê logs, ambiente ou dados de compradores.
@@ -97,6 +99,8 @@ pelo ruleset. O workflow também recusa outras refs e usa o SHA do disparo.
 A impressão digital pública da VPS fica fixada no workflow; divergência
 interrompe a conexão. Rotação exige conferir por canal confiável e atualizar
 por PR, nunca aceitar automaticamente a chave observada na rede.
+As ações que recebem token ou chave são fixadas por commit completo; atualização
+de versão exige novo PR e nova prova.
 Não copie a chave para a sessão. Falha de acesso exige medir a configuração do
 GitHub; peça somente o ajuste exclusivo da conta que realmente faltar, com
 local e resultado esperado. Nenhum diagnóstico deste canal altera a produção.
