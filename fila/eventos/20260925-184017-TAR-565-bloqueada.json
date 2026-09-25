@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-184017-TAR-565-bloqueada",
+  "tarefa": "TAR-565",
+  "evento": "bloqueada",
+  "quando": "2026-09-25T18:40:17.481973+00:00",
+  "quem": "agent/painel/appmax-canario-bloqueio",
+  "detalhe": "Canario real nao autorizado: faltam por escrito o valor exato, a autorizacao de cobrar e a autorizacao de estornar. O catalogo declara apenas Curso de Teste por R$ 9,90; faltam produto e preco reais para um unico site. Pagamentos, worker Appmax e checkout medidos running/healthy em 25/09/2026. Para destravar, mantenedor define produto, preco e site, fornece credenciais de producao pelo caminho protegido e autoriza expressamente valor, cobranca e estorno; agente confere instalacao e rollback antes de ativar.",
+  "espera": "mantenedor"
+}
