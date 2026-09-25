@@ -257,7 +257,7 @@ bloqueio em vez de mudar silenciosamente a entrega para o GitHub.
 
 Sempre PT-BR. Tudo aqui é feito por robôs: execute até a entrega. Ferramenta
 ausente exige outro caminho autorizado; ele entra só no insubstituível. Sem SSH da
-VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
+VPS, use `operacoes-vps.yml` (Lei 5). Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
 Toda proibição de perguntar, inclusive a do subagente, obriga a dizer no fecho
 o que vem depois.
 

@@ -1,0 +1,58 @@
+{
+  "arquivo": "20260925-120929-TAR-712-contrato_execucao",
+  "tarefa": "TAR-712",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-25T12:09:29.651370+00:00",
+  "quem": "agent/ci/operacoes-vps-delimitadas",
+  "contrato": {
+    "plano": "Canal operacional da VPS sem terminal manual",
+    "versao": 1,
+    "objetivo": "Agente solicita diagnóstico pela esteira e entrega prova sanitizada sem terminal do mantenedor.",
+    "entregaveis": [
+      "Workflow fechado",
+      "Coletor e testes",
+      "Instruções atualizadas",
+      "Prova real e revisão independente"
+    ],
+    "escopo_incluido": [
+      "Estado de serviço e espaço em disco",
+      "Encaminhamento a rollback e provisionamento existentes"
+    ],
+    "nao_objetivos": [
+      "Appmax",
+      "Shell livre",
+      "Credenciais locais",
+      "Dados de compradores"
+    ],
+    "restricoes": [
+      "gpt-6-sol high para todos os agentes",
+      "Main protegida e environment vps",
+      "Sem segredo em saída"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido explícito do mantenedor em 25/09/2026"
+    ],
+    "etapas": [
+      "Investigar",
+      "Implementar",
+      "Testar, revisar e provar na VPS"
+    ],
+    "criterios_entrada": [
+      "Bancada isolada",
+      "Autenticação GitHub disponível"
+    ],
+    "criterios_aceite": [
+      "Entradas inválidas recusadas",
+      "Saída por campos permitidos",
+      "Prova em main e recusa fora da main"
+    ],
+    "evidencias_exigidas": [
+      "pytest",
+      "Revisão independente",
+      "URLs dos runs"
+    ],
+    "condicao_encerramento": "Canal integrado, revisão aprovada e diagnóstico real conferido.",
+    "limites_autonomia": "Implementar e operar leituras delimitadas pela esteira; não alterar Appmax nem credenciais.",
+    "acoes_do_mantenedor": "Somente ajuste exclusivo de conta se bloqueio real comprovado."
+  }
+}
