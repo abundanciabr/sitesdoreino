@@ -1,4 +1,5 @@
 """Operações fechadas da VPS: saída por lista permitida, nunca logs de aplicação."""
+
 from __future__ import annotations
 
 import json
@@ -9,13 +10,35 @@ import subprocess
 import sys
 from pathlib import Path
 
-OPERACOES = {"estado-servico", "espaco-disco", "versao-compose"}
+OPERACOES = {"estado-servico", "espaco-disco", "versao-compose", "appmax-pix"}
 OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
-FORMATO = ('{"estado":{{json .State.Status}},'
-           '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
-           '"reinicios":{{.RestartCount}},"imagem":{{json .Image}}}')
+ESTADOS_TENTATIVA = {
+    "sending",
+    "reconciliation_required",
+    "pending",
+    "approved",
+    "rejected",
+    "failed",
+}
+ESTADOS_OPERACAO = {"sending", "reconciliation_required", "completed", "failed"}
+MOTIVOS_APPMAX_PIX = {
+    "campo_expiration_date",
+    "campo_document_number",
+    "campo_customer_id",
+    "campo_order_id",
+    "campo_payment_data",
+    "sem_json",
+    "sem_campo_identificavel",
+    "indisponivel",
+}
+SITE_MESHCRAFT = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
+FORMATO = (
+    '{"estado":{{json .State.Status}},'
+    '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
+    '"reinicios":{{.RestartCount}},"imagem":{{json .Image}}}'
+)
 ACOES = {
     "entrada": "Escolha uma operação e um serviço do catálogo na main.",
     "instrumento": "Confira Docker e disponibilidade da VPS pela esteira; não cole comandos no servidor.",
@@ -28,19 +51,33 @@ class Falha(Exception):
     pass
 
 
-def validar(operacao, servico, permitidos):
+def validar(operacao, servico, permitidos, referencia=""):
     if operacao not in OPERACOES or servico not in permitidos:
         raise Falha("entrada")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", servico):
         raise Falha("entrada")
     if (operacao in OPERACOES_DA_PLATAFORMA) != (servico == "plataforma"):
         raise Falha("entrada")
+    if operacao == "appmax-pix" and servico != "pagamentos":
+        raise Falha("entrada")
+    if operacao == "appmax-pix":
+        if not re.fullmatch(r"[0-9a-f]{64}", referencia):
+            raise Falha("entrada")
+    elif referencia:
+        raise Falha("entrada")
 
 
 def comando(argumentos):
     try:
-        resultado = subprocess.run(argumentos, cwd="/opt/plataforma", capture_output=True,
-                                   text=True, encoding="utf-8", timeout=30, check=False)
+        resultado = subprocess.run(
+            argumentos,
+            cwd="/opt/plataforma",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=30,
+            check=False,
+        )
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
         raise Falha("instrumento") from None
     if resultado.returncode:
@@ -56,9 +93,14 @@ def conferir_medicao(operacao, dados):
             raise Falha("formato")
         if dados["estado"] not in ESTADOS or dados["saude"] not in SAUDES:
             raise Falha("formato")
-        if type(dados["reinicios"]) is not int or not 0 <= dados["reinicios"] <= 1000000000:
+        if (
+            type(dados["reinicios"]) is not int
+            or not 0 <= dados["reinicios"] <= 1000000000
+        ):
             raise Falha("formato")
-        if not isinstance(dados["imagem"], str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", dados["imagem"]):
+        if not isinstance(dados["imagem"], str) or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", dados["imagem"]
+        ):
             raise Falha("formato")
     elif operacao == "espaco-disco":
         if set(dados) != {"total_bytes", "livres_bytes"}:
@@ -66,6 +108,34 @@ def conferir_medicao(operacao, dados):
         if any(type(v) is not int or v < 0 for v in dados.values()):
             raise Falha("formato")
         if not 0 < dados["total_bytes"] or dados["livres_bytes"] > dados["total_bytes"]:
+            raise Falha("formato")
+    elif operacao == "appmax-pix":
+        if set(dados) != {"tentativa", "intent", "motivo", "qr_presente", "operacoes"}:
+            raise Falha("formato")
+        if dados["tentativa"] not in ESTADOS_TENTATIVA:
+            raise Falha("formato")
+        if dados["intent"] not in {
+            "created",
+            "pending",
+            "approved",
+            "rejected",
+            "expired",
+        }:
+            raise Falha("formato")
+        if type(dados["qr_presente"]) is not bool:
+            raise Falha("formato")
+        if dados["motivo"] not in MOTIVOS_APPMAX_PIX:
+            raise Falha("formato")
+        if not isinstance(dados["operacoes"], dict) or set(dados["operacoes"]) != {
+            "customer",
+            "order",
+            "payment",
+        }:
+            raise Falha("formato")
+        if any(
+            valor not in ESTADOS_OPERACAO | {"not_started"}
+            for valor in dados["operacoes"].values()
+        ):
             raise Falha("formato")
     elif operacao == "versao-compose":
         if set(dados) != {"versao"} or not isinstance(dados["versao"], str):
@@ -77,40 +147,97 @@ def conferir_medicao(operacao, dados):
     return dados
 
 
-def medir(operacao, servico):
+def medir(operacao, servico, referencia=""):
     if operacao == "espaco-disco":
         try:
             disco = shutil.disk_usage("/opt/plataforma")
         except OSError:
             raise Falha("instrumento") from None
-        return conferir_medicao(operacao, {"total_bytes": disco.total, "livres_bytes": disco.free})
+        return conferir_medicao(
+            operacao, {"total_bytes": disco.total, "livres_bytes": disco.free}
+        )
     if operacao == "versao-compose":
         versao = comando(["docker", "compose", "version", "--short"]).strip()
         return conferir_medicao(operacao, {"versao": versao})
-    identificador = comando(["docker", "ps", "--all", "--quiet", "--no-trunc",
-                            "--filter", "label=com.docker.compose.project=plataforma",
-                            "--filter", "label=com.docker.compose.service=" + servico]).strip()
+    identificador = comando(
+        [
+            "docker",
+            "ps",
+            "--all",
+            "--quiet",
+            "--no-trunc",
+            "--filter",
+            "label=com.docker.compose.project=plataforma",
+            "--filter",
+            "label=com.docker.compose.service=" + servico,
+        ]
+    ).strip()
     if not identificador:
         raise Falha("ausente")
     if not re.fullmatch(r"[0-9a-f]{12,64}", identificador):
         raise Falha("formato")
+    if operacao == "appmax-pix":
+        codigo = (
+            "import hashlib,json; from datetime import timedelta; from django.utils import timezone; "
+            "from pagamentos.core.models import PaymentAttempt; "
+            f"ts=list(PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix',created_at__gte=timezone.now()-timedelta(minutes=15)).select_related('intent')); "
+            f"ts=[x for x in ts if hashlib.sha256(str(x.intent_id).encode()).hexdigest()=='{referencia}']; assert len(ts)==1; t=ts[0]; "
+            "codigos=('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel'); "
+            "bruto=t.reason or ''; motivo=next((c for c in codigos if bruto.endswith('diagnostico_'+c)),'indisponivel'); "
+            "o={x:'not_started' for x in ('customer','order','payment')}; o.update({x.operation_type:x.state for x in t.operacoes.all()}); "
+            "print(json.dumps({'tentativa':t.state,'intent':t.intent.status,'motivo':motivo,'qr_presente':bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64),'operacoes':o},sort_keys=True))"
+        )
+        try:
+            dados = json.loads(
+                comando(
+                    [
+                        "docker",
+                        "exec",
+                        identificador,
+                        "python",
+                        "manage.py",
+                        "shell",
+                        "-c",
+                        codigo,
+                    ]
+                )
+            )
+        except (ValueError, TypeError):
+            raise Falha("formato") from None
+        return conferir_medicao(operacao, dados)
     try:
-        dados = json.loads(comando(["docker", "inspect", "--format", FORMATO, identificador]))
+        dados = json.loads(
+            comando(["docker", "inspect", "--format", FORMATO, identificador])
+        )
     except (ValueError, TypeError):
         raise Falha("formato") from None
     return conferir_medicao(operacao, dados)
 
 
-def executar(operacao, servico, permitidos):
+def executar(operacao, servico, permitidos, referencia=""):
     try:
-        validar(operacao, servico, permitidos)
-        dados = medir(operacao, servico)
+        validar(operacao, servico, permitidos, referencia)
+        dados = medir(operacao, servico, referencia)
     except (Falha, TypeError, ValueError) as erro:
         codigo = str(erro) if isinstance(erro, Falha) else "formato"
-        print(json.dumps({"resultado": "ERROR", "erro": codigo, "acao": ACOES[codigo]}, ensure_ascii=True))
+        print(
+            json.dumps(
+                {"resultado": "ERROR", "erro": codigo, "acao": ACOES[codigo]},
+                ensure_ascii=True,
+            )
+        )
         return 2
-    print(json.dumps({"resultado": "PASS", "operacao": operacao, "servico": servico,
-                      "medicao": dados}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "resultado": "PASS",
+                "operacao": operacao,
+                "servico": servico,
+                "medicao": dados,
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -118,14 +245,30 @@ def preparar():
     import yaml
 
     raiz = Path(__file__).resolve().parent.parent
-    compose = yaml.safe_load((raiz / "infra/docker-compose.yml").read_text(encoding="utf-8"))
+    compose = yaml.safe_load(
+        (raiz / "infra/docker-compose.yml").read_text(encoding="utf-8")
+    )
     permitidos = sorted(set(compose["services"]) | {"plataforma"})
     operacao, servico = os.environ.get("OPERACAO", ""), os.environ.get("SERVICO", "")
-    validar(operacao, servico, permitidos)
-    fonte = Path(__file__).read_text(encoding="utf-8").split('\ndef preparar():')[0]
-    chamada = f"raise SystemExit(executar({operacao!r}, {servico!r}, {permitidos!r}))\n"
+    evento = json.loads(
+        Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8")
+    )
+    referencia = evento.get("inputs", {}).get("referencia", "")
+    validar(operacao, servico, permitidos, referencia)
+    fonte = Path(__file__).read_text(encoding="utf-8").split("\ndef preparar():")[0]
+    chamada = (
+        f"raise SystemExit(executar({operacao!r}, {servico!r}, "
+        f"{permitidos!r}, {referencia!r}))\n"
+    )
     destino = Path(os.environ["RUNNER_TEMP"]) / "operacao-vps.sh"
-    destino.write_text("set -eu\npython3 - <<'PY_OPERACAO_VPS'\n" + fonte + chamada + "PY_OPERACAO_VPS\n", encoding="utf-8", newline="\n")
+    destino.write_text(
+        "set -eu\npython3 - <<'PY_OPERACAO_VPS'\n"
+        + fonte
+        + chamada
+        + "PY_OPERACAO_VPS\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as saida:
         saida.write(f"script={destino}\n")
 
@@ -133,14 +276,22 @@ def preparar():
 def conferir():
     try:
         saida = os.environ.get("SAIDA", "").strip()
-        rodape = "\n" + "=" * 47 + "\n✅ Successfully executed commands to all hosts.\n" + "=" * 47
+        rodape = (
+            "\n"
+            + "=" * 47
+            + "\n✅ Successfully executed commands to all hosts.\n"
+            + "=" * 47
+        )
         if saida.endswith(rodape):
-            saida = saida[:-len(rodape)]
+            saida = saida[: -len(rodape)]
         dados = json.loads(saida)
         if set(dados) != {"resultado", "operacao", "servico", "medicao"}:
             raise Falha("formato")
-        if (dados["resultado"] != "PASS" or dados["operacao"] != os.environ["OPERACAO"]
-                or dados["servico"] != os.environ["SERVICO"]):
+        if (
+            dados["resultado"] != "PASS"
+            or dados["operacao"] != os.environ["OPERACAO"]
+            or dados["servico"] != os.environ["SERVICO"]
+        ):
             raise Falha("formato")
         conferir_medicao(dados["operacao"], dados["medicao"])
     except (ValueError, TypeError, KeyError):
@@ -162,5 +313,7 @@ if __name__ == "__main__":
         else:
             raise Falha("entrada")
     except (Falha, OSError, ValueError, TypeError, KeyError):
-        print("ERROR: operação ou evidência inválida. Confira o catálogo e o run na main; corrija por PR.")
+        print(
+            "ERROR: operação ou evidência inválida. Confira o catálogo e o run na main; corrija por PR."
+        )
         sys.exit(2)

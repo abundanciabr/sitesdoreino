@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-013-fix-appmax-preservar-causa-sanitizada-do-pix-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "fix(appmax): preservar causa sanitizada do Pix sandbox",
+  detalhe: "Preserva a causa sanitizada do HTTP 400 e permite ao agente ler apenas estados da tentativa Pix pela esteira, sem terminal, segredos, dados pessoais ou QR.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2076. Validação local: árvore 4b05d870c6f4ff23d8dd88faf41a9cf341bf52dd; commit 43c4da5e649e67d63abe2a6e9206d09c65ccfe33; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-711",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

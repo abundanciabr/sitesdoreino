@@ -36,9 +36,12 @@ class FalhaNoProvedor(Exception):
     sobreviveu.
     """
 
-    def __init__(self, message: str, *, ambiguo: bool = False) -> None:
+    def __init__(
+        self, message: str, *, ambiguo: bool = False, diagnostico: str = ""
+    ) -> None:
         super().__init__(message)
         self.ambiguo = ambiguo
+        self.diagnostico = diagnostico
 
 
 @dataclass(frozen=True)
@@ -106,7 +109,9 @@ class AppmaxGateway:
         try:
             return funcao(*args)
         except AppmaxError as exc:
-            raise FalhaNoProvedor(str(exc), ambiguo=exc.ambiguo) from None
+            raise FalhaNoProvedor(
+                str(exc), ambiguo=exc.ambiguo, diagnostico=exc.diagnostico
+            ) from None
 
 
 def nova_sessao_appmax() -> AppmaxGateway:
