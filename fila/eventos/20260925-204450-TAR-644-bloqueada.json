@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-204450-TAR-644-bloqueada",
+  "tarefa": "TAR-644",
+  "evento": "bloqueada",
+  "quando": "2026-09-25T20:44:50.664043+00:00",
+  "quem": "agent/ci/registrar-estorno-sandbox",
+  "detalhe": "Run 36186686315: Appmax aceitou no sandbox uma solicitação parcial de 495 centavos. Consultas autenticadas 36186779897 e 36187037843: pedido ainda integrado, refunded_at falso e nenhum valor devolvido. Falta resposta oficial autenticada com valor efetivo e identidade; agente técnico reconsulta após processamento e busca contrato de endpoint Appmax. Até essa prova, não emitir pagamento.estornado.v2 nem liberar o canário real.",
+  "espera": "fila"
+}

@@ -1,0 +1,19 @@
+{
+  "arquivo": "723-registrar-medicao-do-estorno-sandbox-appmax",
+  "id": "TAR-723",
+  "titulo": "Registrar medição do estorno sandbox Appmax",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Eventos de descoberta e checkpoint da TAR-644 citam os runs 36186686315, 36186779897 e 36187037843, distinguem solicitação aceita de valor devolvido e mantêm o bloqueio; fila valida e PR integra.",
+  "despacho": "Registrar na fila a evidência autenticada do ensaio parcial Appmax: POST sandbox 201 aceito para 495 centavos, duas consultas GET sem refunded_at nem campo de valor. Manter TAR-644 bloqueada. Próxima ação: consultar após processamento e obter da Appmax endpoint oficial autenticado que devolva montante e identidade, sem inferir valor solicitado ou usar webhook sem autenticação.",
+  "origem": "Retomada da TAR-644 após PR #2087 e runs sandbox de 25/09/2026.",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}
