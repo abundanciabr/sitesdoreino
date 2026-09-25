@@ -31,7 +31,6 @@ import hashlib
 import logging
 import re
 
-from django.core import signing
 from django.conf import settings
 from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
@@ -169,7 +168,6 @@ PREFIXO_PUBLICO_DA_MIDIA = "/midia/"
 #: pelo mesmo motivo que a `pages` escreveu: uma rota futura chamada
 #: `/internosecreto` nao herda nada daqui.
 PREFIXO_DA_PORTA_DE_MAQUINA = "/interno"
-PREFIXO_ACESSO_LOCAL = "/acesso-local/"
 
 
 def _sob_a_porta_de_maquina(caminho: str) -> bool:
@@ -263,9 +261,6 @@ class PortaAdministrativa:
             # porque quem consome e outra celula, nunca um navegador.
             return self.get_response(request)
 
-        if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
-            return self._com_seguranca(self.get_response(request))
-
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
             (
                 PREFIXO_PUBLICO_DOS_DOCUMENTOS,
@@ -273,24 +268,14 @@ class PortaAdministrativa:
                 PREFIXO_PUBLICO_DA_MIDIA,
             )
         ):
-            # `/midia/` é público, mas o editor local ainda precisa ver o
-            # arquivo de um documento que ainda não está no ar. O crachá local
-            # não chama a identidade: um aluno com cookie de sessão não pode
-            # derrubar a entrega da imagem se a identidade cair.
+            # `/midia/` é público para o arquivo no ar. O editor do site vê o
+            # arquivo ainda privado pela mesma sessão que abre o admin. Se a
+            # identidade não responder, o arquivo público continua saindo.
             if request.path_info.startswith(PREFIXO_PUBLICO_DA_MIDIA):
-                admin_local = self._admin_local_da_requisicao(request)
-                if admin_local:
-                    request.admin = admin_local
+                admin = self._admin_da_sessao_se_houver(request)
+                if admin:
+                    request.admin = admin
             return self._com_seguranca(self.get_response(request))
-
-        tem_cookie_local = settings.ADMIN_LOCAL_COOKIE_NAME in request.COOKIES
-        admin_local = self._admin_local_da_requisicao(request)
-        if admin_local:
-            request.admin = admin_local
-            _anota(medidor.registrar_resposta, "entrou")
-            return self._com_seguranca(self.get_response(request))
-        if tem_cookie_local:
-            return self._para_o_login(request)
 
         cookie = request.META.get("HTTP_COOKIE", "")
         if not cookie:
@@ -333,25 +318,22 @@ class PortaAdministrativa:
 
     # ---------------------------------------------------------------- respostas
 
-    @staticmethod
-    def _admin_local_da_requisicao(request):
-        bruto = request.COOKIES.get(settings.ADMIN_LOCAL_COOKIE_NAME)
-        if not bruto:
+    def _admin_da_sessao_se_houver(self, request):
+        cookie = request.META.get("HTTP_COOKIE", "")
+        if not cookie:
             return None
         try:
-            admin = signing.TimestampSigner().unsign_object(
-                bruto, max_age=settings.ADMIN_LOCAL_COOKIE_MAX_AGE
-            )
-        except signing.BadSignature:
+            sessao = self.identidade.sessao_completa(cookie)
+        except IdentidadeIndisponivel:
             return None
-        email = (
-            admin.get("email", "").strip().lower() if isinstance(admin, dict) else ""
-        )
+        if not sessao.get("autenticado"):
+            return None
+        email = (sessao.get("email") or "").strip().lower()
         if not email or email not in _emails_autorizados():
             return None
         return {
-            "id": admin.get("id") or settings.ADMIN_LOCAL_ID,
-            "nome": admin.get("nome") or settings.ADMIN_LOCAL_NOME,
+            "id": sessao.get("id"),
+            "nome": sessao.get("nome_exibido") or email,
             "email": email,
         }
 

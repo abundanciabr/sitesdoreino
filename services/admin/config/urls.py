@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.urls import path, re_path
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
@@ -139,7 +138,6 @@ from apps.core.sumario import (
     sumario_prever,
 )
 from apps.core.views import (
-    acesso_local,
     escola,
     escola_admin_promover,
     escola_admin_remover,
@@ -1063,8 +1061,3 @@ urlpatterns = [
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
 ]
-
-if settings.ADMIN_LINK_TOKEN:
-    urlpatterns.append(
-        path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
-    )

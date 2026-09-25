@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260922-203733-TAR-631-explicada",
+  "tarefa": "TAR-631",
+  "evento": "explicada",
+  "quando": "2026-09-22T20:37:33+00:00",
+  "quem": "Pedido do mantenedor em 22/09/2026",
+  "o_que_e": "A administração já abre no site, com a entrada de sempre. Ainda existe um convite que cria um acesso só nesta máquina, sem passar por essa entrada.",
+  "o_que_muda": "Esse convite deixa de existir. Quem entra usa a mesma sessão do site. A imagem de um documento ainda não publicado continua visível para quem já entrou, e a imagem publicada continua saindo mesmo se a identidade não responder.",
+  "exemplo": "Abrir o endereço antigo do convite, já estando dentro, encontra uma página que não existe. O cookie antigo não abre o plano.",
+  "importancia": 80
+}

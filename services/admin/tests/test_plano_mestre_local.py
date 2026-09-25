@@ -1,4 +1,4 @@
-"""O plano mestre local da administração."""
+"""O plano mestre da administração, atrás da sessão do site."""
 
 import json
 import os
@@ -8,11 +8,10 @@ import httpx
 import pytest
 import respx
 from django.http import Http404
-from django.test import Client, RequestFactory, override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from apps.core import planos_para_ia
-from apps.core.views import acesso_local
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -27,7 +26,6 @@ def ambiente(settings, monkeypatch, tmp_path):
     monkeypatch.setenv("ADMIN_PLANOS_DIR", str(tmp_path))
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
-    settings.ADMIN_LINK_TOKEN = "convite-local"
 
 
 def _dentro() -> Client:
@@ -52,51 +50,20 @@ def _md(pasta: Path, nome: str, texto: str) -> None:
     (pasta / nome).write_text(texto, encoding="utf-8")
 
 
-@override_settings(
-    ADMIN_LINK_TOKEN="convite-local",
-    ADMIN_LOCAL_EMAIL=DONO,
-    ADMIN_LOCAL_ID="id-local",
-    ADMIN_LOCAL_NOME="Mantenedor local",
-)
-def test_convite_local_assina_cookie_e_abre_a_tela_sem_google():
+@respx.mock
+@override_settings(ADMIN_EMAILS=DONO, URL_DE_ENTRADA="/entrar/google")
+def test_o_convite_local_nao_abre_a_administracao():
+    dentro = _dentro()
+    assert dentro.get("/acesso-local/convite-local/").status_code == 404
+    respx.get(SESSAO).mock(
+        return_value=httpx.Response(200, json={"autenticado": False})
+    )
     cliente = Client()
-    entrada = acesso_local(
-        RequestFactory().get("/acesso-local/convite-local/?next=/plano-mestre/"),
-        "convite-local",
-    )
-    assert entrada.status_code == 302
-    assert entrada["Location"] == "/plano-mestre/"
-    assert "admin_acesso_local" in entrada.cookies
-
-    cliente.cookies.update(entrada.cookies)
-    pagina = cliente.get("/plano-mestre/")
-    assert pagina.status_code == 200
-    assert "/entrar/google" not in pagina.content.decode()
-
-
-@override_settings(ADMIN_LINK_TOKEN="convite-local")
-def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
-    resposta = acesso_local(
-        RequestFactory().get("/acesso-local/outro-token/"), "outro-token"
-    )
-    assert resposta.status_code == 404
-    assert "Gere outro pelo lançador local" in resposta.content.decode()
-
-
-@override_settings(
-    ADMIN_LINK_TOKEN="convite-local",
-    ADMIN_LOCAL_EMAIL=DONO,
-    ADMIN_EMAILS="outro@exemplo.com",
-)
-def test_cookie_local_fora_da_lista_oficial_nao_autoriza():
-    cliente = Client()
-    entrada = acesso_local(
-        RequestFactory().get("/acesso-local/convite-local/"), "convite-local"
-    )
-    cliente.cookies.update(entrada.cookies)
+    cliente.cookies["admin_acesso_local"] = "assinatura-que-nao-vale"
     resposta = cliente.get("/plano-mestre/")
     assert resposta.status_code == 302
     assert "/entrar/google" in resposta["Location"]
+    assert "admin_acesso_local" not in resposta.cookies
 
 
 @respx.mock

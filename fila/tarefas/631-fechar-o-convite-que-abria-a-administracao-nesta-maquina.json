@@ -1,0 +1,19 @@
+{
+  "arquivo": "631-fechar-o-convite-que-abria-a-administracao-nesta-maquina",
+  "id": "TAR-631",
+  "titulo": "Fechar o convite que abria a administração nesta máquina",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes da porta, da mídia, do rádio e do lançador verdes, com a rota local ausente mesmo quando o token está no ambiente.",
+  "despacho": "Fechar o convite local da administração. A rota acesso-local, o cookie que ela assinava e as configurações desse convite saem. A entrada fica a sessão do site. Quem já entrou continua vendo arquivo de documento ainda privado. Arquivo publicado continua saindo se a identidade não responder. Não apagar o lançador neste PR.",
+  "origem": "Pedido do mantenedor em 22/09/2026",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
