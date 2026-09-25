@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260925-195354-TAR-721-submetida",
+  "tarefa": "TAR-721",
+  "evento": "submetida",
+  "quando": "2026-09-25T19:53:54.785932+00:00",
+  "quem": "agent/ci/appmax-estorno-prova-vps",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2086",
+  "revisao": "71ca31ce308f3f4905387f2f1c612d81dccc7818",
+  "arvore": "6bebba840c457c8069ceff9004fbe1d82478498c"
+}

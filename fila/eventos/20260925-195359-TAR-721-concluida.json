@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-195359-TAR-721-concluida",
+  "tarefa": "TAR-721",
+  "evento": "concluida",
+  "quando": "2026-09-25T19:53:59.286444+00:00",
+  "quem": "agent/ci/appmax-estorno-prova-vps",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2086",
+  "verificado_em": "2026-09-25"
+}
