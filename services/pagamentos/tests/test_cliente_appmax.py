@@ -683,6 +683,7 @@ def test_pix_appmax_preserva_qr_codigo_vencimento_e_pedido(
 
     assert pagamento.call_count == 1
     assert json.loads(pagamento.calls[0].request.read()) == body
+    assert pagamento.calls[0].request.extensions["timeout"]["read"] == 30.0
     assert resultado == {
         "qr_code_base64": "aW1hZ2Vt",
         "qr_code": "000201",

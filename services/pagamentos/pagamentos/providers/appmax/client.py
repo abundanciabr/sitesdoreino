@@ -46,6 +46,7 @@ class AppmaxClient:
             path="",
         )
         self._timeout = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=3.0)
+        self._timeout_pix = httpx.Timeout(connect=3.0, read=30.0, write=5.0, pool=3.0)
         self._token: str | None = None
         self._token_expira_em = 0.0
         self._token_lock = threading.Lock()
@@ -474,12 +475,17 @@ class AppmaxClient:
                 f"{self._api_url}{path}",
                 json=body,
                 headers={"Authorization": f"Bearer {token}"},
-                timeout=self._timeout,
+                timeout=(
+                    self._timeout_pix if path == "/v1/payments/pix" else self._timeout
+                ),
                 follow_redirects=False,
             )
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as exc:
+            fase = (
+                "leitura" if isinstance(exc, httpx.ReadTimeout) else "conexão ou envio"
+            )
             falha_rede = (
-                f"timeout após enviar {operacao} Appmax; reconciliação necessária"
+                f"timeout de {fase} em {operacao} Appmax; reconciliação necessária"
             )
         except httpx.HTTPError:
             falha_rede = f"falha de transporte após enviar {operacao} Appmax; reconciliação necessária"
