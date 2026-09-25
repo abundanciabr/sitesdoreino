@@ -121,7 +121,11 @@ def preparar():
 
 def conferir():
     try:
-        dados = json.loads(os.environ.get("SAIDA", ""))
+        saida = os.environ.get("SAIDA", "").strip()
+        rodape = "\n" + "=" * 47 + "\n✅ Successfully executed commands to all hosts.\n" + "=" * 47
+        if saida.endswith(rodape):
+            saida = saida[:-len(rodape)]
+        dados = json.loads(saida)
         if set(dados) != {"resultado", "operacao", "servico", "medicao"}:
             raise Falha("formato")
         if (dados["resultado"] != "PASS" or dados["operacao"] != os.environ["OPERACAO"]

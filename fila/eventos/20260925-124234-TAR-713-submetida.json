@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260925-124234-TAR-713-submetida",
+  "tarefa": "TAR-713",
+  "evento": "submetida",
+  "quando": "2026-09-25T12:42:34.108042+00:00",
+  "quem": "agent/ci/prova-operacoes-vps",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2069",
+  "revisao": "5bf2e6ec8986056df89bc52c950a13273e9dfbeb",
+  "arvore": "636cdeb9eae0c9641b67f4c40e914e1d3856bf0f"
+}

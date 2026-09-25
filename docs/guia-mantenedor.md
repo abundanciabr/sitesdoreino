@@ -46,7 +46,10 @@ integração. Nunca aceite shell, Python, SQL, caminhos ou URLs livres como inpu
 Recusa do catálogo exige estender o canal, não repassar um script ao mantenedor.
 
 O job usa `environment: vps`; `DEPLOY_SSH_KEY` fica somente nesse ambiente,
-restrito à main protegida. O workflow recusa outras refs e usa o SHA do disparo.
+com política explícita de branch `main` (`custom_branch_policies`), sem tags.
+Não use apenas `protected_branches`: a prova real permitiu iniciar um ramo
+não protegido quando o repositório usava rulesets. A main continua protegida
+pelo ruleset. O workflow também recusa outras refs e usa o SHA do disparo.
 A impressão digital pública da VPS fica fixada no workflow; divergência
 interrompe a conexão. Rotação exige conferir por canal confiável e atualizar
 por PR, nunca aceitar automaticamente a chave observada na rede.

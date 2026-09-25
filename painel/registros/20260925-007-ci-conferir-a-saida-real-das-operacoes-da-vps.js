@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-007-ci-conferir-a-saida-real-das-operacoes-da-vps",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: conferir a saída real das operações da VPS",
+  detalhe: "Confere o rodapé da ação SSH sem aceitar saída extra. Ambiente VPS agora permite somente a main; ramo externo foi barrado antes do runner.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2069. Validação local: árvore 636cdeb9eae0c9641b67f4c40e914e1d3856bf0f; commit 5bf2e6ec8986056df89bc52c950a13273e9dfbeb; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-713",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

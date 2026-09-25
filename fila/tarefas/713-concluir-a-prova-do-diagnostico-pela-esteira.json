@@ -1,0 +1,22 @@
+{
+  "arquivo": "713-concluir-a-prova-do-diagnostico-pela-esteira",
+  "id": "TAR-713",
+  "titulo": "Concluir a prova do diagnóstico pela esteira",
+  "toca": [
+    "ci",
+    "docs"
+  ],
+  "depende_de": [
+    "TAR-712"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run real com resumo validado e recusa externa de ramo antes do runner",
+  "despacho": "Corrigir apenas rodapé observado, testar protocolo e documentar política explícita de main aplicada após prova de lacuna do ambiente. Finalizar prova real do pedido original.",
+  "origem": "Prova real do canal VPS solicitada em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

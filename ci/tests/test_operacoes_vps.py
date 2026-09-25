@@ -145,3 +145,23 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     entradas = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
     assert set(entradas) == {"operacao", "servico"}
     assert set(entradas["operacao"]["options"]) == ops.OPERACOES
+
+
+@pytest.mark.parametrize("sufixo", [
+    "\n===============================================\n✅ Successfully executed commands to all hosts.\n===============================================\n",
+    "",
+])
+def test_rodape_real_da_acao_nao_substitui_a_evidencia(monkeypatch, tmp_path, sufixo):
+    dados = {"resultado": "PASS", "operacao": "estado-servico", "servico": "admin", "medicao": MEDICAO}
+    for nome, valor in {"OPERACAO": "estado-servico", "SERVICO": "admin", "GITHUB_STEP_SUMMARY": str(tmp_path / "summary")}.items():
+        monkeypatch.setenv(nome, valor)
+    monkeypatch.setenv("SAIDA", json.dumps(dados) + sufixo)
+    ops.conferir()
+    resumo = (tmp_path / "summary").read_text()
+    assert json.dumps(dados, sort_keys=True) in resumo
+    assert "Successfully" not in resumo
+    for invalida in [sufixo, json.dumps(dados) + "\n" + PRIVADO + sufixo,
+                     json.dumps(dados) + "\n" + json.dumps(dados) + sufixo]:
+        monkeypatch.setenv("SAIDA", invalida)
+        with pytest.raises(ops.Falha):
+            ops.conferir()
