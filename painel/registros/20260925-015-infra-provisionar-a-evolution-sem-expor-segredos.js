@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-015-infra-provisionar-a-evolution-sem-expor-segredos",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "infra: provisionar a Evolution sem expor segredos",
+  detalhe: "Banco isolado e credenciais consistentes entram antes do Compose, evitando um deploy que referencie env ausente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2075. Validação local: árvore 7f28e0efa8fadb3afd4210fd6218b6dbd1137cf1; commit 69bf9291f82c7cee3d2f7522f82704d375d81d16; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-716",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

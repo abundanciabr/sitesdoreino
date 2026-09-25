@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-145439-TAR-716-concluida",
+  "tarefa": "TAR-716",
+  "evento": "concluida",
+  "quando": "2026-09-25T14:54:39.777454+00:00",
+  "quem": "agent/infra/evolution-transporte",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2075",
+  "verificado_em": "2026-09-25"
+}
