@@ -1,0 +1,20 @@
+{
+  "arquivo": "714-fornecer-credenciais-por-documento-local",
+  "id": "TAR-714",
+  "titulo": "Fornecer credenciais por documento local",
+  "toca": [
+    "ci",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Documento local protegido, leitura fictícia sem vazamento, guarda de segredos preservada e instruções integradas com revisão independente.",
+  "despacho": "Adequar guia, CLAUDE e INV-P8 ao fornecimento por documento local fora do Git. Não configurar credenciais reais, não liberar SSH nem transporte genérico. Revisar com gpt-6-sol/high.",
+  "origem": "Pedido do mantenedor nesta sessão em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
