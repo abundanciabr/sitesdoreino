@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-133210-TAR-714-explicada",
+  "tarefa": "TAR-714",
+  "evento": "explicada",
+  "quando": "2026-09-25T13:32:10.450269+00:00",
+  "quem": "Pedido do mantenedor nesta sessão em 25/09/2026",
+  "o_que_e": "O mantenedor era solicitado a reenviar credenciais ou digitá-las na VPS.",
+  "o_que_muda": "Salvar o acesso em documento local passa a cumprir o fornecimento, e o robô usa somente no trabalho autorizado.",
+  "exemplo": "Uma senha salva no documento pode ser usada sem pedir que o mantenedor a cole no chat.",
+  "importancia": 80
+}

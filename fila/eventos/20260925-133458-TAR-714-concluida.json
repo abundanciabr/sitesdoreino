@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-133458-TAR-714-concluida",
+  "tarefa": "TAR-714",
+  "evento": "concluida",
+  "quando": "2026-09-25T13:34:58.254216+00:00",
+  "quem": "agent/ci/credenciais-locais-do-mantenedor",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2072",
+  "verificado_em": "2026-09-25"
+}
