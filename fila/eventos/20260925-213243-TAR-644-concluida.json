@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260925-213243-TAR-644-concluida",
-  "tarefa": "TAR-644",
-  "evento": "concluida",
-  "quando": "2026-09-25T21:32:43.350271+00:00",
-  "quem": "agent/ci/reconsulta-estorno-sandbox",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2092",
-  "verificado_em": "2026-09-25"
-}
