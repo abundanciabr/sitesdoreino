@@ -40,6 +40,14 @@ function dadosIsland() {
       return principal + bumps;
     },
 
+    async referenciaDiagnostico() {
+      const bytes = new TextEncoder().encode(this.session.id);
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
+    },
+
     async finalizar() {
       this.erro = "";
       if (this.appmaxPix && this.method === "pix") {
@@ -63,8 +71,12 @@ function dadosIsland() {
         // hardcoded perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
         window.location = `../pedido/${pedido.order_id}/${destino}/`;
       } catch (e) {
-        this.erro =
-          "Não foi possível concluir o pedido. Confira os dados e tente novamente.";
+        let referencia = "";
+        try {
+          referencia = await this.referenciaDiagnostico();
+        } catch (_) {}
+        this.erro = "Não foi possível concluir o pedido. Não reenvie esta compra.";
+        if (referencia) this.erro += ` Referência: ${referencia}`;
         this.enviando = false;
       }
     },
