@@ -8,18 +8,32 @@ import pytest
 import yaml
 
 RAIZ = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("operacoes_vps", RAIZ / "ci/operacoes_vps.py")
+SPEC = importlib.util.spec_from_file_location(
+    "operacoes_vps", RAIZ / "ci/operacoes_vps.py"
+)
 ops = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ops)
-MEDICAO = {"estado": "running", "saude": "healthy", "reinicios": 0, "imagem": "sha256:" + "a" * 64}
+MEDICAO = {
+    "estado": "running",
+    "saude": "healthy",
+    "reinicios": 0,
+    "imagem": "sha256:" + "a" * 64,
+}
 PRIVADO = "comprador@example.com token-super-secreto ::warning::nao-publicar"
 
 
-@pytest.mark.parametrize("operacao,servico", [
-    ("shell", "admin"), ("estado-servico", "admin;id"),
-    ("estado-servico", "../../env"), ("estado-servico", "--help"),
-    ("espaco-disco", "admin"), ("estado-servico", "plataforma"),
-])
+@pytest.mark.parametrize(
+    "operacao,servico",
+    [
+        ("shell", "admin"),
+        ("estado-servico", "admin;id"),
+        ("estado-servico", "../../env"),
+        ("estado-servico", "--help"),
+        ("espaco-disco", "admin"),
+        ("estado-servico", "plataforma"),
+        ("appmax-pix", "admin"),
+    ],
+)
 def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico):
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
     assert ops.executar(operacao, servico, {"admin", "plataforma"}) == 2
@@ -28,23 +42,48 @@ def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico
 
 def test_estado_so_emite_campos_permitidos(monkeypatch, capsys):
     chamadas = []
+
     def rodar(args, **kwargs):
         chamadas.append(args)
         assert kwargs["capture_output"] and kwargs["timeout"] == 30
         assert kwargs["encoding"] == "utf-8"
-        return subprocess.CompletedProcess(args, 0, "a" * 64 if len(chamadas) == 1 else json.dumps(MEDICAO), PRIVADO)
+        return subprocess.CompletedProcess(
+            args, 0, "a" * 64 if len(chamadas) == 1 else json.dumps(MEDICAO), PRIVADO
+        )
+
     monkeypatch.setattr(ops.subprocess, "run", rodar)
     assert ops.executar("estado-servico", "admin", {"admin"}) == 0
     saida = capsys.readouterr()
     assert json.loads(saida.out)["medicao"] == MEDICAO
     assert PRIVADO not in saida.out + saida.err
-    assert chamadas[0] == ["docker", "ps", "--all", "--quiet", "--no-trunc",
-                            "--filter", "label=com.docker.compose.project=plataforma",
-                            "--filter", "label=com.docker.compose.service=admin"]
+    assert chamadas[0] == [
+        "docker",
+        "ps",
+        "--all",
+        "--quiet",
+        "--no-trunc",
+        "--filter",
+        "label=com.docker.compose.project=plataforma",
+        "--filter",
+        "label=com.docker.compose.service=admin",
+    ]
     assert chamadas[1] == ["docker", "inspect", "--format", ops.FORMATO, "a" * 64]
 
 
-@pytest.mark.parametrize("defeito", ["ausente", "stderr", "timeout", "inexistente", "json", "campo", "estado", "tipo", "duplicado"])
+@pytest.mark.parametrize(
+    "defeito",
+    [
+        "ausente",
+        "stderr",
+        "timeout",
+        "inexistente",
+        "json",
+        "campo",
+        "estado",
+        "tipo",
+        "duplicado",
+    ],
+)
 def test_instrumento_quebrado_nunca_vira_verde_nem_vaza(monkeypatch, capsys, defeito):
     def rodar(args, **kwargs):
         if defeito == "timeout":
@@ -67,6 +106,7 @@ def test_instrumento_quebrado_nunca_vira_verde_nem_vaza(monkeypatch, capsys, def
                 dados["estado"] = [PRIVADO]
             valor = PRIVADO if defeito == "json" else json.dumps(dados)
         return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
     monkeypatch.setattr(ops.subprocess, "run", rodar)
     assert ops.executar("estado-servico", "admin", {"admin"}) == 2
     saida = capsys.readouterr()
@@ -78,11 +118,61 @@ def test_disco_mede_so_o_caminho_fixo(monkeypatch, capsys):
     def disco(path):
         assert path == "/opt/plataforma"
         return shutil_usage(100, 60, 40)
+
     from collections import namedtuple
+
     shutil_usage = namedtuple("uso", "total used free")
     monkeypatch.setattr(ops.shutil, "disk_usage", disco)
     assert ops.executar("espaco-disco", "plataforma", {"plataforma"}) == 0
-    assert json.loads(capsys.readouterr().out)["medicao"] == {"total_bytes": 100, "livres_bytes": 40}
+    assert json.loads(capsys.readouterr().out)["medicao"] == {
+        "total_bytes": 100,
+        "livres_bytes": 40,
+    }
+
+
+def test_appmax_pix_emite_so_estados_e_presenca_sem_ids_qr_ou_dados(
+    monkeypatch, capsys
+):
+    medicao = {
+        "tentativa": "reconciliation_required",
+        "intent": "pending",
+        "motivo": "appmax_pagamento_pix_requisicao_recusada_http_400_diagnostico_campo_expiration_date",
+        "qr_presente": False,
+        "operacoes": {
+            "customer": "completed",
+            "order": "completed",
+            "payment": "reconciliation_required",
+        },
+    }
+    chamadas = []
+
+    def rodar(args, **kwargs):
+        chamadas.append(args)
+        saida = "a" * 64 if len(chamadas) == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, saida, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == medicao
+    assert PRIVADO not in saida.out + saida.err
+    assert chamadas[1][0:4] == ["docker", "exec", "a" * 64, "python"]
+
+
+def test_appmax_pix_recusa_saida_livre_do_container(monkeypatch, capsys):
+    chamadas = 0
+
+    def rodar(args, **kwargs):
+        nonlocal chamadas
+        chamadas += 1
+        return subprocess.CompletedProcess(
+            args, 0, "a" * 64 if chamadas == 1 else PRIVADO, PRIVADO
+        )
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 2
+    saida = capsys.readouterr()
+    assert PRIVADO not in saida.out + saida.err
 
 
 def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
@@ -102,7 +192,9 @@ def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
         ops.preparar()
 
 
-@pytest.mark.parametrize("saida", ["", PRIVADO, '{}', json.dumps({"resultado": "PASS"})])
+@pytest.mark.parametrize(
+    "saida", ["", PRIVADO, "{}", json.dumps({"resultado": "PASS"})]
+)
 def test_sem_evidencia_real_nao_gera_resumo(monkeypatch, tmp_path, saida):
     monkeypatch.setenv("SAIDA", saida)
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary"))
@@ -112,8 +204,18 @@ def test_sem_evidencia_real_nao_gera_resumo(monkeypatch, tmp_path, saida):
 
 
 def test_resumo_confere_operacao_e_alvo(monkeypatch, tmp_path):
-    dados = {"resultado": "PASS", "operacao": "estado-servico", "servico": "admin", "medicao": MEDICAO}
-    for nome, valor in {"SAIDA": json.dumps(dados), "OPERACAO": "estado-servico", "SERVICO": "admin", "GITHUB_STEP_SUMMARY": str(tmp_path / "summary")}.items():
+    dados = {
+        "resultado": "PASS",
+        "operacao": "estado-servico",
+        "servico": "admin",
+        "medicao": MEDICAO,
+    }
+    for nome, valor in {
+        "SAIDA": json.dumps(dados),
+        "OPERACAO": "estado-servico",
+        "SERVICO": "admin",
+        "GITHUB_STEP_SUMMARY": str(tmp_path / "summary"),
+    }.items():
         monkeypatch.setenv(nome, valor)
     ops.conferir()
     assert json.dumps(dados, sort_keys=True) in (tmp_path / "summary").read_text()
@@ -123,7 +225,9 @@ def test_resumo_confere_operacao_e_alvo(monkeypatch, tmp_path):
 
 
 def test_workflow_fecha_ref_credencial_e_entrada():
-    doc = yaml.safe_load((RAIZ / ".github/workflows/operacoes-vps.yml").read_text(encoding="utf-8"))
+    doc = yaml.safe_load(
+        (RAIZ / ".github/workflows/operacoes-vps.yml").read_text(encoding="utf-8")
+    )
     assert doc["permissions"] == {"contents": "read"}
     assert doc["concurrency"]["group"] == "operacoes-vps"
     job = doc["jobs"]["medir"]
@@ -131,13 +235,20 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     passos = job["steps"]
     assert passos[0]["if"] == "github.ref != 'refs/heads/main'"
     assert "exit 1" in passos[0]["run"]
-    assert passos[1]["with"] == {"ref": "${{ github.sha }}", "persist-credentials": False}
+    assert passos[1]["with"] == {
+        "ref": "${{ github.sha }}",
+        "persist-credentials": False,
+    }
     preparar = next(i for i, p in enumerate(passos) if p.get("id") == "conferir")
     remoto = next(i for i, p in enumerate(passos) if p.get("id") == "remoto")
     assert preparar < remoto
-    assert re.fullmatch(r"SHA256:[A-Za-z0-9+/]{43}", passos[remoto]["with"]["fingerprint"])
+    assert re.fullmatch(
+        r"SHA256:[A-Za-z0-9+/]{43}", passos[remoto]["with"]["fingerprint"]
+    )
     assert passos[remoto]["with"]["capture_stdout"] is True
-    assert passos[remoto]["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
+    assert (
+        passos[remoto]["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
+    )
     assert passos[-1]["run"] == "python ci/operacoes_vps.py conferir"
     for passo in passos:
         assert "inputs." not in passo.get("run", "")
@@ -147,21 +258,36 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     assert set(entradas["operacao"]["options"]) == ops.OPERACOES
 
 
-@pytest.mark.parametrize("sufixo", [
-    "\n===============================================\n✅ Successfully executed commands to all hosts.\n===============================================\n",
-    "",
-])
+@pytest.mark.parametrize(
+    "sufixo",
+    [
+        "\n===============================================\n✅ Successfully executed commands to all hosts.\n===============================================\n",
+        "",
+    ],
+)
 def test_rodape_real_da_acao_nao_substitui_a_evidencia(monkeypatch, tmp_path, sufixo):
-    dados = {"resultado": "PASS", "operacao": "estado-servico", "servico": "admin", "medicao": MEDICAO}
-    for nome, valor in {"OPERACAO": "estado-servico", "SERVICO": "admin", "GITHUB_STEP_SUMMARY": str(tmp_path / "summary")}.items():
+    dados = {
+        "resultado": "PASS",
+        "operacao": "estado-servico",
+        "servico": "admin",
+        "medicao": MEDICAO,
+    }
+    for nome, valor in {
+        "OPERACAO": "estado-servico",
+        "SERVICO": "admin",
+        "GITHUB_STEP_SUMMARY": str(tmp_path / "summary"),
+    }.items():
         monkeypatch.setenv(nome, valor)
     monkeypatch.setenv("SAIDA", json.dumps(dados) + sufixo)
     ops.conferir()
     resumo = (tmp_path / "summary").read_text()
     assert json.dumps(dados, sort_keys=True) in resumo
     assert "Successfully" not in resumo
-    for invalida in [sufixo, json.dumps(dados) + "\n" + PRIVADO + sufixo,
-                     json.dumps(dados) + "\n" + json.dumps(dados) + sufixo]:
+    for invalida in [
+        sufixo,
+        json.dumps(dados) + "\n" + PRIVADO + sufixo,
+        json.dumps(dados) + "\n" + json.dumps(dados) + sufixo,
+    ]:
         monkeypatch.setenv("SAIDA", invalida)
         with pytest.raises(ops.Falha):
             ops.conferir()

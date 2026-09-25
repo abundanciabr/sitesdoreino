@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260925-143734-TAR-711-contrato_execucao",
+  "tarefa": "TAR-711",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-25T14:37:34.703835+00:00",
+  "quem": "agent/pagamentos/appmax-pix-resposta-sandbox",
+  "contrato": {
+    "plano": "Pix Appmax sandbox com diagnóstico autônomo",
+    "versao": 1,
+    "objetivo": "Exibir QR e copia-e-cola Pix sandbox e retirar o mantenedor do caminho de diagnóstico da VPS.",
+    "entregaveis": [
+      "Causa do HTTP 400 identificada e corrigida",
+      "Canal fechado e sanitizado para diagnóstico Appmax",
+      "QR e código copiável conferidos no checkout público"
+    ],
+    "escopo_incluido": [
+      "Cliente e tentativa Pix Appmax",
+      "Operação appmax-pix na esteira da VPS",
+      "Testes, PR, deploy e E2E sandbox"
+    ],
+    "nao_objetivos": [
+      "Mercado Pago",
+      "Produção Appmax",
+      "Endpoint público de diagnóstico",
+      "Reenvio de pedido incerto"
+    ],
+    "restricoes": [
+      "Sem segredos, dados pessoais ou QR nos logs",
+      "Lista fechada de operações",
+      "Somente sandbox Appmax"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido explícito do mantenedor em 25/09/2026"
+    ],
+    "etapas": [
+      "Instrumentar e publicar diagnóstico sanitizado",
+      "Medir uma compra sandbox nova",
+      "Corrigir a causa e provar QR no checkout"
+    ],
+    "criterios_entrada": [
+      "Appmax APP 1888 instalada no sandbox",
+      "OAuth MERCHANT válido",
+      "Pix habilitado somente no sandbox"
+    ],
+    "criterios_aceite": [
+      "HTTP 400 classificado sem resposta bruta",
+      "Agente aciona diagnóstico pela esteira sem terminal do mantenedor",
+      "Checkout exibe QR e código copiável"
+    ],
+    "evidencias_exigidas": [
+      "Testes locais e checks",
+      "Run de operação VPS",
+      "Deploy de pagamentos e checkout",
+      "Teste E2E público"
+    ],
+    "condicao_encerramento": "QR e copia-e-cola visíveis em compra Pix sandbox nova, com canal operacional integrado e testado.",
+    "limites_autonomia": "Criar somente pedidos sintéticos novos no sandbox; nunca reenviar operação ambígua nem ativar produção.",
+    "acoes_do_mantenedor": "Nenhuma, salvo bloqueio exclusivo de plataforma comprovado."
+  }
+}

@@ -706,6 +706,29 @@ def test_pix_appmax_sem_codigo_pagavel_exige_reconciliacao(settings: Any) -> Non
     assert capturada.value.ambiguo
 
 
+def test_pix_400_preserva_so_causa_permitida_sem_vazar_resposta(settings: Any) -> None:
+    segredo = "cliente@example.com token-super-secreto 19100000000"
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        pagamento = transport.post(_PIX_URL).mock(
+            return_value=httpx.Response(
+                400,
+                json={
+                    "message": f"The expiration_date field is invalid: {segredo}",
+                    "errors": {"payment_data.pix.expiration_date": [segredo]},
+                },
+            )
+        )
+        with pytest.raises(AppmaxError) as capturada:
+            AppmaxClient().criar_pagamento_pix({"order_id": 3531})
+
+    mensagem = str(capturada.value)
+    assert pagamento.call_count == 1
+    assert "diagnostico=campo_expiration_date" in mensagem
+    assert segredo not in mensagem
+    assert "example.com" not in mensagem
+
+
 _ESCRITAS = [
     (
         "cliente",
