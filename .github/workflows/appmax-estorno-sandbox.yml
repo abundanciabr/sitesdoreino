@@ -26,11 +26,16 @@ jobs:
         with:
           python-version: '3.12'
       - name: Preparar solicitação fixa deste SHA
-        id: preparar
+        id: conferir
         run: |
           set -euo pipefail
           python ci/appmax_estorno_sandbox.py preparar
-          bash -n "$RUNNER_TEMP/appmax-estorno-sandbox.sh"
+          SCRIPT="$RUNNER_TEMP/appmax-estorno-sandbox.sh"
+          if [ ! -f "$SCRIPT" ]; then
+            echo '::error::A preparação não gerou o script de estorno sandbox.'
+            exit 1
+          fi
+          bash -n "$SCRIPT"
       - name: Solicitar estorno parcial único no sandbox
         id: remoto
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -41,7 +46,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           capture_stdout: true
           command_timeout: 2m
-          script_path: ${{ steps.preparar.outputs.script }}
+          script_path: ${{ steps.conferir.outputs.script }}
       - name: Conferir saída e publicar resumo
         if: always() && steps.remoto.outcome != 'skipped'
         env:
