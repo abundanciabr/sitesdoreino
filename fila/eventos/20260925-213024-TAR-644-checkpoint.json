@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260925-213024-TAR-644-checkpoint",
+  "tarefa": "TAR-644",
+  "evento": "checkpoint",
+  "quando": "2026-09-25T21:30:24.144285+00:00",
+  "quem": "agent/ci/reconsulta-estorno-sandbox",
+  "plano": "Prova autenticada do estorno sandbox",
+  "ultimo_avanco": "Consulta de 25/09/2026 21:28 UTC encontrou o mesmo pedido integrado, refunded_at=false e valor_no_refund_centavos=null. Run 36191751353 concluido com sucesso; nenhum POST repetido.",
+  "proxima_acao": "Obter da Appmax a janela de processamento sandbox e endpoint autenticado com valor efetivamente devolvido e identidade. Testar a resposta antes de implementar o produtor. TAR-644 permanece bloqueada.",
+  "verificacoes": [
+    "gh run view 36191751353 --json status,conclusion: completed/success; log sanitizado com a mesma referencia 34e051deaffcc357c31623210ea84e07dcab7124891016ea46a43b86f41ee7f3. https://github.com/abundanciabr/sitesdoreino/actions/runs/36191751353"
+  ]
+}
