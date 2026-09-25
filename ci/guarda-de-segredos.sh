@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# INV-P8 MECANIZADO — segredo de produção não existe fora da VPS.
-# Credencial cara alcançável de ambiente de teste queima dinheiro real,
-# mais cedo ou mais tarde. Aqui o CI reprova antes do merge.
+# INV-P8 MECANIZADO — segredo de produção não entra no repositório.
+# A guarda recusa padrões de tokens de produção e chaves privadas no Git.
+# Não controla arquivos pessoais nem processos da mesma conta do Windows.
 # =============================================================================
 set -euo pipefail
 VIOLACAO=0

@@ -28,9 +28,9 @@
 # dos 30 hoje, e o valor que eles pedem é login de SMTP, e-mail de aprovador,
 # host do site ou id do Google: segredo e decisão, que a Lei 5 não deixa viajar
 # por pipeline. A regra é deliberadamente LARGA, e recusa até quem só menciona
-# `$@`: recusar demais devolve o script ao caminho manual de hoje, enquanto
+# `$@`: recusar demais exige adaptar o canal por PR, enquanto
 # recusar de menos roda coisa pela metade dentro da produção. Esses continuam
-# manuais até ganharem leitura por ambiente, e o workflow diz isso na cara em
+# bloqueados até ganharem leitura local segura, e o workflow informa isso em
 # vez de falhar torto.
 #
 # NÃO faz deploy, não entrega código, não escreve segredo, não reinicia serviço.
@@ -115,7 +115,7 @@ jobs:
           if grep -qE '\$\{1:-|\$@|\$#' "$SCRIPT"; then
             echo "::error::PAROU POR SEGURANÇA: $SCRIPT espera um valor que só o mantenedor conhece."
             echo "Este workflow roda apenas os provisionadores que não pedem nada."
-            echo "O QUE FAZER: este continua pelo caminho manual, com a linha de colar que está no cabeçalho do próprio script."
+            echo "O QUE FAZER: adapte a operação por PR para ler o valor de forma segura na VPS e execute pela esteira. Não peça ao mantenedor para colar scripts."
             exit 1
           fi
 

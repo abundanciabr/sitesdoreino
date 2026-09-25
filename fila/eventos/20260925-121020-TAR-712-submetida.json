@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260925-121020-TAR-712-submetida",
+  "tarefa": "TAR-712",
+  "evento": "submetida",
+  "quando": "2026-09-25T12:10:20.117413+00:00",
+  "quem": "agent/ci/operacoes-vps-delimitadas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2068",
+  "revisao": "c8a6c68861cc387abaa141b4fd239084de197e27",
+  "arvore": "2cfa579f79f5398074c33b038602798941e55238"
+}

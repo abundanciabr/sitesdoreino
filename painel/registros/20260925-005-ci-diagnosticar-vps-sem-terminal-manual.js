@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-005-ci-diagnosticar-vps-sem-terminal-manual",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: diagnosticar VPS sem terminal manual",
+  detalhe: "Canal fechado consulta estado e disco pela esteira, sem chave local ou dados pessoais. Instruções passam a exigir operação por PR em vez de scripts manuais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2068. Validação local: árvore d04c7ef2c4fe7661fca8856013b9ad9d59d22540; commit f1b7ad544080ef881eb30130ed9ed1e42d22de00; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-712",
+  gravidade: "info",
+  frente: null,
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

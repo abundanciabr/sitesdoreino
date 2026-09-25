@@ -1,0 +1,21 @@
+{
+  "arquivo": "712-diagnosticar-a-vps-sem-terminal-do-mantenedor",
+  "id": "TAR-712",
+  "titulo": "Diagnosticar a VPS sem terminal do mantenedor",
+  "toca": [
+    "ci",
+    ".github",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de segurança, revisão independente e run real de diagnóstico sanitizado na VPS pela main",
+  "despacho": "Implementar canal fechado de diagnóstico, atualizar instruções e executar prova real. Sem shell livre, chave local ou dados de compradores; sem alterar Appmax.",
+  "origem": "Pedido do mantenedor na sessão de 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

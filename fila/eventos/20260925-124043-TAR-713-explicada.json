@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-124043-TAR-713-explicada",
+  "tarefa": "TAR-713",
+  "evento": "explicada",
+  "quando": "2026-09-25T12:40:43.895969+00:00",
+  "quem": "Prova real do canal VPS solicitada em 25/09/2026",
+  "o_que_e": "A leitura real funciona, mas o rodapé da ação impede conferir seu resumo.",
+  "o_que_muda": "O agente entrega a prova validada e o ambiente aceita somente a main.",
+  "exemplo": "Estado saudável da administração aparece no resumo do run sem terminal manual.",
+  "importancia": 90
+}

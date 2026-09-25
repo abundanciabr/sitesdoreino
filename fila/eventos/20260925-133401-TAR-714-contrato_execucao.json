@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260925-133401-TAR-714-contrato_execucao",
+  "tarefa": "TAR-714",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-25T13:34:01.410690+00:00",
+  "quem": "agent/ci/credenciais-locais-do-mantenedor",
+  "contrato": {
+    "plano": "Credenciais fornecidas no PC",
+    "versao": 1,
+    "objetivo": "Salvar uma credencial em documento local basta para seu fornecimento ao trabalho autorizado.",
+    "entregaveis": [
+      "Documento local protegido",
+      "Instruções canônicas alinhadas",
+      "Prova sintética e revisão independente"
+    ],
+    "escopo_incluido": [
+      "Fornecimento local",
+      "Permissões do documento",
+      "Guia e INV-P8"
+    ],
+    "nao_objetivos": [
+      "Configurar credenciais reais",
+      "Transporte genérico para provedores",
+      "Liberar SSH ao agente",
+      "Alterar Appmax"
+    ],
+    "restricoes": [
+      "gpt-6-sol high",
+      "Não imprimir valores",
+      "Documento fora do Git",
+      "Não alterar a lógica da guarda de segredos"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor nesta sessão de 25/09/2026"
+    ],
+    "etapas": [
+      "Investigar regras",
+      "Criar documento e atualizar instruções",
+      "Testar, revisar e integrar"
+    ],
+    "criterios_entrada": [
+      "Bancada isolada"
+    ],
+    "criterios_aceite": [
+      "Documento legível localmente e ACL restrita",
+      "Credencial fictícia consumida sem impressão",
+      "Guarda preservada",
+      "Revisão sem bloqueadores"
+    ],
+    "evidencias_exigidas": [
+      "Teste sintético local",
+      "Teste negativo da guarda",
+      "pytest",
+      "PR integrado"
+    ],
+    "condicao_encerramento": "Documento disponível no PC e instruções integradas com provas e revisão.",
+    "limites_autonomia": "Preparar documento sem segredos e adequar instruções; nenhum uso de credencial real.",
+    "acoes_do_mantenedor": "Preencher o documento quando uma tarefa precisar de credencial."
+  }
+}

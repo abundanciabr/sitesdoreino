@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-120527-TAR-712-explicada",
+  "tarefa": "TAR-712",
+  "evento": "explicada",
+  "quando": "2026-09-25T12:05:27.755682+00:00",
+  "quem": "Pedido do mantenedor na sessão de 25/09/2026",
+  "o_que_e": "Agentes pedem comandos manuais mesmo com acesso da esteira ao servidor.",
+  "o_que_muda": "O agente pede uma medição fechada pela esteira e entrega a prova sem abrir terminal do servidor.",
+  "exemplo": "Consultar saúde da administração e espaço em disco pelo GitHub.",
+  "importancia": 90
+}

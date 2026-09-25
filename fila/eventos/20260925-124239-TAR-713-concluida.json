@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-124239-TAR-713-concluida",
+  "tarefa": "TAR-713",
+  "evento": "concluida",
+  "quando": "2026-09-25T12:42:39.182638+00:00",
+  "quem": "agent/ci/prova-operacoes-vps",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2069",
+  "verificado_em": "2026-09-25"
+}
