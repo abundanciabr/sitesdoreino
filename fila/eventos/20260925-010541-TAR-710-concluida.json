@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-010541-TAR-710-concluida",
+  "tarefa": "TAR-710",
+  "evento": "concluida",
+  "quando": "2026-09-25T01:05:41.951306+00:00",
+  "quem": "agent/pagamentos/appmax-pix-timeout",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2067",
+  "verificado_em": "2026-09-25"
+}

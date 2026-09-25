@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260925-010532-TAR-710-submetida",
+  "tarefa": "TAR-710",
+  "evento": "submetida",
+  "quando": "2026-09-25T01:05:32.535723+00:00",
+  "quem": "agent/pagamentos/appmax-pix-timeout",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2067",
+  "revisao": "7c0b7e3c125d8b3ddcadef1ba008a4146e9fbffe",
+  "arvore": "46d6e4632097df02b3e363df60f1d9f7803a3257"
+}

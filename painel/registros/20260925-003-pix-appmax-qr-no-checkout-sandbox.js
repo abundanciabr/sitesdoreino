@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-003-pix-appmax-qr-no-checkout-sandbox",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "Pix Appmax: QR no checkout sandbox",
+  detalhe: "O Pix sandbox excedeu a espera de 10 segundos. A Appmax agora tem 30 segundos e o checkout, 45; cobranças incertas seguem sem reenvio.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2067. Validação local: árvore 46d6e4632097df02b3e363df60f1d9f7803a3257; commit 7c0b7e3c125d8b3ddcadef1ba008a4146e9fbffe; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-710",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
