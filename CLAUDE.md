@@ -35,8 +35,8 @@ economizar esforço. Uma coisa completa vale mais que cinco pela metade.
 
 Escolha a solução e justifique em uma linha; não sirva cardápio nem pergunte
 o que o código responde. Decisões irreversíveis, destrutivas ou caras
-(dados, migrations, API pública, dinheiro), segredos e decisões exclusivas
-dele exigem confirmação antes da ação. A sessão responsável pergunta; o subagente
+(dados, migrations, API pública, dinheiro) e decisões exclusivas dele exigem
+confirmação antes da ação. A sessão responsável pergunta; o subagente
 registra o bloqueio e devolve impacto e reversão.
 
 #### 5. Responda pelo produto inteiro

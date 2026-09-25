@@ -86,13 +86,18 @@ primeira oportunidade de violá-la.
   revisão de `pix.js`/`cartao.js`: os arquivos não contêm transição local para "pago".
 - **Célula dona:** checkout
 
-### [INV-P8] Segredo de Produção Só Existe em Produção
-- **O quê:** `MP_ACCESS_TOKEN` de produção (`APP_USR-…`) existe em UM lugar no
-  universo: `/opt/plataforma/env/pagamentos.env` na VPS, escrito manualmente pelo
-  mantenedor. Dev, CI, worktrees e agentes conhecem apenas `TEST-…`.
-- **Por quê:** credencial cara alcançável de ambiente de teste queima dinheiro real
-  mais cedo ou mais tarde — um loop de testes com a chave errada cobra de verdade.
-  Aqui isso não é proibido: é inexistente.
+### [INV-P8] Segredo de Produção Fora do Código e dos Testes
+- **O quê:** `MP_ACCESS_TOKEN` de produção (`APP_USR-…`) é usado pelo serviço em
+  `/opt/plataforma/env/pagamentos.env` na VPS. O mantenedor pode fornecê-lo em
+  documento local protegido, fora do repositório, conforme `docs/guia-mantenedor.md`.
+  O agente o consome apenas para configuração autorizada, sem exposição em
+  conversa, logs, argumentos ou inputs de workflow. Não precisa ser digitado
+  manualmente na VPS. Aplicação de desenvolvimento, testes e CI não recebem
+  o arquivo nem o token de produção por configuração; usam credenciais de teste.
+  O arquivo local não isola processos da mesma conta do Windows.
+- **Por quê:** fornecer uma credencial no PC não autoriza seu uso em testes ou
+  cobranças reais. A configuração usa um caminho próprio, com destino autorizado,
+  e não transforma a fonte local em ambiente da aplicação.
 - **Teste-Guarda:** `ci/guarda-de-segredos.sh` (roda em todo PR — reprova `APP_USR-`
   e chaves privadas no repo) + red-team golpe nº 10.
 - **Célula dona:** plataforma (CI)
