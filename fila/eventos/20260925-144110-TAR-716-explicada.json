@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-144110-TAR-716-explicada",
+  "tarefa": "TAR-716",
+  "evento": "explicada",
+  "quando": "2026-09-25T14:41:10.156258+00:00",
+  "quem": "Pedido do mantenedor nesta sessao em 25/09/2026",
+  "o_que_e": "Hoje a plataforma marca mensagens de WhatsApp como enviadas sem chamar provedor algum.",
+  "o_que_muda": "A mensageria passa a usar um transporte real, mantendo o envio bloqueado sem consentimento e sem reenviar o historico sozinha.",
+  "exemplo": "Um timeout depois da aceitacao nao dispara uma segunda mensagem; ele aparece como resultado incerto para reconciliacao.",
+  "importancia": 95
+}
