@@ -725,6 +725,7 @@ def test_pix_400_preserva_so_causa_permitida_sem_vazar_resposta(settings: Any) -
     mensagem = str(capturada.value)
     assert pagamento.call_count == 1
     assert "diagnostico=campo_expiration_date" in mensagem
+    assert capturada.value.diagnostico == "campo_expiration_date"
     assert segredo not in mensagem
     assert "example.com" not in mensagem
 

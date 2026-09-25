@@ -204,7 +204,8 @@ def completar(intent: Intent) -> Intent:
             finalizar_operacao(
                 operacao, state="reconciliation_required", provider_resource_id=order_id
             )
-            raise ResultadoAmbiguo(str(exc)) from None
+            codigo = exc.diagnostico or "indisponivel"
+            raise ResultadoAmbiguo(f"appmax_pix_diagnostico_{codigo}") from None
         except (KeyError, TypeError, ResultadoAmbiguo):
             finalizar_operacao(
                 operacao, state="reconciliation_required", provider_resource_id=order_id

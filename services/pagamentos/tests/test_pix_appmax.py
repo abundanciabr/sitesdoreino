@@ -119,14 +119,16 @@ def test_pix_recusado_preserva_diagnostico_sanitizado_na_tentativa(
     cliente = _cliente()
     cliente.criar_pagamento_pix.side_effect = FalhaNoProvedor(
         "Appmax pagamento Pix: requisição recusada (HTTP 400); "
-        "diagnostico=campo_expiration_date"
+        "consulte o diagnóstico antes de qualquer novo envio; "
+        "diagnostico=campo_expiration_date",
+        diagnostico="campo_expiration_date",
     )
     with pytest.raises(FalhaNoProvedor, match="em confirmação"):
         _criar(settings, cliente)
 
     tentativa = PaymentAttempt.objects.get(provider="appmax")
     assert tentativa.state == "reconciliation_required"
-    assert tentativa.reason.endswith("diagnostico_campo_expiration_date")
+    assert tentativa.reason == "appmax_pix_diagnostico_campo_expiration_date"
     assert cliente.criar_pagamento_pix.call_count == 1
 
 

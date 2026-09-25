@@ -20,6 +20,7 @@ MEDICAO = {
     "imagem": "sha256:" + "a" * 64,
 }
 PRIVADO = "comprador@example.com token-super-secreto ::warning::nao-publicar"
+REFERENCIA = "b" * 64
 
 
 @pytest.mark.parametrize(
@@ -38,6 +39,19 @@ PRIVADO = "comprador@example.com token-super-secreto ::warning::nao-publicar"
 def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico):
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
     assert ops.executar(operacao, servico, {"admin", "plataforma"}) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+@pytest.mark.parametrize("referencia", ["", "x" * 64, PRIVADO])
+def test_appmax_pix_exige_referencia_opaca(monkeypatch, capsys, referencia):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, referencia) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_outra_operacao_recusa_referencia(monkeypatch, capsys):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert ops.executar("estado-servico", "admin", {"admin"}, REFERENCIA) == 2
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
 
 
@@ -153,13 +167,15 @@ def test_appmax_pix_emite_so_estados_e_presenca_sem_ids_qr_ou_dados(
         return subprocess.CompletedProcess(args, 0, saida, PRIVADO)
 
     monkeypatch.setattr(ops.subprocess, "run", rodar)
-    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 0
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, REFERENCIA) == 0
     saida = capsys.readouterr()
     assert json.loads(saida.out)["medicao"] == medicao
     assert PRIVADO not in saida.out + saida.err
     assert chamadas[1][0:4] == ["docker", "exec", "a" * 64, "python"]
     assert "created_at__gte" in chamadas[1][-1]
     assert "timedelta(minutes=15)" in chamadas[1][-1]
+    assert REFERENCIA in chamadas[1][-1]
+    assert "hashlib.sha256(str(x.intent_id).encode()).hexdigest()" in chamadas[1][-1]
 
 
 def test_appmax_pix_expoe_etapas_ainda_nao_iniciadas(monkeypatch, capsys):
@@ -183,7 +199,7 @@ def test_appmax_pix_expoe_etapas_ainda_nao_iniciadas(monkeypatch, capsys):
         return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
 
     monkeypatch.setattr(ops.subprocess, "run", rodar)
-    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 0
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, REFERENCIA) == 0
     assert json.loads(capsys.readouterr().out)["medicao"] == medicao
 
 
@@ -214,7 +230,7 @@ def test_appmax_pix_sem_tentativa_recente_falha_fechado(monkeypatch, capsys):
         return subprocess.CompletedProcess(args, 1, PRIVADO, PRIVADO)
 
     monkeypatch.setattr(ops.subprocess, "run", rodar)
-    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 2
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, REFERENCIA) == 2
     saida = capsys.readouterr()
     assert json.loads(saida.out)["erro"] == "instrumento"
     assert PRIVADO not in saida.out + saida.err
@@ -231,7 +247,7 @@ def test_appmax_pix_recusa_saida_livre_do_container(monkeypatch, capsys):
         )
 
     monkeypatch.setattr(ops.subprocess, "run", rodar)
-    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 2
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, REFERENCIA) == 2
     saida = capsys.readouterr()
     assert PRIVADO not in saida.out + saida.err
 
@@ -276,6 +292,7 @@ def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("SERVICO", "admin")
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    monkeypatch.setenv("REFERENCIA", "")
     ops.preparar()
     script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
     assert script.startswith("set -eu\npython3 - <<'PY_OPERACAO_VPS'\n")
@@ -353,8 +370,9 @@ def test_workflow_fecha_ref_credencial_e_entrada():
         assert "inputs." not in passo.get("run", "")
         assert "script" not in passo.get("with", {})
     entradas = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
-    assert set(entradas) == {"operacao", "servico"}
+    assert set(entradas) == {"operacao", "servico", "referencia"}
     assert set(entradas["operacao"]["options"]) == ops.OPERACOES
+    assert passos[4]["env"]["REFERENCIA"] == "${{ inputs.referencia }}"
 
 
 @pytest.mark.parametrize(

@@ -51,7 +51,7 @@ class Falha(Exception):
     pass
 
 
-def validar(operacao, servico, permitidos):
+def validar(operacao, servico, permitidos, referencia=""):
     if operacao not in OPERACOES or servico not in permitidos:
         raise Falha("entrada")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", servico):
@@ -59,6 +59,11 @@ def validar(operacao, servico, permitidos):
     if (operacao in OPERACOES_DA_PLATAFORMA) != (servico == "plataforma"):
         raise Falha("entrada")
     if operacao == "appmax-pix" and servico != "pagamentos":
+        raise Falha("entrada")
+    if operacao == "appmax-pix":
+        if not re.fullmatch(r"[0-9a-f]{64}", referencia):
+            raise Falha("entrada")
+    elif referencia:
         raise Falha("entrada")
 
 
@@ -142,7 +147,7 @@ def conferir_medicao(operacao, dados):
     return dados
 
 
-def medir(operacao, servico):
+def medir(operacao, servico, referencia=""):
     if operacao == "espaco-disco":
         try:
             disco = shutil.disk_usage("/opt/plataforma")
@@ -173,10 +178,11 @@ def medir(operacao, servico):
         raise Falha("formato")
     if operacao == "appmax-pix":
         codigo = (
-            "import json; from datetime import timedelta; from django.utils import timezone; "
+            "import hashlib,json; from datetime import timedelta; from django.utils import timezone; "
             "from pagamentos.core.models import PaymentAttempt; "
-            f"t=PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix',created_at__gte=timezone.now()-timedelta(minutes=15)).order_by('-created_at').first(); "
-            "assert t is not None; codigos=('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel'); "
+            f"ts=list(PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix',created_at__gte=timezone.now()-timedelta(minutes=15)).select_related('intent')); "
+            f"ts=[x for x in ts if hashlib.sha256(str(x.intent_id).encode()).hexdigest()=='{referencia}']; assert len(ts)==1; t=ts[0]; "
+            "codigos=('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel'); "
             "bruto=t.reason or ''; motivo=next((c for c in codigos if bruto.endswith('diagnostico_'+c)),'indisponivel'); "
             "o={x:'not_started' for x in ('customer','order','payment')}; o.update({x.operation_type:x.state for x in t.operacoes.all()}); "
             "print(json.dumps({'tentativa':t.state,'intent':t.intent.status,'motivo':motivo,'qr_presente':bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64),'operacoes':o},sort_keys=True))"
@@ -208,10 +214,10 @@ def medir(operacao, servico):
     return conferir_medicao(operacao, dados)
 
 
-def executar(operacao, servico, permitidos):
+def executar(operacao, servico, permitidos, referencia=""):
     try:
-        validar(operacao, servico, permitidos)
-        dados = medir(operacao, servico)
+        validar(operacao, servico, permitidos, referencia)
+        dados = medir(operacao, servico, referencia)
     except (Falha, TypeError, ValueError) as erro:
         codigo = str(erro) if isinstance(erro, Falha) else "formato"
         print(
@@ -244,9 +250,13 @@ def preparar():
     )
     permitidos = sorted(set(compose["services"]) | {"plataforma"})
     operacao, servico = os.environ.get("OPERACAO", ""), os.environ.get("SERVICO", "")
-    validar(operacao, servico, permitidos)
+    referencia = os.environ.get("REFERENCIA", "")
+    validar(operacao, servico, permitidos, referencia)
     fonte = Path(__file__).read_text(encoding="utf-8").split("\ndef preparar():")[0]
-    chamada = f"raise SystemExit(executar({operacao!r}, {servico!r}, {permitidos!r}))\n"
+    chamada = (
+        f"raise SystemExit(executar({operacao!r}, {servico!r}, "
+        f"{permitidos!r}, {referencia!r}))\n"
+    )
     destino = Path(os.environ["RUNNER_TEMP"]) / "operacao-vps.sh"
     destino.write_text(
         "set -eu\npython3 - <<'PY_OPERACAO_VPS'\n"

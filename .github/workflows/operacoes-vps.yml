@@ -11,6 +11,11 @@ on:
         description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true
         type: string
+      referencia:
+        description: 'SHA-256 do intent, exigido apenas em appmax-pix; nunca informe o ID original.'
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -42,6 +47,7 @@ jobs:
         env:
           OPERACAO: ${{ inputs.operacao }}
           SERVICO: ${{ inputs.servico }}
+          REFERENCIA: ${{ inputs.referencia }}
         run: |
           set -euo pipefail
           python ci/operacoes_vps.py preparar

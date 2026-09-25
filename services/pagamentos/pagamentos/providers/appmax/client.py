@@ -26,9 +26,12 @@ def _id_externo_valido(value: Any) -> bool:
 class AppmaxError(Exception):
     """Falha segura Appmax, com indicação se um POST pode ter sido aceito."""
 
-    def __init__(self, message: str, *, ambiguo: bool = False) -> None:
+    def __init__(
+        self, message: str, *, ambiguo: bool = False, diagnostico: str = ""
+    ) -> None:
         super().__init__(message)
         self.ambiguo = ambiguo
+        self.diagnostico = diagnostico
 
 
 class AppmaxClient:
@@ -577,7 +580,8 @@ class AppmaxClient:
         diagnostico = AppmaxClient._diagnostico_rejeicao(response)
         raise AppmaxError(
             f"Appmax {operacao}: {motivo} (HTTP {response.status_code}); "
-            f"{acao}{'; diagnostico=' + diagnostico if diagnostico else ''}"
+            f"{acao}{'; diagnostico=' + diagnostico if diagnostico else ''}",
+            diagnostico=diagnostico,
         )
 
     @staticmethod
