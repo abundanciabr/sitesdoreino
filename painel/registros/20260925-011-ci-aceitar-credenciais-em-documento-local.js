@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-011-ci-aceitar-credenciais-em-documento-local",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: aceitar credenciais em documento local",
+  detalhe: "Fornecimento em documento local protegido, sem envio ao chat ou digitação na VPS. Acesso fictício e guarda de segredos verificados; transporte continua limitado ao mandato.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2072. Validação local: árvore cfe3da5222cdf1822e45ee23eea6adbabf002640; commit 727ae74123be33d06718e8551ec172d05cc7a04a; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-714",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
