@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-026-ci-recuperar-consultas-antes-de-encerrar-bloqueado",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: recuperar consultas antes de encerrar bloqueado",
+  detalhe: "Recuperacao exigida nos dois historicos reais, mesmo sem relatorio padrao. 157 testes passaram; mutacao PASS. Pasta antiga preservada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2090. Validação local: árvore 534df75fffc7ae7ec8e1664733c518e5ac5ed44f; commit 947275869efed376725f8165da53203bb905ef00; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-724",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
