@@ -1,0 +1,19 @@
+{
+  "arquivo": "729-registrar-a-protecao-ativa-na-pasta-inicial",
+  "id": "TAR-729",
+  "titulo": "Registrar a protecao ativa na pasta inicial",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro da integracao do PR 2090 e do launcher local recusando os dois historicos; validacao do livro e integracao.",
+  "despacho": "Publicar somente o registro de ativacao de ci/prestacao_de_contas.py, sem novas mudancas de codigo.",
+  "origem": "Continuacao da entrega TAR-724; ativacao local autorizada pelo mantenedor em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
