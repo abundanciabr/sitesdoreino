@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-017-ci-usar-luna-high-em-toda-delegacao-codex",
+  tipo: "entrega",
+  quando: "2026-09-25",
+  titulo: "ci: usar Luna high em toda delegação Codex",
+  detalhe: "Defaults do projeto, fichas e gerador Codex usam Luna/high sem alterar o modelo principal. Testes, mutações e metadados de delegação em dois níveis conferidos; controles de acesso preservados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2079. Validação local: árvore d3f3b1279ae744664c2ad26ec36297f5630d92b6; commit f28f4eab1ff5caa11c553b018d4b4609a778b75b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-719",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
