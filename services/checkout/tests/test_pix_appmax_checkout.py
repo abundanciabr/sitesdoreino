@@ -51,6 +51,7 @@ def test_pix_appmax_envia_documento_ip_e_itens_do_catalogo(
         if str(chamada.request.url) == f"{PAGAMENTOS}/intents"
     )
     cobranca = json.loads(chamada.request.content)
+    assert chamada.request.extensions["timeout"]["read"] == 45.0
     assert cobranca["customer"]["document_number"] == "12345678909"
     assert cobranca["customer"]["ip"] == "127.0.0.1"
     assert cobranca["metadata"]["items"]

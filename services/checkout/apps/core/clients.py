@@ -5,6 +5,7 @@
 import os
 
 import httpx
+from django.conf import settings
 
 _cliente: httpx.Client | None = None
 
@@ -63,11 +64,15 @@ class PagamentosClient:
         return {"Authorization": f"Bearer {self.token}"}
 
     def criar_intent(self, *, idempotency_key: str, payload: dict) -> dict:
+        pix_appmax = (
+            payload.get("method") == "pix"
+            and payload.get("site_id") in settings.APPMAX_PIX_ENABLED_SITES
+        )
         r = http().post(
             f"{self.base}/intents",
             json=payload,
             headers={**self._headers(), "X-Idempotency-Key": idempotency_key},
-            timeout=10.0,
+            timeout=45.0 if pix_appmax else 10.0,
         )
         r.raise_for_status()
         return r.json()

@@ -1,0 +1,20 @@
+{
+  "arquivo": "710-fazer-o-pix-appmax-sandbox-abrir-qr-no-checkout",
+  "id": "TAR-710",
+  "titulo": "Fazer o Pix Appmax sandbox abrir QR no checkout",
+  "toca": [
+    "pagamentos",
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Compra Pix sandbox em meshcraft.top abre QR e código copiável sem duplicar a cobrança; testes e deploy de pagamentos e checkout verdes.",
+  "despacho": "Ajustar apenas os tempos de espera Pix Appmax nas células pagamentos e checkout; manter idempotência e reconciliação dos pedidos ambíguos; testar, publicar pelo rito e provar o QR no checkout sandbox.",
+  "origem": "Diagnóstico real de timeout no POST Pix Appmax em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

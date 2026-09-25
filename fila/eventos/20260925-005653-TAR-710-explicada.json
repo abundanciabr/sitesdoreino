@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-005653-TAR-710-explicada",
+  "tarefa": "TAR-710",
+  "evento": "explicada",
+  "quando": "2026-09-25T00:56:53.340339+00:00",
+  "quem": "Diagnóstico real de timeout no POST Pix Appmax em 25/09/2026",
+  "o_que_e": "O checkout e a chamada Pix à Appmax deixam de esperar após dez segundos; o comprador recebe erro sem QR.",
+  "o_que_muda": "O comprador de teste consegue ver e copiar o Pix criado pela Appmax.",
+  "exemplo": "Compra sandbox de R$ 9,90 aguarda a resposta do Pix e abre o QR no próprio site.",
+  "importancia": 90
+}
