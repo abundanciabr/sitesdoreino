@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-144710-TAR-711-concluida",
+  "tarefa": "TAR-711",
+  "evento": "concluida",
+  "quando": "2026-09-25T14:47:10.772847+00:00",
+  "quem": "agent/pagamentos/appmax-pix-resposta-sandbox",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2076",
+  "verificado_em": "2026-09-25"
+}
