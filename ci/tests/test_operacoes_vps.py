@@ -1,8 +1,14 @@
 import importlib.util
 import json
 import re
+import builtins
+from contextlib import redirect_stdout
+from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 import yaml
@@ -295,25 +301,120 @@ def test_appmax_estorno_consulta_somente_sandbox_sem_expor_pedido(monkeypatch, c
 
 def test_appmax_estorno_sem_pedido_nao_inventa_valor():
     medicao = {
-        "pedido": "ausente", "referencia": None, "status": None,
-        "pedido_confere": False, "refunded_at": False,
-        "campos_observados": [], "campo_valor": None,
+        "pedido": "ausente",
+        "referencia": None,
+        "status": None,
+        "pedido_confere": False,
+        "refunded_at": False,
+        "campos_observados": [],
+        "campo_valor": None,
         "valor_no_refund_centavos": None,
     }
     assert ops.conferir_medicao("appmax-estorno", medicao) == medicao
     with pytest.raises(ops.Falha, match="formato"):
-        ops.conferir_medicao("appmax-estorno", {**medicao, "valor_no_refund_centavos": 990})
+        ops.conferir_medicao(
+            "appmax-estorno", {**medicao, "valor_no_refund_centavos": 990}
+        )
+
+
+def test_appmax_estorno_nao_confunde_total_pago_com_valor_devolvido(monkeypatch):
+    referencia = UUID("12345678-1234-5678-1234-567812345678")
+    tentativa = SimpleNamespace(external_order_id="3531", intent_id=referencia)
+    capturado = {}
+    medicao = {
+        "pedido": "ausente",
+        "referencia": None,
+        "status": None,
+        "pedido_confere": False,
+        "refunded_at": False,
+        "campos_observados": [],
+        "campo_valor": None,
+        "valor_no_refund_centavos": None,
+    }
+
+    def comando(args):
+        if args[1] == "ps":
+            return "a" * 64
+        capturado["codigo"] = args[-1]
+        return json.dumps(medicao)
+
+    monkeypatch.setattr(ops, "comando", comando)
+    ops.medir("appmax-estorno", "pagamentos")
+
+    class Consulta:
+        def filter(self, **kwargs):
+            assert kwargs["provider"] == "appmax"
+            return self
+
+        def select_related(self, *_):
+            return self
+
+        def order_by(self, *_):
+            return self
+
+        def __getitem__(self, _):
+            return [tentativa]
+
+    resposta = {
+        "status": "estornado",
+        "total_paid": 990,
+        "customer": {"email": PRIVADO},
+        "refund": {"refunded_at": "2026-09-25 12:00:00"},
+    }
+    importador_real = builtins.__import__
+
+    def importar(nome, *args, **kwargs):
+        falsos = {
+            "django.utils": SimpleNamespace(
+                timezone=SimpleNamespace(now=lambda: datetime.now(timezone.utc))
+            ),
+            "pagamentos.core.models": SimpleNamespace(
+                PaymentAttempt=SimpleNamespace(objects=Consulta())
+            ),
+            "pagamentos.providers.appmax.client": SimpleNamespace(
+                AppmaxClient=lambda: SimpleNamespace(
+                    consultar_pedido=lambda order_id: resposta
+                )
+            ),
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    saida = StringIO()
+    with redirect_stdout(saida):
+        exec(
+            capturado["codigo"],
+            {"__builtins__": {**vars(builtins), "__import__": importar}},
+        )
+    resultado = json.loads(saida.getvalue())
+    assert resultado["pedido_confere"] is True
+    assert resultado["valor_no_refund_centavos"] is None
+    assert PRIVADO not in saida.getvalue()
+
+    resposta["refund"]["amount"] = 495
+    saida = StringIO()
+    with redirect_stdout(saida):
+        exec(
+            capturado["codigo"],
+            {"__builtins__": {**vars(builtins), "__import__": importar}},
+        )
+    assert json.loads(saida.getvalue())["valor_no_refund_centavos"] == 495
 
 
 def test_appmax_estorno_recusa_saida_livre_ou_valor_sem_campo(monkeypatch, capsys):
     for resposta in (
         PRIVADO,
-        json.dumps({
-            "pedido": "encontrado", "referencia": REFERENCIA,
-            "status": "estornado", "pedido_confere": True,
-            "refunded_at": True, "campos_observados": [],
-            "campo_valor": None, "valor_no_refund_centavos": 495,
-        }),
+        json.dumps(
+            {
+                "pedido": "encontrado",
+                "referencia": REFERENCIA,
+                "status": "estornado",
+                "pedido_confere": True,
+                "refunded_at": True,
+                "campos_observados": [],
+                "campo_valor": None,
+                "valor_no_refund_centavos": 495,
+            }
+        ),
     ):
         chamadas = 0
 

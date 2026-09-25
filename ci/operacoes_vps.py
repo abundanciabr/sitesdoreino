@@ -158,27 +158,55 @@ def conferir_medicao(operacao, dados):
             raise Falha("formato")
     elif operacao == "appmax-estorno":
         if set(dados) != {
-            "pedido", "referencia", "status", "pedido_confere", "refunded_at",
-            "campos_observados", "campo_valor", "valor_no_refund_centavos",
+            "pedido",
+            "referencia",
+            "status",
+            "pedido_confere",
+            "refunded_at",
+            "campos_observados",
+            "campo_valor",
+            "valor_no_refund_centavos",
         }:
             raise Falha("formato")
         if dados["pedido"] == "ausente":
-            if any(dados[campo] is not None for campo in (
-                "referencia", "status", "campo_valor", "valor_no_refund_centavos"
-            )) or dados["pedido_confere"] is not False or dados["refunded_at"] is not False or dados["campos_observados"] != []:
+            if (
+                any(
+                    dados[campo] is not None
+                    for campo in (
+                        "referencia",
+                        "status",
+                        "campo_valor",
+                        "valor_no_refund_centavos",
+                    )
+                )
+                or dados["pedido_confere"] is not False
+                or dados["refunded_at"] is not False
+                or dados["campos_observados"] != []
+            ):
                 raise Falha("formato")
         elif dados["pedido"] == "encontrado":
             if not isinstance(dados["referencia"], str) or not re.fullmatch(
                 r"[0-9a-f]{64}", dados["referencia"]
             ):
                 raise Falha("formato")
-            if dados["status"] not in {"aprovado", "integrado", "estornado", "pendente", "outro"}:
+            if dados["status"] not in {
+                "aprovado",
+                "integrado",
+                "estornado",
+                "pendente",
+                "outro",
+            }:
                 raise Falha("formato")
-            if dados["pedido_confere"] is not True or type(dados["refunded_at"]) is not bool:
+            if (
+                dados["pedido_confere"] is not True
+                or type(dados["refunded_at"]) is not bool
+            ):
                 raise Falha("formato")
             campos = dados["campos_observados"]
-            if not isinstance(campos, list) or len(campos) != len(set(campos)) or any(
-                campo not in CAMPOS_VALOR_ESTORNO for campo in campos
+            if (
+                not isinstance(campos, list)
+                or len(campos) != len(set(campos))
+                or any(campo not in CAMPOS_VALOR_ESTORNO for campo in campos)
             ):
                 raise Falha("formato")
             if dados["campo_valor"] is None:
@@ -288,7 +316,18 @@ def medir(operacao, servico, referencia=""):
         )
         try:
             dados = json.loads(
-                comando(["docker", "exec", identificador, "python", "manage.py", "shell", "-c", codigo])
+                comando(
+                    [
+                        "docker",
+                        "exec",
+                        identificador,
+                        "python",
+                        "manage.py",
+                        "shell",
+                        "-c",
+                        codigo,
+                    ]
+                )
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
