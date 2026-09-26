@@ -43,6 +43,9 @@ from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 
+from django.utils import timezone as django_timezone
+
+from apps.pedidos.emitir import emitir
 from apps.pedidos.models import FatoAplicado
 from apps.pedidos.models import Order as OrderModel
 
@@ -159,6 +162,34 @@ def normalizar(envelope: dict) -> Aviso:
     )
 
 
+def _emitir_pedido_pago(aviso: Aviso) -> None:
+    """[DESENHO-COMUM.md F10] Só emite com visitante, e sem dado pessoal —
+    nem `customer`. Chamada DENTRO da mesma `transaction.atomic()` de
+    `aplicar`, então roda uma vez por fato aplicado: a reentrega do
+    `pagamento.aprovado` (mesma identidade lógica, v1 ou v2) esbarra no índice
+    único de `FatoAplicado` antes de chegar aqui de novo (§ IntegrityError).
+    Contrato ainda em voo na frente irmã F4a; construído contra os campos
+    publicados em DESENHO-COMUM.md."""
+    pedido = (
+        OrderModel.objects.select_related("session")
+        .filter(pk=aviso.order_id, site_id=aviso.site_id)
+        .first()
+    )
+    if pedido is None or not pedido.session.visitor_id:
+        return
+    emitir(
+        "checkout.pedido-pago",
+        {
+            "site_id": pedido.site_id,
+            "order_id": str(pedido.id),
+            "visitor_id": pedido.session.visitor_id,
+            "valor_centavos": pedido.total_cents,
+            "moeda": "BRL",
+            "pago_em": django_timezone.now().isoformat(),
+        },
+    )
+
+
 def aplicar(envelope: dict) -> bool:
     """Aplica o aviso exatamente uma vez, venha ele na versão que vier.
 
@@ -184,10 +215,16 @@ def aplicar(envelope: dict) -> bool:
             estados_elegiveis = Q(status=OrderModel.AGUARDANDO)
             if aviso.status == "pago":
                 estados_elegiveis |= Q(status="recusado", method="card")
-            OrderModel.objects.filter(
-                pk=aviso.order_id,
-                site_id=aviso.site_id,  # [INV-P11] o site do evento tem de bater
-            ).filter(estados_elegiveis).update(status=aviso.status)
+            atualizados = (
+                OrderModel.objects.filter(
+                    pk=aviso.order_id,
+                    site_id=aviso.site_id,  # [INV-P11] o site do evento tem de bater
+                )
+                .filter(estados_elegiveis)
+                .update(status=aviso.status)
+            )
+            if aviso.status == "pago" and atualizados:
+                _emitir_pedido_pago(aviso)
     except IntegrityError:
         return False
     return True
