@@ -127,3 +127,6 @@ urlpatterns = [
     # um, e a porta de cada curso decide quem entra.
     path("", catalogo, name="catalogo"),
 ]
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"

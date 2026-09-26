@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-020954-TAR-734-explicada",
+  "tarefa": "TAR-734",
+  "evento": "explicada",
+  "quando": "2026-09-26T02:09:54.300832+00:00",
+  "quem": "pedido do mantenedor: tratamento geral de erros 404; publicação dos 93 arquivos autorizada em 25/09/2026",
+  "o_que_e": "Quando uma pessoa abre um endereço que não existe, algumas partes do site mostram uma página técnica ou uma mensagem sem orientação.",
+  "o_que_muda": "A pessoa recebe uma explicação clara e um caminho para continuar navegando; os serviços que conversam entre si preservam suas respostas próprias.",
+  "exemplo": "Ao abrir um endereço digitado errado, a pessoa vê que a página não foi encontrada e pode voltar para o site.",
+  "importancia": 90
+}

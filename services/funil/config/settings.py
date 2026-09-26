@@ -44,9 +44,11 @@ INSTALLED_APPS = [
     # i18n da célula (PLANO-I18N fase 1): o AppConfig.ready() valida o
     # catálogo no BOOT (fail-closed) e o congela em memória.
     "apps.i18n",
+    "site_errors",
 ]
 
 MIDDLEWARE = [
+    "site_errors.handlers.SiteErrorLoggingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
@@ -71,6 +73,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 ASGI_APPLICATION = "config.asgi.application"
+SITE_ERROR_SERVICE = "funil"
+SITE_ERRORS_REDIS_URL = os.environ.get("SITE_ERRORS_REDIS_URL") or (
+    "" if DEBUG else "redis://redis:6379/0"
+)
 
 # funil é a única célula sem banco de dados (stateless) — CONTEXTO da célula.
 # Vitrine pura: formulários postam em leads, compra redireciona para checkout.

@@ -172,6 +172,10 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+INSTALLED_APPS += ["site_errors"]
+MIDDLEWARE = ["site_errors.handlers.SiteErrorLoggingMiddleware", *MIDDLEWARE]
+SITE_ERROR_SERVICE = "admin"
+
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
@@ -204,3 +208,9 @@ USE_TZ = True
 # produto inteiro é painel com data — métricas, auditoria, linha do tempo —
 # isso apareceria na primeira tela e seria lido como bug de dado, não de fuso.
 TIME_ZONE = "America/Sao_Paulo"
+
+SITE_ERRORS_REDIS_URL = (
+    os.environ.get("SITE_ERRORS_REDIS_URL")
+    or os.environ.get("REDIS_STREAMS_URL")
+    or ("" if DEBUG else "redis://redis:6379/0")
+)
