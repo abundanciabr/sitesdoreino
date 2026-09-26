@@ -1,0 +1,19 @@
+{
+  "arquivo": "742-publicar-o-lote-de-registros-tecnicos-appmax",
+  "id": "TAR-742",
+  "titulo": "Publicar o lote de registros técnicos Appmax",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR 2101 publicado e memória conferida em https://meshcraft.top/admin/painel/#memoria com os 14 registros novos",
+  "despacho": "Mandato: publicar somente os 14 registros técnicos Appmax já preparados em painel/registros/ e os eventos/contrato/recibo próprios desta TAR, no PR 2101 existente e no repositório https://github.com/abundanciabr/sitesdoreino. Não alterar código, contratos alheios, registros históricos ou estados de TAR financeira ou de implementação. A largura final de 552 px é fato registrado; 360 px e TAR-741 não são aceitos por esta tarefa.",
+  "origem": "Fecho obrigatório pós-publicação Appmax, com autorização explícita do mantenedor para o repositório indicado",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
