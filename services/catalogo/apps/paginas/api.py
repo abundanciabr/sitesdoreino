@@ -729,7 +729,7 @@ def _experimento(pagina: Page, experimento_id: str) -> Experimento:
     summary="Cria um experimento num slot da página, em rascunho",
     description=(
         "O experimento nasce em rascunho, com o controle `a` carregando o texto "
-        "publicado do slot\ne a amostra por braço já calculada. Nada vai ao ar "
+        "publicado do slot e a amostra por braço já calculada. Nada vai ao ar "
         "até a mudança de estado para ativo."
     ),
     openapi_extra={
@@ -837,7 +837,12 @@ def create_experiment(request, site_id: str, slug: str, payload: NovoExperimento
     response=list[ExperimentoDaPagina],
     operation_id="listExperiments",
     summary="Os experimentos de uma página, do mais novo para o mais antigo",
-    openapi_extra={"responses": {404: {"description": "Site ou página inexistente"}}},
+    openapi_extra={
+        "responses": {
+            200: {"description": "Os experimentos da página, em qualquer estado"},
+            404: {"description": "Site ou página inexistente"},
+        }
+    },
 )
 def list_experiments(request, site_id: str, slug: str):
     pagina = _pagina(site_id, slug)
@@ -855,7 +860,10 @@ def list_experiments(request, site_id: str, slug: str):
     operation_id="getExperiment",
     summary="Um experimento de uma página",
     openapi_extra={
-        "responses": {404: {"description": "Site, página ou experimento inexistente"}}
+        "responses": {
+            200: {"description": "O experimento, com as variantes"},
+            404: {"description": "Site, página ou experimento inexistente"},
+        }
     },
 )
 def get_experiment(request, site_id: str, slug: str, experimento_id: str):
@@ -869,12 +877,13 @@ def get_experiment(request, site_id: str, slug: str, experimento_id: str):
     summary="Põe o experimento no ar ou o encerra",
     description=(
         "rascunho vai para ativo ou encerrado; ativo vai para encerrado. Pedir o "
-        "estado em que\no experimento já está responde 200 sem mudar nada. Ao "
-        "entrar no ar, o controle `a` é\nconferido com o texto publicado de agora, "
-        "e as variantes congelam. Ao encerrar, a\ndecisão é obrigatória."
+        "estado em que o experimento já está responde 200 sem mudar nada. Ao "
+        "entrar no ar, o controle `a` é conferido com o texto publicado de agora, "
+        "e as variantes congelam. Ao encerrar, a decisão é obrigatória."
     ),
     openapi_extra={
         "responses": {
+            200: {"description": "O experimento no estado pedido"},
             404: {"description": "Site, página ou experimento inexistente"},
             409: {
                 "description": (
