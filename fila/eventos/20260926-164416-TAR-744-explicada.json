@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-164416-TAR-744-explicada",
+  "tarefa": "TAR-744",
+  "evento": "explicada",
+  "quando": "2026-09-26T16:44:16.900934+00:00",
+  "quem": "Despacho Appmax, fonte oficial de webhook Appmax e revisão da sessão de 26/09/2026",
+  "o_que_e": "O aviso Pix da Appmax pode chegar só com o número do pedido e os dados Pix já se perdem.",
+  "o_que_muda": "Os três dados Pix documentados ficam guardados para recuperação técnica, sem autorizar cobrança, estorno ou exposição ao comprador.",
+  "exemplo": "Um aviso antigo sem QR recebe depois uma reentrega válida e completa o mesmo registro sem criar outra linha.",
+  "importancia": 85
+}
