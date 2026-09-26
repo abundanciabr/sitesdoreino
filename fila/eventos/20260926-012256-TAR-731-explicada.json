@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-012256-TAR-731-explicada",
+  "tarefa": "TAR-731",
+  "evento": "explicada",
+  "quando": "2026-09-26T01:22:56.834334+00:00",
+  "quem": "TAR-711: PR #2076 integrado, mas a falha 502 não expõe o intent ID exigido pelo canal de diagnóstico; PR #2097 foi aberto em rascunho para a correção.",
+  "o_que_e": "Quando o Pix falha, a tela não dá uma referência que permita localizar a tentativa sem expor dados.",
+  "o_que_muda": "O comprador vê uma referência segura e o operador encontra a tentativa exata sem repetir a cobrança.",
+  "exemplo": "Uma compra sandbox falha. O código mostrado na tela localiza a tentativa pela operação fechada sem usar o número bruto do pedido.",
+  "importancia": 90
+}

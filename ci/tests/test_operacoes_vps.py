@@ -189,7 +189,10 @@ def test_appmax_pix_emite_so_estados_e_presenca_sem_ids_qr_ou_dados(
     assert "created_at__gte" in chamadas[1][-1]
     assert "timedelta(minutes=15)" in chamadas[1][-1]
     assert REFERENCIA in chamadas[1][-1]
-    assert "hashlib.sha256(str(x.intent_id).encode()).hexdigest()" in chamadas[1][-1]
+    assert (
+        "hashlib.sha256(str(x.intent.idempotency_key).encode()).hexdigest()"
+        in chamadas[1][-1]
+    )
 
 
 def test_appmax_pix_expoe_etapas_ainda_nao_iniciadas(monkeypatch, capsys):
