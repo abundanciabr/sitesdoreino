@@ -1,0 +1,19 @@
+{
+  "arquivo": "761-o-resultado-do-quiz-ganha-o-botao-refazer-o-quiz",
+  "id": "TAR-761",
+  "titulo": "O resultado do quiz ganha o botao Refazer o quiz",
+  "toca": [
+    "quiz"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "Suite do quiz com teste vermelho antes e verde depois: quem volta sem clicar ve o resultado; Refazer por POST com CSRF abre formulario em branco e novo envio grava resultado novo sem apagar o antigo; PR integrado e publicacao conferida em meshcraft.top/quiz/crivo/.",
+  "despacho": "Bancada agent/quiz/refazer-crivo, PR 2122. Alvos: services/quiz/apps/quiz/views.py, templates/quiz/resultado.html, config/urls.py, tests/test_refazer.py, tests/quiz_browser.js, tests/e2e_browser.py. Refazer so desassocia a sessao do cookie; envio antigo fica no banco.",
+  "origem": "Decisao do mantenedor na sessao Claude de 26/09/2026: botao Refazer no resultado do quiz Crivo, resolvendo o caso das duas abas sem esconder o resultado de quem volta sem clicar.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
