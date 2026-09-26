@@ -1,0 +1,76 @@
+{
+  "arquivo": "20260926-031850-TAR-735-contrato_execucao",
+  "tarefa": "TAR-735",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T03:18:50.305082+00:00",
+  "quem": "despacho-ci-appmax-pix-historico",
+  "contrato": {
+    "plano": "diagnostico-appmax-pix-historico",
+    "versao": 1,
+    "modelo_recomendado": "gpt-5.6-sol",
+    "esforco_recomendado": "medium",
+    "objetivo": "Classificar uma tentativa Pix Appmax sandbox antiga sem repetir cobrança e sem expor identificadores.",
+    "criterios_entrada": [
+      "TAR-735 criada e reivindicada na bancada exclusiva ci",
+      "TAR-731 é dependência técnica e fornece a referência opaca por idempotency_key",
+      "baseline focal medido antes da edição"
+    ],
+    "entregaveis": [
+      "Operação appmax-pix aceita referência opaca opcional e mantém seleção exata quando informada.",
+      "Modo sem referência procura até 100 tentativas Pix do site Meshcraft nos últimos sete dias e classifica zero, uma ou múltiplas candidatas de forma explícita.",
+      "Saída contém somente referências SHA-256 da idempotency_key, horários, estados permitidos, motivo sanitizado e presença booleana de QR.",
+      "Testes provam leitura somente, privacidade, filtros de site/provedor/método, falha fechada e ausência de POST ou mutação.",
+      "Descrição da entrada do workflow reflete que a referência é opcional quando necessária."
+    ],
+    "escopo_incluido": [
+      "ci/operacoes_vps.py",
+      "ci/tests/test_operacoes_vps.py",
+      ".github/workflows/operacoes-vps.yml somente para corrigir a descrição da entrada referencia"
+    ],
+    "nao_objetivos": [
+      "qualquer POST, GET público ou chamada de API Appmax",
+      "compra, cobrança, estorno, save, update, delete ou novo pedido",
+      "cartão, outro site, outro provedor ou alteração financeira",
+      "alterar checkout, admin, ci/fila.py, contratos ou tarefas existentes"
+    ],
+    "restricoes": [
+      "janela fixa de sete dias e limite máximo de 100 candidatas",
+      "provider appmax, site Meshcraft e método Pix",
+      "referência derivada somente por SHA-256 de intent.idempotency_key",
+      "sem referência não escolhe candidato financeiro e explicita ausência ou multiplicidade",
+      "campos, estados e motivos inesperados falham fechados",
+      "saída não contém ID bruto, PII, segredo, QR ou causa não sanitizada",
+      "dependência real: TAR-731"
+    ],
+    "criterios_aceite": [
+      "referência informada continua encontrando exatamente uma tentativa pela chave idempotente",
+      "referência ausente devolve zero, uma ou múltiplas candidatas sem escolha implícita",
+      "tentativas antigas são localizáveis na janela de sete dias e a consulta limita 100",
+      "filtros recusam outro site, provedor e cartão",
+      "saída e consulta são somente leitura e não carregam dados sensíveis",
+      "suite focal, Black, fila e guardas passam",
+      "um run publicado sem referência é executado exatamente uma vez depois da integração"
+    ],
+    "evidencias_exigidas": [
+      "teste focal vermelho antes do código e verde depois",
+      "mutação relevante com FAIL e restauração PASS",
+      "PR integrado e publicação conferidos",
+      "run único appmax-pix sem referencia na main com saída sanitizada ou impossibilidade medida"
+    ],
+    "etapas": [
+      "Adicionar testes que descrevem a busca histórica e a classificação fechada",
+      "Implementar somente leitura com os filtros e limites do contrato",
+      "Atualizar a descrição da entrada do workflow se necessário",
+      "Rodar focal, Black, fila, guardas e validação pelo rito",
+      "Publicar, executar uma leitura única sem referência e registrar o resultado"
+    ],
+    "decisoes_aprovadas": [
+      "O mantenedor liberou tudo do Appmax em 26/09/2026, sem liberar nova compra, cobrança ou estorno",
+      "A janela histórica é de sete dias com limite de 100 tentativas",
+      "A referência é SHA-256 da intent.idempotency_key e a saída é opaca"
+    ],
+    "condicao_encerramento": "TAR-735 só fecha após a prova local, integração, publicação e a leitura única sem referência que classifique a tentativa antiga ou registre impossibilidade medida.",
+    "limites_autonomia": "Cabe a esta frente alterar somente os três caminhos listados; qualquer dependência fora deles volta à sessão responsável.",
+    "acoes_do_mantenedor": "Nenhuma nova compra, cobrança ou estorno está autorizada por esta TAR."
+  }
+}
