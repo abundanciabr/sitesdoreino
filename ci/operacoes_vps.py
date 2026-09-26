@@ -264,7 +264,7 @@ def medir(operacao, servico, referencia=""):
             "import hashlib,json; from datetime import timedelta; from django.utils import timezone; "
             "from pagamentos.core.models import PaymentAttempt; "
             f"ts=list(PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix',created_at__gte=timezone.now()-timedelta(minutes=15)).select_related('intent')); "
-            f"ts=[x for x in ts if hashlib.sha256(str(x.intent_id).encode()).hexdigest()=='{referencia}']; assert len(ts)==1; t=ts[0]; "
+            f"ts=[x for x in ts if hashlib.sha256(str(x.intent.idempotency_key).encode()).hexdigest()=='{referencia}']; assert len(ts)==1; t=ts[0]; "
             "codigos=('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel'); "
             "bruto=t.reason or ''; motivo=next((c for c in codigos if bruto.endswith('diagnostico_'+c)),'indisponivel'); "
             "o={x:'not_started' for x in ('customer','order','payment')}; o.update({x.operation_type:x.state for x in t.operacoes.all()}); "
