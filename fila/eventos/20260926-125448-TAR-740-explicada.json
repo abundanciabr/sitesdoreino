@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-125448-TAR-740-explicada",
+  "tarefa": "TAR-740",
+  "evento": "explicada",
+  "quando": "2026-09-26T12:54:48.485091+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "Rotas de máquina podem devolver uma página HTML quando uma view sinaliza que algo não foi encontrado, embora integrações esperem uma resposta técnica.",
+  "o_que_muda": "As rotas /api passam a devolver sempre o erro JSON contratado, as demais rotas sem HTML deixam de enviar páginas HTML e respostas 404 próprias continuam intactas.",
+  "exemplo": "Quando uma view em /api lança 404, a integração recebe detail: Not found em JSON; quando /interno lança 404, recebe 404 sem HTML.",
+  "importancia": 55
+}

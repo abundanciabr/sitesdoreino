@@ -10,7 +10,7 @@ from functools import lru_cache
 from urllib.parse import urlsplit
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils.html import escape
 from django.template.loader import render_to_string
 from django.urls import Resolver404
@@ -155,7 +155,16 @@ def _resposta_html(
 
 
 def page_not_found_shared(request, exception):
-    if not isinstance(exception, Resolver404) or _rota_sem_html(request.path_info):
+    if _rota_sem_html(request.path_info):
+        identificador = _registrar(request, 404, "route_not_found")
+        if request.path_info == "/api" or request.path_info.startswith("/api/"):
+            resposta = JsonResponse({"detail": "Not found"}, status=404)
+        else:
+            resposta = HttpResponse(status=404, content_type="text/plain; charset=utf-8")
+        resposta["X-Request-ID"] = identificador
+        resposta["Cache-Control"] = "no-store"
+        return resposta
+    if not isinstance(exception, Resolver404):
         return page_not_found(request, exception)
     return _resposta_html(request, 404, "route_not_found")
 
