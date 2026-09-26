@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-142502-TAR-741-explicada",
+  "tarefa": "TAR-741",
+  "evento": "explicada",
+  "quando": "2026-09-26T14:25:02.779036+00:00",
+  "quem": "Defeito medido na vista Appmax publicada, navegador autenticado, sessão Appmax",
+  "o_que_e": "A vista Appmax publicada cria cartões mais largos que a janela do navegador e corta texto em tela estreita.",
+  "o_que_muda": "O mantenedor consegue ler títulos e motivos dos cartões sem rolagem horizontal em celular ou janela estreita.",
+  "exemplo": "Em uma janela de 552px a página mede 669px de largura e os primeiros cartões chegam a 648px.",
+  "importancia": 80
+}
