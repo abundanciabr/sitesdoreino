@@ -1,0 +1,70 @@
+{
+  "arquivo": "20260926-201249-TAR-755-contrato_execucao",
+  "tarefa": "TAR-755",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T20:12:49.627083+00:00",
+  "quem": "agent/contratos/appmax-reversao-v2",
+  "contrato": {
+    "plano": "Publicar a subentrega contratual da TAR-752 como condição prévia da implementação",
+    "versao": 1,
+    "modelo_recomendado": "gpt-5.6-luna",
+    "esforco_recomendado": "high",
+    "objetivo": "Entregar em PR separado o contrato pagamento.reversao_confirmada.v2, suas provas e a dependência de teste necessária, sem publicar emissor ou consumidor.",
+    "condicao_encerramento": "PR de contrato separado aberto com label contrato, validação local executada no snapshot enviado e registro mecânico da entrega da TAR-755. A TAR-752 permanece aberta para a implementação posterior.",
+    "limites_autonomia": "Tocar somente os três arquivos de contracts autorizados e os registros mecânicos da TAR-755. Não alterar código de célula, pagamento.estornado.v2, migração, dinheiro, operação Appmax ou a conclusão da TAR-752.",
+    "entregaveis": [
+      "contracts/eventos/pagamento.reversao_confirmada.v2.json",
+      "contracts/test_pagamento_reversao_confirmada.py",
+      "contracts/requirements-test.txt"
+    ],
+    "escopo_incluido": [
+      "Schema v2 fechado com identidade do site, provedor, referência e motivo, sem amount_cents e com descrição literal da proposta autorizada.",
+      "Testes de validade, ausência, tipos, identidade, formato, enum, constantes, propriedades extras e aditividade do contrato.",
+      "Dependência de teste rfc3339-validator==0.1.4 para o FormatChecker padrão reconhecer date-time.",
+      "Preservação byte a byte de contracts/eventos/pagamento.estornado.v2.json."
+    ],
+    "nao_objetivos": [
+      "Implementar emissor Appmax ou consumidor em alunos.",
+      "Alterar contratos financeiros existentes ou executar migração.",
+      "Executar compra, estorno, liquidação ou qualquer operação financeira real.",
+      "Declarar concluída a TAR-752."
+    ],
+    "restricoes": [
+      "O schema deve permanecer igual à proposta autorizada, sem pattern adicional.",
+      "O PR contém somente contrato, testes, requisito de teste e registros exigidos pelo rito.",
+      "A origem dos dois arquivos de contrato é preservada e o contrato financeiro existente não é tocado.",
+      "A prova final deve estar ligada aos hashes do snapshot enviado."
+    ],
+    "decisoes_aprovadas": [
+      "Autorização nominal do contrato e da implementação descritos na proposta de 26/09/2026.",
+      "Envio técnico autorizado ao repositório indicado para commit, push e PR.",
+      "A TAR-755 é subentrega contratual da TAR-752 e condição prévia da implementação, sem depender formalmente dela."
+    ],
+    "etapas": [
+      "Reivindicar a TAR-755 e registrar este contrato de execução.",
+      "Conferir os bytes do schema, do teste e do contrato financeiro preservado.",
+      "Executar o teste focal com o runtime que contém rfc3339-validator.",
+      "Executar a família de contratos de pagamentos e o portão de aditividade no diff real.",
+      "Preparar ci/pr.py somente com os alvos autorizados e os registros mecânicos da TAR-755."
+    ],
+    "criterios_entrada": [
+      "Bancada gerenciada exclusiva atualizada com origin/main.",
+      "TAR-755 reivindicada pelo agente agent/contratos/appmax-reversao-v2.",
+      "Proposta autorizada e hashes de origem disponíveis."
+    ],
+    "criterios_aceite": [
+      "Schema aceita o envelope mínimo e rejeita amount_cents, identidade incompleta, tipos inválidos, evento ou versão errados, formatos inválidos, enums inválidos e propriedades extras.",
+      "Teste focal passa integralmente com o FormatChecker padrão e o runtime de teste declarado.",
+      "Os contratos de pagamentos existentes passam sem alteração.",
+      "O diff real é aditivo e o contrato pagamento.estornado.v2 permanece byte a byte igual ao hash autorizado.",
+      "O PR é separado, recebe a etiqueta contrato e não contém código de emissor ou consumidor."
+    ],
+    "evidencias_exigidas": [
+      "Saída do pytest focal e da família de contratos de pagamentos.",
+      "Saída do portão ci/contrato_aditivo.py sem SKIP no diff real.",
+      "Hashes SHA-256 do schema, teste, requirements e pagamento.estornado.v2.",
+      "Diff origin/main...HEAD contendo somente os alvos e registros previstos."
+    ],
+    "acoes_do_mantenedor": "Nenhuma decisão adicional é necessária nesta subentrega. A implementação da TAR-752 seguirá em PR posterior depois que este contrato for integrado pelos portões."
+  }
+}
