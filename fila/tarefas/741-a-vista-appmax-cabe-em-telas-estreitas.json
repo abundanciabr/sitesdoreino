@@ -1,0 +1,19 @@
+{
+  "arquivo": "741-a-vista-appmax-cabe-em-telas-estreitas",
+  "id": "TAR-741",
+  "titulo": "A vista Appmax cabe em telas estreitas",
+  "toca": [
+    "services/admin/apps/core/templates/admin/appmax.html"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o template limitado ao overflow e medição pública autenticada em largura estreita sem scroll horizontal",
+  "despacho": "Corrija somente o overflow horizontal da vista Appmax no template services/admin/apps/core/templates/admin/appmax.html. Em largura de 552px, document.scrollWidth deve caber no viewport; títulos, motivos e o grid de cartões devem quebrar sem cortar conteúdo. Não altere Python, JavaScript, rotas, APIs, dados financeiros ou outros templates. Use CSS mínimo embutido no próprio template. Rode a prova focal e a mutação da guarda nova. Mandato-do-mantenedor: tudo do Appmax liberado e publicação técnica autorizada no repositório indicado, sessão atual.",
+  "origem": "Defeito medido na vista Appmax publicada, navegador autenticado, sessão Appmax",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
