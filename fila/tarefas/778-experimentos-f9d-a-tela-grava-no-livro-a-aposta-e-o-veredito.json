@@ -1,0 +1,22 @@
+{
+  "arquivo": "778-experimentos-f9d-a-tela-grava-no-livro-a-aposta-e-o-veredito",
+  "id": "TAR-778",
+  "titulo": "Experimentos F9d: a tela grava no livro a aposta e o veredito de cada experimento",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-774"
+  ],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "Criar ou iniciar um experimento na tela gera um registro medicao no livro com problema, hipotese, metrica, guarda e vence_em_dias; decidir gera o registro com responde_a e veredito; os dois aparecem em /admin/placar/laboratorio/",
+  "despacho": "Célula admin, depois do PR da TAR-774 integrado.\n\nObjetivo: ao criar ou iniciar um experimento na tela, gravar no livro (painel/registros/) um registro `medicao` com `problema`, `hipotese`, `metrica`, `guarda` e `vence_em_dias`; ao decidir (promover, reverter, encerrar), gravar outro registro com `responde_a` apontando para o primeiro e `veredito` (venceu, perdeu, nao-deu-para-saber). Os dois aparecem em /admin/placar/laboratorio/ sem mudar a conta do laboratório.\n\nPor que está bloqueada: o livro vive no Git. A área administrativa só o lê (fotografia publicada). Para a tela escrever um registro, ela precisa abrir um PR no GitHub com uma chave, reservar o número do registro no almoxarife e deixar a integração automática pousar esse PR. A única chave que a área tem hoje (GITHUB_TOKEN_FILA) foi autorizada para pedidos de cancelamento da fila. Usá-la para escrever no livro, ou criar uma chave nova, é decisão do mantenedor (Lista A: chaves).\n\nDestrava com: a palavra do mantenedor escolhendo (a) reaproveitar GITHUB_TOKEN_FILA para registros do livro de experimentos, ou (b) uma chave nova só para isso, ou (c) outro destino para o aprendizado.\n\nAlvos prováveis: services/admin/apps/core/decisao_do_experimento.py, services/admin/apps/core/fila_no_github.py (extrair o escritor de PR sem duplicar), services/admin/apps/core/experimentos.py (F9b, ao criar/iniciar). laboratorio.py não muda: ele já lê medicao com hipotese e resposta com veredito.",
+  "origem": "sessão de 26/09/2026, frente F9d do sistema de experimentos, parte do aprendizado",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

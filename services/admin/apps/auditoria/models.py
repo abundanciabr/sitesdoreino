@@ -317,6 +317,11 @@ class Registro(models.Model):
     # uma tabela que nao se apaga e justamente o que `armadilhas/331` proibe).
     SALVAR_RASCUNHO_DA_PAGINA = "salvar_rascunho_pagina"
     PUBLICAR_PAGINA = "publicar_pagina"
+    # [EXPERIMENTO] 26/09/2026, a decisão de um experimento da página
+    # (`apps/core/decisao_do_experimento.py`). Verbo próprio, e não um
+    # `publicar_pagina` reaproveitado, porque "Reverter" e "Encerrar" não
+    # publicam nada e mudam o que o visitante vê do mesmo jeito: o sorteio para.
+    DECIDIR_EXPERIMENTO = "decidir_experimento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -375,6 +380,7 @@ class Registro(models.Model):
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
         (SALVAR_RASCUNHO_DA_PAGINA, "salvar o texto da pagina de venda"),
         (PUBLICAR_PAGINA, "por a pagina de venda no ar"),
+        (DECIDIR_EXPERIMENTO, "promover, reverter ou encerrar um experimento"),
     ]
 
     OK = "ok"
