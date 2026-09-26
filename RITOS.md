@@ -4,12 +4,14 @@ Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e
 
 ---
 
-## §1 — Rito de Abertura de Sessão (worktree por agente)
+## §1 — Rito de Abertura de Sessão (worktree por frente de escrita)
 
 
-Cada sessão de agente nasce dentro de um worktree próprio. O agente só enxerga a
-árvore onde nasceu — atropelar o trabalho de outra sessão deixa de ser proibido e
-passa a ser fisicamente estranho ao seu mundo.
+Frentes independentes de escrita usam worktrees próprios. Cada agente recebe
+o caminho absoluto e os arquivos sob sua responsabilidade; não altera arquivos
+ou recursos de outra frente. Agentes de leitura podem compartilhar a bancada
+sem criar worktree nem executar a abertura que escreve no repositório.
+Delegação em vários níveis segue CLAUDE.md e não amplia permissões.
 
 **Um PR pode tocar mais de uma célula desde 29/08/2026** (Onda 5): a cerca de largura
 caiu porque o CI passou a RODAR a suíte de cada célula tocada, em vez de recusar por

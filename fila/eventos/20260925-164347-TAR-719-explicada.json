@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-164347-TAR-719-explicada",
+  "tarefa": "TAR-719",
+  "evento": "explicada",
+  "quando": "2026-09-25T16:43:47.861971+00:00",
+  "quem": "Pedido direto do mantenedor em 25/09/2026: configuração Luna em todos os níveis",
+  "o_que_e": "Os agentes do projeto podem nascer com modelos diferentes do escolhido para os ajudantes, por causa de padrões e fichas antigos.",
+  "o_que_muda": "Cada agente criado passa a usar o modelo Luna solicitado, enquanto a conversa principal conserva a escolha do dono.",
+  "exemplo": "O responsável cria dois ajudantes Luna e um deles cria outro Luna; todos devolvem provas sem trocar o modelo da conversa principal.",
+  "importancia": 75
+}

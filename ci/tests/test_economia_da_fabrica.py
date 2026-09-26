@@ -22,37 +22,71 @@ def test_roteador_reserva_modelo_de_topo_para_contrato_e_produto() -> None:
     assert perfil_por_tipo("escrita").modelo == MODELO_ROTINA
 
 
-def test_codex_usa_sol_por_padrao_e_luna_so_em_tarefas_delimitadas(monkeypatch) -> None:
-    from economia_da_fabrica import MODELOS_CODEX
+def test_codex_usa_luna_high_em_todos_os_tipos(monkeypatch) -> None:
+    from economia_da_fabrica import PERFIS
 
     monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
-    assert MODELOS_CODEX == {"rotina": "gpt-6-sol", "delimitado": "gpt-6-luna"}
-    assert perfil_por_tipo("geral").modelo == "gpt-6-sol"
-    assert perfil_por_tipo("geral").esforco == "medium"
-    assert classificar("trabalho sem categoria indicada").modelo == "gpt-6-sol"
-    assert classificar("trabalho sem categoria indicada").esforco == "medium"
-    # guarda: ci/economia_da_fabrica.py:46
-    for tipo in (
-        "arquitetura",
-        "contrato",
-        "produto",
-        "revisao",
-        "diagnostico",
-        "teste",
-        "texto",
-    ):
-        assert perfil_por_tipo(tipo).modelo == "gpt-6-sol"
-    # guarda: ci/economia_da_fabrica.py:48
-    for tipo in ("escrita", "espera"):
-        assert perfil_por_tipo(tipo).modelo == "gpt-6-luna"
-        assert perfil_por_tipo(tipo).esforco == "high"
+    # guarda: ci/economia_da_fabrica.py:45
+    for tipo in PERFIS:
+        perfil = perfil_por_tipo(tipo)
+        assert (perfil.modelo, perfil.esforco) == ("gpt-6-luna", "high"), tipo
+    perfil = classificar("trabalho sem categoria indicada")
+    assert (perfil.modelo, perfil.esforco) == ("gpt-6-luna", "high")
 
 
-def test_fichas_codex_fixam_sol_e_despacho_exige_brief_roteado(monkeypatch) -> None:
+def test_configuracao_codex_preserva_principal_e_nao_impoe_tetos():
+    import tomllib
+    raiz = Path(__file__).resolve().parents[2]
+    config = tomllib.loads((raiz / ".codex/config.toml").read_text(encoding="utf-8"))
+    assert "model" not in config and "model_reasoning_effort" not in config
+    assert config["agents"] == {
+        "enabled": True,
+        "default_subagent_model": "gpt-6-luna",
+        "default_subagent_reasoning_effort": "high",
+    }
+
+
+def test_fichas_codex_fixam_luna_high_sem_bloquear_descendentes(monkeypatch):
+    import tomllib
     raiz = Path(__file__).resolve().parents[2]
     monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
-
     assert auditar_fichas(raiz) == []
+    for caminho in (raiz / ".codex/agents").glob("*.toml"):
+        ficha = tomllib.loads(caminho.read_text(encoding="utf-8"))
+        assert (ficha["model"], ficha["model_reasoning_effort"]) == ("gpt-6-luna", "high")
+        texto = " ".join(ficha["developer_instructions"].split())
+        assert "Não dispare subagentes" not in texto
+        assert "gpt-6-luna" in texto and "high" in texto
+
+
+@pytest.mark.parametrize("campo,valor", [("model", "gpt-6-sol"), ("model_reasoning_effort", "medium")])
+def test_auditoria_recusa_ficha_que_sobrescreve_luna_high(tmp_path, monkeypatch, campo, valor):
+    import shutil
+    raiz = Path(__file__).resolve().parents[2]
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+    shutil.copytree(raiz / ".codex", tmp_path / ".codex")
+    caminho = tmp_path / ".codex/agents/revisor.toml"
+    linhas = caminho.read_text(encoding="utf-8").splitlines()
+    linhas = [f'{campo} = "{valor}"' if linha.startswith(campo + " =") else linha for linha in linhas]
+    caminho.write_text("\n".join(linhas), encoding="utf-8")
+    # guarda: ci/economia_da_fabrica.py:212
+    # guarda: ci/economia_da_fabrica.py:214
+    assert any(campo in falha for falha in auditar_fichas(tmp_path))
+
+
+@pytest.mark.parametrize("campo,valor", [("default_subagent_model", "gpt-6-sol"), ("default_subagent_reasoning_effort", "medium"), ("enabled", False)])
+def test_auditoria_recusa_padrao_de_descendentes_incorreto(tmp_path, monkeypatch, campo, valor):
+    import shutil
+    raiz = Path(__file__).resolve().parents[2]
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+    shutil.copytree(raiz / ".codex", tmp_path / ".codex")
+    caminho = tmp_path / ".codex/config.toml"
+    linhas = caminho.read_text(encoding="utf-8").splitlines()
+    literal = "false" if valor is False else f'"{valor}"'
+    linhas = [f'{campo} = {literal}' if linha.startswith(campo + " =") else linha for linha in linhas]
+    caminho.write_text("\n".join(linhas), encoding="utf-8")
+    # guarda: ci/economia_da_fabrica.py:196
+    assert any(campo in falha for falha in auditar_fichas(tmp_path))
 
 
 def test_classificador_prefere_contrato_quando_o_texto_fala_de_freeze() -> None:
@@ -142,3 +176,21 @@ def test_auditoria_aceita_despacho_variavel_quando_exige_modelo_no_brief(
 def harness_claude_das_fixtures(monkeypatch):
     # Estas fixtures medem a compatibilidade das fichas Markdown do Claude.
     monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "claude")
+
+
+@pytest.mark.parametrize("conteudo", [None, "[agents", "agents = []"])
+def test_auditoria_configuracao_ausente_ou_ilegivel_nao_aprova(tmp_path, monkeypatch, conteudo):
+    import shutil
+    raiz = Path(__file__).resolve().parents[2]
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+    shutil.copytree(raiz / ".codex", tmp_path / ".codex")
+    config = tmp_path / ".codex/config.toml"
+    if conteudo is None:
+        config.unlink()
+    else:
+        config.write_text(conteudo, encoding="utf-8")
+    if conteudo == "agents = []":
+        assert auditar_fichas(tmp_path)
+    else:
+        with pytest.raises(ErroDeInstrumentacao, match="configuração de agentes indisponível"):
+            auditar_fichas(tmp_path)

@@ -67,11 +67,15 @@ ANTES: abertura pelo RITOS §1 + contexto direcionado pelos ALVOS e sintoma;
   ARMADILHAS-OPERACAO.md E no seu relatório final.
 CONTEXTO (≤5 linhas): ...
 MISSÃO (1 frase): ...
+RESPONSÁVEL IMEDIATO: <agente pai, que consolida o resultado>
+DEPENDÊNCIAS: <entregas prévias necessárias, ou nenhuma>
+MODELO DOS DESCENDENTES CODEX: gpt-6-luna, esforço high, declarado na chamada e conferido na ficha.
 ALVOS (PERMITIDO ESCREVER): services/<celula>/apps/<x>/..., services/<celula>/tests/...
 SOMENTE-LEITURA: contracts/<...>.openapi.yaml, contracts/eventos/<...>.v1.json
 FORA DE ESCOPO: <o que NÃO tocar, mesmo que pareça relacionado>
 INVARIANTES TOCADOS: INV-P_ (evidência vermelho→verde obrigatória no PR)
 DoD: make ci verde + <critérios específicos da tarefa>
+EVIDÊNCIA: <comando, saída ou artefato que comprova cada critério>
 ORÇAMENTO: ≤ N arquivos (fix: 1–5 · feature: 5–15)
 ```
 

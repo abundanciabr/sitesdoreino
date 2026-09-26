@@ -104,7 +104,7 @@ def test_modelos_codex_sao_explicitos(monkeypatch):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
     brief = economia.compilar_brief(RAIZ, objetivo="registrar", tipo="escrita", celula="ci", alvos=["ci/a.py"], armadilhas=[])
     assert "modelo_recomendado: gpt-6-luna" in brief
-    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-6-sol"
+    assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-6-luna"
     assert economia.perfil_por_tipo("escrita").modelo == "gpt-6-luna"
     assert economia.perfil_por_tipo("escrita").esforco == "high"
 
@@ -239,6 +239,7 @@ def test_auditoria_nativa_recusa_modelo_herdado_e_revisor_com_escrita(bancada, m
     import shutil
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
     shutil.copytree(RAIZ / ".codex/agents", bancada / ".codex/agents")
+    shutil.copyfile(RAIZ / ".codex/config.toml", bancada / ".codex/config.toml")
     p = bancada / ".codex/agents/revisor.toml"
     linhas = p.read_text(encoding="utf-8").splitlines()
     linhas = [linha for linha in linhas if not linha.startswith(alterar + " =")]
