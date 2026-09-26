@@ -6,7 +6,7 @@ on:
         description: 'Operação somente de leitura, sem comandos livres'
         required: true
         type: choice
-        options: [estado-servico, espaco-disco, versao-compose, appmax-pix, appmax-pix-pedido, appmax-estorno]
+        options: [estado-servico, espaco-disco, versao-compose, appmax-pix, appmax-pix-pedido, appmax-estorno, quiz-configuracao]
       servico:
         description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true

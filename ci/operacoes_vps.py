@@ -17,6 +17,7 @@ OPERACOES = {
     "appmax-pix",
     "appmax-pix-pedido",
     "appmax-estorno",
+    "quiz-configuracao",
 }
 OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
@@ -78,6 +79,80 @@ CAMPOS_VALOR_ESTORNO = {
     "total",
     "total_refunded",
 }
+SITE_QUIZ_CAMPOS = {"id", "host", "active"}
+QUIZ_CAMPOS = {"slug", "active", "versoes"}
+VERSAO_QUIZ_CAMPOS = {
+    "key",
+    "peso",
+    "active",
+    "perguntas",
+    "alternativas",
+    "pontuacao_minima",
+    "pontuacao_maxima",
+    "faixas",
+    "cobertura",
+}
+FAIXA_QUIZ_CAMPOS = {
+    "key",
+    "min_score",
+    "max_score",
+    "botao_destino",
+    "botao_rotulo",
+    "titulo",
+}
+COBERTURA_QUIZ_CAMPOS = {"sem_buraco", "sem_sobreposicao"}
+SLUG_QUIZ = re.compile(r"[A-Za-z0-9_-]{1,100}")
+MIGRACAO_QUIZ = re.compile(r"[0-9]{4}_[a-z0-9_]{1,200}")
+# [MEDICAO-VPS:quiz-configuracao] script fechado, sem parâmetro: lê Site,
+# Quiz, QuizVersion, Question, Option, ResultBand agregados e a contagem de
+# Submission por result_key (nunca a linha, nunca e-mail/nome/telefone) e de
+# OutboxEvent pendente. Migrações lidas do MigrationRecorder, filtradas ao
+# app_label "quiz" (services/quiz não declara AppConfig; o label é o default
+# do último componente de "apps.quiz").
+QUIZ_CONFIGURACAO_CODIGO = (
+    "import json\n"
+    "from django.db import connection\n"
+    "from django.db.migrations.recorder import MigrationRecorder\n"
+    "from django.db.models import Count\n"
+    "from apps.quiz.models import OutboxEvent, Quiz, Site, Submission\n"
+    "def cobertura(bandas, minimo, maximo):\n"
+    "    if not bandas:\n"
+    "        return {'sem_buraco': False, 'sem_sobreposicao': True}\n"
+    "    sobreposicao = any(bandas[i]['max_score'] >= bandas[i + 1]['min_score'] for i in range(len(bandas) - 1))\n"
+    "    buraco = bandas[0]['min_score'] > minimo or bandas[-1]['max_score'] < maximo\n"
+    "    if not buraco:\n"
+    "        limite = bandas[0]['max_score']\n"
+    "        for banda in bandas[1:]:\n"
+    "            if banda['min_score'] > limite + 1:\n"
+    "                buraco = True\n"
+    "                break\n"
+    "            limite = max(limite, banda['max_score'])\n"
+    "    return {'sem_buraco': not buraco, 'sem_sobreposicao': not sobreposicao}\n"
+    "sites = [{'id': s.id, 'host': s.host, 'active': s.active} for s in Site.objects.order_by('id')]\n"
+    "quizzes = []\n"
+    "for quiz in Quiz.objects.order_by('site_id', 'slug'):\n"
+    "    versoes = []\n"
+    "    for versao in quiz.versions.order_by('key').prefetch_related('questions__options', 'bands'):\n"
+    "        perguntas = list(versao.questions.all())\n"
+    "        alternativas = 0\n"
+    "        minimo = 0\n"
+    "        maximo = 0\n"
+    "        for pergunta in perguntas:\n"
+    "            pontos = [opcao.points for opcao in pergunta.options.all()]\n"
+    "            alternativas += len(pontos)\n"
+    "            if pontos:\n"
+    "                minimo += min(pontos)\n"
+    "                maximo += max(pontos)\n"
+    "        bandas = [{'key': b.key, 'min_score': b.min_score, 'max_score': b.max_score, 'botao_destino': b.botao_destino, 'botao_rotulo': b.botao_rotulo, 'titulo': b.title} for b in versao.bands.all()]\n"
+    "        versoes.append({'key': versao.key, 'peso': versao.weight, 'active': versao.active, 'perguntas': len(perguntas), 'alternativas': alternativas, 'pontuacao_minima': minimo, 'pontuacao_maxima': maximo, 'faixas': bandas, 'cobertura': cobertura(bandas, minimo, maximo)})\n"
+    "    quizzes.append({'slug': quiz.slug, 'active': quiz.active, 'versoes': versoes})\n"
+    "submissoes_por_resultado = {}\n"
+    "for linha in Submission.objects.values('result_key').annotate(total=Count('id')):\n"
+    "    submissoes_por_resultado[linha['result_key']] = linha['total']\n"
+    "eventos_pendentes = OutboxEvent.objects.filter(published_at__isnull=True).count()\n"
+    "migracoes = sorted(nome for app_label, nome in MigrationRecorder(connection).applied_migrations() if app_label == 'quiz')\n"
+    "print(json.dumps({'sites': sites, 'quizzes': quizzes, 'submissoes_por_resultado': submissoes_por_resultado, 'eventos_pendentes': eventos_pendentes, 'migracoes': migracoes}, sort_keys=True))\n"
+)
 FORMATO = (
     '{"estado":{{json .State.Status}},'
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
@@ -107,6 +182,8 @@ def validar(operacao, servico, permitidos, referencia=""):
         operacao in {"appmax-pix", "appmax-pix-pedido", "appmax-estorno"}
         and servico != "pagamentos"
     ):
+        raise Falha("entrada")
+    if operacao == "quiz-configuracao" and servico != "quiz":
         raise Falha("entrada")
     if operacao == "appmax-pix":
         if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
@@ -380,6 +457,121 @@ def conferir_medicao(operacao, dados, referencia=""):
             raise Falha("formato")
         if not re.fullmatch(r"v?[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}", dados["versao"]):
             raise Falha("formato")
+    elif operacao == "quiz-configuracao":
+        if set(dados) != {
+            "sites",
+            "quizzes",
+            "submissoes_por_resultado",
+            "eventos_pendentes",
+            "migracoes",
+        }:
+            raise Falha("formato")
+        sites = dados["sites"]
+        if not isinstance(sites, list) or len(sites) > 1000:
+            raise Falha("formato")
+        for site in sites:
+            if set(site) != SITE_QUIZ_CAMPOS:
+                raise Falha("formato")
+            if (
+                not isinstance(site["id"], str)
+                or not 0 < len(site["id"]) <= 64
+                or not isinstance(site["host"], str)
+                or not 0 < len(site["host"]) <= 255
+                or type(site["active"]) is not bool
+            ):
+                raise Falha("formato")
+        quizzes = dados["quizzes"]
+        if not isinstance(quizzes, list) or len(quizzes) > 1000:
+            raise Falha("formato")
+        for quiz in quizzes:
+            if set(quiz) != QUIZ_CAMPOS:
+                raise Falha("formato")
+            if not SLUG_QUIZ.fullmatch(quiz["slug"]) or type(quiz["active"]) is not bool:
+                raise Falha("formato")
+            versoes = quiz["versoes"]
+            if not isinstance(versoes, list) or len(versoes) > 1000:
+                raise Falha("formato")
+            for versao in versoes:
+                if set(versao) != VERSAO_QUIZ_CAMPOS:
+                    raise Falha("formato")
+                if not SLUG_QUIZ.fullmatch(versao["key"]):
+                    raise Falha("formato")
+                if type(versao["peso"]) is not int or not 0 <= versao["peso"] <= 32767:
+                    raise Falha("formato")
+                if type(versao["active"]) is not bool:
+                    raise Falha("formato")
+                if (
+                    type(versao["perguntas"]) is not int
+                    or not 0 <= versao["perguntas"] <= 100000
+                    or type(versao["alternativas"]) is not int
+                    or not 0 <= versao["alternativas"] <= 100000
+                ):
+                    raise Falha("formato")
+                if (
+                    type(versao["pontuacao_minima"]) is not int
+                    or type(versao["pontuacao_maxima"]) is not int
+                    or not -1000000
+                    <= versao["pontuacao_minima"]
+                    <= versao["pontuacao_maxima"]
+                    <= 1000000
+                ):
+                    raise Falha("formato")
+                faixas = versao["faixas"]
+                if not isinstance(faixas, list) or len(faixas) > 1000:
+                    raise Falha("formato")
+                for faixa in faixas:
+                    if set(faixa) != FAIXA_QUIZ_CAMPOS:
+                        raise Falha("formato")
+                    if not SLUG_QUIZ.fullmatch(faixa["key"]):
+                        raise Falha("formato")
+                    if (
+                        type(faixa["min_score"]) is not int
+                        or type(faixa["max_score"]) is not int
+                        or not -1000000
+                        <= faixa["min_score"]
+                        <= faixa["max_score"]
+                        <= 1000000
+                    ):
+                        raise Falha("formato")
+                    if (
+                        not isinstance(faixa["botao_destino"], str)
+                        or len(faixa["botao_destino"]) > 500
+                        or not isinstance(faixa["botao_rotulo"], str)
+                        or len(faixa["botao_rotulo"]) > 80
+                        or bool(faixa["botao_destino"]) != bool(faixa["botao_rotulo"])
+                    ):
+                        raise Falha("formato")
+                    if (
+                        not isinstance(faixa["titulo"], str)
+                        or not 0 < len(faixa["titulo"]) <= 200
+                    ):
+                        raise Falha("formato")
+                cobertura = versao["cobertura"]
+                if set(cobertura) != COBERTURA_QUIZ_CAMPOS or any(
+                    type(valor) is not bool for valor in cobertura.values()
+                ):
+                    raise Falha("formato")
+        submissoes = dados["submissoes_por_resultado"]
+        if not isinstance(submissoes, dict) or len(submissoes) > 1000:
+            raise Falha("formato")
+        for chave, total in submissoes.items():
+            if not SLUG_QUIZ.fullmatch(chave):
+                raise Falha("formato")
+            if type(total) is not int or not 0 <= total <= 1000000000:
+                raise Falha("formato")
+        if (
+            type(dados["eventos_pendentes"]) is not int
+            or not 0 <= dados["eventos_pendentes"] <= 1000000000
+        ):
+            raise Falha("formato")
+        migracoes = dados["migracoes"]
+        if (
+            not isinstance(migracoes, list)
+            or len(migracoes) > 1000
+            or len(migracoes) != len(set(migracoes))
+            or any(not MIGRACAO_QUIZ.fullmatch(nome) for nome in migracoes)
+        ):
+            raise Falha("formato")
     else:
         raise Falha("formato")
     return dados
@@ -621,6 +813,25 @@ def medir(operacao, servico, referencia=""):
                         "shell",
                         "-c",
                         codigo,
+                    ]
+                )
+            )
+        except (ValueError, TypeError):
+            raise Falha("formato") from None
+        return conferir_medicao(operacao, dados)
+    if operacao == "quiz-configuracao":
+        try:
+            dados = json.loads(
+                comando(
+                    [
+                        "docker",
+                        "exec",
+                        identificador,
+                        "python",
+                        "manage.py",
+                        "shell",
+                        "-c",
+                        QUIZ_CONFIGURACAO_CODIGO,
                     ]
                 )
             )
