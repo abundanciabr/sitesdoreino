@@ -75,7 +75,25 @@
         "dispositivo": {
           "type": "string",
           "description": "Formato da tela em que a página foi aberta. O vocabulário é FECHADO dentro do `funil`, que é quem publica: `celular`, `tablet` e `computador`. Fica aberto no contrato pelo mesmo motivo dos slots de seção: enumerar aqui faria um formato novo custar um Rito de Contrato, e quem valida é o provedor. AUSENTE quando não deu para decidir."
+        },
+        "experimento_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Id do experimento que decidiu o que esta pessoa viu, em UUID como texto, o mesmo que o catálogo gerou. OPCIONAL e sempre junto com `variante_id`: sem experimento ativo na página, nenhum dos dois aparece, e é essa ausência que distingue o tráfego fora de teste. Aditivo do Rito de Contrato (RITOS.md §3) de 26/09/2026, autorizado pelo mantenedor."
+        },
+        "variante_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "description": "Chave curta da variante sorteada dentro do experimento (por exemplo `a` para o controle e `b` para o desafiante). É a chave, nunca o texto da variante: o texto mora no catálogo, congelado na variante. OPCIONAL e sempre junto com `experimento_id`."
         }
+      },
+      "dependentRequired": {
+        "experimento_id": [
+          "variante_id"
+        ],
+        "variante_id": [
+          "experimento_id"
+        ]
       }
     }
   }
