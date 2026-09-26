@@ -8,4 +8,6 @@ pytest-django==4.9.0
 respx==0.23.1
 black==24.10.0
 redis==5.1.1
+# Os testes validam cada evento contra o JSON Schema de contracts/eventos/.
+jsonschema==4.23.0
 services/funil/vendor/site_errors-0.1.0-py3-none-any.whl
