@@ -14,18 +14,22 @@ O caminho de baixo continua fechado, e por Postgres, não por regra: o papel
 banco ao público). Quem quiser estes números passa por aqui, com Bearer, ou
 não passa.
 
-AS SEIS OPERAÇÕES, E POR QUE SÃO ESSAS
+AS SETE OPERAÇÕES, E POR QUE SÃO ESSAS
 --------------------------------------
 1. `countFacts` — quantos fatos de um assunto por DIA, num intervalo. É o
    contador histórico de que o bloco "o que mudou" precisa.
 2. `listCoverage` — de cada assunto que já chegou: quantos, e quando foi o
    último. É a cobertura e o frescor do §6.6, a matéria-prima da confiança.
-3. `listDeadLetters` — o que chegou e não pôde ser afirmado.
-4. `getDeadLetter` — o corpo cru de UM evento morto, que é a ação
+3. `countFunnel` — o funil do site de vendas (visita, seção, clique no
+   checkout, lead, pedido), por dia e por variante de experimento. É a leitura
+   de que o painel de experimentação (F9) precisa para calcular SRM e o
+   resultado de um teste A/B.
+4. `listDeadLetters` — o que chegou e não pôde ser afirmado.
+5. `getDeadLetter` — o corpo cru de UM evento morto, que é a ação
    "inspecionar" do §6.2.
-5. `countMilestones` — quantas conquistas de cada tipo, por dia. É a contagem
+6. `countMilestones` — quantas conquistas de cada tipo, por dia. É a contagem
    do §6.4, e é dela que a coorte do degrau 10 vai ser calculada.
-6. `listMilestones` — quais conquistas UM sujeito tem.
+7. `listMilestones` — quais conquistas UM sujeito tem.
 
 OS DOIS VOCABULÁRIOS DE SUJEITO, E POR QUE ELES NUNCA SE SOMAM
 --------------------------------------------------------------
@@ -74,8 +78,9 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from collections import defaultdict
 
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Min
 from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
@@ -177,6 +182,68 @@ class MarcosDoSujeito(Schema):
     sujeito_tipo: str
     sujeito_id: str
     marcos: list[MarcoConquistado]
+
+
+#: A ordem fixa dos passos do funil de vendas, do primeiro fato ao pagamento.
+#: Esta ordem é a mesma da lista `passos` de toda resposta de `countFunnel`, e é
+#: o que faz a resposta virar uma escada de retenção legível sem que quem
+#: consome precisa reordenar nada.
+PASSOS_DO_FUNIL = (
+    "pagina_vista",
+    "secao_vista",
+    "cta_checkout",
+    "lead_capturado",
+    "pedido_atribuido",
+    "pedido_pago",
+)
+
+TIPO_PAGINA_VISTA = "funil.pagina-vista"
+TIPO_SECAO_VISTA = "funil.secao-vista"
+TIPO_CTA_CLICADO = "funil.cta-clicado"
+TIPO_LEAD_CAPTURADO = "funil.lead-capturado"
+TIPO_PEDIDO_ATRIBUIDO = "checkout.pedido-atribuido"
+TIPO_PEDIDO_PAGO = "checkout.pedido-pago"
+
+#: `cta_checkout` é o clique que MIRA no checkout, e não qualquer clique: a
+#: métrica principal do primeiro experimento (decisão do mantenedor,
+#: 26/09/2026) é a entrada no checkout por visitante, e é este prefixo que a
+#: distingue de um clique para outra seção da mesma página.
+PREFIXO_CHECKOUT = "/checkout/"
+
+
+class Coleta(Schema):
+    primeiro: dt.datetime | None
+    ultimo: dt.datetime | None
+
+
+class PassoContado(Schema):
+    passo: str
+    visitantes: int
+
+
+class PassosDoDia(Schema):
+    dia: dt.date
+    passos: list[PassoContado]
+
+
+class VarianteDoFunil(Schema):
+    variante_id: str
+    atribuidos: int
+    expostos: int
+    convertidos: int
+    passos: list[PassoContado]
+
+
+class Funil(Schema):
+    site_id: str
+    experimento_id: str
+    de: dt.date
+    ate: dt.date
+    coleta: Coleta
+    passos: list[PassoContado]
+    por_dia: list[PassosDoDia]
+    variantes: list[VarianteDoFunil] | None
+    visitantes_com_bracos_trocados: int | None
 
 
 @router.get("/contagens", response=Contagem, operation_id="countFacts")
@@ -448,4 +515,255 @@ def marcos(request, sujeito_tipo: str, sujeito_id: str):
         "marcos": MarcoModel.objects.filter(
             sujeito_tipo=sujeito_tipo, sujeito_id=sujeito_id
         ).order_by("dia", "tipo"),
+    }
+
+
+def _janela_do_funil(de: dt.date, ate: dt.date, site_id: str):
+    linhas = EventoModel.objects.filter(dia__gte=de, dia__lte=ate)
+    if site_id:
+        linhas = linhas.filter(site_id=site_id)
+    return linhas
+
+
+def _visitantes_distintos(linhas) -> int:
+    return linhas.aggregate(n=Count("dados__visitor_id", distinct=True))["n"] or 0
+
+
+def _visitantes_por_dia(linhas) -> dict[dt.date, int]:
+    agrupado = linhas.values("dia").annotate(
+        quantidade=Count("dados__visitor_id", distinct=True)
+    )
+    return {linha["dia"]: linha["quantidade"] for linha in agrupado}
+
+
+def _passos_do_funil(janela):
+    """As seis consultas do funil, na ORDEM FIXA de `PASSOS_DO_FUNIL`.
+
+    `cta_checkout` filtra `destino` pelo prefixo `/checkout/`: nem todo clique
+    em botão mira o checkout, e a métrica principal do primeiro experimento
+    (decisão do mantenedor) é justamente a entrada nele.
+    """
+    return {
+        "pagina_vista": janela.filter(tipo=TIPO_PAGINA_VISTA),
+        "secao_vista": janela.filter(tipo=TIPO_SECAO_VISTA),
+        "cta_checkout": janela.filter(
+            tipo=TIPO_CTA_CLICADO, dados__destino__startswith=PREFIXO_CHECKOUT
+        ),
+        "lead_capturado": janela.filter(tipo=TIPO_LEAD_CAPTURADO),
+        "pedido_atribuido": janela.filter(tipo=TIPO_PEDIDO_ATRIBUIDO),
+        "pedido_pago": janela.filter(tipo=TIPO_PEDIDO_PAGO),
+    }
+
+
+def _variantes_do_funil(
+    janela, experimento_id: str, secao: str
+) -> tuple[list[dict], int]:
+    """O bloco `variantes`, e o braço de cada visitante é FIXO (Emenda 1 §5).
+
+    O braço de um visitante é a `variante_id` da PRIMEIRA `pagina-vista` dele
+    para este experimento, e vale para `expostos` e `convertidos` também: um
+    visitante que viu a seção do experimento ou clicou no checkout com um
+    `variante_id` diferente do da primeira visita continua contado no braço em
+    que foi sorteado, porque o braço muda o CONTEÚDO que a pessoa viu, e um
+    evento com o `variante_id` errado é ruído do cliente, não um sorteio novo.
+
+    `visitantes_com_bracos_trocados` é o alarme de qualidade dessa mistura: um
+    visitante cujas `pagina-vista` deste experimento carregam mais de uma
+    `variante_id` diferente entra nesta contagem, e nunca nas dos braços.
+
+    Os passos de pedido (Emenda 1 §6) juntam por `visitor_id` com os
+    atribuídos do braço, e só contam quando o pedido acontece DEPOIS da
+    primeira visita do experimento daquele visitante: um pedido de uma compra
+    anterior ao experimento não é efeito do braço que a pessoa viu.
+    """
+    visitas = list(
+        janela.filter(tipo=TIPO_PAGINA_VISTA, dados__experimento_id=experimento_id)
+        .order_by("ocorrido_em")
+        .values_list("dados__visitor_id", "dados__variante_id", "ocorrido_em")
+    )
+    braco: dict[str, str] = {}
+    primeira_visita: dict[str, dt.datetime] = {}
+    variantes_vistas: dict[str, set[str]] = defaultdict(set)
+    for visitor_id, variante_id, ocorrido_em in visitas:
+        variantes_vistas[visitor_id].add(variante_id)
+        if visitor_id not in braco:
+            braco[visitor_id] = variante_id
+            primeira_visita[visitor_id] = ocorrido_em
+    trocados = sum(1 for vistas in variantes_vistas.values() if len(vistas) > 1)
+
+    atribuidos_por_variante: dict[str, set[str]] = defaultdict(set)
+    for visitor_id, variante_id in braco.items():
+        atribuidos_por_variante[variante_id].add(visitor_id)
+
+    expostos_visitantes = (
+        set(
+            janela.filter(
+                tipo=TIPO_SECAO_VISTA,
+                dados__experimento_id=experimento_id,
+                dados__secao=secao,
+            )
+            .values_list("dados__visitor_id", flat=True)
+            .distinct()
+        )
+        & braco.keys()
+    )
+    convertidos_visitantes = (
+        set(
+            janela.filter(
+                tipo=TIPO_CTA_CLICADO,
+                dados__experimento_id=experimento_id,
+                dados__destino__startswith=PREFIXO_CHECKOUT,
+            )
+            .values_list("dados__visitor_id", flat=True)
+            .distinct()
+        )
+        & expostos_visitantes
+    )
+    leads_visitantes = (
+        set(
+            janela.filter(tipo=TIPO_LEAD_CAPTURADO, dados__experimento_id=experimento_id)
+            .values_list("dados__visitor_id", flat=True)
+            .distinct()
+        )
+        & braco.keys()
+    )
+
+    def _mapa_de_pedidos(tipo: str) -> dict[str, list[dt.datetime]]:
+        mapa: dict[str, list[dt.datetime]] = defaultdict(list)
+        for visitor_id, quando in janela.filter(tipo=tipo).values_list(
+            "dados__visitor_id", "ocorrido_em"
+        ):
+            mapa[visitor_id].append(quando)
+        return mapa
+
+    pedidos_atribuidos = _mapa_de_pedidos(TIPO_PEDIDO_ATRIBUIDO)
+    pedidos_pagos = _mapa_de_pedidos(TIPO_PEDIDO_PAGO)
+
+    def _tem_pedido(visitor_id: str, mapa: dict[str, list[dt.datetime]]) -> bool:
+        momentos = mapa.get(visitor_id)
+        if not momentos:
+            return False
+        inicio = primeira_visita[visitor_id]
+        return any(momento >= inicio for momento in momentos)
+
+    variantes = []
+    for variante_id in sorted(atribuidos_por_variante):
+        atribuidos_v = atribuidos_por_variante[variante_id]
+        expostos_v = atribuidos_v & expostos_visitantes
+        convertidos_v = atribuidos_v & convertidos_visitantes
+        leads_v = atribuidos_v & leads_visitantes
+        pedido_atribuido_v = sum(
+            1 for v in atribuidos_v if _tem_pedido(v, pedidos_atribuidos)
+        )
+        pedido_pago_v = sum(1 for v in atribuidos_v if _tem_pedido(v, pedidos_pagos))
+        variantes.append(
+            {
+                "variante_id": variante_id,
+                "atribuidos": len(atribuidos_v),
+                "expostos": len(expostos_v),
+                "convertidos": len(convertidos_v),
+                "passos": [
+                    {"passo": "pagina_vista", "visitantes": len(atribuidos_v)},
+                    {"passo": "secao_vista", "visitantes": len(expostos_v)},
+                    {"passo": "cta_checkout", "visitantes": len(convertidos_v)},
+                    {"passo": "lead_capturado", "visitantes": len(leads_v)},
+                    {"passo": "pedido_atribuido", "visitantes": pedido_atribuido_v},
+                    {"passo": "pedido_pago", "visitantes": pedido_pago_v},
+                ],
+            }
+        )
+    return variantes, trocados
+
+
+@router.get("/funil", response=Funil, operation_id="countFunnel")
+def funil(
+    request,
+    de: dt.date,
+    ate: dt.date,
+    site_id: str = "",
+    experimento_id: str = "",
+    secao: str = "",
+):
+    """O funil de vendas por dia, e por variante quando há experimento ativo.
+
+    OS SEIS PASSOS SÃO SEMPRE OS MESMOS, NESTA ORDEM (`PASSOS_DO_FUNIL`):
+    visita, seção alcançada, clique no checkout, lead capturado, pedido
+    atribuído, pedido pago. `visitantes` é sempre `visitor_id` distintos, nunca
+    contagem de eventos: um visitante que rola a página duas vezes ou é
+    reentregue pela fila continua UMA pessoa no funil.
+
+    `coleta` DISTINGUE zero de sem coleta, a mesma lei de `countFacts`: se
+    nenhum `funil.*` chegou na janela (para este site), `primeiro` e `ultimo`
+    são nulos, e os seis passos em zero significam "não sei", não "ninguém
+    passou". Com `coleta` preenchida, um passo em zero é uma medição real:
+    a coleta está de pé e ninguém fez aquilo.
+
+    `experimento_id` e `secao` viajam sempre juntos: sem a seção, esta célula
+    não sabe qual `secao-vista` conta como exposição ao experimento, porque
+    quem conhece o catálogo de seções é o `catalogo`, nunca a `metricas`.
+
+    O braço de cada visitante (Emenda 1 do desenho comum, 26/09/2026) é fixado
+    pela primeira `pagina-vista` dele neste experimento, e vale para `expostos`
+    e `convertidos`: ver `_variantes_do_funil`. `convertidos` é sempre um
+    subconjunto de `expostos`: quem clicou no checkout sem ter alcançado a
+    seção do experimento não é convertido deste teste, é ruído de outro
+    caminho da página.
+    """
+    if ate < de:
+        raise HttpError(422, "`ate` é anterior a `de`: o intervalo está invertido")
+    dias = (ate - de).days + 1
+    if dias > JANELA_MAXIMA_EM_DIAS:
+        raise HttpError(
+            422,
+            f"o intervalo pedido tem {dias} dias e o teto é "
+            f"{JANELA_MAXIMA_EM_DIAS}: peça em pedaços",
+        )
+    if bool(experimento_id) != bool(secao):
+        raise HttpError(
+            422,
+            "`experimento_id` e `secao` são opcionais, mas viajam sempre "
+            "juntos: sem a seção, esta célula não sabe o que conta como "
+            "exposição ao experimento",
+        )
+
+    janela = _janela_do_funil(de, ate, site_id)
+
+    coleta = janela.filter(celula="funil").aggregate(
+        primeiro=Min("ocorrido_em"), ultimo=Max("ocorrido_em")
+    )
+
+    querysets = _passos_do_funil(janela)
+    passos = [
+        {"passo": nome, "visitantes": _visitantes_distintos(qs)}
+        for nome, qs in querysets.items()
+    ]
+
+    por_dia_por_passo = {nome: _visitantes_por_dia(qs) for nome, qs in querysets.items()}
+    dias_com_dado = sorted({d for mapa in por_dia_por_passo.values() for d in mapa})
+    por_dia = [
+        {
+            "dia": dia,
+            "passos": [
+                {"passo": nome, "visitantes": por_dia_por_passo[nome].get(dia, 0)}
+                for nome in querysets
+            ],
+        }
+        for dia in dias_com_dado
+    ]
+
+    variantes: list[dict] | None = None
+    trocados: int | None = None
+    if experimento_id:
+        variantes, trocados = _variantes_do_funil(janela, experimento_id, secao)
+
+    return {
+        "site_id": site_id,
+        "experimento_id": experimento_id,
+        "de": de,
+        "ate": ate,
+        "coleta": coleta,
+        "passos": passos,
+        "por_dia": por_dia,
+        "variantes": variantes,
+        "visitantes_com_bracos_trocados": trocados,
     }
