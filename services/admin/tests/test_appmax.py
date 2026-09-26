@@ -178,9 +178,16 @@ def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
 
 
 @respx.mock
-def test_metadado_de_dependencia_ausente_e_nao_medido(fila_appmax, dentro):
+@pytest.mark.parametrize("metadado", ["ausente", "sem-id"])
+def test_metadado_de_dependencia_ausente_e_nao_medido(fila_appmax, dentro, metadado):
     pasta, _ = fila_appmax
-    next((pasta / "tarefas").glob("566-*.json")).unlink()
+    arquivo = next((pasta / "tarefas").glob("566-*.json"))
+    if metadado == "ausente":
+        arquivo.unlink()
+    else:
+        dados = json.loads(arquivo.read_text(encoding="utf-8"))
+        dados.pop("id")
+        arquivo.write_text(json.dumps(dados), encoding="utf-8")
 
     html = dentro.get(reverse("appmax")).content.decode()
     cartao_566 = html.split('<p class="id-tarefa">TAR-566</p>', 1)[1].split("</li>", 1)[
@@ -253,7 +260,7 @@ def test_consulta_viva_falha_sem_apagar_retrato(fila_appmax, dentro):
 
 
 def test_prova_de_conclusao_vem_do_evento_canonico(fila_appmax):
-    # guarda: services/admin/apps/core/appmax.py:122
+    # guarda: services/admin/apps/core/appmax.py:124
     pasta, dados = fila_appmax
     metadados, eventos = appmax._metadados_da_fila(pasta)
     cartao = appmax._tarefa("TAR-731", dados["TAR-731"], dados, metadados, eventos)
@@ -266,7 +273,7 @@ def test_prova_de_conclusao_vem_do_evento_canonico(fila_appmax):
 
 
 def test_dependencia_bloqueada_permanece_impeditiva(fila_appmax):
-    # guarda: services/admin/apps/core/appmax.py:89
+    # guarda: services/admin/apps/core/appmax.py:91
     pasta, dados = fila_appmax
     metadados, _ = appmax._metadados_da_fila(pasta)
     tarefa = {**metadados["TAR-566"], "depende_de": ["TAR-565", "TAR-558"]}
@@ -277,7 +284,7 @@ def test_dependencia_bloqueada_permanece_impeditiva(fila_appmax):
     "tarefa", [None, {}, {"depende_de": "TAR-565"}, {"depende_de": ["TAR-999999"]}]
 )
 def test_dependencia_ausente_invalida_ou_desconhecida_nao_e_medida(tarefa):
-    # guarda: services/admin/apps/core/appmax.py:91
+    # guarda: services/admin/apps/core/appmax.py:93
     assert appmax._dependencias(tarefa, {}) == ([], False)
 
 

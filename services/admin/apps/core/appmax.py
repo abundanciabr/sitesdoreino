@@ -56,7 +56,9 @@ def _metadados_da_fila(pasta: Path) -> tuple[dict[str, dict], dict[str, list[dic
     tarefas: dict[str, dict] = {}
     for caminho in sorted((pasta / "tarefas").glob("*.json")):
         dados = _ler_json(caminho)
-        identificador = dados.get("id") if isinstance(dados, dict) else None
+        if not isinstance(dados, dict) or "id" not in dados:
+            continue
+        identificador = dados["id"]
         if isinstance(identificador, str) and identificador.startswith("TAR-"):
             tarefas[identificador] = dados
 
