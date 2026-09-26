@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-020759-TAR-733-concluida",
+  "tarefa": "TAR-733",
+  "evento": "concluida",
+  "quando": "2026-09-26T02:07:59.848233+00:00",
+  "quem": "agent/quiz/teste-e2e-basico",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2093",
+  "verificado_em": "2026-09-26"
+}

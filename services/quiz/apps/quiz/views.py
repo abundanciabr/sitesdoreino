@@ -3,7 +3,9 @@ import uuid
 from datetime import datetime
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core import signing
+from django.core.validators import validate_email
 from django.db import transaction
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -159,12 +161,31 @@ def _escrever_cookie(response, request, slug, entrada):
 
 
 def _render_formulario(
-    request, quiz, versao, questions, entrada, erro=None, status=200
+    request, quiz, versao, questions, entrada, erro=None, status=200, etapa_inicial=0
 ):
+    valores = {
+        "email": request.POST.get("email", ""),
+        "nome": request.POST.get("nome", ""),
+        "telefone": request.POST.get("telefone", ""),
+    }
+    opcoes_selecionadas = set()
+    for question in questions:
+        valor = request.POST.get(f"pergunta_{question.id}")
+        if valor and any(str(option.id) == valor for option in question.options.all()):
+            opcoes_selecionadas.add(int(valor))
     resposta = render(
         request,
         "quiz/formulario.html",
-        {"quiz": quiz, "versao": versao, "questions": questions, "erro": erro},
+        {
+            "quiz": quiz,
+            "versao": versao,
+            "questions": questions,
+            "erro": erro,
+            "valores": valores,
+            "opcoes_selecionadas": opcoes_selecionadas,
+            "etapa_inicial": etapa_inicial,
+            "etapa_lead_ativa": etapa_inicial >= questions.count(),
+        },
         status=status,
     )
     return _escrever_cookie(resposta, request, quiz.slug, entrada)
@@ -186,13 +207,27 @@ def formulario(request, slug):
             versao,
             questions,
             entrada,
-            erro="e-mail é obrigatório",
+            erro="Informe seu e-mail para ver o resultado.",
             status=422,
+            etapa_inicial=questions.count(),
+        )
+    try:
+        validate_email(email)
+    except ValidationError:
+        return _render_formulario(
+            request,
+            quiz,
+            versao,
+            questions,
+            entrada,
+            erro="Informe um e-mail válido para continuar.",
+            status=422,
+            etapa_inicial=questions.count(),
         )
 
     score = 0
     respostas: dict[int, int] = {}
-    for question in questions:
+    for indice, question in enumerate(questions):
         valor = request.POST.get(f"pergunta_{question.id}")
         if valor is None:
             return _render_formulario(
@@ -201,9 +236,12 @@ def formulario(request, slug):
                 versao,
                 questions,
                 entrada,
-                erro="responda todas as perguntas",
+                erro="Responda todas as perguntas para ver o resultado.",
                 status=422,
+                etapa_inicial=indice,
             )
+        if not valor.isdecimal():
+            raise Http404("opção inválida para esta pergunta")
         # [pontuação só no servidor] a opção é buscada no banco pela pergunta;
         # um id de opção que não pertence a esta pergunta é resposta adulterada.
         opcao = question.options.filter(id=valor).first()
