@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260926-013410-TAR-731-devolvida",
+  "tarefa": "TAR-731",
+  "evento": "devolvida",
+  "quando": "2026-09-26T01:34:10.695991+00:00",
+  "quem": "agent/checkout/appmax-pix-correlacao",
+  "detalhe": "Mesma sessão executora: alinhar a reserva ao nome canônico usado por ci/sessao.py e reabrir a bancada com TAR-731, preservando código, contrato e histórico."
+}
