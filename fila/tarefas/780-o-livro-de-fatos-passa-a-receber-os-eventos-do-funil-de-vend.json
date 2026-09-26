@@ -1,0 +1,20 @@
+{
+  "arquivo": "780-o-livro-de-fatos-passa-a-receber-os-eventos-do-funil-de-vend",
+  "id": "TAR-780",
+  "titulo": "O livro de fatos passa a receber os eventos do funil de vendas",
+  "toca": [
+    "metricas",
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com os testes de recepcao dos quatro eventos do funil verdes e a suite da celula metricas verde",
+  "despacho": "Frente F2 do sistema de experimentos: \"O livro recebe o funil\".\n\nobjetivo: Assinar os quatro streams eventos.funil.* no consumidor da\nmetricas com teste de recepcao por evento e sem dado pessoal.\ntipo: teste | modelo: sonnet | celula: metricas\nArquivos-alvo: services/metricas/apps/fatos/management/commands/consume_eventos.py,\nservices/metricas/apps/fatos/recepcao.py (mais testes; teto 15 arquivos\nfora painel/ e fila/).\n\nO que construir:\n1. STREAMS ganha os quatro streams funil.*, seguindo o molde das outras\n   celulas (XGROUP CREATE ... MKSTREAM).\n2. Testes de recepcao com fixture valida de cada um dos quatro eventos\n   (validada contra o JSON Schema do contrato), duplicata do mesmo\n   event_id nao duplica, payload com campo pessoal extra e recusado.\n3. Vermelho para verde: o teste novo falha em origin/main (stream nao\n   assinado) e passa com a mudanca.\n\nOrdem de pouso: provedor antes do consumidor. Para pagina-vista o\nprovedor ja esta em producao; os outros tres (secao-vista, cta-clicado,\nlead-capturado) sao publicados em paralelo pela frente F3. Decidir pela\nleitura do codigo se o molde do consumidor tolera stream ainda vazio\n(MKSTREAM) e integrar direto, ou bloquear com Depende-de.\n\nProva exigida: teste focal e suite da celula; guarda novo com mutacao\nvermelha.",
+  "origem": "despacho F2 do sistema de experimentos, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

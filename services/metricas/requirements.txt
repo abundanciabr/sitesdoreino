@@ -34,4 +34,9 @@ black==24.10.0
 # `respx` que a gênese deixou plantados para "quando o cliente chegar" saíram no
 # degrau 7.4, quando ficou claro que o cliente é a `admin` e mora lá. Esta
 # célula só RECEBE (Redis Streams) e RESPONDE (django-ninja).
+# Só de teste: é com ele que a fixture de cada evento do funil se valida
+# contra o ARQUIVO do contrato em contracts/eventos/, nunca contra uma cópia
+# do formato dentro do teste. Mesma versão do `forum`, que já usa este pacote
+# do lado de quem publica.
+jsonschema==4.23.0
 services/metricas/vendor/site_errors-0.1.0-py3-none-any.whl

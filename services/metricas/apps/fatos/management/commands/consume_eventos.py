@@ -43,6 +43,15 @@ O que existia era a CARTA (`notificacao.devida`), que leva
 "matricula.situacao-alterada" como um parametro dentro dela, e que so nasce
 quando alguem GANHA acesso e tem identidade da plataforma. Recusa, suspensao,
 encerramento e reembolso nao deixavam rastro nenhum.
+
+Os quatro assuntos do funil (`pagina-vista`, `secao-vista`, `cta-clicado`,
+`lead-capturado`) entram juntos em 26/09/2026, embora so `pagina-vista`
+publique em producao neste minuto. Os outros tres saem da frente irma que mede
+o funil (F3), em paralelo. Isso nao fere a regra do paragrafo acima porque
+`xgroup_create(..., mkstream=True)` roda igual para todo item da lista: um
+assunto sem publicador ainda vira grupo de consumo vazio, sem custo nem
+travamento, ate a frente irma publicar de fato. Coordenar dois PRs no mesmo
+minuto custaria mais do que esperar um grupo vazio por alguns commits.
 """
 
 import json
@@ -81,6 +90,13 @@ STREAMS = [
     "eventos.sugestao.status-alterado",
     "eventos.sugestao.voto-adicionado",
     "eventos.sugestao.voto-removido",
+    # A escada do funil de vendas (`funil`): visita, secao vista, clique e
+    # lead. So `pagina-vista` publica hoje; os outros tres chegam da frente
+    # irma (F3) que mede o funil, em paralelo (nota acima na docstring).
+    "eventos.funil.pagina-vista",
+    "eventos.funil.secao-vista",
+    "eventos.funil.cta-clicado",
+    "eventos.funil.lead-capturado",
 ]
 
 # Convenção do lote de reentrega — MESMOS nomes e valores das outras células.

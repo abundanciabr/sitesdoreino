@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import json
 import uuid
+from pathlib import Path
 
+import jsonschema
 import pytest
 
 from apps.fatos.models import Evento, EventoMorto
@@ -32,6 +34,61 @@ pytestmark = pytest.mark.django_db
 
 # 01h de UTC do dia 1º: ainda é dia 30 em São Paulo.
 NA_VIRADA = "2026-10-01T01:00:00+00:00"
+
+CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
+
+#: Um `data` valido por evento do funil, com os campos exigidos pelo contrato
+#: congelado e nenhum a mais. `visitor_id` e `lead_id` sao opacos por desenho
+#: do contrato (nunca email, telefone ou nome); e essa a garantia que os
+#: testes abaixo defendem.
+FUNIL_DADOS = {
+    "funil.pagina-vista": {
+        "site_id": "meshcraft",
+        "visitor_id": "vis-opaco-1",
+        "pagina_slug": "oferta",
+        "pagina_version": 1,
+        "offer_slug": "mentoria",
+    },
+    "funil.secao-vista": {
+        "site_id": "meshcraft",
+        "visitor_id": "vis-opaco-1",
+        "pagina_slug": "oferta",
+        "pagina_version": 1,
+        "secao": "oferta",
+    },
+    "funil.cta-clicado": {
+        "site_id": "meshcraft",
+        "visitor_id": "vis-opaco-1",
+        "pagina_slug": "oferta",
+        "pagina_version": 1,
+        "secao": "oferta",
+        "slot": "cta_texto",
+        "destino": "/checkout/mentoria",
+    },
+    "funil.lead-capturado": {
+        "site_id": "meshcraft",
+        "visitor_id": "vis-opaco-1",
+        "pagina_slug": "oferta",
+        "pagina_version": 1,
+        "lead_id": "lead-opaco-1",
+    },
+}
+
+
+def _envelope_do_funil(tipo: str) -> tuple[str, dict]:
+    """O envelope de um evento do funil, validado contra o ARQUIVO do
+    contrato antes de servir de fixture: fixture que nao bate com o contrato
+    real e fixture errada, nao teste confiavel."""
+    corpo = {
+        "event": tipo,
+        "version": 1,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": NA_VIRADA,
+        "data": FUNIL_DADOS[tipo],
+    }
+    esquema = json.loads((CONTRATOS / f"{tipo}.v1.json").read_text(encoding="utf-8"))
+    jsonschema.validate(corpo, esquema)
+    return json.dumps(corpo), FUNIL_DADOS[tipo]
 
 
 def envelope(**sobre) -> str:
@@ -149,6 +206,52 @@ def test_o_consumidor_assina_so_o_que_tem_contrato_e_alguem_publica():
     # remover o assunto da lista, o livro para de saber quem virou aluna e
     # ninguem descobre olhando a tela.
     assert "eventos.matricula.situacao-alterada" in STREAMS
+    # A escada do funil (26/09/2026): pagina-vista ja publica em producao;
+    # secao-vista, cta-clicado e lead-capturado chegam juntos porque
+    # MKSTREAM tolera grupo de consumo vazio ate a frente irma (F3) publicar.
+    for assunto in FUNIL_DADOS:
+        assert f"eventos.{assunto}" in STREAMS
+
+
+# ----------------------------------------------------- a escada do funil
+
+
+@pytest.mark.parametrize("tipo", sorted(FUNIL_DADOS))
+def test_cada_evento_do_funil_vira_fato_guardado(tipo):
+    corpo, dados = _envelope_do_funil(tipo)
+    desfecho, evento = receber(corpo)
+    assert desfecho == GUARDADO
+    assert evento.tipo == tipo
+    assert evento.celula == "funil"
+    assert evento.dados == dados
+
+
+@pytest.mark.parametrize("tipo", sorted(FUNIL_DADOS))
+def test_reentrega_do_funil_nao_duplica(tipo):
+    corpo, _ = _envelope_do_funil(tipo)
+    assert receber(corpo)[0] == GUARDADO
+    desfecho, evento = receber(corpo)
+    assert desfecho == JA_TINHA, "o desfecho não mente que guardou de novo"
+    assert Evento.objects.filter(tipo=tipo).count() == 1
+
+
+@pytest.mark.parametrize("tipo", sorted(FUNIL_DADOS))
+def test_campo_pessoal_extra_no_funil_e_recusado_pelo_contrato(tipo):
+    """Nenhum dado pessoal entra no livro pelo funil porque o proprio
+    contrato fecha a porta antes de a `metricas` ver o envelope:
+    `additionalProperties: false` em `data` reprova qualquer campo fora do
+    schema. E por isso que quem publica (a frente F3, no teste dela, no
+    mesmo molde de `forum/tests/test_a_voz_do_forum.py`) nunca consegue
+    emitir um envelope com email, telefone ou nome dentro de `data`; sem
+    contrato congelado nao ha caminho de reentrega isolado aqui que prove
+    algo diferente disso.
+    """
+    corpo, dados = _envelope_do_funil(tipo)
+    envelope_com_email = json.loads(corpo)
+    envelope_com_email["data"] = {**dados, "email": "pessoa@exemplo.test"}
+    esquema = json.loads((CONTRATOS / f"{tipo}.v1.json").read_text(encoding="utf-8"))
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(envelope_com_email, esquema)
 
 
 def test_o_lote_de_reentrega_nao_diverge_das_outras_celulas():
