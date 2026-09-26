@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-030-fila-reconsulta-do-estorno-sandbox",
+  tipo: "medicao",
+  quando: "2026-09-25",
+  titulo: "fila: reconsulta do estorno sandbox",
+  detalhe: "Run 36191751353: mesmo pedido integrado, sem data nem valor devolvido. TAR-644 bloqueada; sem novo POST.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2092. Validação local: árvore 995eecaebcb03238a5913272f5bb4229d07951c2; commit 945d9277e0f650caa0cb6058ba0c0c44611068c6; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-644",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

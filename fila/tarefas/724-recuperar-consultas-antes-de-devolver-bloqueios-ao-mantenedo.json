@@ -1,0 +1,19 @@
+{
+  "arquivo": "724-recuperar-consultas-antes-de-devolver-bloqueios-ao-mantenedo",
+  "id": "TAR-724",
+  "titulo": "Recuperar consultas antes de devolver bloqueios ao mantenedor",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Reproducao das duas sessoes reais, testes antes e depois, mutacao e integracao.",
+  "despacho": "Corrigir ci/prestacao_de_contas.py e ci/tests/test_recuperacao_github.py. Preservar recusas de aprovacao, arquivos de terceiros e limites de acesso.",
+  "origem": "Pedido do mantenedor nesta sessao Codex em 25/09/2026",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

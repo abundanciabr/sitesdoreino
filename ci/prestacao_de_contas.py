@@ -194,9 +194,14 @@ def _entrada_codex(entrada: dict) -> dict | None:
                 for caminho in (item.get("changes") or {})
             ]}}
         if item.get("type") == "CommandExecution":
+            comando = item.get("command") or ""
+            if isinstance(comando, list):
+                if "-Command" in comando:
+                    comando = comando[comando.index("-Command") + 1:]
+                comando = " ".join(str(parte) for parte in comando)
             return {"type": "assistant", "message": {"content": [{
                 "type": "tool_use", "name": "Bash",
-                "input": {"command": item.get("command") or "",
+                "input": {"command": comando,
                           "exit_code": item.get("exit_code")}, "id": item.get("id")
             }, {
                 "type": "tool_result", "tool_use_id": item.get("id"),
@@ -555,8 +560,13 @@ COMANDOS_QUE_VERIFICAM = (
 )
 
 COMANDOS_DE_AMBIENTE = (
+    ("git-remoto", re.compile(
+        r"\b(?:python|python3|py)\s+ci[/\\](?:sessao|boletim)\.py\b|"
+        r"\b(?:python|python3|py)\s+ci[/\\]fila\.py\s+listar\b[^\n]*--ao-vivo\b",
+        re.I,
+    )),
     ("docker", re.compile(r"\bdocker\b", re.I)),
-    ("python", re.compile(r"\b(?:python|python3|py)\b", re.I)),
+    ("python", re.compile(r"(?:^|[;\n&|])\s*(?:python|python3|py)\b", re.I)),
     ("github", re.compile(r"\bgh\b", re.I)),
     ("git-remoto", re.compile(r"\bgit\s+(?:ls-remote|fetch|pull|push)\b", re.I)),
     ("testes", re.compile(r"\b(?:pytest|make)\b", re.I)),
@@ -677,7 +687,7 @@ def bloqueio_por_sandbox_restrito(entradas: list[dict]) -> str:
         texto = _texto_da_fala(entrada)
         if not texto:
             continue
-        if not _prestou_contas(entrada):
+        if not VEREDITO.search(texto):
             return ""
         if FONTE_NAO_MEDIDA.search(texto) and (
             not any(familia in {"github", "git-remoto"} for familia, _ in falhas)
@@ -1367,11 +1377,11 @@ def modo_contas(entrada: dict) -> int:
             {"prs_criados": estado["prs"], "despachos": estado["despachos"]},
             cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
         )
+    entradas = ler_transcript(arquivo)
+    comando_sandbox = bloqueio_por_sandbox_restrito(entradas)
+    if comando_sandbox:
+        return _portao_do_sandbox_restrito(comando_sandbox, arquivo, estado, segunda_passada)
     if not recusar:
-        entradas = ler_transcript(arquivo)
-        comando_sandbox = bloqueio_por_sandbox_restrito(entradas)
-        if comando_sandbox:
-            return _portao_do_sandbox_restrito(comando_sandbox, arquivo, estado, segunda_passada)
         # A prova local vem antes da entrega em voo: não adianta perguntar ao
         # GitHub se a suíte desta máquina reprovou.
         if estado.get("pronto_sobre_vermelho"):

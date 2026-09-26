@@ -1,0 +1,22 @@
+{
+  "arquivo": "722-preparar-um-estorno-parcial-unico-no-sandbox-appmax",
+  "id": "TAR-722",
+  "titulo": "Preparar um estorno parcial unico no sandbox Appmax",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [
+    "TAR-721"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de pedido alvo, ambiente sandbox, valor fixo, marcador atomico de uso unico, saida sanitizada, muralhas e PR validado; a execucao real pertence a TAR-644.",
+  "despacho": "Criar workflow fechado para solicitar uma vez estorno parcial de 495 centavos do pedido sandbox Meshcraft vinculado a referencia opaca ja medida. Antes do unico POST, conferir via Appmax autenticada status integrado, total pago 990, sem estorno e ambiente sandbox; criar marcador atomico persistente na VPS que impede repeticao mesmo em falha ambigua. Nunca imprimir ID bruto, credencial ou corpo Appmax. O POST 201 prova apenas solicitacao aceita; TAR-644 mede depois o estorno efetivo.",
+  "origem": "Retomada da TAR-644 apos run 36183560727 encontrar pedido sandbox integrado e ainda sem estorno.",
+  "criada_em": "2026-09-25",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

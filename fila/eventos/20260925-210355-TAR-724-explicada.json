@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260925-210355-TAR-724-explicada",
+  "tarefa": "TAR-724",
+  "evento": "explicada",
+  "quando": "2026-09-25T21:03:55.273123+00:00",
+  "quem": "Pedido do mantenedor nesta sessao Codex em 25/09/2026",
+  "o_que_e": "A consulta para e o robo pede uma correcao de rede sem tentar o acesso autorizado.",
+  "o_que_muda": "A protecao reconhece o bloqueio mesmo quando o relatorio esta incompleto.",
+  "exemplo": "A fila falha no ambiente restrito e a sessao recebe a instrucao de solicitar a mesma consulta com aprovacao.",
+  "importancia": 85
+}

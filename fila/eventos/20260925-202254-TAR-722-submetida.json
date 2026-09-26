@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260925-202254-TAR-722-submetida",
+  "tarefa": "TAR-722",
+  "evento": "submetida",
+  "quando": "2026-09-25T20:22:54.923464+00:00",
+  "quem": "agent/ci/appmax-estorno-parcial-sandbox",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2087",
+  "revisao": "679fbcc56608033c43d11ca315189e79ebca1b8c",
+  "arvore": "e0e24aa49084cc1dadc83438bcc38acf35b89fa8"
+}

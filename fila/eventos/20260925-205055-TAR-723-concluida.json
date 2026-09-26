@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260925-205055-TAR-723-concluida",
+  "tarefa": "TAR-723",
+  "evento": "concluida",
+  "quando": "2026-09-25T20:50:55.346570+00:00",
+  "quem": "agent/ci/registrar-estorno-sandbox",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2089",
+  "verificado_em": "2026-09-25"
+}
