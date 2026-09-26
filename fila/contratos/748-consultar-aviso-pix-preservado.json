@@ -1,0 +1,64 @@
+{
+  "plano": "RITOS.md#fila-de-trabalho",
+  "versao": 1,
+  "modelo_recomendado": "gpt-6-sol",
+  "esforco_recomendado": "medium",
+  "objetivo": "Consultar uma única tentativa Pix Meshcraft e informar, sem conteúdo sensível, quais campos Pix estão preservados no aviso compatível da inbox.",
+  "condicao_encerramento": "A operação appmax-pix-aviso é validada, publicada pelo rito e retorna protocolo fechado para ausência, ambiguidade ou um único registro compatível.",
+  "limites_autonomia": "Alterar somente ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py, .github/workflows/operacoes-vps.yml e os artefatos próprios da TAR-748. Não alterar webhooks, modelos, cliente Appmax, leitor GET, estados financeiros ou contratos de outras tarefas.",
+  "entregaveis": [
+    "Operação somente leitura appmax-pix-aviso no catálogo da esteira",
+    "Teste focal com mocks ORM e guardas de sandbox, ambiguidade e sanitização",
+    "Tarefa, contrato, eventos e recibo próprios da TAR-748"
+  ],
+  "escopo_incluido": [
+    "ci/operacoes_vps.py",
+    "ci/tests/test_operacoes_vps.py",
+    ".github/workflows/operacoes-vps.yml",
+    "fila/tarefas/748-consultar-aviso-pix-preservado-na-inbox-appmax.json",
+    "fila/contratos/748-consultar-aviso-pix-preservado.json",
+    "fila/eventos próprios da TAR-748 e recibo automático do rito"
+  ],
+  "nao_objetivos": [
+    "Não chamar HTTP, OAuth, AppmaxClient ou qualquer endpoint Appmax.",
+    "Não gravar, reconciliar, publicar evento financeiro ou alterar o receptor de webhook.",
+    "Não exibir valor, QR, EMV, URL, payload, identificador bruto, PII, segredo, exceção ou log.",
+    "Não declarar QR recuperado, autêntico ou enviado pela Appmax quando o inbox não preservou os campos."
+  ],
+  "restricoes": [
+    "A checagem de APPMAX_AUTH_URL e APPMAX_API_URL do sandbox ocorre antes da importação dos modelos e de qualquer consulta ORM.",
+    "A referência recebida é exclusivamente o SHA-256 da chave de idempotência.",
+    "A tentativa é filtrada por Appmax, método Pix, site Meshcraft, janela existente e limite de 100 candidatas.",
+    "A instalação precisa ser única e autorizada para o site; o aviso precisa coincidir em app, instalação, site, pedido, evento order_pix_created e tipo order.",
+    "A consulta da inbox limita a leitura a dois registros para distinguir ausência de ambiguidade.",
+    "A autorização Appmax e de publicação técnica no repositório indicado foi concedida na sessão de 26/09/2026."
+  ],
+  "decisoes_aprovadas": [
+    "Mandato Appmax para os caminhos técnicos desta frente.",
+    "Publicação técnica autorizada em https://github.com/abundanciabr/sitesdoreino.",
+    "A ausência de dados preservados é medida do receptor e não prova ausência de envio do provedor."
+  ],
+  "etapas": [
+    "Reivindicar TAR-748 e validar a bancada própria.",
+    "Provar saída vermelha para verde, incluindo produção bloqueada antes do ORM e nenhuma saída sensível.",
+    "Executar a suíte focal, guardas por mutação e validação do workflow.",
+    "Abrir o PR pelo make pr com tarefa, contrato, eventos e recibo próprios."
+  ],
+  "criterios_entrada": [
+    "TAR-748 criada e bancada agent/ci/appmax-pix-aviso aberta.",
+    "Os três alvos exclusivos estão disponíveis na bancada.",
+    "A sessão responsável autorizou a frente independente e a publicação técnica."
+  ],
+  "criterios_aceite": [
+    "SHA inválido, serviço incorreto e operação desconhecida são recusados antes da leitura.",
+    "Candidata ausente ou múltipla, instalação ausente ou múltipla e aviso não preservado ou múltiplo falham fechado com motivo enum.",
+    "Um aviso compatível retorna somente contagem, estado, datas ISO e presenças booleanas dos três campos Pix.",
+    "O protocolo rejeita campos extras e a esteira não oferece operação fora da main."
+  ],
+  "evidencias_exigidas": [
+    "Comando e saída do teste focal dos três alvos, com casos desconhecido, duplicado, site divergente, cartão, produção e payload inválido.",
+    "Guarda PASS, FAIL, PASS ligada ao código da operação.",
+    "Diff final restrito aos alvos e artefatos próprios da TAR-748, além do recibo automático do rito."
+  ],
+  "acoes_do_mantenedor": "Nenhuma ação técnica nova; o mandato Appmax e a autorização de publicação técnica já foram concedidos."
+}
