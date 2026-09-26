@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-120553-TAR-736-explicada",
+  "tarefa": "TAR-736",
+  "evento": "explicada",
+  "quando": "2026-09-26T12:05:53.283327+00:00",
+  "quem": "continuação técnica Appmax autorizada pelo mantenedor em 26/09/2026",
+  "o_que_e": "A descoberta histórica encontra tentativas Pix no banco, mas ainda não lê o pedido Appmax nem prova seus vínculos.",
+  "o_que_muda": "A pessoa responsável consegue classificar um pedido Pix existente com leitura autenticada e saída sem dados sensíveis, sem repetir cobrança.",
+  "exemplo": "Uma referência SHA conhecida retorna somente estado, método, valor conferido e presença ou validade do QR; resposta incompleta vira não medido.",
+  "importancia": 80
+}

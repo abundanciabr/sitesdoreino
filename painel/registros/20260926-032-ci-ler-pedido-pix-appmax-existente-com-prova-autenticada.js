@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-032-ci-ler-pedido-pix-appmax-existente-com-prova-autenticada",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "ci: ler pedido Pix Appmax existente com prova autenticada",
+  detalhe: "Leitura Pix Appmax autenticada por hash, sandbox antes do banco, GET existente, seleção única e saída sanitizada; testes remotos e mutações restauradas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2102. Validação local: árvore 1aafc477c6c7d5c8d8386e20fdb1a6c8c7890b7f; commit 7cb259c0398353aa162b555651003fa5cb320422; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-736",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
