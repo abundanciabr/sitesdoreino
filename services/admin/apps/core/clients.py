@@ -1877,6 +1877,85 @@ class MedicaoClient:
             return self.NAO_RESPONDEU, None
         return self.OK, linhas
 
+    #: Os degraus de `countFunnel`, na ordem fixa em que a `metricas` os devolve.
+    PASSOS_DO_FUNIL = (
+        "pagina_vista",
+        "secao_vista",
+        "cta_checkout",
+        "lead_capturado",
+        "pedido_atribuido",
+        "pedido_pago",
+    )
+
+    def funil(
+        self, desde: dt.date, ate: dt.date, site_id: "str | None" = None
+    ) -> "tuple[str, dict | None]":
+        """`countFunnel`: visitantes distintos por degrau, na janela e por dia.
+
+        Devolve `{"coleta": {"primeiro", "ultimo"}, "passos": {passo: n},
+        "por_dia": [{"dia": date, "passos": {passo: n}}]}`. `coleta` com
+        `primeiro` nulo é "nenhum evento do funil chegou na janela", e é ela
+        que separa essa resposta de uma escada de zeros medidos.
+
+        Sem `site_id` a contagem é de todos os sites, e quem mostra tem de
+        dizer isso. Resposta sem os seis degraus, ou com contagem que não é
+        inteiro, vira `NAO_RESPONDEU`: metade de uma escada seria lida como a
+        escada inteira.
+        """
+        params = {"desde": desde.isoformat(), "ate": ate.isoformat()}
+        if site_id:
+            params["site_id"] = site_id
+        desfecho, corpo = self._pedir("/funil/contagens", params)
+        if desfecho != self.OK:
+            return desfecho, None
+        corpo = corpo if isinstance(corpo, dict) else {}
+        coleta = corpo.get("coleta")
+        passos = self._degraus(corpo.get("passos"))
+        por_dia = self._dias_do_funil(corpo.get("por_dia"))
+        if not isinstance(coleta, dict) or passos is None or por_dia is None:
+            logger.error("medicao: o funil veio fora do contrato: %r", corpo)
+            return self.NAO_RESPONDEU, None
+        return self.OK, {
+            "coleta": {
+                "primeiro": coleta.get("primeiro"),
+                "ultimo": coleta.get("ultimo"),
+            },
+            "passos": passos,
+            "por_dia": por_dia,
+        }
+
+    def _dias_do_funil(self, linhas: object) -> "list | None":
+        """Cada dia com a sua escada, ou `None` se um só dia vier torto."""
+        if not isinstance(linhas, list):
+            return None
+        dias = []
+        for linha in linhas:
+            if not isinstance(linha, dict):
+                return None
+            try:
+                dia = dt.date.fromisoformat(str(linha.get("dia")))
+            except ValueError:
+                return None
+            degraus = self._degraus(linha.get("passos"))
+            if degraus is None:
+                return None
+            dias.append({"dia": dia, "passos": degraus})
+        return dias
+
+    def _degraus(self, lista: object) -> "dict | None":
+        """`[{passo, visitantes}]` virado em `{passo: visitantes}`, ou `None`
+        se faltar degrau ou se a contagem não for inteiro."""
+        if not isinstance(lista, list):
+            return None
+        degraus = {
+            item.get("passo"): item.get("visitantes")
+            for item in lista
+            if isinstance(item, dict)
+        }
+        if any(type(degraus.get(p)) is not int for p in self.PASSOS_DO_FUNIL):
+            return None
+        return {p: degraus[p] for p in self.PASSOS_DO_FUNIL}
+
     def mortos(self, limite: int = 30) -> "tuple[str, dict | None]":
         """A fila do que chegou e não pôde ser afirmado: o total e o topo dela.
 

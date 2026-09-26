@@ -2560,6 +2560,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/funil/",
+      "endereco": "/admin/placar/funil/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O funil",
+      "descricao": "Das pessoas que abriram a página de venda nos últimos 7, 30 ou 90 dias, quantas chegaram à oferta, clicaram para pagar, deixaram o contato, fizeram o pedido e pagaram, com a taxa de cada degrau para o seguinte e a mesma escada dia a dia.",
+      "observacao": "Lê a contagem do funil na memória da escola. Memória fora do ar vira aviso sem número, e janela sem nenhum evento medido é dita com palavras, nunca como uma escada de zeros. Frente F7 do sistema de experimentos."
+    },
+    {
+      "celula": "admin",
       "rota": "placar/fechamento/",
       "endereco": "/admin/placar/fechamento/",
       "alcance": "publico",
