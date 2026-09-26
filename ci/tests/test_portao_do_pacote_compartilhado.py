@@ -20,6 +20,7 @@ Dois papéis, no mesmo arquivo e de propósito:
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -59,6 +60,7 @@ def _wheel(destino: Path, versao: str, modulos: dict[str, str]) -> Path:
 def arvore(repo) -> Path:
     """Repositório de mentira com o pacote, uma célula e a wheel em dia."""
     raiz = repo.raiz
+    _arvore_site_errors(raiz.parent, raiz=raiz)
     src = raiz / portao.PACOTE / "src" / "outbox_relay"
     src.mkdir(parents=True)
     (src / "relay.py").write_text(RELAY, encoding="utf-8")
@@ -72,7 +74,9 @@ def arvore(repo) -> Path:
         {"relay.py": RELAY, "__init__.py": INIT},
     )
     (raiz / "services" / "falsa" / "requirements.txt").write_text(
-        "services/falsa/vendor/outbox_relay-0.3.1-py3-none-any.whl\n", encoding="utf-8"
+        "services/falsa/vendor/outbox_relay-0.3.1-py3-none-any.whl\n"
+        "services/falsa/vendor/site_errors-0.1.0-py3-none-any.whl\n",
+        encoding="utf-8",
     )
     return raiz
 
@@ -282,8 +286,8 @@ def _wheel_site_errors(destino: Path, html_404: str = "404 atual") -> Path:
     return wheel
 
 
-def _arvore_site_errors(tmp_path: Path) -> Path:
-    raiz = tmp_path / "site-errors-repo"
+def _arvore_site_errors(tmp_path: Path, *, raiz: Path | None = None) -> Path:
+    raiz = raiz or tmp_path / "site-errors-repo"
     for nome in ("CONSTITUICAO.md", "INVARIANTES.md"):
         (raiz / nome).parent.mkdir(parents=True, exist_ok=True)
         (raiz / nome).write_text("teste", encoding="utf-8")
@@ -327,6 +331,16 @@ def test_portao_site_errors_reprova_template_desatualizado(tmp_path: Path):
 
     assert relatorio.estado is Estado.FAIL
     assert "404.html divergiu do fonte" in relatorio.render()
+
+
+def test_portao_completo_reprova_se_fonte_site_errors_foi_removido(arvore: Path):
+    raiz = arvore
+    shutil.rmtree(raiz / "packages/site_errors")
+
+    relatorio = portao.rodar(raiz)
+
+    assert relatorio.estado is Estado.ERROR
+    assert "o pacote site_errors não tem diretório de fonte" in relatorio.render()
 
 
 def test_portao_site_errors_normaliza_fonte_windows_e_reconstroi_lf(tmp_path: Path):

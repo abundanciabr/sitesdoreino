@@ -268,10 +268,9 @@ def rodar(raiz: Path | None = None) -> Relatorio:
             relatorio.registrar(conferir(celula, wheel, fonte, versao, raiz))
         except ErroDeInstrumentacao as erro:
             relatorio.registrar(Resultado.de_erro(f"{celula}/{wheel.name}", erro))
-    if (raiz / PACOTE_SITE_ERRORS).is_dir():
-        relatorio_site = rodar_site_errors(raiz)
-        for resultado in relatorio_site.resultados:
-            relatorio.registrar(resultado)
+    relatorio_site = rodar_site_errors(raiz)
+    for resultado in relatorio_site.resultados:
+        relatorio.registrar(resultado)
     return relatorio
 
 
