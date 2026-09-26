@@ -100,13 +100,36 @@ def jobs_exigidos(workflow: str, arquivos: list[str], celulas: list[str], defini
 
 
 def consultar_jobs(raiz: Path, run: dict) -> list[dict]:
-    dados = _api(raiz, f"actions/runs/{run['id']}/jobs?filter=latest&per_page=100")
+    tentativa = run.get("run_attempt")
+    if type(tentativa) is not int or tentativa < 1:
+        raise ErroDeInstrumentacao("tentativa da publicação ausente; não há prova de cobertura")
+    dados = _api(raiz, f"actions/runs/{run['id']}/attempts/{tentativa}/jobs?per_page=100")
     if not isinstance(dados, dict) or not isinstance(dados.get("jobs"), list):
         raise ErroDeInstrumentacao("GitHub não devolveu os jobs da publicação")
     if dados.get("total_count", len(dados["jobs"])) > len(dados["jobs"]):
         raise ErroDeInstrumentacao("jobs de publicação truncados; não há prova de cobertura")
     return [dict(id=j.get("id"), name=j.get("name"), status=j.get("status"),
-                 conclusion=j.get("conclusion"), url=j.get("html_url")) for j in dados["jobs"]]
+                 conclusion=j.get("conclusion"), completed_at=j.get("completed_at"),
+                 url=j.get("html_url")) for j in dados["jobs"]]
+
+
+def jobs_por_nome_com_prova(jobs: list[dict]) -> dict[str, dict]:
+    """Mantém a prova concluída quando a API repete um job na mesma tentativa."""
+    por_nome = {}
+    prioridades = {}
+    for ordem, job in enumerate(jobs):
+        nome = job.get("name")
+        anterior = por_nome.get(nome)
+        try:
+            id_job = int(job.get("id") or -1)
+        except (TypeError, ValueError):
+            id_job = -1
+        prioridade = (job.get("status") == "completed", job.get("completed_at") or "", id_job, ordem)
+        anterior_prioridade = prioridades.get(nome, (False, "", -1, -1))
+        if anterior is None or prioridade > anterior_prioridade:
+            por_nome.update({nome: job})
+            prioridades[nome] = prioridade
+    return por_nome
 
 
 def consultar_jobs_em_lote(raiz: Path, runs: list[dict]) -> dict[int, list[dict]]:
@@ -196,14 +219,14 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     escolhidos = [max(runs_por_workflow[workflow],
                       key=lambda r: (r.get("id", 0), r.get("run_attempt", 1)), default=None)
                   for workflow in exigidos]
-    base["runs"] = [dict(id=r["id"], workflow=r["path"], sha=sha,
+    base["runs"] = [dict(id=r["id"], workflow=r["path"], sha=sha, run_attempt=r.get("run_attempt"),
                          status=r.get("status"), conclusion=r.get("conclusion"),
                          url=r.get("html_url")) for r in escolhidos if r]
     cobertura_incompleta = False
     for registro in base["runs"]:
         registro["jobs_exigidos"] = jobs_exigidos(registro["workflow"], arquivos, celulas, definicoes[registro["workflow"]])
         registro["jobs"] = consultar_jobs(raiz, registro)
-        por_nome = {j["name"]: j for j in registro["jobs"]}
+        por_nome = jobs_por_nome_com_prova(registro["jobs"])
         registro["jobs_sem_prova"] = [n for n in registro["jobs_exigidos"]
                                      if por_nome.get(n, {}).get("conclusion") != "success"
                                      or por_nome.get(n, {}).get("status") != "completed"]
@@ -469,7 +492,7 @@ def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
             if comparacoes[sha] not in {"ahead", "identical"}:
                 continue
             jobs = consultar_jobs(raiz, candidato)
-            por_nome = {j["name"]: j for j in jobs}
+            por_nome = jobs_por_nome_com_prova(jobs)
             portoes = {"portao-de-deploy"} | ({"detectar"} if workflow == DEPLOYS[0] else set())
             for nome in exigidos - vistos:
                 job = por_nome.get(nome)
@@ -484,7 +507,7 @@ def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
                                        sha=sha, url=candidato.get("html_url")))
             if vistos == exigidos:
                 break
-        por_nome = {j["name"]: j for j in original.get("jobs", [])}
+        por_nome = jobs_por_nome_com_prova(original.get("jobs", []))
         for nome in exigidos - vistos:
             job = por_nome.get(nome, {})
             portoes = {"portao-de-deploy"} | ({"detectar"} if workflow == DEPLOYS[0] else set())
