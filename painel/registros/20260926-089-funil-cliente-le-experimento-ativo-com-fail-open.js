@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-089-funil-cliente-le-experimento-ativo-com-fail-open",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "funil: cliente lê experimento_ativo com fail-open",
+  detalhe: "obter_pagina confere experimento_ativo; fora de forma vira sem experimento com log e a página publicada segue. 14 mutações reprovam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2137. Validação local: árvore 46d01927b5aa62a9d74043389182139b1b027656; commit 1b5f6d8751ea89a9ad4b515fc1adeb53ea66f1e2; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-770",
+  gravidade: "info",
+  frente: "site",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
