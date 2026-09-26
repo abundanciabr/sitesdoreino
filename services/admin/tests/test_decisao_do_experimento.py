@@ -330,7 +330,7 @@ def test_decisao_gravada_nao_muda_com_outro_botao(veredito):
     assert not rotas["encerrar"].called
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_a_decisao_pede_a_trava_do_experimento_ao_postgres(monkeypatch):
     monkeypatch.setattr(connection, "vendor", "postgresql")
     with CaptureQueriesContext(connection) as consultas:
