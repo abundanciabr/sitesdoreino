@@ -632,10 +632,24 @@ def main(argv: list[str] | None = None) -> int:
     relatorio = rodar(args.raiz)
     print(relatorio.render())
     if relatorio.estado is Estado.FAIL:
-        print("")
-        print(f"CONSERTO: {CONSERTO}")
-        print("Reconstruir a wheel faz o PR tocar services/**, e é assim que as")
-        print("suítes das duas células rodam e o deploy da correção dispara.")
+        consertos = set()
+        for resultado in relatorio.resultados:
+            if resultado.estado is not Estado.FAIL:
+                continue
+            if "site_errors" in resultado.nome:
+                consertos.add(
+                    "python ci/portao_do_pacote_compartilhado.py --reconstruir-site-errors"
+                )
+            elif "outbox_relay" in resultado.nome:
+                consertos.add(CONSERTO)
+        if consertos:
+            print("")
+            for conserto in sorted(consertos):
+                print(f"CONSERTO: {conserto}")
+            print("Reconstruir a wheel faz o PR tocar services/**, e é assim que as")
+            print(
+                "suítes das células consumidoras rodam e o deploy da correção dispara."
+            )
     return relatorio.exit_code
 
 

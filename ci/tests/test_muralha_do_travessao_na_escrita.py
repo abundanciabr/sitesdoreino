@@ -35,8 +35,11 @@ def decidir(tool_name: str, tool_input: dict, cwd: Path):
     }
     return subprocess.run(
         [sys.executable, str(MURALHA)],
-        input=json.dumps(dados), capture_output=True, text=True,
-        encoding="utf-8", timeout=60,
+        input=json.dumps(dados),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=60,
     )
 
 
@@ -57,6 +60,7 @@ def reino(tmp_path: Path):
 
 
 # ---------- Write: o arquivo novo ----------
+
 
 def test_recusa_template_novo_com_travessao(reino):
     raiz, templates = reino
@@ -125,6 +129,7 @@ def test_permite_travessao_no_bastidor(reino):
 
 # ---------- Edit: o arquivo que já existe ----------
 
+
 def test_recusa_edit_que_adiciona_travessao(reino):
     raiz, templates = reino
     alvo = templates / "aula.html"
@@ -191,6 +196,7 @@ def test_permite_edit_que_vai_falhar_sozinho(reino):
 
 # ---------- O texto de tela que mora em código ----------
 
+
 def test_recusa_rotulo_de_choices_com_travessao(reino):
     raiz, _ = reino
     conteudo = (
@@ -228,6 +234,7 @@ def test_permite_travessao_em_docstring_de_arquivo_com_choices(reino):
 
 # ---------- fail-closed e fiação ----------
 
+
 def test_recusa_candidato_quando_o_instrumento_falta(tmp_path: Path):
     raiz = tmp_path / "repo-sem-bastidor"
     (raiz / ".git").mkdir(parents=True)
@@ -244,14 +251,19 @@ def test_recusa_candidato_quando_o_instrumento_falta(tmp_path: Path):
 def test_recusa_json_quebrado():
     r = subprocess.run(
         [sys.executable, str(MURALHA)],
-        input="isto não é json", capture_output=True, text=True,
-        encoding="utf-8", timeout=60,
+        input="isto não é json",
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=60,
     )
     assert r.returncode == 2
 
 
 def test_fiacao_muda_da_escrita_para_o_commit():
-    assert "muralha_do_travessao_na_escrita.py" not in FIACAO.read_text(encoding="utf-8")
+    assert "muralha_do_travessao_na_escrita.py" not in FIACAO.read_text(
+        encoding="utf-8"
+    )
     gancho = (RAIZ_DO_REPO / ".githooks/pre-commit").read_text(encoding="utf-8")
     assert "python ci/travessao.py --verificar-staged || exit 1" in gancho
     assert (RAIZ_DO_REPO / "ci/muralha-do-travessao.sh").is_file()
@@ -259,35 +271,60 @@ def test_fiacao_muda_da_escrita_para_o_commit():
 
 def test_checkpoint_mede_texto_do_stage_e_nao_a_edicao_seguinte(tmp_path, monkeypatch):
     import travessao
+
     subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
     (tmp_path / "ci").mkdir()
     (tmp_path / "ci/texto-publico-bastidor.txt").write_text("", encoding="utf-8")
     p = tmp_path / "services/exemplo/templates/pagina.html"
     p.parent.mkdir(parents=True)
     p.write_text("<p>Olá — mundo.</p>", encoding="utf-8")
-    subprocess.run(["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True
+    )
     p.write_text("<p>Olá, mundo.</p>", encoding="utf-8")
     monkeypatch.setattr(travessao, "raiz_do_repo", lambda: tmp_path)
     assert travessao.main(["--verificar-staged"]) == 1
-    subprocess.run(["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True
+    )
     p.write_text("<p>Olá — mundo.</p>", encoding="utf-8")
     assert travessao.main(["--verificar-staged"]) == 0
 
 
 def test_checkpoint_ignora_wheel_binaria_no_stage(tmp_path, monkeypatch):
     import travessao
+
     subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
     (tmp_path / "ci").mkdir()
     (tmp_path / "ci/texto-publico-bastidor.txt").write_text("", encoding="utf-8")
     wheel = tmp_path / "services/exemplo/vendor/site_errors.whl"
     wheel.parent.mkdir(parents=True)
     wheel.write_bytes(b"PK\x03\x04\x00\xff")
-    subprocess.run(["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True
+    )
     monkeypatch.setattr(travessao, "raiz_do_repo", lambda: tmp_path)
     assert travessao.main(["--verificar-staged"]) == 0
 
 
+def test_checkpoint_recusa_texto_publico_utf8_invalido(tmp_path, monkeypatch):
+    import travessao
+
+    subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci/texto-publico-bastidor.txt").write_text("", encoding="utf-8")
+    pagina = tmp_path / "services/exemplo/templates/pagina.html"
+    pagina.parent.mkdir(parents=True)
+    pagina.write_bytes(b"<p>texto publico \xff</p>")
+    subprocess.run(
+        ["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True
+    )
+    monkeypatch.setattr(travessao, "raiz_do_repo", lambda: tmp_path)
+    assert travessao.main(["--verificar-staged"]) == 2
+
+
 # ---------- a equivalência das duas réguas ----------
+
 
 def test_pertence_a_superficie_bate_com_superficie_no_repo_real():
     sys.path.insert(0, str(RAIZ_DO_REPO / "ci"))
@@ -308,10 +345,10 @@ def test_pertence_a_superficie_bate_com_superficie_no_repo_real():
             except (OSError, UnicodeDecodeError):
                 texto = ""
             relativo = arquivo.relative_to(RAIZ_DO_REPO)
-            if travessao.pertence_a_superficie(
-                RAIZ_DO_REPO, relativo, texto
-            ) != (arquivo in oficiais):
+            if travessao.pertence_a_superficie(RAIZ_DO_REPO, relativo, texto) != (
+                arquivo in oficiais
+            ):
                 divergentes.append(relativo.as_posix())
-    assert not divergentes, (
-        "as duas réguas divergiram nestes caminhos:\n  " + "\n  ".join(divergentes)
-    )
+    assert (
+        not divergentes
+    ), "as duas réguas divergiram nestes caminhos:\n  " + "\n  ".join(divergentes)

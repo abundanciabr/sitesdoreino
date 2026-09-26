@@ -195,7 +195,7 @@ urlpatterns = [path("falha-real/", _falhar)]
 handler500 = "site_errors.handlers.server_error_shared"
 
 
-def test_excecao_real_permanece_500_e_nao_exibe_detalhes(caplog, rede):
+def test_excecao_real_permanece_500_e_nao_exibe_detalhes(caplog, rede, sem_contagem):
     with override_settings(ROOT_URLCONF=__name__, DEBUG=False):
         resposta = Client(raise_request_exception=False).get(
             "/falha-real/?token=segredo", HTTP_HOST=HOST_MESH
@@ -206,11 +206,13 @@ def test_excecao_real_permanece_500_e_nao_exibe_detalhes(caplog, rede):
     assert b"falha interna com detalhe" not in resposta.content
     assert b"token=segredo" not in resposta.content
     assert resposta["X-Request-ID"].startswith("ERR-500-")
-    evento = json.loads(
-        next(
-            record.message for record in caplog.records if record.name == "site_errors"
-        )
-    )
+    eventos = [
+        record.message
+        for record in caplog.records
+        if record.name == "site_errors" and record.levelname == "ERROR"
+    ]
+    assert len(eventos) == 1
+    evento = json.loads(eventos[0])
     assert evento["status"] == 500
     assert evento["reference_id"] == resposta["X-Request-ID"]
     assert "token" not in evento["path"]

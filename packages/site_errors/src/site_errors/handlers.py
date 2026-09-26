@@ -165,7 +165,6 @@ def server_error_shared(request):
         response = server_error(request)
         response["X-Request-ID"] = _id_de_referencia(request, 500)
         return response
-    request.site_error_page_rendered = True
     return _resposta_html(request, 500, "unhandled_server_error")
 
 
@@ -202,10 +201,4 @@ class SiteErrorLoggingMiddleware:
             if not getattr(request, "site_error_logged", False):
                 _registrar(request, 500, "response_status_500")
             response["X-Request-ID"] = request.site_error_id
-            if (
-                response.get("Content-Type", "").startswith("text/html")
-                and not getattr(request, "site_error_page_rendered", False)
-                and not _rota_sem_html(request.path_info)
-            ):
-                return _resposta_html(request, 500, "response_status_500")
         return response
