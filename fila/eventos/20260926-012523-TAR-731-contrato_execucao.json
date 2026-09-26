@@ -1,0 +1,62 @@
+{
+  "arquivo": "20260926-012523-TAR-731-contrato_execucao",
+  "tarefa": "TAR-731",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T01:25:23.305518+00:00",
+  "quem": "agent/checkout/appmax-pix-correlacao",
+  "contrato": {
+    "plano": "Referência opaca da falha Pix Appmax",
+    "versao": 1,
+    "objetivo": "Localizar a tentativa Pix que falhou pela referência exibida no checkout, sem reenviar a cobrança.",
+    "entregaveis": [
+      "Referência SHA-256 da sessão na mensagem de falha",
+      "Consulta fechada pela mesma chave idempotente",
+      "PR integrado, deploy e prova da mensagem"
+    ],
+    "escopo_incluido": [
+      "ci/operacoes_vps.py",
+      "ci/tests/test_operacoes_vps.py",
+      "services/checkout/static/checkout/dados.js",
+      "services/checkout/tests/test_paginas_producao.py",
+      "Eventos exclusivos TAR-731 e seu registro"
+    ],
+    "nao_objetivos": [
+      "Repetir POST sandbox existente",
+      "Ativar produção",
+      "Corrigir o fornecedor Pix",
+      "Alterar contrato financeiro"
+    ],
+    "restricoes": [
+      "Escritor único agent/checkout/appmax-pix-correlacao",
+      "Sem ID bruto, PII, segredo ou QR em log",
+      "Sem alterações na vista Appmax do Admin"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato de 25/09/2026 para ci/ e services/checkout/ na TAR-711; retomada expressa do mantenedor nesta sessão"
+    ],
+    "etapas": [
+      "Retomar commit preservado em bancada nova",
+      "Validar correlação e mensagem",
+      "Integrar e confirmar deploy"
+    ],
+    "criterios_entrada": [
+      "PR #2076 integrado",
+      "Bancada exclusiva com baseline checkout 136 passed",
+      "Commit preservado 0f772f24"
+    ],
+    "criterios_aceite": [
+      "SHA-256 na falha sem dados brutos",
+      "Canal usa idempotency_key da sessão",
+      "45 testes do canal e 11 do checkout passam",
+      "PR e publicação comprovados"
+    ],
+    "evidencias_exigidas": [
+      "Logs determinísticos de validação",
+      "Diff de quatro arquivos",
+      "Run deploy e página pública"
+    ],
+    "condicao_encerramento": "TAR-731 conciliada com PR integrado, publicação e provas aceitas; TAR-711 permanece para QR sandbox.",
+    "limites_autonomia": "Somente correlação técnica e publicação pelo pipeline; nenhum POST financeiro repetido.",
+    "acoes_do_mantenedor": "Nenhuma para a correlação."
+  }
+}
