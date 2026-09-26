@@ -110,6 +110,27 @@ def test_faixa_sem_botao_mostra_o_diagnostico_e_nenhum_link(client, quiz_a):
     assert "<a " not in pagina
 
 
+def test_resultado_sem_faixa_nao_mostra_a_chave_interna(client, quiz_a):
+    """Pontuação que nenhuma faixa cobre grava `sem_faixa`. A pessoa lê que as
+    respostas chegaram, nunca o nome interno do caso."""
+    ResultBand.objects.create(
+        version=quiz_a.versions.get(),
+        key="baixo",
+        title="Baixo",
+        min_score=0,
+        max_score=4,
+        botao_destino=DESTINO,
+        botao_rotulo="Começar pelo básico",
+    )
+
+    pagina = _submeter(client, quiz_a, pontos=10).content.decode()
+
+    assert Submission.objects.get().result_key == "sem_faixa"
+    assert "<h1>Recebemos suas respostas</h1>" in pagina
+    assert "sem_faixa" not in pagina
+    assert "<a " not in pagina
+
+
 def test_destino_sem_rotulo_e_recusado_pelo_banco(quiz_a):
     """A regra mora no banco, não no template: tela não é lugar de descobrir
     que o dado está pela metade."""

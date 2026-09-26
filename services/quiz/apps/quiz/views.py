@@ -23,6 +23,16 @@ SALT_SESSAO = "quiz-session"
 MAX_AGE_SESSAO = 7 * 24 * 60 * 60
 LIMITE_CORPO = 4096
 LIMITE_ELEMENTO = 120
+# Lidos do modelo: contato maior que a coluna seria erro do banco (500) e a
+# pessoa perderia as respostas.
+LIMITES_DO_CONTATO = {
+    campo: Submission._meta.get_field(coluna).max_length
+    for campo, coluna in (
+        ("email", "lead_email"),
+        ("nome", "lead_name"),
+        ("telefone", "lead_phone"),
+    )
+}
 
 
 def _quiz_do_site(request, slug):
@@ -161,7 +171,15 @@ def _escrever_cookie(response, request, slug, entrada):
 
 
 def _render_formulario(
-    request, quiz, versao, questions, entrada, erro=None, status=200, etapa_inicial=0
+    request,
+    quiz,
+    versao,
+    questions,
+    entrada,
+    erro=None,
+    status=200,
+    etapa_inicial=0,
+    campo_com_erro=None,
 ):
     valores = {
         "email": request.POST.get("email", ""),
@@ -185,9 +203,16 @@ def _render_formulario(
             "opcoes_selecionadas": opcoes_selecionadas,
             "etapa_inicial": etapa_inicial,
             "etapa_lead_ativa": etapa_inicial >= questions.count(),
+            "campo_com_erro": campo_com_erro,
         },
         status=status,
     )
+    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+
+
+def _ir_ao_resultado(request, quiz, entrada, submissao):
+    destino = reverse("quiz-resultado", args=[quiz.slug])
+    resposta = redirect(f"{destino}?lead={submissao.id}")
     return _escrever_cookie(resposta, request, quiz.slug, entrada)
 
 
@@ -197,6 +222,14 @@ def formulario(request, slug):
     questions = versao.questions.prefetch_related("options")
 
     if request.method != "POST":
+        # Retomar uma sessão já concluída é voltar ao resultado dela. O
+        # formulário em branco pediria respostas que o reenvio idempotente
+        # (quiz + session_id) descartaria sem avisar.
+        concluida = Submission.objects.filter(
+            quiz=quiz, session_id=entrada["session_id"]
+        ).first()
+        if concluida is not None:
+            return _ir_ao_resultado(request, quiz, entrada, concluida)
         return _render_formulario(request, quiz, versao, questions, entrada)
 
     email = request.POST.get("email", "").strip()
@@ -210,8 +243,11 @@ def formulario(request, slug):
             erro="Informe seu e-mail para ver o resultado.",
             status=422,
             etapa_inicial=questions.count(),
+            campo_com_erro="email",
         )
     try:
+        if len(email) > LIMITES_DO_CONTATO["email"]:
+            raise ValidationError("e-mail maior que a coluna")
         validate_email(email)
     except ValidationError:
         return _render_formulario(
@@ -223,7 +259,22 @@ def formulario(request, slug):
             erro="Informe um e-mail válido para continuar.",
             status=422,
             etapa_inicial=questions.count(),
+            campo_com_erro="email",
         )
+    for campo in ("nome", "telefone"):
+        limite = LIMITES_DO_CONTATO[campo]
+        if len(request.POST.get(campo, "").strip()) > limite:
+            return _render_formulario(
+                request,
+                quiz,
+                versao,
+                questions,
+                entrada,
+                erro=f"Use até {limite} caracteres no {campo}.",
+                status=422,
+                etapa_inicial=questions.count(),
+                campo_com_erro=campo,
+            )
 
     score = 0
     respostas: dict[int, int] = {}
@@ -290,9 +341,7 @@ def formulario(request, slug):
             )
             transaction.on_commit(relay_apos_commit)
 
-    destino = reverse("quiz-resultado", args=[slug])
-    resposta = redirect(f"{destino}?lead={submissao.id}")
-    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+    return _ir_ao_resultado(request, quiz, entrada, submissao)
 
 
 def resultado(request, slug):
