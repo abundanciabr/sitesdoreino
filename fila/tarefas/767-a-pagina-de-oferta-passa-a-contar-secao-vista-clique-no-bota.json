@@ -1,0 +1,19 @@
+{
+  "arquivo": "767-a-pagina-de-oferta-passa-a-contar-secao-vista-clique-no-bota",
+  "id": "TAR-767",
+  "titulo": "A pagina de oferta passa a contar secao vista, clique no botao e lead capturado",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "PR do funil mergeado com testes que validam os tres eventos contra o contrato, endpoint que nunca derruba a pagina e POST real ao endpoint em producao devolvendo o codigo esperado",
+  "despacho": "Emitir funil.secao-vista, funil.cta-clicado e funil.lead-capturado com endpoint fail-open e testes (brief da frente F3).",
+  "origem": "Frente F3 do sistema de experimentos, sessao de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
