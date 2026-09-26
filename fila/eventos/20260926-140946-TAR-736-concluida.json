@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-140946-TAR-736-concluida",
+  "tarefa": "TAR-736",
+  "evento": "concluida",
+  "quando": "2026-09-26T14:09:46.393662+00:00",
+  "quem": "agent/ci/appmax-pix-pedido",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2102",
+  "verificado_em": "2026-09-26"
+}
