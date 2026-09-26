@@ -255,18 +255,18 @@ real: F5 depende da TAR-754 integrada; F6 e F7 dependem das decisões dele.
 - [x] Registro 053: #2119 MERGED `120e5af1`
 - [x] #2117 devolvido a rascunho para não integrar com mandato inventado
 - [x] Rota e arquivo de retomada escritos (26/09/2026, sessão de rota)
-- [ ] F1: `docs/quiz/RETOMADA-CRIVO.md` integrado (PR, sha)
-- [ ] Pergunta única respondida (data, hora, o que ele disse)
-- [ ] #2116 MERGED (sha)
-- [ ] #2117 MERGED (sha) ou fechado por decisão dele
-- [ ] Run `quiz-configuracao` verde (URL, SHA) e registro integrado
-- [ ] TAR-754 terminal em `listar --ao-vivo`
-- [ ] Oferta do botão: mantida, ou F6 integrada e semeador verde
-- [ ] Menu: gesto dele conferido na home, ou "não agora" registrado
-- [ ] Regra de refazer: mantida, ou F7 integrada e publicada
-- [ ] F8 procurador e F9 escrivão devolvidos
-- [ ] Limpeza: `git worktree remove` das três bancadas (só com `git status` limpo e PR integrado) e `%TEMP%\sitesdoreino-sessoes\quiz-jornada-completa-crivo\`
-- [ ] Prestação de contas final com Instruções
+- [x] F1: `docs/quiz/RETOMADA-CRIVO.md` integrado: #2121 MERGED `6f7dcc8e`
+- [x] Pergunta única respondida na sessão de 26/09/2026: autoriza #2116 e #2117; mantém curso-teste; menu "não agora"; botão Refazer (registro 058)
+- [x] #2116 MERGED `e4e5babe`
+- [x] #2117 MERGED `3626b247`
+- [x] Run `quiz-configuracao` verde: https://github.com/abundanciabr/sitesdoreino/actions/runs/36273310706 (SHA `3626b247`); registro 059 no #2124 MERGED `570b2957`
+- [x] TAR-754 `concluída` em `listar --ao-vivo`
+- [x] Oferta do botão mantida em curso-teste por decisão dele (F6 não disparada)
+- [x] Menu: "não agora" registrado no registro 058 (#2123 MERGED `74ae3dbf`)
+- [x] Regra de refazer: F7 #2122 MERGED `869d3361`, deploy https://github.com/abundanciabr/sitesdoreino/actions/runs/36274527935 verde, rota com 405 (GET) e 403 (POST sem token); registro 065
+- [x] F8 procurador devolvido; F9 armadilha 510 no #2123 MERGED `74ae3dbf`
+- [ ] Limpeza: as três bancadas removidas; `%TEMP%\sitesdoreino-sessoes\quiz-jornada-completa-crivo\` ficou com o mantenedor (a ferramenta recusou apagar)
+- [x] Prestação de contas final com Instruções na sessão de retomada de 26/09/2026
 
 ## Referências e por que ler
 
