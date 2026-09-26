@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-069-painel-registra-integracao-do-guarda-de-comentario-vazando",
+  tipo: "medicao",
+  quando: "2026-09-26",
+  titulo: "painel: registra integração do guarda de comentário vazando",
+  detalhe: "Guarda de comentário vazando integrado: PR 2126, merge 46d516b4 na main, 8 checks verdes. Responde ao registro 20260926-067.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2145. Validação local: árvore 3a3696e531329912d64d4a71f478a684819d7ca4; commit 1e80e1abafc62ad977cf6fb93dee106cff868430; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-766",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
