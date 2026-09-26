@@ -4,6 +4,8 @@
 # prism (make mocks) — nunca suba a outra célula, nunca leia o banco dela.
 import logging
 import os
+import re
+import uuid
 
 import httpx
 
@@ -20,6 +22,59 @@ _cliente: httpx.Client | None = None
 #: família do erro que o `obter_resumo` da `notificacoes` evita separando "zero"
 #: de "não sei".
 SEM_RESPOSTA = object()
+
+#: `variante_id` do `experimento_ativo`: chave curta, a mesma que os eventos
+#: `funil.*` carregam e que o sorteio usa para ordenar as variantes.
+_VARIANTE_ID = re.compile(r"[a-z][a-z0-9-]{0,31}")
+
+#: Os pesos das variantes são pontos-base: 50/50 chega como 5000 e 5000.
+_PESO_TOTAL = 10000
+
+
+def _defeito_do_experimento(experimento) -> str | None:
+    """Por que `experimento_ativo` está fora da forma do `getPage`, ou `None`
+    se ele está na forma.
+
+    A conferência cobre o que o sorteio e os eventos vão usar sem perguntar de
+    novo: `id` em UUID canônico (vai dentro de todo `funil.*`), `variante_id`
+    único e no padrão, pesos inteiros que somam `_PESO_TOTAL` (senão o sorteio
+    deixa visitante sem braço) e o texto de cada variante.
+    """
+    if not isinstance(experimento, dict):
+        return "não é um objeto"
+    id_ = experimento.get("id")
+    try:
+        id_canonico = isinstance(id_, str) and str(uuid.UUID(id_)) == id_
+    except ValueError:
+        id_canonico = False
+    if not id_canonico:
+        return f"id {id_!r} não é um UUID canônico"
+    for campo in ("secao", "slot"):
+        valor = experimento.get(campo)
+        if not isinstance(valor, str) or not valor:
+            return f"{campo} ausente ou vazio"
+    variantes = experimento.get("variantes")
+    if not isinstance(variantes, list) or not variantes:
+        return "variantes ausente, vazia ou fora de lista"
+    vistos = set()
+    for variante in variantes:
+        if not isinstance(variante, dict):
+            return "uma variante não é um objeto"
+        variante_id = variante.get("variante_id")
+        if not isinstance(variante_id, str) or not _VARIANTE_ID.fullmatch(variante_id):
+            return f"variante_id {variante_id!r} fora do padrão"
+        if variante_id in vistos:
+            return f"variante_id {variante_id!r} repetido"
+        vistos.add(variante_id)
+        peso = variante.get("peso")
+        if isinstance(peso, bool) or not isinstance(peso, int) or peso < 0:
+            return f"peso da variante {variante_id!r} não é inteiro maior ou igual a zero"
+        if not isinstance(variante.get("valor"), str):
+            return f"valor da variante {variante_id!r} não é texto"
+    soma = sum(variante["peso"] for variante in variantes)
+    if soma != _PESO_TOTAL:
+        return f"os pesos somam {soma}, e não {_PESO_TOTAL}"
+    return None
 
 
 def http() -> httpx.Client:
@@ -70,7 +125,9 @@ class CatalogoClient:
         Três respostas, e não duas, porque a página que as recebe leva o
         visitante a três telas diferentes:
 
-        * o dicionário da `PaginaPublicada` — há o que desenhar;
+        * o dicionário da `PaginaPublicada` — há o que desenhar. Ele SEMPRE
+          traz `experimento_ativo`: o objeto conferido quando há um teste
+          rodando na página, ou `None` quando não há;
         * `None` — o catálogo respondeu 404, e "esta página não existe" é um
           fato, não um erro (o próprio contrato o diz: página sem nenhuma
           versão publicada responde 404, e não 200 com seções vazias);
@@ -86,6 +143,11 @@ class CatalogoClient:
         publicaria medição impossível de comparar. Corpo fora do contrato é
         tratado como "não sei", nunca como uma página com campos adivinhados
         (o bug mais caro da Fase D: *2xx não é sucesso*).
+
+        O EXPERIMENTO É O CONTRÁRIO: ele nunca derruba a oferta. Ausente ou
+        nulo é o estado normal de página sem teste; fora de forma é defeito do
+        catálogo, que fica no log com o motivo, e a página segue com a versão
+        publicada, sem experimento.
         """
         try:
             r = http().get(
@@ -128,6 +190,18 @@ class CatalogoClient:
                 slug,
             )
             return SEM_RESPOSTA
+
+        experimento = corpo.get("experimento_ativo")
+        defeito = None if experimento is None else _defeito_do_experimento(experimento)
+        if defeito:
+            logger.error(
+                "pagina %r: o catálogo mandou experimento_ativo fora do contrato (%s); "
+                "a página segue com a versão publicada, sem experimento",
+                slug,
+                defeito,
+            )
+            experimento = None
+        corpo["experimento_ativo"] = experimento
         return corpo
 
 
