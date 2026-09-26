@@ -313,6 +313,20 @@ def test_devolvida_volta_para_a_fila(tmp_path):
     assert estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]["estado"] == fila.NA_FILA
 
 
+def test_reserva_nova_depois_de_devolvida_e_do_almoxarife(tmp_path):
+    eventos = [
+        evento(hora="10:00:00", quem="agent-a"),
+        evento(tipo="devolvida", hora="11:00:00", quem="agent-a"),
+    ]
+    estado = estados_de(tmp_path, [tarefa()], eventos, reservas={"TAR-001"})["TAR-001"]
+    # guarda: ci/fila.py:1163
+    assert estado == {
+        "estado": fila.REIVINDICADA,
+        "motivo": "",
+        "quem": "reserva ativa no almoxarife",
+    }
+
+
 def test_reivindicacao_expirada_volta_para_a_fila_com_a_marca_da_causa(tmp_path):
     eventos = [
         evento(hora="10:00:00"),
@@ -619,7 +633,7 @@ def aquisicao_ok(monkeypatch, tid="TAR-001"):
     monkeypatch.setattr(
         fila.reservar,
         "soltar",
-        lambda *a: pytest.fail("soltou reserva válida"),
+        lambda *a, **k: pytest.fail("soltou reserva válida"),
     )
 
 
@@ -632,6 +646,46 @@ def test_pegar_ganha_escreve_o_evento_e_mostra_o_despacho(tmp_path, monkeypatch,
     eventos = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))
     assert len(eventos) == 1
     assert "faça a coisa" in capsys.readouterr().out
+
+
+def test_pegar_retoma_devolvida_com_reserva_nova(tmp_path, monkeypatch, capsys):
+    montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(hora="10:00:00", quem="agent-a"),
+            evento(tipo="devolvida", hora="11:00:00", quem="agent-a"),
+        ],
+    )
+    sem_rede(monkeypatch)
+    aquisicao_ok(monkeypatch)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
+    # guarda: ci/fila.py:2932
+    assert fila.cmd_pegar(tmp_path, args) == 0
+    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))) == 2
+    assert "✅ TAR-001" in capsys.readouterr().out
+
+
+def test_pegar_recusa_reserva_alheia_depois_de_devolvida(tmp_path, monkeypatch, capsys):
+    montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(hora="10:00:00", quem="agent-a"),
+            evento(tipo="devolvida", hora="11:00:00", quem="agent-a"),
+        ],
+    )
+    sem_rede(monkeypatch, reservas={"TAR-001"})
+    monkeypatch.setattr(
+        fila.reservar,
+        "reservar_intencao",
+        lambda *a, **k: pytest.fail("não tenta roubar reserva alheia"),
+    )
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
+    # guarda: ci/fila.py:2880
+    assert fila.cmd_pegar(tmp_path, args) == 1
+    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))) == 1
+    assert "RECUSADO" in capsys.readouterr().out
 
 
 def test_pegar_revalida_estado_depois_da_reserva_e_libera_se_mudou(
@@ -2898,7 +2952,7 @@ def args_de_fechar(**extra):
 
 def test_entrega_escreve_o_feito_e_a_fila_mostra_concluida(tmp_path, monkeypatch):
     """O PR de entrega submete e fecha, e o estado calculado vira concluída."""
-    # guarda: ci/fila.py:1724
+    # guarda: ci/fila.py:3350
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
@@ -2920,7 +2974,7 @@ def test_fechar_pela_entrega_exige_a_submissao_daquele_pr(tmp_path, monkeypatch,
     encerraria a tarefa de outra pessoa com prova inventada, e a folga de
     `cmd_submeter` reabriria a tarefa por essa mesma string.
     """
-    # guarda: ci/fila.py:2376
+    # guarda: ci/fila.py:3342
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr="prova inventada")) == 1
@@ -2938,7 +2992,7 @@ def test_fechar_pela_entrega_recusa_pr_diferente_da_submissao(tmp_path, monkeypa
 
 def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys):
     """`--continuar` chama de novo e nada é repetido."""
-    # guarda: ci/fila.py:1695
+    # guarda: ci/fila.py:2088
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
@@ -2950,7 +3004,7 @@ def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys)
 
 def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
     """Conclusão alheia não é sobrescrita nem acompanhada de uma segunda."""
-    # guarda: ci/fila.py:2382
+    # guarda: ci/fila.py:3347
     alheia = evento(tipo="concluida", hora="12:00:00",
                     evidencia="outro aceite", verificado_em="2026-09-11")
     montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])
@@ -2962,7 +3016,7 @@ def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, c
 
 def test_submeter_segue_atualizando_a_entrega_que_fechou_a_tarefa(tmp_path, monkeypatch):
     """O `--continuar` não pode bater no guarda terminal que ele mesmo criou."""
-    # guarda: ci/fila.py:1707
+    # guarda: ci/fila.py:3144
     nossa = evento(tipo="concluida", hora="12:00:00",
                    evidencia=URL_SUBMISSAO, verificado_em="2026-09-12")
     montar(tmp_path, [tarefa()], [evento(), submissao(), nossa])

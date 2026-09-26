@@ -1,0 +1,20 @@
+{
+  "arquivo": "732-retomar-reserva-propria-apos-devolucao-sem-aceitar-reserva-a",
+  "id": "TAR-732",
+  "titulo": "Retomar reserva própria após devolução sem aceitar reserva alheia",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Histórico devolvida seguido de nova reserva própria reabre a tarefa com dono do almoxarife; reserva alheia é recusada; suíte ci/tests/test_fila.py verde e PR integrado.",
+  "despacho": "Corrigir somente ci/fila.py e ci/tests/test_fila.py. Não repetir chamadas financeiras, não aceitar reserva alheia, não tocar PRs antigos nem outras superfícies. Registrar teste vermelho e verde, mutação das guardas e entrega pelo rito.",
+  "origem": "Continuação Appmax: bloqueio medido na retomada da TAR-731, com autorização nominal do mantenedor em 25/09/2026 para ci/fila.py e ci/tests/test_fila.py.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
