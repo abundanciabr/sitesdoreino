@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-011-ci-retomada-de-reserva",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "ci: retomada de reserva",
+  detalhe: "A retomada após devolução reconhece a nova reserva própria e mantém a recusa de reserva alheia, com suíte e mutação das guardas verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2098. Validação local: árvore 5c247fe605b39f3635ae753c394a40fb47a1c983; commit fe3f408c3b94e471decc80c8734625d7677ca9ed; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-732",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
