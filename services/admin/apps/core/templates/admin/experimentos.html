@@ -1,0 +1,120 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Experimentos | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro copy">
+  <a class="volta" href="{% url 'pagina_de_venda' %}">Voltar à página de venda</a>
+  <h1>Experimentos da página de oferta</h1>
+  <p class="subtitulo">
+    Um experimento mostra a uma parte das visitas um texto novo num espaço da
+    página, e mede se ele leva mais gente ao checkout do que o texto que está
+    no ar.
+  </p>
+
+  {% if sem_catalogo %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consegui falar com o catálogo,</b> que é onde os experimentos
+    ficam guardados. Nada mudou no site. Tente de novo daqui a pouco, e se
+    continuar assim é passo de máquina no servidor.
+  </p>
+  {% else %}
+
+  <p class="lei">
+    <b>Rascunho não muda o site.</b> <b>Iniciar põe o braço b no ar</b> para a
+    parte das visitas que você escolheu. <b>Encerrar é definitivo</b> e a página
+    volta ao texto que está no ar. Não existe pausar: pausar e retomar misturaria
+    quem viu cada texto e estragaria a conta. Só um experimento fica no ar por vez
+    nesta página.
+  </p>
+
+  {% if recado == "criado" %}
+  <p class="recado"><b>Salvei o experimento em rascunho.</b> O site continua
+    como estava; para pôr no ar, aperte Iniciar.</p>
+  {% elif recado == "iniciado" %}
+  <p class="recado"><b>O experimento está no ar.</b> A partir de agora a parte
+    sorteada das visitas vê o braço b.</p>
+  {% elif recado == "encerrado" %}
+  <p class="recado"><b>Encerrei o experimento.</b> Todas as visitas voltam a ver
+    o texto que está no ar.</p>
+  {% endif %}
+
+  {% if motivo == "ja_existe_ativo" %}
+  <p class="recado borda-vermelha">
+    <b>Não iniciei. Já existe um experimento ativo nesta página.</b>
+    Só um fica no ar por vez, para que cada visita veja uma diferença só.
+    <span class="nota">Encerre o que está no ar e aperte Iniciar de novo. Nada
+      mudou no site.</span>
+  </p>
+  {% elif motivo == "recusado" %}
+  <p class="recado borda-vermelha">
+    <b>O catálogo não aceitou.</b> {{ erro }}
+    <span class="nota">Nada mudou no site. A lista abaixo mostra o estado de
+      cada experimento agora.</span>
+  </p>
+  {% elif motivo == "nao_respondeu" %}
+  <p class="recado borda-vermelha">
+    <b>Não consegui {{ gesto|lower }} agora.</b> {{ erro }}
+    <span class="nota">Nada mudou no site. Aperte {{ gesto }} de novo daqui a
+      pouco: repetir é seguro, e o mesmo gesto não vale duas vezes.</span>
+  </p>
+  {% endif %}
+
+  <p><a class="botao" href="{% url 'experimento_novo' %}">Novo experimento</a></p>
+
+  {% if sem_leitura %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler os experimentos desta página.</b> {{ erro_da_leitura }}
+    Nada mudou no site. Recarregue esta tela daqui a pouco.
+  </p>
+  {% elif not experimentos %}
+  <p class="aviso">
+    Nenhum experimento nesta página ainda. O primeiro costuma ser um teste A/A
+    no título do topo: os dois braços com o mesmo texto, para conferir que a
+    medição está certa antes de testar um texto novo.
+  </p>
+  {% else %}
+  {% for e in experimentos %}
+  <div class="cartao espaco-14">
+    <div class="rotulo">
+      {{ e.espaco }}
+      <span class="{% if e.estado == 'ativo' %}selo-verde{% else %}selo{% endif %}">{{ e.rotulo }}</span>
+    </div>
+    <p class="valor">{{ e.hipotese }}</p>
+    {% for v in e.variantes %}
+    <p class="nota">Braço {{ v.variante_id }}, {{ v.parte }}% das visitas:</p>
+    <p class="citacao">{{ v.valor }}</p>
+    {% endfor %}
+    <p class="nota">
+      Métrica: {{ e.metrica }}. Taxa base {{ e.taxa_base }}%, efeito mínimo de
+      {{ e.mde }} pontos, {{ e.amostra }} visitas por braço em {{ e.dias }} dias.
+      {% if e.iniciado_em %}No ar desde {{ e.iniciado_em|date:"d/m/Y H:i" }}.{% endif %}
+      {% if e.fim_planejado %}Prazo planejado até {{ e.fim_planejado|date:"d/m/Y H:i" }}.{% endif %}
+    </p>
+
+    {% if e.estado == "rascunho" %}
+    <div class="decidir">
+      {% if ha_ativo %}
+      <p class="nota">Para iniciar este, encerre o que está no ar.</p>
+      {% else %}
+      <button class="sim" type="submit" form="iniciar-{{ e.id }}">Iniciar</button>
+      <form id="iniciar-{{ e.id }}" method="post" action="{% url 'experimento_iniciar' e.id %}">{% csrf_token %}</form>
+      {% endif %}
+      <button class="nao" type="submit" form="encerrar-{{ e.id }}">Descartar o rascunho</button>
+    </div>
+    <form id="encerrar-{{ e.id }}" method="post" action="{% url 'experimento_encerrar' e.id %}">{% csrf_token %}</form>
+    {% elif e.estado == "ativo" %}
+    <div class="decidir">
+      <button class="nao" type="submit" form="encerrar-{{ e.id }}">Encerrar de vez</button>
+      <p class="nota">Encerrar é definitivo. Para testar de novo depois,
+        crie um experimento novo.</p>
+    </div>
+    <form id="encerrar-{{ e.id }}" method="post" action="{% url 'experimento_encerrar' e.id %}">{% csrf_token %}</form>
+    {% elif e.estado == "encerrado" %}
+    <p class="nota">Encerrado de vez. Para testar este espaço de novo,
+      crie um experimento novo: ele recomeça o sorteio do zero.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

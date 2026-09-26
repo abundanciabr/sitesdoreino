@@ -317,6 +317,15 @@ class Registro(models.Model):
     # uma tabela que nao se apaga e justamente o que `armadilhas/331` proibe).
     SALVAR_RASCUNHO_DA_PAGINA = "salvar_rascunho_pagina"
     PUBLICAR_PAGINA = "publicar_pagina"
+    # [EXPERIMENTOS] 26/09/2026, a tela `/admin/paginas/experimentos/` (frente
+    # F9b). TRÊS verbos, porque as perguntas são três: "quem propôs este
+    # teste?", "desde quando metade das visitas vê outro texto, e quem ligou?"
+    # e "quem parou?". Iniciar é o único dos três que muda o que o visitante
+    # vê. O `detalhe` guarda a página e o espaço testado, nunca o texto: a copy
+    # é obra dele e mora no catálogo (`armadilhas/331`).
+    CRIAR_EXPERIMENTO = "criar_experimento"
+    INICIAR_EXPERIMENTO = "iniciar_experimento"
+    ENCERRAR_EXPERIMENTO = "encerrar_experimento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -375,6 +384,9 @@ class Registro(models.Model):
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
         (SALVAR_RASCUNHO_DA_PAGINA, "salvar o texto da pagina de venda"),
         (PUBLICAR_PAGINA, "por a pagina de venda no ar"),
+        (CRIAR_EXPERIMENTO, "criar um experimento na pagina de venda"),
+        (INICIAR_EXPERIMENTO, "por um experimento da pagina no ar"),
+        (ENCERRAR_EXPERIMENTO, "encerrar um experimento da pagina"),
     ]
 
     OK = "ok"

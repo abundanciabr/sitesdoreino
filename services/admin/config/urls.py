@@ -90,6 +90,12 @@ from apps.core.paginas import (
     pagina_de_venda_publicar,
     pagina_de_venda_salvar,
 )
+from apps.core.experimentos import (
+    experimento_encerrar,
+    experimento_iniciar,
+    experimento_novo,
+    experimentos,
+)
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import (
     plano_mestre,
@@ -309,6 +315,22 @@ urlpatterns = [
         "paginas/publicar",
         pagina_de_venda_publicar,
         name="pagina_de_venda_publicar",
+    ),
+    # OS EXPERIMENTOS DA PÁGINA (`apps/core/experimentos.py`, 26/09/2026,
+    # frente F9b): criar, iniciar e encerrar um teste de texto num espaço dela.
+    # Sub-rotas de `paginas/` porque é a mesma página, e um verbo por rota,
+    # como no menu: sem pausar, porque pausa estragaria a conta.
+    path("paginas/experimentos/", experimentos, name="experimentos"),
+    path("paginas/experimentos/novo", experimento_novo, name="experimento_novo"),
+    path(
+        "paginas/experimentos/<uuid:experimento_id>/iniciar",
+        experimento_iniciar,
+        name="experimento_iniciar",
+    ),
+    path(
+        "paginas/experimentos/<uuid:experimento_id>/encerrar",
+        experimento_encerrar,
+        name="experimento_encerrar",
     ),
     # A ECONOMIA (`apps/core/economia.py`, 31/08/2026) — a tela em que o
     # mantenedor liga e desliga cada regra de pontuacao da escola. Ela existe
