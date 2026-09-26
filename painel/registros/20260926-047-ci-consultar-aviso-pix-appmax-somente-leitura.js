@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-047-ci-consultar-aviso-pix-appmax-somente-leitura",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "ci: consultar aviso Pix Appmax somente leitura",
+  detalhe: "Consulta somente leitura do aviso Pix Appmax com SHA obrigatório, sandbox fechado, vínculos exatos, limites temporais e de volume, saída sanitizada e guardas de mutação PASS/FAIL/PASS.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2111. Validação local: árvore a0253e09bc320346bac31891b1fcfbcea54296c9; commit 06c75b9e80248cd421842952d5312a69ad4ec851; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-748",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
