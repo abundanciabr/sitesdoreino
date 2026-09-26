@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-031-admin-provas-e-dependencias-conferidas-na-vista-appmax",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "admin: provas e dependências conferidas na vista Appmax",
+  detalhe: "A vista lê provas e dependências na fila canônica, expõe links e recusa metadados incompletos. A consulta viva conta referências de reserva e trata falha com ação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2104. Validação local: árvore b13f13650b871b1ce9e6adb13238458f0d43f8be; commit ee113b94633600050ede742fa9e65b980ebea3a4; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-739",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

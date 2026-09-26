@@ -1,0 +1,21 @@
+{
+  "arquivo": "739-a-vista-appmax-mostra-provas-e-dependencias-conferidas",
+  "id": "TAR-739",
+  "titulo": "A vista Appmax mostra provas e dependências conferidas",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [
+    "TAR-730"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Vista publicada mostra provas como links, dependência TAR-566 por TAR-565 e consulta viva correta. Fixtures canônicas completas, guardas Python e prova JavaScript PASS FAIL PASS com hashes e restauração.",
+  "despacho": "Corrigir somente services/admin/apps/core/appmax.py, services/admin/apps/core/templates/admin/appmax.html e services/admin/tests/test_appmax.py. Usar a mesma fila publicada, incluir TAR-736, tratar metadados ausentes como não medido, preservar histórico TAR-730 e dinheiro desligado. Escritor exclusivo sessao-appmax-vista-correcao; bancada própria. Sem subagentes.",
+  "origem": "Aceite público da TAR-730 em 26/09/2026 e autorização Tudo do Appmax liberado",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
