@@ -1,0 +1,70 @@
+{
+  "plano": "RITOS.md#fila-de-trabalho",
+  "versao": 1,
+  "modelo_recomendado": "gpt-6-sol",
+  "esforco_recomendado": "medium",
+  "objetivo": "Distinguir, antes da inbox, ausência, vínculo incompleto e multiplicidade de instalações Appmax para o aviso Pix Meshcraft.",
+  "condicao_encerramento": "A operação existente retorna protocolo sanitizado para zero, vínculo incompleto, múltiplas instalações ou instalação única, sem nova operação real Appmax.",
+  "limites_autonomia": "Alterar somente ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py e os artefatos próprios da TAR-757. Não alterar workflow, webhooks, modelos, cliente Appmax, leitor GET, estados financeiros ou contratos de outras tarefas.",
+  "entregaveis": [
+    "Contrato e tarefa próprios da TAR-757",
+    "Distinção sanitizada na seleção de InstalacaoAppmax da operação existente",
+    "Testes focais e guardas já comprovados para ausência, incompletude, multiplicidade, validade e sanitização",
+    "Insumos de recibo e validação para o rito ci/pr"
+  ],
+  "escopo_incluido": [
+    "ci/operacoes_vps.py",
+    "ci/tests/test_operacoes_vps.py",
+    "fila/tarefas/757-distinguir-vinculo-instalacao-aviso-appmax.json",
+    "fila/contratos/757-distinguir-vinculo-instalacao-aviso-appmax.json",
+    "insumos privados do recibo da TAR-757"
+  ],
+  "nao_objetivos": [
+    "Não chamar HTTP, OAuth, AppmaxClient ou endpoint Appmax.",
+    "Não disparar workflow real, compra, estorno, POST financeiro ou escrita de dados.",
+    "Não expor IDs, PII, segredos, QR, EMV, payload, URL privada ou valores.",
+    "Não relaxar o vínculo exato nem ampliar a consulta limitada da inbox."
+  ],
+  "restricoes": [
+    "A checagem de sandbox permanece antes da importação ORM.",
+    "A tentativa permanece filtrada por provider appmax, site Meshcraft, método Pix, janela de sete dias e limite [:100].",
+    "A leitura InstalacaoAppmax permanece filtrada pelo site Meshcraft e limitada a [:2].",
+    "Zero linhas brutas emite instalacao_ausente; duas admissíveis emite instalacao_multipla; vínculo bruto incompleto emite instalacao_incompleta.",
+    "A inbox só é consultada depois de exatamente uma instalação admissível.",
+    "A consulta inbox permanece única, vinculada por app, instalação, site, evento order_pix_created, tipo order e pedido, limitada a [:2].",
+    "A saída pública contém apenas enums, contagens 0/1/2, flags de presença e datas ISO."
+  ],
+  "decisoes_aprovadas": [
+    "A TAR-748 já encerrou a operação base; esta TAR cobre somente a distinção diagnóstica sanitizada.",
+    "O mandato técnico Appmax e a publicação técnica no repositório indicado permanecem válidos.",
+    "A ausência ou ambiguidade de instalação não é contagem de avisos inbox."
+  ],
+  "etapas": [
+    "Reservar TAR-757 e vincular o ramo diagnóstico à base validada.",
+    "Preservar as provas existentes sem repetir suíte ou mutação nesta preparação.",
+    "Preparar recibo, corpo, detalhe e JSON de validação com executável Python absoluto.",
+    "A sessão responsável executar ci/pr e medir o desfecho uma vez."
+  ],
+  "criterios_entrada": [
+    "TAR-748 encerrada e implementação diagnóstica já validada.",
+    "Ramo diagnóstico preservado na bancada existente.",
+    "Mandato técnico e autorização de publicação já concedidos."
+  ],
+  "criterios_aceite": [
+    "Zero instalações brutas retorna instalacao_ausente com observadas 0 e sem consulta inbox.",
+    "Uma instalação bruta sem vínculo completo retorna instalacao_incompleta com observadas 1 e sem consulta inbox.",
+    "Duas instalações admissíveis retornam instalacao_multipla com observadas 2 e sem consulta inbox.",
+    "Uma instalação válida mantém filtro inbox exato, limite [:2] e saída sanitizada.",
+    "Combinações incoerentes de ação, contagem e consulta são rejeitadas.",
+    "Nenhum novo HTTP, POST, workflow real, compra, estorno ou escrita de dados é executado."
+  ],
+  "evidencias_exigidas": [
+    "Prova focal anterior preservada: 25 casos Appmax aviso PASS.",
+    "Suíte da célula anterior preservada: 100 casos PASS.",
+    "Prova de mutação anterior preservada: 15 guardas PASS, 15 mutações FAIL e restauração PASS.",
+    "JSON de validação com comandos como listas e executável Python absoluto.",
+    "Diff do PR restrito aos alvos e artefatos próprios da TAR-757."
+  ],
+  "acoes_do_mantenedor": "Nenhuma autorização técnica nova; a sessão responsável deve executar o ci/pr preparado e medir o desfecho.",
+  "referencia_prova": "C:\\Users\\davia\\.codex\\visualizations\\2026\\09\\26\\01a0debd-05b9-76d2-8e60-e40131d1d9b0\\prova-guardas-0t6xx9n3\\resultado.json"
+}

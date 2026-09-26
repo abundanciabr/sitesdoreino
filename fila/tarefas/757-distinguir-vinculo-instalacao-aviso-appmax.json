@@ -1,0 +1,21 @@
+{
+  "arquivo": "757-distinguir-vinculo-instalacao-aviso-appmax",
+  "id": "TAR-757",
+  "titulo": "Distinguir vínculo de instalação antes da inbox Appmax",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-748"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Operação appmax-pix-aviso distingue ausência, instalação incompleta e múltiplas instalações com contagem limitada e não consulta a inbox antes de vínculo único.",
+  "despacho": "A partir da operação appmax-pix-aviso existente, preservar a única leitura InstalacaoAppmax limitada a [:2] e o sandbox antes do ORM. Classificar zero linhas brutas como instalacao_ausente, duas instalações admissíveis como instalacao_multipla e vínculo existente incompleto como instalacao_incompleta. Emitir apenas enums, contagens limitadas, booleanos e datas ISO; não expor IDs, PII, segredos, QR, EMV ou valores. Testar zero, incompleta, múltipla, válida, malformada e sanitização. Não executar HTTP, POST, compras, estornos, workflow real ou escrita de dados. modelo_recomendado: gpt-6-sol; esforco_recomendado: medium.",
+  "origem": "Diagnóstico sanitizado do run 36266764691, continuação Appmax de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
