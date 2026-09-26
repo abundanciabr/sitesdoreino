@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260926-020227-TAR-732-checkpoint",
+  "tarefa": "TAR-732",
+  "evento": "checkpoint",
+  "quando": "2026-09-26T02:02:27.096611+00:00",
+  "quem": "agent/ci/appmax-retomada-reserva",
+  "plano": "Retomada segura de reserva própria após devolução — implementação e prova",
+  "ultimo_avanco": "Teste vermelho reproduziu 3 falhas; correção aplicada; suíte ci/tests/test_fila.py: 247 passed; mutação: PASS, 8 guardas, 8 reprovações, cada uma PASS→FAIL→PASS.",
+  "proxima_acao": "Registrar recibo no PR desta frente com diff restrito a ci/fila.py, ci/tests/test_fila.py e eventos próprios; entregar SHA à sessão responsável para reabrir TAR-731.",
+  "verificacoes": [
+    "python -m pytest -q ci/tests/test_fila.py: 247 passed in 23.94s",
+    "python ci/provar_guardas.py ci/tests/test_fila.py: estado PASS, 8 guardas, 8 reprovaram"
+  ]
+}

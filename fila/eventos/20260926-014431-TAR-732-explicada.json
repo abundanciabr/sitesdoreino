@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-014431-TAR-732-explicada",
+  "tarefa": "TAR-732",
+  "evento": "explicada",
+  "quando": "2026-09-26T01:44:31.198136+00:00",
+  "quem": "Continuação Appmax: bloqueio medido na retomada da TAR-731, com autorização nominal do mantenedor em 25/09/2026 para ci/fila.py e ci/tests/test_fila.py.",
+  "o_que_e": "A fila guarda o nome antigo depois que uma tarefa é devolvida e uma nova reserva própria é criada; a retomada entende que a reserva é de outra pessoa e a solta.",
+  "o_que_muda": "A sessão que retoma uma tarefa devolvida consegue confirmar a própria reserva sem duplicar evento, enquanto uma reserva de outra bancada continua sendo recusada.",
+  "exemplo": "A TAR-731 foi devolvida por agent-a; o almoxarife emite uma nova reserva; o comando deve retomá-la como reserva própria e não como reivindicação de agent-a.",
+  "importancia": 90
+}
