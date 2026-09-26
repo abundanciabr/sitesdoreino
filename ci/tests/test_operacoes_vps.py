@@ -253,7 +253,7 @@ def test_appmax_pix_descoberta_historica_emite_candidatas_opacas():
         "classificacao": "unica",
         "candidatas": [_candidata_pix()],
     }
-    # guarda: ci/operacoes_vps.py:313
+    # guarda: ci/operacoes_vps.py:307
     assert ops.conferir_medicao("appmax-pix", medicao) == medicao
     texto = json.dumps(medicao)
     assert "pedido_id" not in texto
@@ -350,9 +350,15 @@ def test_appmax_pix_codigo_remoto_e_autossuficiente_e_guarda_antes_da_consulta(
         capturado["codigo"] = args[-1]
         return json.dumps(medicao)
 
+    # guarda: ci/operacoes_vps.py:389
     monkeypatch.setattr(ops, "comando", comando)
-    assert ops.medir("appmax-pix", "pagamentos") == medicao
+    try:
+        assert ops.medir("appmax-pix", "pagamentos") == medicao
+    except Exception as exc:
+        pytest.fail(f"código remoto indisponível: {exc}")
     codigo = capturado["codigo"]
+    assert "https://auth.sandboxappmax.com.br/oauth2/token" in codigo
+    assert "https://api.sandboxappmax.com.br" in codigo
 
     def executar_remoto(auth_url, api_url):
         consultas = 0
@@ -421,18 +427,6 @@ def test_appmax_pix_codigo_remoto_e_autossuficiente_e_guarda_antes_da_consulta(
     assert json.loads(saida) == medicao
 
 
-def test_appmax_pix_sandbox_exige_os_dois_enderecos_oficiais():
-    # guarda: ci/operacoes_vps.py:68
-    assert ops.appmax_sandbox_configuracao_valida(
-        "https://auth.sandboxappmax.com.br/oauth2/token",
-        "https://api.sandboxappmax.com.br",
-    )
-    assert not ops.appmax_sandbox_configuracao_valida(
-        "https://auth.appmax.com.br/oauth2/token",
-        "https://api.appmax.com.br",
-    )
-
-
 def test_appmax_pix_recusa_configuracao_fora_do_sandbox(monkeypatch, capsys):
     chamadas = 0
 
@@ -490,7 +484,7 @@ def test_appmax_pix_recusa_motivo_livre_mesmo_transformado_em_slug():
             "payment": "reconciliation_required",
         },
     }
-    # guarda: ci/operacoes_vps.py:230
+    # guarda: ci/operacoes_vps.py:224
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix", medicao, REFERENCIA)
 

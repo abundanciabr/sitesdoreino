@@ -62,12 +62,6 @@ CAMPOS_VALOR_ESTORNO = {
     "total",
     "total_refunded",
 }
-
-
-def appmax_sandbox_configuracao_valida(auth_url, api_url):
-    return auth_url == APPMAX_AUTH_SANDBOX and api_url == APPMAX_API_SANDBOX
-
-
 FORMATO = (
     '{"estado":{{json .State.Status}},'
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
@@ -343,6 +337,7 @@ def medir(operacao, servico, referencia=""):
     if not re.fullmatch(r"[0-9a-f]{12,64}", identificador):
         raise Falha("formato")
     if operacao == "appmax-pix":
+        sandbox_urls = (APPMAX_AUTH_SANDBOX, APPMAX_API_SANDBOX)
         codigo = (
             "import hashlib,json\n"
             "from datetime import timedelta\n"
@@ -350,8 +345,8 @@ def medir(operacao, servico, referencia=""):
             "from django.conf import settings\n"
             "from pagamentos.core.models import PaymentAttempt\n"
             f"referencia = {referencia!r}\n"
-            "appmax_auth_sandbox = 'https://auth.sandboxappmax.com.br/oauth2/token'\n"
-            "appmax_api_sandbox = 'https://api.sandboxappmax.com.br'\n"
+            f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
+            f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
             "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
             "    print('APPMAX_SANDBOX_REQUIRED')\n"
             "    raise SystemExit(23)\n"
