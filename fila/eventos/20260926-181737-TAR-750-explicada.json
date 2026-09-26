@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-181737-TAR-750-explicada",
+  "tarefa": "TAR-750",
+  "evento": "explicada",
+  "quando": "2026-09-26T18:17:37.860661+00:00",
+  "quem": "Continuacao Appmax de 26/09/2026; manutencao da vista TAR-730",
+  "o_que_e": "A vista Appmax usa uma sequencia fixa e nao mostra quatro frentes que ja foram abertas.",
+  "o_que_muda": "O mantenedor acompanha os trabalhos recentes na mesma vista, com os estados e provas publicados pela fila.",
+  "exemplo": "A preservacao do aviso Pix passa a aparecer ao lado da consulta do pedido existente.",
+  "importancia": 75
+}
