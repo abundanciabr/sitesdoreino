@@ -31,7 +31,7 @@ from apps.core.clients import MedicaoClient
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
 METRICAS = "http://metricas:8000/api/metricas"
-FUNIL = f"{METRICAS}/funil/contagens"
+FUNIL = f"{METRICAS}/funil"
 CATALOGO = "http://catalogo:8000/api/catalogo"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
@@ -91,11 +91,15 @@ def _resposta(
     ),
 ) -> dict:
     return {
-        "desde": "2026-08-28",
+        "site_id": "",
+        "experimento_id": "",
+        "de": "2026-08-28",
         "ate": "2026-09-26",
         "coleta": {"primeiro": coleta[0], "ultimo": coleta[1]},
         "passos": passos,
         "por_dia": [{"dia": dia, "passos": _passos(*v)} for dia, v in por_dia],
+        "variantes": None,
+        "visitantes_com_bracos_trocados": None,
     }
 
 
@@ -137,6 +141,28 @@ def test_sem_coleta_e_um_estado_proprio_e_nao_uma_escada_de_zeros():
 
     assert tela["veredito"] == "sem-coleta"
     assert tela["escada"] == []
+
+
+@respx.mock
+def test_coleta_nula_inteira_tambem_e_sem_coleta_e_nao_memoria_fora_do_ar():
+    corpo = _resposta(_passos(0, 0, 0, 0, 0, 0))
+    corpo["coleta"] = None
+    _a_memoria_responde(corpo)
+
+    tela = fu.montar(*MedicaoClient().funil(HOJE, HOJE), HOJE)
+
+    assert tela["veredito"] == "sem-coleta"
+
+
+@respx.mock
+def test_resposta_sem_o_campo_coleta_e_fora_do_contrato_e_nao_sem_coleta():
+    corpo = _resposta(_passos(0, 0, 0, 0, 0, 0))
+    del corpo["coleta"]
+    _a_memoria_responde(corpo)
+
+    desfecho, _ = MedicaoClient().funil(HOJE, HOJE)
+
+    assert desfecho == MedicaoClient.NAO_RESPONDEU
 
 
 @respx.mock
@@ -267,7 +293,7 @@ def test_a_janela_escolhida_vai_para_a_pergunta(pedida, dias, desde):
     corpo = cliente.get(reverse("funil"), {"janela": pedida}).content.decode()
 
     url = str(rota.calls.last.request.url)
-    assert f"desde={desde}" in url
+    assert f"?de={desde}&" in url
     assert "ate=2026-09-26" in url
     assert f'aria-current="page">{dias} dias</a>' in corpo
 
@@ -279,7 +305,7 @@ def test_sem_escolha_a_janela_e_a_padrao():
 
     cliente.get(reverse("funil"))
 
-    assert "desde=2026-08-28" in str(rota.calls.last.request.url)
+    assert "?de=2026-08-28&" in str(rota.calls.last.request.url)
 
 
 @respx.mock
@@ -289,7 +315,7 @@ def test_janela_invalida_cai_na_padrao_e_a_tela_avisa():
 
     corpo = cliente.get(reverse("funil"), {"janela": "365"}).content.decode()
 
-    assert "desde=2026-08-28" in str(rota.calls.last.request.url)
+    assert "?de=2026-08-28&" in str(rota.calls.last.request.url)
     assert "não existe" in corpo
 
 

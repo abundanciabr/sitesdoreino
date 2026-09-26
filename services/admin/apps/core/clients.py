@@ -1890,7 +1890,7 @@ class MedicaoClient:
     def funil(
         self, desde: dt.date, ate: dt.date, site_id: "str | None" = None
     ) -> "tuple[str, dict | None]":
-        """`countFunnel`: visitantes distintos por degrau, na janela e por dia.
+        """`countFunnel` (`GET /funil`): visitantes distintos por degrau e por dia.
 
         Devolve `{"coleta": {"primeiro", "ultimo"}, "passos": {passo: n},
         "por_dia": [{"dia": date, "passos": {passo: n}}]}`. `coleta` com
@@ -1902,14 +1902,19 @@ class MedicaoClient:
         inteiro, vira `NAO_RESPONDEU`: metade de uma escada seria lida como a
         escada inteira.
         """
-        params = {"desde": desde.isoformat(), "ate": ate.isoformat()}
+        params = {"de": desde.isoformat(), "ate": ate.isoformat()}
         if site_id:
             params["site_id"] = site_id
-        desfecho, corpo = self._pedir("/funil/contagens", params)
+        desfecho, corpo = self._pedir("/funil", params)
         if desfecho != self.OK:
             return desfecho, None
         corpo = corpo if isinstance(corpo, dict) else {}
+        # O schema pede o objeto com os dois campos nulos; a regra 3 do
+        # cabeçalho do contrato fala em "`coleta` nula". As duas formas dizem
+        # a mesma coisa, e nenhuma delas é a memória fora do ar.
         coleta = corpo.get("coleta")
+        if coleta is None and "coleta" in corpo:
+            coleta = {"primeiro": None, "ultimo": None}
         passos = self._degraus(corpo.get("passos"))
         por_dia = self._dias_do_funil(corpo.get("por_dia"))
         if not isinstance(coleta, dict) or passos is None or por_dia is None:
