@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-192623-TAR-754-explicada",
+  "tarefa": "TAR-754",
+  "evento": "explicada",
+  "quando": "2026-09-26T19:26:23.089747+00:00",
+  "quem": "Pedido do mantenedor em 26/09/2026 na sessão do quiz: conferir se o resultado do Crivo apresenta oferta desligada; medição de produção ausente (Handoff H-L04)",
+  "o_que_e": "Ninguem mediu o banco de producao do quiz Crivo: nao se sabe quais faixas de resultado existem, para onde o botao de cada faixa leva, se essas faixas cobrem toda pontuacao possivel, quais versoes estao ativas e quantas pessoas cairam em cada resultado.",
+  "o_que_muda": "Depois desta tarefa, o mantenedor sabe com prova (nao suposicao) se o resultado do Crivo oferece algo ligado ou um botao morto, sem tocar em nenhum dado de comprador.",
+  "exemplo": "Hoje ninguem sabe se quem termina o Crivo com nota alta ve um botao que leva ao curso certo ou a um link que nao existe mais, igual a uma vitrine de loja com cartaz de oferta que acabou.",
+  "importancia": 70
+}
