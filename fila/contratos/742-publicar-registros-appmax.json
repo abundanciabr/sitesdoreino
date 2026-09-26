@@ -1,0 +1,57 @@
+{
+  "plano": "painel/LEIA-ME.md#registro-e-publicacao",
+  "versao": 1,
+  "modelo_recomendado": "gpt-6-luna",
+  "esforco_recomendado": "high",
+  "objetivo": "Publicar pelo PR 2101 os 14 registros técnicos Appmax já preparados e conferir sua memória autenticada.",
+  "condicao_encerramento": "O lote é validado, o PR 2101 fica publicado pelo rito e a memória autenticada em https://meshcraft.top/admin/painel/#memoria mostra os 14 registros novos.",
+  "limites_autonomia": "Escritor exclusivo dos 14 registros novos, da TAR-742 e de seus eventos, contrato e recibo. Não alterar código, registros antigos, contratos alheios ou estados de TAR financeira ou de implementação.",
+  "entregaveis": [
+    "14 registros novos em painel/registros/ preparados antes desta TAR",
+    "Tarefa, contrato e eventos próprios da TAR-742",
+    "Recibo automático do rito no PR 2101"
+  ],
+  "escopo_incluido": [
+    "Os 14 arquivos painel/registros/20260926-*.js do lote Appmax",
+    "fila/tarefas/742-publicar-o-lote-de-registros-tecnicos-appmax.json",
+    "fila/contratos/742-publicar-registros-appmax.json",
+    "fila/eventos próprios da TAR-742 e recibo automático do PR 2101"
+  ],
+  "nao_objetivos": [
+    "Não alterar código de produto ou infraestrutura.",
+    "Não reescrever registros históricos nem contratos ou estados de outras TARs.",
+    "Não declarar sucesso da TAR-741 nem medição em 360 px."
+  ],
+  "restricoes": [
+    "A entrega usa exclusivamente o PR 2101 no repositório https://github.com/abundanciabr/sitesdoreino.",
+    "A largura autenticada medida em 552 px permanece como o fato registrado.",
+    "A autorização explícita do mantenedor para publicar no repositório indicado já foi concedida."
+  ],
+  "decisoes_aprovadas": [
+    "Mandato para publicar somente o lote Appmax e os artefatos próprios desta TAR.",
+    "Autorização do mantenedor para publicar no repositório indicado pelos PRs do projeto."
+  ],
+  "etapas": [
+    "Reservar TAR-742 e registrar este contrato fechado.",
+    "Validar painel, fila, travessões e diff limitado aos alvos do lote.",
+    "Continuar o PR 2101 pelo rito e entregar o recibo automático.",
+    "Conferir uma vez a publicação e a memória autenticada indicada na evidência."
+  ],
+  "criterios_entrada": [
+    "TAR-742 reivindicada pela bancada agent/painel/registro-publicacao-appmax.",
+    "PR 2101 existente para o lote de registros Appmax.",
+    "Os 14 registros novos e a autorização de publicação já estão preparados."
+  ],
+  "criterios_aceite": [
+    "Os 14 registros novos passam pelo gerador, verificador independente e teste de lógica do painel.",
+    "A fila valida TAR-742 e seus eventos próprios.",
+    "O PR 2101 é publicado pelo rito, sem alteração fora do escopo.",
+    "A memória autenticada mostra os 14 registros novos; 360 px e TAR-741 continuam sem afirmação de sucesso."
+  ],
+  "evidencias_exigidas": [
+    "Saídas de node painel/gerar_manifesto.js, ci/verificar_painel.py, teste_logica.js, ci/fila.py validar e ci/travessao.py.",
+    "PR 2101, ramo e diff final limitado aos 14 registros e aos artefatos próprios da TAR-742.",
+    "Recibo automático do rito e conferência autenticada de https://meshcraft.top/admin/painel/#memoria."
+  ],
+  "acoes_do_mantenedor": "Nenhuma ação técnica nova; a autorização de publicação no repositório indicado já está válida."
+}
