@@ -53,6 +53,7 @@ from datetime import datetime, timezone
 import redis
 from django.core.management.base import BaseCommand
 
+from apps.fatos.models import EventoMorto
 from apps.fatos.recepcao import MORTO, receber
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,27 @@ STREAMS = [
     "eventos.sugestao.status-alterado",
     "eventos.sugestao.voto-adicionado",
     "eventos.sugestao.voto-removido",
+    # Os dois fatos de compra do sistema de experimentos (`checkout`, contrato
+    # F4a): quem foi atribuído a um pedido e quem pagou. É daqui que sai a
+    # métrica principal do primeiro experimento (entrada no checkout) e as
+    # conversões do funil de compra (DESENHO-COMUM.md, sessão de 26/09/2026).
+    "eventos.checkout.pedido-atribuido",
+    "eventos.checkout.pedido-pago",
 ]
+
+#: Os dois assuntos de compra do checkout: DESENHO-COMUM.md é taxativo — eles
+#: NUNCA levam dado pessoal. `_campo_pessoal_do_checkout` é o segundo guarda:
+#: se algum publicador um dia divergir do contrato F4a, o campo pessoal não
+#: entra no livro por aqui, mesmo que o envelope esteja bem formado.
+EVENTOS_DE_COMPRA_DO_CHECKOUT = frozenset(
+    {"checkout.pedido-atribuido", "checkout.pedido-pago"}
+)
+
+#: DESENHO-COMUM.md, eventos de compra (F4a): "Sem customer, e-mail, nome,
+#: telefone, documento." Comparação por chave, sem distinguir maiúsculas.
+CAMPOS_PESSOAIS_PROIBIDOS_NO_CHECKOUT = frozenset(
+    {"customer", "email", "nome", "telefone", "documento"}
+)
 
 # Convenção do lote de reentrega — MESMOS nomes e valores das outras células.
 IDLE_MS_REENTREGA = 60_000  # presa = pendente sem ACK há pelo menos isto
@@ -94,8 +115,65 @@ def _corpo(campos: dict) -> bytes:
     return campos.get(b"json") or campos.get("json") or b""
 
 
+def _texto_do_corpo(cru: bytes | str) -> str:
+    """`cru` decodificado, ou vazio quando não é UTF-8 (mesma régua de `recepcao`)."""
+    if isinstance(cru, bytes):
+        try:
+            return cru.decode("utf-8")
+        except UnicodeDecodeError:
+            return ""
+    return cru
+
+
+def _campo_pessoal_do_checkout(tipo: str, dados: object) -> str | None:
+    """A primeira chave proibida em `dados`, só para os dois eventos de compra.
+
+    Os demais assuntos não têm validação de miolo por desenho desta célula
+    (`recepcao.receber`: "quem valida o miolo é quem publica"). Os dois
+    eventos de compra do checkout são a exceção deliberada, porque
+    DESENHO-COMUM.md proíbe dado pessoal neles e o livro nunca pode guardar o
+    que não pode expor.
+    """
+    if tipo not in EVENTOS_DE_COMPRA_DO_CHECKOUT or not isinstance(dados, dict):
+        return None
+    for chave in dados:
+        if (
+            isinstance(chave, str)
+            and chave.lower() in CAMPOS_PESSOAIS_PROIBIDOS_NO_CHECKOUT
+        ):
+            return chave
+    return None
+
+
 def processar(cru: bytes) -> str:
     """Guarda o fato e devolve o desfecho, registrando o que merece log."""
+    texto = _texto_do_corpo(cru)
+    try:
+        pre = json.loads(texto) if texto else None
+    except (TypeError, ValueError):
+        pre = None
+    if isinstance(pre, dict):
+        tipo = pre.get("event") if isinstance(pre.get("event"), str) else ""
+        campo = _campo_pessoal_do_checkout(tipo, pre.get("data"))
+        if campo is not None:
+            morto = EventoMorto.objects.create(
+                corpo=texto[:100_000],
+                motivo=(
+                    f"campo pessoal proibido em evento de compra do checkout: "
+                    f"'{campo}' (DESENHO-COMUM.md: sem customer, e-mail, nome, "
+                    "telefone, documento)"
+                ),
+                tipo_declarado=tipo[:120],
+                event_id_declarado=str(pre.get("event_id") or "")[:80],
+            )
+            logger.error(
+                "EVENTO MORTO (id=%s): campo pessoal '%s' num evento de compra "
+                "do checkout. Inspecionar em /admin/, tentar de novo ou "
+                "descartar com motivo.",
+                morto.pk,
+                campo,
+            )
+            return MORTO
     desfecho, objeto = receber(cru)
     if desfecho == MORTO:
         # ERROR e não WARNING: um evento que a plataforma afirmou e o livro não
