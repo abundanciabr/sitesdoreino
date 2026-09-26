@@ -1,20 +1,30 @@
 # apps/paginas/api.py
 # A superfície da estrutura de páginas, espelhando contracts/catalogo.openapi.yaml.
-# Quatro rotas: ler o que está no ar, ler e gravar o rascunho, e publicar.
+# Quatro rotas da página (ler o que está no ar, ler e gravar o rascunho, e
+# publicar) e quatro do experimento que mora nela (criar, listar, ler e mudar
+# de estado).
 # Os operationId, os schemas e os textos abaixo são os do contrato, palavra por
 # palavra: aqui o código é o espelho, e o contrato é a fonte.
 import datetime as dt
 import uuid
-from typing import Literal
+from typing import Literal, Optional
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 from ninja import Field, Path, Router, Schema
 from ninja.errors import HttpError
 
 from apps.ofertas.models import Offer
-from apps.paginas.models import Page, PageDraft, RascunhoVazio
-from apps.paginas.vocabulario import normalizar_secoes
+from apps.paginas.models import (
+    Experimento,
+    Page,
+    PageDraft,
+    RascunhoVazio,
+    Variante,
+    amostra_por_braco,
+)
+from apps.paginas.vocabulario import VOCABULARIOS, normalizar_secoes
 from apps.sites.models import Site
 
 #: O slug da página que vende. É o único que nasce amarrado a uma oferta, porque
@@ -79,6 +89,60 @@ class Secao(Schema):
     slots: dict[str, str] = Field(..., description=DESCRICAO_DOS_SLOTS)
 
 
+#: A forma da chave curta de uma variante (`a`, `b`, `titulo-curto`). É a que
+#: viaja nos eventos do funil, então cabe numa coluna e numa URL sem escape.
+PADRAO_DA_VARIANTE = r"^[a-z][a-z0-9-]{0,31}$"
+
+#: O controle. Nasce com o texto publicado do slot, e é o que o funil mostra
+#: quando não há experimento no ar.
+CONTROLE = "a"
+
+#: Pontos-base: 10000 é o todo, 5000 é metade.
+TODO_EM_PONTOS_BASE = 10000
+
+
+class VarianteDoExperimento(Schema):
+    """Um braço do experimento: a chave curta, o peso no sorteio e o texto do slot."""
+
+    variante_id: str = Field(
+        ...,
+        pattern=PADRAO_DA_VARIANTE,
+        description=(
+            "Chave curta da variante dentro do experimento. `a` é o controle, o texto "
+            "que já estava publicado. É o valor que os eventos do funil carregam."
+        ),
+    )
+    peso: int = Field(
+        ...,
+        ge=1,
+        le=TODO_EM_PONTOS_BASE,
+        description=(
+            "Parte dos visitantes que cai nesta variante, em pontos-base. As "
+            "variantes de um experimento somam 10000 (metade para cada = 5000 e 5000)."
+        ),
+    )
+    valor: str = Field(
+        ...,
+        description=(
+            "O texto do slot nesta variante, congelado quando o experimento sai do "
+            "rascunho. Não muda nem se a página for publicada de novo."
+        ),
+    )
+
+
+class ExperimentoAtivo(Schema):
+    """O experimento que está no ar nesta página, para quem renderiza sortear o braço."""
+
+    id: uuid.UUID
+    secao: str = Field(..., description="Seção da página cujo slot está em teste.")
+    slot: str = Field(
+        ..., description="Slot da seção cujo texto muda de uma variante para outra."
+    )
+    variantes: list[VarianteDoExperimento] = Field(
+        ..., description="As variantes em ordem de `variante_id`, que é a do sorteio."
+    )
+
+
 class PaginaPublicada(Schema):
     """Uma versão publicada de uma página, que é o que quem visita vê e o que a
     telemetria do funil mede. Publicada não se edita: cada publicação nasce com
@@ -115,6 +179,17 @@ class PaginaPublicada(Schema):
     )
     published_at: dt.datetime
     secoes: list[Secao]
+    # Ausente, e não nulo, quando não há experimento no ar: é o que mantém a
+    # resposta de uma página sem experimento idêntica à de antes (a rota usa
+    # `exclude_unset`). Por isso o tipo é o objeto, e não `Optional`.
+    experimento_ativo: ExperimentoAtivo = Field(
+        default_factory=lambda: None,
+        description=(
+            "O experimento que está no ar nesta página. Ausente quando não há "
+            "nenhum: aí a página se mostra como foi publicada. Só aparece o "
+            "experimento no estado `ativo`."
+        ),
+    )
 
 
 class RascunhoDaPagina(Schema):
@@ -293,6 +368,9 @@ def _corpo_rascunho(rascunho) -> dict:
             },
         }
     },
+    # Sem experimento no ar, a chave `experimento_ativo` não sai, e a resposta
+    # continua a mesma de antes do experimento existir.
+    exclude_unset=True,
 )
 def get_page(
     request,
@@ -303,7 +381,20 @@ def get_page(
     versao = pagina.ultima_versao
     if versao is None:
         raise HttpError(404, "esta página ainda não foi publicada")
-    return _corpo_publicada(versao)
+    corpo = _corpo_publicada(versao)
+    ativo = (
+        Experimento.objects.filter(page=pagina, estado=Experimento.ATIVO)
+        .prefetch_related("variantes")
+        .first()
+    )
+    if ativo is not None:
+        corpo["experimento_ativo"] = {
+            "id": ativo.id,
+            "secao": ativo.secao,
+            "slot": ativo.slot,
+            "variantes": _corpo_variantes(ativo),
+        }
+    return corpo
 
 
 @router.get(
@@ -420,3 +511,460 @@ def publish_page(request, site_id: str, slug: str):
     except RascunhoVazio as erro:
         raise HttpError(409, str(erro))
     return _corpo_publicada(versao)
+
+
+class NovaVariante(Schema):
+    """Uma variante como a tela do `admin` a manda ao criar o experimento."""
+
+    variante_id: str = Field(
+        ...,
+        pattern=PADRAO_DA_VARIANTE,
+        description="Chave curta da variante. O controle `a` é obrigatório.",
+    )
+    peso: int = Field(
+        ...,
+        ge=1,
+        le=TODO_EM_PONTOS_BASE,
+        description="Pontos-base; as variantes do experimento somam 10000.",
+    )
+    valor: str = Field(
+        default_factory=str,
+        description=(
+            "O texto do slot nesta variante. No controle `a` pode ficar vazio: ele "
+            "nasce com o texto publicado do slot, e um texto diferente é recusado."
+        ),
+    )
+
+
+class NovoExperimento(Schema):
+    """O que a tela do `admin` manda para criar um experimento, que nasce em rascunho.
+
+    O horizonte vem decidido de antemão: `taxa_base`, `mde` e `dias_planejados`
+    entram aqui, e a amostra por braço é calculada pelo `catalogo`."""
+
+    secao: str = Field(..., description="Seção da página, do vocabulário do tipo dela.")
+    slot: str = Field(..., description="Slot da seção cujo texto vai ser testado.")
+    hipotese: str = Field(
+        ..., min_length=1, description="O que se espera que aconteça, e por quê."
+    )
+    metrica_principal: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description=(
+            "O passo do funil que decide o experimento, com o nome que a leitura do "
+            "funil usa (ex. cta_checkout: entrada no checkout por visitante)."
+        ),
+    )
+    taxa_base: float = Field(
+        ...,
+        gt=0,
+        lt=1,
+        description="Proporção atual da métrica principal, entre 0 e 1 (0,10 = 10%).",
+    )
+    mde: float = Field(
+        ...,
+        gt=0,
+        lt=1,
+        description=(
+            "Menor efeito que vale detectar, ABSOLUTO, em pontos de proporção "
+            "(0,02 = de 10% para 12%)."
+        ),
+    )
+    dias_planejados: int = Field(
+        ..., ge=1, description="Dias corridos de coleta, contados a partir do início."
+    )
+    variantes: list[NovaVariante] = Field(
+        ..., min_length=2, description="Pelo menos duas, e o controle `a` entre elas."
+    )
+
+
+class ExperimentoDaPagina(Schema):
+    """Um experimento de uma página, do jeito que a tela do `admin` o lê."""
+
+    id: uuid.UUID
+    site_id: uuid.UUID
+    slug: str = Field(..., description="Apelido da página onde o experimento mora.")
+    secao: str
+    slot: str
+    hipotese: str
+    metrica_principal: str
+    taxa_base: float
+    mde: float
+    n_por_braco_planejado: int = Field(
+        ...,
+        ge=1,
+        description=(
+            "Expostos por braço calculados na criação: duas proporções, alfa 0,05 "
+            "bicaudal, poder 0,8. Braço abaixo disto no horizonte é resultado "
+            "inconclusivo."
+        ),
+    )
+    dias_planejados: int
+    estado: Literal["rascunho", "ativo", "encerrado"] = Field(
+        ...,
+        description=(
+            "rascunho vai para ativo ou encerrado; ativo vai para encerrado; "
+            "encerrado não sai mais. Não há pausa: retomar é criar outro."
+        ),
+    )
+    decisao: Optional[Literal["promover", "reverter", "encerrar"]] = Field(
+        ..., description="Guardada no encerramento. Nula antes dele."
+    )
+    vencedora: Optional[str] = Field(
+        ..., description="`variante_id` da vencedora, quando o encerramento aponta uma."
+    )
+    criado_em: dt.datetime
+    iniciado_em: Optional[dt.datetime] = Field(
+        ..., description="Quando entrou no ar. Nulo enquanto é rascunho."
+    )
+    fim_planejado: Optional[dt.datetime] = Field(
+        ...,
+        description=(
+            "iniciado_em mais dias_planejados: o fim da janela em que o resultado "
+            "se calcula. Nulo enquanto é rascunho."
+        ),
+    )
+    encerrado_em: Optional[dt.datetime]
+    variantes: list[VarianteDoExperimento]
+
+
+class MudancaDeEstado(Schema):
+    """O estado para onde o experimento vai, e no encerramento a decisão tomada."""
+
+    estado: Literal["ativo", "encerrado"]
+    decisao: Optional[Literal["promover", "reverter", "encerrar"]] = Field(
+        default=None,
+        description="Obrigatória ao encerrar, e só ao encerrar.",
+    )
+    vencedora: Optional[str] = Field(
+        default=None,
+        description=(
+            "`variante_id` da vencedora. Obrigatória para promover; só vale ao encerrar."
+        ),
+    )
+
+
+def _corpo_variantes(experimento) -> list[dict]:
+    return [
+        {"variante_id": v.variante_id, "peso": v.peso, "valor": v.valor}
+        for v in experimento.variantes.all()
+    ]
+
+
+def _corpo_experimento(experimento) -> dict:
+    fim = None
+    if experimento.iniciado_em is not None:
+        fim = experimento.iniciado_em + dt.timedelta(days=experimento.dias_planejados)
+    return {
+        "id": experimento.id,
+        "site_id": experimento.page.site_id,
+        "slug": experimento.page.slug,
+        "secao": experimento.secao,
+        "slot": experimento.slot,
+        "hipotese": experimento.hipotese,
+        "metrica_principal": experimento.metrica_principal,
+        "taxa_base": experimento.taxa_base,
+        "mde": experimento.mde,
+        "n_por_braco_planejado": experimento.n_por_braco_planejado,
+        "dias_planejados": experimento.dias_planejados,
+        "estado": experimento.estado,
+        "decisao": experimento.decisao or None,
+        "vencedora": experimento.vencedora or None,
+        "criado_em": experimento.criado_em,
+        "iniciado_em": experimento.iniciado_em,
+        "fim_planejado": fim,
+        "encerrado_em": experimento.encerrado_em,
+        "variantes": _corpo_variantes(experimento),
+    }
+
+
+def _texto_publicado(pagina: Page, secao: str, slot: str) -> str:
+    """O texto que está no ar neste slot, ou 409 que diz o que fazer.
+
+    O controle de um experimento é o texto publicado: sem página publicada, ou
+    com o slot vazio, não há controle, e testar contra o nada mediria outra
+    coisa.
+    """
+    versao = pagina.ultima_versao
+    if versao is None:
+        raise HttpError(
+            409,
+            f"a página '{pagina.slug}' ainda não foi publicada, e o controle de um "
+            "experimento é o texto publicado. Publique a página e crie o "
+            "experimento de novo.",
+        )
+    for item in versao.secoes:
+        if item["nome"] == secao and item["slots"].get(slot):
+            return item["slots"][slot]
+    raise HttpError(
+        409,
+        f"o slot {secao}.{slot} está vazio na versão {versao.version} publicada, "
+        "e o controle de um experimento é o texto publicado. Escreva esse slot, "
+        "publique a página e tente de novo.",
+    )
+
+
+def _experimento(pagina: Page, experimento_id: str) -> Experimento:
+    """O experimento desta página, ou 404. Id sem forma de UUID também é 404."""
+    try:
+        experimento = (
+            Experimento.objects.select_related("page")
+            .filter(page=pagina, id=experimento_id)
+            .first()
+        )
+    except (ValidationError, ValueError):
+        experimento = None
+    if experimento is None:
+        raise HttpError(404, "experimento inexistente nesta página")
+    return experimento
+
+
+@router.post(
+    "/sites/{site_id}/paginas/{slug}/experimentos",
+    # Um só status declarado, com Schema nomeado: sai como referência no
+    # contrato, sem o Schema dinâmico que `armadilhas/021` teme de 200 e 201.
+    response={201: ExperimentoDaPagina},
+    operation_id="createExperiment",
+    summary="Cria um experimento num slot da página, em rascunho",
+    description=(
+        "O experimento nasce em rascunho, com o controle `a` carregando o texto "
+        "publicado do slot e a amostra por braço já calculada. Nada vai ao ar "
+        "até a mudança de estado para ativo."
+    ),
+    openapi_extra={
+        "responses": {
+            201: {
+                "description": "O experimento criado, em rascunho",
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": "#/components/schemas/ExperimentoDaPagina"}
+                    }
+                },
+            },
+            404: {"description": "Site ou página inexistente"},
+            409: {"description": "Página sem versão publicada, ou slot vazio nela"},
+            422: {
+                "description": (
+                    "Seção ou slot fora do vocabulário, variantes incoerentes ou "
+                    "horizonte impossível; nada foi gravado"
+                )
+            },
+        }
+    },
+)
+def create_experiment(request, site_id: str, slug: str, payload: NovoExperimento):
+    pagina = _pagina(site_id, slug)
+    vocabulario = VOCABULARIOS[pagina.tipo]
+    if payload.secao not in vocabulario:
+        raise HttpError(
+            422,
+            f"seção desconhecida: {payload.secao!r}. As seções válidas são: "
+            f"{', '.join(vocabulario)}.",
+        )
+    if payload.slot not in vocabulario[payload.secao]:
+        raise HttpError(
+            422,
+            f"slot desconhecido na seção {payload.secao!r}: {payload.slot!r}. Os "
+            f"slots de {payload.secao!r} são: {', '.join(vocabulario[payload.secao])}.",
+        )
+    if payload.taxa_base + payload.mde >= 1:
+        raise HttpError(
+            422,
+            "taxa_base mais mde passa de 100%, e nenhuma proporção chega lá. "
+            "Diminua o mde.",
+        )
+
+    chaves = [v.variante_id for v in payload.variantes]
+    if len(set(chaves)) != len(chaves):
+        raise HttpError(422, "cada variante_id aparece uma vez só no experimento.")
+    if CONTROLE not in chaves:
+        raise HttpError(
+            422, "falta a variante 'a', o controle com o texto publicado. Inclua-a."
+        )
+    soma = sum(v.peso for v in payload.variantes)
+    if soma != TODO_EM_PONTOS_BASE:
+        raise HttpError(
+            422,
+            f"os pesos somam {soma}, e precisam somar 10000 pontos-base "
+            "(metade para cada = 5000 e 5000).",
+        )
+
+    controle = _texto_publicado(pagina, payload.secao, payload.slot)
+    valores = {}
+    for variante in payload.variantes:
+        valor = variante.valor.strip()
+        if variante.variante_id == CONTROLE:
+            if valor and valor != controle:
+                raise HttpError(
+                    422,
+                    "a variante 'a' é o texto publicado do slot e não recebe outro. "
+                    "Deixe o valor dela vazio.",
+                )
+            valor = controle
+        elif not valor:
+            raise HttpError(
+                422,
+                f"a variante {variante.variante_id!r} está sem texto. Escreva o "
+                "texto que ela mostra no slot.",
+            )
+        valores[variante.variante_id] = valor
+
+    with transaction.atomic():
+        experimento = Experimento.objects.create(
+            page=pagina,
+            secao=payload.secao,
+            slot=payload.slot,
+            hipotese=payload.hipotese.strip(),
+            metrica_principal=payload.metrica_principal.strip(),
+            taxa_base=payload.taxa_base,
+            mde=payload.mde,
+            n_por_braco_planejado=amostra_por_braco(payload.taxa_base, payload.mde),
+            dias_planejados=payload.dias_planejados,
+        )
+        for variante in payload.variantes:
+            Variante.objects.create(
+                experimento=experimento,
+                variante_id=variante.variante_id,
+                peso=variante.peso,
+                valor=valores[variante.variante_id],
+            )
+    return 201, _corpo_experimento(experimento)
+
+
+@router.get(
+    "/sites/{site_id}/paginas/{slug}/experimentos",
+    response=list[ExperimentoDaPagina],
+    operation_id="listExperiments",
+    summary="Os experimentos de uma página, do mais novo para o mais antigo",
+    openapi_extra={
+        "responses": {
+            200: {"description": "Os experimentos da página, em qualquer estado"},
+            404: {"description": "Site ou página inexistente"},
+        }
+    },
+)
+def list_experiments(request, site_id: str, slug: str):
+    pagina = _pagina(site_id, slug)
+    return [
+        _corpo_experimento(experimento)
+        for experimento in pagina.experimentos.select_related("page").prefetch_related(
+            "variantes"
+        )
+    ]
+
+
+@router.get(
+    "/sites/{site_id}/paginas/{slug}/experimentos/{experimento_id}",
+    response=ExperimentoDaPagina,
+    operation_id="getExperiment",
+    summary="Um experimento de uma página",
+    openapi_extra={
+        "responses": {
+            200: {"description": "O experimento, com as variantes"},
+            404: {"description": "Site, página ou experimento inexistente"},
+        }
+    },
+)
+def get_experiment(request, site_id: str, slug: str, experimento_id: str):
+    return _corpo_experimento(_experimento(_pagina(site_id, slug), experimento_id))
+
+
+@router.post(
+    "/sites/{site_id}/paginas/{slug}/experimentos/{experimento_id}/estado",
+    response=ExperimentoDaPagina,
+    operation_id="changeExperimentState",
+    summary="Põe o experimento no ar ou o encerra",
+    description=(
+        "rascunho vai para ativo ou encerrado; ativo vai para encerrado. Pedir o "
+        "estado em que o experimento já está responde 200 sem mudar nada. Ao "
+        "entrar no ar, o controle `a` é conferido com o texto publicado de agora, "
+        "e as variantes congelam. Ao encerrar, a decisão é obrigatória."
+    ),
+    openapi_extra={
+        "responses": {
+            200: {"description": "O experimento no estado pedido"},
+            404: {"description": "Site, página ou experimento inexistente"},
+            409: {
+                "description": (
+                    "Transição inválida, outro experimento já ativo nesta página, "
+                    "ou encerramento repetido com outra decisão; nada mudou"
+                )
+            },
+            422: {"description": "Decisão ausente, ou vencedora que não é variante"},
+        }
+    },
+)
+def change_experiment_state(
+    request, site_id: str, slug: str, experimento_id: str, payload: MudancaDeEstado
+):
+    pagina = _pagina(site_id, slug)
+    _experimento(pagina, experimento_id)
+    encerrar = payload.estado == Experimento.ENCERRADO
+    if not encerrar and (payload.decisao or payload.vencedora):
+        raise HttpError(422, "decisão e vencedora só se mandam ao encerrar.")
+    if encerrar and not payload.decisao:
+        raise HttpError(
+            422, "ao encerrar, diga a decisão: promover, reverter ou encerrar."
+        )
+    if payload.decisao == "promover" and not payload.vencedora:
+        raise HttpError(422, "para promover, diga qual variante venceu.")
+
+    with transaction.atomic():
+        experimento = (
+            Experimento.objects.select_for_update()
+            .select_related("page")
+            .get(pk=experimento_id)
+        )
+        if payload.estado == experimento.estado:
+            if encerrar and (
+                payload.decisao != experimento.decisao
+                or (payload.vencedora or "") != experimento.vencedora
+            ):
+                raise HttpError(
+                    409,
+                    "este experimento já foi encerrado com a decisão "
+                    f"'{experimento.decisao}', e ela não muda. Nada foi alterado.",
+                )
+            return _corpo_experimento(experimento)
+        if payload.estado not in Experimento.TRANSICOES[experimento.estado]:
+            raise HttpError(
+                409,
+                f"um experimento {experimento.estado} não vai para {payload.estado}. "
+                "Para testar de novo, crie um experimento novo.",
+            )
+        if encerrar:
+            chaves = set(experimento.variantes.values_list("variante_id", flat=True))
+            if payload.vencedora and payload.vencedora not in chaves:
+                raise HttpError(
+                    422,
+                    f"a vencedora {payload.vencedora!r} não é variante deste "
+                    f"experimento. As variantes são: {', '.join(sorted(chaves))}.",
+                )
+            experimento.estado = Experimento.ENCERRADO
+            experimento.decisao = payload.decisao
+            experimento.vencedora = payload.vencedora or ""
+            experimento.encerrado_em = timezone.now()
+            experimento.save()
+            return _corpo_experimento(experimento)
+
+        # Entrar no ar: o controle é o texto publicado AGORA, e não o do dia da
+        # criação, porque a página pode ter sido publicada de novo no meio. A
+        # atualização vem antes da troca de estado: depois dela, a variante já
+        # está congelada.
+        controle = _texto_publicado(
+            experimento.page, experimento.secao, experimento.slot
+        )
+        experimento.variantes.filter(variante_id=CONTROLE).update(valor=controle)
+        experimento.estado = Experimento.ATIVO
+        experimento.iniciado_em = timezone.now()
+        try:
+            with transaction.atomic():
+                experimento.save()
+        except IntegrityError:
+            raise HttpError(
+                409,
+                "já há um experimento no ar nesta página. Encerre-o antes de pôr "
+                "este no ar. Nada foi alterado.",
+            )
+        return _corpo_experimento(experimento)
