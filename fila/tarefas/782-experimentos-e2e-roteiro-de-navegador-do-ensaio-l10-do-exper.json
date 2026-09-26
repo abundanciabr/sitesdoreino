@@ -1,0 +1,19 @@
+{
+  "arquivo": "782-experimentos-e2e-roteiro-de-navegador-do-ensaio-l10-do-exper",
+  "id": "TAR-782",
+  "titulo": "Experimentos E2E: roteiro de navegador do ensaio L10 do experimento",
+  "toca": [
+    "e2e"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "saida verde de node e2e/ensaio_experimento.js (modo rota) contra producao",
+  "despacho": "Frente E2E do sistema de experimentos (L10): escreva e2e/ensaio_experimento.js,\num roteiro de navegador (Playwright, molde de e2e/painel_no_navegador.js) com\ndois modos: --modo=rota (a rota /oferta funciona hoje, com ou sem experimento\nativo) e --modo=ensaio (dois visitantes sem cookie leem data-experimento-id/\ndata-variante-id no slot, recarregam e confirmam braço sticky, rolam até o\nslot, clicam no CTA interceptado antes de /checkout, e o resultado sai em\nJSON). Sem a F8b integrada ainda, --modo=ensaio precisa reprovar dizendo\nexatamente isso, nunca passar em falso; --modo=rota precisa fechar verde\ncontra https://meshcraft.top hoje. Entrega já concluída nesta tarefa: ver PR\nvinculado.",
+  "origem": "sessao de arquitetura do sistema de experimentos, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

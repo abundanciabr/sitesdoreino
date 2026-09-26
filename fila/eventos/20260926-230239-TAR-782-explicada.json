@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-230239-TAR-782-explicada",
+  "tarefa": "TAR-782",
+  "evento": "explicada",
+  "quando": "2026-09-26T23:02:39.655229+00:00",
+  "quem": "sessao de arquitetura do sistema de experimentos, 26/09/2026",
+  "o_que_e": "Hoje nao existe um roteiro de navegador que abra a pagina de oferta de verdade e prove o clique no botao de comprar.",
+  "o_que_muda": "Sem isso, um defeito no experimento ou no funil de vendas so apareceria depois de publicado, sem ninguem ter clicado a pagina de verdade antes.",
+  "exemplo": "E como testar se uma vitrine nova realmente deixa o cliente clicar em comprar antes de anunciar: alguem abre no navegador e confere o clique, em vez de so olhar o codigo.",
+  "importancia": 35
+}
