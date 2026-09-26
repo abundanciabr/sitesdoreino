@@ -4,7 +4,7 @@ import json
 import re
 import builtins
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from io import StringIO
 from pathlib import Path
 import subprocess
@@ -964,6 +964,17 @@ def _executar_codigo_appmax_pix_pedido(monkeypatch, registros, resposta, urls=No
     return dados, chamadas, consultas, cliente_chamadas
 
 
+# PIX vence contra o relógio real (ci/operacoes_vps.py:555, datetime.now(utc)).
+# Data fixa no fixture reprova sozinha quando o calendário avança: armadilha
+# medida em 26/09/2026 (ci/tests/test_operacoes_vps.py::…qr_vencido).
+_PIX_EXPIRATION_FUTURA = (
+    datetime.now(timezone.utc) + timedelta(days=365)
+).strftime("%Y-%m-%d %H:%M:%S")
+_PIX_EXPIRATION_PASSADA = (
+    datetime.now(timezone.utc) - timedelta(days=7)
+).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _tentativa_appmax_pix_pedido():
     return SimpleNamespace(
         external_order_id="3531",
@@ -983,7 +994,7 @@ def _resposta_appmax_pix_pedido(**alteracoes):
             "method": "pix",
             "pix_qrcode": "data:image/png;base64,aW1hZ2Vt",
             "pix_emv": "000201ABC",
-            "pix_expiration_date": "2026-09-26 13:00:00",
+            "pix_expiration_date": _PIX_EXPIRATION_FUTURA,
         },
         "amounts": {"sub_total": 495},
     }
@@ -1069,6 +1080,25 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
     assert True
 
 
+def test_appmax_pix_pedido_qr_vencido_para_data_passada(monkeypatch):
+    tentativa = _tentativa_appmax_pix_pedido()
+    resposta = _resposta_appmax_pix_pedido(
+        payment={
+            "method": "pix",
+            "pix_qrcode": "data:image/png;base64,aW1hZ2Vt",
+            "pix_emv": "000201ABC",
+            "pix_expiration_date": _PIX_EXPIRATION_PASSADA,
+        }
+    )
+    dados, _, _, cliente_chamadas = _executar_codigo_appmax_pix_pedido(
+        monkeypatch, [tentativa], resposta
+    )
+    # guarda: ci/operacoes_vps.py:555 (qr_vencido compara com o agora real)
+    assert dados["resultado"] == "medido"
+    assert dados["qr_vencido"] is True
+    assert cliente_chamadas == [3531]
+
+
 @pytest.mark.parametrize(
     ("alteracoes", "acao"),
     [
@@ -1082,7 +1112,7 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
                     "method": "pix",
                     "pix_qrcode": "@@@",
                     "pix_emv": "000201ABC",
-                    "pix_expiration_date": "2026-09-26 13:00:00",
+                    "pix_expiration_date": _PIX_EXPIRATION_FUTURA,
                 }
             },
             "qr_nao_comprovado",
@@ -1093,7 +1123,7 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
                     "method": "pix",
                     "pix_qrcode": "data:image/png;base64,",
                     "pix_emv": "000201ABC",
-                    "pix_expiration_date": "2026-09-26 13:00:00",
+                    "pix_expiration_date": _PIX_EXPIRATION_FUTURA,
                 }
             },
             "qr_nao_comprovado",
@@ -1181,6 +1211,482 @@ def test_appmax_pix_pedido_formato_da_saida_e_diagnostico_sao_fechados():
         )
     # guarda: ci/operacoes_vps.py:472
     assert True
+
+
+# ============================================================================
+# Bloco novo (TAR-754, Frente B): quiz-configuracao. Não toca os testes de
+# Pix Appmax acima (Frente A, teste-pix-sem-relogio); só acrescenta.
+# ============================================================================
+
+
+def _versao_quiz_valida(**alteracoes):
+    base = {
+        "key": "controle",
+        "peso": 100,
+        "active": True,
+        "perguntas": 2,
+        "alternativas": 4,
+        "pontuacao_minima": 0,
+        "pontuacao_maxima": 20,
+        "faixas": [
+            {
+                "key": "iniciante",
+                "min_score": 0,
+                "max_score": 9,
+                "botao_destino": "/checkout/curso-teste/",
+                "botao_rotulo": "Comece agora",
+                "titulo": "Iniciante",
+            },
+            {
+                "key": "avancado",
+                "min_score": 10,
+                "max_score": 20,
+                "botao_destino": "/checkout/curso-avancado/",
+                "botao_rotulo": "Avance",
+                "titulo": "Avançado",
+            },
+        ],
+        "cobertura": {"sem_buraco": True, "sem_sobreposicao": True},
+    }
+    base.update(alteracoes)
+    return base
+
+
+def _medicao_quiz_configuracao_valida():
+    return {
+        "sites": [
+            {"id": ops.SITE_MESHCRAFT, "host": "meshcraft.top", "active": True}
+        ],
+        "quizzes": [
+            {"slug": "crivo", "active": True, "versoes": [_versao_quiz_valida()]}
+        ],
+        "submissoes_por_resultado": {"iniciante": 3, "avancado": 1, "sem_faixa": 0},
+        "eventos_pendentes": 2,
+        "migracoes": ["0001_initial", "0002_botao_por_faixa"],
+    }
+
+
+@pytest.mark.parametrize(
+    "servico,referencia",
+    [("admin", ""), ("pagamentos", ""), ("quiz", "a" * 64), ("quiz", PRIVADO)],
+)
+def test_quiz_configuracao_exige_servico_quiz_e_recusa_referencia_livre(
+    monkeypatch, capsys, servico, referencia
+):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert (
+        ops.executar(
+            "quiz-configuracao", servico, {"admin", "pagamentos", "quiz"}, referencia
+        )
+        == 2
+    )
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_quiz_configuracao_aceita_amostra_valida_e_e_fechada_a_campo_extra():
+    medicao = _medicao_quiz_configuracao_valida()
+    assert ops.conferir_medicao("quiz-configuracao", medicao) == medicao
+    contaminada = json.loads(json.dumps(medicao))
+    contaminada["quizzes"][0]["versoes"][0]["faixas"][0]["lead_email"] = PRIVADO
+    # guarda: ci/operacoes_vps.py (bloco quiz-configuracao, set(faixa) != FAIXA_QUIZ_CAMPOS)
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("quiz-configuracao", contaminada)
+
+
+@pytest.mark.parametrize(
+    "mutacao",
+    [
+        lambda m: m["quizzes"][0]["versoes"][0]["faixas"][0].update(botao_rotulo=""),
+        lambda m: m["migracoes"].append(m["migracoes"][0]),
+        lambda m: m.update(eventos_pendentes=-1),
+        lambda m: m["submissoes_por_resultado"].update({"cliente@example.com": 1}),
+        lambda m: m["quizzes"][0]["versoes"][0].update(pontuacao_minima=21),
+        lambda m: m["sites"][0].update(host=""),
+    ],
+)
+def test_quiz_configuracao_recusa_saida_fora_do_formato(mutacao):
+    medicao = _medicao_quiz_configuracao_valida()
+    mutacao(medicao)
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("quiz-configuracao", medicao)
+
+
+def test_quiz_configuracao_medir_usa_container_do_quiz_e_roda_script_fechado(
+    monkeypatch,
+):
+    chamadas = []
+
+    def comando(args):
+        chamadas.append(args)
+        if args[1] == "ps":
+            return "a" * 64
+        assert args[:7] == [
+            "docker",
+            "exec",
+            "a" * 64,
+            "python",
+            "manage.py",
+            "shell",
+            "-c",
+        ]
+        return json.dumps(_medicao_quiz_configuracao_valida())
+
+    # guarda: ci/operacoes_vps.py (bloco "if operacao == 'quiz-configuracao':" em medir())
+    monkeypatch.setattr(ops, "comando", comando)
+    dados = ops.medir("quiz-configuracao", "quiz")
+    assert dados == _medicao_quiz_configuracao_valida()
+    assert chamadas[0] == [
+        "docker",
+        "ps",
+        "--all",
+        "--quiet",
+        "--no-trunc",
+        "--filter",
+        "label=com.docker.compose.project=plataforma",
+        "--filter",
+        "label=com.docker.compose.service=quiz",
+    ]
+    codigo = chamadas[1][-1]
+    assert codigo == ops.QUIZ_CONFIGURACAO_CODIGO
+    assert "lead_email" not in codigo
+    assert "lead_name" not in codigo
+    assert "lead_phone" not in codigo
+    assert "session_id" not in codigo
+    assert "answers" not in codigo
+    assert ".save(" not in codigo
+    assert ".update(" not in codigo and "Submission.objects.update" not in codigo
+    assert ".delete(" not in codigo
+    compile(codigo, "quiz_configuracao", "exec")
+
+
+def test_quiz_configuracao_executar_emite_pass_com_medicao_sanitizada(
+    monkeypatch, capsys
+):
+    medicao = _medicao_quiz_configuracao_valida()
+    chamadas = 0
+
+    def rodar(args, **kwargs):
+        nonlocal chamadas
+        chamadas += 1
+        valor = "a" * 64 if chamadas == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("quiz-configuracao", "quiz", {"quiz"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == medicao
+    assert PRIVADO not in saida.out + saida.err
+
+
+def test_quiz_configuracao_saida_livre_do_container_nao_vira_verde_nem_vaza(
+    monkeypatch, capsys
+):
+    chamadas = 0
+
+    def rodar(args, **kwargs):
+        nonlocal chamadas
+        chamadas += 1
+        return subprocess.CompletedProcess(
+            args, 0, "a" * 64 if chamadas == 1 else PRIVADO, PRIVADO
+        )
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("quiz-configuracao", "quiz", {"quiz"}) == 2
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["resultado"] == "ERROR"
+    assert PRIVADO not in saida.out + saida.err
+
+
+class _FakeQuerySetQuiz(list):
+    """Espelha só os métodos de encadeamento que o script remoto chama."""
+
+    def order_by(self, *args, **kwargs):
+        return self
+
+    def prefetch_related(self, *args, **kwargs):
+        return self
+
+    def all(self):
+        return self
+
+    def filter(self, **kwargs):
+        return self
+
+
+class _FakeSubmissionManagerQuiz:
+    """`.values(campo).annotate(total=Count(...))` agrupado pelos campos
+    projetados; se o script pedir um campo além de result_key, ele aparece
+    aqui (é assim que a sabotagem de sanitização vira vermelho)."""
+
+    def __init__(self, linhas):
+        self._linhas = linhas
+
+    def values(self, *campos):
+        projetadas = [
+            {campo: getattr(linha, campo) for campo in campos}
+            for linha in self._linhas
+        ]
+
+        class _Agrupavel(list):
+            def annotate(self, **kwargs):
+                contagem, ordem = {}, []
+                for linha in projetadas:
+                    chave = tuple(sorted(linha.items()))
+                    if chave not in contagem:
+                        ordem.append(chave)
+                    contagem[chave] = contagem.get(chave, 0) + 1
+                saida = []
+                for chave in ordem:
+                    linha = dict(chave)
+                    for nome in kwargs:
+                        linha[nome] = contagem[chave]
+                    saida.append(linha)
+                return saida
+
+        return _Agrupavel(projetadas)
+
+
+def _rodar_codigo_quiz_configuracao(site, quiz, submissoes, eventos_pendentes, migracoes):
+    class FakeSite:
+        objects = _FakeQuerySetQuiz([site])
+
+    class FakeQuiz:
+        objects = _FakeQuerySetQuiz([quiz])
+
+    class FakeSubmission:
+        objects = _FakeSubmissionManagerQuiz(submissoes)
+
+    class FakeOutboxEvent:
+        objects = SimpleNamespace(
+            filter=lambda **kwargs: SimpleNamespace(count=lambda: eventos_pendentes)
+        )
+
+    class FakeMigrationRecorder:
+        def __init__(self, conexao):
+            self._conexao = conexao
+
+        def applied_migrations(self):
+            return migracoes
+
+    importador_real = builtins.__import__
+
+    def importar(nome, *args, **kwargs):
+        falsos = {
+            "django.db": SimpleNamespace(connection=object()),
+            "django.db.migrations.recorder": SimpleNamespace(
+                MigrationRecorder=FakeMigrationRecorder
+            ),
+            "django.db.models": SimpleNamespace(Count=lambda campo: campo),
+            "apps.quiz.models": SimpleNamespace(
+                OutboxEvent=FakeOutboxEvent,
+                Quiz=FakeQuiz,
+                Site=FakeSite,
+                Submission=FakeSubmission,
+            ),
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    saida = StringIO()
+    with redirect_stdout(saida):
+        exec(
+            ops.QUIZ_CONFIGURACAO_CODIGO,
+            {"__builtins__": {**vars(builtins), "__import__": importar}},
+        )
+    return saida.getvalue()
+
+
+def test_quiz_configuracao_codigo_remoto_calcula_pontuacao_e_oculta_dados_pessoais():
+    perguntas = [
+        SimpleNamespace(
+            options=_FakeQuerySetQuiz(
+                [SimpleNamespace(points=0), SimpleNamespace(points=5)]
+            )
+        ),
+        SimpleNamespace(
+            options=_FakeQuerySetQuiz(
+                [SimpleNamespace(points=0), SimpleNamespace(points=15)]
+            )
+        ),
+    ]
+    faixas = _FakeQuerySetQuiz(
+        [
+            SimpleNamespace(
+                key="iniciante",
+                min_score=0,
+                max_score=9,
+                botao_destino="/checkout/curso-teste/",
+                botao_rotulo="Comece agora",
+                title="Iniciante",
+            ),
+            SimpleNamespace(
+                key="avancado",
+                min_score=10,
+                max_score=20,
+                botao_destino="/checkout/curso-avancado/",
+                botao_rotulo="Avance",
+                title="Avançado",
+            ),
+        ]
+    )
+    versao = SimpleNamespace(
+        key="controle",
+        weight=100,
+        active=True,
+        questions=_FakeQuerySetQuiz(perguntas),
+        bands=faixas,
+    )
+    quiz = SimpleNamespace(
+        slug="crivo", active=True, versions=_FakeQuerySetQuiz([versao])
+    )
+    site = SimpleNamespace(id=ops.SITE_MESHCRAFT, host="meshcraft.top", active=True)
+
+    lead_email, lead_name, lead_phone = (
+        "comprador-real@example.com",
+        "Nome Sobrenome Verdadeiro",
+        "+55 11 90000-0000",
+    )
+    submissoes = [
+        SimpleNamespace(
+            result_key="iniciante",
+            lead_email=lead_email,
+            lead_name=lead_name,
+            lead_phone=lead_phone,
+        ),
+        SimpleNamespace(
+            result_key="iniciante",
+            lead_email=lead_email,
+            lead_name=lead_name,
+            lead_phone=lead_phone,
+        ),
+        SimpleNamespace(
+            result_key="sem_faixa",
+            lead_email=lead_email,
+            lead_name=lead_name,
+            lead_phone=lead_phone,
+        ),
+    ]
+    migracoes = {
+        ("quiz", "0002_botao_por_faixa"): object(),
+        ("quiz", "0001_initial"): object(),
+        ("pagamentos", "0001_initial"): object(),
+    }
+
+    texto = _rodar_codigo_quiz_configuracao(site, quiz, submissoes, 4, migracoes)
+
+    # guarda: teste que prova a sanitização exigida pelo brief (H-L04/H-L08/H-L09)
+    assert lead_email not in texto
+    assert lead_name not in texto
+    assert lead_phone not in texto
+
+    dados = json.loads(texto)
+    assert ops.conferir_medicao("quiz-configuracao", dados) == dados
+    assert dados == {
+        "sites": [{"id": ops.SITE_MESHCRAFT, "host": "meshcraft.top", "active": True}],
+        "quizzes": [
+            {
+                "slug": "crivo",
+                "active": True,
+                "versoes": [
+                    {
+                        "key": "controle",
+                        "peso": 100,
+                        "active": True,
+                        "perguntas": 2,
+                        "alternativas": 4,
+                        "pontuacao_minima": 0,
+                        "pontuacao_maxima": 20,
+                        "faixas": [
+                            {
+                                "key": "iniciante",
+                                "min_score": 0,
+                                "max_score": 9,
+                                "botao_destino": "/checkout/curso-teste/",
+                                "botao_rotulo": "Comece agora",
+                                "titulo": "Iniciante",
+                            },
+                            {
+                                "key": "avancado",
+                                "min_score": 10,
+                                "max_score": 20,
+                                "botao_destino": "/checkout/curso-avancado/",
+                                "botao_rotulo": "Avance",
+                                "titulo": "Avançado",
+                            },
+                        ],
+                        "cobertura": {"sem_buraco": True, "sem_sobreposicao": True},
+                    }
+                ],
+            }
+        ],
+        "submissoes_por_resultado": {"iniciante": 2, "sem_faixa": 1},
+        "eventos_pendentes": 4,
+        "migracoes": ["0001_initial", "0002_botao_por_faixa"],
+    }
+
+
+def _cobertura_calculada_quiz(bandas):
+    pergunta = SimpleNamespace(
+        options=_FakeQuerySetQuiz(
+            [SimpleNamespace(points=0), SimpleNamespace(points=20)]
+        )
+    )
+    faixas = _FakeQuerySetQuiz(
+        [
+            SimpleNamespace(
+                key=b["key"],
+                min_score=b["min_score"],
+                max_score=b["max_score"],
+                botao_destino="",
+                botao_rotulo="",
+                title=b["key"],
+            )
+            for b in bandas
+        ]
+    )
+    versao = SimpleNamespace(
+        key="controle",
+        weight=100,
+        active=True,
+        questions=_FakeQuerySetQuiz([pergunta]),
+        bands=faixas,
+    )
+    quiz = SimpleNamespace(
+        slug="crivo", active=True, versions=_FakeQuerySetQuiz([versao])
+    )
+    site = SimpleNamespace(id=ops.SITE_MESHCRAFT, host="meshcraft.top", active=True)
+    texto = _rodar_codigo_quiz_configuracao(site, quiz, [], 0, {})
+    return json.loads(texto)["quizzes"][0]["versoes"][0]["cobertura"]
+
+
+@pytest.mark.parametrize(
+    "bandas,esperado",
+    [
+        (
+            [{"key": "unica", "min_score": 0, "max_score": 20}],
+            {"sem_buraco": True, "sem_sobreposicao": True},
+        ),
+        (
+            [
+                {"key": "a", "min_score": 0, "max_score": 9},
+                {"key": "b", "min_score": 11, "max_score": 20},
+            ],
+            {"sem_buraco": False, "sem_sobreposicao": True},
+        ),
+        (
+            [
+                {"key": "a", "min_score": 0, "max_score": 12},
+                {"key": "b", "min_score": 10, "max_score": 20},
+            ],
+            {"sem_buraco": True, "sem_sobreposicao": False},
+        ),
+        ([], {"sem_buraco": False, "sem_sobreposicao": True}),
+    ],
+)
+def test_quiz_configuracao_cobertura_distingue_buraco_de_sobreposicao(
+    bandas, esperado
+):
+    # guarda: ci/operacoes_vps.py (função cobertura() dentro de QUIZ_CONFIGURACAO_CODIGO)
+    assert _cobertura_calculada_quiz(bandas) == esperado
 
 
 class _AvisoManager:
