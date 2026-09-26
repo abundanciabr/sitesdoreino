@@ -260,7 +260,7 @@ def test_consulta_viva_falha_sem_apagar_retrato(fila_appmax, dentro):
 
 
 def test_prova_de_conclusao_vem_do_evento_canonico(fila_appmax):
-    # guarda: services/admin/apps/core/appmax.py:124
+    # guarda: services/admin/apps/core/appmax.py:128
     pasta, dados = fila_appmax
     metadados, eventos = appmax._metadados_da_fila(pasta)
     cartao = appmax._tarefa("TAR-731", dados["TAR-731"], dados, metadados, eventos)
@@ -273,7 +273,7 @@ def test_prova_de_conclusao_vem_do_evento_canonico(fila_appmax):
 
 
 def test_dependencia_bloqueada_permanece_impeditiva(fila_appmax):
-    # guarda: services/admin/apps/core/appmax.py:91
+    # guarda: services/admin/apps/core/appmax.py:95
     pasta, dados = fila_appmax
     metadados, _ = appmax._metadados_da_fila(pasta)
     tarefa = {**metadados["TAR-566"], "depende_de": ["TAR-565", "TAR-558"]}
@@ -284,7 +284,7 @@ def test_dependencia_bloqueada_permanece_impeditiva(fila_appmax):
     "tarefa", [None, {}, {"depende_de": "TAR-565"}, {"depende_de": ["TAR-999999"]}]
 )
 def test_dependencia_ausente_invalida_ou_desconhecida_nao_e_medida(tarefa):
-    # guarda: services/admin/apps/core/appmax.py:93
+    # guarda: services/admin/apps/core/appmax.py:97
     assert appmax._dependencias(tarefa, {}) == ([], False)
 
 

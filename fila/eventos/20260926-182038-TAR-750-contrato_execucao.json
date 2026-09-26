@@ -1,0 +1,56 @@
+{
+  "arquivo": "20260926-182038-TAR-750-contrato_execucao",
+  "tarefa": "TAR-750",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T18:20:38.310963+00:00",
+  "quem": "agent/admin/appmax-frentes-recentes",
+  "contrato": {
+    "plano": "docs/decisoes/ROTEIRO-APPMAX-ATE-A-CONCLUSAO.md",
+    "versao": 1,
+    "modelo_recomendado": "gpt-5.6-sol",
+    "esforco_recomendado": "medium",
+    "objetivo": "Mostrar as quatro frentes recentes Appmax na vista administrativa existente.",
+    "entregaveis": [
+      "TAR-744, TAR-748, TAR-747 e TAR-749 presentes uma vez na sequência publicada.",
+      "Estados e provas calculados pela mesma fonte da fila."
+    ],
+    "escopo_incluido": [
+      "services/admin/apps/core/appmax.py",
+      "services/admin/tests/test_appmax.py",
+      "Artefatos próprios da TAR-750 e recibo do rito"
+    ],
+    "nao_objetivos": [
+      "Alterar a máquina de estados da fila, a consulta viva, templates ou JavaScript.",
+      "Operações financeiras, mudança de contrato de pagamento ou novas fontes de estado."
+    ],
+    "restricoes": [
+      "Preservar todos os cartões atuais e suas substitutas.",
+      "Ausência de tarefa no retrato continua não medida.",
+      "Não repetir compras nem estornos."
+    ],
+    "decisoes_aprovadas": [
+      "Continuidade do objetivo Appmax e publicação técnica no repositório autorizadas pelo mantenedor em 26/09/2026."
+    ],
+    "etapas": [
+      "Reivindicar a TAR e medir o teste focal.",
+      "Incluir as quatro tarefas na sequência e verificar as leituras.",
+      "Validar a célula e publicar pelo rito."
+    ],
+    "criterios_entrada": [
+      "Tarefas 744, 747, 748 e 749 existentes nas bancadas confirmadas.",
+      "Bancada admin exclusiva e reserva da TAR-750 adquirida."
+    ],
+    "criterios_aceite": [
+      "A vista inclui as quatro tarefas sem duplicação.",
+      "Estados distintos são lidos da fila; tarefa ausente é não medida.",
+      "Cartões e substitutas anteriores permanecem disponíveis."
+    ],
+    "evidencias_exigidas": [
+      "Teste focal executado com Django 5.1.4.",
+      "Validação da célula no rito e conferência de /admin/appmax/ após publicação."
+    ],
+    "condicao_encerramento": "As quatro tarefas aparecem na vista publicada, com fonte identificada e sem conclusão financeira inferida.",
+    "limites_autonomia": "Somente os dois arquivos da vista e artefatos próprios da TAR-750, sem tocar bancadas de outras frentes.",
+    "acoes_do_mantenedor": "Nenhuma ação técnica nova."
+  }
+}
