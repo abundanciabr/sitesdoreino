@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-085-catalogo-experimento-da-pagina-f5",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "catalogo: experimento da pagina (F5)",
+  detalhe: "Experimento e Variante no catálogo: variante congelada fora do rascunho, um só ativo por página pelo banco, ciclo com 409 e idempotência, experimento_ativo no getPage.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2138. Validação local: árvore 58c611f4eccbcd02a4cb41b7de1a61fcc2a3a23a; commit 7b944cab6b1559240c3def48ef5859b9c64f989d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-776",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
