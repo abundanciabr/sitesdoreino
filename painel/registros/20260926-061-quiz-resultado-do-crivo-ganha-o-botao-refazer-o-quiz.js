@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-061-quiz-resultado-do-crivo-ganha-o-botao-refazer-o-quiz",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "quiz: resultado do Crivo ganha o botão Refazer o quiz",
+  detalhe: "Resultado do Crivo ganha Refazer o quiz: POST com CSRF abre sessão nova e formulário em branco; o envio antigo fica no banco.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2122. Validação local: árvore b663b6c3c08329bc7bed716f4542dc430d84fa87; commit b17fdd02f7f104ff8d8bb39f410061c575efcf85; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-761",
+  gravidade: "info",
+  frente: "site",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
