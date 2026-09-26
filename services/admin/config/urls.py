@@ -108,6 +108,7 @@ from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
+from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
 from apps.core.appmax import appmax
@@ -720,6 +721,15 @@ urlpatterns = [
     # seções (`moldura.py`) cresceria sem realidade nova — experimento não é
     # assunto novo da administração, é o que se faz para mover aqueles números.
     path("placar/laboratorio/", laboratorio, name="laboratorio"),
+    # O RESULTADO DE UM EXPERIMENTO DE PÁGINA (`apps/core/resultado_do_experimento.py`,
+    # 26/09/2026, frente F9a do sistema de experimentos): a versão B ganhou,
+    # perdeu ou ainda está coletando. Sub-rota do placar ao lado do laboratório
+    # pela mesma razão dele: é o que se faz para mover os números do placar.
+    path(
+        "placar/experimentos/<uuid:experimento_id>/resultado/",
+        resultado_do_experimento,
+        name="resultado_do_experimento",
+    ),
     # AS COORTES (`apps/core/coortes.py`, 05/09/2026) — quem entrou em cada mês,
     # e o que a memória da escola sabe sobre cada grupo. É o degrau 10 do plano
     # do painel de gestão (§6.4), na metade que já tem fonte hoje.

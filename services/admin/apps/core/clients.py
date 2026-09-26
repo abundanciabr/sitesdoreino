@@ -1067,6 +1067,9 @@ class CatalogoClient:
     SEM_PAGINA = "sem_pagina"
     # 409 de `publishPage`: o rascunho está vazio e nada foi publicado.
     VAZIO = "vazio"
+    # 404 da leitura de um experimento: o endereço aponta para um id que o
+    # catálogo não conhece, e isso não é o catálogo fora do ar.
+    SEM_EXPERIMENTO = "sem_experimento"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1259,36 +1262,48 @@ class CatalogoClient:
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
     ) -> "tuple[str, dict | str]":
-        """As três operações de página, que só diferem no verbo e no sufixo.
+        """As três operações de página, que só diferem no verbo e no sufixo."""
+        return self._falar(
+            metodo,
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
+            corpo=corpo,
+            especiais=especiais,
+        )
 
-        Uma peça só porque o encanamento é idêntico nas três (config, endereço,
-        timeout, corpo fora do contrato) e três cópias divergiriam no primeiro
-        conserto feito em uma delas. O que muda é declarado: `especiais` diz
-        quais status desta operação têm nome próprio, em vez de caírem no
-        "não respondeu" genérico.
+    def _falar(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        corpo: "dict | None" = None,
+        especiais: "tuple[tuple[int, str], ...]" = (),
+    ) -> "tuple[str, dict | str]":
+        """O encanamento de toda operação do catálogo que devolve um objeto.
+
+        Uma peça só porque ele é idêntico em todas (config, endereço, timeout,
+        corpo fora do contrato), e cópias divergiriam no primeiro conserto feito
+        em uma delas. O que muda é declarado: `especiais` diz quais status desta
+        operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
         """
         config = self._configuracao()
         if config is None:
             logger.warning(
-                "página de venda: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão "
+                "catálogo: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão "
                 "no env desta célula (par admin→catalogo não provisionado)"
             )
             return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
         base, token = config
-        endereco = (
-            f"{base}/sites/{quote(str(site_id), safe='')}"
-            f"/paginas/{quote(str(slug), safe='')}{sufixo}"
-        )
         try:
             r = http().request(
                 metodo,
-                endereco,
+                f"{base}{caminho}",
                 json=corpo,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
             )
         except httpx.HTTPError as erro:
-            logger.error("página de venda: o catálogo não respondeu: %s", erro)
+            logger.error("catálogo: não respondeu: %s", erro)
             return self.NAO_RESPONDEU, "o catálogo não respondeu"
 
         for status, desfecho in especiais:
@@ -1297,10 +1312,7 @@ class CatalogoClient:
 
         if r.status_code != 200:
             logger.error(
-                "página de venda: %s %s respondeu HTTP %s",
-                metodo,
-                sufixo or "/rascunho",
-                r.status_code,
+                "catálogo: %s %s respondeu HTTP %s", metodo, caminho, r.status_code
             )
             return self.NAO_RESPONDEU, "o catálogo respondeu com erro"
 
@@ -1308,12 +1320,21 @@ class CatalogoClient:
             lido = r.json()
         except ValueError as erro:
             # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
-            logger.error("página de venda: resposta fora do contrato: %s", erro)
+            logger.error("catálogo: resposta fora do contrato: %s", erro)
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         if not isinstance(lido, dict):
-            logger.error("página de venda: o corpo não é um objeto")
+            logger.error("catálogo: o corpo não é um objeto")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         return self.OK, lido
+
+    def experimento(self, experimento_id: str) -> "tuple[str, dict | str]":
+        """Um experimento do catálogo, com variantes, pesos e o plano (dias e
+        amostra por braço). 404 devolve `SEM_EXPERIMENTO`."""
+        return self._falar(
+            "GET",
+            f"/experimentos/{quote(str(experimento_id), safe='')}",
+            especiais=((404, self.SEM_EXPERIMENTO),),
+        )
 
     @staticmethod
     def _recusa_do_catalogo(resposta) -> str:
@@ -1876,6 +1897,34 @@ class MedicaoClient:
             logger.error("medicao: 'conquistas' fora do contrato: %r", linhas)
             return self.NAO_RESPONDEU, None
         return self.OK, linhas
+
+    def contar_funil(
+        self,
+        desde: "dt.date",
+        ate: "dt.date",
+        *,
+        experimento_id: "str | None" = None,
+        site_id: "str | None" = None,
+    ) -> "tuple[str, dict | None]":
+        """`countFunnel`: visitantes distintos por passo do funil na janela.
+
+        Com `experimento_id`, a resposta traz também as `variantes` (atribuídos,
+        expostos e convertidos de cada braço). `coleta` nula quer dizer que
+        nenhum evento do funil chegou na janela, e é diferente de zero com
+        coleta: quem mostra o número precisa dizer qual dos dois é.
+        """
+        params = {"desde": desde.isoformat(), "ate": ate.isoformat()}
+        if experimento_id:
+            params["experimento_id"] = experimento_id
+        if site_id:
+            params["site_id"] = site_id
+        desfecho, corpo = self._pedir("/funil/contagens", params)
+        if desfecho != self.OK:
+            return desfecho, None
+        if not isinstance(corpo, dict) or not isinstance(corpo.get("passos"), list):
+            logger.error("medicao: o funil veio fora do contrato: %r", corpo)
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
 
     def mortos(self, limite: int = 30) -> "tuple[str, dict | None]":
         """A fila do que chegou e não pôde ser afirmado: o total e o topo dela.
