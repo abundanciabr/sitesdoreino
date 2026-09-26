@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-125059-TAR-739-explicada",
+  "tarefa": "TAR-739",
+  "evento": "explicada",
+  "quando": "2026-09-26T12:50:59.537859+00:00",
+  "quem": "Aceite público da TAR-730 em 26/09/2026 e autorização Tudo do Appmax liberado",
+  "o_que_e": "A página Appmax abre, mas omite provas e dependências e mede reservas por um endereço errado.",
+  "o_que_muda": "O operador confere evidências e entende o que impede a próxima etapa pela mesma fila do projeto.",
+  "exemplo": "A observação mostra que espera o canário, e uma entrega concluída mostra o link da prova.",
+  "importancia": 100
+}
