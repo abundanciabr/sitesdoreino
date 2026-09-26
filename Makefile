@@ -23,7 +23,7 @@
 # local e não pode virar requisito arquitetural. Sobrescreva com PYTHON=... se o
 # seu ambiente chamar o interpretador de outro jeito.
 # =============================================================================
-PYTHON ?= python
+PYTHON ?= $(shell if [ -x "$(USERPROFILE)/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" ]; then printf '%s' "$(USERPROFILE)/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe"; elif command -v python >/dev/null 2>&1; then command -v python; elif command -v python3 >/dev/null 2>&1; then command -v python3; else printf '%s' python; fi)
 
 .PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas economia pr
 
