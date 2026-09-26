@@ -32,3 +32,4 @@ respx==0.23.1
 # (armadilhas/096). Mesma versão pinada das outras células required.
 PyYAML==6.0.2
 black==24.10.0
+services/identidade/vendor/site_errors-0.1.0-py3-none-any.whl

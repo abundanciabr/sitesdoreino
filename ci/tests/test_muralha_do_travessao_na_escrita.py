@@ -274,6 +274,19 @@ def test_checkpoint_mede_texto_do_stage_e_nao_a_edicao_seguinte(tmp_path, monkey
     assert travessao.main(["--verificar-staged"]) == 0
 
 
+def test_checkpoint_ignora_wheel_binaria_no_stage(tmp_path, monkeypatch):
+    import travessao
+    subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci/texto-publico-bastidor.txt").write_text("", encoding="utf-8")
+    wheel = tmp_path / "services/exemplo/vendor/site_errors.whl"
+    wheel.parent.mkdir(parents=True)
+    wheel.write_bytes(b"PK\x03\x04\x00\xff")
+    subprocess.run(["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True)
+    monkeypatch.setattr(travessao, "raiz_do_repo", lambda: tmp_path)
+    assert travessao.main(["--verificar-staged"]) == 0
+
+
 # ---------- a equivalência das duas réguas ----------
 
 def test_pertence_a_superficie_bate_com_superficie_no_repo_real():

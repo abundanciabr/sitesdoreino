@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "site-errors"
+version = "0.1.0"
+description = "Tratamento compartilhado de erros HTTP do site."
+requires-python = ">=3.12"
+dependencies = ["Django>=5.0,<5.2", "redis>=5.1.1,<6"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+site_errors = ["templates/site_errors/*.html"]

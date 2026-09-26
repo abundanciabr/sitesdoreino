@@ -262,3 +262,93 @@ def test_a_linha_de_comando_devolve_os_tres_codigos(arvore: Path):
     for wheel in (arvore / "services").glob("*/vendor/*.whl"):
         wheel.unlink()
     assert rodar_cli(arvore).returncode == 2
+
+
+def _wheel_site_errors(destino: Path, html_404: str = "404 atual") -> Path:
+    versao = "0.1.0"
+    wheel = destino / f"site_errors-{versao}-py3-none-any.whl"
+    wheel.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(wheel, "w") as zf:
+        zf.writestr("site_errors/__init__.py", "")
+        zf.writestr("site_errors/apps.py", "class SiteErrorsConfig: pass\n")
+        zf.writestr("site_errors/handlers.py", "def handle(): return 404\n")
+        zf.writestr("site_errors/templates/site_errors/404.html", html_404)
+        zf.writestr("site_errors/templates/site_errors/500.html", "500 atual")
+        zf.writestr(
+            f"site_errors-{versao}.dist-info/METADATA",
+            "Metadata-Version: 2.1\nName: site-errors\nVersion: 0.1.0\n"
+            "Requires-Dist: Django>=5.0,<5.2\nRequires-Dist: redis>=5.1.1,<6\n",
+        )
+    return wheel
+
+
+def _arvore_site_errors(tmp_path: Path) -> Path:
+    raiz = tmp_path / "site-errors-repo"
+    for nome in ("CONSTITUICAO.md", "INVARIANTES.md"):
+        (raiz / nome).parent.mkdir(parents=True, exist_ok=True)
+        (raiz / nome).write_text("teste", encoding="utf-8")
+    for pasta in ("ci", "contracts", "services", "packages"):
+        (raiz / pasta).mkdir(parents=True, exist_ok=True)
+    pacote = raiz / "packages/site_errors"
+    src = pacote / "src/site_errors"
+    templates = src / "templates/site_errors"
+    templates.mkdir(parents=True)
+    (src / "__init__.py").write_text("", encoding="utf-8")
+    (src / "apps.py").write_text("class SiteErrorsConfig: pass\n", encoding="utf-8")
+    (src / "handlers.py").write_text("def handle(): return 404\n", encoding="utf-8")
+    (templates / "404.html").write_text("404 atual", encoding="utf-8")
+    (templates / "500.html").write_text("500 atual", encoding="utf-8")
+    (pacote / "pyproject.toml").write_text(
+        '[project]\nname="site-errors"\nversion="0.1.0"\nrequires-python=">=3.12"\n'
+        'dependencies=["Django>=5.0,<5.2", "redis>=5.1.1,<6"]\n',
+        encoding="utf-8",
+    )
+    service = raiz / "services/falsa"
+    vendor = service / "vendor"
+    vendor.mkdir(parents=True)
+    (service / "requirements.txt").write_text(
+        "services/falsa/vendor/site_errors-0.1.0-py3-none-any.whl\n", encoding="utf-8"
+    )
+    (service / "Dockerfile").write_text(
+        "COPY requirements.txt .\nCOPY vendor ./services/falsa/vendor\n"
+        "RUN pip install -r requirements.txt\n",
+        encoding="utf-8",
+    )
+    _wheel_site_errors(vendor)
+    return raiz
+
+
+def test_portao_site_errors_reprova_template_desatualizado(tmp_path: Path):
+    raiz = _arvore_site_errors(tmp_path)
+    vendor = raiz / "services/falsa/vendor"
+    _wheel_site_errors(vendor, html_404="404 antigo")
+
+    relatorio = portao.rodar_site_errors(raiz)
+
+    assert relatorio.estado is Estado.FAIL
+    assert "404.html divergiu do fonte" in relatorio.render()
+
+
+def test_portao_site_errors_reprova_wheel_copiada_depois_do_pip(tmp_path: Path):
+    raiz = _arvore_site_errors(tmp_path)
+    dockerfile = raiz / "services/falsa/Dockerfile"
+    dockerfile.write_text(
+        "COPY requirements.txt .\nRUN pip install -r requirements.txt\n"
+        "COPY vendor ./services/falsa/vendor\n",
+        encoding="utf-8",
+    )
+
+    relatorio = portao.rodar_site_errors(raiz)
+
+    assert relatorio.estado is Estado.FAIL
+    assert "não copia a wheel antes" in relatorio.render()
+
+
+def test_portao_site_errors_reprova_sem_consumidor(tmp_path: Path):
+    raiz = _arvore_site_errors(tmp_path)
+    (raiz / "services/falsa/vendor/site_errors-0.1.0-py3-none-any.whl").unlink()
+
+    relatorio = portao.rodar_site_errors(raiz)
+
+    assert relatorio.estado is Estado.ERROR
+    assert "nenhuma célula vendoriza site_errors" in relatorio.render()

@@ -41,7 +41,10 @@ dois é PASS: um portão que não mediu nada não provou nada. [INV-CI01]
 from __future__ import annotations
 
 import argparse
+import base64
+import csv
 import difflib
+import hashlib
 import re
 import shutil
 import subprocess
@@ -67,6 +70,8 @@ from _nucleo import (  # noqa: E402
 
 PACOTE = Path("packages") / "outbox-relay"
 MODULO = "outbox_relay"
+PACOTE_SITE_ERRORS = Path("packages") / "site_errors"
+MODULO_SITE_ERRORS = "site_errors"
 CONSERTO = "python ci/portao_do_pacote_compartilhado.py --reconstruir"
 
 
@@ -263,6 +268,10 @@ def rodar(raiz: Path | None = None) -> Relatorio:
             relatorio.registrar(conferir(celula, wheel, fonte, versao, raiz))
         except ErroDeInstrumentacao as erro:
             relatorio.registrar(Resultado.de_erro(f"{celula}/{wheel.name}", erro))
+    if (raiz / PACOTE_SITE_ERRORS).is_dir():
+        relatorio_site = rodar_site_errors(raiz)
+        for resultado in relatorio_site.resultados:
+            relatorio.registrar(resultado)
     return relatorio
 
 
@@ -287,8 +296,15 @@ def reconstruir(raiz: Path) -> int:
         saida = Path(tmp) / "dist"
         shutil.copytree(raiz / PACOTE, copia)
         proc = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel",
-             "--outdir", str(saida), str(copia)],
+            [
+                sys.executable,
+                "-m",
+                "build",
+                "--wheel",
+                "--outdir",
+                str(saida),
+                str(copia),
+            ],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -327,6 +343,249 @@ def reconstruir(raiz: Path) -> int:
     return relatorio.exit_code
 
 
+def _fonte_site_errors(raiz: Path) -> dict[str, bytes]:
+    src = raiz / PACOTE_SITE_ERRORS / "src" / MODULO_SITE_ERRORS
+    if not src.is_dir():
+        raise ErroDeInstrumentacao(
+            "o pacote site_errors não tem diretório de fonte",
+            f"Esperado: {src}",
+        )
+    arquivos = {
+        f"{MODULO_SITE_ERRORS}/{arquivo.relative_to(src).as_posix()}": arquivo.read_bytes()
+        for arquivo in sorted(src.rglob("*"))
+        if arquivo.is_file() and "__pycache__" not in arquivo.parts
+    }
+    if not arquivos:
+        raise ErroDeInstrumentacao(
+            "o pacote site_errors não tem arquivos de fonte",
+            f"Diretório: {src}",
+        )
+    return arquivos
+
+
+def _consumidores_site_errors(raiz: Path) -> list[tuple[str, Path]]:
+    achados = []
+    for vendor in sorted((raiz / "services").glob("*/vendor")):
+        wheels = sorted(vendor.glob("site_errors-*.whl"))
+        if len(wheels) > 1:
+            raise ErroDeInstrumentacao(
+                f"a célula {vendor.parent.name} vendoriza várias wheels site_errors",
+                "Wheels encontradas: " + ", ".join(w.name for w in wheels),
+            )
+        if wheels:
+            achados.append((vendor.parent.name, wheels[0]))
+    if not achados:
+        raise ErroDeInstrumentacao(
+            "nenhuma célula vendoriza site_errors",
+            f"Procurei por services/*/vendor/site_errors-*.whl em {raiz}",
+        )
+    return achados
+
+
+def _normalizar_requisito_site_errors(requisito: str) -> str:
+    achado = re.match(r"\s*([A-Za-z0-9_.-]+)\s*(.*)", requisito)
+    if achado is None:
+        return requisito.strip().lower()
+    nome = re.sub(r"[-_.]+", "-", achado.group(1)).lower()
+    restricoes = sorted(
+        parte.replace(" ", "") for parte in achado.group(2).split(",") if parte
+    )
+    return nome + ",".join(restricoes)
+
+
+def conferir_site_errors(
+    celula: str,
+    wheel: Path,
+    raiz: Path,
+    fonte: dict[str, bytes],
+    versao: str,
+    dependencias: list[str],
+) -> Resultado:
+    nome = f"{celula}/{wheel.name}"
+    try:
+        with zipfile.ZipFile(wheel) as zf:
+            metadatas = [
+                item for item in zf.namelist() if item.endswith(".dist-info/METADATA")
+            ]
+            if len(metadatas) != 1:
+                raise ErroDeInstrumentacao(
+                    f"a wheel de {celula} tem {len(metadatas)} arquivos METADATA",
+                    f"Arquivo: {wheel}",
+                )
+            metadata = _texto(zf.read(metadatas[0]))
+            arquivos_wheel = {
+                item: zf.read(item)
+                for item in sorted(zf.namelist())
+                if item.startswith(f"{MODULO_SITE_ERRORS}/")
+            }
+            versao_wheel = _versao_na_metadata(zf, wheel)
+    except ErroDeInstrumentacao:
+        raise
+    except (zipfile.BadZipFile, KeyError, OSError, UnicodeDecodeError) as erro:
+        raise ErroDeInstrumentacao(
+            f"não consegui abrir a wheel site_errors de {celula}",
+            f"Arquivo: {wheel}\nMotivo: {erro.__class__.__name__}: {erro}",
+        ) from erro
+
+    problemas = []
+    versao_no_nome = re.match(r"site_errors-([^-]+)-", wheel.name)
+    if versao_no_nome is None or versao_no_nome.group(1) != versao:
+        problemas.append(
+            f"o nome {wheel.name} não corresponde à versão declarada {versao}."
+        )
+    if versao_wheel != versao:
+        problemas.append(
+            f"a METADATA declara {versao_wheel}; o pyproject.toml declara {versao}."
+        )
+    for caminho in sorted(set(fonte) - set(arquivos_wheel)):
+        problemas.append(f"{caminho} existe no fonte e não está na wheel.")
+    for caminho in sorted(set(arquivos_wheel) - set(fonte)):
+        problemas.append(f"{caminho} está na wheel e não existe no fonte.")
+    for caminho in sorted(set(fonte) & set(arquivos_wheel)):
+        if fonte[caminho] != arquivos_wheel[caminho]:
+            problemas.append(f"{caminho} divergiu do fonte, incluindo arquivos HTML.")
+    requisitos_wheel = [
+        linha.partition(":")[2].strip()
+        for linha in metadata.splitlines()
+        if linha.startswith("Requires-Dist:")
+    ]
+    if sorted(map(_normalizar_requisito_site_errors, requisitos_wheel)) != sorted(
+        map(_normalizar_requisito_site_errors, dependencias)
+    ):
+        problemas.append("as dependências da METADATA divergem do pyproject.toml.")
+    requisitos = raiz / "services" / celula / "requirements.txt"
+    caminho_instalado = f"services/{celula}/vendor/{wheel.name}"
+    if not requisitos.is_file() or caminho_instalado not in requisitos.read_text(
+        encoding="utf-8"
+    ).replace("\\", "/"):
+        problemas.append(f"requirements.txt não instala {caminho_instalado}.")
+    dockerfiles = sorted((raiz / "services" / celula).glob("Dockerfile*"))
+    imagens_com_pip = []
+    for dockerfile in dockerfiles:
+        docker = dockerfile.read_text(encoding="utf-8")
+        if "RUN pip install" in docker and "requirements.txt" in docker:
+            imagens_com_pip.append((dockerfile, docker))
+    if not imagens_com_pip:
+        problemas.append("nenhum Dockerfile instala requirements.txt.")
+    for dockerfile, docker in imagens_com_pip:
+        copia = docker.find(f"COPY vendor ./services/{celula}/vendor")
+        instala = docker.find("RUN pip install")
+        if copia < 0 or instala < 0 or copia > instala:
+            problemas.append(
+                f"{dockerfile.name} não copia a wheel antes de executar pip install."
+            )
+    if problemas:
+        return Resultado(
+            nome,
+            Estado.FAIL,
+            f"{len(problemas)} divergência(s) entre fonte, wheel e imagem",
+            "\n".join(problemas),
+        )
+    return Resultado(
+        nome,
+        Estado.PASS,
+        f"{len(fonte)} arquivos idênticos ao fonte, versão {versao}",
+    )
+
+
+def rodar_site_errors(raiz: Path | None = None) -> Relatorio:
+    relatorio = Relatorio("PORTÃO DO PACOTE COMPARTILHADO (packages/site_errors)")
+    try:
+        raiz = raiz_declarada(raiz) if raiz is not None else raiz_do_repo()
+        fonte = _fonte_site_errors(raiz)
+        projeto = tomllib.loads(
+            (raiz / PACOTE_SITE_ERRORS / "pyproject.toml").read_text(encoding="utf-8")
+        )["project"]
+        versao = str(projeto["version"])
+        dependencias = list(projeto["dependencies"])
+        alvos = _consumidores_site_errors(raiz)
+    except (ErroDeInstrumentacao, OSError, KeyError, tomllib.TOMLDecodeError) as erro:
+        if isinstance(erro, ErroDeInstrumentacao):
+            relatorio.registrar(Resultado.de_erro("site_errors", erro))
+        else:
+            relatorio.registrar(
+                Resultado.de_erro(
+                    "site_errors",
+                    ErroDeInstrumentacao(
+                        "não consegui ler fonte ou pyproject.toml", str(erro)
+                    ),
+                )
+            )
+        return relatorio
+    for celula, wheel in alvos:
+        try:
+            relatorio.registrar(
+                conferir_site_errors(celula, wheel, raiz, fonte, versao, dependencias)
+            )
+        except ErroDeInstrumentacao as erro:
+            relatorio.registrar(Resultado.de_erro(f"{celula}/{wheel.name}", erro))
+    return relatorio
+
+
+def reconstruir_site_errors(raiz: Path) -> int:
+    raiz = raiz_declarada(raiz)
+    pacote = raiz / PACOTE_SITE_ERRORS
+    dados = tomllib.loads((pacote / "pyproject.toml").read_text(encoding="utf-8"))[
+        "project"
+    ]
+    versao = str(dados["version"])
+    modulo = pacote / "src" / MODULO_SITE_ERRORS
+    dist_info = f"site_errors-{versao}.dist-info"
+    nome_wheel = f"site_errors-{versao}-py3-none-any.whl"
+    alvos = _consumidores_site_errors(raiz)
+    with tempfile.TemporaryDirectory() as pasta:
+        wheel = Path(pasta) / nome_wheel
+        metadata = [
+            "Metadata-Version: 2.1",
+            f"Name: {dados['name']}",
+            f"Version: {versao}",
+            f"Summary: {dados.get('description', '')}",
+            f"Requires-Python: {dados['requires-python']}",
+            *[f"Requires-Dist: {item}" for item in dados.get("dependencies", [])],
+            "",
+            "",
+        ]
+        arquivos = {
+            f"{MODULO_SITE_ERRORS}/{arquivo.relative_to(modulo).as_posix()}": arquivo.read_bytes()
+            for arquivo in sorted(modulo.rglob("*"))
+            if arquivo.is_file() and "__pycache__" not in arquivo.parts
+        }
+        arquivos[f"{dist_info}/METADATA"] = "\n".join(metadata).encode("utf-8")
+        arquivos[f"{dist_info}/WHEEL"] = (
+            "Wheel-Version: 1.0\nGenerator: ci.portao_do_pacote_compartilhado\n"
+            "Root-Is-Purelib: true\nTag: py3-none-any\n"
+        ).encode("utf-8")
+        arquivos[f"{dist_info}/top_level.txt"] = f"{MODULO_SITE_ERRORS}\n".encode()
+        linhas = []
+        for caminho, conteudo in sorted(arquivos.items()):
+            digest = (
+                base64.urlsafe_b64encode(hashlib.sha256(conteudo).digest())
+                .decode()
+                .rstrip("=")
+            )
+            linhas.append((caminho, f"sha256={digest}", str(len(conteudo))))
+        record = f"{dist_info}/RECORD"
+        with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as pacote_zip:
+            for caminho, conteudo in arquivos.items():
+                pacote_zip.writestr(caminho, conteudo)
+            from io import StringIO
+
+            saida_csv = StringIO(newline="")
+            csv.writer(saida_csv, lineterminator="\n").writerows(
+                [*linhas, (record, "", "")]
+            )
+            pacote_zip.writestr(record, saida_csv.getvalue())
+        for celula, antiga in alvos:
+            destino = antiga.parent / nome_wheel
+            if antiga.name != nome_wheel:
+                antiga.unlink()
+            shutil.copy2(wheel, destino)
+            print(f"  {celula}: {destino.relative_to(raiz).as_posix()}")
+    relatorio = rodar_site_errors(raiz)
+    print(relatorio.render())
+    return relatorio.exit_code
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(
@@ -336,10 +595,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--reconstruir",
         action="store_true",
-        help="constrói a wheel do fonte e a copia para todos os consumidores",
+        help="constrói a wheel outbox-relay do fonte e a copia para os consumidores",
+    )
+    parser.add_argument(
+        "--reconstruir-site-errors",
+        action="store_true",
+        help="constrói a wheel site_errors sem ferramentas externas e a copia aos consumidores",
     )
     args = parser.parse_args(argv)
 
+    if args.reconstruir_site_errors:
+        try:
+            raiz = raiz_declarada(args.raiz) if args.raiz else raiz_do_repo()
+            return reconstruir_site_errors(raiz)
+        except ErroDeInstrumentacao as erro:
+            print(f"ERROR {erro.resumo}")
+            print(erro.detalhe)
+            return 2
     if args.reconstruir:
         try:
             raiz = raiz_declarada(args.raiz) if args.raiz else raiz_do_repo()

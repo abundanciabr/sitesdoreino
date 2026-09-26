@@ -943,11 +943,16 @@ def main(argv: list[str] | None = None) -> int:
                 if not (relativo.startswith("documentos/") or relativo.startswith("services/") or "templates/" in relativo or "traducoes/" in relativo or "management/commands/" in relativo):
                     continue
                 try:
-                    texto = subprocess.check_output(
-                        ["git", "show", f":{relativo}"],
-                        cwd=raiz, encoding="utf-8"
+                    conteudo = subprocess.check_output(
+                        ["git", "show", f":{relativo}"], cwd=raiz
                     )
                 except subprocess.CalledProcessError:
+                    continue
+                if b"\0" in conteudo:
+                    continue
+                try:
+                    texto = conteudo.decode("utf-8")
+                except UnicodeDecodeError:
                     continue
                 if not pertence_a_superficie(raiz, Path(relativo), texto):
                     continue

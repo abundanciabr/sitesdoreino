@@ -15,3 +15,4 @@ jsonschema==4.23.0
 mypy==1.13.0
 django-stubs==5.1.1
 import-linter==2.1
+services/pagamentos/vendor/site_errors-0.1.0-py3-none-any.whl
