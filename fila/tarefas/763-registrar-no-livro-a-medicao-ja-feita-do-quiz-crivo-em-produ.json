@@ -1,0 +1,19 @@
+{
+  "arquivo": "763-registrar-no-livro-a-medicao-ja-feita-do-quiz-crivo-em-produ",
+  "id": "TAR-763",
+  "titulo": "Registrar no livro a medicao ja feita do quiz Crivo em producao",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "registro em painel/registros/ citando a URL do run e verificado_em",
+  "despacho": "Registrar no livro (painel/registros/) a medicao do quiz Crivo em producao ja feita pelo run quiz-configuracao de operacoes-vps.yml (PR #2117, TAR-754). Criar um registro novo tipo medicao, <1KB, com evidencia citando a URL do run e verificado_em, sem disparar o run de novo.",
+  "origem": "Continuacao da TAR-754 (PR #2117): a medicao ja rodou e deu PASS; falta so o registro no livro de ocorrencias",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
