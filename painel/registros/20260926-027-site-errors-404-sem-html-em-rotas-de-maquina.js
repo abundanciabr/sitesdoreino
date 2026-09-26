@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-027-site-errors-404-sem-html-em-rotas-de-maquina",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "site_errors: 404 sem HTML em rotas de máquina",
+  detalhe: "Http404 segue o formato da rota; respostas próprias preservadas. Validação: 36 testes e 18 wheels aprovadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2106. Validação local: árvore e56b16f9757a22dc01dfeb8bb6285aa0dd4f8a8c; commit 8c2906488643255557f627495cecb38b3acaa85d; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-740",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
