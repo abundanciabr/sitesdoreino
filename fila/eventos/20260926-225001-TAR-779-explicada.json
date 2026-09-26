@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-225001-TAR-779-explicada",
+  "tarefa": "TAR-779",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:50:01.639493+00:00",
+  "quem": "achado do guarda [INV-MET-P1] (services/metricas/tests/test_livro_sem_dado_pessoal.py), sessão PRIV de 26/09/2026",
+  "o_que_e": "o esquema congelado contracts/eventos/quiz.completado.v1.json declara data.lead com email (obrigatorio), name e phone (opcionais); eventos.quiz.completado esta na lista STREAMS que a metricas assina, entao o livro de fatos da metricas recebe e-mail, nome e telefone de quem termina o quiz",
+  "o_que_muda": "o livro de fatos (Redis Streams + tabela Evento/EventoMorto) para de guardar dado pessoal de quem fez o quiz; sem isso, um vazamento ou uma leitura indevida do livro expoe e-mail e telefone de lead, que e exatamente o que o guarda [INV-MET-P1] existe para impedir",
+  "exemplo": "hoje, rodar o guarda novo mostra: quiz.completado.v1.json: campo 'data.lead.email'; 'data.lead.name'; 'data.lead.phone' -- o mesmo e-mail que a pessoa digitou no quiz fica gravado num Evento imutavel da metricas, uma celula que nao deveria conhecer quem e ninguem",
+  "importancia": 70
+}

@@ -1,0 +1,20 @@
+{
+  "arquivo": "779-o-contrato-quiz-completado-v1-leva-e-mail-nome-e-telefone-do",
+  "id": "TAR-779",
+  "titulo": "O contrato quiz.completado.v1 leva e-mail, nome e telefone do lead, e a metricas assina esse assunto",
+  "toca": [
+    "metricas",
+    "quiz"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado: contracts/eventos/quiz.completado.v1.json sem data.lead.email/name/phone (Rito de Contrato com o mantenedor) OU eventos.quiz.completado fora de STREAMS em services/metricas/apps/fatos/management/commands/consume_eventos.py; services/metricas/tests/test_livro_sem_dado_pessoal.py::test_stream_assinado_nao_tem_campo_pessoal_no_contrato[quiz.completado] verde",
+  "despacho": "Achado real do guarda [INV-MET-P1] (services/metricas/tests/test_livro_sem_dado_pessoal.py): contracts/eventos/quiz.completado.v1.json declara data.lead.email (obrigatorio), data.lead.name e data.lead.phone (opcionais), e eventos.quiz.completado esta em STREAMS (services/metricas/apps/fatos/management/commands/consume_eventos.py) -- a metricas assina esse assunto e o livro de fatos recebe dado pessoal. Antes de editar, rode python ci/mandato_por_faixa.py --arquivos contracts/eventos/quiz.completado.v1.json services/metricas/apps/fatos/management/commands/consume_eventos.py --faixa contratos: tocar contracts/ e contrato congelado exige mandato nominal do mantenedor (Rito de Contrato, RITOS.md secao de contrato) e consume_eventos.py e das irmas F2/F10b, entao qualquer edicao nele encadeia com essas frentes. Duas saidas possiveis, a escolher com o mantenedor: (a) Rito de Contrato para tirar lead (ou so email/name/phone) de quiz.completado.v1 -- PR so em contracts/, etiqueta contrato, linha Mandato-do-mantenedor de contratos; ou (b) remover eventos.quiz.completado de STREAMS, encadeado com quem hoje mantem consume_eventos.py. Nao afrouxe o guarda [INV-MET-P1] (services/metricas/tests/test_livro_sem_dado_pessoal.py) para fazer o teste passar. Feche rodando python -m pytest services/metricas/tests/test_livro_sem_dado_pessoal.py -q com DJANGO_SECRET_KEY e DATABASE_URL de CI, mostrando o parametro quiz.completado verde, e abra o PR com make pr.",
+  "origem": "achado do guarda [INV-MET-P1] (services/metricas/tests/test_livro_sem_dado_pessoal.py), sessão PRIV de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

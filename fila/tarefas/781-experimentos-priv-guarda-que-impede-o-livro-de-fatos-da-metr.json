@@ -1,0 +1,19 @@
+{
+  "arquivo": "781-experimentos-priv-guarda-que-impede-o-livro-de-fatos-da-metr",
+  "id": "TAR-781",
+  "titulo": "Experimentos PRIV: guarda que impede o livro de fatos da metricas de receber dado pessoal",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com services/metricas/tests/test_livro_sem_dado_pessoal.py, prova de mutacao (STREAMS + eventos.pedido.criado pego) e achado real de quiz.completado registrado",
+  "despacho": "Escreva services/metricas/tests/test_livro_sem_dado_pessoal.py: para cada assunto em STREAMS (consume_eventos.py, nao editar), exija esquema congelado em contracts/eventos/ e reprove campo pessoal (customer, cliente, email, e-mail, nome, name, telefone, phone, cpf, documento, endereco, ip) em qualquer nivel do esquema. Prove por mutacao com uma copia de STREAMS mais eventos.pedido.criado. Se algum stream assinado hoje ja tiver campo pessoal, nao afrouxe: registre arquivo e linha no relatorio e abra tarefa na fila. Declare o invariante em INVARIANTES.md. make pr / ci/pr.py com Mandato-do-mantenedor de faixa metricas.",
+  "origem": "Rito comum das frentes do sistema de experimentos, frente PRIV, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
