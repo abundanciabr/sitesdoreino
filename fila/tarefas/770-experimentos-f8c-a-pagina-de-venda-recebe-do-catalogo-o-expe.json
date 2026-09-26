@@ -1,0 +1,19 @@
+{
+  "arquivo": "770-experimentos-f8c-a-pagina-de-venda-recebe-do-catalogo-o-expe",
+  "id": "TAR-770",
+  "titulo": "Experimentos F8c: a página de venda recebe do catálogo o experimento ativo e nunca cai por causa dele",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "PR integrado com testes do cliente do catálogo no funil: com experimento, sem, malformado e catálogo fora, vermelho antes e verde depois",
+  "despacho": "Em services/funil/apps/core/clients.py, CatalogoClient.obter_pagina valida e devolve experimento_ativo {id, secao, slot, variantes:[{variante_id, peso, valor}]} quando vier; ausente, nulo ou fora de forma vira sem experimento, com log do defeito, e a página segue com a versão publicada. Depende do contrato da F5.",
+  "origem": "sessão responsável do sistema de experimentos, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-223906-TAR-770-explicada",
+  "tarefa": "TAR-770",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:39:06.521033+00:00",
+  "quem": "sessão responsável do sistema de experimentos, 26/09/2026",
+  "o_que_e": "O site passa a ler do catálogo qual teste de texto está rodando na página de venda.",
+  "o_que_muda": "Com isso a página poderá mostrar a versão A ou B da frase a cada visitante, sem nunca sair do ar se o catálogo mandar o teste errado.",
+  "exemplo": "Se o catálogo mandar um teste com pesos que não somam 100%, a página mostra o texto publicado e o erro fica anotado no log.",
+  "importancia": 60
+}
