@@ -1152,7 +1152,14 @@ def calcular_estados(
                 "quem": (ultimo_ciclo or {}).get("quem"),
             }
         elif reivindicada:
-            quem = (ultimo_ciclo or {}).get("quem") or "reserva ativa no almoxarife"
+            nova_reserva = tid in reservas_ativas and (
+                ultimo_ciclo is None or ultimo_ciclo["evento"] != "reivindicada"
+            )
+            quem = (
+                "reserva ativa no almoxarife"
+                if nova_reserva
+                else (ultimo_ciclo or {}).get("quem") or "reserva ativa no almoxarife"
+            )
             resultado = {"estado": REIVINDICADA, "motivo": "", "quem": quem}
         estados[tid] = resultado
         return resultado
