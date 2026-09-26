@@ -160,7 +160,9 @@ def page_not_found_shared(request, exception):
         if request.path_info == "/api" or request.path_info.startswith("/api/"):
             resposta = JsonResponse({"detail": "Not found"}, status=404)
         else:
-            resposta = HttpResponse(status=404, content_type="text/plain; charset=utf-8")
+            resposta = HttpResponse(
+                status=404, content_type="text/plain; charset=utf-8"
+            )
         resposta["X-Request-ID"] = identificador
         resposta["Cache-Control"] = "no-store"
         return resposta
