@@ -329,6 +329,26 @@ def test_portao_site_errors_reprova_template_desatualizado(tmp_path: Path):
     assert "404.html divergiu do fonte" in relatorio.render()
 
 
+def test_portao_site_errors_normaliza_fonte_windows_e_reconstroi_lf(tmp_path: Path):
+    raiz = _arvore_site_errors(tmp_path)
+    fonte = raiz / "packages/site_errors/src/site_errors"
+    for arquivo in fonte.rglob("*"):
+        if arquivo.is_file():
+            conteudo = arquivo.read_bytes().replace(b"\r\n", b"\n")
+            arquivo.write_bytes(conteudo.replace(b"\n", b"\r\n"))
+
+    assert portao.reconstruir_site_errors(raiz) == 0
+    assert portao.rodar_site_errors(raiz).estado is Estado.PASS
+
+    wheel = raiz / "services/falsa/vendor/site_errors-0.1.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel) as arquivo_zip:
+        assert all(
+            b"\r\n" not in arquivo_zip.read(nome)
+            for nome in arquivo_zip.namelist()
+            if nome.startswith("site_errors/")
+        )
+
+
 def test_portao_site_errors_reprova_wheel_copiada_depois_do_pip(tmp_path: Path):
     raiz = _arvore_site_errors(tmp_path)
     dockerfile = raiz / "services/falsa/Dockerfile"

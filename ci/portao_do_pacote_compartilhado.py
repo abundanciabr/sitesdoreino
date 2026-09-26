@@ -351,7 +351,9 @@ def _fonte_site_errors(raiz: Path) -> dict[str, bytes]:
             f"Esperado: {src}",
         )
     arquivos = {
-        f"{MODULO_SITE_ERRORS}/{arquivo.relative_to(src).as_posix()}": arquivo.read_bytes()
+        f"{MODULO_SITE_ERRORS}/{arquivo.relative_to(src).as_posix()}": _normalizar_linhas_site_errors(
+            arquivo.read_bytes()
+        )
         for arquivo in sorted(src.rglob("*"))
         if arquivo.is_file() and "__pycache__" not in arquivo.parts
     }
@@ -361,6 +363,10 @@ def _fonte_site_errors(raiz: Path) -> dict[str, bytes]:
             f"Diretório: {src}",
         )
     return arquivos
+
+
+def _normalizar_linhas_site_errors(conteudo: bytes) -> bytes:
+    return conteudo.replace(b"\r\n", b"\n")
 
 
 def _consumidores_site_errors(raiz: Path) -> list[tuple[str, Path]]:
@@ -414,7 +420,7 @@ def conferir_site_errors(
                 )
             metadata = _texto(zf.read(metadatas[0]))
             arquivos_wheel = {
-                item: zf.read(item)
+                item: _normalizar_linhas_site_errors(zf.read(item))
                 for item in sorted(zf.namelist())
                 if item.startswith(f"{MODULO_SITE_ERRORS}/")
             }
@@ -546,7 +552,9 @@ def reconstruir_site_errors(raiz: Path) -> int:
             "",
         ]
         arquivos = {
-            f"{MODULO_SITE_ERRORS}/{arquivo.relative_to(modulo).as_posix()}": arquivo.read_bytes()
+            f"{MODULO_SITE_ERRORS}/{arquivo.relative_to(modulo).as_posix()}": _normalizar_linhas_site_errors(
+                arquivo.read_bytes()
+            )
             for arquivo in sorted(modulo.rglob("*"))
             if arquivo.is_file() and "__pycache__" not in arquivo.parts
         }
