@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-193637-TAR-755-explicada",
+  "tarefa": "TAR-755",
+  "evento": "explicada",
+  "quando": "2026-09-26T19:36:37.258655+00:00",
+  "quem": "Entrega técnica do contrato Appmax vinculada à TAR-752, autorização nominal de 26/09/2026",
+  "o_que_e": "O evento v2 ainda não está publicado na fronteira oficial entre pagamentos e seus consumidores.",
+  "o_que_muda": "Os próximos emissores e consumidores passam a trabalhar com uma forma única de reversão confirmada que não inventa valor financeiro.",
+  "exemplo": "Uma contestação Appmax confirmada informa site, provedor, referência e motivo, sem declarar centavos devolvidos.",
+  "importancia": 90
+}

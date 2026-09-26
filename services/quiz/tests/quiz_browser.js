@@ -103,12 +103,18 @@ async function main() {
 
     let ativo = page.locator("fieldset.passo.ativo");
     if (!(await ativo.innerText()).includes("Qual é seu próximo passo?")) throw new Error("A segunda pergunta não abriu.");
+    const focoNaPergunta = await page.evaluate(() => {
+      const campo = document.activeElement;
+      return campo?.type === "radio" && Boolean(campo.closest("fieldset.passo.ativo"));
+    });
+    if (!focoNaPergunta) throw new Error("O foco não acompanhou a pergunta nova.");
     const cliqueSegunda = esperarTelemetria(page, endpointTelemetria, "click_option");
     await ativo.locator('input[type="radio"]').nth(1).check();
     await cliqueSegunda;
     await page.getByRole("button", { name: "Continuar" }).click();
     ativo = page.locator("fieldset.passo.ativo");
     if (!(await ativo.innerText()).includes("E-mail")) throw new Error("A etapa do e-mail não abriu.");
+    if (await page.evaluate(() => document.activeElement?.getAttribute("name")) !== "email") throw new Error("O foco não acompanhou a etapa do e-mail.");
 
     const email = page.getByLabel("E-mail");
     await email.fill("endereco-invalido");
@@ -146,9 +152,26 @@ async function main() {
     if ((await page.getByLabel("E-mail").inputValue()) !== "endereco-invalido") throw new Error("O e-mail inválido não foi preservado para correção.");
     if (await page.evaluate(() => document.activeElement?.getAttribute("name")) !== "email") throw new Error("O foco não voltou ao campo de e-mail inválido.");
     await page.getByLabel("E-mail").fill("e2e@exemplo.test");
+    // O envio fica retido no roteador até o estado de carregamento ser lido:
+    // numa rede rápida ele sumiria antes de qualquer conferência.
+    let liberarEnvio;
+    const envioRetido = new Promise(resolve => { liberarEnvio = resolve; });
+    await page.route(endereco, async rota => {
+      if (rota.request().method() === "POST") await envioRetido;
+      await rota.continue();
+    });
     const navegacaoResultado = page.waitForNavigation({ waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "Ver resultado" }).click();
+    // O clique do Playwright espera a navegação começar, e ela está retida.
+    // O clique do próprio botão dispara o mesmo envio, e o evento submit roda
+    // dentro dele: o estado lido logo depois é o que a pessoa vê esperando.
+    const carregando = await page.getByRole("button", { name: "Ver resultado" }).evaluate(botao => {
+      botao.click();
+      return { desligado: botao.disabled, aviso: botao.form.querySelector('[role="status"]').textContent };
+    });
+    liberarEnvio();
     await navegacaoResultado;
+    await page.unroute(endereco);
+    if (!carregando.desligado || carregando.aviso !== "Calculando seu resultado…") throw new Error(`O envio não mostrou carregamento: ${JSON.stringify(carregando)}.`);
 
     const resultado = await page.locator("main h1").innerText();
     const botaoResultado = page.locator("a.botao");
@@ -158,8 +181,29 @@ async function main() {
     if (resultado !== "Pronto para avançar") throw new Error(`Resultado inesperado: ${resultado}.`);
     if (proximoPasso !== "/teste/continuidade/") throw new Error(`Destino inesperado no resultado: ${proximoPasso}.`);
     if (rotuloProximoPasso !== "Próximo passo") throw new Error(`Rótulo inesperado no botão: ${rotuloProximoPasso}.`);
+    const urlResultado = page.url();
+
+    const volta = await page.goto(endereco, { waitUntil: "networkidle" });
+    if (!volta || volta.status() !== 200) throw new Error("A volta ao endereço do quiz não abriu com HTTP 200.");
+    if (await page.locator("main h1").innerText() !== resultado) throw new Error("Quem já concluiu não voltou ao próprio resultado.");
+
+    // Voltar do resultado pelo histórico restaura da memória a página já
+    // enviada. O Playwright desliga essa memória do Chromium, então o evento
+    // que ela emite é disparado numa visita à parte, depois de um envio simulado.
+    const outraVisita = await browser.newContext();
+    const restaurada = await outraVisita.newPage();
+    await restaurada.goto(endereco, { waitUntil: "networkidle" });
+    const recarga = restaurada.waitForNavigation({ waitUntil: "load" });
+    await restaurada.locator("form").evaluate(form => {
+      window.antesDaVolta = true;
+      form.dispatchEvent(new SubmitEvent("submit", { cancelable: true }));
+      setTimeout(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })), 0);
+    });
+    await recarga;
+    if (await restaurada.evaluate(() => window.antesDaVolta) === true) throw new Error("A página já enviada, restaurada do histórico, não devolveu a decisão ao servidor.");
+    await outraVisita.close();
     if (erros.length) throw new Error(`Erros inesperados no navegador ou servidor: ${erros.join(" | ")}`);
-    console.log(JSON.stringify({ url: page.url(), resultado, proximo_passo: proximoPasso, rotulo_proximo_passo: rotuloProximoPasso }));
+    console.log(JSON.stringify({ url: urlResultado, retomada: page.url(), resultado, proximo_passo: proximoPasso, rotulo_proximo_passo: rotuloProximoPasso }));
   } finally {
     await browser.close();
   }

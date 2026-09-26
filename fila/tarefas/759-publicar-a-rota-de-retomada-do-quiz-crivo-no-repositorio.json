@@ -1,0 +1,20 @@
+{
+  "arquivo": "759-publicar-a-rota-de-retomada-do-quiz-crivo-no-repositorio",
+  "id": "TAR-759",
+  "titulo": "Publicar a rota de retomada do quiz Crivo no repositorio",
+  "toca": [
+    "docs",
+    "quiz"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "docs/quiz/RETOMADA-CRIVO.md existe em origin/main com o mesmo conteudo do arquivo de retomada local; PR integrado.",
+  "despacho": "Publicar docs/quiz/RETOMADA-CRIVO.md com o conteudo de C:/Users/davia/abundanciabr/RETOMADA-QUIZ-CRIVO.md (arquivo de retomada do quiz Crivo), copiado sem mudanca de substancia.",
+  "origem": "brief da sessao de rota do quiz Crivo, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
