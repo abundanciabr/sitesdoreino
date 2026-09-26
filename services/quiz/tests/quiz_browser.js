@@ -151,17 +151,6 @@ async function main() {
     if (await page.locator('fieldset[data-pergunta]:not([data-pergunta="lead"])').nth(1).locator('input[type="radio"]:checked').count() !== 1) throw new Error("A segunda resposta se perdeu após a validação.");
     if ((await page.getByLabel("E-mail").inputValue()) !== "endereco-invalido") throw new Error("O e-mail inválido não foi preservado para correção.");
     if (await page.evaluate(() => document.activeElement?.getAttribute("name")) !== "email") throw new Error("O foco não voltou ao campo de e-mail inválido.");
-    // Voltar pelo histórico restaura a página da memória, com o botão como o
-    // envio o deixou. O Playwright desliga essa memória do Chromium, então o
-    // evento que ela emite é disparado aqui, depois de um envio simulado.
-    const restaurada = await page.locator("form").evaluate(form => {
-      form.dispatchEvent(new SubmitEvent("submit", { cancelable: true }));
-      const botao = form.querySelector("button.enviar");
-      const travadoNoEnvio = botao.disabled;
-      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
-      return { travadoNoEnvio, desligado: botao.disabled, rotulo: botao.textContent };
-    });
-    if (!restaurada.travadoNoEnvio || restaurada.desligado || restaurada.rotulo !== "Ver resultado") throw new Error(`A página restaurada do histórico não voltou a aceitar o envio: ${JSON.stringify(restaurada)}.`);
     await page.getByLabel("E-mail").fill("e2e@exemplo.test");
     // O envio fica retido no roteador até o estado de carregamento ser lido:
     // numa rede rápida ele sumiria antes de qualquer conferência.
@@ -177,12 +166,12 @@ async function main() {
     // dentro dele: o estado lido logo depois é o que a pessoa vê esperando.
     const carregando = await page.getByRole("button", { name: "Ver resultado" }).evaluate(botao => {
       botao.click();
-      return { desligado: botao.disabled, rotulo: botao.textContent };
+      return { desligado: botao.disabled, aviso: botao.form.querySelector('[role="status"]').textContent };
     });
     liberarEnvio();
     await navegacaoResultado;
     await page.unroute(endereco);
-    if (!carregando.desligado || carregando.rotulo !== "Calculando seu resultado…") throw new Error(`O envio não mostrou carregamento: ${JSON.stringify(carregando)}.`);
+    if (!carregando.desligado || carregando.aviso !== "Calculando seu resultado…") throw new Error(`O envio não mostrou carregamento: ${JSON.stringify(carregando)}.`);
 
     const resultado = await page.locator("main h1").innerText();
     const botaoResultado = page.locator("a.botao");
@@ -197,6 +186,22 @@ async function main() {
     const volta = await page.goto(endereco, { waitUntil: "networkidle" });
     if (!volta || volta.status() !== 200) throw new Error("A volta ao endereço do quiz não abriu com HTTP 200.");
     if (await page.locator("main h1").innerText() !== resultado) throw new Error("Quem já concluiu não voltou ao próprio resultado.");
+
+    // Voltar do resultado pelo histórico restaura da memória a página já
+    // enviada. O Playwright desliga essa memória do Chromium, então o evento
+    // que ela emite é disparado numa visita à parte, depois de um envio simulado.
+    const outraVisita = await browser.newContext();
+    const restaurada = await outraVisita.newPage();
+    await restaurada.goto(endereco, { waitUntil: "networkidle" });
+    const recarga = restaurada.waitForNavigation({ waitUntil: "load" });
+    await restaurada.locator("form").evaluate(form => {
+      window.antesDaVolta = true;
+      form.dispatchEvent(new SubmitEvent("submit", { cancelable: true }));
+      setTimeout(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })), 0);
+    });
+    await recarga;
+    if (await restaurada.evaluate(() => window.antesDaVolta) === true) throw new Error("A página já enviada, restaurada do histórico, não devolveu a decisão ao servidor.");
+    await outraVisita.close();
     if (erros.length) throw new Error(`Erros inesperados no navegador ou servidor: ${erros.join(" | ")}`);
     console.log(JSON.stringify({ url: urlResultado, retomada: page.url(), resultado, proximo_passo: proximoPasso, rotulo_proximo_passo: rotuloProximoPasso }));
   } finally {
