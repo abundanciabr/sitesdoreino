@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-193133-TAR-753-concluida",
+  "tarefa": "TAR-753",
+  "evento": "concluida",
+  "quando": "2026-09-26T19:31:33.230689+00:00",
+  "quem": "agent/ci/teste-pix-sem-relogio",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2116",
+  "verificado_em": "2026-09-26"
+}
