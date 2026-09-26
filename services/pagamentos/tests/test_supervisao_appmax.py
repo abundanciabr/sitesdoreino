@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import timedelta
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 import redis
@@ -13,6 +13,7 @@ from django.utils import timezone
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.models import (
     AppmaxWebhookInbox,
+    InstalacaoAppmax,
     Intent,
     OutboxEvent,
     PaymentAttempt,
@@ -52,7 +53,8 @@ def _tentativa() -> PaymentAttempt:
 
 
 def _cliente() -> Mock:
-    cliente = Mock()
+    cliente = Mock(spec_set=["preparar", "consultar_pedido"])
+    cliente.preparar.return_value = None
     cliente.consultar_pedido.return_value = {
         "id": 3531,
         "status": "aprovado",
@@ -62,6 +64,35 @@ def _cliente() -> Mock:
         "payment": {"installments": 1, "method": "creditcard"},
     }
     return cliente
+
+
+def _instalacao() -> InstalacaoAppmax:
+    return InstalacaoAppmax.objects.create(
+        app_id="123",
+        appmax_site_id="site-appmax",
+        alias="Loja",
+        platform_site_ids=["site-interno"],
+    )
+
+
+def _aviso(event: str = "order_refund") -> AppmaxWebhookInbox:
+    return AppmaxWebhookInbox.objects.create(
+        app_id="123",
+        appmax_site_id="site-appmax",
+        platform_site_id="site-interno",
+        event=event,
+        event_type="order",
+        external_order_id="3531",
+        payload={"data": {"order_id": 3531}},
+    )
+
+
+def _tentativa_aprovada() -> PaymentAttempt:
+    tentativa = _tentativa()
+    PaymentAttempt.objects.filter(pk=tentativa.pk).update(state="approved")
+    Intent.objects.filter(pk=tentativa.intent_id).update(status="approved")
+    tentativa.refresh_from_db()
+    return tentativa
 
 
 def test_aviso_perdido_e_descoberto_sem_webhook() -> None:
@@ -237,3 +268,278 @@ def test_queda_apos_publicar_redis_nao_duplica_stream() -> None:
     assert cliente.xlen(f"eventos.{nome}") == 1
     assert relay_outbox() == 1
     assert cliente.xlen(f"eventos.{nome}") == 1
+
+
+# guarda: services/pagamentos/pagamentos/supervisao.py:138
+@pytest.mark.parametrize(
+    ("status", "codigo"),
+    [
+        ("estornado", "appmax_estornado"),
+        ("chargeback_em_tratativa", "appmax_chargeback_em_tratativa"),
+        ("chargeback_em_disputa", "appmax_chargeback_em_disputa"),
+        ("chargeback_perdido", "appmax_chargeback_perdido"),
+        ("chargeback_vencido", "appmax_chargeback_vencido"),
+    ],
+)
+def test_aviso_pos_aprovacao_classifica_status_sem_mudar_dinheiro(
+    status: str, codigo: str
+) -> None:
+    tentativa = _tentativa_aprovada()
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = status
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 1
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert cliente.preparar.call_count == 1
+    assert cliente.consultar_pedido.call_count == 1
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert aviso.processed_at is not None
+    assert aviso.last_error == codigo
+    expected_actions = {
+        "appmax_estornado": "Confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
+        "appmax_chargeback_em_tratativa": "Acompanhe a contestação no painel Appmax; nenhuma reversão foi emitida.",
+        "appmax_chargeback_em_disputa": "Acompanhe a disputa no painel Appmax; nenhuma reversão foi emitida.",
+        "appmax_chargeback_perdido": "Acompanhe a contestação perdida no painel Appmax; nenhuma reversão foi emitida.",
+        "appmax_chargeback_vencido": "Registre a vitória do lojista no painel Appmax; nenhuma reversão ou reabertura de acesso foi executada.",
+    }
+    assert aviso.operational_action == expected_actions[codigo]
+    if codigo == "appmax_chargeback_vencido":
+        assert "vitória do lojista" in aviso.operational_action
+        assert "nenhuma reversão" in aviso.operational_action
+        assert "reabertura de acesso" in aviso.operational_action
+    assert tentativa.state == "approved"
+    assert tentativa.intent.status == "approved"
+    assert OutboxEvent.objects.count() == 0
+
+
+def test_aviso_pos_aprovacao_sem_refund_e_repetido_nao_duplica_consulta() -> None:
+    _tentativa_aprovada()
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = "estornado"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            processar_rodada()
+            processar_rodada()
+    aviso.refresh_from_db()
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert aviso.last_error == "appmax_estornado"
+    assert OutboxEvent.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    "campo",
+    [
+        "site",
+        "installation",
+        "installation_app_id",
+        "allowed_site",
+        "intent_site",
+        "id",
+        "customer",
+        "subtotal",
+        "fee",
+        "total",
+        "installments",
+        "payment",
+    ],
+)
+def test_aviso_pos_aprovacao_identidade_divergente_falha_fechado(
+    campo: str,
+) -> None:
+    tentativa = _tentativa_aprovada()
+    instalacao = _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    if campo == "site":
+        aviso.platform_site_id = "site-alheio"
+        aviso.save(update_fields=["platform_site_id"])
+    elif campo == "installation":
+        instalacao.appmax_site_id = "site-alheio"
+        instalacao.save(update_fields=["appmax_site_id"])
+    elif campo == "installation_app_id":
+        instalacao.app_id = "456"
+        instalacao.save(update_fields=["app_id"])
+    elif campo == "allowed_site":
+        instalacao.platform_site_ids = []
+        instalacao.save(update_fields=["platform_site_ids"])
+    elif campo == "intent_site":
+        Intent.objects.filter(pk=tentativa.intent_id).update(site_id="site-alheio")
+    elif campo == "id":
+        cliente.consultar_pedido.return_value["id"] = 9999
+    elif campo == "customer":
+        cliente.consultar_pedido.return_value["customer"]["id"] = 99
+    elif campo == "subtotal":
+        cliente.consultar_pedido.return_value["amounts"]["sub_total"] = 1
+    elif campo == "fee":
+        cliente.consultar_pedido.return_value["amounts"]["installment_fee"] = 1
+    elif campo == "total":
+        cliente.consultar_pedido.return_value["total_paid"] = 1
+    elif campo == "installments":
+        cliente.consultar_pedido.return_value["payment"]["installments"] = 2
+    else:
+        cliente.consultar_pedido.return_value["payment"]["method"] = "pix"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 0
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert aviso.dead_lettered_at is not None
+    assert aviso.processed_at is None
+    assert aviso.last_error == (
+        "pedido_sem_vinculo_unico"
+        if campo == "site"
+        else "appmax_identidade_posterior_invalida"
+    )
+    assert tentativa.state == "approved"
+    assert tentativa.intent.status == "approved"
+    if campo in {
+        "site",
+        "installation",
+        "installation_app_id",
+        "allowed_site",
+        "intent_site",
+    }:
+        assert cliente.mock_calls == []
+    assert OutboxEvent.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    "campo", ["id", "customer", "amounts", "total_paid", "payment"]
+)
+def test_aviso_pos_aprovacao_identidade_ausente_falha_fechado(campo: str) -> None:
+    tentativa = _tentativa_aprovada()
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value.pop(campo)
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 0
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert aviso.dead_lettered_at is not None
+    assert aviso.processed_at is None
+    assert aviso.last_error == "appmax_identidade_posterior_invalida"
+    assert tentativa.state == "approved"
+    assert tentativa.intent.status == "approved"
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert OutboxEvent.objects.count() == 0
+
+
+def test_aviso_pos_aprovacao_status_desconhecido_falha_fechado() -> None:
+    tentativa = _tentativa_aprovada()
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = "status_novo_desconhecido"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 0
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert aviso.dead_lettered_at is not None
+    assert aviso.processed_at is None
+    assert aviso.last_error == "appmax_status_posterior_desconhecido"
+    assert "status_novo_desconhecido" not in aviso.last_error
+    assert tentativa.state == "approved"
+    assert tentativa.intent.status == "approved"
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert OutboxEvent.objects.count() == 0
+
+
+def test_aviso_pos_aprovacao_falha_no_get_reagenda_sem_efeito() -> None:
+    tentativa = _tentativa_aprovada()
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.side_effect = FalhaNoProvedor("indisponível")
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 0
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert aviso.processed_at is None
+    assert aviso.dead_lettered_at is None
+    assert aviso.next_retry_at is not None
+    assert aviso.failed_attempts == 1
+    assert aviso.last_error == "appmax_consulta_posterior_indisponivel"
+    assert tentativa.state == "approved"
+    assert tentativa.intent.status == "approved"
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert OutboxEvent.objects.count() == 0
+
+
+def test_aviso_adverso_antes_da_aprovacao_nao_aprova_a_tentativa() -> None:
+    tentativa = _tentativa()
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = "estornado"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 0
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert aviso.processed_at is None
+    assert aviso.dead_lettered_at is not None
+    assert aviso.last_error == "appmax_aviso_fora_da_ordem"
+    assert tentativa.state == "pending"
+    assert tentativa.intent.status == "pending"
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert OutboxEvent.objects.count() == 0
+
+
+def test_aviso_pos_aprovacao_ignora_intent_defasada_sem_reconciliar() -> None:
+    tentativa = _tentativa_aprovada()
+    Intent.objects.filter(pk=tentativa.intent_id).update(status="pending")
+    _instalacao()
+    aviso = _aviso()
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = "chargeback_vencido"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            assert processar_rodada()["inbox_processada"] == 1
+    aviso.refresh_from_db()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert aviso.processed_at is not None
+    assert aviso.last_error == "appmax_chargeback_vencido"
+    assert tentativa.state == "approved"
+    assert tentativa.intent.status == "pending"
+    assert cliente.mock_calls == [
+        call.preparar(),
+        call.consultar_pedido(order_id=3531),
+    ]
+    assert OutboxEvent.objects.count() == 0
