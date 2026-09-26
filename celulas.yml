@@ -58,6 +58,7 @@ celulas:
     # num plano mergearia sem disparar deploy e o site continuaria servindo
     # o texto antigo, em silencio.
     caminhos: [services/admin, painel, fila, documentos, docs/decisoes]
+    compartilhados: [packages/site_errors]
     # `catalogo` desde 31/08/2026: o menu do topo do site e DADO DO SITE, e
     # dado de site mora no catalogo. A tela /admin/menu/ le e grava la, pela
     # porta de maquina — nunca no banco dele, e nunca guardando uma copia
@@ -129,6 +130,7 @@ celulas:
 
   alunos:
     caminhos: [services/alunos]
+    compartilhados: [packages/site_errors]
     # Ganhou a primeira em 29/08/2026, e ela existe por uma razão só: para
     # endereçar a carta de liberação é preciso o id de plataforma de quem vai
     # recebê-la, e só a `identidade` sabe traduzir e-mail em id. Fail-ABERTO —
@@ -137,14 +139,17 @@ celulas:
 
   catalogo:
     caminhos: [services/catalogo]
+    compartilhados: [packages/site_errors]
     consome: []
 
   checkout:
     caminhos: [services/checkout]
+    compartilhados: [packages/site_errors]
     consome: [catalogo, pagamentos]
 
   cursos:
     caminhos: [services/cursos]
+    compartilhados: [packages/site_errors]
     # Os três pares entraram JUNTOS com os clientes que os leem (degrau 1.8, a
     # sala do aluno, `apps/core/clients.py`), e não antes (`armadilhas/224`):
     # - alunos: a matrícula ativa decide quem vê a aula (`getStudentStanding`,
@@ -157,6 +162,7 @@ celulas:
 
   encomendas:
     caminhos: [services/encomendas]
+    compartilhados: [packages/site_errors]
     # O degrau 2.7 chegou, e com ele os dois clientes: `apps/core/sessao.py`
     # lê `IDENTIDADE_API_URL` (quem é o dono do cookie, e o id opaco de quem
     # tem um e-mail) e `ALUNOS_API_URL` (a categoria da pessoa na escola). As
@@ -173,6 +179,7 @@ celulas:
 
   forum:
     caminhos: [services/forum]
+    compartilhados: [packages/site_errors]
     # `catalogo` desde 31/08/2026: o menu do topo e DADO DO SITE, e o forum
     # mostra o MESMO menu que o site. Ele NAO tem o CONV-SITE inteiro (isso
     # mexeria em toda a identidade da celula) — pergunta so o menu do host da
@@ -187,6 +194,7 @@ celulas:
 
   funil:
     caminhos: [services/funil]
+    compartilhados: [packages/site_errors]
     # `gamificacao` desde 01/09/2026: a home e a primeira tela depois do login, e
     # ela passou a mostrar o degrau da pessoa na trilha da escola (o quadrinho de
     # progresso, degrau 20 do PLANO-CELULA-GAMIFICACAO). O progresso e DADO DA
@@ -197,6 +205,7 @@ celulas:
 
   gamificacao:
     caminhos: [services/gamificacao]
+    compartilhados: [packages/site_errors]
     # A gênese declarou `consome: []` e escreveu aqui que a linha entraria
     # "no PR 7 da escada, junto com o cliente que lê IDENTIDADE_API_URL".
     # O cliente chegou ANTES: quem o escreveu foi a porta de máquina (o PR
@@ -235,18 +244,22 @@ celulas:
 
   identidade:
     caminhos: [services/identidade]
+    compartilhados: [packages/site_errors]
     consome: []
 
   leads:
     caminhos: [services/leads]
+    compartilhados: [packages/site_errors]
     consome: []
 
   mensageria:
     caminhos: [services/mensageria]
+    compartilhados: [packages/site_errors]
     consome: []
 
   metricas:
     caminhos: [services/metricas]
+    compartilhados: [packages/site_errors]
     # NASCE SEM CONSUMIR NINGUÉM, e aqui a lista vazia não é um degrau da
     # escada: é o DESENHO da célula. A `metricas` é o livro de fatos da
     # plataforma (`PLANO-PAINEL-DE-GESTAO.md` §6.2) e é consumidora de
@@ -261,14 +274,17 @@ celulas:
 
   notificacoes:
     caminhos: [services/notificacoes]
+    compartilhados: [packages/site_errors]
     consome: []
 
   pagamentos:
     caminhos: [services/pagamentos]
+    compartilhados: [packages/site_errors]
     consome: []
 
   pages:
     caminhos: [services/pages]
+    compartilhados: [packages/site_errors]
     # AS DUAS LINHAS ENTRARAM NO DEGRAU 06 (05/09/2026), no MESMO PR do código
     # que as consome, e não antes: a gênese declarou `consome: []` de propósito,
     # porque declaração escrita antes do cliente é declaração órfã e o varredor
@@ -309,10 +325,12 @@ celulas:
     # mundo real não pede. (Este mapa nasceu declarando o consumo, e foi o
     # próprio varredor que corrigiu a mão que o escreveu.)
     caminhos: [services/quiz]
+    compartilhados: [packages/site_errors]
     consome: []
 
   sugestoes:
     caminhos: [services/sugestoes]
+    compartilhados: [packages/site_errors]
     # `catalogo` desde 31/08/2026, pela MESMA razao do forum: o menu do topo e
     # DADO DO SITE, e a Caixa mostra o MESMO menu. Ela NAO ganhou o CONV-SITE
     # inteiro — pergunta so o menu do host da requisicao, com cache, e cai para

@@ -1070,3 +1070,6 @@ if settings.ADMIN_LINK_TOKEN:
     urlpatterns.append(
         path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
     )
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"

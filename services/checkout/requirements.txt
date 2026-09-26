@@ -12,3 +12,4 @@ black==24.10.0
 PyYAML==6.0.2
 redis==5.1.1
 huey==2.5.1
+services/checkout/vendor/site_errors-0.1.0-py3-none-any.whl

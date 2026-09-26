@@ -1,0 +1,36 @@
+{
+  "arquivo": "734-orientar-quem-abre-uma-pagina-inexistente-em-todo-o-site",
+  "id": "TAR-734",
+  "titulo": "Orientar quem abre uma página inexistente em todo o site",
+  "toca": [
+    "funil",
+    "admin",
+    "alunos",
+    "catalogo",
+    "checkout",
+    "cursos",
+    "encomendas",
+    "forum",
+    "gamificacao",
+    "identidade",
+    "leads",
+    "mensageria",
+    "metricas",
+    "notificacoes",
+    "pagamentos",
+    "pages",
+    "quiz",
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes do tratamento de erros aprovados, checks remotos das 18 células aprovados, integração confirmada e publicação conferida por respostas públicas 404 sem alteração das respostas de máquina, autenticação ou erro 500.",
+  "despacho": "Concluir o tratamento geral de erros 404 em packages/site_errors e seus 18 consumidores, preservando respostas de máquina, autenticação e erros 500. Publicar os 93 arquivos atuais da bancada, incluindo mudanças preexistentes expressamente autorizadas pelo mantenedor. Validar pelo rito make pr, conferir checks remotos das 18 células, integração e publicação.",
+  "origem": "pedido do mantenedor: tratamento geral de erros 404; publicação dos 93 arquivos autorizada em 25/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

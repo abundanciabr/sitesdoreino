@@ -68,6 +68,43 @@ def test_opcao_que_nao_pertence_a_pergunta_e_rejeitada(client, quiz_a, site_b):
     assert Submission.objects.count() == 0
 
 
+def test_email_invalido_preserva_respostas_sem_gravar_resultado(client, quiz_a):
+    # guarda: services/quiz/apps/quiz/views.py:215
+    pergunta = quiz_a.versions.get().questions.get(order=1)
+    opcao = pergunta.options.get(points=10)
+    resp = client.post(
+        f"/{quiz_a.slug}/",
+        {
+            f"pergunta_{pergunta.id}": opcao.id,
+            "email": "endereco-invalido",
+            "nome": "Pessoa",
+            "telefone": "11999999999",
+        },
+        HTTP_HOST=HOST_A,
+    )
+    assert resp.status_code == 422
+    assert resp.context["etapa_lead_ativa"] is True
+    assert resp.context["opcoes_selecionadas"] == {opcao.id}
+    assert resp.context["valores"] == {
+        "email": "endereco-invalido",
+        "nome": "Pessoa",
+        "telefone": "11999999999",
+    }
+    assert Submission.objects.count() == 0
+    assert OutboxEvent.objects.count() == 0
+
+
+def test_id_nao_numerico_de_opcao_e_rejeitado_sem_erro_de_servidor(client, quiz_a):
+    pergunta = quiz_a.versions.get().questions.get(order=1)
+    resp = client.post(
+        f"/{quiz_a.slug}/",
+        {f"pergunta_{pergunta.id}": "invalida", "email": "lead@exemplo.com"},
+        HTTP_HOST=HOST_A,
+    )
+    assert resp.status_code == 404
+    assert Submission.objects.count() == 0
+
+
 def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
     pergunta = quiz_a.versions.get().questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)

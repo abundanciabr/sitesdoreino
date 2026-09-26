@@ -1,0 +1,20 @@
+{
+  "arquivo": "731-a-falha-pix-mostra-uma-referencia-segura-para-diagnostico",
+  "id": "TAR-731",
+  "titulo": "A falha Pix mostra uma referência segura para diagnóstico",
+  "toca": [
+    "checkout",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Falha Pix sandbox exibe somente SHA-256 da sessão; operação fechada encontra a mesma tentativa pela chave idempotente e devolve apenas estados e códigos permitidos; 45 testes do canal e 11 do checkout verdes; PR integrado e deploy confirmado sem reenviar compra incerta.",
+  "despacho": "Entregar somente a correlação opaca entre a sessão de checkout e a tentativa Pix Appmax na operação fechada. Alvos: ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py, services/checkout/static/checkout/dados.js, services/checkout/tests/test_paginas_producao.py. Não reenviar pedido existente, não cobrar em produção, não alterar contratos. Provar teste local, PR, deploy e mensagem de falha.",
+  "origem": "TAR-711: PR #2076 integrado, mas a falha 502 não expõe o intent ID exigido pelo canal de diagnóstico; PR #2097 foi aberto em rascunho para a correção.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

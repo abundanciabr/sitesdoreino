@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260926-014622-TAR-732-contrato_execucao",
+  "tarefa": "TAR-732",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T01:46:22.697512+00:00",
+  "quem": "agent/ci/appmax-retomada-reserva",
+  "contrato": {
+    "plano": "Retomada segura de reserva própria após devolução",
+    "versao": 1,
+    "objetivo": "Permitir que a sessão retome uma tarefa devolvida quando o almoxarife emitiu nova reserva própria, preservando a recusa de reserva alheia.",
+    "entregaveis": [
+      "Cálculo de estado que identifica nova reserva como reserva ativa do almoxarife após devolução",
+      "Guarda de comando para aceitar somente a reserva da bancada atual",
+      "Testes de retomada própria e recusa de reserva alheia"
+    ],
+    "escopo_incluido": [
+      "ci/fila.py",
+      "ci/tests/test_fila.py",
+      "TAR-731 Appmax como caso de retomada"
+    ],
+    "nao_objetivos": [
+      "PRs #2027 e #2028",
+      "ci/sessao.py ou ci/reservar.py",
+      "Qualquer chamada financeira ou operação Appmax"
+    ],
+    "restricoes": [
+      "Somente os dois arquivos-alvo podem mudar no código",
+      "Não aceitar reserva alheia nem apagar histórico",
+      "Não tocar no metadata da TAR-731 nem em outros worktrees"
+    ],
+    "decisoes_aprovadas": [
+      "Autorização nominal do mantenedor em 25/09/2026 para corrigir ci/fila.py e ci/tests/test_fila.py"
+    ],
+    "etapas": [
+      "Adicionar teste vermelho para nova reserva após devolução",
+      "Corrigir a identificação do dono no cálculo de estado",
+      "Validar suíte, mutação das guardas e publicar PR pelo rito"
+    ],
+    "criterios_entrada": [
+      "Bancada isolada em origin/main",
+      "Baseline focal medido antes da edição",
+      "PRs históricos que tocam fila.py conferidos e sem escritor ativo desta frente"
+    ],
+    "criterios_aceite": [
+      "Histórico reivindicada e devolvida seguido de reserva própria resulta em reivindicada por reserva ativa no almoxarife",
+      "Reserva alheia continua recusada sem evento falso",
+      "Suíte ci/tests/test_fila.py verde"
+    ],
+    "evidencias_exigidas": [
+      "Teste vermelho antes da correção e verde após",
+      "Pytest focal e validação do pacote",
+      "Prova de mutação das guardas",
+      "PR aberto com diff restrito aos alvos"
+    ],
+    "condicao_encerramento": "O cálculo e o comando de fila retomam a reserva própria após devolução, a reserva alheia é recusada, e o PR validado é entregue pelo rito.",
+    "limites_autonomia": "Não alterar outros arquivos de código, não substituir nem atualizar PRs #2027/#2028, não executar chamadas financeiras e não operar produção Appmax.",
+    "acoes_do_mantenedor": "Nenhuma para esta correção; a autorização nominal já foi concedida."
+  }
+}

@@ -17,6 +17,8 @@ As quatro perguntas que este arquivo responde, e nenhuma delas é opcional:
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 from django.urls import get_script_prefix, set_script_prefix
 
@@ -87,7 +89,8 @@ def test_a_vitrine_desligada_responde_o_MESMO_que_o_apelido_que_nunca_existiu(
     """403 aqui seria um vazamento: ele confirmaria que o apelido existe.
 
     Quem tenta `/estudio/ana-3d` no escuro tem de receber exatamente a mesma
-    coisa de quem tenta `/estudio/nao-existe-ninguem`, byte por byte.
+    coisa de quem tenta /estudio/nao-existe-ninguem, salvo a referência
+    de suporte e o endereço que a própria pessoa pediu.
     """
     criar_portfolio(ANA["id"], apelido=APELIDO, publicada=False)
 
@@ -96,7 +99,21 @@ def test_a_vitrine_desligada_responde_o_MESMO_que_o_apelido_que_nunca_existiu(
 
     assert desligada.status_code == 404
     assert inexistente.status_code == 404
-    assert desligada.content == inexistente.content
+    corpos = []
+    for resposta, endereco in (
+        (desligada, ENDERECO),
+        (inexistente, "/estudio/nao-existe-ninguem"),
+    ):
+        referencia = resposta["X-Request-ID"]
+        assert referencia.startswith("ERR-404-")
+        assert UUID(referencia.removeprefix("ERR-404-")).version == 4
+        diagnostico = (
+            '<footer class="site-error-reference">'
+            f"Referência: {referencia} · {endereco}</footer>"
+        ).encode()
+        assert resposta.content.count(diagnostico) == 1
+        corpos.append(resposta.content.replace(diagnostico, b""))
+    assert corpos[0] == corpos[1]
 
 
 def test_despublicar_tira_a_pagina_do_ar_no_pedido_seguinte(client, vitrine_no_ar):

@@ -50,3 +50,4 @@ redis==5.1.1
 # teste, que seria uma segunda verdade sobre o contrato. Versão igual à das
 # vizinhas de propósito (`armadilhas/071`).
 jsonschema==4.23.0
+services/pages/vendor/site_errors-0.1.0-py3-none-any.whl
