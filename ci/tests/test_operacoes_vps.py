@@ -51,7 +51,7 @@ def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
 
 
-# guarda: ci/operacoes_vps.py:130
+# guarda: ci/operacoes_vps.py:133
 @pytest.mark.parametrize("referencia", ["", "x" * 64, PRIVADO])
 def test_appmax_pix_aviso_recusa_referencia_invalida_antes_da_leitura(
     monkeypatch, capsys, referencia
@@ -265,7 +265,7 @@ def test_appmax_pix_descoberta_historica_emite_candidatas_opacas():
         "classificacao": "unica",
         "candidatas": [_candidata_pix()],
     }
-    # guarda: ci/operacoes_vps.py:472
+    # guarda: ci/operacoes_vps.py:506
     assert ops.conferir_medicao("appmax-pix", medicao) == medicao
     texto = json.dumps(medicao)
     assert "pedido_id" not in texto
@@ -362,7 +362,7 @@ def test_appmax_pix_codigo_remoto_e_autossuficiente_e_guarda_antes_da_consulta(
         capturado["codigo"] = args[-1]
         return json.dumps(medicao)
 
-    # guarda: ci/operacoes_vps.py:554
+    # guarda: ci/operacoes_vps.py:539
     monkeypatch.setattr(ops, "comando", comando)
     try:
         assert ops.medir("appmax-pix", "pagamentos") == medicao
@@ -496,7 +496,7 @@ def test_appmax_pix_recusa_motivo_livre_mesmo_transformado_em_slug():
             "payment": "reconciliation_required",
         },
     }
-    # guarda: ci/operacoes_vps.py:260
+    # guarda: ci/operacoes_vps.py:263
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix", medicao, REFERENCIA)
 
@@ -995,7 +995,7 @@ def test_appmax_pix_pedido_exige_referencia_e_filtra_catalogo(monkeypatch, capsy
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
     assert ops.executar("appmax-pix-pedido", "pagamentos", {"pagamentos"}) == 2
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
-    # guarda: ci/operacoes_vps.py:130
+    # guarda: ci/operacoes_vps.py:133
     assert ops.OPERACOES >= {"appmax-pix-pedido"}
 
 
@@ -1032,7 +1032,7 @@ def test_appmax_pix_pedido_executa_get_unico_e_sanitizado(monkeypatch):
     texto = json.dumps(dados)
     assert "3531" not in texto
     assert "aW1hZ2Vt" not in texto
-    # guarda: ci/operacoes_vps.py:749
+    # guarda: ci/operacoes_vps.py:671
     assert "APPMAX_SANDBOX_REQUIRED" in codigo
 
 
@@ -1065,7 +1065,7 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
                 "https://api.appmax.com.br",
             ),
         )
-    # guarda: ci/operacoes_vps.py:633
+    # guarda: ci/operacoes_vps.py:671
     assert True
 
 
@@ -1139,7 +1139,7 @@ def test_appmax_pix_pedido_referencia_de_saida_e_qr_coerentes():
     }
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix-pedido", medicao, REFERENCIA)
-    # guarda: ci/operacoes_vps.py:350
+    # guarda: ci/operacoes_vps.py:384
     medido = {
         "resultado": "medido",
         "referencia": REFERENCIA,
@@ -1154,7 +1154,7 @@ def test_appmax_pix_pedido_referencia_de_saida_e_qr_coerentes():
         "qr_vencido": False,
         "diagnostico": "vazio",
     }
-    # guarda: ci/operacoes_vps.py:400
+    # guarda: ci/operacoes_vps.py:434
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix-pedido", medido, REFERENCIA)
 
@@ -1179,7 +1179,7 @@ def test_appmax_pix_pedido_formato_da_saida_e_diagnostico_sao_fechados():
         ops.conferir_medicao(
             "appmax-pix-pedido", {**medicao, "diagnostico": "indisponivel"}, REFERENCIA
         )
-    # guarda: ci/operacoes_vps.py:472
+    # guarda: ci/operacoes_vps.py:430
     assert True
 
 
@@ -1335,6 +1335,8 @@ def test_appmax_pix_aviso_preserva_so_presenca_sanitizada(monkeypatch):
         "resultado": "medido",
         "referencia": referencia,
         "registros_encontrados": 1,
+        "inbox_consultada": True,
+        "instalacoes_observadas": 1,
         "pix_emv_preservado": True,
         "pix_qrcode_preservado": True,
         "pix_expiration_date_preservado": True,
@@ -1363,36 +1365,42 @@ def test_appmax_pix_aviso_preserva_so_presenca_sanitizada(monkeypatch):
         "event_type": "order",
         "external_order_id": "3531",
     }
-    # guarda: ci/operacoes_vps.py:631
+    # guarda: ci/operacoes_vps.py:669
     assert "timedelta(days=7)" in codigo
     assert "order_by('-created_at')[:100]" in codigo
     assert "order_by('-received_at')[:2]" in codigo
 
 
 @pytest.mark.parametrize(
-    ("tentativas", "instalacoes", "avisos", "acao", "encontrados"),
+    ("tentativas", "instalacoes", "avisos", "acao", "encontrados", "inbox", "observadas"),
     [
-        ([], [_instalacao_appmax_pix_aviso()], [], "candidata_ausente_ou_multipla", 0),
+        ([], [_instalacao_appmax_pix_aviso()], [], "candidata_ausente_ou_multipla", None, False, None),
         (
             [_tentativa_appmax_pix_aviso(), _tentativa_appmax_pix_aviso()],
             [_instalacao_appmax_pix_aviso()],
             [],
             "candidata_ausente_ou_multipla",
-            0,
+            None,
+            False,
+            None,
         ),
         (
             [_tentativa_appmax_pix_aviso()],
             [_instalacao_appmax_pix_aviso(site="outro-site")],
             [],
-            "instalacao_ausente_ou_multipla",
+            "instalacao_ausente",
+            None,
+            False,
             0,
         ),
         (
             [_tentativa_appmax_pix_aviso()],
             [_instalacao_appmax_pix_aviso(), _instalacao_appmax_pix_aviso(app_id="app-2")],
             [],
-            "instalacao_ausente_ou_multipla",
-            0,
+            "instalacao_multipla",
+            None,
+            False,
+            2,
         ),
         (
             [_tentativa_appmax_pix_aviso()],
@@ -1400,6 +1408,8 @@ def test_appmax_pix_aviso_preserva_so_presenca_sanitizada(monkeypatch):
             [],
             "aviso_nao_preservado",
             0,
+            True,
+            1,
         ),
         (
             [_tentativa_appmax_pix_aviso()],
@@ -1407,27 +1417,33 @@ def test_appmax_pix_aviso_preserva_so_presenca_sanitizada(monkeypatch):
             [_aviso_appmax_pix_aviso(), _aviso_appmax_pix_aviso()],
             "aviso_multiplo",
             2,
+            True,
+            1,
         ),
         (
             [_tentativa_appmax_pix_aviso(metodo="card")],
-            [_instalacao_appmax_pix_aviso()],
-            [],
-            "candidata_ausente_ou_multipla",
-            0,
-        ),
+                [_instalacao_appmax_pix_aviso()],
+                [],
+                "candidata_ausente_ou_multipla",
+                None,
+                False,
+                None,
+            ),
     ],
 )
 def test_appmax_pix_aviso_falha_fechado_sem_candidata_unica(
-    monkeypatch, tentativas, instalacoes, avisos, acao, encontrados
+    monkeypatch, tentativas, instalacoes, avisos, acao, encontrados, inbox, observadas
 ):
     dados, _, _, referencia = _executar_codigo_appmax_pix_aviso(
         monkeypatch, tentativas, instalacoes, avisos
     )
-    # guarda: ci/operacoes_vps.py:631
+    # guarda: ci/operacoes_vps.py:669
     assert dados == {
         "resultado": "nao_medido",
         "referencia": referencia,
         "registros_encontrados": encontrados,
+        "inbox_consultada": inbox,
+        "instalacoes_observadas": observadas,
         "pix_emv_preservado": False,
         "pix_qrcode_preservado": False,
         "pix_expiration_date_preservado": False,
@@ -1436,6 +1452,48 @@ def test_appmax_pix_aviso_falha_fechado_sem_candidata_unica(
         "processado_em": None,
         "acao": acao,
     }
+
+
+@pytest.mark.parametrize(
+    ("instalacoes", "acao", "observadas"),
+    [
+        ([], "instalacao_ausente", 0),
+        ([_instalacao_appmax_pix_aviso(app_id="")], "instalacao_incompleta", 1),
+        (
+            [
+                _instalacao_appmax_pix_aviso(),
+                _instalacao_appmax_pix_aviso(app_id="app-2"),
+            ],
+            "instalacao_multipla",
+            2,
+        ),
+    ],
+)
+def test_appmax_pix_aviso_distingue_instalacao_sem_consultar_inbox(
+    monkeypatch, instalacoes, acao, observadas
+):
+    dados, _, consultas, referencia = _executar_codigo_appmax_pix_aviso(
+        monkeypatch,
+        [_tentativa_appmax_pix_aviso()],
+        instalacoes,
+        [_aviso_appmax_pix_aviso()],
+    )
+    assert dados == {
+        "resultado": "nao_medido",
+        "referencia": referencia,
+        "registros_encontrados": None,
+        "inbox_consultada": False,
+        "instalacoes_observadas": observadas,
+        "pix_emv_preservado": False,
+        "pix_qrcode_preservado": False,
+        "pix_expiration_date_preservado": False,
+        "estado_processamento": "nao_medido",
+        "recebido_em": None,
+        "processado_em": None,
+        "acao": acao,
+    }
+    # guarda: ci/operacoes_vps.py:590
+    assert len(consultas) == 2
 
 
 def test_appmax_pix_aviso_registro_vazio_nao_afirma_ausencia_do_envio(monkeypatch):
@@ -1477,6 +1535,8 @@ def test_appmax_pix_aviso_vinculo_do_pedido_no_payload_e_exato(monkeypatch):
         "resultado": "nao_medido",
         "referencia": referencia,
         "registros_encontrados": 1,
+        "inbox_consultada": True,
+        "instalacoes_observadas": 1,
         "pix_emv_preservado": False,
         "pix_qrcode_preservado": False,
         "pix_expiration_date_preservado": False,
@@ -1507,6 +1567,8 @@ def test_appmax_pix_aviso_nao_vaza_sentinela_em_stdout_stderr_ou_resumo(
         "resultado": "nao_medido",
         "referencia": REFERENCIA,
         "registros_encontrados": 0,
+        "inbox_consultada": True,
+        "instalacoes_observadas": 1,
         "pix_emv_preservado": False,
         "pix_qrcode_preservado": False,
         "pix_expiration_date_preservado": False,
@@ -1578,7 +1640,7 @@ def test_appmax_pix_aviso_nao_vaza_sentinela_em_stdout_stderr_ou_resumo(
         "medicao": medicao_pedido,
     }))
     monkeypatch.setenv("SAIDA", json.dumps(invalida))
-    # guarda: ci/operacoes_vps.py:881
+    # guarda: ci/operacoes_vps.py:919
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir()
 
@@ -1603,6 +1665,8 @@ def test_appmax_pix_aviso_rejeita_saida_extra():
         "resultado": "medido",
         "referencia": REFERENCIA,
         "registros_encontrados": 1,
+        "inbox_consultada": True,
+        "instalacoes_observadas": 1,
         "pix_emv_preservado": False,
         "pix_qrcode_preservado": False,
         "pix_expiration_date_preservado": False,
@@ -1616,20 +1680,24 @@ def test_appmax_pix_aviso_rejeita_saida_extra():
 
 
 @pytest.mark.parametrize(
-    ("acao", "encontrados"),
+    ("acao", "encontrados", "inbox", "observadas"),
     [
-        ("aviso_multiplo", 0),
-        ("aviso_multiplo", 1),
-        ("candidata_ausente_ou_multipla", 2),
-        ("instalacao_ausente_ou_multipla", 1),
-        ("aviso_nao_preservado", 2),
+        ("aviso_multiplo", 0, True, 1),
+        ("aviso_multiplo", 1, True, 1),
+        ("candidata_ausente_ou_multipla", 2, False, None),
+        ("instalacao_ausente_ou_multipla", 1, False, 1),
+        ("aviso_nao_preservado", 2, True, 1),
     ],
 )
-def test_appmax_pix_aviso_rejeita_contagem_incoerente(acao, encontrados):
+def test_appmax_pix_aviso_rejeita_contagem_incoerente(
+    acao, encontrados, inbox, observadas
+):
     medicao = {
         "resultado": "nao_medido",
         "referencia": REFERENCIA,
         "registros_encontrados": encontrados,
+        "inbox_consultada": inbox,
+        "instalacoes_observadas": observadas,
         "pix_emv_preservado": False,
         "pix_qrcode_preservado": False,
         "pix_expiration_date_preservado": False,
@@ -1638,6 +1706,6 @@ def test_appmax_pix_aviso_rejeita_contagem_incoerente(acao, encontrados):
         "processado_em": None,
         "acao": acao,
     }
-    # guarda: ci/operacoes_vps.py:300
+    # guarda: ci/operacoes_vps.py:332
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix-aviso", medicao, REFERENCIA)

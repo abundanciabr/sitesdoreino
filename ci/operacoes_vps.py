@@ -73,6 +73,9 @@ ESTADOS_AVISO_APPMAX = {"pendente", "processado", "falhou", "carta_morta", "nao_
 ACOES_AVISO_APPMAX = {
     "candidata_ausente_ou_multipla",
     "instalacao_ausente_ou_multipla",
+    "instalacao_ausente",
+    "instalacao_incompleta",
+    "instalacao_multipla",
     "aviso_nao_preservado",
     "aviso_multiplo",
 }
@@ -280,6 +283,8 @@ def conferir_medicao(operacao, dados, referencia=""):
             "estado_processamento",
             "recebido_em",
             "processado_em",
+            "inbox_consultada",
+            "instalacoes_observadas",
         }
         if dados.get("resultado") == "nao_medido":
             if set(dados) != campos_comuns | {"acao"}:
@@ -287,15 +292,42 @@ def conferir_medicao(operacao, dados, referencia=""):
             if dados["acao"] not in ACOES_AVISO_APPMAX:
                 raise Falha("formato")
             encontrados = dados["registros_encontrados"]
-            if type(encontrados) is not int or encontrados not in {0, 1, 2}:
+            if type(dados["inbox_consultada"]) is not bool:
+                raise Falha("formato")
+            observadas = dados["instalacoes_observadas"]
+            if observadas is not None and (
+                type(observadas) is not int or observadas not in {0, 1, 2}
+            ):
+                raise Falha("formato")
+            if dados["inbox_consultada"]:
+                if type(encontrados) is not int or encontrados not in {0, 1, 2}:
+                    raise Falha("formato")
+                if observadas != 1:
+                    raise Falha("formato")
+            elif encontrados is not None:
                 raise Falha("formato")
             if (
                 dados["acao"] in {"candidata_ausente_ou_multipla", "instalacao_ausente_ou_multipla"}
-                and encontrados != 0
+                and (dados["inbox_consultada"] or observadas is not None)
             ) or (
-                dados["acao"] == "aviso_multiplo" and encontrados != 2
+                dados["acao"] == "aviso_multiplo"
+                and (not dados["inbox_consultada"] or encontrados != 2)
             ) or (
-                dados["acao"] == "aviso_nao_preservado" and encontrados not in {0, 1}
+                dados["acao"] == "aviso_nao_preservado"
+                and (
+                    not dados["inbox_consultada"]
+                    or encontrados not in {0, 1}
+                )
+            ) or (
+                dados["acao"] in {
+                    "instalacao_ausente",
+                    "instalacao_incompleta",
+                    "instalacao_multipla",
+                }
+                and (
+                    dados["inbox_consultada"]
+                    or observadas is None
+                )
             ):
                 raise Falha("formato")
             if (
@@ -321,6 +353,8 @@ def conferir_medicao(operacao, dados, referencia=""):
                 dados["referencia"] != referencia
                 or not re.fullmatch(r"[0-9a-f]{64}", dados["referencia"])
                 or dados["registros_encontrados"] != 1
+                or dados["inbox_consultada"] is not True
+                or dados["instalacoes_observadas"] != 1
                 or type(dados["pix_emv_preservado"]) is not bool
                 or type(dados["pix_qrcode_preservado"]) is not bool
                 or type(dados["pix_expiration_date_preservado"]) is not bool
@@ -568,28 +602,32 @@ def medir(operacao, servico, referencia=""):
             "from pagamentos.core.models import AppmaxWebhookInbox, InstalacaoAppmax, PaymentAttempt\n"
             f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='pix', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
             "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
-            "def nao_medido(acao, encontrados=0):\n"
-            "    return {'resultado':'nao_medido','referencia':referencia,'registros_encontrados':encontrados,'pix_emv_preservado':False,'pix_qrcode_preservado':False,'pix_expiration_date_preservado':False,'estado_processamento':'nao_medido','recebido_em':None,'processado_em':None,'acao':acao}\n"
+            "def nao_medido(acao, encontrados=None, instalacoes_observadas=None, inbox_consultada=False):\n"
+            "    return {'resultado':'nao_medido','referencia':referencia,'registros_encontrados':encontrados,'inbox_consultada':inbox_consultada,'instalacoes_observadas':instalacoes_observadas,'pix_emv_preservado':False,'pix_qrcode_preservado':False,'pix_expiration_date_preservado':False,'estado_processamento':'nao_medido','recebido_em':None,'processado_em':None,'acao':acao}\n"
             "if len(tentativas) != 1:\n"
             "    print(json.dumps(nao_medido('candidata_ausente_ou_multipla'), sort_keys=True))\n"
             "else:\n"
             "    tentativa = tentativas[0]\n"
-            f"    instalacoes = list(InstalacaoAppmax.objects.filter(platform_site_ids__contains=['{SITE_MESHCRAFT}'])[:2])\n"
-            "    instalacoes = [i for i in instalacoes if isinstance(i.platform_site_ids, list) and tentativa.platform_site_id in i.platform_site_ids and isinstance(i.app_id, str) and i.app_id.strip() and isinstance(i.appmax_site_id, str) and i.appmax_site_id.strip()]\n"
-            "    if len(instalacoes) != 1:\n"
-            "        print(json.dumps(nao_medido('instalacao_ausente_ou_multipla'), sort_keys=True))\n"
+            f"    instalacoes_brutas = list(InstalacaoAppmax.objects.filter(platform_site_ids__contains=['{SITE_MESHCRAFT}'])[:2])\n"
+            "    instalacoes = [i for i in instalacoes_brutas if isinstance(i.platform_site_ids, list) and tentativa.platform_site_id in i.platform_site_ids and isinstance(i.app_id, str) and i.app_id.strip() and isinstance(i.appmax_site_id, str) and i.appmax_site_id.strip()]\n"
+            "    if not instalacoes_brutas:\n"
+            "        print(json.dumps(nao_medido('instalacao_ausente', instalacoes_observadas=0), sort_keys=True))\n"
+            "    elif len(instalacoes) > 1 and len(instalacoes) == len(instalacoes_brutas):\n"
+            "        print(json.dumps(nao_medido('instalacao_multipla', instalacoes_observadas=len(instalacoes_brutas)), sort_keys=True))\n"
+            "    elif len(instalacoes) != 1 or len(instalacoes) != len(instalacoes_brutas):\n"
+            "        print(json.dumps(nao_medido('instalacao_incompleta', instalacoes_observadas=len(instalacoes_brutas)), sort_keys=True))\n"
             "    else:\n"
             "        instalacao = instalacoes[0]\n"
             "        avisos = list(AppmaxWebhookInbox.objects.filter(app_id=instalacao.app_id, appmax_site_id=instalacao.appmax_site_id, platform_site_id=tentativa.platform_site_id, event='order_pix_created', event_type='order', external_order_id=str(tentativa.external_order_id)).order_by('-received_at')[:2])\n"
             "        if len(avisos) != 1:\n"
             "            acao = 'aviso_nao_preservado' if not avisos else 'aviso_multiplo'\n"
-            "            print(json.dumps(nao_medido(acao, len(avisos)), sort_keys=True))\n"
+            "            print(json.dumps(nao_medido(acao, len(avisos), 1, True), sort_keys=True))\n"
             "        else:\n"
             "            aviso = avisos[0]\n"
             "            payload = aviso.payload if isinstance(aviso.payload, dict) else {}\n"
             "            dados = payload.get('data') if isinstance(payload.get('data'), dict) else {}\n"
             "            if str(dados.get('order_id', '')).strip() != str(tentativa.external_order_id).strip():\n"
-            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1), sort_keys=True))\n"
+            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1, 1, True), sort_keys=True))\n"
             "                raise SystemExit(0)\n"
             "            payment_info = dados.get('payment_info') if isinstance(dados.get('payment_info'), dict) else {}\n"
             "            pix = payment_info.get('pix') if isinstance(payment_info.get('pix'), dict) else {}\n"
@@ -607,9 +645,9 @@ def medir(operacao, servico, referencia=""):
             "            recebido_em = aviso.received_at.isoformat() if hasattr(aviso.received_at, 'isoformat') else None\n"
             "            processado_em = aviso.processed_at.isoformat() if aviso.processed_at is not None and hasattr(aviso.processed_at, 'isoformat') else None\n"
             "            if recebido_em is None:\n"
-            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1), sort_keys=True))\n"
+            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1, 1, True), sort_keys=True))\n"
             "            else:\n"
-            "                print(json.dumps({'resultado':'medido','referencia':referencia,'registros_encontrados':1,'pix_emv_preservado':presente('pix_emv'),'pix_qrcode_preservado':presente('pix_qrcode'),'pix_expiration_date_preservado':presente('pix_expiration_date'),'estado_processamento':estado,'recebido_em':recebido_em,'processado_em':processado_em}, sort_keys=True))\n"
+            "                print(json.dumps({'resultado':'medido','referencia':referencia,'registros_encontrados':1,'inbox_consultada':True,'instalacoes_observadas':1,'pix_emv_preservado':presente('pix_emv'),'pix_qrcode_preservado':presente('pix_qrcode'),'pix_expiration_date_preservado':presente('pix_expiration_date'),'estado_processamento':estado,'recebido_em':recebido_em,'processado_em':processado_em}, sort_keys=True))\n"
         )
         try:
             dados = json.loads(
