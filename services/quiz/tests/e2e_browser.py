@@ -97,6 +97,7 @@ def test_uma_pessoa_conclui_o_quiz_no_navegador(live_server):
     dados = json.loads(resultado.stdout.splitlines()[-1])
     assert urlsplit(dados["url"]).path == "/crivo-e2e/resultado"
     assert dados["retomada"] == dados["url"]
+    assert urlsplit(dados["refeito"]).path == "/crivo-e2e/"
     assert dados["resultado"] == "Pronto para avançar"
     assert dados["proximo_passo"] == "/teste/continuidade/"
     submissao = Submission.objects.get(quiz=quiz)

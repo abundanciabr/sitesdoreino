@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-213649-TAR-761-explicada",
+  "tarefa": "TAR-761",
+  "evento": "explicada",
+  "quando": "2026-09-26T21:36:49.895080+00:00",
+  "quem": "Decisao do mantenedor na sessao Claude de 26/09/2026: botao Refazer no resultado do quiz Crivo, resolvendo o caso das duas abas sem esconder o resultado de quem volta sem clicar.",
+  "o_que_e": "Quem termina o quiz e volta cai sempre no mesmo resultado. Se abriu o quiz em duas abas, a segunda envia respostas novas e recebe calada o resultado velho, sem saida.",
+  "o_que_muda": "A tela de resultado ganha o botao Refazer o quiz: um clique abre o formulario em branco e o novo envio gera um resultado novo. Quem volta sem clicar continua vendo o proprio resultado.",
+  "exemplo": "E como pedir outra senha no balcao: o pedido anterior continua registrado, mas voce pode fazer um novo.",
+  "importancia": 40
+}

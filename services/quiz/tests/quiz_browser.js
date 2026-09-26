@@ -187,6 +187,15 @@ async function main() {
     if (!volta || volta.status() !== 200) throw new Error("A volta ao endereço do quiz não abriu com HTTP 200.");
     if (await page.locator("main h1").innerText() !== resultado) throw new Error("Quem já concluiu não voltou ao próprio resultado.");
 
+    const refazer = page.getByRole("button", { name: "Refazer o quiz" });
+    await refazer.focus();
+    const foco = await refazer.evaluate(botao => botao.matches(":focus-visible") && getComputedStyle(botao).outlineStyle !== "none");
+    if (!foco) throw new Error("O botão Refazer não mostra foco visível ao teclado.");
+    await Promise.all([page.waitForURL(url => url.pathname.endsWith("/crivo-e2e/")), page.keyboard.press("Enter")]);
+    const emBranco = await page.locator("form.crivo").evaluate(form => !form.querySelector("input:checked") && form.elements.email.value === "");
+    if (!emBranco) throw new Error("Refazer não abriu o formulário em branco.");
+    const refeito = page.url();
+
     // Voltar do resultado pelo histórico restaura da memória a página já
     // enviada. O Playwright desliga essa memória do Chromium, então o evento
     // que ela emite é disparado numa visita à parte, depois de um envio simulado.
@@ -203,7 +212,7 @@ async function main() {
     if (await restaurada.evaluate(() => window.antesDaVolta) === true) throw new Error("A página já enviada, restaurada do histórico, não devolveu a decisão ao servidor.");
     await outraVisita.close();
     if (erros.length) throw new Error(`Erros inesperados no navegador ou servidor: ${erros.join(" | ")}`);
-    console.log(JSON.stringify({ url: urlResultado, retomada: page.url(), resultado, proximo_passo: proximoPasso, rotulo_proximo_passo: rotuloProximoPasso }));
+    console.log(JSON.stringify({ url: urlResultado, retomada: volta.url(), refeito, resultado, proximo_passo: proximoPasso, rotulo_proximo_passo: rotuloProximoPasso }));
   } finally {
     await browser.close();
   }

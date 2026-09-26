@@ -2175,6 +2175,16 @@
     },
     {
       "celula": "quiz",
+      "rota": "<slug:slug>/refazer",
+      "endereco": "/quiz/<slug:slug>/refazer",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Refazer um quiz",
+      "descricao": "O gesto do botão Refazer o quiz, na tela de resultado. Não é uma página: quem clica volta às perguntas em branco e o próximo envio gera um resultado novo. O resultado anterior continua gravado."
+    },
+    {
+      "celula": "quiz",
       "rota": "telemetry/",
       "endereco": "/quiz/telemetry/",
       "alcance": "publico",
