@@ -4,13 +4,15 @@ A regra que este módulo mecaniza é uma só:
 
     ausência de evidência nunca é evidência de sucesso.
 
-Todo portão construído sobre este núcleo devolve um de quatro estados
+Todo portão construído sobre este núcleo devolve um estado
 semânticos, e nenhum deles pode ser produzido por acidente:
 
     PASS   a medição rodou e não encontrou violação
     FAIL   a medição rodou e encontrou violação
     ERROR  a medição NÃO pôde ser feita de forma confiável
     SKIP   a medição foi DECLARADA não aplicável (nunca inferida)
+    TIMEOUT a medição começou, mas estourou o prazo
+    CANCELLED a medição foi cancelada antes de concluir
 
 O modo de falha que originou este arquivo: `freeze-de-contrato.sh` chamava
 `python3`, que nesta máquina não existia; as duas pontas do `diff` viraram
@@ -38,16 +40,25 @@ MARCAS_DA_RAIZ = ("CONSTITUICAO.md", "INVARIANTES.md", "ci", "contracts", "servi
 
 
 class Estado(enum.Enum):
-    """Os quatro estados semânticos. A ordem é a de gravidade crescente."""
+    """Estados semânticos. A ordem é a de gravidade crescente."""
 
     PASS = "PASS"
     SKIP = "SKIP"
     FAIL = "FAIL"
     ERROR = "ERROR"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
 
     @property
     def gravidade(self) -> int:
-        return {"PASS": 0, "SKIP": 0, "FAIL": 1, "ERROR": 2}[self.value]
+        return {
+            "PASS": 0,
+            "SKIP": 0,
+            "FAIL": 1,
+            "ERROR": 2,
+            "TIMEOUT": 2,
+            "CANCELLED": 2,
+        }[self.value]
 
     @property
     def exit_code(self) -> int:
@@ -131,7 +142,7 @@ class Relatorio:
             linhas.append("  (nenhuma checagem foi executada)")
             linhas.append("")
         linhas.append(f"RESULTADO  {self.estado.value}")
-        if self.estado is Estado.ERROR:
+        if self.estado in (Estado.ERROR, Estado.TIMEOUT, Estado.CANCELLED):
             linhas.append(
                 "A CI NÃO conseguiu completar a medição. "
                 "Este resultado NÃO é um PASS."
