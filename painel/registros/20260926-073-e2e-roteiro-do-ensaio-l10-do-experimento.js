@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-073-e2e-roteiro-do-ensaio-l10-do-experimento",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "e2e: roteiro do ensaio L10 do experimento",
+  detalhe: "Separei rota/ensaio em dois modos: a rota fecha verde hoje contra produção; o\nensaio completo reprova nomeando que a F8b ainda não expõe o braço no HTML.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2135. Validação local: árvore 7a8dc7c0d04b0dfe937a4023df5b450387aa2927; commit b8a639a8db9cc06b6311231a47f1193b6084d81f; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-782",
+  gravidade: "info",
+  frente: "vender",
+  area: "e2e",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
