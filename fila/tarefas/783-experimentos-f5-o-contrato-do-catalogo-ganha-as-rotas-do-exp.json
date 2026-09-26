@@ -3,7 +3,7 @@
   "id": "TAR-783",
   "titulo": "Experimentos F5: o contrato do catálogo ganha as rotas do experimento da página e o campo experimento_ativo",
   "toca": [
-    "contratos",
+    "contracts",
     "catalogo"
   ],
   "depende_de": [],
