@@ -236,22 +236,52 @@ def test_reentrega_do_funil_nao_duplica(tipo):
 
 
 @pytest.mark.parametrize("tipo", sorted(FUNIL_DADOS))
-def test_campo_pessoal_extra_no_funil_e_recusado_pelo_contrato(tipo):
-    """Nenhum dado pessoal entra no livro pelo funil porque o proprio
-    contrato fecha a porta antes de a `metricas` ver o envelope:
-    `additionalProperties: false` em `data` reprova qualquer campo fora do
-    schema. E por isso que quem publica (a frente F3, no teste dela, no
-    mesmo molde de `forum/tests/test_a_voz_do_forum.py`) nunca consegue
-    emitir um envelope com email, telefone ou nome dentro de `data`; sem
-    contrato congelado nao ha caminho de reentrega isolado aqui que prove
-    algo diferente disso.
+def test_campo_pessoal_no_funil_vira_evento_morto_pelo_processar(tipo):
+    """A guarda REAL: `processar` (consume_eventos.py), que e o caminho por
+    onde toda mensagem do Redis passa, recusa o campo pessoal ANTES de
+    `receber` guardar qualquer coisa. Defesa em duas camadas: o contrato ja
+    reprova este payload (additionalProperties: false, conferido abaixo), e
+    o consumidor reprova de novo por nome de campo, mesmo que um publicador
+    um dia divirja do contrato.
     """
+    from apps.fatos.management.commands.consume_eventos import processar
+
     corpo, dados = _envelope_do_funil(tipo)
     envelope_com_email = json.loads(corpo)
     envelope_com_email["data"] = {**dados, "email": "pessoa@exemplo.test"}
+
     esquema = json.loads((CONTRATOS / f"{tipo}.v1.json").read_text(encoding="utf-8"))
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(envelope_com_email, esquema)
+
+    desfecho = processar(json.dumps(envelope_com_email).encode("utf-8"))
+    assert desfecho == MORTO
+    assert (
+        Evento.objects.filter(tipo=tipo).count() == 0
+    ), "campo pessoal nunca vira fato"
+    morto = EventoMorto.objects.filter(tipo_declarado=tipo).first()
+    assert morto is not None
+    assert "pessoal" in morto.motivo
+
+
+def test_campo_pessoal_fora_dos_assuntos_protegidos_continua_sendo_guardado():
+    """A guarda e ESCOPADA aos assuntos protegidos, nao um filtro global: os
+    assuntos antigos (sem essa exigencia na fonte) continuam sendo guardados
+    como vem, do jeito que `recepcao.receber` sempre fez.
+    """
+    from apps.fatos.management.commands.consume_eventos import processar
+
+    corpo = envelope(
+        data={
+            "site_id": "meshcraft",
+            "pessoa_id": "id-opaco-1",
+            "email": "aluno@exemplo.test",
+        }
+    )
+    desfecho = processar(corpo.encode("utf-8"))
+    assert desfecho == GUARDADO
+    evento = Evento.objects.get(tipo="identidade.pessoa-cadastrada")
+    assert evento.dados["email"] == "aluno@exemplo.test"
 
 
 def test_o_lote_de_reentrega_nao_diverge_das_outras_celulas():

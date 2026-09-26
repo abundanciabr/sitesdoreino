@@ -6,7 +6,7 @@ de entrada do livro de fatos. O molde é o das cinco células consumidoras
 constantes de reentrega — copiar o padrão é Lei 3, e divergir nos números
 tornaria impossível comparar o comportamento de duas células em incidente.
 
-## As três adaptações desta célula, declaradas em vez de silenciosas
+## As quatro adaptações desta célula, declaradas em vez de silenciosas
 
 **1. Não há tabela `EventoProcessado`.** Nas outras células ela existe porque o
 efeito do evento (creditar XP, matricular) não deixa rastro do `event_id`; aqui
@@ -24,6 +24,15 @@ e, cinco entregas depois, cai na fila morta do Redis, onde ninguém olha. Aqui
 ela cai numa TABELA, que o painel mostra e sobre a qual há três ações
 (inspecionar, tentar de novo, descartar com motivo). Reentregar um corpo
 quebrado não o conserta; o que conserta é alguém ver.
+
+**4. Dois assuntos por vez sao exceção deliberada: proibem dado pessoal por
+nome de campo, nao por contrato.** `recepcao.receber` nao valida o miolo
+(contracts/ nao viaja para o build da celula, ver o docstring de la). Para os
+assuntos em `ASSUNTOS_SEM_DADO_PESSOAL`, `processar` confere `data` contra
+`CAMPOS_PESSOAIS_PROIBIDOS` ANTES de chamar `receber`: e um segundo guarda,
+que nao depende de nenhum arquivo fora da celula, so de nomes de campo que a
+casa ja proibe (customer, email, nome, telefone, documento). Assunto novo com
+a mesma exigencia entra no MESMO conjunto.
 
 ## O que ele assina, e por que não assina mais
 
@@ -62,6 +71,7 @@ from datetime import datetime, timezone
 import redis
 from django.core.management.base import BaseCommand
 
+from apps.fatos.models import EventoMorto
 from apps.fatos.recepcao import MORTO, receber
 
 logger = logging.getLogger(__name__)
@@ -99,6 +109,26 @@ STREAMS = [
     "eventos.funil.lead-capturado",
 ]
 
+#: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
+#: e-mail, nome, telefone ou documento em `data`, por desenho da propria fonte
+#: (o funil so tem `visitor_id`, opaco). E o SEGUNDO guarda: se um publicador
+#: um dia divergir do contrato, o campo pessoal nao entra no livro por aqui,
+#: mesmo com o envelope bem formado. Assunto novo com a mesma exigencia entra
+#: NESTE conjunto, nunca cria um segundo.
+ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
+    {
+        "funil.pagina-vista",
+        "funil.secao-vista",
+        "funil.cta-clicado",
+        "funil.lead-capturado",
+    }
+)
+
+#: Comparado por chave, sem distinguir maiusculas.
+CAMPOS_PESSOAIS_PROIBIDOS = frozenset(
+    {"customer", "email", "nome", "telefone", "documento"}
+)
+
 # Convenção do lote de reentrega — MESMOS nomes e valores das outras células.
 IDLE_MS_REENTREGA = 60_000  # presa = pendente sem ACK há pelo menos isto
 MAX_ENTREGAS = 5  # contagem do PEL em que a mensagem vai para a fila morta
@@ -110,8 +140,60 @@ def _corpo(campos: dict) -> bytes:
     return campos.get(b"json") or campos.get("json") or b""
 
 
+def _texto_do_corpo(cru: bytes | str) -> str:
+    """`cru` decodificado, ou vazio quando não é UTF-8 (mesma régua de `recepcao`)."""
+    if isinstance(cru, bytes):
+        try:
+            return cru.decode("utf-8")
+        except UnicodeDecodeError:
+            return ""
+    return cru
+
+
+def _campo_pessoal_proibido(tipo: str, dados: object) -> str | None:
+    """A primeira chave proibida em `dados`, só para os assuntos protegidos.
+
+    Os demais assuntos não têm validação de miolo por desenho desta célula
+    (`recepcao.receber`: "quem valida o miolo é quem publica"). Os assuntos em
+    `ASSUNTOS_SEM_DADO_PESSOAL` são a exceção deliberada, porque a fonte deles
+    proíbe dado pessoal e o livro nunca pode guardar o que não pode expor.
+    """
+    if tipo not in ASSUNTOS_SEM_DADO_PESSOAL or not isinstance(dados, dict):
+        return None
+    for chave in dados:
+        if isinstance(chave, str) and chave.lower() in CAMPOS_PESSOAIS_PROIBIDOS:
+            return chave
+    return None
+
+
 def processar(cru: bytes) -> str:
     """Guarda o fato e devolve o desfecho, registrando o que merece log."""
+    texto = _texto_do_corpo(cru)
+    try:
+        pre = json.loads(texto) if texto else None
+    except (TypeError, ValueError):
+        pre = None
+    if isinstance(pre, dict):
+        tipo = pre.get("event") if isinstance(pre.get("event"), str) else ""
+        campo = _campo_pessoal_proibido(tipo, pre.get("data"))
+        if campo is not None:
+            morto = EventoMorto.objects.create(
+                corpo=texto[:100_000],
+                motivo=(
+                    f"campo pessoal proibido em assunto protegido: '{campo}' "
+                    "(sem customer, e-mail, nome, telefone, documento)"
+                ),
+                tipo_declarado=tipo[:120],
+                event_id_declarado=str(pre.get("event_id") or "")[:80],
+            )
+            logger.error(
+                "EVENTO MORTO (id=%s): campo pessoal '%s' num assunto protegido "
+                "contra dado pessoal. Inspecionar em /admin/, tentar de novo "
+                "ou descartar com motivo.",
+                morto.pk,
+                campo,
+            )
+            return MORTO
     desfecho, objeto = receber(cru)
     if desfecho == MORTO:
         # ERROR e não WARNING: um evento que a plataforma afirmou e o livro não
