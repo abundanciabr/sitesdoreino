@@ -33,7 +33,21 @@ def fila_appmax(tmp_path, monkeypatch):
             "estado": "cancelada",
             "titulo": "Worker antigo",
             "motivo": "substituída pelo reconciliador",
-            "substitui": "TAR-560",
+        },
+        "TAR-554": {
+            "estado": "cancelada",
+            "titulo": "Estorno antigo",
+            "motivo": "escopo histórico cancelado",
+        },
+        "TAR-641": {
+            "estado": "concluída",
+            "titulo": "Estorno medido",
+            "motivo": "prova histórica registrada",
+        },
+        "TAR-555": {
+            "estado": "cancelada",
+            "titulo": "Tela antiga",
+            "motivo": "substituída pela tela atual",
         },
         "TAR-560": {
             "estado": "bloqueada",
@@ -74,7 +88,7 @@ def dentro(monkeypatch, settings):
 def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     fila_appmax, dentro
 ):
-    # guarda: services/admin/apps/core/appmax.py:108
+    # guarda: services/admin/apps/core/appmax.py:127
     resposta = dentro.get(reverse("appmax"))
     html = resposta.content.decode()
 
@@ -86,11 +100,20 @@ def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     assert "concluída" in html
     assert "TAR-559" in html
     assert "cancelada" in html
+    assert "TAR-554" in html
+    assert "TAR-641" in html
+    assert "TAR-555" in html
     assert "TAR-560" in html
+    assert "TAR-641" in html
+    assert "TAR-615" in html
     assert "Substituta" in html
+    assert "<dt>Substituta</dt><dd>TAR-641</dd>" in html
+    assert "<dt>Substituta</dt><dd>TAR-644</dd>" in html
+    assert "<dt>Substituta</dt><dd>TAR-615</dd>" in html
     assert "TAR-557" in html
     assert "prova oficial da fila" in html
     assert "data-consulta-viva" in html
+    assert "nenhuma impeditiva" in html
 
 
 @respx.mock

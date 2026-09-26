@@ -54,7 +54,7 @@
             </div>
             <p>{{ tarefa.motivo }}</p>
             <dl class="detalhes">
-              <div><dt>Dependência</dt><dd>{% if tarefa.dependencias %}{{ tarefa.dependencias|join:", " }}{% else %}nenhuma registrada{% endif %}</dd></div>
+              <div><dt>Dependência impeditiva</dt><dd>{% if tarefa.dependencias %}{{ tarefa.dependencias|join:", " }}{% else %}nenhuma impeditiva{% endif %}</dd></div>
               <div><dt>Prova</dt><dd>{{ tarefa.prova }}</dd></div>
               {% if tarefa.substituta %}<div><dt>Substituta</dt><dd>{{ tarefa.substituta }}</dd></div>{% endif %}
             </dl>
@@ -79,7 +79,7 @@
   .appmax-vista .secao-titulo h2 { margin: 0; }
   .appmax-vista .sequencia { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
   .appmax-vista .tarefa { border-left: 5px solid var(--linha); padding: 16px; }
-  .appmax-vista .tarefa-concluída { border-left-color: #2f9e44; }
+  .appmax-vista .tarefa-concluida { border-left-color: #2f9e44; }
   .appmax-vista .tarefa-cancelada { border-left-color: #868e96; }
   .appmax-vista .tarefa-bloqueada { border-left-color: #e67700; }
   .appmax-vista .tarefa-reivindicada { border-left-color: #7048e8; }
