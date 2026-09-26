@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-050-pagamentos-avisos-appmax",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "pagamentos: avisos Appmax",
+  detalhe: "Consultas autenticadas classificam avisos Appmax após aprovação e recusam identidade divergente, sem alterar valores ou emitir reversões.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2113. Validação local: árvore 85db28687f7da43c91e34efff3b7cac7a6795bf4; commit e22438bb38254e4125f27d46fe499bb3244441cd; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-749",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

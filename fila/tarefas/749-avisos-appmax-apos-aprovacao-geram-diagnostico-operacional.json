@@ -1,0 +1,19 @@
+{
+  "arquivo": "749-avisos-appmax-apos-aprovacao-geram-diagnostico-operacional",
+  "id": "TAR-749",
+  "titulo": "Avisos Appmax após aprovação geram diagnóstico operacional",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Testes focais com GET autenticado sintético provam estados estornado, contestacao e vitoria do lojista, identidade divergente e repeticao sem efeito financeiro; suite pagamentos, Black, mypy e guardas PASS FAIL PASS.",
+  "despacho": "Celula pagamentos. No services/pagamentos/pagamentos/supervisao.py e seu teste, trate aviso Appmax recebido depois de tentativa approved com GET autenticado pelo gateway existente. Valide instalação, site, pedido, vínculo, método original e valores originais como identidade, sem usar valor como refund. Estados estornado geram pendência específica de confirmação de devolução; chargeback_em_tratamento gera pendência de contestação; chargeback_vencido gera vitória do lojista e nunca devolução ou reabertura. Respostas desconhecidas, identidade ausente ou inconsistente falham conservadoramente. Use somente campos operacionais existentes do AppmaxWebhookInbox e não registre resposta bruta, PII, dinheiro, URL, IDs ou mensagem livre. Não altere ledger, outbox, tentativa, intent, estados abertos, reconciliacao ou política de acesso. Aviso repetido ou fora de ordem não cria cobrança/evento nem falso fechamento. Teste estados, identidade/método/site divergente, falta de amount refund, repetição e ordem invertida, sem chamadas reais. Varredura periódica de approved é descoberta separada e deve constar no handoff.",
+  "origem": "Lacuna Appmax identificada na supervisao de avisos aprovados, frente independente autorizada pelo mantenedor",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
