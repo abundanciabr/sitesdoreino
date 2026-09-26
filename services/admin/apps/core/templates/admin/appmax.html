@@ -54,8 +54,8 @@
             </div>
             <p>{{ tarefa.motivo }}</p>
             <dl class="detalhes">
-              <div><dt>Dependência impeditiva</dt><dd>{% if tarefa.dependencias %}{{ tarefa.dependencias|join:", " }}{% else %}nenhuma impeditiva{% endif %}</dd></div>
-              <div><dt>Prova</dt><dd>{{ tarefa.prova }}</dd></div>
+              <div><dt>Dependência impeditiva</dt><dd>{% if not tarefa.dependencias_medidas %}não medido{% elif tarefa.dependencias %}{{ tarefa.dependencias|join:", " }}{% else %}nenhuma impeditiva{% endif %}</dd></div>
+              <div><dt>Prova</dt><dd>{% if tarefa.provas %}{% for prova in tarefa.provas %}<a href="{{ prova.url }}">{{ prova.rotulo }}</a>{% if not forloop.last %}; {% endif %}{% endfor %}{% else %}{{ tarefa.prova }}{% endif %}</dd></div>
               {% if tarefa.substituta %}<div><dt>Substituta</dt><dd>{{ tarefa.substituta }}</dd></div>{% endif %}
             </dl>
           </li>
@@ -111,13 +111,14 @@
     const base = bloco.dataset.url;
     try {
       const respostas = await Promise.all([
-        fetch(base + "/git/matching-refs/refs/reservas", {cache: "no-store"}),
+        fetch(base + "/git/matching-refs/reservas", {cache: "no-store"}),
         fetch(base + "/pulls?state=open&per_page=100", {cache: "no-store"})
       ]);
       if (respostas.some((resposta) => !resposta.ok)) throw new Error("fonte indisponível");
       const reservas = await respostas[0].json();
       const prs = await respostas[1].json();
-      status.textContent = "medido em " + new Date().toLocaleString("pt-BR") + ": " + reservas.length + " reservas e " + prs.length + " PRs abertos.";
+      if (!Array.isArray(reservas) || !Array.isArray(prs)) throw new Error("resposta inválida");
+      status.textContent = "medido em " + new Date().toLocaleString("pt-BR") + ": " + reservas.length + " referências de reserva e " + prs.length + " PRs abertos.";
     } catch (erro) {
       status.textContent = "não medido. Recarregue a consulta quando a fonte estiver disponível.";
     } finally {

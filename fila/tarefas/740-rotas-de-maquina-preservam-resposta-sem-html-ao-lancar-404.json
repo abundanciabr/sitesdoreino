@@ -1,0 +1,36 @@
+{
+  "arquivo": "740-rotas-de-maquina-preservam-resposta-sem-html-ao-lancar-404",
+  "id": "TAR-740",
+  "titulo": "Rotas de máquina preservam resposta sem HTML ao lançar 404",
+  "toca": [
+    "funil",
+    "admin",
+    "alunos",
+    "catalogo",
+    "checkout",
+    "cursos",
+    "encomendas",
+    "forum",
+    "gamificacao",
+    "identidade",
+    "leads",
+    "mensageria",
+    "metricas",
+    "notificacoes",
+    "pagamentos",
+    "pages",
+    "quiz",
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "URL do PR com testes HTTP reais e portão PASS nas 18 wheels",
+  "despacho": "Corrigir o handler compartilhado de 404 para classificar rotas sem HTML antes do tipo de exceção. /api e /api/... devolvem JSON {detail: Not found}; as demais rotas sem HTML não geram HTML. Preservar respostas 404 próprias retornadas pelas views. Cobrir Http404 com cliente Django real, manter autenticação e 500, reconstruir as 18 wheels, provar o portão e entregar PR após revisão independente.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
