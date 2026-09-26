@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-003-quiz-preserva-respostas-e-comprova-fluxo-no-navegador",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "quiz: preserva respostas e comprova fluxo no navegador",
+  detalhe: "Email invalido conserva respostas e contato. Navegador comprova resultado, banco e evento.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2093. Validação local: árvore 7989d93ecc10e0b57b1c424a4fc4091b39ab4dab; commit 48e1e510f407924a571983a9c4b3ffde8da46097; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-733",
+  gravidade: "info",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

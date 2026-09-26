@@ -1,7 +1,7 @@
 # A Definição de Pronto local da célula: make ci
 CELULA := $(notdir $(CURDIR))
 
-.PHONY: dev mocks test lint type contrato-check ci
+.PHONY: dev mocks test lint type contrato-check ci e2e
 
 dev:            ## sobe SÓ esta célula + banco + mocks (isolamento real)
 	docker compose -f docker-compose.dev.yml up
@@ -30,3 +30,8 @@ contrato-check:
 
 ci: lint type test contrato-check
 	@echo "✅ $(CELULA): Definição de Pronto local atingida"
+
+e2e:
+	@node -e "if(require('playwright/package.json').version!=='1.62.1')process.exit(1)" 2>/dev/null || npm install --no-save --no-package-lock playwright@1.62.1
+	@node -e "if(!require('fs').existsSync(require('playwright').chromium.executablePath()))process.exit(1)" 2>/dev/null || npx playwright install chromium
+	python tests/run_e2e.py
