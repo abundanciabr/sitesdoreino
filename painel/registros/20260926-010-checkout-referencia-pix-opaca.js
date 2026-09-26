@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-010-checkout-referencia-pix-opaca",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "checkout: referência Pix opaca",
+  detalhe: "Liga a falha Pix à tentativa por referência opaca, sem repetir cobrança nem expor dados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2097. Validação local: árvore 9c5b40b92d4b8791f966d10c3c83f3477f5f2dd5; commit 283bbbecbfead41afe8c6da48fd8fb7b1d727731; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-731",
+  gravidade: "info",
+  frente: null,
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
