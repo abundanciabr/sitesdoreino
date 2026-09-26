@@ -90,3 +90,6 @@ urlpatterns = [
     # caminho vazio, e ler a lista de cima para baixo é como se confere isto.
     path("", base, name="base"),
 ]
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"

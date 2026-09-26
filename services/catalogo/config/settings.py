@@ -50,6 +50,12 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+MIDDLEWARE = ["site_errors.handlers.SiteErrorLoggingMiddleware", *MIDDLEWARE]
+SITE_ERROR_SERVICE = "catalogo"
+SITE_ERRORS_REDIS_URL = os.environ.get("SITE_ERRORS_REDIS_URL") or (
+    "" if DEBUG else "redis://redis:6379/0"
+)
+
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="{{ language|default:'pt-br' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if language == "en" %}Page error{% elif language == "es" %}Error al abrir la página{% else %}Erro ao abrir a página{% endif %}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f7f7f8; color: #1a1a1a; font: 1rem/1.6 system-ui, sans-serif; }
+    main { width: min(100% - 2rem, 34rem); margin: 10vh auto; padding: 2rem; background: #fff; border: 1px solid #e4e4e7; border-radius: .75rem; box-shadow: 0 1px 3px #00000014; }
+    h1 { margin-top: 0; font-size: clamp(1.6rem, 6vw, 2.2rem); line-height: 1.2; }
+    p { color: #3f3f46; }
+    nav { margin: 1.5rem 0; }
+    nav a { display: inline-block; padding: .75rem 1rem; border-radius: .5rem; background: #15803d; color: #fff; font-weight: 650; text-decoration: none; }
+    nav a:focus-visible { outline: 3px solid #166534; outline-offset: 3px; }
+    .endereco { overflow-wrap: anywhere; }
+    .diagnostico { margin: 1.5rem 0 0; padding-top: 1rem; border-top: 1px solid #e4e4e7; color: #52525b; font-size: .82rem; }
+    .diagnostico p { margin: .25rem 0; font-size: inherit; }
+  </style>
+</head>
+<body>
+  <main id="conteudo" tabindex="-1">
+    {% if language == "en" %}
+    <h1>We couldn't open this page</h1>
+    <p>Please try again later or return to the home page.</p>
+    <nav aria-label="Next step"><a href="{{ home_url }}">Go to home</a></nav>
+    <section class="diagnostico" aria-label="Support reference">
+      <p class="endereco">Address: <code>{{ requested_path }}</code></p>
+      <p>Reference: <code>{{ reference_id }}</code>. Share this code with support.</p>
+    </section>
+    {% elif language == "es" %}
+    <h1>No pudimos abrir esta página</h1>
+    <p>Inténtalo más tarde o vuelve al inicio.</p>
+    <nav aria-label="Siguiente paso"><a href="{{ home_url }}">Ir al inicio</a></nav>
+    <section class="diagnostico" aria-label="Referencia de soporte">
+      <p class="endereco">Dirección: <code>{{ requested_path }}</code></p>
+      <p>Referencia: <code>{{ reference_id }}</code>. Comparte este código con soporte.</p>
+    </section>
+    {% else %}
+    <h1>Não foi possível abrir esta página</h1>
+    <p>Tente novamente mais tarde ou volte para a página inicial.</p>
+    <nav aria-label="Próximo passo"><a href="{{ home_url }}">Ir para o início</a></nav>
+    <section class="diagnostico" aria-label="Referência para suporte">
+      <p class="endereco">Endereço: <code>{{ requested_path }}</code></p>
+      <p>Referência: <code>{{ reference_id }}</code>. Informe este código ao suporte.</p>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

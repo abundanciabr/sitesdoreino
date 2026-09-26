@@ -79,6 +79,7 @@ class Celula:
     nome: str
     caminhos: tuple[str, ...]
     consome: tuple[str, ...]
+    compartilhados: tuple[str, ...] = ()
 
 
 def _yaml():
@@ -129,6 +130,7 @@ def carregar(raiz: Path | None = None) -> dict[str, Celula]:
             )
         caminhos = dados.get("caminhos")
         consome = dados.get("consome")
+        compartilhados = dados.get("compartilhados", [])
         if not isinstance(caminhos, list) or not caminhos:
             raise ErroDeInstrumentacao(
                 f"{ARQUIVO}: a célula '{nome}' não declara 'caminhos'",
@@ -143,10 +145,16 @@ def carregar(raiz: Path | None = None) -> dict[str, Celula]:
                 "Use [] para 'não consome ninguém' — a lista vazia é uma "
                 "declaração, a ausência é um esquecimento.",
             )
+        if not isinstance(compartilhados, list):
+            raise ErroDeInstrumentacao(
+                f"{ARQUIVO}: 'compartilhados' da célula '{nome}' não é uma lista",
+                "Use uma lista de caminhos compartilhados, ou [] quando não houver.",
+            )
         mapa[nome] = Celula(
             nome=nome,
             caminhos=tuple(str(c).strip().strip("/") for c in caminhos),
             consome=tuple(sorted(str(c).strip() for c in consome)),
+            compartilhados=tuple(str(c).strip().strip("/") for c in compartilhados),
         )
     return mapa
 
@@ -168,7 +176,19 @@ def celula_do_caminho(caminho: str, mapa: dict[str, Celula]) -> str | None:
 
 def celulas_do_diff(arquivos: list[str], mapa: dict[str, Celula]) -> list[str]:
     """Quais células um conjunto de arquivos toca. Ordenado, para ser estável."""
-    return sorted({c for c in (celula_do_caminho(a, mapa) for a in arquivos) if c})
+    tocadas = set()
+    for arquivo in arquivos:
+        dono = celula_do_caminho(arquivo, mapa)
+        if dono:
+            tocadas.add(dono)
+        partes = arquivo.strip().replace("\\", "/").strip("/").split("/")
+        for nome, celula in mapa.items():
+            if any(
+                partes[: len(base.split("/"))] == base.split("/")
+                for base in celula.compartilhados
+            ):
+                tocadas.add(nome)
+    return sorted(tocadas)
 
 
 def consumo_no_codigo(raiz: Path, mapa: dict[str, Celula]) -> dict[str, set[str]]:

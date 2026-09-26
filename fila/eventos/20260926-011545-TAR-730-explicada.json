@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-011545-TAR-730-explicada",
+  "tarefa": "TAR-730",
+  "evento": "explicada",
+  "quando": "2026-09-26T01:15:45.187141+00:00",
+  "quem": "docs/decisoes/ROTEIRO-APPMAX-ATE-A-CONCLUSAO.md, seção Mecanismo de visibilidade, brief Appmax recompilado em 25/09/2026",
+  "o_que_e": "O Admin hoje mostra um quadro genérico e não oferece a sequência Appmax com dependências, provas, tarefas encerradas e falha de medição.",
+  "o_que_muda": "O mantenedor acompanha a execução Appmax numa vista calculada, identifica a fonte e o horário, entende o que trava cada tarefa e sabe recarregar quando a fila não pôde ser consultada.",
+  "exemplo": "É um mapa da obra que mantém as etapas encerradas visíveis, mostra quem espera por quem e avisa quando a leitura do quadro não aconteceu.",
+  "importancia": 85
+}

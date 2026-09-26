@@ -4,6 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=config.settings_leitura
 WORKDIR /app
 COPY requirements.txt .
+COPY vendor ./services/admin/vendor
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 8000

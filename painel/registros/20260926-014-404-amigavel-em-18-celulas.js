@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-014-404-amigavel-em-18-celulas",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "404 amigável em 18 células",
+  detalhe: "Um pacote atende 18 células com wheels iguais ao fonte, preservando APIs, autorização e 500.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2088. Validação local: árvore 5b50c6dbf1ed0e1acd4dd9ffc3f5eaa928e42d4a; commit 138ff52bfac5a22580a0ab1a3ecd9e3d6f2cc17c; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-734",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

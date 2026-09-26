@@ -3,6 +3,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.txt .
+COPY vendor ./services/admin/vendor
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN DJANGO_SECRET_KEY=build-static DATABASE_URL=sqlite:////tmp/collectstatic.sqlite python manage.py collectstatic --noinput

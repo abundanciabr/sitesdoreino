@@ -27,3 +27,6 @@ urlpatterns = [
     path("<slug:slug>/", quiz_views.formulario, name="quiz-formulario"),
     path("<slug:slug>/resultado", quiz_views.resultado, name="quiz-resultado"),
 ]
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"
