@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-070-armadilhas-evento-novo-so-conta-quando-o-consumidor-assina-a",
+  tipo: "nota",
+  quando: "2026-09-26",
+  titulo: "armadilhas: evento novo so conta quando o consumidor assina (armadilha 511)",
+  detalhe: "Registra que o consumidor da metricas tem lista fechada de streams, e o evento funil.pagina-vista trafegou sem ninguem guarda-lo por semanas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2144. Validação local: árvore 4d4952c2c8f7942400db87b3d90d31fea829c9d7; commit b1385fbf70d6780a9b32525a4f264f00ea0d6ef6; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-773",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
