@@ -42,6 +42,45 @@ def medir(monkeypatch, runs, arquivos=None):
     monkeypatch.setattr(entrega, "_api", api)
     return entrega.consultar_publicacao(RAIZ, SHA, arquivos or ["services/quiz/app.py"])
 
+
+def test_consultar_jobs_isola_a_tentativa_do_run(monkeypatch):
+    consultas = []
+    monkeypatch.setattr(entrega, "_api", lambda raiz, caminho: (
+        consultas.append(caminho) or {
+            "jobs": [{"name": "deploy (quiz)", "status": "completed", "conclusion": "success"}]
+        }
+    ))
+    assert entrega.consultar_jobs(RAIZ, run(id=10, run_attempt=5))
+    assert consultas == ["actions/runs/10/attempts/5/jobs?per_page=100"]
+
+
+def test_forum_usa_tentativa_5_e_preserva_job_concluido_entre_homonimos(monkeypatch):
+    jobs = [
+        dict(id=108396354172, name="deploy (forum)", status="queued", conclusion=None),
+        dict(id=108396354196, name="deploy (forum)", status="completed", conclusion="success"),
+        dict(id=108396354234, name="deploy (forum)", status="queued", conclusion=None),
+    ]
+    jobs.extend(dict(name=n, status="completed", conclusion="success")
+                for n in ["detectar", "portao-de-deploy"])
+    escolhido = run(run_attempt=5, jobs=jobs)
+    consultas = []
+
+    def api(raiz, caminho, **kwargs):
+        if caminho.startswith("contents/"):
+            return conteudo_workflow(caminho)
+        if caminho.startswith("actions/workflows/"):
+            return {"total_count": 1, "workflow_runs": [escolhido]}
+        consultas.append(caminho)
+        return {"total_count": len(jobs), "jobs": jobs}
+
+    monkeypatch.setattr(entrega, "_api", api)
+    estado = entrega.consultar_publicacao(RAIZ, SHA, ["services/forum/app.py"])
+
+    assert estado["estado"] == "PUBLICADO"
+    assert estado["runs"][0]["run_attempt"] == 5
+    assert consultas == ["actions/runs/10/attempts/5/jobs?per_page=100"]
+
+
 def test_publicado_exige_o_sha_exato(monkeypatch):
     assert medir(monkeypatch, [run()])["estado"] == "PUBLICADO"
     assert medir(monkeypatch, [run(head_sha="b"*40)])["estado"] == "AGUARDANDO_PUBLICACAO"
@@ -233,6 +272,31 @@ def test_workflow_success_sem_job_da_celula_nao_publica(monkeypatch):
     estado=medir(monkeypatch,[run(jobs=jobs)])
     assert estado["estado"] == "FALHA_PUBLICACAO"
     assert "deploy (quiz)" in estado["runs"][0]["jobs_exigidos"]
+
+
+def test_job_duplicado_pendente_nao_apaga_sucesso(monkeypatch):
+    # guarda: ci/estado_da_entrega.py:130
+    jobs = [
+        dict(name=n, status="completed", conclusion="success")
+        for n in ["detectar", "portao-de-deploy", "deploy (quiz)"]
+    ]
+    jobs.append(dict(name="deploy (quiz)", status="queued", conclusion=None))
+    estado = medir(monkeypatch, [run(jobs=jobs)])
+    assert estado["estado"] == "PUBLICADO"
+    assert estado["runs"][0]["jobs_sem_prova"] == []
+
+
+def test_job_duplicado_falha_concluida_mais_recente_reprova(monkeypatch):
+    jobs = [
+        dict(name=n, status="completed", conclusion="success")
+        for n in ["detectar", "portao-de-deploy", "deploy (quiz)"]
+    ]
+    jobs[2].update(id=10, completed_at="2026-09-26T10:00:00Z")
+    jobs.append(dict(name="deploy (quiz)", id=11, status="completed",
+                     conclusion="failure", completed_at="2026-09-26T10:01:00Z"))
+    estado = medir(monkeypatch, [run(jobs=jobs)])
+    assert estado["estado"] == "FALHA_PUBLICACAO"
+    assert "deploy (quiz)" in estado["runs"][0]["jobs_sem_prova"]
 
 
 def test_dados_admin_nao_exigem_imagem_mas_exigem_publicador(monkeypatch):

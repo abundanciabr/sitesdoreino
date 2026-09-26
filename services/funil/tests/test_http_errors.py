@@ -2,7 +2,7 @@ import json
 import re
 
 import pytest
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.test import Client, RequestFactory, override_settings
 from django.urls import path
 
@@ -191,7 +191,25 @@ def _falhar(request):
     raise RuntimeError("falha interna com detalhe que não deve aparecer")
 
 
-urlpatterns = [path("falha-real/", _falhar)]
+def _nao_encontrado_da_api(request):
+    return HttpResponse(
+        b'{"detail":"Not found"}',
+        status=404,
+        content_type="application/json",
+    )
+
+
+def _nao_encontrado_por_excecao(request):
+    raise Http404("not found")
+
+
+urlpatterns = [
+    path("falha-real/", _falhar),
+    path("api/erro-excecao/", _nao_encontrado_por_excecao),
+    path("interno/erro-excecao/", _nao_encontrado_por_excecao),
+]
+urlpatterns.append(path("api/erro-proprio/", _nao_encontrado_da_api))
+handler404 = "site_errors.handlers.page_not_found_shared"
 handler500 = "site_errors.handlers.server_error_shared"
 
 
@@ -216,6 +234,67 @@ def test_excecao_real_permanece_500_e_nao_exibe_detalhes(caplog, rede, sem_conta
     assert evento["status"] == 500
     assert evento["reference_id"] == resposta["X-Request-ID"]
     assert "token" not in evento["path"]
+
+
+@pytest.mark.parametrize(
+    ("caminho", "json_esperado"),
+    [
+        ("/api", True),
+        ("/api/", True),
+        ("/api/rota-ausente", True),
+        ("/interno/rota-ausente", False),
+        ("/webhooks/rota-ausente", False),
+        ("/static/rota-ausente", False),
+        ("/leads", False),
+    ],
+)
+def test_rota_sem_html_inexistente_responde_sem_html_pelo_handler_real(
+    caminho, json_esperado, rede, sem_contagem
+):
+    with override_settings(ROOT_URLCONF=__name__, DEBUG=False):
+        resposta = Client().get(caminho, HTTP_HOST=HOST_MESH)
+
+    assert resposta.status_code == 404
+    assert b"<html" not in resposta.content.lower()
+    assert resposta["X-Request-ID"].startswith("ERR-404-")
+    assert resposta["Cache-Control"] == "no-store"
+    if json_esperado:
+        assert resposta["Content-Type"].startswith("application/json")
+        assert resposta.json() == {"detail": "Not found"}
+    else:
+        assert resposta.content == b""
+        assert resposta["Content-Type"].startswith("text/plain")
+
+
+def test_404_de_view_api_mantem_resposta_propria(rede, sem_contagem):
+    with override_settings(ROOT_URLCONF=__name__, DEBUG=False):
+        resposta = Client().get("/api/erro-proprio/", HTTP_HOST=HOST_MESH)
+
+    assert resposta.status_code == 404
+    assert resposta.content == b'{"detail":"Not found"}'
+    assert resposta["Content-Type"].startswith("application/json")
+
+
+@pytest.mark.parametrize(
+    ("caminho", "json_esperado"),
+    [("/api/erro-excecao/", True), ("/interno/erro-excecao/", False)],
+)
+def test_http404_de_view_real_respeita_classificacao_de_rota_sem_html(
+    caminho, json_esperado, rede, sem_contagem
+):
+    with override_settings(ROOT_URLCONF=__name__, DEBUG=False):
+        resposta = Client().get(caminho, HTTP_HOST=HOST_MESH)
+
+    assert resposta.status_code == 404
+    assert b"<html" not in resposta.content.lower()
+    assert resposta["X-Request-ID"].startswith("ERR-404-")
+    assert resposta["Cache-Control"] == "no-store"
+    if json_esperado:
+        assert resposta["Content-Type"].startswith("application/json")
+        assert resposta.json() == {"detail": "Not found"}
+    else:
+        assert resposta.content == b""
+        assert resposta["Content-Type"].startswith("text/plain")
 
 
 def test_contador_incrementa_e_define_ttl_ao_iniciar(monkeypatch):
