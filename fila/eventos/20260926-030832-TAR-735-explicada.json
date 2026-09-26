@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-030832-TAR-735-explicada",
+  "tarefa": "TAR-735",
+  "evento": "explicada",
+  "quando": "2026-09-26T03:08:32.498488+00:00",
+  "quem": "Frente independente real do objetivo Appmax; pendência TAR-711 e entrega técnica TAR-731; autorização do mantenedor em 26/09/2026: Tudo do Appmax liberado",
+  "o_que_e": "A operação Pix hoje exige uma referência e só procura os últimos quinze minutos, então uma tentativa antiga pode ficar sem classificação mesmo quando nenhuma compra nova deve ser enviada.",
+  "o_que_muda": "A equipe consegue identificar uma única tentativa histórica ou recebe uma impossibilidade explícita, sempre em leitura protegida e sem repetir cobrança.",
+  "exemplo": "Uma falha Pix de ontem sem referência mostra candidatos opacos e seus horários; se houver dois candidatos, a operação informa duplicidade e não escolhe nenhum.",
+  "importancia": 90
+}

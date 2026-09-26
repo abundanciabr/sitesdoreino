@@ -1,0 +1,19 @@
+{
+  "arquivo": "20260926-031929-TAR-735-checkpoint",
+  "tarefa": "TAR-735",
+  "evento": "checkpoint",
+  "quando": "2026-09-26T03:19:29.701327+00:00",
+  "quem": "despacho-ci-appmax-pix-historico",
+  "plano": "Frente Appmax com 4 frentes legítimas identificadas: TAR-730, TAR-731, TAR-732 e TAR-735; 17 das 21 solicitadas permanecem sem independência real por serem aceites coesos existentes, dependências, prova externa ou autoridade financeira.",
+  "ultimo_avanco": "TAR-735 criada, reivindicada e contrato fechado; baseline focal ci/test_operacoes_vps.py medido em 52 passed, Black em 2 arquivos PASS e fila válida.",
+  "proxima_acao": "Adicionar testes vermelhos para referência opcional, descoberta histórica limitada e classificação fechada; depois implementar somente leitura nos caminhos contratados.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_operacoes_vps.py -q: 52 passed; python -m black --check ci/operacoes_vps.py ci/tests/test_operacoes_vps.py: 2 files unchanged; python ci/fila.py validar: Fila válida"
+  ],
+  "contexto": {
+    "bancada": "C:\\Users\\davia\\abundanciabr\\wt-ci-appmax-pix-historico",
+    "branch": "agent/ci/appmax-pix-historico",
+    "frentes_legitimas": 4,
+    "frentes_faltantes": 17
+  }
+}
