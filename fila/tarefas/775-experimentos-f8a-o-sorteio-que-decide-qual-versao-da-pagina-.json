@@ -1,0 +1,19 @@
+{
+  "arquivo": "775-experimentos-f8a-o-sorteio-que-decide-qual-versao-da-pagina-",
+  "id": "TAR-775",
+  "titulo": "Experimentos F8a: o sorteio que decide qual versão da página cada visitante vê",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "PR integrado com services/funil/apps/core/sorteio.py e testes de determinismo, distribuição 50/50 e 90/10, independência entre experimentos, A/A com qui-quadrado sem alarme e mutação da fórmula ficando vermelha",
+  "despacho": "Entregue só o módulo puro services/funil/apps/core/sorteio.py e seus testes, pela fórmula do desenho comum do sistema de experimentos: sha256 de experimento_id:visitor_id, balde em 10000, variantes ordenadas por variante_id, peso acumulado; entrada inválida devolve None com log de erro; abra o PR com make pr.",
+  "origem": "sessão do mantenedor de 26/09/2026 sobre o sistema de experimentos",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
