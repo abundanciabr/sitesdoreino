@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224658-TAR-778-explicada",
+  "tarefa": "TAR-778",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:46:58.334026+00:00",
+  "quem": "sessão de 26/09/2026, frente F9d do sistema de experimentos, parte do aprendizado",
+  "o_que_e": "O laboratório só mostra experimentos que um robô escreveu no livro por PR. A tela de administração não tem como escrever no livro sozinha.",
+  "o_que_muda": "Cada teste de página passaria a deixar no livro a aposta feita antes e o resultado depois, sem depender de um robô lembrar de escrever.",
+  "exemplo": "É como o caderno da cozinha: hoje só o cozinheiro de plantão escreve nele; a mudança deixaria a própria balança anotar o peso.",
+  "importancia": 50
+}
