@@ -1,0 +1,21 @@
+{
+  "arquivo": "736-ler-pedido-pix-appmax-existente-com-prova-autenticada",
+  "id": "TAR-736",
+  "titulo": "Ler pedido Pix Appmax existente com prova autenticada",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-735"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com suíte focal, guardas de mutação, e uma leitura única publicada com saída sanitizada da referência SHA conhecida",
+  "despacho": "Nova frente Appmax para leitura autenticada de pedido Pix existente. Depende de TAR-735 aceita e não reabre TAR-735 nem TAR-711. A descoberta única 36240353637 encontrou oito candidatas pendentes, sem QR e com motivo indisponivel; a nova interface produz prova GET e QR ausente sem afirmar que alguma candidata é a compra original da TAR-711.\n\nEntrega exclusiva: operação fechada appmax-pix-pedido em ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py e somente a descrição de referencia em .github/workflows/operacoes-vps.yml se necessária. TAR, eventos e recibo próprios. Não editar pagamentos, checkout, admin, contratos, migrations ou reconciliar Pix.\n\nReferencia SHA obrigatória seleciona exatamente um pedido existente. Consulta no máximo um pedido via AppmaxClient.consultar_pedido(order_id), usando o GET existente, sem divulgar IDs, QR, payload ou PII. Validar identidade, método Pix, valor, status, presença, validade e vencimento do QR por booleanos e valores conferidos. Se o formato não provar um vínculo, responder não medido com ação; não inferir.\n\nAntes de banco ou API, exigir APPMAX_AUTH_URL e APPMAX_API_URL nos dois URLs oficiais sandbox. Restringir banco a sete dias e cem registros, provider Appmax, site Meshcraft e método Pix. Zero, múltiplas candidatas ou formato inesperado falham fechado. GET autenticado pode renovar OAuth pelo cliente existente; nenhum POST financeiro, create, refund, save, update, delete ou reconciliação.\n\nDiagnóstico somente nas classes vazio, diagnostico, status_conciliado e outro_codigo. Nunca divulgar reason livre nem dizer que indisponivel prova perda. Não implementar recuperação QR em navegador nem mudança de estado.\n\nAceite: testes executam o programa remoto gerado com fake Django e fake client, recusam produção antes do ORM/API, validam endpoint GET e método, recusam respostas sem identidade/método/valor/QR válidos, e guardas medem baseline PASS, mutação FAIL e restauração PASS. Após integração, a sessão responsável executa exatamente uma leitura da candidata conhecida por hash 10c61b9551cb7b0d203e687711bc129fc399c8d06618466629f2452d5dffef4f, criada em 25/09 15:33:01 UTC, sem declarar que é a compra original.\n\nAutorização técnica: Tudo do Appmax liberado. Nenhum dinheiro real ou nova oferta. Modelo recomendado gpt-5.6-sol e esforço medium, conforme economia da fábrica.",
+  "origem": "continuação técnica Appmax autorizada pelo mantenedor em 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
