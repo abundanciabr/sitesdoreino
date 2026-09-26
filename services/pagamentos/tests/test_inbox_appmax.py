@@ -70,7 +70,6 @@ def _aviso_pix(**pix: Any) -> dict[str, Any]:
         "data": {
             "order_id": 3531,
             "payment_info": {"pix": pix},
-            "card": {"number": "4111111111111111", "cvv": "321"},
             "unknown": {"secret": "nao guardar"},
         },
     }
