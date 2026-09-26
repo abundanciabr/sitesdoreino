@@ -30,6 +30,7 @@ from apps.core.clients import (
 )
 from apps.core import telemetria, ver_como
 from apps.core.middleware import limpar_cache_de_avisos
+from apps.core.visitante import COOKIE, id_valido
 from apps.core.notificacoes import (
     buscar_avisos,
     aviso_para_tela,
@@ -342,6 +343,23 @@ def pagina_de_oferta(request):
     if oferta and not any(bloco["nome"] == "oferta" for bloco in blocos):
         blocos.append(_bloco_vazio_da_oferta())
 
+    for bloco in blocos:
+        bloco["cta_medido"] = _cta_medido(bloco, offer_slug if oferta else "")
+    contexto_telemetria = (
+        telemetria.contexto_da_pagina(
+            site["id"],
+            pagina,
+            [bloco["nome"] for bloco in blocos],
+            [
+                (bloco["nome"], "cta_texto", bloco["cta_medido"])
+                for bloco in blocos
+                if bloco["cta_medido"]
+            ],
+        )
+        if blocos
+        else ""
+    )
+
     query = urlencode(_utm_da_requisicao(request))
     resposta = render(
         request,
@@ -349,6 +367,7 @@ def pagina_de_oferta(request):
         {
             "site": site,
             "blocos": blocos,
+            "contexto_telemetria": contexto_telemetria,
             "oferta": oferta,
             "preco_formatado": (
                 f"{oferta['price_cents'] / 100:.2f}".replace(".", ",") if oferta else ""
@@ -362,6 +381,34 @@ def pagina_de_oferta(request):
     )
     _medir_visita(request, pagina, offer_slug)
     return resposta
+
+
+def _destino_interno(destino: str) -> bool:
+    """Âncora desta página ou caminho deste host. Nunca outro domínio.
+
+    Só o prefixo decide, sem `urlsplit`: um endereço malformado vindo do
+    catálogo não pode derrubar a renderização da página.
+    """
+    return destino.startswith("#") or (
+        destino.startswith("/") and not destino.startswith(("//", "/\\"))
+    )
+
+
+def _cta_medido(bloco: dict, offer_slug: str) -> str:
+    """O destino do botão desta seção que a telemetria mede, ou `""`.
+
+    Espelha o que `oferta.html` desenha: o botão de compra da seção `oferta`
+    leva ao checkout, e o do cubo leva ao destino escrito ou à âncora da
+    oferta. O destino medido é o CAMINHO, sem a UTM da visita, porque o
+    contrato pede o endereço como a página o escreveu. Botão para fora do host
+    não é medido: o endpoint só aceita o que está aqui.
+    """
+    if bloco["nome"] == "oferta":
+        return f"/checkout/{offer_slug}/" if offer_slug else ""
+    if bloco["nome"] == "cubo" and bloco["cta_texto"]:
+        destino = bloco["cta_destino"] or "#a-oferta"
+        return destino if _destino_interno(destino) else ""
+    return ""
 
 
 def _destino_da_flp(destino: str, request) -> str:
@@ -1118,7 +1165,119 @@ def capturar_lead(request):
         "utm": corpo.get("utm") or {},
     }
     resultado = LeadsClient().upsert_lead(payload)
+    _medir_lead(request, corpo.get("contexto"), resultado)
     return JsonResponse(resultado, status=200)
+
+
+def _medir_lead(request, token, resultado) -> None:
+    """Publica `funil.lead-capturado` quando o lead nasceu numa página medida.
+
+    Só depois de a `leads` devolver o `lead_id`, que é o que o contrato manda
+    carregar. Sem contexto assinado não há página nem versão a declarar, e o
+    fato não é inventado: a vitrine de `landing.html`, único formulário que
+    posta aqui hoje, não é página do catálogo e não manda contexto.
+    """
+    contexto = telemetria.ler_contexto(token, request.site["id"])
+    lead_id = resultado.get("lead_id") if isinstance(resultado, dict) else None
+    visitante = id_valido(request.COOKIES.get(COOKIE, ""))
+    if not (contexto and isinstance(lead_id, str) and lead_id and visitante):
+        return
+    telemetria.publicar(
+        "funil.lead-capturado",
+        1,
+        {
+            "site_id": request.site["id"],
+            "visitor_id": visitante,
+            "pagina_slug": contexto["p"],
+            "pagina_version": contexto["v"],
+            "lead_id": lead_id,
+        },
+        event_id=telemetria.id_do_fato(
+            contexto["c"], visitante, "lead-capturado", lead_id
+        ),
+    )
+
+
+#: O maior fato que o navegador manda cabe folgado nisto; corpo maior é lixo.
+TETO_DO_FATO_DO_NAVEGADOR = 2048
+
+#: Os campos de cada fato, e nenhum outro. `visitor_id` fica de fora de
+#: propósito: quem é o visitante o servidor lê do cookie, nunca do corpo.
+CAMPOS_DO_FATO = {
+    "secao-vista": {"contexto", "evento", "secao"},
+    "cta-clicado": {"contexto", "evento", "secao", "slot", "destino"},
+}
+
+
+@require_POST
+def telemetria_do_navegador(request):
+    """`POST /telemetria`: seção vista e clique no botão, contados pela página.
+
+    Corpo, em JSON (o `sendBeacon` o manda como texto puro, e tanto faz):
+    `{"contexto", "evento": "secao-vista", "secao"}` ou
+    `{"contexto", "evento": "cta-clicado", "secao", "slot", "destino"}`.
+    `contexto` é o texto assinado que a própria página entregou ao script.
+
+    **Fail-open, sempre.** Fato aceito é 204, publicado ou não: sem Redis,
+    com Redis fora ou sem cookie de visitante, a resposta é a mesma e rápida,
+    porque medição pode falhar e a página não. Corpo que não é o que a página
+    assinou é 400. Nenhum caminho aqui chega a 500.
+
+    **CSRF: a defesa é o contexto assinado, não um token de formulário.** O
+    `sendBeacon` não manda cabeçalho, e o que um POST forjado conseguiria é só
+    medir: sem o contexto que o servidor assinou para este site nada é aceito,
+    e o cookie `SameSite=Lax` do visitante não viaja num POST de outro site,
+    então nada é publicado em nome de ninguém.
+
+    Rota de MÁQUINA (`middleware.CAMINHOS_DE_MAQUINA`): resolve o site, nunca
+    se localiza e nunca sorteia visitante. Navegador sem cookie não ganha um
+    número novo aqui, porque um fato de um visitante que nunca viu a página
+    seria um fato inventado.
+    """
+    if len(request.body) > TETO_DO_FATO_DO_NAVEGADOR:
+        return HttpResponseBadRequest("fato grande demais")
+    try:
+        corpo = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return HttpResponseBadRequest("o corpo não é JSON")
+    evento = corpo.get("evento") if isinstance(corpo, dict) else None
+    campos = CAMPOS_DO_FATO.get(evento) if isinstance(evento, str) else None
+    if campos is None or set(corpo) != campos:
+        return HttpResponseBadRequest(
+            "fato desconhecido ou com campos fora do contrato"
+        )
+
+    contexto = telemetria.ler_contexto(corpo["contexto"], request.site["id"])
+    if contexto is None:
+        return HttpResponseBadRequest("contexto que esta página não assinou")
+    if evento == "secao-vista":
+        partes = [corpo["secao"]]
+        aceito = corpo["secao"] in contexto["e"]
+    else:
+        partes = [corpo["secao"], corpo["slot"], corpo["destino"]]
+        aceito = partes in contexto["b"]
+    if not aceito:
+        return HttpResponseBadRequest("seção ou botão que esta página não desenhou")
+
+    visitante = id_valido(request.COOKIES.get(COOKIE, ""))
+    if visitante:
+        dados = {
+            "site_id": request.site["id"],
+            "visitor_id": visitante,
+            "pagina_slug": contexto["p"],
+            "pagina_version": contexto["v"],
+            "secao": corpo["secao"],
+        }
+        if evento == "cta-clicado":
+            dados["slot"] = corpo["slot"]
+            dados["destino"] = corpo["destino"]
+        telemetria.publicar(
+            f"funil.{evento}",
+            1,
+            dados,
+            event_id=telemetria.id_do_fato(contexto["c"], visitante, evento, *partes),
+        )
+    return HttpResponse(status=204)
 
 
 @require_http_methods(["GET", "POST"])

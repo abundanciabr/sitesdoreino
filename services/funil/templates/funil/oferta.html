@@ -1,4 +1,5 @@
 {% extends "base_mobile.html" %}
+{% load static %}
 <!-- templates/funil/oferta.html, a pagina de vendas.
 
      A heranca do base_mobile fica na linha 1 por lei desta celula: qualquer
@@ -55,14 +56,14 @@
   <p class="preco">{{ bloco.slots.preco_texto }}</p>{% elif oferta %}
   <p class="preco">R$ {{ preco_formatado }}</p>{% endif %}{% if bloco.slots.parcelamento %}
   <p class="parcelamento">{{ bloco.slots.parcelamento }}</p>{% endif %}{% if url_checkout %}
-  <a class="cta" href="{{ url_checkout }}">{% if bloco.cta_texto %}{{ bloco.cta_texto }}{% else %}Quero comprar{% endif %}</a>{% endif %}{% if bloco.prova %}
+  <a class="cta" href="{{ url_checkout }}"{% if bloco.cta_medido %} data-slot="cta_texto" data-destino="{{ bloco.cta_medido }}"{% endif %}>{% if bloco.cta_texto %}{{ bloco.cta_texto }}{% else %}Quero comprar{% endif %}</a>{% endif %}{% if bloco.prova %}
   <p class="prova">{{ bloco.prova }}</p>{% endif %}
 </section>{% elif bloco.nome == "cubo" %}
 <section class="card cubo oferta-secao" data-secao="cubo">
   {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt="">{% endif %}
   {% if bloco.headline %}<h1>{{ bloco.headline }}</h1>{% endif %}
   {% for texto in bloco.paragrafos %}<p>{{ texto|linebreaksbr }}</p>{% endfor %}{% if bloco.cta_texto %}
-  <a class="cta" href="{% if bloco.cta_destino %}{{ bloco.cta_destino }}{% else %}#a-oferta{% endif %}">{{ bloco.cta_texto }}</a>{% endif %}
+  <a class="cta" href="{% if bloco.cta_destino %}{{ bloco.cta_destino }}{% else %}#a-oferta{% endif %}"{% if bloco.cta_medido %} data-slot="cta_texto" data-destino="{{ bloco.cta_medido }}"{% endif %}>{{ bloco.cta_texto }}</a>{% endif %}
 </section>{% else %}
 <section class="card oferta-secao" data-secao="{{ bloco.nome }}">
   {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt="">{% endif %}
@@ -77,3 +78,9 @@
   <p>O endereço está no ar e funcionando. O conteúdo é escrito no editor de páginas e aparece aqui assim que a página for publicada de novo.</p>
 </div>{% endfor %}{% endif %}
 {% endblock %}
+{% block script_extra %}{% if contexto_telemetria %}{% comment %}
+O contexto assinado pelo servidor vai no proprio script: e o que o endpoint de
+telemetria confere antes de aceitar uma secao vista ou um clique. O cookie do
+visitante nao e lido aqui, porque e HttpOnly; o servidor o le no POST.
+{% endcomment %}
+<script src="{% static 'funil/telemetria.js' %}" data-contexto="{{ contexto_telemetria }}" defer></script>{% endif %}{% endblock %}

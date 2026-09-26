@@ -49,6 +49,7 @@ import os
 import uuid
 
 import redis
+from django.core import signing
 from django.utils import timezone
 
 logger = logging.getLogger("funil.telemetria")
@@ -78,8 +79,12 @@ def _conectar(url: str) -> "redis.Redis":
     return cliente
 
 
-def publicar(nome: str, versao: int, dados: dict) -> bool:
+def publicar(nome: str, versao: int, dados: dict, event_id: str = "") -> bool:
     """Empurra um fato ao stream `eventos.<nome>`. Devolve se ele saiu.
+
+    `event_id` vazio sorteia um id novo, que é o certo para o fato que só o
+    servidor vê (a visita). O fato que chega do navegador passa o id derivado
+    por `id_do_fato`, para que o reenvio do mesmo fato deduplique em quem consome.
 
     Devolver `False` nunca é motivo para quem chama fazer alguma coisa: o
     retorno existe para o teste, e para o log dizer o que não saiu.
@@ -111,7 +116,7 @@ def publicar(nome: str, versao: int, dados: dict) -> bool:
     envelope = {
         "event": nome,
         "version": versao,
-        "event_id": str(uuid.uuid4()),
+        "event_id": event_id or str(uuid.uuid4()),
         "occurred_at": timezone.now().isoformat(),
         "data": dados,
     }
@@ -124,6 +129,69 @@ def publicar(nome: str, versao: int, dados: dict) -> bool:
         logger.exception("%s: não deu para publicar; a visita não foi medida", nome)
         return False
     return True
+
+
+#: O sal que separa esta assinatura de qualquer outra feita com a mesma chave:
+#: um contexto de telemetria nunca serve como outro token da célula, nem o
+#: contrário.
+SAL_DO_CONTEXTO = "funil.telemetria.contexto"
+
+#: Uma visita. Aba esquecida aberta de ontem não mede mais nada, e um contexto
+#: copiado de uma página não vira um gerador eterno de fatos.
+VALIDADE_DO_CONTEXTO = 60 * 60 * 24
+
+#: Espaço de nomes dos ids derivados. Fixo para sempre: trocá-lo mudaria o id
+#: do mesmo fato e desfaria a deduplicação de quem já guardou o antigo.
+_ESPACO_DOS_FATOS = uuid.UUID("5d0f3a9e-7c41-4b8e-9a26-3e1f0c7b4d52")
+
+
+def contexto_da_pagina(site_id: str, pagina: dict, secoes: list, ctas: list) -> str:
+    """O que a página mostrou, assinado pelo servidor na renderização.
+
+    É a única fonte de verdade do endpoint `/telemetria`: o navegador devolve
+    este texto e o servidor só aceita a seção que ele mesmo desenhou e o botão
+    que ele mesmo mediu, com o destino que ele mesmo escreveu. Nada do que o
+    navegador escreve fora daqui vira fato. `c` é o id desta carga da página,
+    sorteado aqui, e é dele que nasce o id estável de cada fato.
+    """
+    return signing.dumps(
+        {
+            "s": site_id,
+            "p": pagina["slug"],
+            "v": pagina["version"],
+            "c": uuid.uuid4().hex,
+            "e": list(secoes),
+            "b": [list(cta) for cta in ctas],
+        },
+        salt=SAL_DO_CONTEXTO,
+        compress=True,
+    )
+
+
+def ler_contexto(token, site_id: str) -> dict | None:
+    """O contexto, se foi assinado aqui, está na validade e é deste site."""
+    if not isinstance(token, str) or not token:
+        return None
+    try:
+        contexto = signing.loads(
+            token, salt=SAL_DO_CONTEXTO, max_age=VALIDADE_DO_CONTEXTO
+        )
+    except signing.BadSignature:
+        return None
+    if contexto.get("s") != site_id:
+        return None
+    return contexto
+
+
+def id_do_fato(carga: str, visitor_id: str, *partes: str) -> str:
+    """O `event_id` do fato que veio do navegador: o mesmo fato, o mesmo id.
+
+    Deriva da carga da página, do visitante e do que aconteceu. O navegador que
+    reenvia a mesma seção da mesma carga gera o mesmo id e quem consome conta
+    uma vez só. O visitante entra na conta porque a página pode ser servida de
+    cache a duas pessoas com a mesma carga, e os fatos delas não podem colidir.
+    """
+    return str(uuid.uuid5(_ESPACO_DOS_FATOS, ":".join((carga, visitor_id, *partes))))
 
 
 def dispositivo_do_agente(user_agent: str) -> str:
