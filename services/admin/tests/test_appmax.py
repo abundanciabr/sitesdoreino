@@ -105,6 +105,7 @@ def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     assert "TAR-555" in html
     assert "TAR-560" in html
     assert "TAR-711" in html
+    assert "TAR-735" in html
     assert "TAR-731" in html
     assert "TAR-730" in html
     assert "TAR-732" in html
