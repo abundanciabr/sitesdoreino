@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-223100-TAR-766-explicada",
+  "tarefa": "TAR-766",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:31:00.781272+00:00",
+  "quem": "sessão do mantenedor de 26/09/2026 sobre comentário de template vazando na tela",
+  "o_que_e": "O guarda que impede comentário de programador de aparecer nas páginas já está no ar para todas as partes do site, mas o livro ainda diz que a integração não foi conferida.",
+  "o_que_muda": "O painel passa a mostrar a entrega como integrada, com a prova do merge.",
+  "exemplo": "É carimbar o protocolo depois que o documento foi aceito no cartório.",
+  "importancia": 10
+}
