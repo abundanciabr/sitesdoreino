@@ -1,0 +1,70 @@
+{
+  "arquivo": "20260926-032136-TAR-730-contrato_execucao",
+  "tarefa": "TAR-730",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T03:21:36.810614+00:00",
+  "quem": "agent/admin/vista-appmax",
+  "contrato": {
+    "plano": "docs/decisoes/ROTEIRO-APPMAX-ATE-A-CONCLUSAO.md#Mecanismo-de-visibilidade",
+    "versao": 3,
+    "objetivo": "Entregar a vista Appmax calculada da fila no Admin.",
+    "entregaveis": [
+      "services/admin/apps/core/appmax.py",
+      "services/admin/apps/core/templates/admin/appmax.html",
+      "services/admin/config/urls.py",
+      "services/admin/apps/core/moldura.py",
+      "services/admin/tests/test_appmax.py",
+      "painel/mapa-do-site.json"
+    ],
+    "escopo_incluido": [
+      "Ler a mesma fila/estados.json do quadro dos robos.",
+      "Mostrar a sequencia Appmax com tarefas concluídas e canceladas, substitutas, dependencias, provas e horario.",
+      "Distinguir retrato publicado de consulta viva.",
+      "Mostrar nao medido e recarregar quando a fonte faltar.",
+      "Provar transicoes reivindicada, bloqueada, devolvida e concluída em fixtures.",
+      "Registrar a rota appmax/ no mapa do site com endereco canonico /admin/appmax/.",
+      "Expor a rota appmax/ por services/admin/config/urls.py e integrá-la à moldura em services/admin/apps/core/moldura.py."
+    ],
+    "nao_objetivos": [
+      "Nao alterar services/pagamentos, services/checkout, contratos, migracoes, precos ou dinheiro.",
+      "Nao gravar status nem duplicar a maquina de estados da fila.",
+      "Nao incluir arquivos fora da propriedade declarada."
+    ],
+    "restricoes": [
+      "Escrita exclusiva nos arquivos services/admin/apps/core/appmax.py, services/admin/apps/core/templates/admin/appmax.html, services/admin/config/urls.py, services/admin/apps/core/moldura.py, services/admin/tests/test_appmax.py, painel/mapa-do-site.json e fila/eventos da TAR-730.",
+      "Admin CODEOWNERS sem protecao adicional na regra atual."
+    ],
+    "decisoes_aprovadas": [
+      "modelo_recomendado: gpt-6-luna",
+      "esforco_recomendado: high",
+      "autorizacao_mantenedor: resposta literal em 2026-09-26: Tudo do Appmax liberado. Autoriza a inclusao limitada de /admin/appmax/ no painel/mapa-do-site.json, atualizacao de contrato e reserva exclusiva da interface admin/appmax."
+    ],
+    "etapas": [
+      "Implementar leitor e contexto da vista.",
+      "Implementar template e recarregamento.",
+      "Adicionar fixtures e testes vermelho-verde.",
+      "Validar suite admin, guardas e publicacao."
+    ],
+    "criterios_entrada": [
+      "TAR-730 reivindicada no ramo agent/admin/vista-appmax.",
+      "PR #2096 em rascunho."
+    ],
+    "criterios_aceite": [
+      "A mesma estados.json é usada pelo leitor.",
+      "Tarefas concluídas e canceladas permanecem visíveis e cancelada mostra substituta.",
+      "Dependencia impeditiva e evidencia de conclusao sao legiveis.",
+      "Retrato publicado e consulta viva exibem fontes e horarios distintos.",
+      "Falha da fonte nunca vira lista vazia: mostra nao medido e recarregar.",
+      "Fixtures mostram reivindicada, bloqueada, devolvida e concluída apos atualizacao."
+    ],
+    "evidencias_exigidas": [
+      "Testes da vista Appmax PASS.",
+      "Suite admin PASS.",
+      "Prova de guardas por mutacao PASS.",
+      "URL /admin/appmax/ conferida apos publicacao."
+    ],
+    "condicao_encerramento": "PR integrado, vista publicada e URL conferida com os criterios de aceite medidos.",
+    "limites_autonomia": "Pode decidir implementacao e nomes somente nos arquivos services/admin/apps/core/appmax.py, services/admin/apps/core/templates/admin/appmax.html, services/admin/config/urls.py, services/admin/apps/core/moldura.py, services/admin/tests/test_appmax.py, painel/mapa-do-site.json e fila/eventos da TAR-730; qualquer mudanca fora desses caminhos retorna a sessao responsavel.",
+    "acoes_do_mantenedor": "Nenhuma para esta entrega; acesso real, dinheiro e contratos permanecem fora do escopo."
+  }
+}
