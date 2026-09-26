@@ -957,7 +957,7 @@ def _resposta_appmax_pix_pedido(**alteracoes):
         "customer": {"id": 2023},
         "payment": {
             "method": "pix",
-            "pix_qrcode": "aW1hZ2Vt",
+            "pix_qrcode": "data:image/png;base64,aW1hZ2Vt",
             "pix_emv": "000201ABC",
             "pix_expiration_date": "2026-09-26 13:00:00",
         },
