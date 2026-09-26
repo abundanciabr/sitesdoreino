@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-225512-TAR-781-explicada",
+  "tarefa": "TAR-781",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:55:12.172262+00:00",
+  "quem": "Rito comum das frentes do sistema de experimentos, frente PRIV, 26/09/2026",
+  "o_que_e": "nao existia guarda que impedisse a metricas de assinar, no contrato congelado, um stream com campo pessoal (email, nome, telefone, cpf...)",
+  "o_que_muda": "todo stream novo que a metricas passar a assinar tem o contrato conferido contra dado pessoal antes de virar fato no livro; um contrato aditivo com email opcional nao passa mais despercebido",
+  "exemplo": "o guarda ja pegou um caso real: quiz.completado.v1 leva data.lead.email/name/phone e esta assinado hoje (TAR-779 aberta para o conserto)",
+  "importancia": 60
+}
