@@ -145,7 +145,7 @@ def test_api_js_nao_hardcoda_a_base(client, rede, env_de_producao):
     assert b'_base: "/api/checkout"' not in corpo
 
 
-def test_falha_do_pedido_expoe_so_referencia_opaca_e_proibe_reenvio(
+def test_js_de_dados_servido_contem_calculo_da_referencia_opaca(
     client, rede, env_de_producao
 ):
     resp = client.get("/static/checkout/dados.js", HTTP_HOST=HOST_A)

@@ -71,12 +71,14 @@ function dadosIsland() {
         // hardcoded perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
         window.location = `../pedido/${pedido.order_id}/${destino}/`;
       } catch (e) {
-        let referencia = "";
-        try {
-          referencia = await this.referenciaDiagnostico();
-        } catch (_) {}
-        this.erro = "Não foi possível concluir o pedido. Não reenvie esta compra.";
-        if (referencia) this.erro += ` Referência: ${referencia}`;
+        this.erro = "Não foi possível concluir o pedido. Confira os dados e tente novamente.";
+        if (this.appmaxPix && this.method === "pix") {
+          this.erro = "Não foi possível concluir o pedido. Não reenvie esta compra.";
+          try {
+            const referencia = await this.referenciaDiagnostico();
+            this.erro += ` Referência: ${referencia}`;
+          } catch (_) {}
+        }
         this.enviando = false;
       }
     },
