@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.exceptions import RequestDataTooBig
@@ -88,6 +90,82 @@ def webhook_mp_card(request: HttpRequest) -> dict[str, Any]:
 
 def _resposta_appmax(detalhe: str, status: int) -> JsonResponse:
     return JsonResponse({"detail": detalhe}, status=status)
+
+
+def _texto_pix_valido(valor: Any, *, limite: int) -> bool:
+    return (
+        isinstance(valor, str)
+        and 0 < len(valor) <= limite
+        and not any(ord(caractere) < 32 or ord(caractere) == 127 for caractere in valor)
+    )
+
+
+def _url_qr_pix_valida(valor: Any) -> bool:
+    if not _texto_pix_valido(valor, limite=2048):
+        return False
+    try:
+        url = urlparse(valor)
+    except ValueError:
+        return False
+    return (
+        url.scheme == "https"
+        and bool(url.hostname)
+        and not url.username
+        and not url.password
+        and not any(caractere.isspace() for caractere in valor)
+    )
+
+
+def _expiracao_pix_valida(valor: Any) -> bool:
+    if not _texto_pix_valido(valor, limite=64):
+        return False
+    try:
+        instante = datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return instante.tzinfo is not None and instante.utcoffset() is not None
+
+
+def _payload_pix_preservavel(
+    envelope: dict[str, Any], *, order_id: int, tentativa_pix: bool
+) -> dict[str, Any]:
+    minimo = {"data": {"order_id": order_id}}
+    if (
+        not tentativa_pix
+        or envelope.get("event") != "order_pix_created"
+        or envelope.get("event_type") != "order"
+    ):
+        return minimo
+    data = envelope.get("data")
+    payment_info = data.get("payment_info") if isinstance(data, dict) else None
+    pix = payment_info.get("pix") if isinstance(payment_info, dict) else None
+    if not isinstance(pix, dict):
+        return minimo
+    emv = pix.get("pix_emv")
+    qr_code = pix.get("pix_qrcode")
+    expiracao = pix.get("pix_expiration_date")
+    if not (
+        _texto_pix_valido(emv, limite=512)
+        and _url_qr_pix_valida(qr_code)
+        and _expiracao_pix_valida(expiracao)
+    ):
+        return minimo
+    return {
+        "data": {
+            "order_id": order_id,
+            "payment_info": {
+                "pix": {
+                    "pix_emv": emv,
+                    "pix_qrcode": qr_code,
+                    "pix_expiration_date": expiracao,
+                }
+            },
+        }
+    }
+
+
+def _payload_legado(payload: Any, *, order_id: int) -> bool:
+    return bool(payload == {"data": {"order_id": order_id}})
 
 
 @csrf_exempt
@@ -180,8 +258,16 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
     if len(tentativas) != 1:
         return _resposta_appmax("Pedido sem vínculo único. Confira a tentativa.", 409)
 
+    tentativa_pix = (
+        tentativas[0].intent.method == "pix"
+        and tentativas[0].intent.site_id == tentativas[0].platform_site_id
+        and tentativas[0].platform_site_id in instalacao.platform_site_ids
+    )
+    payload = _payload_pix_preservavel(
+        envelope, order_id=order_id, tentativa_pix=tentativa_pix
+    )
     with transaction.atomic():
-        _, criado = AppmaxWebhookInbox.objects.get_or_create(
+        aviso, criado = AppmaxWebhookInbox.objects.get_or_create(
             app_id=app_id,
             appmax_site_id=appmax_site_id,
             event=event.strip(),
@@ -189,9 +275,14 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
             external_order_id=str(order_id),
             defaults={
                 "platform_site_id": tentativas[0].platform_site_id,
-                "payload": {"data": {"order_id": order_id}},
+                "payload": payload,
             },
         )
+        if not criado and payload != {"data": {"order_id": order_id}}:
+            aviso = AppmaxWebhookInbox.objects.select_for_update().get(pk=aviso.pk)
+            if _payload_legado(aviso.payload, order_id=order_id):
+                aviso.payload = payload
+                aviso.save(update_fields=["payload"])
     return JsonResponse({"status": "recebido" if criado else "ja_recebido"})
 
 

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260926-185448-TAR-744-submetida",
+  "tarefa": "TAR-744",
+  "evento": "submetida",
+  "quando": "2026-09-26T18:54:48.133146+00:00",
+  "quem": "agent/pagamentos/appmax-pix-webhook-preservacao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2110",
+  "revisao": "e678708fb494ef498bec369e1aa11a8db0985823",
+  "arvore": "c8629c3e875e438fc64012da314de7e64377b422"
+}

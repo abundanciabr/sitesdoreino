@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-045-pagamentos-pix-appmax",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "pagamentos: Pix Appmax",
+  detalhe: "Pix Appmax: tres campos, vinculo exato, legado fill-only sob lock; provas PG17, mutacao e suite.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2110. Validação local: árvore c8629c3e875e438fc64012da314de7e64377b422; commit e678708fb494ef498bec369e1aa11a8db0985823; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-744",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
