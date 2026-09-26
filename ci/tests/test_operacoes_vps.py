@@ -4,7 +4,7 @@ import json
 import re
 import builtins
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from io import StringIO
 from pathlib import Path
 import subprocess
@@ -964,6 +964,17 @@ def _executar_codigo_appmax_pix_pedido(monkeypatch, registros, resposta, urls=No
     return dados, chamadas, consultas, cliente_chamadas
 
 
+# PIX vence contra o relógio real (ci/operacoes_vps.py:555, datetime.now(utc)).
+# Data fixa no fixture reprova sozinha quando o calendário avança: armadilha
+# medida em 26/09/2026 (ci/tests/test_operacoes_vps.py::…qr_vencido).
+_PIX_EXPIRATION_FUTURA = (
+    datetime.now(timezone.utc) + timedelta(days=365)
+).strftime("%Y-%m-%d %H:%M:%S")
+_PIX_EXPIRATION_PASSADA = (
+    datetime.now(timezone.utc) - timedelta(days=7)
+).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _tentativa_appmax_pix_pedido():
     return SimpleNamespace(
         external_order_id="3531",
@@ -983,7 +994,7 @@ def _resposta_appmax_pix_pedido(**alteracoes):
             "method": "pix",
             "pix_qrcode": "data:image/png;base64,aW1hZ2Vt",
             "pix_emv": "000201ABC",
-            "pix_expiration_date": "2026-09-26 13:00:00",
+            "pix_expiration_date": _PIX_EXPIRATION_FUTURA,
         },
         "amounts": {"sub_total": 495},
     }
@@ -1069,6 +1080,25 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
     assert True
 
 
+def test_appmax_pix_pedido_qr_vencido_para_data_passada(monkeypatch):
+    tentativa = _tentativa_appmax_pix_pedido()
+    resposta = _resposta_appmax_pix_pedido(
+        payment={
+            "method": "pix",
+            "pix_qrcode": "data:image/png;base64,aW1hZ2Vt",
+            "pix_emv": "000201ABC",
+            "pix_expiration_date": _PIX_EXPIRATION_PASSADA,
+        }
+    )
+    dados, _, _, cliente_chamadas = _executar_codigo_appmax_pix_pedido(
+        monkeypatch, [tentativa], resposta
+    )
+    # guarda: ci/operacoes_vps.py:555 (qr_vencido compara com o agora real)
+    assert dados["resultado"] == "medido"
+    assert dados["qr_vencido"] is True
+    assert cliente_chamadas == [3531]
+
+
 @pytest.mark.parametrize(
     ("alteracoes", "acao"),
     [
@@ -1082,7 +1112,7 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
                     "method": "pix",
                     "pix_qrcode": "@@@",
                     "pix_emv": "000201ABC",
-                    "pix_expiration_date": "2026-09-26 13:00:00",
+                    "pix_expiration_date": _PIX_EXPIRATION_FUTURA,
                 }
             },
             "qr_nao_comprovado",
@@ -1093,7 +1123,7 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
                     "method": "pix",
                     "pix_qrcode": "data:image/png;base64,",
                     "pix_emv": "000201ABC",
-                    "pix_expiration_date": "2026-09-26 13:00:00",
+                    "pix_expiration_date": _PIX_EXPIRATION_FUTURA,
                 }
             },
             "qr_nao_comprovado",
