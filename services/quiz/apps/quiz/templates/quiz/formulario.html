@@ -130,12 +130,32 @@
         return;
       }
       if (aviso) aviso.hidden = true;
-      if (indice < passos.length - 1) mostrar(indice + 1);
+      if (indice < passos.length - 1) {
+        mostrar(indice + 1);
+        // O foco acompanha a etapa nova: sem isso o leitor de tela fica no
+        // botão e a pergunta seguinte aparece em silêncio.
+        var novo = passos[indice];
+        var campo = novo.querySelector("input:checked") || novo.querySelector("input");
+        if (campo) campo.focus();
+      }
     });
   }
 
+  var enviar = form.querySelector(".enviar");
+  var rotuloEnviar = enviar.textContent;
   form.addEventListener("submit", function () {
     enviado = true;
+    enviar.disabled = true;
+    enviar.textContent = "Calculando seu resultado…";
+  });
+
+  // Voltar do resultado pelo histórico restaura esta página da memória, com o
+  // botão ainda desligado. Restaurada assim, ela volta a aceitar o envio.
+  window.addEventListener("pageshow", function (ev) {
+    if (!ev.persisted) return;
+    enviado = false;
+    enviar.disabled = false;
+    enviar.textContent = rotuloEnviar;
   });
 
   window.addEventListener("pagehide", function () {

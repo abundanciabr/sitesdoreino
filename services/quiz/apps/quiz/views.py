@@ -191,12 +191,26 @@ def _render_formulario(
     return _escrever_cookie(resposta, request, quiz.slug, entrada)
 
 
+def _ir_ao_resultado(request, quiz, entrada, submissao):
+    destino = reverse("quiz-resultado", args=[quiz.slug])
+    resposta = redirect(f"{destino}?lead={submissao.id}")
+    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+
+
 def formulario(request, slug):
     quiz = _quiz_do_site(request, slug)
     entrada, versao = resolver_sessao(request, quiz)
     questions = versao.questions.prefetch_related("options")
 
     if request.method != "POST":
+        # Retomar uma sessão já concluída é voltar ao resultado dela. O
+        # formulário em branco pediria respostas que o reenvio idempotente
+        # (quiz + session_id) descartaria sem avisar.
+        concluida = Submission.objects.filter(
+            quiz=quiz, session_id=entrada["session_id"]
+        ).first()
+        if concluida is not None:
+            return _ir_ao_resultado(request, quiz, entrada, concluida)
         return _render_formulario(request, quiz, versao, questions, entrada)
 
     email = request.POST.get("email", "").strip()
@@ -290,9 +304,7 @@ def formulario(request, slug):
             )
             transaction.on_commit(relay_apos_commit)
 
-    destino = reverse("quiz-resultado", args=[slug])
-    resposta = redirect(f"{destino}?lead={submissao.id}")
-    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+    return _ir_ao_resultado(request, quiz, entrada, submissao)
 
 
 def resultado(request, slug):

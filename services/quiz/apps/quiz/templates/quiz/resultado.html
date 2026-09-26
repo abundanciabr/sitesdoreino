@@ -15,7 +15,9 @@
 </head>
 <body>
 <main>
-  <h1>{{ banda.title|default:submissao.result_key }}</h1>
+  {# Sem faixa (pontuação fora de todas, ou faixa removida) a pessoa não lê a
+     chave interna: as respostas estão gravadas, e é isso que se diz. #}
+  <h1>{% if banda %}{{ banda.title }}{% else %}Recebemos suas respostas{% endif %}</h1>
   {% if banda %}<p class="descricao">{{ banda.description }}</p>{% endif %}
   {# O passo seguinte é da FAIXA: quem está começando e quem está pronto para
      escalar não vão ao mesmo lugar. Faixa sem destino simplesmente não mostra
