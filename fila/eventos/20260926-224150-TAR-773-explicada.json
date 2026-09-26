@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224150-TAR-773-explicada",
+  "tarefa": "TAR-773",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:41:50.199533+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O evento funil.pagina-vista foi publicado sem que nenhuma celula o consumisse, porque a metricas assina streams por lista fechada.",
+  "o_que_muda": "Registra a licao para que a proxima decisao de arquitetura nao suponha consumo automatico de evento novo.",
+  "exemplo": "E como enviar carta para um endereco que ninguem visita: o correio entrega, ninguem le.",
+  "importancia": 40
+}
