@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       referencia:
-        description: 'SHA-256 do intent: exigido em appmax-pix, opcional em appmax-estorno; nunca informe o ID original.'
+        description: 'SHA-256 da chave idempotente: opcional em appmax-pix para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
         required: false
         default: ''
         type: string

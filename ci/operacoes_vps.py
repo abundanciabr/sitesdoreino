@@ -29,6 +29,7 @@ ESTADOS_TENTATIVA = {
     "failed",
 }
 ESTADOS_OPERACAO = {"sending", "reconciliation_required", "completed", "failed"}
+ESTADOS_OPERACAO_SAIDA = ESTADOS_OPERACAO | {"not_started"}
 MOTIVOS_APPMAX_PIX = {
     "campo_expiration_date",
     "campo_document_number",
@@ -39,7 +40,18 @@ MOTIVOS_APPMAX_PIX = {
     "sem_campo_identificavel",
     "indisponivel",
 }
+CAMPOS_CANDIDATA_APPMAX_PIX = {
+    "referencia",
+    "criada_em",
+    "tentativa",
+    "intent",
+    "motivo",
+    "qr_presente",
+    "operacoes",
+}
 SITE_MESHCRAFT = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
+APPMAX_AUTH_SANDBOX = "https://auth.sandboxappmax.com.br/oauth2/token"
+APPMAX_API_SANDBOX = "https://api.sandboxappmax.com.br"
 CAMPOS_VALOR_ESTORNO = {
     "amount",
     "value",
@@ -50,6 +62,12 @@ CAMPOS_VALOR_ESTORNO = {
     "total",
     "total_refunded",
 }
+
+
+def appmax_sandbox_configuracao_valida(auth_url, api_url):
+    return auth_url == APPMAX_AUTH_SANDBOX and api_url == APPMAX_API_SANDBOX
+
+
 FORMATO = (
     '{"estado":{{json .State.Status}},'
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
@@ -58,6 +76,7 @@ FORMATO = (
 ACOES = {
     "entrada": "Escolha uma operação e um serviço do catálogo na main.",
     "instrumento": "Confira Docker e disponibilidade da VPS pela esteira; não cole comandos no servidor.",
+    "sandbox": "A leitura foi bloqueada porque o serviço não está apontado ao sandbox. Corrija APPMAX_AUTH_URL e APPMAX_API_URL na configuração do sandbox e repita.",
     "ausente": "Confira o deploy desse serviço e corrija pelo PR e pipeline.",
     "formato": "A medição não corresponde ao protocolo; corrija o coletor por PR.",
 }
@@ -77,7 +96,7 @@ def validar(operacao, servico, permitidos, referencia=""):
     if operacao in {"appmax-pix", "appmax-estorno"} and servico != "pagamentos":
         raise Falha("entrada")
     if operacao == "appmax-pix":
-        if not re.fullmatch(r"[0-9a-f]{64}", referencia):
+        if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
             raise Falha("entrada")
     elif operacao == "appmax-estorno":
         if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
@@ -100,11 +119,13 @@ def comando(argumentos):
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
         raise Falha("instrumento") from None
     if resultado.returncode:
+        if resultado.stdout.strip() == "APPMAX_SANDBOX_REQUIRED":
+            raise Falha("sandbox")
         raise Falha("instrumento")
     return resultado.stdout
 
 
-def conferir_medicao(operacao, dados):
+def conferir_medicao(operacao, dados, referencia=""):
     if not isinstance(dados, dict):
         raise Falha("formato")
     if operacao == "estado-servico":
@@ -129,33 +150,95 @@ def conferir_medicao(operacao, dados):
         if not 0 < dados["total_bytes"] or dados["livres_bytes"] > dados["total_bytes"]:
             raise Falha("formato")
     elif operacao == "appmax-pix":
-        if set(dados) != {"tentativa", "intent", "motivo", "qr_presente", "operacoes"}:
-            raise Falha("formato")
-        if dados["tentativa"] not in ESTADOS_TENTATIVA:
-            raise Falha("formato")
-        if dados["intent"] not in {
-            "created",
-            "pending",
-            "approved",
-            "rejected",
-            "expired",
-        }:
-            raise Falha("formato")
-        if type(dados["qr_presente"]) is not bool:
-            raise Falha("formato")
-        if dados["motivo"] not in MOTIVOS_APPMAX_PIX:
-            raise Falha("formato")
-        if not isinstance(dados["operacoes"], dict) or set(dados["operacoes"]) != {
-            "customer",
-            "order",
-            "payment",
-        }:
-            raise Falha("formato")
-        if any(
-            valor not in ESTADOS_OPERACAO | {"not_started"}
-            for valor in dados["operacoes"].values()
-        ):
-            raise Falha("formato")
+        if dados.get("modo") == "descoberta":
+            if referencia:
+                raise Falha("formato")
+            if set(dados) != {"modo", "classificacao", "candidatas"}:
+                raise Falha("formato")
+            if dados["classificacao"] not in {"ausente", "unica", "multipla"}:
+                raise Falha("formato")
+            candidatas = dados["candidatas"]
+            if not isinstance(candidatas, list) or len(candidatas) > 100:
+                raise Falha("formato")
+            if dados["classificacao"] == "ausente" and candidatas:
+                raise Falha("formato")
+            if dados["classificacao"] == "unica" and len(candidatas) != 1:
+                raise Falha("formato")
+            if dados["classificacao"] == "multipla" and len(candidatas) < 2:
+                raise Falha("formato")
+            referencias = []
+            for candidata in candidatas:
+                if set(candidata) != CAMPOS_CANDIDATA_APPMAX_PIX:
+                    raise Falha("formato")
+                if not re.fullmatch(r"[0-9a-f]{64}", candidata["referencia"]):
+                    raise Falha("formato")
+                if not re.fullmatch(
+                    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
+                    candidata["criada_em"],
+                ):
+                    raise Falha("formato")
+                if candidata["tentativa"] not in ESTADOS_TENTATIVA:
+                    raise Falha("formato")
+                if candidata["intent"] not in {
+                    "created",
+                    "pending",
+                    "approved",
+                    "rejected",
+                    "expired",
+                }:
+                    raise Falha("formato")
+                if type(candidata["qr_presente"]) is not bool:
+                    raise Falha("formato")
+                if candidata["motivo"] not in MOTIVOS_APPMAX_PIX:
+                    raise Falha("formato")
+                if not isinstance(candidata["operacoes"], dict) or set(
+                    candidata["operacoes"]
+                ) != {"customer", "order", "payment"}:
+                    raise Falha("formato")
+                if any(
+                    valor not in ESTADOS_OPERACAO_SAIDA
+                    for valor in candidata["operacoes"].values()
+                ):
+                    raise Falha("formato")
+                referencias.append(candidata["referencia"])
+            if len(referencias) != len(set(referencias)):
+                raise Falha("formato")
+        else:
+            if not referencia:
+                raise Falha("formato")
+            if set(dados) != {
+                "tentativa",
+                "intent",
+                "motivo",
+                "qr_presente",
+                "operacoes",
+            }:
+                raise Falha("formato")
+            if dados["tentativa"] not in ESTADOS_TENTATIVA:
+                raise Falha("formato")
+            if dados["intent"] not in {
+                "created",
+                "pending",
+                "approved",
+                "rejected",
+                "expired",
+            }:
+                raise Falha("formato")
+            if type(dados["qr_presente"]) is not bool:
+                raise Falha("formato")
+            if dados["motivo"] not in MOTIVOS_APPMAX_PIX:
+                raise Falha("formato")
+            if not isinstance(dados["operacoes"], dict) or set(dados["operacoes"]) != {
+                "customer",
+                "order",
+                "payment",
+            }:
+                raise Falha("formato")
+            if any(
+                valor not in ESTADOS_OPERACAO_SAIDA
+                for valor in dados["operacoes"].values()
+            ):
+                raise Falha("formato")
     elif operacao == "appmax-estorno":
         if set(dados) != {
             "pedido",
@@ -261,14 +344,33 @@ def medir(operacao, servico, referencia=""):
         raise Falha("formato")
     if operacao == "appmax-pix":
         codigo = (
-            "import hashlib,json; from datetime import timedelta; from django.utils import timezone; "
-            "from pagamentos.core.models import PaymentAttempt; "
-            f"ts=list(PaymentAttempt.objects.filter(provider='appmax',platform_site_id='{SITE_MESHCRAFT}',intent__method='pix',created_at__gte=timezone.now()-timedelta(minutes=15)).select_related('intent')); "
-            f"ts=[x for x in ts if hashlib.sha256(str(x.intent.idempotency_key).encode()).hexdigest()=='{referencia}']; assert len(ts)==1; t=ts[0]; "
-            "codigos=('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel'); "
-            "bruto=t.reason or ''; motivo=next((c for c in codigos if bruto.endswith('diagnostico_'+c)),'indisponivel'); "
-            "o={x:'not_started' for x in ('customer','order','payment')}; o.update({x.operation_type:x.state for x in t.operacoes.all()}); "
-            "print(json.dumps({'tentativa':t.state,'intent':t.intent.status,'motivo':motivo,'qr_presente':bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64),'operacoes':o},sort_keys=True))"
+            "import hashlib,json\n"
+            "from datetime import timedelta\n"
+            "from django.utils import timezone\n"
+            "from django.conf import settings\n"
+            "from pagamentos.core.models import PaymentAttempt\n"
+            f"referencia = {referencia!r}\n"
+            "if not appmax_sandbox_configuracao_valida(settings.APPMAX_AUTH_URL, settings.APPMAX_API_URL):\n"
+            "    print('APPMAX_SANDBOX_REQUIRED')\n"
+            "    raise SystemExit(23)\n"
+            f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='pix', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').prefetch_related('operacoes').order_by('-created_at')[:100])\n"
+            "tentativas = [t for t in tentativas if not referencia or hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+            "codigos = ('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel')\n"
+            "def candidato(t):\n"
+            "    bruto = t.reason or ''\n"
+            "    motivo = next((c for c in codigos if bruto.endswith('diagnostico_' + c)), 'indisponivel')\n"
+            "    operacoes = {x: 'not_started' for x in ('customer', 'order', 'payment')}\n"
+            "    for operacao in t.operacoes.all():\n"
+            "        operacoes[operacao.operation_type] = operacao.state\n"
+            "    return {'referencia': hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest(), 'criada_em': t.created_at.isoformat(), 'tentativa': t.state, 'intent': t.intent.status, 'motivo': motivo, 'qr_presente': bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64), 'operacoes': operacoes}\n"
+            "if referencia:\n"
+            "    assert len(tentativas) == 1\n"
+            "    resumo = candidato(tentativas[0])\n"
+            "    print(json.dumps({x: resumo[x] for x in ('tentativa', 'intent', 'motivo', 'qr_presente', 'operacoes')}, sort_keys=True))\n"
+            "else:\n"
+            "    candidatas = [candidato(t) for t in tentativas]\n"
+            "    classificacao = 'ausente' if not candidatas else 'unica' if len(candidatas) == 1 else 'multipla'\n"
+            "    print(json.dumps({'modo': 'descoberta', 'classificacao': classificacao, 'candidatas': candidatas}, sort_keys=True))\n"
         )
         try:
             dados = json.loads(
@@ -287,7 +389,7 @@ def medir(operacao, servico, referencia=""):
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
-        return conferir_medicao(operacao, dados)
+        return conferir_medicao(operacao, dados, referencia)
     if operacao == "appmax-estorno":
         codigo = (
             "import hashlib,json\n"
