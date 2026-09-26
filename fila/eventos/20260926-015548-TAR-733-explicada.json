@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-015548-TAR-733-explicada",
+  "tarefa": "TAR-733",
+  "evento": "explicada",
+  "quando": "2026-09-26T01:55:48.584463+00:00",
+  "quem": "Pedido do mantenedor na sessao Codex de 25/09/2026: Conclua essa tarefa, retomando o fluxo basico e o E2E ja implementados.",
+  "o_que_e": "O teste do fluxo basico existe na bancada, mas a entrega parou sem tarefa vinculada e sem submissao formal.",
+  "o_que_muda": "A pessoa pode corrigir seu e-mail sem perder respostas e chegar ao resultado; o navegador comprova o caminho inteiro.",
+  "exemplo": "Ao digitar um e-mail invalido, as duas respostas permanecem marcadas e o foco volta ao e-mail para correcao.",
+  "importancia": 85
+}

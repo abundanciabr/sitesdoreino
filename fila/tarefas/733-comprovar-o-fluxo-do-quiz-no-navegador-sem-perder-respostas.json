@@ -1,0 +1,19 @@
+{
+  "arquivo": "733-comprovar-o-fluxo-do-quiz-no-navegador-sem-perder-respostas",
+  "id": "TAR-733",
+  "titulo": "Comprovar o fluxo do quiz no navegador sem perder respostas",
+  "toca": [
+    "quiz"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "Suite do quiz e teste de navegador aprovados, PR integrado e publicacao conferida.",
+  "despacho": "Retomar agent/quiz/teste-e2e-basico e PR 2093. Alvos: services/quiz/Makefile, apps/quiz/views.py, apps/quiz/templates/quiz/formulario.html, tests/e2e_browser.py, tests/quiz_browser.js, tests/run_e2e.py e tests/test_inv_pontuacao_servidor_e_outbox.py. Validar suite e E2E, submeter pelo ci/pr.py, conferir integracao e publicacao. Contratos e outras celulas somente leitura.",
+  "origem": "Pedido do mantenedor na sessao Codex de 25/09/2026: Conclua essa tarefa, retomando o fluxo basico e o E2E ja implementados.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

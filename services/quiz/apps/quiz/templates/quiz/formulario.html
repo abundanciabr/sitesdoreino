@@ -31,32 +31,33 @@
 <body>
 <main>
   <h1>{{ quiz.title }}</h1>
-  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
-  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-telemetria="{% url 'quiz-telemetria' %}">
+  {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
+  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-telemetria="{% url 'quiz-telemetria' %}" data-etapa-inicial="{{ etapa_inicial }}">
     {% csrf_token %}
     {% for question in questions %}
-    <fieldset class="passo{% if forloop.first %} ativo{% endif %}" data-pergunta="{{ question.id }}">
+    <fieldset class="passo{% if forloop.counter0 == etapa_inicial %} ativo{% endif %}" data-pergunta="{{ question.id }}">
       <legend>{{ question.text }}</legend>
       {% for option in question.options.all %}
       <label>
-        <input type="radio" name="pergunta_{{ question.id }}" value="{{ option.id }}" required>
+        <input type="radio" name="pergunta_{{ question.id }}" value="{{ option.id }}" required aria-describedby="validacao-{{ question.id }}"{% if option.id in opcoes_selecionadas %} checked{% endif %}{% if erro and forloop.parentloop.counter0 == etapa_inicial and forloop.first %} autofocus aria-invalid="true"{% endif %}>
         {{ option.text }}
       </label>
       {% endfor %}
+      <p class="erro" id="validacao-{{ question.id }}" data-validacao{% if not erro or forloop.counter0 != etapa_inicial %} hidden{% endif %} role="alert" aria-live="assertive">Escolha uma resposta para continuar.</p>
     </fieldset>
     {% endfor %}
-    <fieldset class="passo{% if not questions %} ativo{% endif %}" data-pergunta="lead">
+    <fieldset class="passo{% if etapa_lead_ativa %} ativo{% endif %}" data-pergunta="lead">
       <label>
         E-mail
-        <input type="email" name="email" required>
+        <input type="email" name="email" value="{{ valores.email }}" required{% if erro and etapa_lead_ativa %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
       </label>
       <label>
         Nome
-        <input type="text" name="nome">
+        <input type="text" name="nome" value="{{ valores.nome }}">
       </label>
       <label>
         Telefone
-        <input type="tel" name="telefone">
+        <input type="tel" name="telefone" value="{{ valores.telefone }}">
       </label>
     </fieldset>
     <button type="button" class="avancar">Continuar</button>
@@ -71,7 +72,7 @@
   var slug = form.getAttribute("data-quiz");
   var enviado = false;
   var passos = Array.prototype.slice.call(form.querySelectorAll(".passo"));
-  var indice = 0;
+  var indice = Number(form.getAttribute("data-etapa-inicial") || 0);
 
   function emitir(tipo, elementId, metadata) {
     var corpo = JSON.stringify({
@@ -105,12 +106,14 @@
   }
 
   emitir("view_quiz", "", {});
-  mostrar(0);
+  mostrar(indice);
 
   form.addEventListener("change", function (ev) {
     var input = ev.target;
     if (!input || input.type !== "radio") return;
     var campo = input.closest(".passo");
+    var aviso = campo && campo.querySelector("[data-validacao]");
+    if (aviso) aviso.hidden = true;
     emitir("click_option", input.value, {
       question_id: campo ? campo.getAttribute("data-pergunta") : ""
     });
@@ -121,7 +124,12 @@
     avancar.addEventListener("click", function () {
       var atual = passos[indice];
       var radios = atual.querySelectorAll("input[type=radio]");
-      if (radios.length && !atual.querySelector("input[type=radio]:checked")) return;
+      var aviso = atual.querySelector("[data-validacao]");
+      if (radios.length && !atual.querySelector("input[type=radio]:checked")) {
+        aviso.hidden = false;
+        return;
+      }
+      if (aviso) aviso.hidden = true;
       if (indice < passos.length - 1) mostrar(indice + 1);
     });
   }
