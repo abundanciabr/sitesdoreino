@@ -152,5 +152,7 @@ def test_js_de_dados_servido_contem_calculo_da_referencia_opaca(
     corpo = _corpo(resp).decode("utf-8")
     assert 'crypto.subtle.digest("SHA-256", bytes)' in corpo
     assert "this.session.id" in corpo
+    assert 'if (this.appmaxPix && this.method === "pix")' in corpo
+    assert "await this.referenciaDiagnostico()" in corpo
     assert "Não reenvie esta compra." in corpo
     assert "Referência:" in corpo
