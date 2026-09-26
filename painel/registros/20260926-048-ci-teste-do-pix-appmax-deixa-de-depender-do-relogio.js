@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-048-ci-teste-do-pix-appmax-deixa-de-depender-do-relogio",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "ci: teste do Pix Appmax deixa de depender do relogio",
+  detalhe: "Fixture do Pix Appmax parou de fixar a data de vencimento; agora ela nasce do relogio do proprio teste, futura para nao vencido e passada para o caso vencido novo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2116. Validação local: árvore c200de03d60a40ffedf955b53acd1c83beb5427e; commit 3593c47b004d9c7604436095dd2be840c5c6d87c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-753",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
