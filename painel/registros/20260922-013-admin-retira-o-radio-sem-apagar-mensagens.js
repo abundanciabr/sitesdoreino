@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-013-admin-retira-o-radio-sem-apagar-mensagens",
+  tipo: "entrega",
+  quando: "2026-09-22",
+  titulo: "admin: retira o rádio sem apagar mensagens",
+  detalhe: "Rádio retirado do admin; tabela e mensagens preservadas. Rotas, mapa e 2142 testes conferidos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1893. Validação local: árvore 11e54541b31631058679f326cb3658304a5849be; commit a8ffa75ca96f33d84019f7a1734b83530f8f912b; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-606",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
