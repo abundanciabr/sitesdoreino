@@ -1,0 +1,19 @@
+{
+  "arquivo": "604-preservar-a-remocao-autorizada-da-fila",
+  "id": "TAR-604",
+  "titulo": "Preservar a remoção autorizada da fila",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Arquivo ZIP com SHA-256 conferido, decisão integrada e validação da fila.",
+  "despacho": "Criar backup verificável e decisão de exceção antes da remoção física, em PR separado.",
+  "origem": "Mandato do mantenedor nesta sessão em 21/09/2026.",
+  "criada_em": "2026-09-22",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

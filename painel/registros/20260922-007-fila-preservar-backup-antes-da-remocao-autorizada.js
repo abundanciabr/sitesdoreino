@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260922-007-fila-preservar-backup-antes-da-remocao-autorizada",
+  tipo: "decisao",
+  quando: "2026-09-22",
+  titulo: "fila: preservar backup antes da remoção autorizada",
+  detalhe: "O backup versionado e sua soma criptográfica tornam a exceção recuperável e auditável antes de qualquer exclusão dos caminhos canônicos da fila.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1880. Validação local: árvore 9af6425b06148a09afec42af40916de6ec98a1f4; commit 7309d65f55dd4dc16349893aef02eb922c5bedc6; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-22",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-604",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
