@@ -1046,6 +1046,17 @@ def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
             },
             "qr_nao_comprovado",
         ),
+        (
+            {
+                "payment": {
+                    "method": "pix",
+                    "pix_qrcode": "data:image/png;base64,",
+                    "pix_emv": "000201ABC",
+                    "pix_expiration_date": "2026-09-26 13:00:00",
+                }
+            },
+            "qr_nao_comprovado",
+        ),
     ],
 )
 def test_appmax_pix_pedido_resposta_incompleta_falha_fechado(
