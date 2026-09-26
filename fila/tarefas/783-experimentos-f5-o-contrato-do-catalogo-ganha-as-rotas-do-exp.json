@@ -1,0 +1,20 @@
+{
+  "arquivo": "783-experimentos-f5-o-contrato-do-catalogo-ganha-as-rotas-do-exp",
+  "id": "TAR-783",
+  "titulo": "Experimentos F5: o contrato do catálogo ganha as rotas do experimento da página e o campo experimento_ativo",
+  "toca": [
+    "contratos",
+    "catalogo"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "PR só de contracts/ integrado, com freeze PASS contra o export do ramo da célula e contrato aditivo PASS",
+  "despacho": "Rito de Contrato da frente F5: emendar contracts/catalogo.openapi.yaml com createExperiment, listExperiments, getExperiment, changeExperimentState e o campo opcional experimento_ativo do getPage, montado do export do ramo agent/catalogo/experimento-na-pagina.",
+  "origem": "sessão do mantenedor de 26/09/2026, sistema de experimentos, frente F5",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
