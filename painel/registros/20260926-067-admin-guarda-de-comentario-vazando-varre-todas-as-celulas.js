@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-067-admin-guarda-de-comentario-vazando-varre-todas-as-celulas",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "admin: guarda de comentário vazando varre todas as células",
+  detalhe: "Guarda de comentário vazando sai da admin e varre os 142 templates de services/ pelo lexer do Django. Vermelho com o quiz de antes do PR 2122, verde na main.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2126. Validação local: árvore 7a0994ca00e0bb61f211297a9d3be492b2b5d6d0; commit 96cf74da6e9653c9ce654c7223f2d6a39b367a11; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-765",
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
