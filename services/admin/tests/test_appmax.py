@@ -88,7 +88,7 @@ def dentro(monkeypatch, settings):
 def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     fila_appmax, dentro
 ):
-    # guarda: services/admin/apps/core/appmax.py:127
+    # guarda: services/admin/apps/core/appmax.py:131
     resposta = dentro.get(reverse("appmax"))
     html = resposta.content.decode()
 
@@ -104,6 +104,10 @@ def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     assert "TAR-641" in html
     assert "TAR-555" in html
     assert "TAR-560" in html
+    assert "TAR-711" in html
+    assert "TAR-731" in html
+    assert "TAR-730" in html
+    assert "TAR-732" in html
     assert "TAR-641" in html
     assert "TAR-615" in html
     assert "Substituta" in html
@@ -113,7 +117,10 @@ def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     assert "TAR-557" in html
     assert "prova oficial da fila" in html
     assert "data-consulta-viva" in html
-    assert "nenhuma impeditiva" in html
+    cartao_560 = html.split('<p class="id-tarefa">TAR-560</p>', 1)[1].split("</li>", 1)[
+        0
+    ]
+    assert "TAR-559" in cartao_560
 
 
 @respx.mock

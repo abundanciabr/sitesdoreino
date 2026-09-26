@@ -19,6 +19,10 @@ SEQUENCIA_APPMAX = (
     ("TAR-615", ""),
     ("TAR-560", ""),
     ("TAR-647", ""),
+    ("TAR-711", ""),
+    ("TAR-731", ""),
+    ("TAR-730", ""),
+    ("TAR-732", ""),
     ("TAR-644", ""),
     ("TAR-561", ""),
     ("TAR-562", ""),
@@ -28,7 +32,7 @@ SEQUENCIA_APPMAX = (
     ("TAR-566", ""),
 )
 
-ESTADOS_TERMINAIS = frozenset(("concluída", "cancelada"))
+ESTADOS_CONCLUIDOS = frozenset(("concluída",))
 
 
 def _prova(dados: dict) -> str:
@@ -45,7 +49,7 @@ def _dependencias(dados: dict, estados: dict[str, dict]) -> list[str]:
         if isinstance(item, str)
         and (
             not isinstance(estados.get(item), dict)
-            or estados[item].get("estado") not in ESTADOS_TERMINAIS
+            or estados[item].get("estado") not in ESTADOS_CONCLUIDOS
         )
     ]
 
