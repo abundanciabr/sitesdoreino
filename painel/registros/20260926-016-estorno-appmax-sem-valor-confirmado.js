@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-016-estorno-appmax-sem-valor-confirmado",
+  tipo: "medicao",
+  quando: "2026-09-26",
+  titulo: "Estorno Appmax sem valor confirmado",
+  detalhe: "Run 36213081989, somente leitura, terminou sucesso: pedido confere, integrado, sem valor efetivo. Não comprova estorno nem encerra TAR-644. Nenhum POST.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/36213081989",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  area: "painel",
+  tarefa: "TAR-644",
+  porque_so_voce: "Só o mantenedor pode pedir essa resposta à Appmax.",
+  proximo_passo: "Pedir à Appmax janela e endpoint autenticado com valor e identidade.",
+  se_eu_nao_decidir: "TAR-644 fica aberta; estorno real não avança.",
+  recomendacao: "Obter a resposta antes de novo canário.",
+  reversivel: false,
+  impacto: "medio"
+});})();
