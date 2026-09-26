@@ -219,15 +219,25 @@ def test_destino_externo_e_recusado(client, tela, fio):
     assert fio.escritas == []
 
 
-def test_botao_do_cubo_para_fora_do_host_nao_e_medido(client, rede, fio):
+@pytest.mark.parametrize(
+    "fora",
+    [
+        "https://golpista.example/",
+        "//golpista.example/",
+        "/\golpista.example",
+        "https://[x",
+    ],
+)
+def test_botao_do_cubo_para_fora_do_host_nao_e_medido(client, rede, fio, fora):
     secoes = copy.deepcopy(SECOES_CHEIAS)
-    secoes[0]["slots"]["cta_destino"] = "https://golpista.example/"
+    secoes[0]["slots"]["cta_destino"] = fora
     client.cookies[COOKIE] = VISITANTE
     resp = abrir(client, rede, secoes)
-    assert 'data-destino="https://golpista.example/"' not in resp.content.decode()
-    corpo = clique(
-        contexto_da_tela(resp), secao="cubo", destino="https://golpista.example/"
-    )
+    assert resp.status_code == 200
+    assert (
+        resp.content.decode().count('data-slot="cta_texto"') == 1
+    ), "só o botão da oferta é medido; o do cubo aponta para fora do host"
+    corpo = clique(contexto_da_tela(resp), secao="cubo", destino=fora)
     fio.escritas.clear()
     assert enviar(client, corpo).status_code == 400
     assert fio.escritas == []
@@ -270,11 +280,17 @@ def test_contexto_vencido_e_recusado(client, tela, fio, monkeypatch):
 
 @pytest.mark.parametrize(
     "cru",
-    ["", "não é json", "[1, 2]", '{"evento": "secao-vista"}', "x" * 5000],
-    ids=["vazio", "nao-json", "lista", "sem-contexto", "gigante"],
+    ["", "não é json", "[1, 2]", '{"evento": "secao-vista"}'],
+    ids=["vazio", "nao-json", "lista", "sem-contexto"],
 )
 def test_corpo_invalido_e_400_e_nunca_500(client, rede, fio, cru):
     assert enviar(client, cru).status_code == 400
+    assert fio.escritas == []
+
+
+def test_fato_valido_mas_gigante_e_recusado(client, tela, fio):
+    inflado = json.dumps(secao_vista(tela)) + " " * 5000
+    assert enviar(client, inflado).status_code == 400
     assert fio.escritas == []
 
 

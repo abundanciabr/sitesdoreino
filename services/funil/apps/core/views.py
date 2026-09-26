@@ -384,15 +384,13 @@ def pagina_de_oferta(request):
 
 
 def _destino_interno(destino: str) -> bool:
-    """Âncora desta página ou caminho deste host. Nunca outro domínio."""
-    if destino.startswith("#"):
-        return True
-    partes = urlsplit(destino)
-    return (
-        destino.startswith("/")
-        and not destino.startswith(("//", "/\\"))
-        and not partes.scheme
-        and not partes.netloc
+    """Âncora desta página ou caminho deste host. Nunca outro domínio.
+
+    Só o prefixo decide, sem `urlsplit`: um endereço malformado vindo do
+    catálogo não pode derrubar a renderização da página.
+    """
+    return destino.startswith("#") or (
+        destino.startswith("/") and not destino.startswith(("//", "/\\"))
     )
 
 
