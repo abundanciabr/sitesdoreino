@@ -60,7 +60,25 @@
         "lead_id": {
           "type": "string",
           "description": "Id OPACO do lead dentro da célula `leads`, devolvido por ela na gravação. É por ele que quem consome volta a perguntar, sem adivinhar. Nunca é o e-mail, o telefone nem o nome de ninguém."
+        },
+        "experimento_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Id do experimento que decidiu o que esta pessoa viu, em UUID como texto, o mesmo que o catálogo gerou. OPCIONAL e sempre junto com `variante_id`: sem experimento ativo na página, nenhum dos dois aparece, e é essa ausência que distingue o tráfego fora de teste. Aditivo do Rito de Contrato (RITOS.md §3) de 26/09/2026, autorizado pelo mantenedor."
+        },
+        "variante_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "description": "Chave curta da variante sorteada dentro do experimento (por exemplo `a` para o controle e `b` para o desafiante). É a chave, nunca o texto da variante: o texto mora no catálogo, congelado na variante. OPCIONAL e sempre junto com `experimento_id`."
         }
+      },
+      "dependentRequired": {
+        "experimento_id": [
+          "variante_id"
+        ],
+        "variante_id": [
+          "experimento_id"
+        ]
       }
     }
   }
