@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260926-012927-TAR-731-checkpoint",
+  "tarefa": "TAR-731",
+  "evento": "checkpoint",
+  "quando": "2026-09-26T01:29:27.904811+00:00",
+  "quem": "agent/checkout/appmax-pix-correlacao",
+  "plano": "Correlação Pix na bancada própria",
+  "ultimo_avanco": "Commit transportado sem conflito; baseline checkout 136 passed; canal operacional 52 passed e páginas 11 passed; TAR e contrato registrados.",
+  "proxima_acao": "Reabrir a sessão com TAR-731 para corrigir a identidade de execução herdada da tentativa TAR-711; concluir o mesmo PR #2097 sem duplicar entrega.",
+  "verificacoes": [
+    "ci/pr.py recusou identidade ambígua; python ci/fila.py validar PASS com TAR-731 reivindicada; nenhum POST sandbox executado."
+  ]
+}

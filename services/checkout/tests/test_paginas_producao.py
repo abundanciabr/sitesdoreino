@@ -143,3 +143,17 @@ def test_api_js_nao_hardcoda_a_base(client, rede, env_de_producao):
     corpo = _corpo(resp)
     assert b"window.API_BASE" in corpo
     assert b'_base: "/api/checkout"' not in corpo
+
+
+def test_js_de_dados_servido_contem_calculo_da_referencia_opaca(
+    client, rede, env_de_producao
+):
+    resp = client.get("/static/checkout/dados.js", HTTP_HOST=HOST_A)
+    corpo = _corpo(resp).decode("utf-8")
+    assert 'crypto.subtle.digest("SHA-256", bytes)' in corpo
+    assert "this.session.id" in corpo
+    falha = corpo.rsplit("} catch (e) {", 1)[1]
+    assert 'if (this.appmaxPix && this.method === "pix")' in falha
+    assert "await this.referenciaDiagnostico()" in falha
+    assert "Não reenvie esta compra." in corpo
+    assert "Referência:" in corpo
