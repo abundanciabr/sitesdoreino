@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224356-TAR-774-explicada",
+  "tarefa": "TAR-774",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:43:56.231754+00:00",
+  "quem": "sessão de 26/09/2026, frente F9d do sistema de experimentos",
+  "o_que_e": "Hoje um teste de duas versões da página não tem um fim decidido na tela: ninguém consegue pôr a versão vencedora no ar nem registrar o que se aprendeu.",
+  "o_que_muda": "O mantenedor aperta um botão e a versão vencedora vai ao ar pela publicação normal da página, ou o teste termina sem mudar nada, sem risco de publicar duas vezes.",
+  "exemplo": "Como numa degustação de dois pratos: quem prova decide qual entra no cardápio, e o caderno da cozinha anota o porquê.",
+  "importancia": 60
+}

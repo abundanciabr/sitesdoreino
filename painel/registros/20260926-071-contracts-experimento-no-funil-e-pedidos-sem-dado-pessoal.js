@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-071-contracts-experimento-no-funil-e-pedidos-sem-dado-pessoal",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "contracts: experimento no funil e pedidos sem dado pessoal",
+  detalhe: "Aditivo v1 aceito pelo portão: quatro funil.* com experimento e variante pareados, dois checkout.* sem dado pessoal. Mutações reprovam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2133. Validação local: árvore a8f9654e19377a180c6d63ee27e3d539279a2781; commit 1fe564a2582875a72e0c4c8cf95ea58d1150d9fe; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-768",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
