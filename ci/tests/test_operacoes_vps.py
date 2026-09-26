@@ -338,6 +338,89 @@ def test_appmax_pix_sem_referencia_consulta_sete_dias_e_limite_cem(monkeypatch, 
     assert ".delete(" not in codigo
 
 
+def test_appmax_pix_codigo_remoto_e_autossuficiente_e_guarda_antes_da_consulta(
+    monkeypatch,
+):
+    capturado = {}
+    medicao = {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+
+    def comando(args):
+        if args[1] == "ps":
+            return "a" * 64
+        capturado["codigo"] = args[-1]
+        return json.dumps(medicao)
+
+    monkeypatch.setattr(ops, "comando", comando)
+    assert ops.medir("appmax-pix", "pagamentos") == medicao
+    codigo = capturado["codigo"]
+
+    def executar_remoto(auth_url, api_url):
+        consultas = 0
+
+        class Consulta:
+            def filter(self, **kwargs):
+                nonlocal consultas
+                consultas += 1
+                return self
+
+            def select_related(self, *_):
+                return self
+
+            def prefetch_related(self, *_):
+                return self
+
+            def order_by(self, *_):
+                return self
+
+            def __getitem__(self, _):
+                return []
+
+        importador_real = builtins.__import__
+
+        def importar(nome, *args, **kwargs):
+            falsos = {
+                "django.conf": SimpleNamespace(
+                    settings=SimpleNamespace(
+                        APPMAX_AUTH_URL=auth_url, APPMAX_API_URL=api_url
+                    )
+                ),
+                "django.utils": SimpleNamespace(
+                    timezone=SimpleNamespace(now=lambda: datetime.now(timezone.utc))
+                ),
+                "pagamentos.core.models": SimpleNamespace(
+                    PaymentAttempt=SimpleNamespace(objects=Consulta())
+                ),
+            }
+            return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+        saida = StringIO()
+        erro = None
+        with redirect_stdout(saida):
+            try:
+                exec(
+                    codigo,
+                    {"__builtins__": {**vars(builtins), "__import__": importar}},
+                )
+            except SystemExit as exc:
+                erro = exc.code
+        return saida.getvalue(), consultas, erro
+
+    saida, consultas, erro = executar_remoto(
+        "https://auth.appmax.com.br/oauth2/token", "https://api.appmax.com.br"
+    )
+    assert erro == 23
+    assert consultas == 0
+    assert saida.strip() == "APPMAX_SANDBOX_REQUIRED"
+
+    saida, consultas, erro = executar_remoto(
+        "https://auth.sandboxappmax.com.br/oauth2/token",
+        "https://api.sandboxappmax.com.br",
+    )
+    assert erro is None
+    assert consultas == 1
+    assert json.loads(saida) == medicao
+
+
 def test_appmax_pix_sandbox_exige_os_dois_enderecos_oficiais():
     # guarda: ci/operacoes_vps.py:68
     assert ops.appmax_sandbox_configuracao_valida(
