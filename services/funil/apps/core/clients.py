@@ -68,7 +68,9 @@ def _defeito_do_experimento(experimento) -> str | None:
         vistos.add(variante_id)
         peso = variante.get("peso")
         if isinstance(peso, bool) or not isinstance(peso, int) or peso < 0:
-            return f"peso da variante {variante_id!r} não é inteiro maior ou igual a zero"
+            return (
+                f"peso da variante {variante_id!r} não é inteiro maior ou igual a zero"
+            )
         if not isinstance(variante.get("valor"), str):
             return f"valor da variante {variante_id!r} não é texto"
     soma = sum(variante["peso"] for variante in variantes)

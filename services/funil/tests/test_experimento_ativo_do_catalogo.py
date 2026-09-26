@@ -94,38 +94,66 @@ def test_pagina_sem_experimento_e_o_estado_normal_e_nao_escreve_erro(
         pytest.param({**EXPERIMENTO, "id": None}, "UUID", id="sem-id"),
         pytest.param({**EXPERIMENTO, "id": "exp-1"}, "UUID", id="id-nao-e-uuid"),
         pytest.param(
-            {**EXPERIMENTO, "id": EXPERIMENTO["id"].upper()}, "UUID", id="id-fora-do-canonico"
+            {**EXPERIMENTO, "id": EXPERIMENTO["id"].upper()},
+            "UUID",
+            id="id-fora-do-canonico",
         ),
         pytest.param({**EXPERIMENTO, "secao": ""}, "secao ausente", id="secao-vazia"),
         pytest.param(
-            {k: v for k, v in EXPERIMENTO.items() if k != "slot"}, "slot ausente", id="sem-slot"
+            {k: v for k, v in EXPERIMENTO.items() if k != "slot"},
+            "slot ausente",
+            id="sem-slot",
         ),
-        pytest.param({**EXPERIMENTO, "variantes": {}}, "variantes ausente", id="variantes-nao-e-lista"),
+        pytest.param(
+            {**EXPERIMENTO, "variantes": {}},
+            "variantes ausente",
+            id="variantes-nao-e-lista",
+        ),
         pytest.param(com_variantes(), "variantes ausente", id="sem-variantes"),
-        pytest.param(com_variantes("a", variante("b", 10000)), "uma variante não é", id="variante-nao-e-objeto"),
         pytest.param(
-            com_variantes(variante("A"), variante("b")), "fora do padrão", id="variante-id-maiusculo"
+            com_variantes("a", variante("b", 10000)),
+            "uma variante não é",
+            id="variante-nao-e-objeto",
         ),
         pytest.param(
-            com_variantes(variante("a\n"), variante("b")), "fora do padrão", id="variante-id-com-quebra"
+            com_variantes(variante("A"), variante("b")),
+            "fora do padrão",
+            id="variante-id-maiusculo",
         ),
         pytest.param(
-            com_variantes(variante("a"), variante("a")), "repetido", id="variante-id-repetido"
+            com_variantes(variante("a\n"), variante("b")),
+            "fora do padrão",
+            id="variante-id-com-quebra",
         ),
         pytest.param(
-            com_variantes(variante("a", True), variante("b", 9999)), "peso", id="peso-booleano"
+            com_variantes(variante("a"), variante("a")),
+            "repetido",
+            id="variante-id-repetido",
         ),
         pytest.param(
-            com_variantes(variante("a", 15000), variante("b", -5000)), "peso", id="peso-negativo"
+            com_variantes(variante("a", True), variante("b", 9999)),
+            "peso",
+            id="peso-booleano",
         ),
         pytest.param(
-            com_variantes(variante("a", "5000"), variante("b")), "peso", id="peso-em-texto"
+            com_variantes(variante("a", 15000), variante("b", -5000)),
+            "peso",
+            id="peso-negativo",
         ),
         pytest.param(
-            com_variantes(variante("a", 5000), variante("b", 4000)), "9000", id="pesos-nao-somam-10000"
+            com_variantes(variante("a", "5000"), variante("b")),
+            "peso",
+            id="peso-em-texto",
         ),
         pytest.param(
-            com_variantes(variante("a"), variante("b", valor=None)), "valor", id="valor-nao-e-texto"
+            com_variantes(variante("a", 5000), variante("b", 4000)),
+            "9000",
+            id="pesos-nao-somam-10000",
+        ),
+        pytest.param(
+            com_variantes(variante("a"), variante("b", valor=None)),
+            "valor",
+            id="valor-nao-e-texto",
         ),
     ],
 )
