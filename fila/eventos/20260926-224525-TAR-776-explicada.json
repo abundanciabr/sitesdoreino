@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224525-TAR-776-explicada",
+  "tarefa": "TAR-776",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:45:25.299601+00:00",
+  "quem": "sessão do mantenedor de 26/09/2026, sistema de experimentos, frente F5",
+  "o_que_e": "Hoje a página de vendas tem um texto só, e não existe lugar para guardar duas versões de uma frase para comparar qual vende mais.",
+  "o_que_muda": "O catálogo passa a guardar o teste de uma frase da página, com as versões congeladas, e avisa ao site qual teste está no ar, para que a comparação seja justa e medida.",
+  "exemplo": "Como testar duas vitrines na mesma loja: metade das pessoas vê o título atual e metade vê o novo, e o catálogo anota qual é qual.",
+  "importancia": 70
+}

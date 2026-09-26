@@ -1067,6 +1067,11 @@ class CatalogoClient:
     SEM_PAGINA = "sem_pagina"
     # 409 de `publishPage`: o rascunho está vazio e nada foi publicado.
     VAZIO = "vazio"
+    # 404 de um experimento: o endereço aponta para um experimento que o
+    # catálogo não conhece neste site.
+    SEM_EXPERIMENTO = "sem_experimento"
+    # 409 de encerrar: ele já estava encerrado, e a decisão gravada é a dele.
+    JA_ENCERRADO = "ja_encerrado"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1267,18 +1272,37 @@ class CatalogoClient:
         quais status desta operação têm nome próprio, em vez de caírem no
         "não respondeu" genérico.
         """
+        return self._falar(
+            metodo,
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
+            corpo=corpo,
+            especiais=especiais,
+        )
+
+    def _falar(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        corpo: "dict | None" = None,
+        especiais: "tuple[tuple[int, str], ...]" = (),
+    ) -> "tuple[str, dict | str]":
+        """O encanamento das escritas e leituras com desfecho nomeado.
+
+        Páginas e experimentos passam por aqui: config, endereço, timeout e
+        corpo fora do contrato são os mesmos, e duas cópias divergiriam no
+        primeiro conserto feito em uma delas.
+        """
         config = self._configuracao()
         if config is None:
             logger.warning(
-                "página de venda: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão "
+                "catálogo: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão "
                 "no env desta célula (par admin→catalogo não provisionado)"
             )
             return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
         base, token = config
-        endereco = (
-            f"{base}/sites/{quote(str(site_id), safe='')}"
-            f"/paginas/{quote(str(slug), safe='')}{sufixo}"
-        )
+        endereco = f"{base}{caminho}"
         try:
             r = http().request(
                 metodo,
@@ -1288,7 +1312,7 @@ class CatalogoClient:
                 timeout=self.TIMEOUT,
             )
         except httpx.HTTPError as erro:
-            logger.error("página de venda: o catálogo não respondeu: %s", erro)
+            logger.error("catálogo: não respondeu: %s", erro)
             return self.NAO_RESPONDEU, "o catálogo não respondeu"
 
         for status, desfecho in especiais:
@@ -1297,10 +1321,7 @@ class CatalogoClient:
 
         if r.status_code != 200:
             logger.error(
-                "página de venda: %s %s respondeu HTTP %s",
-                metodo,
-                sufixo or "/rascunho",
-                r.status_code,
+                "catálogo: %s %s respondeu HTTP %s", metodo, caminho, r.status_code
             )
             return self.NAO_RESPONDEU, "o catálogo respondeu com erro"
 
@@ -1308,10 +1329,10 @@ class CatalogoClient:
             lido = r.json()
         except ValueError as erro:
             # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
-            logger.error("página de venda: resposta fora do contrato: %s", erro)
+            logger.error("catálogo: resposta fora do contrato: %s", erro)
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         if not isinstance(lido, dict):
-            logger.error("página de venda: o corpo não é um objeto")
+            logger.error("catálogo: o corpo não é um objeto")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         return self.OK, lido
 
@@ -1371,6 +1392,49 @@ class CatalogoClient:
             slug,
             "/publicar",
             especiais=((409, self.VAZIO), (404, self.SEM_PAGINA)),
+        )
+
+    def pagina_publicada(self, site_id: str, slug: str) -> "tuple[str, dict | str]":
+        """`getPage`: a versão que está no ar, que é o que quem visita vê."""
+        return self._falar_da_pagina(
+            "GET", site_id, slug, "", especiais=((404, self.SEM_PAGINA),)
+        )
+
+    # -- Os experimentos da página (frente F5 do sistema de experimentos) -----
+
+    def _caminho_do_experimento(self, site_id: str, experimento_id: str) -> str:
+        return (
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/experimentos/{quote(str(experimento_id), safe='')}"
+        )
+
+    def experimento(
+        self, site_id: str, experimento_id: str
+    ) -> "tuple[str, dict | str]":
+        """O experimento com estado, decisão e as variantes (snapshot do texto)."""
+        return self._falar(
+            "GET",
+            self._caminho_do_experimento(site_id, experimento_id),
+            especiais=((404, self.SEM_EXPERIMENTO),),
+        )
+
+    def encerrar_experimento(
+        self,
+        site_id: str,
+        experimento_id: str,
+        decisao: str,
+        variante_vencedora: "str | None",
+    ) -> "tuple[str, dict | str]":
+        """Encerra com a decisão. 409 é experimento que já estava encerrado."""
+        return self._falar(
+            "POST",
+            self._caminho_do_experimento(site_id, experimento_id) + "/encerrar",
+            corpo={"decisao": decisao, "variante_vencedora": variante_vencedora},
+            especiais=(
+                (409, self.JA_ENCERRADO),
+                (404, self.SEM_EXPERIMENTO),
+                (422, self.RECUSADO),
+            ),
         )
 
 
