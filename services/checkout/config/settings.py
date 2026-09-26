@@ -86,6 +86,13 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+INSTALLED_APPS += ["site_errors"]
+MIDDLEWARE = ["site_errors.handlers.SiteErrorLoggingMiddleware", *MIDDLEWARE]
+SITE_ERROR_SERVICE = "checkout"
+SITE_ERRORS_REDIS_URL = os.environ.get("SITE_ERRORS_REDIS_URL") or (
+    "" if DEBUG else "redis://redis:6379/0"
+)
+
 TEMPLATES = [  # [RECEITA:R6 v1] — páginas dados/pix/cartão (ilhas Alpine)
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

@@ -110,6 +110,7 @@ from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
+from apps.core.appmax import appmax
 from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
@@ -609,6 +610,7 @@ urlpatterns = [
     # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
+    path("appmax/", appmax, name="appmax"),
     # O único gesto de escrita desta aba (06/09/2026): tirar uma tarefa da fila
     # para sempre. Não apaga nada aqui — abre um PR no GitHub com o evento
     # `cancelada`, e quem mergeia é a pista. O `TAR-NNN` viaja no CORPO do POST
@@ -1068,3 +1070,6 @@ if settings.ADMIN_LINK_TOKEN:
     urlpatterns.append(
         path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
     )
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"

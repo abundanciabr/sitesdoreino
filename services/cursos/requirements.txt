@@ -47,3 +47,4 @@ respx==0.23.1
 # indisponível", e local fica verde porque a máquina de quem desenvolve tem
 # PyYAML global (`armadilhas/096`).
 PyYAML==6.0.2
+services/cursos/vendor/site_errors-0.1.0-py3-none-any.whl

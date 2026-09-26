@@ -1,0 +1,24 @@
+{
+  "arquivo": "20260926-131329-TAR-736-checkpoint",
+  "tarefa": "TAR-736",
+  "evento": "checkpoint",
+  "quando": "2026-09-26T13:13:29.183296+00:00",
+  "quem": "despacho-ci-appmax-pix-pedido",
+  "plano": "Implementação e provas concluídas; publicação pelo ci/pr.py bloqueada antes do início",
+  "ultimo_avanco": "Suíte focal 72 passed; Black aprovado; prova canônica PASS com 9 guards, 9 mutações FAIL e restauração PASS; commit fb40699e",
+  "proxima_acao": "Autorizar a execução remota de ci/pr.py nesta bancada e retomar com os mesmos argumentos; não repetir a publicação por outro caminho",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_operacoes_vps.py -q: 72 passed",
+    "python -m black --check ci/operacoes_vps.py ci/tests/test_operacoes_vps.py: 2 files unchanged",
+    "python ci/provar_guardas.py ci/tests/test_operacoes_vps.py: PASS, 9 guards, 9 reprovou",
+    "python ci/pr.py ...: recusado pelo revisor automático antes do início por egress remoto não aprovado"
+  ],
+  "contexto": {
+    "ramo": "agent/ci/appmax-pix-pedido",
+    "bancada": "C:\\Users\\davia\\abundanciabr\\wt-ci-appmax-pix-pedido",
+    "commit": "fb40699e",
+    "precisa_do_dono": true,
+    "impacto": "PR não aberto nem publicado",
+    "reversao": "retomar com os mesmos argumentos, sem alterar código"
+  }
+}

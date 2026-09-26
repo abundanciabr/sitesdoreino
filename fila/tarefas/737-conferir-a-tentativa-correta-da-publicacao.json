@@ -1,0 +1,19 @@
+{
+  "arquivo": "737-conferir-a-tentativa-correta-da-publicacao",
+  "id": "TAR-737",
+  "titulo": "Conferir a tentativa correta da publicação",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado; testes do validador de entrega e do histórico GraphQL aprovados; sem deploy porque os caminhos são de CI.",
+  "despacho": "Corrigir a leitura dos jobs de publicação para consultar a tentativa escolhida pelo run_attempt e selecionar a prova concluída mais recente quando a API repetir o nome do job. Alvos de código: ci/estado_da_entrega.py e ci/tests/test_estado_da_entrega.py. Cobrir a tentativa 5 do fórum, com sucesso no job 108396354196 e homônimos em fila 108396354172 e 108396354234. Não alterar nem reconciliar tarefas ou eventos anteriores e não executar nem cancelar deploys.",
+  "origem": "Autorização do mantenedor nesta sessão em 2026-09-26; correção do validador de publicação",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

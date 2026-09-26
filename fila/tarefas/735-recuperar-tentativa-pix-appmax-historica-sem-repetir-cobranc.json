@@ -1,0 +1,21 @@
+{
+  "arquivo": "735-recuperar-tentativa-pix-appmax-historica-sem-repetir-cobranc",
+  "id": "TAR-735",
+  "titulo": "Recuperar tentativa Pix Appmax histórica sem repetir cobrança",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-731"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Operação somente leitura publicada na main executada exatamente uma vez sem referência; classifica uma tentativa antiga ou mede impossibilidade, devolvendo apenas referências opacas, horários, estados, motivo sanitizado e presença booleana de QR; referência explícita continua selecionando exatamente uma tentativa; zero, múltiplas, campos inesperados, outros sites, provedores ou cartão falham fechados; testes focais, Black, fila e guardas passam.",
+  "despacho": "Diagnóstico somente leitura da tentativa Pix Appmax sandbox ligada à TAR-711 quando a referência opaca não está disponível ou já passou a janela recente. Preserve o modo com referência, tornando-a opcional. Com referência, selecione exatamente uma tentativa pela SHA-256 da intent.idempotency_key. Sem referência, leia no máximo 100 tentativas Pix do site Meshcraft dos últimos sete dias e devolva somente candidatos sanitizados com referência opaca, horário, estados permitidos, motivo sanitizado e presença booleana de QR; zero candidatos e múltiplos candidatos são resultados explícitos e fechados. Nunca escolha financeiramente, nunca use cartão, outro site ou provedor, nunca exponha ID bruto, PII, segredo ou QR, e nunca faça POST, API pública, save, update, delete ou novo pedido. A operação deve falhar fechada para campos ou estados inesperados e conservar a compatibilidade do modo referenciado. Alvos exclusivos: ci/operacoes_vps.py e ci/tests/test_operacoes_vps.py; o workflow só pode ser tocado se a descrição da entrada referência precisar refletir o modo opcional já existente. Depende da entrega técnica TAR-731 e move manutenção.",
+  "origem": "Frente independente real do objetivo Appmax; pendência TAR-711 e entrega técnica TAR-731; autorização do mantenedor em 26/09/2026: Tudo do Appmax liberado",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

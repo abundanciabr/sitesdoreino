@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-037-admin-largura-appmax-em-tela-estreita",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "admin: largura Appmax em tela estreita",
+  detalhe: "CSS mínimo no template Appmax. Prova estática PASS. Medição pública em 552px pela sessão responsável.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2108. Validação local: árvore fa809fde5e47a2eb82d067c79ea7f37d096aff9d; commit a3dcce1403b3c3c11dbc881e05658816310472cc; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-741",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import re
@@ -49,11 +50,22 @@ def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
 
 
-@pytest.mark.parametrize("referencia", ["", "x" * 64, PRIVADO])
-def test_appmax_pix_exige_referencia_opaca(monkeypatch, capsys, referencia):
+@pytest.mark.parametrize("referencia", ["x" * 64, PRIVADO])
+def test_appmax_pix_recusa_referencia_livre(monkeypatch, capsys, referencia):
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
     assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, referencia) == 2
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_appmax_pix_sem_referencia_permite_descoberta(monkeypatch, capsys):
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "ausente",
+        "candidatas": [],
+    }
+    monkeypatch.setattr(ops, "medir", lambda *args: medicao)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, "") == 0
+    assert json.loads(capsys.readouterr().out)["medicao"] == medicao
 
 
 @pytest.mark.parametrize("referencia", ["x" * 64, PRIVADO])
@@ -187,10 +199,10 @@ def test_appmax_pix_emite_so_estados_e_presenca_sem_ids_qr_ou_dados(
     assert PRIVADO not in saida.out + saida.err
     assert chamadas[1][0:4] == ["docker", "exec", "a" * 64, "python"]
     assert "created_at__gte" in chamadas[1][-1]
-    assert "timedelta(minutes=15)" in chamadas[1][-1]
+    assert "timedelta(days=7)" in chamadas[1][-1]
     assert REFERENCIA in chamadas[1][-1]
     assert (
-        "hashlib.sha256(str(x.intent.idempotency_key).encode()).hexdigest()"
+        "hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest()"
         in chamadas[1][-1]
     )
 
@@ -220,6 +232,247 @@ def test_appmax_pix_expoe_etapas_ainda_nao_iniciadas(monkeypatch, capsys):
     assert json.loads(capsys.readouterr().out)["medicao"] == medicao
 
 
+def _candidata_pix(referencia="a" * 64, *, motivo="indisponivel"):
+    return {
+        "referencia": referencia,
+        "criada_em": "2026-09-25T20:00:00+00:00",
+        "tentativa": "reconciliation_required",
+        "intent": "pending",
+        "motivo": motivo,
+        "qr_presente": False,
+        "operacoes": {
+            "customer": "completed",
+            "order": "completed",
+            "payment": "reconciliation_required",
+        },
+    }
+
+
+def test_appmax_pix_descoberta_historica_emite_candidatas_opacas():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [_candidata_pix()],
+    }
+    # guarda: ci/operacoes_vps.py:385
+    assert ops.conferir_medicao("appmax-pix", medicao) == medicao
+    texto = json.dumps(medicao)
+    assert "pedido_id" not in texto
+    assert "customer_id" not in texto
+    assert "qr_code" not in texto
+
+
+@pytest.mark.parametrize("classificacao", ["ausente", "multipla"])
+def test_appmax_pix_descoberta_explica_zero_ou_muitas(classificacao):
+    candidatas = (
+        []
+        if classificacao == "ausente"
+        else [_candidata_pix(), _candidata_pix("b" * 64)]
+    )
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": classificacao,
+        "candidatas": candidatas,
+    }
+    assert ops.conferir_medicao("appmax-pix", medicao) == medicao
+
+
+def test_appmax_pix_descoberta_recusa_campo_inesperado():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_pix(), "pedido_id": "3531"}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix", medicao)
+
+
+def test_appmax_pix_vincula_resposta_ao_modo_solicitado():
+    descoberta = {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+    resumo = {
+        "tentativa": "reconciliation_required",
+        "intent": "pending",
+        "motivo": "indisponivel",
+        "qr_presente": False,
+        "operacoes": {
+            "customer": "completed",
+            "order": "completed",
+            "payment": "reconciliation_required",
+        },
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix", descoberta, "a" * 64)
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix", resumo)
+
+
+def test_appmax_pix_sem_referencia_consulta_sete_dias_e_limite_cem(monkeypatch, capsys):
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "ausente",
+        "candidatas": [],
+    }
+    chamadas = []
+
+    def rodar(args, **kwargs):
+        chamadas.append(args)
+        valor = "a" * 64 if len(chamadas) == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 0
+    assert json.loads(capsys.readouterr().out)["medicao"] == medicao
+    codigo = chamadas[1][-1]
+    assert "timedelta(days=7)" in codigo
+    assert "[:100]" in codigo
+    assert codigo.index("settings.APPMAX_AUTH_URL") < codigo.index(
+        "PaymentAttempt.objects.filter"
+    )
+    assert codigo.index("settings.APPMAX_API_URL") < codigo.index(
+        "PaymentAttempt.objects.filter"
+    )
+    assert "provider='appmax'" in codigo
+    assert "platform_site_id='cc06b8c3-043b-4c06-92c5-5ea624e00586'" in codigo
+    assert "intent__method='pix'" in codigo
+    assert ".save(" not in codigo
+    assert ".update(" not in codigo
+    assert ".delete(" not in codigo
+
+
+def test_appmax_pix_codigo_remoto_e_autossuficiente_e_guarda_antes_da_consulta(
+    monkeypatch,
+):
+    capturado = {}
+    medicao = {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+
+    def comando(args):
+        if args[1] == "ps":
+            return "a" * 64
+        capturado["codigo"] = args[-1]
+        return json.dumps(medicao)
+
+    # guarda: ci/operacoes_vps.py:467
+    monkeypatch.setattr(ops, "comando", comando)
+    try:
+        assert ops.medir("appmax-pix", "pagamentos") == medicao
+    except Exception as exc:
+        pytest.fail(f"código remoto indisponível: {exc}")
+    codigo = capturado["codigo"]
+    assert "https://auth.sandboxappmax.com.br/oauth2/token" in codigo
+    assert "https://api.sandboxappmax.com.br" in codigo
+
+    def executar_remoto(auth_url, api_url):
+        consultas = 0
+
+        class Consulta:
+            def filter(self, **kwargs):
+                nonlocal consultas
+                consultas += 1
+                return self
+
+            def select_related(self, *_):
+                return self
+
+            def prefetch_related(self, *_):
+                return self
+
+            def order_by(self, *_):
+                return self
+
+            def __getitem__(self, _):
+                return []
+
+        importador_real = builtins.__import__
+
+        def importar(nome, *args, **kwargs):
+            falsos = {
+                "django.conf": SimpleNamespace(
+                    settings=SimpleNamespace(
+                        APPMAX_AUTH_URL=auth_url, APPMAX_API_URL=api_url
+                    )
+                ),
+                "django.utils": SimpleNamespace(
+                    timezone=SimpleNamespace(now=lambda: datetime.now(timezone.utc))
+                ),
+                "pagamentos.core.models": SimpleNamespace(
+                    PaymentAttempt=SimpleNamespace(objects=Consulta())
+                ),
+            }
+            return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+        saida = StringIO()
+        erro = None
+        with redirect_stdout(saida):
+            try:
+                exec(
+                    codigo,
+                    {"__builtins__": {**vars(builtins), "__import__": importar}},
+                )
+            except SystemExit as exc:
+                erro = exc.code
+        return saida.getvalue(), consultas, erro
+
+    saida, consultas, erro = executar_remoto(
+        "https://auth.appmax.com.br/oauth2/token", "https://api.appmax.com.br"
+    )
+    assert erro == 23
+    assert consultas == 0
+    assert saida.strip() == "APPMAX_SANDBOX_REQUIRED"
+
+    saida, consultas, erro = executar_remoto(
+        "https://auth.sandboxappmax.com.br/oauth2/token",
+        "https://api.sandboxappmax.com.br",
+    )
+    assert erro is None
+    assert consultas == 1
+    assert json.loads(saida) == medicao
+
+
+def test_appmax_pix_recusa_configuracao_fora_do_sandbox(monkeypatch, capsys):
+    chamadas = 0
+
+    def rodar(args, **kwargs):
+        nonlocal chamadas
+        chamadas += 1
+        if chamadas == 1:
+            return subprocess.CompletedProcess(args, 0, "a" * 64, PRIVADO)
+        return subprocess.CompletedProcess(
+            args, 23, "APPMAX_SANDBOX_REQUIRED\n", PRIVADO
+        )
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}) == 2
+    saida = json.loads(capsys.readouterr().out)
+    assert saida["erro"] == "sandbox"
+    assert "Corrija APPMAX_AUTH_URL e APPMAX_API_URL" in saida["acao"]
+    assert PRIVADO not in json.dumps(saida)
+
+
+def test_appmax_pix_referencia_tambem_encontra_tentativa_antiga(monkeypatch, capsys):
+    medicao = {
+        "tentativa": "reconciliation_required",
+        "intent": "pending",
+        "motivo": "indisponivel",
+        "qr_presente": False,
+        "operacoes": {
+            "customer": "completed",
+            "order": "completed",
+            "payment": "reconciliation_required",
+        },
+    }
+    chamadas = []
+
+    def rodar(args, **kwargs):
+        chamadas.append(args)
+        valor = "a" * 64 if len(chamadas) == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pix", "pagamentos", {"pagamentos"}, "a" * 64) == 0
+    assert json.loads(capsys.readouterr().out)["medicao"] == medicao
+    assert "timedelta(days=7)" in chamadas[1][-1]
+
+
 def test_appmax_pix_recusa_motivo_livre_mesmo_transformado_em_slug():
     medicao = {
         "tentativa": "reconciliation_required",
@@ -232,8 +485,9 @@ def test_appmax_pix_recusa_motivo_livre_mesmo_transformado_em_slug():
             "payment": "reconciliation_required",
         },
     }
+    # guarda: ci/operacoes_vps.py:246
     with pytest.raises(ops.Falha, match="formato"):
-        ops.conferir_medicao("appmax-pix", medicao)
+        ops.conferir_medicao("appmax-pix", medicao, REFERENCIA)
 
 
 def test_appmax_pix_sem_tentativa_recente_falha_fechado(monkeypatch, capsys):
@@ -615,3 +869,274 @@ def test_rodape_real_da_acao_nao_substitui_a_evidencia(monkeypatch, tmp_path, su
         monkeypatch.setenv("SAIDA", invalida)
         with pytest.raises(ops.Falha):
             ops.conferir()
+
+
+def _executar_codigo_appmax_pix_pedido(monkeypatch, registros, resposta, urls=None):
+    chamadas = []
+    consultas = []
+    cliente_chamadas = []
+    urls = urls or (ops.APPMAX_AUTH_SANDBOX, ops.APPMAX_API_SANDBOX)
+    referencia = hashlib.sha256(b"chave-historica").hexdigest()
+
+    class Consulta:
+        def filter(self, **kwargs):
+            consultas.append(kwargs)
+            return self
+
+        def select_related(self, *_):
+            return self
+
+        def order_by(self, *_):
+            return self
+
+        def __getitem__(self, _):
+            return registros
+
+    class Cliente:
+        def consultar_pedido(self, order_id):
+            cliente_chamadas.append(order_id)
+            return resposta
+
+    settings = SimpleNamespace(APPMAX_AUTH_URL=urls[0], APPMAX_API_URL=urls[1])
+    timezone_falsa = SimpleNamespace(
+        now=lambda: datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    )
+    importador_real = builtins.__import__
+
+    def importar(nome, *args, **kwargs):
+        falsos = {
+            "django.conf": SimpleNamespace(settings=settings),
+            "django.utils": SimpleNamespace(timezone=timezone_falsa),
+            "pagamentos.core.models": SimpleNamespace(
+                PaymentAttempt=SimpleNamespace(objects=Consulta())
+            ),
+            "pagamentos.providers.appmax.client": SimpleNamespace(
+                AppmaxClient=lambda: Cliente()
+            ),
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    def comando(args):
+        chamadas.append(args)
+        if args[1] == "ps":
+            return "a" * 64
+        codigo = args[-1]
+        saida = StringIO()
+        with redirect_stdout(saida):
+            try:
+                exec(
+                    codigo,
+                    {"__builtins__": {**vars(builtins), "__import__": importar}},
+                )
+            except SystemExit as erro:
+                if erro.code == 23:
+                    raise ops.Falha("sandbox") from None
+                if erro.code not in (None, 0):
+                    raise
+        return saida.getvalue()
+
+    monkeypatch.setattr(ops, "comando", comando)
+    dados = ops.medir("appmax-pix-pedido", "pagamentos", referencia)
+    return dados, chamadas, consultas, cliente_chamadas
+
+
+def _tentativa_appmax_pix_pedido():
+    return SimpleNamespace(
+        external_order_id="3531",
+        customer_id="2023",
+        amount_cents=495,
+        reason="appmax_pix_diagnostico_indisponivel",
+        intent=SimpleNamespace(idempotency_key="chave-historica"),
+    )
+
+
+def _resposta_appmax_pix_pedido(**alteracoes):
+    resposta = {
+        "id": 3531,
+        "status": "pendente",
+        "customer": {"id": 2023},
+        "payment": {
+            "method": "pix",
+            "pix_qrcode": "data:image/png;base64,aW1hZ2Vt",
+            "pix_emv": "000201ABC",
+            "pix_expiration_date": "2026-09-26 13:00:00",
+        },
+        "amounts": {"sub_total": 495},
+    }
+    resposta.update(alteracoes)
+    return resposta
+
+
+def test_appmax_pix_pedido_exige_referencia_e_filtra_catalogo(monkeypatch, capsys):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert ops.executar("appmax-pix-pedido", "pagamentos", {"pagamentos"}) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+    # guarda: ci/operacoes_vps.py:116
+    assert ops.OPERACOES >= {"appmax-pix-pedido"}
+
+
+def test_appmax_pix_pedido_executa_get_unico_e_sanitizado(monkeypatch):
+    tentativa = _tentativa_appmax_pix_pedido()
+    dados, chamadas, consultas, cliente_chamadas = _executar_codigo_appmax_pix_pedido(
+        monkeypatch, [tentativa], _resposta_appmax_pix_pedido()
+    )
+    assert dados == {
+        "resultado": "medido",
+        "referencia": hashlib.sha256(b"chave-historica").hexdigest(),
+        "identidade_confere": True,
+        "metodo": "pix",
+        "metodo_confere": True,
+        "valor_centavos": 495,
+        "valor_confere": True,
+        "status": "pendente",
+        "qr_presente": True,
+        "qr_formato_aceito": True,
+        "qr_vencido": False,
+        "diagnostico": "diagnostico",
+    }
+    assert len(consultas) == 1
+    assert len(cliente_chamadas) == 1 and cliente_chamadas[0] == 3531
+    codigo = chamadas[1][-1]
+    assert "AppmaxClient().consultar_pedido" in codigo
+    assert "intent__method='pix'" in codigo
+    assert "timedelta(days=7)" in codigo
+    cliente_texto = (
+        RAIZ / "services/pagamentos/pagamentos/providers/appmax/client.py"
+    ).read_text(encoding="utf-8")
+    assert "httpx.get(" in cliente_texto
+    assert "/v1/orders/{quote(str(order_id), safe='')}" in cliente_texto
+    texto = json.dumps(dados)
+    assert "3531" not in texto
+    assert "aW1hZ2Vt" not in texto
+    # guarda: ci/operacoes_vps.py:469
+    assert "APPMAX_SANDBOX_REQUIRED" in codigo
+
+
+def test_appmax_pix_pedido_producao_para_antes_de_orm_e_api(monkeypatch):
+    tentativa = _tentativa_appmax_pix_pedido()
+    with pytest.raises(ops.Falha, match="sandbox"):
+        _executar_codigo_appmax_pix_pedido(
+            monkeypatch,
+            [tentativa],
+            _resposta_appmax_pix_pedido(),
+            urls=(
+                "https://auth.appmax.com.br/oauth2/token",
+                "https://api.appmax.com.br",
+            ),
+        )
+    # guarda: ci/operacoes_vps.py:469
+    assert True
+
+
+@pytest.mark.parametrize(
+    ("alteracoes", "acao"),
+    [
+        ({"customer": None}, "identidade_nao_comprovada"),
+        ({"payment": {"method": "card"}}, "metodo_nao_comprovado"),
+        ({"amounts": {}}, "valor_nao_comprovado"),
+        ({"payment": {"method": "pix"}}, "qr_nao_comprovado"),
+        (
+            {
+                "payment": {
+                    "method": "pix",
+                    "pix_qrcode": "@@@",
+                    "pix_emv": "000201ABC",
+                    "pix_expiration_date": "2026-09-26 13:00:00",
+                }
+            },
+            "qr_nao_comprovado",
+        ),
+        (
+            {
+                "payment": {
+                    "method": "pix",
+                    "pix_qrcode": "data:image/png;base64,",
+                    "pix_emv": "000201ABC",
+                    "pix_expiration_date": "2026-09-26 13:00:00",
+                }
+            },
+            "qr_nao_comprovado",
+        ),
+    ],
+)
+def test_appmax_pix_pedido_resposta_incompleta_falha_fechado(
+    monkeypatch, alteracoes, acao
+):
+    dados, _, _, cliente_chamadas = _executar_codigo_appmax_pix_pedido(
+        monkeypatch,
+        [_tentativa_appmax_pix_pedido()],
+        _resposta_appmax_pix_pedido(**alteracoes),
+    )
+    assert dados == {
+        "resultado": "nao_medido",
+        "referencia": hashlib.sha256(b"chave-historica").hexdigest(),
+        "acao": acao,
+    }
+    assert cliente_chamadas == [3531]
+
+
+def test_appmax_pix_pedido_candidata_zero_ou_multipla_nao_chama_appmax(monkeypatch):
+    tentativa = _tentativa_appmax_pix_pedido()
+    dados, _, consultas, cliente_chamadas = _executar_codigo_appmax_pix_pedido(
+        monkeypatch, [], _resposta_appmax_pix_pedido()
+    )
+    assert dados["acao"] == "candidata_ausente_ou_multipla"
+    assert len(consultas) == 1 and cliente_chamadas == []
+    tentativa2 = _tentativa_appmax_pix_pedido()
+    dados, _, _, cliente_chamadas = _executar_codigo_appmax_pix_pedido(
+        monkeypatch, [tentativa, tentativa2], _resposta_appmax_pix_pedido()
+    )
+    assert dados["acao"] == "candidata_ausente_ou_multipla"
+    assert cliente_chamadas == []
+
+
+def test_appmax_pix_pedido_referencia_de_saida_e_qr_coerentes():
+    medicao = {
+        "resultado": "nao_medido",
+        "referencia": "a" * 64,
+        "acao": "qr_nao_comprovado",
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix-pedido", medicao, REFERENCIA)
+    # guarda: ci/operacoes_vps.py:313
+    medido = {
+        "resultado": "medido",
+        "referencia": REFERENCIA,
+        "identidade_confere": True,
+        "metodo": "pix",
+        "metodo_confere": True,
+        "valor_centavos": 495,
+        "valor_confere": True,
+        "status": "pendente",
+        "qr_presente": False,
+        "qr_formato_aceito": True,
+        "qr_vencido": False,
+        "diagnostico": "vazio",
+    }
+    # guarda: ci/operacoes_vps.py:263
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix-pedido", medido, REFERENCIA)
+
+
+def test_appmax_pix_pedido_formato_da_saida_e_diagnostico_sao_fechados():
+    medicao = {
+        "resultado": "medido",
+        "referencia": REFERENCIA,
+        "identidade_confere": True,
+        "metodo": "pix",
+        "metodo_confere": True,
+        "valor_centavos": 495,
+        "valor_confere": True,
+        "status": "pendente",
+        "qr_presente": False,
+        "qr_formato_aceito": False,
+        "qr_vencido": False,
+        "diagnostico": "outro_codigo",
+    }
+    assert ops.conferir_medicao("appmax-pix-pedido", medicao, REFERENCIA) == medicao
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao(
+            "appmax-pix-pedido", {**medicao, "diagnostico": "indisponivel"}, REFERENCIA
+        )
+    # guarda: ci/operacoes_vps.py:309
+    assert True

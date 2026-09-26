@@ -1,0 +1,70 @@
+{
+  "arquivo": "20260926-121713-TAR-736-contrato_execucao",
+  "tarefa": "TAR-736",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T12:17:13.645222+00:00",
+  "quem": "despacho-ci-appmax-pix-pedido",
+  "contrato": {
+    "versao": 1,
+    "plano": "TAR-736 leitura autenticada de pedido Pix Appmax existente",
+    "objetivo": "Adicionar a operação fechada appmax-pix-pedido, com referência SHA obrigatória, seleção única de uma tentativa Pix Appmax do Meshcraft e uma consulta GET autenticada somente leitura.",
+    "condicao_encerramento": "PR integrado com ci/operacoes_vps.py e seus testes, workflow atualizado, guardas de mutação PASS/FAIL/PASS e uma única leitura posterior pela sessão responsável.",
+    "limites_autonomia": "Editar exclusivamente ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py, a descrição/opção necessária em .github/workflows/operacoes-vps.yml e os registros próprios da TAR. Não alterar pagamentos, checkout, admin, contratos, migrations ou reconciliação.",
+    "acoes_do_mantenedor": "Após a integração, a sessão responsável dispara exatamente uma leitura appmax-pix-pedido na main com a referência SHA conhecida e conserva sua saída sanitizada.",
+    "entregaveis": [
+      "Operação appmax-pix-pedido com referência SHA obrigatória e consulta GET única via AppmaxClient.consultar_pedido.",
+      "Saída fechada com identidade, método Pix, valor em centavos, status e booleans de QR, sem ID, payload, PII ou motivo livre.",
+      "Testes de execução do programa remoto gerado com fake Django e fake client, incluindo recusa de produção antes de banco/API.",
+      "Guardas de mutação com baseline PASS, sabotagem FAIL e restauração PASS."
+    ],
+    "escopo_incluido": [
+      "Adicionar appmax-pix-pedido ao catálogo e ao workflow operacoes-vps.",
+      "Validar URLs oficiais sandbox antes de consultar banco ou cliente.",
+      "Limitar consulta a sete dias, cem registros, provider appmax, site Meshcraft e método pix.",
+      "Selecionar exatamente uma candidata pelo hash SHA256 da idempotency_key.",
+      "Classificar diagnóstico somente como vazio, diagnostico, status_conciliado ou outro_codigo."
+    ],
+    "nao_objetivos": [
+      "Não criar pedido, cobrança, estorno ou nova oferta.",
+      "Não chamar reconciliação nem gravar, atualizar ou excluir estado.",
+      "Não implementar recuperação de QR no navegador.",
+      "Não declarar que a candidata conhecida é a compra original da TAR-711."
+    ],
+    "restricoes": [
+      "Somente sandbox oficial APPMAX_AUTH_URL e APPMAX_API_URL.",
+      "Nenhum POST financeiro; eventual renovação OAuth fica exclusivamente no cliente GET existente.",
+      "Resposta incompleta ou formato inesperado falha de forma fechada e sem dados sensíveis.",
+      "Dependência aceita: TAR-735."
+    ],
+    "decisoes_aprovadas": [
+      "Autorização técnica do mantenedor: Tudo do Appmax liberado em 26/09/2026.",
+      "Modelo recomendado gpt-5.6-sol e esforço medium conforme economia_da_fabrica.py brief.",
+      "Propriedade exclusiva desta frente: ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py e descrição/opção necessária de .github/workflows/operacoes-vps.yml."
+    ],
+    "etapas": [
+      "Implementar contrato de entrada, coleta remota autossuficiente e validação da saída.",
+      "Escrever testes vermelhos e executar o programa remoto gerado com fakes.",
+      "Rodar focal, Black, guardas e revisão independente.",
+      "Abrir PR pelo rito com recibo, eventos e provas privadas referenciadas."
+    ],
+    "criterios_entrada": [
+      "TAR-735 aceita e integrada em origin/main.",
+      "Bancada exclusiva limpa e reserva TAR-736 conferida.",
+      "Suíte focal baseline medida com 61 testes passando.",
+      "Mandato nominal cobre os três caminhos autorizados."
+    ],
+    "criterios_aceite": [
+      "Referência ausente, inválida, candidata zero ou múltipla não seleciona pedido.",
+      "Configuração de produção é recusada antes de ORM e cliente.",
+      "A consulta usa exatamente AppmaxClient.consultar_pedido e o cliente existente usa GET /v1/orders/{id}.",
+      "Identidade, método, valor, status e QR incompletos não produzem conclusão financeira.",
+      "Saída não contém ID externo, QR bruto, payload, PII ou reason livre."
+    ],
+    "evidencias_exigidas": [
+      "Comandos e saídas da suíte focal, Black e guardas de mutação.",
+      "Caminhos privados dos JSON baseline, mutação e restauração ligados aos hashes finais.",
+      "Diff restrito aos três alvos e registros próprios da TAR.",
+      "PR aberto pelo make pr com validação e evento de entrega."
+    ]
+  }
+}

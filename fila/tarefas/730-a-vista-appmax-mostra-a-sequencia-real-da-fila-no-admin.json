@@ -1,0 +1,19 @@
+{
+  "arquivo": "730-a-vista-appmax-mostra-a-sequencia-real-da-fila-no-admin",
+  "id": "TAR-730",
+  "titulo": "A vista Appmax mostra a sequência real da fila no Admin",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado na célula admin com a vista Appmax publicada; testes provam leitura da mesma estados.json, tarefas concluídas e canceladas com substituta, dependências e provas legíveis, retrato publicado separado de consulta viva, transições reivindicada/bloqueada/devolvida/concluída em fixtures, e falha não medido com recarregar.",
+  "despacho": "modelo_recomendado: gpt-6-luna; esforco_recomendado: high. Entregar a vista Appmax calculada da fila no Admin, consumindo a mesma estados.json, com sequência, estados inclusive concluídas e canceladas, substitutas, dependências, provas, horário, retrato publicado versus consulta viva e falha não medido com recarregar. Testar transições reivindicada, bloqueada, devolvida e concluída em fixtures. Escopo exclusivo: services/admin/apps/core/appmax.py, services/admin/apps/core/templates/admin/appmax.html, services/admin/tests/test_appmax.py e fila/eventos da própria TAR. Não tocar pagamentos, checkout, contratos, migração, preços, dinheiro ou outras frentes.",
+  "origem": "docs/decisoes/ROTEIRO-APPMAX-ATE-A-CONCLUSAO.md, seção Mecanismo de visibilidade, brief Appmax recompilado em 25/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -41,3 +41,6 @@ urlpatterns = [
         {"document_root": settings.STATICFILES_DIRS[0]},
     ),
 ]
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"

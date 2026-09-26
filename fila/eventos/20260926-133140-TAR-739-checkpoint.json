@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260926-133140-TAR-739-checkpoint",
+  "tarefa": "TAR-739",
+  "evento": "checkpoint",
+  "quando": "2026-09-26T13:31:40.179799+00:00",
+  "quem": "sessao-appmax-vista-correcao",
+  "plano": "Código final e provas locais concluídos; revisão final e destino remoto pendentes",
+  "ultimo_avanco": "2219 testes admin aprovados em 230.37s; três guardas PASS FAIL PASS e duas mutações JavaScript PASS FAIL PASS ligadas aos hashes finais",
+  "proxima_acao": "Concluir revisão independente; publicar pelo ci/pr.py após autorização explícita do destino; conferir vista autenticada após publicação",
+  "verificacoes": [
+    "pytest -q services/admin/tests: 2219 passed, 4 warnings; TEMP/tar739-provas-finais/admin.txt",
+    "provar_guardas.py com PYTEST_ADDOPTS=--rootdir=.: PASS, 3 guards, 3 reprovou; TEMP/tar739-provas-finais/guardas.json",
+    "Node v24.19.0: duas mutações comportamentais FAIL, restaurações PASS; TEMP/tar739-provas-finais/javascript.json"
+  ]
+}

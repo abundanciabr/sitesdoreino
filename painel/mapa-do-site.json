@@ -1955,6 +1955,15 @@
     },
     {
       "celula": "admin",
+      "rota": "appmax/",
+      "endereco": "/admin/appmax/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Vista Appmax",
+      "descricao": "A sequência da fila Appmax com estados, dependências, provas, horário e consulta viva separada."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/robos/excluir",
       "endereco": "/admin/caixa/robos/excluir",
       "alcance": "publico",

@@ -44,6 +44,8 @@ def _cenario(tmp_path: Path, mapa_yml: str) -> Path:
     )
     shutil.copytree(RAIZ / "services", raiz / "services")
     shutil.copytree(RAIZ / "painel", raiz / "painel", dirs_exist_ok=True)
+    for caminho in ("fila", "documentos", "docs/decisoes"):
+        shutil.copytree(RAIZ / caminho, raiz / caminho, dirs_exist_ok=True)
     for marca in ("CONSTITUICAO.md", "INVARIANTES.md"):
         (raiz / marca).write_text("cenario", encoding="utf-8")
     (raiz / "contracts").mkdir(exist_ok=True)
@@ -87,8 +89,8 @@ def test_o_varredor_enxerga_o_consumo_real_e_nao_uma_lista():
 def test_dependencia_escondida_reprova(tmp_path: Path):
     """O código consome e o mapa não declara: a ordem de publicação erraria."""
     mapa = _mapa_real().replace(
-        "    caminhos: [services/checkout]\n    consome: [catalogo, pagamentos]",
-        "    caminhos: [services/checkout]\n    consome: [catalogo]",
+        "    consome: [catalogo, pagamentos]",
+        "    consome: [catalogo]",
     )
     raiz = _cenario(tmp_path, mapa)
     relatorio = mapa_de_celulas.verificar(raiz)
@@ -99,8 +101,8 @@ def test_dependencia_escondida_reprova(tmp_path: Path):
 def test_declaracao_orfa_reprova(tmp_path: Path):
     """O mapa declara e o código não usa: é assim que um mapa envelhece."""
     mapa = _mapa_real().replace(
-        "  leads:\n    caminhos: [services/leads]\n    consome: []",
-        "  leads:\n    caminhos: [services/leads]\n    consome: [catalogo]",
+        "  leads:\n    caminhos: [services/leads]\n    compartilhados: [packages/site_errors]\n    consome: []",
+        "  leads:\n    caminhos: [services/leads]\n    compartilhados: [packages/site_errors]\n    consome: [catalogo]",
     )
     raiz = _cenario(tmp_path, mapa)
     relatorio = mapa_de_celulas.verificar(raiz)
@@ -223,8 +225,8 @@ def test_a_muralha_do_mapa_reprova_de_verdade(tmp_path: Path):
     if BASH is None:
         pytest.skip("sem bash utilizável")
     mapa = _mapa_real().replace(
-        "    caminhos: [services/checkout]\n    consome: [catalogo, pagamentos]",
-        "    caminhos: [services/checkout]\n    consome: []",
+        "    consome: [catalogo, pagamentos]",
+        "    consome: []",
     )
     raiz = _cenario(tmp_path, mapa)
     shutil.copy(RAIZ / "ci" / "mapa-de-celulas.sh", raiz / "ci" / "mapa-de-celulas.sh")
@@ -270,3 +272,19 @@ def test_todo_workflow_que_le_o_mapa_instala_o_leitor():
             f"{arquivo.name} lê o mapa das células e não instala o PyYAML — "
             "a detecção vai falhar alto em TODO PR"
         )
+
+
+def test_pacote_site_errors_acorda_todas_as_celulas_consumidoras():
+    mapa = mapa_de_celulas.carregar(RAIZ)
+    consumidores = sorted(
+        wheel.parents[1].name
+        for wheel in (RAIZ / "services").glob("*/vendor/site_errors-*.whl")
+    )
+
+    assert consumidores, "o pacote site_errors não tem consumidor vendorizado"
+    assert (
+        mapa_de_celulas.celulas_do_diff(
+            ["packages/site_errors/src/site_errors/handlers.py"], mapa
+        )
+        == consumidores
+    )

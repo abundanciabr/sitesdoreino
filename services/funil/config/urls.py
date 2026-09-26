@@ -112,3 +112,6 @@ urlpatterns = [
     # [RECEITA:R6 v1] catch-all: funil serve a raiz de QUALQUER host cadastrado.
     path("", landing, name="landing"),
 ]
+
+handler404 = "site_errors.handlers.page_not_found_shared"
+handler500 = "site_errors.handlers.server_error_shared"

@@ -1,0 +1,21 @@
+{
+  "arquivo": "20260926-040540-TAR-735-checkpoint",
+  "tarefa": "TAR-735",
+  "evento": "checkpoint",
+  "quando": "2026-09-26T04:05:40.851874+00:00",
+  "quem": "despacho-ci-appmax-pix-historico",
+  "plano": "Regressão B: corrigir a execução remota da leitura Pix sandbox e provar a guarda de configuração antes da consulta.",
+  "ultimo_avanco": "Revisão detectou NameError no código enviado a manage.py shell; a validação agora compara os dois URLs oficiais dentro do processo remoto e teste com ORM falso executa produção e sandbox.",
+  "proxima_acao": "Refazer Black, fila, guardas e validação do rito; retomar o PR da TAR-735.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_operacoes_vps.py -q: 62 passed; teste executa código remoto e comprova consulta zero fora do sandbox e uma consulta em sandbox.",
+    "Revisão focal: NameError eliminado por código remoto autossuficiente."
+  ],
+  "contexto": {
+    "bancada": "C:\\Users\\davia\\abundanciabr\\wt-ci-appmax-pix-historico",
+    "branch": "agent/ci/appmax-pix-historico",
+    "frentes_legitimas": 4,
+    "frentes_faltantes": 17,
+    "mudanca_abordagem": "de inspeção textual para execução do código remoto gerado"
+  }
+}

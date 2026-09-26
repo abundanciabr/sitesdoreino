@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-018-admin-exibir-vista-appmax-e-sincronizar-acesso",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "admin: exibir vista Appmax e sincronizar acesso",
+  detalhe: "Vista Appmax com estados, provas, dependências, mapa e menu Admin sincronizados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2096. Validação local: árvore 29f3e8c6c3292cc9b3186f5fd768040ce58d8c17; commit 74e75c1e957f415671b14d517783b887eda574e5; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-730",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

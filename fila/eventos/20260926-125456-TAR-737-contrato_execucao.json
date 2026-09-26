@@ -1,0 +1,65 @@
+{
+  "arquivo": "20260926-125456-TAR-737-contrato_execucao",
+  "tarefa": "TAR-737",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T12:54:56.163012+00:00",
+  "quem": "agent/ci/publicacao-404-prova",
+  "contrato": {
+    "plano": "fila/tarefas/737-conferir-a-tentativa-correta-da-publicacao.json",
+    "versao": 1,
+    "objetivo": "Fazer o validador conferir os jobs que pertencem exatamente à tentativa selecionada da publicação, inclusive quando a API retorna jobs homônimos.",
+    "entregaveis": [
+      "ci/estado_da_entrega.py",
+      "ci/tests/test_estado_da_entrega.py",
+      "fila/tarefas/737-conferir-a-tentativa-correta-da-publicacao.json",
+      "fila/eventos da TAR-737 necessários para reivindicação, contrato e submissão"
+    ],
+    "escopo_incluido": [
+      "Propagar run_attempt do workflow escolhido até a consulta de jobs.",
+      "Consultar actions/runs/{id}/attempts/{run_attempt}/jobs?per_page=100.",
+      "Selecionar de forma determinística a prova concluída mais recente entre jobs homônimos e usar essa seleção na publicação e na cobertura de sucessores.",
+      "Testar a tentativa 5 do fórum com sucesso no job 108396354196 e homônimos em fila 108396354172 e 108396354234."
+    ],
+    "nao_objetivos": [
+      "Não alterar nem reconciliar TAR-734 ou qualquer evento antigo.",
+      "Não executar, cancelar ou redisparar deploys.",
+      "Não alterar workflows, contratos, outras células ou arquivos além dos dois alvos de código e metadados novos da TAR-737."
+    ],
+    "restricoes": [
+      "Código limitado a ci/estado_da_entrega.py e ci/tests/test_estado_da_entrega.py.",
+      "Preservar todos os artefatos locais do rito já existentes.",
+      "Validar os comandos declarados em .codex/pr-publicacao-404-validacao.json.",
+      "A publicação dos arquivos ci/ não exige deploy de aplicação."
+    ],
+    "decisoes_aprovadas": [
+      "A consulta de jobs deve identificar a tentativa específica retornada pelo workflow.",
+      "Em nomes duplicados, prova concluída prevalece sobre cópia pendente e a conclusão concluída mais recente decide."
+    ],
+    "etapas": [
+      "Atualizar o leitor para preservar a tentativa e selecionar provas de jobs homônimos.",
+      "Proteger o caso real do fórum com teste integrado e guarda do endpoint específico.",
+      "Executar os dois comandos do recibo de validação.",
+      "Submeter pelo rito canônico com TAR-737 e aguardar medição da sessão principal."
+    ],
+    "criterios_entrada": [
+      "TAR-737 criada nesta bancada e reivindicada por agent/ci/publicacao-404-prova.",
+      "Mandato do mantenedor nesta sessão em 2026-09-26 cobre os dois caminhos de código."
+    ],
+    "criterios_aceite": [
+      "A consulta usa a tentativa exata escolhida para o workflow.",
+      "O caso do fórum com IDs 108396354172, 108396354196 e 108396354234 resulta em publicação comprovada pela tentativa 5.",
+      "Jobs duplicados pendentes não apagam prova concluída; conclusão concluída mais recente ainda pode reprovar.",
+      "Os testes do validador de entrega e do histórico GraphQL passam.",
+      "O rito de PR contém a TAR-737, o mandato e os dois caminhos autorizados."
+    ],
+    "evidencias_exigidas": [
+      "Prova de regressão: endpoint antigo falha na guarda do caso real.",
+      "Comando do recibo: python -m pytest ci/tests/test_estado_da_entrega.py ci/tests/test_jobs_historicos_graphql.py -q.",
+      "Comando do recibo: análise AST dos dois arquivos de código termina com AST PASS.",
+      "PR criado pelo rito canônico e ligado à TAR-737."
+    ],
+    "condicao_encerramento": "PR integrado e evidência de testes aprovada; a sessão principal mede integração e confirma que ci/ não exige publicação de aplicação.",
+    "limites_autonomia": "Alterações de código limitadas aos dois arquivos declarados. Decisão fora desse escopo volta à sessão principal.",
+    "acoes_do_mantenedor": "Nenhuma ação adicional; o mandato nominal já foi dado nesta sessão em 2026-09-26."
+  }
+}

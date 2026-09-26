@@ -17,3 +17,4 @@ jsonschema==4.23.0
 # desenvolve tem PyYAML global (`armadilhas/096`). Mesmo pino das outras celulas.
 PyYAML==6.0.2
 black==24.10.0
+services/mensageria/vendor/site_errors-0.1.0-py3-none-any.whl

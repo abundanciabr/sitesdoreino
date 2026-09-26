@@ -1,0 +1,132 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Appmax | Admin{% endblock %}
+{% block corpo %}
+<div class="envolucro largo appmax-vista">
+  <nav class="abas" aria-label="Seções da fila">
+    <a class="aba" href="{% url 'caixa_robos' %}">Os robôs</a>
+    <a class="aba ativa" href="{% url 'appmax' %}" aria-current="page">Appmax</a>
+  </nav>
+  <header class="cartao cabecalho">
+    <p class="sobretitulo">Cartão Appmax</p>
+    <h1>Vista Appmax</h1>
+    <p>Acompanhe a sequência da fila pela mesma leitura que abastece o quadro dos robôs.</p>
+  </header>
+
+  <section class="cartao fonte" aria-labelledby="titulo-retrato">
+    <div>
+      <p class="sobretitulo">Fonte de estados</p>
+      <h2 id="titulo-retrato">{{ fonte.rotulo }}</h2>
+      <p class="fonte-status">Origem: <strong>{{ fonte.origem }}</strong>. Condição: <strong>{{ fonte.condicao }}</strong>.</p>
+      <p>Gerado em: <strong>{{ fonte.gerado_em }}</strong>. Revisão: <code>{{ fonte.sha }}</code>. Execução: <strong>{{ fonte.run }}</strong>.</p>
+      {% if fonte.motivo %}<p class="aviso">{{ fonte.motivo }}</p>{% endif %}
+    </div>
+    <div class="viva" data-consulta-viva data-url="{{ consulta_viva_url }}">
+      <p class="sobretitulo">Consulta viva</p>
+      <p id="consulta-viva-status" aria-live="polite">não medido</p>
+      <p class="nota">Reservas e PRs são consultados pelo navegador. Eles não alteram o retrato publicado.</p>
+      <button type="button" id="consultar-viva">Consultar agora</button>
+      <a href="{% url 'appmax' %}">Recarregar o retrato</a>
+    </div>
+  </section>
+
+  {% if fila_ausente %}
+    <section class="cartao vazio" aria-live="polite">
+      <h2>Não medido</h2>
+      <p>A fonte da fila está ausente ou inválida. Isto não significa que não há tarefas.</p>
+      <a class="botao" href="{% url 'appmax' %}">Recarregar</a>
+    </section>
+  {% else %}
+    <section aria-labelledby="titulo-sequencia">
+      <div class="secao-titulo">
+        <p class="sobretitulo">Sequência do roteiro</p>
+        <h2 id="titulo-sequencia">Etapas Appmax</h2>
+      </div>
+      <ol class="sequencia">
+        {% for tarefa in tarefas %}
+          <li class="cartao tarefa tarefa-{{ tarefa.estado|slugify }}">
+            <div class="tarefa-cabecalho">
+              <span class="numero">{{ forloop.counter }}</span>
+              <div>
+                <p class="id-tarefa">{{ tarefa.id }}</p>
+                <h3>{{ tarefa.titulo }}</h3>
+              </div>
+              <strong class="estado">{{ tarefa.estado }}</strong>
+            </div>
+            <p>{{ tarefa.motivo }}</p>
+            <dl class="detalhes">
+              <div><dt>Dependência impeditiva</dt><dd>{% if not tarefa.dependencias_medidas %}não medido{% elif tarefa.dependencias %}{{ tarefa.dependencias|join:", " }}{% else %}nenhuma impeditiva{% endif %}</dd></div>
+              <div><dt>Prova</dt><dd>{% if tarefa.provas %}{% for prova in tarefa.provas %}<a href="{{ prova.url }}">{{ prova.rotulo }}</a>{% if not forloop.last %}; {% endif %}{% endfor %}{% else %}{{ tarefa.prova }}{% endif %}</dd></div>
+              {% if tarefa.substituta %}<div><dt>Substituta</dt><dd>{{ tarefa.substituta }}</dd></div>{% endif %}
+            </dl>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endif %}
+</div>
+<style>
+  .appmax-vista .cabecalho { margin-bottom: 18px; }
+  .appmax-vista h1, .appmax-vista h2, .appmax-vista h3 { color: var(--texto); }
+  .appmax-vista .cabecalho h1 { margin: 0 0 8px; }
+  .appmax-vista .fonte { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr); gap: 24px; margin-bottom: 28px; }
+  .appmax-vista .fonte > div, .appmax-vista .tarefa-cabecalho > div { min-width: 0; }
+  .appmax-vista .fonte p, .appmax-vista .fonte code, .appmax-vista .tarefa > p, .appmax-vista .tarefa h3 { overflow-wrap: anywhere; }
+  .appmax-vista .fonte h2 { margin: 0 0 8px; }
+  .appmax-vista .fonte p { margin: 7px 0; }
+  .appmax-vista .viva { border-left: 1px solid var(--linha); padding-left: 20px; }
+  .appmax-vista .viva #consulta-viva-status { font-weight: 700; }
+  .appmax-vista .nota { color: var(--texto-2); font-size: 13px; }
+  .appmax-vista .viva a { display: inline-block; margin-left: 10px; }
+  .appmax-vista .secao-titulo { margin: 10px 0 12px; }
+  .appmax-vista .secao-titulo h2 { margin: 0; }
+  .appmax-vista .sequencia { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+  .appmax-vista .tarefa { border-left: 5px solid var(--linha); padding: 16px; }
+  .appmax-vista .tarefa-concluida { border-left-color: #2f9e44; }
+  .appmax-vista .tarefa-cancelada { border-left-color: #868e96; }
+  .appmax-vista .tarefa-bloqueada { border-left-color: #e67700; }
+  .appmax-vista .tarefa-reivindicada { border-left-color: #7048e8; }
+  .appmax-vista .tarefa-cabecalho { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+  .appmax-vista .numero { color: var(--texto-2); font-size: 20px; font-weight: 700; }
+  .appmax-vista .id-tarefa { color: var(--texto-2); font-family: monospace; margin: 0 0 3px; }
+  .appmax-vista .tarefa h3 { margin: 0; font-size: 17px; }
+  .appmax-vista .estado { white-space: nowrap; text-transform: lowercase; }
+  .appmax-vista .detalhes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; }
+  .appmax-vista dt { color: var(--texto-2); font-size: 12px; }
+  .appmax-vista dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+  .appmax-vista .vazio { margin-top: 20px; }
+  @media (max-width: 700px) {
+    .appmax-vista .fonte, .appmax-vista .detalhes { grid-template-columns: 1fr; }
+    .appmax-vista .viva { border-left: 0; border-top: 1px solid var(--linha); padding-left: 0; padding-top: 16px; }
+    .appmax-vista .tarefa-cabecalho { grid-template-columns: 24px minmax(0, 1fr); }
+    .appmax-vista .estado { grid-column: 2; }
+  }
+</style>
+<script>
+(function () {
+  const bloco = document.querySelector("[data-consulta-viva]");
+  const botao = document.getElementById("consultar-viva");
+  const status = document.getElementById("consulta-viva-status");
+  if (!bloco || !botao || !status) return;
+  botao.addEventListener("click", async function () {
+    botao.disabled = true;
+    status.textContent = "medindo...";
+    const base = bloco.dataset.url;
+    try {
+      const respostas = await Promise.all([
+        fetch(base + "/git/matching-refs/reservas", {cache: "no-store"}),
+        fetch(base + "/pulls?state=open&per_page=100", {cache: "no-store"})
+      ]);
+      if (respostas.some((resposta) => !resposta.ok)) throw new Error("fonte indisponível");
+      const reservas = await respostas[0].json();
+      const prs = await respostas[1].json();
+      if (!Array.isArray(reservas) || !Array.isArray(prs)) throw new Error("resposta inválida");
+      status.textContent = "medido em " + new Date().toLocaleString("pt-BR") + ": " + reservas.length + " referências de reserva e " + prs.length + " PRs abertos.";
+    } catch (erro) {
+      status.textContent = "não medido. Recarregue a consulta quando a fonte estiver disponível.";
+    } finally {
+      botao.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}
