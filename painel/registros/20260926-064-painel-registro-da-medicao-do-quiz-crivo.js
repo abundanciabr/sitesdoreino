@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-064-painel-registro-da-medicao-do-quiz-crivo",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "painel: registro da medicao do quiz Crivo",
+  detalhe: "PR so acrescenta o registro 059, que documenta o run quiz-configuracao ja concluido; nenhum codigo mudou nesta entrega.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2124. Validação local: árvore 8dbc1f08b7c8569e133c3d36e31b43cf57c78790; commit 4099dc65f980e2afdc33662adad618846853c354; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-763",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
