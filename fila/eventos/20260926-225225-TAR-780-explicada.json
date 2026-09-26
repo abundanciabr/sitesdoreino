@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-225225-TAR-780-explicada",
+  "tarefa": "TAR-780",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:52:25.690263+00:00",
+  "quem": "despacho F2 do sistema de experimentos, 26/09/2026",
+  "o_que_e": "Hoje o consumidor de eventos da metricas nao assina os quatro assuntos do funil de vendas (pagina vista, secao vista, clique e lead capturado), entao esses fatos nunca chegam ao livro de fatos.",
+  "o_que_muda": "O consumidor passa a assinar os quatro streams do funil e o livro passa a guardar visita, secao alcancada, clique e lead, sem nenhum dado pessoal, abrindo caminho para medir a escada de vendas.",
+  "exemplo": "Hoje ninguem sabe, pelo livro, quantas pessoas viram a secao de oferta antes de comprar; depois desta tarefa existe um fato por secao alcancada, pronto para essa pergunta.",
+  "importancia": 60
+}
