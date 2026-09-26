@@ -165,7 +165,7 @@ def _payload_pix_preservavel(
 
 
 def _payload_legado(payload: Any, *, order_id: int) -> bool:
-    return payload == {"data": {"order_id": order_id}}
+    return bool(payload == {"data": {"order_id": order_id}})
 
 
 @csrf_exempt
