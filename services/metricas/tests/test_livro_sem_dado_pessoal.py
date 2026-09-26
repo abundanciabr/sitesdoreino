@@ -136,8 +136,7 @@ def violacoes_de(streams: list[str], raiz: Path = RAIZ_CONTRATOS) -> list[str]:
             esquema = json.loads(esquema_path.read_text(encoding="utf-8"))
             for achado in campos_pessoais_do_esquema(esquema):
                 mensagens.append(
-                    f"{assunto} ({esquema_path.name}): campo pessoal "
-                    f"'{achado}'"
+                    f"{assunto} ({esquema_path.name}): campo pessoal " f"'{achado}'"
                 )
     return mensagens
 
