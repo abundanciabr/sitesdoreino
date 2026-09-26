@@ -1,0 +1,20 @@
+{
+  "arquivo": "762-registrar-no-livro-a-licao-do-mandato-por-faixa-do-quiz-criv",
+  "id": "TAR-762",
+  "titulo": "Registrar no livro a lição do mandato por faixa do quiz Crivo e a decisão do mantenedor",
+  "toca": [
+    "painel",
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR aberto com a armadilha 510 e o registro 20260926-058 mesclado, gerador e indice PASS",
+  "despacho": "Escreva armadilhas/510 e o registro de decisao do mantenedor sobre os PRs 2116 e 2117 e o quiz Crivo, valide com node painel/gerar_manifesto.js e python ci/indice_de_armadilhas.py, e abra o PR com make pr.",
+  "origem": "sessao do escrivao, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
