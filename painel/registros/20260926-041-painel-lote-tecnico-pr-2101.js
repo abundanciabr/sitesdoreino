@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-041-painel-lote-tecnico-pr-2101",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "painel: lote técnico PR 2101",
+  detalhe: "14 registros Appmax validados; 039 confirma 552 px. 360 px e TAR-741 seguem sem sucesso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2101. Validação local: árvore ffe932c30e645ece8a9b7c6481f42c53ca069f31; commit 5f2cfd56fec638bff859b0e96a2316ec81d885f1; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-742",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

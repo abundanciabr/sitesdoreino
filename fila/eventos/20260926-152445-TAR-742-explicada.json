@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-152445-TAR-742-explicada",
+  "tarefa": "TAR-742",
+  "evento": "explicada",
+  "quando": "2026-09-26T15:24:45.572364+00:00",
+  "quem": "Fecho obrigatório pós-publicação Appmax, com autorização explícita do mantenedor para o repositório indicado",
+  "o_que_e": "Reúne os registros técnicos Appmax no livro e os publica pela porta oficial do projeto.",
+  "o_que_muda": "Fatos já verificados ficam visíveis na memória do painel, com prova do PR e da publicação.",
+  "exemplo": "Depois do PR publicado, abrir a memória e localizar os 14 registros do lote.",
+  "importancia": 80
+}
