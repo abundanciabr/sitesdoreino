@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-202620-TAR-755-concluida",
+  "tarefa": "TAR-755",
+  "evento": "concluida",
+  "quando": "2026-09-26T20:26:20.371954+00:00",
+  "quem": "agent/contratos/appmax-reversao-v2",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2120",
+  "verificado_em": "2026-09-26"
+}

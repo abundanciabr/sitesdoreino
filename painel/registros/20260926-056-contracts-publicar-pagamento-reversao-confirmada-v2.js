@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-056-contracts-publicar-pagamento-reversao-confirmada-v2",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "contracts: publicar pagamento.reversao_confirmada.v2",
+  detalhe: "Contrato v2 e provas para reversão confirmada sem amount_cents; preserva pagamento.estornado.v2 e inclui teste date-time reproduzível.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2120. Validação local: árvore 11be3ea9a07ed26177f1c47874c7103c1982c47e; commit ed52761a4ba519be7082c2f1acd13f69eb6efe95; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-755",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contratos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
