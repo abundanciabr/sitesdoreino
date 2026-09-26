@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260926-021201-TAR-732-submetida",
+  "tarefa": "TAR-732",
+  "evento": "submetida",
+  "quando": "2026-09-26T02:12:01.730830+00:00",
+  "quem": "agent/ci/appmax-retomada-reserva",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2098",
+  "revisao": "46f31840e2cbc93689dcb018ea57f4bc8195dff2",
+  "arvore": "6c9fa89343ca58dc6b13478d67de9661567aaf59"
+}
