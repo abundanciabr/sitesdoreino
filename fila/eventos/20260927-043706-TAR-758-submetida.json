@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-043706-TAR-758-submetida",
+  "tarefa": "TAR-758",
+  "evento": "submetida",
+  "quando": "2026-09-27T04:37:06.739702+00:00",
+  "quem": "agent/pagamentos/appmax-emissor-reversao-v2",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2166",
+  "revisao": "1f82cc8a9e9ee934af1b63f97c91e04df295dca4",
+  "arvore": "ca2b3982062f98ac30ead41c30625ad5ff7fdb45"
+}
