@@ -84,6 +84,14 @@ semeador — e o motivo é que o valor a gravar quase nunca é conhecível na ho
 escrever o código (o `product_id` é um UUID sorteado, diferente em cada
 ambiente).
 
+**Exceção decidida em 27/09/2026, na TAR-852 (versões da rubrica).** Quando o
+valor a gravar já está no próprio banco, o preenchimento é `RunSQL` de
+`INSERT ... SELECT` ou `UPDATE ... FROM` (`0010_versoes_do_instrumento`):
+nenhum texto sai do repositório, e o banco novo de todo teste não recebe nada.
+Continua proibido o `RunPython` e qualquer valor escrito no arquivo. A prova é
+do teste que volta o banco para a migração anterior, planta laudos e migra de
+novo (`tests/test_versoes_do_instrumento.py`).
+
 ## Reordenar linhas com posição única: a aula estaciona, o bloco adia
 
 **Medido em 07/09/2026, na TAR-266.** `putCourseStructure` reordena blocos e

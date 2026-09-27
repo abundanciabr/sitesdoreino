@@ -1,0 +1,118 @@
+{% extends "gamificacao/moldura.html" %}{% comment %}
+O QUADRO DE CONTRIBUIÇÕES do aluno (dossiê da Comunidade §6).
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/conquistas` para dentro do caminho (`armadilhas/029` e `/081`).
+
+A EXIGÊNCIA VEM ANTES DO BOTÃO. Cada tarefa mostra os cinco campos (o que
+entregar, quem pode, como se avalia, o reconhecimento e quem aceita) acima do
+"Assumir": quem assume sabe o que vai ser cobrado.
+
+SÓ A PESSOA QUE OLHA. A tarefa diz se há vaga, nunca quantas pessoas a
+assumiram, e nenhum nome de colega aparece: placar é proibido pela lei §8.
+
+Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
+{% endcomment %}
+{% block titulo %}Contribuições{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{% url 'medalhas' %}">Medalhas</a>
+  <a href="{% url 'contribuicoes' %}" aria-current="page">Contribuições</a>
+{% endblock %}
+
+{% block conteudo %}
+{% if entrou %}
+  <section class="degrau">
+    <p class="rotulo">O que a escola precisa</p>
+    <h1>Quadro de contribuições</h1>
+    <p class="passo">A escola publica aqui o trabalho de que precisa. Leia tudo o que a tarefa pede antes de assumir: você ocupa uma vaga, manda o link quando terminar, e a equipe aceita ou devolve dizendo o que ajustar.</p>
+  </section>
+
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
+
+  {% if minhas %}
+    <h2 class="titulo-da-lista">As suas contribuições</h2>
+    {% for compromisso in minhas %}
+      <section class="tarefa {{ compromisso.estado }}">
+        <h3>{{ compromisso.tarefa.titulo }}</h3>
+        <p class="passo"><strong>O que entregar:</strong> {{ compromisso.tarefa.o_que_entregar }}</p>
+        <p class="miudo">Quem aceita: {{ compromisso.tarefa.responsavel_nome }}</p>
+        {% if not compromisso.tarefa.aberta and compromisso.estado != "aceita" %}
+          <p class="miudo">A escola encerrou esta tarefa para novos compromissos. O seu continua valendo.</p>
+        {% endif %}
+
+        {% if compromisso.estado == "aceita" %}
+          <p class="selo">Aceita pela escola em {{ compromisso.decidida_em|date:"d/m/Y" }}. Ela fica no seu histórico.</p>
+
+        {% elif compromisso.estado == "enviada" %}
+          <p class="selo">Aguardando avaliação. A escola responde até {{ compromisso.prazo_ate|date:"d/m/Y" }}.</p>
+          <p class="miudo">Você mandou: <a href="{{ compromisso.link }}" rel="noopener noreferrer" target="_blank">{{ compromisso.link }}</a></p>
+
+        {% else %}
+          {% if compromisso.estado == "devolvida" %}
+            <p class="selo devolvido">Devolvida para ajuste em {{ compromisso.decidida_em|date:"d/m/Y" }}: <strong>{{ compromisso.get_motivo_da_devolucao_display }}</strong></p>
+            <blockquote class="prova">{{ compromisso.orientacao }}</blockquote>
+          {% else %}
+            <p class="selo">Assumida em {{ compromisso.assumida_em|date:"d/m/Y" }}. Quando terminar, mande o link.</p>
+          {% endif %}
+          <form method="post" action="{% url 'contribuir' %}">
+            {% csrf_token %}
+            <input type="hidden" name="tarefa" value="{{ compromisso.tarefa.pk }}">
+            <label for="link-{{ compromisso.tarefa.pk }}">O link da sua contribuição</label>
+            <input type="url" id="link-{{ compromisso.tarefa.pk }}" name="link" value="{{ compromisso.link }}" placeholder="https://" required maxlength="500">
+            <button type="submit" name="gesto" value="enviar">{% if compromisso.estado == "devolvida" %}Mandar de novo{% else %}Enviar para a escola{% endif %}</button>
+          </form>
+        {% endif %}
+
+        {% if compromisso.estado != "aceita" %}
+          <form method="post" action="{% url 'contribuir' %}" class="gestos">
+            {% csrf_token %}
+            <input type="hidden" name="tarefa" value="{{ compromisso.tarefa.pk }}">
+            <button type="submit" name="gesto" value="desistir" class="discreto">Desistir e liberar a vaga</button>
+          </form>
+        {% endif %}
+      </section>
+    {% endfor %}
+  {% endif %}
+
+  <h2 class="titulo-da-lista">Tarefas abertas</h2>
+  {% for linha in abertas %}
+    <section class="tarefa">
+      <h3>{{ linha.tarefa.titulo }}</h3>
+      <p class="passo"><strong>O que entregar:</strong> {{ linha.tarefa.o_que_entregar }}</p>
+      <p class="passo"><strong>Quem pode participar:</strong> {{ linha.tarefa.quem_pode }}</p>
+      <p class="passo"><strong>Como a qualidade é avaliada:</strong></p>
+      <ul class="criterios">
+        {% for criterio in linha.tarefa.criterios %}<li>{{ criterio }}</li>{% endfor %}
+      </ul>
+      <p class="passo"><strong>Reconhecimento:</strong> a contribuição aceita fica registrada no seu histórico{% if linha.tarefa.medalha and linha.tarefa.medalha.ativa %} e vale a medalha {{ linha.tarefa.medalha.nome }}{% endif %}.</p>
+      <p class="miudo">Não dá pontos nem créditos.</p>
+      <p class="miudo">Quem aceita: {{ linha.tarefa.responsavel_nome }}</p>
+      {% if linha.tem_vaga %}
+        <p class="selo">Há vaga.</p>
+        <form method="post" action="{% url 'contribuir' %}">
+          {% csrf_token %}
+          <input type="hidden" name="tarefa" value="{{ linha.tarefa.pk }}">
+          <button type="submit" name="gesto" value="assumir">Assumir esta tarefa</button>
+        </form>
+      {% else %}
+        <p class="selo">Sem vaga agora. Se alguém desistir, a vaga volta para o quadro.</p>
+      {% endif %}
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Nenhuma tarefa aberta agora</h2>
+      <p>Quando a escola precisar de uma contribuição, ela aparece aqui com tudo o que é pedido.</p>
+    </section>
+  {% endfor %}
+{% else %}
+  <section class="convite">
+    <h1>O quadro de contribuições fica aqui</h1>
+    <p>Aqui a escola publica o trabalho de que precisa, e quem é aluno assume, entrega e tem a contribuição reconhecida. Para ver as tarefas, a escola precisa saber quem você é.</p>
+    <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+    <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  </section>
+{% endif %}
+{% endblock %}
