@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-050819-TAR-801-concluida",
+  "tarefa": "TAR-801",
+  "evento": "concluida",
+  "quando": "2026-09-27T05:08:19.552396+00:00",
+  "quem": "agent/ci/pouso-respeita-depende-de",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2174",
+  "verificado_em": "2026-09-27"
+}
