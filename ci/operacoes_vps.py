@@ -55,6 +55,17 @@ CAMPOS_CANDIDATA_APPMAX_PIX = {
     "qr_presente",
     "operacoes",
 }
+# A leitura por referência não repete "referencia" nem "criada_em" na
+# evidência (medir() já filtrou por elas); a forma da evidência é quem
+# distingue candidata única de descoberta, não o parâmetro `referencia` do
+# conferir() da esteira, que para appmax-pix nunca o repassa.
+CAMPOS_RESUMO_APPMAX_PIX = {
+    "tentativa",
+    "intent",
+    "motivo",
+    "qr_presente",
+    "operacoes",
+}
 SITE_MESHCRAFT = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
 DIAGNOSTICOS_APPMAX_PEDIDO = {
     "vazio",
@@ -359,10 +370,12 @@ def conferir_medicao(operacao, dados, referencia=""):
         if not 0 < dados["total_bytes"] or dados["livres_bytes"] > dados["total_bytes"]:
             raise Falha("formato")
     elif operacao == "appmax-pix":
-        if dados.get("modo") == "descoberta":
+        if set(dados) != CAMPOS_RESUMO_APPMAX_PIX:
             if referencia:
                 raise Falha("formato")
             if set(dados) != {"modo", "classificacao", "candidatas"}:
+                raise Falha("formato")
+            if dados["modo"] != "descoberta":
                 raise Falha("formato")
             if dados["classificacao"] not in {"ausente", "unica", "multipla"}:
                 raise Falha("formato")
@@ -413,16 +426,6 @@ def conferir_medicao(operacao, dados, referencia=""):
             if len(referencias) != len(set(referencias)):
                 raise Falha("formato")
         else:
-            if not referencia:
-                raise Falha("formato")
-            if set(dados) != {
-                "tentativa",
-                "intent",
-                "motivo",
-                "qr_presente",
-                "operacoes",
-            }:
-                raise Falha("formato")
             if dados["tentativa"] not in ESTADOS_TENTATIVA:
                 raise Falha("formato")
             if dados["intent"] not in {
