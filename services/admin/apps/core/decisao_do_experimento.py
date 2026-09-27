@@ -63,6 +63,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 
 from .clients import CatalogoClient
+from .paginas import SLUG_DA_PAGINA
 from .views import _auditar
 
 #: As três decisões, com o nome que aparece na tela.
@@ -78,8 +79,8 @@ CONTROLE = "a"
 #: O veredito da F9a que habilita Promover sem confirmação.
 CANDIDATO = "candidato à promoção"
 
-#: Os estados em que o experimento ainda está medindo.
-MEDINDO = ("ativo", "pausado")
+#: O estado em que o experimento está medindo. O contrato não tem pausa.
+ATIVO = "ativo"
 
 
 @dataclass(frozen=True)
@@ -167,7 +168,7 @@ def _falha(situacao: str, frase: str) -> Desfecho:
 def _publicar_a_variante(request, site_id: str, experimento: dict, variante: dict):
     """Põe o texto da variante no ar. Devolve a versão no ar, ou um `Desfecho`."""
     catalogo = CatalogoClient()
-    slug, secao, slot = experimento["pagina"], experimento["secao"], experimento["slot"]
+    slug, secao, slot = experimento["slug"], experimento["secao"], experimento["slot"]
     valor = variante["valor"]
 
     situacao, publicada = catalogo.pagina_publicada(site_id, slug)
@@ -246,7 +247,7 @@ def _publicar_a_variante(request, site_id: str, experimento: dict, variante: dic
 def _ja_encerrado(experimento: dict, decisao: str, variante_id: str | None) -> Desfecho:
     gravada = experimento.get("decisao")
     if gravada == decisao and (
-        decisao != "promover" or experimento.get("variante_vencedora") == variante_id
+        decisao != "promover" or experimento.get("vencedora") == variante_id
     ):
         return Desfecho(
             "repetido",
@@ -271,7 +272,9 @@ def decidir(
     """O gesto inteiro, sob a trava do experimento."""
     catalogo = CatalogoClient()
     with _um_de_cada_vez(experimento_id):
-        situacao, experimento = catalogo.experimento(site_id, experimento_id)
+        situacao, experimento = catalogo.experimento(
+            site_id, SLUG_DA_PAGINA, experimento_id
+        )
         if situacao != CatalogoClient.OK:
             return _falha(
                 situacao,
@@ -282,7 +285,7 @@ def decidir(
 
         versao = None
         if decisao == "promover":
-            if experimento.get("estado") not in MEDINDO:
+            if experimento.get("estado") != ATIVO:
                 return Desfecho(
                     "recusado",
                     "Um experimento que nunca começou não tem vencedor. Use Encerrar.",
@@ -295,7 +298,7 @@ def decidir(
                 ),
                 None,
             )
-            if not all(experimento.get(k) for k in ("pagina", "secao", "slot")):
+            if not all(experimento.get(k) for k in ("slug", "secao", "slot")):
                 return Desfecho(
                     "recusado",
                     "O catálogo devolveu o experimento sem dizer em que espaço da "
@@ -324,15 +327,23 @@ def decidir(
                 return publicado
             versao = publicado
 
-        situacao, resposta = catalogo.encerrar_experimento(
+        situacao, resposta = catalogo.mudar_estado_do_experimento(
             site_id,
+            SLUG_DA_PAGINA,
             experimento_id,
-            decisao,
-            variante_id if decisao == "promover" else None,
+            {
+                "estado": "encerrado",
+                "decisao": decisao,
+                "vencedora": variante_id if decisao == "promover" else None,
+            },
         )
-        if situacao == CatalogoClient.JA_ENCERRADO:
-            situacao, experimento = catalogo.experimento(site_id, experimento_id)
-            if situacao == CatalogoClient.OK:
+        if situacao == CatalogoClient.CONFLITO:
+            # Outro gesto encerrou entre a leitura e esta escrita: a tela diz
+            # qual decisão ficou, que é o que ele precisa saber.
+            relida, experimento = catalogo.experimento(
+                site_id, SLUG_DA_PAGINA, experimento_id
+            )
+            if relida == CatalogoClient.OK and experimento.get("estado") == "encerrado":
                 return _ja_encerrado(experimento, decisao, variante_id)
         _auditar(
             request,
@@ -393,7 +404,9 @@ def _tela(
             {**contexto, "sem_catalogo": True},
             status=status,
         )
-    situacao, experimento = CatalogoClient().experimento(site["id"], experimento_id)
+    situacao, experimento = CatalogoClient().experimento(
+        site["id"], SLUG_DA_PAGINA, experimento_id
+    )
     if situacao != CatalogoClient.OK:
         desconhecido = situacao == CatalogoClient.SEM_EXPERIMENTO
         return render(
@@ -403,7 +416,7 @@ def _tela(
             status=404 if desconhecido and status == 200 else status,
         )
     encerrado = experimento.get("estado") == "encerrado"
-    medindo = experimento.get("estado") in MEDINDO
+    medindo = experimento.get("estado") == ATIVO
     return render(
         request,
         "admin/decisao_do_experimento.html",
