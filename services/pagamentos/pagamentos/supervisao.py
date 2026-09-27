@@ -16,6 +16,7 @@ from pagamentos.core.models import (
     InstalacaoAppmax,
     OutboxEvent,
     PaymentAttempt,
+    emitir,
     relay_outbox,
 )
 from pagamentos.methods.card.service import (
@@ -34,11 +35,17 @@ _STATUS_POS_APROVACAO = {
     "chargeback_perdido": "appmax_chargeback_perdido",
     "chargeback_vencido": "appmax_chargeback_vencido",
 }
+_MOTIVO_REVERSAO = {
+    "appmax_estornado": "estorno",
+    "appmax_chargeback_em_tratativa": "contestacao",
+    "appmax_chargeback_em_disputa": "contestacao",
+    "appmax_chargeback_perdido": "contestacao",
+}
 _ACAO_POS_APROVACAO = {
-    "appmax_estornado": "Confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
-    "appmax_chargeback_em_tratativa": "Acompanhe a contestação no painel Appmax; nenhuma reversão foi emitida.",
-    "appmax_chargeback_em_disputa": "Acompanhe a disputa no painel Appmax; nenhuma reversão foi emitida.",
-    "appmax_chargeback_perdido": "Acompanhe a contestação perdida no painel Appmax; nenhuma reversão foi emitida.",
+    "appmax_estornado": "Evento de reversão confirmado registrado para envio; confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
+    "appmax_chargeback_em_tratativa": "Evento de reversão confirmado registrado para envio; acompanhe a contestação no painel Appmax; nenhuma reabertura de acesso foi executada.",
+    "appmax_chargeback_em_disputa": "Evento de reversão confirmado registrado para envio; acompanhe a disputa no painel Appmax; nenhuma reabertura de acesso foi executada.",
+    "appmax_chargeback_perdido": "Evento de reversão confirmado registrado para envio; acompanhe a contestação perdida no painel Appmax; nenhuma reabertura de acesso foi executada.",
     "appmax_chargeback_vencido": "Registre a vitória do lojista no painel Appmax; nenhuma reversão ou reabertura de acesso foi executada.",
 }
 _STATUS_APROVADO = {"aprovado", "integrado", "pendente_integracao"}
@@ -147,6 +154,8 @@ def _consultar_pos_aprovacao(
     if (
         aviso.platform_site_id != tentativa.platform_site_id
         or tentativa.intent.site_id != tentativa.platform_site_id
+        or tentativa.provider != "appmax"
+        or tentativa.provider_reference_id != aviso.external_order_id
     ):
         raise _IdentidadePosAprovacaoInvalida
     instalacao = InstalacaoAppmax.objects.filter(
@@ -169,6 +178,28 @@ def _consultar_pos_aprovacao(
     return _validar_identidade_pos_aprovacao(aviso, tentativa, pedido)
 
 
+def _emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> None:
+    motivo = _MOTIVO_REVERSAO[codigo]
+    payload = {
+        "platform_site_id": tentativa.platform_site_id,
+        "provider": "appmax",
+        "provider_reference_id": tentativa.provider_reference_id,
+        "motivo": motivo,
+    }
+    # A tentativa é a identidade local que todas as entregas deste pedido
+    # compartilham. Travá-la antes da leitura da outbox serializa reentregas
+    # de avisos diferentes sem alterar o ledger financeiro.
+    PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
+    if not OutboxEvent.objects.filter(
+        event="pagamento.reversao_confirmada",
+        version=2,
+        payload__platform_site_id=payload["platform_site_id"],
+        payload__provider=payload["provider"],
+        payload__provider_reference_id=payload["provider_reference_id"],
+    ).exists():
+        emitir("pagamento.reversao_confirmada", payload, version=2)
+
+
 def _processar_aviso_pos_aprovacao(
     aviso: AppmaxWebhookInbox, tentativa: PaymentAttempt
 ) -> bool:
@@ -186,6 +217,8 @@ def _processar_aviso_pos_aprovacao(
         )
         return False
     if codigo:
+        if codigo in _MOTIVO_REVERSAO:
+            _emitir_reversao_confirmada(tentativa, codigo)
         _registrar_diagnostico_pos_aprovacao(aviso, codigo)
     else:
         aviso.processed_at = timezone.now()
