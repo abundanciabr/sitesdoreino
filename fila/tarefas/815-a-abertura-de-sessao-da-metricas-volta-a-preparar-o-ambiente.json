@@ -1,0 +1,20 @@
+{
+  "arquivo": "815-a-abertura-de-sessao-da-metricas-volta-a-preparar-o-ambiente",
+  "id": "TAR-815",
+  "titulo": "A abertura de sessão da metricas volta a preparar o ambiente de teste",
+  "toca": [
+    "ci",
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/sessao.py --celula metricas --tarefa <slug> conclui a abertura com contêiner; teste vermelho para verde no ci/sessao.py",
+  "despacho": "ci/sessao.py --celula metricas com contêiner para no passo 'venv FORA do worktree' com 'dependência local sem identidade imutável: services/metricas/vendor/site_errors-0.1.0-py3-none-any.whl'. Achado da frente F10b (PR #2130) em 26/09/2026. Faça a abertura aceitar a wheel vendorizada com identidade imutável (hash conferido) ou dê a ela essa identidade, sem afrouxar a regra para dependência sem hash. Teste vermelho para verde.",
+  "origem": "achado da frente F10b, PR #2130, 26/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

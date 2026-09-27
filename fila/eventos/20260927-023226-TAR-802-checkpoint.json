@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260927-023226-TAR-802-checkpoint",
+  "tarefa": "TAR-802",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T02:32:26.323175+00:00",
+  "quem": "agent/infra/canario-appmax-dormente",
+  "plano": "TAR-802 etapa 3 de 4: verde, previa e mutacao feitas",
+  "ultimo_avanco": "39 testes de infra verdes; 16 de 16 guardas mordem sob mutacao; ciclo ligar e desligar devolve env identicos",
+  "proxima_acao": "python ci/pr.py --tarefa TAR-802 com mandato infra/",
+  "verificacoes": [
+    "python -m pytest infra/ -q",
+    "mutar.py: GUARDAS QUE NAO MORDEM nenhuma"
+  ]
+}

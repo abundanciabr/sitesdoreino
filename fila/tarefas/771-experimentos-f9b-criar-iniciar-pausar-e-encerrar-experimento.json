@@ -1,0 +1,19 @@
+{
+  "arquivo": "771-experimentos-f9b-criar-iniciar-pausar-e-encerrar-experimento",
+  "id": "TAR-771",
+  "titulo": "Experimentos F9b: criar, iniciar, pausar e encerrar experimento na tela da página de oferta",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "PR da admin com testes de cliente falso verdes e mutação provada",
+  "despacho": "# Brief compilado\n\nobjetivo: Telas do ciclo do experimento na admin: criar com slot, hipotese, texto B e alocacao; iniciar, pausar, encerrar pelo cliente do catalogo\ntipo: produto\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: cria ou muda comportamento de produto; precisa de julgamento semantico\ncelula: admin\n\n## Arquivos-alvo\n- services/admin/apps/core/experimentos.py\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
+  "origem": "sessão de 26/09/2026, frente F9b do sistema de experimentos",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
