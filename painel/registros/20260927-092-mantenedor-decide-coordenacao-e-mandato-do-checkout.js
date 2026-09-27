@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-092-mantenedor-decide-coordenacao-e-mandato-do-checkout",
+  tipo: "decisao",
+  quando: "2026-09-27",
+  titulo: "Mantenedor decide: a coordenação de 27/09 assume a obra Appmax e recebe mandato do checkout",
+  detalhe: "Sessao Claude Code de 27/09, respostas estruturadas as 00h35 e 00h50 BRT: (1) a coordenacao de 27/09 assume a obra Appmax; a sessao anterior foi encerrada. (2) Mandato services/checkout/ concedido para TAR-809, 813, 814 e o criar_intent. (3) Appmax sem resposta sobre o estorno sandbox: TAR-644, 565 e 566 seguem bloqueadas. (4) Fable 5.1 fica so na coordenacao; escritores nascem em opus ou sonnet; a muralha dos subagentes nao muda. (5) O Pix de meshcraft.top fica na Appmax sandbox como esta (registro 022); pendencia assumida por ele. (6) A lei do Workflow nao muda agora; a ordem de 27/09 02h45 UTC dada em outra sessao fica pendente dele.",
+  autoridade: "mantenedor",
+  evidencia: "Respostas estruturadas do mantenedor na sessão Claude Code de 27/09/2026, 00h35 e 00h50 BRT.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "continuacao",
+  tarefa: "TAR-795",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
