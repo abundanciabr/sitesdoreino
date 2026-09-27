@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-022-pix-de-meshcraft-esta-na-appmax-sandbox",
+  tipo: "pendencia",
+  quando: "2026-09-27",
+  titulo: "O Pix de meshcraft.top está na Appmax sandbox",
+  detalhe: "A sonda da TAR-803 abriu o checkout em 27/09 02:27Z: o Pix está na Appmax, não no Mercado Pago. Não há QR do Mercado Pago para medir; nenhum pedido criado.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2161",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  area: "checkout",
+  tarefa: "TAR-803",
+  porque_so_voce: "Muda a configuração de produção do site.",
+  proximo_passo: "Dizer numa sessão: Pix volta ao Mercado Pago ou a medida vira o Pix Appmax.",
+  se_eu_nao_decidir: "A sonda segue vermelha; Pix antes e depois sem prova.",
+  recomendacao: "Pix ao Mercado Pago; a TAR-711 perde o Pix sandbox.",
+  reversivel: true,
+  impacto: "alto"
+});})();

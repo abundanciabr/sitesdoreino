@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260927-023407-TAR-811-contrato_execucao",
+  "tarefa": "TAR-811",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T02:34:07.491360+00:00",
+  "quem": "agent/pagamentos/appmax-status-medicao",
+  "contrato": {
+    "plano": "Cobertura de teste dos status Appmax sem tocar codigo de producao",
+    "versao": 1,
+    "objetivo": "Fechar a lacuna medida na TAR N9: dois status Appmax reconhecidos pelo codigo (pendente_integracao, recusado_por_risco) e o ramo de status desconhecido, no cartao e no Pix, ficam sem teste algum.",
+    "entregaveis": [
+      "Testes novos cobrindo pendente_integracao e recusado_por_risco no cartao (test_smoke.py) e no Pix (test_pix_appmax.py)",
+      "Teste novo cobrindo status desconhecido no cartao e no Pix, com a excecao certa (ResultadoAmbiguo/FalhaNoProvedor)",
+      "Teste novo em test_supervisao_appmax.py exercitando processar_rodada() sobre um aviso order_refund ou order_chargeback_in_treatment de uma Intent ja aprovada"
+    ],
+    "escopo_incluido": [
+      "services/pagamentos/tests/test_smoke.py",
+      "services/pagamentos/tests/test_pix_appmax.py",
+      "services/pagamentos/tests/test_supervisao_appmax.py"
+    ],
+    "nao_objetivos": [
+      "Mudar methods/card/service.py, methods/pix/appmax.py, supervisao.py ou api/webhooks.py",
+      "Emitir pagamento.estornado ou avancar estorno/chargeback financeiro (isso e TAR-644, bloqueada)",
+      "Qualquer chamada real a Appmax, sandbox ou producao",
+      "Mudar contracts/"
+    ],
+    "restricoes": [
+      "Nenhum codigo de producao muda; so arquivos de teste",
+      "Antes de editar, confira na fila ao vivo se outra sessao esta escrevendo methods/card/service.py, methods/pix/appmax.py, supervisao.py ou api/webhooks.py; se estiver, serialize atras dela",
+      "Sem segredo, sem chamada real a Appmax, sem dado pessoal em fixture"
+    ],
+    "decisoes_aprovadas": [
+      "Medicao N9 desta sessao, brief fechado do mantenedor para medir status Appmax"
+    ],
+    "etapas": [
+      "Ler os 7 status e as duas funcoes gemeas (card/service.py, pix/appmax.py) antes de escrever qualquer teste",
+      "Escrever cada teste vermelho primeiro (assercao que falha sem o comportamento), confirmar que reprova, so entao confirmar que passa contra o codigo existente",
+      "Rodar a suite completa de pagamentos"
+    ],
+    "criterios_entrada": [
+      "Nenhuma outra sessao com reserva ativa sobre methods/card/service.py, methods/pix/appmax.py, supervisao.py ou api/webhooks.py"
+    ],
+    "criterios_aceite": [
+      "pendente_integracao e recusado_por_risco testados no cartao e no Pix",
+      "Status desconhecido testado no cartao e no Pix, com a excecao certa afirmada",
+      "processar_rodada() testado sobre aviso de estorno/chargeback sem inventar comportamento novo",
+      "Suite de pagamentos completa verde",
+      "Zero arquivos de producao no diff"
+    ],
+    "evidencias_exigidas": [
+      "Saida vermelha e verde de cada teste novo",
+      "Suite completa de pagamentos, comando e saida",
+      "git diff --name-only mostrando so arquivos de teste"
+    ],
+    "condicao_encerramento": "Os tres arquivos de teste cobrem os dois status e o ramo de status desconhecido, no cartao e no Pix, mais o caso de supervisao sobre aviso de estorno/chargeback, com suite verde e nenhum arquivo de producao tocado.",
+    "limites_autonomia": "Só criar ou editar arquivo de teste; qualquer necessidade de mudar codigo de producao para o teste fazer sentido volta para a fila como tarefa nova, nunca vira mudanca desta.",
+    "acoes_do_mantenedor": "Nenhuma, salvo bloqueio exclusivo de plataforma comprovado."
+  }
+}

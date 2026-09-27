@@ -1,0 +1,162 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Novo experimento | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro copy">
+  <a class="volta" href="{% url 'experimentos' %}">Voltar aos experimentos da página</a>
+  <h1>Novo experimento</h1>
+  <p class="subtitulo">
+    Uma parte das visitas vê um texto novo (o braço b) no lugar do texto que
+    está no ar (o braço a), num espaço só da página de oferta. Salvar guarda o
+    experimento em rascunho e não muda o site.
+  </p>
+
+  {% if sem_catalogo %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consegui falar com o catálogo,</b> que é onde os experimentos
+    ficam guardados. Não abri o formulário de propósito: um campo que não tem
+    onde salvar faria você escrever e perder. Nada mudou no site. Tente de novo
+    daqui a pouco, e se continuar assim é passo de máquina no servidor.
+  </p>
+  {% else %}
+
+  {% if erros %}
+  <div class="recado borda-vermelha">
+    <b>Falta acertar:</b>
+    <ul class="riscas">{% for frase in erros %}<li>{{ frase }}</li>{% endfor %}</ul>
+    <span class="nota">Nada do que você escreveu se perdeu: está tudo abaixo.</span>
+  </div>
+  {% endif %}
+  {% if motivo == "recusado" %}
+  <p class="recado borda-vermelha">
+    <b>Não salvei: o catálogo recusou este experimento.</b> {{ erro }}
+    <span class="nota">Nada do que você escreveu se perdeu: está tudo abaixo.</span>
+  </p>
+  {% elif motivo == "nao_salvou" %}
+  <p class="recado borda-vermelha">
+    <b>Não consegui salvar agora.</b> {{ erro }}
+    <span class="nota">Nada do que você escreveu se perdeu e nada mudou no site.
+      Aperte Salvar de novo daqui a pouco.</span>
+  </p>
+  {% endif %}
+
+  <form method="get" action="{% url 'experimento_novo' %}" class="espaco">
+    <label class="nome" for="c-espaco">Espaço testado</label>
+    <p class="explica">O experimento troca o texto de um espaço só. Os nomes são
+      os mesmos da tela da página de venda.</p>
+    <select id="c-espaco" name="espaco">
+      {% for rotulo, nomes in grupos %}
+      <optgroup label="{{ rotulo|capfirst }}">
+        {% for nome in nomes %}
+        <option value="{{ nome }}"{% if nome == escrito.espaco %} selected{% endif %}>{{ nome }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+    <div class="decidir"><button type="submit">Trocar de espaço</button></div>
+  </form>
+
+  <div class="espaco">
+    <div class="nome">Braço a: o texto que está no ar</div>
+    {% if no_ar == "ok" %}
+    <p class="citacao">{{ texto_a }}</p>
+    <a class="botao" href="{% url 'experimento_novo' %}?espaco={{ escrito.espaco|urlencode }}&amp;copiar=1">Copiar o texto atual para o braço b</a>
+    <p class="explica">Para um teste A/A: com os dois braços iguais, qualquer
+      diferença no resultado é defeito de medição, e é bom saber disso antes de
+      testar um texto novo. Use antes de escrever, porque o formulário recomeça.</p>
+    {% elif no_ar == "vazio" %}
+    <p class="recado borda-vermelha">Este espaço
+      está vazio na página que está no ar, e sem texto não há o que comparar. Escolha outro espaço, ou escreva este
+      na <a href="{% url 'pagina_de_venda' %}">página de venda</a> e publique antes.</p>
+    {% elif no_ar == "nunca_publicada" %}
+    <p class="recado borda-vermelha">A página de oferta ainda não está no ar, e
+      não há texto para servir de comparação. Publique a
+      <a href="{% url 'pagina_de_venda' %}">página de venda</a> antes de testar.</p>
+    {% elif no_ar == "nao_leu" %}
+    <p class="recado borda-vermelha">Não consegui ler a página que está no ar.
+      Nada mudou no site. Recarregue esta tela daqui a pouco.</p>
+    {% else %}
+    <p class="recado borda-vermelha">Escolha na lista acima o espaço a testar.</p>
+    {% endif %}
+  </div>
+
+  <form method="post" action="{% url 'experimento_novo' %}">
+    {% csrf_token %}
+    <input type="hidden" name="espaco" value="{{ escrito.espaco }}">
+
+    <div class="espaco">
+      <label class="nome" for="c-hipotese">Hipótese</label>
+      <p class="explica">O que você espera que mude, e por quê. Ela fica gravada
+        com o experimento, e é a pergunta que o resultado vai responder.</p>
+      <textarea id="c-hipotese" name="hipotese" rows="3">{{ escrito.hipotese }}</textarea>
+    </div>
+
+    <div class="espaco">
+      <label class="nome" for="c-texto_b">Braço b: o texto novo</label>
+      <p class="explica">O que a parte sorteada das visitas vai ler no lugar do
+        texto de cima.</p>
+      <textarea id="c-texto_b" name="texto_b" rows="3">{{ escrito.texto_b }}</textarea>
+    </div>
+
+    <div class="espaco">
+      <label class="nome" for="c-parte_b">Parte das visitas que vê o braço b, em %</label>
+      <p class="explica">50 divide ao meio, e é o que mede mais depressa. O resto
+        das visitas continua vendo o texto que está no ar.</p>
+      <input type="text" inputmode="numeric" id="c-parte_b" name="parte_b" value="{{ escrito.parte_b }}">
+    </div>
+
+    <div class="espaco">
+      <label class="nome" for="c-metrica_principal">Métrica principal</label>
+      <p class="explica">O que decide o experimento, escolhido antes de começar.</p>
+      <select id="c-metrica_principal" name="metrica_principal">
+        {% for valor, rotulo in metricas %}
+        <option value="{{ valor }}"{% if valor == escrito.metrica_principal %} selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="espaco">
+      <label class="nome" for="c-taxa_base">Taxa base, em %</label>
+      <p class="explica">De cada 100 visitas que veem o espaço hoje, quantas fazem
+        o que a métrica mede. O placar do funil mostra esse número.</p>
+      <input type="text" inputmode="decimal" id="c-taxa_base" name="taxa_base" value="{{ escrito.taxa_base }}">
+    </div>
+
+    <div class="espaco">
+      <label class="nome" for="c-mde">Efeito mínimo detectável, em pontos</label>
+      <p class="explica">O menor ganho que vale a pena descobrir. Com taxa base 10
+        e efeito 2, o teste procura se o braço b chega a 12.</p>
+      <input type="text" inputmode="decimal" id="c-mde" name="mde" value="{{ escrito.mde }}">
+      <div class="decidir">
+        <button type="submit" name="gesto" value="calcular">Calcular a amostra</button>
+      </div>
+      {% if amostra %}
+      <p class="cartao"><b>{{ amostra }} visitas por braço</b> precisam ver o
+        espaço para que um efeito desse tamanho apareça, com 95% de confiança e
+        80% de chance de achar o efeito se ele existir. O experimento guarda este
+        número, e o resultado só é lido quando o prazo termina.</p>
+      {% else %}
+      <p class="explica">Preencha a taxa base e o efeito mínimo e aperte Calcular
+        para ver quantas visitas cada braço precisa.</p>
+      {% endif %}
+    </div>
+
+    <div class="espaco">
+      <label class="nome" for="c-dias_planejados">Dias planejados</label>
+      <p class="explica">Quanto tempo o experimento fica no ar antes de o resultado
+        ser lido. Escolha pensando em quantas visitas a página recebe por dia.</p>
+      <input type="text" inputmode="numeric" id="c-dias_planejados" name="dias_planejados" value="{{ escrito.dias_planejados }}">
+    </div>
+
+    <div class="gestos">
+      {% if no_ar == "ok" %}
+      <button type="submit" name="gesto" value="salvar">Salvar em rascunho</button>
+      <span class="nota">Guarda o experimento. O site não muda até você iniciar.</span>
+      {% else %}
+      <span class="nota">Sem texto no ar neste espaço, não há como salvar o
+        experimento.</span>
+      {% endif %}
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-023221-TAR-802-descoberta",
+  "tarefa": "TAR-802",
+  "evento": "descoberta",
+  "quando": "2026-09-27T02:32:21.536873+00:00",
+  "quem": "agent/infra/canario-appmax-dormente",
+  "detalhe": "services/checkout/apps/pedidos/views.py escolhe o script de sandbox da Appmax sempre que o site esta em APPMAX_CARD_ENABLED_SITES; no canario de producao a tokenizacao falharia.",
+  "evidencia": "views.py funcao cartao, appmax_sandbox = site in APPMAX_CARD_ENABLED_SITES; docs.appmax.com.br/guides/ambientes exige script e external_id do mesmo ambiente",
+  "classificacao": "C",
+  "criterio": "acoes_do_mantenedor: canario so depois do checkout carregar o script de producao",
+  "encaminhamento": "TAR-809 criada; exige mandato services/checkout/; bloqueia a execucao da TAR-565, nao esta entrega"
+}

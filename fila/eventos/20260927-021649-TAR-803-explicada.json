@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-021649-TAR-803-explicada",
+  "tarefa": "TAR-803",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:16:49.161737+00:00",
+  "quem": "sessão Claude Code de 26/09/2026 22h53 BRT, frente N7 de RETOMADA-APPMAX.md, autorizada pelo mantenedor",
+  "o_que_e": "Hoje ninguém mede, com um clique, se quem escolhe Pix no site recebe o QR para pagar. Cada mudança no cartão pode derrubar o Pix sem ninguém ver.",
+  "o_que_muda": "Antes e depois de cada mudança do cartão, um robô abre o site como um comprador, pede o Pix e confere que o QR aparece. Se o Pix cair, a sonda fica vermelha na hora.",
+  "exemplo": "É como o eletricista que liga a luz da sala antes e depois de mexer no quadro: se a luz não acende depois, ele sabe que foi a mexida.",
+  "importancia": 70
+}
