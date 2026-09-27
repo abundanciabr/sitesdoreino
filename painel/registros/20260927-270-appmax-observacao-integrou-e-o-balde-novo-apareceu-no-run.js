@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-270-appmax-observacao-integrou-e-o-balde-novo-apareceu-no-run",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "PR 2268 integrou e o balde novo apareceu no run da observação",
+  detalhe: "PR 2268 (TAR-896) MERGED às 11h55 de São Paulo, mergeCommit d62bece71454115f3887189afde178880a6977ff (gh pr view --json state,mergedBy,mergeCommit). Disparado gh workflow run operacoes-vps.yml -f operacao=appmax-observacao -f servico=pagamentos: run 36327788557 success, e o resumo publicado já traz pre_autorizacao_de_teste_sandbox no JSON (valor 0 no instante da medição, porque as 9 tentativas abertas caíram em tentativas_60_min_a_um_dia_util pela matemática de dia útil no fim de semana, nenhuma acima de um dia útil agora).",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2268 MERGED, mergedBy abundanciabr, mergeCommit d62bece71454115f3887189afde178880a6977ff; https://github.com/abundanciabr/sitesdoreino/actions/runs/36327788557 success, resumo com pre_autorizacao_de_teste_sandbox=0, tentativas_acima_de_um_dia_util=0, tentativas_60_min_a_um_dia_util=9",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-266-ci-appmax-observacao-separa-teste-sandbox",
+  relacao: "comentario",
+  tarefa: "TAR-896",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
