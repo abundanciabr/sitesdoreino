@@ -8,7 +8,7 @@ import json
 import httpx
 import pytest
 
-from apps.pedidos.models import Order
+from apps.pedidos.models import Order, OutboxEvent
 from tests.conftest import BUMP_A, HOST_A, HOST_B, OFERTA_A, PAGAMENTOS, SLUG
 
 pytestmark = pytest.mark.django_db
@@ -50,7 +50,7 @@ def pedido_de_cartao(api, rede, sessao_a):
     return Order.objects.get(pk=resp.json()["order_id"])
 
 
-# guarda: services/checkout/apps/core/api.py:341
+# guarda: services/checkout/apps/core/api.py:383
 def test_intent_de_cartao_usa_itens_e_total_calculados_pelo_catalogo(
     api, rede, sessao_a
 ):
@@ -162,7 +162,7 @@ def test_a_recusa_do_provedor_volta_com_o_motivo_e_o_pedido_nao_muda(
     assert pedido_de_cartao.status == "aguardando_pagamento"
 
 
-# guarda: services/checkout/apps/core/api.py:615
+# guarda: services/checkout/apps/core/api.py:691
 def test_pedido_de_cartao_recusado_aceita_nova_confirmacao_sem_mover_snapshot(
     api, rede, pedido_de_cartao
 ):
@@ -211,6 +211,62 @@ def test_o_409_de_pagamentos_atravessa_como_409_em_vez_de_virar_erro_mudo(
 
     assert resp.status_code == 409, resp.content
     assert "confirmavel" in resp.json()["detail"]
+
+
+def falhar_em_pagamentos(rota, falha):
+    if falha == "502":
+        rota.respond(502, json={"detail": "segredo-interno do provedor"})
+    elif falha == "timeout":
+        rota.mock(side_effect=httpx.ReadTimeout("segredo-interno"))
+    else:
+        rota.respond(500, text="<html>segredo-interno</html>")
+
+
+@pytest.mark.parametrize("falha", ["502", "timeout", "html"])
+def test_falha_do_provedor_na_confirmacao_orienta_nova_tentativa_sem_cobrar_de_novo(
+    api, rede, pedido_de_cartao, falha
+):
+    """Cartões de teste 0002, 0036, 0044 e 9999 da Appmax sandbox: pagamentos
+    devolve o 502 do contrato, e o comprador precisa ler o que fazer em vez de
+    receber um 500 mudo."""
+    # guarda: services/checkout/apps/core/api.py:742
+    rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card")
+    falhar_em_pagamentos(rota, falha)
+
+    resp = api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+
+    assert resp.status_code == 502, resp.content
+    assert resp.json() == {
+        "detail": "não foi possível concluir a tentativa; tente novamente"
+    }
+    assert "segredo-interno" not in resp.content.decode()
+    assert rota.call_count == 1
+    pedido_de_cartao.refresh_from_db()
+    assert pedido_de_cartao.status == "aguardando_pagamento"
+
+
+@pytest.mark.parametrize("falha", ["502", "timeout", "html"])
+def test_falha_do_provedor_ao_fechar_pedido_de_cartao_nao_cria_pedido(
+    api, rede, sessao_a, falha
+):
+    # guarda: services/checkout/apps/core/api.py:420
+    falhar_em_pagamentos(rede.post(f"{PAGAMENTOS}/intents"), falha)
+
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
+        {
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "method": "card",
+        },
+    )
+
+    assert resp.status_code == 502, resp.content
+    assert resp.json() == {
+        "detail": "não foi possível iniciar o pagamento; tente novamente"
+    }
+    assert "segredo-interno" not in resp.content.decode()
+    assert not Order.objects.filter(session_id=sessao_a["id"]).exists()
+    assert not OutboxEvent.objects.filter(event="pedido.criado").exists()
 
 
 def test_pedido_de_pix_nao_aceita_cartao(api, rede, sessao_a):
