@@ -1,0 +1,21 @@
+{
+  "arquivo": "879-as-oito-compras-de-teste-com-cartao-que-ficaram-paradas-em-a",
+  "id": "TAR-879",
+  "titulo": "As oito compras de teste com cartão que ficaram paradas em análise na Appmax",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-866"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro no livro com as oito referências, a causa medida e as opções para o dono decidir, ou run appmax-pendentes com as oito encerradas pela consulta à Appmax",
+  "despacho": "Diagnosticar as 8 tentativas de cartão Appmax sandbox em pending com status_bruto \"autorizado\" listadas pela operação appmax-pendentes (run 36319736464), referências 2111920e0d2b, 48eed018450d, efdc29350071, df63d340ab70, b658b4a399b8, 9cf8cdcec4b1, e7e79b866dc2, b2d9f0bc76c5. Descobrir como um cartão autorizado vira terminal no desenho da casa, se são as compras aprovadas da tela, e decidir: (a) conserto sem POST que as leve a terminal por consulta autenticada, ou (b) registro no livro tipo pendencia, precisa_do_dono true, com as 8 referências, por que nenhum robô pode encerrá-las, as opções, a recomendação e o que acontece na terça 29/09 00h BRT, quando viram acima de um dia útil na appmax-observacao. Nunca POST, PUT ou DELETE na Appmax.",
+  "origem": "operação appmax-pendentes, run 36319736464, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}
