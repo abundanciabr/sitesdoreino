@@ -1,0 +1,20 @@
+{
+  "arquivo": "831-deixar-pronto-o-ensaio-que-desliga-e-religa-o-cartao-appmax-",
+  "id": "TAR-831",
+  "titulo": "Deixar pronto o ensaio que desliga e religa o cartao Appmax no sandbox da Meshcraft, sem executar",
+  "toca": [
+    "infra",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "infra/drill-appmax-rollback-sandbox.py e infra/test_drill_appmax_rollback_sandbox.py com testes vermelho para verde e guardas reprovando sob mutacao; workflow appmax-drill-rollback.yml com ambiente vps, recusa de ref fora da main e script conferido antes do SSH; checks do PR medidos; nenhuma execucao na VPS.",
+  "despacho": "Frente N6 de RETOMADA-APPMAX: preparar como operacao da esteira o ensaio de rollback do cartao Appmax no sandbox da Meshcraft (plano mestre 18.2 e 22.1): tirar a Meshcraft de APPMAX_CARD_ENABLED_SITES pelo mecanismo do canario, provar pela porta publica que o Pix segue e que o cartao aparece bloqueado com explicacao, religar e provar que voltou, publicar a evidencia sanitizada no resumo do run. Trava: so o sandbox da Meshcraft. Nao executar.",
+  "origem": "RETOMADA-APPMAX frente N6; mandato do mantenedor na sessao de 26/09/2026 22h53 BRT",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
