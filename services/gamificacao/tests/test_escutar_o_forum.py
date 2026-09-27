@@ -186,7 +186,13 @@ def test_marcar_desmarcar_e_remarcar_conta_uma_ajuda_so():
 
 
 def test_a_medalha_mao_amiga_cai_com_cinco_ajudas():
-    """A primeira medalha automática que esta escola consegue conceder de verdade."""
+    """A primeira medalha automática que esta escola consegue conceder de verdade.
+
+    Desde 27/09/2026 ela cai pelo PRÓPRIO FATO, com a regra de XP desligada:
+    o handler avalia as medalhas depois de registrar a ajuda. Antes, só o
+    crédito de XP chamava a avaliação, e com a economia desligada a medalha
+    esperava alguém rodar a conta à mão.
+    """
     ConquistaDefinicao.objects.create(
         slug="mao-amiga",
         site_id=SITE,
@@ -201,13 +207,17 @@ def test_a_medalha_mao_amiga_cai_com_cinco_ajudas():
 
     for numero in range(4):
         _entregar(_resposta_aceita(data={"mensagem_id": str(numero)}))
-    assert avaliar(QUEM_ESCREVEU, SITE) == [], "quatro ainda não são cinco"
+    assert Concessao.objects.count() == 0, "quatro ainda não são cinco"
 
     _entregar(_resposta_aceita(data={"mensagem_id": "quinta"}))
-    novas = avaliar(QUEM_ESCREVEU, SITE)
 
-    assert [c.conquista.slug for c in novas] == ["mao-amiga"]
-    assert Concessao.objects.get().pessoa_id == QUEM_ESCREVEU
+    assert not LancamentoDeXP.objects.filter(
+        regra_slug="forum-resposta-aceita"
+    ).exists(), "não há regra de XP ligada"
+    concessao = Concessao.objects.get()
+    assert concessao.conquista.slug == "mao-amiga"
+    assert concessao.pessoa_id == QUEM_ESCREVEU
+    assert avaliar(QUEM_ESCREVEU, SITE) == [], "a conta à mão não concede de novo"
 
 
 # ------------------------------------------- 3. o que não entra, e por quê
