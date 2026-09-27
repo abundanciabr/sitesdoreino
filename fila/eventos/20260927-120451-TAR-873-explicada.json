@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-120451-TAR-873-explicada",
+  "tarefa": "TAR-873",
+  "evento": "explicada",
+  "quando": "2026-09-27T12:04:51.215079+00:00",
+  "quem": "descoberta pela TAR-860 (guarda do make impostor, PR 2213) em 27/09/2026: ao provar os dois guardas novos pela maquina, o arquivo inteiro nao roda por causa de marcadores antigos desalinhados",
+  "o_que_e": "Tres testes antigos de ci/tests/test_sessao_persistente.py dizem proteger linhas especificas de ci/sessao.py, mas o codigo cresceu e essas linhas hoje sao outra coisa (a cerca de 300 linhas de distancia do que deveriam)",
+  "o_que_muda": "Hoje ninguem consegue rodar a prova por mutacao no arquivo inteiro (python ci/provar_guardas.py trava na coleta); depois do conserto, a maquina volta a confirmar que esses tres testes realmente travam se o comportamento deles for desfeito",
+  "exemplo": "É como uma placa que diz extintor aqui apontando para uma parede vazia porque a sala foi reformada; o extintor existe, so nao esta mais onde a placa diz",
+  "importancia": 25
+}

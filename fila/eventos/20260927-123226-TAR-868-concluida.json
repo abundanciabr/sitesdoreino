@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-123226-TAR-868-concluida",
+  "tarefa": "TAR-868",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:32:26.705260+00:00",
+  "quem": "agent/infra/appmax-drill-env",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2249",
+  "verificado_em": "2026-09-27"
+}
