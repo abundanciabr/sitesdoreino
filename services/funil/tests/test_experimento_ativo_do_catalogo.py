@@ -165,6 +165,7 @@ def test_pagina_sem_experimento_e_o_estado_normal_e_nao_escreve_erro(
 def test_experimento_fora_de_forma_vira_sem_experimento_e_a_pagina_publicada_segue(
     rede, caplog, experimento, motivo
 ):
+    # guarda: services/funil/apps/core/clients.py:67
     lida = ler(rede, pagina(experimento_ativo=experimento))
 
     assert lida is not SEM_RESPOSTA
