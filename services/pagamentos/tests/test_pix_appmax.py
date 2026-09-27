@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
+from django.utils import timezone
+from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.models import (
+    ESTADOS_EM_ABERTO,
     AppmaxWebhookInbox,
     Intent,
     OutboxEvent,
@@ -24,6 +29,12 @@ from pagamentos.supervisao import processar_rodada
 
 pytestmark = pytest.mark.django_db(transaction=True)
 SITE = "site-appmax"
+_CONTRATO_PIX_EXPIRADO = (
+    Path(__file__).resolve().parents[3]
+    / "contracts"
+    / "eventos"
+    / "pix.expirado.v1.json"
+)
 
 
 def _cliente() -> Mock:
@@ -69,6 +80,7 @@ def _criar(settings: Any, cliente: Mock) -> Intent:
             },
             metadata={
                 "product_id": "produto-1",
+                "recovery_url": "https://meshcraft.top/checkout/recuperar",
                 "items": [
                     {
                         "product_id": "produto-1",
@@ -200,3 +212,154 @@ def test_aviso_pix_forjado_nao_aprova_sem_consulta_autenticada(settings: Any) ->
     assert intent.status == "pending"
     assert cliente.consultar_pedido.call_count == 1
     assert not OutboxEvent.objects.filter(event="pagamento.aprovado").exists()
+
+
+def _criar_pix(settings: Any, cliente: Mock, *, com_qr: bool) -> Intent:
+    if com_qr:
+        return _criar(settings, cliente)
+    cliente.criar_pagamento_pix.side_effect = FalhaNoProvedor(
+        "Appmax pagamento Pix: requisição recusada (HTTP 400)",
+        diagnostico="campo_expiration_date",
+    )
+    with pytest.raises(FalhaNoProvedor, match="em confirmação"):
+        _criar(settings, cliente)
+    return Intent.objects.get(site_id=SITE)
+
+
+def _envelhecer(
+    intent: Intent, *, criada_ha: timedelta, qr_venceu_ha: timedelta | None = None
+) -> None:
+    antes = timezone.now() - criada_ha
+    PaymentAttempt.objects.filter(intent=intent).update(
+        created_at=antes, updated_at=antes
+    )
+    if qr_venceu_ha is not None:
+        Intent.objects.filter(pk=intent.pk).update(
+            pix_expires_at=timezone.now() - qr_venceu_ha
+        )
+
+
+def _rodadas_so_de_consulta(cliente: Mock, quantas: int) -> list[dict[str, Any]]:
+    """Roda a supervisão e reprova qualquer chamada à Appmax além da consulta."""
+    cliente.reset_mock()
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        rodadas = [processar_rodada() for _ in range(quantas)]
+    assert {nome for nome, _, _ in cliente.method_calls} <= {
+        "preparar",
+        "consultar_pedido",
+    }
+    return rodadas
+
+
+@pytest.mark.parametrize(
+    ("com_qr", "criada_ha", "qr_venceu_ha"),
+    [
+        pytest.param(False, timedelta(days=2), None, id="sem-qr-criado-ha-2-dias"),
+        pytest.param(
+            True, timedelta(days=2), timedelta(hours=25), id="qr-vencido-ha-25h"
+        ),
+    ],
+)
+def test_pix_vencido_ha_mais_de_um_dia_encerra_uma_vez_so_por_consulta(
+    settings: Any,
+    caplog: pytest.LogCaptureFixture,
+    com_qr: bool,
+    criada_ha: timedelta,
+    qr_venceu_ha: timedelta | None,
+) -> None:
+    cliente = _cliente()
+    intent = _criar_pix(settings, cliente, com_qr=com_qr)
+    _envelhecer(intent, criada_ha=criada_ha, qr_venceu_ha=qr_venceu_ha)
+
+    # guarda: services/pagamentos/pagamentos/methods/pix/appmax.py:328
+    # guarda: services/pagamentos/pagamentos/methods/pix/appmax.py:379
+    primeira, segunda = _rodadas_so_de_consulta(cliente, 2)
+
+    tentativa = PaymentAttempt.objects.get(intent=intent)
+    intent.refresh_from_db()
+    assert (tentativa.state, tentativa.reason) == ("rejected", "pix_vencido")
+    assert intent.status == "expired"
+    assert (primeira["reconciliadas"], segunda["reconciliadas"]) == (1, 0)
+    assert cliente.consultar_pedido.call_count == 1
+    assert list(OutboxEvent.objects.values_list("event", "version")) == [
+        ("pix.expirado", 1)
+    ]
+    assert "fato pagamento.recusado ignorado" not in caplog.text
+    evento = OutboxEvent.objects.get()
+    schema = json.loads(_CONTRATO_PIX_EXPIRADO.read_text(encoding="utf-8"))
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(
+        {
+            "event": evento.event,
+            "version": evento.version,
+            "event_id": str(evento.event_id),
+            "occurred_at": evento.occurred_at.isoformat(),
+            "data": evento.payload,
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("com_qr", "criada_ha", "qr_venceu_ha", "status"),
+    [
+        pytest.param(
+            False,
+            timedelta(days=1, minutes=29),
+            None,
+            "pendente",
+            id="sem-qr-dentro-da-margem",
+        ),
+        pytest.param(
+            True,
+            timedelta(days=2),
+            timedelta(hours=23),
+            "pendente",
+            id="qr-vencido-dentro-da-margem",
+        ),
+        pytest.param(
+            False, timedelta(days=2), None, "autorizado", id="autorizado-fica-aberto"
+        ),
+    ],
+)
+def test_pix_dentro_da_margem_ou_autorizado_continua_aberto(
+    settings: Any,
+    com_qr: bool,
+    criada_ha: timedelta,
+    qr_venceu_ha: timedelta | None,
+    status: str,
+) -> None:
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = status
+    intent = _criar_pix(settings, cliente, com_qr=com_qr)
+    status_antes = intent.status
+    _envelhecer(intent, criada_ha=criada_ha, qr_venceu_ha=qr_venceu_ha)
+
+    # guarda: services/pagamentos/pagamentos/methods/pix/appmax.py:354
+    _rodadas_so_de_consulta(cliente, 1)
+
+    intent.refresh_from_db()
+    assert cliente.consultar_pedido.call_count == 1
+    assert PaymentAttempt.objects.get(intent=intent).state in ESTADOS_EM_ABERTO
+    assert intent.status == status_antes
+    assert not OutboxEvent.objects.exists()
+
+
+def test_pix_expirado_nao_gera_cobranca_nova_no_replay(settings: Any) -> None:
+    cliente = _cliente()
+    intent = _criar_pix(settings, cliente, com_qr=False)
+    _envelhecer(intent, criada_ha=timedelta(days=2))
+    _rodadas_so_de_consulta(cliente, 1)
+    intent.refresh_from_db()
+
+    # guarda: services/pagamentos/pagamentos/methods/pix/appmax.py:144
+    with patch(
+        "pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente
+    ), pytest.raises(FalhaNoProvedor, match="venceu"):
+        completar_intent_pix(intent)
+
+    intent.refresh_from_db()
+    assert intent.status == "expired"
+    assert PaymentAttempt.objects.filter(intent=intent).count() == 1
+    assert {nome for nome, _, _ in cliente.method_calls} <= {
+        "preparar",
+        "consultar_pedido",
+    }

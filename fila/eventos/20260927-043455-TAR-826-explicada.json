@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-043455-TAR-826-explicada",
+  "tarefa": "TAR-826",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:34:55.227195+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "o_que_e": "A gamificacao ja concede medalhas e marcos uma vez so, ja escuta a aula concluida e a resposta aceita no forum, e ja tem a tela onde o mantenedor liga e desliga cada conquista. Nao existem ainda os dois reconhecimentos da Comunidade nem uma tela em que o aluno leia o criterio de cada medalha antes de conquistar.",
+  "o_que_muda": "Nascem duas medalhas desligadas, Primeiro ciclo concluido e Primeira ajuda aceita, que o mantenedor liga pela tela quando quiser; repetir o mesmo evento nunca concede duas vezes; e uma pagina de medalhas mostra a cada aluno o criterio e o que falta, sem ranking e sem comparar com ninguem.",
+  "exemplo": "Um aluno termina o primeiro desafio e recebe Primeiro ciclo concluido; se o mesmo aviso chegar de novo por falha de rede, nada muda. Um colega tem a primeira resposta aceita e recebe Primeira ajuda aceita. Antes disso, os dois ja liam na pagina de medalhas exatamente o que precisavam fazer.",
+  "importancia": 75
+}
