@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-020-infra-chave-dormente-do-canario-appmax",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "infra: chave dormente do canario Appmax",
+  detalhe: "Chave do canario pronta sem executar: previa, um site por vez, desligar restaura os env; guardas mordem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2162. Validação local: árvore d76c957af4e985b08c8cc4d10887a8914db12256; commit 828193acb00c0d5ab8190b48375541c33af3cefa; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-802",
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

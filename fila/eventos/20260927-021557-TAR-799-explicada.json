@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-021557-TAR-799-explicada",
+  "tarefa": "TAR-799",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:15:57.506821+00:00",
+  "quem": "decisão 5 do mantenedor, sessão de 26/09/2026; substitui a TAR-778",
+  "o_que_e": "Os testes de texto da página existem no catálogo, mas o laboratório não os mostra.",
+  "o_que_muda": "Quem administra vê, num lugar só, cada teste da página, o que ele apostava e como terminou.",
+  "exemplo": "Como um caderno de receitas que mostra quais versões do bolo foram testadas e qual ficou.",
+  "importancia": 70
+}
