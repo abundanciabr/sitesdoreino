@@ -217,18 +217,20 @@ def test_falha_transitoria_reconsulta_sem_duplicar_fato() -> None:
 
 
 def test_rodada_encerra_a_tentativa_presa_de_cartao_recusado() -> None:
-    """Tarefa 862: a tentativa que ficou presa em reconciliation_required
-    porque a Appmax recusou o cartão (pedido cancelado, nada pago) é fechada
-    pelo processo que roda a cada 30 segundos em produção, sem ninguém tocar."""
+    """Tarefa 862: as tentativas que a operação appmax-pendentes achou presas
+    na VPS em 27/09/2026 (pedido `cancelado`, valor esperado em total_paid,
+    `payment` sem `installments`, motivo consulta_appmax_incompleta) são
+    fechadas como recusa pelo processo que roda a cada 30 segundos em
+    produção, sem ninguém tocar."""
     tentativa = _tentativa()
     PaymentAttempt.objects.filter(pk=tentativa.pk).update(
-        state="reconciliation_required"
+        state="reconciliation_required", reason="consulta_appmax_incompleta"
     )
     cliente = _cliente()
     cliente.consultar_pedido.return_value = {
         **cliente.consultar_pedido.return_value,
         "status": "cancelado",
-        "total_paid": 0,
+        "payment": {"method": "creditcard"},
     }
     with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
         resultado = processar_rodada()
