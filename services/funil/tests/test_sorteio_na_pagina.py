@@ -102,6 +102,7 @@ def test_os_visitantes_de_teste_caem_onde_a_formula_do_contrato_manda():
 
 
 def test_quem_cai_em_b_ve_o_texto_b_no_slot_marcado(client, rede):
+    # guarda: services/funil/apps/core/views.py:451
     resp = abrir_com(client, rede, experimento(), NO_BRACO_B)
     assert resp.status_code == 200
     corpo = resp.content.decode()
@@ -229,6 +230,7 @@ def test_catalogo_fora_do_ar_e_a_tela_de_sempre_sem_braco(client, rede):
 
 
 def test_pagina_com_braco_nao_e_guardada_por_ninguem(client, rede):
+    # guarda: services/funil/apps/core/views.py:395
     resp = abrir_com(client, rede, experimento(), NO_BRACO_B)
     assert resp["Cache-Control"] == "private, no-store"
 
@@ -262,6 +264,7 @@ def tela_com_braco(client, rede, fio):
 def test_a_exposicao_e_a_secao_vista_da_secao_do_slot_com_o_par(
     client, tela_com_braco, fio
 ):
+    # guarda: services/funil/apps/core/telemetria.py:173
     assert enviar(client, secao_vista(tela_com_braco, "cubo")).status_code == 204
     [exposicao] = fatos(fio, "funil.secao-vista")
     validar_contra_o_contrato(exposicao)
