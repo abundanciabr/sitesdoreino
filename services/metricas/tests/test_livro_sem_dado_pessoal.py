@@ -12,9 +12,10 @@ todos, lugares onde dado pessoal NÃO tem como ser apagado depois — e o
 
 A régua não é o código de recepção (que guarda o que chegar, de propósito —
 ver o docstring de `consume_eventos.py`): é o CONTRATO. `receber()` grava o
-envelope inteiro; a única cerca que existe é a `metricas` só assinar streams
-cujo contrato NÃO declare campo pessoal em lugar nenhum do esquema. Por isso
-este guarda lê `contracts/eventos/`, não o banco.
+envelope inteiro; a cerca é a `metricas` só assinar streams cujo contrato NÃO
+declare campo pessoal em lugar nenhum do esquema, salvo o campo que o
+consumidor descarta na entrada (a exceção abaixo). Por isso este guarda lê
+`contracts/eventos/`, não o banco.
 
 Lista de nomes de campo tratados como dado pessoal, em qualquer nível do
 esquema (`properties`, dentro de `anyOf`/`oneOf`/`allOf`, dentro de `items` de
@@ -22,27 +23,34 @@ array, dentro de `$defs`/`definitions`): `customer`, `cliente`, `email`,
 `e-mail`, `nome`, `name`, `telefone`, `phone`, `cpf`, `documento`, `endereco`,
 `ip`.
 
-**Achado real, registrado aqui e não escondido (armadilhas/INDICE.md e
-`fila/tarefas/` têm a tarefa aberta):** `contracts/eventos/quiz.completado.v1.json`
-declara `data.properties.lead` com `email`, `name` e `phone` — e
-`eventos.quiz.completado` está em `STREAMS`
-(`services/metricas/apps/fatos/management/commands/consume_eventos.py`,
-degrau "A jornada de aprendizado (`quiz`)"). Isto é uma violação de verdade,
-não uma bobagem do exemplo: enquanto ninguém abrir um Rito de Contrato para
-tirar `lead` do esquema ou parar de assinar o assunto, este guarda fica
-vermelho DE PROPÓSITO — `INVARIANTES.md` regra 2 proíbe afrouxar um
-teste-guarda para passar, e a lista de campos acima não ganha exceção para
-este caso.
+**Uma exceção, e só uma forma de ganhá-la:** campo pessoal que o contrato
+declara e o consumidor DESCARTA antes de guardar. O caso real é
+`quiz.completado.v1`, que declara `data.lead` com `email`, `name` e `phone`.
+Pela decisão 6 do mantenedor (sessão de 26/09/2026, "Limpar na entrada e
+expurgar"), o contrato do quiz não muda: a `metricas` tira `lead` do `data`
+em `processar`, antes de `receber`, e a migração
+`0004_quiz_completado_sem_lead` apagou `lead` dos fatos já guardados. O
+assunto e o campo moram em `DESCARTADOS_NA_ENTRADA`, no próprio consumidor, e
+este guarda não confia na lista: para cada par ele entrega um envelope com o
+campo pela porta de verdade e exige que o fato guardado saia sem ele. Um nome
+na lista sem o descarte de fato reprova aqui.
 """
 
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 import pytest
 
-from apps.fatos.management.commands.consume_eventos import STREAMS
+from apps.fatos.management.commands.consume_eventos import (
+    DESCARTADOS_NA_ENTRADA,
+    STREAMS,
+    processar,
+)
+from apps.fatos.models import Evento, EventoMorto
+from apps.fatos.recepcao import GUARDADO
 
 RAIZ_CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 
@@ -118,6 +126,16 @@ def campos_pessoais_do_esquema(no: object, caminho: str = "") -> list[str]:
     return achados
 
 
+def descartado_na_entrada(assunto: str, caminho: str) -> bool:
+    """Verdadeiro quando `caminho` fica dentro de um campo de `data` que o
+    consumidor descarta antes de guardar (`DESCARTADOS_NA_ENTRADA`)."""
+    for campo in DESCARTADOS_NA_ENTRADA.get(assunto, ()):
+        raiz = f"data.{campo}"
+        if caminho == raiz or caminho.startswith((f"{raiz}.", f"{raiz}[", f"{raiz}#")):
+            return True
+    return False
+
+
 def violacoes_de(streams: list[str], raiz: Path = RAIZ_CONTRATOS) -> list[str]:
     """Uma mensagem por (assunto, arquivo, campo) que viola a regra — vazio
     quando `streams` está limpo. Núcleo do guarda, testável sem depender do
@@ -135,6 +153,8 @@ def violacoes_de(streams: list[str], raiz: Path = RAIZ_CONTRATOS) -> list[str]:
         for esquema_path in esquemas:
             esquema = json.loads(esquema_path.read_text(encoding="utf-8"))
             for achado in campos_pessoais_do_esquema(esquema):
+                if descartado_na_entrada(assunto, achado):
+                    continue
                 mensagens.append(
                     f"{assunto} ({esquema_path.name}): campo pessoal " f"'{achado}'"
                 )
@@ -167,6 +187,8 @@ def test_stream_assinado_nao_tem_campo_pessoal_no_contrato(assunto: str) -> None
     for esquema_path in esquemas_do_assunto(assunto):
         esquema = json.loads(esquema_path.read_text(encoding="utf-8"))
         for caminho in campos_pessoais_do_esquema(esquema):
+            if descartado_na_entrada(assunto, caminho):
+                continue
             achados.append(f"{esquema_path.name}: campo '{caminho}'")
     assert not achados, (
         f"'{assunto}' tem campo pessoal no contrato congelado: "
@@ -174,8 +196,42 @@ def test_stream_assinado_nao_tem_campo_pessoal_no_contrato(assunto: str) -> None
         "(STREAMS em consume_eventos.py) — o livro de fatos não pode "
         "receber dado pessoal. Não afrouxe este guarda: abra um Rito de "
         "Contrato para tirar o campo do esquema, ou pare de assinar o "
-        "assunto (fila/tarefas/)."
+        "assunto (fila/tarefas/). Descartar o campo na entrada também serve, "
+        "declarado em DESCARTADOS_NA_ENTRADA e provado pelo teste abaixo."
     )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "assunto,campo",
+    [(a, c) for a, campos in sorted(DESCARTADOS_NA_ENTRADA.items()) for c in campos],
+)
+def test_campo_descartado_na_entrada_nao_chega_ao_livro(
+    assunto: str, campo: str
+) -> None:
+    """A exceção acima só vale se o descarte existe de fato: um envelope com o
+    campo, entregue pela porta de verdade (`processar`), vira fato SEM ele, e
+    o dado pessoal não aparece em lugar nenhum do livro."""
+    marca = "descartado-na-entrada@exemplo.com"
+    corpo = json.dumps(
+        {
+            "event": assunto,
+            "version": 1,
+            "event_id": str(uuid.uuid4()),
+            "occurred_at": "2026-09-26T18:00:00+00:00",
+            "data": {"site_id": "meshcraft", campo: {"email": marca}},
+        }
+    )
+
+    assert processar(corpo.encode("utf-8")) == GUARDADO
+    evento = Evento.objects.get()
+    assert campo not in evento.dados, (
+        f"'{assunto}' está em DESCARTADOS_NA_ENTRADA com '{campo}', mas o fato "
+        "foi guardado com ele: a lista promete um descarte que processar() "
+        "não faz."
+    )
+    assert marca not in json.dumps(evento.dados)
+    assert not EventoMorto.objects.exists()
 
 
 # ------------------------------------------------------------- prova por mutação

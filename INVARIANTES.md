@@ -331,24 +331,30 @@ primeira oportunidade de violá-la.
   em `contracts/eventos/`, e esse contrato não declara, em nenhum nível do
   esquema, uma propriedade cujo nome seja dado pessoal (`customer`, `cliente`,
   `email`, `e-mail`, `nome`, `name`, `telefone`, `phone`, `cpf`, `documento`,
-  `endereco`, `ip`).
+  `endereco`, `ip`), salvo campo de `data` que o consumidor descarta antes de
+  guardar (`DESCARTADOS_NA_ENTRADA`), com o descarte provado pela porta de
+  verdade.
 - **Por quê:** `receber()` guarda o envelope inteiro sem filtrar campo nenhum
   — é o desenho declarado do consumidor ("tudo que chega com envelope bom é
-  guardado"). A única cerca possível é o CONTRATO: uma fila de eventos
+  guardado"). A cerca é o CONTRATO, ou o descarte na entrada: uma fila de eventos
   replicada (Redis Streams), um `EventoMorto` inspecionável e um `Evento`
   imutável não têm como "esquecer" um e-mail depois que ele entrou. Sem este
   guarda, um contrato aditivo publicado por outra célula (a `metricas` não é
   dona de nenhum) poderia acrescentar um campo pessoal opcional e ninguém no
   caminho perceberia — aditivo é sempre PASS no `contrato_aditivo.py`, que
-  mede compatibilidade, não privacidade. **Achado real e não escondido:** o
-  esquema `quiz.completado.v1` declara `data.lead.email`, `data.lead.name` e
-  `data.lead.phone`, e o assunto `eventos.quiz.completado` está assinado
-  (`STREAMS`) — o guarda fica vermelho de propósito até um Rito de Contrato
-  tirar `lead` do esquema ou a assinatura do assunto ser removida (TAR-779).
+  mede compatibilidade, não privacidade. O caso real é o
+  `quiz.completado.v1`, que declara `data.lead` (e-mail, nome, telefone). Pela
+  decisão 6 do mantenedor (sessão de 26/09/2026, "Limpar na entrada e
+  expurgar", TAR-800), o contrato não muda: `processar` descarta `lead` antes
+  de `receber`, e a migração `0004_quiz_completado_sem_lead` apagou `lead` dos
+  fatos já guardados, atravessando a trava do banco só dentro da própria
+  transação.
 - **Teste-Guarda:**
   `services/metricas/tests/test_livro_sem_dado_pessoal.py` — para cada assunto
   assinado, exige esquema congelado e ausência de campo pessoal em qualquer
-  profundidade; provado por mutação sobre uma CÓPIA de `STREAMS` (acrescentar
+  profundidade, fora os campos de `DESCARTADOS_NA_ENTRADA`, e para cada um
+  deles entrega um envelope pela porta de verdade e exige o fato guardado sem
+  o campo; provado por mutação sobre uma CÓPIA de `STREAMS` (acrescentar
   `eventos.pedido.criado`, que leva `customer`) sem tocar o consumidor real.
 - **Célula dona:** metricas
 
