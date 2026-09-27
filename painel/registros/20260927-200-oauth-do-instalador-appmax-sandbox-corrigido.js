@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-200-oauth-do-instalador-appmax-sandbox-corrigido",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "OAuth do instalador Appmax sandbox corrigido",
+  detalhe: "O OAuth da Appmax dava erro 403 no servidor. O instalador passou a usar curl no PR 2056 e depois disso o cartão sandbox foi cobrado e integrado (PR 2066).",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2056 e https://github.com/abundanciabr/sitesdoreino/pull/2066 MERGED (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260924-049-corrigir-o-oauth-do-instalador-appmax-sandbox",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

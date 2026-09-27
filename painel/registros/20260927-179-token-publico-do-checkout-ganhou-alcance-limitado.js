@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-179-token-publico-do-checkout-ganhou-alcance-limitado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Token público do checkout ganhou alcance limitado",
+  detalhe: "O diagnóstico mostrou que a senha da página de compra abria toda a API do checkout. O diagnóstico e o conserto que limita o que essa senha pode fazer entraram na main.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1737 e https://github.com/abundanciabr/sitesdoreino/pull/1745 MERGED (gh pr view, 27/09/2026); evento TAR-478 concluida na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260918-023-checkout-diagnosticar-a-exposicao-do-bearer-antes-de-ativar",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

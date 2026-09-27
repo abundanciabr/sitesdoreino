@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-155-falso-verde-do-canario-f3-corrigido-na-main",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Falso verde do canário F3 corrigido na main",
+  detalhe: "O canário F3 tinha entrado com um falso verde e o conserto não estava integrado. O PR 1394 com o conserto foi integrado em 08/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1394 MERGED em 08/09/2026, mergeCommit 09cece6abd (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260908-055-infra-fecha-falso-verde-do-canario-f3",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
