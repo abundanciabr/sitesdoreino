@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-293-fila-rodada-3-da-comunidade-em-oito-frentes",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "fila: rodada 3 da Comunidade em oito frentes",
+  detalhe: "Oito frentes da rodada 3 da Comunidade entram na fila com despacho e contrato; decisões do mantenedor e o pedido das contas no livro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2282. Validação local: árvore 11bc918b0dd1d5931c90be193528aef7845098fc; commit af2321774912b15f61f87ca2e6bc0479238f0538; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-909",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
