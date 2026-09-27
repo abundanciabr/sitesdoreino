@@ -222,6 +222,7 @@ def test_no_horizonte_braco_abaixo_do_planejado_e_amostra_insuficiente():
 
 
 def test_no_horizonte_b_melhor_com_significancia_e_candidato():
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:246
     r = _avaliar(_par((1000, 1000, 200), (1000, 1000, 250)))
 
     assert r.veredito == re_.CANDIDATO
@@ -256,6 +257,7 @@ def test_encerrado_antes_do_horizonte_nao_calcula_p():
 
 
 def test_srm_nos_atribuidos_bloqueia_candidato():
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:209
     r = _avaliar(_par((1150, 1000, 200), (850, 1000, 250)))
 
     assert r.srm_atribuidos.alarme is True
@@ -265,6 +267,7 @@ def test_srm_nos_atribuidos_bloqueia_candidato():
 
 
 def test_srm_nos_expostos_bloqueia_candidato():
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:210
     r = _avaliar(_par((1000, 1000, 200), (1000, 1200, 300)))
 
     assert r.srm_atribuidos.alarme is False
@@ -274,6 +277,7 @@ def test_srm_nos_expostos_bloqueia_candidato():
 
 def test_bracos_trocados_acima_do_limite_bloqueiam_candidato():
     """2000 atribuídos: o limite de 1% são 20 visitantes."""
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:212
     bracos = _par((1000, 1000, 200), (1000, 1000, 250))
 
     assert _avaliar(bracos, trocados=20).veredito == re_.CANDIDATO
@@ -325,6 +329,7 @@ def test_peso_zero_com_gente_dentro_e_alarme():
     ],
 )
 def test_n_por_braco_bate_com_a_tabela_da_decisao(base, mde, esperado):
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:151
     assert re_.n_por_braco_planejado(base, mde) == esperado
 
 
@@ -469,6 +474,7 @@ def test_tela_madura_mostra_a_conta_e_o_veredito():
 
 @respx.mock
 def test_tela_coletando_nao_mostra_p_nem_intervalo_nem_conversoes(monkeypatch):
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:413
     monkeypatch.setattr(re_.timezone, "localdate", lambda: NO_MEIO)
     _catalogo_responde(_experimento())
     rota = respx.get(FUNIL).mock(
