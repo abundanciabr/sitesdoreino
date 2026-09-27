@@ -1,0 +1,70 @@
+# =============================================================================
+# ENSAIO DE ROLLBACK DO CARTÃO APPMAX NO SANDBOX DA MESHCRAFT (TAR-831)
+#
+# Plano mestre Appmax, seções 18.2 e 22.1: tira a Meshcraft de
+# APPMAX_CARD_ENABLED_SITES pela chave do canário, mede pela página pública do
+# checkout que o cartão ficou bloqueado com explicação e que o Pix não mudou,
+# religa, prova que o cartão voltou e publica a evidência no resumo do run.
+# Todo o ensaio é UM script na VPS: a religação não depende do runner
+# sobreviver entre dois passos.
+#
+# Só por disparo manual do mantenedor. Nenhum pedido, cobrança ou estorno
+# nasce aqui; fora do sandbox da Meshcraft o script para sem gravar.
+#
+# Grupo `deploy`: o ensaio recria checkout e pagamentos pelo mesmo
+# `docker compose` dos deploys e do rollback, então espera a vez deles.
+# =============================================================================
+name: appmax-drill-rollback
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+  queue: max
+jobs:
+  ensaiar:
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo '::error::O ensaio de rollback só executa na main. Integre o PR e dispare com --ref main.'
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Preparar o ensaio fixo deste SHA
+        id: conferir
+        run: |
+          set -euo pipefail
+          python infra/drill-appmax-rollback-sandbox.py preparar
+          SCRIPT="$RUNNER_TEMP/drill-appmax-rollback-sandbox.sh"
+          if [ ! -f "$SCRIPT" ]; then
+            echo '::error::A preparação não gerou o script do ensaio.'
+            exit 1
+          fi
+          bash -n "$SCRIPT"
+      - name: Desligar, sondar e religar o cartão sandbox na VPS
+        id: remoto
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 20m
+          script_path: ${{ steps.conferir.outputs.script }}
+      - name: Conferir a evidência e publicar o resumo
+        if: always() && steps.remoto.outcome != 'skipped'
+        env:
+          SAIDA: ${{ steps.remoto.outputs.stdout }}
+        run: python infra/drill-appmax-rollback-sandbox.py conferir
