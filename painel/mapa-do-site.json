@@ -262,6 +262,16 @@
     },
     {
       "celula": "funil",
+      "rota": "telemetria",
+      "endereco": "/telemetria",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "gesto": true,
+      "titulo": "Contar o que a pessoa viu na página de oferta",
+      "descricao": "Não é uma página: é para onde a página de oferta avisa, sozinha, que uma parte dela apareceu na tela ou que alguém clicou no botão de comprar. Abrir este endereço no navegador não mostra nada."
+    },
+    {
+      "celula": "funil",
       "rota": "avisos/ligar",
       "endereco": "/avisos/ligar",
       "alcance": "publico",
