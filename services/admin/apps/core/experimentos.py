@@ -1,15 +1,17 @@
-"""`/admin/paginas/experimentos/`: criar e conduzir um experimento da página.
+"""`/admin/paginas/experimentos/`: criar e pôr no ar um experimento da página.
 
 Um experimento troca UM espaço da página de oferta para uma parte das visitas:
 o braço `a` é o texto que está no ar, o braço `b` é o texto novo. Esta tela é
-onde o mantenedor cria o experimento, põe no ar e encerra. O resultado mora em
-outra tela, e a decisão de promover ou reverter em outra ainda.
+onde o mantenedor vê os experimentos da página, cria um em rascunho e o põe no
+ar. Parar é uma das três decisões (promover, reverter, encerrar) da tela
+`decisao_do_experimento`, e a lista leva até ela em vez de repetir o gesto.
 
 ## Onde o dado mora, e por que não aqui
 
-No `catalogo`, dono da página (frente F5 do sistema de experimentos). É lá que
-o sorteio do `funil` lê o experimento ativo, e uma cópia aqui seria o mesmo
-fato em dois lugares. Esta célula só fala pelo cliente do catálogo.
+No `catalogo`, dono da página, pelas operações `listExperiments`,
+`createExperiment` e `changeExperimentState` do contrato congelado. É lá que o
+sorteio do `funil` lê o experimento ativo, e uma cópia aqui seria o mesmo fato
+em dois lugares.
 
 ## Três estados, e nenhum deles é pausa
 
@@ -21,26 +23,27 @@ registrado, e a conta do resultado misturaria os dois.
 Parar é encerrar; testar de novo é criar outro, com sorteio novo. A tela diz
 isso onde o gesto aparece, para a ausência do botão não parecer defeito.
 
-## O braço `a` sai da página no ar, nunca do formulário
+## O braço `a` é o texto no ar, e quem o grava é o catálogo
 
-No momento de salvar, a tela relê a versão publicada e manda o texto dela.
-Aceitar o `a` do formulário deixaria um campo escondido decidir o controle do
-experimento, e o controle só vale se for o que as visitas de fato viam.
+A tela mostra o texto publicado do espaço, e o controle `a` viaja sem texto: o
+catálogo o preenche com a versão publicada no momento da criação. Aceitar o `a`
+do formulário deixaria um campo decidir o controle do experimento, e o controle
+só vale se for o que as visitas de fato viam.
 
 ## O plano é fixado antes de começar
 
 Métrica principal, taxa base, efeito mínimo detectável e dias planejados são
-escritos no rascunho, e a amostra por braço sai deles pela conta da tela de
-resultado (`n_por_braco_planejado`). Escolher o tamanho do teste depois de ver
-o placar é o erro que o horizonte fixo existe para impedir.
+escritos no rascunho. A tela mostra a amostra por braço que sai deles pela
+conta da tela de resultado (`n_por_braco_planejado`), a mesma que o catálogo
+grava. Escolher o tamanho do teste depois de ver o placar é o erro que o
+horizonte fixo existe para impedir.
 
-## Repetir um gesto é seguro
+## Repetir o Iniciar é seguro
 
-Duplo clique no Iniciar manda duas vezes. O catálogo responde 409 à segunda,
-porque o experimento já saiu do rascunho; a tela relê o experimento e, se ele
-já está no estado pedido, responde o mesmo sucesso da primeira, sem segunda
-linha de auditoria. Só quando o experimento continua em rascunho o 409 é o
-conflito de verdade: outro experimento ativo ocupa a página.
+Pedir ao catálogo o estado em que o experimento já está responde 200 sem mudar
+nada, então o duplo clique chega ao mesmo recado de sucesso. O 409 é outra
+coisa: nada mudou, e a tela diz por quê olhando a página. Havendo outro
+experimento ativo, a frase é que já existe um experimento ativo nesta página.
 
 ## Sem script
 
@@ -179,8 +182,8 @@ def _recusas(escrito) -> dict[str, str]:
     return erros
 
 
-def _corpo_do_experimento(escrito, texto_a: str) -> dict:
-    """O experimento na forma que o catálogo recebe. Só chamado sem recusa."""
+def _corpo_do_experimento(escrito) -> dict:
+    """`NovoExperimento`, na forma do contrato. Só chamado sem recusa."""
     _, taxa, mde = _plano(escrito)
     secao, slot = escrito["espaco"].split(".", 1)
     peso_b = int(escrito["parte_b"]) * PESO_TOTAL // 100
@@ -191,10 +194,9 @@ def _corpo_do_experimento(escrito, texto_a: str) -> dict:
         "metrica_principal": escrito["metrica_principal"],
         "taxa_base": taxa,
         "mde": mde,
-        "n_por_braco_planejado": n_por_braco_planejado(taxa, mde),
         "dias_planejados": int(escrito["dias_planejados"]),
         "variantes": [
-            {"variante_id": "a", "peso": PESO_TOTAL - peso_b, "valor": texto_a},
+            {"variante_id": "a", "peso": PESO_TOTAL - peso_b},
             {"variante_id": "b", "peso": peso_b, "valor": escrito["texto_b"]},
         ],
     }
@@ -300,12 +302,8 @@ def experimento_novo(request):
     if erros:
         return _formulario(request, site, escrito, erros=erros, status=422)
 
-    situacao, texto_a = _texto_no_ar(site, escrito["espaco"])
-    if situacao != CatalogoClient.OK or not texto_a.strip():
-        return _formulario(request, site, escrito, status=422)
-
     situacao, resposta = CatalogoClient().criar_experimento(
-        site["id"], SLUG_DA_PAGINA, _corpo_do_experimento(escrito, texto_a)
+        site["id"], SLUG_DA_PAGINA, _corpo_do_experimento(escrito)
     )
     detalhe = (
         f"{SLUG_DA_PAGINA}: {escrito['espaco']}, braço b com "
@@ -340,7 +338,7 @@ def experimento_novo(request):
 
 
 # ---------------------------------------------------------------------------
-# A lista e os dois gestos do ciclo
+# A lista e o gesto de pôr no ar
 # ---------------------------------------------------------------------------
 def _para_a_tela(experimento: dict) -> dict:
     estado = experimento.get("estado") or ""
@@ -371,24 +369,22 @@ def _para_a_tela(experimento: dict) -> dict:
     }
 
 
-def _lista(request, site, *, recado="", motivo="", gesto="", erro="", status=200):
+def _lista(request, site, *, recado="", recusado_id="", erro="", status=200):
+    """A lista da página. `recusado_id` é o experimento cujo Iniciar voltou com
+    409: a frase sai do estado da página, que é onde está o porquê."""
     situacao, lista = CatalogoClient().experimentos_da_pagina(
         site["id"], SLUG_DA_PAGINA
     )
-    contexto = {
-        "admin": request.admin,
-        "recado": recado,
-        "motivo": motivo,
-        "gesto": gesto,
-        "erro": erro,
-    }
+    contexto = {"admin": request.admin, "recado": recado, "erro": erro}
     if situacao != CatalogoClient.OK:
         contexto.update(sem_leitura=True, erro_da_leitura=lista)
     else:
         experimentos = [_para_a_tela(e) for e in lista]
+        ativos = [e["id"] for e in experimentos if e["estado"] == "ativo"]
         contexto.update(
             experimentos=experimentos,
-            ha_ativo=any(e["estado"] == "ativo" for e in experimentos),
+            ha_ativo=bool(ativos),
+            outro_ativo=bool(recusado_id) and any(i != recusado_id for i in ativos),
         )
     return render(request, "admin/experimentos.html", contexto, status=status)
 
@@ -402,71 +398,44 @@ def experimentos(request):
     return _lista(request, site, recado=request.GET.get("recado", ""))
 
 
-def _conduzir(request, experimento_id, *, gesto, mudar, estado_pedido, acao, recado):
-    """Iniciar e encerrar: o mesmo caminho, com o 409 relido antes de virar erro."""
+@require_POST
+def experimento_iniciar(request, experimento_id):
+    """Põe o rascunho no ar. Só um experimento fica ativo por página."""
     site = _site(request)
     if site is None:
         return _sem_catalogo(request, "admin/experimentos.html", status=503)
 
-    catalogo = CatalogoClient()
     alvo = str(experimento_id)
-    situacao, resposta = mudar(catalogo, alvo)
-    sucesso = HttpResponseRedirect(f"{reverse('experimentos')}?recado={recado}")
+    situacao, resposta = CatalogoClient().mudar_estado_do_experimento(
+        site["id"], SLUG_DA_PAGINA, alvo, {"estado": "ativo"}
+    )
     if situacao == CatalogoClient.OK:
-        _auditar(request, acao, alvo, Registro.OK, SLUG_DA_PAGINA)
-        return sucesso
+        _auditar(
+            request, Registro.INICIAR_EXPERIMENTO, alvo, Registro.OK, SLUG_DA_PAGINA
+        )
+        return HttpResponseRedirect(f"{reverse('experimentos')}?recado=iniciado")
 
-    motivo = "nao_respondeu"
-    if situacao == CatalogoClient.CONFLITO:
-        lido, experimento = catalogo.experimento(alvo)
-        estado = experimento.get("estado") if lido == CatalogoClient.OK else None
-        if estado == estado_pedido:
-            return sucesso
-        motivo = "ja_existe_ativo" if estado == "rascunho" else "recusado"
-    elif situacao in (CatalogoClient.RECUSADO, CatalogoClient.SEM_EXPERIMENTO):
-        motivo = "recusado"
-
-    recusado = motivo != "nao_respondeu"
+    recusado = situacao != CatalogoClient.NAO_RESPONDEU
     _auditar(
         request,
-        acao,
+        Registro.INICIAR_EXPERIMENTO,
         alvo,
         Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
         f"{SLUG_DA_PAGINA}: {resposta}",
     )
+    if situacao == CatalogoClient.CONFLITO:
+        return _lista(
+            request,
+            site,
+            recado="recusado",
+            recusado_id=alvo,
+            erro=resposta,
+            status=409,
+        )
     return _lista(
         request,
         site,
-        motivo=motivo,
-        gesto=gesto,
+        recado="recusado" if recusado else "nao_iniciou",
         erro=resposta,
-        status={"ja_existe_ativo": 409, "recusado": 422}.get(motivo, 503),
-    )
-
-
-@require_POST
-def experimento_iniciar(request, experimento_id):
-    """Põe o rascunho no ar. Só um experimento fica ativo por página."""
-    return _conduzir(
-        request,
-        experimento_id,
-        gesto="Iniciar",
-        mudar=CatalogoClient.iniciar_experimento,
-        estado_pedido="ativo",
-        acao=Registro.INICIAR_EXPERIMENTO,
-        recado="iniciado",
-    )
-
-
-@require_POST
-def experimento_encerrar(request, experimento_id):
-    """Encerra de vez. A página volta ao texto que está no ar."""
-    return _conduzir(
-        request,
-        experimento_id,
-        gesto="Encerrar",
-        mudar=CatalogoClient.encerrar_experimento,
-        estado_pedido="encerrado",
-        acao=Registro.ENCERRAR_EXPERIMENTO,
-        recado="encerrado",
+        status=422 if recusado else 503,
     )

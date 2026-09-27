@@ -20,10 +20,10 @@
 
   <p class="lei">
     <b>Rascunho não muda o site.</b> <b>Iniciar põe o braço b no ar</b> para a
-    parte das visitas que você escolheu. <b>Encerrar é definitivo</b> e a página
-    volta ao texto que está no ar. Não existe pausar: pausar e retomar misturaria
-    quem viu cada texto e estragaria a conta. Só um experimento fica no ar por vez
-    nesta página.
+    parte das visitas que você escolheu. <b>Parar é decidir</b>, na tela da
+    decisão: promover, reverter ou encerrar, e é definitivo. Não existe pausar:
+    pausar e retomar misturaria quem viu cada texto e estragaria a conta. Só um
+    experimento fica no ar por vez nesta página.
   </p>
 
   {% if recado == "criado" %}
@@ -32,29 +32,25 @@
   {% elif recado == "iniciado" %}
   <p class="recado"><b>O experimento está no ar.</b> A partir de agora a parte
     sorteada das visitas vê o braço b.</p>
-  {% elif recado == "encerrado" %}
-  <p class="recado"><b>Encerrei o experimento.</b> Todas as visitas voltam a ver
-    o texto que está no ar.</p>
-  {% endif %}
-
-  {% if motivo == "ja_existe_ativo" %}
+  {% elif outro_ativo %}
   <p class="recado borda-vermelha">
     <b>Não iniciei. Já existe um experimento ativo nesta página.</b>
     Só um fica no ar por vez, para que cada visita veja uma diferença só.
-    <span class="nota">Encerre o que está no ar e aperte Iniciar de novo. Nada
-      mudou no site.</span>
+    <span class="nota">Decida o que está no ar (o link fica no cartão dele) e
+      aperte Iniciar de novo. Nada mudou no site.</span>
   </p>
-  {% elif motivo == "recusado" %}
+  {% elif recado == "recusado" %}
   <p class="recado borda-vermelha">
-    <b>O catálogo não aceitou.</b> {{ erro }}
+    <b>Não iniciei: o catálogo não aceitou.</b> {{ erro }}
     <span class="nota">Nada mudou no site. A lista abaixo mostra o estado de
       cada experimento agora.</span>
   </p>
-  {% elif motivo == "nao_respondeu" %}
+  {% elif recado == "nao_iniciou" %}
   <p class="recado borda-vermelha">
-    <b>Não consegui {{ gesto|lower }} agora.</b> {{ erro }}
-    <span class="nota">Nada mudou no site. Aperte {{ gesto }} de novo daqui a
-      pouco: repetir é seguro, e o mesmo gesto não vale duas vezes.</span>
+    <b>Não consegui iniciar agora.</b> {{ erro }}
+    <span class="nota">Nada mudou no site. Aperte Iniciar de novo daqui a
+      pouco: repetir é seguro, o catálogo não põe o mesmo experimento no ar
+      duas vezes.</span>
   </p>
   {% endif %}
 
@@ -93,21 +89,19 @@
     {% if e.estado == "rascunho" %}
     <div class="decidir">
       {% if ha_ativo %}
-      <p class="nota">Para iniciar este, encerre o que está no ar.</p>
+      <p class="nota">Para iniciar este, decida antes o que está no ar.</p>
       {% else %}
       <button class="sim" type="submit" form="iniciar-{{ e.id }}">Iniciar</button>
       <form id="iniciar-{{ e.id }}" method="post" action="{% url 'experimento_iniciar' e.id %}">{% csrf_token %}</form>
       {% endif %}
-      <button class="nao" type="submit" form="encerrar-{{ e.id }}">Descartar o rascunho</button>
+      <p class="nota">Não vai usar? <a href="{% url 'decisao_do_experimento' e.id %}">Encerrar o rascunho</a>.</p>
     </div>
-    <form id="encerrar-{{ e.id }}" method="post" action="{% url 'experimento_encerrar' e.id %}">{% csrf_token %}</form>
     {% elif e.estado == "ativo" %}
     <div class="decidir">
-      <button class="nao" type="submit" form="encerrar-{{ e.id }}">Encerrar de vez</button>
-      <p class="nota">Encerrar é definitivo. Para testar de novo depois,
+      <a class="botao" href="{% url 'decisao_do_experimento' e.id %}">Decidir: promover, reverter ou encerrar</a>
+      <p class="nota">Decidir é definitivo. Para testar de novo depois,
         crie um experimento novo.</p>
     </div>
-    <form id="encerrar-{{ e.id }}" method="post" action="{% url 'experimento_encerrar' e.id %}">{% csrf_token %}</form>
     {% elif e.estado == "encerrado" %}
     <p class="nota">Encerrado de vez. Para testar este espaço de novo,
       crie um experimento novo: ele recomeça o sorteio do zero.</p>
