@@ -27,6 +27,8 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -367,6 +369,102 @@ def recortar(texto: str, limite: int = 2000) -> str:
     if len(texto) > limite:
         texto = texto[:limite] + f"\n  … (+{len(texto) - limite} bytes)"
     return "\n".join(f"  {linha}" for linha in texto.splitlines())
+
+
+# ---------------------------------------------------------------------------
+# O make do PATH roda as receitas das células? Medido, nunca deduzido.
+# ---------------------------------------------------------------------------
+#
+# `ci/ci.py` (`rodar_celula`) e `ci/sessao.py` (baseline) perguntam a mesma
+# coisa antes do `make ci`, e por isso a resposta mora aqui, uma vez só.
+# Conferir `make --version` pegava a fachada do Codex (`armadilhas/529`), mas
+# não o GNU Make do Windows sem `sh` no PATH: ele roda a receita no cmd.exe, o
+# `if [ ... ]` das células quebra no shell e a célula leva a culpa
+# (`armadilhas/536`). A sonda roda uma receita com uma linha simples e uma de
+# shell POSIX, do mesmo jeito que a porta vai rodar o `make ci`.
+#
+# Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
+# rodar (127 ausente, 126 erro de SO, 124 timeout). Só eles significam "não
+# foi possível medir"; qualquer outro número veio do programa e é veredito
+# dele. Moram aqui porque a sonda, o `make ci` do `ci.py` e o do baseline de
+# `sessao.py` leem a mesma tabela.
+SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
+
+MAKEFILE_DA_SONDA = (
+    "sonda:\n"
+    "\t@echo linha-simples\n"
+    "\t@test -n x && echo linha-posix\n"
+)
+
+O_QUE_FAZER_COM_O_MAKE = (
+    "Nada foi medido e a célula não reprovou: o defeito é do instrumento, não da base.\n"
+    "No Windows, deixe o GNU Make na frente do PATH (`winget install ezwinports.make`,\n"
+    "que fica em %LOCALAPPDATA%\\Microsoft\\WinGet\\Links) e `C:\\Program Files\\Git\\usr\\bin`\n"
+    "no FIM do PATH. Só o GNU Make não basta, e `Git\\bin` no lugar de `Git\\usr\\bin`\n"
+    "também não. Fora do Windows, instale o GNU Make e um `sh` POSIX. Depois abra uma\n"
+    "janela nova e repita. Veja armadilhas/529 e armadilhas/536."
+)
+
+
+def _correr_a_sonda(comando: list[str]) -> tuple[int, str]:
+    """Ausência, erro de SO e timeout viram as sentinelas 127, 126 e 124."""
+    try:
+        proc = subprocess.run(comando, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=120, check=False)
+    except FileNotFoundError as exc:
+        return 127, str(exc)
+    except subprocess.TimeoutExpired:
+        return 124, f"{comando[0]}: timeout após 120s"
+    except OSError as exc:
+        return 126, str(exc)
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def defeito_do_make(
+    make: str,
+    correr: Callable[[list[str]], tuple[int, str]] = _correr_a_sonda,
+    argumentos_do_make: Sequence[str] = (),
+) -> tuple[str, str] | None:
+    """None se `make` roda receita de shell POSIX; senão (resumo, detalhe) do defeito.
+
+    `correr` devolve (exit, stdout+stderr). `argumentos_do_make` são os mesmos
+    que a porta acrescenta ao `make ci` (o baseline passa `SHELL=`), para a
+    sonda medir o instrumento do jeito que ele vai ser usado. Sem cache: são
+    dois processos curtos por célula, e o `make ci` que vem depois custa minutos.
+    """
+    with tempfile.TemporaryDirectory(prefix="sonda-do-make-") as pasta:
+        Path(pasta, "Makefile").write_text(MAKEFILE_DA_SONDA, encoding="utf-8", newline="\n")
+        codigo, saida = correr([make, "-C", pasta, "sonda", *argumentos_do_make])
+    linhas = {linha.strip() for linha in saida.splitlines()}
+    if codigo == 0 and "linha-posix" in linhas:
+        return None
+    _, versao = correr([make, "--version"])
+    resumo = f"o `make` do PATH não roda as receitas das células: {make}"
+    causa = "A receita de prova não imprimiu o que devia; a saída acima mostra onde ela parou."
+    if "linha-simples" not in linhas:
+        resumo = f"o `make` do PATH é GNU Make, mas não executa nem `echo` numa receita: {make}"
+        causa = ("O GNU Make achou um `sh`, mas não as ferramentas POSIX ao lado dele. No\n"
+                 "Windows isso é `Git\\bin` no PATH no lugar de `Git\\usr\\bin`.")
+    if "linha-simples" in linhas and "linha-posix" not in linhas:
+        resumo = f"o `make` do PATH é GNU Make, mas roda as receitas sem shell POSIX: {make}"
+        causa = ("O GNU Make rodou a linha simples e quebrou na de shell POSIX: sem `sh` no\n"
+                 "PATH, no Windows, ele usa o cmd.exe. Todo Makefile de célula usa shell POSIX\n"
+                 "(`if [ ... ]`, `&&`), e o `make ci` quebraria no shell, não no código.")
+    if not versao.startswith("GNU Make"):
+        resumo = f"o `make` do PATH não é GNU Make: {make}"
+        causa = "Um programa chamado `make` que não é o GNU Make não roda o `make ci` das células."
+    if codigo in SENTINELAS_DE_INSTRUMENTACAO:
+        resumo = f"a sonda do `make` do PATH não chegou a rodar (exit {codigo}): {make}"
+        causa = ("O make não abriu ou não terminou a tempo (124 = tempo esgotado, 126 = erro do\n"
+                 "sistema, 127 = não encontrado). Com a máquina carregada, espere e repita.")
+    comando = subprocess.list2cmdline([make, "-C", "<pasta temporária>", "sonda", *argumentos_do_make])
+    detalhe = (
+        f"A sonda `{comando}`, com a receita\n{recortar(MAKEFILE_DA_SONDA)}\n"
+        f"saiu {codigo}:\n{recortar(saida, 1500)}\n"
+        f"`{make} --version` respondeu:\n{recortar(versao, 500)}\n\n"
+        f"{causa}\n\n{O_QUE_FAZER_COM_O_MAKE}"
+    )
+    return resumo, detalhe
 
 
 def configurar_saida() -> None:

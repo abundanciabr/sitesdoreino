@@ -34,7 +34,9 @@ carregava a semântica certa. Duplicação consciente é aceitável; duplicaçã
 guarda é armadilha com data marcada (é a §5.11, a mesma lição que fez
 `orcamento-de-mudanca.sh` e `mergear.py` ganharem testes que se leem). Por isso
 `test_as_duas_copias_da_sentinela_nao_derivaram` lê os dois arquivos e reprova
-se elas divergirem.
+se elas divergirem. Desde 27/09/2026 a tabela mora em `ci/_nucleo.py`, junto da
+sonda do make que também a lê, e os dois só a importam; o teste continua
+reprovando se alguém voltar a escrever uma cópia local.
 """
 
 from __future__ import annotations
@@ -50,12 +52,13 @@ if str(CI) not in sys.path:
 
 import ci as runner  # noqa: E402
 import sessao  # noqa: E402
-from _nucleo import Estado, Relatorio  # noqa: E402
+from _nucleo import Estado, Relatorio, defeito_do_make  # noqa: E402
 from conftest import RepoFalso  # noqa: E402
 
+_MAKE_DO_PATH = __import__("shutil").which("make")
 MAKE_DISPONIVEL = pytest.mark.skipif(
-    not runner.e_gnu_make(__import__("shutil").which("make")),
-    reason="GNU Make ausente nesta máquina — o portão já devolve ERROR por conta disso",
+    _MAKE_DO_PATH is None or defeito_do_make(_MAKE_DO_PATH) is not None,
+    reason="o make do PATH não roda receita de célula; o portão já devolve ERROR por conta disso",
 )
 
 
@@ -89,16 +92,98 @@ def test_o_2_do_make_nao_e_mais_ERROR():
 
 
 def test_so_o_gnu_make_conta_como_make():
-    # guarda: ci/ci.py:363
+    # guarda: ci/_nucleo.py:454
     """Uma fachada chamada `make` não é o GNU Make (`armadilhas/529`).
 
-    `is False` em vez de `not ...`: sem a linha protegida a função cai no
-    fim do corpo e devolve `None`, que também é falso para `not`. A
-    asserção frouxa não veria a diferença entre "não é GNU Make" e "não
-    decidiu nada".
+    Aqui o impostor é de verdade: o próprio Python no lugar do `make`.
     """
-    assert runner.e_gnu_make(None) is False
-    assert runner.e_gnu_make(sys.executable) is False
+    resumo, detalhe = defeito_do_make(sys.executable)
+    assert resumo == f"o `make` do PATH não é GNU Make: {sys.executable}"
+    assert "Python" in detalhe
+
+
+# ---------------------------------------------------------------------------
+# A sonda: "o make do PATH roda as receitas das células?", medido, não deduzido.
+# Os quatro modos foram medidos nesta máquina em 27/09/2026 com a mesma receita
+# (`armadilhas/529` e `armadilhas/536`). O simulador lê a receita que a regra
+# escreveu e a executa como cada instrumento real executaria.
+# ---------------------------------------------------------------------------
+def _make_simulado(modo: str):
+    def correr(argumentos: list[str]) -> tuple[int, str]:
+        if argumentos[1:] == ["--version"]:
+            if modo == "fachada":
+                return 2, "ERROR: alvo desconhecido: --version"
+            return 0, "GNU Make 4.4.1\nBuilt for Windows32"
+        if modo == "fachada":
+            return 2, "ERROR: alvo desconhecido: -C"
+        makefile = Path(argumentos[2], "Makefile").read_text(encoding="utf-8")
+        saida = []
+        for linha in (l.lstrip("\t@") for l in makefile.splitlines() if l.startswith("\t")):
+            simples = linha.startswith("echo ") and "&&" not in linha
+            if modo == "sem-echo":
+                return 2, f"process_begin: CreateProcess(NULL, {linha}, ...) failed."
+            if modo == "sem-sh" and not simples:
+                saida.append("'test' não é reconhecido como um comando interno")
+                return 2, "\n".join(saida)
+            saida.append(linha.split("&&")[-1].strip().removeprefix("echo "))
+        return 0, "\n".join(saida)
+    return correr
+
+
+def _orienta_sem_culpar_a_celula(detalhe: str) -> None:
+    assert "a célula não reprovou" in detalhe
+    assert r"C:\Program Files\Git\usr\bin" in detalhe
+    assert "armadilhas/529" in detalhe and "armadilhas/536" in detalhe
+
+
+def test_sonda_aceita_o_make_que_roda_receita_posix():
+    # guarda: ci/_nucleo.py:440
+    assert defeito_do_make("make", _make_simulado("bom")) is None
+
+
+def test_sonda_diz_que_a_fachada_nao_e_gnu_make():
+    # guarda: ci/_nucleo.py:454
+    resumo, detalhe = defeito_do_make("make", _make_simulado("fachada"))
+    assert resumo == "o `make` do PATH não é GNU Make: make"
+    assert "alvo desconhecido: -C" in detalhe
+    _orienta_sem_culpar_a_celula(detalhe)
+
+
+def test_sonda_diz_que_o_gnu_make_roda_receita_sem_shell_posix():
+    # guarda: ci/_nucleo.py:449
+    resumo, detalhe = defeito_do_make("make", _make_simulado("sem-sh"))
+    assert resumo == "o `make` do PATH é GNU Make, mas roda as receitas sem shell POSIX: make"
+    assert "não é reconhecido" in detalhe
+    _orienta_sem_culpar_a_celula(detalhe)
+
+
+def test_sonda_diz_que_o_gnu_make_nao_acha_nem_echo():
+    # guarda: ci/_nucleo.py:445
+    resumo, detalhe = defeito_do_make("make", _make_simulado("sem-echo"))
+    assert resumo == "o `make` do PATH é GNU Make, mas não executa nem `echo` numa receita: make"
+    assert "CreateProcess" in detalhe
+    _orienta_sem_culpar_a_celula(detalhe)
+
+
+@pytest.mark.parametrize("sentinela", [124, 126, 127])
+def test_sonda_que_nem_rodou_nao_e_confundida_com_make_sem_echo(sentinela):
+    """Medido em 27/09/2026: com a máquina carregada a sonda estourou 60 s."""
+    # guarda: ci/_nucleo.py:457
+    resumo, detalhe = defeito_do_make("make", lambda argumentos: (sentinela, "timeout"))
+    assert resumo == f"a sonda do `make` do PATH não chegou a rodar (exit {sentinela}): make"
+    _orienta_sem_culpar_a_celula(detalhe)
+
+
+def test_make_que_nao_roda_receita_e_ERROR_sem_rodar_a_celula(repo: RepoFalso, monkeypatch):
+    """A porta do `ci.py`: instrumento ruim nunca vira FAIL da célula."""
+    # guarda: ci/ci.py:380
+    _celula_com_receita(repo, "falsa", "ci:\n\t@exit 1\n")
+    monkeypatch.setattr(runner.shutil, "which", lambda _nome: "make")
+    monkeypatch.setattr(runner, "defeito_do_make", lambda make: defeito_do_make(make, _make_simulado("sem-sh")))
+    resultado = runner.rodar_celula(repo.raiz, "falsa")
+    assert resultado.estado is Estado.ERROR
+    assert resultado.resumo == "o `make` do PATH é GNU Make, mas roda as receitas sem shell POSIX: make"
+    _orienta_sem_culpar_a_celula(resultado.detalhe)
 
 
 # ---------------------------------------------------------------------------
