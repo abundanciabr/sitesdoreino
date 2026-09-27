@@ -1,0 +1,19 @@
+{
+  "arquivo": "835-o-rito-ci-pr-py-so-embarca-eventos-da-tarefa-declarada-em-ta",
+  "id": "TAR-835",
+  "titulo": "O rito ci/pr.py so embarca eventos da tarefa declarada em --tarefa e recusa fechar tarefa com depende_de aberto",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com teste vermelho para verde em ci/tests/test_pr.py e ci/tests/test_fila.py",
+  "despacho": "ci/pr.py deduz a tarefa de qualquer TAR-N no titulo ou detalhe e embarca submetida/concluida sem conferir depende_de nem se a tarefa ja terminou (PRs #2189 e #2190, 27/09/2026). Fazer o rito usar so --tarefa; ci/fila.py submeter/fechar recusam tarefa com depende_de aberto ou ja concluida. Teste vermelho para verde em ci/tests.",
+  "origem": "escrivao, sessao de 27/09/2026, armadilha 526",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
