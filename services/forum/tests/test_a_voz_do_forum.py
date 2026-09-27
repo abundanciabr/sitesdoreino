@@ -227,7 +227,8 @@ def test_tirar_do_ar_anuncia_o_estorno(monkeypatch):
     _entrar(monkeypatch, professor, equipe=True)
 
     Client().post(
-        reverse("moderar_mensagem", args=[mensagem.pk]), {"acao": "tirar_do_ar"}
+        reverse("moderar_mensagem", args=[mensagem.pk]),
+        {"acao": "tirar_do_ar", "motivo": "fora do tema"},
     )
 
     (evento,) = _eventos("forum.mensagem-removida")

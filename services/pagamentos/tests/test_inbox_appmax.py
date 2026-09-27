@@ -485,7 +485,7 @@ def test_pedido_invalido_nao_entra_na_inbox(dados: dict[str, Any]) -> None:
     assert OutboxEvent.objects.count() == 0
 
 
-# guarda: services/pagamentos/pagamentos/api/webhooks.py:286
+# guarda: services/pagamentos/pagamentos/api/webhooks.py:290
 def test_pix_documentado_preserva_tripla_sem_efeito_financeiro() -> None:
     _preparar_tentativa_appmax()
     aviso = _aviso_pix(
@@ -526,7 +526,7 @@ def test_pix_documentado_preserva_tripla_sem_efeito_financeiro() -> None:
     assert OutboxEvent.objects.count() == 0
 
 
-# guarda: services/pagamentos/pagamentos/api/webhooks.py:285
+# guarda: services/pagamentos/pagamentos/api/webhooks.py:286
 def test_reentrega_completa_preenche_aviso_legado_sem_mudar_controle_operacional() -> (
     None
 ):
@@ -734,7 +734,7 @@ def test_duplicata_pix_com_conflito_nao_substitui_a_primeira_tripla() -> None:
     }
 
 
-# guarda: services/pagamentos/pagamentos/api/webhooks.py:282
+# guarda: services/pagamentos/pagamentos/api/webhooks.py:283
 @pytest.mark.django_db(transaction=True)
 def test_corridas_concorrentes_preservam_uma_tripla_inteira_e_o_controle_operacional() -> (
     None
@@ -823,3 +823,77 @@ def test_corridas_concorrentes_preservam_uma_tripla_inteira_e_o_controle_operaci
     assert recebido.failed_attempts == 3
     assert recebido.last_error == "aguardando replay"
     assert recebido.operational_action == "preservar primeira tupla"
+
+
+# guarda: services/pagamentos/pagamentos/api/webhooks.py:289
+def test_quatro_reentregas_do_mesmo_aviso_contam_quatro_sem_novo_efeito() -> None:
+    _preparar_tentativa_appmax(method="card")
+    aviso = {**_aviso_pix(), "event": "order_approved", "data": {"order_id": 3531}}
+    cliente = Client()
+
+    respostas = [
+        cliente.post(URL, data=json.dumps(aviso), content_type="application/json")
+        for _ in range(5)
+    ]
+
+    assert [resposta.status_code for resposta in respostas] == [200] * 5
+    assert [resposta.json() for resposta in respostas] == [{"status": "recebido"}] + [
+        {"status": "ja_recebido"}
+    ] * 4
+    recebido = AppmaxWebhookInbox.objects.get()
+    assert recebido.redeliveries == 4
+    assert recebido.payload == {"data": {"order_id": 3531}}
+    assert recebido.processed_at is None
+    assert recebido.failed_attempts == 0
+    assert Intent.objects.get().status == "created"
+    assert PaymentAttempt.objects.get().state == "pending"
+    assert OutboxEvent.objects.count() == 0
+
+
+# guarda: services/pagamentos/pagamentos/api/webhooks.py:289
+@pytest.mark.django_db(transaction=True)
+def test_reentregas_simultaneas_nao_perdem_contagem() -> None:
+    _preparar_tentativa_appmax(method="card")
+    aviso = {**_aviso_pix(), "event": "order_approved", "data": {"order_id": 3531}}
+    assert (
+        Client()
+        .post(URL, data=json.dumps(aviso), content_type="application/json")
+        .status_code
+        == 200
+    )
+    simultaneas = 3
+    todas_leram = threading.Barrier(simultaneas)
+    get_or_create_original = AppmaxWebhookInbox.objects.get_or_create
+    respostas: list[dict[str, Any]] = []
+
+    def ler_e_esperar_as_outras(
+        *args: Any, **kwargs: Any
+    ) -> tuple[AppmaxWebhookInbox, bool]:
+        resultado = get_or_create_original(*args, **kwargs)
+        todas_leram.wait(timeout=10)
+        return resultado
+
+    def reenviar() -> None:
+        try:
+            respostas.append(
+                Client()
+                .post(URL, data=json.dumps(aviso), content_type="application/json")
+                .json()
+            )
+        finally:
+            connection.close()
+
+    with patch.object(
+        AppmaxWebhookInbox.objects, "get_or_create", new=ler_e_esperar_as_outras
+    ):
+        threads = [threading.Thread(target=reenviar) for _ in range(simultaneas)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=15)
+
+    assert all(not thread.is_alive() for thread in threads)
+    assert respostas == [{"status": "ja_recebido"}] * simultaneas
+    recebido = AppmaxWebhookInbox.objects.get()
+    assert recebido.redeliveries == simultaneas
+    assert OutboxEvent.objects.count() == 0
