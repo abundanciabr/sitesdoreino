@@ -117,10 +117,12 @@ def baseline(ambiente):
     a.preparar_venv()
     a.instalar()
     estado = {"main": "a" * 40, "tree": "b" * 40, "head": "b" * 40, "dirty": "", "exit": 0, "make": 0, "isoladas": [],
-              "versao_do_make": "GNU Make 4.4.1"}
+              "versao_do_make": "GNU Make 4.4.1", "sonda": (0, "linha-simples\nlinha-posix")}
     def correr(comando, **kwargs):
         if comando[1:] == ["--version"]:
             return sessao.Saida(comando, 0, estado["versao_do_make"], "")
+        if "sonda" in comando:
+            return sessao.Saida(comando, *estado["sonda"], "")
         if "status" in comando:
             return sessao.Saida(comando, 0, estado["dirty"] if "-C" in comando else estado.get("base_dirty", ""), "")
         if "show" in comando:
@@ -300,6 +302,37 @@ def test_abertura_de_verdade_instala_wheel_vendorizada_com_hash_conferido(ambien
     assert a.ambiente_instalado()
 
 
+def test_chave_do_baseline_le_blob_binario_da_wheel_sem_corromper(ambiente):
+    """`git show` do blob da BASE não pode passar pela decodificação e
+    recodificação UTF-8 que `correr_de_verdade` usa para texto: isso corrompe
+    bytes de uma wheel vendorizada e derruba o sha256 anotado no
+    requirements.txt (o defeito medido na abertura com contêiner da admin).
+    A fake `correr` simula fielmente o que o subprocess faz em modo texto
+    (decode com errors="replace") quando `binario` não é pedido, e devolve os
+    bytes exatos quando é pedido. Assim o teste reprova sem o conserto e
+    aprova com ele, sem precisar de um repositório git real."""
+    conteudo = bytes(range(256)) * 4  # garante bytes inválidos como UTF-8
+    linha, hash_real = _escrever_wheel_vendorizada(ambiente, conteudo)
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_real}\n", encoding="utf-8")
+    revisao = "a" * 40
+
+    def correr(comando, *, cwd=None, env=None, timeout=1800, binario=False):
+        if comando[:2] == ["git", "rev-parse"]:
+            return sessao.Saida(comando, 0, revisao, "")
+        if comando[:2] == ["git", "show"]:
+            relativo = comando[2].split(":", 1)[1]
+            bruto = (ambiente.worktree / relativo).read_bytes()
+            if binario:
+                return sessao.Saida(comando, 0, bruto, "")
+            return sessao.Saida(comando, 0, bruto.decode("utf-8", errors="replace"), "")
+        raise AssertionError(comando)
+
+    a = sessao.Sessao(ambiente, correr=correr)
+    _, _, base = a.chave_do_baseline("git")
+    esperado = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    assert base.plano.venv.name == esperado
+
+
 def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
     a, estado = baseline
     a._variaveis = sessao.variaveis_de_sessao(a.plano, porta_postgres=15432)
@@ -315,7 +348,8 @@ def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
 @pytest.mark.parametrize("requisitos_divergentes", [False, True])
 def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_divergentes):
     make = shutil.which("make")
-    assert make, "prova de integração exige GNU Make"
+    defeito = sessao.defeito_do_make(make) if make else ("`make` ausente do PATH", "")
+    assert defeito is None, "prova de integração exige o make do PATH rodando receita de célula:\n" + "\n".join(defeito or ())
     repo = ambiente.raiz
     repo.mkdir(parents=True)
     def git(*args):
@@ -396,9 +430,10 @@ def test_revisao_da_main_invalida_nao_executa_baseline(baseline):
 
 
 def test_make_que_nao_e_gnu_para_como_instrumento_sem_culpar_a_base(baseline):
-    # guarda: ci/sessao.py:2145
+    # guarda: ci/sessao.py:2153
     a, estado = baseline
     estado["versao_do_make"] = "make local do Codex para sitesdoreino"
+    estado["sonda"] = (2, "ERROR: alvo desconhecido: -C")
     with pytest.raises(sessao.ErroDeSessao) as erro:
         a.rodar_baseline("git")
     assert erro.value.resumo == "o `make` do PATH não é GNU Make: make"

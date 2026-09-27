@@ -626,14 +626,16 @@ def test_todo_endereco_interno_sai_com_o_prefixo_publico(
     aluna, aula_publicada, client, sob_prefixo
 ):
     """`armadilhas/081`: sob SCRIPT_NAME, todo `href` e `action` da célula
-    começa pelo prefixo. Endereço de fora (a capa, a entrada, os documentos)
-    não é desta célula e fica de fora da régua."""
+    começa pelo prefixo. Endereço de fora (a capa, a entrada, os documentos,
+    o grupo da Comunidade no fórum) não é desta célula e fica de fora da
+    régua."""
     for endereco in ("/profissional/", "/profissional/parte-1/E00"):
         corpo = corpo_de(abrir(client, endereco))
         internos = [
             alvo
             for alvo in re.findall(r'(?:href|action)="([^"]+)"', corpo)
-            if alvo.startswith("/") and alvo not in ("/", "/docs/", "/entrar/google")
+            if alvo.startswith("/")
+            and alvo not in ("/", "/docs/", "/entrar/google", "/forum/comunidade")
         ]
         assert internos, endereco
         fora = [alvo for alvo in internos if not alvo.startswith("/cursos/")]

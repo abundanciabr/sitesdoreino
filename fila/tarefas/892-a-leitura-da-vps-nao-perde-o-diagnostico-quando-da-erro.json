@@ -1,0 +1,19 @@
+{
+  "arquivo": "892-a-leitura-da-vps-nao-perde-o-diagnostico-quando-da-erro",
+  "id": "TAR-892",
+  "titulo": "A leitura da VPS nao perde o diagnostico quando da erro",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com teste vermelho para verde e mutacao provada dos guardas novos",
+  "despacho": "Obra Appmax rodada 3. Achado do escritor da TAR-868 (PR 2249): o appleboy/ssh-action\nroda o script remoto sob `bash -e -o pipefail`, e fecha a captura multilinha do\nstdout com um `echo EOF` que so roda se o comando anterior saiu 0. Quando\n`ci/operacoes_vps.py executar` devolvia ERROR, o script saia diferente de zero e\na evidencia sumia justo quando mais precisamos dela; o passo `conferir` tambem\nnao tinha `if: always()`.\n\nConserto aplicado nesta TAR, replicando o padrao do PR 2249:\n- ci/operacoes_vps.py: o heredoc do script remoto ganha `|| true`, script sempre\n  sai 0; o veredito sai do JSON, no passo `conferir`.\n- .github/workflows/operacoes-vps.yml: o passo `conferir` ganha\n  `if: always() && steps.remoto.outcome != 'skipped'`.\n- Mesmo defeito encontrado e corrigido em ci/appmax_estorno_sandbox.py (faltava\n  so o `|| true`; o `if: always()` ja existia) e em e2e/appmax_sandbox.js +\n  .github/workflows/appmax-sandbox-tela.yml (faltavam os dois).\n- Testes novos executam o script GERADO de verdade via bash (nao so leem texto)\n  e provam vermelho para verde; mutacao de cada guarda confirmada.\n\nEvidencia exigida: PR integrado com teste vermelho para verde e mutacao provada.",
+  "origem": "despacho ci/operacoes-vps-saida-no-erro, sessao 4442b6ad, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
