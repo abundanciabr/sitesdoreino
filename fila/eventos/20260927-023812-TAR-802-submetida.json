@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-023812-TAR-802-submetida",
+  "tarefa": "TAR-802",
+  "evento": "submetida",
+  "quando": "2026-09-27T02:38:12.961843+00:00",
+  "quem": "agent/infra/canario-appmax-dormente",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2162",
+  "revisao": "828193acb00c0d5ab8190b48375541c33af3cefa",
+  "arvore": "d76c957af4e985b08c8cc4d10887a8914db12256"
+}

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-023825-TAR-802-concluida",
+  "tarefa": "TAR-802",
+  "evento": "concluida",
+  "quando": "2026-09-27T02:38:25.100186+00:00",
+  "quem": "agent/infra/canario-appmax-dormente",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2162",
+  "verificado_em": "2026-09-27"
+}

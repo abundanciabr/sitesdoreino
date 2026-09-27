@@ -1,0 +1,65 @@
+{
+  "arquivo": "20260927-021704-TAR-802-contrato_execucao",
+  "tarefa": "TAR-802",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T02:17:04.068749+00:00",
+  "quem": "agent/infra/canario-appmax-dormente",
+  "contrato": {
+    "plano": "Preparacao dormente do canario Appmax no cartao (frente N5 de RETOMADA-APPMAX.md)",
+    "versao": 1,
+    "objetivo": "Deixar pronta, testada e sem executar, a operacao reversivel que liga e desliga UM site em APPMAX_CARD_ENABLED_SITES na producao, para o gesto do mantenedor no canario (TAR-565).",
+    "entregaveis": [
+      "infra/ativar-appmax-canario.py: previa por padrao, --executar para gravar, --desligar como caminho de volta, um site por vez",
+      "infra/test_ativar_appmax_canario.py: testes vermelho para verde e guardas provadas por mutacao"
+    ],
+    "escopo_incluido": [
+      "Trava APPMAX_CARD_ENABLED_SITES em env/pagamentos.env e env/checkout.env da VPS",
+      "Conferencias antes de gravar: Appmax de producao, site vinculado a instalacao, identificador externo coerente, Pix Appmax vazio, servicos ativos",
+      "Copia de seguranca, recarga dos servicos, prova de leitura e restauracao automatica em falha"
+    ],
+    "nao_objetivos": [
+      "Executar a operacao na VPS",
+      "Ativar cartao em producao",
+      "Compra, cobranca ou estorno reais",
+      "Instalar a Appmax de producao ou gravar credenciais",
+      "Workflow novo ou ci/operacoes_vps.py",
+      "Corrigir services/checkout"
+    ],
+    "restricoes": [
+      "Nenhum segredo nem valor de env impresso",
+      "Somente um site na trava por vez",
+      "Pix continua no Mercado Pago",
+      "Mandato-do-mantenedor cobre infra/ nesta obra, nao cobre services/checkout/ nem contracts/"
+    ],
+    "decisoes_aprovadas": [
+      "Decisao 3 da secao 10 de RETOMADA-APPMAX.md: preparacao dormente autorizada pelo mantenedor na sessao Claude Code de 26/09/2026 22h53 BRT",
+      "Plano mestre secao 5.4: APPMAX_CARD_ENABLED_SITES e a unica trava; secao 18.2: esvaziar a trava e o primeiro passo do rollback"
+    ],
+    "etapas": [
+      "Teste vermelho para cada guarda e para o ciclo ligar e desligar",
+      "Script no desenho de infra/ativar-appmax-meshcraft-sandbox.py",
+      "Verde, previa medida, ciclo com arquivos identicos, mutacao das guardas",
+      "PR com mandato infra/ e checks medidos"
+    ],
+    "criterios_entrada": [
+      "Mandato infra/ transcrito do mantenedor",
+      "infra/ativar-appmax-meshcraft-sandbox.py em origin/main como molde"
+    ],
+    "criterios_aceite": [
+      "Previa mostra o antes e o depois da trava sem alterar arquivo nem recriar servico",
+      "Ligar e depois desligar devolve pagamentos.env e checkout.env byte a byte iguais ao estado anterior",
+      "Recusa sem gravar: Appmax fora da producao, site fora da instalacao, outro site ja ligado, Pix Appmax ligado, identificador externo divergente, servico parado",
+      "Falha de recarga restaura os dois env",
+      "Cada guarda reprova seu teste quando sabotada"
+    ],
+    "evidencias_exigidas": [
+      "Saida de pytest infra/test_ativar_appmax_canario.py vermelha antes e verde depois",
+      "Saida da previa em raiz ficticia",
+      "Relatorio de mutacao das guardas",
+      "Checks do PR medidos por ci/esperar.py"
+    ],
+    "condicao_encerramento": "PR integrado com o script e os testes; a operacao continua sem execucao em producao.",
+    "limites_autonomia": "Nao executar nada na VPS; nao tocar services/, contracts/, ci/operacoes_vps.py nem workflow; nenhuma chamada a Appmax.",
+    "acoes_do_mantenedor": "Nenhuma para esta entrega. A TAR-565 (canario) continua bloqueada: executar esta operacao e gesto do mantenedor, na VPS, somente depois da TAR-644 fechada e das autorizacoes L0-P (valor da compra real, cobranca e estorno) dadas por escrito, e depois que o checkout carregar o script de producao da Appmax para o site canario."
+  }
+}
