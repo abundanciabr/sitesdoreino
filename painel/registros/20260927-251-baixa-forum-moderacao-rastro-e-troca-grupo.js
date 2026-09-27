@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-251-baixa-forum-moderacao-rastro-e-troca-grupo",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A moderação do fórum com rastro e troca de grupo está no site",
+  detalhe: "O PR 2219 (TAR-847) integrou na main (mergeCommit 4adb87fec577b82ca48f3f4573208df450de9d52, MERGED conferido por gh pr view --json state,mergedAt,mergeCommit) e publicou: run 36316137295 fechou 'deploy (admin)' e 'deploy (forum)' com success. Este registro dá baixa verde no recibo 20260927-131.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2219 (MERGED, mergeCommit 4adb87fec577b82ca48f3f4573208df450de9d52); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36316137295 (deploy admin e forum: success)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-131-forum-moderacao-deixa-rastro-e-troca-grupo",
+  relacao: "baixa",
+  tarefa: "TAR-847",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
