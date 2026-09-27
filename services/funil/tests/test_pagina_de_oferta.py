@@ -320,7 +320,7 @@ def test_pagina_que_nao_vende_nada_nao_inventa_botao_de_compra(client, rede):
 
 def test_site_sem_pagina_publicada_e_404_honesto(client, rede):
     """O site existe e resolve; quem não existe é a página. 404, nunca 500."""
-    # guarda: services/funil/apps/core/views.py:312
+    # guarda: services/funil/apps/core/views.py:322
     publicar(rede, None, status=404)
     resp = client.get(CAMINHO, HTTP_HOST=HOST_A)
     assert resp.status_code == 404
@@ -330,6 +330,7 @@ def test_site_sem_pagina_publicada_e_404_honesto(client, rede):
 
 
 def test_catalogo_fora_do_ar_nao_derruba_a_pagina_e_diz_o_que_fazer(client, rede):
+    # guarda: services/funil/apps/core/views.py:319
     rede.get(f"{CATALOGO}/sites/{SITE_A['id']}/paginas/oferta").mock(
         side_effect=httpx.ConnectError("catalogo fora do ar")
     )
