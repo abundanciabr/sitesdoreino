@@ -9,13 +9,21 @@ from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
 
 from apps.eventos.models import EventoProcessado
-from apps.matriculas.handlers import ao_pagamento_aprovado, ao_pagamento_estornado
+from apps.matriculas.handlers import (
+    ao_pagamento_aprovado,
+    ao_pagamento_estornado,
+    ao_pagamento_reversao_confirmada,
+)
 
 logger = logging.getLogger(__name__)
 
 GRUPO = "alunos"  # nome DESTA célula
 CONSUMIDOR = "worker-1"
-STREAMS = ["eventos.pagamento.aprovado", "eventos.pagamento.estornado"]
+STREAMS = [
+    "eventos.pagamento.aprovado",
+    "eventos.pagamento.estornado",
+    "eventos.pagamento.reversao_confirmada",
+]
 HANDLERS = {
     "pagamento.aprovado": ao_pagamento_aprovado,
     # [ESTORNO] 20/09/2026: o dinheiro que volta fecha o acesso na hora. Sem
@@ -23,6 +31,7 @@ HANDLERS = {
     # e mexer na matricula a mao, que foi exatamente o motivo de o contrato
     # `pagamento.estornado.v2` nascer.
     "pagamento.estornado": ao_pagamento_estornado,
+    "pagamento.reversao_confirmada": ao_pagamento_reversao_confirmada,
 }
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células
@@ -76,6 +85,10 @@ PONTE_DO_V1 = {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
         "no_v1": None,  # nasceu na v2 (Rito de Contrato de 20/09/2026)
     },
+    "pagamento.reversao_confirmada": {
+        "chave_entre_versoes": ["provider", "provider_reference_id"],
+        "no_v1": None,
+    },
 }
 
 
@@ -90,6 +103,37 @@ class VersaoDesconhecida(ValueError):
 
 class EventoSemPonte(LookupError):
     """Evento consumido sem a ponte entre versões declarada em PONTE_DO_V1."""
+
+
+REVERSAO_CAMPOS = {
+    "platform_site_id",
+    "provider",
+    "provider_reference_id",
+    "motivo",
+}
+REVERSAO_PROVEDORES = {"mercadopago", "appmax"}
+REVERSAO_MOTIVOS = {"estorno", "contestacao"}
+
+
+def validar_reversao_confirmada(dados: dict) -> None:
+    """Recusa na borda um aviso v2 que não obedeça ao contrato congelado."""
+    campos_recebidos = set(dados)
+    if campos_recebidos != REVERSAO_CAMPOS:
+        raise ValueError(
+            "pagamento.reversao_confirmada exige identidade e motivo, sem "
+            "campos financeiros adicionais"
+        )
+    if not all(
+        isinstance(dados[campo], str) and dados[campo]
+        for campo in ("platform_site_id", "provider_reference_id")
+    ):
+        raise ValueError(
+            "pagamento.reversao_confirmada exige site e referência não vazios"
+        )
+    if dados["provider"] not in REVERSAO_PROVEDORES:
+        raise ValueError("pagamento.reversao_confirmada exige provedor conhecido")
+    if dados["motivo"] not in REVERSAO_MOTIVOS:
+        raise ValueError("pagamento.reversao_confirmada exige motivo confirmado")
 
 
 def ponte_do_evento(evento: str) -> dict:
@@ -143,6 +187,8 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
         )
     dados = envelope["data"]
     if versao == 2:
+        if envelope["event"] == "pagamento.reversao_confirmada":
+            validar_reversao_confirmada(dados)
         return dados
     if ponte_do_evento(envelope["event"])["no_v1"] is None:
         raise VersaoDesconhecida(

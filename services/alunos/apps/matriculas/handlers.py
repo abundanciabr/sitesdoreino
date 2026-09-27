@@ -78,34 +78,55 @@ def ao_pagamento_estornado(data: dict) -> None:
     handlers quando chegam ao mesmo tempo. Compra que nunca matriculou ninguém
     também fica registrada sem interromper a fila.
     """
+    _suspender_por_reversao_confirmada(
+        data, nome_do_aviso="estorno", etiqueta="ESTORNO"
+    )
+
+
+def _suspender_por_reversao_confirmada(
+    data: dict, *, nome_do_aviso: str, etiqueta: str
+) -> None:
+    site_id = data["platform_site_id"]
+    provider = data["provider"]
+    provider_reference_id = data["provider_reference_id"]
     encontradas, suspensas = suspender_por_estorno(
-        site_id=data["platform_site_id"],
-        provider=data["provider"],
-        provider_reference_id=data["provider_reference_id"],
+        site_id=site_id,
+        provider=provider,
+        provider_reference_id=provider_reference_id,
     )
 
     if not encontradas:
-        # Quem lê este aviso é quem investiga "o dinheiro voltou e o aluno
-        # continua entrando?". Sem o par no texto, a linha não serve para achar
-        # nem o pagamento nem a pessoa.
         logger.warning(
-            "pagamento.estornado de (%s, %s) no site %s não encontrou matrícula. "
-            "O estorno ficou registrado e uma aprovação posterior nascerá "
-            "suspensa; o consumidor segue. [ESTORNO]",
+            "pagamento.%s de (%s, %s) no site %s não encontrou matrícula. "
+            "A aprovação posterior nascerá suspensa; o consumidor segue. [%s]",
+            nome_do_aviso,
             data["provider"],
             data["provider_reference_id"],
             data["platform_site_id"],
+            etiqueta,
         )
         return
 
-    # Só o corte de VERDADE se anuncia: a reentrega do mesmo aviso encontra a
-    # matrícula já suspensa, não muda nada e não tem o que contar.
     for linha in suspensas:
         logger.info(
-            "matrícula %s suspensa pelo estorno de (%s, %s): motivo %r. A ficha "
-            "continua inteira e reabrir é decisão humana, pelo painel. [ESTORNO]",
+            "matrícula %s suspensa por %s de (%s, %s), motivo %r. A ficha "
+            "continua inteira e reabrir é decisão humana, pelo painel. [%s]",
             linha.pk,
+            nome_do_aviso,
             data["provider"],
             data["provider_reference_id"],
             data["motivo"],
+            etiqueta,
         )
+
+
+def ao_pagamento_reversao_confirmada(data: dict) -> None:
+    """Suspende acesso por uma reversão confirmada, sem prova de valor.
+
+    O emissor só publica este aviso depois de consultar a Appmax. O consumidor
+    reutiliza a suspensão já idempotente por site, provedor e referência, e não
+    lê nem cria qualquer montante financeiro.
+    """
+    _suspender_por_reversao_confirmada(
+        data, nome_do_aviso="reversao_confirmada", etiqueta="REVERSAO"
+    )
