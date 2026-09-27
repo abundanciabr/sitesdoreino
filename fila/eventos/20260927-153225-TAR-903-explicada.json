@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-153225-TAR-903-explicada",
+  "tarefa": "TAR-903",
+  "evento": "explicada",
+  "quando": "2026-09-27T15:32:25.637411+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026 de abrir o máximo de frentes da Comunidade",
+  "o_que_e": "A última melhoria da segunda rodada, a régua mostrada no retorno da professora, entrou no site sem baixa no livro. E uma entrega anterior ficou marcada em amarelo porque uma cópia de dados para o servidor falhou por falta de rede num momento.",
+  "o_que_muda": "O livro passa a mostrar a régua no retorno como entregue e publicada, e a entrega em amarelo fica verde com a prova de que o código foi publicado e os dados foram copiados pelas publicações seguintes.",
+  "exemplo": "É como anotar no caderno de obra que a última parede ficou pronta e riscar o aviso de uma entrega que parecia atrasada, mas que chegou no caminhão seguinte.",
+  "importancia": 30
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-284-painel-fecho-do-livro-da-rodada-2",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "painel: fecho do livro da rodada 2",
+  detalhe: "Baixa verde da régua no laudo e correção do âmbar da publicação dos gestos de área, com merge e deploy medidos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2278. Validação local: árvore 62222284145e9e0feb673d0b07449095bf3e0f84; commit d5047d4fbf5d3198124640a9b42a72d3b23230b7; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-903",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-282-gestos-de-area-publicados",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Os gestos na área do fórum estão publicados",
+  detalhe: "Corrige o âmbar do registro 263. No run do PR 2240 o job deploy (forum), que leva o código da TAR-867, passou; só a cópia dos dados da admin caiu por falta de rede. Os deploys seguintes publicaram esses dados com sucesso. Não se repete o deploy antigo: ele copiaria dados velhos.",
+  autoridade: "github",
+  evidencia: "run https://github.com/abundanciabr/sitesdoreino/actions/runs/36324915264 (deploy (forum) success, SHA e85b5998); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36327952478 (publicar-dados-admin success, SHA 5d6bdcd2)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-263-baixa-forum-gestos-de-area-integrado-publicacao-falhou",
+  relacao: "baixa",
+  tarefa: "TAR-867",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
