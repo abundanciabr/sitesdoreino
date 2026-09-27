@@ -540,7 +540,9 @@ CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sw.js", "/google0e78b54775677e95.
 # site e o `start_url` sai dos idiomas do catálogo. Mesmo cache de 60s de
 # qualquer outra rota, e nenhum prefixo de idioma (o idioma dele vai na query,
 # não no caminho).
-CAMINHOS_DE_MAQUINA = ("/sitemap.xml", "/manifest.webmanifest")
+# A `/telemetria` precisa do Site para conferir o contexto assinado, e fica fora
+# da identidade do visitante: ela lê o cookie e nunca sorteia um número novo.
+CAMINHOS_DE_MAQUINA = ("/sitemap.xml", "/manifest.webmanifest", "/telemetria")
 
 # D6: TODA rota de máquina desta célula — as isentas de Site e a que precisa
 # dele. Nenhuma delas se localiza. As duas listas acima são conferidas no

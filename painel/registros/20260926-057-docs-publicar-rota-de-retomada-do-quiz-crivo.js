@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-057-docs-publicar-rota-de-retomada-do-quiz-crivo",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "docs: publicar rota de retomada do quiz Crivo",
+  detalhe: "Copia sem mudanca de conteudo (diff vazio) para docs/quiz/RETOMADA-CRIVO.md. Sem travessao; portao de texto staged saiu 0. Lista B, sem CODEOWNERS.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2121. Validação local: árvore 431f96b3c7204b9a501b5c3f66757d45e7206328; commit 035ffeeac919bb3986f28e42d68e0b2e0b63758d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-759",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

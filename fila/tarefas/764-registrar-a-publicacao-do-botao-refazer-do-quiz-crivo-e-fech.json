@@ -1,0 +1,20 @@
+{
+  "arquivo": "764-registrar-a-publicacao-do-botao-refazer-do-quiz-crivo-e-fech",
+  "id": "TAR-764",
+  "titulo": "Registrar a publicação do botão Refazer do quiz Crivo e fechar a rota de retomada",
+  "toca": [
+    "painel",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o registro da publicação (deploy 36274527935) e o checklist de docs/quiz/RETOMADA-CRIVO.md marcado com as provas",
+  "despacho": "Escreva em painel/registros/ o registro de medição da publicação do botão Refazer (PR 2122, merge 869d3361, deploy run 36274527935 success, sonda GET /quiz/crivo/refazer 405 e POST sem token 403) respondendo ao 20260926-063, e marque o checklist vivo de docs/quiz/RETOMADA-CRIVO.md com PR e SHA de cada passo; abra o PR com make pr.",
+  "origem": "sessão de retomada do quiz Crivo, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

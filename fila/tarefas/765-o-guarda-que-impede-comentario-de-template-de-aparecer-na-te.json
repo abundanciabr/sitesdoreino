@@ -1,0 +1,19 @@
+{
+  "arquivo": "765-o-guarda-que-impede-comentario-de-template-de-aparecer-na-te",
+  "id": "TAR-765",
+  "titulo": "O guarda que impede comentário de template de aparecer na tela passa a olhar todas as células",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o guarda da célula admin varrendo os templates de todas as células de services/, vermelho com o resultado.html do quiz de antes do PR 2122 e verde na main",
+  "despacho": "Estenda services/admin/tests/test_nenhum_comentario_vaza_para_a_tela.py para varrer os templates de todas as células de services/ com o lexer do Django, provando vermelho com o resultado.html do quiz de antes do PR 2122 e verde na main; abra o PR com make pr.",
+  "origem": "sessão do mantenedor de 26/09/2026 sobre comentário de template vazando na tela",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

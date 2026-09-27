@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-171252-TAR-748-explicada",
+  "tarefa": "TAR-748",
+  "evento": "explicada",
+  "quando": "2026-09-26T17:12:52.608030+00:00",
+  "quem": "Frente independente Appmax autorizada na sessão de 26/09/2026",
+  "o_que_e": "A inbox pode guardar apenas a referência do pedido e descartar os campos Pix do webhook; ainda não existe uma leitura fechada que diferencie aviso preservado de aviso ausente no banco.",
+  "o_que_muda": "A bancada passa a medir uma única tentativa Pix Meshcraft e informar com segurança se o registro compatível guardou os três campos Pix, sem revelar valores, IDs ou conteúdo.",
+  "exemplo": "Como conferir o recibo de uma encomenda sem abrir o conteúdo: a operação mostra se o registro existe, está processado e quais campos foram preservados.",
+  "importancia": 86
+}
