@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-053521-TAR-835-explicada",
+  "tarefa": "TAR-835",
+  "evento": "explicada",
+  "quando": "2026-09-27T05:35:21.450116+00:00",
+  "quem": "escrivao, sessao de 27/09/2026, armadilha 526",
+  "o_que_e": "Hoje o comando que abre PR de qualquer tarefa adivinha qual tarefa fechar so pelo texto do titulo ou do detalhe, mesmo sem ninguem ter dito qual tarefa e",
+  "o_que_muda": "Evita fechar ou tocar a tarefa errada so porque o texto do PR citou o numero dela, o que ja quebrou a fila duas vezes",
+  "exemplo": "um PR que so cita 'ver tarefa 818 para contexto' nao deveria fechar a tarefa 818, do mesmo jeito que citar um numero de pedido numa carta nao fecha aquele pedido",
+  "importancia": 60
+}

@@ -1,0 +1,20 @@
+{
+  "arquivo": "836-registrar-nas-armadilhas-as-licoes-do-rito-de-pr-e-da-fila-v",
+  "id": "TAR-836",
+  "titulo": "Registrar nas armadilhas as lições do rito de PR e da fila vindas da obra dos experimentos",
+  "toca": [
+    "armadilhas",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com as armadilhas 526, 527 e 528, o bloqueio da tarefa 786 e a tarefa 835 na fila",
+  "despacho": "Registrar as tres licoes (rito deduz tarefa do texto; pista integra antes do recibo; python base no validacao.json), o bloqueio da tarefa 786 e a tarefa 835 do conserto do rito.",
+  "origem": "sessao Fable de 27/09/2026, obra dos experimentos",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
