@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-131545-TAR-887-explicada",
+  "tarefa": "TAR-887",
+  "evento": "explicada",
+  "quando": "2026-09-27T13:15:45.386957+00:00",
+  "quem": "sessão despacho 4442b6ad, rodada 3 Appmax, 27/09/2026",
+  "o_que_e": "O registro no livro do resultado do ensaio que prova que dá para desligar o cartão Appmax e religar sem derrubar o Pix.",
+  "o_que_muda": "O painel passa a mostrar que o caminho de volta do cartão foi medido de verdade no sandbox.",
+  "exemplo": "Se o cartão der problema na produção, o mantenedor sabe que esvaziar a trava bloqueia o cartão com explicação e mantém o Pix vendendo.",
+  "importancia": 40
+}
