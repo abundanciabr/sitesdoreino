@@ -1,0 +1,61 @@
+{
+  "arquivo": "20260927-174046-TAR-911-contrato_execucao",
+  "tarefa": "TAR-911",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T17:40:46.490427+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-3",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 3 (A2): Medalha que cai sozinha por pontos ou pela forja guarda o fato que a disparou",
+    "versao": 1,
+    "objetivo": "motor.recalcular e forja.selar passam a origem até avaliar() e conceder(), e a concessão automática mostra o fato real.",
+    "entregaveis": [
+      "Repasse da origem em motor.recalcular",
+      "Referência rastreável da peça em forja.selar",
+      "Testes de origem e idempotência vermelho para verde"
+    ],
+    "escopo_incluido": [
+      "services/gamificacao/**"
+    ],
+    "nao_objetivos": [
+      "Mudar views, contribuicoes.py ou templates",
+      "Contrato de evento ou notificação nova"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Arquivos disjuntos das outras frentes da rodada, como o brief lista",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit",
+      "PR em rascunho até o revisor da coordenação ler"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Decisões do mantenedor em 27/09/2026, pergunta estruturada na sessão: matrícula ativa dá acesso, só a professora assina laudo, página de orientação pública, quadro exige matrícula ativa, Cristais de medalha retirada ficam com o aluno, convite vai ao site desligado"
+    ],
+    "etapas": [
+      "Abrir bancada pelo sessao.py da bancada em dia e medir a linha de base",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte, travessão",
+      "PR em rascunho por ci/pr.py com a própria TAR"
+    ],
+    "criterios_entrada": [
+      "TAR-911 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Concessão por recalcular guarda o origem_event_id recebido",
+      "Concessão por selar guarda referência da peça",
+      "Reentrega não duplica concessão nem histórico",
+      "Suíte gamificacao verde; PR MERGED; deploy verde"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy quando houver"
+    ],
+    "condicao_encerramento": "testes vermelho para verde: medalha concedida por recalcular e por selar a forja grava a origem real e a tela interna a mostra; reentrega do mesmo evento não concede duas vezes; mutação provada nos dois repasses; suíte gamificacao verde com PostgreSQL; PR integrado; deploy verde",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção além do autorizado viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega."
+  }
+}

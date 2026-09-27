@@ -1,0 +1,68 @@
+{
+  "arquivo": "20260927-174112-TAR-917-contrato_execucao",
+  "tarefa": "TAR-917",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T17:41:12.657184+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-3",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 3 (B2): Só quem tem matrícula ativa assume tarefa no quadro de contribuições",
+    "versao": 1,
+    "objetivo": "Assumir tarefa no quadro exige categoria aluno consultada na célula alunos, fail-closed, com o par e o token provisionados pelo pipeline.",
+    "entregaveis": [
+      "Cliente de alunos na gamificação no molde do fórum",
+      "Checagem de matrícula na porta de assumir com texto claro",
+      "celulas.yml, env de exemplo e script de provisionamento do par",
+      "Um run do provisionar.yml na main"
+    ],
+    "escopo_incluido": [
+      "services/gamificacao/**",
+      "celulas.yml",
+      "infra/env/gamificacao.env.exemplo",
+      "infra/env/alunos.env.exemplo",
+      "infra/provisionar-par-da-gamificacao-com-os-alunos.sh"
+    ],
+    "nao_objetivos": [
+      "Mudar contrato de alunos",
+      "Mudar quem vê o quadro",
+      "Tocar base.html, motor.py, forja.py ou tests/e2e_*"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Arquivos disjuntos das outras frentes da rodada, como o brief lista",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit",
+      "PR em rascunho até o revisor da coordenação ler"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Decisões do mantenedor em 27/09/2026, pergunta estruturada na sessão: matrícula ativa dá acesso, só a professora assina laudo, página de orientação pública, quadro exige matrícula ativa, Cristais de medalha retirada ficam com o aluno, convite vai ao site desligado"
+    ],
+    "etapas": [
+      "Abrir bancada pelo sessao.py da bancada em dia e medir a linha de base",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte, travessão",
+      "PR em rascunho por ci/pr.py com a própria TAR"
+    ],
+    "criterios_entrada": [
+      "TAR-917 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Sem matrícula ativa não assume, com texto do que fazer",
+      "Alunos fora do ar fecha sem criar nada",
+      "Matrícula ativa assume",
+      "Mapa de células coerente",
+      "PR MERGED com Mandato-do-mantenedor; deploy verde; provisionar verde"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy quando houver"
+    ],
+    "condicao_encerramento": "testes vermelho para verde: conta sem matrícula ativa não assume, com texto que diz o que fazer; alunos fora do ar fecha sem criar nada; matrícula ativa assume; mutação provada; suíte gamificacao verde com PostgreSQL; celulas.yml e mapa de células coerentes; PR integrado com mandato; deploy verde; run do provisionar verde sem segredo no log",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção além do autorizado viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega."
+  }
+}

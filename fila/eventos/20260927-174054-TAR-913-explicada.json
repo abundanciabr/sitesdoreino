@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-174054-TAR-913-explicada",
+  "tarefa": "TAR-913",
+  "evento": "explicada",
+  "quando": "2026-09-27T17:40:54.067330+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: Comunidade Meshcraft, rodada 3 (RETOMADA-COMUNIDADE.md); prova local que antecipa a parte sem produção da TAR-828",
+  "o_que_e": "O desafio do curso só abre para quem tem matrícula ativa, mas nenhum teste mostra o que acontece com o desafio e com os retornos da professora quando a matrícula para e depois volta.",
+  "o_que_muda": "Fica provado, com dados de teste, que quem sai não envia mais e quem volta reencontra os envios e retornos antigos, sem nada inventado pela volta.",
+  "exemplo": "É como trancar a matrícula da academia e, ao voltar, achar a ficha de treino exatamente onde ficou.",
+  "importancia": 40
+}

@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260927-174058-TAR-914-contrato_execucao",
+  "tarefa": "TAR-914",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T17:40:58.811553+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-3",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 3 (A4-forum): Prova no navegador de que as telas da Comunidade no fórum funcionam no celular e só com o teclado",
+    "versao": 1,
+    "objetivo": "Provar no navegador, com dados de teste, 390 px sem rolagem lateral e navegação só por teclado nas telas da Comunidade no fórum.",
+    "entregaveis": [
+      "Teste e2e local com Playwright e live_server",
+      "Capturas sanitizadas listadas no PR"
+    ],
+    "escopo_incluido": [
+      "services/forum/**"
+    ],
+    "nao_objetivos": [
+      "Substituir a prova em produção",
+      "Tocar o teste de matrícula da outra frente"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Arquivos disjuntos das outras frentes da rodada, como o brief lista",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit",
+      "PR em rascunho até o revisor da coordenação ler"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Decisões do mantenedor em 27/09/2026, pergunta estruturada na sessão: matrícula ativa dá acesso, só a professora assina laudo, página de orientação pública, quadro exige matrícula ativa, Cristais de medalha retirada ficam com o aluno, convite vai ao site desligado"
+    ],
+    "etapas": [
+      "Abrir bancada pelo sessao.py da bancada em dia e medir a linha de base",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte, travessão",
+      "PR em rascunho por ci/pr.py com a própria TAR"
+    ],
+    "criterios_entrada": [
+      "TAR-914 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Três telas sem rolagem lateral em 390 px",
+      "Foco visível e Tab até o botão principal com número de passos declarado",
+      "Campos do pedido de ajuda com rótulo",
+      "PR MERGED"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy quando houver"
+    ],
+    "condicao_encerramento": "teste de navegador local (Playwright com live_server) em /forum/comunidade, no grupo e no pedido de ajuda: 390 px sem rolagem lateral, foco visível e Tab até o botão principal; saída colada no PR e capturas listadas; furo corrigido no fórum ou descoberta; PR integrado",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção além do autorizado viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega."
+  }
+}

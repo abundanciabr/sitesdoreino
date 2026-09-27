@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-292-comunidade-faltam-as-contas-de-teste",
+  tipo: "pendencia",
+  quando: "2026-09-27",
+  titulo: "Comunidade: faltam só as contas de teste para provar o percurso inteiro no site de verdade",
+  detalhe: "Tudo da Comunidade que não depende de conta está no ar, e a rodada 3 prova localmente, com dados de teste, a saída e a volta pela matrícula e o uso no celular e no teclado. O que nenhuma prova local substitui é entrar no site de verdade como aluno e como professora e percorrer o caminho inteiro.\n\nPara isso são precisas três contas: duas de aluno com matrícula ativa, em grupos diferentes, e uma de professora de teste nas listas FORUM_PROFESSORES, CURSOS_PROFESSORES e IDS_DA_EQUIPE do servidor. As senhas vão só para as variáveis locais COMUNIDADE_E2E_MEMBRO_A, COMUNIDADE_E2E_MEMBRO_B e COMUNIDADE_E2E_PROFESSORA do computador dele, nunca para o chat nem para o repositório.",
+  autoridade: "sessao",
+  evidencia: "variáveis COMUNIDADE_E2E_MEMBRO_A, _MEMBRO_B e _PROFESSORA ausentes no processo e no usuário, medido às 14h20 de 27/09/2026; TAR-828 bloqueada à espera do mantenedor",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: "TAR-828",
+  gravidade: "ambar",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: 7,
+  porque_so_voce: "Criar conta de aluno com matrícula ativa, pôr alguém na lista da equipe do servidor e guardar senha são acesso e segredo; nenhum robô cria isso.",
+  proximo_passo: "Criar as duas contas de aluno com matrícula ativa em grupos diferentes e a professora de teste nas três listas, e gravar as senhas nas três variáveis locais do computador. Depois é só dizer a qualquer sessão: rode a TAR-828.",
+  se_eu_nao_decidir: "A Comunidade continua no ar e provada por partes, mas ninguém confirma que o caminho inteiro funciona para um aluno de verdade, e ela não se declara pronta para o piloto.",
+  recomendacao: "Criar as três contas de uma vez, com nomes que digam que são de teste, e encerrá-las depois da prova.",
+  reversivel: true,
+  impacto: "medio"
+}); })();
