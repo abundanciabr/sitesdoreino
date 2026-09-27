@@ -286,6 +286,9 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
     assert OutboxEvent.objects.filter(event="aula.concluida").count() == 1
 
     proxima = Aula.objects.get(curso=curso, ordem=e00.ordem + 1)
+    # A aula seguinte precisa estar publicada: rascunho aparece no mapa como
+    # "Em preparo", sem link, mesmo com a porta destrancada.
+    publicar(proxima)
     ana_pessoa = Pessoa.objects.get(id_da_plataforma=ANA["id"])
     progresso_seguinte = Progresso.objects.get(pessoa=ana_pessoa, aula=proxima)
     assert progresso_seguinte.estado == Progresso.Estado.DISPONIVEL
@@ -305,7 +308,12 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
 
     resposta = get("curso", CURSO)
     corpo = resposta.content.decode()
-    assert proxima.titulo_exibido in corpo
+    # O link só existe quando a porta abre; porta trancada imprime o título
+    # sem href (mapa.html). Conferir o título seria tautológico.
+    assert (
+        reverse("aula-do-curso", args=[CURSO, proxima.bloco.parte, proxima.numero])
+        in corpo
+    )
     assert corpo.count(">Concluída<") == 1
 
     # ---------------------------------------------------- alunos fora do ar
