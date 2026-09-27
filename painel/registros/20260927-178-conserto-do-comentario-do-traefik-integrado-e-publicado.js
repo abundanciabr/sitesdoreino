@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-178-conserto-do-comentario-do-traefik-integrado-e-publicado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Conserto do comentário do Traefik integrado e publicado",
+  detalhe: "Um comentário na configuração derrubava o site com erro 404. O conserto entrou na main em 15/09 e a publicação da infra rodou com sucesso logo depois.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1675 MERGED em 15/09/2026, mergeCommit 75e425b997 (gh pr view); commit dd6291bb na origin/main; deploy-infra de 75e425b9 success (gh run list), conferidos em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260915-006-infra-comentario-derrubava-o-traefik",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
