@@ -1,3 +1,5 @@
+const CONSULTA_INDISPONIVEL = "Não conseguimos consultar agora. Vamos tentar de novo em instantes.";
+
 function cartaoIsland() {
   return {
     orderId: JSON.parse(document.getElementById("order-id").textContent),
@@ -14,6 +16,7 @@ function cartaoIsland() {
     enviando: false,
     emAnalise: false,
     erro: "",
+    proximaConsulta: null,
 
     async init() {
       await Promise.all([this.poll(), this.carregarParcelas()]);
@@ -25,26 +28,37 @@ function cartaoIsland() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status;
+        this.emAnalise = pedido.card_in_review === true;
       } catch (e) {
         this.status = "erro";
         this.erro = "Não foi possível consultar o pedido. Tente novamente.";
       }
-      if (this.status === "aguardando_pagamento") {
-        setTimeout(() => this.pollSemTelaTravada(), 3000);
-      }
+      this.agendarConsulta();
     },
 
     async pollSemTelaTravada() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status;
+        // Cartão aprovado sem aviso ainda não está no provedor, mas o pedido
+        // também não está pago: a análise vista nesta aba segue até o aviso.
+        this.emAnalise =
+          pedido.card_in_review === true || (this.emAnalise && this.status === "aguardando_pagamento");
+        if (this.erro === CONSULTA_INDISPONIVEL) this.erro = "";
       } catch (e) {
-        return;
+        if (this.aguardandoResultado()) this.erro = CONSULTA_INDISPONIVEL;
       }
-      if (this.status === "aguardando_pagamento") {
-        setTimeout(() => this.pollSemTelaTravada(), 3000);
-      } else {
-        this.emAnalise = false;
+      this.agendarConsulta();
+    },
+
+    aguardandoResultado() {
+      return this.status === "aguardando_pagamento" || this.emAnalise;
+    },
+
+    agendarConsulta() {
+      clearTimeout(this.proximaConsulta);
+      if (this.aguardandoResultado()) {
+        this.proximaConsulta = setTimeout(() => this.pollSemTelaTravada(), 3000);
       }
     },
 
@@ -110,7 +124,13 @@ function cartaoIsland() {
           await this.pollSemTelaTravada();
         }
       } catch (e) {
-        this.erro = "Não foi possível concluir a tentativa. Tente novamente.";
+        // A aba antiga que tenta de novo leva 409 enquanto a tentativa anterior
+        // está no provedor: relê o pedido e mostra a análise em vez de pedir
+        // outra tentativa.
+        await this.pollSemTelaTravada();
+        if (this.podeTentar()) {
+          this.erro = "Não foi possível concluir a tentativa. Tente novamente.";
+        }
       } finally {
         this.enviando = false;
       }
