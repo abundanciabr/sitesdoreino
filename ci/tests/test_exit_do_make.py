@@ -134,7 +134,7 @@ def _orienta_sem_culpar_a_celula(detalhe: str) -> None:
 
 
 def test_sonda_aceita_o_make_que_roda_receita_posix():
-    # guarda: ci/_nucleo.py:388
+    # guarda: ci/_nucleo.py:432
     assert defeito_do_make("make", _make_simulado("bom")) is None
 
 
