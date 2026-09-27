@@ -106,6 +106,7 @@ from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
+from apps.core.funil import funil
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
@@ -743,6 +744,11 @@ urlpatterns = [
     # que ela deixa para trás é exatamente uma linha desta tabela. Como seção
     # própria do menu ela viveria longe do número de que é a memória.
     path("placar/coortes/", coortes, name="coortes"),
+    # O FUNIL (`apps/core/funil.py`, 26/09/2026) — quantas pessoas passam de
+    # cada degrau da página de venda até o pagamento, lendo `countFunnel` da
+    # memória. Sub-rota do placar porque é o caminho da venda do placar,
+    # aceso: como seção própria do menu ele viveria longe dos números que move.
+    path("placar/funil/", funil, name="funil"),
     # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
     # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
     # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta

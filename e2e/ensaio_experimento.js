@@ -11,8 +11,11 @@
 // (`data-experimento-id` + `data-variante-id` no elemento do slot do
 // experimento — os nomes que a F8b vai expor, DESENHO-COMUM.md), recarrega e
 // confirma que o braço não mudou (sticky sem sessão no servidor), rola até a
-// seção do slot, e clica no CTA SEM PAGAR — o clique é interceptado antes de
-// sair para `/checkout`, então só se confirma que a navegação foi tentada.
+// seção do slot, e clica no CTA SEM PAGAR — o clique é CAPTURADO antes de
+// virar navegação de verdade (cancelado em fase de captura, no navegador;
+// interceptar pela rede perde a corrida contra o clique com frequência
+// medida ao vivo contra esta página, ver o comentário de
+// `instalarCapturaDeClique`), então só se confirma que ele mirava `/checkout`.
 // O visitante atribuído sai do próprio contexto do navegador
 // (`context.cookies()`, que enxerga o `meshcraft_visitante` HttpOnly sem
 // passar pelo `document.cookie` da página — services/funil/apps/core/
@@ -31,7 +34,8 @@
 //
 //   --modo=rota     (padrão) PROVA 1: a rota funciona hoje, com ou sem
 //                   experimento — visita, seção vista, CTA clicado e
-//                   interceptado. Roda contra produção AGORA e fecha verde.
+//                   capturado antes de navegar. Roda contra produção AGORA e
+//                   fecha verde.
 //   --modo=ensaio   o ensaio L10 completo (braço sticky + exposição + clique
 //                   + telemetria). Sem `data-experimento-id`/`data-variante-id`
 //                   no HTML, reprova nomeando exatamente isso — nunca passa em
@@ -218,33 +222,55 @@ function observarTelemetria(pagina) {
   return chamadas;
 }
 
-/** Intercepta a NAVEGAÇÃO para `/checkout/...` — confirma só que ELA
- *  ACONTECEU, sem pagar nada nem depender do serviço `checkout` estar de pé.
+/** Impede que o PRÓXIMO clique num `a.cta` chegue a navegar — confirma só que
+ *  ele ACONTECEU (e para onde ia), sem pagar nada nem depender do serviço
+ *  `checkout` estar de pé.
  *
- *  `isNavigationRequest()` é o que impede este guarda de se enganar: o glob
- *  `**\/checkout/**` também bate em recursos estáticos cujo caminho contém o
- *  segmento (por exemplo `/static/checkout/dados.js`, servido pela própria
- *  célula quando a navegação REAL chega a acontecer). Sem esta guarda, um
- *  desses arquivos vira `text/html` na resposta fabricada, o navegador tenta
- *  interpretá-lo como script, e o `pageerror` que sobra ("Unexpected token
- *  '<'") aponta para o lugar errado — mediu o dublê, não a navegação
- *  (armadilhas/131). Só a requisição de documento (o clique em si) é
- *  substituída; qualquer outra request deste padrão segue seu caminho normal. */
-async function interceptarCheckout(pagina) {
-  var estado = { url: null };
-  await pagina.route("**/checkout/**", function (rota) {
-    var requisicao = rota.request();
-    if (!requisicao.isNavigationRequest()) {
-      return rota.continue();
-    }
-    estado.url = requisicao.url();
-    return rota.fulfill({
-      status: 200,
-      contentType: "text/html; charset=utf-8",
-      body: "<!doctype html><title>checkout interceptado pelo ensaio</title>",
-    });
+ *  Isto NÃO é `page.route()`/`context.route()`, e a escolha é medida, não de
+ *  gosto: as duas formas de interceptar pela REDE perdem a corrida contra a
+ *  navegação real com frequência nesta página, ao vivo, em produção. O
+ *  Chromium às vezes emite uma sondagem do link (ao passar o cursor ou
+ *  pressionar o botão, antes do clique completar) que chega ao `route`
+ *  classificada como "não é navegação"; o `continue()` daquela sondagem deixa
+ *  a navegação REAL que vem em seguida passar sem bater no `route` de novo, e
+ *  a página verdadeira de checkout chega a carregar — inclusive criando uma
+ *  sessão de verdade em produção (medido ao vivo: `POST
+ *  /checkout/api/checkout/sessoes`). Cancelar o próprio EVENTO DE CLIQUE não
+ *  tem essa corrida: `preventDefault()` roda dentro do mesmo despacho de
+ *  evento do clique, sempre ANTES de qualquer requisição de rede — não há
+ *  janela de tempo em que o navegador já decidiu navegar mas o cancelamento
+ *  ainda não chegou. `addInitScript` (e não `evaluate`) porque o clique deste
+ *  ensaio acontece depois de um `reload`: um script instalado por `evaluate`
+ *  morre com o documento antigo; o de `addInitScript` renasce em toda
+ *  navegação da mesma página, sem precisar ser reinstalado. */
+async function instalarCapturaDeClique(pagina) {
+  await pagina.addInitScript(function () {
+    window.__cliqueDoEnsaio = null;
+    document.addEventListener(
+      "click",
+      function (evento) {
+        var alvo = evento.target && evento.target.closest && evento.target.closest("a.cta");
+        if (!alvo) return;
+        evento.preventDefault();
+        evento.stopPropagation();
+        window.__cliqueDoEnsaio = alvo.href;
+      },
+      true
+    );
   });
-  return estado;
+}
+
+/** Clica no CTA e lê o que a captura de `instalarCapturaDeClique` registrou.
+ *  `null` de volta significa duas coisas possíveis: o clique não achou nenhum
+ *  `a.cta` no caminho do evento (guarda: `existeSecao`/`temCta` já cobrem
+ *  isso antes), ou a captura não foi instalada — e aí o clique NAVEGOU de
+ *  verdade, o que a prova seguinte (zero erro de página, braço intacto)
+ *  também acabaria denunciando. */
+async function clicarCtaSemNavegar(pagina, cta) {
+  await cta.click();
+  return pagina.evaluate(function () {
+    return window.__cliqueDoEnsaio;
+  });
 }
 
 /** Um visitante do ensaio L10, do zero: contexto novo (zero cookie), abre a
@@ -254,8 +280,8 @@ async function interceptarCheckout(pagina) {
 async function visitanteDoEnsaio(navegador, rotulo) {
   var contexto = await navegador.newContext();
   var pagina = await contexto.newPage();
+  await instalarCapturaDeClique(pagina);
   var telemetria = observarTelemetria(pagina);
-  var checkout = await interceptarCheckout(pagina);
 
   var resultado = {
     rotulo: rotulo,
@@ -308,13 +334,12 @@ async function visitanteDoEnsaio(navegador, rotulo) {
   var temCta = (await cta.count()) > 0;
   caso(rotulo + ": existe um CTA associado à seção do slot", temCta);
   if (temCta) {
-    await cta.first().click();
-    await pagina.waitForTimeout(300);
-    resultado.checkoutInterceptado = checkout.url;
+    var hrefCapturadoEnsaio = await clicarCtaSemNavegar(pagina, cta.first());
+    resultado.checkoutInterceptado = hrefCapturadoEnsaio;
     caso(
-      rotulo + ": o clique no CTA foi interceptado a caminho de /checkout, sem pagar",
-      !!checkout.url && checkout.url.indexOf("/checkout") !== -1,
-      "interceptado=" + checkout.url
+      rotulo + ": o clique no CTA foi capturado a caminho de /checkout, sem pagar (sem navegar)",
+      !!hrefCapturadoEnsaio && hrefCapturadoEnsaio.indexOf("/checkout") !== -1,
+      "capturado=" + hrefCapturadoEnsaio
     );
   }
 
@@ -332,18 +357,18 @@ async function ensaioDoBraco(navegador) {
 
 /** PROVA 1 (deve fechar verde HOJE, contra produção, com ou sem experimento
  *  ativo): a rota em si funciona — a página abre, a seção da oferta aparece
- *  ao rolar, e o CTA leva a `/checkout` de verdade quando clicado. Não olha
+ *  ao rolar, e o CTA mira `/checkout` de verdade quando clicado. Não olha
  *  `data-experimento-id`: é o piso que continua de pé mesmo sem nenhuma
  *  frente do experimento integrada. */
 async function provaDaRota(navegador) {
   console.log("\n== prova 1: a rota funciona (com ou sem experimento ativo) ==");
   var contexto = await navegador.newContext();
   var pagina = await contexto.newPage();
+  await instalarCapturaDeClique(pagina);
   var errosPagina = [];
   pagina.on("pageerror", function (e) {
     errosPagina.push(String(e && e.message ? e.message : e));
   });
-  var checkout = await interceptarCheckout(pagina);
 
   var resposta = await pagina.goto(BASE + PAGINA_OFERTA, { waitUntil: "load", timeout: 30000 });
   caso("rota: GET " + PAGINA_OFERTA + " respondeu 200", !!resposta && resposta.status() === 200, "status=" + (resposta && resposta.status()));
@@ -365,12 +390,11 @@ async function provaDaRota(navegador) {
     var temCta = (await cta.count()) > 0;
     caso("rota: a seção da oferta tem um CTA", temCta);
     if (temCta) {
-      await cta.click();
-      await pagina.waitForTimeout(300);
+      var hrefCapturadoRota = await clicarCtaSemNavegar(pagina, cta);
       caso(
-        "rota: o clique no CTA foi interceptado a caminho de /checkout, sem pagar",
-        !!checkout.url && checkout.url.indexOf("/checkout") !== -1,
-        "interceptado=" + checkout.url
+        "rota: o clique no CTA foi capturado a caminho de /checkout, sem pagar (sem navegar)",
+        !!hrefCapturadoRota && hrefCapturadoRota.indexOf("/checkout") !== -1,
+        "capturado=" + hrefCapturadoRota
       );
     }
   }
