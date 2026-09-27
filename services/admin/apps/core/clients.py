@@ -1282,29 +1282,6 @@ class CatalogoClient:
         *,
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
-    ) -> "tuple[str, dict | str]":
-        """O encanamento de toda operação do catálogo que devolve um objeto.
-
-        Uma peça só porque ele é idêntico em todas (config, endereço, timeout,
-        corpo fora do contrato), e cópias divergiriam no primeiro conserto feito
-        em uma delas. O que muda é declarado: `especiais` diz quais status desta
-        operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
-        """
-        return self._falar(
-            metodo,
-            f"/sites/{quote(str(site_id), safe='')}"
-            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
-            corpo=corpo,
-            especiais=especiais,
-        )
-
-    def _falar(
-        self,
-        metodo: str,
-        caminho: str,
-        *,
-        corpo: "dict | None" = None,
-        especiais: "tuple[tuple[int, str], ...]" = (),
         forma: type = dict,
     ) -> "tuple[str, dict | list | str]":
         """O encanamento das escritas e leituras com desfecho nomeado.

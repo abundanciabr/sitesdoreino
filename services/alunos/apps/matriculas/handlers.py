@@ -78,6 +78,31 @@ def ao_pagamento_estornado(data: dict) -> None:
     handlers quando chegam ao mesmo tempo. Compra que nunca matriculou ninguém
     também fica registrada sem interromper a fila.
     """
+    _fechar_o_acesso_do_pagamento(
+        data, evento="pagamento.estornado", etiqueta="ESTORNO"
+    )
+
+
+def ao_pagamento_reversao_confirmada(data: dict) -> None:
+    """[REVERSAO] A Appmax confirmou estorno ou contestação: o acesso fecha.
+
+    `data` é o campo `data` de `pagamento.reversao_confirmada.v2`, já conferido
+    contra o contrato na borda (`validar_reversao_confirmada`). O aviso não
+    carrega valor nenhum, e é isso que o separa de `pagamento.estornado`: ele
+    prova que a reversão aconteceu, não quanto dinheiro voltou.
+
+    O corte é o MESMO do estorno, pela mesma chave (site, provedor, referência).
+    Por isso os dois avisos do mesmo pagamento cortam uma vez só, em qualquer
+    ordem, e a aprovação que chegar depois nasce suspensa. Reabrir continua
+    sendo decisão humana, pelo painel: nenhum aviso posterior reativa o acesso.
+    """
+    _fechar_o_acesso_do_pagamento(
+        data, evento="pagamento.reversao_confirmada", etiqueta="REVERSAO"
+    )
+
+
+def _fechar_o_acesso_do_pagamento(data: dict, *, evento: str, etiqueta: str) -> None:
+    """Suspende as matrículas daquele pagamento e conta o que aconteceu no log."""
     encontradas, suspensas = suspender_por_estorno(
         site_id=data["platform_site_id"],
         provider=data["provider"],
@@ -89,23 +114,28 @@ def ao_pagamento_estornado(data: dict) -> None:
         # continua entrando?". Sem o par no texto, a linha não serve para achar
         # nem o pagamento nem a pessoa.
         logger.warning(
-            "pagamento.estornado de (%s, %s) no site %s não encontrou matrícula. "
-            "O estorno ficou registrado e uma aprovação posterior nascerá "
-            "suspensa; o consumidor segue. [ESTORNO]",
+            "%s de (%s, %s) no site %s não encontrou matrícula. O corte ficou "
+            "registrado e uma aprovação posterior nascerá suspensa; o consumidor "
+            "segue. [%s]",
+            evento,
             data["provider"],
             data["provider_reference_id"],
             data["platform_site_id"],
+            etiqueta,
         )
         return
 
-    # Só o corte de VERDADE se anuncia: a reentrega do mesmo aviso encontra a
-    # matrícula já suspensa, não muda nada e não tem o que contar.
+    # Só o corte de VERDADE se anuncia: a reentrega do mesmo aviso, ou o outro
+    # aviso do mesmo pagamento, encontra a matrícula já suspensa, não muda nada
+    # e não tem o que contar.
     for linha in suspensas:
         logger.info(
-            "matrícula %s suspensa pelo estorno de (%s, %s): motivo %r. A ficha "
-            "continua inteira e reabrir é decisão humana, pelo painel. [ESTORNO]",
+            "matrícula %s suspensa por %s de (%s, %s): motivo %r. A ficha "
+            "continua inteira e reabrir é decisão humana, pelo painel. [%s]",
             linha.pk,
+            evento,
             data["provider"],
             data["provider_reference_id"],
             data["motivo"],
+            etiqueta,
         )

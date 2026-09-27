@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-041-e2e-matriz-appmax-sandbox-tar-808",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "e2e: matriz Appmax sandbox (TAR-808)",
+  detalhe: "Matriz Appmax sandbox pela tela: 0010 e 0028 no resultado exigido; 0002, 0036, 0044 e 9999 devolvem HTTP 500, encaminhado à TAR-813. Auto-teste: 43 PASS, 0 FAIL.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2159. Validação local: árvore d39293ac20a48f0c25ce860df0066c167e435493; commit 0a0deef6d191af45bb08f604932cfe851d2b798d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-808",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "e2e",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

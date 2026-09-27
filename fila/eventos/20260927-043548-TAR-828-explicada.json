@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-043548-TAR-828-explicada",
+  "tarefa": "TAR-828",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:35:48.629966+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "o_que_e": "Cada frente da Comunidade prova a sua parte com testes na propria celula. Nenhuma prova hoje percorre o caminho inteiro, no site de verdade, do jeito que um aluno faz: entrar, achar o grupo, pedir ajuda, enviar o desafio, receber o laudo, reenviar, ser reconhecido.",
+  "o_que_muda": "Um roteiro de navegador percorre o percurso completo em producao com duas contas de teste em grupos diferentes, no celular e so pelo teclado, e escreve no livro o que respondeu e o que nao respondeu. So depois disso a Comunidade pode ser chamada de pronta para o piloto.",
+  "exemplo": "A conta A abre o grupo de B pelo endereco direto e recebe pagina nao encontrada; envia o desafio, recebe o laudo, reenvia e ve as duas versoes lado a lado; o reconhecimento aparece uma vez e continua um so depois de recarregar. Tudo isso gravado com data e endereco.",
+  "importancia": 80
+}
