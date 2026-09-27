@@ -1,0 +1,31 @@
+{
+  "arquivo": "786-experimentos-ensaio-l10-rodar-o-ensaio-completo-do-sistema-d",
+  "id": "TAR-786",
+  "titulo": "Experimentos ENSAIO L10: rodar o ensaio completo do sistema de experimentos",
+  "toca": [
+    "e2e"
+  ],
+  "depende_de": [
+    "TAR-768",
+    "TAR-780",
+    "TAR-767",
+    "TAR-775",
+    "TAR-770",
+    "TAR-781",
+    "TAR-782",
+    "TAR-777",
+    "TAR-774",
+    "TAR-778",
+    "TAR-785"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "saida verde de node e2e/ensaio_experimento.js --modo=ensaio contra producao",
+  "despacho": "Ensaio final do sistema de experimentos (L10): rode\nnode e2e/ensaio_experimento.js --modo=ensaio (escrito na TAR-782) contra\nproducao ou contra o ambiente mais proximo dela, depois que TODAS as\ndependencias listadas em depende_de estiverem concluidas. Confirme dois\nvisitantes sem cookie recebendo braco sticky, o slot renderizado por F8b, o\nclique no CTA indo para /checkout/, e os eventos funil.* com experimento_id e\nvariante_id chegando na metrica (F2) com o passo countFunnel (F6) contando\ncerto. So feche esta tarefa com a saida verde do ensaio; antes disso, se\nalguma dependencia ainda nao existir na fila, registre bloqueada com espera\nfila e devolva. Esta tarefa foi criada pela frente PLANO com as dependencias\nreais que ja existiam no momento da criacao (26/09/2026); confira com\npython ci/fila.py listar --ao-vivo se F1, F5, F6, F7, F9a, F9b e F10 ja tem\nTAR propria e se estao concluidas antes de rodar o ensaio, porque elas nao\npuderam entrar em depende_de por nao existirem ainda naquele momento.",
+  "origem": "sistema de experimentos, sessao de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

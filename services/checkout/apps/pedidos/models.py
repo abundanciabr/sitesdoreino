@@ -21,6 +21,11 @@ class Session(models.Model):
     offer = models.JSONField()
     lead_id = models.CharField(max_length=64, blank=True, default="")
     utm = models.JSONField(default=dict, blank=True)
+    # [DESENHO-COMUM.md F10] o UUID4 do cookie `meshcraft_visitante` (funil),
+    # lido na abertura da sessão. Nulo quando o navegador chegou sem o cookie
+    # ou com um valor que não é um UUID4 canônico — esta célula não é dona do
+    # cookie, só lê; nunca sorteia nem corrige o que recebeu.
+    visitor_id = models.CharField(max_length=36, null=True, blank=True, default=None)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

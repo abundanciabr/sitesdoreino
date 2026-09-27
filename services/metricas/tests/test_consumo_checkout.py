@@ -14,10 +14,11 @@ experimentos, sessão de 26/09/2026):
    telefone ou documento. Se um deles aparecer em `data`, o envelope vira
    `EventoMorto` (a fila que o painel mostra), nunca um `Evento` (o livro é
    append-only e não se corrige depois — armadilhas/lei da imutabilidade).
-5. **O guarda é do checkout, não da casa inteira**: os mesmos nomes de campo
-   continuam livres em qualquer outro assunto, porque `recepcao.receber` não
-   valida miolo por desenho (quem valida é quem publica) — só os dois
-   eventos de compra do checkout têm essa exceção.
+5. **O guarda é o comum, não um segundo mecanismo**: os dois eventos de
+   compra entram em `ASSUNTOS_SEM_DADO_PESSOAL`, o mesmo conjunto que protege
+   o funil. Os mesmos nomes de campo continuam livres em assunto fora dele,
+   porque `recepcao.receber` não valida miolo por desenho (quem valida é quem
+   publica).
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ import uuid
 import pytest
 
 from apps.fatos.management.commands.consume_eventos import (
-    EVENTOS_DE_COMPRA_DO_CHECKOUT,
+    ASSUNTOS_SEM_DADO_PESSOAL,
     STREAMS,
     processar,
 )
@@ -86,10 +87,12 @@ def envelope_pedido_pago(**sobre_dados) -> str:
 def test_os_dois_assuntos_de_compra_estao_assinados():
     assert "eventos.checkout.pedido-atribuido" in STREAMS
     assert "eventos.checkout.pedido-pago" in STREAMS
-    assert EVENTOS_DE_COMPRA_DO_CHECKOUT == {
-        "checkout.pedido-atribuido",
-        "checkout.pedido-pago",
-    }
+
+
+def test_os_dois_assuntos_de_compra_estao_na_guarda_comum():
+    assert {"checkout.pedido-atribuido", "checkout.pedido-pago"} <= (
+        ASSUNTOS_SEM_DADO_PESSOAL
+    )
 
 
 @pytest.mark.parametrize(
@@ -134,12 +137,12 @@ def test_payload_com_campo_pessoal_vira_evento_morto_nunca_livro(
     assert desfecho == MORTO
     assert Evento.objects.count() == 0, "dado pessoal nunca entra no livro"
     morto = EventoMorto.objects.get()
-    assert chave in morto.motivo
+    assert f"campo pessoal proibido em assunto protegido: '{chave}'" in morto.motivo
     assert morto.estado == EventoMorto.Estado.NOVO
 
 
-def test_o_guarda_de_dado_pessoal_e_so_do_checkout():
-    """O mesmo campo continua livre em outro assunto: a exceção é do checkout."""
+def test_o_guarda_de_dado_pessoal_nao_alcanca_assunto_fora_do_conjunto():
+    """O mesmo campo continua livre fora de `ASSUNTOS_SEM_DADO_PESSOAL`."""
     corpo = json.dumps(
         {
             "event": "identidade.pessoa-cadastrada",

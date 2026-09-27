@@ -6,7 +6,7 @@ de entrada do livro de fatos. O molde é o das cinco células consumidoras
 constantes de reentrega — copiar o padrão é Lei 3, e divergir nos números
 tornaria impossível comparar o comportamento de duas células em incidente.
 
-## As três adaptações desta célula, declaradas em vez de silenciosas
+## As quatro adaptações desta célula, declaradas em vez de silenciosas
 
 **1. Não há tabela `EventoProcessado`.** Nas outras células ela existe porque o
 efeito do evento (creditar XP, matricular) não deixa rastro do `event_id`; aqui
@@ -24,6 +24,15 @@ e, cinco entregas depois, cai na fila morta do Redis, onde ninguém olha. Aqui
 ela cai numa TABELA, que o painel mostra e sobre a qual há três ações
 (inspecionar, tentar de novo, descartar com motivo). Reentregar um corpo
 quebrado não o conserta; o que conserta é alguém ver.
+
+**4. Dois assuntos por vez sao exceção deliberada: proibem dado pessoal por
+nome de campo, nao por contrato.** `recepcao.receber` nao valida o miolo
+(contracts/ nao viaja para o build da celula, ver o docstring de la). Para os
+assuntos em `ASSUNTOS_SEM_DADO_PESSOAL`, `processar` confere `data` contra
+`CAMPOS_PESSOAIS_PROIBIDOS` ANTES de chamar `receber`: e um segundo guarda,
+que nao depende de nenhum arquivo fora da celula, so de nomes de campo que a
+casa ja proibe (customer, email, nome, telefone, documento). Assunto novo com
+a mesma exigencia entra no MESMO conjunto.
 
 ## O que ele assina, e por que não assina mais
 
@@ -43,6 +52,15 @@ O que existia era a CARTA (`notificacao.devida`), que leva
 "matricula.situacao-alterada" como um parametro dentro dela, e que so nasce
 quando alguem GANHA acesso e tem identidade da plataforma. Recusa, suspensao,
 encerramento e reembolso nao deixavam rastro nenhum.
+
+Os quatro assuntos do funil (`pagina-vista`, `secao-vista`, `cta-clicado`,
+`lead-capturado`) entram juntos em 26/09/2026, embora so `pagina-vista`
+publique em producao neste minuto. Os outros tres saem da frente irma que mede
+o funil (F3), em paralelo. Isso nao fere a regra do paragrafo acima porque
+`xgroup_create(..., mkstream=True)` roda igual para todo item da lista: um
+assunto sem publicador ainda vira grupo de consumo vazio, sem custo nem
+travamento, ate a frente irma publicar de fato. Coordenar dois PRs no mesmo
+minuto custaria mais do que esperar um grupo vazio por alguns commits.
 """
 
 import json
@@ -82,6 +100,13 @@ STREAMS = [
     "eventos.sugestao.status-alterado",
     "eventos.sugestao.voto-adicionado",
     "eventos.sugestao.voto-removido",
+    # A escada do funil de vendas (`funil`): visita, secao vista, clique e
+    # lead. So `pagina-vista` publica hoje; os outros tres chegam da frente
+    # irma (F3) que mede o funil, em paralelo (nota acima na docstring).
+    "eventos.funil.pagina-vista",
+    "eventos.funil.secao-vista",
+    "eventos.funil.cta-clicado",
+    "eventos.funil.lead-capturado",
     # Os dois fatos de compra do sistema de experimentos (`checkout`, contrato
     # F4a): quem foi atribuído a um pedido e quem pagou. É daqui que sai a
     # métrica principal do primeiro experimento (entrada no checkout) e as
@@ -90,17 +115,27 @@ STREAMS = [
     "eventos.checkout.pedido-pago",
 ]
 
-#: Os dois assuntos de compra do checkout: DESENHO-COMUM.md é taxativo — eles
-#: NUNCA levam dado pessoal. `_campo_pessoal_do_checkout` é o segundo guarda:
-#: se algum publicador um dia divergir do contrato F4a, o campo pessoal não
-#: entra no livro por aqui, mesmo que o envelope esteja bem formado.
-EVENTOS_DE_COMPRA_DO_CHECKOUT = frozenset(
-    {"checkout.pedido-atribuido", "checkout.pedido-pago"}
+#: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
+#: e-mail, nome, telefone ou documento em `data`, por desenho da propria fonte
+#: (o funil so tem `visitor_id`, opaco). E o SEGUNDO guarda: se um publicador
+#: um dia divergir do contrato, o campo pessoal nao entra no livro por aqui,
+#: mesmo com o envelope bem formado. Assunto novo com a mesma exigencia entra
+#: NESTE conjunto, nunca cria um segundo.
+ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
+    {
+        "funil.pagina-vista",
+        "funil.secao-vista",
+        "funil.cta-clicado",
+        "funil.lead-capturado",
+        # DESENHO-COMUM.md, eventos de compra (F4a): "Sem customer, e-mail,
+        # nome, telefone, documento."
+        "checkout.pedido-atribuido",
+        "checkout.pedido-pago",
+    }
 )
 
-#: DESENHO-COMUM.md, eventos de compra (F4a): "Sem customer, e-mail, nome,
-#: telefone, documento." Comparação por chave, sem distinguir maiúsculas.
-CAMPOS_PESSOAIS_PROIBIDOS_NO_CHECKOUT = frozenset(
+#: Comparado por chave, sem distinguir maiusculas.
+CAMPOS_PESSOAIS_PROIBIDOS = frozenset(
     {"customer", "email", "nome", "telefone", "documento"}
 )
 
@@ -125,22 +160,18 @@ def _texto_do_corpo(cru: bytes | str) -> str:
     return cru
 
 
-def _campo_pessoal_do_checkout(tipo: str, dados: object) -> str | None:
-    """A primeira chave proibida em `dados`, só para os dois eventos de compra.
+def _campo_pessoal_proibido(tipo: str, dados: object) -> str | None:
+    """A primeira chave proibida em `dados`, só para os assuntos protegidos.
 
     Os demais assuntos não têm validação de miolo por desenho desta célula
-    (`recepcao.receber`: "quem valida o miolo é quem publica"). Os dois
-    eventos de compra do checkout são a exceção deliberada, porque
-    DESENHO-COMUM.md proíbe dado pessoal neles e o livro nunca pode guardar o
-    que não pode expor.
+    (`recepcao.receber`: "quem valida o miolo é quem publica"). Os assuntos em
+    `ASSUNTOS_SEM_DADO_PESSOAL` são a exceção deliberada, porque a fonte deles
+    proíbe dado pessoal e o livro nunca pode guardar o que não pode expor.
     """
-    if tipo not in EVENTOS_DE_COMPRA_DO_CHECKOUT or not isinstance(dados, dict):
+    if tipo not in ASSUNTOS_SEM_DADO_PESSOAL or not isinstance(dados, dict):
         return None
     for chave in dados:
-        if (
-            isinstance(chave, str)
-            and chave.lower() in CAMPOS_PESSOAIS_PROIBIDOS_NO_CHECKOUT
-        ):
+        if isinstance(chave, str) and chave.lower() in CAMPOS_PESSOAIS_PROIBIDOS:
             return chave
     return None
 
@@ -154,22 +185,21 @@ def processar(cru: bytes) -> str:
         pre = None
     if isinstance(pre, dict):
         tipo = pre.get("event") if isinstance(pre.get("event"), str) else ""
-        campo = _campo_pessoal_do_checkout(tipo, pre.get("data"))
+        campo = _campo_pessoal_proibido(tipo, pre.get("data"))
         if campo is not None:
             morto = EventoMorto.objects.create(
                 corpo=texto[:100_000],
                 motivo=(
-                    f"campo pessoal proibido em evento de compra do checkout: "
-                    f"'{campo}' (DESENHO-COMUM.md: sem customer, e-mail, nome, "
-                    "telefone, documento)"
+                    f"campo pessoal proibido em assunto protegido: '{campo}' "
+                    "(sem customer, e-mail, nome, telefone, documento)"
                 ),
                 tipo_declarado=tipo[:120],
                 event_id_declarado=str(pre.get("event_id") or "")[:80],
             )
             logger.error(
-                "EVENTO MORTO (id=%s): campo pessoal '%s' num evento de compra "
-                "do checkout. Inspecionar em /admin/, tentar de novo ou "
-                "descartar com motivo.",
+                "EVENTO MORTO (id=%s): campo pessoal '%s' num assunto protegido "
+                "contra dado pessoal. Inspecionar em /admin/, tentar de novo "
+                "ou descartar com motivo.",
                 morto.pk,
                 campo,
             )

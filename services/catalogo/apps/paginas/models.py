@@ -21,7 +21,9 @@ imutabilidade: apagar uma página que já publicou é recusado, porque apagá-la
 levaria as versões junto.
 """
 
+import math
 import uuid
+from statistics import NormalDist
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -201,3 +203,191 @@ class PageDraft(models.Model):
     def save(self, *args, **kwargs):
         self.secoes = normalizar_secoes(self.secoes, self.page.tipo)
         return super().save(*args, **kwargs)
+
+
+class VarianteCongelada(Exception):
+    """Tentativa de alterar ou apagar uma variante de experimento que já saiu do rascunho."""
+
+
+RECADO_VARIANTE_CONGELADA = (
+    "variante de experimento que já saiu do rascunho não se edita nem se apaga: "
+    "o texto dela é o que os visitantes viram e o que os eventos do funil citam. "
+    "Para testar outro texto, encerre este experimento e crie um novo"
+)
+
+
+#: Alfa 0,05 bicaudal e poder 0,8, os da conta que decidiu o primeiro
+#: experimento (docs/decisoes/DECISAO-a-pagina-real-antes-do-experimento.md §3).
+Z_ALFA = NormalDist().inv_cdf(1 - 0.05 / 2)
+Z_PODER = NormalDist().inv_cdf(0.80)
+
+
+def amostra_por_braco(taxa_base: float, mde: float) -> int:
+    """Visitantes expostos por braço para enxergar `mde` sobre `taxa_base`.
+
+    A fórmula da DECISAO §3 (duas proporções, variância agrupada sob a nula),
+    com uma diferença: lá o efeito é relativo (`lift`), aqui `mde` é ABSOLUTO,
+    em pontos de proporção (0,02 é "de 10% para 12%").
+    """
+    tratado = taxa_base + mde
+    media = (taxa_base + tratado) / 2
+    termo_nulo = Z_ALFA * math.sqrt(2 * media * (1 - media))
+    termo_alt = Z_PODER * math.sqrt(
+        taxa_base * (1 - taxa_base) + tratado * (1 - tratado)
+    )
+    return math.ceil(((termo_nulo + termo_alt) / mde) ** 2)
+
+
+class ExperimentoQuerySet(models.QuerySet):
+    """Apagar em conjunto também respeita o que já foi ao ar (`armadilhas/023`)."""
+
+    def delete(self):
+        if self.exclude(estado=Experimento.RASCUNHO).exists():
+            raise VarianteCongelada(RECADO_VARIANTE_CONGELADA)
+        return super().delete()
+
+
+class Experimento(models.Model):
+    """O teste de um slot de uma página: uma hipótese, as variantes e o horizonte.
+
+    O horizonte é fixo e decidido antes de começar (`taxa_base`, `mde`,
+    `n_por_braco_planejado`, `dias_planejados`), porque olhar o resultado todo
+    dia e parar quando ele agrada fabrica vencedor por acaso. Não há pausa:
+    pausar e retomar misturaria no braço `b` quem viu `a` durante a pausa, e
+    retomar é criar um experimento novo.
+
+    Um só `ativo` por página, garantido pelo banco: duas ativações ao mesmo
+    tempo terminam com uma aceita e a outra recusada, nunca com duas no ar.
+    """
+
+    RASCUNHO = "rascunho"
+    ATIVO = "ativo"
+    ENCERRADO = "encerrado"
+
+    #: As transições válidas. Repetir a transição que já aconteceu não passa
+    #: por aqui: é idempotente e responde o estado atual sem mudar nada.
+    TRANSICOES = {RASCUNHO: {ATIVO, ENCERRADO}, ATIVO: {ENCERRADO}, ENCERRADO: set()}
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    page = models.ForeignKey(
+        Page, on_delete=models.PROTECT, related_name="experimentos"
+    )
+    secao = models.CharField(max_length=32)
+    slot = models.CharField(max_length=32)
+    hipotese = models.TextField()
+    metrica_principal = models.CharField(max_length=100)
+    taxa_base = models.FloatField()
+    mde = models.FloatField()
+    n_por_braco_planejado = models.PositiveIntegerField()
+    dias_planejados = models.PositiveIntegerField()
+    estado = models.CharField(
+        max_length=9,
+        choices=[(RASCUNHO, "Rascunho"), (ATIVO, "Ativo"), (ENCERRADO, "Encerrado")],
+        default=RASCUNHO,
+    )
+    decisao = models.CharField(
+        max_length=8,
+        choices=[
+            ("promover", "Promover"),
+            ("reverter", "Reverter"),
+            ("encerrar", "Encerrar"),
+        ],
+        blank=True,
+    )
+    vencedora = models.CharField(max_length=32, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    iniciado_em = models.DateTimeField(null=True, blank=True)
+    encerrado_em = models.DateTimeField(null=True, blank=True)
+
+    objects = ExperimentoQuerySet.as_manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page"],
+                condition=models.Q(estado="ativo"),
+                name="um_experimento_ativo_por_pagina",
+            )
+        ]
+        ordering = ["-criado_em"]
+
+    def __str__(self) -> str:
+        return f"{self.page} {self.secao}.{self.slot} ({self.estado})"
+
+    def delete(self, *args, **kwargs):
+        # Apagar o experimento levaria as variantes junto pela cascata, que não
+        # passa pelo `delete()` de cada uma: a trava delas precisa estar aqui.
+        if self.estado != self.RASCUNHO:
+            raise VarianteCongelada(RECADO_VARIANTE_CONGELADA)
+        return super().delete(*args, **kwargs)
+
+
+class VarianteQuerySet(models.QuerySet):
+    """O caminho de conjunto também confere o estado do experimento.
+
+    Sem isto, `Variante.objects.filter(...).update(...)` passaria direto pelo
+    `save()` sobrescrito (`armadilhas/023`), e a trava pareceria existir sem
+    existir.
+    """
+
+    def _recusa_se_congelada(self):
+        if self.exclude(experimento__estado=Experimento.RASCUNHO).exists():
+            raise VarianteCongelada(RECADO_VARIANTE_CONGELADA)
+
+    def update(self, **kwargs):
+        self._recusa_se_congelada()
+        return super().update(**kwargs)
+
+    def delete(self):
+        self._recusa_se_congelada()
+        return super().delete()
+
+
+class Variante(models.Model):
+    """Um braço do experimento: a chave curta, o peso e o texto congelado do slot.
+
+    O texto é snapshot, e não referência à página: a página pode ser publicada
+    de novo durante o experimento, e o que cada visitante viu precisa continuar
+    sendo o que está aqui.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    experimento = models.ForeignKey(
+        Experimento, on_delete=models.CASCADE, related_name="variantes"
+    )
+    variante_id = models.CharField(max_length=32)
+    #: Pontos-base: as variantes de um experimento somam 10000.
+    peso = models.PositiveIntegerField()
+    valor = models.TextField()
+
+    objects = VarianteQuerySet.as_manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["experimento", "variante_id"],
+                name="variante_unica_por_experimento",
+            )
+        ]
+        ordering = ["variante_id"]
+
+    def __str__(self) -> str:
+        return f"{self.experimento_id}:{self.variante_id}"
+
+    def _congelada(self) -> bool:
+        estado = (
+            Experimento.objects.filter(pk=self.experimento_id)
+            .values_list("estado", flat=True)
+            .first()
+        )
+        return estado not in (None, Experimento.RASCUNHO)
+
+    def save(self, *args, **kwargs):
+        if self._congelada():
+            raise VarianteCongelada(RECADO_VARIANTE_CONGELADA)
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self._congelada():
+            raise VarianteCongelada(RECADO_VARIANTE_CONGELADA)
+        return super().delete(*args, **kwargs)

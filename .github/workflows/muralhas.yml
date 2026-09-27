@@ -42,6 +42,11 @@ jobs:
       # conseguir medir, exatamente como já aconteceu.
       - name: Testar o testador (suíte adversarial dos portões)
         run: python ci/ci.py --apenas testador
+      # Os esquemas de `contracts/` contra os exemplos que devem aceitar e
+      # recusar. As dependências vêm de `contracts/requirements-test.txt`, que o
+      # `requirements-ci.txt` inclui.
+      - name: Testes de contrato (pytest contracts)
+        run: python ci/ci.py --apenas contratos
 
   # ===========================================================================
   # O ESPELHO DA MAIN — o que vai rodar DEPOIS do merge, rodando ANTES dele.
