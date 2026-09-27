@@ -111,13 +111,21 @@ fi
 
 echo
 echo "== 4/5: semeando (sem ligar: o convite nasce DESLIGADO) =="
-NOTA_DO_BANCO="O comando de semear já rodou; nada foi ligado. Dispare de novo depois de corrigir: ele não duplica."
+NOTA_DO_BANCO="O comando de semear já rodou. Dispare de novo depois de corrigir: ele não duplica."
 if SAIDA=$(docker compose exec -T mensageria python manage.py semear_convite_para_a_comunidade --site-id "$SITE" 2>&1); then
   echo "$SAIDA"
 else
   echo "$SAIDA"
   parar "o comando semear_convite_para_a_comunidade falhou. A saída acima diz por quê."
 fi
+# O comando diz se CRIOU a jornada agora ou se ela já existia. Só a criada neste
+# run tem a obrigação de ter nascido desligada; a que já existia pode ter sido
+# ligada na tela, e este fluxo nunca desliga.
+case "$SAIDA" in
+  *"@$SITE: criada"*) ORIGEM="criada neste run" ;;
+  *"@$SITE: ja existia"*) ORIGEM="ja existia" ;;
+  *) parar "a saída do comando não diz se a jornada foi criada agora ou se já existia." ;;
+esac
 
 echo
 echo "== 5/5: conferindo do lado de fora do comando =="
@@ -143,9 +151,13 @@ echo "  passos da versão 1 ................ $PASSOS"
 echo "  textos nos três idiomas ........... $TEXTOS"
 
 echo
+if [ "$ORIGEM" = "criada neste run" ] && [ "$ATIVA" = "1" ]; then
+  parar "a jornada $SLUG foi criada agora e nasceu LIGADA; ela deveria nascer desligada. Desligue em /admin/escola/jornadas/ e confira o comando semear_convite_para_a_comunidade."
+fi
 echo "PRONTO: o convite para a Comunidade existe neste site."
+echo "ORIGEM: $ORIGEM"
 if [ "$ATIVA" = "1" ]; then
-  echo "ESTADO: LIGADO. Quem ligou foi o mantenedor, na tela; este fluxo nunca liga nem desliga."
+  echo "ESTADO: LIGADO (na tela /admin/escola/jornadas/)"
 else
   echo "ESTADO: DESLIGADO, que é como nasce. Ninguém recebe nada até o mantenedor"
   echo "ligar em /admin/escola/jornadas/."

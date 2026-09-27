@@ -101,4 +101,15 @@ jobs:
             echo "Sem ela, nada está provado, e ausência de erro não é sucesso (INV-CI01)."
             exit 1
           fi
+          # A jornada criada NESTE run precisa ter nascido desligada. A que já
+          # existia pode ter sido ligada na tela, e aí o run passa informando.
+          if printf '%s' "$SAIDA" | grep -q '^ORIGEM: criada neste run' \
+            && ! printf '%s' "$SAIDA" | grep -q '^ESTADO: DESLIGADO'; then
+            echo "::error::O convite foi criado neste run e não está DESLIGADO. Ele deveria nascer desligado; desligue em /admin/escola/jornadas/."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -Eq '^ESTADO: (DESLIGADO|LIGADO)'; then
+            echo "::error::Não encontrei a linha 'ESTADO:' na saída do script; sem ela o estado do convite não está provado."
+            exit 1
+          fi
           echo "o convite para a Comunidade existe na produção, conferido pela medida no banco."
