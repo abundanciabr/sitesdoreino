@@ -14,7 +14,7 @@ esquecer de listar.
 
 from __future__ import annotations
 
-from apps.forum.models import Area
+from apps.forum.models import Area, MembroDoGrupo
 
 from .sessao import Ator
 
@@ -52,9 +52,8 @@ def pode_ler(area: Area, ator: Ator) -> bool:
       aposta de crescimento da escola: dúvida respondida é porta de entrada
       gratuita e permanente.
     - **Alunos:** exige matrícula válida, conferida na `alunos`.
-    - **Turma:** exige matrícula E o curso certo. Enquanto o fórum não souber
-      perguntar "esta pessoa está NESTE curso?", **ninguém entra** — que é o
-      lado seguro do erro, e está travado em teste.
+    - **Turma (o grupo de prática):** exige matrícula E vínculo ativo com o
+      grupo. A equipe lê todo grupo; o resto fica de fora.
     - **Arquivada:** some para todo mundo, menos para quem consegue desarquivar.
     """
     if not area.ativa:
@@ -78,11 +77,13 @@ def pode_ler(area: Area, ator: Ator) -> bool:
         return True
 
     if area.visibilidade == Area.Visibilidade.TURMA:
-        # AINDA NÃO IMPLEMENTADO, e fecha de propósito. Saber se alguém está
-        # num curso específico é uma pergunta que o fórum ainda não faz à
-        # `alunos`. Devolver `True` aqui "para não travar" seria abrir a área
-        # mais restrita do sistema — o oposto do que o nome dela promete.
-        return False
+        # O GRUPO DE PRÁTICA (TAR-824): a turma é quem tem vínculo ATIVO, uma
+        # linha de `MembroDoGrupo` com `ate` nulo, posta ali por alguém da
+        # escola. Sem linha, fecha. A matrícula já foi exigida logo acima: o
+        # vínculo de quem deixou de ser aluno não abre nada.
+        return MembroDoGrupo.objects.filter(
+            grupo=area, pessoa=ator.pessoa, ate__isnull=True
+        ).exists()
 
     # Visibilidade desconhecida (dado novo, código velho) ⇒ fechado.
     return False
@@ -151,6 +152,9 @@ def por_que_nao_escreve(area: Area, ator: Ator) -> str:
         return NAO_SE_APLICA if ator.eh_equipe else SO_A_ESCOLA_FALA
 
     if area.quem_escreve == Area.QuemEscreve.ALUNO:
+        # Num grupo de prática isto quer dizer "membro ativo ou equipe" sem uma
+        # linha a mais: o degrau 1 já exigiu o vínculo, e repeti-lo aqui seria
+        # a segunda expressão da regra de `pode_ler`.
         return NAO_SE_APLICA if (ator.eh_aluno or ator.eh_equipe) else PRECISA_SER_ALUNO
 
     if area.quem_escreve == Area.QuemEscreve.CADASTRADO:
