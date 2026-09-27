@@ -69,8 +69,8 @@ Dois conjuntos de tokens, dois direitos:
 
 | env da `identidade` | prova | quem tem |
 |---|---|---|
-| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin`, `cursos`, `pages` |
-| `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | `sugestoes`, `admin`, `cursos`, `pages` |
+| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin`, `cursos`, `pages`, `gamificacao` |
+| `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | `sugestoes`, `admin`, `cursos`, `pages`, `gamificacao` |
 
 O `funil` não vê e-mail por desenho — ele quer um nome para o canto da página.
 
@@ -103,6 +103,60 @@ nenhuma — o token dela nas provedoras de métrica entra em
 listagem de TODOS os e-mails da plataforma (a seção "Usuários", fase 4) é
 autorização categoricamente maior, **não coberta por este registro** — ela
 exige operação interna nova, Rito §3 e registro próprio aqui.
+
+### O par `gamificacao`, o registro que o §6.3 exige (27/09/2026)
+
+**Quem:** a célula `gamificacao`, no gesto de assumir tarefa do quadro de
+contribuições (`/conquistas/contribuicoes`).
+
+**Este registro regulariza, e não inaugura.** O grau pode já existir em
+produção desde 01/09/2026: a ponte da medalha de Fundador
+(`conceder_fundador --emails`) exige o mesmo grau, e
+`infra/provisionar-gamificacao.sh` (§5 do cabeçalho) diz que ele foi instalado
+à mão pelo mantenedor com a linha que `infra/conceder-fundador-aos-alunos.sh`
+entrega, sem registro aqui. A partir deste registro, o grau passa a ter o
+porquê escrito e um script que o grava e o prova
+(`infra/provisionar-par-da-gamificacao-com-os-alunos.sh`).
+
+**Por quê o e-mail, e não o id opaco:** a decisão do mantenedor de 27/09/2026
+é que só quem tem matrícula ativa assume tarefa no quadro. Essa resposta mora
+na `alunos` (`getStudentStanding`), e a `alunos` só responde por e-mail. O
+e-mail que a gamificação guarda em `Pessoa.email` não serve: ele é o marcador
+`<id>@desconhecido.invalid`, gravado em toda visita porque a página só recebe
+o id opaco, e perguntar com ele recusaria todo aluno de verdade. É a mesma
+razão da `cursos` e da `pages`, e nenhuma outra.
+
+**O que este par NÃO ganha:** não guarda o e-mail em lugar nenhum, nem em
+`Pessoa` nem em campo algum. Só o lê no gesto de assumir, usa na pergunta à
+`alunos` e o descarta; ele não vai para a tela nem para o log
+(`services/gamificacao/apps/core/matricula.py`, com guarda em
+`tests/test_quadro_exige_matricula.py`). Ver o quadro não pede nada à
+`identidade` além do que já pedia. A página continua usando `getSession`, só
+com o id opaco.
+
+**Escopo:** o uso que o código faz, e só ele. `getSessionFull` no gesto de
+assumir tarefa (`services/gamificacao/apps/core/matricula.py`): um e-mail por
+requisição, o da própria sessão de quem clicou em Assumir. Nenhuma tela e
+nenhum outro gesto da célula pedem o e-mail. O grau usa o MESMO valor de
+`TOKENS_ACEITOS_GAMIFICACAO`.
+
+**A consequência do grau por par, por inteiro.** O grau vale para o par, e não
+para uma operação: com ele, o token da gamificação também abre
+`findPersonByEmail`. Essa porta responde se um e-mail QUALQUER existe na
+plataforma (devolve o id, ou `null`), e por isso é um oráculo de existência de
+conta: quem tiver o token pode testar endereços um a um. O token não sai da
+VPS e só a gamificação o usa; no código, o único chamador dessa porta é o
+comando de linha `conceder_fundador --emails` (`apps/core/sessao.py`), rodado
+pela equipe. Nenhum caminho de página a chama.
+
+**Origem:** duas palavras do mantenedor na sessão Retomada comunidade, rodada
+3, em 27/09/2026. A primeira, à tarde: o quadro exige matrícula ativa
+(`painel/registros/20260927-291-comunidade-mantenedor-decide-convite-quadro-e-cristais.js`).
+A segunda, por volta das 16h, numa pergunta estruturada separada, respondida
+com "Autorizo": a parte das conquistas lê o e-mail de quem clica em Assumir
+tarefa, só naquele clique e sem guardar em lugar nenhum, como o fórum e os
+cursos já fazem
+(`painel/registros/20260927-311-quadro-mantenedor-autoriza-email-no-gesto-de-assumir.js`).
 
 ## 5. A escada de entrega (e por que nesta ordem)
 
@@ -163,6 +217,9 @@ cookie disputado por um cabeçalho desatualizado por alguns minutos é troca
      dois lados do par são escritos por
      `infra/provisionar-pares-da-prancheta.sh`, com o MESMO valor nas duas
      listas.
+   - **`gamificacao` (27/09/2026, quadro de contribuições):** pela mesma razão
+     da `cursos` e da `pages`. O registro completo está no §4, em "O par
+     `gamificacao`".
 4. A partir do PR 5, sessão da Caixa é a do site: **nenhum código novo na
    `sugestoes` pode escrever `request.session`** (guarda lá) — quem grava o
    cookie `meshcraft_sessao` é só a `identidade`.

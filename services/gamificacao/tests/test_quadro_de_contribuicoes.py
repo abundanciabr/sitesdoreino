@@ -69,6 +69,11 @@ def site_e_sessao(monkeypatch):
     monkeypatch.setenv("URL_DA_CAPA", "https://exemplo.test/")
     monkeypatch.setenv(porta_da_equipe.VARIAVEL, f"{PROFESSORA},{MONITOR}")
     porta_da_equipe._ja_avisei_que_a_lista_esta_vazia = False
+    # A matrícula tem arquivo próprio (`test_quadro_exige_matricula.py`); aqui
+    # quem assume pela tela é sempre aluno com matrícula ativa.
+    monkeypatch.setattr(
+        "apps.core.views.categoria_de_quem_pede", lambda request: "aluno"
+    )
 
 
 def _entrar_como(monkeypatch, pessoa_id: str | None):
@@ -104,7 +109,9 @@ def _tarefa(**campos) -> TarefaComunitaria:
 
 
 def _assumir(tarefa, pessoa_id=ALUNA) -> CompromissoDeContribuicao:
-    return contribuicoes.assumir(tarefa=tarefa, pessoa=_pessoa(pessoa_id))
+    return contribuicoes.assumir(
+        tarefa=tarefa, pessoa=_pessoa(pessoa_id), categoria="aluno"
+    )
 
 
 def _enviar(tarefa, pessoa_id=ALUNA, link="https://exemplo.test/estudo"):
