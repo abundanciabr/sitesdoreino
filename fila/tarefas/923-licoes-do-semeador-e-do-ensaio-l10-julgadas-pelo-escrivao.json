@@ -1,0 +1,19 @@
+{
+  "arquivo": "923-licoes-do-semeador-e-do-ensaio-l10-julgadas-pelo-escrivao",
+  "id": "TAR-923",
+  "titulo": "Licoes do semeador e do ensaio L10 julgadas pelo escrivao",
+  "toca": [
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "duas licoes novas em armadilhas/ com schema_version 2, indice regenerado com python ci/indice_de_armadilhas.py e PR aberto",
+  "despacho": "Julgue tres candidatas a licao levantadas em 27/09/2026: (1) ci/pr.py --arquivos precisa citar o fila/tarefas/NNN-*.json criado por ci/fila.py criar, senao a muralha-da-fila reprova; (2) bash sem caminho completo no Windows cai no stub do WSL (ja coberta por armadilhas/010); (3) em e2e, sendBeacon tem resourceType ping (invisivel a filtro xhr/fetch/other) e stopPropagation na captura cala listener de telemetria em fase de bolha. Para cada uma nao coberta, escreva armadilhas/NNN-slug.md com schema_version 2 e regenere o indice.",
+  "origem": "escrivao, julgamento de licoes do dia 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
