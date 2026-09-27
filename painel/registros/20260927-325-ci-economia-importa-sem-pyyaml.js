@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-325-ci-economia-importa-sem-pyyaml",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: economia importa sem PyYAML",
+  detalhe: "O PyYAML sai do topo de ci/economia_da_fabrica.py e entra só na leitura das fichas; o deploy volta a importar o módulo sem ele.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2307. Validação local: árvore aaef7c869435e65ebf3b8aefe08b08cc20997e9d; commit 79ef4ee5dbe5c0b08bef626a519365f0e8bfc5e7; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-939",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
