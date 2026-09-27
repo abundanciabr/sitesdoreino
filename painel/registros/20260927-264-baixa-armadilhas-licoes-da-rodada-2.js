@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-264-baixa-armadilhas-licoes-da-rodada-2",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "As duas lições novas da rodada 2 já estão no índice de armadilhas",
+  detalhe: "O PR 2252 (TAR-878) integrou na main (mergeCommit dee8e09454e6faecd256f4a7d7b780018cb0f359, MERGED conferido por gh pr view --json state,mergedAt,mergeCommit). PR só de armadilhas, sem código de célula: run 36321421708 cobriu 'publicar-dados-admin' e 'deploy (admin)', ambos success, sem job de deploy de outra célula, como o próprio conteúdo do PR previa. Este registro dá baixa verde no recibo 20260927-229.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2252 (MERGED, mergeCommit dee8e09454e6faecd256f4a7d7b780018cb0f359); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36321421708 (publicar-dados-admin e deploy admin: success)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-229-armadilhas-licoes-da-rodada-2",
+  relacao: "baixa",
+  tarefa: "TAR-878",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
