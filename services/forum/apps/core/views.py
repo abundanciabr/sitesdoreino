@@ -12,7 +12,8 @@ from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, F, OuterRef, Window
+from django.db.models.functions import RowNumber
 from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -20,7 +21,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
 
-from apps.forum.models import Area, MembroDoGrupo, Mensagem, Pessoa, Topico
+from apps.forum.models import (
+    Area,
+    MembroDoGrupo,
+    Mensagem,
+    Pessoa,
+    RegistroDeModeracao,
+    Topico,
+)
 
 from . import agente
 from .etiquetas import decorar as decorar_com_etiquetas
@@ -727,14 +735,16 @@ def comunidade(request):
 PLANTAO_DE_LAUDOS = "/cursos/plantao"
 FILA_DE_VALIDACAO = "/conquistas/interno"
 SEM_NOME_DE_EXIBICAO = "pessoa da escola sem nome de exibição"
+ULTIMAS_ACOES = 10
 
 
 def contexto_da_comunidade_da_equipe(ator) -> dict:
-    """Os grupos ativos com as esperas penduradas, em três consultas no total.
+    """Os grupos ativos com as esperas penduradas, em cinco consultas no total.
 
-    Uma consulta para os grupos, uma para as dúvidas abertas de todos eles e
-    uma para os vínculos ativos já sabendo se a pessoa escreveu no grupo.
-    Perguntar por grupo dentro do laço faria uma ida ao banco por grupo.
+    Uma consulta para os grupos, uma para as dúvidas abertas de todos eles, uma
+    para os vínculos ativos já sabendo se a pessoa escreveu no grupo e duas
+    para o rastro da moderação. Perguntar por grupo dentro do laço faria uma
+    ida ao banco por grupo.
     """
     grupos = list(
         Area.objects.filter(
@@ -778,6 +788,30 @@ def contexto_da_comunidade_da_equipe(ator) -> dict:
     for grupo in grupos:
         # Vaga zero é o lado fechado (`Area.vagas`): o grupo não recebe ninguém.
         grupo.sem_vaga = grupo.membros_ativos >= grupo.vagas
+        grupo.rastro = []
+
+    # O RASTRO DA MODERAÇÃO (TAR-847): as últimas ações de cada grupo, quem fez
+    # e por quê. Duas consultas, e não uma por grupo: uma pelas linhas em que o
+    # grupo é a origem e outra pelas em que é o destino (mover, trocar de
+    # grupo), cada uma já cortada em dez por grupo dentro do banco.
+    for campo in ("area", "area_destino"):
+        linhas = (
+            RegistroDeModeracao.objects.filter(**{f"{campo}__in": grupos})
+            .annotate(
+                posicao=Window(
+                    RowNumber(),
+                    partition_by=[F(campo)],
+                    order_by=[F("quando").desc(), F("pk").desc()],
+                )
+            )
+            .filter(posicao__lte=ULTIMAS_ACOES)
+            .select_related("ator")
+        )
+        for linha in linhas:
+            por_pk[getattr(linha, f"{campo}_id")].rastro.append(linha)
+    for grupo in grupos:
+        grupo.rastro.sort(key=lambda linha: (linha.quando, linha.pk), reverse=True)
+        del grupo.rastro[ULTIMAS_ACOES:]
 
     return {
         "ator": ator,

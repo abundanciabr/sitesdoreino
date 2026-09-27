@@ -237,7 +237,9 @@ def test_remover_fecha_leitura_busca_e_a_comunidade_e_guarda_a_linha(
     assert "Como exporto o rig" in pedir(client, "comunidade").content.decode()
 
     como(monkeypatch, professora, categoria="cadastrado")
-    resposta = gerir(client, grupo, acao="remover", vinculo_id=vinculo.pk)
+    resposta = gerir(
+        client, grupo, acao="remover", vinculo_id=vinculo.pk, motivo="pediu"
+    )
     assert resposta.status_code == 302
 
     como(monkeypatch, ana)
