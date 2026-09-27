@@ -4,10 +4,11 @@
 # prism (make mocks) — nunca suba a outra célula, nunca leia o banco dela.
 import logging
 import os
-import re
 import uuid
 
 import httpx
+
+from apps.core.sorteio import PONTOS_BASE, VARIANTE_ID
 
 logger = logging.getLogger("funil.sessao")
 
@@ -23,13 +24,6 @@ _cliente: httpx.Client | None = None
 #: de "não sei".
 SEM_RESPOSTA = object()
 
-#: `variante_id` do `experimento_ativo`: chave curta, a mesma que os eventos
-#: `funil.*` carregam e que o sorteio usa para ordenar as variantes.
-_VARIANTE_ID = re.compile(r"[a-z][a-z0-9-]{0,31}")
-
-#: Os pesos das variantes são pontos-base: 50/50 chega como 5000 e 5000.
-_PESO_TOTAL = 10000
-
 
 def _defeito_do_experimento(experimento) -> str | None:
     """Por que `experimento_ativo` está fora da forma do `getPage`, ou `None`
@@ -37,8 +31,10 @@ def _defeito_do_experimento(experimento) -> str | None:
 
     A conferência cobre o que o sorteio e os eventos vão usar sem perguntar de
     novo: `id` em UUID canônico (vai dentro de todo `funil.*`), `variante_id`
-    único e no padrão, pesos inteiros que somam `_PESO_TOTAL` (senão o sorteio
-    deixa visitante sem braço) e o texto de cada variante.
+    único e no padrão, pesos inteiros de 1 em diante que somam `PONTOS_BASE`
+    (senão o sorteio deixa visitante sem braço) e o texto de cada variante.
+    O padrão e o total são os do sorteio, e o peso mínimo 1 é o do
+    `VarianteDoExperimento` no contrato congelado.
     """
     if not isinstance(experimento, dict):
         return "não é um objeto"
@@ -61,21 +57,19 @@ def _defeito_do_experimento(experimento) -> str | None:
         if not isinstance(variante, dict):
             return "uma variante não é um objeto"
         variante_id = variante.get("variante_id")
-        if not isinstance(variante_id, str) or not _VARIANTE_ID.fullmatch(variante_id):
+        if not isinstance(variante_id, str) or not VARIANTE_ID.fullmatch(variante_id):
             return f"variante_id {variante_id!r} fora do padrão"
         if variante_id in vistos:
             return f"variante_id {variante_id!r} repetido"
         vistos.add(variante_id)
         peso = variante.get("peso")
-        if isinstance(peso, bool) or not isinstance(peso, int) or peso < 0:
-            return (
-                f"peso da variante {variante_id!r} não é inteiro maior ou igual a zero"
-            )
+        if isinstance(peso, bool) or not isinstance(peso, int) or peso < 1:
+            return f"peso da variante {variante_id!r} não é inteiro de 1 em diante"
         if not isinstance(variante.get("valor"), str):
             return f"valor da variante {variante_id!r} não é texto"
     soma = sum(variante["peso"] for variante in variantes)
-    if soma != _PESO_TOTAL:
-        return f"os pesos somam {soma}, e não {_PESO_TOTAL}"
+    if soma != PONTOS_BASE:
+        return f"os pesos somam {soma}, e não {PONTOS_BASE}"
     return None
 
 
