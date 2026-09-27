@@ -20,6 +20,12 @@ O que cada grupo de guardas protege, e por que ele existe:
    experimento e como nasce o primeiro, em vez de mostrar uma lista em branco.
 6. **Todo grupo termina num gesto que já existe** (régua 5 do §2 do plano): a
    reunião de segunda escreve registro, e a fila dos robôs vira tarefa.
+7. **Os experimentos da página de oferta vêm do catálogo** (decisão 5 do
+   mantenedor, 26/09/2026), com estado, hipótese, métrica, datas, decisão e
+   vencedora, e cada um leva às telas de resultado e de decisão. Catálogo fora
+   do ar é aviso com o que fazer, nunca "nenhum experimento"; página sem
+   experimento diz isso e aponta o Novo experimento. O catálogo falso é o
+   `respx`, nos endereços e na forma de `ExperimentoDaPagina` do contrato.
 """
 
 from __future__ import annotations
@@ -36,6 +42,11 @@ from apps.core import doze, laboratorio
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
+CATALOGO = "http://catalogo:8000/api/catalogo"
+SITE_ID = "5d0c7a1e-2b3f-4c6d-8e9f-0a1b2c3d4e5f"
+EXPERIMENTOS = f"{CATALOGO}/sites/{SITE_ID}/paginas/oferta/experimentos"
+ID_ATIVO = "7c2d9e4f-1a3b-4c5d-8e6f-9a0b1c2d3e4f"
+ID_ENCERRADO = "1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 HOJE = dt.date(2026, 9, 20)
@@ -311,3 +322,127 @@ def test_a_tela_nao_conjuga_verbo_em_contagem_zerada(monkeypatch):
     # sai torta justamente no caso que mais aparece ("0 experimentos venceram").
     for torto in ("experimentos venceram", "experimentos perderam", "0 experimento "):
         assert torto not in corpo
+
+
+# ------------------------------- 7. os experimentos da página, lidos do catálogo
+
+
+def _catalogo(monkeypatch, resposta: httpx.Response) -> None:
+    """O catálogo falso: o site deste domínio e a resposta de `listExperiments`."""
+    monkeypatch.setenv("CATALOGO_API_URL", CATALOGO)
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-do-par-admin-catalogo")
+    monkeypatch.setattr(laboratorio, "ler_registros", lambda: [])
+    respx.get(f"{CATALOGO}/sites/by-host/testserver").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": SITE_ID,
+                "host": "testserver",
+                "name": "Meshcraft",
+                "active": True,
+            },
+        )
+    )
+    respx.get(EXPERIMENTOS).mock(return_value=resposta)
+
+
+def _da_pagina(experimento_id: str, estado: str, **mais) -> dict:
+    """Um `ExperimentoDaPagina` na forma do contrato."""
+    corpo = {
+        "id": experimento_id,
+        "site_id": SITE_ID,
+        "slug": "oferta",
+        "secao": "cubo",
+        "slot": "headline",
+        "hipotese": f"Hipótese do experimento {estado}.",
+        "metrica_principal": "cta_checkout",
+        "taxa_base": 0.1,
+        "mde": 0.03,
+        "n_por_braco_planejado": 1600,
+        "dias_planejados": 21,
+        "estado": estado,
+        "decisao": None,
+        "vencedora": None,
+        "criado_em": "2026-09-01T15:00:00Z",
+        "iniciado_em": "2026-09-02T15:00:00Z",
+        "fim_planejado": "2026-09-23T15:00:00Z",
+        "encerrado_em": None,
+        "variantes": [
+            {"variante_id": "a", "peso": 5000, "valor": "Texto no ar"},
+            {"variante_id": "b", "peso": 5000, "valor": "Texto novo"},
+        ],
+    }
+    corpo.update(mais)
+    return corpo
+
+
+@respx.mock
+def test_a_tela_mostra_os_experimentos_da_pagina_lidos_do_catalogo(monkeypatch):
+    _catalogo(
+        monkeypatch,
+        httpx.Response(
+            200,
+            json=[
+                _da_pagina(ID_ATIVO, "ativo"),
+                _da_pagina(
+                    ID_ENCERRADO,
+                    "encerrado",
+                    decisao="promover",
+                    vencedora="b",
+                    encerrado_em="2026-09-24T15:00:00Z",
+                ),
+            ],
+        ),
+    )
+    resposta = _dentro().get(reverse("laboratorio"))
+    corpo = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "Experimentos da página de oferta" in corpo
+    assert "Hipótese do experimento ativo." in corpo
+    assert "Hipótese do experimento encerrado." in corpo
+    assert "Ativo" in corpo and "Encerrado" in corpo
+    assert "Entrada no checkout" in corpo, "a métrica sai com o nome, não com a chave"
+    for data in ("01/09/2026", "02/09/2026", "23/09/2026", "24/09/2026"):
+        assert data in corpo, f"a data {data} do experimento não apareceu"
+    assert "Promover" in corpo, "a decisão do encerrado"
+    assert "Vencedora: versão b" in corpo
+    for experimento_id in (ID_ATIVO, ID_ENCERRADO):
+        assert reverse("resultado_do_experimento", args=[experimento_id]) in corpo
+        assert reverse("decisao_do_experimento", args=[experimento_id]) in corpo
+    assert reverse("experimentos") in corpo
+
+
+@respx.mock
+def test_catalogo_fora_do_ar_avisa_o_que_fazer_e_nunca_diz_nenhum(monkeypatch):
+    _catalogo(monkeypatch, httpx.Response(503))
+    resposta = _dentro().get(reverse("laboratorio"))
+    corpo = resposta.content.decode()
+
+    assert resposta.status_code == 200, "a tela abre e diz o que não conseguiu ver"
+    assert "Não consegui ler os experimentos da página." in corpo
+    assert "Recarregue esta tela" in corpo, "o aviso diz o que fazer"
+    assert "Esta página ainda não tem experimento" not in corpo, (
+        "a tela afirmou que a página não tem experimento sem ter conseguido "
+        "perguntar ao catálogo"
+    )
+
+
+@respx.mock
+def test_sem_catalogo_configurado_avisa_e_nunca_diz_nenhum(monkeypatch):
+    monkeypatch.delenv("CATALOGO_API_URL", raising=False)
+    monkeypatch.setattr(laboratorio, "ler_registros", lambda: [])
+    corpo = _dentro().get(reverse("laboratorio")).content.decode()
+
+    assert "Não consegui ler os experimentos da página." in corpo
+    assert "Esta página ainda não tem experimento" not in corpo
+
+
+@respx.mock
+def test_pagina_sem_experimento_diz_isso_e_aponta_o_novo(monkeypatch):
+    _catalogo(monkeypatch, httpx.Response(200, json=[]))
+    corpo = _dentro().get(reverse("laboratorio")).content.decode()
+
+    assert "Esta página ainda não tem experimento" in corpo
+    assert reverse("experimento_novo") in corpo
+    assert "Não consegui ler os experimentos da página." not in corpo
