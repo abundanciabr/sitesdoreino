@@ -19,7 +19,9 @@ _atualizacao = importlib.import_module(
 )
 
 NOME = "comunidade"
-TITULO_DA_RODADA_1 = "A Comunidade Meshcraft: o que é, o que fazer agora e como pedir ajuda"
+TITULO_DA_RODADA_1 = (
+    "A Comunidade Meshcraft: o que é, o que fazer agora e como pedir ajuda"
+)
 CORPO_DA_RODADA_1 = _atualizacao.CORPO_DA_RODADA_1
 
 CONTRIBUICOES = "Como funcionam as contribuições"
@@ -34,7 +36,9 @@ class _AppsFalso:
     @staticmethod
     def get_model(app_label, model_name):
         assert app_label == "core"
-        return {"Documento": Documento, "VersaoDoDocumento": VersaoDoDocumento}[model_name]
+        return {"Documento": Documento, "VersaoDoDocumento": VersaoDoDocumento}[
+            model_name
+        ]
 
 
 def _atualizar():
