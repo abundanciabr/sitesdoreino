@@ -1,0 +1,21 @@
+{
+  "arquivo": "20260927-030237-TAR-750-checkpoint",
+  "tarefa": "TAR-750",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T03:02:37.781185+00:00",
+  "quem": "agent/admin/appmax-frentes-recentes",
+  "plano": "Corrigir muralhas=FAILURE do PR 2114 por base atrasada; concluido",
+  "ultimo_avanco": "Merge de origin/main sem conflitos, suites focal (23) e da celula admin (2502) verdes, push, checks 8/8 verdes, PR 2114 integrado MERGED (commit 6c431f7b), deploy-celula success",
+  "proxima_acao": "Nenhuma nesta TAR: PR 2114 ja integrado e publicado. Pendente apenas registrar no livro de ocorrencias a confirmacao de merge/deploy (rascunho em C:/Users/davia/abundanciabr/wt-painel-registro-pr-2114/painel/registros/20260927-025-pr-2114-integrado-e-publicado-apos-base-atualizada.js, nao commitado, sem PR aberto por ordem de parada).",
+  "verificacoes": [
+    "gh pr view 2114 --json state,mergedBy,mergeCommit -> MERGED",
+    "python ci/esperar.py --checks 2114 --teto 40 -> 8/8 verdes",
+    "python ci/esperar.py --deploy 6c431f7b93175d9db8e3a7b968fce1ff29033d3f --teto 20 --so-desfecho -> deploy-celula success"
+  ],
+  "contexto": {
+    "branch": "agent/admin/appmax-frentes-recentes",
+    "worktree": "C:/Users/davia/abundanciabr/wt-admin-appmax-frentes-recentes",
+    "sha_local": "16a95d1ed7b1ba24df4e4cb71d9ec35a265f4b11",
+    "merge_commit": "6c431f7b93175d9db8e3a7b968fce1ff29033d3f"
+  }
+}
