@@ -1,0 +1,19 @@
+{
+  "arquivo": "830-testar-os-status-appmax-de-cartao-e-pix-que-hoje-ninguem-tes",
+  "id": "TAR-830",
+  "titulo": "Testar os status Appmax de cartao e Pix que hoje ninguem testa, sucessora da TAR-811",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com test_smoke.py, test_pix_appmax.py e test_supervisao_appmax.py cobrindo pendente_integracao, recusado_por_risco e status desconhecido no cartao e no Pix, mais processar_rodada() sobre order_refund/order_chargeback_in_treatment, todos verdes na suite de pagamentos",
+  "despacho": "Escreva so testes novos para o cartao e o Pix Appmax e para a rodada de supervisao; nenhuma linha de codigo de producao muda nesta tarefa (nao toque supervisao.py, methods/card/service.py, methods/pix/appmax.py nem contracts/).\n\nAlvos exatos:\n- services/pagamentos/tests/test_smoke.py: caso com status Appmax \"pendente_integracao\" (aprova) e \"recusado_por_risco\" (recusa com reason_code) no fluxo de confirmacao de cartao; status desconhecido faz o card/service.py levantar ResultadoAmbiguo e a rota responder 502 (linhas 447 a 456 do arquivo).\n- services/pagamentos/tests/test_pix_appmax.py: os mesmos tres casos (pendente_integracao, recusado_por_risco, status desconhecido) no Pix, usando FalhaNoProvedor (linhas 303 a 324 de methods/pix/appmax.py).\n- services/pagamentos/tests/test_supervisao_appmax.py: processar_rodada() sobre um aviso order_refund e um order_chargeback_in_treatment de uma Intent ja aprovada; confira que o evento pagamento.reversao_confirmada v2 e emitido uma unica vez (comportamento que a TAR-758, ja na main, deve produzir).\n\nProva de vermelho para verde exigida: cada teste novo nasce falhando sem a asserção certa. Depois do verde, sabote cada guarda lida (comente a linha que ela protege), confirme que o teste reprova, desfaça a sabotagem.\n\nOrigem: a TAR-811 foi marcada concluida pelo PR 2158 sem os testes descritos (armadilha 515); esta tarefa e a sucessora que efetivamente escreve o trabalho.",
+  "origem": "sucessora da TAR-811, concluida sem trabalho pelo PR 2158 (armadilha 515)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
