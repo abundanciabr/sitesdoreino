@@ -782,7 +782,7 @@ def test_card_recusado_sem_parcelas_responde_rejected_e_aceita_outro_cartao(
     assert outro_cartao.json()["status"] == "approved"
 
 
-# guarda: services/pagamentos/pagamentos/methods/card/service.py:465
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:440
 @pytest.mark.smoke_card
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize(
@@ -820,8 +820,8 @@ def test_card_divergencia_de_valor_ou_parcelas_continua_ambigua(
     inventa. Valor diferente do enviado, em qualquer desfecho, e aprovação ou
     pendência sem as parcelas cobradas continuam 502, e a tentativa espera a
     reconciliação sem evento e sem liberar outro envio."""
-    # guarda: services/pagamentos/pagamentos/methods/card/service.py:429
     # guarda: services/pagamentos/pagamentos/methods/card/service.py:462
+    # guarda: services/pagamentos/pagamentos/methods/card/service.py:470
     from pagamentos.core.models import PaymentAttempt
 
     _configurar_appmax(settings)
