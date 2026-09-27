@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-132348-TAR-882-descoberta",
+  "tarefa": "TAR-882",
+  "evento": "descoberta",
+  "quando": "2026-09-27T13:23:48.832428+00:00",
+  "quem": "agent/ci/seguimento-rito-so-tarefa",
+  "detalhe": "A linha de ajuda do alvo pr no Makefile (linha 102) ainda mostra make pr sem TAR=; o Makefile está fora dos alvos deste PR.",
+  "evidencia": "Makefile:102 e Makefile:109 (TAR só entra por $(if $(TAR),...))",
+  "classificacao": "C",
+  "criterio": "textos que ensinam make pr com a tarefa obrigatória",
+  "encaminhamento": "backlog: trocar a ajuda do alvo pr para incluir TAR=TAR-NNN; a recusa do ci/pr.py já ensina TAR= a quem esquecer"
+}
