@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-224-catalogo-prova-por-mutacao-os-guardas-do-experimento",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "catalogo: prova por mutação os guardas do experimento",
+  detalhe: "13 guardas provados a mao (sabotado reprova, restaurado volta verde): imutabilidade, ativo unico por pagina, variante_id, estado pela rota. Pesos: NAO PROVEI.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2243. Validação local: árvore 9c21168b31145657e3c5da5437817afcb8752c98; commit d8727d20b24a2bcd592c3172c3cde709469455b2; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-875",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
