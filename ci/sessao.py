@@ -97,8 +97,10 @@ if __name__ == "__main__":
     sys.modules.setdefault("sessao", sys.modules[__name__])
 
 from _nucleo import (  # noqa: E402
+    SENTINELAS_DE_INSTRUMENTACAO,
     ErroDeInstrumentacao,
     configurar_saida,
+    defeito_do_make,
     raiz_declarada,
     raiz_do_repo,
     recortar,
@@ -167,11 +169,6 @@ LIMITE_DE_NOME = 40
 # de dependência local sem identidade continua valendo — a wheel muda de
 # conteúdo sem avisar, a anotação não (TAR-815).
 PADRAO_DO_SHA256_ANOTADO = re.compile(r"\bsha256:([0-9a-fA-F]{64})\b", re.IGNORECASE)
-
-# Os exit codes que `correr_de_verdade` inventa quando o comando NÃO chegou a
-# rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
-# medir" — qualquer outro número veio do programa e é veredito dele.
-SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
 
 PASSOS = (
     "conferir o repositório e a célula",
@@ -2172,14 +2169,18 @@ class Sessao:
                 except (OSError, ValueError, KeyError, TypeError):
                     self._nota("baseline sem evidência válida no cache; medindo a base")
             if not pytest_direto:
-                versao = self._correr([make, "--version"], cwd=self.plano.worktree, timeout=30)
-                if not versao.stdout.startswith("GNU Make"):
-                    raise ErroDeSessao(passo, f"o `make` do PATH não é GNU Make: {make}",
-                                       detalhe=f"`make --version` respondeu:\n{recortar(versao.texto, 500)}\n\n"
-                                               "Nada da base foi medido e a célula não reprovou. Ponha o GNU Make antes "
-                                               "dele no PATH (Windows: `winget install ezwinports.make`) e repita a "
-                                               "abertura. Veja armadilhas/529.",
-                                       comando=subprocess.list2cmdline([make, "--version"]))
+                ambiente_da_sonda = self.ambiente_da_base()
+                argumentos_do_make: list[str] = []
+                if shell:
+                    ambiente_da_sonda["PATH"] = os.pathsep.join([str(Path(shell).parent), ambiente_da_sonda.get("PATH", "")])
+                    argumentos_do_make = [f"SHELL={shell}"]
+                def correr_a_sonda(comando: list[str]) -> tuple[int, str]:
+                    saida = self._correr(comando, cwd=self.plano.worktree, env=ambiente_da_sonda, timeout=120)
+                    return saida.exit_code, saida.texto
+                defeito = defeito_do_make(make, correr_a_sonda, argumentos_do_make)
+                if defeito is not None:
+                    resumo, detalhe = defeito
+                    raise ErroDeSessao(passo, resumo, detalhe=detalhe)
             with tempfile.TemporaryDirectory(prefix="baseline-main-") as temporario:
                 base = Path(temporario).resolve() / "arvore"
                 self._exigir(passo, [git, "worktree", "add", "--detach", str(base), revisao],

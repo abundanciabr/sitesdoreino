@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-160-contrato-da-lista-de-alunos-com-curso-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Contrato da lista de alunos com curso integrado",
+  detalhe: "O alerta dizia que o contrato que passa a trazer o curso e a origem da matrícula não estava integrado. O PR 1416 foi integrado em 08/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1416 MERGED em 08/09/2026, mergeCommit e0bdf9866c (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260908-104-contratos-lista-de-alunos-declara-o-curso",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "contratos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

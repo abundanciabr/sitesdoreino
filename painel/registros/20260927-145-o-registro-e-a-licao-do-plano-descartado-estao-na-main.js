@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-145-o-registro-e-a-licao-do-plano-descartado-estao-na-main",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O registro e a lição do plano descartado estão na main",
+  detalhe: "Você pediu que o erro do robô ficasse registrado. O registro e a lição 301 entraram pelo PR 931. O pedido da meta de alunos continua aberto no registro próprio dele.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/931 MERGED, mergeCommit 896d9bc35c (gh pr view, 27/09/2026); armadilhas/301 na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260903-034-o-robo-recomendou-jogar-fora-metade-do-plano-e-voce-trocou-de-agente",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

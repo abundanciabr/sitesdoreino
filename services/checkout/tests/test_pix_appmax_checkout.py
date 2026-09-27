@@ -66,7 +66,7 @@ def test_502_do_pix_orienta_nova_tentativa_e_repete_a_mesma_chave(
     """Achado da TAR-711: a compra Pix sandbox recebeu 500 sem QR. O 502 de
     pagamentos vira frase para o comprador, nenhum pedido nasce, e a nova
     tentativa leva a mesma chave de idempotência, sem cobrança duplicada."""
-    # guarda: services/checkout/apps/core/api.py:420
+    # guarda: services/checkout/apps/core/api.py:426
     settings.APPMAX_PIX_ENABLED_SITES = frozenset({SITE_A["id"]})
     respostas = [httpx.Response(502, json={"detail": "segredo-interno do provedor"})]
     rota = rede.post(f"{PAGAMENTOS}/intents").mock(

@@ -259,7 +259,7 @@ def test_o_professor_tambem_modera(client, env, monkeypatch, conversa, sala):
     conversa.refresh_from_db()
     assert conversa.fixado is True
 
-    assert moderar_area(client, sala, acao="arquivar").status_code == 302
+    assert moderar_area(client, sala, acao="arquivar", motivo=MOTIVO).status_code == 302
     sala.refresh_from_db()
     assert sala.ativa is False
 
@@ -612,7 +612,7 @@ def test_deixar_a_area_privada(client, env, monkeypatch, avisos):
     passa a exigir matrícula."""
     como_dono(monkeypatch)
     resposta = moderar_area(
-        client, avisos, **campos_da_area(avisos, visibilidade="alunos")
+        client, avisos, **campos_da_area(avisos, visibilidade="alunos", motivo=MOTIVO)
     )
     assert resposta.status_code == 302
 
@@ -645,7 +645,9 @@ def test_abrir_a_area_ao_mundo_com_a_escola_falando(client, env, monkeypatch, sa
     resposta = moderar_area(
         client,
         sala,
-        **campos_da_area(sala, visibilidade="publica", quem_escreve="equipe"),
+        **campos_da_area(
+            sala, visibilidade="publica", quem_escreve="equipe", motivo=MOTIVO
+        ),
     )
     assert resposta.status_code == 302
 
@@ -689,7 +691,7 @@ def test_arquivar_a_area_some_para_a_aluna_e_continua_para_o_dono(
     """Arquivar é o "deletar" honesto: some da lista de todo mundo, e nada sai
     do banco. E tem volta, senão seria porta de mão única."""
     como_dono(monkeypatch)
-    assert moderar_area(client, sala, acao="arquivar").status_code == 302
+    assert moderar_area(client, sala, acao="arquivar", motivo=MOTIVO).status_code == 302
 
     sala.refresh_from_db()
     assert sala.ativa is False
@@ -710,8 +712,8 @@ def test_arquivar_a_area_some_para_a_aluna_e_continua_para_o_dono(
 
 def test_reabrir_a_area(client, env, monkeypatch, sala):
     como_dono(monkeypatch)
-    moderar_area(client, sala, acao="arquivar")
-    assert moderar_area(client, sala, acao="reabrir").status_code == 302
+    moderar_area(client, sala, acao="arquivar", motivo=MOTIVO)
+    assert moderar_area(client, sala, acao="reabrir", motivo=MOTIVO).status_code == 302
 
     sala.refresh_from_db()
     assert sala.ativa is True

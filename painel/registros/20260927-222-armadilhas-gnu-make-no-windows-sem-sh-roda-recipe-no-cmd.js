@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-222-armadilhas-gnu-make-no-windows-sem-sh-roda-recipe-no-cmd",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "armadilhas: GNU Make no Windows sem sh roda recipe no cmd",
+  detalhe: "No Windows, GNU Make sem sh roda receita no cmd e quebra os alvos da raiz e o make ci das células, culpando a célula. A 536 traz a sonda nos quatro PATHs e a ordem verde.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2237. Validação local: árvore cac6fe6c221ef58c558c94a5b7a109df6ce9538a; commit 1c23de473309263c7cb83cdc99c61041529cce87; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-864",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

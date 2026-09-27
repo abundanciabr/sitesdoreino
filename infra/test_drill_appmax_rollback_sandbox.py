@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -72,6 +73,7 @@ class VPS:
         self.recargas: list[bool] = []
         self.respostas_de_recarga: list[bool] = []
         self.recargas_sem_efeito: list[bool] = []
+        self.sobreposicoes: list[str | None] = []
         try:
             self.lido = self._ler()
         except drill.canario.ParouPorSeguranca:
@@ -82,11 +84,18 @@ class VPS:
         self.http = "200"
         self.sondas = 0
 
-    def _ler(self) -> dict[str, dict[str, str]]:
-        return {
+    def _ler(self, ambiente: dict[str, str] | None = None) -> dict[str, dict[str, str]]:
+        """O que cada serviço lê: o env_file, com o `environment:` das sobreposições por cima."""
+        lido = {
             nome: drill.canario.ler_env(self.raiz / f"env/{nome}.env", escrever=False)
             for nome in ("pagamentos", "checkout")
         }
+        arquivos = (ambiente or {}).get("COMPOSE_FILE", "").split(os.pathsep)
+        for arquivo in filter(None, arquivos[1:]):
+            servicos = yaml.safe_load(Path(arquivo).read_text(encoding="utf-8"))["services"]
+            for nome in lido:
+                lido[nome].update(servicos.get(nome, {}).get("environment", {}))
+        return lido
 
     def compose(self, _raiz: Path, _ambiente: dict[str, str], *args: str):
         if args[0] == "ps":
@@ -97,12 +106,13 @@ class VPS:
             return subprocess.CompletedProcess(args, codigo, "", "")
         raise AssertionError(f"chamada inesperada ao Compose: {args}")
 
-    def recarregar(self, _raiz: Path, _ambiente: dict[str, str]) -> bool:
+    def recarregar(self, _raiz: Path, ambiente: dict[str, str]) -> bool:
         resposta = self.respostas_de_recarga.pop(0) if self.respostas_de_recarga else True
         self.recargas.append(resposta)
         sem_efeito = self.recargas_sem_efeito.pop(0) if self.recargas_sem_efeito else False
+        self.sobreposicoes.append(ambiente.get("COMPOSE_FILE"))
         if resposta and not sem_efeito:
-            self.lido = self._ler()
+            self.lido = self._ler(ambiente)
         return resposta
 
     def buscar_pagina(self) -> tuple[str, str]:
@@ -167,8 +177,8 @@ LIGADO = {
 
 
 def test_ensaio_inteiro_prova_o_bloqueio_religa_e_devolve_os_env_identicos(tmp_path, monkeypatch):
-    # guarda: infra/drill-appmax-rollback-sandbox.py:254
-    # guarda: infra/drill-appmax-rollback-sandbox.py:270
+    # guarda: infra/drill-appmax-rollback-sandbox.py:259
+    # guarda: infra/drill-appmax-rollback-sandbox.py:250
     raiz, vps = preparar(tmp_path, monkeypatch)
     antes = fotografar(raiz)
     evidencia = drill.executar(raiz)
@@ -183,8 +193,67 @@ def test_ensaio_inteiro_prova_o_bloqueio_religa_e_devolve_os_env_identicos(tmp_p
     assert fotografar(raiz) == antes
     assert not copias(raiz)
     assert vps.recargas == [True, True]
+    desligar, religar = vps.sobreposicoes
+    assert desligar.split(os.pathsep)[0] == str(raiz / "docker-compose.yml")
+    assert religar is None
     assert SEGREDO not in json.dumps(evidencia)
     assert SITE not in json.dumps(evidencia)
+
+
+def test_env_somente_leitura_como_o_usuario_deploy_ve_na_vps(tmp_path, monkeypatch):
+    """Run 36316492477: o deploy lê env/*.env, mas não escreve; o ensaio não pode depender disso."""
+    raiz, vps = preparar(tmp_path, monkeypatch)
+    antes = fotografar(raiz)
+    for nome in ("pagamentos", "checkout", "admin"):
+        (raiz / f"env/{nome}.env").chmod(0o444)
+    try:
+        evidencia = drill.executar(raiz)
+    finally:
+        for nome in ("pagamentos", "checkout", "admin"):
+            (raiz / f"env/{nome}.env").chmod(0o644)
+    assert evidencia["resultado"] == "PASS", evidencia
+    assert evidencia["env_devolvido_identico"] is True
+    assert fotografar(raiz) == antes
+    assert sorted(p.name for p in (raiz / "env").iterdir()) == [
+        "admin.env",
+        "checkout.env",
+        "pagamentos.env",
+    ]
+
+
+def test_sobreposicao_zera_a_trava_nos_cinco_servicos_e_some_depois(tmp_path, monkeypatch):
+    # guarda: infra/drill-appmax-rollback-sandbox.py:197
+    raiz, vps = preparar(tmp_path, monkeypatch)
+    lidas = []
+    original = vps.recarregar
+
+    def recarregar(raiz_, ambiente):
+        arquivos = ambiente.get("COMPOSE_FILE", "").split(os.pathsep)[1:]
+        lidas.extend(yaml.safe_load(Path(a).read_text(encoding="utf-8")) for a in arquivos)
+        return original(raiz_, ambiente)
+
+    monkeypatch.setattr(drill.canario, "recarregar", recarregar)
+    assert drill.executar(raiz)["resultado"] == "PASS"
+    assert lidas == [
+        {"services": {s: {"environment": {drill.TRAVA: ""}} for s in drill.canario.SERVICOS}}
+    ]
+    assert not Path(vps.sobreposicoes[0].split(os.pathsep)[1]).exists()
+
+
+def test_env_sem_leitura_para_com_motivo_e_sem_gravar(tmp_path, monkeypatch):
+    # guarda: infra/drill-appmax-rollback-sandbox.py:186
+    raiz, vps = preparar(tmp_path, monkeypatch)
+    ler_env = drill.canario.ler_env
+
+    def negar(caminho, *, escrever):
+        if caminho.name == "pagamentos.env":
+            raise PermissionError(13, "Permission denied")
+        return ler_env(caminho, escrever=escrever)
+
+    monkeypatch.setattr(drill.canario, "ler_env", negar)
+    with pytest.raises(drill.canario.ParouPorSeguranca, match="pagamentos.env sem leitura"):
+        drill.executar(raiz)
+    assert vps.recargas == []
 
 
 RECUSAS = [
@@ -274,7 +343,7 @@ def test_recusa_antes_de_gravar_fora_do_sandbox_da_meshcraft(
 
 
 def test_recusa_servico_parado_antes_de_gravar(tmp_path, monkeypatch):
-    # guarda: infra/drill-appmax-rollback-sandbox.py:218
+    # guarda: infra/drill-appmax-rollback-sandbox.py:235
     raiz, vps = preparar(tmp_path, monkeypatch)
     vps.ativos.remove("checkout")
     with pytest.raises(drill.canario.ParouPorSeguranca, match="ativos"):
@@ -346,21 +415,21 @@ def test_falha_no_meio_religa_e_devolve_os_env(tmp_path, monkeypatch, estrago, m
     assert vps.recargas[-1] is True
 
 
-def test_religacao_que_falha_vira_error_e_guarda_a_copia(tmp_path, monkeypatch):
+def test_religacao_que_falha_vira_error_e_ensina_a_religar(tmp_path, monkeypatch):
     raiz, vps = preparar(tmp_path, monkeypatch)
     antes = fotografar(raiz)
     vps.respostas_de_recarga = [True, False]
     evidencia = drill.executar(raiz)
     assert evidencia["resultado"] == "ERROR"
     assert "religar" in evidencia["motivo"]
-    assert ".bak-" in evidencia["acao"]
+    assert "deploy de checkout e pagamentos" in evidencia["acao"]
     assert evidencia["env_devolvido_identico"] is True
     assert fotografar(raiz) == antes
-    assert len(copias(raiz)) == 2
+    assert not copias(raiz)
 
 
 def test_servico_que_nao_le_a_trava_desligada_reprova_sem_sondar(tmp_path, monkeypatch):
-    # guarda: infra/drill-appmax-rollback-sandbox.py:248
+    # guarda: infra/drill-appmax-rollback-sandbox.py:253
     raiz, vps = preparar(tmp_path, monkeypatch)
     antes = fotografar(raiz)
     vps.recargas_sem_efeito = [True, False]
@@ -372,13 +441,13 @@ def test_servico_que_nao_le_a_trava_desligada_reprova_sem_sondar(tmp_path, monke
 
 
 def test_servico_que_nao_le_a_trava_religada_vira_error(tmp_path, monkeypatch):
-    # guarda: infra/drill-appmax-rollback-sandbox.py:188
+    # guarda: infra/drill-appmax-rollback-sandbox.py:205
     raiz, vps = preparar(tmp_path, monkeypatch)
     vps.recargas_sem_efeito = [False, True]
     evidencia = drill.executar(raiz)
     assert evidencia["resultado"] == "ERROR"
     assert "religar" in evidencia["motivo"] and "não leu a trava" in evidencia["motivo"]
-    assert len(copias(raiz)) == 2
+    assert not copias(raiz)
 
 
 def test_pagina_que_nao_volta_depois_de_religar_reprova(tmp_path, monkeypatch):
@@ -504,7 +573,7 @@ def test_preparar_leva_o_ensaio_e_a_chave_do_canario_para_a_vps(tmp_path, monkey
     assert texto.startswith("#!/bin/sh\nset -eu\n")
     assert CAMINHO.read_text(encoding="utf-8") in texto
     assert (RAIZ / "infra/ativar-appmax-canario.py").read_text(encoding="utf-8") in texto
-    assert texto.rstrip().endswith('python3 "$DIR/drill-appmax-rollback-sandbox.py" executar')
+    assert texto.rstrip().endswith('python3 "$DIR/drill-appmax-rollback-sandbox.py" executar || true')
     assert "\r" not in texto
 
 

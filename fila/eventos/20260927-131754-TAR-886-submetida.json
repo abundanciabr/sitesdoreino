@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-131754-TAR-886-submetida",
+  "tarefa": "TAR-886",
+  "evento": "submetida",
+  "quando": "2026-09-27T13:17:54.428250+00:00",
+  "quem": "agent/ci/registrar-descobertas-do-make",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2254",
+  "revisao": "f1efb71c62f24218c8d89e04305428ad88d7cde7",
+  "arvore": "7787b0c5c6b374552da2e1211736768f8bdd0cd1"
+}
