@@ -107,6 +107,12 @@ STREAMS = [
     "eventos.funil.secao-vista",
     "eventos.funil.cta-clicado",
     "eventos.funil.lead-capturado",
+    # Os dois fatos de compra do sistema de experimentos (`checkout`, contrato
+    # F4a): quem foi atribuído a um pedido e quem pagou. É daqui que sai a
+    # métrica principal do primeiro experimento (entrada no checkout) e as
+    # conversões do funil de compra (DESENHO-COMUM.md, sessão de 26/09/2026).
+    "eventos.checkout.pedido-atribuido",
+    "eventos.checkout.pedido-pago",
 ]
 
 #: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
@@ -121,6 +127,10 @@ ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
         "funil.secao-vista",
         "funil.cta-clicado",
         "funil.lead-capturado",
+        # DESENHO-COMUM.md, eventos de compra (F4a): "Sem customer, e-mail,
+        # nome, telefone, documento."
+        "checkout.pedido-atribuido",
+        "checkout.pedido-pago",
     }
 )
 
