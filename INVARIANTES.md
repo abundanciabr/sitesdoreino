@@ -325,6 +325,39 @@ primeira oportunidade de violá-la.
   vazio.
 - **Célula dona:** pagamentos
 
+### [INV-MET-P1] O Livro de Fatos Não Recebe Dado Pessoal
+- **O quê:** todo stream que a `metricas` assina (`STREAMS` em
+  `apps/fatos/management/commands/consume_eventos.py`) tem contrato congelado
+  em `contracts/eventos/`, e esse contrato não declara, em nenhum nível do
+  esquema, uma propriedade cujo nome seja dado pessoal (`customer`, `cliente`,
+  `email`, `e-mail`, `nome`, `name`, `telefone`, `phone`, `cpf`, `documento`,
+  `endereco`, `ip`), salvo campo de `data` que o consumidor descarta antes de
+  guardar (`DESCARTADOS_NA_ENTRADA`), com o descarte provado pela porta de
+  verdade.
+- **Por quê:** `receber()` guarda o envelope inteiro sem filtrar campo nenhum
+  — é o desenho declarado do consumidor ("tudo que chega com envelope bom é
+  guardado"). A cerca é o CONTRATO, ou o descarte na entrada: uma fila de eventos
+  replicada (Redis Streams), um `EventoMorto` inspecionável e um `Evento`
+  imutável não têm como "esquecer" um e-mail depois que ele entrou. Sem este
+  guarda, um contrato aditivo publicado por outra célula (a `metricas` não é
+  dona de nenhum) poderia acrescentar um campo pessoal opcional e ninguém no
+  caminho perceberia — aditivo é sempre PASS no `contrato_aditivo.py`, que
+  mede compatibilidade, não privacidade. O caso real é o
+  `quiz.completado.v1`, que declara `data.lead` (e-mail, nome, telefone). Pela
+  decisão 6 do mantenedor (sessão de 26/09/2026, "Limpar na entrada e
+  expurgar", TAR-800), o contrato não muda: `processar` descarta `lead` antes
+  de `receber`, e a migração `0004_quiz_completado_sem_lead` apagou `lead` dos
+  fatos já guardados, atravessando a trava do banco só dentro da própria
+  transação.
+- **Teste-Guarda:**
+  `services/metricas/tests/test_livro_sem_dado_pessoal.py` — para cada assunto
+  assinado, exige esquema congelado e ausência de campo pessoal em qualquer
+  profundidade, fora os campos de `DESCARTADOS_NA_ENTRADA`, e para cada um
+  deles entrega um envelope pela porta de verdade e exige o fato guardado sem
+  o campo; provado por mutação sobre uma CÓPIA de `STREAMS` (acrescentar
+  `eventos.pedido.criado`, que leva `customer`) sem tocar o consumidor real.
+- **Célula dona:** metricas
+
 ### [INV-SUG11] Identidade Cunhada Guarda o Id da Plataforma
 - **O quê:** toda `Identidade` cunhada pela célula `sugestoes` depois da migration
   `0006` guarda, ao lado do id opaco que ela mesma cunha, o **id da identidade da
