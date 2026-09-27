@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-174042-TAR-910-explicada",
+  "tarefa": "TAR-910",
+  "evento": "explicada",
+  "quando": "2026-09-27T17:40:42.167247+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: Comunidade Meshcraft, rodada 3 (RETOMADA-COMUNIDADE.md); descoberta C da TAR-826",
+  "o_que_e": "A página inicial das conquistas mostra só o degrau do aluno e ainda diz que medalhas e marcos chegam nos próximos passos, embora essas telas já existam. Nenhum link leva até elas.",
+  "o_que_muda": "O aluno encontra, a partir da página de conquistas, as medalhas, os marcos, a forja e o quadro de contribuições, sem precisar saber o endereço.",
+  "exemplo": "É como uma loja com os corredores montados e uma placa na entrada dizendo em breve: a placa passa a apontar os corredores.",
+  "importancia": 55
+}

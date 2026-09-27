@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-174058-TAR-914-explicada",
+  "tarefa": "TAR-914",
+  "evento": "explicada",
+  "quando": "2026-09-27T17:40:58.435104+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: Comunidade Meshcraft, rodada 3 (RETOMADA-COMUNIDADE.md); prova local que antecipa a parte sem produção da TAR-828",
+  "o_que_e": "As telas da Comunidade no fórum foram feitas para caber no celular e funcionar pelo teclado, mas ninguém abriu num navegador de verdade para medir.",
+  "o_que_muda": "Fica medido, num navegador, que a pessoa no celular não precisa rolar para o lado e que quem usa só o teclado chega ao botão principal vendo onde está.",
+  "exemplo": "É como testar a rampa de acesso com uma cadeira de rodas antes da inauguração, em vez de confiar na planta.",
+  "importancia": 35
+}

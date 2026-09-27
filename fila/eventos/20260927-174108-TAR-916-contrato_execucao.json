@@ -1,0 +1,64 @@
+{
+  "arquivo": "20260927-174108-TAR-916-contrato_execucao",
+  "tarefa": "TAR-916",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T17:41:08.224342+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-3",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 3 (B1): O convite para a Comunidade chega ao site desligado, para o mantenedor ligar quando quiser",
+    "versao": 1,
+    "objetivo": "Workflow manual e script no molde de semear-boas-vindas semeiam na VPS a jornada convite-para-a-comunidade desligada, com prova por fora do comando.",
+    "entregaveis": [
+      "Workflow semear-convite-para-a-comunidade.yml sem entrada de ligar",
+      "Script infra/semear-convite-para-a-comunidade.sh idempotente com prova por fora",
+      "Um run do workflow na main com a prova"
+    ],
+    "escopo_incluido": [
+      ".github/workflows/semear-convite-para-a-comunidade.yml",
+      "infra/semear-convite-para-a-comunidade.sh"
+    ],
+    "nao_objetivos": [
+      "Ligar o convite (gesto do mantenedor)",
+      "Qualquer arquivo em services/",
+      "Outra ação na VPS além deste workflow"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Arquivos disjuntos das outras frentes da rodada, como o brief lista",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit",
+      "PR em rascunho até o revisor da coordenação ler"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Decisões do mantenedor em 27/09/2026, pergunta estruturada na sessão: matrícula ativa dá acesso, só a professora assina laudo, página de orientação pública, quadro exige matrícula ativa, Cristais de medalha retirada ficam com o aluno, convite vai ao site desligado"
+    ],
+    "etapas": [
+      "Abrir bancada pelo sessao.py da bancada em dia e medir a linha de base",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte, travessão",
+      "PR em rascunho por ci/pr.py com a própria TAR"
+    ],
+    "criterios_entrada": [
+      "TAR-916 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Guardas de workflow com SSH verdes",
+      "Run na main verde",
+      "Jornada existe com ativa falso e passos contados",
+      "Segundo run não duplica",
+      "PR MERGED com Mandato-do-mantenedor"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy quando houver"
+    ],
+    "condicao_encerramento": "workflow e script no molde de semear-boas-vindas integrados com a linha de mandato; guardas de workflow verdes; um run do workflow na main verde; prova por fora do comando de que a jornada convite-para-a-comunidade existe e está desligada; rodar de novo não duplica",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção além do autorizado viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Ligar o convite em /admin/escola/jornadas/ quando quiser, depois da prova."
+  }
+}
