@@ -1,0 +1,19 @@
+{
+  "arquivo": "882-as-fichas-e-as-mensagens-do-rito-passam-a-ensinar-a-tarefa-o",
+  "id": "TAR-882",
+  "titulo": "As fichas e as mensagens do rito passam a ensinar a tarefa obrigatória no PR",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com teste vermelho para verde em ci/tests/test_pr.py e fichas de despacho ensinando TAR= no make pr",
+  "despacho": "Seguimento pedido pelo revisor do PR #2238: fichas e LEIA-ME ensinam TAR= obrigatório no make pr; mensagem de dependência ensina merge de origin/main; renome para dependência não concluída; sessão legada com TAR na abertura recusa sem --tarefa; guarda da recusa provada; conferir o portão de pouso de ci/mergear.py.",
+  "origem": "revisor do PR #2238, sessão de 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
