@@ -132,7 +132,9 @@ def _preparar_historico(rede, aula_publicada, client, monkeypatch):
     dublar_sessao(rede, PROFESSORA)
     dublar_matricula(rede, PROFESSORA["email"], "cadastrado")
     amanha = timezone.localdate() + dt.timedelta(days=2)
-    laudo = _emitir_laudo_devolvido(client, envio, aula_id=e00.id, data_de_retorno=amanha)
+    laudo = _emitir_laudo_devolvido(
+        client, envio, aula_id=e00.id, data_de_retorno=amanha
+    )
     # `emitir` grava `envio.estado`; a cópia em memória precisa acompanhar,
     # senão o teste compara o snapshot de ANTES do laudo com o de depois.
     envio.refresh_from_db()
