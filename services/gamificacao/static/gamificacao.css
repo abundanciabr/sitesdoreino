@@ -254,6 +254,11 @@ form button {
 /* O link na fila da equipe: a cor padrão do navegador some no tema escuro. */
 .prova a { color: var(--marca); }
 
+/* O RASTRO DOS RECONHECIMENTOS (TAR-850). A referência da origem e o id da
+   pessoa são textos sem espaço de até 64 letras: em 390 px eles quebram. */
+.pedido .miudo, .historia { overflow-wrap: anywhere; }
+.historia { margin: 4px 0 8px; padding-left: 22px; }
+
 /* Foco visível para quem navega pelo teclado, em todo controle da célula. */
 a:focus-visible, button:focus-visible, input:focus-visible,
 select:focus-visible, textarea:focus-visible {
