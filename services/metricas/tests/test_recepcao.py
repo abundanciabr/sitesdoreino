@@ -246,6 +246,7 @@ def test_campo_pessoal_no_funil_vira_evento_morto_pelo_processar(tipo):
     """
     from apps.fatos.management.commands.consume_eventos import processar
 
+    # guarda: services/metricas/apps/fatos/management/commands/consume_eventos.py:189
     corpo, dados = _envelope_do_funil(tipo)
     envelope_com_email = json.loads(corpo)
     envelope_com_email["data"] = {**dados, "email": "pessoa@exemplo.test"}
@@ -271,6 +272,7 @@ def test_campo_pessoal_fora_dos_assuntos_protegidos_continua_sendo_guardado():
     """
     from apps.fatos.management.commands.consume_eventos import processar
 
+    # guarda: services/metricas/apps/fatos/management/commands/consume_eventos.py:186
     corpo = envelope(
         data={
             "site_id": "meshcraft",

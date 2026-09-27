@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-245-ci-pista-da-prioridade-ao-pr-com-fome",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: pista dá prioridade ao PR com fome",
+  detalhe: "PR lento que a pista atualizou duas vezes seguidas segura a fila enquanto mede; solta em vermelho, verde, rascunho ou 20 min.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2266. Validação local: árvore c5fa093638492f8049fb7face73af2ef1c9a59ad; commit d35957b0276cdcfdd1bbed9b665b63da96ab7202; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-891",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

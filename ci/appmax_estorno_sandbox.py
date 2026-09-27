@@ -172,7 +172,10 @@ def preparar():
     fonte = Path(__file__).read_text(encoding="utf-8").split("\ndef preparar():")[0]
     destino = Path(os.environ["RUNNER_TEMP"]) / "appmax-estorno-sandbox.sh"
     destino.write_text(
-        "#!/bin/sh\nset -eu\npython3 - <<'PY_APPMAX_ESTORNO'\n"
+        # O ssh-action fecha a saída multilinha com `echo EOF` sob
+        # `bash -e -o pipefail`: saída diferente de zero aqui apaga a evidência.
+        # O veredito vem do JSON, no `conferir` (armadilha do PR #2249/TAR-868).
+        "#!/bin/sh\nset -eu\npython3 - <<'PY_APPMAX_ESTORNO' || true\n"
         + fonte
         + "\nraise SystemExit(executar())\nPY_APPMAX_ESTORNO\n",
         encoding="utf-8",

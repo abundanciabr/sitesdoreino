@@ -217,8 +217,48 @@ def test_a_evidencia_soma_o_texto_de_fora_ao_numero_do_pr(tmp_path):
     texto = next((raiz / "painel" / "registros").glob("*.js")).read_text(encoding="utf-8")
     evidencia = pr.campos_lidos(texto)["evidencia"]
     assert evidencia.startswith(URL_DO_PR)
-    assert "9 passed" not in evidencia
+    assert "9 passed" in evidencia
     assert "exit 0" in evidencia
+
+
+def test_evidencia_da_flag_chega_ao_recibo_somada_a_url_do_pr(tmp_path):
+    """`armadilhas/-`: `--evidencia` era lido e descartado em silêncio; o
+    recibo saía só com a URL do PR e a prova real (run da VPS, por exemplo)
+    se perdia."""
+    raiz = bancada(tmp_path)
+    url_da_prova = "https://github.com/abundanciabr/sitesdoreino/actions/runs/123"
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    pr.abrir(raiz, pedido(raiz, evidencia=url_da_prova), rodar=dub, hoje=HOJE)
+
+    texto = next((raiz / "painel" / "registros").glob("*.js")).read_text(encoding="utf-8")
+    evidencia = pr.campos_lidos(texto)["evidencia"]
+    assert url_da_prova in evidencia
+
+
+def test_sem_a_flag_de_evidencia_nada_muda_no_recibo(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+
+    texto = next((raiz / "painel" / "registros").glob("*.js")).read_text(encoding="utf-8")
+    evidencia = pr.campos_lidos(texto)["evidencia"]
+    assert evidencia == (
+        f"{URL_DO_PR}. Validação local: árvore {'a' * 40}; commit {'b' * 40}; "
+        "1 comando(s), exit 0. Revisão, integração e publicação não verificadas."
+    )
+
+
+def test_evidencia_grande_demais_recusa_com_mensagem_que_ensina_a_flag(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="--evidencia") as excinfo:
+        pr.abrir(raiz, pedido(raiz, evidencia="x" * 900), rodar=dub, hoje=HOJE)
+
+    assert not list((raiz / "painel" / "registros").glob("*.js"))
+    assert "Encurte o texto de --evidencia" in excinfo.value.o_que_fazer
 
 
 def test_a_frente_sai_dos_caminhos_tocados_quando_ninguem_a_declara():
@@ -310,7 +350,7 @@ def test_arvore_sem_mudancas_recusa(tmp_path):
 # e #2220 saíram com o texto de outra tarefa.
 @pytest.mark.parametrize("campo", ["mensagem_arquivo", "corpo_arquivo", "validacao_arquivo", "detalhe_arquivo"])
 def test_arquivo_de_entrada_fora_da_bancada_recusa_antes_de_gravar(tmp_path, monkeypatch, campo):
-    # guarda: ci/pr.py:743
+    # guarda: ci/pr.py:749
     raiz = bancada(tmp_path)
     monkeypatch.setattr(pr, "base_de_scratch_padrao", lambda: tmp_path / "sessoes")
     copias = {"mensagem_arquivo": "mensagem.txt", "corpo_arquivo": "corpo.md", "validacao_arquivo": "validacao.json"}
@@ -494,6 +534,24 @@ def test_o_leia_me_manda_pelo_make_pr():
     texto = (RAIZ_DO_REPO / "painel" / "LEIA-ME.md").read_text(encoding="utf-8")
     assert "make pr" in texto
 
+
+def test_o_exemplo_canonico_do_make_pr_ensina_a_tarefa_obrigatoria():
+    import tomllib
+
+    ficha_codex = tomllib.loads(
+        (RAIZ_DO_REPO / ".codex/agents/despacho.toml").read_text(encoding="utf-8")
+    )["developer_instructions"]
+    textos = {
+        ".claude/agents/despacho.md": (RAIZ_DO_REPO / ".claude/agents/despacho.md").read_text(encoding="utf-8"),
+        ".codex/agents/despacho.toml": ficha_codex,
+        "painel/LEIA-ME.md": (RAIZ_DO_REPO / "painel/LEIA-ME.md").read_text(encoding="utf-8"),
+    }
+    for nome, texto in textos.items():
+        exemplo = texto.split("make pr TITULO=", 1)[1].split("```", 1)[0]
+        assert "TAR=TAR-NNN" in exemplo, nome
+        assert "quando aplicável" not in texto, nome
+        assert "quando esta entrega" not in texto, nome
+
 def test_evidencia_ausente_recusa_antes_de_publicar(tmp_path):
     raiz = bancada(tmp_path)
     dub = Duble(RESPOSTAS_FELIZES)
@@ -648,7 +706,8 @@ def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aber
     fases = []
     monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
     monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
-    pr.abrir(raiz, pedido(raiz), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
+    declarada = tarefa_aberta if tarefa_aberta.startswith('TAR-') else None
+    pr.abrir(raiz, pedido(raiz, tarefa=declarada), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
     assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('validacao','concluido'), ('fechamento','concluido')]
     assert {d['tentativa'] for f,r,d in fases} == {'tentativa-abertura'}
     assert {d['tarefa'] for f,r,d in fases} == {tarefa_aberta}
@@ -1153,6 +1212,7 @@ def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
 @pytest.mark.parametrize("onde", ["titulo", "corpo", "detalhe"])
 def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
     """PRs #2189 e #2190: citar outra tarefa no texto a fechou de verdade."""
+    # guarda: ci/pr.py:692
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
@@ -1172,19 +1232,33 @@ def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
 
 
 def test_sem_tarefa_a_recusa_ensina_a_tar_da_abertura(tmp_path, monkeypatch):
+    # guarda: ci/pr.py:692
     raiz = bancada(tmp_path)
     monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
     dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
     with pytest.raises(pr.ParouPorSeguranca) as recusa:
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
-    assert "Repita com --tarefa TAR-001" in recusa.value.o_que_fazer
+    assert "Repita com TAR=TAR-001 (make pr) ou --tarefa TAR-001 (python ci/pr.py)" in recusa.value.o_que_fazer
     assert not dub.pediu("ci/fila.py")
     assert not dub.pediu("git add")
 
 
+def test_sessao_legada_aberta_com_tar_recusa_sem_tarefa(tmp_path, monkeypatch):
+    """Na main antiga a TAR da abertura recebia eventos; sem --tarefa, calar a perde."""
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca) as recusa:
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert "TAR=TAR-001" in recusa.value.o_que_fazer
+    assert not dub.pediu("ci/fila.py")
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
 @pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
-def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
-    # guarda: ci/pr.py:680
+def test_tar_com_dependencia_nao_concluida_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
+    # guarda: ci/pr.py:714
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {
@@ -1196,8 +1270,9 @@ def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypat
     with pytest.raises(pr.ParouPorSeguranca) as recusa:
         pr.abrir(raiz, pedido(raiz, tarefa="TAR-002"), rodar=dub, hoje=HOJE)
     estado = fila.CANCELADA if fim_da_dependencia else fila.NA_FILA
-    assert f"TAR-001 ({estado})" in recusa.value.resumo
+    assert f"dependência não concluída: TAR-001 ({estado})" in recusa.value.resumo
     assert "depende_de" in recusa.value.o_que_fazer
+    assert "merge de origin/main" in recusa.value.o_que_fazer
     assert not dub.pediu("ci/fila.py")
     assert not dub.pediu("git add")
     assert not dub.pediu("gh pr create")

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-150051-TAR-752-concluida",
+  "tarefa": "TAR-752",
+  "evento": "concluida",
+  "quando": "2026-09-27T15:00:51.340375+00:00",
+  "quem": "coordenacao-appmax-r3",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/2196; revisao=180720bca430e1f64037d381bd7da05d60bd6c07; arvore=c73adae5bd341fd5ada70bee2afcd970d4887d26; head=0d9626b1f7fc64c2307aca1b04d66918842a1a9d; merge=33343a24c0e3c4f09daf83576727d71aa461102d; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/36297814199; linhagem=retroativa: linhagem perdida por quatro reivindicacoes expiradas; PRs 2187 e 2196 integrados com deploy-celula success; aceite 177 integrado pelo PR 2223; linhagem recusada (há código posterior à revisão: ci/sessao.py, ci/tests/test_sessao_persistente.py, services/metricas/requirements.txt); suíte verde no HEAD entregue: muralhas=1x success, ci-celula-gate=1x success; aceite=painel/registros/20260927-177-alunos-suspende-matricula-na-reversao-publicado.js",
+  "verificado_em": "2026-09-27"
+}
