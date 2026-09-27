@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-070728-TAR-841-explicada",
+  "tarefa": "TAR-841",
+  "evento": "explicada",
+  "quando": "2026-09-27T07:07:28.227124+00:00",
+  "quem": "revisao do PR 2207 em 27/09/2026 (frente C6 da Comunidade, TAR-827)",
+  "o_que_e": "A vista da equipe da Comunidade pinta de vermelho, como se fosse falha do sistema, o aviso de que um grupo ainda nao tem responsavel. No forum, vermelho e reservado a erro de verdade; explicacao operacional usa a cor de recado.",
+  "o_que_muda": "A professora abre a vista e entende que falta nomear um responsavel, sem achar que algo quebrou; o vermelho volta a significar falha.",
+  "exemplo": "Um grupo novo sem responsavel mostra um recado amarelo dizendo que as esperas nao tem dono, em vez de uma faixa vermelha de erro.",
+  "importancia": 30
+}
