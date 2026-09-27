@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260927-021715-TAR-803-contrato_execucao",
+  "tarefa": "TAR-803",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T02:17:15.835667+00:00",
+  "quem": "agent/e2e/sonda-pix-publica",
+  "contrato": {
+    "plano": "Sonda pública Pix antes e depois (frente N7 da obra Appmax)",
+    "versao": 1,
+    "objetivo": "Medir com um comando e um run público se o Pix do Mercado Pago está vivo no checkout de meshcraft.top, antes e depois de cada mudança do cartão Appmax.",
+    "entregaveis": [
+      "e2e/sonda_pix_publica.js: navegador de verdade, um pedido Pix sintético por execução, sem pagar, veredito PASS FAIL ERROR e JSON sanitizado",
+      "Auto-teste sem rede que prova que o leitor do QR e do código copiável morde nos dois sentidos",
+      ".github/workflows/sonda-pix-publica.yml: disparo manual, sem segredo, uma execução por vez"
+    ],
+    "escopo_incluido": [
+      "Página pública /checkout/<oferta>/ e /checkout/pedido/<id>/pix/ de meshcraft.top",
+      "Comprador sintético sonda-pix-<marca>@meshcraft.top, no padrão do canário da fase 3"
+    ],
+    "nao_objetivos": [
+      "Pagar, cobrar ou estornar",
+      "Pix pela Appmax (exige CPF, e a sonda não usa CPF)",
+      "Mudar checkout, pagamentos, infra ou a configuração do site",
+      "e2e/appmax_sandbox.js, ci/operacoes_vps.py e operacoes-vps.yml"
+    ],
+    "restricoes": [
+      "Nenhum dado de pessoa real; sem CPF",
+      "Um pedido por execução, sem retentativa do envio",
+      "Log e JSON sem e-mail, sem id bruto do pedido e sem o conteúdo do código Pix",
+      "Texto publicado sem travessão"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato do mantenedor em 26/09/2026 22h53 BRT, sessão Claude Code: N7 aprovada, inclusive criar pedido real pendente em produção"
+    ],
+    "etapas": [
+      "Auto-teste do leitor nasce vermelho e fica verde",
+      "Sonda contra meshcraft.top e run público antes",
+      "PR com mandato e pouso"
+    ],
+    "criterios_entrada": [
+      "Checkout público de meshcraft.top responde",
+      "Playwright disponível no runner"
+    ],
+    "criterios_aceite": [
+      "Auto-teste PASS e cada guarda reprova quando sabotado",
+      "Com Pix no Mercado Pago: QR PNG visível e código copiável EMV com br.gov.bcb.pix, um pedido criado, IDs sanitizados e horário no JSON",
+      "Com Pix desviado para a Appmax: nenhum pedido criado e FAIL que nomeia a causa",
+      "Run público antes registrado"
+    ],
+    "evidencias_exigidas": [
+      "Saída do auto-teste e das sabotagens",
+      "Run do workflow sonda-pix-publica.yml com o JSON sanitizado",
+      "PR integrado"
+    ],
+    "condicao_encerramento": "Sonda integrada, run público antes medido e registrado. O run depois é critério de uso: repete-se no canário (TAR-565) e no drill de rollback (N6), não fecha esta TAR.",
+    "limites_autonomia": "Criar no máximo um pedido Pix pendente por execução em produção; nunca pagar nem reenviar; não alterar a configuração do site.",
+    "acoes_do_mantenedor": "Decidir se o Pix de meshcraft.top volta ao Mercado Pago ou se a medida antes e depois passa a ser do Pix Appmax sandbox; sem isso o run antes reprova com a causa nomeada."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "arquivo": "828-a-prova-do-percurso-inteiro-da-comunidade-em-producao-com-du",
+  "id": "TAR-828",
+  "titulo": "A prova do percurso inteiro da Comunidade em producao, com duas contas de teste",
+  "toca": [
+    "e2e",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-823",
+    "TAR-824",
+    "TAR-825",
+    "TAR-826",
+    "TAR-827"
+  ],
+  "cria": [],
+  "move": [
+    "primeira-acao-em-7-dias"
+  ],
+  "evidencia_exigida": "run local do e2e/comunidade.js contra meshcraft.top com saida e capturas sanitizadas; registro tipo medicao no livro com URL e veredito por passo; membro A nao le, nao busca, nao abre por id o grupo de B; reconhecimento existe uma vez; equipe ve a espera com responsavel; viewport 390 px e navegacao por Tab",
+  "despacho": "# Brief compilado\n\nobjetivo: A prova do percurso inteiro da Comunidade em producao com duas contas de teste\ntipo: teste\nmodelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: guarda focado nasce de comportamento ja definido; contrato aberto sobe para produto\ncelula: e2e\n\n## Arquivos-alvo\n- e2e/comunidade.js\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n## Frente C8 da Comunidade Meshcraft: a prova do percurso inteiro em produção\n\nOrigem: pedido do mantenedor de 27/09/2026 (implementar a Comunidade Meshcraft,\nespecificação em `docs/comunidade/` §15: \"nenhum agente poderá considerar uma\ntela pronta como prova de que o percurso completo funciona\"). Rota:\n`RETOMADA-COMUNIDADE.md` seções 1, 7 (frente C8) e 9. Depende de C1, C3, C4,\nC5 e C6 PUBLICADAS (deploy verde no SHA do merge) e das contas de teste\n(decisão 6, gesto dele): duas contas com matrícula ativa em grupos diferentes\n(membro A e membro B) e a professora de teste nas listas `FORUM_PROFESSORES`,\n`CURSOS_PROFESSORES` e `IDS_DA_EQUIPE` da VPS. Sem as contas, bloqueie a tarefa\ncom `--espera mantenedor` no primeiro minuto e devolva.\n\nÁrea: e2e (sem serviço). Bancada: `python ci/sessao.py --celula e2e --tarefa comunidade-prova --tar TAR-NNN --sem-container`.\nMolde: `services/quiz/tests/quiz_browser.js` e `services/quiz/tests/e2e_browser.py`\n(Playwright); `e2e/painel_no_navegador.js` para o arranjo do arquivo.\n\nArquivos-alvo: `e2e/comunidade.js` (novo) e, se precisar, `e2e/LEIA-ME.md`.\nCredenciais SÓ por variável de ambiente local (`COMUNIDADE_E2E_MEMBRO_A`,\n`COMUNIDADE_E2E_MEMBRO_B`, `COMUNIDADE_E2E_PROFESSORA`, com o cookie de sessão\nou o caminho de login que ele indicar), nunca no repositório, nunca na saída,\nnunca na sessão. Saída e capturas sanitizadas: sem e-mail, sem nome de pessoa.\n\nO que a prova percorre em `https://meshcraft.top`:\n1. membro A entra e lê `/docs/comunidade` e `/forum/comunidade` (200; próxima\n   ação visível);\n2. A vê o próprio grupo; A NÃO lê o grupo de B: 404 por id de tópico, ausente\n   na lista e na busca (`/forum/buscar`), nunca 403;\n3. A abre um pedido de ajuda no grupo; B (em outro grupo) não o vê;\n4. A abre o desafio do estágio em `/cursos/<curso>/`, envia o link (envio 1);\n5. a professora vê o envio em `/cursos/plantao`, assina laudo `devolvido` com\n   data; A vê em `/cursos/<numero>/laudo` a data e o envio 1; A reenvia (envio\n   2) e os dois ficam lado a lado; a professora assina `aberto`; a porta seguinte\n   abre;\n6. `/conquistas/medalhas` mostra o critério de \"Primeiro ciclo concluído\" e,\n   se a medalha estiver ligada em `/admin/economia/`, a concessão existe UMA vez\n   (repetir a página, recarregar, não duplica);\n7. um colega do grupo de A responde a dúvida de A; A marca a resposta aceita;\n   `/conquistas/medalhas` do colega mostra \"Primeira ajuda aceita\" uma vez;\n8. a professora vê a espera com responsável na vista da equipe do fórum;\n9. tudo repetido em viewport 390 px e com navegação só por Tab no grupo, no\n   envio e no laudo (foco visível, ordem, rótulos).\n\nAceite: run local com saída colada e capturas sanitizadas em pasta fora do\nrepositório; cada passo com URL e código HTTP; registro `tipo: medicao` no\nlivro (`painel/registros/`, número por `python ci/reservar.py numero registro`)\ncom as URLs e o veredito por passo; falha de qualquer passo é bloqueio com fato,\nimpacto, responsável e ação, nunca \"parcialmente pronto\".\n\nContrato: `python ci/mapa_de_execucao.py --tar TAR-NNN`.\nPR: `python ci/pr.py --titulo \"e2e: a prova do percurso da Comunidade em produção\" --tipo medicao --frente comunidade --tarefa TAR-NNN ...`\n(Lista B; linha `Mandato-do-mantenedor: mandato prévio por faixa e2e ; docs/decisoes/MANDATO-POR-FAIXA.md ; sessão de 27/09/2026`).\nA partir das 21h30 de São Paulo não comece caixa nova; feche ou bloqueie.",
+  "origem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

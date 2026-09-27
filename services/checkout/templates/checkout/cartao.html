@@ -29,7 +29,7 @@
   {{ api_token|json_script:"api-token" }}
   {{ api_base|json_script:"api-base" }}
   {{ appmax_external_id|json_script:"appmax-external-id" }}
-  <div class="wrap" x-data="cartaoIsland()" x-init="init()">
+  <div class="wrap" x-data="cartaoIsland()">
     <div class="card">
       <h1>Pague com cartão</h1>
       <p class="total" x-text="`Total: R$ ${(totalCents / 100).toFixed(2)}`"></p>
@@ -76,7 +76,7 @@
       </form>
       <p class="status" x-text="statusLabel()"></p>
       <p class="erro" x-show="erro" x-text="erro"></p>
-      <a class="link" href="{{ offer_url }}" x-show="status !== 'pago' && status !== 'reembolsado' && status !== 'carregando'">Voltar à escolha do pagamento</a>
+      <a class="link" href="{{ offer_url }}" x-show="!emAnalise && status !== 'pago' && status !== 'reembolsado' && status !== 'carregando'">Voltar à escolha do pagamento</a>
       <button class="acao" type="button" x-show="status === 'erro'" @click="poll()">Tentar consultar novamente</button>
     </div>
   </div>

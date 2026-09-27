@@ -1,0 +1,18 @@
+{
+  "arquivo": "20260927-030204-TAR-752-checkpoint",
+  "tarefa": "TAR-752",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T03:02:04.356994+00:00",
+  "quem": "despacho-claude-appmax-reversao-20260926",
+  "plano": "V6 etapa 5 de 5: entrega interrompida pelo encerramento da sessao",
+  "ultimo_avanco": "codigo e testes completos em 16becbd3; suite alunos 280 passed; guardas 3/3 PASS FAIL PASS; ci/pr.py interrompido antes de abrir PR",
+  "proxima_acao": "na bancada, com DATABASE_URL e REDIS_STREAMS_URL de postgres e redis da celula, rodar python ci/pr.py --tarefa TAR-752 com os arquivos em scratchpad (mensagem, corpo, detalhe, validacao.json) e medir checks com ci/esperar.py",
+  "verificacoes": [
+    "pytest services/alunos: 280 passed; provar_guardas: PASS 3/3; freeze-de-contrato alunos: PASS"
+  ],
+  "contexto": {
+    "branch": "agent/alunos/appmax-reversao-consumidor",
+    "worktree": "C:/Users/davia/.codex/worktrees/appmax-reversao/sitesdoreino-limpo-20260923",
+    "sha": "1f0c7e63"
+  }
+}
