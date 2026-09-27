@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-199-instalacao-appmax-da-meshcraft-concluida-no-sandbox",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Instalação Appmax da Meshcraft concluída no sandbox",
+  detalhe: "Faltava concluir a autorização MERCHANT da Meshcraft no sandbox. O comando entrou no PR 2055 e depois dele um cartão sandbox foi cobrado e integrado (PRs 2066 e 2159).",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2055, https://github.com/abundanciabr/sitesdoreino/pull/2066 e https://github.com/abundanciabr/sitesdoreino/pull/2159 MERGED (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260924-048-infra-iniciar-instalacao-appmax-da-meshcraft-no-sandbox",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

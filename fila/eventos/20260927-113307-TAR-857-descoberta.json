@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-113307-TAR-857-descoberta",
+  "tarefa": "TAR-857",
+  "evento": "descoberta",
+  "quando": "2026-09-27T11:33:07.152907+00:00",
+  "quem": "agent/painel/baixa-dos-problemas-abertos",
+  "detalhe": "Registros do mesmo dia só têm data, sem hora. No empate, a ordenação por data de painel/logica.js mantém a ordem do nome do arquivo, crescente. Em 27/09 havia 108 registros do dia e a janela dos 30 recentes ficou com 20260927-002 a 043, deixando fora os mais novos (100 em diante). O bloco O que mudou mostra a manhã, não o último fato.",
+  "evidencia": "medido na bancada agent/painel/baixa-dos-problemas-abertos sobre a0f2e7a3: porData em montarResumo devolveu 20260926-093 e 20260927-002 a 20260927-043 como os 30 primeiros",
+  "classificacao": "C",
+  "criterio": "o resumo leva os 30 registros mais recentes e a capa mostra os 8 mais novos em O que mudou",
+  "encaminhamento": "desempate pelo arquivo, decrescente, nas ordenações por data de painel/logica.js (montarResumo, mudancasRecentes e naoComprovados), com guarda em painel/testes/teste_logica.js provado por mutação e livro de teste maior que 30 (armadilha 317)"
+}

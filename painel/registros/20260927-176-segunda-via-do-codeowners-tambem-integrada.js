@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-176-segunda-via-do-codeowners-tambem-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Segunda via do CODEOWNERS também integrada",
+  detalhe: "Segundo registro do mesmo PR que protege a lei e as decisões no CODEOWNERS, aberto porque faltava o mandato. O PR entrou na main em 14/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1659 MERGED em 14/09/2026, mergeCommit b4b88ebafb (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260914-024-maestro-proteger-a-lei-canonica-e-as-decisoes-no-codeowners",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "maestro",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
