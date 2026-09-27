@@ -74,7 +74,10 @@ def test_pagina_pix_nao_carrega_appmax(client, api, rede, sessao_a):
     assert "appmax" not in corpo
 
 
-def test_pagina_cartao_carrega_sdk_e_formulario_appmax(client, api, rede, sessao_a):
+def test_pagina_cartao_carrega_sdk_e_formulario_appmax(
+    client, api, rede, sessao_a, settings
+):
+    settings.APPMAX_API_URL = "https://api.appmax.com.br"
     order_id = _abrir_pedido(api, sessao_a, "card")
     resp = client.get(f"/pedido/{order_id}/cartao/", HTTP_HOST=HOST_A)
     corpo = resp.content.decode()
