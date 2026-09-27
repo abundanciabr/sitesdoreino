@@ -975,7 +975,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "A fila da conferencia dos portfolios",
-      "descricao": "O bastidor onde a equipe da escola confere os portfolios que os alunos mandam. Cada pedido aparece com as obras do aluno, o que falta em cada uma e a data ate quando responder, o mais urgente em cima. A equipe aceita, ou devolve escolhendo uma das frases que a escola escreveu, e o aluno le essa frase inteira na tela dele.",
+      "descricao": "O bastidor onde a equipe da escola confere os portfolios que os alunos mandam. Cada pedido aparece com as obras do aluno, o que falta em cada uma e a data ate quando responder, o mais urgente em cima. A equipe aceita, ou devolve escolhendo uma das frases que a escola escreveu, e o aluno le essa frase inteira na tela dele. Cada pedido mostra quem da equipe assumiu, ou que esta sem responsavel, e ha quantos dias uteis espera.",
       "observacao": "So abre para quem esta na lista de quem confere, guardada no servidor. Enquanto essa lista nao for escrita, a pagina responde a todo mundo que a pessoa nao esta nela, e os pedidos dos alunos continuam guardados e esperando."
     },
     {
@@ -987,6 +987,16 @@
       "gesto": true,
       "titulo": "Aceitar ou devolver a conferencia de um portfolio",
       "descricao": "Nao e uma pagina: e o que acontece quando alguem da equipe aperta um dos dois botoes de um pedido da fila. Abrir este endereco no navegador nao mostra nada."
+    },
+    {
+      "celula": "pages",
+      "rota": "equipe/assumir",
+      "endereco": "/pages/equipe/assumir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Assumir um pedido de conferencia da fila",
+      "descricao": "Nao e uma pagina: e o que acontece quando alguem da equipe aperta o botao de assumir um pedido. A fila passa a mostrar quem responde por ele. Abrir este endereco no navegador nao mostra nada."
     },
     {
       "celula": "gamificacao",

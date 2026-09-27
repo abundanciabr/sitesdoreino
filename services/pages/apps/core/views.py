@@ -714,6 +714,7 @@ def desenhar_fila(request, site_id, *, recusa="", feito="", status=200):
     """
     regras = regras_da_escola() if site_id else {}
     agora = timezone.now()
+    quem_olha = request.membro_da_equipe["id"]
     linhas = [
         {
             "pedido": pedido,
@@ -721,6 +722,8 @@ def desenhar_fila(request, site_id, *, recusa="", feito="", status=200):
                 list(pedido.portfolio.pecas.order_by("ordem")), regras
             ),
             "atrasado": pedido.prazo_ate < agora,
+            "dias_de_espera": conferencia.dias_uteis_de_espera(pedido.criado_em, agora),
+            "assumido_por_voce": pedido.assumido_por == quem_olha,
         }
         for pedido in (conferencia.fila_da_equipe(site_id) if site_id else [])
     ]
@@ -763,23 +766,11 @@ def decidir(request):
     if site_id is None:
         return desenhar_fila(request, None, status=503)
 
-    numero = (request.POST.get("pedido") or "").strip()
-    pedido = (
-        conferencia.fila_da_equipe(site_id).filter(pk=numero).first()
-        if numero.isdigit()
-        else None
+    pedido = conferencia.pedido_da_escola(
+        site_id, (request.POST.get("pedido") or "").strip()
     )
     if pedido is None:
-        return desenhar_fila(
-            request,
-            site_id,
-            recusa=(
-                "Esse pedido não está mais esperando nesta fila. Ou alguém da "
-                "equipe já respondeu, ou ele é de outra escola. Atualize a "
-                "página para ver a fila de agora."
-            ),
-            status=404,
-        )
+        return pedido_fora_da_fila(request, site_id)
 
     gesto = request.POST.get("gesto") or ""
     try:
@@ -799,6 +790,51 @@ def decidir(request):
         return desenhar_fila(request, site_id, recusa=str(recusa), status=422)
 
     return redirect(f"{reverse('equipe')}?feito={gesto}")
+
+
+def pedido_fora_da_fila(request, site_id):
+    """O número que chegou não é de pedido nenhum desta escola.
+
+    Pedido já respondido NÃO cai aqui: ele é desta escola e chega à regra, que
+    diz quem respondeu e quando. Aqui só chega o número de outra escola ou um
+    número que não existe.
+    """
+    return desenhar_fila(
+        request,
+        site_id,
+        recusa=(
+            "Esse pedido não está nesta fila. Ele é de outra escola, ou o "
+            "número não existe. Atualize a página para ver a fila de agora."
+        ),
+        status=404,
+    )
+
+
+@require_POST
+def assumir(request):
+    """Alguém da equipe diz "este é comigo", e a fila passa a mostrar o nome.
+
+    Quem assume sai do SERVIDOR, nunca do formulário, pelo mesmo motivo do
+    `decidir`: um campo escondido com o id seria uma etiqueta que qualquer
+    navegador escreve. O token do formulário vem do `CsrfViewMiddleware`, que
+    esta casa liga para toda escrita.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return desenhar_fila(request, None, status=503)
+
+    pedido = conferencia.pedido_da_escola(
+        site_id, (request.POST.get("pedido") or "").strip()
+    )
+    if pedido is None:
+        return pedido_fora_da_fila(request, site_id)
+
+    try:
+        conferencia.assumir(pedido=pedido, assumido_por=request.membro_da_equipe["id"])
+    except conferencia.ConferenciaRecusada as recusa:
+        return desenhar_fila(request, site_id, recusa=str(recusa), status=422)
+
+    return redirect(f"{reverse('equipe')}?feito=assumir")
 
 
 # ---------------------------------------------------------------------------
