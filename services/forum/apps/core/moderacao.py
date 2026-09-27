@@ -434,9 +434,53 @@ def _rastro_do_grupo(ator, grupo, responsavel_antes, vagas_antes) -> list:
     return rastro
 
 
+def _rastro_da_area(ator, area: Area, campos: dict) -> list:
+    """As linhas de uma edição de área: o nome, e quem enxerga ou escreve nela.
+
+    Chamada ANTES de a área mudar: `area` ainda é o antes e `campos` é o depois,
+    e a linha guarda os dois. A descrição não vira linha: ela não muda quem lê
+    nem quem escreve, e o texto inteiro não cabe no rastro.
+    """
+    rastro = []
+    if campos["nome"] != area.nome:
+        rastro.append(
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.RENOMEAR_AREA,
+                area=area,
+                detalhe=f'de "{area.nome}" para "{campos["nome"]}"',
+            )
+        )
+    mudancas = []
+    for rotulo, escolhas, campo in (
+        ("quem enxerga", Area.Visibilidade, "visibilidade"),
+        ("quem escreve", Area.QuemEscreve, "quem_escreve"),
+    ):
+        antes, depois = getattr(area, campo), campos[campo]
+        if antes != depois:
+            nomes = dict(escolhas.choices)
+            mudancas.append(
+                f'{rotulo} de "{nomes.get(antes, antes)}" para "{nomes[depois]}"'
+            )
+    if mudancas:
+        rastro.append(
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.MUDAR_ACESSO_DA_AREA,
+                area=area,
+                detalhe="; ".join(mudancas),
+            )
+        )
+    return rastro
+
+
 @require_POST
 def moderar_area(request, slug: str):
-    """Editar, deixar privada ou aberta, arquivar e reabrir uma área."""
+    """Editar, deixar privada ou aberta, arquivar e reabrir uma área.
+
+    Cada gesto deixa sua linha no registro da moderação, na mesma transação
+    (TAR-867), seja a área um grupo de prática ou não.
+    """
     ator = _so_quem_modera(request)
     area = get_object_or_404(Area, slug=slug)
     acao = (request.POST.get("acao") or "").strip()
@@ -445,15 +489,15 @@ def moderar_area(request, slug: str):
     if acao == "salvar":
         campos, erro = _ler_o_formulario_da_area(request)
         if not erro:
+            rastro = _rastro_da_area(ator, area, campos)
             responsavel_antes, vagas_antes = area.responsavel, area.vagas
             area.nome = campos["nome"]
             area.descricao = campos["descricao"]
             area.visibilidade = campos["visibilidade"]
             area.quem_escreve = campos["quem_escreve"]
-            rastro = []
             if area.visibilidade == Area.Visibilidade.TURMA:
                 _aplicar_o_grupo(area, campos["grupo"])
-                rastro = _rastro_do_grupo(ator, area, responsavel_antes, vagas_antes)
+                rastro += _rastro_do_grupo(ator, area, responsavel_antes, vagas_antes)
             motivo, erro = _ler_o_motivo(
                 request,
                 exigido=any(linha.acao in ACOES_QUE_EXIGEM_MOTIVO for linha in rastro),
@@ -465,8 +509,23 @@ def moderar_area(request, slug: str):
     elif acao in ("arquivar", "reabrir"):
         # O "deletar" honesto: a área some da lista de todo mundo e continua
         # aparecendo para quem pode reabri-la, marcada (ver `pode_ler`).
-        area.ativa = acao == "reabrir"
-        erro = _salvar_com_a_rede_do_banco(area)
+        motivo, erro = _ler_o_motivo(request, exigido=True)
+        if not erro:
+            area.ativa = acao == "reabrir"
+            erro = _salvar_com_a_rede_do_banco(
+                area,
+                RegistroDeModeracao(
+                    ator=ator.pessoa,
+                    acao=(
+                        AcaoDeModeracao.REABRIR_AREA
+                        if area.ativa
+                        else AcaoDeModeracao.ARQUIVAR_AREA
+                    ),
+                    area=area,
+                    detalhe=f'"{area.nome}"',
+                    motivo=motivo,
+                ),
+            )
     else:
         erro = ERRO_ACAO_DESCONHECIDA
 
