@@ -1,0 +1,21 @@
+{
+  "arquivo": "792-experimentos-e2e-corrige-o-clique-do-cta-no-ensaio-l10",
+  "id": "TAR-792",
+  "titulo": "Experimentos E2E: corrige o clique do CTA no ensaio L10",
+  "toca": [
+    "e2e"
+  ],
+  "depende_de": [
+    "TAR-782"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "20 execucoes seguidas verdes de node e2e/ensaio_experimento.js contra producao",
+  "despacho": "Consertar e2e/ensaio_experimento.js: trocar a confirmacao do clique no CTA (que usava interceptacao de rede, instavel medida ao vivo) por captura do proprio evento de clique no navegador. Entrega ja concluida: ver PR vinculado.",
+  "origem": "verificacao final do PR #2135, 26/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
