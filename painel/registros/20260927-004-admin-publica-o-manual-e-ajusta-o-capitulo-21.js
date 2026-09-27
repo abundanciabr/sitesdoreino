@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-004-admin-publica-o-manual-e-ajusta-o-capitulo-21",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "admin: publica o manual e ajusta o capítulo 21",
+  detalhe: "Migração 0029 cobre as duas causas do 404 sem tocar corpo editado (hash da 0028). Guardas provados por mutação. Capítulo 21 ajustado à Emenda 1.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2129. Validação local: árvore e1818e613dae0239f0a16ed6edd335c1f38e8775; commit a203837fc95d188bdc00810e5972d761542fab13; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-791",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
