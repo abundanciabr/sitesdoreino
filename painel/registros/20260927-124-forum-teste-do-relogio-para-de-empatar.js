@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-124-forum-teste-do-relogio-para-de-empatar",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "forum: teste do relogio para de empatar",
+  detalhe: "Guarda recua ultima_atividade_em por update no banco antes de responder; 20 rodadas verdes e mutacao na view provou vermelho.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2220. Validação local: árvore b30d374b5c805e308b8fcf6023ecd5dbb853f83b; commit e3adcb768efe8dfe3e7034aed0f48efead92b8f4; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-848",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

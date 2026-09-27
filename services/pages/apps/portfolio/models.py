@@ -621,6 +621,14 @@ class PedidoDeConferencia(models.Model):
     respondido_em = models.DateTimeField(null=True, blank=True)
     respondido_por = id_da_plataforma()
 
+    # QUEM RESPONDE POR ESTE PEDIDO enquanto ele espera (COM-06 do dossiê da
+    # Comunidade: nenhuma espera fica sem responsável). Assumir não é decidir:
+    # qualquer pessoa da equipe continua podendo responder, e quem respondeu
+    # fica em `respondido_por`. As duas colunas ficam depois da resposta,
+    # porque são a história de quem cuidou do pedido.
+    assumido_por = id_da_plataforma()
+    assumido_em = models.DateTimeField(null=True, blank=True)
+
     criado_em = models.DateTimeField(auto_now_add=True)
 
     objects = DoPortfolioQuerySet.as_manager()
@@ -687,6 +695,14 @@ class PedidoDeConferencia(models.Model):
                     & ~models.Q(respondido_por="")
                 ),
                 name="a_resposta_tem_data_e_quem_respondeu",
+            ),
+            # QUEM ASSUMIU E QUANDO andam juntos: um nome sem data não diz há
+            # quanto tempo a pessoa responde pelo pedido, e uma data sem nome
+            # é um responsável que ninguém consegue procurar.
+            models.CheckConstraint(
+                condition=models.Q(assumido_por="", assumido_em__isnull=True)
+                | (~models.Q(assumido_por="") & models.Q(assumido_em__isnull=False)),
+                name="quem_assumiu_tem_data",
             ),
         ]
 

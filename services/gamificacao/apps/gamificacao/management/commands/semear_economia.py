@@ -316,6 +316,23 @@ CONQUISTAS = [
         0,
         0,
     ),
+    # O RECONHECIMENTO DO QUADRO DE CONTRIBUIÇÕES (27/09/2026, TAR-849). Zero
+    # ponto e zero Cristal pela mesma razão das duas de cima, e mais uma: o
+    # dossiê da Comunidade (§7 e §17) deixa crédito e benefício para o
+    # mantenedor decidir. A produção a recebe pela migração 0008.
+    (
+        "primeira-contribuicao",
+        "Primeira contribuição aceita",
+        "Uma tarefa do quadro de contribuições, feita por você e aceita pela equipe.",
+        "medalha",
+        "comunidade",
+        {"tipo": "contribuicoes_aceitas", "alvo": 1},
+        False,
+        False,
+        False,
+        0,
+        0,
+    ),
     # OS MARCOS: a espinha. Todos com pontos=0, e o banco recusa o contrário.
     (
         "portfolio-publicado",
