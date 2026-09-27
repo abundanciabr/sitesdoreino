@@ -240,7 +240,7 @@ def medalhas(request):
     return render(
         request,
         "gamificacao/medalhas.html",
-        {"entrou": True, "linhas": medalhas_da_pessoa(perfil.pessoa, site), **de_fora},
+        {"entrou": True, "linhas": medalhas_da_pessoa(perfil), **de_fora},
     )
 
 

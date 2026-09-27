@@ -23,8 +23,8 @@ O QUE ESTE ARQUIVO CONSEGUE ALIMENTAR HOJE, MEDIDO E NÃO SUPOSTO
 Cinco dos dez critérios têm dado de verdade por trás: `xp_acumulado`,
 `nivel_alcancado`, `conquistas_da_familia`, `respostas_aceitas` (desde
 01/09/2026, quando o fórum ganhou voz) e `entregas_aceitas` (desde 27/09/2026,
-quando a sala de aula passou a ser contada fora do ledger). Os outros leem tabelas que **nenhum código
-desta plataforma escreve ainda** — uma varredura por `.objects.create` em
+quando a sala de aula passou a ser contada fora do ledger). Os outros leem
+tabelas que **nenhum código desta plataforma escreve ainda** — uma varredura por `.objects.create` em
 `services/gamificacao` não acha ninguém criando `Forja`, `Sequencia` ou
 `ProgressoDeMissao`.
 
@@ -49,9 +49,9 @@ import threading
 
 from .models import (
     AjudaAceita,
-    EntregaAceita,
     Concessao,
     ConquistaDefinicao,
+    EntregaAceita,
     Forja,
     PerfilJogador,
     Pessoa,
@@ -196,8 +196,8 @@ FRASES_DOS_CRITERIOS = {
         "Ter {alvo} entregas aceitas pela escola.",
     ),
     "primeira_vez": (
-        "Fazer pela primeira vez: {assunto}.",
-        "Fazer pela primeira vez: {assunto}.",
+        "Fazer pela primeira vez o que a descrição conta.",
+        "Fazer pela primeira vez o que a descrição conta.",
     ),
     "conquistas_da_familia": (
         "Ganhar uma medalha da família {familia}.",
@@ -251,14 +251,13 @@ def criterio_em_portugues(conquista: ConquistaDefinicao) -> str:
     alvo = int(criterio.get("alvo") or 1)
     singular, plural = FRASES_DOS_CRITERIOS.get(tipo, FRASES_DOS_CRITERIOS["manual"])
     familia = criterio.get("familia", "")
+    nome_da_familia = dict(ConquistaDefinicao.Familia.choices).get(familia, familia)
     return (singular if alvo == 1 else plural).format(
-        alvo=alvo,
-        assunto=criterio.get("assunto", ""),
-        familia=ConquistaDefinicao.Familia(familia).label.lower() if familia else "",
+        alvo=alvo, familia=nome_da_familia.lower()
     )
 
 
-def medalhas_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
+def medalhas_da_pessoa(perfil: PerfilJogador) -> list[dict]:
     """As medalhas LIGADAS da escola, cada uma com o critério e o estado DESTA pessoa.
 
     Só a pessoa que olha entra na conta: nada aqui pergunta quantas outras já
@@ -266,7 +265,7 @@ def medalhas_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
     secreta só aparece para quem já a tem, porque mostrar o critério dela antes
     desfaria o segredo.
     """
-    perfil, _ = PerfilJogador.objects.get_or_create(pessoa=pessoa, site_id=site_id)
+    pessoa, site_id = perfil.pessoa, perfil.site_id
     concedidas = {
         c.conquista_id: c
         for c in Concessao.objects.filter(pessoa=pessoa, site_id=site_id)

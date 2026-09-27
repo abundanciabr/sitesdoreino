@@ -33,10 +33,10 @@ import logging
 from .criterios import avaliar
 from .models import (
     AjudaAceita,
-    EntregaAceita,
     Concessao,
     ConquistaDefinicao,
     ConversaAberta,
+    EntregaAceita,
     Pessoa,
 )
 from .motor import _quando, aplicar
@@ -280,9 +280,8 @@ def ao_aula_concluida(envelope: dict) -> None:
 
     **A entrega aceita fica REGISTRADA com a economia desligada**
     (`EntregaAceita`, 27/09/2026), e as medalhas são avaliadas em seguida: é o
-    que faz o
-    "Primeiro ciclo concluído" cair pelo próprio fato, pela mesma separação de
-    `ao_forum_resposta_aceita` entre reconhecer e pagar.
+    que faz o "Primeiro ciclo concluído" cair pelo próprio fato, pela mesma
+    separação de `ao_forum_resposta_aceita` entre reconhecer e pagar.
     """
     entrega = _registrar_a_entrega(envelope)
     _creditar(envelope)
