@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-043522-TAR-827-explicada",
+  "tarefa": "TAR-827",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:35:22.421537+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "o_que_e": "Depois que os grupos existirem no forum, a equipe da escola nao tera onde ver, num lugar so, quais grupos existem, quem responde por cada um, quantas vagas restam e quais duvidas estao esperando ha mais tempo. Hoje cada fila mora numa celula diferente.",
+  "o_que_muda": "Uma vista so para a equipe, dentro do forum, mostra por grupo o responsavel, os membros e as vagas, as duvidas sem resposta da mais antiga para a mais nova e quem entrou e ainda nao escreveu, com links para a fila de laudos e a fila de validacao. Nenhuma espera fica sem alguem que responda por ela.",
+  "exemplo": "A professora abre a vista de manha e ve: grupo Iniciantes de setembro, 5 de 8 vagas, duas duvidas esperando ha 4 dias e um aluno que entrou ha uma semana e nunca escreveu. Ela sabe por onde comecar o dia.",
+  "importancia": 70
+}
