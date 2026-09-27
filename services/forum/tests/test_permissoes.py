@@ -9,10 +9,11 @@ Todo teste deste arquivo tem a mesma forma: monta um mundo, e exige que o
 """
 
 import pytest
+from django.utils import timezone
 
 from apps.core.permissoes import areas_visiveis, pode_escrever, pode_ler
 from apps.core.sessao import VISITANTE, Ator
-from apps.forum.models import Area, Pessoa
+from apps.forum.models import Area, MembroDoGrupo, Pessoa
 
 pytestmark = pytest.mark.django_db
 
@@ -64,16 +65,27 @@ def test_area_de_alunos_abre_para_aluno_e_para_professor(aluno, professor):
     assert pode_ler(a, professor) is True
 
 
-def test_area_de_turma_fecha_ate_para_aluno_enquanto_o_curso_nao_for_conferido(aluno):
-    """O caso que mais tenta a mão: 'deixa passar por enquanto'.
+def test_area_de_turma_abre_so_para_o_aluno_com_vinculo_ativo(aluno, pessoa):
+    """O grupo de prática (TAR-824): a turma é quem tem VÍNCULO ATIVO.
 
-    Saber se alguém está NUM curso é pergunta que o fórum ainda não faz. Abrir
-    'temporariamente' escancararia justamente a área mais restrita do sistema —
-    a que promete ser de uma turma só.
+    Até 27/09/2026 este guarda exigia a turma fechada para todo aluno, porque o
+    fórum não sabia quem estava nela. Agora sabe, pela linha de `MembroDoGrupo`,
+    e o guarda trava as três metades: sem vínculo fecha, com vínculo abre, e
+    depois da saída (`ate` preenchido) fecha de novo.
     """
     a = area(
         visibilidade=Area.Visibilidade.TURMA, curso_id="curso_esqueleto", slug="turma"
     )
+    assert pode_ler(a, aluno) is False
+
+    vinculo = MembroDoGrupo.objects.create(
+        grupo=a, pessoa=pessoa, adicionado_por=pessoa, motivo="teste"
+    )
+    assert pode_ler(a, aluno) is True
+
+    vinculo.ate = timezone.now()
+    vinculo.removido_por = pessoa
+    vinculo.save()
     assert pode_ler(a, aluno) is False
 
 

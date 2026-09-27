@@ -498,6 +498,16 @@
     },
     {
       "celula": "forum",
+      "rota": "comunidade",
+      "endereco": "/forum/comunidade",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A Comunidade do aluno",
+      "descricao": "A página do grupo de prática: o desafio atual do grupo, o convite para se apresentar e pedir ajuda, e a lista das dúvidas dos colegas que ainda esperam resposta, da mais antiga para a mais nova.",
+      "observacao": "Quem não entrou vê o convite para entrar; quem não está matriculado vê a porta fechada com a explicação; aluno sem grupo vê como pedir a entrada. O link aparece na capa do fórum para quem entrou."
+    },
+    {
+      "celula": "forum",
       "rota": "areas/nova",
       "endereco": "/forum/areas/nova",
       "alcance": "publico",
@@ -518,6 +528,17 @@
       "descricao": "O que acontece ao salvar as ferramentas de uma área: trocar o nome, trocar a descrição, deixar a área privada ou aberta ao mundo, arquivar e reabrir.",
       "gesto": true,
       "observacao": "Arquivar não apaga nada: a área some da lista de todo mundo e continua visível para você, marcada."
+    },
+    {
+      "celula": "forum",
+      "rota": "a/<slug:slug>/membros",
+      "endereco": "/forum/a/<slug:slug>/membros",
+      "exemplo": "/forum/a/grupo-azul/membros",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Membros de um grupo de prática",
+      "descricao": "Quem está num grupo de prática, desde quando, quem colocou e por quê. É aqui que você põe alguém no grupo pelo e-mail e tira quem saiu. O grupo não passa do número de vagas que você escolheu.",
+      "observacao": "Tirar alguém não apaga nada: fica guardado até quando a pessoa esteve no grupo e quem a tirou. Para aluno e visitante, este endereço responde 'não existe'."
     },
     {
       "celula": "forum",
