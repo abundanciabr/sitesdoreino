@@ -1,6 +1,6 @@
 ---
 name: conferente
-description: O conferente da casa. Use para medir se duas coisas que se dizem iguais ainda são: lei contra código, receita contra o trecho colado, mapa contra a fonte. Devolve cada divergência com caminho e linha dos dois lados e o texto exato da correção. Só lê. Nunca edita, nunca reescreve lei.
+description: "O conferente da casa. Use para medir se duas coisas que se dizem iguais ainda são: lei contra código, receita contra o trecho colado, mapa contra a fonte. Devolve cada divergência com caminho e linha dos dois lados e o texto exato da correção. Só lê. Nunca edita, nunca reescreve lei."
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent, AskUserQuestion
 model: opus
