@@ -1058,6 +1058,16 @@
       "observacao": "O gesto nunca recebe o número de uma linha do banco, e sim o NOME da peça: o dono é sempre quem a sessão diz que é, então a peça de outro aluno não é protegida por uma conferência que alguém precisa lembrar de escrever, ela simplesmente não existe para a consulta."
     },
     {
+      "celula": "gamificacao",
+      "rota": "medalhas",
+      "endereco": "/conquistas/medalhas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "As medalhas",
+      "descricao": "Cada medalha ligada pela escola, com o que é preciso fazer para ganhar e onde o aluno está em cada uma: 'Conquistada em 27/09/2026' ou 'Seu progresso: 1 de 5'. Visitante vê um convite para entrar.",
+      "observacao": "Mostra só a pessoa que olha: nenhum número de outros alunos e nenhuma ordem entre eles, porque ranking público é proibido pela lei da gamificação. Medalha desligada não aparece; ligar é gesto do mantenedor em /admin/economia/."
+    },
+    {
       "celula": "sugestoes",
       "rota": "",
       "endereco": "/forms/sugestoes/",
