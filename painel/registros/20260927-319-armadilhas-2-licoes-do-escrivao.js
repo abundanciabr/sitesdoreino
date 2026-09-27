@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-319-armadilhas-2-licoes-do-escrivao",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "armadilhas: 2 licoes do escrivao",
+  detalhe: "Conferi 3 candidatas com ci/consultar_armadilhas.py. Bash/WSL ja coberta por armadilhas/010. Duas novas: armadilhas/556 (pr.py) e armadilhas/557 (ping/stopPropagation em e2e). Indice regenerado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2300. Validação local: árvore e2e78f950bec3300ba213b5cc2a23570b37a8cb8; commit cb2f1be779a612ed4747d3f12891762c18191161; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-923",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
