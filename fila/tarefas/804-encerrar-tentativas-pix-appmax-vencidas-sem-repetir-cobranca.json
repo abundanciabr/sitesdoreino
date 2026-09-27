@@ -1,0 +1,19 @@
+{
+  "arquivo": "804-encerrar-tentativas-pix-appmax-vencidas-sem-repetir-cobranca",
+  "id": "TAR-804",
+  "titulo": "Encerrar tentativas Pix Appmax vencidas sem repetir cobrança",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de pagamentos que nasce reprovando e passa: Pix Appmax pendente um dia depois do vencimento vai a estado terminal (tentativa rejected, intent expired, um pix.expirado) por uma consulta GET, sem POST, e a rodada seguinte não consulta de novo; guardas sob mutação; suíte pagamentos verde; PR integrado; deploy de pagamentos verde no SHA do merge; run appmax-pix de leitura mostrando as oito tentativas históricas do registro 20260926-023 em estado terminal.",
+  "despacho": "Célula pagamentos, produto (opus high). O reconciliador Appmax Pix (reconciliar em services/pagamentos/pagamentos/methods/pix/appmax.py, chamado pela rodada de processar_appmax) passa a encerrar uma tentativa Pix cujo pedido a Appmax ainda informa como pendente quando o vencimento do Pix (pix_expires_at, ou o criado_em da tentativa mais a validade de 30 minutos pedida quando não há QR) passou há mais de um dia. O encerramento vem de uma consulta GET autenticada, nunca de suposição: tentativa rejected com motivo pix_vencido, intent expired pelo ledger com um único pix.expirado v1, sem POST e sem nova cobrança; a rodada seguinte não consulta de novo. Status autorizado, aprovado, cancelado e desconhecido mantêm o comportamento atual. Alvos exclusivos: services/pagamentos/pagamentos/methods/pix/appmax.py e services/pagamentos/tests/test_pix_appmax.py. Proibido tocar supervisao.py e api/webhooks.py. Prova: teste vermelho para verde, guardas sob mutação, suíte pagamentos inteira, PR integrado, deploy de pagamentos verde e um run appmax-pix de leitura com as oito tentativas do registro 20260926-023 em estado terminal. Mandato: services/pagamentos/ dado pelo mantenedor em 26/09/2026 22h53 BRT.",
+  "origem": "Frente N4 de RETOMADA-APPMAX.md; registro 20260926-023 (TAR-735); mandato do mantenedor em 26/09/2026 22h53 BRT para services/pagamentos/",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}
