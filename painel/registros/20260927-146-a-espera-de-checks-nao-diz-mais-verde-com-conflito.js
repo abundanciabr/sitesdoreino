@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-146-a-espera-de-checks-nao-diz-mais-verde-com-conflito",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A espera de checks não diz mais verde com conflito",
+  detalhe: "A ferramenta de espera dizia verde para PR em conflito. O conserto entrou pelo PR 1282, que faz as duas perguntas do portão antes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1025 e https://github.com/abundanciabr/sitesdoreino/pull/1282 MERGED (gh pr view, 27/09/2026); fila/eventos/20260907-040707-TAR-141-concluida.json na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260904-090-achei-um-falso-verde-na-espera-e-deixei-na-fila",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

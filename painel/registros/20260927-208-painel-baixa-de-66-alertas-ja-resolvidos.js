@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-208-painel-baixa-de-66-alertas-ja-resolvidos",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "painel: baixa de 66 alertas já resolvidos",
+  detalhe: "66 alertas abertos tinham conserto provado e ganharam baixa verde com responde_a; 21 seguem abertos. O teto do resumo não mudou.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2224. Validação local: árvore f8dcbdb8bffbbce4dabd5f8706ccab398cdba478; commit 511ca15748b84b68df2d00aaf1d0b37dacb8c721; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-857",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
