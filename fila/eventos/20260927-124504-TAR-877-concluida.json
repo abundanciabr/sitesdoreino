@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-124504-TAR-877-concluida",
+  "tarefa": "TAR-877",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:45:04.462526+00:00",
+  "quem": "agent/metricas/provador-experimentos-metricas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2245",
+  "verificado_em": "2026-09-27"
+}

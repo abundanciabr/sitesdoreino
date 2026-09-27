@@ -63,6 +63,7 @@ def envelope_do_quiz(dados: dict) -> str:
 
 
 def test_quiz_completado_com_lead_e_guardado_sem_lead() -> None:
+    # guarda: services/metricas/apps/fatos/management/commands/consume_eventos.py:207
     desfecho = processar(
         envelope_do_quiz({**DADOS_SEM_LEAD, "lead": LEAD}).encode("utf-8")
     )
@@ -143,6 +144,7 @@ def expurgar() -> None:
 
 
 def test_migracao_apaga_lead_dos_fatos_de_quiz_ja_guardados() -> None:
+    # guarda: services/metricas/apps/fatos/migrations/0004_quiz_completado_sem_lead.py:45
     antigo = guardar_como_antes("quiz.completado", {**DADOS_SEM_LEAD, "lead": LEAD})
 
     expurgar()
