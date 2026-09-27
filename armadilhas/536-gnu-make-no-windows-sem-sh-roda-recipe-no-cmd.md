@@ -1,13 +1,13 @@
 ---
 schema_version: 2
 armadilha: 536
-estado: guardada
+estado: documentada
 degrau: 2
 confianca: alta
 custo_por_queda: alto
 guarda:
-  tipo: teste
-  dono: ci/tests/test_exit_do_make.py
+  tipo: nenhum
+  motivo: "hoje nenhum teste pega o GNU Make sem sh; o teste da sonda de receita entra com o conserto de ci/ci.py e ci/sessao.py em outro PR"
 sinal:
   - "'test' não é reconhecido como um comando interno"
   - "'{' não é reconhecido como um comando interno"
@@ -16,7 +16,7 @@ gatilho:
   - ci/sessao.py
   - ci/ci.py
   - services/*/Makefile
-licao: "A armadilha/529 manda pôr o GNU Make antes da fachada no PATH, mas isso sozinho não basta no Windows. Sem sh.exe alcançável, o GNU Make roda cada recipe no cmd.exe e `test`/`{ }` (economia, pr, sessao, e Makefiles de célula com shell POSIX) reprovam; `e_gnu_make` só confere `--version` e `ci/ci.py` culpa a célula. Só `Git\\bin` também falha (falta echo.exe). A ordem verde: WinGet\\Links na frente, `Git\\usr\\bin` no FIM do PATH."
+licao: "A 529 manda pôr o GNU Make antes da fachada no PATH; no Windows isso sozinho não basta. Sem sh.exe alcançável, o GNU Make roda recipe no cmd.exe, `test` e `[ ]` quebram os alvos da raiz e os Makefiles de célula, e `ci/ci.py` culpa a célula. Só `Git\\bin` também falha (falta echo.exe). Ordem verde: WinGet\\Links na frente, `Git\\usr\\bin` no FIM do PATH."
 ---
 
 # 536: GNU Make no Windows sem sh roda recipe no cmd
