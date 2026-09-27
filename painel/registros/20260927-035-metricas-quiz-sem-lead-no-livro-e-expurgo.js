@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-035-metricas-quiz-sem-lead-no-livro-e-expurgo",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "metricas: quiz sem lead no livro e expurgo",
+  detalhe: "processar descarta lead de quiz.completado e a migração 0004 apaga lead dos fatos guardados; trava do banco religada (decisão 6).",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2178. Validação local: árvore 77016500c99b31a0add3d66e612fa30cae60f5e1; commit 2fd5f8ec39d8d8eff418ec9bcccb784af3236d78; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-800",
+  gravidade: "verde",
+  frente: "site",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
