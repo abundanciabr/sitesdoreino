@@ -177,6 +177,61 @@ def test_vista_appmax_mostra_sequencia_estado_dependencia_prova_e_fontes(
     assert "nenhuma impeditiva" not in cartao_566
 
 
+FRENTES_DE_26_E_27_DE_SETEMBRO = (
+    "TAR-795",
+    "TAR-802",
+    "TAR-803",
+    "TAR-804",
+    "TAR-808",
+    "TAR-809",
+    "TAR-810",
+    "TAR-811",
+    "TAR-813",
+    "TAR-814",
+)
+
+
+def _cartao(html: str, tarefa: str) -> str:
+    return html.split(f'<p class="id-tarefa">{tarefa}</p>', 1)[1].split("</li>", 1)[0]
+
+
+@respx.mock
+def test_vista_appmax_lista_as_frentes_de_26_e_27_de_setembro(fila_appmax, dentro):
+    ids = [tarefa for tarefa, _ in appmax.SEQUENCIA_APPMAX]
+    assert len(ids) == len(set(ids))
+    assert set(FRENTES_DE_26_E_27_DE_SETEMBRO) <= set(ids)
+
+    pasta, dados = fila_appmax
+    dados["TAR-811"] = {
+        "estado": "concluída",
+        "motivo": "https://github.com/abundanciabr/sitesdoreino/pull/2158",
+        "quem": "agent/pagamentos/appmax-status-medicao",
+    }
+    dados["TAR-804"] = {
+        "estado": "reivindicada",
+        "motivo": "sem registro",
+        "quem": "agent/pagamentos/pix-appmax-vencido-terminal",
+    }
+    del dados["TAR-814"]
+    (pasta / "estados.json").write_text(
+        json.dumps(dados, ensure_ascii=False), encoding="utf-8"
+    )
+
+    html = dentro.get(reverse("appmax")).content.decode()
+
+    for tarefa in FRENTES_DE_26_E_27_DE_SETEMBRO:
+        assert html.count(f'<p class="id-tarefa">{tarefa}</p>') == 1
+    cartao_811 = _cartao(html, "TAR-811")
+    assert "Testar os status Appmax de cartao e Pix" in cartao_811
+    assert "concluída" in cartao_811
+    assert "nenhuma impeditiva" in cartao_811
+    assert 'href="https://github.com/abundanciabr/sitesdoreino/pull/2158"' in cartao_811
+    assert "reivindicada" in _cartao(html, "TAR-804")
+    cartao_814 = _cartao(html, "TAR-814")
+    assert "ainda não publicada neste retrato" in cartao_814
+    assert "não medido" in cartao_814
+
+
 @respx.mock
 @pytest.mark.parametrize("metadado", ["ausente", "sem-id"])
 def test_metadado_de_dependencia_ausente_e_nao_medido(fila_appmax, dentro, metadado):
@@ -260,7 +315,7 @@ def test_consulta_viva_falha_sem_apagar_retrato(fila_appmax, dentro):
 
 
 def test_prova_de_conclusao_vem_do_evento_canonico(fila_appmax):
-    # guarda: services/admin/apps/core/appmax.py:128
+    # guarda: services/admin/apps/core/appmax.py:138
     pasta, dados = fila_appmax
     metadados, eventos = appmax._metadados_da_fila(pasta)
     cartao = appmax._tarefa("TAR-731", dados["TAR-731"], dados, metadados, eventos)
@@ -273,7 +328,7 @@ def test_prova_de_conclusao_vem_do_evento_canonico(fila_appmax):
 
 
 def test_dependencia_bloqueada_permanece_impeditiva(fila_appmax):
-    # guarda: services/admin/apps/core/appmax.py:95
+    # guarda: services/admin/apps/core/appmax.py:105
     pasta, dados = fila_appmax
     metadados, _ = appmax._metadados_da_fila(pasta)
     tarefa = {**metadados["TAR-566"], "depende_de": ["TAR-565", "TAR-558"]}
@@ -284,7 +339,7 @@ def test_dependencia_bloqueada_permanece_impeditiva(fila_appmax):
     "tarefa", [None, {}, {"depende_de": "TAR-565"}, {"depende_de": ["TAR-999999"]}]
 )
 def test_dependencia_ausente_invalida_ou_desconhecida_nao_e_medida(tarefa):
-    # guarda: services/admin/apps/core/appmax.py:97
+    # guarda: services/admin/apps/core/appmax.py:107
     assert appmax._dependencias(tarefa, {}) == ([], False)
 
 

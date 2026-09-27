@@ -40,6 +40,16 @@ SEQUENCIA_APPMAX = (
     ("TAR-564", ""),
     ("TAR-565", ""),
     ("TAR-566", ""),
+    ("TAR-795", ""),
+    ("TAR-802", ""),
+    ("TAR-803", ""),
+    ("TAR-804", ""),
+    ("TAR-808", ""),
+    ("TAR-809", ""),
+    ("TAR-810", ""),
+    ("TAR-811", ""),
+    ("TAR-813", ""),
+    ("TAR-814", ""),
 )
 
 ESTADOS_CONCLUIDOS = frozenset(("concluída",))
