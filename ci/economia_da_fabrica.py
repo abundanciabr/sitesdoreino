@@ -151,7 +151,13 @@ def classificar(texto: str) -> Perfil:
     return _perfil_do_harness(PERFIS["geral"])
 
 
-def _frontmatter(caminho: Path) -> dict[str, str]:
+def _frontmatter(caminho: Path) -> dict:
+    """Lê como o Claude Code lê: YAML de verdade, que descarta a ficha inválida em silêncio.
+
+    O PyYAML entra só aqui porque o deploy importa este módulo num job sem ele.
+    """
+    import yaml
+
     texto = caminho.read_text(encoding="utf-8")
     if not texto.startswith("---\n"):
         raise ErroDeInstrumentacao(
@@ -164,12 +170,18 @@ def _frontmatter(caminho: Path) -> dict[str, str]:
             "frontmatter da ficha não fecha",
             f"{caminho}: faltou a linha final `---`.",
         )
-    campos: dict[str, str] = {}
-    for linha in texto[4:fim].splitlines():
-        if not linha.strip() or ":" not in linha:
-            continue
-        chave, _, valor = linha.partition(":")
-        campos[chave.strip()] = valor.strip()
+    aviso = "e o Claude Code descarta a ficha em silêncio"
+    try:
+        campos = yaml.safe_load(texto[4:fim])
+    except yaml.YAMLError as erro:
+        marca = getattr(erro, "problem_mark", None)
+        onde = f" na linha {marca.line + 2}" if marca else ""
+        raise ValueError(
+            f"o frontmatter não abre como YAML{onde}, {aviso}. "
+            "Ponha entre aspas o valor que tem ': ' ou ' #'."
+        ) from erro
+    if not isinstance(campos, dict):
+        raise ValueError(f"o frontmatter não é uma lista de campos, {aviso}.")
     return campos
 
 
@@ -182,7 +194,11 @@ def auditar_fichas(raiz: Path) -> list[str]:
             f"Esperado: {pasta}\nSem fichas não há herança de modelo a auditar.",
         )
     falhas: list[str] = []
-    caminhos = sorted(pasta.glob("*.toml" if harness == "codex" else "*.md"))
+    caminhos = sorted(
+        caminho
+        for caminho in pasta.glob("*.toml" if harness == "codex" else "*.md")
+        if caminho.name != "LEIA-ME.md"
+    )
     if not caminhos:
         raise ErroDeInstrumentacao("pasta de fichas vazia", f"Crie as fichas nativas em {pasta}.")
     if harness == "codex":
@@ -191,13 +207,16 @@ def auditar_fichas(raiz: Path) -> list[str]:
                 falhas.append(f"{pasta.name}: falta a ficha nativa {nome}.toml")
     for caminho in caminhos:
         texto = caminho.read_text(encoding="utf-8")
+        relativo = caminho.relative_to(raiz).as_posix()
         try:
             campos = tomllib.loads(texto) if harness == "codex" else _frontmatter(caminho)
         except tomllib.TOMLDecodeError as erro:
             raise ErroDeInstrumentacao("ficha TOML inválida", f"{caminho}: {erro}") from erro
+        except ValueError as erro:
+            falhas.append(f"{relativo}: {erro}")
+            continue
         modelo = str(campos.get("model", "")).strip()
         nome = campos.get("name") or caminho.stem
-        relativo = caminho.relative_to(raiz).as_posix()
         if harness == "codex":
             esperado = MODELOS_CODEX["rotina"]
             if modelo != esperado:
@@ -327,11 +346,14 @@ def cmd_auditar_fichas(args: argparse.Namespace) -> int:
     raiz = raiz_do_repo()
     falhas = auditar_fichas(raiz)
     if falhas:
-        print("FAIL economia-fichas: herança cara ou brief sem modelo")
+        print("FAIL economia-fichas: ficha que o harness descarta, herança cara ou brief sem modelo")
         for falha in falhas:
             print(f"  - {falha}")
         return 1
-    print("PASS economia-fichas: fichas mecânicas declaram modelo e despacho exige brief roteado.")
+    print(
+        "PASS economia-fichas: toda ficha abre como YAML, as mecânicas declaram modelo "
+        "e o despacho exige brief roteado."
+    )
     return 0
 
 

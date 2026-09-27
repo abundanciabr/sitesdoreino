@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-223356-TAR-929-explicada",
+  "tarefa": "TAR-929",
+  "evento": "explicada",
+  "quando": "2026-09-27T22:33:56.111605+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: roadmap com checklist da Comunidade (RETOMADA-COMUNIDADE-RODADA-4.md); portão do lote do dossiê §15 COM-10",
+  "o_que_e": "A Comunidade está no ar e provada por partes com dados de teste; ninguém acompanhou ainda um grupo real percorrendo o caminho inteiro, e a prova em produção espera as contas de teste do mantenedor.",
+  "o_que_muda": "A escola passa a saber, com evidência, se a Comunidade ensina, se as pessoas contribuem e se a equipe aguenta a operação, antes de abrir para todos.",
+  "exemplo": "É a turma piloto de um curso novo: poucos alunos, acompanhamento de perto, e só depois a matrícula aberta.",
+  "importancia": 50
+}

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -137,6 +139,41 @@ def test_auditoria_aceita_despacho_variavel_quando_exige_modelo_no_brief(
     )
 
     assert auditar_fichas(tmp_path) == []
+
+
+def test_auditoria_reprova_ficha_que_o_yaml_nao_abre(tmp_path: Path) -> None:
+    """Dois-pontos sem aspas na description quebra o YAML, e o Claude Code
+    descarta a ficha em silêncio: conferente, adversario e provador sumiram
+    assim do Agent até 27/09/2026."""
+    pasta = tmp_path / ".claude" / "agents"
+    pasta.mkdir(parents=True)
+    (pasta / "conferente.md").write_text(
+        "---\nname: conferente\ndescription: mede se ainda são: lei contra código\n"
+        "model: opus\n---\ntexto\n",
+        encoding="utf-8",
+    )
+
+    falhas = auditar_fichas(tmp_path)
+
+    assert len(falhas) == 1
+    assert falhas[0].startswith(".claude/agents/conferente.md: o frontmatter não abre como YAML")
+
+
+def test_auditoria_passa_nas_fichas_reais_do_repositorio() -> None:
+    assert auditar_fichas(Path(__file__).resolve().parents[2]) == []
+
+
+def test_o_modulo_importa_sem_pyyaml() -> None:
+    """O deploy importa este módulo por `ci/preparar_dados_admin.py`, num job sem
+    PyYAML; o import no topo derrubou a publicação do admin em 27/09/2026."""
+    resultado = subprocess.run(
+        [sys.executable, "-c", "import sys; sys.modules['yaml'] = None; import economia_da_fabrica"],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+
 
 @pytest.fixture(autouse=True)
 def harness_claude_das_fixtures(monkeypatch):

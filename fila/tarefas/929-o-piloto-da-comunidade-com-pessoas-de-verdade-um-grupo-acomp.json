@@ -1,0 +1,25 @@
+{
+  "arquivo": "929-o-piloto-da-comunidade-com-pessoas-de-verdade-um-grupo-acomp",
+  "id": "TAR-929",
+  "titulo": "O piloto da Comunidade com pessoas de verdade: um grupo acompanhado de ponta a ponta, com o que aprendeu, contribuiu e o que a equipe corrigiu",
+  "toca": [
+    "e2e",
+    "forum",
+    "cursos",
+    "gamificacao"
+  ],
+  "depende_de": [
+    "TAR-828",
+    "TAR-936"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "prova do percurso inteiro em produção concluída (tarefa 828); um grupo real acompanhado por um ciclo completo; registro de medição no livro com evidências de aprendizagem, contribuição e capacidade operacional e as correções feitas; PRs integrados",
+  "despacho": "Lote COM-10 do dossiê da Comunidade (docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md, §14 e §15): o piloto, uso acompanhado e correções. Esta tarefa depende da prova do percurso inteiro em produção (tarefa 828, que espera as contas de teste do mantenedor, registro 292 do livro) e só começa quando ela concluir e o mantenedor indicar o grupo real que participa.\n\nQuando destravar, a sessão responsável:\n1. Combina com o mantenedor, por pendência no livro, qual grupo real participa e por quanto tempo (um ciclo completo de desafio, do envio ao laudo, com pelo menos uma contribuição aceita no quadro).\n2. Acompanha sem interferir: mede pela vista da equipe (forum), pelo quadro de contribuições e pelos reconhecimentos o que o §14 pede, aprendizagem, contribuição e capacidade operacional, sem dado pessoal em registro nenhum.\n3. Cada furo achado vira tarefa na fila com --depende-de nesta e é corrigido na célula certa; nada se corrige de carona.\n4. Fecha com um registro de medição no livro, com evidência conferida e verificado_em, dizendo se a Comunidade está pronta para abrir a todos ou o que falta.\n\nRegras: nada de conta nem senha em chat ou repositório; texto para aluno sem travessão; uma célula por PR; a decisão de abrir a Comunidade a todos é do mantenedor e vira pendência, nunca é tomada pela sessão.",
+  "origem": "pedido do mantenedor de 27/09/2026: roadmap com checklist da Comunidade (RETOMADA-COMUNIDADE-RODADA-4.md); portão do lote do dossiê §15 COM-10",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}
