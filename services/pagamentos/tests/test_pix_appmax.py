@@ -194,6 +194,56 @@ def test_pix_pendente_sem_total_pago_nao_emite_aprovacao(settings: Any) -> None:
     assert not OutboxEvent.objects.exists()
 
 
+# guarda: services/pagamentos/pagamentos/methods/pix/appmax.py:323
+def test_pix_pendente_integracao_aprova_uma_vez(settings: Any) -> None:
+    """pendente_integracao é um dos 7 status do catálogo Appmax
+    (ci/operacoes_vps.py:STATUS_APPMAX_PEDIDO) e nunca tinha teste próprio
+    no Pix: hoje ele aprova, junto com aprovado/integrado."""
+    cliente = _cliente()
+    intent = _criar(settings, cliente)
+    cliente.consultar_pedido.return_value["status"] = "pendente_integracao"
+    cliente.consultar_pedido.return_value["total_paid"] = 1005
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        reconciliar(intent)
+    intent.refresh_from_db()
+    assert intent.status == "approved"
+    assert OutboxEvent.objects.filter(event="pagamento.aprovado").count() == 1
+
+
+# guarda: services/pagamentos/pagamentos/methods/pix/appmax.py:325
+def test_pix_recusado_por_risco_fecha_tentativa_uma_vez(settings: Any) -> None:
+    """recusado_por_risco é um dos 7 status do catálogo Appmax e nunca
+    tinha teste próprio no Pix: hoje ele recusa, junto com cancelado."""
+    cliente = _cliente()
+    intent = _criar(settings, cliente)
+    cliente.consultar_pedido.return_value.pop("total_paid")
+    cliente.consultar_pedido.return_value["status"] = "recusado_por_risco"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        reconciliar(intent)
+    intent.refresh_from_db()
+    assert intent.status == "rejected"
+    assert OutboxEvent.objects.filter(event="pagamento.recusado").count() == 1
+
+
+def test_pix_status_desconhecido_levanta_falha_no_provedor(settings: Any) -> None:
+    """Um status Pix fora dos 7 do catálogo (ci/operacoes_vps.py:
+    STATUS_APPMAX_PEDIDO) não é terminal conhecido: reconciliar() levanta
+    FalhaNoProvedor ambígua, a Intent fica pendente e nenhum evento de
+    aprovação ou recusa é emitido."""
+    cliente = _cliente()
+    intent = _criar(settings, cliente)
+    cliente.consultar_pedido.return_value["status"] = "em_analise_manual"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with pytest.raises(FalhaNoProvedor, match="desconhecido") as excinfo:
+            reconciliar(intent)
+    assert excinfo.value.ambiguo is True
+    intent.refresh_from_db()
+    assert intent.status == "pending"
+    assert not OutboxEvent.objects.filter(
+        event__in=["pagamento.aprovado", "pagamento.recusado"]
+    ).exists()
+
+
 def test_aviso_pix_forjado_nao_aprova_sem_consulta_autenticada(settings: Any) -> None:
     cliente = _cliente()
     intent = _criar(settings, cliente)
