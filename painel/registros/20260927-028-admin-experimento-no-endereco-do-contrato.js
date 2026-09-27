@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-028-admin-experimento-no-endereco-do-contrato",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "admin: experimento no endereço do contrato",
+  detalhe: "Decisão e resultado do experimento pediam ao catálogo endereço fora do contrato; agora usam o do contrato.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2157. Validação local: árvore 454bfea4fed11a8700fe4dbbba90dc14b9a5ab1d; commit 1c0e1fb1eef0477d921b7e1e792d0812e8ce8b98; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-812",
+  gravidade: "info",
+  frente: "vender",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
