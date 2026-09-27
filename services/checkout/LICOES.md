@@ -309,3 +309,21 @@ custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
   segue visível no código-fonte da página. O token de curto prazo emitido por
   sessão, já cogitado na seção acima, é a resposta completa e muda o desenho da
   página. Esta sessão reduziu o que passa pela porta; não fechou a porta.
+
+## Sessão: em análise ao recarregar (tarefa 869)
+
+- **O estado de uma tentativa de cartão se lê de pagamentos, não se copia.**
+  A primeira versão guardava uma marca local `cartao_em_analise`, ligada pela
+  resposta da confirmação e desligada pelo aviso. A revisão achou o furo: num
+  pedido já recusado, a recusa da nova tentativa pode chegar antes da resposta
+  `pending`, a marca liga depois e nunca mais desliga. `getOrder` agora pergunta
+  a `getIntent` e responde `card_in_review` verdadeiro só para `pending`; pedido
+  de Pix ou encerrado não consulta pagamentos. Falha na consulta tira o campo da
+  resposta, porque "não sei" não é "não está em análise".
+- **Cartão aprovado sem aviso não está mais no provedor, mas também não está
+  pago.** Por isso `cartao.js` mantém a análise que a própria aba viu enquanto o
+  pedido segue `aguardando_pagamento`; a página recarregada depende só do
+  servidor.
+- **A cobrança dupla já é barrada em pagamentos** (409 para intent fora de
+  `created`/`rejected`). O defeito visível era a aba antiga lendo "Tente
+  novamente" no 409; agora a tela relê o pedido e mostra a análise.
