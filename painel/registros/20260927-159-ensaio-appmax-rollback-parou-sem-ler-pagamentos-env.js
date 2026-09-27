@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-159-ensaio-appmax-rollback-parou-sem-ler-pagamentos-env",
+  tipo: "incidente",
+  quando: "2026-09-27",
+  titulo: "Primeira execução do ensaio de rollback do cartão Appmax parou sem testar nada",
+  detalhe: "Disparo autorizado às 08h29 BRT. O run terminou ERROR em 4min04s: a VPS não conseguiu ler env/pagamentos.env (ausente ou sem permissão para o usuário deploy), então o script parou por segurança antes de desligar qualquer coisa. Nada foi alterado; o checkout continuou no ar (HTTP 200) e os deploys seguintes ficaram verdes. O ensaio ainda não provou o rollback; TAR-868 cobre destravar a leitura e rodar de novo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/36316492477",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-868",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

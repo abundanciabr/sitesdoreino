@@ -21,6 +21,11 @@ AS TRAVAS, E POR QUE CADA UMA
 6. **Reconhecimento, nunca pagamento.** O aceite registra o fato e chama o motor
    de critérios; a medalha vale o que a escola ligou, e nenhum crédito nasce
    aqui (dossiê §7 e §17: catálogo e benefício são decisão do mantenedor).
+7. **Quem responde pela aceitação é sempre da equipe, conferido AQUI.** A view
+   já perguntava isso, mas a porta é esta função: quem a chamasse por outro
+   caminho gravava uma tarefa com qualquer pessoa como responsável. Fail-closed.
+8. **A lista de critérios tem teto.** Sem limite, o campo vira formulário sem
+   fim: no máximo 20 critérios, cada um com até 300 caracteres.
 
 O QUE ESTE ARQUIVO NÃO FAZ: não avisa ninguém. Só boa notícia vira carta, e a
 carta da medalha já sai por `conceder()`. A devolução e o prazo moram na tela
@@ -33,6 +38,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import transaction
 from django.utils import timezone
+
+from apps.core.equipe import e_da_equipe
 
 from .criterios import avaliar
 from .models import (
@@ -58,6 +65,13 @@ ORIGEM = "contribuicao:{id}"
 # O teto de vagas de uma tarefa. Não é regra de produto: é o limite do que a
 # coluna guarda sem virar erro de banco, com folga para qualquer tarefa real.
 VAGAS_NO_MAXIMO = 999
+
+# O teto da lista de critérios. Também não é regra de produto: sem limite,
+# `criterios` vira formulário sem fim. 20 itens de até 300 caracteres cobre
+# qualquer tarefa real com folga, e cada item continua sendo uma frase, não
+# um parágrafo.
+MAXIMO_DE_CRITERIOS = 20
+MAXIMO_DE_CARACTERES_POR_CRITERIO = 300
 
 Estado = CompromissoDeContribuicao.Estado
 
@@ -100,9 +114,11 @@ def publicar(
 ) -> TarefaComunitaria:
     """A escola publica o que precisa. Sem os cinco campos, a tarefa não nasce.
 
-    Quem pode publicar e quem pode responder é pergunta da porta da equipe
-    (`apps/core/equipe.py`), feita pela view: esta função recebe ids já
-    conferidos, como `validacao.aceitar` recebe o papel de quem decide.
+    Quem PODE publicar (a view recusa quem não é da equipe antes de chegar
+    aqui) é diferente de quem PODE ser o responsável pela aceitação: isso é
+    conferido AQUI, contra a mesma porta da equipe (`apps/core/equipe.py`),
+    porque esta é a única porta de escrita e não pode confiar que todo
+    chamador lembrou de checar antes.
     """
     campos = {
         "o título": titulo,
@@ -120,9 +136,23 @@ def publicar(
             + ", ".join(faltando)
             + ". Quem assume tem de saber o que vai ser cobrado."
         )
+    if len(criterios) > MAXIMO_DE_CRITERIOS:
+        raise ContribuicaoRecusada(
+            f"A lista de critérios vai até {MAXIMO_DE_CRITERIOS} itens. Escolha "
+            "os que realmente importam para quem avalia."
+        )
+    if any(len(c) > MAXIMO_DE_CARACTERES_POR_CRITERIO for c in criterios):
+        raise ContribuicaoRecusada(
+            f"Cada critério cabe em até {MAXIMO_DE_CARACTERES_POR_CRITERIO} "
+            "caracteres: é uma frase, não um parágrafo."
+        )
     if len(titulo.strip()) > 120 or len(responsavel_nome.strip()) > 120:
         raise ContribuicaoRecusada(
             "O título e o nome de quem responde cabem em até 120 caracteres cada."
+        )
+    if not e_da_equipe(responsavel_id):
+        raise ContribuicaoRecusada(
+            "Quem responde pela aceitação precisa ser alguém da equipe da escola."
         )
     if not isinstance(vagas, int) or not 1 <= vagas <= VAGAS_NO_MAXIMO:
         raise ContribuicaoRecusada(

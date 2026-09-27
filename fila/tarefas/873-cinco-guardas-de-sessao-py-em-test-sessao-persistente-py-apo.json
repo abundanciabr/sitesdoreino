@@ -1,0 +1,19 @@
+{
+  "arquivo": "873-cinco-guardas-de-sessao-py-em-test-sessao-persistente-py-apo",
+  "id": "TAR-873",
+  "titulo": "Cinco guardas de sessao.py em test_sessao_persistente.py apontam para linha errada",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado: os 5 marcadores # guarda: realocados para a linha atual que cada teste protege, provados por python ci/provar_guardas.py ci/tests/test_sessao_persistente.py rodando o arquivo inteiro sem erro de coleta",
+  "despacho": "Cinco marcadores `# guarda:` pre-existentes em\nci/tests/test_sessao_persistente.py (linhas 479-480, 496-497 e 521, dentro de\ntest_windows_shell_do_git_impede_make_cair_no_cmd,\ntest_windows_sem_shell_mede_pytest_e_declara_sem_lint e\ntest_windows_pytest_quebrado_diz_erro_e_acao) apontam para\nci/sessao.py:1823, 1824, 1826, 1789 e 1835. Hoje essas linhas de ci/sessao.py\nnao sao mais o codigo que esses testes protegem: ficaram cerca de 300 linhas\npara tras, provavelmente porque o arquivo cresceu antes dessas linhas sem\nque os marcadores fossem atualizados.\n\nConfirmado rodando, para cada uma das 5 linhas:\n`python -c \"import sys; sys.path.insert(0,'ci'); import provar_guardas as pg;\nfrom pathlib import Path; pg.mutar(Path('ci/sessao.py').read_bytes(), 1823,\n'.py')\"`\nTodas devolvem \"a sabotagem quebra a sintaxe\", porque caem no meio de outra\nestrutura (por exemplo 1823/1824 caem hoje na assinatura de\n`_garantir_container`, nao no codigo de shell do baseline).\n\nPor isso `python ci/provar_guardas.py ci/tests/test_sessao_persistente.py`\n(o arquivo inteiro) nao roda hoje: ele erra na coleta antes de testar\nqualquer guarda, porque valida todos os marcadores do arquivo de uma vez so.\nIsso e anterior a esta tarefa (TAR-860) e nao foi causado por ela: os dois\nguardas do make impostor (PR 2213, armadilhas/529) foram marcados e provados\na parte, numa copia isolada sem os 5 marcadores velhos.\n\nPedido: ache a linha ATUAL de ci/sessao.py que cada um desses tres testes\nrealmente protege (procure por \"SHELL=\", \"por pytest direto, sem lint\" e\n\"O pytest direto falhou\" em ci/sessao.py, tudo perto de rodar_baseline, hoje\npor volta das linhas 2115 a 2185) e mova os 5 marcadores para la, provando\ncada um com `python ci/provar_guardas.py ci/tests/test_sessao_persistente.py`\nantes de fechar. Nao apague os marcadores sem realoca-los: o classificador de\nseguranca da casa recusou essa saida (\"Security Test Removal\") quando esta\ntarefa tentou.",
+  "origem": "descoberta pela TAR-860 (guarda do make impostor, PR 2213) em 27/09/2026: ao provar os dois guardas novos pela maquina, o arquivo inteiro nao roda por causa de marcadores antigos desalinhados",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

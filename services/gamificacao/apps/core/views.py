@@ -45,11 +45,15 @@ from apps.gamificacao.models import (
 from apps.gamificacao.validacao import (
     ValidacaoRecusada,
     aceitar,
+    corrigir,
     devolver,
     fila_da_equipe,
     marcos_da_pessoa,
     pedir_validacao,
+    reconhecimentos_da_escola,
     reenviar,
+    restaurar,
+    revogar,
 )
 
 from .equipe import e_da_equipe, ids_da_equipe
@@ -76,6 +80,9 @@ RECADOS = {
     "tarefa-reaberta": "Tarefa aberta de novo no quadro.",
     "contribuicao-aceita": "Aceita. O reconhecimento já está no nome da pessoa.",
     "contribuicao-devolvida": "Devolvida, com o motivo e a orientação que você escreveu.",
+    "revogada": "Retirada. A história ficou guardada.",
+    "restaurada": "Devolvida à pessoa. A história ficou guardada.",
+    "corrigida": "Referência corrigida. A antiga ficou na história.",
 }
 
 
@@ -686,14 +693,11 @@ def decidir_contribuicao(request):
 def _publicar(request, autor_id: str, site: str):
     """O formulário de publicar, lido e conferido. A tarefa nasce em `quadro.publicar`.
 
-    O responsável vem de uma lista, mas a lista é do navegador: por isso ele é
-    conferido de novo contra `IDS_DA_EQUIPE`, que é a única resposta que vale.
+    O responsável vem de uma lista, mas a lista é do navegador: a conferência
+    contra `IDS_DA_EQUIPE` mora dentro de `quadro.publicar` (a porta única),
+    não aqui, para valer também para quem chamar por outro caminho.
     """
     responsavel_id = (request.POST.get("responsavel_id") or "").strip()
-    if not e_da_equipe(responsavel_id):
-        raise quadro.ContribuicaoRecusada(
-            "Quem responde pela aceitação precisa ser alguém da equipe da escola."
-        )
     medalha = None
     slug = (request.POST.get("medalha") or "").strip()
     if slug:
@@ -715,3 +719,79 @@ def _publicar(request, autor_id: str, site: str):
         medalha=medalha,
     )
     return _voltar("interno-contribuicoes", recado="tarefa-publicada")
+
+
+# ---------------------------------------------------------------------------
+# O RASTRO DOS RECONHECIMENTOS — o bastidor da equipe
+# ---------------------------------------------------------------------------
+@require_GET
+def interno_reconhecimentos(request):
+    """Cada conquista concedida, com a regra do dia, a origem e a história inteira.
+
+    É aqui que a equipe retira, devolve ou corrige uma conquista, sempre com
+    motivo. A porta é a mesma da fila dos marcos, fail-CLOSED por
+    `IDS_DA_EQUIPE`, e quem não está na lista leva o mesmo 403 com a razão.
+    """
+    pessoa_id, site = _pessoa_e_site(request)
+    if not e_da_equipe(pessoa_id) or not site:
+        return _recusar_quem_nao_e_da_equipe(request)
+
+    procurada = (request.GET.get("pessoa") or "").strip()
+    return render(
+        request,
+        "gamificacao/interno_reconhecimentos.html",
+        {
+            "concessoes": reconhecimentos_da_escola(site, procurada),
+            "procurada": procurada,
+            "revogada": Concessao.Estado.REVOGADA,
+            "eu": pessoa_id,
+            "recado": RECADOS.get(request.GET.get("recado", "")),
+            "erro": request.GET.get("erro", ""),
+            "url_da_capa": settings.URL_DA_CAPA,
+        },
+    )
+
+
+@require_POST
+def decidir_reconhecimento(request):
+    """Retirar, devolver ou corrigir uma conquista, com o motivo escrito.
+
+    Quem decide é quem a sessão diz que é, conferido na lista da equipe; a
+    concessão é procurada DENTRO da escola desta instalação, e a de outra escola
+    simplesmente não existe para o gesto.
+    """
+    pessoa_id, site = _pessoa_e_site(request)
+    if not e_da_equipe(pessoa_id) or not site:
+        return _recusar_quem_nao_e_da_equipe(request)
+
+    concessao = Concessao.objects.filter(
+        pk=_numero(request.POST.get("concessao")), site_id=site
+    ).first()
+    if concessao is None:
+        return _voltar(
+            "interno-reconhecimentos",
+            erro="Essa conquista não existe nesta escola.",
+        )
+
+    gesto = request.POST.get("gesto", "")
+    motivo = request.POST.get("motivo", "")
+    try:
+        if gesto == "revogar":
+            revogar(concessao=concessao, quem_id=pessoa_id, motivo=motivo)
+            return _voltar("interno-reconhecimentos", recado="revogada")
+        if gesto == "restaurar":
+            restaurar(concessao=concessao, quem_id=pessoa_id, motivo=motivo)
+            return _voltar("interno-reconhecimentos", recado="restaurada")
+        if gesto == "corrigir":
+            corrigir(
+                concessao=concessao,
+                quem_id=pessoa_id,
+                origem_nova=request.POST.get("origem", ""),
+                motivo=motivo,
+            )
+            return _voltar("interno-reconhecimentos", recado="corrigida")
+    except ValidacaoRecusada as recusa:
+        return _voltar("interno-reconhecimentos", erro=str(recusa))
+
+    # Gesto que não existe é formulário adulterado: volta sem mexer em nada.
+    return _voltar("interno-reconhecimentos")
