@@ -36,6 +36,7 @@ from _nucleo import (  # noqa: E402
 )
 import telemetria
 from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
+from sessao import base_de_scratch_padrao  # noqa: E402
 
 # O vocabulário do livro. Copiado de `painel/logica.js` de propósito: o
 # validador de lá é a autoridade e reprova de qualquer jeito; conferir aqui
@@ -121,6 +122,7 @@ class Pedido:
     continuar: bool = False
     validacao_arquivo: Path | None = None
     tarefa: str | None = None
+    detalhe_arquivo: Path | None = None
 
 
 # ---------------------------------------------------------------- a costura --
@@ -382,6 +384,32 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
             "  git worktree add ../wt-<area>-<tarefa> -b agent/<area>/<tarefa> origin/main\n"
             "Nada foi gravado.",
         )
+
+
+def _conferir_que_as_entradas_sao_da_bancada(raiz: Path, pedido: Pedido, ramo: str) -> None:
+    """O scratchpad é um só para a sessão e todos os subagentes: um despacho
+    sobrescreveu o `corpo.md` do outro enquanto o rito validava, e #2122, #2164
+    e #2220 saíram com o texto de outra tarefa. Só o worktree e a pasta que
+    `ci/sessao.py` cria para a bancada pertencem a um ramo só."""
+    pasta = base_de_scratch_padrao() / ramo.removeprefix("agent/").replace("/", "-")
+    donos = [Path(os.path.normcase(dono.resolve())) for dono in (Path(raiz), pasta)]
+    for rotulo, caminho in (
+        ("--mensagem-arquivo", pedido.mensagem_arquivo),
+        ("--corpo-arquivo", pedido.corpo_arquivo),
+        ("--validacao-arquivo", pedido.validacao_arquivo),
+        ("--detalhe-arquivo", pedido.detalhe_arquivo),
+    ):
+        if caminho is None:
+            continue
+        real = Path(os.path.normcase(Path(caminho).resolve()))
+        if not any(real.is_relative_to(dono) for dono in donos):
+            raise ParouPorSeguranca(
+                f"{rotulo} está fora da bancada: {caminho}",
+                "Pasta dividida, como o scratchpad da sessão, é sobrescrita por outro\n"
+                "despacho no meio do rito, e o PR sai com o texto de outra tarefa.\n"
+                f"Grave os arquivos em {pasta}\n"
+                "(crie a pasta se faltar) e rode de novo. Nada foi gravado.",
+            )
 
 
 def _configuracao_de_validacao(pedido: Pedido) -> tuple[list[list[str]], int]:
@@ -718,6 +746,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     ramo = correr(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
     if not ramo.startswith("agent/"):
         raise ParouPorSeguranca("ramo incompatível", "Use agent/<área>/<tarefa> na sua bancada.")
+    _conferir_que_as_entradas_sao_da_bancada(raiz, pedido, ramo)
     sujo = correr(["git", "status", "--porcelain"]).strip()
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
@@ -952,6 +981,7 @@ def main(argv: list[str] | None = None) -> int:
             continuar=args.continuar,
             validacao_arquivo=args.validacao_arquivo,
             tarefa=args.tarefa,
+            detalhe_arquivo=args.detalhe_arquivo,
         )
         abrir(raiz, pedido)
         return 0
