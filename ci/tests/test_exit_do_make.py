@@ -89,9 +89,16 @@ def test_o_2_do_make_nao_e_mais_ERROR():
 
 
 def test_so_o_gnu_make_conta_como_make():
-    """Uma fachada chamada `make` não é o GNU Make (`armadilhas/529`)."""
-    assert not runner.e_gnu_make(None)
-    assert not runner.e_gnu_make(sys.executable)
+    # guarda: ci/ci.py:363
+    """Uma fachada chamada `make` não é o GNU Make (`armadilhas/529`).
+
+    `is False` em vez de `not ...`: sem a linha protegida a função cai no
+    fim do corpo e devolve `None`, que também é falso para `not`. A
+    asserção frouxa não veria a diferença entre "não é GNU Make" e "não
+    decidiu nada".
+    """
+    assert runner.e_gnu_make(None) is False
+    assert runner.e_gnu_make(sys.executable) is False
 
 
 # ---------------------------------------------------------------------------
