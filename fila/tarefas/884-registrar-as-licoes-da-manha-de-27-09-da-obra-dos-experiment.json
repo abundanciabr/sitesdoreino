@@ -1,0 +1,19 @@
+{
+  "arquivo": "884-registrar-as-licoes-da-manha-de-27-09-da-obra-dos-experiment",
+  "id": "TAR-884",
+  "titulo": "Registrar as lições da manhã de 27/09 da obra dos experimentos",
+  "toca": [
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "armadilhas novas em armadilhas/*.md com índice regenerado, cobrindo os fatos medidos na manhã de 27/09/2026 que têm evidência e evitam custo real",
+  "despacho": "Leia os eventos e PRs da manhã de 27/09/2026 na obra dos experimentos e registre em armadilhas/ as lições com evidência que evitam custo real; recuse com uma linha as que não tiverem evidência ou guarda possível.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
