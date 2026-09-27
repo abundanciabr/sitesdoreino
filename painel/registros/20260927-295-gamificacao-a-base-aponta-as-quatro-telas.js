@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-295-gamificacao-a-base-aponta-as-quatro-telas",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "gamificacao: a Base aponta as quatro telas",
+  detalhe: "Base de /conquistas ganha faixa com Marcos, Forja, Medalhas e Contribuições; a promessa velha saiu; guardas por mutação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2286. Validação local: árvore c3c71d5594d22253dd5547f60c7f5f59c528f15a; commit b59b42e778f9f7e84c9f1ae13224c20189333b76; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-910",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "gamificacao",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
