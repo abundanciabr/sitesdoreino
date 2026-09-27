@@ -30,6 +30,12 @@ from apps.pedidos.models import Session as SessionModel
 
 router = Router()
 
+# Frases do 502 que o comprador lê quando pagamentos não responde, responde 5xx
+# ou devolve corpo inválido: o pedido segue como estava e a nova tentativa leva
+# a mesma chave de idempotência.
+_PAGAMENTO_NAO_INICIADO = "não foi possível iniciar o pagamento; tente novamente"
+_TENTATIVA_NAO_CONCLUIDA = "não foi possível concluir a tentativa; tente novamente"
+
 
 # [DESENHO-COMUM.md F10] Mesmo cookie e MESMO formato que o funil sorteia e
 # guarda (`services/funil/apps/core/visitante.py`): UUID4 canônico em
@@ -373,9 +379,8 @@ def place_order(request, session_id: str):
         "checkout_session_id": str(sessao.id),
         "product_id": str(itens[0]["product_id"]),
     }
-    metadata = dict(
-        metadata, **({"items": itens} if method == "card" or pix_appmax else {})
-    )
+    if method == "card" or pix_appmax:
+        metadata["items"] = itens
     comprador_pagamento = dict(comprador)
     if pix_appmax:
         ip_bruto = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
@@ -389,27 +394,30 @@ def place_order(request, session_id: str):
                 "Não foi possível identificar sua conexão; recarregue a página e tente novamente",
             ) from None
         comprador_pagamento["document_number"] = cpf
-    intent = PagamentosClient().criar_intent(
-        # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
-        idempotency_key=str(sessao.id),
-        payload={
-            "site_id": site["id"],
-            "order_id": str(order_id),
-            "amount_cents": total_cents,
-            "currency": "BRL",
-            "method": method,
-            "customer": comprador_pagamento,
-            # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
-            # para ecoar dado que não é dele (mesma técnica de
-            # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
-            # por causa disto. `product_id` é sempre o do item PRINCIPAL
-            # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
-            # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
-            # bump comprado junto não ganha matrícula própria — é o mesmo
-            # desenho que já existe hoje para `items` no evento `pedido.criado`.
-            "metadata": metadata,
-        },
-    )
+    try:
+        intent = PagamentosClient().criar_intent(
+            # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
+            idempotency_key=str(sessao.id),
+            payload={
+                "site_id": site["id"],
+                "order_id": str(order_id),
+                "amount_cents": total_cents,
+                "currency": "BRL",
+                "method": method,
+                "customer": comprador_pagamento,
+                # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
+                # para ecoar dado que não é dele (mesma técnica de
+                # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
+                # por causa disto. `product_id` é sempre o do item PRINCIPAL
+                # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
+                # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
+                # bump comprado junto não ganha matrícula própria — é o mesmo
+                # desenho que já existe hoje para `items` no evento `pedido.criado`.
+                "metadata": metadata,
+            },
+        )
+    except (httpx.HTTPError, ValueError):
+        raise HttpError(502, _PAGAMENTO_NAO_INICIADO) from None
 
     with transaction.atomic():
         pedido = OrderModel.objects.create(
@@ -716,19 +724,22 @@ def confirm_order_card(request, order_id: str):
     if ip is not None and (not isinstance(ip, str) or not ip.strip()):
         raise HttpError(422, "ip deve ser texto não vazio quando enviado")
 
-    status_http, resposta = PagamentosClient().confirmar_cartao(
-        intent_id=pedido.intent_id,
-        payload={
-            "card_token": token.strip(),
-            "installments": parcelas,
-            # O e-mail sai do snapshot, e não do corpo: quem paga é o comprador
-            # que fechou o pedido, e trocar isso pelo navegador seria cobrar em
-            # nome de outra pessoa.
-            "payer_email": pedido.customer["email"],
-            **({"ip": ip.strip()} if ip else {}),
-            **titular,
-        },
-    )
+    try:
+        status_http, resposta = PagamentosClient().confirmar_cartao(
+            intent_id=pedido.intent_id,
+            payload={
+                "card_token": token.strip(),
+                "installments": parcelas,
+                # O e-mail sai do snapshot, e não do corpo: quem paga é o comprador
+                # que fechou o pedido, e trocar isso pelo navegador seria cobrar em
+                # nome de outra pessoa.
+                "payer_email": pedido.customer["email"],
+                **({"ip": ip.strip()} if ip else {}),
+                **titular,
+            },
+        )
+    except (httpx.HTTPError, ValueError):
+        raise HttpError(502, _TENTATIVA_NAO_CONCLUIDA) from None
     if status_http != 200:
         raise HttpError(
             status_http, str(resposta.get("detail") or "a tentativa não foi concluída")

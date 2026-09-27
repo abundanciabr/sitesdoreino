@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-050-checkout-502-de-pagamentos-tratado-no-cartao-e-no-pix",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "checkout: 502 de pagamentos tratado no cartão e no Pix",
+  detalhe: "Cartão e intent Pix devolvem 502 com frase ao comprador quando pagamentos falha; pedido intacto, mesma chave na nova tentativa.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2181. Validação local: árvore 3404b7d2579115e0834adaf729911996a5a4c024; commit 3e53e6d90ce94ceafa0643be20e9db52671e34ca; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-813",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
