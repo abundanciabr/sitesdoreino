@@ -432,9 +432,10 @@ def _srm(s: Srm) -> dict:
     }
 
 
-def calcular(site_id: str, corpo: dict, hoje: dt.date) -> dict:
-    """O resultado de um experimento já lido do catálogo. Cada desfecho tem
-    nome, e nenhum deles é zero."""
+def contar(site_id: str, corpo: dict, hoje: dt.date) -> dict:
+    """Os braços que a medição contou, já avaliados, em `resultado`; ou o
+    desfecho com nome de por que não deu. A tela e o `manage.py
+    semear_experimento --acao medir` leem a contagem por aqui, e contam igual."""
     experimento = _ler_experimento(corpo)
     if isinstance(experimento, str):
         return {"estado": "fora-do-contrato", "frase": experimento}
@@ -461,7 +462,7 @@ def calcular(site_id: str, corpo: dict, hoje: dt.date) -> dict:
         return {**base, "estado": "fora-do-contrato", "frase": lidos}
     bracos, trocados = lidos
 
-    r = avaliar(
+    resultado = avaliar(
         bracos,
         iniciado_em=experimento["iniciado_em"],
         dias_planejados=experimento["dias_planejados"],
@@ -470,8 +471,18 @@ def calcular(site_id: str, corpo: dict, hoje: dt.date) -> dict:
         trocados=trocados,
         encerrado_em=experimento["encerrado_em"],
     )
+    return {**base, "estado": "contado", "resultado": resultado}
+
+
+def calcular(site_id: str, corpo: dict, hoje: dt.date) -> dict:
+    """O resultado de um experimento já lido do catálogo. Cada desfecho tem
+    nome, e nenhum deles é zero."""
+    contagem = contar(site_id, corpo, hoje)
+    if contagem["estado"] != "contado":
+        return contagem
+    r = contagem.pop("resultado")
     return {
-        **base,
+        **contagem,
         "estado": "resultado",
         "veredito": r.veredito,
         "motivo": r.motivo,
