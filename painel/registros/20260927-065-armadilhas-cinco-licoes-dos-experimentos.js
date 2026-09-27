@@ -10,7 +10,7 @@
   precisa_do_dono: false,
   responde_a: null,
   relacao: "comentario",
-  tarefa: "TAR-818",
+  tarefa: null,
   gravidade: "info",
   frente: "fabrica",
   area: "armadilhas",
