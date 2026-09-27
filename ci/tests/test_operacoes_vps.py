@@ -2195,6 +2195,27 @@ def test_appmax_pix_aviso_rejeita_saida_extra():
 
 
 @pytest.mark.parametrize(
+    ("inbox", "observadas"), [(False, 1), (True, 2), (True, None)]
+)
+def test_appmax_pix_aviso_medido_exige_inbox_de_instalacao_unica(inbox, observadas):
+    medicao = {
+        "resultado": "medido",
+        "referencia": REFERENCIA,
+        "registros_encontrados": 1,
+        "inbox_consultada": inbox,
+        "instalacoes_observadas": observadas,
+        "pix_emv_preservado": False,
+        "pix_qrcode_preservado": False,
+        "pix_expiration_date_preservado": False,
+        "estado_processamento": "pendente",
+        "recebido_em": "2026-09-25T12:01:00+00:00",
+        "processado_em": None,
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix-aviso", medicao, REFERENCIA)
+
+
+@pytest.mark.parametrize(
     ("acao", "encontrados", "inbox", "observadas"),
     [
         ("aviso_multiplo", 0, True, 1),
@@ -2209,6 +2230,9 @@ def test_appmax_pix_aviso_rejeita_saida_extra():
         ("instalacao_multipla", None, False, 1),
         ("instalacao_multipla", None, True, 2),
         ("instalacao_multipla", 0, False, 2),
+        ("aviso_nao_preservado", 0, True, 2),
+        ("aviso_multiplo", 2, True, None),
+        ("instalacao_incompleta", 1, True, 1),
     ],
 )
 def test_appmax_pix_aviso_rejeita_contagem_incoerente(
