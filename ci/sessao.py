@@ -99,6 +99,7 @@ if __name__ == "__main__":
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     configurar_saida,
+    defeito_do_make,
     raiz_declarada,
     raiz_do_repo,
     recortar,
@@ -2142,14 +2143,18 @@ class Sessao:
                 except (OSError, ValueError, KeyError, TypeError):
                     self._nota("baseline sem evidência válida no cache; medindo a base")
             if not pytest_direto:
-                versao = self._correr([make, "--version"], cwd=self.plano.worktree, timeout=30)
-                if not versao.stdout.startswith("GNU Make"):
-                    raise ErroDeSessao(passo, f"o `make` do PATH não é GNU Make: {make}",
-                                       detalhe=f"`make --version` respondeu:\n{recortar(versao.texto, 500)}\n\n"
-                                               "Nada da base foi medido e a célula não reprovou. Ponha o GNU Make antes "
-                                               "dele no PATH (Windows: `winget install ezwinports.make`) e repita a "
-                                               "abertura. Veja armadilhas/529.",
-                                       comando=subprocess.list2cmdline([make, "--version"]))
+                ambiente_da_sonda = self.ambiente_da_base()
+                argumentos_do_make: list[str] = []
+                if shell:
+                    ambiente_da_sonda["PATH"] = os.pathsep.join([str(Path(shell).parent), ambiente_da_sonda.get("PATH", "")])
+                    argumentos_do_make = [f"SHELL={shell}"]
+                def correr_a_sonda(comando: list[str]) -> tuple[int, str]:
+                    saida = self._correr(comando, cwd=self.plano.worktree, env=ambiente_da_sonda, timeout=60)
+                    return saida.exit_code, saida.texto
+                defeito = defeito_do_make(make, correr_a_sonda, argumentos_do_make)
+                if defeito is not None:
+                    resumo, detalhe = defeito
+                    raise ErroDeSessao(passo, resumo, detalhe=detalhe)
             with tempfile.TemporaryDirectory(prefix="baseline-main-") as temporario:
                 base = Path(temporario).resolve() / "arvore"
                 self._exigir(passo, [git, "worktree", "add", "--detach", str(base), revisao],
