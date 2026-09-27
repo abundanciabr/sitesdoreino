@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.core.exceptions import RequestDataTooBig
 from django.db import transaction
+from django.db.models import F
 from django.http import Http404, HttpRequest, JsonResponse
 from django.test import Client as _DjangoClient
 from django.views.decorators.csrf import csrf_exempt
@@ -283,6 +284,9 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
             if _payload_legado(aviso.payload, order_id=order_id):
                 aviso.payload = payload
                 aviso.save(update_fields=["payload"])
+        if not criado:
+            mesmo_aviso = AppmaxWebhookInbox.objects.filter(pk=aviso.pk)
+            mesmo_aviso.update(redeliveries=F("redeliveries") + 1)
     return JsonResponse({"status": "recebido" if criado else "ja_recebido"})
 
 
