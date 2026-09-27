@@ -1056,10 +1056,9 @@ class CatalogoClient:
     # foi alterado. Tem nome próprio porque o conserto é do mantenedor (escolher
     # outro apelido) e não de quem opera a máquina.
     JA_EXISTE = "ja_existe"
-    # 409 do ciclo de um experimento: o catálogo não fez a transição pedida.
-    # Tem nome próprio porque ele esconde dois casos que a tela separa relendo
-    # o experimento: o gesto repetido (já está no estado pedido, e isso é
-    # sucesso) e o conflito de verdade (outro experimento ocupa a página).
+    # 409 do ciclo de um experimento: o catálogo não fez a transição pedida
+    # (outro experimento ativo na página, ou transição que não vale), e nada
+    # mudou. Tem nome próprio porque a tela o explica pelo estado da página.
     CONFLITO = "conflito"
     # 404 de `getPageDraft`: esta página nunca foi editada. Tem nome próprio
     # porque NÃO é falha — é folha em branco, e confundir as duas faria a tela
@@ -1072,9 +1071,11 @@ class CatalogoClient:
     SEM_PAGINA = "sem_pagina"
     # 409 de `publishPage`: o rascunho está vazio e nada foi publicado.
     VAZIO = "vazio"
-    # 404 da leitura de um experimento: o endereço aponta para um id que o
-    # catálogo não conhece, e isso não é o catálogo fora do ar.
+    # 404 de um experimento: o endereço aponta para um experimento que o
+    # catálogo não conhece neste site.
     SEM_EXPERIMENTO = "sem_experimento"
+    # 409 de encerrar: ele já estava encerrado, e a decisão gravada é a dele.
+    JA_ENCERRADO = "ja_encerrado"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1267,7 +1268,14 @@ class CatalogoClient:
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
     ) -> "tuple[str, dict | str]":
-        """As três operações de página, que só diferem no verbo e no sufixo."""
+        """As três operações de página, que só diferem no verbo e no sufixo.
+
+        Uma peça só porque o encanamento é idêntico nas três (config, endereço,
+        timeout, corpo fora do contrato) e três cópias divergiriam no primeiro
+        conserto feito em uma delas. O que muda é declarado: `especiais` diz
+        quais status desta operação têm nome próprio, em vez de caírem no
+        "não respondeu" genérico.
+        """
         return self._falar(
             metodo,
             f"/sites/{quote(str(site_id), safe='')}"
@@ -1283,13 +1291,13 @@ class CatalogoClient:
         *,
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
-    ) -> "tuple[str, dict | str]":
-        """O encanamento de toda operação do catálogo que devolve um objeto.
+        forma: type = dict,
+    ) -> "tuple[str, dict | list | str]":
+        """O encanamento das escritas e leituras com desfecho nomeado.
 
-        Uma peça só porque ele é idêntico em todas (config, endereço, timeout,
-        corpo fora do contrato), e cópias divergiriam no primeiro conserto feito
-        em uma delas. O que muda é declarado: `especiais` diz quais status desta
-        operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
+        Páginas e experimentos passam por aqui: config, endereço, timeout e
+        corpo fora do contrato são os mesmos, e duas cópias divergiriam no
+        primeiro conserto feito em uma delas.
         """
         config = self._configuracao()
         if config is None:
@@ -1299,10 +1307,11 @@ class CatalogoClient:
             )
             return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
         base, token = config
+        endereco = f"{base}{caminho}"
         try:
             r = http().request(
                 metodo,
-                f"{base}{caminho}",
+                endereco,
                 json=corpo,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
@@ -1327,19 +1336,10 @@ class CatalogoClient:
             # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
             logger.error("catálogo: resposta fora do contrato: %s", erro)
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
-        if not isinstance(lido, dict):
-            logger.error("catálogo: o corpo não é um objeto")
+        if not isinstance(lido, forma):
+            logger.error("catálogo: o corpo não tem a forma do contrato")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         return self.OK, lido
-
-    def experimento(self, experimento_id: str) -> "tuple[str, dict | str]":
-        """Um experimento do catálogo, com variantes, pesos e o plano (dias e
-        amostra por braço). 404 devolve `SEM_EXPERIMENTO`."""
-        return self._falar(
-            "GET",
-            f"/experimentos/{quote(str(experimento_id), safe='')}",
-            especiais=((404, self.SEM_EXPERIMENTO),),
-        )
 
     @staticmethod
     def _recusa_do_catalogo(resposta) -> str:
@@ -1399,67 +1399,104 @@ class CatalogoClient:
             especiais=((409, self.VAZIO), (404, self.SEM_PAGINA)),
         )
 
-    # -- O ciclo de um experimento de página (frente F5, 26/09/2026) --------
-    # A coleção mora sob a página, porque um experimento testa um espaço dela;
-    # cada experimento se endereça pelo UUID que o catálogo gerou, como na
-    # leitura `experimento` acima. Estados: rascunho, ativo e encerrado.
-
     def pagina_publicada(self, site_id: str, slug: str) -> "tuple[str, dict | str]":
-        """`getPage`: a versão no ar, que é de onde sai o braço `a`.
-
-        404 devolve `SEM_PAGINA`: a página nunca foi publicada, e não há texto
-        no ar para servir de controle.
-        """
+        """`getPage`: a versão que está no ar, que é o que quem visita vê."""
         return self._falar_da_pagina(
             "GET", site_id, slug, "", especiais=((404, self.SEM_PAGINA),)
+        )
+
+    # -- Os experimentos da página (frente F5 do sistema de experimentos) -----
+
+    def _caminho_do_experimento(self, site_id: str, experimento_id: str) -> str:
+        return (
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/experimentos/{quote(str(experimento_id), safe='')}"
+        )
+
+    def experimento(
+        self, site_id: str, experimento_id: str
+    ) -> "tuple[str, dict | str]":
+        """O experimento com estado, decisão e as variantes (snapshot do texto)."""
+        return self._falar(
+            "GET",
+            self._caminho_do_experimento(site_id, experimento_id),
+            especiais=((404, self.SEM_EXPERIMENTO),),
+        )
+
+    def encerrar_experimento(
+        self,
+        site_id: str,
+        experimento_id: str,
+        decisao: str,
+        variante_vencedora: "str | None",
+    ) -> "tuple[str, dict | str]":
+        """Encerra com a decisão. 409 é experimento que já estava encerrado."""
+        return self._falar(
+            "POST",
+            self._caminho_do_experimento(site_id, experimento_id) + "/encerrar",
+            corpo={"decisao": decisao, "variante_vencedora": variante_vencedora},
+            especiais=(
+                (409, self.JA_ENCERRADO),
+                (404, self.SEM_EXPERIMENTO),
+                (422, self.RECUSADO),
+            ),
+        )
+
+    # -- O ciclo, pelo contrato publicado em 26/09/2026 (PR #2146) ------------
+    # `listExperiments`, `createExperiment` e `changeExperimentState`, todos
+    # sob a página. É por eles que a tela `/admin/paginas/experimentos/` cria
+    # o experimento em rascunho e o põe no ar.
+
+    def _caminho_dos_experimentos(self, site_id: str, slug: str) -> str:
+        return (
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}/experimentos"
         )
 
     def experimentos_da_pagina(
         self, site_id: str, slug: str
     ) -> "tuple[str, list | str]":
-        """Os experimentos da página, em qualquer estado, como o catálogo os
-        ordena. `(OK, [])` é página sem experimento; falha nunca vira lista
-        vazia, senão a tela diria "nenhum" quando apenas não perguntou."""
-        desfecho, corpo = self._falar_da_pagina("GET", site_id, slug, "/experimentos")
-        if desfecho != self.OK:
-            return desfecho, corpo
-        lista = corpo.get("experimentos")
-        if not isinstance(lista, list) or not all(isinstance(e, dict) for e in lista):
+        """`listExperiments`: todos, do mais novo para o mais antigo. `(OK, [])`
+        é página sem experimento; falha nunca vira lista vazia, senão a tela
+        diria "nenhum" quando apenas não conseguiu perguntar."""
+        desfecho, lido = self._falar(
+            "GET",
+            self._caminho_dos_experimentos(site_id, slug),
+            especiais=((404, self.SEM_PAGINA),),
+            forma=list,
+        )
+        if desfecho == self.OK and not all(isinstance(e, dict) for e in lido):
             logger.error("catálogo: a lista de experimentos veio fora do contrato")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
-        return self.OK, lista
+        return desfecho, lido
 
     def criar_experimento(
         self, site_id: str, slug: str, corpo: dict
     ) -> "tuple[str, dict | str]":
-        """Cria o experimento em `rascunho`. Nada muda no site até iniciar."""
-        return self._falar_da_pagina(
-            "POST",
-            site_id,
-            slug,
-            "/experimentos",
-            corpo=corpo,
-            especiais=((422, self.RECUSADO), (404, self.SEM_PAGINA)),
-        )
-
-    def iniciar_experimento(self, experimento_id: str) -> "tuple[str, dict | str]":
-        """`rascunho` vira `ativo`: o sorteio começa a mostrar o braço `b`."""
-        return self._mudar_experimento(experimento_id, "/iniciar")
-
-    def encerrar_experimento(self, experimento_id: str) -> "tuple[str, dict | str]":
-        """Encerra de vez, com a decisão `encerrar`: a página volta ao texto que
-        está no ar. `promover` e `reverter` são gestos da tela de decisão."""
-        return self._mudar_experimento(
-            experimento_id, "/encerrar", corpo={"decisao": "encerrar"}
-        )
-
-    def _mudar_experimento(
-        self, experimento_id: str, sufixo: str, *, corpo: "dict | None" = None
-    ) -> "tuple[str, dict | str]":
+        """`createExperiment`: nasce em rascunho, e nada vai ao ar. 409 é página
+        sem versão publicada ou espaço vazio nela; 422 é incoerência."""
         return self._falar(
             "POST",
-            f"/experimentos/{quote(str(experimento_id), safe='')}{sufixo}",
+            self._caminho_dos_experimentos(site_id, slug),
             corpo=corpo,
+            especiais=(
+                (409, self.RECUSADO),
+                (422, self.RECUSADO),
+                (404, self.SEM_PAGINA),
+            ),
+        )
+
+    def mudar_estado_do_experimento(
+        self, site_id: str, slug: str, experimento_id: str, mudanca: dict
+    ) -> "tuple[str, dict | str]":
+        """`changeExperimentState`: `{"estado": "ativo"}` põe no ar. Pedir o
+        estado em que ele já está responde 200 sem mudar nada, e é isso que
+        torna seguro o duplo clique."""
+        return self._falar(
+            "POST",
+            f"{self._caminho_dos_experimentos(site_id, slug)}"
+            f"/{quote(str(experimento_id), safe='')}/estado",
+            corpo=mudanca,
             especiais=(
                 (409, self.CONFLITO),
                 (422, self.RECUSADO),

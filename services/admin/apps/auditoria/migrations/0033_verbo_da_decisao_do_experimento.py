@@ -1,9 +1,9 @@
 """Escolha de auditoria: so estado do Django, nenhum SQL ou dado alterado.
 
-Os tres verbos do ciclo de um experimento de pagina (TAR-771, 26/09/2026), no
-molde da 0032: envolvidos em `SeparateDatabaseAndState` porque `AlterField` no
-SQLite reconstroi a tabela e derruba os gatilhos append-only (`armadilhas/246`),
-e acrescentar uma escolha nao muda coluna nenhuma.
+O verbo `decidir_experimento` (26/09/2026), envolvido em
+`SeparateDatabaseAndState` porque `AlterField` no SQLite reconstroi a tabela e
+derruba os gatilhos append-only (`armadilhas/246`), e acrescentar uma escolha
+nao muda coluna nenhuma.
 """
 
 from django.db import migrations, models
@@ -144,16 +144,8 @@ class Migration(migrations.Migration):
                             ),
                             ("publicar_pagina", "por a pagina de venda no ar"),
                             (
-                                "criar_experimento",
-                                "criar um experimento na pagina de venda",
-                            ),
-                            (
-                                "iniciar_experimento",
-                                "por um experimento da pagina no ar",
-                            ),
-                            (
-                                "encerrar_experimento",
-                                "encerrar um experimento da pagina",
+                                "decidir_experimento",
+                                "promover, reverter ou encerrar um experimento",
                             ),
                         ],
                         max_length=32,
