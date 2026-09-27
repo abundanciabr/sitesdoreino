@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-238-ci-rito-ensina-a-tarefa-obrigatoria-no-pr",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: rito ensina a tarefa obrigatória no PR",
+  detalhe: "Fichas e LEIA-ME ensinam a tarefa obrigatória no make pr; a recusa por dependência ensina o merge da main.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2256. Validação local: árvore 3f6afc3375dd616a06a9dcf6a7d54dadf150cabe; commit b2ccaf84da2e99cb1ad718607d455337e01a14b1; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-882",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

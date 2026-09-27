@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-144803-TAR-896-submetida",
+  "tarefa": "TAR-896",
+  "evento": "submetida",
+  "quando": "2026-09-27T14:48:03.263599+00:00",
+  "quem": "agent/ci/appmax-observacao-pre-autorizacao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2268",
+  "revisao": "8e7a2c72dc94281ebb4844ddb16fbab8cc624244",
+  "arvore": "64182bef9332cc2c25ac3ec820f449223b9790df"
+}

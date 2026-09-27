@@ -1,0 +1,19 @@
+{
+  "arquivo": "897-o-livro-da-comunidade-da-baixa-nas-entregas-da-segunda-rodad",
+  "id": "TAR-897",
+  "titulo": "O livro da Comunidade dá baixa nas entregas da segunda rodada e registra as decisões novas",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com um registro de baixa por recibo da rodada 2, cada um com merge e publicação medidos, e um registro de pendência com as três decisões novas; node painel/gerar_manifesto.js verde; python ci/fila.py validar verde",
+  "despacho": "Livro da rodada 2 da Comunidade",
+  "origem": "pedido do mantenedor de 27/09/2026 de abrir o máximo de frentes da Comunidade",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

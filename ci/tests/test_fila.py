@@ -1070,9 +1070,9 @@ def test_concluir_duas_vezes_recusa(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
-def test_concluir_com_dependencia_aberta_recusa_e_diz_qual(tmp_path, monkeypatch, capsys, fim_da_dependencia):
+def test_concluir_com_dependencia_nao_concluida_recusa_e_diz_qual(tmp_path, monkeypatch, capsys, fim_da_dependencia):
     """PR #2190 fechou uma tarefa que ainda esperava a dependência terminar."""
-    # guarda: ci/fila.py:3245
+    # guarda: ci/fila.py:3246
     fim = [evento(tipo="cancelada", detalhe="trocada por outra")] if fim_da_dependencia else []
     montar(tmp_path, [tarefa(), tarefa("002", "depois", deps=["TAR-001"])],
            fim + [evento("TAR-002", hora="11:00:00")])
@@ -1087,6 +1087,8 @@ def test_concluir_com_dependencia_aberta_recusa_e_diz_qual(tmp_path, monkeypatch
     estado = fila.CANCELADA if fim_da_dependencia else fila.NA_FILA
     assert f"TAR-001 ({estado})" in saida
     assert "depende_de" in saida
+    assert "dependência não concluída" in saida
+    assert "merge de origin/main" in saida
 
 
 def test_concluir_com_dependencia_concluida_escreve_o_evento(tmp_path, monkeypatch):
@@ -2985,7 +2987,7 @@ def args_de_fechar(**extra):
 
 def test_entrega_escreve_o_feito_e_a_fila_mostra_concluida(tmp_path, monkeypatch):
     """O PR de entrega submete e fecha, e o estado calculado vira concluída."""
-    # guarda: ci/fila.py:3380
+    # guarda: ci/fila.py:3381
     montar(tmp_path, [tarefa()], [evento(), submissao()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
@@ -3007,7 +3009,7 @@ def test_fechar_pela_entrega_exige_a_submissao_daquele_pr(tmp_path, monkeypatch,
     encerraria a tarefa de outra pessoa com prova inventada, e a folga de
     `cmd_submeter` reabriria a tarefa por essa mesma string.
     """
-    # guarda: ci/fila.py:3372
+    # guarda: ci/fila.py:3373
     montar(tmp_path, [tarefa()], [evento()])
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr="prova inventada")) == 1
@@ -3037,7 +3039,7 @@ def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys)
 
 def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
     """Conclusão alheia não é sobrescrita nem acompanhada de uma segunda."""
-    # guarda: ci/fila.py:3377
+    # guarda: ci/fila.py:3378
     alheia = evento(tipo="concluida", hora="12:00:00",
                     evidencia="outro aceite", verificado_em="2026-09-11")
     montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])

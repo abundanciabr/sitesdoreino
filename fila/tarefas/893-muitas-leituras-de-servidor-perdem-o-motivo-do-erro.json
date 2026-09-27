@@ -1,0 +1,20 @@
+{
+  "arquivo": "893-muitas-leituras-de-servidor-perdem-o-motivo-do-erro",
+  "id": "TAR-893",
+  "titulo": "Muitas leituras de servidor perdem o motivo do erro",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "cada workflow corrigido com teste que executa o script gerado de verdade, vermelho antes e verde depois, com mutacao provada",
+  "despacho": "Achado ao consertar a tarefa 892 (obra Appmax rodada 3): o mesmo padrao de\ndefeito (\"armadilha do PR 2249/TAR-868\") aparece em pelo menos 14 outros\nworkflows fora da obra Appmax. Todos usam appleboy/ssh-action com\ncapture_stdout: true, e o passo seguinte que le steps.<id>.outputs.stdout NAO\ntem if: always(). Se o script remoto sair diferente de zero, o ssh-action\n(sob bash -e -o pipefail) nao fecha a captura multilinha do GITHUB_OUTPUT, a\nevidencia sanitizada some, e o passo de conferencia sequer roda (sem\nif: always(), o GitHub o pula quando o passo anterior falha).\n\nWorkflows com o padrao simples (um so passo remoto, corrigir e o mesmo rito\ndo PR 2249 e da TAR-892 - conferir se o script gerado sai sempre 0, senao\nacrescentar `|| true` no heredoc, e por if: always() no passo seguinte):\n- .github/workflows/backfill-mensagens-do-forum.yml (job backfill, sid rodar)\n- .github/workflows/backfill-pontos-do-forum.yml (job backfill, sid rodar)\n- .github/workflows/canario-fase-3-outbox.yml (job canario, sid canario)\n- .github/workflows/conferir-as-fichas.yml (job conferir, sid conferir)\n- .github/workflows/esvaziar-caixa.yml (job esvaziar, sid esvaziamento)\n- .github/workflows/ligar-os-degraus.yml (job ligar, sid ligar)\n- .github/workflows/limpar-avisos-orfaos.yml (job limpar, sid limpeza)\n- .github/workflows/provisionar.yml (job provisionar, sid provisionar)\n- .github/workflows/rollback.yml (job aplicar, sid voltar)\n- .github/workflows/semear-areas-do-forum.yml (job semear, sid semear)\n- .github/workflows/semear-boas-vindas.yml (job semear, sid semear)\n- .github/workflows/semear-caixa.yml (job semear, sid semear)\n- .github/workflows/semear-demo-caixa.yml (job semear-demo, sid vitrine)\n- .github/workflows/semear-duvidas-do-forum.yml (job semear, sid semear)\n- .github/workflows/semear-economia.yml (job semear, sid semear)\n- .github/workflows/semear-quiz.yml (job semear, sid semear)\n\nDois workflows tem retry em varias tentativas com if: ja parcialmente presente\n(!cancelled(), failure()) mas sem cobrir every caso de ERROR isolado; exigem\nleitura cuidadosa, nao o conserto mecanico direto:\n- .github/workflows/deploy-celula.yml (sids publicar_painel, publicar_fila,\n  subir1/2/3, reverter)\n- .github/workflows/deploy-infra.yml (sids aplicar1/2/3)\n\nCada script gerado (o `preparar()`/equivalente por tras de cada script_path)\nprecisa ser conferido individualmente: alguns podem ja sair 0 sempre por outro\nmotivo (script shell simples sem heredoc python), e so o `if: always()` falta;\noutros repetem o heredoc `python3 - <<'EOF' ... EOF` e precisam do `|| true`\ntambem. Prova exigida por workflow: teste que executa o script GERADO de\nverdade (nao so le o texto), vermelho antes do conserto, verde depois, e\nmutacao de cada guarda novo.\n\nIsto e comando mecanico repetido em muitos arquivos: convem avaliar se cabe\nem um PR so (Lei 2, orcamento de 15 arquivos) ou se precisa de mais de uma\ntarefa/PR encadeados com Depende-de.",
+  "origem": "descoberta durante o despacho ci/operacoes-vps-saida-no-erro (TAR-892), sessao 4442b6ad, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

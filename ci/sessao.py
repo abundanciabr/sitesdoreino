@@ -97,8 +97,10 @@ if __name__ == "__main__":
     sys.modules.setdefault("sessao", sys.modules[__name__])
 
 from _nucleo import (  # noqa: E402
+    SENTINELAS_DE_INSTRUMENTACAO,
     ErroDeInstrumentacao,
     configurar_saida,
+    defeito_do_make,
     raiz_declarada,
     raiz_do_repo,
     recortar,
@@ -167,11 +169,6 @@ LIMITE_DE_NOME = 40
 # de dependência local sem identidade continua valendo — a wheel muda de
 # conteúdo sem avisar, a anotação não (TAR-815).
 PADRAO_DO_SHA256_ANOTADO = re.compile(r"\bsha256:([0-9a-fA-F]{64})\b", re.IGNORECASE)
-
-# Os exit codes que `correr_de_verdade` inventa quando o comando NÃO chegou a
-# rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
-# medir" — qualquer outro número veio do programa e é veredito dele.
-SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
 
 PASSOS = (
     "conferir o repositório e a célula",
@@ -781,7 +778,7 @@ def porta_publicada(saida: str) -> int:
 class Saida:
     comando: list[str]
     exit_code: int
-    stdout: str
+    stdout: str | bytes
     stderr: str
 
     @property
@@ -796,29 +793,49 @@ def correr_de_verdade(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
     timeout: int = 1800,
+    binario: bool = False,
 ) -> Saida:
-    """Roda um comando. Exit != 0 é INFORMAÇÃO para quem chama, nunca engolido."""
+    """Roda um comando. Exit != 0 é INFORMAÇÃO para quem chama, nunca engolido.
+
+    `binario=True` devolve o stdout em bytes crus, sem a decodificação e
+    recodificação UTF-8. É o jeito de ler um blob binário (ex.: `git show` de
+    uma wheel vendorizada) sem corromper os bytes. O stderr continua texto,
+    para as mensagens de erro; o comportamento de texto (padrão) não muda."""
     comando = [str(c) for c in comando]
     try:
-        proc = subprocess.run(
-            comando,
-            cwd=str(cwd) if cwd is not None else None,
-            env=env,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
+        if binario:
+            proc = subprocess.run(
+                comando,
+                cwd=str(cwd) if cwd is not None else None,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=timeout,
+                check=False,
+            )
+            stdout: str | bytes = proc.stdout or b""
+            stderr = (proc.stderr or b"").decode("utf-8", errors="replace")
+        else:
+            proc = subprocess.run(
+                comando,
+                cwd=str(cwd) if cwd is not None else None,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                check=False,
+            )
+            stdout, stderr = proc.stdout or "", proc.stderr or ""
     except FileNotFoundError:
-        return Saida(comando, 127, "", f"{comando[0]}: não encontrado no PATH")
+        return Saida(comando, 127, b"" if binario else "", f"{comando[0]}: não encontrado no PATH")
     except subprocess.TimeoutExpired:
-        return Saida(comando, 124, "", f"{comando[0]}: timeout após {timeout}s")
+        return Saida(comando, 124, b"" if binario else "", f"{comando[0]}: timeout após {timeout}s")
     except OSError as exc:
-        return Saida(comando, 126, "", f"{comando[0]}: {exc}")
-    return Saida(comando, proc.returncode, proc.stdout or "", proc.stderr or "")
+        return Saida(comando, 126, b"" if binario else "", f"{comando[0]}: {exc}")
+    return Saida(comando, proc.returncode, stdout, stderr)
 
 
 def escrever_de_verdade(caminho: Path, texto: str) -> None:
@@ -2089,8 +2106,18 @@ class Sessao:
                                detalhe="Confira git fetch origin e repita a abertura.")
         def ler_da_base(arquivo):
             relativo = arquivo.relative_to(self.plano.worktree.resolve()).as_posix()
-            return self._exigir(P_BASELINE, [git, "show", f"{revisao}:{relativo}"],
-                                 cwd=self.plano.worktree).stdout.encode("utf-8")
+            comando = [git, "show", f"{revisao}:{relativo}"]
+            # bytes crus: `.stdout` em modo texto decodifica e reencoda UTF-8,
+            # o que corrompe um blob binário (ex.: wheel vendorizada) e
+            # derruba o sha256 anotado no requirements.txt (armadilha nova).
+            saida = self._correr(comando, cwd=self.plano.worktree, binario=True)
+            if saida.exit_code != 0:
+                raise ErroDeSessao(
+                    P_BASELINE, f"o comando saiu com exit code {saida.exit_code}",
+                    comando=" ".join(str(c) for c in comando),
+                    detalhe=recortar(saida.stderr, 3000),
+                )
+            return saida.stdout if isinstance(saida.stdout, bytes) else saida.stdout.encode("utf-8")
         identidade_base = identidade_do_venv(self.plano.requisitos, ler=ler_da_base, raiz_do_worktree=self.plano.worktree)
         plano_base = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / identidade_base)
         base = Sessao(plano_base, correr=self._correr, escrever=self._escrever,
@@ -2142,14 +2169,18 @@ class Sessao:
                 except (OSError, ValueError, KeyError, TypeError):
                     self._nota("baseline sem evidência válida no cache; medindo a base")
             if not pytest_direto:
-                versao = self._correr([make, "--version"], cwd=self.plano.worktree, timeout=30)
-                if not versao.stdout.startswith("GNU Make"):
-                    raise ErroDeSessao(passo, f"o `make` do PATH não é GNU Make: {make}",
-                                       detalhe=f"`make --version` respondeu:\n{recortar(versao.texto, 500)}\n\n"
-                                               "Nada da base foi medido e a célula não reprovou. Ponha o GNU Make antes "
-                                               "dele no PATH (Windows: `winget install ezwinports.make`) e repita a "
-                                               "abertura. Veja armadilhas/529.",
-                                       comando=subprocess.list2cmdline([make, "--version"]))
+                ambiente_da_sonda = self.ambiente_da_base()
+                argumentos_do_make: list[str] = []
+                if shell:
+                    ambiente_da_sonda["PATH"] = os.pathsep.join([str(Path(shell).parent), ambiente_da_sonda.get("PATH", "")])
+                    argumentos_do_make = [f"SHELL={shell}"]
+                def correr_a_sonda(comando: list[str]) -> tuple[int, str]:
+                    saida = self._correr(comando, cwd=self.plano.worktree, env=ambiente_da_sonda, timeout=120)
+                    return saida.exit_code, saida.texto
+                defeito = defeito_do_make(make, correr_a_sonda, argumentos_do_make)
+                if defeito is not None:
+                    resumo, detalhe = defeito
+                    raise ErroDeSessao(passo, resumo, detalhe=detalhe)
             with tempfile.TemporaryDirectory(prefix="baseline-main-") as temporario:
                 base = Path(temporario).resolve() / "arvore"
                 self._exigir(passo, [git, "worktree", "add", "--detach", str(base), revisao],
