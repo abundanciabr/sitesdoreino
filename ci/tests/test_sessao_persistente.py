@@ -302,6 +302,37 @@ def test_abertura_de_verdade_instala_wheel_vendorizada_com_hash_conferido(ambien
     assert a.ambiente_instalado()
 
 
+def test_chave_do_baseline_le_blob_binario_da_wheel_sem_corromper(ambiente):
+    """`git show` do blob da BASE não pode passar pela decodificação e
+    recodificação UTF-8 que `correr_de_verdade` usa para texto: isso corrompe
+    bytes de uma wheel vendorizada e derruba o sha256 anotado no
+    requirements.txt (o defeito medido na abertura com contêiner da admin).
+    A fake `correr` simula fielmente o que o subprocess faz em modo texto
+    (decode com errors="replace") quando `binario` não é pedido, e devolve os
+    bytes exatos quando é pedido. Assim o teste reprova sem o conserto e
+    aprova com ele, sem precisar de um repositório git real."""
+    conteudo = bytes(range(256)) * 4  # garante bytes inválidos como UTF-8
+    linha, hash_real = _escrever_wheel_vendorizada(ambiente, conteudo)
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_real}\n", encoding="utf-8")
+    revisao = "a" * 40
+
+    def correr(comando, *, cwd=None, env=None, timeout=1800, binario=False):
+        if comando[:2] == ["git", "rev-parse"]:
+            return sessao.Saida(comando, 0, revisao, "")
+        if comando[:2] == ["git", "show"]:
+            relativo = comando[2].split(":", 1)[1]
+            bruto = (ambiente.worktree / relativo).read_bytes()
+            if binario:
+                return sessao.Saida(comando, 0, bruto, "")
+            return sessao.Saida(comando, 0, bruto.decode("utf-8", errors="replace"), "")
+        raise AssertionError(comando)
+
+    a = sessao.Sessao(ambiente, correr=correr)
+    _, _, base = a.chave_do_baseline("git")
+    esperado = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    assert base.plano.venv.name == esperado
+
+
 def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
     a, estado = baseline
     a._variaveis = sessao.variaveis_de_sessao(a.plano, porta_postgres=15432)
