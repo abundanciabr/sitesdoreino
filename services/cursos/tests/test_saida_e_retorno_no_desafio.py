@@ -253,6 +253,7 @@ def test_alunos_fora_do_ar_fecha_o_desafio_com_historico_ja_existente_e_reabre_d
     contagens_antes = {
         "envios": Envio.objects.count(),
         "laudos": Laudo.objects.count(),
+        "eventos": OutboxEvent.objects.count(),
     }
 
     rota = rede.get(url_das_matriculas(ANA["email"]))
@@ -283,3 +284,6 @@ def test_alunos_fora_do_ar_fecha_o_desafio_com_historico_ja_existente_e_reabre_d
     )
     assert resposta_de_volta.status_code == 200
     assert MUDANCA_DO_LAUDO in resposta_de_volta.content.decode()
+    assert Envio.objects.count() == contagens_antes["envios"]
+    assert Laudo.objects.count() == contagens_antes["laudos"]
+    assert OutboxEvent.objects.count() == contagens_antes["eventos"]
