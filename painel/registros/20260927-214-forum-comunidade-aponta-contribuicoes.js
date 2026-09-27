@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-214-forum-comunidade-aponta-contribuicoes",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "forum: Comunidade aponta contribuições",
+  detalhe: "A Comunidade aponta o quadro de contribuições nos estados sem grupo e com grupo, com link estático e testes nos quatro estados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2239. Validação local: árvore 44fab78d448c60d2af2334a1e4d4735a1073e953; commit 10025abb83fb2a05d044e076e706ff05389cf5ee; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-855",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
