@@ -1,0 +1,23 @@
+{
+  "arquivo": "869-recarregar-a-pagina-do-cartao-em-analise-nao-reabre-o-formul",
+  "id": "TAR-869",
+  "titulo": "Recarregar a página do cartão em análise não reabre o formulário de pagamento",
+  "toca": [
+    "checkout",
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-813",
+    "TAR-814"
+  ],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "Contrato aditivo integrado com a etiqueta contrato; teste de checkout vermelho para verde do estado em análise ao recarregar; deploy-celula do checkout com sucesso; a página do cartão conferida em meshcraft.top sem pagar nada.",
+  "despacho": "Rito de Contrato do checkout autorizado pelo mantenedor em 27/09/2026 08h29 BRT (sessão Claude Code, resposta estruturada), com contracts/ no mandato só para dois pontos deixados pelas tarefas 813 e 814:\n1. contracts/checkout.openapi.yaml declara a resposta 502 em placeOrder (o checkout já devolve 502 quando pagamentos não inicia a cobrança).\n2. getOrder ganha o campo opcional card_in_review (boolean): verdadeiro quando o provedor aceitou a última tentativa de cartão e o aviso ainda não chegou. O checkout guarda isso no pedido (Order.cartao_em_analise, migração aditiva), liga na confirmação só se nenhum aviso mexeu no pedido no meio, desliga em todo aviso de pagamento; cartao.js lê o campo ao abrir e em cada consulta, mantém o formulário fechado e segue consultando enquanto houver análise.\nEscada do rito (RITOS.md §3, armadilhas/243): PR 1 só com contracts/ e etiqueta contrato; PR 2 só com services/checkout, Depende-de o PR 1. Testes vermelho para verde e mutação de cada guarda. Sem POST financeiro, sem compra real.",
+  "origem": "Rito de Contrato autorizado pelo mantenedor em 27/09/2026 08h29, lacunas das tarefas 813 e 814",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -85,6 +85,10 @@ paths:
               schema: { $ref: '#/components/schemas/OrderCreated' }
         '409': { description: Sessão já fechada (pedido existente é devolvido — idempotência de sessão) }
         '422': { description: Payload inválido }
+        '502':
+          description: >-
+            O provedor de pagamento não iniciou a cobrança; nenhum pedido foi
+            criado e a nova tentativa usa a mesma sessão
   /pedidos/{order_id}:
     get:
       operationId: getOrder
@@ -274,6 +278,12 @@ components:
               kind: { type: string, enum: [principal, bump, upsell] }
         total_cents: { type: integer }
         created_at: { type: string, format: date-time }
+        card_in_review:
+          type: boolean
+          description: >-
+            Verdadeiro quando o provedor aceitou a última tentativa de cartão e o
+            aviso de pagamento ainda não chegou. Enquanto for verdadeiro, a página
+            não oferece nova cobrança.
     CardConfirmed:
       type: object
       required: [order_id, site_id, status, payment]
