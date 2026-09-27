@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-186-porta-do-quiz-no-perpetuo-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Porta do quiz no perpétuo integrada",
+  detalhe: "A lista de etapas do perpétuo apontava o endereço antigo do quiz e o guarda do mapa reprovava. A correção entrou na main em 19/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1768 MERGED em 19/09/2026, mergeCommit 4d802c85f9 (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260919-054-admin-a-porta-do-quiz-no-perpetuo",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
