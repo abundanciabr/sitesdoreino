@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-217-ci-rito-so-usa-tarefa-e-confere-depende-de",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: rito so usa --tarefa e confere depende_de",
+  detalhe: "O rito fechava tarefa citada no titulo ou no corpo do PR e ignorava depende_de. Agora so --tarefa escolhe a tarefa, e concluir com dependencia aberta e recusado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2238. Validação local: árvore 2e796403f1102cee3438b4b2e535a58716e155cd; commit 360d8e6b4f44b8d18bd07510e8d5be4eeb7b1747; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-835",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
