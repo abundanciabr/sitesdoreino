@@ -16,6 +16,7 @@ on:
           - appmax-inbox-latencia
           - appmax-observacao
           - appmax-estorno
+          - appmax-pendentes
           - quiz-configuracao
       servico:
         description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
