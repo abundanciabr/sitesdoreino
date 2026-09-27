@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-296-infra-convite-da-comunidade-vai-desligado",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "infra: convite da Comunidade vai desligado",
+  detalhe: "Workflow manual semeia na VPS o convite da Comunidade desligado e mede por fora: 1 jornada, 2 passos, 6 textos, sem duplicar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2290. Validação local: árvore 1bffddc3094e68b3026d9fa8f0bddeaf49335c89; commit afaaae170b5f44d3adc6693a3f0fc309e0609d40; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-916",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
