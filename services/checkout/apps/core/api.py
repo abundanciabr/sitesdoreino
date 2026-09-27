@@ -31,6 +31,25 @@ from apps.pedidos.models import Session as SessionModel
 router = Router()
 
 
+# [DESENHO-COMUM.md F10] Mesmo cookie e MESMO formato que o funil sorteia e
+# guarda (`services/funil/apps/core/visitante.py`): UUID4 canônico em
+# minúsculas, e nada além disso. Este checkout não é dono do cookie, só lê —
+# valor ausente ou que não bate com o formato vira ausência (None), nunca erro
+# nem cookie novo sorteado aqui.
+COOKIE_VISITANTE = "meshcraft_visitante"
+
+
+def _visitor_id_do_cookie(request) -> str | None:
+    bruto = request.COOKIES.get(COOKIE_VISITANTE, "")
+    try:
+        lido = uuid.UUID(bruto)
+    except (ValueError, AttributeError, TypeError):
+        return None
+    if lido.version != 4 or str(lido) != bruto:
+        return None
+    return bruto
+
+
 def _corpo(request) -> dict:
     try:
         corpo = json.loads(request.body or b"{}")
@@ -172,6 +191,7 @@ def create_session(request):
         offer=oferta,
         lead_id=str(corpo.get("lead_id") or ""),
         utm={str(k): str(v) for k, v in utm.items()},
+        visitor_id=_visitor_id_do_cookie(request),
     )
     return JsonResponse(
         {
@@ -420,6 +440,24 @@ def place_order(request, session_id: str):
                 **({"utm": sessao.utm} if sessao.utm else {}),
             },
         )
+        if sessao.visitor_id:
+            # [DESENHO-COMUM.md F10] só emite com visitante; sem dado pessoal
+            # (nem customer, nem e-mail, nem CPF). Contrato ainda em voo na
+            # frente irmã F4a — construído contra os campos publicados em
+            # DESENHO-COMUM.md, não contra um schema congelado nesta árvore.
+            emitir(
+                "checkout.pedido-atribuido",
+                {
+                    "site_id": pedido.site_id,
+                    "order_id": str(pedido.id),
+                    "checkout_session_id": str(sessao.id),
+                    "visitor_id": sessao.visitor_id,
+                    "produto": sessao.offer_slug,
+                    "valor_centavos": total_cents,
+                    "moeda": "BRL",
+                    "criado_em": pedido.created_at.isoformat(),
+                },
+            )
         # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
         # do worker cobre qualquer falha aqui — o evento nunca se perde.
         transaction.on_commit(relay_apos_commit)

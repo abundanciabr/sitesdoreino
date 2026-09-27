@@ -1,0 +1,19 @@
+{
+  "arquivo": "790-experimentos-f6-leitura-do-funil-de-vendas-por-dia-e-por-var",
+  "id": "TAR-790",
+  "titulo": "Experimentos F6: leitura do funil de vendas por dia e por variante",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "suite da celula metricas verde (python -m pytest), contrato countFunnel integrado (PR #2148), PR da celula integrado",
+  "despacho": "countFunnel na metricas: visitantes distintos por passo do funil, por dia e por variante de experimento, com braco fixado pela primeira pagina-vista (Emenda 1 do desenho comum, 26/09/2026).",
+  "origem": "sistema de experimentos, sessao de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

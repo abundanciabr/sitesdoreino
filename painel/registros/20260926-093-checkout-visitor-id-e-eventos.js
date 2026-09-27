@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-093-checkout-visitor-id-e-eventos",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "checkout: visitor_id e eventos",
+  detalhe: "visitor_id nasce nulo; cookie invalido vira ausencia. Eventos so saem com\nvisitante, na mesma transacao da mudanca de estado. Guardas sabotados e\nconfirmados vermelhos; payload bate com o schema da F4a.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2134. Validação local: árvore 7d4caa57214273ffdfe74ca5a0af086d0d7cfcb2; commit 62fe21faf43d72e6498ba0db13008cb6c1b0f2e9; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-784",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
