@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-125009-TAR-869-descoberta",
+  "tarefa": "TAR-869",
+  "evento": "descoberta",
+  "quando": "2026-09-27T12:50:09.225985+00:00",
+  "quem": "despacho-contrato-502-em-analise",
+  "detalhe": "Corrige a descoberta anterior desta tarefa: a cobrança dupla já é barrada em pagamentos, que recusa com 409 a intent pending. O defeito real é a aba antiga que tenta de novo e lê 'Não foi possível concluir a tentativa. Tente novamente.', frase que convida a insistir.",
+  "evidencia": "services/pagamentos/pagamentos/methods/card/service.py:193 recusa intent fora de created e rejected; services/checkout/static/checkout/cartao.js:113 mostra a frase genérica em qualquer falha da confirmação",
+  "classificacao": "C",
+  "criterio": "sem segunda cobrança enquanto o cartão está em análise",
+  "encaminhamento": "consertado no degrau 2, ramo agent/checkout/contrato-502-em-analise: na falha da confirmação a tela relê o pedido e, com card_in_review verdadeiro, mostra a análise sem pedir nova tentativa"
+}

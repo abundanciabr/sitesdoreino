@@ -16,13 +16,14 @@ on:
           - appmax-inbox-latencia
           - appmax-observacao
           - appmax-estorno
+          - appmax-pendentes
           - quiz-configuracao
       servico:
         description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true
         type: string
       referencia:
-        description: 'SHA-256 da chave idempotente: obrigatório em appmax-pix-pedido, appmax-pix-aviso e appmax-inbox-latencia, opcional em appmax-pix para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
+        description: 'SHA-256 da chave idempotente: obrigatório em appmax-pix-pedido e appmax-pix-aviso, opcional em appmax-pix e appmax-inbox-latencia para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
         required: false
         default: ''
         type: string

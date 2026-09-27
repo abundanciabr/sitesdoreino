@@ -10,10 +10,12 @@ explicação e o Pix inalterado. Este ensaio faz isso num dia calmo, no sandbox:
    sem gravar nada;
 2. lê https://meshcraft.top/checkout/curso-teste/ com curl e exige o cartão
    ligado e o Pix oferecido antes de mexer;
-3. tira a Meshcraft da trava com as funções da chave do canário
-   (infra/ativar-appmax-canario.py), recria os serviços e prova a leitura;
+3. recria os serviços com uma sobreposição temporária do Compose que esvazia a
+   trava e prova a leitura; os env/*.env nunca são gravados, porque o usuário
+   deploy da esteira lê esses arquivos mas não escreve neles (run 36316492477);
 4. lê a página de novo: cartão bloqueado, explicação ao comprador e o Pix igual;
-5. religa SEMPRE, devolvendo os env byte a byte, e prova que o cartão voltou.
+5. religa SEMPRE, recriando os serviços pelos env intactos, e prova que o
+   cartão voltou.
 
 Nenhum pedido, cobrança ou estorno nasce aqui. A saída é uma linha JSON com
 estados e booleanos, sem valor de env nem identificador.
@@ -32,9 +34,9 @@ import importlib.util
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -179,10 +181,25 @@ def evidencia(resultado: str, **campos) -> dict:
     }
 
 
-def religar(raiz: Path, ambiente: dict[str, str], copias: list[tuple[Path, Path]]) -> str | None:
+def ler_env(caminho: Path) -> dict[str, str]:
     try:
-        for caminho, copia in copias:
-            shutil.copy2(copia, caminho)
+        return canario.ler_env(caminho, escrever=False)
+    except OSError:
+        raise canario.ParouPorSeguranca(
+            f"{caminho.name} sem leitura para o usuário da esteira; nada foi alterado"
+        ) from None
+
+
+def sobrepor_trava_vazia(raiz: Path, pasta: Path) -> str:
+    """COMPOSE_FILE que recria os serviços do cartão com a trava vazia, sem gravar env."""
+    sobreposicao = pasta / "trava-vazia.yml"
+    servicos = {servico: {"environment": {TRAVA: ""}} for servico in canario.SERVICOS}
+    sobreposicao.write_text(json.dumps({"services": servicos}), encoding="utf-8")
+    return os.pathsep.join((str(raiz / "docker-compose.yml"), str(sobreposicao)))
+
+
+def religar(raiz: Path, ambiente: dict[str, str]) -> str | None:
+    try:
         if not canario.recarregar(raiz, ambiente):
             raise Falha("recriação das células falhou")
         canario.provar_leitura(raiz, ambiente, {nome: SITE for nome in ENVS})
@@ -197,7 +214,7 @@ def executar(raiz: Path) -> dict:
             "docker-compose.yml ausente; execute na VPS correta; nada foi alterado"
         )
     caminhos = {nome: raiz / f"env/{nome}.env" for nome in ENVS}
-    envs = {nome: canario.ler_env(caminho, escrever=True) for nome, caminho in caminhos.items()}
+    envs = {nome: ler_env(caminho) for nome, caminho in caminhos.items()}
     conferir_sandbox_da_meshcraft(envs["pagamentos"])
     for nome, valores in envs.items():
         if valores.get(TRAVA) != SITE:
@@ -205,7 +222,7 @@ def executar(raiz: Path) -> dict:
                 f"{TRAVA} em {nome}.env não contém só a Meshcraft; o ensaio parte do "
                 "cartão ligado somente nela; nada foi alterado"
             )
-    admin = canario.ler_env(raiz / "env/admin.env", escrever=False)
+    admin = ler_env(raiz / "env/admin.env")
     if not admin.get("ALUNOS_API_TOKEN") or not admin.get("TOKEN_CATALOGO"):
         raise canario.ParouPorSeguranca(
             "tokens de operação do Compose ausentes em admin.env; nada foi alterado"
@@ -226,32 +243,20 @@ def executar(raiz: Path) -> dict:
             "a página pública não oferece o Pix com provedor declarado; nada foi alterado"
         )
 
-    marca = str(time.time_ns())
-    copias = [(c, c.with_name(c.name + ".bak-" + marca)) for c in caminhos.values()]
     originais = {caminho: caminho.read_bytes() for caminho in caminhos.values()}
-    try:
-        for caminho, copia in copias:
-            shutil.copy2(caminho, copia)
-    except OSError:
-        for _, copia in copias:
-            copia.unlink(missing_ok=True)
-        raise canario.ParouPorSeguranca(
-            "não consegui guardar a cópia dos env; nada foi alterado"
-        ) from None
-
     sondas = {"antes": antes}
     try:
-        for caminho in caminhos.values():
-            canario.trocar_trava(caminho, [])
-        if not canario.recarregar(raiz, ambiente):
-            raise Falha("recriação das células falhou")
+        with tempfile.TemporaryDirectory(prefix="drill-appmax-") as pasta:
+            desligado = {**ambiente, "COMPOSE_FILE": sobrepor_trava_vazia(raiz, Path(pasta))}
+            if not canario.recarregar(raiz, desligado):
+                raise Falha("recriação das células falhou")
         canario.provar_leitura(raiz, ambiente, {nome: "" for nome in ENVS})
         sondas["desligado"] = sondar_ate(cartao_ligado=False)
         motivo = julgar_desligado(sondas["desligado"], antes)
-    except Exception as erro:  # qualquer falha depois de gravar ainda precisa religar
+    except Exception as erro:  # qualquer falha depois de recriar ainda precisa religar
         motivo = f"desligar não se confirmou: {erro}"
 
-    erro_ao_religar = religar(raiz, ambiente, copias)
+    erro_ao_religar = religar(raiz, ambiente)
     identico = all(caminho.read_bytes() == bytes_ for caminho, bytes_ in originais.items())
     if erro_ao_religar:
         return evidencia(
@@ -259,15 +264,12 @@ def executar(raiz: Path) -> dict:
             motivo=erro_ao_religar,
             acao=(
                 "O Pix não foi tocado e o cartão sandbox da Meshcraft pode ter ficado "
-                f"desligado, que é o estado seguro. A cópia dos env está em env/*.env.bak-{marca}. "
-                "Confira docker compose ps; com os env devolvidos, um deploy de checkout e "
-                "pagamentos religa o cartão."
+                "desligado, que é o estado seguro. Os env não foram gravados; confira "
+                "docker compose ps, e um deploy de checkout e pagamentos religa o cartão."
             ),
             env_devolvido_identico=identico,
             sondas=sondas,
         )
-    for _, copia in copias:
-        copia.unlink(missing_ok=True)
     sondas["religado"] = sondar_ate(cartao_ligado=True)
     motivo = motivo or julgar_religado(sondas["religado"], antes)
     return evidencia(
@@ -287,7 +289,9 @@ def preparar() -> None:
     ):
         fonte = Path(arquivo).read_text(encoding="utf-8")
         partes.append(f"cat > \"$DIR/{Path(arquivo).name}\" <<'{fim}'\n{fonte}{fim}\n")
-    partes.append('python3 "$DIR/drill-appmax-rollback-sandbox.py" executar\n')
+    # O ssh-action fecha a saída multilinha com `echo EOF` sob `bash -e -o pipefail`:
+    # saída diferente de zero aqui apaga a evidência. O veredito vem do JSON, no `conferir`.
+    partes.append('python3 "$DIR/drill-appmax-rollback-sandbox.py" executar || true\n')
     destino.write_text("".join(partes), encoding="utf-8", newline="\n")
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as saida:
         saida.write(f"script={destino}\n")

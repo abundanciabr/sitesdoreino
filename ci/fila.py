@@ -3196,6 +3196,32 @@ def _problemas_da_substituicao(
     return problemas
 
 
+def recusa_por_dependencia_nao_concluida(
+    tarefas: dict[str, dict], eventos: list[dict], tid: str
+) -> tuple[str, str] | None:
+    """O que houve e o que fazer quando `tid` ainda espera um `depende_de`.
+
+    Só CONCLUÍDA destrava, a mesma regra de `calcular_estados`: dependência
+    cancelada prende a tarefa até alguém corrigir o `depende_de`. Serve às
+    portas terminais daqui e a `ci/pr.py`, que recusa antes de publicar.
+    """
+    estados = calcular_estados(tarefas, eventos)
+    nao_concluidas = [
+        f"{dep} ({estados[dep]['estado']})"
+        for dep in tarefas[tid].get("depende_de") or []
+        if dep in estados and estados[dep]["estado"] != CONCLUIDA
+    ]
+    if not nao_concluidas:
+        return None
+    return (
+        f"{tid} não pode ser concluída com dependência não concluída: {', '.join(nao_concluidas)}",
+        "Espere a dependência concluir (python ci/fila.py listar mostra o estado) e repita. "
+        "Se ela já concluiu na main, faça merge de origin/main nesta bancada e repita. "
+        f"Se ela foi cancelada ou deixou de ser pré-requisito, corrija o depende_de de {tid} "
+        "num PR e repita.",
+    )
+
+
 def _concluir_com_prova(
     raiz: Path,
     tid: str,
@@ -3208,10 +3234,15 @@ def _concluir_com_prova(
     Guardas sobre a responsabilidade da entrega pertencem aqui, antes da
     soltura da reserva e da escrita do evento, para valer nos dois caminhos.
     """
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     tarefa = tarefas.get(tid)
     if tarefa is None and (raiz / "fila" / "tarefas").exists():
         print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    recusa = tarefa and recusa_por_dependencia_nao_concluida(tarefas, eventos, tid)
+    if recusa:
+        print(f"RECUSADO: {recusa[0]}.")
+        print(recusa[1])
         return 1
     responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
     if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:

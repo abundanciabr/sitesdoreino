@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-121110-TAR-821-concluida",
+  "tarefa": "TAR-821",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:11:10.574021+00:00",
+  "quem": "agent/pagamentos/appmax-reentregas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2235",
+  "verificado_em": "2026-09-27"
+}

@@ -211,7 +211,8 @@ def emitir(
 
     # (1) e (2) e (3): a rubrica, as forças, a mudança. Nenhuma delas toca o
     # banco: são puras, e por isso rodam ANTES de qualquer trava de linha.
-    notas_limpas = _validar_rubrica(envio.aula.instrumento, notas)
+    instrumento = envio.aula.instrumento
+    notas_limpas = _validar_rubrica(instrumento, notas)
     forcas_limpas = validar_forcas(forcas)
     mudanca_limpa = _validar_mudanca(envio.aula.curso, mudanca)
 
@@ -266,12 +267,15 @@ def emitir(
         if Laudo.objects.filter(envio=envio_travado).exists():
             raise LaudoRecusado("Este envio já recebeu um laudo: um envio, um laudo.")
 
-        instrumento = envio_travado.aula.instrumento
+        # A régua é a MESMA com que a rubrica foi validada acima, guardada no
+        # número dela: uma edição que chegue no meio já guardou esse número
+        # antes de subir a versão, e o laudo aponta a cópia certa.
         laudo = Laudo.objects.create(
             envio=envio_travado,
             avaliador=avaliador,
             papel=papel,
             instrumento_versao=instrumento.versao if instrumento else None,
+            versao_do_instrumento=instrumento.guardar_versao() if instrumento else None,
             notas=notas_limpas,
             forcas=forcas_limpas,
             mudanca=mudanca_limpa,
