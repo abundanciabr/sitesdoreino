@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-021925-TAR-805-explicada",
+  "tarefa": "TAR-805",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:19:25.776884+00:00",
+  "quem": "sessão de 26/09/2026, retomada do sistema de experimentos",
+  "o_que_e": "Três decisões do dono sobre os testes da página existem só num arquivo solto.",
+  "o_que_muda": "Qualquer robô vê as decisões na fila e no livro, e ninguém pergunta de novo.",
+  "exemplo": "Como passar a limpo para a ata o que foi combinado na reunião.",
+  "importancia": 50
+}
