@@ -195,6 +195,7 @@ def test_criar_nasce_em_rascunho_com_o_controle_publicado(client, token, pagina)
 def test_criar_incoerente_e_422_e_nada_e_gravado(
     client, token, pagina, mudancas, trecho
 ):
+    # guarda: services/catalogo/apps/paginas/api.py:780
     resp = _criar(client, token, pagina, **mudancas)
 
     assert resp.status_code == 422
@@ -227,7 +228,7 @@ def test_ler_e_listar_pela_porta(client, token, pagina):
 
     assert lido.status_code == 200 and lido.json() == criado
     assert lista.status_code == 200 and lista.json() == [criado]
-    # guarda: apps/paginas/api.py:719
+    # guarda: services/catalogo/apps/paginas/api.py:719
     assert (
         _get(client, token, f"{_base(pagina)}/experimentos/nao-e-uuid").status_code
         == 404
@@ -276,6 +277,19 @@ def test_ativar_encerrar_e_repetir_e_idempotente(client, token, pagina):
     assert _estado(client, token, pagina, exp_id, estado="ativo").status_code == 409
 
 
+def test_encerrado_nao_reativa_retomar_e_experimento_novo(client, token, pagina):
+    # Encerrado sai direto do banco (bypassa a transição rascunho->ativo), para
+    # que a única passagem pelo mapa de transições, nesta prova, seja a que
+    # tenta reabrir um experimento encerrado.
+    experimento = _experimento_no_banco(pagina, Experimento.ENCERRADO)
+
+    # guarda: services/catalogo/apps/paginas/models.py:269
+    resp = _estado(client, token, pagina, experimento.id, estado="ativo")
+
+    assert resp.status_code == 409
+    assert Experimento.objects.get(pk=experimento.id).estado == Experimento.ENCERRADO
+
+
 def test_rascunho_pode_ser_encerrado_sem_ir_ao_ar(client, token, pagina):
     exp_id = _criar(client, token, pagina).json()["id"]
 
@@ -302,6 +316,8 @@ def test_rascunho_pode_ser_encerrado_sem_ir_ao_ar(client, token, pagina):
 def test_mudanca_incoerente_e_422(client, token, pagina, corpo, trecho):
     exp_id = _criar(client, token, pagina).json()["id"]
 
+    # guarda: services/catalogo/apps/paginas/api.py:905
+    # guarda: services/catalogo/apps/paginas/api.py:911
     resp = _estado(client, token, pagina, exp_id, **corpo)
 
     assert resp.status_code == 422
@@ -313,6 +329,7 @@ def test_pausa_nao_existe(client, token, pagina):
     exp_id = _criar(client, token, pagina).json()["id"]
     _estado(client, token, pagina, exp_id, estado="ativo")
 
+    # guarda: services/catalogo/apps/paginas/api.py:635
     resp = _estado(client, token, pagina, exp_id, estado="pausado")
 
     assert resp.status_code == 422
@@ -342,6 +359,7 @@ def test_segundo_ativo_na_mesma_pagina_e_409(client, token, pagina):
     segundo = _criar(client, token, pagina).json()["id"]
     _estado(client, token, pagina, primeiro, estado="ativo")
 
+    # guarda: services/catalogo/apps/paginas/api.py:963
     resp = _estado(client, token, pagina, segundo, estado="ativo")
 
     assert resp.status_code == 409
@@ -369,6 +387,7 @@ def test_duas_ativacoes_ao_mesmo_tempo_terminam_com_uma_so_no_ar(client, token):
     def ativar(exp_id):
         try:
             largada.wait()
+            # guarda: services/catalogo/apps/paginas/api.py:963
             respostas.append(
                 _estado(client, token, pagina, exp_id, estado="ativo").status_code
             )
@@ -404,10 +423,13 @@ def test_variante_fora_do_rascunho_nao_se_edita_nem_se_apaga(pagina, estado):
     variante = experimento.variantes.get(variante_id="b")
 
     variante.valor = "reescrito"
+    # guarda: services/catalogo/apps/paginas/models.py:387
     with pytest.raises(VarianteCongelada):
         variante.save()
+    # guarda: services/catalogo/apps/paginas/models.py:392
     with pytest.raises(VarianteCongelada):
         variante.delete()
+    # guarda: services/catalogo/apps/paginas/models.py:335
     with pytest.raises(VarianteCongelada):
         Variante.objects.filter(pk=variante.pk).update(valor="reescrito")
     with pytest.raises(VarianteCongelada):
@@ -416,8 +438,10 @@ def test_variante_fora_do_rascunho_nao_se_edita_nem_se_apaga(pagina, estado):
         Variante.objects.create(
             experimento=experimento, variante_id="c", peso=1, valor="x"
         )
+    # guarda: services/catalogo/apps/paginas/models.py:321
     with pytest.raises(VarianteCongelada):
         experimento.delete()
+    # guarda: services/catalogo/apps/paginas/models.py:246
     with pytest.raises(VarianteCongelada):
         Experimento.objects.filter(pk=experimento.pk).delete()
 
