@@ -1,0 +1,19 @@
+{
+  "arquivo": "820-medir-quanto-tempo-o-aviso-de-pagamento-appmax-leva-para-vir",
+  "id": "TAR-820",
+  "titulo": "Medir quanto tempo o aviso de pagamento Appmax leva para virar efeito",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run da operação appmax-inbox-latencia na main com saída sanitizada de um pedido sandbox real: recebido em, processado em, latência, reentregas e um efeito; guardas PASS FAIL PASS.",
+  "despacho": "Frente N2 da rota Appmax (plano mestre, secao 22.1): operacao fechada de leitura appmax-inbox-latencia em ci/operacoes_vps.py. Recebe a referencia SHA-256 da chave idempotente da intent (como appmax-pix-aviso) e devolve, sem dado pessoal, para cada aviso da inbox Appmax do pedido: evento, estado, recebido em, processado em, latencia em milissegundos e reentregas; e a quantidade de efeitos financeiros (outbox pagamento.aprovado ou pagamento.recusado do pedido), que tem de ser um. Sandbox conferido antes do ORM; nenhum HTTP, POST, compra ou escrita. Testes vermelhos primeiro, mutacao das guardas, workflow com a opcao nova, PR com mandato, um run de leitura na main. modelo_recomendado: opus; esforco_recomendado: high.",
+  "origem": "Frente N2 do RETOMADA-APPMAX.md, plano mestre Appmax no cartão seção 22.1, sessão de 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
