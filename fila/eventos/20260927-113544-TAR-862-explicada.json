@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-113544-TAR-862-explicada",
+  "tarefa": "TAR-862",
+  "evento": "explicada",
+  "quando": "2026-09-27T11:35:44.872593+00:00",
+  "quem": "tarefa 839 fechada sem trabalho; run 36298068269 do appmax-sandbox-tela com 8 de 12; coordenação da rodada 3 Appmax",
+  "o_que_e": "Quando o banco recusa o cartão de quem compra na Meshcraft, o sistema de pagamentos responde como se não soubesse o que aconteceu. A tela não diz que o cartão foi recusado e a compra fica travada esperando uma conferência.",
+  "o_que_muda": "Quem teve o cartão recusado vê a mensagem de recusa na hora e pode tentar de novo com outro cartão, em vez de ficar preso numa compra que não anda.",
+  "exemplo": "É como a maquininha da padaria dizer 'sem comunicação' quando o certo era 'cartão recusado': a pessoa fica sem saber se pagou e não tenta outro cartão.",
+  "importancia": 80
+}
