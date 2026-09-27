@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-133-o-deploy-que-ficava-verde-sem-entregar-foi-consertado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O deploy que ficava verde sem entregar foi consertado",
+  detalhe: "A entrega terminava verde sem rodar nada no servidor. O conserto do PR 346, que usa o nome certo do parâmetro e reprova sem a marca de entrega, está na main.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/346 MERGED em 28/08, mergeCommit 37b61157cd (gh pr view, 27/09/2026); armadilhas/149 na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260828-012-o-deploy-ficou-verde-sem-ter-entregue-nada",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
