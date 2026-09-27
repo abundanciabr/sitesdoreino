@@ -47,6 +47,8 @@ rotas de `apps/core/moderacao.py`.
       </select>
       {% if area.visibilidade == "turma" %}
         {% include "forum/_campos_do_grupo.html" with curso_id=area.curso_id responsavel_id=area.responsavel_id vagas=area.vagas %}
+        <label for="motivo-grupo">Motivo da mudança (obrigatório ao trocar o responsável)</label>
+        <input id="motivo-grupo" name="motivo" maxlength="200">
       {% endif %}
       <p class="sub" style="margin:10px 0 0">
         Área aberta ao mundo é sempre só a escola falando. É a regra que protege
@@ -128,13 +130,23 @@ nunca aparece: sem login não há de quem guardar a marca de leitura.
           <input type="hidden" name="acao" value="{% if topico.trancado %}destrancar{% else %}trancar{% endif %}">
           <button class="mini" type="submit">{% if topico.trancado %}Destrancar{% else %}Trancar{% endif %}</button>
         </form>
-        <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+      </div>
+      {% comment %}
+      Tirar do ar e devolver ao ar pedem motivo (TAR-847), então saem da linha de
+      botões e ganham uma caixa que abre. O motivo fica no histórico que a equipe
+      lê na Comunidade da equipe.
+      {% endcomment %}
+      <details class="ferramentas-mini">
+        <summary>{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</summary>
+        <form class="escrever" method="post" action="{% url 'moderar_topico' topico.pk %}">
           {% csrf_token %}
           <input type="hidden" name="de_onde" value="area">
           <input type="hidden" name="acao" value="{% if topico.estado == 'publicado' %}tirar_do_ar{% else %}restaurar{% endif %}">
-          <button class="mini" type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
+          <label for="motivo-ar{{ topico.pk }}">Motivo</label>
+          <input id="motivo-ar{{ topico.pk }}" name="motivo" maxlength="200" required placeholder="Ex.: link fora da lista permitida">
+          <button type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
         </form>
-      </div>
+      </details>
     {% endif %}
   </div>
 {% empty %}
