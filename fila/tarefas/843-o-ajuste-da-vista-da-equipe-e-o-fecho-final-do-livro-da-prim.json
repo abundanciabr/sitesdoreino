@@ -1,0 +1,19 @@
+{
+  "arquivo": "843-o-ajuste-da-vista-da-equipe-e-o-fecho-final-do-livro-da-prim",
+  "id": "TAR-843",
+  "titulo": "O ajuste da vista da equipe e o fecho final do livro da primeira rodada da Comunidade entram no livro",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR so de livro integrado com as baixas dos PRs 2211 e 2210 e a publicacao do ajuste da vista da equipe conferida de fora",
+  "despacho": "Escrever em painel/registros/ a baixa verde do PR 2211 (livro do fecho), a baixa verde do PR 2210 (aviso em vez de alarme na vista da equipe) e o registro de publicacao desse ajuste (deploy do forum verde), e abrir o PR so de livro.",
+  "origem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
