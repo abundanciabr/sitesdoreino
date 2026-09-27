@@ -1,0 +1,120 @@
+{% extends "gamificacao/moldura.html" %}{% comment %}
+O BASTIDOR DO QUADRO DE CONTRIBUIÇÕES. Quem chega aqui é da equipe, pela mesma
+porta fail-CLOSED da fila dos marcos; quem não é leva 403 com frase, desenhado
+por `interno.html`.
+
+A ordem da fila é REGRA: o prazo mais curto em cima. Ela vem pronta de
+`contribuicoes.para_avaliar()`, e este template não reordena nada.
+
+A contribuição de quem está olhando não traz os botões: ninguém avalia a
+própria (dossiê §12). A regra mora em `contribuicoes.py`; esconder o botão
+aqui só poupa um clique que seria recusado.
+
+Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
+{% endcomment %}
+{% block titulo %}Contribuições da equipe{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{% url 'interno' %}">Fila dos marcos</a>
+  <a href="{% url 'interno-contribuicoes' %}" aria-current="page">Contribuições</a>
+{% endblock %}
+
+{% block conteudo %}
+  <section class="degrau">
+    <p class="rotulo">Bastidor</p>
+    <h1>Quadro de contribuições</h1>
+    <p class="passo">Aqui a equipe avalia o que os alunos mandaram, com o prazo mais curto em cima, e publica o que a escola precisa. Aceitar registra a contribuição no nome da pessoa; devolver pede o ajuste, com motivo e orientação.</p>
+  </section>
+
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
+
+  <h2 class="titulo-da-lista">Para avaliar</h2>
+  {% for compromisso in fila %}
+    <section class="pedido{% if compromisso.prazo_ate < agora %} atrasado{% endif %}">
+      <h3>{{ compromisso.tarefa.titulo }}</h3>
+      <p class="miudo">De {{ compromisso.pessoa_id }} · enviada em {{ compromisso.enviada_em|date:"d/m/Y" }} · {% if compromisso.prazo_ate < agora %}<strong>atrasada desde {{ compromisso.prazo_ate|date:"d/m/Y" }}</strong>{% else %}responder até {{ compromisso.prazo_ate|date:"d/m/Y" }}{% endif %}</p>
+      <p class="miudo">Responde: {{ compromisso.tarefa.responsavel_nome }}</p>
+      <p class="prova"><a href="{{ compromisso.link }}" rel="noopener noreferrer" target="_blank">{{ compromisso.link }}</a></p>
+
+      {% if compromisso.pessoa_id == eu %}
+        <p class="selo">Esta contribuição é sua. Outra pessoa da equipe avalia.</p>
+      {% else %}
+        <form method="post" action="{% url 'decidir-contribuicao' %}">
+          {% csrf_token %}
+          <input type="hidden" name="compromisso" value="{{ compromisso.pk }}">
+          <button type="submit" name="gesto" value="aceitar">Aceitar</button>
+        </form>
+        <form method="post" action="{% url 'decidir-contribuicao' %}">
+          {% csrf_token %}
+          <input type="hidden" name="compromisso" value="{{ compromisso.pk }}">
+          <label for="motivo-{{ compromisso.pk }}">Ou devolver, pelo motivo</label>
+          <select id="motivo-{{ compromisso.pk }}" name="motivo">
+            {% for valor, rotulo in motivos %}<option value="{{ valor }}">{{ rotulo }}</option>{% endfor %}
+          </select>
+          <label for="orientacao-{{ compromisso.pk }}">Orientação de ajuste (a pessoa lê isto)</label>
+          <textarea id="orientacao-{{ compromisso.pk }}" name="orientacao" rows="3" required></textarea>
+          <button type="submit" name="gesto" value="devolver" class="discreto">Devolver para ajuste</button>
+        </form>
+      {% endif %}
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Nada esperando avaliação</h2>
+      <p>Quando alguém mandar o link de uma contribuição, ela aparece aqui.</p>
+    </section>
+  {% endfor %}
+
+  <h2 class="titulo-da-lista">Publicar uma tarefa</h2>
+  <section class="pedido">
+    <form method="post" action="{% url 'decidir-contribuicao' %}">
+      {% csrf_token %}
+      <label for="titulo">Título</label>
+      <input type="text" id="titulo" name="titulo" maxlength="120" required>
+      <label for="o_que_entregar">O que precisa ser entregue</label>
+      <textarea id="o_que_entregar" name="o_que_entregar" rows="3" required></textarea>
+      <label for="quem_pode">Quem pode participar</label>
+      <textarea id="quem_pode" name="quem_pode" rows="2" required></textarea>
+      <label for="criterios">Como a qualidade será avaliada (um critério por linha)</label>
+      <textarea id="criterios" name="criterios" rows="4" required></textarea>
+      <label for="responsavel_id">Quem responde pela aceitação</label>
+      <select id="responsavel_id" name="responsavel_id">
+        {% for id in equipe %}<option value="{{ id }}"{% if id == eu %} selected{% endif %}>{{ id }}{% if id == eu %} (você){% endif %}</option>{% endfor %}
+      </select>
+      <label for="responsavel_nome">O nome dessa pessoa, como o aluno vai ler</label>
+      <input type="text" id="responsavel_nome" name="responsavel_nome" maxlength="120" required>
+      <label for="vagas">Vagas</label>
+      <input type="number" id="vagas" name="vagas" min="1" value="1" required>
+      <label for="medalha">Medalha concedida no aceite (opcional)</label>
+      <select id="medalha" name="medalha">
+        <option value="">Nenhuma: o reconhecimento é o registro</option>
+        {% for medalha in medalhas %}<option value="{{ medalha.slug }}">{{ medalha.nome }}</option>{% endfor %}
+      </select>
+      <p class="miudo">Só aparecem medalhas ligadas que a equipe concede. Tarefa não dá pontos nem créditos.</p>
+      <button type="submit" name="gesto" value="publicar">Publicar no quadro</button>
+    </form>
+  </section>
+
+  <h2 class="titulo-da-lista">Tarefas publicadas</h2>
+  {% for linha in tarefas %}
+    <section class="pedido">
+      <h3>{{ linha.tarefa.titulo }}</h3>
+      <p class="miudo">{% if linha.tarefa.aberta %}Aberta{% else %}Encerrada{% endif %} · {{ linha.ocupadas }} de {{ linha.tarefa.vagas }} vagas ocupadas · responde {{ linha.tarefa.responsavel_nome }}</p>
+      <form method="post" action="{% url 'decidir-contribuicao' %}">
+        {% csrf_token %}
+        <input type="hidden" name="tarefa" value="{{ linha.tarefa.pk }}">
+        {% if linha.tarefa.aberta %}
+          <button type="submit" name="gesto" value="encerrar" class="discreto">Encerrar para compromissos novos</button>
+        {% else %}
+          <button type="submit" name="gesto" value="reabrir">Abrir de novo</button>
+        {% endif %}
+      </form>
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Nenhuma tarefa publicada ainda</h2>
+      <p>O formulário acima põe a primeira no quadro dos alunos.</p>
+    </section>
+  {% endfor %}
+{% endblock %}

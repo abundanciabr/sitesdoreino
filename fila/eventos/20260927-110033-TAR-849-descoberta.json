@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-110033-TAR-849-descoberta",
+  "tarefa": "TAR-849",
+  "evento": "descoberta",
+  "quando": "2026-09-27T11:00:33.553622+00:00",
+  "quem": "agent/gamificacao/comunidade-quadro-de-contribuicoes",
+  "detalhe": "O quadro de contribuicoes confere a conta pela identidade, a mesma porta das outras telas das Conquistas, mas nao confere matricula: a gamificacao nao conversa com a celula alunos (celulas.yml: alunos NAO entra). Conferir matricula exige um par novo gamificacao para alunos, com senha de maquina e endereco no env da VPS, e o e-mail da pessoa, que hoje so sai da identidade com o degrau TOKENS_COMPLETOS_GAMIFICACAO.",
+  "evidencia": "celulas.yml, bloco gamificacao, consome: [catalogo, forum, identidade]; contracts/alunos.openapi.yaml getStudentStanding pede e-mail; services/gamificacao/apps/core/sessao.py so le o id",
+  "classificacao": "E",
+  "criterio": "entra quem tem conta e matricula ativa (registro 072); dossie 12: ter conta nao significa estar habilitado",
+  "encaminhamento": "Tarefa nova que espera o mantenedor: decidir se o quadro exige matricula e, se sim, autorizar o par gamificacao-alunos (env da VPS e token). Ate la a equipe confere quem assume, porque toda contribuicao passa pelo aceite humano."
+}

@@ -111,6 +111,7 @@ CRITERIOS_ACEITOS = frozenset(
         "forjas_seladas",
         "respostas_aceitas",
         "entregas_aceitas",
+        "contribuicoes_aceitas",
         "primeira_vez",  # medalha de estreia (primeiro quiz, primeira obra)
     }
 )
@@ -1361,6 +1362,168 @@ class EntregaAceita(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pessoa_id} teve a entrega aceita ({self.origem_event_id})"
+
+
+class TarefaComunitaria(models.Model):
+    """Uma coisa de que a escola precisa, publicada pela equipe no quadro de contribuições.
+
+    **Os cinco campos que o dossiê da Comunidade exige (§6) moram na linha**, e
+    não num texto livre: o que entregar, quem pode participar, como a qualidade
+    é avaliada (`criterios`, uma frase por item), o reconhecimento e quem
+    responde pela aceitação. O membro lê os cinco ANTES de assumir.
+
+    **O reconhecimento é o registro, e a medalha é opcional.** Sem crédito e sem
+    benefício: catálogo e benefício são decisão do mantenedor (dossiê §7 e §17).
+    A medalha, quando existe, é de concessão manual; uma medalha de conta
+    automática cai pela própria conta, e dá-la por tarefa desmentiria o critério
+    que `/conquistas/medalhas` mostra.
+
+    `responsavel_nome` existe porque esta célula não sabe nome de ninguém: o
+    espelho `Pessoa` guarda o id opaco, e mostrar um id ao aluno não diz quem
+    vai olhar o trabalho dele.
+    """
+
+    site_id = id_do_site()
+    titulo = models.CharField(max_length=120)
+    o_que_entregar = models.TextField()
+    quem_pode = models.TextField()
+    criterios = models.JSONField(default=list)
+    medalha = models.ForeignKey(
+        ConquistaDefinicao,
+        related_name="tarefas",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    responsavel_id = models.CharField(max_length=64)
+    responsavel_nome = models.CharField(max_length=120)
+    vagas = models.PositiveSmallIntegerField()
+    aberta = models.BooleanField(default=True)
+    autor_id = models.CharField(max_length=64)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criada_em"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(vagas__gte=1), name="tarefa_tem_ao_menos_uma_vaga"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.titulo
+
+
+class CompromissoDeContribuicao(models.Model):
+    """Esta pessoa assumiu esta tarefa. A linha atravessa o ciclo inteiro.
+
+    O ciclo do dossiê §6 é o `estado`: assumida, enviada (em avaliação),
+    devolvida para ajuste, aceita, ou cancelada quando a pessoa desiste. Uma
+    linha só por compromisso, e não um pedido por envio: o reenvio corrige a
+    mesma contribuição, e é esta linha que ocupa a vaga.
+
+    **Por que não é um `PedidoDeValidacao` do tipo AJUDA.** O pedido serve para
+    reivindicar uma CONQUISTA, e a fila dele, o `aceitar()` e os motivos dele
+    são desse ciclo. Uma contribuição tem vaga, desistência e orientação escrita,
+    e não aponta para conquista nenhuma: posta lá, ela apareceria na fila dos
+    marcos com um "Aceitar" que recusa. Duas filas com regras diferentes numa
+    tabela só seriam duas verdades brigando pela mesma linha.
+
+    **Um compromisso ativo por pessoa e tarefa, no BANCO**
+    (`um_compromisso_ativo_por_tarefa`): dois cliques simultâneos em "Assumir"
+    não criam dois. Só a desistência libera a pessoa para assumir de novo.
+
+    **Devolver exige motivo da lista E orientação**, e o banco recusa a linha
+    sem os dois. O motivo é fechado pela mesma razão da fila dos marcos; a
+    orientação é o que o dossiê pede a mais, "o que fazer para ajustar", e quem
+    a escreve é sempre a equipe, nunca um colega.
+    """
+
+    class Estado(models.TextChoices):
+        ASSUMIDA = "assumida", "Assumida"
+        ENVIADA = "enviada", "Enviada, em avaliação"
+        DEVOLVIDA = "devolvida", "Devolvida para ajuste"
+        ACEITA = "aceita", "Aceita"
+        CANCELADA = "cancelada", "Cancelada"
+
+    class MotivoDaDevolucao(models.TextChoices):
+        LINK_NAO_ABRE = "link_nao_abre", "O link não abre para a escola"
+        FORA_DO_ENTREGAVEL = (
+            "fora_do_entregavel",
+            "Não é o que a tarefa pede para entregar",
+        )
+        FORA_DO_CRITERIO = "fora_do_criterio", "Ainda não cumpre um dos critérios"
+
+    tarefa = models.ForeignKey(
+        TarefaComunitaria, related_name="compromissos", on_delete=models.PROTECT
+    )
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="compromissos", on_delete=models.PROTECT
+    )
+    site_id = id_do_site()
+    estado = models.CharField(
+        max_length=9, choices=Estado.choices, default=Estado.ASSUMIDA
+    )
+    link = models.URLField(max_length=500, blank=True)
+    assumida_em = models.DateTimeField(auto_now_add=True)
+    enviada_em = models.DateTimeField(null=True, blank=True)
+    prazo_ate = models.DateTimeField(null=True, blank=True)
+    motivo_da_devolucao = models.CharField(
+        max_length=18, choices=MotivoDaDevolucao.choices, blank=True, default=""
+    )
+    orientacao = models.TextField(blank=True)
+    decidida_por = models.CharField(max_length=64, blank=True, default="")
+    decidida_em = models.DateTimeField(null=True, blank=True)
+    cancelada_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["prazo_ate", "assumida_em"]
+        indexes = [models.Index(fields=["site_id", "estado", "prazo_ate"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tarefa", "pessoa"],
+                condition=~models.Q(estado="cancelada"),
+                name="um_compromisso_ativo_por_tarefa",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(estado="devolvida")
+                | (~models.Q(motivo_da_devolucao="") & ~models.Q(orientacao="")),
+                name="devolucao_diz_motivo_e_orientacao",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id} em {self.tarefa_id}: {self.estado}"
+
+
+class ContribuicaoAceita(models.Model):
+    """A equipe aceitou esta contribuição. É o fato que a medalha conta.
+
+    Molde de `EntregaAceita`: a medalha "Primeira contribuição aceita" conta
+    esta tabela, e não o ledger de XP, porque reconhecer não depende de pagar.
+
+    **Uma linha por compromisso, no BANCO** (`OneToOne`). Aceitar de novo o
+    mesmo compromisso não vira um segundo fato, e é essa a trava que impede um
+    reaceite de contar duas contribuições. O estado `aceita` do compromisso e
+    esta linha nascem na MESMA transação, pela mesma porta
+    (`contribuicoes.aceitar`); o estado não volta atrás.
+    """
+
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="contribuicoes_aceitas", on_delete=models.PROTECT
+    )
+    site_id = id_do_site()
+    compromisso = models.OneToOneField(
+        CompromissoDeContribuicao, related_name="aceite", on_delete=models.PROTECT
+    )
+    aceita_por = models.CharField(max_length=64)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criada_em"]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id} teve a contribuição {self.compromisso_id} aceita"
 
 
 class ConversaAberta(models.Model):
