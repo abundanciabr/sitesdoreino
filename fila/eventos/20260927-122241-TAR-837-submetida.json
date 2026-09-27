@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-122241-TAR-837-submetida",
+  "tarefa": "TAR-837",
+  "evento": "submetida",
+  "quando": "2026-09-27T12:22:41.364835+00:00",
+  "quem": "agent/checkout/tar-837-hash-wheel-checkout-pagamentos",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2247",
+  "revisao": "05366db1727064f66bf81ee4a2c0a4dca1476231",
+  "arvore": "166f22567023232e1ba30dc0dac24b6e3fc0fc37"
+}

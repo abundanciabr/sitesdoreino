@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-210-checkout-pagamentos-sha256-da-wheel-site-errors",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "checkout, pagamentos: sha256 da wheel site_errors",
+  detalhe: "Sha256 real anotado no requirements.txt (formato do PR 2201); portao do pacote e identidade do venv ficam verdes; pip install confirma o pacote instalado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2247. Validação local: árvore 166f22567023232e1ba30dc0dac24b6e3fc0fc37; commit 05366db1727064f66bf81ee4a2c0a4dca1476231; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-837",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
