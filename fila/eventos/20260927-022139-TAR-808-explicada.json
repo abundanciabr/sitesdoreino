@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-022139-TAR-808-explicada",
+  "tarefa": "TAR-808",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:21:39.664805+00:00",
+  "quem": "RETOMADA-APPMAX.md frente N1, sucessora das TAR-561 e TAR-562 (PR 2019 e PR 2021 não provaram matriz oficial nem navegador); mandato do mantenedor em 26/09/2026 22h53 BRT",
+  "o_que_e": "O pagamento com cartão pela Appmax já existe no ambiente de teste da Meshcraft, mas ninguém comprou pela tela com os seis cartões de teste oficiais para ver se cada um termina do jeito certo.",
+  "o_que_muda": "Um robô compra pela tela com cada cartão de teste, no computador e no celular, e mostra em público o que aconteceu com cada compra, sem nunca deixar o número do cartão passar pelos nossos servidores.",
+  "exemplo": "Como um cliente oculto que testa seis cartões diferentes no caixa de uma loja e anota se a compra passou, ficou em análise ou foi recusada, antes de a loja abrir para o público.",
+  "importancia": 80
+}

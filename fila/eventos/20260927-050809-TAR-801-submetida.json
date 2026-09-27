@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-050809-TAR-801-submetida",
+  "tarefa": "TAR-801",
+  "evento": "submetida",
+  "quando": "2026-09-27T05:08:09.844410+00:00",
+  "quem": "agent/ci/pouso-respeita-depende-de",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2174",
+  "revisao": "6156913a9d01bb2040a41f1fed1f7fbdb04c68c9",
+  "arvore": "cbd7787d93bfa5f40a65eaa8661875386d411dda"
+}

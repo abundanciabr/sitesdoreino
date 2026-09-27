@@ -1,0 +1,21 @@
+{
+  "arquivo": "819-os-eventos-recusados-do-quiz-tambem-deixam-de-guardar-dado-p",
+  "id": "TAR-819",
+  "titulo": "Os eventos recusados do quiz também deixam de guardar dado pessoal",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [
+    "TAR-800"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com migração que apaga lead do corpo dos EventoMorto de quiz.completado, teste vermelho para verde e publicação da metricas com sucesso",
+  "despacho": "Decisão 6 do mantenedor (registro 20260927-013): expurgar lead de quiz.completado dos fatos guardados. A TAR-800 (PR #2178) limpou Evento e passou a descartar lead na entrada, inclusive para EventoMorto novo; os EventoMorto de quiz.completado gravados antes de 27/09/2026 03h37 UTC podem ter lead no corpo. Migração única que remove lead desses corpos, sem tocar outros assuntos, pelo mesmo cuidado com gatilhos da migração 0004. Linha de mandato: Mandato-do-mantenedor: limpar lead do quiz.completado na entrada e expurgar os fatos guardados autorizado pelo mantenedor <arquivos> ; origem: sessão de 26/09/2026.",
+  "origem": "achado da frente QUIZ, PR #2178, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
