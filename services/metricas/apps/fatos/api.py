@@ -621,7 +621,9 @@ def _variantes_do_funil(
     )
     leads_visitantes = (
         set(
-            janela.filter(tipo=TIPO_LEAD_CAPTURADO, dados__experimento_id=experimento_id)
+            janela.filter(
+                tipo=TIPO_LEAD_CAPTURADO, dados__experimento_id=experimento_id
+            )
             .values_list("dados__visitor_id", flat=True)
             .distinct()
         )
@@ -738,7 +740,9 @@ def funil(
         for nome, qs in querysets.items()
     ]
 
-    por_dia_por_passo = {nome: _visitantes_por_dia(qs) for nome, qs in querysets.items()}
+    por_dia_por_passo = {
+        nome: _visitantes_por_dia(qs) for nome, qs in querysets.items()
+    }
     dias_com_dado = sorted({d for mapa in por_dia_por_passo.values() for d in mapa})
     por_dia = [
         {
