@@ -46,6 +46,13 @@ MEDALHA = "medalha-e2e-comunidade"
 # mais assumiu (lei §8, sem ranking nem contagem alheia).
 VAGAS_DA_TAREFA = 2
 
+# Teto MEDIDO de passos de Tab até o alvo, com os dados deste teste (a faixa
+# de navegação mais o alvo). `passos_ate_o_alvo > 0` sozinho deixaria passar
+# até 15 tabstops a mais que o roteiro tolera (MAXIMO_DE_PASSOS do JS): o
+# número certo é o TETO, não só "encontrou".
+PASSOS_ATE_ASSUMIR = 4
+PASSOS_ATE_QUADRO_DE_CONTRIBUICOES = 5
+
 
 def _pessoa(pessoa_id: str) -> Pessoa:
     pessoa, _ = Pessoa.objects.get_or_create(
@@ -180,7 +187,10 @@ def test_quadro_de_contribuicoes_cabe_no_celular_e_se_navega_so_com_teclado(
         f"Tab não chegou ao botão 'Assumir esta tarefa' em {dados['passos_maximos']} passos; "
         f"sequência: {dados['sequencia']}"
     )
-    assert dados["passos_ate_o_alvo"] > 0
+    assert dados["passos_ate_o_alvo"] <= PASSOS_ATE_ASSUMIR, (
+        f"Tab levou {dados['passos_ate_o_alvo']} passos até 'Assumir esta tarefa'; "
+        f"o teto medido é {PASSOS_ATE_ASSUMIR}. Sequência: {dados['sequencia']}"
+    )
     assert dados[
         "foco_visivel_em_todos_os_passos"
     ], f"Algum elemento focado antes do alvo não mostrou contorno visível: {dados['sequencia']}"
@@ -214,7 +224,10 @@ def test_medalhas_cabem_no_celular_e_se_navegam_so_com_teclado(
         f"Tab não chegou ao primeiro link de conteúdo em {dados['passos_maximos']} passos; "
         f"sequência: {dados['sequencia']}"
     )
-    assert dados["passos_ate_o_alvo"] > 0
+    assert dados["passos_ate_o_alvo"] <= PASSOS_ATE_QUADRO_DE_CONTRIBUICOES, (
+        f"Tab levou {dados['passos_ate_o_alvo']} passos até 'quadro de contribuições'; "
+        f"o teto medido é {PASSOS_ATE_QUADRO_DE_CONTRIBUICOES}. Sequência: {dados['sequencia']}"
+    )
     assert dados[
         "foco_visivel_em_todos_os_passos"
     ], f"Algum elemento focado antes do alvo não mostrou contorno visível: {dados['sequencia']}"
