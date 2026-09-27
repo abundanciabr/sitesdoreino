@@ -2559,6 +2559,26 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/experimentos/<str:experimento_id>/decisao/",
+      "endereco": "/admin/placar/experimentos/<str:experimento_id>/decisao/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Decidir o experimento",
+      "descricao": "O fim de um teste de duas versões da página. Promover põe no ar o texto da versão vencedora, Reverter mantém a página como está e Encerrar termina o teste sem escolher vencedor. A decisão não muda depois de gravada."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/experimentos/<str:experimento_id>/decidir",
+      "endereco": "/admin/placar/experimentos/<str:experimento_id>/decidir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Gravar a decisão do experimento",
+      "descricao": "Não é uma página: é o que acontece quando você aperta Promover, Reverter ou Encerrar. Apertar duas vezes não publica nem encerra duas vezes."
+    },
+    {
+      "celula": "admin",
       "rota": "placar/coortes/",
       "endereco": "/admin/placar/coortes/",
       "alcance": "publico",
@@ -2567,6 +2587,17 @@
       "titulo": "As coortes",
       "descricao": "Quem entrou na escola em cada mês, uma linha por mês, separando quem comprou de quem foi liberado, e ao lado o que a plataforma ganhou naquele mesmo mês. A barra do mês zera no dia 1; esta tela guarda as barras que já fecharam.",
       "observacao": "As duas tabelas nunca se somam: a de cima conta fichas de aluno e a de baixo conta pessoas da plataforma, e não existe hoje como dizer qual pessoa corresponde a qual ficha. Por turma, por canal e a foto ao longo do tempo aparecem escritas, com o motivo de ainda não terem fonte. Degrau 10 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §6.4)."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/funil/",
+      "endereco": "/admin/placar/funil/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O funil",
+      "descricao": "Das pessoas que abriram a página de venda nos últimos 7, 30 ou 90 dias, quantas chegaram à oferta, clicaram para pagar, deixaram o contato, fizeram o pedido e pagaram, com a taxa de cada degrau para o seguinte e a mesma escada dia a dia.",
+      "observacao": "Lê a contagem do funil na memória da escola. Memória fora do ar vira aviso sem número, e janela sem nenhum evento medido é dita com palavras, nunca como uma escada de zeros. Frente F7 do sistema de experimentos."
     },
     {
       "celula": "admin",

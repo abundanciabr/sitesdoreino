@@ -13,6 +13,16 @@
 # do plano). Ele autorizou nominalmente, em pergunta estruturada, com estas
 # palavras: "Abre agora, nesta conversa".
 #
+# EMENDADO EM 26/09/2026, por mandato prévio por faixa (Lista B,
+# `docs/decisoes/MANDATO-POR-FAIXA.md`, cerca `contracts/`, aditivos
+# autorizados pelo mantenedor na sessão de 26/09/2026): nasceu `countFunnel`,
+# a leitura do funil de vendas (visita, seção alcançada, clique no checkout,
+# lead capturado, pedido atribuído, pedido pago) por dia e por variante de
+# experimento (F6 do sistema de experimentos, DESENHO-COMUM.md e a Emenda 1
+# dele). Nada foi removido nem renomeado, e nenhum campo virou obrigatório em
+# operação que já existia: a adição é só o caminho `/funil` e os schemas que
+# ele usa.
+#
 # O QUE ESTA PORTA PROMETE, E O QUE ELA NUNCA VAI FAZER
 # -----------------------------------------------------
 # 1. **Ela só LÊ.** Não existe operação que grave, corrija ou apague um fato, e
@@ -28,18 +38,20 @@
 #
 # 3. **Ausência nunca vira zero.** Dia sem fato não aparece em `countFacts`;
 #    assunto que nunca chegou não aparece em `listCoverage`; tipo sem conquista
-#    não aparece em `countMilestones`. Quem lê distingue "medi e deu zero" de
-#    "não medi", e é para isso que `listCoverage` existe.
+#    não aparece em `countMilestones`; sem nenhum `funil.*` na janela,
+#    `countFunnel` devolve `coleta` nula, e não zero. Quem lê distingue "medi e
+#    deu zero" de "não medi", e é para isso que `listCoverage` e `coleta` existem.
 #
 # 4. **Toda contagem é por DIA DE SÃO PAULO.** O armazenamento é UTC; o dia é
 #    gravado na recepção, no fuso em que esta casa decide a que mês uma pessoa
 #    pertence. Um fato das 22h do dia 30 conta no dia 30 (`armadilhas/099`).
 #
-# 5. **`countFacts` e `listCoverage` exigem `site_id` (Lei 9).** Duas famílias
-#    de operação ficam de fora, e as duas exceções são honestas. A fila de
-#    eventos mortos NÃO é escopada por site porque um evento morto é um envelope
-#    que não pôde ser lido, e o site é uma das coisas que faltam nele: filtrar
-#    ali esconderia justamente os quebrados. As operações de MARCO não são
+# 5. **`countFacts` e `listCoverage` exigem `site_id` (Lei 9); `countFunnel`
+#    aceita `site_id` OPCIONAL.** Duas famílias de operação ficam de fora do
+#    escopo por site, e as duas exceções são honestas. A fila de eventos
+#    mortos NÃO é escopada por site porque um evento morto é um envelope que
+#    não pôde ser lido, e o site é uma das coisas que faltam nele: filtrar ali
+#    esconderia justamente os quebrados. As operações de MARCO não são
 #    escopadas por site porque a tabela de marcos não guarda o site, e um número
 #    da plataforma inteira que se declara como tal é honesto, enquanto um recorte
 #    inventado por dentro não seria. O dia em que o marco ganhar site, o filtro
@@ -62,12 +74,21 @@
 #    uma decisão de quem consome, em vez de acontecer por acidente
 #    (`armadilhas/303`).
 #
+# 8. **Em `countFunnel`, o braço de um visitante é FIXO.** É a `variante_id` da
+#    PRIMEIRA `pagina-vista` dele no experimento pedido, e vale para `expostos`
+#    e `convertidos` também: um evento posterior com `variante_id` diferente
+#    não muda o braço, só entra na contagem de `visitantes_com_bracos_trocados`.
+#    `secao` viaja sempre junto de `experimento_id`, porque esta célula não
+#    conhece o catálogo de seções da página: quem sabe qual seção pertence a
+#    qual experimento é a `admin`, que pede as duas juntas.
+#
 # AUTORIZAÇÃO: Bearer de par (`TOKENS_ACEITOS_<PAR>`), em TODAS as operações. O
 # conjunto nasce vazio quando o env falta, e conjunto vazio recusa todo mundo
 # com 401. Quem consome hoje é a `admin`, e só ela.
 #
 # Lei do assunto: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2, §6.4 e a
-# escada do §8, degraus 7 e 9. Constituição da célula:
+# escada do §8, degraus 7 e 9; `documentos/plataforma-experimentacao-e-aprendizado-de-conversao.md`
+# e `DESENHO-COMUM.md` (F6) para `countFunnel`. Constituição da célula:
 # `constituicoes/AGENTS.metricas.md`.
 # =============================================================================
 openapi: 3.1.0
@@ -425,6 +446,91 @@ paths:
         guarda marco derivado de fato. Marco assinado por gente mora no livro de
 
         ocorrências, e o plano manda o painel dizer qual dos dois está mostrando.'
+  /funil:
+    get:
+      operationId: countFunnel
+      summary: Funil
+      parameters:
+      - in: query
+        name: de
+        schema:
+          format: date
+          type: string
+        required: true
+      - in: query
+        name: ate
+        schema:
+          format: date
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: experimento_id
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: secao
+        schema:
+          default: ''
+          type: string
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Funil'
+      description: 'O funil de vendas por dia, e por variante quando há experimento ativo.
+
+
+        OS SEIS PASSOS SÃO SEMPRE OS MESMOS, NESTA ORDEM (`PASSOS_DO_FUNIL`):
+
+        visita, seção alcançada, clique no checkout, lead capturado, pedido
+
+        atribuído, pedido pago. `visitantes` é sempre `visitor_id` distintos, nunca
+
+        contagem de eventos: um visitante que rola a página duas vezes ou é
+
+        reentregue pela fila continua UMA pessoa no funil.
+
+
+        `coleta` DISTINGUE zero de sem coleta, a mesma lei de `countFacts`: se
+
+        nenhum `funil.*` chegou na janela (para este site), `primeiro` e `ultimo`
+
+        são nulos, e os seis passos em zero significam "não sei", não "ninguém
+
+        passou". Com `coleta` preenchida, um passo em zero é uma medição real:
+
+        a coleta está de pé e ninguém fez aquilo.
+
+
+        `experimento_id` e `secao` viajam sempre juntos: sem a seção, esta célula
+
+        não sabe qual `secao-vista` conta como exposição ao experimento, porque
+
+        quem conhece o catálogo de seções é o `catalogo`, nunca a `metricas`.
+
+
+        O braço de cada visitante (Emenda 1 do desenho comum, 26/09/2026) é fixado
+
+        pela primeira `pagina-vista` dele neste experimento, e vale para `expostos`
+
+        e `convertidos`: ver `_variantes_do_funil`. `convertidos` é sempre um
+
+        subconjunto de `expostos`: quem clicou no checkout sem ter alcançado a
+
+        seção do experimento não é convertido deste teste, é ruído de outro
+
+        caminho da página.'
 components:
   schemas:
     Contagem:
@@ -643,6 +749,109 @@ components:
       - sujeito_tipo
       - sujeito_id
       - marcos
+      type: object
+    Coleta:
+      properties:
+        primeiro:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        ultimo:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+      required:
+      - primeiro
+      - ultimo
+      type: object
+    Funil:
+      properties:
+        site_id:
+          type: string
+        experimento_id:
+          type: string
+        de:
+          format: date
+          type: string
+        ate:
+          format: date
+          type: string
+        coleta:
+          $ref: '#/components/schemas/Coleta'
+        passos:
+          items:
+            $ref: '#/components/schemas/PassoContado'
+          type: array
+        por_dia:
+          items:
+            $ref: '#/components/schemas/PassosDoDia'
+          type: array
+        variantes:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/VarianteDoFunil'
+            type: array
+          - type: 'null'
+        visitantes_com_bracos_trocados:
+          anyOf:
+          - type: integer
+          - type: 'null'
+      required:
+      - site_id
+      - experimento_id
+      - de
+      - ate
+      - coleta
+      - passos
+      - por_dia
+      - variantes
+      - visitantes_com_bracos_trocados
+      type: object
+    PassoContado:
+      properties:
+        passo:
+          type: string
+        visitantes:
+          type: integer
+      required:
+      - passo
+      - visitantes
+      type: object
+    PassosDoDia:
+      properties:
+        dia:
+          format: date
+          type: string
+        passos:
+          items:
+            $ref: '#/components/schemas/PassoContado'
+          type: array
+      required:
+      - dia
+      - passos
+      type: object
+    VarianteDoFunil:
+      properties:
+        variante_id:
+          type: string
+        atribuidos:
+          type: integer
+        expostos:
+          type: integer
+        convertidos:
+          type: integer
+        passos:
+          items:
+            $ref: '#/components/schemas/PassoContado'
+          type: array
+      required:
+      - variante_id
+      - atribuidos
+      - expostos
+      - convertidos
+      - passos
       type: object
   securitySchemes:
     bearerAuth:

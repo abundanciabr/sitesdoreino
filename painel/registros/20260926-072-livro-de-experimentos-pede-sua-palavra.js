@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-072-livro-de-experimentos-pede-sua-palavra",
+  tipo: "pendencia",
+  quando: "2026-09-26",
+  titulo: "Gravar no livro a aposta e o veredito do experimento pede sua palavra",
+  detalhe: "O livro mora no Git; a administração só o lê. Gravar nele pela tela exige PR com chave do GitHub; a da área só cancela tarefa da fila. TAR-778 bloqueada.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2143",
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  area: "admin",
+  tarefa: "TAR-778",
+  porque_so_voce: "Uso novo de chave, ou chave nova, só você decide.",
+  proximo_passo: "Dizer numa sessão: chave da fila, chave própria, ou outro lugar.",
+  se_eu_nao_decidir: "A decisão funciona; o aprendizado só vai ao livro à mão.",
+  recomendacao: "Chave própria para o livro: risco separado da fila.",
+  reversivel: true,
+  impacto: "medio"
+});})();
