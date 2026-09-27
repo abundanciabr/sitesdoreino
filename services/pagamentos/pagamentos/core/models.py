@@ -350,6 +350,7 @@ class AppmaxWebhookInbox(models.Model):
     external_order_id = models.CharField(max_length=255)
     payload = models.JSONField()
     received_at = models.DateTimeField(auto_now_add=True)
+    redeliveries = models.PositiveIntegerField(default=0)
     processed_at = models.DateTimeField(null=True, blank=True)
     failed_attempts = models.PositiveSmallIntegerField(default=0)
     next_retry_at = models.DateTimeField(null=True, blank=True)
