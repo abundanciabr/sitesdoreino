@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-099-reconhecimentos-da-comunidade-integrados",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Os dois reconhecimentos da Comunidade estão integrados na gamificação da main",
+  detalhe: "O PR 2194 (frente C5, TAR-826) integrou na main às 03h26 de São Paulo (merge 4000b3f2a9170f70088c0849e9fb6ca461bc2a26): as medalhas Primeiro ciclo concluído e Primeira ajuda aceita nascem desligadas, a concessão é única mesmo com evento reentregue, a tela /conquistas/medalhas mostra o critério e o estado da pessoa, e a migração leva as definições ao banco de produção porque o semeador só roda por workflow manual. Nove checks verdes, revisor aprovou, pouso automático. Publicação é registro à parte quando conferida. Este registro dá baixa verde no recibo do PR 2194.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2194 (MERGED, mergeCommit 4000b3f2a9170f70088c0849e9fb6ca461bc2a26, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-082-gamificacao-reconhecimentos-da-comunidade",
+  relacao: "baixa",
+  tarefa: "TAR-826",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "gamificacao",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -303,6 +303,18 @@ def rodar_testes_de_contrato(raiz: Path) -> Resultado:
     return resultado
 
 
+def rodar_testes_da_infra(raiz: Path) -> Resultado:
+    """Os testes das operações da infraestrutura (`infra/test_*.py`).
+
+    Até 27/09/2026 eles só rodavam na máquina de quem os escrevia: a ativação
+    da Appmax e o canário (TAR-802) pousavam sem medição em PR. Custa ~2 s,
+    por isso roda em todo PR, como os contratos.
+    """
+    resultado, _ = executar_pytest(raiz, [str(raiz / "infra"), "-q"])
+    resultado.nome = "testes-da-infra"
+    return resultado
+
+
 # Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
 # rodar (ausente, erro de SO, timeout). Só eles significam "não foi possível
 # medir" — qualquer outro número veio do programa e é veredito dele.
@@ -339,6 +351,18 @@ def classificar_exit_do_make(codigo: int) -> Estado:
     return Estado.FAIL
 
 
+def e_gnu_make(make: str | None) -> bool:
+    """Só o GNU Make vale: uma fachada chamada `make` não entende `-C` (`armadilhas/529`)."""
+    if make is None:
+        return False
+    try:
+        versao = subprocess.run([make, "--version"], capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return versao.stdout.startswith("GNU Make")
+
+
 def rodar_celula(raiz: Path, celula: str) -> Resultado:
     """Delega o `make ci` da célula — sem reimplementar lint/type/test aqui."""
     destino = raiz / "services" / celula
@@ -359,12 +383,14 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
             "ausente não é portão satisfeito.",
         )
     make = shutil.which("make")
-    if make is None:
+    if not e_gnu_make(make):
+        impostor = f"O `make` do PATH ({make}) não é GNU Make; ponha o GNU Make antes dele.\n" if make else ""
         return Resultado(
             f"celula/{celula}",
             Estado.ERROR,
             "GNU Make ausente — a CI da célula ainda depende dele",
-            "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
+            impostor
+            + "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
             "Enquanto essa camada não for portada, rodar a CI de UMA célula exige make.\n"
             "Os portões de repositório (`python ci/ci.py --apenas freeze,muralhas`)\n"
             "continuam disponíveis sem make.",
@@ -471,7 +497,7 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
     return mapa_de_celulas.celulas_do_diff(arquivos, mapa)
 
 
-PORTOES = ("freeze", "muralhas", "guardas", "testador", "contratos")
+PORTOES = ("freeze", "muralhas", "guardas", "testador", "contratos", "infra")
 
 
 def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relatorio:
@@ -509,6 +535,8 @@ def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relator
         relatorio.registrar(rodar_testes_do_testador(raiz))
     if "contratos" in escolhidos:
         relatorio.registrar(rodar_testes_de_contrato(raiz))
+    if "infra" in escolhidos:
+        relatorio.registrar(rodar_testes_da_infra(raiz))
     if celula:
         relatorio.registrar(rodar_celula(raiz, celula))
     return relatorio
@@ -577,6 +605,10 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "  contratos  — os esquemas de contracts/ aceitam e recusam o que devem "
             "(pytest contracts)"
+        )
+        print(
+            "  infra      — os testes das operações da infraestrutura "
+            "(pytest infra)"
         )
         print("\nAlém deles: --celula <nome> encadeia o `make ci` daquela célula.")
         return 0

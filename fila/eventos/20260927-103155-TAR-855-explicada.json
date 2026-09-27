@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-103155-TAR-855-explicada",
+  "tarefa": "TAR-855",
+  "evento": "explicada",
+  "quando": "2026-09-27T10:31:55.359502+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026 (sessão da manhã): abrir o máximo de frentes da Comunidade Meshcraft com Opus 5.5 e Sonnet 5; rodada 2 do dossiê (docs/comunidade), partes sem decisão reservada ao mantenedor",
+  "o_que_e": "A página Comunidade do fórum diz ao aluno o que ele pode fazer agora, mas não aponta o quadro de contribuições, que mora em outra parte do site.",
+  "o_que_muda": "A página passa a mostrar, junto das dúvidas que dependem do aluno, o caminho para as contribuições que a escola precisa, com o link direto.",
+  "exemplo": "O aluno abre a Comunidade, vê que não há dúvida pendente no grupo e, logo abaixo, lê que a escola precisa de ajuda, com o link para as contribuições abertas.",
+  "importancia": 45
+}

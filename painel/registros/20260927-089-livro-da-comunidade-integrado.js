@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-089-livro-da-comunidade-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Os registros da primeira rodada da Comunidade estão no livro da main",
+  detalhe: "O PR 2200 integrou na main às 03h02 de São Paulo (merge e250e6db7a4f543aefcf1ca647b259a53ed3cb2e) com a baixa da integração do PR 2184, a decisão 1 do mantenedor sobre os modelos e a pendência das decisões 3 a 6 da Comunidade (registro 072, com precisa_do_dono). Os sete checks estavam verdes e o pouso foi automático. Este registro dá baixa verde no recibo do PR 2200.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2200 (MERGED, mergeCommit e250e6db7a4f543aefcf1ca647b259a53ed3cb2e, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-073-painel-registros-da-comunidade-no-livro",
+  relacao: "baixa",
+  tarefa: "TAR-832",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

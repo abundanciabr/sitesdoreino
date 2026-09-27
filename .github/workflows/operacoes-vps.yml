@@ -13,6 +13,8 @@ on:
           - appmax-pix
           - appmax-pix-pedido
           - appmax-pix-aviso
+          - appmax-inbox-latencia
+          - appmax-observacao
           - appmax-estorno
           - quiz-configuracao
       servico:
@@ -20,7 +22,7 @@ on:
         required: true
         type: string
       referencia:
-        description: 'SHA-256 da chave idempotente: obrigatório em appmax-pix-pedido e appmax-pix-aviso, opcional em appmax-pix para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
+        description: 'SHA-256 da chave idempotente: obrigatório em appmax-pix-pedido, appmax-pix-aviso e appmax-inbox-latencia, opcional em appmax-pix para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
         required: false
         default: ''
         type: string

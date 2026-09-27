@@ -1,0 +1,62 @@
+{
+  "arquivo": "20260927-103151-TAR-854-contrato_execucao",
+  "tarefa": "TAR-854",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T10:31:51.300962+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-2",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 2 (dossiê §15, partes sem decisão reservada): Uma sequência de mensagens, desligada até o mantenedor ligar, convida quem concluiu o primeiro bloco a entrar na Comunidade",
+    "versao": 1,
+    "objetivo": "Fica pronta uma sequência de mensagens que convida o aluno a entrar na Comunidade depois de concluir o primeiro bloco do curso. Ela nasce desligada; o mantenedor liga pela tela de jornadas quando quiser começar.",
+    "entregaveis": [
+      "Comando semear_convite_para_a_comunidade idempotente, desligado, em três idiomas",
+      "Execução em produção pelo mesmo caminho do convite da Prancheta",
+      "Testes vermelho para verde, inclusive o de não coincidir com o convite da Prancheta"
+    ],
+    "escopo_incluido": [
+      "services/mensageria/**"
+    ],
+    "nao_objetivos": [
+      "Ligar a sequência (gesto do mantenedor)",
+      "Evento, contrato ou assunto novo",
+      "Mudar o convite da Prancheta"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Bancada --sem-container com PostgreSQL próprio e venv em caminho curto; suíte antes da primeira edição",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 (manhã): abrir o máximo de frentes da Comunidade com Opus 5.5 e Sonnet 5",
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Assunções do registro 072 em vigor: matrícula ativa, só a professora assina laudo, orientação pública"
+    ],
+    "etapas": [
+      "Abrir bancada, subir PostgreSQL, rodar a suíte da célula e guardar a saída",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte inteira, black e travessão",
+      "PR por ci/pr.py com a própria TAR e espera com teto"
+    ],
+    "criterios_entrada": [
+      "TAR-854 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Rodar o comando duas vezes deixa uma sequência desligada e uma versão",
+      "Desligada não inscreve ninguém; ligada inscreve uma vez por pessoa",
+      "Não coincide com o convite da Prancheta no mesmo instante",
+      "Suíte mensageria inteira verde; diff dentro dos alvos; PR MERGED; deploy verde"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte inteira com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy"
+    ],
+    "condicao_encerramento": "comando de semeadura idempotente testado vermelho para verde: cria a sequência desligada com texto em português, inglês e espanhol e links para /forum/comunidade e /docs/comunidade; rodar duas vezes não duplica; desligada não inscreve ninguém; ligada inscreve uma vez por pessoa; não chega no mesmo instante que o convite para a Prancheta; suíte mensageria verde; PR integrado; deploy verde; semeadura executada em produção ou caminho de execução comprovado",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega. Ligar medalhas ou sequências novas é gesto dele na tela, depois do deploy."
+  }
+}

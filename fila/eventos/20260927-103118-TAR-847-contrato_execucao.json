@@ -1,0 +1,68 @@
+{
+  "arquivo": "20260927-103118-TAR-847-contrato_execucao",
+  "tarefa": "TAR-847",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T10:31:18.683118+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-2",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 2 (dossiê §15, partes sem decisão reservada): O fórum guarda quem moderou, quando e por quê, e a equipe troca alguém de grupo numa ação só",
+    "versao": 1,
+    "objetivo": "Cada gesto de moderação passa a deixar uma linha que ninguém apaga: quem fez, quando, em quê e o motivo. A equipe lê essas linhas na vista da Comunidade, e a troca de grupo vira um gesto único, sem o aluno ficar no meio do caminho sem grupo.",
+    "entregaveis": [
+      "Registro de moderação append-only com migração, gravado na mesma transação de cada ação, com guarda contra atualização e remoção",
+      "Motivo obrigatório nas ações que retiram, movem, editam texto alheio, trocam responsável, removem ou trocam membro",
+      "Troca de grupo em gesto único, só equipe, numa transação, recusando sem vaga sem mexer no grupo de origem",
+      "Vista da equipe com as últimas 10 ações por grupo, sem e-mail",
+      "Testes vermelho para verde em test_rastro_da_moderacao.py e test_troca_de_grupo.py"
+    ],
+    "escopo_incluido": [
+      "services/forum/**"
+    ],
+    "nao_objetivos": [
+      "Denúncia de aluno e ocorrências de convivência (exigem desenho próprio)",
+      "Mensagem direta entre alunos",
+      "Contrato de evento novo ou assunto novo de notificação",
+      "Conserto do teste de relógio em test_escrever.py (frente paralela)",
+      "Qualquer arquivo fora de services/forum/** e painel/mapa-do-site.json"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Bancada --sem-container com PostgreSQL próprio e venv em caminho curto; suíte antes da primeira edição",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 (manhã): abrir o máximo de frentes da Comunidade com Opus 5.5 e Sonnet 5",
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Assunções do registro 072 em vigor: matrícula ativa, só a professora assina laudo, orientação pública"
+    ],
+    "etapas": [
+      "Abrir bancada, subir PostgreSQL, rodar a suíte da célula e guardar a saída",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte inteira, black e travessão",
+      "PR por ci/pr.py com a própria TAR e espera com teto"
+    ],
+    "criterios_entrada": [
+      "TAR-847 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Cada ação listada grava exatamente uma linha com ator, ação, alvo, motivo e hora; tentativa de alterar ou apagar a linha é recusada",
+      "Ação que exige motivo e chega sem ele é recusada com mensagem que diz o que fazer",
+      "Troca de grupo fecha A e abre B de uma vez; sem vaga em B, A fica intacto; o membro deixa de ler e achar A na busca e passa a ler B",
+      "Quem não é equipe recebe 404 na troca de grupo e na vista",
+      "Suíte forum inteira verde com PostgreSQL; black --check e travessao --listar limpos; diff dentro dos alvos",
+      "PR MERGED e deploy do fórum verde no SHA do merge"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte inteira com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy"
+    ],
+    "condicao_encerramento": "testes vermelho para verde: cada ação de moderação grava uma linha com quem, quando, o quê e o motivo, nunca apagada; troca de responsável e troca de grupo exigem motivo e ficam registradas; troca de grupo numa transação fecha o grupo antigo e abre o novo, recusando sem vaga; vista da equipe mostra as últimas ações por grupo; guarda provado por mutação; suíte forum verde com PostgreSQL; PR integrado; deploy verde",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega. Ligar medalhas ou sequências novas é gesto dele na tela, depois do deploy."
+  }
+}

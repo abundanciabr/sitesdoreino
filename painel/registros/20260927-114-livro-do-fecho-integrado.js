@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-114-livro-do-fecho-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O livro do fecho da primeira rodada da Comunidade está na main",
+  detalhe: "O PR 2211 integrou na main às 04h28 de São Paulo (merge c4196010574233c949eaab3e4f9e508099565384) com a baixa do PR 2209, a baixa do PR 2207 e a publicação da vista da equipe. Este registro dá baixa verde no recibo do PR 2211.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2211 (MERGED, mergeCommit c4196010574233c949eaab3e4f9e508099565384, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-113-painel-vista-da-equipe-e-fecho-do-livro",
+  relacao: "baixa",
+  tarefa: "TAR-842",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

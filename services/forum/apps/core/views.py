@@ -8,10 +8,12 @@ dia em que alguém mexer num deles.
 import mimetypes
 import os
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Exists, F, OuterRef, Window
+from django.db.models.functions import RowNumber
 from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -19,7 +21,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
 
-from apps.forum.models import Area, Mensagem, Topico
+from apps.forum.models import (
+    Area,
+    MembroDoGrupo,
+    Mensagem,
+    Pessoa,
+    RegistroDeModeracao,
+    Topico,
+)
 
 from . import agente
 from .etiquetas import decorar as decorar_com_etiquetas
@@ -41,7 +50,7 @@ from apps.forum import eventos
 from apps.forum.tasks import relay_apos_commit
 
 from .menu import site_id_do_host
-from .sessao import quem_e
+from .sessao import email_da_equipe, quem_e
 
 # ---------------------------------------------------------------------------
 # OS LIMITES DO QUE SE ESCREVE — números, num lugar só
@@ -207,10 +216,32 @@ def _porta_de_entrada(request) -> str:
     return f"{porta}?{urlencode({'next': request.get_full_path()})}"
 
 
-def contexto_da_home(ator, *, erro_admin="", nome="", descricao=""):
-    """A capa do fórum. `nome`/`descricao` voltam preenchidos quando a criação
-    de uma área foi recusada — perder o que a pessoa digitou é a pior forma de
-    recusar."""
+def responsaveis_possiveis() -> list[Pessoa]:
+    """Quem pode responder por um grupo de prática: a equipe que já entrou aqui.
+
+    A pergunta "é da equipe?" é `email_da_equipe`, a MESMA que decide o poder de
+    quem está do outro lado da tela, e é por isso que o filtro corre em Python
+    e não num `email__in` montado aqui: montar a lista de novo seria a segunda
+    leitura das duas variáveis do env. Só a escola chega a pedir isto, e o
+    número de pessoas de um fórum de escola é de centenas.
+
+    Quem nunca entrou no fórum não tem espelho em `Pessoa` e não aparece: peça
+    à professora que entre uma vez.
+    """
+    return [
+        pessoa
+        for pessoa in Pessoa.objects.order_by("nome_exibido", "pk")
+        if email_da_equipe(pessoa.email)
+    ]
+
+
+def contexto_da_home(ator, *, erro_admin="", digitado=None):
+    """A capa do fórum. `digitado` (os campos do formulário de criar área, lidos
+    por `moderacao._ler_o_formulario_da_area`) volta preenchido quando a criação
+    foi recusada: perder o que a pessoa digitou é a pior forma de recusar, e
+    devolver um grupo de prática com "quem enxerga" zerado criaria, no segundo
+    clique, uma área aberta a todo aluno."""
+    digitado = digitado or {}
     areas = areas_visiveis(ator)
     # A contagem de novidades vem de UMA consulta para todas as áreas, e é
     # pendurada em cada uma. Perguntar dentro do laço do template faria uma ida
@@ -228,8 +259,11 @@ def contexto_da_home(ator, *, erro_admin="", nome="", descricao=""):
         "vazio": not areas,
         "pode_moderar": pode_moderar(ator),
         "erro_admin": erro_admin,
-        "nome_digitado": nome,
-        "descricao_digitada": descricao,
+        "nome_digitado": digitado.get("nome", ""),
+        "descricao_digitada": digitado.get("descricao", ""),
+        "visibilidade_digitada": digitado.get("visibilidade", ""),
+        "grupo_digitado": digitado.get("grupo", {}),
+        "responsaveis": responsaveis_possiveis() if pode_moderar(ator) else [],
     }
 
 
@@ -267,6 +301,13 @@ def contexto_da_area(
         "texto_digitado": texto,
         "pode_moderar": pode_moderar(ator),
         "erro_admin": erro_admin,
+        # Os campos do grupo só aparecem na caixa de editar de um GRUPO: é o
+        # que impede salvar um grupo pela tela e vê-lo virar área de alunos.
+        "responsaveis": (
+            responsaveis_possiveis()
+            if pode_moderar(ator) and area.visibilidade == Area.Visibilidade.TURMA
+            else []
+        ),
     }
 
 
@@ -559,3 +600,236 @@ def responder(request, topico_id: int):
         Topico.objects.filter(pk=topico.pk).update(ultima_atividade_em=timezone.now())
 
     return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
+
+
+# ===========================================================================
+# A COMUNIDADE: o que o membro de um grupo de prática pode fazer agora
+# ===========================================================================
+# TAR-824, 27/09/2026. A página responde uma pergunta só, "o que posso fazer
+# agora?", e tem quatro estados, todos com texto: sem login, sem matrícula
+# (inclusive a `alunos` fora do ar, que chega aqui como "não é aluno"), sem
+# grupo e com grupo. Nenhum deles depende da `gamificacao`: ela fora do ar não
+# tira nada desta página.
+#
+# QUEM É "MEU GRUPO" sai de `areas_visiveis`, a mesma regra de todas as telas.
+# Para o aluno, ler o grupo já É ter vínculo ativo. Para a equipe, que lê todo
+# grupo, "meu" é aquele pelo qual ela responde.
+
+# O endereço do desafio mora na célula `cursos`, fora do prefixo `/forum`, e
+# por isso é caminho do SITE e não `reverse()` deste urlconf.
+DESAFIO_DO_CURSO = "/cursos/{}/"
+# O bastante para uma tarde de ajuda. A lista existe para ser atendida, e a
+# mais antiga vem primeiro, então o corte nunca esconde quem espera há mais
+# tempo.
+QUEM_DEPENDE_DE_VOCE_MAXIMO = 20
+
+
+def endereco_do_desafio(grupo: Area) -> str:
+    """O link do desafio atual de um grupo: o curso dele, na célula `cursos`."""
+    return DESAFIO_DO_CURSO.format(quote(grupo.curso_id, safe=""))
+
+
+def ha_quanto_tempo(momento, agora) -> str:
+    """A espera em português de gente, sem depender do idioma do Django.
+
+    O filtro `timesince` responderia no idioma configurado, e esta célula não
+    configura nenhum: a tela diria "3 days" para um aluno brasileiro.
+    """
+    horas = max(0, int((agora - momento).total_seconds())) // 3600
+    if horas < 1:
+        return "há menos de uma hora"
+    if horas < 24:
+        return f"há {horas} hora{'s' if horas > 1 else ''}"
+    dias = horas // 24
+    return f"há {dias} dia{'s' if dias > 1 else ''}"
+
+
+def grupos_de(ator) -> list[Area]:
+    """Os grupos de prática desta pessoa, na ordem da tela."""
+    return [
+        area
+        for area in areas_visiveis(ator)
+        if area.visibilidade == Area.Visibilidade.TURMA
+        and area.ativa
+        and (not ator.eh_equipe or area.responsavel_id == ator.pessoa.pk)
+    ]
+
+
+def duvidas_abertas(grupos):
+    """As dúvidas destes grupos que esperam resposta, a mais antiga primeiro.
+
+    Esperar é estar publicada, destrancada e sem resposta aceita: uma conversa
+    trancada não recebe resposta, então ninguém espera por ela. A mesma
+    pergunta serve ao membro ("quem depende de você") e à equipe ("o que
+    espera em cada grupo"); duas cópias dela divergiriam na primeira mudança.
+    """
+    return (
+        Topico.objects.filter(
+            area__in=grupos,
+            estado=Topico.Estado.PUBLICADO,
+            trancado=False,
+            resposta_aceita__isnull=True,
+        )
+        .select_related("area", "autor")
+        .order_by("criado_em", "pk")
+    )
+
+
+def contexto_da_comunidade(request, ator) -> dict:
+    contexto = {
+        "ator": ator,
+        "porta_de_entrada": _porta_de_entrada(request),
+        "estado": "",
+        "grupos": [],
+        "dependem": [],
+    }
+    if not ator.autenticado:
+        contexto["estado"] = "entrar"
+        return contexto
+    if not (ator.eh_aluno or ator.eh_equipe):
+        contexto["estado"] = "matricula"
+        return contexto
+
+    grupos = grupos_de(ator)
+    if not grupos:
+        contexto["estado"] = "sem_grupo"
+        return contexto
+
+    for grupo in grupos:
+        grupo.desafio = endereco_do_desafio(grupo)
+
+    # QUEM DEPENDE DE VOCÊ: as dúvidas abertas do grupo que são de outra
+    # pessoa, porque a sua própria você não responde.
+    agora = timezone.now()
+    dependem = list(
+        duvidas_abertas(grupos).exclude(autor=ator.pessoa)[:QUEM_DEPENDE_DE_VOCE_MAXIMO]
+    )
+    for topico in dependem:
+        topico.espera = ha_quanto_tempo(topico.criado_em, agora)
+
+    contexto.update(estado="com_grupo", grupos=grupos, dependem=dependem)
+    return contexto
+
+
+@require_GET
+def comunidade(request):
+    """A página Comunidade do membro. Nunca 404: cada estado tem seu texto."""
+    ator = quem_e(request)
+    return render(
+        request, "forum/comunidade.html", contexto_da_comunidade(request, ator)
+    )
+
+
+# ===========================================================================
+# A COMUNIDADE VISTA PELA EQUIPE: o que espera em cada grupo, e quem responde
+# ===========================================================================
+# TAR-827, 27/09/2026. A especificação da Comunidade pede que a equipe
+# identifique filas, atrasos e limites de capacidade. Esta página mostra, por
+# grupo de prática ativo: o responsável, as vagas ocupadas, as dúvidas abertas
+# e quem entrou e ainda não escreveu. Toda espera aponta para o responsável do
+# grupo, e o grupo sem responsável diz isso em voz alta.
+#
+# As filas das outras células (laudos em `cursos`, validação em
+# `conquistas`) entram só como link: cada célula responde pelos próprios
+# números, e copiá-los aqui criaria uma segunda verdade atrasada.
+PLANTAO_DE_LAUDOS = "/cursos/plantao"
+FILA_DE_VALIDACAO = "/conquistas/interno"
+SEM_NOME_DE_EXIBICAO = "pessoa da escola sem nome de exibição"
+ULTIMAS_ACOES = 10
+
+
+def contexto_da_comunidade_da_equipe(ator) -> dict:
+    """Os grupos ativos com as esperas penduradas, em cinco consultas no total.
+
+    Uma consulta para os grupos, uma para as dúvidas abertas de todos eles, uma
+    para os vínculos ativos já sabendo se a pessoa escreveu no grupo e duas
+    para o rastro da moderação. Perguntar por grupo dentro do laço faria uma
+    ida ao banco por grupo.
+    """
+    grupos = list(
+        Area.objects.filter(
+            visibilidade=Area.Visibilidade.TURMA, ativa=True
+        ).select_related("responsavel")
+    )
+    por_pk = {grupo.pk: grupo for grupo in grupos}
+    for grupo in grupos:
+        grupo.quem_responde = (
+            (grupo.responsavel.nome_exibido or SEM_NOME_DE_EXIBICAO)
+            if grupo.responsavel
+            else ""
+        )
+        grupo.membros_ativos = 0
+        grupo.duvidas = []
+        grupo.acolhimento = []
+
+    agora = timezone.now()
+    for topico in duvidas_abertas(grupos):
+        topico.espera = ha_quanto_tempo(topico.criado_em, agora)
+        por_pk[topico.area_id].duvidas.append(topico)
+
+    # ACOLHIMENTO PENDENTE: quem tem vínculo ativo e nunca escreveu uma
+    # mensagem em conversa nenhuma do grupo, quem entrou antes primeiro.
+    ja_escreveu = Mensagem.objects.filter(
+        topico__area=OuterRef("grupo"), autor=OuterRef("pessoa")
+    )
+    vinculos = (
+        MembroDoGrupo.objects.filter(grupo__in=grupos, ate__isnull=True)
+        .annotate(ja_escreveu=Exists(ja_escreveu))
+        .select_related("pessoa")
+        .order_by("desde", "pk")
+    )
+    for vinculo in vinculos:
+        grupo = por_pk[vinculo.grupo_id]
+        grupo.membros_ativos += 1
+        if not vinculo.ja_escreveu:
+            vinculo.espera = ha_quanto_tempo(vinculo.desde, agora)
+            grupo.acolhimento.append(vinculo)
+
+    for grupo in grupos:
+        # Vaga zero é o lado fechado (`Area.vagas`): o grupo não recebe ninguém.
+        grupo.sem_vaga = grupo.membros_ativos >= grupo.vagas
+        grupo.rastro = []
+
+    # O RASTRO DA MODERAÇÃO (TAR-847): as últimas ações de cada grupo, quem fez
+    # e por quê. Duas consultas, e não uma por grupo: uma pelas linhas em que o
+    # grupo é a origem e outra pelas em que é o destino (mover, trocar de
+    # grupo), cada uma já cortada em dez por grupo dentro do banco.
+    for campo in ("area", "area_destino"):
+        linhas = (
+            RegistroDeModeracao.objects.filter(**{f"{campo}__in": grupos})
+            .annotate(
+                posicao=Window(
+                    RowNumber(),
+                    partition_by=[F(campo)],
+                    order_by=[F("quando").desc(), F("pk").desc()],
+                )
+            )
+            .filter(posicao__lte=ULTIMAS_ACOES)
+            .select_related("ator")
+        )
+        for linha in linhas:
+            por_pk[getattr(linha, f"{campo}_id")].rastro.append(linha)
+    for grupo in grupos:
+        grupo.rastro.sort(key=lambda linha: (linha.quando, linha.pk), reverse=True)
+        del grupo.rastro[ULTIMAS_ACOES:]
+
+    return {
+        "ator": ator,
+        "grupos": grupos,
+        "plantao_de_laudos": PLANTAO_DE_LAUDOS,
+        "fila_de_validacao": FILA_DE_VALIDACAO,
+    }
+
+
+@require_GET
+def comunidade_da_equipe(request):
+    """A Comunidade vista pela escola. 404 para quem não modera, nunca 403:
+    o 403 confirmaria que a página existe."""
+    ator = quem_e(request)
+    if not pode_moderar(ator):
+        raise Http404("página não encontrada")
+    return render(
+        request,
+        "forum/comunidade_da_equipe.html",
+        contexto_da_comunidade_da_equipe(ator),
+    )

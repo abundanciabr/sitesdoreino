@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-111131-TAR-847-descoberta",
+  "tarefa": "TAR-847",
+  "evento": "descoberta",
+  "quando": "2026-09-27T11:11:31.071675+00:00",
+  "quem": "agent/forum/comunidade-rastro-da-moderacao",
+  "detalhe": "Os gestos sobre a ÁREA inteira (arquivar, reabrir, mudar nome, quem enxerga e quem escreve) seguem sem rastro: não estavam no vocabulário do brief e ficaram fora para não ampliar o mandato. Deixar uma área privada aberta ao mundo é o gesto mais sério desses.",
+  "evidencia": "services/forum/apps/core/moderacao.py moderar_area: arquivar e reabrir salvam sem RegistroDeModeracao; AcaoDeModeracao não tem valor para área",
+  "classificacao": "C",
+  "criterio": "cada gesto de moderação grava uma linha com quem, quando, o quê e o motivo",
+  "encaminhamento": "tarefa nova na célula forum: acrescentar arquivar_area, reabrir_area e editar_area ao vocabulário (migração que troca a CheckConstraint) e gravar a linha em moderar_area, com motivo obrigatório ao mudar quem enxerga"
+}

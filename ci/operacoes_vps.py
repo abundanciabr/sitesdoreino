@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 OPERACOES = {
@@ -17,6 +18,8 @@ OPERACOES = {
     "appmax-pix",
     "appmax-pix-pedido",
     "appmax-pix-aviso",
+    "appmax-inbox-latencia",
+    "appmax-observacao",
     "appmax-estorno",
     "quiz-configuracao",
 }
@@ -52,6 +55,17 @@ CAMPOS_CANDIDATA_APPMAX_PIX = {
     "qr_presente",
     "operacoes",
 }
+# A leitura por referência não repete "referencia" nem "criada_em" na
+# evidência (medir() já filtrou por elas); a forma da evidência é quem
+# distingue candidata única de descoberta, não o parâmetro `referencia` do
+# conferir() da esteira, que para appmax-pix nunca o repassa.
+CAMPOS_RESUMO_APPMAX_PIX = {
+    "tentativa",
+    "intent",
+    "motivo",
+    "qr_presente",
+    "operacoes",
+}
 SITE_MESHCRAFT = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
 DIAGNOSTICOS_APPMAX_PEDIDO = {
     "vazio",
@@ -73,9 +87,33 @@ APPMAX_API_SANDBOX = "https://api.sandboxappmax.com.br"
 ESTADOS_AVISO_APPMAX = {"pendente", "processado", "falhou", "carta_morta", "nao_medido"}
 ACOES_AVISO_APPMAX = {
     "candidata_ausente_ou_multipla",
-    "instalacao_ausente_ou_multipla",
+    "instalacao_ausente",
+    "instalacao_incompleta",
+    "instalacao_multipla",
     "aviso_nao_preservado",
     "aviso_multiplo",
+}
+ACOES_INBOX_LATENCIA_APPMAX = {
+    "candidata_ausente_ou_multipla",
+    "pedido_ausente",
+    "avisos_acima_do_limite",
+}
+CAMPOS_AVISO_INBOX_LATENCIA = {
+    "evento",
+    "estado",
+    "recebido_em",
+    "processado_em",
+    "latencia_ms",
+    "reentregas",
+}
+LIMITE_AVISOS_INBOX_LATENCIA = 20
+INSTANTE_ISO = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})"
+)
+INSTALACOES_OBSERVADAS_POR_ACAO = {
+    "instalacao_ausente": {0},
+    "instalacao_incompleta": {1, 2},
+    "instalacao_multipla": {2},
 }
 CAMPOS_VALOR_ESTORNO = {
     "amount",
@@ -161,6 +199,73 @@ QUIZ_CONFIGURACAO_CODIGO = (
     "migracoes = sorted(nome for app_label, nome in MigrationRecorder(connection).applied_migrations() if app_label == 'quiz')\n"
     "print(json.dumps({'sites': sites, 'quizzes': quizzes, 'submissoes_por_resultado': submissoes_por_resultado, 'eventos_pendentes': eventos_pendentes, 'migracoes': migracoes}, sort_keys=True))\n"
 )
+CHAVES_OBSERVACAO_APPMAX = {
+    "tentativas_ate_15_min",
+    "tentativas_15_a_60_min",
+    "tentativas_60_min_a_um_dia_util",
+    "tentativas_acima_de_um_dia_util",
+    "inbox_sem_processamento",
+    "outbox_pendente",
+    "fila_morta",
+    "pedidos_com_tentativas_abertas_duplicadas",
+    "pedidos_com_efeito_duplicado",
+}
+# [MEDICAO-VPS:appmax-observacao] janelas da G12B, só contagens. Não chama a
+# Appmax nem escreve; por isso não exige sandbox e serve à observação de
+# produção. As definições de inbox, outbox e fila morta são as de
+# pagamentos/supervisao.py:medir_pendencias. O dia útil pula sábado e domingo
+# em America/Sao_Paulo; feriado conta como dia útil.
+APPMAX_OBSERVACAO_CODIGO = (
+    "import json\n"
+    "from collections import Counter\n"
+    "from datetime import timedelta\n"
+    "from zoneinfo import ZoneInfo\n"
+    "from django.utils import timezone\n"
+    "from pagamentos.core.models import ESTADOS_EM_ABERTO, AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
+    "agora = timezone.now()\n"
+    "fuso = ZoneInfo('America/Sao_Paulo')\n"
+    "def um_dia_util_depois(instante):\n"
+    "    dia = instante.astimezone(fuso)\n"
+    "    if dia.weekday() >= 5:\n"
+    "        dia = (dia + timedelta(days=7 - dia.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)\n"
+    "    dia += timedelta(days=1)\n"
+    "    while dia.weekday() >= 5:\n"
+    "        dia += timedelta(days=1)\n"
+    "    return dia\n"
+    "def faixa(criada_em):\n"
+    "    idade = agora - criada_em\n"
+    "    if idade <= timedelta(minutes=15):\n"
+    "        return 'tentativas_ate_15_min'\n"
+    "    if idade <= timedelta(minutes=60):\n"
+    "        return 'tentativas_15_a_60_min'\n"
+    "    if agora <= um_dia_util_depois(criada_em):\n"
+    "        return 'tentativas_60_min_a_um_dia_util'\n"
+    "    return 'tentativas_acima_de_um_dia_util'\n"
+    "faixas = Counter()\n"
+    "pedidos = Counter()\n"
+    "for criada_em, site, pedido in PaymentAttempt.objects.filter(provider='appmax', state__in=ESTADOS_EM_ABERTO).values_list('created_at', 'platform_site_id', 'intent__order_id'):\n"
+    "    faixas[faixa(criada_em)] += 1\n"
+    "    pedidos[(site, pedido)] += 1\n"
+    "efeitos = Counter()\n"
+    "for evento, payload in OutboxEvent.objects.filter(payload__provider='appmax').values_list('event', 'payload'):\n"
+    "    if isinstance(payload, dict) and payload.get('provider_reference_id'):\n"
+    "        efeitos[(evento, payload.get('platform_site_id'), payload['provider_reference_id'])] += 1\n"
+    "print(json.dumps({\n"
+    "    'tentativas_ate_15_min': faixas['tentativas_ate_15_min'],\n"
+    "    'tentativas_15_a_60_min': faixas['tentativas_15_a_60_min'],\n"
+    "    'tentativas_60_min_a_um_dia_util': faixas['tentativas_60_min_a_um_dia_util'],\n"
+    "    'tentativas_acima_de_um_dia_util': faixas['tentativas_acima_de_um_dia_util'],\n"
+    "    'inbox_sem_processamento': AppmaxWebhookInbox.objects.filter(processed_at__isnull=True, dead_lettered_at__isnull=True).count(),\n"
+    "    'outbox_pendente': OutboxEvent.objects.filter(published_at__isnull=True).count(),\n"
+    "    'fila_morta': AppmaxWebhookInbox.objects.filter(dead_lettered_at__isnull=False).count(),\n"
+    "    'pedidos_com_tentativas_abertas_duplicadas': sum(1 for total in pedidos.values() if total > 1),\n"
+    "    'pedidos_com_efeito_duplicado': len({chave[1:] for chave, total in efeitos.items() if total > 1}),\n"
+    "}, sort_keys=True))\n"
+)
+CODIGOS_FECHADOS = {
+    "quiz-configuracao": QUIZ_CONFIGURACAO_CODIGO,
+    "appmax-observacao": APPMAX_OBSERVACAO_CODIGO,
+}
 FORMATO = (
     '{"estado":{{json .State.Status}},'
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
@@ -192,6 +297,8 @@ def validar(operacao, servico, permitidos, referencia=""):
             "appmax-pix",
             "appmax-pix-pedido",
             "appmax-pix-aviso",
+            "appmax-inbox-latencia",
+            "appmax-observacao",
             "appmax-estorno",
         }
         and servico != "pagamentos"
@@ -202,7 +309,11 @@ def validar(operacao, servico, permitidos, referencia=""):
     if operacao == "appmax-pix":
         if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
             raise Falha("entrada")
-    elif operacao in {"appmax-pix-pedido", "appmax-pix-aviso"}:
+    elif operacao in {
+        "appmax-pix-pedido",
+        "appmax-pix-aviso",
+        "appmax-inbox-latencia",
+    }:
         if not re.fullmatch(r"[0-9a-f]{64}", referencia):
             raise Falha("entrada")
     elif operacao == "appmax-estorno":
@@ -257,10 +368,12 @@ def conferir_medicao(operacao, dados, referencia=""):
         if not 0 < dados["total_bytes"] or dados["livres_bytes"] > dados["total_bytes"]:
             raise Falha("formato")
     elif operacao == "appmax-pix":
-        if dados.get("modo") == "descoberta":
+        if set(dados) != CAMPOS_RESUMO_APPMAX_PIX:
             if referencia:
                 raise Falha("formato")
             if set(dados) != {"modo", "classificacao", "candidatas"}:
+                raise Falha("formato")
+            if dados["modo"] != "descoberta":
                 raise Falha("formato")
             if dados["classificacao"] not in {"ausente", "unica", "multipla"}:
                 raise Falha("formato")
@@ -311,16 +424,6 @@ def conferir_medicao(operacao, dados, referencia=""):
             if len(referencias) != len(set(referencias)):
                 raise Falha("formato")
         else:
-            if not referencia:
-                raise Falha("formato")
-            if set(dados) != {
-                "tentativa",
-                "intent",
-                "motivo",
-                "qr_presente",
-                "operacoes",
-            }:
-                raise Falha("formato")
             if dados["tentativa"] not in ESTADOS_TENTATIVA:
                 raise Falha("formato")
             if dados["intent"] not in {
@@ -357,6 +460,8 @@ def conferir_medicao(operacao, dados, referencia=""):
             "estado_processamento",
             "recebido_em",
             "processado_em",
+            "inbox_consultada",
+            "instalacoes_observadas",
         }
         if dados.get("resultado") == "nao_medido":
             if set(dados) != campos_comuns | {"acao"}:
@@ -364,15 +469,38 @@ def conferir_medicao(operacao, dados, referencia=""):
             if dados["acao"] not in ACOES_AVISO_APPMAX:
                 raise Falha("formato")
             encontrados = dados["registros_encontrados"]
-            if type(encontrados) is not int or encontrados not in {0, 1, 2}:
+            if type(dados["inbox_consultada"]) is not bool:
+                raise Falha("formato")
+            observadas = dados["instalacoes_observadas"]
+            if observadas is not None and (
+                type(observadas) is not int or observadas not in {0, 1, 2}
+            ):
+                raise Falha("formato")
+            if dados["inbox_consultada"]:
+                if type(encontrados) is not int or encontrados not in {0, 1, 2}:
+                    raise Falha("formato")
+                if observadas != 1:
+                    raise Falha("formato")
+            elif encontrados is not None:
                 raise Falha("formato")
             if (
-                dados["acao"] in {"candidata_ausente_ou_multipla", "instalacao_ausente_ou_multipla"}
-                and encontrados != 0
+                dados["acao"] == "candidata_ausente_ou_multipla"
+                and (dados["inbox_consultada"] or observadas is not None)
             ) or (
-                dados["acao"] == "aviso_multiplo" and encontrados != 2
+                dados["acao"] == "aviso_multiplo"
+                and (not dados["inbox_consultada"] or encontrados != 2)
             ) or (
-                dados["acao"] == "aviso_nao_preservado" and encontrados not in {0, 1}
+                dados["acao"] == "aviso_nao_preservado"
+                and (
+                    not dados["inbox_consultada"]
+                    or encontrados not in {0, 1}
+                )
+            ) or (
+                dados["acao"] in INSTALACOES_OBSERVADAS_POR_ACAO
+                and (
+                    dados["inbox_consultada"]
+                    or observadas not in INSTALACOES_OBSERVADAS_POR_ACAO[dados["acao"]]
+                )
             ):
                 raise Falha("formato")
             if (
@@ -398,6 +526,8 @@ def conferir_medicao(operacao, dados, referencia=""):
                 dados["referencia"] != referencia
                 or not re.fullmatch(r"[0-9a-f]{64}", dados["referencia"])
                 or dados["registros_encontrados"] != 1
+                or dados["inbox_consultada"] is not True
+                or dados["instalacoes_observadas"] != 1
                 or type(dados["pix_emv_preservado"]) is not bool
                 or type(dados["pix_qrcode_preservado"]) is not bool
                 or type(dados["pix_expiration_date_preservado"]) is not bool
@@ -419,6 +549,71 @@ def conferir_medicao(operacao, dados, referencia=""):
                 )
             ):
                 raise Falha("formato")
+    elif operacao == "appmax-inbox-latencia":
+        if not isinstance(dados.get("referencia"), str) or not re.fullmatch(
+            r"[0-9a-f]{64}", dados["referencia"]
+        ):
+            raise Falha("formato")
+        if dados["referencia"] != referencia:
+            raise Falha("formato")
+        if dados.get("resultado") == "nao_medido":
+            if set(dados) != {"resultado", "referencia", "acao"}:
+                raise Falha("formato")
+            if dados["acao"] not in ACOES_INBOX_LATENCIA_APPMAX:
+                raise Falha("formato")
+        else:
+            if set(dados) != {"resultado", "referencia", "avisos", "efeitos"}:
+                raise Falha("formato")
+            if dados["resultado"] != "medido":
+                raise Falha("formato")
+            if type(dados["efeitos"]) is not int or not 0 <= dados["efeitos"] <= 1000000:
+                raise Falha("formato")
+            avisos = dados["avisos"]
+            if not isinstance(avisos, list) or len(avisos) > LIMITE_AVISOS_INBOX_LATENCIA:
+                raise Falha("formato")
+            for aviso in avisos:
+                if not isinstance(aviso, dict) or set(aviso) != CAMPOS_AVISO_INBOX_LATENCIA:
+                    raise Falha("formato")
+                if (
+                    not isinstance(aviso["evento"], str)
+                    or len(aviso["evento"]) > 100
+                    or not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", aviso["evento"])
+                ):
+                    raise Falha("formato")
+                if aviso["estado"] not in ESTADOS_AVISO_APPMAX - {"nao_medido"}:
+                    raise Falha("formato")
+                # O webhook ainda não grava reentregas; a contagem nasce na TAR-821.
+                if aviso["reentregas"] is not None:
+                    raise Falha("formato")
+                if not isinstance(aviso["recebido_em"], str) or not INSTANTE_ISO.fullmatch(
+                    aviso["recebido_em"]
+                ):
+                    raise Falha("formato")
+                if aviso["processado_em"] is None:
+                    if aviso["latencia_ms"] is not None or aviso["estado"] == "processado":
+                        raise Falha("formato")
+                    continue
+                if not isinstance(aviso["processado_em"], str) or not INSTANTE_ISO.fullmatch(
+                    aviso["processado_em"]
+                ):
+                    raise Falha("formato")
+                try:
+                    recebido = datetime.fromisoformat(aviso["recebido_em"].replace("Z", "+00:00"))
+                    processado = datetime.fromisoformat(
+                        aviso["processado_em"].replace("Z", "+00:00")
+                    )
+                except ValueError:
+                    raise Falha("formato") from None
+                latencia = (processado - recebido) // timedelta(milliseconds=1)
+                if latencia < 0:
+                    raise Falha("formato")
+                if type(aviso["latencia_ms"]) is not int or aviso["latencia_ms"] != latencia:
+                    raise Falha("formato")
+    elif operacao == "appmax-observacao":
+        if set(dados) != CHAVES_OBSERVACAO_APPMAX:
+            raise Falha("formato")
+        if any(type(v) is not int or not 0 <= v <= 1000000000 for v in dados.values()):
+            raise Falha("formato")
     elif operacao == "appmax-pix-pedido":
         if dados.get("resultado") == "nao_medido":
             if set(dados) != {"resultado", "referencia", "acao"}:
@@ -760,28 +955,32 @@ def medir(operacao, servico, referencia=""):
             "from pagamentos.core.models import AppmaxWebhookInbox, InstalacaoAppmax, PaymentAttempt\n"
             f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='pix', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
             "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
-            "def nao_medido(acao, encontrados=0):\n"
-            "    return {'resultado':'nao_medido','referencia':referencia,'registros_encontrados':encontrados,'pix_emv_preservado':False,'pix_qrcode_preservado':False,'pix_expiration_date_preservado':False,'estado_processamento':'nao_medido','recebido_em':None,'processado_em':None,'acao':acao}\n"
+            "def nao_medido(acao, encontrados=None, instalacoes_observadas=None, inbox_consultada=False):\n"
+            "    return {'resultado':'nao_medido','referencia':referencia,'registros_encontrados':encontrados,'inbox_consultada':inbox_consultada,'instalacoes_observadas':instalacoes_observadas,'pix_emv_preservado':False,'pix_qrcode_preservado':False,'pix_expiration_date_preservado':False,'estado_processamento':'nao_medido','recebido_em':None,'processado_em':None,'acao':acao}\n"
             "if len(tentativas) != 1:\n"
             "    print(json.dumps(nao_medido('candidata_ausente_ou_multipla'), sort_keys=True))\n"
             "else:\n"
             "    tentativa = tentativas[0]\n"
-            f"    instalacoes = list(InstalacaoAppmax.objects.filter(platform_site_ids__contains=['{SITE_MESHCRAFT}'])[:2])\n"
-            "    instalacoes = [i for i in instalacoes if isinstance(i.platform_site_ids, list) and tentativa.platform_site_id in i.platform_site_ids and isinstance(i.app_id, str) and i.app_id.strip() and isinstance(i.appmax_site_id, str) and i.appmax_site_id.strip()]\n"
-            "    if len(instalacoes) != 1:\n"
-            "        print(json.dumps(nao_medido('instalacao_ausente_ou_multipla'), sort_keys=True))\n"
+            f"    instalacoes_brutas = list(InstalacaoAppmax.objects.filter(platform_site_ids__contains=['{SITE_MESHCRAFT}'])[:2])\n"
+            "    instalacoes = [i for i in instalacoes_brutas if isinstance(i.platform_site_ids, list) and tentativa.platform_site_id in i.platform_site_ids and isinstance(i.app_id, str) and i.app_id.strip() and isinstance(i.appmax_site_id, str) and i.appmax_site_id.strip()]\n"
+            "    if not instalacoes_brutas:\n"
+            "        print(json.dumps(nao_medido('instalacao_ausente', instalacoes_observadas=0), sort_keys=True))\n"
+            "    elif len(instalacoes) != len(instalacoes_brutas):\n"
+            "        print(json.dumps(nao_medido('instalacao_incompleta', instalacoes_observadas=len(instalacoes_brutas)), sort_keys=True))\n"
+            "    elif len(instalacoes) > 1:\n"
+            "        print(json.dumps(nao_medido('instalacao_multipla', instalacoes_observadas=len(instalacoes)), sort_keys=True))\n"
             "    else:\n"
             "        instalacao = instalacoes[0]\n"
             "        avisos = list(AppmaxWebhookInbox.objects.filter(app_id=instalacao.app_id, appmax_site_id=instalacao.appmax_site_id, platform_site_id=tentativa.platform_site_id, event='order_pix_created', event_type='order', external_order_id=str(tentativa.external_order_id)).order_by('-received_at')[:2])\n"
             "        if len(avisos) != 1:\n"
             "            acao = 'aviso_nao_preservado' if not avisos else 'aviso_multiplo'\n"
-            "            print(json.dumps(nao_medido(acao, len(avisos)), sort_keys=True))\n"
+            "            print(json.dumps(nao_medido(acao, len(avisos), 1, True), sort_keys=True))\n"
             "        else:\n"
             "            aviso = avisos[0]\n"
             "            payload = aviso.payload if isinstance(aviso.payload, dict) else {}\n"
             "            dados = payload.get('data') if isinstance(payload.get('data'), dict) else {}\n"
             "            if str(dados.get('order_id', '')).strip() != str(tentativa.external_order_id).strip():\n"
-            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1), sort_keys=True))\n"
+            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1, 1, True), sort_keys=True))\n"
             "                raise SystemExit(0)\n"
             "            payment_info = dados.get('payment_info') if isinstance(dados.get('payment_info'), dict) else {}\n"
             "            pix = payment_info.get('pix') if isinstance(payment_info.get('pix'), dict) else {}\n"
@@ -799,9 +998,67 @@ def medir(operacao, servico, referencia=""):
             "            recebido_em = aviso.received_at.isoformat() if hasattr(aviso.received_at, 'isoformat') else None\n"
             "            processado_em = aviso.processed_at.isoformat() if aviso.processed_at is not None and hasattr(aviso.processed_at, 'isoformat') else None\n"
             "            if recebido_em is None:\n"
-            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1), sort_keys=True))\n"
+            "                print(json.dumps(nao_medido('aviso_nao_preservado', 1, 1, True), sort_keys=True))\n"
             "            else:\n"
-            "                print(json.dumps({'resultado':'medido','referencia':referencia,'registros_encontrados':1,'pix_emv_preservado':presente('pix_emv'),'pix_qrcode_preservado':presente('pix_qrcode'),'pix_expiration_date_preservado':presente('pix_expiration_date'),'estado_processamento':estado,'recebido_em':recebido_em,'processado_em':processado_em}, sort_keys=True))\n"
+            "                print(json.dumps({'resultado':'medido','referencia':referencia,'registros_encontrados':1,'inbox_consultada':True,'instalacoes_observadas':1,'pix_emv_preservado':presente('pix_emv'),'pix_qrcode_preservado':presente('pix_qrcode'),'pix_expiration_date_preservado':presente('pix_expiration_date'),'estado_processamento':estado,'recebido_em':recebido_em,'processado_em':processado_em}, sort_keys=True))\n"
+        )
+        try:
+            dados = json.loads(
+                comando(
+                    [
+                        "docker",
+                        "exec",
+                        identificador,
+                        "python",
+                        "manage.py",
+                        "shell",
+                        "-c",
+                        codigo,
+                    ]
+                )
+            )
+        except (ValueError, TypeError):
+            raise Falha("formato") from None
+        return conferir_medicao(operacao, dados, referencia)
+    if operacao == "appmax-inbox-latencia":
+        sandbox_urls = (APPMAX_AUTH_SANDBOX, APPMAX_API_SANDBOX)
+        codigo = (
+            "import hashlib,json\n"
+            "from datetime import timedelta\n"
+            "from django.conf import settings\n"
+            f"referencia = {referencia!r}\n"
+            f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
+            f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
+            "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
+            "    print('APPMAX_SANDBOX_REQUIRED')\n"
+            "    raise SystemExit(23)\n"
+            "from django.utils import timezone\n"
+            "from pagamentos.core.models import AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
+            f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
+            "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+            "def nao_medido(acao):\n"
+            "    print(json.dumps({'resultado': 'nao_medido', 'referencia': referencia, 'acao': acao}, sort_keys=True))\n"
+            "    raise SystemExit(0)\n"
+            "if len(tentativas) != 1:\n"
+            "    nao_medido('candidata_ausente_ou_multipla')\n"
+            "tentativa = tentativas[0]\n"
+            "pedido = str(tentativa.external_order_id or '').strip()\n"
+            "if not pedido:\n"
+            "    nao_medido('pedido_ausente')\n"
+            f"avisos = list(AppmaxWebhookInbox.objects.filter(platform_site_id=tentativa.platform_site_id, external_order_id=pedido).order_by('received_at', 'id')[:{LIMITE_AVISOS_INBOX_LATENCIA + 1}])\n"
+            f"if len(avisos) > {LIMITE_AVISOS_INBOX_LATENCIA}:\n"
+            "    nao_medido('avisos_acima_do_limite')\n"
+            "def estado(aviso):\n"
+            "    if aviso.dead_lettered_at is not None:\n"
+            "        return 'carta_morta'\n"
+            "    if aviso.processed_at is not None:\n"
+            "        return 'processado'\n"
+            "    return 'falhou' if aviso.failed_attempts > 0 else 'pendente'\n"
+            "def resumo(aviso):\n"
+            "    processado = aviso.processed_at\n"
+            "    return {'evento': aviso.event, 'estado': estado(aviso), 'recebido_em': aviso.received_at.isoformat(), 'processado_em': processado.isoformat() if processado is not None else None, 'latencia_ms': (processado - aviso.received_at) // timedelta(milliseconds=1) if processado is not None else None, 'reentregas': None}\n"
+            "efeitos = OutboxEvent.objects.filter(event__in=['pagamento.aprovado', 'pagamento.recusado'], payload__provider='appmax', payload__platform_site_id=tentativa.platform_site_id, payload__provider_reference_id=pedido).count()\n"
+            "print(json.dumps({'resultado': 'medido', 'referencia': referencia, 'avisos': [resumo(aviso) for aviso in avisos], 'efeitos': efeitos}, sort_keys=True))\n"
         )
         try:
             dados = json.loads(
@@ -983,7 +1240,7 @@ def medir(operacao, servico, referencia=""):
         except (ValueError, TypeError):
             raise Falha("formato") from None
         return conferir_medicao(operacao, dados)
-    if operacao == "quiz-configuracao":
+    if operacao in CODIGOS_FECHADOS:
         try:
             dados = json.loads(
                 comando(
@@ -995,7 +1252,7 @@ def medir(operacao, servico, referencia=""):
                         "manage.py",
                         "shell",
                         "-c",
-                        QUIZ_CONFIGURACAO_CODIGO,
+                        CODIGOS_FECHADOS[operacao],
                     ]
                 )
             )
@@ -1092,7 +1349,12 @@ def conferir():
             raise Falha("formato")
         conferencia_referencia = (
             dados["medicao"].get("referencia", "")
-            if dados["operacao"] in {"appmax-pix-pedido", "appmax-pix-aviso"}
+            if dados["operacao"]
+            in {
+                "appmax-pix-pedido",
+                "appmax-pix-aviso",
+                "appmax-inbox-latencia",
+            }
             else ""
         )
         conferir_medicao(dados["operacao"], dados["medicao"], conferencia_referencia)

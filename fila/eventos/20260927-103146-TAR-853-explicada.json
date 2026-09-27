@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-103146-TAR-853-explicada",
+  "tarefa": "TAR-853",
+  "evento": "explicada",
+  "quando": "2026-09-27T10:31:46.294650+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026 (sessão da manhã): abrir o máximo de frentes da Comunidade Meshcraft com Opus 5.5 e Sonnet 5; rodada 2 do dossiê (docs/comunidade), partes sem decisão reservada ao mantenedor",
+  "o_que_e": "Quando o aluno pede a conferência do portfólio, qualquer pessoa da equipe pode aceitar ou devolver. Se duas pessoas decidirem o mesmo pedido ao mesmo tempo, as duas decisões passam e o aluno recebe dois avisos do mesmo selo. A fila também não mostra quem está cuidando de cada pedido.",
+  "o_que_muda": "O pedido passa a ser decidido uma vez só: quem chega depois recebe um aviso claro de que outra pessoa já decidiu. E a equipe vê, em cada pedido, quem assumiu e há quanto tempo ele espera, para nenhum ficar sem dono.",
+  "exemplo": "A professora e o monitor abrem o mesmo pedido na segunda de manhã. Ela aceita primeiro; quando ele clica em aceitar, a tela diz que o pedido já foi decidido às 9h12, e o aluno recebe um único aviso.",
+  "importancia": 60
+}

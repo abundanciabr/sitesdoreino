@@ -157,6 +157,17 @@ GANCHOS_VERSIONADOS = ("pre-commit", "pre-push")
 PADRAO_DE_NOME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LIMITE_DE_NOME = 40
 
+# Uma wheel vendorizada (`services/<celula>/vendor/*.whl`) só entra no hash do
+# venv quando a própria linha do requirements.txt anota o sha256 do arquivo
+# num comentário: `caminho/da.whl  # sha256:<hex>`. NÃO é o `--hash=` do pip:
+# aquele liga o modo --require-hashes do pip, que passa a exigir hash de TODA
+# dependência transitiva do arquivo — bem mais que esta regra pede. O
+# comentário é só para este script; pip já ignora comentário em requirements.
+# Sem a anotação, ou com uma anotação que não bate com o arquivo real, a regra
+# de dependência local sem identidade continua valendo — a wheel muda de
+# conteúdo sem avisar, a anotação não (TAR-815).
+PADRAO_DO_SHA256_ANOTADO = re.compile(r"\bsha256:([0-9a-fA-F]{64})\b", re.IGNORECASE)
+
 # Os exit codes que `correr_de_verdade` inventa quando o comando NÃO chegou a
 # rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
 # medir" — qualquer outro número veio do programa e é veredito dele.
@@ -1081,10 +1092,42 @@ def registrar_estado_inicial(
     return caminho
 
 
-def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
+def _hash_conferido_da_wheel(caminho_wheel: Path, hash_declarado: str, linha: str, requisitos: Path, ler) -> str:
+    """Confere o sha256 anotado no comentário da linha contra o arquivo real.
+
+    Devolve o hash real (para entrar no hash do venv) só quando ele bate com o
+    declarado. Arquivo ausente, ilegível ou hash divergente é a MESMA falta de
+    identidade imutável que uma wheel sem anotação nenhuma — fail closed.
+    """
+    try:
+        conteudo_wheel = ler(caminho_wheel) if ler else caminho_wheel.read_bytes()
+    except OSError as erro:
+        raise ErroDeSessao(
+            P_VENV, "dependência local sem identidade imutável",
+            detalhe=f"Não leu {caminho_wheel} para conferir o sha256 anotado em {requisitos}: {erro}",
+        ) from erro
+    hash_real = hashlib.sha256(conteudo_wheel).hexdigest()
+    if hash_real != hash_declarado.lower():
+        raise ErroDeSessao(
+            P_VENV, "dependência local sem identidade imutável",
+            detalhe=(
+                f"O sha256 anotado em {requisitos} não confere com o arquivo: {linha}. "
+                "Gere o sha256 real da wheel e atualize o comentário antes de repetir a abertura."
+            ),
+        )
+    return hash_real
+
+
+def identidade_do_venv(requisitos: Path, *, ler=None, raiz_do_worktree: Path | None = None) -> str:
+    """`raiz_do_worktree` é a pasta a partir da qual o pip roda (cwd do
+    `instalar()`). As wheels vendorizadas são escritas no requirements.txt
+    como caminho a partir dela (mesma resolução do pip), nunca a partir da
+    pasta do requirements.txt — por isso a wheel precisa dessa raiz para ser
+    lida e conferida contra o sha256 anotado."""
     identidade = hashlib.sha256()
     identidade.update(repr((sys.executable, sys.version, platform.system(), platform.release(), platform.machine(),
                             FERRAMENTAS_DE_PORTAO)).encode())
+    raiz_do_worktree = raiz_do_worktree.resolve() if raiz_do_worktree else requisitos.parent
     visitados = set()
 
     def incluir(arquivo):
@@ -1095,15 +1138,35 @@ def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
         conteudo = (ler(arquivo) if ler else arquivo.read_bytes()).replace(b"\r\n", b"\n")
         identidade.update(len(conteudo).to_bytes(8, "big"))
         identidade.update(conteudo)
-        for linha in conteudo.decode("utf-8").splitlines():
-            linha = linha.split(" #", 1)[0].strip()
+        for linha_bruta in conteudo.decode("utf-8").splitlines():
+            codigo, _, comentario = linha_bruta.partition(" #")
+            linha = codigo.strip()
+            if not linha:
+                continue
             referencia = re.match(r"^(?:-r\s*|-c\s*|--requirement(?:=|\s+)|--constraint(?:=|\s+))(.+)$", linha)
             if referencia:
                 incluir(arquivo.parent / referencia.group(1).strip())
-            elif (linha.startswith(("-e", "--editable", "-f", "--find-links", ".", "/", "\\", "file:"))
+                continue
+            alvo = linha.split(None, 1)[0]
+            wheel_local = alvo.lower().endswith((".whl", ".zip", ".tar.gz")) and "://" not in alvo
+            if wheel_local:
+                sha256_anotado = PADRAO_DO_SHA256_ANOTADO.search(comentario)
+                if sha256_anotado:
+                    caminho_wheel = (raiz_do_worktree / alvo).resolve()
+                    identidade.update(_hash_conferido_da_wheel(
+                        caminho_wheel, sha256_anotado.group(1), linha, requisitos, ler,
+                    ).encode())
+                    continue
+                raise ErroDeSessao(
+                    P_VENV, "dependência local sem identidade imutável",
+                    detalhe=(
+                        f"Use uma versão publicada, ou dê identidade imutável com um comentário "
+                        f"'# sha256:<hash do arquivo>' na mesma linha da wheel vendorizada: {linha}"
+                    ),
+                )
+            if (linha.startswith(("-e", "--editable", "-f", "--find-links", ".", "/", "\\", "file:"))
                   or PureWindowsPath(linha).drive
-                  or (" @ " in linha and not linha.split(" @ ", 1)[1].startswith(("https://", "http://")))
-                  or (linha.lower().endswith((".whl", ".zip", ".tar.gz")) and "://" not in linha)):
+                  or (" @ " in linha and not linha.split(" @ ", 1)[1].startswith(("https://", "http://")))):
                 raise ErroDeSessao(P_VENV, "dependência local sem identidade imutável",
                                    detalhe=f"Use uma versão publicada antes de reutilizar o ambiente: {linha}")
     try:
@@ -1703,7 +1766,7 @@ class Sessao:
 
     def preparar_venv(self) -> None:
         passo = self._abrir(P_VENV)
-        chave = identidade_do_venv(self.plano.requisitos)
+        chave = identidade_do_venv(self.plano.requisitos, raiz_do_worktree=self.plano.worktree)
         self.plano = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / chave)
         with trava_de_ambiente(self.plano.venv.with_suffix(".lock")):
             if self._existe(self.plano.python_do_venv):
@@ -1725,7 +1788,7 @@ class Sessao:
 
     def instalar(self) -> None:
         passo = self._abrir(P_DEPS)
-        chave = identidade_do_venv(self.plano.requisitos)
+        chave = identidade_do_venv(self.plano.requisitos, raiz_do_worktree=self.plano.worktree)
         if self.plano.venv.name != chave:
             raise ErroDeSessao(passo, "dependências mudaram durante a preparação",
                                detalhe="Repita a abertura para preparar o novo ambiente.")
@@ -2028,7 +2091,7 @@ class Sessao:
             relativo = arquivo.relative_to(self.plano.worktree.resolve()).as_posix()
             return self._exigir(P_BASELINE, [git, "show", f"{revisao}:{relativo}"],
                                  cwd=self.plano.worktree).stdout.encode("utf-8")
-        identidade_base = identidade_do_venv(self.plano.requisitos, ler=ler_da_base)
+        identidade_base = identidade_do_venv(self.plano.requisitos, ler=ler_da_base, raiz_do_worktree=self.plano.worktree)
         plano_base = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / identidade_base)
         base = Sessao(plano_base, correr=self._correr, escrever=self._escrever,
                       existe=self._existe, localizar=self._localizar, dormir=self._dormir,
@@ -2078,6 +2141,15 @@ class Sessao:
                         return resumo
                 except (OSError, ValueError, KeyError, TypeError):
                     self._nota("baseline sem evidência válida no cache; medindo a base")
+            if not pytest_direto:
+                versao = self._correr([make, "--version"], cwd=self.plano.worktree, timeout=30)
+                if not versao.stdout.startswith("GNU Make"):
+                    raise ErroDeSessao(passo, f"o `make` do PATH não é GNU Make: {make}",
+                                       detalhe=f"`make --version` respondeu:\n{recortar(versao.texto, 500)}\n\n"
+                                               "Nada da base foi medido e a célula não reprovou. Ponha o GNU Make antes "
+                                               "dele no PATH (Windows: `winget install ezwinports.make`) e repita a "
+                                               "abertura. Veja armadilhas/529.",
+                                       comando=subprocess.list2cmdline([make, "--version"]))
             with tempfile.TemporaryDirectory(prefix="baseline-main-") as temporario:
                 base = Path(temporario).resolve() / "arvore"
                 self._exigir(passo, [git, "worktree", "add", "--detach", str(base), revisao],

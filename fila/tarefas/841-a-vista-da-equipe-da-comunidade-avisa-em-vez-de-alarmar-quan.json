@@ -1,0 +1,19 @@
+{
+  "arquivo": "841-a-vista-da-equipe-da-comunidade-avisa-em-vez-de-alarmar-quan",
+  "id": "TAR-841",
+  "titulo": "A vista da equipe da Comunidade avisa, em vez de alarmar, quando uma espera esta sem dono",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste vermelho para verde da classe recado no aviso; suite forum verde; PR integrado; deploy verde",
+  "despacho": "Trocar class=erro por class=recado no aviso de espera sem dono em comunidade_da_equipe.html e dar o mesmo tratamento onde ninguem definido aparece nas duvidas e no acolhimento; item unico da revisao do PR 2207.",
+  "origem": "revisao do PR 2207 em 27/09/2026 (frente C6 da Comunidade, TAR-827)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-126-pages-conferencia-decide-uma-vez-e-tem-dono",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "pages: conferência decide uma vez e tem dono",
+  detalhe: "Aceitar e devolver travam a linha e releem o estado; a fila mostra quem assumiu e ha quantos dias uteis o pedido espera.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2217. Validação local: árvore 62b120d367868486e89716d67dca7e3cc5b0abf8; commit 91a625dad12ace3586b731f247989659eae85990; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-853",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "pages",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

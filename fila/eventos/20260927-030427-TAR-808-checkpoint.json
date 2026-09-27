@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260927-030427-TAR-808-checkpoint",
+  "tarefa": "TAR-808",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T03:04:27.690632+00:00",
+  "quem": "agent/e2e/appmax-sandbox-tela",
+  "plano": "N1 etapa 4 de 5: PR 2159 aberto, recibo pendente",
+  "ultimo_avanco": "PR 2159 aberto no SHA 865ad760; validação local PASS; run local das 12 compras (desktop e celular) completo: 0010 pago, 0028 pending, 0002 0036 0044 9999 HTTP 500",
+  "proxima_acao": "na bancada wt-e2e-appmax-sandbox-tela encurtar o detalhe e o título para o recibo caber em 1 KB e rodar python ci/pr.py com os mesmos argumentos e --continuar; depois da integração, gh workflow run appmax-sandbox-tela.yml --ref main e medir com python ci/esperar.py",
+  "verificacoes": [
+    "node e2e/appmax_sandbox.js --etapa=auto-teste",
+    "python ci/pr.py (PR 2159 aberto; parou em recibo excede 1 KB)"
+  ]
+}

@@ -28,6 +28,12 @@ from pagamentos.core.tentativas import (
 
 _DIGITOS = re.compile(r"\D")
 _FUSO = ZoneInfo("America/Sao_Paulo")
+_PRAZO_DO_PIX = timedelta(minutes=30)
+# Pix pendente só encerra um dia depois de vencer: liquidação atrasada ainda
+# aprova pela consulta, e só depois disso o pedido vai para os vencidos.
+_MARGEM_DE_LIQUIDACAO = timedelta(days=1)
+_MOTIVO_VENCIDO = "pix_vencido"
+_PIX_VENCIDO = "Este Pix venceu; volte ao checkout e gere um pedido novo."
 
 
 class DadosPixInvalidos(ValueError):
@@ -134,6 +140,8 @@ def _vencimento(bruto: str) -> datetime:
 
 
 def completar(intent: Intent) -> Intent:
+    if intent.status == "expired":
+        raise gateway.FalhaNoProvedor(_PIX_VENCIDO)
     cliente, itens = validar(intent)
     ativa = (
         PaymentAttempt.objects.filter(
@@ -182,8 +190,8 @@ def completar(intent: Intent) -> Intent:
             enviar=sessao.criar_pedido,
             customer_id=customer_id,
         )
-        vencimento_solicitado = timezone.localtime(timezone.now(), _FUSO) + timedelta(
-            minutes=30
+        vencimento_solicitado = (
+            timezone.localtime(timezone.now(), _FUSO) + _PRAZO_DO_PIX
         )
         corpo = {
             "order_id": int(order_id),
@@ -315,6 +323,9 @@ def reconciliar(intent: Intent) -> Intent:
         aprovada: bool | None = True
     elif status in {"cancelado", "recusado_por_risco"}:
         aprovada = False
+    elif status == "pendente" and timezone.now() > _encerramento(intent, tentativa):
+        aprovada = False
+        status = _MOTIVO_VENCIDO
     elif status in {"pendente", "autorizado"}:
         aprovada = None
     else:
@@ -335,9 +346,36 @@ def reconciliar(intent: Intent) -> Intent:
     return intent
 
 
+def _encerramento(intent: Intent, tentativa: PaymentAttempt) -> datetime:
+    """Vencimento devolvido pela Appmax, ou o prazo pedido na criação quando o
+    QR nunca chegou, mais a margem de liquidação."""
+    vencimento = tentativa.created_at + _PRAZO_DO_PIX
+    if intent.pix_expires_at is not None:
+        vencimento = intent.pix_expires_at
+    return vencimento + _MARGEM_DE_LIQUIDACAO
+
+
 def _registrar_fato(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -> None:
     intent = tentativa.intent
     if resultado.aprovada is None:
+        return
+    if resultado.motivo == _MOTIVO_VENCIDO:
+        ledger.registrar_fato(
+            intent,
+            novo_status="expired",
+            evento="pix.expirado",
+            dados={
+                "site_id": intent.site_id,
+                "payment_id": str(intent.id),
+                "order_id": intent.order_id,
+                "amount_cents": intent.amount_cents,
+                "customer": {
+                    "email": str(intent.customer.get("email") or ""),
+                    "name": str(intent.customer.get("name") or ""),
+                },
+                "recovery_url": str(intent.metadata.get("recovery_url") or ""),
+            },
+        )
         return
     aprovada = resultado.aprovada
     dados: dict[str, Any] = {

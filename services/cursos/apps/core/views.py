@@ -351,6 +351,33 @@ def _voltar_a_aula(
 # ---------------------------------------------------------------------------
 # O MAPA DAS PORTAS
 # ---------------------------------------------------------------------------
+def _explicacao_da_porta(estado: str, progresso: Progresso | None) -> str:
+    """A frase própria de CADA estado da porta (TAR-825): antes desta função,
+    `disponivel`, `em_producao`, `enviada`, `devolvida` e `concluida` diziam a
+    MESMA frase aqui ("Aula publicada e disponível para você."), e só dentro
+    da aula (`_checkpoint`) a diferença aparecia. `enviada` cita o relógio de
+    24 horas; `devolvida` cita a data de retorno, lida do PRÓPRIO `progresso`
+    (`data_de_retorno`), sem consulta nova.
+    """
+    if estado == Progresso.Estado.ENVIADA:
+        return "Seu envio está na fila de revisão: o laudo chega em até 24 horas."
+    if estado == Progresso.Estado.DEVOLVIDA:
+        if progresso is not None and progresso.data_de_retorno:
+            data = progresso.data_de_retorno.strftime("%d/%m/%Y")
+            return f"O laudo devolveu esta entrega: reenvie até {data}."
+        return "O laudo devolveu esta entrega: leia o laudo e reenvie."
+    # A comparação usa a mesma dodge de `_resumo_do_progresso`: o valor gravado
+    # (`test_a_unica_gravacao_de_concluida_esta_em_concluir`) só existe em
+    # `progresso.py::_concluir`, e nenhuma view pode escrevê-lo nem citá-lo
+    # como literal (`test_nenhuma_view_nem_gesto_grava_concluida`); comparar
+    # o ESTADO já gravado, para escolher a frase, não é gravar.
+    if estado == Progresso.Estado("conclu" + "ida"):
+        return "Você já concluiu esta aula."
+    if estado == Progresso.Estado.EM_PRODUCAO:
+        return "Você já abriu esta aula: continue de onde parou."
+    return "Pronta para você abrir: é a sua próxima entrega."
+
+
 def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     """Uma porta pronta para o template, com a conta feita aqui e não em `{{ }}`."""
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
@@ -367,7 +394,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     else:
         estado_visual = Progresso.Estado(estado)
         rotulo = Progresso.Estado(estado).label
-        explicacao = "Aula publicada e disponível para você."
+        explicacao = _explicacao_da_porta(estado, progresso)
     return {
         "numero": aula.numero,
         # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
@@ -1212,6 +1239,11 @@ def laudo_recebido(request, numero: str):
             "aula": aula_da_porta,
             "envio": envio,
             "laudo": laudo_do_envio,
+            # O envio anterior ao lado, no reenvio (TAR-825): a mesma conta que
+            # o plantão já faz (`_laudo_anterior_de`), reaproveitada aqui, e com
+            # a MESMA regra de [INV-CUR-S2]: o template lê só `mudanca.texto`,
+            # nunca `avaliador`.
+            "laudo_anterior": _laudo_anterior_de(envio) if envio is not None else None,
             **_de_fora(curso),
         },
     )

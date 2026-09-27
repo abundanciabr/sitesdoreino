@@ -54,7 +54,7 @@ from _nucleo import Estado, Relatorio  # noqa: E402
 from conftest import RepoFalso  # noqa: E402
 
 MAKE_DISPONIVEL = pytest.mark.skipif(
-    __import__("shutil").which("make") is None,
+    not runner.e_gnu_make(__import__("shutil").which("make")),
     reason="GNU Make ausente nesta máquina — o portão já devolve ERROR por conta disso",
 )
 
@@ -86,6 +86,12 @@ def test_o_2_do_make_nao_e_mais_ERROR():
         "ERROR faz o portão dizer 'não consegui medir' quando ele mediu e "
         "reprovou — armadilhas/107."
     )
+
+
+def test_so_o_gnu_make_conta_como_make():
+    """Uma fachada chamada `make` não é o GNU Make (`armadilhas/529`)."""
+    assert not runner.e_gnu_make(None)
+    assert not runner.e_gnu_make(sys.executable)
 
 
 # ---------------------------------------------------------------------------

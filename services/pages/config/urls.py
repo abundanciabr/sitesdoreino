@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.views import (
+    assumir,
     baixar_dossie,
     decidir,
     despublicar_vitrine,
@@ -92,6 +93,9 @@ urlpatterns = [
     path("pecas/conferir", pedir_conferencia, name="pedir_conferencia"),
     path("equipe", fila_da_equipe, name="equipe"),
     path("equipe/decidir", decidir, name="decidir"),
+    # ASSUMIR um pedido (COM-06 do dossiê da Comunidade): a fila passa a
+    # mostrar quem responde por ele. Debaixo de `equipe` pela regra acima.
+    path("equipe/assumir", assumir, name="assumir"),
     # A VITRINE PÚBLICA (degrau 13, critérios AC-13 a AC-15), e ela é a única
     # rota desta casa que NÃO mora sob o prefixo da célula.
     #

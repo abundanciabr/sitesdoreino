@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260927-103138-TAR-851-contrato_execucao",
+  "tarefa": "TAR-851",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T10:31:38.040884+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-2",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 2 (dossiê §15, partes sem decisão reservada): A aula e o retorno da professora mostram ao aluno onde pedir ajuda no grupo da Comunidade",
+    "versao": 1,
+    "objetivo": "As duas telas passam a dizer, no ponto em que o aluno trava, onde pedir ajuda e como escrever um pedido que um colega consegue atender, com o link para o grupo.",
+    "entregaveis": [
+      "Bloco de pedir ajuda na aula e no laudo com link para /forum/comunidade",
+      "Testes vermelho para verde"
+    ],
+    "escopo_incluido": [
+      "services/cursos/**"
+    ],
+    "nao_objetivos": [
+      "Campo novo em Aula",
+      "Modelos, migrações, laudo.py ou envio.py de cursos (frente paralela)",
+      "Qualquer arquivo fora de services/cursos/**"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Bancada --sem-container com PostgreSQL próprio e venv em caminho curto; suíte antes da primeira edição",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 (manhã): abrir o máximo de frentes da Comunidade com Opus 5.5 e Sonnet 5",
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Assunções do registro 072 em vigor: matrícula ativa, só a professora assina laudo, orientação pública"
+    ],
+    "etapas": [
+      "Abrir bancada, subir PostgreSQL, rodar a suíte da célula e guardar a saída",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte inteira, black e travessão",
+      "PR por ci/pr.py com a própria TAR e espera com teto"
+    ],
+    "criterios_entrada": [
+      "TAR-851 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Aula e laudo renderizam o bloco com link /forum/comunidade para aluno com matrícula ativa",
+      "Texto sem travessão; black --check limpo; diff dentro dos alvos",
+      "Suíte cursos inteira verde com PostgreSQL; PR MERGED; deploy verde"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte inteira com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy"
+    ],
+    "condicao_encerramento": "testes vermelho para verde: a tela da aula e a tela do laudo mostram o caminho para pedir ajuda com link para /forum/comunidade e o molde de um bom pedido; texto sem travessão; nenhum link quebrado; suíte cursos verde com PostgreSQL; PR integrado; deploy verde",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega. Ligar medalhas ou sequências novas é gesto dele na tela, depois do deploy."
+  }
+}
