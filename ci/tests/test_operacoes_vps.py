@@ -3160,6 +3160,7 @@ _CHAVES_OBSERVACAO = {
     "tentativas_15_a_60_min",
     "tentativas_60_min_a_um_dia_util",
     "tentativas_acima_de_um_dia_util",
+    "pre_autorizacao_de_teste_sandbox",
     "inbox_sem_processamento",
     "outbox_pendente",
     "fila_morta",
@@ -3189,9 +3190,19 @@ class _ConsultaObservacao:
         return Filtrada()
 
 
+_URLS_PRODUCAO_OBSERVACAO = (
+    "https://auth.appmax.com.br/oauth2/token",
+    "https://api.appmax.com.br",
+)
+_URLS_SANDBOX_OBSERVACAO = (ops.APPMAX_AUTH_SANDBOX, ops.APPMAX_API_SANDBOX)
+
+
 def _executar_codigo_appmax_observacao(
-    monkeypatch, tentativas=(), efeitos=(), agora=_AGORA_OBSERVACAO
+    monkeypatch, tentativas=(), efeitos=(), agora=_AGORA_OBSERVACAO, sandbox=False
 ):
+    tentativas = [
+        t if len(t) == 5 else (*t, "card", "") for t in tentativas
+    ]
     chamadas = []
     consultas = {"tentativas": [], "inbox": [], "outbox": []}
     modelos = SimpleNamespace(
@@ -3219,10 +3230,16 @@ def _executar_codigo_appmax_observacao(
             )
         ),
     )
+    urls = _URLS_SANDBOX_OBSERVACAO if sandbox else _URLS_PRODUCAO_OBSERVACAO
     importador_real = builtins.__import__
 
     def importar(nome, *args, **kwargs):
         falsos = {
+            "django.conf": SimpleNamespace(
+                settings=SimpleNamespace(
+                    APPMAX_AUTH_URL=urls[0], APPMAX_API_URL=urls[1]
+                )
+            ),
             "django.utils": SimpleNamespace(
                 timezone=SimpleNamespace(now=lambda: agora)
             ),
@@ -3316,6 +3333,7 @@ def test_appmax_observacao_conta_janelas_filas_e_duplicidades_sem_pii(monkeypatc
         "tentativas_15_a_60_min": 2,
         "tentativas_60_min_a_um_dia_util": 2,
         "tentativas_acima_de_um_dia_util": 1,
+        "pre_autorizacao_de_teste_sandbox": 0,
         "inbox_sem_processamento": 3,
         "outbox_pendente": 4,
         "fila_morta": 1,
@@ -3331,6 +3349,8 @@ def test_appmax_observacao_conta_janelas_filas_e_duplicidades_sem_pii(monkeypatc
         "created_at",
         "platform_site_id",
         "intent__order_id",
+        "intent__method",
+        "intent__card_reason_code",
     )
     assert consultas["outbox"][0] == {"payload__provider": "appmax"}
     codigo = chamadas[1][-1]
@@ -3340,6 +3360,61 @@ def test_appmax_observacao_conta_janelas_filas_e_duplicidades_sem_pii(monkeypatc
     for proibido in ("comprador@example.com", "pedido-", "3531", "outro-site"):
         assert proibido not in texto
     assert ops.conferir_medicao("appmax-observacao", dados) == dados
+
+
+_ANTIGA_OBSERVACAO = datetime(2026, 9, 24, 18, 59, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    ("sandbox", "metodo", "motivo", "esperado"),
+    [
+        (True, "card", "autorizado", "pre_autorizacao_de_teste_sandbox"),
+        # guarda: ci/operacoes_vps.py:302 (produção não sai da faixa vermelha)
+        (False, "card", "autorizado", "tentativas_acima_de_um_dia_util"),
+        # guarda: ci/operacoes_vps.py:319 (só cartão, Pix continua vermelho)
+        (True, "pix", "autorizado", "tentativas_acima_de_um_dia_util"),
+        # guarda: ci/operacoes_vps.py:319 (só motivo autorizado)
+        (True, "card", "pendente", "tentativas_acima_de_um_dia_util"),
+        (True, "card", "", "tentativas_acima_de_um_dia_util"),
+    ],
+)
+def test_appmax_observacao_pre_autorizacao_de_teste_sai_da_faixa_vermelha_so_no_sandbox(
+    monkeypatch, sandbox, metodo, motivo, esperado
+):
+    dados, _, _ = _executar_codigo_appmax_observacao(
+        monkeypatch,
+        [(_ANTIGA_OBSERVACAO, ops.SITE_MESHCRAFT, "pedido-1", metodo, motivo)],
+        sandbox=sandbox,
+    )
+    assert dados["pre_autorizacao_de_teste_sandbox"] == int(
+        esperado == "pre_autorizacao_de_teste_sandbox"
+    )
+    assert dados["tentativas_acima_de_um_dia_util"] == int(
+        esperado == "tentativas_acima_de_um_dia_util"
+    )
+    assert ops.conferir_medicao("appmax-observacao", dados) == dados
+
+
+def test_appmax_observacao_pre_autorizacao_de_teste_nao_reclassifica_tentativa_jovem(
+    monkeypatch,
+):
+    # guarda: ci/operacoes_vps.py:319 (idade continua a mesma: só a faixa
+    # vermelha acima de um dia útil é reclassificada, não as mais jovens)
+    dados, _, _ = _executar_codigo_appmax_observacao(
+        monkeypatch,
+        [
+            (
+                _AGORA_OBSERVACAO - timedelta(minutes=5),
+                ops.SITE_MESHCRAFT,
+                "pedido-1",
+                "card",
+                "autorizado",
+            )
+        ],
+        sandbox=True,
+    )
+    assert dados["tentativas_ate_15_min"] == 1
+    assert dados["pre_autorizacao_de_teste_sandbox"] == 0
 
 
 @pytest.mark.parametrize(

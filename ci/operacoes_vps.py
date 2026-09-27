@@ -267,6 +267,7 @@ CHAVES_OBSERVACAO_APPMAX = {
     "tentativas_15_a_60_min",
     "tentativas_60_min_a_um_dia_util",
     "tentativas_acima_de_um_dia_util",
+    "pre_autorizacao_de_teste_sandbox",
     "inbox_sem_processamento",
     "outbox_pendente",
     "fila_morta",
@@ -278,15 +279,27 @@ CHAVES_OBSERVACAO_APPMAX = {
 # produção. As definições de inbox, outbox e fila morta são as de
 # pagamentos/supervisao.py:medir_pendencias. O dia útil pula sábado e domingo
 # em America/Sao_Paulo; feriado conta como dia útil.
+# Só no sandbox da Appmax (settings.APPMAX_AUTH_URL/APPMAX_API_URL apontando
+# para sandboxappmax.com.br): uma tentativa de cartão não terminal cujo
+# card_reason_code gravado é "autorizado" (motivo que
+# card/service.py:_consultar_resultado grava quando o status Appmax é
+# "autorizado", pré-autorização de teste do cartão 0028, sem captura) sai da
+# faixa vermelha acima de um dia útil e entra em pre_autorizacao_de_teste_sandbox
+# (aviso, não alarme). Em produção o card_reason_code "autorizado" é dinheiro
+# reservado de verdade: a tentativa continua em tentativas_acima_de_um_dia_util.
 APPMAX_OBSERVACAO_CODIGO = (
     "import json\n"
     "from collections import Counter\n"
     "from datetime import timedelta\n"
     "from zoneinfo import ZoneInfo\n"
+    "from django.conf import settings\n"
     "from django.utils import timezone\n"
     "from pagamentos.core.models import ESTADOS_EM_ABERTO, AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
     "agora = timezone.now()\n"
     "fuso = ZoneInfo('America/Sao_Paulo')\n"
+    f"appmax_auth_sandbox = {APPMAX_AUTH_SANDBOX!r}\n"
+    f"appmax_api_sandbox = {APPMAX_API_SANDBOX!r}\n"
+    "sandbox = settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox\n"
     "def um_dia_util_depois(instante):\n"
     "    dia = instante.astimezone(fuso)\n"
     "    if dia.weekday() >= 5:\n"
@@ -295,7 +308,7 @@ APPMAX_OBSERVACAO_CODIGO = (
     "    while dia.weekday() >= 5:\n"
     "        dia += timedelta(days=1)\n"
     "    return dia\n"
-    "def faixa(criada_em):\n"
+    "def faixa(criada_em, metodo, motivo):\n"
     "    idade = agora - criada_em\n"
     "    if idade <= timedelta(minutes=15):\n"
     "        return 'tentativas_ate_15_min'\n"
@@ -303,11 +316,13 @@ APPMAX_OBSERVACAO_CODIGO = (
     "        return 'tentativas_15_a_60_min'\n"
     "    if agora <= um_dia_util_depois(criada_em):\n"
     "        return 'tentativas_60_min_a_um_dia_util'\n"
+    "    if sandbox and metodo == 'card' and motivo == 'autorizado':\n"
+    "        return 'pre_autorizacao_de_teste_sandbox'\n"
     "    return 'tentativas_acima_de_um_dia_util'\n"
     "faixas = Counter()\n"
     "pedidos = Counter()\n"
-    "for criada_em, site, pedido in PaymentAttempt.objects.filter(provider='appmax', state__in=ESTADOS_EM_ABERTO).values_list('created_at', 'platform_site_id', 'intent__order_id'):\n"
-    "    faixas[faixa(criada_em)] += 1\n"
+    "for criada_em, site, pedido, metodo, motivo in PaymentAttempt.objects.filter(provider='appmax', state__in=ESTADOS_EM_ABERTO).values_list('created_at', 'platform_site_id', 'intent__order_id', 'intent__method', 'intent__card_reason_code'):\n"
+    "    faixas[faixa(criada_em, metodo, motivo)] += 1\n"
     "    pedidos[(site, pedido)] += 1\n"
     "efeitos = Counter()\n"
     "for evento, payload in OutboxEvent.objects.filter(payload__provider='appmax').values_list('event', 'payload'):\n"
@@ -318,6 +333,7 @@ APPMAX_OBSERVACAO_CODIGO = (
     "    'tentativas_15_a_60_min': faixas['tentativas_15_a_60_min'],\n"
     "    'tentativas_60_min_a_um_dia_util': faixas['tentativas_60_min_a_um_dia_util'],\n"
     "    'tentativas_acima_de_um_dia_util': faixas['tentativas_acima_de_um_dia_util'],\n"
+    "    'pre_autorizacao_de_teste_sandbox': faixas['pre_autorizacao_de_teste_sandbox'],\n"
     "    'inbox_sem_processamento': AppmaxWebhookInbox.objects.filter(processed_at__isnull=True, dead_lettered_at__isnull=True).count(),\n"
     "    'outbox_pendente': OutboxEvent.objects.filter(published_at__isnull=True).count(),\n"
     "    'fila_morta': AppmaxWebhookInbox.objects.filter(dead_lettered_at__isnull=False).count(),\n"
