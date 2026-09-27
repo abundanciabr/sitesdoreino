@@ -154,7 +154,6 @@ def _consultar_pos_aprovacao(
     if (
         aviso.platform_site_id != tentativa.platform_site_id
         or tentativa.intent.site_id != tentativa.platform_site_id
-        or tentativa.provider != "appmax"
         or tentativa.provider_reference_id != aviso.external_order_id
     ):
         raise _IdentidadePosAprovacaoInvalida
@@ -190,14 +189,15 @@ def _emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> None:
     # compartilham. Travá-la antes da leitura da outbox serializa reentregas
     # de avisos diferentes sem alterar o ledger financeiro.
     PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-    if not OutboxEvent.objects.filter(
+    if OutboxEvent.objects.filter(
         event="pagamento.reversao_confirmada",
         version=2,
         payload__platform_site_id=payload["platform_site_id"],
         payload__provider=payload["provider"],
         payload__provider_reference_id=payload["provider_reference_id"],
     ).exists():
-        emitir("pagamento.reversao_confirmada", payload, version=2)
+        return
+    emitir("pagamento.reversao_confirmada", payload, version=2)
 
 
 def _processar_aviso_pos_aprovacao(

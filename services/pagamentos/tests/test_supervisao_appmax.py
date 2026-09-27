@@ -270,7 +270,7 @@ def test_queda_apos_publicar_redis_nao_duplica_stream() -> None:
     assert cliente.xlen(f"eventos.{nome}") == 1
 
 
-# guarda: services/pagamentos/pagamentos/supervisao.py:138
+# guarda: services/pagamentos/pagamentos/supervisao.py:145
 @pytest.mark.parametrize(
     ("status", "codigo"),
     [

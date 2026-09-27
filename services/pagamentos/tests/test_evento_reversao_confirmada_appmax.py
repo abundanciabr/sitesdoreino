@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import uuid
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import pytest
+import redis
+from django.conf import settings
 from django.db import connection
 from django.db.models import QuerySet
+from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.ledger import registrar_fato
@@ -20,8 +25,10 @@ from pagamentos.core.models import (
     Intent,
     OutboxEvent,
     PaymentAttempt,
+    emitir,
+    relay_outbox,
 )
-from pagamentos.supervisao import processar_rodada
+from pagamentos.supervisao import _processar_aviso, processar_rodada
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -29,6 +36,12 @@ SITE = "site-interno"
 APP_ID = "123"
 SITE_APPMAX = "site-appmax"
 REFERENCIA = "3531"
+_CONTRATO = (
+    Path(__file__).resolve().parents[3]
+    / "contracts"
+    / "eventos"
+    / "pagamento.reversao_confirmada.v2.json"
+)
 
 
 class ClienteAppmaxSomenteLeitura:
@@ -128,6 +141,16 @@ def _reversoes() -> QuerySet[OutboxEvent]:
     return OutboxEvent.objects.filter(event="pagamento.reversao_confirmada")
 
 
+def _envelope_publicado(evento: OutboxEvent) -> dict[str, Any]:
+    relay_outbox()
+    cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
+    for _, campos in cliente.xrevrange("eventos.pagamento.reversao_confirmada"):
+        envelope: dict[str, Any] = json.loads(campos[b"json"])
+        if envelope["event_id"] == str(evento.event_id):
+            return envelope
+    raise AssertionError("o envelope da reversão não chegou ao stream")
+
+
 @pytest.mark.parametrize(
     ("status", "motivo"),
     [
@@ -137,6 +160,7 @@ def _reversoes() -> QuerySet[OutboxEvent]:
         ("chargeback_perdido", "contestacao"),
     ],
 )
+# guarda: services/pagamentos/pagamentos/supervisao.py:200
 def test_get_autenticado_emite_reversao_sem_valor_nem_transicao_financeira(
     status: str, motivo: str
 ) -> None:
@@ -158,7 +182,10 @@ def test_get_autenticado_emite_reversao_sem_valor_nem_transicao_financeira(
         "provider_reference_id": REFERENCIA,
         "motivo": motivo,
     }
-    assert "amount_cents" not in evento.payload
+    envelope = _envelope_publicado(evento)
+    contrato = json.loads(_CONTRATO.read_text(encoding="utf-8"))
+    Draft202012Validator(contrato, format_checker=FormatChecker()).validate(envelope)
+    assert "amount_cents" not in envelope["data"]
     assert intent.status == "approved"
     assert tentativa.state == "approved"
     assert not OutboxEvent.objects.filter(event="pagamento.estornado").exists()
@@ -312,6 +339,7 @@ def test_pedido_devolvido_pelo_get_divergente_nao_emite(campo: str) -> None:
     assert aviso.processed_at is None
 
 
+# guarda: services/pagamentos/pagamentos/supervisao.py:199
 def test_repeticao_e_dois_avisos_produzem_um_evento_da_mesma_reversao() -> None:
     _compra_aprovada()
     _aviso("order_refund")
@@ -325,32 +353,46 @@ def test_repeticao_e_dois_avisos_produzem_um_evento_da_mesma_reversao() -> None:
     assert _reversoes().get().payload["motivo"] == "contestacao"
 
 
-def test_duas_rodadas_concorrentes_produzem_um_evento() -> None:
+# guarda: services/pagamentos/pagamentos/supervisao.py:191
+def test_dois_avisos_processados_ao_mesmo_tempo_produzem_um_evento() -> None:
+    """Cada worker segura um aviso diferente do mesmo pedido.
+
+    O encontro antes de gravar a outbox só se completa se os dois passarem pela
+    conferência ao mesmo tempo, o que a trava da tentativa impede. Sem a trava,
+    os dois gravam e a contagem denuncia a duplicata.
+    """
     assert connection.vendor == "postgresql", "esta prova exige PostgreSQL"
     _compra_aprovada()
-    _aviso("order_refund")
-    _aviso("order_chargeback_in_treatment")
+    avisos = [_aviso("order_refund"), _aviso("order_chargeback_in_treatment")]
     clientes = [
         ClienteAppmaxSomenteLeitura(_pedido("chargeback_em_disputa")),
         ClienteAppmaxSomenteLeitura(_pedido("chargeback_em_disputa")),
     ]
     largada = threading.Barrier(2)
+    encontro_antes_da_outbox = threading.Barrier(2)
     erros: list[BaseException] = []
 
-    def executar() -> None:
+    def emitir_apos_encontro(*args: Any, **kwargs: Any) -> OutboxEvent:
+        try:
+            encontro_antes_da_outbox.wait(timeout=3)
+        except threading.BrokenBarrierError:
+            pass
+        return emitir(*args, **kwargs)
+
+    def executar(aviso_id: int) -> None:
         try:
             connection.close()
             largada.wait(timeout=10)
-            processar_rodada()
+            _processar_aviso(aviso_id)
         except BaseException as exc:  # noqa: BLE001 - relançada no teste
             erros.append(exc)
         finally:
             connection.close()
 
-    threads = [threading.Thread(target=executar) for _ in clientes]
+    threads = [threading.Thread(target=executar, args=(aviso.pk,)) for aviso in avisos]
     with patch(
         "pagamentos.core.gateway.nova_sessao_appmax", side_effect=clientes
-    ), patch("pagamentos.supervisao.relay_outbox", return_value=0):
+    ), patch("pagamentos.supervisao.emitir", emitir_apos_encontro):
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -358,7 +400,12 @@ def test_duas_rodadas_concorrentes_produzem_um_evento() -> None:
 
     assert not any(thread.is_alive() for thread in threads)
     assert not erros
+    assert [cliente.consultas for cliente in clientes] == [
+        [int(REFERENCIA)],
+        [int(REFERENCIA)],
+    ]
     assert _reversoes().count() == 1
+    assert AppmaxWebhookInbox.objects.filter(processed_at__isnull=False).count() == 2
 
 
 def test_falha_ao_gravar_evento_reverte_toda_a_transacao() -> None:
