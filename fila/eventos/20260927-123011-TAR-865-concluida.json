@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-123011-TAR-865-concluida",
+  "tarefa": "TAR-865",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:30:11.706412+00:00",
+  "quem": "agent/ci/pr-arquivos-da-bancada",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2232",
+  "verificado_em": "2026-09-27"
+}
