@@ -23,6 +23,7 @@ from apps.core.views import (
     service_worker,
     servir_estatico,
     sitemap_xml,
+    telemetria_do_navegador,
     ver_como_view,
     verificacao_do_google,
 )
@@ -53,6 +54,10 @@ urlpatterns = [
     # cada detalhe está na docstring da view.
     re_path(r"^static/(?P<path>.*)$", servir_estatico, name="static"),
     path("leads", capturar_lead, name="capturar_lead"),
+    # Seção vista e clique no botão, mandados pelo script da oferta. Rota de
+    # MÁQUINA como o sitemap: resolve o site e nunca se localiza, então o
+    # script posta sempre no mesmo endereço, em qualquer idioma.
+    path("telemetria", telemetria_do_navegador, name="telemetria_do_navegador"),
     # Ligar e desligar o aviso na tela do celular. São gestos de uma PESSOA
     # numa página (não rota de máquina): servem sob o prefixo de idioma como
     # o /leads, e é por isso que o JavaScript recebe o endereço pronto do
