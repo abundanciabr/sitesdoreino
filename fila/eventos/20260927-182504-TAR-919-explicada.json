@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-182504-TAR-919-explicada",
+  "tarefa": "TAR-919",
+  "evento": "explicada",
+  "quando": "2026-09-27T18:25:04.493007+00:00",
+  "quem": "coordenação da obra Appmax rodada 4, sessão 2549a52a, 27/09/2026",
+  "o_que_e": "A obra do cartão está esperando o relógio: na terça 29/09 à meia-noite a janela de um dia útil fecha e a leitura decisiva pode ser feita. Hoje foi medido o estado de domingo",
+  "o_que_muda": "Quem abrir a sessão de terça encontra no livro o ponto de partida medido, com as leituras do servidor, sem precisar refazer nem adivinhar",
+  "exemplo": "É como anotar a leitura do relógio de luz no domingo para, na terça, saber exatamente quanto mudou",
+  "importancia": 30
+}

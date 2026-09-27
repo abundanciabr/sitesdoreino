@@ -1,0 +1,20 @@
+{
+  "arquivo": "919-o-que-a-obra-do-cartao-appmax-mediu-no-domingo-antes-da-jane",
+  "id": "TAR-919",
+  "titulo": "O que a obra do cartão Appmax mediu no domingo, antes da janela de terça, fica escrito no livro",
+  "toca": [
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "registro de medição no livro com os runs appmax-pendentes e appmax-observacao e a conferência da pista, e o PR MERGED",
+  "despacho": "Coordenacao da obra Appmax, rodada 4, sessao 2549a52a, domingo 27/09/2026.\nEscrever no livro, num registro de medicao embarcado pelo ci/pr.py, o que foi\nmedido antes da janela de terca 29/09 00h BRT: run appmax-pendentes\n36340289078 (10 pre-autorizacoes de teste ainda autorizadas, Pix 7272efcf\npendente), run appmax-observacao 36340291130 (repetido uma vez apos conexao\nexpirada: zero acima de um dia util, 11 na faixa de 60 min a um dia util),\ne a pista sem fome conferida nos runs de pouso 36334357870 e 36334360463.\nCriar na mesma entrega a tarefa do defeito da conexao expirada.\nNao responde ao registro 275: o mantenedor ainda nao cancelou.",
+  "origem": "coordenação da obra Appmax rodada 4, sessão 2549a52a, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
