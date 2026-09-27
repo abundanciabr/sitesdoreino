@@ -117,7 +117,8 @@ def test_o_proximo_passo_ignora_rascunho_e_destaca_aula_publicada_disponivel(
     assert ">Em preparo<" in corpo
     assert "A escola está preparando esta aula." in corpo
     assert "Conclua a aula anterior para abrir esta porta." in corpo
-    assert "Aula publicada e disponível para você." in corpo
+    # TAR-825: `disponivel` ganhou frase própria, diferente da genérica antiga.
+    assert "Pronta para você abrir: é a sua próxima entrega." in corpo
     assert reverse("aula-do-curso", args=["profissional", 1, "E01"]) not in corpo
     assert reverse("aula-do-curso", args=["profissional", 1, "E03"]) not in corpo
 
