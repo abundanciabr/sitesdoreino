@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-078-metricas-guarda-contra-dado-pessoal-no-livro-de-fatos",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "metricas: guarda contra dado pessoal no livro de fatos",
+  detalhe: "Checo o contrato congelado, unica cerca real, sem tocar consume_eventos.py. Nao afrouxei o achado real de quiz.completado; registrado em INVARIANTES.md e na TAR-779.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2132. Validação local: árvore e8281a722bdbecf8affcb731f2500377f843bf22; commit 255f69829931a743318d47009f4657bae824bda1; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-781",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
