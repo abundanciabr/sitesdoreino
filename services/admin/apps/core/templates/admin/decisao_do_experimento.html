@@ -59,7 +59,7 @@ confirmação obrigatória no próprio formulário, e o servidor confere de novo
   <div class="cartoes espaco-20">
     <div class="cartao">
       <div class="rotulo">Onde</div>
-      <div class="valor">{{ experimento.pagina }} &middot; {{ experimento.secao }}.{{ experimento.slot }}</div>
+      <div class="valor">{{ experimento.slug }} &middot; {{ experimento.secao }}.{{ experimento.slot }}</div>
     </div>
     <div class="cartao">
       <div class="rotulo">Estado</div>
@@ -75,7 +75,7 @@ confirmação obrigatória no próprio formulário, e o servidor confere de novo
 
   {% if encerrado %}
   <p class="recado">
-    <b>Encerrado com a decisão {{ decisao_gravada|default:"sem decisão" }}</b>{% if experimento.variante_vencedora %}, variante {{ experimento.variante_vencedora }}{% endif %}.
+    <b>Encerrado com a decisão {{ decisao_gravada|default:"sem decisão" }}</b>{% if experimento.vencedora %}, variante {{ experimento.vencedora }}{% endif %}.
     Não há mais o que decidir aqui.
   </p>
 
