@@ -214,7 +214,11 @@ def ao_forum_resposta_aceita(envelope: dict) -> None:
     ajuda = _registrar_a_ajuda(envelope)
     _creditar(envelope)
     if ajuda is not None:
-        avaliar(ajuda.pessoa_id, ajuda.site_id)
+        avaliar(
+            ajuda.pessoa_id,
+            ajuda.site_id,
+            origem_event_id=str(envelope.get("event_id") or ""),
+        )
 
 
 def _registrar_a_ajuda(envelope: dict) -> AjudaAceita | None:
@@ -285,7 +289,11 @@ def ao_aula_concluida(envelope: dict) -> None:
     if (envelope.get("data") or {}).get("e_boss") is True:
         _conceder_boss(envelope)
     if entrega is not None:
-        avaliar(entrega.pessoa_id, entrega.site_id)
+        avaliar(
+            entrega.pessoa_id,
+            entrega.site_id,
+            origem_event_id=entrega.origem_event_id,
+        )
 
 
 def _registrar_a_entrega(envelope: dict) -> EntregaAceita | None:

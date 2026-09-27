@@ -156,11 +156,13 @@ def test_a_primeira_aula_concede_o_primeiro_ciclo_uma_vez_com_o_xp_desligado():
     _semear()
     _ligar(PRIMEIRO_CICLO)
 
-    _entregar_pelos_dois_caminhos(_aula_concluida())
+    envelope = _aula_concluida()
+    _entregar_pelos_dois_caminhos(envelope)
 
     assert EntregaAceita.objects.count() == 1, "reentrega virou segundo ciclo"
     concessao = Concessao.objects.get()
     assert concessao.conquista.slug == PRIMEIRO_CICLO
+    assert concessao.origem_event_id == envelope["event_id"], "sem a origem"
     assert concessao.pessoa_id == ALUNO
     assert concessao.validador_papel == Concessao.PapelDoValidador.SISTEMA
     assert LancamentoDeXP.objects.count() == 0, "a economia está desligada"
@@ -213,10 +215,12 @@ def test_a_primeira_ajuda_aceita_concede_uma_vez_a_quem_escreveu():
     _semear()
     _ligar(PRIMEIRA_AJUDA)
 
-    _entregar_pelos_dois_caminhos(_resposta_aceita())
+    envelope = _resposta_aceita()
+    _entregar_pelos_dois_caminhos(envelope)
 
     concessao = Concessao.objects.get()
     assert concessao.conquista.slug == PRIMEIRA_AJUDA
+    assert concessao.origem_event_id == envelope["event_id"], "sem a origem"
     assert concessao.pessoa_id == ALUNO, "o prêmio é de quem escreveu"
     assert not Concessao.objects.filter(pessoa_id=QUEM_MARCOU).exists()
     assert LancamentoDeXP.objects.count() == 0, "a economia está desligada"

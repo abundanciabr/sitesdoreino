@@ -302,8 +302,14 @@ def _progresso(medida: tuple[int, int] | None) -> tuple[int, int] | None:
     return min(valor, alvo), alvo
 
 
-def avaliar(pessoa_id: str, site_id: str) -> list[Concessao]:
+def avaliar(
+    pessoa_id: str, site_id: str, *, origem_event_id: str = ""
+) -> list[Concessao]:
     """Concede tudo o que esta pessoa passou a cumprir. Devolve o que foi novo.
+
+    `origem_event_id` é o fato que disparou a conta, quando há um: o handler da
+    aula e o da resposta aceita o passam, e a concessão guarda de onde veio
+    (dossiê da Comunidade §5: reconhecimento registra origem e data).
 
     **É um LAÇO, e não uma passada**, porque uma medalha pode destravar a
     seguinte: ganhar a de ofício paga XP, o XP sobe o nível, e o nível pode
@@ -376,7 +382,10 @@ def avaliar(pessoa_id: str, site_id: str) -> list[Concessao]:
             # recebe metade.
             for conquista in candidatas:
                 concessao, nova = conceder(
-                    pessoa=pessoa, site_id=site_id, conquista=conquista
+                    pessoa=pessoa,
+                    site_id=site_id,
+                    conquista=conquista,
+                    origem_event_id=origem_event_id,
                 )
                 if nova:
                     concedidas.append(concessao)
