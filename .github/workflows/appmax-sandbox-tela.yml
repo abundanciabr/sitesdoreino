@@ -1,0 +1,58 @@
+name: appmax-sandbox-tela
+# Compra pela tela de meshcraft.top os seis cartões oficiais da Appmax sandbox,
+# no computador e no celular, e conta na VPS, só lendo, o que cada pedido gerou
+# (TAR-808). Cada disparo cria compras sintéticas NOVAS no sandbox; nenhum
+# pedido antigo é reenviado e nada é ligado ou desligado.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: appmax-sandbox-tela
+  cancel-in-progress: false
+jobs:
+  matriz:
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo '::error::A matriz sandbox só executa na main. Integre o PR e dispare com --ref main.'
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar o navegador
+        run: |
+          npm install --no-save playwright@1.62.1
+          npx playwright install --with-deps chromium
+      - name: Comprar pela tela os seis cartões, no computador e no celular
+        id: comprar
+        run: |
+          set -euo pipefail
+          node e2e/appmax_sandbox.js --etapa=comprar --dados="$RUNNER_TEMP/compras.json" --script="$RUNNER_TEMP/contagem.sh"
+          bash -n "$RUNNER_TEMP/contagem.sh"
+          echo "script=$RUNNER_TEMP/contagem.sh" >> "$GITHUB_OUTPUT"
+      - name: Dar tempo aos avisos e à matrícula
+        run: sleep 90
+      - name: Contar na VPS, só lendo, o que cada pedido gerou
+        id: remoto
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 5m
+          script_path: ${{ steps.comprar.outputs.script }}
+      - name: Julgar cada cartão e publicar a evidência sanitizada
+        env:
+          SAIDA: ${{ steps.remoto.outputs.stdout }}
+        run: node e2e/appmax_sandbox.js --etapa=conferir --dados="$RUNNER_TEMP/compras.json"
