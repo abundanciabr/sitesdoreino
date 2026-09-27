@@ -149,10 +149,14 @@ VPS e só a gamificação o usa; no código, o único chamador dessa porta é o
 comando de linha `conceder_fundador --emails` (`apps/core/sessao.py`), rodado
 pela equipe. Nenhum caminho de página a chama.
 
-**Origem:** decisão do mantenedor na sessão de 27/09/2026 (Retomada
-comunidade, rodada 3, pergunta estruturada), registro
-`painel/registros/20260927-291-comunidade-mantenedor-decide-convite-quadro-e-cristais.js`
-do livro.
+**Origem:** duas palavras do mantenedor na sessão Retomada comunidade, rodada
+3, em 27/09/2026. A primeira, à tarde: o quadro exige matrícula ativa
+(`painel/registros/20260927-291-comunidade-mantenedor-decide-convite-quadro-e-cristais.js`).
+A segunda, por volta das 16h, numa pergunta estruturada separada, respondida
+com "Autorizo": a parte das conquistas lê o e-mail de quem clica em Assumir
+tarefa, só naquele clique e sem guardar em lugar nenhum, como o fórum e os
+cursos já fazem
+(`painel/registros/20260927-311-quadro-mantenedor-autoriza-email-no-gesto-de-assumir.js`).
 
 ## 5. A escada de entrega (e por que nesta ordem)
 
