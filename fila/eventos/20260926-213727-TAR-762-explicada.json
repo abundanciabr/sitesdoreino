@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-213727-TAR-762-explicada",
+  "tarefa": "TAR-762",
+  "evento": "explicada",
+  "quando": "2026-09-26T21:37:27.227740+00:00",
+  "quem": "sessao do escrivao, 26/09/2026",
+  "o_que_e": "Dois PRs (2116 e 2117) esbarraram na classificacao do mandato por faixa (Lista A x Lista B) e o mantenedor respondeu a decisao no chat, sem que isso virasse licao nem registro no livro.",
+  "o_que_muda": "O proximo despacho para de classificar workflow que so le segredo como Lista B, e passa a saber que Lista B tambem exige a linha do mandato; e a decisao do mantenedor sobre os PRs 2116/2117 e o quiz Crivo fica no livro, nao so na sessao.",
+  "exemplo": "PR 2117 alegou Lista B para um workflow que le secrets.VPS_HOST e foi recusado; PR 2116 ficou sem a linha do mandato e --automatico recusou cinco vezes.",
+  "importancia": 30
+}

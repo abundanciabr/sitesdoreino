@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260926-193114-TAR-753-submetida",
+  "tarefa": "TAR-753",
+  "evento": "submetida",
+  "quando": "2026-09-26T19:31:14.388941+00:00",
+  "quem": "agent/ci/teste-pix-sem-relogio",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2116",
+  "revisao": "3593c47b004d9c7604436095dd2be840c5c6d87c",
+  "arvore": "c200de03d60a40ffedf955b53acd1c83beb5427e"
+}

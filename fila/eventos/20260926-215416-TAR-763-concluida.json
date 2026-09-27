@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-215416-TAR-763-concluida",
+  "tarefa": "TAR-763",
+  "evento": "concluida",
+  "quando": "2026-09-26T21:54:16.260326+00:00",
+  "quem": "agent/painel/medir-crivo-producao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2124",
+  "verificado_em": "2026-09-26"
+}

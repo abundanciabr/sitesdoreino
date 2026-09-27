@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-192442-TAR-753-explicada",
+  "tarefa": "TAR-753",
+  "evento": "explicada",
+  "quando": "2026-09-26T19:24:42.123979+00:00",
+  "quem": "Medido na sessão do quiz em 26/09/2026: muralhas reprova todo PR por data fixa no fixture Pix Appmax",
+  "o_que_e": "O teste que prova o Pix Appmax fixava a data de vencimento do QR em 2026-09-26 13:00:00 e comparava com o relogio real; passado esse horario, o teste vira vermelho sozinho e reprova todo PR da casa no check muralhas.",
+  "o_que_muda": "As datas dos casos sem vencimento passam a nascer no futuro a partir do agora do teste, e o caso vencido nasce no passado a partir do agora; nenhum dos dois depende mais do dia do calendario.",
+  "exemplo": "E como testar se um boleto vencido bloqueia pagamento usando sempre o dia de ontem como data fixa: um dia o 'ontem' fica no futuro e o teste quebra sem ninguem mudar nada.",
+  "importancia": 70
+}
