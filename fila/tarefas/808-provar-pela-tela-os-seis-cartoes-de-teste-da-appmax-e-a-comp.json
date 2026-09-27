@@ -4,7 +4,7 @@
   "titulo": "Provar pela tela os seis cartões de teste da Appmax e a compra aprovada até a matrícula",
   "toca": [
     "e2e",
-    "fabrica"
+    ".github"
   ],
   "depende_de": [],
   "cria": [],
