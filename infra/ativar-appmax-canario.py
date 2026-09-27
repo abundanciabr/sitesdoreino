@@ -7,10 +7,10 @@ do site e a ausência de outro site ligado; se a recarga não se confirmar, os
 dois env voltam como estavam. Desligar é o caminho de volta: tira só o site
 pedido e, na dúvida, deixa a trava fechada.
 
-Uso na VPS, em /opt/plataforma:
-  python3 infra/ativar-appmax-canario.py --site <platform_site_id>
-  python3 infra/ativar-appmax-canario.py --site <platform_site_id> --executar
-  python3 infra/ativar-appmax-canario.py --site <platform_site_id> --desligar --executar
+Uso na VPS (PLATAFORMA_DIR, padrão /opt/plataforma, é onde moram docker-compose.yml e env/):
+  python3 ativar-appmax-canario.py --site <platform_site_id>
+  python3 ativar-appmax-canario.py --site <platform_site_id> --executar
+  python3 ativar-appmax-canario.py --site <platform_site_id> --desligar --executar
 """
 
 from __future__ import annotations

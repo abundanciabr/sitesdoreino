@@ -40,7 +40,7 @@ class Compose:
 
     def __init__(self) -> None:
         self.ativos = list(canario.SERVICOS)
-        self.external_id = EXTERNAL_ID
+        self.consulta_confirma = True
         self.prova = 0
         self.recargas: list[bool] = []
         self.respostas_de_recarga: list[bool] = []
@@ -49,9 +49,8 @@ class Compose:
         if args[0] == "ps":
             return subprocess.CompletedProcess(args, 0, "\n".join(self.ativos), "")
         if args[:5] == ("exec", "-T", "pagamentos", "python", "manage.py"):
-            if not self.external_id:
-                return subprocess.CompletedProcess(args, 1, "", "sem instalação")
-            return subprocess.CompletedProcess(args, 0, self.external_id + "\n", "")
+            codigo = 0 if self.consulta_confirma else 1
+            return subprocess.CompletedProcess(args, codigo, EXTERNAL_ID + "\n", "")
         if args[0] == "exec":
             return subprocess.CompletedProcess(args, self.prova, "", "")
         raise AssertionError(f"chamada inesperada ao Compose: {args}")
@@ -230,7 +229,7 @@ def test_recusa_servico_parado(tmp_path, monkeypatch):
 
 def test_recusa_instalacao_ausente_no_banco(tmp_path, monkeypatch):
     raiz, compose = preparar(tmp_path, monkeypatch)
-    compose.external_id = ""
+    compose.consulta_confirma = False
     with pytest.raises(canario.ParouPorSeguranca, match="banco"):
         canario.executar(raiz, SITE, ligar=True, gravar=True)
     assert not copias(raiz)
@@ -276,7 +275,7 @@ def test_desligar_funciona_mesmo_com_a_appmax_fora_da_producao(tmp_path, monkeyp
     )
     raiz, compose = preparar(tmp_path, monkeypatch, pagamentos, CHECKOUT)
     compose.ativos = []
-    compose.external_id = ""
+    compose.consulta_confirma = False
     canario.executar(raiz, SITE, ligar=False, gravar=True)
     texto = (raiz / "env/pagamentos.env").read_text(encoding="utf-8")
     assert f"APPMAX_CARD_ENABLED_SITES={OUTRO}\n" in texto
