@@ -303,6 +303,18 @@ def rodar_testes_de_contrato(raiz: Path) -> Resultado:
     return resultado
 
 
+def rodar_testes_da_infra(raiz: Path) -> Resultado:
+    """Os testes das operações da infraestrutura (`infra/test_*.py`).
+
+    Até 27/09/2026 eles só rodavam na máquina de quem os escrevia: a ativação
+    da Appmax e o canário (TAR-802) pousavam sem medição em PR. Custa ~2 s,
+    por isso roda em todo PR, como os contratos.
+    """
+    resultado, _ = executar_pytest(raiz, [str(raiz / "infra"), "-q"])
+    resultado.nome = "testes-da-infra"
+    return resultado
+
+
 # Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
 # rodar (ausente, erro de SO, timeout). Só eles significam "não foi possível
 # medir" — qualquer outro número veio do programa e é veredito dele.
@@ -471,7 +483,7 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
     return mapa_de_celulas.celulas_do_diff(arquivos, mapa)
 
 
-PORTOES = ("freeze", "muralhas", "guardas", "testador", "contratos")
+PORTOES = ("freeze", "muralhas", "guardas", "testador", "contratos", "infra")
 
 
 def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relatorio:
@@ -509,6 +521,8 @@ def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relator
         relatorio.registrar(rodar_testes_do_testador(raiz))
     if "contratos" in escolhidos:
         relatorio.registrar(rodar_testes_de_contrato(raiz))
+    if "infra" in escolhidos:
+        relatorio.registrar(rodar_testes_da_infra(raiz))
     if celula:
         relatorio.registrar(rodar_celula(raiz, celula))
     return relatorio
@@ -577,6 +591,10 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "  contratos  — os esquemas de contracts/ aceitam e recusam o que devem "
             "(pytest contracts)"
+        )
+        print(
+            "  infra      — os testes das operações da infraestrutura "
+            "(pytest infra)"
         )
         print("\nAlém deles: --celula <nome> encadeia o `make ci` daquela célula.")
         return 0

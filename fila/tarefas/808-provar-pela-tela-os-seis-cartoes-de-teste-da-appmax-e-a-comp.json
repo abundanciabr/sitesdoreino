@@ -1,0 +1,20 @@
+{
+  "arquivo": "808-provar-pela-tela-os-seis-cartoes-de-teste-da-appmax-e-a-comp",
+  "id": "TAR-808",
+  "titulo": "Provar pela tela os seis cartões de teste da Appmax e a compra aprovada até a matrícula",
+  "toca": [
+    "e2e",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run público do workflow appmax-sandbox-tela na main com resultado por cartão da matriz oficial (seis cartões, desktop e celular), captura de rede sanitizada sem número do cartão nem código de segurança fora da Appmax, e contagem na VPS: o cartão aprovado gerou uma tentativa, uma outbox de pagamento aprovado, um pedido pago e uma matrícula.",
+  "despacho": "Frente N1 de RETOMADA-APPMAX.md. Medir se o cartão sandbox está ligado na Meshcraft; construir e2e/appmax_sandbox.js (Playwright) que compra pela tela com os seis cartões do §16 do plano mestre, em desktop e celular, audita a rede e conta na VPS tentativa, outbox, pedido e matrícula; workflow próprio em .github/workflows/; evidência por run público. Somente compras sintéticas novas no sandbox; nunca reenviar pedido antigo; não ligar nem desligar o cartão.",
+  "origem": "RETOMADA-APPMAX.md frente N1, sucessora das TAR-561 e TAR-562 (PR 2019 e PR 2021 não provaram matriz oficial nem navegador); mandato do mantenedor em 26/09/2026 22h53 BRT",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

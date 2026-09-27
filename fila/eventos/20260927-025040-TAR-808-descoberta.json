@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-025040-TAR-808-descoberta",
+  "tarefa": "TAR-808",
+  "evento": "descoberta",
+  "quando": "2026-09-27T02:50:40.990428+00:00",
+  "quem": "agent/e2e/appmax-sandbox-tela",
+  "detalhe": "Três defeitos vistos na tela: a página de dados cria duas sessões por visita (POST /sessoes duas vezes); depois de pago a tela mantém a frase 'Pagamento em análise' abaixo de 'Pagamento aprovado!'; com o cartão 0028 em análise o formulário continua aberto para outra cobrança",
+  "evidencia": "sondas locais de 27/09/2026 com captura de rede e texto da tela",
+  "classificacao": "C",
+  "criterio": "fora do aceite da TAR-808; tela do checkout",
+  "encaminhamento": "backlog de checkout; não altera o julgamento da matriz"
+}
