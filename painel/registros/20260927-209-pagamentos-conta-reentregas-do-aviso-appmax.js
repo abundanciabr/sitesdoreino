@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-209-pagamentos-conta-reentregas-do-aviso-appmax",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "pagamentos: conta reentregas do aviso Appmax",
+  detalhe: "Reentrega do aviso Appmax soma 1 com F() na mesma transação; concorrência provada por mutação; latência publica o número.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2235. Validação local: árvore ead594308ae3bf38fd1f11881a145abaa639a568; commit d72616b196fa40288208d8a4b65b7adcec63b486; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-821",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
