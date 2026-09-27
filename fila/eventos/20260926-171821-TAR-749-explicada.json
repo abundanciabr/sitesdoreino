@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-171821-TAR-749-explicada",
+  "tarefa": "TAR-749",
+  "evento": "explicada",
+  "quando": "2026-09-26T17:18:21.712642+00:00",
+  "quem": "Lacuna Appmax identificada na supervisao de avisos aprovados, frente independente autorizada pelo mantenedor",
+  "o_que_e": "Um aviso Appmax recebido depois da aprovação cai no caminho genérico e pode morrer após três falhas.",
+  "o_que_muda": "O operador passa a ver uma pendência específica para confirmar devolução, acompanhar contestação ou reconhecer vitória do lojista, sem reabrir cobrança nem inventar estorno.",
+  "exemplo": "Uma compra aprovada recebe depois um aviso e o GET autenticado informa estornado; o aviso fica visível como pendência de confirmação, sem mudar o ledger.",
+  "importancia": 95
+}
