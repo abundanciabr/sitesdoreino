@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-057-painel-paga-a-divida-do-livro-do-pr-2187",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "painel: paga a dívida do livro do PR #2187",
+  detalhe: "PR #2187 mergeou antes do commit do registro. Ele entregou o consumidor de\nreversão confirmada da célula alunos (280 passed). Este PR só escritura,\ncita #2187 e fecha a TAR-752.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2196. Validação local: árvore c73adae5bd341fd5ada70bee2afcd970d4887d26; commit 180720bca430e1f64037d381bd7da05d60bd6c07; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-752",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
