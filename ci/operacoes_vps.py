@@ -21,6 +21,7 @@ OPERACOES = {
     "appmax-inbox-latencia",
     "appmax-observacao",
     "appmax-estorno",
+    "appmax-pendentes",
     "quiz-configuracao",
 }
 OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
@@ -82,6 +83,58 @@ STATUS_APPMAX_PEDIDO = {
     "pendente",
     "autorizado",
 }
+# [MEDICAO-VPS:appmax-pendentes] mesmo critério de "em aberto" da
+# appmax-observacao (ESTADOS_EM_ABERTO de pagamentos/core/models.py), mas linha
+# a linha em vez de contagem: cada tentativa Pix ou cartão que não terminou.
+# Cartão com order_id válido soma uma consulta GET somente-leitura à Appmax
+# (mesma chamada de consultar_pedido usada em appmax-pix-pedido e
+# appmax-estorno) para expor as conferências que _consultar_resultado faz
+# antes de mapear o status; NUNCA POST/PUT/DELETE.
+METODOS_APPMAX_PENDENTES = {"pix", "cartao"}
+ESTADOS_TENTATIVA_APPMAX_PENDENTES = {"sending", "pending", "reconciliation_required"}
+ESTADOS_INTENT_APPMAX_PENDENTES = {
+    "created",
+    "pending",
+    "approved",
+    "rejected",
+    "expired",
+    "refunded",
+}
+CAMPOS_TENTATIVA_APPMAX_PENDENTES = {
+    "referencia",
+    "metodo",
+    "estado_tentativa",
+    "estado_intent",
+    "motivo",
+    "operacoes",
+    "idade_horas",
+    "consulta_appmax",
+}
+CAMPOS_CONSULTA_APPMAX_PENDENTES = {
+    "status_bruto",
+    "total_paid_centavos",
+    "valor_esperado_centavos",
+    "conferencias",
+}
+CONFERENCIAS_APPMAX_PENDENTES = {
+    "id",
+    "cliente",
+    "total",
+    "sub_total",
+    "taxa",
+    "parcelas",
+    "metodo",
+    "status_e_texto",
+}
+MOTIVO_APPMAX_PENDENTES_OK = re.compile(r"[a-z_]{1,60}")
+STATUS_BRUTO_APPMAX_PENDENTES_OK = re.compile(r"[a-z_]{1,40}")
+LIMITE_TENTATIVAS_APPMAX_PENDENTES = 200
+# Orçamento das consultas à Appmax dentro do docker exec de 30s (comando()):
+# um cliente reutilizado (token não se autentica de novo por cartão) e um
+# prazo total, não por cartão — na primeira falha de rede ou ao estourar,
+# os cartões restantes saem como "nao_consultado" em vez de arriscar o
+# comando inteiro (achado da revisão do PR #2228).
+PRAZO_APPMAX_PENDENTES_SEGUNDOS = 20
 APPMAX_AUTH_SANDBOX = "https://auth.sandboxappmax.com.br/oauth2/token"
 APPMAX_API_SANDBOX = "https://api.sandboxappmax.com.br"
 ESTADOS_AVISO_APPMAX = {"pendente", "processado", "falhou", "carta_morta", "nao_medido"}
@@ -300,6 +353,7 @@ def validar(operacao, servico, permitidos, referencia=""):
             "appmax-inbox-latencia",
             "appmax-observacao",
             "appmax-estorno",
+            "appmax-pendentes",
         }
         and servico != "pagamentos"
     ):
@@ -670,6 +724,80 @@ def conferir_medicao(operacao, dados, referencia=""):
                 dados["qr_formato_aceito"] or dados["qr_vencido"]
             ):
                 raise Falha("formato")
+    elif operacao == "appmax-pendentes":
+        if set(dados) != {"tentativas"}:
+            raise Falha("formato")
+        tentativas = dados["tentativas"]
+        if not isinstance(tentativas, list) or len(
+            tentativas
+        ) > LIMITE_TENTATIVAS_APPMAX_PENDENTES:
+            raise Falha("formato")
+        referencias = []
+        for item in tentativas:
+            if not isinstance(item, dict) or set(item) != CAMPOS_TENTATIVA_APPMAX_PENDENTES:
+                raise Falha("formato")
+            if not isinstance(item["referencia"], str) or not re.fullmatch(
+                r"[0-9a-f]{64}", item["referencia"]
+            ):
+                raise Falha("formato")
+            referencias.append(item["referencia"])
+            if item["metodo"] not in METODOS_APPMAX_PENDENTES:
+                raise Falha("formato")
+            if item["estado_tentativa"] not in ESTADOS_TENTATIVA_APPMAX_PENDENTES:
+                raise Falha("formato")
+            if item["estado_intent"] not in ESTADOS_INTENT_APPMAX_PENDENTES:
+                raise Falha("formato")
+            motivo = item["motivo"]
+            if not isinstance(motivo, str) or (
+                motivo != "vazio"
+                and motivo != "fora_do_padrao"
+                and not MOTIVO_APPMAX_PENDENTES_OK.fullmatch(motivo)
+            ):
+                raise Falha("formato")
+            operacoes = item["operacoes"]
+            if not isinstance(operacoes, dict) or set(operacoes) != {
+                "customer",
+                "order",
+                "payment",
+            }:
+                raise Falha("formato")
+            if any(valor not in ESTADOS_OPERACAO_SAIDA for valor in operacoes.values()):
+                raise Falha("formato")
+            idade = item["idade_horas"]
+            if type(idade) is not int or not 0 <= idade <= 1000000:
+                raise Falha("formato")
+            consulta = item["consulta_appmax"]
+            if consulta is None:
+                continue
+            if item["metodo"] != "cartao":
+                raise Falha("formato")
+            if not isinstance(consulta, dict) or set(
+                consulta
+            ) != CAMPOS_CONSULTA_APPMAX_PENDENTES:
+                raise Falha("formato")
+            status_bruto = consulta["status_bruto"]
+            if not isinstance(status_bruto, str) or (
+                status_bruto != "fora_do_padrao"
+                and not STATUS_BRUTO_APPMAX_PENDENTES_OK.fullmatch(status_bruto)
+            ):
+                raise Falha("formato")
+            total_paid = consulta["total_paid_centavos"]
+            if total_paid is not None and (
+                type(total_paid) is not int or total_paid < 0
+            ):
+                raise Falha("formato")
+            valor_esperado = consulta["valor_esperado_centavos"]
+            if type(valor_esperado) is not int or valor_esperado < 0:
+                raise Falha("formato")
+            conferencias = consulta["conferencias"]
+            if not isinstance(conferencias, dict) or set(
+                conferencias
+            ) != CONFERENCIAS_APPMAX_PENDENTES:
+                raise Falha("formato")
+            if any(type(v) is not bool for v in conferencias.values()):
+                raise Falha("formato")
+        if len(referencias) != len(set(referencias)):
+            raise Falha("formato")
     elif operacao == "appmax-estorno":
         if set(dados) != {
             "pedido",
@@ -1196,6 +1324,119 @@ def medir(operacao, servico, referencia=""):
         except (ValueError, TypeError):
             raise Falha("formato") from None
         return conferir_medicao(operacao, dados, referencia)
+    if operacao == "appmax-pendentes":
+        sandbox_urls = (APPMAX_AUTH_SANDBOX, APPMAX_API_SANDBOX)
+        codigo = (
+            "import hashlib,json,re,time\n"
+            "from django.conf import settings\n"
+            "from django.utils import timezone\n"
+            f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
+            f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
+            "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
+            "    print('APPMAX_SANDBOX_REQUIRED')\n"
+            "    raise SystemExit(23)\n"
+            "from pagamentos.core.models import ESTADOS_EM_ABERTO, PaymentAttempt\n"
+            "from pagamentos.providers.appmax.client import AppmaxClient\n"
+            "motivo_ok = re.compile(r'[a-z_]{1,60}')\n"
+            "status_ok = re.compile(r'[a-z_]{1,40}')\n"
+            "order_id_ok = re.compile(r'[1-9][0-9]*')\n"
+            "campos_conferencia = ('id','cliente','total','sub_total','taxa','parcelas','metodo','status_e_texto')\n"
+            "agora = timezone.now()\n"
+            f"prazo_final = time.monotonic() + {PRAZO_APPMAX_PENDENTES_SEGUNDOS}\n"
+            "cliente_appmax = AppmaxClient()\n"
+            "falhou_rede = False\n"
+            "def sanitiza_motivo(bruto):\n"
+            "    if not isinstance(bruto, str) or not bruto:\n"
+            "        return 'vazio'\n"
+            "    if motivo_ok.fullmatch(bruto):\n"
+            "        return bruto\n"
+            "    return 'fora_do_padrao'\n"
+            "def sanitiza_status(bruto):\n"
+            "    if isinstance(bruto, str):\n"
+            "        normalizado = bruto.strip().lower()\n"
+            "        if status_ok.fullmatch(normalizado):\n"
+            "            return normalizado\n"
+            "    return 'fora_do_padrao'\n"
+            "def consulta_fechada(status_bruto, tentativa):\n"
+            "    return {'status_bruto': status_bruto, 'total_paid_centavos': None, 'valor_esperado_centavos': tentativa.effective_amount_cents, 'conferencias': {c: False for c in campos_conferencia}}\n"
+            "def consultar(tentativa):\n"
+            "    global falhou_rede\n"
+            "    order_id = str(tentativa.external_order_id or '')\n"
+            "    if not order_id_ok.fullmatch(order_id):\n"
+            "        return None\n"
+            "    if falhou_rede or time.monotonic() >= prazo_final:\n"
+            "        return consulta_fechada('nao_consultado', tentativa)\n"
+            "    try:\n"
+            "        pedido = cliente_appmax.consultar_pedido(int(order_id))\n"
+            "    except Exception:\n"
+            "        falhou_rede = True\n"
+            "        return consulta_fechada('nao_consultado', tentativa)\n"
+            "    if not isinstance(pedido, dict):\n"
+            "        pedido = {}\n"
+            "    status = pedido.get('status')\n"
+            "    cliente_obj = pedido.get('customer')\n"
+            "    cliente_id = cliente_obj.get('id') if isinstance(cliente_obj, dict) else None\n"
+            "    total_paid = pedido.get('total_paid')\n"
+            "    amounts = pedido.get('amounts')\n"
+            "    base = amounts.get('sub_total') if isinstance(amounts, dict) else None\n"
+            "    taxa = amounts.get('installment_fee', 0) if isinstance(amounts, dict) else None\n"
+            "    payment = pedido.get('payment')\n"
+            "    parcelas = payment.get('installments') if isinstance(payment, dict) else None\n"
+            "    metodo_pedido = payment.get('method') if isinstance(payment, dict) else None\n"
+            "    total_paid_ok = isinstance(total_paid, int) and not isinstance(total_paid, bool)\n"
+            "    base_ok = isinstance(base, int) and not isinstance(base, bool)\n"
+            "    taxa_ok = isinstance(taxa, int) and not isinstance(taxa, bool)\n"
+            "    conferencias = {\n"
+            "        'id': str(pedido.get('id')) == order_id,\n"
+            "        'cliente': cliente_id is not None and str(cliente_id) == str(tentativa.customer_id),\n"
+            "        'total': total_paid_ok and total_paid == tentativa.effective_amount_cents,\n"
+            "        'sub_total': base_ok and base == tentativa.amount_cents,\n"
+            "        'taxa': base_ok and taxa_ok and base + taxa == tentativa.effective_amount_cents,\n"
+            "        'parcelas': not isinstance(parcelas, bool) and parcelas == tentativa.installments,\n"
+            "        'metodo': metodo_pedido == 'creditcard',\n"
+            "        'status_e_texto': isinstance(status, str),\n"
+            "    }\n"
+            "    return {'status_bruto': sanitiza_status(status), 'total_paid_centavos': total_paid if total_paid_ok else None, 'valor_esperado_centavos': tentativa.effective_amount_cents, 'conferencias': conferencias}\n"
+            "nomes_operacao = ('customer', 'order', 'payment')\n"
+            "saida = []\n"
+            f"consulta_qs = PaymentAttempt.objects.filter(provider='appmax', platform_site_id={SITE_MESHCRAFT!r}, state__in=ESTADOS_EM_ABERTO).select_related('intent').prefetch_related('operacoes').order_by('created_at')[:{LIMITE_TENTATIVAS_APPMAX_PENDENTES}]\n"
+            "for t in consulta_qs:\n"
+            "    operacoes = {x: 'not_started' for x in nomes_operacao}\n"
+            "    for operacao_registrada in t.operacoes.all():\n"
+            "        operacoes[operacao_registrada.operation_type] = operacao_registrada.state\n"
+            "    metodo = 'cartao' if t.intent.method == 'card' else 'pix'\n"
+            "    idade_horas = int((agora - t.created_at).total_seconds() // 3600)\n"
+            "    consulta = consultar(t) if metodo == 'cartao' else None\n"
+            "    saida.append({\n"
+            "        'referencia': hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest(),\n"
+            "        'metodo': metodo,\n"
+            "        'estado_tentativa': t.state,\n"
+            "        'estado_intent': t.intent.status,\n"
+            "        'motivo': sanitiza_motivo(t.reason),\n"
+            "        'operacoes': operacoes,\n"
+            "        'idade_horas': idade_horas,\n"
+            "        'consulta_appmax': consulta,\n"
+            "    })\n"
+            "print(json.dumps({'tentativas': saida}, sort_keys=True))\n"
+        )
+        try:
+            dados = json.loads(
+                comando(
+                    [
+                        "docker",
+                        "exec",
+                        identificador,
+                        "python",
+                        "manage.py",
+                        "shell",
+                        "-c",
+                        codigo,
+                    ]
+                )
+            )
+        except (ValueError, TypeError):
+            raise Falha("formato") from None
+        return conferir_medicao(operacao, dados)
     if operacao == "appmax-estorno":
         codigo = (
             "import hashlib,json\n"
