@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260927-061852-TAR-757-reivindicacao_expirada",
+  "tarefa": "TAR-757",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-27T06:18:52.160413+00:00",
+  "quem": "despacho-forum-comunidade-vista-da-equipe",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}
