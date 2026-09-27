@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-189-a-divida-de-publicacao-de-alunos-saiu",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A dívida de publicação de alunos saiu",
+  detalhe: "Um commit de alunos estava na main mas não no servidor. O PR 1809 entrou na main em 20/09 e a publicação de alunos rodou com sucesso logo em seguida.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1797 e https://github.com/abundanciabr/sitesdoreino/pull/1809 MERGED (gh pr view); run 35536588205 do deploy-celula com alunos success (gh run view), conferidos em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260920-008-fila-a-divida-de-alunos-entra-na-tar-495",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

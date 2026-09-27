@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-113410-TAR-859-explicada",
+  "tarefa": "TAR-859",
+  "evento": "explicada",
+  "quando": "2026-09-27T11:34:10.078177+00:00",
+  "quem": "descoberta C registrada na auditoria dos alertas abertos do painel, 27/09/2026",
+  "o_que_e": "Os registros do painel guardam só a data, sem a hora. Quando o dia tem muitos registros, a capa escolhe os primeiros do dia pela ordem do nome do arquivo. Em 27/09 havia 108 registros e o bloco O que mudou mostrava os da manhã.",
+  "o_que_muda": "O dono abre a capa e vê o que acabou de acontecer, e não o que aconteceu às sete da manhã. Sem isso, o último fato do dia só aparece na aba Memória.",
+  "exemplo": "É um mural de avisos que, quando lota, esconde o aviso mais novo atrás dos de ontem.",
+  "importancia": 60
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-163-segunda-versao-do-teto-da-pista-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Segunda versão do teto da pista integrada",
+  detalhe: "O alerta dizia que a versão revisada do teto da pista calculado pela régua não estava integrada. O PR 1424 foi integrado em 08/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1424 MERGED em 08/09/2026, mergeCommit fc4f3937b8 (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260908-132-ci-derivar-teto-da-pista-da-regua",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

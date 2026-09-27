@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-180-a-volta-de-emergencia-voltou-a-baixar-o-repositorio",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A volta de emergência voltou a baixar o repositório",
+  detalhe: "A volta de emergência tentava rodar um roteiro sem baixar o repositório antes e falharia numa queda. O conserto entrou na main em 19/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1759 MERGED em 19/09/2026, mergeCommit ee4c316224 (gh pr view em 27/09/2026); .github/workflows/rollback.yml na origin/main baixa o repositório antes do roteiro",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260919-025-a-volta-de-emergencia-nao-consegue-rodar-hoje",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
