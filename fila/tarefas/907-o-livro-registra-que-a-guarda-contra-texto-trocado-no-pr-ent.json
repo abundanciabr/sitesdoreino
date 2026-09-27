@@ -1,0 +1,19 @@
+{
+  "arquivo": "907-o-livro-registra-que-a-guarda-contra-texto-trocado-no-pr-ent",
+  "id": "TAR-907",
+  "titulo": "O livro registra que a guarda contra texto trocado no PR entrou no ar",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "registro de baixa verde com responde_a no recibo 20260927-219, citando o merge fc8a08ce do PR 2232 e o deploy com sucesso",
+  "despacho": "Registrar no livro a integracao e a publicacao do PR 2232 com baixa verde no recibo 20260927-219.",
+  "origem": "pedido do mantenedor de 27/09/2026 na sessao: investigar o corpo trocado do PR 2220; o PR 2232 integrou em 27/09/2026 as 17h20 UTC",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
