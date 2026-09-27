@@ -180,6 +180,18 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   <p>A encomenda está aceita quando:</p>
   <ul class="aceito-quando">{% for criterio in aceito_quando %}<li>{{ criterio }}</li>{% endfor %}</ul>
   {% endif %}
+  <div class="pedir-ajuda">
+    <h3>Travou nesta encomenda?</h3>
+    <p>Peça ajuda no grupo da Comunidade. Abra
+    <a href="/forum/comunidade">/forum/comunidade</a> e conte o que está
+    acontecendo.</p>
+    <p class="miudo">Um bom pedido traz três coisas.</p>
+    <ul>
+      <li>O que você está tentando entregar, com o link da peça ou da tela.</li>
+      <li>Onde você travou, com a mensagem de erro ou a imagem do problema.</li>
+      <li>O que você já tentou.</li>
+    </ul>
+  </div>
   {% if checkpoint.envio %}
   <div class="envio">
     <p class="selo">Envio {{ checkpoint.envio.numero }}: {{ checkpoint.envio.estado }}</p>
