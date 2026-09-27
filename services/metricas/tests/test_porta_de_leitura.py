@@ -579,6 +579,7 @@ def por_passo(corpo: dict, chave: str = "passos") -> dict[str, int]:
 
 
 def test_funil_conta_por_site_e_nao_mistura_com_outro_site():
+    # guarda: services/metricas/apps/fatos/api.py:524
     visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 2, 10, 0, tzinfo=SP))
     visita(
         FUNIL_PAGINA_VISTA,
@@ -611,6 +612,7 @@ def test_funil_conta_por_site_e_nao_mistura_com_outro_site():
 
 
 def test_funil_visitante_com_duas_visitas_conta_uma_vez():
+    # guarda: services/metricas/apps/fatos/api.py:529
     visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP))
     visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 3, 9, 0, tzinfo=SP))
 
@@ -663,6 +665,8 @@ def test_funil_sem_experimento_nao_traz_variantes():
 
 
 def test_funil_variante_e_sticky_pela_primeira_visita_e_marca_a_troca():
+    # guarda: services/metricas/apps/fatos/api.py:590
+    # guarda: services/metricas/apps/fatos/api.py:592
     exp = "exp-1"
     visita(
         FUNIL_PAGINA_VISTA,
@@ -697,6 +701,7 @@ def test_funil_variante_e_sticky_pela_primeira_visita_e_marca_a_troca():
 
 
 def test_funil_convertido_que_nao_foi_exposto_nao_conta():
+    # guarda: services/metricas/apps/fatos/api.py:655
     exp = "exp-1"
     visita(
         FUNIL_PAGINA_VISTA,
@@ -731,6 +736,7 @@ def test_funil_convertido_que_nao_foi_exposto_nao_conta():
 
 def test_funil_expostos_e_convertidos_contam_pelo_braco_fixado_e_nao_pelo_evento():
     """Emenda 1 §5: a `secao-vista` chega com o `variante_id` errado, e não muda o braço."""
+    # guarda: services/metricas/apps/fatos/api.py:654
     exp = "exp-1"
     visita(
         FUNIL_PAGINA_VISTA,
@@ -771,6 +777,7 @@ def test_funil_expostos_e_convertidos_contam_pelo_braco_fixado_e_nao_pelo_evento
 
 
 def test_funil_junta_pedidos_por_visitor_id_dentro_da_janela_de_atribuicao():
+    # guarda: services/metricas/apps/fatos/api.py:649
     exp = "exp-1"
     visita(
         FUNIL_PAGINA_VISTA,

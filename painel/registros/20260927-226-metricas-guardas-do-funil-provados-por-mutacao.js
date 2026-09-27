@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-226-metricas-guardas-do-funil-provados-por-mutacao",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "metricas: guardas do funil provados por mutacao",
+  detalhe: "Provei so linhas onde a sabotagem produz FAIL na chamada; raise multilinha e a trava do banco viraram NAO PROVEI em vez de guarda falso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2245. Validação local: árvore c55385f7480f58cc4778abac730d55b1cd810708; commit 1c90cecde98e8d6f2b103c9593af287a11c4d439; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-877",
+  gravidade: "info",
+  frente: "site",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
