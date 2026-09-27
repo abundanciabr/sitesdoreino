@@ -608,8 +608,9 @@ def responder(request, topico_id: int):
 # TAR-824, 27/09/2026. A página responde uma pergunta só, "o que posso fazer
 # agora?", e tem quatro estados, todos com texto: sem login, sem matrícula
 # (inclusive a `alunos` fora do ar, que chega aqui como "não é aluno"), sem
-# grupo e com grupo. Nenhum deles depende da `gamificacao`: ela fora do ar não
-# tira nada desta página.
+# grupo e com grupo. Nenhum deles CHAMA a `gamificacao`: ela fora do ar não
+# tira nada desta página. O único elo é um link estático (TAR-855) para o
+# quadro de contribuições dela.
 #
 # QUEM É "MEU GRUPO" sai de `areas_visiveis`, a mesma regra de todas as telas.
 # Para o aluno, ler o grupo já É ter vínculo ativo. Para a equipe, que lê todo
@@ -622,6 +623,11 @@ DESAFIO_DO_CURSO = "/cursos/{}/"
 # mais antiga vem primeiro, então o corte nunca esconde quem espera há mais
 # tempo.
 QUEM_DEPENDE_DE_VOCE_MAXIMO = 20
+# O quadro de contribuições mora na célula `gamificacao`, fora do prefixo
+# `/forum`: caminho do SITE, não `reverse()`. É só um link (TAR-855) — a
+# página não pergunta nada a ela, então continua inteira com a gamificação
+# fora do ar.
+CONTRIBUICOES_URL = "/conquistas/contribuicoes"
 
 
 def endereco_do_desafio(grupo: Area) -> str:
@@ -682,6 +688,7 @@ def contexto_da_comunidade(request, ator) -> dict:
         "estado": "",
         "grupos": [],
         "dependem": [],
+        "contribuicoes_url": CONTRIBUICOES_URL,
     }
     if not ator.autenticado:
         contexto["estado"] = "entrar"
