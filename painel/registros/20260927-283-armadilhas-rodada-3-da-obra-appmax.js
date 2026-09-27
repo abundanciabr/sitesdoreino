@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-283-armadilhas-rodada-3-da-obra-appmax",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "armadilhas: rodada 3 da obra Appmax",
+  detalhe: "8 licoes da rodada 3 da obra Appmax viram armadilhas 547-554; indice regenerado com PASS apos ajustar 2 colisoes de sinal com 198 e 505.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2276. Validação local: árvore 9cc24e7f209c7dcfbc1c1eafd18d80ea4a714c8d; commit 3a73438f107287175a5b258ede1617f213116c7b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-902",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
