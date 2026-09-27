@@ -26,7 +26,10 @@ from pagamentos.supervisao import processar_rodada
 pytestmark = pytest.mark.django_db(transaction=True)
 SITE = "site-appmax"
 _CONTRATO = (
-    Path(__file__).resolve().parents[3] / "contracts" / "eventos" / "pix.expirado.v1.json"
+    Path(__file__).resolve().parents[3]
+    / "contracts"
+    / "eventos"
+    / "pix.expirado.v1.json"
 )
 
 
