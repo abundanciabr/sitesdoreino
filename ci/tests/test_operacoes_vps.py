@@ -2995,3 +2995,468 @@ def test_appmax_observacao_nao_vaza_saida_livre_e_publica_resumo(
         monkeypatch.setenv(nome, valor)
     ops.conferir()
     assert '"outbox_pendente": 2' in "".join(resumo)
+
+
+# ---------------------------------------------------------------------------
+# appmax-pendentes (TAR encadeada a TAR-834): instrumento de leitura, sem dado
+# pessoal, das tentativas Appmax não terminais (Pix e cartão). Cartão com
+# order_id soma uma consulta GET somente-leitura à Appmax, expondo as
+# conferências que services/pagamentos/.../card/service.py:_consultar_resultado
+# faz antes de mapear o status — nunca o valor bruto do cliente/pedido.
+# ---------------------------------------------------------------------------
+_AGORA_PENDENTES = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
+_ABERTOS_PENDENTES = ["sending", "pending", "reconciliation_required"]
+
+
+class _OperacaoAppmaxPendente:
+    def __init__(self, operation_type, state):
+        self.operation_type = operation_type
+        self.state = state
+
+
+class _ConsultaAppmaxPendentes:
+    def __init__(self, linhas, esperado=None):
+        self._linhas = linhas
+        self._esperado = esperado
+
+    def filter(self, **kwargs):
+        if self._esperado is not None:
+            assert kwargs == self._esperado
+        return self
+
+    def select_related(self, *_):
+        return self
+
+    def prefetch_related(self, *_):
+        return self
+
+    def order_by(self, *_):
+        return self
+
+    def __getitem__(self, _):
+        return self._linhas
+
+
+def _tentativa_appmax_pendentes(
+    *,
+    chave,
+    metodo,
+    estado_intent,
+    estado_tentativa,
+    motivo,
+    idade,
+    order_id="",
+    customer_id="",
+    amount_cents=490,
+    effective_amount_cents=490,
+    installments=1,
+    operacoes=(),
+):
+    return SimpleNamespace(
+        intent=SimpleNamespace(
+            idempotency_key=chave, method=metodo, status=estado_intent
+        ),
+        state=estado_tentativa,
+        reason=motivo,
+        created_at=_AGORA_PENDENTES - idade,
+        external_order_id=order_id,
+        customer_id=customer_id,
+        amount_cents=amount_cents,
+        effective_amount_cents=effective_amount_cents,
+        installments=installments,
+        operacoes=SimpleNamespace(
+            all=lambda: [_OperacaoAppmaxPendente(t, s) for t, s in operacoes]
+        ),
+    )
+
+
+def _executar_codigo_appmax_pendentes(monkeypatch, tentativas, respostas=None):
+    chamadas = []
+    cliente_chamadas = []
+    respostas = respostas or {}
+
+    class Cliente:
+        def consultar_pedido(self, order_id):
+            cliente_chamadas.append(order_id)
+            resposta = respostas[order_id]
+            if isinstance(resposta, Exception):
+                raise resposta
+            return resposta
+
+    importador_real = builtins.__import__
+
+    def importar(nome, *args, **kwargs):
+        falsos = {
+            "django.utils": SimpleNamespace(
+                timezone=SimpleNamespace(now=lambda: _AGORA_PENDENTES)
+            ),
+            "pagamentos.core.models": SimpleNamespace(
+                ESTADOS_EM_ABERTO=_ABERTOS_PENDENTES,
+                PaymentAttempt=SimpleNamespace(
+                    objects=_ConsultaAppmaxPendentes(
+                        tentativas,
+                        esperado={
+                            "provider": "appmax",
+                            "state__in": _ABERTOS_PENDENTES,
+                        },
+                    )
+                ),
+            ),
+            "pagamentos.providers.appmax.client": SimpleNamespace(
+                AppmaxClient=lambda: Cliente()
+            ),
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    def comando(args):
+        chamadas.append(args)
+        if args[1] == "ps":
+            return "a" * 64
+        codigo = args[-1]
+        saida = StringIO()
+        with redirect_stdout(saida):
+            exec(codigo, {"__builtins__": {**vars(builtins), "__import__": importar}})
+        return saida.getvalue()
+
+    monkeypatch.setattr(ops, "comando", comando)
+    dados = ops.medir("appmax-pendentes", "pagamentos")
+    return dados, chamadas, cliente_chamadas
+
+
+def _tentativa_valida_appmax_pendentes(**alteracoes):
+    base = {
+        "referencia": REFERENCIA,
+        "metodo": "pix",
+        "estado_tentativa": "pending",
+        "estado_intent": "pending",
+        "motivo": "vazio",
+        "operacoes": {
+            "customer": "not_started",
+            "order": "not_started",
+            "payment": "not_started",
+        },
+        "idade_horas": 1,
+        "consulta_appmax": None,
+    }
+    base.update(alteracoes)
+    return base
+
+
+@pytest.mark.parametrize("referencia", [REFERENCIA, PRIVADO, " "])
+def test_appmax_pendentes_recusa_referencia_antes_de_medir(
+    monkeypatch, capsys, referencia
+):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert "appmax-pendentes" in ops.OPERACOES
+    # guarda: ci/operacoes_vps.py (bloco de serviço "pagamentos" em validar())
+    assert ops.executar("appmax-pendentes", "admin", {"admin"}) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+    assert (
+        ops.executar("appmax-pendentes", "pagamentos", {"pagamentos"}, referencia) == 2
+    )
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_appmax_pendentes_lista_pix_e_consulta_so_cartao_com_order_valido(
+    monkeypatch,
+):
+    pix = _tentativa_appmax_pendentes(
+        chave="chave-pix-1",
+        metodo="pix",
+        estado_intent="pending",
+        estado_tentativa="pending",
+        motivo="",
+        idade=timedelta(hours=3),
+    )
+    cartao_recusado = _tentativa_appmax_pendentes(
+        chave="chave-cartao-recusado",
+        metodo="card",
+        estado_intent="pending",
+        estado_tentativa="reconciliation_required",
+        motivo="recusado_por_risco",
+        idade=timedelta(hours=30),
+        order_id="3531",
+        customer_id="2023",
+        amount_cents=490,
+        effective_amount_cents=500,
+        installments=2,
+        operacoes=(
+            ("customer", "completed"),
+            ("order", "completed"),
+            ("payment", "reconciliation_required"),
+        ),
+    )
+    cartao_sem_order = _tentativa_appmax_pendentes(
+        chave="chave-cartao-sem-order",
+        metodo="card",
+        estado_intent="created",
+        estado_tentativa="sending",
+        motivo=PRIVADO,
+        idade=timedelta(minutes=5),
+    )
+    respostas = {
+        3531: {
+            "id": 3531,
+            "status": "recusado_por_risco",
+            "customer": {"id": 2023},
+            "total_paid": 0,
+            "amounts": {"sub_total": 490, "installment_fee": 10},
+            "payment": {"method": "creditcard", "installments": 2},
+        }
+    }
+    dados, chamadas, cliente_chamadas = _executar_codigo_appmax_pendentes(
+        monkeypatch, [pix, cartao_recusado, cartao_sem_order], respostas
+    )
+    esperado_pix = {
+        "referencia": hashlib.sha256(b"chave-pix-1").hexdigest(),
+        "metodo": "pix",
+        "estado_tentativa": "pending",
+        "estado_intent": "pending",
+        "motivo": "vazio",
+        "operacoes": {
+            "customer": "not_started",
+            "order": "not_started",
+            "payment": "not_started",
+        },
+        "idade_horas": 3,
+        "consulta_appmax": None,
+    }
+    esperado_cartao = {
+        "referencia": hashlib.sha256(b"chave-cartao-recusado").hexdigest(),
+        "metodo": "cartao",
+        "estado_tentativa": "reconciliation_required",
+        "estado_intent": "pending",
+        "motivo": "recusado_por_risco",
+        "operacoes": {
+            "customer": "completed",
+            "order": "completed",
+            "payment": "reconciliation_required",
+        },
+        "idade_horas": 30,
+        "consulta_appmax": {
+            "status_bruto": "recusado_por_risco",
+            "total_paid_centavos": 0,
+            "valor_esperado_centavos": 500,
+            "conferencias": {
+                "id": True,
+                "cliente": True,
+                "total": False,
+                "sub_total": True,
+                "taxa": True,
+                "parcelas": True,
+                "metodo": True,
+                "status_e_texto": True,
+            },
+        },
+    }
+    esperado_sem_order = {
+        "referencia": hashlib.sha256(b"chave-cartao-sem-order").hexdigest(),
+        "metodo": "cartao",
+        "estado_tentativa": "sending",
+        "estado_intent": "created",
+        "motivo": "fora_do_padrao",
+        "operacoes": {
+            "customer": "not_started",
+            "order": "not_started",
+            "payment": "not_started",
+        },
+        "idade_horas": 0,
+        "consulta_appmax": None,
+    }
+    assert dados == {"tentativas": [esperado_pix, esperado_cartao, esperado_sem_order]}
+    assert cliente_chamadas == [3531]
+    assert ops.conferir_medicao("appmax-pendentes", dados) == dados
+    codigo = chamadas[1][-1]
+    for proibido in (
+        ".save(",
+        ".update(",
+        ".delete(",
+        "requests.post",
+        "httpx.post",
+        "httpx.put",
+        "httpx.delete",
+    ):
+        assert proibido not in codigo
+    texto = json.dumps(dados)
+    for proibido in (PRIVADO, "2023", "token-super-secreto", "comprador@example.com"):
+        assert proibido not in texto
+
+
+def test_appmax_pendentes_falha_de_rede_na_consulta_cai_fechado(monkeypatch):
+    cartao = _tentativa_appmax_pendentes(
+        chave="chave-cartao-falha",
+        metodo="card",
+        estado_intent="pending",
+        estado_tentativa="pending",
+        motivo="",
+        idade=timedelta(hours=2),
+        order_id="42",
+        customer_id="9",
+    )
+    dados, _, cliente_chamadas = _executar_codigo_appmax_pendentes(
+        monkeypatch, [cartao], {42: RuntimeError("timeout")}
+    )
+    assert cliente_chamadas == [42]
+    consulta = dados["tentativas"][0]["consulta_appmax"]
+    assert consulta == {
+        "status_bruto": "fora_do_padrao",
+        "total_paid_centavos": None,
+        "valor_esperado_centavos": 490,
+        "conferencias": {c: False for c in ops.CONFERENCIAS_APPMAX_PENDENTES},
+    }
+    assert ops.conferir_medicao("appmax-pendentes", dados) == dados
+
+
+def test_appmax_pendentes_executor_nao_vaza_saida_livre(monkeypatch, capsys):
+    medicao = {"tentativas": []}
+    chamadas = []
+
+    def rodar(args, **kwargs):
+        chamadas.append(args)
+        valor = "a" * 64 if len(chamadas) == 1 else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, valor, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-pendentes", "pagamentos", {"pagamentos"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == medicao
+    assert PRIVADO not in saida.out + saida.err
+    codigo = chamadas[1][-1]
+    assert "AppmaxClient" in codigo
+    assert chamadas[1][:4] == ["docker", "exec", "a" * 64, "python"]
+
+
+def test_appmax_pendentes_recusa_referencia_duplicada():
+    tentativa = _tentativa_valida_appmax_pendentes()
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao(
+            "appmax-pendentes", {"tentativas": [tentativa, dict(tentativa)]}
+        )
+
+
+def test_appmax_pendentes_recusa_lista_alem_do_limite():
+    tentativas = [
+        _tentativa_valida_appmax_pendentes(referencia=f"{indice:064x}")
+        for indice in range(ops.LIMITE_TENTATIVAS_APPMAX_PENDENTES + 1)
+    ]
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pendentes", {"tentativas": tentativas})
+
+
+@pytest.mark.parametrize(
+    "dados",
+    [
+        {"tentativas": [], "extra": 1},
+        {"tentativas": "nope"},
+        [],
+        PRIVADO,
+        {"tentativas": [1, 2, 3]},
+    ],
+)
+def test_appmax_pendentes_recusa_formato_top_level(dados):
+    # guarda: ci/operacoes_vps.py (bloco "elif operacao == 'appmax-pendentes':")
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pendentes", dados)
+
+
+_CONFERENCIAS_TUDO_TRUE = {c: True for c in ops.CONFERENCIAS_APPMAX_PENDENTES}
+
+
+@pytest.mark.parametrize(
+    "tentativa",
+    [
+        _tentativa_valida_appmax_pendentes(referencia="x" * 64),
+        _tentativa_valida_appmax_pendentes(referencia=REFERENCIA[:-1]),
+        _tentativa_valida_appmax_pendentes(metodo="boleto"),
+        _tentativa_valida_appmax_pendentes(estado_tentativa="approved"),
+        _tentativa_valida_appmax_pendentes(estado_tentativa="pagamento_aprovado"),
+        _tentativa_valida_appmax_pendentes(estado_intent="outro"),
+        _tentativa_valida_appmax_pendentes(motivo=PRIVADO),
+        _tentativa_valida_appmax_pendentes(motivo="Com Maiuscula"),
+        _tentativa_valida_appmax_pendentes(motivo=123),
+        _tentativa_valida_appmax_pendentes(idade_horas=-1),
+        _tentativa_valida_appmax_pendentes(idade_horas="1"),
+        _tentativa_valida_appmax_pendentes(idade_horas=1.0),
+        _tentativa_valida_appmax_pendentes(
+            operacoes={"customer": "not_started", "order": "not_started"}
+        ),
+        _tentativa_valida_appmax_pendentes(
+            operacoes={
+                "customer": "outro",
+                "order": "not_started",
+                "payment": "not_started",
+            }
+        ),
+        {**_tentativa_valida_appmax_pendentes(), "cliente_id": "2023"},
+        {**_tentativa_valida_appmax_pendentes(), "customer_id": "2023"},
+        _tentativa_valida_appmax_pendentes(
+            metodo="cartao",
+            consulta_appmax={
+                "status_bruto": "APROVADO",
+                "total_paid_centavos": 1,
+                "valor_esperado_centavos": 1,
+                "conferencias": _CONFERENCIAS_TUDO_TRUE,
+            },
+        ),
+        _tentativa_valida_appmax_pendentes(metodo="cartao", consulta_appmax=[]),
+        _tentativa_valida_appmax_pendentes(
+            metodo="cartao",
+            consulta_appmax={
+                "status_bruto": "recusado_por_risco",
+                "total_paid_centavos": 1,
+                "valor_esperado_centavos": 1,
+                "conferencias": _CONFERENCIAS_TUDO_TRUE,
+                "extra": 1,
+            },
+        ),
+        _tentativa_valida_appmax_pendentes(
+            metodo="pix",
+            consulta_appmax={
+                "status_bruto": "recusado_por_risco",
+                "total_paid_centavos": 1,
+                "valor_esperado_centavos": 1,
+                "conferencias": _CONFERENCIAS_TUDO_TRUE,
+            },
+        ),
+        _tentativa_valida_appmax_pendentes(
+            metodo="cartao",
+            consulta_appmax={
+                "status_bruto": "recusado_por_risco",
+                "total_paid_centavos": -1,
+                "valor_esperado_centavos": 1,
+                "conferencias": _CONFERENCIAS_TUDO_TRUE,
+            },
+        ),
+        _tentativa_valida_appmax_pendentes(
+            metodo="cartao",
+            consulta_appmax={
+                "status_bruto": "recusado_por_risco",
+                "total_paid_centavos": None,
+                "valor_esperado_centavos": -1,
+                "conferencias": _CONFERENCIAS_TUDO_TRUE,
+            },
+        ),
+        _tentativa_valida_appmax_pendentes(
+            metodo="cartao",
+            consulta_appmax={
+                "status_bruto": "recusado_por_risco",
+                "total_paid_centavos": None,
+                "valor_esperado_centavos": 1,
+                "conferencias": {**_CONFERENCIAS_TUDO_TRUE, "id": "sim"},
+            },
+        ),
+        _tentativa_valida_appmax_pendentes(
+            metodo="cartao",
+            consulta_appmax={
+                "status_bruto": "recusado_por_risco",
+                "total_paid_centavos": None,
+                "valor_esperado_centavos": 1,
+                "conferencias": dict(list(_CONFERENCIAS_TUDO_TRUE.items())[:-1]),
+            },
+        ),
+    ],
+)
+def test_appmax_pendentes_so_aceita_catalogo_fechado_e_recusa_dado_pessoal(tentativa):
+    # guarda: ci/operacoes_vps.py (bloco "elif operacao == 'appmax-pendentes':")
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pendentes", {"tentativas": [tentativa]})
