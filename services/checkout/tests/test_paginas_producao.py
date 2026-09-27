@@ -97,15 +97,11 @@ def test_pagina_do_pix_define_api_base_do_prefixo_real(client, rede, env_de_prod
     assert "window.API_BASE" in html
 
 
-@pytest.mark.django_db
-def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settings):
-    """A terceira rota de página, mesma semântica de produção das outras duas."""
-    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
-    settings.APPMAX_EXTERNAL_ID = "instalacao-sandbox-de-teste"
+def _pedido_no_cartao() -> OrderModel:
     sessao = SessionModel.objects.create(
         site_id=SITE_A["id"], offer_slug=SLUG, offer={"price_cents": 990}
     )
-    pedido = OrderModel.objects.create(
+    return OrderModel.objects.create(
         id=uuid.uuid4(),
         session=sessao,
         site_id=SITE_A["id"],
@@ -115,6 +111,15 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settin
         method="card",
         intent_id="intent-de-teste",
     )
+
+
+@pytest.mark.django_db
+def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settings):
+    """A terceira rota de página, mesma semântica de produção das outras duas."""
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
+    settings.APPMAX_API_URL = "https://api.sandboxappmax.com.br"
+    settings.APPMAX_EXTERNAL_ID = "instalacao-sandbox-de-teste"
+    pedido = _pedido_no_cartao()
     resp = client.get(f"/pedido/{pedido.id}/cartao/", HTTP_HOST=HOST_A)
     assert resp.status_code == 200, resp.content
     html = resp.content.decode("utf-8")
@@ -128,6 +133,38 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settin
     assert "appmax-ip" not in html
     assert f'href="/checkout/{SLUG}/"' in html
     assert "Aguardando confirmação do pagamento" not in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("api_url", "script", "script_do_outro_ambiente"),
+    [
+        (
+            "https://api.sandboxappmax.com.br",
+            "https://scripts.sandboxappmax.com.br/appmax.min.js",
+            "https://scripts.appmax.com.br/appmax.min.js",
+        ),
+        (
+            "https://api.appmax.com.br",
+            "https://scripts.appmax.com.br/appmax.min.js",
+            "https://scripts.sandboxappmax.com.br/appmax.min.js",
+        ),
+    ],
+    ids=["sandbox", "producao"],
+)
+def test_script_do_cartao_segue_o_ambiente_da_appmax(
+    client, rede, env_de_producao, settings, api_url, script, script_do_outro_ambiente
+):
+    """TAR-809: com o cartão ligado, a página lê o cartão no mesmo ambiente
+    Appmax que vai cobrar. O script de teste num site de produção faria a
+    primeira compra real falhar na leitura do cartão."""
+    # guarda: services/checkout/apps/pedidos/views.py:68
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
+    settings.APPMAX_API_URL = api_url
+    pedido = _pedido_no_cartao()
+    html = client.get(f"/pedido/{pedido.id}/cartao/", HTTP_HOST=HOST_A).content.decode()
+    assert f'<script src="{script}"></script>' in html
+    assert script_do_outro_ambiente not in html
 
 
 @pytest.mark.parametrize("nome", ARQUIVOS_JS)
