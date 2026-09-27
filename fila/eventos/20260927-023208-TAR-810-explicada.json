@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-023208-TAR-810-explicada",
+  "tarefa": "TAR-810",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:32:08.205388+00:00",
+  "quem": "Descoberta da TAR-802 em 26/09/2026",
+  "o_que_e": "As chaves que ligam e desligam a Appmax no servidor tem testes, mas nenhum robo da esteira roda esses testes.",
+  "o_que_muda": "Uma mudanca que quebre a chave de desligar o cartao passaria despercebida ate o dia em que ela fosse necessaria.",
+  "exemplo": "E como ter extintor na parede sem nunca conferir a validade: ele existe, mas ninguem sabe se funciona.",
+  "importancia": 50
+}

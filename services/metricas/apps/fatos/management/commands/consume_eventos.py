@@ -6,7 +6,7 @@ de entrada do livro de fatos. O molde é o das cinco células consumidoras
 constantes de reentrega — copiar o padrão é Lei 3, e divergir nos números
 tornaria impossível comparar o comportamento de duas células em incidente.
 
-## As quatro adaptações desta célula, declaradas em vez de silenciosas
+## As cinco adaptações desta célula, declaradas em vez de silenciosas
 
 **1. Não há tabela `EventoProcessado`.** Nas outras células ela existe porque o
 efeito do evento (creditar XP, matricular) não deixa rastro do `event_id`; aqui
@@ -33,6 +33,12 @@ assuntos em `ASSUNTOS_SEM_DADO_PESSOAL`, `processar` confere `data` contra
 que nao depende de nenhum arquivo fora da celula, so de nomes de campo que a
 casa ja proibe (customer, email, nome, telefone, documento). Assunto novo com
 a mesma exigencia entra no MESMO conjunto.
+
+**5. Um campo pessoal que o contrato declara e descartado na entrada.**
+`quiz.completado` leva `data.lead` (e-mail, nome, telefone) por contrato, e o
+livro nao o guarda: `processar` tira os campos de `DESCARTADOS_NA_ENTRADA`
+antes de `receber`, e o resto do envelope segue como veio. A prova mora em
+`tests/test_quiz_completado_sem_lead.py`.
 
 ## O que ele assina, e por que não assina mais
 
@@ -107,6 +113,12 @@ STREAMS = [
     "eventos.funil.secao-vista",
     "eventos.funil.cta-clicado",
     "eventos.funil.lead-capturado",
+    # Os dois fatos de compra do sistema de experimentos (`checkout`, contrato
+    # F4a): quem foi atribuído a um pedido e quem pagou. É daqui que sai a
+    # métrica principal do primeiro experimento (entrada no checkout) e as
+    # conversões do funil de compra (DESENHO-COMUM.md, sessão de 26/09/2026).
+    "eventos.checkout.pedido-atribuido",
+    "eventos.checkout.pedido-pago",
 ]
 
 #: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
@@ -121,8 +133,20 @@ ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
         "funil.secao-vista",
         "funil.cta-clicado",
         "funil.lead-capturado",
+        # DESENHO-COMUM.md, eventos de compra (F4a): "Sem customer, e-mail,
+        # nome, telefone, documento."
+        "checkout.pedido-atribuido",
+        "checkout.pedido-pago",
     }
 )
+
+#: Campos de `data` que o livro descarta na entrada, por assunto. O contrato
+#: os declara e continua declarando; o livro de fatos e que nao os guarda.
+#: `quiz.completado` leva `lead` (e-mail, nome, telefone) e entra sem ele:
+#: decisao 6 do mantenedor, sessao de 26/09/2026, "Limpar na entrada e
+#: expurgar" (LGPD). Os fatos guardados antes dela perderam `lead` na migracao
+#: `0004_quiz_completado_sem_lead`.
+DESCARTADOS_NA_ENTRADA = {"quiz.completado": frozenset({"lead"})}
 
 #: Comparado por chave, sem distinguir maiusculas.
 CAMPOS_PESSOAIS_PROIBIDOS = frozenset(
@@ -175,6 +199,14 @@ def processar(cru: bytes) -> str:
         pre = None
     if isinstance(pre, dict):
         tipo = pre.get("event") if isinstance(pre.get("event"), str) else ""
+        dados = pre.get("data")
+        descartar = DESCARTADOS_NA_ENTRADA.get(tipo, frozenset())
+        if isinstance(dados, dict) and descartar & dados.keys():
+            # Antes de `receber`: nem o fato nem um eventual EventoMorto guardam
+            # o campo descartado.
+            pre["data"] = {k: v for k, v in dados.items() if k not in descartar}
+            texto = json.dumps(pre, ensure_ascii=False)
+            cru = texto.encode("utf-8")
         campo = _campo_pessoal_proibido(tipo, pre.get("data"))
         if campo is not None:
             morto = EventoMorto.objects.create(
