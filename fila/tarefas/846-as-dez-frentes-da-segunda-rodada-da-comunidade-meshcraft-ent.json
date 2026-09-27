@@ -1,0 +1,19 @@
+{
+  "arquivo": "846-as-dez-frentes-da-segunda-rodada-da-comunidade-meshcraft-ent",
+  "id": "TAR-846",
+  "titulo": "As dez frentes da segunda rodada da Comunidade Meshcraft entram na fila com contrato e dependências",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com as dez tarefas da rodada 2 criadas, explicadas e com contrato de execução; python ci/fila.py validar verde",
+  "despacho": "Registrar na fila as dez frentes da rodada 2 da Comunidade (fórum, gamificação, cursos, pages, mensageria e admin) com os quatro textos para leigo, despacho com modelo e esforço do brief da economia e contrato de execução, e abrir o PR só de fila que as leva à main para os despachos poderem reivindicar.",
+  "origem": "pedido do mantenedor de 27/09/2026 (manhã): abrir o máximo de frentes da Comunidade Meshcraft com Opus 5.5 e Sonnet 5",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
