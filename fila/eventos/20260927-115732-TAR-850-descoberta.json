@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-115732-TAR-850-descoberta",
+  "tarefa": "TAR-850",
+  "evento": "descoberta",
+  "quando": "2026-09-27T11:57:32.713690+00:00",
+  "quem": "agent/gamificacao/comunidade-rastro-do-reconhecimento",
+  "detalhe": "Medalha revogada estorna o XP por linha negativa, mas os Cristais que ela pagou ficam: o banco so aceita Cristal negativo como compra na loja (cristal_negativo_so_com_referencia_de_compra, INV-GAM1). Abrir debito por correcao da equipe e decisao do mantenedor, ja anotada em MovimentoDeCristais.",
+  "evidencia": "services/gamificacao/apps/gamificacao/models.py MovimentoDeCristais: restricao cristal_negativo_so_com_referencia_de_compra e o paragrafo O QUE ESTA TABELA AINDA NAO SABE FAZER",
+  "classificacao": "C",
+  "criterio": "Revogar medalha estorna o que ela pagou",
+  "encaminhamento": "Mantenedor decide se Cristal de medalha revogada volta; se sim, tarefa nova com migracao visivel da restricao"
+}
