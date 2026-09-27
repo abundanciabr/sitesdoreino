@@ -648,20 +648,24 @@ def _sessao_anterior_ao_protocolo(raiz, ramo, correr):
 
 def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     from fila import (carregar_tarefas, carregar_eventos, calcular_estados,
-                      recusa_por_dependencia_aberta, CONCLUIDA, CANCELADA, NA_FILA)
+                      recusa_por_dependencia_nao_concluida, CONCLUIDA, CANCELADA, NA_FILA)
     da_abertura = tarefa_da_abertura if re.fullmatch(r"TAR-\d{3,}", tarefa_da_abertura) else None
     # Só --tarefa decide: TAR citada no texto fechou tarefa alheia (PRs #2189 e #2190).
     if not pedido.tarefa:
-        if _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+        if da_abertura is None and _sessao_anterior_ao_protocolo(raiz, ramo, correr):
             return None
         raise ParouPorSeguranca(
             "tarefa não declarada: só --tarefa escolhe a tarefa que recebe eventos",
-            f"Repita com --tarefa {da_abertura or 'TAR-NNN'} (python ci/fila.py listar mostra a fila). "
+            f"Repita com TAR={da_abertura or 'TAR-NNN'} (make pr) ou --tarefa {da_abertura or 'TAR-NNN'} "
+            "(python ci/pr.py); python ci/fila.py listar mostra a fila. "
             "TAR citada no título, no corpo ou no detalhe é só texto e não fecha tarefa. "
-            "Sem abertura comprovadamente anterior ao protocolo, não publico trabalho sem tarefa.",
+            "Só abertura anterior ao protocolo e sem tarefa da fila publica sem tarefa.",
         )
     if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
-        raise ParouPorSeguranca("tarefa inválida", "Informe --tarefa TAR-NNN da fila existente.")
+        raise ParouPorSeguranca(
+            "tarefa inválida",
+            "Informe TAR=TAR-NNN (make pr) ou --tarefa TAR-NNN (python ci/pr.py) da fila existente.",
+        )
     erros = []
     tarefas = carregar_tarefas(raiz, erros)
     eventos = carregar_eventos(raiz, tarefas, erros)
@@ -672,9 +676,10 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     if erros or len(candidatos) != 1 or not candidatos <= tarefas.keys():
         raise ParouPorSeguranca(
             "tarefa ausente, ambígua ou fila inválida",
-            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com --tarefa antes de publicar.",
+            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com TAR=TAR-NNN "
+            "(make pr) ou --tarefa TAR-NNN (python ci/pr.py) antes de publicar.",
         )
-    recusa = recusa_por_dependencia_aberta(tarefas, eventos, pedido.tarefa)
+    recusa = recusa_por_dependencia_nao_concluida(tarefas, eventos, pedido.tarefa)
     if recusa:
         o_que_houve, o_que_fazer = recusa
         raise ParouPorSeguranca(o_que_houve, o_que_fazer)

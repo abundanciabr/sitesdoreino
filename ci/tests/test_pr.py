@@ -1152,13 +1152,26 @@ def test_sem_tarefa_a_recusa_ensina_a_tar_da_abertura(tmp_path, monkeypatch):
     dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
     with pytest.raises(pr.ParouPorSeguranca) as recusa:
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
-    assert "Repita com --tarefa TAR-001" in recusa.value.o_que_fazer
+    assert "Repita com TAR=TAR-001 (make pr) ou --tarefa TAR-001 (python ci/pr.py)" in recusa.value.o_que_fazer
     assert not dub.pediu("ci/fila.py")
     assert not dub.pediu("git add")
 
 
+def test_sessao_legada_aberta_com_tar_recusa_sem_tarefa(tmp_path, monkeypatch):
+    """Na main antiga a TAR da abertura recebia eventos; sem --tarefa, calar a perde."""
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca) as recusa:
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert "TAR=TAR-001" in recusa.value.o_que_fazer
+    assert not dub.pediu("ci/fila.py")
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
 @pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
-def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
+def test_tar_com_dependencia_nao_concluida_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
     # guarda: ci/pr.py:680
     import fila
     raiz = bancada(tmp_path)
@@ -1171,8 +1184,9 @@ def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypat
     with pytest.raises(pr.ParouPorSeguranca) as recusa:
         pr.abrir(raiz, pedido(raiz, tarefa="TAR-002"), rodar=dub, hoje=HOJE)
     estado = fila.CANCELADA if fim_da_dependencia else fila.NA_FILA
-    assert f"TAR-001 ({estado})" in recusa.value.resumo
+    assert f"dependência não concluída: TAR-001 ({estado})" in recusa.value.resumo
     assert "depende_de" in recusa.value.o_que_fazer
+    assert "merge de origin/main" in recusa.value.o_que_fazer
     assert not dub.pediu("ci/fila.py")
     assert not dub.pediu("git add")
     assert not dub.pediu("gh pr create")

@@ -1070,7 +1070,7 @@ def test_concluir_duas_vezes_recusa(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
-def test_concluir_com_dependencia_aberta_recusa_e_diz_qual(tmp_path, monkeypatch, capsys, fim_da_dependencia):
+def test_concluir_com_dependencia_nao_concluida_recusa_e_diz_qual(tmp_path, monkeypatch, capsys, fim_da_dependencia):
     """PR #2190 fechou uma tarefa que ainda esperava a dependência terminar."""
     # guarda: ci/fila.py:3245
     fim = [evento(tipo="cancelada", detalhe="trocada por outra")] if fim_da_dependencia else []
@@ -1087,6 +1087,8 @@ def test_concluir_com_dependencia_aberta_recusa_e_diz_qual(tmp_path, monkeypatch
     estado = fila.CANCELADA if fim_da_dependencia else fila.NA_FILA
     assert f"TAR-001 ({estado})" in saida
     assert "depende_de" in saida
+    assert "dependência não concluída" in saida
+    assert "merge de origin/main" in saida
 
 
 def test_concluir_com_dependencia_concluida_escreve_o_evento(tmp_path, monkeypatch):
