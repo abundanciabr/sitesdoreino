@@ -15,6 +15,9 @@
   frente: "comunidade",
   area: "painel",
   vence_em_dias: 3,
+  porque_so_voce: "Elegibilidade, quem avalia e o que é público são decisões de produto que o dossiê da Comunidade reserva ao mantenedor (§17); contas em produção e listas de equipe no env da VPS são acesso e segredo, que nenhum robô cria.",
+  proximo_passo: "Responder neste registro: confirma as três assunções como estão (ou diz qual muda); e criar as duas contas de teste com matrícula ativa em grupos diferentes mais a professora de teste nas três listas da VPS, entregando as credenciais por variável de ambiente local à sessão que rodar a prova.",
+  impacto: "medio",
   se_eu_nao_decidir: "As frentes C1, C3, C4, C5 e C6 seguem com as três assunções e chegam à produção assim; a prova em produção (TAR-828) fica bloqueada à espera das contas de teste, e a Comunidade não se declara pronta para o piloto.",
   recomendacao: "Confirmar as três assunções como estão e criar as contas de teste no mesmo dia; se negar a elegibilidade por matrícula, avisar antes de o grupo do fórum (TAR-824) pousar, porque é ela que decide quem entra.",
   reversivel: true
