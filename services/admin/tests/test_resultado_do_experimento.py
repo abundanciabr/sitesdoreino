@@ -24,11 +24,13 @@ from pathlib import Path
 import httpx
 import pytest
 import respx
+import yaml
 from django.test import Client
 from django.urls import reverse
 
 from apps.core import resultado_do_experimento as re_
-from apps.core.clients import CatalogoClient, MedicaoClient
+from apps.core.clients import MedicaoClient
+from apps.core.paginas import SLUG_DA_PAGINA
 from apps.core.resultado_do_experimento import Braco
 
 IDENTIDADE = "http://identidade:8000/interno"
@@ -43,8 +45,17 @@ DONO = "dono@exemplo.com"
 CONTRATOS = Path(__file__).resolve().parents[3] / "contracts"
 
 EXPERIMENTO = "0b8f7a52-3c1e-4c7b-9a51-6f2d0c1e9a10"
-# O endereço é o que o cliente do catálogo monta, e não uma cópia dele aqui.
-LER_EXPERIMENTO = CATALOGO + CatalogoClient()._caminho_do_experimento(SITE, EXPERIMENTO)
+CONTRATO_DO_CATALOGO = yaml.safe_load(
+    (CONTRATOS / "catalogo.openapi.yaml").read_text(encoding="utf-8")
+)
+# O endereço é o que o contrato escreve, e não o que o cliente monta: um
+# cliente fora do contrato não encontra a rota falsa e o teste reprova.
+(LER_EXPERIMENTO,) = [
+    CATALOGO
+    + caminho.format(site_id=SITE, slug=SLUG_DA_PAGINA, experimento_id=EXPERIMENTO)
+    for caminho, verbos in CONTRATO_DO_CATALOGO["paths"].items()
+    if any(v.get("operationId") == "getExperiment" for v in verbos.values())
+]
 SITE_DO_HOST = f"{CATALOGO}/sites/by-host/testserver"
 INICIO = dt.date(2026, 9, 1)
 # 14 dias planejados: o fim planejado é 15/09 e a janela é [01/09, 15/09].
@@ -364,15 +375,22 @@ def _dentro() -> Client:
 def _experimento(**troca) -> dict:
     corpo = {
         "id": EXPERIMENTO,
+        "site_id": SITE,
+        "slug": SLUG_DA_PAGINA,
         "estado": "ativo",
+        "decisao": None,
+        "vencedora": None,
         "secao": "cubo",
         "slot": "titulo",
+        "hipotese": "Um título mais direto faz mais gente entrar no checkout",
         "metrica_principal": "entrada no checkout por visitante",
         "taxa_base": 0.2,
         "mde": 0.05,
         "n_por_braco_planejado": 1000,
         "dias_planejados": DIAS,
+        "criado_em": "2026-08-31T10:00:00-03:00",
         "iniciado_em": "2026-09-01T13:00:00-03:00",
+        "fim_planejado": "2026-09-15T13:00:00-03:00",
         "encerrado_em": None,
         "variantes": [
             {"variante_id": "b", "peso": 5000, "valor": "Texto B"},
@@ -593,6 +611,13 @@ def _caminhos(arquivo: str) -> dict[str, str]:
     texto = (CONTRATOS / arquivo).read_text(encoding="utf-8")
     partes = re.split(r"^  (/\S*):$", texto, flags=re.M)
     return dict(zip(partes[1::2], partes[2::2]))
+
+
+def test_o_experimento_falso_tem_os_campos_do_contrato_do_catalogo():
+    esquema = CONTRATO_DO_CATALOGO["components"]["schemas"]
+    assert set(_experimento()) == set(esquema["ExperimentoDaPagina"]["required"])
+    for variante in _experimento()["variantes"]:
+        assert set(variante) == set(esquema["VarianteDoExperimento"]["required"])
 
 
 def test_o_funil_que_o_cliente_chama_e_o_do_contrato():
