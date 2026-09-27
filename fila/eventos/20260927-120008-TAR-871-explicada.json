@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-120008-TAR-871-explicada",
+  "tarefa": "TAR-871",
+  "evento": "explicada",
+  "quando": "2026-09-27T12:00:08.545608+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "Os testes que protegem o resultado e a decisao do experimento (SRM em duas bases, horizonte fixo, estados sem pausado, pedido conta so depois da primeira visita) ainda nao provam que mordem de verdade.",
+  "o_que_muda": "Cada guarda marcado passa a ter prova por mutacao: sabotado, o teste reprova; sem sabotagem, volta ao verde. Guarda que nao morde e exposto e reportado, nao escondido.",
+  "exemplo": "Se alguem apagar o calculo do alarme de desequilibrio amostral por engano, o teste tem que denunciar isso reprovando, e hoje ninguem provou que ele denuncia.",
+  "importancia": 40
+}
