@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-150-a-tarefa-duplicada-foi-resolvida-com-uma-so-entrega",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A tarefa duplicada foi resolvida com uma só entrega",
+  detalhe: "Dois avisos pediam o mesmo conserto. A duplicata foi encerrada pelo PR 1294 e o conserto único entrou pelo PR 1282.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1294 e https://github.com/abundanciabr/sitesdoreino/pull/1282 MERGED (gh pr view, 27/09/2026); eventos TAR-226 e TAR-141 concluida na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260907-034-a-tarefa-226-era-a-mesma-tarefa-de-outro-robo",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
