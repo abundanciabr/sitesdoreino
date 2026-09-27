@@ -1,0 +1,23 @@
+{
+  "arquivo": "752-reversao-confirmada-suspende-acesso-sem-inventar-valor-finan",
+  "id": "TAR-752",
+  "titulo": "Reversão confirmada suspende acesso sem inventar valor financeiro",
+  "toca": [
+    "contracts",
+    "alunos",
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [
+    "contracts/eventos/pagamento.reversao_confirmada.v2.json"
+  ],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Contrato Draft 2020-12 com cinco negativos, consumidor aluno idempotente e tenant-safe, prova sintética sem amount_cents e suite das células tocadas; emissor Appmax posterior depende de supervisao.py liberado.",
+  "despacho": "Responsabilidade: contrato e célula alunos nesta etapa, com emissor pagamentos depois da liberação do escritor TAR-749. Alvos iniciais: contracts/eventos/pagamento.reversao_confirmada.v2.json, services/alunos/apps/eventos/management/commands/consume_eventos.py, services/alunos/apps/matriculas/handlers.py e testes diretamente necessários. Adicione o envelope v2 sem valor monetário; aceite apenas estornado ou chargeback_em_tratativa, chargeback_em_disputa e chargeback_perdido confirmados pela consulta autenticada. O consumidor deve reutilizar suspensão, deduplicar por site/provedor/referência, isolar tenants, tolerar matrícula ausente e aprovação tardia e nunca reativar automaticamente. Não altere pagamento.estornado.v2, não faça migração, compra, estorno, produção financeira, comprovante privado ou dispatch real. A etapa de pagamentos e supervisao.py fica dependente da liberação nominal do escritor TAR-749. Prove negativos, fluxo sintético sem amount_cents e guardas PASS FAIL PASS. Mandato-do-mantenedor: contratos services/alunos services/pagamentos, origem sessão de 26/09/2026, resposta Autorizar o contrato e a implementação descritos.",
+  "origem": "Mandato nominal do mantenedor em 26/09/2026: Autorizar o contrato e a implementação descritos, a partir da proposta PROPOSTA-CONTRATO-REVERSAO-APPMAX.md.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

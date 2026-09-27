@@ -270,7 +270,7 @@ def test_queda_apos_publicar_redis_nao_duplica_stream() -> None:
     assert cliente.xlen(f"eventos.{nome}") == 1
 
 
-# guarda: services/pagamentos/pagamentos/supervisao.py:138
+# guarda: services/pagamentos/pagamentos/supervisao.py:145
 @pytest.mark.parametrize(
     ("status", "codigo"),
     [
@@ -304,10 +304,10 @@ def test_aviso_pos_aprovacao_classifica_status_sem_mudar_dinheiro(
     assert aviso.processed_at is not None
     assert aviso.last_error == codigo
     expected_actions = {
-        "appmax_estornado": "Confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
-        "appmax_chargeback_em_tratativa": "Acompanhe a contestação no painel Appmax; nenhuma reversão foi emitida.",
-        "appmax_chargeback_em_disputa": "Acompanhe a disputa no painel Appmax; nenhuma reversão foi emitida.",
-        "appmax_chargeback_perdido": "Acompanhe a contestação perdida no painel Appmax; nenhuma reversão foi emitida.",
+        "appmax_estornado": "Evento de reversão confirmada registrado para envio; confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
+        "appmax_chargeback_em_tratativa": "Evento de reversão confirmada registrado para envio; acompanhe a contestação no painel Appmax; nenhuma reabertura de acesso foi executada.",
+        "appmax_chargeback_em_disputa": "Evento de reversão confirmada registrado para envio; acompanhe a disputa no painel Appmax; nenhuma reabertura de acesso foi executada.",
+        "appmax_chargeback_perdido": "Evento de reversão confirmada registrado para envio; acompanhe a contestação perdida no painel Appmax; nenhuma reabertura de acesso foi executada.",
         "appmax_chargeback_vencido": "Registre a vitória do lojista no painel Appmax; nenhuma reversão ou reabertura de acesso foi executada.",
     }
     assert aviso.operational_action == expected_actions[codigo]
@@ -317,10 +317,23 @@ def test_aviso_pos_aprovacao_classifica_status_sem_mudar_dinheiro(
         assert "reabertura de acesso" in aviso.operational_action
     assert tentativa.state == "approved"
     assert tentativa.intent.status == "approved"
-    assert OutboxEvent.objects.count() == 0
+    if codigo in {
+        "appmax_estornado",
+        "appmax_chargeback_em_tratativa",
+        "appmax_chargeback_em_disputa",
+        "appmax_chargeback_perdido",
+    }:
+        assert (
+            OutboxEvent.objects.filter(
+                event="pagamento.reversao_confirmada", version=2
+            ).count()
+            == 1
+        )
+    else:
+        assert OutboxEvent.objects.count() == 0
 
 
-def test_aviso_pos_aprovacao_sem_refund_e_repetido_nao_duplica_consulta() -> None:
+def test_repeticao_de_aviso_preserva_uma_reversao_confirmada() -> None:
     _tentativa_aprovada()
     _instalacao()
     aviso = _aviso()
@@ -336,7 +349,12 @@ def test_aviso_pos_aprovacao_sem_refund_e_repetido_nao_duplica_consulta() -> Non
         call.consultar_pedido(order_id=3531),
     ]
     assert aviso.last_error == "appmax_estornado"
-    assert OutboxEvent.objects.count() == 0
+    assert (
+        OutboxEvent.objects.filter(
+            event="pagamento.reversao_confirmada", version=2
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.parametrize(
