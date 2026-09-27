@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-041859-TAR-822-explicada",
+  "tarefa": "TAR-822",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:18:59.848160+00:00",
+  "quem": "PR-2182",
+  "o_que_e": "As cinco lições da coordenação da obra Appmax de 26 e 27/09 (recibo do pr.py, continuar, tarefa recem criada, checkpoint depois de concluir, teste que trava) ainda não estavam no arquivo de armadilhas.",
+  "o_que_muda": "As armadilhas ficam registradas e indexadas, e a próxima sessão que passar pelos mesmos scripts encontra a lição antes de cair no mesmo problema.",
+  "exemplo": "Como marcar no mapa da obra onde já caiu um buraco, para o próximo pedreiro não pisar no mesmo lugar.",
+  "importancia": 20
+}
