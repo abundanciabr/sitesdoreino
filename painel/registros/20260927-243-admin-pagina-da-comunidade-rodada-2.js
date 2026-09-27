@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-243-admin-pagina-da-comunidade-rodada-2",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "admin: pagina da comunidade, rodada 2",
+  detalhe: "Documento da Comunidade ganha secoes de contribuicoes e de registro de moderacao e reconhecimentos, sem sobrescrever edicao do mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2261. Validação local: árvore 50dbd3fd17da6c08d17d7607fe563fe4bdbd0a0d; commit 0470df5a6116d7738df9a4c3ea804bd632b83bef; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-856",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
