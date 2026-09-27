@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-232-pagamentos-cartao-recusado-vira-recusa",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "pagamentos: cartão recusado vira recusa",
+  detalhe: "Recusa da Appmax sem parcelas deixa de ser 502: cancelado vira rejected com motivo e libera outro cartão; valor divergente segue ambíguo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2229. Validação local: árvore 87bc1c428b0a3f983cb5ce15c155c55f5ece3e42; commit 230aeeec25a7b35217dd8d538b8f8e786a13624c; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-862",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

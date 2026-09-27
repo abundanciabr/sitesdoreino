@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-287-catraca-mede-do-merge-base-integrada-e-publicada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A catraca de testes mede do merge-base, integrada e publicada",
+  detalhe: "O PR 2280 integrou às 13h17 de São Paulo. A catraca rodou no próprio PR sobre o merge de teste 741b62a e deu PASS; PR atrasado deixa de levar FAIL por testes que a main ganhou depois.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2280 MERGED, mergeCommit 512336b4f2 (gh pr view --json state,mergedBy,mergeCommit); deploy-celula success no run 36332672383",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-286-ci-catraca-de-testes-mede-contra-o-ponto-de-onde-o-pr-saiu",
+  relacao: "baixa",
+  tarefa: "TAR-905",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

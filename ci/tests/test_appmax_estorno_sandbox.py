@@ -3,6 +3,9 @@
 import builtins
 import importlib.util
 import json
+import os
+import stat
+import subprocess
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -10,6 +13,8 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+
+from conftest import BASH
 
 SPEC = importlib.util.spec_from_file_location(
     "appmax_estorno_sandbox",
@@ -184,6 +189,52 @@ def test_workflow_na_main_sem_inputs_e_script_fixo(monkeypatch, tmp_path):
     assert script.count("python3 - <<") == 1
     assert "raise SystemExit(executar())" in script
     assert "script=" in saidas.read_text(encoding="utf-8")
+
+
+def _shim_python3(tmp_path: Path) -> str:
+    """Sem `python3` no PATH do Windows; um shim de uma linha resolve `python`,
+    que já está no PATH. O script GERADO (o que a VPS roda) não muda."""
+    pasta = tmp_path / "shim-bin"
+    pasta.mkdir(exist_ok=True)
+    shim = pasta / "python3"
+    shim.write_text("#!/bin/sh\nexec python \"$@\"\n", encoding="utf-8", newline="\n")
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    return str(pasta)
+
+
+def test_script_gerado_sempre_sai_zero_mesmo_com_erro_no_remoto(monkeypatch, tmp_path):
+    """Mesmo achado do PR #2249/TAR-868, replicado aqui: sob `bash -e -o pipefail`,
+    o ssh-action fecha a captura multilinha do stdout com um `echo EOF` que só
+    roda se o comando anterior saiu 0. O script tem que sair 0 sempre; o
+    veredito sai do JSON, no `conferir`.
+    """
+    assert BASH, (
+        "sem bash nesta máquina: este guarda EXECUTA o script gerado, sem "
+        "interpretador não há o que medir - isso não é um OK ([INV-CI01])"
+    )
+    saidas = tmp_path / "outputs"
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(saidas))
+    ensaio.preparar()
+    script = tmp_path / "appmax-estorno-sandbox.sh"
+
+    # /opt/plataforma não existe fora da VPS: dispara Falha("instrumento") no
+    # remoto de forma determinística, em qualquer máquina, sem precisar de docker.
+    ambiente = dict(os.environ)
+    ambiente["PATH"] = _shim_python3(tmp_path) + os.pathsep + ambiente["PATH"]
+    resultado = subprocess.run(
+        [BASH, str(script)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=ambiente,
+        timeout=30,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    linhas_json = [l for l in resultado.stdout.splitlines() if l.startswith("{")]
+    assert linhas_json, resultado.stdout + resultado.stderr
+    dados = json.loads(linhas_json[-1])
+    assert dados["resultado"] == "ERROR"
 
 
 def test_conferir_aceita_apenas_resposta_sanitizada(monkeypatch, tmp_path, capsys):

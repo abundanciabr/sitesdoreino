@@ -240,6 +240,76 @@ def test_cobertura_da_celula_nao_confunde_movimento_com_reducao(
     )
 
 
+# --------------------------------------------------------------------------
+# A BASE É DE ONDE O PR SAIU, não a ponta da main. Medido em 27/09/2026.
+#
+# Run 36320665606 (PR 2221, célula cursos): o GitHub mediu o merge de teste
+# `a58e82d into 1770150`, mas o `origin/main` buscado no mesmo job já trazia o
+# PR 2230, com 33 testes a mais em gamificacao. A catraca acusou
+# "gamificacao: 516 → 483" num PR que não tocou a célula, e ele ficou preso.
+# --------------------------------------------------------------------------
+
+
+def _pr_atrasado(tmp_path: Path, mudanca_do_pr, checkout: str) -> Path:
+    """O PR sai da main com 2 testes em quiz; DEPOIS a main ganha um terceiro.
+
+    `checkout` escolhe o HEAD medido: o ramo do PR (rodada local) ou o merge
+    de teste que o GitHub faz com a main de ANTES (`refs/pull/N/merge`).
+    """
+    raiz = _repo(tmp_path)
+    _git(raiz, "checkout", "-q", "-b", "pr")
+    _commit(raiz, mudanca_do_pr)
+    _git(raiz, "checkout", "-q", "main")
+    if checkout == "merge-de-teste":
+        _git(raiz, "checkout", "-q", "-b", "merge-de-teste")
+        _git(raiz, "merge", "-q", "--no-ff", "-m", "Merge pr into main", "pr")
+        _git(raiz, "checkout", "-q", "main")
+    _commit(
+        raiz,
+        lambda r: (r / ALVO).write_text(
+            DOIS_TESTES + "\n\ndef test_da_main():\n    assert True\n",
+            encoding="utf-8",
+        ),
+    )
+    _git(raiz, "checkout", "-q", "pr" if checkout == "pr" else "merge-de-teste")
+    return raiz
+
+
+@pytest.mark.parametrize("checkout", ["pr", "merge-de-teste"])
+def test_main_que_ganhou_testes_depois_nao_acusa_PR_que_nao_tocou_a_celula(
+    tmp_path: Path, monkeypatch, checkout: str
+):
+    raiz = _pr_atrasado(
+        tmp_path,
+        lambda r: (r / "ci" / "ferramenta.py").write_text("x = 1\n", encoding="utf-8"),
+        checkout,
+    )
+    monkeypatch.setenv("BASE_REF", "main")
+    monkeypatch.delenv("PR_LABELS", raising=False)
+    relatorio = catraca.rodar(raiz)
+    assert relatorio.estado is Estado.PASS, relatorio.render()
+
+
+@pytest.mark.parametrize("checkout", ["pr", "merge-de-teste"])
+def test_PR_atrasado_que_apaga_teste_reprova_contado_de_onde_saiu(
+    tmp_path: Path, monkeypatch, checkout: str
+):
+    """A cura não pode cegar a catraca: a perda do PR continua reprovando, e
+    contada contra os 2 testes de onde ele saiu, não os 3 da ponta da main."""
+    raiz = _pr_atrasado(
+        tmp_path,
+        lambda r: (r / ALVO).write_text(UM_TESTE, encoding="utf-8"),
+        checkout,
+    )
+    monkeypatch.setenv("BASE_REF", "main")
+    monkeypatch.delenv("PR_LABELS", raising=False)
+    relatorio = catraca.rodar(raiz)
+    texto = relatorio.render()
+    assert relatorio.estado is Estado.FAIL, texto
+    assert "test_algo.py: 2 → 1 teste(s)" in texto
+    assert "célula quiz: 2 → 1 teste(s)" in texto
+
+
 def test_cobertura_da_celula_sem_mapa_e_ERROR(tmp_path: Path):
     raiz = _repo(tmp_path)
     (raiz / "celulas.yml").unlink()
