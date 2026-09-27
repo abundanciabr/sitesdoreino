@@ -33,12 +33,17 @@ jobs:
           npm install --no-save playwright@1.62.1
           npx playwright install --with-deps chromium
       - name: Comprar pela tela os seis cartões, no computador e no celular
-        id: comprar
+        id: conferir
         run: |
           set -euo pipefail
           node e2e/appmax_sandbox.js --etapa=comprar --dados="$RUNNER_TEMP/compras.json" --script="$RUNNER_TEMP/contagem.sh"
-          bash -n "$RUNNER_TEMP/contagem.sh"
-          echo "script=$RUNNER_TEMP/contagem.sh" >> "$GITHUB_OUTPUT"
+          SCRIPT="$RUNNER_TEMP/contagem.sh"
+          if [ ! -f "$SCRIPT" ]; then
+            echo '::error::A compra pela tela não gerou o script de contagem.'
+            exit 1
+          fi
+          bash -n "$SCRIPT"
+          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
       - name: Dar tempo aos avisos e à matrícula
         run: sleep 90
       - name: Contar na VPS, só lendo, o que cada pedido gerou
@@ -51,7 +56,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           capture_stdout: true
           command_timeout: 5m
-          script_path: ${{ steps.comprar.outputs.script }}
+          script_path: ${{ steps.conferir.outputs.script }}
       - name: Julgar cada cartão e publicar a evidência sanitizada
         env:
           SAIDA: ${{ steps.remoto.outputs.stdout }}
