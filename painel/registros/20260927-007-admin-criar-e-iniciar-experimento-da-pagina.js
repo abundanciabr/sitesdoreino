@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-007-admin-criar-e-iniciar-experimento-da-pagina",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "admin: criar e iniciar experimento da página",
+  detalhe: "Criar e iniciar experimento da página pelo contrato #2146; parar é a decisão da F9d. 36 testes, 8 guardas por mutação. Depende de #2138 e #2142.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2141. Validação local: árvore 8eacdbe0aeff1727b1b8d94eb5423016b9356602; commit b3f8dbba045eed4c356a2bdb632e7a3ed083ecc9; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-771",
+  gravidade: "info",
+  frente: "vender",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
