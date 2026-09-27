@@ -1,0 +1,19 @@
+{
+  "arquivo": "812-experimentos-a-tela-que-decide-e-a-que-mostra-o-resultado-pa",
+  "id": "TAR-812",
+  "titulo": "Experimentos: a tela que decide e a que mostra o resultado passam a falar com o catálogo no endereço combinado",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "PR da admin com teste que confere o endereço chamado contra o contrato do catálogo, vermelho antes e verde depois, e mutação provada",
+  "despacho": "# Brief compilado\n\nobjetivo: Alinhar ao contrato catalogo.openapi.yaml o cliente do catálogo na admin: getExperiment e changeExperimentState sob a página, campos slug e vencedora na decisão e no resultado do experimento\ntipo: contrato\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: muda promessa entre celulas; a economia errada aqui quebra consumidores\ncelula: admin\n\n## Arquivos-alvo\n- services/admin/apps/core/clients.py\n- services/admin/apps/core/decisao_do_experimento.py\n- services/admin/apps/core/resultado_do_experimento.py\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
+  "origem": "sessão de 26/09/2026, frente CLIENTE-CATALOGO do sistema de experimentos",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
