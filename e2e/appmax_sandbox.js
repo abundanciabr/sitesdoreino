@@ -314,7 +314,10 @@ function scriptDaVps(resumos) {
     "alunos = django('alunos', 'PEDIDOS = ' + repr(pedidos) + '\\n' + " + JSON.stringify(alunos) + ")",
     "print(json.dumps({'resultado': 'PASS', 'pedidos': {r: {'pagamentos': pagamentos['pedidos'][a['id']], 'pedido_status': a['status'], 'matriculas': alunos[a['id']]} for r, a in achados.items()}}, sort_keys=True))",
   ].join("\n");
-  return "set -eu\npython3 - <<'PY_CONTAGEM_APPMAX'\n" + host + "\nPY_CONTAGEM_APPMAX\n";
+  // O ssh-action fecha a saída multilinha com `echo EOF` sob `bash -e -o
+  // pipefail`: saída diferente de zero aqui apaga a evidência. O veredito vem
+  // do JSON, em `lerSaidaDaVps` (armadilha do PR #2249/TAR-868).
+  return "set -eu\npython3 - <<'PY_CONTAGEM_APPMAX' || true\n" + host + "\nPY_CONTAGEM_APPMAX\n";
 }
 
 /** A saída da ação SSH chega com o rodapé dela colado. Qualquer coisa que não
@@ -472,6 +475,12 @@ function autoTeste() {
     script.indexOf("https://api.sandboxappmax.com.br") !== -1);
   caso("consulta: só lê (nenhuma escrita de ORM)", !/\.(save|delete|update|create|bulk_create)\(/.test(script));
   caso("consulta: o script leva só o resumo do pedido", script.indexOf(resumo(pedido)) !== -1 && script.indexOf(pedido) === -1);
+  // PR #2249 (TAR-868), replicado aqui: sob `bash -e -o pipefail`, o ssh-action
+  // fecha a captura multilinha do stdout com um `echo EOF` que só roda se o
+  // comando anterior saiu 0. Sem isto, ERROR no remoto apaga a evidência bem
+  // no caso em que mais precisamos dela. O veredito vem do JSON, em `lerSaidaDaVps`.
+  caso("consulta: o script remoto sai sempre 0 (evidência não some em ERROR)",
+    script.indexOf("<<'PY_CONTAGEM_APPMAX' || true\n") !== -1);
 
   var saida = JSON.stringify({ resultado: "PASS", pedidos: { abc: 1 } });
   caso("leitor da VPS: tira o rodapé da ação SSH", lerSaidaDaVps(saida + RODAPE_DA_SSH).abc === 1);
