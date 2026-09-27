@@ -16,12 +16,12 @@ gatilho:
   - ci/sessao.py
   - ci/ci.py
   - services/*/Makefile
-licao: "A armadilha/529 manda pôr o GNU Make antes da fachada no PATH, mas isso sozinho não basta no Windows. Sem sh.exe alcançável, o GNU Make roda cada recipe no cmd.exe e `test`/`{ }` (economia, pr, sessao) reprovam. Só `Git\\bin` também falha (falta echo.exe). A ordem verde: WinGet\\Links na frente, `Git\\usr\\bin` no FIM do PATH."
+licao: "A armadilha/529 manda pôr o GNU Make antes da fachada no PATH, mas isso sozinho não basta no Windows. Sem sh.exe alcançável, o GNU Make roda cada recipe no cmd.exe e `test`/`{ }` (economia, pr, sessao, e Makefiles de célula com shell POSIX) reprovam; `e_gnu_make` só confere `--version` e `ci/ci.py` culpa a célula. Só `Git\\bin` também falha (falta echo.exe). A ordem verde: WinGet\\Links na frente, `Git\\usr\\bin` no FIM do PATH."
 ---
 
 # 536: GNU Make no Windows sem sh roda recipe no cmd
 
-**Data:** 27/09/2026 · **Onde:** alvos da raiz do `Makefile` (`economia`, `pr`, `sessao`) medidos em bancada Windows nova · **Custo evitado:** achar que "GNU Make na frente do PATH" (armadilhas/529) já resolve, e só descobrir a quebra no meio de um rito
+**Data:** 27/09/2026 · **Onde:** alvos da raiz do `Makefile` (`economia`, `pr`, `sessao`) e Makefiles de célula (`ci/ci.py --celula`), medidos em bancada Windows nova · **Custo evitado:** achar que "GNU Make na frente do PATH" (armadilhas/529) já resolve, e só descobrir a quebra no meio de um rito, ou culpar a célula por uma reprovação que é do PATH
 
 ## Sintoma
 
@@ -55,6 +55,23 @@ make (e=2): O sistema não pode encontrar o arquivo especificado.
 ```
 
 `ci/tests/test_exit_do_make.py::test_receita_verde_e_PASS` reprova pelo mesmo motivo.
+
+O problema não se limita aos alvos da raiz. Todo Makefile de célula usa shell POSIX (ex.:
+`services/cursos/Makefile:20`, `@if [ -f .importlinter ]; then lint-imports; fi`). Nos dois modos
+quebrados, `python ci/ci.py --celula <x>` roda `make ci`, quebra no shell e relata "make ci
+reprovou", culpando a célula, porque `e_gnu_make()` só confere `make --version` e não confere se o
+`sh` é alcançável. Sonda medida com um alvo `sonda:` de duas linhas (`@echo linha-simples` e
+`@test -n x && echo linha-posix`), `make -C <pasta> sonda`:
+
+```
+fachada .codex\bin\make.CMD:           exit=2  ERROR: alvo desconhecido: -C
+GNU Make sem sh:                       exit=2  'test' não é reconhecido como um comando interno
+GNU Make + só Git\bin:                 exit=2  process_begin: CreateProcess(NULL, echo linha-simples, ...) failed
+GNU Make na frente + Git\usr\bin fim:  exit=0  linha-simples / linha-posix
+```
+
+O conserto de código dessa porta (`e_gnu_make` também confirmar o `sh`) está em curso em outro PR;
+esta entrada registra só a medição.
 
 ## Solução
 
