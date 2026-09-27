@@ -772,14 +772,28 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
             raise ErroDeInstrumentacao("reserva não devolveu número válido", "Confira python ci/reservar.py listar; retome com a mesma revisão.")
         nome = f"{sequencia}-{slug_do_titulo(pedido.titulo)}"
         destino = raiz / "painel/registros" / f"{nome}.js"
+        validacao_local = (
+            f"Validação local: árvore {arvore}; commit {commit}; "
+            f"{len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas."
+        )
+        evidencia_extra = validacao_local
+        if pedido.evidencia.strip():
+            evidencia_extra = f"{validacao_local} {pedido.evidencia.strip()}"
         campos = montar_campos(
             arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
             url_do_pr=url, dia=hoje, tipo=pedido.tipo, gravidade=pedido.gravidade,
             frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1], tarefa=pedido.tarefa,
-            evidencia_extra=f"Validação local: árvore {arvore}; commit {commit}; {len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+            evidencia_extra=evidencia_extra,
         )
         texto = renderizar(campos)
         if len(texto.encode("utf-8")) >= 1024:
+            if pedido.evidencia.strip():
+                raise ParouPorSeguranca(
+                    "recibo excede 1 KB com --evidencia",
+                    "A prova passada em --evidencia deixou o recibo grande demais.\n"
+                    "Encurte o texto de --evidencia (ou remova) e rode de novo; nada\n"
+                    "foi gravado, e a prova não foi cortada em silêncio.",
+                )
             raise ParouPorSeguranca("recibo excede 1 KB", "Encurte título e detalhe; preserve a evidência determinística.")
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")

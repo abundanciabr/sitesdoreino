@@ -217,8 +217,48 @@ def test_a_evidencia_soma_o_texto_de_fora_ao_numero_do_pr(tmp_path):
     texto = next((raiz / "painel" / "registros").glob("*.js")).read_text(encoding="utf-8")
     evidencia = pr.campos_lidos(texto)["evidencia"]
     assert evidencia.startswith(URL_DO_PR)
-    assert "9 passed" not in evidencia
+    assert "9 passed" in evidencia
     assert "exit 0" in evidencia
+
+
+def test_evidencia_da_flag_chega_ao_recibo_somada_a_url_do_pr(tmp_path):
+    """`armadilhas/-`: `--evidencia` era lido e descartado em silêncio; o
+    recibo saía só com a URL do PR e a prova real (run da VPS, por exemplo)
+    se perdia."""
+    raiz = bancada(tmp_path)
+    url_da_prova = "https://github.com/abundanciabr/sitesdoreino/actions/runs/123"
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    pr.abrir(raiz, pedido(raiz, evidencia=url_da_prova), rodar=dub, hoje=HOJE)
+
+    texto = next((raiz / "painel" / "registros").glob("*.js")).read_text(encoding="utf-8")
+    evidencia = pr.campos_lidos(texto)["evidencia"]
+    assert url_da_prova in evidencia
+
+
+def test_sem_a_flag_de_evidencia_nada_muda_no_recibo(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+
+    texto = next((raiz / "painel" / "registros").glob("*.js")).read_text(encoding="utf-8")
+    evidencia = pr.campos_lidos(texto)["evidencia"]
+    assert evidencia == (
+        f"{URL_DO_PR}. Validação local: árvore {'a' * 40}; commit {'b' * 40}; "
+        "1 comando(s), exit 0. Revisão, integração e publicação não verificadas."
+    )
+
+
+def test_evidencia_grande_demais_recusa_com_mensagem_que_ensina_a_flag(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="--evidencia") as excinfo:
+        pr.abrir(raiz, pedido(raiz, evidencia="x" * 900), rodar=dub, hoje=HOJE)
+
+    assert not list((raiz / "painel" / "registros").glob("*.js"))
+    assert "Encurte o texto de --evidencia" in excinfo.value.o_que_fazer
 
 
 def test_a_frente_sai_dos_caminhos_tocados_quando_ninguem_a_declara():
