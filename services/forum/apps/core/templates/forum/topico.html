@@ -35,6 +35,8 @@ botão nunca é a proteção.
           <option value="{{ destino.pk }}" {% if destino.pk == topico.area_id %}selected{% endif %}>{{ destino.nome }}{% if not destino.ativa %} (arquivada){% endif %}</option>
         {% endfor %}
       </select>
+      <label for="motivo-conversa">Motivo (obrigatório para mudar de área ou mudar o título escrito por outra pessoa)</label>
+      <input id="motivo-conversa" name="motivo" maxlength="200">
       <button type="submit">Salvar</button>
     </form>
 
@@ -49,11 +51,6 @@ botão nunca é a proteção.
         <input type="hidden" name="acao" value="{% if topico.trancado %}destrancar{% else %}trancar{% endif %}">
         <button class="mini" type="submit">{% if topico.trancado %}Destrancar{% else %}Trancar{% endif %}</button>
       </form>
-      <form method="post" action="{% url 'moderar_topico' topico.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="acao" value="{% if topico.estado == 'publicado' %}tirar_do_ar{% else %}restaurar{% endif %}">
-        <button class="mini" type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
-      </form>
       {% if topico.resposta_aceita_id %}
         <form method="post" action="{% url 'moderar_topico' topico.pk %}">
           {% csrf_token %}
@@ -62,6 +59,13 @@ botão nunca é a proteção.
         </form>
       {% endif %}
     </div>
+    <form class="escrever" method="post" action="{% url 'moderar_topico' topico.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="{% if topico.estado == 'publicado' %}tirar_do_ar{% else %}restaurar{% endif %}">
+      <label for="motivo-ar">Motivo para {% if topico.estado == 'publicado' %}tirar a conversa do ar{% else %}devolver a conversa ao ar{% endif %}</label>
+      <input id="motivo-ar" name="motivo" maxlength="200" required placeholder="Ex.: link fora da lista permitida">
+      <button type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
+    </form>
     <p class="sub" style="margin:10px 0 0">
       Tirar do ar é o jeito seguro de apagar: a conversa some para todo mundo e
       continua aqui para você, inteira. Nada é destruído.
@@ -135,14 +139,18 @@ trabalho nunca encontra.
           <input type="hidden" name="acao" value="salvar">
           <label for="texto{{ mensagem.pk }}">Texto da mensagem</label>
           <textarea id="texto{{ mensagem.pk }}" name="texto" rows="5" required>{{ mensagem.texto }}</textarea>
+          <label for="motivo-editar{{ mensagem.pk }}">Motivo (obrigatório para mudar o texto de outra pessoa)</label>
+          <input id="motivo-editar{{ mensagem.pk }}" name="motivo" maxlength="200">
           <button type="submit">Salvar</button>
         </form>
+        <form class="escrever" method="post" action="{% url 'moderar_mensagem' mensagem.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="{% if mensagem.removida_em %}restaurar{% else %}tirar_do_ar{% endif %}">
+          <label for="motivo-ar{{ mensagem.pk }}">Motivo para {% if mensagem.removida_em %}devolver esta mensagem ao ar{% else %}tirar esta mensagem do ar{% endif %}</label>
+          <input id="motivo-ar{{ mensagem.pk }}" name="motivo" maxlength="200" required>
+          <button type="submit">{% if mensagem.removida_em %}Devolver ao ar{% else %}Tirar do ar{% endif %}</button>
+        </form>
         <div class="linha-de-botoes">
-          <form method="post" action="{% url 'moderar_mensagem' mensagem.pk %}">
-            {% csrf_token %}
-            <input type="hidden" name="acao" value="{% if mensagem.removida_em %}restaurar{% else %}tirar_do_ar{% endif %}">
-            <button class="mini" type="submit">{% if mensagem.removida_em %}Devolver ao ar{% else %}Tirar do ar{% endif %}</button>
-          </form>
           {% if not mensagem.removida_em and topico.resposta_aceita_id != mensagem.pk %}
             <form method="post" action="{% url 'moderar_topico' topico.pk %}">
               {% csrf_token %}

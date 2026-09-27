@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-131-forum-moderacao-deixa-rastro-e-troca-grupo",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "forum: moderação deixa rastro e troca grupo",
+  detalhe: "Cada gesto de moderação grava quem, quando e por quê, sem apagar; a troca de grupo é um gesto só e recusa sem vaga.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2219. Validação local: árvore a928e5587c9258668121bf39a2851e1e9d145f79; commit 25c2d4426e9d286898e3e13b593b37a7966a1bac; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-847",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
