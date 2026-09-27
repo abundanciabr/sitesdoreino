@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-152805-TAR-902-explicada",
+  "tarefa": "TAR-902",
+  "evento": "explicada",
+  "quando": "2026-09-27T15:28:05.932682+00:00",
+  "quem": "coordenacao 4442b6ad, obra Appmax rodada 3, 27/09/2026",
+  "o_que_e": "8 licoes medidas hoje na obra Appmax (pista, mandato, ssh-action, clone atrasado, e2e, gh cli, revisao, sandbox) ainda nao viraram registro escrito",
+  "o_que_muda": "a proxima sessao que cair num desses mesmos erros encontra a licao pronta em vez de perder tempo redescobrindo a mesma causa",
+  "exemplo": "um PR de pagamentos com checks de 8 minutos ficou 4 ciclos verde sem integrar porque a pista so atualiza a base, nunca integra o BEHIND na mesma passada",
+  "importancia": 40
+}
