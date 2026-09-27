@@ -14,7 +14,7 @@ sub-agente segue como rito.
 | Parte | Regra |
 |---|---|
 | `name` | igual ao nome do arquivo, sem `.md`; o teste confere |
-| `description` | obrigatória; é por ela que a sessão responsável escolhe a ficha |
+| `description` | obrigatória; é por ela que a sessão responsável escolhe a ficha. Texto com `: ` ou ` #` vai entre aspas, senão o YAML não abre e o harness descarta a ficha em silêncio |
 | `tools` | a lista fechada do que aquele papel alcança; ficha sem lista herda tudo, inclusive escrita |
 | `disallowedTools` | precisa negar `AskUserQuestion` e `Agent`, sempre, em toda ficha |
 | `model` | declarado, nunca herdado; ficha sem `model` usa o modelo da sessão responsável, que é o mais caro (CLAUDE.md, "O que uma chamada custa") |
@@ -53,15 +53,17 @@ experiência" e de "Integridade comercial e transacional".
 
 | Ficha | Convoque quando | NÃO convoque quando |
 |---|---|---|
-| `despacho` | há um pedaço de trabalho fechado que vira um PR, com alvos e evidência já decididos | falta decidir o que fazer, ou o pedido ainda não foi repartido em pedaços independentes |
+| `despacho` | há um pedaço de trabalho fechado que vira um PR, com alvos e evidência já decididos, e o brief recomenda esforço `high` | falta decidir o que fazer, o pedido ainda não foi repartido em pedaços independentes, ou o brief recomenda `medium` |
+| `despacho-medio` | o mesmo pedaço fechado, com o brief recomendando esforço `medium`; o rito é o do `despacho`, palavra por palavra | o brief recomenda `high`: o esforço vem só da ficha, e a chamada do Agent não o muda |
 | `revisor` | um PR existe e você quer a lista do que ele reprovaria, com arquivo e linha, durante a validação da entrega | não há diff para ler, ou o que você quer é o conserto, e não o veredito |
 | `escrivao` | sobrou um papel de julgamento depois do `make pr`: lição nova, bloqueio, incidente, decisão pedida ou respondida | é registro, recibo, evento ou reserva que o `make pr` já escreveu; ele não duplica o que a máquina fez |
 | `procurador` | antes de fechar a fila de um pedido, para medir para onde o trabalho foi e o que o comprador e o aluno perderam | a pergunta é sobre código quebrado, e não sobre valor que não existe |
 
-A ficha `procurador.md` nasce neste PR. Outras estão sendo escritas hoje, em
-PRs irmãos: `provador`, `adversario`, `conferente` e `maquinista`. Enquanto o
-PR de cada uma não pousar, a ficha não existe em `origin/main` e convocá-la
-pelo nome falha: confira a pasta antes de escrever um brief que dependa dela.
+Ficha na pasta não é ficha no Agent. `conferente`, `adversario` e `provador`
+ficaram fora da lista de 18/09 a 27/09/2026 porque a `description` tinha `: `
+sem aspas: o YAML não abria e o harness descartou as três sem aviso.
+`python ci/economia_da_fabrica.py auditar-fichas` lê o frontmatter como o
+harness lê e reprova esse caso.
 
 ## As duas regras que nenhuma ficha derruba
 
@@ -82,4 +84,4 @@ bloqueio que ele devolve vira o bloco **Instruções** da sessão responsável, 
 mantenedor lê. Devolver "bloqueada" sem dizer o que houve, o que destrava e
 quanto leva é a falha que fez o trabalho dele parar (20/09/2026).
 
-Quem faz valer: `ci/tests/test_fichas_de_robo.py`.
+Quem faz valer: `ci/tests/test_fichas_de_robo.py` e `ci/tests/test_economia_da_fabrica.py`.
