@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-113425-TAR-860-explicada",
+  "tarefa": "TAR-860",
+  "evento": "explicada",
+  "quando": "2026-09-27T11:34:25.766050+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026 na sessao: abrir frentes da retomada do make impostor (secao 8, provador)",
+  "o_que_e": "O PR 2213 (ja integrado) criou dois testes que travam o conserto do make falso, mas nenhum deles diz qual linha do codigo eles protegem",
+  "o_que_muda": "A maquina passa a provar de verdade que esses dois testes mordem: se alguem desfizer o conserto, o teste tem que reprovar, e isso vira checagem automatica em vez de promessa escrita",
+  "exemplo": "É como um alarme de porta que ninguem testou se toca: agora a gente abre a porta de proposito para confirmar que ele soa, antes de confiar nele",
+  "importancia": 35
+}
