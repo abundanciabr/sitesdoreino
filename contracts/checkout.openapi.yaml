@@ -281,9 +281,10 @@ components:
         card_in_review:
           type: boolean
           description: >-
-            Verdadeiro quando o provedor aceitou a última tentativa de cartão e o
-            aviso de pagamento ainda não chegou. Enquanto for verdadeiro, a página
-            não oferece nova cobrança.
+            Verdadeiro enquanto a última tentativa de cartão está no provedor sem
+            resultado final (nem aprovada nem recusada); só pode ser verdadeiro com
+            status aguardando_pagamento ou recusado. Ausente quando não foi possível
+            consultar a tentativa.
     CardConfirmed:
       type: object
       required: [order_id, site_id, status, payment]
