@@ -1,0 +1,71 @@
+{
+  "arquivo": "20260927-040113-TAR-820-contrato_execucao",
+  "tarefa": "TAR-820",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T04:01:13.683793+00:00",
+  "quem": "agent/ci/appmax-inbox-latencia",
+  "contrato": {
+    "plano": "docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md#221-sandbox-completo",
+    "versao": 1,
+    "modelo_recomendado": "opus",
+    "esforco_recomendado": "high",
+    "objetivo": "Ler pela esteira, sem dado pessoal, o tempo entre a chegada e o processamento dos avisos Appmax de um pedido sandbox e a quantidade de efeitos financeiros que eles produziram.",
+    "entregaveis": [
+      "Operação appmax-inbox-latencia no catálogo OPERACOES de ci/operacoes_vps.py",
+      "Testes vermelhos primeiro em ci/tests/test_operacoes_vps.py: catálogo, sanitização, contagens, latência e referência ausente",
+      "Opção nova no workflow operacoes-vps.yml",
+      "Um run de leitura na main com referência sandbox existente"
+    ],
+    "escopo_incluido": [
+      "ci/operacoes_vps.py",
+      "ci/tests/test_operacoes_vps.py",
+      ".github/workflows/operacoes-vps.yml",
+      "fila/tarefas e fila/eventos da TAR-820 e da TAR-821"
+    ],
+    "nao_objetivos": [
+      "Qualquer POST, OAuth, AppmaxClient ou HTTP para a Appmax",
+      "Criar pedido, compra, estorno ou webhook novo",
+      "Alterar services/pagamentos, modelos ou migrações",
+      "Frente N3 appmax-observacao",
+      "ci/ci.py e .github/workflows/muralhas.yml (TAR-810)"
+    ],
+    "restricoes": [
+      "Sandbox conferido antes da importação do ORM",
+      "Tentativa filtrada por provider appmax, site Meshcraft, sete dias e limite [:100]",
+      "Saída pública só com enums, contagens limitadas, datas ISO e a referência recebida",
+      "Nenhum ID de pedido, e-mail, nome, payload, QR ou valor na saída"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato do mantenedor para ci/ e .github/ na sessão de 26/09/2026 22h53 BRT (RETOMADA-APPMAX-RODADA-2.md)",
+      "Efeito é a linha de outbox pagamento.aprovado ou pagamento.recusado do pedido, com provider appmax, site e provider_reference_id do pedido",
+      "Reentregas saem nulas enquanto pagamentos não as guardar; a contagem nasce na TAR-821"
+    ],
+    "etapas": [
+      "Testes vermelhos",
+      "Operação e conferência verdes",
+      "Mutação das guardas",
+      "PR, checks e integração",
+      "Run de leitura na main",
+      "Ler reentregas depois da TAR-821"
+    ],
+    "criterios_entrada": [
+      "PR 2179 integrado na main",
+      "Referência sandbox existente nos eventos da fila"
+    ],
+    "criterios_aceite": [
+      "Run na main publica recebido em, processado em e latência de cada aviso do pedido",
+      "Run publica a quantidade de efeitos do pedido",
+      "Run publica a quantidade de reentregas de cada aviso",
+      "Saída sem dado pessoal e recusada fora do formato fechado"
+    ],
+    "evidencias_exigidas": [
+      "pytest ci/tests/test_operacoes_vps.py",
+      "python ci/provar_guardas.py com PASS FAIL PASS",
+      "python ci/fila.py validar",
+      "Run operacoes-vps na main com saída sanitizada"
+    ],
+    "condicao_encerramento": "Run na main mostra latência, efeitos e reentregas medidas de um pedido sandbox real.",
+    "limites_autonomia": "Somente leitura na VPS pela esteira; nenhuma escrita em dados, nenhuma chamada à Appmax, nenhum arquivo fora do escopo incluído.",
+    "acoes_do_mantenedor": "Nenhuma, salvo liberar o disparo do workflow se a permissão da sessão negar."
+  }
+}
