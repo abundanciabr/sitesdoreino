@@ -1,0 +1,19 @@
+{
+  "arquivo": "839-mapear-a-resposta-da-appmax-ao-cartao-recusado-0002-para-rej",
+  "id": "TAR-839",
+  "titulo": "Mapear a resposta da Appmax ao cartão recusado 0002 para rejected com motivo",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "run do appmax-sandbox-tela com 0002 recusado nomeado (http 200 rejected, mensagem de recusa na tela, nova tokenização aceita)",
+  "despacho": "Mapear por que a Appmax sandbox devolve http 502 (em vez de http 200 status rejected) para o cartao final 0002 e para o final 0036, na chamada de pagamento e na nova tokenizacao apos recusa. Ajustar o tratamento em pagamentos/ para que 502 desses cartoes se torne 'rejected' com motivo visivel na tela e permita nova tentativa, sem queimar o pedido. Prova: rodar appmax-sandbox-tela.yml e mostrar 0002 e 0036 passando (http 200 rejected/erro_transacional, mensagem na tela, nova tentativa aceita).",
+  "origem": "TAR-813m, despacho de medicao do PR 2181 (celula checkout)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
