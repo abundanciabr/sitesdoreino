@@ -173,13 +173,82 @@ def pedir(portfolio: Portfolio | None) -> PedidoDeConferencia:
     return PedidoDeConferencia.objects.create(portfolio=portfolio, prazo_ate=prazo_de())
 
 
+def dias_uteis_de_espera(desde, agora=None) -> int:
+    """Quantos dias úteis inteiros o pedido já esperou, com a régua do prazo.
+
+    Conta os mesmos passos de `prazo_de`, no mesmo fuso: um pedido que chega
+    ao prazo esperou exatamente `DIAS_UTEIS_PARA_CONFERIR` dias úteis. Duas
+    réguas diferentes fariam a fila dizer "no prazo" e "cinco dias de espera"
+    sobre o mesmo pedido em dias diferentes.
+    """
+    agora = timezone.localtime(agora or timezone.now())
+    passo = timezone.localtime(desde)
+    dias = 0
+    while (passo := _proximo_dia_util(passo)) <= agora:
+        dias += 1
+    return dias
+
+
+def pedido_da_escola(site_id: str, numero: str) -> PedidoDeConferencia | None:
+    """O pedido que a equipe desta escola apontou na fila, em QUALQUER estado.
+
+    Em qualquer estado, e não só em análise, de propósito: quem clica num
+    pedido que outra pessoa acabou de responder precisa ouvir quem respondeu e
+    quando, e não um "não encontrado" que o faria procurar o pedido sumido. A
+    fronteira que continua de pé é a do SITE (Lei 9).
+    """
+    if not numero.isdigit():
+        return None
+    return (
+        PedidoDeConferencia.objects.filter(portfolio__site_id=site_id, pk=numero)
+        .select_related("portfolio")
+        .first()
+    )
+
+
+def _travar(pedido: PedidoDeConferencia) -> None:
+    """Relê o pedido do banco e segura a linha até o fim da transação.
+
+    **É isto que impede a decisão dupla.** O objeto que chega aqui foi lido
+    quando a tela abriu, e outra pessoa da equipe pode ter respondido depois.
+    Conferir o estado nele seria conferir uma foto velha. Com a linha travada,
+    a segunda decisão espera a primeira terminar e relê o pedido já
+    respondido, em vez de gravar por cima dela e publicar um segundo selo.
+    """
+    pedido.refresh_from_db(
+        from_queryset=PedidoDeConferencia.objects.select_for_update(of=("self",))
+    )
+
+
+# O rótulo do estado é a frase que o ALUNO lê ("A escola conferiu o seu
+# portfólio"); a equipe, que recebe esta recusa, precisa do gesto que foi feito.
+_RESPOSTA_DITA_A_EQUIPE = {
+    EstadoDoPedido.ACEITO: "aceitou a conferência",
+    EstadoDoPedido.DEVOLVIDO: "devolveu com o que falta",
+}
+
+
+def _quando(momento) -> str:
+    return timezone.localtime(momento).strftime("%d/%m/%Y às %H:%M")
+
+
+def _quem(id_da_pessoa: str, quem_pergunta: str) -> str:
+    return "você" if id_da_pessoa == quem_pergunta else id_da_pessoa
+
+
 def _conferir_quem_responde(pedido: PedidoDeConferencia, conferido_por: str) -> None:
-    """As três recusas que restrição de banco nenhuma consegue fazer."""
+    """As três recusas que restrição de banco nenhuma consegue fazer.
+
+    Quem chama já travou o pedido com `_travar`: o estado conferido aqui é o
+    do banco, e não o da tela que abriu minutos antes.
+    """
     if pedido.estado != EstadoDoPedido.EM_ANALISE:
         raise ConferenciaRecusada(
-            "Este pedido já foi respondido. Trocar a resposta de uma "
-            "conferência fechada é outro gesto, com auditoria própria, e não "
-            "passa por aqui."
+            f"Este pedido já foi respondido em {_quando(pedido.respondido_em)}, "
+            f"por {_quem(pedido.respondido_por, conferido_por)}, que "
+            f"{_RESPOSTA_DITA_A_EQUIPE[pedido.estado]}. Nada foi gravado "
+            "de novo. Trocar a resposta de uma conferência fechada é outro "
+            "gesto, com auditoria própria, e não passa por aqui."
         )
     if not conferido_por:
         raise ConferenciaRecusada(
@@ -226,11 +295,17 @@ def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConfe
     montou uma estante inteira a ter marcado alguma coisa. Sem o
     `get_or_create`, justamente esse aluno receberia o sim da escola e nenhum
     selo.
-    """
-    _conferir_quem_responde(pedido, conferido_por)
 
-    agora = timezone.now()
+    **Um sim por pedido, nunca dois** (§12 do dossiê da Comunidade). O pedido é
+    relido com a linha travada ANTES de conferir o estado, e é por isso que a
+    conferência mora dentro da transação: duas abas abertas na mesma fila não
+    carimbam dois selos nem mandam duas cartas ao aluno.
+    """
     with transaction.atomic():
+        _travar(pedido)
+        _conferir_quem_responde(pedido, conferido_por)
+
+        agora = timezone.now()
         pedido.estado = EstadoDoPedido.ACEITO
         pedido.respondido_em = agora
         pedido.respondido_por = conferido_por
@@ -265,8 +340,11 @@ def devolver(
     o que fazer. Por isso o motivo é obrigatório, e por isso ele sai de uma
     lista fechada que a escola escreveu: texto livre num campo de devolução
     vira crítica pessoal, e a lista existe para impedir exatamente isso.
+
+    Relê e trava o pedido antes de conferir, pelo mesmo motivo do `aceitar`:
+    uma devolução atrasada não troca por "ainda não" o sim que outra pessoa
+    da equipe acabou de dar.
     """
-    _conferir_quem_responde(pedido, conferido_por)
     if motivo not in MotivoDaDevolucao.values:
         raise ConferenciaRecusada(
             f"{motivo!r} não é um dos motivos que esta escola aceita: "
@@ -275,6 +353,9 @@ def devolver(
         )
 
     with transaction.atomic():
+        _travar(pedido)
+        _conferir_quem_responde(pedido, conferido_por)
+
         pedido.estado = EstadoDoPedido.DEVOLVIDO
         pedido.motivo_da_devolucao = motivo
         pedido.respondido_em = timezone.now()
@@ -287,6 +368,38 @@ def devolver(
                 "respondido_por",
             ]
         )
+    return pedido
+
+
+def assumir(*, pedido: PedidoDeConferencia, assumido_por: str) -> PedidoDeConferencia:
+    """Alguém da equipe diz "este é comigo", e a fila passa a mostrar o nome.
+
+    COM-06 do dossiê da Comunidade: nenhuma espera fica sem responsável. A
+    fila mostra quem assumiu cada pedido, e quem abre a tela sabe o que já tem
+    dono e o que ninguém pegou.
+
+    **Assumir não tranca a decisão.** Qualquer pessoa da equipe continua
+    podendo aceitar ou devolver, e quem respondeu fica em `respondido_por`.
+    Trancar faria um pedido esperar por alguém de férias.
+
+    **Quem chega depois não tira o pedido de quem assumiu.** Trocar o dono em
+    silêncio deixaria duas pessoas achando que o pedido é delas. Assumir de
+    novo o próprio pedido não muda nada, e a data continua sendo a primeira.
+    """
+    with transaction.atomic():
+        _travar(pedido)
+        _conferir_quem_responde(pedido, assumido_por)
+        if pedido.assumido_por == assumido_por:
+            return pedido
+        if pedido.assumido_por:
+            raise ConferenciaRecusada(
+                f"Este pedido já está com {pedido.assumido_por} desde "
+                f"{_quando(pedido.assumido_em)}. Você ainda pode decidir o "
+                "pedido, e a decisão fica gravada no seu nome."
+            )
+        pedido.assumido_por = assumido_por
+        pedido.assumido_em = timezone.now()
+        pedido.save(update_fields=["assumido_por", "assumido_em"])
     return pedido
 
 

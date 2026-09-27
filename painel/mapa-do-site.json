@@ -508,6 +508,16 @@
     },
     {
       "celula": "forum",
+      "rota": "comunidade/equipe",
+      "endereco": "/forum/comunidade/equipe",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A Comunidade vista pela equipe",
+      "descricao": "Todos os grupos de prática numa página: quem responde por cada um, quantas vagas estão ocupadas, as dúvidas que esperam resposta da mais antiga para a mais nova e há quanto tempo, e quem entrou no grupo e ainda não escreveu. Leva também ao plantão de laudos dos cursos e à fila de validação das conquistas.",
+      "observacao": "Só a escola: quem está em ADMIN_EMAILS ou em FORUM_PROFESSORES no env do fórum. Para aluno e visitante, este endereço responde 'não existe'. O link aparece no cartão da Comunidade, na capa do fórum, só para a escola."
+    },
+    {
+      "celula": "forum",
       "rota": "areas/nova",
       "endereco": "/forum/areas/nova",
       "alcance": "publico",
@@ -965,7 +975,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "A fila da conferencia dos portfolios",
-      "descricao": "O bastidor onde a equipe da escola confere os portfolios que os alunos mandam. Cada pedido aparece com as obras do aluno, o que falta em cada uma e a data ate quando responder, o mais urgente em cima. A equipe aceita, ou devolve escolhendo uma das frases que a escola escreveu, e o aluno le essa frase inteira na tela dele.",
+      "descricao": "O bastidor onde a equipe da escola confere os portfolios que os alunos mandam. Cada pedido aparece com as obras do aluno, o que falta em cada uma e a data ate quando responder, o mais urgente em cima. A equipe aceita, ou devolve escolhendo uma das frases que a escola escreveu, e o aluno le essa frase inteira na tela dele. Cada pedido mostra quem da equipe assumiu, ou que esta sem responsavel, e ha quantos dias uteis espera.",
       "observacao": "So abre para quem esta na lista de quem confere, guardada no servidor. Enquanto essa lista nao for escrita, a pagina responde a todo mundo que a pessoa nao esta nela, e os pedidos dos alunos continuam guardados e esperando."
     },
     {
@@ -977,6 +987,16 @@
       "gesto": true,
       "titulo": "Aceitar ou devolver a conferencia de um portfolio",
       "descricao": "Nao e uma pagina: e o que acontece quando alguem da equipe aperta um dos dois botoes de um pedido da fila. Abrir este endereco no navegador nao mostra nada."
+    },
+    {
+      "celula": "pages",
+      "rota": "equipe/assumir",
+      "endereco": "/pages/equipe/assumir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Assumir um pedido de conferencia da fila",
+      "descricao": "Nao e uma pagina: e o que acontece quando alguem da equipe aperta o botao de assumir um pedido. A fila passa a mostrar quem responde por ele. Abrir este endereco no navegador nao mostra nada."
     },
     {
       "celula": "gamificacao",
@@ -1077,6 +1097,58 @@
       "titulo": "Começar, somar ou selar uma peça",
       "descricao": "Os três gestos da Forja num endereço só. Não é uma página: quem clica volta para a bancada com a resposta.",
       "observacao": "O gesto nunca recebe o número de uma linha do banco, e sim o NOME da peça: o dono é sempre quem a sessão diz que é, então a peça de outro aluno não é protegida por uma conferência que alguém precisa lembrar de escrever, ela simplesmente não existe para a consulta."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "medalhas",
+      "endereco": "/conquistas/medalhas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "As medalhas",
+      "descricao": "Cada medalha ligada pela escola, com o que é preciso fazer para ganhar e onde o aluno está em cada uma: 'Conquistada em 27/09/2026' ou 'Seu progresso: 1 de 5'. Visitante vê um convite para entrar.",
+      "observacao": "Mostra só a pessoa que olha: nenhum número de outros alunos e nenhuma ordem entre eles, porque ranking público é proibido pela lei da gamificação. Medalha desligada não aparece; ligar é gesto do mantenedor em /admin/economia/."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "contribuicoes",
+      "endereco": "/conquistas/contribuicoes",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "O quadro de contribuições",
+      "descricao": "As tarefas de que a escola precisa, cada uma com o que entregar, quem pode participar, como a qualidade é avaliada, o reconhecimento e quem aceita, tudo antes do botão de assumir. O aluno assume uma vaga, manda o link, acompanha a avaliação e, se voltar, lê o motivo e a orientação de ajuste. Visitante vê um convite para entrar.",
+      "observacao": "Reconhecimento, nunca pagamento: não dá pontos nem créditos, porque crédito e benefício são decisão do mantenedor. Mostra só a pessoa que olha: a tarefa diz se há vaga, nunca quantas pessoas a assumiram. É o endereço para onde o fórum aponta."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "contribuicoes/gesto",
+      "endereco": "/conquistas/contribuicoes/gesto",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Assumir, enviar ou desistir de uma tarefa",
+      "descricao": "Os três gestos do aluno no quadro num endereço só. Não é uma página: quem clica volta para o quadro com a resposta.",
+      "observacao": "O gesto recebe a tarefa, nunca o número de um compromisso: o dono é sempre quem a sessão diz que é, então o compromisso de outra pessoa não existe para a consulta."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno/contribuicoes",
+      "endereco": "/conquistas/interno/contribuicoes",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O bastidor do quadro de contribuições",
+      "descricao": "Onde a equipe avalia as contribuições enviadas, com o prazo mais curto em cima e o responsável à vista, e publica, encerra ou reabre as tarefas do quadro. Aceitar registra a contribuição no nome da pessoa; devolver exige motivo e orientação.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita. Ninguém avalia a própria contribuição, nem sendo da equipe."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno/contribuicoes/gesto",
+      "endereco": "/conquistas/interno/contribuicoes/gesto",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Publicar, encerrar, aceitar ou devolver no quadro",
+      "descricao": "Os gestos da equipe no quadro de contribuições. Não é uma página: quem clica volta para o bastidor com a resposta.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita."
     },
     {
       "celula": "sugestoes",

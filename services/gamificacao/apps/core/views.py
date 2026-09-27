@@ -32,8 +32,16 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.gamificacao import contribuicoes as quadro
 from apps.gamificacao import forja as forjas
-from apps.gamificacao.models import Concessao, ConquistaDefinicao, PedidoDeValidacao
+from apps.gamificacao.criterios import medalhas_da_pessoa
+from apps.gamificacao.models import (
+    CompromissoDeContribuicao,
+    Concessao,
+    ConquistaDefinicao,
+    PedidoDeValidacao,
+    TarefaComunitaria,
+)
 from apps.gamificacao.validacao import (
     ValidacaoRecusada,
     aceitar,
@@ -44,7 +52,7 @@ from apps.gamificacao.validacao import (
     reenviar,
 )
 
-from .equipe import e_da_equipe
+from .equipe import e_da_equipe, ids_da_equipe
 from .perfil import escada_de, perfil_de
 from .sessao import quem_e, site_atual
 
@@ -60,6 +68,14 @@ RECADOS = {
     "forja-aberta": "A forja começou. A primeira tentativa já está contada.",
     "forja-somada": "Mais uma tentativa contada. É assim que se faz.",
     "forja-selada": "Peça selada. O número de tentativas ficou gravado nela.",
+    "tarefa-assumida": "Tarefa assumida. Quando terminar, mande o link por aqui.",
+    "contribuicao-enviada": "Enviada. A escola avalia e responde por aqui.",
+    "desistiu": "Você desistiu desta tarefa, e a vaga voltou para o quadro.",
+    "tarefa-publicada": "Tarefa publicada no quadro.",
+    "tarefa-encerrada": "Tarefa encerrada para compromissos novos.",
+    "tarefa-reaberta": "Tarefa aberta de novo no quadro.",
+    "contribuicao-aceita": "Aceita. O reconhecimento já está no nome da pessoa.",
+    "contribuicao-devolvida": "Devolvida, com o motivo e a orientação que você escreveu.",
 }
 
 
@@ -206,6 +222,40 @@ def marcos(request):
             "erro": request.GET.get("erro", ""),
             **de_fora,
         },
+    )
+
+
+@require_GET
+def medalhas(request):
+    """As medalhas ligadas da escola: como cada uma se ganha, e onde a pessoa está.
+
+    **O critério aparece ANTES de conquistar.** Uma medalha que cai sem que a
+    pessoa soubesse que existia não ensina nada; dita antes, ela mostra o
+    próximo passo. O texto sai do próprio critério
+    (`criterios.criterio_em_portugues`), nunca de uma frase solta.
+
+    **Só a pessoa que olha.** Nenhum número de outras pessoas, nenhuma ordem
+    entre alunos: ranking público é proibido pela lei §8, e "quantos já têm"
+    é o primeiro passo dele.
+
+    **Visitante não leva erro**, e sem `SITE_ID` também não quebra: a mesma
+    postura da Base, dos Marcos e da Forja.
+    """
+    de_fora = {
+        "url_de_entrada": settings.URL_DE_ENTRADA,
+        "url_da_capa": settings.URL_DA_CAPA,
+    }
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id:
+        return render(
+            request, "gamificacao/medalhas.html", {"entrou": False, **de_fora}
+        )
+
+    perfil = perfil_de(pessoa_id, site)
+    return render(
+        request,
+        "gamificacao/medalhas.html",
+        {"entrou": True, "linhas": medalhas_da_pessoa(perfil), **de_fora},
     )
 
 
@@ -460,3 +510,208 @@ def forjar(request):
     # Gesto que não existe não é erro do aluno: é formulário adulterado ou
     # navegador antigo. Volta para a página sem mexer em nada.
     return _voltar("forja")
+
+
+# ---------------------------------------------------------------------------
+# O QUADRO DE CONTRIBUIÇÕES: a escola pede, o aluno assume e entrega
+# ---------------------------------------------------------------------------
+@require_GET
+def contribuicoes(request):
+    """O quadro: as contribuições desta pessoa e as tarefas que ela pode assumir.
+
+    **A exigência inteira aparece ANTES do botão.** O dossiê da Comunidade (§6)
+    manda que o membro conheça o que será cobrado antes de assumir, então cada
+    tarefa mostra os cinco campos acima do "Assumir".
+
+    **É esta tela que conta a devolução**, com a data, o motivo e a orientação,
+    pela mesma razão da trilha dos marcos: devolver não vira carta.
+
+    Visitante não leva erro, e sem `SITE_ID` também não quebra: a mesma postura
+    da Base, dos Marcos, da Forja e das Medalhas.
+    """
+    de_fora = {
+        "url_de_entrada": settings.URL_DE_ENTRADA,
+        "url_da_capa": settings.URL_DA_CAPA,
+    }
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id:
+        return render(
+            request, "gamificacao/contribuicoes.html", {"entrou": False, **de_fora}
+        )
+
+    perfil = perfil_de(pessoa_id, site)
+    return render(
+        request,
+        "gamificacao/contribuicoes.html",
+        {
+            "entrou": True,
+            **quadro.quadro_da_pessoa(perfil.pessoa, site),
+            "recado": RECADOS.get(request.GET.get("recado", "")),
+            "erro": request.GET.get("erro", ""),
+            **de_fora,
+        },
+    )
+
+
+@require_POST
+def contribuir(request):
+    """Os três gestos do aluno numa porta só: assumir, enviar, desistir.
+
+    **Nenhum deles recebe o id de um compromisso.** O formulário manda a TAREFA,
+    e o dono é sempre quem a sessão diz que é (o molde da Forja): o compromisso
+    de outra pessoa não existe para esta consulta.
+    """
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id:
+        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
+
+    tarefa = TarefaComunitaria.objects.filter(
+        pk=_numero(request.POST.get("tarefa")), site_id=site
+    ).first()
+    if tarefa is None:
+        return _voltar("contribuicoes", erro="Não encontrei essa tarefa nesta escola.")
+
+    pessoa = perfil_de(pessoa_id, site).pessoa
+    gesto = request.POST.get("gesto", "")
+    try:
+        if gesto == "assumir":
+            quadro.assumir(tarefa=tarefa, pessoa=pessoa)
+            return _voltar("contribuicoes", recado="tarefa-assumida")
+        if gesto == "enviar":
+            quadro.enviar(
+                tarefa=tarefa, pessoa=pessoa, link=request.POST.get("link", "")
+            )
+            return _voltar("contribuicoes", recado="contribuicao-enviada")
+        if gesto == "desistir":
+            quadro.desistir(tarefa=tarefa, pessoa=pessoa)
+            return _voltar("contribuicoes", recado="desistiu")
+    except quadro.ContribuicaoRecusada as recusa:
+        return _voltar("contribuicoes", erro=str(recusa))
+
+    # Gesto que não existe é formulário adulterado: volta sem mexer em nada.
+    return _voltar("contribuicoes")
+
+
+def _numero(valor) -> int:
+    """Um id vindo do formulário, ou 0, que nenhuma linha tem."""
+    try:
+        return int(valor)
+    except (TypeError, ValueError):
+        return 0
+
+
+@require_GET
+def interno_contribuicoes(request):
+    """O bastidor do quadro: avaliar o que chegou, publicar e encerrar tarefas.
+
+    A porta é a mesma da fila dos marcos, fail-CLOSED por `IDS_DA_EQUIPE`, e a
+    recusa é a mesma: 403 com a frase que diz que a área existe e esta pessoa
+    não está na lista.
+    """
+    pessoa_id, site = _pessoa_e_site(request)
+    if not e_da_equipe(pessoa_id) or not site:
+        return _recusar_quem_nao_e_da_equipe(request)
+
+    return render(
+        request,
+        "gamificacao/interno_contribuicoes.html",
+        {
+            "fila": quadro.para_avaliar(site),
+            "tarefas": quadro.tarefas_da_escola(site),
+            "motivos": CompromissoDeContribuicao.MotivoDaDevolucao.choices,
+            "equipe": sorted(ids_da_equipe()),
+            "eu": pessoa_id,
+            "medalhas": quadro.medalhas_que_a_tarefa_pode_dar(site),
+            "recado": RECADOS.get(request.GET.get("recado", "")),
+            "erro": request.GET.get("erro", ""),
+            "agora": timezone.now(),
+            "url_da_capa": settings.URL_DA_CAPA,
+        },
+    )
+
+
+@require_POST
+def decidir_contribuicao(request):
+    """Os gestos da equipe no quadro: publicar, encerrar, reabrir, aceitar, devolver.
+
+    Quem decide é quem a sessão diz que é, conferido na lista da equipe; nada
+    do formulário diz quem está clicando.
+    """
+    pessoa_id, site = _pessoa_e_site(request)
+    if not e_da_equipe(pessoa_id) or not site:
+        return _recusar_quem_nao_e_da_equipe(request)
+
+    gesto = request.POST.get("gesto", "")
+    try:
+        if gesto == "publicar":
+            return _publicar(request, pessoa_id, site)
+
+        if gesto in ("encerrar", "reabrir"):
+            tarefa = TarefaComunitaria.objects.filter(
+                pk=_numero(request.POST.get("tarefa")), site_id=site
+            ).first()
+            if tarefa is None:
+                return _voltar("interno-contribuicoes", erro="Essa tarefa não existe.")
+            if gesto == "encerrar":
+                quadro.encerrar(tarefa=tarefa)
+                return _voltar("interno-contribuicoes", recado="tarefa-encerrada")
+            quadro.reabrir(tarefa=tarefa)
+            return _voltar("interno-contribuicoes", recado="tarefa-reaberta")
+
+        compromisso = CompromissoDeContribuicao.objects.filter(
+            pk=_numero(request.POST.get("compromisso")), site_id=site
+        ).first()
+        if compromisso is None:
+            return _voltar(
+                "interno-contribuicoes",
+                erro="Essa contribuição não existe mais nesta escola.",
+            )
+        if gesto == "aceitar":
+            quadro.aceitar(compromisso=compromisso, validador_id=pessoa_id)
+            return _voltar("interno-contribuicoes", recado="contribuicao-aceita")
+        if gesto == "devolver":
+            quadro.devolver(
+                compromisso=compromisso,
+                validador_id=pessoa_id,
+                motivo=request.POST.get("motivo", ""),
+                orientacao=request.POST.get("orientacao", ""),
+            )
+            return _voltar("interno-contribuicoes", recado="contribuicao-devolvida")
+    except quadro.ContribuicaoRecusada as recusa:
+        return _voltar("interno-contribuicoes", erro=str(recusa))
+
+    return _voltar("interno-contribuicoes")
+
+
+def _publicar(request, autor_id: str, site: str):
+    """O formulário de publicar, lido e conferido. A tarefa nasce em `quadro.publicar`.
+
+    O responsável vem de uma lista, mas a lista é do navegador: por isso ele é
+    conferido de novo contra `IDS_DA_EQUIPE`, que é a única resposta que vale.
+    """
+    responsavel_id = (request.POST.get("responsavel_id") or "").strip()
+    if not e_da_equipe(responsavel_id):
+        raise quadro.ContribuicaoRecusada(
+            "Quem responde pela aceitação precisa ser alguém da equipe da escola."
+        )
+    medalha = None
+    slug = (request.POST.get("medalha") or "").strip()
+    if slug:
+        medalha = ConquistaDefinicao.objects.filter(site_id=site, slug=slug).first()
+        if medalha is None:
+            raise quadro.ContribuicaoRecusada(
+                "Não encontrei essa medalha nesta escola."
+            )
+    quadro.publicar(
+        site_id=site,
+        autor_id=autor_id,
+        titulo=request.POST.get("titulo", ""),
+        o_que_entregar=request.POST.get("o_que_entregar", ""),
+        quem_pode=request.POST.get("quem_pode", ""),
+        criterios=(request.POST.get("criterios") or "").splitlines(),
+        responsavel_id=responsavel_id,
+        responsavel_nome=request.POST.get("responsavel_nome", ""),
+        vagas=_numero(request.POST.get("vagas")),
+        medalha=medalha,
+    )
+    return _voltar("interno-contribuicoes", recado="tarefa-publicada")

@@ -2,13 +2,18 @@ from django.urls import path, re_path
 
 from apps.core.views import (
     base,
+    contribuicoes,
+    contribuir,
     decidir,
+    decidir_contribuicao,
     enviar_prova,
     forja,
     forjar,
     healthz,
     interno,
+    interno_contribuicoes,
     marcos,
+    medalhas,
     servir_estatico,
 )
 from config.api import api
@@ -84,6 +89,26 @@ urlpatterns = [
     # lembrar (guarda em `tests/test_forja.py`).
     path("forja", forja, name="forja"),
     path("forja/registrar", forjar, name="forjar"),
+    # AS MEDALHAS (27/09/2026, TAR-826): a coleção que o plano §5 previa. Uma
+    # rota só, de leitura: medalha não se pede, ela cai quando a conta bate.
+    path("medalhas", medalhas, name="medalhas"),
+    # O QUADRO DE CONTRIBUIÇÕES (27/09/2026, TAR-849): a escola publica o que
+    # precisa, o aluno assume, entrega, e a equipe aceita ou devolve. Duas rotas
+    # do ALUNO e duas da EQUIPE, com a mesma porta fail-CLOSED da fila dos
+    # marcos. `contribuicoes` é o endereço combinado com o fórum, que aponta
+    # para cá: trocá-lo quebra um link de outra célula.
+    path("contribuicoes", contribuicoes, name="contribuicoes"),
+    path("contribuicoes/gesto", contribuir, name="contribuir"),
+    path(
+        "interno/contribuicoes",
+        interno_contribuicoes,
+        name="interno-contribuicoes",
+    ),
+    path(
+        "interno/contribuicoes/gesto",
+        decidir_contribuicao,
+        name="decidir-contribuicao",
+    ),
     # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
     # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
     # público para dentro do endereço. Vem por último porque `path("")` casa o

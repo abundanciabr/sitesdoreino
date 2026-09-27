@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-110-vista-da-equipe-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A vista da equipe da Comunidade está integrada no fórum da main",
+  detalhe: "O PR 2207 (frente C6, TAR-827) integrou na main às 04h02 de São Paulo (merge cceac4525917e5eebd1d316f34691223ddd35053): uma vista só para quem modera, com responsável, membros e vagas de cada grupo, dúvidas sem resposta da mais antiga para a mais nova com idade, quem entrou e ainda não escreveu, e links para as filas de laudo e de validação. Nove checks verdes. O revisor devolveu um item depois do pouso (o aviso de espera sem dono usa a cor de alarme em vez da cor de recado); a correção segue em PR próprio de acompanhamento. Publicação é registro à parte quando conferida. Este registro dá baixa verde no recibo do PR 2207.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2207 (MERGED, mergeCommit cceac4525917e5eebd1d316f34691223ddd35053, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-106-forum-a-equipe-ve-a-comunidade",
+  relacao: "baixa",
+  tarefa: "TAR-827",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

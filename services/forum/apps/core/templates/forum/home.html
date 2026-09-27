@@ -13,6 +13,7 @@ dela só teria a porta fechada para mostrar. Quem decide o que ela mostra é
   <div class="cartao">
     <h2><a href="{% url 'comunidade' %}">Comunidade</a></h2>
     <p class="sub" style="margin:4px 0 0">O seu grupo de prática: o desafio da vez e os colegas que esperam a sua ajuda.</p>
+    {% if pode_moderar %}<p class="sub" style="margin:4px 0 0"><a href="{% url 'comunidade_da_equipe' %}">Ver todos os grupos pela equipe: esperas, vagas e responsáveis</a></p>{% endif %}
   </div>
 {% endif %}
 

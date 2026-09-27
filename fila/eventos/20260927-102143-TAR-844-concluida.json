@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-102143-TAR-844-concluida",
+  "tarefa": "TAR-844",
+  "evento": "concluida",
+  "quando": "2026-09-27T10:21:43.723133+00:00",
+  "quem": "agent/ci/make-impostor-no-baseline",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2213",
+  "verificado_em": "2026-09-27"
+}

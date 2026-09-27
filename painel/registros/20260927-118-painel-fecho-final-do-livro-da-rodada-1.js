@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-118-painel-fecho-final-do-livro-da-rodada-1",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "painel: fecho final do livro da rodada 1",
+  detalhe: "Tres registros: baixas verdes dos PRs 2211 e 2210 e a publicacao do ajuste da vista da equipe; fecho do livro da rodada 1.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2212. Validação local: árvore 4e56694684cedf9262a0efd8f520e2f0e3cdc1af; commit c5bf9b31a8d1aab9334bea8526d2ede1a08ef198; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-843",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

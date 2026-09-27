@@ -1,0 +1,61 @@
+{
+  "arquivo": "20260927-103155-TAR-855-contrato_execucao",
+  "tarefa": "TAR-855",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T10:31:55.775377+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-2",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 2 (dossiê §15, partes sem decisão reservada): A página Comunidade do fórum mostra o caminho para as contribuições que o aluno pode assumir",
+    "versao": 1,
+    "objetivo": "A página passa a mostrar, junto das dúvidas que dependem do aluno, o caminho para as contribuições que a escola precisa, com o link direto.",
+    "entregaveis": [
+      "Bloco de contribuições na página Comunidade com link",
+      "Teste vermelho para verde"
+    ],
+    "escopo_incluido": [
+      "services/forum/**"
+    ],
+    "nao_objetivos": [
+      "Contagem de contribuições (exigiria contrato novo)",
+      "Qualquer arquivo fora de services/forum/**"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Bancada --sem-container com PostgreSQL próprio e venv em caminho curto; suíte antes da primeira edição",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 (manhã): abrir o máximo de frentes da Comunidade com Opus 5.5 e Sonnet 5",
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Assunções do registro 072 em vigor: matrícula ativa, só a professora assina laudo, orientação pública"
+    ],
+    "etapas": [
+      "Abrir bancada, subir PostgreSQL, rodar a suíte da célula e guardar a saída",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte inteira, black e travessão",
+      "PR por ci/pr.py com a própria TAR e espera com teto"
+    ],
+    "criterios_entrada": [
+      "TAR-855 integrada na main pelo PR de fila",
+      "TAR-847 integrada e publicada",
+      "TAR-849 integrada e publicada"
+    ],
+    "criterios_aceite": [
+      "Página Comunidade mostra o caminho para as contribuições nos estados sem grupo e com grupo",
+      "Link responde de fora em produção",
+      "Suíte forum inteira verde; PR MERGED; deploy verde; URL conferida"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte inteira com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy"
+    ],
+    "condicao_encerramento": "testes vermelho para verde: a página /forum/comunidade mostra o caminho para o quadro de contribuições nos estados sem grupo e com grupo, com link que responde de fora em produção; texto sem travessão; suíte forum verde; PR integrado; deploy verde; URL conferida",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega. Ligar medalhas ou sequências novas é gesto dele na tela, depois do deploy."
+  }
+}

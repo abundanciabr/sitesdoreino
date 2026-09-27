@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-100131-TAR-844-explicada",
+  "tarefa": "TAR-844",
+  "evento": "explicada",
+  "quando": "2026-09-27T10:01:31.053911+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026 na sessao: diagnosticar test_baseline_real_de_duas_tarefas_usa_main_isolada reprovando com exit 2",
+  "o_que_e": "Nesta maquina o unico make e um atalho do Codex que nao entende a ordem de rodar numa pasta. A abertura de sessao le a falha dele como se a versao principal do site estivesse quebrada e manda parar.",
+  "o_que_muda": "A abertura passa a dizer a verdade: o instrumento e que falta, nao o codigo. Ninguem mais para o trabalho para reportar uma falha que nao existe.",
+  "exemplo": "E como um termometro quebrado marcar 42 graus e a enfermeira internar o paciente, em vez de trocar o termometro.",
+  "importancia": 55
+}

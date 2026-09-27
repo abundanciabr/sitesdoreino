@@ -1,0 +1,19 @@
+{
+  "arquivo": "834-contar-sem-dado-pessoal-o-que-ficou-parado-nos-pagamentos-ap",
+  "id": "TAR-834",
+  "titulo": "Contar, sem dado pessoal, o que ficou parado nos pagamentos Appmax",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run da operação appmax-observacao na main com saída sanitizada: tentativas Appmax abertas por faixa de idade, inbox sem processamento, outbox pendente, fila morta e duplicidades, só inteiros; guardas PASS FAIL PASS.",
+  "despacho": "Frente N3 da rota Appmax: operação fechada de leitura appmax-observacao em ci/operacoes_vps.py, sem referência, cobrindo o serviço pagamentos inteiro. Devolve só contagens inteiras: tentativas Appmax não terminais por idade (até 15 min, 15 a 60 min, 60 min a um dia útil, mais de um dia útil), inbox Appmax sem processamento, outbox pendente, fila morta, pedidos com mais de uma tentativa aberta e pedidos Appmax com efeito repetido. Nenhum HTTP, POST ou escrita. Testes vermelhos primeiro, mutação das guardas, workflow com a opção nova, PR com mandato, um run de leitura na main. modelo_recomendado: opus; esforco_recomendado: high.",
+  "origem": "Frente N3 do RETOMADA-APPMAX.md, plano mestre Appmax no cartão, L12 (G12B) e seção 22.1, sessão de 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

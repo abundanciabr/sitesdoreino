@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-073749-TAR-828-bloqueada",
+  "tarefa": "TAR-828",
+  "evento": "bloqueada",
+  "quando": "2026-09-27T07:37:49.971146+00:00",
+  "quem": "agent/forum/comunidade-coordenacao",
+  "detalhe": "A prova ponta a ponta em producao exige duas contas de teste com matricula ativa em grupos diferentes e a professora de teste nas listas FORUM_PROFESSORES, CURSOS_PROFESSORES e IDS_DA_EQUIPE da VPS; so o mantenedor cria contas e mexe no env (Lista A). Impacto: o percurso da Comunidade nao pode ser declarado provado em producao. Destrava: ele cria as contas e entrega as credenciais por variavel de ambiente local (registro 072 no painel). Prazo: no dia, ao acordar; as cinco frentes ja estao publicadas.",
+  "espera": "mantenedor"
+}
