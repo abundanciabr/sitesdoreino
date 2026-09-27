@@ -1,0 +1,20 @@
+{
+  "arquivo": "803-sonda-publica-do-pix-antes-e-depois-das-mudancas-do-cartao",
+  "id": "TAR-803",
+  "titulo": "Sonda pública do Pix antes e depois das mudanças do cartão",
+  "toca": [
+    "e2e",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "run público do workflow sonda-pix-publica.yml com o veredito da sonda (QR e código copiável presentes, IDs sanitizados e horário) ou o motivo nomeado de não haver Pix do Mercado Pago no site",
+  "despacho": "Frente N7 da obra Appmax: e2e/sonda_pix_publica.js abre o checkout público de meshcraft.top num navegador de verdade, cria UM pedido Pix com comprador sintético identificável como sonda, sem pagar, e prova que o QR e o código copiável do Mercado Pago aparecem. Workflow próprio .github/workflows/sonda-pix-publica.yml, só por disparo manual, sem segredo. Se o Pix do site estiver na Appmax, a sonda não cria pedido e reprova dizendo isso.",
+  "origem": "sessão Claude Code de 26/09/2026 22h53 BRT, frente N7 de RETOMADA-APPMAX.md, autorizada pelo mantenedor",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
