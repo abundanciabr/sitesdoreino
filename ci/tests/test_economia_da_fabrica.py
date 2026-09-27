@@ -138,6 +138,29 @@ def test_auditoria_aceita_despacho_variavel_quando_exige_modelo_no_brief(
 
     assert auditar_fichas(tmp_path) == []
 
+
+def test_auditoria_reprova_ficha_que_o_yaml_nao_abre(tmp_path: Path) -> None:
+    """Dois-pontos sem aspas na description quebra o YAML, e o Claude Code
+    descarta a ficha em silêncio: conferente, adversario e provador sumiram
+    assim do Agent até 27/09/2026."""
+    pasta = tmp_path / ".claude" / "agents"
+    pasta.mkdir(parents=True)
+    (pasta / "conferente.md").write_text(
+        "---\nname: conferente\ndescription: mede se ainda são: lei contra código\n"
+        "model: opus\n---\ntexto\n",
+        encoding="utf-8",
+    )
+
+    falhas = auditar_fichas(tmp_path)
+
+    assert len(falhas) == 1
+    assert falhas[0].startswith(".claude/agents/conferente.md: o frontmatter não abre como YAML")
+
+
+def test_auditoria_passa_nas_fichas_reais_do_repositorio() -> None:
+    assert auditar_fichas(Path(__file__).resolve().parents[2]) == []
+
+
 @pytest.fixture(autouse=True)
 def harness_claude_das_fixtures(monkeypatch):
     # Estas fixtures medem a compatibilidade das fichas Markdown do Claude.

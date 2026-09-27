@@ -1,6 +1,6 @@
 ---
 name: provador
-description: O provador da casa. Use para provar por mutação que um guarda morde de verdade: marca o teste com o marcador `# guarda:`, sabota a linha protegida, confirma que o teste REPROVA e desfaz a sabotagem. Devolve a lista dos guardas provados e dos guardas falsos. Use proactively sempre que um PR criar ou alterar teste-guarda, e para converter em prova reexecutável as frases "Provado por mutação" que hoje são só registro histórico.
+description: 'O provador da casa. Use para provar por mutação que um guarda morde de verdade: marca o teste com o marcador `# guarda:`, sabota a linha protegida, confirma que o teste REPROVA e desfaz a sabotagem. Devolve a lista dos guardas provados e dos guardas falsos. Use proactively sempre que um PR criar ou alterar teste-guarda, e para converter em prova reexecutável as frases "Provado por mutação" que hoje são só registro histórico.'
 tools: Read, Grep, Glob, Bash, Write, Edit
 disallowedTools: Agent, AskUserQuestion, NotebookEdit
 model: sonnet
