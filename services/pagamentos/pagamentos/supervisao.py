@@ -42,10 +42,10 @@ _MOTIVO_REVERSAO = {
     "appmax_chargeback_perdido": "contestacao",
 }
 _ACAO_POS_APROVACAO = {
-    "appmax_estornado": "Evento de reversão confirmado registrado para envio; confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
-    "appmax_chargeback_em_tratativa": "Evento de reversão confirmado registrado para envio; acompanhe a contestação no painel Appmax; nenhuma reabertura de acesso foi executada.",
-    "appmax_chargeback_em_disputa": "Evento de reversão confirmado registrado para envio; acompanhe a disputa no painel Appmax; nenhuma reabertura de acesso foi executada.",
-    "appmax_chargeback_perdido": "Evento de reversão confirmado registrado para envio; acompanhe a contestação perdida no painel Appmax; nenhuma reabertura de acesso foi executada.",
+    "appmax_estornado": "Evento de reversão confirmada registrado para envio; confirme a devolução no painel Appmax; nenhum acesso foi reaberto automaticamente.",
+    "appmax_chargeback_em_tratativa": "Evento de reversão confirmada registrado para envio; acompanhe a contestação no painel Appmax; nenhuma reabertura de acesso foi executada.",
+    "appmax_chargeback_em_disputa": "Evento de reversão confirmada registrado para envio; acompanhe a disputa no painel Appmax; nenhuma reabertura de acesso foi executada.",
+    "appmax_chargeback_perdido": "Evento de reversão confirmada registrado para envio; acompanhe a contestação perdida no painel Appmax; nenhuma reabertura de acesso foi executada.",
     "appmax_chargeback_vencido": "Registre a vitória do lojista no painel Appmax; nenhuma reversão ou reabertura de acesso foi executada.",
 }
 _STATUS_APROVADO = {"aprovado", "integrado", "pendente_integracao"}

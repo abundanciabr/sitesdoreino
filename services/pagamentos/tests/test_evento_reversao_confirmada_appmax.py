@@ -258,18 +258,16 @@ def test_falha_na_consulta_nao_emite_e_conserva_pendencia() -> None:
         "referencia",
     ],
 )
+# guarda: services/pagamentos/pagamentos/supervisao.py:157
 def test_identidade_local_divergente_nao_consulta_nem_emite(
     divergir: Callable[[AppmaxWebhookInbox, Intent, PaymentAttempt], None],
 ) -> None:
     intent, tentativa = _compra_aprovada()
     aviso = _aviso()
     divergir(aviso, intent, tentativa)
-    if aviso.pk:
-        aviso.save()
-    if intent.pk:
-        Intent.objects.filter(pk=intent.pk).update(site_id=intent.site_id)
-    if tentativa.pk:
-        tentativa.save()
+    aviso.save()
+    Intent.objects.filter(pk=intent.pk).update(site_id=intent.site_id)
+    tentativa.save()
     cliente = ClienteAppmaxSomenteLeitura()
 
     _rodar(cliente)
