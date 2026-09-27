@@ -251,6 +251,8 @@ form button {
 .criterios { margin: 4px 0 8px; padding-left: 22px; }
 /* O link que o aluno mandou pode ser longo; em 390 px ele quebra, não vaza. */
 .tarefa .miudo { overflow-wrap: anywhere; }
+/* O link na fila da equipe: a cor padrão do navegador some no tema escuro. */
+.prova a { color: var(--marca); }
 
 /* Foco visível para quem navega pelo teclado, em todo controle da célula. */
 a:focus-visible, button:focus-visible, input:focus-visible,
