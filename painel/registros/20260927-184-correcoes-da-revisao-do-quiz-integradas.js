@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-184-correcoes-da-revisao-do-quiz-integradas",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Correções da revisão do quiz integradas",
+  detalhe: "A revisão achou um guarda de CSRF que se confirmava sozinho e um seed que aceitava endereço inalcançável. As correções entraram na main em 19/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1768 MERGED em 19/09/2026, mergeCommit 4d802c85f9 (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260919-052-quiz-revisao-do-endereco-csrf-e-seed",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

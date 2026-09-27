@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-166-tetos-de-espera-pela-regua-viva-integrados",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Tetos de espera pela régua viva integrados",
+  detalhe: "O alerta dizia que a troca do teto de espera fixo pelo teto calculado a partir da medição oficial não estava integrada. O PR 1463 foi integrado em 09/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1463 MERGED em 09/09/2026, mergeCommit 770455956e (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260909-024-ci-calcular-tetos-de-espera-pela-regua-viva",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

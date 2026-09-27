@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-158-correcao-do-detector-da-fase-4-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Correção do detector da Fase 4 integrada",
+  detalhe: "O alerta dizia que a correção de precisão do detector sintético da Fase 4 não estava integrada. Ela veio no PR 1406, integrado em 08/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1406 MERGED, mergeCommit 1c5c351920 (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260908-078-ci-comprovar-coleta-operacional-da-fase-4",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
