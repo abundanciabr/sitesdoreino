@@ -1,0 +1,19 @@
+{
+  "arquivo": "801-a-integracao-automatica-passa-a-esperar-o-pr-de-que-outro-de",
+  "id": "TAR-801",
+  "titulo": "A integração automática passa a esperar o PR de que outro depende",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com teste vermelho para verde: PR com Depende-de apontando PR aberto não integra",
+  "despacho": "Célula ci. Decisão 7 do mantenedor (sessão de 26/09/2026, \"Autorizo ligar a checagem\"): ci/mergear.py passa a chamar checar_dependencias no pouso. Hoje a função existe, tem teste, e ninguém a chama, então \"Depende-de: #N\" não segura nada. Caminho /ci/ é CODEOWNERS dele; transcreva: \"Mandato-do-mantenedor: ligar checar_dependencias no pouso autorizado pelo mantenedor ci/mergear.py ci/tests/test_mergear.py ; origem: sessão de 26/09/2026\". Teste vermelho para verde: PR com Depende-de de PR aberto não integra.",
+  "origem": "decisão 7 do mantenedor, sessão de 26/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
