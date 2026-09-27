@@ -1,0 +1,19 @@
+{
+  "arquivo": "903-o-livro-da-comunidade-fecha-a-segunda-rodada-regua-no-laudo-",
+  "id": "TAR-903",
+  "titulo": "O livro da Comunidade fecha a segunda rodada: régua no laudo publicada e gestos de área confirmados no ar",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com a baixa verde do recibo da régua no laudo e o registro que corrige o âmbar da publicação dos gestos de área, os dois com merge e deploy medidos; node painel/gerar_manifesto.js verde; python ci/fila.py validar verde",
+  "despacho": "Fecho do livro da rodada 2 da Comunidade",
+  "origem": "pedido do mantenedor de 27/09/2026 de abrir o máximo de frentes da Comunidade",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

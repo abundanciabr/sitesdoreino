@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-281-baixa-cursos-regua-no-laudo",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O retorno da professora mostra a régua da avaliação e está no ar",
+  detalhe: "O PR 2269 (TAR-895) integrou e publicou: na página do laudo, o aluno vê a rubrica e a versão que avaliaram a peça, abre o texto daquela versão e é avisado quando a rubrica mudou depois. Laudo antigo sem cópia diz que o texto não foi guardado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2269 (MERGED, mergeCommit 1c6efc746aec97c4a7c6ba81d4797963ece4cd66); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36329380215 (deploy-celula success)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-272-cursos-o-laudo-mostra-a-regua-da-avaliacao",
+  relacao: "baixa",
+  tarefa: "TAR-895",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
