@@ -20,7 +20,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core import moderacao
+from apps.core import moderacao, views
 from apps.core.permissoes import areas_visiveis, pode_escrever, pode_ler
 from apps.core.sessao import Ator
 from apps.forum.models import Area, MembroDoGrupo, Mensagem, Pessoa, Topico
@@ -436,6 +436,7 @@ def test_a_comunidade_sem_login_fecha_a_porta_com_texto(client, env, monkeypatch
     corpo = resposta.content.decode()
     assert "Entre para ver a sua Comunidade" in corpo
     assert "Quem depende de você" not in corpo
+    assert views.CONTRIBUICOES_URL not in corpo
 
 
 def test_a_comunidade_fecha_para_quem_nao_tem_matricula(
@@ -447,6 +448,7 @@ def test_a_comunidade_fecha_para_quem_nao_tem_matricula(
     corpo = pedir(client, "comunidade").content.decode()
     assert "A Comunidade é de quem está matriculado" in corpo
     assert grupo.nome not in corpo
+    assert views.CONTRIBUICOES_URL not in corpo
 
 
 def test_a_comunidade_sem_grupo_diz_como_pedir_a_entrada(client, env, monkeypatch, ana):
@@ -455,6 +457,16 @@ def test_a_comunidade_sem_grupo_diz_como_pedir_a_entrada(client, env, monkeypatc
     assert "Você ainda não está em um grupo de prática" in corpo
     assert "Quem responde é a equipe da escola" in corpo
     assert reverse("abrir_conversa") in corpo
+    assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
+
+
+def test_a_comunidade_sem_grupo_da_equipe_tambem_aponta_as_contribuicoes(
+    client, env, monkeypatch, professora
+):
+    como(monkeypatch, professora, categoria="cadastrado")
+    corpo = pedir(client, "comunidade").content.decode()
+    assert "Você ainda não responde por nenhum grupo de prática" in corpo
+    assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
 
 
 def test_a_comunidade_com_grupo_mostra_o_desafio_e_quem_depende_de_voce(
@@ -494,6 +506,7 @@ def test_a_comunidade_com_grupo_vazio_diz_que_ninguem_espera(
     como(monkeypatch, ana)
     corpo = pedir(client, "comunidade").content.decode()
     assert "Ninguém do seu grupo está esperando resposta agora" in corpo
+    assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
 
 
 def test_a_home_mostra_o_link_da_comunidade_so_para_quem_entrou(
