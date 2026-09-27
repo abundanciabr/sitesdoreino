@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-289-painel-baixa-do-pr-2232-guarda-da-bancada-no-ar",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "painel: baixa do PR 2232, guarda da bancada no ar",
+  detalhe: "Baixa verde do PR 2232 no livro: integrado no merge fc8a08ce e publicado, medido por ci/esperar.py --entrega.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2283. Validação local: árvore e848a2b4544798cf9b0ce3a2545d43db42406e8d; commit 92e80574ca420a193201e7aebcf89f19cee4a40d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-907",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
