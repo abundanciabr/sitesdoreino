@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-218-ci-descoberta-de-referencia-de-cartao",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: descoberta de referencia de cartao",
+  detalhe: "Estende appmax-inbox-latencia com descoberta method agnostica (so havia para Pix) para achar cartao. Traz registro 083 do PR 2205, nunca mesclado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2226. Validação local: árvore 2a1b4e8ac9ff2773f146145afe10f6b07afcbd81; commit 812a70d6e2463013c9c9ef671d2ae962befde44b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-872",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
