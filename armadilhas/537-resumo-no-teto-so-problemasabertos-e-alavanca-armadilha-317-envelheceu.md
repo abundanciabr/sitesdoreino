@@ -12,6 +12,7 @@ sinal:
   - `o resumo pesa \d+ bytes e o orçamento é \d+`
 gatilho:
   - ci/encerramento_alertas.py
+  - painel/gerar_manifesto.js
 licao: "Resumo no teto: meça por porta; nao-comprovado já tem teto de 12 e baixa não o esvazia. A alavanca é problemasAbertos: audite cada alerta na fonte e escreva uma baixa verde com responde_a. Recibo âmbar de PR integrado pede baixa de quem integra."
 ---
 
@@ -42,7 +43,8 @@ A `armadilhas/317` (04/09) apontou dois motores sem teto, `nao-comprovado` e
   qualquer que seja o tamanho do livro (12 de 80 em 27/09, 6.762 bytes). E
   nenhuma baixa o esvazia: o filtro `naoComprovados` lê `evidencia` e
   `verificado_em` do PRÓPRIO registro, e registro não se edita.
-- `problemasAbertos` (âmbar ou vermelho sem `responde_a`) continua sem teto de
+- `problemasAbertos` (âmbar ou vermelho que nenhum outro registro cita em
+  `responde_a`, fora `pendencia`, `frente` e `rumo`) continua sem teto de
   contagem: 87 itens, 72.862 bytes, 47,6% do resumo. Uma baixa com
   `responde_a` tira o alerta dessa lista (`respondidos`), e é por isso que ela
   é a alavanca.

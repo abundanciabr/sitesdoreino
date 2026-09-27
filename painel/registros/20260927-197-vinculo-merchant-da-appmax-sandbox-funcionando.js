@@ -3,7 +3,7 @@
   tipo: "nota",
   quando: "2026-09-27",
   titulo: "Vínculo MERCHANT da Appmax sandbox funcionando",
-  detalhe: "Faltavam o consentimento e o OAuth MERCHANT depois de renovar o ID no sandbox. Um cartão sandbox foi cobrado e integrado (PR 2066) e o teste pela tela do PR 2159 aprovou dois cartões.",
+  detalhe: "Faltavam o consentimento e o OAuth MERCHANT depois de renovar o ID no sandbox. Um cartão sandbox foi cobrado e integrado (PR 2066), e o teste pela tela do PR 2159 pagou e matriculou com o cartão aprovado.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1973, https://github.com/abundanciabr/sitesdoreino/pull/2066 e https://github.com/abundanciabr/sitesdoreino/pull/2159 MERGED (gh pr view, 27/09/2026)",
   verificado_em: "2026-09-27",
