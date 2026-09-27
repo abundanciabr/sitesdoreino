@@ -303,6 +303,12 @@ _PLACE_ORDER_OPENAPI = {
             )
         },
         422: {"description": "Payload inválido"},
+        502: {
+            "description": (
+                "O provedor de pagamento não iniciou a cobrança; nenhum pedido foi "
+                "criado e a nova tentativa usa a mesma sessão"
+            )
+        },
     },
 }
 
@@ -513,6 +519,20 @@ def _inline_order_created_at(schema: dict) -> None:
     schema.update({"type": "string", "format": "date-time"})
 
 
+def _inline_order_card_in_review(schema: dict) -> None:
+    schema.clear()
+    schema.update(
+        {
+            "type": "boolean",
+            "description": (
+                "Verdadeiro quando o provedor aceitou a última tentativa de cartão "
+                "e o aviso de pagamento ainda não chegou. Enquanto for verdadeiro, "
+                "a página não oferece nova cobrança."
+            ),
+        }
+    )
+
+
 class Order(Schema):
     order_id: str
     site_id: str
@@ -521,6 +541,9 @@ class Order(Schema):
     total_cents: int
     created_at: dict = Field(
         default_factory=dict, json_schema_extra=_inline_order_created_at
+    )
+    card_in_review: dict = Field(
+        default_factory=dict, json_schema_extra=_inline_order_card_in_review
     )
 
 
@@ -553,6 +576,7 @@ def get_order(request, order_id: str):
             "items": pedido.items,
             "total_cents": pedido.total_cents,
             "created_at": pedido.created_at.isoformat(),
+            "card_in_review": pedido.cartao_em_analise,
         }
     )
 
@@ -744,6 +768,10 @@ def confirm_order_card(request, order_id: str):
         raise HttpError(
             status_http, str(resposta.get("detail") or "a tentativa não foi concluída")
         )
+    # Só marca se nenhum aviso mexeu no pedido enquanto o provedor respondia: o
+    # aviso que chegou antes já encerrou a análise.
+    no_mesmo_estado = OrderModel.objects.filter(pk=pedido.id, status=pedido.status)
+    no_mesmo_estado.update(cartao_em_analise=resposta["status"] != "rejected")
     pagamento = {
         "method": "card",
         "intent_id": pedido.intent_id,

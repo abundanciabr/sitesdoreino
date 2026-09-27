@@ -223,6 +223,10 @@ def aplicar(envelope: dict) -> bool:
                 .filter(estados_elegiveis)
                 .update(status=aviso.status)
             )
+            # Todo aviso de pagamento encerra a análise do cartão, inclusive a
+            # recusa de um pedido que já estava recusado e não muda de status.
+            do_pedido = OrderModel.objects.filter(pk=aviso.order_id)
+            do_pedido.filter(site_id=aviso.site_id).update(cartao_em_analise=False)
             if aviso.status == "pago" and atualizados:
                 _emitir_pedido_pago(aviso)
     except IntegrityError:

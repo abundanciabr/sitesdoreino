@@ -25,11 +25,12 @@ function cartaoIsland() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status;
+        this.emAnalise = pedido.card_in_review === true;
       } catch (e) {
         this.status = "erro";
         this.erro = "Não foi possível consultar o pedido. Tente novamente.";
       }
-      if (this.status === "aguardando_pagamento") {
+      if (this.status === "aguardando_pagamento" || this.emAnalise) {
         setTimeout(() => this.pollSemTelaTravada(), 3000);
       }
     },
@@ -38,13 +39,12 @@ function cartaoIsland() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status;
+        this.emAnalise = pedido.card_in_review === true;
       } catch (e) {
         return;
       }
-      if (this.status === "aguardando_pagamento") {
+      if (this.status === "aguardando_pagamento" || this.emAnalise) {
         setTimeout(() => this.pollSemTelaTravada(), 3000);
-      } else {
-        this.emAnalise = false;
       }
     },
 

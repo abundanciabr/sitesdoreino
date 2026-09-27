@@ -8,8 +8,18 @@ import json
 import httpx
 import pytest
 
+from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import Order, OutboxEvent
-from tests.conftest import BUMP_A, HOST_A, HOST_B, OFERTA_A, PAGAMENTOS, SLUG
+from tests.conftest import (
+    BUMP_A,
+    HOST_A,
+    HOST_B,
+    OFERTA_A,
+    PAGAMENTOS,
+    SLUG,
+    aprovado_v2,
+    recusado_v2,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -50,7 +60,7 @@ def pedido_de_cartao(api, rede, sessao_a):
     return Order.objects.get(pk=resp.json()["order_id"])
 
 
-# guarda: services/checkout/apps/core/api.py:383
+# guarda: services/checkout/apps/core/api.py:389
 def test_intent_de_cartao_usa_itens_e_total_calculados_pelo_catalogo(
     api, rede, sessao_a
 ):
@@ -162,7 +172,7 @@ def test_a_recusa_do_provedor_volta_com_o_motivo_e_o_pedido_nao_muda(
     assert pedido_de_cartao.status == "aguardando_pagamento"
 
 
-# guarda: services/checkout/apps/core/api.py:691
+# guarda: services/checkout/apps/core/api.py:715
 def test_pedido_de_cartao_recusado_aceita_nova_confirmacao_sem_mover_snapshot(
     api, rede, pedido_de_cartao
 ):
@@ -229,7 +239,7 @@ def test_falha_do_provedor_na_confirmacao_orienta_nova_tentativa_sem_cobrar_de_n
     """Cartões de teste 0002, 0036, 0044 e 9999 da Appmax sandbox: pagamentos
     devolve o 502 do contrato, e o comprador precisa ler o que fazer em vez de
     receber um 500 mudo."""
-    # guarda: services/checkout/apps/core/api.py:742
+    # guarda: services/checkout/apps/core/api.py:766
     rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card")
     falhar_em_pagamentos(rota, falha)
 
@@ -249,7 +259,7 @@ def test_falha_do_provedor_na_confirmacao_orienta_nova_tentativa_sem_cobrar_de_n
 def test_falha_do_provedor_ao_fechar_pedido_de_cartao_nao_cria_pedido(
     api, rede, sessao_a, falha
 ):
-    # guarda: services/checkout/apps/core/api.py:420
+    # guarda: services/checkout/apps/core/api.py:426
     falhar_em_pagamentos(rede.post(f"{PAGAMENTOS}/intents"), falha)
 
     resp = api.post(
@@ -473,3 +483,93 @@ def test_parcelas_recusam_pedido_pix_e_id_invalido(api, rede, pedido_de_cartao):
         == 409
     )
     assert api.get("/api/checkout/pedidos/invalido/parcelas").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Em análise ao recarregar. O provedor aceitou o cartão e o aviso ainda não
+# chegou: o pedido segue aguardando pagamento, e é `card_in_review` em getOrder
+# que diz à página recarregada para não oferecer uma segunda cobrança.
+# ---------------------------------------------------------------------------
+
+
+def _em_analise(api, pedido):
+    resp = api.get(f"/api/checkout/pedidos/{pedido.id}")
+    assert resp.status_code == 200, resp.content
+    return resp.json()["status"], resp.json()["card_in_review"]
+
+
+def test_pedido_novo_nao_esta_em_analise(api, rede, pedido_de_cartao):
+    assert _em_analise(api, pedido_de_cartao) == ("aguardando_pagamento", False)
+
+
+# guarda: services/checkout/apps/core/api.py:774
+@pytest.mark.parametrize("resposta", ["pending", "approved", "created"])
+def test_cartao_aceito_fica_em_analise_ate_o_aviso(
+    api, rede, pedido_de_cartao, resposta
+):
+    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        return_value=_intent_confirmada(status=resposta)
+    )
+    resp = api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+    assert resp.status_code == 200, resp.content
+
+    assert _em_analise(api, pedido_de_cartao) == ("aguardando_pagamento", True)
+
+
+def test_cartao_recusado_na_hora_nao_fica_em_analise(api, rede, pedido_de_cartao):
+    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        return_value=_intent_confirmada(status="rejected", reason_code="cc_rejected")
+    )
+    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+
+    assert _em_analise(api, pedido_de_cartao) == ("aguardando_pagamento", False)
+
+
+# guarda: services/checkout/apps/pedidos/management/commands/consume_eventos.py:229
+@pytest.mark.parametrize(
+    "aviso, status_final",
+    [
+        (lambda p: aprovado_v2(p, provider_reference_id="ref-1"), "pago"),
+        (lambda p: recusado_v2(p, payment_id="pag-1"), "recusado"),
+    ],
+)
+def test_o_aviso_encerra_a_analise(api, rede, pedido_de_cartao, aviso, status_final):
+    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        return_value=_intent_confirmada(status="pending")
+    )
+    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+
+    aplicar(aviso(pedido_de_cartao))
+
+    assert _em_analise(api, pedido_de_cartao) == (status_final, False)
+
+
+def test_nova_tentativa_depois_da_recusa_tambem_fica_em_analise(
+    api, rede, pedido_de_cartao
+):
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status="recusado")
+    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        return_value=_intent_confirmada(status="pending")
+    )
+    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+
+    assert _em_analise(api, pedido_de_cartao) == ("recusado", True)
+
+
+def test_aviso_que_chega_antes_da_resposta_nao_reabre_a_analise(
+    api, rede, pedido_de_cartao
+):
+    """O aviso de aprovação pode chegar enquanto a resposta do provedor ainda
+    está a caminho. Marcar a análise depois disso deixaria um pedido pago com a
+    frase de análise por cima."""
+
+    def aprova_no_meio(request):
+        aplicar(aprovado_v2(pedido_de_cartao, provider_reference_id="ref-1"))
+        return _intent_confirmada(status="pending")
+
+    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        side_effect=aprova_no_meio
+    )
+    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+
+    assert _em_analise(api, pedido_de_cartao) == ("pago", False)
