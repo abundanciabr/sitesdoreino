@@ -152,7 +152,7 @@ h1 {
 
 .faixa a + a { margin-left: 18px; }
 
-.marco, .pedido {
+.marco, .pedido, .medalha {
   background: var(--caixa);
   border: 1px solid var(--borda);
   border-radius: 12px;
@@ -160,14 +160,14 @@ h1 {
   padding: 18px 20px;
 }
 
-.marco h2, .pedido h2 {
+.marco h2, .pedido h2, .medalha h2 {
   font-size: 19px;
   margin: 0 0 6px;
 }
 
 /* O já conquistado é o único com cor de marca: ele é o que a página     */
 /* existe para produzir, e merece ser o que o olho acha primeiro.        */
-.marco.conquistado { border-color: var(--marca); }
+.marco.conquistado, .medalha.conquistada { border-color: var(--marca); }
 .marco.em_analise { border-style: dashed; }
 
 .selo {
@@ -176,7 +176,8 @@ h1 {
   margin: 10px 0 0;
 }
 
-.marco.conquistado .selo { color: var(--marca); font-weight: 600; }
+.marco.conquistado .selo, .medalha.conquistada .selo { color: var(--marca); font-weight: 600; }
+.criterio { margin: 8px 0 0; }
 .selo.devolvido { color: var(--tinta); }
 
 /* O pedido atrasado é a única coisa vermelha do bastidor. Vermelho em    */

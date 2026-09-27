@@ -20,6 +20,14 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
   <h1>{{ aula.titulo_exibido }}</h1>
 </header>
 
+{% if laudo_anterior %}
+<section class="laudo-anterior">
+  <h2>O envio anterior</h2>
+  <p class="miudo">Este é um reenvio. O laudo anterior devolveu com a mudança pedida:</p>
+  <p class="mudanca">{{ laudo_anterior.mudanca.texto }}</p>
+</section>
+{% endif %}
+
 {% if not envio %}
 <section class="laudo-vazio">
   <p>Você ainda não entregou o checkpoint desta aula. Volte para
