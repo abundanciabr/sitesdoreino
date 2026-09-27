@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-114336-TAR-863-explicada",
+  "tarefa": "TAR-863",
+  "evento": "explicada",
+  "quando": "2026-09-27T11:43:36.765895+00:00",
+  "quem": "RETOMADA-APPMAX-RODADA-3.md secao 3, gaps de escrituracao",
+  "o_que_e": "O painel ainda mostra como pendentes decisoes que o mantenedor ja tomou hoje de manha, e a fila mostra como abertas duas tarefas cujo codigo ja esta no ar desde a madrugada.",
+  "o_que_muda": "O mantenedor para de ver pedido ja respondido na caixa dele, e a fila passa a contar certo o que a obra Appmax entregou.",
+  "exemplo": "E como dar baixa no caderno de pedidos depois que o cliente ja respondeu por telefone: sem a baixa, alguem liga de novo para perguntar a mesma coisa.",
+  "importancia": 60
+}
