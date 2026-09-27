@@ -1056,6 +1056,10 @@ class CatalogoClient:
     # foi alterado. Tem nome próprio porque o conserto é do mantenedor (escolher
     # outro apelido) e não de quem opera a máquina.
     JA_EXISTE = "ja_existe"
+    # 409 do ciclo de um experimento: o catálogo não fez a transição pedida
+    # (outro experimento ativo na página, ou transição que não vale), e nada
+    # mudou. Tem nome próprio porque a tela o explica pelo estado da página.
+    CONFLITO = "conflito"
     # 404 de `getPageDraft`: esta página nunca foi editada. Tem nome próprio
     # porque NÃO é falha — é folha em branco, e confundir as duas faria a tela
     # oferecer campos vazios quando a leitura apenas não chegou, apagando no
@@ -1070,8 +1074,6 @@ class CatalogoClient:
     # 404 de um experimento: o endereço aponta para um experimento que o
     # catálogo não conhece neste site.
     SEM_EXPERIMENTO = "sem_experimento"
-    # 409 de encerrar: ele já estava encerrado, e a decisão gravada é a dele.
-    JA_ENCERRADO = "ja_encerrado"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1415,40 +1417,42 @@ class CatalogoClient:
             "GET", site_id, slug, "", especiais=((404, self.SEM_PAGINA),)
         )
 
-    # -- Os experimentos da página (frente F5 do sistema de experimentos) -----
+    # -- Os experimentos da página, pelo contrato publicado em 26/09/2026 -----
+    # `getExperiment` e `changeExperimentState`, os dois sob a página: o
+    # experimento mora na página, e o endereço dele carrega o apelido dela.
 
-    def _caminho_do_experimento(self, site_id: str, experimento_id: str) -> str:
+    def _caminho_dos_experimentos(self, site_id: str, slug: str) -> str:
         return (
             f"/sites/{quote(str(site_id), safe='')}"
-            f"/experimentos/{quote(str(experimento_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}/experimentos"
         )
 
     def experimento(
-        self, site_id: str, experimento_id: str
+        self, site_id: str, slug: str, experimento_id: str
     ) -> "tuple[str, dict | str]":
-        """O experimento com estado, decisão e as variantes (snapshot do texto)."""
+        """`getExperiment`: estado, decisão e as variantes (snapshot do texto)."""
         return self._falar(
             "GET",
-            self._caminho_do_experimento(site_id, experimento_id),
+            f"{self._caminho_dos_experimentos(site_id, slug)}"
+            f"/{quote(str(experimento_id), safe='')}",
             especiais=((404, self.SEM_EXPERIMENTO),),
         )
 
-    def encerrar_experimento(
-        self,
-        site_id: str,
-        experimento_id: str,
-        decisao: str,
-        variante_vencedora: "str | None",
+    def mudar_estado_do_experimento(
+        self, site_id: str, slug: str, experimento_id: str, mudanca: dict
     ) -> "tuple[str, dict | str]":
-        """Encerra com a decisão. 409 é experimento que já estava encerrado."""
+        """`changeExperimentState`: `{"estado": "ativo"}` põe no ar. Pedir o
+        estado em que ele já está responde 200 sem mudar nada, e é isso que
+        torna seguro o duplo clique."""
         return self._falar(
             "POST",
-            self._caminho_do_experimento(site_id, experimento_id) + "/encerrar",
-            corpo={"decisao": decisao, "variante_vencedora": variante_vencedora},
+            f"{self._caminho_dos_experimentos(site_id, slug)}"
+            f"/{quote(str(experimento_id), safe='')}/estado",
+            corpo=mudanca,
             especiais=(
-                (409, self.JA_ENCERRADO),
-                (404, self.SEM_EXPERIMENTO),
+                (409, self.CONFLITO),
                 (422, self.RECUSADO),
+                (404, self.SEM_EXPERIMENTO),
             ),
         )
 
