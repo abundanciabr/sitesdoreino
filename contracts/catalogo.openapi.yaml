@@ -272,6 +272,140 @@ paths:
               schema: { $ref: '#/components/schemas/PaginaPublicada' }
         '404': { description: 'Site inexistente' }
         '409': { description: 'Rascunho vazio; nada foi publicado' }
+  /sites/{site_id}/paginas/{slug}/experimentos:
+    post:
+      operationId: createExperiment
+      summary: Cria um experimento num slot da página, em rascunho
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      responses:
+        '201':
+          description: O experimento criado, em rascunho
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentoDaPagina'
+        '404':
+          description: Site ou página inexistente
+        '409':
+          description: Página sem versão publicada, ou slot vazio nela
+        '422':
+          description: Seção ou slot fora do vocabulário, variantes incoerentes ou horizonte impossível;
+            nada foi gravado
+      description: O experimento nasce em rascunho, com o controle `a` carregando o texto publicado do slot
+        e a amostra por braço já calculada. Nada vai ao ar até a mudança de estado para ativo.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovoExperimento'
+        required: true
+    get:
+      operationId: listExperiments
+      summary: Os experimentos de uma página, do mais novo para o mais antigo
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Os experimentos da página, em qualquer estado
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ExperimentoDaPagina'
+                type: array
+        '404':
+          description: Site ou página inexistente
+  /sites/{site_id}/paginas/{slug}/experimentos/{experimento_id}:
+    get:
+      operationId: getExperiment
+      summary: Um experimento de uma página
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: experimento_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: O experimento, com as variantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentoDaPagina'
+        '404':
+          description: Site, página ou experimento inexistente
+  /sites/{site_id}/paginas/{slug}/experimentos/{experimento_id}/estado:
+    post:
+      operationId: changeExperimentState
+      summary: Põe o experimento no ar ou o encerra
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: experimento_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: O experimento no estado pedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentoDaPagina'
+        '404':
+          description: Site, página ou experimento inexistente
+        '409':
+          description: Transição inválida, outro experimento já ativo nesta página, ou encerramento repetido
+            com outra decisão; nada mudou
+        '422':
+          description: Decisão ausente, ou vencedora que não é variante
+      description: rascunho vai para ativo ou encerrado; ativo vai para encerrado. Pedir o estado em que
+        o experimento já está responde 200 sem mudar nada. Ao entrar no ar, o controle `a` é conferido com
+        o texto publicado de agora, e as variantes congelam. Ao encerrar, a decisão é obrigatória.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MudancaDeEstado'
+        required: true
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
@@ -548,6 +682,11 @@ components:
         secoes:
           type: array
           items: { $ref: '#/components/schemas/Secao' }
+        experimento_ativo:
+          allOf:
+          - $ref: '#/components/schemas/ExperimentoAtivo'
+          description: 'O experimento que está no ar nesta página. Ausente quando não há nenhum: aí a página se
+            mostra como foi publicada. Só aparece o experimento no estado `ativo`.'
     RascunhoDaPagina:
       type: object
       description: |-
@@ -642,3 +781,248 @@ components:
             O nome do slot é o que os eventos `funil.cta-clicado` carregam no campo
             `slot`. O texto muda a cada versão; o nome do slot não muda, e é por isso
             que ele serve de identificador e a copy não serve.
+    ExperimentoAtivo:
+      description: O experimento que está no ar nesta página, para quem renderiza sortear o braço.
+      properties:
+        id:
+          format: uuid
+          type: string
+        secao:
+          description: Seção da página cujo slot está em teste.
+          type: string
+        slot:
+          description: Slot da seção cujo texto muda de uma variante para outra.
+          type: string
+        variantes:
+          description: As variantes em ordem de `variante_id`, que é a do sorteio.
+          items:
+            $ref: '#/components/schemas/VarianteDoExperimento'
+          type: array
+      required:
+      - id
+      - secao
+      - slot
+      - variantes
+      type: object
+    VarianteDoExperimento:
+      description: 'Um braço do experimento: a chave curta, o peso no sorteio e o texto do slot.'
+      properties:
+        variante_id:
+          description: Chave curta da variante dentro do experimento. `a` é o controle, o texto que já estava
+            publicado. É o valor que os eventos do funil carregam.
+          pattern: ^[a-z][a-z0-9-]{0,31}$
+          type: string
+        peso:
+          description: Parte dos visitantes que cai nesta variante, em pontos-base. As variantes de um experimento
+            somam 10000 (metade para cada = 5000 e 5000).
+          maximum: 10000
+          minimum: 1
+          type: integer
+        valor:
+          description: O texto do slot nesta variante, congelado quando o experimento sai do rascunho. Não
+            muda nem se a página for publicada de novo.
+          type: string
+      required:
+      - variante_id
+      - peso
+      - valor
+      type: object
+    ExperimentoDaPagina:
+      description: Um experimento de uma página, do jeito que a tela do `admin` o lê.
+      properties:
+        id:
+          format: uuid
+          type: string
+        site_id:
+          format: uuid
+          type: string
+        slug:
+          description: Apelido da página onde o experimento mora.
+          type: string
+        secao:
+          type: string
+        slot:
+          type: string
+        hipotese:
+          type: string
+        metrica_principal:
+          type: string
+        taxa_base:
+          type: number
+        mde:
+          type: number
+        n_por_braco_planejado:
+          description: 'Expostos por braço calculados na criação: duas proporções, alfa 0,05 bicaudal, poder
+            0,8. Braço abaixo disto no horizonte é resultado inconclusivo.'
+          minimum: 1
+          type: integer
+        dias_planejados:
+          type: integer
+        estado:
+          description: 'rascunho vai para ativo ou encerrado; ativo vai para encerrado; encerrado não sai
+            mais. Não há pausa: retomar é criar outro.'
+          enum:
+          - rascunho
+          - ativo
+          - encerrado
+          type: string
+        decisao:
+          anyOf:
+          - enum:
+            - promover
+            - reverter
+            - encerrar
+            type: string
+          - type: 'null'
+          description: Guardada no encerramento. Nula antes dele.
+        vencedora:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: '`variante_id` da vencedora, quando o encerramento aponta uma.'
+        criado_em:
+          format: date-time
+          type: string
+        iniciado_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          description: Quando entrou no ar. Nulo enquanto é rascunho.
+        fim_planejado:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          description: 'iniciado_em mais dias_planejados: o fim da janela em que o resultado se calcula. Nulo
+            enquanto é rascunho.'
+        encerrado_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        variantes:
+          items:
+            $ref: '#/components/schemas/VarianteDoExperimento'
+          type: array
+      required:
+      - id
+      - site_id
+      - slug
+      - secao
+      - slot
+      - hipotese
+      - metrica_principal
+      - taxa_base
+      - mde
+      - n_por_braco_planejado
+      - dias_planejados
+      - estado
+      - decisao
+      - vencedora
+      - criado_em
+      - iniciado_em
+      - fim_planejado
+      - encerrado_em
+      - variantes
+      type: object
+    NovaVariante:
+      description: Uma variante como a tela do `admin` a manda ao criar o experimento.
+      properties:
+        variante_id:
+          description: Chave curta da variante. O controle `a` é obrigatório.
+          pattern: ^[a-z][a-z0-9-]{0,31}$
+          type: string
+        peso:
+          description: Pontos-base; as variantes do experimento somam 10000.
+          maximum: 10000
+          minimum: 1
+          type: integer
+        valor:
+          description: 'O texto do slot nesta variante. No controle `a` pode ficar vazio: ele nasce com o
+            texto publicado do slot, e um texto diferente é recusado.'
+          type: string
+      required:
+      - variante_id
+      - peso
+      type: object
+    NovoExperimento:
+      description: 'O que a tela do `admin` manda para criar um experimento, que nasce em rascunho.
+
+
+        O horizonte vem decidido de antemão: `taxa_base`, `mde` e `dias_planejados`
+
+        entram aqui, e a amostra por braço é calculada pelo `catalogo`.'
+      properties:
+        secao:
+          description: Seção da página, do vocabulário do tipo dela.
+          type: string
+        slot:
+          description: Slot da seção cujo texto vai ser testado.
+          type: string
+        hipotese:
+          description: O que se espera que aconteça, e por quê.
+          minLength: 1
+          type: string
+        metrica_principal:
+          description: 'O passo do funil que decide o experimento, com o nome que a leitura do funil usa (ex.
+            cta_checkout: entrada no checkout por visitante).'
+          maxLength: 100
+          minLength: 1
+          type: string
+        taxa_base:
+          description: Proporção atual da métrica principal, entre 0 e 1 (0,10 = 10%).
+          exclusiveMaximum: 1
+          exclusiveMinimum: 0
+          type: number
+        mde:
+          description: Menor efeito que vale detectar, ABSOLUTO, em pontos de proporção (0,02 = de 10% para
+            12%).
+          exclusiveMaximum: 1
+          exclusiveMinimum: 0
+          type: number
+        dias_planejados:
+          description: Dias corridos de coleta, contados a partir do início.
+          minimum: 1
+          type: integer
+        variantes:
+          description: Pelo menos duas, e o controle `a` entre elas.
+          items:
+            $ref: '#/components/schemas/NovaVariante'
+          minItems: 2
+          type: array
+      required:
+      - secao
+      - slot
+      - hipotese
+      - metrica_principal
+      - taxa_base
+      - mde
+      - dias_planejados
+      - variantes
+      type: object
+    MudancaDeEstado:
+      description: O estado para onde o experimento vai, e no encerramento a decisão tomada.
+      properties:
+        estado:
+          enum:
+          - ativo
+          - encerrado
+          type: string
+        decisao:
+          anyOf:
+          - enum:
+            - promover
+            - reverter
+            - encerrar
+            type: string
+          - type: 'null'
+          description: Obrigatória ao encerrar, e só ao encerrar.
+        vencedora:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: '`variante_id` da vencedora. Obrigatória para promover; só vale ao encerrar.'
+      required:
+      - estado
+      type: object
