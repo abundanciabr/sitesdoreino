@@ -129,6 +129,12 @@ CONFERENCIAS_APPMAX_PENDENTES = {
 MOTIVO_APPMAX_PENDENTES_OK = re.compile(r"[a-z_]{1,60}")
 STATUS_BRUTO_APPMAX_PENDENTES_OK = re.compile(r"[a-z_]{1,40}")
 LIMITE_TENTATIVAS_APPMAX_PENDENTES = 200
+# Orçamento das consultas à Appmax dentro do docker exec de 30s (comando()):
+# um cliente reutilizado (token não se autentica de novo por cartão) e um
+# prazo total, não por cartão — na primeira falha de rede ou ao estourar,
+# os cartões restantes saem como "nao_consultado" em vez de arriscar o
+# comando inteiro (achado da revisão do PR #2228).
+PRAZO_APPMAX_PENDENTES_SEGUNDOS = 20
 APPMAX_AUTH_SANDBOX = "https://auth.sandboxappmax.com.br/oauth2/token"
 APPMAX_API_SANDBOX = "https://api.sandboxappmax.com.br"
 ESTADOS_AVISO_APPMAX = {"pendente", "processado", "falhou", "carta_morta", "nao_medido"}
@@ -1319,15 +1325,26 @@ def medir(operacao, servico, referencia=""):
             raise Falha("formato") from None
         return conferir_medicao(operacao, dados, referencia)
     if operacao == "appmax-pendentes":
+        sandbox_urls = (APPMAX_AUTH_SANDBOX, APPMAX_API_SANDBOX)
         codigo = (
-            "import hashlib,json,re\n"
+            "import hashlib,json,re,time\n"
+            "from django.conf import settings\n"
             "from django.utils import timezone\n"
+            f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
+            f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
+            "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
+            "    print('APPMAX_SANDBOX_REQUIRED')\n"
+            "    raise SystemExit(23)\n"
             "from pagamentos.core.models import ESTADOS_EM_ABERTO, PaymentAttempt\n"
             "from pagamentos.providers.appmax.client import AppmaxClient\n"
             "motivo_ok = re.compile(r'[a-z_]{1,60}')\n"
             "status_ok = re.compile(r'[a-z_]{1,40}')\n"
             "order_id_ok = re.compile(r'[1-9][0-9]*')\n"
+            "campos_conferencia = ('id','cliente','total','sub_total','taxa','parcelas','metodo','status_e_texto')\n"
             "agora = timezone.now()\n"
+            f"prazo_final = time.monotonic() + {PRAZO_APPMAX_PENDENTES_SEGUNDOS}\n"
+            "cliente_appmax = AppmaxClient()\n"
+            "falhou_rede = False\n"
             "def sanitiza_motivo(bruto):\n"
             "    if not isinstance(bruto, str) or not bruto:\n"
             "        return 'vazio'\n"
@@ -1335,18 +1352,25 @@ def medir(operacao, servico, referencia=""):
             "        return bruto\n"
             "    return 'fora_do_padrao'\n"
             "def sanitiza_status(bruto):\n"
-            "    if isinstance(bruto, str) and status_ok.fullmatch(bruto):\n"
-            "        return bruto\n"
+            "    if isinstance(bruto, str):\n"
+            "        normalizado = bruto.strip().lower()\n"
+            "        if status_ok.fullmatch(normalizado):\n"
+            "            return normalizado\n"
             "    return 'fora_do_padrao'\n"
+            "def consulta_fechada(status_bruto, tentativa):\n"
+            "    return {'status_bruto': status_bruto, 'total_paid_centavos': None, 'valor_esperado_centavos': tentativa.effective_amount_cents, 'conferencias': {c: False for c in campos_conferencia}}\n"
             "def consultar(tentativa):\n"
+            "    global falhou_rede\n"
             "    order_id = str(tentativa.external_order_id or '')\n"
             "    if not order_id_ok.fullmatch(order_id):\n"
             "        return None\n"
-            "    campos_falsos = {c: False for c in ('id','cliente','total','sub_total','taxa','parcelas','metodo','status_e_texto')}\n"
+            "    if falhou_rede or time.monotonic() >= prazo_final:\n"
+            "        return consulta_fechada('nao_consultado', tentativa)\n"
             "    try:\n"
-            "        pedido = AppmaxClient().consultar_pedido(int(order_id))\n"
+            "        pedido = cliente_appmax.consultar_pedido(int(order_id))\n"
             "    except Exception:\n"
-            "        return {'status_bruto': 'fora_do_padrao', 'total_paid_centavos': None, 'valor_esperado_centavos': tentativa.effective_amount_cents, 'conferencias': campos_falsos}\n"
+            "        falhou_rede = True\n"
+            "        return consulta_fechada('nao_consultado', tentativa)\n"
             "    if not isinstance(pedido, dict):\n"
             "        pedido = {}\n"
             "    status = pedido.get('status')\n"
@@ -1362,21 +1386,20 @@ def medir(operacao, servico, referencia=""):
             "    total_paid_ok = isinstance(total_paid, int) and not isinstance(total_paid, bool)\n"
             "    base_ok = isinstance(base, int) and not isinstance(base, bool)\n"
             "    taxa_ok = isinstance(taxa, int) and not isinstance(taxa, bool)\n"
-            "    parcelas_ok = isinstance(parcelas, int) and not isinstance(parcelas, bool)\n"
             "    conferencias = {\n"
             "        'id': str(pedido.get('id')) == order_id,\n"
             "        'cliente': cliente_id is not None and str(cliente_id) == str(tentativa.customer_id),\n"
             "        'total': total_paid_ok and total_paid == tentativa.effective_amount_cents,\n"
             "        'sub_total': base_ok and base == tentativa.amount_cents,\n"
             "        'taxa': base_ok and taxa_ok and base + taxa == tentativa.effective_amount_cents,\n"
-            "        'parcelas': parcelas_ok and parcelas == tentativa.installments,\n"
+            "        'parcelas': not isinstance(parcelas, bool) and parcelas == tentativa.installments,\n"
             "        'metodo': metodo_pedido == 'creditcard',\n"
             "        'status_e_texto': isinstance(status, str),\n"
             "    }\n"
             "    return {'status_bruto': sanitiza_status(status), 'total_paid_centavos': total_paid if total_paid_ok else None, 'valor_esperado_centavos': tentativa.effective_amount_cents, 'conferencias': conferencias}\n"
             "nomes_operacao = ('customer', 'order', 'payment')\n"
             "saida = []\n"
-            f"consulta_qs = PaymentAttempt.objects.filter(provider='appmax', state__in=ESTADOS_EM_ABERTO).select_related('intent').prefetch_related('operacoes').order_by('-created_at')[:{LIMITE_TENTATIVAS_APPMAX_PENDENTES}]\n"
+            f"consulta_qs = PaymentAttempt.objects.filter(provider='appmax', platform_site_id={SITE_MESHCRAFT!r}, state__in=ESTADOS_EM_ABERTO).select_related('intent').prefetch_related('operacoes').order_by('created_at')[:{LIMITE_TENTATIVAS_APPMAX_PENDENTES}]\n"
             "for t in consulta_qs:\n"
             "    operacoes = {x: 'not_started' for x in nomes_operacao}\n"
             "    for operacao_registrada in t.operacoes.all():\n"
