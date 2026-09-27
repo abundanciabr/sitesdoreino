@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-202-provisionador-da-evolution-integrado-na-main",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Provisionador da Evolution integrado na main",
+  detalhe: "Estava pendente a integração do provisionador da Evolution, que prepara banco isolado e credenciais antes do Compose. O PR 2075 foi integrado e a tarefa está concluída.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2075 MERGED, mergeCommit dbac56abad (gh pr view, 27/09/2026); fila/eventos/20260925-145439-TAR-716-concluida.json na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260925-015-infra-provisionar-a-evolution-sem-expor-segredos",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
