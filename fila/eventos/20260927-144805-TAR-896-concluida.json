@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-144805-TAR-896-concluida",
+  "tarefa": "TAR-896",
+  "evento": "concluida",
+  "quando": "2026-09-27T14:48:05.144929+00:00",
+  "quem": "agent/ci/appmax-observacao-pre-autorizacao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2268",
+  "verificado_em": "2026-09-27"
+}
