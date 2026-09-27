@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-120029-TAR-872-explicada",
+  "tarefa": "TAR-872",
+  "evento": "explicada",
+  "quando": "2026-09-27T12:00:29.262171+00:00",
+  "quem": "Sessao de despacho ci/appmax-n2-latencia-real, coordenacao 4442b6ad, 27/09/2026",
+  "o_que_e": "A operacao de leitura appmax-inbox-latencia so consegue medir um pedido se alguem ja souber a referencia SHA-256 da chave de idempotencia dele; para Pix ja existe um jeito de descobrir essa referencia sem saber o ID cru, mas para cartao nao existe, entao a latencia do aviso de cartao nunca foi medida de verdade.",
+  "o_que_muda": "Passa a existir um jeito de leitura, sem dado pessoal, de descobrir a referencia de qualquer pedido recente (cartao ou Pix) e medir quanto tempo o aviso da Appmax leva para virar matricula paga; hoje isso so podia ser afirmado por acaso.",
+  "exemplo": "E como conferir se a compra de cartao virou aula liberada rapido ou devagar: hoje so dava para conferir isso por acaso, com um pedido Pix que nao tinha aviso nenhum; com a descoberta, da para escolher um pedido de cartao aprovado de verdade e cronometrar.",
+  "importancia": 55
+}
