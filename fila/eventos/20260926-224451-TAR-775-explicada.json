@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224451-TAR-775-explicada",
+  "tarefa": "TAR-775",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:44:51.738422+00:00",
+  "quem": "sessão do mantenedor de 26/09/2026 sobre o sistema de experimentos",
+  "o_que_e": "Hoje a página de venda mostra o mesmo texto para todo mundo, e não existe jeito de mostrar duas versões e comparar qual vende mais.",
+  "o_que_muda": "Cada visitante passa a cair sempre na mesma versão da página, metade em cada uma, sem guardar nada sobre a pessoa; é a base para medir qual texto converte melhor.",
+  "exemplo": "É como dar a cada pessoa que entra na loja uma ficha com cara ou coroa que não muda quando ela volta amanhã.",
+  "importancia": 70
+}

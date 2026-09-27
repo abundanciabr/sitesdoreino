@@ -45,6 +45,7 @@ que é exatamente a mistura que o contrato proíbe.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import uuid
 from zoneinfo import ZoneInfo
 
@@ -52,6 +53,7 @@ import pytest
 from django.test import Client
 
 from apps.fatos.models import Evento, EventoMorto, Marco
+from apps.fatos.recepcao import GUARDADO, JA_TINHA, receber
 
 pytestmark = pytest.mark.django_db
 
@@ -118,9 +120,9 @@ def operacoes_da_porta() -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def test_o_schema_vivo_tem_as_seis_operacoes():
+def test_o_schema_vivo_tem_as_sete_operacoes():
     """Se este número mudar, o teste de 401 abaixo mudou de escopo junto."""
-    assert len(operacoes_da_porta()) == 6
+    assert len(operacoes_da_porta()) == 7
 
 
 @pytest.mark.parametrize("metodo,caminho", operacoes_da_porta())
@@ -525,3 +527,303 @@ def test_a_lista_de_marcos_exige_as_duas_partes_do_sujeito():
     """Id sozinho é ambíguo, e ambiguidade aqui vira contagem errada de gente."""
     assert pedir("/marcos?sujeito_id=p-1").status_code == 422
     assert pedir("/marcos?sujeito_tipo=pessoa").status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# 6. O funil de vendas (`countFunnel`)
+# ---------------------------------------------------------------------------
+
+FUNIL_PAGINA_VISTA = "funil.pagina-vista"
+FUNIL_SECAO_VISTA = "funil.secao-vista"
+FUNIL_CTA_CLICADO = "funil.cta-clicado"
+FUNIL_LEAD_CAPTURADO = "funil.lead-capturado"
+CHECKOUT_PEDIDO_ATRIBUIDO = "checkout.pedido-atribuido"
+CHECKOUT_PEDIDO_PAGO = "checkout.pedido-pago"
+
+
+def visita(
+    tipo: str, visitor_id: str, quando: dt.datetime, site: str = SITE, **extra
+) -> Evento:
+    return Evento.objects.create(
+        event_id=uuid.uuid4(),
+        tipo=tipo,
+        versao=1,
+        site_id=site,
+        ocorrido_em=quando,
+        dados={"site_id": site, "visitor_id": visitor_id, **extra},
+    )
+
+
+def envelope_pagina_vista(
+    event_id: uuid.UUID, visitor_id: str, quando: dt.datetime, site: str = SITE
+) -> str:
+    return json.dumps(
+        {
+            "event": "funil.pagina-vista",
+            "version": 1,
+            "event_id": str(event_id),
+            "occurred_at": quando.isoformat(),
+            "data": {
+                "site_id": site,
+                "visitor_id": visitor_id,
+                "pagina_slug": "oferta",
+                "pagina_version": 1,
+                "offer_slug": "mentoria",
+            },
+        }
+    )
+
+
+def por_passo(corpo: dict, chave: str = "passos") -> dict[str, int]:
+    return {linha["passo"]: linha["visitantes"] for linha in corpo[chave]}
+
+
+def test_funil_conta_por_site_e_nao_mistura_com_outro_site():
+    visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 2, 10, 0, tzinfo=SP))
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v2",
+        dt.datetime(2026, 9, 2, 10, 0, tzinfo=SP),
+        site=OUTRO_SITE,
+    )
+    visita(
+        FUNIL_CTA_CLICADO,
+        "v1",
+        dt.datetime(2026, 9, 2, 11, 0, tzinfo=SP),
+        secao="oferta",
+        slot="cta_texto",
+        destino="/checkout/mentoria",
+    )
+    visita(
+        FUNIL_CTA_CLICADO,
+        "v1",
+        dt.datetime(2026, 9, 2, 12, 0, tzinfo=SP),
+        secao="cubo",
+        slot="cta_topo",
+        destino="/perguntas",
+    )
+
+    corpo = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}").json()
+
+    passo = por_passo(corpo)
+    assert passo["pagina_vista"] == 1, "a visita do outro site vazou"
+    assert passo["cta_checkout"] == 1, "só o clique com destino /checkout/ conta"
+
+
+def test_funil_visitante_com_duas_visitas_conta_uma_vez():
+    visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP))
+    visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 3, 9, 0, tzinfo=SP))
+
+    corpo = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}").json()
+
+    assert por_passo(corpo)["pagina_vista"] == 1
+    dias = {linha["dia"]: por_passo(linha, "passos") for linha in corpo["por_dia"]}
+    assert dias["2026-09-02"]["pagina_vista"] == 1
+    assert dias["2026-09-03"]["pagina_vista"] == 1
+
+
+def test_funil_duplicata_de_event_id_nao_infla_a_contagem():
+    """A mesma entrega duas vezes: a recepção guarda uma vez, e o funil conta um."""
+    event_id = uuid.uuid4()
+    corpo_bruto = envelope_pagina_vista(
+        event_id, "visitante-duplicado", dt.datetime(2026, 9, 2, 10, 0, tzinfo=SP)
+    )
+
+    primeiro, _ = receber(corpo_bruto)
+    segundo, _ = receber(corpo_bruto)
+
+    assert primeiro == GUARDADO
+    assert segundo == JA_TINHA
+    assert Evento.objects.filter(tipo=FUNIL_PAGINA_VISTA).count() == 1
+
+    corpo = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}").json()
+    assert por_passo(corpo)["pagina_vista"] == 1
+
+
+def test_funil_coleta_distingue_zero_de_sem_coleta():
+    sem_nada = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}").json()
+    assert sem_nada["coleta"] == {"primeiro": None, "ultimo": None}
+    assert all(linha["visitantes"] == 0 for linha in sem_nada["passos"])
+
+    visita(FUNIL_PAGINA_VISTA, "v1", dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP))
+
+    com_coleta = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}").json()
+    assert com_coleta["coleta"]["primeiro"] is not None
+    passo = por_passo(com_coleta)
+    assert passo["pagina_vista"] == 1
+    assert (
+        passo["lead_capturado"] == 0
+    ), "zero com a coleta de pé é medição, não ausência"
+
+
+def test_funil_sem_experimento_nao_traz_variantes():
+    corpo = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}").json()
+    assert corpo["variantes"] is None
+    assert corpo["visitantes_com_bracos_trocados"] is None
+
+
+def test_funil_variante_e_sticky_pela_primeira_visita_e_marca_a_troca():
+    exp = "exp-1"
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v1",
+        dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="a",
+    )
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v1",
+        dt.datetime(2026, 9, 3, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="b",
+    )
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v2",
+        dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="b",
+    )
+
+    corpo = pedir(
+        f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}&experimento_id={exp}&secao=oferta"
+    ).json()
+
+    variantes = {v["variante_id"]: v for v in corpo["variantes"]}
+    assert variantes["a"]["atribuidos"] == 1, "v1 ficou no braço da PRIMEIRA visita"
+    assert variantes["b"]["atribuidos"] == 1, "só v2, que nasceu em b"
+    assert corpo["visitantes_com_bracos_trocados"] == 1
+
+
+def test_funil_convertido_que_nao_foi_exposto_nao_conta():
+    exp = "exp-1"
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v1",
+        dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="a",
+    )
+    visita(
+        FUNIL_CTA_CLICADO,
+        "v1",
+        dt.datetime(2026, 9, 2, 10, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="a",
+        secao="oferta",
+        slot="cta_texto",
+        destino="/checkout/mentoria",
+    )
+
+    corpo = pedir(
+        f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}&experimento_id={exp}&secao=oferta"
+    ).json()
+
+    variante_a = next(v for v in corpo["variantes"] if v["variante_id"] == "a")
+    assert (
+        variante_a["expostos"] == 0
+    ), "v1 nunca teve secao-vista da seção do experimento"
+    assert (
+        variante_a["convertidos"] == 0
+    ), "clicou sem ter sido exposto: não é conversão deste teste"
+
+
+def test_funil_expostos_e_convertidos_contam_pelo_braco_fixado_e_nao_pelo_evento():
+    """Emenda 1 §5: a `secao-vista` chega com o `variante_id` errado, e não muda o braço."""
+    exp = "exp-1"
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v1",
+        dt.datetime(2026, 9, 2, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="a",
+    )
+    visita(
+        FUNIL_SECAO_VISTA,
+        "v1",
+        dt.datetime(2026, 9, 2, 9, 5, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="b",
+        secao="oferta",
+    )
+    visita(
+        FUNIL_CTA_CLICADO,
+        "v1",
+        dt.datetime(2026, 9, 2, 9, 10, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="b",
+        secao="oferta",
+        slot="cta_texto",
+        destino="/checkout/mentoria",
+    )
+
+    corpo = pedir(
+        f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}&experimento_id={exp}&secao=oferta"
+    ).json()
+
+    variante_a = next(v for v in corpo["variantes"] if v["variante_id"] == "a")
+    assert variante_a["expostos"] == 1
+    assert variante_a["convertidos"] == 1
+    assert not any(
+        v["variante_id"] == "b" for v in corpo["variantes"]
+    ), "v1 nunca teve pagina-vista em b: b não tem atribuído nenhum"
+
+
+def test_funil_junta_pedidos_por_visitor_id_dentro_da_janela_de_atribuicao():
+    exp = "exp-1"
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v1",
+        dt.datetime(2026, 9, 5, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="a",
+    )
+    visita(
+        FUNIL_PAGINA_VISTA,
+        "v2",
+        dt.datetime(2026, 9, 5, 9, 0, tzinfo=SP),
+        experimento_id=exp,
+        variante_id="a",
+    )
+    # v1: um pedido ANTES da primeira visita (compra antiga, não é efeito do braço)
+    # e um pedido DEPOIS (esse conta).
+    visita(CHECKOUT_PEDIDO_ATRIBUIDO, "v1", dt.datetime(2026, 9, 4, 10, 0, tzinfo=SP))
+    visita(CHECKOUT_PEDIDO_ATRIBUIDO, "v1", dt.datetime(2026, 9, 6, 10, 0, tzinfo=SP))
+    visita(CHECKOUT_PEDIDO_PAGO, "v1", dt.datetime(2026, 9, 7, 10, 0, tzinfo=SP))
+    # v2: só um pedido ANTES da primeira visita: não deve contar.
+    visita(CHECKOUT_PEDIDO_ATRIBUIDO, "v2", dt.datetime(2026, 9, 3, 10, 0, tzinfo=SP))
+
+    corpo = pedir(
+        f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}&experimento_id={exp}&secao=oferta"
+    ).json()
+
+    variante_a = next(v for v in corpo["variantes"] if v["variante_id"] == "a")
+    assert variante_a["atribuidos"] == 2
+    passo = por_passo(variante_a)
+    assert passo["pedido_atribuido"] == 1, "só v1, e só pelo pedido de DEPOIS da visita"
+    assert passo["pedido_pago"] == 1
+
+
+def test_funil_intervalo_invertido_e_recusado():
+    resposta = pedir("/funil?de=2026-09-30&ate=2026-09-01")
+    assert resposta.status_code == 422
+    assert "invertido" in resposta.json()["detail"]
+
+
+def test_funil_janela_maior_que_o_teto_e_recusada():
+    resposta = pedir("/funil?de=2020-01-01&ate=2026-09-30")
+    assert resposta.status_code == 422
+    assert "pedaços" in resposta.json()["detail"]
+
+
+def test_funil_experimento_sem_secao_e_recusado():
+    resposta = pedir("/funil?de=2026-09-01&ate=2026-09-30&experimento_id=exp-1")
+    assert resposta.status_code == 422
+    assert "juntos" in resposta.json()["detail"]
+
+
+def test_funil_secao_sem_experimento_e_recusada():
+    resposta = pedir("/funil?de=2026-09-01&ate=2026-09-30&secao=oferta")
+    assert resposta.status_code == 422
+    assert "juntos" in resposta.json()["detail"]

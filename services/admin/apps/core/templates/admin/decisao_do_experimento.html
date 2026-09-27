@@ -1,0 +1,119 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A DECISÃO DO EXPERIMENTO (/admin/placar/experimentos/<id>/decisao/, 26/09/2026).
+
+Bloco `comment`, nunca o comentário de uma linha só (armadilhas/087). Zero
+atributo `style=`: toda classe usada abaixo já existe em admin/base.html.
+
+Três formulários, um por gesto, sem script: um botão por gesto não tem como ser
+mal entendido. Promover sem veredito `candidato à promoção` traz a frase de
+confirmação obrigatória no próprio formulário, e o servidor confere de novo.
+{% endcomment %}
+{% block titulo %}Decidir o experimento{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'laboratorio' %}">&larr; Voltar para o laboratório</a>
+  <h1>Decidir o experimento</h1>
+  <p class="subtitulo">
+    Promover põe no ar o texto da variante vencedora. Reverter mantém a página
+    como está. Encerrar termina o teste sem escolher vencedor. Nos três casos o
+    sorteio para, e a decisão não muda depois de gravada.
+  </p>
+
+  {% if recado == "promover" %}
+  <p class="recado"><b>Promovido.</b> O texto da variante está no ar, numa versão nova da página, e o experimento foi encerrado.</p>
+  {% elif recado == "reverter" %}
+  <p class="recado"><b>Revertido.</b> A página continua como estava, e o experimento foi encerrado.</p>
+  {% elif recado == "encerrar" %}
+  <p class="recado"><b>Encerrado.</b> O experimento terminou sem vencedor. A página continua como estava.</p>
+  {% elif recado == "repetido" %}
+  <p class="recado"><b>Nada foi repetido.</b> Este experimento já estava encerrado com esta decisão.</p>
+  {% endif %}
+
+  {% if desfecho %}
+  <p class="recado borda-vermelha">{{ desfecho.frase }}</p>
+  {% endif %}
+
+  {% if sem_catalogo %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui falar com o catálogo.</b> É ele que guarda a página e o
+    experimento, e sem ele nenhum gesto desta tela tem onde ser gravado. Tente de
+    novo em alguns minutos; se continuar, peça a uma sessão que confira a ligação
+    entre a administração e o catálogo.
+  </p>
+
+  {% elif desconhecido %}
+  <p class="aviso borda-vermelha">
+    <b>Este experimento não existe neste site.</b> Confira o endereço, ou volte
+    ao laboratório e abra o experimento por lá.
+  </p>
+
+  {% elif sem_leitura %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler o experimento.</b> O catálogo não respondeu com ele, e
+    nenhum botão aparece para não decidir às cegas. Tente de novo em alguns
+    minutos.
+  </p>
+
+  {% else %}
+  <div class="cartoes espaco-20">
+    <div class="cartao">
+      <div class="rotulo">Onde</div>
+      <div class="valor">{{ experimento.pagina }} &middot; {{ experimento.secao }}.{{ experimento.slot }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Estado</div>
+      <div class="valor">{{ experimento.estado }}</div>
+    </div>
+    {% if medindo %}
+    <div class="cartao">
+      <div class="rotulo">Veredito do resultado</div>
+      <div class="valor">{{ veredito|default:"ainda sem cálculo" }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if encerrado %}
+  <p class="recado">
+    <b>Encerrado com a decisão {{ decisao_gravada|default:"sem decisão" }}</b>{% if experimento.variante_vencedora %}, variante {{ experimento.variante_vencedora }}{% endif %}.
+    Não há mais o que decidir aqui.
+  </p>
+
+  {% else %}
+  {% if medindo %}
+  {% for variante in promoviveis %}
+  <form method="post" action="{% url 'decidir_experimento' experimento_id %}" class="espaco-20">
+    {% csrf_token %}
+    <input type="hidden" name="decisao" value="promover">
+    <input type="hidden" name="variante" value="{{ variante.variante_id }}">
+    <p class="nota">Texto da variante {{ variante.variante_id }}: {{ variante.valor }}</p>
+    {% if veredito != candidato %}
+    <p>
+      <label>
+        <input type="checkbox" name="confirmo_inconclusivo" value="sim" required>
+        Sei que o resultado não é conclusivo e quero pôr a variante {{ variante.variante_id }} no ar assim mesmo.
+      </label>
+    </p>
+    {% endif %}
+    <button type="submit">Promover {{ variante.variante_id }}</button>
+  </form>
+  {% endfor %}
+
+  <form method="post" action="{% url 'decidir_experimento' experimento_id %}" class="espaco-20">
+    {% csrf_token %}
+    <input type="hidden" name="decisao" value="reverter">
+    <button type="submit">Reverter</button>
+    <span class="nota">Mantém a página como está e encerra o experimento.</span>
+  </form>
+  {% endif %}
+
+  <form method="post" action="{% url 'decidir_experimento' experimento_id %}" class="espaco-20">
+    {% csrf_token %}
+    <input type="hidden" name="decisao" value="encerrar">
+    <button type="submit">Encerrar</button>
+    <span class="nota">Termina sem escolher vencedor. A página continua como está.</span>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

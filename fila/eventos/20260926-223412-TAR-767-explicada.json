@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-223412-TAR-767-explicada",
+  "tarefa": "TAR-767",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:34:12.239295+00:00",
+  "quem": "Frente F3 do sistema de experimentos, sessao de 26/09/2026",
+  "o_que_e": "Hoje o site so sabe que alguem abriu a pagina de oferta. Nao sabe ate onde a pessoa desceu nem se ela clicou no botao de comprar.",
+  "o_que_muda": "Cada secao que aparece na tela e cada clique no botao viram um fato medido, ligado a versao da pagina que a pessoa viu.",
+  "exemplo": "Como uma loja que conta nao so quem entrou pela porta, mas ate qual corredor cada pessoa chegou e se pegou o produto.",
+  "importancia": 70
+}

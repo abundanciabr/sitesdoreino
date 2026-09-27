@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-000115-TAR-791-explicada",
+  "tarefa": "TAR-791",
+  "evento": "explicada",
+  "quando": "2026-09-27T00:01:15.955072+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O manual de experimentação existe no repositório, mas /docs/plataforma-experimentacao-e-aprendizado-de-conversao responde 404 e a rota de retomada do sistema de experimentos ainda não está no repositório.",
+  "o_que_muda": "Publica o manual no site com uma migração de dados idempotente que cobre as duas causas prováveis do 404, reconcilia o capítulo 21 com a Emenda 1 do desenho comum das frentes de experimentos, e registra no repositório a rota de retomada e a decisão do mantenedor.",
+  "exemplo": "Hoje um visitante que abre /docs/plataforma-experimentacao-e-aprendizado-de-conversao recebe 404 sem explicação; depois desta tarefa a página abre normalmente com o manual completo.",
+  "importancia": 55
+}
