@@ -441,6 +441,8 @@ class MundoFalso:
     # -- as saídas plausíveis ----------------------------------------------
 
     def _stdout(self, linha: str) -> str:
+        if linha.endswith("make --version"):
+            return "GNU Make 4.4.1"
         if "gh pr list" in linha:
             return self.saidas.get("gh_pr_list", "[]")
         if "gh pr create" in linha:
@@ -649,7 +651,7 @@ def test_baseline_vermelho_e_FAIL_exit_1_e_manda_parar_e_reportar(codigo_do_make
     """
     mundo = MundoFalso(
         plano_de_teste(),
-        falhar={"rev-parse --verify": 1, "/usr/bin/make": codigo_do_make},
+        falhar={"rev-parse --verify": 1, "/usr/bin/make -C": codigo_do_make},
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
@@ -663,7 +665,7 @@ def test_baseline_vermelho_e_FAIL_exit_1_e_manda_parar_e_reportar(codigo_do_make
 def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL(sentinela):
     """Não conseguir medir nunca pode chegar disfarçado de reprovação."""
     mundo = MundoFalso(
-        plano_de_teste(), falhar={"rev-parse --verify": 1, "/usr/bin/make": sentinela}
+        plano_de_teste(), falhar={"rev-parse --verify": 1, "/usr/bin/make -C": sentinela}
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
