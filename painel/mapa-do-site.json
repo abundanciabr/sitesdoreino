@@ -1151,6 +1151,27 @@
       "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita."
     },
     {
+      "celula": "gamificacao",
+      "rota": "interno/reconhecimentos",
+      "endereco": "/conquistas/interno/reconhecimentos",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O rastro dos reconhecimentos",
+      "descricao": "Onde a equipe vê cada medalha e marco concedido com a regra do dia (versão e frase do critério), a referência da origem e a história inteira, e retira, devolve ou corrige a origem, sempre com motivo. Retirar estorna o XP que a conquista pagou.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita. Ninguém mexe na própria conquista, nem sendo da equipe. Nada se apaga: cada gesto é uma linha nova da história, e o banco recusa editar ou apagar essas linhas."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno/reconhecimentos/gesto",
+      "endereco": "/conquistas/interno/reconhecimentos/gesto",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Retirar, devolver ou corrigir uma conquista",
+      "descricao": "Os gestos da equipe sobre uma conquista já concedida. Não é uma página: quem clica volta para o rastro com a resposta.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita."
+    },
+    {
       "celula": "sugestoes",
       "rota": "",
       "endereco": "/forms/sugestoes/",

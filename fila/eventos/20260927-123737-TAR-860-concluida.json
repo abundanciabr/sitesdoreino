@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-123737-TAR-860-concluida",
+  "tarefa": "TAR-860",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:37:37.085229+00:00",
+  "quem": "agent/ci/guarda-do-make-impostor",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2231",
+  "verificado_em": "2026-09-27"
+}

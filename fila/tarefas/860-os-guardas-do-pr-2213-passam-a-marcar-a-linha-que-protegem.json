@@ -1,0 +1,19 @@
+{
+  "arquivo": "860-os-guardas-do-pr-2213-passam-a-marcar-a-linha-que-protegem",
+  "id": "TAR-860",
+  "titulo": "Os guardas do PR 2213 passam a marcar a linha que protegem",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado: os dois testes-guarda do make impostor declaram # guarda: e ci/provar_guardas.py os prova por mutacao",
+  "despacho": "Marque os dois testes-guarda criados pelo PR 2213 (make impostor,\narmadilhas/529) com o comentario `# guarda: <arquivo>:<linha>` apontando a\nlinha real que cada um protege:\n\n1. ci/tests/test_exit_do_make.py::test_so_o_gnu_make_conta_como_make protege\n   ci/ci.py, funcao e_gnu_make, na instrucao que decide pelo prefixo \"GNU\n   Make\".\n2. ci/tests/test_sessao_persistente.py::test_make_que_nao_e_gnu_para_como_instrumento_sem_culpar_a_base\n   protege ci/sessao.py, a linha `if not versao.stdout.startswith(\"GNU\n   Make\"):` (e o `raise ErroDeSessao` logo abaixo, se fizer sentido).\n\nDepois rode `python ci/provar_guardas.py <arquivo>` nos dois arquivos de\nteste: cada guarda tem que REPROVAR quando a linha protegida e sabotada e\nvoltar ao verde quando a sabotagem e desfeita. So FAIL do teste prova\nmutacao; ERROR e falha do instrumento. Nunca skip/xfail, nunca afrouxar\nasercao. Alvos permitidos: os dois arquivos de teste acima. ci/ci.py e\nci/sessao.py sao SOMENTE LEITURA.",
+  "origem": "pedido do mantenedor de 27/09/2026 na sessao: abrir frentes da retomada do make impostor (secao 8, provador)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

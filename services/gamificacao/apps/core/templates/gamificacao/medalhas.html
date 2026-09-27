@@ -29,12 +29,16 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
   </section>
 
   {% for linha in linhas %}
-    <section class="medalha{% if linha.concessao %} conquistada{% endif %}">
+    <section class="medalha{% if linha.concessao and not linha.retirada %} conquistada{% endif %}">
       <h2>{{ linha.medalha.nome }}</h2>
       {% if linha.medalha.descricao %}<p class="passo">{{ linha.medalha.descricao }}</p>{% endif %}
       <p class="criterio"><strong>Como ganhar:</strong> {{ linha.criterio }}</p>
-      {% if linha.concessao %}
+      {% if linha.retirada %}
+        <p class="selo">Retirada pela equipe em {{ linha.retirada.registrado_em|date:"d/m/Y" }}. Motivo: {{ linha.retirada.motivo }}</p>
+        <p class="miudo">Você a conquistou em {{ linha.concessao.concedida_em|date:"d/m/Y" }}, e isso continua na sua história. Se você discorda, fale com a equipe: só ela devolve.</p>
+      {% elif linha.concessao %}
         <p class="selo">Conquistada em {{ linha.concessao.concedida_em|date:"d/m/Y" }}.</p>
+        {% if linha.concessao.criterio_versao %}<p class="miudo">Concedida pela regra da versão {{ linha.concessao.criterio_versao }}: {{ linha.concessao.criterio_em_texto }}</p>{% endif %}
       {% elif linha.progresso %}
         <p class="selo">Seu progresso: {{ linha.progresso.0 }} de {{ linha.progresso.1 }}.</p>
       {% endif %}
