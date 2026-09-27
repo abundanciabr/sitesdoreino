@@ -1,0 +1,22 @@
+{
+  "arquivo": "758-emissor-appmax-registra-reversao-confirmada-apos-consulta-au",
+  "id": "TAR-758",
+  "titulo": "Emissor Appmax registra reversão confirmada após consulta autenticada",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-749",
+    "TAR-755"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Focal PostgreSQL, prova integrada privada, Black, mypy, suíte pagamentos e guardas PASS FAIL PASS; publicação do provedor após contrato TAR-755.",
+  "despacho": "CELULA: pagamentos\nTAREFA: emissor Appmax de reversão confirmada\nMODELO_RECOMENDADO: gpt-6-luna\nESFORCO_RECOMENDADO: high\n\nMandato-do-mantenedor: Autorizar o contrato e a implementação descritos services/pagamentos/pagamentos/supervisao.py services/pagamentos/tests/test_supervisao_appmax.py ; origem: sessão de 26/09/2026.\n\nDepende-de: TAR-749 diagnóstico posterior a aprovação; TAR-755 contrato pagamento.reversao_confirmada.v2.\n\nCONTEXTO\n\nO diagnóstico privado da TAR-749 já consulta o pedido Appmax com autenticação e valida a identidade local. O contrato da TAR-755 define o envelope v2 sem valor monetário. Esta tarefa é exclusivamente o emissor de pagamentos entre essas duas etapas e o consumidor posterior em alunos.\n\nOBJETIVO\n\nDepois do GET autenticado confirmar a reversão, registrar uma única linha na outbox para pagamento.reversao_confirmada v2. O payload contém somente platform_site_id, provider, provider_reference_id e motivo. O motivo é estorno para estornado e contestacao para chargeback_em_tratativa, chargeback_em_disputa ou chargeback_perdido.\n\nESCOPO INCLUÍDO\n\n- Reaproveitar a consulta autenticada existente e sua validação exata de app, instalação, site, referência, cliente, método, parcelas e valores originais.\n- Gravar a emissão atomicamente com o aviso e usar bloqueio PostgreSQL da tentativa para deduplicar avisos concorrentes.\n- Conservar o estado financeiro aprovado e não chamar o ledger de refunded.\n- Manter a pendência quando a consulta falhar, a identidade divergir, o estado for desconhecido ou o status for recusado_por_risco.\n- Testar os quatro estados emissores, os estados sem emissão, divergências locais e do GET, repetição, concorrência e rollback da outbox.\n\nNÃO OBJETIVOS\n\n- Não alterar contratos, consumidor de alunos, ledger, modelos, migrations, cliente Appmax ou configuração.\n- Não implementar varredura periódica de approved.\n- Não executar compra, estorno, refund, POST financeiro ou ativação de cartão.\n- Não registrar amount_cents, resposta bruta, PII, URL, recibo privado ou valor devolvido.\n\nCRITÉRIOS DE ACEITE\n\n1. O GET autenticado confirma identidade exata antes da emissão.\n2. Cada estado permitido emite o envelope v2 correto, sem amount_cents e sem transição financeira.\n3. Dois avisos concorrentes para o mesmo site, provedor e referência geram um evento.\n4. Falha ao gravar a outbox desfaz também o fechamento do aviso.\n5. Estados sem reversão confirmada conservam a segurança e não emitem.\n6. A prova focal PostgreSQL, Black, mypy e a suíte de pagamentos passam. Guardas seguem a fila pesada e serão medidos pela sessão responsável.\n\nEVIDÊNCIAS\n\nFocal PostgreSQL com 26 casos passando, Black, mypy focal, diff check e prova integrada privada do emissor e consumidor. A validação completa e ci/pr.py aguardam a sequência da fila e não fazem parte desta retomada imediata.\n\nLIMITES\n\nO código já existente na bancada pertence a esta tarefa. Preserve os arquivos e provas ao abrir o despacho. Não reexecute operações financeiras. A publicação deve ocorrer somente depois de TAR-755, antes da entrega do consumidor.",
+  "origem": "TAR-755 contrato Appmax reversão confirmada v2",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

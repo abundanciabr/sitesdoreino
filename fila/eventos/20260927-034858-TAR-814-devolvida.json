@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260927-034858-TAR-814-devolvida",
+  "tarefa": "TAR-814",
+  "evento": "devolvida",
+  "quando": "2026-09-27T03:48:58.682411+00:00",
+  "quem": "despacho-checkout-tela-cartao-tres-defeitos",
+  "detalhe": "Mandato chegou: o mantenedor autorizou services/checkout/ para a TAR-814 na sessão Claude Code de 27/09/2026 00h35 BRT. A tarefa volta à fila para ser pega de novo e executada nesta bancada."
+}

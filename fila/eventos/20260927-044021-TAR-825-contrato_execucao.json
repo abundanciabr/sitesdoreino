@@ -1,0 +1,69 @@
+{
+  "arquivo": "20260927-044021-TAR-825-contrato_execucao",
+  "tarefa": "TAR-825",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T04:40:21.792768+00:00",
+  "quem": "agent/forum/comunidade-coordenacao",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 1 (RETOMADA-COMUNIDADE.md), frente C4: o ciclo do desafio em cursos provado com dados de teste",
+    "versao": 1,
+    "objetivo": "Percorrer com dados de teste o ciclo mapa, desafio em destaque, envio 1, plantão da professora, laudo devolvido com data, reenvio numerado, laudo aberto, porta seguinte e evento aula.concluida.v1 uma vez, e garantir que cada estado da tela diz ao membro o que aconteceu e o que fazer, corrigindo lacunas pequenas dentro dos alvos e registrando o resto como descoberta.",
+    "entregaveis": [
+      "services/cursos/tests/test_ciclo_do_desafio_da_comunidade.py executando o roteiro inteiro com PostgreSQL (ou Playwright no molde do quiz), com a saída colada no PR",
+      "Correções pequenas de texto e estado nos templates e views alvo, cada uma com teste vermelho para verde",
+      "Descobertas classe C ou E registradas na fila para toda lacuna que exija mudança de comportamento, com arquivo e linha"
+    ],
+    "escopo_incluido": [
+      "services/cursos/apps/core/views.py",
+      "services/cursos/apps/core/templates/cursos/aula.html",
+      "services/cursos/apps/core/templates/cursos/laudo.html",
+      "services/cursos/apps/core/templates/cursos/plantao_fila.html",
+      "services/cursos/apps/core/templates/cursos/plantao_ficha.html",
+      "services/cursos/apps/core/templates/cursos/mapa.html",
+      "services/cursos/tests/test_ciclo_do_desafio_da_comunidade.py"
+    ],
+    "nao_objetivos": [
+      "Modelos de conteúdo, apps/cursos/models.py, AulaAvulsa, catálogo novo de desafios",
+      "Contratos de evento, config/urls.py, revisão por pares (Fase 4)",
+      "Reescrever blocos inteiros de aula.html ou views.py (outra sessão tem alterações não commitadas nesses arquivos)",
+      "Qualquer arquivo fora de services/cursos/**"
+    ],
+    "restricoes": [
+      "Diagnóstico com prova: mudança de comportamento não é desta tarefa; vira descoberta classe E e volta à sessão responsável",
+      "Nenhuma palavra reprovado em texto de aluno (INV-CUR-L2); texto sem travessão",
+      "PostgreSQL próprio (porta 55463) e venv em caminho curto; baseline da suíte antes da primeira edição",
+      "Diff mínimo; git fetch antes de editar e conferência de que origin/main não recebeu PR nos mesmos arquivos"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft usando docs/comunidade como especificação",
+      "Decisão 4 assumida: só CURSOS_PROFESSORES assina laudo",
+      "PLANO-CELULA-CURSOS §4, §5, §8: envio numerado, laudo por critérios, decisão aberto, aberto_com_ajuste ou devolvido com data; não existe reprovado"
+    ],
+    "etapas": [
+      "Abrir bancada, subir PostgreSQL, rodar a suíte inteira de cursos como baseline",
+      "Escrever o roteiro como teste de integração e rodá-lo; anotar cada passo que falha ou fica mudo",
+      "Corrigir dentro dos alvos o que é texto ou estado de tela, vermelho para verde",
+      "Registrar descobertas classe C ou E na fila com arquivo e linha",
+      "Suíte inteira, black, travessão, PR com --tarefa TAR-825"
+    ],
+    "criterios_entrada": [
+      "TAR-825 integrada na main; despacho aberto com model sonnet (brief sonnet medium)",
+      "Nenhuma reserva ativa de outra sessão sobre os alvos"
+    ],
+    "criterios_aceite": [
+      "Roteiro inteiro verde com saída colada, incluindo o envio 2 ao lado do envio 1 e aula.concluida.v1 emitido uma vez pelo outbox",
+      "Cada um dos estados trancada, disponivel, em_producao, enviada (relógio e estouro), devolvida (com data), concluida, link inválido e alunos fora do ar tem frase própria na tela, provada por teste ou registrada como descoberta",
+      "Suíte cursos inteira verde com PostgreSQL; black --check e travessao --listar limpos; diff dentro dos alvos",
+      "PR MERGED; deploy de cursos verde no SHA do merge"
+    ],
+    "evidencias_exigidas": [
+      "Saída do roteiro e da suíte inteira com comando e banco",
+      "Saída vermelha e verde de cada correção",
+      "Lista das descobertas registradas com id do evento na fila",
+      "git diff --name-only origin/main...HEAD; URL do PR; estado MERGED; run de deploy"
+    ],
+    "condicao_encerramento": "O ciclo do desafio está provado de ponta a ponta por teste integrado na main, cada estado fala com o membro ou tem descoberta registrada, e o deploy de cursos está verde no SHA do merge.",
+    "limites_autonomia": "Só texto e estado de tela dentro dos alvos; qualquer mudança de modelo, evento, regra ou rota é descoberta classe E e bloqueio; não pergunta ao mantenedor; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega. Para operar: garantir a professora em CURSOS_PROFESSORES na VPS (env, Lista A)."
+  }
+}

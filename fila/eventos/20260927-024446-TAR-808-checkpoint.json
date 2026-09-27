@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260927-024446-TAR-808-checkpoint",
+  "tarefa": "TAR-808",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T02:44:46.758151+00:00",
+  "quem": "agent/e2e/appmax-sandbox-tela",
+  "plano": "N1 etapa 3 de 5: roteiro e workflow construídos",
+  "ultimo_avanco": "cartão sandbox medido ligado (appmax-card-enabled true, 02:13 UTC); e2e/appmax_sandbox.js com auto-teste 45 PASS e 8 guardas provadas por sabotagem; workflow appmax-sandbox-tela.yml; sondas locais: 0010 aprovado e pago, 0028 pending, 0002 0036 0044 9999 devolvem HTTP 500 da nossa API",
+  "proxima_acao": "abrir o PR com ci/pr.py, integrar e disparar gh workflow run appmax-sandbox-tela.yml --ref main",
+  "verificacoes": [
+    "node e2e/appmax_sandbox.js --etapa=auto-teste"
+  ]
+}

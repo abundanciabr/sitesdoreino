@@ -12,6 +12,7 @@ function cartaoIsland() {
     ip: "",
     carregandoParcelas: false,
     enviando: false,
+    emAnalise: false,
     erro: "",
 
     async init() {
@@ -42,6 +43,8 @@ function cartaoIsland() {
       }
       if (this.status === "aguardando_pagamento") {
         setTimeout(() => this.pollSemTelaTravada(), 3000);
+      } else {
+        this.emAnalise = false;
       }
     },
 
@@ -103,7 +106,7 @@ function cartaoIsland() {
         if (resposta.payment.status === "rejected") {
           this.erro = "Cartão recusado. Confira os dados ou tente outro cartão.";
         } else {
-          this.erro = "Pagamento em análise. A confirmação aparece aqui quando o servidor receber o aviso.";
+          this.emAnalise = this.status === "aguardando_pagamento";
           await this.pollSemTelaTravada();
         }
       } catch (e) {
@@ -114,6 +117,9 @@ function cartaoIsland() {
     },
 
     statusLabel() {
+      if (this.emAnalise) {
+        return "Pagamento em análise. Não é preciso pagar de novo. A confirmação aparece aqui assim que a análise terminar.";
+      }
       return (
         {
           carregando: "Consultando o pedido...",
@@ -127,6 +133,7 @@ function cartaoIsland() {
     },
 
     podeTentar() {
+      if (this.emAnalise) return false;
       return this.status === "aguardando_pagamento" || this.status === "recusado";
     },
 
