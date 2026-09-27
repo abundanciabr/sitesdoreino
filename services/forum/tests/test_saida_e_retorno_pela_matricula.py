@@ -78,7 +78,9 @@ def dublar(monkeypatch, *, sessao=None, categoria=None, alunos_fora_do_ar=False)
     monkeypatch.setattr(httpx.Client, "get", falso_get)
 
 
-def como(monkeypatch, pessoa: Pessoa, categoria: str = "aluno", *, alunos_fora_do_ar=False):
+def como(
+    monkeypatch, pessoa: Pessoa, categoria: str = "aluno", *, alunos_fora_do_ar=False
+):
     dublar(
         monkeypatch,
         sessao=sessao_de(pessoa),
@@ -149,7 +151,9 @@ def tentar_escrever(client: Client, grupo: Area, **dados):
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("estado_fechado", ["pausado", "ex_aluno", "reembolsado", "cadastrado"])
+@pytest.mark.parametrize(
+    "estado_fechado", ["pausado", "ex_aluno", "reembolsado", "cadastrado"]
+)
 def test_matricula_suspensa_ou_encerrada_fecha_o_grupo_e_reativar_reabre_sem_duplicar(
     client, env, monkeypatch, grupo, ana, bia, professora, estado_fechado
 ):
@@ -182,8 +186,7 @@ def test_matricula_suspensa_ou_encerrada_fecha_o_grupo_e_reativar_reabre_sem_dup
     assert pedir(client, "topico", topico.pk).status_code == 404
     assert grupo.nome not in pedir(client, "home").content.decode()
     assert (
-        "Como exporto o rig"
-        not in pedir(client, "buscar", q="dragão").content.decode()
+        "Como exporto o rig" not in pedir(client, "buscar", q="dragão").content.decode()
     )
     comunidade_fechada = pedir(client, "comunidade").content.decode()
     assert grupo.nome not in comunidade_fechada
@@ -232,8 +235,7 @@ def test_alunos_fora_do_ar_fecha_o_grupo_inteiro(
     assert pedir(client, "topico", topico.pk).status_code == 404
     assert grupo.nome not in pedir(client, "home").content.decode()
     assert (
-        "Como exporto o rig"
-        not in pedir(client, "buscar", q="dragão").content.decode()
+        "Como exporto o rig" not in pedir(client, "buscar", q="dragão").content.decode()
     )
     comunidade = pedir(client, "comunidade").content.decode()
     assert grupo.nome not in comunidade
