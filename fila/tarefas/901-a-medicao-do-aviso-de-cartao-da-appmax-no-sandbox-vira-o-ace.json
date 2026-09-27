@@ -6,9 +6,7 @@
     "ci",
     "painel"
   ],
-  "depende_de": [
-    "TAR-872"
-  ],
+  "depende_de": [],
   "cria": [],
   "move": [
     "manutencao"
