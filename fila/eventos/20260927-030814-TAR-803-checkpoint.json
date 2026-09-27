@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260927-030814-TAR-803-checkpoint",
+  "tarefa": "TAR-803",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T03:08:14.171518+00:00",
+  "quem": "agent/e2e/sonda-pix-publica",
+  "plano": "N7 etapa 3 de 3: PR 2161 aberto pelo rito; sessão encerrada pelo mantenedor",
+  "ultimo_avanco": "sonda e workflow no ramo (1d5f0328); PR 2161 aberto; ci/pr.py --continuar em curso embarcando recibo e eventos",
+  "proxima_acao": "na bancada wt-e2e-sonda-pix-publica: rerodar o mesmo python ci/pr.py ... --tarefa TAR-803 --continuar (argumentos no corpo do PR), commitar o registro 20260927-022 citando o PR 2161, gh pr ready 2161, python ci/esperar.py --checks 2161 --so-desfecho; após o pouso, gh workflow run sonda-pix-publica.yml para o run público antes",
+  "verificacoes": [
+    "gh pr view 2161 --json state,isDraft,headRefOid"
+  ]
+}
