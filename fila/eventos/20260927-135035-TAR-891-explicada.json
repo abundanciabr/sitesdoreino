@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-135035-TAR-891-explicada",
+  "tarefa": "TAR-891",
+  "evento": "explicada",
+  "quando": "2026-09-27T13:50:35.077460+00:00",
+  "quem": "sessão 4442b6ad, obra Appmax rodada 3, medição de 27/09/2026",
+  "o_que_e": "A pista que junta os pedidos prontos ao site atende quem ficar pronto primeiro. Um pedido cujas provas demoram oito minutos nunca chega a vez, porque a cada seis minutos um pedido rápido entra antes e obriga o lento a refazer as provas.",
+  "o_que_muda": "O conserto do cartão recusado e o contrato do pagamento, que têm prazo, deixam de ficar parados horas na fila mesmo prontos.",
+  "exemplo": "É a fila do caixa em que quem tem um item só sempre passa na frente de quem tem o carrinho cheio: o carrinho cheio nunca é atendido. Depois de duas vezes, o carrinho cheio passa primeiro.",
+  "importancia": 85
+}

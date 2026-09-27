@@ -13,6 +13,7 @@ import re
 import shutil
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -1525,6 +1526,10 @@ def checks_obrigatorios_verdes(pr: dict[str, Any]) -> bool:
         ],
     )
     return all(r.estado is Estado.PASS for r in checar_checks(so_obrigatorios))
+
+
+BASES_NOVAS_ATE_A_PRIORIDADE = 2
+TETO_DA_PRIORIDADE = timedelta(minutes=20)
 
 
 def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
