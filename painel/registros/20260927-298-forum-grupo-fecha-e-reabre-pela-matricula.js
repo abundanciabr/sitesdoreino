@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-298-forum-grupo-fecha-e-reabre-pela-matricula",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "forum: grupo fecha e reabre pela matricula",
+  detalhe: "Teste de integracao com PostgreSQL prova que a matricula fecha e reabre o grupo, sem duplicar vinculo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2284. Validação local: árvore 7e721d0a1f2fc8dc0d0a6e9e83ed4c46891dd9f6; commit 9529006672b917675b81e15b9f8be956ec982a5c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-912",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
