@@ -32,6 +32,12 @@ rotas de `apps/core/moderacao.py`.
       <select id="visibilidade" name="visibilidade">
         <option value="alunos" {% if area.visibilidade == "alunos" %}selected{% endif %}>Privada: só quem está matriculado</option>
         <option value="publica" {% if area.visibilidade == "publica" %}selected{% endif %}>Aberta: qualquer pessoa da internet lê</option>
+        {% comment %}
+        O grupo de prática só se oferece aqui para quem JÁ é grupo: sem a opção
+        marcada, salvar um grupo por esta caixa o transformaria em área de todo
+        aluno. Grupo novo nasce na capa, pela caixa de criar.
+        {% endcomment %}
+        {% if area.visibilidade == "turma" %}<option value="turma" selected>Grupo de prática: só os membros e a escola</option>{% endif %}
       </select>
       <label for="quem_escreve">Quem escreve (hoje: {{ area.get_quem_escreve_display }})</label>
       <select id="quem_escreve" name="quem_escreve">
@@ -39,6 +45,9 @@ rotas de `apps/core/moderacao.py`.
         <option value="equipe" {% if area.quem_escreve == "equipe" %}selected{% endif %}>Só a escola</option>
         <option value="cadastrado" {% if area.quem_escreve == "cadastrado" %}selected{% endif %}>Qualquer pessoa com login</option>
       </select>
+      {% if area.visibilidade == "turma" %}
+        {% include "forum/_campos_do_grupo.html" with curso_id=area.curso_id responsavel_id=area.responsavel_id vagas=area.vagas %}
+      {% endif %}
       <p class="sub" style="margin:10px 0 0">
         Área aberta ao mundo é sempre só a escola falando. É a regra que protege
         os alunos menores de idade, e o banco a recusa se as duas escolhas não
@@ -48,6 +57,9 @@ rotas de `apps/core/moderacao.py`.
     </form>
 
     <div class="linha-de-botoes">
+      {% if area.visibilidade == "turma" %}
+        <a class="botao" href="{% url 'membros_do_grupo' area.slug %}">Membros do grupo</a>
+      {% endif %}
       {% if area.ativa %}
         <form method="post" action="{% url 'moderar_area' area.slug %}">
           {% csrf_token %}
@@ -143,10 +155,27 @@ quem está matriculado escreve" são recusas diferentes, e um formulário que
 some em silêncio faz a pessoa achar que o site quebrou.
 {% endcomment %}
 {% if pode_escrever %}
-  <form class="cartao escrever" method="post" action="{% url 'novo_topico' area.slug %}">
+  <form class="cartao escrever" id="abrir" method="post" action="{% url 'novo_topico' area.slug %}">
     {% csrf_token %}
     <div class="cabeca">{% include "forum/_mascote.html" %}<h2>Abrir uma conversa</h2></div>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    {% comment %}
+    O MOLDE DE PEDIDO DE AJUDA (TAR-824). É orientação, não formulário novo: o
+    pedido continua sendo uma conversa comum, e a resposta que resolve é
+    marcada pelo próprio autor (`moderacao.ACOES_DO_AUTOR_DA_PERGUNTA`).
+    {% endcomment %}
+    {% if area.visibilidade == "turma" %}
+      <div class="recado">
+        <strong>Como pedir ajuda ao grupo</strong>
+        <ul>
+          <li><strong>O que precisa ser entregue:</strong> diga qual é o desafio, o que você já fez e onde travou. Um link do seu trabalho ajuda quem vai responder.</li>
+          <li><strong>Quem pode responder:</strong> qualquer colega do grupo e a equipe da escola.</li>
+          <li><strong>Como será aceito:</strong> quando uma resposta resolver, você mesmo marca essa resposta como a que resolveu.</li>
+          <li><strong>O que ganha quem ajuda:</strong> a ajuda aceita conta na gamificação de quem respondeu, e as medalhas aparecem em <a href="/conquistas/">Conquistas</a>.</li>
+        </ul>
+        <p>Para se apresentar, conte quem você é e o que está construindo.</p>
+      </div>
+    {% endif %}
     <label for="titulo">Sua pergunta em uma linha</label>
     <input id="titulo" name="titulo" maxlength="180" required
            value="{{ titulo_digitado }}"

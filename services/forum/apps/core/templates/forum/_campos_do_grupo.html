@@ -1,0 +1,18 @@
+{% comment %}
+Os três campos do GRUPO DE PRÁTICA (TAR-824), iguais na caixa de criar área
+(capa) e na de editar um grupo (página dele). Uma peça só, porque duas cópias
+do mesmo formulário divergem, e a que esquecesse um campo faria o salvar
+recusar sem a pessoa entender por quê. Quem confere é
+`moderacao._ler_o_grupo`, e os campos só valem quando "quem enxerga" é grupo.
+{% endcomment %}
+<p class="sub" style="margin:10px 0 0">Os três campos abaixo só valem para grupo de prática.</p>
+<label for="curso_id">Curso do desafio atual (o código que vem depois de /cursos/ no endereço do curso)</label>
+<input id="curso_id" name="curso_id" maxlength="64" value="{{ curso_id|default:'' }}" placeholder="Ex.: modelagem-1">
+<label for="responsavel">Responsável pelo grupo</label>
+<select id="responsavel" name="responsavel">
+  <option value="">Escolha alguém da escola</option>
+  {% for pessoa in responsaveis %}<option value="{{ pessoa.pk }}"{% if pessoa.pk == responsavel_id %} selected{% endif %}>{{ pessoa.nome_exibido|default:"Pessoa sem nome de exibição" }}</option>{% endfor %}
+</select>
+{% if not responsaveis %}<p class="sub" style="margin:6px 0 0">Ninguém da escola entrou no fórum ainda, então não há quem escolher. Peça ao professor que entre uma vez e recarregue esta página.</p>{% endif %}
+<label for="vagas">Vagas</label>
+<input id="vagas" name="vagas" type="number" min="1" max="500" value="{{ vagas|default:'' }}">
