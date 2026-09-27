@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-132631-TAR-888-explicada",
+  "tarefa": "TAR-888",
+  "evento": "explicada",
+  "quando": "2026-09-27T13:26:31.485753+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "quatro dos doze guardas provados no PR #2245 só reprovam por NameError quando sabotados: a linha some e o código quebra por variável indefinida, o que prova só que a linha existe, não que o número calculado está certo",
+  "o_que_muda": "os marcadores passam a apontar para a linha que decide o valor (o contador que soma, o save que grava o dado limpo), e a sabotagem passa a reprovar por um número errado (AssertionError), prova mais forte de que o guarda realmente protege a conta",
+  "exemplo": "é como testar um alarme de fumaça cortando a energia da casa inteira: a campainha para, mas isso não prova que ela detecta fumaça; o teste bom é soltar fumaça de verdade e ver o alarme tocar",
+  "importancia": 40
+}
