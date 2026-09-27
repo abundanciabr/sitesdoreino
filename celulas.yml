@@ -213,8 +213,14 @@ celulas:
     # porta e travava toda a célula). É `getMyStatus` quem pergunta "quem é
     # esta pessoa?" — `services/gamificacao/apps/core/sessao.py`.
     #
-    # `alunos` NÃO entra: a gamificação não confere matrícula. Quem decide o
-    # que pode é quem serve a tela; esta porta só diz de quem é o XP.
+    # `alunos` desde 27/09/2026, por decisão do mantenedor: só quem tem
+    # matrícula ativa assume tarefa no quadro de contribuições, a mesma regra do
+    # grupo e do desafio. Até ali este comentário dizia que a gamificação não
+    # conferia matrícula, e era verdade. A pergunta é `getStudentStanding`
+    # (`apps/core/matricula.py`, `ALUNOS_API_URL`), feita só no gesto de
+    # assumir e FAIL-CLOSED: sem resposta, ninguém assume. A porta de máquina
+    # continua sem conferir matrícula; ela só diz de quem é o XP. Quem instala
+    # o par é `infra/provisionar-par-da-gamificacao-com-os-alunos.sh`.
     #
     # `forum` desde 02/09/2026, e o sentido é o INVERSO do par que já existia:
     # até aqui o fórum perguntava a etiqueta de nível à gamificação; agora a
@@ -240,7 +246,7 @@ celulas:
     # área do site sem menu e sem rodapé (`armadilhas/286`). Quem o instala é
     # `infra/provisionar-par-do-menu.sh`, o mesmo que já ligou o Admin, o fórum
     # e a Caixa: o quinto degrau dele nasceu junto com esta linha.
-    consome: [catalogo, forum, identidade]
+    consome: [alunos, catalogo, forum, identidade]
 
   identidade:
     caminhos: [services/identidade]
