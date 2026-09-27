@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-122-painel-baixa-do-pr-2213-e-pendencia-do-make",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "painel: baixa do PR 2213 e pendencia do make",
+  detalhe: "Dois registros: baixa verde da integracao do PR 2213 e a pendencia do PATH desta maquina, que espera o mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2215. Validação local: árvore 8df93944476d114561b9c02a8f9477da2c9c8b4d; commit 83fffcde043c011ac7d6138ed6117a5e525991e0; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-845",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
