@@ -216,6 +216,33 @@ def test_falha_transitoria_reconsulta_sem_duplicar_fato() -> None:
     assert OutboxEvent.objects.filter(event="pagamento.aprovado").count() == 1
 
 
+def test_rodada_encerra_a_tentativa_presa_de_cartao_recusado() -> None:
+    """Tarefa 862: a tentativa que ficou presa em reconciliation_required
+    porque a Appmax recusou o cartão (pedido cancelado, nada pago) é fechada
+    pelo processo que roda a cada 30 segundos em produção, sem ninguém tocar."""
+    tentativa = _tentativa()
+    PaymentAttempt.objects.filter(pk=tentativa.pk).update(
+        state="reconciliation_required"
+    )
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value = {
+        **cliente.consultar_pedido.return_value,
+        "status": "cancelado",
+        "total_paid": 0,
+    }
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        resultado = processar_rodada()
+        processar_rodada()
+    tentativa.refresh_from_db()
+    tentativa.intent.refresh_from_db()
+    assert tentativa.state == "rejected"
+    assert tentativa.intent.status == "rejected"
+    assert tentativa.intent.card_reason_code == "cancelado"
+    assert OutboxEvent.objects.filter(event="pagamento.recusado").count() == 1
+    assert resultado["reconciliadas"] == 1
+    assert resultado["tentativas_presas"] == 0
+
+
 def test_pedido_sem_vinculo_unico_nao_aprova_nenhuma_tentativa() -> None:
     primeira = _tentativa()
     segunda = _tentativa()
