@@ -4,7 +4,9 @@
 {% comment %}
 A PÁGINA COMUNIDADE (TAR-824). Responde "o que posso fazer agora?" em quatro
 estados, e quem decide o estado é `views.contexto_da_comunidade`. Nenhum deles
-fala com a `gamificacao`: ela fora do ar não tira nada desta página.
+chama a `gamificacao`: ela fora do ar não tira nada desta página. Nos estados
+sem grupo e com grupo (TAR-855) há um link estático para o quadro de
+contribuições dela, sem pedir nada a mais que o caminho.
 {% endcomment %}
 <p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
 <h1>Comunidade</h1>
@@ -67,5 +69,13 @@ fala com a `gamificacao`: ela fora do ar não tira nada desta página.
       <p style="margin:8px 0 0">Quando um colega pedir ajuda, a dúvida aparece aqui.</p>
     </div>
   {% endfor %}
+{% endif %}
+
+{% if estado == "sem_grupo" or estado == "com_grupo" %}
+  <div class="cartao recado">
+    <strong>A escola publica as contribuições que ajudam a turma inteira.</strong>
+    <p>Veja o que já virou referência e proponha a sua.</p>
+    <a class="botao" href="{{ contribuicoes_url }}">Ver o quadro de contribuições</a>
+  </div>
 {% endif %}
 {% endblock %}
