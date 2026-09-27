@@ -6,12 +6,14 @@ from apps.core.views import (
     contribuir,
     decidir,
     decidir_contribuicao,
+    decidir_reconhecimento,
     enviar_prova,
     forja,
     forjar,
     healthz,
     interno,
     interno_contribuicoes,
+    interno_reconhecimentos,
     marcos,
     medalhas,
     servir_estatico,
@@ -108,6 +110,19 @@ urlpatterns = [
         "interno/contribuicoes/gesto",
         decidir_contribuicao,
         name="decidir-contribuicao",
+    ),
+    # O RASTRO DOS RECONHECIMENTOS (27/09/2026, TAR-850): a equipe vê cada
+    # conquista com a regra do dia e a história, e retira, devolve ou corrige
+    # com motivo. Bastidor, com a mesma porta fail-CLOSED da fila dos marcos.
+    path(
+        "interno/reconhecimentos",
+        interno_reconhecimentos,
+        name="interno-reconhecimentos",
+    ),
+    path(
+        "interno/reconhecimentos/gesto",
+        decidir_reconhecimento,
+        name="decidir-reconhecimento",
     ),
     # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
     # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
