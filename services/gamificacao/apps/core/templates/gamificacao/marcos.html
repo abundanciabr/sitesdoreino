@@ -46,6 +46,11 @@ português, com o botão de mandar de novo ao lado.
         <p class="selo">Conferido pela escola em
         {{ linha.concessao.concedida_em|date:"d/m/Y" }}.</p>
 
+      {% elif linha.estado == "revogado" %}
+        <p class="selo devolvido">Retirado pela equipe em {{ linha.retirada.registrado_em|date:"d/m/Y" }}.</p>
+        <p class="miudo">Motivo: {{ linha.retirada.motivo }}</p>
+        <p class="miudo">Ele foi conferido em {{ linha.concessao.concedida_em|date:"d/m/Y" }}, e isso continua na sua história. Se você discorda, fale com a equipe: só ela devolve.</p>
+
       {% elif linha.estado == "em_analise" %}
         <p class="selo">Em análise. A escola responde até
         {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.</p>
