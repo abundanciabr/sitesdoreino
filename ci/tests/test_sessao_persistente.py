@@ -1,4 +1,5 @@
 """Persistência com arquivos reais e falhas nas fronteiras externas."""
+import hashlib
 import json
 import os
 import subprocess
@@ -229,6 +230,71 @@ def test_dependencia_local_nao_recebe_cache(ambiente, referencia):
     ambiente.requisitos.write_text(referencia)
     with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
         sessao.identidade_do_venv(ambiente.requisitos)
+
+
+def _escrever_wheel_vendorizada(ambiente, conteudo=b"conteudo da wheel vendorizada"):
+    """Cria a wheel em services/quiz/vendor/ e devolve (linha, sha256 real)."""
+    vendor = ambiente.celula_no_worktree / "vendor"
+    vendor.mkdir(parents=True, exist_ok=True)
+    wheel = vendor / "pacote-0.1.0-py3-none-any.whl"
+    wheel.write_bytes(conteudo)
+    return "services/quiz/vendor/pacote-0.1.0-py3-none-any.whl", hashlib.sha256(conteudo).hexdigest()
+
+
+def test_wheel_vendorizada_sem_hash_continua_recusada(ambiente):
+    linha, _ = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(linha)
+    with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
+        sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+
+
+def test_wheel_vendorizada_com_hash_conferido_recebe_identidade(ambiente):
+    linha, hash_real = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_real}")
+    um = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    dois = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    assert um == dois
+
+
+def test_wheel_vendorizada_muda_de_conteudo_muda_a_identidade(ambiente):
+    linha, hash_um = _escrever_wheel_vendorizada(ambiente, b"versao 1")
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_um}")
+    identidade_um = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    _, hash_dois = _escrever_wheel_vendorizada(ambiente, b"versao 2, conteudo diferente")
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_dois}")
+    identidade_dois = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    assert identidade_um != identidade_dois
+
+
+def test_wheel_vendorizada_com_hash_divergente_continua_recusada(ambiente):
+    linha, _ = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{'0' * 64}")
+    with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
+        sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+
+
+def test_wheel_vendorizada_troca_de_conteudo_sem_atualizar_hash_continua_recusada(ambiente):
+    """A wheel muda no disco (ex.: reconstruída) e o comentário ficou velho:
+    é exatamente a mesma falta de identidade imutável de uma wheel sem hash."""
+    linha, hash_velho = _escrever_wheel_vendorizada(ambiente, b"conteudo original")
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_velho}")
+    assert sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    _escrever_wheel_vendorizada(ambiente, b"conteudo trocado sem atualizar o comentario")
+    with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
+        sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+
+
+def test_abertura_de_verdade_instala_wheel_vendorizada_com_hash_conferido(ambiente):
+    """Fim a fim: `preparar_venv` + `instalar`, como o RITOS realmente chama,
+    aceitam a wheel vendorizada com identidade imutável e seguem adiante."""
+    linha, hash_real = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(f"pytest==8.3.4\n{linha}  # sha256:{hash_real}\n")
+    chamadas = []
+    a = criador(ambiente, chamadas)
+    a.preparar_venv()
+    a.instalar()
+    assert sum("install" in c for c in chamadas) == 1
+    assert a.ambiente_instalado()
 
 
 def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
