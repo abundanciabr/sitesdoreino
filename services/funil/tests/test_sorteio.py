@@ -72,11 +72,13 @@ VETORES = [
 
 @pytest.mark.parametrize("visitor_id,esperado,_meio,_noventa", VETORES)
 def test_balde_bate_com_os_vetores_fixos(visitor_id, esperado, _meio, _noventa):
+    # guarda: services/funil/apps/core/sorteio.py:42
     assert balde(EXPERIMENTO, visitor_id) == esperado
 
 
 @pytest.mark.parametrize("visitor_id,_balde,meio,noventa", VETORES)
 def test_braco_bate_com_os_vetores_fixos(visitor_id, _balde, meio, noventa):
+    # guarda: services/funil/apps/core/sorteio.py:71
     assert (
         sortear(experimento([("a", 5000), ("b", 5000)]), visitor_id)["variante_id"]
         == meio

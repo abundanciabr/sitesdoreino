@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-123713-TAR-864-concluida",
+  "tarefa": "TAR-864",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:37:13.547914+00:00",
+  "quem": "agent/ci/armadilha-gnu-make-sem-sh",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2237",
+  "verificado_em": "2026-09-27"
+}
