@@ -2549,6 +2549,26 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/experimentos/<str:experimento_id>/decisao/",
+      "endereco": "/admin/placar/experimentos/<str:experimento_id>/decisao/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Decidir o experimento",
+      "descricao": "O fim de um teste de duas versões da página. Promover põe no ar o texto da versão vencedora, Reverter mantém a página como está e Encerrar termina o teste sem escolher vencedor. A decisão não muda depois de gravada."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/experimentos/<str:experimento_id>/decidir",
+      "endereco": "/admin/placar/experimentos/<str:experimento_id>/decidir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Gravar a decisão do experimento",
+      "descricao": "Não é uma página: é o que acontece quando você aperta Promover, Reverter ou Encerrar. Apertar duas vezes não publica nem encerra duas vezes."
+    },
+    {
+      "celula": "admin",
       "rota": "placar/coortes/",
       "endereco": "/admin/placar/coortes/",
       "alcance": "publico",
