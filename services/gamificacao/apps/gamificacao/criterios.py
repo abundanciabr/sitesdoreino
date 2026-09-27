@@ -20,9 +20,10 @@ dos 300 foi ligada a recebe na primeira vez em que o motor rodar para ela.
 
 O QUE ESTE ARQUIVO CONSEGUE ALIMENTAR HOJE, MEDIDO E NÃO SUPOSTO
 -----------------------------------------------------------------
-Quatro dos nove critérios têm dado de verdade por trás: `xp_acumulado`,
-`nivel_alcancado`, `conquistas_da_familia` e — desde 01/09/2026, quando o fórum
-ganhou voz — `respostas_aceitas`. Os outros leem tabelas que **nenhum código
+Cinco dos dez critérios têm dado de verdade por trás: `xp_acumulado`,
+`nivel_alcancado`, `conquistas_da_familia`, `respostas_aceitas` (desde
+01/09/2026, quando o fórum ganhou voz) e `entregas_aceitas` (desde 27/09/2026,
+quando a sala de aula passou a ser contada fora do ledger). Os outros leem tabelas que **nenhum código
 desta plataforma escreve ainda** — uma varredura por `.objects.create` em
 `services/gamificacao` não acha ninguém criando `Forja`, `Sequencia` ou
 `ProgressoDeMissao`.
@@ -48,6 +49,7 @@ import threading
 
 from .models import (
     AjudaAceita,
+    EntregaAceita,
     Concessao,
     ConquistaDefinicao,
     Forja,
@@ -110,6 +112,16 @@ def _valor_respostas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int
     return AjudaAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
 
 
+def _valor_entregas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
+    """Entregas aceitas por laudo, uma por fato. Conta desde 27/09/2026 (TAR-826).
+
+    Conta `EntregaAceita`, e não o ledger de XP, pela razão de
+    `_valor_respostas`: a regra `aula-concluida` pode estar desligada, e a
+    medalha "Primeiro ciclo concluído" não pode sumir junto com ela.
+    """
+    return EntregaAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
+
+
 def _valor_primeira_vez(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
     """A estreia num assunto (a primeira obra, o primeiro quiz).
 
@@ -145,17 +157,61 @@ CONTAS = {
     "missoes_cumpridas": _valor_missoes,
     "forjas_seladas": _valor_forjas,
     "respostas_aceitas": _valor_respostas,
+    "entregas_aceitas": _valor_entregas,
     "primeira_vez": _valor_primeira_vez,
     "conquistas_da_familia": _valor_familia,
 }
 
 
-def cumpre(
-    conquista: ConquistaDefinicao, pessoa: Pessoa, site_id: str, perfil: PerfilJogador
-) -> bool:
-    """Esta pessoa alcançou o critério desta conquista?
+# O MESMO VOCABULÁRIO, dito para quem vai conquistar (`/conquistas/medalhas`).
+# Uma frase por palavra, no singular e no plural, e é o dado (`criterio`) que
+# escolhe a frase: um texto solto na descrição divergiria do critério no dia em
+# que alguém mudasse o alvo. Palavra nova em `CONTAS` sem frase aqui deixa
+# `tests/test_tela_de_medalhas.py` vermelho.
+FRASES_DOS_CRITERIOS = {
+    "manual": (
+        "Concedida pela equipe da escola.",
+        "Concedida pela equipe da escola.",
+    ),
+    "xp_acumulado": (
+        "Somar 1 ponto de experiência.",
+        "Somar {alvo} pontos de experiência.",
+    ),
+    "nivel_alcancado": ("Chegar ao nível {alvo}.", "Chegar ao nível {alvo}."),
+    "semanas_de_sequencia": (
+        "Fechar uma semana de sequência.",
+        "Fechar {alvo} semanas de sequência.",
+    ),
+    "missoes_cumpridas": ("Cumprir uma missão.", "Cumprir {alvo} missões."),
+    "forjas_seladas": (
+        "Selar uma peça na Forja.",
+        "Selar {alvo} peças na Forja.",
+    ),
+    "respostas_aceitas": (
+        "Ter uma resposta sua aceita no fórum como a que resolveu a dúvida.",
+        "Ter {alvo} respostas suas aceitas no fórum como as que resolveram a dúvida.",
+    ),
+    "entregas_aceitas": (
+        "Ter uma entrega aceita pela escola, abrindo a aula seguinte.",
+        "Ter {alvo} entregas aceitas pela escola.",
+    ),
+    "primeira_vez": (
+        "Fazer pela primeira vez: {assunto}.",
+        "Fazer pela primeira vez: {assunto}.",
+    ),
+    "conquistas_da_familia": (
+        "Ganhar uma medalha da família {familia}.",
+        "Ganhar {alvo} medalhas da família {familia}.",
+    ),
+}
 
-    Critério fora do vocabulário devolve `False` com aviso no log, nunca exceção:
+
+def _valor_e_alvo(
+    conquista: ConquistaDefinicao, pessoa: Pessoa, site_id: str, perfil: PerfilJogador
+) -> tuple[int, int] | None:
+    """Onde a pessoa está e aonde precisa chegar. `None` quando não há conta.
+
+    Critério fora do vocabulário devolve `None` com aviso no log, nunca exceção:
     o `save()` da `ConquistaDefinicao` já recusa uma palavra desconhecida na
     porta de entrada, então chegar aqui significaria uma linha gravada antes
     daquela trava existir. Fail-closed é não conceder.
@@ -170,14 +226,80 @@ def cumpre(
                 conquista.slug,
                 tipo,
             )
-        return False
+        return None
 
     alvo = int(criterio.get("alvo") or 1)
     if tipo == "conquistas_da_familia":
         valor = conta(pessoa, site_id, perfil, criterio.get("familia", ""))
     else:
         valor = conta(pessoa, site_id, perfil)
-    return valor >= alvo
+    return valor, alvo
+
+
+def cumpre(
+    conquista: ConquistaDefinicao, pessoa: Pessoa, site_id: str, perfil: PerfilJogador
+) -> bool:
+    """Esta pessoa alcançou o critério desta conquista?"""
+    medida = _valor_e_alvo(conquista, pessoa, site_id, perfil)
+    return medida is not None and medida[0] >= medida[1]
+
+
+def criterio_em_portugues(conquista: ConquistaDefinicao) -> str:
+    """O critério desta conquista dito em uma frase, a partir do próprio dado."""
+    criterio = conquista.criterio or {}
+    tipo = criterio.get("tipo", "manual")
+    alvo = int(criterio.get("alvo") or 1)
+    singular, plural = FRASES_DOS_CRITERIOS.get(tipo, FRASES_DOS_CRITERIOS["manual"])
+    familia = criterio.get("familia", "")
+    return (singular if alvo == 1 else plural).format(
+        alvo=alvo,
+        assunto=criterio.get("assunto", ""),
+        familia=ConquistaDefinicao.Familia(familia).label.lower() if familia else "",
+    )
+
+
+def medalhas_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
+    """As medalhas LIGADAS da escola, cada uma com o critério e o estado DESTA pessoa.
+
+    Só a pessoa que olha entra na conta: nada aqui pergunta quantas outras já
+    ganharam, e é isso que mantém a tela longe de ranking (lei §8). Medalha
+    secreta só aparece para quem já a tem, porque mostrar o critério dela antes
+    desfaria o segredo.
+    """
+    perfil, _ = PerfilJogador.objects.get_or_create(pessoa=pessoa, site_id=site_id)
+    concedidas = {
+        c.conquista_id: c
+        for c in Concessao.objects.filter(pessoa=pessoa, site_id=site_id)
+    }
+    linhas = []
+    for medalha in ConquistaDefinicao.objects.filter(
+        site_id=site_id, ativa=True, classe=ConquistaDefinicao.Classe.MEDALHA
+    ).order_by("nome"):
+        concessao = concedidas.get(medalha.pk)
+        if medalha.secreta and concessao is None:
+            continue
+        medida = None if concessao else _valor_e_alvo(medalha, pessoa, site_id, perfil)
+        linhas.append(
+            {
+                "medalha": medalha,
+                "criterio": criterio_em_portugues(medalha),
+                "concessao": concessao,
+                "progresso": _progresso(medida),
+            }
+        )
+    return linhas
+
+
+def _progresso(medida: tuple[int, int] | None) -> tuple[int, int] | None:
+    """`(valor, alvo)` com o valor limitado ao alvo: "3 de 1" não diz nada.
+
+    Passar do alvo sem a medalha é possível por um instante (ligada agora, a
+    avaliação ainda não rodou para esta pessoa), e a tela mostra "1 de 1".
+    """
+    if medida is None:
+        return None
+    valor, alvo = medida
+    return min(valor, alvo), alvo
 
 
 def avaliar(pessoa_id: str, site_id: str) -> list[Concessao]:

@@ -33,6 +33,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.gamificacao import forja as forjas
+from apps.gamificacao.criterios import medalhas_da_pessoa
 from apps.gamificacao.models import Concessao, ConquistaDefinicao, PedidoDeValidacao
 from apps.gamificacao.validacao import (
     ValidacaoRecusada,
@@ -206,6 +207,40 @@ def marcos(request):
             "erro": request.GET.get("erro", ""),
             **de_fora,
         },
+    )
+
+
+@require_GET
+def medalhas(request):
+    """As medalhas ligadas da escola: como cada uma se ganha, e onde a pessoa está.
+
+    **O critério aparece ANTES de conquistar.** Uma medalha que cai sem que a
+    pessoa soubesse que existia não ensina nada; dita antes, ela mostra o
+    próximo passo. O texto sai do próprio critério
+    (`criterios.criterio_em_portugues`), nunca de uma frase solta.
+
+    **Só a pessoa que olha.** Nenhum número de outras pessoas, nenhuma ordem
+    entre alunos: ranking público é proibido pela lei §8, e "quantos já têm"
+    é o primeiro passo dele.
+
+    **Visitante não leva erro**, e sem `SITE_ID` também não quebra: a mesma
+    postura da Base, dos Marcos e da Forja.
+    """
+    de_fora = {
+        "url_de_entrada": settings.URL_DE_ENTRADA,
+        "url_da_capa": settings.URL_DA_CAPA,
+    }
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id:
+        return render(
+            request, "gamificacao/medalhas.html", {"entrou": False, **de_fora}
+        )
+
+    perfil = perfil_de(pessoa_id, site)
+    return render(
+        request,
+        "gamificacao/medalhas.html",
+        {"entrou": True, "linhas": medalhas_da_pessoa(perfil.pessoa, site), **de_fora},
     )
 
 

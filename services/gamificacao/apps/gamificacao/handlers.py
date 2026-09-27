@@ -30,7 +30,15 @@ from __future__ import annotations
 
 import logging
 
-from .models import AjudaAceita, Concessao, ConquistaDefinicao, ConversaAberta, Pessoa
+from .criterios import avaliar
+from .models import (
+    AjudaAceita,
+    EntregaAceita,
+    Concessao,
+    ConquistaDefinicao,
+    ConversaAberta,
+    Pessoa,
+)
 from .motor import _quando, aplicar
 from .validacao import conceder
 
@@ -197,17 +205,25 @@ def ao_forum_resposta_aceita(envelope: dict) -> None:
     O crédito vai para quem ESCREVEU (`autor_da_resposta_id`), não para quem
     marcou (`ator_id` do envelope) — são pessoas diferentes, e o contrato carrega
     os dois exatamente para que ninguém confunda.
+
+    **A avaliação das medalhas roda aqui, depois do registro** (27/09/2026). Sem
+    ela, só o crédito de XP chamava `avaliar` (por `motor.recalcular`), e com a
+    regra desligada a "Primeira ajuda aceita" e a "Mão amiga" nunca caíam pelo
+    fato: esperavam alguém rodar a conta à mão.
     """
-    _registrar_a_ajuda(envelope)
+    ajuda = _registrar_a_ajuda(envelope)
     _creditar(envelope)
+    if ajuda is not None:
+        avaliar(ajuda.pessoa_id, ajuda.site_id)
 
 
-def _registrar_a_ajuda(envelope: dict) -> None:
+def _registrar_a_ajuda(envelope: dict) -> AjudaAceita | None:
     """Grava a ajuda aceita, uma vez por mensagem. Nunca derruba o crédito.
 
     Idempotente pelo par (pessoa, mensagem): marcar, desmarcar e remarcar conta
     UMA vez. Se a chave fosse o evento, dois amigos alternando a marca
-    fabricariam a medalha em minutos.
+    fabricariam a medalha em minutos. Devolve a linha, ou `None` quando o
+    envelope não diz de quem é a ajuda.
     """
     data = envelope.get("data") or {}
     site_id = data.get("site_id")
@@ -218,13 +234,13 @@ def _registrar_a_ajuda(envelope: dict) -> None:
             "resposta aceita %s chegou sem site, autor ou mensagem: não registro",
             envelope.get("event_id"),
         )
-        return
+        return None
 
     pessoa, _ = Pessoa.objects.get_or_create(
         id_da_plataforma=autor,
         defaults={"email": f"{autor}@desconhecido.invalid"},
     )
-    AjudaAceita.objects.get_or_create(
+    ajuda, _ = AjudaAceita.objects.get_or_create(
         pessoa=pessoa,
         site_id=site_id,
         mensagem_id=str(mensagem_id),
@@ -235,6 +251,7 @@ def _registrar_a_ajuda(envelope: dict) -> None:
             "occurred_at": _quando(envelope),
         },
     )
+    return ajuda
 
 
 # ---------------------------------------------------------------------------
@@ -256,10 +273,53 @@ def ao_aula_concluida(envelope: dict) -> None:
     sendo o da aula, sem bônus. Quando a conquista concreta estiver ligada,
     este mesmo fato concede o reconhecimento privado do Boss; não é critério
     genérico, não abre aula e não altera a progressão.
+
+    **A entrega aceita fica REGISTRADA com a economia desligada**
+    (`EntregaAceita`, 27/09/2026), e as medalhas são avaliadas em seguida: é o
+    que faz o
+    "Primeiro ciclo concluído" cair pelo próprio fato, pela mesma separação de
+    `ao_forum_resposta_aceita` entre reconhecer e pagar.
     """
+    entrega = _registrar_a_entrega(envelope)
     _creditar(envelope)
     if (envelope.get("data") or {}).get("e_boss") is True:
         _conceder_boss(envelope)
+    if entrega is not None:
+        avaliar(entrega.pessoa_id, entrega.site_id)
+
+
+def _registrar_a_entrega(envelope: dict) -> EntregaAceita | None:
+    """Grava a entrega aceita, uma vez por evento. Nunca inventa aluno.
+
+    Idempotente pelo `event_id`: o mesmo fato reentregue pelo relay não vira
+    uma segunda linha. Guarda o fato e nunca a aula, pelo invariante 3 da
+    economia. Envelope sem aluno, site ou id não vira linha nem pessoa fantasma
+    (`armadilhas/255`).
+    """
+    data = envelope.get("data") or {}
+    site_id = data.get("site_id")
+    aluno_id = envelope.get("ator_id")
+    event_id = envelope.get("event_id")
+    if not (site_id and aluno_id and event_id):
+        logger.warning(
+            "aula concluída %s chegou sem site, aluno ou id do evento: não registro",
+            event_id,
+        )
+        return None
+
+    pessoa, _ = Pessoa.objects.get_or_create(
+        id_da_plataforma=aluno_id,
+        defaults={"email": f"{aluno_id}@desconhecido.invalid"},
+    )
+    entrega, _ = EntregaAceita.objects.get_or_create(
+        origem_event_id=str(event_id),
+        defaults={
+            "pessoa": pessoa,
+            "site_id": site_id,
+            "occurred_at": _quando(envelope),
+        },
+    )
+    return entrega
 
 
 def _conceder_boss(envelope: dict) -> None:

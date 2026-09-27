@@ -9,6 +9,7 @@ from apps.core.views import (
     healthz,
     interno,
     marcos,
+    medalhas,
     servir_estatico,
 )
 from config.api import api
@@ -84,6 +85,9 @@ urlpatterns = [
     # lembrar (guarda em `tests/test_forja.py`).
     path("forja", forja, name="forja"),
     path("forja/registrar", forjar, name="forjar"),
+    # AS MEDALHAS (27/09/2026, TAR-826): a coleção que o plano §5 previa. Uma
+    # rota só, de leitura: medalha não se pede, ela cai quando a conta bate.
+    path("medalhas", medalhas, name="medalhas"),
     # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
     # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
     # público para dentro do endereço. Vem por último porque `path("")` casa o
