@@ -16,6 +16,7 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
   <a href="{% url 'base' %}">Suas conquistas</a>
   <a href="{% url 'marcos' %}">Marcos reais</a>
   <a href="{% url 'medalhas' %}" aria-current="page">Medalhas</a>
+  <a href="{% url 'contribuicoes' %}">Contribuições</a>
 {% endblock %}
 
 {% block conteudo %}
@@ -24,6 +25,7 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
     <p class="rotulo">A sua coleção</p>
     <h1>Medalhas</h1>
     <p class="passo">Cada medalha diz aqui como se ganha, antes de você ganhar. Ela cai sozinha quando o que está escrito acontece, e fica só com você.</p>
+    <p class="miudo">A escola também pede ajuda no <a href="{% url 'contribuicoes' %}">quadro de contribuições</a>: tarefas de verdade, com reconhecimento quando a equipe aceita.</p>
   </section>
 
   {% for linha in linhas %}

@@ -152,7 +152,7 @@ h1 {
 
 .faixa a + a { margin-left: 18px; }
 
-.marco, .pedido, .medalha {
+.marco, .pedido, .medalha, .tarefa {
   background: var(--caixa);
   border: 1px solid var(--borda);
   border-radius: 12px;
@@ -160,7 +160,7 @@ h1 {
   padding: 18px 20px;
 }
 
-.marco h2, .pedido h2, .medalha h2 {
+.marco h2, .pedido h2, .medalha h2, .tarefa h3, .pedido h3 {
   font-size: 19px;
   margin: 0 0 6px;
 }
@@ -244,6 +244,21 @@ form button {
 
 .decidir button[value="aceitar"] { margin-top: 0; }
 
+/* O QUADRO DE CONTRIBUIÇÕES (TAR-849). A aceita ganha a cor de marca, pela
+   mesma razão do marco conquistado: é o que a página existe para produzir. */
+.tarefa.aceita { border-color: var(--marca); }
+.tarefa.enviada { border-style: dashed; }
+.criterios { margin: 4px 0 8px; padding-left: 22px; }
+/* O link que o aluno mandou pode ser longo; em 390 px ele quebra, não vaza. */
+.tarefa .miudo { overflow-wrap: anywhere; }
+
+/* Foco visível para quem navega pelo teclado, em todo controle da célula. */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--marca);
+  outline-offset: 2px;
+}
+
 .recado, .erro {
   border-radius: 10px;
   margin: 0 0 16px;
@@ -324,13 +339,13 @@ form button {
 .gestos form { margin: 0; }
 .gestos button { margin-top: 0; }
 
-.gestos button.discreto {
+form button.discreto {
   background: transparent;
   border: 1px solid var(--borda);
   color: var(--tinta);
 }
 
-form input[type="text"] {
+form input[type="text"], form input[type="url"], form input[type="number"] {
   background: var(--papel);
   border: 1px solid var(--borda);
   border-radius: 8px;

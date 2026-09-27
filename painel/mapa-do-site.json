@@ -1099,6 +1099,48 @@
       "observacao": "Mostra só a pessoa que olha: nenhum número de outros alunos e nenhuma ordem entre eles, porque ranking público é proibido pela lei da gamificação. Medalha desligada não aparece; ligar é gesto do mantenedor em /admin/economia/."
     },
     {
+      "celula": "gamificacao",
+      "rota": "contribuicoes",
+      "endereco": "/conquistas/contribuicoes",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "O quadro de contribuições",
+      "descricao": "As tarefas de que a escola precisa, cada uma com o que entregar, quem pode participar, como a qualidade é avaliada, o reconhecimento e quem aceita, tudo antes do botão de assumir. O aluno assume uma vaga, manda o link, acompanha a avaliação e, se voltar, lê o motivo e a orientação de ajuste. Visitante vê um convite para entrar.",
+      "observacao": "Reconhecimento, nunca pagamento: não dá pontos nem créditos, porque crédito e benefício são decisão do mantenedor. Mostra só a pessoa que olha: a tarefa diz se há vaga, nunca quantas pessoas a assumiram. É o endereço para onde o fórum aponta."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "contribuicoes/gesto",
+      "endereco": "/conquistas/contribuicoes/gesto",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Assumir, enviar ou desistir de uma tarefa",
+      "descricao": "Os três gestos do aluno no quadro num endereço só. Não é uma página: quem clica volta para o quadro com a resposta.",
+      "observacao": "O gesto recebe a tarefa, nunca o número de um compromisso: o dono é sempre quem a sessão diz que é, então o compromisso de outra pessoa não existe para a consulta."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno/contribuicoes",
+      "endereco": "/conquistas/interno/contribuicoes",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O bastidor do quadro de contribuições",
+      "descricao": "Onde a equipe avalia as contribuições enviadas, com o prazo mais curto em cima e o responsável à vista, e publica, encerra ou reabre as tarefas do quadro. Aceitar registra a contribuição no nome da pessoa; devolver exige motivo e orientação.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita. Ninguém avalia a própria contribuição, nem sendo da equipe."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno/contribuicoes/gesto",
+      "endereco": "/conquistas/interno/contribuicoes/gesto",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Publicar, encerrar, aceitar ou devolver no quadro",
+      "descricao": "Os gestos da equipe no quadro de contribuições. Não é uma página: quem clica volta para o bastidor com a resposta.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita."
+    },
+    {
       "celula": "sugestoes",
       "rota": "",
       "endereco": "/forms/sugestoes/",

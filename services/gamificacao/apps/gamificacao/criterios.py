@@ -20,10 +20,12 @@ dos 300 foi ligada a recebe na primeira vez em que o motor rodar para ela.
 
 O QUE ESTE ARQUIVO CONSEGUE ALIMENTAR HOJE, MEDIDO E NÃO SUPOSTO
 -----------------------------------------------------------------
-Cinco dos dez critérios têm dado de verdade por trás: `xp_acumulado`,
+Seis dos onze critérios têm dado de verdade por trás: `xp_acumulado`,
 `nivel_alcancado`, `conquistas_da_familia`, `respostas_aceitas` (desde
-01/09/2026, quando o fórum ganhou voz) e `entregas_aceitas` (desde 27/09/2026,
-quando a sala de aula passou a ser contada fora do ledger). Os outros leem
+01/09/2026, quando o fórum ganhou voz), `entregas_aceitas` (desde 27/09/2026,
+quando a sala de aula passou a ser contada fora do ledger) e
+`contribuicoes_aceitas` (desde 27/09/2026, com o quadro de contribuições,
+`contribuicoes.py`). Os outros leem
 tabelas que **nenhum código desta plataforma escreve ainda** — uma varredura por `.objects.create` em
 `services/gamificacao` não acha ninguém criando `Forja`, `Sequencia` ou
 `ProgressoDeMissao`.
@@ -51,6 +53,7 @@ from .models import (
     AjudaAceita,
     Concessao,
     ConquistaDefinicao,
+    ContribuicaoAceita,
     EntregaAceita,
     Forja,
     PerfilJogador,
@@ -122,6 +125,15 @@ def _valor_entregas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
     return EntregaAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
 
 
+def _valor_contribuicoes(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
+    """Contribuições do quadro aceitas pela equipe, uma por compromisso (TAR-849).
+
+    Conta `ContribuicaoAceita`, e não o ledger, pela razão de `_valor_respostas`:
+    o quadro não paga ponto nenhum, e a medalha existe mesmo assim.
+    """
+    return ContribuicaoAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
+
+
 def _valor_primeira_vez(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
     """A estreia num assunto (a primeira obra, o primeiro quiz).
 
@@ -158,6 +170,7 @@ CONTAS = {
     "forjas_seladas": _valor_forjas,
     "respostas_aceitas": _valor_respostas,
     "entregas_aceitas": _valor_entregas,
+    "contribuicoes_aceitas": _valor_contribuicoes,
     "primeira_vez": _valor_primeira_vez,
     "conquistas_da_familia": _valor_familia,
 }
@@ -194,6 +207,10 @@ FRASES_DOS_CRITERIOS = {
     "entregas_aceitas": (
         "Ter uma entrega aceita pela escola, abrindo a aula seguinte.",
         "Ter {alvo} entregas aceitas pela escola.",
+    ),
+    "contribuicoes_aceitas": (
+        "Ter uma contribuição do quadro aceita pela equipe da escola.",
+        "Ter {alvo} contribuições do quadro aceitas pela equipe da escola.",
     ),
     "primeira_vez": (
         "Fazer pela primeira vez o que a descrição conta.",
@@ -302,13 +319,23 @@ def _progresso(medida: tuple[int, int] | None) -> tuple[int, int] | None:
 
 
 def avaliar(
-    pessoa_id: str, site_id: str, *, origem_event_id: str = ""
+    pessoa_id: str,
+    site_id: str,
+    *,
+    origem_event_id: str = "",
+    validador_id: str = "",
+    validador_papel: str = Concessao.PapelDoValidador.SISTEMA,
 ) -> list[Concessao]:
     """Concede tudo o que esta pessoa passou a cumprir. Devolve o que foi novo.
 
     `origem_event_id` é o fato que disparou a conta, quando há um: o handler da
     aula e o da resposta aceita o passam, e a concessão guarda de onde veio
     (dossiê da Comunidade §5: reconhecimento registra origem e data).
+
+    `validador_id` e `validador_papel` vêm quando uma PESSOA disparou a conta: o
+    aceite de uma contribuição do quadro (`contribuicoes.aceitar`). Aí a medalha
+    que cair guarda quem disse sim, e não "o sistema"; sem eles, é conta de
+    máquina, como sempre foi.
 
     **É um LAÇO, e não uma passada**, porque uma medalha pode destravar a
     seguinte: ganhar a de ofício paga XP, o XP sobe o nível, e o nível pode
@@ -385,6 +412,8 @@ def avaliar(
                     site_id=site_id,
                     conquista=conquista,
                     origem_event_id=origem_event_id,
+                    validador_id=validador_id,
+                    validador_papel=validador_papel,
                 )
                 if nova:
                     concedidas.append(concessao)
