@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-143-o-aviso-de-sessao-passou-a-medir-o-atraso-da-pasta",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O aviso de sessão passou a medir o atraso da pasta",
+  detalhe: "A pasta local entregava instruções velhas aos robôs sem aviso. O PR 658 fez o aviso de abertura medir e anunciar esse atraso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/650 e https://github.com/abundanciabr/sitesdoreino/pull/658 MERGED (gh pr view, 27/09/2026); fila/eventos/20260830-231628-TAR-045-concluida.json na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260830-086-a-pasta-do-seu-computador-entrega-ordens-velhas-aos-robos",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-194-trabalho-da-appmax-refeito-e-integrado-no-pr-1866",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Trabalho da Appmax refeito e integrado no PR 1866",
+  detalhe: "O PR 1859 foi integrado sem nenhum arquivo e o trabalho de ligar a Appmax ficou de fora. Ele foi refeito no PR 1866, que entrou na main em 21/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1859 MERGED vazio e https://github.com/abundanciabr/sitesdoreino/pull/1866 MERGED em 21/09/2026, mergeCommit c9a14a09d9 (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260921-045-ci-o-pr-1859-pousou-vazio-e-foi-refeito-no-1866",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
