@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-144104-TAR-895-explicada",
+  "tarefa": "TAR-895",
+  "evento": "explicada",
+  "quando": "2026-09-27T14:41:04.690203+00:00",
+  "quem": "próximo passo da TAR-852; pedido do mantenedor de 27/09/2026 de abrir o máximo de frentes da Comunidade",
+  "o_que_e": "A escola agora guarda cada versão da rubrica e liga cada retorno à versão usada, mas o aluno ainda não vê na tela qual régua o avaliou.",
+  "o_que_muda": "Na página do retorno, o aluno vê qual rubrica e qual versão mediram a peça dele e pode abrir o texto daquela régua. Se a escola mudar a rubrica depois, ele é avisado de que a avaliação dele continua valendo pela régua da época.",
+  "exemplo": "Um aluno avaliado em agosto abre o retorno em outubro, depois de a escola trocar um critério, e ainda lê o critério exato que valia quando a peça dele foi medida.",
+  "importancia": 40
+}
