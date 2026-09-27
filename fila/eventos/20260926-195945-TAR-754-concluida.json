@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-195945-TAR-754-concluida",
+  "tarefa": "TAR-754",
+  "evento": "concluida",
+  "quando": "2026-09-26T19:59:45.110212+00:00",
+  "quem": "agent/ci/medir-crivo-em-producao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2117",
+  "verificado_em": "2026-09-26"
+}

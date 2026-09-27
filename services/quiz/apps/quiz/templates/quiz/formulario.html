@@ -18,6 +18,8 @@
   }
   button { width: 100%; padding: .8rem; font-size: 1rem; border-radius: 8px; border: none;
            background: #111; color: #fff; }
+  button:disabled { opacity: .6; }
+  .aguarde { margin: .75rem 0 0; text-align: center; color: #444; }
   .erro { color: #b00020; }
   .avancar { display: none; }
   html.com-passos .avancar { display: block; }
@@ -49,19 +51,20 @@
     <fieldset class="passo{% if etapa_lead_ativa %} ativo{% endif %}" data-pergunta="lead">
       <label>
         E-mail
-        <input type="email" name="email" value="{{ valores.email }}" required{% if erro and etapa_lead_ativa %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
+        <input type="email" name="email" value="{{ valores.email }}" required{% if campo_com_erro == "email" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
       </label>
       <label>
         Nome
-        <input type="text" name="nome" value="{{ valores.nome }}">
+        <input type="text" name="nome" value="{{ valores.nome }}"{% if campo_com_erro == "nome" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
       </label>
       <label>
         Telefone
-        <input type="tel" name="telefone" value="{{ valores.telefone }}">
+        <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
       </label>
     </fieldset>
     <button type="button" class="avancar">Continuar</button>
     <button type="submit" class="enviar">Ver resultado</button>
+    <p class="aguarde" role="status" data-aguarde></p>
   </form>
 </main>
 <script>
@@ -130,12 +133,30 @@
         return;
       }
       if (aviso) aviso.hidden = true;
-      if (indice < passos.length - 1) mostrar(indice + 1);
+      if (indice < passos.length - 1) {
+        mostrar(indice + 1);
+        // O foco acompanha a etapa nova: sem isso o leitor de tela fica no
+        // botão e a pergunta seguinte aparece em silêncio.
+        var novo = passos[indice];
+        var campo = novo.querySelector("input:checked") || novo.querySelector("input");
+        if (campo) campo.focus();
+      }
     });
   }
 
+  var enviar = form.querySelector(".enviar");
+  var aguarde = form.querySelector("[data-aguarde]");
   form.addEventListener("submit", function () {
     enviado = true;
+    enviar.disabled = true;
+    aguarde.textContent = "Calculando seu resultado…";
+  });
+
+  // Voltar do resultado pelo histórico pode restaurar da memória esta página
+  // já enviada. Recarregar devolve a decisão ao servidor, que leva a sessão
+  // concluída ao próprio resultado em vez de aceitar respostas que descartaria.
+  window.addEventListener("pageshow", function (ev) {
+    if (ev.persisted && enviado) location.reload();
   });
 
   window.addEventListener("pagehide", function () {

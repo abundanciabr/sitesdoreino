@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.plataforma/eventos/pagamento.reversao_confirmada.v2.json",
   "title": "pagamento.reversao_confirmada.v2",
-  "description": "Reversao ou contestacao confirmada no provedor exige suspensao de acesso. Nao comprova valor devolvido nem liquidacao financeira.",
+  "description": "Reversão ou contestação confirmada no provedor exige suspensão de acesso. Não comprova valor devolvido nem liquidação financeira.",
   "type": "object",
   "additionalProperties": false,
   "required": ["event", "version", "event_id", "occurred_at", "data"],

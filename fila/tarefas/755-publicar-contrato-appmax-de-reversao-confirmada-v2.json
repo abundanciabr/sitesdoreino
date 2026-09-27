@@ -1,0 +1,19 @@
+{
+  "arquivo": "755-publicar-contrato-appmax-de-reversao-confirmada-v2",
+  "id": "TAR-755",
+  "titulo": "Publicar contrato Appmax de reversão confirmada v2",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de contrato separado com label contrato; schema 7 PASS, contratos de pagamentos 27 PASS, aditividade PASS sem SKIP, congelamento do contrato financeiro pagamento.estornado.v2 e hashes conferidos; pagamento.estornado.v2 byte a byte inalterado.",
+  "despacho": "modelo_recomendado: gpt-5.6-luna; esforco_recomendado: high. Subentrega de contrato da TAR-752 e condição prévia da implementação. Entrega exclusiva do contrato pagamento.reversao_confirmada.v2 e seu teste em contracts/. Schema fechado sem amount_cents, com identidade do site, provedor, referência e motivo; consumidores virão em PRs posteriores. Não tocar pagamentos, consumidores, estornado.v2, migração, dinheiro ou operação Appmax real. Mandato-do-mantenedor: Autorizar o contrato e a implementação descritos; publicação técnica autorizada no repositório indicado.",
+  "origem": "Entrega técnica do contrato Appmax vinculada à TAR-752, autorização nominal de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

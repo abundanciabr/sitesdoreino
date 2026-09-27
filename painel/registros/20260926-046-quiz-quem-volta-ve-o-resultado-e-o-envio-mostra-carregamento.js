@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-046-quiz-quem-volta-ve-o-resultado-e-o-envio-mostra-carregamento",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "quiz: quem volta vê o resultado e o envio mostra carregamento",
+  detalhe: "Quem já concluiu volta ao resultado. Envio mostra carregamento; foco e resultado sem faixa tratados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2115. Validação local: árvore 1bff42e6a8534ecbe1f4e4141511c8e6ca71bbbf; commit 80e89a8712a823fe8c0cfe032ebe8c9989dc009b; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-751",
+  gravidade: "info",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

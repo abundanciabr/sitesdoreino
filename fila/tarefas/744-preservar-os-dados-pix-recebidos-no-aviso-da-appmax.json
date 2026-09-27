@@ -1,0 +1,19 @@
+{
+  "arquivo": "744-preservar-os-dados-pix-recebidos-no-aviso-da-appmax",
+  "id": "TAR-744",
+  "titulo": "Preservar os dados Pix recebidos no aviso da Appmax",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Suíte pagamentos verde com testes de preservação, descarte, replay e ausência de efeito financeiro",
+  "despacho": "Preservar somente pix_emv, pix_qrcode e pix_expiration_date do evento order_pix_created/order com tipos, limites e formato seguros; manter idempotência e ACK; não guardar envelope bruto, PII, cartão ou campos desconhecidos; não produzir nenhum efeito financeiro, cliente HTTP, outbox ou exposição. Completar apenas aviso legado vazio do mesmo pedido e mesma instalação, sem substituir dados já gravados.",
+  "origem": "Despacho Appmax, fonte oficial de webhook Appmax e revisão da sessão de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260926-195937-TAR-754-submetida",
+  "tarefa": "TAR-754",
+  "evento": "submetida",
+  "quando": "2026-09-26T19:59:37.348281+00:00",
+  "quem": "agent/ci/medir-crivo-em-producao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2117",
+  "revisao": "67a5791837d6e8b3a1f2dfc00967aeb2bf620e62",
+  "arvore": "8a15fbe1df0b2c7fb6cf36b5fe82dc8de245a2a0"
+}

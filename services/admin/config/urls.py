@@ -106,8 +106,11 @@ from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
+from apps.core.funil import funil
+from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
+from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
 from apps.core.appmax import appmax
@@ -720,6 +723,28 @@ urlpatterns = [
     # seções (`moldura.py`) cresceria sem realidade nova — experimento não é
     # assunto novo da administração, é o que se faz para mover aqueles números.
     path("placar/laboratorio/", laboratorio, name="laboratorio"),
+    # O RESULTADO DE UM EXPERIMENTO DE PÁGINA (`apps/core/resultado_do_experimento.py`,
+    # 26/09/2026, frente F9a do sistema de experimentos): a versão B ganhou,
+    # perdeu ou ainda está coletando. Sub-rota do placar ao lado do laboratório
+    # pela mesma razão dele: é o que se faz para mover os números do placar.
+    path(
+        "placar/experimentos/<uuid:experimento_id>/resultado/",
+        resultado_do_experimento,
+        name="resultado_do_experimento",
+    ),
+    # A DECISÃO DE UM EXPERIMENTO DA PÁGINA (`apps/core/decisao_do_experimento.py`,
+    # 26/09/2026): promover, reverter ou encerrar. Sub-rota do placar ao lado do
+    # laboratório, porque é o gesto que transforma a aposta em resultado.
+    path(
+        "placar/experimentos/<str:experimento_id>/decisao/",
+        decisao_do_experimento,
+        name="decisao_do_experimento",
+    ),
+    path(
+        "placar/experimentos/<str:experimento_id>/decidir",
+        decidir_experimento,
+        name="decidir_experimento",
+    ),
     # AS COORTES (`apps/core/coortes.py`, 05/09/2026) — quem entrou em cada mês,
     # e o que a memória da escola sabe sobre cada grupo. É o degrau 10 do plano
     # do painel de gestão (§6.4), na metade que já tem fonte hoje.
@@ -729,6 +754,11 @@ urlpatterns = [
     # que ela deixa para trás é exatamente uma linha desta tabela. Como seção
     # própria do menu ela viveria longe do número de que é a memória.
     path("placar/coortes/", coortes, name="coortes"),
+    # O FUNIL (`apps/core/funil.py`, 26/09/2026) — quantas pessoas passam de
+    # cada degrau da página de venda até o pagamento, lendo `countFunnel` da
+    # memória. Sub-rota do placar porque é o caminho da venda do placar,
+    # aceso: como seção própria do menu ele viveria longe dos números que move.
+    path("placar/funil/", funil, name="funil"),
     # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
     # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
     # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta

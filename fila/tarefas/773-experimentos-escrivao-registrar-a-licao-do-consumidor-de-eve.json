@@ -1,0 +1,19 @@
+{
+  "arquivo": "773-experimentos-escrivao-registrar-a-licao-do-consumidor-de-eve",
+  "id": "TAR-773",
+  "titulo": "Experimentos ESCRIVAO: registrar a licao do consumidor de eventos com lista fechada de streams",
+  "toca": [
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com a armadilha 511 mergeado, indice_de_armadilhas.py PASS",
+  "despacho": "Escreva a armadilha 511 em armadilhas/ documentando que services/metricas assina streams por lista fechada (STREAMS em consume_eventos.py), e que funil.pagina-vista trafegou sem consumidor. Regenere o indice e abra PR pelo rito.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

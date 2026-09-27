@@ -1,0 +1,19 @@
+{
+  "arquivo": "754-medir-a-configuracao-do-quiz-crivo-em-producao-sem-escrever-",
+  "id": "TAR-754",
+  "titulo": "Medir a configuração do quiz Crivo em produção, sem escrever nada",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "URL do run do workflow operacoes-vps.yml com a medição sanitizada e o PR integrado",
+  "despacho": "Operacao VPS fechada e somente leitura, chamada quiz-configuracao, servico\nquiz, medindo faixas, versoes, cobertura, migracoes e contagens agregadas do\nCrivo em producao. Implementar em ci/operacoes_vps.py (catalogo, validacao de\nentrada fechada, script Django fechado sem parametro livre, validacao de\nsaida sanitizada) e ci/tests/test_operacoes_vps.py (bloco novo, sem tocar nos\ntestes de Pix Appmax da Frente A). Adicionar a operacao ao catalogo de\n.github/workflows/operacoes-vps.yml. Saida: por Site (id,host,active), por\nQuiz (slug,active), por versao (key,weight,active,perguntas,alternativas,\npontuacao minima e maxima), por faixa (key,min_score,max_score,botao_destino,\nbotao_rotulo,titulo), cobertura sem buraco e sem sobreposicao, contagem\nagregada de Submission por result_key (inclui sem_faixa), contagem de\nOutboxEvent pendente e lista de migracoes aplicadas do app quiz. Nunca\ne-mail, nome, telefone, session_id, UTM, answers ou IDs de submissao. Depois\nde integrado, disparar o workflow e ler a medicao.",
+  "origem": "Pedido do mantenedor em 26/09/2026 na sessão do quiz: conferir se o resultado do Crivo apresenta oferta desligada; medição de produção ausente (Handoff H-L04)",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

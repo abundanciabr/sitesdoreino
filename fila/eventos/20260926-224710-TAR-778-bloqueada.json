@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-224710-TAR-778-bloqueada",
+  "tarefa": "TAR-778",
+  "evento": "bloqueada",
+  "quando": "2026-09-26T22:47:10.087750+00:00",
+  "quem": "sessao F9d (admin/experimentos-decisao)",
+  "detalhe": "O livro de aprendizados mora no Git e a área administrativa só o lê. Para a tela escrever a aposta e o veredito de cada experimento, ela precisa abrir PR no GitHub com uma chave. A única chave que ela tem hoje foi liberada só para pedidos de cancelamento da fila. Destrava com a palavra do mantenedor: reaproveitar essa chave para o livro de experimentos, criar uma chave própria, ou escolher outro lugar para o aprendizado. Depois da palavra, o trabalho leva cerca de meio dia de robô.",
+  "espera": "mantenedor"
+}
