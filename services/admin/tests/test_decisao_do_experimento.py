@@ -13,16 +13,22 @@ O que estes guardas protegem:
 5. **Texto salvo e não publicado não vai ao ar escondido.**
 6. **A metade que parou se completa sem publicar de novo.**
 7. **Toda escrita deixa linha de auditoria**, e sem crachá nada escreve.
+8. **O catálogo falso é o do contrato**: os endereços saem dos `paths` de
+   `contracts/catalogo.openapi.yaml` e o experimento tem os campos de
+   `ExperimentoDaPagina`, então um endereço ou um campo fora do contrato
+   reprova aqui, e não na produção.
 """
 
 from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 import httpx
 import pytest
 import respx
+import yaml
 from django.db import DatabaseError, connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
@@ -30,6 +36,7 @@ from django.urls import reverse
 
 from apps.auditoria.models import Registro
 from apps.core import decisao_do_experimento
+from apps.core.paginas import SLUG_DA_PAGINA
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -38,11 +45,30 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 SITE_ID = "site-mesh"
 EXP_ID = "6f1c2b1e-0000-4000-8000-000000000001"
-EXPERIMENTO = f"{CATALOGO}/sites/{SITE_ID}/experimentos/{EXP_ID}"
-ENCERRAR = f"{EXPERIMENTO}/encerrar"
-PAGINA = f"{CATALOGO}/sites/{SITE_ID}/paginas/oferta"
-RASCUNHO = f"{PAGINA}/rascunho"
-PUBLICAR = f"{PAGINA}/publicar"
+CONTRATO = yaml.safe_load(
+    (
+        Path(__file__).resolve().parents[3] / "contracts" / "catalogo.openapi.yaml"
+    ).read_text(encoding="utf-8")
+)
+
+
+def _do_contrato(operacao: str) -> str:
+    """O endereço da operação como o contrato o escreve, e não uma cópia dele."""
+    (caminho,) = [
+        caminho
+        for caminho, verbos in CONTRATO["paths"].items()
+        if any(v.get("operationId") == operacao for v in verbos.values())
+    ]
+    return CATALOGO + caminho.format(
+        site_id=SITE_ID, slug=SLUG_DA_PAGINA, experimento_id=EXP_ID
+    )
+
+
+EXPERIMENTO = _do_contrato("getExperiment")
+MUDAR_ESTADO = _do_contrato("changeExperimentState")
+PAGINA = _do_contrato("getPage")
+RASCUNHO = _do_contrato("getPageDraft")
+PUBLICAR = _do_contrato("publishPage")
 
 TEXTO_A = "Modele peças que funcionam"
 TEXTO_B = "Da primeira peça ao primeiro cliente"
@@ -100,12 +126,23 @@ def _dentro() -> Client:
 def _experimento(estado="ativo", decisao=None, vencedora=None) -> dict:
     return {
         "id": EXP_ID,
-        "pagina": "oferta",
+        "site_id": SITE_ID,
+        "slug": SLUG_DA_PAGINA,
         "secao": "cubo",
         "slot": "headline",
+        "hipotese": "Falar do primeiro cliente faz mais gente entrar no checkout",
+        "metrica_principal": "cta_checkout",
+        "taxa_base": 0.1,
+        "mde": 0.02,
+        "n_por_braco_planejado": 3839,
+        "dias_planejados": 14,
         "estado": estado,
         "decisao": decisao,
-        "variante_vencedora": vencedora,
+        "vencedora": vencedora,
+        "criado_em": "2026-09-01T12:00:00Z",
+        "iniciado_em": "2026-09-01T13:00:00Z",
+        "fim_planejado": "2026-09-15T13:00:00Z",
+        "encerrado_em": "2026-09-16T12:00:00Z" if estado == "encerrado" else None,
         "variantes": [
             {"variante_id": "a", "peso": 5000, "valor": TEXTO_A},
             {"variante_id": "b", "peso": 5000, "valor": TEXTO_B},
@@ -145,6 +182,13 @@ def _rascunho(headline=TEXTO_A) -> dict:
     }
 
 
+def test_o_experimento_falso_tem_os_campos_do_contrato():
+    esquema = CONTRATO["components"]["schemas"]
+    assert set(_experimento()) == set(esquema["ExperimentoDaPagina"]["required"])
+    for variante in _experimento()["variantes"]:
+        assert set(variante) == set(esquema["VarianteDoExperimento"]["required"])
+
+
 def _catalogo(*, experimentos, publicada=None, rascunho=None, encerrar=200):
     """O catálogo falso. `experimentos` é a sequência de leituras do experimento;
     depois da última, ele continua respondendo a última (a tela relê)."""
@@ -167,7 +211,7 @@ def _catalogo(*, experimentos, publicada=None, rascunho=None, encerrar=200):
         "publicar": respx.post(PUBLICAR).mock(
             return_value=httpx.Response(200, json=_publicada(TEXTO_B, 8))
         ),
-        "encerrar": respx.post(ENCERRAR).mock(
+        "encerrar": respx.post(MUDAR_ESTADO).mock(
             return_value=httpx.Response(encerrar, json={"detail": "fora do ar"})
         ),
     }
@@ -193,11 +237,12 @@ def test_promover_publica_a_variante_pelo_rascunho_e_encerra_com_a_vencedora(ver
     assert gravado["secoes"] == _secoes(TEXTO_B)
     assert rotas["publicar"].call_count == 1
     assert json.loads(rotas["encerrar"].calls.last.request.content) == {
+        "estado": "encerrado",
         "decisao": "promover",
-        "variante_vencedora": "b",
+        "vencedora": "b",
     }
     ordem = [c.request.url for c in respx.calls]
-    assert ordem.index(PUBLICAR) < ordem.index(ENCERRAR)
+    assert ordem.index(PUBLICAR) < ordem.index(MUDAR_ESTADO)
 
 
 @respx.mock
@@ -291,8 +336,9 @@ def test_reverter_e_encerrar_encerram_sem_publicar(veredito, decisao):
     assert not rotas["gravar"].called
     assert not rotas["publicar"].called
     assert json.loads(rotas["encerrar"].calls.last.request.content) == {
+        "estado": "encerrado",
         "decisao": decisao,
-        "variante_vencedora": None,
+        "vencedora": None,
     }
 
 
@@ -328,6 +374,24 @@ def test_decisao_gravada_nao_muda_com_outro_botao(veredito):
     assert "já foi encerrado com a decisão Reverter" in r.content.decode()
     assert not rotas["publicar"].called
     assert not rotas["encerrar"].called
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_encerrado_por_outro_gesto_no_meio_do_caminho_diz_a_decisao_gravada(
+    veredito,
+):
+    """O 409 do contrato: entre ler e encerrar, outro gesto encerrou com outra
+    decisão. A tela relê e conta qual ficou, em vez de "o catálogo recusou"."""
+    rotas = _catalogo(
+        experimentos=[_experimento(), _experimento("encerrado", "encerrar")],
+        encerrar=409,
+    )
+    r = _decidir(_dentro(), decisao="reverter")
+
+    assert r.status_code == 422
+    assert "já foi encerrado com a decisão Encerrar" in r.content.decode()
+    assert rotas["encerrar"].call_count == 1
 
 
 @pytest.mark.django_db
@@ -400,7 +464,8 @@ def test_experimento_encerrado_nao_oferece_botao(veredito):
     _catalogo(experimentos=[_experimento("encerrado", "promover", "b")])
     tela = _dentro().get(reverse("decisao_do_experimento", args=[EXP_ID]))
     texto = tela.content.decode()
-    assert "Encerrado com a decisão Promover" in texto
+    assert "Encerrado com a decisão Promover</b>, variante b." in texto
+    assert f"{SLUG_DA_PAGINA} &middot; cubo.headline" in texto
     assert "<button" not in texto
 
 
@@ -421,7 +486,7 @@ def test_sem_cracha_nenhum_gesto_escreve():
         return_value=httpx.Response(200, json={"id": SITE_ID})
     )
     publicar = respx.post(PUBLICAR).mock(return_value=httpx.Response(200, json={}))
-    encerrar = respx.post(ENCERRAR).mock(return_value=httpx.Response(200, json={}))
+    encerrar = respx.post(MUDAR_ESTADO).mock(return_value=httpx.Response(200, json={}))
     r = Client().post(
         reverse("decidir_experimento", args=[EXP_ID]),
         {"decisao": "promover", "variante": "b"},
