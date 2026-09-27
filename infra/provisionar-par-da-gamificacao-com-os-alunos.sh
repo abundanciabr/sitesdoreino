@@ -4,12 +4,12 @@
 #
 # Decisão do mantenedor de 27/09/2026: só quem tem matrícula ativa assume
 # tarefa no quadro de contribuições (`/conquistas/contribuicoes`), a mesma
-# regra do grupo e do desafio. Quem sabe da matrícula é a célula `alunos`, e a
-# parte das conquistas precisa perguntar a ela. Falar com outra célula exige
-# credencial, e credencial não viaja por esteira (INV-P8, Lei 5): o segredo
-# nasce AQUI, dentro da VPS, e é gravado direto nos dois arquivos. Ele não
-# aparece na tela, não passa por agente nenhum e não entra no Git
-# (`armadilhas/090`).
+# regra do grupo e do desafio. Quem sabe da matrícula é a célula `alunos`, e ela
+# responde por e-mail; o e-mail de quem clicou, só a `identidade` entrega.
+# Falar com outra célula exige credencial, e credencial não viaja por esteira
+# (INV-P8, Lei 5): o segredo nasce AQUI, dentro da VPS, e é gravado direto nos
+# arquivos. Ele não aparece na tela, não passa por agente nenhum e não entra no
+# Git (`armadilhas/090`).
 #
 # COMO RODAR: pelo botão, `.github/workflows/provisionar.yml` com o alvo
 #   par-da-gamificacao-com-os-alunos
@@ -20,21 +20,26 @@
 # regerado: trocar um token em uso derrubaria as chamadas até o container do
 # outro lado reiniciar. Rodar de novo é seguro.
 #
-# O QUE ELE LIGA (dois degraus, PROVEDOR PRIMEIRO):
+# O QUE ELE LIGA (três chaves de provedor, depois as duas do consumidor):
 #
-#   1. env/alunos.env        TOKENS_ACEITOS_GAMIFICACAO
-#   2. env/gamificacao.env   ALUNOS_API_URL, ALUNOS_API_TOKEN
+#   1. env/alunos.env        TOKENS_ACEITOS_GAMIFICACAO    (token novo deste par)
+#   2. env/identidade.env    TOKENS_COMPLETOS_GAMIFICACAO  (o grau do e-mail: o
+#                            MESMO valor de TOKENS_ACEITOS_GAMIFICACAO que já
+#                            está lá, escrito por infra/provisionar-gamificacao.sh)
+#   3. env/gamificacao.env   ALUNOS_API_URL, ALUNOS_API_TOKEN
 #
 # Provedor antes de consumidor porque a ordem inversa tem janela ruim: o
 # consumidor com token que o provedor ainda não aceita recebe 401. Um provedor
 # que aceita um token que ninguém usa ainda não faz nada.
 #
-# O QUE ELE NÃO LIGA, E POR QUÊ. A pergunta à `alunos` vai por e-mail, e o
-# e-mail real de quem clica só a `identidade` entrega (`getSessionFull`), ao
-# par que está também em TOKENS_COMPLETOS_GAMIFICACAO no env DELA. Conceder
-# esse grau é decisão do mantenedor, registrada no §6.3 de
-# `docs/decisoes/DECISAO-celula-de-identidade.md`, e este script não a toma.
-# Ele só CONFERE o grau e diz na saída se ele existe, sem imprimir valor.
+# O GRAU DO E-MAIL está registrado no §4 de
+# `docs/decisoes/DECISAO-celula-de-identidade.md` ("O par `gamificacao`"), como
+# o §6.3 daquela lei exige, e segue o molde de `cursos` e `pages`
+# (`infra/provisionar-pares-da-sala-de-aula.sh`, `...-da-prancheta.sh`).
+#
+# A PROVA É POR FORA. Arquivo certo não é célula certa: no fim, de dentro do
+# container da gamificação, o script faz as duas perguntas de verdade, com o
+# token que o container enxerga, e só diz PRONTO se as duas respondem 200.
 #
 # SE NADA FOR RODADO: ver o quadro continua igual para todo mundo; só o botão
 # Assumir responde que não deu para conferir a matrícula agora, e nada é
@@ -53,8 +58,8 @@ parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 ENV_ALUNOS="env/alunos.env"
-ENV_GAMIFICACAO="env/gamificacao.env"
 ENV_IDENTIDADE="env/identidade.env"
+ENV_GAMIFICACAO="env/gamificacao.env"
 # A referência de dono/permissão: um env que JÁ funciona nesta máquina.
 ENV_REF="$ENV_ALUNOS"
 
@@ -63,11 +68,11 @@ ENV_REF="$ENV_ALUNOS"
 ALUNOS_URL="http://alunos:8000/api/alunos"
 
 # -----------------------------------------------------------------------------
-# 1. ONDE: a pasta da plataforma e os dois arquivos de que dependo.
+# 1. ONDE: a pasta da plataforma e os três arquivos de que dependo.
 #    Tudo conferido ANTES de gerar ou escrever coisa nenhuma.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? Nada foi alterado."
-for arquivo in "$ENV_ALUNOS" "$ENV_GAMIFICACAO"; do
+for arquivo in "$ENV_ALUNOS" "$ENV_IDENTIDADE" "$ENV_GAMIFICACAO"; do
   [ -f "$arquivo" ] || parar "não achei $RAIZ/$arquivo: alguma das células não está provisionada nesta máquina. Nada foi criado, nada foi alterado."
   [ -w "$arquivo" ] || parar "não consigo escrever em $RAIZ/$arquivo. Rode como root ou como o dono dos env. Nada foi alterado."
 done
@@ -89,9 +94,15 @@ gerar_segredo() {
 }
 
 # -----------------------------------------------------------------------------
-# 2. O VALOR: reusado se já existe, gerado só se falta, e diferente de todo
-#    outro par que a gamificação já tem do lado dela.
+# 2. OS VALORES. O do par com a alunos é reusado se existe e gerado se falta.
+#    O do grau NUNCA é gerado: é o token com que a gamificação JÁ fala com a
+#    identidade, e ele precisa estar igual nos dois lados antes de ganhar grau.
 # -----------------------------------------------------------------------------
+T_IDENTIDADE="$(ler_de "$ENV_IDENTIDADE" TOKENS_ACEITOS_GAMIFICACAO)"
+[ -n "$T_IDENTIDADE" ] || parar "o par gamificacao→identidade não existe em $ENV_IDENTIDADE, e o grau do e-mail só se dá a um par que já existe. Quem o cria é infra/provisionar-gamificacao.sh. Nada foi alterado."
+[ "$(ler_de "$ENV_GAMIFICACAO" IDENTIDADE_API_TOKEN)" = "$T_IDENTIDADE" ] \
+  || parar "o IDENTIDADE_API_TOKEN de $ENV_GAMIFICACAO não é o TOKENS_ACEITOS_GAMIFICACAO de $ENV_IDENTIDADE. Dar o grau agora seria dá-lo a um token que a gamificação não usa. Nada foi alterado."
+
 T_PAR="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_GAMIFICACAO)"
 NOVO=0
 if [ -z "$T_PAR" ]; then
@@ -103,17 +114,23 @@ fi
 for outro in IDENTIDADE_API_TOKEN FORUM_API_TOKEN TOKEN_CATALOGO; do
   valor="$(ler_de "$ENV_GAMIFICACAO" "$outro")"
   if [ -n "$valor" ] && [ "$T_PAR" = "$valor" ]; then
-    parar "o token deste par é IGUAL ao de $outro. Token é por par: um valor só faria a rotação de um derrubar o outro, sem aviso. Nada foi alterado."
+    parar "o token do par com a alunos é IGUAL ao de $outro. Token é por par: um valor só faria a rotação de um derrubar o outro, sem aviso. Nada foi alterado."
   fi
 done
 
 echo "== estado ANTES =="
-printf '  %-24s %s\n' "$ENV_ALUNOS" "encontrado ($(wc -l < "$ENV_ALUNOS") linhas)"
-printf '  %-24s %s\n' "$ENV_GAMIFICACAO" "encontrado ($(wc -l < "$ENV_GAMIFICACAO") linhas)"
+for arquivo in "$ENV_ALUNOS" "$ENV_IDENTIDADE" "$ENV_GAMIFICACAO"; do
+  printf '  %-24s %s\n' "$arquivo" "encontrado ($(wc -l < "$arquivo") linhas)"
+done
 if [ "$NOVO" -eq 0 ]; then
-  echo "  segredo ................. o par JÁ existia; vou reusar, não regerar"
+  echo "  par com a alunos ........ JÁ existia; vou reusar, não regerar"
 else
-  echo "  segredo ................. vou gerar um novo, aqui dentro da VPS"
+  echo "  par com a alunos ........ vou gerar um segredo novo, aqui dentro da VPS"
+fi
+if [ "$(ler_de "$ENV_IDENTIDADE" TOKENS_COMPLETOS_GAMIFICACAO)" = "$T_IDENTIDADE" ]; then
+  echo "  grau do e-mail .......... JÁ existia"
+else
+  echo "  grau do e-mail .......... vou gravar, com o token que a gamificação já usa"
 fi
 echo
 
@@ -160,8 +177,9 @@ garantir() {  # arquivo, chave, valor, cabeçalho-do-bloco
   fi
 }
 
-# PROVEDOR PRIMEIRO: ver o cabeçalho deste arquivo.
+# PROVEDORES PRIMEIRO: ver o cabeçalho deste arquivo.
 garantir "$ENV_ALUNOS" TOKENS_ACEITOS_GAMIFICACAO "$T_PAR" "par gamificacao→alunos: a matricula de quem assume tarefa no quadro"
+garantir "$ENV_IDENTIDADE" TOKENS_COMPLETOS_GAMIFICACAO "$T_IDENTIDADE" "grau de e-mail da gamificacao (DECISAO-celula-de-identidade §4, par gamificacao): o MESMO token de TOKENS_ACEITOS_GAMIFICACAO"
 garantir "$ENV_GAMIFICACAO" ALUNOS_API_URL "$ALUNOS_URL" "par gamificacao→alunos"
 garantir "$ENV_GAMIFICACAO" ALUNOS_API_TOKEN "$T_PAR" "par gamificacao→alunos"
 
@@ -171,55 +189,119 @@ garantir "$ENV_GAMIFICACAO" ALUNOS_API_TOKEN "$T_PAR" "par gamificacao→alunos"
 # -----------------------------------------------------------------------------
 echo "== estado DEPOIS =="
 A="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_GAMIFICACAO)"
-B="$(ler_de "$ENV_GAMIFICACAO" ALUNOS_API_TOKEN)"
-U="$(ler_de "$ENV_GAMIFICACAO" ALUNOS_API_URL)"
 [ -n "$A" ] || parar "TOKENS_ACEITOS_GAMIFICACAO não ficou gravado em $ENV_ALUNOS. As cópias intactas estão em $RAIZ ($BACKUPS)."
-[ "$A" = "$B" ] || parar "os dois lados do par ficaram com valores DIFERENTES, e isso daria 401 a cada Assumir. As cópias intactas estão em $RAIZ ($BACKUPS)."
-[ "$U" = "$ALUNOS_URL" ] || parar "ALUNOS_API_URL não ficou como esperado em $ENV_GAMIFICACAO. As cópias intactas estão em $RAIZ ($BACKUPS)."
-echo "  par gamificacao→alunos .. confere nos dois lados"
-echo "  endereco da alunos ...... $ALUNOS_URL"
+[ "$A" = "$(ler_de "$ENV_GAMIFICACAO" ALUNOS_API_TOKEN)" ] || parar "os dois lados do par com a alunos ficaram com valores DIFERENTES, e isso daria 401 a cada Assumir. As cópias intactas estão em $RAIZ ($BACKUPS)."
+[ "$(ler_de "$ENV_GAMIFICACAO" ALUNOS_API_URL)" = "$ALUNOS_URL" ] || parar "ALUNOS_API_URL não ficou como esperado em $ENV_GAMIFICACAO. As cópias intactas estão em $RAIZ ($BACKUPS)."
+[ "$(ler_de "$ENV_IDENTIDADE" TOKENS_COMPLETOS_GAMIFICACAO)" = "$T_IDENTIDADE" ] || parar "o grau TOKENS_COMPLETOS_GAMIFICACAO não ficou igual ao TOKENS_ACEITOS_GAMIFICACAO em $ENV_IDENTIDADE. As cópias intactas estão em $RAIZ ($BACKUPS)."
 
-# O grau do e-mail na identidade: só lido e comparado, nunca escrito.
-ACEITO_NA_IDENTIDADE="$(ler_de "$ENV_IDENTIDADE" TOKENS_ACEITOS_GAMIFICACAO)"
-GRAU_NA_IDENTIDADE="$(ler_de "$ENV_IDENTIDADE" TOKENS_COMPLETOS_GAMIFICACAO)"
-if [ -n "$GRAU_NA_IDENTIDADE" ] && [ "$GRAU_NA_IDENTIDADE" = "$ACEITO_NA_IDENTIDADE" ]; then
-  echo "  e-mail pela identidade .. o grau TOKENS_COMPLETOS_GAMIFICACAO existe"
-  QUADRO="O quadro de contribuicoes ja confere a matricula de quem clica em Assumir."
-else
-  echo "  e-mail pela identidade .. o grau TOKENS_COMPLETOS_GAMIFICACAO NAO existe"
-  QUADRO="O botao Assumir continua fechado ate o mantenedor conceder o grau TOKENS_COMPLETOS_GAMIFICACAO na identidade."
-fi
+# Chave repetida é o modo de falha mais traiçoeiro de um env: o Docker Compose
+# usa a ÚLTIMA, e um valor velho ficaria por baixo sem nada acusar.
+for par in "$ENV_ALUNOS:TOKENS_ACEITOS_GAMIFICACAO" "$ENV_IDENTIDADE:TOKENS_ACEITOS_GAMIFICACAO" \
+           "$ENV_IDENTIDADE:TOKENS_COMPLETOS_GAMIFICACAO" "$ENV_GAMIFICACAO:ALUNOS_API_URL" \
+           "$ENV_GAMIFICACAO:ALUNOS_API_TOKEN"; do
+  arq="${par%%:*}"; chave="${par##*:}"
+  n="$(grep -c "^$chave=" "$arq")"
+  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS)."
+done
+echo "  par gamificacao→alunos .. confere nos dois lados"
+echo "  grau do e-mail .......... confere com o token que a gamificação usa"
+echo "  endereco da alunos ...... $ALUNOS_URL"
+echo "  chaves repetidas ........ nenhuma"
 echo
 
 # -----------------------------------------------------------------------------
-# 5. REINICIAR quem lê as chaves novas: a porta da `alunos` (o conjunto de
-#    tokens aceitos) e a tela da `gamificacao` (o par). Os consumidores e relays
-#    das duas células não usam estas chaves e ficam como estão.
-#
-#    O gatilho é o que os containers LEEM, e não o que este script escreveu:
-#    assim um reinício que falhou numa execução é refeito na seguinte, pelo
-#    mesmo botão. A comparação não imprime valor nenhum.
+# 5. REINICIAR só quem ainda não lê o valor novo. O gatilho é o que o container
+#    em pé ENXERGA, e não o que este script escreveu: um reinício que falhou
+#    numa execução é refeito na seguinte, pelo mesmo botão, e a identidade (que
+#    atende o login do site inteiro) só reinicia se o grau for novo para ela.
+#    Os consumidores e relays das três células não usam estas chaves.
 # -----------------------------------------------------------------------------
 lido_por() {  # serviço, chave: o valor que o container em pé enxerga
   docker compose exec -T "$1" printenv "$2" 2>/dev/null | tr -d '[:space:]'
 }
-as_duas_leem_o_par() {
-  [ "$(lido_por alunos TOKENS_ACEITOS_GAMIFICACAO)" = "$A" ]     && [ "$(lido_por gamificacao ALUNOS_API_TOKEN)" = "$A" ]     && [ "$(lido_por gamificacao ALUNOS_API_URL)" = "$ALUNOS_URL" ]
+precisa_reiniciar() {  # serviço
+  case "$1" in
+    alunos) [ "$(lido_por alunos TOKENS_ACEITOS_GAMIFICACAO)" != "$A" ] ;;
+    identidade) [ "$(lido_por identidade TOKENS_COMPLETOS_GAMIFICACAO)" != "$T_IDENTIDADE" ] ;;
+    gamificacao) [ "$(lido_por gamificacao ALUNOS_API_TOKEN)" != "$A" ] \
+                   || [ "$(lido_por gamificacao ALUNOS_API_URL)" != "$ALUNOS_URL" ] ;;
+  esac
 }
 
-if as_duas_leem_o_par; then
-  echo "PRONTO: o par gamificacao→alunos ja estava gravado e lido pelas duas celulas; nada foi reiniciado."
-else
-  echo "== reiniciando as celulas para que leiam o env novo =="
+ALVOS=""
+for servico in alunos identidade gamificacao; do
+  if precisa_reiniciar "$servico"; then ALVOS="$ALVOS $servico"; fi
+done
+if [ -n "$ALVOS" ]; then
+  echo "== reiniciando só quem ainda não lê o env novo:$ALVOS =="
   # O VEREDITO VEM DO COMANDO, NUNCA DO PIPE (ARMADILHAS §5.10): a saída é
   # guardada e só depois impressa, para o estado medido ser o do compose.
-  saida_do_reinicio="$(docker compose up -d --force-recreate alunos gamificacao 2>&1)"
+  saida_do_reinicio="$(docker compose up -d --force-recreate $ALVOS 2>&1)"
   estado_do_reinicio=$?
-  printf '%s
-' "$saida_do_reinicio" | tail -5
-  [ "$estado_do_reinicio" -eq 0 ]     || parar "os arquivos ficaram certos e conferidos, mas o reinício das células falhou. Rodar este mesmo provisionador de novo refaz o reinício."
-  as_duas_leem_o_par     || parar "as células reiniciaram, mas não leem o par gravado. Rodar este mesmo provisionador de novo confere e reinicia outra vez."
-  echo
-  echo "PRONTO: par gamificacao→alunos gravado, conferido e lido pelas duas celulas."
+  printf '%s\n' "$saida_do_reinicio" | tail -5
+  [ "$estado_do_reinicio" -eq 0 ] \
+    || parar "os arquivos ficaram certos e conferidos, mas o reinício falhou. Rodar este mesmo provisionador de novo refaz o reinício."
+  for servico in $ALVOS; do
+    if precisa_reiniciar "$servico"; then
+      parar "$servico reiniciou, mas não lê o valor gravado. Rodar este mesmo provisionador de novo confere e reinicia outra vez."
+    fi
+  done
+else
+  echo "== as três células já leem o env novo; nada reiniciado =="
 fi
-echo "$QUADRO"
+echo
+
+# -----------------------------------------------------------------------------
+# 6. A PROVA POR FORA: as duas perguntas de verdade, de dentro do container da
+#    gamificação, com os tokens que ELE enxerga. O e-mail de prova não existe:
+#    a identidade responde 200 com `id: null` quando tem o grau (403 sem ele),
+#    e a alunos responde 200 com `visitante` quando aceita o token (401 sem).
+#    Sai só o código HTTP; nenhum token vai para a tela.
+# -----------------------------------------------------------------------------
+provar() {
+  docker compose exec -T gamificacao python - 2>/dev/null <<'PY'
+import os
+
+import httpx
+
+
+def status(chamada):
+    try:
+        return chamada().status_code
+    except Exception as erro:  # a prova diz o nome do tropeço, nunca o texto
+        return type(erro).__name__
+
+
+identidade = os.environ.get("IDENTIDADE_API_URL", "").rstrip("/")
+alunos = os.environ.get("ALUNOS_API_URL", "").rstrip("/")
+bearer = lambda nome: {"Authorization": "Bearer " + os.environ.get(nome, "")}
+print("identidade", status(lambda: httpx.post(
+    identidade + "/pessoas/por-email",
+    json={"email": "prova-do-grau@exemplo.invalid"},
+    headers=bearer("IDENTIDADE_API_TOKEN"), timeout=5)))
+print("alunos", status(lambda: httpx.get(
+    alunos + "/alunos/prova-do-par%40exemplo.invalid/situacao",
+    headers=bearer("ALUNOS_API_TOKEN"), timeout=5)))
+PY
+}
+
+echo "== prova por fora, de dentro da gamificação =="
+# As células recém-recriadas levam alguns segundos para atender: até 12
+# tentativas, 5 s entre elas, antes de dar o veredito.
+tentativa=1
+while :; do
+  PROVA="$(provar)"
+  R_IDENTIDADE="$(printf '%s\n' "$PROVA" | awk '$1 == "identidade" { print $2 }')"
+  R_ALUNOS="$(printf '%s\n' "$PROVA" | awk '$1 == "alunos" { print $2 }')"
+  if [ "$R_IDENTIDADE" = "200" ] && [ "$R_ALUNOS" = "200" ]; then break; fi
+  [ "$tentativa" -ge 12 ] && break
+  tentativa=$((tentativa + 1))
+  sleep 5
+done
+echo "  identidade entrega e-mail  HTTP ${R_IDENTIDADE:-sem resposta}"
+echo "  alunos aceita o par ...... HTTP ${R_ALUNOS:-sem resposta}"
+[ "$R_IDENTIDADE" = "200" ] || parar "a identidade não respondeu 200 ao token da gamificação (403 quer dizer grau não lido; o arquivo está certo). Rodar este mesmo provisionador de novo reinicia e prova outra vez."
+[ "$R_ALUNOS" = "200" ] || parar "a alunos não respondeu 200 ao token da gamificação (401 quer dizer token não lido; o arquivo está certo). Rodar este mesmo provisionador de novo reinicia e prova outra vez."
+echo
+echo "PRONTO: par gamificacao→alunos e grau do e-mail gravados, conferidos e provados por fora."
+echo "O quadro de contribuicoes ja confere a matricula de quem clica em Assumir."

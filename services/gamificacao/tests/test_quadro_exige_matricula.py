@@ -279,3 +279,47 @@ def test_ver_o_quadro_nao_pergunta_matricula():
 
     assert resposta.status_code == 200
     assert "Estudo de caso de uma peça de Roblox" in resposta.content.decode()
+
+
+# ------------------------------------------- 4. o e-mail não fica em lugar nenhum
+
+
+EMAIL_NA_URL = "aluna%2Bquadro%40exemplo.test"
+
+
+@pytest.mark.parametrize("celula_que_cai", ["identidade", "alunos"])
+def test_a_falha_de_rede_nao_leva_o_email_para_o_log(caplog, celula_que_cai):
+    """O erro do httpx pode trazer a URL, e a URL da alunos carrega o e-mail."""
+    tarefa = _tarefa()
+
+    with respx.mock as mock:
+        if celula_que_cai == "identidade":
+            mock.get(SESSAO_COMPLETA).mock(
+                side_effect=httpx.ConnectError(f"falhou {SESSAO_COMPLETA} {EMAIL}")
+            )
+        else:
+            _identidade_responde(mock)
+            mock.get(SITUACAO).mock(
+                side_effect=httpx.ConnectError(f"falhou {SITUACAO} {EMAIL}")
+            )
+        with caplog.at_level("DEBUG"):
+            _assumir_pela_tela(tarefa)
+
+    assert "matrícula não conferida" in caplog.text
+    assert EMAIL not in caplog.text and EMAIL_NA_URL not in caplog.text
+
+
+def test_assumir_nao_guarda_o_email_da_identidade():
+    tarefa = _tarefa()
+    _pessoa()
+
+    with respx.mock as mock:
+        _identidade_responde(mock)
+        _alunos_responde(mock, "aluno")
+        _assumir_pela_tela(tarefa)
+
+    assert CompromissoDeContribuicao.objects.count() == 1
+    assert Pessoa.objects.get(id_da_plataforma=ALUNA).email == (
+        f"{ALUNA}@desconhecido.invalid"
+    )
+    assert not Pessoa.objects.filter(email=EMAIL).exists()

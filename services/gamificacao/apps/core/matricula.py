@@ -16,7 +16,13 @@ e só para o par que está também em `TOKENS_COMPLETOS_GAMIFICACAO` no env dela
 **A postura é FECHADA.** Par ausente, célula fora do ar, status fora de 200 ou
 resposta fora do contrato levantam `MatriculaNaoConferida`, e quem chama diz à
 pessoa que não deu para conferir agora. Não conseguir perguntar nunca é "pode
-assumir". Nenhum e-mail sai daqui para a tela nem para o log.
+assumir".
+
+**O e-mail não fica em lugar nenhum.** Ele é lido da identidade, usado na
+pergunta à `alunos` e descartado: não é gravado em `Pessoa` nem em campo algum,
+e não vai para a tela nem para o log. Por isso a falha de rede leva ao log só o
+NOME do erro do httpx, nunca o texto dele, que pode trazer a URL, e a URL da
+`alunos` carrega o e-mail.
 
 **Nada aqui é lido no import** (`armadilhas/097`): as quatro variáveis dos dois
 pares são lidas no ponto de uso, e a falta de qualquer uma desiste sem tocar a
@@ -72,7 +78,7 @@ def _email_de(cookie: str, base: str, token: str) -> str:
         )
     except httpx.RequestError as erro:
         raise MatriculaNaoConferida(
-            f"não deu para falar com a célula identidade: {erro}"
+            f"não deu para falar com a célula identidade: {type(erro).__name__}"
         ) from erro
     if resposta.status_code == 403:
         raise MatriculaNaoConferida(
@@ -102,7 +108,7 @@ def _categoria_de(email: str, base: str, token: str) -> str:
         )
     except httpx.RequestError as erro:
         raise MatriculaNaoConferida(
-            f"não deu para falar com a célula alunos: {erro}"
+            f"não deu para falar com a célula alunos: {type(erro).__name__}"
         ) from erro
     corpo = _json_de(resposta, "alunos")
     categoria = corpo.get("categoria") if isinstance(corpo, dict) else None
