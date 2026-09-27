@@ -107,7 +107,11 @@ def _servindo_o_css():
 
 
 def _rodar_no_navegador(
-    live_server_url: str, caminho: str, tag_alvo: str, texto_alvo: str, nome_da_captura: str
+    live_server_url: str,
+    caminho: str,
+    tag_alvo: str,
+    texto_alvo: str,
+    nome_da_captura: str,
 ) -> dict:
     node = shutil.which("node")
     assert (
@@ -177,17 +181,21 @@ def test_quadro_de_contribuicoes_cabe_no_celular_e_se_navega_so_com_teclado(
         f"sequência: {dados['sequencia']}"
     )
     assert dados["passos_ate_o_alvo"] > 0
-    assert dados["foco_visivel_em_todos_os_passos"], (
-        f"Algum elemento focado antes do alvo não mostrou contorno visível: {dados['sequencia']}"
-    )
+    assert dados[
+        "foco_visivel_em_todos_os_passos"
+    ], f"Algum elemento focado antes do alvo não mostrou contorno visível: {dados['sequencia']}"
 
     texto = dados["texto_da_pagina"]
     assert COLEGA not in texto, "o id da colega que já assumiu vazou para a tela"
-    assert f"1 de {VAGAS_DA_TAREFA}" not in texto, "contagem de vagas é ranking (lei §8)"
+    assert (
+        f"1 de {VAGAS_DA_TAREFA}" not in texto
+    ), "contagem de vagas é ranking (lei §8)"
     assert "Há vaga." in texto
 
 
-def test_medalhas_cabem_no_celular_e_se_navegam_so_com_teclado(monkeypatch, live_server):
+def test_medalhas_cabem_no_celular_e_se_navegam_so_com_teclado(
+    monkeypatch, live_server
+):
     _preparar_dados(monkeypatch)
 
     with _servindo_o_css():
@@ -207,9 +215,9 @@ def test_medalhas_cabem_no_celular_e_se_navegam_so_com_teclado(monkeypatch, live
         f"sequência: {dados['sequencia']}"
     )
     assert dados["passos_ate_o_alvo"] > 0
-    assert dados["foco_visivel_em_todos_os_passos"], (
-        f"Algum elemento focado antes do alvo não mostrou contorno visível: {dados['sequencia']}"
-    )
+    assert dados[
+        "foco_visivel_em_todos_os_passos"
+    ], f"Algum elemento focado antes do alvo não mostrou contorno visível: {dados['sequencia']}"
 
     texto = dados["texto_da_pagina"]
     assert "Conquistada em" in texto
