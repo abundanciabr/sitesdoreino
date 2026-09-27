@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-053809-TAR-837-bloqueada",
+  "tarefa": "TAR-837",
+  "evento": "bloqueada",
+  "quando": "2026-09-27T05:38:09.638045+00:00",
+  "quem": "despacho-hash-wheel-celulas",
+  "detalhe": "checkout e pagamentos sao Lista A (pagamento e cobranca) por ci/mandato_por_faixa.py; o brief da TAR-833 nao trouxe mandato nominal do mantenedor para editar esses dois requirements.txt. Destrava quando o mantenedor autorizar nominalmente os caminhos services/checkout/requirements.txt e services/pagamentos/requirements.txt para esta anotacao de sha256.",
+  "espera": "mantenedor"
+}
