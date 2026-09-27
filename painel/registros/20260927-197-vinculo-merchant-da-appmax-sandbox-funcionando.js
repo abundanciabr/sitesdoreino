@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-197-vinculo-merchant-da-appmax-sandbox-funcionando",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Vínculo MERCHANT da Appmax sandbox funcionando",
+  detalhe: "Faltavam o consentimento e o OAuth MERCHANT depois de renovar o ID no sandbox. Um cartão sandbox foi cobrado e integrado (PR 2066), e o teste pela tela do PR 2159 pagou e matriculou com o cartão aprovado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1973, https://github.com/abundanciabr/sitesdoreino/pull/2066 e https://github.com/abundanciabr/sitesdoreino/pull/2159 MERGED (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260923-005-infra-renovar-id-appmax-sandbox",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

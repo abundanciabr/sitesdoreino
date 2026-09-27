@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-188-cookie-da-vitrine-ja-exige-conexao-segura",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Cookie da vitrine já exige conexão segura",
+  detalhe: "O recibo do PR 1774 deu por resolvido o defeito do cookie da vitrine sem proteção. O defeito voltou como tarefa própria e o conserto entrou na main pelo PR 1779 em 19/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1774 e https://github.com/abundanciabr/sitesdoreino/pull/1779 MERGED (gh pr view, 27/09/2026); fila/eventos/20260919-210701-TAR-513-concluida.json na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260919-066-o-recibo-do-pr-1774-apontou-a-tarefa-errada",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

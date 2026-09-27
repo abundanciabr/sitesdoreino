@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-139-a-main-vermelha-foi-destravada-e-os-achados-entregues",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A main vermelha foi destravada e os achados entregues",
+  detalhe: "A esteira parou porque os testes liam arquivos que não existiam mais. O conserto entrou pelo PR 591, os achados extras pelo PR 604, e o alarme 587 fechou.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/591 e https://github.com/abundanciabr/sitesdoreino/pull/604 MERGED, issue 587 CLOSED em 01/09/2026; conferidos por gh pr view e gh issue view em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260830-035-a-main-ficou-vermelha-e-travou-todas-as-publicacoes",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

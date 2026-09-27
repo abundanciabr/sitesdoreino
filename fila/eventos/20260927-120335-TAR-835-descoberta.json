@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-120335-TAR-835-descoberta",
+  "tarefa": "TAR-835",
+  "evento": "descoberta",
+  "quando": "2026-09-27T12:03:35.975430+00:00",
+  "quem": "agent/ci/tar-835-rito-so-tarefa-declarada",
+  "detalhe": "Anotacoes # guarda: antigas em ci/tests/test_fila_responsabilidade.py apontam ci/fila.py:2465 (um comentario), 2619 (um print) e 2625 (um try:), linhas que nao guardam o que o teste prova; python ci/provar_guardas.py sabotaria a linha errada ou recusaria por sintaxe.",
+  "evidencia": "sed -n 2465p, 2619p e 2625p de ci/fila.py na revisao f1f8bbdb; esta entrega realinhou so as anotacoes de test_fila.py que ela mesma deslocou (3342, 3347, 3350)",
+  "classificacao": "C",
+  "criterio": "guardas declaradas por # guarda: apontam a linha que protegem",
+  "encaminhamento": "tarefa separada: realinhar as anotacoes # guarda: de test_fila_responsabilidade.py e rodar python ci/provar_guardas.py nele"
+}

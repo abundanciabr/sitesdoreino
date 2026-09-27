@@ -1,0 +1,19 @@
+{
+  "arquivo": "878-registrar-licoes-da-rodada-2-da-comunidade-como-armadilhas",
+  "id": "TAR-878",
+  "titulo": "Registrar lições da rodada 2 da Comunidade como armadilhas",
+  "toca": [
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com dois arquivos novos em armadilhas/ e índice regenerado",
+  "despacho": "Escreva em armadilhas/ as lições já medidas na rodada 2 da Comunidade (script de mutação no scratchpad compartilhado sabota bancada vizinha; .pyc velho sobrevive a mutação desfeita no Windows). Rito de reservar.py numero armadilha, molde de entrada existente, indice_de_armadilhas.py regenerado, PR com make pr.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
