@@ -1,0 +1,56 @@
+{
+  "arquivo": "20260927-032312-TAR-816-contrato_execucao",
+  "tarefa": "TAR-816",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T03:23:12.453936+00:00",
+  "quem": "agent/admin/vista-appmax-frentes-novas",
+  "contrato": {
+    "plano": "docs/decisoes/ROTEIRO-APPMAX-ATE-A-CONCLUSAO.md",
+    "versao": 1,
+    "modelo_recomendado": "opus",
+    "esforco_recomendado": "high",
+    "objetivo": "Mostrar as frentes Appmax abertas em 26 e 27/09/2026 na vista administrativa existente.",
+    "entregaveis": [
+      "TAR-795, TAR-802, TAR-803, TAR-804, TAR-808, TAR-809, TAR-810, TAR-811, TAR-813 e TAR-814 presentes uma vez na sequência publicada.",
+      "Estados, dependências e provas calculados pela mesma fonte da fila."
+    ],
+    "escopo_incluido": [
+      "services/admin/apps/core/appmax.py",
+      "services/admin/tests/test_appmax.py",
+      "Artefatos próprios da TAR-816 e recibo do rito"
+    ],
+    "nao_objetivos": [
+      "Alterar a máquina de estados da fila, a consulta viva, templates ou JavaScript.",
+      "Operações financeiras, chamadas à Appmax, mudança de contrato de pagamento ou novas fontes de estado."
+    ],
+    "restricoes": [
+      "Preservar todos os cartões atuais e suas substitutas.",
+      "Ausência de tarefa no retrato continua não medida.",
+      "Não tocar contracts/ nem services/pagamentos/."
+    ],
+    "decisoes_aprovadas": [
+      "Continuidade da obra Appmax e uso dos modelos mais capazes ordenados pelo mantenedor em 27/09/2026 02h45 UTC."
+    ],
+    "etapas": [
+      "Reivindicar a TAR e medir como a vista escolhe as frentes.",
+      "Teste vermelho com as frentes novas, inclusão na sequência e verde.",
+      "Validar a célula e publicar pelo rito."
+    ],
+    "criterios_entrada": [
+      "Frentes novas conferidas na main e nos ramos agent/*appmax*, *pix* e *sonda*.",
+      "Bancada admin exclusiva e reserva da TAR-816 adquirida."
+    ],
+    "criterios_aceite": [
+      "A vista inclui as dez frentes sem duplicação.",
+      "Estados distintos são lidos da fila; tarefa ausente do retrato é não medida.",
+      "Cartões e substitutas anteriores permanecem disponíveis."
+    ],
+    "evidencias_exigidas": [
+      "Teste focal vermelho antes e verde depois.",
+      "Validação da célula no rito e conferência de /admin/appmax/ após publicação."
+    ],
+    "condicao_encerramento": "As dez frentes aparecem na vista publicada, com fonte identificada e sem conclusão financeira inferida.",
+    "limites_autonomia": "Somente os dois arquivos da vista e artefatos próprios da TAR-816, sem tocar bancadas de outras frentes.",
+    "acoes_do_mantenedor": "Nenhuma ação técnica nova."
+  }
+}
