@@ -268,6 +268,65 @@ def _sem_catalogo(request, template: str, status: int = 200):
     )
 
 
+# ---------------------------------------------------------------------------
+# As duas escritas, chamadas pela tela e pelo `manage.py semear_experimento`
+# ---------------------------------------------------------------------------
+def criar_rascunho(request, site, escrito) -> "tuple[str, dict | str]":
+    """Grava o rascunho no catálogo e a linha de auditoria, deu certo ou não.
+
+    `escrito` já passou por `_recusas`. De `request` só se lê `.admin`, que
+    assina a auditoria: a tela passa a requisição, o semeador passa o ator dele.
+    """
+    situacao, resposta = CatalogoClient().criar_experimento(
+        site["id"], SLUG_DA_PAGINA, _corpo_do_experimento(escrito)
+    )
+    detalhe = (
+        f"{SLUG_DA_PAGINA}: {escrito['espaco']}, braço b com "
+        f"{escrito['parte_b']}% das visitas"
+    )
+    if situacao == CatalogoClient.OK:
+        _auditar(
+            request,
+            Registro.CRIAR_EXPERIMENTO,
+            str(resposta.get("id") or SLUG_DA_PAGINA),
+            Registro.OK,
+            detalhe,
+        )
+        return situacao, resposta
+
+    recusado = situacao in (CatalogoClient.RECUSADO, CatalogoClient.SEM_PAGINA)
+    _auditar(
+        request,
+        Registro.CRIAR_EXPERIMENTO,
+        SLUG_DA_PAGINA,
+        Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
+        f"{detalhe}: {resposta}",
+    )
+    return situacao, resposta
+
+
+def iniciar(request, site, alvo: str) -> "tuple[str, dict | str]":
+    """Pede ao catálogo o estado `ativo` e grava a linha de auditoria."""
+    situacao, resposta = CatalogoClient().mudar_estado_do_experimento(
+        site["id"], SLUG_DA_PAGINA, alvo, {"estado": "ativo"}
+    )
+    if situacao == CatalogoClient.OK:
+        _auditar(
+            request, Registro.INICIAR_EXPERIMENTO, alvo, Registro.OK, SLUG_DA_PAGINA
+        )
+        return situacao, resposta
+
+    recusado = situacao != CatalogoClient.NAO_RESPONDEU
+    _auditar(
+        request,
+        Registro.INICIAR_EXPERIMENTO,
+        alvo,
+        Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
+        f"{SLUG_DA_PAGINA}: {resposta}",
+    )
+    return situacao, resposta
+
+
 @require_http_methods(["GET", "POST"])
 def experimento_novo(request):
     """GET abre o formulário; POST calcula a amostra ou salva em rascunho."""
@@ -302,31 +361,11 @@ def experimento_novo(request):
     if erros:
         return _formulario(request, site, escrito, erros=erros, status=422)
 
-    situacao, resposta = CatalogoClient().criar_experimento(
-        site["id"], SLUG_DA_PAGINA, _corpo_do_experimento(escrito)
-    )
-    detalhe = (
-        f"{SLUG_DA_PAGINA}: {escrito['espaco']}, braço b com "
-        f"{escrito['parte_b']}% das visitas"
-    )
+    situacao, resposta = criar_rascunho(request, site, escrito)
     if situacao == CatalogoClient.OK:
-        _auditar(
-            request,
-            Registro.CRIAR_EXPERIMENTO,
-            str(resposta.get("id") or SLUG_DA_PAGINA),
-            Registro.OK,
-            detalhe,
-        )
         return HttpResponseRedirect(f"{reverse('experimentos')}?recado=criado")
 
     recusado = situacao in (CatalogoClient.RECUSADO, CatalogoClient.SEM_PAGINA)
-    _auditar(
-        request,
-        Registro.CRIAR_EXPERIMENTO,
-        SLUG_DA_PAGINA,
-        Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
-        f"{detalhe}: {resposta}",
-    )
     return _formulario(
         request,
         site,
@@ -406,23 +445,11 @@ def experimento_iniciar(request, experimento_id):
         return _sem_catalogo(request, "admin/experimentos.html", status=503)
 
     alvo = str(experimento_id)
-    situacao, resposta = CatalogoClient().mudar_estado_do_experimento(
-        site["id"], SLUG_DA_PAGINA, alvo, {"estado": "ativo"}
-    )
+    situacao, resposta = iniciar(request, site, alvo)
     if situacao == CatalogoClient.OK:
-        _auditar(
-            request, Registro.INICIAR_EXPERIMENTO, alvo, Registro.OK, SLUG_DA_PAGINA
-        )
         return HttpResponseRedirect(f"{reverse('experimentos')}?recado=iniciado")
 
     recusado = situacao != CatalogoClient.NAO_RESPONDEU
-    _auditar(
-        request,
-        Registro.INICIAR_EXPERIMENTO,
-        alvo,
-        Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
-        f"{SLUG_DA_PAGINA}: {resposta}",
-    )
     if situacao == CatalogoClient.CONFLITO:
         return _lista(
             request,
