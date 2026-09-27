@@ -1124,14 +1124,14 @@ def test_cli_distingue_reprovacao_de_timeout(tmp_path, monkeypatch, capsys, erro
 
 
 
-def test_fechamento_submete_tar_recuperada_e_recibo_a_identifica(tmp_path, monkeypatch):
+def test_fechamento_submete_tar_declarada_e_recibo_a_identifica(tmp_path, monkeypatch):
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
     monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
     dub = Duble(RESPOSTAS_FELIZES)
-    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
     assert dub.pediu("ci/fila.py submeter TAR-001")
     assert not dub.pediu("ci/fila.py concluir")
     assert dub.pediu("--revisao " + "b" * 40)
@@ -1150,16 +1150,70 @@ def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
     assert not dub.pediu("gh pr create")
 
 
-def test_tar_do_titulo_reutiliza_cadastro_sem_confundir_tentativa(tmp_path, monkeypatch):
+@pytest.mark.parametrize("onde", ["titulo", "corpo", "detalhe"])
+def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
+    """PRs #2189 e #2190: citar outra tarefa no texto a fechou de verdade."""
     import fila
     raiz = bancada(tmp_path)
-    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("TAR-999", "agent/ci/make-pr"))
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
     monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    citacao = "Caso histórico TAR-001."
+    texto = {"titulo": {"titulo": "fila: corrigir conclusão TAR-001"},
+             "detalhe": {"detalhe": DETALHE + " " + citacao}}.get(onde, {})
+    if onde == "corpo":
+        (raiz / "corpo.md").write_text("## O que muda\n\n" + citacao + "\n", encoding="utf-8")
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
+    with pytest.raises(pr.ParouPorSeguranca) as recusa:
+        pr.abrir(raiz, pedido(raiz, **texto), rodar=dub, hoje=HOJE)
+    assert "--tarefa" in recusa.value.o_que_fazer
+    assert not dub.pediu("ci/fila.py")
+    assert not dub.pediu("git add")
+    assert not dub.pediu("gh pr create")
+
+
+def test_sem_tarefa_a_recusa_ensina_a_tar_da_abertura(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
+    with pytest.raises(pr.ParouPorSeguranca) as recusa:
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert "Repita com --tarefa TAR-001" in recusa.value.o_que_fazer
+    assert not dub.pediu("ci/fila.py")
+    assert not dub.pediu("git add")
+
+
+@pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
+def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
+    # guarda: ci/pr.py:680
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {
+        "TAR-001": {"depende_de": []}, "TAR-002": {"depende_de": ["TAR-001"]}})
+    eventos = [{"tarefa": "TAR-001", "evento": fim_da_dependencia, "quem": "outra", "detalhe": "trocada",
+                "quando": "2026-09-01T00:00:00+00:00"}] if fim_da_dependencia else []
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: eventos)
     dub = Duble(RESPOSTAS_FELIZES)
-    pr.abrir(raiz, pedido(raiz, titulo="fila: corrigir conclusão TAR-001"), rodar=dub, hoje=HOJE)
-    assert dub.pediu("ci/fila.py submeter TAR-001")
-    assert not dub.pediu("TAR-999")
+    with pytest.raises(pr.ParouPorSeguranca) as recusa:
+        pr.abrir(raiz, pedido(raiz, tarefa="TAR-002"), rodar=dub, hoje=HOJE)
+    estado = fila.CANCELADA if fim_da_dependencia else fila.NA_FILA
+    assert f"TAR-001 ({estado})" in recusa.value.resumo
+    assert "depende_de" in recusa.value.o_que_fazer
+    assert not dub.pediu("ci/fila.py")
+    assert not dub.pediu("git add")
+    assert not dub.pediu("gh pr create")
+
+
+def test_tar_com_dependencia_concluida_segue_para_a_submissao(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {
+        "TAR-001": {"depende_de": []}, "TAR-002": {"depende_de": ["TAR-001"]}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [
+        {"tarefa": "TAR-001", "evento": "concluida", "quem": "outra", "evidencia": "PR #1",
+         "quando": "2026-09-01T00:00:00+00:00"}])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-002"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-002")
 
 
 
