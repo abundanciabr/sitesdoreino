@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-032810-TAR-814-bloqueada",
+  "tarefa": "TAR-814",
+  "evento": "bloqueada",
+  "quando": "2026-09-27T03:28:10.742966+00:00",
+  "quem": "despacho-checkout-tela-cartao-tres-defeitos",
+  "detalhe": "O que houve: os três defeitos da tela de compra com cartão estão diagnosticados, mas os arquivos dela ficam em services/checkout/, área de cobrança protegida, e a autorização de 26/09 cobre só services/pagamentos/, ci/, .github/ e infra/. Nada foi editado. O que destrava: o mantenedor dizer numa sessão 'autorizo services/checkout/ para a TAR-814'. Quanto leva depois: cerca de uma hora, com testes. Conserto já desenhado: (1) tirar x-init=\"init()\" de dados.html, cartao.html e pix.html, porque o Alpine já chama init() sozinho e cada visita cria duas sessões; (2) em cartao.js a frase de análise sai de erro e vira estado emAnalise mostrado por statusLabel, então some quando o pedido vira pago; (3) podeTentar() fica falso enquanto emAnalise, o link de voltar também some, e emAnalise zera quando o GET do pedido muda de estado; teste em Node (vm) como services/admin/tests/test_appmax.py.",
+  "espera": "mantenedor"
+}

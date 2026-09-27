@@ -9,13 +9,21 @@ from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
 
 from apps.eventos.models import EventoProcessado
-from apps.matriculas.handlers import ao_pagamento_aprovado, ao_pagamento_estornado
+from apps.matriculas.handlers import (
+    ao_pagamento_aprovado,
+    ao_pagamento_estornado,
+    ao_pagamento_reversao_confirmada,
+)
 
 logger = logging.getLogger(__name__)
 
 GRUPO = "alunos"  # nome DESTA célula
 CONSUMIDOR = "worker-1"
-STREAMS = ["eventos.pagamento.aprovado", "eventos.pagamento.estornado"]
+STREAMS = [
+    "eventos.pagamento.aprovado",
+    "eventos.pagamento.estornado",
+    "eventos.pagamento.reversao_confirmada",
+]
 HANDLERS = {
     "pagamento.aprovado": ao_pagamento_aprovado,
     # [ESTORNO] 20/09/2026: o dinheiro que volta fecha o acesso na hora. Sem
@@ -23,6 +31,7 @@ HANDLERS = {
     # e mexer na matricula a mao, que foi exatamente o motivo de o contrato
     # `pagamento.estornado.v2` nascer.
     "pagamento.estornado": ao_pagamento_estornado,
+    "pagamento.reversao_confirmada": ao_pagamento_reversao_confirmada,
 }
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células
@@ -76,6 +85,12 @@ PONTE_DO_V1 = {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
         "no_v1": None,  # nasceu na v2 (Rito de Contrato de 20/09/2026)
     },
+    # [REVERSAO] A mesma chave do estorno, porque os dois avisos apontam o
+    # mesmo pagamento: é ela que faz o segundo deles não cortar de novo.
+    "pagamento.reversao_confirmada": {
+        "chave_entre_versoes": ["provider", "provider_reference_id"],
+        "no_v1": None,  # nasceu na v2 (Rito de Contrato da TAR-755)
+    },
 }
 
 
@@ -90,6 +105,50 @@ class VersaoDesconhecida(ValueError):
 
 class EventoSemPonte(LookupError):
     """Evento consumido sem a ponte entre versões declarada em PONTE_DO_V1."""
+
+
+# [REVERSAO] Campos e valores COPIADOS de
+# contracts/eventos/pagamento.reversao_confirmada.v2.json. Guarda de que não
+# derivam: tests/test_reversao_confirmada.py::test_a_borda_copia_campos_e_enums_do_contrato_v2.
+REVERSAO_CAMPOS = {
+    "platform_site_id",
+    "provider",
+    "provider_reference_id",
+    "motivo",
+}
+REVERSAO_PROVEDORES = {"mercadopago", "appmax"}
+REVERSAO_MOTIVOS = {"estorno", "contestacao"}
+
+
+def validar_reversao_confirmada(dados: dict) -> None:
+    """Recusa na borda um aviso de reversão que o contrato não permite.
+
+    Este é o único aviso da célula conferido campo a campo, e por duas razões.
+    Ele corta acesso sem trazer valor, então um `amount_cents` que aparecesse
+    nele seria um emissor fingindo prova financeira que o contrato proíbe. E o
+    emissor é novo (Appmax): site vazio ou motivo fora da lista cortaria a
+    pessoa errada, ou por um status que não é reversão confirmada.
+
+    A recusa sobe antes de o evento ser marcado como processado: a mensagem fica
+    no PEL e vai para a fila morta depois de MAX_ENTREGAS, onde alguém a lê.
+    """
+    campos_recebidos = set(dados)
+    if campos_recebidos != REVERSAO_CAMPOS:
+        raise ValueError(
+            "pagamento.reversao_confirmada exige identidade e motivo, sem "
+            "campos financeiros adicionais"
+        )
+    if not all(
+        isinstance(dados[campo], str) and dados[campo]
+        for campo in ("platform_site_id", "provider_reference_id")
+    ):
+        raise ValueError(
+            "pagamento.reversao_confirmada exige site e referência não vazios"
+        )
+    if dados["provider"] not in REVERSAO_PROVEDORES:
+        raise ValueError("pagamento.reversao_confirmada exige provedor conhecido")
+    if dados["motivo"] not in REVERSAO_MOTIVOS:
+        raise ValueError("pagamento.reversao_confirmada exige motivo confirmado")
 
 
 def ponte_do_evento(evento: str) -> dict:
@@ -143,6 +202,8 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
         )
     dados = envelope["data"]
     if versao == 2:
+        if envelope["event"] == "pagamento.reversao_confirmada":
+            validar_reversao_confirmada(dados)
         return dados
     if ponte_do_evento(envelope["event"])["no_v1"] is None:
         raise VersaoDesconhecida(
