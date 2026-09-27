@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -159,6 +161,18 @@ def test_auditoria_reprova_ficha_que_o_yaml_nao_abre(tmp_path: Path) -> None:
 
 def test_auditoria_passa_nas_fichas_reais_do_repositorio() -> None:
     assert auditar_fichas(Path(__file__).resolve().parents[2]) == []
+
+
+def test_o_modulo_importa_sem_pyyaml() -> None:
+    """O deploy importa este módulo por `ci/preparar_dados_admin.py`, num job sem
+    PyYAML; o import no topo derrubou a publicação do admin em 27/09/2026."""
+    resultado = subprocess.run(
+        [sys.executable, "-c", "import sys; sys.modules['yaml'] = None; import economia_da_fabrica"],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, resultado.stderr
 
 
 @pytest.fixture(autouse=True)
