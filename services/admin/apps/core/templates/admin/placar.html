@@ -362,6 +362,12 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% endfor %}
     </ul>
   {% endif %}
+  {% comment %}A porta para o funil (26/09/2026), fora dos `if` dos cartões pela
+  razão da porta das coortes: o funil vem da memória, e continua tendo o que
+  mostrar quando um cartão falta.{% endcomment %}
+  <p class="recado-fraco espaco-abaixo-20">
+    <a href="{% url 'funil' %}">Ver o funil da página de venda, degrau a degrau &rarr;</a>
+  </p>
 
   <h2 class="titulo-de-bloco espaco-20">A restrição desta semana</h2>
   {% if not cartao_da_restricao %}
