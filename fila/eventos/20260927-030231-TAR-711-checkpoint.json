@@ -1,0 +1,16 @@
+{
+  "arquivo": "20260927-030231-TAR-711-checkpoint",
+  "tarefa": "TAR-711",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T03:02:31.353089+00:00",
+  "quem": "despacho-pagamentos-appmax-pix-aceite",
+  "plano": "V7 aceite TAR-711: medir deploy do PR 2110, fazer 1 compra Pix sandbox nova pelo checkout publico, ler appmax-pix-pedido/aviso, concluir ou bloquear.",
+  "ultimo_avanco": "Deploy do SHA 5da19c977462 (PR 2110) confirmado success por ci/esperar.py --deploy (17s). Fiz 1 compra Pix sandbox nova real via POST publico https://meshcraft.top/checkout/api/checkout (oferta curso-teste, sessao 5827f711-...048a, R$9,90) em 2026-09-27T02:53:53Z: HTTP 500 na criacao do pedido; 1 nova tentativa idempotente na MESMA sessao (nao reenvio de pedido antigo, e sim replay natural da mesma X-Idempotency-Key=session_id) tambem 500, rapido (1.3s). Raiz provavel: services/checkout/apps/core/clients.py PagamentosClient.criar_intent() faz r.raise_for_status() sem capturar httpx.HTTPError, transformando o 502 documentado e contratual de pagamentos/api/intents.py (_falha_de_provedor, contrato congelado) num 500 mudo do checkout, ao contrario de confirmar_cartao e get_order_card_installments que ja tratam isso. services/checkout/ NAO esta no mandato desta sessao (so services/pagamentos/, ci/, .github/, infra/): correcao bloqueada por mandato, nao tentada.",
+  "proxima_acao": "Nao fazer nova compra nem novo workflow (ordem do coordenador). Obter mandato services/checkout/ do mantenedor OU outra sessao com esse mandato corrige clients.py:criar_intent (try/except httpx.HTTPError -> HttpError 502, igual ao padrao ja usado em get_order_card_installments); so entao repetir 1 compra Pix sandbox nova para medir QR.",
+  "verificacoes": [
+    "python ci/esperar.py --deploy 5da19c977462c3905e9f9a64b9ad3799c98e46be --teto 5 -> success 17s",
+    "curl POST https://meshcraft.top/checkout/api/checkout/sessoes (curso-teste) -> 201, sessao 5827f711-f8d1-43f5-8249-86532569048a",
+    "curl POST .../sessoes/5827f711.../pedido method=pix -> 500 (X-Request-Id ERR-500-552b52de...); repeticao mesma sessao -> 500 (X-Request-Id ERR-500-7fa3d732..., 1.3s)",
+    "leitura services/checkout/apps/core/clients.py e services/pagamentos/pagamentos/api/intents.py em origin/main: raise_for_status sem try/except em criar_intent, vs _falha_de_provedor=502 documentado no contrato"
+  ]
+}
