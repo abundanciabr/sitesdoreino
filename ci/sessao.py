@@ -97,6 +97,7 @@ if __name__ == "__main__":
     sys.modules.setdefault("sessao", sys.modules[__name__])
 
 from _nucleo import (  # noqa: E402
+    SENTINELAS_DE_INSTRUMENTACAO,
     ErroDeInstrumentacao,
     configurar_saida,
     defeito_do_make,
@@ -168,11 +169,6 @@ LIMITE_DE_NOME = 40
 # de dependência local sem identidade continua valendo — a wheel muda de
 # conteúdo sem avisar, a anotação não (TAR-815).
 PADRAO_DO_SHA256_ANOTADO = re.compile(r"\bsha256:([0-9a-fA-F]{64})\b", re.IGNORECASE)
-
-# Os exit codes que `correr_de_verdade` inventa quando o comando NÃO chegou a
-# rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
-# medir" — qualquer outro número veio do programa e é veredito dele.
-SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
 
 PASSOS = (
     "conferir o repositório e a célula",
@@ -2149,7 +2145,7 @@ class Sessao:
                     ambiente_da_sonda["PATH"] = os.pathsep.join([str(Path(shell).parent), ambiente_da_sonda.get("PATH", "")])
                     argumentos_do_make = [f"SHELL={shell}"]
                 def correr_a_sonda(comando: list[str]) -> tuple[int, str]:
-                    saida = self._correr(comando, cwd=self.plano.worktree, env=ambiente_da_sonda, timeout=60)
+                    saida = self._correr(comando, cwd=self.plano.worktree, env=ambiente_da_sonda, timeout=120)
                     return saida.exit_code, saida.texto
                 defeito = defeito_do_make(make, correr_a_sonda, argumentos_do_make)
                 if defeito is not None:

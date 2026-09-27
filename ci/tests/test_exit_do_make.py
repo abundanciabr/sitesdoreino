@@ -34,7 +34,9 @@ carregava a semântica certa. Duplicação consciente é aceitável; duplicaçã
 guarda é armadilha com data marcada (é a §5.11, a mesma lição que fez
 `orcamento-de-mudanca.sh` e `mergear.py` ganharem testes que se leem). Por isso
 `test_as_duas_copias_da_sentinela_nao_derivaram` lê os dois arquivos e reprova
-se elas divergirem.
+se elas divergirem. Desde 27/09/2026 a tabela mora em `ci/_nucleo.py`, junto da
+sonda do make que também a lê, e os dois só a importam; o teste continua
+reprovando se alguém voltar a escrever uma cópia local.
 """
 
 from __future__ import annotations
@@ -90,7 +92,7 @@ def test_o_2_do_make_nao_e_mais_ERROR():
 
 
 def test_so_o_gnu_make_conta_como_make():
-    # guarda: ci/_nucleo.py:446
+    # guarda: ci/_nucleo.py:454
     """Uma fachada chamada `make` não é o GNU Make (`armadilhas/529`).
 
     Aqui o impostor é de verdade: o próprio Python no lugar do `make`.
@@ -135,12 +137,12 @@ def _orienta_sem_culpar_a_celula(detalhe: str) -> None:
 
 
 def test_sonda_aceita_o_make_que_roda_receita_posix():
-    # guarda: ci/_nucleo.py:432
+    # guarda: ci/_nucleo.py:440
     assert defeito_do_make("make", _make_simulado("bom")) is None
 
 
 def test_sonda_diz_que_a_fachada_nao_e_gnu_make():
-    # guarda: ci/_nucleo.py:446
+    # guarda: ci/_nucleo.py:454
     resumo, detalhe = defeito_do_make("make", _make_simulado("fachada"))
     assert resumo == "o `make` do PATH não é GNU Make: make"
     assert "alvo desconhecido: -C" in detalhe
@@ -148,7 +150,7 @@ def test_sonda_diz_que_a_fachada_nao_e_gnu_make():
 
 
 def test_sonda_diz_que_o_gnu_make_roda_receita_sem_shell_posix():
-    # guarda: ci/_nucleo.py:441
+    # guarda: ci/_nucleo.py:449
     resumo, detalhe = defeito_do_make("make", _make_simulado("sem-sh"))
     assert resumo == "o `make` do PATH é GNU Make, mas roda as receitas sem shell POSIX: make"
     assert "não é reconhecido" in detalhe
@@ -156,16 +158,25 @@ def test_sonda_diz_que_o_gnu_make_roda_receita_sem_shell_posix():
 
 
 def test_sonda_diz_que_o_gnu_make_nao_acha_nem_echo():
-    # guarda: ci/_nucleo.py:437
+    # guarda: ci/_nucleo.py:445
     resumo, detalhe = defeito_do_make("make", _make_simulado("sem-echo"))
     assert resumo == "o `make` do PATH é GNU Make, mas não executa nem `echo` numa receita: make"
     assert "CreateProcess" in detalhe
     _orienta_sem_culpar_a_celula(detalhe)
 
 
+@pytest.mark.parametrize("sentinela", [124, 126, 127])
+def test_sonda_que_nem_rodou_nao_e_confundida_com_make_sem_echo(sentinela):
+    """Medido em 27/09/2026: com a máquina carregada a sonda estourou 60 s."""
+    # guarda: ci/_nucleo.py:457
+    resumo, detalhe = defeito_do_make("make", lambda argumentos: (sentinela, "timeout"))
+    assert resumo == f"a sonda do `make` do PATH não chegou a rodar (exit {sentinela}): make"
+    _orienta_sem_culpar_a_celula(detalhe)
+
+
 def test_make_que_nao_roda_receita_e_ERROR_sem_rodar_a_celula(repo: RepoFalso, monkeypatch):
     """A porta do `ci.py`: instrumento ruim nunca vira FAIL da célula."""
-    # guarda: ci/ci.py:391
+    # guarda: ci/ci.py:380
     _celula_com_receita(repo, "falsa", "ci:\n\t@exit 1\n")
     monkeypatch.setattr(runner.shutil, "which", lambda _nome: "make")
     monkeypatch.setattr(runner, "defeito_do_make", lambda make: defeito_do_make(make, _make_simulado("sem-sh")))

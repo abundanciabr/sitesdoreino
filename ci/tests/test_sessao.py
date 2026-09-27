@@ -679,7 +679,7 @@ def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL(sentinela):
 
 def test_make_sem_shell_posix_para_o_baseline_como_instrumento_sem_culpar_a_celula():
     """O GNU Make que roda receita no cmd.exe (`armadilhas/536`) não chega ao `make ci`."""
-    # guarda: ci/sessao.py:2157
+    # guarda: ci/sessao.py:2153
     mundo = MundoFalso(
         plano_de_teste(),
         falhar={"rev-parse --verify": 1},
@@ -698,8 +698,8 @@ def test_make_sem_shell_posix_para_o_baseline_como_instrumento_sem_culpar_a_celu
 
 def test_sonda_do_baseline_mede_o_make_com_o_shell_do_make_ci(monkeypatch):
     """No Windows o `make ci` recebe `SHELL=` e o PATH do shell; a sonda também."""
-    # guarda: ci/sessao.py:2149
-    # guarda: ci/sessao.py:2150
+    # guarda: ci/sessao.py:2145
+    # guarda: ci/sessao.py:2146
     monkeypatch.setattr(sessao.platform, "system", lambda: "Windows")
     mundo = MundoFalso(plano_de_teste(), falhar={"rev-parse --verify": 1})
     mundo.sessao().rodar()

@@ -51,6 +51,7 @@ from resumo_de_teste import executar_pytest
 import mapa_de_celulas  # noqa: E402
 import guarda_dos_guardas  # noqa: E402
 from _nucleo import (  # noqa: E402
+    SENTINELAS_DE_INSTRUMENTACAO,
     ErroDeInstrumentacao,
     Estado,
     Relatorio,
@@ -314,18 +315,6 @@ def rodar_testes_da_infra(raiz: Path) -> Resultado:
     resultado, _ = executar_pytest(raiz, [str(raiz / "infra"), "-q"])
     resultado.nome = "testes-da-infra"
     return resultado
-
-
-# Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
-# rodar (ausente, erro de SO, timeout). Só eles significam "não foi possível
-# medir" — qualquer outro número veio do programa e é veredito dele.
-#
-# Este conjunto é DELIBERADAMENTE igual ao de `ci/sessao.py`, que encapsula o
-# mesmo `make ci` para o baseline de sessão. Duplicação consciente é aceitável;
-# duplicação sem guarda é armadilha com data marcada — por isso
-# `ci/tests/test_exit_do_make.py` lê os DOIS arquivos e reprova se as cópias
-# divergirem.
-SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
 
 
 def classificar_exit_do_make(codigo: int) -> Estado:

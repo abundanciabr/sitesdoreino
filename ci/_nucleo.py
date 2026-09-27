@@ -382,6 +382,14 @@ def recortar(texto: str, limite: int = 2000) -> str:
 # `if [ ... ]` das células quebra no shell e a célula leva a culpa
 # (`armadilhas/536`). A sonda roda uma receita com uma linha simples e uma de
 # shell POSIX, do mesmo jeito que a porta vai rodar o `make ci`.
+#
+# Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
+# rodar (127 ausente, 126 erro de SO, 124 timeout). Só eles significam "não
+# foi possível medir"; qualquer outro número veio do programa e é veredito
+# dele. Moram aqui porque a sonda, o `make ci` do `ci.py` e o do baseline de
+# `sessao.py` leem a mesma tabela.
+SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
+
 MAKEFILE_DA_SONDA = (
     "sonda:\n"
     "\t@echo linha-simples\n"
@@ -402,11 +410,11 @@ def _correr_a_sonda(comando: list[str]) -> tuple[int, str]:
     """Ausência, erro de SO e timeout viram as sentinelas 127, 126 e 124."""
     try:
         proc = subprocess.run(comando, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", timeout=60, check=False)
+                              encoding="utf-8", errors="replace", timeout=120, check=False)
     except FileNotFoundError as exc:
         return 127, str(exc)
     except subprocess.TimeoutExpired:
-        return 124, f"{comando[0]}: timeout após 60s"
+        return 124, f"{comando[0]}: timeout após 120s"
     except OSError as exc:
         return 126, str(exc)
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
@@ -445,6 +453,10 @@ def defeito_do_make(
     if not versao.startswith("GNU Make"):
         resumo = f"o `make` do PATH não é GNU Make: {make}"
         causa = "Um programa chamado `make` que não é o GNU Make não roda o `make ci` das células."
+    if codigo in SENTINELAS_DE_INSTRUMENTACAO:
+        resumo = f"a sonda do `make` do PATH não chegou a rodar (exit {codigo}): {make}"
+        causa = ("O make não abriu ou não terminou a tempo (124 = tempo esgotado, 126 = erro do\n"
+                 "sistema, 127 = não encontrado). Com a máquina carregada, espere e repita.")
     comando = subprocess.list2cmdline([make, "-C", "<pasta temporária>", "sonda", *argumentos_do_make])
     detalhe = (
         f"A sonda `{comando}`, com a receita\n{recortar(MAKEFILE_DA_SONDA)}\n"
