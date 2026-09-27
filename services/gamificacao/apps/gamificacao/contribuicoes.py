@@ -26,6 +26,10 @@ AS TRAVAS, E POR QUE CADA UMA
    caminho gravava uma tarefa com qualquer pessoa como responsável. Fail-closed.
 8. **A lista de critérios tem teto.** Sem limite, o campo vira formulário sem
    fim: no máximo 20 critérios, cada um com até 300 caracteres.
+9. **Só quem tem matrícula ativa assume** (decisão do mantenedor de
+   27/09/2026, a mesma regra do grupo e do desafio). A categoria é pergunta de
+   rede, feita pela view (`apps/core/matricula.py`); a regra mora AQUI, e o
+   argumento é obrigatório: nenhum caminho assume sem dizer a categoria.
 
 O QUE ESTE ARQUIVO NÃO FAZ: não avisa ninguém. Só boa notícia vira carta, e a
 carta da medalha já sai por `conceder()`. A devolução e o prazo moram na tela
@@ -72,6 +76,9 @@ VAGAS_NO_MAXIMO = 999
 # um parágrafo.
 MAXIMO_DE_CRITERIOS = 20
 MAXIMO_DE_CARACTERES_POR_CRITERIO = 300
+
+# A única categoria de `getStudentStanding` que assume tarefa no quadro.
+CATEGORIA_QUE_ASSUME = "aluno"
 
 Estado = CompromissoDeContribuicao.Estado
 
@@ -237,8 +244,16 @@ def _meu(tarefa: TarefaComunitaria, pessoa: Pessoa) -> CompromissoDeContribuicao
     return compromisso
 
 
-def assumir(*, tarefa: TarefaComunitaria, pessoa: Pessoa) -> CompromissoDeContribuicao:
-    """O aluno diz "eu faço". Dentro das vagas, e uma vez por tarefa."""
+def assumir(
+    *, tarefa: TarefaComunitaria, pessoa: Pessoa, categoria: str
+) -> CompromissoDeContribuicao:
+    """O aluno diz "eu faço". Com matrícula ativa, dentro das vagas, uma vez por tarefa."""
+    if categoria != CATEGORIA_QUE_ASSUME:
+        raise ContribuicaoRecusada(
+            "Assumir tarefa do quadro é para quem tem matrícula ativa na escola, e "
+            "a sua ainda não está ativa. Faça a sua matrícula e volte aqui para "
+            "assumir. Ver as tarefas continua livre."
+        )
     with transaction.atomic():
         tarefa = TarefaComunitaria.objects.select_for_update().get(pk=tarefa.pk)
         if not tarefa.aberta:

@@ -21,6 +21,7 @@ em lugar nenhum ([INV-P12]; `armadilhas/143`). O estado dessas coisas mora em
 `PerfilJogador.celebracoes_pendentes`, no banco.
 """
 
+import logging
 import mimetypes
 from pathlib import Path
 from urllib.parse import quote
@@ -57,8 +58,18 @@ from apps.gamificacao.validacao import (
 )
 
 from .equipe import e_da_equipe, ids_da_equipe
+from .matricula import MatriculaNaoConferida, categoria_de_quem_pede
 from .perfil import escada_de, perfil_de
 from .sessao import quem_e, site_atual
+
+logger = logging.getLogger(__name__)
+
+# O que o aluno lê quando a matrícula não pôde ser perguntada. O motivo técnico
+# vai para o log; a tela diz só o que houve e o que fazer.
+MATRICULA_NAO_CONFERIDA = (
+    "Não consegui conferir a sua matrícula agora, então nada foi assumido. "
+    "Tente de novo em alguns minutos."
+)
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
 # não frases: o texto vive no template, no idioma de quem lê, e uma frase pronta
@@ -582,7 +593,12 @@ def contribuir(request):
     gesto = request.POST.get("gesto", "")
     try:
         if gesto == "assumir":
-            quadro.assumir(tarefa=tarefa, pessoa=pessoa)
+            try:
+                categoria = categoria_de_quem_pede(request)
+            except MatriculaNaoConferida as motivo:
+                logger.warning("matrícula não conferida no quadro: %s", motivo)
+                return _voltar("contribuicoes", erro=MATRICULA_NAO_CONFERIDA)
+            quadro.assumir(tarefa=tarefa, pessoa=pessoa, categoria=categoria)
             return _voltar("contribuicoes", recado="tarefa-assumida")
         if gesto == "enviar":
             quadro.enviar(
