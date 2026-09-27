@@ -3196,7 +3196,7 @@ def _problemas_da_substituicao(
     return problemas
 
 
-def recusa_por_dependencia_aberta(
+def recusa_por_dependencia_nao_concluida(
     tarefas: dict[str, dict], eventos: list[dict], tid: str
 ) -> tuple[str, str] | None:
     """O que houve e o que fazer quando `tid` ainda espera um `depende_de`.
@@ -3206,16 +3206,17 @@ def recusa_por_dependencia_aberta(
     portas terminais daqui e a `ci/pr.py`, que recusa antes de publicar.
     """
     estados = calcular_estados(tarefas, eventos)
-    abertas = [
+    nao_concluidas = [
         f"{dep} ({estados[dep]['estado']})"
         for dep in tarefas[tid].get("depende_de") or []
         if dep in estados and estados[dep]["estado"] != CONCLUIDA
     ]
-    if not abertas:
+    if not nao_concluidas:
         return None
     return (
-        f"{tid} não pode ser concluída com dependência aberta: {', '.join(abertas)}",
+        f"{tid} não pode ser concluída com dependência não concluída: {', '.join(nao_concluidas)}",
         "Espere a dependência concluir (python ci/fila.py listar mostra o estado) e repita. "
+        "Se ela já concluiu na main, faça merge de origin/main nesta bancada e repita. "
         f"Se ela foi cancelada ou deixou de ser pré-requisito, corrija o depende_de de {tid} "
         "num PR e repita.",
     )
@@ -3238,7 +3239,7 @@ def _concluir_com_prova(
     if tarefa is None and (raiz / "fila" / "tarefas").exists():
         print(f"RECUSADO: {tid} não existe na fila.")
         return 1
-    recusa = tarefa and recusa_por_dependencia_aberta(tarefas, eventos, tid)
+    recusa = tarefa and recusa_por_dependencia_nao_concluida(tarefas, eventos, tid)
     if recusa:
         print(f"RECUSADO: {recusa[0]}.")
         print(recusa[1])
