@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-103150-TAR-854-explicada",
+  "tarefa": "TAR-854",
+  "evento": "explicada",
+  "quando": "2026-09-27T10:31:50.873393+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026 (sessão da manhã): abrir o máximo de frentes da Comunidade Meshcraft com Opus 5.5 e Sonnet 5; rodada 2 do dossiê (docs/comunidade), partes sem decisão reservada ao mantenedor",
+  "o_que_e": "A Comunidade está no ar, mas nenhum aluno é avisado de que ela existe. Só descobre quem por acaso abre o fórum ou a página de documentos.",
+  "o_que_muda": "Fica pronta uma sequência de mensagens que convida o aluno a entrar na Comunidade depois de concluir o primeiro bloco do curso. Ela nasce desligada; o mantenedor liga pela tela de jornadas quando quiser começar.",
+  "exemplo": "Um aluno termina o primeiro bloco numa terça à noite; no dia seguinte chega no sininho: você concluiu o primeiro bloco, seu grupo na Comunidade está esperando, com o link.",
+  "importancia": 50
+}
