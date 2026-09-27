@@ -53,7 +53,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .clients import CatalogoClient, MedicaoClient
-from .paginas import _site
+from .paginas import SLUG_DA_PAGINA, _site
 
 ALFA = 0.05
 PODER = 0.80
@@ -502,7 +502,9 @@ def montar(site: dict | None, experimento_id: str, hoje: dt.date) -> dict:
             "estado": "catalogo-nao-respondeu",
             "frase": "não consegui saber de qual site é este endereço",
         }
-    desfecho, corpo = CatalogoClient().experimento(site["id"], experimento_id)
+    desfecho, corpo = CatalogoClient().experimento(
+        site["id"], SLUG_DA_PAGINA, experimento_id
+    )
     if desfecho == CatalogoClient.SEM_EXPERIMENTO:
         return {"estado": "sem-experimento"}
     if desfecho != CatalogoClient.OK:

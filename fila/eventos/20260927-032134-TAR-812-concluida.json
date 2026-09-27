@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-032134-TAR-812-concluida",
+  "tarefa": "TAR-812",
+  "evento": "concluida",
+  "quando": "2026-09-27T03:21:34.436402+00:00",
+  "quem": "agent/admin/cliente-catalogo-experimento",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2157",
+  "verificado_em": "2026-09-27"
+}
