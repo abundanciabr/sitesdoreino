@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-246-checkout-em-analise-sobrevive-a-recarga",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "checkout: em análise sobrevive à recarga",
+  detalhe: "TAR-869: página do cartão recarregada em análise segue fechada; getOrder lê a intent em pagamentos e a tela reagenda consultas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2234. Validação local: árvore 5c6f83f2456861b5f8a08d96e6f5d3f72fdcfeb2; commit e3561682c4bc3fb6b1824ba239fdbca9a78acab8; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-869",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

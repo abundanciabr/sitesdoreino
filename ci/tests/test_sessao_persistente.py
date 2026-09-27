@@ -117,10 +117,12 @@ def baseline(ambiente):
     a.preparar_venv()
     a.instalar()
     estado = {"main": "a" * 40, "tree": "b" * 40, "head": "b" * 40, "dirty": "", "exit": 0, "make": 0, "isoladas": [],
-              "versao_do_make": "GNU Make 4.4.1"}
+              "versao_do_make": "GNU Make 4.4.1", "sonda": (0, "linha-simples\nlinha-posix")}
     def correr(comando, **kwargs):
         if comando[1:] == ["--version"]:
             return sessao.Saida(comando, 0, estado["versao_do_make"], "")
+        if "sonda" in comando:
+            return sessao.Saida(comando, *estado["sonda"], "")
         if "status" in comando:
             return sessao.Saida(comando, 0, estado["dirty"] if "-C" in comando else estado.get("base_dirty", ""), "")
         if "show" in comando:
@@ -315,7 +317,8 @@ def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
 @pytest.mark.parametrize("requisitos_divergentes", [False, True])
 def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_divergentes):
     make = shutil.which("make")
-    assert make, "prova de integração exige GNU Make"
+    defeito = sessao.defeito_do_make(make) if make else ("`make` ausente do PATH", "")
+    assert defeito is None, "prova de integração exige o make do PATH rodando receita de célula:\n" + "\n".join(defeito or ())
     repo = ambiente.raiz
     repo.mkdir(parents=True)
     def git(*args):
@@ -396,9 +399,10 @@ def test_revisao_da_main_invalida_nao_executa_baseline(baseline):
 
 
 def test_make_que_nao_e_gnu_para_como_instrumento_sem_culpar_a_base(baseline):
-    # guarda: ci/sessao.py:2145
+    # guarda: ci/sessao.py:2153
     a, estado = baseline
     estado["versao_do_make"] = "make local do Codex para sitesdoreino"
+    estado["sonda"] = (2, "ERROR: alvo desconhecido: -C")
     with pytest.raises(sessao.ErroDeSessao) as erro:
         a.rodar_baseline("git")
     assert erro.value.resumo == "o `make` do PATH não é GNU Make: make"
