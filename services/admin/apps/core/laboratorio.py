@@ -53,6 +53,15 @@ ele media a coisa errada com precisão, que é como um indicador morre
 `doze.aprendizados_validados` passou a chamar `aprendizados_validados` daqui.
 Uma regra só, dois leitores, zero divergência: a tela do laboratório e o 12º do
 placar não conseguem discordar, porque são a mesma conta.
+
+## Os experimentos da página de oferta vêm do catálogo, e não entram na conta
+
+Decisão 5 do mantenedor (sessão de 26/09/2026): o laboratório mostra os
+experimentos da página lidos do `catalogo`, que é o dono deles
+(`listExperiments`), e nenhum registro no livro nasce por decisão. Eles
+aparecem numa seção própria, com as mesmas palavras da tela
+`/admin/paginas/experimentos/` (`experimentos._para_a_tela`), e a conta acima
+não muda: ela continua lendo só o livro.
 """
 
 from __future__ import annotations
@@ -61,9 +70,14 @@ import datetime as dt
 
 from django.shortcuts import render
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_GET
 
+from .clients import CatalogoClient
+from .decisao_do_experimento import DECISOES
 from .direcao import ler_registros
+from .experimentos import _para_a_tela
+from .paginas import SLUG_DA_PAGINA, _site
 
 #: O tipo de registro que carrega um experimento e o resultado dele.
 TIPO = "medicao"
@@ -195,6 +209,34 @@ def aprendizados_validados(
     )
 
 
+def experimentos_da_pagina(request) -> dict:
+    """Os experimentos da página de oferta, ou o motivo de não tê-los lido.
+
+    `{"erro": ...}` é "não consegui perguntar ao catálogo", e a tela diz isso;
+    `{"experimentos": []}` é "perguntei e a página não tem nenhum".
+    """
+    site = _site(request)
+    if site is None:
+        return {"erro": "O catálogo, que guarda os experimentos, não respondeu."}
+    situacao, lista = CatalogoClient().experimentos_da_pagina(
+        site["id"], SLUG_DA_PAGINA
+    )
+    if situacao != CatalogoClient.OK:
+        return {"erro": lista}
+    return {
+        "experimentos": [
+            {
+                **_para_a_tela(e),
+                "criado_em": parse_datetime(e.get("criado_em") or ""),
+                "encerrado_em": parse_datetime(e.get("encerrado_em") or ""),
+                "decisao": DECISOES.get(e.get("decisao"), e.get("decisao")),
+                "vencedora": e.get("vencedora"),
+            }
+            for e in lista
+        ]
+    }
+
+
 @require_GET
 def laboratorio(request):
     """A tela. Fail-OPEN, como o placar: ela abre e DIZ o que não conseguiu ver."""
@@ -204,5 +246,6 @@ def laboratorio(request):
         {
             "admin": request.admin,
             "lab": montar(ler_registros(), timezone.localdate()),
+            "da_pagina": experimentos_da_pagina(request),
         },
     )
