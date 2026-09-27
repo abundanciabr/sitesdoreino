@@ -825,6 +825,75 @@ def test_sem_declaracao_nao_ha_checagem(monkeypatch) -> None:
 
 
 # ---------------------------------------------------------------------------
+# `Depende-de: #N` SEGURA O POUSO (decisão 7 do mantenedor, 26/09/2026)
+#
+# A checagem acima existia e ninguém a chamava: a pista integrava o consumidor
+# com o provedor ainda aberto. Estes testes passam pelo caminho real da pista,
+# `integrar_abertos` -> `integrar` -> `conferir`, e só trocam o `gh`.
+# ---------------------------------------------------------------------------
+
+MERGE_DO_99 = ["pr", "merge", "99", "--merge", "--match-head-commit", "a" * 40]
+
+
+def _pousar_automatico(monkeypatch, corpo: str, estado_do_provedor: str = "") -> list:
+    import json as _json
+
+    chamadas: list = []
+    pr = _pr(body=corpo)
+
+    def gh(argumentos, raiz, descricao, **kwargs):
+        chamadas.append(list(argumentos))
+        if argumentos[:2] == ["pr", "list"]:
+            return _json.dumps(
+                [
+                    {
+                        "number": 99,
+                        "isDraft": False,
+                        "isCrossRepository": False,
+                        "createdAt": "2026-09-26T23:00:00Z",
+                    }
+                ]
+            )
+        if argumentos[:3] == ["pr", "view", "12"]:
+            return _json.dumps({"state": estado_do_provedor, "title": "o provedor"})
+        if argumentos[:3] == ["pr", "view", "99"]:
+            if argumentos[-1] == "state,mergedAt,mergeCommit":
+                return _json.dumps({"state": "MERGED", "mergeCommit": {"oid": "b" * 40}})
+            return _json.dumps(pr)
+        return ""
+
+    def fora_deste_teste(*a, **k):
+        return mergear.Resultado("isolado", Estado.PASS, "fora deste teste")
+
+    monkeypatch.setattr(mergear, "_gh", gh)
+    monkeypatch.setattr(mergear, "checar_mandato", fora_deste_teste)
+    monkeypatch.setattr(mergear, "checar_congelamento", fora_deste_teste)
+    monkeypatch.setattr(mergear, "sombra_do_evento_da_fila", lambda *a, **k: [])
+    monkeypatch.setattr(mergear, "sombra_da_area_do_registro", lambda *a, **k: None)
+    assert mergear.integrar_abertos(RAIZ) == 0
+    return chamadas
+
+
+def test_pouso_nao_integra_pr_cuja_dependencia_esta_aberta(monkeypatch, capsys) -> None:
+    chamadas = _pousar_automatico(monkeypatch, "Depende-de: #12", "OPEN")
+    assert MERGE_DO_99 not in chamadas
+    saida = capsys.readouterr().out
+    assert "Depende-de #12" in saida and "ainda não entrou" in saida
+
+
+def test_pouso_integra_quando_a_dependencia_ja_entrou(monkeypatch) -> None:
+    chamadas = _pousar_automatico(monkeypatch, "Depende-de: #12", "MERGED")
+    assert ["pr", "view", "12", "--json", "state,title"] in chamadas
+    assert MERGE_DO_99 in chamadas
+
+
+def test_pouso_sem_depende_de_integra_como_antes(monkeypatch) -> None:
+    chamadas = _pousar_automatico(monkeypatch, "sem ordem declarada")
+    assert MERGE_DO_99 in chamadas
+    assert not any(c[:3] == ["pr", "view", "12"] for c in chamadas)
+
+
+# ---------------------------------------------------------------------------
 # A PISTA NÃO DEPENDE DE PERMISSÃO QUE ELA NÃO TEM (conserto de 29/08/2026)
 #
 # A pista terminava chamando a si mesma (`gh workflow run pouso.yml`) para
