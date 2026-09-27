@@ -15,16 +15,17 @@
 > `test_mexer_no_arquivo_da_pasta_NAO_muda_o_que_o_site_publica` existe para essa
 > confusão não voltar em silêncio.
 
-Aqui moram os documentos com que o **site nasce**: uns para qualquer pessoa,
-outros só para quem administra. Decidido pelo mantenedor em 29/08/2026; a lei é
-`docs/decisoes/DECISAO-a-area-de-documentos.md`.
+Aqui moram os documentos com que o **site nasce**, privados e visíveis somente
+a administradores. Acesso público exige pedido explícito do mantenedor para
+aquele documento. Regra reiterada em 27/09/2026 em `CLAUDE.md`, seção Regra de
+destino do conteúdo; `como-funciona-a-entrada` é a exceção pública já autorizada.
 
 Não confundir com as outras pastas de texto do repositório, porque a diferença é
 quem lê:
 
 | Pasta | Para quem | Sai no site? |
 |---|---|---|
-| `documentos/` | pessoas (alunos e o mantenedor) | **sim** |
+| `documentos/` | administradores; público só com pedido explícito | **sim** |
 | `docs/decisoes/` | quem constrói (agentes, e ele quando quer o porquê) | não |
 | `armadilhas/` | agentes, memória de campo | não |
 | `painel/ia/` | IAs de fora, pelo `/mapa-ia/` | sim, como texto puro |
@@ -35,12 +36,12 @@ Cada documento é um `.md` com um cabeçalho no topo:
 
 ```markdown
 ---
-titulo: Como funciona a entrada na escola
-publico: true
+titulo: Roteiro interno da escola
+publico: false
 ordem: 10
 ---
 
-# Como funciona a entrada na escola
+# Roteiro interno da escola
 
 ...
 ```
@@ -54,8 +55,9 @@ ordem: 10
   arquivo.
 
 **`publico` é fail-CLOSED, e essa é a regra que carrega a pasta.** Um documento
-novo nasce PRIVADO. Para ele sair no site aberto alguém precisa escrever
-`publico: true`, e não existe caminho em que um texto escape para o mundo por
+novo nasce PRIVADO. Somente após pedido explícito do mantenedor para publicá-lo
+para o público, registrado na evidência da entrega, use `publico: true`.
+Não existe caminho em que um texto escape para o mundo por
 esquecimento ou por erro de digitação no cabeçalho.
 
 ## O que se escreve aqui, e o que não
