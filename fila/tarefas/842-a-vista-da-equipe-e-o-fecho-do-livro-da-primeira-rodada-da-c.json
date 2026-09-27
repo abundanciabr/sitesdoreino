@@ -1,0 +1,19 @@
+{
+  "arquivo": "842-a-vista-da-equipe-e-o-fecho-do-livro-da-primeira-rodada-da-c",
+  "id": "TAR-842",
+  "titulo": "A vista da equipe e o fecho do livro da primeira rodada da Comunidade entram no livro",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR so de livro integrado com a baixa do PR 2209, a baixa do PR 2207 e a publicacao da vista da equipe conferida de fora",
+  "despacho": "Escrever em painel/registros/ a baixa verde do PR 2209 (livro da rodada 1), a baixa verde do PR 2207 (vista da equipe, C6) e o registro de publicacao da vista (deploy verde e rota fechada ao visitante), e abrir o PR so de livro.",
+  "origem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

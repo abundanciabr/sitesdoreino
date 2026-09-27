@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-059-armadilhas-cinco-licoes-da-obra-appmax",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "armadilhas: cinco lições da obra Appmax",
+  detalhe: "Registra as armadilhas 512, 513, 515, 516 e 517 da coordenação da obra Appmax: recibo do pr.py, --continuar, TAR concluída sem trabalho, checkpoint fora de ordem e teste que trava.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2182. Validação local: árvore 05c28c653d1c371fc9d9915d3f6650a75b69bc5b; commit e89546602f6ba3d135cf079f6a164676c266fdc8; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-822",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

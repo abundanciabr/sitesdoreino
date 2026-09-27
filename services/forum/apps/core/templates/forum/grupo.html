@@ -1,0 +1,73 @@
+{% extends "forum/base.html" %}
+{% block titulo %}Membros de {{ grupo.nome }}{% endblock %}
+{% block conteudo %}
+{% comment %}
+OS MEMBROS DE UM GRUPO DE PRÁTICA (TAR-824). Só a escola chega aqui: para o
+resto, `moderacao.membros_do_grupo` responde 404. Nenhum e-mail aparece na
+tela; a escola digita o e-mail para ACHAR a pessoa, e a lista mostra o nome.
+Tirar alguém não apaga nada: a linha ganha a data de saída e quem tirou.
+Trocar de grupo (TAR-847) fecha a linha daqui e abre a do destino no mesmo
+instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
+{% endcomment %}
+<p class="migalha"><a href="{% url 'area' grupo.slug %}">← voltar ao grupo</a></p>
+<h1>Membros de {{ grupo.nome }}</h1>
+<p class="sub">Só a escola enxerga esta página. Vagas ocupadas: {{ membros|length }} de {{ grupo.vagas }}.
+  Responsável: {{ grupo.responsavel.nome_exibido|default:"ninguém definido" }}.
+  Desafio atual: <a href="{{ desafio }}">{{ grupo.curso_id }}</a>.</p>
+{% if erro %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
+
+{% for membro in membros %}
+  <div class="cartao">
+    <strong>{{ membro.pessoa.nome_exibido|default:"Pessoa sem nome de exibição" }}</strong>
+    <p class="sub" style="margin:4px 0 0">No grupo desde {{ membro.desde|date:"d/m/Y" }}. Quem adicionou: {{ membro.adicionado_por.nome_exibido|default:"alguém da escola" }}. Motivo: {{ membro.motivo }}</p>
+    <details class="ferramentas-mini">
+      <summary>Tirar do grupo ou trocar de grupo</summary>
+      <form class="escrever" method="post" action="{% url 'membros_do_grupo' grupo.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="remover">
+        <input type="hidden" name="vinculo_id" value="{{ membro.pk }}">
+        <label for="motivo-saida{{ membro.pk }}">Motivo da saída</label>
+        <input id="motivo-saida{{ membro.pk }}" name="motivo" maxlength="200" required>
+        <button type="submit" aria-label="Tirar {{ membro.pessoa.nome_exibido|default:'esta pessoa' }} do grupo">Tirar do grupo</button>
+      </form>
+      {% if destinos %}
+        <form class="escrever" method="post" action="{% url 'membros_do_grupo' grupo.slug %}">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="trocar">
+          <input type="hidden" name="vinculo_id" value="{{ membro.pk }}">
+          <label for="destino{{ membro.pk }}">Trocar para o grupo</label>
+          <select id="destino{{ membro.pk }}" name="destino" required>
+            {% for destino in destinos %}<option value="{{ destino.pk }}">{{ destino.nome }} ({{ destino.ocupadas }} de {{ destino.vagas }} vaga{{ destino.vagas|pluralize }})</option>{% endfor %}
+          </select>
+          <label for="motivo-troca{{ membro.pk }}">Motivo da troca</label>
+          <input id="motivo-troca{{ membro.pk }}" name="motivo" maxlength="200" required>
+          <button type="submit" aria-label="Trocar {{ membro.pessoa.nome_exibido|default:'esta pessoa' }} de grupo">Trocar de grupo</button>
+        </form>
+      {% else %}
+        <p class="sub" style="margin:10px 0 0">Não existe outro grupo de prática ativo para onde trocar.</p>
+      {% endif %}
+    </details>
+  </div>
+{% empty %}
+  <div class="vazio">
+    <strong>Ninguém no grupo ainda.</strong>
+    <p style="margin:8px 0 0">Adicione a primeira pessoa no formulário abaixo.</p>
+  </div>
+{% endfor %}
+{% if sairam %}<p class="sub">Saídas guardadas no histórico do grupo: {{ sairam }}.</p>{% endif %}
+
+<form class="cartao escrever" method="post" action="{% url 'membros_do_grupo' grupo.slug %}">
+  {% csrf_token %}
+  <input type="hidden" name="acao" value="adicionar">
+  <h2>Adicionar ao grupo</h2>
+  <label for="email">E-mail com que a pessoa entra no site</label>
+  <input id="email" name="email" type="email" required autocomplete="off" value="{{ email_digitado }}">
+  <label for="motivo">Motivo da entrada</label>
+  <input id="motivo" name="motivo" maxlength="200" required value="{{ motivo_digitado }}"
+         placeholder="Ex.: turma de setembro, pedido feito no fórum">
+  <p class="sub" style="margin:10px 0 0">A pessoa precisa ter entrado no fórum pelo
+    menos uma vez. Ela enxerga o grupo enquanto estiver nele e a matrícula
+    estiver ativa.</p>
+  <button type="submit">Adicionar</button>
+</form>
+{% endblock %}

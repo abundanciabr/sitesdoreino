@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-105-painel-decisoes-e-frentes-da-obra-appmax-tar-795",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "painel: decisões e frentes da obra Appmax (TAR-795)",
+  detalhe: "Registros 092 (decisões do mantenedor) e 093 (contagem honesta das frentes contra a ordem de 21) no livro; pendências novas em 094 e 095.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2156. Validação local: árvore d231c5175e590071d0619a7591b9f4f93a8643f0; commit a875091af561795078dcde98f3758a41a4a14108; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-795",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1388,26 +1388,32 @@ def get_instrument(request, slug: str):
     ),
 )
 def put_instrument(request, slug: str, payload: InstrumentoParaGravarSchema):
-    try:
-        instrumento = InstrumentoModel.objects.get(slug=slug)
-    except InstrumentoModel.DoesNotExist:
-        raise HttpError(404, f"o instrumento '{slug}' não existe")
-    instrumento.escala = payload.escala
-    instrumento.minimo_exercicio = payload.minimo_exercicio
-    instrumento.minimo_contrato = payload.minimo_contrato
-    instrumento.secao_do_padrao = payload.secao_do_padrao
-    instrumento.descritores = payload.descritores
-    instrumento.versao += 1
-    instrumento.save(
-        update_fields=[
-            "escala",
-            "minimo_exercicio",
-            "minimo_contrato",
-            "secao_do_padrao",
-            "descritores",
-            "versao",
-        ]
-    )
+    # A tranca serializa duas edições do mesmo instrumento: sem ela, as duas
+    # leriam o mesmo número, e a cópia guardada de um número poderia não ser a
+    # régua que o instrumento teve com ele.
+    with transaction.atomic():
+        try:
+            instrumento = InstrumentoModel.objects.select_for_update().get(slug=slug)
+        except InstrumentoModel.DoesNotExist:
+            raise HttpError(404, f"o instrumento '{slug}' não existe")
+        instrumento.guardar_versao()
+        instrumento.escala = payload.escala
+        instrumento.minimo_exercicio = payload.minimo_exercicio
+        instrumento.minimo_contrato = payload.minimo_contrato
+        instrumento.secao_do_padrao = payload.secao_do_padrao
+        instrumento.descritores = payload.descritores
+        instrumento.versao += 1
+        instrumento.save(
+            update_fields=[
+                "escala",
+                "minimo_exercicio",
+                "minimo_contrato",
+                "secao_do_padrao",
+                "descritores",
+                "versao",
+            ]
+        )
+        instrumento.guardar_versao()
     return _instrumento(instrumento)
 
 

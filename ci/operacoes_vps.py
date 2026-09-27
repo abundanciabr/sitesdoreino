@@ -19,6 +19,7 @@ OPERACOES = {
     "appmax-pix-pedido",
     "appmax-pix-aviso",
     "appmax-inbox-latencia",
+    "appmax-observacao",
     "appmax-estorno",
     "quiz-configuracao",
 }
@@ -48,6 +49,17 @@ MOTIVOS_APPMAX_PIX = {
 CAMPOS_CANDIDATA_APPMAX_PIX = {
     "referencia",
     "criada_em",
+    "tentativa",
+    "intent",
+    "motivo",
+    "qr_presente",
+    "operacoes",
+}
+# A leitura por referência não repete "referencia" nem "criada_em" na
+# evidência (medir() já filtrou por elas); a forma da evidência é quem
+# distingue candidata única de descoberta, não o parâmetro `referencia` do
+# conferir() da esteira, que para appmax-pix nunca o repassa.
+CAMPOS_RESUMO_APPMAX_PIX = {
     "tentativa",
     "intent",
     "motivo",
@@ -187,6 +199,73 @@ QUIZ_CONFIGURACAO_CODIGO = (
     "migracoes = sorted(nome for app_label, nome in MigrationRecorder(connection).applied_migrations() if app_label == 'quiz')\n"
     "print(json.dumps({'sites': sites, 'quizzes': quizzes, 'submissoes_por_resultado': submissoes_por_resultado, 'eventos_pendentes': eventos_pendentes, 'migracoes': migracoes}, sort_keys=True))\n"
 )
+CHAVES_OBSERVACAO_APPMAX = {
+    "tentativas_ate_15_min",
+    "tentativas_15_a_60_min",
+    "tentativas_60_min_a_um_dia_util",
+    "tentativas_acima_de_um_dia_util",
+    "inbox_sem_processamento",
+    "outbox_pendente",
+    "fila_morta",
+    "pedidos_com_tentativas_abertas_duplicadas",
+    "pedidos_com_efeito_duplicado",
+}
+# [MEDICAO-VPS:appmax-observacao] janelas da G12B, só contagens. Não chama a
+# Appmax nem escreve; por isso não exige sandbox e serve à observação de
+# produção. As definições de inbox, outbox e fila morta são as de
+# pagamentos/supervisao.py:medir_pendencias. O dia útil pula sábado e domingo
+# em America/Sao_Paulo; feriado conta como dia útil.
+APPMAX_OBSERVACAO_CODIGO = (
+    "import json\n"
+    "from collections import Counter\n"
+    "from datetime import timedelta\n"
+    "from zoneinfo import ZoneInfo\n"
+    "from django.utils import timezone\n"
+    "from pagamentos.core.models import ESTADOS_EM_ABERTO, AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
+    "agora = timezone.now()\n"
+    "fuso = ZoneInfo('America/Sao_Paulo')\n"
+    "def um_dia_util_depois(instante):\n"
+    "    dia = instante.astimezone(fuso)\n"
+    "    if dia.weekday() >= 5:\n"
+    "        dia = (dia + timedelta(days=7 - dia.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)\n"
+    "    dia += timedelta(days=1)\n"
+    "    while dia.weekday() >= 5:\n"
+    "        dia += timedelta(days=1)\n"
+    "    return dia\n"
+    "def faixa(criada_em):\n"
+    "    idade = agora - criada_em\n"
+    "    if idade <= timedelta(minutes=15):\n"
+    "        return 'tentativas_ate_15_min'\n"
+    "    if idade <= timedelta(minutes=60):\n"
+    "        return 'tentativas_15_a_60_min'\n"
+    "    if agora <= um_dia_util_depois(criada_em):\n"
+    "        return 'tentativas_60_min_a_um_dia_util'\n"
+    "    return 'tentativas_acima_de_um_dia_util'\n"
+    "faixas = Counter()\n"
+    "pedidos = Counter()\n"
+    "for criada_em, site, pedido in PaymentAttempt.objects.filter(provider='appmax', state__in=ESTADOS_EM_ABERTO).values_list('created_at', 'platform_site_id', 'intent__order_id'):\n"
+    "    faixas[faixa(criada_em)] += 1\n"
+    "    pedidos[(site, pedido)] += 1\n"
+    "efeitos = Counter()\n"
+    "for evento, payload in OutboxEvent.objects.filter(payload__provider='appmax').values_list('event', 'payload'):\n"
+    "    if isinstance(payload, dict) and payload.get('provider_reference_id'):\n"
+    "        efeitos[(evento, payload.get('platform_site_id'), payload['provider_reference_id'])] += 1\n"
+    "print(json.dumps({\n"
+    "    'tentativas_ate_15_min': faixas['tentativas_ate_15_min'],\n"
+    "    'tentativas_15_a_60_min': faixas['tentativas_15_a_60_min'],\n"
+    "    'tentativas_60_min_a_um_dia_util': faixas['tentativas_60_min_a_um_dia_util'],\n"
+    "    'tentativas_acima_de_um_dia_util': faixas['tentativas_acima_de_um_dia_util'],\n"
+    "    'inbox_sem_processamento': AppmaxWebhookInbox.objects.filter(processed_at__isnull=True, dead_lettered_at__isnull=True).count(),\n"
+    "    'outbox_pendente': OutboxEvent.objects.filter(published_at__isnull=True).count(),\n"
+    "    'fila_morta': AppmaxWebhookInbox.objects.filter(dead_lettered_at__isnull=False).count(),\n"
+    "    'pedidos_com_tentativas_abertas_duplicadas': sum(1 for total in pedidos.values() if total > 1),\n"
+    "    'pedidos_com_efeito_duplicado': len({chave[1:] for chave, total in efeitos.items() if total > 1}),\n"
+    "}, sort_keys=True))\n"
+)
+CODIGOS_FECHADOS = {
+    "quiz-configuracao": QUIZ_CONFIGURACAO_CODIGO,
+    "appmax-observacao": APPMAX_OBSERVACAO_CODIGO,
+}
 FORMATO = (
     '{"estado":{{json .State.Status}},'
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
@@ -219,6 +298,7 @@ def validar(operacao, servico, permitidos, referencia=""):
             "appmax-pix-pedido",
             "appmax-pix-aviso",
             "appmax-inbox-latencia",
+            "appmax-observacao",
             "appmax-estorno",
         }
         and servico != "pagamentos"
@@ -288,10 +368,12 @@ def conferir_medicao(operacao, dados, referencia=""):
         if not 0 < dados["total_bytes"] or dados["livres_bytes"] > dados["total_bytes"]:
             raise Falha("formato")
     elif operacao == "appmax-pix":
-        if dados.get("modo") == "descoberta":
+        if set(dados) != CAMPOS_RESUMO_APPMAX_PIX:
             if referencia:
                 raise Falha("formato")
             if set(dados) != {"modo", "classificacao", "candidatas"}:
+                raise Falha("formato")
+            if dados["modo"] != "descoberta":
                 raise Falha("formato")
             if dados["classificacao"] not in {"ausente", "unica", "multipla"}:
                 raise Falha("formato")
@@ -342,16 +424,6 @@ def conferir_medicao(operacao, dados, referencia=""):
             if len(referencias) != len(set(referencias)):
                 raise Falha("formato")
         else:
-            if not referencia:
-                raise Falha("formato")
-            if set(dados) != {
-                "tentativa",
-                "intent",
-                "motivo",
-                "qr_presente",
-                "operacoes",
-            }:
-                raise Falha("formato")
             if dados["tentativa"] not in ESTADOS_TENTATIVA:
                 raise Falha("formato")
             if dados["intent"] not in {
@@ -537,6 +609,11 @@ def conferir_medicao(operacao, dados, referencia=""):
                     raise Falha("formato")
                 if type(aviso["latencia_ms"]) is not int or aviso["latencia_ms"] != latencia:
                     raise Falha("formato")
+    elif operacao == "appmax-observacao":
+        if set(dados) != CHAVES_OBSERVACAO_APPMAX:
+            raise Falha("formato")
+        if any(type(v) is not int or not 0 <= v <= 1000000000 for v in dados.values()):
+            raise Falha("formato")
     elif operacao == "appmax-pix-pedido":
         if dados.get("resultado") == "nao_medido":
             if set(dados) != {"resultado", "referencia", "acao"}:
@@ -1163,7 +1240,7 @@ def medir(operacao, servico, referencia=""):
         except (ValueError, TypeError):
             raise Falha("formato") from None
         return conferir_medicao(operacao, dados)
-    if operacao == "quiz-configuracao":
+    if operacao in CODIGOS_FECHADOS:
         try:
             dados = json.loads(
                 comando(
@@ -1175,7 +1252,7 @@ def medir(operacao, servico, referencia=""):
                         "manage.py",
                         "shell",
                         "-c",
-                        QUIZ_CONFIGURACAO_CODIGO,
+                        CODIGOS_FECHADOS[operacao],
                     ]
                 )
             )

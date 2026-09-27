@@ -246,7 +246,8 @@ class Instrumento(models.Model):
     (`semear_esqueleto`). A escala, os mínimos, a seção do padrão e os
     descritores 5/3/1 entram pela tela. **Avaliação em andamento guarda a versão
     em que começou** (P04): mudar o instrumento é `versao` nova, e o laudo
-    (degrau 2.2) grava `instrumento_versao`.
+    (degrau 2.2) grava `instrumento_versao` e aponta a cópia daquela régua
+    (`VersaoDoInstrumento`), que sobrevive às edições seguintes.
     """
 
     slug = models.SlugField(max_length=40, unique=True)
@@ -274,6 +275,62 @@ class Instrumento(models.Model):
 
     def __str__(self) -> str:
         return f"{self.cartao}. {self.nome_canonico}"
+
+    def guardar_versao(self) -> "VersaoDoInstrumento":
+        """A cópia da régua deste objeto no número `versao` dele. Se o número
+        já tem cópia, devolve a que existe e nunca a reescreve: o texto só muda
+        com `versao` nova, então a cópia de um número é a régua daquele número."""
+        copia, _ = VersaoDoInstrumento.objects.get_or_create(
+            instrumento=self,
+            numero=self.versao,
+            defaults={
+                "escala": self.escala,
+                "minimo_exercicio": self.minimo_exercicio,
+                "minimo_contrato": self.minimo_contrato,
+                "secao_do_padrao": self.secao_do_padrao,
+                "descritores": self.descritores,
+            },
+        )
+        return copia
+
+
+class VersaoDoInstrumento(models.Model):
+    """A régua de um instrumento como ela era num número de versão: escala,
+    mínimos, seção do padrão e descritores. Dossiê da Comunidade §10: alterar
+    a rubrica cria uma versão nova e não reescreve avaliações anteriores.
+
+    Só de acréscimo, e quem garante é o banco: o gatilho da migração 0010
+    recusa UPDATE e DELETE nesta tabela. A edição pela porta do Admin
+    (`putInstrument`) guarda a versão que sai e a que entra; o laudo guarda a
+    versão com que foi emitido (`Laudo.versao_do_instrumento`).
+    """
+
+    instrumento = models.ForeignKey(
+        Instrumento, related_name="versoes", on_delete=models.PROTECT
+    )
+    numero = models.PositiveIntegerField()
+    escala = models.JSONField(default=dict, blank=True)
+    minimo_exercicio = models.CharField(max_length=200, blank=True, default="")
+    minimo_contrato = models.CharField(max_length=200, blank=True, default="")
+    secao_do_padrao = models.CharField(max_length=120, blank=True, default="")
+    descritores = models.JSONField(default=dict, blank=True)
+    guardada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["instrumento", "numero"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["instrumento", "numero"],
+                name="uma_copia_por_versao_de_instrumento",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(numero__gte=1),
+                name="copia_de_instrumento_comeca_em_1",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.instrumento} v{self.numero}"
 
 
 # ---------------------------------------------------------------------------
@@ -969,7 +1026,10 @@ class Laudo(models.Model):
 
     `instrumento_versao` é nulo quando a aula não tem instrumento (a mesma
     autoavaliação de texto livre que `envio.py::criterios_de` já prevê para o
-    aluno). `ajuste_feito` só é escrito com `aberto_com_ajuste`. `rascunho`
+    aluno). `versao_do_instrumento` é a cópia da régua com que o laudo foi
+    emitido, legível depois de qualquer edição; é nula sem instrumento e nos
+    laudos anteriores à migração 0010 cujo número não tinha mais cópia.
+    `ajuste_feito` só é escrito com `aberto_com_ajuste`. `rascunho`
     aponta para a sugestão do Assistente de laudo, quando o laudo nasceu de uma.
     """
 
@@ -989,6 +1049,13 @@ class Laudo(models.Model):
     )
     papel = models.CharField(max_length=9, choices=Papel.choices)
     instrumento_versao = models.PositiveIntegerField(null=True, blank=True)
+    versao_do_instrumento = models.ForeignKey(
+        VersaoDoInstrumento,
+        related_name="laudos",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
     notas = models.JSONField(default=dict, blank=True)
     forcas = models.JSONField(default=list, blank=True)
     mudanca = models.JSONField(default=dict, blank=True)

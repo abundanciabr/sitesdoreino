@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-119-correcao-do-make-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A abertura de sessão já não culpa a base quando o make da máquina não é o GNU Make",
+  detalhe: "O PR 2213 integrou na main às 07h26 de São Paulo (merge e8c6ca44938ee051ee48b013ded2015414a1cdcd). ci/sessao.py e ci/ci.py conferem make --version e param como erro de instrumento; armadilha 529. Os 8 checks passaram. Este registro dá baixa verde no recibo do PR 2213.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2213 (MERGED, mergeCommit e8c6ca44938ee051ee48b013ded2015414a1cdcd, conferido por gh pr view --json state,mergedBy,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-120-ci-baseline-nao-culpa-a-base-se-make-nao-e-gnu",
+  relacao: "baixa",
+  tarefa: "TAR-845",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

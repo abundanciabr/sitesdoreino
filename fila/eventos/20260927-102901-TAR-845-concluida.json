@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-102901-TAR-845-concluida",
+  "tarefa": "TAR-845",
+  "evento": "concluida",
+  "quando": "2026-09-27T10:29:01.673100+00:00",
+  "quem": "agent/painel/make-impostor-livro",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2215",
+  "verificado_em": "2026-09-27"
+}

@@ -357,6 +357,34 @@ def test_repeticao_de_aviso_preserva_uma_reversao_confirmada() -> None:
     )
 
 
+# guarda: services/pagamentos/pagamentos/supervisao.py:200
+def test_order_refund_e_order_chargeback_in_treatment_produzem_um_evento() -> None:
+    """order_refund e order_chargeback_in_treatment são os dois avisos que a
+    Appmax manda para o mesmo pedido em disputa; nunca tinham teste próprio
+    juntos aqui. Numa Intent já aprovada, a rodada processa os dois avisos e
+    emite pagamento.reversao_confirmada v2 uma única vez (TAR-758)."""
+    _tentativa_aprovada()
+    _instalacao()
+    aviso_refund = _aviso("order_refund")
+    aviso_chargeback = _aviso("order_chargeback_in_treatment")
+    cliente = _cliente()
+    cliente.consultar_pedido.return_value["status"] = "estornado"
+    with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
+        with patch("pagamentos.supervisao.relay_outbox", return_value=0):
+            resultado = processar_rodada()
+    assert resultado["inbox_processada"] == 2
+    aviso_refund.refresh_from_db()
+    aviso_chargeback.refresh_from_db()
+    assert aviso_refund.processed_at is not None
+    assert aviso_chargeback.processed_at is not None
+    assert (
+        OutboxEvent.objects.filter(
+            event="pagamento.reversao_confirmada", version=2
+        ).count()
+        == 1
+    )
+
+
 @pytest.mark.parametrize(
     "campo",
     [
