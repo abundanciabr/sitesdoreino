@@ -14,6 +14,7 @@ on:
           - appmax-pix-pedido
           - appmax-pix-aviso
           - appmax-inbox-latencia
+          - appmax-observacao
           - appmax-estorno
           - quiz-configuracao
       servico:

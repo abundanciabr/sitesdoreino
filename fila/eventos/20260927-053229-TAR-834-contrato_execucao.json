@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260927-053229-TAR-834-contrato_execucao",
+  "tarefa": "TAR-834",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T05:32:29.659276+00:00",
+  "quem": "despacho-n3-appmax-observacao",
+  "contrato": {
+    "plano": "Rota Appmax, frente N3: instrumento das janelas de observação G12B",
+    "versao": 1,
+    "objetivo": "Dar à esteira uma leitura fechada que conta, sem dado pessoal, tentativas Appmax abertas por idade, inbox sem processamento, outbox pendente, fila morta e duplicidades.",
+    "entregaveis": [
+      "Operação appmax-observacao no catálogo de ci/operacoes_vps.py com script de medição e validação fechada",
+      "Testes vermelhos e depois verdes em ci/tests/test_operacoes_vps.py, com mutação das guardas",
+      "Opção nova no workflow operacoes-vps.yml",
+      "Um run de leitura na main com as contagens sanitizadas"
+    ],
+    "escopo_incluido": [
+      "Leitura agregada do banco de pagamentos pelo container",
+      "Validador que só aceita as chaves exatas com inteiros não negativos",
+      "Workflow de operações da VPS"
+    ],
+    "nao_objetivos": [
+      "Chamada HTTP ou POST na Appmax",
+      "Criar pedido, compra ou webhook",
+      "Corrigir o ramo appmax-pix de conferir_medicao",
+      "Alertas automáticos ou agendamento das janelas"
+    ],
+    "restricoes": [
+      "Sem dado pessoal, identificador de pedido ou referência na saída",
+      "Lista fechada de operações",
+      "Somente leitura"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato do mantenedor de 26/09/2026 22h53 BRT para ci/ e .github/ na obra Appmax no cartão"
+    ],
+    "etapas": [
+      "Testes vermelhos",
+      "Operação, validador e workflow",
+      "Mutação das guardas e PR",
+      "Run de leitura na main"
+    ],
+    "criterios_entrada": [
+      "Operação appmax-inbox-latencia integrada na main (PR 2183)"
+    ],
+    "criterios_aceite": [
+      "Saída contém só as nove contagens inteiras não negativas",
+      "Valor inválido, chave extra ou ausente reprova no conferir",
+      "Run na main termina com PASS e resumo publicado"
+    ],
+    "evidencias_exigidas": [
+      "Testes focais e checks do PR",
+      "Prova de guardas PASS FAIL PASS",
+      "Run da operação appmax-observacao na main"
+    ],
+    "condicao_encerramento": "Operação integrada e um run de leitura na main com contagens sanitizadas relatadas.",
+    "limites_autonomia": "Somente leitura agregada; nenhuma escrita no banco, nenhuma chamada à Appmax.",
+    "acoes_do_mantenedor": "Nenhuma."
+  }
+}
