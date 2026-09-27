@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-123704-TAR-864-submetida",
+  "tarefa": "TAR-864",
+  "evento": "submetida",
+  "quando": "2026-09-27T12:37:04.232764+00:00",
+  "quem": "agent/ci/armadilha-gnu-make-sem-sh",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2237",
+  "revisao": "1c23de473309263c7cb83cdc99c61041529cce87",
+  "arvore": "cac6fe6c221ef58c558c94a5b7a109df6ce9538a"
+}
