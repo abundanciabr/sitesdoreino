@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-259-baixa-forum-comunidade-aponta-contribuicoes",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A Comunidade já aponta o quadro de contribuições no site",
+  detalhe: "O PR 2239 (TAR-855) integrou na main (mergeCommit b08a21498b1830f310b35046dae253fd23b36bc1, MERGED conferido por gh pr view --json state,mergedAt,mergeCommit) e publicou: run 36324184631 fechou 'deploy (admin)' e 'deploy (forum)' com success. Este registro dá baixa verde no recibo 20260927-214.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2239 (MERGED, mergeCommit b08a21498b1830f310b35046dae253fd23b36bc1); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36324184631 (deploy admin e forum: success)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-214-forum-comunidade-aponta-contribuicoes",
+  relacao: "baixa",
+  tarefa: "TAR-855",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
