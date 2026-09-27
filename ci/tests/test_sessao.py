@@ -399,6 +399,10 @@ class MundoFalso:
         comando = [str(c) for c in comando]
         linha = " ".join(comando)
         self.chamadas.append(linha)
+        if "sonda-do-make-" in linha:
+            self.sonda = (comando, env)
+            codigo, texto = self.saidas.get("sonda", (0, "linha-simples\nlinha-posix"))
+            return sessao.Saida(comando, codigo, texto, "")
         for fragmento, codigo in self.falhar.items():
             if fragmento in linha:
                 return sessao.Saida(comando, codigo, "", f"falha simulada: {fragmento}")
@@ -671,6 +675,37 @@ def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL(sentinela):
         mundo.sessao().rodar()
     assert erro.value.codigo == 2
     assert "NÃO chegou a rodar" in erro.value.resumo
+
+
+def test_make_sem_shell_posix_para_o_baseline_como_instrumento_sem_culpar_a_celula():
+    """O GNU Make que roda receita no cmd.exe (`armadilhas/536`) não chega ao `make ci`."""
+    # guarda: ci/sessao.py:2153
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        sonda=(2, "linha-simples\n'test' não é reconhecido como um comando interno"),
+    )
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == "baseline: make ci da célula"
+    assert erro.value.codigo == 2
+    assert erro.value.resumo == (
+        "o `make` do PATH é GNU Make, mas roda as receitas sem shell POSIX: /usr/bin/make"
+    )
+    assert "a célula não reprovou" in erro.value.detalhe
+    assert not [c for c in mundo.chamadas if "/usr/bin/make -C" in c and "sonda-do-make-" not in c]
+
+
+def test_sonda_do_baseline_mede_o_make_com_o_shell_do_make_ci(monkeypatch):
+    """No Windows o `make ci` recebe `SHELL=` e o PATH do shell; a sonda também."""
+    # guarda: ci/sessao.py:2145
+    # guarda: ci/sessao.py:2146
+    monkeypatch.setattr(sessao.platform, "system", lambda: "Windows")
+    mundo = MundoFalso(plano_de_teste(), falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    comando, env = mundo.sonda
+    assert comando[-1] == "SHELL=/usr/bin/sh"
+    assert env["PATH"].split(os.pathsep)[0] == str(Path("/usr/bin/sh").parent)
 
 
 def test_worktree_sujo_depois_do_baseline_declara_estado_medido():
