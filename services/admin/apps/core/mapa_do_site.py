@@ -152,6 +152,7 @@ AREAS = (
             "/cadastro",
             "/login",
             "/leads",
+            "/telemetria",
             "/ver-como",
             "/entrar",
         ),
