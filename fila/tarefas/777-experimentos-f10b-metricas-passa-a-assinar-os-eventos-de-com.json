@@ -1,0 +1,19 @@
+{
+  "arquivo": "777-experimentos-f10b-metricas-passa-a-assinar-os-eventos-de-com",
+  "id": "TAR-777",
+  "titulo": "Experimentos F10b: metricas passa a assinar os eventos de compra do checkout",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com teste vermelho->verde provando a recepcao dos dois eventos de checkout, duplicata sem duplicar e payload com dado pessoal recusado para EventoMorto",
+  "despacho": "Em services/metricas/apps/fatos/management/commands/consume_eventos.py, assine os streams eventos.checkout.pedido-atribuido e eventos.checkout.pedido-pago (esquemas da F4a). Escreva teste vermelho->verde para recepcao de cada evento, duplicata sem duplicar, e payload com campo pessoal (customer, email, nome, telefone, documento) indo para EventoMorto em vez do livro. Nao integre antes da F4a (contratos) e da F10 (emissao no checkout); Depende-de citado na descricao do PR.",
+  "origem": "sessao de experimentos, frente F10b, 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
