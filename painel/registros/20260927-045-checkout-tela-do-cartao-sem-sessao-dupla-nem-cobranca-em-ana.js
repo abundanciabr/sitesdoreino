@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-045-checkout-tela-do-cartao-sem-sessao-dupla-nem-cobranca-em-ana",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "checkout: tela do cartão sem sessão dupla nem cobrança em análise",
+  detalhe: "Uma sessão por visita; aprovado apaga a análise; em análise o formulário fecha e explica. Dez testes em Node, nove sabotagens reprovam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2172. Validação local: árvore 09c48220bc038b9faf72ab7390fdd8404a671c08; commit 4dfb96cacb36023a8a7899cb0bb708af2570efa1; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-814",
+  gravidade: "verde",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
