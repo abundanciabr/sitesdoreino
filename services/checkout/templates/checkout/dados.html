@@ -31,7 +31,7 @@
   {{ api_base|json_script:"api-base" }}
   {{ appmax_pix_enabled|json_script:"appmax-pix-enabled" }}
   {{ appmax_card_enabled|json_script:"appmax-card-enabled" }}
-  <div class="wrap" x-data="dadosIsland()" x-init="init()">
+  <div class="wrap" x-data="dadosIsland()">
     <div class="card" x-show="!carregando">
       <h1 x-text="offer.product_name"></h1>
       <template x-if="offer.bumps && offer.bumps.length">
