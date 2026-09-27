@@ -70,9 +70,10 @@ desistir a qualquer momento e liberar a vaga para outra pessoa. A equipe aceita
 o que você enviou ou devolve com o motivo e uma orientação escrita, e você pode
 reenviar depois de ajustar.
 
-O reconhecimento é concedido uma vez por tarefa aceita, só com o aceite da
-equipe: ninguém aprova a própria contribuição. Não há pontuação, saldo nem
-qualquer benefício além do reconhecimento.
+O reconhecimento só vem com o aceite da equipe, e ninguém aprova a própria contribuição.
+A mesma medalha nunca é concedida duas vezes para a mesma pessoa. O que a
+tarefa vale é o que ela mostra antes de você assumir, e não há outro
+benefício além disso.
 
 ## Como pedir ajuda
 
