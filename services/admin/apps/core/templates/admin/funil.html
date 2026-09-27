@@ -1,0 +1,136 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O FUNIL (/admin/placar/funil/, 26/09/2026, frente F7 do sistema de
+experimentos).
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html, e toda classe usada abaixo já existe lá.
+
+Três regras governam cada `{% if %}` desta tela:
+
+1. NÃO PERGUNTEI nunca vira NINGUÉM VEIO. Com a memória fora do ar ou sem o
+   par ligado, nenhum número aparece; a frase diz o que houve e o que fazer.
+2. SEM COLETA não é ZERO. A memória respondeu e nenhum evento do funil chegou
+   na janela: a tela explica, e não desenha uma escada de zeros.
+3. ZERO COM COLETA é número. `taxa` vem `None` só quando o degrau anterior é
+   zero, e o teste é `is None`, nunca a verdade do valor.
+{% endcomment %}
+{% block titulo %}Placar | O funil{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>O funil</h1>
+  <p class="subtitulo">
+    Das pessoas que abriram a página de venda, quantas chegaram à oferta,
+    clicaram para pagar, deixaram o contato, fizeram o pedido e pagaram.
+  </p>
+
+  <nav class="abas" aria-label="Janela da contagem">
+    {% for opcao in janelas %}
+    <a class="aba{% if opcao == dias %} ativa{% endif %}" href="?janela={{ opcao }}"{% if opcao == dias %} aria-current="page"{% endif %}>{{ opcao }} dias</a>
+    {% endfor %}
+  </nav>
+
+  {% if janela_invalida %}
+  <p class="aviso borda-amarela espaco-abaixo-20">
+    A janela pedida no endereço não existe nesta tela. Mostrando os últimos
+    {{ dias }} dias; escolha outra janela nas abas acima.
+  </p>
+  {% endif %}
+
+  <p class="lei">
+    Cada degrau conta pessoas diferentes nos últimos {{ dias }} dias, de
+    {{ desde|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }}: quem abriu a página três
+    vezes conta uma vez. A taxa diz quantos, dos que estavam no degrau de cima,
+    aparecem no degrau seguinte.
+    {% if site_id %}Contagem do site {{ site_id }}.{% else %}Não consegui saber de qual site é este endereço, por isso a contagem soma todos os sites.{% endif %}
+  </p>
+
+  {% if tela.veredito == "sem-configuracao" %}
+  <div class="aviso borda-amarela espaco-20">
+    <b>A memória da escola ainda não está ligada nesta célula.</b>
+    Sem o par de senhas entre a administração e a parte que guarda os fatos, eu
+    não consegui perguntar nada, e por isso nenhum número aparece: uma escada
+    de zeros aqui diria que ninguém visitou a página. O passo que liga isso é
+    rodar <code>infra/provisionar-par-da-medicao.sh</code> na VPS.
+  </div>
+
+  {% elif tela.veredito == "sem-coleta" %}
+  <div class="aviso borda-amarela espaco-20">
+    <b>A memória respondeu, e ainda não chegou nenhuma visita medida nesta janela.</b>
+    Isso não quer dizer zero pessoas: quer dizer que nenhum evento da página de
+    venda foi recebido entre {{ desde|date:"d/m/Y" }} e {{ ate|date:"d/m/Y" }}.
+    A primeira visita aparece aqui sozinha. Se você sabe que houve visita, abra
+    <a href="{% url 'confianca' %}">dá para acreditar nestes números?</a> para
+    ver o que a memória está conseguindo receber.
+  </div>
+
+  {% elif tela.veredito != "medindo" %}
+  <div class="aviso borda-vermelha espaco-20">
+    <b>A memória da escola não respondeu agora.</b>
+    Eu não consegui perguntar quantas pessoas passaram por cada degrau, e isso
+    não quer dizer que ninguém passou. Nenhum número aparece enquanto a
+    resposta não vier. Recarregue a página em alguns minutos; se continuar,
+    a tela <a href="{% url 'confianca' %}">dá para acreditar nestes números?</a>
+    mostra o que a parte que guarda os fatos está conseguindo receber.
+  </div>
+
+  {% else %}
+  <h2 class="titulo-de-bloco espaco-20">A escada da janela</h2>
+  <div class="rolagem-lateral">
+    <table class="tabela-coortes">
+      <thead>
+        <tr>
+          <th>Degrau</th>
+          <th class="numero">Pessoas</th>
+          <th class="numero">Do degrau de cima</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for degrau in tela.escada %}
+        <tr>
+          <td>{{ degrau.nome }}</td>
+          <td class="numero"><b>{{ degrau.visitantes }}</b></td>
+          <td class="numero">{% if forloop.first %}{% elif degrau.taxa is None %}sem base{% else %}{{ degrau.taxa }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="nota">
+    "Sem base" quer dizer que ninguém estava no degrau de cima, e não que
+    ninguém passou. Cada degrau é contado sozinho, e por isso uma taxa acima de
+    100% pode aparecer: alguém que deixou o contato sem clicar para pagar conta
+    no degrau dele.
+    {% if tela.ultimo_evento %}Último evento recebido: {{ tela.ultimo_evento|date:"d/m/Y H:i" }}.{% endif %}
+  </p>
+
+  <h2 class="titulo-de-bloco espaco-34">Dia a dia</h2>
+  <div class="rolagem-lateral">
+    <table class="tabela-coortes">
+      <thead>
+        <tr>
+          <th>Dia</th>
+          {% for nome in tela.nomes %}<th class="numero">{{ nome }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in tela.dias %}
+        <tr>
+          <td>{{ linha.dia|date:"d/m/Y" }}</td>
+          {% for n in linha.visitantes %}<td class="numero">{{ n }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="nota">
+    A tabela começa no primeiro dia com evento: antes dele não dá para saber se
+    ninguém veio ou se a medição ainda não escutava. A soma dos dias pode
+    passar do total da janela, porque quem volta em dois dias conta uma vez em
+    cada dia e uma vez só na janela.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
