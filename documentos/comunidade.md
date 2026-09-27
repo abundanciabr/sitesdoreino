@@ -48,9 +48,9 @@ Se você ainda não é aluno, o caminho começa em
 3. **Apresente-se no grupo.** Uma mensagem curta: em que aula você está e o que
    quer fazer com modelagem 3D. É a primeira coisa que o responsável do grupo
    espera ver.
-4. **Faça o desafio do estágio.** Ele é a aula em destaque no seu mapa do curso,
-   em [/cursos](/cursos). Antes de enviar, confira a lista "aceito quando" da
-   própria aula.
+4. **Faça o desafio do estágio.** Ele é a aula em destaque no mapa do seu curso.
+   Entre pelo catálogo em [/cursos](/cursos), abra o seu curso e, antes de
+   enviar, confira a lista "aceito quando" da própria aula.
 5. **Envie a primeira versão** pelo botão de envio da aula, com o link da peça.
    O retorno chega na página de laudo do envio e o fórum é o lugar de conversar
    sobre ele.
@@ -118,7 +118,7 @@ estágio em que você estiver.
 ## Onde ver o estado da sua participação
 
 Esta página não traz números nem listas de pessoas. O que é seu está nas telas
-do site: o mapa do curso em [/cursos](/cursos) mostra a aula em destaque e cada
-envio; o fórum em [/forum/](/forum/) mostra o seu grupo e as dúvidas que esperam
+do site: o seu curso, aberto pelo catálogo em [/cursos](/cursos), mostra a aula
+em destaque e cada envio; o fórum em [/forum/](/forum/) mostra o seu grupo e as dúvidas que esperam
 por alguém; a trilha em [/conquistas/marcos](/conquistas/marcos) mostra o que já
 foi concedido e o que falta provar.
