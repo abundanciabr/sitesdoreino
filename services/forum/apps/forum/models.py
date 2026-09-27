@@ -16,6 +16,7 @@ import uuid
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
+from django.utils import timezone
 
 from .config_de_busca import config_de_busca
 
@@ -160,8 +161,30 @@ class Area(models.Model):
         max_length=12, choices=QuemEscreve.choices, default=QuemEscreve.EQUIPE
     )
     # Opaco de propósito: o fórum não é dono do catálogo de cursos. Só faz
-    # sentido com `visibilidade = TURMA`.
+    # sentido com `visibilidade = TURMA`, e ali é o curso do DESAFIO ATUAL do
+    # grupo de prática: a página Comunidade o transforma em `/cursos/<id>/`.
     curso_id = models.CharField(max_length=64, blank=True, default="")
+
+    # O GRUPO DE PRÁTICA (TAR-824, 27/09/2026). Uma área de TURMA é um grupo:
+    # quem entra é quem tem vínculo ativo em `MembroDoGrupo`, e estes dois
+    # campos são o que a escola decide sobre ele. Nas outras visibilidades eles
+    # ficam inertes.
+    #
+    # O responsável é pessoa da ESCOLA, e quem confere isso é a tela de criar
+    # (`apps/core/moderacao.py`), perguntando às listas do env no ponto de uso.
+    # Não há restrição de banco exigindo o campo numa área de turma: uma linha
+    # antiga sem responsável faria o `migrate` do boot morrer na VPS (lição 5 de
+    # `services/forum/LICOES.md`), e a porta continua fechada sem ele, porque
+    # quem abre o grupo é o vínculo, nunca o responsável.
+    responsavel = models.ForeignKey(
+        Pessoa,
+        related_name="grupos_sob_responsabilidade",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    # Zero é o lado fechado: grupo sem vaga declarada não recebe ninguém.
+    vagas = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ["ordem", "nome"]
@@ -203,6 +226,64 @@ class Area(models.Model):
 
     def __str__(self) -> str:
         return self.nome
+
+
+class MembroDoGrupo(models.Model):
+    """Esta pessoa está NESTE grupo de prática, desde quando e até quando.
+
+    **É uma linha por passagem, e nenhuma linha se apaga.** Entrar cria a
+    linha; sair preenche `ate` e `removido_por`. Um booleano "é membro"
+    responderia só a pergunta de hoje e perderia as outras que alguém faz
+    depois de um problema: quem pôs esta pessoa no grupo, por quê, e em que
+    janela ela enxergou as conversas. O mesmo desenho de
+    `ConsentimentoDaGaleria.revogado_em`, mais abaixo.
+
+    Quem pergunta "está no grupo agora?" é `pode_ler`
+    (`apps/core/permissoes.py`), e a resposta é "existe linha com `ate` nulo".
+    """
+
+    grupo = models.ForeignKey(Area, related_name="membros", on_delete=models.PROTECT)
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="passagens_por_grupos", on_delete=models.PROTECT
+    )
+    motivo = models.CharField(max_length=200)
+    adicionado_por = models.ForeignKey(
+        Pessoa, related_name="+", on_delete=models.PROTECT
+    )
+    desde = models.DateTimeField(default=timezone.now)
+    ate = models.DateTimeField(null=True, blank=True)
+    removido_por = models.ForeignKey(
+        Pessoa, related_name="+", on_delete=models.PROTECT, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["desde"]
+        constraints = [
+            # UM VÍNCULO ATIVO POR PESSOA E GRUPO. No banco, e não só na tela:
+            # dois cliques rápidos em "adicionar" gerariam duas linhas ativas, e
+            # remover uma deixaria a pessoa dentro pela outra, sem ninguém ver.
+            models.UniqueConstraint(
+                fields=["pessoa", "grupo"],
+                condition=models.Q(ate__isnull=True),
+                name="um_vinculo_ativo_por_pessoa_e_grupo",
+            ),
+            # Saída sem quem removeu é saída que ninguém consegue explicar
+            # depois. Vale também para o `update()` que fura o `save()`
+            # (`armadilhas/023`).
+            models.CheckConstraint(
+                condition=models.Q(ate__isnull=True, removido_por__isnull=True)
+                | models.Q(ate__isnull=False, removido_por__isnull=False),
+                name="saida_do_grupo_tem_quem_removeu",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(ate__isnull=True)
+                | models.Q(ate__gte=models.F("desde")),
+                name="saida_do_grupo_depois_da_entrada",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.pessoa_id} em {self.grupo_id}"
 
 
 class Topico(models.Model):

@@ -4,6 +4,18 @@
 <h1>Fórum da escola</h1>
 <p class="sub">Onde a dúvida de um vira a resposta de todos.</p>
 
+{% comment %}
+A PORTA DA COMUNIDADE (TAR-824) só aparece para quem entrou: sem login a página
+dela só teria a porta fechada para mostrar. Quem decide o que ela mostra é
+`views.contexto_da_comunidade`.
+{% endcomment %}
+{% if ator.autenticado %}
+  <div class="cartao">
+    <h2><a href="{% url 'comunidade' %}">Comunidade</a></h2>
+    <p class="sub" style="margin:4px 0 0">O seu grupo de prática: o desafio da vez e os colegas que esperam a sua ajuda.</p>
+  </div>
+{% endif %}
+
 {% if vazio %}
   {% comment %}
   O "salão vazio" é problema declarado da lei (§6.1): o fórum nasce sem
@@ -64,8 +76,9 @@ lado.
                 placeholder="Uma linha explicando para que serve a área.">{{ descricao_digitada }}</textarea>
       <label for="visibilidade">Quem enxerga</label>
       <select id="visibilidade" name="visibilidade">
-        <option value="alunos" selected>Privada: só quem está matriculado</option>
-        <option value="publica">Aberta: qualquer pessoa da internet lê</option>
+        <option value="alunos" {% if visibilidade_digitada != "publica" and visibilidade_digitada != "turma" %}selected{% endif %}>Privada: só quem está matriculado</option>
+        <option value="publica" {% if visibilidade_digitada == "publica" %}selected{% endif %}>Aberta: qualquer pessoa da internet lê</option>
+        <option value="turma" {% if visibilidade_digitada == "turma" %}selected{% endif %}>Grupo de prática: só os membros e a escola</option>
       </select>
       <label for="quem_escreve">Quem escreve</label>
       <select id="quem_escreve" name="quem_escreve">
@@ -73,6 +86,7 @@ lado.
         <option value="equipe">Só a escola</option>
         <option value="cadastrado">Qualquer pessoa com login</option>
       </select>
+      {% include "forum/_campos_do_grupo.html" with curso_id=grupo_digitado.curso_id responsavel_id=grupo_digitado.responsavel vagas=grupo_digitado.vagas %}
       <p class="sub" style="margin:10px 0 0">
         Área aberta ao mundo é sempre só a escola falando. É a regra que protege
         os alunos menores de idade, e o banco a recusa se as duas escolhas não
