@@ -468,6 +468,9 @@ class ConquistaDefinicao(models.Model):
     pontos = models.PositiveIntegerField(default=0)
     cristais = models.PositiveIntegerField(default=0)
     ativa = models.BooleanField(default=False)
+    # Sobe sozinha quando o `criterio` muda, por QUALQUER caminho: quem soma é
+    # um gatilho do PostgreSQL (migração 0009), porque um `update()` ou um SQL
+    # solto não passam pelo `save()`. A concessão guarda o número do dia.
     versao = models.PositiveIntegerField(default=1)
 
     class Meta:
@@ -1015,7 +1018,23 @@ class Concessao(models.Model):
 
     `Unique(pessoa, conquista)` faz o backfill ser RE-EXECUTÁVEL: rodar
     `conceder_fundador` duas vezes não concede duas medalhas.
+
+    **A regra do dia viaja com a concessão** (dossiê da Comunidade §5): a
+    versão, uma cópia do critério e a frase que a pessoa leu. A definição muda
+    (`ConquistaDefinicao.versao` sobe no banco quando o critério muda), e a
+    concessão continua dizendo sob que regra foi dada. As três ficam vazias só
+    nas concessões anteriores a 27/09/2026, quando a regra não era guardada:
+    preencher com a regra de hoje seria inventar o passado.
+
+    **Revogar ou corrigir não apaga nada.** O `estado` diz como a concessão está
+    agora; `HistoricoDaConcessao` diz tudo o que aconteceu com ela, e o banco
+    recusa apagar a concessão e editar ou apagar o histórico.
     """
+
+    class Estado(models.TextChoices):
+        CONCEDIDA = "concedida", "Concedida"
+        CORRIGIDA = "corrigida", "Concedida, com registro corrigido"
+        REVOGADA = "revogada", "Retirada pela equipe"
 
     class PapelDoValidador(models.TextChoices):
         PROFESSOR = "professor", "Professor"
@@ -1046,6 +1065,12 @@ class Concessao(models.Model):
     consentimento = models.CharField(
         max_length=7, choices=Consentimento.choices, default=Consentimento.PRIVADO
     )
+    estado = models.CharField(
+        max_length=9, choices=Estado.choices, default=Estado.CONCEDIDA
+    )
+    criterio_versao = models.PositiveIntegerField(null=True, blank=True)
+    criterio = models.JSONField(null=True, blank=True)
+    criterio_em_texto = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["-concedida_em"]
@@ -1062,6 +1087,67 @@ class Concessao(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pessoa_id}: {self.conquista_id}"
+
+
+class HistoricoDaConcessao(models.Model):
+    """Tudo o que aconteceu com uma concessão, uma linha por gesto, para sempre.
+
+    **Append-only no BANCO**, pelo molde de `services/metricas` (0002): um
+    gatilho do PostgreSQL recusa UPDATE e DELETE nesta tabela, e outro recusa
+    DELETE na concessão. "Uma correção posterior preserva o histórico" (dossiê
+    da Comunidade §5) só é verdade se nem um `manage.py shell` consegue apagar.
+
+    A primeira linha nasce com a concessão (`concedida`), pela porta única
+    `validacao.conceder()`. As outras são gestos da equipe, e cada uma diz quem,
+    quando, por quê, o estado de antes e o de depois; a correção diz também a
+    referência de antes e a de depois. O banco recusa gesto da equipe sem nome
+    e sem motivo.
+    """
+
+    class Gesto(models.TextChoices):
+        CONCEDIDA = "concedida", "Concedida"
+        CORRIGIDA = "corrigida", "Registro corrigido"
+        REVOGADA = "revogada", "Retirada"
+        RESTAURADA = "restaurada", "Devolvida"
+
+    concessao = models.ForeignKey(
+        Concessao, related_name="historico", on_delete=models.PROTECT
+    )
+    site_id = id_do_site()
+    gesto = models.CharField(max_length=10, choices=Gesto.choices)
+    estado_anterior = models.CharField(
+        max_length=9, choices=Concessao.Estado.choices, blank=True, default=""
+    )
+    estado_novo = models.CharField(max_length=9, choices=Concessao.Estado.choices)
+    quem_id = models.CharField(max_length=64, blank=True, default="")
+    motivo = models.TextField(blank=True, default="")
+    origem_anterior = models.CharField(max_length=64, blank=True, default="")
+    origem_nova = models.CharField(max_length=64, blank=True, default="")
+    registrado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["registrado_em", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(gesto="concedida")
+                | (~models.Q(quem_id="") & ~models.Q(motivo="")),
+                name="gesto_da_equipe_diz_quem_e_por_que",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.concessao_id}: {self.gesto}"
+
+    @classmethod
+    def retiradas_de(cls, concessoes) -> dict[int, "HistoricoDaConcessao"]:
+        """`{id da concessão: o gesto que a retirou}`, só das revogadas, numa consulta."""
+        revogadas = [c.pk for c in concessoes if c.estado == Concessao.Estado.REVOGADA]
+        retiradas: dict[int, HistoricoDaConcessao] = {}
+        for linha in cls.objects.filter(
+            concessao_id__in=revogadas, gesto=cls.Gesto.REVOGADA
+        ).order_by("registrado_em", "id"):
+            retiradas[linha.concessao_id] = linha
+        return retiradas
 
 
 class PedidoDeValidacao(models.Model):

@@ -56,6 +56,7 @@ from .models import (
     ContribuicaoAceita,
     EntregaAceita,
     Forja,
+    HistoricoDaConcessao,
     PerfilJogador,
     Pessoa,
     ProgressoDeMissao,
@@ -148,12 +149,16 @@ def _valor_primeira_vez(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> 
 def _valor_familia(
     pessoa: Pessoa, site_id: str, perfil: PerfilJogador, familia: str = ""
 ) -> int:
-    """Quantas conquistas de uma família esta pessoa já tem. Funciona HOJE."""
+    """Quantas conquistas de uma família esta pessoa tem. A retirada não conta."""
     if not familia:
         return 0
-    return Concessao.objects.filter(
-        pessoa=pessoa, site_id=site_id, conquista__familia=familia
-    ).count()
+    return (
+        Concessao.objects.filter(
+            pessoa=pessoa, site_id=site_id, conquista__familia=familia
+        )
+        .exclude(estado=Concessao.Estado.REVOGADA)
+        .count()
+    )
 
 
 # O VOCABULÁRIO, ligado uma palavra a uma função. É o oposto de uma DSL: a lista
@@ -281,12 +286,17 @@ def medalhas_da_pessoa(perfil: PerfilJogador) -> list[dict]:
     ganharam, e é isso que mantém a tela longe de ranking (lei §8). Medalha
     secreta só aparece para quem já a tem, porque mostrar o critério dela antes
     desfaria o segredo.
+
+    A medalha que a equipe RETIROU continua na lista, com `retirada` (o gesto,
+    com data e motivo) e sem progresso: ela não se ganha de novo pela conta, e
+    a história mostra que existiu.
     """
     pessoa, site_id = perfil.pessoa, perfil.site_id
     concedidas = {
         c.conquista_id: c
         for c in Concessao.objects.filter(pessoa=pessoa, site_id=site_id)
     }
+    retiradas = HistoricoDaConcessao.retiradas_de(concedidas.values())
     linhas = []
     for medalha in ConquistaDefinicao.objects.filter(
         site_id=site_id, ativa=True, classe=ConquistaDefinicao.Classe.MEDALHA
@@ -300,6 +310,7 @@ def medalhas_da_pessoa(perfil: PerfilJogador) -> list[dict]:
                 "medalha": medalha,
                 "criterio": criterio_em_portugues(medalha),
                 "concessao": concessao,
+                "retirada": retiradas.get(concessao.pk) if concessao else None,
                 "progresso": _progresso(medida),
             }
         )
