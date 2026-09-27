@@ -102,14 +102,14 @@ contêiner da bancada marca UTC, então confira a hora certa antes de decidir:
 ## 6. Abra o PR e embarque o registro no mesmo ramo
 
 ```bash
-make pr TITULO="<area>: <resultado>" MENSAGEM=<arquivo> CORPO=<arquivo> ARQUIVOS="<alvos>" DETALHE=<arquivo> VALIDACAO=<json>
+make pr TITULO="<area>: <resultado>" MENSAGEM=<arquivo> CORPO=<arquivo> ARQUIVOS="<alvos>" DETALHE=<arquivo> VALIDACAO=<json> TAR=TAR-NNN
 ```
 
 O formato dos arquivos e a entrada Python equivalente estão em
 `painel/LEIA-ME.md`. A validação é executada sobre o trabalho entregue;
 informe todos os comandos exigidos pelos alvos. O julgamento do detalhe e a
-revisão de código continuam seus. Use `TAR=TAR-NNN` quando esta entrega
-concluir a tarefa da fila. O comando cria ou recupera o PR, pede a reserva,
+revisão de código continuam seus. `TAR=TAR-NNN` é obrigatório e nomeia a
+tarefa da fila que esta entrega conclui. O comando cria ou recupera o PR, pede a reserva,
 embarca recibo e eventos e informa os estados comprovados. Não repita esses
 efeitos manualmente. Retome com os mesmos argumentos e `CONTINUAR=1`
 (Python: `--continuar`); falha de rede exige conferir o efeito remoto.
