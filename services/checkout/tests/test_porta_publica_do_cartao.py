@@ -8,18 +8,8 @@ import json
 import httpx
 import pytest
 
-from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import Order, OutboxEvent
-from tests.conftest import (
-    BUMP_A,
-    HOST_A,
-    HOST_B,
-    OFERTA_A,
-    PAGAMENTOS,
-    SLUG,
-    aprovado_v2,
-    recusado_v2,
-)
+from tests.conftest import BUMP_A, HOST_A, HOST_B, OFERTA_A, PAGAMENTOS, SLUG
 
 pytestmark = pytest.mark.django_db
 
@@ -172,7 +162,7 @@ def test_a_recusa_do_provedor_volta_com_o_motivo_e_o_pedido_nao_muda(
     assert pedido_de_cartao.status == "aguardando_pagamento"
 
 
-# guarda: services/checkout/apps/core/api.py:715
+# guarda: services/checkout/apps/core/api.py:732
 def test_pedido_de_cartao_recusado_aceita_nova_confirmacao_sem_mover_snapshot(
     api, rede, pedido_de_cartao
 ):
@@ -239,7 +229,7 @@ def test_falha_do_provedor_na_confirmacao_orienta_nova_tentativa_sem_cobrar_de_n
     """Cartões de teste 0002, 0036, 0044 e 9999 da Appmax sandbox: pagamentos
     devolve o 502 do contrato, e o comprador precisa ler o que fazer em vez de
     receber um 500 mudo."""
-    # guarda: services/checkout/apps/core/api.py:766
+    # guarda: services/checkout/apps/core/api.py:783
     rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card")
     falhar_em_pagamentos(rota, falha)
 
@@ -486,90 +476,107 @@ def test_parcelas_recusam_pedido_pix_e_id_invalido(api, rede, pedido_de_cartao):
 
 
 # ---------------------------------------------------------------------------
-# Em análise ao recarregar. O provedor aceitou o cartão e o aviso ainda não
-# chegou: o pedido segue aguardando pagamento, e é `card_in_review` em getOrder
-# que diz à página recarregada para não oferecer uma segunda cobrança.
+# Em análise ao recarregar. A página recarregada não sabe o que a anterior
+# mostrou: `card_in_review` em getOrder diz se a última tentativa de cartão
+# ainda está no provedor, lido do estado real da intent em pagamentos.
 # ---------------------------------------------------------------------------
 
 
-def _em_analise(api, pedido):
+def _intent_no_estado(pedido, status):
+    corpo = _intent_confirmada(status=status).json()
+    return httpx.Response(200, json={**corpo, "id": pedido.intent_id})
+
+
+def _consultar(api, pedido):
     resp = api.get(f"/api/checkout/pedidos/{pedido.id}")
     assert resp.status_code == 200, resp.content
-    return resp.json()["status"], resp.json()["card_in_review"]
+    return resp.json()
 
 
-def test_pedido_novo_nao_esta_em_analise(api, rede, pedido_de_cartao):
-    assert _em_analise(api, pedido_de_cartao) == ("aguardando_pagamento", False)
-
-
-# guarda: services/checkout/apps/core/api.py:774
-@pytest.mark.parametrize("resposta", ["pending", "approved", "created"])
-def test_cartao_aceito_fica_em_analise_ate_o_aviso(
-    api, rede, pedido_de_cartao, resposta
-):
-    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
-        return_value=_intent_confirmada(status=resposta)
-    )
-    resp = api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
-    assert resp.status_code == 200, resp.content
-
-    assert _em_analise(api, pedido_de_cartao) == ("aguardando_pagamento", True)
-
-
-def test_cartao_recusado_na_hora_nao_fica_em_analise(api, rede, pedido_de_cartao):
-    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
-        return_value=_intent_confirmada(status="rejected", reason_code="cc_rejected")
-    )
-    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
-
-    assert _em_analise(api, pedido_de_cartao) == ("aguardando_pagamento", False)
-
-
-# guarda: services/checkout/apps/pedidos/management/commands/consume_eventos.py:229
 @pytest.mark.parametrize(
-    "aviso, status_final",
-    [
-        (lambda p: aprovado_v2(p, provider_reference_id="ref-1"), "pago"),
-        (lambda p: recusado_v2(p, payment_id="pag-1"), "recusado"),
-    ],
+    "status_da_intent, em_analise",
+    [("pending", True), ("created", False), ("approved", False), ("rejected", False)],
 )
-def test_o_aviso_encerra_a_analise(api, rede, pedido_de_cartao, aviso, status_final):
-    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
-        return_value=_intent_confirmada(status="pending")
+def test_em_analise_e_a_tentativa_pendente_no_provedor(
+    api, rede, pedido_de_cartao, status_da_intent, em_analise
+):
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, status_da_intent)
     )
-    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
-
-    aplicar(aviso(pedido_de_cartao))
-
-    assert _em_analise(api, pedido_de_cartao) == (status_final, False)
+    pedido = _consultar(api, pedido_de_cartao)
+    assert pedido["status"] == "aguardando_pagamento"
+    assert pedido["card_in_review"] is em_analise
 
 
-def test_nova_tentativa_depois_da_recusa_tambem_fica_em_analise(
+def test_nova_tentativa_pendente_depois_da_recusa_esta_em_analise(
     api, rede, pedido_de_cartao
 ):
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status="recusado")
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, "pending")
+    )
+    pedido = _consultar(api, pedido_de_cartao)
+    assert (pedido["status"], pedido["card_in_review"]) == ("recusado", True)
+
+
+def test_recusa_que_chega_antes_da_resposta_pendente_nao_prende_o_formulario(
+    api, rede, pedido_de_cartao
+):
+    """Pedido já recusado, nova tentativa: o provedor responde pending, mas a
+    recusa dessa tentativa chega antes de a página consultar. Uma marca local
+    ligada pela resposta nunca desligaria; a intent já diz rejected."""
     Order.objects.filter(pk=pedido_de_cartao.id).update(status="recusado")
     rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
         return_value=_intent_confirmada(status="pending")
     )
-    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
-
-    assert _em_analise(api, pedido_de_cartao) == ("recusado", True)
-
-
-def test_aviso_que_chega_antes_da_resposta_nao_reabre_a_analise(
-    api, rede, pedido_de_cartao
-):
-    """O aviso de aprovação pode chegar enquanto a resposta do provedor ainda
-    está a caminho. Marcar a análise depois disso deixaria um pedido pago com a
-    frase de análise por cima."""
-
-    def aprova_no_meio(request):
-        aplicar(aprovado_v2(pedido_de_cartao, provider_reference_id="ref-1"))
-        return _intent_confirmada(status="pending")
-
-    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
-        side_effect=aprova_no_meio
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, "rejected")
     )
-    api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+    resp = api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+    assert resp.json()["payment"]["status"] == "pending"
 
-    assert _em_analise(api, pedido_de_cartao) == ("pago", False)
+    pedido = _consultar(api, pedido_de_cartao)
+    assert (pedido["status"], pedido["card_in_review"]) == ("recusado", False)
+
+
+@pytest.mark.parametrize("status_do_pedido", ["pago", "expirado", "reembolsado"])
+def test_pedido_encerrado_nao_esta_em_analise_nem_consulta_pagamentos(
+    api, rede, pedido_de_cartao, status_do_pedido
+):
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status=status_do_pedido)
+    rota = rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, "pending")
+    )
+    assert _consultar(api, pedido_de_cartao)["card_in_review"] is False
+    assert not rota.called
+
+
+def test_pedido_de_pix_nao_esta_em_analise_nem_consulta_pagamentos(api, rede, sessao_a):
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
+        {
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "method": "pix",
+        },
+    )
+    rota = rede.get(url__regex=rf"{PAGAMENTOS}/intents/[^/]+$")
+    pedido = api.get(f"/api/checkout/pedidos/{resp.json()['order_id']}").json()
+    assert pedido["card_in_review"] is False
+    assert not rota.called
+
+
+@pytest.mark.parametrize("falha", ["timeout", "http", "html"])
+def test_consulta_da_tentativa_que_falha_tira_o_campo_e_nao_derruba_o_pedido(
+    api, rede, pedido_de_cartao, falha
+):
+    rota = rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}")
+    if falha == "timeout":
+        rota.mock(side_effect=httpx.ReadTimeout("segredo-interno"))
+    elif falha == "http":
+        rota.respond(500, json={"status": "pending", "detail": "segredo-interno"})
+    else:
+        rota.respond(200, text="segredo-interno")
+    resp = api.get(f"/api/checkout/pedidos/{pedido_de_cartao.id}")
+    assert resp.status_code == 200, resp.content
+    assert "card_in_review" not in resp.json()
+    assert resp.json()["status"] == "aguardando_pagamento"

@@ -66,10 +66,6 @@ class Order(models.Model):
     method = models.CharField(max_length=8)
     intent_id = models.CharField(max_length=64)
     pix = models.JSONField(default=dict, blank=True)
-    # O provedor aceitou a última tentativa de cartão e o aviso de pagamento
-    # ainda não chegou. Liga na confirmação, desliga com o aviso; é o que getOrder
-    # devolve como `card_in_review` para a página recarregada não cobrar de novo.
-    cartao_em_analise = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = OrderQuerySet.as_manager()

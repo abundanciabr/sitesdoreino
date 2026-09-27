@@ -83,6 +83,7 @@ const contexto = {
   document: {getElementById: () => ({textContent: 'null'})},
   window: {},
   setTimeout: () => { agendadas += 1; },
+  clearTimeout: () => {},
   api: {
     get: async () => {
       agendadas = 0;
@@ -90,7 +91,11 @@ const contexto = {
       if (pedido === null) throw new Error('rede indisponível');
       return typeof pedido === 'string' ? {status: pedido} : pedido;
     },
-    post: async () => JSON.parse(confirmacao),
+    post: async () => {
+      const resposta = JSON.parse(confirmacao);
+      if (resposta.falha) throw new Error('POST: ' + resposta.falha);
+      return resposta;
+    },
   },
 };
 vm.runInNewContext(js + '\nthis.ilha = cartaoIsland();', contexto);
@@ -158,7 +163,9 @@ def cartao_html(client, api, rede, sessao_a):
 @pytest.mark.parametrize("resposta", ["pending", "approved", "created"])
 def test_em_analise_fecha_o_formulario_e_explica(cartao_html, resposta):
     tela = _tela_depois_de(
-        cartao_html, _confirmacao(resposta), [_pedido("aguardando_pagamento", True)]
+        cartao_html,
+        _confirmacao(resposta),
+        [_pedido("aguardando_pagamento", resposta == "pending")],
     )
     assert tela["formulario"] is False
     assert tela["voltar"] is False
@@ -231,3 +238,52 @@ def test_analise_que_termina_em_recusa_depois_de_recarregar_reabre(cartao_html):
     assert tela["voltar"] is True
     assert tela["status"] == "Pagamento recusado. Você pode tentar novamente."
     assert tela["segue_consultando"] is False
+
+
+# A consulta que falha no meio da espera avisa e tenta de novo, em vez de parar
+# para sempre com a tela congelada.
+CONSULTA_INDISPONIVEL = (
+    "Não conseguimos consultar agora. Vamos tentar de novo em instantes."
+)
+
+
+def test_consulta_que_falha_avisa_e_tenta_de_novo(cartao_html):
+    tela = _tela_depois_de(
+        cartao_html, None, [_pedido("aguardando_pagamento", True), None]
+    )
+    assert tela["erro"] == CONSULTA_INDISPONIVEL
+    assert tela["segue_consultando"] is True
+    assert tela["formulario"] is False
+
+
+def test_consulta_que_volta_apaga_o_aviso(cartao_html):
+    tela = _tela_depois_de(
+        cartao_html,
+        None,
+        [_pedido("aguardando_pagamento", True), None, _pedido("pago", False)],
+    )
+    assert tela["erro"] == ""
+    assert tela["status"] == "Pagamento aprovado!"
+    assert tela["segue_consultando"] is False
+
+
+# A aba antiga, aberta antes da análise, tenta pagar de novo. Pagamentos recusa
+# com 409 porque a tentativa anterior segue no provedor; a tela relê o pedido e
+# mostra a análise, sem convidar a insistir.
+
+
+def test_aba_antiga_que_tenta_de_novo_ve_a_analise(cartao_html):
+    tela = _tela_depois_de(
+        cartao_html, {"falha": 409}, [_pedido("aguardando_pagamento", True)]
+    )
+    assert tela["erro"] == ""
+    assert tela["formulario"] is False
+    assert tela["status"].startswith(FRASE_DE_ANALISE)
+
+
+def test_falha_na_confirmacao_sem_analise_orienta_nova_tentativa(cartao_html):
+    tela = _tela_depois_de(
+        cartao_html, {"falha": 502}, [_pedido("aguardando_pagamento", False)]
+    )
+    assert tela["erro"] == "Não foi possível concluir a tentativa. Tente novamente."
+    assert tela["formulario"] is True
