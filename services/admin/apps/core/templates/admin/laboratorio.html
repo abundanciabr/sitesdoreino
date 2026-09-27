@@ -31,6 +31,57 @@ mais aparece.
     muito e aprender pouco: esta tela mede a segunda coisa.
   </p>
 
+  {% comment %}
+  OS EXPERIMENTOS DA PÁGINA DE OFERTA, lidos do catálogo (decisão 5 do
+  mantenedor, 26/09/2026). `da_pagina.erro` é "não consegui perguntar", e nesse
+  ramo a tela nunca diz que a página não tem experimento.
+  {% endcomment %}
+  <h2 class="titulo-de-lista espaco-34">Experimentos da página de oferta</h2>
+  {% if da_pagina.erro %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler os experimentos da página.</b> {{ da_pagina.erro }}
+    Isto não quer dizer que a página não tenha experimento. Nada mudou no site.
+    Recarregue esta tela daqui a pouco; se o aviso continuar, peça a uma sessão
+    que confira o serviço do catálogo.
+  </p>
+  {% elif not da_pagina.experimentos %}
+  <p class="recado">
+    <b>Esta página ainda não tem experimento.</b> Um experimento mostra a uma
+    parte das visitas um texto novo num espaço da página e mede se ele leva
+    mais gente ao checkout.
+  </p>
+  <p><a class="botao" href="{% url 'experimento_novo' %}">Novo experimento</a></p>
+  {% else %}
+  <ul class="riscas">
+    {% for e in da_pagina.experimentos %}
+    <li>
+      <b>{{ e.espaco }}</b>
+      <span class="{% if e.estado == 'ativo' %}selo-verde{% else %}selo{% endif %}">{{ e.rotulo }}</span>
+      <span class="nota">Aposta: {{ e.hipotese }} &nbsp;·&nbsp; métrica principal: {{ e.metrica }}</span>
+      <span class="nota">
+        Criado em {{ e.criado_em|date:"d/m/Y" }}
+        {% if e.iniciado_em %} &nbsp;·&nbsp; iniciado em {{ e.iniciado_em|date:"d/m/Y" }}{% endif %}
+        {% if e.fim_planejado %} &nbsp;·&nbsp; fim planejado em {{ e.fim_planejado|date:"d/m/Y" }}{% endif %}
+        {% if e.encerrado_em %} &nbsp;·&nbsp; encerrado em {{ e.encerrado_em|date:"d/m/Y" }}{% endif %}
+      </span>
+      {% if e.decisao %}
+      <span class="nota">Decisão: {{ e.decisao }}{% if e.vencedora %} &nbsp;·&nbsp; Vencedora: versão {{ e.vencedora }}{% endif %}</span>
+      {% endif %}
+      <span class="nota">
+        <a href="{% url 'resultado_do_experimento' e.id %}">Ver o resultado</a>
+        &nbsp;·&nbsp;
+        <a href="{% url 'decisao_do_experimento' e.id %}">{% if e.estado == 'encerrado' %}Ver a decisão{% else %}Decidir{% endif %}</a>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="recado">
+    <b>O gesto:</b> criar, iniciar e acompanhar cada um fica em
+    <a href="{% url 'experimentos' %}">Experimentos da página</a>.
+  </p>
+  {% endif %}
+
+  <h2 class="titulo-de-lista espaco-34">Apostas escritas no livro</h2>
   <p class="lei">
     Cada experimento é escrito no livro ANTES de se saber o resultado (o
     problema, a aposta, qual número ela quer mover, o que a faz parar e até
