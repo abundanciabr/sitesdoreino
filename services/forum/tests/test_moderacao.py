@@ -39,6 +39,8 @@ pytestmark = pytest.mark.django_db
 
 COOKIE = "meshcraft_sessao=um-cookie-opaco-qualquer"
 FERRAMENTAS = "Ferramentas da escola"
+# Tirar do ar, devolver, mover e editar texto alheio pedem motivo (TAR-847).
+MOTIVO = "pedido da moderação"
 
 SESSAO_DO_DONO = {
     "autenticado": True,
@@ -270,8 +272,16 @@ def test_a_porta_responde_404_para_quem_nao_modera(
     mensagem = conversa.mensagens.first()
     como_aluna(monkeypatch)
 
-    assert moderar_topico(client, conversa, acao="tirar_do_ar").status_code == 404
-    assert moderar_mensagem(client, mensagem, acao="tirar_do_ar").status_code == 404
+    assert (
+        moderar_topico(client, conversa, acao="tirar_do_ar", motivo=MOTIVO).status_code
+        == 404
+    )
+    assert (
+        moderar_mensagem(
+            client, mensagem, acao="tirar_do_ar", motivo=MOTIVO
+        ).status_code
+        == 404
+    )
     assert moderar_area(client, sala, acao="arquivar").status_code == 404
     assert (
         client.post(
@@ -328,7 +338,11 @@ def test_acao_desconhecida_nao_muda_nada(client, env, monkeypatch, conversa):
 def test_editar_o_titulo(client, env, monkeypatch, conversa):
     como_dono(monkeypatch)
     resposta = moderar_topico(
-        client, conversa, acao="salvar", titulo="A textura estica no braço do avatar"
+        client,
+        conversa,
+        acao="salvar",
+        titulo="A textura estica no braço do avatar",
+        motivo=MOTIVO,
     )
     assert resposta.status_code == 302
     conversa.refresh_from_db()
@@ -350,7 +364,12 @@ def test_mover_a_conversa_de_area(client, env, monkeypatch, conversa, avisos):
     pendem do tópico, não da área."""
     como_dono(monkeypatch)
     resposta = moderar_topico(
-        client, conversa, acao="salvar", titulo=conversa.titulo, area_id=avisos.pk
+        client,
+        conversa,
+        acao="salvar",
+        titulo=conversa.titulo,
+        area_id=avisos.pk,
+        motivo=MOTIVO,
     )
     assert resposta.status_code == 302
     conversa.refresh_from_db()
@@ -415,7 +434,10 @@ def test_tirar_a_conversa_do_ar_nao_apaga_nada(client, env, monkeypatch, convers
     """ "Deletar" nesta casa é tirar do ar. A linha continua no banco, e é ela
     que permite reconstruir o que houve numa denúncia."""
     como_dono(monkeypatch)
-    assert moderar_topico(client, conversa, acao="tirar_do_ar").status_code == 302
+    assert (
+        moderar_topico(client, conversa, acao="tirar_do_ar", motivo=MOTIVO).status_code
+        == 302
+    )
 
     conversa.refresh_from_db()
     assert conversa.estado == Topico.Estado.REMOVIDO
@@ -437,8 +459,11 @@ def test_tirar_a_conversa_do_ar_nao_apaga_nada(client, env, monkeypatch, convers
 
 def test_devolver_a_conversa_ao_ar(client, env, monkeypatch, conversa):
     como_dono(monkeypatch)
-    moderar_topico(client, conversa, acao="tirar_do_ar")
-    assert moderar_topico(client, conversa, acao="restaurar").status_code == 302
+    moderar_topico(client, conversa, acao="tirar_do_ar", motivo=MOTIVO)
+    assert (
+        moderar_topico(client, conversa, acao="restaurar", motivo=MOTIVO).status_code
+        == 302
+    )
 
     conversa.refresh_from_db()
     assert conversa.estado == Topico.Estado.PUBLICADO
@@ -496,7 +521,11 @@ def test_editar_a_mensagem_marca_a_edicao_e_reindexa_a_busca(
     como_dono(monkeypatch)
 
     resposta = moderar_mensagem(
-        client, mensagem, acao="salvar", texto="Travei na exportação do modelo."
+        client,
+        mensagem,
+        acao="salvar",
+        texto="Travei na exportação do modelo.",
+        motivo=MOTIVO,
     )
     assert resposta.status_code == 302
 
@@ -536,7 +565,12 @@ def test_tirar_a_mensagem_do_ar_nao_apaga_e_tira_o_selo(
     como_dono(monkeypatch)
     moderar_topico(client, conversa, acao="aceitar", mensagem_id=premiada.pk)
 
-    assert moderar_mensagem(client, premiada, acao="tirar_do_ar").status_code == 302
+    assert (
+        moderar_mensagem(
+            client, premiada, acao="tirar_do_ar", motivo=MOTIVO
+        ).status_code
+        == 302
+    )
 
     premiada.refresh_from_db()
     conversa.refresh_from_db()
@@ -557,9 +591,12 @@ def test_tirar_a_mensagem_do_ar_nao_apaga_e_tira_o_selo(
 def test_devolver_a_mensagem_ao_ar(client, env, monkeypatch, conversa):
     mensagem = conversa.mensagens.first()
     como_dono(monkeypatch)
-    moderar_mensagem(client, mensagem, acao="tirar_do_ar")
+    moderar_mensagem(client, mensagem, acao="tirar_do_ar", motivo=MOTIVO)
 
-    assert moderar_mensagem(client, mensagem, acao="restaurar").status_code == 302
+    assert (
+        moderar_mensagem(client, mensagem, acao="restaurar", motivo=MOTIVO).status_code
+        == 302
+    )
     mensagem.refresh_from_db()
     assert mensagem.removida_em is None
 
