@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-078-painel-registros-da-comunidade-no-livro",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "painel: registros da Comunidade no livro",
+  detalhe: "Tres registros: baixa verde do PR 2184, decisao 1 do mantenedor e pendencia das decisoes 3 a 6 com precisa_do_dono; gerador do painel verde.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2200. Validação local: árvore bef4ac38fa4078e862b3e8b08131f9b7da24ba57; commit de5b6d88e54f066a5dd18954804c7f1afa672654; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-832",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
