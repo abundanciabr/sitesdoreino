@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-318-comunidade-definir-catalogo-de-cristais-e-uso-publico-de-trabalhos",
+  tipo: "pendencia",
+  quando: "2026-09-27",
+  titulo: "Comunidade: definir o que os Cristais compram e se trabalhos e perfis dos alunos podem aparecer em público",
+  detalhe: "Decisão sua, em duas partes. 1) Catálogo dos créditos: hoje o aluno acumula Cristais e não há o que resgatar; o dossiê reserva a você dizer o que entra no catálogo (por exemplo revisão extra, vaga em encomenda, destaque) e quanto custa cada item. 2) Uso público: se trabalhos aprovados e perfis podem aparecer num diretório ou vitrine fora da Comunidade, e com que consentimento. As duas travam o lote de gamificação ampliada (tarefa 928 da fila).\n\nRecomendado: 1) catálogo pequeno, só com o que a escola já tem para dar, sem valores até medir quantos Cristais os alunos acumulam num ciclo; 2) diretório só com consentimento explícito e revogável do aluno, e só de trabalhos já aprovados. Dá para desfazer: o catálogo sim; a exposição de um trabalho, uma vez pública, não se apaga da memória de quem viu.\n\nComo responder: liste os itens e valores, ou diga 'catálogo ainda não'; diga sim ou não ao diretório e a regra de consentimento. A sessão registra e destrava a tarefa 928.",
+  autoridade: "sessao",
+  evidencia: "docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md §17, linhas 'Catálogo e valores de créditos' e 'Uso público de trabalhos e perfis'; tarefa 928 bloqueada com espera mantenedor em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: "TAR-928",
+  gravidade: "ambar",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  porque_so_voce: "Valor dos créditos é economia interna e capacidade de resgate; expor trabalho e perfil de aluno é decisão editorial e de privacidade; o dossiê reserva ambas ao mantenedor.",
+  proximo_passo: "Responder as duas partes: itens e valores do catálogo (ou 'catálogo ainda não'), e sim ou não ao diretório com a regra de consentimento. A sessão registra e destrava a tarefa 928.",
+  se_eu_nao_decidir: "Os Cristais continuam acumulando sem uso e nenhum trabalho de aluno aparece fora da Comunidade; o lote fica a fazer no roadmap.",
+  recomendacao: "Catálogo pequeno com o que a escola já dá, sem valores antes de medir o saldo típico de um ciclo; diretório só com consentimento explícito, porque privacidade não se desfaz.",
+  reversivel: true,
+  impacto: "medio"
+}); })();

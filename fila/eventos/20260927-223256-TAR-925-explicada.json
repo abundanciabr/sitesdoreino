@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-223256-TAR-925-explicada",
+  "tarefa": "TAR-925",
+  "evento": "explicada",
+  "quando": "2026-09-27T22:32:56.822568+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: roadmap com checklist da Comunidade (RETOMADA-COMUNIDADE-RODADA-4.md)",
+  "o_que_e": "A Comunidade Meshcraft já tem 32 entregas no ar em três rodadas, mas o que foi feito, o que está sendo feito e o que falta só existe espalhado em tarefas e registros; ninguém enxerga o todo numa tela.",
+  "o_que_muda": "A fila ganha uma tarefa para a tela do roadmap e uma tarefa portão para cada lote futuro, e o livro ganha o estado de hoje, o rumo e as decisões que só o mantenedor pode dar. É isso que permite calcular o roadmap em vez de digitá-lo.",
+  "exemplo": "É como montar o quadro de obras na entrada do canteiro: cada etapa com a placa de pronta, em andamento ou aguardando decisão do dono, e o quadro se atualiza sozinho conforme as etapas fecham.",
+  "importancia": 70
+}

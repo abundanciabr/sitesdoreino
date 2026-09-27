@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260927-224035-TAR-927-contrato_execucao",
+  "tarefa": "TAR-927",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T22:40:35.113653+00:00",
+  "quem": "agent/fila/comunidade-roadmap-4",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 4 (roadmap com checklist calculado): portão do lote COM-08, liderança distribuída",
+    "versao": 1,
+    "objetivo": "Guardar o lugar do lote de liderança distribuída no roadmap até o mantenedor decidir os incentivos a mentores e avaliadores e pedir o lote; ao destravar, dividir em frentes por célula com --depende-de nesta.",
+    "entregaveis": [
+      "Habilitação de avaliador por estágio, limitada e revogável, com laudo que diz quem assinou",
+      "Responsável de grupo com permissões limitadas ao grupo e gestos no rastro de moderação",
+      "Incentivo conforme a decisão do mantenedor",
+      "Vista da equipe de quem está habilitado a quê"
+    ],
+    "escopo_incluido": [
+      "services/cursos/**",
+      "services/forum/**",
+      "services/gamificacao/**"
+    ],
+    "nao_objetivos": [
+      "Criar incentivo material sem a decisão do mantenedor",
+      "Permissão ampla: toda habilitação é limitada à função"
+    ],
+    "restricoes": [
+      "Só começa depois da resposta à pendência 20260927-317 e do pedido do mantenedor",
+      "Permissão limitada provada por teste negativo",
+      "Uma célula por PR; texto para aluno sem travessão; testes nascem vermelhos"
+    ],
+    "decisoes_aprovadas": [
+      "Só a professora assina laudo hoje (registro 290); a habilitação de avaliadores é a Fase 4 do plano de cursos",
+      "Rastro de moderação do fórum já existe (tarefas 847 e 867)"
+    ],
+    "etapas": [
+      "Resposta do mantenedor registrada no livro",
+      "Divisão em frentes por célula, cada uma com --depende-de nesta tarefa",
+      "Execução das frentes pelo rito da casa",
+      "Registro de entrega no livro e conclusão desta tarefa com as provas das filhas"
+    ],
+    "criterios_entrada": [
+      "Registro de resposta à pendência 20260927-317 no livro",
+      "Pedido do mantenedor de executar o lote"
+    ],
+    "criterios_aceite": [
+      "Habilitação limitada à função provada por teste negativo",
+      "Cada decisão do responsável no rastro com quem a tomou",
+      "PRs das frentes MERGED"
+    ],
+    "evidencias_exigidas": [
+      "Registro da decisão no livro",
+      "Saídas vermelha e verde dos testes das frentes",
+      "URLs dos PRs e estado MERGED"
+    ],
+    "condicao_encerramento": "decisão do mantenedor sobre incentivos a mentores e avaliadores registrada no livro; habilitação com permissões limitadas à função provada por teste negativo; rastro de cada decisão do responsável; testes vermelho para verde; PRs integrados",
+    "limites_autonomia": "A sessão responsável divide e despacha; não decide incentivo nem quem habilitar; descoberta fora do alvo vira tarefa na fila.",
+    "acoes_do_mantenedor": "Responder à pendência 20260927-317 (só reconhecimento, ou qual incentivo) e pedir a execução do lote."
+  }
+}

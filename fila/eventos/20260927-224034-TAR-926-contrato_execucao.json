@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260927-224034-TAR-926-contrato_execucao",
+  "tarefa": "TAR-926",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T22:40:34.568501+00:00",
+  "quem": "agent/fila/comunidade-roadmap-4",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 4 (roadmap com checklist calculado): portão do lote COM-07, retenção e saída",
+    "versao": 1,
+    "objetivo": "Guardar o lugar do lote de retenção e saída no roadmap até o mantenedor decidir a participação espiritual e pedir o lote; ao destravar, dividir em frentes por célula com --depende-de nesta.",
+    "entregaveis": [
+      "Tela de saída com a data efetiva de cada efeito",
+      "Exportação dos trabalhos próprios sem dado de outros membros",
+      "Reativação que recupera conquistas e saldo",
+      "Entrada conforme a decisão sobre participação espiritual"
+    ],
+    "escopo_incluido": [
+      "services/cursos/**",
+      "services/forum/**",
+      "services/gamificacao/**"
+    ],
+    "nao_objetivos": [
+      "Refazer o que a matrícula já faz (grupo e desafio fecham e reabrem, tarefas 912 e 913)",
+      "Inventar calendário ou regra espiritual em nome do mantenedor"
+    ],
+    "restricoes": [
+      "Só começa depois da resposta à pendência 20260927-316 e do pedido do mantenedor",
+      "Uma célula por PR; texto para aluno sem travessão; testes nascem vermelhos",
+      "Exportação sem dado alheio provada por teste"
+    ],
+    "decisoes_aprovadas": [
+      "Vínculo de acesso é a matrícula ativa (registro 290)",
+      "Tabela de efeitos do encerramento do dossiê §8"
+    ],
+    "etapas": [
+      "Resposta do mantenedor registrada no livro",
+      "Divisão em frentes por célula, cada uma com --depende-de nesta tarefa",
+      "Execução das frentes pelo rito da casa",
+      "Registro de entrega no livro e conclusão desta tarefa com as provas das filhas"
+    ],
+    "criterios_entrada": [
+      "Registro de resposta à pendência 20260927-316 no livro",
+      "Pedido do mantenedor de executar o lote"
+    ],
+    "criterios_aceite": [
+      "Tela de saída mostra benefícios encerrados e data efetiva",
+      "Exportação sem dado de outros membros",
+      "Reativação recupera conquistas e saldo",
+      "PRs das frentes MERGED"
+    ],
+    "evidencias_exigidas": [
+      "Registro da decisão no livro",
+      "Saídas vermelha e verde dos testes das frentes",
+      "URLs dos PRs e estado MERGED"
+    ],
+    "condicao_encerramento": "decisão do mantenedor sobre participação espiritual registrada no livro; tela de saída com a data efetiva de cada efeito; exportação dos trabalhos próprios sem dado de outros membros; reativação recupera conquistas e saldo; testes vermelho para verde; PRs integrados",
+    "limites_autonomia": "A sessão responsável divide e despacha; não decide participação espiritual nem regra comercial; descoberta fora do alvo vira tarefa na fila.",
+    "acoes_do_mantenedor": "Responder à pendência 20260927-316 (convite ou requisito) e pedir a execução do lote."
+  }
+}
