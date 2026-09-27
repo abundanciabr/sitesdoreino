@@ -110,6 +110,7 @@ CRITERIOS_ACEITOS = frozenset(
         "conquistas_da_familia",
         "forjas_seladas",
         "respostas_aceitas",
+        "entregas_aceitas",
         "primeira_vez",  # medalha de estreia (primeiro quiz, primeira obra)
     }
 )
@@ -1321,6 +1322,45 @@ class AjudaAceita(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pessoa_id} ajudou em {self.mensagem_id}"
+
+
+class EntregaAceita(models.Model):
+    """Um laudo aceitou uma entrega desta pessoa, e a porta seguinte abriu.
+
+    É o que a medalha "Primeiro ciclo concluído" conta, e existe pela mesma
+    razão de `AjudaAceita`: reconhecimento é uma coisa, pagamento é outra.
+    Contar pelo ledger de XP amarraria a medalha à regra `aula-concluida` estar
+    LIGADA, e hoje a economia inteira da escola está desligada.
+
+    **Guarda o FATO, nunca o conteúdo.** Não há coluna que nomeie a aula ou o
+    curso: o invariante 3 da economia (`test_inv_economia_aula_nunca_atras_de_jogo`)
+    manda que esta célula não saiba o que é uma aula, porque quem não consegue
+    nomeá-la não consegue trancá-la. A linha diz "alguém aceitou uma entrega
+    desta pessoa, neste instante", e é só isso que a medalha precisa.
+
+    **Idempotente pelo evento.** `Unique(origem_event_id)`: o mesmo fato
+    reentregue pelo relay não vira uma segunda linha. Dois laudos são dois fatos,
+    e contam dois; a medalha continua sendo uma só (`Unique(pessoa, conquista)`).
+    """
+
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="entregas_aceitas", on_delete=models.PROTECT
+    )
+    site_id = id_do_site()
+    origem_event_id = models.CharField(max_length=64)
+    occurred_at = models.DateTimeField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["origem_event_id"], name="uma_entrega_aceita_por_evento"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id} teve a entrega aceita ({self.origem_event_id})"
 
 
 class ConversaAberta(models.Model):
