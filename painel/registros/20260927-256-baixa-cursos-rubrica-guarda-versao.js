@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-256-baixa-cursos-rubrica-guarda-versao",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A rubrica editada de cursos já guarda cada versão no site",
+  detalhe: "O PR 2218 (TAR-852) integrou na main (mergeCommit 348512a1c8edb05e25a3ed999b03c31e21f96040, MERGED conferido por gh pr view --json state,mergedAt,mergeCommit) e publicou: run 36316368162 fechou 'deploy (admin)' e 'deploy (cursos)' com success. Este registro dá baixa verde no recibo 20260927-130.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2218 (MERGED, mergeCommit 348512a1c8edb05e25a3ed999b03c31e21f96040); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36316368162 (deploy admin e cursos: success)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-130-cursos-a-rubrica-editada-guarda-cada-versao",
+  relacao: "baixa",
+  tarefa: "TAR-852",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

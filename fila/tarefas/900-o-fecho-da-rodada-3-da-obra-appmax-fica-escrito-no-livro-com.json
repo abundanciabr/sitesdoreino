@@ -1,0 +1,23 @@
+{
+  "arquivo": "900-o-fecho-da-rodada-3-da-obra-appmax-fica-escrito-no-livro-com",
+  "id": "TAR-900",
+  "titulo": "O fecho da rodada 3 da obra Appmax fica escrito no livro: compras de teste encerradas, tela com doze de doze e o compromisso do mantenedor",
+  "toca": [
+    "pagamentos",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-862",
+    "TAR-866"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com os registros de medicao das 39 tentativas (runs 36319736464 e 36327808889), da tela com 12 de 12 (run 36327860461), o compromisso do mantenedor sobre as pre-autorizacoes de teste e a tarefa 752 reconciliada",
+  "despacho": "Coordenacao da obra Appmax, rodada 3 (sessao 4442b6ad): registrar no livro o desfecho das 39 tentativas Appmax paradas, a tela sandbox com 12 de 12 depois do conserto do cartao recusado, a decisao do mantenedor das 11h30 sobre as pre-autorizacoes de teste (ele cancela no painel da Appmax; a observacao ja as mostra em amarelo) e reconciliar a tarefa 752.",
+  "origem": "RETOMADA-APPMAX-RODADA-3.md, resultados 1, 2 e 5",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

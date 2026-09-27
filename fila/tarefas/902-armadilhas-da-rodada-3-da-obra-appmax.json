@@ -1,0 +1,19 @@
+{
+  "arquivo": "902-armadilhas-da-rodada-3-da-obra-appmax",
+  "id": "TAR-902",
+  "titulo": "Armadilhas da rodada 3 da obra Appmax",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "armadilhas 547 a 554 criadas, indice de armadilhas regenerado sem erro",
+  "despacho": "Rodada 3 da obra Appmax: 8 lições medidas em 27/09/2026 (pista com fome,\nmandato lê só a primeira linha, ssh-action perde saída em falha, clone\nprincipal atrasado recusa wheel, e2e loga referência errada, gh pr list\nrecusado por limite de nós, revisão exige rascunho antes do pouso, sandbox\nnão emite webhook de cartão) viram armadilhas numeradas 547 a 554, com\níndice regenerado.",
+  "origem": "coordenacao 4442b6ad, obra Appmax rodada 3, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

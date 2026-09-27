@@ -494,6 +494,24 @@ def test_o_leia_me_manda_pelo_make_pr():
     texto = (RAIZ_DO_REPO / "painel" / "LEIA-ME.md").read_text(encoding="utf-8")
     assert "make pr" in texto
 
+
+def test_o_exemplo_canonico_do_make_pr_ensina_a_tarefa_obrigatoria():
+    import tomllib
+
+    ficha_codex = tomllib.loads(
+        (RAIZ_DO_REPO / ".codex/agents/despacho.toml").read_text(encoding="utf-8")
+    )["developer_instructions"]
+    textos = {
+        ".claude/agents/despacho.md": (RAIZ_DO_REPO / ".claude/agents/despacho.md").read_text(encoding="utf-8"),
+        ".codex/agents/despacho.toml": ficha_codex,
+        "painel/LEIA-ME.md": (RAIZ_DO_REPO / "painel/LEIA-ME.md").read_text(encoding="utf-8"),
+    }
+    for nome, texto in textos.items():
+        exemplo = texto.split("make pr TITULO=", 1)[1].split("```", 1)[0]
+        assert "TAR=TAR-NNN" in exemplo, nome
+        assert "quando aplicável" not in texto, nome
+        assert "quando esta entrega" not in texto, nome
+
 def test_evidencia_ausente_recusa_antes_de_publicar(tmp_path):
     raiz = bancada(tmp_path)
     dub = Duble(RESPOSTAS_FELIZES)
@@ -648,7 +666,8 @@ def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aber
     fases = []
     monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
     monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
-    pr.abrir(raiz, pedido(raiz), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
+    declarada = tarefa_aberta if tarefa_aberta.startswith('TAR-') else None
+    pr.abrir(raiz, pedido(raiz, tarefa=declarada), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
     assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('validacao','concluido'), ('fechamento','concluido')]
     assert {d['tentativa'] for f,r,d in fases} == {'tentativa-abertura'}
     assert {d['tarefa'] for f,r,d in fases} == {tarefa_aberta}
@@ -1150,6 +1169,7 @@ def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
 @pytest.mark.parametrize("onde", ["titulo", "corpo", "detalhe"])
 def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
     """PRs #2189 e #2190: citar outra tarefa no texto a fechou de verdade."""
+    # guarda: ci/pr.py:664
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
@@ -1169,19 +1189,33 @@ def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
 
 
 def test_sem_tarefa_a_recusa_ensina_a_tar_da_abertura(tmp_path, monkeypatch):
+    # guarda: ci/pr.py:664
     raiz = bancada(tmp_path)
     monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
     dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
     with pytest.raises(pr.ParouPorSeguranca) as recusa:
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
-    assert "Repita com --tarefa TAR-001" in recusa.value.o_que_fazer
+    assert "Repita com TAR=TAR-001 (make pr) ou --tarefa TAR-001 (python ci/pr.py)" in recusa.value.o_que_fazer
     assert not dub.pediu("ci/fila.py")
     assert not dub.pediu("git add")
 
 
+def test_sessao_legada_aberta_com_tar_recusa_sem_tarefa(tmp_path, monkeypatch):
+    """Na main antiga a TAR da abertura recebia eventos; sem --tarefa, calar a perde."""
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca) as recusa:
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert "TAR=TAR-001" in recusa.value.o_que_fazer
+    assert not dub.pediu("ci/fila.py")
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
 @pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
-def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
-    # guarda: ci/pr.py:680
+def test_tar_com_dependencia_nao_concluida_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
+    # guarda: ci/pr.py:686
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {
@@ -1193,8 +1227,9 @@ def test_tar_com_dependencia_aberta_recusa_antes_de_publicar(tmp_path, monkeypat
     with pytest.raises(pr.ParouPorSeguranca) as recusa:
         pr.abrir(raiz, pedido(raiz, tarefa="TAR-002"), rodar=dub, hoje=HOJE)
     estado = fila.CANCELADA if fim_da_dependencia else fila.NA_FILA
-    assert f"TAR-001 ({estado})" in recusa.value.resumo
+    assert f"dependência não concluída: TAR-001 ({estado})" in recusa.value.resumo
     assert "depende_de" in recusa.value.o_que_fazer
+    assert "merge de origin/main" in recusa.value.o_que_fazer
     assert not dub.pediu("ci/fila.py")
     assert not dub.pediu("git add")
     assert not dub.pediu("gh pr create")

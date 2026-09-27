@@ -303,6 +303,12 @@ _PLACE_ORDER_OPENAPI = {
             )
         },
         422: {"description": "Payload inválido"},
+        502: {
+            "description": (
+                "O provedor de pagamento não iniciou a cobrança; nenhum pedido foi "
+                "criado e a nova tentativa usa a mesma sessão"
+            )
+        },
     },
 }
 
@@ -513,6 +519,21 @@ def _inline_order_created_at(schema: dict) -> None:
     schema.update({"type": "string", "format": "date-time"})
 
 
+def _inline_order_card_in_review(schema: dict) -> None:
+    schema.clear()
+    schema.update(
+        {
+            "type": "boolean",
+            "description": (
+                "Verdadeiro enquanto a última tentativa de cartão está no provedor "
+                "sem resultado final (nem aprovada nem recusada); só pode ser "
+                "verdadeiro com status aguardando_pagamento ou recusado. Ausente "
+                "quando não foi possível consultar a tentativa."
+            ),
+        }
+    )
+
+
 class Order(Schema):
     order_id: str
     site_id: str
@@ -522,6 +543,24 @@ class Order(Schema):
     created_at: dict = Field(
         default_factory=dict, json_schema_extra=_inline_order_created_at
     )
+    card_in_review: dict = Field(
+        default_factory=dict, json_schema_extra=_inline_order_card_in_review
+    )
+
+
+def _cartao_em_analise(pedido: OrderModel) -> bool | None:
+    """O estado real da tentativa mora em pagamentos (getIntent), e é de lá que
+    ele se lê: nenhuma cópia local fica para trás quando um aviso chega fora de
+    ordem. None quando a consulta falha; o campo então sai da resposta, porque
+    "não sei" não é "não está em análise"."""
+    aceita_cartao = pedido.status in (OrderModel.AGUARDANDO, "recusado")
+    if pedido.method != "card" or not aceita_cartao:
+        return False
+    try:
+        intent = PagamentosClient().obter_intent(intent_id=pedido.intent_id)
+    except (httpx.HTTPError, ValueError):
+        return None
+    return intent.get("status") == "pending" if isinstance(intent, dict) else None
 
 
 @router.get(
@@ -545,16 +584,18 @@ def get_order(request, order_id: str):
         pedido = OrderModel.objects.get(pk=uuid.UUID(order_id), site_id=site["id"])
     except (OrderModel.DoesNotExist, ValueError):
         raise HttpError(404, "pedido inexistente neste site")
-    return JsonResponse(
-        {
-            "order_id": str(pedido.id),
-            "site_id": pedido.site_id,
-            "status": pedido.status,  # [INV-P7] única fonte de status para o front
-            "items": pedido.items,
-            "total_cents": pedido.total_cents,
-            "created_at": pedido.created_at.isoformat(),
-        }
-    )
+    corpo = {
+        "order_id": str(pedido.id),
+        "site_id": pedido.site_id,
+        "status": pedido.status,  # [INV-P7] única fonte de status para o front
+        "items": pedido.items,
+        "total_cents": pedido.total_cents,
+        "created_at": pedido.created_at.isoformat(),
+    }
+    em_analise = _cartao_em_analise(pedido)
+    if em_analise is not None:
+        corpo["card_in_review"] = em_analise
+    return JsonResponse(corpo)
 
 
 # --------------------------------------------------------------------------

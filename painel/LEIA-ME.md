@@ -63,7 +63,7 @@
    ```bash
    make pr TITULO="ci: o que muda, para leigo" MENSAGEM=mensagem.txt \
            CORPO=corpo.md ARQUIVOS="ci/pr.py ci/tests/test_pr.py" \
-           DETALHE=detalhe.txt VALIDACAO=validacao.json
+           DETALHE=detalhe.txt VALIDACAO=validacao.json TAR=TAR-NNN
    ```
 
    A validação ausente, inválida ou com falha impede o fechamento. O recibo
@@ -87,7 +87,7 @@
    ramo, recupera o recibo compatível e reexecuta a validação. A reserva usa
    uma identidade estável e grava número e chave no mesmo push atômico:
    resposta remota perdida não autoriza repetir uma reserva nova. A data da
-   reserva original também é preservada. `TAR=TAR-NNN`, quando aplicável,
+   reserva original também é preservada. `TAR=TAR-NNN`, obrigatório,
    conclui a tarefa pela fila existente e embarca todos os seus eventos;
    encerramento por outro fato impede a retomada. Nenhum desses estados
    declara publicação. Interface: `python ci/pr.py --help`.
