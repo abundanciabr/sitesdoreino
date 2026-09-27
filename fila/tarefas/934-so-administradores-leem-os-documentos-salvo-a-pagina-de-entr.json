@@ -1,0 +1,20 @@
+{
+  "arquivo": "934-so-administradores-leem-os-documentos-salvo-a-pagina-de-entr",
+  "id": "TAR-934",
+  "titulo": "Só administradores leem os documentos, salvo a página de entrada",
+  "toca": [
+    "admin",
+    "documentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Lista pública com um link, entrada 200, demais documentos e anexos 404, leitura admin preservada e semente somente com a exceção pública.",
+  "despacho": "Despublicar pelo gesto auditado do editor todos os documentos existentes salvo como-funciona-a-entrada. Preservar corpo, título, ordem e histórico. Conferir inventário inteiro, anexos e acesso administrativo. Atualizar as três sementes públicas além da exceção e testar instalações novas e documento novo privado.",
+  "origem": "Pedido direto do mantenedor em 2026-09-27, retomada Documentos privados Rodada 1",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

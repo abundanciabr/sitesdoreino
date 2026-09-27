@@ -732,7 +732,6 @@ def documento_restaurar(request, nome):
     documento.titulo = versao.titulo
     documento.corpo = versao.corpo
     documento.ordem = versao.ordem
-    documento.publico = versao.publico
     documento.save()
 
     quando = timezone.localtime(versao.salvo_em).strftime("%d/%m/%Y às %H:%M")
