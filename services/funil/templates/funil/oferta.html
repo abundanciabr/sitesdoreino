@@ -32,6 +32,12 @@
     .aviso h1 { margin: 0 0 .5rem; font-size: 1.25rem; }
     .aviso p { margin: 0; line-height: 1.6; color: #3f3f46; }
 {% endblock %}
+{% comment %}
+A MARCA DO EXPERIMENTO: `bloco.marca` so existe no bloco da secao em teste
+(views._braco_na_tela). O elemento do slot sorteado recebe `marca.atributos`,
+o par data-experimento-id e data-variante-id; paragrafo e item de lista sao
+achados pela posicao, os outros slots pelo nome.
+{% endcomment %}
 {% block conteudo %}{% if pagina_inexistente %}
 <div class="card aviso">
   <h1>A página de oferta ainda não foi publicada</h1>
@@ -42,36 +48,36 @@
   <p>A página existe, e o que faltou foi o conteúdo dela, que vem de outro serviço. Atualize a página em alguns instantes.</p>
 </div>{% else %}{% for bloco in blocos %}{% if bloco.nome == "oferta" %}
 <section class="card oferta-secao" id="a-oferta" data-secao="oferta">
-  {% if bloco.headline %}<h2>{{ bloco.headline }}</h2>{% elif oferta %}<h2>{{ oferta.product.name }}</h2>{% endif %}{% comment %}
+  {% if bloco.headline %}<h2{% if bloco.marca.slot == "headline" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.headline }}</h2>{% elif oferta %}<h2>{{ oferta.product.name }}</h2>{% endif %}{% comment %}
   O NOME DO PRODUTO entra no lugar da headline enquanto ela nao existe. O nome
   e DADO, como o preco, e nao copy: uma pagina sem uma palavra escrita ainda
   precisa dizer o que esta a venda, senao sobra um preco solto na tela.
   {% endcomment %}
-  {% if bloco.slots.o_que_recebe %}<p>{{ bloco.slots.o_que_recebe|linebreaksbr }}</p>{% endif %}{% comment %}
+  {% if bloco.slots.o_que_recebe %}<p{% if bloco.marca.slot == "o_que_recebe" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.slots.o_que_recebe|linebreaksbr }}</p>{% endif %}{% comment %}
   O PRECO APARECE UMA VEZ (ferramenta 73, sem ancoragem). O numero cadastrado
   na oferta e a verdade; quando o mantenedor escreveu um `preco_texto`, e o
   texto dele que sai, no lugar do numero e nunca ao lado dele: os dois juntos
   seriam o valor riscado que a ferramenta 74 proibe.
   {% endcomment %}{% if bloco.slots.preco_texto %}
-  <p class="preco">{{ bloco.slots.preco_texto }}</p>{% elif oferta %}
+  <p class="preco"{% if bloco.marca.slot == "preco_texto" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.slots.preco_texto }}</p>{% elif oferta %}
   <p class="preco">R$ {{ preco_formatado }}</p>{% endif %}{% if bloco.slots.parcelamento %}
-  <p class="parcelamento">{{ bloco.slots.parcelamento }}</p>{% endif %}{% if url_checkout %}
-  <a class="cta" href="{{ url_checkout }}"{% if bloco.cta_medido %} data-slot="cta_texto" data-destino="{{ bloco.cta_medido }}"{% endif %}>{% if bloco.cta_texto %}{{ bloco.cta_texto }}{% else %}Quero comprar{% endif %}</a>{% endif %}{% if bloco.prova %}
-  <p class="prova">{{ bloco.prova }}</p>{% endif %}
+  <p class="parcelamento"{% if bloco.marca.slot == "parcelamento" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.slots.parcelamento }}</p>{% endif %}{% if url_checkout %}
+  <a class="cta" href="{{ url_checkout }}"{% if bloco.cta_medido %} data-slot="cta_texto" data-destino="{{ bloco.cta_medido }}"{% endif %}{% if bloco.marca.slot == "cta_texto" %}{{ bloco.marca.atributos }}{% endif %}>{% if bloco.cta_texto %}{{ bloco.cta_texto }}{% else %}Quero comprar{% endif %}</a>{% endif %}{% if bloco.prova %}
+  <p class="prova"{% if bloco.marca.slot == "prova" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.prova }}</p>{% endif %}
 </section>{% elif bloco.nome == "cubo" %}
 <section class="card cubo oferta-secao" data-secao="cubo">
-  {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt="">{% endif %}
-  {% if bloco.headline %}<h1>{{ bloco.headline }}</h1>{% endif %}
-  {% for texto in bloco.paragrafos %}<p>{{ texto|linebreaksbr }}</p>{% endfor %}{% if bloco.cta_texto %}
-  <a class="cta" href="{% if bloco.cta_destino %}{{ bloco.cta_destino }}{% else %}#a-oferta{% endif %}"{% if bloco.cta_medido %} data-slot="cta_texto" data-destino="{{ bloco.cta_medido }}"{% endif %}>{{ bloco.cta_texto }}</a>{% endif %}
+  {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt=""{% if bloco.marca.slot == "imagem" %}{{ bloco.marca.atributos }}{% endif %}>{% endif %}
+  {% if bloco.headline %}<h1{% if bloco.marca.slot == "headline" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.headline }}</h1>{% endif %}
+  {% for texto in bloco.paragrafos %}<p{% if forloop.counter0 == bloco.marca.paragrafo %}{{ bloco.marca.atributos }}{% endif %}>{{ texto|linebreaksbr }}</p>{% endfor %}{% if bloco.cta_texto %}
+  <a class="cta" href="{% if bloco.cta_destino %}{{ bloco.cta_destino }}{% else %}#a-oferta{% endif %}"{% if bloco.cta_medido %} data-slot="cta_texto" data-destino="{{ bloco.cta_medido }}"{% endif %}{% if bloco.marca.slot == "cta_texto" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.cta_texto }}</a>{% endif %}
 </section>{% else %}
 <section class="card oferta-secao" data-secao="{{ bloco.nome }}">
-  {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt="">{% endif %}
-  {% if bloco.headline %}<h2>{{ bloco.headline }}</h2>{% endif %}
-  {% for texto in bloco.paragrafos %}<p>{{ texto|linebreaksbr }}</p>{% endfor %}{% if bloco.itens %}
-  <ul class="oferta-lista">{% for item in bloco.itens %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}{% if bloco.prova %}
-  <p class="prova">{{ bloco.prova }}</p>{% endif %}{% if bloco.assinatura %}
-  <p class="assinatura">{{ bloco.assinatura }}</p>{% endif %}
+  {% if bloco.imagem %}<img src="{{ bloco.imagem }}" alt=""{% if bloco.marca.slot == "imagem" %}{{ bloco.marca.atributos }}{% endif %}>{% endif %}
+  {% if bloco.headline %}<h2{% if bloco.marca.slot == "headline" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.headline }}</h2>{% endif %}
+  {% for texto in bloco.paragrafos %}<p{% if forloop.counter0 == bloco.marca.paragrafo %}{{ bloco.marca.atributos }}{% endif %}>{{ texto|linebreaksbr }}</p>{% endfor %}{% if bloco.itens %}
+  <ul class="oferta-lista">{% for item in bloco.itens %}<li{% if forloop.counter0 == bloco.marca.item %}{{ bloco.marca.atributos }}{% endif %}>{{ item }}</li>{% endfor %}</ul>{% endif %}{% if bloco.prova %}
+  <p class="prova"{% if bloco.marca.slot == "prova" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.prova }}</p>{% endif %}{% if bloco.assinatura %}
+  <p class="assinatura"{% if bloco.marca.slot == "assinatura" %}{{ bloco.marca.atributos }}{% endif %}>{{ bloco.assinatura }}</p>{% endif %}
 </section>{% endif %}{% empty %}
 <div class="card aviso">
   <h1>Esta página ainda não tem texto publicado</h1>
