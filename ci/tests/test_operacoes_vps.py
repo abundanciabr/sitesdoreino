@@ -1973,6 +1973,14 @@ def test_appmax_pix_aviso_falha_fechado_sem_candidata_unica(
             "instalacao_multipla",
             2,
         ),
+        (
+            [
+                _instalacao_appmax_pix_aviso(),
+                _instalacao_appmax_pix_aviso(app_id=" "),
+            ],
+            "instalacao_incompleta",
+            2,
+        ),
     ],
 )
 def test_appmax_pix_aviso_distingue_instalacao_sem_consultar_inbox(
@@ -2000,6 +2008,7 @@ def test_appmax_pix_aviso_distingue_instalacao_sem_consultar_inbox(
     }
     # guarda: ci/operacoes_vps.py:590
     assert len(consultas) == 2
+    assert ops.conferir_medicao("appmax-pix-aviso", dados, referencia) == dados
 
 
 def test_appmax_pix_aviso_registro_vazio_nao_afirma_ausencia_do_envio(monkeypatch):
@@ -2192,7 +2201,14 @@ def test_appmax_pix_aviso_rejeita_saida_extra():
         ("aviso_multiplo", 1, True, 1),
         ("candidata_ausente_ou_multipla", 2, False, None),
         ("instalacao_ausente_ou_multipla", 1, False, 1),
+        ("instalacao_ausente_ou_multipla", None, False, None),
         ("aviso_nao_preservado", 2, True, 1),
+        ("instalacao_ausente", None, False, 1),
+        ("instalacao_ausente", None, False, 2),
+        ("instalacao_incompleta", None, False, 0),
+        ("instalacao_multipla", None, False, 1),
+        ("instalacao_multipla", None, True, 2),
+        ("instalacao_multipla", 0, False, 2),
     ],
 )
 def test_appmax_pix_aviso_rejeita_contagem_incoerente(

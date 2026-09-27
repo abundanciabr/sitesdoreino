@@ -73,12 +73,16 @@ APPMAX_API_SANDBOX = "https://api.sandboxappmax.com.br"
 ESTADOS_AVISO_APPMAX = {"pendente", "processado", "falhou", "carta_morta", "nao_medido"}
 ACOES_AVISO_APPMAX = {
     "candidata_ausente_ou_multipla",
-    "instalacao_ausente_ou_multipla",
     "instalacao_ausente",
     "instalacao_incompleta",
     "instalacao_multipla",
     "aviso_nao_preservado",
     "aviso_multiplo",
+}
+INSTALACOES_OBSERVADAS_POR_ACAO = {
+    "instalacao_ausente": {0},
+    "instalacao_incompleta": {1, 2},
+    "instalacao_multipla": {2},
 }
 CAMPOS_VALOR_ESTORNO = {
     "amount",
@@ -384,7 +388,7 @@ def conferir_medicao(operacao, dados, referencia=""):
             elif encontrados is not None:
                 raise Falha("formato")
             if (
-                dados["acao"] in {"candidata_ausente_ou_multipla", "instalacao_ausente_ou_multipla"}
+                dados["acao"] == "candidata_ausente_ou_multipla"
                 and (dados["inbox_consultada"] or observadas is not None)
             ) or (
                 dados["acao"] == "aviso_multiplo"
@@ -396,14 +400,10 @@ def conferir_medicao(operacao, dados, referencia=""):
                     or encontrados not in {0, 1}
                 )
             ) or (
-                dados["acao"] in {
-                    "instalacao_ausente",
-                    "instalacao_incompleta",
-                    "instalacao_multipla",
-                }
+                dados["acao"] in INSTALACOES_OBSERVADAS_POR_ACAO
                 and (
                     dados["inbox_consultada"]
-                    or observadas is None
+                    or observadas not in INSTALACOES_OBSERVADAS_POR_ACAO[dados["acao"]]
                 )
             ):
                 raise Falha("formato")
@@ -804,10 +804,10 @@ def medir(operacao, servico, referencia=""):
             "    instalacoes = [i for i in instalacoes_brutas if isinstance(i.platform_site_ids, list) and tentativa.platform_site_id in i.platform_site_ids and isinstance(i.app_id, str) and i.app_id.strip() and isinstance(i.appmax_site_id, str) and i.appmax_site_id.strip()]\n"
             "    if not instalacoes_brutas:\n"
             "        print(json.dumps(nao_medido('instalacao_ausente', instalacoes_observadas=0), sort_keys=True))\n"
-            "    elif len(instalacoes) > 1 and len(instalacoes) == len(instalacoes_brutas):\n"
-            "        print(json.dumps(nao_medido('instalacao_multipla', instalacoes_observadas=len(instalacoes_brutas)), sort_keys=True))\n"
-            "    elif len(instalacoes) != 1 or len(instalacoes) != len(instalacoes_brutas):\n"
+            "    elif len(instalacoes) != len(instalacoes_brutas):\n"
             "        print(json.dumps(nao_medido('instalacao_incompleta', instalacoes_observadas=len(instalacoes_brutas)), sort_keys=True))\n"
+            "    elif len(instalacoes) > 1:\n"
+            "        print(json.dumps(nao_medido('instalacao_multipla', instalacoes_observadas=len(instalacoes)), sort_keys=True))\n"
             "    else:\n"
             "        instalacao = instalacoes[0]\n"
             "        avisos = list(AppmaxWebhookInbox.objects.filter(app_id=instalacao.app_id, appmax_site_id=instalacao.appmax_site_id, platform_site_id=tentativa.platform_site_id, event='order_pix_created', event_type='order', external_order_id=str(tentativa.external_order_id)).order_by('-received_at')[:2])\n"
