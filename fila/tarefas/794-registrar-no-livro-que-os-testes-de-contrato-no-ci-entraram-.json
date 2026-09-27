@@ -1,0 +1,20 @@
+{
+  "arquivo": "794-registrar-no-livro-que-os-testes-de-contrato-no-ci-entraram-",
+  "id": "TAR-794",
+  "titulo": "Registrar no livro que os testes de contrato no CI entraram no ar",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "registro de medição no livro com merge e publicação do PR 2147",
+  "despacho": "# Registrar no livro que os testes de contrato no CI foram integrados e publicados\n\nO PR #2147 (TAR-789) pôs `python ci/ci.py --apenas contratos` no check obrigatório `muralhas`.\n`gh pr view 2147 --json state,mergedBy,mergeCommit` devolve `MERGED`, merge\n`b487846d1ae209904a67f41554e46bb2fad18eb0`; `ci/esperar.py --entrega 2147` devolve `PUBLICADO`.\n\nObjetivo: registro de medição no livro que responde ao recibo `20260927-002`, por `python ci/pr.py`.",
+  "origem": "fecho da TAR-789, sessão de 26/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

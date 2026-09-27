@@ -94,6 +94,41 @@ def test_email_invalido_preserva_respostas_sem_gravar_resultado(client, quiz_a):
     assert OutboxEvent.objects.count() == 0
 
 
+@pytest.mark.parametrize(
+    "campo, valor, orientacao",
+    [
+        (
+            "telefone",
+            "(11) 99999-9999 ou (11) 3333-4444",
+            "Use até 32 caracteres no telefone.",
+        ),
+        ("nome", "N" * 201, "Use até 200 caracteres no nome."),
+        (
+            "email",
+            "a" * 250 + "@exemplo.com",
+            "Informe um e-mail válido para continuar.",
+        ),
+    ],
+)
+def test_contato_maior_que_o_banco_guarda_orienta_sem_erro_de_servidor(
+    client, quiz_a, campo, valor, orientacao
+):
+    pergunta = quiz_a.versions.get().questions.get(order=1)
+    opcao = pergunta.options.get(points=10)
+    dados = {f"pergunta_{pergunta.id}": opcao.id, "email": "lead@exemplo.com"}
+    dados[campo] = valor
+
+    resp = client.post(f"/{quiz_a.slug}/", dados, HTTP_HOST=HOST_A)
+
+    assert resp.status_code == 422
+    assert resp.context["erro"] == orientacao
+    assert resp.context["campo_com_erro"] == campo
+    assert resp.context["opcoes_selecionadas"] == {opcao.id}
+    assert resp.context["valores"][campo] == valor
+    assert Submission.objects.count() == 0
+    assert OutboxEvent.objects.count() == 0
+
+
 def test_id_nao_numerico_de_opcao_e_rejeitado_sem_erro_de_servidor(client, quiz_a):
     pergunta = quiz_a.versions.get().questions.get(order=1)
     resp = client.post(

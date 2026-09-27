@@ -1,0 +1,19 @@
+{
+  "arquivo": "753-teste-do-pix-appmax-deixa-de-depender-do-relogio",
+  "id": "TAR-753",
+  "titulo": "Teste do Pix Appmax deixa de depender do relogio",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python -m pytest -q -p no:cacheprovider ci/tests/test_operacoes_vps.py",
+  "despacho": "Tarefa concluída no PR desta sessão (agent/ci/teste-pix-sem-relogio): o\nfixture Pix Appmax em ci/tests/test_operacoes_vps.py parou de fixar\n\"pix_expiration_date\" em \"2026-09-26 13:00:00\". Os casos \"nao vencido\" agora\nusam uma data futura calculada a partir do relogio do teste (datetime.now(utc)\n+ 365 dias); foi adicionado um caso \"vencido\" com data no passado (agora - 7\ndias) provando qr_vencido: True, guarda que antes nao existia. Nada em\nci/operacoes_vps.py foi tocado. Prova vermelho/verde: antes da correcao,\npython -m pytest -q -p no:cacheprovider ci/tests/test_operacoes_vps.py -k\nappmax_pix_pedido reprovava com {'qr_vencido': True} != {'qr_vencido': False};\ndepois, 13 passed.",
+  "origem": "Medido na sessão do quiz em 26/09/2026: muralhas reprova todo PR por data fixa no fixture Pix Appmax",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

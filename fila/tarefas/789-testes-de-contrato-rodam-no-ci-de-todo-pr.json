@@ -1,0 +1,20 @@
+{
+  "arquivo": "789-testes-de-contrato-rodam-no-ci-de-todo-pr",
+  "id": "TAR-789",
+  "titulo": "Testes de contrato rodam no CI de todo PR",
+  "toca": [
+    "ci",
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "check muralhas vermelho com esquema sabotado e verde no PR real, ambos no GitHub",
+  "despacho": "# Testes de contrato rodam no CI de todo PR\n\nOs testes em `contracts/test_*.py` (entre eles `contracts/test_eventos_do_experimento.py`,\n188 testes trazidos pelo PR #2133) não rodavam em nenhum workflow de `.github/workflows/`.\n\nObjetivo: `python -m pytest contracts -q` roda no check obrigatório `muralhas` de todo PR,\npelo runner canônico `ci/ci.py` (portão `contratos`), com as dependências declaradas em\n`contracts/requirements-test.txt` e incluídas por `requirements-ci.txt`.\n\nAceite: vermelho real no GitHub com um esquema de `contracts/eventos` sabotado numa cópia\ndescartável; verde no PR real; teste adversarial em `ci/tests/test_portao_dos_contratos.py`.\n\nBancada: `python ci/sessao.py --celula ci --tarefa testes-de-contrato-no-ci --sem-container`.\nPR por `python ci/pr.py`, etiqueta `contrato` (o PR toca `contracts/requirements-test.txt`).",
+  "origem": "pedido do mantenedor, sessão de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

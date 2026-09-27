@@ -14,6 +14,7 @@ on:
           - appmax-pix-pedido
           - appmax-pix-aviso
           - appmax-estorno
+          - quiz-configuracao
       servico:
         description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true
