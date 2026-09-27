@@ -1,0 +1,19 @@
+{
+  "arquivo": "809-o-cartao-de-producao-carrega-o-script-de-teste-da-appmax-no-",
+  "id": "TAR-809",
+  "titulo": "O cartao de producao carrega o script de teste da Appmax no site canario",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste do checkout provando que, com a Appmax de producao, a pagina do cartao do site ligado carrega https://scripts.appmax.com.br/appmax.min.js, e com a Appmax de sandbox carrega o script de sandbox.",
+  "despacho": "Em services/checkout/apps/pedidos/views.py, a view cartao escolhe o script de sandbox sempre que o site esta em APPMAX_CARD_ENABLED_SITES (appmax_sandbox = site in APPMAX_CARD_ENABLED_SITES). No canario de producao isso carrega scripts.sandboxappmax.com.br com a instalacao de producao, e a documentacao oficial (docs.appmax.com.br/guides/ambientes) diz que script e external_id precisam ser do mesmo ambiente, senao a tokenizacao falha. Fazer a escolha do script seguir o ambiente Appmax configurado, sem segredo no checkout (INV-CARD-A7), com teste nos dois ambientes. Exige Mandato-do-mantenedor com services/checkout/, que a sessao de 26/09/2026 22h53 nao cobre.",
+  "origem": "Descoberta da TAR-802 em 26/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

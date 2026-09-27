@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-025928-TAR-815-explicada",
+  "tarefa": "TAR-815",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:59:28.877648+00:00",
+  "quem": "achado da frente F10b, PR #2130, 26/09/2026",
+  "o_que_e": "Quem começa trabalho na parte que conta os números do site não consegue montar o ambiente de teste pelo caminho oficial.",
+  "o_que_muda": "Cada robô monta o ambiente em um comando, sem inventar um caminho próprio a cada vez.",
+  "exemplo": "Como uma porta de oficina que emperra e obriga todo mundo a entrar pela janela.",
+  "importancia": 40
+}

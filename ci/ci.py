@@ -291,6 +291,18 @@ def rodar_testes_do_testador(raiz: Path) -> Resultado:
     return resultado
 
 
+def rodar_testes_de_contrato(raiz: Path) -> Resultado:
+    """Os esquemas de `contracts/` contra os exemplos que devem aceitar e recusar.
+
+    Até 26/09/2026 `contracts/test_*.py` não rodava em workflow nenhum: um
+    esquema quebrado pousava na `main` com todos os checks verdes. Custa ~2 s,
+    por isso roda em todo PR em vez de depender de o diff tocar `contracts/`.
+    """
+    resultado, _ = executar_pytest(raiz, [str(raiz / "contracts"), "-q"])
+    resultado.nome = "testes-de-contrato"
+    return resultado
+
+
 # Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
 # rodar (ausente, erro de SO, timeout). Só eles significam "não foi possível
 # medir" — qualquer outro número veio do programa e é veredito dele.
@@ -459,7 +471,7 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
     return mapa_de_celulas.celulas_do_diff(arquivos, mapa)
 
 
-PORTOES = ("freeze", "muralhas", "guardas", "testador")
+PORTOES = ("freeze", "muralhas", "guardas", "testador", "contratos")
 
 
 def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relatorio:
@@ -495,6 +507,8 @@ def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relator
             relatorio.registrar(r)
     if "testador" in escolhidos:
         relatorio.registrar(rodar_testes_do_testador(raiz))
+    if "contratos" in escolhidos:
+        relatorio.registrar(rodar_testes_de_contrato(raiz))
     if celula:
         relatorio.registrar(rodar_celula(raiz, celula))
     return relatorio
@@ -559,6 +573,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             "  testador   — a suíte adversarial que prova que o freeze falha quando deve"
+        )
+        print(
+            "  contratos  — os esquemas de contracts/ aceitam e recusam o que devem "
+            "(pytest contracts)"
         )
         print("\nAlém deles: --celula <nome> encadeia o `make ci` daquela célula.")
         return 0

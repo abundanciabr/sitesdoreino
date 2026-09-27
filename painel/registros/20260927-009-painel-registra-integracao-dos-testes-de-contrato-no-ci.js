@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-009-painel-registra-integracao-dos-testes-de-contrato-no-ci",
+  tipo: "medicao",
+  quando: "2026-09-27",
+  titulo: "painel: registra integração dos testes de contrato no CI",
+  detalhe: "Testes de contrato no CI integrados e publicados: PR 2147, merge b487846d na main. Responde ao registro 20260927-002.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2154. Validação local: árvore ab81e91d1a136e5cb001e5cb7c521800c63690af; commit 518b5fd80b3bda4fa2da3e3eb33a78e68349729e; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-794",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

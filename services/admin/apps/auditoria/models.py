@@ -317,6 +317,19 @@ class Registro(models.Model):
     # uma tabela que nao se apaga e justamente o que `armadilhas/331` proibe).
     SALVAR_RASCUNHO_DA_PAGINA = "salvar_rascunho_pagina"
     PUBLICAR_PAGINA = "publicar_pagina"
+    # [EXPERIMENTO] 26/09/2026, a decisão de um experimento da página
+    # (`apps/core/decisao_do_experimento.py`). Verbo próprio, e não um
+    # `publicar_pagina` reaproveitado, porque "Reverter" e "Encerrar" não
+    # publicam nada e mudam o que o visitante vê do mesmo jeito: o sorteio para.
+    DECIDIR_EXPERIMENTO = "decidir_experimento"
+    # [EXPERIMENTOS] 26/09/2026, a tela `/admin/paginas/experimentos/` (frente
+    # F9b). DOIS verbos, porque as perguntas são duas: "quem propôs este
+    # teste?" e "desde quando parte das visitas vê outro texto, e quem ligou?".
+    # Parar é `decidir_experimento`, logo acima. O `detalhe` guarda a página e
+    # o espaço testado, nunca o texto: a copy é obra dele e mora no catálogo
+    # (`armadilhas/331`).
+    CRIAR_EXPERIMENTO = "criar_experimento"
+    INICIAR_EXPERIMENTO = "iniciar_experimento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -375,6 +388,9 @@ class Registro(models.Model):
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
         (SALVAR_RASCUNHO_DA_PAGINA, "salvar o texto da pagina de venda"),
         (PUBLICAR_PAGINA, "por a pagina de venda no ar"),
+        (DECIDIR_EXPERIMENTO, "promover, reverter ou encerrar um experimento"),
+        (CRIAR_EXPERIMENTO, "criar um experimento na pagina de venda"),
+        (INICIAR_EXPERIMENTO, "por um experimento da pagina no ar"),
     ]
 
     OK = "ok"

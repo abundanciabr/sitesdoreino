@@ -1,0 +1,21 @@
+{
+  "arquivo": "787-guardar-o-dossie-e-o-termo-de-entrega-da-comunidade-no-proje",
+  "id": "TAR-787",
+  "titulo": "Guardar o dossiê e o termo de entrega da Comunidade no projeto",
+  "toca": [
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [
+    "docs/comunidade"
+  ],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Dois arquivos completos no projeto, links relativos válidos e entrega documental integrada.",
+  "despacho": "Salvar os dois documentos completos em docs/comunidade, preservar propostas e limites de verificação, incluir links relativos e verificar os arquivos. Não implementar a Comunidade.",
+  "origem": "Pedido do mantenedor nesta conversa: criar os dois documentos na pasta do projeto para acesso dos robôs.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
