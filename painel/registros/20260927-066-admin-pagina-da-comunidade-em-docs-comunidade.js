@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-066-admin-pagina-da-comunidade-em-docs-comunidade",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "admin: página da Comunidade em /docs/comunidade",
+  detalhe: "Pagina publica da Comunidade semeada por migracao 0030; vermelho sem ela, 9 passed com ela; suite admin 2438 passed; black e travessao limpos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2186. Validação local: árvore 6bc6fcb90fc61df879dee713f176d5b5d9757488; commit bc04dbe883f834e839a37884788bead3a0a122ee; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-823",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
