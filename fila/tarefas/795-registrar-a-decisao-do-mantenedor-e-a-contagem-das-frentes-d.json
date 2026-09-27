@@ -1,0 +1,19 @@
+{
+  "arquivo": "795-registrar-a-decisao-do-mantenedor-e-a-contagem-das-frentes-d",
+  "id": "TAR-795",
+  "titulo": "Registrar a decisão do mantenedor e a contagem das frentes da obra Appmax",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o registro da decisão do mantenedor de 26/09 e o registro da contagem honesta de frentes abertas, iniciadas e faltantes contra a ordem de 21",
+  "despacho": "Na bancada agent/pagamentos/appmax-coordenacao, embarcar o registro 20260927-011 da decisão do mantenedor e um registro de medição com a contagem de frentes da obra Appmax (abertas, iniciadas, faltantes para 21 e motivo), medida na fila viva, e entregar por python ci/pr.py --tarefa com esta TAR.",
+  "origem": "RETOMADA-APPMAX.md seções 8 e 10, sessão de 26/09/2026 22h53",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
