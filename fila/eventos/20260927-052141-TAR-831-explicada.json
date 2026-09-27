@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-052141-TAR-831-explicada",
+  "tarefa": "TAR-831",
+  "evento": "explicada",
+  "quando": "2026-09-27T05:21:41.754192+00:00",
+  "quem": "RETOMADA-APPMAX frente N6; mandato do mantenedor na sessao de 26/09/2026 22h53 BRT",
+  "o_que_e": "O site tem uma chave que liga e desliga o pagamento com cartao da Appmax, mas ninguem ensaiou ainda desligar o cartao num site de teste e ver o Pix continuar funcionando.",
+  "o_que_muda": "Quando o cartao entrar de verdade, a gente ja sabe que desligar em emergencia funciona, que o comprador ve uma explicacao e que o Pix nao cai junto.",
+  "exemplo": "E como o simulado de incendio do predio: aperta o botao num dia calmo, ve se as luzes de emergencia acendem e depois religa tudo.",
+  "importancia": 70
+}
