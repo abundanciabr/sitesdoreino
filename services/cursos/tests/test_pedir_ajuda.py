@@ -43,7 +43,10 @@ def test_a_aula_mostra_onde_pedir_ajuda_perto_do_aceito_quando_e_do_envio(
     aluna, envio_na_fila, client
 ):
     corpo = corpo_de(
-        client.get(reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE)
+        client.get(
+            reverse("aula-do-curso", args=["profissional", 1, "E00"]),
+            HTTP_COOKIE=COOKIE,
+        )
     )
     inicio = corpo.index('id="checkpoint"')
     checkpoint = corpo[inicio : corpo.index("</section>", inicio)]
@@ -64,7 +67,10 @@ def test_a_aula_sem_envio_ainda_mostra_o_bloco_perto_do_aceito_quando(
     """Antes de qualquer entrega o "envio" não existe, mas o "aceito quando"
     sim: o bloco continua ali, porque é aceito quando que o aluno lê primeiro."""
     corpo = corpo_de(
-        client.get(reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE)
+        client.get(
+            reverse("aula-do-curso", args=["profissional", 1, "E00"]),
+            HTTP_COOKIE=COOKIE,
+        )
     )
     inicio = corpo.index('id="checkpoint"')
     checkpoint = corpo[inicio : corpo.index("</section>", inicio)]
