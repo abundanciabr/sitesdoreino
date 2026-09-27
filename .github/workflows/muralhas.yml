@@ -47,6 +47,10 @@ jobs:
       # `requirements-ci.txt` inclui.
       - name: Testes de contrato (pytest contracts)
         run: python ci/ci.py --apenas contratos
+      # Os testes das operações da infraestrutura (`infra/test_*.py`: ativação
+      # da Appmax, canário). Até 27/09/2026 não rodavam em workflow nenhum.
+      - name: Testes da infraestrutura (pytest infra)
+        run: python ci/ci.py --apenas infra
 
   # ===========================================================================
   # O ESPELHO DA MAIN — o que vai rodar DEPOIS do merge, rodando ANTES dele.

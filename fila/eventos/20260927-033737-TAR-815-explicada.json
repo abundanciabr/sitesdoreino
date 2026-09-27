@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-033737-TAR-815-explicada",
+  "tarefa": "TAR-815",
+  "evento": "explicada",
+  "quando": "2026-09-27T03:37:37.802530+00:00",
+  "quem": "sessao-experimentos-20260926",
+  "o_que_e": "Quem começa trabalho na parte que conta os números do site ou na área administrativa não consegue montar o ambiente de teste pelo caminho oficial: as duas travam no mesmo pacote interno.",
+  "o_que_muda": "Cada robô monta o ambiente em um comando, com a medição inicial feita, sem inventar um caminho próprio a cada vez.",
+  "exemplo": "Como uma porta de oficina que emperra e obriga todo mundo a entrar pela janela.",
+  "importancia": 55
+}
