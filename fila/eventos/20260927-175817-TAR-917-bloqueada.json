@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-175817-TAR-917-bloqueada",
+  "tarefa": "TAR-917",
+  "evento": "bloqueada",
+  "quando": "2026-09-27T17:58:17.563884+00:00",
+  "quem": "agent/gamificacao/comunidade-matricula-no-quadro",
+  "detalhe": "O que houve: para saber se quem clica em Assumir tem matricula ativa, a parte das conquistas precisa do e-mail da pessoa, e hoje ela nao o recebe. A identidade so entrega o e-mail a quem tem a permissao TOKENS_COMPLETOS_GAMIFICACAO, e a regra da identidade diz que dar essa permissao e decisao sua, registrada por escrito. O que trava: sem ela, ninguem assume tarefa no quadro, nem aluno; ver o quadro continua normal e hoje nao ha tarefa publicada. O que destrava: voce autorizar essa permissao, a mesma que o forum, os cursos e a Caixa ja tem para a mesma conferencia. Com a sua palavra, o robo acrescenta o passo ao script do par e o registro na decisao da identidade, no mesmo PR, em cerca de 30 minutos. Da para desfazer: basta apagar uma linha do env da identidade.",
+  "espera": "mantenedor"
+}

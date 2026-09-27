@@ -238,7 +238,7 @@ def test_a_contribuicao_aceita_deixa_a_regra_e_a_origem_na_medalha():
         responsavel_nome="Professora Ana",
         vagas=1,
     )
-    contribuicoes.assumir(tarefa=tarefa, pessoa=_pessoa())
+    contribuicoes.assumir(tarefa=tarefa, pessoa=_pessoa(), categoria="aluno")
     compromisso = contribuicoes.enviar(
         tarefa=tarefa, pessoa=_pessoa(), link="https://exemplo.test/uv"
     )
