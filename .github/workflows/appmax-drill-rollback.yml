@@ -1,12 +1,14 @@
 # =============================================================================
 # ENSAIO DE ROLLBACK DO CARTÃO APPMAX NO SANDBOX DA MESHCRAFT (TAR-831)
 #
-# Plano mestre Appmax, seções 18.2 e 22.1: tira a Meshcraft de
-# APPMAX_CARD_ENABLED_SITES pela chave do canário, mede pela página pública do
-# checkout que o cartão ficou bloqueado com explicação e que o Pix não mudou,
-# religa, prova que o cartão voltou e publica a evidência no resumo do run.
-# Todo o ensaio é UM script na VPS: a religação não depende do runner
-# sobreviver entre dois passos.
+# Plano mestre Appmax, seções 18.2 e 22.1: recria checkout e pagamentos com
+# APPMAX_CARD_ENABLED_SITES vazia por uma sobreposição temporária do Compose
+# (o usuário deploy lê env/*.env, mas não escreve neles), mede pela página
+# pública do checkout que o cartão ficou bloqueado com explicação e que o Pix
+# não mudou, religa, prova que o cartão voltou e publica a evidência no resumo
+# do run. Todo o ensaio é UM script na VPS: a religação não depende do runner
+# sobreviver entre dois passos. O script remoto sai sempre com 0 para o
+# ssh-action fechar a saída capturada; o veredito sai do passo de conferência.
 #
 # Só por disparo manual do mantenedor. Nenhum pedido, cobrança ou estorno
 # nasce aqui; fora do sandbox da Meshcraft o script para sem gravar.
