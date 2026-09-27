@@ -1,0 +1,20 @@
+{
+  "arquivo": "918-a-leitura-do-servidor-repete-a-conexao-que-nao-abriu-e-diz-o",
+  "id": "TAR-918",
+  "titulo": "A leitura do servidor repete a conexão que não abriu e diz o motivo certo",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste do conferir com saída vazia exigindo a mensagem de conexão, teste do workflow que reprova repetição fora de conexão nunca aberta, vermelho antes e verde depois com mutação, e um run operacoes-vps PASS na main após o merge",
+  "despacho": "Achado na coordenacao da obra Appmax, rodada 4 (27/09/2026, 15h21 BRT).\n\nO run 36340291130 de .github/workflows/operacoes-vps.yml (operacao\nappmax-observacao) caiu com `dial tcp ***:22: i/o timeout` no passo remoto\n(appleboy/ssh-action). A saida ficou vazia, o GitHub reclamou\n`Matching delimiter not found 'EOF'` e o passo \"Conferir evidencia\" imprimiu\n\"ERROR: operacao ou evidencia invalida. Confira o catalogo e o run na main;\ncorrija por PR.\" O diagnostico e a acao estao errados: o catalogo estava certo,\nnenhum comando rodou na VPS, e a repeticao do mesmo run passou dois minutos\ndepois (PASS). E a armadilhas/127 (timeout intermitente com a VPS viva).\n\nO deploy-celula ja trata esse caso (TAR-013): mede a porta 22 com\nci/sonda_da_vps.py e repete com pausa. operacoes-vps nao tem nada disso, e a\nleitura decisiva da G12B (observacao de terca 29/09) passa por ele.\n\nO que fazer, dentro de ci/ e .github/:\n1. ci/operacoes_vps.py conferir: saida vazia do passo remoto vira mensagem\n   propria, em portugues: a conexao com o servidor nao respondeu, nada rodou\n   la, repita o run uma vez (armadilhas/127). \"Formato invalido\" fica so para\n   saida que chegou e nao confere.\n2. operacoes-vps.yml: repetir o passo remoto somente quando a conexao nunca\n   abriu (porta 22 medida pela sonda do deploy, reusar ci/sonda_da_vps.py),\n   nunca quando o comando chegou a rodar. Operacao que escreve nao pode rodar\n   duas vezes.\n3. Teste que executa conferir com SAIDA vazia e exige a mensagem nova;\n   teste do workflow que reprova se a repeticao perder a condicao\n   \"conexao nunca abriu\". Vermelho antes, verde depois, mutacao provada.\n\nSomente leitura: services/, contracts/. Sem SSH direto; prova pela esteira.",
+  "origem": "descoberta na coordenação da obra Appmax rodada 4 (run 36340291130), sessão 2549a52a, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

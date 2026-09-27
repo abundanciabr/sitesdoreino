@@ -394,8 +394,16 @@ def recalcular(
         # `celebrar=False` também não avalia: quem repara uma cópia divergente não
         # está fazendo a pessoa conquistar nada, e conceder ali mandaria a carta
         # pelo relógio da manutenção.
+        #
+        # O fato que mudou o número vai junto: a medalha que ele fizer cair
+        # guarda de onde veio, e a tela da equipe mostra o evento em vez de
+        # "conta automática". Sem fato (a liberação da quarentena), fica vazio.
         if celebrar:
-            criterios.avaliar(pessoa.id_da_plataforma, site_id)
+            criterios.avaliar(
+                pessoa.id_da_plataforma,
+                site_id,
+                origem_event_id=origem_event_id or "",
+            )
 
         if celebrar and subiu:
             # DEPOIS do commit, nunca antes: é o que dá o aviso em segundos sem

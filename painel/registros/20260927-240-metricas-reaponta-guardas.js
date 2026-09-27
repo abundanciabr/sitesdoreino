@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-240-metricas-reaponta-guardas",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "metricas: reaponta guardas",
+  detalhe: "Reapontei 2 marcadores (api.py:588, migração:46) para a linha que decide o valor sem quebrar o cálculo. Os outros 2 dependem de expressão entre parênteses que o sabotador não corta, por isso mantive e declarei PROVA FRACA.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2259. Validação local: árvore 067a99b2daf7f338dc8a31a6ea5182656060a34d; commit 16f568fc94f3fdeecbbab408aa94b2211a91d358; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-888",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
