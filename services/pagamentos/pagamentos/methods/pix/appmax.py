@@ -33,6 +33,7 @@ _PRAZO_DO_PIX = timedelta(minutes=30)
 # aprova pela consulta, e só depois disso o pedido vai para os vencidos.
 _MARGEM_DE_LIQUIDACAO = timedelta(days=1)
 _MOTIVO_VENCIDO = "pix_vencido"
+_PIX_VENCIDO = "Este Pix venceu; volte ao checkout e gere um pedido novo."
 
 
 class DadosPixInvalidos(ValueError):
@@ -140,9 +141,7 @@ def _vencimento(bruto: str) -> datetime:
 
 def completar(intent: Intent) -> Intent:
     if intent.status == "expired":
-        raise gateway.FalhaNoProvedor(
-            "Este Pix venceu; volte ao checkout e gere um pedido novo."
-        )
+        raise gateway.FalhaNoProvedor(_PIX_VENCIDO)
     cliente, itens = validar(intent)
     ativa = (
         PaymentAttempt.objects.filter(
@@ -350,7 +349,9 @@ def reconciliar(intent: Intent) -> Intent:
 def _encerramento(intent: Intent, tentativa: PaymentAttempt) -> datetime:
     """Vencimento devolvido pela Appmax, ou o prazo pedido na criação quando o
     QR nunca chegou, mais a margem de liquidação."""
-    vencimento = intent.pix_expires_at or tentativa.created_at + _PRAZO_DO_PIX
+    vencimento = tentativa.created_at + _PRAZO_DO_PIX
+    if intent.pix_expires_at is not None:
+        vencimento = intent.pix_expires_at
     return vencimento + _MARGEM_DE_LIQUIDACAO
 
 
