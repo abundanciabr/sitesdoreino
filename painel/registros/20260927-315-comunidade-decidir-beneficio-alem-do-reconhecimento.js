@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-315-comunidade-decidir-beneficio-alem-do-reconhecimento",
+  tipo: "pendencia",
+  quando: "2026-09-27",
+  titulo: "Comunidade: decidir se contribuir libera algum benefício além do reconhecimento que já existe",
+  detalhe: "Decisão sua. Hoje, quando a equipe aceita uma contribuição do aluno no quadro da Comunidade, ele ganha reconhecimento (Cristais e medalha). O dossiê da Comunidade reserva a você dizer se contribuir também libera algum benefício a mais, como acesso a algo, prioridade ou vaga, e com que regra.\n\nRecomendado: não criar benefício novo agora; manter só o reconhecimento e voltar ao assunto quando a equipe pedir algo concreto. Dá para desfazer: sim, um benefício pode ser criado depois sem refazer o quadro.\n\nComo responder: diga a qualquer sessão 'sem benefício adicional agora' ou descreva o benefício e a condição; ela registra a resposta e abre a tarefa.",
+  autoridade: "sessao",
+  evidencia: "docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md §17, linha 'Benefícios adicionais sujeitos à reciprocidade'; quadro de contribuições no ar (tarefas 849, 855, 856 e 861 concluídas na fila em 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: null,
+  gravidade: "ambar",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  porque_so_voce: "Definir o que a escola dá em troca de contribuição é condição comercial e institucional que o dossiê reserva ao mantenedor; nenhum robô cria benefício em nome dele.",
+  proximo_passo: "Responder a qualquer sessão: sem benefício adicional agora, ou qual benefício e sob qual condição; a sessão registra a resposta e abre a tarefa.",
+  se_eu_nao_decidir: "O quadro de contribuições continua funcionando só com o reconhecimento de hoje; o lote de reciprocidade aparece no roadmap como feito, com esta decisão em aberto.",
+  recomendacao: "Não criar benefício novo agora; manter o reconhecimento que existe e reabrir quando a equipe pedir algo concreto, porque regra sem uso apodrece.",
+  reversivel: true,
+  impacto: "baixo"
+}); })();

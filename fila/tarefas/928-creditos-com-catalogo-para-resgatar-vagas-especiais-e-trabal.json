@@ -1,0 +1,21 @@
+{
+  "arquivo": "928-creditos-com-catalogo-para-resgatar-vagas-especiais-e-trabal",
+  "id": "TAR-928",
+  "titulo": "Créditos com catálogo para resgatar, vagas especiais e trabalhos dos alunos visíveis num diretório, quando o mantenedor definir as regras",
+  "toca": [
+    "gamificacao",
+    "pages",
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "decisões do mantenedor sobre catálogo e valores de créditos e sobre uso público de trabalhos e perfis registradas no livro; catálogo e resgate provados por teste, sem saldo negativo; diretório só com consentimento; testes vermelho para verde; PRs integrados",
+  "despacho": "Lote COM-09 do dossiê da Comunidade (docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md, §7 e §15): gamificação ampliada, créditos com catálogo, vagas especiais e descobertas. Esta tarefa é um portão: só vira frente quando o mantenedor responder às duas pendências do livro reservadas a ele (§17), o catálogo e os valores dos créditos e o uso público de trabalhos e perfis, e pedir a execução do lote.\n\nQuando destravar, a sessão responsável divide o lote em frentes por célula e cria as tarefas filhas com --depende-de nesta:\n1. Catálogo de resgate (gamificacao): os itens e valores que o mantenedor definiu, com capacidade por item; o resgate debita Cristais sem deixar saldo negativo (a regra de Cristal negativo só como compra já existe, tarefa 850) e fica no histórico.\n2. Vagas especiais (encomendas ou cursos, conforme o item): item do catálogo que reserva vaga, respeitando a capacidade declarada pela equipe.\n3. Diretório e vitrine (pages ou forum): trabalhos aprovados e perfis aparecem em público só com consentimento explícito do aluno, revogável, e conforme o que o mantenedor decidiu.\n4. Descobertas (gamificacao): conquistas que aparecem ao serem alcançadas, sem lista prévia, dentro do plano de lotes da gamificação que já existe (docs/decisoes/PLANO-LOTES-DA-GAMIFICACAO.md).\n\nRegras: nada de preço, valor ou regra inventada em nome dele; texto para aluno sem travessão; testes nascem vermelhos, inclusive o de saldo negativo recusado; uma célula por PR.",
+  "origem": "pedido do mantenedor de 27/09/2026: roadmap com checklist da Comunidade (RETOMADA-COMUNIDADE-RODADA-4.md); portão do lote do dossiê §15 COM-09",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

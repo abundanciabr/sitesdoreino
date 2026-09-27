@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-317-comunidade-decidir-incentivo-a-responsaveis-e-avaliadores",
+  tipo: "pendencia",
+  quando: "2026-09-27",
+  titulo: "Comunidade: decidir se responsáveis de grupo e avaliadores recebem algum incentivo material",
+  detalhe: "Decisão sua. Para a Comunidade crescer sem depender só da professora, alunos experientes podem virar responsáveis de grupo e avaliadores habilitados. O dossiê reserva a você dizer se essas pessoas recebem algo material (desconto, bolsa, pagamento) ou só reconhecimento visível, porque isso é custo e concessão da escola. Trava o lote de liderança distribuída (tarefa 927 da fila).\n\nRecomendado: começar sem incentivo material, só com reconhecimento visível (título no grupo e medalha própria), e medir por um ciclo se aparecem voluntários; custo em dinheiro só se faltar gente. Dá para desfazer: sim, um incentivo pode entrar depois.\n\nComo responder: diga a qualquer sessão 'só reconhecimento' ou qual incentivo e para quem; ela registra a resposta e destrava a tarefa 927.",
+  autoridade: "sessao",
+  evidencia: "docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md §17, linha 'Incentivos materiais para mentores e avaliadores'; tarefa 927 bloqueada com espera mantenedor em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: "TAR-927",
+  gravidade: "ambar",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  porque_so_voce: "Incentivo material é custo e concessão da escola; o dossiê reserva essa decisão ao mantenedor.",
+  proximo_passo: "Responder só reconhecimento, ou qual incentivo e para quem. A sessão registra e destrava a tarefa 927.",
+  se_eu_nao_decidir: "Só a professora avalia e só a equipe modera, como hoje; a habilitação de responsáveis e avaliadores fica a fazer no roadmap.",
+  recomendacao: "Só reconhecimento visível num primeiro ciclo, medindo se aparecem voluntários, porque custo fixo antes de conhecer a demanda é desperdício.",
+  reversivel: true,
+  impacto: "medio"
+}); })();

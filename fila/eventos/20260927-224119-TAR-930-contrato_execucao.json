@@ -1,0 +1,71 @@
+{
+  "arquivo": "20260927-224119-TAR-930-contrato_execucao",
+  "tarefa": "TAR-930",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T22:41:19.880186+00:00",
+  "quem": "agent/fila/comunidade-roadmap-4",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 4 (roadmap com checklist calculado): a tela /admin/comunidade/",
+    "versao": 1,
+    "objetivo": "Uma tela na área administrativa que calcula, da fila e do livro embutidos, o roadmap da Comunidade em dez lotes com três colunas (feito, em voo, a fazer), o bloco do que espera o mantenedor e o rumo, no molde de /admin/appmax/.",
+    "entregaveis": [
+      "services/admin/apps/core/comunidade.py com os lotes como dado e o cálculo",
+      "services/admin/apps/core/templates/admin/comunidade.html e a aba em appmax.html",
+      "Rota comunidade/ em config/urls.py e entrada em painel/mapa-do-site.json",
+      "services/admin/tests/test_comunidade.py com os casos do brief"
+    ],
+    "escopo_incluido": [
+      "services/admin/apps/core/comunidade.py",
+      "services/admin/apps/core/templates/admin/comunidade.html",
+      "services/admin/apps/core/templates/admin/appmax.html (só a barra de abas)",
+      "services/admin/config/urls.py",
+      "services/admin/tests/test_comunidade.py",
+      "painel/mapa-do-site.json"
+    ],
+    "nao_objetivos": [
+      "Alterar appmax.py, robos.py, direcao.py, painel.py ou fila_do_painel.py",
+      "Editar a fila ou o livro para corrigir classificação: a classificação mora na tela",
+      "Executar qualquer lote da Comunidade",
+      "Página do aluno em /docs/comunidade"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar ci/, docs/decisoes/, infra/ nem .github/",
+      "Nada digitado como estado: fila e livro embutidos são as fontes; o que não se lê vira não li",
+      "Texto sem travessão, em termos do leigo",
+      "Links por {% url %} com o prefixo público provado por teste",
+      "PR em rascunho depois do ci/pr.py até o revisor da coordenação ler; conserto é commit e push, nunca ci/pr.py de novo"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026: roadmap com checklist da Comunidade, feito, em curso e a fazer",
+      "Decisão da coordenação: tela calculada na admin, no molde de /admin/appmax/, porque estado digitado apodrece",
+      "Classificação inicial dos lotes e tarefas na tabela do brief; o executor corrige na tela pelo texto de cada tarefa"
+    ],
+    "etapas": [
+      "Bancada com contêiner pelo sessao.py em dia e linha de base da suíte da admin",
+      "Testes vermelhos dos casos do brief",
+      "Módulo, template, rota, aba e mapa do site",
+      "Mutação dos guardas, suíte, alvo ci da célula, travessão",
+      "ci/pr.py com esta tarefa, gh pr ready --undo, devolver ao coordenador"
+    ],
+    "criterios_entrada": [
+      "Tarefa 925 concluída na main pelo PR de fila da rodada 4",
+      "appmax.py e robos.py sem mudança em origin/main desde 27/09/2026 15h59; se mudaram, releia antes de copiar a solução"
+    ],
+    "criterios_aceite": [
+      "Cada caso do brief tem teste que nasceu vermelho e ficou verde",
+      "Suíte da admin verde; travessão zero nos arquivos novos",
+      "curl -I em /admin/comunidade/ responde 302 deslogado",
+      "PR MERGED e deploy da admin verde no SHA do merge"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy quando houver"
+    ],
+    "condicao_encerramento": "testes vermelho para verde (fila ausente, livro ausente, tarefa em cada estado, dependência, não medida, não classificada, pendência aberta e respondida, rumo, abas com prefixo, mapa do site); suíte da admin verde; travessão limpo; PR integrado; deploy verde; curl -I em /admin/comunidade/ responde 302 deslogado",
+    "limites_autonomia": "O escritor decide nomes e desenho dentro do contrato; não pergunta ao mantenedor; mudança em arquivo somente leitura, contrato de evento, célula vizinha, env ou dado de produção viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila antes do ci/pr.py; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega; depois do deploy ele abre a aba Comunidade logado."
+  }
+}
