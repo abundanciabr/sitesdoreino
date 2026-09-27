@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-021818-TAR-804-explicada",
+  "tarefa": "TAR-804",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:18:18.694403+00:00",
+  "quem": "Frente N4 de RETOMADA-APPMAX.md; registro 20260926-023 (TAR-735); mandato do mantenedor em 26/09/2026 22h53 BRT para services/pagamentos/",
+  "o_que_e": "Oito tentativas de pagamento Pix de teste ficaram abertas para sempre: o fornecedor nunca devolveu o código Pix e o pedido segue pendente lá, então o sistema pergunta de novo a cada cinco minutos e nunca encerra.",
+  "o_que_muda": "Um Pix vencido há mais de um dia passa a ser encerrado como expirado depois de uma consulta ao fornecedor, uma única vez, sem nova cobrança; o comprador fica livre para pagar de novo e a prova de conciliação sem aviso do fornecedor fica medida.",
+  "exemplo": "É como um boleto vencido que continuava na gaveta como aguardando: depois de conferir no banco que ninguém pagou, ele vai para o arquivo de vencidos e para de ser conferido toda hora.",
+  "importancia": 60
+}

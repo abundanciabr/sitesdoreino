@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-048-pagamentos-pix-appmax-vencido-encerra-sem-cobrar-de-novo",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "pagamentos: Pix Appmax vencido encerra sem cobrar de novo",
+  detalhe: "Pix Appmax pendente 1 dia após vencer encerra por GET: rejected pix_vencido, intent expired, um pix.expirado v1, sem POST.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2165. Validação local: árvore ee546e515b197a7acf553eb262487a6f2dffe9af; commit 1cdd2670469ba67014960d765237c6e6f418234a; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-804",
+  gravidade: "verde",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

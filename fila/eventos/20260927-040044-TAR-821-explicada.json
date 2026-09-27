@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-040044-TAR-821-explicada",
+  "tarefa": "TAR-821",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:00:44.325774+00:00",
+  "quem": "Descoberta da TAR-820 em 27/09/2026: a inbox Appmax não guarda reentregas",
+  "o_que_e": "Quando a Appmax manda de novo um aviso que já chegou, o sistema responde que já recebeu e não anota nada. Assim ninguém sabe quantas vezes o mesmo aviso chegou.",
+  "o_que_muda": "Com a contagem guardada, a leitura da esteira prova que quatro reentregas do mesmo aviso produziram um efeito só, exigência do plano para fechar o sandbox.",
+  "exemplo": "É como um porteiro que recusa a mesma encomenda repetida, mas agora anota no caderno cada vez que o entregador voltou.",
+  "importancia": 55
+}

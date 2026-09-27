@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-049-fila-seis-frentes-da-comunidade-com-contrato",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "fila: seis frentes da Comunidade com contrato",
+  detalhe: "Seis tarefas da Comunidade (TAR-823 a 828) criadas com contrato e dependencias reais; so fila, sem codigo; fila validada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2184. Validação local: árvore 10f999f81ec2244458480c59b5df4bdf283491f8; commit abef8f1c52981b43b2cf91f3b07f4c15ef7e0fb3; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-829",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

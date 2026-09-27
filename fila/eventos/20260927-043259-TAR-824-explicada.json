@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-043259-TAR-824-explicada",
+  "tarefa": "TAR-824",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:32:59.876372+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "o_que_e": "O forum ja sabe quem e aluno e ja tem no vocabulario a area de turma, mas essa area esta fechada para todo mundo de proposito, porque o forum ainda nao sabe quem pertence a qual grupo. Nao existe grupo pequeno, responsavel por grupo, nem lista de duvidas que esperam por um colega.",
+  "o_que_muda": "Cada aluno passa a ter um grupo de pratica no forum, com responsavel da escola e vaga maxima; so os membros leem e escrevem ali, e quem nao e membro nem descobre que o grupo existe. Uma pagina Comunidade diz ao aluno o que fazer agora: apresentar-se, fazer o desafio do estagio e responder as duvidas do grupo que ninguem respondeu.",
+  "exemplo": "Joana entra no forum e ve o grupo Iniciantes de setembro com a professora como responsavel, o desafio da semana com link para a aula e duas duvidas de colegas esperando ha tres dias. Pedro, de outro grupo, abre o mesmo endereco e recebe pagina nao encontrada.",
+  "importancia": 90
+}
