@@ -1,0 +1,62 @@
+{
+  "plano": "RITOS.md#1-rito-de-abertura-de-sessao",
+  "versao": 1,
+  "modelo_recomendado": "gpt-6-sol",
+  "esforco_recomendado": "high",
+  "objetivo": "Preservar os três campos Pix documentados de um aviso Appmax sem interpretar dinheiro.",
+  "condicao_encerramento": "A suíte focal prova preservação válida, descarte inválido, replay legado, primeira informação vencedora e ausência de efeito financeiro.",
+  "limites_autonomia": "Alterar somente webhooks.py e test_inbox_appmax.py, além desta TAR-744, seus eventos e recibo do rito.",
+  "entregaveis": [
+    "Preservação limitada a pix_emv, pix_qrcode e pix_expiration_date.",
+    "Preenchimento idempotente de aviso legado vazio do mesmo aviso.",
+    "Testes de validade, descarte, conflito e ausência de efeito financeiro."
+  ],
+  "escopo_incluido": [
+    "services/pagamentos/pagamentos/api/webhooks.py",
+    "services/pagamentos/tests/test_inbox_appmax.py",
+    "fila/tarefas/744-preservar-os-dados-pix-recebidos-no-aviso-da-appmax.json",
+    "fila/contratos/744-preservar-dados-pix-webhook-appmax.json",
+    "fila/eventos próprios da TAR-744 e recibo automático do rito"
+  ],
+  "nao_objetivos": [
+    "Não decidir aprovação, estorno, compensação ou validade financeira.",
+    "Não criar endpoint, cliente HTTP, outbox, migração, UI ou dependência.",
+    "Não guardar envelope bruto, PII, cartão, credenciais ou campos desconhecidos.",
+    "Não declarar QR existente, G10, TAR-711 ou TAR-644 concluídos."
+  ],
+  "restricoes": [
+    "O aviso só é enriquecido para order_pix_created/order com uma tentativa Appmax Pix ligada à instalação e ao site exatos.",
+    "pix_qrcode exige URL HTTPS absoluta com hostname, sem usuário, senha ou controle; os três campos têm limites fixos.",
+    "Uma reentrega completa só preenche o payload legado mínimo e nunca substitui uma tupla já preservada.",
+    "A atualização usa somente payload e não toca received_at, processed_at, failed_attempts, next_retry_at, dead_lettered_at, last_error ou operational_action."
+  ],
+  "decisoes_aprovadas": [
+    "Mandato do mantenedor: Tudo do Appmax liberado.",
+    "Publicação técnica no repositório https://github.com/abundanciabr/sitesdoreino autorizada."
+  ],
+  "etapas": [
+    "Reservar TAR-744 na bancada própria e validar o contexto.",
+    "Medir os testes focais antes da edição quando o baseline de serviço não estiver disponível.",
+    "Implementar a preservação fail-closed e os testes vermelhos para verdes.",
+    "Provar guardas novos e executar a suíte pagamentos disponível.",
+    "Abrir o PR pelo rito, conferir a entrega terminal e registrar o recibo."
+  ],
+  "criterios_entrada": [
+    "Fonte oficial confirma event order_pix_created/order e os três campos payment_info.pix.",
+    "Os modelos AppmaxWebhookInbox, InstalacaoAppmax, Intent e PaymentAttempt existentes permanecem somente como dependências de leitura.",
+    "Nenhuma compra ou estorno Appmax é chamado."
+  ],
+  "criterios_aceite": [
+    "Payload válido conserva somente order_id e os três campos Pix documentados.",
+    "Entrada incompleta, malformada ou excedente conserva somente order_id.",
+    "Evento não Pix ou tentativa que não seja Pix não recebe payload Pix.",
+    "Reentrega válida completa um aviso legado sem duplicar linha nem substituir a primeira tupla.",
+    "Testes comprovam zero transição financeira, zero outbox e zero cliente HTTP."
+  ],
+  "evidencias_exigidas": [
+    "Resultado real do teste focal da célula pagamentos e dos guardas novos.",
+    "Diff final restrito aos dois alvos e aos artefatos próprios da TAR-744.",
+    "Recibo automático do rito e conferência do PR no repositório autorizado."
+  ],
+  "acoes_do_mantenedor": "Nenhuma ação técnica nova; o mandato Appmax e a publicação técnica já estão autorizados."
+}
