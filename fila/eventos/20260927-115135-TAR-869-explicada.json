@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-115135-TAR-869-explicada",
+  "tarefa": "TAR-869",
+  "evento": "explicada",
+  "quando": "2026-09-27T11:51:35.099912+00:00",
+  "quem": "Rito de Contrato autorizado pelo mantenedor em 27/09/2026 08h29, lacunas das tarefas 813 e 814",
+  "o_que_e": "Quando o pagamento com cartão fica em análise, a tela fecha o formulário. Mas se a pessoa recarrega a página, o sistema não lembra da análise e o formulário volta a aparecer.",
+  "o_que_muda": "Quem recarrega a página continua vendo que o pagamento está em análise e não é convidado a pagar de novo; o risco de cobrança dupla some.",
+  "exemplo": "É como deixar o carro no lava-rápido: se você volta ao balcão, o atendente precisa ver que o carro já está na fila, e não abrir outra comanda.",
+  "importancia": 70
+}
