@@ -143,6 +143,31 @@ def test_grupo_sem_responsavel_diz_que_a_espera_nao_tem_dono(
     assert "Quem responde: ninguém definido" in corpo
 
 
+def test_o_aviso_de_espera_sem_dono_usa_recado_e_nao_alarme(
+    client, env, monkeypatch, ana, bia, professora
+):
+    """Item único da revisão do PR 2207 (TAR-827): o fundo vermelho de `.erro`
+    é reservado a falha real (`forum.css`); a ausência de responsável é
+    explicação operacional e usa `.recado`, sem alarmar quem só precisa
+    nomear alguém. O mesmo tratamento vale nas duas repetições de "ninguém
+    definido": na dúvida esperando resposta e no acolhimento pendente.
+    """
+    orfao = novo_grupo("grupo-orfao-recado", professora)
+    Area.objects.filter(pk=orfao.pk).update(responsavel=None)
+    vincular(orfao, ana, professora)
+    duvida(orfao, ana, "Duvida sem dono", "a")
+    vinculo = vincular(orfao, bia, professora)
+    MembroDoGrupo.objects.filter(pk=vinculo.pk).update(
+        desde=timezone.now() - timedelta(days=1)
+    )
+
+    como(monkeypatch, professora, categoria="cadastrado")
+    corpo = vista(client).content.decode()
+
+    assert 'class="erro"' not in corpo
+    assert corpo.count('class="recado"') == 3
+
+
 def test_os_tres_estados_vazios_tem_texto(client, env, monkeypatch, professora):
     como(monkeypatch, professora, categoria="cadastrado")
     assert "Ainda não existe nenhum grupo de prática" in (
