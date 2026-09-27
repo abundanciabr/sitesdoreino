@@ -1074,8 +1074,6 @@ class CatalogoClient:
     # 404 de um experimento: o endereço aponta para um experimento que o
     # catálogo não conhece neste site.
     SEM_EXPERIMENTO = "sem_experimento"
-    # 409 de encerrar: ele já estava encerrado, e a decisão gravada é a dele.
-    JA_ENCERRADO = "ja_encerrado"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1284,29 +1282,6 @@ class CatalogoClient:
         *,
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
-    ) -> "tuple[str, dict | str]":
-        """O encanamento de toda operação do catálogo que devolve um objeto.
-
-        Uma peça só porque ele é idêntico em todas (config, endereço, timeout,
-        corpo fora do contrato), e cópias divergiriam no primeiro conserto feito
-        em uma delas. O que muda é declarado: `especiais` diz quais status desta
-        operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
-        """
-        return self._falar(
-            metodo,
-            f"/sites/{quote(str(site_id), safe='')}"
-            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
-            corpo=corpo,
-            especiais=especiais,
-        )
-
-    def _falar(
-        self,
-        metodo: str,
-        caminho: str,
-        *,
-        corpo: "dict | None" = None,
-        especiais: "tuple[tuple[int, str], ...]" = (),
         forma: type = dict,
     ) -> "tuple[str, dict | list | str]":
         """O encanamento das escritas e leituras com desfecho nomeado.
@@ -1420,47 +1395,11 @@ class CatalogoClient:
             "GET", site_id, slug, "", especiais=((404, self.SEM_PAGINA),)
         )
 
-    # -- Os experimentos da página (frente F5 do sistema de experimentos) -----
-
-    def _caminho_do_experimento(self, site_id: str, experimento_id: str) -> str:
-        return (
-            f"/sites/{quote(str(site_id), safe='')}"
-            f"/experimentos/{quote(str(experimento_id), safe='')}"
-        )
-
-    def experimento(
-        self, site_id: str, experimento_id: str
-    ) -> "tuple[str, dict | str]":
-        """O experimento com estado, decisão e as variantes (snapshot do texto)."""
-        return self._falar(
-            "GET",
-            self._caminho_do_experimento(site_id, experimento_id),
-            especiais=((404, self.SEM_EXPERIMENTO),),
-        )
-
-    def encerrar_experimento(
-        self,
-        site_id: str,
-        experimento_id: str,
-        decisao: str,
-        variante_vencedora: "str | None",
-    ) -> "tuple[str, dict | str]":
-        """Encerra com a decisão. 409 é experimento que já estava encerrado."""
-        return self._falar(
-            "POST",
-            self._caminho_do_experimento(site_id, experimento_id) + "/encerrar",
-            corpo={"decisao": decisao, "variante_vencedora": variante_vencedora},
-            especiais=(
-                (409, self.JA_ENCERRADO),
-                (404, self.SEM_EXPERIMENTO),
-                (422, self.RECUSADO),
-            ),
-        )
-
     # -- O ciclo, pelo contrato publicado em 26/09/2026 (PR #2146) ------------
-    # `listExperiments`, `createExperiment` e `changeExperimentState`, todos
-    # sob a página. É por eles que a tela `/admin/paginas/experimentos/` cria
-    # o experimento em rascunho e o põe no ar.
+    # `listExperiments`, `getExperiment`, `createExperiment` e
+    # `changeExperimentState`, todos sob a página. É por eles que a tela
+    # `/admin/paginas/experimentos/` cria o experimento em rascunho e o põe no
+    # ar, e a decisão e o resultado leem e encerram o experimento.
 
     def _caminho_dos_experimentos(self, site_id: str, slug: str) -> str:
         return (
@@ -1484,6 +1423,17 @@ class CatalogoClient:
             logger.error("catálogo: a lista de experimentos veio fora do contrato")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         return desfecho, lido
+
+    def experimento(
+        self, site_id: str, slug: str, experimento_id: str
+    ) -> "tuple[str, dict | str]":
+        """`getExperiment`: estado, decisão e as variantes (snapshot do texto)."""
+        return self._falar(
+            "GET",
+            f"{self._caminho_dos_experimentos(site_id, slug)}"
+            f"/{quote(str(experimento_id), safe='')}",
+            especiais=((404, self.SEM_EXPERIMENTO),),
+        )
 
     def criar_experimento(
         self, site_id: str, slug: str, corpo: dict

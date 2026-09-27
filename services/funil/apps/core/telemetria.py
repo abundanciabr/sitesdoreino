@@ -145,7 +145,9 @@ VALIDADE_DO_CONTEXTO = 60 * 60 * 24
 _ESPACO_DOS_FATOS = uuid.UUID("5d0f3a9e-7c41-4b8e-9a26-3e1f0c7b4d52")
 
 
-def contexto_da_pagina(site_id: str, pagina: dict, secoes: list, ctas: list) -> str:
+def contexto_da_pagina(
+    site_id: str, pagina: dict, secoes: list, ctas: list, braco: dict | None = None
+) -> str:
     """O que a página mostrou, assinado pelo servidor na renderização.
 
     É a única fonte de verdade do endpoint `/telemetria`: o navegador devolve
@@ -153,19 +155,32 @@ def contexto_da_pagina(site_id: str, pagina: dict, secoes: list, ctas: list) -> 
     que ele mesmo mediu, com o destino que ele mesmo escreveu. Nada do que o
     navegador escreve fora daqui vira fato. `c` é o id desta carga da página,
     sorteado aqui, e é dele que nasce o id estável de cada fato.
+
+    `x` é o braço do experimento que esta carga mostrou
+    (`{experimento_id, variante_id}`), e só existe quando houve sorteio. Ele
+    mora aqui, e nunca no corpo que o navegador escreve, porque quem sorteou
+    foi o servidor: braço declarado pelo navegador seria braço forjável.
     """
-    return signing.dumps(
-        {
-            "s": site_id,
-            "p": pagina["slug"],
-            "v": pagina["version"],
-            "c": uuid.uuid4().hex,
-            "e": list(secoes),
-            "b": [list(cta) for cta in ctas],
-        },
-        salt=SAL_DO_CONTEXTO,
-        compress=True,
-    )
+    contexto = {
+        "s": site_id,
+        "p": pagina["slug"],
+        "v": pagina["version"],
+        "c": uuid.uuid4().hex,
+        "e": list(secoes),
+        "b": [list(cta) for cta in ctas],
+    }
+    if braco:
+        contexto["x"] = braco
+    return signing.dumps(contexto, salt=SAL_DO_CONTEXTO, compress=True)
+
+
+def braco_do_contexto(contexto: dict) -> dict:
+    """`{experimento_id, variante_id}` da carga assinada, ou `{}` sem experimento.
+
+    Os dois saem sempre juntos, como o contrato dos quatro eventos `funil.*`
+    manda: é a ausência dos dois que distingue o tráfego fora de teste.
+    """
+    return dict(contexto.get("x") or {})
 
 
 def ler_contexto(token, site_id: str) -> dict | None:

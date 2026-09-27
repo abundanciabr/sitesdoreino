@@ -1,0 +1,20 @@
+{
+  "arquivo": "813-corrigir-o-erro-500-do-pagamento-com-cartao-quando-o-cartao-",
+  "id": "TAR-813",
+  "titulo": "Corrigir o erro 500 do pagamento com cartão quando o cartão de teste é recusado, falha ou fica indisponível",
+  "toca": [
+    "checkout",
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run público do workflow appmax-sandbox-tela na main em que os cartões 4000000000000002, 4000000000000036, 4000000000000044 e 4000000000009999 recebem resposta tratada (sem HTTP 500) e atingem o resultado exigido do §16, com os testes de checkout e pagamentos cobrindo cada caso.",
+  "despacho": "Descoberta da TAR-808 em 27/09/2026: na Meshcraft sandbox, a confirmação POST /checkout/api/checkout/pedidos/<id>/cartao devolve HTTP 500 para os cartões de teste 0002 (recusado), 0036 (erro transacional), 0044 (falha do pedido) e 9999 (indisponível); a tela mostra 'Não foi possível concluir a tentativa' e o pedido fica em aguardando_pagamento. Os cartões 0010 e 0028 respondem 200. Diagnosticar pela contagem sanitizada do run appmax-sandbox-tela (estado e motivo de cada tentativa) e pelas operações de leitura, corrigir no menor caminho em services/pagamentos e ou services/checkout com mandato, provar com testes e rodar de novo o workflow appmax-sandbox-tela na main. Nunca reenviar pedido antigo.",
+  "origem": "TAR-808, sondas locais de 27/09/2026 02:28 a 02:37 UTC com pedidos novos no sandbox",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
