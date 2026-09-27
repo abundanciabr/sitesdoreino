@@ -222,7 +222,7 @@ def test_no_horizonte_braco_abaixo_do_planejado_e_amostra_insuficiente():
 
 
 def test_no_horizonte_b_melhor_com_significancia_e_candidato():
-    # guarda: services/admin/apps/core/resultado_do_experimento.py:246
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:170
     r = _avaliar(_par((1000, 1000, 200), (1000, 1000, 250)))
 
     assert r.veredito == re_.CANDIDATO
@@ -257,7 +257,7 @@ def test_encerrado_antes_do_horizonte_nao_calcula_p():
 
 
 def test_srm_nos_atribuidos_bloqueia_candidato():
-    # guarda: services/admin/apps/core/resultado_do_experimento.py:209
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:190
     r = _avaliar(_par((1150, 1000, 200), (850, 1000, 250)))
 
     assert r.srm_atribuidos.alarme is True
@@ -267,7 +267,7 @@ def test_srm_nos_atribuidos_bloqueia_candidato():
 
 
 def test_srm_nos_expostos_bloqueia_candidato():
-    # guarda: services/admin/apps/core/resultado_do_experimento.py:210
+    # guarda: services/admin/apps/core/resultado_do_experimento.py:190
     r = _avaliar(_par((1000, 1000, 200), (1000, 1200, 300)))
 
     assert r.srm_atribuidos.alarme is False
