@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-121548-TAR-837-concluida",
+  "tarefa": "TAR-837",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:15:48.076156+00:00",
+  "quem": "agent/pagamentos/sha256-wheel-checkout-pagamentos",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2248",
+  "verificado_em": "2026-09-27"
+}
