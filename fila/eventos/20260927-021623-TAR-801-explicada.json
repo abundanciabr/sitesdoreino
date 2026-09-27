@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-021623-TAR-801-explicada",
+  "tarefa": "TAR-801",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:16:23.576896+00:00",
+  "quem": "decisão 7 do mantenedor, sessão de 26/09/2026",
+  "o_que_e": "Um PR diz de qual outro depende, mas a integração automática ignora esse aviso.",
+  "o_que_muda": "Uma mudança não entra antes da peça de que ela precisa, e a página não quebra no meio.",
+  "exemplo": "Como não pôr o telhado antes das paredes.",
+  "importancia": 60
+}
