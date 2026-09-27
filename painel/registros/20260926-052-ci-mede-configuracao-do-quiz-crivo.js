@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-052-ci-mede-configuracao-do-quiz-crivo",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "ci: mede configuração do quiz Crivo",
+  detalhe: "Operacao fechada quiz-configuracao mede faixas, cobertura e migracoes do\nCrivo, sem escrever nada. Ignora o teste de Pix com relogio fixo (Frente A,\nPR #2116) no recorte de validacao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2117. Validação local: árvore 8a15fbe1df0b2c7fb6cf36b5fe82dc8de245a2a0; commit 67a5791837d6e8b3a1f2dfc00967aeb2bf620e62; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-754",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

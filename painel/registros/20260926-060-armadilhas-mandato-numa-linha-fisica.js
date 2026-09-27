@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-060-armadilhas-mandato-numa-linha-fisica",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "armadilhas: mandato numa linha física",
+  detalhe: "Armadilha 510 ensina a linha de mandato numa linha física; registro 058 guarda a decisão do quiz Crivo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2123. Validação local: árvore 17337ffdc4962ac0ce831f4bc5038079e39247fd; commit 476901f1dafe309627b1a959a9cd6c6817707c1f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-762",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-076-metricas-assina-os-quatro-streams-do-funil",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "metricas: assina os quatro streams do funil",
+  detalhe: "receber() nao valida o miolo: contracts/ nao entra no build da celula. Provo sem dado pessoal via jsonschema contra o contrato. Streams sem publicador entram pois MKSTREAM tolera vazio.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2128. Validação local: árvore 0ca9729fcb2bb496134be87d920cb5cdaac097a2; commit f7a9b4f2b70c617ca23317cb0299e0a239e6befd; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-780",
+  gravidade: "info",
+  frente: "vender",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

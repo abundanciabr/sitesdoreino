@@ -344,6 +344,29 @@ def formulario(request, slug):
     return _ir_ao_resultado(request, quiz, entrada, submissao)
 
 
+@require_POST
+def refazer(request, slug):
+    """Refazer é começar uma sessão nova do quiz.
+
+    O envio antigo fica gravado; só o cookie deixa de apontar para ele, e a
+    volta ao formulário abre em branco. POST com token porque um pré-carregamento
+    de link por GET desfaria a volta ao resultado de quem nem clicou.
+    """
+    quiz = _quiz_do_site(request, slug)
+    anterior, _ = resolver_sessao(request, quiz)
+    session_id = uuid.uuid4()
+    versao = escolher_versao(quiz, session_id)
+    entrada = {
+        "session_id": str(session_id),
+        "version_id": versao.id,
+        "version_key": versao.key,
+        "site_id": quiz.site_id,
+        "utm": anterior["utm"],
+    }
+    resposta = redirect("quiz-formulario", slug=quiz.slug)
+    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+
+
 def resultado(request, slug):
     quiz = _quiz_do_site(request, slug)
     try:

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-223731-TAR-768-explicada",
+  "tarefa": "TAR-768",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:37:31.959885+00:00",
+  "quem": "sistema de experimentos, sessão de 26/09/2026",
+  "o_que_e": "Os avisos que a página de vendas manda para a contagem não dizem qual versão de teste a pessoa viu, e o checkout não avisa pedido sem levar dados pessoais.",
+  "o_que_muda": "A contagem passa a separar os visitantes de cada versão do teste e a ligar a compra à visita sem guardar nome, e-mail ou telefone.",
+  "exemplo": "Duas manchetes disputando a mesma página: sem a etiqueta de qual cada um viu, não dá para saber qual vendeu mais.",
+  "importancia": 70
+}

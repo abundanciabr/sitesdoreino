@@ -1,0 +1,193 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O RESULTADO DE UM EXPERIMENTO (/admin/placar/experimentos/<id>/resultado/,
+26/09/2026, frente F9a do sistema de experimentos). A conta e o veredito moram
+em apps/core/resultado_do_experimento.py; aqui só se mostra.
+
+Bloco `comment`, nunca `{#` (armadilhas/087). Zero atributo `style=`: o estilo
+mora em admin/base.html.
+
+Três regras governam cada `{% if %}` desta tela:
+
+1. NÃO PERGUNTEI nunca vira ZERO. Catálogo ou medição fora do ar, resposta fora
+   do combinado e janela sem nenhum evento têm cada um a sua frase, e nenhum
+   deles mostra número.
+2. SEM ESPIAR. Enquanto coleta, a tela mostra quem entrou em cada versão, a
+   divisão e o progresso, e nunca as conversões por versão, a taxa, o p ou o
+   intervalo: quem vê o placar no meio do jogo decide pelo placar do meio.
+3. O VEREDITO NÃO É A DECISÃO. "Candidato à promoção" diz que a conta permite
+   promover; quem promove é o mantenedor.
+{% endcomment %}
+{% block titulo %}Resultado do experimento | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>O resultado do experimento</h1>
+  {% if tela.experimento %}
+  <p class="subtitulo">
+    {% if tela.experimento.secao %}Seção <b>{{ tela.experimento.secao }}</b>. {% endif %}
+    {% if tela.experimento.metrica_principal %}Métrica principal: {{ tela.experimento.metrica_principal }}.{% endif %}
+  </p>
+  {% endif %}
+
+  {% if tela.estado == "sem-experimento" %}
+  <div class="aviso borda-amarela">
+    <b>O catálogo não conhece este experimento.</b>
+    O endereço aponta para o identificador <code>{{ experimento_id }}</code>, que não
+    existe lá. Confira se o link veio inteiro: um identificador cortado no
+    meio leva a este aviso.
+  </div>
+
+  {% elif tela.estado == "catalogo-nao-respondeu" %}
+  <div class="aviso borda-vermelha">
+    <b>O catálogo não respondeu agora.</b>
+    Sem ele eu não sei quais versões este experimento tem nem quando ele começou,
+    e por isso nenhum número aparece. O que aconteceu: {{ tela.frase }}. Tente de
+    novo em alguns minutos; se continuar, a célula do catálogo precisa ser olhada.
+  </div>
+
+  {% elif tela.estado == "fora-do-contrato" %}
+  <div class="aviso borda-vermelha">
+    <b>A resposta veio fora do combinado, e eu não fiz conta com ela.</b>
+    O que faltou: {{ tela.frase }}. Uma conta feita com dado torto pareceria
+    resultado. Isto é defeito de quem respondeu, e vale abrir uma tarefa com esta
+    frase.
+  </div>
+
+  {% elif tela.estado == "nao-comecou" %}
+  <div class="aviso borda-amarela">
+    {% if tela.experimento.estado == "encerrado" %}
+    <b>Este experimento foi encerrado sem nunca ter começado.</b>
+    Ninguém foi sorteado para ele, e por isso não há resultado a mostrar.
+    {% else %}
+    <b>Este experimento ainda não começou.</b>
+    Enquanto ele estiver em rascunho ninguém é sorteado e não há o que contar.
+    O resultado começa a encher no dia em que ele for iniciado.
+    {% endif %}
+  </div>
+
+  {% elif tela.estado == "medicao-nao-respondeu" %}
+  <div class="aviso borda-vermelha">
+    {% if tela.desfecho == "sem-configuracao" %}
+    <b>A medição ainda não está ligada nesta célula.</b>
+    Sem o par de senhas entre a administração e a parte que guarda os fatos, eu
+    não consegui perguntar nada, e por isso não mostro número: zero aqui diria
+    que ninguém viu a página, e a verdade é que ninguém foi perguntado.
+    {% else %}
+    <b>A medição não respondeu agora.</b>
+    Eu não consegui perguntar quantas pessoas viram cada versão, e isso não é a
+    mesma coisa que ninguém ter visto. Nenhum número aparece enquanto a resposta
+    não vier. Se continuar, a tela
+    <a href="{% url 'confianca' %}">dá para acreditar nestes números?</a> mostra o
+    que a medição está conseguindo receber.
+    {% endif %}
+  </div>
+
+  {% elif tela.estado == "sem-coleta" %}
+  <div class="aviso borda-amarela">
+    <b>A medição respondeu, e nenhum evento do funil chegou nesta janela.</b>
+    De {{ tela.desde|date:"d/m/Y" }} a {{ tela.ate|date:"d/m/Y" }} a página não
+    mandou nada, nem das pessoas que só abriram. Isso é diferente de zero
+    conversões: costuma ser a medição da página desligada. A tela
+    <a href="{% url 'confianca' %}">dá para acreditar nestes números?</a> mostra o
+    que chegou por último.
+  </div>
+
+  {% elif tela.estado == "resultado" %}
+  <div class="recado">
+    <p class="titulo-da-conta">Veredito: {{ tela.veredito }}</p>
+    <p>{{ tela.motivo }}</p>
+  </div>
+
+  <p class="nota">
+    Janela: de {{ tela.desde|date:"d/m/Y" }} a {{ tela.fim_planejado|date:"d/m/Y" }},
+    {{ tela.dias_corridos }} de {{ tela.experimento.dias_planejados }} dias corridos.
+    Amostra planejada: {{ tela.experimento.n_por_braco_planejado }} pessoas expostas
+    em cada versão. Contado até {{ tela.ate|date:"d/m/Y" }}.
+  </p>
+
+  <h2 class="titulo-de-bloco">Quem entrou em cada versão</h2>
+  <div class="rolagem-lateral">
+    <table class="tabela-do-resultado">
+      <thead>
+        <tr>
+          <th>Versão</th>
+          <th class="numero">Peso</th>
+          <th class="numero">Sorteados</th>
+          <th class="numero">Viram a seção</th>
+          <th class="numero">Viram, dos sorteados</th>
+          {% if tela.coletando %}
+          <th class="numero">Faltam para a amostra</th>
+          {% else %}
+          <th class="numero">Clicaram para comprar</th>
+          <th class="numero">Taxa</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in tela.linhas %}
+        <tr>
+          <td><b>{{ linha.variante_id }}</b></td>
+          <td class="numero">{{ linha.peso }}</td>
+          <td class="numero">{{ linha.atribuidos }}</td>
+          <td class="numero">{{ linha.expostos }}</td>
+          <td class="numero">{{ linha.vistos }}</td>
+          {% if tela.coletando %}
+          <td class="numero">{{ linha.faltam }}</td>
+          {% elif linha.convertidos is None %}
+          <td class="numero">não calculado</td>
+          <td class="numero">não calculado</td>
+          {% else %}
+          <td class="numero">{{ linha.convertidos }}</td>
+          <td class="numero">{{ linha.taxa }}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if tela.coletando %}
+  <p class="nota">
+    As conversões de cada versão só aparecem quando a janela fechar, junto com a
+    conta. Olhar o placar no meio e parar quando ele agrada é o jeito mais comum
+    de declarar um vencedor que não existe.
+  </p>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco">A divisão saiu como planejada?</h2>
+  <ul class="riscas">
+    <li>
+      Nos sorteados: chance de a diferença ser acaso de {{ tela.srm_atribuidos.p }}.
+      {% if tela.srm_atribuidos.alarme %}<b>Alarme: abaixo de 0,001.</b>{% else %}Sem alarme.{% endif %}
+    </li>
+    <li>
+      Em quem viu a seção: chance de a diferença ser acaso de {{ tela.srm_expostos.p }}.
+      {% if tela.srm_expostos.alarme %}<b>Alarme: abaixo de 0,001.</b>{% else %}Sem alarme.{% endif %}
+    </li>
+    <li>
+      Visitantes que apareceram em mais de uma versão: {{ tela.trocados }}.
+      {% if tela.trocados_em_alarme %}<b>Alarme: acima de 1% dos sorteados.</b>{% else %}Dentro do limite de 1% dos sorteados.{% endif %}
+    </li>
+  </ul>
+  <p class="nota">
+    Uma divisão diferente da planejada costuma ser defeito de sorteio, de cache
+    ou de coleta. Qualquer alarme aqui bloqueia a promoção, mesmo com a conta a
+    favor.
+  </p>
+
+  {% if tela.conta %}
+  <h2 class="titulo-de-bloco">A conta, feita uma vez no fim da janela</h2>
+  <ul class="riscas">
+    <li>Diferença da versão {{ tela.tratamento }} para a {{ tela.controle }}: <b>{{ tela.conta.efeito }}</b>.</li>
+    <li>Diferença relativa: {{ tela.conta.relativo }}.</li>
+    <li>Intervalo de 95% da diferença: {{ tela.conta.ic }}.</li>
+    <li>Valor p (duas caudas): {{ tela.conta.p }}.</li>
+  </ul>
+  <p class="nota">
+    O intervalo diz entre que valores a diferença verdadeira provavelmente está.
+    Se ele cruza o zero, a versão {{ tela.tratamento }} pode não ser melhor.
+  </p>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

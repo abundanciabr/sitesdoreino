@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-211336-TAR-759-explicada",
+  "tarefa": "TAR-759",
+  "evento": "explicada",
+  "quando": "2026-09-26T21:13:36.405488+00:00",
+  "quem": "brief da sessao de rota do quiz Crivo, 26/09/2026",
+  "o_que_e": "O roteiro de retomada do quiz Crivo (roadmap, frentes e checklist vivo) existe hoje so como arquivo local na maquina, fora do repositorio.",
+  "o_que_muda": "O roteiro passa a morar no repositorio, em docs/quiz/RETOMADA-CRIVO.md, citavel e comparavel em qualquer sessao futura, sem depender do arquivo local nao sumir ou ficar desatualizado.",
+  "exemplo": "Uma sessao nova que abrir o repositorio sem acesso ao disco local da maquina consegue ler o mesmo roteiro em docs/quiz/RETOMADA-CRIVO.md.",
+  "importancia": 30
+}
