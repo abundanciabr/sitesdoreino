@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-122155-TAR-872-concluida",
-  "tarefa": "TAR-872",
-  "evento": "concluida",
-  "quando": "2026-09-27T12:21:55.094098+00:00",
-  "quem": "agent/ci/appmax-n2-latencia-real",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2226",
-  "verificado_em": "2026-09-27"
-}

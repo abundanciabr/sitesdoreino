@@ -151,7 +151,14 @@ ACOES_INBOX_LATENCIA_APPMAX = {
     "pedido_ausente",
     "avisos_acima_do_limite",
 }
-CAMPOS_CANDIDATA_INBOX_LATENCIA = {"referencia", "criada_em", "metodo", "tentativa", "intent"}
+CAMPOS_CANDIDATA_INBOX_LATENCIA = {
+    "referencia",
+    "criada_em",
+    "metodo",
+    "tentativa",
+    "intent",
+    "tentativas",
+}
 METODOS_INTENT = {"pix", "card"}
 STATUS_INTENT = {"created", "pending", "approved", "rejected", "expired", "refunded"}
 CAMPOS_AVISO_INBOX_LATENCIA = {
@@ -611,12 +618,17 @@ def conferir_medicao(operacao, dados, referencia=""):
                 raise Falha("formato")
             if set(dados) != {"modo", "classificacao", "candidatas"}:
                 raise Falha("formato")
-            if dados["classificacao"] not in {"ausente", "unica", "multipla"}:
+            if dados["classificacao"] not in {
+                "ausente",
+                "unica",
+                "multipla",
+                "acima_do_limite",
+            }:
                 raise Falha("formato")
             candidatas = dados["candidatas"]
             if not isinstance(candidatas, list) or len(candidatas) > 100:
                 raise Falha("formato")
-            if dados["classificacao"] == "ausente" and candidatas:
+            if dados["classificacao"] in {"ausente", "acima_do_limite"} and candidatas:
                 raise Falha("formato")
             if dados["classificacao"] == "unica" and len(candidatas) != 1:
                 raise Falha("formato")
@@ -628,16 +640,15 @@ def conferir_medicao(operacao, dados, referencia=""):
                     raise Falha("formato")
                 if not re.fullmatch(r"[0-9a-f]{64}", candidata["referencia"]):
                     raise Falha("formato")
-                if not re.fullmatch(
-                    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
-                    candidata["criada_em"],
-                ):
+                if not INSTANTE_ISO.fullmatch(candidata["criada_em"]):
                     raise Falha("formato")
                 if candidata["metodo"] not in METODOS_INTENT:
                     raise Falha("formato")
                 if candidata["tentativa"] not in ESTADOS_TENTATIVA:
                     raise Falha("formato")
                 if candidata["intent"] not in STATUS_INTENT:
+                    raise Falha("formato")
+                if type(candidata["tentativas"]) is not int or not 1 <= candidata["tentativas"] <= 100:
                     raise Falha("formato")
                 referencias.append(candidata["referencia"])
             if len(referencias) != len(set(referencias)):
@@ -1199,12 +1210,24 @@ def medir(operacao, servico, referencia=""):
                 "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
                 "    print('APPMAX_SANDBOX_REQUIRED')\n"
                 "    raise SystemExit(23)\n"
+                "from django.db import connection\n"
                 "from django.utils import timezone\n"
                 "from pagamentos.core.models import PaymentAttempt\n"
-                f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
-                "def candidato(t):\n"
-                "    return {'referencia': hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest(), 'criada_em': t.created_at.isoformat(), 'metodo': t.intent.method, 'tentativa': t.state, 'intent': t.intent.status}\n"
-                "candidatas = [candidato(t) for t in tentativas]\n"
+                "with connection.cursor() as cursor:\n"
+                "    cursor.execute('SET statement_timeout = 10000')\n"
+                f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='card', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:101])\n"
+                "if len(tentativas) > 100:\n"
+                "    print(json.dumps({'modo': 'descoberta', 'classificacao': 'acima_do_limite', 'candidatas': []}, sort_keys=True))\n"
+                "    raise SystemExit(0)\n"
+                "grupos = {}\n"
+                "for t in tentativas:\n"
+                "    referencia_t = hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest()\n"
+                "    grupo = grupos.get(referencia_t)\n"
+                "    if grupo is None:\n"
+                "        grupos[referencia_t] = {'referencia': referencia_t, 'criada_em': t.created_at.isoformat(), 'metodo': t.intent.method, 'tentativa': t.state, 'intent': t.intent.status, 'tentativas': 1}\n"
+                "    else:\n"
+                "        grupo['tentativas'] += 1\n"
+                "candidatas = list(grupos.values())\n"
                 "classificacao = 'ausente' if not candidatas else 'unica' if len(candidatas) == 1 else 'multipla'\n"
                 "print(json.dumps({'modo': 'descoberta', 'classificacao': classificacao, 'candidatas': candidatas}, sort_keys=True))\n"
             )

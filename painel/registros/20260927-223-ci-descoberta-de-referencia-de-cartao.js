@@ -3,7 +3,7 @@
   tipo: "entrega",
   quando: "2026-09-27",
   titulo: "ci: descoberta de referencia de cartao",
-  detalhe: "Estende appmax-inbox-latencia com descoberta method agnostica (so havia para Pix) para achar cartao. Traz registro 083 do PR 2205, nunca mesclado.",
+  detalhe: "Estende appmax-inbox-latencia com descoberta de cartao agrupada por intent (nao por tentativa); so havia descoberta para Pix. Traz registro 083 do PR 2205, aberto em rascunho.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2226. Validação local: árvore 6bc5a71df8ad7be7281e139ca70fa5ccb4769a6b; commit 1f56880bd0dd5a570c577d5a85e96cb78bbd0725; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
   verificado_em: "2026-09-27",
