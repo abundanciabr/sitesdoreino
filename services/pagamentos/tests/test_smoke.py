@@ -84,7 +84,20 @@ def _post_intent(client: Client, token: str, chave: str, **overrides: Any) -> An
     )
 
 
-def _appmax(transport: Any, *, statuses: list[str]) -> tuple[Any, Any, Any]:
+_PAGAMENTO_COMPLETO = {"installments": 1, "method": "creditcard"}
+
+
+def _appmax(
+    transport: Any,
+    *,
+    statuses: list[str],
+    total_pago: list[int] | None = None,
+    pagamentos: list[dict[str, Any]] | None = None,
+) -> tuple[Any, Any, Any]:
+    totais = total_pago if total_pago is not None else [1990] * len(statuses)
+    blocos = (
+        pagamentos if pagamentos is not None else [_PAGAMENTO_COMPLETO] * len(statuses)
+    )
     transport.post(_APP_AUTH).mock(
         return_value=httpx.Response(
             200,
@@ -131,15 +144,17 @@ def _appmax(transport: Any, *, statuses: list[str]) -> tuple[Any, Any, Any]:
                         "order": {
                             "id": 3531 + n,
                             "status": status,
-                            "total_paid": 1990,
+                            "total_paid": total,
                             "amounts": {"sub_total": 1990},
                         },
                         "customer": {"id": 42 + n},
-                        "payment": {"installments": 1, "method": "creditcard"},
+                        "payment": bloco,
                     }
                 },
             )
-            for n, status in enumerate(statuses)
+            for n, (status, total, bloco) in enumerate(
+                zip(statuses, totais, blocos, strict=True)
+            )
         ]
     )
     return customers, orders, transport
@@ -168,13 +183,18 @@ def _configurar_appmax(settings: Any) -> None:
 
 
 def _confirmar_cartao_appmax(
-    client: Client, token: str, intent_id: str, *, installments: int = 1
+    client: Client,
+    token: str,
+    intent_id: str,
+    *,
+    installments: int = 1,
+    card_token: str = "token-appmax",
 ) -> Any:
     return client.post(
         f"/api/pagamentos/intents/{intent_id}/card",
         data=json.dumps(
             {
-                "card_token": "token-appmax",
+                "card_token": card_token,
                 "installments": installments,
                 "payer_email": "cliente@exemplo.com",
                 "ip": "203.0.113.7",
@@ -597,7 +617,7 @@ def test_card_recusado_aceita_novo_token_e_confirma_aprovado(
         assert resp_segunda_tentativa.json()["status"] == "approved"
 
 
-# guarda: services/pagamentos/pagamentos/methods/card/service.py:448
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:442
 @pytest.mark.smoke_card
 def test_card_pendente_integracao_confirma_aprovado(
     client: Client, token_valido: str, settings: Any
@@ -624,7 +644,7 @@ def test_card_pendente_integracao_confirma_aprovado(
     assert Intent.objects.get(id=intent_id).status == "approved"
 
 
-# guarda: services/pagamentos/pagamentos/methods/card/service.py:450
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:444
 @pytest.mark.smoke_card
 @pytest.mark.django_db(transaction=True)
 def test_card_recusado_por_risco_recusa_com_reason_code(
@@ -659,7 +679,7 @@ def test_card_recusado_por_risco_recusa_com_reason_code(
     assert PaymentAttempt.objects.get(intent_id=intent_id).state == "rejected"
 
 
-# guarda: services/pagamentos/pagamentos/methods/card/service.py:456
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:450
 @pytest.mark.smoke_card
 @pytest.mark.django_db(transaction=True)
 def test_card_status_desconhecido_e_ambiguo_e_responde_502(
@@ -692,6 +712,143 @@ def test_card_status_desconhecido_e_ambiguo_e_responde_502(
         PaymentAttempt.objects.get(intent_id=intent_id).state
         == "reconciliation_required"
     )
+
+
+def _eventos_do_cartao() -> dict[str, int]:
+    from pagamentos.core.models import OutboxEvent
+
+    return {
+        evento: OutboxEvent.objects.filter(event=evento).count()
+        for evento in ("pagamento.aprovado", "pagamento.recusado")
+    }
+
+
+@pytest.mark.smoke_card
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("status_da_recusa", ["cancelado", "recusado_por_risco"])
+@pytest.mark.parametrize(
+    "bloco_de_pagamento",
+    [
+        {"method": "creditcard"},
+        {"installments": None, "method": "creditcard"},
+        {"installments": 3, "method": "creditcard"},
+    ],
+    ids=["parcelas_ausentes", "parcelas_nulas", "parcelas_outras"],
+)
+def test_card_recusado_sem_parcelas_responde_rejected_e_aceita_outro_cartao(
+    client: Client,
+    token_valido: str,
+    settings: Any,
+    status_da_recusa: str,
+    bloco_de_pagamento: dict[str, Any],
+) -> None:
+    """Tarefa 862. Medido na VPS em 27/09/2026 (operação appmax-pendentes):
+    o pedido que a Appmax recusa volta `cancelado`, com o valor esperado em
+    total_paid e sem `payment.installments`. Parcelas descrevem como o
+    dinheiro foi cobrado; numa recusa não houve cobrança, então elas não
+    tornam o resultado ambíguo. A API responde 200 rejected com o motivo, a
+    recusa sai uma vez na outbox e a nova tokenização é aceita."""
+    from pagamentos.core.models import PaymentAttempt
+
+    _configurar_appmax(settings)
+    intent_id = _post_intent(
+        client,
+        token_valido,
+        "b1b1b1b1-b1b1-4b1b-8b1b-b1b1b1b1b1b1",
+        method="card",
+        metadata=_card_metadata(),
+    ).json()["id"]
+
+    with respx.mock(assert_all_called=True) as rede:
+        _appmax(
+            rede,
+            statuses=[status_da_recusa, "aprovado"],
+            pagamentos=[bloco_de_pagamento, _PAGAMENTO_COMPLETO],
+        )
+        recusa = _confirmar_cartao_appmax(client, token_valido, intent_id)
+        assert recusa.status_code == 200, recusa.content
+        assert recusa.json()["status"] == "rejected"
+        assert recusa.json()["card"]["reason_code"] == status_da_recusa
+        assert PaymentAttempt.objects.get(intent_id=intent_id).state == "rejected"
+        assert _eventos_do_cartao() == {
+            "pagamento.aprovado": 0,
+            "pagamento.recusado": 1,
+        }
+
+        outro_cartao = _confirmar_cartao_appmax(
+            client, token_valido, intent_id, card_token="token-appmax-outro"
+        )
+    assert outro_cartao.status_code == 200, outro_cartao.content
+    assert outro_cartao.json()["status"] == "approved"
+
+
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:440
+@pytest.mark.smoke_card
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    ("status", "total_pago", "bloco_de_pagamento"),
+    [
+        ("aprovado", 0, _PAGAMENTO_COMPLETO),
+        ("integrado", 500, _PAGAMENTO_COMPLETO),
+        ("cancelado", 500, _PAGAMENTO_COMPLETO),
+        ("cancelado", 0, {"method": "creditcard"}),
+        ("pendente", 500, _PAGAMENTO_COMPLETO),
+        ("aprovado", 1990, {"method": "creditcard"}),
+        ("aprovado", 1990, {"installments": 3, "method": "creditcard"}),
+        ("pendente", 1990, {"method": "creditcard"}),
+    ],
+    ids=[
+        "aprovado_sem_valor",
+        "integrado_com_valor_divergente",
+        "recusa_com_valor_divergente",
+        "recusa_sem_o_valor_esperado",
+        "pendente_com_valor_divergente",
+        "aprovado_sem_parcelas",
+        "aprovado_com_outras_parcelas",
+        "pendente_sem_parcelas",
+    ],
+)
+def test_card_divergencia_de_valor_ou_parcelas_continua_ambigua(
+    client: Client,
+    token_valido: str,
+    settings: Any,
+    status: str,
+    total_pago: int,
+    bloco_de_pagamento: dict[str, Any],
+) -> None:
+    """A regra de ouro que a tarefa 862 não pode afrouxar: dinheiro não se
+    inventa. Valor diferente do enviado, em qualquer desfecho, e aprovação ou
+    pendência sem as parcelas cobradas continuam 502, e a tentativa espera a
+    reconciliação sem evento e sem liberar outro envio."""
+    # guarda: services/pagamentos/pagamentos/methods/card/service.py:462
+    # guarda: services/pagamentos/pagamentos/methods/card/service.py:470
+    from pagamentos.core.models import PaymentAttempt
+
+    _configurar_appmax(settings)
+    intent_id = _post_intent(
+        client,
+        token_valido,
+        "c2c2c2c2-c2c2-4c2c-8c2c-c2c2c2c2c2c2",
+        method="card",
+        metadata=_card_metadata(),
+    ).json()["id"]
+
+    with respx.mock(assert_all_called=True) as rede:
+        _appmax(
+            rede,
+            statuses=[status],
+            total_pago=[total_pago],
+            pagamentos=[bloco_de_pagamento],
+        )
+        resposta = _confirmar_cartao_appmax(client, token_valido, intent_id)
+
+    assert resposta.status_code == 502
+    assert Intent.objects.get(id=intent_id).status not in ("approved", "rejected")
+    assert (
+        PaymentAttempt.objects.get(intent_id=intent_id).state
+        == "reconciliation_required"
+    )
+    assert _eventos_do_cartao() == {"pagamento.aprovado": 0, "pagamento.recusado": 0}
 
 
 @pytest.mark.smoke_pix

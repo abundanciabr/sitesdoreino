@@ -50,7 +50,7 @@ def pedido_de_cartao(api, rede, sessao_a):
     return Order.objects.get(pk=resp.json()["order_id"])
 
 
-# guarda: services/checkout/apps/core/api.py:383
+# guarda: services/checkout/apps/core/api.py:389
 def test_intent_de_cartao_usa_itens_e_total_calculados_pelo_catalogo(
     api, rede, sessao_a
 ):
@@ -162,7 +162,7 @@ def test_a_recusa_do_provedor_volta_com_o_motivo_e_o_pedido_nao_muda(
     assert pedido_de_cartao.status == "aguardando_pagamento"
 
 
-# guarda: services/checkout/apps/core/api.py:691
+# guarda: services/checkout/apps/core/api.py:732
 def test_pedido_de_cartao_recusado_aceita_nova_confirmacao_sem_mover_snapshot(
     api, rede, pedido_de_cartao
 ):
@@ -229,7 +229,7 @@ def test_falha_do_provedor_na_confirmacao_orienta_nova_tentativa_sem_cobrar_de_n
     """Cartões de teste 0002, 0036, 0044 e 9999 da Appmax sandbox: pagamentos
     devolve o 502 do contrato, e o comprador precisa ler o que fazer em vez de
     receber um 500 mudo."""
-    # guarda: services/checkout/apps/core/api.py:742
+    # guarda: services/checkout/apps/core/api.py:783
     rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card")
     falhar_em_pagamentos(rota, falha)
 
@@ -249,7 +249,7 @@ def test_falha_do_provedor_na_confirmacao_orienta_nova_tentativa_sem_cobrar_de_n
 def test_falha_do_provedor_ao_fechar_pedido_de_cartao_nao_cria_pedido(
     api, rede, sessao_a, falha
 ):
-    # guarda: services/checkout/apps/core/api.py:420
+    # guarda: services/checkout/apps/core/api.py:426
     falhar_em_pagamentos(rede.post(f"{PAGAMENTOS}/intents"), falha)
 
     resp = api.post(
@@ -473,3 +473,110 @@ def test_parcelas_recusam_pedido_pix_e_id_invalido(api, rede, pedido_de_cartao):
         == 409
     )
     assert api.get("/api/checkout/pedidos/invalido/parcelas").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Em análise ao recarregar. A página recarregada não sabe o que a anterior
+# mostrou: `card_in_review` em getOrder diz se a última tentativa de cartão
+# ainda está no provedor, lido do estado real da intent em pagamentos.
+# ---------------------------------------------------------------------------
+
+
+def _intent_no_estado(pedido, status):
+    corpo = _intent_confirmada(status=status).json()
+    return httpx.Response(200, json={**corpo, "id": pedido.intent_id})
+
+
+def _consultar(api, pedido):
+    resp = api.get(f"/api/checkout/pedidos/{pedido.id}")
+    assert resp.status_code == 200, resp.content
+    return resp.json()
+
+
+@pytest.mark.parametrize(
+    "status_da_intent, em_analise",
+    [("pending", True), ("created", False), ("approved", False), ("rejected", False)],
+)
+def test_em_analise_e_a_tentativa_pendente_no_provedor(
+    api, rede, pedido_de_cartao, status_da_intent, em_analise
+):
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, status_da_intent)
+    )
+    pedido = _consultar(api, pedido_de_cartao)
+    assert pedido["status"] == "aguardando_pagamento"
+    assert pedido["card_in_review"] is em_analise
+
+
+def test_nova_tentativa_pendente_depois_da_recusa_esta_em_analise(
+    api, rede, pedido_de_cartao
+):
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status="recusado")
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, "pending")
+    )
+    pedido = _consultar(api, pedido_de_cartao)
+    assert (pedido["status"], pedido["card_in_review"]) == ("recusado", True)
+
+
+def test_recusa_que_chega_antes_da_resposta_pendente_nao_prende_o_formulario(
+    api, rede, pedido_de_cartao
+):
+    """Pedido já recusado, nova tentativa: o provedor responde pending, mas a
+    recusa dessa tentativa chega antes de a página consultar. Uma marca local
+    ligada pela resposta nunca desligaria; a intent já diz rejected."""
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status="recusado")
+    rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").mock(
+        return_value=_intent_confirmada(status="pending")
+    )
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, "rejected")
+    )
+    resp = api.post(f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao", CORPO_VALIDO)
+    assert resp.json()["payment"]["status"] == "pending"
+
+    pedido = _consultar(api, pedido_de_cartao)
+    assert (pedido["status"], pedido["card_in_review"]) == ("recusado", False)
+
+
+@pytest.mark.parametrize("status_do_pedido", ["pago", "expirado", "reembolsado"])
+def test_pedido_encerrado_nao_esta_em_analise_nem_consulta_pagamentos(
+    api, rede, pedido_de_cartao, status_do_pedido
+):
+    Order.objects.filter(pk=pedido_de_cartao.id).update(status=status_do_pedido)
+    rota = rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").mock(
+        return_value=_intent_no_estado(pedido_de_cartao, "pending")
+    )
+    assert _consultar(api, pedido_de_cartao)["card_in_review"] is False
+    assert not rota.called
+
+
+def test_pedido_de_pix_nao_esta_em_analise_nem_consulta_pagamentos(api, rede, sessao_a):
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
+        {
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "method": "pix",
+        },
+    )
+    rota = rede.get(url__regex=rf"{PAGAMENTOS}/intents/[^/]+$")
+    pedido = api.get(f"/api/checkout/pedidos/{resp.json()['order_id']}").json()
+    assert pedido["card_in_review"] is False
+    assert not rota.called
+
+
+@pytest.mark.parametrize("falha", ["timeout", "http", "html"])
+def test_consulta_da_tentativa_que_falha_tira_o_campo_e_nao_derruba_o_pedido(
+    api, rede, pedido_de_cartao, falha
+):
+    rota = rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}")
+    if falha == "timeout":
+        rota.mock(side_effect=httpx.ReadTimeout("segredo-interno"))
+    elif falha == "http":
+        rota.respond(500, json={"status": "pending", "detail": "segredo-interno"})
+    else:
+        rota.respond(200, text="segredo-interno")
+    resp = api.get(f"/api/checkout/pedidos/{pedido_de_cartao.id}")
+    assert resp.status_code == 200, resp.content
+    assert "card_in_review" not in resp.json()
+    assert resp.json()["status"] == "aguardando_pagamento"
