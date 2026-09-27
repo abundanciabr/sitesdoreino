@@ -1,0 +1,21 @@
+{
+  "arquivo": "868-destravar-e-reexecutar-o-ensaio-de-rollback-do-cartao-appmax",
+  "id": "TAR-868",
+  "titulo": "Destravar e reexecutar o ensaio de rollback do cartão Appmax",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-831"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "novo run do appmax-drill-rollback.yml com veredito PASS ou FAIL (não ERROR por ambiente) e registro no livro citando o run",
+  "despacho": "Executar o ensaio de rollback do cartão Appmax no sandbox da Meshcraft (workflow appmax-drill-rollback.yml, TAR-831) e registrar o resultado no livro. O disparo de 27/09/2026 08h40 BRT (run 36316492477) terminou ERROR: o script parou por segurança na VPS antes de tocar em qualquer coisa, porque não conseguiu ler env/pagamentos.env (ausente ou sem permissão para o usuário deploy). Nada foi alterado; o checkout segue no ar. Esta TAR cobre diagnosticar e destravar essa leitura na VPS para que o ensaio prove o rollback de verdade, e então rodar de novo até um veredito PASS ou FAIL (nunca ERROR por ambiente). Escopo: infra/ e o workflow .github/workflows/appmax-drill-rollback.yml; nada em produção além do que o próprio ensaio já faz.",
+  "origem": "sessão despacho 4442b6ad, rodada 3 Appmax, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
