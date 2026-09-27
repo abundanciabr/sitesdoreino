@@ -59,6 +59,7 @@ def test_o_dia_e_o_de_sao_paulo_e_a_celula_sai_do_tipo():
 
 def test_instante_sem_fuso_e_recusado():
     """Todo evento traz `occurred_at` com fuso; sem ele o dia é um chute."""
+    # guarda: services/metricas/apps/fatos/models.py:65
     with pytest.raises(ValueError):
         dia_em_sao_paulo(dt.datetime(2026, 10, 1, 1, 0))
 
