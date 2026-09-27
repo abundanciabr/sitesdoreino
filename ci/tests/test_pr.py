@@ -626,7 +626,8 @@ def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aber
     fases = []
     monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
     monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
-    pr.abrir(raiz, pedido(raiz), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
+    declarada = tarefa_aberta if tarefa_aberta.startswith('TAR-') else None
+    pr.abrir(raiz, pedido(raiz, tarefa=declarada), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
     assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('validacao','concluido'), ('fechamento','concluido')]
     assert {d['tentativa'] for f,r,d in fases} == {'tentativa-abertura'}
     assert {d['tarefa'] for f,r,d in fases} == {tarefa_aberta}
