@@ -326,6 +326,7 @@ def test_janela_invalida_cai_na_padrao_e_a_tela_avisa():
 
 @respx.mock
 def test_por_dia_comeca_no_primeiro_dia_medido_e_o_buraco_depois_e_zero():
+    # guarda: services/admin/apps/core/funil.py:96
     _a_memoria_responde(
         _resposta(
             _passos(4, 3, 1, 0, 0, 0),
