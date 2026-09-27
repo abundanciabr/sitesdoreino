@@ -58,6 +58,22 @@ Se você ainda não é aluno, o caminho começa em
    laudo. O reenvio ganha o número seguinte e a versão anterior continua
    visível.
 
+## Como funcionam as contribuições
+
+Além do desafio do seu estágio, a escola publica pedidos de trabalho no
+[quadro de contribuições](/conquistas/contribuicoes). Cada tarefa mostra, antes
+de você assumir, o que entregar, quem pode participar, como a qualidade é
+avaliada, o reconhecimento que ela vale e quem aceita o resultado.
+
+Você assume uma tarefa enquanto há vaga e envia o link quando terminar. Pode
+desistir a qualquer momento e liberar a vaga para outra pessoa. A equipe aceita
+o que você enviou ou devolve com o motivo e uma orientação escrita, e você pode
+reenviar depois de ajustar.
+
+O reconhecimento é concedido uma vez por tarefa aceita, só com o aceite da
+equipe: ninguém aprova a própria contribuição. Não há pontuação, saldo nem
+qualquer benefício além do reconhecimento.
+
 ## Como pedir ajuda
 
 Pedido de ajuda bom é aquele que um colega consegue atender. Abra um tópico na
@@ -87,6 +103,18 @@ a escola enxerga e pode intervir.
   equipe da escola, separadas de qualquer reconhecimento.
 
 O que você já conquistou aparece em [/conquistas/marcos](/conquistas/marcos).
+
+## O que a escola registra
+
+Todo gesto de moderação fica registrado, e nada é apagado. Tirar uma conversa
+do ar, devolvê-la, mover de área, editar uma mensagem de outra pessoa, trocar o
+responsável do grupo, tirar alguém do grupo ou trocar de grupo: cada um desses
+gestos exige um motivo escrito, e o registro guarda quem fez, quando e por quê.
+
+Cada medalha guarda a regra e a versão do dia em que foi concedida. Se a
+equipe precisar corrigir ou retirar um reconhecimento, ela escreve o motivo, e
+a história completa continua guardada. Uma medalha retirada deixa de aparecer
+como conquistada, mas o que aconteceu com ela nunca some do registro.
 
 ## Regras da casa
 
@@ -121,4 +149,5 @@ Esta página não traz números nem listas de pessoas. O que é seu está nas te
 do site: o seu curso, aberto pelo catálogo em [/cursos](/cursos), mostra a aula
 em destaque e cada envio; o fórum em [/forum/](/forum/) mostra o seu grupo e as dúvidas que esperam
 por alguém; a trilha em [/conquistas/marcos](/conquistas/marcos) mostra o que já
-foi concedido e o que falta provar.
+foi concedido e o que falta provar; o [quadro de contribuições](/conquistas/contribuicoes)
+mostra as tarefas que você assumiu e o estado de cada uma.
