@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-023532-TAR-777-concluida",
+  "tarefa": "TAR-777",
+  "evento": "concluida",
+  "quando": "2026-09-27T02:35:32.592463+00:00",
+  "quem": "agent/metricas/f10b-assinar-checkout",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2130",
+  "verificado_em": "2026-09-27"
+}

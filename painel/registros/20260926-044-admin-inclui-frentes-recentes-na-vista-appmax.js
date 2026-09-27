@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-044-admin-inclui-frentes-recentes-na-vista-appmax",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "admin: inclui frentes recentes na vista Appmax",
+  detalhe: "A vista inclui as quatro frentes Appmax recentes e preserva a fonte da fila, as provas e a ausencia explicitamente nao medida; renderizacao local HTTP 200 com 26 cartoes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2114. Validação local: árvore ae75b73252df4424be336d2def7bd086a49e6522; commit b2db3de77d7fd44f00b994f599ace966e10e9da9; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-750",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
