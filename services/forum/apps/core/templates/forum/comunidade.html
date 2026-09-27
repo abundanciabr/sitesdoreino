@@ -1,0 +1,71 @@
+{% extends "forum/base.html" %}
+{% block titulo %}Comunidade{% endblock %}
+{% block conteudo %}
+{% comment %}
+A PÁGINA COMUNIDADE (TAR-824). Responde "o que posso fazer agora?" em quatro
+estados, e quem decide o estado é `views.contexto_da_comunidade`. Nenhum deles
+fala com a `gamificacao`: ela fora do ar não tira nada desta página.
+{% endcomment %}
+<p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
+<h1>Comunidade</h1>
+<p class="sub">O seu grupo de prática: o desafio da vez e os colegas que esperam uma resposta.</p>
+
+{% if estado == "entrar" %}
+  <div class="cartao recado">
+    <strong>Entre para ver a sua Comunidade.</strong>
+    <p>O grupo de prática só aparece para quem entrou. Depois de entrar, você
+      volta para esta mesma página.</p>
+    <a class="botao" href="{{ porta_de_entrada }}">Entrar</a>
+  </div>
+{% elif estado == "matricula" %}
+  <div class="cartao recado">
+    <strong>A Comunidade é de quem está matriculado.</strong>
+    <p>Os grupos de prática abrem junto com a matrícula em um curso da escola.
+      Se você já é aluno e está vendo esta mensagem, a conferência da matrícula
+      pode estar fora do ar agora. Tente de novo em alguns minutos.</p>
+  </div>
+{% elif estado == "sem_grupo" %}
+  {% if ator.eh_equipe %}
+    <div class="vazio">
+      <strong>Você ainda não responde por nenhum grupo de prática.</strong>
+      <p style="margin:8px 0 0">Para criar um, abra as Ferramentas da escola na
+        <a href="{% url 'home' %}">capa do fórum</a> e escolha "Grupo de
+        prática" em quem enxerga.</p>
+    </div>
+  {% else %}
+    <div class="vazio">
+      <strong>Você ainda não está em um grupo de prática.</strong>
+      <p style="margin:8px 0 0">Para entrar, abra uma conversa no fórum pedindo a vaga e diga qual curso você está fazendo.
+        Quem responde é a equipe da escola (professor ou administrador), e é ela que coloca você no grupo.</p>
+      <a class="botao" href="{% url 'abrir_conversa' %}">Pedir a entrada</a>
+    </div>
+  {% endif %}
+{% else %}
+  {% for grupo in grupos %}
+    <section class="cartao" aria-labelledby="grupo-{{ grupo.pk }}">
+      <h2 id="grupo-{{ grupo.pk }}"><a href="{% url 'area' grupo.slug %}">{{ grupo.nome }}</a></h2>
+      {% if grupo.responsavel %}<p class="sub" style="margin:4px 0 0">Responsável: {{ grupo.responsavel.nome_exibido|default:"a escola" }}</p>{% endif %}
+      <ul>
+        <li><a href="{% url 'area' grupo.slug %}#abrir">Apresente-se ao grupo ou peça ajuda</a></li>
+        <li><a href="{{ grupo.desafio }}">Abrir o desafio atual</a></li>
+      </ul>
+    </section>
+  {% endfor %}
+
+  <h2>Quem depende de você</h2>
+  <p class="sub">Dúvidas do seu grupo que ainda não têm resposta aceita, da mais
+    antiga para a mais nova. Quando o autor aceita a sua resposta, a ajuda conta
+    na sua gamificação.</p>
+  {% for topico in dependem %}
+    <div class="cartao">
+      <a href="{% url 'topico' topico.pk %}">{{ topico.titulo }}</a>
+      <p class="sub" style="margin:4px 0 0">{{ topico.assinatura }} · {{ topico.area.nome }} · esperando {{ topico.espera }}</p>
+    </div>
+  {% empty %}
+    <div class="vazio">
+      <strong>Ninguém do seu grupo está esperando resposta agora.</strong>
+      <p style="margin:8px 0 0">Quando um colega pedir ajuda, a dúvida aparece aqui.</p>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}
