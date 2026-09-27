@@ -59,9 +59,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from .cartas import ASSUNTO_CONQUISTA, ASSUNTO_MARCO, carta_de_celebracao
+from .criterios import criterio_em_portugues
 from .models import (
     Concessao,
     ConquistaDefinicao,
+    HistoricoDaConcessao,
     LancamentoDeXP,
     MovimentoDeCristais,
     PedidoDeValidacao,
@@ -94,6 +96,13 @@ DEVOLUCOES_DE_PAR_ATE_ESCALAR = 2
 REFERENCIA_DE_CRISTAL = "conquista:{slug}"
 REGRA_DA_CONQUISTA = "conquista-{slug}"
 EVENTO_DA_CONCESSAO = "concessao:{id}"
+# O estorno e a devolução do XP de uma concessão revogada e restaurada. A linha
+# do histórico entra na chave porque a mesma concessão pode ser retirada,
+# devolvida e retirada de novo, e cada gesto é um lançamento próprio.
+EVENTO_DO_GESTO = "concessao:{id}:{gesto}:{linha}"
+# A referência que a concessão de um marco guarda: o pedido, que é onde a prova
+# mora, privada. O texto da prova nunca sai de lá.
+ORIGEM_DO_PEDIDO = "pedido:{id}"
 
 
 class ValidacaoRecusada(Exception):
@@ -182,8 +191,15 @@ def conceder(
     concessão nasce, o XP e os Cristais são creditados (quando a conquista os
     tem), o perfil é recalculado e a carta é escrita. Se qualquer passo falhar,
     nada aconteceu — e ninguém recebe parabéns por uma medalha que não existe.
+
+    **A regra do dia vai junto** (dossiê da Comunidade §5): a versão, a cópia e
+    a frase do critério, lidas do BANCO na hora e não do objeto que chegou, que
+    pode ter sido carregado antes de alguém mudar o critério. E nasce a primeira
+    linha do histórico. Uma concessão revogada continua existindo, então
+    conceder de novo não a reabre: devolvê-la é `restaurar()`, gesto da equipe.
     """
     with transaction.atomic():
+        vigente = ConquistaDefinicao.objects.get(pk=conquista.pk)
         concessao, nova = Concessao.objects.get_or_create(
             pessoa=pessoa,
             conquista=conquista,
@@ -192,10 +208,23 @@ def conceder(
                 "validador_id": validador_id,
                 "validador_papel": validador_papel,
                 "origem_event_id": origem_event_id,
+                "criterio_versao": vigente.versao,
+                "criterio": vigente.criterio or {},
+                "criterio_em_texto": criterio_em_portugues(vigente),
             },
         )
         if not nova:
             return concessao, False
+
+        HistoricoDaConcessao.objects.create(
+            concessao=concessao,
+            site_id=site_id,
+            gesto=HistoricoDaConcessao.Gesto.CONCEDIDA,
+            estado_novo=concessao.estado,
+            quem_id=validador_id,
+            origem_nova=origem_event_id,
+            registrado_em=concessao.concedida_em,
+        )
 
         agora = timezone.now()
 
@@ -208,7 +237,7 @@ def conceder(
                 pontos=conquista.pontos,
                 origem_event_id=EVENTO_DA_CONCESSAO.format(id=concessao.pk),
                 regra_slug=REGRA_DA_CONQUISTA.format(slug=conquista.slug)[:60],
-                regra_versao=conquista.versao,
+                regra_versao=vigente.versao,
                 occurred_at=agora,
                 dia_local=dia_local_de(agora),
                 status=LancamentoDeXP.Status.DEFINITIVO,
@@ -277,6 +306,216 @@ def _carta_da_conquista(concessao: Concessao) -> None:
 
 
 # ---------------------------------------------------------------------------
+# O RASTRO DE UMA CONCESSÃO: revogar, corrigir e restaurar
+# ---------------------------------------------------------------------------
+# Os três gestos da equipe sobre uma conquista que já existe. Cada um é uma
+# linha nova em `HistoricoDaConcessao`, com quem, quando, por quê e o estado de
+# antes e de depois; a concessão nunca é apagada. Quem pode fazê-los é a porta
+# da equipe (`apps/core/equipe.py`), conferida pela view, como em `aceitar()`.
+#
+# **Os Cristais de uma medalha revogada ficam**, e não é esquecimento: o banco
+# só aceita Cristal negativo como compra na loja
+# (`cristal_negativo_so_com_referencia_de_compra`), e abrir um débito por
+# correção é decisão do mantenedor (`MovimentoDeCristais`, "o que esta tabela
+# ainda não sabe fazer"). O XP volta, pela linha negativa de sempre.
+
+
+def _travar_para_o_gesto(
+    concessao: Concessao, quem_id: str, motivo: str
+) -> tuple[Concessao, str]:
+    """Relê a concessão travada e confere quem e por quê. Chamar dentro de transação."""
+    motivo = (motivo or "").strip()
+    if not quem_id:
+        raise ValidacaoRecusada(
+            "toda decisão tem nome. Sem o id de quem decidiu, a história desta "
+            "conquista não responderia 'quem mexeu aqui?'."
+        )
+    if not motivo:
+        raise ValidacaoRecusada(
+            "Escreva o motivo. Ele fica guardado na história desta conquista, e é "
+            "ele que responde 'por quê?' para quem olhar depois."
+        )
+    concessao = (
+        Concessao.objects.select_for_update()
+        .select_related("conquista")
+        .get(pk=concessao.pk)
+    )
+    if quem_id == concessao.pessoa_id:
+        raise ValidacaoRecusada(
+            "Ninguém mexe na própria conquista. Outra pessoa da equipe precisa "
+            "decidir esta."
+        )
+    return concessao, motivo
+
+
+def _registrar(
+    concessao: Concessao,
+    gesto: str,
+    *,
+    anterior: str,
+    quem_id: str,
+    motivo: str,
+    origem_anterior: str,
+) -> HistoricoDaConcessao:
+    return HistoricoDaConcessao.objects.create(
+        concessao=concessao,
+        site_id=concessao.site_id,
+        gesto=gesto,
+        estado_anterior=anterior,
+        estado_novo=concessao.estado,
+        quem_id=quem_id,
+        motivo=motivo,
+        origem_anterior=origem_anterior,
+        origem_nova=concessao.origem_event_id,
+    )
+
+
+def _mover_o_xp(concessao: Concessao, linha: HistoricoDaConcessao, sinal: int) -> None:
+    """Estorna (-1) ou devolve (+1) o XP que a concessão pagou quando nasceu.
+
+    O valor sai do lançamento ORIGINAL, e não dos pontos que a conquista vale
+    hoje: se a escola mudou os pontos depois, estornar o valor novo tiraria da
+    pessoa o que ela nunca recebeu.
+    """
+    credito = LancamentoDeXP.objects.filter(
+        pessoa_id=concessao.pessoa_id,
+        origem_event_id=EVENTO_DA_CONCESSAO.format(id=concessao.pk),
+    ).first()
+    if credito is None:
+        return
+    agora = timezone.now()
+    LancamentoDeXP.objects.create(
+        pessoa_id=concessao.pessoa_id,
+        site_id=concessao.site_id,
+        pontos=sinal * credito.pontos,
+        origem_event_id=EVENTO_DO_GESTO.format(
+            id=concessao.pk, gesto=linha.gesto, linha=linha.pk
+        ),
+        regra_slug=credito.regra_slug,
+        regra_versao=credito.regra_versao,
+        occurred_at=agora,
+        dia_local=dia_local_de(agora),
+        status=LancamentoDeXP.Status.DEFINITIVO,
+    )
+    # `celebrar=False`: devolver o que foi retirado por engano não é a pessoa
+    # subir de nível, e retirar não avisa ninguém (só boa notícia vira carta).
+    # Sem avaliação também: um gesto de correção não concede medalha nova.
+    recalcular(concessao.pessoa_id, concessao.site_id, celebrar=False)
+
+
+def revogar(*, concessao: Concessao, quem_id: str, motivo: str) -> Concessao:
+    """A equipe retira a conquista. A linha fica, e a história diz por quê.
+
+    A pessoa deixa de ter a conquista em toda tela e em toda conta
+    (`criterios`, a porta de máquina), o XP que ela pagou é estornado, e
+    nenhuma conta automática a devolve: a concessão continua existindo, e
+    `Unique(pessoa, conquista)` não deixa nascer outra.
+    """
+    with transaction.atomic():
+        concessao, motivo = _travar_para_o_gesto(concessao, quem_id, motivo)
+        if concessao.estado == Concessao.Estado.REVOGADA:
+            raise ValidacaoRecusada(
+                "Esta conquista já foi retirada. Se foi engano, o gesto é devolver."
+            )
+        anterior = concessao.estado
+        concessao.estado = Concessao.Estado.REVOGADA
+        concessao.save(update_fields=["estado"])
+        linha = _registrar(
+            concessao,
+            HistoricoDaConcessao.Gesto.REVOGADA,
+            anterior=anterior,
+            quem_id=quem_id,
+            motivo=motivo,
+            origem_anterior=concessao.origem_event_id,
+        )
+        _mover_o_xp(concessao, linha, -1)
+    return concessao
+
+
+def restaurar(*, concessao: Concessao, quem_id: str, motivo: str) -> Concessao:
+    """A equipe devolve uma conquista retirada, ao estado que ela tinha antes."""
+    with transaction.atomic():
+        concessao, motivo = _travar_para_o_gesto(concessao, quem_id, motivo)
+        if concessao.estado != Concessao.Estado.REVOGADA:
+            raise ValidacaoRecusada(
+                "Esta conquista não foi retirada. Não há o que devolver."
+            )
+        retirada = concessao.historico.filter(
+            gesto=HistoricoDaConcessao.Gesto.REVOGADA
+        ).last()
+        concessao.estado = retirada.estado_anterior
+        concessao.save(update_fields=["estado"])
+        linha = _registrar(
+            concessao,
+            HistoricoDaConcessao.Gesto.RESTAURADA,
+            anterior=Concessao.Estado.REVOGADA,
+            quem_id=quem_id,
+            motivo=motivo,
+            origem_anterior=concessao.origem_event_id,
+        )
+        _mover_o_xp(concessao, linha, +1)
+    return concessao
+
+
+def corrigir(
+    *, concessao: Concessao, quem_id: str, origem_nova: str, motivo: str
+) -> Concessao:
+    """A equipe corrige de onde a conquista veio. A referência antiga fica na história.
+
+    O que se corrige é a REFERÊNCIA da origem ou da evidência (`pedido:7`,
+    `contribuicao:15`, o id de um evento), nunca a regra, a data ou quem
+    validou: esses são fatos do dia em que a conquista nasceu.
+    """
+    origem_nova = (origem_nova or "").strip()
+    if not origem_nova:
+        raise ValidacaoRecusada(
+            "Escreva a referência certa da origem, como pedido:7 ou contribuicao:15."
+        )
+    if len(origem_nova) > 64:
+        raise ValidacaoRecusada("A referência da origem cabe em até 64 caracteres.")
+    with transaction.atomic():
+        concessao, motivo = _travar_para_o_gesto(concessao, quem_id, motivo)
+        if concessao.estado == Concessao.Estado.REVOGADA:
+            raise ValidacaoRecusada(
+                "Esta conquista está retirada. Devolva primeiro, e depois corrija."
+            )
+        if origem_nova == concessao.origem_event_id:
+            raise ValidacaoRecusada(
+                "Essa é a mesma referência que já está gravada. Nada a corrigir."
+            )
+        anterior = concessao.estado
+        origem_anterior = concessao.origem_event_id
+        concessao.estado = Concessao.Estado.CORRIGIDA
+        concessao.origem_event_id = origem_nova
+        concessao.save(update_fields=["estado", "origem_event_id"])
+        _registrar(
+            concessao,
+            HistoricoDaConcessao.Gesto.CORRIGIDA,
+            anterior=anterior,
+            quem_id=quem_id,
+            motivo=motivo,
+            origem_anterior=origem_anterior,
+        )
+    return concessao
+
+
+def reconhecimentos_da_escola(site_id: str, pessoa_id: str = ""):
+    """As concessões da escola com a história de cada uma, a mais nova em cima.
+
+    Bastidor da equipe. Sem filtro, as 50 mais recentes: a tela é para achar
+    uma conquista e decidir sobre ela, não para ler a escola inteira.
+    """
+    concessoes = Concessao.objects.filter(site_id=site_id)
+    if pessoa_id:
+        concessoes = concessoes.filter(pessoa_id=pessoa_id)
+    return (
+        concessoes.select_related("conquista")
+        .prefetch_related("historico")
+        .order_by("-concedida_em")[:50]
+    )
+
+
+# ---------------------------------------------------------------------------
 # A FILA
 # ---------------------------------------------------------------------------
 def pedir_validacao(
@@ -317,6 +556,13 @@ def pedir_validacao(
             raise PedidoInvalido(
                 f"o marco {conquista.slug!r} ainda não está no ar nesta escola. "
                 "Ligar uma conquista é decisão do mantenedor, com data."
+            )
+        if Concessao.objects.filter(
+            pessoa=pessoa, conquista=conquista, estado=Concessao.Estado.REVOGADA
+        ).exists():
+            raise PedidoInvalido(
+                f"a equipe retirou {conquista.nome!r}, e o motivo está nesta "
+                "página. Se você discorda, fale com a equipe: só ela devolve."
             )
         if Concessao.objects.filter(pessoa=pessoa, conquista=conquista).exists():
             raise PedidoInvalido(
@@ -407,6 +653,7 @@ def aceitar(
             conquista=pedido.conquista,
             validador_id=validador_id,
             validador_papel=validador_papel,
+            origem_event_id=ORIGEM_DO_PEDIDO.format(id=pedido.pk),
         )
         pedido.estado = PedidoDeValidacao.Estado.ACEITO
         pedido.respondido_em = timezone.now()
@@ -518,10 +765,12 @@ def marcos_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
     perguntasse isso sozinho faria N consultas por marco — a forma preguiçosa de
     ficar lento exatamente quando a escola crescer.
 
-    Os quatro estados possíveis são o vocabulário que a tela usa:
-    `conquistado`, `em_analise`, `devolvido` e `disponivel`. Não há "recusado":
-    a lei manda que esperar nunca pareça recusa, e devolver não é dizer não — é
-    dizer o que falta.
+    Os cinco estados possíveis são o vocabulário que a tela usa:
+    `conquistado`, `revogado`, `em_analise`, `devolvido` e `disponivel`. Não há
+    "recusado": a lei manda que esperar nunca pareça recusa, e devolver não é
+    dizer não — é dizer o que falta. `revogado` é o marco que a equipe retirou,
+    e a linha traz `retirada`, o gesto com a data e o motivo: a história mostra
+    que ele existiu.
     """
     marcos = ConquistaDefinicao.objects.filter(
         site_id=site_id, classe=ConquistaDefinicao.Classe.MARCO, ativa=True
@@ -531,6 +780,7 @@ def marcos_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
         c.conquista_id: c
         for c in Concessao.objects.filter(pessoa=pessoa, site_id=site_id)
     }
+    retiradas = HistoricoDaConcessao.retiradas_de(concedidos.values())
     # O pedido mais RECENTE de cada marco. Ordenar por id decrescente e deixar o
     # primeiro vencer é o que faz um reenvio aparecer no lugar da devolução
     # antiga — a linha velha continua no banco, e é isso que mantém a história.
@@ -544,7 +794,9 @@ def marcos_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
     for marco in marcos:
         concessao = concedidos.get(marco.pk)
         pedido = pedidos.get(marco.pk)
-        if concessao is not None:
+        if concessao is not None and concessao.estado == Concessao.Estado.REVOGADA:
+            estado = "revogado"
+        elif concessao is not None:
             estado = "conquistado"
         elif (
             pedido is not None and pedido.estado == PedidoDeValidacao.Estado.EM_ANALISE
@@ -559,6 +811,7 @@ def marcos_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
                 "marco": marco,
                 "estado": estado,
                 "concessao": concessao,
+                "retirada": retiradas.get(concessao.pk) if concessao else None,
                 "pedido": pedido,
             }
         )

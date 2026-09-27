@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-115735-TAR-850-descoberta",
+  "tarefa": "TAR-850",
+  "evento": "descoberta",
+  "quando": "2026-09-27T11:57:35.409254+00:00",
+  "quem": "agent/gamificacao/comunidade-rastro-do-reconhecimento",
+  "detalhe": "Medalhas de conta automatica disparadas por motor.recalcular e por forja.py chegam a conceder() sem evento de origem; a concessao guarda a regra copiada e mostra origem como conta automatica da escola. Passar o event_id do recalculo ao criterios.avaliar daria a referencia do fato que cruzou o alvo.",
+  "evidencia": "services/gamificacao/apps/gamificacao/motor.py chama criterios.avaliar(pessoa, site) sem origem_event_id; forja.py idem",
+  "classificacao": "D",
+  "criterio": "Toda concessao grava a referencia da origem",
+  "encaminhamento": "Tarefa pequena na celula gamificacao: propagar origem_event_id em motor.recalcular e forja para avaliar()"
+}
