@@ -15,11 +15,13 @@ from apps.eventos.management.commands.consume_eventos import (
     REVERSAO_MOTIVOS,
     REVERSAO_PROVEDORES,
     STREAMS,
+    VersaoDesconhecida,
     ponte_do_evento,
     processar_envelope,
 )
 from apps.eventos.models import EventoProcessado
 from apps.matriculas.eventos import SITUACAO_ALTERADA
+from apps.matriculas.handlers import ao_pagamento_aprovado
 from apps.matriculas.models import Matricula, OutboxEvent
 
 pytestmark = pytest.mark.django_db
@@ -103,7 +105,6 @@ def _cortes() -> list[OutboxEvent]:
 def test_o_consumidor_registra_a_nova_stream_e_a_ponte_v2() -> None:
     assert "eventos.pagamento.reversao_confirmada" in STREAMS
     assert "pagamento.reversao_confirmada" in HANDLERS
-    # guarda: services/alunos/apps/eventos/management/commands/consume_eventos.py:155
     assert ponte_do_evento("pagamento.reversao_confirmada") == {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
         "no_v1": None,
@@ -136,7 +137,7 @@ def test_a_borda_recusa_reversao_incompleta_ou_sem_motivo_confirmado(
     envelope = _reversao()
     envelope["data"][campo] = valor
 
-    # guarda: services/alunos/apps/eventos/management/commands/consume_eventos.py:120
+    # guarda: services/alunos/apps/eventos/management/commands/consume_eventos.py:206
     with pytest.raises(ValueError):
         processar_envelope(envelope, HANDLERS)
 
@@ -181,7 +182,6 @@ def test_reversao_de_um_site_nao_corta_matricula_de_outro() -> None:
     uma = _matricula(site=SITE)
     outra = _matricula(site=OUTRO_SITE)
 
-    # guarda: services/alunos/apps/matriculas/handlers.py:89
     processar_envelope(_reversao(site=SITE), HANDLERS)
 
     uma.refresh_from_db()
@@ -194,7 +194,6 @@ def test_reversao_de_um_provedor_nao_corta_matricula_de_outro() -> None:
     appmax = _matricula(provider="appmax")
     outro = _matricula(provider="mercadopago")
 
-    # guarda: services/alunos/apps/matriculas/handlers.py:90
     processar_envelope(_reversao(provider="appmax"), HANDLERS)
 
     appmax.refresh_from_db()
@@ -207,7 +206,6 @@ def test_reversao_de_uma_referencia_nao_corta_outra() -> None:
     alvo = _matricula(referencia=REFERENCIA)
     outra = _matricula(referencia="pedido-outro")
 
-    # guarda: services/alunos/apps/matriculas/handlers.py:91
     processar_envelope(_reversao(referencia=REFERENCIA), HANDLERS)
 
     alvo.refresh_from_db()
@@ -217,6 +215,7 @@ def test_reversao_de_uma_referencia_nao_corta_outra() -> None:
 
 
 def test_reversao_antes_da_aprovacao_mantem_suspensao() -> None:
+    # guarda: services/alunos/apps/matriculas/services.py:190
     processar_envelope(_reversao(), HANDLERS)
     processar_envelope(_aprovado(), HANDLERS)
 
@@ -233,3 +232,65 @@ def test_reversao_sem_matricula_e_processada_sem_interromper(caplog) -> None:
 
     assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).exists()
     assert "pedido-sem-matricula" in caplog.text
+
+
+def test_reversao_que_se_diz_v1_e_recusada_sem_cortar_ninguem() -> None:
+    matricula = _matricula()
+    envelope = _reversao()
+    envelope["version"] = 1
+
+    with pytest.raises(VersaoDesconhecida):
+        processar_envelope(envelope, HANDLERS)
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_ATIVA
+    assert not EventoProcessado.objects.filter(event_id=envelope["event_id"]).exists()
+
+
+def _estorno() -> dict:
+    return {
+        "event": "pagamento.estornado",
+        "version": 2,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-26T19:00:00Z",
+        "data": {
+            "platform_site_id": SITE,
+            "provider": PROVEDOR,
+            "provider_reference_id": REFERENCIA,
+            "amount_cents": 9900,
+            "motivo": "estorno",
+        },
+    }
+
+
+@pytest.mark.parametrize("primeiro", ["reversao", "estorno"])
+def test_reversao_e_estorno_do_mesmo_pagamento_cortam_uma_vez(primeiro: str) -> None:
+    matricula = _matricula()
+    avisos = [_reversao(), _estorno()]
+    if primeiro == "estorno":
+        avisos.reverse()
+
+    for aviso in avisos:
+        processar_envelope(aviso, HANDLERS)
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert len(_cortes()) == 1
+
+
+def test_aprovacao_que_chega_depois_da_reversao_nao_reativa() -> None:
+    """A disputa ganha não reabre a sala sozinha: reabrir é decisão humana.
+
+    O handler é chamado direto, além do envelope novo, porque o dedup pela
+    identidade do fato barraria o envelope antes dele e esconderia uma
+    reativação que o handler fizesse.
+    """
+    matricula = _matricula()
+    processar_envelope(_reversao(), HANDLERS)
+
+    processar_envelope(_aprovado(), HANDLERS)
+    ao_pagamento_aprovado(_aprovado()["data"])
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert Matricula.objects.filter(provider_reference_id=REFERENCIA).count() == 1

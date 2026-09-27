@@ -85,9 +85,11 @@ PONTE_DO_V1 = {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
         "no_v1": None,  # nasceu na v2 (Rito de Contrato de 20/09/2026)
     },
+    # [REVERSAO] A mesma chave do estorno, porque os dois avisos apontam o
+    # mesmo pagamento: é ela que faz o segundo deles não cortar de novo.
     "pagamento.reversao_confirmada": {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
-        "no_v1": None,
+        "no_v1": None,  # nasceu na v2 (Rito de Contrato da TAR-755)
     },
 }
 
@@ -105,6 +107,9 @@ class EventoSemPonte(LookupError):
     """Evento consumido sem a ponte entre versões declarada em PONTE_DO_V1."""
 
 
+# [REVERSAO] Campos e valores COPIADOS de
+# contracts/eventos/pagamento.reversao_confirmada.v2.json. Guarda de que não
+# derivam: tests/test_reversao_confirmada.py::test_a_borda_copia_campos_e_enums_do_contrato_v2.
 REVERSAO_CAMPOS = {
     "platform_site_id",
     "provider",
@@ -116,7 +121,17 @@ REVERSAO_MOTIVOS = {"estorno", "contestacao"}
 
 
 def validar_reversao_confirmada(dados: dict) -> None:
-    """Recusa na borda um aviso v2 que não obedeça ao contrato congelado."""
+    """Recusa na borda um aviso de reversão que o contrato não permite.
+
+    Este é o único aviso da célula conferido campo a campo, e por duas razões.
+    Ele corta acesso sem trazer valor, então um `amount_cents` que aparecesse
+    nele seria um emissor fingindo prova financeira que o contrato proíbe. E o
+    emissor é novo (Appmax): site vazio ou motivo fora da lista cortaria a
+    pessoa errada, ou por um status que não é reversão confirmada.
+
+    A recusa sobe antes de o evento ser marcado como processado: a mensagem fica
+    no PEL e vai para a fila morta depois de MAX_ENTREGAS, onde alguém a lê.
+    """
     campos_recebidos = set(dados)
     if campos_recebidos != REVERSAO_CAMPOS:
         raise ValueError(
