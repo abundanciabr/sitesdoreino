@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-033228-TAR-800-submetida",
+  "tarefa": "TAR-800",
+  "evento": "submetida",
+  "quando": "2026-09-27T03:32:28.141673+00:00",
+  "quem": "agent/metricas/quiz-limpar-lead",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2178",
+  "revisao": "2fd5f8ec39d8d8eff418ec9bcccb784af3236d78",
+  "arvore": "77016500c99b31a0add3d66e612fa30cae60f5e1"
+}

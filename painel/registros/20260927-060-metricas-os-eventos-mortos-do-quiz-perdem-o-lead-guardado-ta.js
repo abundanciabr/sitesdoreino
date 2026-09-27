@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-060-metricas-os-eventos-mortos-do-quiz-perdem-o-lead-guardado-ta",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "metricas: os eventos mortos do quiz perdem o lead guardado (TAR-819)",
+  detalhe: "Migração 0005 apaga lead do corpo dos EventoMorto de quiz.completado, sem\ntocar outro assunto. Suíte verde, mutação provada no caso do tipo vazio.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2190. Validação local: árvore 533f0182a966c87abd25ef2f3ebe51772a1e62b2; commit 37e10c8af8e424c74bdc11781443da6dd54ceafb; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-819",
+  gravidade: "verde",
+  frente: "site",
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
