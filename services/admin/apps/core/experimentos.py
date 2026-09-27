@@ -151,7 +151,7 @@ def _plano(escrito) -> "tuple[dict[str, str], float | None, float | None]":
     return {}, taxa / 100, mde / 100
 
 
-def _recusas(escrito) -> dict[str, str]:
+def recusas_do_plano(escrito) -> dict[str, str]:
     """Tudo o que não faz sentido, antes de perguntar ao catálogo."""
     erros, _, _ = _plano(escrito)
     if escrito["espaco"] not in ESPACOS:
@@ -202,7 +202,7 @@ def _corpo_do_experimento(escrito) -> dict:
     }
 
 
-def _texto_no_ar(site, espaco: str) -> "tuple[str, str]":
+def texto_no_ar(site, espaco: str) -> "tuple[str, str]":
     """`(situação, texto)` do espaço na versão publicada.
 
     Espaço ausente da versão no ar volta `OK` com texto vazio: é resposta, e a
@@ -234,7 +234,7 @@ def _formulario(request, site, escrito, *, erros=None, motivo="", erro="", statu
     erros = erros or {}
     texto_a, situacao = "", ""
     if escrito["espaco"] in ESPACOS:
-        situacao, texto_a = _texto_no_ar(site, escrito["espaco"])
+        situacao, texto_a = texto_no_ar(site, escrito["espaco"])
     no_ar = _no_ar(situacao, texto_a) if situacao else "sem_espaco"
     _, taxa, mde = _plano(escrito)
     return render(
@@ -271,11 +271,12 @@ def _sem_catalogo(request, template: str, status: int = 200):
 # ---------------------------------------------------------------------------
 # As duas escritas, chamadas pela tela e pelo `manage.py semear_experimento`
 # ---------------------------------------------------------------------------
-def criar_rascunho(request, site, escrito) -> "tuple[str, dict | str]":
+def criar_rascunho(quem_assina, site, escrito) -> "tuple[str, dict | str]":
     """Grava o rascunho no catálogo e a linha de auditoria, deu certo ou não.
 
-    `escrito` já passou por `_recusas`. De `request` só se lê `.admin`, que
-    assina a auditoria: a tela passa a requisição, o semeador passa o ator dele.
+    `escrito` já passou por `recusas_do_plano`. De `quem_assina` só se lê
+    `.admin`, que assina a auditoria: a tela passa a requisição, o semeador
+    passa o ator dele.
     """
     situacao, resposta = CatalogoClient().criar_experimento(
         site["id"], SLUG_DA_PAGINA, _corpo_do_experimento(escrito)
@@ -286,7 +287,7 @@ def criar_rascunho(request, site, escrito) -> "tuple[str, dict | str]":
     )
     if situacao == CatalogoClient.OK:
         _auditar(
-            request,
+            quem_assina,
             Registro.CRIAR_EXPERIMENTO,
             str(resposta.get("id") or SLUG_DA_PAGINA),
             Registro.OK,
@@ -296,7 +297,7 @@ def criar_rascunho(request, site, escrito) -> "tuple[str, dict | str]":
 
     recusado = situacao in (CatalogoClient.RECUSADO, CatalogoClient.SEM_PAGINA)
     _auditar(
-        request,
+        quem_assina,
         Registro.CRIAR_EXPERIMENTO,
         SLUG_DA_PAGINA,
         Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
@@ -305,20 +306,23 @@ def criar_rascunho(request, site, escrito) -> "tuple[str, dict | str]":
     return situacao, resposta
 
 
-def iniciar(request, site, alvo: str) -> "tuple[str, dict | str]":
-    """Pede ao catálogo o estado `ativo` e grava a linha de auditoria."""
+def iniciar_experimento(quem_assina, site, alvo: str) -> "tuple[str, dict | str]":
+    """Pede ao catálogo o estado `ativo` e grava a linha de auditoria.
+
+    `quem_assina` como em `criar_rascunho`.
+    """
     situacao, resposta = CatalogoClient().mudar_estado_do_experimento(
         site["id"], SLUG_DA_PAGINA, alvo, {"estado": "ativo"}
     )
     if situacao == CatalogoClient.OK:
         _auditar(
-            request, Registro.INICIAR_EXPERIMENTO, alvo, Registro.OK, SLUG_DA_PAGINA
+            quem_assina, Registro.INICIAR_EXPERIMENTO, alvo, Registro.OK, SLUG_DA_PAGINA
         )
         return situacao, resposta
 
     recusado = situacao != CatalogoClient.NAO_RESPONDEU
     _auditar(
-        request,
+        quem_assina,
         Registro.INICIAR_EXPERIMENTO,
         alvo,
         Registro.RECUSADO_PELA_CELULA if recusado else Registro.NAO_RESPONDEU,
@@ -347,7 +351,7 @@ def experimento_novo(request):
             metrica_principal=next(iter(METRICAS)),
         )
         if request.GET.get("copiar"):
-            situacao, texto_a = _texto_no_ar(site, escrito["espaco"])
+            situacao, texto_a = texto_no_ar(site, escrito["espaco"])
             if situacao == CatalogoClient.OK:
                 escrito["texto_b"] = texto_a
         return _formulario(request, site, escrito)
@@ -357,7 +361,7 @@ def experimento_novo(request):
         erros, _, _ = _plano(escrito)
         return _formulario(request, site, escrito, erros=erros)
 
-    erros = _recusas(escrito)
+    erros = recusas_do_plano(escrito)
     if erros:
         return _formulario(request, site, escrito, erros=erros, status=422)
 
@@ -445,7 +449,7 @@ def experimento_iniciar(request, experimento_id):
         return _sem_catalogo(request, "admin/experimentos.html", status=503)
 
     alvo = str(experimento_id)
-    situacao, resposta = iniciar(request, site, alvo)
+    situacao, resposta = iniciar_experimento(request, site, alvo)
     if situacao == CatalogoClient.OK:
         return HttpResponseRedirect(f"{reverse('experimentos')}?recado=iniciado")
 
