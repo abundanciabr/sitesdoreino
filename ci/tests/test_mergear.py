@@ -854,6 +854,8 @@ def _pousar_automatico(monkeypatch, corpo: str, estado_do_provedor: str = "") ->
                     }
                 ]
             )
+        if argumentos[:2] == ["api", "graphql"]:
+            return _json.dumps({"data": {"repository": {"pullRequests": {"nodes": []}}}})
         if argumentos[:3] == ["pr", "view", "12"]:
             return _json.dumps({"state": estado_do_provedor, "title": "o provedor"})
         if argumentos[:3] == ["pr", "view", "99"]:
