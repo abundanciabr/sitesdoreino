@@ -1,0 +1,19 @@
+{
+  "arquivo": "811-testar-os-status-appmax-de-cartao-e-pix-que-hoje-ninguem-tes",
+  "id": "TAR-811",
+  "titulo": "Testar os status Appmax de cartao e Pix que hoje ninguem testa",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes novos para pendente_integracao, recusado_por_risco e status desconhecido, no cartao e no Pix, nascem vermelhos sem a asserção e ficam verdes com ela; suite completa de pagamentos verde; nenhum arquivo de producao tocado.",
+  "despacho": "Escreva so testes novos para o cartao e o Pix Appmax; nenhuma linha de codigo de producao muda nesta tarefa.\n\nAlvos exatos:\n- services/pagamentos/tests/test_smoke.py: acrescente casos parametrizados usando o helper _appmax(rede, statuses=[...]) ja existente, cobrindo o status \"pendente_integracao\" (deve aprovar, como \"aprovado\"/\"integrado\") e \"recusado_por_risco\" (deve recusar, como \"cancelado\") no fluxo de confirmacao de cartao.\n- services/pagamentos/tests/test_pix_appmax.py: acrescente os mesmos dois status na funcao reconciliar(), reaproveitando o padrao de _cliente()/_criar() ja usado no arquivo.\n- Em ambos os arquivos, acrescente um caso de status desconhecido (uma string que nao esta no catalogo de 7 valores de ci/operacoes_vps.py:STATUS_APPMAX_PEDIDO) e afirme que a Intent fica pendente, nenhum evento de aprovacao ou recusa e emitido, e a excecao correta e levantada (ResultadoAmbiguo convertido em FalhaNoProvedor no cartao; FalhaNoProvedor direto no Pix).\n- services/pagamentos/tests/test_supervisao_appmax.py: acrescente um teste chamando processar_rodada() sobre um aviso \"order_refund\" ou \"order_chargeback_in_treatment\" de uma Intent ja aprovada, e afirme o desfecho medido (reconciliation_required, contagem de falha, ou o que a medicao encontrar), sem inventar comportamento novo.\n\nAntes de tocar esses arquivos, rode a suite de pagamentos e confirme que nenhuma outra sessao esta reescrevendo methods/card/service.py, methods/pix/appmax.py, supervisao.py ou api/webhooks.py ao mesmo tempo (fila ao vivo); se houver, serialize atras dela em vez de editar por cima. Prova de vermelho para verde exigida: cada teste novo nasce falhando antes de existir a asserção certa (ou comente a asserção e mostre o teste passando de qualquer jeito, se for o caso de checar contra código já correto).\n\nFora do escopo: qualquer mudanca em card/service.py, pix/appmax.py, supervisao.py, api/webhooks.py, contracts/ ou qualquer chamada real a Appmax. Estorno e chargeback financeiros continuam bloqueados em TAR-644; esta tarefa nao mexe nisso, so testa o caminho ja existente do aviso guardado sem avancar.",
+  "origem": "Medicao N9 (diagnostico), PR desta sessao, pagamentos/appmax-status-medicao",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
