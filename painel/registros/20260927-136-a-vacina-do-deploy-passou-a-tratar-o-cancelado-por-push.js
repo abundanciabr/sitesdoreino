@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-136-a-vacina-do-deploy-passou-a-tratar-o-cancelado-por-push",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A vacina do deploy passou a tratar o cancelado por push",
+  detalhe: "Dois trabalhos ficaram fora do site por deploy cancelado. Foram republicados no dia, e a ferramenta foi corrigida pelo PR 573.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/562 e https://github.com/abundanciabr/sitesdoreino/pull/573 MERGED (gh pr view, 27/09/2026); fila/eventos/20260830-111732-TAR-017-concluida.json na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260830-011-dois-merges-ficaram-na-main-sem-chegar-ao-site",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
