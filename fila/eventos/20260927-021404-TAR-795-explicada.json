@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-021404-TAR-795-explicada",
+  "tarefa": "TAR-795",
+  "evento": "explicada",
+  "quando": "2026-09-27T02:14:04.927354+00:00",
+  "quem": "RETOMADA-APPMAX.md seções 8 e 10, sessão de 26/09/2026 22h53",
+  "o_que_e": "O livro guarda o que o mantenedor decidiu nesta noite e quantas frentes da obra Appmax existem de verdade",
+  "o_que_muda": "Qualquer sessão futura sabe o mandato dado e por que a ordem de 21 frentes não foi atingida, sem perguntar de novo",
+  "exemplo": "Uma sessão amanhã lê o registro e sabe que services/pagamentos/ tem mandato e quantas frentes faltam por dependência",
+  "importancia": 40
+}

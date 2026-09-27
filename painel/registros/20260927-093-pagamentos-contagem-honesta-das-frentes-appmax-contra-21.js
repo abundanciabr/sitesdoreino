@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-093-pagamentos-contagem-honesta-das-frentes-appmax-contra-21",
+  tipo: "medicao",
+  quando: "2026-09-27",
+  titulo: "pagamentos: contagem honesta das frentes da obra Appmax contra a ordem de 21",
+  detalhe: "Ordem do mantenedor (RETOMADA-APPMAX.md secao 1) exige ao menos 21 frentes legitimas. Medido na fila viva (ci/fila.py listar --ao-vivo) e em gh pr view em 27/09: 25 frentes abertas, 0 faltando para 21. Concluidas pela fila: 17 (TAR 744, 749, 750, 802, 730, 758, 803, 804, 808, 809, 810, 813, 814, 816, 820, 822, 831). Bloqueada com prova: TAR-711 (Pix sem QR). Codigo integrado (PRs 2187/2196 e 2179) mas sem evento de conclusao por reivindicacao expirada: TAR-752 e TAR-757. Em voo, PR aberto e tarefa so no branch: TAR-830 (PR 2173), TAR-838 (PR 2203) e a N3 appmax-observacao TAR-834 (PR 2202). Na fila esperando decisao de migracao aditiva: TAR-821. Em execucao: esta TAR-795.",
+  autoridade: "sessao",
+  evidencia: "python ci/fila.py listar --ao-vivo --json (27/09/2026) e gh pr view 2160 2187 2196 2179 2166 2161 2165 2199 2159 2176 2175 2181 2172 2171 2183 2182 2173 2198 2203 2202 --json state,mergedAt,title",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-795",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

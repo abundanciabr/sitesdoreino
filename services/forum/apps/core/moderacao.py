@@ -36,6 +36,7 @@ As cinco regras que este arquivo inteiro obedece, e que não se reabrem aqui:
 from __future__ import annotations
 
 import json
+import re
 
 from django.db import IntegrityError, transaction
 from django.http import Http404, StreamingHttpResponse
@@ -43,10 +44,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.forum import eventos
-from apps.forum.models import Area, Mensagem, Topico
+from apps.forum.models import Area, MembroDoGrupo, Mensagem, Pessoa, Topico
 from apps.forum.tasks import relay_apos_commit
 
 from . import agente, galeria
@@ -59,6 +60,7 @@ from .views import (
     contexto_da_area,
     contexto_da_home,
     contexto_do_topico,
+    endereco_do_desafio,
 )
 
 # ---------------------------------------------------------------------------
@@ -100,6 +102,41 @@ ERRO_BANCO_RECUSOU = (
     "alunos, então nada foi mudado."
 )
 
+# O GRUPO DE PRÁTICA (TAR-824, 27/09/2026). O código do curso é opaco para o
+# fórum (quem é dono do catálogo é a célula `cursos`), mas vira pedaço de
+# endereço na página Comunidade, então só passam os caracteres que um endereço
+# de curso usa.
+CURSO_DO_GRUPO = re.compile(r"[A-Za-z0-9_-]{1,64}")
+VAGAS_MAXIMAS = 500
+MOTIVO_MAXIMO = 200
+
+ERRO_CURSO_DO_GRUPO = (
+    "Todo grupo de prática precisa do código do curso do desafio atual, o mesmo "
+    "que aparece no endereço do curso depois de /cursos/. Use só letras, "
+    "números, hífen e sublinhado."
+)
+ERRO_RESPONSAVEL_FORA_DA_EQUIPE = (
+    "O responsável pelo grupo precisa ser professor ou administrador do fórum. "
+    "Se a pessoa certa não aparece na lista, peça que ela entre no fórum uma vez "
+    "e recarregue esta página."
+)
+ERRO_VAGAS = f"Diga quantas vagas o grupo tem, com um número de 1 a {VAGAS_MAXIMAS}."
+ERRO_VAGA_CHEIA = (
+    "Todas as vagas do grupo estão ocupadas, então ninguém entrou. Remova alguém "
+    "ou aumente as vagas na edição do grupo."
+)
+ERRO_MOTIVO_VAZIO = (
+    "Escreva o motivo da entrada, por exemplo a turma ou o pedido que a pessoa "
+    "fez no fórum."
+)
+ERRO_MOTIVO_LONGO = f"O motivo passou de {MOTIVO_MAXIMO} letras. Uma linha basta."
+ERRO_PESSOA_DESCONHECIDA = (
+    "Não achei ninguém com esse e-mail no fórum. Confira o e-mail; se estiver "
+    "certo, a pessoa precisa entrar no fórum uma vez antes de ser adicionada."
+)
+ERRO_JA_E_MEMBRO = "Essa pessoa já está no grupo."
+ERRO_VINCULO_INEXISTENTE = "Essa pessoa já não está no grupo. Recarregue a página."
+
 # O RASCUNHO DA IA (02/09/2026). As duas recusas existem porque o rascunho nasce
 # dentro da caixa de responder, e nas duas situações abaixo essa caixa não está
 # na tela: gerar texto para uma caixa que não existe seria trabalho pago à
@@ -130,12 +167,15 @@ AVISO_IA_TRAVESSAO = (
     "soar certo em cada uma."
 )
 
-# As duas visibilidades que o fórum sabe conferir hoje. `turma` existe no
-# modelo e continua fora daqui de propósito: enquanto o fórum não souber
-# perguntar à `alunos` se alguém está NUM curso, `pode_ler` fecha para todo
-# mundo (`permissoes.py`), e oferecer o botão seria oferecer a criação de uma
-# área que ninguém abre.
-VISIBILIDADES_OFERECIDAS = {Area.Visibilidade.PUBLICA, Area.Visibilidade.ALUNOS}
+# As três visibilidades que o fórum sabe conferir. `turma` entrou em 27/09/2026
+# (TAR-824) como o GRUPO DE PRÁTICA: desde então `pode_ler` sabe quem está nela,
+# pelo vínculo ativo em `MembroDoGrupo`, e a área deixou de ser uma porta que
+# ninguém abre.
+VISIBILIDADES_OFERECIDAS = {
+    Area.Visibilidade.PUBLICA,
+    Area.Visibilidade.ALUNOS,
+    Area.Visibilidade.TURMA,
+}
 QUEM_ESCREVE_OFERECIDO = {
     Area.QuemEscreve.EQUIPE,
     Area.QuemEscreve.ALUNO,
@@ -181,13 +221,48 @@ def _salvar_com_a_rede_do_banco(objeto) -> str:
 # ===========================================================================
 
 
+def _ler_o_grupo(request) -> tuple[dict, str]:
+    """Os três campos do grupo de prática. Devolve (grupo, erro).
+
+    `grupo` guarda o que foi DIGITADO, para a tela devolver numa recusa, e só
+    ganha `responsavel_pessoa` e `vagas_numero` quando tudo confere.
+
+    O responsável passa pela MESMA pergunta que dá poder a quem está do outro
+    lado da tela (`email_da_equipe`): lista do env vazia significa que ninguém
+    pode ser responsável, nunca que qualquer um pode.
+    """
+    grupo = {
+        "curso_id": (request.POST.get("curso_id") or "").strip(),
+        "responsavel": (request.POST.get("responsavel") or "").strip(),
+        "vagas": (request.POST.get("vagas") or "").strip(),
+    }
+    if not CURSO_DO_GRUPO.fullmatch(grupo["curso_id"]):
+        return grupo, ERRO_CURSO_DO_GRUPO
+    responsavel = Pessoa.objects.filter(pk=grupo["responsavel"]).first()
+    if responsavel is None or not email_da_equipe(responsavel.email):
+        return grupo, ERRO_RESPONSAVEL_FORA_DA_EQUIPE
+    if not re.fullmatch(r"[0-9]{1,4}", grupo["vagas"]) or not (
+        1 <= int(grupo["vagas"]) <= VAGAS_MAXIMAS
+    ):
+        return grupo, ERRO_VAGAS
+    grupo["responsavel_pessoa"] = responsavel
+    grupo["vagas_numero"] = int(grupo["vagas"])
+    return grupo, ""
+
+
 def _ler_o_formulario_da_area(request) -> tuple[dict, str]:
-    """Os quatro campos da área, conferidos juntos. Devolve (campos, erro)."""
+    """Os campos da área, conferidos juntos. Devolve (campos, erro).
+
+    Os do grupo de prática só são exigidos quando a área É um grupo; nas outras
+    eles voltam só para a tela não perder o que foi digitado.
+    """
+    grupo, erro_do_grupo = _ler_o_grupo(request)
     campos = {
         "nome": (request.POST.get("nome") or "").strip(),
         "descricao": (request.POST.get("descricao") or "").strip(),
         "visibilidade": (request.POST.get("visibilidade") or "").strip(),
         "quem_escreve": (request.POST.get("quem_escreve") or "").strip(),
+        "grupo": grupo,
     }
 
     if not campos["nome"]:
@@ -198,6 +273,8 @@ def _ler_o_formulario_da_area(request) -> tuple[dict, str]:
         return campos, ERRO_VISIBILIDADE
     if campos["quem_escreve"] not in QUEM_ESCREVE_OFERECIDO:
         return campos, ERRO_QUEM_ESCREVE
+    if campos["visibilidade"] == Area.Visibilidade.TURMA and erro_do_grupo:
+        return campos, erro_do_grupo
     # EM PÁGINA PÚBLICA, SÓ A ESCOLA FALA. A conferência é aqui para o
     # mantenedor receber uma frase em vez de um erro de banco; a garantia de
     # verdade continua sendo a restrição do PostgreSQL, que nem um `update()`
@@ -234,44 +311,37 @@ def criar_area(request):
     ):
         erro = ERRO_AREA_REPETIDA
 
-    if erro:
-        return render(
-            request,
-            "forum/home.html",
-            contexto_da_home(
-                ator,
-                erro_admin=erro,
-                nome=campos["nome"],
-                descricao=campos["descricao"],
-            ),
-            status=400,
+    if not erro:
+        # A área nova entra no fim da lista. `ordem` é dado de exibição, e o
+        # passo de 10 deixa espaço para intercalar sem renumerar tudo.
+        ultima = Area.objects.order_by("-ordem").values_list("ordem", flat=True).first()
+        area = Area(
+            slug=slug,
+            nome=campos["nome"],
+            descricao=campos["descricao"],
+            visibilidade=campos["visibilidade"],
+            quem_escreve=campos["quem_escreve"],
+            ordem=(ultima or 0) + 10,
         )
+        if area.visibilidade == Area.Visibilidade.TURMA:
+            _aplicar_o_grupo(area, campos["grupo"])
+        erro = _salvar_com_a_rede_do_banco(area)
 
-    # A área nova entra no fim da lista. `ordem` é dado de exibição, e o passo
-    # de 10 deixa espaço para intercalar sem renumerar tudo.
-    ultima = Area.objects.order_by("-ordem").values_list("ordem", flat=True).first()
-    area = Area(
-        slug=slug,
-        nome=campos["nome"],
-        descricao=campos["descricao"],
-        visibilidade=campos["visibilidade"],
-        quem_escreve=campos["quem_escreve"],
-        ordem=(ultima or 0) + 10,
-    )
-    erro = _salvar_com_a_rede_do_banco(area)
     if erro:
         return render(
             request,
             "forum/home.html",
-            contexto_da_home(
-                ator,
-                erro_admin=erro,
-                nome=campos["nome"],
-                descricao=campos["descricao"],
-            ),
+            contexto_da_home(ator, erro_admin=erro, digitado=campos),
             status=400,
         )
     return redirect(reverse("area", args=[area.slug]))
+
+
+def _aplicar_o_grupo(area: Area, grupo: dict) -> None:
+    """Os três campos do grupo de prática, já conferidos por `_ler_o_grupo`."""
+    area.curso_id = grupo["curso_id"]
+    area.responsavel = grupo["responsavel_pessoa"]
+    area.vagas = grupo["vagas_numero"]
 
 
 @require_POST
@@ -289,6 +359,8 @@ def moderar_area(request, slug: str):
             area.descricao = campos["descricao"]
             area.visibilidade = campos["visibilidade"]
             area.quem_escreve = campos["quem_escreve"]
+            if area.visibilidade == Area.Visibilidade.TURMA:
+                _aplicar_o_grupo(area, campos["grupo"])
             erro = _salvar_com_a_rede_do_banco(area)
     elif acao in ("arquivar", "reabrir"):
         # O "deletar" honesto: a área some da lista de todo mundo e continua
@@ -307,6 +379,118 @@ def moderar_area(request, slug: str):
             status=400,
         )
     return redirect(reverse("area", args=[area.slug]))
+
+
+# ===========================================================================
+# GRUPO DE PRÁTICA: quem está dentro, e os dois gestos da escola, pôr e tirar
+# ===========================================================================
+# TAR-824, 27/09/2026. As mesmas cinco regras do cabeçalho: 404 para quem não
+# modera, POST com CSRF para mudar, nenhuma linha apagada (tirar alguém é
+# preencher `ate` e `removido_por`), e a recusa devolve a mesma tela com o que
+# foi digitado. O GET existe porque a escola precisa VER o grupo antes de
+# mexer nele; ele não muda nada.
+
+
+def _contexto_do_grupo(ator, grupo, *, erro="", email="", motivo="") -> dict:
+    membros = list(
+        MembroDoGrupo.objects.filter(grupo=grupo, ate__isnull=True).select_related(
+            "pessoa", "adicionado_por"
+        )
+    )
+    return {
+        "ator": ator,
+        "grupo": grupo,
+        "desafio": endereco_do_desafio(grupo),
+        "membros": membros,
+        "sairam": MembroDoGrupo.objects.filter(grupo=grupo, ate__isnull=False).count(),
+        "erro": erro,
+        "email_digitado": email,
+        "motivo_digitado": motivo,
+    }
+
+
+def _adicionar_membro(request, ator, grupo) -> str:
+    email = (request.POST.get("email") or "").strip().lower()
+    motivo = (request.POST.get("motivo") or "").strip()
+    if not motivo:
+        return ERRO_MOTIVO_VAZIO
+    if len(motivo) > MOTIVO_MAXIMO:
+        return ERRO_MOTIVO_LONGO
+    pessoa = Pessoa.objects.filter(email=email).first() if email else None
+    if pessoa is None:
+        return ERRO_PESSOA_DESCONHECIDA
+
+    try:
+        with transaction.atomic():
+            # A VAGA É CONTADA COM O GRUPO TRANCADO. Sem o `select_for_update`,
+            # dois cliques ao mesmo tempo na última vaga contariam "sobra uma"
+            # cada um, e o grupo passaria do teto que a escola escolheu.
+            travado = Area.objects.select_for_update().get(pk=grupo.pk)
+            ativos = MembroDoGrupo.objects.filter(grupo=travado, ate__isnull=True)
+            if ativos.filter(pessoa=pessoa).exists():
+                return ERRO_JA_E_MEMBRO
+            if ativos.count() >= travado.vagas:
+                return ERRO_VAGA_CHEIA
+            MembroDoGrupo.objects.create(
+                grupo=travado, pessoa=pessoa, motivo=motivo, adicionado_por=ator.pessoa
+            )
+    except IntegrityError:
+        # A restrição `um_vinculo_ativo_por_pessoa_e_grupo` pegou o que a
+        # conferência acima não viu a tempo.
+        return ERRO_JA_E_MEMBRO
+    return ""
+
+
+def _remover_membro(request, ator, grupo) -> str:
+    vinculo_id = (request.POST.get("vinculo_id") or "").strip()
+    vinculo = (
+        MembroDoGrupo.objects.filter(
+            pk=vinculo_id, grupo=grupo, ate__isnull=True
+        ).first()
+        if vinculo_id.isascii() and vinculo_id.isdigit()
+        else None
+    )
+    if vinculo is None:
+        return ERRO_VINCULO_INEXISTENTE
+    vinculo.ate = timezone.now()
+    vinculo.removido_por = ator.pessoa
+    return _salvar_com_a_rede_do_banco(vinculo)
+
+
+@require_http_methods(["GET", "POST"])
+def membros_do_grupo(request, slug: str):
+    """Os membros de um grupo de prática. 404 para quem não é da escola.
+
+    Área que não é grupo também é 404: a tela de membros de uma área de alunos
+    seria uma porta para uma regra que ela não tem.
+    """
+    ator = _so_quem_modera(request)
+    grupo = get_object_or_404(Area, slug=slug, visibilidade=Area.Visibilidade.TURMA)
+    if request.method == "GET":
+        return render(request, "forum/grupo.html", _contexto_do_grupo(ator, grupo))
+
+    acao = (request.POST.get("acao") or "").strip()
+    if acao == "adicionar":
+        erro = _adicionar_membro(request, ator, grupo)
+    elif acao == "remover":
+        erro = _remover_membro(request, ator, grupo)
+    else:
+        erro = ERRO_ACAO_DESCONHECIDA
+
+    if erro:
+        return render(
+            request,
+            "forum/grupo.html",
+            _contexto_do_grupo(
+                ator,
+                grupo,
+                erro=erro,
+                email=(request.POST.get("email") or "").strip(),
+                motivo=(request.POST.get("motivo") or "").strip(),
+            ),
+            status=400,
+        )
+    return redirect(reverse("membros_do_grupo", args=[grupo.slug]))
 
 
 # ===========================================================================

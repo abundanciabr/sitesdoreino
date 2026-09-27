@@ -597,6 +597,103 @@ def test_card_recusado_aceita_novo_token_e_confirma_aprovado(
         assert resp_segunda_tentativa.json()["status"] == "approved"
 
 
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:448
+@pytest.mark.smoke_card
+def test_card_pendente_integracao_confirma_aprovado(
+    client: Client, token_valido: str, settings: Any
+) -> None:
+    """pendente_integracao é um dos 7 status do catálogo Appmax
+    (ci/operacoes_vps.py:STATUS_APPMAX_PEDIDO) e nunca tinha teste próprio:
+    hoje ele aprova, junto com aprovado/integrado."""
+    _configurar_appmax(settings)
+    resp = _post_intent(
+        client,
+        token_valido,
+        "44444444-4444-4444-4444-444444444444",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = resp.json()["id"]
+
+    with respx.mock(assert_all_called=True) as mp:
+        _appmax(mp, statuses=["pendente_integracao"])
+        resp_confirm = _confirmar_cartao_appmax(client, token_valido, intent_id)
+
+    assert resp_confirm.status_code == 200
+    assert resp_confirm.json()["status"] == "approved"
+    assert Intent.objects.get(id=intent_id).status == "approved"
+
+
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:450
+@pytest.mark.smoke_card
+@pytest.mark.django_db(transaction=True)
+def test_card_recusado_por_risco_recusa_com_reason_code(
+    client: Client, token_valido: str, settings: Any
+) -> None:
+    """recusado_por_risco é um dos 7 status do catálogo Appmax e nunca
+    tinha teste próprio: hoje ele recusa, junto com cancelado, e grava o
+    reason_code na Intent."""
+    from pagamentos.core.models import PaymentAttempt
+
+    _configurar_appmax(settings)
+    resp = _post_intent(
+        client,
+        token_valido,
+        "66666666-6666-4666-8666-666666666666",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = resp.json()["id"]
+
+    with respx.mock(assert_all_called=True) as mp:
+        _appmax(mp, statuses=["recusado_por_risco"])
+        resp_confirm = _confirmar_cartao_appmax(client, token_valido, intent_id)
+
+    assert resp_confirm.status_code == 200
+    corpo = resp_confirm.json()
+    assert corpo["status"] == "rejected"
+    assert corpo["card"]["reason_code"] == "recusado_por_risco"
+    intent = Intent.objects.get(id=intent_id)
+    assert intent.status != "approved"
+    assert intent.card_reason_code == "recusado_por_risco"
+    assert PaymentAttempt.objects.get(intent_id=intent_id).state == "rejected"
+
+
+# guarda: services/pagamentos/pagamentos/methods/card/service.py:456
+@pytest.mark.smoke_card
+@pytest.mark.django_db(transaction=True)
+def test_card_status_desconhecido_e_ambiguo_e_responde_502(
+    client: Client, token_valido: str, settings: Any
+) -> None:
+    """Um status Appmax fora dos 7 do catálogo (ci/operacoes_vps.py:
+    STATUS_APPMAX_PEDIDO) não é terminal conhecido: o serviço levanta
+    ResultadoAmbiguo, a Intent fica pendente e a API responde 502, nunca
+    2xx com um resultado inventado."""
+    from pagamentos.core.models import PaymentAttempt
+
+    _configurar_appmax(settings)
+    resp = _post_intent(
+        client,
+        token_valido,
+        "88888888-8888-4888-8888-888888888888",
+        method="card",
+        metadata=_card_metadata(),
+    )
+    intent_id = resp.json()["id"]
+
+    with respx.mock(assert_all_called=True) as mp:
+        _appmax(mp, statuses=["em_analise_manual"])
+        resp_confirm = _confirmar_cartao_appmax(client, token_valido, intent_id)
+
+    assert resp_confirm.status_code == 502
+    intent = Intent.objects.get(id=intent_id)
+    assert intent.status not in ("approved", "rejected")
+    assert (
+        PaymentAttempt.objects.get(intent_id=intent_id).state
+        == "reconciliation_required"
+    )
+
+
 @pytest.mark.smoke_pix
 def test_debug_simulate_webhook_entrega_webhook_assinado_a_si_mesma(
     client: Client, token_valido: str, settings: Any

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-064418-TAR-840-explicada",
+  "tarefa": "TAR-840",
+  "evento": "explicada",
+  "quando": "2026-09-27T06:44:18.314942+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "o_que_e": "As quatro frentes de codigo da primeira rodada da Comunidade pousaram e foram publicadas nesta madrugada, mas o livro ainda mostra os recibos como nao verificados: para o painel dele, nada foi integrado nem publicado.",
+  "o_que_muda": "O painel passa a mostrar, com prova, que o grupo no forum, os reconhecimentos, o ciclo do desafio e a pagina publica da Comunidade estao integrados e no ar, com o endereco e o run de deploy de cada um.",
+  "exemplo": "Ele abre o painel de manha e ve quatro cartoes verdes da Comunidade com os enderecos para clicar: a pagina em /docs/comunidade, o forum em /forum/comunidade, as medalhas em /conquistas/medalhas e o curso em /cursos.",
+  "importancia": 60
+}
