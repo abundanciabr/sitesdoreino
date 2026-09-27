@@ -24,7 +24,7 @@
   {{ pix_data|json_script:"pix-data" }}
   {{ api_token|json_script:"api-token" }}
   {{ api_base|json_script:"api-base" }}
-  <div class="wrap" x-data="pixIsland()" x-init="init()">
+  <div class="wrap" x-data="pixIsland()">
     <div class="card">
       <h1>Pague com Pix</h1>
       <img :src="`data:image/png;base64,${qr.qr_code_base64}`" alt="QR Code Pix" class="qr" x-show="qr.qr_code_base64">

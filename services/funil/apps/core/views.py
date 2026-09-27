@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -13,6 +14,7 @@ from django.http import (
     JsonResponse,
 )
 from django.shortcuts import render
+from django.utils.html import format_html
 from django.views.decorators.http import (
     require_http_methods,
     require_POST,
@@ -28,7 +30,7 @@ from apps.core.clients import (
     LeadsClient,
     NotificacoesClient,
 )
-from apps.core import telemetria, ver_como
+from apps.core import sorteio, telemetria, ver_como
 from apps.core.middleware import limpar_cache_de_avisos
 from apps.core.visitante import COOKIE, id_valido
 from apps.core.notificacoes import (
@@ -44,6 +46,8 @@ from apps.core.enderecos import (
 )
 from apps.i18n import catalogo as cat
 from apps.i18n.idiomas import caminho_publico, direcao, tag_bcp47
+
+logger = logging.getLogger("funil.oferta")
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
 # montada — preservar isso torna o teste de UTM determinístico.
@@ -250,6 +254,10 @@ def _bloco_da_secao(secao) -> dict | None:
         "assinatura": preenchidos.get("assinatura", ""),
         "paragrafos": [preenchidos[chave] for chave in corridos],
         "itens": [preenchidos[chave] for chave in numerados],
+        # De que slot veio cada parágrafo e cada item, na mesma ordem: é por
+        # aqui que a marca do experimento acha o elemento do slot em teste.
+        "slots_dos_paragrafos": corridos,
+        "slots_dos_itens": numerados,
         "slots": preenchidos,
     }
 
@@ -324,6 +332,7 @@ def pagina_de_oferta(request):
         for bloco in (_bloco_da_secao(secao) for secao in pagina["secoes"])
         if bloco is not None
     ]
+    braco = _braco_na_tela(request, pagina, blocos)
 
     offer_slug = pagina.get("offer_slug") or ""
     oferta = None
@@ -355,6 +364,7 @@ def pagina_de_oferta(request):
                 for bloco in blocos
                 if bloco["cta_medido"]
             ],
+            braco,
         )
         if blocos
         else ""
@@ -379,8 +389,71 @@ def pagina_de_oferta(request):
             ),
         },
     )
-    _medir_visita(request, pagina, offer_slug)
+    if braco:
+        # Um cache compartilhado serviria o braço de uma pessoa a outra, e
+        # quem visse o texto de um braço seria contado no outro.
+        resposta["Cache-Control"] = "private, no-store"
+    _medir_visita(request, pagina, offer_slug, braco)
     return resposta
+
+
+def _braco_na_tela(request, pagina: dict, blocos: list) -> dict:
+    """Sorteia o braço deste visitante e põe o texto dele no slot em teste.
+
+    Devolve `{experimento_id, variante_id}`, que é o par dos eventos, ou `{}`
+    quando não há experimento a medir. O bloco da seção em teste é refeito com
+    o texto da variante e ganha `marca`, que diz ao template qual elemento é o
+    do slot e com quais atributos marcá-lo.
+
+    Experimento que aponta para seção ou slot que esta página não desenha é
+    defeito do catálogo: a página segue como foi publicada, sem par nos
+    eventos, e o log diz qual. Medir um braço que ninguém viu contaria
+    exposição inventada.
+    """
+    experimento = pagina.get("experimento_ativo")
+    variante = sorteio.sortear(experimento, getattr(request, "id_do_visitante", ""))
+    if variante is None:
+        return {}
+    secao, slot = experimento["secao"], experimento["slot"]
+    posicao = next(
+        (i for i, bloco in enumerate(blocos) if bloco["nome"] == secao), None
+    )
+    bloco = (
+        None
+        if posicao is None
+        else _bloco_da_secao(
+            {
+                "nome": secao,
+                "slots": {**blocos[posicao]["slots"], slot: variante["valor"]},
+            }
+        )
+    )
+    if bloco is None or slot not in bloco["slots"]:
+        logger.error(
+            "oferta: o experimento %s testa %s.%s, que esta página não desenha; "
+            "a página segue como foi publicada, sem experimento",
+            experimento["id"],
+            secao,
+            slot,
+        )
+        return {}
+
+    bloco["marca"] = {
+        "slot": slot,
+        "paragrafo": _posicao(bloco["slots_dos_paragrafos"], slot),
+        "item": _posicao(bloco["slots_dos_itens"], slot),
+        "atributos": format_html(
+            ' data-experimento-id="{}" data-variante-id="{}"',
+            experimento["id"],
+            variante["variante_id"],
+        ),
+    }
+    blocos[posicao] = bloco
+    return {"experimento_id": experimento["id"], "variante_id": variante["variante_id"]}
+
+
+def _posicao(slots: list, slot: str) -> int | None:
+    return slots.index(slot) if slot in slots else None
 
 
 def _destino_interno(destino: str) -> bool:
@@ -474,11 +547,11 @@ def pagina_flp(request):
     resposta = render(
         request, "funil/flp.html", {"site": request.site, "blocos": blocos}
     )
-    _medir_visita(request, pagina, pagina.get("offer_slug") or "")
+    _medir_visita(request, pagina, pagina.get("offer_slug") or "", {})
     return resposta
 
 
-def _medir_visita(request, pagina: dict, offer_slug: str) -> None:
+def _medir_visita(request, pagina: dict, offer_slug: str, braco: dict) -> None:
     """Publica `funil.pagina-vista.v1`. Nunca derruba nem segura a página.
 
     ID e VERSÃO, nunca copy: é `pagina_version` que amarra o fato ao conteúdo
@@ -494,6 +567,7 @@ def _medir_visita(request, pagina: dict, offer_slug: str) -> None:
         "pagina_slug": pagina["slug"],
         "pagina_version": pagina["version"],
         "offer_slug": offer_slug,
+        **braco,
     }
     referrer = request.META.get("HTTP_REFERER", "")
     if referrer:
@@ -1191,6 +1265,7 @@ def _medir_lead(request, token, resultado) -> None:
             "pagina_slug": contexto["p"],
             "pagina_version": contexto["v"],
             "lead_id": lead_id,
+            **telemetria.braco_do_contexto(contexto),
         },
         event_id=telemetria.id_do_fato(
             contexto["c"], visitante, "lead-capturado", lead_id
@@ -1267,6 +1342,7 @@ def telemetria_do_navegador(request):
             "pagina_slug": contexto["p"],
             "pagina_version": contexto["v"],
             "secao": corpo["secao"],
+            **telemetria.braco_do_contexto(contexto),
         }
         if evento == "cta-clicado":
             dados["slot"] = corpo["slot"]
