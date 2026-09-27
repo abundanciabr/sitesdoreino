@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-116-vista-da-equipe-avisa-publicado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O ajuste da vista da equipe está no ar: espera sem dono é aviso, não alarme",
+  detalhe: "Depois do merge do PR 2210 (TAR-841), o deploy do fórum no SHA 35e8b8f1 terminou verde (run 36302812069, job deploy forum success). De fora, https://meshcraft.top/forum/comunidade/equipe continua respondendo 404 ao visitante, como desenhado, e https://meshcraft.top/forum/comunidade 200. Com isto, a primeira rodada da Comunidade Meshcraft está integrada e publicada por inteiro: página pública, grupo de prática, ciclo do desafio, reconhecimentos, vista da equipe e o ajuste de revisão. O que falta é a prova ponta a ponta em produção (TAR-828), que espera as contas de teste do mantenedor (registro 072).",
+  autoridade: "sonda",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/36302812069 (deploy-celula success no SHA 35e8b8f1a8c425c52e41b986244f8cab1b07fa02); curl https://meshcraft.top/forum/comunidade/equipe: HTTP 404 para visitante; curl https://meshcraft.top/forum/comunidade: HTTP 200",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-841",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

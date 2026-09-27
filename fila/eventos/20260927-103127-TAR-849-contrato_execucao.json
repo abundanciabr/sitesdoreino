@@ -1,0 +1,69 @@
+{
+  "arquivo": "20260927-103127-TAR-849-contrato_execucao",
+  "tarefa": "TAR-849",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T10:31:27.373576+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-2",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 2 (dossiê §15, partes sem decisão reservada): O quadro de contribuições da Comunidade: a escola publica tarefas úteis, o aluno assume, entrega e é reconhecido quando a equipe aceita",
+    "versao": 1,
+    "objetivo": "A escola publica tarefas úteis dizendo o que entregar, quem pode fazer, como será avaliado, que reconhecimento vale e quem aceita. O aluno assume, entrega o link, recebe aceite ou um motivo para ajustar, e o reconhecimento é concedido uma única vez quando a equipe aceita.",
+    "entregaveis": [
+      "Tarefa comunitária e compromisso com migração, e a porta única do ciclo",
+      "Tela do aluno /conquistas/contribuicoes com os cinco campos antes de assumir, estado e motivo de devolução",
+      "Tela da equipe para publicar tarefa e avaliar com motivo e orientação obrigatórios na devolução",
+      "Fato de contribuição aceita, conta nova no critério e medalha primeira-contribuicao semeada desligada",
+      "Entrada no mapa do site e testes vermelho para verde"
+    ],
+    "escopo_incluido": [
+      "services/gamificacao/**"
+    ],
+    "nao_objetivos": [
+      "Créditos, saldo, catálogo de recompensas ou benefício além do reconhecimento (decisão do mantenedor)",
+      "Ranking, voto, contagem pública, XP por volume",
+      "Revisão por par como laudo",
+      "Contrato de evento novo ou assunto novo de notificação",
+      "Qualquer arquivo fora de services/gamificacao/** e painel/mapa-do-site.json"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Bancada --sem-container com PostgreSQL próprio e venv em caminho curto; suíte antes da primeira edição",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 (manhã): abrir o máximo de frentes da Comunidade com Opus 5.5 e Sonnet 5",
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Assunções do registro 072 em vigor: matrícula ativa, só a professora assina laudo, orientação pública"
+    ],
+    "etapas": [
+      "Abrir bancada, subir PostgreSQL, rodar a suíte da célula e guardar a saída",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte inteira, black e travessão",
+      "PR por ci/pr.py com a própria TAR e espera com teto"
+    ],
+    "criterios_entrada": [
+      "TAR-849 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Tarefa publicada aparece no quadro com os cinco campos antes de assumir; quem não é equipe recebe 404 nas telas da equipe",
+      "Assumir respeita vagas sob corrida e um compromisso ativo por pessoa e tarefa",
+      "Aceite concede o reconhecimento uma única vez, mesmo repetido; devolução não concede e mostra motivo e orientação",
+      "Quem enviou não consegue aceitar a própria contribuição",
+      "Medalha primeira-contribuicao nasce desligada e 0 XP",
+      "Suíte gamificacao inteira verde com PostgreSQL; black --check e travessao --listar limpos; diff dentro dos alvos",
+      "PR MERGED; deploy verde; https://meshcraft.top/conquistas/contribuicoes responde de fora"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte inteira com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy"
+    ],
+    "condicao_encerramento": "testes vermelho para verde: tarefa publicada pela equipe aparece no quadro com o que entregar, quem pode, como se avalia, o reconhecimento e quem aceita; o aluno assume dentro das vagas, envia o link, a equipe aceita ou devolve com motivo; o aceite concede o reconhecimento uma única vez; quem enviou não aprova a própria contribuição; devolução não concede; guarda provado por mutação; suíte gamificacao verde com PostgreSQL; PR integrado; deploy verde; https://meshcraft.top/conquistas/contribuicoes conferida",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega. Ligar medalhas ou sequências novas é gesto dele na tela, depois do deploy."
+  }
+}

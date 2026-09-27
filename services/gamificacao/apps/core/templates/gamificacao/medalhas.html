@@ -1,0 +1,56 @@
+{% extends "gamificacao/moldura.html" %}{% comment %}
+As MEDALHAS da escola, cada uma com o critério e o estado de quem olha.
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/conquistas` para dentro do caminho (`armadilhas/029` e `/081`).
+
+SÓ A PESSOA QUE OLHA. Nenhum número de outras pessoas e nenhuma ordem entre
+alunos: ranking público é proibido pela lei §8. O critério vem pronto da view
+(`criterios.criterio_em_portugues`), porque template que calcula erra calado.
+
+Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
+{% endcomment %}
+{% block titulo %}Medalhas{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{% url 'marcos' %}">Marcos reais</a>
+  <a href="{% url 'medalhas' %}" aria-current="page">Medalhas</a>
+  <a href="{% url 'contribuicoes' %}">Contribuições</a>
+{% endblock %}
+
+{% block conteudo %}
+{% if entrou %}
+  <section class="degrau">
+    <p class="rotulo">A sua coleção</p>
+    <h1>Medalhas</h1>
+    <p class="passo">Cada medalha diz aqui como se ganha, antes de você ganhar. Ela cai sozinha quando o que está escrito acontece, e fica só com você.</p>
+    <p class="miudo">A escola também pede ajuda no <a href="{% url 'contribuicoes' %}">quadro de contribuições</a>: tarefas de verdade, com reconhecimento quando a equipe aceita.</p>
+  </section>
+
+  {% for linha in linhas %}
+    <section class="medalha{% if linha.concessao %} conquistada{% endif %}">
+      <h2>{{ linha.medalha.nome }}</h2>
+      {% if linha.medalha.descricao %}<p class="passo">{{ linha.medalha.descricao }}</p>{% endif %}
+      <p class="criterio"><strong>Como ganhar:</strong> {{ linha.criterio }}</p>
+      {% if linha.concessao %}
+        <p class="selo">Conquistada em {{ linha.concessao.concedida_em|date:"d/m/Y" }}.</p>
+      {% elif linha.progresso %}
+        <p class="selo">Seu progresso: {{ linha.progresso.0 }} de {{ linha.progresso.1 }}.</p>
+      {% endif %}
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Ainda não há medalhas ligadas nesta escola</h2>
+      <p>Elas existem e estão prontas; a escola ainda não as ligou. Quando ligar, elas aparecem aqui com o que é preciso para ganhar cada uma.</p>
+    </section>
+  {% endfor %}
+{% else %}
+  <section class="convite">
+    <h1>As suas medalhas ficam aqui</h1>
+    <p>Esta página mostra como cada medalha se ganha e onde você está em cada uma. Ela é sua, e por isso precisa saber quem você é.</p>
+    <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+    <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-108-painel-rodada-1-da-comunidade-no-livro",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "painel: rodada 1 da Comunidade no livro",
+  detalhe: "Nove registros: cinco baixas verdes de integracao e quatro publicacoes conferidas de fora, com run de deploy e URL; gerador do painel verde.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2209. Validação local: árvore 30a646a79efc0556a0486b5ffd28c83f3bf0aa4a; commit 1e20d8be93d7c8ab5f4ce1467b901c634ccf0fef; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-840",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

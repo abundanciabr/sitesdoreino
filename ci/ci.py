@@ -351,6 +351,18 @@ def classificar_exit_do_make(codigo: int) -> Estado:
     return Estado.FAIL
 
 
+def e_gnu_make(make: str | None) -> bool:
+    """Só o GNU Make vale: uma fachada chamada `make` não entende `-C` (`armadilhas/529`)."""
+    if make is None:
+        return False
+    try:
+        versao = subprocess.run([make, "--version"], capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return versao.stdout.startswith("GNU Make")
+
+
 def rodar_celula(raiz: Path, celula: str) -> Resultado:
     """Delega o `make ci` da célula — sem reimplementar lint/type/test aqui."""
     destino = raiz / "services" / celula
@@ -371,12 +383,14 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
             "ausente não é portão satisfeito.",
         )
     make = shutil.which("make")
-    if make is None:
+    if not e_gnu_make(make):
+        impostor = f"O `make` do PATH ({make}) não é GNU Make; ponha o GNU Make antes dele.\n" if make else ""
         return Resultado(
             f"celula/{celula}",
             Estado.ERROR,
             "GNU Make ausente — a CI da célula ainda depende dele",
-            "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
+            impostor
+            + "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
             "Enquanto essa camada não for portada, rodar a CI de UMA célula exige make.\n"
             "Os portões de repositório (`python ci/ci.py --apenas freeze,muralhas`)\n"
             "continuam disponíveis sem make.",

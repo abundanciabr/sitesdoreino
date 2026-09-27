@@ -285,6 +285,54 @@ CONQUISTAS = [
         100,
         15,
     ),
+    # OS DOIS RECONHECIMENTOS DA COMUNIDADE (27/09/2026, TAR-826). Valem ZERO
+    # ponto e zero Cristal: são reconhecimento, não pagamento. A aula concluída e
+    # a resposta aceita já têm regra de XP própria, e pagar de novo pela primeira
+    # vez seria cobrar o mesmo fato duas vezes. O banco de produção os recebe
+    # pela migração 0007, porque este comando não roda no deploy.
+    (
+        "primeiro-ciclo",
+        "Primeiro ciclo concluído",
+        "A sua primeira aula concluída, com a entrega aceita pela escola.",
+        "medalha",
+        "comunidade",
+        {"tipo": "entregas_aceitas", "alvo": 1},
+        False,
+        False,
+        False,
+        0,
+        0,
+    ),
+    (
+        "primeira-ajuda",
+        "Primeira ajuda aceita",
+        "Uma resposta sua destravou alguém no fórum pela primeira vez.",
+        "medalha",
+        "comunidade",
+        {"tipo": "respostas_aceitas", "alvo": 1},
+        False,
+        False,
+        False,
+        0,
+        0,
+    ),
+    # O RECONHECIMENTO DO QUADRO DE CONTRIBUIÇÕES (27/09/2026, TAR-849). Zero
+    # ponto e zero Cristal pela mesma razão das duas de cima, e mais uma: o
+    # dossiê da Comunidade (§7 e §17) deixa crédito e benefício para o
+    # mantenedor decidir. A produção a recebe pela migração 0008.
+    (
+        "primeira-contribuicao",
+        "Primeira contribuição aceita",
+        "Uma tarefa do quadro de contribuições, feita por você e aceita pela equipe.",
+        "medalha",
+        "comunidade",
+        {"tipo": "contribuicoes_aceitas", "alvo": 1},
+        False,
+        False,
+        False,
+        0,
+        0,
+    ),
     # OS MARCOS: a espinha. Todos com pontos=0, e o banco recusa o contrário.
     (
         "portfolio-publicado",

@@ -1,0 +1,70 @@
+{% extends "forum/base.html" %}
+{% block titulo %}Comunidade da equipe{% endblock %}
+{% block conteudo %}
+{% comment %}
+A COMUNIDADE VISTA PELA EQUIPE (TAR-827). Só a escola chega aqui: para o resto,
+`views.comunidade_da_equipe` responde 404. Toda espera diz quem responde por
+ela, e nenhum e-mail aparece na tela, só o nome exibido. As filas das outras
+células são links: os números delas moram nas telas delas.
+{% endcomment %}
+<p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
+<h1>Comunidade da equipe</h1>
+<p class="sub">Os grupos de prática, quem responde por cada um, as dúvidas que esperam
+  resposta e quem entrou no grupo e ainda não escreveu. Só a escola enxerga esta página.</p>
+
+{% for grupo in grupos %}
+  <section class="cartao" aria-labelledby="grupo-{{ grupo.pk }}">
+    <h2 id="grupo-{{ grupo.pk }}"><a href="{% url 'area' grupo.slug %}">{{ grupo.nome }}</a>{% if grupo.sem_vaga %}<span class="etiqueta">sem vaga</span>{% endif %}</h2>
+    <p class="sub" style="margin:4px 0 0">Responsável: {{ grupo.quem_responde|default:"ninguém definido" }}.
+      Membros: {{ grupo.membros_ativos }} de {{ grupo.vagas }} vaga{{ grupo.vagas|pluralize }}.
+      <a href="{% url 'membros_do_grupo' grupo.slug %}">Ver os membros</a></p>
+    {% if not grupo.quem_responde %}
+      <p class="recado">As esperas deste grupo não têm dono. Escolha o responsável
+        nas ferramentas da <a href="{% url 'area' grupo.slug %}">página do grupo</a>.</p>
+    {% endif %}
+
+    <h3>Dúvidas esperando resposta</h3>
+    {% if grupo.duvidas %}
+      <ul>
+        {% for topico in grupo.duvidas %}
+          <li><a href="{% url 'topico' topico.pk %}">{{ topico.titulo }}</a><br>
+            <span class="{% if grupo.quem_responde %}sub{% else %}recado{% endif %}">{{ topico.assinatura }}, esperando {{ topico.espera }}. Quem responde: {{ grupo.quem_responde|default:"ninguém definido" }}.</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="sub" style="margin:4px 0 0">Nenhuma dúvida esperando resposta neste grupo.</p>
+    {% endif %}
+
+    <h3>Acolhimento pendente</h3>
+    {% if not grupo.membros_ativos %}
+      <p class="sub" style="margin:4px 0 0">Ninguém no grupo ainda.
+        <a href="{% url 'membros_do_grupo' grupo.slug %}">Adicionar a primeira pessoa</a></p>
+    {% elif grupo.acolhimento %}
+      <ul>
+        {% for vinculo in grupo.acolhimento %}
+          <li>{{ vinculo.pessoa.nome_exibido|default:"Pessoa sem nome de exibição" }} entrou {{ vinculo.espera }} e ainda não escreveu no grupo.
+            <span class="{% if grupo.quem_responde %}sub{% else %}recado{% endif %}">Quem acolhe: {{ grupo.quem_responde|default:"ninguém definido" }}.</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="sub" style="margin:4px 0 0">Todos os membros já escreveram no grupo.</p>
+    {% endif %}
+  </section>
+{% empty %}
+  <div class="vazio">
+    <strong>Ainda não existe nenhum grupo de prática.</strong>
+    <p style="margin:8px 0 0">Para criar um, abra as Ferramentas da escola na
+      <a href="{% url 'home' %}">capa do fórum</a> e escolha "Grupo de prática" em
+      quem enxerga.</p>
+  </div>
+{% endfor %}
+
+<section class="cartao" aria-labelledby="outras-filas">
+  <h2 id="outras-filas">Outras filas da equipe</h2>
+  <ul>
+    <li><a href="{{ plantao_de_laudos }}">Plantão de laudos dos cursos</a></li>
+    <li><a href="{{ fila_de_validacao }}">Fila de validação das conquistas</a></li>
+  </ul>
+  <p class="sub" style="margin:4px 0 0">Os números dessas filas ficam nas telas delas.</p>
+</section>
+{% endblock %}

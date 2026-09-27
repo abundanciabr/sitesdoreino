@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-115-vista-da-equipe-avisa-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A vista da equipe da Comunidade passa a avisar, e não alarmar, quando uma espera está sem dono",
+  detalhe: "O PR 2210 integrou na main às 04h20 de São Paulo (merge 35e8b8f1a8c425c52e41b986244f8cab1b07fa02): o aviso de espera sem dono na vista da equipe do fórum trocou a cor de alarme pela cor de recado, único item devolvido pelo revisor do PR 2207 depois do pouso. Teste vermelho para verde e suíte do fórum verde. Publicação é registro à parte quando o deploy do fórum terminar. Este registro dá baixa verde no recibo do PR 2210.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2210 (MERGED, mergeCommit 35e8b8f1a8c425c52e41b986244f8cab1b07fa02, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-112-forum-vista-da-equipe-avisa-nao-alarma",
+  relacao: "baixa",
+  tarefa: "TAR-841",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

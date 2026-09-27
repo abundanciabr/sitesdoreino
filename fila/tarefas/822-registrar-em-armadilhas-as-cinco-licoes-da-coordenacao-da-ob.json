@@ -1,0 +1,19 @@
+{
+  "arquivo": "822-registrar-em-armadilhas-as-cinco-licoes-da-coordenacao-da-ob",
+  "id": "TAR-822",
+  "titulo": "Registrar em armadilhas as cinco lições da coordenação da obra Appmax de 26 e 27/09",
+  "toca": [
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR 2182 integrado com as armadilhas 512, 513, 515, 516 e 517 no índice",
+  "despacho": "Escreva em armadilhas/ as cinco lições numeradas 512, 513, 515, 516 e 517 sobre a coordenação da obra Appmax de 26 e 27/09, regenere o índice e abra o PR.",
+  "origem": "PR-2182",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

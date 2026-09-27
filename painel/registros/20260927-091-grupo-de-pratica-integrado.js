@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-091-grupo-de-pratica-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O grupo de prática da Comunidade está integrado no fórum da main",
+  detalhe: "O PR 2193 (frente C3, TAR-824) integrou na main às 03h16 de São Paulo (merge f38840968c2e93d34a985236e4e415c197fd1366): vínculo pessoa a grupo sem apagar linha, área de turma que abre só para membro ativo, telas de gestão da equipe, página Comunidade do membro e rotas no mapa do site. Nove checks verdes, revisor aprovou, pouso automático. Publicação (deploy do fórum e URL /forum/comunidade) é registro à parte quando conferida. Este registro dá baixa verde no recibo do PR 2193.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2193 (MERGED, mergeCommit f38840968c2e93d34a985236e4e415c197fd1366, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-079-forum-grupo-de-pratica-da-comunidade",
+  relacao: "baixa",
+  tarefa: "TAR-824",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
