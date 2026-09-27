@@ -141,6 +141,11 @@ def test_pagina_sem_experimento_e_o_estado_normal_e_nao_escreve_erro(
             id="peso-negativo",
         ),
         pytest.param(
+            com_variantes(variante("a", 0), variante("b", 10000)),
+            "peso",
+            id="peso-zero",
+        ),
+        pytest.param(
             com_variantes(variante("a", "5000"), variante("b")),
             "peso",
             id="peso-em-texto",
