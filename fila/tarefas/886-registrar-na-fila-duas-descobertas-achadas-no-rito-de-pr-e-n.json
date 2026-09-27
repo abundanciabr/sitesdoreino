@@ -1,0 +1,19 @@
+{
+  "arquivo": "886-registrar-na-fila-duas-descobertas-achadas-no-rito-de-pr-e-n",
+  "id": "TAR-886",
+  "titulo": "Registrar na fila duas descobertas achadas no rito de PR e na suite de ci no Windows",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado registrando as duas tarefas descobertas na fila, com python ci/fila.py validar verde",
+  "despacho": "Registrar na fila as duas tarefas descobertas nesta sessao (testes do termometro reprovando no Windows, e commit do painel creditando Codex fixo), sem consertar nada, por causa da armadilha 530 (ci/pr.py exige TAR mesmo em PR que so escritura fila/).",
+  "origem": "sessao-ci-registrar-descobertas-do-make-2026-09-27",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

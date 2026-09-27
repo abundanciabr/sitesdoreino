@@ -36,6 +36,7 @@ from _nucleo import (  # noqa: E402
 )
 import telemetria
 from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
+from sessao import base_de_scratch_padrao  # noqa: E402
 
 # O vocabulário do livro. Copiado de `painel/logica.js` de propósito: o
 # validador de lá é a autoridade e reprova de qualquer jeito; conferir aqui
@@ -121,6 +122,7 @@ class Pedido:
     continuar: bool = False
     validacao_arquivo: Path | None = None
     tarefa: str | None = None
+    detalhe_arquivo: Path | None = None
 
 
 # ---------------------------------------------------------------- a costura --
@@ -382,6 +384,32 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
             "  git worktree add ../wt-<area>-<tarefa> -b agent/<area>/<tarefa> origin/main\n"
             "Nada foi gravado.",
         )
+
+
+def _conferir_que_as_entradas_sao_da_bancada(raiz: Path, pedido: Pedido, ramo: str) -> None:
+    """O scratchpad é um só para a sessão e todos os subagentes: um despacho
+    sobrescreveu o `corpo.md` do outro enquanto o rito validava, e #2122, #2164
+    e #2220 saíram com o texto de outra tarefa. Só o worktree e a pasta que
+    `ci/sessao.py` cria para a bancada pertencem a um ramo só."""
+    pasta = base_de_scratch_padrao() / ramo.removeprefix("agent/").replace("/", "-")
+    donos = [Path(os.path.normcase(dono.resolve())) for dono in (Path(raiz), pasta)]
+    for rotulo, caminho in (
+        ("--mensagem-arquivo", pedido.mensagem_arquivo),
+        ("--corpo-arquivo", pedido.corpo_arquivo),
+        ("--validacao-arquivo", pedido.validacao_arquivo),
+        ("--detalhe-arquivo", pedido.detalhe_arquivo),
+    ):
+        if caminho is None:
+            continue
+        real = Path(os.path.normcase(Path(caminho).resolve()))
+        if not any(real.is_relative_to(dono) for dono in donos):
+            raise ParouPorSeguranca(
+                f"{rotulo} está fora da bancada: {caminho}",
+                "Pasta dividida, como o scratchpad da sessão, é sobrescrita por outro\n"
+                "despacho no meio do rito, e o PR sai com o texto de outra tarefa.\n"
+                f"Grave os arquivos em {pasta}\n"
+                "(crie a pasta se faltar) e rode de novo. Nada foi gravado.",
+            )
 
 
 def _configuracao_de_validacao(pedido: Pedido) -> tuple[list[list[str]], int]:
@@ -648,20 +676,25 @@ def _sessao_anterior_ao_protocolo(raiz, ramo, correr):
 
 def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     from fila import (carregar_tarefas, carregar_eventos, calcular_estados,
-                      recusa_por_dependencia_aberta, CONCLUIDA, CANCELADA, NA_FILA)
+                      recusa_por_dependencia_nao_concluida, CONCLUIDA, CANCELADA, NA_FILA)
     da_abertura = tarefa_da_abertura if re.fullmatch(r"TAR-\d{3,}", tarefa_da_abertura) else None
     # Só --tarefa decide: TAR citada no texto fechou tarefa alheia (PRs #2189 e #2190).
     if not pedido.tarefa:
-        if _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+        if da_abertura is None and _sessao_anterior_ao_protocolo(raiz, ramo, correr):
             return None
-        raise ParouPorSeguranca(
-            "tarefa não declarada: só --tarefa escolhe a tarefa que recebe eventos",
-            f"Repita com --tarefa {da_abertura or 'TAR-NNN'} (python ci/fila.py listar mostra a fila). "
+        o_que_houve = "tarefa não declarada: só --tarefa escolhe a tarefa que recebe eventos"
+        o_que_fazer = (
+            f"Repita com TAR={da_abertura or 'TAR-NNN'} (make pr) ou --tarefa {da_abertura or 'TAR-NNN'} "
+            "(python ci/pr.py); python ci/fila.py listar mostra a fila. "
             "TAR citada no título, no corpo ou no detalhe é só texto e não fecha tarefa. "
-            "Sem abertura comprovadamente anterior ao protocolo, não publico trabalho sem tarefa.",
+            "Só abertura anterior ao protocolo e sem tarefa da fila publica sem tarefa."
         )
+        raise ParouPorSeguranca(o_que_houve, o_que_fazer)
     if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
-        raise ParouPorSeguranca("tarefa inválida", "Informe --tarefa TAR-NNN da fila existente.")
+        raise ParouPorSeguranca(
+            "tarefa inválida",
+            "Informe TAR=TAR-NNN (make pr) ou --tarefa TAR-NNN (python ci/pr.py) da fila existente.",
+        )
     erros = []
     tarefas = carregar_tarefas(raiz, erros)
     eventos = carregar_eventos(raiz, tarefas, erros)
@@ -672,9 +705,10 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     if erros or len(candidatos) != 1 or not candidatos <= tarefas.keys():
         raise ParouPorSeguranca(
             "tarefa ausente, ambígua ou fila inválida",
-            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com --tarefa antes de publicar.",
+            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com TAR=TAR-NNN "
+            "(make pr) ou --tarefa TAR-NNN (python ci/pr.py) antes de publicar.",
         )
-    recusa = recusa_por_dependencia_aberta(tarefas, eventos, pedido.tarefa)
+    recusa = recusa_por_dependencia_nao_concluida(tarefas, eventos, pedido.tarefa)
     if recusa:
         o_que_houve, o_que_fazer = recusa
         raise ParouPorSeguranca(o_que_houve, o_que_fazer)
@@ -712,6 +746,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     ramo = correr(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
     if not ramo.startswith("agent/"):
         raise ParouPorSeguranca("ramo incompatível", "Use agent/<área>/<tarefa> na sua bancada.")
+    _conferir_que_as_entradas_sao_da_bancada(raiz, pedido, ramo)
     sujo = correr(["git", "status", "--porcelain"]).strip()
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
@@ -772,14 +807,28 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
             raise ErroDeInstrumentacao("reserva não devolveu número válido", "Confira python ci/reservar.py listar; retome com a mesma revisão.")
         nome = f"{sequencia}-{slug_do_titulo(pedido.titulo)}"
         destino = raiz / "painel/registros" / f"{nome}.js"
+        validacao_local = (
+            f"Validação local: árvore {arvore}; commit {commit}; "
+            f"{len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas."
+        )
+        evidencia_extra = validacao_local
+        if pedido.evidencia.strip():
+            evidencia_extra = f"{validacao_local} {pedido.evidencia.strip()}"
         campos = montar_campos(
             arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
             url_do_pr=url, dia=hoje, tipo=pedido.tipo, gravidade=pedido.gravidade,
             frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1], tarefa=pedido.tarefa,
-            evidencia_extra=f"Validação local: árvore {arvore}; commit {commit}; {len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+            evidencia_extra=evidencia_extra,
         )
         texto = renderizar(campos)
         if len(texto.encode("utf-8")) >= 1024:
+            if pedido.evidencia.strip():
+                raise ParouPorSeguranca(
+                    "recibo excede 1 KB com --evidencia",
+                    "A prova passada em --evidencia deixou o recibo grande demais.\n"
+                    "Encurte o texto de --evidencia (ou remova) e rode de novo; nada\n"
+                    "foi gravado, e a prova não foi cortada em silêncio.",
+                )
             raise ParouPorSeguranca("recibo excede 1 KB", "Encurte título e detalhe; preserve a evidência determinística.")
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
@@ -932,6 +981,7 @@ def main(argv: list[str] | None = None) -> int:
             continuar=args.continuar,
             validacao_arquivo=args.validacao_arquivo,
             tarefa=args.tarefa,
+            detalhe_arquivo=args.detalhe_arquivo,
         )
         abrir(raiz, pedido)
         return 0

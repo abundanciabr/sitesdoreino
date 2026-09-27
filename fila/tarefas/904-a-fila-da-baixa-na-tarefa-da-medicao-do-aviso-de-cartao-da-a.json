@@ -1,0 +1,19 @@
+{
+  "arquivo": "904-a-fila-da-baixa-na-tarefa-da-medicao-do-aviso-de-cartao-da-a",
+  "id": "TAR-904",
+  "titulo": "A fila da baixa na tarefa da medicao do aviso de cartao da Appmax",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o evento de conclusao da tarefa 872 pela reconciliacao com o aceite verde 279",
+  "despacho": "Coordenacao da obra Appmax, rodada 3 (sessao 4442b6ad): embarcar o evento da reconciliacao da tarefa 872 (aceite painel/registros/20260927-279, integrado pelo PR 2277).",
+  "origem": "fila.py reconciliar da tarefa 872 depois do PR 2277",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

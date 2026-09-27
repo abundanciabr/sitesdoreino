@@ -45,7 +45,7 @@ from django.db.models import Max
 
 from . import eventos
 from . import progresso as portas
-from .models import Aula, Envio, Instrumento, Progresso
+from .models import Aula, Envio, Instrumento, Progresso, VersaoDoInstrumento
 
 # Os dois estados de porta em que a pessoa PODE entregar: em produção (o
 # primeiro envio) e devolvida (o reenvio, depois de um laudo devolvido).
@@ -97,7 +97,9 @@ class Criterio:
     maximo: int
 
 
-def criterios_de(instrumento: Instrumento | None) -> list[Criterio]:
+def criterios_de(
+    instrumento: Instrumento | VersaoDoInstrumento | None,
+) -> list[Criterio]:
     """A escala do instrumento como a sala a lê: `{criterio: {minimo, maximo}}`.
 
     A escala é JSON livre, editado como texto no Admin (degrau 1.5): "os

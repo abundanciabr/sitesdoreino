@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260927-174103-TAR-915-contrato_execucao",
+  "tarefa": "TAR-915",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T17:41:03.901729+00:00",
+  "quem": "agent/fila/comunidade-coordenacao-3",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 3 (A4-gamificacao): Prova no navegador de que o quadro de contribuições e as medalhas funcionam no celular e só com o teclado",
+    "versao": 1,
+    "objetivo": "Provar no navegador, com dados de teste, 390 px sem rolagem lateral e navegação só por teclado no quadro de contribuições e nas medalhas.",
+    "entregaveis": [
+      "Teste e2e local com Playwright e live_server",
+      "Capturas sanitizadas listadas no PR"
+    ],
+    "escopo_incluido": [
+      "services/gamificacao/**"
+    ],
+    "nao_objetivos": [
+      "Substituir a prova em produção",
+      "Corrigir templates ou views (outras frentes escrevem neles)"
+    ],
+    "restricoes": [
+      "Uma célula por PR; orçamento de 15 arquivos; sem tocar contracts/",
+      "Arquivos disjuntos das outras frentes da rodada, como o brief lista",
+      "Texto para aluno sem travessão, em 390 px e por teclado; sem e-mail na tela",
+      "Guarda novo provado por mutação antes do commit",
+      "PR em rascunho até o revisor da coordenação ler"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido original de 26 para 27/09/2026: implementar a Comunidade pelas partes que não dependem de decisão reservada",
+      "Decisões do mantenedor em 27/09/2026, pergunta estruturada na sessão: matrícula ativa dá acesso, só a professora assina laudo, página de orientação pública, quadro exige matrícula ativa, Cristais de medalha retirada ficam com o aluno, convite vai ao site desligado"
+    ],
+    "etapas": [
+      "Abrir bancada pelo sessao.py da bancada em dia e medir a linha de base",
+      "Testes vermelhos do aceite",
+      "Implementação dentro dos alvos",
+      "Mutação dos guardas, suíte, travessão",
+      "PR em rascunho por ci/pr.py com a própria TAR"
+    ],
+    "criterios_entrada": [
+      "TAR-915 integrada na main pelo PR de fila"
+    ],
+    "criterios_aceite": [
+      "Duas telas sem rolagem lateral em 390 px",
+      "Foco visível e Tab até o botão principal com número de passos declarado",
+      "Nenhum ranking ou contagem alheia",
+      "PR MERGED"
+    ],
+    "evidencias_exigidas": [
+      "Saída vermelha e verde de cada teste novo",
+      "Saída da suíte com o comando e o banco usados",
+      "Saída da mutação e sua reversão",
+      "git diff --name-only origin/main...HEAD",
+      "URL do PR, estado MERGED e run de deploy quando houver"
+    ],
+    "condicao_encerramento": "teste de navegador local (Playwright com live_server) em /conquistas/contribuicoes e /conquistas/medalhas: 390 px sem rolagem lateral, foco visível e Tab até o botão principal, sem ranking; saída colada no PR e capturas listadas; furo vira descoberta; PR integrado",
+    "limites_autonomia": "O escritor decide o desenho dentro do contrato; não pergunta ao mantenedor; contrato de evento, notificação nova, célula vizinha, env ou dado de produção além do autorizado viram descoberta classe E e bloqueio com --espera mantenedor; descoberta fora do alvo vira classe C na fila; duas tentativas sem mover critério exigem checkpoint e mudança de abordagem.",
+    "acoes_do_mantenedor": "Nenhuma para a entrega."
+  }
+}

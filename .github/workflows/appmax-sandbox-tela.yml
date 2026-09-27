@@ -58,6 +58,7 @@ jobs:
           command_timeout: 5m
           script_path: ${{ steps.conferir.outputs.script }}
       - name: Julgar cada cartão e publicar a evidência sanitizada
+        if: always() && steps.remoto.outcome != 'skipped'
         env:
           SAIDA: ${{ steps.remoto.outputs.stdout }}
         run: node e2e/appmax_sandbox.js --etapa=conferir --dados="$RUNNER_TEMP/compras.json"

@@ -27,7 +27,7 @@ def linhas_ativas(relativo: str) -> list[str]:
 
 
 def test_os_caminhos_vivos_nao_entregam_a_continuacao_a_outro_papel():
-    # guarda: ci/pr.py:832
+    # guarda: ci/pr.py:881
     for relativo in ARQUIVOS:
         ativas = "\n".join(linhas_ativas(relativo))
         assert FRASE not in ativas, relativo

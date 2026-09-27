@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-151219-TAR-899-concluida",
+  "tarefa": "TAR-899",
+  "evento": "concluida",
+  "quando": "2026-09-27T15:12:19.801609+00:00",
+  "quem": "agent/armadilhas/armadilha-msys-no-pathconv-baseline",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2275",
+  "verificado_em": "2026-09-27"
+}

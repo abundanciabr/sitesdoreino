@@ -1,0 +1,19 @@
+{
+  "arquivo": "909-as-oito-frentes-da-terceira-rodada-da-comunidade-meshcraft-e",
+  "id": "TAR-909",
+  "titulo": "As oito frentes da terceira rodada da Comunidade Meshcraft entram na fila",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com as oito tarefas da rodada 3 criadas, explicadas e com contrato de execução, e os registros das decisões; python ci/fila.py validar verde",
+  "despacho": "Registrar na fila as oito frentes da rodada 3 da Comunidade (A1 e A2 na gamificação, A3 em fórum e cursos, A4 em fórum e gamificação, B1 convite em produção, B2 matrícula no quadro) com os quatro textos para leigo, despacho com modelo e esforço do brief da economia e contrato de execução, mais os registros das decisões do mantenedor de 27/09/2026, e abrir o PR só de fila e livro que as leva à main para os despachos poderem reivindicar.",
+  "origem": "pedido do mantenedor de 27/09/2026: Comunidade Meshcraft, rodada 3 (RETOMADA-COMUNIDADE.md)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

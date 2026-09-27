@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-280-painel-aceite-da-medicao-do-aviso-de-cartao",
+  tipo: "medicao",
+  quando: "2026-09-27",
+  titulo: "painel: aceite da medicao do aviso de cartao",
+  detalhe: "A medicao do aviso de cartao ja estava feita e registrada; faltava o aceite verde que a fila exige para dar baixa na tarefa da latencia.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2277. Validação local: árvore 923a77ddb445ac85c4d4226caffa4d4097de231a; commit 99c313560d798c0d2a82ff25aa3c854b3af8b839; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-901",
+  gravidade: "info",
+  frente: "vender",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

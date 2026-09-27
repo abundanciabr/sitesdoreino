@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-124553-TAR-875-concluida",
+  "tarefa": "TAR-875",
+  "evento": "concluida",
+  "quando": "2026-09-27T12:45:53.171523+00:00",
+  "quem": "agent/catalogo/provador-experimentos-catalogo",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2243",
+  "verificado_em": "2026-09-27"
+}

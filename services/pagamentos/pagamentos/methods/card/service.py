@@ -416,9 +416,6 @@ def _consultar_resultado(
         amounts = pedido["amounts"]
         base = amounts["sub_total"]
         taxa = amounts.get("installment_fee", 0)
-        payment = pedido["payment"]
-        parcelas = payment["installments"]
-        metodo = payment["method"]
     except (AttributeError, KeyError, TypeError):
         _registrar_motivo(intent, "reconciliation_required")
         ledger.marcar_tentativa_pendente(intent)
@@ -436,9 +433,6 @@ def _consultar_resultado(
         or isinstance(taxa, bool)
         or not isinstance(taxa, int)
         or base + taxa != tentativa.effective_amount_cents
-        or isinstance(parcelas, bool)
-        or parcelas != installments
-        or metodo != "creditcard"
         or not isinstance(status, str)
     ):
         _registrar_motivo(intent, "reconciliation_required")
@@ -454,6 +448,26 @@ def _consultar_resultado(
         _registrar_motivo(intent, "reconciliation_required")
         ledger.marcar_tentativa_pendente(intent)
         raise ResultadoAmbiguo("status Appmax não terminal")
+    # [TAR-862] O pedido recusado volta sem `payment.installments` (medido na
+    # VPS em 27/09/2026). Parcelas e método dizem COMO o dinheiro foi cobrado;
+    # numa recusa não houve cobrança, então só aprovação e pendência os exigem.
+    if aprovada is not False:
+        try:
+            payment = pedido["payment"]
+            parcelas = payment["installments"]
+            metodo = payment["method"]
+        except (AttributeError, KeyError, TypeError):
+            _registrar_motivo(intent, "reconciliation_required")
+            ledger.marcar_tentativa_pendente(intent)
+            raise ResultadoAmbiguo("consulta Appmax incompleta") from None
+        if (
+            isinstance(parcelas, bool)
+            or parcelas != installments
+            or metodo != "creditcard"
+        ):
+            _registrar_motivo(intent, "reconciliation_required")
+            ledger.marcar_tentativa_pendente(intent)
+            raise ResultadoAmbiguo("consulta Appmax não corresponde à cobrança enviada")
     return ResultadoDoProvedor(
         aprovada=aprovada,
         provider_reference_id=order_id,
