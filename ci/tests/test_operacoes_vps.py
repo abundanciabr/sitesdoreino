@@ -298,10 +298,15 @@ def test_appmax_pix_descoberta_recusa_campo_inesperado():
         ops.conferir_medicao("appmax-pix", medicao)
 
 
-def test_appmax_pix_vincula_resposta_ao_modo_solicitado():
+def test_appmax_pix_recusa_descoberta_com_referencia_solicitada():
     descoberta = {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix", descoberta, "a" * 64)
+
+
+def _resumo_pix(**sobrescritas):
     resumo = {
-        "tentativa": "reconciliation_required",
+        "tentativa": "pending",
         "intent": "pending",
         "motivo": "indisponivel",
         "qr_presente": False,
@@ -311,10 +316,66 @@ def test_appmax_pix_vincula_resposta_ao_modo_solicitado():
             "payment": "reconciliation_required",
         },
     }
+    resumo.update(sobrescritas)
+    return resumo
+
+
+def test_appmax_pix_por_referencia_aceita_candidata_unica_pela_forma_da_evidencia():
+    # O conferir() da esteira (ci/operacoes_vps.py:conferir) nunca repassa a
+    # referência do disparo para appmax-pix: quem decide o formato é a forma
+    # da evidência devolvida pela VPS, não o parâmetro `referencia`.
+    resumo = _resumo_pix()
+    assert ops.conferir_medicao("appmax-pix", resumo, REFERENCIA) == resumo
+    assert ops.conferir_medicao("appmax-pix", resumo, "") == resumo
+
+
+def test_appmax_pix_descoberta_recusa_modo_diferente_de_descoberta():
+    # guarda: ci/operacoes_vps.py:308
+    medicao = {"modo": "outro", "classificacao": "ausente", "candidatas": []}
     with pytest.raises(ops.Falha, match="formato"):
-        ops.conferir_medicao("appmax-pix", descoberta, "a" * 64)
+        ops.conferir_medicao("appmax-pix", medicao)
+
+
+@pytest.mark.parametrize(
+    "campo,valor",
+    [
+        ("tentativa", "cancelada"),
+        ("motivo", "sem_motivo_catalogado"),
+    ],
+)
+def test_appmax_pix_por_referencia_recusa_valor_fora_do_catalogo(campo, valor):
+    resumo = _resumo_pix(**{campo: valor})
     with pytest.raises(ops.Falha, match="formato"):
-        ops.conferir_medicao("appmax-pix", resumo)
+        ops.conferir_medicao("appmax-pix", resumo, REFERENCIA)
+
+
+def test_appmax_pix_por_referencia_recusa_operacao_fora_do_catalogo():
+    resumo = _resumo_pix(operacoes={"customer": "completed", "order": "completed", "payment": "cancelada"})
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-pix", resumo, REFERENCIA)
+
+
+def test_appmax_pix_esteira_confere_evidencia_por_referencia_sem_repeti_la(
+    monkeypatch, tmp_path
+):
+    # Reproduz o run 36292606719 de operacoes-vps.yml (referencia real,
+    # servico=pagamentos): a leitura por referência devolve a forma de
+    # candidata única, e o conferir() da esteira nunca repassa a referência
+    # do disparo para appmax-pix (só o faz para appmax-pix-pedido,
+    # appmax-pix-aviso e appmax-inbox-latencia, que a trazem na própria
+    # evidência).
+    dados = {
+        "resultado": "PASS",
+        "operacao": "appmax-pix",
+        "servico": "pagamentos",
+        "medicao": _resumo_pix(),
+    }
+    monkeypatch.setenv("SAIDA", json.dumps(dados))
+    monkeypatch.setenv("OPERACAO", "appmax-pix")
+    monkeypatch.setenv("SERVICO", "pagamentos")
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary"))
+    ops.conferir()
+    assert json.dumps(dados, sort_keys=True) in (tmp_path / "summary").read_text()
 
 
 def test_appmax_pix_sem_referencia_consulta_sete_dias_e_limite_cem(monkeypatch, capsys):
