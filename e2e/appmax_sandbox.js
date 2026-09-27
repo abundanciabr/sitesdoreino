@@ -485,6 +485,16 @@ function autoTeste() {
 
 // --------------------------------------------------------------- a compra
 
+/** Medido em 27/09/2026: a resposta HTTP 500 da confirmação chega, mas o corpo
+ *  dela nunca termina de ser lido pelo navegador. Toda leitura que depende da
+ *  rede tem prazo, e o prazo vencido vira fato registrado, nunca espera eterna. */
+function comPrazo(promessa, ms, valorNoPrazo) {
+  return Promise.race([
+    promessa,
+    new Promise(function (resolver) { setTimeout(function () { resolver(valorNoPrazo); }, ms); }),
+  ]);
+}
+
 async function textoDaTela(pagina) {
   return pagina.evaluate(function () {
     var form = document.querySelector("form[data-appmax-checkout]");
@@ -498,9 +508,9 @@ async function textoDaTela(pagina) {
 
 async function statusDoPedido(pagina, pedido) {
   try {
-    return await pagina.evaluate(function (id) {
+    return await comPrazo(pagina.evaluate(function (id) {
       return api.get("/pedidos/" + id).then(function (p) { return p.status; });
-    }, pedido);
+    }, pedido), 20000, "nao_medido");
   } catch (e) {
     return "nao_medido";
   }
@@ -526,7 +536,7 @@ async function tentar(pagina, pedido, cartao) {
     }, { timeout: ESPERA_RESPOSTA_MS })
     .then(async function (r) {
       var corpo = {};
-      try { corpo = await r.json(); } catch (e) { corpo = {}; }
+      try { corpo = (await comPrazo(r.json(), 10000, null)) || { payment: { reason_code: "corpo_nao_lido" } }; } catch (e) { corpo = {}; }
       return { http: r.status(), pagamento: (corpo.payment && corpo.payment.status) || "", motivo: (corpo.payment && corpo.payment.reason_code) || "" };
     }, function () { return { http: null, pagamento: "", motivo: "sem_resposta_da_api" }; });
   await pagina.click("form[data-appmax-checkout] button[type=submit]");
