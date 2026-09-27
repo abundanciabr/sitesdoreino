@@ -508,6 +508,16 @@
     },
     {
       "celula": "forum",
+      "rota": "comunidade/equipe",
+      "endereco": "/forum/comunidade/equipe",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A Comunidade vista pela equipe",
+      "descricao": "Todos os grupos de prática numa página: quem responde por cada um, quantas vagas estão ocupadas, as dúvidas que esperam resposta da mais antiga para a mais nova e há quanto tempo, e quem entrou no grupo e ainda não escreveu. Leva também ao plantão de laudos dos cursos e à fila de validação das conquistas.",
+      "observacao": "Só a escola: quem está em ADMIN_EMAILS ou em FORUM_PROFESSORES no env do fórum. Para aluno e visitante, este endereço responde 'não existe'. O link aparece no cartão da Comunidade, na capa do fórum, só para a escola."
+    },
+    {
+      "celula": "forum",
       "rota": "areas/nova",
       "endereco": "/forum/areas/nova",
       "alcance": "publico",

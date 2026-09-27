@@ -12,6 +12,7 @@ from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -19,7 +20,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
 
-from apps.forum.models import Area, Mensagem, Pessoa, Topico
+from apps.forum.models import Area, MembroDoGrupo, Mensagem, Pessoa, Topico
 
 from . import agente
 from .etiquetas import decorar as decorar_com_etiquetas
@@ -646,6 +647,26 @@ def grupos_de(ator) -> list[Area]:
     ]
 
 
+def duvidas_abertas(grupos):
+    """As dúvidas destes grupos que esperam resposta, a mais antiga primeiro.
+
+    Esperar é estar publicada, destrancada e sem resposta aceita: uma conversa
+    trancada não recebe resposta, então ninguém espera por ela. A mesma
+    pergunta serve ao membro ("quem depende de você") e à equipe ("o que
+    espera em cada grupo"); duas cópias dela divergiriam na primeira mudança.
+    """
+    return (
+        Topico.objects.filter(
+            area__in=grupos,
+            estado=Topico.Estado.PUBLICADO,
+            trancado=False,
+            resposta_aceita__isnull=True,
+        )
+        .select_related("area", "autor")
+        .order_by("criado_em", "pk")
+    )
+
+
 def contexto_da_comunidade(request, ator) -> dict:
     contexto = {
         "ator": ator,
@@ -669,20 +690,11 @@ def contexto_da_comunidade(request, ator) -> dict:
     for grupo in grupos:
         grupo.desafio = endereco_do_desafio(grupo)
 
-    # QUEM DEPENDE DE VOCÊ: as dúvidas do grupo que ainda não têm resposta
-    # aceita e que você consegue responder (publicadas, destrancadas, de outra
-    # pessoa), a mais antiga primeiro.
+    # QUEM DEPENDE DE VOCÊ: as dúvidas abertas do grupo que são de outra
+    # pessoa, porque a sua própria você não responde.
     agora = timezone.now()
     dependem = list(
-        Topico.objects.filter(
-            area__in=grupos,
-            estado=Topico.Estado.PUBLICADO,
-            trancado=False,
-            resposta_aceita__isnull=True,
-        )
-        .exclude(autor=ator.pessoa)
-        .select_related("area", "autor")
-        .order_by("criado_em", "pk")[:QUEM_DEPENDE_DE_VOCE_MAXIMO]
+        duvidas_abertas(grupos).exclude(autor=ator.pessoa)[:QUEM_DEPENDE_DE_VOCE_MAXIMO]
     )
     for topico in dependem:
         topico.espera = ha_quanto_tempo(topico.criado_em, agora)
@@ -697,4 +709,93 @@ def comunidade(request):
     ator = quem_e(request)
     return render(
         request, "forum/comunidade.html", contexto_da_comunidade(request, ator)
+    )
+
+
+# ===========================================================================
+# A COMUNIDADE VISTA PELA EQUIPE: o que espera em cada grupo, e quem responde
+# ===========================================================================
+# TAR-827, 27/09/2026. A especificação da Comunidade pede que a equipe
+# identifique filas, atrasos e limites de capacidade. Esta página mostra, por
+# grupo de prática ativo: o responsável, as vagas ocupadas, as dúvidas abertas
+# e quem entrou e ainda não escreveu. Toda espera aponta para o responsável do
+# grupo, e o grupo sem responsável diz isso em voz alta.
+#
+# As filas das outras células (laudos em `cursos`, validação em
+# `conquistas`) entram só como link: cada célula responde pelos próprios
+# números, e copiá-los aqui criaria uma segunda verdade atrasada.
+PLANTAO_DE_LAUDOS = "/cursos/plantao"
+FILA_DE_VALIDACAO = "/conquistas/interno"
+SEM_NOME_DE_EXIBICAO = "pessoa da escola sem nome de exibição"
+
+
+def contexto_da_comunidade_da_equipe(ator) -> dict:
+    """Os grupos ativos com as esperas penduradas, em três consultas no total.
+
+    Uma consulta para os grupos, uma para as dúvidas abertas de todos eles e
+    uma para os vínculos ativos já sabendo se a pessoa escreveu no grupo.
+    Perguntar por grupo dentro do laço faria uma ida ao banco por grupo.
+    """
+    grupos = list(
+        Area.objects.filter(
+            visibilidade=Area.Visibilidade.TURMA, ativa=True
+        ).select_related("responsavel")
+    )
+    por_pk = {grupo.pk: grupo for grupo in grupos}
+    for grupo in grupos:
+        grupo.quem_responde = (
+            (grupo.responsavel.nome_exibido or SEM_NOME_DE_EXIBICAO)
+            if grupo.responsavel
+            else ""
+        )
+        grupo.membros_ativos = 0
+        grupo.duvidas = []
+        grupo.acolhimento = []
+
+    agora = timezone.now()
+    for topico in duvidas_abertas(grupos):
+        topico.espera = ha_quanto_tempo(topico.criado_em, agora)
+        por_pk[topico.area_id].duvidas.append(topico)
+
+    # ACOLHIMENTO PENDENTE: quem tem vínculo ativo e nunca escreveu uma
+    # mensagem em conversa nenhuma do grupo, quem entrou antes primeiro.
+    ja_escreveu = Mensagem.objects.filter(
+        topico__area=OuterRef("grupo"), autor=OuterRef("pessoa")
+    )
+    vinculos = (
+        MembroDoGrupo.objects.filter(grupo__in=grupos, ate__isnull=True)
+        .annotate(ja_escreveu=Exists(ja_escreveu))
+        .select_related("pessoa")
+        .order_by("desde", "pk")
+    )
+    for vinculo in vinculos:
+        grupo = por_pk[vinculo.grupo_id]
+        grupo.membros_ativos += 1
+        if not vinculo.ja_escreveu:
+            vinculo.espera = ha_quanto_tempo(vinculo.desde, agora)
+            grupo.acolhimento.append(vinculo)
+
+    for grupo in grupos:
+        # Vaga zero é o lado fechado (`Area.vagas`): o grupo não recebe ninguém.
+        grupo.sem_vaga = grupo.membros_ativos >= grupo.vagas
+
+    return {
+        "ator": ator,
+        "grupos": grupos,
+        "plantao_de_laudos": PLANTAO_DE_LAUDOS,
+        "fila_de_validacao": FILA_DE_VALIDACAO,
+    }
+
+
+@require_GET
+def comunidade_da_equipe(request):
+    """A Comunidade vista pela escola. 404 para quem não modera, nunca 403:
+    o 403 confirmaria que a página existe."""
+    ator = quem_e(request)
+    if not pode_moderar(ator):
+        raise Http404("página não encontrada")
+    return render(
+        request,
+        "forum/comunidade_da_equipe.html",
+        contexto_da_comunidade_da_equipe(ator),
     )

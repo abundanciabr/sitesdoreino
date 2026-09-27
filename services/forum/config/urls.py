@@ -16,6 +16,7 @@ from apps.core.views import (
     home,
     abrir_conversa,
     comunidade,
+    comunidade_da_equipe,
     li_tudo,
     novo_topico,
     responder,
@@ -66,6 +67,9 @@ urlpatterns = [
     # agora. GET e nada mais; cada estado (sem login, sem matrícula, sem grupo,
     # com grupo) responde com texto, nunca com 404.
     path("comunidade", comunidade, name="comunidade"),
+    # A MESMA Comunidade vista pela escola (TAR-827): as esperas de cada grupo
+    # e quem responde por elas. 404 para quem não modera, como as ferramentas.
+    path("comunidade/equipe", comunidade_da_equipe, name="comunidade_da_equipe"),
     # AS FERRAMENTAS DO ADMINISTRADOR (`apps/core/moderacao.py`). Mesmas duas
     # razões de `require_POST` acima, um degrau mais fundo: uma acao de
     # moderacao por GET seria um "tirar do ar" que o robo do Google executa
