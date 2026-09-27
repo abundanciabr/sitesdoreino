@@ -2,9 +2,11 @@
 
 import json
 
+import httpx
 import pytest
 
-from tests.conftest import HOST_A, PAGAMENTOS, SITE_A, SLUG
+from apps.pedidos.models import Order
+from tests.conftest import HOST_A, PAGAMENTOS, SITE_A, SLUG, _responder_intent
 
 pytestmark = pytest.mark.django_db
 
@@ -56,6 +58,47 @@ def test_pix_appmax_envia_documento_ip_e_itens_do_catalogo(
     assert cobranca["customer"]["ip"] == "127.0.0.1"
     assert cobranca["metadata"]["items"]
     assert cobranca["metadata"]["items"][0]["product_id"] != "forjado"
+
+
+def test_502_do_pix_orienta_nova_tentativa_e_repete_a_mesma_chave(
+    api, rede, sessao_a, settings
+):
+    """Achado da TAR-711: a compra Pix sandbox recebeu 500 sem QR. O 502 de
+    pagamentos vira frase para o comprador, nenhum pedido nasce, e a nova
+    tentativa leva a mesma chave de idempotência, sem cobrança duplicada."""
+    # guarda: services/checkout/apps/core/api.py:420
+    settings.APPMAX_PIX_ENABLED_SITES = frozenset({SITE_A["id"]})
+    respostas = [httpx.Response(502, json={"detail": "segredo-interno do provedor"})]
+    rota = rede.post(f"{PAGAMENTOS}/intents").mock(
+        side_effect=lambda pedido: (
+            respostas.pop() if respostas else _responder_intent(pedido)
+        )
+    )
+    corpo = {
+        "customer": {
+            "name": "Cliente Teste",
+            "email": "cliente@teste.com",
+            "phone": "(11) 99999-9999",
+            "cpf": "123.456.789-09",
+        },
+        "method": "pix",
+    }
+
+    falha = api.post(f"/api/checkout/sessoes/{sessao_a['id']}/pedido", corpo)
+
+    assert falha.status_code == 502, falha.content
+    assert falha.json() == {
+        "detail": "não foi possível iniciar o pagamento; tente novamente"
+    }
+    assert "segredo-interno" not in falha.content.decode()
+    assert not Order.objects.filter(session_id=sessao_a["id"]).exists()
+
+    nova = api.post(f"/api/checkout/sessoes/{sessao_a['id']}/pedido", corpo)
+
+    assert nova.status_code == 201, nova.content
+    assert nova.json()["payment"]["pix"]["qr_code"]
+    chaves = {chamada.request.headers["X-Idempotency-Key"] for chamada in rota.calls}
+    assert chaves == {sessao_a["id"]}
 
 
 def test_site_habilitado_mostra_opcao_de_cartao_e_exige_dados_do_pix(
