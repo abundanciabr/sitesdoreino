@@ -692,6 +692,10 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # esta é a regra que aquele status protege — falha do Mercado Pago
         # responde 502, nunca 2xx, e o consumidor repete com a MESMA chave.
         "INV-P15",
+        # Frente PRIV do sistema de experimentos (26/09/2026), célula
+        # `metricas`: o livro de fatos só assina stream cujo contrato congelado
+        # não declare campo pessoal em nenhum nível do esquema.
+        "INV-MET-P1",
         # Fase 1 do plano de notificações (25/08/2026), célula `sugestoes`: a
         # identidade cunhada aqui guarda o id da identidade da PLATAFORMA, que a
         # resposta do contrato já entregava e a porta descartava. Sem ele nenhum

@@ -693,14 +693,11 @@ def decidir_contribuicao(request):
 def _publicar(request, autor_id: str, site: str):
     """O formulário de publicar, lido e conferido. A tarefa nasce em `quadro.publicar`.
 
-    O responsável vem de uma lista, mas a lista é do navegador: por isso ele é
-    conferido de novo contra `IDS_DA_EQUIPE`, que é a única resposta que vale.
+    O responsável vem de uma lista, mas a lista é do navegador: a conferência
+    contra `IDS_DA_EQUIPE` mora dentro de `quadro.publicar` (a porta única),
+    não aqui, para valer também para quem chamar por outro caminho.
     """
     responsavel_id = (request.POST.get("responsavel_id") or "").strip()
-    if not e_da_equipe(responsavel_id):
-        raise quadro.ContribuicaoRecusada(
-            "Quem responde pela aceitação precisa ser alguém da equipe da escola."
-        )
     medalha = None
     slug = (request.POST.get("medalha") or "").strip()
     if slug:
