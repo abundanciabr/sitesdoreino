@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-140215-TAR-893-explicada",
+  "tarefa": "TAR-893",
+  "evento": "explicada",
+  "quando": "2026-09-27T14:02:15.046871+00:00",
+  "quem": "descoberta durante o despacho ci/operacoes-vps-saida-no-erro (TAR-892), sessao 4442b6ad, 27/09/2026",
+  "o_que_e": "Varios botoes de manutencao do site (religar coisas, semear conteudo, fazer rollback, contar dados) tem o mesmo problema medido e corrigido na TAR-892: quando a operacao da erro no servidor, a tela do run some com o motivo em vez de mostrar o que aconteceu",
+  "o_que_muda": "Cada um desses botoes passa a mostrar o motivo real do erro quando falha, em vez de aparecer uma mensagem tecnica confusa do GitHub sem explicar nada",
+  "exemplo": "Hoje, se o botao de semear conteudo do quiz falhar no servidor, o run so mostra Unable to process file command; devia mostrar qual passo falhou e por que, como ja acontece quando tudo da certo",
+  "importancia": 40
+}
