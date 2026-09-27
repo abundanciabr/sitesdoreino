@@ -1,0 +1,19 @@
+{
+  "arquivo": "881-o-commit-do-painel-feito-pelo-rito-de-pr-sempre-credita-o-co",
+  "id": "TAR-881",
+  "titulo": "O commit do painel feito pelo rito de PR sempre credita o Codex mesmo quando outro robo fez o trabalho",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado: o commit do painel usa a coautoria da mensagem do pedido; teste que prova",
+  "despacho": "modelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: guarda focado nasce de comportamento ja definido; contrato aberto sobe para produto\n(perfil gerado por `python ci/economia_da_fabrica.py brief --tipo teste --celula ci --alvo ci/pr.py ...`)\n\nBrief de despacho no repositorio abundanciabr/sitesdoreino. Sempre PT-BR.\n\n## O problema medido\n`ci/pr.py` linha 795 faz `git commit ... -m \"painel: ...\" -m \"Co-Authored-By: Codex <noreply@openai.com>\"` com\na linha de coautoria fixa em Codex, sempre, no commit automatico que grava o recibo do painel. Nao importa\nqual robo (Claude, Codex ou outro) fez o trabalho do PR, o commit \"painel: ...\" credita sempre o Codex.\n\nA mensagem de erro em `ci/pr.py` linha 365 reforca isso: ela ensina a colar exatamente\n`Co-Authored-By: Codex <noreply@openai.com>` na mensagem de commit do pedido. Mas a checagem em\n`ci/pr.py` linha 361 so confere se a substring `Co-Authored-By` esta presente, aceitando qualquer coautor.\nEfeito real: PR 2237, feito pelo Claude, tem o commit do painel creditado ao Codex no historico do git.\n\n## O que fazer\n1. Mude `ci/pr.py` linha 795 para usar a linha de coautoria que veio na mensagem de commit do pedido (a\n   mesma que passou pela checagem da linha 361), em vez do texto fixo do Codex.\n2. Escreva um teste que primeiro reprova (comprovando que hoje o commit do painel sempre credita Codex mesmo\n   quando a mensagem do pedido credita outro robo) e depois passa com a correcao.\n3. Confira que a mensagem de erro da linha 365 nao fica descolada do novo comportamento.\n\n## Evidencia exigida\nPR integrado: o commit do painel usa a coautoria da mensagem do pedido; teste que prova.\n\n## Referencias\nPR 2237 (exemplo real do efeito). Arquivo: ci/pr.py (linhas 361, 365, 795).",
+  "origem": "sessao-ci-registrar-descobertas-do-make-2026-09-27",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
