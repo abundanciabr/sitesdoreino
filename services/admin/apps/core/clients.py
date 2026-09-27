@@ -1418,49 +1418,11 @@ class CatalogoClient:
             "GET", site_id, slug, "", especiais=((404, self.SEM_PAGINA),)
         )
 
-    # -- Os experimentos da página, pelo contrato publicado em 26/09/2026 -----
-    # `getExperiment` e `changeExperimentState`, os dois sob a página: o
-    # experimento mora na página, e o endereço dele carrega o apelido dela.
-
-    def _caminho_dos_experimentos(self, site_id: str, slug: str) -> str:
-        return (
-            f"/sites/{quote(str(site_id), safe='')}"
-            f"/paginas/{quote(str(slug), safe='')}/experimentos"
-        )
-
-    def experimento(
-        self, site_id: str, slug: str, experimento_id: str
-    ) -> "tuple[str, dict | str]":
-        """`getExperiment`: estado, decisão e as variantes (snapshot do texto)."""
-        return self._falar(
-            "GET",
-            f"{self._caminho_dos_experimentos(site_id, slug)}"
-            f"/{quote(str(experimento_id), safe='')}",
-            especiais=((404, self.SEM_EXPERIMENTO),),
-        )
-
-    def mudar_estado_do_experimento(
-        self, site_id: str, slug: str, experimento_id: str, mudanca: dict
-    ) -> "tuple[str, dict | str]":
-        """`changeExperimentState`: `{"estado": "ativo"}` põe no ar. Pedir o
-        estado em que ele já está responde 200 sem mudar nada, e é isso que
-        torna seguro o duplo clique."""
-        return self._falar(
-            "POST",
-            f"{self._caminho_dos_experimentos(site_id, slug)}"
-            f"/{quote(str(experimento_id), safe='')}/estado",
-            corpo=mudanca,
-            especiais=(
-                (409, self.CONFLITO),
-                (422, self.RECUSADO),
-                (404, self.SEM_EXPERIMENTO),
-            ),
-        )
-
     # -- O ciclo, pelo contrato publicado em 26/09/2026 (PR #2146) ------------
-    # `listExperiments`, `createExperiment` e `changeExperimentState`, todos
-    # sob a página. É por eles que a tela `/admin/paginas/experimentos/` cria
-    # o experimento em rascunho e o põe no ar.
+    # `listExperiments`, `getExperiment`, `createExperiment` e
+    # `changeExperimentState`, todos sob a página. É por eles que a tela
+    # `/admin/paginas/experimentos/` cria o experimento em rascunho e o põe no
+    # ar, e a decisão e o resultado leem e encerram o experimento.
 
     def _caminho_dos_experimentos(self, site_id: str, slug: str) -> str:
         return (
@@ -1484,6 +1446,17 @@ class CatalogoClient:
             logger.error("catálogo: a lista de experimentos veio fora do contrato")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         return desfecho, lido
+
+    def experimento(
+        self, site_id: str, slug: str, experimento_id: str
+    ) -> "tuple[str, dict | str]":
+        """`getExperiment`: estado, decisão e as variantes (snapshot do texto)."""
+        return self._falar(
+            "GET",
+            f"{self._caminho_dos_experimentos(site_id, slug)}"
+            f"/{quote(str(experimento_id), safe='')}",
+            especiais=((404, self.SEM_EXPERIMENTO),),
+        )
 
     def criar_experimento(
         self, site_id: str, slug: str, corpo: dict
