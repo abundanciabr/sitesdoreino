@@ -151,6 +151,7 @@ def _envelope_publicado(evento: OutboxEvent) -> dict[str, Any]:
     raise AssertionError("o envelope da reversão não chegou ao stream")
 
 
+# guarda: services/pagamentos/pagamentos/supervisao.py:201
 @pytest.mark.parametrize(
     ("status", "motivo"),
     [
@@ -160,7 +161,6 @@ def _envelope_publicado(evento: OutboxEvent) -> dict[str, Any]:
         ("chargeback_perdido", "contestacao"),
     ],
 )
-# guarda: services/pagamentos/pagamentos/supervisao.py:200
 def test_get_autenticado_emite_reversao_sem_valor_nem_transicao_financeira(
     status: str, motivo: str
 ) -> None:
@@ -233,6 +233,7 @@ def test_falha_na_consulta_nao_emite_e_conserva_pendencia() -> None:
     assert aviso.failed_attempts == 1
 
 
+# guarda: services/pagamentos/pagamentos/supervisao.py:160
 @pytest.mark.parametrize(
     "divergir",
     [
@@ -258,7 +259,6 @@ def test_falha_na_consulta_nao_emite_e_conserva_pendencia() -> None:
         "referencia",
     ],
 )
-# guarda: services/pagamentos/pagamentos/supervisao.py:157
 def test_identidade_local_divergente_nao_consulta_nem_emite(
     divergir: Callable[[AppmaxWebhookInbox, Intent, PaymentAttempt], None],
 ) -> None:
@@ -337,7 +337,7 @@ def test_pedido_devolvido_pelo_get_divergente_nao_emite(campo: str) -> None:
     assert aviso.processed_at is None
 
 
-# guarda: services/pagamentos/pagamentos/supervisao.py:199
+# guarda: services/pagamentos/pagamentos/supervisao.py:200
 def test_repeticao_e_dois_avisos_produzem_um_evento_da_mesma_reversao() -> None:
     _compra_aprovada()
     _aviso("order_refund")
@@ -351,7 +351,7 @@ def test_repeticao_e_dois_avisos_produzem_um_evento_da_mesma_reversao() -> None:
     assert _reversoes().get().payload["motivo"] == "contestacao"
 
 
-# guarda: services/pagamentos/pagamentos/supervisao.py:191
+# guarda: services/pagamentos/pagamentos/supervisao.py:192
 def test_dois_avisos_processados_ao_mesmo_tempo_produzem_um_evento() -> None:
     """Cada worker segura um aviso diferente do mesmo pedido.
 

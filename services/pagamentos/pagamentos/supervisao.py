@@ -154,8 +154,9 @@ def _consultar_pos_aprovacao(
     if (
         aviso.platform_site_id != tentativa.platform_site_id
         or tentativa.intent.site_id != tentativa.platform_site_id
-        or tentativa.provider_reference_id != aviso.external_order_id
     ):
+        raise _IdentidadePosAprovacaoInvalida
+    if tentativa.provider_reference_id != aviso.external_order_id:
         raise _IdentidadePosAprovacaoInvalida
     instalacao = InstalacaoAppmax.objects.filter(
         app_id=aviso.app_id, appmax_site_id=aviso.appmax_site_id
