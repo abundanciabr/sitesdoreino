@@ -1,7 +1,9 @@
 import hashlib
 import importlib.util
 import json
+import os
 import re
+import stat
 import builtins
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
@@ -13,6 +15,8 @@ from uuid import UUID
 
 import pytest
 import yaml
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -806,7 +810,7 @@ def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(evento))
     ops.preparar()
     script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
-    assert script.startswith("set -eu\npython3 - <<'PY_OPERACAO_VPS'\n")
+    assert script.startswith("set -eu\npython3 - <<'PY_OPERACAO_VPS' || true\n")
     fonte = script.split("\n", 2)[2].rsplit("PY_OPERACAO_VPS", 1)[0]
     compile(fonte, "remoto", "exec")
     assert "executar('estado-servico', 'admin'," in fonte
@@ -835,6 +839,57 @@ def test_preparar_appmax_le_referencia_do_evento_sem_expor_em_env(
     script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
     assert REFERENCIA in script
     assert PRIVADO not in script
+
+
+def _shim_python3(tmp_path: Path) -> str:
+    """Sem `python3` no PATH do Windows; um shim de uma linha resolve `python`,
+    que já está no PATH. O script GERADO (o que a VPS roda) não muda."""
+    pasta = tmp_path / "shim-bin"
+    pasta.mkdir(exist_ok=True)
+    shim = pasta / "python3"
+    shim.write_text("#!/bin/sh\nexec python \"$@\"\n", encoding="utf-8", newline="\n")
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    return str(pasta)
+
+
+def test_script_gerado_sempre_sai_zero_mesmo_com_erro_no_remoto(monkeypatch, tmp_path):
+    """PR #2249 (achado da TAR-868, replicado aqui): sob `bash -e -o pipefail`, o
+    `appleboy/ssh-action` fecha a captura multilinha do stdout com um `echo EOF`
+    que só roda se o comando anterior saiu 0. Um script que sai != 0 quando o
+    remoto dá ERROR apaga a evidência bem no caso em que mais precisamos dela.
+    O veredito sai do JSON, no `conferir`; o script tem que sair 0 sempre.
+    """
+    assert BASH, (
+        "sem bash nesta máquina: este guarda EXECUTA o script gerado, sem "
+        "interpretador não há o que medir - isso não é um OK ([INV-CI01])"
+    )
+    monkeypatch.setenv("OPERACAO", "estado-servico")
+    monkeypatch.setenv("SERVICO", "admin")
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    evento = tmp_path / "evento.json"
+    evento.write_text(json.dumps({"inputs": {"referencia": ""}}), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(evento))
+    ops.preparar()
+    script = tmp_path / "operacao-vps.sh"
+
+    # /opt/plataforma não existe fora da VPS: dispara Falha("instrumento") no
+    # remoto de forma determinística, em qualquer máquina, sem precisar de docker.
+    ambiente = dict(os.environ)
+    ambiente["PATH"] = _shim_python3(tmp_path) + os.pathsep + ambiente["PATH"]
+    resultado = subprocess.run(
+        [BASH, str(script)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=ambiente,
+        timeout=30,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    linhas_json = [l for l in resultado.stdout.splitlines() if l.startswith("{")]
+    assert linhas_json, resultado.stdout + resultado.stderr
+    dados = json.loads(linhas_json[-1])
+    assert dados["resultado"] == "ERROR"
 
 
 @pytest.mark.parametrize(
@@ -894,6 +949,10 @@ def test_workflow_fecha_ref_credencial_e_entrada():
         r"SHA256:[A-Za-z0-9+/]{43}", passos[remoto]["with"]["fingerprint"]
     )
     assert passos[remoto]["with"]["capture_stdout"] is True
+    # TAR-nova (PR #2249 replicado): o remoto pode sair sempre 0 (o veredito vem
+    # do JSON), então o passo de conferência precisa rodar mesmo quando o
+    # GitHub o marca como falho por outro motivo, e nunca ser pulado em ERROR.
+    assert passos[-1]["if"] == "always() && steps.remoto.outcome != 'skipped'"
     assert (
         passos[remoto]["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
     )

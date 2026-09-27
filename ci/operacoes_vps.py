@@ -1557,7 +1557,10 @@ def preparar():
     )
     destino = Path(os.environ["RUNNER_TEMP"]) / "operacao-vps.sh"
     destino.write_text(
-        "set -eu\npython3 - <<'PY_OPERACAO_VPS'\n"
+        # O ssh-action fecha a saída multilinha com `echo EOF` sob
+        # `bash -e -o pipefail`: saída diferente de zero aqui apaga a evidência.
+        # O veredito vem do JSON, no `conferir` (armadilha do PR #2249/TAR-868).
+        "set -eu\npython3 - <<'PY_OPERACAO_VPS' || true\n"
         + fonte
         + chamada
         + "PY_OPERACAO_VPS\n",

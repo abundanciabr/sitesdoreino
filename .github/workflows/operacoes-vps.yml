@@ -80,6 +80,7 @@ jobs:
           command_timeout: 2m
           script_path: ${{ steps.conferir.outputs.script }}
       - name: Conferir evidência e publicar resumo
+        if: always() && steps.remoto.outcome != 'skipped'
         env:
           SAIDA: ${{ steps.remoto.outputs.stdout }}
           OPERACAO: ${{ inputs.operacao }}
