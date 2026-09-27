@@ -21,6 +21,7 @@ montado à mão prova o que eu acredito, não o que o site faz.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -28,6 +29,7 @@ import pytest
 from django.db import IntegrityError, transaction
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from apps.forum.models import Area, Mensagem, Pessoa, Topico
 from apps.core.views import ERRO_TITULO_CURTO
 
@@ -188,10 +190,17 @@ def test_responder_avanca_a_ultima_atividade_do_topico(client, env, monkeypatch,
 
     Sem este avanço, uma conversa que acabou de receber resposta continuaria
     parecendo lida para a turma inteira.
+
+    O relógio do Windows tem um tique de ~15ms: o `auto_now_add` da criação e o
+    `timezone.now()` da view podiam empatar nele, e o `>` reprovava por sorte
+    de horário, não por defeito. Por isso o teste recua `antes` por `update` no
+    banco (sem depender de biblioteca nova) para um instante inequivocamente
+    anterior, e continua provando a mesma coisa: que a view avança a hora.
     """
     como_aluno(monkeypatch)
     topico = conversa(sala)
-    antes = topico.ultima_atividade_em
+    antes = timezone.now() - timedelta(minutes=5)
+    Topico.objects.filter(pk=topico.pk).update(ultima_atividade_em=antes)
 
     responder(client, topico)
 
