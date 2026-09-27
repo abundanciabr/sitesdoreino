@@ -1,7 +1,9 @@
 import hashlib
 import importlib.util
 import json
+import os
 import re
+import stat
 import builtins
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
@@ -13,6 +15,8 @@ from uuid import UUID
 
 import pytest
 import yaml
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -51,7 +55,7 @@ def test_recusa_entrada_antes_de_executar(monkeypatch, capsys, operacao, servico
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
 
 
-# guarda: ci/operacoes_vps.py:134
+# guarda: ci/operacoes_vps.py:381
 @pytest.mark.parametrize("referencia", ["", "x" * 64, PRIVADO])
 def test_appmax_pix_aviso_recusa_referencia_invalida_antes_da_leitura(
     monkeypatch, capsys, referencia
@@ -265,7 +269,7 @@ def test_appmax_pix_descoberta_historica_emite_candidatas_opacas():
         "classificacao": "unica",
         "candidatas": [_candidata_pix()],
     }
-    # guarda: ci/operacoes_vps.py:575
+    # guarda: ci/operacoes_vps.py:438
     assert ops.conferir_medicao("appmax-pix", medicao) == medicao
     texto = json.dumps(medicao)
     assert "pedido_id" not in texto
@@ -330,7 +334,7 @@ def test_appmax_pix_por_referencia_aceita_candidata_unica_pela_forma_da_evidenci
 
 
 def test_appmax_pix_descoberta_recusa_modo_diferente_de_descoberta():
-    # guarda: ci/operacoes_vps.py:308
+    # guarda: ci/operacoes_vps.py:440
     medicao = {"modo": "outro", "classificacao": "ausente", "candidatas": []}
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix", medicao)
@@ -423,7 +427,7 @@ def test_appmax_pix_codigo_remoto_e_autossuficiente_e_guarda_antes_da_consulta(
         capturado["codigo"] = args[-1]
         return json.dumps(medicao)
 
-    # guarda: ci/operacoes_vps.py:608
+    # guarda: ci/operacoes_vps.py:1118
     monkeypatch.setattr(ops, "comando", comando)
     try:
         assert ops.medir("appmax-pix", "pagamentos") == medicao
@@ -806,7 +810,7 @@ def test_preparar_usa_catalogo_e_codigo_do_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(evento))
     ops.preparar()
     script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
-    assert script.startswith("set -eu\npython3 - <<'PY_OPERACAO_VPS'\n")
+    assert script.startswith("set -eu\npython3 - <<'PY_OPERACAO_VPS' || true\n")
     fonte = script.split("\n", 2)[2].rsplit("PY_OPERACAO_VPS", 1)[0]
     compile(fonte, "remoto", "exec")
     assert "executar('estado-servico', 'admin'," in fonte
@@ -835,6 +839,57 @@ def test_preparar_appmax_le_referencia_do_evento_sem_expor_em_env(
     script = (tmp_path / "operacao-vps.sh").read_text(encoding="utf-8")
     assert REFERENCIA in script
     assert PRIVADO not in script
+
+
+def _shim_python3(tmp_path: Path) -> str:
+    """Sem `python3` no PATH do Windows; um shim de uma linha resolve `python`,
+    que já está no PATH. O script GERADO (o que a VPS roda) não muda."""
+    pasta = tmp_path / "shim-bin"
+    pasta.mkdir(exist_ok=True)
+    shim = pasta / "python3"
+    shim.write_text("#!/bin/sh\nexec python \"$@\"\n", encoding="utf-8", newline="\n")
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    return str(pasta)
+
+
+def test_script_gerado_sempre_sai_zero_mesmo_com_erro_no_remoto(monkeypatch, tmp_path):
+    """PR #2249 (achado da TAR-868, replicado aqui): sob `bash -e -o pipefail`, o
+    `appleboy/ssh-action` fecha a captura multilinha do stdout com um `echo EOF`
+    que só roda se o comando anterior saiu 0. Um script que sai != 0 quando o
+    remoto dá ERROR apaga a evidência bem no caso em que mais precisamos dela.
+    O veredito sai do JSON, no `conferir`; o script tem que sair 0 sempre.
+    """
+    assert BASH, (
+        "sem bash nesta máquina: este guarda EXECUTA o script gerado, sem "
+        "interpretador não há o que medir - isso não é um OK ([INV-CI01])"
+    )
+    monkeypatch.setenv("OPERACAO", "estado-servico")
+    monkeypatch.setenv("SERVICO", "admin")
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    evento = tmp_path / "evento.json"
+    evento.write_text(json.dumps({"inputs": {"referencia": ""}}), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(evento))
+    ops.preparar()
+    script = tmp_path / "operacao-vps.sh"
+
+    # /opt/plataforma não existe fora da VPS: dispara Falha("instrumento") no
+    # remoto de forma determinística, em qualquer máquina, sem precisar de docker.
+    ambiente = dict(os.environ)
+    ambiente["PATH"] = _shim_python3(tmp_path) + os.pathsep + ambiente["PATH"]
+    resultado = subprocess.run(
+        [BASH, str(script)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=ambiente,
+        timeout=30,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    linhas_json = [l for l in resultado.stdout.splitlines() if l.startswith("{")]
+    assert linhas_json, resultado.stdout + resultado.stderr
+    dados = json.loads(linhas_json[-1])
+    assert dados["resultado"] == "ERROR"
 
 
 @pytest.mark.parametrize(
@@ -894,6 +949,10 @@ def test_workflow_fecha_ref_credencial_e_entrada():
         r"SHA256:[A-Za-z0-9+/]{43}", passos[remoto]["with"]["fingerprint"]
     )
     assert passos[remoto]["with"]["capture_stdout"] is True
+    # TAR-nova (PR #2249 replicado): o remoto pode sair sempre 0 (o veredito vem
+    # do JSON), então o passo de conferência precisa rodar mesmo quando o
+    # GitHub o marca como falho por outro motivo, e nunca ser pulado em ERROR.
+    assert passos[-1]["if"] == "always() && steps.remoto.outcome != 'skipped'"
     assert (
         passos[remoto]["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
     )
@@ -1067,7 +1126,7 @@ def test_appmax_pix_pedido_exige_referencia_e_filtra_catalogo(monkeypatch, capsy
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
     assert ops.executar("appmax-pix-pedido", "pagamentos", {"pagamentos"}) == 2
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
-    # guarda: ci/operacoes_vps.py:134
+    # guarda: ci/operacoes_vps.py:19
     assert ops.OPERACOES >= {"appmax-pix-pedido"}
 
 
@@ -1767,6 +1826,10 @@ class _AvisoManager:
         filtrados = self.itens
         for nome, esperado in kwargs.items():
             if nome.endswith("__gte"):
+                base = nome.removesuffix("__gte")
+                filtrados = [
+                    item for item in filtrados if valor(item, base) >= esperado
+                ]
                 continue
             base = nome.removesuffix("__contains")
             filtrados = [item for item in filtrados if valor(item, base) == esperado]
@@ -2387,6 +2450,222 @@ def _executar_codigo_appmax_inbox_latencia(
     return dados, chamadas, consultas, consultas_outbox, referencia
 
 
+class _CursorFalso:
+    def __init__(self, comandos_sql):
+        self.comandos_sql = comandos_sql
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def execute(self, sql, *args):
+        self.comandos_sql.append(sql)
+
+
+def _executar_codigo_appmax_inbox_latencia_descoberta(
+    monkeypatch, tentativas, urls=None, agora=None
+):
+    consultas = []
+    comandos_sql = []
+    urls = urls or (ops.APPMAX_AUTH_SANDBOX, ops.APPMAX_API_SANDBOX)
+    settings = SimpleNamespace(APPMAX_AUTH_URL=urls[0], APPMAX_API_URL=urls[1])
+    timezone_falsa = SimpleNamespace(
+        now=lambda: agora or datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    )
+    conexao_falsa = SimpleNamespace(cursor=lambda: _CursorFalso(comandos_sql))
+    importador_real = builtins.__import__
+    modelos = SimpleNamespace(
+        PaymentAttempt=SimpleNamespace(objects=_AvisoManager(tentativas, consultas)),
+    )
+
+    def importar(nome, *args, **kwargs):
+        falsos = {
+            "django.conf": SimpleNamespace(settings=settings),
+            "django.utils": SimpleNamespace(timezone=timezone_falsa),
+            "django.db": SimpleNamespace(connection=conexao_falsa),
+            "pagamentos.core.models": modelos,
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    def comando(args):
+        if args[1] == "ps":
+            return "a" * 64
+        saida = StringIO()
+        with redirect_stdout(saida):
+            try:
+                exec(
+                    args[-1],
+                    {"__builtins__": {**vars(builtins), "__import__": importar}},
+                )
+            except SystemExit as erro:
+                if erro.code == 23:
+                    raise ops.Falha("sandbox") from None
+                if erro.code != 0:
+                    raise
+        return saida.getvalue()
+
+    monkeypatch.setattr(ops, "comando", comando)
+    dados = ops.medir("appmax-inbox-latencia", "pagamentos", "")
+    return dados, consultas, comandos_sql
+
+
+def _tentativa_inbox_latencia(
+    chave,
+    metodo,
+    status_intent,
+    estado_tentativa,
+    criada_em,
+    *,
+    platform_site_id=None,
+    provider="appmax",
+):
+    return SimpleNamespace(
+        provider=provider,
+        platform_site_id=platform_site_id or ops.SITE_MESHCRAFT,
+        state=estado_tentativa,
+        created_at=criada_em,
+        intent=SimpleNamespace(idempotency_key=chave, method=metodo, status=status_intent),
+    )
+
+
+def test_appmax_inbox_latencia_descoberta_le_so_pagamentos_e_publica_referencia_opaca(
+    monkeypatch,
+):
+    criada_em = datetime(2026, 9, 27, 5, 45, 15, tzinfo=timezone.utc)
+    tentativas = [
+        _tentativa_inbox_latencia("sessao-cartao-0010", "card", "approved", "approved", criada_em)
+    ]
+    dados, consultas, comandos_sql = _executar_codigo_appmax_inbox_latencia_descoberta(
+        monkeypatch, tentativas
+    )
+    assert comandos_sql == ["SET statement_timeout = 10000"]
+    esperado = hashlib.sha256(b"sessao-cartao-0010").hexdigest()
+    assert dados == {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [
+            {
+                "referencia": esperado,
+                "criada_em": criada_em.isoformat(),
+                "metodo": "card",
+                "tentativa": "approved",
+                "intent": "approved",
+                "tentativas": 1,
+            }
+        ],
+    }
+    assert "sessao-cartao-0010" not in json.dumps(dados)
+
+
+def test_appmax_inbox_latencia_descoberta_ignora_outro_site(monkeypatch):
+    criada_em = datetime(2026, 9, 27, 5, 45, 15, tzinfo=timezone.utc)
+    tentativas = [
+        _tentativa_inbox_latencia(
+            "sessao-de-outro-site",
+            "card",
+            "approved",
+            "approved",
+            criada_em,
+            platform_site_id="outro-site",
+        )
+    ]
+    dados, consultas, _ = _executar_codigo_appmax_inbox_latencia_descoberta(
+        monkeypatch, tentativas
+    )
+    # guarda: ci/operacoes_vps.py:1204 (platform_site_id=SITE_MESHCRAFT)
+    assert dados == {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+    assert consultas[0]["platform_site_id"] == ops.SITE_MESHCRAFT
+
+
+def test_appmax_inbox_latencia_descoberta_ignora_fora_da_janela_de_sete_dias(
+    monkeypatch,
+):
+    agora = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
+    dentro = agora - timedelta(days=6)
+    fora = agora - timedelta(days=8)
+    tentativas = [
+        _tentativa_inbox_latencia("chave-antiga", "card", "approved", "approved", fora),
+        _tentativa_inbox_latencia("chave-recente", "card", "approved", "approved", dentro),
+    ]
+    dados, _, _ = _executar_codigo_appmax_inbox_latencia_descoberta(
+        monkeypatch, tentativas, agora=agora
+    )
+    assert dados["classificacao"] == "unica"
+    assert dados["candidatas"][0]["referencia"] == hashlib.sha256(
+        b"chave-recente"
+    ).hexdigest()
+
+
+def test_appmax_inbox_latencia_descoberta_acima_do_limite_com_101_tentativas(
+    monkeypatch,
+):
+    criada_em = datetime(2026, 9, 27, 5, 45, 15, tzinfo=timezone.utc)
+    tentativas = [
+        _tentativa_inbox_latencia(f"chave-{indice}", "card", "approved", "approved", criada_em)
+        for indice in range(101)
+    ]
+    dados, _, _ = _executar_codigo_appmax_inbox_latencia_descoberta(monkeypatch, tentativas)
+    # guarda: ci/operacoes_vps.py:1205-1207 ([:101] / len(tentativas) > 100)
+    assert dados == {
+        "modo": "descoberta",
+        "classificacao": "acima_do_limite",
+        "candidatas": [],
+    }
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_fora_do_sandbox(monkeypatch):
+    tentativas = [
+        _tentativa_inbox_latencia(
+            "sessao",
+            "card",
+            "approved",
+            "approved",
+            datetime(2026, 9, 27, 5, 45, 15, tzinfo=timezone.utc),
+        )
+    ]
+    with pytest.raises(ops.Falha, match="sandbox"):
+        _executar_codigo_appmax_inbox_latencia_descoberta(
+            monkeypatch, tentativas, urls=("https://producao.invalido", "https://producao.invalido")
+        )
+
+
+def test_appmax_inbox_latencia_descoberta_agrupa_recusado_seguido_de_aprovado(
+    monkeypatch,
+):
+    """[TAR-872 achado] `rejected` libera novo envio da MESMA intent
+    (models.py:52): duas linhas de PaymentAttempt, mesma idempotency_key.
+    A descoberta agrupa por referência em vez de emitir uma candidata por
+    tentativa — senão a guarda de referência duplicada derruba tudo."""
+    aprovado_em = datetime(2026, 9, 27, 5, 49, 0, tzinfo=timezone.utc)
+    recusado_em = datetime(2026, 9, 27, 5, 45, 0, tzinfo=timezone.utc)
+    tentativas = [
+        _tentativa_inbox_latencia(
+            "mesma-sessao", "card", "approved", "approved", aprovado_em
+        ),
+        _tentativa_inbox_latencia(
+            "mesma-sessao", "card", "rejected", "rejected", recusado_em
+        ),
+    ]
+    dados, _, _ = _executar_codigo_appmax_inbox_latencia_descoberta(monkeypatch, tentativas)
+    esperado = hashlib.sha256(b"mesma-sessao").hexdigest()
+    assert dados == {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [
+            {
+                "referencia": esperado,
+                "criada_em": aprovado_em.isoformat(),
+                "metodo": "card",
+                "tentativa": "approved",
+                "intent": "approved",
+                "tentativas": 2,
+            }
+        ],
+    }
+
+
 def _aviso_inbox_latencia(evento, recebido, processado, **alteracoes):
     aviso = SimpleNamespace(
         app_id="app-1",
@@ -2440,17 +2719,204 @@ def _aviso_da_medicao(**alteracoes):
     )
 
 
-@pytest.mark.parametrize("referencia", ["", "x" * 64, "B" * 64, PRIVADO])
-def test_appmax_inbox_latencia_recusa_referencia_invalida_antes_da_leitura(
+@pytest.mark.parametrize("referencia", ["x" * 64, "B" * 64, PRIVADO])
+def test_appmax_inbox_latencia_recusa_referencia_livre(
     monkeypatch, capsys, referencia
 ):
     monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
-    # guarda: ci/operacoes_vps.py:307
+    # guarda: ci/operacoes_vps.py:375
     assert (
         ops.executar("appmax-inbox-latencia", "pagamentos", {"pagamentos"}, referencia)
         == 2
     )
     assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_appmax_inbox_latencia_sem_referencia_permite_descoberta(monkeypatch, capsys):
+    medicao = {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+    monkeypatch.setattr(ops, "medir", lambda *args: medicao)
+    assert ops.executar("appmax-inbox-latencia", "pagamentos", {"pagamentos"}, "") == 0
+    assert json.loads(capsys.readouterr().out)["medicao"] == medicao
+
+
+def _candidata_inbox_latencia(referencia="a" * 64, *, metodo="card", tentativas=1):
+    return {
+        "referencia": referencia,
+        "criada_em": "2026-09-27T05:45:15+00:00",
+        "metodo": metodo,
+        "tentativa": "approved",
+        "intent": "approved",
+        "tentativas": tentativas,
+    }
+
+
+def test_appmax_inbox_latencia_descoberta_emite_candidatas_opacas():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [_candidata_inbox_latencia()],
+    }
+    # guarda: ci/operacoes_vps.py:620
+    assert ops.conferir_medicao("appmax-inbox-latencia", medicao) == medicao
+    texto = json.dumps(medicao)
+    assert "pedido" not in texto
+    assert "order_id" not in texto
+
+
+@pytest.mark.parametrize("classificacao", ["ausente", "multipla", "acima_do_limite"])
+def test_appmax_inbox_latencia_descoberta_explica_zero_muitas_ou_acima_do_limite(
+    classificacao,
+):
+    candidatas = (
+        [_candidata_inbox_latencia(), _candidata_inbox_latencia("b" * 64)]
+        if classificacao == "multipla"
+        else []
+    )
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": classificacao,
+        "candidatas": candidatas,
+    }
+    assert ops.conferir_medicao("appmax-inbox-latencia", medicao) == medicao
+
+
+@pytest.mark.parametrize(
+    "classificacao,candidatas",
+    [
+        ("ausente", [_candidata_inbox_latencia()]),
+        ("unica", []),
+        ("unica", [_candidata_inbox_latencia(), _candidata_inbox_latencia("b" * 64)]),
+        ("multipla", [_candidata_inbox_latencia()]),
+        ("acima_do_limite", [_candidata_inbox_latencia()]),
+    ],
+)
+def test_appmax_inbox_latencia_descoberta_recusa_classificacao_incoerente(
+    classificacao, candidatas
+):
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": classificacao,
+        "candidatas": candidatas,
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_classificacao_fora_do_catalogo():
+    medicao = {"modo": "descoberta", "classificacao": "invalida", "candidatas": []}
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_criada_em_invalida():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_inbox_latencia(), "criada_em": "27/09/2026"}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_tentativa_invalida():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_inbox_latencia(), "tentativa": "invalido"}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_intent_invalido():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_inbox_latencia(), "intent": "invalido"}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_referencia_fora_do_formato():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_inbox_latencia(), "referencia": "x" * 64}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_tentativas_fora_do_tipo():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_inbox_latencia(), "tentativas": 0}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_mais_de_cem_candidatas():
+    candidatas = [
+        _candidata_inbox_latencia(referencia=f"{indice:064x}") for indice in range(101)
+    ]
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "multipla",
+        "candidatas": candidatas,
+    }
+    # guarda: ci/operacoes_vps.py:624 (len(candidatas) > 100)
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_chave_de_topo_inesperada():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "ausente",
+        "candidatas": [],
+        "pedido": "3531",
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_campo_inesperado():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [{**_candidata_inbox_latencia(), "pedido_id": "3531"}],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_referencia_duplicada():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "multipla",
+        "candidatas": [_candidata_inbox_latencia(), _candidata_inbox_latencia()],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_metodo_invalido():
+    medicao = {
+        "modo": "descoberta",
+        "classificacao": "unica",
+        "candidatas": [_candidata_inbox_latencia(metodo="boleto")],
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao)
+
+
+def test_appmax_inbox_latencia_descoberta_recusa_referencia_junto():
+    medicao = {"modo": "descoberta", "classificacao": "ausente", "candidatas": []}
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao, REFERENCIA)
 
 
 def test_appmax_inbox_latencia_so_le_pagamentos(monkeypatch, capsys):
@@ -2637,9 +3103,9 @@ def test_appmax_inbox_latencia_bloqueia_producao_antes_do_orm(monkeypatch):
     ],
 )
 def test_appmax_inbox_latencia_recusa_latencia_incoerente(medicao):
-    # guarda: ci/operacoes_vps.py:591
-    # guarda: ci/operacoes_vps.py:606
-    # guarda: ci/operacoes_vps.py:608
+    # guarda: ci/operacoes_vps.py:698
+    # guarda: ci/operacoes_vps.py:710
+    # guarda: ci/operacoes_vps.py:715
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-inbox-latencia", medicao, REFERENCIA)
 
@@ -2672,14 +3138,14 @@ def test_appmax_inbox_latencia_recusa_latencia_incoerente(medicao):
     ],
 )
 def test_appmax_inbox_latencia_formato_da_saida_e_fechado(medicao):
-    # guarda: ci/operacoes_vps.py:555
-    # guarda: ci/operacoes_vps.py:560
-    # guarda: ci/operacoes_vps.py:567
-    # guarda: ci/operacoes_vps.py:570
-    # guarda: ci/operacoes_vps.py:579
-    # guarda: ci/operacoes_vps.py:581
-    # guarda: ci/operacoes_vps.py:584
-    # guarda: ci/operacoes_vps.py:587
+    # guarda: ci/operacoes_vps.py:662
+    # guarda: ci/operacoes_vps.py:670
+    # guarda: ci/operacoes_vps.py:674
+    # guarda: ci/operacoes_vps.py:677
+    # guarda: ci/operacoes_vps.py:680
+    # guarda: ci/operacoes_vps.py:691
+    # guarda: ci/operacoes_vps.py:695
+    # guarda: ci/operacoes_vps.py:667
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-inbox-latencia", medicao, REFERENCIA)
 
@@ -2753,6 +3219,7 @@ _CHAVES_OBSERVACAO = {
     "tentativas_15_a_60_min",
     "tentativas_60_min_a_um_dia_util",
     "tentativas_acima_de_um_dia_util",
+    "pre_autorizacao_de_teste_sandbox",
     "inbox_sem_processamento",
     "outbox_pendente",
     "fila_morta",
@@ -2782,9 +3249,19 @@ class _ConsultaObservacao:
         return Filtrada()
 
 
+_URLS_PRODUCAO_OBSERVACAO = (
+    "https://auth.appmax.com.br/oauth2/token",
+    "https://api.appmax.com.br",
+)
+_URLS_SANDBOX_OBSERVACAO = (ops.APPMAX_AUTH_SANDBOX, ops.APPMAX_API_SANDBOX)
+
+
 def _executar_codigo_appmax_observacao(
-    monkeypatch, tentativas=(), efeitos=(), agora=_AGORA_OBSERVACAO
+    monkeypatch, tentativas=(), efeitos=(), agora=_AGORA_OBSERVACAO, sandbox=False
 ):
+    tentativas = [
+        t if len(t) == 5 else (*t, "card", "") for t in tentativas
+    ]
     chamadas = []
     consultas = {"tentativas": [], "inbox": [], "outbox": []}
     modelos = SimpleNamespace(
@@ -2812,10 +3289,16 @@ def _executar_codigo_appmax_observacao(
             )
         ),
     )
+    urls = _URLS_SANDBOX_OBSERVACAO if sandbox else _URLS_PRODUCAO_OBSERVACAO
     importador_real = builtins.__import__
 
     def importar(nome, *args, **kwargs):
         falsos = {
+            "django.conf": SimpleNamespace(
+                settings=SimpleNamespace(
+                    APPMAX_AUTH_URL=urls[0], APPMAX_API_URL=urls[1]
+                )
+            ),
             "django.utils": SimpleNamespace(
                 timezone=SimpleNamespace(now=lambda: agora)
             ),
@@ -2909,6 +3392,7 @@ def test_appmax_observacao_conta_janelas_filas_e_duplicidades_sem_pii(monkeypatc
         "tentativas_15_a_60_min": 2,
         "tentativas_60_min_a_um_dia_util": 2,
         "tentativas_acima_de_um_dia_util": 1,
+        "pre_autorizacao_de_teste_sandbox": 0,
         "inbox_sem_processamento": 3,
         "outbox_pendente": 4,
         "fila_morta": 1,
@@ -2924,6 +3408,8 @@ def test_appmax_observacao_conta_janelas_filas_e_duplicidades_sem_pii(monkeypatc
         "created_at",
         "platform_site_id",
         "intent__order_id",
+        "intent__method",
+        "intent__card_reason_code",
     )
     assert consultas["outbox"][0] == {"payload__provider": "appmax"}
     codigo = chamadas[1][-1]
@@ -2933,6 +3419,61 @@ def test_appmax_observacao_conta_janelas_filas_e_duplicidades_sem_pii(monkeypatc
     for proibido in ("comprador@example.com", "pedido-", "3531", "outro-site"):
         assert proibido not in texto
     assert ops.conferir_medicao("appmax-observacao", dados) == dados
+
+
+_ANTIGA_OBSERVACAO = datetime(2026, 9, 24, 18, 59, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    ("sandbox", "metodo", "motivo", "esperado"),
+    [
+        (True, "card", "autorizado", "pre_autorizacao_de_teste_sandbox"),
+        # guarda: ci/operacoes_vps.py:302 (produção não sai da faixa vermelha)
+        (False, "card", "autorizado", "tentativas_acima_de_um_dia_util"),
+        # guarda: ci/operacoes_vps.py:319 (só cartão, Pix continua vermelho)
+        (True, "pix", "autorizado", "tentativas_acima_de_um_dia_util"),
+        # guarda: ci/operacoes_vps.py:319 (só motivo autorizado)
+        (True, "card", "pendente", "tentativas_acima_de_um_dia_util"),
+        (True, "card", "", "tentativas_acima_de_um_dia_util"),
+    ],
+)
+def test_appmax_observacao_pre_autorizacao_de_teste_sai_da_faixa_vermelha_so_no_sandbox(
+    monkeypatch, sandbox, metodo, motivo, esperado
+):
+    dados, _, _ = _executar_codigo_appmax_observacao(
+        monkeypatch,
+        [(_ANTIGA_OBSERVACAO, ops.SITE_MESHCRAFT, "pedido-1", metodo, motivo)],
+        sandbox=sandbox,
+    )
+    assert dados["pre_autorizacao_de_teste_sandbox"] == int(
+        esperado == "pre_autorizacao_de_teste_sandbox"
+    )
+    assert dados["tentativas_acima_de_um_dia_util"] == int(
+        esperado == "tentativas_acima_de_um_dia_util"
+    )
+    assert ops.conferir_medicao("appmax-observacao", dados) == dados
+
+
+def test_appmax_observacao_pre_autorizacao_de_teste_nao_reclassifica_tentativa_jovem(
+    monkeypatch,
+):
+    # guarda: ci/operacoes_vps.py:319 (idade continua a mesma: só a faixa
+    # vermelha acima de um dia útil é reclassificada, não as mais jovens)
+    dados, _, _ = _executar_codigo_appmax_observacao(
+        monkeypatch,
+        [
+            (
+                _AGORA_OBSERVACAO - timedelta(minutes=5),
+                ops.SITE_MESHCRAFT,
+                "pedido-1",
+                "card",
+                "autorizado",
+            )
+        ],
+        sandbox=True,
+    )
+    assert dados["tentativas_ate_15_min"] == 1
+    assert dados["pre_autorizacao_de_teste_sandbox"] == 0
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,19 @@
+{
+  "arquivo": "905-a-trava-de-testes-deixa-de-culpar-o-pedido-atrasado-pelos-te",
+  "id": "TAR-905",
+  "titulo": "A trava de testes deixa de culpar o pedido atrasado pelos testes que outros acrescentaram",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o teste do pedido atrasado passando, a mutacao que volta a comparar com a ponta da main reprovando, e a trava real dando PASS no merge de teste do PR 2221",
+  "despacho": "Defeito medido em 27/09/2026 (sessao Retomada comunidade): ci/catraca_de_testes.py\ncomparava o total de testes por celula (cobertura_das_celulas) e o conteudo dos\narquivos tocados (perdas) contra a PONTA de BASE_REF, e nao contra o ponto de\nonde o PR saiu. No CI o HEAD e o merge de teste do GitHub feito com a main de\nantes, e o origin/main buscado no job ja traz os testes que outros PRs somaram\ndepois. Provas: PR 2221 (celula cursos), run 36320665606, \"gamificacao: 516 -> 483\"\n(PR 2230); run 36324863242, \"forum: 400 -> 390\" (PR 2240). Com muralhas vermelho a\npista nao atualiza o ramo e o PR fica preso.\n\nConserto: resolver em rodar() o git merge-base BASE_REF HEAD e medir as duas contas\ncontra ele. Teste vermelho para verde em ci/tests/test_catraca_de_testes.py com os\ndois checkouts (ramo do PR e merge de teste); mutacao que volta a comparar com a\nponta reprova. ci/ e Lista B (docs/decisoes/MANDATO-POR-FAIXA.md), faixa ci.",
+  "origem": "pedido do mantenedor na sessao de 27/09/2026; defeito medido na sessao Retomada comunidade (runs 36320665606 e 36324863242)",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

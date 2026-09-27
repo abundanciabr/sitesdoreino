@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-198-falso-aceite-do-pix-appmax-removido-da-fila",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Falso aceite do Pix Appmax removido da fila",
+  detalhe: "A fila tinha declarado o Pix Appmax pronto sem código. O PR 2053 apagou os dois eventos falsos, que não existem mais na main. O Pix sem QR continua aberto nos registros próprios dele.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2053 MERGED, mergeCommit 8d92bc7f9c (gh pr view); os dois eventos falsos da tarefa do Pix ausentes da origin/main (git ls-tree), conferidos em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260924-047-fila-corrige-falso-aceite-do-pix-appmax",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

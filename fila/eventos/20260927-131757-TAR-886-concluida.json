@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-131757-TAR-886-concluida",
+  "tarefa": "TAR-886",
+  "evento": "concluida",
+  "quando": "2026-09-27T13:17:57.334596+00:00",
+  "quem": "agent/ci/registrar-descobertas-do-make",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2254",
+  "verificado_em": "2026-09-27"
+}

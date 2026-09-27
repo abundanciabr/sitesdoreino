@@ -51,11 +51,13 @@ from resumo_de_teste import executar_pytest
 import mapa_de_celulas  # noqa: E402
 import guarda_dos_guardas  # noqa: E402
 from _nucleo import (  # noqa: E402
+    SENTINELAS_DE_INSTRUMENTACAO,
     ErroDeInstrumentacao,
     Estado,
     Relatorio,
     Resultado,
     configurar_saida,
+    defeito_do_make,
     executar,
     raiz_do_repo,
     recortar,
@@ -315,18 +317,6 @@ def rodar_testes_da_infra(raiz: Path) -> Resultado:
     return resultado
 
 
-# Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
-# rodar (ausente, erro de SO, timeout). Só eles significam "não foi possível
-# medir" — qualquer outro número veio do programa e é veredito dele.
-#
-# Este conjunto é DELIBERADAMENTE igual ao de `ci/sessao.py`, que encapsula o
-# mesmo `make ci` para o baseline de sessão. Duplicação consciente é aceitável;
-# duplicação sem guarda é armadilha com data marcada — por isso
-# `ci/tests/test_exit_do_make.py` lê os DOIS arquivos e reprova se as cópias
-# divergirem.
-SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
-
-
 def classificar_exit_do_make(codigo: int) -> Estado:
     """FAIL ou ERROR para o exit de um `make` cujo alvo JÁ se provou planejável.
 
@@ -351,18 +341,6 @@ def classificar_exit_do_make(codigo: int) -> Estado:
     return Estado.FAIL
 
 
-def e_gnu_make(make: str | None) -> bool:
-    """Só o GNU Make vale: uma fachada chamada `make` não entende `-C` (`armadilhas/529`)."""
-    if make is None:
-        return False
-    try:
-        versao = subprocess.run([make, "--version"], capture_output=True, text=True,
-                                encoding="utf-8", errors="replace", timeout=30, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return versao.stdout.startswith("GNU Make")
-
-
 def rodar_celula(raiz: Path, celula: str) -> Resultado:
     """Delega o `make ci` da célula — sem reimplementar lint/type/test aqui."""
     destino = raiz / "services" / celula
@@ -382,19 +360,24 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
             "A Definição de Pronto da célula mora no `make ci` dela. Portão\n"
             "ausente não é portão satisfeito.",
         )
+    sem_make = (
+        "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
+        "Enquanto essa camada não for portada, rodar a CI de UMA célula exige make.\n"
+        "Os portões de repositório (`python ci/ci.py --apenas freeze,muralhas`)\n"
+        "continuam disponíveis sem make."
+    )
     make = shutil.which("make")
-    if not e_gnu_make(make):
-        impostor = f"O `make` do PATH ({make}) não é GNU Make; ponha o GNU Make antes dele.\n" if make else ""
+    if make is None:
         return Resultado(
             f"celula/{celula}",
             Estado.ERROR,
             "GNU Make ausente — a CI da célula ainda depende dele",
-            impostor
-            + "O `make ci` de cada célula encadeia lint/type/test/contrato-check.\n"
-            "Enquanto essa camada não for portada, rodar a CI de UMA célula exige make.\n"
-            "Os portões de repositório (`python ci/ci.py --apenas freeze,muralhas`)\n"
-            "continuam disponíveis sem make.",
+            sem_make,
         )
+    defeito = defeito_do_make(make)
+    if defeito is not None:
+        resumo, detalhe = defeito
+        return Resultado(f"celula/{celula}", Estado.ERROR, resumo, f"{detalhe}\n\n{sem_make}")
 
     def _correr(argumentos: list[str], limite: int) -> subprocess.CompletedProcess | int:
         """Roda o make; devolve o processo, ou 124 se estourou o tempo.

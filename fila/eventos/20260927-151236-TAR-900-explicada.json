@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-151236-TAR-900-explicada",
+  "tarefa": "TAR-900",
+  "evento": "explicada",
+  "quando": "2026-09-27T15:12:36.292819+00:00",
+  "quem": "RETOMADA-APPMAX-RODADA-3.md, resultados 1, 2 e 5",
+  "o_que_e": "Trinta compras de teste com cartao ficaram presas o dia todo porque o sistema nao entendia a recusa da Appmax; o conserto entrou no ar hoje e elas fecharam sozinhas, mas isso ainda nao esta escrito no livro.",
+  "o_que_muda": "O mantenedor ve no painel que as compras presas foram resolvidas, o que ainda depende dele e ate quando, sem precisar perguntar.",
+  "exemplo": "E como fechar o caixa no fim do dia: o dinheiro ja esta certo na gaveta, mas sem a folha assinada ninguem sabe disso amanha.",
+  "importancia": 70
+}

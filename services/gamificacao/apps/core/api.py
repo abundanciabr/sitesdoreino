@@ -882,9 +882,13 @@ def _conquistas_por_pessoa(
     (o prontuário de matrícula, a fila de liberação); tratar o consentimento de
     exposição entre pares como se fosse um véu contra o próprio operador da
     escola confundiria as duas perguntas.
+
+    A conquista que a equipe RETIROU não aparece: a pessoa não a tem mais, e a
+    história dela mora na concessão, no bastidor `/conquistas/interno/reconhecimentos`.
     """
     linhas = (
         ConcessaoModel.objects.filter(site_id=site_id, pessoa_id__in=ids)
+        .exclude(estado=ConcessaoModel.Estado.REVOGADA)
         .select_related("conquista")
         .order_by("pessoa_id", "-concedida_em")
     )

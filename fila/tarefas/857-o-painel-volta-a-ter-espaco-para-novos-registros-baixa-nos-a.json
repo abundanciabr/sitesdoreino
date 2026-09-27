@@ -1,0 +1,19 @@
+{
+  "arquivo": "857-o-painel-volta-a-ter-espaco-para-novos-registros-baixa-nos-a",
+  "id": "TAR-857",
+  "titulo": "O painel volta a ter espaço para novos registros: baixa nos alertas que já foram resolvidos",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "cada baixa aponta responde_a para o alerta exato, gravidade verde, verificado_em de hoje e evidencia com o PR conferido por gh pr view ou o registro posterior que prova o conserto; alerta sem prova de conserto fica aberto; node painel/gerar_manifesto.js verde com a folga do resumo medida antes e depois; python ci/encerramento_alertas.py verde; PR integrado",
+  "despacho": "Auditar os alertas abertos do painel (problemasAbertos em painel/logica.js), conferir na fonte (gh pr view, registros posteriores, fila) quais já foram resolvidos e escrever uma baixa verde por alerta resolvido com responde_a. Não editar registro antigo. Não subir ORCAMENTO_RESUMO_BYTES.",
+  "origem": "pedido do mantenedor de 27/09/2026: o rito do PR da frente comunidade-convite reprovou em node painel/gerar_manifesto.js (resumo 154001 de 153600 bytes); auditar e dar baixa sem subir ORCAMENTO_RESUMO_BYTES",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

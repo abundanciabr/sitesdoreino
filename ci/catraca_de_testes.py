@@ -66,6 +66,16 @@ movido de um arquivo para outro dentro do mesmo PR (a contagem cai aqui e sobe
 lá — o total do PR é que conta), e teste fraco desde o nascimento. Quem cobra a
 MORDIDA dos guardas de invariante é o `ci/guarda_dos_guardas.py`.
 
+A BASE É DE ONDE O PR SAIU, NÃO A PONTA DA MAIN (27/09/2026)
+-------------------------------------------------------------
+Até esta data, "antes" era a ponta de `BASE_REF`. Com a main recebendo um
+merge a cada ~6 min, o PR atrasado pagava pelos testes que ela ganhou depois
+que ele saiu. No run 36320665606 o PR 2221 (célula cursos) reprovou com
+"gamificacao: 516 → 483": o GitHub mediu o merge de teste com a main de antes,
+e o `origin/main` buscado no job já trazia os 33 testes do PR 2230. Com o
+check vermelho a pista não atualiza o ramo, e o PR ficava preso. Agora "antes"
+é `git merge-base BASE_REF HEAD` (ver `ponto_de_partida`).
+
 Uso (o wrapper da muralha passa BASE_REF e PR_LABELS):
 
     python ci/catraca_de_testes.py
@@ -402,17 +412,34 @@ def perdas(raiz: Path, base: str) -> tuple[list[str], int, int]:
     return achados, total_antes, total_depois
 
 
+def ponto_de_partida(raiz: Path, base_ref: str) -> str:
+    """O commit de onde o PR saiu: `git merge-base BASE_REF HEAD`.
+
+    No CI o HEAD é o merge de teste do GitHub, feito com a main de ANTES, e o
+    merge-base dele com o `origin/main` buscado no job é essa main. Na rodada
+    local é o ponto em que o ramo saiu. Nos dois casos, só conta o PR.
+    """
+    return executar(
+        ["git", "merge-base", base_ref, "HEAD"],
+        cwd=raiz,
+        descricao=f"achar de onde o PR saiu de '{base_ref}'",
+        exigir_stdout=True,
+    ).stdout.strip()
+
+
 def rodar(raiz: Path | None = None) -> Relatorio:
     raiz = raiz or raiz_do_repo()
-    base = os.environ.get("BASE_REF", "").strip() or "origin/main"
+    base_ref = os.environ.get("BASE_REF", "").strip() or "origin/main"
     etiquetas = {
         e.strip() for e in os.environ.get("PR_LABELS", "").split(",") if e.strip()
     }
     relatorio = Relatorio(titulo="CATRACA DE TESTES — teste não some em silêncio")
 
+    base = ponto_de_partida(raiz, base_ref)
     achados, antes, depois = perdas(raiz, base)
     reducoes, placar = cobertura_das_celulas(raiz, base)
     achados.extend(reducoes)
+    print(f"BASE MEDIDA: {base[:12]} (merge-base de {base_ref} com HEAD)")
     print(f"TESTES nos arquivos tocados: {antes} antes · {depois} depois")
     print(f"COBERTURA POR CÉLULA: {placar}")
 

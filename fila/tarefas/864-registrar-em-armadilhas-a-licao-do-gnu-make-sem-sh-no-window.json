@@ -1,0 +1,19 @@
+{
+  "arquivo": "864-registrar-em-armadilhas-a-licao-do-gnu-make-sem-sh-no-window",
+  "id": "TAR-864",
+  "titulo": "Registrar em armadilhas a lição do GNU Make sem sh no Windows",
+  "toca": [
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com a armadilha nova do GNU Make sem sh no Windows, com comando e saída",
+  "despacho": "Meça na sua bancada o item 1 e o item 3 da divergência descrita, cole a saída crua na armadilha nova em armadilhas/, cite armadilhas/529 como origem, regenere o índice e abra o PR.",
+  "origem": "pedido do mantenedor de 27/09/2026 na sessao: abrir frentes da retomada do make impostor",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
