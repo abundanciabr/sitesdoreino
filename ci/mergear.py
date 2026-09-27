@@ -1042,6 +1042,8 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
         relatorio.registrar(resultado)
     relatorio.registrar(checar_mandato(raiz_real, pr))
     relatorio.registrar(checar_congelamento(raiz_real, pr))
+    for resultado in checar_dependencias(raiz_real, pr):
+        relatorio.registrar(resultado)
     return relatorio, pr
 
 

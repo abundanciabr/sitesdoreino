@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-058-ci-o-pouso-automatico-espera-o-pr-declarado-em-depende-de",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: o pouso automático espera o PR declarado em Depende-de",
+  detalhe: "O pouso chama checar_dependencias antes do merge: Depende-de de PR aberto segura a integração. Vermelho, verde e mutação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2174. Validação local: árvore cbd7787d93bfa5f40a65eaa8661875386d411dda; commit 6156913a9d01bb2040a41f1fed1f7fbdb04c68c9; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-801",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

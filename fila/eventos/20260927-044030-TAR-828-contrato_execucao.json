@@ -1,0 +1,64 @@
+{
+  "arquivo": "20260927-044030-TAR-828-contrato_execucao",
+  "tarefa": "TAR-828",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T04:40:30.546747+00:00",
+  "quem": "agent/forum/comunidade-coordenacao",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 1 (RETOMADA-COMUNIDADE.md), frente C8: a prova do percurso inteiro em produção",
+    "versao": 1,
+    "objetivo": "Percorrer em meshcraft.top, com duas contas de teste em grupos diferentes e a professora de teste, os passos 2 a 9 do percurso da Comunidade (orientação, grupo, pedido de ajuda, desafio, envio, laudo, reenvio, reconhecimento único, vista da equipe), em celular e só por teclado, e registrar no livro o veredito por passo.",
+    "entregaveis": [
+      "e2e/comunidade.js no molde de services/quiz/tests/quiz_browser.js, lendo credenciais só de variáveis de ambiente",
+      "Run local com saída e capturas sanitizadas (sem e-mail, sem nome)",
+      "Registro tipo medicao em painel/registros/ com URL, código HTTP e veredito de cada passo"
+    ],
+    "escopo_incluido": [
+      "e2e/comunidade.js",
+      "e2e/LEIA-ME.md, se precisar dizer como rodar",
+      "painel/registros/ (um registro novo, número pelo almoxarife)"
+    ],
+    "nao_objetivos": [
+      "Criar contas, mexer em env da VPS ou em listas de equipe (só o mantenedor)",
+      "Corrigir código de célula (lacuna vira bloqueio ou tarefa nova)",
+      "Guardar credencial ou dado pessoal em qualquer arquivo do repositório ou na saída"
+    ],
+    "restricoes": [
+      "Só abre depois de TAR-823, TAR-824, TAR-825, TAR-826 e TAR-827 publicadas (deploy verde no SHA do merge de cada uma)",
+      "Sem as contas de teste, bloquear no primeiro minuto com --espera mantenedor e devolver",
+      "404 nunca 403 para o grupo alheio; reconhecimento único após recarregar; viewport 390 px; navegação só por Tab nos passos de grupo, envio e laudo",
+      "Saída e capturas sanitizadas antes de qualquer registro"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft usando docs/comunidade como especificação",
+      "Dossiê §15: nenhuma tela pronta prova o percurso completo; §16: funciona em celular e orienta nos estados vazio, carregando, erro e espera",
+      "RETOMADA §9: prova do percurso inteiro com dois membros de teste em grupos diferentes"
+    ],
+    "etapas": [
+      "Conferir publicação das cinco frentes e a existência das variáveis de ambiente das contas; sem elas, bloquear",
+      "Escrever o roteiro por passo com URL, código esperado e verificação de conteúdo sanitizada",
+      "Rodar em 390 px e por Tab; guardar capturas fora do repositório",
+      "Registro de medição no livro e PR com --tarefa TAR-828 --tipo medicao"
+    ],
+    "criterios_entrada": [
+      "TAR-823, TAR-824, TAR-825, TAR-826 e TAR-827 concluídas e publicadas",
+      "Decisão 6 do mantenedor cumprida: contas de teste A e B com matrícula ativa em grupos diferentes e a professora de teste nas listas FORUM_PROFESSORES, CURSOS_PROFESSORES e IDS_DA_EQUIPE",
+      "Despacho aberto com model sonnet (brief sonnet medium)"
+    ],
+    "criterios_aceite": [
+      "Cada um dos nove passos do roteiro tem URL, código HTTP e veredito registrados",
+      "A não lê, não busca, não abre por id nem recebe aviso do grupo de B",
+      "Envio 1, laudo e envio 2 visíveis lado a lado; reconhecimento existe uma vez após recarregar",
+      "Equipe vê a espera com responsável",
+      "Tudo em 390 px e por Tab; nenhum e-mail ou nome na saída"
+    ],
+    "evidencias_exigidas": [
+      "Saída do run local com data e URLs",
+      "Capturas sanitizadas fora do repositório, citadas por nome no registro",
+      "Registro tipo medicao com evidencia e verificado_em; URL do PR; estado MERGED"
+    ],
+    "condicao_encerramento": "O percurso 1 a 9 da rota está comprovado em produção com dados de teste e o veredito por passo mora no livro; qualquer passo reprovado está bloqueado com fato, impacto, responsável e ação.",
+    "limites_autonomia": "Não cria conta, não mexe em produção, não corrige célula; reprovação vira bloqueio ou tarefa nova; não pergunta ao mantenedor.",
+    "acoes_do_mantenedor": "Antes de abrir: criar as duas contas de teste com matrícula ativa em grupos diferentes, pôr a professora de teste nas três listas da VPS e entregar as credenciais por variável de ambiente local. Depois: ler o registro de medição."
+  }
+}
