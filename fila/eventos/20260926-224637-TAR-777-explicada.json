@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224637-TAR-777-explicada",
+  "tarefa": "TAR-777",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:46:37.200724+00:00",
+  "quem": "sessao de experimentos, frente F10b, 26/09/2026",
+  "o_que_e": "Hoje o consumidor de eventos da metricas nao ouve os dois eventos de compra do checkout (pedido atribuido e pedido pago), entao o livro de fatos fica cego para quem entrou e quem pagou no experimento.",
+  "o_que_muda": "A metricas passa a guardar os dois fatos de compra do checkout, sem duplicar por reentrega, e recusa para a fila de mortos qualquer envio que carregue dado pessoal, que nunca entra no livro.",
+  "exemplo": "Quando o checkout confirma um pedido pago, a metricas grava o fato uma unica vez mesmo se o Redis reentregar a mensagem; se um envio vier com o e-mail do cliente, o evento vai para a fila de mortos em vez de entrar no livro.",
+  "importancia": 55
+}
