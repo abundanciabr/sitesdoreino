@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-174-canal-automatico-da-triade-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Canal automático da tríade integrado",
+  detalhe: "Estava aberto porque o PR do canal da tríade esperava o mandato do dono para integrar. Ele entrou na main em 14/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1658 MERGED em 14/09/2026, mergeCommit 5c19d94a45 (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260914-020-maestro-registrar-canal-automatico-da-triade",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "maestro",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

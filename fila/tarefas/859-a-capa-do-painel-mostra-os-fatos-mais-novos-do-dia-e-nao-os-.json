@@ -1,0 +1,19 @@
+{
+  "arquivo": "859-a-capa-do-painel-mostra-os-fatos-mais-novos-do-dia-e-nao-os-",
+  "id": "TAR-859",
+  "titulo": "A capa do painel mostra os fatos mais novos do dia, e não os da manhã",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste em painel/testes/teste_logica.js com livro maior que 30 registros do mesmo dia prova que a janela dos recentes e O que mudou trazem os de número maior; mutação que remove o desempate reprova; node painel/gerar_manifesto.js verde; PR integrado",
+  "despacho": "Em painel/logica.js, desempatar as ordenações por data (montarResumo porData, mudancasRecentes, naoComprovados e outras que usem paraData(b.quando) - paraData(a.quando)) pelo campo arquivo, decrescente. Guarda em painel/testes/teste_logica.js com livro maior que RECENTES_NO_RESUMO (armadilha 317) e mutação provada.",
+  "origem": "descoberta C registrada na auditoria dos alertas abertos do painel, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

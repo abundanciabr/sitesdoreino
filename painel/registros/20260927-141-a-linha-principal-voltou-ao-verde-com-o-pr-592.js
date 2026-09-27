@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-141-a-linha-principal-voltou-ao-verde-com-o-pr-592",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A linha principal voltou ao verde com o PR 592",
+  detalhe: "A linha principal ficou vermelha e travou as publicações. O conserto do PR 592 está na main e o alarme 587 foi fechado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/592 MERGED, mergeCommit 1409b856e2, issue 587 CLOSED em 01/09/2026; conferidos por gh pr view e gh issue view em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260830-037-main-vermelha-destravada",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

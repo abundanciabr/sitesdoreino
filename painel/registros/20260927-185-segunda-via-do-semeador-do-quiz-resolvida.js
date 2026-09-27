@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-185-segunda-via-do-semeador-do-quiz-resolvida",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Segunda via do semeador do quiz resolvida",
+  detalhe: "Segundo registro do botão semear-quiz, aberto porque faltava integrar e disparar na produção. O PR entrou na main em 19/09 e o disparo rodou com sucesso em 20/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1769 MERGED em 19/09/2026, mergeCommit dfb5a3817a (gh pr view); semear-quiz.yml success em 20/09/2026 (gh run list), conferidos em 27/09/2026",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260919-053-infra-dar-ao-quiz-o-semeador-que-toda-celula-ja-tinha",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "site",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

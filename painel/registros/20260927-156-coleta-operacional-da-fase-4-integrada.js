@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-156-coleta-operacional-da-fase-4-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Coleta operacional da Fase 4 integrada",
+  detalhe: "O alerta dizia que a integração do PR 1406, que comprova a coleta da Fase 4, não estava verificada. O PR foi integrado e a tarefa está concluída na fila.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1406 MERGED, mergeCommit 1c5c351920 (gh pr view, 27/09/2026); fila/eventos/20260908-201838-TAR-280-concluida.json na origin/main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260908-077-ci-comprovar-coleta-operacional-da-fase-4",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
