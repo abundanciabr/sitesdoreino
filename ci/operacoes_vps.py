@@ -621,8 +621,8 @@ def conferir_medicao(operacao, dados, referencia=""):
                         raise Falha("formato")
                     if aviso["estado"] not in ESTADOS_AVISO_APPMAX - {"nao_medido"}:
                         raise Falha("formato")
-                    # O webhook ainda não grava reentregas; a contagem nasce na TAR-821.
-                    if aviso["reentregas"] is not None:
+                    reentregas = aviso["reentregas"]
+                    if type(reentregas) is not int or not 0 <= reentregas <= 1000000:
                         raise Falha("formato")
                     if not isinstance(aviso["recebido_em"], str) or not INSTANTE_ISO.fullmatch(
                         aviso["recebido_em"]
@@ -1115,7 +1115,7 @@ def medir(operacao, servico, referencia=""):
                 "    return 'falhou' if aviso.failed_attempts > 0 else 'pendente'\n"
                 "def resumo(aviso):\n"
                 "    processado = aviso.processed_at\n"
-                "    return {'evento': aviso.event, 'estado': estado(aviso), 'recebido_em': aviso.received_at.isoformat(), 'processado_em': processado.isoformat() if processado is not None else None, 'latencia_ms': (processado - aviso.received_at) // timedelta(milliseconds=1) if processado is not None else None, 'reentregas': None}\n"
+                "    return {'evento': aviso.event, 'estado': estado(aviso), 'recebido_em': aviso.received_at.isoformat(), 'processado_em': processado.isoformat() if processado is not None else None, 'latencia_ms': (processado - aviso.received_at) // timedelta(milliseconds=1) if processado is not None else None, 'reentregas': aviso.redeliveries}\n"
                 "efeitos = OutboxEvent.objects.filter(event__in=['pagamento.aprovado', 'pagamento.recusado'], payload__provider='appmax', payload__platform_site_id=tentativa.platform_site_id, payload__provider_reference_id=pedido).count()\n"
                 "print(json.dumps({'resultado': 'medido', 'referencia': referencia, 'avisos': [resumo(aviso) for aviso in avisos], 'efeitos': efeitos}, sort_keys=True))\n"
             )

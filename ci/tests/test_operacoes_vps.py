@@ -2479,6 +2479,7 @@ def _aviso_inbox_latencia(evento, recebido, processado, **alteracoes):
         failed_attempts=0,
         dead_lettered_at=None,
         last_error="",
+        redeliveries=0,
     )
     for nome, valor in alteracoes.items():
         setattr(aviso, nome, valor)
@@ -2500,7 +2501,7 @@ def _medicao_inbox_latencia(**alteracoes):
                 "recebido_em": "2026-09-25T12:01:00.250000+00:00",
                 "processado_em": "2026-09-25T12:01:03.750000+00:00",
                 "latencia_ms": 3500,
-                "reentregas": None,
+                "reentregas": 4,
             }
         ],
         "efeitos": 1,
@@ -2654,7 +2655,10 @@ def test_appmax_inbox_latencia_mede_chegada_processamento_e_efeito_sem_pii(
 ):
     avisos = [
         _aviso_inbox_latencia(
-            "order_approved", _RECEBIDO_LATENCIA, _PROCESSADO_LATENCIA
+            "order_approved",
+            _RECEBIDO_LATENCIA,
+            _PROCESSADO_LATENCIA,
+            redeliveries=4,
         ),
         _aviso_inbox_latencia(
             "order_paid",
@@ -2685,7 +2689,7 @@ def test_appmax_inbox_latencia_mede_chegada_processamento_e_efeito_sem_pii(
                 "recebido_em": "2026-09-25T12:01:00.250000+00:00",
                 "processado_em": "2026-09-25T12:01:03.750000+00:00",
                 "latencia_ms": 3500,
-                "reentregas": None,
+                "reentregas": 4,
             },
             {
                 "evento": "order_paid",
@@ -2693,7 +2697,7 @@ def test_appmax_inbox_latencia_mede_chegada_processamento_e_efeito_sem_pii(
                 "recebido_em": "2026-09-25T12:02:00+00:00",
                 "processado_em": None,
                 "latencia_ms": None,
-                "reentregas": None,
+                "reentregas": 0,
             },
         ],
         "efeitos": 1,
@@ -2835,7 +2839,10 @@ def test_appmax_inbox_latencia_recusa_latencia_incoerente(medicao):
         _aviso_da_medicao(evento="comprador@example.com"),
         _aviso_da_medicao(evento="order_" + "a" * 100),
         _aviso_da_medicao(estado="nao_medido"),
-        _aviso_da_medicao(reentregas=4),
+        _aviso_da_medicao(reentregas=None),
+        _aviso_da_medicao(reentregas=True),
+        _aviso_da_medicao(reentregas=-1),
+        _aviso_da_medicao(reentregas=1000001),
         _aviso_da_medicao(recebido_em="ontem"),
         _aviso_da_medicao(vazamento=PRIVADO),
         _medicao_inbox_latencia(efeitos=-1),
@@ -2861,6 +2868,7 @@ def test_appmax_inbox_latencia_formato_da_saida_e_fechado(medicao):
     # guarda: ci/operacoes_vps.py:579
     # guarda: ci/operacoes_vps.py:581
     # guarda: ci/operacoes_vps.py:584
+    # guarda: ci/operacoes_vps.py:587
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-inbox-latencia", medicao, REFERENCIA)
 
