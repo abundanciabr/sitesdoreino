@@ -2255,3 +2255,423 @@ def test_appmax_pix_aviso_rejeita_contagem_incoerente(
     # guarda: ci/operacoes_vps.py:409
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix-aviso", medicao, REFERENCIA)
+
+
+class _ContagemOutbox:
+    def __init__(self, total, chamadas):
+        self.total = total
+        self.chamadas = chamadas
+
+    def filter(self, **kwargs):
+        self.chamadas.append(kwargs)
+        return self
+
+    def count(self):
+        return self.total
+
+
+def _executar_codigo_appmax_inbox_latencia(
+    monkeypatch, tentativas, avisos, efeitos=1, urls=None
+):
+    chamadas = []
+    consultas = []
+    consultas_outbox = []
+    importacoes_orm = []
+    urls = urls or (ops.APPMAX_AUTH_SANDBOX, ops.APPMAX_API_SANDBOX)
+    referencia = hashlib.sha256(b"chave-aviso").hexdigest()
+    settings = SimpleNamespace(APPMAX_AUTH_URL=urls[0], APPMAX_API_URL=urls[1])
+    timezone_falsa = SimpleNamespace(
+        now=lambda: datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    )
+    importador_real = builtins.__import__
+    modelos = SimpleNamespace(
+        PaymentAttempt=SimpleNamespace(objects=_AvisoManager(tentativas, consultas)),
+        AppmaxWebhookInbox=SimpleNamespace(objects=_AvisoManager(avisos, consultas)),
+        OutboxEvent=SimpleNamespace(objects=_ContagemOutbox(efeitos, consultas_outbox)),
+    )
+
+    def importar(nome, *args, **kwargs):
+        if nome == "pagamentos.core.models":
+            importacoes_orm.append(nome)
+        falsos = {
+            "django.conf": SimpleNamespace(settings=settings),
+            "django.utils": SimpleNamespace(timezone=timezone_falsa),
+            "pagamentos.core.models": modelos,
+        }
+        return falsos.get(nome) or importador_real(nome, *args, **kwargs)
+
+    def comando(args):
+        chamadas.append(args)
+        if args[1] == "ps":
+            return "a" * 64
+        saida = StringIO()
+        with redirect_stdout(saida):
+            try:
+                exec(
+                    args[-1],
+                    {"__builtins__": {**vars(builtins), "__import__": importar}},
+                )
+            except SystemExit as erro:
+                if erro.code == 23:
+                    raise ops.Falha("sandbox") from None
+                if erro.code != 0:
+                    raise
+        return saida.getvalue()
+
+    monkeypatch.setattr(ops, "comando", comando)
+    monkeypatch.setattr(
+        ops, "_appmax_inbox_latencia_importacoes_orm", importacoes_orm, raising=False
+    )
+    dados = ops.medir("appmax-inbox-latencia", "pagamentos", referencia)
+    return dados, chamadas, consultas, consultas_outbox, referencia
+
+
+def _aviso_inbox_latencia(evento, recebido, processado, **alteracoes):
+    aviso = SimpleNamespace(
+        app_id="app-1",
+        appmax_site_id="site-appmax",
+        platform_site_id=ops.SITE_MESHCRAFT,
+        event=evento,
+        event_type="order",
+        external_order_id="3531",
+        payload={
+            "data": {"order_id": 3531, "customer": {"email": "comprador@example.com"}}
+        },
+        received_at=recebido,
+        processed_at=processado,
+        failed_attempts=0,
+        dead_lettered_at=None,
+        last_error="",
+    )
+    for nome, valor in alteracoes.items():
+        setattr(aviso, nome, valor)
+    return aviso
+
+
+_RECEBIDO_LATENCIA = datetime(2026, 9, 25, 12, 1, 0, 250000, tzinfo=timezone.utc)
+_PROCESSADO_LATENCIA = datetime(2026, 9, 25, 12, 1, 3, 750000, tzinfo=timezone.utc)
+
+
+def _medicao_inbox_latencia(**alteracoes):
+    medicao = {
+        "resultado": "medido",
+        "referencia": REFERENCIA,
+        "avisos": [
+            {
+                "evento": "order_approved",
+                "estado": "processado",
+                "recebido_em": "2026-09-25T12:01:00.250000+00:00",
+                "processado_em": "2026-09-25T12:01:03.750000+00:00",
+                "latencia_ms": 3500,
+                "reentregas": None,
+            }
+        ],
+        "efeitos": 1,
+    }
+    medicao.update(alteracoes)
+    return medicao
+
+
+def _aviso_da_medicao(**alteracoes):
+    return _medicao_inbox_latencia(
+        avisos=[{**_medicao_inbox_latencia()["avisos"][0], **alteracoes}]
+    )
+
+
+@pytest.mark.parametrize("referencia", ["", "x" * 64, "B" * 64, PRIVADO])
+def test_appmax_inbox_latencia_recusa_referencia_invalida_antes_da_leitura(
+    monkeypatch, capsys, referencia
+):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    # guarda: ci/operacoes_vps.py:238
+    assert (
+        ops.executar("appmax-inbox-latencia", "pagamentos", {"pagamentos"}, referencia)
+        == 2
+    )
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_appmax_inbox_latencia_so_le_pagamentos(monkeypatch, capsys):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert "appmax-inbox-latencia" in ops.OPERACOES
+    # guarda: ci/operacoes_vps.py:226
+    assert ops.executar("appmax-inbox-latencia", "admin", {"admin"}, REFERENCIA) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_appmax_inbox_latencia_mede_chegada_processamento_e_efeito_sem_pii(
+    monkeypatch,
+):
+    avisos = [
+        _aviso_inbox_latencia(
+            "order_approved", _RECEBIDO_LATENCIA, _PROCESSADO_LATENCIA
+        ),
+        _aviso_inbox_latencia(
+            "order_paid",
+            datetime(2026, 9, 25, 12, 2, tzinfo=timezone.utc),
+            None,
+            failed_attempts=1,
+            last_error="appmax_consulta_posterior_indisponivel",
+        ),
+        _aviso_inbox_latencia(
+            "order_pix_created",
+            datetime(2026, 9, 25, 12, 3, tzinfo=timezone.utc),
+            None,
+            external_order_id="9999",
+        ),
+    ]
+    dados, chamadas, consultas, consultas_outbox, referencia = (
+        _executar_codigo_appmax_inbox_latencia(
+            monkeypatch, [_tentativa_appmax_pix_aviso(metodo="card")], avisos
+        )
+    )
+    assert dados == {
+        "resultado": "medido",
+        "referencia": referencia,
+        "avisos": [
+            {
+                "evento": "order_approved",
+                "estado": "processado",
+                "recebido_em": "2026-09-25T12:01:00.250000+00:00",
+                "processado_em": "2026-09-25T12:01:03.750000+00:00",
+                "latencia_ms": 3500,
+                "reentregas": None,
+            },
+            {
+                "evento": "order_paid",
+                "estado": "falhou",
+                "recebido_em": "2026-09-25T12:02:00+00:00",
+                "processado_em": None,
+                "latencia_ms": None,
+                "reentregas": None,
+            },
+        ],
+        "efeitos": 1,
+    }
+    texto = json.dumps(dados)
+    for proibido in ("3531", "comprador@example.com", "appmax_consulta", "app-1"):
+        assert proibido not in texto
+    codigo = chamadas[1][-1]
+    assert "AppmaxClient" not in codigo and "httpx" not in codigo
+    assert consultas[0]["provider"] == "appmax"
+    assert consultas[0]["platform_site_id"] == ops.SITE_MESHCRAFT
+    assert "intent__method" not in consultas[0]
+    assert consultas[0]["created_at__gte"] == datetime(
+        2026, 9, 19, 12, 0, tzinfo=timezone.utc
+    )
+    assert consultas[1] == {
+        "platform_site_id": ops.SITE_MESHCRAFT,
+        "external_order_id": "3531",
+    }
+    assert consultas_outbox == [
+        {
+            "event__in": ["pagamento.aprovado", "pagamento.recusado"],
+            "payload__provider": "appmax",
+            "payload__platform_site_id": ops.SITE_MESHCRAFT,
+            "payload__provider_reference_id": "3531",
+        }
+    ]
+    assert "order_by('-created_at')[:100]" in codigo
+    assert "[:21]" in codigo
+    assert ops.conferir_medicao("appmax-inbox-latencia", dados, referencia) == dados
+
+
+@pytest.mark.parametrize(
+    ("tentativas", "avisos", "acao"),
+    [
+        ([], [], "candidata_ausente_ou_multipla"),
+        (
+            [_tentativa_appmax_pix_aviso(), _tentativa_appmax_pix_aviso()],
+            [],
+            "candidata_ausente_ou_multipla",
+        ),
+        (
+            [
+                SimpleNamespace(
+                    **{**vars(_tentativa_appmax_pix_aviso()), "external_order_id": ""}
+                )
+            ],
+            [],
+            "pedido_ausente",
+        ),
+        (
+            [_tentativa_appmax_pix_aviso()],
+            [
+                _aviso_inbox_latencia(
+                    f"order_evento_{chr(97 + i)}", _RECEBIDO_LATENCIA, None
+                )
+                for i in range(21)
+            ],
+            "avisos_acima_do_limite",
+        ),
+    ],
+)
+def test_appmax_inbox_latencia_nao_mede_sem_pedido_unico_ou_acima_do_limite(
+    monkeypatch, tentativas, avisos, acao
+):
+    dados, _, _, consultas_outbox, referencia = (
+        _executar_codigo_appmax_inbox_latencia(monkeypatch, tentativas, avisos)
+    )
+    assert dados == {"resultado": "nao_medido", "referencia": referencia, "acao": acao}
+    assert consultas_outbox == []
+    assert ops.conferir_medicao("appmax-inbox-latencia", dados, referencia) == dados
+
+
+def test_appmax_inbox_latencia_reconciliacao_sem_aviso_ainda_conta_efeito(monkeypatch):
+    dados, _, _, _, referencia = _executar_codigo_appmax_inbox_latencia(
+        monkeypatch, [_tentativa_appmax_pix_aviso()], [], efeitos=1
+    )
+    assert dados == {
+        "resultado": "medido",
+        "referencia": referencia,
+        "avisos": [],
+        "efeitos": 1,
+    }
+
+
+def test_appmax_inbox_latencia_distingue_carta_morta_e_pendente(monkeypatch):
+    avisos = [
+        _aviso_inbox_latencia(
+            "order_approved",
+            _RECEBIDO_LATENCIA,
+            None,
+            dead_lettered_at=_PROCESSADO_LATENCIA,
+            failed_attempts=3,
+        ),
+        _aviso_inbox_latencia("order_paid", _RECEBIDO_LATENCIA, None),
+    ]
+    dados, _, _, _, _ = _executar_codigo_appmax_inbox_latencia(
+        monkeypatch, [_tentativa_appmax_pix_aviso()], avisos, efeitos=0
+    )
+    assert [aviso["estado"] for aviso in dados["avisos"]] == ["carta_morta", "pendente"]
+    assert dados["efeitos"] == 0
+
+
+def test_appmax_inbox_latencia_bloqueia_producao_antes_do_orm(monkeypatch):
+    with pytest.raises(ops.Falha, match="sandbox"):
+        _executar_codigo_appmax_inbox_latencia(
+            monkeypatch,
+            [_tentativa_appmax_pix_aviso()],
+            [],
+            urls=("https://auth.appmax.com.br/oauth2/token", "https://api.appmax.com.br"),
+        )
+    assert ops._appmax_inbox_latencia_importacoes_orm == []
+
+
+@pytest.mark.parametrize(
+    "medicao",
+    [
+        _aviso_da_medicao(latencia_ms=3499),
+        _aviso_da_medicao(latencia_ms=None),
+        _aviso_da_medicao(latencia_ms=True),
+        _aviso_da_medicao(processado_em=None),
+        _aviso_da_medicao(
+            processado_em="2026-09-25T12:00:59+00:00", latencia_ms=-1250
+        ),
+        _aviso_da_medicao(estado="pendente", processado_em=None),
+    ],
+)
+def test_appmax_inbox_latencia_recusa_latencia_incoerente(medicao):
+    # guarda: ci/operacoes_vps.py:522
+    # guarda: ci/operacoes_vps.py:537
+    # guarda: ci/operacoes_vps.py:539
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao, REFERENCIA)
+
+
+@pytest.mark.parametrize(
+    "medicao",
+    [
+        _aviso_da_medicao(evento="comprador@example.com"),
+        _aviso_da_medicao(evento="order_" + "a" * 100),
+        _aviso_da_medicao(estado="nao_medido"),
+        _aviso_da_medicao(reentregas=4),
+        _aviso_da_medicao(recebido_em="ontem"),
+        _aviso_da_medicao(vazamento=PRIVADO),
+        _medicao_inbox_latencia(efeitos=-1),
+        _medicao_inbox_latencia(efeitos=True),
+        _medicao_inbox_latencia(avisos=_medicao_inbox_latencia()["avisos"] * 21),
+        _medicao_inbox_latencia(referencia="c" * 64),
+        _medicao_inbox_latencia(pedido="3531"),
+        {"resultado": "nao_medido", "referencia": REFERENCIA, "acao": "livre"},
+        {"resultado": "nao_medido", "referencia": "c" * 64, "acao": "pedido_ausente"},
+        {
+            "resultado": "nao_medido",
+            "referencia": REFERENCIA,
+            "acao": "pedido_ausente",
+            "efeitos": 0,
+        },
+    ],
+)
+def test_appmax_inbox_latencia_formato_da_saida_e_fechado(medicao):
+    # guarda: ci/operacoes_vps.py:486
+    # guarda: ci/operacoes_vps.py:491
+    # guarda: ci/operacoes_vps.py:498
+    # guarda: ci/operacoes_vps.py:501
+    # guarda: ci/operacoes_vps.py:510
+    # guarda: ci/operacoes_vps.py:512
+    # guarda: ci/operacoes_vps.py:515
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-inbox-latencia", medicao, REFERENCIA)
+
+
+def test_appmax_inbox_latencia_nao_vaza_sentinela_e_publica_resumo(
+    monkeypatch, capsys
+):
+    medicao = _medicao_inbox_latencia()
+
+    def rodar(args, **kwargs):
+        saida = "a" * 64 if args[1] == "ps" else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, saida, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert (
+        ops.executar("appmax-inbox-latencia", "pagamentos", {"pagamentos"}, REFERENCIA)
+        == 0
+    )
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == medicao
+    assert PRIVADO not in saida.out + saida.err
+
+    def rodar_livre(args, **kwargs):
+        saida = "a" * 64 if args[1] == "ps" else PRIVADO
+        return subprocess.CompletedProcess(args, 0, saida, "")
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar_livre)
+    assert (
+        ops.executar("appmax-inbox-latencia", "pagamentos", {"pagamentos"}, REFERENCIA)
+        == 2
+    )
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["erro"] == "formato"
+    assert PRIVADO not in saida.out + saida.err
+
+    resumo = []
+
+    class Resumo:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def write(self, texto):
+            resumo.append(texto)
+
+    monkeypatch.setattr(ops, "open", lambda *args, **kwargs: Resumo(), raising=False)
+    for nome, valor in {
+        "SAIDA": json.dumps(
+            {
+                "resultado": "PASS",
+                "operacao": "appmax-inbox-latencia",
+                "servico": "pagamentos",
+                "medicao": medicao,
+            }
+        ),
+        "OPERACAO": "appmax-inbox-latencia",
+        "SERVICO": "pagamentos",
+        "GITHUB_STEP_SUMMARY": "summary",
+    }.items():
+        monkeypatch.setenv(nome, valor)
+    ops.conferir()
+    assert '"latencia_ms": 3500' in "".join(resumo)
