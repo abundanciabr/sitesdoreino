@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-234606-TAR-930-descoberta-2",
+  "tarefa": "TAR-930",
+  "evento": "descoberta",
+  "quando": "2026-09-27T23:46:06.874574+00:00",
+  "quem": "agent/admin/comunidade-roadmap-na-admin",
+  "detalhe": "Repetir ci/sessao.py com --tar depois de uma abertura que pegou a tarefa e abriu o PR rascunho, mas parou no baseline, é recusado pelo balcão: a tarefa está em execução pelo PR da própria bancada. O script manda repetir o mesmo comando, e o mesmo comando nunca passa.",
+  "evidencia": "abertura de TAR-930 em 27/09/2026: primeira parou no make do PATH (PR 2305 aberto), a repetição com --tar parou em 'o balcão recusou TAR-930'; retomada só sem --tar",
+  "classificacao": "C",
+  "criterio": "Retomar a bancada repetindo a mesma entrada do ci/sessao.py",
+  "encaminhamento": "Tarefa na célula ci: pegar_a_tarefa aceita como sua a tarefa cujo evento reivindicada é desta bancada e deste quem."
+}

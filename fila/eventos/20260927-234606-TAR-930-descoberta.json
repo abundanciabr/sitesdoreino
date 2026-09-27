@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-234606-TAR-930-descoberta",
+  "tarefa": "TAR-930",
+  "evento": "descoberta",
+  "quando": "2026-09-27T23:46:06.149424+00:00",
+  "quem": "agent/admin/comunidade-roadmap-na-admin",
+  "detalhe": "ci/provar_guardas.py não prova guarda de teste de célula: compara o nodeid services/admin/tests/x.py::t com o que o pytest devolve rodando da raiz da célula (tests/x.py::t) e para em ERROR 'baseline não passou integralmente', com o teste verde.",
+  "evidencia": "prova de services/admin/tests/test_comunidade.py em 27/09/2026: log_baseline com summary passed 1 de 1 e estado ERROR; mutação refeita à mão, 9 de 9 mordendo",
+  "classificacao": "C",
+  "criterio": "Guarda novo provado por mutação com a ferramenta da casa",
+  "encaminhamento": "Tarefa na célula ci: selecionados() normalizar o nodeid pela raiz em que o pytest rodou; teste com um guarda de services/<celula>/tests."
+}

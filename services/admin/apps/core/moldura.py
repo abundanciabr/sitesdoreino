@@ -120,6 +120,7 @@ SECOES = (
     ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
     ("appmax", "Appmax"),
+    ("comunidade", "Comunidade"),
     # "Ranking das IAs", e nunca "Placar": já existe um item "Placar" nesta
     # mesma barra, e ele é a meta de alunos. Dois "placar" lado a lado fariam o
     # mantenedor clicar no errado, que é exatamente o atrito que renomeou
