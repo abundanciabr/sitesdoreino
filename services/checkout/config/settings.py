@@ -49,6 +49,10 @@ APPMAX_CARD_ENABLED_SITES = frozenset(
     if site.strip()
 )
 APPMAX_EXTERNAL_ID = os.environ.get("APPMAX_EXTERNAL_ID", "")
+# O ambiente Appmax que cobra o cartão: mesmo nome e mesmo padrão de
+# pagamentos.env. O script que lê o cartão na página precisa ser do mesmo
+# ambiente, senão o token nasce num e é recusado no outro (TAR-809).
+APPMAX_API_URL = os.environ.get("APPMAX_API_URL", "https://api.sandboxappmax.com.br")
 
 # Os tokens válidos que são públicos, e por isso valem menos que os outros.
 # Derivado, nunca declarado à parte: uma variável de ambiente nova esquecida
