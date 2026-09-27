@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-224116-TAR-772-explicada",
+  "tarefa": "TAR-772",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:41:16.445810+00:00",
+  "quem": "Sistema de experimentos, frente F7, sessão de 26/09/2026",
+  "o_que_e": "O placar mostra o caminho da venda apagado: ninguém consegue ver quantas pessoas chegam na página de venda, leem a oferta, clicam para pagar e pagam.",
+  "o_que_muda": "O mantenedor abre uma tela e vê, degrau a degrau, quantas pessoas passaram de uma etapa para a outra nos últimos 7, 30 ou 90 dias, e sabe onde a venda vaza.",
+  "exemplo": "Como a catraca de uma loja que conta quem entrou, quem pegou o produto e quem passou no caixa: se cem entram e dois pagam, a tela mostra em que corredor os outros desistiram.",
+  "importancia": 70
+}

@@ -28,21 +28,24 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.core import resultado_do_experimento as re_
+from apps.core.clients import CatalogoClient, MedicaoClient
 from apps.core.resultado_do_experimento import Braco
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
 METRICAS = "http://metricas:8000/api/metricas"
-CAMINHO_DO_FUNIL = "/funil/contagens"
+CAMINHO_DO_FUNIL = "/funil"
 FUNIL = f"{METRICAS}{CAMINHO_DO_FUNIL}"
 CATALOGO = "http://catalogo:8000/api/catalogo"
-CAMINHO_DO_EXPERIMENTO = "/experimentos/{experimento_id}"
+SITE = "5d1c0f4e-2a7b-4f11-9c3e-8b6a1d2e3f40"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 CONTRATOS = Path(__file__).resolve().parents[3] / "contracts"
 
 EXPERIMENTO = "0b8f7a52-3c1e-4c7b-9a51-6f2d0c1e9a10"
-LER_EXPERIMENTO = CATALOGO + CAMINHO_DO_EXPERIMENTO.format(experimento_id=EXPERIMENTO)
+# O endereço é o que o cliente do catálogo monta, e não uma cópia dele aqui.
+LER_EXPERIMENTO = CATALOGO + CatalogoClient()._caminho_do_experimento(SITE, EXPERIMENTO)
+SITE_DO_HOST = f"{CATALOGO}/sites/by-host/testserver"
 INICIO = dt.date(2026, 9, 1)
 # 14 dias planejados: o fim planejado é 15/09 e a janela é [01/09, 15/09].
 DIAS = 14
@@ -382,12 +385,18 @@ def _experimento(**troca) -> dict:
 
 def _funil(variantes, coleta=True, trocados=0) -> dict:
     return {
+        "site_id": SITE,
+        "experimento_id": EXPERIMENTO,
+        "de": "2026-09-01",
+        "ate": "2026-09-15",
         "coleta": (
             {"primeiro": "2026-09-01T16:00:00Z", "ultimo": "2026-09-15T22:00:00Z"}
             if coleta
-            else None
+            else {"primeiro": None, "ultimo": None}
         ),
-        "passos": [],
+        "passos": [
+            {"passo": passo, "visitantes": 0} for passo in MedicaoClient.PASSOS_DO_FUNIL
+        ],
         "por_dia": [],
         "variantes": [
             {
@@ -404,6 +413,9 @@ def _funil(variantes, coleta=True, trocados=0) -> dict:
 
 
 def _catalogo_responde(corpo, status=200):
+    respx.get(SITE_DO_HOST).mock(
+        return_value=httpx.Response(200, json={"id": SITE, "host": "testserver"})
+    )
     return respx.get(LER_EXPERIMENTO).mock(
         return_value=httpx.Response(status, json=corpo)
     )
@@ -431,7 +443,9 @@ def test_tela_madura_mostra_a_conta_e_o_veredito():
     assert "+5,00 pontos" in html
     pedido = rota.calls.last.request.url.params
     assert pedido["experimento_id"] == EXPERIMENTO
-    assert pedido["desde"] == "2026-09-01"
+    assert pedido["secao"] == "cubo"
+    assert pedido["site_id"] == SITE
+    assert pedido["de"] == "2026-09-01"
     assert pedido["ate"] == "2026-09-15"
 
 
@@ -467,7 +481,7 @@ def test_coletando_nem_leva_as_conversoes_ate_a_tela():
         )
     )
 
-    tela = re_.montar(EXPERIMENTO, NO_MEIO)
+    tela = re_.montar({"id": SITE}, EXPERIMENTO, NO_MEIO)
 
     assert tela["veredito"] == re_.COLETANDO
     assert tela["conta"] is None
@@ -492,7 +506,7 @@ def test_medicao_fora_do_ar_vira_aviso_e_nunca_zero():
 
 @respx.mock
 def test_catalogo_fora_do_ar_vira_aviso():
-    respx.get(LER_EXPERIMENTO).mock(side_effect=httpx.ConnectError("sem rede"))
+    respx.get(SITE_DO_HOST).mock(side_effect=httpx.ConnectError("sem rede"))
 
     html = _abrir(_dentro())
 
@@ -569,11 +583,8 @@ def test_braco_ainda_sem_visitante_conta_como_zero_quando_ha_coleta():
     assert "inconclusivo (amostra insuficiente)" in html
 
 
-# O cliente fala o contrato congelado (Lei 2). A F5 (catálogo) e a F6
-# (countFunnel) ainda não integraram, e este PR declara `Depende-de` das duas.
-# Enquanto o contrato não tem a operação, não há com o que divergir; no dia em
-# que ela entra na main, a integração automática atualiza a base deste PR e
-# estes dois guardas passam a exigir que o endereço chamado seja o do contrato.
+# O cliente fala o contrato congelado (Lei 2): o countFunnel que a tela chama é
+# o do contrato da `metricas`, com os parâmetros que ela manda.
 # ---------------------------------------------------------------------------
 
 
@@ -584,25 +595,32 @@ def _caminhos(arquivo: str) -> dict[str, str]:
     return dict(zip(partes[1::2], partes[2::2]))
 
 
-def test_o_leitor_de_caminhos_acha_a_operacao_e_os_parametros():
-    assert (
-        "operationId: countMilestones"
-        in _caminhos("metricas.openapi.yaml")["/marcos/contagens"]
-    )
-
-
 def test_o_funil_que_o_cliente_chama_e_o_do_contrato():
     caminhos = _caminhos("metricas.openapi.yaml")
     com_a_operacao = [c for c, b in caminhos.items() if "operationId: countFunnel" in b]
-    if com_a_operacao:
-        assert com_a_operacao == [CAMINHO_DO_FUNIL]
-        for parametro in ("desde", "ate", "experimento_id"):
-            assert f"name: {parametro}" in caminhos[CAMINHO_DO_FUNIL], parametro
+    assert com_a_operacao == [CAMINHO_DO_FUNIL]
+    for parametro in ("de", "ate", "site_id", "experimento_id", "secao"):
+        assert f"name: {parametro}" in caminhos[CAMINHO_DO_FUNIL], parametro
 
 
-def test_a_leitura_do_experimento_que_o_cliente_chama_e_a_do_contrato():
-    caminhos = _caminhos("catalogo.openapi.yaml")
-    de_experimento = [c for c in caminhos if c.startswith("/experimentos")]
-    if de_experimento:
-        assert CAMINHO_DO_EXPERIMENTO in de_experimento, de_experimento
-        assert re.search(r"^    get:$", caminhos[CAMINHO_DO_EXPERIMENTO], flags=re.M)
+# ---------------------------------------------------------------------------
+# As duas portas que as frentes irmãs usam
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_veredito_do_experimento_para_a_decisao():
+    respx.get(FUNIL).mock(
+        return_value=httpx.Response(
+            200, json=_funil([("a", 1000, 1000, 200), ("b", 1000, 1000, 250)])
+        )
+    )
+
+    assert re_.veredito_do_experimento(SITE, _experimento()) == re_.CANDIDATO
+
+
+@respx.mock
+def test_veredito_sem_medicao_e_none_e_nunca_um_veredito_inventado():
+    respx.get(FUNIL).mock(side_effect=httpx.ConnectError("sem rede"))
+
+    assert re_.veredito_do_experimento(SITE, _experimento()) is None

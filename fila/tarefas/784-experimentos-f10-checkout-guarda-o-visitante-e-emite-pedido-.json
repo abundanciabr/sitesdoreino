@@ -1,0 +1,19 @@
+{
+  "arquivo": "784-experimentos-f10-checkout-guarda-o-visitante-e-emite-pedido-",
+  "id": "TAR-784",
+  "titulo": "Experimentos F10: checkout guarda o visitante e emite pedido atribuido e pago sem dado pessoal",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "suite da celula checkout verde com os testes novos, guardas provados por mutacao, PR integrado, deploy do checkout verde e sonda publica da pagina do checkout respondendo",
+  "despacho": "# Brief compilado\n\nobjetivo: CheckoutSession.visitor_id do cookie meshcraft_visitante e outbox com checkout.pedido-atribuido.v1 e checkout.pedido-pago.v1 sem dado pessoal\ntipo: teste\nmodelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: guarda focado nasce de comportamento ja definido; contrato aberto sobe para produto\ncelula: checkout\n\n## Arquivos-alvo\n- services/checkout/apps/pedidos/models.py\n- services/checkout/apps/core/api.py\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suite ou o teste focal que prova a mudanca.\n- Se escrever guarda novo, faca a mutacao e confirme vermelho.\n- FAIL corrige codigo; ERROR corrige instrumento ou ambiente.",
+  "origem": "sistema de experimentos, sessao de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

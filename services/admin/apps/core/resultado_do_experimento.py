@@ -53,6 +53,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .clients import CatalogoClient, MedicaoClient
+from .paginas import _site
 
 ALFA = 0.05
 PODER = 0.80
@@ -431,13 +432,9 @@ def _srm(s: Srm) -> dict:
     }
 
 
-def montar(experimento_id: str, hoje: dt.date) -> dict:
-    """O que a tela mostra. Cada desfecho tem nome, e nenhum deles é zero."""
-    desfecho, corpo = CatalogoClient().experimento(experimento_id)
-    if desfecho == CatalogoClient.SEM_EXPERIMENTO:
-        return {"estado": "sem-experimento"}
-    if desfecho != CatalogoClient.OK:
-        return {"estado": "catalogo-nao-respondeu", "frase": corpo}
+def calcular(site_id: str, corpo: dict, hoje: dt.date) -> dict:
+    """O resultado de um experimento já lido do catálogo. Cada desfecho tem
+    nome, e nenhum deles é zero."""
     experimento = _ler_experimento(corpo)
     if isinstance(experimento, str):
         return {"estado": "fora-do-contrato", "frase": experimento}
@@ -448,12 +445,16 @@ def montar(experimento_id: str, hoje: dt.date) -> dict:
     fim = experimento["iniciado_em"] + dt.timedelta(days=experimento["dias_planejados"])
     desde, ate = experimento["iniciado_em"], min(hoje, fim)
     base.update(desde=desde, ate=ate)
-    desfecho, funil = MedicaoClient().contar_funil(
-        desde, ate, experimento_id=experimento_id
+    desfecho, funil = MedicaoClient().funil(
+        desde,
+        ate,
+        site_id,
+        experimento_id=str(corpo.get("id") or ""),
+        secao=experimento["secao"],
     )
     if desfecho != MedicaoClient.OK:
         return {**base, "estado": "medicao-nao-respondeu", "desfecho": desfecho}
-    if funil.get("coleta") is None:
+    if funil["coleta"]["primeiro"] is None:
         return {**base, "estado": "sem-coleta"}
     lidos = _ler_bracos(funil, experimento["pesos"])
     if isinstance(lidos, str):
@@ -488,6 +489,27 @@ def montar(experimento_id: str, hoje: dt.date) -> dict:
     }
 
 
+def veredito_do_experimento(site_id: str, experimento: dict) -> str | None:
+    """O veredito para quem decide (frente F9d), ou `None` quando não deu para
+    calcular: medição fora do ar, sem coleta, rascunho ou resposta torta."""
+    return calcular(site_id, experimento, timezone.localdate()).get("veredito")
+
+
+def montar(site: dict | None, experimento_id: str, hoje: dt.date) -> dict:
+    """O que a tela mostra: o site do domínio, o experimento, e a conta."""
+    if site is None:
+        return {
+            "estado": "catalogo-nao-respondeu",
+            "frase": "não consegui saber de qual site é este endereço",
+        }
+    desfecho, corpo = CatalogoClient().experimento(site["id"], experimento_id)
+    if desfecho == CatalogoClient.SEM_EXPERIMENTO:
+        return {"estado": "sem-experimento"}
+    if desfecho != CatalogoClient.OK:
+        return {"estado": "catalogo-nao-respondeu", "frase": corpo}
+    return calcular(site["id"], corpo, hoje)
+
+
 @require_GET
 def resultado_do_experimento(request, experimento_id):
     """A tela. Fail-OPEN, como as outras do placar: abre e DIZ o que faltou."""
@@ -497,6 +519,6 @@ def resultado_do_experimento(request, experimento_id):
         {
             "admin": request.admin,
             "experimento_id": str(experimento_id),
-            "tela": montar(str(experimento_id), timezone.localdate()),
+            "tela": montar(_site(request), str(experimento_id), timezone.localdate()),
         },
     )
