@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-036-ci-testes-da-infraestrutura-rodam-em-todo-pr",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "ci: testes da infraestrutura rodam em todo PR",
+  detalhe: "Portao infra no job muralhas roda pytest infra em todo PR; sabotar um teste real da infra deu FAIL e exit 1, restaurado deu 39/39.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2175. Validação local: árvore 890868e3d17aec220dfd5ad3d39d7ad33c8377dd; commit e768f07e7f18d3f93ec22cd44332319da7081a98; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-810",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
