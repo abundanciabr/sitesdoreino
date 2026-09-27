@@ -141,7 +141,11 @@ def test_corpo_igual_ao_hash_antigo_e_trocado_pelo_texto_novo(
     monkeypatch.setattr(_migracao, "SHA256_CORPO_SEMEADO_PELA_0028", hash_de_ontem)
     Documento.objects.filter(nome=NOME).delete()
     Documento.objects.create(
-        nome=NOME, titulo="Título de ontem", corpo=CORPO_DE_ONTEM, publico=True, ordem=99
+        nome=NOME,
+        titulo="Título de ontem",
+        corpo=CORPO_DE_ONTEM,
+        publico=True,
+        ordem=99,
     )
 
     _rodar()
@@ -164,7 +168,10 @@ def test_corpo_diferente_do_hash_antigo_e_do_novo_nao_e_tocado(
     monkeypatch.setattr(_migracao, "SHA256_CORPO_SEMEADO_PELA_0028", hash_de_ontem)
     Documento.objects.filter(nome=NOME).delete()
     Documento.objects.create(
-        nome=NOME, titulo="Editado pelo dono", corpo="Ele reescreveu tudo.", publico=False
+        nome=NOME,
+        titulo="Editado pelo dono",
+        corpo="Ele reescreveu tudo.",
+        publico=False,
     )
 
     _rodar()
@@ -182,8 +189,14 @@ def test_rodar_duas_vezes_nao_muda_nada_na_segunda(db, tmp_path, monkeypatch):
     Documento.objects.create(nome=NOME, titulo="Rascunho", corpo="x", publico=False)
 
     _rodar()
-    primeiro = (Documento.objects.get(nome=NOME).corpo, Documento.objects.get(nome=NOME).publico)
+    primeiro = (
+        Documento.objects.get(nome=NOME).corpo,
+        Documento.objects.get(nome=NOME).publico,
+    )
     _rodar()
-    segundo = (Documento.objects.get(nome=NOME).corpo, Documento.objects.get(nome=NOME).publico)
+    segundo = (
+        Documento.objects.get(nome=NOME).corpo,
+        Documento.objects.get(nome=NOME).publico,
+    )
 
     assert primeiro == segundo == ("x", True)
