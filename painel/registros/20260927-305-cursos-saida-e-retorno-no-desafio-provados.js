@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-305-cursos-saida-e-retorno-no-desafio-provados",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "cursos: saida e retorno no desafio provados",
+  detalhe: "Prova de integracao: matricula parada fecha o desafio da Comunidade; ativa de novo reabre com historico intacto, sem criar nada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2291. Validação local: árvore e29b9d70c7f60c2917c9f27324658799e7660a8e; commit c13af8d1db20e95ee5fa7439214cdc079ae9a10d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-913",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
