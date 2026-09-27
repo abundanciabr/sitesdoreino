@@ -227,6 +227,7 @@ def test_ler_e_listar_pela_porta(client, token, pagina):
 
     assert lido.status_code == 200 and lido.json() == criado
     assert lista.status_code == 200 and lista.json() == [criado]
+    # guarda: apps/paginas/api.py:719
     assert (
         _get(client, token, f"{_base(pagina)}/experimentos/nao-e-uuid").status_code
         == 404
