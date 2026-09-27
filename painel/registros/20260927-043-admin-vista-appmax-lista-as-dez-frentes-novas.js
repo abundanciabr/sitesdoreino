@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-043-admin-vista-appmax-lista-as-dez-frentes-novas",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "admin: vista Appmax lista as dez frentes novas",
+  detalhe: "Segui a forma das entradas existentes de SEQUENCIA_APPMAX. Teste focal nasceu vermelho, ficou verde com as dez frentes; mutação manual e ci/provar_guardas.py confirmaram as guardas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2171. Validação local: árvore f675da8f8eae51d651352291481975b331733980; commit e905699b7773937ce9e8be77684a99f81322e40c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-816",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
