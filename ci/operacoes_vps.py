@@ -87,6 +87,9 @@ ACOES_INBOX_LATENCIA_APPMAX = {
     "pedido_ausente",
     "avisos_acima_do_limite",
 }
+CAMPOS_CANDIDATA_INBOX_LATENCIA = {"referencia", "criada_em", "metodo", "tentativa", "intent"}
+METODOS_INTENT = {"pix", "card"}
+STATUS_INTENT = {"created", "pending", "approved", "rejected", "expired", "refunded"}
 CAMPOS_AVISO_INBOX_LATENCIA = {
     "evento",
     "estado",
@@ -295,13 +298,12 @@ def validar(operacao, servico, permitidos, referencia=""):
         raise Falha("entrada")
     if operacao == "quiz-configuracao" and servico != "quiz":
         raise Falha("entrada")
-    if operacao == "appmax-pix":
+    if operacao in {"appmax-pix", "appmax-inbox-latencia"}:
         if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
             raise Falha("entrada")
     elif operacao in {
         "appmax-pix-pedido",
         "appmax-pix-aviso",
-        "appmax-inbox-latencia",
     }:
         if not re.fullmatch(r"[0-9a-f]{64}", referencia):
             raise Falha("entrada")
@@ -547,65 +549,102 @@ def conferir_medicao(operacao, dados, referencia=""):
             ):
                 raise Falha("formato")
     elif operacao == "appmax-inbox-latencia":
-        if not isinstance(dados.get("referencia"), str) or not re.fullmatch(
-            r"[0-9a-f]{64}", dados["referencia"]
-        ):
-            raise Falha("formato")
-        if dados["referencia"] != referencia:
-            raise Falha("formato")
-        if dados.get("resultado") == "nao_medido":
-            if set(dados) != {"resultado", "referencia", "acao"}:
+        if dados.get("modo") == "descoberta":
+            if referencia:
                 raise Falha("formato")
-            if dados["acao"] not in ACOES_INBOX_LATENCIA_APPMAX:
+            if set(dados) != {"modo", "classificacao", "candidatas"}:
+                raise Falha("formato")
+            if dados["classificacao"] not in {"ausente", "unica", "multipla"}:
+                raise Falha("formato")
+            candidatas = dados["candidatas"]
+            if not isinstance(candidatas, list) or len(candidatas) > 100:
+                raise Falha("formato")
+            if dados["classificacao"] == "ausente" and candidatas:
+                raise Falha("formato")
+            if dados["classificacao"] == "unica" and len(candidatas) != 1:
+                raise Falha("formato")
+            if dados["classificacao"] == "multipla" and len(candidatas) < 2:
+                raise Falha("formato")
+            referencias = []
+            for candidata in candidatas:
+                if set(candidata) != CAMPOS_CANDIDATA_INBOX_LATENCIA:
+                    raise Falha("formato")
+                if not re.fullmatch(r"[0-9a-f]{64}", candidata["referencia"]):
+                    raise Falha("formato")
+                if not re.fullmatch(
+                    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
+                    candidata["criada_em"],
+                ):
+                    raise Falha("formato")
+                if candidata["metodo"] not in METODOS_INTENT:
+                    raise Falha("formato")
+                if candidata["tentativa"] not in ESTADOS_TENTATIVA:
+                    raise Falha("formato")
+                if candidata["intent"] not in STATUS_INTENT:
+                    raise Falha("formato")
+                referencias.append(candidata["referencia"])
+            if len(referencias) != len(set(referencias)):
                 raise Falha("formato")
         else:
-            if set(dados) != {"resultado", "referencia", "avisos", "efeitos"}:
+            if not isinstance(dados.get("referencia"), str) or not re.fullmatch(
+                r"[0-9a-f]{64}", dados["referencia"]
+            ):
                 raise Falha("formato")
-            if dados["resultado"] != "medido":
+            if dados["referencia"] != referencia:
                 raise Falha("formato")
-            if type(dados["efeitos"]) is not int or not 0 <= dados["efeitos"] <= 1000000:
-                raise Falha("formato")
-            avisos = dados["avisos"]
-            if not isinstance(avisos, list) or len(avisos) > LIMITE_AVISOS_INBOX_LATENCIA:
-                raise Falha("formato")
-            for aviso in avisos:
-                if not isinstance(aviso, dict) or set(aviso) != CAMPOS_AVISO_INBOX_LATENCIA:
+            if dados.get("resultado") == "nao_medido":
+                if set(dados) != {"resultado", "referencia", "acao"}:
                     raise Falha("formato")
-                if (
-                    not isinstance(aviso["evento"], str)
-                    or len(aviso["evento"]) > 100
-                    or not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", aviso["evento"])
-                ):
+                if dados["acao"] not in ACOES_INBOX_LATENCIA_APPMAX:
                     raise Falha("formato")
-                if aviso["estado"] not in ESTADOS_AVISO_APPMAX - {"nao_medido"}:
+            else:
+                if set(dados) != {"resultado", "referencia", "avisos", "efeitos"}:
                     raise Falha("formato")
-                # O webhook ainda não grava reentregas; a contagem nasce na TAR-821.
-                if aviso["reentregas"] is not None:
+                if dados["resultado"] != "medido":
                     raise Falha("formato")
-                if not isinstance(aviso["recebido_em"], str) or not INSTANTE_ISO.fullmatch(
-                    aviso["recebido_em"]
-                ):
+                if type(dados["efeitos"]) is not int or not 0 <= dados["efeitos"] <= 1000000:
                     raise Falha("formato")
-                if aviso["processado_em"] is None:
-                    if aviso["latencia_ms"] is not None or aviso["estado"] == "processado":
+                avisos = dados["avisos"]
+                if not isinstance(avisos, list) or len(avisos) > LIMITE_AVISOS_INBOX_LATENCIA:
+                    raise Falha("formato")
+                for aviso in avisos:
+                    if not isinstance(aviso, dict) or set(aviso) != CAMPOS_AVISO_INBOX_LATENCIA:
                         raise Falha("formato")
-                    continue
-                if not isinstance(aviso["processado_em"], str) or not INSTANTE_ISO.fullmatch(
-                    aviso["processado_em"]
-                ):
-                    raise Falha("formato")
-                try:
-                    recebido = datetime.fromisoformat(aviso["recebido_em"].replace("Z", "+00:00"))
-                    processado = datetime.fromisoformat(
-                        aviso["processado_em"].replace("Z", "+00:00")
-                    )
-                except ValueError:
-                    raise Falha("formato") from None
-                latencia = (processado - recebido) // timedelta(milliseconds=1)
-                if latencia < 0:
-                    raise Falha("formato")
-                if type(aviso["latencia_ms"]) is not int or aviso["latencia_ms"] != latencia:
-                    raise Falha("formato")
+                    if (
+                        not isinstance(aviso["evento"], str)
+                        or len(aviso["evento"]) > 100
+                        or not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", aviso["evento"])
+                    ):
+                        raise Falha("formato")
+                    if aviso["estado"] not in ESTADOS_AVISO_APPMAX - {"nao_medido"}:
+                        raise Falha("formato")
+                    # O webhook ainda não grava reentregas; a contagem nasce na TAR-821.
+                    if aviso["reentregas"] is not None:
+                        raise Falha("formato")
+                    if not isinstance(aviso["recebido_em"], str) or not INSTANTE_ISO.fullmatch(
+                        aviso["recebido_em"]
+                    ):
+                        raise Falha("formato")
+                    if aviso["processado_em"] is None:
+                        if aviso["latencia_ms"] is not None or aviso["estado"] == "processado":
+                            raise Falha("formato")
+                        continue
+                    if not isinstance(aviso["processado_em"], str) or not INSTANTE_ISO.fullmatch(
+                        aviso["processado_em"]
+                    ):
+                        raise Falha("formato")
+                    try:
+                        recebido = datetime.fromisoformat(aviso["recebido_em"].replace("Z", "+00:00"))
+                        processado = datetime.fromisoformat(
+                            aviso["processado_em"].replace("Z", "+00:00")
+                        )
+                    except ValueError:
+                        raise Falha("formato") from None
+                    latencia = (processado - recebido) // timedelta(milliseconds=1)
+                    if latencia < 0:
+                        raise Falha("formato")
+                    if type(aviso["latencia_ms"]) is not int or aviso["latencia_ms"] != latencia:
+                        raise Falha("formato")
     elif operacao == "appmax-observacao":
         if set(dados) != CHAVES_OBSERVACAO_APPMAX:
             raise Falha("formato")
@@ -1019,44 +1058,64 @@ def medir(operacao, servico, referencia=""):
         return conferir_medicao(operacao, dados, referencia)
     if operacao == "appmax-inbox-latencia":
         sandbox_urls = (APPMAX_AUTH_SANDBOX, APPMAX_API_SANDBOX)
-        codigo = (
-            "import hashlib,json\n"
-            "from datetime import timedelta\n"
-            "from django.conf import settings\n"
-            f"referencia = {referencia!r}\n"
-            f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
-            f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
-            "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
-            "    print('APPMAX_SANDBOX_REQUIRED')\n"
-            "    raise SystemExit(23)\n"
-            "from django.utils import timezone\n"
-            "from pagamentos.core.models import AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
-            f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
-            "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
-            "def nao_medido(acao):\n"
-            "    print(json.dumps({'resultado': 'nao_medido', 'referencia': referencia, 'acao': acao}, sort_keys=True))\n"
-            "    raise SystemExit(0)\n"
-            "if len(tentativas) != 1:\n"
-            "    nao_medido('candidata_ausente_ou_multipla')\n"
-            "tentativa = tentativas[0]\n"
-            "pedido = str(tentativa.external_order_id or '').strip()\n"
-            "if not pedido:\n"
-            "    nao_medido('pedido_ausente')\n"
-            f"avisos = list(AppmaxWebhookInbox.objects.filter(platform_site_id=tentativa.platform_site_id, external_order_id=pedido).order_by('received_at', 'id')[:{LIMITE_AVISOS_INBOX_LATENCIA + 1}])\n"
-            f"if len(avisos) > {LIMITE_AVISOS_INBOX_LATENCIA}:\n"
-            "    nao_medido('avisos_acima_do_limite')\n"
-            "def estado(aviso):\n"
-            "    if aviso.dead_lettered_at is not None:\n"
-            "        return 'carta_morta'\n"
-            "    if aviso.processed_at is not None:\n"
-            "        return 'processado'\n"
-            "    return 'falhou' if aviso.failed_attempts > 0 else 'pendente'\n"
-            "def resumo(aviso):\n"
-            "    processado = aviso.processed_at\n"
-            "    return {'evento': aviso.event, 'estado': estado(aviso), 'recebido_em': aviso.received_at.isoformat(), 'processado_em': processado.isoformat() if processado is not None else None, 'latencia_ms': (processado - aviso.received_at) // timedelta(milliseconds=1) if processado is not None else None, 'reentregas': None}\n"
-            "efeitos = OutboxEvent.objects.filter(event__in=['pagamento.aprovado', 'pagamento.recusado'], payload__provider='appmax', payload__platform_site_id=tentativa.platform_site_id, payload__provider_reference_id=pedido).count()\n"
-            "print(json.dumps({'resultado': 'medido', 'referencia': referencia, 'avisos': [resumo(aviso) for aviso in avisos], 'efeitos': efeitos}, sort_keys=True))\n"
-        )
+        if not referencia:
+            codigo = (
+                "import hashlib,json\n"
+                "from datetime import timedelta\n"
+                "from django.conf import settings\n"
+                f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
+                f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
+                "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
+                "    print('APPMAX_SANDBOX_REQUIRED')\n"
+                "    raise SystemExit(23)\n"
+                "from django.utils import timezone\n"
+                "from pagamentos.core.models import PaymentAttempt\n"
+                f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
+                "def candidato(t):\n"
+                "    return {'referencia': hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest(), 'criada_em': t.created_at.isoformat(), 'metodo': t.intent.method, 'tentativa': t.state, 'intent': t.intent.status}\n"
+                "candidatas = [candidato(t) for t in tentativas]\n"
+                "classificacao = 'ausente' if not candidatas else 'unica' if len(candidatas) == 1 else 'multipla'\n"
+                "print(json.dumps({'modo': 'descoberta', 'classificacao': classificacao, 'candidatas': candidatas}, sort_keys=True))\n"
+            )
+        else:
+            codigo = (
+                "import hashlib,json\n"
+                "from datetime import timedelta\n"
+                "from django.conf import settings\n"
+                f"referencia = {referencia!r}\n"
+                f"appmax_auth_sandbox = {sandbox_urls[0]!r}\n"
+                f"appmax_api_sandbox = {sandbox_urls[1]!r}\n"
+                "if not (settings.APPMAX_AUTH_URL == appmax_auth_sandbox and settings.APPMAX_API_URL == appmax_api_sandbox):\n"
+                "    print('APPMAX_SANDBOX_REQUIRED')\n"
+                "    raise SystemExit(23)\n"
+                "from django.utils import timezone\n"
+                "from pagamentos.core.models import AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
+                f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
+                "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+                "def nao_medido(acao):\n"
+                "    print(json.dumps({'resultado': 'nao_medido', 'referencia': referencia, 'acao': acao}, sort_keys=True))\n"
+                "    raise SystemExit(0)\n"
+                "if len(tentativas) != 1:\n"
+                "    nao_medido('candidata_ausente_ou_multipla')\n"
+                "tentativa = tentativas[0]\n"
+                "pedido = str(tentativa.external_order_id or '').strip()\n"
+                "if not pedido:\n"
+                "    nao_medido('pedido_ausente')\n"
+                f"avisos = list(AppmaxWebhookInbox.objects.filter(platform_site_id=tentativa.platform_site_id, external_order_id=pedido).order_by('received_at', 'id')[:{LIMITE_AVISOS_INBOX_LATENCIA + 1}])\n"
+                f"if len(avisos) > {LIMITE_AVISOS_INBOX_LATENCIA}:\n"
+                "    nao_medido('avisos_acima_do_limite')\n"
+                "def estado(aviso):\n"
+                "    if aviso.dead_lettered_at is not None:\n"
+                "        return 'carta_morta'\n"
+                "    if aviso.processed_at is not None:\n"
+                "        return 'processado'\n"
+                "    return 'falhou' if aviso.failed_attempts > 0 else 'pendente'\n"
+                "def resumo(aviso):\n"
+                "    processado = aviso.processed_at\n"
+                "    return {'evento': aviso.event, 'estado': estado(aviso), 'recebido_em': aviso.received_at.isoformat(), 'processado_em': processado.isoformat() if processado is not None else None, 'latencia_ms': (processado - aviso.received_at) // timedelta(milliseconds=1) if processado is not None else None, 'reentregas': None}\n"
+                "efeitos = OutboxEvent.objects.filter(event__in=['pagamento.aprovado', 'pagamento.recusado'], payload__provider='appmax', payload__platform_site_id=tentativa.platform_site_id, payload__provider_reference_id=pedido).count()\n"
+                "print(json.dumps({'resultado': 'medido', 'referencia': referencia, 'avisos': [resumo(aviso) for aviso in avisos], 'efeitos': efeitos}, sort_keys=True))\n"
+            )
         try:
             dados = json.loads(
                 comando(
