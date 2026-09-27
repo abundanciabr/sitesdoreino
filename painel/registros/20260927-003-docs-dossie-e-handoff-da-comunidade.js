@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-003-docs-dossie-e-handoff-da-comunidade",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "docs: dossiê e handoff da Comunidade",
+  detalhe: "Dois documentos da Comunidade preservados no projeto, com links locais, regras do mantenedor e limites de verificação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2149. Validação local: árvore f0e720e8b6b6eaa59c34eef574129c47be4f0fa4; commit 416ea426082cbf904d424b93e38d891e6c592203; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-787",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
