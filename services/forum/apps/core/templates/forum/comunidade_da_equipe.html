@@ -10,7 +10,8 @@ células são links: os números delas moram nas telas delas.
 <p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
 <h1>Comunidade da equipe</h1>
 <p class="sub">Os grupos de prática, quem responde por cada um, as dúvidas que esperam
-  resposta e quem entrou no grupo e ainda não escreveu. Só a escola enxerga esta página.</p>
+  resposta, quem entrou no grupo e ainda não escreveu e as últimas ações da moderação, com
+  quem fez e por quê. Só a escola enxerga esta página.</p>
 
 {% for grupo in grupos %}
   <section class="cartao" aria-labelledby="grupo-{{ grupo.pk }}">
@@ -48,6 +49,18 @@ células são links: os números delas moram nas telas delas.
       </ul>
     {% else %}
       <p class="sub" style="margin:4px 0 0">Todos os membros já escreveram no grupo.</p>
+    {% endif %}
+
+    <h3>Últimas ações da moderação</h3>
+    {% if grupo.rastro %}
+      <ul>
+        {% for linha in grupo.rastro %}
+          <li>{{ linha.ator.nome_exibido|default:"Pessoa sem nome de exibição" }} {{ linha.get_acao_display }}{% if linha.detalhe %}: {{ linha.detalhe }}{% endif %}.<br>
+            <span class="sub">Em {{ linha.quando|date:"d/m/Y H:i" }}.{% if linha.motivo %} Motivo: {{ linha.motivo }}{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="sub" style="margin:4px 0 0">Nenhuma ação de moderação neste grupo ainda.</p>
     {% endif %}
   </section>
 {% empty %}
