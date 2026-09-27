@@ -19,7 +19,7 @@ function focoEVisivel(info) {
 /** Tab a partir do topo da página até o elemento que `bate` aceita.
  *
  * Devolve quantos passos custou e se TODO elemento focado no caminho (não só
- * o alvo final) tinha contorno visível — é o que o brief pede: "cada
+ * o alvo final) tinha contorno visível: é o que o brief pede, "cada
  * elemento focado tem contorno visível". */
 async function tabAte(page, bate) {
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
@@ -98,7 +98,7 @@ async function main() {
       if (resposta.status() >= 400) erros.push(`HTTP ${resposta.status()}: ${resposta.url()}`);
     });
 
-    // TELA 1: /comunidade — o membro do grupo, e o link que leva a pedir ajuda
+    // TELA 1: /comunidade, o membro do grupo, e o link que leva a pedir ajuda
     // é o alvo do teclado (é literalmente a porta para a tela 3).
     const enderecoComunidade = `${base.protocol}//${host}:${base.port}/comunidade`;
     const cargaComunidade = await page.goto(enderecoComunidade, { waitUntil: "networkidle" });
@@ -119,7 +119,7 @@ async function main() {
       (info) => info.tag === "A" && info.texto === "Apresente-se ao grupo ou peça ajuda"
     );
 
-    // TELA 2 e 3: a página do grupo (Area TURMA) — e, dentro dela, o pedido de
+    // TELA 2 e 3: a página do grupo (Area TURMA), e dentro dela o pedido de
     // ajuda ao grupo é a MESMA tela, na caixa "Abrir uma conversa" (a view não
     // separa as duas: `apps/core/views.contexto_da_area`). O alvo do teclado
     // aqui é o botão que publica o pedido.
