@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-040016-TAR-820-explicada",
+  "tarefa": "TAR-820",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:00:16.200777+00:00",
+  "quem": "Frente N2 do RETOMADA-APPMAX.md, plano mestre Appmax no cartão seção 22.1, sessão de 27/09/2026",
+  "o_que_e": "Quando a Appmax avisa que um pagamento mudou, o aviso entra numa caixa de entrada e um robô o processa depois. Hoje ninguém consegue ver, sem abrir o servidor, quanto tempo esse aviso esperou nem se ele gerou exatamente um efeito.",
+  "o_que_muda": "Uma leitura pela esteira mostra, sem dado pessoal, quando o aviso chegou, quando foi processado, quanto demorou e quantos efeitos de pagamento nasceram, que é a prova exigida para chamar o sandbox de completo.",
+  "exemplo": "É como o carimbo de chegada e de saída de um protocolo na repartição: dá para saber quanto tempo ficou na mesa e se foi despachado uma vez só.",
+  "importancia": 60
+}
