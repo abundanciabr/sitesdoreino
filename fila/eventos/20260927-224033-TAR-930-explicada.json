@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-224033-TAR-930-explicada",
+  "tarefa": "TAR-930",
+  "evento": "explicada",
+  "quando": "2026-09-27T22:40:33.388726+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: roadmap com checklist da Comunidade (RETOMADA-COMUNIDADE-RODADA-4.md); frente R2",
+  "o_que_e": "Hoje o mantenedor só sabe o que a Comunidade já tem perguntando a uma sessão ou lendo registros um a um; a área administrativa tem a vista Appmax calculada da fila, mas nada equivalente para a Comunidade.",
+  "o_que_muda": "Ele abre uma aba ao lado de Appmax e vê os dez lotes do plano da Comunidade em três colunas calculadas: o que está no ar com o endereço, o que está sendo feito com o PR, e o que falta com a decisão que destrava. Nada é digitado; o que a tela não conseguir ler, ela diz que não leu.",
+  "exemplo": "É o painel de voos do aeroporto: cada lote com pousou, em rota ou aguardando autorização, atualizado pela mesma fonte que os robôs usam, sem alguém escrever à mão.",
+  "importancia": 80
+}

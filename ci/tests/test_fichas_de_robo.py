@@ -28,6 +28,8 @@ O que este teste prova, e só isto:
    declara modelo de rotina.
 6. Cada ficha nova diz em seção própria o que devolve, e bloqueia na fila em
    vez de perguntar ao mantenedor.
+7. O `despacho-medio` é o `despacho` palavra por palavra, só com esforço
+   `medium`.
 
 O que ele NÃO prova: que a maestro divide o pedido e dispara as fichas em
 paralelo. Isso é julgamento de sessão, sem mecanismo, e a seção do CLAUDE.md
@@ -42,7 +44,7 @@ import re
 RAIZ = Path(__file__).resolve().parents[2]
 FICHAS = RAIZ / ".claude" / "agents"
 NOMES = (
-    "despacho", "revisor", "escrivao",
+    "despacho", "despacho-medio", "revisor", "escrivao",
     "conferente", "maquinista", "procurador", "provador", "adversario",
 )
 
@@ -60,6 +62,9 @@ SO_LEEM = ("revisor", "conferente", "maquinista", "procurador", "adversario")
 # de propósito: a ficha dele declara `opus` porque comparar duas fontes e dizer
 # qual venceu é julgamento, não preenchimento de molde.
 MODELO_DE_ROTINA = ("escrivao", "revisor", "provador", "adversario")
+
+# Os dois construtores recebem o modelo pelo brief, e não pela ficha.
+CONSTRUTORES = ("despacho", "despacho-medio")
 
 SECAO_DE_DEVOLUCAO = re.compile(r"^#{2,3} (?:\d+\. )?O que você devolve", re.M)
 
@@ -134,7 +139,7 @@ def test_toda_ficha_declara_o_modelo_menos_o_despacho() -> None:
     declarada: o modelo dele vem do brief, e o guarda logo abaixo cobra isso.
     """
     for nome in NOMES:
-        if nome == "despacho":
+        if nome in CONSTRUTORES:
             continue
         modelo = _frontmatter(FICHAS / f"{nome}.md").get("model", "")
         assert modelo, (
@@ -167,6 +172,28 @@ def test_o_despacho_sem_model_exige_brief_roteado() -> None:
     assert "modelo_recomendado" in texto, (
         "despacho.md: se a ficha não fixa `model`, ela precisa exigir "
         "`modelo_recomendado` no brief. Herdar modelo caro não é decisão."
+    )
+
+
+def test_despacho_medio_e_o_despacho_em_esforco_medio() -> None:
+    """O esforço do sub-agente vem só da ficha, e a chamada do Agent escolhe só o
+    modelo. Com um construtor só, em `high`, toda frente que o brief roteava para
+    `medium` (teste, texto, escrita, diagnóstico) pagava esforço alto
+    (27/09/2026). O rito é um só: quem muda uma ficha copia a mudança na outra.
+    """
+    alto = _frontmatter(FICHAS / "despacho.md")
+    medio = _frontmatter(FICHAS / "despacho-medio.md")
+    assert (alto["effort"], medio["effort"]) == ("high", "medium")
+    proprios = {"name", "description", "effort"}
+    assert {c: v for c, v in medio.items() if c not in proprios} == {
+        c: v for c, v in alto.items() if c not in proprios
+    }, "despacho-medio.md: o frontmatter divergiu do despacho.md além de name, description e effort"
+    corpos = []
+    for nome in CONSTRUTORES:
+        texto = (FICHAS / f"{nome}.md").read_text(encoding="utf-8")
+        corpos.append(texto[texto.index("\n---", 4):])
+    assert corpos[0] == corpos[1], (
+        "o rito de despacho.md e despacho-medio.md divergiu; copie a mudança para a outra ficha"
     )
 
 

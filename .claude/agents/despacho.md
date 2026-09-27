@@ -1,6 +1,6 @@
 ---
 name: despacho
-description: O construtor da casa. Use para todo pedaço de trabalho que produz um PR. Recebe um brief fechado (célula, alvos, o que é somente leitura, evidência exigida, armadilhas da tarefa) e faz o rito inteiro, da bancada ao registro que embarca no PR. Use proactively, um por pedaço independente de um pedido do mantenedor, em paralelo.
+description: O construtor da casa em esforço alto. Use para o pedaço de trabalho que produz um PR quando o brief de `python ci/economia_da_fabrica.py brief` recomenda esforço high; com esforço medium, use despacho-medio. Recebe um brief fechado (célula, alvos, o que é somente leitura, evidência exigida, armadilhas da tarefa) e faz o rito inteiro, da bancada ao registro que embarca no PR. Use proactively, um por pedaço independente de um pedido do mantenedor, em paralelo.
 disallowedTools: Agent, AskUserQuestion
 effort: high
 maxTurns: 150
