@@ -90,6 +90,7 @@ def test_o_2_do_make_nao_e_mais_ERROR():
 
 
 def test_so_o_gnu_make_conta_como_make():
+    # guarda: ci/_nucleo.py:446
     """Uma fachada chamada `make` não é o GNU Make (`armadilhas/529`).
 
     Aqui o impostor é de verdade: o próprio Python no lugar do `make`.

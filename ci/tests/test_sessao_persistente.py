@@ -399,6 +399,7 @@ def test_revisao_da_main_invalida_nao_executa_baseline(baseline):
 
 
 def test_make_que_nao_e_gnu_para_como_instrumento_sem_culpar_a_base(baseline):
+    # guarda: ci/sessao.py:2157
     a, estado = baseline
     estado["versao_do_make"] = "make local do Codex para sitesdoreino"
     estado["sonda"] = (2, "ERROR: alvo desconhecido: -C")
