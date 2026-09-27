@@ -29,6 +29,7 @@ from io import StringIO
 import pytest
 from django.apps import apps as registro_de_apps
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.eventos.management.commands.consume_eventos import processar_envelope
@@ -166,6 +167,22 @@ def test_a_primeira_aula_concede_o_primeiro_ciclo_uma_vez_com_o_xp_desligado():
     assert concessao.pessoa_id == ALUNO
     assert concessao.validador_papel == Concessao.PapelDoValidador.SISTEMA
     assert LancamentoDeXP.objects.count() == 0, "a economia está desligada"
+
+
+def test_a_unicidade_da_entrega_mora_no_banco():
+    """O `get_or_create` do handler perde a corrida de dois consumidores; o banco
+    não perde. A segunda linha do mesmo evento é recusada por ele."""
+    aluno = Pessoa.objects.create(id_da_plataforma=ALUNO, email="a@exemplo.test")
+    linha = {
+        "pessoa": aluno,
+        "site_id": SITE,
+        "origem_event_id": "evento-1",
+        "occurred_at": timezone.now(),
+    }
+    EntregaAceita.objects.create(**linha)
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        EntregaAceita.objects.create(**linha)
 
 
 def test_dois_laudos_sao_duas_entregas_e_o_primeiro_ciclo_continua_um_so():

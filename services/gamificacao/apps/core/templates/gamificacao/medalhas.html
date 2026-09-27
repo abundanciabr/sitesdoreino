@@ -30,7 +30,7 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
     <section class="medalha{% if linha.concessao %} conquistada{% endif %}">
       <h2>{{ linha.medalha.nome }}</h2>
       {% if linha.medalha.descricao %}<p class="passo">{{ linha.medalha.descricao }}</p>{% endif %}
-      <p class="criterio">{{ linha.criterio }}</p>
+      <p class="criterio"><strong>Como ganhar:</strong> {{ linha.criterio }}</p>
       {% if linha.concessao %}
         <p class="selo">Conquistada em {{ linha.concessao.concedida_em|date:"d/m/Y" }}.</p>
       {% elif linha.progresso %}

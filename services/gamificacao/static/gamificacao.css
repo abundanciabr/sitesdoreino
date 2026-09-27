@@ -177,7 +177,7 @@ h1 {
 }
 
 .marco.conquistado .selo, .medalha.conquistada .selo { color: var(--marca); font-weight: 600; }
-.criterio { margin: 0; }
+.criterio { margin: 8px 0 0; }
 .selo.devolvido { color: var(--tinta); }
 
 /* O pedido atrasado é a única coisa vermelha do bastidor. Vermelho em    */
