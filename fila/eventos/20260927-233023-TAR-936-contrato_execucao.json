@@ -1,0 +1,62 @@
+{
+  "arquivo": "20260927-233023-TAR-936-contrato_execucao",
+  "tarefa": "TAR-936",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T23:30:23.951081+00:00",
+  "quem": "coordenacao/comunidade-pronta",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 4, segunda leva: os quatro gestos da área administrativa feitos pelos robôs",
+    "versao": 1,
+    "objetivo": "Ligar as três medalhas, pôr Comunidade no menu, publicar a primeira tarefa do quadro e ligar o convite por caminho autorizado da casa, registrando o que foi feito para o mantenedor conferir e vetar.",
+    "entregaveis": [
+      "Medalhas Primeiro ciclo, Primeira ajuda e Primeira contribuição ativas",
+      "Linha Comunidade no menu do site",
+      "Primeira tarefa do quadro publicada, com o texto registrado no livro",
+      "Convite para a Comunidade ligado"
+    ],
+    "escopo_incluido": [
+      "services/gamificacao/**",
+      "services/catalogo/**",
+      "services/mensageria/**",
+      "infra/**",
+      ".github/workflows/**"
+    ],
+    "nao_objetivos": [
+      "Decidir conteúdo comercial ou regra de produto além do que o dossiê §6 já descreve",
+      "Tocar contracts/"
+    ],
+    "restricoes": [
+      "Só começa depois da resposta do mantenedor à pendência 20260927-324",
+      "Uma célula por PR; caminhos de CODEOWNERS com mandato nominal transcrito",
+      "Cada gesto idempotente e registrado; texto para aluno sem travessão"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 às 19h50: os quatro cliques feitos pelos robôs",
+      "Par gamificação e alunos autorizado na rodada 3 (registro 291)"
+    ],
+    "etapas": [
+      "Resposta do mantenedor registrada no livro",
+      "Divisão em frentes por célula com --depende-de nesta",
+      "Execução pelo rito e leitura do resultado no site",
+      "Registro de entrega com o texto da tarefa publicada"
+    ],
+    "criterios_entrada": [
+      "Registro de resposta à pendência 20260927-324",
+      "Sessão com permissão para agir em produção"
+    ],
+    "criterios_aceite": [
+      "As três medalhas ativas em /conquistas/medalhas",
+      "Comunidade no menu da home",
+      "Tarefa visível em /conquistas/contribuicoes",
+      "Convite ligado, comprovado por leitura"
+    ],
+    "evidencias_exigidas": [
+      "URLs e saídas de leitura do site",
+      "URL dos PRs e runs, estado MERGED",
+      "Registro de entrega no livro"
+    ],
+    "condicao_encerramento": "as três medalhas ativas em /conquistas/medalhas; a linha Comunidade no menu da home; a primeira tarefa visível em /conquistas/contribuicoes; o convite ligado, comprovado por leitura; tudo aplicado por caminho autorizado e registrado no livro com o texto da tarefa publicada",
+    "limites_autonomia": "A sessão responsável escolhe o texto da primeira tarefa pelo dossiê §6 e o registra para veto; não inventa preço, regra ou benefício; descoberta fora do alvo vira tarefa na fila.",
+    "acoes_do_mantenedor": "Responder à pendência 20260927-324; vetar o texto da tarefa publicada se quiser."
+  }
+}
