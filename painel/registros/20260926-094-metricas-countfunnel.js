@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-094-metricas-countfunnel",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "metricas: countFunnel",
+  detalhe: "countFunnel conta visitor_id por passo, braco fixo pela 1a pagina-vista,\npedido junta por tempo. 14 testes vermelho sem a rota, verde com ela;\nsuite inteira (125) verde.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2131. Validação local: árvore 986b5ca4525eee591e07fcfe2130e9598e53a976; commit 6b30889c71ef4986a7999fcdaa1bbf758fd71fe8; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-790",
+  gravidade: "info",
+  frente: null,
+  area: "metricas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

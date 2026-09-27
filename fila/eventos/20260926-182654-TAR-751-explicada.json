@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-182654-TAR-751-explicada",
+  "tarefa": "TAR-751",
+  "evento": "explicada",
+  "quando": "2026-09-26T18:26:54.843528+00:00",
+  "quem": "Pedido do mantenedor na sessao Claude de 26/09/2026: criar ou completar o quiz Crivo usando a arquitetura existente, tratando carregamento, vazio, erro, primeiro uso, entrada invalida e retomada da sessao.",
+  "o_que_e": "O quiz do Crivo ja funciona no ar: a pessoa responde tres perguntas, deixa o e-mail e ve o resultado. Mas quem volta depois de terminar ve o formulario em branco e, se responder de novo, recebe calado o resultado antigo; o botao de enviar nao mostra que esta trabalhando; e um resultado fora das faixas mostra um codigo interno.",
+  "o_que_muda": "Quem volta ve o proprio resultado em vez de responder de novo para nada; quem tem internet lenta ve que o envio esta em andamento; quem usa leitor de tela ouve a pergunta nova; ninguem ve codigo interno no resultado.",
+  "exemplo": "E como voltar ao balcao da lanchonete com a senha na mao: o atendente entrega o seu pedido, em vez de mandar voce fazer outro que ele vai ignorar.",
+  "importancia": 45
+}

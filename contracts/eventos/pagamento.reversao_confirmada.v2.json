@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pagamento.reversao_confirmada.v2.json",
+  "title": "pagamento.reversao_confirmada.v2",
+  "description": "Reversão ou contestação confirmada no provedor exige suspensão de acesso. Não comprova valor devolvido nem liquidação financeira.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": {"const": "pagamento.reversao_confirmada"},
+    "version": {"const": 2},
+    "event_id": {"type": "string", "format": "uuid"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform_site_id", "provider", "provider_reference_id", "motivo"],
+      "properties": {
+        "platform_site_id": {"type": "string", "minLength": 1},
+        "provider": {"type": "string", "enum": ["mercadopago", "appmax"]},
+        "provider_reference_id": {"type": "string", "minLength": 1},
+        "motivo": {"type": "string", "enum": ["estorno", "contestacao"]}
+      }
+    }
+  }
+}

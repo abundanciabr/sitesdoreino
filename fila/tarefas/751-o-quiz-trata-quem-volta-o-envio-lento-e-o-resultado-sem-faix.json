@@ -1,0 +1,19 @@
+{
+  "arquivo": "751-o-quiz-trata-quem-volta-o-envio-lento-e-o-resultado-sem-faix",
+  "id": "TAR-751",
+  "titulo": "O quiz trata quem volta, o envio lento e o resultado sem faixa",
+  "toca": [
+    "quiz"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "Suite do quiz e teste de navegador aprovados cobrindo retorno ao resultado, carregamento do envio, foco ao avancar e resultado sem faixa; PR integrado e publicacao conferida em meshcraft.top/quiz/crivo/.",
+  "despacho": "Bancada agent/quiz/jornada-completa-crivo, PR 2115. Alvos: services/quiz/apps/quiz/views.py, templates/quiz/formulario.html, templates/quiz/resultado.html, tests/test_inv_pontuacao_servidor_e_outbox.py, tests/quiz_browser.js, tests/e2e_browser.py. Sessao concluida no mesmo navegador volta ao resultado pela idempotencia existente; envio mostra carregamento; foco acompanha a pergunta nova; resultado sem faixa nao mostra chave interna. Contrato do evento, outras celulas, perguntas, pontos, faixas e oferta somente leitura.",
+  "origem": "Pedido do mantenedor na sessao Claude de 26/09/2026: criar ou completar o quiz Crivo usando a arquitetura existente, tratando carregamento, vazio, erro, primeiro uso, entrada invalida e retomada da sessao.",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

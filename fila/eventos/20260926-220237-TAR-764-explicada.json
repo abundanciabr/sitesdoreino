@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-220237-TAR-764-explicada",
+  "tarefa": "TAR-764",
+  "evento": "explicada",
+  "quando": "2026-09-26T22:02:37.657411+00:00",
+  "quem": "sessão de retomada do quiz Crivo, 26/09/2026",
+  "o_que_e": "O fecho da rota de retomada do quiz Crivo",
+  "o_que_muda": "O livro passa a mostrar que o botão Refazer está no ar e a rota fica com as provas de cada passo",
+  "exemplo": "Quem abre docs/quiz/RETOMADA-CRIVO.md vê cada caixa marcada com PR e SHA",
+  "importancia": 30
+}

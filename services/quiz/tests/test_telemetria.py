@@ -155,6 +155,28 @@ def test_reenvio_da_mesma_sessao_nao_duplica_conversao_nem_outbox(client, quiz_a
     assert OutboxEvent.objects.count() == 1
 
 
+def test_quem_ja_concluiu_volta_ao_proprio_resultado(client, quiz_a):
+    """Retomar a sessão concluída é ver o resultado dela, e não um formulário
+    em branco cujas respostas o reenvio idempotente descartaria calado."""
+    pergunta = quiz_a.versions.get().questions.get(order=1)
+    envio = client.post(
+        f"/{quiz_a.slug}/",
+        {
+            f"pergunta_{pergunta.id}": pergunta.options.get(points=10).id,
+            "email": "lead@exemplo.com",
+        },
+        HTTP_HOST=HOST_A,
+    )
+
+    volta = client.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST_A)
+
+    assert volta.status_code == 302
+    assert volta["Location"] == envio["Location"]
+    # Outra sessão continua começando do zero: a volta é da sessão, não do quiz.
+    assert Client().get(f"/{quiz_a.slug}/", HTTP_HOST=HOST_A).status_code == 200
+    assert Submission.objects.count() == 1
+
+
 def test_a_ingestao_nao_grava_no_banco_e_a_drenagem_grava(client, quiz_a, stream_limpo):
     client.get(f"/{quiz_a.slug}/?utm_content=criativo", HTTP_HOST=HOST_A)
     corpo = _corpo(

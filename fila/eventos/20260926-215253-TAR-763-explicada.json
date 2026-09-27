@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260926-215253-TAR-763-explicada",
+  "tarefa": "TAR-763",
+  "evento": "explicada",
+  "quando": "2026-09-26T21:52:53.242526+00:00",
+  "quem": "Continuacao da TAR-754 (PR #2117): a medicao ja rodou e deu PASS; falta so o registro no livro de ocorrencias",
+  "o_que_e": "O run quiz-configuracao de operacoes-vps.yml ja mediu o Crivo em producao (PASS), mas o fato ainda nao esta no livro de ocorrencias.",
+  "o_que_muda": "O livro passa a mostrar, com prova, que a coleta e a configuracao do quiz Crivo estao corretas em producao.",
+  "exemplo": "Como o extrato de uma conta so fecha quando a movimentacao e lancada: o run ja aconteceu, falta o lancamento no livro.",
+  "importancia": 20
+}

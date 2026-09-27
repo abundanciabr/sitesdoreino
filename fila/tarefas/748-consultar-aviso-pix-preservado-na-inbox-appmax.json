@@ -1,0 +1,23 @@
+{
+  "arquivo": "748-consultar-aviso-pix-preservado-na-inbox-appmax",
+  "id": "TAR-748",
+  "titulo": "Consultar aviso Pix preservado na inbox Appmax",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-558",
+    "TAR-711",
+    "TAR-736"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Operação appmax-pix-aviso publicada e teste focal verde; consulta única pela esteira com saída sanitizada ou não medido fechado.",
+  "despacho": "Criar a operação somente leitura appmax-pix-aviso nos três alvos do brief. Exigir SHA256 da chave de idempotência, sandbox Appmax antes de importar ORM, única tentativa PIX Meshcraft, exatamente uma instalação autorizada e no máximo dois registros inbox filtrados por app_id, appmax_site_id, platform_site_id, order_id, event order_pix_created e event_type order. Emitir apenas protocolo fechado com contagem limitada, três presenças booleanas, estado enum e datas ISO; ausência no banco não prova ausência de envio. Sem HTTP, cliente Appmax, POST financeiro, escrita, reconciliação ou alteração de webhooks. modelo_recomendado: gpt-6-sol; esforco_recomendado: medium.",
+  "origem": "Frente independente Appmax autorizada na sessão de 26/09/2026",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

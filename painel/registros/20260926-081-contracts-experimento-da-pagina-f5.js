@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-081-contracts-experimento-da-pagina-f5",
+  tipo: "entrega",
+  quando: "2026-09-26",
+  titulo: "contracts: experimento da pagina (F5)",
+  detalhe: "Contrato do catálogo emendado por adição: quatro operações do ciclo do experimento e experimento_ativo opcional no getPage, do export da célula.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2146. Validação local: árvore bc47a9088c76a8f9c53adfe5b9851da8f5fb17e3; commit d24a26657127701ad0e78bef28af94e89d0790f4; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-783",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contratos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

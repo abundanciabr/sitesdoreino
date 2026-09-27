@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260926-192452-TAR-748-concluida",
+  "tarefa": "TAR-748",
+  "evento": "concluida",
+  "quando": "2026-09-26T19:24:52.418053+00:00",
+  "quem": "agent/ci/appmax-pix-aviso",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2111",
+  "verificado_em": "2026-09-26"
+}

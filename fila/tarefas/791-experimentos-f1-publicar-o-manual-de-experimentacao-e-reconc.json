@@ -1,0 +1,21 @@
+{
+  "arquivo": "791-experimentos-f1-publicar-o-manual-de-experimentacao-e-reconc",
+  "id": "TAR-791",
+  "titulo": "Experimentos F1: publicar o manual de experimentação e reconciliar o capítulo 21",
+  "toca": [
+    "admin",
+    "docs",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "URL pública /docs/plataforma-experimentacao-e-aprendizado-de-conversao responde 200",
+  "despacho": "Diagnostique e conserte o 404 de /docs/plataforma-experimentacao-e-aprendizado-de-conversao (migração de dados idempotente em services/admin/apps/core/migrations/); leve o capítulo 21 revisado de wt-admin-manual-experimentacao-mvp para documentos/plataforma-experimentacao-e-aprendizado-de-conversao.md, conferido contra DESENHO-COMUM.md/Emenda 1; copie C:/Users/davia/abundanciabr/RETOMADA-EXPERIMENTOS.md para docs/experimentos/RETOMADA-EXPERIMENTOS.md com o checklist atualizado; registre em painel/registros/ a decisão do mantenedor. Sem travessão. Prova: suíte da admin verde e curl na URL pública.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
