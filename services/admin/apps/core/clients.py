@@ -1056,6 +1056,10 @@ class CatalogoClient:
     # foi alterado. Tem nome próprio porque o conserto é do mantenedor (escolher
     # outro apelido) e não de quem opera a máquina.
     JA_EXISTE = "ja_existe"
+    # 409 do ciclo de um experimento: o catálogo não fez a transição pedida
+    # (outro experimento ativo na página, ou transição que não vale), e nada
+    # mudou. Tem nome próprio porque a tela o explica pelo estado da página.
+    CONFLITO = "conflito"
     # 404 de `getPageDraft`: esta página nunca foi editada. Tem nome próprio
     # porque NÃO é falha — é folha em branco, e confundir as duas faria a tela
     # oferecer campos vazios quando a leitura apenas não chegou, apagando no
@@ -1264,14 +1268,7 @@ class CatalogoClient:
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
     ) -> "tuple[str, dict | str]":
-        """As três operações de página, que só diferem no verbo e no sufixo.
-
-        Uma peça só porque o encanamento é idêntico nas três (config, endereço,
-        timeout, corpo fora do contrato) e três cópias divergiriam no primeiro
-        conserto feito em uma delas. O que muda é declarado: `especiais` diz
-        quais status desta operação têm nome próprio, em vez de caírem no
-        "não respondeu" genérico.
-        """
+        """As três operações de página, que só diferem no verbo e no sufixo."""
         return self._falar(
             metodo,
             f"/sites/{quote(str(site_id), safe='')}"
@@ -1288,6 +1285,30 @@ class CatalogoClient:
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
     ) -> "tuple[str, dict | str]":
+        """O encanamento de toda operação do catálogo que devolve um objeto.
+
+        Uma peça só porque ele é idêntico em todas (config, endereço, timeout,
+        corpo fora do contrato), e cópias divergiriam no primeiro conserto feito
+        em uma delas. O que muda é declarado: `especiais` diz quais status desta
+        operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
+        """
+        return self._falar(
+            metodo,
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
+            corpo=corpo,
+            especiais=especiais,
+        )
+
+    def _falar(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        corpo: "dict | None" = None,
+        especiais: "tuple[tuple[int, str], ...]" = (),
+        forma: type = dict,
+    ) -> "tuple[str, dict | list | str]":
         """O encanamento das escritas e leituras com desfecho nomeado.
 
         Páginas e experimentos passam por aqui: config, endereço, timeout e
@@ -1302,11 +1323,10 @@ class CatalogoClient:
             )
             return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
         base, token = config
-        endereco = f"{base}{caminho}"
         try:
             r = http().request(
                 metodo,
-                endereco,
+                f"{base}{caminho}",
                 json=corpo,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
@@ -1319,7 +1339,7 @@ class CatalogoClient:
             if r.status_code == status:
                 return desfecho, self._recusa_do_catalogo(r)
 
-        if r.status_code != 200:
+        if r.status_code not in (200, 201):
             logger.error(
                 "catálogo: %s %s respondeu HTTP %s", metodo, caminho, r.status_code
             )
@@ -1331,8 +1351,8 @@ class CatalogoClient:
             # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
             logger.error("catálogo: resposta fora do contrato: %s", erro)
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
-        if not isinstance(lido, dict):
-            logger.error("catálogo: o corpo não é um objeto")
+        if not isinstance(lido, forma):
+            logger.error("catálogo: o corpo não tem a forma do contrato")
             return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
         return self.OK, lido
 
@@ -1434,6 +1454,68 @@ class CatalogoClient:
                 (409, self.JA_ENCERRADO),
                 (404, self.SEM_EXPERIMENTO),
                 (422, self.RECUSADO),
+            ),
+        )
+
+    # -- O ciclo, pelo contrato publicado em 26/09/2026 (PR #2146) ------------
+    # `listExperiments`, `createExperiment` e `changeExperimentState`, todos
+    # sob a página. É por eles que a tela `/admin/paginas/experimentos/` cria
+    # o experimento em rascunho e o põe no ar.
+
+    def _caminho_dos_experimentos(self, site_id: str, slug: str) -> str:
+        return (
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}/experimentos"
+        )
+
+    def experimentos_da_pagina(
+        self, site_id: str, slug: str
+    ) -> "tuple[str, list | str]":
+        """`listExperiments`: todos, do mais novo para o mais antigo. `(OK, [])`
+        é página sem experimento; falha nunca vira lista vazia, senão a tela
+        diria "nenhum" quando apenas não conseguiu perguntar."""
+        desfecho, lido = self._falar(
+            "GET",
+            self._caminho_dos_experimentos(site_id, slug),
+            especiais=((404, self.SEM_PAGINA),),
+            forma=list,
+        )
+        if desfecho == self.OK and not all(isinstance(e, dict) for e in lido):
+            logger.error("catálogo: a lista de experimentos veio fora do contrato")
+            return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+        return desfecho, lido
+
+    def criar_experimento(
+        self, site_id: str, slug: str, corpo: dict
+    ) -> "tuple[str, dict | str]":
+        """`createExperiment`: nasce em rascunho, e nada vai ao ar. 409 é página
+        sem versão publicada ou espaço vazio nela; 422 é incoerência."""
+        return self._falar(
+            "POST",
+            self._caminho_dos_experimentos(site_id, slug),
+            corpo=corpo,
+            especiais=(
+                (409, self.RECUSADO),
+                (422, self.RECUSADO),
+                (404, self.SEM_PAGINA),
+            ),
+        )
+
+    def mudar_estado_do_experimento(
+        self, site_id: str, slug: str, experimento_id: str, mudanca: dict
+    ) -> "tuple[str, dict | str]":
+        """`changeExperimentState`: `{"estado": "ativo"}` põe no ar. Pedir o
+        estado em que ele já está responde 200 sem mudar nada, e é isso que
+        torna seguro o duplo clique."""
+        return self._falar(
+            "POST",
+            f"{self._caminho_dos_experimentos(site_id, slug)}"
+            f"/{quote(str(experimento_id), safe='')}/estado",
+            corpo=mudanca,
+            especiais=(
+                (409, self.CONFLITO),
+                (422, self.RECUSADO),
+                (404, self.SEM_EXPERIMENTO),
             ),
         )
 
@@ -1952,7 +2034,13 @@ class MedicaoClient:
     )
 
     def funil(
-        self, desde: dt.date, ate: dt.date, site_id: "str | None" = None
+        self,
+        desde: dt.date,
+        ate: dt.date,
+        site_id: "str | None" = None,
+        *,
+        experimento_id: "str | None" = None,
+        secao: "str | None" = None,
     ) -> "tuple[str, dict | None]":
         """`countFunnel` (`GET /funil`): visitantes distintos por degrau e por dia.
 
@@ -1969,6 +2057,11 @@ class MedicaoClient:
         params = {"de": desde.isoformat(), "ate": ate.isoformat()}
         if site_id:
             params["site_id"] = site_id
+        # `experimento_id` e `secao` viajam juntos (contrato): sem a seção a
+        # `metricas` não sabe qual `secao-vista` conta como exposição.
+        if experimento_id:
+            params["experimento_id"] = experimento_id
+            params["secao"] = secao or ""
         desfecho, corpo = self._pedir("/funil", params)
         if desfecho != self.OK:
             return desfecho, None
@@ -1991,6 +2084,12 @@ class MedicaoClient:
             },
             "passos": passos,
             "por_dia": por_dia,
+            # Os braços do experimento, crus: quem pediu por `experimento_id`
+            # confere a forma deles (`resultado_do_experimento._ler_bracos`).
+            "variantes": corpo.get("variantes"),
+            "visitantes_com_bracos_trocados": corpo.get(
+                "visitantes_com_bracos_trocados"
+            ),
         }
 
     def _dias_do_funil(self, linhas: object) -> "list | None":

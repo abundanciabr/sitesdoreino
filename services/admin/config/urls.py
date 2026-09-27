@@ -90,6 +90,7 @@ from apps.core.paginas import (
     pagina_de_venda_publicar,
     pagina_de_venda_salvar,
 )
+from apps.core.experimentos import experimento_iniciar, experimento_novo, experimentos
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import (
     plano_mestre,
@@ -110,6 +111,7 @@ from apps.core.funil import funil
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
+from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
 from apps.core.appmax import appmax
@@ -311,6 +313,17 @@ urlpatterns = [
         "paginas/publicar",
         pagina_de_venda_publicar,
         name="pagina_de_venda_publicar",
+    ),
+    # OS EXPERIMENTOS DA PÁGINA (`apps/core/experimentos.py`, 26/09/2026,
+    # frente F9b): criar e iniciar um teste de texto num espaço dela. Sub-rotas
+    # de `paginas/` porque é a mesma página. Encerrar é uma das decisões da
+    # tela `decisao_do_experimento`, e não se repete aqui; pausar não existe.
+    path("paginas/experimentos/", experimentos, name="experimentos"),
+    path("paginas/experimentos/novo", experimento_novo, name="experimento_novo"),
+    path(
+        "paginas/experimentos/<uuid:experimento_id>/iniciar",
+        experimento_iniciar,
+        name="experimento_iniciar",
     ),
     # A ECONOMIA (`apps/core/economia.py`, 31/08/2026) — a tela em que o
     # mantenedor liga e desliga cada regra de pontuacao da escola. Ela existe
@@ -722,6 +735,15 @@ urlpatterns = [
     # seções (`moldura.py`) cresceria sem realidade nova — experimento não é
     # assunto novo da administração, é o que se faz para mover aqueles números.
     path("placar/laboratorio/", laboratorio, name="laboratorio"),
+    # O RESULTADO DE UM EXPERIMENTO DE PÁGINA (`apps/core/resultado_do_experimento.py`,
+    # 26/09/2026, frente F9a do sistema de experimentos): a versão B ganhou,
+    # perdeu ou ainda está coletando. Sub-rota do placar ao lado do laboratório
+    # pela mesma razão dele: é o que se faz para mover os números do placar.
+    path(
+        "placar/experimentos/<uuid:experimento_id>/resultado/",
+        resultado_do_experimento,
+        name="resultado_do_experimento",
+    ),
     # A DECISÃO DE UM EXPERIMENTO DA PÁGINA (`apps/core/decisao_do_experimento.py`,
     # 26/09/2026): promover, reverter ou encerrar. Sub-rota do placar ao lado do
     # laboratório, porque é o gesto que transforma a aposta em resultado.
