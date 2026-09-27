@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-294-gamificacao-medalha-automatica-guarda-origem",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "gamificacao: medalha automática guarda origem",
+  detalhe: "recalcular repassa o evento e selar passa o id da peça até conceder; a tela interna mostra a origem; sem migração",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2288. Validação local: árvore b10a7f280d6bcc3c6eab64cbac77abe8e56c6e8c; commit daf4b1d8a5f581cfc3a9249a3d135eff327b5aac; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-911",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "gamificacao",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -20,9 +20,12 @@
 // (`context.cookies()`, que enxerga o `meshcraft_visitante` HttpOnly sem
 // passar pelo `document.cookie` da página — services/funil/apps/core/
 // visitante.py é explícito: o JS da página nunca lê esse cookie). As chamadas
-// de rede a caminho da telemetria (xhr/fetch para a própria origem) são
-// observadas e viajam no JSON de saída; a F3 (irmã em voo) ainda não expôs um
-// caminho fixo, por isso aqui é OBSERVAÇÃO de rede, não uma chamada nomeada.
+// de rede a caminho da telemetria (POST /telemetria — services/funil/apps/
+// core/views.py:telemetria_do_navegador — enviado por sendBeacon, que o
+// Chromium reporta como resourceType "ping", com fallback fetch keepalive)
+// são observadas e viajam no JSON de saída, com o `evento` lido do corpo do
+// POST e o `status` da resposta; o campo `contexto` do corpo (token assinado
+// com dado do visitante) nunca entra no JSON de saída.
 //
 // SEM PÁGINA PRONTA AINDA, O ENSAIO FALHA DIZENDO O QUE FALTOU
 // --------------------------------------------------------------
@@ -39,9 +42,11 @@
 //   --modo=ensaio   o ensaio L10 completo (braço sticky + exposição + clique
 //                   + telemetria). Sem `data-experimento-id`/`data-variante-id`
 //                   no HTML, reprova nomeando exatamente isso — nunca passa em
-//                   falso. Use quando um experimento estiver ativo (bancada
-//                   com F5+F8a+F8b, ou produção depois do primeiro
-//                   experimento real).
+//                   falso. Por visitante, também reprova se faltar o POST
+//                   /telemetria (2xx) de secao-vista e o de cta-clicado — o
+//                   modo rota não exige telemetria. Use quando um experimento
+//                   estiver ativo (bancada com F5+F8a+F8b, ou produção depois
+//                   do primeiro experimento real).
 //
 // Antes dos dois, um AUTO-TESTE sem rede prova que o LEITOR do braço morde nos
 // dois sentidos (achado/consistente vs. ausente vs. par quebrado) — a mesma
@@ -187,9 +192,32 @@ async function provaDoLeitorDoBraco(navegador) {
 
 // ------------------------------------------------------------------ o ensaio
 
-/** As chamadas de rede desta origem que NÃO são documento nem estático — o
- *  candidato a telemetria enquanto a F3 não expõe um caminho fixo (o
- *  comentário de topo explica). */
+//: O caminho fixo da telemetria (telemetria.js, services/funil/apps/core/
+//: views.py:telemetria_do_navegador). Citado uma vez (Lei 3) para o filtro de
+//: rede e as esperas de evento concordarem palavra por palavra.
+var CAMINHO_TELEMETRIA = "/telemetria";
+
+/** O `evento` (`"secao-vista"`/`"cta-clicado"`) do corpo de um POST
+ *  /telemetria, ou `null` sem JSON válido ou sem o campo. Só isto sai do
+ *  corpo: ele também carrega `contexto` (token assinado com dado do
+ *  visitante), que esta função ignora de propósito — não lê, não devolve,
+ *  então não pode vazar para `chamadas` nem para o JSON de saída. */
+function eventoDoPostData(postData) {
+  try {
+    var corpo = postData ? JSON.parse(postData) : null;
+    return corpo && typeof corpo.evento === "string" ? corpo.evento : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** As chamadas de rede desta origem para o caminho da telemetria — inclusive
+ *  o `sendBeacon` de telemetria.js, que o Chromium reporta com
+ *  `resourceType() === "ping"` (o fallback `fetch keepalive` chega como
+ *  "fetch"/"xhr"; "other" cobre variação do motor). `evento` vem do CORPO do
+ *  POST (`req.postData()`, síncrono, o que o navegador enviou), via
+ *  `eventoDoPostData`, não da resposta: o `sendBeacon` não devolve corpo, e
+ *  mesmo a resposta real do servidor a 204 vem vazia. */
 function observarTelemetria(pagina) {
   var chamadas = [];
   pagina.on("requestfinished", function (req) {
@@ -198,21 +226,11 @@ function observarTelemetria(pagina) {
         var reqUrl = req.url();
         if (reqUrl.indexOf(BASE) !== 0) return;
         var tipo = req.resourceType();
-        if (tipo !== "xhr" && tipo !== "fetch" && tipo !== "other") return;
+        if (tipo !== "xhr" && tipo !== "fetch" && tipo !== "other" && tipo !== "ping") return;
+        if (reqUrl.indexOf(CAMINHO_TELEMETRIA) === -1) return;
         var resp = await req.response();
-        var corpo = null;
-        if (resp) {
-          try {
-            corpo = await resp.json();
-          } catch (e1) {
-            try {
-              corpo = (await resp.text()).slice(0, 500);
-            } catch (e2) {
-              corpo = null;
-            }
-          }
-        }
-        chamadas.push({ url: reqUrl, metodo: req.method(), status: resp ? resp.status() : null, corpo: corpo });
+        var evento = eventoDoPostData(req.postData());
+        chamadas.push({ url: reqUrl, metodo: req.method(), status: resp ? resp.status() : null, evento: evento });
       } catch (e) {
         // rede instável durante a coleta não derruba o ensaio.
       }
@@ -220,6 +238,69 @@ function observarTelemetria(pagina) {
     void tratar;
   });
   return chamadas;
+}
+
+/** `true` quando `status` é um 2xx de verdade — nem `null` (requisição sem
+ *  resposta ainda observável) nem 4xx/5xx contam. */
+function statusOk(status) {
+  return typeof status === "number" && status >= 200 && status < 300;
+}
+
+/** Espera até `chamadas` trazer um POST /telemetria do `evento` pedido com
+ *  status 2xx, ou até o teto — o beacon é assíncrono (a página o enfileira e
+ *  o navegador o envia por fora do despacho do evento), então sem esta
+ *  espera o ensaio fecharia o contexto antes da fila esvaziar. */
+async function esperarTelemetria(chamadas, evento, tetoMs) {
+  var teto = tetoMs || 3000;
+  var inicio = Date.now();
+  for (;;) {
+    var achadas = chamadas.filter(function (c) {
+      return c.evento === evento;
+    });
+    if (achadas.some(function (c) { return statusOk(c.status); })) return achadas;
+    if (Date.now() - inicio >= teto) return achadas;
+    await new Promise(function (r) { setTimeout(r, 100); });
+  }
+}
+
+/** Prova que o leitor de telemetria morde nos dois sentidos, SEM REDE — a
+ *  mesma forma de `provaDoLeitorDoBraco`: `eventoDoPostData` lê `evento` e
+ *  nunca `contexto`; `esperarTelemetria`/`statusOk` só dão por achado um
+ *  evento com status 2xx, nunca um que falta e nunca um com status ruim.
+ *  Comentar `status >= 200 && status < 300` em `statusOk` (trocando por
+ *  `true`) faz o caso "status não é 2xx" abaixo passar quando devia reprovar
+ *  — a mutação que prova que este guarda morde. */
+async function provaDoLeitorDeTelemetria() {
+  console.log("\n== auto-teste: o leitor de telemetria, sem rede ==");
+
+  caso(
+    "telemetria: evento lido do corpo do POST",
+    eventoDoPostData('{"evento":"secao-vista","secao":"oferta","contexto":"SEGREDO-DO-VISITANTE"}') === "secao-vista"
+  );
+  caso("telemetria: corpo sem JSON válido -> evento nulo", eventoDoPostData("não é json") === null);
+  caso("telemetria: corpo sem campo evento -> evento nulo", eventoDoPostData('{"secao":"oferta"}') === null);
+
+  var achouOsDois = [
+    { url: BASE + CAMINHO_TELEMETRIA, metodo: "POST", status: 204, evento: "secao-vista" },
+    { url: BASE + CAMINHO_TELEMETRIA, metodo: "POST", status: 204, evento: "cta-clicado" },
+  ];
+  caso(
+    "telemetria: achou os dois eventos com 2xx -> cada um é encontrado",
+    (await esperarTelemetria(achouOsDois, "secao-vista", 50)).some(function (c) { return statusOk(c.status); }) &&
+      (await esperarTelemetria(achouOsDois, "cta-clicado", 50)).some(function (c) { return statusOk(c.status); })
+  );
+
+  var faltouUm = [{ url: BASE + CAMINHO_TELEMETRIA, metodo: "POST", status: 204, evento: "secao-vista" }];
+  caso(
+    "telemetria: faltou cta-clicado -> não é encontrado",
+    !(await esperarTelemetria(faltouUm, "cta-clicado", 50)).some(function (c) { return statusOk(c.status); })
+  );
+
+  var statusRuim = [{ url: BASE + CAMINHO_TELEMETRIA, metodo: "POST", status: 400, evento: "cta-clicado" }];
+  caso(
+    "telemetria: status não é 2xx (400) -> não conta como achado",
+    !(await esperarTelemetria(statusRuim, "cta-clicado", 50)).some(function (c) { return statusOk(c.status); })
+  );
 }
 
 /** Impede que o PRÓXIMO clique num `a.cta` chegue a navegar — confirma só que
@@ -242,7 +323,14 @@ function observarTelemetria(pagina) {
  *  ainda não chegou. `addInitScript` (e não `evaluate`) porque o clique deste
  *  ensaio acontece depois de um `reload`: um script instalado por `evaluate`
  *  morre com o documento antigo; o de `addInitScript` renasce em toda
- *  navegação da mesma página, sem precisar ser reinstalado. */
+ *  navegação da mesma página, sem precisar ser reinstalado.
+ *
+ *  SÓ `preventDefault()`, nunca `stopPropagation()`: a navegação é cancelada
+ *  pelo `preventDefault()` sozinho, porque ele roda na fase de CAPTURA (antes
+ *  do despacho decidir o destino final do clique) — chamar `stopPropagation`
+ *  aqui não impede navegação nenhuma a mais, só calaria o listener de clique
+ *  de `telemetria.js` (também em `document`, na fase de BOLHA, que dispara o
+ *  beacon `cta-clicado`), fazendo o ensaio nunca ver essa telemetria. */
 async function instalarCapturaDeClique(pagina) {
   await pagina.addInitScript(function () {
     window.__cliqueDoEnsaio = null;
@@ -252,7 +340,6 @@ async function instalarCapturaDeClique(pagina) {
         var alvo = evento.target && evento.target.closest && evento.target.closest("a.cta");
         if (!alvo) return;
         evento.preventDefault();
-        evento.stopPropagation();
         window.__cliqueDoEnsaio = alvo.href;
       },
       true
@@ -325,6 +412,13 @@ async function visitanteDoEnsaio(navegador, rotulo) {
   await slot.scrollIntoViewIfNeeded();
   caso(rotulo + ": a seção do slot ficou visível ao rolar", await slot.isVisible());
 
+  var secaoVista = await esperarTelemetria(telemetria, "secao-vista");
+  caso(
+    rotulo + ": a telemetria secao-vista chegou em POST " + CAMINHO_TELEMETRIA + " (2xx)",
+    secaoVista.some(function (c) { return statusOk(c.status); }),
+    "chamadas=" + JSON.stringify(secaoVista)
+  );
+
   var cta = pagina.locator("[data-experimento-id] a.cta").first();
   if ((await cta.count()) === 0) {
     cta = pagina.locator(
@@ -340,6 +434,13 @@ async function visitanteDoEnsaio(navegador, rotulo) {
       rotulo + ": o clique no CTA foi capturado a caminho de /checkout, sem pagar (sem navegar)",
       !!hrefCapturadoEnsaio && hrefCapturadoEnsaio.indexOf("/checkout") !== -1,
       "capturado=" + hrefCapturadoEnsaio
+    );
+
+    var ctaClicado = await esperarTelemetria(telemetria, "cta-clicado");
+    caso(
+      rotulo + ": a telemetria cta-clicado chegou em POST " + CAMINHO_TELEMETRIA + " (2xx)",
+      ctaClicado.some(function (c) { return statusOk(c.status); }),
+      "chamadas=" + JSON.stringify(ctaClicado)
     );
   }
 
@@ -421,6 +522,7 @@ async function principal() {
   console.log("ENSAIO DO EXPERIMENTO — base " + BASE + PAGINA_OFERTA + " — modo " + MODO);
 
   await provaDoLeitorDoBraco(navegador);
+  await provaDoLeitorDeTelemetria();
 
   var resultados = null;
   if (MODO === "ensaio") {
