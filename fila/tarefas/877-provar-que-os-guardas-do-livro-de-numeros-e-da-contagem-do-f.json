@@ -1,0 +1,19 @@
+{
+  "arquivo": "877-provar-que-os-guardas-do-livro-de-numeros-e-da-contagem-do-f",
+  "id": "TAR-877",
+  "titulo": "Provar que os guardas do livro de números e da contagem do funil reprovam quando sabotados",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "saída de ci/provar_guardas.py com FAIL sob sabotagem para cada guarda marcado",
+  "despacho": "Marque e prove por mutação os guardas de imutabilidade do livro, contagem do funil por variante, exposição e braço fixo, e ausência de dado pessoal na célula metricas, conforme .claude/agents/provador.md.",
+  "origem": "brief PROVADOR-METRICAS, sessão de 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
