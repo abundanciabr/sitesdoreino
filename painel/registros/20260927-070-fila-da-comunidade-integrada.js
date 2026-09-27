@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-070-fila-da-comunidade-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "As seis frentes da Comunidade estão na fila da main, com contrato",
+  detalhe: "O PR 2184 integrou na main às 02h14 de São Paulo (merge 9fc6f4291d8d7be77b4efb79cab642630522bcd3) com as tarefas TAR-823 a TAR-828 da Comunidade Meshcraft, seus contratos de execução e a TAR-829 que registrou a criação. Os oito checks estavam verdes e o pouso foi automático.\n\nA partir daqui os despachos das frentes conseguem reivindicar cada tarefa no balcão. Este registro dá baixa verde no recibo do PR 2184.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2184 (MERGED, mergeCommit 9fc6f4291d8d7be77b4efb79cab642630522bcd3, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-049-fila-seis-frentes-da-comunidade-com-contrato",
+  relacao: "baixa",
+  tarefa: "TAR-829",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
