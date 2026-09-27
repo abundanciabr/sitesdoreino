@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260927-121219-TAR-851-descoberta",
+  "tarefa": "TAR-851",
+  "evento": "descoberta",
+  "quando": "2026-09-27T12:12:19.562356+00:00",
+  "quem": "agent/cursos/comunidade-pedir-ajuda",
+  "detalhe": "Apos o mergear atualizar esta branch para a main atual, o check 'muralhas' reprova em catraca-de-testes: celula gamificacao caiu de 483 para 477 testes coletaveis entre o merge-base anterior e a main atual. O PR #2227 (agent/gamificacao/comunidade-contribuicoes-porta, ja integrado em 9f29c4db) removeu a checagem duplicada de apps/core/views.py::_publicar, consolidando em contribuicoes.py::publicar(); a suite da celula ficou 523 passed la, mas o numero de testes COLETAVEIS caiu sem a etiqueta 'remove-teste' nem explicacao na descricao do PR. Nenhum arquivo de gamificacao foi tocado por este despacho (TAR-851, celula cursos).",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/actions/runs/36317803306 (job muralhas do PR #2221); PR #2227 https://github.com/abundanciabr/sitesdoreino/pull/2227 merged em 9f29c4db",
+  "classificacao": "B",
+  "criterio": "muralhas/catraca-de-testes verde no SHA atual (RITOS.md §2, item 3)",
+  "encaminhamento": "Uma sessao com mandato em services/gamificacao confere se a reducao de 483 para 477 e legitima (refatoracao removeu teste redundante do caminho antigo em views.py) e, se for, abre PR so de fila/registro com a etiqueta 'remove-teste' e a explicacao exigida pela Lei 6/RITOS; se nao for legitima, restaura os testes que sumiram. Ate isso pousar, todo PR rebased contra main reprova em catraca-de-testes por uma celula que nao tocou."
+}
