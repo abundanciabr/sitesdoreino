@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-055747-TAR-839-explicada",
+  "tarefa": "TAR-839",
+  "evento": "explicada",
+  "quando": "2026-09-27T05:57:47.154683+00:00",
+  "quem": "TAR-813m, despacho de medicao do PR 2181 (celula checkout)",
+  "o_que_e": "No sandbox, o cartao de teste final 0002 (recusado) e o 0036 (erro transacional) fazem a Appmax devolver http 502 em vez do http 200 com status rejected. A tela e o pedido nao recebem a informacao de recusa, e a nova tentativa de pagamento tambem recebe 502, entao a pessoa fica sem saber que o cartao foi recusado e sem conseguir tentar de novo.",
+  "o_que_muda": "Quem tiver o cartao recusado numa compra real vai ver a tela travada em erro generico em vez de 'cartao recusado, tente outro', e pode desistir da compra em vez de tentar de novo com outro cartao.",
+  "exemplo": "No run https://github.com/abundanciabr/sitesdoreino/actions/runs/36298068269 (prova publica do PR 2181), o cartao final 0002 recebeu duas respostas 502 da Appmax (tentativa inicial e nova tokenizacao), em vez do 200 rejected esperado; o mesmo aconteceu com o cartao final 0036.",
+  "importancia": 60
+}
