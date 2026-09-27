@@ -24,10 +24,8 @@ O TEXTO SÓ FALA DO QUE JÁ EXISTE
 ---------------------------------
 A Prancheta (degrau 07) mostra o roteiro da escola e guarda o que o aluno marca.
 Peças por link, semáforo, selo, vitrine e dossiê em PDF são os degraus 08 a 14, e
-nenhuma frase daqui os promete. As quatro regras da professora não estão
-copiadas aqui: elas moram no guia publicado em
-`meshcraft.top/docs/guia-do-portfolio`, que o mantenedor edita sem abrir PR, e
-repeti-las neste arquivo seria o mesmo texto em dois lugares.
+nenhuma frase daqui os promete. O convite leva à própria Prancheta em
+`meshcraft.top/pages/`.
 
 NASCE DESLIGADA, E ISSO NÃO É EXCESSO DE ZELO
 ----------------------------------------------
@@ -70,26 +68,25 @@ PASSOS = [
                 "Chegou a hora de montar o seu portfólio",
                 "Você fechou um bloco do curso, e já sabe modelar o bastante "
                 "para começar o portfólio. Ele é o que um cliente olha antes "
-                "de decidir contratar você. Abra a Prancheta para ver o "
-                "roteiro da escola, etapa por etapa, e leia as quatro regras "
-                "da professora em meshcraft.top/docs/guia-do-portfolio.",
+                "de decidir contratar você. Abra a Prancheta em "
+                "meshcraft.top/pages/ para seguir o roteiro da "
+                "escola, etapa por etapa.",
             ),
             "en": (
                 "Time to build your portfolio",
                 "You finished a block of the course, and you already know "
                 "enough modeling to start your portfolio. It is what a client "
-                "looks at before deciding to hire you. Open the Prancheta to "
-                "see the school roadmap, step by step, and read the teacher's "
-                "four rules at meshcraft.top/docs/guia-do-portfolio.",
+                "looks at before deciding to hire you. Open the Prancheta "
+                "at meshcraft.top/pages/ to follow the school "
+                "roadmap, step by step.",
             ),
             "es": (
                 "Llegó la hora de armar tu portafolio",
                 "Cerraste un bloque del curso, y ya sabes modelar lo "
                 "suficiente para empezar el portafolio. Es lo que un cliente "
-                "mira antes de decidir contratarte. Abre la Prancheta para ver "
-                "la hoja de ruta de la escuela, etapa por etapa, y lee las "
-                "cuatro reglas de la profesora en "
-                "meshcraft.top/docs/guia-do-portfolio.",
+                "mira antes de decidir contratarte. Abre la Prancheta en "
+                "meshcraft.top/pages/ para seguir la hoja de ruta "
+                "de la escuela, paso a paso.",
             ),
         },
     },
