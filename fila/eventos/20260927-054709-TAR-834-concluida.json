@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-054709-TAR-834-concluida",
+  "tarefa": "TAR-834",
+  "evento": "concluida",
+  "quando": "2026-09-27T05:47:09.999110+00:00",
+  "quem": "agent/ci/appmax-observacao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2202",
+  "verificado_em": "2026-09-27"
+}

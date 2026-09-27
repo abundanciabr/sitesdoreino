@@ -16,6 +16,7 @@ import uuid
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
+from django.utils import timezone
 
 from .config_de_busca import config_de_busca
 
@@ -160,8 +161,30 @@ class Area(models.Model):
         max_length=12, choices=QuemEscreve.choices, default=QuemEscreve.EQUIPE
     )
     # Opaco de propósito: o fórum não é dono do catálogo de cursos. Só faz
-    # sentido com `visibilidade = TURMA`.
+    # sentido com `visibilidade = TURMA`, e ali é o curso do DESAFIO ATUAL do
+    # grupo de prática: a página Comunidade o transforma em `/cursos/<id>/`.
     curso_id = models.CharField(max_length=64, blank=True, default="")
+
+    # O GRUPO DE PRÁTICA (TAR-824, 27/09/2026). Uma área de TURMA é um grupo:
+    # quem entra é quem tem vínculo ativo em `MembroDoGrupo`, e estes dois
+    # campos são o que a escola decide sobre ele. Nas outras visibilidades eles
+    # ficam inertes.
+    #
+    # O responsável é pessoa da ESCOLA, e quem confere isso é a tela de criar
+    # (`apps/core/moderacao.py`), perguntando às listas do env no ponto de uso.
+    # Não há restrição de banco exigindo o campo numa área de turma: uma linha
+    # antiga sem responsável faria o `migrate` do boot morrer na VPS (lição 5 de
+    # `services/forum/LICOES.md`), e a porta continua fechada sem ele, porque
+    # quem abre o grupo é o vínculo, nunca o responsável.
+    responsavel = models.ForeignKey(
+        Pessoa,
+        related_name="grupos_sob_responsabilidade",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    # Zero é o lado fechado: grupo sem vaga declarada não recebe ninguém.
+    vagas = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ["ordem", "nome"]
@@ -203,6 +226,64 @@ class Area(models.Model):
 
     def __str__(self) -> str:
         return self.nome
+
+
+class MembroDoGrupo(models.Model):
+    """Esta pessoa está NESTE grupo de prática, desde quando e até quando.
+
+    **É uma linha por passagem, e nenhuma linha se apaga.** Entrar cria a
+    linha; sair preenche `ate` e `removido_por`. Um booleano "é membro"
+    responderia só a pergunta de hoje e perderia as outras que alguém faz
+    depois de um problema: quem pôs esta pessoa no grupo, por quê, e em que
+    janela ela enxergou as conversas. O mesmo desenho de
+    `ConsentimentoDaGaleria.revogado_em`, mais abaixo.
+
+    Quem pergunta "está no grupo agora?" é `pode_ler`
+    (`apps/core/permissoes.py`), e a resposta é "existe linha com `ate` nulo".
+    """
+
+    grupo = models.ForeignKey(Area, related_name="membros", on_delete=models.PROTECT)
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="passagens_por_grupos", on_delete=models.PROTECT
+    )
+    motivo = models.CharField(max_length=200)
+    adicionado_por = models.ForeignKey(
+        Pessoa, related_name="+", on_delete=models.PROTECT
+    )
+    desde = models.DateTimeField(default=timezone.now)
+    ate = models.DateTimeField(null=True, blank=True)
+    removido_por = models.ForeignKey(
+        Pessoa, related_name="+", on_delete=models.PROTECT, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["desde"]
+        constraints = [
+            # UM VÍNCULO ATIVO POR PESSOA E GRUPO. No banco, e não só na tela:
+            # dois cliques rápidos em "adicionar" gerariam duas linhas ativas, e
+            # remover uma deixaria a pessoa dentro pela outra, sem ninguém ver.
+            models.UniqueConstraint(
+                fields=["pessoa", "grupo"],
+                condition=models.Q(ate__isnull=True),
+                name="um_vinculo_ativo_por_pessoa_e_grupo",
+            ),
+            # Saída sem quem removeu é saída que ninguém consegue explicar
+            # depois. Vale também para o `update()` que fura o `save()`
+            # (`armadilhas/023`).
+            models.CheckConstraint(
+                condition=models.Q(ate__isnull=True, removido_por__isnull=True)
+                | models.Q(ate__isnull=False, removido_por__isnull=False),
+                name="saida_do_grupo_tem_quem_removeu",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(ate__isnull=True)
+                | models.Q(ate__gte=models.F("desde")),
+                name="saida_do_grupo_depois_da_entrada",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.pessoa_id} em {self.grupo_id}"
 
 
 class Topico(models.Model):
@@ -509,3 +590,118 @@ class ConsentimentoDaGaleria(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return f"galeria: tópico {self.topico_id} em {self.site_id}"
+
+
+# ---------------------------------------------------------------------------
+# O RASTRO DA MODERAÇÃO (TAR-847, 27/09/2026)
+# ---------------------------------------------------------------------------
+
+
+class AcaoDeModeracao(models.TextChoices):
+    """O vocabulário fechado dos gestos. O rótulo é o que a vista da equipe lê."""
+
+    FIXAR = "fixar", "fixou a conversa"
+    DESAFIXAR = "desafixar", "desafixou a conversa"
+    TRANCAR = "trancar", "trancou a conversa"
+    DESTRANCAR = "destrancar", "destrancou a conversa"
+    TIRAR_DO_AR = "tirar_do_ar", "tirou a conversa do ar"
+    RESTAURAR = "restaurar", "devolveu a conversa ao ar"
+    MOVER = "mover", "mudou a conversa de área"
+    EDITAR_TOPICO = "editar_topico", "editou o título da conversa"
+    EDITAR_MENSAGEM = "editar_mensagem", "editou uma mensagem"
+    TIRAR_MENSAGEM_DO_AR = "tirar_mensagem_do_ar", "tirou uma mensagem do ar"
+    RESTAURAR_MENSAGEM = "restaurar_mensagem", "devolveu uma mensagem ao ar"
+    APONTAR_RESPOSTA = "apontar_resposta", "apontou a resposta certa"
+    DESMARCAR_RESPOSTA = "desmarcar_resposta", "tirou o selo de resolvido"
+    TROCAR_RESPONSAVEL = "trocar_responsavel", "trocou o responsável do grupo"
+    MUDAR_VAGAS = "mudar_vagas", "mudou as vagas do grupo"
+    ADICIONAR_MEMBRO = "adicionar_membro", "pôs no grupo"
+    REMOVER_MEMBRO = "remover_membro", "tirou do grupo"
+    TROCAR_DE_GRUPO = "trocar_de_grupo", "trocou de grupo"
+
+
+# Os gestos que mexem no que outra pessoa vê, no que ela escreveu ou no grupo
+# em que ela está. Editar texto alheio também pede motivo, mas isso depende de
+# QUEM escreveu, e quem confere é `apps/core/moderacao.py`. Aqui fica o que vale
+# sempre, e o banco recusa a linha sem ele.
+ACOES_QUE_EXIGEM_MOTIVO = (
+    AcaoDeModeracao.TIRAR_DO_AR,
+    AcaoDeModeracao.RESTAURAR,
+    AcaoDeModeracao.MOVER,
+    AcaoDeModeracao.TIRAR_MENSAGEM_DO_AR,
+    AcaoDeModeracao.RESTAURAR_MENSAGEM,
+    AcaoDeModeracao.TROCAR_RESPONSAVEL,
+    AcaoDeModeracao.ADICIONAR_MEMBRO,
+    AcaoDeModeracao.REMOVER_MEMBRO,
+    AcaoDeModeracao.TROCAR_DE_GRUPO,
+)
+
+
+class RegistroDeModeracao(models.Model):
+    """Quem moderou, o quê, em quê, quando e por quê. Uma linha por gesto.
+
+    Até aqui a moderação mudava o estado e esquecia o gesto: uma conversa sumia
+    do grupo e ninguém conseguia dizer quem a tirou do ar nem por quê. O
+    `OutboxEvent` não responde isso: ele é o recado que o fórum manda às outras
+    células, e só alguns gestos viram recado.
+
+    **A linha nasce na MESMA transação do gesto** (`apps/core/moderacao.py`,
+    `_salvar_com_a_rede_do_banco`): ou os dois ficam, ou nenhum.
+
+    **E nunca muda nem some.** Quem garante é o PostgreSQL, com o gatilho
+    `registro_de_moderacao_so_acrescenta` da migração 0010, que recusa UPDATE e
+    DELETE nesta tabela. Guarda em `save()` não bastaria: o `update()` o fura
+    (`armadilhas/023`), e o `psql` numa madrugada de incidente também. Por isso
+    toda chave estrangeira daqui é `PROTECT`: um `SET_NULL` seria um UPDATE, e
+    o gatilho o recusaria no meio de outra operação.
+
+    `detalhe` guarda o alvo COMO ELE ERA no instante do gesto (o título antes
+    da edição, o responsável que saiu). O alvo muda depois; o rastro não.
+    """
+
+    ator = models.ForeignKey(Pessoa, related_name="+", on_delete=models.PROTECT)
+    acao = models.CharField(max_length=24, choices=AcaoDeModeracao.choices)
+    # A área em que o gesto aconteceu: é por ela que a equipe filtra por grupo.
+    # Em mover e em trocar de grupo ela é a ORIGEM, e o destino vai ao lado.
+    area = models.ForeignKey(Area, related_name="+", on_delete=models.PROTECT)
+    area_destino = models.ForeignKey(
+        Area, related_name="+", on_delete=models.PROTECT, null=True, blank=True
+    )
+    topico = models.ForeignKey(
+        Topico, related_name="+", on_delete=models.PROTECT, null=True, blank=True
+    )
+    mensagem = models.ForeignKey(
+        Mensagem, related_name="+", on_delete=models.PROTECT, null=True, blank=True
+    )
+    # O vínculo que o gesto abriu ou fechou. Na troca de grupo é o NOVO; o
+    # antigo é o da mesma pessoa na origem, com `ate` igual ao `desde` deste.
+    vinculo = models.ForeignKey(
+        MembroDoGrupo,
+        related_name="+",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    detalhe = models.CharField(max_length=400, blank=True)
+    motivo = models.CharField(max_length=200, blank=True)
+    quando = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["area", "-quando"]),
+            models.Index(fields=["area_destino", "-quando"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(acao__in=AcaoDeModeracao.values),
+                name="registro_de_moderacao_vocabulario_fechado",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(acao__in=ACOES_QUE_EXIGEM_MOTIVO)
+                | ~models.Q(motivo=""),
+                name="registro_de_moderacao_motivo_obrigatorio",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.ator_id} {self.acao} em {self.area_id}"

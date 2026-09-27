@@ -34,7 +34,7 @@ espaço em branco entre os botões (`armadilhas/033`).
   <h1>Portfólios esperando você</h1>
   <p>O mais urgente em cima. Aceitar fecha a conferência no nome da pessoa;
   devolver manda de volta com o que falta, em particular, e o aluno lê o motivo
-  na tela dele.</p>
+  na tela dele. Assumir um pedido mostra à equipe quem está cuidando dele.</p>
 
 {% if not sabe_a_escola %}
   <p class="aviso">Esta instalação ainda não diz de que escola ela é, então a
@@ -50,13 +50,20 @@ espaço em branco entre os botões (`armadilhas/033`).
 {% elif feito == "devolver" %}
   <p class="recado">Devolvido, com o motivo que você escolheu. O aluno lê a
   frase inteira na tela dele.</p>
+{% elif feito == "assumir" %}
+  <p class="recado">Pedido assumido. A fila mostra agora que ele está com você.</p>
 {% endif %}
 
 {% for linha in linhas %}
     <section class="pedido{% if linha.atrasado %} atrasado{% endif %}">
       <h2>Portfólio de {{ linha.pedido.portfolio.aluno_id }}</h2>
       <p class="miudo">Pedido em {{ linha.pedido.criado_em|date:"d/m/Y" }}.
-      {% if linha.atrasado %}<strong>Atrasado desde {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.</strong>{% else %}Responder até {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.{% endif %}</p>
+      {% if linha.atrasado %}<strong>Atrasado desde {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.</strong>{% else %}Responder até {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.{% endif %}
+      {% if linha.dias_de_espera == 0 %}Chegou há menos de um dia útil.{% elif linha.dias_de_espera == 1 %}Esperando há 1 dia útil.{% else %}Esperando há {{ linha.dias_de_espera }} dias úteis.{% endif %}</p>
+      <p class="responsavel">{% if linha.assumido_por_voce %}Com você desde {{ linha.pedido.assumido_em|date:"d/m/Y" }}.{% elif linha.pedido.assumido_por %}Com {{ linha.pedido.assumido_por }} desde {{ linha.pedido.assumido_em|date:"d/m/Y" }}. Você também pode decidir este pedido.{% else %}Sem responsável.{% endif %}</p>
+{% if not linha.pedido.assumido_por %}
+      <form method="post" action="{% url 'assumir' %}">{% csrf_token %}<input type="hidden" name="pedido" value="{{ linha.pedido.pk }}"><button type="submit">Assumir este pedido</button></form>
+{% endif %}
 
       <ol class="estante">
 {% for peca in linha.pecas %}

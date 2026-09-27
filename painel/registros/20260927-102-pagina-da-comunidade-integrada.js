@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-102-pagina-da-comunidade-integrada",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "A página da Comunidade está integrada na admin da main",
+  detalhe: "O PR 2186 (frente C1, TAR-823) integrou na main às 03h35 de São Paulo (merge ca86d9e1e17cea3e7980010bb2a21c02148b1174): o documento público documentos/comunidade.md, a migração 0030 que o semeia sem sobrescrever edição pela tela, e o teste que prova entrada pública, semente única e as frases exigidas. O pouso esperou o PR 2193 (Depende-de), para nenhum aluno ler sobre o grupo antes de ele existir no fórum. Publicação (deploy da admin e URL /docs/comunidade) é registro à parte quando conferida. Este registro dá baixa verde no recibo do PR 2186.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2186 (MERGED, mergeCommit ca86d9e1e17cea3e7980010bb2a21c02148b1174, conferido por gh pr view --json state,mergedAt,mergeCommit)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-066-admin-pagina-da-comunidade-em-docs-comunidade",
+  relacao: "baixa",
+  tarefa: "TAR-823",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

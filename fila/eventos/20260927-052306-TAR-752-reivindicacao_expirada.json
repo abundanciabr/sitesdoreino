@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260927-052306-TAR-752-reivindicacao_expirada",
+  "tarefa": "TAR-752",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-27T05:23:06.933452+00:00",
+  "quem": "agent/infra/appmax-drill-rollback-sandbox",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}

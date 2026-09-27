@@ -1,0 +1,35 @@
+{
+  "arquivo": "833-a-abertura-de-sessao-das-demais-celulas-aceita-o-pacote-inte",
+  "id": "TAR-833",
+  "titulo": "A abertura de sessao das demais celulas aceita o pacote interno conferido",
+  "toca": [
+    "admin",
+    "alunos",
+    "catalogo",
+    "cursos",
+    "encomendas",
+    "forum",
+    "funil",
+    "gamificacao",
+    "identidade",
+    "leads",
+    "mensageria",
+    "notificacoes",
+    "pages",
+    "quiz",
+    "sugestoes"
+  ],
+  "depende_de": [
+    "TAR-815"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o sha256 conferido em cada requirements.txt e uma abertura real da celula admin passando do passo do venv",
+  "despacho": "A TAR-815 (PR #2191) fez a abertura de sessao aceitar a wheel vendorizada site_errors quando o requirements.txt anota o sha256 real dela num comentario na mesma linha. So a celula metricas foi anotada. Calcule o sha256 real da wheel de cada uma das outras celulas do site (nao suponha que e igual ao da metricas) e acrescente o comentario no mesmo formato, sem mudar mais nada.",
+  "origem": "achado da TAR-815, PR #2191, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

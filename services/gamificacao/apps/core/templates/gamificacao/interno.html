@@ -14,7 +14,8 @@ telefone — quem precisa falar com a pessoa pergunta à célula que guarda isso
 
 {% block faixa %}
   <a href="{% url 'base' %}">Suas conquistas</a>
-  {% if pode %}<a href="{% url 'interno' %}">Fila da equipe</a>{% endif %}
+  {% if pode %}<a href="{% url 'interno' %}">Fila da equipe</a>
+  <a href="{% url 'interno-contribuicoes' %}">Contribuições</a>{% endif %}
 {% endblock %}
 
 {% block conteudo %}

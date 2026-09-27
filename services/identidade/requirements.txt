@@ -32,4 +32,10 @@ respx==0.23.1
 # (armadilhas/096). Mesma versão pinada das outras células required.
 PyYAML==6.0.2
 black==24.10.0
-services/identidade/vendor/site_errors-0.1.0-py3-none-any.whl
+# Wheel vendorizada (não está no PyPI). O comentário `# sha256:<hex>` na mesma
+# linha dá identidade imutável a ela para o `ci/sessao.py`, sem afrouxar a
+# regra para dependência local sem hash (TAR-815); não é o `--hash=` do pip,
+# que ligaria o --require-hashes global e passaria a exigir hash de toda
+# dependência transitiva. Trocou a wheel, troca o hash: `python -c "import
+# hashlib;print(hashlib.sha256(open('services/identidade/vendor/site_errors-0.1.0-py3-none-any.whl','rb').read()).hexdigest())"`.
+services/identidade/vendor/site_errors-0.1.0-py3-none-any.whl  # sha256:b4fb450384896d4f1d276792027a9b0692d79e1257a4d0f3b99e6aeb242b0693

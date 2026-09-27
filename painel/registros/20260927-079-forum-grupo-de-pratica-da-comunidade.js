@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-079-forum-grupo-de-pratica-da-comunidade",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "forum: grupo de prática da Comunidade",
+  detalhe: "Grupo de prática por vínculo ativo, fail-closed em pode_ler; gestão só da equipe; Comunidade com quem depende de você.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2193. Validação local: árvore af9ddb9e2bd3f46c3174fef370ff09147f2a9029; commit db944986ed28c8ef88e84ca601258fb7ee8202d6; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-824",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

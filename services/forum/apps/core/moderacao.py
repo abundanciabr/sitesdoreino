@@ -36,17 +36,28 @@ As cinco regras que este arquivo inteiro obedece, e que não se reabrem aqui:
 from __future__ import annotations
 
 import json
+import re
 
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q
 from django.http import Http404, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.forum import eventos
-from apps.forum.models import Area, Mensagem, Topico
+from apps.forum.models import (
+    ACOES_QUE_EXIGEM_MOTIVO,
+    AcaoDeModeracao,
+    Area,
+    MembroDoGrupo,
+    Mensagem,
+    Pessoa,
+    RegistroDeModeracao,
+    Topico,
+)
 from apps.forum.tasks import relay_apos_commit
 
 from . import agente, galeria
@@ -59,6 +70,7 @@ from .views import (
     contexto_da_area,
     contexto_da_home,
     contexto_do_topico,
+    endereco_do_desafio,
 )
 
 # ---------------------------------------------------------------------------
@@ -100,6 +112,62 @@ ERRO_BANCO_RECUSOU = (
     "alunos, então nada foi mudado."
 )
 
+# O GRUPO DE PRÁTICA (TAR-824, 27/09/2026). O código do curso é opaco para o
+# fórum (quem é dono do catálogo é a célula `cursos`), mas vira pedaço de
+# endereço na página Comunidade, então só passam os caracteres que um endereço
+# de curso usa.
+CURSO_DO_GRUPO = re.compile(r"[A-Za-z0-9_-]{1,64}")
+VAGAS_MAXIMAS = 500
+MOTIVO_MAXIMO = 200
+
+ERRO_CURSO_DO_GRUPO = (
+    "Todo grupo de prática precisa do código do curso do desafio atual, o mesmo "
+    "que aparece no endereço do curso depois de /cursos/. Use só letras, "
+    "números, hífen e sublinhado."
+)
+ERRO_RESPONSAVEL_FORA_DA_EQUIPE = (
+    "O responsável pelo grupo precisa ser professor ou administrador do fórum. "
+    "Se a pessoa certa não aparece na lista, peça que ela entre no fórum uma vez "
+    "e recarregue esta página."
+)
+ERRO_VAGAS = f"Diga quantas vagas o grupo tem, com um número de 1 a {VAGAS_MAXIMAS}."
+ERRO_VAGA_CHEIA = (
+    "Todas as vagas do grupo estão ocupadas, então ninguém entrou. Remova alguém "
+    "ou aumente as vagas na edição do grupo."
+)
+ERRO_MOTIVO_VAZIO = (
+    "Escreva o motivo da entrada, por exemplo a turma ou o pedido que a pessoa "
+    "fez no fórum."
+)
+ERRO_MOTIVO_LONGO = f"O motivo passou de {MOTIVO_MAXIMO} letras. Uma linha basta."
+ERRO_PESSOA_DESCONHECIDA = (
+    "Não achei ninguém com esse e-mail no fórum. Confira o e-mail; se estiver "
+    "certo, a pessoa precisa entrar no fórum uma vez antes de ser adicionada."
+)
+ERRO_JA_E_MEMBRO = "Essa pessoa já está no grupo."
+ERRO_VINCULO_INEXISTENTE = "Essa pessoa já não está no grupo. Recarregue a página."
+
+# O RASTRO DA MODERAÇÃO (TAR-847, 27/09/2026). O motivo fica guardado junto do
+# gesto, e é ele que responde ao aluno que pergunta o que houve.
+ERRO_MOTIVO_DA_ACAO = (
+    "Este gesto pede um motivo. Escreva em uma linha por que está fazendo isso "
+    "(por exemplo: link fora da lista permitida) e tente de novo. O motivo fica "
+    "no histórico da moderação que a equipe consulta."
+)
+ERRO_DESTINO_INVALIDO = (
+    "Escolha outro grupo de prática ativo para onde a pessoa vai. Recarregue a "
+    "página se a lista parecer desatualizada."
+)
+ERRO_DESTINO_SEM_VAGA = (
+    "O grupo de destino está sem vaga, então nada mudou e a pessoa continua "
+    "neste grupo. Aumente as vagas do destino ou escolha outro grupo."
+)
+ERRO_JA_NO_DESTINO = (
+    "Essa pessoa já está no grupo de destino. Para ela sair só deste grupo, "
+    "use o botão Tirar do grupo."
+)
+SEM_NOME = "pessoa sem nome de exibição"
+
 # O RASCUNHO DA IA (02/09/2026). As duas recusas existem porque o rascunho nasce
 # dentro da caixa de responder, e nas duas situações abaixo essa caixa não está
 # na tela: gerar texto para uma caixa que não existe seria trabalho pago à
@@ -130,12 +198,15 @@ AVISO_IA_TRAVESSAO = (
     "soar certo em cada uma."
 )
 
-# As duas visibilidades que o fórum sabe conferir hoje. `turma` existe no
-# modelo e continua fora daqui de propósito: enquanto o fórum não souber
-# perguntar à `alunos` se alguém está NUM curso, `pode_ler` fecha para todo
-# mundo (`permissoes.py`), e oferecer o botão seria oferecer a criação de uma
-# área que ninguém abre.
-VISIBILIDADES_OFERECIDAS = {Area.Visibilidade.PUBLICA, Area.Visibilidade.ALUNOS}
+# As três visibilidades que o fórum sabe conferir. `turma` entrou em 27/09/2026
+# (TAR-824) como o GRUPO DE PRÁTICA: desde então `pode_ler` sabe quem está nela,
+# pelo vínculo ativo em `MembroDoGrupo`, e a área deixou de ser uma porta que
+# ninguém abre.
+VISIBILIDADES_OFERECIDAS = {
+    Area.Visibilidade.PUBLICA,
+    Area.Visibilidade.ALUNOS,
+    Area.Visibilidade.TURMA,
+}
 QUEM_ESCREVE_OFERECIDO = {
     Area.QuemEscreve.EQUIPE,
     Area.QuemEscreve.ALUNO,
@@ -155,7 +226,7 @@ def _so_quem_modera(request):
     return ator
 
 
-def _salvar_com_a_rede_do_banco(objeto) -> str:
+def _salvar_com_a_rede_do_banco(objeto, *rastro: RegistroDeModeracao) -> str:
     """Grava, e transforma a recusa do PostgreSQL em frase de gente.
 
     As restrições do modelo (`pagina_publica_so_a_escola_fala`,
@@ -167,13 +238,42 @@ def _salvar_com_a_rede_do_banco(objeto) -> str:
     **O `atomic` não é enfeite:** `IntegrityError` capturado sem savepoint
     envenena a transação inteira e o próximo comando estoura longe da causa
     (`armadilhas/027`).
+
+    **O rastro entra no MESMO `atomic`** (TAR-847): se a linha do registro não
+    pode ser gravada, o gesto também não acontece. Um gesto sem rastro é
+    exatamente o que o registro existe para impedir.
     """
     try:
         with transaction.atomic():
             objeto.save()
+            for linha in rastro:
+                linha.save()
     except IntegrityError:
         return ERRO_BANCO_RECUSOU
     return ""
+
+
+def _ler_o_motivo(request, *, exigido: bool) -> tuple[str, str]:
+    """O motivo do gesto. Devolve (motivo, erro)."""
+    motivo = (request.POST.get("motivo") or "").strip()
+    if exigido and not motivo:
+        return motivo, ERRO_MOTIVO_DA_ACAO
+    if len(motivo) > MOTIVO_MAXIMO:
+        return motivo, ERRO_MOTIVO_LONGO
+    return motivo, ""
+
+
+def _nome(pessoa) -> str:
+    """Quem a linha do registro nomeia. Nunca o e-mail."""
+    if pessoa is None:
+        return "ninguém"
+    return pessoa.nome_exibido or SEM_NOME
+
+
+def _texto_alheio(ator, autor_id, publicado_pela_escola: bool) -> bool:
+    """O texto é de OUTRA pessoa? Fala da escola é da escola inteira, e quem
+    modera fala por ela; o texto de um aluno não é de quem o edita."""
+    return not publicado_pela_escola and autor_id != ator.pessoa.pk
 
 
 # ===========================================================================
@@ -181,13 +281,48 @@ def _salvar_com_a_rede_do_banco(objeto) -> str:
 # ===========================================================================
 
 
+def _ler_o_grupo(request) -> tuple[dict, str]:
+    """Os três campos do grupo de prática. Devolve (grupo, erro).
+
+    `grupo` guarda o que foi DIGITADO, para a tela devolver numa recusa, e só
+    ganha `responsavel_pessoa` e `vagas_numero` quando tudo confere.
+
+    O responsável passa pela MESMA pergunta que dá poder a quem está do outro
+    lado da tela (`email_da_equipe`): lista do env vazia significa que ninguém
+    pode ser responsável, nunca que qualquer um pode.
+    """
+    grupo = {
+        "curso_id": (request.POST.get("curso_id") or "").strip(),
+        "responsavel": (request.POST.get("responsavel") or "").strip(),
+        "vagas": (request.POST.get("vagas") or "").strip(),
+    }
+    if not CURSO_DO_GRUPO.fullmatch(grupo["curso_id"]):
+        return grupo, ERRO_CURSO_DO_GRUPO
+    responsavel = Pessoa.objects.filter(pk=grupo["responsavel"]).first()
+    if responsavel is None or not email_da_equipe(responsavel.email):
+        return grupo, ERRO_RESPONSAVEL_FORA_DA_EQUIPE
+    if not re.fullmatch(r"[0-9]{1,4}", grupo["vagas"]) or not (
+        1 <= int(grupo["vagas"]) <= VAGAS_MAXIMAS
+    ):
+        return grupo, ERRO_VAGAS
+    grupo["responsavel_pessoa"] = responsavel
+    grupo["vagas_numero"] = int(grupo["vagas"])
+    return grupo, ""
+
+
 def _ler_o_formulario_da_area(request) -> tuple[dict, str]:
-    """Os quatro campos da área, conferidos juntos. Devolve (campos, erro)."""
+    """Os campos da área, conferidos juntos. Devolve (campos, erro).
+
+    Os do grupo de prática só são exigidos quando a área É um grupo; nas outras
+    eles voltam só para a tela não perder o que foi digitado.
+    """
+    grupo, erro_do_grupo = _ler_o_grupo(request)
     campos = {
         "nome": (request.POST.get("nome") or "").strip(),
         "descricao": (request.POST.get("descricao") or "").strip(),
         "visibilidade": (request.POST.get("visibilidade") or "").strip(),
         "quem_escreve": (request.POST.get("quem_escreve") or "").strip(),
+        "grupo": grupo,
     }
 
     if not campos["nome"]:
@@ -198,6 +333,8 @@ def _ler_o_formulario_da_area(request) -> tuple[dict, str]:
         return campos, ERRO_VISIBILIDADE
     if campos["quem_escreve"] not in QUEM_ESCREVE_OFERECIDO:
         return campos, ERRO_QUEM_ESCREVE
+    if campos["visibilidade"] == Area.Visibilidade.TURMA and erro_do_grupo:
+        return campos, erro_do_grupo
     # EM PÁGINA PÚBLICA, SÓ A ESCOLA FALA. A conferência é aqui para o
     # mantenedor receber uma frase em vez de um erro de banco; a garantia de
     # verdade continua sendo a restrição do PostgreSQL, que nem um `update()`
@@ -234,44 +371,67 @@ def criar_area(request):
     ):
         erro = ERRO_AREA_REPETIDA
 
-    if erro:
-        return render(
-            request,
-            "forum/home.html",
-            contexto_da_home(
-                ator,
-                erro_admin=erro,
-                nome=campos["nome"],
-                descricao=campos["descricao"],
-            ),
-            status=400,
+    if not erro:
+        # A área nova entra no fim da lista. `ordem` é dado de exibição, e o
+        # passo de 10 deixa espaço para intercalar sem renumerar tudo.
+        ultima = Area.objects.order_by("-ordem").values_list("ordem", flat=True).first()
+        area = Area(
+            slug=slug,
+            nome=campos["nome"],
+            descricao=campos["descricao"],
+            visibilidade=campos["visibilidade"],
+            quem_escreve=campos["quem_escreve"],
+            ordem=(ultima or 0) + 10,
         )
+        if area.visibilidade == Area.Visibilidade.TURMA:
+            _aplicar_o_grupo(area, campos["grupo"])
+        erro = _salvar_com_a_rede_do_banco(area)
 
-    # A área nova entra no fim da lista. `ordem` é dado de exibição, e o passo
-    # de 10 deixa espaço para intercalar sem renumerar tudo.
-    ultima = Area.objects.order_by("-ordem").values_list("ordem", flat=True).first()
-    area = Area(
-        slug=slug,
-        nome=campos["nome"],
-        descricao=campos["descricao"],
-        visibilidade=campos["visibilidade"],
-        quem_escreve=campos["quem_escreve"],
-        ordem=(ultima or 0) + 10,
-    )
-    erro = _salvar_com_a_rede_do_banco(area)
     if erro:
         return render(
             request,
             "forum/home.html",
-            contexto_da_home(
-                ator,
-                erro_admin=erro,
-                nome=campos["nome"],
-                descricao=campos["descricao"],
-            ),
+            contexto_da_home(ator, erro_admin=erro, digitado=campos),
             status=400,
         )
     return redirect(reverse("area", args=[area.slug]))
+
+
+def _aplicar_o_grupo(area: Area, grupo: dict) -> None:
+    """Os três campos do grupo de prática, já conferidos por `_ler_o_grupo`."""
+    area.curso_id = grupo["curso_id"]
+    area.responsavel = grupo["responsavel_pessoa"]
+    area.vagas = grupo["vagas_numero"]
+
+
+def _rastro_do_grupo(ator, grupo, responsavel_antes, vagas_antes) -> list:
+    """As linhas de uma edição de grupo: quem responde por ele e quantas vagas.
+
+    Só o que MUDOU vira linha. Salvar o grupo sem trocar nada não é gesto, e uma
+    linha inventada esconderia as de verdade na vista da equipe.
+    """
+    rastro = []
+    if grupo.responsavel_id != getattr(responsavel_antes, "pk", None):
+        rastro.append(
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.TROCAR_RESPONSAVEL,
+                area=grupo,
+                detalhe=(
+                    f"de {_nome(responsavel_antes)} para {_nome(grupo.responsavel)}"
+                ),
+            )
+        )
+    if grupo.vagas != vagas_antes:
+        rastro.append(
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.MUDAR_VAGAS,
+                area=grupo,
+                detalhe=f"de {vagas_antes} para {grupo.vagas}",
+            )
+        )
+    return rastro
 
 
 @require_POST
@@ -285,11 +445,23 @@ def moderar_area(request, slug: str):
     if acao == "salvar":
         campos, erro = _ler_o_formulario_da_area(request)
         if not erro:
+            responsavel_antes, vagas_antes = area.responsavel, area.vagas
             area.nome = campos["nome"]
             area.descricao = campos["descricao"]
             area.visibilidade = campos["visibilidade"]
             area.quem_escreve = campos["quem_escreve"]
-            erro = _salvar_com_a_rede_do_banco(area)
+            rastro = []
+            if area.visibilidade == Area.Visibilidade.TURMA:
+                _aplicar_o_grupo(area, campos["grupo"])
+                rastro = _rastro_do_grupo(ator, area, responsavel_antes, vagas_antes)
+            motivo, erro = _ler_o_motivo(
+                request,
+                exigido=any(linha.acao in ACOES_QUE_EXIGEM_MOTIVO for linha in rastro),
+            )
+            for linha in rastro:
+                linha.motivo = motivo
+            if not erro:
+                erro = _salvar_com_a_rede_do_banco(area, *rastro)
     elif acao in ("arquivar", "reabrir"):
         # O "deletar" honesto: a área some da lista de todo mundo e continua
         # aparecendo para quem pode reabri-la, marcada (ver `pode_ler`).
@@ -307,6 +479,226 @@ def moderar_area(request, slug: str):
             status=400,
         )
     return redirect(reverse("area", args=[area.slug]))
+
+
+# ===========================================================================
+# GRUPO DE PRÁTICA: quem está dentro, e os dois gestos da escola, pôr e tirar
+# ===========================================================================
+# TAR-824, 27/09/2026. As mesmas cinco regras do cabeçalho: 404 para quem não
+# modera, POST com CSRF para mudar, nenhuma linha apagada (tirar alguém é
+# preencher `ate` e `removido_por`), e a recusa devolve a mesma tela com o que
+# foi digitado. O GET existe porque a escola precisa VER o grupo antes de
+# mexer nele; ele não muda nada.
+
+
+def _contexto_do_grupo(ator, grupo, *, erro="", email="", motivo="") -> dict:
+    membros = list(
+        MembroDoGrupo.objects.filter(grupo=grupo, ate__isnull=True).select_related(
+            "pessoa", "adicionado_por"
+        )
+    )
+    # Para onde a troca pode levar: os outros grupos ativos, com as vagas à
+    # vista, para a escola não escolher às cegas um destino cheio.
+    destinos = (
+        Area.objects.filter(visibilidade=Area.Visibilidade.TURMA, ativa=True)
+        .exclude(pk=grupo.pk)
+        .annotate(ocupadas=Count("membros", filter=Q(membros__ate__isnull=True)))
+    )
+    return {
+        "ator": ator,
+        "grupo": grupo,
+        "desafio": endereco_do_desafio(grupo),
+        "membros": membros,
+        "destinos": list(destinos),
+        "sairam": MembroDoGrupo.objects.filter(grupo=grupo, ate__isnull=False).count(),
+        "erro": erro,
+        "email_digitado": email,
+        "motivo_digitado": motivo,
+    }
+
+
+def _adicionar_membro(request, ator, grupo) -> str:
+    email = (request.POST.get("email") or "").strip().lower()
+    motivo = (request.POST.get("motivo") or "").strip()
+    if not motivo:
+        return ERRO_MOTIVO_VAZIO
+    if len(motivo) > MOTIVO_MAXIMO:
+        return ERRO_MOTIVO_LONGO
+    pessoa = Pessoa.objects.filter(email=email).first() if email else None
+    if pessoa is None:
+        return ERRO_PESSOA_DESCONHECIDA
+
+    try:
+        with transaction.atomic():
+            # A VAGA É CONTADA COM O GRUPO TRANCADO. Sem o `select_for_update`,
+            # dois cliques ao mesmo tempo na última vaga contariam "sobra uma"
+            # cada um, e o grupo passaria do teto que a escola escolheu.
+            travado = Area.objects.select_for_update().get(pk=grupo.pk)
+            ativos = MembroDoGrupo.objects.filter(grupo=travado, ate__isnull=True)
+            if ativos.filter(pessoa=pessoa).exists():
+                return ERRO_JA_E_MEMBRO
+            if ativos.count() >= travado.vagas:
+                return ERRO_VAGA_CHEIA
+            vinculo = MembroDoGrupo.objects.create(
+                grupo=travado, pessoa=pessoa, motivo=motivo, adicionado_por=ator.pessoa
+            )
+            RegistroDeModeracao.objects.create(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.ADICIONAR_MEMBRO,
+                area=travado,
+                vinculo=vinculo,
+                detalhe=_nome(pessoa),
+                motivo=motivo,
+            )
+    except IntegrityError:
+        # A restrição `um_vinculo_ativo_por_pessoa_e_grupo` pegou o que a
+        # conferência acima não viu a tempo.
+        return ERRO_JA_E_MEMBRO
+    return ""
+
+
+def _vinculo_ativo(request, grupo):
+    """O vínculo ativo que o formulário aponta, neste grupo, ou `None`."""
+    vinculo_id = (request.POST.get("vinculo_id") or "").strip()
+    if not (vinculo_id.isascii() and vinculo_id.isdigit()):
+        return None
+    return (
+        MembroDoGrupo.objects.select_related("pessoa")
+        .filter(pk=vinculo_id, grupo=grupo, ate__isnull=True)
+        .first()
+    )
+
+
+def _remover_membro(request, ator, grupo) -> str:
+    vinculo = _vinculo_ativo(request, grupo)
+    if vinculo is None:
+        return ERRO_VINCULO_INEXISTENTE
+    motivo, erro = _ler_o_motivo(request, exigido=True)
+    if erro:
+        return erro
+    vinculo.ate = timezone.now()
+    vinculo.removido_por = ator.pessoa
+    return _salvar_com_a_rede_do_banco(
+        vinculo,
+        RegistroDeModeracao(
+            ator=ator.pessoa,
+            acao=AcaoDeModeracao.REMOVER_MEMBRO,
+            area=grupo,
+            vinculo=vinculo,
+            detalhe=_nome(vinculo.pessoa),
+            motivo=motivo,
+        ),
+    )
+
+
+def _trocar_de_grupo(request, ator, grupo) -> str:
+    """Tira de um grupo e põe no outro NUM GESTO SÓ, ou não muda nada.
+
+    Em dois gestos a pessoa ficava sem grupo no meio, e se o segundo falhasse
+    (destino sem vaga) ela ficava de fora sem ninguém perceber. Aqui a saída e
+    a entrada têm o MESMO instante e a mesma transação, e a vaga do destino é
+    contada com os dois grupos trancados, sempre na ordem da chave: dois gestos
+    cruzados (Ana de A para B, Bia de B para A) nunca se travam um ao outro.
+
+    A leitura, a busca e a página Comunidade perguntam ao vínculo ativo, ao
+    vivo (`pode_ler`), então mudam no mesmo instante. O que a pessoa escreveu
+    na origem fica onde está, com o nome dela.
+    """
+    vinculo = _vinculo_ativo(request, grupo)
+    if vinculo is None:
+        return ERRO_VINCULO_INEXISTENTE
+    destino_id = (request.POST.get("destino") or "").strip()
+    destino = (
+        Area.objects.filter(
+            pk=destino_id, visibilidade=Area.Visibilidade.TURMA, ativa=True
+        )
+        .exclude(pk=grupo.pk)
+        .first()
+        if destino_id.isascii() and destino_id.isdigit()
+        else None
+    )
+    if destino is None:
+        return ERRO_DESTINO_INVALIDO
+    motivo, erro = _ler_o_motivo(request, exigido=True)
+    if erro:
+        return erro
+
+    try:
+        with transaction.atomic():
+            travados = {
+                area.pk: area
+                for area in Area.objects.select_for_update()
+                .filter(pk__in=[grupo.pk, destino.pk])
+                .order_by("pk")
+            }
+            no_destino = MembroDoGrupo.objects.filter(grupo=destino, ate__isnull=True)
+            if no_destino.filter(pessoa=vinculo.pessoa).exists():
+                return ERRO_JA_NO_DESTINO
+            if no_destino.count() >= travados[destino.pk].vagas:
+                return ERRO_DESTINO_SEM_VAGA
+            agora = timezone.now()
+            fechados = MembroDoGrupo.objects.filter(
+                pk=vinculo.pk, ate__isnull=True
+            ).update(ate=agora, removido_por=ator.pessoa)
+            if not fechados:
+                return ERRO_VINCULO_INEXISTENTE
+            novo = MembroDoGrupo.objects.create(
+                grupo=destino,
+                pessoa=vinculo.pessoa,
+                motivo=motivo,
+                adicionado_por=ator.pessoa,
+                desde=agora,
+            )
+            RegistroDeModeracao.objects.create(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.TROCAR_DE_GRUPO,
+                area=grupo,
+                area_destino=destino,
+                vinculo=novo,
+                detalhe=f"{_nome(vinculo.pessoa)}, de {grupo.nome} para {destino.nome}",
+                motivo=motivo,
+            )
+    except IntegrityError:
+        return ERRO_BANCO_RECUSOU
+    return ""
+
+
+@require_http_methods(["GET", "POST"])
+def membros_do_grupo(request, slug: str):
+    """Os membros de um grupo de prática. 404 para quem não é da escola.
+
+    Área que não é grupo também é 404: a tela de membros de uma área de alunos
+    seria uma porta para uma regra que ela não tem.
+    """
+    ator = _so_quem_modera(request)
+    grupo = get_object_or_404(Area, slug=slug, visibilidade=Area.Visibilidade.TURMA)
+    if request.method == "GET":
+        return render(request, "forum/grupo.html", _contexto_do_grupo(ator, grupo))
+
+    acao = (request.POST.get("acao") or "").strip()
+    if acao == "adicionar":
+        erro = _adicionar_membro(request, ator, grupo)
+    elif acao == "remover":
+        erro = _remover_membro(request, ator, grupo)
+    elif acao == "trocar":
+        erro = _trocar_de_grupo(request, ator, grupo)
+    else:
+        erro = ERRO_ACAO_DESCONHECIDA
+
+    if erro:
+        return render(
+            request,
+            "forum/grupo.html",
+            _contexto_do_grupo(
+                ator,
+                grupo,
+                erro=erro,
+                email=(request.POST.get("email") or "").strip(),
+                motivo=(request.POST.get("motivo") or "").strip(),
+            ),
+            status=400,
+        )
+    return redirect(reverse("membros_do_grupo", args=[grupo.slug]))
 
 
 # ===========================================================================
@@ -370,30 +762,28 @@ def moderar_topico(request, topico_id: int):
         elif destino is None:
             erro = ERRO_AREA_INEXISTENTE
         else:
-            topico.titulo = titulo
-            # MOVER (lei §4.6). A conversa inteira vai junto: as mensagens
-            # pendem do tópico, não da área.
-            topico.area = destino
-            erro = _salvar_com_a_rede_do_banco(topico)
+            erro = _editar_ou_mover(request, ator, topico, titulo, destino)
     elif acao in ("fixar", "desafixar"):
         topico.fixado = acao == "fixar"
-        erro = _salvar_com_a_rede_do_banco(topico)
+        erro = _gesto_na_conversa(request, ator, topico, acao)
     elif acao in ("trancar", "destrancar"):
         # Trancado esconde a caixa de responder E faz a view de resposta
         # recusar. As duas coisas, sempre: esconder o formulário nunca foi a
         # proteção.
         topico.trancado = acao == "trancar"
-        erro = _salvar_com_a_rede_do_banco(topico)
+        erro = _gesto_na_conversa(request, ator, topico, acao)
     elif acao in ("tirar_do_ar", "restaurar"):
         topico.estado = (
             Topico.Estado.REMOVIDO if acao == "tirar_do_ar" else Topico.Estado.PUBLICADO
         )
-        erro = _salvar_com_a_rede_do_banco(topico)
+        erro = _gesto_na_conversa(request, ator, topico, acao)
     elif acao == "aceitar":
         erro = _apontar_a_resposta_certa(request, topico)
     elif acao == "desmarcar":
         topico.resposta_aceita = None
-        erro = _salvar_com_a_rede_do_banco(topico)
+        erro = _gesto_na_conversa(
+            request, ator, topico, AcaoDeModeracao.DESMARCAR_RESPOSTA
+        )
     else:
         erro = ERRO_ACAO_DESCONHECIDA
 
@@ -406,6 +796,77 @@ def moderar_topico(request, topico_id: int):
             status=400,
         )
     return redirect(_de_volta_para(request, topico))
+
+
+def _gesto_na_conversa(request, ator, topico, acao) -> str:
+    """Grava o estado novo da conversa e a linha do gesto, juntos.
+
+    O nome do botão (`fixar`, `tirar_do_ar`...) é o mesmo valor do vocabulário
+    do registro, de propósito: um nome só para o mesmo gesto.
+    """
+    motivo, erro = _ler_o_motivo(request, exigido=acao in ACOES_QUE_EXIGEM_MOTIVO)
+    if erro:
+        return erro
+    return _salvar_com_a_rede_do_banco(
+        topico,
+        RegistroDeModeracao(
+            ator=ator.pessoa,
+            acao=acao,
+            area=topico.area,
+            topico=topico,
+            detalhe=f'"{topico.titulo}"',
+            motivo=motivo,
+        ),
+    )
+
+
+def _editar_ou_mover(request, ator, topico, titulo, destino) -> str:
+    """O formulário de editar a conversa faz dois gestos, e cada um é uma linha.
+
+    MOVER (lei §4.6) leva a conversa inteira: as mensagens pendem do tópico, não
+    da área. Mover sempre pede motivo; mudar o título pede quando o título é de
+    outra pessoa. Salvar sem mudar nada não grava linha nenhuma.
+    """
+    origem = topico.area
+    mudou_o_titulo = titulo != topico.titulo
+    moveu = destino.pk != origem.pk
+    motivo, erro = _ler_o_motivo(
+        request,
+        exigido=moveu
+        or (
+            mudou_o_titulo
+            and _texto_alheio(ator, topico.autor_id, topico.publicado_pela_escola)
+        ),
+    )
+    if erro:
+        return erro
+    rastro = []
+    if mudou_o_titulo:
+        rastro.append(
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.EDITAR_TOPICO,
+                area=origem,
+                topico=topico,
+                detalhe=f'de "{topico.titulo}" para "{titulo}"',
+                motivo=motivo,
+            )
+        )
+    if moveu:
+        rastro.append(
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.MOVER,
+                area=origem,
+                area_destino=destino,
+                topico=topico,
+                detalhe=f'"{titulo}", de {origem.nome} para {destino.nome}',
+                motivo=motivo,
+            )
+        )
+    topico.titulo = titulo
+    topico.area = destino
+    return _salvar_com_a_rede_do_banco(topico, *rastro)
 
 
 def _apontar_a_resposta_certa(request, topico) -> str:
@@ -425,7 +886,17 @@ def _apontar_a_resposta_certa(request, topico) -> str:
 
     with transaction.atomic():
         topico.resposta_aceita = mensagem
-        erro = _salvar_com_a_rede_do_banco(topico)
+        erro = _salvar_com_a_rede_do_banco(
+            topico,
+            RegistroDeModeracao(
+                ator=ator.pessoa,
+                acao=AcaoDeModeracao.APONTAR_RESPOSTA,
+                area=topico.area,
+                topico=topico,
+                mensagem=mensagem,
+                detalhe=f'mensagem de {mensagem.assinatura} em "{topico.titulo}"',
+            ),
+        )
         if erro:
             return erro
         # O FATO MAIS VALIOSO DO SISTEMA (decisão 4 da Sessão A: validação humana
@@ -477,28 +948,65 @@ def moderar_mensagem(request, mensagem_id: int):
     topico = mensagem.topico
     acao = (request.POST.get("acao") or "").strip()
 
+    # O alvo como a equipe vai lê-lo no registro: de quem é a fala e onde ela
+    # está, nunca o texto (que pode ser justamente o que foi tirado do ar).
+    detalhe = f'mensagem de {mensagem.assinatura} em "{topico.titulo}"'
     erro = ""
     if acao == "salvar":
         texto = (request.POST.get("texto") or "").strip()
+        motivo, erro = _ler_o_motivo(
+            request,
+            exigido=_texto_alheio(
+                ator, mensagem.autor_id, mensagem.publicado_pela_escola
+            ),
+        )
         if not texto:
             erro = ERRO_MENSAGEM_VAZIA
-        else:
+        elif not erro and texto != mensagem.texto:
             mensagem.texto = texto
             # A tela mostra "editada" a partir DESTE campo. Editar em silêncio
             # a fala de outra pessoa é o que um fórum não pode fazer: quem
             # respondeu confiando no que estava escrito merece ver que mudou.
             mensagem.editado_em = timezone.now()
-            erro = _salvar_com_a_rede_do_banco(mensagem)
+            erro = _salvar_com_a_rede_do_banco(
+                mensagem,
+                RegistroDeModeracao(
+                    ator=ator.pessoa,
+                    acao=AcaoDeModeracao.EDITAR_MENSAGEM,
+                    area=topico.area,
+                    topico=topico,
+                    mensagem=mensagem,
+                    detalhe=detalhe,
+                    motivo=motivo,
+                ),
+            )
             if not erro:
                 # A busca é calculada na ESCRITA, nunca na consulta (lei §4.4).
                 # Sem esta linha o texto novo ficaria invisível para a busca e
                 # o antigo continuaria aparecendo nela, sem erro em lugar nenhum.
                 mensagem.indexar_para_busca()
     elif acao in ("tirar_do_ar", "restaurar"):
+        motivo, erro = _ler_o_motivo(request, exigido=True)
         site_id = site_id_do_host(request.get_host())
         with transaction.atomic():
-            mensagem.removida_em = timezone.now() if acao == "tirar_do_ar" else None
-            erro = _salvar_com_a_rede_do_banco(mensagem)
+            if not erro:
+                mensagem.removida_em = timezone.now() if acao == "tirar_do_ar" else None
+                erro = _salvar_com_a_rede_do_banco(
+                    mensagem,
+                    RegistroDeModeracao(
+                        ator=ator.pessoa,
+                        acao=(
+                            AcaoDeModeracao.TIRAR_MENSAGEM_DO_AR
+                            if acao == "tirar_do_ar"
+                            else AcaoDeModeracao.RESTAURAR_MENSAGEM
+                        ),
+                        area=topico.area,
+                        topico=topico,
+                        mensagem=mensagem,
+                        detalhe=detalhe,
+                        motivo=motivo,
+                    ),
+                )
             if not erro and mensagem.removida_em is not None:
                 # Uma mensagem fora do ar não pode continuar sendo a resposta
                 # premiada da conversa: o selo apontaria para o vazio.

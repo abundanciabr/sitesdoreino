@@ -1,4 +1,5 @@
 """Persistência com arquivos reais e falhas nas fronteiras externas."""
+import hashlib
 import json
 import os
 import subprocess
@@ -115,8 +116,11 @@ def baseline(ambiente):
     a = criador(ambiente, [])
     a.preparar_venv()
     a.instalar()
-    estado = {"main": "a" * 40, "tree": "b" * 40, "head": "b" * 40, "dirty": "", "exit": 0, "make": 0, "isoladas": []}
+    estado = {"main": "a" * 40, "tree": "b" * 40, "head": "b" * 40, "dirty": "", "exit": 0, "make": 0, "isoladas": [],
+              "versao_do_make": "GNU Make 4.4.1"}
     def correr(comando, **kwargs):
+        if comando[1:] == ["--version"]:
+            return sessao.Saida(comando, 0, estado["versao_do_make"], "")
         if "status" in comando:
             return sessao.Saida(comando, 0, estado["dirty"] if "-C" in comando else estado.get("base_dirty", ""), "")
         if "show" in comando:
@@ -231,6 +235,71 @@ def test_dependencia_local_nao_recebe_cache(ambiente, referencia):
         sessao.identidade_do_venv(ambiente.requisitos)
 
 
+def _escrever_wheel_vendorizada(ambiente, conteudo=b"conteudo da wheel vendorizada"):
+    """Cria a wheel em services/quiz/vendor/ e devolve (linha, sha256 real)."""
+    vendor = ambiente.celula_no_worktree / "vendor"
+    vendor.mkdir(parents=True, exist_ok=True)
+    wheel = vendor / "pacote-0.1.0-py3-none-any.whl"
+    wheel.write_bytes(conteudo)
+    return "services/quiz/vendor/pacote-0.1.0-py3-none-any.whl", hashlib.sha256(conteudo).hexdigest()
+
+
+def test_wheel_vendorizada_sem_hash_continua_recusada(ambiente):
+    linha, _ = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(linha)
+    with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
+        sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+
+
+def test_wheel_vendorizada_com_hash_conferido_recebe_identidade(ambiente):
+    linha, hash_real = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_real}")
+    um = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    dois = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    assert um == dois
+
+
+def test_wheel_vendorizada_muda_de_conteudo_muda_a_identidade(ambiente):
+    linha, hash_um = _escrever_wheel_vendorizada(ambiente, b"versao 1")
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_um}")
+    identidade_um = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    _, hash_dois = _escrever_wheel_vendorizada(ambiente, b"versao 2, conteudo diferente")
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_dois}")
+    identidade_dois = sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    assert identidade_um != identidade_dois
+
+
+def test_wheel_vendorizada_com_hash_divergente_continua_recusada(ambiente):
+    linha, _ = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{'0' * 64}")
+    with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
+        sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+
+
+def test_wheel_vendorizada_troca_de_conteudo_sem_atualizar_hash_continua_recusada(ambiente):
+    """A wheel muda no disco (ex.: reconstruída) e o comentário ficou velho:
+    é exatamente a mesma falta de identidade imutável de uma wheel sem hash."""
+    linha, hash_velho = _escrever_wheel_vendorizada(ambiente, b"conteudo original")
+    ambiente.requisitos.write_text(f"{linha}  # sha256:{hash_velho}")
+    assert sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+    _escrever_wheel_vendorizada(ambiente, b"conteudo trocado sem atualizar o comentario")
+    with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
+        sessao.identidade_do_venv(ambiente.requisitos, raiz_do_worktree=ambiente.worktree)
+
+
+def test_abertura_de_verdade_instala_wheel_vendorizada_com_hash_conferido(ambiente):
+    """Fim a fim: `preparar_venv` + `instalar`, como o RITOS realmente chama,
+    aceitam a wheel vendorizada com identidade imutável e seguem adiante."""
+    linha, hash_real = _escrever_wheel_vendorizada(ambiente)
+    ambiente.requisitos.write_text(f"pytest==8.3.4\n{linha}  # sha256:{hash_real}\n")
+    chamadas = []
+    a = criador(ambiente, chamadas)
+    a.preparar_venv()
+    a.instalar()
+    assert sum("install" in c for c in chamadas) == 1
+    assert a.ambiente_instalado()
+
+
 def test_duas_tarefas_com_bancos_distintos_reutilizam_base(baseline):
     a, estado = baseline
     a._variaveis = sessao.variaveis_de_sessao(a.plano, porta_postgres=15432)
@@ -294,7 +363,7 @@ def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_div
         a._localizar = shutil.which
         a._variaveis = sessao.variaveis_de_sessao(a.plano, porta_postgres=15432)
         assert a.rodar_baseline("git") == "1 passed"
-        assert sum(c[0] == make for c in chamadas) == (1 if numero == 1 else 0)
+        assert sum(c[0] == make and "ci" in c for c in chamadas) == (1 if numero == 1 else 0)
         assert "1 passed" in a.plano.log_do_baseline.read_text()
 
 
@@ -324,6 +393,19 @@ def test_revisao_da_main_invalida_nao_executa_baseline(baseline):
     with pytest.raises(sessao.ErroDeSessao, match="revisão da main inválida"):
         a.rodar_baseline("git")
     assert estado["make"] == 0
+
+
+def test_make_que_nao_e_gnu_para_como_instrumento_sem_culpar_a_base(baseline):
+    a, estado = baseline
+    estado["versao_do_make"] = "make local do Codex para sitesdoreino"
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        a.rodar_baseline("git")
+    assert erro.value.resumo == "o `make` do PATH não é GNU Make: make"
+    assert "make local do Codex" in erro.value.detalhe
+    assert "a célula não reprovou" in erro.value.detalhe
+    assert erro.value.codigo == 2
+    assert estado["make"] == 0
+    assert estado["isoladas"] == []
 
 
 def test_trava_aguarda_produtor_apos_120s_com_relogio_acelerado(tmp_path, monkeypatch):
@@ -381,7 +463,7 @@ def windows_sem_shell(baseline, monkeypatch):
         estado["comandos"].append((comando, kwargs))
         if "--exec-path" in comando:
             return sessao.Saida(comando, 0, str(a.plano.raiz / "Git/mingw64/libexec/git-core"), "")
-        if comando[0] == "make" and not any(c.startswith("SHELL=") for c in comando):
+        if comando[0] == "make" and "ci" in comando and not any(c.startswith("SHELL=") for c in comando):
             return sessao.Saida(comando, 255, "", "-f foi inesperado neste momento.")
         if "pytest" in comando:
             estado["pytest"] += 1
@@ -400,7 +482,7 @@ def test_windows_shell_do_git_impede_make_cair_no_cmd(windows_sem_shell):
     shell.parent.mkdir(parents=True)
     shell.touch()
     assert a.rodar_baseline("git") == "6 passed"
-    comando, kwargs = next(c for c in estado["comandos"] if c[0][0] == "make")
+    comando, kwargs = next(c for c in estado["comandos"] if c[0][0] == "make" and "ci" in c[0])
     assert f"SHELL={shell.as_posix()}" in comando
     assert kwargs["env"]["SHELL"] == shell.as_posix()
     caminhos = kwargs["env"]["PATH"].split(os.pathsep)

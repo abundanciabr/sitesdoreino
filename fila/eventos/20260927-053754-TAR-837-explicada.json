@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-053754-TAR-837-explicada",
+  "tarefa": "TAR-837",
+  "evento": "explicada",
+  "quando": "2026-09-27T05:37:54.469975+00:00",
+  "quem": "achado da TAR-833 ao dividir por mandato_por_faixa.py, sessao de 27/09/2026",
+  "o_que_e": "As duas celulas que cuidam de pagamento (checkout e cobranca) tambem tem a mesma copia do pacote interno de erros sem o codigo de identidade escrito ao lado, igual as outras catorze da TAR-833.",
+  "o_que_muda": "Depois desta tarefa, abrir sessao em checkout ou em pagamentos tambem passa pela conferencia do pacote em vez de travar.",
+  "exemplo": "E a mesma etiqueta que falta nas outras lojas da rede, so que nestas duas o cofre da loja exige a assinatura do dono antes de qualquer um trocar a etiqueta.",
+  "importancia": 50
+}

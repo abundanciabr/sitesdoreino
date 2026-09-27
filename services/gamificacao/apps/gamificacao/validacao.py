@@ -134,13 +134,21 @@ def prazo_de(tipo: str, a_partir_de=None):
     um pedido que aparece como atrasado um dia antes, numa fila que uma pessoa
     olha. Quando a escola tiver calendário próprio, este é o lugar de ligá-lo.
     """
-    agora = timezone.localtime(a_partir_de or timezone.now())
     dias = (
         DIAS_UTEIS_PARA_MARCO
         if tipo == PedidoDeValidacao.Tipo.MARCO
         else DIAS_UTEIS_PARA_RESPOSTA
     )
-    prazo = agora
+    return prazo_em_dias_uteis(dias, a_partir_de)
+
+
+def prazo_em_dias_uteis(dias: int, a_partir_de=None):
+    """O mesmo horário, `dias` dias úteis adiante, no fuso da escola.
+
+    A conta de `prazo_de` num lugar só, para a fila das contribuições
+    (`contribuicoes.py`) medir atraso com a MESMA régua da fila dos marcos.
+    """
+    prazo = timezone.localtime(a_partir_de or timezone.now())
     for _ in range(dias):
         prazo = _proximo_dia_util(prazo)
     return prazo

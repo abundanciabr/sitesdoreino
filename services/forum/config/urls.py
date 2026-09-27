@@ -6,6 +6,7 @@ from apps.core.moderacao import (
     decidir_galeria,
     gerar_resposta,
     gerar_resposta_ao_vivo,
+    membros_do_grupo,
     moderar_area,
     moderar_mensagem,
     moderar_topico,
@@ -14,6 +15,8 @@ from apps.core.views import (
     healthz,
     home,
     abrir_conversa,
+    comunidade,
+    comunidade_da_equipe,
     li_tudo,
     novo_topico,
     responder,
@@ -60,6 +63,13 @@ urlpatterns = [
     # "Ja vi tudo" — avanca a marca-d'agua da area. POST porque aqui a escrita e
     # o PEDIDO da pessoa, e nao consequencia de ela ter lido.
     path("a/<slug:slug>/li-tudo", li_tudo, name="li_tudo"),
+    # A COMUNIDADE (TAR-824): o que o membro de um grupo de prática pode fazer
+    # agora. GET e nada mais; cada estado (sem login, sem matrícula, sem grupo,
+    # com grupo) responde com texto, nunca com 404.
+    path("comunidade", comunidade, name="comunidade"),
+    # A MESMA Comunidade vista pela escola (TAR-827): as esperas de cada grupo
+    # e quem responde por elas. 404 para quem não modera, como as ferramentas.
+    path("comunidade/equipe", comunidade_da_equipe, name="comunidade_da_equipe"),
     # AS FERRAMENTAS DO ADMINISTRADOR (`apps/core/moderacao.py`). Mesmas duas
     # razões de `require_POST` acima, um degrau mais fundo: uma acao de
     # moderacao por GET seria um "tirar do ar" que o robo do Google executa
@@ -69,6 +79,9 @@ urlpatterns = [
     # nao 403. O 403 confirmaria que a porta existe.
     path("areas/nova", criar_area, name="criar_area"),
     path("a/<slug:slug>/moderar", moderar_area, name="moderar_area"),
+    # Os membros de um grupo de prática (TAR-824). GET mostra, POST põe ou
+    # tira alguém; 404 para quem não é da escola, como as quatro acima e abaixo.
+    path("a/<slug:slug>/membros", membros_do_grupo, name="membros_do_grupo"),
     path("t/<int:topico_id>/moderar", moderar_topico, name="moderar_topico"),
     path("m/<int:mensagem_id>/moderar", moderar_mensagem, name="moderar_mensagem"),
     # MOSTRAR NA GALERIA. Mesmo `require_POST` das de cima, e pela mesma razao:
