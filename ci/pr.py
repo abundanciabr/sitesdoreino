@@ -654,13 +654,14 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     if not pedido.tarefa:
         if da_abertura is None and _sessao_anterior_ao_protocolo(raiz, ramo, correr):
             return None
-        raise ParouPorSeguranca(
-            "tarefa não declarada: só --tarefa escolhe a tarefa que recebe eventos",
+        o_que_houve = "tarefa não declarada: só --tarefa escolhe a tarefa que recebe eventos"
+        o_que_fazer = (
             f"Repita com TAR={da_abertura or 'TAR-NNN'} (make pr) ou --tarefa {da_abertura or 'TAR-NNN'} "
             "(python ci/pr.py); python ci/fila.py listar mostra a fila. "
             "TAR citada no título, no corpo ou no detalhe é só texto e não fecha tarefa. "
-            "Só abertura anterior ao protocolo e sem tarefa da fila publica sem tarefa.",
+            "Só abertura anterior ao protocolo e sem tarefa da fila publica sem tarefa."
         )
+        raise ParouPorSeguranca(o_que_houve, o_que_fazer)
     if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
         raise ParouPorSeguranca(
             "tarefa inválida",

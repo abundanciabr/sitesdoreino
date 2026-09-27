@@ -1128,6 +1128,7 @@ def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
 @pytest.mark.parametrize("onde", ["titulo", "corpo", "detalhe"])
 def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
     """PRs #2189 e #2190: citar outra tarefa no texto a fechou de verdade."""
+    # guarda: ci/pr.py:664
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
@@ -1147,6 +1148,7 @@ def test_tar_citada_no_texto_nao_escolhe_tarefa(tmp_path, monkeypatch, onde):
 
 
 def test_sem_tarefa_a_recusa_ensina_a_tar_da_abertura(tmp_path, monkeypatch):
+    # guarda: ci/pr.py:664
     raiz = bancada(tmp_path)
     monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
     dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
@@ -1172,7 +1174,7 @@ def test_sessao_legada_aberta_com_tar_recusa_sem_tarefa(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("fim_da_dependencia", [None, "cancelada"])
 def test_tar_com_dependencia_nao_concluida_recusa_antes_de_publicar(tmp_path, monkeypatch, fim_da_dependencia):
-    # guarda: ci/pr.py:680
+    # guarda: ci/pr.py:686
     import fila
     raiz = bancada(tmp_path)
     monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {
