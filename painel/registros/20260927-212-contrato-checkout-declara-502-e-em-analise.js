@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-212-contrato-checkout-declara-502-e-em-analise",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "contrato: checkout declara 502 e em análise",
+  detalhe: "TAR-874: contrato do checkout declara o 502 de placeOrder e o campo opcional card_in_review em getOrder; aditivo, código vem no PR seguinte.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2242. Validação local: árvore 3490cbcc053642e6a45a941c16fc31e9696b65d2; commit 58a719ecbd537b05e4db93a6b92fa1d38468ddc1; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-874",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
