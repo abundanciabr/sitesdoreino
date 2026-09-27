@@ -12,10 +12,15 @@ cabo-de-guerra invisível: abrir a página de conquistas deslogaria do site, e
 vice-versa, sem erro em lugar nenhum (`armadilhas/143`).
 
 O molde é `services/forum/apps/core/clients.py`, o consumidor de referência da
-plataforma — copiado, não importado (Lei 3). No caminho da PÁGINA basta
-`getSession`: a gamificação precisa do **id opaco**, nunca do e-mail, e pedir
-`getSessionFull` seria receber um dado que esta célula não tem o que fazer com
-ele.
+plataforma, copiado e não importado (Lei 3). Para desenhar as PÁGINAS basta
+`getSession`: a gamificação precisa do **id opaco**, e `quem_e` nunca pede o
+e-mail.
+
+**Um gesto pede o e-mail, e ele não mora aqui:** assumir tarefa no quadro de
+contribuições exige matrícula ativa (decisão do mantenedor de 27/09/2026), a
+`alunos` só responde por e-mail, e o e-mail vem de `getSessionFull`. Essa
+chamada está em `apps/core/matricula.py`, que usa o e-mail na pergunta e o
+descarta.
 
 **Há um segundo caminho aqui desde 01/09/2026, e ele é de linha de comando, não
 de página:** `pessoa_por_email`, a tradução que `conceder_fundador --emails`
