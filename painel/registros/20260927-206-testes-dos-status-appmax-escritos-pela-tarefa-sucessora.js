@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-206-testes-dos-status-appmax-escritos-pela-tarefa-sucessora",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Testes dos status Appmax escritos pela tarefa sucessora",
+  detalhe: "Uma tarefa foi marcada concluída sem os testes dos status Appmax. A sucessora escreveu os testes de cartão, Pix e supervisão no PR 2173, integrado, e está concluída.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2158 e https://github.com/abundanciabr/sitesdoreino/pull/2173 MERGED (2173 altera os testes Appmax de pagamentos) (gh pr view, 27/09/2026)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-062-tar-811-concluida-sem-os-testes-sucessora-tar-830",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

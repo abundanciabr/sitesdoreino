@@ -368,6 +368,7 @@ def test_o_segundo_clique_nao_publica_nem_encerra_de_novo(veredito):
 @respx.mock
 @pytest.mark.django_db
 def test_decisao_gravada_nao_muda_com_outro_botao(veredito):
+    # guarda: services/admin/apps/core/decisao_do_experimento.py:248
     rotas = _catalogo(experimentos=[_experimento("encerrado", "reverter")])
     r = _decidir(_dentro(), decisao="promover", variante="b")
     assert r.status_code == 422
@@ -461,6 +462,7 @@ def test_publicou_e_nao_encerrou_diz_a_metade_e_o_clique_seguinte_so_encerra(
 @respx.mock
 @pytest.mark.django_db
 def test_experimento_encerrado_nao_oferece_botao(veredito):
+    # guarda: services/admin/apps/core/decisao_do_experimento.py:418
     _catalogo(experimentos=[_experimento("encerrado", "promover", "b")])
     tela = _dentro().get(reverse("decisao_do_experimento", args=[EXP_ID]))
     texto = tela.content.decode()

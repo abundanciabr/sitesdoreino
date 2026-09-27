@@ -618,10 +618,20 @@ class AcaoDeModeracao(models.TextChoices):
     ADICIONAR_MEMBRO = "adicionar_membro", "pôs no grupo"
     REMOVER_MEMBRO = "remover_membro", "tirou do grupo"
     TROCAR_DE_GRUPO = "trocar_de_grupo", "trocou de grupo"
+    # Os gestos sobre a ÁREA inteira (TAR-867). Mudar quem enxerga ou escreve
+    # tem ação própria, separada do nome, porque é o único dos dois que pode
+    # expor ao mundo o que foi escrito numa área fechada.
+    ARQUIVAR_AREA = "arquivar_area", "arquivou a área"
+    REABRIR_AREA = "reabrir_area", "reabriu a área"
+    RENOMEAR_AREA = "renomear_area", "renomeou a área"
+    MUDAR_ACESSO_DA_AREA = (
+        "mudar_acesso_da_area",
+        "mudou quem enxerga ou escreve na área",
+    )
 
 
-# Os gestos que mexem no que outra pessoa vê, no que ela escreveu ou no grupo
-# em que ela está. Editar texto alheio também pede motivo, mas isso depende de
+# Os gestos que mexem no que outra pessoa vê, no que ela escreveu, no grupo
+# em que ela está ou na área em que ela escreve. Editar texto alheio também pede motivo, mas isso depende de
 # QUEM escreveu, e quem confere é `apps/core/moderacao.py`. Aqui fica o que vale
 # sempre, e o banco recusa a linha sem ele.
 ACOES_QUE_EXIGEM_MOTIVO = (
@@ -634,6 +644,9 @@ ACOES_QUE_EXIGEM_MOTIVO = (
     AcaoDeModeracao.ADICIONAR_MEMBRO,
     AcaoDeModeracao.REMOVER_MEMBRO,
     AcaoDeModeracao.TROCAR_DE_GRUPO,
+    AcaoDeModeracao.ARQUIVAR_AREA,
+    AcaoDeModeracao.REABRIR_AREA,
+    AcaoDeModeracao.MUDAR_ACESSO_DA_AREA,
 )
 
 

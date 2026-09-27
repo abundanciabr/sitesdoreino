@@ -99,6 +99,15 @@ class PagamentosClient:
             r.raise_for_status()
         return r.status_code, r.json()
 
+    def obter_intent(self, *, intent_id: str) -> dict:
+        """`getIntent`: a página consulta o pedido a cada 3 s, então o prazo é
+        curto; quem chama trata a falha como "não sei"."""
+        r = http().get(
+            f"{self.base}/intents/{intent_id}", headers=self._headers(), timeout=5.0
+        )
+        r.raise_for_status()
+        return r.json()
+
     def consultar_parcelas(self, *, intent_id: str) -> dict:
         resposta = http().get(
             f"{self.base}/intents/{intent_id}/installments",

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-144019-TAR-892-concluida",
+  "tarefa": "TAR-892",
+  "evento": "concluida",
+  "quando": "2026-09-27T14:40:19.749185+00:00",
+  "quem": "agent/ci/operacoes-vps-saida-no-erro",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2264",
+  "verificado_em": "2026-09-27"
+}

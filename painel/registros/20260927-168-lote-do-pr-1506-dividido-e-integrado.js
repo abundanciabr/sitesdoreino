@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-168-lote-do-pr-1506-dividido-e-integrado",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "Lote do PR 1506 dividido e integrado",
+  detalhe: "O PR 1506 passou de 40 arquivos e travou o dia. Foi dividido nos PRs 1510, 1512, 1513 e 1514, integrados, e uma bancada por tarefa virou lei. O bash do WSL segue aberto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1506 fechado; https://github.com/abundanciabr/sitesdoreino/pull/1510 e https://github.com/abundanciabr/sitesdoreino/pull/1512 MERGED, 1513 e 1514 idem (gh pr view); ci/muralha_pasta_compartilhada.py na main",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260909-123-incidente-do-dia-de-concorrencia",
+  relacao: "baixa",
+  tarefa: "TAR-857",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

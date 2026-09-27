@@ -23,7 +23,7 @@ on:
         required: true
         type: string
       referencia:
-        description: 'SHA-256 da chave idempotente: obrigatório em appmax-pix-pedido, appmax-pix-aviso e appmax-inbox-latencia, opcional em appmax-pix para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
+        description: 'SHA-256 da chave idempotente: obrigatório em appmax-pix-pedido e appmax-pix-aviso, opcional em appmax-pix e appmax-inbox-latencia para descoberta histórica e em appmax-estorno; nunca informe o ID original.'
         required: false
         default: ''
         type: string
@@ -80,6 +80,7 @@ jobs:
           command_timeout: 2m
           script_path: ${{ steps.conferir.outputs.script }}
       - name: Conferir evidência e publicar resumo
+        if: always() && steps.remoto.outcome != 'skipped'
         env:
           SAIDA: ${{ steps.remoto.outputs.stdout }}
           OPERACAO: ${{ inputs.operacao }}

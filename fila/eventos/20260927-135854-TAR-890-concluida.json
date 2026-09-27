@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-135854-TAR-890-concluida",
+  "tarefa": "TAR-890",
+  "evento": "concluida",
+  "quando": "2026-09-27T13:58:54.826517+00:00",
+  "quem": "agent/ci/pr-py-evidencia",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2265",
+  "verificado_em": "2026-09-27"
+}

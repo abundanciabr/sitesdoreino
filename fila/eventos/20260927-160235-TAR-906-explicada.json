@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-160235-TAR-906-explicada",
+  "tarefa": "TAR-906",
+  "evento": "explicada",
+  "quando": "2026-09-27T16:02:35.596172+00:00",
+  "quem": "descoberta na sessao de 27/09/2026 que consertou a trava de testes (mesmo defeito em ci/contrato_aditivo.py)",
+  "o_que_e": "A trava que impede apagar campo de contrato compara o pedido com a versao mais nova do site, e nao com a versao de onde o pedido saiu.",
+  "o_que_muda": "Pedido atrasado que mexe num contrato que outro pedido tambem mudou deixa de ser barrado por uma remocao que ele nao fez.",
+  "exemplo": "E como acusar alguem de rasgar uma pagina que foi colada no caderno depois que ele devolveu o caderno.",
+  "importancia": 40
+}

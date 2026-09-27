@@ -1,0 +1,21 @@
+{
+  "arquivo": "872-medir-a-latencia-real-do-aviso-appmax-para-pedido-de-cartao-",
+  "id": "TAR-872",
+  "titulo": "Medir a latencia real do aviso Appmax para pedido de cartao aprovado",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-820"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run da operacao appmax-inbox-latencia na main com a referencia de um pedido de CARTAO aprovado (achado pela descoberta), com saida sanitizada; registro tipo medicao com a latencia real ou o achado documentado de aviso ausente.",
+  "despacho": "TAR-820 mediu com uma referencia Pix sem aviso (PR 2183, achado 083): a latencia real de cartao nunca foi medida. appmax-inbox-latencia so aceitava referencia (SHA-256 da chave de idempotencia = id da sessao de checkout), que nenhum log sanitizado publica; e2e/appmax_sandbox.js so publica o resumo do pedido (order pk), campo diferente. Sem descoberta dedicada por cartao (appmax-pix ja tinha a sua, so para method=pix), a medicao real era impossivel. Adiciona modo de descoberta a appmax-inbox-latencia (referencia vazia lista candidatas sanitizadas), descobre a referencia de um pedido de cartao aprovado do run 36298068269 (appmax-sandbox-tela), mede a latencia real (ou registra a ausencia de aviso, se for o caso) e registra o resultado.",
+  "origem": "Sessao de despacho ci/appmax-n2-latencia-real, coordenacao 4442b6ad, 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
