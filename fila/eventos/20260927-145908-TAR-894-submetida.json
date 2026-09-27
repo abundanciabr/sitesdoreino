@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-145908-TAR-894-submetida",
+  "tarefa": "TAR-894",
+  "evento": "submetida",
+  "quando": "2026-09-27T14:59:08.797438+00:00",
+  "quem": "agent/ci/wheel-base-binaria",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2250",
+  "revisao": "37fc50e0405d36c301630acb16cf7181cde307fc",
+  "arvore": "f91d8db9942c36df6c95106a156b0f37e914ec3b"
+}
