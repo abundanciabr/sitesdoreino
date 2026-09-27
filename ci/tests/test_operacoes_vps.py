@@ -2006,7 +2006,7 @@ def test_appmax_pix_aviso_distingue_instalacao_sem_consultar_inbox(
         "processado_em": None,
         "acao": acao,
     }
-    # guarda: ci/operacoes_vps.py:590
+    # guarda: ci/operacoes_vps.py (ramos instalacao_* do código remoto em medir(), antes da inbox)
     assert len(consultas) == 2
     assert ops.conferir_medicao("appmax-pix-aviso", dados, referencia) == dados
 
@@ -2228,6 +2228,6 @@ def test_appmax_pix_aviso_rejeita_contagem_incoerente(
         "processado_em": None,
         "acao": acao,
     }
-    # guarda: ci/operacoes_vps.py:332
+    # guarda: ci/operacoes_vps.py:409
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pix-aviso", medicao, REFERENCIA)
