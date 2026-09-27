@@ -2559,6 +2559,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/experimentos/<uuid:experimento_id>/resultado/",
+      "endereco": "/admin/placar/experimentos/<uuid:experimento_id>/resultado/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O resultado de um experimento de página",
+      "descricao": "Se a versão B de um texto da página ganhou, perdeu ou ainda está coletando: quantas pessoas cada versão recebeu, quantas viram a seção, se a divisão saiu como planejada e, só depois do fim planejado, quantas clicaram para comprar, a diferença, o intervalo de 95% e o veredito.",
+      "observacao": "Um endereço por experimento. Enquanto a janela não fecha, a tela esconde as conversões e a conta, para ninguém decidir espiando o meio. Divisão fora do planejado bloqueia a promoção. Frente F9a do sistema de experimentos (documentos/plataforma-experimentacao-e-aprendizado-de-conversao.md, capítulos 11 e 12)."
+    },
+    {
+      "celula": "admin",
       "rota": "placar/experimentos/<str:experimento_id>/decisao/",
       "endereco": "/admin/placar/experimentos/<str:experimento_id>/decisao/",
       "alcance": "publico",

@@ -1264,13 +1264,29 @@ class CatalogoClient:
         corpo: "dict | None" = None,
         especiais: "tuple[tuple[int, str], ...]" = (),
     ) -> "tuple[str, dict | str]":
-        """As três operações de página, que só diferem no verbo e no sufixo.
+        """As três operações de página, que só diferem no verbo e no sufixo."""
+        return self._falar(
+            metodo,
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
+            corpo=corpo,
+            especiais=especiais,
+        )
 
-        Uma peça só porque o encanamento é idêntico nas três (config, endereço,
-        timeout, corpo fora do contrato) e três cópias divergiriam no primeiro
-        conserto feito em uma delas. O que muda é declarado: `especiais` diz
-        quais status desta operação têm nome próprio, em vez de caírem no
-        "não respondeu" genérico.
+    def _falar(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        corpo: "dict | None" = None,
+        especiais: "tuple[tuple[int, str], ...]" = (),
+    ) -> "tuple[str, dict | str]":
+        """O encanamento de toda operação do catálogo que devolve um objeto.
+
+        Uma peça só porque ele é idêntico em todas (config, endereço, timeout,
+        corpo fora do contrato), e cópias divergiriam no primeiro conserto feito
+        em uma delas. O que muda é declarado: `especiais` diz quais status desta
+        operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
         """
         return self._falar(
             metodo,
@@ -1302,11 +1318,10 @@ class CatalogoClient:
             )
             return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
         base, token = config
-        endereco = f"{base}{caminho}"
         try:
             r = http().request(
                 metodo,
-                endereco,
+                f"{base}{caminho}",
                 json=corpo,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
@@ -1952,7 +1967,13 @@ class MedicaoClient:
     )
 
     def funil(
-        self, desde: dt.date, ate: dt.date, site_id: "str | None" = None
+        self,
+        desde: dt.date,
+        ate: dt.date,
+        site_id: "str | None" = None,
+        *,
+        experimento_id: "str | None" = None,
+        secao: "str | None" = None,
     ) -> "tuple[str, dict | None]":
         """`countFunnel` (`GET /funil`): visitantes distintos por degrau e por dia.
 
@@ -1969,6 +1990,11 @@ class MedicaoClient:
         params = {"de": desde.isoformat(), "ate": ate.isoformat()}
         if site_id:
             params["site_id"] = site_id
+        # `experimento_id` e `secao` viajam juntos (contrato): sem a seção a
+        # `metricas` não sabe qual `secao-vista` conta como exposição.
+        if experimento_id:
+            params["experimento_id"] = experimento_id
+            params["secao"] = secao or ""
         desfecho, corpo = self._pedir("/funil", params)
         if desfecho != self.OK:
             return desfecho, None
@@ -1991,6 +2017,12 @@ class MedicaoClient:
             },
             "passos": passos,
             "por_dia": por_dia,
+            # Os braços do experimento, crus: quem pediu por `experimento_id`
+            # confere a forma deles (`resultado_do_experimento._ler_bracos`).
+            "variantes": corpo.get("variantes"),
+            "visitantes_com_bracos_trocados": corpo.get(
+                "visitantes_com_bracos_trocados"
+            ),
         }
 
     def _dias_do_funil(self, linhas: object) -> "list | None":
