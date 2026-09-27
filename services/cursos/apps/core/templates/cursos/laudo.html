@@ -51,14 +51,45 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
   <p class="selo">Aberto em {{ laudo.emitido_em|date:"d/m/Y" }}.</p>
   {% endif %}
 
-  {% if laudo.notas %}
+  {% if laudo.notas or laudo.instrumento_versao %}
   <h2>A rubrica</h2>
+  {% with copia=laudo.versao_do_instrumento %}
+  {% if copia %}
+  <p class="miudo">Régua usada: {{ copia.instrumento.nome_canonico }}, versão {{ copia.numero }}, de {{ copia.guardada_em|date:"d/m/Y" }}.</p>
+  {% if copia.instrumento.versao > copia.numero %}
+  <p class="pede">A régua mudou depois desta avaliação. A sua avaliação continua valendo pela régua da época, que você lê abaixo.</p>
+  {% endif %}
+  {% elif laudo.instrumento_versao %}
+  <p class="miudo">Régua usada: versão {{ laudo.instrumento_versao }}.
+  O texto dessa versão não foi guardado, então esta página não tem como mostrá-lo. Suas notas continuam valendo.</p>
+  {% endif %}
+  {% if laudo.notas %}
   <dl class="registro">
     {% for criterio, item in laudo.notas.items %}
     <dt>{{ criterio }}: {{ item.nota }}</dt>
     <dd>{{ item.frase }}</dd>
     {% endfor %}
   </dl>
+  {% endif %}
+  {% if copia %}
+  <details>
+    <summary>Ver a régua da versão {{ copia.numero }}</summary>
+    {% if criterios_da_regua %}
+    <dl class="registro">
+      {% for criterio in criterios_da_regua %}
+      <dt>{{ criterio.nome }}{% if criterio.maximo is not None %}, notas de {{ criterio.minimo }} a {{ criterio.maximo }}{% endif %}</dt>
+      {% for linha in criterio.descritores %}<dd>{{ linha }}</dd>{% endfor %}
+      {% endfor %}
+    </dl>
+    {% else %}
+    <p class="miudo">Esta versão da régua não tem escala nem descritores escritos.</p>
+    {% endif %}
+    {% if copia.minimo_exercicio %}<p>Mínimo do exercício: {{ copia.minimo_exercicio }}</p>{% endif %}
+    {% if copia.minimo_contrato %}<p>Mínimo do contrato: {{ copia.minimo_contrato }}</p>{% endif %}
+    {% if copia.secao_do_padrao %}<p>Seção do padrão: {{ copia.secao_do_padrao }}</p>{% endif %}
+  </details>
+  {% endif %}
+  {% endwith %}
   {% endif %}
 
   {% if laudo.forcas %}

@@ -71,6 +71,7 @@ from apps.cursos.models import (
     RascunhoDaIA,
     RegistroDePausa,
     TipoDePeca,
+    VersaoDoInstrumento,
 )
 
 from .markdown import para_html
@@ -1213,6 +1214,52 @@ def concluir_aula(
 # ---------------------------------------------------------------------------
 # O LAUDO RECEBIDO (degrau 2.2): a tela do aluno
 # ---------------------------------------------------------------------------
+def _linhas_do_descritor(descritor) -> list[str]:
+    """Os descritores são JSON livre do Admin. O formato 5/3/1 (`{"5": "..."}`)
+    vira "Nota 5: ...", da nota maior para a menor; qualquer outro valor aparece
+    como foi escrito, porque esconder texto da régua seria mostrar outra régua."""
+    if descritor is None:
+        return []
+    if not isinstance(descritor, dict):
+        return [str(descritor)]
+    niveis = sorted(
+        descritor,
+        key=lambda nivel: (0, -int(nivel)) if nivel.isdecimal() else (1, nivel),
+    )
+    return [
+        (
+            f"Nota {nivel}: {descritor[nivel]}"
+            if nivel.isdecimal()
+            else f"{nivel}: {descritor[nivel]}"
+        )
+        for nivel in niveis
+    ]
+
+
+def _criterios_da_regua(copia: VersaoDoInstrumento | None) -> list[dict]:
+    """A escala e os descritores da cópia com que o laudo foi emitido, critério
+    a critério, lidos pela mesma `criterios_de` que montou o formulário daquele
+    dia. Descritor de critério fora da escala também aparece, depois."""
+    if copia is None:
+        return []
+    descritores = copia.descritores if isinstance(copia.descritores, dict) else {}
+    na_escala = checkpoint.criterios_de(copia)
+    nomes_na_escala = {criterio.nome for criterio in na_escala}
+    return [
+        {
+            "nome": criterio.nome,
+            "minimo": criterio.minimo,
+            "maximo": criterio.maximo,
+            "descritores": _linhas_do_descritor(descritores.get(criterio.nome)),
+        }
+        for criterio in na_escala
+    ] + [
+        {"nome": nome, "descritores": _linhas_do_descritor(descritores[nome])}
+        for nome in sorted(descritores)
+        if nome not in nomes_na_escala
+    ]
+
+
 @require_GET
 def laudo_recebido(request, numero: str):
     """O laudo do envio mais recente desta aula, para a PESSOA DA SESSÃO
@@ -1225,13 +1272,20 @@ def laudo_recebido(request, numero: str):
     opinião de um membro, e mostrar "Banca" não identifica ninguém — mas
     mostrar QUAL membro identificaria, e é isso que [INV-CUR-S2] proíbe. Por
     isso o template lê só `laudo.decisao`, `laudo.notas`, `laudo.forcas`,
-    `laudo.mudanca` e `laudo.data_de_retorno`: nunca `laudo.avaliador`.
+    `laudo.mudanca`, `laudo.data_de_retorno` e a régua do laudo
+    (`laudo.versao_do_instrumento`): nunca `laudo.avaliador`.
     """
     pessoa, curso, aula_da_porta, progresso, recusa = _porta_aberta(request, numero)
     if recusa is not None:
         return recusa
     envio = checkpoint.ultimo_envio(progresso)
-    laudo_do_envio = getattr(envio, "laudo", None) if envio is not None else None
+    laudo_do_envio = (
+        Laudo.objects.select_related("versao_do_instrumento__instrumento")
+        .filter(envio=envio)
+        .first()
+        if envio is not None
+        else None
+    )
     return render(
         request,
         "cursos/laudo.html",
@@ -1239,6 +1293,11 @@ def laudo_recebido(request, numero: str):
             "aula": aula_da_porta,
             "envio": envio,
             "laudo": laudo_do_envio,
+            # A régua com que a peça foi medida (dossiê da Comunidade §10): a
+            # cópia ligada ao laudo, nunca o instrumento vigente.
+            "criterios_da_regua": _criterios_da_regua(
+                laudo_do_envio.versao_do_instrumento if laudo_do_envio else None
+            ),
             # O envio anterior ao lado, no reenvio (TAR-825): a mesma conta que
             # o plantão já faz (`_laudo_anterior_de`), reaproveitada aqui, e com
             # a MESMA regra de [INV-CUR-S2]: o template lê só `mudanca.texto`,
