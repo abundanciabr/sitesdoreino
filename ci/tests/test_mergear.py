@@ -858,7 +858,9 @@ def _pousar_automatico(monkeypatch, corpo: str, estado_do_provedor: str = "") ->
             return _json.dumps({"state": estado_do_provedor, "title": "o provedor"})
         if argumentos[:3] == ["pr", "view", "99"]:
             if argumentos[-1] == "state,mergedAt,mergeCommit":
-                return _json.dumps({"state": "MERGED", "mergeCommit": {"oid": "b" * 40}})
+                return _json.dumps(
+                    {"state": "MERGED", "mergeCommit": {"oid": "b" * 40}}
+                )
             return _json.dumps(pr)
         return ""
 
