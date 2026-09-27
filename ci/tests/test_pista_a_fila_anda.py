@@ -88,7 +88,7 @@ def test_atualiza_base_com_sha_e_segue_sem_esperar(monkeypatch, tmp_path):
     assert chamadas[1] == 2
 
 
-# guarda: ci/mergear.py:1599
+# guarda: ci/mergear.py:1650
 def test_sem_mandato_nao_atualiza_nem_mergeia(monkeypatch, tmp_path, capsys):
     chamadas = configurar(monkeypatch, [pr(1)], bloqueados=(1,))
     monkeypatch.setattr(
@@ -238,6 +238,7 @@ def aberto(numero, bases=2, minutos=5, rollup=PENDENTE, **campos):
 def test_rapido_espera_enquanto_o_lento_mede_a_base_nova(
     monkeypatch, tmp_path, capsys
 ):
+    # guarda: ci/mergear.py:1690
     chamadas = configurar(monkeypatch, [pr(2)], abertos=[aberto(1)])
     assert mergear.integrar_abertos(tmp_path, ramo="agent/rapido") == 0
     assert chamadas == []
@@ -273,25 +274,31 @@ def _rapido_integra_com(monkeypatch, tmp_path, lento):
 
 
 def test_trava_solta_quando_os_checks_do_lento_reprovam(monkeypatch, tmp_path):
+    # guarda: ci/mergear.py:1613
     _rapido_integra_com(monkeypatch, tmp_path, aberto(1, rollup=VERMELHO))
 
 
 def test_trava_solta_quando_os_checks_do_lento_terminam_verdes(monkeypatch, tmp_path):
+    # guarda: ci/mergear.py:1613
     _rapido_integra_com(monkeypatch, tmp_path, aberto(1, rollup=VERDE))
 
 
 def test_trava_solta_quando_o_lento_vira_rascunho(monkeypatch, tmp_path):
+    # guarda: ci/mergear.py:1595
     _rapido_integra_com(monkeypatch, tmp_path, aberto(1, isDraft=True))
 
 
 def test_trava_ignora_pr_de_fork(monkeypatch, tmp_path):
+    # guarda: ci/mergear.py:1595
     _rapido_integra_com(monkeypatch, tmp_path, aberto(1, isCrossRepository=True))
 
 
 def test_trava_solta_depois_do_teto_de_tempo(monkeypatch, tmp_path):
+    # guarda: ci/mergear.py:1603
     passou_do_teto = mergear.TETO_DA_PRIORIDADE // timedelta(minutes=1) + 1
     _rapido_integra_com(monkeypatch, tmp_path, aberto(1, minutos=passou_do_teto))
 
 
 def test_uma_base_nova_so_ainda_nao_e_fome(monkeypatch, tmp_path):
+    # guarda: ci/mergear.py:1600
     _rapido_integra_com(monkeypatch, tmp_path, aberto(1, bases=1))

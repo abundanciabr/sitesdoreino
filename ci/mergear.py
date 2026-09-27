@@ -1528,8 +1528,91 @@ def checks_obrigatorios_verdes(pr: dict[str, Any]) -> bool:
     return all(r.estado is Estado.PASS for r in checar_checks(so_obrigatorios))
 
 
+# ---------------------------------------------------------------------------
+# A FOME (medida em 27/09/2026)
+#
+# A pista atende quem estiver verde e em dia, na ordem de abertura. Com a
+# política estrita da main, um PR de checks de 8 minutos nunca chegava a vez:
+# a cada 6 ou 7 minutos um PR de checks de 2 minutos entrava antes, e o lento
+# voltava a BEHIND. O #2229 ficou quatro ciclos verdes seguidos sem integrar.
+#
+# O rastro que sobrevive entre execuções já existe no próprio ramo: cada
+# `update-branch` deixa um commit "Merge branch 'main' into". Dois no topo, sem
+# nada entre eles, dizem que o PR ficou verde, perdeu a vez e ficou verde de
+# novo. Enquanto os checks desse topo rodam, os outros PRs esperam. Verde ele
+# pousa pelo próprio evento; vermelho, rascunho ou topo mais velho que o teto
+# soltam a trava, para um PR travado não parar a fábrica.
+# ---------------------------------------------------------------------------
+
 BASES_NOVAS_ATE_A_PRIORIDADE = 2
 TETO_DA_PRIORIDADE = timedelta(minutes=20)
+ATUALIZACAO_DA_BASE = "Merge branch 'main' into "
+
+# `gh pr list --json commits` pede os autores de 100 commits de 100 PRs e o
+# GitHub recusa (1.000.000 de nós, o limite é 500.000). Só a cauda interessa.
+CONSULTA_DA_FOME = """
+query($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequests(states: OPEN, baseRefName: "main", first: 100,
+                 orderBy: {field: CREATED_AT, direction: ASC}) {
+      nodes {
+        number isDraft isCrossRepository
+        commits(last: %d) { nodes { commit {
+          messageHeadline committedDate
+          statusCheckRollup { contexts(first: 100) { nodes {
+            ... on CheckRun { name status conclusion startedAt completedAt }
+            ... on StatusContext { context state startedAt: createdAt }
+          } } }
+        } } }
+      }
+    }
+  }
+}
+""" % BASES_NOVAS_ATE_A_PRIORIDADE
+
+
+def pr_prioritario(raiz: Path) -> tuple[int, datetime] | None:
+    """O PR aberto mais antigo com fome, e desde quando espera os checks."""
+    resposta = json.loads(
+        _gh(
+            [
+                "api",
+                "graphql",
+                "-f",
+                "query=" + CONSULTA_DA_FOME,
+                "-F",
+                "owner={owner}",
+                "-F",
+                "repo={repo}",
+            ],
+            raiz,
+            "procurar PR com fome na fila",
+        )
+    )
+    agora = datetime.now(timezone.utc)
+    for pr in resposta["data"]["repository"]["pullRequests"]["nodes"]:
+        if pr["isDraft"] or pr["isCrossRepository"]:
+            continue
+        commits = [no["commit"] for no in pr["commits"]["nodes"]]
+        if len(commits) < BASES_NOVAS_ATE_A_PRIORIDADE or not all(
+            c["messageHeadline"].startswith(ATUALIZACAO_DA_BASE) for c in commits
+        ):
+            continue
+        desde = datetime.fromisoformat(commits[-1]["committedDate"])
+        if agora - desde > TETO_DA_PRIORIDADE:
+            continue
+        # A mesma regra do portão, com o desdobramento por nome (armadilhas/381).
+        contextos = (commits[-1].get("statusCheckRollup") or {}).get("contexts") or {}
+        estados = {
+            r.estado
+            for r in checar_checks(dict(statusCheckRollup=contextos.get("nodes") or []))
+        }
+        # Verde pousa pelo próprio evento e vermelho não pousa: só a medição
+        # ainda em curso segura a fila.
+        if Estado.FAIL in estados or Estado.ERROR not in estados:
+            continue
+        return pr["number"], desde
+    return None
 
 
 def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
@@ -1592,6 +1675,17 @@ def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
                     f"BASE ATUALIZADA — PR #{item['number']}: a main entrou no "
                     "ramo. Os checks medem o mundo novo; o pouso volta no "
                     "próximo evento."
+                )
+                continue
+            prioridade = pr_prioritario(raiz) if checks_obrigatorios_verdes(pr) else None
+            if prioridade and prioridade[0] != item["number"]:
+                numero, desde = prioridade
+                print(
+                    f"PRIORIDADE — PR #{numero} espera os checks da base nova "
+                    f"desde {desde:%H:%M} UTC; o PR #{item['number']} aguarda. "
+                    f"A trava solta sozinha quando os checks do #{numero} "
+                    "terminarem, se ele virar rascunho, ou às "
+                    f"{desde + TETO_DA_PRIORIDADE:%H:%M} UTC."
                 )
                 continue
             integrar(item["number"], raiz)
