@@ -76,6 +76,11 @@ logger = logging.getLogger(__name__)
 # recusa depois, com 500 na cara do aluno.
 LIMITE_DA_CHAVE = Forja._meta.get_field("desafio_ref").max_length
 
+# A origem que a medalha das forjas guarda: o id da linha, e não o nome da peça.
+# O nome se repete entre pessoas e pode passar dos 64 caracteres da origem; o id
+# é único, curto e aponta para a peça exata que foi selada.
+ORIGEM = "forja:{id}"
+
 
 class ForjaRecusada(ValueError):
     """O gesto não vale, e a mensagem é escrita para ser lida por gente.
@@ -246,7 +251,11 @@ def selar(*, pessoa: Pessoa, site_id: str, desafio_ref: str) -> Forja:
     # no motor não pode desfazer, nem esconder, a prova de insistência que a
     # pessoa acabou de ganhar. O log grita, e a próxima avaliação recupera.
     try:
-        criterios.avaliar(pessoa.id_da_plataforma, site_id)
+        criterios.avaliar(
+            pessoa.id_da_plataforma,
+            site_id,
+            origem_event_id=ORIGEM.format(id=forja.pk),
+        )
     except Exception:  # noqa: BLE001 — o selo já está gravado; ver acima
         logger.exception(
             "a forja %s foi selada, mas o motor de medalhas tropeçou", desafio_ref
