@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-045958-TAR-809-concluida",
+  "tarefa": "TAR-809",
+  "evento": "concluida",
+  "quando": "2026-09-27T04:59:58.350647+00:00",
+  "quem": "agent/checkout/appmax-script-por-ambiente",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2176",
+  "verificado_em": "2026-09-27"
+}

@@ -32,6 +32,7 @@ CHECKOUT = (
     "APPMAX_PIX_ENABLED_SITES=\n"
     "APPMAX_CARD_ENABLED_SITES=\n"
     f"APPMAX_EXTERNAL_ID={EXTERNAL_ID}\n"
+    "APPMAX_API_URL=https://api.appmax.com.br\n"
 )
 
 
@@ -188,6 +189,18 @@ RECUSAS = [
         "identificador externo",
     ),
     (
+        "checkout-com-script-de-teste",
+        PAGAMENTOS,
+        _trocar(CHECKOUT, "https://api.appmax.com.br", "https://api.sandboxappmax.com.br"),
+        "script de teste",
+    ),
+    (
+        "checkout-sem-ambiente-appmax",
+        PAGAMENTOS,
+        _trocar(CHECKOUT, "APPMAX_API_URL=https://api.appmax.com.br\n", ""),
+        "script de teste",
+    ),
+    (
         "trava-ausente",
         _trocar(PAGAMENTOS, "APPMAX_CARD_ENABLED_SITES=\n", ""),
         CHECKOUT,
@@ -208,6 +221,7 @@ RECUSAS = [
     ids=[caso[0] for caso in RECUSAS],
 )
 def test_recusa_antes_de_gravar(tmp_path, monkeypatch, pagamentos, checkout, motivo):
+    # guarda: infra/ativar-appmax-canario.py:253
     raiz, compose = preparar(tmp_path, monkeypatch, pagamentos, checkout)
     antes = fotografar(raiz)
     for gravar in (False, True):

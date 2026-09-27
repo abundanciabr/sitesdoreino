@@ -36,6 +36,10 @@ SERVICOS = (
 TRAVA = "APPMAX_CARD_ENABLED_SITES"
 AUTH_PRODUCAO = "https://auth.appmax.com.br/oauth2/token"
 API_PRODUCAO = "https://api.appmax.com.br"
+SCRIPT_DE_TESTE_NO_CHECKOUT = (
+    "a página do cartão carregaria o script de teste da Appmax; defina "
+    f"APPMAX_API_URL={API_PRODUCAO} em checkout.env; nada foi alterado"
+)
 USO = (
     "use --site <platform_site_id> para ver a prévia, acrescente --executar para "
     "gravar e --desligar para o caminho de volta"
@@ -245,6 +249,8 @@ def executar(raiz: Path, site: str, *, ligar: bool, gravar: bool) -> None:
                     f"{TRAVA} em {nome}.env já contém outro site; o canário liga um "
                     "site por vez; nada foi alterado"
                 )
+        if envs["checkout"].get("APPMAX_API_URL") != API_PRODUCAO:
+            raise ParouPorSeguranca(SCRIPT_DE_TESTE_NO_CHECKOUT)
         conferir_servicos(raiz, ambiente)
         if envs["checkout"].get("APPMAX_EXTERNAL_ID", "") != external_id_no_banco(
             raiz, ambiente, app_id, site

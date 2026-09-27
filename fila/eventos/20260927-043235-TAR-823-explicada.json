@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-043235-TAR-823-explicada",
+  "tarefa": "TAR-823",
+  "evento": "explicada",
+  "quando": "2026-09-27T04:32:35.702601+00:00",
+  "quem": "pedido do mantenedor de 27/09/2026: implementar a Comunidade Meshcraft (docs/comunidade)",
+  "o_que_e": "Hoje o site nao tem nenhuma pagina que explique a Comunidade Meshcraft: quem pode entrar, o que fazer primeiro, como pedir ajuda, quem avalia e o que acontece quando a matricula termina. O dossie e o termo de entrega da Comunidade estao guardados no projeto, mas nenhum aluno consegue le-los.",
+  "o_que_muda": "Uma pagina publica em meshcraft.top/docs/comunidade passa a dizer tudo isso em portugues simples, sem prometer renda nem inventar cobranca: o acesso e o da matricula vigente. O mantenedor edita o texto pela tela de documentos, sem abrir PR.",
+  "exemplo": "Uma aluna que acabou de entrar abre a pagina e sai sabendo tres coisas: onde fica o grupo dela no forum, qual e o desafio do estagio dela no mapa do curso e como pedir ajuda de um jeito que um colega consiga atender.",
+  "importancia": 80
+}
