@@ -101,6 +101,10 @@ jobs:
             echo "Sem ela, nada está provado, e ausência de erro não é sucesso (INV-CI01)."
             exit 1
           fi
+          if ! printf '%s' "$SAIDA" | grep -Eq '^ORIGEM: (criada neste run|ja existia)$'; then
+            echo "::error::Não encontrei a linha 'ORIGEM: criada neste run' ou 'ORIGEM: ja existia' na saída do script; sem ela não dá para saber se o convite precisava ter nascido desligado."
+            exit 1
+          fi
           # A jornada criada NESTE run precisa ter nascido desligada. A que já
           # existia pode ter sido ligada na tela, e aí o run passa informando.
           if printf '%s' "$SAIDA" | grep -q '^ORIGEM: criada neste run' \
