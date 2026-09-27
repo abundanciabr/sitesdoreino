@@ -1,0 +1,66 @@
+{
+  "plano": "Rito de Contrato para pagamento.reversao_confirmada.v2, seguido por emissores e consumidores em etapas",
+  "versao": 1,
+  "modelo_recomendado": "gpt-5.6-luna",
+  "esforco_recomendado": "high",
+  "objetivo": "Adicionar o evento de reversão confirmada sem montante financeiro e fazer a célula alunos suspender o acesso pela identidade do pagamento.",
+  "condicao_encerramento": "O contrato e o consumidor desta etapa passam nas provas focais, guardas e suíte da célula alunos; o emissor Appmax em pagamentos será entregue depois da liberação nominal do escritor TAR-749.",
+  "limites_autonomia": "Escritor exclusivo do novo contrato, do teste de contrato, do consumidor e dos testes diretamente necessários em alunos. Não tocar supervisao.py ou seus testes antes da liberação de TAR-749. Não executar compra, estorno, migração, operação financeira de produção, comprovante privado ou dispatch operacional real.",
+  "entregaveis": [
+    "contracts/eventos/pagamento.reversao_confirmada.v2.json e sua prova de envelope mínimo e cinco negativos",
+    "Consumidor pagamento.reversao_confirmada com deduplicação por site, provedor e referência, isolamento de tenants, suspensão tardia e sem reativação",
+    "Provas sintéticas sem amount_cents e recibo do rito da TAR-752"
+  ],
+  "escopo_incluido": [
+    "contracts/eventos/pagamento.reversao_confirmada.v2.json",
+    "contracts/test_pagamento_reversao_confirmada.py",
+    "services/alunos/apps/eventos/management/commands/consume_eventos.py",
+    "services/alunos/apps/matriculas/handlers.py",
+    "services/alunos/tests/test_reversao_confirmada.py",
+    "fila/tarefas/752-reversao-confirmada-suspende-acesso-sem-inventar-valor-finan.json",
+    "fila/contratos/752-reversao-confirmada-suspende-acesso-sem-inventar-valor-finan.json",
+    "fila/eventos próprios da TAR-752 e recibo automático do rito"
+  ],
+  "nao_objetivos": [
+    "Não alterar pagamento.estornado.v2 nem declarar valor devolvido.",
+    "Não implementar o emissor Appmax enquanto supervisao.py estiver reservado por TAR-749.",
+    "Não alterar ledger, outbox financeiro, migrações, infraestrutura ou rotas públicas.",
+    "Não repetir compras, estornos, consultas com efeito financeiro ou publicar comprovantes privados."
+  ],
+  "restricoes": [
+    "O webhook Appmax não é verdade financeira; o emissor futuro só publica após GET autenticado com app, instalação, site e referência exatos.",
+    "Estornado e chargeback_em_tratativa, chargeback_em_disputa e chargeback_perdido significam reversão confirmada; chargeback_vencido e integrado não significam.",
+    "O evento não carrega amount_cents, valor solicitado, recibo ou total_paid.",
+    "A autorização nominal do mantenedor em 26/09/2026 é: Autorizar o contrato e a implementação descritos."
+  ],
+  "decisoes_aprovadas": [
+    "Mandato-do-mantenedor: contratos services/alunos services/pagamentos, origem sessão de 26/09/2026.",
+    "A suspensão usa a chave tenant-safe já existente e não reativa matrícula automaticamente.",
+    "A etapa de emissão em pagamentos depende da liberação do escritor TAR-749 e será medida com PostgreSQL quando concorrência for exigida."
+  ],
+  "etapas": [
+    "Registrar TAR-752 e confirmar a reserva exclusiva dos arquivos livres.",
+    "Adicionar contrato, consumidor e testes independentes com evidência vermelho para verde.",
+    "Executar guards PASS FAIL PASS, suíte de contratos e suíte da célula alunos.",
+    "Submeter a etapa pelo rito ci/pr.py e devolver à sessão raiz a dependência de pagamentos em TAR-749."
+  ],
+  "criterios_entrada": [
+    "TAR-752 criada e reivindicada nesta bancada.",
+    "Mandato nominal recebido na sessão em 26/09/2026.",
+    "supervisao.py e test_supervisao_appmax.py permanecem com o executor TAR-749."
+  ],
+  "criterios_aceite": [
+    "O schema aceita o envelope mínimo, rejeita valor monetário adicional, identidade vazia, motivo desconhecido e versão diferente.",
+    "O consumidor registra a nova stream, recusa v1 sem ponte, deduplica reentrega, mantém isolamento por site e suspende aprovação tardia.",
+    "Matrícula ausente não derruba o consumidor, e uma vitória posterior de contestação não reativa acesso.",
+    "Contrato pagamento.estornado.v2 permanece byte a byte inalterado.",
+    "Nenhuma operação financeira real ou dispatch operacional é executado."
+  ],
+  "evidencias_exigidas": [
+    "Baseline focal medido antes da edição com falha herdada do lock SQLite identificada pela lição da célula.",
+    "Teste focal do contrato e consumidor com saída PASS.",
+    "JSON completo de ci/provar_guardas.py com baseline PASS, mutação FAIL e restauração PASS.",
+    "Suíte da célula alunos, teste de contratos, travessões, fila válida e diff limitado aos alvos."
+  ],
+  "acoes_do_mantenedor": "Nenhuma decisão adicional nesta etapa. A sessão raiz deve liberar o escritor TAR-749 antes da etapa que tocar supervisao.py."
+}
