@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-090-cursos-ciclo-do-desafio-provado",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "cursos: ciclo do desafio provado",
+  detalhe: "Teste de integração prova o ciclo do desafio ponta a ponta; corrige frases por estado da porta e o envio anterior no laudo do aluno.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2195. Validação local: árvore efcaedb0bd52cd3e7f152253b5017b7e019e4bdc; commit 194973afa501ec98b90489109556329c4f7d9f51; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-825",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
