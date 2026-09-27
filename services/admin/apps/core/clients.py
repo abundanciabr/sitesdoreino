@@ -1067,9 +1067,11 @@ class CatalogoClient:
     SEM_PAGINA = "sem_pagina"
     # 409 de `publishPage`: o rascunho está vazio e nada foi publicado.
     VAZIO = "vazio"
-    # 404 da leitura de um experimento: o endereço aponta para um id que o
-    # catálogo não conhece, e isso não é o catálogo fora do ar.
+    # 404 de um experimento: o endereço aponta para um experimento que o
+    # catálogo não conhece neste site.
     SEM_EXPERIMENTO = "sem_experimento"
+    # 409 de encerrar: ele já estava encerrado, e a decisão gravada é a dele.
+    JA_ENCERRADO = "ja_encerrado"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1286,6 +1288,28 @@ class CatalogoClient:
         em uma delas. O que muda é declarado: `especiais` diz quais status desta
         operação têm nome próprio, em vez de caírem no "não respondeu" genérico.
         """
+        return self._falar(
+            metodo,
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}{sufixo}",
+            corpo=corpo,
+            especiais=especiais,
+        )
+
+    def _falar(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        corpo: "dict | None" = None,
+        especiais: "tuple[tuple[int, str], ...]" = (),
+    ) -> "tuple[str, dict | str]":
+        """O encanamento das escritas e leituras com desfecho nomeado.
+
+        Páginas e experimentos passam por aqui: config, endereço, timeout e
+        corpo fora do contrato são os mesmos, e duas cópias divergiriam no
+        primeiro conserto feito em uma delas.
+        """
         config = self._configuracao()
         if config is None:
             logger.warning(
@@ -1392,6 +1416,49 @@ class CatalogoClient:
             slug,
             "/publicar",
             especiais=((409, self.VAZIO), (404, self.SEM_PAGINA)),
+        )
+
+    def pagina_publicada(self, site_id: str, slug: str) -> "tuple[str, dict | str]":
+        """`getPage`: a versão que está no ar, que é o que quem visita vê."""
+        return self._falar_da_pagina(
+            "GET", site_id, slug, "", especiais=((404, self.SEM_PAGINA),)
+        )
+
+    # -- Os experimentos da página (frente F5 do sistema de experimentos) -----
+
+    def _caminho_do_experimento(self, site_id: str, experimento_id: str) -> str:
+        return (
+            f"/sites/{quote(str(site_id), safe='')}"
+            f"/experimentos/{quote(str(experimento_id), safe='')}"
+        )
+
+    def experimento(
+        self, site_id: str, experimento_id: str
+    ) -> "tuple[str, dict | str]":
+        """O experimento com estado, decisão e as variantes (snapshot do texto)."""
+        return self._falar(
+            "GET",
+            self._caminho_do_experimento(site_id, experimento_id),
+            especiais=((404, self.SEM_EXPERIMENTO),),
+        )
+
+    def encerrar_experimento(
+        self,
+        site_id: str,
+        experimento_id: str,
+        decisao: str,
+        variante_vencedora: "str | None",
+    ) -> "tuple[str, dict | str]":
+        """Encerra com a decisão. 409 é experimento que já estava encerrado."""
+        return self._falar(
+            "POST",
+            self._caminho_do_experimento(site_id, experimento_id) + "/encerrar",
+            corpo={"decisao": decisao, "variante_vencedora": variante_vencedora},
+            especiais=(
+                (409, self.JA_ENCERRADO),
+                (404, self.SEM_EXPERIMENTO),
+                (422, self.RECUSADO),
+            ),
         )
 
 

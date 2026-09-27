@@ -1,0 +1,19 @@
+{
+  "arquivo": "766-registrar-no-livro-que-o-guarda-de-comentario-vazando-foi-in",
+  "id": "TAR-766",
+  "titulo": "Registrar no livro que o guarda de comentário vazando foi integrado",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o registro de medição da integração do PR 2126 (merge 46d516b4, 8 checks verdes)",
+  "despacho": "Registre no livro, com ci/pr.py, a medição da integração do PR 2126 (merge 46d516b426a26cf92347edf5f6a9fd01af9ae6d8, 8 checks verdes), respondendo ao registro 20260926-067.",
+  "origem": "sessão do mantenedor de 26/09/2026 sobre comentário de template vazando na tela",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
