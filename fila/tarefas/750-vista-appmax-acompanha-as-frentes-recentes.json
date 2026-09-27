@@ -1,0 +1,19 @@
+{
+  "arquivo": "750-vista-appmax-acompanha-as-frentes-recentes",
+  "id": "TAR-750",
+  "titulo": "Vista Appmax acompanha as frentes recentes",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste da vista mostra as quatro tarefas recentes, estados lidos da fila e ausencia marcada como nao medida; publicacao conferida em /admin/appmax/.",
+  "despacho": "Incluir TAR-744 TAR-748 TAR-747 TAR-749 na sequencia existente de services/admin/apps/core/appmax.py, validar pelo teste existente services/admin/tests/test_appmax.py, preservar a fonte canonica e publicar pelo rito. Sem mudancas financeiras.",
+  "origem": "Continuacao Appmax de 26/09/2026; manutencao da vista TAR-730",
+  "criada_em": "2026-09-26",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
