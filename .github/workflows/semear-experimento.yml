@@ -1,0 +1,128 @@
+# =============================================================================
+# SEMEAR EXPERIMENTO: liga (iniciar-aa) ou desliga (encerrar) o A/A técnico da
+# página de oferta de um site, pelo pipeline, sem navegador e sem o mantenedor.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# O ensaio do sistema de experimentos precisa de um A/A ativo no espaço
+# `cubo.headline` da oferta, e até aqui só a tela logada da área administrativa
+# criava e iniciava um experimento. O mantenedor decidiu em 27/09/2026 que o
+# robô faz isso sozinho. O script roda `manage.py semear_experimento` no
+# contêiner `admin`, que usa as mesmas funções, recusas e auditoria da tela.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI
+# ----------------------------------------
+# Não ENTREGA código: roda um script versionado que só sabe fazer duas coisas,
+# as duas idempotentes, e que só toca o experimento com a assinatura do A/A.
+# Outro experimento ativo na página faz o comando parar sem mexer em nada.
+#
+# OS INPUTS VIAJAM POR `envs:`, NUNCA COSTURADOS NO CORPO DO SCRIPT:
+# `${{ inputs.* }}` dentro de `script:` é substituição de texto feita antes de o
+# shell existir, ou seja, injeção de comando na VPS (`armadilhas/047`).
+#
+# GRUPO PRÓPRIO (`armadilhas/173`): no grupo de outro workflow, o próximo disparo
+# cancelaria o pendente antes de ele começar.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+# =============================================================================
+name: semear-experimento
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: 'Host do site (ex.: meshcraft.top). Precisa estar ATIVO no catálogo.'
+        required: true
+        type: string
+        default: meshcraft.top
+      acao:
+        description: 'iniciar-aa liga o A/A da oferta; encerrar desliga só o A/A, com a decisão encerrar.'
+        required: true
+        type: choice
+        options:
+          - iniciar-aa
+          - encerrar
+permissions:
+  contents: read
+concurrency:
+  group: semear-experimento
+  cancel-in-progress: false
+jobs:
+  semear:
+    name: ligar ou desligar o A/A da oferta
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # Num disparo por `workflow_dispatch` o GitHub roda o YAML e o
+      # `script_path` da REF escolhida, e nao os da main: sem este passo,
+      # qualquer ramo empurrado levaria o proprio `infra/*.sh` para a VPS.
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
+          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
+          exit 1
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso.
+      - name: Conferir que o script existe antes de abrir conexao
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-experimento.sh ]; then
+            echo "::error::PAROU POR SEGURANCA: infra/semear-experimento.sh nao existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-experimento.sh
+          echo "script presente e sintaticamente valido"
+
+      - name: Ligar ou desligar na VPS
+        id: semear
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          # Chave pública ECDSA da VPS já confiada no known_hosts do mantenedor (25/09/2026).
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: HOST_EXPERIMENTO,ACAO_EXPERIMENTO
+          capture_stdout: true
+          command_timeout: 5m
+          script_path: infra/semear-experimento.sh
+        env:
+          HOST_EXPERIMENTO: ${{ inputs.host }}
+          ACAO_EXPERIMENTO: ${{ inputs.acao }}
+
+      # A PROVA, e não o eco (`armadilhas/114`). A linha "PRONTO:" vem do
+      # comando da admin, que só a imprime depois de reler o experimento no
+      # catálogo por fora da chamada que o mudou. Roda também quando o passo
+      # anterior falha (`armadilhas/549`), para dizer o motivo em vez de sumir.
+      - name: Provar o estado do A/A (nao basta a conexao ter aberto)
+        if: always() && steps.semear.outcome != 'skipped'
+        env:
+          SAIDA: ${{ steps.semear.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O semeador parou por segurança. A saída acima diz o que houve e o que fazer."
+            exit 1
+          fi
+          if ! printf '%s\n' "$SAIDA" | grep -q '^PRONTO: '; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do semeador."
+            echo "Ela só é impressa depois de o comando reler o experimento no catálogo."
+            echo "Sem ela, nada está provado: ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          printf '%s\n' "$SAIDA" | grep '^PRONTO: ' >> "$GITHUB_STEP_SUMMARY"
+          echo "o A/A está como foi pedido, conferido pela releitura no catálogo."

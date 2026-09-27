@@ -144,7 +144,7 @@ def expurgar() -> None:
 
 
 def test_migracao_apaga_lead_dos_fatos_de_quiz_ja_guardados() -> None:
-    # guarda: services/metricas/apps/fatos/migrations/0004_quiz_completado_sem_lead.py:45
+    # guarda: services/metricas/apps/fatos/migrations/0004_quiz_completado_sem_lead.py:46
     antigo = guardar_como_antes("quiz.completado", {**DADOS_SEM_LEAD, "lead": LEAD})
 
     expurgar()
