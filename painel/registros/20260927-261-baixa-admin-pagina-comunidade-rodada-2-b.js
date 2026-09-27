@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-261-baixa-admin-pagina-comunidade-rodada-2-b",
+  tipo: "nota",
+  quando: "2026-09-27",
+  titulo: "O segundo recibo da página da Comunidade no admin repete o mesmo PR",
+  detalhe: "O recibo 20260927-243 é a mesma entrega do recibo 20260927-242: mesma TAR-856, mesmo PR 2261 (MERGED, mergeCommit 7958c35aae0fded27bb90c9f0e9aca46b033e2bd, conferido por gh pr view --json state,mergedAt,mergeCommit), mesma publicação (run 36326069311, deploy admin: success). Duas validações locais em árvores diferentes geraram dois recibos para um único PR. Este registro dá baixa verde no recibo duplicado, sem apagar o original.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2261 (MERGED, mergeCommit 7958c35aae0fded27bb90c9f0e9aca46b033e2bd); run https://github.com/abundanciabr/sitesdoreino/actions/runs/36326069311 (deploy admin: success)",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: "20260927-243-admin-pagina-da-comunidade-rodada-2",
+  relacao: "baixa",
+  tarefa: "TAR-856",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
