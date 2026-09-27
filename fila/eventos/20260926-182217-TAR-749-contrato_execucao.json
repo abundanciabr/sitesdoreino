@@ -1,0 +1,67 @@
+{
+  "arquivo": "20260926-182217-TAR-749-contrato_execucao",
+  "tarefa": "TAR-749",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T18:22:17.418810+00:00",
+  "quem": "agent/pagamentos/appmax-aviso-pos-aprovacao",
+  "contrato": {
+    "versao": 1,
+    "plano": "TAR-749 aviso Appmax posterior a aprovação",
+    "modelo_recomendado": "gpt-6-sol",
+    "esforco_recomendado": "high",
+    "objetivo": "Consultar uma vez o pedido Appmax autenticado quando um aviso chega depois de uma tentativa approved e registrar somente um diagnóstico operacional privado.",
+    "condicao_encerramento": "A consulta GET autenticada exige identidade exata, classifica os cinco estados operacionais previstos, conserva o estado financeiro e passa pelos testes focais, Black, mypy, suíte de pagamentos e guardas PASS FAIL PASS.",
+    "limites_autonomia": "Editar exclusivamente services/pagamentos/pagamentos/supervisao.py, services/pagamentos/tests/test_supervisao_appmax.py e os artefatos próprios da TAR-749. Não alterar ledger, outbox, tentativa, intent, contratos públicos, migrations, cliente Appmax ou política de acesso.",
+    "escopo_incluido": [
+      "Consulta GET autenticada existente para aviso recebido após tentativa approved",
+      "Validação de instalação, site, pedido, cliente, método, parcelas e valores originais",
+      "Diagnósticos estáticos para estornado, chargeback_em_tratativa, chargeback_em_disputa, chargeback_perdido e chargeback_vencido",
+      "Testes de estados, divergências, ausência de identidade, repetição e ordem invertida"
+    ],
+    "nao_objetivos": [
+      "Não criar ou repetir compra, estorno, refund ou qualquer operação financeira",
+      "Não emitir ledger, outbox ou evento nem alterar estados de tentativa ou intent",
+      "Não registrar payload, PII, dinheiro, URL, ID externo ou mensagem livre",
+      "Não implementar varredura periódica de approved"
+    ],
+    "restricoes": [
+      "O GET usa apenas gateway.nova_sessao_appmax().preparar() e consultar_pedido() já existentes",
+      "Resposta desconhecida, vínculo ausente ou identidade divergente falha conservadoramente",
+      "chargeback_vencido significa vitória do lojista e não reabre acesso nem gera reversão",
+      "Aviso repetido ou fora de ordem não produz efeito financeiro"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato do mantenedor em 26/09/2026: Tudo do Appmax liberado para a implementação técnica e os caminhos desta TAR.",
+      "Modelo recomendado e esforço gerados por python ci/economia_da_fabrica.py brief.",
+      "A sessão responsável assume a retomada desta bancada após executor anterior sem alteração de produto verificável."
+    ],
+    "entregaveis": [
+      "Código de supervisão que consulta e classifica avisos posteriores a approved sem efeito financeiro",
+      "Testes focais e guardas de identidade, estados adversos, repetição e ordem",
+      "Contrato, eventos e recibo próprios da TAR-749"
+    ],
+    "etapas": [
+      "Registrar contrato e provas de entrada da retomada",
+      "Escrever testes vermelhos e implementar a consulta segura nos dois alvos",
+      "Rodar focal, Black, mypy, suíte, guardas e revisão crítica",
+      "Entregar a validação pelo rito sem repetir operações financeiras"
+    ],
+    "acoes_do_mantenedor": "Nenhuma ação técnica nova; a autorização Tudo do Appmax já foi concedida. Dinheiro real, compra e estorno permanecem fora deste despacho.",
+    "criterios_entrada": [
+      "TAR-749 reivindicada pela bancada agent/pagamentos/appmax-aviso-pos-aprovacao.",
+      "Baseline focal medido antes da edição, com falhas locais identificadas como Redis indisponível.",
+      "Ownership exclusivo confirmado para os dois alvos de produto e teste."
+    ],
+    "criterios_aceite": [
+      "Approved com aviso chama exatamente o GET autenticado existente e fecha apenas após identidade exata.",
+      "Cada estado adverso recebe código operacional privado estático sem alterar o dinheiro.",
+      "Divergência de instalação, site, pedido, cliente, método, parcelas ou valores preserva a segurança e não fecha como válido.",
+      "Repetição e ordem invertida não criam cobrança, refund, ledger, outbox ou evento."
+    ],
+    "evidencias_exigidas": [
+      "Teste focal, Black, mypy e suíte pagamentos com saída real.",
+      "Guardas novas com baseline PASS, sabotagem FAIL e restauração PASS.",
+      "Validação da fila, diff limitado aos alvos e recibo próprio do rito."
+    ]
+  }
+}
