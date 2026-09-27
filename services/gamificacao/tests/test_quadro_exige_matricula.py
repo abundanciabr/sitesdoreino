@@ -37,12 +37,15 @@ pytestmark = pytest.mark.django_db
 SITE = "site-de-teste"
 ALUNA = "pes-aluna"
 PROFESSORA = "pes-professora"
-EMAIL = "aluna+quadro@exemplo.test"
+# `/` e `?` no nome são válidos em e-mail e quebram a URL se não forem
+# codificados: o `/` vira outro segmento, e o `?` corta o caminho em consulta.
+EMAIL = "aluna+quadro/2026?turma@exemplo.test"
+EMAIL_NA_URL = "aluna%2Bquadro%2F2026%3Fturma%40exemplo.test"
 COOKIE = "meshcraft_sessao=opaco"
 IDENTIDADE = "http://identidade:8000/interno"
 ALUNOS = "http://alunos:8000/api/alunos"
 SESSAO_COMPLETA = f"{IDENTIDADE}/sessao/completa"
-SITUACAO = f"{ALUNOS}/alunos/aluna%2Bquadro%40exemplo.test/situacao"
+SITUACAO = f"{ALUNOS}/alunos/{EMAIL_NA_URL}/situacao"
 
 SEM_MATRICULA = "matrícula ativa"
 NAO_CONFERIU = "Não consegui conferir a sua matrícula agora"
@@ -150,6 +153,9 @@ def test_o_email_vem_da_identidade_e_a_categoria_da_alunos():
     assert situacao.calls.last.request.headers["Authorization"] == (
         "Bearer token-gamificacao-alunos"
     )
+    assert situacao.calls.last.request.url.raw_path == (
+        f"/api/alunos/alunos/{EMAIL_NA_URL}/situacao".encode()
+    )
 
 
 def test_sem_o_grau_completo_na_identidade_o_motivo_diz_o_nome_do_grau():
@@ -192,6 +198,7 @@ def test_sem_cookie_nao_ha_quem_conferir():
         httpx.Response(500),
         httpx.Response(200, text="<html>proxy</html>"),
         httpx.Response(200, json={"autenticado": False, "id": None, "email": None}),
+        httpx.Response(200, json={"autenticado": False, "id": None, "email": EMAIL}),
         httpx.Response(200, json={"autenticado": True, "id": ALUNA, "email": None}),
         httpx.Response(200, json=["fora", "do", "contrato"]),
     ],
@@ -282,9 +289,6 @@ def test_ver_o_quadro_nao_pergunta_matricula():
 
 
 # ------------------------------------------- 4. o e-mail não fica em lugar nenhum
-
-
-EMAIL_NA_URL = "aluna%2Bquadro%40exemplo.test"
 
 
 @pytest.mark.parametrize("celula_que_cai", ["identidade", "alunos"])

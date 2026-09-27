@@ -222,6 +222,12 @@ celulas:
     # continua sem conferir matrícula; ela só diz de quem é o XP. Quem instala
     # o par é `infra/provisionar-par-da-gamificacao-com-os-alunos.sh`.
     #
+    # E, pelo mesmo motivo, `identidade` passa a ser consumida também COM
+    # e-mail: quem é a pessoa, com o e-mail, porque a matrícula se pergunta por
+    # e-mail (`getSessionFull`, só no gesto de assumir; `apps/core/matricula.py`,
+    # `IDENTIDADE_API_URL`). O grau `TOKENS_COMPLETOS_GAMIFICACAO` está
+    # registrado no §4 de `docs/decisoes/DECISAO-celula-de-identidade.md`.
+    #
     # `forum` desde 02/09/2026, e o sentido é o INVERSO do par que já existia:
     # até aqui o fórum perguntava a etiqueta de nível à gamificação; agora a
     # gamificação pergunta TÍTULOS ao fórum (`listRecentTopics`,

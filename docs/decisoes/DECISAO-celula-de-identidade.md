@@ -69,7 +69,7 @@ Dois conjuntos de tokens, dois direitos:
 
 | env da `identidade` | prova | quem tem |
 |---|---|---|
-| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin`, `cursos`, `pages` |
+| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin`, `cursos`, `pages`, `gamificacao` |
 | `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | `sugestoes`, `admin`, `cursos`, `pages`, `gamificacao` |
 
 O `funil` não vê e-mail por desenho — ele quer um nome para o canto da página.
@@ -107,7 +107,16 @@ exige operação interna nova, Rito §3 e registro próprio aqui.
 ### O par `gamificacao`, o registro que o §6.3 exige (27/09/2026)
 
 **Quem:** a célula `gamificacao`, no gesto de assumir tarefa do quadro de
-contribuições (`/conquistas/contribuicoes`), a partir do PR 2287.
+contribuições (`/conquistas/contribuicoes`).
+
+**Este registro regulariza, e não inaugura.** O grau pode já existir em
+produção desde 01/09/2026: a ponte da medalha de Fundador
+(`conceder_fundador --emails`) exige o mesmo grau, e
+`infra/provisionar-gamificacao.sh` (§5 do cabeçalho) diz que ele foi instalado
+à mão pelo mantenedor com a linha que `infra/conceder-fundador-aos-alunos.sh`
+entrega, sem registro aqui. A partir deste registro, o grau passa a ter o
+porquê escrito e um script que o grava e o prova
+(`infra/provisionar-par-da-gamificacao-com-os-alunos.sh`).
 
 **Por quê o e-mail, e não o id opaco:** a decisão do mantenedor de 27/09/2026
 é que só quem tem matrícula ativa assume tarefa no quadro. Essa resposta mora
@@ -125,12 +134,20 @@ razão da `cursos` e da `pages`, e nenhuma outra.
 `identidade` além do que já pedia. A página continua usando `getSession`, só
 com o id opaco.
 
-**Escopo:** um e-mail por requisição, o da própria sessão de quem clicou em
-Assumir. O grau usa o MESMO valor de `TOKENS_ACEITOS_GAMIFICACAO`, e quem o
-grava é `infra/provisionar-par-da-gamificacao-com-os-alunos.sh`. Consequência
-conhecida: o grau é por par, e não por operação, então ele também abre
-`findPersonByEmail`, que o comando de linha `conceder_fundador --emails` já
-usa (entra e-mail, sai id; nenhum e-mail volta dessa porta).
+**Escopo:** o uso que o código faz, e só ele. `getSessionFull` no gesto de
+assumir tarefa (`services/gamificacao/apps/core/matricula.py`): um e-mail por
+requisição, o da própria sessão de quem clicou em Assumir. Nenhuma tela e
+nenhum outro gesto da célula pedem o e-mail. O grau usa o MESMO valor de
+`TOKENS_ACEITOS_GAMIFICACAO`.
+
+**A consequência do grau por par, por inteiro.** O grau vale para o par, e não
+para uma operação: com ele, o token da gamificação também abre
+`findPersonByEmail`. Essa porta responde se um e-mail QUALQUER existe na
+plataforma (devolve o id, ou `null`), e por isso é um oráculo de existência de
+conta: quem tiver o token pode testar endereços um a um. O token não sai da
+VPS e só a gamificação o usa; no código, o único chamador dessa porta é o
+comando de linha `conceder_fundador --emails` (`apps/core/sessao.py`), rodado
+pela equipe. Nenhum caminho de página a chama.
 
 **Origem:** decisão do mantenedor na sessão de 27/09/2026 (Retomada
 comunidade, rodada 3, pergunta estruturada), registro

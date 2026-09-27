@@ -298,8 +298,8 @@ while :; do
   tentativa=$((tentativa + 1))
   sleep 5
 done
-echo "  identidade entrega e-mail  HTTP ${R_IDENTIDADE:-sem resposta}"
-echo "  alunos aceita o par ...... HTTP ${R_ALUNOS:-sem resposta}"
+echo "  identidade aceita o grau completo (findPersonByEmail) ... HTTP ${R_IDENTIDADE:-sem resposta}"
+echo "  alunos aceita o par (getStudentStanding) ............... HTTP ${R_ALUNOS:-sem resposta}"
 [ "$R_IDENTIDADE" = "200" ] || parar "a identidade não respondeu 200 ao token da gamificação (403 quer dizer grau não lido; o arquivo está certo). Rodar este mesmo provisionador de novo reinicia e prova outra vez."
 [ "$R_ALUNOS" = "200" ] || parar "a alunos não respondeu 200 ao token da gamificação (401 quer dizer token não lido; o arquivo está certo). Rodar este mesmo provisionador de novo reinicia e prova outra vez."
 echo
