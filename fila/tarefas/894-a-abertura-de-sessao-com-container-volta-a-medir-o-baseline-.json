@@ -1,0 +1,19 @@
+{
+  "arquivo": "894-a-abertura-de-sessao-com-container-volta-a-medir-o-baseline-",
+  "id": "TAR-894",
+  "titulo": "A abertura de sessao com container volta a medir o baseline das celulas que tem pacote interno",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste vermelho para verde e abertura com container da admin passando do baseline",
+  "despacho": "LEIA ANTES: `ci/sessao.py` (funções `correr_de_verdade`, `Sessao.chave_do_baseline`,\n`identidade_do_venv`, `_hash_conferido_da_wheel`), `ci/tests/test_sessao_persistente.py`\n(helpers `_escrever_wheel_vendorizada`, fixture `baseline`).\n\nO QUE ESTAVA ERRADO, medido em 27/09/2026 na prova da TAR-815 (abertura com\ncontêiner, célula admin): o passo 11 (\"baseline: make ci da célula\") reprovava\ncom \"dependência local sem identidade imutável\" / \"sha256 anotado não confere\",\nmesmo com a wheel real no disco batendo com o sha256 anotado no\nrequirements.txt.\n\nA CAUSA: `Sessao.chave_do_baseline` lê os arquivos da revisão `origin/main`\n(a BASE) via `git show <rev>:<caminho>` para calcular a identidade de cache do\nvenv (`identidade_do_venv(..., ler=ler_da_base, ...)`). Essa leitura passava\npelo mesmo `self._exigir`/`self._correr` usado para saída de texto, que roda\no subprocess com `text=True, encoding=\"utf-8\", errors=\"replace\"` e depois\n`ler_da_base` ainda fazia `.stdout.encode(\"utf-8\")`. Para uma wheel vendorizada\n(`services/<celula>/vendor/*.whl`, um zip binário), esse round-trip\ndecode-then-reencode troca qualquer sequência de bytes inválida como UTF-8 por\n`U+FFFD` (3 bytes na recodificação), alterando o conteúdo. O sha256 recalculado\nda BASE nunca bate com o `# sha256:` anotado, e `_hash_conferido_da_wheel`\nrecusa (fail closed) — mesmo a wheel do disco sendo idêntica à anotada.\nConsequência: a abertura com contêiner de QUALQUER célula com wheel\nvendorizada cai no baseline.\n\nO CONSERTO (já aplicado e integrado): `correr_de_verdade` ganhou um parâmetro\n`binario: bool = False` — quando `True`, roda o subprocess sem `text=True` e\ndevolve `Saida.stdout` em bytes crus (stderr continua decodificado, só para\nmensagens). `ler_da_base` passou a chamar `self._correr(comando, cwd=...,\nbinario=True)` e devolver os bytes exatos do blob, sem `.encode(\"utf-8\")`.\nComportamento para arquivos de texto não muda (mesmo conteúdo, agora lido sem\no round-trip lossy).\n\nO GUARDA QUE PROVA: `ci/tests/test_sessao_persistente.py::\ntest_chave_do_baseline_le_blob_binario_da_wheel_sem_corromper` — fake `correr`\nque simula fielmente o subprocess em modo texto (decode com errors=\"replace\")\nquando `binario` não é pedido, e devolve bytes exatos quando é. Vermelho sem o\nconserto (reproduz \"dependência local sem identidade imutável\"), verde com\nele. Prova real: abertura com contêiner da célula admin passando do passo do\nbaseline com a wheel vendorizada real.\n\nNÃO reabra a discussão de trocar `git show` por `git cat-file blob`: o comando\né o mesmo: o defeito estava só na captura de saída (texto vs bytes), não no\ncomando git.",
+  "origem": "achado da prova da TAR-815, sessao de 27/09/2026",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
