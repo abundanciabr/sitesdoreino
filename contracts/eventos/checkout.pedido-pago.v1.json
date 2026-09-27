@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/checkout.pedido-pago.v1.json",
+  "title": "checkout.pedido-pago.v1",
+  "description": "UM PEDIDO ATRIBUÍDO A UM VISITANTE FOI PAGO. É o último degrau do funil medido: diz quantos visitantes de cada variante chegaram a pagar, ligando o pagamento à visita pelo `visitor_id`. Publicado pela célula `checkout` quando confirma o pagamento de um pedido cuja sessão tinha visitante, uma vez por pedido. Quem consome: a célula `metricas`. LEI DESTE EVENTO: nenhum dado pessoal. Sem `customer`, e-mail, nome, telefone nem documento, porque dado pessoal no livro imutável da `metricas` não se apaga depois; quem precisar de quem comprou pergunta ao `checkout` pelo `order_id`. `additionalProperties: false` é o que faz um campo pessoal acrescentado por engano ser recusado. Nome de stream pela convenção do trilho: `eventos.<event>`. Rito de Contrato (RITOS.md §3) de 26/09/2026, contratos aditivos autorizados pelo mantenedor na sessão.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "checkout.pedido-pago"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único DESTE fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila é contado uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante em que o fato foi publicado, com fuso. Sem fuso o DIA do fato é um chute e a recepção da `metricas` recusa o envelope."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "order_id",
+        "visitor_id",
+        "valor_centavos",
+        "moeda",
+        "pago_em"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma, o mesmo `site_id` de `pedido.criado`."
+        },
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id do pedido dentro da célula `checkout`, o mesmo `order_id` de `pedido.criado`. É por ele que atribuição e pagamento do mesmo pedido se juntam."
+        },
+        "visitor_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "O mesmo identificador OPACO de primeira parte que a célula `funil` gravou no navegador e enviou em `funil.pagina-vista`. É ele, e só ele, que liga a compra à visita e à variante sorteada. OBRIGATÓRIO: o checkout só emite este fato quando a sessão tem visitante. Nunca é e-mail, telefone, nome, IP nem hash de nenhum deles."
+        },
+        "valor_centavos": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Valor do pedido em centavos, inteiro. Dinheiro nunca é número com casas decimais (contracts/README.md, lei 7)."
+        },
+        "moeda": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "Código de moeda ISO 4217 em maiúsculas, por exemplo `BRL`."
+        },
+        "pago_em": {
+          "type": "string",
+          "format": "date-time",
+          "description": "O instante em que o pagamento foi confirmado, com fuso."
+        }
+      }
+    }
+  }
+}
