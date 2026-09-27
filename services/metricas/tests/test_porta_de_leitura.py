@@ -666,7 +666,7 @@ def test_funil_sem_experimento_nao_traz_variantes():
 
 def test_funil_variante_e_sticky_pela_primeira_visita_e_marca_a_troca():
     # guarda: services/metricas/apps/fatos/api.py:590
-    # guarda: services/metricas/apps/fatos/api.py:592
+    # guarda: services/metricas/apps/fatos/api.py:588
     exp = "exp-1"
     visita(
         FUNIL_PAGINA_VISTA,

@@ -1,0 +1,19 @@
+{
+  "arquivo": "888-os-guardas-da-contagem-do-funil-passam-a-provar-o-invariante",
+  "id": "TAR-888",
+  "titulo": "Os guardas da contagem do funil passam a provar o invariante, não só que a linha roda",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "saída de ci/provar_guardas.py com AssertionError de conteúdo sob sabotagem nos 4 marcadores reapontados",
+  "despacho": "Reaponte os marcadores # guarda: dos 4 testes flagados no PR #2245 (trocados,\nconvertidos_v, expostos_v, limpos) para a linha que decide o invariante, prove\npor mutação com ci/provar_guardas.py e devolva PROVADOS/FALSOS/NÃO PROVEI com\na saída crua, conforme .claude/agents/provador.md.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
