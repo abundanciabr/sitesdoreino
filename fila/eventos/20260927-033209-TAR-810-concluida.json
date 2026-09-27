@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-033209-TAR-810-concluida",
+  "tarefa": "TAR-810",
+  "evento": "concluida",
+  "quando": "2026-09-27T03:32:09.753094+00:00",
+  "quem": "agent/infra/testes-infra-em-todo-pr",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2175",
+  "verificado_em": "2026-09-27"
+}

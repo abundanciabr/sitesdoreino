@@ -1,0 +1,69 @@
+{
+  "arquivo": "20260926-203650-TAR-758-contrato_execucao",
+  "tarefa": "TAR-758",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-26T20:36:50.249891+00:00",
+  "quem": "agent/pagamentos/appmax-emissor-reversao",
+  "contrato": {
+    "plano": "TAR-758 emissor Appmax de reversão confirmada",
+    "versao": 1,
+    "modelo_recomendado": "gpt-6-luna",
+    "esforco_recomendado": "high",
+    "objetivo": "Emitir uma única mensagem pagamento.reversao_confirmada v2 após o diagnóstico autenticado da TAR-749 confirmar estorno ou contestação Appmax.",
+    "entregaveis": [
+      "Emissor em services/pagamentos/pagamentos/supervisao.py",
+      "Testes de pagamentos para estados permitidos, divergências, concorrência e rollback",
+      "Registro e validação pelo rito da fila antes da publicação técnica"
+    ],
+    "escopo_incluido": [
+      "Reaproveitar o GET autenticado e as validações exatas da TAR-749",
+      "Emitir apenas para estornado, chargeback_em_tratativa, chargeback_em_disputa e chargeback_perdido",
+      "Deduplicar por site, provedor e referência com bloqueio PostgreSQL da tentativa",
+      "Conservar estado financeiro aprovado e não registrar valor devolvido"
+    ],
+    "nao_objetivos": [
+      "Não alterar contratos, consumidor de alunos, ledger, modelos, migrations, cliente ou configuração",
+      "Não implementar varredura periódica de approved",
+      "Não executar compra, estorno, refund, POST financeiro ou ativação de cartão",
+      "Não registrar amount_cents, resposta bruta, PII, URL ou recibo privado"
+    ],
+    "restricoes": [
+      "A tarefa depende de TAR-749 e TAR-755 e publica depois do contrato",
+      "Estado desconhecido, recusado_por_risco, identidade divergente ou falha mantém a pendência",
+      "Falha na gravação da outbox deve reverter o fechamento do aviso",
+      "A bancada preserva o teste novo transferido e não disputa arquivos de outros executores"
+    ],
+    "decisoes_aprovadas": [
+      "Mantenedor autorizou o contrato e a implementação descritos em 26/09/2026",
+      "Mantenedor confirmou envio técnico ao repositório abundanciabr/sitesdoreino após a revisão automática",
+      "Compras, estornos reais, ativação de cartão e comprovantes privados permanecem fora do mandato"
+    ],
+    "etapas": [
+      "Registrar TAR-758 e este contrato de execução após TAR-755 estar na fila",
+      "Preservar código e provas do emissor na bancada atual",
+      "Aguardar liberação da fila pesada para suíte completa, guardas e ci/pr.py",
+      "Publicar o emissor depois do contrato e antes do consumidor"
+    ],
+    "criterios_entrada": [
+      "TAR-749 existe como diagnóstico do GET autenticado",
+      "TAR-755 existe e está concluída com o contrato v2 publicado",
+      "Autorização técnica nominal para implementação e envio ao repositório está registrada"
+    ],
+    "criterios_aceite": [
+      "Os quatro estados permitidos geram envelope v2 sem amount_cents",
+      "Duas execuções concorrentes geram uma única outbox",
+      "Divergência local ou no GET não consulta ou não emite conforme a origem",
+      "Falha na outbox desfaz o processamento do aviso",
+      "O estado financeiro e o evento pagamento.estornado permanecem inalterados"
+    ],
+    "evidencias_exigidas": [
+      "Focal PostgreSQL do emissor e prova integrada privada do emissor e consumidor",
+      "Black, mypy focal e diff check PASS",
+      "Suíte de pagamentos e guardas PASS FAIL PASS quando a fila pesada liberar",
+      "Validação remota do PR técnico e registro da fila pelo ci/pr.py"
+    ],
+    "condicao_encerramento": "TAR-758 será encerrada somente com evidência local, submissão técnica pelo rito e confirmação separada da integração e publicação; esta etapa atual registra a tarefa e preserva a bancada.",
+    "limites_autonomia": "Editar somente services/pagamentos/pagamentos/supervisao.py, services/pagamentos/tests/test_supervisao_appmax.py e metadados próprios da TAR-758. O teste novo transferido permanece preservado. Não editar contratos, alunos, ledger, migrations, cliente, configuração, compras ou estornos.",
+    "acoes_do_mantenedor": "Nenhuma decisão nova. A autorização técnica já concedida vale para esta implementação e seu envio; valores reais, compras e estornos continuam fora do escopo."
+  }
+}
