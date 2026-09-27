@@ -454,6 +454,24 @@ def test_o_leia_me_manda_pelo_make_pr():
     texto = (RAIZ_DO_REPO / "painel" / "LEIA-ME.md").read_text(encoding="utf-8")
     assert "make pr" in texto
 
+
+def test_o_exemplo_canonico_do_make_pr_ensina_a_tarefa_obrigatoria():
+    import tomllib
+
+    ficha_codex = tomllib.loads(
+        (RAIZ_DO_REPO / ".codex/agents/despacho.toml").read_text(encoding="utf-8")
+    )["developer_instructions"]
+    textos = {
+        ".claude/agents/despacho.md": (RAIZ_DO_REPO / ".claude/agents/despacho.md").read_text(encoding="utf-8"),
+        ".codex/agents/despacho.toml": ficha_codex,
+        "painel/LEIA-ME.md": (RAIZ_DO_REPO / "painel/LEIA-ME.md").read_text(encoding="utf-8"),
+    }
+    for nome, texto in textos.items():
+        exemplo = texto.split("make pr TITULO=", 1)[1].split("```", 1)[0]
+        assert "TAR=TAR-NNN" in exemplo, nome
+        assert "quando aplicável" not in texto, nome
+        assert "quando esta entrega" not in texto, nome
+
 def test_evidencia_ausente_recusa_antes_de_publicar(tmp_path):
     raiz = bancada(tmp_path)
     dub = Duble(RESPOSTAS_FELIZES)
