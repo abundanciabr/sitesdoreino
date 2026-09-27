@@ -305,6 +305,46 @@ def test_arvore_sem_mudancas_recusa(tmp_path):
     assert not dub.pediu("git add")
 
 
+# O scratchpad é um só para a sessão e todos os subagentes: um despacho
+# sobrescreveu o `corpo.md` do outro enquanto o rito validava, e #2122, #2164
+# e #2220 saíram com o texto de outra tarefa.
+@pytest.mark.parametrize("campo", ["mensagem_arquivo", "corpo_arquivo", "validacao_arquivo", "detalhe_arquivo"])
+def test_arquivo_de_entrada_fora_da_bancada_recusa_antes_de_gravar(tmp_path, monkeypatch, campo):
+    # guarda: ci/pr.py:743
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "base_de_scratch_padrao", lambda: tmp_path / "sessoes")
+    copias = {"mensagem_arquivo": "mensagem.txt", "corpo_arquivo": "corpo.md", "validacao_arquivo": "validacao.json"}
+    fora = tmp_path / "scratchpad-da-sessao" / "entrada"
+    fora.parent.mkdir()
+    fora.write_text((raiz / copias[campo]).read_text(encoding="utf-8") if campo in copias else DETALHE, encoding="utf-8")
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    with pytest.raises(pr.ParouPorSeguranca) as caixa:
+        pr.abrir(raiz, pedido(raiz, **{campo: fora}), rodar=dub, hoje=HOJE)
+
+    assert str(fora) in str(caixa.value)
+    assert str(tmp_path / "sessoes" / "ci-make-pr") in caixa.value.o_que_fazer
+    assert not dub.pediu("git add")
+    assert list((raiz / "painel" / "registros").glob("*.js")) == []
+
+
+def test_arquivos_na_pasta_da_bancada_seguem_o_rito(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "base_de_scratch_padrao", lambda: tmp_path / "sessoes")
+    pasta = tmp_path / "sessoes" / "ci-make-pr"
+    pasta.mkdir(parents=True)
+    for nome in ("mensagem.txt", "corpo.md", "validacao.json", "detalhe.txt"):
+        (pasta / nome).write_text(DETALHE if nome == "detalhe.txt" else (raiz / nome).read_text(encoding="utf-8"), encoding="utf-8")
+    dub = Duble(RESPOSTAS_FELIZES)
+
+    final = pr.abrir(raiz, pedido(
+        raiz, mensagem_arquivo=pasta / "mensagem.txt", corpo_arquivo=pasta / "corpo.md",
+        validacao_arquivo=pasta / "validacao.json", detalhe_arquivo=pasta / "detalhe.txt",
+    ), rodar=dub, hoje=HOJE)
+
+    assert final.startswith("PR 1210 aberto com recibo")
+
+
 # ------------------------------------------------------------- (c) --continuar --
 
 
@@ -647,7 +687,7 @@ def _acoes_da_fila(dub):
 
 def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
     """O "feito" viaja na entrega: um PR de entrega submete E fecha."""
-    # guarda: ci/pr.py:564
+    # guarda: ci/pr.py:592
     raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [])
     dub = Duble()
     pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
@@ -658,7 +698,7 @@ def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch)
 
 def test_continuar_preserva_a_conclusao_sem_criar_evento_posterior(tmp_path, monkeypatch):
     """Uma revisão nova do mesmo PR não escreve depois do evento terminal."""
-    # guarda: ci/pr.py:556
+    # guarda: ci/pr.py:584
     evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR}
     caminho_conclusao = 'fila/eventos/concluida.json'
     raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
@@ -680,8 +720,11 @@ def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize('ignorado', [False, True])
 @pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])
-def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo):
+def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, monkeypatch, ignorado, alvo):
     import subprocess
+    monkeypatch.setattr(pr, "base_de_scratch_padrao", lambda: tmp_path / "sessoes")
+    entradas = tmp_path / "sessoes" / "ci-prova"
+    entradas.mkdir(parents=True)
     origem = tmp_path/'origem'
     subprocess.run(['git','init',str(origem)],check=True,capture_output=True)
     def git(*args, cwd=origem):
@@ -698,13 +741,13 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo)
     pr.telemetria.registrar_fase('abertura','concluido',tarefa='agent/ci/prova',tentativa='legada',branch='agent/ci/prova',commit=git('rev-parse','HEAD'),cwd=str(raiz))
     (raiz/'check.py').write_text('import necessario\ndef test_entregue():\n    assert necessario.valor == 42\n',encoding='utf-8')
     (raiz/'necessario.py').write_text('valor = 42\n',encoding='utf-8')
-    (tmp_path/'mensagem.txt').write_text('ci: prova\n\n'+COAUTOR+'\n',encoding='utf-8')
-    (tmp_path/'corpo.md').write_text('Teste isolado.',encoding='utf-8')
+    (entradas/'mensagem.txt').write_text('ci: prova\n\n'+COAUTOR+'\n',encoding='utf-8')
+    (entradas/'corpo.md').write_text('Teste isolado.',encoding='utf-8')
     comando = [sys.executable,'check.py'] if alvo == 'relativo' else [sys.executable,str(raiz/'check.py')]
     if alvo == 'pytest_absoluto':
         comando = [sys.executable,'-m','pytest',str(raiz/'check.py'),'-q']
-    (tmp_path/'validacao.json').write_text(json.dumps({'comandos':[comando]}),encoding='utf-8')
-    entrada=pr.Pedido(titulo='ci: prova',mensagem_arquivo=tmp_path/'mensagem.txt',corpo_arquivo=tmp_path/'corpo.md',validacao_arquivo=tmp_path/'validacao.json',arquivos=['check.py'],detalhe=DETALHE)
+    (entradas/'validacao.json').write_text(json.dumps({'comandos':[comando]}),encoding='utf-8')
+    entrada=pr.Pedido(titulo='ci: prova',mensagem_arquivo=entradas/'mensagem.txt',corpo_arquivo=entradas/'corpo.md',validacao_arquivo=entradas/'validacao.json',arquivos=['check.py'],detalhe=DETALHE)
     def executar(comando, cwd, **opcoes):
         assert comando[:2] != ['git','push'], 'publicaria código dependente de arquivo não entregue'
         return pr.rodar(comando,cwd,**opcoes)
@@ -1271,7 +1314,7 @@ def test_validacao_aceita_geracao_canonica_deterministica(tmp_path):
     "Path('painel/painel.html').write_text('adulterado')",
 ])
 def test_validacao_recusa_artefato_adulterado_mesmo_com_nome_legitimo(tmp_path, acao):
-    # guarda: ci/pr.py:459
+    # guarda: ci/pr.py:487
     raiz, commit = _bancada_com_painel_geravel(tmp_path)
     with pytest.raises(pr.ParouPorSeguranca, match="artefato"):
         pr._validar(raiz, commit, pr.rodar, [
@@ -1281,7 +1324,7 @@ def test_validacao_recusa_artefato_adulterado_mesmo_com_nome_legitimo(tmp_path, 
 
 @pytest.mark.parametrize("arquivo", ["extra.py", "ignorada/injecao.py", "painel/livro-202608.js"])
 def test_validacao_recusa_fonte_ignorada_extra_apos_preparar_artefatos(tmp_path, arquivo):
-    # guarda: ci/pr.py:477
+    # guarda: ci/pr.py:505
     raiz, commit = _bancada_com_painel_geravel(tmp_path)
     with pytest.raises(pr.ParouPorSeguranca, match="fontes não rastreadas"):
         pr._validar(raiz, commit, pr.rodar, [[sys.executable, "-c",
