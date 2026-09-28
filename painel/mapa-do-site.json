@@ -2088,6 +2088,15 @@
     },
     {
       "celula": "admin",
+      "rota": "comunidade/",
+      "endereco": "/admin/comunidade/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Roadmap da Comunidade",
+      "descricao": "Os dez lotes do plano da Comunidade com o que está feito, em voo e a fazer, lidos da fila e do livro, e as decisões que esperam você."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/robos/excluir",
       "endereco": "/admin/caixa/robos/excluir",
       "alcance": "publico",

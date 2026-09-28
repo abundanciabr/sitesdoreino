@@ -115,6 +115,7 @@ from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
 from apps.core.appmax import appmax
+from apps.core.comunidade import comunidade
 from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
@@ -626,6 +627,7 @@ urlpatterns = [
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
     path("appmax/", appmax, name="appmax"),
+    path("comunidade/", comunidade, name="comunidade"),
     # O único gesto de escrita desta aba (06/09/2026): tirar uma tarefa da fila
     # para sempre. Não apaga nada aqui — abre um PR no GitHub com o evento
     # `cancelada`, e quem mergeia é a pista. O `TAR-NNN` viaja no CORPO do POST
