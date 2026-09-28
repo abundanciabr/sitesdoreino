@@ -183,7 +183,7 @@ a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
 
 **Quem faz valer:** julgamento.
 
-## Pontuação livre e histórico preservado
+## Pontuação livre
 
 Por decisão do mantenedor em 28/09/2026, não há revisão obrigatória,
 bloqueio, aviso ou contagem por pontuação em textos públicos,
@@ -191,13 +191,17 @@ rascunhos, documentos, aulas, livros ou respostas da IA.
 A pontuação pertence a quem escreve. Esta decisão substitui as regras
 anteriores de travessão, inclusive nas fichas e decisões históricas.
 
+**Quem faz valer:** `ci/tests/test_codex_nativo.py`, `services/admin/tests/test_editor_de_documentos.py` e `services/admin/tests/test_livro.py`.
+
+## Histórico sem cobrança de dívida
+
 O livro de ocorrências e seus registros existentes são preservados.
 Ausência de registro ou de citação de PR não cria dívida e não impede
 commit, integração ou publicação. O recibo automático de `make pr`
 permanece como histórico, sem exigir escrituração manual adicional.
 Registros escritos continuam sujeitos ao formato e às evidências declaradas.
 
-**Quem faz valer:** testes dos editores e do pre-commit.
+**Quem faz valer:** `ci/tests/test_codex_nativo.py` e `ci/pr.py`.
 
 ## Integração automática
 
