@@ -1,4 +1,4 @@
-"""Guarda a publicação do manual de experimentação no site."""
+"""Guarda a semente privada do manual de experimentação no site."""
 
 import importlib
 
@@ -21,16 +21,16 @@ class _AppsFalso:
         return Documento
 
 
-def test_o_manual_entra_publico_no_banco_existente(db):
+def test_o_manual_entra_privado_no_banco_existente(db):
     Documento.objects.filter(nome=NOME).delete()
 
     _semeadura.semear_manual(_AppsFalso, None)
 
     documento = Documento.objects.get(nome=NOME)
-    assert documento.publico is True
+    assert documento.publico is False
     assert documento.titulo == "Plataforma de Experimentação e Aprendizado de Conversão"
     assert "Assignment:" in documento.corpo
-    assert Client().get(f"/docs/{NOME}").status_code == 200
+    assert Client().get(f"/docs/{NOME}").status_code == 404
 
 
 def test_semear_duas_vezes_preserva_edicao_do_mantenedor(db):

@@ -22,8 +22,6 @@ import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-import yaml
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
@@ -154,7 +152,12 @@ def classificar(texto: str) -> Perfil:
 
 
 def _frontmatter(caminho: Path) -> dict:
-    """Lê como o Claude Code lê: YAML de verdade, que descarta a ficha inválida em silêncio."""
+    """Lê como o Claude Code lê: YAML de verdade, que descarta a ficha inválida em silêncio.
+
+    O PyYAML entra só aqui porque o deploy importa este módulo num job sem ele.
+    """
+    import yaml
+
     texto = caminho.read_text(encoding="utf-8")
     if not texto.startswith("---\n"):
         raise ErroDeInstrumentacao(
@@ -167,9 +170,18 @@ def _frontmatter(caminho: Path) -> dict:
             "frontmatter da ficha não fecha",
             f"{caminho}: faltou a linha final `---`.",
         )
-    campos = yaml.safe_load(texto[4:fim])
+    aviso = "e o Claude Code descarta a ficha em silêncio"
+    try:
+        campos = yaml.safe_load(texto[4:fim])
+    except yaml.YAMLError as erro:
+        marca = getattr(erro, "problem_mark", None)
+        onde = f" na linha {marca.line + 2}" if marca else ""
+        raise ValueError(
+            f"o frontmatter não abre como YAML{onde}, {aviso}. "
+            "Ponha entre aspas o valor que tem ': ' ou ' #'."
+        ) from erro
     if not isinstance(campos, dict):
-        raise yaml.YAMLError("o frontmatter não é uma lista de campos")
+        raise ValueError(f"o frontmatter não é uma lista de campos, {aviso}.")
     return campos
 
 
@@ -200,13 +212,8 @@ def auditar_fichas(raiz: Path) -> list[str]:
             campos = tomllib.loads(texto) if harness == "codex" else _frontmatter(caminho)
         except tomllib.TOMLDecodeError as erro:
             raise ErroDeInstrumentacao("ficha TOML inválida", f"{caminho}: {erro}") from erro
-        except yaml.YAMLError as erro:
-            marca = getattr(erro, "problem_mark", None)
-            onde = f" na linha {marca.line + 2}" if marca else ""
-            falhas.append(
-                f"{relativo}: o frontmatter não abre como YAML{onde}, e o Claude Code "
-                "descarta a ficha em silêncio. Ponha entre aspas o valor que tem ': ' ou ' #'."
-            )
+        except ValueError as erro:
+            falhas.append(f"{relativo}: {erro}")
             continue
         modelo = str(campos.get("model", "")).strip()
         nome = campos.get("name") or caminho.stem

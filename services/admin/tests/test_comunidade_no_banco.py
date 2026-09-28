@@ -1,4 +1,4 @@
-"""A página da Comunidade Meshcraft chega ao banco de produção, pública.
+"""A página da Comunidade Meshcraft chega privada ao banco de produção.
 
 Guarda de `0030_semear_a_comunidade.py` e do texto de `documentos/comunidade.md`.
 
@@ -59,30 +59,26 @@ def banco_de_producao_antes_da_comunidade(db):
     Documento.objects.filter(nome=NOME).delete()
 
 
-def test_a_comunidade_entra_publica_no_banco_que_ja_foi_semeado(
+def test_a_comunidade_entra_privada_no_banco_que_ja_foi_semeado(
     banco_de_producao_antes_da_comunidade,
 ):
     _semear()
 
     documento = Documento.objects.get(nome=NOME)
-    assert documento.publico is True
+    assert documento.publico is False
     assert documento.titulo == TITULO
     assert ACESSO_E_O_DA_MATRICULA in documento.corpo
 
 
-def test_qualquer_pessoa_le_a_pagina_e_ela_aparece_na_lista_publica(
+def test_visitante_nao_le_a_comunidade_nem_a_encontra_na_lista_publica(
     banco_de_producao_antes_da_comunidade,
 ):
-    """Decisão 5 da rota (27/09/2026): a página de orientação nasce pública em
-    `/docs/comunidade`; o resto da Comunidade fica atrás do login."""
     _semear()
 
     pagina = Client().get(f"/docs/{NOME}")
-    assert pagina.status_code == 200
-    corpo = pagina.content.decode()
-    assert ACESSO_E_O_DA_MATRICULA in corpo
-    assert SEM_MENSAGEM_PRIVADA in corpo
-    assert TITULO in Client().get("/docs/").content.decode()
+    assert pagina.status_code == 404
+    assert TITULO not in Client().get("/docs/").content.decode()
+    assert SEM_MENSAGEM_PRIVADA in Documento.objects.get(nome=NOME).corpo
 
 
 def test_nao_sobrescreve_o_que_o_mantenedor_ja_escreveu(

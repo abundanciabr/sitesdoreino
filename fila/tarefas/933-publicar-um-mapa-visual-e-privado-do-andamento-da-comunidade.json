@@ -1,0 +1,20 @@
+{
+  "arquivo": "933-publicar-um-mapa-visual-e-privado-do-andamento-da-comunidade",
+  "id": "TAR-933",
+  "titulo": "Publicar um mapa visual e privado do andamento da Comunidade Meshcraft",
+  "toca": [
+    "admin",
+    "documentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Documento privado e visual no banco; teste da migracao e da rota publica 404; suite admin verde; PR integrado; deploy verde; URL administrativa pede login",
+  "despacho": "Na celula admin, criar documentos/roadmap-da-comunidade.md com HTML completo, publico false, ordem 13, leitura didatica dos dez blocos do dossie com dados medidos em 27/09/2026. Sem script ou fonte externa e sem travessao. Criar migracao 0032 que semeia so este nome, grava formato pagina e preserva edicao do mantenedor. Adicionar teste de banco privado e rota publica 404. Validar suite admin, abrir PR pelo ci/pr.py com frente comunidade, esperar integracao e deploy, conferir URLs de fora e registrar no livro. Nao alterar forum, gamificacao, cursos ou infra.",
+  "origem": "Pedido do mantenedor de 27/09/2026 para foto didatica da Comunidade, dossie secoes 15 e 17",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
