@@ -1,19 +1,19 @@
 ---
 schema_version: 2
 armadilha: 185
-estado: guardada
+estado: aposentada
 degrau: 2
 confianca: alta
 custo_por_queda: medio
 guarda:
-  tipo: CI
-  dono: ci/divida_do_livro.py
+  tipo: nenhum
+  motivo: Cobrança de dívida retirada por decisão do mantenedor em 28/09/2026.
 sinal:
   - `d[íi]vida do livro +FAIL`
   - `merge\(s\) sem registro`
 gatilho:
   - painel/registros/*
-licao: a `evidencia` do registro precisa CITAR o número do próprio PR (a URL completa dele), senão o portão de pouso reprova por dívida do livro e a conta cai na próxima sessão.
+licao: A cobrança de dívida do livro foi retirada por decisão do mantenedor em 28/09/2026; esta entrada preserva apenas o histórico da regra antiga.
 ---
 
 # O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão

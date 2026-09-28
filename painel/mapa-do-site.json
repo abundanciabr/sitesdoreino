@@ -1459,15 +1459,6 @@
     },
     {
       "celula": "admin",
-      "rota": "painel/divida.json",
-      "endereco": "/admin/painel/divida.json",
-      "alcance": "publico",
-      "para_quem": "maquina",
-      "titulo": "A conta de merges não registrados",
-      "descricao": "Um número que o painel busca sozinho: quantas entregas ainda não viraram registro no livro."
-    },
-    {
-      "celula": "admin",
       "rota": "painel/diag.json",
       "endereco": "/admin/painel/diag.json",
       "alcance": "publico",

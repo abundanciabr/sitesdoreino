@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260928-023-painel-sem-cobranca-de-divida",
+  tipo: "entrega",
+  quando: "2026-09-28",
+  titulo: "Painel sem cobrança de dívida",
+  detalhe: "Retirada a cobrança de dívida do painel e os módulos exclusivos. O histórico de ocorrências e os demais controles permanecem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2322. Validação local: árvore fb2e81d980409e7097fb060c88ed5974982c687a; commit 68106aba5714ebc7c28799d1d416cce54905f447; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-28",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-946",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

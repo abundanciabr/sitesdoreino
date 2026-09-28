@@ -25,7 +25,6 @@ from apps.core.caixa import (
     quem_espera,
     travessia,
 )
-from apps.core.divida import divida_json
 from apps.core.fila_do_painel import fila_json
 from apps.core.documento_em_pagina import (
     doc_publico_moldura,
@@ -235,11 +234,6 @@ urlpatterns = [
     # `/painel` para `/painel/` é o APPEND_SLASH do CommonMiddleware, que já
     # está na cadeia.
     path("painel/", painel, name="painel"),
-    # ANTES da rota genérica de arquivo, e a ordem é o que faz funcionar: esta
-    # medição não é um arquivo em disco, e a rota de baixo responderia 404 por
-    # ela. É a dívida do livro — merges que ninguém contou ao dono —, medida ao
-    # vivo (`apps/core/divida.py`).
-    path("painel/divida.json", divida_json, name="painel_divida"),
     # Pelo mesmo motivo da linha acima: medição, não arquivo em disco — a rota
     # genérica abaixo responderia 404 por ela. Aqui o SERVIDOR conta o que
     # aconteceu com ele (apps/core/medidor.py): quantas vezes perguntou à

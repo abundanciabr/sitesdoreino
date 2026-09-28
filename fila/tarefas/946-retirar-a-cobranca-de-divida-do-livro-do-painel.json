@@ -1,0 +1,21 @@
+{
+  "arquivo": "946-retirar-a-cobranca-de-divida-do-livro-do-painel",
+  "id": "TAR-946",
+  "titulo": "Retirar a cobrança de dívida do livro do painel",
+  "toca": [
+    "ci",
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Painel preserva histórico sem medição de dívida, módulos exclusivos retirados e testes de integração e administração aprovados.",
+  "despacho": "Remova a medição de dívida, sua consulta no painel, módulo de servidor, cópia no build e funções exclusivas de cobrança. Preserve o histórico do livro, demais indicadores, metadados usados por outros controles e testes desses controles.",
+  "origem": "Autorização explícita do mantenedor nesta sessão em 28/09/2026: retirada completa dos dois controles.",
+  "criada_em": "2026-09-28",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

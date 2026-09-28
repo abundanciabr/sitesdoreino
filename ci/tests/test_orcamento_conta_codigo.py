@@ -36,7 +36,7 @@ import pytest
 import mergear
 from _nucleo import Estado
 from conftest import BASH
-from divida_do_livro import PASTAS_DE_ESCRITURACAO
+from registros_de_entrega import PASTAS_DE_ESCRITURACAO
 
 CI = Path(__file__).resolve().parents[1]
 SCRIPT = CI / "orcamento-de-mudanca.sh"
@@ -108,7 +108,7 @@ def test_catraca_conta_apenas_o_codigo_na_mensagem() -> None:
 
 @pytest.mark.parametrize("pasta", PASTAS_DE_ESCRITURACAO)
 def test_catraca_isenta_toda_pasta_de_escrituracao(pasta: str) -> None:
-    """A lista de pastas isentas é a de `ci/divida_do_livro.py`, e este teste
+    """A lista de pastas isentas é a de `ci/registros_de_entrega.py`, e este teste
     percorre a constante em vez de repeti-la: pasta nova entra aqui sozinha, e
     uma segunda lista escondida no portão fica vermelha na hora."""
     caminhos = _codigo(mergear.LIMITE_DE_ARQUIVOS) + [f"{pasta}algum-arquivo.json"]
@@ -212,7 +212,7 @@ def test_muralha_c_escrituracao_nao_salva_codigo_estourado(repo_git) -> None:
 @pytest.mark.parametrize("pasta", PASTAS_DE_ESCRITURACAO)
 def test_muralha_isenta_toda_pasta_de_escrituracao(repo_git, pasta: str) -> None:
     """Mesmo guarda de deriva da catraca, do lado do bash: o script lê as pastas
-    de `ci/divida_do_livro.py` em vez de guardar uma cópia."""
+    de `ci/registros_de_entrega.py` em vez de guardar uma cópia."""
     raiz, base = repo_git
     _comitar(raiz, _codigo(15) + [f"{pasta}algum-arquivo.json"])
     proc = _rodar_portao(raiz, base)
