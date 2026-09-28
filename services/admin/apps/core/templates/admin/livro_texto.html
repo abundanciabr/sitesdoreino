@@ -53,32 +53,6 @@ abaixo leva para lá.
     <a class="botao" href="{% url 'texto_baixar' texto.nome %}">Baixar o arquivo</a>
   </p>
 
-  {% if riscas %}
-  {% comment %}
-  O AVISO das riscas, que aqui não recusa nada e NUNCA vai recusar. Escolha do
-  mantenedor em 04/09/2026 (a Biblioteca guarda a obra como o autor escreveu),
-  reafirmada em 05/09/2026 quando ele viu a tela de LEITURA nascer: perguntado
-  se a régua do CLAUDE.md (nenhum texto publicado sai com travessão) valeria
-  para o livro publicado, ele respondeu "Não, o livro é sua voz literal". Isto
-  é EXCEÇÃO PERMANENTE, não um prazo — ver o cabeçalho de `apps/core/livro.py`.
-  {% endcomment %}
-  <div class="aviso espaco-abaixo-20">
-    <b>Este texto tem {{ riscas|length }} risca{{ riscas|length|pluralize:"s" }} comprida{{ riscas|length|pluralize:"s" }}.</b>
-    <p class="nota">
-      Guardei do jeito que você escreveu, e não mudei nada. É só uma contagem:
-      você decidiu que o livro é a sua voz literal, então estas riscas vão
-      para a tela de leitura exatamente como estão aqui. Onde elas estão:
-    </p>
-    <ul class="riscas">
-      {% for risca in riscas %}
-      <li>
-        <b>{{ risca.onde }}</b> ({{ risca.risca }})
-        <span class="frase">{{ risca.frase }}</span>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
 
   <div class="documento">{{ corpo|safe }}</div>
 

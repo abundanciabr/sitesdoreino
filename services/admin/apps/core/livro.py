@@ -16,32 +16,11 @@ E é por isso que existe o botão de baixar: o `.md` que sai tem de ser idêntic
 ao que entrou, e há um guarda medindo exatamente essa ida e volta
 (`tests/test_livro.py::test_o_texto_baixado_e_identico_ao_que_entrou`).
 
-## Por que esta área NÃO recusa travessão, e a de documentos recusa
-
-Decisão do mantenedor, na conversa em que ele pediu a tela, com as três saídas
-na mesa. A lei do `CLAUDE.md` (30/08/2026) vale para **texto publicado**, e a
-Biblioteca não publica: ela não tem uma única rota fora da porta, e o livro dele
-não está lançado. Recusar aqui seria a régua da vitrine aplicada ao caderno do
-autor — e a próxima coisa que alguém faz com uma regra assim é procurar como
-desligá-la.
-
-O que a tela faz no lugar: **conta as riscas e mostra as frases**, para o dia em
-que um trecho virar página online. Aviso onde o documento tem recusa, porque as
-duas telas guardam coisas de naturezas diferentes.
-
-## A leitura, e a exceção do travessão que vem com ela (05/09/2026)
+A pontuação da obra é preservada, sem avisos nem contagens.
 
 O mantenedor pediu uma tela de LEITURA — "parecido com o leitor da Amazon
 Kindle" — e ela é `texto_ler`, ao lado da editorial (`texto_do_livro`) que já
 existia. As duas convivem: uma edita, a outra lê, a mesma obra.
-
-Perguntado se, no dia em que um capítulo virasse página de leitura, o texto
-passaria a valer a régua do `CLAUDE.md` sobre travessão, ele respondeu **"Não,
-o livro é sua voz literal"**. Isto NÃO é mais "a régua vale no dia em que
-publicar" — é uma **exceção PERMANENTE e deliberada** à lei do travessão
-(30/08/2026), valendo só para o conteúdo desta Biblioteca do Livro, porque é a
-voz autoral dele, e não texto de interface. `texto_ler` mostra o corpo sem
-tocar numa risca, do mesmo jeito que `texto_do_livro` sempre mostrou.
 
 ## O acesso a quem lê ainda não existe, e é decisão adiada por ELE
 
@@ -81,7 +60,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
-from . import documentos, travessao
+from . import documentos
 from .models import Livro, TextoDoLivro, VersaoDoTexto
 from .views import _auditar
 
@@ -289,20 +268,6 @@ def _livro_padrao_para_upload() -> Livro:
 
 def _livros_disponiveis() -> list:
     return list(Livro.objects.order_by("ordem", "slug"))
-
-
-def _riscas(texto) -> list:
-    """As frases com risca comprida, no título e no corpo, numa lista só.
-
-    O mesmo instrumento que RECUSA no editor de documentos, aqui só AVISA.
-    """
-    achados = travessao.problemas(texto.titulo)
-    for achado in achados:
-        achado["onde"] = "no título"
-    for achado in travessao.problemas(texto.corpo):
-        achado["onde"] = f"linha {achado['linha']}"
-        achados.append(achado)
-    return achados
 
 
 def _guardar_versao(request, texto, gesto: str) -> None:
@@ -623,7 +588,6 @@ def texto_do_livro(request, nome):
             "admin": request.admin,
             "texto": texto,
             "corpo": documentos.para_html(texto.corpo),
-            "riscas": _riscas(texto),
             "versoes": list(texto.versoes.order_by("-salvo_em")[:VERSOES_NA_TELA]),
             # Quantas ficaram de fora do corte, para a tela dizer isso em vez de
             # deixar o autor achar que o resto foi apagado.
