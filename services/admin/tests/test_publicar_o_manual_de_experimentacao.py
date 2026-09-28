@@ -6,8 +6,8 @@ conversao` responde 404, e a lista de `/docs/` não mostra o manual), mas ele
 tem duas causas possíveis atrás de `semear_documento` ser `get_or_create`
 (`armadilhas/253` e `347`): uma linha PRIVADA que já existia quando a `0028`
 rodou (ela não teria feito nada), ou a linha nunca ter existido (pasta
-ausente na imagem daquele deploy). `test_publicar_manual_experimentacao.py`
-já prova o caminho feliz de banco novo — e é justamente esse caminho feliz
+ausente na imagem daquele deploy). `test_semente_manual_experimentacao.py`
+já prova a semeadura em banco novo — e é justamente esse caminho feliz
 que fica cego para as duas causas de produção. Este arquivo fabrica as duas.
 
 Os testes usam uma pasta de documentos PRÓPRIA (`monkeypatch` em
