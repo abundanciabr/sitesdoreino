@@ -132,7 +132,11 @@ publicação ou acesso do site e corrija pelo PR e pipeline; não ofereça a có
 local como substituto.
 
 Regra de destino: quando o mantenedor pedir manual, documento, página, guia,
-roteiro, texto ou conteúdo, a entrega é criar e publicar no site. O editor e
+roteiro, texto ou conteúdo, a entrega é gravar no site, somente para
+administradores. Acesso público exige pedido explícito do mantenedor para
+publicar aquele documento para o público, registrado na evidência da entrega.
+Pedir para criar ou colocar no site não autoriza acesso público.
+`como-funciona-a-entrada` é a exceção pública já autorizada. O editor e
 a migração própria de documento novo são caminhos válidos. Um arquivo em
 `docs/` no GitHub é apenas fonte técnica e não
 encerra o pedido. O GitHub só recebe código, testes, templates, contratos,
@@ -140,11 +144,13 @@ configuração, infraestrutura, workflows, leis mecânicas ou registros que o
 projeto exige para funcionar. Se o site não puder ser publicado, informe o
 bloqueio e não apresente um PR de documentação como se fosse a entrega.
 
-Pedido de criar documento é ordem para o robô produzir o texto, gravá-lo no
-banco e conferir a URL pública. Escolha um caminho executável: editor
-autenticado ou, para documento novo, a receita de `armadilhas/347`, com arquivo
+Pedido de criar documento é ordem para o robô produzir o texto, gravá-lo privado
+no banco e conferir a leitura autenticada em `/admin/documentos/`. Só confira
+URL pública quando o mantenedor pedir acesso público. Escolha um caminho executável:
+editor autenticado ou, para documento novo, a receita de `armadilhas/347`, com arquivo
 em `documentos/` e migração própria que chama `semear_documento` apenas para
-esse nome. Confira a URL depois do deploy; PR, migração e pipeline verdes não
+esse nome, com `publico: false` salvo autorização explícita para acesso público.
+Confira o acesso depois do deploy; PR, migração e pipeline verdes não
 provam que a página está no ar. Se o nome já existe no banco, essa receita
 não altera o texto: procure um meio autorizado de editar a linha existente e
 registre o bloqueio concreto quando ele faltar. Uma falha da ferramenta web

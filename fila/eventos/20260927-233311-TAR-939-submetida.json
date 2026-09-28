@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260927-233311-TAR-939-submetida",
+  "tarefa": "TAR-939",
+  "evento": "submetida",
+  "quando": "2026-09-27T23:33:11.802411+00:00",
+  "quem": "agent/ci/economia-sem-pyyaml-no-deploy",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2307",
+  "revisao": "79ef4ee5dbe5c0b08bef626a519365f0e8bfc5e7",
+  "arvore": "aaef7c869435e65ebf3b8aefe08b08cc20997e9d"
+}
