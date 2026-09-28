@@ -20,7 +20,8 @@ Há guarda mecânico provando que nenhum salto de rede além do Google acontece
 no caminho do Google (`tests/test_inv_porta_nao_consulta_ninguem.py`).
 
 **Esta célula não renderiza página nenhuma.** A tela de entrada, nos três
-idiomas, mora no `funil` (`/{idioma}/login`); toda recusa daqui VOLTA para lá
+idiomas, mora no `funil` (`/login` na raiz, `/{idioma}/login` nos outros
+idiomas); toda recusa daqui VOLTA para lá
 com uma chave de erro na query (`?erro=…`), que aquela tela sabe explicar. A
 regra continua a mesma da Caixa — toda porta que não abre, fecha explicando —
 só que quem explica é a página que tem i18n e a marca do site.
@@ -40,12 +41,11 @@ from . import sessao as ses
 from . import tokens_de_entrada as tokens
 from .clients import ConfiguracaoAusente, GoogleIndisponivel, GoogleOAuth
 
-# Primeiro segmento com forma de idioma (`pt-br`, `en`, `es`…) — o mesmo
+# Primeiro segmento com forma de idioma (`en`, `es`, `pt-br`…) — o mesmo
 # recorte que o guarda de rotas da plataforma usa. Serve só para escolher em
 # QUAL tela de login a pessoa aterrissa numa recusa; errar aqui nunca nega
-# nada, só explica no idioma padrão.
+# nada, só explica no idioma da raiz.
 _FORMA_DE_IDIOMA = re.compile(r"^[a-z]{2}(-[a-z]{2})?$")
-_IDIOMA_PADRAO = "pt-br"
 
 
 @require_GET
@@ -69,19 +69,24 @@ def destino_seguro(cru: str | None) -> str:
     return cru
 
 
-def _idioma_de(destino: str) -> str:
+def _prefixo_de_idioma(destino: str) -> str:
+    """`/es/cadastro` vira `/es`; `/cadastro` vira vazio: a raiz não tem prefixo."""
     primeiro = destino.strip("/").split("/", 1)[0]
-    return primeiro if _FORMA_DE_IDIOMA.fullmatch(primeiro) else _IDIOMA_PADRAO
+    return f"/{primeiro}" if _FORMA_DE_IDIOMA.fullmatch(primeiro) else ""
 
 
 def _recusar(destino: str, chave: str) -> HttpResponseRedirect:
     """Toda recusa aterrissa na tela de login do `funil`, com o motivo na query.
 
-    O idioma sai do destino que a pessoa pediu — quem estava em `/es/...`
-    recebe a explicação em espanhol. A chave é vocabulário CONGELADO entre as
-    duas células (o `funil` a traduz): mudar uma é mudar lá também.
+    A tela fica AO LADO do destino que a pessoa pediu: quem estava em `/es/...`
+    recebe `/es/login`, em espanhol; quem estava na raiz recebe `/login`. Esta
+    célula não sabe qual é o idioma padrão do site, e não precisa saber: desde a
+    `DECISAO-raiz-sem-prefixo-do-idioma-padrao` o padrão mora na raiz, sem
+    prefixo. Um padrão fixo aqui (`pt-br`) mandou toda recusa do meshcraft para
+    `/pt-br/login`, 404, de 27/08 a 28/09/2026. A chave é vocabulário CONGELADO
+    entre as duas células (o `funil` a traduz): mudar uma é mudar lá também.
     """
-    return HttpResponseRedirect(f"/{_idioma_de(destino)}/login?erro={chave}")
+    return HttpResponseRedirect(f"{_prefixo_de_idioma(destino)}/login?erro={chave}")
 
 
 def _url_de_retorno(request) -> str:
