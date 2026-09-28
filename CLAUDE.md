@@ -183,35 +183,26 @@ a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
 
 **Quem faz valer:** julgamento.
 
-## Nenhum texto publicado sai com travessão
+## Pontuação livre
 
-Proíba `—`, `–`, `―` e entidades HTML em texto publicado.
-Reescreva em português correto. Não separe verbo de complemento nem
-continuação direta com dois-pontos; use conectivo ou ponto.
-Hífen livre; título de aba usa barra: `Cadastro | Meshcraft`.
-Vale em templates, traducoes, documentos, management/commands, rótulos
-TextChoices fora de migrations e arquivos `ci:texto-publicado`.
-Exclua bastidor (`ci/texto-publico-bastidor.txt`), `painel/ia/`, não publicado
-e a obra dele (aulas/livro), sem contagem de riscas nem pedido de reescrita.
-O portão mede arquivos; texto semeado exige migração de dados.
-Confira `python ci/travessao.py --listar`.
+Por decisão do mantenedor em 28/09/2026, não há revisão obrigatória,
+bloqueio, aviso ou contagem por pontuação em textos públicos,
+rascunhos, documentos, aulas, livros ou respostas da IA.
+A pontuação pertence a quem escreve. Esta decisão substitui as regras
+anteriores de travessão, inclusive nas fichas e decisões históricas.
 
-**Quem faz valer:** `ci/travessao.py` no pre-commit (staged), CI e testes do editor.
+**Quem faz valer:** `ci/tests/test_codex_nativo.py`, `services/admin/tests/test_editor_de_documentos.py` e `services/admin/tests/test_livro.py`.
 
-## O livro de ocorrências é obrigatório, não opcional
+## Histórico sem cobrança de dívida
 
-Conclusão, falha, bloqueio, incidente e decisão pedida/respondida exigem
-registro novo <1 KB em `painel/registros/`; molde `painel/LEIA-ME.md` e número
-por `python ci/reservar.py numero registro`. Nunca edite registro; correção
-é outro, com `responde_a` ao fechar pedido. Verde exige `evidencia` e
-`verificado_em`. `make pr` abre PR e embarca recibo no ramo: não repita esses efeitos.
-Só registro é commitado; painel.html e livro-AAAAMM.js são gerados.
-Merge confirmado de fora: `gh pr view <N> --json state,mergedBy,mergeCommit`
-e registro na mesma resposta. Telas calculam o livro, sem lista paralela.
-Superfície muda em `painel/logica.js` por PR com guarda.
-Sem tipo específico, use nota.
+O livro de ocorrências e seus registros existentes são preservados.
+Ausência de registro ou de citação de PR não cria dívida e não impede
+commit, integração ou publicação. O recibo automático de `make pr`
+permanece como histórico, sem exigir escrituração manual adicional.
+Não repita os efeitos que `make pr` já registrou.
+Registros escritos continuam sujeitos ao formato e às evidências declaradas.
 
-**Quem faz valer:** `ci/divida_do_livro.py`, pre-commit e portão de pouso.
+**Quem faz valer:** `ci/tests/test_codex_nativo.py` e `ci/pr.py`.
 
 ## Integração automática
 
