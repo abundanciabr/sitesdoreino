@@ -710,7 +710,7 @@ def documento_versoes(request, nome):
 
 @require_POST
 def documento_restaurar(request, nome):
-    """Copia uma versao antiga por cima do documento de hoje.
+    """Restaura título, corpo e ordem, mantendo a visibilidade atual.
 
     **A volta nao apaga historia: ela ESCREVE mais uma.** O texto restaurado
     vira a versao mais nova, com o gesto dizendo de onde ele veio. Desfazer uma
@@ -732,7 +732,6 @@ def documento_restaurar(request, nome):
     documento.titulo = versao.titulo
     documento.corpo = versao.corpo
     documento.ordem = versao.ordem
-    documento.publico = versao.publico
     documento.save()
 
     quando = timezone.localtime(versao.salvo_em).strftime("%d/%m/%Y às %H:%M")

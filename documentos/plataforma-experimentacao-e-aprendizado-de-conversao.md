@@ -1,6 +1,6 @@
 ---
 titulo: Plataforma de Experimentação e Aprendizado de Conversão
-publico: true
+publico: false
 ordem: 13
 ---
 

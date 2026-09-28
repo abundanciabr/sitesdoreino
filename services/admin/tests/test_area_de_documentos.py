@@ -627,3 +627,9 @@ def test_o_documento_da_entrada_E_publico(semente):
     entrada = documentos.ler("como-funciona-a-entrada")
     assert entrada is not None, "o documento da entrada sumiu da pasta"
     assert entrada.publico is True
+
+
+def test_instalacao_nova_publica_so_a_pagina_de_entrada(semente):
+    assert [documento.nome for documento in documentos.listar(so_publicos=True)] == [
+        "como-funciona-a-entrada"
+    ]

@@ -68,7 +68,7 @@ def test_atualiza_o_texto_e_preserva_a_versao_anterior(documento_da_rodada_1):
     assert QUADRO_DE_CONTRIBUICOES in documento.corpo
     assert O_QUE_A_ESCOLA_REGISTRA in documento.corpo
     assert NINGUEM_APROVA_A_PROPRIA in documento.corpo
-    assert documento.publico is True
+    assert documento.publico is False
     assert documento.titulo == TITULO_DA_RODADA_1
     assert documento.ordem == 12
 
@@ -76,6 +76,7 @@ def test_atualiza_o_texto_e_preserva_a_versao_anterior(documento_da_rodada_1):
     assert len(versoes) == 1
     versao = versoes[0]
     assert versao.corpo == CORPO_DA_RODADA_1
+    assert versao.publico is True
     assert CONTRIBUICOES not in versao.corpo
     assert versao.gesto == (
         "preservou o texto da rodada 1 antes da atualizacao da rodada 2"

@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260928-000611-TAR-934-checkpoint",
+  "tarefa": "TAR-934",
+  "evento": "checkpoint",
+  "quando": "2026-09-28T00:06:11.233206+00:00",
+  "quem": "agent/admin/documentos-privados-exceto-entrada",
+  "plano": "Correção das expectativas antigas",
+  "ultimo_avanco": "Suíte ampla: 2483 passaram e seis exigiam a política pública anterior; guardas atualizados para a decisão do mantenedor.",
+  "proxima_acao": "Validar os caminhos alterados e entregar; conferir make ci completo no portão da célula.",
+  "verificacoes": [
+    "Caderno f2a142f: 6 failed, 2483 passed; testes novos e superfícies de documentos: 173 passed."
+  ]
+}

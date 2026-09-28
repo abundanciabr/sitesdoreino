@@ -160,9 +160,7 @@ def test_voltar_atras_NAO_apaga_historia_nenhuma():
 
 
 @respx.mock
-def test_voltar_atras_devolve_tambem_o_titulo_e_a_publicacao():
-    """A versão é um RETRATO, não só o corpo: se voltar trouxesse o texto antigo
-    com o título de hoje, o documento ficaria num estado que nunca existiu."""
+def test_restaurar_versao_publica_recupera_o_texto_sem_republicar():
     cliente = _dentro()
     cliente.post("/documentos/criar", {"titulo": "Nome Antigo", "corpo": "x"})
     cliente.post("/documentos/nome-antigo/publicar")
@@ -176,7 +174,26 @@ def test_voltar_atras_devolve_tambem_o_titulo_e_a_publicacao():
 
     documento = Documento.objects.get(nome="nome-antigo")
     assert documento.titulo == "Nome Antigo"
+    assert documento.corpo == "x"
+    assert documento.publico is False
+    assert Client().get("/docs/nome-antigo").status_code == 404
+    assert documento.versoes.order_by("id").last().publico is False
+
+
+@respx.mock
+def test_restaurar_versao_privada_mantem_a_publicacao_atual():
+    cliente = _dentro()
+    cliente.post("/documentos/criar", {"titulo": "Guia", "corpo": "primeiro"})
+    primeira = VersaoDoDocumento.objects.get()
+    cliente.post("/documentos/guia/publicar")
+    cliente.post("/documentos/guia/salvar", {"titulo": "Guia", "corpo": "segundo"})
+
+    cliente.post("/documentos/guia/restaurar", {"versao": primeira.id})
+
+    documento = Documento.objects.get(nome="guia")
+    assert documento.corpo == "primeiro"
     assert documento.publico is True
+    assert documento.versoes.order_by("id").last().publico is True
 
 
 # --------------------------------- 3. uma versão pertence a UM documento

@@ -1,6 +1,6 @@
 ---
 titulo: Como montar o seu portfólio
-publico: true
+publico: false
 ordem: 11
 ---
 

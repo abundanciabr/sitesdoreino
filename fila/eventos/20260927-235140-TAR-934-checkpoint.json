@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260927-235140-TAR-934-checkpoint",
+  "tarefa": "TAR-934",
+  "evento": "checkpoint",
+  "quando": "2026-09-27T23:51:40.930804+00:00",
+  "quem": "agent/admin/documentos-privados-exceto-entrada",
+  "plano": "Validação final e publicação",
+  "ultimo_avanco": "Produção privada pelo editor; 173 testes passaram após corrigir bootstrap e restauração.",
+  "proxima_acao": "Validar a suíte completa pelo rito, integrar e medir deploy.",
+  "verificacoes": [
+    "pytest documentos: 173 passed; mutações: 2 failed restauração e 1 failed bootstrap; curl: índice 1 link, entrada 200, cinco privados 404."
+  ]
+}

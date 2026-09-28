@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260927-231319-TAR-934-explicada",
+  "tarefa": "TAR-934",
+  "evento": "explicada",
+  "quando": "2026-09-27T23:13:19.752622+00:00",
+  "quem": "Pedido direto do mantenedor em 2026-09-27, retomada Documentos privados Rodada 1",
+  "o_que_e": "Seis documentos estão públicos; o mantenedor pediu que só a página de entrada continue aberta.",
+  "o_que_muda": "Visitantes só leem a entrada, e os administradores conservam todos os textos no editor.",
+  "exemplo": "O guia do portfólio deixa de abrir por URL pública e continua inteiro em Documentos na administração.",
+  "importancia": 100
+}
