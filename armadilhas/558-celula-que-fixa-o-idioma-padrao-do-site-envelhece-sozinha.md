@@ -13,7 +13,7 @@ sinal:
 gatilho:
   - services/identidade/apps/core/views.py
   - services/funil/apps/i18n/idiomas.py
-licao: "Só o funil sabe qual idioma é o padrão do site, e o padrão mora na raiz sem prefixo (DECISAO-raiz-sem-prefixo-do-idioma-padrao). Outra célula que precise montar uma URL do site deriva o prefixo do caminho que já recebeu (next, Referer, destino): se o primeiro segmento tem forma de idioma, repete-o; se não tem, a URL fica na raiz. Nunca fixe um idioma padrão em constante fora do funil: a identidade fixou pt-br, o padrão do site virou pt-br em 27/08/2026 e toda recusa de login caiu em /pt-br/login, 404, por um mês, sem teste vermelho e sem alarme."
+licao: "Só o funil sabe o idioma padrão do site, e o padrão mora na raiz sem prefixo. Outra célula que monta URL do site deriva o prefixo do caminho recebido: primeiro segmento com forma de idioma repete-se; sem ele, a URL fica na raiz. Nunca fixe idioma padrão em constante fora do funil: a identidade fixou pt-br e toda recusa de login caiu em /pt-br/login, 404, por um mês."
 ---
 
 # 558: célula que fixa o idioma padrão do site envelhece sozinha quando o padrão muda
