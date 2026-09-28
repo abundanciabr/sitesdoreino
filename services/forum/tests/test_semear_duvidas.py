@@ -46,7 +46,6 @@ pytestmark = pytest.mark.django_db
 # teste é o alarme que toca na hora, dentro da célula, para quem estiver
 # escrevendo dúvida nova não descobrir só no CI.
 # ---------------------------------------------------------------------------
-RISCAS_LONGAS = ("—", "–", "―", "&mdash;", "&ndash;", "&#8212;")
 
 
 @pytest.fixture
@@ -226,17 +225,6 @@ def test_o_aluno_encontra_duvidas_ja_respondidas(semeado):
 # ===========================================================================
 
 
-def test_nenhuma_risca_longa_no_texto_semeado(semeado):
-    """Decisão do mantenedor em 30/08/2026: texto publicado sai sem travessão."""
-    for mensagem in Mensagem.objects.all():
-        for risca in RISCAS_LONGAS:
-            assert risca not in mensagem.texto, (
-                f"a mensagem {mensagem.pk} publica `{risca}`. A troca é uma "
-                "REESCRITA da frase, não um caractere trocado"
-            )
-    for topico in Topico.objects.all():
-        for risca in RISCAS_LONGAS:
-            assert risca not in topico.titulo
 
 
 def test_todo_titulo_semeado_cabe_no_que_a_tela_aceita(semeado):

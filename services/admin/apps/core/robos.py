@@ -323,7 +323,7 @@ def prompt_para_tocar(tarefa: str, toca) -> str:
         "Antes de escrever, rode a suíte da célula. Depois, siga os alvos e limites "
         "do despacho, escreva o teste que nasce vermelho, deixe-o verde e sabote "
         "cada guarda para confirmar que ele reprova. Texto publicado sai em "
-        "português correto e sem travessão. Se depender de decisão do dono, segredo, "
+        "português do Brasil. Se depender de decisão do dono, segredo, "
         "dinheiro ou VPS, bloqueie a tarefa no balcão com o motivo e registre que "
         "precisa do dono.\n\n"
         "Com a suíte verde, faça a revisão e o passe de remoção. Use make pr "

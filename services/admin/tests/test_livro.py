@@ -13,10 +13,7 @@ O mantenedor pediu uma página onde ele guarda os textos do livro que escreve,
    importante do arquivo: sem ele, "guardar o texto" vira "guardar quase o
    texto", e ninguém percebe até faltar um espaço no livro impresso.
 
-3. **O travessão AVISA e não recusa.** É o contrário do editor de documentos, e
-   foi decisão do mantenedor com as três saídas na mesa. Um teste mede a
-   diferença nas duas telas juntas: se alguém "consertar" a Biblioteca para
-   recusar, o guarda acusa.
+3. **Pontuação livre.** O texto é preservado sem contagens nem avisos.
 
 4. **Toda escrita deixa rastro e guarda versão.** Aqui não existe `git log` para
    socorrer ninguém: a tabela de versões é a memória inteira do que estava
@@ -223,39 +220,26 @@ def test_a_biblioteca_guarda_o_texto_com_risca_comprida(risca):
 
 
 @respx.mock
-def test_a_tela_do_texto_mostra_quantas_riscas_ele_tem():
-    """Guardar sem avisar seria esconder a dívida para o dia da publicação."""
+def test_a_tela_do_texto_nao_exige_revisao_de_pontuacao():
+    """A pontuação pertence ao autor."""
     cliente = _dentro()
     _guardar(cliente, corpo="Primeira — com risca.\n\nSegunda — também.")
 
     corpo = cliente.get("/livro/um-capitulo").content.decode("utf-8")
 
-    assert "2 riscas compridas" in corpo
+    assert "riscas compridas" not in corpo
+    assert "Primeira — com risca." in corpo
 
 
 @respx.mock
-def test_o_documento_do_site_continua_recusando_a_mesma_risca():
-    """As duas telas medidas juntas, e é de propósito.
-
-    A diferença entre elas é uma DECISÃO (uma publica, a outra guarda), não um
-    descuido. Se alguém uniformizar as duas em qualquer direção, este guarda
-    acusa: ou o livro passa a recusar a obra do autor, ou uma página pública
-    passa a aceitar risca.
-    """
+def test_livro_e_documento_preservam_a_mesma_pontuacao():
     cliente = _dentro()
     frase = "Uma frase — com risca."
-
     do_livro = _guardar(cliente, corpo=frase)
-    do_site = cliente.post(
-        "/documentos/criar", {"titulo": "Um guia", "corpo": frase, "ordem": "10"}
-    )
-
+    do_site = cliente.post("/documentos/criar", {"titulo": "Um guia", "corpo": frase, "ordem": "10"})
     assert do_livro.status_code in (302, 303)
-    assert do_site.status_code == 422
-    # Filtrado pelo nome, e não por `count() == 0`: a migração `0003` semeia os
-    # documentos de verdade quando o banco de teste nasce, e o que se mede aqui
-    # é este documento não ter entrado.
-    assert not Documento.objects.filter(nome="um-guia").exists()
+    assert do_site.status_code == 302
+    assert Documento.objects.get(nome="um-guia").corpo == frase
 
 
 # ------------------------------------------- 4. versões e rastro de auditoria

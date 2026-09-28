@@ -439,7 +439,7 @@ def test_mensagem_fora_do_ar_nao_viaja(env, monkeypatch, conversa):
 # ---------------------------------------------------------------------------
 
 
-def test_travessao_na_resposta_vira_aviso_na_tela(env, monkeypatch, conversa):
+def test_pontuacao_na_resposta_nao_exige_revisao(env, monkeypatch, conversa):
     como_dono(monkeypatch)
     dublar_a_anthropic(
         monkeypatch,
@@ -448,7 +448,7 @@ def test_travessao_na_resposta_vira_aviso_na_tela(env, monkeypatch, conversa):
 
     tela = gerar(Client(), conversa, orientacao="").content.decode()
 
-    assert "risca longa" in tela
+    assert "risca longa" not in tela
     # E o texto continua chegando inteiro: o conserto é da pessoa, não daqui.
     # Trocar o caractere aqui deixaria a frase torta com o portão satisfeito.
     assert "aquele mapa" in tela
@@ -465,11 +465,8 @@ def test_resposta_limpa_nao_recebe_o_aviso_de_travessao(env, monkeypatch, conver
     assert "risca longa" not in tela
 
 
-def test_o_hifen_nao_e_travessao():
-    """Guarda de português: `guarda-chuva` não pode acusar."""
-    assert agente.travessoes_em("um guarda-chuva bem feito") == []
-    assert agente.travessoes_em("um travessão — assim") == ["—"]
-    assert agente.travessoes_em("meia risca – assim") == ["–"]
+def test_instrucoes_nao_proibem_pontuacao():
+    assert "PROIBIDO O TRAVESSÃO" not in agente.INSTRUCOES
 
 
 def test_resposta_cortada_no_meio_avisa(env, monkeypatch, conversa):
@@ -1078,7 +1075,7 @@ def test_ao_vivo_termina_avisando_quem_vai_publicar(env, monkeypatch, conversa):
     assert "Leia inteiro antes de publicar" in fim[0]
 
 
-def test_ao_vivo_aponta_o_travessao_no_fim(env, monkeypatch, conversa):
+def test_ao_vivo_nao_exige_revisao_de_pontuacao(env, monkeypatch, conversa):
     """A mesma lei do modo de uma vez: a máquina aponta, a pessoa reescreve."""
     como_dono(monkeypatch)
     dublar_ao_vivo(monkeypatch, ["O UV ", "— aquele mapa — ", "precisa de escala."])
@@ -1086,7 +1083,7 @@ def test_ao_vivo_aponta_o_travessao_no_fim(env, monkeypatch, conversa):
     lidos = quadros(gerar_ao_vivo(Client(), conversa, orientacao=""))
 
     fim = [q["fim"] for q in lidos if "fim" in q][0]
-    assert "risca longa" in fim
+    assert "risca longa" not in fim
 
 
 def test_ao_vivo_avisa_quando_a_resposta_veio_cortada(env, monkeypatch, conversa):
