@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260928-016-identidade-recusa-do-login-no-ar-baixa-verde",
+  tipo: "nota",
+  quando: "2026-09-28",
+  titulo: "Recusa do login no ar: baixa verde do PR 2316",
+  detalhe: "PR 2316 integrou às 09h29 BRT e o deploy da identidade acabou às 09h34. No site: senha errada volta para /login?erro=senha-invalida, 200; sem token, /login?erro=nao-confere, 200. Antes, tudo caía em /pt-br/login, 404.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2316 MERGED, mergeCommit 5b2edc696bd3 (gh pr view); deploy-celula run 36422138231 success; curl no site em 28/09/2026",
+  verificado_em: "2026-09-28",
+  precisa_do_dono: false,
+  responde_a: "20260928-015-identidade-recusa-do-login-volta-para-login",
+  relacao: "baixa",
+  tarefa: "TAR-941",
+  gravidade: "verde",
+  frente: "site",
+  area: "identidade",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
