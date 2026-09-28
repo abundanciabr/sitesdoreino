@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260928-021-pontuacao-livre-no-editor-e-no-forum",
+  tipo: "entrega",
+  quando: "2026-09-28",
+  titulo: "Pontuação livre no editor e no fórum",
+  detalhe: "Documentos, livros e respostas aceitam a pontuação do autor. Histórico, publicação e controles de acesso permanecem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2321. Validação local: árvore 6e1724b3f665af1095c41dd23bd946d26fd8f10e; commit cb1c06fb6e5a0a92793ab571fd9d18d67f003f86; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-28",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-944",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

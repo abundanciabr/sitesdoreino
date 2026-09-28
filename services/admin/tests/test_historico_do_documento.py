@@ -20,7 +20,7 @@ As quatro coisas medidas aqui:
 3. **Uma versao pertence a UM documento.** Um POST montado a mao nao copia o
    texto de um documento para dentro de outro.
 
-4. **A recusa nao deixa rastro.** Uma gravacao que o portao do travessao
+4. **A recusa nao deixa rastro.** Uma gravacao sem titulo que a validacao
    recusou nao inventa versao nenhuma: aquele texto nunca esteve no ar.
 """
 
@@ -221,7 +221,7 @@ def test_voltar_para_uma_versao_de_OUTRO_documento_nao_funciona():
 def test_uma_gravacao_recusada_nao_inventa_versao():
     """Aquele texto nunca esteve no ar: uma versão dele contaria uma história
     que não aconteceu."""
-    _dentro().post("/documentos/criar", {"titulo": "Guia", "corpo": "frase — recusada"})
+    _dentro().post("/documentos/criar", {"titulo": "", "corpo": "texto preservado"})
 
     assert VersaoDoDocumento.objects.count() == 0
 

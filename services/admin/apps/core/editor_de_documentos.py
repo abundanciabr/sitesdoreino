@@ -28,16 +28,7 @@ botão com o nome do gesto escrito nele não tem como ser mal entendido.
 O preço é uma volta ao servidor por gravação, e ele é barato: escrever um
 documento é coisa de uma vez por semana, não de uma vez por segundo.
 
-## A recusa do travessão, e por que ela é fail-closed
-
-Escolha do mantenedor, com as três opções na mesa: a tela **recusa salvar** e
-mostra as frases com problema. `ci/travessao.py` vigia arquivos e não alcança
-mais este texto — ele vai do formulário direto para o banco. Ou a régua desce
-para cá, ou ela deixou de existir para os documentos.
-
-**E a recusa devolve o rascunho INTEIRO para a tela.** Perder o texto de alguém
-por causa de uma regra de pontuação transformaria a lei num inimigo, e a
-próxima coisa que essa pessoa faria seria procurar como desligá-la.
+A pontuação do título e do corpo é preservada como foi escrita.
 """
 
 from __future__ import annotations
@@ -52,7 +43,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
-from . import documentos, midia, travessao
+from . import documentos, midia
 from .models import Documento, VersaoDoDocumento
 from .views import _auditar
 
@@ -169,7 +160,6 @@ def _tela(
     *,
     criando,
     erro="",
-    riscas=(),
     status=200,
     documento=None,
     erro_da_midia="",
@@ -194,7 +184,6 @@ def _tela(
             "rascunho": rascunho,
             "criando": criando,
             "erro": erro,
-            "riscas": riscas,
             "prefixo_publico": documentos.PREFIXO_PUBLICO,
             "midias": (
                 documento.midias.order_by("-enviado_em", "-id")
@@ -208,21 +197,6 @@ def _tela(
         },
         status=status,
     )
-
-
-def _riscas(rascunho: dict) -> list:
-    """As frases com travessão, no título e no corpo, numa lista só.
-
-    O título entra na conta, e não é detalhe: ele aparece na lista pública e na
-    aba do navegador — é texto publicado tanto quanto o corpo.
-    """
-    achados = travessao.problemas(rascunho["titulo"])
-    for achado in achados:
-        achado["onde"] = "no título"
-    for achado in travessao.problemas(rascunho["corpo"]):
-        achado["onde"] = f"no texto, linha {achado['linha']}"
-        achados.append(achado)
-    return achados
 
 
 # ----------------------------------------------------------------- criar
@@ -313,10 +287,6 @@ def documento_criar(request):
             status=422,
         )
 
-    riscas = _riscas(rascunho)
-    if riscas:
-        return _tela(request, rascunho, criando=True, riscas=riscas, status=422)
-
     erro_apendice = _erro_de_apendice_vivo(rascunho)
     if erro_apendice:
         return _tela(request, rascunho, criando=True, erro=erro_apendice, status=422)
@@ -399,17 +369,6 @@ def documento_salvar(request, nome):
             rascunho,
             criando=False,
             erro="Escreva um título para o documento.",
-            status=422,
-            documento=documento,
-        )
-
-    riscas = _riscas(rascunho)
-    if riscas:
-        return _tela(
-            request,
-            rascunho,
-            criando=False,
-            riscas=riscas,
             status=422,
             documento=documento,
         )
