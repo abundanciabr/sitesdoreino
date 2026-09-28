@@ -19,5 +19,5 @@ def nao_reabre(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("core", "0031_atualizar_a_comunidade_na_rodada_2")]
+    dependencies = [("core", "0032_semear_roadmap_da_comunidade")]
     operations = [migrations.RunPython(fechar_semente, nao_reabre)]

@@ -7,7 +7,7 @@ from apps.auditoria.models import Registro
 from apps.core.models import Documento, VersaoDoDocumento
 
 MIGRACAO = import_module(
-    "apps.core.migrations.0032_manter_o_manual_de_experimentacao_privado"
+    "apps.core.migrations.0033_manter_o_manual_de_experimentacao_privado"
 )
 NOME = "plataforma-experimentacao-e-aprendizado-de-conversao"
 
