@@ -68,12 +68,10 @@ PADRAO_DA_LANE_TRADUCOES = re.compile(r"^services/[^/]+/traducoes/.+$")
 
 
 def arquivos_de_codigo(arquivos: list[str]) -> list[str]:
-    """O que o orçamento mede: o PR menos a escrituração obrigatória.
+    """O que o orçamento mede: o PR menos os registros e eventos.
 
-    Desde 31/08/2026 todo PR carrega a própria papelada — o registro do livro
-    (sem ele o pouso é recusado), os eventos da fila, o mapa do site. Ninguém
-    pode removê-los, e mesmo assim eles comiam o teto de 15 arquivos do
-    trabalho de verdade. O caso medido é o PR #1161: 19 arquivos, 13 de código
+    Registros do livro, eventos da fila e mapa do site ficam fora do teto
+    de 15 arquivos de código. O caso medido é o PR #1161: 19 arquivos, 13 de código
     e 6 de escrituração, reprovado por um contador que nunca teve a intenção de
     barrar aquilo. Para vencer o contador, a sessão aplicou a etiqueta
     `arquitetural` num PR que não é arquitetural, e uma etiqueta que vira senha

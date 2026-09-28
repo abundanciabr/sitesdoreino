@@ -13,10 +13,8 @@ PR_LABELS="${PR_LABELS:-}"
 # -----------------------------------------------------------------------------
 # A escrituração obrigatória NÃO entra no orçamento — e o porquê tem número.
 #
-# Desde 31/08/2026 a casa obriga cada PR a carregar a própria papelada: o
-# registro do livro (o portão de pouso recusa PR sem ele), os eventos da fila,
-# o mapa do site. Ninguém pode remover esses arquivos, e mesmo assim eles
-# comiam o orçamento do trabalho de verdade.
+# Registros do livro, eventos da fila e mapa do site ficam fora do orçamento
+# de arquivos de código; a isenção não cobra a presença desses registros.
 #
 # O caso medido é o PR #1161 (degrau 06 da escada do portfólio): 19 arquivos no
 # diff, 13 de código e 6 de escrituração, reprovado por um contador que nunca
