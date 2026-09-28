@@ -237,11 +237,11 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 ### Regra de destino do conteúdo
 
-Pedido de manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
-explicação ou material para leitura do público tem como destino padrão o site.
-Publique por qualquer caminho autorizado, inclusive editor ou migração de
-documento novo. Confira a URL pública; arquivo Markdown isolado não conta
-como publicação.
+Conteúdo vai ao site. Documentos ficam só para administradores.
+Acesso público exige pedido explícito do mantenedor, registrado na evidência.
+`como-funciona-a-entrada` é exceção autorizada. Grave pelo editor ou migração
+e confira a leitura em `/admin/documentos/`; com pedido público, também a URL
+sem sessão. Markdown não encerra a entrega.
 
 O GitHub fica reservado ao que é necessário para o funcionamento do site,
 sistema ou projeto: código, templates, testes, contratos, configurações,
