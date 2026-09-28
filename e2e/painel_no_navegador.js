@@ -855,7 +855,7 @@ async function principal() {
     process.exit(1);
   }
   console.log("✅ painel_no_navegador: com 10, 1.000 e 5.000 registros, abrir o painel busca");
-  console.log("   NADA por file:// e só as duas medições ao vivo pelo site — nos dois modos, sem");
+  console.log("   NADA por file:// e só o diagnóstico ao vivo pelo site — nos dois modos, sem");
   console.log("   erro de console e sem erro de página. O custo de abrir não cresce com o livro.");
   console.log("   Prioridades é só o menu, cada área tem a sua página (também aberta direto pelo endereço,");
   console.log("   com o estado da fila à vista), e o botão de copiar o prompt copia exatamente o prompt.");
