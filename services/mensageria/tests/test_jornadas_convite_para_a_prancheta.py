@@ -277,15 +277,12 @@ def test_o_convite_nao_promete_o_que_os_degraus_seguintes_ainda_nao_entregaram()
             assert palavra not in texto.corpo, f"{palavra} em {texto.corpo!r}"
 
 
-def test_o_convite_manda_o_aluno_ao_guia_que_ja_esta_publicado():
-    """O guia da escola existe desde o degrau 16, em `/docs/guia-do-portfolio`,
-    com as quatro regras da professora. O convite aponta para lá, e não descreve
-    as regras de novo: o mantenedor edita o guia sem abrir PR, e um resumo aqui
-    seria o mesmo texto em dois lugares."""
+def test_o_convite_manda_o_aluno_para_a_prancheta_sem_documento_privado():
     semear()
-    corpos = " ".join(TextoDoPasso.objects.values_list("corpo", flat=True))
-
-    assert "meshcraft.top/docs/guia-do-portfolio" in corpos
+    for texto in TextoDoPasso.objects.all():
+        assert "meshcraft.top/docs/guia-do-portfolio" not in texto.corpo
+        if texto.passo.ordem == 1:
+            assert "meshcraft.top/pages/ " in texto.corpo
 
 
 def test_semear_duas_vezes_nao_duplica_nem_reescreve():

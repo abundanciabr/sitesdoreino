@@ -37,9 +37,13 @@ fora do brief vira tarefa na fila. Integração é automática pelos portões.
 
 Manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
 explicação ou qualquer material feito para ser lido no site deve nascer no
-site, pelo editor de documentos de `/admin/documentos/`, e terminar publicado
-com URL pública conferida. Criar um Markdown em `docs/` ou outro arquivo no
-GitHub não é publicação e não substitui essa entrega.
+site, pelo editor de documentos de `/admin/documentos/`, e terminar privado,
+com leitura autenticada conferida. Todo documento é somente para administradores,
+salvo pedido explícito do mantenedor para publicar aquele documento para o
+público, registrado na evidência da entrega. Nesse caso, confira a URL sem sessão.
+`como-funciona-a-entrada` é a exceção pública já autorizada. A lei é
+`CLAUDE.md`, seção Regra de destino do conteúdo. Criar um Markdown em `docs/`
+ou outro arquivo no GitHub não substitui essa entrega.
 
 O GitHub só recebe a parte obrigatória para o funcionamento do site, sistema
 ou projeto: código, template, teste, contrato, configuração, infraestrutura,
