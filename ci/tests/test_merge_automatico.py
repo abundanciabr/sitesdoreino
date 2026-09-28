@@ -32,10 +32,29 @@ def pr():
     )
 
 
+CELULAS = """\
+celulas:
+  checkout:
+    caminhos: [servicos/checkout]
+    consome: []
+  pagamentos:
+    caminhos: [servicos/pagamentos]
+    consome: []
+"""
+
+LINHA_DE_FAIXA = (
+    "Mandato-do-mantenedor: mandato prévio por faixa ci ; "
+    "docs/decisoes/MANDATO-POR-FAIXA.md ; ci/"
+)
+
+
 @pytest.fixture
 def repo(tmp_path):
     (tmp_path / ".github").mkdir()
     (tmp_path / ".github/CODEOWNERS").write_text("/ci/ @dono\n/contracts/ @dono\n")
+    # O que `mandato_por_faixa.classificar` precisa para traduzir a Lista A.
+    (tmp_path / "celulas.yml").write_text(CELULAS, encoding="utf-8")
+    (tmp_path / "infra").mkdir()
     return tmp_path
 
 
@@ -99,14 +118,62 @@ def test_codeowners_sem_mandato_recusa(monkeypatch, repo, pr):
     assert conferir(monkeypatch, repo, pr).estado is Estado.FAIL
 
 
-@pytest.mark.parametrize("caminho", ["CLAUDE.md", "docs/decisoes/DECISAO-exemplo.md"])
-def test_lei_e_decisoes_sem_mandato_recusam(pr, caminho):
+@pytest.mark.parametrize(
+    "caminho, resumo",
+    [
+        ("CLAUDE.md", "falta mandato do dono para CLAUDE.md"),
+        (
+            "docs/decisoes/DECISAO-exemplo.md",
+            "falta a linha de mandato prévio para docs/decisoes/DECISAO-exemplo.md",
+        ),
+    ],
+)
+def test_lei_e_decisoes_sem_mandato_recusam(pr, caminho, resumo):
     # guarda: ci/mergear.py:907
     pr["files"] = [{"path": caminho}]
     pr["author"]["login"] = "abundanciabr"
     resultado = mergear.checar_mandato(RAIZ, pr)
     assert resultado.estado is Estado.FAIL
-    assert resultado.resumo == f"falta mandato do dono para {caminho}"
+    assert resultado.resumo == resumo
+
+
+def test_lista_b_com_a_linha_de_faixa_pousa(monkeypatch, repo, pr):
+    """O mandato prévio por faixa (20/09/2026) vale no pouso sem pergunta nenhuma."""
+    pr["files"] = [{"path": "ci/exemplo.py"}]
+    pr["body"] = LINHA_DE_FAIXA
+    assert conferir(monkeypatch, repo, pr).estado is Estado.PASS
+
+
+def test_lista_a_recusa_a_linha_de_faixa(repo, pr):
+    """O portão de pouso é lei e pouso: a linha de faixa não o libera."""
+    pr["files"] = [{"path": "ci/mergear.py"}]
+    pr["body"] = LINHA_DE_FAIXA
+    resultado = mergear.checar_mandato(repo, pr)
+    assert resultado.estado is Estado.FAIL
+    assert resultado.resumo == "mandato prévio por faixa não vale para ci/mergear.py"
+    assert "lei e pouso" in resultado.detalhe and "sessão" in resultado.detalhe
+
+
+def test_lista_a_com_mandato_nominal_pousa(monkeypatch, repo, pr):
+    pr["files"] = [{"path": "ci/mergear.py"}]
+    pr["body"] = (
+        "Mandato-do-mantenedor: ele mandou consertar o portão ci/ ; "
+        "sessão de 28/09/2026."
+    )
+    assert conferir(monkeypatch, repo, pr).estado is Estado.PASS
+
+
+def test_classificador_quebrado_nao_libera(monkeypatch, repo, pr):
+    """INV-CI01: sem saber o que é Lista A, o pouso não aprova nada de CODEOWNERS."""
+    from _nucleo import ErroDeInstrumentacao
+
+    def quebrado(*a, **k):
+        raise ErroDeInstrumentacao("celulas.yml sumiu", "detalhe")
+
+    monkeypatch.setattr(mergear.mandato_por_faixa, "classificar", quebrado)
+    pr["files"] = [{"path": "ci/exemplo.py"}]
+    pr["body"] = LINHA_DE_FAIXA
+    assert mergear.checar_mandato(repo, pr).estado is Estado.ERROR
 
 
 def test_mandato_do_dono_cobre_caminho(monkeypatch, repo, pr):
@@ -147,9 +214,15 @@ def test_recusa_por_mandato_ausente_nao_manda_ninguem_ao_site(repo, pr):
     """A recusa mandava escrever a linha no GitHub, e toda sessão parava ali.
 
     Em 19/09/2026 o mantenedor decidiu que a autorização vale onde ele a deu.
-    O conserto agora aponta para o chat, que é onde ele está.
+    Em 28/09/2026, que a Lista B não pergunta: o mandato prévio já foi dado.
+    O conserto aponta para o chat só quando o caminho é Lista A.
     """
     pr["files"] = [{"path": "ci/exemplo.py"}]
+    detalhe = mergear.checar_mandato(repo, pr).detalhe
+    assert "MANDATO-POR-FAIXA" in detalhe and "Não pergunte" in detalhe
+    assert "GitHub" not in detalhe and "peça a ele" not in detalhe
+
+    pr["files"] = [{"path": "ci/mergear.py"}]
     detalhe = mergear.checar_mandato(repo, pr).detalhe
     assert "sessão" in detalhe and "GitHub" not in detalhe
 

@@ -10,12 +10,16 @@ existe depois de o trabalho estar pronto.
 Sem `--corpo-arquivo` ele só classifica, porque no minuto zero ainda não existe
 corpo de PR: sai 0 em Lista B e 1 em Lista A. Com o corpo, julga também a linha.
 
-A LISTA A SÃO TRÊS NOMES, NÃO UMA LISTA DE CAMINHOS
----------------------------------------------------
+A LISTA A SÃO CINCO NOMES, NÃO UMA LISTA DE CAMINHOS
+----------------------------------------------------
 O mantenedor fechou três nomes em 20/09/2026: pagamento e cobrança, servidor e
-infraestrutura, senhas e chaves. Os nomes são a autoridade e estão escritos
-aqui. Os CAMINHOS de cada nome são derivados de `celulas.yml` e do disco a cada
-chamada, nunca colados.
+infraestrutura, senhas e chaves. Em 28/09/2026, ao atender a segunda opinião do
+Codex, acrescentou dois: contrato, e lei e pouso (as leis da casa, `.github/`
+inteiro, os ganchos e o portão de pouso). Até então o comando respondia
+"Lista B" para `CLAUDE.md`, `.github/CODEOWNERS` e `ci/mergear.py`, e um
+classificador que libera a própria lei e o próprio portão não é autoridade.
+Os nomes são a autoridade e estão escritos aqui. Os CAMINHOS de dinheiro são
+derivados de `celulas.yml`; os segredos e as muralhas, do disco, a cada chamada.
 
 Colar os caminhos seria a Classe 8 do plano dos robôs sem colisão (mapa velho):
 no dia em que a célula `pagamentos` mudasse de pasta, a lista continuaria
@@ -58,12 +62,50 @@ GLOB = "*?!["
 PAGAMENTO = "pagamento e cobrança"
 SERVIDOR = "servidor e infraestrutura"
 SEGREDOS = "senhas e chaves"
+CONTRATO = "contrato"
+LEI_E_POUSO = "lei e pouso"
 
 # Nomes de CÉLULA, não caminhos: quem responde onde elas moram é `celulas.yml`.
 CELULAS_DO_DINHEIRO = ("checkout", "pagamentos")
 PASTA_DA_INFRA = "infra"
+PASTA_DOS_CONTRATOS = "contracts"
 COFRE = "secrets."
 PASTAS_QUE_A_VARREDURA_PULA = {".git", "__pycache__", "node_modules", ".venv", "venv"}
+
+# Lei e pouso: o que decide o que é permitido e o que é verde. Um PR que muda
+# isto muda o significado dos outros portões, por isso só entra com a palavra
+# dele. As muralhas saem do disco (`ci/muralha_*.py`); o resto tem nome fixo,
+# porque um arquivo destes que ainda não existe e um PR cria é Lista A igual.
+LEIS = (
+    "CONSTITUICAO.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "INVARIANTES.md",
+    "RITOS.md",
+    "CAMINHO-DOURADO.md",
+    "docs/decisoes/MANDATO-POR-FAIXA.md",
+)
+GANCHOS_E_PORTAO = (
+    ".github/",
+    ".githooks/",
+    ".claude/settings.json",
+    ".codex/hooks.json",
+    "ci/ci.py",
+    "ci/hook_codex.py",
+    "ci/mandato_por_faixa.py",
+    "ci/mergear.py",
+    "ci/prestacao_de_contas.py",
+    "requirements-ci.txt",
+)
+PREFIXO_DAS_MURALHAS = "muralha_"
+
+# A linha que a Lista B escreve sozinha. Em caminho de Lista A ela não vale.
+FAIXA = "mandato prévio por faixa"
+
+
+def e_linha_de_faixa(texto: str) -> bool:
+    """A linha de mandato cita o mandato prévio, e não um pedido dele?"""
+    return FAIXA in texto or FAIXA.replace("é", "e") in texto
 
 
 @dataclass(frozen=True)
@@ -114,8 +156,16 @@ def _segredos_no_disco(raiz: Path) -> tuple[str, ...]:
     return tuple(sorted(achados))
 
 
+def _lei_e_pouso(raiz: Path) -> tuple[str, ...]:
+    muralhas = sorted(
+        caminho.relative_to(raiz).as_posix()
+        for caminho in (raiz / "ci").glob(PREFIXO_DAS_MURALHAS + "*.py")
+    )
+    return tuple(sorted({*LEIS, *GANCHOS_E_PORTAO, *muralhas}))
+
+
 def lista_a(raiz: Path | None = None) -> dict[str, tuple[str, ...]]:
-    """Os três nomes da Lista A traduzidos em caminhos, derivados a cada chamada."""
+    """Os cinco nomes da Lista A traduzidos em caminhos, derivados a cada chamada."""
     raiz = raiz or raiz_do_repo()
     mapa = carregar(raiz)
 
@@ -147,11 +197,13 @@ def lista_a(raiz: Path | None = None) -> dict[str, tuple[str, ...]]:
         PAGAMENTO: dinheiro,
         SERVIDOR: (PASTA_DA_INFRA + "/",),
         SEGREDOS: _segredos_no_disco(raiz),
+        CONTRATO: (PASTA_DOS_CONTRATOS + "/",),
+        LEI_E_POUSO: _lei_e_pouso(raiz),
     }
 
 
 def classificar(arquivos: list[str], raiz: Path | None = None) -> dict[str, str]:
-    """Caminho tocado que é Lista A, e por qual dos três nomes. Vazio é Lista B."""
+    """Caminho tocado que é Lista A, e por qual dos cinco nomes. Vazio é Lista B."""
     faixas = lista_a(raiz)
     return {
         caminho: item
@@ -227,6 +279,18 @@ def conferir(
                 "bloqueio e encerre a parte dependente.",
                 motivos,
             )
+        if e_linha_de_faixa(achada.group(1)):
+            return Veredito(
+                False,
+                "A",
+                f"mandato prévio por faixa não vale para {caminho} ({item})",
+                "Lista A exige mandato nominal: o pedido dele, os caminhos e a "
+                "origem (sessão e data), transcritos na linha "
+                "Mandato-do-mantenedor:. Se ele ainda não autorizou, a sessão "
+                "responsável pede a ele nesta sessão; o subagente registra o "
+                "bloqueio e devolve à sessão responsável.",
+                motivos,
+            )
         fora = sorted(alvo for alvo in motivos if alvo not in tokens)
         if fora:
             return Veredito(
@@ -249,14 +313,6 @@ def conferir(
             motivos,
         )
 
-    if any(_casa(caminho, "contracts/") for caminho in arquivos):
-        return Veredito(
-            False,
-            "B",
-            "contrato congelado sem a etiqueta",
-            "`ci/mergear.py` recusa PR que toca contracts/ sem a etiqueta "
-            "`contrato`. Preserve o rito de contrato antes de seguir.",
-        )
     if not achada:
         return Veredito(
             False,
@@ -337,7 +393,9 @@ def main(argv: list[str] | None = None) -> int:
                 "responsável. Transcreva a resposta em Mandato-do-mantenedor: "
                 "com os caminhos autorizados."
                 if motivos
-                else "",
+                else f"O mandato já foi dado por {DOCUMENTO}. Escreva na descrição "
+                f"do PR: Mandato-do-mantenedor: {FAIXA} <faixa> ; {DOCUMENTO} ; "
+                "<cerca de CODEOWNERS>. Siga sem perguntar ao mantenedor.",
                 motivos,
             )
     except OSError as erro:

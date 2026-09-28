@@ -42,12 +42,28 @@ ciclo. Se os vãos sumirem e o ciclo não encurtar, a aposta estava errada.
 1. Pagamento e cobrança
 2. Servidor e infraestrutura
 3. Senhas e chaves
+4. Contrato (`contracts/`), desde 28/09/2026
+5. Lei e pouso, desde 28/09/2026: as leis da casa (CONSTITUICAO, CLAUDE.md,
+   AGENTS.md, INVARIANTES, RITOS, CAMINHO-DOURADO e este documento),
+   `.github/` inteiro, os ganchos (`.githooks/`, `.claude/settings.json`,
+   `.codex/hooks.json`, `ci/hook_codex.py`, `ci/prestacao_de_contas.py`, as
+   `ci/muralha_*.py`) e o portão (`ci/mergear.py`, `ci/ci.py`,
+   `ci/mandato_por_faixa.py`, `requirements-ci.txt`).
 
-Estes três nomes são a autoridade. Os caminhos literais de cada um são
-derivados de `celulas.yml` e da pasta `infra/` por `ci/mandato_por_faixa.py`,
-nunca colados numa lista à parte. Lista colada envelhece em silêncio no dia em
-que uma célula muda de pasta, e um caminho de pagamento fora da lista é um
-caminho sem dono.
+Os itens 4 e 5 vieram da palavra do mantenedor na sessão de 28/09/2026, ao
+atender a segunda opinião do Codex sobre as perguntas aos robôs: até ali o
+comando respondia "Lista B" para `CLAUDE.md`, `.github/CODEOWNERS` e
+`ci/mergear.py`, e um classificador que libera a própria lei e o próprio portão
+não é autoridade. A cadeia de importação de `ci/mergear.py` tem 25 módulos de
+`ci/`, e 27 dos 450 PRs pousados entre 20 e 27/09/2026 a tocaram; ampliar o
+item 5 a essa cadeia é decisão dele, não do agente, e fica registrada como
+pendente.
+
+Estes cinco nomes são a autoridade. Os caminhos de dinheiro são derivados de
+`celulas.yml`; os segredos e as muralhas, do disco; tudo por
+`ci/mandato_por_faixa.py`, nunca colado numa lista à parte. Lista colada
+envelhece em silêncio no dia em que uma célula muda de pasta, e um caminho de
+pagamento fora da lista é um caminho sem dono.
 
 Em 20/09/2026 os três nomes resolvem para 2 caminhos de pagamento e cobrança
 (`services/checkout/` e `services/pagamentos/`), 1 de servidor (`infra/`) e 41
@@ -77,8 +93,10 @@ resolvida pelo mantenedor, nunca pelo despacho.
 
 A linha `Mandato-do-mantenedor:` continua obrigatória no corpo de todo PR que
 toque caminho de `CODEOWNERS`, e `ci/mergear.py` continua a conferir que o
-caminho aparece nela como token separado por espaço. O que muda é o que a linha
-**cita**:
+caminho aparece nela como token separado por espaço. Desde 28/09/2026 ele
+também recusa a linha de mandato prévio por faixa em caminho de Lista A, e a
+recusa em caminho de Lista B diz para escrever a linha e seguir, não para
+perguntar. O que muda é o que a linha **cita**:
 
 - PR de Lista A: cita o pedido do mantenedor, os caminhos autorizados e a
   origem (a sessão e a data), exatamente como hoje.

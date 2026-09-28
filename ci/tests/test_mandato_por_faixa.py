@@ -117,9 +117,80 @@ def test_lista_a_misturada_com_lista_b_e_tratada_como_lista_a(repo):
     )
     assert veredito.lista == "A"
     assert not veredito.aprovado
-    assert veredito.resumo == "o mandato não alcança servicos/pagamentos/cobranca.py"
-    assert "sessão responsável pede ao mantenedor" in veredito.como_prosseguir
-    assert "subagente devolve o bloqueio" in veredito.como_prosseguir
+    assert veredito.resumo == (
+        "mandato prévio por faixa não vale para servicos/pagamentos/cobranca.py "
+        "(pagamento e cobrança)"
+    )
+    assert "sessão responsável pede a ele" in veredito.como_prosseguir
+    assert "subagente registra o bloqueio" in veredito.como_prosseguir
+
+    nominal = mandato_por_faixa.conferir(
+        ["painel/registros/20260920-001-nota.js", "servicos/pagamentos/cobranca.py"],
+        "Mandato-do-mantenedor: ele mandou mexer na cobrança ; painel/ ; sessão de 20/09/2026.",
+        "admin",
+        repo,
+    )
+    assert nominal.lista == "A" and not nominal.aprovado
+    assert nominal.resumo == "o mandato não alcança servicos/pagamentos/cobranca.py"
+
+
+@pytest.mark.parametrize(
+    "caminho",
+    [
+        "CLAUDE.md",
+        "AGENTS.md",
+        ".github/CODEOWNERS",
+        ".github/workflows/muralhas.yml",
+        ".claude/settings.json",
+        ".codex/hooks.json",
+        "ci/mergear.py",
+        "ci/ci.py",
+        "ci/mandato_por_faixa.py",
+        "ci/muralha_das_perguntas.py",
+        "requirements-ci.txt",
+    ],
+)
+def test_lei_e_pouso_e_lista_a(repo, caminho):
+    """28/09/2026: o que decide o que é permitido e o que é verde só muda com a palavra dele."""
+    (repo / "ci").mkdir(exist_ok=True)
+    (repo / "ci/muralha_das_perguntas.py").write_text("", encoding="utf-8")
+    assert mandato_por_faixa.classificar([caminho], repo) == {
+        caminho: mandato_por_faixa.LEI_E_POUSO
+    }
+
+
+def test_contrato_e_lista_a(repo):
+    assert mandato_por_faixa.classificar(["contracts/catalogo.yaml"], repo) == {
+        "contracts/catalogo.yaml": mandato_por_faixa.CONTRATO
+    }
+
+
+@pytest.mark.parametrize("caminho", ["ci/economia_da_fabrica.py", "painel/registros/x.js"])
+def test_o_resto_do_ci_continua_lista_b(repo, caminho):
+    assert mandato_por_faixa.classificar([caminho], repo) == {}
+
+
+def test_linha_de_faixa_nao_vale_para_lista_a(repo):
+    veredito = mandato_por_faixa.conferir(
+        ["CLAUDE.md"],
+        "Mandato-do-mantenedor: mandato prévio por faixa ci ; "
+        "docs/decisoes/MANDATO-POR-FAIXA.md ; CLAUDE.md",
+        "ci",
+        repo,
+    )
+    assert veredito.lista == "A" and not veredito.aprovado
+    assert veredito.resumo == "mandato prévio por faixa não vale para CLAUDE.md (lei e pouso)"
+    assert "mandato nominal" in veredito.como_prosseguir
+
+
+def test_pre_voo_lista_b_diz_para_seguir_sem_perguntar(monkeypatch, capsys):
+    monkeypatch.setattr(mandato_por_faixa, "classificar", lambda arquivos: {})
+    saida = mandato_por_faixa.main(["--arquivos", "ci/economia_da_fabrica.py"])
+    texto = capsys.readouterr().out
+    assert saida == 0
+    assert "LISTA B" in texto
+    assert "Siga sem perguntar ao mantenedor" in texto
+    assert "mandato prévio por faixa <faixa>" in texto
 
 
 def test_caminhos_da_lista_a_derivam_de_celulas_yml_e_nao_de_constante(repo):

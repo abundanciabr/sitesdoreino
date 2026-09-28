@@ -30,6 +30,7 @@ from _nucleo import (  # noqa: E402
     recortar,
 )
 import fila  # noqa: E402
+import mandato_por_faixa  # noqa: E402
 import mapa_de_celulas  # noqa: E402
 import rollback  # noqa: E402
 import telemetria  # noqa: E402
@@ -866,8 +867,13 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
             r"^Mandato-do-mantenedor: (.{20,})$", pr.get("body") or "", re.MULTILINE
         )
         autor = "@" + (pr.get("author") or {}).get("login", "")
-        for arquivo in pr.get("files") or []:
-            caminho = arquivo["path"]
+        caminhos = [arquivo["path"] for arquivo in pr.get("files") or []]
+        # Lista A (dinheiro, servidor, segredo, contrato, lei e pouso) exige o
+        # mandato nominal dele. O resto do CODEOWNERS é Lista B: o mandato já
+        # foi dado por docs/decisoes/MANDATO-POR-FAIXA.md e a linha de faixa
+        # basta. A linha de faixa em caminho de Lista A é recusada (28/09/2026).
+        lista_a = mandato_por_faixa.classificar(caminhos, raiz)
+        for caminho in caminhos:
             for padrao, *donos in regras:
                 padrao = padrao.lstrip("/")
                 if (
@@ -875,20 +881,41 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
                     if padrao.endswith("/")
                     else caminho == padrao
                 ):
+                    nominal = caminho in lista_a
                     if autor not in donos:
                         recusa = (
                             f"o PR de {caminho} não saiu da conta do dono",
                             f"Só a conta {donos[0]} abre PR neste caminho; "
                             "reabra o PR por ela.",
                         )
-                    elif not mandato:
+                    elif not mandato and nominal:
                         recusa = (
                             f"falta mandato do dono para {caminho}",
-                            "Transcreva na descrição a autorização que o dono já "
-                            "deu: Mandato-do-mantenedor: seguido do pedido, dos "
-                            f"caminhos autorizados ({padrao}) e da origem. A "
-                            "autorização dita na sessão vale tanto quanto a "
-                            "digitada no site; se ainda não houver nenhuma, peça a "
+                            f"{caminho} é {lista_a[caminho]}, Lista A. Transcreva "
+                            "na descrição a autorização que o dono já deu: "
+                            "Mandato-do-mantenedor: seguido do pedido, dos "
+                            f"caminhos autorizados ({padrao}) e da origem (sessão "
+                            "e data). A autorização dita na sessão vale tanto "
+                            "quanto a digitada no site; se ainda não houver "
+                            "nenhuma, peça a ele na própria sessão.",
+                        )
+                    elif not mandato:
+                        recusa = (
+                            f"falta a linha de mandato prévio para {caminho}",
+                            f"{caminho} é Lista B: o mandato já foi dado por "
+                            f"{mandato_por_faixa.DOCUMENTO}. Escreva na descrição: "
+                            f"Mandato-do-mantenedor: {mandato_por_faixa.FAIXA} "
+                            f"<faixa> ; {mandato_por_faixa.DOCUMENTO} ; {padrao} "
+                            "e siga. Não pergunte ao mantenedor.",
+                        )
+                    elif nominal and mandato_por_faixa.e_linha_de_faixa(
+                        mandato.group(1)
+                    ):
+                        recusa = (
+                            f"mandato prévio por faixa não vale para {caminho}",
+                            f"{caminho} é {lista_a[caminho]}, Lista A: exige mandato "
+                            "nominal, com o pedido dele, os caminhos e a origem "
+                            "(sessão e data). Se ele ainda não autorizou, peça a "
                             "ele na própria sessão.",
                         )
                     elif not any(
@@ -897,8 +924,8 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
                         recusa = (
                             f"o mandato do dono não alcança {caminho}",
                             f"Acrescente {padrao} à linha Mandato-do-mantenedor: se "
-                            "a autorização dele cobre esse caminho; se não cobre, "
-                            "pergunte a ele na própria sessão.",
+                            "a autorização cobre esse caminho; se não cobre e o "
+                            "caminho é Lista A, pergunte a ele na própria sessão.",
                         )
                     else:
                         continue
@@ -912,7 +939,7 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
                     "Preserve o rito de contrato e sua etiqueta contrato.",
                 )
         return Resultado("mandato do mantenedor", Estado.PASS, "fronteiras respeitadas")
-    except (OSError, ValueError, KeyError) as erro:
+    except (OSError, ValueError, KeyError, ErroDeInstrumentacao) as erro:
         return Resultado(
             "mandato do mantenedor",
             Estado.ERROR,
