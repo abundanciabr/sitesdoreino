@@ -465,7 +465,6 @@ feito na aula.
 - e-mail, telefone ou nome completo na página pública, e o `noindex` não é
   negociável;
 - guardar a peça em duas células;
-- travessão em texto que o aluno lê (`ci/travessao.py`);
 - marco real pagando XP (ele vale zero, de propósito).
 
 **Ela está em `celulas.yml`, tem constituição, manifesto e contrato.** O

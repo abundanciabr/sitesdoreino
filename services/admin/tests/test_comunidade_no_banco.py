@@ -159,8 +159,5 @@ def test_o_texto_nao_inventa_cobranca_prazo_nem_renda():
         assert proibida not in texto, proibida
 
 
-def test_o_texto_nao_tem_travessao_nem_nome_de_membro():
-    texto = _texto()
-    for risca in ("—", "–", "―", "&mdash;", "&ndash;"):
-        assert risca not in texto, repr(risca)
-    assert "@" not in texto
+def test_o_texto_nao_tem_nome_de_membro():
+    assert "@" not in _texto()

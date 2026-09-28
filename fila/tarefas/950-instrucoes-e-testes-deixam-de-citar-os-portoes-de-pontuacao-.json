@@ -1,0 +1,20 @@
+{
+  "arquivo": "950-instrucoes-e-testes-deixam-de-citar-os-portoes-de-pontuacao-",
+  "id": "TAR-950",
+  "titulo": "Instruções e testes deixam de citar os portões de pontuação e de dívida que já saíram",
+  "toca": [
+    "admin",
+    "constituicoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "pytest verde em services/admin/tests/test_comunidade_no_banco.py e nenhuma citação a ci/travessao.py ou ao portão do travessão em constituicoes/AGENTS.pages.md e painel/ia/04",
+  "despacho": "Célula admin, sem tocar código de produto. Alvos: constituicoes/AGENTS.pages.md (tirar a cláusula do portão do travessão no roteiro e o item 6 da lista fechada, que vira seis itens), painel/ia/04-arquitetura-de-celulas-e-contratos.md (tirar o marcador do travessão), services/admin/tests/test_comunidade_no_banco.py (o teste deixa de proibir travessão e passa a chamar test_o_texto_nao_tem_nome_de_membro, mantendo a proibição de arroba), services/admin/apps/core/direcao.py (docstring sem citar ci/divida_do_livro.py). Prova: pytest do arquivo do admin verde e grep sem ci/travessao.py nos dois documentos. Etiqueta remove-teste no PR, porque um teste encolhe.",
+  "origem": "pedido do mantenedor em 28/09/2026 (sessão Claude): não revisar pontuação de nenhum tipo; complemento das TAR-943 a 946",
+  "criada_em": "2026-09-28",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

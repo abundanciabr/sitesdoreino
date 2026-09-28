@@ -118,9 +118,8 @@ degrau ela vira código.
 - **O ROTEIRO É DADO, e o texto dele é da ESCOLA** (degrau 07, critério AC-06).
   As cinco etapas e os itens de conferência moram em `EtapaDoRoteiro` e
   `ItemDoRoteiro`, no banco desta célula, plantados por migração a partir de
-  `apps/portfolio/roteiro_da_escola.py`, que se declara `ci:texto-publicado` e
-  por isso é medido inteiro pelo portão do travessão. **Nenhuma palavra do
-  roteiro se escreve em template.** O guarda que separa as duas coisas é
+  `apps/portfolio/roteiro_da_escola.py`. **Nenhuma palavra do roteiro se
+  escreve em template.** O guarda que separa as duas coisas é
   `tests/test_a_prancheta.py::test_a_lista_sai_do_banco_e_nao_do_template`: ele
   corrige a frase no banco e exige a frase nova na tela.
 
@@ -184,7 +183,7 @@ degrau ela vira código.
   `do_aluno` por `self.all()` deixa seis testes vermelhos na asserção).
 
 ## O que ninguém pode inventar aqui (plano §7)
-Sete itens, e a lista é fechada:
+Seis itens, e a lista é fechada:
 
 1. **Nota, estrela, ranking ou voto popular** em portfólio ou em peça de aluno.
 2. **Detecção de "isto foi feito por IA"** — proibida por escrito.
@@ -193,8 +192,7 @@ Sete itens, e a lista é fechada:
 4. **E-mail, telefone ou nome completo na página pública**; padrão é privado e
    o `noindex` não é negociável.
 5. **Guardar a peça em duas células.**
-6. **Travessão em texto que o aluno lê** (`ci/travessao.py`).
-7. **Marco real pagando XP** (decisão 7 da Sessão A: o marco do portfólio vale
+6. **Marco real pagando XP** (decisão 7 da Sessão A: o marco do portfólio vale
    zero, de propósito).
 
 ## Critérios de morte

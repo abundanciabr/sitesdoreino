@@ -48,9 +48,9 @@ aberto*. Sem tabela nova, sem estado em lugar nenhum: a reunião de segunda
 
 A leitura dos registros aqui é a MESMA fotografia que a `admin` serve em
 `/admin/painel/` (`painel_embutido/registros/`), lida por um leitor mínimo em
-Python que só extrai os campos de que esta tela precisa. É o precedente de
-`ci/divida_do_livro.py`: ler o livro do lado de fora sem reimplementar a
-lógica dele; a validação continua sendo a de `painel/logica.js`.
+Python que só extrai os campos de que esta tela precisa: o livro é lido do
+lado de fora, sem reimplementar a lógica dele, e a validação continua sendo
+a de `painel/logica.js`.
 """
 
 from __future__ import annotations
