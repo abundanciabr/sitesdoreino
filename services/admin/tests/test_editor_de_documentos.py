@@ -8,10 +8,7 @@ este arquivo trava:
    ausência dele aqui seria pior: qualquer pessoa reescreveria uma página
    pública.
 
-2. **A recusa do travessão é fail-CLOSED e não come o rascunho.** Ela recusa
-   salvar, diz onde está o problema, e devolve o texto inteiro para a tela.
-   Perder o texto de alguém por causa de uma regra de pontuação transformaria a
-   lei num inimigo.
+2. **Pontuação livre.** Criar, editar e publicar preservam o texto.
 
 3. **O endereço é uma promessa.** Ele sai do título quando o campo fica em
    branco, recusa colidir com o que já existe, recusa os nomes que a área
@@ -140,44 +137,37 @@ def test_as_rotas_do_editor_nao_escaparam_para_o_prefixo_publico():
 @pytest.mark.parametrize(
     "risca", ["—", "–", "―", "&mdash;", "&#8212;", "&ndash;", "&#x2014;"]
 )
-def test_a_tela_recusa_salvar_texto_com_risca_comprida(risca):
-    """Todas as formas que viram risca na tela, inclusive as escritas em HTML.
-
-    `ci/travessao.py` vigia ARQUIVOS e não alcança mais este texto: ele vai do
-    formulário direto para o banco. Ou a régua desce para cá, ou ela deixou de
-    existir para os documentos.
-    """
-    resposta = _criar(_dentro(), corpo=f"Uma frase {risca} com risca.")
-
-    assert resposta.status_code == 422
-    assert Documento.objects.count() == 0
+def test_a_tela_preserva_pontuacao_ao_criar_e_publicar(risca):
+    cliente = _dentro()
+    texto = f"Uma frase {risca} com pontuacao."
+    resposta = _criar(cliente, corpo=texto)
+    assert resposta.status_code == 302
+    assert Documento.objects.get().corpo == texto
+    assert cliente.post("/documentos/um-guia/publicar").status_code == 302
+    pagina = Client().get("/docs/um-guia")
+    assert pagina.status_code == 200
+    assert documentos.para_html(texto) in pagina.content.decode()
 
 
 @respx.mock
-def test_a_risca_no_TITULO_tambem_recusa():
-    """O título aparece na lista pública e na aba do navegador: é texto
-    publicado tanto quanto o corpo."""
+def test_o_titulo_preserva_a_pontuacao():
     resposta = _criar(_dentro(), titulo="Guia — completo")
-
-    assert resposta.status_code == 422
-    assert Documento.objects.count() == 0
+    assert resposta.status_code == 302
+    assert Documento.objects.get().titulo == "Guia — completo"
 
 
 @respx.mock
-def test_a_recusa_devolve_o_rascunho_inteiro_e_ensina_a_troca():
-    """Perder o texto de alguém por causa de uma regra de pontuação
-    transformaria a lei num inimigo, e a próxima coisa que essa pessoa faria
-    seria procurar como desligá-la."""
-    resposta = _criar(
-        _dentro(),
-        titulo="Meu guia",
-        corpo="Primeira linha.\nUma frase — com risca.\nUltima linha.",
+def test_editar_preserva_pontuacao_sem_exigir_revisao():
+    cliente = _dentro()
+    _criar(cliente)
+    texto = 'Primeira: linha; "aspas", (parenteses)... — – ― !?'
+    resposta = cliente.post(
+        "/documentos/um-guia/salvar", {"titulo": "Guia — completo", "corpo": texto}
     )
-    corpo = resposta.content.decode()
-
-    assert "Uma frase" in corpo, "o rascunho do mantenedor foi comido"
-    assert "Ultima linha." in corpo
-    assert "Vírgula" in corpo and "Parênteses" in corpo, "a recusa não ensina"
+    assert resposta.status_code == 302
+    assert Documento.objects.get().corpo == texto
+    tela = cliente.get("/documentos/um-guia/editar").content.decode()
+    assert "Não salvei: há risca" not in tela
 
 
 @respx.mock
@@ -362,7 +352,7 @@ def test_publicar_e_despublicar_deixam_verbos_proprios_na_auditoria():
 def test_uma_gravacao_recusada_nao_deixa_rastro_de_nada():
     """Recusa não é escrita: uma linha de auditoria aqui contaria uma história
     que não aconteceu."""
-    _criar(_dentro(), corpo="frase — recusada")
+    _criar(_dentro(), titulo="", corpo="texto preservado")
 
     assert Registro.objects.count() == 0
 

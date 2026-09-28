@@ -192,11 +192,6 @@ AVISO_IA_CORTADO = (
     "A resposta veio no limite de tamanho e terminou no meio. Complete o final "
     "antes de publicar."
 )
-AVISO_IA_TRAVESSAO = (
-    "A IA usou risca longa no texto, e este site publica sem ela. Reescreva "
-    "essas frases com vírgula, parênteses, dois-pontos ou aspas, do jeito que "
-    "soar certo em cada uma."
-)
 
 # As três visibilidades que o fórum sabe conferir. `turma` entrou em 27/09/2026
 # (TAR-824) como o GRUPO DE PRÁTICA: desde então `pode_ler` sabe quem está nela,
@@ -1156,8 +1151,6 @@ def _o_que_avisar(rascunho: agente.Rascunho) -> str:
     partes = [AVISO_IA_PRONTO]
     if rascunho.cortado:
         partes.append(AVISO_IA_CORTADO)
-    if agente.travessoes_em(rascunho.texto):
-        partes.append(AVISO_IA_TRAVESSAO)
     return " ".join(partes)
 
 

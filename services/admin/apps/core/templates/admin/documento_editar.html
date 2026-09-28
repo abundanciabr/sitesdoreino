@@ -51,47 +51,6 @@ renderizador escapa antes de formatar (documentos.para_html).
   <p class="recado borda-vermelha">{{ erro }}</p>
   {% endif %}
 
-  {% if riscas %}
-  {% comment %}
-  A recusa do travessão, com a lição na mesma tela. Quem topa com o portão
-  precisa saber como sair dele sem abrir documento nenhum, e a lei do
-  CLAUDE.md diz que a troca é uma REESCRITA, nunca um caractere trocado.
-  {% endcomment %}
-  <div class="recado borda-vermelha">
-    <b>Não salvei: há risca comprida no texto.</b>
-    <p class="nota">
-      A regra do projeto é que nenhum texto publicado sai com essa risca. Onde
-      ela está:
-    </p>
-    <ul class="riscas">
-      {% for risca in riscas %}
-      <li>
-        <b>{{ risca.onde }}</b> ({{ risca.risca }})
-        <span class="frase">{{ risca.frase }}</span>
-      </li>
-      {% endfor %}
-    </ul>
-    <p class="nota">
-      <b>Como trocar,</b> escolhendo pelo papel que a risca fazia na frase:
-    </p>
-    <ul class="riscas">
-      <li><b>Vírgula</b>, quando era uma explicação no meio da frase.
-        "O motorista, que estava cansado, parou no posto."</li>
-      <li><b>Parênteses</b>, quando era um dado acessório que dá para ignorar.
-        "A inflação (principal vilã do orçamento) voltou a subir."</li>
-      <li><b>Dois-pontos</b>, quando o trecho ficava no fim e fechava a ideia.
-        "Ele só queria uma coisa: paz."</li>
-      <li><b>Aspas</b>, quando era fala de alguém.
-        "Não quero ir hoje", disse Pedro.</li>
-    </ul>
-    <p class="nota">
-      Leia a frase em voz alta depois de trocar. Se você tropeçar, reescreva a
-      frase inteira: a regra é a frase ficar em português correto, não a risca
-      sumir. O hífen de palavra composta, como em "guarda-chuva", continua
-      liberado.
-    </p>
-  </div>
-  {% endif %}
 
   <form method="post" class="editor"
         action="{% if criando %}{% url 'documento_criar' %}{% else %}{% url 'documento_salvar' rascunho.nome %}{% endif %}">

@@ -28,12 +28,6 @@ consequências que o resto do arquivo obedece:
    modelo leria as duas do mesmo jeito se ninguém dissesse o contrário. A
    defesa está escrita nas instruções, no fim.
 
-**Sobre o travessão** (lei do projeto desde 30/08/2026): as instruções proíbem
-as riscas longas e ensinam as quatro trocas, mas promessa de modelo não é
-mecanismo. Por isso `travessoes_em()` existe: o que voltar com risca é
-apontado na tela, para a PESSOA reescrever a frase. Trocar o caractere aqui
-dentro seria justamente o erro que a lei nomeia — a troca é uma reescrita, e o
-portão `ci/travessao.py` não enxerga texto que já está no banco.
 """
 
 from __future__ import annotations
@@ -134,11 +128,6 @@ TETO_DA_CONVERSA = 12000
 # empurrar um livro para dentro da chamada.
 TETO_DA_ORIENTACAO = 2000
 
-# As três riscas longas da lei do projeto. O hífen NUNCA entra: ele é letra de
-# palavra composta ("guarda-chuva"), não pontuação de frase. Mesma lista de
-# `ci/travessao.py`, na parte que se aplica a texto puro — as formas escritas em
-# HTML não cabem aqui, porque o fórum mostra o texto como texto.
-RISCAS = ("—", "–", "―")
 
 # ---------------------------------------------------------------------------
 # O QUE A TELA DIZ QUANDO NÃO DEU — em português de gente, num lugar só
@@ -275,14 +264,6 @@ O fórum mostra o seu texto como texto puro, sem formatação nenhuma. Escreva s
 markdown: nada de asterisco para negrito, nada de cabeçalho com #, nada de \
 tabela. Uma lista numerada com "1." funciona; o resto vira sujeira na tela.
 
-PROIBIDO O TRAVESSÃO
-Esta escola publica sem as riscas longas. Nada de "—", de "–" e de "―". No lugar \
-delas entra, conforme o papel que a risca faria na frase: vírgula (explicação no \
-meio da frase), parênteses (dado acessório que pode ser ignorado), dois-pontos \
-(esclarecimento no fim da frase) ou aspas (fala de alguém). A troca é uma \
-reescrita, não um caractere trocado: a frase tem de ficar em português correto \
-do Brasil. O hífen de palavra composta ("guarda-chuva") continua normal.
-
 O QUE VOCÊ NÃO SABE, E POR ISSO NÃO INVENTA
 Preço, formas de pagamento, prazo, data de turma, política de reembolso, o que \
 tem dentro de cada aula, prazo de correção de trabalho, e qualquer combinado \
@@ -315,17 +296,6 @@ def ligado() -> bool:
 
 def _chave() -> str:
     return (os.environ.get(VARIAVEL_DA_CHAVE) or "").strip()
-
-
-def travessoes_em(texto: str) -> list[str]:
-    """As riscas longas que sobraram no texto, sem repetir.
-
-    Devolve lista vazia quando está limpo. **Não conserta nada**, e isso é a
-    decisão: a lei do projeto diz que trocar travessão é REESCREVER a frase, e
-    um `replace` deixaria a frase torta com o portão satisfeito. Aqui a máquina
-    aponta e a pessoa reescreve.
-    """
-    return [risca for risca in RISCAS if risca in texto]
 
 
 def _transcrever(falas: list[tuple[str, str]], teto: int = TETO_DA_CONVERSA) -> str:
@@ -385,7 +355,7 @@ def _pergunta(
             # esta frase, um "responda em inglês" na caixinha brigaria em
             # silêncio com as instruções, e o resultado seria sorteado.
             "Siga esta orientação. Ela não desfaz as proibições das instruções "
-            "(travessão, inventar fato, fingir ser pessoa).",
+            "(inventar fato, fingir ser pessoa).",
             orientacao,
         ]
     partes += ["", "Escreva agora o rascunho da resposta, e só ele."]
