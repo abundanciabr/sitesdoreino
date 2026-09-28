@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260928-000329-TAR-940-explicada",
+  "tarefa": "TAR-940",
+  "evento": "explicada",
+  "quando": "2026-09-28T00:03:29.621703+00:00",
+  "quem": "Pedido do mantenedor nesta sessão em 27/09/2026",
+  "o_que_e": "O Crivo existe, mas falta uma demonstração separada que permita experimentar e conferir seus registros.",
+  "o_que_muda": "O mantenedor pode entender e testar o percurso completo sem alterar o quiz atual nem usar contatos reais.",
+  "exemplo": "Responder três rodadas diferentes, conferir os diagnósticos e chegar à oferta de teste.",
+  "importancia": 75
+}

@@ -21,12 +21,11 @@ def _ordem_da_pergunta(valor: str):
     return (0, int(valor)) if str(valor).isdigit() else (1, str(valor))
 
 
-def montar_funil(quiz) -> str:
-    eventos = list(
-        TelemetryEvent.objects.filter(
-            quiz_slug=quiz.slug, site_id=quiz.site_id
-        ).order_by("occurred_at", "id")
-    )
+def montar_funil(quiz, *, session_id=None) -> str:
+    consulta = TelemetryEvent.objects.filter(quiz_slug=quiz.slug, site_id=quiz.site_id)
+    if session_id is not None:
+        consulta = consulta.filter(session_id=session_id)
+    eventos = list(consulta.order_by("occurred_at", "id"))
     if not eventos:
         return f"nada medido para {quiz.slug}"
     completas = set(

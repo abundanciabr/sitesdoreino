@@ -32,6 +32,10 @@
 </head>
 <body>
 <main>
+  {% if quiz.slug == "laboratorio-crivo" %}
+  <p><a href="/docs/laboratorio-crivo">Guia do laboratório</a> | <a href="{% url 'quiz-observacao' quiz.slug %}" target="_blank" rel="noopener">Observar registros (nova aba)</a></p>
+  <p>Use somente o contato sintético indicado no guia. Esta experiência demonstra o quiz e a chegada à oferta de teste.</p>
+  {% endif %}
   <h1>{{ quiz.title }}</h1>
   {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
   <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-telemetria="{% url 'quiz-telemetria' %}" data-etapa-inicial="{{ etapa_inicial }}">

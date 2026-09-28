@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260928-012-quiz-publica-laboratorio-crivo-guia-e-observacao",
+  tipo: "entrega",
+  quando: "2026-09-28",
+  titulo: "quiz: publica Laboratório Crivo, guia e observação",
+  detalhe: "Quiz separado com duas versões, três resultados e observação da rodada. Guia criado no editor; publicação ainda será conferida.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2313. Validação local: árvore d9dc63dc1e0d1febdace54f7a1f569772c703ea3; commit 30de4b20e4b07d24d8eec8755d8c37e7b48e4729; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-28",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-940",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

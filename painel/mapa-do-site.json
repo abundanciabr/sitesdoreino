@@ -2289,6 +2289,15 @@
     },
     {
       "celula": "quiz",
+      "rota": "<slug:slug>/observacao/",
+      "endereco": "/quiz/<slug:slug>/observacao/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Observar o Laboratório Crivo",
+      "descricao": "Mostra a rodada deste navegador e contagens dos eventos sintéticos. Só responde ao Laboratório Crivo; não imprime contatos ou identificadores de sessão."
+    },
+    {
+      "celula": "quiz",
       "rota": "<slug:slug>/",
       "endereco": "/quiz/<slug:slug>/",
       "alcance": "publico",
