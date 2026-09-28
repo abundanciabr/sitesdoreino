@@ -143,10 +143,6 @@ def test_o_texto_das_etapas_nao_esta_copiado_em_nenhum_template():
         assert VOTAR_NUNCA_FECHA not in fonte, arquivo.name
 
 
-
-
-
-
 def test_a_legenda_lista_as_quatro_etapas_do_caminho_e_so_elas():
     """As duas saídas têm texto, e de propósito NÃO entram na legenda.
 

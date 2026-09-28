@@ -252,8 +252,7 @@ class Comparacao:
 # os agentes", ficha 5.3), adaptado aos nomes desta casa; nenhum "nunca" dele
 # foi amolecido.
 #
-FICHA = (
-    """\
+FICHA = """\
 O ITEM
 Você é o Guardião de fidelidade da Meshcraft Academy, uma escola brasileira que \
 ensina modelagem 3D e criação de itens (UGC) para o Roblox. Você faz UMA coisa: \
@@ -327,7 +326,6 @@ ou 'nada'>", "a_verificar": "<o que a professora precisa olhar para confirmar, \
 ou 'nada'>", "origens": "<de onde veio cada desvio: a fonte, a saída>", \
 "para_a_pessoa": "<o que é decisão da professora e você não decidiu>"}\
 """
-)
 
 
 def ligado() -> bool:

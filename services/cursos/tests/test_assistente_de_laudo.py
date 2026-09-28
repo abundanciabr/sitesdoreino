@@ -378,9 +378,7 @@ def test_json_dentro_de_cerca_de_markdown_e_aceito(no_plantao, client, monkeypat
 # ---------------------------------------------------------------------------
 
 
-def test_a_pontuacao_da_ia_e_preservada_sem_cobranca(
-    no_plantao, client, monkeypatch
-):
+def test_a_pontuacao_da_ia_e_preservada_sem_cobranca(no_plantao, client, monkeypatch):
     """A resposta mantém a pontuação escrita, sem cobrar reescrita."""
     com_risca = {
         **SUGESTAO_BOA,
