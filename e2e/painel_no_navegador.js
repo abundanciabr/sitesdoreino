@@ -20,7 +20,7 @@
 //
 //   sub-pedidos ao abrir    = CONJUNTO NOMINAL, não contagem:
 //                               file://  nenhum
-//                               http     divida.json e diag.json, e só (as
+//                               http     diag.json, e só (as
 //                                        medições ao vivo — custo FIXO, não
 //                                        cresce com o livro)
 //   erros de console        = 0
@@ -179,22 +179,16 @@ function servidor(dir, filaQuebrada) {
   var s = http.createServer(function (req, res) {
     var alvo = path.join(dir, decodeURIComponent(url.parse(req.url).pathname));
     if (alvo.slice(-1) === path.sep || req.url === "/") alvo = path.join(dir, "painel.html");
-    // A medição ao vivo da dívida do livro existe em produção
-    // (`/admin/painel/divida.json`, servida por services/admin). O servidor
-    // deste teste a serve também: sem isso o modo http mediria uma página
-    // diferente da real, e um 404 inventado pelo teste apareceria como erro de
-    // console — medindo o dublê em vez do original (armadilhas/131).
+    // O servidor reproduz as consultas de diagnóstico e fila usadas pelo painel.
     var caminho = url.parse(req.url).pathname;
     if (caminho === "/fila.json" && filaQuebrada) {
       res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("a fila caiu");
       return;
     }
-    if (caminho === "/divida.json" || caminho === "/diag.json" || caminho === "/fila.json") {
+    if (caminho === "/diag.json" || caminho === "/fila.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-      res.end(JSON.stringify(caminho === "/divida.json"
-        ? { devedores: [] }
-        : caminho === "/fila.json" ? filaDeMentira()
+      res.end(JSON.stringify(caminho === "/fila.json" ? filaDeMentira()
         : { de_pe_ha_segundos: 42, perguntas_a_identidade: 3,
             desfechos: { respondeu: 3, estourou_o_tempo: 0, recusou: 0,
                          fora_do_contrato: 0, sem_configuracao: 0 },
@@ -776,7 +770,7 @@ function provaDoCorteExterno() {
   //    a NOSSA página. Reconhecer o relato não basta — quem isenta é o alvo.
   caso("corte CORS: pedido barrado cuja vítima é a NOSSA página continua reprovando",
     erroDaNossaPagina(msgSemOrigem(
-      "Access to fetch at 'http://127.0.0.1:8123/divida.json' from origin 'null' " +
+      "Access to fetch at 'http://127.0.0.1:8123/diag.json' from origin 'null' " +
       "has been blocked by CORS policy: Cross origin requests are only supported " +
       "for protocol schemes: http, https."
     )) === true);
@@ -831,20 +825,16 @@ async function principal() {
     var s = await servidor(dir);
     var endereco = "http://127.0.0.1:" + s.porta + "/painel.html";
     var baseHttp = "http://127.0.0.1:" + s.porta + "/";
-    // Pelo site: a página mais a medição ao vivo da dívida do livro. Um pedido
-    // FIXO — ele não cresce com o tamanho do livro, que é a propriedade que
-    // este teste existe para proteger.
-    // Pelo site: a página mais DUAS medições ao vivo — a dívida do livro e o
-    // que o servidor diz sobre si mesmo. Pedidos FIXOS: não crescem com o
+    // Pelo site: a página mais o diagnóstico do servidor. Pedidos FIXOS: não crescem com o
     // tamanho do livro, que é a propriedade que este teste existe para
     // proteger. O conjunto é nominal justamente para um pedido novo ter de
     // passar por uma decisão consciente, em vez de entrar de carona.
     var estadoHttp = await medir(navegador, endereco, baseHttp, "http · " + n,
-      ["divida.json", "diag.json"]);
+      ["diag.json"]);
     await medirPrioridades(estadoHttp, "http · " + n);
     await medirMemoria(estadoHttp, endereco, baseHttp, "http · " + n);
     await estadoHttp.pagina.close();
-    await medirAreaDireta(navegador, endereco, baseHttp, "http · " + n, ["divida.json", "diag.json"], false);
+    await medirAreaDireta(navegador, endereco, baseHttp, "http · " + n, ["diag.json"], false);
     if (n === TAMANHOS[0]) await medirEstadosDaArea(navegador, endereco);
     s.servidor.close();
 
@@ -852,7 +842,7 @@ async function principal() {
     var quebrado = await servidor(dir, true);
     var enderecoQuebrado = "http://127.0.0.1:" + quebrado.porta + "/painel.html";
     await medirAreaDireta(navegador, enderecoQuebrado, "http://127.0.0.1:" + quebrado.porta + "/",
-      "http · " + n, ["divida.json", "diag.json"], true);
+      "http · " + n, ["diag.json"], true);
     quebrado.servidor.close();
   }
 
