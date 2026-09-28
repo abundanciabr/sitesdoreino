@@ -8,6 +8,7 @@ import pytest
 import respx
 from django.test import Client
 from django.urls import reverse, set_script_prefix
+from django.utils.html import escape
 
 from apps.core import comunidade, direcao, robos
 
@@ -245,7 +246,7 @@ def test_cada_tarefa_pertence_a_exatamente_um_lote():
 
 @respx.mock
 def test_cada_estado_cai_na_coluna_certa(fila_comunidade, livro_comunidade, dentro):
-    # guarda: services/admin/apps/core/comunidade.py:244
+    # guarda: services/admin/apps/core/comunidade.py:256
     resposta = dentro.get(reverse("comunidade"))
     html = resposta.content.decode()
 
@@ -281,7 +282,7 @@ def test_cada_estado_cai_na_coluna_certa(fila_comunidade, livro_comunidade, dent
 def test_dependencia_nao_concluida_vai_para_a_fazer_com_a_tarefa_esperada(
     fila_comunidade, livro_comunidade, dentro
 ):
-    # guarda: services/admin/apps/core/comunidade.py:221
+    # guarda: services/admin/apps/core/comunidade.py:233
     resposta = dentro.get(reverse("comunidade"))
 
     piloto = _lote(resposta, "COM-10")
@@ -298,7 +299,7 @@ def test_dependencia_nao_concluida_vai_para_a_fazer_com_a_tarefa_esperada(
 def test_tarefa_do_lote_ausente_da_fila_e_nao_medida(
     fila_comunidade, livro_comunidade, dentro
 ):
-    # guarda: services/admin/apps/core/comunidade.py:228
+    # guarda: services/admin/apps/core/comunidade.py:240
     resposta = dentro.get(reverse("comunidade"))
 
     gamificacao = _lote(resposta, "COM-09")
@@ -311,7 +312,7 @@ def test_tarefa_do_lote_ausente_da_fila_e_nao_medida(
 def test_tarefa_fora_dos_lotes_com_comunidade_aparece_em_nao_classificadas(
     fila_comunidade, livro_comunidade, dentro
 ):
-    # guarda: services/admin/apps/core/comunidade.py:308
+    # guarda: services/admin/apps/core/comunidade.py:320
     resposta = dentro.get(reverse("comunidade"))
     html = resposta.content.decode()
 
@@ -325,7 +326,7 @@ def test_tarefa_fora_dos_lotes_com_comunidade_aparece_em_nao_classificadas(
 def test_pendencia_respondida_some_e_a_aberta_aparece_com_o_lote(
     fila_comunidade, livro_comunidade, dentro
 ):
-    # guarda: services/admin/apps/core/comunidade.py:329
+    # guarda: services/admin/apps/core/comunidade.py:341
     resposta = dentro.get(reverse("comunidade"))
     html = resposta.content.decode()
 
@@ -345,7 +346,7 @@ def test_pendencia_respondida_some_e_a_aberta_aparece_com_o_lote(
 def test_rumo_mais_recente_e_data_do_ultimo_registro_da_frente(
     fila_comunidade, livro_comunidade, dentro
 ):
-    # guarda: services/admin/apps/core/comunidade.py:323
+    # guarda: services/admin/apps/core/comunidade.py:335
     resposta = dentro.get(reverse("comunidade"))
     html = resposta.content.decode()
 
@@ -359,7 +360,7 @@ def test_rumo_mais_recente_e_data_do_ultimo_registro_da_frente(
 def test_fila_ausente_deixa_todo_lote_nao_medido_com_recarregar(
     tmp_path, monkeypatch, livro_comunidade, dentro
 ):
-    # guarda: services/admin/apps/core/comunidade.py:264
+    # guarda: services/admin/apps/core/comunidade.py:276
     monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path / "ausente",))
 
     resposta = dentro.get(reverse("comunidade"))
@@ -386,6 +387,30 @@ def test_livro_ausente_diz_nao_li_e_continua_mostrando_a_fila(
     assert "não li o livro" in html
     assert _lote(resposta, "COM-01")["estado"] == "feito"
     assert _lote(resposta, "COM-05")["espera_voce"] is False
+
+
+@respx.mock
+def test_campo_com_aspas_escapadas_chega_inteiro_na_tela(
+    fila_comunidade, livro_comunidade, dentro
+):
+    # guarda: services/admin/apps/core/comunidade.py:167
+    titulo = 'Ele disse "pare", e o robô parou em C:\\pasta'
+    passo = 'Responder "sim, pode", ou "não"'
+    _registro(
+        livro_comunidade,
+        "20260927-600-comunidade-aspas",
+        tipo="pendencia",
+        frente="comunidade",
+        precisa_do_dono=True,
+        quando="2026-09-27",
+        titulo=titulo,
+        proximo_passo=passo,
+    )
+
+    html = dentro.get(reverse("comunidade")).content.decode()
+
+    assert escape(titulo) in html
+    assert escape(passo) in html
 
 
 def test_registro_ilegivel_nao_vira_livro_pela_metade(tmp_path):

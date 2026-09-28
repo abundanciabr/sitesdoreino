@@ -136,7 +136,9 @@ QUEM_DESTRAVA = {"mantenedor": "espera você", "fila": "espera outra tarefa"}
 ENDERECO_NO_AR = re.compile(r"https://meshcraft\.top/[^\s\"'<>),;]*")
 
 _CAMPO = {
-    nome: re.compile(r"^\s*" + nome + r':\s*(null|true|false|"([^"]*)"|(\d+))', re.M)
+    nome: re.compile(
+        r"^\s*" + nome + r':\s*(null|true|false|"((?:[^"\\]|\\.)*)"|(\d+))', re.M
+    )
     for nome in (
         "arquivo",
         "tipo",
@@ -161,7 +163,17 @@ def _campo(texto: str, nome: str):
         return encontrado.group(1) == "true"
     if encontrado.group(3) is not None:
         return int(encontrado.group(3))
-    return encontrado.group(2)
+    valor = encontrado.group(2)
+    valor = _sem_escape(valor)
+    return valor
+
+
+def _sem_escape(bruto: str) -> str:
+    """A string JavaScript do registro, com `\\"`, `\\\\` e `\\n` desfeitos, sem executar nada."""
+    try:
+        return json.loads(f'"{bruto}"')
+    except ValueError:
+        return re.sub(r"\\(.)", r"\1", bruto)
 
 
 def ler_registros(pasta: Path | None) -> list[dict] | None:
