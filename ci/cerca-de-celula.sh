@@ -23,7 +23,7 @@
 # outra coisa (tamanho de uma mudança revisável) e continua útil. Desde o PR
 # #1167 (06/09/2026) o que ele conta é CÓDIGO: a escrituração que a casa OBRIGA
 # cada PR a carregar (`painel/` e `fila/`, a lista de `PASTAS_DE_ESCRITURACAO`
-# em ci/registros_de_entrega.py) sai da conta, porque comia o orçamento do trabalho
+# em ci/divida_do_livro.py) sai da conta, porque comia o orçamento do trabalho
 # de verdade. Quem mede é ci/orcamento-de-mudanca.sh, não este arquivo.
 #
 # O que este script ainda faz: o Rito de Contrato (RITOS.md §3) — contrato não
