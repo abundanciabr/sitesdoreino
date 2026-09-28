@@ -45,18 +45,16 @@ from _nucleo import raiz_do_repo  # noqa: E402
 
 RAIZ = raiz_do_repo()
 
-# Uma assinatura REAL da armadilhas/185 (a entrada que tocou quatro vezes em
-# 30/08/2026), escolhida porque a frase está LITERALMENTE em `ci/mergear.py`
-# (linha `f"{len(devedores)} merge(s) sem registro"`), e a linha de FALHA que ela
-# descreve, tal como `ci/mergear.py --conferir` imprime.
-SINAL_185 = r"merge\(s\) sem registro"
+# A assinatura ativa da armadilha 481 aparece no código que recusa alterações
+# sem mandato. A prova usa essa falha real sem depender da dívida aposentada.
+SINAL_MANDATO = r"falta mandato do dono para"
 SAIDA_DE_FALHA = (
-    "  dívida do livro       FAIL   2 merge(s) sem registro\n"
+    "  mandato do mantenedor FAIL   falta mandato do dono para ci/mergear.py\n"
     "RESULTADO  FAIL\n"
 )
 SINAIS = [{
-    "armadilha": "185", "arquivo": "armadilhas/185-x.md",
-    "titulo": "dívida do livro", "regex": SINAL_185,
+    "armadilha": "481", "arquivo": "armadilhas/481-mandato-do-mantenedor-e-uma-linha-com-caminhos-soltos.md",
+    "titulo": "mandato do mantenedor", "regex": SINAL_MANDATO,
 }]
 
 
@@ -75,8 +73,8 @@ def _codigo_que_imprime_a_mensagem() -> str:
     por acaso: a premissa (código-fonte benigno contém a assinatura) é medida.
     """
     texto = (RAIZ / "ci" / "mergear.py").read_text(encoding="utf-8")
-    assert re.search(SINAL_185, texto), (
-        "ci/mergear.py deixou de conter a assinatura da 185; escolha outro "
+    assert re.search(SINAL_MANDATO, texto), (
+        "ci/mergear.py deixou de conter a assinatura da 481; escolha outro "
         "arquivo-fonte REAL para esta prova em vez de afrouxá-la."
     )
     return texto
@@ -89,11 +87,11 @@ def _codigo_que_imprime_a_mensagem() -> str:
     "cat ci/mergear.py",
     "sed -n '1,200p' ci/mergear.py",
     "grep -n 'FAIL' ci/mergear.py",
-    "grep -rn \"d[íi]vida do livro\" ci/ | head -20",
+    "grep -rn \"falta mandato do dono para\" ci/ | head -20",
     "git show origin/main:ci/mergear.py | sed -n '1,80p'",
     "cd C:/Users/x/wt-ci && head -120 ci/mergear.py; echo ---; tail -40 ci/fila.py",
     "for f in ci/mergear.py ci/fila.py; do echo \"== $f\"; cat $f; done",
-    "rg -n 'd[íi]vida do livro' ci/",
+    "rg -n 'falta mandato do dono para' ci/",
     "grep -E \"FAIL|PASS\" ci/mergear.py",
 ], ids=["cat", "sed-n", "grep", "grep-r-pipe-head", "git-show", "cd-head-tail",
         "for-do-cat", "rg", "grep-alternacao-em-aspas-duplas"])
@@ -130,7 +128,7 @@ def test_ler_codigo_fonte_pelo_powershell_tambem_cala() -> None:
         "heredoc-para-python", "find-exec", "xargs-python"])
 def test_a_falha_real_com_a_mesma_assinatura_faz_o_sino_tocar(comando: str) -> None:
     aviso = _decidir(comando, SAIDA_DE_FALHA)
-    assert aviso is not None and "armadilhas/185" in aviso, (
+    assert aviso is not None and "armadilhas/481" in aviso, (
         f"o sino CALOU numa falha real: {comando!r}. Isto é cegueira, e cegueira "
         "não se cura (a TAR-043 mediu)."
     )
