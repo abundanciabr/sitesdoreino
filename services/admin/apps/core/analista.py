@@ -267,15 +267,6 @@ PRECISA DO DONO: exatamente "sim" quando o próximo passo é uma decisão que s�
 o dono pode tomar (dinheiro, produto, preço, contrato, prioridade), ou \
 exatamente "não" quando é trabalho que um robô ou a equipe executa.
 
-PROIBIDO O TRAVESSÃO
-Esta escola publica sem as riscas longas. Nada de risca longa de tamanho \
-nenhum no seu texto. No lugar dela entra, conforme o papel na frase: vírgula \
-(explicação no meio), parênteses (dado acessório), dois-pontos (fechamento no \
-fim da frase) ou aspas (fala de alguém). A troca é uma reescrita, não um \
-caractere trocado: a frase tem de ficar em português correto do Brasil. O \
-hífen de palavra composta ("guarda-chuva") continua normal, e o hífen que abre \
-cada alternativa também.
-
 O QUE VOCÊ NÃO SABE, E POR ISSO NÃO INVENTA
 Qualquer número que não esteja no dossiê. Você não sabe quantos alunos a \
 escola tem se o dossiê não disser, não sabe o preço de nada, não sabe o que \
