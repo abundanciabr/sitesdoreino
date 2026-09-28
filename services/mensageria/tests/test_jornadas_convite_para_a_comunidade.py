@@ -259,16 +259,11 @@ def test_o_convite_nao_promete_renda_prazo_nem_nome_de_membro():
             assert palavra not in corpo_minusculo, f"{palavra!r} em {texto.corpo!r}"
 
 
-def test_o_convite_aponta_para_o_forum_e_para_a_pagina_publica():
+def test_o_convite_aponta_para_o_forum_sem_documento_privado():
     semear()
-    corpos = " ".join(
-        TextoDoPasso.objects.filter(
-            passo__jornada_versao__jornada__slug=SLUG
-        ).values_list("corpo", flat=True)
-    )
-
-    assert "meshcraft.top/forum/comunidade" in corpos
-    assert "meshcraft.top/docs/comunidade" in corpos
+    for texto in TextoDoPasso.objects.filter(passo__jornada_versao__jornada__slug=SLUG):
+        assert "meshcraft.top/forum/comunidade" in texto.corpo
+        assert "meshcraft.top/docs/comunidade" not in texto.corpo
 
 
 def test_semear_duas_vezes_nao_duplica_nem_reescreve():

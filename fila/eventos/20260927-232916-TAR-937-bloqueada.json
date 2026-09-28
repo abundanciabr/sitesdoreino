@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260927-232916-TAR-937-bloqueada",
+  "tarefa": "TAR-937",
+  "evento": "bloqueada",
+  "quando": "2026-09-27T23:29:16.332377+00:00",
+  "quem": "coordenacao/comunidade-pronta",
+  "detalhe": "Trava: criar contas e senhas em produção e preparar execução automática contra o site são gestos que a permissão da sessão que recebeu o pedido recusou (modo automático, 27/09/2026, registro 20260927-324). Destrava: decisão dele no registro 324 (frente em sessão autorizada a agir em produção), ou ele cria as contas à mão como o registro 292 descreve e pede o cancelamento desta tarefa.",
+  "espera": "mantenedor"
+}

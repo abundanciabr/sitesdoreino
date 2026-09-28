@@ -9,7 +9,8 @@
     "gamificacao"
   ],
   "depende_de": [
-    "TAR-828"
+    "TAR-828",
+    "TAR-936"
   ],
   "cria": [],
   "move": [

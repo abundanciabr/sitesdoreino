@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260927-233023-TAR-935-contrato_execucao",
+  "tarefa": "TAR-935",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-27T23:30:23.343086+00:00",
+  "quem": "coordenacao/comunidade-pronta",
+  "contrato": {
+    "plano": "Comunidade Meshcraft, rodada 4, segunda leva: as frentes que levam a Comunidade a se declarar pronta",
+    "versao": 1,
+    "objetivo": "Levar à main, num PR só, as tarefas da segunda leva (prova em produção com contas de teste; os quatro gestos; o piloto ligado a elas) com contrato, e os registros da resposta e da pendência do mantenedor no livro.",
+    "entregaveis": [
+      "Tarefa guarda-chuva concluída pelo PR",
+      "Tarefas da prova em produção e dos quatro gestos criadas, explicadas, com contrato e bloqueadas à espera do mantenedor",
+      "Piloto (tarefa 929) dependente dos gestos, com contrato versão 2",
+      "Registros: resposta ao pedido 292 e pendência da permissão"
+    ],
+    "escopo_incluido": [
+      "fila/**",
+      "painel/registros/**"
+    ],
+    "nao_objetivos": [
+      "Código de produto, script ou workflow",
+      "Executar gesto em produção",
+      "Decidir em nome do mantenedor o que a permissão dele reserva"
+    ],
+    "restricoes": [
+      "Texto publicado sem travessão",
+      "Registro nunca se edita; atualização é registro novo",
+      "Tarefa existente só muda depende_de",
+      "Não citar outra tarefa no título nem no detalhe do ci/pr.py"
+    ],
+    "decisoes_aprovadas": [
+      "Pedido do mantenedor de 27/09/2026 às 19h50: frentes que façam sozinhas as provas pousarem, as contas de teste e a prova no site de verdade, os quatro cliques da área administrativa e o piloto",
+      "Resposta dele ao pedido 292 (registro 20260927-322)"
+    ],
+    "etapas": [
+      "Medição dos quatro itens (PRs, gestos, contas, fila)",
+      "Criação das tarefas, bloqueios e dependência do piloto",
+      "Contratos e registros",
+      "fila validar, gerar_manifesto, travessão",
+      "ci/pr.py com esta tarefa e pouso medido"
+    ],
+    "criterios_entrada": [
+      "Rodada 4 primeira leva na main (tarefas 925 a 930)"
+    ],
+    "criterios_aceite": [
+      "PR MERGED",
+      "python ci/fila.py listar mostra as tarefas novas bloqueadas com espera mantenedor e o piloto dependente delas",
+      "node painel/gerar_manifesto.js verde"
+    ],
+    "evidencias_exigidas": [
+      "Saída de python ci/fila.py validar e de node painel/gerar_manifesto.js",
+      "URL do PR e estado MERGED"
+    ],
+    "condicao_encerramento": "PR integrado com as tarefas da segunda leva criadas, explicadas e com contrato, as dependências novas das tarefas 828 e 929, e os registros da resposta e da decisão do mantenedor no livro; python ci/fila.py validar verde; node painel/gerar_manifesto.js verde",
+    "limites_autonomia": "A coordenadora registra e mede; não executa gesto de produção nem cria conta; o que a permissão da sessão recusou vira pendência ao mantenedor, nunca contorno.",
+    "acoes_do_mantenedor": "Responder à pendência 20260927-324 quando quiser."
+  }
+}
