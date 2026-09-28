@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260928-121037-TAR-942-explicada",
+  "tarefa": "TAR-942",
+  "evento": "explicada",
+  "quando": "2026-09-28T12:10:37.338102+00:00",
+  "quem": "Descoberta na TAR-941, sessao do mantenedor em 28/09/2026",
+  "o_que_e": "O formulario de senha em /login carrega um token que vale 20 minutos. Quem deixa a tela aberta mais que isso e depois digita a senha e recusado com a chave nao-confere, e a tela explica com o texto da volta do Google: A volta do Google nao confere com o pedido que saiu daqui. A pessoa nunca usou o Google.",
+  "o_que_muda": "A pessoa le que a tela ficou aberta tempo demais e que basta recarregar e digitar de novo. Hoje ela le uma frase sobre o Google e nao entende o que fazer.",
+  "exemplo": "Ana abre /login, atende o telefone por meia hora, volta, digita a senha certa e le que a volta do Google nao confere. Depois, ela le que a pagina ficou aberta tempo demais e que e so recarregar.",
+  "importancia": 40
+}

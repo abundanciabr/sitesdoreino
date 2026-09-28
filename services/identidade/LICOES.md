@@ -24,20 +24,26 @@ respondendo).
 
 ## O vocabulário de recusa é CONTRATO com o `funil`
 
-Toda recusa da porta redireciona para `/{idioma}/login?erro=<chave>`. As
-chaves, que a tela do `funil` traduz nos três idiomas:
+Toda recusa da porta redireciona para a tela de login AO LADO do destino
+pedido: `/login?erro=<chave>` quando o `?next=` não tem prefixo de idioma (o
+idioma padrão mora na raiz, `DECISAO-raiz-sem-prefixo-do-idioma-padrao`) e
+`/es/login?erro=<chave>` quando tem. As chaves, que a tela do `funil` traduz
+nos três idiomas:
 
 | chave | quando |
 |---|---|
 | `interrompida` | a pessoa voltou do Google sem concluir (`?error=`) |
-| `nao-confere` | `state` ausente/errado — retorno fora de ordem ou forjado |
+| `nao-confere` | `state` do Google ausente/errado, ou token do formulário de senha ausente, vencido (20 min) ou forjado |
 | `nao-configurada` | falta credencial do Google no env desta célula |
 | `google-indisponivel` | o Google não respondeu ou respondeu inutilizável |
 | `email-nao-verificado` | o Google não confirma o e-mail como verificado |
 
 Mudar uma chave aqui é mudar a tradução lá — e vice-versa. O idioma da
-aterrissagem sai do `?next=` pedido (`/es/…` ⇒ `/es/login`), com `pt-br` de
-padrão.
+aterrissagem sai do `?next=` pedido (`/es/…` ⇒ `/es/login`); sem prefixo,
+`/login`. Esta célula NÃO tem idioma padrão próprio: o `pt-br` fixo que havia
+aqui mandou toda recusa do meshcraft para `/pt-br/login`, 404 desde 27/08/2026,
+quando o padrão do site virou `pt-br` e a forma prefixada dele deixou de
+existir. Consertado em 28/09/2026 (TAR-941).
 
 ## O cookie tem o MESMO nome que a Caixa publicava — e isso é deliberado
 

@@ -32,8 +32,8 @@ def test_sem_next_volta_para_a_raiz(porta):
 
 def test_email_nao_verificado_e_recusado_sem_criar_nada(porta):
     """[INVARIANTE] Só o booleano True do Google passa — herdado da EVO-01 §2."""
-    resposta = porta.bater(perfil_google(verificado=False), next="/pt-br/")
-    assert _para_onde(resposta) == "/pt-br/login?erro=email-nao-verificado"
+    resposta = porta.bater(perfil_google(verificado=False), next="/")
+    assert _para_onde(resposta) == "/login?erro=email-nao-verificado"
     assert not porta.esta_dentro
     assert Identidade.objects.count() == 0
 

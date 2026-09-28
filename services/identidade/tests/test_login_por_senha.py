@@ -89,12 +89,13 @@ def test_email_ou_senha_vazios_sao_recusados(client, db):
 
 def test_sem_token_e_recusado_antes_de_tocar_a_senha(client, db):
     """O token é conferido ANTES de qualquer credencial — mesma ordem de
-    portões em série do fluxo do Google."""
+    portões em série do fluxo do Google. Sem `next`, a pessoa estava na raiz,
+    e a tela de login da raiz é `/login`: sem prefixo de idioma."""
     _com_senha()
     resposta = client.post(
         "/entrar/senha", {"email": "ana@exemplo.test", "senha": "uma-senha-boa-123"}
     )
-    assert "erro=nao-confere" in _para_onde(resposta)
+    assert _para_onde(resposta) == "/login?erro=nao-confere"
     assert ses.CHAVE_IDENTIDADE not in client.session
 
 
@@ -141,6 +142,25 @@ def test_recusa_fala_o_idioma_do_destino(client, db):
         },
     )
     assert _para_onde(resposta) == "/es/login?erro=senha-invalida"
+
+
+def test_recusa_na_raiz_volta_para_login_sem_prefixo_de_idioma(client, db):
+    """O idioma padrão do site mora na raiz, sem prefixo
+    (`DECISAO-raiz-sem-prefixo-do-idioma-padrao`): quem estava em `/` volta
+    para `/login`. Esta célula não sabe qual idioma é o padrão, e não precisa
+    saber. O `pt-br` fixo que havia aqui mandava toda recusa do meshcraft
+    para `/pt-br/login`, que é 404 desde 27/08/2026."""
+    _com_senha()
+    resposta = client.post(
+        "/entrar/senha",
+        {
+            "email": "ana@exemplo.test",
+            "senha": "senha-errada",
+            "token": tokens.emitir(),
+            "next": "/",
+        },
+    )
+    assert _para_onde(resposta) == "/login?erro=senha-invalida"
 
 
 def test_pessoa_recusada_na_fila_ainda_consegue_entrar_por_senha(client, db):
