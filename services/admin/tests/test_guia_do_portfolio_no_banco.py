@@ -1,4 +1,4 @@
-"""O guia do portfólio chega ao banco de produção, e o aluno o lê sem entrar.
+"""O guia do portfólio chega privado ao banco de produção.
 
 Guarda de `0011_semear_o_guia_do_portfolio.py`. Mesmo desenho de
 `test_alavancas_10x_no_banco.py`: no banco de teste a `0003` semeia a pasta
@@ -6,8 +6,7 @@ inteira, inclusive este documento, e a `0011` não encontraria o que inserir.
 Cada teste apaga a linha antes, fabricando o banco que a migração vai encontrar
 em produção (`armadilhas/253`, `347`).
 
-A diferença para os guardas dos outros documentos novos é o público: este é
-PÚBLICO, porque quem o lê é o aluno, e ele precisa abrir sem porta nenhuma.
+O guia fica somente para administradores por decisão de 27/09/2026.
 """
 
 import importlib
@@ -56,24 +55,24 @@ def banco_de_producao_antes_do_documento(db):
     Documento.objects.filter(nome=NOME).delete()
 
 
-def test_o_guia_entra_no_banco_que_ja_foi_semeado(
+def test_o_guia_entra_privado_no_banco_que_ja_foi_semeado(
     banco_de_producao_antes_do_documento,
 ):
     _semear()
 
     documento = Documento.objects.get(nome=NOME)
     assert documento.titulo == TITULO
-    assert documento.publico is True
+    assert documento.publico is False
 
 
-def test_o_aluno_le_o_guia_sem_passar_por_porta_nenhuma(
+def test_visitante_nao_le_o_guia_nem_o_encontra_na_lista_publica(
     banco_de_producao_antes_do_documento,
 ):
     _semear()
 
     pagina = Client().get(f"/docs/{NOME}")
-    assert pagina.status_code == 200
-    assert TITULO in Client().get("/docs/").content.decode()
+    assert pagina.status_code == 404
+    assert TITULO not in Client().get("/docs/").content.decode()
 
 
 def test_o_guia_carrega_as_quatro_regras_da_professora(
