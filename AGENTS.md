@@ -71,7 +71,7 @@ da fila e de seus eventos, não do roteiro.
 
 Hooks nativos estão em `.codex/hooks.json`: SessionStart, UserPromptSubmit,
 Stop e a guarda de Monitor. Ações comuns não injetam documentos nem leem
-transcript. Texto publicado é verificado no pre-commit e CI.
+transcript. Pontuação não exige revisão nem bloqueia a publicação.
 Consulte erros por `python ci/consultar_armadilhas.py "<mensagem>"` ou
 `--caminho <arquivo>`; abra somente origens pertinentes.
 

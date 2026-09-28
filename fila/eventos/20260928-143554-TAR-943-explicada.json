@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260928-143554-TAR-943-explicada",
+  "tarefa": "TAR-943",
+  "evento": "explicada",
+  "quando": "2026-09-28T14:35:54.333258+00:00",
+  "quem": "Pedido do mantenedor nesta sessão em 28/09/2026: retirada completa dos dois controles.",
+  "o_que_e": "O projeto cobrava revisão de pontuação e registro no livro antes de salvar mudanças.",
+  "o_que_muda": "Quem altera o projeto passa a salvar o trabalho sem essas duas cobranças.",
+  "exemplo": "Um texto com travessão pode entrar no projeto sem gerar bloqueio ou dívida no livro.",
+  "importancia": 70
+}

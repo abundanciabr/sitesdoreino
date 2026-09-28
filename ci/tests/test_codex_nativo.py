@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 import muralha_pasta_compartilhada as pasta
-import muralha_do_travessao_na_escrita as texto
 import economia_da_fabrica as economia
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -70,35 +69,36 @@ def test_multipatch_confere_tambem_destino_do_move(bancada, tmp_path):
 def test_patch_invalido_ou_traversal_fecha_as_duas_guardas(bancada, corpo):
     e = evento(bancada, corpo)
     assert pasta.decidir(e)
-    assert texto.decidir(e) == 2
 
 def test_patch_legitimo_permitido_na_bancada(bancada):
     e = evento(bancada, "*** Add File: services/a/templates/a.html\n+<p>Olá, mundo.</p>\n")
     assert pasta.decidir(e) is None
-    assert texto.decidir(e) == 0
+    assert pasta.decidir(e) is None
 
-def test_travessao_no_segundo_arquivo_recusa_patch_inteiro(bancada):
+def test_pontuacao_no_segundo_arquivo_nao_recusa_patch(bancada):
     e = evento(bancada, "*** Add File: interno.txt\n+ok\n*** Add File: services/a/templates/a.html\n+<p>Olá — mundo.</p>\n")
-    assert texto.decidir(e) == 2
+    assert pasta.decidir(e) is None
     assert not (bancada / "interno.txt").exists()
 
-def test_update_reconstroi_contexto_para_detectar_travessao(bancada):
+def test_update_com_pontuacao_e_permitido(bancada):
     destino = bancada / "services/a/templates/a.html"
     destino.parent.mkdir(parents=True)
     destino.write_text("<p>\nOlá, mundo.\n</p>\n", encoding="utf-8")
     e = evento(bancada, "*** Update File: services/a/templates/a.html\n@@\n <p>\n-Olá, mundo.\n+Olá — mundo.\n </p>\n")
-    assert texto.decidir(e) == 2
+    assert pasta.decidir(e) is None
     assert "—" not in destino.read_text(encoding="utf-8")
 
-def test_move_de_privado_para_publico_mede_destino(bancada):
+def test_move_para_publico_preserva_pontuacao(bancada):
     (bancada / "interno.txt").write_text("Olá — mundo.\n", encoding="utf-8")
     e = evento(bancada, "*** Update File: interno.txt\n*** Move to: services/a/templates/a.html\n@@\n Olá — mundo.\n")
-    assert texto.decidir(e) == 2
+    assert pasta.decidir(e) is None
 
 def test_contexto_ausente_recusa_medicao(bancada):
     (bancada / "a.txt").write_text("diferente\n")
     e = evento(bancada, "*** Update File: a.txt\n@@\n-ausente\n+novo\n")
-    assert texto.decidir(e) == 2
+    from patch_codex import ler_patch, texto_proposto
+    with pytest.raises(ValueError):
+        texto_proposto(ler_patch(e)[0])
 
 def test_modelos_codex_sao_explicitos(monkeypatch):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
@@ -206,10 +206,15 @@ def test_launcher_codex_nativo_preservado():
         assert evento_hook in comando["commandWindows"]
 
 
-def test_travessao_permanece_no_checkpoint_de_commit():
+def test_commit_nao_cobra_pontuacao_nem_registro():
     gancho = (RAIZ / ".githooks/pre-commit").read_text(encoding="utf-8")
-    assert "python ci/travessao.py --verificar-staged || exit 1" in gancho
-    assert "python ci/registro_no_commit.py" in gancho
+    assert "python ci/travessao.py --verificar-staged || exit 1" not in gancho
+    assert "python ci/registro_no_commit.py" not in gancho
+    assert "python ci/travessao.py" not in gancho
+    assert 'BLOQUEADO: arquivo GERADO do painel' in gancho
+    assert 'BLOQUEADO: arquivo GERADO das armadilhas' in gancho
+    runner = (RAIZ / "ci/ci.py").read_text(encoding="utf-8")
+    assert 'PortaoDeShell("muralha-do-travessao"' not in runner
 
 
 def test_dispatcher_stop_cobra_e_aceita_relatorio(bancada):
@@ -260,7 +265,6 @@ def test_add_update_multihunk_e_delete_na_bancada(bancada):
 ])
 def test_gramatica_invalida_fecha_patch(bancada, corpo):
     assert pasta.decidir(evento(bancada, corpo))
-    assert texto.decidir(evento(bancada, corpo)) == 2
 
 def test_session_start_emite_um_json_valido(bancada):
     import subprocess
