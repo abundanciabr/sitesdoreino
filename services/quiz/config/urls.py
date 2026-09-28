@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.core.views import healthz
 from apps.quiz import views as quiz_views
+from apps.quiz.laboratorio import observacao
 
 urlpatterns = [
     path("healthz", healthz),
@@ -24,6 +25,7 @@ urlpatterns = [
     # honestos por um erro de servidor.
     # Antes do curinga: senão `telemetry` vira slug de quiz e a ingestão 404.
     path("telemetry/", quiz_views.telemetria, name="quiz-telemetria"),
+    path("<slug:slug>/observacao/", observacao, name="quiz-observacao"),
     path("<slug:slug>/", quiz_views.formulario, name="quiz-formulario"),
     path("<slug:slug>/resultado", quiz_views.resultado, name="quiz-resultado"),
     path("<slug:slug>/refazer", quiz_views.refazer, name="quiz-refazer"),

@@ -19,6 +19,10 @@
 </head>
 <body>
 <main>
+  {% if quiz.slug == "laboratorio-crivo" %}
+  <p><a href="/docs/laboratorio-crivo">Guia do laboratório</a> | <a href="{% url 'quiz-observacao' quiz.slug %}" target="_blank" rel="noopener">Observar registros (nova aba)</a></p>
+  <p>Use somente o contato sintético indicado no guia. Esta experiência demonstra o quiz e a chegada à oferta de teste.</p>
+  {% endif %}
   {% comment %}Sem faixa (pontuação fora de todas, ou faixa removida) a pessoa não lê a
      chave interna: as respostas estão gravadas, e é isso que se diz.{% endcomment %}
   <h1>{% if banda %}{{ banda.title }}{% else %}Recebemos suas respostas{% endif %}</h1>

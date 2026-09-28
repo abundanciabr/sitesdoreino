@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observação | Laboratório Crivo</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; color: #222; }
+main { max-width: 680px; margin: auto; padding: 1.5rem 1rem; }
+a { color: #164c91; } a:focus-visible { outline: 3px solid #164c91; outline-offset: 3px; }
+section { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.7; }
+dt { font-weight: bold; } dd { margin: .25rem 0 1rem; }
+</style>
+</head>
+<body><main>
+<h1>Observe o Laboratório Crivo</h1>
+<p><a href="{{ guia }}">Abrir o guia de experiências</a> | <a href="{% url 'quiz-formulario' quiz.slug %}">Voltar ao quiz</a></p>
+<p>Esta tela calcula os registros da rodada deste navegador. Recarregue após cada experiência. A coleta de cliques acontece em segundo plano e pode levar até um minuto para aparecer.</p>
+<section>
+<h2>Sua rodada atual</h2>
+{% if rodada %}
+<dl><dt>Versão</dt><dd>{{ rodada.versao }}</dd><dt>Origem</dt><dd>{{ rodada.origem }}</dd><dt>Aberturas registradas do formulário</dt><dd>{{ rodada.visitas }}</dd><dt>Respostas completas registradas nesta rodada</dt><dd>{% if rodada.submissao %}1{% else %}0{% endif %}</dd></dl>
+{% if rodada.submissao %}
+<p>Pontuação calculada pelo servidor: <strong>{{ rodada.submissao.score }}</strong>. Resultado: <strong>{{ rodada.submissao.result_key }}</strong>.</p>
+<h3>Respostas registradas</h3>
+<ol>{% for resposta in rodada.respostas %}<li><p>{{ resposta.pergunta }}<br><strong>{{ resposta.escolha }}</strong></p></li>{% endfor %}</ol>
+{% else %}<p>Ainda não há resposta completa. Conclua o quiz para ver pontuação, diagnóstico e escolhas gravadas.</p>{% endif %}
+<h3>Relatório existente da rodada</h3>
+{% if rodada.relatorio %}<pre>{{ rodada.relatorio }}</pre>{% else %}<p>Nenhum evento foi recebido ainda. Faça uma escolha no quiz, aguarde até um minuto e recarregue. Se continuar vazio, a coleta precisa ser conferida pela operação.</p>{% endif %}
+<p>O relatório conta uma visita por rodada na conversão. Hesitação é mais de uma escolha na mesma pergunta. Tempo médio vai da primeira visualização à primeira escolha. Sair significa um evento de saída do formulário; uma rodada pode sair e depois concluir.</p>
+{% else %}<p>Não encontrei uma rodada válida deste navegador. Abra o laboratório por um dos links do guia e volte a esta tela no mesmo navegador.</p>{% endif %}
+</section>
+<section><h2>Entrega dos eventos sintéticos</h2>
+<p>Na amostra compartilhada de demonstração: <strong>{{ pendentes }}</strong> eventos pendentes e <strong>{{ entregues }}</strong> entregues ao canal de eventos.</p>
+<p>A amostra inclui somente o contato sintético indicado no guia, o Laboratório Crivo e as três origens de demonstração. Não identifica pessoas. O modelo atual não liga cada evento a uma resposta por um identificador de conclusão. Essas contagens não comprovam a entrega de uma rodada específica nem o registro no serviço de contatos.</p>
+<p>Entregue aqui significa publicado pelo relay. Não significa pagamento, matrícula ou receita. Falha e recuperação são demonstradas apenas no banco de teste.</p></section>
+</main></body></html>

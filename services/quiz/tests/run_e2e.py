@@ -73,6 +73,7 @@ def main() -> int:
         "-p",
         "no:cacheprovider",
         str(ROOT / "tests" / "e2e_browser.py"),
+        str(ROOT / "tests" / "e2e_laboratorio.py"),
     ]
     try:
         return subprocess.run(
