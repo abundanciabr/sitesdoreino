@@ -1,0 +1,19 @@
+{
+  "arquivo": "931-convites-apontam-para-paginas-que-continuarao-abertas-aos-al",
+  "id": "TAR-931",
+  "titulo": "Convites apontam para páginas que continuarão abertas aos alunos",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Textos futuros sem URL de documento privado, testes da mensageria, versão ativa conferida e publicação medida.",
+  "despacho": "Corrigir nas sementes os links dos convites da Comunidade e da Prancheta que apontam a documentos a fechar. Conferir as rotas reais, versões ativas no banco e publicar novas versões somente se necessário, pelo rito existente. Testar e medir o destino público.",
+  "origem": "Pedido direto do mantenedor em 2026-09-27: documentos privados, exceto a entrada",
+  "criada_em": "2026-09-27",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
