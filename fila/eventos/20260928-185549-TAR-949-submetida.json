@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260928-185549-TAR-949-submetida",
+  "tarefa": "TAR-949",
+  "evento": "submetida",
+  "quando": "2026-09-28T18:55:49.121054+00:00",
+  "quem": "agent/ci/alertas-sem-divida",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2325",
+  "revisao": "e3c40468c65d9af255e6311baa7fba87b016f5f3",
+  "arvore": "bbd1bb1d74d458f886db00f3b0f93dd3b3f7d19f"
+}
