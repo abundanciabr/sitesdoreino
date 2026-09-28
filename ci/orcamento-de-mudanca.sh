@@ -29,7 +29,7 @@ PR_LABELS="${PR_LABELS:-}"
 # reprovando, tenham eles escrituração ao lado ou não. Isenção que salvasse
 # código seria o fim do portão.
 #
-# As pastas vêm de `PASTAS_DE_ESCRITURACAO`, em ci/divida_do_livro.py, que já é
+# As pastas vêm de `PASTAS_DE_ESCRITURACAO`, em ci/registros_de_entrega.py, que já é
 # a definição desta casa para "isto é papelada, não entrega". Uma segunda lista
 # aqui divergiria da primeira no dia em que alguém mexesse numa só.
 # -----------------------------------------------------------------------------
@@ -43,15 +43,15 @@ for candidato in python python3; do
 done
 if [[ -z "$PY_BIN" ]]; then
   echo "❌ ERROR orcamento-de-mudanca: 'python' não está no PATH."
-  echo "   As pastas de escrituração isentas são lidas de ci/divida_do_livro.py,"
+  echo "   As pastas de escrituração isentas são lidas de ci/registros_de_entrega.py,"
   echo "   e sem Python não há como saber quais são. O orçamento NÃO foi medido."
   echo "   Este resultado NÃO é um OK. Ative o venv (ou instale o Python) e rode de novo."
   exit 2
 fi
-LEITURA_DAS_PASTAS='import sys; sys.path.insert(0, sys.argv[1]); from divida_do_livro import PASTAS_DE_ESCRITURACAO; print("\n".join(PASTAS_DE_ESCRITURACAO))'
+LEITURA_DAS_PASTAS='import sys; sys.path.insert(0, sys.argv[1]); from registros_de_entrega import PASTAS_DE_ESCRITURACAO; print("\n".join(PASTAS_DE_ESCRITURACAO))'
 if ! PASTAS_ISENTAS="$("$PY_BIN" -c "$LEITURA_DAS_PASTAS" "$DIR_DO_PORTAO")" || [[ -z "$PASTAS_ISENTAS" ]]; then
   echo "❌ ERROR orcamento-de-mudanca: não consegui ler PASTAS_DE_ESCRITURACAO."
-  echo "   Origem: ci/divida_do_livro.py (o arquivo sumiu, mudou de nome, ou a"
+  echo "   Origem: ci/registros_de_entrega.py (o arquivo sumiu, mudou de nome, ou a"
   echo "   constante saiu de lá?). O orçamento NÃO foi medido; isto NÃO é um OK."
   exit 2
 fi

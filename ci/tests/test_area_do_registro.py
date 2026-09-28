@@ -22,7 +22,7 @@ from typing import Any
 
 import pytest
 
-import divida_do_livro
+import registros_de_entrega
 import mergear
 from _nucleo import Estado
 
@@ -76,7 +76,7 @@ def test_le_a_area_nas_duas_grafias_que_o_livro_aceita() -> None:
     com_aspas = _remessa(
         "painel/registros/20260907-002-b.js", *_registro("admin", aspas=True)
     )
-    assert divida_do_livro.areas_dos_registros_embarcados([sem_aspas, com_aspas]) == [
+    assert registros_de_entrega.areas_dos_registros_embarcados([sem_aspas, com_aspas]) == [
         ("painel/registros/20260907-001-a.js", "ci"),
         ("painel/registros/20260907-002-b.js", "admin"),
     ]
@@ -91,7 +91,7 @@ def test_campo_parecido_nao_passa_por_declaracao_de_area() -> None:
         '+  "sub-area": "vendas",',
         '+  area: "ci",',
     )
-    assert divida_do_livro.areas_dos_registros_embarcados([remessa]) == [
+    assert registros_de_entrega.areas_dos_registros_embarcados([remessa]) == [
         ("painel/registros/20260907-006-f.js", "ci")
     ]
 
@@ -100,7 +100,7 @@ def test_registro_sem_o_campo_e_com_null_contam_como_nao_declarado() -> None:
     """`area: null` é o molde não preenchido — não vale como declaração."""
     sem = _remessa("painel/registros/20260907-003-c.js", *_registro(None))
     nulo = _remessa("painel/registros/20260907-004-d.js", "+  area: null,")
-    assert divida_do_livro.areas_dos_registros_embarcados([sem, nulo]) == [
+    assert registros_de_entrega.areas_dos_registros_embarcados([sem, nulo]) == [
         ("painel/registros/20260907-003-c.js", None),
         ("painel/registros/20260907-004-d.js", None),
     ]
@@ -112,28 +112,28 @@ def test_area_em_linha_removida_nao_conta() -> None:
         "filename": "painel/registros/20260907-005-e.js",
         "patch": '@@ -1 +1 @@\n-  area: "ci",\n+  tipo: "entrega",',
     }
-    assert divida_do_livro.areas_dos_registros_embarcados([remessa]) == [
+    assert registros_de_entrega.areas_dos_registros_embarcados([remessa]) == [
         ("painel/registros/20260907-005-e.js", None)
     ]
 
 
 def test_arquivo_fora_da_pasta_do_livro_nao_e_registro() -> None:
     fora = _remessa("ci/mergear.py", '+  area: "ci",')
-    assert divida_do_livro.areas_dos_registros_embarcados([fora]) == []
+    assert registros_de_entrega.areas_dos_registros_embarcados([fora]) == []
 
 
 def test_area_do_ramo_le_o_nome_da_celula() -> None:
-    assert divida_do_livro.area_do_ramo("agent/ci/area-do-registro") == "ci"
-    assert divida_do_livro.area_do_ramo("agent/admin/degrau-17") == "admin"
+    assert registros_de_entrega.area_do_ramo("agent/ci/area-do-registro") == "ci"
+    assert registros_de_entrega.area_do_ramo("agent/admin/degrau-17") == "admin"
 
 
 def test_ramo_fora_do_padrao_nao_tem_area() -> None:
     """Ramo que não é `agent/<area>/<tarefa>` não diz área nenhuma."""
-    assert divida_do_livro.area_do_ramo("main") is None
-    assert divida_do_livro.area_do_ramo("agent/ci") is None
-    assert divida_do_livro.area_do_ramo("agent/ci/") is None
-    assert divida_do_livro.area_do_ramo("") is None
-    assert divida_do_livro.area_do_ramo(None) is None
+    assert registros_de_entrega.area_do_ramo("main") is None
+    assert registros_de_entrega.area_do_ramo("agent/ci") is None
+    assert registros_de_entrega.area_do_ramo("agent/ci/") is None
+    assert registros_de_entrega.area_do_ramo("") is None
+    assert registros_de_entrega.area_do_ramo(None) is None
 
 
 # ---------------------------------------------------------------------------

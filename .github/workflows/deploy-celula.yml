@@ -329,20 +329,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Embutir a regra da dívida do livro no contexto do build (só a célula admin)
-        if: matrix.celula == 'admin'
-        run: |
-          set -eu
-          # A REGRA da dívida do livro viaja junto — o MESMO arquivo que a porta
-          # do merge usa (`ci/mergear.py`). A célula mede a dívida ao vivo para
-          # a tela do dono; reimplementar a regra aqui dentro daria dois números
-          # diferentes para a mesma pergunta no primeiro dia em que alguém
-          # mexesse numa das cópias.
-          test -f ci/divida_do_livro.py || { echo "PAROU: ci/divida_do_livro.py nao existe"; exit 1; }
-          rm -rf services/admin/regra_do_livro
-          mkdir -p services/admin/regra_do_livro
-          cp ci/divida_do_livro.py services/admin/regra_do_livro/
-          echo "regra da divida embutida"
       - name: Embutir snapshot de segurança dos dados admin no build (só a célula admin)
         if: matrix.celula == 'admin'
         run: |

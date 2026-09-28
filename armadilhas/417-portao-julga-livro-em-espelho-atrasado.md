@@ -1,7 +1,7 @@
 ---
 schema_version: 2
 armadilha: 417
-estado: guardada
+estado: aposentada
 degrau: 3
 confianca: alta
 custo_por_queda: alto
@@ -9,11 +9,10 @@ gatilho:
   - ci/mergear.py
   - ci/divida_do_livro.py
 guarda:
-  tipo: CI
-  dono: ci/tests/test_mergear.py
-  detector: 'test_o_portao_recusa_julgar_o_livro_de_arvore_atrasada: árvore atrás de origin/main termina em ERROR'
+  tipo: nenhum
+  motivo: Cobrança de dívida retirada por decisão do mantenedor em 28/09/2026.
 sinal: 'o portão cobra dívida de registros que existem na origin/main, mas não existem no clone local'
-licao: 'Antes de julgar a dívida do livro, confirme que HEAD está em dia com origin/main; se a medição não for possível ou houver atraso, recuse com instrução para armar a espera numa bancada em dia.'
+licao: A cobrança de dívida do livro foi retirada por decisão do mantenedor em 28/09/2026; esta entrada preserva apenas o histórico da regra antiga.
 ---
 
 # 417: O portão julga o livro por um espelho atrasado
