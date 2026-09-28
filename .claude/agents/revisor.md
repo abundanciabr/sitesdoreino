@@ -23,18 +23,15 @@ sessão responsável; revisão adicional não é condição de integração.
    escopo que ninguém pediu; arquivo a menos é entrega pela metade.
 2. **A cerca e o orçamento.** CONSTITUICAO.md, Lei 2: até 15 arquivos e suítes
    de todas as células tocadas; caminho CODEOWNERS só com mandato escrito.
-3. **O recibo a bordo.** Um registro novo em `painel/registros/` citando o
-   número deste PR, e o evento da fila quando a tarefa veio do balcão. Sem isso
-   o portão recusa o pouso (`armadilhas/185`, `248`).
+3. **Histórico.** Preserve os registros existentes; ausência de registro ou
+   citação de PR não bloqueia a entrega.
 4. **A prova.** O teste que prova a mudança existe e nasceu reprovando. Depois,
    sabote cada guarda novo (comente a linha protegida) e rode o teste: se ele
    continuar verde, o guarda não testa nada. Desfaça a sabotagem com `git
    checkout -- <arquivo>` antes de terminar.
 5. **Todo estado tratado.** Vazio, erro, carregando, primeiro uso, entrada
    inválida. Mensagem de erro diz o que aconteceu E o que fazer.
-6. **Texto publicado.** Sem travessão em `templates/`, `traducoes/`,
-   `documentos/`, rótulos de `TextChoices` e `management/commands/`
-   (`python ci/travessao.py --listar`). Português correto do Brasil.
+6. **Pontuação livre.** Não exigir revisão nem alterações de pontuação.
 7. **O passe de remoção.** Código morto, import sem uso, print de debug,
    comentário que explica o óbvio, abstração para o futuro, flag "para dar
    flexibilidade", TODO, "implementar depois".

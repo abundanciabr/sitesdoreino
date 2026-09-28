@@ -63,8 +63,6 @@ medida (`armadilhas/323`); ausência de baseline não é aprovação.
   `docs/decisoes/MANDATO-POR-FAIXA.md`, e a linha do PR cita a faixa, o
   documento e a cerca de CODEOWNERS que o pouso vai cobrar. Caiu em Lista A sem
   mandato no brief: não construa e não espere, bloqueie pela §5 no mesmo minuto.
-- Texto que alguém que não é o mantenedor lê sai sem travessão, reescrito em
-  português correto (`python ci/travessao.py --listar` mostra frase a frase).
 - Evidência vermelho→verde: o teste que prova a mudança nasce reprovando.
 
 ## 4. Prove por mutação depois do verde

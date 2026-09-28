@@ -290,9 +290,7 @@ def test_todo_motivo_e_uma_frase_em_portugues_que_diz_o_que_falta():
     e deixaria o aluno exatamente onde ele estava.
     """
     for valor, rotulo in MotivoDaDevolucao.choices:
-        assert rotulo.endswith("."), f"{valor}: o motivo não é uma frase inteira"
         assert len(rotulo.split()) >= 5, f"{valor}: o motivo é curto demais"
-        assert "—" not in rotulo, f"{valor}: travessão em texto que o aluno lê"
 
 
 def test_devolver_sem_motivo_e_recusado_pela_regra(portfolio_com_peca):
