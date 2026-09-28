@@ -378,12 +378,8 @@ def test_json_dentro_de_cerca_de_markdown_e_aceito(no_plantao, client, monkeypat
 # ---------------------------------------------------------------------------
 
 
-def test_o_travessao_que_a_ia_devolver_e_apontado_e_nao_trocado(
-    no_plantao, client, monkeypatch
-):
-    """A lei do projeto diz que trocar travessão é REESCREVER a frase. Um
-    `replace` aqui dentro deixaria a frase torta com o portão satisfeito, e o
-    `ci/travessao.py` não enxerga o que já foi para o banco."""
+def test_a_pontuacao_da_ia_e_preservada_sem_cobranca(no_plantao, client, monkeypatch):
+    """A resposta mantém a pontuação escrita, sem cobrar reescrita."""
     com_risca = {
         **SUGESTAO_BOA,
         "forcas": [
@@ -395,15 +391,15 @@ def test_o_travessao_que_a_ia_devolver_e_apontado_e_nao_trocado(
     dublar_a_anthropic(monkeypatch, corpo=corpo_da_anthropic(com_risca))
     html = rascunhar(client, no_plantao).content.decode()
 
-    assert agente.AVISO_TRAVESSAO in html
-    # a risca CONTINUA lá, para a pessoa reescrever a frase
+    assert "Reescreva a frase" not in html
+    # A pontuação da resposta permanece intacta.
     assert "—" in html
 
 
 def test_sem_travessao_o_aviso_nao_aparece(no_plantao, client, monkeypatch):
     dublar_a_anthropic(monkeypatch, corpo=corpo_da_anthropic(SUGESTAO_BOA))
     html = rascunhar(client, no_plantao).content.decode()
-    assert agente.AVISO_TRAVESSAO not in html
+    assert "Reescreva a frase" not in html
     assert agente.SUGERIDO in html
 
 

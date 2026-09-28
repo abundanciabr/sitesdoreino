@@ -455,16 +455,3 @@ def test_as_SETE_cartas_convivem_na_mesma_pagina(dentro, rede, sugestao):
 
 
 # ------------------------------------------------- a lei do texto publicado
-
-
-def test_nenhuma_frase_das_quatro_cartas_tem_travessao(dentro, rede, quadro):
-    """Lei do projeto desde 30/08/2026: nenhum texto publicado sai com
-    travessão. Estas frases são exatamente o tipo de texto que ela cobre, e um
-    aluno as lê. O portão do CI vigia `templates/`; este teste vigia o que a
-    tela RENDERIZA, incluindo as frases que nascem em `avisos.py`."""
-    for assunto in QUATRO:
-        _responde_com(rede, [_carta(assunto, MINIMO[assunto])])
-        corpo = dentro.client.get(reverse("avisos")).content.decode()
-        visivel = corpo.split('<div class="avisos">')[1]
-        for risca in ("—", "–", "―", "&mdash;", "&#8212;"):
-            assert risca not in visivel, f"{assunto} tem {risca!r}"

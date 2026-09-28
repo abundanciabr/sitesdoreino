@@ -201,18 +201,16 @@ def test_a_duvida_do_modelo_vira_a_verificar_na_frente_da_frase(
     assert defeito["frase"].startswith("A verificar: Na fonte:")
 
 
-def test_a_risca_longa_que_volta_e_apontada_e_nunca_trocada(
+def test_a_pontuacao_e_preservada_sem_cobranca(
     uma_derivada_so, com_a_chave, monkeypatch
 ):
-    """A lei do projeto diz que trocar a risca longa e REESCREVER a frase, e o
-    portao `ci/travessao.py` nao enxerga o que ja esta no banco. Aqui a maquina
-    avisa, com o caractere intacto, e a pessoa reescreve."""
+    """A conferência preserva a citação literal sem cobrar pontuação."""
     com_risca = {
         **DOIS_DESVIOS,
         "desvios": [
             {
                 **DOIS_DESVIOS["desvios"][0],
-                "trecho_da_fonte": "o pilar " + agente.RISCAS[0] + " nao se alonga",
+                "trecho_da_fonte": "o pilar — nao se alonga",
             }
         ],
     }
@@ -220,8 +218,8 @@ def test_a_risca_longa_que_volta_e_apontada_e_nunca_trocada(
 
     (defeito,) = corpo(conferir("fidelidade"))
 
-    assert agente.RISCAS[0] in defeito["frase"]
-    assert defeito["frase"].endswith(fidelidade.AVISO_TRAVESSAO)
+    assert "—" in defeito["frase"]
+    assert "Reescreva a frase" not in defeito["frase"]
 
 
 # ---------------------------------------------------------------------------

@@ -909,7 +909,7 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
             "o `gh pr create` não devolveu a URL de um PR",
             f"saída:\n{saida.strip() or '(vazia)'}\n\n"
             "Sem o número não há como citar o PR na evidência do registro, e sem\n"
-            "isso o portão de pouso cobra dívida do livro (`armadilhas/185`).",
+            "isso o recibo automático não consegue identificar esta entrega.",
         )
     return int(achado.group(1)), achado.group(0)
 

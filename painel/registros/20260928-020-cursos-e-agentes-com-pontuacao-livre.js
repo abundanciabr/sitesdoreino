@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260928-020-cursos-e-agentes-com-pontuacao-livre",
+  tipo: "entrega",
+  quando: "2026-09-28",
+  titulo: "Cursos e agentes com pontuação livre",
+  detalhe: "Retirada a revisão obrigatória de pontuação nas aulas e orientações. Conteúdo e proteções de acesso permanecem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2320. Validação local: árvore 38a7733c9f654d4fd88b778477c931f7e71f9d80; commit 1f1e1cb269000ff3ca521f52695d3e3532a984a7; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-28",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-945",
+  gravidade: "info",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -143,41 +143,6 @@ def test_o_texto_das_etapas_nao_esta_copiado_em_nenhum_template():
         assert VOTAR_NUNCA_FECHA not in fonte, arquivo.name
 
 
-# As três riscas longas da lei do `CLAUDE.md`, mais as formas de HTML que viram
-# risca na tela. Escritas aqui e não importadas de `ci/travessao.py`: uma célula
-# não importa do runner do repositório, e a lista é curta e estável.
-RISCAS = ("—", "–", "―", "&mdash;", "&ndash;", "&#8212;", "&#8211;")
-
-
-def test_o_texto_do_aluno_nao_tem_travessao():
-    """A lei de 30/08/2026, no único lugar desta célula onde o portão não olha.
-
-    `ci/travessao.py` varre `templates/`, `traducoes/`, `documentos/` e
-    `management/commands/`. Ele diz na própria docstring que texto publicado
-    morando em `.py` é um buraco conhecido, e que a superfície cresce no dia em
-    que a cópia do site passar a morar lá.
-
-    Nesta célula ela mora: os RÓTULOS de `Sugestao.Status` (o "Em análise" que o
-    aluno lê no selo) sempre estiveram em `models.py`, e desde 31/08/2026 as
-    explicações estão em `participacao.py`. Enquanto o portão do repositório não
-    alcança esta classe de arquivo, quem segura a lei aqui é este guarda.
-    """
-    publicados = {
-        **{
-            f"explicação de {chave}": texto
-            for chave, texto in EXPLICACAO_DAS_ETAPAS.items()
-        },
-        **{f"rótulo de {s.value}": s.label for s in Sugestao.Status},
-        "a frase do voto": VOTAR_NUNCA_FECHA,
-    }
-    for onde, texto in publicados.items():
-        achadas = [risca for risca in RISCAS if risca in texto]
-        assert not achadas, (
-            f"{onde} tem travessão ({achadas}): a lei do CLAUDE.md manda trocar "
-            "por vírgula, parênteses, dois-pontos ou aspas, REESCREVENDO a frase"
-        )
-
-
 def test_a_legenda_lista_as_quatro_etapas_do_caminho_e_so_elas():
     """As duas saídas têm texto, e de propósito NÃO entram na legenda.
 

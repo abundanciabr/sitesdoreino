@@ -93,7 +93,7 @@ Decisão do mantenedor em 13/09/2026, registrada em
    `python ci/rerun_de_deploy.py --ultimo`. Integrado e publicado: registro com
    `evidencia` e `verificado_em`, e `python ci/fila.py reconciliar TAR-NNN
    --quem <voce> --aceite-registro painel/registros/<arquivo>` fecha a tarefa.
-   Teto estourado ou decisão exclusiva do mantenedor: dívida no livro e NÃO
+   Teto estourado ou decisão exclusiva do mantenedor: informe NÃO
    PRONTO com o que falta. O Stop recusa o fecho enquanto o PR desta sessão não
    tiver resultado terminal (`ci/prestacao_de_contas.py`, Lei 11).
 
