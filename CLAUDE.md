@@ -199,6 +199,7 @@ O livro de ocorrências e seus registros existentes são preservados.
 Ausência de registro ou de citação de PR não cria dívida e não impede
 commit, integração ou publicação. O recibo automático de `make pr`
 permanece como histórico, sem exigir escrituração manual adicional.
+Não repita os efeitos que `make pr` já registrou.
 Registros escritos continuam sujeitos ao formato e às evidências declaradas.
 
 **Quem faz valer:** `ci/tests/test_codex_nativo.py` e `ci/pr.py`.
