@@ -710,7 +710,7 @@ def documento_versoes(request, nome):
 
 @require_POST
 def documento_restaurar(request, nome):
-    """Copia uma versao antiga por cima do documento de hoje.
+    """Restaura título, corpo e ordem, mantendo a visibilidade atual.
 
     **A volta nao apaga historia: ela ESCREVE mais uma.** O texto restaurado
     vira a versao mais nova, com o gesto dizendo de onde ele veio. Desfazer uma
