@@ -1,0 +1,19 @@
+{
+  "arquivo": "949-preservar-os-testes-de-alertas-ao-retirar-a-divida-do-livro",
+  "id": "TAR-949",
+  "titulo": "Preservar os testes de alertas ao retirar a dívida do livro",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de leitura silenciosa e falha real passam com uma assinatura ativa, sem depender da cobrança de dívida removida.",
+  "despacho": "Substitua no teste do sino a assinatura aposentada de dívida pela assinatura ativa de falta de mandato. Preserve os casos, comandos e asserções e valide a suíte completa do arquivo.",
+  "origem": "Complemento da retirada completa dos dois controles autorizada pelo mantenedor em 28/09/2026.",
+  "criada_em": "2026-09-28",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

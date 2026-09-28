@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260928-184830-TAR-711-bloqueada",
+  "tarefa": "TAR-711",
+  "evento": "bloqueada",
+  "quando": "2026-09-28T18:48:30.635771+00:00",
+  "quem": "coordenacao/appmax-resposta-do-suporte",
+  "detalhe": "O que houve: o suporte da Appmax respondeu em 28/09 que o Pix no sandbox gera retorno, mas o pagamento não se valida em sandbox, e pediu um novo teste com o id do pedido e o retorno da requisição. A leitura appmax-pix já foi feita (registro 140): o nosso cliente descartou a resposta sem QR e gravou motivo indisponível, então não temos o retorno para mandar. O que destrava: a tarefa 947 grava o formato da resposta sem valores; depois, um novo Pix no sandbox com a palavra do mantenedor; o id do pedido (do painel da Appmax) e o formato vão ao suporte. Nada de POST Pix antes disso.",
+  "espera": "fila"
+}

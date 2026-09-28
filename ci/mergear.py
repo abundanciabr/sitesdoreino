@@ -33,19 +33,11 @@ import fila  # noqa: E402
 import mapa_de_celulas  # noqa: E402
 import rollback  # noqa: E402
 import telemetria  # noqa: E402
-from divida_do_livro import (  # noqa: E402
-    EMBARCADO,
-    ISENTO,
+from registros_de_entrega import (  # noqa: E402
     PASTAS_DE_ESCRITURACAO,
-    SEM_REGISTRO,
+    PASTA_DO_LIVRO,
     area_do_ramo,
     areas_dos_registros_embarcados,
-    como_embarcar,
-    como_pagar,
-    divida,
-    pagamentos_em_voo,
-    registro_embarcado,
-    so_toca_o_livro,
 )
 
 # Checks que PODEM aparecer como "skipped" sem que isso seja um problema — e o
@@ -76,12 +68,10 @@ PADRAO_DA_LANE_TRADUCOES = re.compile(r"^services/[^/]+/traducoes/.+$")
 
 
 def arquivos_de_codigo(arquivos: list[str]) -> list[str]:
-    """O que o orçamento mede: o PR menos a escrituração obrigatória.
+    """O que o orçamento mede: o PR menos os registros e eventos.
 
-    Desde 31/08/2026 todo PR carrega a própria papelada — o registro do livro
-    (sem ele o pouso é recusado), os eventos da fila, o mapa do site. Ninguém
-    pode removê-los, e mesmo assim eles comiam o teto de 15 arquivos do
-    trabalho de verdade. O caso medido é o PR #1161: 19 arquivos, 13 de código
+    Registros do livro, eventos da fila e mapa do site ficam fora do teto
+    de 15 arquivos de código. O caso medido é o PR #1161: 19 arquivos, 13 de código
     e 6 de escrituração, reprovado por um contador que nunca teve a intenção de
     barrar aquilo. Para vencer o contador, a sessão aplicou a etiqueta
     `arquitetural` num PR que não é arquitetural, e uma etiqueta que vira senha
@@ -510,163 +500,6 @@ def checar_labels(pr: dict[str, Any]) -> list[Resultado]:
             )
         )
     return resultados
-
-
-def checar_registro_embarcado(raiz: Path, pr: dict[str, Any]) -> Resultado:
-    """O recibo embarca no PR — a regra e o porquê em `ci/divida_do_livro.py`.
-
-    Até 31/08/2026 a cobrança era só pós-merge, e o buraco era de DESENHO: o
-    rito manda pedir pouso e ir embora, a pista mergeia depois — e não há mais
-    ninguém ali para registrar. A dívida nascia do caminho normal e travava a
-    fila de todos (`armadilhas/248`). Aqui a cobrança muda de lugar: para a
-    PORTA, PR por PR, onde ainda existe alguém para consertar com um commit.
-
-    Registrar antes do merge não é falso-verde: o registro embarcado só entra
-    no livro SE o merge acontecer — o recibo não consegue existir sem o fato.
-    O veredito do deploy continua sendo registro pós-merge (CLAUDE.md).
-
-    A leitura do diff vem da API porque a pista nunca faz checkout do código
-    do PR (`pouso.yml`): o registro embarcado não está no disco de quem julga.
-    """
-    numero = pr.get("number")
-    arquivos = [f["path"] for f in pr.get("files") or []]
-
-    # Sem rede dá para saber se é isento ou se nem registro há a bordo.
-    veredito = registro_embarcado(numero, arquivos, [])
-    if veredito == ISENTO:
-        return Resultado(
-            "registro a bordo",
-            Estado.PASS,
-            "isento: este PR é escrituração",
-        )
-    if veredito == SEM_REGISTRO:
-        return Resultado(
-            "registro a bordo",
-            Estado.FAIL,
-            "nenhum registro viaja neste PR",
-            como_embarcar(numero, veredito),
-        )
-
-    try:
-        remessas = json.loads(
-            _gh(
-                ["api", f"repos/{{owner}}/{{repo}}/pulls/{numero}/files?per_page=100"],
-                raiz,
-                "ler o diff dos registros embarcados",
-            )
-        )
-    except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
-        return Resultado(
-            "registro a bordo",
-            Estado.ERROR,
-            "não consegui ler o diff dos registros do PR",
-            f"{erro}\n\nNão consegui ler NÃO é 'está a bordo' (INV-CI01).",
-        )
-    veredito = registro_embarcado(numero, arquivos, remessas)
-    if veredito == EMBARCADO:
-        return Resultado(
-            "registro a bordo",
-            Estado.PASS,
-            f"o registro viaja neste PR e cita #{numero}",
-        )
-    return Resultado(
-        "registro a bordo",
-        Estado.FAIL,
-        f"o registro a bordo não cita #{numero} (armadilhas/185)",
-        como_embarcar(numero, veredito),
-    )
-
-
-def checar_frescor_do_livro(raiz: Path) -> Resultado:
-    """Impede cobrar o livro local quando a árvore não acompanha a main."""
-    try:
-        medicao = executar(
-            ["git", "rev-list", "--count", "HEAD..origin/main"],
-            cwd=raiz,
-            descricao="conferir o frescor do livro contra origin/main",
-            exigir_stdout=True,
-        ).stdout.strip()
-    except ErroDeInstrumentacao as erro:
-        return Resultado(
-            "frescor do livro",
-            Estado.ERROR,
-            "não consegui confirmar se a árvore está em dia com origin/main",
-            f"{erro.detalhe}\n\nArme a espera de uma bancada em dia com `origin/main` "
-            "antes de julgar o livro.",
-        )
-    if not re.fullmatch(r"[0-9]+", medicao):
-        return Resultado(
-            "frescor do livro",
-            Estado.ERROR,
-            "a medição do atraso da árvore devolveu um valor inválido",
-            f"git rev-list devolveu {medicao!r}. Arme a espera de uma bancada em "
-            "dia com `origin/main` antes de julgar o livro.",
-        )
-    atraso = int(medicao)
-    if atraso:
-        return Resultado(
-            "frescor do livro",
-            Estado.ERROR,
-            f"a árvore está {atraso} commit(s) atrás de origin/main",
-            "O portão não julgou a dívida porque o livro local pode estar velho. "
-            "Arme a espera de uma bancada em dia com `origin/main` antes de "
-            "julgar o livro.",
-        )
-    return Resultado("frescor do livro", Estado.PASS, "árvore em dia com origin/main")
-
-
-def checar_divida_do_livro(raiz: Path, pr: dict[str, Any]) -> Resultado:
-    """A rede de segurança pós-merge — a regra em `ci/divida_do_livro.py`.
-
-    Desde 31/08/2026 a cobrança PRINCIPAL acontece na porta
-    (`checar_registro_embarcado`): o PR embarca o próprio registro e o recibo
-    aterrissa junto com o trabalho. Esta checagem fica como rede de segurança
-    para o que a porta não alcança — merge por fora da pista, registro cuja
-    citação não valeu — e continua compartilhada de propósito: dívida órfã é
-    problema da casa, não de um ramo.
-
-    O que ela ganhou em 31/08: quando reprova, ela LISTA os pagamentos já em
-    voo (PRs de escrituração abertos), para dois robôs não pagarem a mesma
-    conta em paralelo — a corrida medida em `armadilhas/248`.
-    """
-    arquivos = [f["path"] for f in pr.get("files") or []]
-    if so_toca_o_livro(arquivos):
-        return Resultado(
-            "dívida do livro",
-            Estado.PASS,
-            "isento: este PR é o registro",
-        )
-    try:
-        devedores = divida(raiz)
-    except Exception as erro:  # rede, gh ausente, JSON estranho
-        return Resultado(
-            "dívida do livro",
-            Estado.ERROR,
-            "não consegui medir a dívida do livro",
-            f"{erro}\n\nNão consegui medir NÃO é 'está em dia' (INV-CI01).",
-        )
-    if not devedores:
-        return Resultado("dívida do livro", Estado.PASS, "livro em dia")
-    try:
-        abertos = json.loads(
-            _gh(
-                ["pr", "list", "--state", "open", "--json", "number,title,files"],
-                raiz,
-                "procurar pagamentos em voo",
-            )
-        )
-        em_voo = pagamentos_em_voo(abertos)
-    except (ErroDeInstrumentacao, json.JSONDecodeError):
-        # Enriquecimento de uma mensagem que JÁ é FAIL — sem ele a recusa
-        # continua de pé, só sem a lista do que voa. Não é veredito (INV-CI01
-        # não se aplica): falhar aqui não deixa ninguém passar.
-        em_voo = None
-    return Resultado(
-        "dívida do livro",
-        Estado.FAIL,
-        f"{len(devedores)} merge(s) sem registro",
-        como_pagar(devedores, em_voo),
-    )
 
 
 # `Depende-de: #123` na descrição do PR. Aceita a linha em qualquer lugar do
@@ -1348,9 +1181,8 @@ def _celulas_conhecidas(raiz: Path) -> set[str] | None:
 def sombra_da_area_do_registro(raiz: Path, pr: dict[str, Any], diff: DiffDoPR) -> None:
     numero = int(pr.get("number") or 0)
     arquivos = [f["path"] for f in pr.get("files") or []]
-    # Estes dois casos já têm dono em `checar_registro_embarcado`. A sombra
-    # falar de novo só faria barulho — e nem o diff ela precisa buscar.
-    if registro_embarcado(numero, arquivos, []) in (ISENTO, SEM_REGISTRO):
+    if (all(c.startswith(PASTAS_DE_ESCRITURACAO) for c in arquivos)
+            or not any(c.startswith(PASTA_DO_LIVRO) for c in arquivos)):
         return
     try:
         celulas = _celulas_conhecidas(raiz)

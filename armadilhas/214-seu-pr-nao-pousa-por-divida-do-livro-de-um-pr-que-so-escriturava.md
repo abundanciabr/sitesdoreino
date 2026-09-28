@@ -1,13 +1,13 @@
 ---
 schema_version: 2
 armadilha: 214
-estado: guardada
+estado: aposentada
 degrau: 4
 confianca: alta
 custo_por_queda: medio
 guarda:
-  tipo: CI
-  dono: ci/divida_do_livro.py
+  tipo: nenhum
+  motivo: Cobrança de dívida retirada por decisão do mantenedor em 28/09/2026.
 sinal:
   - `merge\(s\) entraram na main e NINGUÉM contou ao dono`
 ---
