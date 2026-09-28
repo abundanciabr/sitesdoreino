@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-327-mensageria-convites-sem-documentos-privados",
+  tipo: "entrega",
+  quando: "2026-09-27",
+  titulo: "mensageria: convites sem documentos privados",
+  detalhe: "Convites nos três idiomas abrem o Fórum e a Prancheta. A Comunidade permanece desligada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2301. Validação local: árvore bf58ad31f1c6a80f61d74da166fa0fb6e5187ae3; commit 7b1d2c2fb01bc404f61772367879aca6c5fed8bd; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-931",
+  gravidade: "info",
+  frente: "curso",
+  area: "mensageria",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

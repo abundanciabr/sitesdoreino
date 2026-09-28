@@ -31,9 +31,8 @@ inventar condição comercial, prometer renda e expor nome de membro — a mesma
 régua que trava o texto da própria página em
 `services/admin/tests/test_comunidade_no_banco.py`. Nenhuma frase daqui promete
 renda, cita prazo ou nomeia um membro: o convite aponta para
-`meshcraft.top/docs/comunidade` (a página pública que explica o que é e como
-pedir ajuda) e `meshcraft.top/forum/comunidade` (a porta de entrada), e nada
-além disso.
+`meshcraft.top/forum/comunidade`, a porta de entrada que continua aberta aos
+alunos.
 
 NASCE DESLIGADA, E ISSO NÃO É EXCESSO DE ZELO
 ----------------------------------------------
@@ -77,16 +76,14 @@ PASSOS = [
                 "Você fechou um bloco do curso, e a Comunidade Meshcraft está "
                 "aberta para você. Lá tem gente modelando os mesmos temas, "
                 "fios por assunto e a experiência de quem já passou pelo "
-                "curso. Leia como funciona em meshcraft.top/docs/comunidade e "
-                "entre pelo fórum em meshcraft.top/forum/comunidade.",
+                "curso. Entre pelo fórum em meshcraft.top/forum/comunidade.",
             ),
             "en": (
                 "You can join the Community now",
                 "You finished a block of the course, and the Meshcraft "
                 "Community is open to you. There is people modeling the same "
                 "subjects there, threads by topic, and the experience of "
-                "those who already went through the course. Read how it "
-                "works at meshcraft.top/docs/comunidade and join the forum "
+                "those who already went through the course. Join the forum "
                 "at meshcraft.top/forum/comunidade.",
             ),
             "es": (
@@ -94,8 +91,7 @@ PASSOS = [
                 "Cerraste un bloque del curso, y la Comunidad Meshcraft está "
                 "abierta para ti. Ahi hay gente modelando los mismos temas, "
                 "hilos por asunto y la experiencia de quien ya paso por el "
-                "curso. Lee como funciona en meshcraft.top/docs/comunidade y "
-                "entra por el foro en meshcraft.top/forum/comunidade.",
+                "curso. Entra por el foro en meshcraft.top/forum/comunidade.",
             ),
         },
     },
