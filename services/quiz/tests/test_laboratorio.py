@@ -155,6 +155,16 @@ def test_observacao_calcula_so_a_rodada_e_esconde_contato_e_origem_livre(laborat
             metadata={"question_id": str(pergunta.id), "utm": entrada["utm"]},
             occurred_at=inicio + timedelta(seconds=segundo),
         )
+    TelemetryEvent.objects.create(
+        site_id=laboratorio.site_id,
+        quiz_slug=SLUG,
+        version_key=versao.key,
+        session_id=entrada["session_id"],
+        event_type="view_question",
+        element_id=f"{pergunta.id}:\nCONTATO-ADULTERADO@exemplo.test",
+        metadata={"utm": entrada["utm"]},
+        occurred_at=inicio,
+    )
     # Outra rodada não entra no relatório do navegador.
     TelemetryEvent.objects.create(
         site_id=laboratorio.site_id,
@@ -180,6 +190,7 @@ def test_observacao_calcula_so_a_rodada_e_esconde_contato_e_origem_livre(laborat
         "TELEFONE-SECRETO",
         entrada["session_id"],
         "segredo-pessoal@exemplo.test",
+        "CONTATO-ADULTERADO@exemplo.test",
     ):
         assert segredo not in html
     assert len(rodada_atual["respostas"]) == 3

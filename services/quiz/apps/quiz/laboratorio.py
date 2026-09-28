@@ -1,3 +1,5 @@
+import re
+
 from django.http import Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
@@ -31,12 +33,18 @@ def observacao(request, slug):
             perguntas = list(versao.questions.prefetch_related("options"))
             relatorio = []
             for linha in linhas[1:]:
-                if linha.startswith("  pergunta ") and not any(
-                    linha.startswith(f"  pergunta {p.id}:") for p in perguntas
-                ):
-                    continue
                 if " | utm=" in linha:
                     linha = f"Versão {versao.key} | origem: {origem}"
+                elif re.fullmatch(r"  conversao: \d+ de \d+", linha):
+                    pass
+                elif re.fullmatch(
+                    r"  pergunta \d+: viram \d+, sairam \d+, hesitaram \d+, "
+                    r"tempo medio (?:\d+\.\d+s|sem amostra)",
+                    linha,
+                ) and any(linha.startswith(f"  pergunta {p.id}:") for p in perguntas):
+                    pass
+                else:
+                    continue
                 for pergunta in perguntas:
                     linha = linha.replace(
                         f"pergunta {pergunta.id}:", f"pergunta {pergunta.order}:"
