@@ -236,7 +236,9 @@ def test_livro_e_documento_preservam_a_mesma_pontuacao():
     cliente = _dentro()
     frase = "Uma frase — com risca."
     do_livro = _guardar(cliente, corpo=frase)
-    do_site = cliente.post("/documentos/criar", {"titulo": "Um guia", "corpo": frase, "ordem": "10"})
+    do_site = cliente.post(
+        "/documentos/criar", {"titulo": "Um guia", "corpo": frase, "ordem": "10"}
+    )
     assert do_livro.status_code in (302, 303)
     assert do_site.status_code == 302
     assert Documento.objects.get(nome="um-guia").corpo == frase

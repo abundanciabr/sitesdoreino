@@ -161,7 +161,9 @@ def test_editar_preserva_pontuacao_sem_exigir_revisao():
     cliente = _dentro()
     _criar(cliente)
     texto = 'Primeira: linha; "aspas", (parenteses)... — – ― !?'
-    resposta = cliente.post("/documentos/um-guia/salvar", {"titulo": "Guia — completo", "corpo": texto})
+    resposta = cliente.post(
+        "/documentos/um-guia/salvar", {"titulo": "Guia — completo", "corpo": texto}
+    )
     assert resposta.status_code == 302
     assert Documento.objects.get().corpo == texto
     tela = cliente.get("/documentos/um-guia/editar").content.decode()

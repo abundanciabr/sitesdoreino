@@ -225,8 +225,6 @@ def test_o_aluno_encontra_duvidas_ja_respondidas(semeado):
 # ===========================================================================
 
 
-
-
 def test_todo_titulo_semeado_cabe_no_que_a_tela_aceita(semeado):
     """O mesmo teto que a view aplica ao aluno vale para a escola."""
     for topico in Topico.objects.all():
