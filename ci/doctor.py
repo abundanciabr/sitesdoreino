@@ -276,7 +276,7 @@ def checar_arquivos_fundamentais(raiz: Path) -> Resultado:
     esperados = [
         "CONSTITUICAO.md",
         "INVARIANTES.md",
-        "RITOS.md",
+        "CAMINHO-DOURADO.md",
         "ci/contract_freeze.py",
         "ci/manifesto-de-contratos.json",
         ".github/workflows/muralhas.yml",
