@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-214028-TAR-1005-explicada",
+  "tarefa": "TAR-1005",
+  "evento": "explicada",
+  "quando": "2026-09-29T21:40:28.927457+00:00",
+  "quem": "mantenedor na sessao Claude Code de 29/09/2026: sim, publique as descricoes do contrato",
+  "o_que_e": "A regra escrita entre o Admin e a Caixa passa a dizer quando a resposta vale, quando apaga e quando e recusada.",
+  "o_que_muda": "Quem constroi o formulario do Admin le no proprio contrato o que acontece com cada valor do campo resposta.",
+  "exemplo": "Mandar resposta vazia com Implementado apaga a resposta; mandar texto com Planejado e recusado com a frase que ensina.",
+  "importancia": 30
+}
