@@ -24,7 +24,7 @@ def test_roteador_reserva_modelo_de_topo_para_contrato_e_produto() -> None:
     assert perfil_por_tipo("escrita").modelo == MODELO_ROTINA
 
 
-def test_codex_usa_sol_por_padrao_e_luna_so_em_tarefas_delimitadas(monkeypatch) -> None:
+def test_codex_roteia_modelo_e_esforco_por_risco(monkeypatch) -> None:
     from economia_da_fabrica import MODELOS_CODEX
 
     monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
@@ -33,7 +33,7 @@ def test_codex_usa_sol_por_padrao_e_luna_so_em_tarefas_delimitadas(monkeypatch) 
     assert perfil_por_tipo("geral").esforco == "medium"
     assert classificar("trabalho sem categoria indicada").modelo == "gpt-6-sol"
     assert classificar("trabalho sem categoria indicada").esforco == "medium"
-    # guarda: ci/economia_da_fabrica.py:46
+    # guarda: ci/economia_da_fabrica.py:49
     for tipo in (
         "arquitetura",
         "contrato",
@@ -41,16 +41,15 @@ def test_codex_usa_sol_por_padrao_e_luna_so_em_tarefas_delimitadas(monkeypatch) 
         "revisao",
         "diagnostico",
         "teste",
-        "texto",
     ):
         assert perfil_por_tipo(tipo).modelo == "gpt-6-sol"
-    # guarda: ci/economia_da_fabrica.py:48
-    for tipo in ("escrita", "espera"):
+    # guarda: ci/economia_da_fabrica.py:47
+    for tipo, esforco in (("escrita", "medium"), ("texto", "medium"), ("leitura", "low"), ("implementacao-pequena", "medium"), ("espera", "low")):
         assert perfil_por_tipo(tipo).modelo == "gpt-6-luna"
-        assert perfil_por_tipo(tipo).esforco == "high"
+        assert perfil_por_tipo(tipo).esforco == esforco
 
 
-def test_fichas_codex_fixam_sol_e_despacho_exige_brief_roteado(monkeypatch) -> None:
+def test_fichas_codex_exigem_modelo_permitido_e_brief_roteado(monkeypatch) -> None:
     raiz = Path(__file__).resolve().parents[2]
     monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
 
@@ -179,3 +178,72 @@ def test_o_modulo_importa_sem_pyyaml() -> None:
 def harness_claude_das_fixtures(monkeypatch):
     # Estas fixtures medem a compatibilidade das fichas Markdown do Claude.
     monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "claude")
+
+
+@pytest.mark.parametrize("modelo,esforco", [("gpt-6-luna", "low"), ("gpt-6-luna", "medium"), ("gpt-6-sol", "medium"), ("gpt-6-sol", "high")])
+def test_validacao_codex_aceita_escolha_explicita(monkeypatch, modelo, esforco):
+    from economia_da_fabrica import validar_brief_codex
+    texto = f"modelo_recomendado: {modelo}\nesforco_recomendado: {esforco}\n"
+    validar_brief_codex(texto, modelo=modelo, esforco=esforco)
+
+
+@pytest.mark.parametrize("texto,modelo,esforco", [
+    ("", "gpt-6-sol", "medium"),
+    ("modelo_recomendado: gpt-6-sol", "gpt-6-sol", "medium"),
+    ("modelo_recomendado: gpt-6-astra\nesforco_recomendado: medium", "gpt-6-astra", "medium"),
+    ("modelo_recomendado: gpt-6-sol\nesforco_recomendado: medium", "", "medium"),
+    ("modelo_recomendado: gpt-6-sol\nesforco_recomendado: medium", "gpt-6-luna", "medium"),
+    ("modelo_recomendado: gpt-6-luna\nesforco_recomendado: high", "gpt-6-luna", "high"),
+    ("modelo_recomendado: gpt-6-sol\nesforco_recomendado: xhigh", "gpt-6-sol", "xhigh"),
+    ("modelo_recomendado: gpt-6-sol\nesforco_recomendado: medium\nfallback: gpt-6-luna", "gpt-6-sol", "medium"),
+    ("modelo_recomendado: gpt-6-sol\nesforco_recomendado: medium\n  fallback: gpt-6-luna", "gpt-6-sol", "medium"),
+    ("modelo_recomendado: gpt-6-sol\nesforco_recomendado: medium\nfallback-model: gpt-6-luna", "gpt-6-sol", "medium"),
+    ("modelo_recomendado: gpt-6-sol\nmodelo_recomendado: gpt-6-luna\nesforco_recomendado: medium", "gpt-6-sol", "medium"),
+])
+def test_validacao_codex_recusa_heranca_modelo_alheio_e_fallback(texto, modelo, esforco):
+    from economia_da_fabrica import validar_brief_codex
+    with pytest.raises(ErroDeInstrumentacao):
+        validar_brief_codex(texto, modelo=modelo, esforco=esforco)
+
+
+@pytest.mark.parametrize("esforco", ["xhigh", "max"])
+def test_esforco_excepcional_exige_razao_concreta(esforco):
+    from economia_da_fabrica import validar_brief_codex
+    validar_brief_codex(f"modelo_recomendado: gpt-6-sol\nesforco_recomendado: {esforco}\njustificativa_esforco: concorrencia de publicadores e recuperacao", modelo="gpt-6-sol", esforco=esforco)
+
+
+@pytest.mark.parametrize("mudanca", ["sem-modelo", "alheio", "fallback", "esforco", "sem-validacao"])
+def test_auditoria_codex_recusa_ficha_fora_do_mandato(tmp_path, monkeypatch, mudanca):
+    import shutil
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+    raiz = Path(__file__).resolve().parents[2]
+    shutil.copytree(raiz / ".codex/agents", tmp_path / ".codex/agents")
+    ficha = tmp_path / ".codex/agents/despacho.toml"
+    texto = ficha.read_text(encoding="utf-8")
+    if mudanca == "sem-modelo":
+        texto = texto.replace('model = "gpt-6-sol"', '')
+    elif mudanca == "alheio":
+        texto = texto.replace('model = "gpt-6-sol"', 'model = "gpt-6-astra"')
+    elif mudanca == "fallback":
+        texto += '\nfallback_model = "gpt-6-luna"\n'
+    elif mudanca == "esforco":
+        texto = texto.replace('model = "gpt-6-sol"', 'model = "gpt-6-luna"').replace('model_reasoning_effort = "medium"', 'model_reasoning_effort = "high"')
+    else:
+        texto = texto.replace('validar-brief', 'ignorar-brief')
+    ficha.write_text(texto, encoding="utf-8")
+    assert auditar_fichas(tmp_path)
+
+
+def test_cli_codex_rejeita_modelo_ausente_e_brief_indisponivel(tmp_path):
+    from economia_da_fabrica import main
+    with pytest.raises(SystemExit) as erro:
+        main(["validar-brief", "--arquivo", "ausente", "--esforco", "medium"])
+    assert erro.value.code == 2
+    assert main(["validar-brief", "--arquivo", str(tmp_path / "ausente"), "--modelo", "gpt-6-sol", "--esforco", "medium"]) == 2
+
+
+@pytest.mark.parametrize("texto", ["dados", "autorização", "concorrência", "recuperação"])
+def test_classificacao_de_risco_usa_sol_high(monkeypatch, texto):
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "codex")
+    perfil = classificar(texto)
+    assert (perfil.modelo, perfil.esforco) == ("gpt-6-sol", "high")
