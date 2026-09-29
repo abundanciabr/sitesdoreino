@@ -1,0 +1,19 @@
+{
+  "arquivo": "1000-o-admin-mostra-o-campo-da-resposta-ao-mover-a-ideia-para-imp",
+  "id": "TAR-1000",
+  "titulo": "O admin mostra o campo da resposta ao mover a ideia para Implementado",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR da admin integrado e publicado; em meshcraft.top/admin/caixa/ideia/20/ o campo da resposta aparece só com Implementado escolhido e a resposta chega à ideia",
+  "despacho": "Frente B do pedido de resposta rica: textarea resposta visível só com Implementado via CSS :has, caixa.py e clients.py enviam resposta só em Implementado, 9 testes. Ramo agent/admin/campo-resposta-implementado.",
+  "origem": "pedido do mantenedor na sessão Claude Code de 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}
