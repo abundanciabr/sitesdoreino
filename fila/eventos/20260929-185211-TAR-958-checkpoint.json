@@ -1,0 +1,35 @@
+{
+  "arquivo": "20260929-185211-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T18:52:11.883394+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-09: reduzir repeticao e concluir publicacao comprovada",
+  "ultimo_avanco": "Lote986 integrado; catalogo878 medido em89.439s; continuacoes989 e990 registradas; repeticao local por BEHIND interrompida",
+  "proxima_acao": "pme06_candidato revisa TAR988 somente leitura; pme_mutadores_producao executa989; pme07_publicacao executa990; fechar cadeia969 e piloto do executor",
+  "verificacoes": [
+    "TAR988 comparacao5pacotes 26.075s para13.452s com SHA igual; posterior89.439s nao prova10xglobal; API confirma merge986 5e816713 e deploy36613563153 success"
+  ],
+  "contexto": {
+    "frentes_planejadas_total_historico": 17,
+    "frentes_abertas": 16,
+    "continuacoes": [
+      "TAR987",
+      "TAR988",
+      "TAR989",
+      "TAR990"
+    ],
+    "revisao988": {
+      "responsavel": "pme06_candidato",
+      "modelo_configurado": "gpt-6-sol",
+      "esforco_configurado": "high",
+      "modo": "somente leitura"
+    },
+    "bloqueios_pendentes": [
+      "TAR978 publicacao payload82D584",
+      "TAR983 reuso mandato800855",
+      "TAR987 patch dependenciaAE54"
+    ],
+    "coordenador": "01a0ed71-4e7f-7680-821e-4d655a7ad405"
+  }
+}

@@ -415,6 +415,13 @@ textarea { resize: vertical; min-height: 72px; }
 .ficha h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-tenue); margin: 0 0 5px; font-weight: 500; }
 .ficha p { font-size: 13px; color: var(--texto-fraco); margin: 0; line-height: 1.55; }
 
+/* A resposta da equipe numa ideia implementada: HTML filtrado, com midia que
+   nunca passa da largura da coluna e player de video em 16:9. */
+.resposta-da-equipe p { margin: 0 0 10px; }
+.resposta-da-equipe img,
+.resposta-da-equipe video { display: block; max-width: 100%; height: auto; margin: 8px 0; }
+.resposta-da-equipe iframe { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; margin: 8px 0; }
+
 /* --- a faixa de roadmap (EVO-31) ---------------------------------------- */
 
 /* O mapa de nomes continua o do topo do arquivo:

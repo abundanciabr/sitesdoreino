@@ -40,6 +40,7 @@ CAMPOS_GRAVADOS = [
     "titulo",
     "problema",
     "solucao_proposta",
+    "resposta_da_equipe",
     "apagada_em",
     "apagada_por",
     "arquivada_em",
@@ -76,6 +77,7 @@ def apagar_definitivamente(sugestao: Sugestao, quem=None, agora=None) -> bool:
     sugestao.titulo = ""
     sugestao.problema = ""
     sugestao.solucao_proposta = ""
+    sugestao.resposta_da_equipe = ""
     sugestao.apagada_em = agora
     sugestao.apagada_por = quem
     # Apagada é sempre arquivada: nenhuma superfície do aluno ou da gestão

@@ -3097,6 +3097,7 @@ def cmd_pegar(raiz: Path, args) -> int:
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
         return 1
+    conferir_efeito_piloto(raiz, {tid})
     estados, reservas, prs = estado_ao_vivo(raiz, tarefas, eventos)
     escritos = rotular_orfaos(raiz, tarefas, eventos, reservas, prs, args.quem)
     if escritos:
@@ -3141,7 +3142,15 @@ def cmd_pegar(raiz: Path, args) -> int:
         print("Próximo comando seguro: python ci/fila.py listar --ao-vivo")
         return 1
     chave_reserva = f"{PREFIXO_DA_RESERVA}{tid}"
-    ganhou, recado = reservar.reservar_intencao(raiz, chave_reserva, objetivo=tarefas[tid]["titulo"])
+    manifesto = ler_manifesto_piloto(raiz)
+    if manifesto and manifesto["estado"] == "ativa" and tid in manifesto["tarefas"]:
+        ganhou, recado = reservar.reservar_intencao_piloto(
+            raiz, chave_reserva, tarefas[tid]["titulo"], manifesto["tarefas"]
+        )
+    else:
+        ganhou, recado = reservar.reservar_intencao(
+            raiz, chave_reserva, objetivo=tarefas[tid]["titulo"]
+        )
     if not ganhou:
         print(f"RECUSADO PELO SERVIDOR: {recado}")
         return 1
@@ -3155,6 +3164,14 @@ def cmd_pegar(raiz: Path, args) -> int:
     if reserva_dono != reservar.identidade_da_bancada(raiz):
         print("RECUSADO: a reserva recém-obtida não pertence a esta bancada.")
         print("Preservado: nenhum evento foi escrito; confira a reserva antes de retomar.")
+        return 1
+    try:
+        conferir_efeito_piloto(raiz, {tid})
+    except ErroDeInstrumentacao as erro:
+        _soltar_reserva_condicionado(
+            raiz, chave_reserva, esperado=reserva_sha, dono=reserva_dono
+        )
+        print(f"RECUSADO: {erro.resumo}. Reserva recém-obtida liberada; confira a barreira remota.")
         return 1
     if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
         _soltar_reserva_condicionado(
@@ -3732,6 +3749,10 @@ def cmd_validar(raiz: Path) -> int:
         print("   apagá-la (ou movê-la) não pode passar verde.")
         return 1
     erros: list[str] = []
+    try:
+        ler_manifesto_piloto(raiz)
+    except ErroDeInstrumentacao as erro:
+        erros.append(f"{erro.resumo}: {erro.detalhe}")
     tarefas = carregar_tarefas(raiz, erros)
     eventos = carregar_eventos(raiz, tarefas, erros)
     if (raiz / "painel" / "responsabilidades.json").exists() or any(tarefa_exige_responsabilidade(tarefa) for tarefa in tarefas.values()):
@@ -3829,6 +3850,66 @@ def cmd_validar(raiz: Path) -> int:
 
 CAMPO_QUE_PODE_MUDAR = "depende_de"
 BASE_PADRAO = "origin/main"
+MANIFESTO_PILOTO = Path("fila/coortes/piloto.json")
+
+
+def ler_manifesto_piloto(raiz: Path) -> dict | None:
+    caminho = raiz / MANIFESTO_PILOTO
+    if not caminho.exists():
+        return None
+    try:
+        manifesto = json.loads(caminho.read_text(encoding="utf-8"))
+        if (set(manifesto) != {"versao", "coorte", "estado", "tarefas", "ids_sha256"}
+                or manifesto["versao"] != 1 or manifesto["coorte"] != "piloto"
+                or manifesto["estado"] not in ("preparada", "ativa")
+                or manifesto["ids_sha256"] != reservar.digest_da_coorte_piloto(manifesto["tarefas"])):
+            raise ValueError("campos, estado ou digest divergentes")
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, ErroDeInstrumentacao) as erro:
+        raise ErroDeInstrumentacao(
+            "manifesto da coorte piloto inválido",
+            f"{MANIFESTO_PILOTO}: {erro}. Corrija o manifesto publicado antes de operar a fila.",
+        ) from erro
+    return manifesto
+
+
+def conferir_efeito_piloto(raiz: Path, tids: set[str]) -> None:
+    manifesto = ler_manifesto_piloto(raiz)
+    if not manifesto or not tids.intersection(manifesto["tarefas"]):
+        return
+    if manifesto["estado"] == "preparada":
+        return
+    _, barreira = reservar.ler_barreira_piloto(raiz)
+    if (barreira["ids_sha256"] != manifesto["ids_sha256"]
+            or barreira["estado"] != "git"):
+        raise ErroDeInstrumentacao(
+            "efeito da coorte piloto recusado pela barreira",
+            "A coorte está pausada ou o manifesto diverge; não crie eventos nem integre PRs piloto. Releia a barreira remota e aguarde a transição oficial.",
+        )
+
+
+def cmd_portao_coorte(raiz: Path, base: str) -> int:
+    alterados = _git_da_fila(
+        raiz, "diff", "--name-only", "--no-renames", f"{base}...HEAD",
+        "--", "fila/eventos", "fila/tarefas", para_que="diff da fila na coorte piloto",
+    )
+    ids = set()
+    for caminho in alterados.splitlines():
+        arquivo = raiz / caminho
+        try:
+            registro = json.loads(arquivo.read_text(encoding="utf-8"))
+            campo = "tarefa" if caminho.startswith("fila/eventos/") else "id"
+            if (not isinstance(registro, dict) or registro.get("arquivo") != arquivo.stem
+                    or not isinstance(registro.get(campo), str)):
+                raise ValueError("registro sem identidade válida")
+            ids.add(registro[campo])
+        except (OSError, UnicodeError, ValueError, TypeError) as erro:
+            raise ErroDeInstrumentacao(
+                "registro alterado não pôde ser identificado",
+                f"{caminho}: {erro}. Corrija a fila antes de conferir a barreira piloto.",
+            ) from erro
+    conferir_efeito_piloto(raiz, ids)
+    print("PASS: registros da coorte conferidos na autoridade atual.")
+    return 0
 
 
 def _git_da_fila(raiz: Path, *args: str, para_que: str) -> str:
@@ -3900,6 +3981,24 @@ def _tarefa_na_revisao(raiz: Path, revisao: str, caminho: str) -> dict:
 def conferir_imutabilidade(raiz: Path, base: str) -> list[str]:
     """As violações da lei "nada se edita", uma frase por violação."""
     problemas: list[str] = []
+    caminho_manifesto = "fila/coortes/piloto.json"
+    if _git_da_fila(
+        raiz, "ls-tree", "--name-only", base, caminho_manifesto,
+        para_que="presença do manifesto piloto na base",
+    ).strip():
+        anterior = json.loads(_git_da_fila(
+            raiz, "show", f"{base}:{caminho_manifesto}",
+            para_que="manifesto piloto na base",
+        ))
+        atual = ler_manifesto_piloto(raiz)
+        if atual is None:
+            problemas.append(f"{caminho_manifesto} foi apagado — a coorte perderia o portão")
+        elif anterior != atual and not (
+            anterior.get("estado") == "preparada"
+            and atual.get("estado") == "ativa"
+            and {**anterior, "estado": "ativa"} == atual
+        ):
+            problemas.append(f"{caminho_manifesto} mudou fora da transição preparada→ativa com os mesmos IDs e digest")
     for status, caminho in mudancas_em_tarefas(raiz, base):
         if status.startswith("A"):
             tarefa = _tarefa_na_revisao(raiz, "HEAD", caminho)
@@ -4164,6 +4263,9 @@ def construir_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("validar", help="fail-closed; é o que a muralha roda")
 
+    p = sub.add_parser("portao-coorte", help="recusa eventos piloto incompatíveis com a barreira remota")
+    p.add_argument("--base", default=os.environ.get("BASE_REF") or BASE_PADRAO)
+
     p = sub.add_parser(
         "imutabilidade",
         help="o diff de fila/tarefas contra a base; é o que a muralha roda",
@@ -4230,6 +4332,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_tentativa_sem_progresso(raiz, args)
         if args.acao == "imutabilidade":
             return cmd_imutabilidade(raiz, args.base)
+        if args.acao == "portao-coorte":
+            return cmd_portao_coorte(raiz, args.base)
         return cmd_validar(raiz)
     except ErroDeInstrumentacao as erro:
         print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n")

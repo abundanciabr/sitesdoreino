@@ -1,0 +1,234 @@
+{
+  "arquivo": "20260929-164624-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:46:24.064845+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-09 integral com cinco reforcos explicitamente autorizados e propriedade exclusiva",
+  "ultimo_avanco": "Reservas978a982 e cinco spawn4Solhigh1Lunamedium reais; contratos/construcao iniciados; bancada root sincronizada837 preservando13copiasidenticas de registros integrados",
+  "proxima_acao": "Integrar977/976/GOV; provarpersistenciaB04; executar novosprotocolos e ensaios semCPUconcorrente excessivo",
+  "verificacoes": [
+    "Ferramentas create_worktree/spawn; CIM12logicos99%CPU; seisnegativosPG e clienteopaco974PASS; Bsemartefatopersistente naoaceito;199testes976PASS"
+  ],
+  "contexto": {
+    "coordenador": "01a0ed71-4e7f-7680-821e-4d655a7ad405",
+    "plano_sha256": "A88666E0FDADADF30A0B0F68ECD133534B0755A8606004112F98E1F743E3C5C2",
+    "frentes_inicialmente_planejadas": 11,
+    "frentes_abertas": 16,
+    "frente_pme08": {
+      "estado": "absorvida no mesmo escritor de PME07",
+      "tarefa": "TAR-967",
+      "historico_preservado": true
+    },
+    "modelos": {
+      "permitidos": [
+        "gpt-6-sol",
+        "gpt-6-luna"
+      ],
+      "configuracao": "Cinco novos spawn model explicito Sol high4/Luna medium1, fork none, semfallback; tool confirma inicio; runtimebackend naoatestadoindependentemente",
+      "execucao": "agentes observados executando; modelo backend nao atestado independentemente"
+    },
+    "frentes": [
+      {
+        "id": "PME01",
+        "tarefa": "TAR-959",
+        "responsavel": "pme01_medicao",
+        "estado": "integrada/publicada tecnicamente",
+        "pr": 2331,
+        "aceite_funcional": "pendente medicao fim a fim"
+      },
+      {
+        "id": "MODELOS",
+        "tarefa": "TAR-960",
+        "origem": "TAR-719 tentativa2",
+        "responsavel": "pme_modelos",
+        "estado": "integrada/publicada tecnicamente; politica deste programa, nao lei permanente",
+        "pr": 2332
+      },
+      {
+        "id": "PME02",
+        "tarefa": "TAR-961",
+        "responsavel": "pme02_submissao",
+        "estado": "973draft242testsPASS; readydepende977/976",
+        "pr": 2333,
+        "proxima_acao": "corrigir exposicao precoce sem retirar segunda validacao nem concorrer com03"
+      },
+      {
+        "id": "PME03",
+        "tarefa": "TAR-962",
+        "responsavel": "pme03_aceite",
+        "estado": "2338integrado;969f578congelado coletaativa;977gate construcao",
+        "continuacao": "TAR-969",
+        "worktree_continuacao": "C:\\Users\\davia\\.codex\\worktrees\\pme03-proveniencia\\sitesdoreino-limpo-20260923"
+      },
+      {
+        "id": "REVISAO",
+        "tarefa": "TAR-963",
+        "responsavel": "pme_revisao",
+        "estado": "P1 executor encontrado; revisa correcao flock e portabilidade de07"
+      },
+      {
+        "id": "PME04",
+        "tarefa": "TAR-964",
+        "origem": "TAR-679 tentativa2",
+        "responsavel": "pme04_executor",
+        "estado": "A interromper/retomar mesmasIDs e soma10PASS; Bsom18apenasTEMPremovido, persistenciaNAOPASS; configpermissoes investigada",
+        "pr": 2334,
+        "piloto": "TAR-968",
+        "prova": "revisor reproduziu rollout invalido e reconciliacao com sucesso indevido; contencao Windows filho/neto passou"
+      },
+      {
+        "id": "PME05",
+        "tarefa": "TAR-965",
+        "responsavel": "pme05_coordenacao",
+        "estado": "965nucleo seisrepros974 e clienteopacoPASS; origem/corte/DRpendentes; Gitautoridade",
+        "prova": "35 testes nucleo real PG e24cliente/cerca relatados; origem/restauro/offsite/corte final pendentes"
+      },
+      {
+        "id": "PME06",
+        "tarefa": "TAR-966",
+        "responsavel": "pme06_candidato",
+        "estado": "2335/2339integrados/publicadostecnicos; cadeiareal980/07pendente",
+        "continuacao": "TAR-970",
+        "pr": 2335,
+        "terminal_historico": "TAR966 concluida prematuramente pelo rito antigo; nao significa aceite PME06"
+      },
+      {
+        "id": "PME07/08",
+        "tarefa": "TAR-967",
+        "responsavel": "pme07_publicacao",
+        "estado": "2336parcialintegrado/publicado;976199focaisPASS aguarda977;receptor07+subdivisoes978/979/980/982",
+        "continuacao": "TAR-971",
+        "terminal_historico": "TAR967 concluida prematuramente pelo rito antigo; nao significa aceite PME07/08",
+        "checkpoint_preservado": {
+          "sha256": "A00396C91E7B5ED51BDC74014585C0E4FD7F30C315F110FBE5EB78DD9BDCD19F",
+          "path": "C:\\Users\\davia\\AppData\\Local\\Temp\\sitesdoreino-sessoes\\ci-pme07-publicacao\\evidencia-checkpoint-pos-terminal-20260929-153548.json"
+        }
+      },
+      {
+        "id": "PME09",
+        "estado": "TAR981 pme09_auditoria Luna medium iniciado; cobertura capturada obsoleta recusada; reensaio leitura e diagnostico processo"
+      },
+      {
+        "configuracao": "spawn explicito fork none; sem fallback",
+        "modelo": "gpt-6-sol",
+        "tarefa": "TAR-972",
+        "estado": "patch6E14autorizadoeaplicado;2344draft254testsPASS; RITOSaceiteajustado; identidadeAppconfigECD1preparandoexecucaoconfiavel",
+        "worktree": "C:\\Users\\davia\\.codex\\worktrees\\pme-modelos\\sitesdoreino-limpo-20260923",
+        "base": "aef373bd80e64ce3be0be5fa6c36c8ec90e23e3c",
+        "execucao": "agente iniciado ferramenta; backend nao atestado independentemente",
+        "id": "GOV",
+        "branch": "codex/ci/pme-governanca",
+        "esforco": "high",
+        "responsavel": "pme_governanca"
+      },
+      {
+        "tarefa": "TAR-974",
+        "modelo": "gpt-6-sol",
+        "estado": "seis negativos e clienteopacoPASS; emissor07origempendente",
+        "id": "REVISAO-PG",
+        "esforco": "high",
+        "responsavel": "pme_revisao_coordenacao"
+      },
+      {
+        "worktree": "pme-backup-recuperacao",
+        "tarefa": "TAR-978",
+        "modelo": "gpt-6-sol",
+        "estado": "agente iniciado;contrato/coletorinicial",
+        "id": "BACKUP",
+        "esforco": "high",
+        "responsavel": "pme_backup_recuperacao"
+      },
+      {
+        "worktree": "pme-mutadores-producao",
+        "tarefa": "TAR-979",
+        "modelo": "gpt-6-sol",
+        "estado": "agente iniciado;contrato/inventario50mutadores",
+        "id": "MUTADORES",
+        "esforco": "high",
+        "responsavel": "pme_mutadores_producao"
+      },
+      {
+        "worktree": "pme-preparo-candidato",
+        "tarefa": "TAR-980",
+        "modelo": "gpt-6-sol",
+        "estado": "agente iniciado;produtorconcreto",
+        "id": "PREPARO",
+        "esforco": "high",
+        "responsavel": "pme_preparo_candidato"
+      },
+      {
+        "worktree": "pme-testemunho-epoca",
+        "tarefa": "TAR-982",
+        "modelo": "gpt-6-sol",
+        "estado": "agente iniciado;protocoloexterno",
+        "id": "EPOCA",
+        "esforco": "high",
+        "responsavel": "pme_testemunho_epoca"
+      }
+    ],
+    "provas": {
+      "PME01": {
+        "merge": "d9c2ece712bf0ba2799223d8952e502cceca92fc",
+        "deploy": 36586225325,
+        "duracao_deploy_segundos": 348,
+        "browser": "https://meshcraft.top/admin/caixa/robos/ autenticado; 859tarefas; revisao e run visiveis",
+        "ganho10x": "nao demonstrado"
+      },
+      "procuradoria": {
+        "snapshot": "d9c2ece",
+        "tarefas": 859,
+        "cartoes_fonte_nula": "11/26",
+        "pacotes_do_programa": "TAR958-967 todos manutencao; nao representam entrega de produto",
+        "bloqueios_dias": {
+          "TAR565": 4,
+          "TAR711": 1,
+          "TAR926": 2,
+          "TAR927": 2,
+          "TAR928": 2
+        }
+      }
+    },
+    "adendo": {
+      "responsavel": "pme_governanca",
+      "tarefa": "TAR-972",
+      "sha256": "DC87674030B4BC3A553D2F3F70F4672832865BB76EC74D6FD4EDE66E4802CCCD",
+      "criterios": [
+        "fontes vigentes e consumidores junto ao incremento adotado",
+        "propriedade mantida por provas positivas e negativas",
+        "autoridade nao vem da propria versao candidata",
+        "entrega comum continua automatica",
+        "PME09 comprova retirada final sem adiar protecao"
+      ],
+      "caminho": "C:\\Users\\davia\\abundanciabr\\ADENDO-GOVERNANCA-VIGENTE-SITESDOREINO.md",
+      "origem": "Instrucao direta do mantenedor nesta sessao para reconciliar TAR958 e integrar protecao durante cada adocao; documento e proposta examinavel, nao auditoria comprovada nem segunda lei"
+    },
+    "frentes_planejadas_total_historico": 17,
+    "frentes_executando_observadas": [
+      "PME02",
+      "PME03",
+      "PME04",
+      "PME05",
+      "PME07/08",
+      "GOV",
+      "REVISAO-PG",
+      "BACKUP",
+      "MUTADORES",
+      "PREPARO",
+      "PME09",
+      "EPOCA"
+    ],
+    "capacidade": {
+      "coordenador_ativo": 1,
+      "limite_tecnico": 33,
+      "tarefas_continuacao_nao_criam_frentes": [
+        "TAR968",
+        "TAR969",
+        "TAR970",
+        "TAR971"
+      ],
+      "outros_executores_no_host": "Medicao global12logicos99%CPU9.53GiBlivres; nenhum novo build pesado; catalogo03ativo, Luna mede processos.",
+      "agentes_delegados_acionados": 12
+    }
+  }
+}
