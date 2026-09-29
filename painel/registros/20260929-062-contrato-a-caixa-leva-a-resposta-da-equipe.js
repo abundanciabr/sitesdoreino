@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-062-contrato-a-caixa-leva-a-resposta-da-equipe",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "contrato: a Caixa leva a resposta da equipe",
+  detalhe: "Campo resposta opcional em MudancaDeStatus e IdeiaEmGestao, pedido do mantenedor; contrato antes do provedor, pela cerca.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2365. Validação local: árvore f22eb2575f9b88b3e68b2faa2f95d43c06db524b; commit c717a513e5df97cf43ed5d9bc875229b9485033f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-996",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "contrato",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
