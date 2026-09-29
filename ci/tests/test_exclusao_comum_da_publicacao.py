@@ -282,6 +282,7 @@ def test_sincronizador_fecha_fd8_antes_do_sudo_e_revalida_apos_a_posse():
     texto = (RAIZ / "infra/sincronizar-infra-na-vps.sh").read_text(encoding="utf-8")
     fragmento = TRAVA.read_text(encoding="utf-8").strip()
     assert texto.count(fragmento) == 1
+    assert texto.index("conferir_publicacao_admin\n\n# O staging") < texto.index('sudo -n "$PROVISIONADOR_DA_PONTE"')
     assert texto.index('if ! docker compose --project-directory') < texto.index('sudo -n "$PROVISIONADOR_DA_PONTE"')
     assert texto.index("exec 8<&-\n  sudo -n") < texto.index(fragmento)
     assert texto.index(fragmento) < texto.index("STAGING_AGORA=")

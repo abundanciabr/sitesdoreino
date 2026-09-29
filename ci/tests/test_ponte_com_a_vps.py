@@ -22,6 +22,7 @@ import json
 import re
 from pathlib import Path
 import subprocess
+import sys
 
 RAIZ = Path(__file__).resolve().parents[2]
 PROVISIONADOR = RAIZ / "infra" / "provisionar-usuario-ponte.sh"
@@ -219,13 +220,58 @@ def linux_isolado(pasta: Path, codigo: str) -> None:
         ["docker", "run", "--rm", "--network", "none", "--cpus", "1",
          "--memory", "1g", "--volume", f"{pasta}:/plataforma",
          "--volume", f"{RAIZ / 'infra'}:/fontes:ro",
-         "--entrypoint", "bash", "python:3.12-slim", "-c", codigo],
+         "--entrypoint", "bash", "ubuntu:24.04", "-c", codigo],
         capture_output=True, text=True, timeout=60,
     )
     assert processo.returncode == 0, (processo.stdout, processo.stderr)
 
 
-def test_sincronizador_recusa_copia_stale_estado_admin_e_staging_trocado(tmp_path):
+def test_estado_admin_recusa_publicacao_indecisa_pin_e_link(tmp_path):
+    trecho = SINCRONIZADOR.read_text(encoding="utf-8").split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    pasta = tmp_path / "publicacoes-candidatos"
+    pasta.mkdir()
+    estado_path = pasta / "admin.json"
+    ambiente = tmp_path / ".env"
+
+    def conferir():
+        return subprocess.run(
+            [sys.executable, "-", str(estado_path), str(ambiente)],
+            input=trecho, capture_output=True, text=True,
+        )
+
+    assert conferir().returncode == 0
+    if sys.platform != "win32":
+        estado_path.symlink_to("inexistente")
+        assert "estado duravel nao pode ser link" in conferir().stderr
+        estado_path.unlink()
+    digest = "sha256:" + "a" * 64
+    estado = {
+        "estado": "autorizada", "candidato": "teste", "digest": digest,
+        "imagem_id": "sha256:" + "b" * 64, "anterior": {},
+        "anterior_digest": "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64,
+        "aceite_funcional": "pendente",
+    }
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
+    assert "autorizada ou incerta" in conferir().stderr
+    estado["estado"] = "publicada"
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@" + digest + "\n", encoding="utf-8")
+    assert "aguarda aceite funcional" in conferir().stderr
+    estado["aceite_funcional"] = "conferido"
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
+    assert "ADMIN_IMAGE nao corresponde" in conferir().stderr
+    ambiente.write_text("ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@" + digest + "\n", encoding="utf-8")
+    assert conferir().returncode == 0
+    estado["estado"] = "falhou"
+    estado["aceite_funcional"] = "pendente"
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=" + estado["anterior_digest"] + "\n", encoding="utf-8")
+    assert conferir().returncode == 0
+
+
+def test_sincronizador_recusa_copia_stale_compose_e_staging_trocado(tmp_path):
     stage = tmp_path / "infra.new"
     stage.mkdir()
     (stage / "traefik").mkdir()
@@ -251,18 +297,7 @@ def test_sincronizador_recusa_copia_stale_estado_admin_e_staging_trocado(tmp_pat
         "printf '{\"trocado\":true}\\n' > /plataforma/infra.new/sites.json\n",
         encoding="utf-8",
     )
-    digest = "sha256:" + "a" * 64
-    (tmp_path / "publicacoes-candidatos").mkdir()
-    estado = {
-        "estado": "autorizada", "candidato": "teste", "digest": digest,
-        "imagem_id": "sha256:" + "b" * 64, "anterior": {},
-        "anterior_digest": "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64,
-        "aceite_funcional": "pendente",
-    }
-    (tmp_path / "publicacoes-candidatos/admin.json").write_text(
-        json.dumps(estado), encoding="utf-8"
-    )
-    (tmp_path / ".env").write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
+    (binarios / "python3").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
     linux_isolado(tmp_path, r'''
 set -euo pipefail
 export PLATAFORMA_DIR=/plataforma PATH=/plataforma/bin:$PATH
@@ -270,44 +305,6 @@ sed -i 's/\r$//' /plataforma/bin/*
 chmod +x /plataforma/bin/*
 cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
 printf '\n# stale\n' >> /usr/local/sbin/provisionar-usuario-ponte
-# O estado em voo recusa antes de sudo e de qualquer Compose.
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-grep -Fq 'autorizada ou incerta' /plataforma/saida
-test ! -e /plataforma/sudo-prova
-mv /plataforma/publicacoes-candidatos/admin.json /plataforma/estado-real.json
-ln -s inexistente /plataforma/publicacoes-candidatos/admin.json
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-grep -Fq 'estado duravel nao pode ser link' /plataforma/saida
-test ! -e /plataforma/sudo-prova
-rm /plataforma/publicacoes-candidatos/admin.json
-mv /plataforma/estado-real.json /plataforma/publicacoes-candidatos/admin.json
-python3 - <<'PY'
-import json
-p='/plataforma/publicacoes-candidatos/admin.json'
-d=json.load(open(p)); d['estado']='publicada'; open(p,'w').write(json.dumps(d))
-PY
-python3 - <<'PY'
-from pathlib import Path
-Path('/plataforma/.env').write_text('ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@sha256:'+'a'*64+'\n')
-PY
-# Publicada com aceite pendente recusa mesmo com pin correto.
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-grep -Fq 'aguarda aceite funcional' /plataforma/saida
-test ! -e /plataforma/sudo-prova
-python3 - <<'PY'
-import json
-p='/plataforma/publicacoes-candidatos/admin.json'
-d=json.load(open(p)); d['aceite_funcional']='conferido'; open(p,'w').write(json.dumps(d))
-PY
-# Publicada com pin errado recusa, sem tocar no staging.
-printf 'ADMIN_IMAGE=incorreta\n' > /plataforma/.env
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-grep -Fq 'ADMIN_IMAGE nao corresponde' /plataforma/saida
-test ! -e /plataforma/sudo-prova
-python3 - <<'PY'
-from pathlib import Path
-Path('/plataforma/.env').write_text('ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@sha256:'+'a'*64+'\n')
-PY
 # A copia root antiga falha antes de executar sudo ou consumir infra.new.
 if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
 grep -Fq 'copia root da ponte diverge' /plataforma/saida
