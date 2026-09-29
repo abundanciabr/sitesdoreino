@@ -229,6 +229,9 @@ def test_receptor_manual_ou_provisionador_espera_sem_escrever_env(tmp_path, nome
       echo "roteiro sem Compose terminou com sucesso indevido" >&2; exit 1
     fi
     grep -q 'docker-compose.yml' "$PLATAFORMA_DIR/resultado"
+    if [ "{nome}" = provisionar-identidade.sh ]; then
+      grep -Fq "$PLATAFORMA_DIR" "$PLATAFORMA_DIR/resultado"
+    fi
     test "$(cat "$PLATAFORMA_DIR/env/pagamentos.env")" = inalterado
     echo exclusao-manual-confirmada
     """

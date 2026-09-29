@@ -58,7 +58,7 @@ if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
 fi
 flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
 unset TRAVA_PUBLICACAO
-[ -f docker-compose.yml ] || parar "não achei docker-compose.yml em /opt/plataforma."
+[ -f docker-compose.yml ] || parar "não achei docker-compose.yml em $RAIZ."
 [ -f env/sugestoes.env ]  || parar "não achei env/sugestoes.env — a Caixa precisa estar provisionada antes (é dela que eu copio as credenciais do Google)."
 [ -f env/funil.env ]      || parar "não achei env/funil.env."
 
