@@ -137,6 +137,7 @@ def test_restaurador_confere_nove_hashes_e_bloqueia_retomada(tmp_path, monkeypat
         raise AssertionError(argumentos)
 
     monkeypatch.setattr(restaurador, 'comando', executar_falso)
+    monkeypatch.setattr(restaurador.shutil, 'which', lambda _: '/usr/bin/tool')
     monkeypatch.setattr(restaurador.subprocess, 'run',
                         lambda *args, **kwargs: subprocess.CompletedProcess(args, 0))
     restaurador.executar(pacote, cert, chave, 'coordenacao_ensaio_978',

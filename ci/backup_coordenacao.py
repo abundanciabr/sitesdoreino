@@ -24,7 +24,8 @@ def verificar(resumo_path, pacote_path):
     if digest != resumo.get('sha256'):
         raise ValueError('SHA-256 divergiu no transporte; não publique.')
     cms = subprocess.run(['openssl', 'cms', '-cmsout', '-print', '-inform', 'DER',
-                          '-in', str(pacote_path)], capture_output=True, text=True)
+                          '-in', str(pacote_path)], capture_output=True, text=True,
+                         encoding='utf-8')
     oaep = re.search(r'algorithm:\s*rsaesOaep.*?encryptedKey:', cms.stdout, re.S)
     if (cms.returncode or not re.search(
             r'contentEncryptionAlgorithm:\s*algorithm:\s*aes-256-gcm\b', cms.stdout)
