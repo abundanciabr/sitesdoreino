@@ -430,10 +430,18 @@ def snapshot_fonte(raiz: Path, celula: str, ambiente: object) -> dict:
     exigir(re.fullmatch(r"[a-z][a-z0-9-]*", celula) is not None, "célula inválida")
     exigir(
         isinstance(ambiente, dict)
-        and set(ambiente) == {"runner", "arquitetura", "docker", "python"}
-        and all(isinstance(v, str) and v for v in ambiente.values()),
-        "ambiente sem runner, arquitetura, Docker ou Python",
+        and set(ambiente) == {"runner", "arquitetura", "docker", "python", "pacotes"}
+        and all(
+            isinstance(ambiente[chave], str) and ambiente[chave]
+            for chave in ("runner", "arquitetura", "docker", "python")
+        ),
+        "ambiente de fonte sem runner, arquitetura, Docker, Python ou pacotes resolvidos",
     )
+    ambiente_medido = {
+        chave: ambiente[chave]
+        for chave in ("runner", "arquitetura", "docker", "python")
+    }
+    ambiente_medido["pacotes"] = pacotes_resolvidos(ambiente["pacotes"])
     encontrados = arquivos(raiz, f"services/{celula}")
     exigir(
         f"services/{celula}/Dockerfile" in encontrados, "Dockerfile da célula ausente"
@@ -476,7 +484,7 @@ def snapshot_fonte(raiz: Path, celula: str, ambiente: object) -> dict:
                 caminho: hash_arquivo(raiz, caminho) for caminho in POLITICAS
             },
         },
-        "ambiente": candidato.digest(ambiente),
+        "ambiente": candidato.digest(ambiente_medido),
         "verificadores": {
             nome: candidato.digest(hashes(raiz, caminhos))
             for nome, caminhos in VERIFICADORES.items()

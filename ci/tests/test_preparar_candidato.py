@@ -23,6 +23,7 @@ PACOTES = [
     {"name": "Django", "version": "5.1.4"},
     {"name": "asgiref", "version": "3.8.1"},
 ]
+AMBIENTE_FONTE = {**AMBIENTE, "pacotes": PACOTES}
 
 
 def git(raiz, *args):
@@ -145,7 +146,7 @@ def test_snapshot_mede_dependencias_transitivas_e_dockerfile_pinado(bancada):
 
 def test_snapshot_fonte_nao_depende_da_imagem_futura(bancada):
     raiz, _, _ = bancada
-    fonte = preparo.snapshot_fonte(raiz, "admin", AMBIENTE)
+    fonte = preparo.snapshot_fonte(raiz, "admin", AMBIENTE_FONTE)
     completo = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
     assert set(fonte["entradas"]) == candidato.FONTE
     assert fonte["entradas"] == {
@@ -153,6 +154,51 @@ def test_snapshot_fonte_nao_depende_da_imagem_futura(bancada):
     }
     assert "services/admin/requirements.txt" in fonte["entradas"]["codigo"]
     assert "dependencias" not in fonte["entradas"]
+    pacotes_novos = [PACOTES[0], {"name": "asgiref", "version": "3.9.0"}]
+    assert (
+        preparo.snapshot_fonte(raiz, "admin", {**AMBIENTE, "pacotes": pacotes_novos})[
+            "ambiente"
+        ]
+        != fonte["ambiente"]
+    )
+
+
+def test_emissao_main_de_fonte_e_build_reutiliza_prova_equivalente(bancada):
+    raiz, base, fonte = bancada
+    atual = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
+    medido_fonte = preparo.snapshot_fonte(raiz, "admin", AMBIENTE_FONTE)
+    execucao = {"run_id": 10, "tentativa": 1, "job_id": 20}
+    provas_fonte = [
+        p for p in provas(medido_fonte, fonte, execucao) if p["nome"] != "build"
+    ]
+    prova_build = next(
+        p for p in provas(atual, fonte, execucao) if p["nome"] == "build"
+    )
+    manifesto = preparo.criar(
+        raiz,
+        "admin",
+        "TAR-980",
+        1,
+        fonte,
+        base,
+        fonte,
+        atual,
+        provas_fonte + [prova_build],
+        execucao,
+        IMAGEM,
+        candidato.assinatura_build(atual),
+    )
+    assert candidato.validar(manifesto)["estado"] == "PASS"
+    equivalente = {
+        **atual,
+        "ambientes": {p["nome"]: p["emissao"]["ambiente"] for p in manifesto["provas"]},
+    }
+    assert candidato.validar(manifesto, equivalente)["estado"] == "PASS"
+    divergente = {
+        **equivalente,
+        "ambientes": {**equivalente["ambientes"], "muralhas": "0" * 64},
+    }
+    assert candidato.validar(manifesto, divergente)["provas_invalidas"] == ["muralhas"]
 
 
 def test_mudanca_de_dependencia_invalida_prova_e_imagem(bancada):
@@ -280,7 +326,9 @@ def test_checkout_modificado_nao_gera_snapshot_oficial(bancada):
 def test_prova_pr_nao_recebe_ambiente_main_retroativamente(bancada):
     raiz, base, fonte = bancada
     ambiente_pr = {**AMBIENTE, "runner": "ubuntu-22.04"}
-    medido_no_pr = preparo.snapshot(raiz, "admin", BASE, PACOTES, ambiente_pr)
+    medido_no_pr = preparo.snapshot_fonte(
+        raiz, "admin", {**ambiente_pr, "pacotes": PACOTES}
+    )
     escrever(raiz, "README.md", "merge sem mudança relevante\n")
     git(raiz, "add", ".")
     git(raiz, "commit", "-qm", "integração")
