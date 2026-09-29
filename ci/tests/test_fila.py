@@ -2271,7 +2271,7 @@ def aceite_entrega_de_teste(publicacao="PUBLICADO"):
         "publicacoes": [RUN_RECONCILIADO] if publicacao == "PUBLICADO" else [URL_SUBMISSAO],
         "registro": REGISTRO_DE_ACEITE, "aceite_funcional": funcional_de_teste(publicacao),
     }
-    prova["registro_sha256"] = fila.hash_do_registro(registro_de_aceite_de_teste(prova))
+    prova["registro_sha256"] = fila.hash_do_conteudo(registro_de_aceite_de_teste(prova))
     return prova
 
 
@@ -4037,14 +4037,17 @@ def test_aceite_funcional_exige_criterio_e_evidencia(funcional):
 
 
 @pytest.mark.parametrize("publicacao", ["PUBLICADO", "SEM_PUBLICACAO"])
-def test_reconciliacao_com_aceite_distingue_as_quatro_provas(tmp_path, publicacao):
+def test_reconciliacao_com_aceite_distingue_as_quatro_provas(tmp_path, monkeypatch, publicacao):
     prova = aceite_entrega_de_teste(publicacao)
     conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="registro da reconciliação",
-                       verificado_em="2026-09-29", aceite_entrega=prova)
+                       verificado_em="2026-09-10", aceite_entrega=prova)
     montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
     escrever_registro_de_aceite(tmp_path, prova)
     tarefas, eventos, erros = carregar(tmp_path)
     assert not erros
+    monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a, **kw: ("fonte", "2026-09-10", prova))
+    indice = fila.comprovar_aceites_publicados(tmp_path, eventos)
+    assert indice["tarefas"]["TAR-001"]["prova"] == prova
     estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
     assert estado["estado"] == fila.CONCLUIDA
     assert estado["submissao"] == "registrada"
@@ -4090,6 +4093,7 @@ def test_reconciliacao_recusa_jornada_de_outra_revisao_ambiente_ou_reprovada(tmp
 @pytest.mark.parametrize("mudanca", [
     {"pr": URL_SUBMISSAO + "9"}, {"revisao": "f" * 40}, {"arvore": "f" * 40},
     {"publicacoes": ["texto livre"]}, {"integracao": "curto"}, {"tarefa": "TAR-002"},
+    {"retroativa": True}, {"retroativa": ""},
 ])
 def test_evento_de_aceite_recusa_vinculo_divergente_na_carga_e_na_projecao(tmp_path, mudanca):
     prova = aceite_entrega_de_teste()
@@ -4140,7 +4144,7 @@ def test_concluir_texto_livre_nao_produz_aceite_final(tmp_path, monkeypatch):
     assert estado["aceite"] == "nao_comprovado"
 
 
-@pytest.mark.parametrize("alteracao", ["ausente", "hash", "sha", "run", "candidato", "jornada", "marca_serializada"])
+@pytest.mark.parametrize("alteracao", ["ausente", "hash", "sha", "run", "candidato", "jornada", "marca_serializada", "reconciliacao_serializada"])
 def test_leitura_nao_aprova_estrutura_sem_registro_canonico_correspondente(tmp_path, alteracao):
     prova = aceite_entrega_de_teste()
     caminho = escrever_registro_de_aceite(tmp_path, prova)
@@ -4162,6 +4166,8 @@ def test_leitura_nao_aprova_estrutura_sem_registro_canonico_correspondente(tmp_p
     conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação", verificado_em="2026-09-29", aceite_entrega=prova)
     if alteracao == "marca_serializada":
         conclusao["_aceite_verificado"] = True
+    elif alteracao == "reconciliacao_serializada":
+        conclusao["_aceite_reconciliado"] = True
     montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
     tarefas, eventos, erros = carregar(tmp_path)
     assert erros
@@ -4179,3 +4185,71 @@ def test_porta_terminal_recusa_prova_sem_registro_canonico(tmp_path, monkeypatch
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: pytest.fail("não libera sem prova"))
     assert fila._concluir_com_prova(tmp_path, "TAR-001", "executor", "reconciliação", "2026-09-29", aceite_entrega_de_teste()) == 1
     assert not list((tmp_path / "fila/eventos").glob("*concluida.json"))
+
+
+def test_registro_local_consistente_nao_comprova_origem_publicada(tmp_path):
+    prova = aceite_entrega_de_teste()
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação", verificado_em="2026-09-29", aceite_entrega=prova)
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    escrever_registro_de_aceite(tmp_path, prova)
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+@pytest.mark.parametrize("fabricacao", ["run", "sha", "registro_nao_integrado"])
+def test_snapshot_recusa_evento_e_livro_fabricados_juntos(tmp_path, monkeypatch, fabricacao):
+    prova = aceite_entrega_de_teste()
+    if fabricacao == "run":
+        prova["publicacoes"] = [RUN_RECONCILIADO.rsplit("/", 1)[0] + "/99999999999"]
+    elif fabricacao == "sha":
+        prova["integracao"] = "f" * 40
+        prova["aceite_funcional"]["revisao"] = "f" * 40
+    prova["registro_sha256"] = fila.hash_do_conteudo(registro_de_aceite_de_teste(prova))
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação", verificado_em="2026-09-10", aceite_entrega=prova)
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    escrever_registro_de_aceite(tmp_path, prova)
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    if fabricacao == "registro_nao_integrado":
+        monkeypatch.setattr(fila, "_git_da_fila", lambda *a, **kw: "")
+    else:
+        monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro_de_aceite_de_teste(prova))
+    with pytest.raises(fila.RecusaDeReconciliacao):
+        fila.comprovar_aceites_publicados(tmp_path, eventos)
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+def test_snapshot_sem_aceite_novo_nao_consulta_github(tmp_path, monkeypatch, capsys):
+    montar(tmp_path, [tarefa()], [evento(tipo="concluida", evidencia=URL_SUBMISSAO, verificado_em="2026-09-10")])
+    monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a, **kw: pytest.fail("legado não cria consultas"))
+    assert fila.cmd_snapshot_publicado(tmp_path) == 0
+    snapshot = json.loads(capsys.readouterr().out)
+    assert snapshot["aceites"]["tarefas"] == {}
+    assert snapshot["estados"]["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+def test_snapshot_instrumento_quebrado_preserva_erro(tmp_path, monkeypatch):
+    prova = aceite_entrega_de_teste()
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação", verificado_em="2026-09-10", aceite_entrega=prova)
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    escrever_registro_de_aceite(tmp_path, prova)
+    def quebrado(*a, **kw):
+        raise ErroDeInstrumentacao("GitHub não respondeu")
+    monkeypatch.setattr(fila, "provar_reconciliacao", quebrado)
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.cmd_snapshot_publicado(tmp_path)
+
+
+@pytest.mark.parametrize("campo", ["pr", "revisao", "arvore"])
+def test_aceite_recusa_submissao_incompleta_sem_quebrar_leitor(tmp_path, campo):
+    sub = submissao_reconciliavel()
+    sub.pop(campo)
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="aceite declarado", verificado_em="2026-09-29", aceite_entrega=aceite_entrega_de_teste())
+    montar(tmp_path, [tarefa()], [sub, conclusao])
+    _, _, erros = carregar(tmp_path)
+    assert erros

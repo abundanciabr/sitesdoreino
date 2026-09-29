@@ -836,7 +836,7 @@ def test_conclusao_legada_mostra_origem_e_aceite_nao_comprovado(
 
 
 @respx.mock
-def test_aceite_funcional_comprovado_tem_grupo_e_quatro_provas(tmp_path, monkeypatch):
+def test_snapshot_isolado_nao_comprova_aceite_funcional(tmp_path, monkeypatch):
     pasta = fila_de_mentira(tmp_path, monkeypatch)
     (pasta / "estados.json").write_text(
         json.dumps(
@@ -860,8 +860,8 @@ def test_aceite_funcional_comprovado_tem_grupo_e_quatro_provas(tmp_path, monkeyp
     for etapa in ("Submissão", "Integração", "Publicação técnica", "Aceite funcional"):
         assert etapa in html
     grupo = next(g for g in resposta.context["colunas"] if g["cartoes"])
-    assert grupo["cor"] == "verde"
-    assert grupo["curto"] == "aceite comprovado"
+    assert grupo["cor"] == "cinza"
+    assert grupo["curto"] != "aceite comprovado"
 
 
 @respx.mock
@@ -908,3 +908,66 @@ def test_projecao_do_produtor_chega_ao_cartao_sem_aceite_inventado(
     assert "Conclusão histórica registrada pelo PR" in html
     assert "O aceite funcional não foi comprovado" in html
     assert "Resultados com aceite funcional comprovado" not in html
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "condicao",
+    ["conferido", "sem_indice", "sem_identificacao", "vinculo", "arquivo_alterado"],
+)
+def test_snapshot_do_produtor_vincula_aceite_ao_cartao(tmp_path, monkeypatch, condicao):
+    from tests.test_versao_dos_dados_admin import pacote
+
+    produtor = Path(__file__).resolve().parents[3] / "ci"
+    programa = """
+import json, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+sys.path.insert(0, str(Path(sys.argv[1]) / 'tests'))
+import fila, test_fila
+raiz = Path(sys.argv[2])
+prova = test_fila.aceite_entrega_de_teste()
+conclusao = test_fila.evento(tipo='concluida', hora='12:00:00', evidencia='fonte conferida', verificado_em='2026-09-10', aceite_entrega=prova)
+test_fila.montar(raiz, [test_fila.tarefa()], [test_fila.submissao_reconciliavel(), conclusao])
+test_fila.escrever_registro_de_aceite(raiz, prova)
+tarefas, eventos, erros = test_fila.carregar(raiz)
+assert not erros
+fila.provar_reconciliacao = lambda *a, **kw: ('fonte conferida', '2026-09-10', prova)
+indice = fila.comprovar_aceites_publicados(raiz, eventos)
+estados = fila.calcular_estados(tarefas, eventos)
+print(json.dumps({'estados': fila.tarefas_para_snapshot(tarefas, eventos, estados), 'indice': indice}))
+"""
+    origem = tmp_path / "origem"
+    origem.mkdir()
+    resultado = subprocess.run(
+        [sys.executable, "-c", programa, str(produtor), str(origem)],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    snapshot = json.loads(resultado.stdout)
+    if condicao == "vinculo":
+        snapshot["indice"]["tarefas"]["TAR-001"]["prova"][
+            "pr"
+        ] = "https://github.com/outro/projeto/pull/9"
+    extras = {"estados.json": snapshot["estados"]}
+    if condicao != "sem_indice":
+        extras["aceites-comprovados.json"] = snapshot["indice"]
+    pasta = pacote(tmp_path / "snapshot", tipo="fila", extras=extras)
+    if condicao == "sem_identificacao":
+        (pasta / "admin-dados.json").unlink()
+    elif condicao == "arquivo_alterado":
+        (pasta / "aceites-comprovados.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
+    resposta = _dentro().get(reverse("caixa_robos"))
+    if condicao == "arquivo_alterado":
+        assert resposta.status_code == 500
+        return
+    assert resposta.status_code == 200
+    grupo = next(g for g in resposta.context["colunas"] if g["cartoes"])
+    assert grupo["cor"] == ("verde" if condicao == "conferido" else "cinza")
+    html = texto_sem_estilo(resposta)
+    assert ("Resultados com aceite funcional comprovado" in html) == (
+        condicao == "conferido"
+    )

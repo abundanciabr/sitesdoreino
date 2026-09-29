@@ -10,7 +10,7 @@ do plano de 29/08/2026 — desenho em
 
 | O quê | De onde | Quem escreveu |
 |---|---|---|
-| O quadro (estados) | `admin-dados/fila_ativo/estados.json` | `ci/fila.py listar --json`, no publicador (escritor único) |
+| O quadro (estados) | `admin-dados/fila_ativo/estados.json` | `ci/fila.py snapshot-publicado`, no publicador (escritor único) |
 | As tarefas/eventos | `admin-dados/fila_ativo/tarefas|eventos/` | os robôs, por PR |
 | A régua das esperas | `admin-dados/fila_ativo/regua.json` | `ci/medir_tempos.py` (a régua viva) |
 | Os estouros | `admin-dados/fila_ativo/esperas/resumo-*.json` | `ci/exportar_esperas.py` (curado e redigido) |
@@ -482,6 +482,50 @@ def ler_estados(pasta: Path | None) -> dict | None:
         for tid, dados in estados.items()
     ):
         return None
+    publicacao = (
+        dados_da_fila()
+        if any(d.get("aceite") == "comprovado" for d in estados.values())
+        else None
+    )
+    indice = (
+        _ler_json(pasta / "aceites-comprovados.json")
+        if publicacao and publicacao.pasta == pasta and publicacao.sha
+        else None
+    )
+    provas = (
+        indice.get("tarefas", {})
+        if isinstance(indice, dict) and indice.get("formato") == "aceites-publicados.v1"
+        else {}
+    )
+    for tid, dados in estados.items():
+        if dados.get("aceite") != "comprovado":
+            continue
+        registro = provas.get(tid) if isinstance(provas, dict) else None
+        prova = registro.get("prova") if isinstance(registro, dict) else None
+        digest = (
+            hashlib.sha256(
+                json.dumps(
+                    prova, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
+            ).hexdigest()
+            if isinstance(prova, dict)
+            else None
+        )
+        if (
+            digest is None
+            or digest != registro.get("sha256")
+            or digest != dados.get("aceite_prova_sha256")
+            or prova.get("tarefa") != tid
+            or any(prova.get(c) != dados.get(c) for c in ("pr", "revisao", "arvore"))
+        ):
+            dados.update(
+                {
+                    "integracao": "nao_comprovada",
+                    "publicacao": "nao_comprovada",
+                    "aceite": "nao_comprovado",
+                    "origem_conclusao": "registro_legado",
+                }
+            )
     return estados
 
 

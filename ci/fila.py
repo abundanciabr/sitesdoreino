@@ -918,6 +918,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         nome = caminho.name
         _conferir_campos(nome, dados, CAMPOS_DO_EVENTO, CAMPOS_OPCIONAIS_DO_EVENTO, erros)
         dados.pop("_aceite_verificado", None)
+        dados.pop("_aceite_reconciliado", None)
         if dados.get("arquivo") != caminho.stem:
             erros.append(f"{nome}: campo 'arquivo' ≠ nome do arquivo")
         tipo = dados.get("evento")
@@ -1100,8 +1101,10 @@ def problemas_do_aceite_funcional(funcional, revisao=None, ambiente=None) -> lis
 def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
     if not isinstance(prova, dict):
         return ["aceite_entrega exige uma prova estruturada"]
-    if not submissao:
+    if not isinstance(submissao, dict) or not submissao:
         return ["aceite_entrega exige a submissão correspondente"]
+    if problemas_da_submissao(submissao):
+        return ["aceite_entrega exige submissão válida; confira PR, revisão e árvore antes de reconciliar"]
     problemas = [
         f"aceite_entrega: {campo} diverge da última submissão"
         for campo in ("tarefa", "pr", "revisao", "arvore")
@@ -1120,6 +1123,8 @@ def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
         problemas.append("aceite_entrega exige o registro de aceite do livro")
     if not re.fullmatch(r"[0-9a-f]{64}", str(prova.get("registro_sha256") or "")):
         problemas.append("aceite_entrega exige o SHA256 do registro canônico")
+    if "retroativa" in prova and (not isinstance(prova["retroativa"], str) or not prova["retroativa"].strip()):
+        problemas.append("aceite_entrega exige motivo textual para a reconciliação retroativa")
     publicacoes = prova.get("publicacoes")
     prefixo = str(submissao["pr"]).split("/pull/")[0]
     if estado == "SEM_PUBLICACAO":
@@ -1133,7 +1138,7 @@ def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
     return problemas
 
 
-def hash_do_registro(registro: dict) -> str:
+def hash_do_conteudo(registro: dict) -> str:
     conteudo = json.dumps(registro, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
 
@@ -1144,7 +1149,7 @@ def problemas_do_registro_canonico(prova: dict, registro) -> list[str]:
     problemas = []
     if registro.get("arquivo") != Path(prova["registro"]).stem:
         problemas.append("a identidade do registro canônico diverge do arquivo")
-    if hash_do_registro(registro) != prova["registro_sha256"]:
+    if hash_do_conteudo(registro) != prova["registro_sha256"]:
         problemas.append("o SHA256 do registro canônico diverge do aceite")
     if registro.get("tarefa") != prova["tarefa"]:
         problemas.append("o registro canônico pertence a outra tarefa")
@@ -1182,6 +1187,7 @@ def comprovacoes_da_entrega(eventos: list[dict], tid: str) -> dict:
     )
     prova = conclusao.get("aceite_entrega")
     if (conclusao.get("_aceite_verificado") is True
+            and conclusao.get("_aceite_reconciliado") is True
             and prova is not None and not problemas_do_aceite_entrega(prova, submissao)):
         resultado.update({
             "integracao": "comprovada",
@@ -1189,6 +1195,7 @@ def comprovacoes_da_entrega(eventos: list[dict], tid: str) -> dict:
                            else "nao_aplicavel"),
             "aceite": "comprovado",
             "origem_conclusao": "reconciliacao",
+            "aceite_prova_sha256": hash_do_conteudo(prova),
         })
     return resultado
 
@@ -1848,9 +1855,11 @@ def provar_reconciliacao(
         "publicacao": estado["estado"],
         "publicacoes": provas,
         "registro": aceite_registro.replace("\\", "/"),
-        "registro_sha256": hash_do_registro(registro),
+        "registro_sha256": hash_do_conteudo(registro),
         "aceite_funcional": registro["aceite_funcional"],
     }
+    if retroativa:
+        aceite_entrega["retroativa"] = retroativa
     problemas = problemas_do_aceite_entrega(aceite_entrega, submissao)
     if problemas:
         raise RecusaDeReconciliacao("; ".join(problemas))
@@ -1865,6 +1874,32 @@ def provar_reconciliacao(
         f"linhagem={linhagem}; aceite={aceite_registro.replace('\\', '/')}"
     )
     return evidencia, registro["verificado_em"], aceite_entrega
+
+
+def comprovar_aceites_publicados(raiz: Path, eventos: list[dict]) -> dict:
+    conferidas = {}
+    tarefas = {}
+    for ev in eventos:
+        prova = ev.get("aceite_entrega")
+        if ev.get("evento") != "concluida" or prova is None:
+            continue
+        if ev.get("_aceite_verificado") is not True:
+            raise RecusaDeReconciliacao("o aceite não passou pela leitura do registro canônico")
+        digest = hash_do_conteudo(prova)
+        if digest not in conferidas:
+            _, verificado_em, fonte = provar_reconciliacao(
+                raiz, ultima_submissao(eventos, ev["tarefa"]), prova["registro"],
+                retroativa=prova.get("retroativa", ""),
+            )
+            if fonte != prova or verificado_em != ev["verificado_em"]:
+                raise RecusaDeReconciliacao(
+                    "a prova registrada diverge da integração, publicação ou aceite conferidos; "
+                    "registre a jornada pertinente e reconcilie antes de publicar os dados"
+                )
+            conferidas[digest] = fonte
+        ev["_aceite_reconciliado"] = True
+        tarefas[ev["tarefa"]] = {"sha256": digest, "prova": conferidas[digest]}
+    return {"formato": "aceites-publicados.v1", "tarefas": tarefas}
 
 
 def _ultimos_ciclos(eventos: list[dict]) -> dict[str, dict]:
@@ -2906,6 +2941,33 @@ def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
     return 0
 
 
+def tarefas_para_snapshot(tarefas, eventos, estados) -> dict:
+    return {
+        tid: {
+            **estados[tid],
+            "titulo": tarefas[tid]["titulo"],
+            "toca": tarefas[tid]["toca"],
+            "execucao": resumo_da_execucao(eventos, tid),
+        }
+        for tid in sorted(tarefas)
+    }
+
+
+def cmd_snapshot_publicado(raiz: Path) -> int:
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    try:
+        aceites = comprovar_aceites_publicados(raiz, eventos)
+    except RecusaDeReconciliacao as erro:
+        print("RECUSADO: " + str(erro))
+        return 1
+    estados = calcular_estados(tarefas, eventos)
+    print(json.dumps({
+        "estados": tarefas_para_snapshot(tarefas, eventos, estados),
+        "aceites": aceites,
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_listar(raiz: Path, args) -> int:
     tarefas, eventos = _carregar_ou_parar(raiz)
     reservas: set[str] = set()
@@ -2915,15 +2977,7 @@ def cmd_listar(raiz: Path, args) -> int:
         prs = prs_citando_tarefas(raiz)
     estados = calcular_estados(tarefas, eventos, reservas, prs)
     if args.json:
-        visao = {
-            tid: {
-                **estados[tid],
-                "titulo": tarefas[tid]["titulo"],
-                "toca": tarefas[tid]["toca"],
-                "execucao": resumo_da_execucao(eventos, tid),
-            }
-            for tid in sorted(tarefas)
-        }
+        visao = tarefas_para_snapshot(tarefas, eventos, estados)
         print(json.dumps(visao, ensure_ascii=False, indent=2))
         return 0
     if not tarefas:
@@ -3952,6 +4006,8 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--hipotese", required=True)
     p.add_argument("--resultado", required=True)
 
+    sub.add_parser("snapshot-publicado", help="confere as fontes dos aceites antes do pacote de dados admin")
+
     p = sub.add_parser("listar", help="o quadro, com estados calculados")
     p.add_argument("--ao-vivo", action="store_true", help="soma reservas do servidor e PRs abertos")
     p.add_argument("--json", action="store_true")
@@ -4054,6 +4110,8 @@ def main(argv: list[str] | None = None) -> int:
         raiz = raiz_do_repo()
         if args.acao == "criar":
             return cmd_criar(raiz, args)
+        if args.acao == "snapshot-publicado":
+            return cmd_snapshot_publicado(raiz)
         if args.acao == "listar":
             return cmd_listar(raiz, args)
         if args.acao == "zelar":
