@@ -1,0 +1,20 @@
+{
+  "arquivo": "20260929-162928-TAR-977-checkpoint",
+  "tarefa": "TAR-977",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:29:28.805831+00:00",
+  "quem": "codex/ci/pme03-portao-pr",
+  "plano": "PME03 corte 977 etapa 1 de 4",
+  "ultimo_avanco": "Bancada e fonte conferidas; registros centrais idênticos e reserva adquirida; interface mínima enviada ao consumidor 07",
+  "proxima_acao": "Executar baseline e prova negativa de HEAD sem recibo antes da implementação",
+  "verificacoes": [
+    "git status clean antes da cópia; base 837148aca; leis já lidas idênticas; pegar TAR977 PASS"
+  ],
+  "contexto": {
+    "branch": "codex/ci/pme03-portao-pr",
+    "worktree": "C:\\Users\\davia\\.codex\\worktrees\\pme06-candidato\\sitesdoreino-limpo-20260923",
+    "sha": "837148aca1034d5c1e35ad8c7ae733693dadcfc9",
+    "fonte_rito": "bec58f85074bbf4c9493a843dd1ee9bc82716840",
+    "interface": "verificar-linhagem --pr N --head SHA40; TAR derivada da última submissão única; CI com checkout HEAD exato"
+  }
+}

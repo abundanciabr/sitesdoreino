@@ -1,0 +1,19 @@
+{
+  "arquivo": "977-recusar-integracao-de-uma-revisao-sem-seu-comprovante-comple",
+  "id": "TAR-977",
+  "titulo": "Recusar integracao de uma revisao sem seu comprovante completo",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "CLI inevitavel confere TAR/PR/HEAD real e linhagem; primeiroHEADsemreciboFAIL; novo codigo com recibo antigoFAIL; revisao completaPASS; falhaAPI/historicorasoERROR; consumidorCI07 exigido antes02ready",
+  "despacho": "Corte minimo da MESMA frente PME03, continuacao969 semencerraraceite/UI. Responsavel pme03_aceite gpt-6-sol high, semsubagentes. Reserva pme03-portao-pr; bancada gerenciada pme06-candidato liberada aposagente06concluido e gitclean/root conferidos, ramo novo codex/ci/pme03-portao-pr desde main. Nenhumaescrita na969 enquanto catalogoativo. Escoposomente ci/fila.py e ci/tests/test_fila.py maispropriosregistros. Reuse medir_linhagem/problemas_da_linhagem/ultima_submissao/problemas_da_submissao existentesemmain; verificar_linhagem_submissao ainda precisa implementacao, nao presumir API. NovoCLIverificar-linhagem usa PRreal/HEADcompleto/base.sha paraPRaberto, nao exigeintegracaoainda. Vinculos/arvores/ancestralidade/caminhospossubmissao provados; sincronizacaolegitimamainsuportada semaceitarcodigoposteriorsemnovaprova. Provaspositivas/negativas/erros/historicoraso. Fonte02bec58f85074bbf4c9493a843dd1ee9bc82716840 podeexecutar rito pr.abrir com raizexplicita verificadanabancadadocorte paraPRnascerDraft, semcopiarparcialmentepr.py nemresolverraizerrada.07integraCLIaCIexistentecompermissoesread;GOVdocumentapropriedadeeequivalencia;02continuaDraftategateativocomprovado. Semnovoformulario/servicodeautoridade/doublevalidationremoval. Pararporinterfaceouorigemambigua semmarcarPASS; manterprovas erecuperecodigo.",
+  "origem": "TAR958 adendo; dependencia concreta TAR973; continuacao969; fonte corrigida da interface proposta03",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

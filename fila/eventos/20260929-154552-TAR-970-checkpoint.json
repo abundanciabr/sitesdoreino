@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-154552-TAR-970-checkpoint",
+  "tarefa": "TAR-970",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T15:45:52.797930+00:00",
+  "quem": "codex/pme06-candidato",
+  "plano": "PME06 complemento registro completo etapa provas e PR",
+  "ultimo_avanco": "carregar_registro verifica um unico envelope; CLI emite registro_sha256; 69 testes e duas guardas passaram; corte2338 incorporado",
+  "proxima_acao": "Submeter complemento nos dois arquivos exclusivos pelo rito e entregar fonte ao consumidor PME07; assinatura e piloto ainda pendentes",
+  "verificacoes": [
+    "pytest candidato e reservar: 69 PASS; provar_guardas: 2 de 2 PASS; git merge-base corte2338 HEAD: exit0"
+  ]
+}

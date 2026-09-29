@@ -1,0 +1,20 @@
+{
+  "arquivo": "967-preparar-e-publicar-sem-disputa-e-com-recuperacao-comprovada",
+  "id": "TAR-967",
+  "titulo": "Preparar e publicar sem disputa e com recuperacao comprovada",
+  "toca": [
+    "ci",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Exclusao comum real antes de mover trava; fonte prova digest em producao; jornada e recuperacao medidas no piloto oficial; cache decidido por medida",
+  "despacho": "PME07 e PME08 reunidos numa frente pois mudam a mesma exclusao e publicador; tentativa1 responsavel unico pme07_publicacao gpt-6-sol high configuracao explicita sem fallback; runtime independente nao atestado. Coordenador01a0ed71/TAR958. Mandato direto mantenedor29/09 pleno protegido/publicacao oficial/migracoes compativeis/recuperacao; sem custos/perda/credenciais ao implementador. Escrita exclusiva .github/workflows/deploy-celula.yml deploy-infra.yml rollback.yml e demais workflows mutadores pertinentes, infra/deploy-celula-na-vps.sh infra/sincronizar-infra-na-vps.sh ci/rollback.py e scripts/testes estritamente necessarios a exclusao comum, candidato/publicador. ci/candidato.py donoPME06, fila.py donoPME03, pr.py donoPME02, sessao/grupos donoPME04 readonly. Dependencia contratoPME06 e aceitePME03; primeiro inventario/prova da exclusao comum antes de movertrava. Um integrador unico07/08; incrementos pequenos no rito15arquivos, protecoes antigas ate equivalentes ativas. Aceite prepara/testa/build/push fora exclusao, ativa por digest aprovado, revalida gates freeze atual supersessao migrations sobexclusao, saude+jornada dentroprotecaocomum; recuperacao imediata reutiliza trava semdestruirdados; prova candidatos atrasados/resultadoduvidoso/concorrencia e piloto real pela Actions oficial. Cache decisoes medidas. Plano A88666E0FDADADF30A0B0F68ECD133534B0755A8606004112F98E1F743E3C5C2; quatro prompts742A1D14DBE21BF662926E5C237219AD6AEE1386D6884AB90844B083C62A3B7E. Proximaacao inventariar e enviar contrato minimo; parar so bloqueio real deacesso/interface, continuando ensaios. Proibido subdelegar. Banco oficial/compatibilidade preservados. Recuperacao ensaiada antes piloto. Piloto coordenador dispara depois revisao independente, semnovaaprovacao mantenedor.",
+  "origem": "Mandato PME07-08 29/09/2026 TAR958",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -73,7 +73,7 @@ DIVIDA = "ci/leis-sem-mecanismo.txt"
 ARQUIVOS_LEI = {
     "CONSTITUICAO.md": r"^## (Lei \d+[^\n]*)$",
     "RITOS.md": r"^## (§\d+[^\n]*)$",
-    "CLAUDE.md": r"^## ([^\n]+)$",
+    "CAMINHO-DOURADO.md": r"^## ([^\n]+)$",
 }
 
 DECLARACAO = re.compile(r"\*\*Quem faz valer:\*\*(.+?)(?:\n\n|\Z)", re.S)
@@ -116,6 +116,8 @@ def _levantar_texto(texto_por_arquivo: dict[str, str]) -> list[Lei]:
     leis: list[Lei] = []
     for arquivo, padrao in ARQUIVOS_LEI.items():
         texto = texto_por_arquivo[arquivo]
+        if arquivo == "CAMINHO-DOURADO.md":
+            texto = texto.partition("## §0")[0]
         partes = re.split(padrao, texto, flags=re.M)
         for titulo, corpo in zip(partes[1::2], partes[2::2]):
             declaracao = DECLARACAO.search(corpo)
@@ -147,7 +149,16 @@ def _leis_de_origin_main(raiz: Path) -> list[Lei]:
                 processo.stderr.strip()
                 or "Não foi possível ler a lei remota para comparar o censo.",
             )
-        textos[arquivo] = processo.stdout
+        fonte = processo.stdout
+        if arquivo == "CAMINHO-DOURADO.md" and fonte.startswith("# CAMINHO DOURADO — As Receitas Canônicas") and "## O Padrão de Trabalho" not in fonte:
+            historica = subprocess.run(
+                ["git", "show", "origin/main:CLAUDE.md"], cwd=raiz,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+            )
+            if historica.returncode != 0:
+                raise ErroDeInstrumentacao("fonte anterior ilegível", historica.stderr.strip())
+            fonte = historica.stdout
+        textos[arquivo] = fonte
     return _levantar_texto(textos)
 
 
