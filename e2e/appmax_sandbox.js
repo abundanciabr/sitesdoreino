@@ -32,10 +32,15 @@
 //   --etapa=conferir     lê --dados e a saída da VPS em $SAIDA, julga cada
 //                        cartão, publica o resumo sanitizado.
 //
+// SELEÇÃO (comprar e conferir): sem filtro, a matriz inteira (6 cartões x 2
+// perfis = 12 compras). --cartao=<4 últimos dígitos> e --perfil=<desktop|celular>
+// reduzem a matriz; valor que não existe reprova sem comprar nada.
+//
 // Uso local (compra de verdade no sandbox):
 //   npm install --no-save playwright@1.62.1 && npx playwright install chromium
 //   node e2e/appmax_sandbox.js --etapa=auto-teste
 //   node e2e/appmax_sandbox.js --etapa=comprar --dados=/tmp/c.json --script=/tmp/c.sh
+//   node e2e/appmax_sandbox.js --etapa=comprar --cartao=0010 --perfil=desktop ...
 //
 // Estados (RETROSPECTIVA-FASE-D §1): 0 PASS · 1 FAIL · 2 ERROR.
 // =============================================================================
@@ -76,6 +81,37 @@ var MATRIZ = [
   { cartao: "4000000000009999", caso: "indisponivel", exigido: "indisponibilidade, sem retry cego e sem afetar Pix" },
 ];
 var PERFIS = ["desktop", "celular"];
+
+/** A matriz que a rodada compra. Vazio significa "todos". Valor que não existe
+ *  na matriz lança, e quem chama reprova antes de abrir o navegador. */
+function selecionarMatriz(cartao, perfil) {
+  var finais = MATRIZ.map(function (l) { return l.cartao.slice(-4); });
+  var linhas = MATRIZ;
+  var perfis = PERFIS;
+  cartao = String(cartao || "").trim();
+  perfil = String(perfil || "").trim();
+  if (cartao) {
+    linhas = MATRIZ.filter(function (l) { return l.cartao.slice(-4) === cartao; });
+    if (!linhas.length) {
+      throw new Error("o cartão '" + cartao + "' não existe na matriz. Informe os 4 últimos dígitos de um destes: " + finais.join(", ") + ". Nenhuma compra foi feita.");
+    }
+  }
+  if (perfil) {
+    perfis = PERFIS.filter(function (p) { return p === perfil; });
+    if (!perfis.length) {
+      throw new Error("o perfil '" + perfil + "' não existe na matriz. Informe um destes: " + PERFIS.join(", ") + ". Nenhuma compra foi feita.");
+    }
+  }
+  return { linhas: linhas, perfis: perfis };
+}
+
+function selecaoDaLinhaDeComando() {
+  try {
+    return selecionarMatriz(argumento("cartao", ""), argumento("perfil", ""));
+  } catch (e) {
+    erro(e.message);
+  }
+}
 
 var ESPERA_APROVACAO_MS = 150000;
 var ESPERA_RESPOSTA_MS = 90000;
@@ -482,6 +518,29 @@ function autoTeste() {
   caso("consulta: o script remoto sai sempre 0 (evidência não some em ERROR)",
     script.indexOf("<<'PY_CONTAGEM_APPMAX' || true\n") !== -1);
 
+  var todas = selecionarMatriz("", "");
+  caso("seleção: sem filtro compra 12 (6 cartões x 2 perfis)", todas.linhas.length * todas.perfis.length === 12);
+  var uma = selecionarMatriz("0010", "celular");
+  caso("seleção: um cartão e um perfil compram 1",
+    uma.linhas.length * uma.perfis.length === 1 && uma.linhas[0].cartao === "4000000000000010" && uma.perfis[0] === "celular");
+  caso("seleção: só o cartão compra os dois perfis", (function () {
+    var s = selecionarMatriz("0028", "");
+    return s.linhas.length * s.perfis.length === 2;
+  })());
+  caso("seleção: só o perfil compra os seis cartões", (function () {
+    var s = selecionarMatriz("", "desktop");
+    return s.linhas.length * s.perfis.length === 6;
+  })());
+  caso("seleção: cartão inexistente reprova e lista os valores válidos", (function () {
+    try { selecionarMatriz("1234", ""); return false; } catch (e) { return e.message.indexOf("0010") !== -1 && e.message.indexOf("Nenhuma compra") !== -1; }
+  })());
+  caso("seleção: o número inteiro do cartão não vale, só os 4 últimos dígitos", (function () {
+    try { selecionarMatriz("4000000000000010", ""); return false; } catch (e) { return true; }
+  })());
+  caso("seleção: perfil inexistente reprova e lista os valores válidos", (function () {
+    try { selecionarMatriz("", "tablet"); return false; } catch (e) { return e.message.indexOf("celular") !== -1 && e.message.indexOf("Nenhuma compra") !== -1; }
+  })());
+
   var saida = JSON.stringify({ resultado: "PASS", pedidos: { abc: 1 } });
   caso("leitor da VPS: tira o rodapé da ação SSH", lerSaidaDaVps(saida + RODAPE_DA_SSH).abc === 1);
   caso("leitor da VPS: ERROR da VPS não vira contagem", (function () {
@@ -646,7 +705,7 @@ async function comprar(playwright, navegador, perfil, linha, inicio) {
   return fato;
 }
 
-async function etapaComprar() {
+async function etapaComprar(selecao) {
   var saidaDados = argumento("dados", "");
   var saidaScript = argumento("script", "");
   if (!saidaDados || !saidaScript) erro("--etapa=comprar exige --dados=<json> e --script=<sh>");
@@ -665,9 +724,9 @@ async function etapaComprar() {
   var inicio = Date.now();
   console.log("COMPRAS SANDBOX em " + BASE + "/checkout/" + OFERTA + "/ | " + new Date(inicio).toISOString().slice(0, 16) + "Z");
   var compras = [];
-  for (var p = 0; p < PERFIS.length; p++) {
-    for (var i = 0; i < MATRIZ.length; i++) {
-      var fato = await comprar(playwright, navegador, PERFIS[p], MATRIZ[i], inicio);
+  for (var p = 0; p < selecao.perfis.length; p++) {
+    for (var i = 0; i < selecao.linhas.length; i++) {
+      var fato = await comprar(playwright, navegador, selecao.perfis[p], selecao.linhas[i], inicio);
       compras.push(fato);
       console.log(
         "  " + fato.perfil + " cartão final " + fato.cartao_final + " (" + fato.caso + "): pedido " +
@@ -685,7 +744,7 @@ async function etapaComprar() {
   console.log("\n" + compras.length + " compras gravadas; " + pedidos.length + " pedidos vão à contagem da VPS.");
 }
 
-function etapaConferir() {
+function etapaConferir(selecao) {
   var entrada = argumento("dados", "");
   if (!entrada) erro("--etapa=conferir exige --dados=<json> da etapa comprar");
   var dados;
@@ -696,6 +755,8 @@ function etapaConferir() {
   } catch (e) {
     erro("não consegui ler as duas fontes: " + e.message);
   }
+  var esperadas = selecao.linhas.length * selecao.perfis.length;
+  caso("seleção: o número de compras gravadas bate com o pedido (" + esperadas + ")", dados.compras.length === esperadas, "gravadas " + dados.compras.length);
   var linhas = [];
   var vazamentos = [];
   var hosts = {};
@@ -747,11 +808,12 @@ async function principal() {
   if (ETAPA === "auto-teste") {
     autoTeste();
   } else if (ETAPA === "comprar") {
+    var selecaoDaCompra = selecaoDaLinhaDeComando();
     autoTeste();
     if (falhas.length) erro("o auto-teste reprovou; nenhuma compra foi feita.");
-    await etapaComprar();
+    await etapaComprar(selecaoDaCompra);
   } else if (ETAPA === "conferir") {
-    etapaConferir();
+    etapaConferir(selecaoDaLinhaDeComando());
   } else {
     erro("--etapa desconhecida: '" + ETAPA + "' (use auto-teste, comprar ou conferir)");
   }

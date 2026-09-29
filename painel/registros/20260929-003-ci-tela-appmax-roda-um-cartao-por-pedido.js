@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-003-ci-tela-appmax-roda-um-cartao-por-pedido",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: tela Appmax roda um cartão por pedido",
+  detalhe: "Filtro de cartão e perfil no disparo e no script da tela Appmax; valor inexistente reprova antes de comprar. Sem entradas, 12 compras.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2328. Validação local: árvore 77de735f70a14abdca8cdbb6eb1e2e106454d56e; commit 80275ad180b51fe540a984b5d255ed3133b0b087; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-953",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
