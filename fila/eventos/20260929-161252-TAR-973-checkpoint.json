@@ -1,0 +1,18 @@
+{
+  "arquivo": "20260929-161252-TAR-973-checkpoint",
+  "tarefa": "TAR-973",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:12:52.474851+00:00",
+  "quem": "pme02_submissao",
+  "plano": "PME-02 etapa 2 de 3; guarda de candidato antes de integracao",
+  "ultimo_avanco": "P1 reproduzido em FAIL e KeyboardInterrupt; guarda negativa ampliada a push inicial e edit; revisao congelada bec58f85074bbf4c9493a843dd1ee9bc82716840; PR2341 mantido em rascunho",
+  "proxima_acao": "Conferir portao remoto por SHA, recibo e submissao coordenado em TAR972; executar rito oficial e conferir publicacao",
+  "verificacoes": [
+    "pytest suite relevante: 237 passed 80.04s antes do ultimo delta; oito testes focados do delta passaram; draft PR2341 confirmado diretamente"
+  ],
+  "contexto": {
+    "sha": "bec58f85074bbf4c9493a843dd1ee9bc82716840",
+    "branch": "codex/ci/pme02-candidato-pronto",
+    "worktree": "C:\\Users\\davia\\.codex\\worktrees\\pme02-submissao\\sitesdoreino-limpo-20260923"
+  }
+}
