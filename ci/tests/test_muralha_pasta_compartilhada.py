@@ -72,6 +72,7 @@ def test_recusa_write_no_principal(reino):
     r = decidir("Write", {"file_path": str(principal / "novo.py")}, principal)
     assert r.returncode == 2
     assert "MURALHA" in r.stderr and "worktree" in r.stderr
+    assert "CAMINHO-DOURADO.md" in r.stderr and "RITOS.md §1" not in r.stderr
 
 
 def test_recusa_edit_no_principal_mesmo_com_cwd_fora(reino):
@@ -139,6 +140,7 @@ def test_recusa_git_de_estado_no_principal(reino, comando):
     r = decidir("Bash", {"command": comando}, principal)
     assert r.returncode == 2, f"deveria recusar `{comando}` no principal"
     assert "MURALHA" in r.stderr
+    assert "CAMINHO-DOURADO.md" in r.stderr and "RITOS.md §1" not in r.stderr
 
 
 @pytest.mark.parametrize("comando", [
@@ -282,6 +284,7 @@ def test_aviso_aparece_no_principal_e_cala_no_worktree(reino):
     no_principal = _aviso(principal)
     assert no_principal.returncode == 0
     assert "MURALHA" in no_principal.stdout and "worktree" in no_principal.stdout
+    assert "CAMINHO-DOURADO.md" in no_principal.stdout and "RITOS.md §1" not in no_principal.stdout
     no_worktree = _aviso(irmao)
     assert no_worktree.returncode == 0
     assert no_worktree.stdout.strip() == ""

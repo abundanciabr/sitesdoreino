@@ -487,7 +487,7 @@ def _recusa_de_git(sub: str, raiz: Path) -> str:
         f"principal ({raiz}). O clone principal é ESPELHO compartilhado entre "
         "sessões — trocar ramo/estado aqui apaga o trabalho de outra sessão "
         "(aconteceu em 26/08/2026; armadilhas/135). Trabalhe num worktree "
-        f"(RITOS.md §1): {RITO} — a ferramenta EnterWorktree do harness também "
+        f"(CAMINHO-DOURADO.md, 'Abrir e retomar uma sessão'): {RITO} — a ferramenta EnterWorktree do harness também "
         "serve. No principal continuam livres: leituras, git fetch, "
         "git worktree, gh — e, com a árvore limpa, `git switch main` e "
         "`git pull` na main, para manter o espelho fresco."
@@ -603,7 +603,7 @@ def decidir(dados: dict) -> str | None:
             f"está dentro do clone principal ({raiz}), que é ESPELHO "
             "compartilhado entre sessões, não bancada. Outra sessão pode estar "
             "usando esta pasta AGORA; foi assim que edições se perderam em "
-            "26/08/2026 (armadilhas/135). Crie seu worktree (RITOS.md §1): "
+            "26/08/2026 (armadilhas/135). Crie seu worktree (CAMINHO-DOURADO.md, 'Abrir e retomar uma sessão'): "
             f"{RITO} — e refaça a edição lá dentro (a ferramenta EnterWorktree "
             "do harness também cria um)."
         )
@@ -662,7 +662,7 @@ def _hook_aviso_de_sessao() -> int:
         f"compartilhado ({raiz}), ramo atual: {ramo}. Esta pasta é ESPELHO — "
         "outras sessões podem estar usando-a agora, e trabalho já foi perdido "
         "assim (armadilhas/135). Antes de editar qualquer arquivo ou mexer no "
-        f"git daqui, crie seu worktree (RITOS.md §1): {RITO} — e trabalhe lá. "
+        f"git daqui, crie seu worktree (CAMINHO-DOURADO.md, 'Abrir e retomar uma sessão'): {RITO} — e trabalhe lá. "
         "A muralha recusará edição e troca de ramo feitas aqui; leituras, "
         "git fetch, git worktree e gh continuam livres."
     )
