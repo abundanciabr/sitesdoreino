@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-175034-TAR-982-checkpoint",
+  "tarefa": "TAR-982",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:50:34.605799+00:00",
+  "quem": "pme_testemunho_epoca",
+  "plano": "Testemunho externo e workflow oficial; incremento local validado, dependência TAR-984 ainda em construção",
+  "ultimo_avanco": "Ramo local renomeado de codex/pme-testemunho-epoca para codex/ci/pme-testemunho-epoca para cumprir pr.abrir; 15 testes focais passaram; saída do receptor alinhada aos dez campos top-level",
+  "proxima_acao": "Conferir formato real do campo path da API de run, esperar PR real TAR-984, registrar Depende-de e abrir Draft pelo pr.abrir da fonte02",
+  "verificacoes": [
+    "python -B -m pytest ci/tests/test_testemunho_epoca.py -q -p no:cacheprovider --basetemp .pytest-testemunho-epoca: 15 passed",
+    "git branch --show-current: codex/ci/pme-testemunho-epoca"
+  ]
+}
