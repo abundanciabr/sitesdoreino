@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-002-cartao-appmax-janela-de-terca-sem-atraso",
+  tipo: "medicao",
+  quando: "2026-09-29",
+  titulo: "Cartão Appmax: janela de terça sem atraso",
+  detalhe: "Zero tentativas acima de um dia útil; as 10 pré-autorizações de teste aparecem em amarelo. O Pix de teste fechou pela regra do vencido.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2326. Validação local: árvore 501e39a6286b6a9565ef65e55193478315d78040; commit a98b03dadaba76567e005fc1c15d27d16db87643; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas. run 36572588190",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-952",
+  gravidade: "verde",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
