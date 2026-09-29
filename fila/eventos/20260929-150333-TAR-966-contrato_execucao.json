@@ -1,0 +1,49 @@
+{
+  "arquivo": "20260929-150333-TAR-966-contrato_execucao",
+  "tarefa": "TAR-966",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T15:03:33.150001+00:00",
+  "quem": "codex/pme06-candidato",
+  "contrato": {
+    "plano": "PME06 TAR-966",
+    "versao": 1,
+    "objetivo": "Ligar fonte e provas verificaveis ao digest por manifesto duravel imutavel",
+    "entregaveis": [
+      "ci/candidato.py",
+      "ci/tests/test_candidato.py"
+    ],
+    "escopo_incluido": [
+      "Manifesto fechado, equivalencia por propriedade, atestacao e CAS Git"
+    ],
+    "nao_objetivos": [
+      "Workflows, VPS, publicacao ou alteracao de fila.py"
+    ],
+    "restricoes": [
+      "Sem segredos; sem refs reais durante ensaio; demais bancadas somente leitura"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato integral PME 29/09/2026 encaminhado pela sessao responsavel"
+    ],
+    "etapas": [
+      "Leitura",
+      "Implementacao",
+      "Provas e PR"
+    ],
+    "criterios_entrada": [
+      "TAR-966 reservada e baseline alvo verde"
+    ],
+    "criterios_aceite": [
+      "Manifesto liga fonte/provas/digest",
+      "Alteracao pertinente invalida",
+      "Origem assinada verificada e duravel",
+      "Ausencia/erro/cancelamento nao aprova"
+    ],
+    "evidencias_exigidas": [
+      "pytest deterministico",
+      "CLI real em repositorio temporario"
+    ],
+    "condicao_encerramento": "Codigo validado e integrado pelo rito oficial; interface entregue ao consumidor",
+    "limites_autonomia": "Apenas arquivos-alvo e fila propria; sem deploy ou ampliacao de mandato",
+    "acoes_do_mantenedor": "Nenhuma decisao nova; coordenador encaminha consumidores oficiais"
+  }
+}
