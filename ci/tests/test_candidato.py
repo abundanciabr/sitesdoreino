@@ -31,21 +31,42 @@ def entrada():
     }
     provas = []
     for indice, nome in enumerate(sorted(candidato.OBRIGATORIOS), 1):
-        escopo = sorted(candidato.BUILD if nome == "build" else candidato.GRUPOS)
-        provas.append(
-            {
-                "nome": nome,
-                "resultado": "PASS",
-                "escopo": escopo,
-                "entradas": candidato.assinatura_prova(atual, nome, escopo),
-                "run_id": 10 if nome == "build" else 20 + indice,
-                "tentativa": 1,
-                "job_id": indice,
-                "revisao": "d" * 40 if nome == "build" else "e" * 40,
-            }
-        )
+        escopo = sorted(candidato.BUILD if nome == "build" else candidato.FONTE)
+        prova = {
+            "nome": nome,
+            "resultado": "PASS",
+            "escopo": escopo,
+            "entradas": candidato.assinatura_prova(atual, nome, escopo),
+            "run_id": 10 if nome == "build" else 20 + indice,
+            "tentativa": 1,
+            "job_id": indice,
+            "revisao": "d" * 40,
+        }
+        prova["emissao"] = {
+            "versao": 1,
+            **{
+                campo: prova[campo]
+                for campo in (
+                    "nome",
+                    "resultado",
+                    "run_id",
+                    "tentativa",
+                    "job_id",
+                    "revisao",
+                    "escopo",
+                    "entradas",
+                )
+            },
+            "ambiente": atual["ambiente"],
+            "verificador": atual["verificadores"][nome],
+            "insumos": {grupo: atual["entradas"][grupo] for grupo in escopo},
+        }
+        if nome == "ci-celula-gate":
+            prova["emissao"]["job_id"] = 100 + indice
+        prova["bundle"] = {"dsseEnvelope": {"payload": "assinada-pelo-job"}}
+        provas.append(prova)
     return {
-        "versao": 1,
+        "versao": candidato.VERSAO,
         "tarefa": "TAR-966",
         "tentativa": 1,
         "celula": "admin",
@@ -61,15 +82,18 @@ def entrada():
     }
 
 
-def assinado(manifesto):
+def assinado(manifesto, prova=None):
+    valor = manifesto if prova is None else prova["emissao"]
+    run_id = 10 if prova is None else prova["run_id"]
+    revisao = "d" * 40 if prova is None else prova["revisao"]
     return [
         {
             "verificationResult": {
                 "signature": {
                     "certificate": {
-                        "runInvocationURI": "https://github.com/abundanciabr/sitesdoreino/actions/runs/10/attempts/1",
+                        "runInvocationURI": f"https://github.com/abundanciabr/sitesdoreino/actions/runs/{run_id}/attempts/1",
                         "buildTrigger": "push",
-                        "sourceRepositoryDigest": "d" * 40,
+                        "sourceRepositoryDigest": revisao,
                     }
                 },
                 "verifiedTimestamps": [{"type": "Tlog"}],
@@ -78,7 +102,7 @@ def assinado(manifesto):
                         {
                             "digest": {
                                 "sha256": candidato.hashlib.sha256(
-                                    candidato.canonico(manifesto)
+                                    candidato.canonico(valor)
                                 ).hexdigest()
                             }
                         }
@@ -98,10 +122,28 @@ def fonte_oficial(monkeypatch, manifesto):
         comandos.append(args)
         if "attestation" in args:
             assert "--bundle" in args
-            assert args[args.index("--cert-identity") + 1] == candidato.IDENTIDADE
-            assert args[args.index("--source-digest") + 1] == "d" * 40
             assert "--deny-self-hosted-runners" in args
-            return assinado(manifesto)
+            arquivo = Path(args[3]).name
+            prova = next(
+                (p for p in manifesto["provas"] if arquivo == f"{p['nome']}.json"), None
+            )
+            workflow = (
+                candidato.WORKFLOW
+                if prova is None or prova["nome"] == "build"
+                else (
+                    ".github/workflows/muralhas.yml"
+                    if prova["nome"] == "muralhas"
+                    else ".github/workflows/ci-celula.yml"
+                )
+            )
+            assert (
+                args[args.index("--cert-identity") + 1]
+                == f"https://github.com/{candidato.REPO}/{workflow}@refs/heads/main"
+            )
+            assert args[args.index("--source-digest") + 1] == (
+                prova["revisao"] if prova else "d" * 40
+            )
+            return assinado(manifesto, prova)
         endpoint = args[-1]
         if "/git/commits/" in endpoint:
             return {"sha": endpoint.rsplit("/", 1)[1], "tree": {"sha": "f" * 40}}
@@ -116,18 +158,32 @@ def fonte_oficial(monkeypatch, manifesto):
         prova = provas[run_id]
         nome = prova["nome"]
         if "/jobs?" in endpoint:
-            return [
+            jobs = [
                 {
-                    "jobs": [
-                        {
-                            "id": prova["job_id"],
-                            "name": "preparar (admin)" if nome == "build" else nome,
-                            "status": "completed",
-                            "conclusion": "success",
-                        }
-                    ]
+                    "id": prova["job_id"],
+                    "name": (
+                        "preparar (admin)"
+                        if nome == "build"
+                        else (
+                            "muralhas-main"
+                            if nome == "muralhas"
+                            else "ci-celula-gate-main"
+                        )
+                    ),
+                    "status": "completed",
+                    "conclusion": "success",
                 }
             ]
+            if nome == "ci-celula-gate":
+                jobs.append(
+                    {
+                        "id": prova["emissao"]["job_id"],
+                        "name": "rodar-main (admin)",
+                        "status": "completed",
+                        "conclusion": "success",
+                    }
+                )
+            return [{"jobs": jobs}]
         return {
             "head_sha": prova["revisao"],
             "path": (
@@ -141,7 +197,7 @@ def fonte_oficial(monkeypatch, manifesto):
             ),
             "head_repository": {"full_name": candidato.REPO},
             "run_attempt": 1,
-            "event": "push" if nome == "build" else "pull_request",
+            "event": "push",
             "head_branch": "main",
             "status": "completed",
             "conclusion": "success",
@@ -170,7 +226,9 @@ def test_alteracao_relevante_invalida_prova_e_build_conforme_propriedade(
     atual["entradas"][grupo]["mudanca"] = "2" * 64
     relatorio = candidato.validar(manifesto, atual)
     assert relatorio["estado"] == "FAIL"
-    assert {"muralhas", "ci-celula-gate"} <= set(relatorio["provas_invalidas"])
+    assert ({"muralhas", "ci-celula-gate"} <= set(relatorio["provas_invalidas"])) == (
+        grupo in candidato.FONTE
+    )
     assert relatorio["reconstruir"] == (grupo != "politicas")
     assert ("build" in relatorio["provas_invalidas"]) == (grupo != "politicas")
 
@@ -193,12 +251,11 @@ def test_ambiente_diferente_invalida_provas_e_build(entrada):
 
 def test_entradas_equivalentes_reutilizam_sem_nome_de_celula(entrada):
     manifesto = candidato.criar(entrada)
-    assert (
-        candidato.validar(manifesto, copy.deepcopy(candidato.snapshot(manifesto)))[
-            "estado"
-        ]
-        == "PASS"
-    )
+    atual = copy.deepcopy(candidato.snapshot(manifesto))
+    atual["ambientes"] = {
+        prova["nome"]: prova["emissao"]["ambiente"] for prova in manifesto["provas"]
+    }
+    assert candidato.validar(manifesto, atual)["estado"] == "PASS"
 
 
 @pytest.mark.parametrize("resultado", ["FAIL", "ERROR", "SKIP", "cancelled", None])
@@ -212,6 +269,14 @@ def test_resultado_nao_aprovado_recusado(entrada, resultado):
 def test_prova_ausente_nao_vira_verde(entrada):
     entrada["provas"].pop()
     with pytest.raises(candidato.CandidatoInvalido, match="sem prova"):
+        candidato.criar(entrada)
+
+
+def test_prova_pr_nao_autoriza_candidato_main(entrada):
+    prova = next(p for p in entrada["provas"] if p["nome"] == "muralhas")
+    prova["revisao"] = entrada["fonte"]["revisao"]
+    prova["emissao"]["revisao"] = prova["revisao"]
+    with pytest.raises(candidato.CandidatoInvalido, match="push main"):
         candidato.criar(entrada)
 
 
@@ -247,8 +312,44 @@ def test_origem_confere_certificado_e_jobs_sem_artifact(entrada, monkeypatch, tm
     manifesto = candidato.criar(entrada)
     comandos, _ = fonte_oficial(monkeypatch, manifesto)
     candidato.conferir_origem(manifesto, {"dsseEnvelope": {}}, tmp_path)
-    assert len([c for c in comandos if "attestation" in c]) == 1
+    assert len([c for c in comandos if "attestation" in c]) == 4
     assert all("artifacts" not in c[-1] for c in comandos)
+
+
+def test_emissao_assinada_cobre_bytes_do_job_e_matriz(monkeypatch, entrada, tmp_path):
+    manifesto = candidato.criar(entrada)
+    _, medir = fonte_oficial(monkeypatch, manifesto)
+
+    def adulterar(args, raiz):
+        resposta = medir(args, raiz)
+        if "attestation" in args and Path(args[3]).name == "ci-celula-gate.json":
+            resposta[0]["verificationResult"]["statement"]["subject"][0]["digest"][
+                "sha256"
+            ] = ("0" * 64)
+        return resposta
+
+    monkeypatch.setattr(candidato, "_json_comando", adulterar)
+    with pytest.raises(
+        candidato.CandidatoInvalido, match="assinatura não vincula emissão"
+    ):
+        candidato.conferir_origem(manifesto, {"dsseEnvelope": {}}, tmp_path)
+
+
+def test_gate_verde_com_matriz_pulada_nao_aprova(monkeypatch, entrada, tmp_path):
+    manifesto = candidato.criar(entrada)
+    _, medir = fonte_oficial(monkeypatch, manifesto)
+
+    def matriz_pulada(args, raiz):
+        resposta = medir(args, raiz)
+        if "/jobs?" in args[-1] and "/runs/22/" in args[-1]:
+            resposta[0]["jobs"][1]["conclusion"] = "skipped"
+        return resposta
+
+    monkeypatch.setattr(candidato, "_json_comando", matriz_pulada)
+    with pytest.raises(
+        candidato.CandidatoInvalido, match="matriz emissora não aprovou"
+    ):
+        candidato.conferir_origem(manifesto, {"dsseEnvelope": {}}, tmp_path)
 
 
 @pytest.mark.parametrize(

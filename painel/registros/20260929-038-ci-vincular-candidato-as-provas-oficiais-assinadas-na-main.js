@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-038-ci-vincular-candidato-as-provas-oficiais-assinadas-na-main",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: vincular candidato às provas oficiais assinadas na main",
+  detalhe: "O produtor e o receptor passaram a exigir provas assinadas pelos jobs oficiais da main; a execução real e seu custo continuam pendentes na integração do workflow.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2349. Validação local: árvore b998bf713013226278fc0f34e75683b2153a6ced; commit 605c860b78daff65650eed5e38614fc6cf6adfbb; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-980",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
