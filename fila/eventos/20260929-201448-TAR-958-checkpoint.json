@@ -1,0 +1,111 @@
+{
+  "arquivo": "20260929-201448-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T20:14:48.600065+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-09: implementacao e provas funcionais,19frentes historicas/18abertas",
+  "ultimo_avanco": "991 publicado;5registros de aceite validados;993 aplicado;987 liberado;995 iniciado;978 autorizado especificamente",
+  "proxima_acao": "Integrar992 com provas/GPS; concluir990/993/987/995; publicar978 pelo mesmo controle e preparar corte seguro",
+  "verificacoes": [
+    "Validadores canonicos5/5 sem problemas; API publicacoes988/991 success; list_agents8ativos; CIM e drenagem de dois pytest proprios"
+  ],
+  "contexto": {
+    "coordenador": "01a0ed71-4e7f-7680-821e-4d655a7ad405",
+    "reserva_coordenacao": {
+      "sha": "ba3b5db3f21b781d9971a5585daf4022fafac6d6",
+      "expira_em": "2026-09-29T22:30:30.755970+00:00"
+    },
+    "frentes_planejadas_total_historico": 19,
+    "frentes_abertas": 18,
+    "nova_frente": {
+      "id": 19,
+      "tarefa": "TAR-995",
+      "responsavel": "pme_provisionamento_coordenacao",
+      "objetivo": "Provisionar banco da fila preservando configuracoes, antes do corte",
+      "modelo_solicitado": "gpt-6-sol",
+      "esforco_solicitado": "high",
+      "fork_turns": "none",
+      "configuracao_aplicada": true,
+      "execucao": "ferramenta confirmou agente iniciado; runtime nao atestado independentemente"
+    },
+    "frentes_executando": [
+      "TAR-992",
+      "TAR-990",
+      "TAR-978",
+      "TAR-993",
+      "TAR-987",
+      "TAR-995",
+      "TAR-974"
+    ],
+    "agentes_ativos_observados": 8,
+    "capacidade": {
+      "limite_tecnico": 33,
+      "memoria_livre_gb": 4.75,
+      "ultimo_cpu_percent": 100,
+      "acao": "Autor07 encerrou somente pytest proprios travados PIDs1548 e7248; testes Linux limitados a1CPU/1GB",
+      "outros_executores": "PRs2362/2363 novos observados fora do programa; quantidade real de agentes externos nao conhecida"
+    },
+    "mandato_mais_recente": "Mantenedor: E, desde ja, para agilizar essa entrega dessa tarefa, eu ja deixo autorizado tudo o que for preciso para implementar a mesma ate o fim. Mantidos limites/invariantes do mandato original.",
+    "autorizacoes": {
+      "TAR-993": {
+        "origem": "call_wErnr3Ay0ASUmXcbqi76zras item0 resposta direta",
+        "patch_sha256": "DD526476A19A5BED905A592FB3AF4B44E41FA533EDF5810C794482E75F645A56",
+        "contrato_sha256": "B79AE640AF934164B8E0330F778FC7B7F8BB73BC2E1411245B81E9E25DCDBEF5",
+        "estado": "aplicado14alvos; fixture15 autorizada pelo coordenador; testes pertinentes PASS"
+      },
+      "TAR-992": "Patch e contrato especificos aprovados e aplicados; revisao adversarial em curso; sem corte real",
+      "TAR-987": "Mesmo controle aceitou patchAE54 apos mandato mais recente; dependencia circular retirada; contrato registrado antes do codigo",
+      "TAR-978": {
+        "origem": "call_ehd0Vax8HF5hPZIwS5cDmLvH item0",
+        "resposta": "Autorizo publicar esse patch e os registros do rito",
+        "destino_publico": "https://github.com/abundanciabr/sitesdoreino",
+        "patch_sha256": "82D58406C7FFBE9CB589E237A105604F58F198605A41AFB3282D149C797211F7",
+        "estado": "mesmo executor retomado pelo mesmo controle; nenhum PR declarado antes da confirmacao"
+      },
+      "TAR-983": "Retomar mesmo controle com mandato atualizado apos congelar993; ainda nao aplicado"
+    },
+    "publicacoes": {
+      "TAR-988": {
+        "integracao": "1ff7745e493036e095abeeb7ce4fccab0f710586",
+        "run": 36619214819,
+        "estado": "success"
+      },
+      "TAR-991": {
+        "integracao": "df22bf4723277119b25f087ecc00c273e8701c48",
+        "run": 36620554167,
+        "estado": "success"
+      }
+    },
+    "aceites": {
+      "registros": [
+        "051",
+        "052",
+        "053",
+        "054",
+        "055"
+      ],
+      "validacao": "ambos validadores canonicos, ultimas submissoes e hashes reais:5/5 sem problemas",
+      "pendencia": "integrar registros no incremento992 antes de reconciliar; nao sao aceite global PME"
+    },
+    "pilotos": {
+      "TAR-968": "concluida evento193900; executor drenado e reserva liberada CAS",
+      "TAR-975": "concluida evento193902; executor drenado e reserva liberada CAS",
+      "TAR-994": "pendente, mesma frente05, tarefa reservada numericamente; nenhum executor/claim iniciado; somente depois do corte seguro"
+    },
+    "arquitetura990": "Produtor oficial precisa concluir success; consumidor separado de ativacao; nenhuma aceitacao de build falho. Pin ADMIN_IMAGE canonico e persistente. Autoridade de coorte ainda precisa contrato verificavel, DSN nao determina backend.",
+    "pendencias_criticas": [
+      "992 barreira/reconciliacao de efeito incerto; I2/I3 export/import/transferencia ainda nao feitos",
+      "990 cadeia real por digest, jornadaHTTP, recuperacao e medicacao de cache",
+      "995 banco/identidades pelo canal oficial sem corte prematuro",
+      "978 copia externa oficial e agendaRPO24h",
+      "983 Appcheck real e vinculacao na protecao da main",
+      "993 e continuacao fontes obsoletas; auditoria finalPME09"
+    ],
+    "bloqueios_plataforma": [
+      "TAR963 revisao977 recusada por filtro de seguranca, sem contorno",
+      "990 flexibilizar run failure recusado; desenho seguro separado adotado preserva guardas"
+    ],
+    "ganho10x": "nao demonstrado"
+  }
+}

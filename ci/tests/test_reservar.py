@@ -403,3 +403,243 @@ def test_push_atomico_perdido_recupera_numero_real_sem_rede(tmp_path, monkeypatc
     refs = git('ls-remote','origin').splitlines()
     assert len(refs) == 2
     assert sum('refs/numeros/registro/' in linha for linha in refs) == 1
+
+
+def _duas_bancadas_git(tmp_path):
+    remoto = tmp_path / "servidor.git"
+    origem = tmp_path / "origem"
+    subprocess.run(["git", "init", "--bare", str(remoto)], check=True, capture_output=True)
+    subprocess.run(["git", "init", "-b", "main", str(origem)], check=True, capture_output=True)
+
+    def git(raiz, *args):
+        return subprocess.run(
+            ["git", *args], cwd=raiz, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    git(origem, "config", "user.name", "Teste")
+    git(origem, "config", "user.email", "teste@example.com")
+    (origem / "base").write_text("base", encoding="utf-8")
+    git(origem, "add", "base")
+    git(origem, "commit", "-m", "base")
+    git(origem, "remote", "add", "origin", str(remoto))
+    git(origem, "push", "-u", "origin", "main")
+    bancadas = []
+    for nome in ("claim", "pausa"):
+        bancada = tmp_path / nome
+        git(tmp_path, "clone", "-b", "main", str(remoto), str(bancada))
+        git(bancada, "config", "user.name", "Teste")
+        git(bancada, "config", "user.email", "teste@example.com")
+        bancadas.append(bancada)
+    return remoto, bancadas, git
+
+
+@pytest.mark.parametrize("primeiro", ["claim", "pausa"])
+def test_claim_e_pausa_disputam_mesma_ref_cas_em_bare_git(tmp_path, primeiro):
+    remoto, (claim, pausa), git = _duas_bancadas_git(tmp_path)
+    barreira = "refs/coordenacao/barreira/piloto"
+    reserva = "refs/reservas/tarefa-TAR-001"
+    assert reservar.criar_ref_atomica(claim, barreira, {"barreira": "git"})
+    esperado = git(claim, "ls-remote", "origin", barreira).split()[0]
+
+    def reivindicar():
+        return reservar.criar_ref_atomica(
+            claim, barreira, {"barreira": "git", "chave": "tarefa-TAR-001"},
+            ref_chave=reserva, lease=esperado,
+        )
+
+    def pausar():
+        return reservar.criar_ref_atomica(
+            pausa, barreira, {"barreira": "pausada"}, lease=esperado,
+        )
+
+    operacoes = {"claim": reivindicar, "pausa": pausar}
+    assert operacoes[primeiro]() is True
+    assert operacoes["pausa" if primeiro == "claim" else "claim"]() is False
+    refs = dict(
+        linha.split("\t")[::-1]
+        for linha in git(claim, "ls-remote", "origin", barreira, reserva).splitlines()
+    )
+    assert (reserva in refs) is (primeiro == "claim")
+    if primeiro == "claim":
+        assert refs[barreira] == refs[reserva]
+    assert remoto.is_dir()
+
+
+def test_cliente_antigo_ignora_barreira_e_ainda_grava_reserva(tmp_path):
+    _, (claim, pausa), git = _duas_bancadas_git(tmp_path)
+    barreira = "refs/coordenacao/barreira/piloto"
+    assert reservar.criar_ref_atomica(pausa, barreira, {"barreira": "pausada"})
+    ganhou, _ = reservar.reservar_intencao(
+        claim, "tarefa-TAR-001", "cliente antigo", agora=AGORA
+    )
+    assert ganhou is True
+    assert git(claim, "ls-remote", "origin", barreira).split()[0] != git(
+        claim, "ls-remote", "origin", "refs/reservas/tarefa-TAR-001"
+    ).split()[0]
+
+
+def test_leitor_da_barreira_confronta_digest_e_referencia_remota(tmp_path):
+    _, (claim, _), _ = _duas_bancadas_git(tmp_path)
+    ids = ["TAR-001", "TAR-002"]
+    digest = reservar.digest_da_coorte_piloto(ids)
+    corpo = {"barreira": {"coorte": "piloto", "estado": "git",
+                          "ids_sha256": digest, "sequencia": 0}}
+    assert reservar.criar_ref_atomica(claim, reservar.REF_BARREIRA_PILOTO, corpo)
+    sha, leitura = reservar.ler_barreira_piloto(claim)
+    assert len(sha) == 40
+    assert leitura == corpo["barreira"]
+    assert reservar.digest_da_coorte_piloto(ids[::-1]) == digest
+    assert reservar.digest_da_coorte_piloto(["TAR-001", "TAR-003"]) != digest
+
+
+@pytest.mark.parametrize("ids", [[], ["TAR-001", "TAR-001"], ["TAR-1"], [{}]])
+def test_manifesto_piloto_invalido_para_antes_da_rede(ids):
+    with pytest.raises(ErroDeInstrumentacao, match="manifesto"):
+        reservar.digest_da_coorte_piloto(ids)
+
+
+def test_segundo_lease_troca_apenas_reserva_expirada_lida(tmp_path):
+    _, (claim, pausa), git = _duas_bancadas_git(tmp_path)
+    barreira = reservar.REF_BARREIRA_PILOTO
+    reserva = "refs/reservas/tarefa-TAR-001"
+    assert reservar.criar_ref_atomica(claim, barreira, {"barreira": "git"})
+    assert reservar.criar_ref_atomica(pausa, reserva, {"expira_em": "2020-01-01T00:00:00+00:00"})
+    sha_barreira = git(claim, "ls-remote", "origin", barreira).split()[0]
+    sha_antiga = git(claim, "ls-remote", "origin", reserva).split()[0]
+    assert reservar.criar_ref_atomica(
+        claim, barreira, {"barreira": "git", "chave": "tarefa-TAR-001"},
+        ref_chave=reserva, lease=sha_barreira, lease_chave=sha_antiga,
+    )
+    assert git(claim, "ls-remote", "origin", barreira).split()[0] == git(
+        claim, "ls-remote", "origin", reserva
+    ).split()[0]
+    assert reservar.criar_ref_atomica(
+        pausa, barreira, {"barreira": "git"}, ref_chave=reserva,
+        lease=sha_barreira, lease_chave=sha_antiga,
+    ) is False
+
+
+def _iniciar_barreira_piloto(raiz, ids):
+    assert reservar.criar_ref_atomica(
+        raiz, reservar.REF_BARREIRA_PILOTO,
+        {"barreira": {"coorte": "piloto", "estado": "git",
+                      "ids_sha256": reservar.digest_da_coorte_piloto(ids), "sequencia": 0}},
+    )
+
+
+def test_claim_piloto_e_pausa_real_preservam_reserva_ativa(tmp_path):
+    _, (claim, pausa), git = _duas_bancadas_git(tmp_path)
+    ids = ["TAR-001", "TAR-002"]
+    _iniciar_barreira_piloto(claim, ids)
+    ganhou, _ = reservar.reservar_intencao_piloto(
+        claim, "tarefa-TAR-001", "ensaio", ids, agora=AGORA
+    )
+    assert ganhou is True
+    sha, barreira = reservar.ler_barreira_piloto(pausa)
+    assert barreira["sequencia"] == 1
+    assert sha == git(claim, "ls-remote", "origin", "refs/reservas/tarefa-TAR-001").split()[0]
+    assert reservar.pausar_barreira_piloto(pausa, ids, agora=AGORA) is False
+    assert reservar.pausar_barreira_piloto(
+        pausa, ids, agora=AGORA.replace(hour=19)
+    ) is False
+    assert reservar.pausar_barreira_piloto(
+        pausa, ids, agora=AGORA.replace(month=9)
+    ) is True
+    assert reservar.ler_barreira_piloto(claim)[1]["estado"] == "pausada"
+    assert reservar.reservar_intencao_piloto(
+        claim, "tarefa-TAR-002", "ensaio", ids, agora=AGORA.replace(month=9)
+    )[0] is False
+
+
+@pytest.mark.parametrize("primeiro", ["pouso", "pausa"])
+def test_pouso_e_pausa_disputam_a_mesma_barreira_bare(tmp_path, primeiro):
+    _, (pouso, pausa), _ = _duas_bancadas_git(tmp_path)
+    ids = ["TAR-001"]
+    head = "a" * 40
+    _iniciar_barreira_piloto(pouso, ids)
+    if primeiro == "pausa":
+        assert reservar.pausar_barreira_piloto(pausa, ids, agora=AGORA)
+        assert reservar.adquirir_efeito_piloto(pouso, ids, 99, head) is None
+        return
+    operacao = reservar.adquirir_efeito_piloto(pouso, ids, 99, head)
+    assert operacao and len(operacao) == 32
+    assert reservar.pausar_barreira_piloto(pausa, ids, agora=AGORA) is False
+    assert reservar.pausar_barreira_piloto(
+        pausa, ids, agora=AGORA.replace(year=AGORA.year + 1)
+    ) is False
+    assert reservar.adquirir_efeito_piloto(pausa, ids, 100, "b" * 40) is None
+    assert reservar.concluir_efeito_piloto(pouso, ids, 99, head, "0" * 32) is False
+    assert reservar.concluir_efeito_piloto(pouso, ids, 99, head, operacao)
+    assert reservar.pausar_barreira_piloto(pausa, ids, agora=AGORA)
+
+
+def test_pouso_recupera_resposta_perdida_sem_soltar_efeito_incerto(tmp_path, monkeypatch):
+    _, (pouso, pausa), _ = _duas_bancadas_git(tmp_path)
+    ids = ["TAR-001"]
+    head = "a" * 40
+    _iniciar_barreira_piloto(pouso, ids)
+    original = reservar._git
+
+    def perder_resposta(raiz, args):
+        resposta = original(raiz, args)
+        assert resposta.returncode == 0
+        return Saida(128, stderr="resposta perdida após push")
+
+    monkeypatch.setattr(reservar, "_git", perder_resposta)
+    operacao = reservar.adquirir_efeito_piloto(pouso, ids, 99, head)
+    assert operacao
+    assert reservar.pausar_barreira_piloto(pausa, ids, agora=AGORA) is False
+    assert reservar.concluir_efeito_piloto(pouso, ids, 99, head, operacao)
+    assert reservar.pausar_barreira_piloto(pausa, ids, agora=AGORA)
+
+
+def test_claim_piloto_recupera_resposta_perdida_e_reserva_expirada(tmp_path, monkeypatch):
+    _, (claim, _), git = _duas_bancadas_git(tmp_path)
+    ids = ["TAR-001"]
+    _iniciar_barreira_piloto(claim, ids)
+    assert reservar.criar_ref_atomica(
+        claim, "refs/reservas/tarefa-TAR-001",
+        {"tipo": "intencao", "expira_em": "2020-01-01T00:00:00+00:00"},
+    )
+    original = reservar._git
+
+    def perder_resposta(raiz, args):
+        resultado = original(raiz, args)
+        assert resultado.returncode == 0
+        return Saida(128, stderr="resposta perdida após push atômico")
+
+    monkeypatch.setattr(reservar, "_git", perder_resposta)
+    assert reservar.reservar_intencao_piloto(
+        claim, "tarefa-TAR-001", "ensaio", ids, agora=AGORA
+    )[0] is True
+    assert git(claim, "ls-remote", "origin", reservar.REF_BARREIRA_PILOTO).split()[0] == git(
+        claim, "ls-remote", "origin", "refs/reservas/tarefa-TAR-001"
+    ).split()[0]
+
+
+def test_claim_piloto_recusa_manifesto_divergente_sem_escrever(tmp_path):
+    _, (claim, _), git = _duas_bancadas_git(tmp_path)
+    _iniciar_barreira_piloto(claim, ["TAR-001"])
+    antes = git(claim, "ls-remote", "origin", reservar.REF_BARREIRA_PILOTO)
+    with pytest.raises(ErroDeInstrumentacao, match="manifesto piloto diverge"):
+        reservar.reservar_intencao_piloto(
+            claim, "tarefa-TAR-001", "ensaio", ["TAR-001", "TAR-002"], agora=AGORA
+        )
+    assert git(claim, "ls-remote", "origin", reservar.REF_BARREIRA_PILOTO) == antes
+    assert not git(claim, "ls-remote", "origin", "refs/reservas/tarefa-TAR-001")
+
+
+def test_pausa_piloto_recupera_resposta_perdida_sem_reabrir_git(tmp_path, monkeypatch):
+    _, (claim, _), _ = _duas_bancadas_git(tmp_path)
+    ids = ["TAR-001"]
+    _iniciar_barreira_piloto(claim, ids)
+    original = reservar._git
+
+    def perder_resposta(raiz, args):
+        resultado = original(raiz, args)
+        assert resultado.returncode == 0
+        return Saida(128, stderr="resposta perdida após pausa")
+
+    monkeypatch.setattr(reservar, "_git", perder_resposta)
+    assert reservar.pausar_barreira_piloto(claim, ids, agora=AGORA) is True
+    assert reservar.ler_barreira_piloto(claim)[1]["estado"] == "pausada"

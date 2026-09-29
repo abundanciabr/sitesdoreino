@@ -335,6 +335,116 @@ quem detectar corrige mapa no mesmo PR.
 
 **Quem faz valer:** `ci/tests/test_painel_ia_atualizado.py`.
 
+## Abrir e retomar uma sessão — sucessor de RITOS §1
+
+Use `make sessao CELULA=<area> TAREFA=<slug> TAR=TAR-NNN` ou
+`python ci/sessao.py --celula <area> --tarefa <slug> --tar <numero>`.
+Sem serviço, acrescente `SEM_CONTAINER=1` ou `--sem-container`; nesse caso o
+baseline não é medido e os testes dos alvos devem rodar antes da edição.
+Entre na bancada absoluta informada e repita a mesma entrada para retomar,
+sem apagar alterações. A abertura reivindica a tarefa depois de criar a bancada.
+Confira o log e declare apenas o baseline observado. Se ele falhou antes da
+edição, pare sem tocar arquivos e reporte a falha e a revisão medida; não
+atribua a falha à mudança.
+
+A primeira resposta declara a leitura do Padrão nesta fonte, da Constituição
+global e da constituição da célula pertinente, o caminho da bancada, a tarefa
+e o resultado real do baseline. O brief delimita alvos, leitura e restrições;
+carregue só receitas técnicas citadas. Um PR pode tocar mais de uma célula
+quando todas as suítes correspondentes rodam. PRs encadeados declaram
+`Depende-de: #N`. No fecho, registre handoff com revisão, provas, pendências
+e riscos; arquive a bancada somente depois de a entrega não precisar dela.
+
+**Quem faz valer:** `ci/sessao.py`, `ci/muralha_pasta_compartilhada.py`,
+`ci/padrao_de_trabalho.py` e `ci/tests/test_sessao.py`.
+
+## Integrar, publicar e aceitar — sucessor de RITOS §2
+
+A proteção da `main` exige PR, `muralhas` e `ci-celula-gate` verdes na revisão
+atual. `pouso.yml` roda da `main`, atualiza base atrasada e retoma pelo próximo
+evento. Rascunho, fork, conflito ou check ausente impedem integração. O SHA
+conferido é exigido no merge. CODEOWNERS e contrato congelado continuam
+exigindo mandato do mantenedor; a descrição registra pedido, caminhos e origem,
+mas texto ou conta isolados não autenticam a autorização.
+
+Depois de `make pr`, meça uma vez com
+`python ci/esperar.py --checks <N> --so-desfecho` ou
+`python ci/esperar.py --entrega <N> --so-desfecho`. Se o deploy foi cancelado
+ou recusado pela VPS, consulte `python ci/rerun_de_deploy.py --ultimo`.
+Integração, publicação e aceite funcional são provas distintas. Para
+reconciliar TAR, confira a jornada afetada na revisão integrada e no ambiente
+publicado, com comando, resultado, origem e efeito final assíncrono quando
+existir; só então preencha `evidencia` e `verificado_em` no registro e use
+`python ci/fila.py reconciliar TAR-NNN --quem <voce> --aceite-registro painel/registros/<arquivo>`.
+Sem essa prova, mantenha a tarefa submetida e registre a pendência; a
+continuação TAR-969 ainda trata o produtor mecânico. Falha técnica preserva
+commits e arquivos. Teto ou decisão exclusiva são relatados como NÃO PRONTO.
+
+**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`,
+`ci/prestacao_de_contas.py` e `ci/tests/test_merge_automatico.py`.
+
+## Mudar contrato — sucessor de RITOS §3
+
+Contrato congelado só muda com o mantenedor presente e mandato nominal.
+Use PR com etiqueta `contrato`. Uma extensão pode acompanhar seu provedor
+somente quando adiciona operações ou definições sem alterar as anteriores,
+com freeze vivo e sonda de autenticação. Remoção, mudança de tipo, drift,
+outro provedor e prova ausente são recusados; `contrato-remocao` não libera
+essa exceção. Provedor vem primeiro e preserva compatibilidade: campo novo
+opcional, evento incompatível em `*.v2.json` enquanto o v1 ainda tem
+consumidores. Depois migre consumidores em PRs próprios contra mock novo.
+Registre o quê, por quê, consumidores e plano de migração no PR.
+
+**Quem faz valer:** `ci/cerca-de-celula.sh`, `ci/contract_freeze.py`,
+`ci/contrato_aditivo.py` e `ci/tests/test_contrato_aditivo.py`.
+
+## Reverter uma emergência — sucessor de RITOS §4
+
+Em emergência, dispare o rollback delimitado pelo pipeline:
+
+```bash
+gh workflow run rollback.yml -f celula=<celula> -f alvo=<sha-main-anterior> -f motivo="<incidente>"
+```
+
+O alvo é o SHA completo de um commit ancestral da `main` cuja imagem exista
+no registry. `ci/rollback.py` confere manifesto, ancestralidade e imagem antes
+de qualquer SSH. O rollback de uma célula não toca as outras. O workflow
+congela a célula, inclusive quando a aplicação termina incerta; a integração
+de PRs dessa célula e de `infra/` fica recusada. A referência de congelamento
+vale 6 horas e o mesmo disparo a renova. O pin não persiste sozinho: o próximo
+deploy da célula volta a `:main`, por isso a trava impede a reexposição.
+`alvo=main` descongela só depois de aplicação confirmada. Consulte
+`python ci/rollback.py congelados`; `descongelar <celula>` é intervenção
+explícita. O job com chave da VPS não escreve no repositório; o job que
+escreve a referência não recebe essa chave. Se GitHub Actions estiver fora,
+o acesso manual mínimo pelo mantenedor é último recurso:
+`ssh deploy@<IP>`, `cd /opt/plataforma`,
+`PAGAMENTOS_TAG=<sha> docker compose up -d pagamentos`,
+`docker compose ps pagamentos`. Revertê-lo pelo deploy normal.
+Depois do incidente, a correção viaja por PR e o post-mortem produz
+um portão, com a armadilha e a prova registradas.
+
+**Quem faz valer:** `ci/rollback.py`, `.github/workflows/rollback.yml`,
+`ci/mergear.py` e `ci/tests/test_rollback_congela_ao_aplicar.py`.
+
+## Pegar e registrar trabalho na fila — sucessor de RITOS §5
+
+Abra a bancada antes de reivindicar TAR. `ci/reservar.py` mantém reserva
+atômica por 3 horas, com expiração; a segunda sessão recebe recusa. `criar`, `pegar` e
+`concluir` recusam o clone principal para que o evento viaje com o PR;
+`listar`, `validar` e `soltar` continuam disponíveis para leitura e
+recuperação. Descoberta fora do brief vira tarefa na fila, nunca lista
+paralela. O estado é calculado dos eventos, sem campo de status.
+
+Conclusão exige prova vinculada à jornada e revisão. Impedimento vira evento
+`bloqueada` com `espera: mantenedor` ou `espera: fila`, comunicado na hora;
+não existe adiamento silencioso. Embarque todos os eventos da tarefa no PR e
+rode `python ci/fila.py validar`. Reserva remota vale agora, evento versionado
+permanece como histórico.
+
+**Quem faz valer:** `ci/fila.py`, `ci/reservar.py`, `ci/muralha-da-fila.sh`
+e `ci/tests/test_fila.py`.
+
 ## §0 — Como usar (dieta por citação)
 
 **Este documento NÃO é lido inteiro.** O despacho cita receitas por número
@@ -363,7 +473,7 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 
 | Preciso de... | Receita | Nunca faça |
 |---|---|---|
-| Expor um endpoint novo na minha API | **R1** | Mudar `contracts/` junto (rito §3 do RITOS.md) |
+| Expor um endpoint novo na minha API | **R1** | Mudar `contracts/` sem seguir “Mudar contrato” |
 | Chamar a API de outra célula | **R2** | Importar código dela ou ler o banco dela |
 | Avisar a plataforma que algo aconteceu | **R3** | Publicar direto no Redis sem outbox |
 | Reagir a algo que aconteceu fora da célula | **R4** | Consultar o banco de quem emitiu |
@@ -391,7 +501,7 @@ CÉLULA: <celula> · WORKTREE: wt-<celula>-<tarefa> · RECEITAS: R_, R_
 PADRÃO: o Padrão de Trabalho (1ª seção do CAMINHO-DOURADO.md) vale nesta tarefa como em
   todas — inclusive a regra 2 (discorde ANTES, em ≤5 linhas, com UMA alternativa
   e o trade-off) e a regra 9 (relatório nos cinco blocos da regra 9, sem enchimento).
-ANTES: abertura pelo RITOS §1 + contexto direcionado pelos ALVOS e sintoma;
+ANTES: abertura por “Abrir e retomar uma sessão” + contexto direcionado pelos ALVOS e sintoma;
   abra as entradas citadas e recuperadas + services/<celula>/LICOES.md, se existir. Ao terminar,
   acrescente o que aprendeu como ARQUIVO NOVO em armadilhas/NNN-slug.md + `make
   indice`; o que só o mantenedor resolve vai na tabela §1 do
@@ -548,7 +658,7 @@ class Command(BaseCommand):
 
 JSON é YAML válido — o `ci/freeze-de-contrato.sh` aceita a saída como está.
 **Se o endpoint novo não está no contrato congelado: PARE.** É Rito de Contrato
-(RITOS.md §3), não decisão de sessão.
+(“Mudar contrato”), não decisão de sessão.
 
 **Addendo — contrato sem `$ref` nomeado (schemas 100% inline nos paths):** alguns
 contratos (ex.: `leads`, `alunos`) não declaram `components.schemas` — todo
@@ -1498,18 +1608,18 @@ silêncio. `armadilhas/481` é o relato.
 |---|---|
 | "Vou importar esse util da outra célula" | R2 (API) — ou issue `arquitetura:` propondo pacote versionado |
 | "Leio o banco dela só pra conferir" | API dela (R2) ou evento (R4). O Postgres vai negar mesmo. |
-| "O teste está errado, ajusto o assert" | PARE. RITOS.md §2.3 — teste é intocável; reporte. |
+| "O teste está errado, ajusto o assert" | PARE. CONSTITUICAO.md Lei 8 — a guarda não pode ser afrouxada para passar; reporte. |
 | "Crio um base.html compartilhado" | Cada célula tem o seu (Lei 7). Copie o padrão, não o arquivo. |
-| "Só dessa vez o contrato muda junto" | A cerca reprova. Rito §3, com o mantenedor. |
+| "Só dessa vez o contrato muda junto" | A cerca exige “Mudar contrato”, com o mantenedor. |
 | "Float facilita o cálculo do desconto" | `amount_cents` inteiro. Sempre. |
 | "Coloco um retry nesse POST" | Só com a MESMA `X-Idempotency-Key` (R2). |
 | "Resolvo a corrida com um sleep" | Poll de status do servidor (R6) ou lock/unicidade (R4). |
-| "Um segundo commit gigante no fim" | Catraca verde (RITOS §2.1): verde ⇒ commit, sempre. |
+| "Um segundo commit gigante no fim" | Valide o incremento coeso e embarque sua prova pelo rito da entrega. |
 | "Host desconhecido? Sirvo o site principal" | 404 (INV-P11). Site padrão silencioso contamina os testes de todos os sites. |
 
 ## §5: Validar, entregar e consultar no PowerShell
 
-Roteiro dos agentes dentro da bancada aberta pelo RITOS §1. O mantenedor recebe
+Roteiro dos agentes dentro da bancada aberta por “Abrir e retomar uma sessão”. O mantenedor recebe
 resultado e prova; os comandos abaixo são trabalho da sessão responsável.
 
 **1. Conferir o trabalho.** Rode os testes dos alvos do brief e guarde comando,
@@ -1523,7 +1633,7 @@ Caminho com dono exige o mandato no formato da [R14](#r14--abrir-pr-que-toca-cam
 **2. Abrir o PR com validação e recibo no mesmo ramo.** Quem executa define `$alvos`
 como lista dos caminhos autorizados no brief e `$preparo` como caminho absoluto
 da pasta local de preparação, fora dos arquivos entregues. `$tarefaFila` contém
-a TAR real vinculada a este trabalho pelo RITOS §5; sessões novas exigem esse
+a TAR real vinculada a este trabalho por “Pegar e registrar trabalho na fila”; sessões novas exigem esse
 vínculo antes de publicar. Prepare na pasta
 `mensagem.txt` (primeira linha: título do PR; última linha:
 `Co-Authored-By: Codex <noreply@openai.com>`), `corpo.md`, `detalhe.txt` e
@@ -1557,7 +1667,7 @@ PR aberto e validação local não comprovam integração nem publicação.
 
 **3. Consultar uma vez, a partir do ramo da bancada.** A sessão responsável
 consulta sem laço. A integração é automática pelos checks no SHA atual
-(RITOS §2). A consulta composta não promete resposta em cinco segundos.
+(“Integrar, publicar e aceitar”). A consulta composta não promete resposta em cinco segundos.
 
 ```powershell
 # [RECEITA:ENTREGA v1]
@@ -1581,7 +1691,7 @@ switch ($pr.state) {
 ```
 
 Use `--entrega` só após `MERGED`: em PR aberto, o leitor ainda cobra atestado e
-etiqueta removidos por RITOS §2. Para diagnosticar PR aberto, a R14 usa
+etiqueta removidos pelo rito de integração vigente. Para diagnosticar PR aberto, a R14 usa
 `python ci/mergear.py $pr.number --conferir`, somente leitura.
 
 | JSON de `--entrega` | Prova e próxima ação |

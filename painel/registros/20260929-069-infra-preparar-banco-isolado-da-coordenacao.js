@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-069-infra-preparar-banco-isolado-da-coordenacao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: preparar banco isolado da coordenação",
+  detalhe: "Banco próprio preparado sem apagar o env da admin; falhas retomam com o mesmo segredo e sem liberar identidades.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2361. Validação local: árvore 03abd47cd725afa80c014f68859637a1dc318a33; commit 37a34fafcfe4e292c42c6514262a8be0e1b2b121; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-995",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

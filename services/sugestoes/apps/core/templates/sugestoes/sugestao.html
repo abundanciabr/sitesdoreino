@@ -52,6 +52,13 @@ pessoa mais precisa de uma frase.
   <p>{% if sugestao.solucao_proposta %}{{ sugestao.solucao_proposta|linebreaksbr }}{% else %}Quem sugeriu não propôs uma solução específica, e o que vale aqui é o problema.{% endif %}</p>
 </div>
 
+{% if resposta_da_equipe %}
+  <section class="ficha resposta-da-equipe">
+    <h3>A resposta da equipe</h3>
+    {{ resposta_da_equipe }}
+  </section>
+{% endif %}
+
 <form method="post"
       action="{% if ja_votou %}{% url 'desvotar' sugestao.id %}{% else %}{% url 'votar' sugestao.id %}{% endif %}">
   {% csrf_token %}

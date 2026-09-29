@@ -29,7 +29,7 @@ Documento não impõe nada a um agente sob pressão de erro; portão impõe.
    pública — só o que precisa da internet passa pelo gateway.
 2. **Dados:** um database e um role Postgres por célula. Acesso cruzado não é proibido —
    é `permission denied`. A connection string do quiz não *consegue* ler pagamentos.
-3. **Código:** uma sessão de agente = um worktree (RITOS.md §1). **A cerca "1 PR = 1
+3. **Código:** uma sessão de agente = um worktree (CAMINHO-DOURADO.md, “Abrir e retomar uma sessão”). **A cerca "1 PR = 1
    célula" caiu em 29/08/2026** (Onda 5 do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`,
    decisão do mantenedor): ela restringia LARGURA para comprar EXCLUSIVIDADE, que é
    outro eixo — e não teria evitado o pior incidente já medido aqui. No lugar dela,
@@ -71,7 +71,7 @@ do SHA e não declara publicação a partir de um merge.
 
 
 O caminho seguro deve ser o mais rápido. A resposta canônica a qualquer emergência é
-**rollback** (re-apontar a tag de imagem anterior — comando em RITOS.md §4), nunca
+**rollback** (re-apontar a tag de imagem anterior — comando em CAMINHO-DOURADO.md, “Reverter uma emergência”), nunca
 hotfix no servidor. Agentes não possuem chave SSH da VPS — não é proibição, é
 inexistência no ambiente do agente. O pipeline possui a chave e executa
 operações delimitadas pelo agente, com ambiente protegido, código da main e
@@ -165,7 +165,8 @@ uma vez, com teto.
 
 ## Ritos
 
-Abertura de sessão, catraca verde/anti-thrashing, mudança de contrato e emergência:
-ver `RITOS.md`. Formato de invariante (o quê / por quê / teste-guarda): ver
+Abertura de sessão, integração, mudança de contrato e emergência:
+ver `CAMINHO-DOURADO.md`. A correspondência histórica está em `RITOS.md`.
+Formato de invariante (o quê / por quê / teste-guarda): ver
 `INVARIANTES.md`.
 
