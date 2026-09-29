@@ -31,7 +31,7 @@ from telemetria import redigir  # noqa: E402
 
 VERSAO = 1
 FRESCOR_SEGUNDOS = 60
-GLOBAIS = ("CONSTITUICAO.md", "RITOS.md", "docs/decisoes/RETROSPECTIVA-FASE-D.md")
+GLOBAIS = ("CONSTITUICAO.md", "CAMINHO-DOURADO.md", "docs/decisoes/RETROSPECTIVA-FASE-D.md")
 MECANISMOS = tuple(
     "ci/" + nome + ".py"
     for nome in (
