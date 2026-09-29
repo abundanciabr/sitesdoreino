@@ -1,0 +1,20 @@
+{
+  "arquivo": "951-o-aviso-da-appmax-passa-a-chegar-no-endereco-que-ela-usa",
+  "id": "TAR-951",
+  "titulo": "O aviso da Appmax passa a chegar no endereço que ela usa",
+  "toca": [
+    "pagamentos",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "testes da célula verdes com guarda da rota do aviso provada por mutação, deploy de pagamentos com sucesso e GET no endereço do plural devolvendo 405 em meshcraft.top",
+  "despacho": "O aviso (webhook) da Appmax nunca chegou: ela chama um endereco que nao existe.\n\nFato medido em 29/09/2026 10h BRT (sessao 2549a52a):\n- O suporte da Appmax confirmou que dispara os avisos dos nossos pedidos para\n  https://meshcraft.top/api/pagamentos/appmax/webhooks (PLURAL), endereco\n  cadastrado no aplicativo da Appmax.\n- Nossa rota e services/pagamentos/config/urls.py:19\n  path(\"api/pagamentos/appmax/webhook\", webhook_appmax) (SINGULAR).\n- Sonda publica, GET sem efeito: .../appmax/webhook -> 405 (receptor vivo);\n  .../appmax/webhooks -> 404. Todo aviso de cartao aprovado, Pix criado e\n  estorno caiu em 404 desde a instalacao (explica os registros 083 e 247).\n- O plural nao aparece em lugar nenhum do repositorio; o singular so em\n  config/urls.py, tests/test_inbox_appmax.py, tests/test_estorno_appmax.py e\n  painel/mapa-do-site.json.\n\nO que fazer (celula pagamentos):\n1. A rota do receptor passa a ser api/pagamentos/appmax/webhooks, o endereco que\n   a Appmax usa. Uma rota so: o singular sai, porque nada o chama. Se achar algo\n   que ainda dependa do singular, diga no PR antes de manter um apelido.\n2. Conferir que a borda publica (Traefik/gateway em infra/) entrega o plural ao\n   servico; hoje o 404 do plural pode vir do Django ou da borda.\n3. Atualizar os testes que usam a URL e o painel/mapa-do-site.json.\n4. Teste novo que reprova se a rota do aviso nao for a do plural (guarda contra\n   o mesmo erro voltar). Vermelho antes, verde depois, mutacao provada.\n\nProva exigida: testes da celula verdes; deploy-celula de pagamentos success; GET\nhttps://meshcraft.top/api/pagamentos/appmax/webhooks devolve 405 depois do deploy.\n\nNao fazer: compra, cobranca ou estorno (a coordenacao faz a compra de teste\nautorizada depois do deploy); contracts/; services/checkout/.\nRevisor le o PR antes do pouso.\nCorpo do PR leva a linha literal:\nMandato-do-mantenedor: concluir a obra Appmax no cartão (RETOMADA-APPMAX-RODADA-2.md) services/pagamentos/ services/checkout/ ci/ .github/ infra/ origem: sessão Claude Code de 26/09/2026 22h53 BRT (pagamentos, ci, .github, infra) e de 27/09/2026 00h35 BRT (checkout), respostas estruturadas do mantenedor",
+  "origem": "resposta do suporte da Appmax de 29/09 e sonda pública da sessão 2549a52a",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
