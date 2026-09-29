@@ -635,7 +635,9 @@ def test_codigo_alterado_apos_recibo_recusa(tmp_path):
     dub = Duble({**RESPOSTAS_FELIZES, 'diff --name-only ' + 'b'*40: 'ci/outro.py'})
     with pytest.raises(pr.ParouPorSeguranca, match='difere da validada'):
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
-    assert not dub.pediu('gh pr view')
+    assert not dub.pediu('git push origin')
+    assert dub.rascunho is True
+    assert not any(c[:3] == ['gh', 'pr', 'ready'] and '--undo' not in c for c in dub.chamadas)
 
 
 def test_indice_alheio_e_preservado(tmp_path):
@@ -997,7 +999,8 @@ def test_prova_final_avalia_o_sha_com_recibo_e_impede_sucesso(tmp_path):
         pr.abrir(raiz,pedido(raiz),rodar=executar,hoje=HOJE)
     assert revisoes==['b'*40,'c'*40]
     assert not dub.pediu('git push origin')
-    assert not dub.pediu('gh pr view')
+    assert dub.rascunho is True
+    assert not any(c[:3] == ['gh', 'pr', 'ready'] and '--undo' not in c for c in dub.chamadas)
 
 
 def test_authorization_bearer_nao_deixa_o_token_visivel():
@@ -1395,13 +1398,13 @@ def test_propagacao_esgota_consultas_sem_aprovar_revisao_ou_estado_errados(tmp_p
     def executar(comando, raiz, **opcoes):
         if comando[:3] == ["gh", "pr", "view"]:
             consultas.append(comando)
-            if len(consultas) == 1:
+            if len(consultas) == 1 or len(consultas) > 4:
                 return json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": True})
             return json.dumps(remoto)
         return dub(comando, raiz, **opcoes)
     with pytest.raises(pr.ParouPorSeguranca, match="após 3 consultas"):
         pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
-    assert len(consultas) == 4
+    assert len(consultas) == 5
     assert not dub.pediu("gh pr ready")
 
 
@@ -1703,3 +1706,100 @@ def test_pr_liberado_durante_validacao_volta_a_rascunho_antes_do_push_final(tmp_
     pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
     assert dub.posicao("gh pr ready 1210 --undo") < dub.posicao("git push origin")
     assert dub.rascunho is False
+
+
+@pytest.mark.parametrize("interrupcao", [False, True])
+def test_pr_liberado_durante_prova_reprovada_volta_a_rascunho(tmp_path, interrupcao):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    validacoes = 0
+    def executar(comando, raiz, **opcoes):
+        nonlocal validacoes
+        if comando == ["pytest", "ci/tests"]:
+            validacoes += 1
+            if validacoes == 2:
+                dub.rascunho = False
+                if interrupcao:
+                    raise KeyboardInterrupt()
+                raise pr.ErroDeInstrumentacao("prova reprovada", "Retome com uma nova prova.")
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(KeyboardInterrupt if interrupcao else pr.ErroDeInstrumentacao):
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert dub.rascunho is True
+    assert dub.pediu("gh pr ready 1210 --undo")
+    assert not any(c[:3] == ["gh", "pr", "ready"] and "--undo" not in c for c in dub.chamadas)
+
+
+
+def test_falha_na_restauracao_do_rascunho_informa_bloqueio_sem_sucesso(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    validacoes = 0
+    def executar(comando, raiz, **opcoes):
+        nonlocal validacoes
+        if comando == ["pytest", "ci/tests"]:
+            validacoes += 1
+            if validacoes == 2:
+                dub.rascunho = False
+                dub.explode_em = "gh pr view"
+                raise pr.ErroDeInstrumentacao("prova reprovada", "Retome com uma nova prova.")
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(pr.ErroDeInstrumentacao, match="rascunho remoto não confirmado") as caixa:
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert "validação 1 não aprovada" in caixa.value.detalhe
+    assert "log privado" in caixa.value.detalhe
+    assert "gh pr ready 1210 --undo" in caixa.value.detalhe
+    assert not any(c[:3] == ["gh", "pr", "ready"] and "--undo" not in c for c in dub.chamadas)
+
+
+@pytest.mark.parametrize("interrupcao", [False, True])
+def test_push_inicial_interrompido_restaura_guarda_do_pr_existente(tmp_path, interrupcao):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "gh pr list": json.dumps([
+        {"number": 1210, "url": URL_DO_PR, "state": "OPEN"}])})
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["git", "push", "-u"]:
+            dub.rascunho = False
+            if interrupcao:
+                raise KeyboardInterrupt()
+            raise pr.ErroDeInstrumentacao("push interrompido", "Retome a candidata.")
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(KeyboardInterrupt if interrupcao else pr.ErroDeInstrumentacao):
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert dub.rascunho is True
+    assert sum(c[:3] == ["gh", "pr", "ready"] and "--undo" in c for c in dub.chamadas) == 2
+    assert not dub.pediu("gh pr create")
+
+
+
+def test_edicao_interrompida_restaura_guarda_da_identidade_conhecida(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "gh pr list": json.dumps([
+        {"number": 1210, "url": URL_DO_PR, "state": "OPEN"}])})
+    original = pr.ErroDeInstrumentacao("edicao falhou", "Retome esta candidata.")
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "edit"]:
+            dub.rascunho = False
+            raise original
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(pr.ErroDeInstrumentacao) as caixa:
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert caixa.value is original
+    assert dub.rascunho is True
+    assert sum(c[:3] == ["gh", "pr", "ready"] and "--undo" in c for c in dub.chamadas) == 2
+
+
+@pytest.mark.parametrize("estado", ["CLOSED", "MERGED"])
+def test_pr_encerrado_na_saida_negativa_preserva_erro_sem_tentar_undo(tmp_path, estado):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    original = pr.ErroDeInstrumentacao("recibo falhou", "Confira o log da candidata.")
+    def executar(comando, raiz, **opcoes):
+        if comando[:2] == ["node", "painel/gerar_manifesto.js"]:
+            dub.respostas["gh pr view"] = json.dumps({"state": estado})
+            raise original
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(pr.ErroDeInstrumentacao) as caixa:
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert caixa.value is original
+    assert not dub.pediu("gh pr ready")
