@@ -1,0 +1,76 @@
+{
+  "arquivo": "20260929-173624-TAR-984-contrato_execucao",
+  "tarefa": "TAR-984",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T17:36:24.178193+00:00",
+  "quem": "codex/pme-coordenacao-epocas",
+  "contrato": {
+    "versao": 1,
+    "objetivo": "Continuação PME05: transferir época da coorte sem duas autoridades escritoras e sem replay de testemunho após restauração antiga.",
+    "escopo_incluido": [
+      "services/admin/apps/core/coordenacao.py",
+      "services/admin/apps/core/coordenacao.sql",
+      "services/admin/tests/test_coordenacao.py",
+      "services/admin/tests/test_porta_de_maquina.py",
+      "contracts/admin.openapi.yaml: somente rota aditiva /interno/coordenacao/epocas com auth viva conferida",
+      "ci/coordenacao.py",
+      "ci/tests/test_coordenacao.py",
+      "infra/consultar-transicao-coordenacao-na-vps.sh",
+      "ci/tests/test_consultar_transicao_coordenacao_na_vps.py",
+      "fila própria TAR-984"
+    ],
+    "nao_objetivos": [
+      "Não alterar primeiro PR2340 nem arquivos compartilhados PME03/07/982/978/GOV",
+      "Não ativar coorte nova, publicar tags, emitir segredo ou promover restore",
+      "Git continua autoridade até conciliação, backup offsite e testemunho protegidos com prova"
+    ],
+    "contrato": {
+      "rota": "POST /admin/interno/coordenacao/epocas, papel transicionador da coorte",
+      "consulta": "Entrada operacao/coorte/transicao/fase/nonce; fase preparada|ativa, nonce hex32. Resultado estrito coorte/epoca_atual/epoca/transicao/pausada/concessoes_invalidas/watermark_sha256/autoridade_sha256/fase/nonce.",
+      "testemunho": "Tags anotadas refs/tags/coordenacao-epoca/<coorte>/<epoca:020d>/preparada|ativa, registro_sha256 do payload canonico e tag_oid Git distintos. Recibo opaco vincula ambos. Antes de registrar ou retomar, API consulta refs remotas HTTPS do repo publico, exige maior epoca/fase esperada e OID exato; ausencia, conflito ou particao mantem pausa. Origem Sigstore verificada pelo emissor oficial, nao pela listagem REST.",
+      "receptor": "infra/consultar-transicao-coordenacao-na-vps.sh recebe somente coorte/transicao/fase/nonce do job MAIN, adquire FD8 comum e consulta API interna real com identidade transicionador existente no container admin; imprime JSON validado, sem segredo no log.",
+      "idem": "Chave repetida apos resposta perdida retorna mesmo resultado sem novo evento; pedido divergente ou epoch velha recusa.",
+      "restauro": "Backup antigo isolado nao pode retomar se testemunho remoto tem epoca mais nova; particao falha fechada e tail novo nao se descarta."
+    },
+    "evidencias_exigidas": [
+      "PG17 real em container proprio 0.5 CPU/256 MiB: atomicidade, replay, executor vencido, particao e operacao legitima",
+      "Contrato vivo igual congelado e compatibilidade aditiva",
+      "Receptor shell focal com API interna simulada, FD8 e nenhum vazamento de token",
+      "Nenhum corte ou segredo de producao executado"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato TAR958/29-09 autoriza migracoes compativeis e integracao oficial; root autorizou segundo incremento TAR984 como mesma frente PME05.",
+      "Root escolheu consulta externa monotônica no servidor para bloquear replay apos backup antigo, sem desafio volatil ou novo keypair."
+    ],
+    "restricoes": [
+      "Sem custo novo, perda de dados, atalhos de acesso ou subagentes",
+      "Workflow/tag pertence TAR982, emissor/publicacao PME07, backup TAR978",
+      "Publicacao deste codigo nao e ativacao da autoridade PG"
+    ],
+    "plano": "PME05/TAR984, segundo incremento da frente TAR965 sob plano mestre 29/09/2026",
+    "entregaveis": [
+      "Rota aditiva e transição de época PG pausada",
+      "Consulta remota antirreplay de tags protegidas",
+      "Receptor VPS FD8 com token interno e resposta estrita",
+      "Provas PG17, shell e contrato"
+    ],
+    "etapas": [
+      "Portar delta provado sem alterar PR2340",
+      "Fechar antirreplay remoto e receptor",
+      "Validar PG17, contrato e shell",
+      "Entregar incremento sem ativação"
+    ],
+    "criterios_entrada": [
+      "TAR984 reservada e contrato registrado",
+      "PR2340 é base técnica; Git conserva autoridade"
+    ],
+    "criterios_aceite": [
+      "Repetição idempotente e época antiga recusada",
+      "Partição mantém coorte pausada",
+      "Contrato aditivo e receptor real testados"
+    ],
+    "condicao_encerramento": "Incremento integrado com provas; coorte permanece em Git até piloto completo e testemunho protegido",
+    "limites_autonomia": "Somente alvos exclusivos registrados; sem ativar autoridade, segredos, tags ou restore",
+    "acoes_do_mantenedor": "Nenhuma agora; mandato vigente cobre o incremento"
+  }
+}
