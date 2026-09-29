@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -16,6 +17,37 @@ MUTADORES = (
     "canario-fase-3-outbox.sh", "conferir-as-fichas.sh", "esvaziar-caixa.sh",
     "ligar-os-degraus.sh", "limpar-avisos-orfaos.sh", "restaurar-backup.sh",
 )
+
+
+MUTADORES_MANUAIS = (
+    "abrir-a-sala-de-aula.sh", "cadastrar-os-dois-cursos.sh",
+    "conceder-fundador-aos-alunos.sh", "ligar-a-appmax.sh",
+    "semear-areas-do-forum.sh", "semear-boas-vindas.sh", "semear-caixa.sh",
+    "semear-convite-para-a-comunidade.sh", "semear-demo-caixa.sh",
+    "semear-duvidas-do-forum.sh", "semear-economia.sh",
+    "semear-experimento.sh", "semear-quiz.sh",
+)
+
+
+def trava_imediata_apos_entrada(texto, fragmento):
+    entrada = re.search(r'(?m)^cd "\$RAIZ"[^\n]*\n', texto)
+    return bool(entrada and texto[entrada.end():].startswith("\n" + fragmento + "\n"))
+
+
+@pytest.mark.parametrize("nome", MUTADORES_MANUAIS)
+def test_mutador_manual_trava_antes_de_operar(nome):
+    texto = (RAIZ / "infra" / nome).read_text(encoding="utf-8")
+    fragmento = TRAVA.read_text(encoding="utf-8").strip()
+    assert trava_imediata_apos_entrada(texto, fragmento)
+    assert texto.index(fragmento) < texto.index("docker compose", texto.index(fragmento))
+
+
+def test_escrita_de_env_antes_da_trava_e_reprovada():
+    texto = (RAIZ / "infra/ligar-a-appmax.sh").read_text(encoding="utf-8")
+    fragmento = TRAVA.read_text(encoding="utf-8").strip()
+    mutado = texto.replace(fragmento, 'printf %s alterado > "$RAIZ/env/pagamentos.env"\n' + fragmento, 1)
+    assert trava_imediata_apos_entrada(texto, fragmento)
+    assert not trava_imediata_apos_entrada(mutado, fragmento)
 
 
 def executar(codigo, pasta, *, como_root=False, **kwargs):
@@ -143,3 +175,43 @@ def test_root_e_deploy_revezam_mesmo_inode_com_umask_restritiva(tmp_path):
     echo alternancia-confirmada
     """
     assert concluir(executar(codigo, tmp_path, como_root=True)).strip() == "alternancia-confirmada"
+
+
+
+
+def test_receptor_manual_espera_sem_escrever_env(tmp_path):
+    roteiro = RAIZ / "infra/ligar-a-appmax.sh"
+    (tmp_path / roteiro.name).write_bytes(roteiro.read_bytes())
+    (tmp_path / "env").mkdir()
+    env = tmp_path / "env/pagamentos.env"
+    env.write_bytes(b"inalterado\n")
+    codigo = r"""
+    mkfifo "$PLATAFORMA_DIR/liberar"
+    (source "$FRAGMENTO"; touch "$PLATAFORMA_DIR/segurando";
+     read -r sinal < "$PLATAFORMA_DIR/liberar") &
+    detentor=$!
+    for tentativa in {1..100}; do
+      [ -f "$PLATAFORMA_DIR/segurando" ] && break
+      kill -0 "$detentor" || { echo "detentor terminou antes da posse" >&2; exit 1; }
+      sleep 0.05
+    done
+    test -f "$PLATAFORMA_DIR/segurando" || { echo "detentor nao assumiu a trava" >&2; exit 1; }
+    bash "$PLATAFORMA_DIR/ligar-a-appmax.sh" > "$PLATAFORMA_DIR/resultado" 2>&1 &
+    receptor=$!
+    sleep 0.3
+    kill -0 "$receptor" || { echo "receptor nao esperou a trava" >&2; exit 1; }
+    if flock --nonblock --exclusive "$PLATAFORMA_DIR/.publicacao.lock" -c true; then
+      echo "segunda posse atravessou a trava" >&2; exit 1
+    fi
+    test "$(cat "$PLATAFORMA_DIR/env/pagamentos.env")" = inalterado
+    printf 'liberar\n' > "$PLATAFORMA_DIR/liberar"
+    wait "$detentor"
+    if wait "$receptor"; then
+      echo "roteiro sem Compose terminou com sucesso indevido" >&2; exit 1
+    fi
+    grep -q 'docker-compose.yml' "$PLATAFORMA_DIR/resultado"
+    test "$(cat "$PLATAFORMA_DIR/env/pagamentos.env")" = inalterado
+    echo exclusao-manual-confirmada
+    """
+    assert concluir(executar(codigo, tmp_path)).strip() == "exclusao-manual-confirmada"
+    assert env.read_text(encoding="utf-8") == "inalterado\n"

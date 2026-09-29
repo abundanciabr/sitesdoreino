@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-030-ci-executar-e-retomar-codex-isolado",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: executar e retomar Codex isolado",
+  detalhe: "TAR-964 executa e retoma Codex em bancada isolada, com posse, resultado e arquivos preservados. Pilotos reais A/B: soma10/soma18 sem contaminação. Backend não atestado; implantação ainda não medida.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2334. Validação local: árvore 5e2be688224311c2bebf1098bc44cfc49d0a46b7; commit c692850018d560e1475dfeb546bd88b868492103; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-964",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -320,3 +320,13 @@ def test_indice_ausente_nao_impede_busca_e_informa_como_aprofundar(memoria):
     assert "Índice de aprofundamento ausente" in texto
     assert "python ci/indice_de_armadilhas.py" in texto
     assert not any("INDICE.md" in l for l in texto.splitlines() if l.startswith("Limitação: fontes de leitura"))
+
+
+
+def test_caminho_dourado_e_fonte_global_sem_injetar_conteudo_integral(memoria):
+    (memoria / "CAMINHO-DOURADO.md").write_text("SENTINELA DA REGUA INTEGRAL",encoding="utf-8")
+    texto=sessao.contexto_direcionado(memoria,objetivo="Aplicar a régua",caminhos=["ci/sessao.py"])
+    leituras=next(linha for linha in texto.splitlines() if linha.startswith("Leituras obrigatórias:"))
+    assert "CAMINHO-DOURADO.md" in leituras
+    assert "SENTINELA DA REGUA INTEGRAL" not in texto
+    assert "ci/sessao.py" in texto

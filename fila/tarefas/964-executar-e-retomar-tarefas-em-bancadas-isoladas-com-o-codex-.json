@@ -1,0 +1,19 @@
+{
+  "arquivo": "964-executar-e-retomar-tarefas-em-bancadas-isoladas-com-o-codex-",
+  "id": "TAR-964",
+  "titulo": "Executar e retomar tarefas em bancadas isoladas com o Codex real",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Tarefa real pelo adaptador autorizado, interrupcao e retomada, duas tentativas sem contaminacao, isolamento e limpeza, modelo explicito e limitacoes supervisionadas declaradas",
+  "despacho": "PME04 TAR958; reutiliza frente TAR679/PR2028 e dependencias existentes, sem apagar trabalho anterior. Responsavel pme04-executor tentativa2 gpt-6-sol high sem fallback/subdelegacao. Bancada pme04-executor ramo agent/ci/pme04-executor base ee596c94855d9f2ae9039a5116802b8b2e9baf90. CodexCLI0.158.0-alpha.2.1 confirmado: exec/resume, --model, -c model_reasoning_effort, --json, --sandbox workspace-write; Docker29.7.2 disponivel. Escrita ci/sessao.py e testes de sessao, ci/executor_codex.py/teste se minimo necessario; fila.py/reservar.py/pr.py e workflows somente leitura ate redistribuicao. Reutilizar preparacao existente por hash e executor de testes do trabalho anterior apenas quando compativel; nao incorporar ramos antigos inteiros ou regras revogadas. Adaptador inicia/retoma Codex real com argumentos oficiais modelo/esforco fixos permitidos, eventos/checkpoint e reconciliacao de interrupcao; respeita posse, diretório e processos por tentativa. Somente coordenador pode disparar novos agentes: voce implementa/prova deterministicamente e devolve comando concreto para coordenador disparar piloto, sem executar codex exec como subagente sozinho. Sem override de aprovacoes/sandbox/regras nem leitura de segredos. Validacao nova em ambiente Linux quando propriedade depende; medir preparo frio/quente; makepr mandato, rollback porPR.",
+  "origem": "TAR958 PME04; reaproveitamento TAR679 PR2028 e mandato29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260929-161022-TAR-964-checkpoint",
+  "tarefa": "TAR-964",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:10:22.045042+00:00",
+  "quem": "agent/ci/pme04-executor",
+  "plano": "PME04 contrato de abertura e piloto real",
+  "ultimo_avanco": "Abrir e iniciar usam posse própria vigente sem duplicar reivindicação; contexto global referencia CAMINHO-DOURADO; fonte congelada para piloto supervisionado",
+  "proxima_acao": "Coordenador executa TAR968 Luna medium, interrupção e retomada; executor preserva fonte, incorpora rito atual e submete depois das provas reais",
+  "verificacoes": [
+    "Windows: python -m pytest ci/tests/test_executor_codex.py ci/tests/test_sessao_contexto.py -q -p no:cacheprovider --tb=short: 82 PASS 1 skip 57.47s exit0",
+    "Guarda temporal final: pytest test_executor_codex.py -k abertura_real_e_inicio_or_adocao_de_ativa: 9 PASS 8.85s exit0; py_compile e git diff --check exit0",
+    "executor SHA256 DAA6FAAEDAC0DDAC2DCE5B5D9EFA8ACA34F3B9A9FD96846D0F3FD329E0982D46; sessao SHA256 0AC7BC12789E10E3ACF4C529754AC0C2193D96A4E7C5665ECB1C404B7F97757F; nenhum CLI IA iniciado pelo executor"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260929-153137-TAR-964-checkpoint",
+  "tarefa": "TAR-964",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T15:31:37.973221+00:00",
+  "quem": "agent/ci/pme04-executor",
+  "plano": "PME04 passo 3 de 4",
+  "ultimo_avanco": "Provider OpenAI explícito e adoção gerenciada provados; Windows 254 PASS 6 skips e Linux 36 PASS 1 skip; runners próprios concluídos",
+  "proxima_acao": "Coordenador executa piloto TAR968 iniciar, interromper, reconciliar e retomar na mesma tentativa; executor confere evidência e submete",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_sessao.py ci/tests/test_sessao_retomada.py ci/tests/test_sessao_persistente.py ci/tests/test_sessao_contexto.py ci/tests/test_executor_codex.py ci/tests/test_pr_processos_windows.py ci/tests/test_pr_processos_linux.py -q -p no:cacheprovider --tb=short: 254 passed 6 skipped 89.79s",
+    "Docker Python3.12 Linux real --init readonly: test_executor_codex.py e test_pr_processos_linux.py: 36 passed 1 skipped 17.03s; container próprio removido",
+    "sessao.py --worktree pme01-medicao --tar TAR968 --sem-container --conferir: exit0, ramo real codex/ci/pme04-piloto, nenhuma escrita"
+  ]
+}

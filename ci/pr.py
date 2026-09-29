@@ -784,7 +784,7 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     return pedido.tarefa
 
 
-def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
+def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False, exigir_rascunho=False):
     for tentativa in range(3):
         try:
             remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
@@ -795,7 +795,8 @@ def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
             ) from erro
         if (isinstance(remoto, dict) and remoto.get("headRefOid") == entregue
                 and remoto.get("state") == "OPEN" and type(remoto.get("isDraft")) is bool
-                and (not exigir_pronto or remoto["isDraft"] is False)):
+                and (not exigir_pronto or remoto["isDraft"] is False)
+                and (not exigir_rascunho or remoto["isDraft"] is True)):
             return remoto
         if tentativa < 2:
             time.sleep(2)
@@ -856,76 +857,98 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "resultado": "concluido",
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=commit, rodada=rodada, **correlacao)
-    correr(["git", "push", "-u", "origin", ramo])
-    numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
-    dizer(f"PASS PR aberto: #{numero} {url}")
-    # A identidade é do fato (ramo, PR e árvore), nunca de uma tentativa.
-    destino = _recibo_reutilizavel(raiz, numero, arvore, pedido, correr)
-    chave = hashlib.sha256(f"{ramo}:{numero}:{arvore}".encode()).hexdigest()
-    if destino is None:
-        sequencia = correr([sys.executable, "ci/reservar.py", "numero", "registro", "--chave", chave, "--com-dia"]).strip()
-        if not re.fullmatch(r"\d{8}-\d{3}", sequencia):
-            raise ErroDeInstrumentacao("reserva não devolveu número válido", "Confira python ci/reservar.py listar; retome com a mesma revisão.")
-        nome = f"{sequencia}-{slug_do_titulo(pedido.titulo)}"
-        destino = raiz / "painel/registros" / f"{nome}.js"
-        texto = _texto_do_recibo(pedido, nome, url, hoje, ramo.split('/')[1],
-                                arvore, commit, len(provas))
-        if destino.exists():
-            raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
-        destino.write_text(texto, encoding="utf-8", newline="\n")
-    eventos = _submeter_fila(raiz, correr, pedido.tarefa, ramo, url, commit, arvore)
-    correr(["node", "painel/gerar_manifesto.js"])
-    relativo = destino.relative_to(raiz).as_posix()
-    correr(["git", "add", "--", relativo, *eventos])
-    preparados = correr(["git", "diff", "--cached", "--name-only"]).splitlines()
-    if set(preparados) - {relativo, *eventos}:
-        raise ParouPorSeguranca("embarque contém mudança alheia ao recibo", "Confira git diff --cached e retome sem incluir código não validado.")
-    if preparados:
-        correr(["git", "commit", "-m", f"painel: {_encurtar(pedido.titulo, 60)} (PR #{numero})", "-m", "Co-Authored-By: Codex <noreply@openai.com>"])
-    # O recibo não muda o código provado. Toda outra alteração exige nova validação.
-    alterados = set(correr(["git", "diff", "--name-only", commit, "HEAD"]).splitlines())
-    if alterados - {relativo, *eventos} or correr(["git", "diff", "HEAD", "--name-only"]).strip():
-        raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
-    entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
-    rodada = time.time_ns()
-    telemetria.registrar_fase("validacao", "iniciado", commit=entregue, pr=numero, rodada=rodada, **correlacao)
+    existente = _achar_o_pr(correr, ramo)
+    if existente:
+        _guardar_o_pr(correr, existente["number"])
+    numero = existente["number"] if existente else None
     try:
-        provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos,
-                                 _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])))
-    except ErroDeInstrumentacao:
-        telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, rodada=rodada, **correlacao)
-        raise
-    if (_hash_git(correr(["git", "rev-parse", "HEAD"])) != entregue
-            or correr(["git", "diff", "HEAD", "--name-only"]).strip()):
-        raise ParouPorSeguranca("revisão mudou durante a prova final", "Confira o diff e valide novamente antes de publicar.")
-    telemetria.registrar("validacao_pr", {
-        "commit": entregue, "branch": ramo, "tentativa": tentativa,
-        "saidas_sha256": provas_finais, "resultado": "concluido", "pr": numero,
-        "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
-    }, cwd=str(raiz), sessao=tentativa)
-    telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, rodada=rodada, **correlacao)
-    correr(["git", "push", "origin", ramo])
-    remoto = _conferir_revisao_remota(correr, numero, entregue)
-    if remoto["isDraft"]:
+        correr(["git", "push", "-u", "origin", ramo])
+        numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
+        dizer(f"PASS PR aberto: #{numero} {url}")
+        # A identidade é do fato (ramo, PR e árvore), nunca de uma tentativa.
+        destino = _recibo_reutilizavel(raiz, numero, arvore, pedido, correr)
+        chave = hashlib.sha256(f"{ramo}:{numero}:{arvore}".encode()).hexdigest()
+        if destino is None:
+            sequencia = correr([sys.executable, "ci/reservar.py", "numero", "registro", "--chave", chave, "--com-dia"]).strip()
+            if not re.fullmatch(r"\d{8}-\d{3}", sequencia):
+                raise ErroDeInstrumentacao("reserva não devolveu número válido", "Confira python ci/reservar.py listar; retome com a mesma revisão.")
+            nome = f"{sequencia}-{slug_do_titulo(pedido.titulo)}"
+            destino = raiz / "painel/registros" / f"{nome}.js"
+            texto = _texto_do_recibo(pedido, nome, url, hoje, ramo.split('/')[1],
+                                    arvore, commit, len(provas))
+            if destino.exists():
+                raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
+            destino.write_text(texto, encoding="utf-8", newline="\n")
+        eventos = _submeter_fila(raiz, correr, pedido.tarefa, ramo, url, commit, arvore)
+        correr(["node", "painel/gerar_manifesto.js"])
+        relativo = destino.relative_to(raiz).as_posix()
+        correr(["git", "add", "--", relativo, *eventos])
+        preparados = correr(["git", "diff", "--cached", "--name-only"]).splitlines()
+        if set(preparados) - {relativo, *eventos}:
+            raise ParouPorSeguranca("embarque contém mudança alheia ao recibo", "Confira git diff --cached e retome sem incluir código não validado.")
+        if preparados:
+            correr(["git", "commit", "-m", f"painel: {_encurtar(pedido.titulo, 60)} (PR #{numero})", "-m", "Co-Authored-By: Codex <noreply@openai.com>"])
+        # O recibo não muda o código provado. Toda outra alteração exige nova validação.
+        alterados = set(correr(["git", "diff", "--name-only", commit, "HEAD"]).splitlines())
+        if alterados - {relativo, *eventos} or correr(["git", "diff", "HEAD", "--name-only"]).strip():
+            raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
+        entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
+        rodada = max(time.time_ns(), rodada + 1)
+        telemetria.registrar_fase("validacao", "iniciado", commit=entregue, pr=numero, rodada=rodada, **correlacao)
+        try:
+            provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos,
+                                     _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])))
+        except ErroDeInstrumentacao:
+            telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, rodada=rodada, **correlacao)
+            raise
+        if (_hash_git(correr(["git", "rev-parse", "HEAD"])) != entregue
+                or correr(["git", "diff", "HEAD", "--name-only"]).strip()):
+            raise ParouPorSeguranca("revisão mudou durante a prova final", "Confira o diff e valide novamente antes de publicar.")
+        telemetria.registrar("validacao_pr", {
+            "commit": entregue, "branch": ramo, "tentativa": tentativa,
+            "saidas_sha256": provas_finais, "resultado": "concluido", "pr": numero,
+            "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
+        }, cwd=str(raiz), sessao=tentativa)
+        telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, rodada=rodada, **correlacao)
+        _guardar_o_pr(correr, numero)
+        correr(["git", "push", "origin", ramo])
+        _conferir_revisao_remota(correr, numero, entregue, exigir_rascunho=True)
         correr(["gh", "pr", "ready", str(numero)])
         _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
-    if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
-        dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
-    telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
-    dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
-    dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
-    instrucao_de_continuidade = (
-        "Meça o desfecho nesta sessão: "
-        f"python ci/esperar.py --checks {numero} --so-desfecho se houver checks "
-        f"pendentes; caso contrário, python ci/esperar.py --entrega {numero} "
-        "--so-desfecho. Informe integração e publicação apenas com prova."
-    )
-    final = f"PR {numero} aberto com recibo: {url}. {instrucao_de_continuidade}"
-    dizer(final)
-    return final
+        if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
+            dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
+        telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
+        dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
+        dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
+        instrucao_de_continuidade = (
+            "Meça o desfecho nesta sessão: "
+            f"python ci/esperar.py --checks {numero} --so-desfecho se houver checks "
+            f"pendentes; caso contrário, python ci/esperar.py --entrega {numero} "
+            "--so-desfecho. Informe integração e publicação apenas com prova."
+        )
+        final = f"PR {numero} aberto com recibo: {url}. {instrucao_de_continuidade}"
+        dizer(final)
+        return final
+    except BaseException as erro:
+        try:
+            if numero is None:
+                existente = _achar_o_pr(correr, ramo)
+                numero = existente["number"] if existente else None
+            if numero is not None:
+                _guardar_o_pr(correr, numero, exigir_aberto=False)
+        except BaseException as erro_da_guarda:
+            alvo = numero or ramo
+            raise ErroDeInstrumentacao(
+                "falha na entrega e rascunho remoto não confirmado",
+                f"Falha original: {erro}. {getattr(erro, 'detalhe', '')} "
+                f"Confira gh pr view {alvo} e restaure o rascunho "
+                f"com gh pr ready {alvo} --undo antes de retomar; os commits e logs foram preservados.",
+            ) from erro_da_guarda
+        raise
 
 
-def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
+
+def _achar_o_pr(correr, ramo):
     bruto = correr(["gh", "pr", "list", "--head", ramo, "--state", "all", "--json", "number,url,state"]).strip()
     try:
         encontrados = json.loads(bruto)
@@ -935,12 +958,42 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
         raise ParouPorSeguranca("PR do ramo é ambíguo", "Confira gh pr list --head antes de retomar.")
     if encontrados:
         existente = encontrados[0]
+        if not isinstance(existente, dict):
+            raise ErroDeInstrumentacao("identidade do PR inválida", "Confira gh pr list antes de publicar a candidata.")
         if existente.get("state", "OPEN") != "OPEN":
             raise ParouPorSeguranca("PR do ramo já foi encerrado", "Use uma nova bancada para um novo trabalho.")
+        if (type(existente.get("number")) is not int or existente["number"] < 1
+                or not isinstance(existente.get("url"), str)
+                or not existente["url"].endswith(f"/pull/{existente['number']}")):
+            raise ErroDeInstrumentacao("identidade do PR inválida", "Confira gh pr list antes de publicar a candidata.")
+        return existente
+    return None
+
+
+def _guardar_o_pr(correr, numero, *, exigir_aberto=True):
+    try:
+        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+    except (TypeError, ValueError) as erro:
+        raise ErroDeInstrumentacao("consulta do rascunho inválida", "Confira gh pr view antes de publicar a candidata.") from erro
+    if isinstance(remoto, dict) and remoto.get("state") in ("MERGED", "CLOSED") and not exigir_aberto:
+        return
+    if (not isinstance(remoto, dict) or remoto.get("state") != "OPEN"
+            or type(remoto.get("isDraft")) is not bool
+            or not re.fullmatch(r"[0-9a-f]{40,64}", str(remoto.get("headRefOid", "")))):
+        raise ParouPorSeguranca("PR não pode receber a candidata", "Confira estado e revisão em gh pr view; nenhum push foi autorizado.")
+    if not remoto["isDraft"]:
+        correr(["gh", "pr", "ready", str(numero), "--undo"])
+        _conferir_revisao_remota(correr, numero, remoto["headRefOid"], exigir_rascunho=True)
+
+
+def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
+    existente = _achar_o_pr(correr, ramo)
+    if existente:
+        _guardar_o_pr(correr, existente["number"])
         correr(["gh", "pr", "edit", str(existente["number"]), "--title", pedido.titulo, "--body-file", str(pedido.corpo_arquivo)])
-        return int(existente["number"]), existente["url"]
+        return existente["number"], existente["url"]
     saida = correr([
-        "gh", "pr", "create",
+        "gh", "pr", "create", "--draft",
         "--base", "main",
         "--title", pedido.titulo,
         "--body-file", str(pedido.corpo_arquivo),

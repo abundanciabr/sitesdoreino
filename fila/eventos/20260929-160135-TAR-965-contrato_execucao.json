@@ -1,0 +1,75 @@
+{
+  "arquivo": "20260929-160135-TAR-965-contrato_execucao",
+  "tarefa": "TAR-965",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T16:01:35.790627+00:00",
+  "quem": "codex/pme05-coordenacao",
+  "contrato": {
+    "nao_objetivos": [
+      "ci/fila.py, ci/reservar.py, admin robos.py e fila_do_painel.py até liberação PME03",
+      "Workflow/provisionamento/exclusão pertencem PME07",
+      "Transferir autoridade sem importação conciliada, backup externo e receptor de publicação conferindo época/fencing",
+      "RITOS.md e contracts/README.md transferidos explicitamente para GOV após delta validado"
+    ],
+    "evidencias_exigidas": [
+      "Comandos e tempos reais",
+      "Ensaio concorrente e idempotente",
+      "Testes executados",
+      "Guarda executável em repositório descartável: adição compatível PASS; remoção mesmo com etiqueta contrato-remocao, drift, contrato de outra célula e exportador ausente FAIL/ERROR",
+      "Backup antigo após época mais nova: nova época acima do testemunho; CAS com resposta perdida idempotente; partição mantém pausa; nenhuma escrita posterior descartada"
+    ],
+    "criterios_aceite": [
+      "Amostra e limites explícitos",
+      "Instrumento quebrado produz ERROR",
+      "Decisão positiva, não converter falta de acesso em não adoção"
+    ],
+    "escopo_incluido": [
+      "ci/medir_coordenacao.py e ci/tests/test_medir_coordenacao.py",
+      "services/admin/apps/core/coordenacao.py e coordenacao.sql",
+      "services/admin/tests/test_coordenacao.py",
+      "ci/coordenacao.py e ci/tests/test_coordenacao.py",
+      "services/admin/config/settings.py e config/urls.py quando necessários",
+      "fila própria TAR-965",
+      "services/admin/apps/core/api.py e contracts/admin.openapi.yaml: rota aditiva Ninja real autorizada pelo coordenador",
+      "services/admin/config/api.py: descrição da API real e autenticação específica",
+      "services/admin/tests/test_porta_de_maquina.py: guarda existente abrangendo nova operação",
+      "ci/cerca-de-celula.sh e ci/tests/test_cerca_de_celula.py: exceção aditiva com prova viva",
+      "contracts/README.md e RITOS.md §3: substituição autorizada da restrição pertinente",
+      "Próximo incremento: núcleo/clientes/testes próprios para pausa, transição de época e ref CAS dedicada por coorte; contrato admin aditivo correspondente, sem escrita nos alvos de07"
+    ],
+    "criterios_entrada": [
+      "Worktree exclusivo",
+      "Baseline do medidor existente verde"
+    ],
+    "etapas": [
+      "Medição e protótipo: comprovados",
+      "Núcleo/API/cliente isolados",
+      "Integração de comandos e leitores após liberação",
+      "Provisionamento oficial/backup externo e corte piloto",
+      "Ensaios de aceitação em autoridade única",
+      "Pausar PG/capturar watermark → CAS preparada → PG nova época ainda pausada → CAS ativa confirmada → retomar PG apenas com witness consistente"
+    ],
+    "condicao_encerramento": "Fluxo adotado e coorte piloto com autoridade única, histórico reconciliado e recuperação; incrementos locais não encerram o objetivo",
+    "restricoes": [
+      "Sem custos novos, perda de dados ou atalhos de acesso",
+      "Chaves de experimento próprias; limpeza com SHA e dono",
+      "Não criar subagentes"
+    ],
+    "plano": "PME-05: plano-mestre entrega enxuta 29/09/2026",
+    "decisoes_aprovadas": [
+      "Mandato integral mantenedor 29/09/2026 conforme TAR-965",
+      "Coordenador decidiu ADOTAR e redistribuiu alvos em 29/09/2026 após medição",
+      "Coordenador redistribuiu cerca e rito em 29/09/2026 sob mandato integral: regra antiga contracts/ não muda junto com services/ e PR contendo somente contracts/; propriedade preservada por etiqueta contrato, mesmo provedor, compatibilidade aditiva sem contrato-remocao e igualdade viva/congelada com sonda de autenticação executada. Drift, remoção, outra célula e prova ausente recusam.",
+      "Root29/09: testemunho externo monotônico reutiliza CAS Git em ref dedicada de época por coorte, por identidade oficial. PG conserva única autoridade de tarefas quando cortada. Recuperação sem testemunho consistente para."
+    ],
+    "versao": 5,
+    "acoes_do_mantenedor": "Nenhuma ação agora; mandato recebido cobre a medição",
+    "objetivo": "Adotar coordenação durável para coorte piloto: medição e núcleo isolado antes de transferir autoridade",
+    "entregaveis": [
+      "Medidor e decisão com fatos na TAR-965",
+      "Núcleo PostgreSQL transacional, API autenticada por papel/coorte e cliente",
+      "Ensaios negativos e plano de corte/recuperação"
+    ],
+    "limites_autonomia": "Núcleo e cliente autorizados; produção permanece Git até comprovar pré-condições. Não escrever nos alvos de PME03/07 nem criar subagentes."
+  }
+}

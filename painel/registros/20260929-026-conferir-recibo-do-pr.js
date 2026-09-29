@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-026-conferir-recibo-do-pr",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "Conferir recibo do PR",
+  detalhe: "O portão recusa PR sem recibo que ligue TAR, revisão, árvore e HEAD real. Código novo exige prova nova; merge legítimo da base passa.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2345. Validação local: árvore 796163e53246c98c5ea1dc8c948baf0c2da65ce5; commit 99cfe79ead3bdc1745adfa09d89c9d72a7ac7a25; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-977",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
