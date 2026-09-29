@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-032-infra-serializar-treze-provisionadores-de-producao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: serializar treze provisionadores de producao",
+  detalhe: "Treze provisionadores passam a esperar a trava comum antes de alterar dados. Identidade trava a mesma raiz que opera; a cobertura restante segue na TAR-986.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2348. Validação local: árvore 48c405943e5a9049ecdf39ad1f6e50bdba7cf974; commit a424c07872e460c3bf9af7dfcd88b46807caadc2; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-986",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
