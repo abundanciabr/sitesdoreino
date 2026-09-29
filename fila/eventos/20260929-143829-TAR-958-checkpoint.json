@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-143829-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T14:38:29.492143+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "fase 0 e PME-01/02/03; revisao independente ativa",
+  "ultimo_avanco": "TAR-962 executando Sol high em bancada propria; TAR-963 revisao somente leitura Sol high iniciada; TAR-960 107 testes locais, auditoria em curso; ramo legado agent permitido para submissao ate compatibilizacao codex",
+  "proxima_acao": "Integrar incrementos pequenos; encadear chamada da telemetria PME-01 no dono pr.py PME-02; revisar contrato de estados antes de alterar fecho",
+  "verificacoes": [
+    "5 agentes despachados explicitamente com fork none, sem fallback configurado; 4 frentes de implementacao e 1 de revisao; planejadas 11 frentes (PME01-09, modelos reutilizada TAR719, revisao), abertas5; capacidade medida 12CPUs e12.5GiB livres; nao confundir tarefas em execucao da fila com processos vivos"
+  ]
+}
