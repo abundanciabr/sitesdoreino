@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-130801-TAR-951-explicada",
+  "tarefa": "TAR-951",
+  "evento": "explicada",
+  "quando": "2026-09-29T13:08:01.298496+00:00",
+  "quem": "resposta do suporte da Appmax de 29/09 e sonda pública da sessão 2549a52a",
+  "o_que_e": "A Appmax avisa o nosso sistema de cada pagamento num endereço com uma letra a mais do que o nosso; todos os avisos voltam como página não encontrada",
+  "o_que_muda": "Cartão aprovado, Pix criado e estorno passam a ser avisados na hora, e o estorno finalmente pode ser confirmado com o valor certo",
+  "exemplo": "É como o carteiro entregar na casa 12 A quando a nossa placa diz 12: as cartas existem, mas ninguém recebe",
+  "importancia": 90
+}

@@ -1,0 +1,20 @@
+{
+  "arquivo": "952-a-janela-de-terca-e-a-resposta-da-appmax-sobre-o-estorno-fic",
+  "id": "TAR-952",
+  "titulo": "A janela de terça e a resposta da Appmax sobre o estorno ficam escritas no livro",
+  "toca": [
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "registro de medição com o run da observação de terça, registro de resposta ao pedido de 26/09 e o PR MERGED",
+  "despacho": "Coordenacao da obra Appmax, sessao 2549a52a, terca 29/09/2026.\nEscrever no livro a observacao de terca (run 36572588190: zero acima de um dia util,\n10 pre-autorizacoes de teste em amarelo) e a resposta da Appmax ao pedido do registro 016\n(estorno parcial nao muda o status; o valor vem so pelo aviso; o GET nao traz).\nCriar a tarefa do endereco do aviso (404 no plural) e rebloquear a 644 no caminho novo.",
+  "origem": "coordenação da obra Appmax, sessão 2549a52a, 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
