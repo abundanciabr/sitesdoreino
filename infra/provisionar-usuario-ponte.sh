@@ -54,6 +54,30 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ"
+
+# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
+TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
+command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
+if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
+  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
+    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
+  fi
+  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
+fi
+flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
+unset TRAVA_PUBLICACAO
+
+FONTE_CONFERIDA="$RAIZ/infra.new/provisionar-usuario-ponte.sh"
+[ -f "$FONTE_CONFERIDA" ] || FONTE_CONFERIDA="$RAIZ/provisionar-usuario-ponte.sh"
+if [ ! -f "$FONTE_CONFERIDA" ] || [ -L "$FONTE_CONFERIDA" ] || ! cmp -s "$FONTE_CONFERIDA" /usr/local/sbin/provisionar-usuario-ponte; then
+  echo "ERRO: o provisionador root diverge da fonte publicada; nenhuma conta ou regra SSH foi alterada." >&2
+  echo "      Confira o kit e reinstale a copia root pelo console antes de repetir o deploy-infra." >&2
+  exit 1
+fi
+unset FONTE_CONFERIDA
+
 # ── 1) O QUE SE QUER TER. Escrito uma vez, comparado com o que existe. ──
 #
 # A restricao vive em DOIS lugares de proposito, e cada um sozinho ja bastaria:

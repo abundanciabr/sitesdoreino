@@ -129,9 +129,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Recusa'
-      description: 'Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA transação, a plateia
-        inteira recebe aviso, ''não planejado'' exige justificativa e ''planejado → em desenvolvimento''
-        exige ChangeSpec aprovado registrado. Recusa 422 com a frase que ensina o caminho.'
+      description: 'Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA transação, a plateia inteira recebe aviso e ''não planejado'' exige justificativa. `resposta` só vale com ''implementado'': substitui por inteiro a resposta publicada na ideia, filtrada pela lista de permissão de HTML, e vazia apaga. Fora de ''implementado'', resposta não vazia é recusada com 422 e vazia não toca na guardada. De ''implementado'' para ''implementado'' sem nota, só a resposta é gravada: nenhuma linha de histórico, nenhum aviso, nenhum evento. Recusa 422 com a frase que ensina o caminho.'
       requestBody:
         content:
           application/json:
@@ -561,6 +559,7 @@ components:
           type: boolean
         resposta:
           default: ''
+          description: 'A resposta da equipe guardada na ideia, já filtrada pela lista de permissão de HTML da Caixa. A página da ideia só a mostra com a ideia em ''implementado''. Vazia: a equipe não escreveu resposta.'
           type: string
         conversa:
           default: []
@@ -698,6 +697,7 @@ components:
           type: boolean
         resposta:
           default: ''
+          description: 'A resposta da equipe guardada na ideia, já filtrada pela lista de permissão de HTML da Caixa. A página da ideia só a mostra com a ideia em ''implementado''. Vazia: a equipe não escreveu resposta.'
           type: string
         conversa:
           default: []
@@ -865,6 +865,7 @@ components:
           type: string
         resposta:
           default: ''
+          description: 'A resposta da equipe publicada na ideia. Só vale com status ''implementado'', e então substitui a guardada por inteiro: vazia apaga. Fora de ''implementado'', não vazia é recusada com 422 e vazia não toca na guardada. O HTML passa pela lista de permissão da Caixa antes de ser gravado.'
           type: string
       required:
       - por_email

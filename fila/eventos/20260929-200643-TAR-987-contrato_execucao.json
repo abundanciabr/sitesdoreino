@@ -1,0 +1,68 @@
+{
+  "arquivo": "20260929-200643-TAR-987-contrato_execucao",
+  "tarefa": "TAR-987",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T20:06:43.615927+00:00",
+  "quem": "pme_mutadores_producao",
+  "contrato": {
+    "plano": "TAR-987-pme08-ponte-exclusao",
+    "versao": 1,
+    "objetivo": "Sincronizar infraestrutura, provisionar a conta ponte e instalar a copia root sob a mesma exclusao da publicacao, sem herdar FD8 pelo sudo nem operar uma copia privilegiada divergente.",
+    "entregaveis": [
+      "Sincronizador valida infra.new sem consumir, executa sudo com FD8 fechado antes do lock pai, adquire a trava comum e revalida staging e copia root antes do primeiro efeito.",
+      "Provisionador root e instalador usam a trava do mesmo inode, com copia/regra sudo preparadas e instaladas atomicamente, preservando versoes anteriores em falha.",
+      "Testes negativos e positivos em Linux isolado, kit root revisavel e PR Draft-first com prova de integracao separada."
+    ],
+    "escopo_incluido": [
+      "infra/sincronizar-infra-na-vps.sh",
+      "infra/provisionar-usuario-ponte.sh",
+      "infra/instalar-provisionador-usuario-ponte.sh",
+      "ci/tests/test_exclusao_comum_da_publicacao.py",
+      "ci/tests/test_ponte_com_a_vps.py",
+      "Tarefa, eventos e recibo proprios da TAR-987."
+    ],
+    "nao_objetivos": [
+      "Alterar workflows, deploy-celula, trava canonica, deploy990, provisionar-admin995 ou coorte992.",
+      "Executar efeitos reais na VPS, criar SSH de agente, elevar a esteira ou alterar segredos.",
+      "Concluir TAR-986 parcialmente ou retirar a concurrency antiga antes da cobertura instalada e comprovada."
+    ],
+    "restricoes": [
+      "Cinco arquivos tecnicos exatos, sem codigo fora do contrato.",
+      "FD8 somente leitura no mesmo inode; fechar FD8 ao chamar sudo que tambem adquire a trava.",
+      "Revalidar sob posse o staging e a copia root congelada contra a fonte esperada, antes de mover ou recarregar.",
+      "Falha antes de consumir staging; rollback infra sob FD8; instalador preserva copia e regra antigas."
+    ],
+    "decisoes_aprovadas": [
+      "Mantenedor autorizou a implementacao integral da TAR-987 em 29/09/2026; proposta de dependencia circular AE54F1BBE97CC99DB359861086AAE0D37499775619AC871DB11223768D6FE905 passou no mesmo controle de aprovacao.",
+      "A integracao continua dependente do PR2348 pelo portao Depende-de; o aceite total da TAR-986 nao foi alterado.",
+      "Reserva pme-ponte-exclusao e reivindicacao atomica tarefa-TAR-987 confirmadas na bancada gerenciada."
+    ],
+    "etapas": [
+      "Conferir base, tarefa, reserva e contrato antes de codigo.",
+      "Inventariar efeitos e contratos de staging, sudo, copia root e rollback.",
+      "Implementar ordem segura nos tres scripts e guardas nos dois testes.",
+      "Executar Bash, negativos, Linux isolado, falha e recuperacao; obter revisao independente.",
+      "Abrir PR pelo rito Draft-first com mandato infra/ ci/ e dependencia explicita do PR2348; medir checks, integracao e publicacao."
+    ],
+    "criterios_entrada": [
+      "Worktree pme-mutadores-producao sem processo antigo e branch codex/infra/pme-ponte-exclusao atualizada com origin/main.",
+      "Tarefa/evento canônicos copiados, dependencia circular corrigida pelo mesmo mecanismo de aprovacao.",
+      "Reivindicacao TAR-987 registrada."
+    ],
+    "criterios_aceite": [
+      "Mesmo inode trava sincronizador, provisionador e instalador antes de qualquer mutacao; sudo recebe FD8 fechado.",
+      "Staging e copia root divergentes reprovam antes de efeitos; ausencia da ponte preserva sincronizacao existente.",
+      "Teste Linux isolado demonstra disputa, reentrada, falha e recuperacao sem consumir staging indevido.",
+      "Kit oficial e comando root concretos preparados; instalacao real so por canal autorizado e conferida antes de fechar TAR-987."
+    ],
+    "evidencias_exigidas": [
+      "bash -n dos tres scripts e testes focais de exclusao e ponte.",
+      "Saida de testes Linux isolados para stale, staging trocado, disputa, sudo sem FD8 e rollback.",
+      "Revisao independente, checks remotos, integracao e publicacao medidas separadamente.",
+      "Prova de copia root instalada e mesmo inode antes do aceite final da TAR-987."
+    ],
+    "condicao_encerramento": "TAR-987 so conclui apos codigo integrado, publicacao oficial, kit root instalado pelo canal autorizado e exclusao real conferida; PME08 e TAR-986 continuam separadas.",
+    "limites_autonomia": "Implementar e provar os cinco arquivos em bancada e fluxo oficial; nenhuma mutacao na VPS, SSH agente, sudo real de producao ou mudanca de controles superiores nesta tentativa.",
+    "acoes_do_mantenedor": "Apenas o gesto root exclusivo, com kit revisavel e comando concreto, se a via oficial nao puder realiza-lo; a autorizacao para implementar codigo ja foi concedida."
+  }
+}
