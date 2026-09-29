@@ -67,7 +67,9 @@ jobs:
           envs: COORTE,TRANSICAO,FASE,NONCE
           capture_stdout: true
           command_timeout: 2m
-          script_path: ${{ steps.preparar.outputs.script }}
+          script: |
+            set -e
+            bash /opt/plataforma/infra/consultar-transicao-coordenacao-na-vps.sh
       - name: Validar resposta PG e construir registro canonico
         env:
           COORTE: ${{ inputs.coorte }}

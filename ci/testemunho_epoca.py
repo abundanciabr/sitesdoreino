@@ -631,16 +631,8 @@ def main(argv: list[str] | None = None) -> int:
         pasta = Path(os.environ["RUNNER_TEMP"])
         if args.operacao == "preparar-consulta":
             nonce = secrets.token_hex(16)
-            script = pasta / "consultar-transicao-coordenacao.sh"
-            script.write_text(
-                "#!/usr/bin/env bash\n"
-                "set -euo pipefail\n"
-                ". /opt/plataforma/infra/trava-de-publicacao.sh\n"
-                ". /opt/plataforma/infra/consultar-transicao-coordenacao-na-vps.sh\n",
-                encoding="utf-8",
-            )
             with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as saida:
-                saida.write(f"script={script}\nnonce={nonce}\n")
+                saida.write(f"nonce={nonce}\n")
         else:
             nonce = os.environ["NONCE"]
             resposta = json.loads(os.environ["SAIDA_PG"])

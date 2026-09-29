@@ -442,7 +442,7 @@ def test_consulta_pg_ativa_preserva_watermark_e_pina_oid(protocolo):
         testemunho.referencia_confirmada("piloto", preparada)
 
 
-def test_preparar_consulta_escreve_script_fixo_e_nonce(tmp_path, monkeypatch):
+def test_preparar_consulta_gera_nonce_sem_script_do_dispatch(tmp_path, monkeypatch):
     saida = tmp_path / "github-output"
     for chave, valor in {
         "COORTE": "piloto",
@@ -454,12 +454,9 @@ def test_preparar_consulta_escreve_script_fixo_e_nonce(tmp_path, monkeypatch):
         monkeypatch.setenv(chave, valor)
     assert epoca.main(["preparar-consulta"]) == 0
     linhas = dict(linha.split("=", 1) for linha in saida.read_text().splitlines())
+    assert set(linhas) == {"nonce"}
     assert len(linhas["nonce"]) == 32
     assert epoca.re.fullmatch("[0-9a-f]{32}", linhas["nonce"])
-    script = Path(linhas["script"]).read_text()
-    assert "/opt/plataforma/infra/trava-de-publicacao.sh" in script
-    assert "/opt/plataforma/infra/consultar-transicao-coordenacao-na-vps.sh" in script
-    assert "piloto" not in script
     monkeypatch.setenv("COORTE", "piloto;echo PWN")
     assert epoca.main(["preparar-consulta"]) == 2
 
@@ -484,7 +481,10 @@ def test_workflow_main_assina_artefato_sem_poder_de_criar_tag():
     assert "github.ref != 'refs/heads/main'" in passos[0]["if"]
     remoto = next(p for p in passos if p.get("id") == "remoto")
     assert remoto["with"]["fingerprint"].startswith("SHA256:")
-    assert remoto["with"]["script_path"] == "${{ steps.preparar.outputs.script }}"
+    assert remoto["with"]["script"] == (
+        "set -e\nbash /opt/plataforma/infra/consultar-transicao-coordenacao-na-vps.sh\n"
+    )
+    assert "script_path" not in remoto["with"]
     assert remoto["with"]["envs"] == "COORTE,TRANSICAO,FASE,NONCE"
     assert any("actions/attest@" in p.get("uses", "") for p in passos)
     assert any("actions/upload-artifact@" in p.get("uses", "") for p in passos)
