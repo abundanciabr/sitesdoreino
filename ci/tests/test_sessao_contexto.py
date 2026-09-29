@@ -18,6 +18,7 @@ def memoria(tmp_path):
     )
     for relativo in (
         "CLAUDE.md",
+        "CAMINHO-DOURADO.md",
         "CONSTITUICAO.md",
         "RITOS.md",
         "armadilhas/INDICE.md",
@@ -309,8 +310,9 @@ def test_indice_e_aprofundamento_sem_leitura_integral_no_contexto(memoria, monke
     assert "INDICE.md" not in obrigatorias
     assert "CONTEUDO INTEGRAL SENTINELA" not in texto
     assert "Aprofundamento:" in texto and "armadilhas/INDICE.md" in texto
-    for nome in ("CLAUDE.md", "CONSTITUICAO.md", "RITOS.md", "RETROSPECTIVA-FASE-D.md"):
+    for nome in ("CLAUDE.md", "CAMINHO-DOURADO.md", "CONSTITUICAO.md", "RETROSPECTIVA-FASE-D.md"):
         assert nome in obrigatorias
+    assert "RITOS.md" not in obrigatorias
 
 
 def test_indice_ausente_nao_impede_busca_e_informa_como_aprofundar(memoria):

@@ -393,6 +393,23 @@ def test_licao_nova_e_mudanca_da_fonte_aparecem_no_brief_seguinte(caso, capsys):
     )
 
 
+def test_receita_vigente_invalida_pacote_sem_commit_e_rito_historico_nao_e_fonte(caso, capsys):
+    _, antes = tar(caso, capsys)
+    fontes = {fonte["id"] for fonte in antes["fontes"]}
+    assert "CAMINHO-DOURADO.md" in fontes
+    assert "RITOS.md" not in fontes
+    assert "CAMINHO-DOURADO.md" in antes["fronteiras"]["somente_leitura"]
+    assert "RITOS.md" not in antes["fronteiras"]["somente_leitura"]
+
+    gravar(caso[1], "CAMINHO-DOURADO.md", "# Receita vigente atualizada\n")
+    assert not caso[0].conferir_frescor(
+        caso[1], antes, datetime.fromisoformat(AGORA)
+    )["valido"]
+    _, depois = tar(caso, capsys)
+    assert antes["id_pacote"] != depois["id_pacote"]
+    assert "CAMINHO-DOURADO.md" in {fonte["id"] for fonte in depois["fontes"]}
+
+
 def test_determinismo_e_invalidacao_por_conteudo_sem_commit(caso, capsys):
     _, antes = tar(caso, capsys)
     _, igual = tar(caso, capsys)

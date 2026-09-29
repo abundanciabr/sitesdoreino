@@ -1,6 +1,6 @@
 """Guardas da muralha da pasta compartilhada (ci/muralha_pasta_compartilhada.py).
 
-A muralha é o mecanismo que impõe o RITOS.md §1 (worktree por agente): ela
+A muralha é o mecanismo que impõe o CAMINHO-DOURADO.md (worktree por agente): ela
 recusa, no clone principal, edições e comandos git que mudam estado. Estes
 testes ENCENAM a falha de verdade (armadilhas/132): repositório real em tmp,
 com worktree ligado — inclusive um dentro de .claude/worktrees/, o caso sutil.
@@ -326,6 +326,7 @@ def _montar_espelho(
     *,
     atras: int = 0,
     ordens_mudam: bool = False,
+    receita_muda: bool = False,
     com_origin_main: bool = True,
 ) -> Path:
     """Um clone principal de mentira, com a distância que a história pedir.
@@ -339,12 +340,14 @@ def _montar_espelho(
     _git("config", "user.email", "teste@teste", cwd=raiz)
     _git("config", "user.name", "teste", cwd=raiz)
     (raiz / "CLAUDE.md").write_text("as ordens de ontem\n", encoding="utf-8")
-    _git("add", "CLAUDE.md", cwd=raiz)
+    (raiz / "CAMINHO-DOURADO.md").write_text("a receita de ontem\n", encoding="utf-8")
+    _git("add", "CLAUDE.md", "CAMINHO-DOURADO.md", cwd=raiz)
     _git("commit", "-m", "genese", cwd=raiz)
     base = _sha(raiz)
 
     for i in range(atras):
-        alvo = "CLAUDE.md" if ordens_mudam else f"outro-{i}.txt"
+        alvo = ("CLAUDE.md" if ordens_mudam else
+                "CAMINHO-DOURADO.md" if receita_muda else f"outro-{i}.txt")
         (raiz / alvo).write_text(f"avanco {i}\n", encoding="utf-8")
         _git("add", alvo, cwd=raiz)
         _git("commit", "-m", f"avanco {i}", cwd=raiz)
@@ -393,6 +396,14 @@ def test_ordens_divergentes_dizem_a_consequencia_com_todas_as_letras(tmp_path):
     saida = _aviso(raiz).stdout
     assert "revogad" in saida.lower(), saida
     assert "git show origin/main:CLAUDE.md" in saida, saida
+
+
+def test_receita_divergente_com_adaptador_igual_avisa_revogacao(tmp_path):
+    raiz = _montar_espelho(tmp_path / "espelho", atras=2, receita_muda=True)
+    saida = _aviso(raiz).stdout
+    assert "revogad" in saida.lower(), saida
+    assert "CAMINHO-DOURADO.md" in saida
+    assert "git show origin/main:CAMINHO-DOURADO.md" in saida
 
 
 def test_atraso_que_nao_tocou_as_ordens_nao_grita_revogado(tmp_path):

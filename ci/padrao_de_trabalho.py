@@ -96,7 +96,6 @@ COSTURAS = ('A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra
 # nenhum — some, e a lei volta a depender de alguém lembrar.
 PORTAS = {
     "CONSTITUICAO.md": "## Lei 10 — O Padrão de Trabalho",
-    "RITOS.md": "> \"Li o **Padrão de Trabalho** (1ª seção do `CAMINHO-DOURADO.md`)",
     "ci/indice_de_armadilhas.py": "> **Antes de tudo, o Padrão de Trabalho:**",
     "CAMINHO-DOURADO.md": "PADRÃO: o Padrão de Trabalho (1ª seção do CAMINHO-DOURADO.md)",
     "00-LEIA-PRIMEIRO.md": "**O Padrão de Trabalho, íntegro, na 1ª seção**",
