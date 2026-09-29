@@ -1,5 +1,10 @@
 # Contexto consultado e lei compacta
 
+Situação em 29/09/2026: TAR-972 transfere a receita vigente para
+CAMINHO-DOURADO.md e transforma CLAUDE.md em adaptador. A consulta sob demanda
+permanece. Trechos abaixo que descrevem a fonte ou procedimentos substituídos
+são históricos e não ordenam sua restauração.
+
 O mantenedor autorizou as fases 1.1, 3.1 e 3.2 do plano de otimização:
 zero scripts por ação comum, consulta ativa e compressão textual sem perda
 das obrigações. O catálogo e o histórico continuam no repositório.

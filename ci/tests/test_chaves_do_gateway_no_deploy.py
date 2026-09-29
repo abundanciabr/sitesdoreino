@@ -38,8 +38,8 @@ Nada aqui toca a VPS, nem o Docker de verdade, nem o Traefik. A prova de que o
 gateway sobe com os tokens certos é a próxima execução do `deploy-celula`
 depois do merge.
 
-Sem `bash` nesta máquina o guarda não tem o que medir, e isso é ERRO, nunca um
-OK silencioso.
+No Windows, o guarda exige Docker para executar Linux com flock real; sem
+o instrumento, falha em vez de aceitar um OK silencioso.
 """
 
 from __future__ import annotations
@@ -155,14 +155,14 @@ def _plataforma(
     """Uma /opt/plataforma de mentira, com o compose que exige os dois tokens."""
     raiz = tmp_path / "plataforma"
     (raiz / "env").mkdir(parents=True)
-    (raiz / "docker-compose.yml").write_text(COMPOSE, encoding="utf-8")
+    (raiz / "docker-compose.yml").write_bytes(COMPOSE.encode("utf-8"))
     if admin_env:
         linhas = ["DJANGO_SECRET_KEY=x\n", "SCRIPT_NAME=/admin\n"]
         if alunos is not None:
             linhas.append(f"ALUNOS_API_TOKEN={alunos}\n")
         if catalogo is not None:
             linhas.append(f"TOKEN_CATALOGO={catalogo}\n")
-        (raiz / "env" / "admin.env").write_text("".join(linhas), encoding="utf-8")
+        (raiz / "env" / "admin.env").write_bytes("".join(linhas).encode("utf-8"))
     return raiz
 
 
@@ -204,8 +204,21 @@ def _rodar(
     ambiente.pop("TOKEN_CATALOGO", None)
     ambiente.update(ajustes)
 
+    if os.name == "nt":
+        comando = [
+            "docker", "run", "--rm", "--network", "none", "--cpus", "1",
+            "--memory", "512m", "--volume", f"{tmp_path}:/ensaio",
+            "--volume", f"{SCRIPT}:/deploy.sh:ro",
+            "--env", "PATH=/ensaio/docker-de-mentira:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "--env", "PLATAFORMA_DIR=/ensaio/plataforma", "--env", f"CELULA={celula}",
+            "--env", "DOCKER_FALSO_DIARIO=/ensaio/comandos-do-docker.txt",
+            *[item for nome, valor in ajustes.items() for item in ("--env", f"{nome}={valor}")],
+            "ubuntu:24.04", "bash", "/deploy.sh",
+        ]
+    else:
+        comando = [_bash(), str(SCRIPT)]
     processo = subprocess.run(
-        [_bash(), str(SCRIPT)],
+        comando,
         input="",
         capture_output=True,
         text=True,
@@ -215,6 +228,7 @@ def _rodar(
         encoding="utf-8",
         errors="replace",
         env=ambiente,
+        timeout=45,
     )
     return processo, diario
 

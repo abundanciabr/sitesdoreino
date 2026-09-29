@@ -7,7 +7,7 @@ Ele não é um plano que pede confiança: cada alegação estrutural vem com um 
 falsificaria. A Fase 0 só termina quando o **red-team** (02-RED-TEAM.md) falha em matá-la.
 
 As competências são definidas pela tarefa, sem papéis fixos por fornecedor.
-Cada sessão segue `CLAUDE.md`, `AGENTS.md` e a ficha do trabalho que recebeu.
+Cada sessão segue `CAMINHO-DOURADO.md`, sua entrada e a ficha do trabalho que recebeu.
 O protocolo antigo da tríade está revogado em `docs/decisoes/DECISAO-triade-de-ias.md`.
 
 ## Mapa do kit
@@ -18,7 +18,7 @@ O protocolo antigo da tríade está revogado em `docs/decisoes/DECISAO-triade-de
 | `01-BRIEF-FASE-0.md` | O brief de despacho da Fase 0 (formato de despacho para agentes). |
 | `PROMPTS-INICIAIS.md` | A sequência de despachos prontos: do repo vazio ao esqueleto que anda. |
 | `02-RED-TEAM.md` | O rito de graduação: tentativas deliberadas de matar cada muralha. |
-| `CLAUDE.md` | **O Padrão de Trabalho, íntegro, na 1ª seção** (a régua de toda tarefa) + as leis de sessão. É o único documento que entra sozinho no contexto de toda sessão. |
+| `CAMINHO-DOURADO.md` | **O Padrão de Trabalho, íntegro, na 1ª seção** e a receita comum. AGENTS.md e CLAUDE.md apontam diretamente para ela; receitas técnicas sob demanda. |
 | `CONSTITUICAO.md` | A lei da plataforma (herda para todas as células). |
 | `RITOS.md` | Abertura de sessão, catraca verde/anti-thrashing, mudança de contrato, emergência 2h. |
 | `INVARIANTES.md` | Jurisprudência pré-paga: os invariantes de dinheiro, com teste-guarda ANTES da primeira feature. |
