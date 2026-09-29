@@ -1,0 +1,66 @@
+{
+  "arquivo": "20260929-162927-TAR-977-contrato_execucao",
+  "tarefa": "TAR-977",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T16:29:27.674715+00:00",
+  "quem": "codex/ci/pme03-portao-pr",
+  "contrato": {
+    "plano": "PME-03 — corte TAR-977 da continuação TAR-969",
+    "versao": 1,
+    "objetivo": "O CI recusa o HEAD do PR sem a submissão e o recibo completos do candidato realmente validado.",
+    "entregaveis": [
+      "verificar_linhagem_submissao e CLI verificar-linhagem",
+      "medição de autoria compartilhada",
+      "provas reais e regressões negativas"
+    ],
+    "escopo_incluido": [
+      "ci/fila.py",
+      "ci/tests/test_fila.py",
+      "registros próprios"
+    ],
+    "nao_objetivos": [
+      "aceite funcional e snapshot da TAR-969",
+      "editar ci/pr.py ou seus testes",
+      "editar workflow de PME-07",
+      "alterar fonte normativa de GOV"
+    ],
+    "restricoes": [
+      "principal somente leitura",
+      "sem subagentes ou troca de modelo",
+      "nenhuma escrita na TAR-969 durante catálogo ativo",
+      "preservar eventos e dependências"
+    ],
+    "decisoes_aprovadas": [
+      "mandato integral de 29/09/2026 sessão 01a0ed71-4e7f-7680-821e-4d655a7ad405",
+      "bancada pme06-candidato liberada e ramo codex/ci/pme03-portao-pr preparado pela coordenação",
+      "rito com fonte PME02 bec58f85074bbf4c9493a843dd1ee9bc82716840 e raiz explícita"
+    ],
+    "etapas": [
+      "baseline e regressões",
+      "porta de linhagem e núcleo compartilhado",
+      "validação e rito",
+      "consumidor CI existente e prova final"
+    ],
+    "criterios_entrada": [
+      "TAR-977 central copiada exatamente e reivindicada",
+      "leis lidas continuam idênticas na base 837148aca"
+    ],
+    "criterios_aceite": [
+      "primeiro HEAD sem recibo FAIL",
+      "novo código com recibo antigo FAIL",
+      "candidato completo PASS",
+      "base sincronizada legitimamente PASS",
+      "falha API/Git ou histórico raso ERROR"
+    ],
+    "evidencias_exigidas": [
+      "pytest fila com Git real",
+      "CLI positiva/negativa",
+      "muralhas e guardas",
+      "rito isolado na raiz correta",
+      "CI consumidor conferido na revisão pertinente"
+    ],
+    "condicao_encerramento": "Fonte do gate integrada e consumidor CI comprovado; este corte não conclui o aceite ou a interface da PME03.",
+    "limites_autonomia": "Apenas dois arquivos de código e registros próprios; todos os vínculos vêm do Git e da consulta real do PR.",
+    "acoes_do_mantenedor": "Nenhuma ação técnica rotineira; coordenação já autorizou o corte."
+  }
+}
