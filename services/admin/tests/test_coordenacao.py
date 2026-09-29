@@ -1,6 +1,9 @@
 """Guarda de autoridade única, idempotência, concessão e publicação na coorte."""
 
 import hashlib
+import hmac
+import os
+import secrets
 import json
 from concurrent.futures import ThreadPoolExecutor
 
@@ -29,7 +32,8 @@ PUB = {
 
 
 @pytest.fixture
-def banco_limpo():
+def banco_limpo(monkeypatch):
+    monkeypatch.setenv("COORDENACAO_RECIBOS_CHAVE", secrets.token_hex(32))
     coord.preparar()
     with coord.banco() as c:
         c.execute("DROP SCHEMA coordenacao CASCADE")
@@ -52,6 +56,24 @@ def banco_limpo():
     }
     coord.executar(pedido, OP)
     return pedido
+
+
+def recibo_de_ensaio(conteudo):
+    texto = json.dumps(
+        conteudo,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode()
+    return {
+        "conteudo": conteudo,
+        "assinatura": hmac.new(
+            bytes.fromhex(os.environ["COORDENACAO_RECIBOS_CHAVE"]),
+            texto,
+            hashlib.sha256,
+        ).hexdigest(),
+    }
 
 
 def ativo():
@@ -272,6 +294,18 @@ def test_candidato_duravel_e_publicador_independente(banco_limpo):
         "manifesto": manifesto,
         "estado_anterior": {"digest": "anterior"},
     }
+    pedido["aceitacao"] = recibo_de_ensaio(
+        {
+            "tipo": "aceitacao",
+            "coorte": "piloto",
+            "epoca": 1,
+            "celula": "admin",
+            "candidato": "cand-1",
+            "tarefa": "TAR-1",
+            "referencia": "refs/candidatos/cand-1",
+            "manifesto_sha256": coord.hash_conteudo(manifesto),
+        }
+    )
     autorizada = coord.executar(pedido, PUB)
     assert autorizada["estado"] == "autorizada"
     confirmar = {
@@ -368,3 +402,326 @@ def test_numero_nao_finito_e_entrada_invalida():
     with pytest.raises(coord.Recusa) as erro:
         coord.canonico({"checkpoint": float("nan")})
     assert erro.value.status == 422
+
+
+@pytest.mark.parametrize("estado", ["concluída", "cancelada", "bloqueada"])
+def test_aquisicao_preserva_estado_terminal_ou_bloqueio(banco_limpo, estado):
+    ativo()
+    with coord.banco() as c:
+        c.execute(
+            "UPDATE coordenacao.tarefa SET projecao=%s",
+            (coord.Jsonb({"estado": estado}),),
+        )
+    with pytest.raises(coord.Recusa, match="Estado da tarefa"):
+        adquirir()
+
+
+def test_aquisicao_recusa_dependencia_sem_prova_de_conclusao(banco_limpo):
+    ativo()
+    with coord.banco() as c:
+        c.execute(
+            "UPDATE coordenacao.tarefa SET documento=%s",
+            (coord.Jsonb({"id": "TAR-1", "depende_de": ["TAR-999"]}),),
+        )
+    with pytest.raises(coord.Recusa, match="Dependência"):
+        adquirir()
+
+
+def test_snapshot_antigo_nao_descarta_evento_posterior(banco_limpo):
+    novo = {
+        **banco_limpo,
+        "chave": "novo",
+        "origem_sha": "b" * 40,
+        "historico": banco_limpo["historico"]
+        + [
+            {
+                "id": "posterior.json",
+                "conteudo": {"tarefa": "TAR-1", "evento": "checkpoint"},
+            }
+        ],
+    }
+    coord.executar(novo, OP)
+    with pytest.raises(coord.Recusa, match="Snapshot omite"):
+        coord.executar({**banco_limpo, "chave": "regressao"}, OP)
+    with coord.banco() as c:
+        a = c.execute(
+            "SELECT origem_sha,hash_historico FROM coordenacao.autoridade"
+        ).fetchone()
+        assert a["origem_sha"] == "b" * 40 and a[
+            "hash_historico"
+        ] == coord.hash_conteudo(novo["historico"])
+        assert (
+            c.execute("SELECT count(*) AS n FROM coordenacao.historico").fetchone()["n"]
+            == 2
+        )
+
+
+def test_duas_coortes_disputam_um_publicador_por_celula(banco_limpo):
+    outra = {
+        **banco_limpo,
+        "coorte": "outra",
+        "chave": "importar-outra",
+        "tarefas": [
+            {
+                "id": "TAR-2",
+                "documento": {"id": "TAR-2"},
+                "projecao": {"estado": "na fila"},
+            }
+        ],
+        "historico": [
+            {"id": "outro.json", "conteudo": {"tarefa": "TAR-2", "evento": "criada"}}
+        ],
+    }
+    coord.executar(outra, {**OP, "coortes": ["outra"]})
+    with coord.banco() as c:
+        c.execute("UPDATE coordenacao.autoridade SET backend='postgres'")
+
+    def tentar(coorte):
+        try:
+            return coord.executar(
+                {
+                    "operacao": "adquirir_publicador",
+                    "coorte": coorte,
+                    "chave": "pub-" + coorte,
+                    "celula": "admin",
+                    "epoca": 1,
+                },
+                {**PUB, "id": "pub-" + coorte, "coortes": [coorte]},
+            )
+        except coord.Recusa:
+            return None
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        resultados = list(pool.map(tentar, ["piloto", "outra"]))
+    assert sum(r is not None for r in resultados) == 1
+
+
+def test_snapshot_de_backup_usa_mesma_visao_apesar_de_nova_escrita(banco_limpo):
+    ativo()
+    with coord.capturar_snapshot() as antes:
+        assert antes["snapshot_id"]
+        assert antes["tabelas"]["evento"]["linhas"] == 1
+        adquirir()
+        from psycopg import sql
+
+        with coord.banco() as c:
+            c.commit()
+            c.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+            c.execute(
+                sql.SQL("SET TRANSACTION SNAPSHOT {}").format(
+                    sql.Literal(antes["snapshot_id"])
+                )
+            )
+            assert (
+                c.execute("SELECT count(*) AS n FROM coordenacao.evento").fetchone()[
+                    "n"
+                ]
+                == 1
+            )
+        assert antes["tabelas"]["evento"]["linhas"] == 1
+    with coord.capturar_snapshot() as depois:
+        assert depois["tabelas"]["evento"]["linhas"] == 2
+        assert (
+            antes["tabelas"]["evento"]["sha256"]
+            != depois["tabelas"]["evento"]["sha256"]
+        )
+        assert depois["tabelas"]["outbox"]["linhas"] == 2
+
+
+def publicacao_de_ensaio():
+    ativo()
+    r = adquirir()
+    coord.executar(
+        {
+            "operacao": "candidato",
+            "coorte": "piloto",
+            "chave": "ca",
+            "tarefa": "TAR-1",
+            "epoca": 1,
+            "versao": r["versao"],
+            "concessao": r["concessao"],
+            "candidato": "cand-1",
+        },
+        EX,
+    )
+    pub = coord.executar(
+        {
+            "operacao": "adquirir_publicador",
+            "coorte": "piloto",
+            "chave": "pub",
+            "celula": "admin",
+            "epoca": 1,
+        },
+        PUB,
+    )
+    manifesto = {
+        "id": "cand-1",
+        "tarefa": "TAR-1",
+        "celula": "admin",
+        "integracao": {"revisao": "b" * 40},
+        "imagem": {"referencia": "repo/admin@sha256:" + "c" * 64},
+    }
+    p = {
+        "operacao": "autorizar_publicacao",
+        "coorte": "piloto",
+        "chave": "aut",
+        "celula": "admin",
+        "epoca": 1,
+        "concessao": pub["concessao"],
+        "candidato": "cand-1",
+        "manifesto": manifesto,
+        "estado_anterior": {"digest": "anterior"},
+    }
+    p["aceitacao"] = recibo_de_ensaio(
+        {
+            "tipo": "aceitacao",
+            "coorte": "piloto",
+            "epoca": 1,
+            "celula": "admin",
+            "candidato": "cand-1",
+            "tarefa": "TAR-1",
+            "referencia": "refs/candidatos/cand-1",
+            "manifesto_sha256": coord.hash_conteudo(manifesto),
+        }
+    )
+    return p, pub
+
+
+@pytest.mark.parametrize(
+    "falha", ["forjado", "assinatura_invalida", "manifesto", "epoca"]
+)
+def test_publicador_nao_pode_fabricar_origem(banco_limpo, falha):
+    p, _ = publicacao_de_ensaio()
+    if falha == "forjado":
+        p["aceitacao"]["assinatura"] = "0" * 64
+    elif falha == "assinatura_invalida":
+        p["aceitacao"]["assinatura"] = "é" * 64
+    elif falha == "manifesto":
+        p["manifesto"]["integracao"]["revisao"] = "d" * 40
+    else:
+        p["aceitacao"]["conteudo"]["epoca"] = 2
+    with pytest.raises(coord.Recusa) as erro:
+        coord.executar(p, PUB)
+    assert erro.value.status == 403
+    with coord.banco() as c:
+        assert (
+            c.execute("SELECT count(*) AS n FROM coordenacao.publicacao").fetchone()[
+                "n"
+            ]
+            == 0
+        )
+
+
+def test_post_direto_sem_recibo_nao_autoriza_manifesto(banco_limpo, monkeypatch):
+    p, _ = publicacao_de_ensaio()
+    del p["aceitacao"]
+    token = "publicador-fixture"
+    monkeypatch.setenv(
+        "COORDENACAO_IDENTIDADES",
+        json.dumps({hashlib.sha256(token.encode()).hexdigest(): PUB}),
+    )
+    r = Client().post(
+        "/interno/coordenacao",
+        data=json.dumps(p),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer " + token,
+    )
+    assert r.status_code == 422
+    p["aceitacao"] = {"conteudo": {}, "assinatura": "0" * 64}
+    r = Client().post(
+        "/interno/coordenacao",
+        data=json.dumps(p),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer " + token,
+    )
+    assert r.status_code == 403
+
+
+def test_reconciliacao_de_efeito_apos_lease_expirar_exige_prova_e_fencing(banco_limpo):
+    p, pub = publicacao_de_ensaio()
+    coord.executar(p, PUB)
+    with coord.banco() as c:
+        c.execute(
+            "UPDATE coordenacao.publicador SET expira_em=clock_timestamp()-interval '1 second'"
+        )
+    prova = {
+        "mutadores_parados": True,
+        "estado_observado": {
+            "candidato": "cand-1",
+            "digest": "sha256:" + "c" * 64,
+            "revisao": "b" * 40,
+        },
+    }
+    pedido = {
+        "operacao": "reconciliar_publicacao",
+        "coorte": "piloto",
+        "chave": "recon",
+        "celula": "admin",
+        "epoca": 1,
+        "publicacao": "aut",
+        "resultado": "publicada",
+        "prova": prova,
+    }
+    conteudo = {
+        "tipo": "reconciliacao",
+        "coorte": "piloto",
+        "epoca": 1,
+        "celula": "admin",
+        "publicacao": "aut",
+        "epoca_publicacao": 1,
+        "concessao": pub["concessao"],
+        "resultado": "publicada",
+        "prova_sha256": coord.hash_conteudo(prova),
+    }
+    pedido["recibo"] = recibo_de_ensaio(conteudo)
+    confirmacao = {
+        **pedido,
+        "operacao": "confirmar_publicacao",
+        "chave": "confirmar-vencida",
+        "concessao": pub["concessao"],
+    }
+    confirmacao["recibo"] = recibo_de_ensaio({**conteudo, "tipo": "confirmacao"})
+    with pytest.raises(coord.Recusa, match="perdeu a concessão"):
+        coord.executar(confirmacao, PUB)
+    reconciliador = {**PUB, "id": "receptor", "papeis": ["reconciliador"]}
+    with pytest.raises(coord.Recusa) as erro:
+        coord.executar(pedido, PUB)
+    assert erro.value.status == 403
+    resultado = coord.executar(pedido, reconciliador)
+    assert resultado["estado"] == "publicada"
+    assert coord.executar(pedido, reconciliador) == resultado
+    novo = coord.executar(
+        {
+            "operacao": "adquirir_publicador",
+            "coorte": "piloto",
+            "chave": "pub-novo",
+            "celula": "admin",
+            "epoca": 1,
+        },
+        PUB,
+    )
+    assert novo["concessao"] > pub["concessao"]
+
+
+def test_reconciliacao_sem_parada_comprovada_mantem_pendencia(banco_limpo):
+    p, pub = publicacao_de_ensaio()
+    coord.executar(p, PUB)
+    prova = {"estado_observado": {}, "mutadores_parados": False}
+    pedido = {
+        "operacao": "reconciliar_publicacao",
+        "coorte": "piloto",
+        "chave": "recon",
+        "celula": "admin",
+        "epoca": 1,
+        "publicacao": "aut",
+        "resultado": "incerta",
+        "prova": prova,
+        "recibo": {},
+    }
+    with pytest.raises(coord.Recusa, match="parada comprovada"):
+        coord.executar(pedido, {**PUB, "id": "receptor", "papeis": ["reconciliador"]})
+    with coord.banco() as c:
+        assert (
+            c.execute("SELECT estado FROM coordenacao.publicacao").fetchone()["estado"]
+            == "autorizada"
+        )

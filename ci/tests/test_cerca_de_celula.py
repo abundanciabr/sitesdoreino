@@ -110,3 +110,22 @@ def test_diff_ausente_e_error(misto):
         errors="replace",
     )
     assert r.returncode == 2
+
+
+def test_contrato_provedor_com_codigo_alheio_recusa(misto):
+    import json
+
+    repo, _ = misto
+    repo.criar_celula("alheia")
+    manifesto = json.loads(
+        (repo.raiz / "ci/manifesto-de-contratos.json").read_text(encoding="utf-8")
+    )
+    manifesto["celulas"]["alheia"] = {
+        "freeze": "not-applicable",
+        "motivo": "Não oferece HTTP neste ensaio.",
+    }
+    (repo.raiz / "ci/manifesto-de-contratos.json").write_text(
+        json.dumps(manifesto), encoding="utf-8"
+    )
+    r = cerca(repo)
+    assert r.returncode == 1 and "outro provedor" in r.stdout

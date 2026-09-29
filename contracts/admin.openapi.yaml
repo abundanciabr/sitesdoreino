@@ -2,9 +2,9 @@
 # CONTRATO DA CELULA `admin`: a PRIMEIRA porta de MAQUINA da area
 # administrativa.
 #
-# CONGELADO. Mudar este arquivo e o Rito de Contrato (RITOS.md secao 3): PR so
-# de `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores
-# em PRs seguintes. O portao que faz valer e `ci/contract_freeze.py`, que
+# CONGELADO. Mudar este arquivo segue o Rito de Contrato (RITOS.md secao 3):
+# etiqueta `contrato`, adicao compativel comprovada e exportacao viva igual ao
+# congelado permitem acompanhar somente o codigo do proprio provedor. O portao que faz valer e `ci/contract_freeze.py`, que
 # compara este arquivo com o que a celula EXPORTA de verdade, e divergencia
 # reprova.
 #
@@ -194,8 +194,9 @@ paths:
                 additionalProperties: true
                 type: object
       description: Importa snapshots enquanto Git governa. Operações PostgreSQL exigem
-        época, versão e concessão vigentes. O publicador tem concessão própria e verifica
-        o candidato assinado antes de pedir autorização.
+        época, versão e concessão vigentes. O publicador tem concessão própria. Autorizações
+        e resultados exigem recibo do receptor oficial, que verifica a origem assinada
+        e o efeito sob bloqueio de publicação.
       tags:
       - Coordenação
       requestBody:
@@ -213,6 +214,7 @@ paths:
               - $ref: '#/components/schemas/Coordenacao_autorizar_publicacao'
               - $ref: '#/components/schemas/Coordenacao_conferir_publicacao'
               - $ref: '#/components/schemas/Coordenacao_confirmar_publicacao'
+              - $ref: '#/components/schemas/Coordenacao_reconciliar_publicacao'
         required: true
 components:
   schemas:
@@ -303,6 +305,8 @@ components:
         estado_anterior:
           additionalProperties: true
           type: object
+        aceitacao:
+          $ref: '#/components/schemas/ReciboReceptor'
       required:
       - operacao
       - coorte
@@ -313,6 +317,7 @@ components:
       - candidato
       - manifesto
       - estado_anterior
+      - aceitacao
       type: object
     Coordenacao_candidato:
       additionalProperties: false
@@ -426,6 +431,8 @@ components:
         prova:
           additionalProperties: true
           type: object
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
       required:
       - operacao
       - coorte
@@ -436,6 +443,7 @@ components:
       - publicacao
       - resultado
       - prova
+      - recibo
       type: object
     Coordenacao_importar:
       additionalProperties: false
@@ -479,6 +487,40 @@ components:
       - operacao
       - coorte
       type: object
+    Coordenacao_reconciliar_publicacao:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: reconciliar_publicacao
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        celula:
+          type: string
+        epoca:
+          type: integer
+        publicacao:
+          type: string
+        resultado:
+          type: string
+        prova:
+          additionalProperties: true
+          type: object
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
+      required:
+      - operacao
+      - coorte
+      - chave
+      - celula
+      - epoca
+      - publicacao
+      - resultado
+      - prova
+      - recibo
+      type: object
     Coordenacao_renovar:
       additionalProperties: false
       properties:
@@ -505,6 +547,18 @@ components:
       - epoca
       - versao
       - concessao
+      type: object
+    ReciboReceptor:
+      additionalProperties: false
+      properties:
+        conteudo:
+          additionalProperties: true
+          type: object
+        assinatura:
+          type: string
+      required:
+      - conteudo
+      - assinatura
       type: object
   securitySchemes:
     bearerAuth:

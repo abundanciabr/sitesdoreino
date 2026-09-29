@@ -29,33 +29,27 @@ def chamar(pedido):
         "conferir_publicacao",
         "confirmar_publicacao",
     )
-    token = os.environ.get(
-        "COORDENACAO_PUBLICADOR_TOKEN" if publicador else "COORDENACAO_TOKEN", ""
+    identidade = (
+        "COORDENACAO_RECONCILIADOR_TOKEN"
+        if pedido.get("operacao") == "reconciliar_publicacao"
+        else ("COORDENACAO_PUBLICADOR_TOKEN" if publicador else "COORDENACAO_TOKEN")
     )
+    token = os.environ.get(identidade, "")
     if not token:
         raise ErroDeInstrumentacao(
             "Credencial da coordenação ausente. Provisione a identidade técnica pelo canal oficial."
         )
-    if pedido.get("operacao") == "autorizar_publicacao":
-        try:
-            from candidato import carregar, CandidatoInvalido, InstrumentoIndisponivel
-        except ImportError as erro:
+    if pedido.get("operacao") in (
+        "autorizar_publicacao",
+        "confirmar_publicacao",
+        "reconciliar_publicacao",
+    ):
+        recibo = pedido.get(
+            "aceitacao" if pedido["operacao"] == "autorizar_publicacao" else "recibo"
+        )
+        if not isinstance(recibo, dict) or set(recibo) != {"conteudo", "assinatura"}:
             raise ErroDeInstrumentacao(
-                "Verificador de candidato ausente. Instale o incremento PME06 antes de autorizar publicação."
-            ) from erro
-        if not isinstance(pedido.get("candidato"), str) or not pedido["candidato"]:
-            raise ErroDeInstrumentacao(
-                "Candidato ausente. Envie o identificador da aceitação assinada."
-            )
-        try:
-            aceito = carregar(Path(__file__).resolve().parents[1], pedido["candidato"])
-        except (CandidatoInvalido, InstrumentoIndisponivel) as erro:
-            raise ErroDeInstrumentacao(
-                "Aceitação do candidato não comprovada. Confira o verificador e a origem oficial antes de autorizar."
-            ) from erro
-        if pedido.get("manifesto") != aceito:
-            raise ErroDeInstrumentacao(
-                "Manifesto diverge da aceitação assinada. Recarregue o candidato antes de publicar."
+                "Recibo do receptor oficial ausente. Revalide origem e efeito no receptor antes de publicar."
             )
     requisicao = Request(
         url,

@@ -84,6 +84,16 @@ if (( TEM_CONTRATO == 1 )); then
         exit 1
       fi
     done
+    while IFS= read -r celula; do
+      encontrou=0
+      for contrato in "${CONTRATOS_HTTP[@]}"; do
+        [[ "$contrato" == "contracts/$celula.openapi.yaml" ]] && encontrou=1
+      done
+      if (( encontrou == 0 )); then
+        echo "❌ MURALHA: código de $celula acompanha contrato de outro provedor. Separe a mudança."
+        exit 1
+      fi
+    done <<< "$UNICAS"
     # Uma autorização de remoção não amplia esta exceção: o PR misto só cresce.
     PR_LABELS="" python ci/contrato_aditivo.py
     python - "$BASE" "${CONTRATOS_HTTP[@]}" <<'PY'

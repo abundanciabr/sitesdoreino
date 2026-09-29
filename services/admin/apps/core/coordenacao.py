@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -31,6 +32,7 @@ PAPEIS = {
     "autorizar_publicacao": "publicador",
     "conferir_publicacao": "publicador",
     "confirmar_publicacao": "publicador",
+    "reconciliar_publicacao": "reconciliador",
 }
 CAMPOS = {
     "listar": (),
@@ -48,6 +50,7 @@ CAMPOS = {
         "candidato",
         "manifesto",
         "estado_anterior",
+        "aceitacao",
     ),
     "conferir_publicacao": (
         "celula",
@@ -64,6 +67,16 @@ CAMPOS = {
         "publicacao",
         "resultado",
         "prova",
+        "recibo",
+    ),
+    "reconciliar_publicacao": (
+        "chave",
+        "celula",
+        "epoca",
+        "publicacao",
+        "resultado",
+        "prova",
+        "recibo",
     ),
 }
 
@@ -125,6 +138,42 @@ def preparar():
             Path(__file__).with_suffix(".sql").read_text(encoding="utf-8-sig")
         )
     return {"estado": "PASS", "banco": "coordenacao_db"}
+
+
+@contextmanager
+def capturar_snapshot():
+    """Mantém a visão do pg_dump --snapshot e dos hashes até o receptor terminar."""
+    with banco() as c:
+        c.commit()
+        c.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        c.execute("SET LOCAL TIME ZONE 'UTC'")
+        snapshot = c.execute("SELECT pg_export_snapshot() AS id").fetchone()["id"]
+        tabelas = {}
+        for nome, ordem in (
+            ("autoridade", "coorte"),
+            ("tarefa", "id"),
+            ("historico", "id"),
+            ("operacao", "coorte,chave"),
+            ("evento", "id"),
+            ("outbox", "evento"),
+            ("candidato", "id"),
+            ("publicador", "celula"),
+            ("publicacao", "id"),
+        ):
+            linhas = [
+                item["linha"]
+                for item in c.execute(
+                    f"SELECT to_jsonb(t) AS linha FROM coordenacao.{nome} t ORDER BY {ordem}"
+                ).fetchall()
+            ]
+            tabelas[nome] = {"linhas": len(linhas), "sha256": hash_conteudo(linhas)}
+        autoridades = [
+            item["linha"]
+            for item in c.execute(
+                "SELECT to_jsonb(a) AS linha FROM coordenacao.autoridade a ORDER BY coorte"
+            ).fetchall()
+        ]
+        yield {"snapshot_id": snapshot, "autoridades": autoridades, "tabelas": tabelas}
 
 
 def identificar(token):
@@ -272,6 +321,95 @@ def _publicacao(c, p, ator):
     return registro
 
 
+def _verificar_recibo(recebido, esperado):
+    chave = os.environ.get("COORDENACAO_RECIBOS_CHAVE", "")
+    if not re.fullmatch("[0-9a-f]{64}", chave):
+        raise Recusa(
+            "Emissor de recibos ausente. Provisione a chave de par do receptor oficial.",
+            503,
+        )
+    if (
+        not isinstance(recebido, dict)
+        or set(recebido) != {"conteudo", "assinatura"}
+        or recebido["conteudo"] != esperado
+        or not isinstance(recebido["assinatura"], str)
+        or not re.fullmatch("[0-9a-f]{64}", recebido["assinatura"])
+    ):
+        raise Recusa(
+            "Recibo não comprova esta operação. Peça a revalidação ao receptor oficial.",
+            403,
+        )
+    assinatura = hmac.new(
+        bytes.fromhex(chave), canonico(esperado).encode(), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(assinatura, recebido["assinatura"]):
+        raise Recusa(
+            "Assinatura do recibo recusada. Revalide pelo receptor oficial antes do efeito.",
+            403,
+        )
+
+
+def _conteudo_aceitacao(p, tarefa):
+    return {
+        "tipo": "aceitacao",
+        "coorte": p["coorte"],
+        "epoca": p["epoca"],
+        "celula": p["celula"],
+        "candidato": p["candidato"],
+        "tarefa": tarefa,
+        "referencia": "refs/candidatos/" + p["candidato"],
+        "manifesto_sha256": hash_conteudo(p["manifesto"]),
+    }
+
+
+def _conteudo_resultado(p, registro, tipo):
+    return {
+        "tipo": tipo,
+        "coorte": p["coorte"],
+        "epoca": p["epoca"],
+        "celula": p["celula"],
+        "publicacao": registro["id"],
+        "epoca_publicacao": registro["epoca"],
+        "concessao": registro["concessao"],
+        "resultado": p["resultado"],
+        "prova_sha256": hash_conteudo(p["prova"]),
+    }
+
+
+def _validar_resultado(p, registro, manifesto, reconciliacao=False):
+    prova = p["prova"]
+    if (
+        p["resultado"] not in ("publicada", "falhou", "incerta")
+        or not isinstance(prova, dict)
+        or not isinstance(prova.get("estado_observado"), dict)
+    ):
+        raise Recusa(
+            "Resultado exige estado observado pelo receptor. Reconcilie o efeito real antes de confirmar.",
+            422,
+        )
+    if reconciliacao and prova.get("mutadores_parados") is not True:
+        raise Recusa(
+            "Reconciliação exige parada comprovada sob a exclusão comum. Pare e observe os mutadores antes de retomar."
+        )
+    if p["resultado"] == "publicada":
+        esperado = {
+            "candidato": manifesto["id"],
+            "digest": manifesto["imagem"]["referencia"].split("@", 1)[1],
+            "revisao": manifesto["integracao"]["revisao"],
+        }
+        if prova["estado_observado"] != esperado:
+            raise Recusa(
+                "Estado observado não corresponde ao candidato autorizado. Preserve o resultado incerto e investigue."
+            )
+    elif (
+        p["resultado"] == "falhou"
+        and prova["estado_observado"] != registro["estado_anterior"]
+    ):
+        raise Recusa(
+            "Falha não comprovou preservação do estado anterior. Registre resultado incerto e investigue."
+        )
+
+
 def _validar_snapshot(p):
     if (
         not re.fullmatch("[0-9a-f]{40}", str(p["origem_sha"]))
@@ -372,7 +510,13 @@ def executar(p, identidade):
                 p.get("tarefa"),
                 ator,
                 op,
-                Jsonb({"chave": p["chave"], "resultado": resultado}),
+                Jsonb(
+                    {
+                        "chave": p["chave"],
+                        "resultado": resultado,
+                        "recibo": p.get("aceitacao", p.get("recibo")),
+                    }
+                ),
             ),
         ).fetchone()["id"]
         c.execute("INSERT INTO coordenacao.outbox(evento) VALUES(%s)", (evento,))
@@ -386,6 +530,29 @@ def executar(p, identidade):
 def _aplicar(c, p, ator, autoridade):
     op = p["operacao"]
     if op == "importar":
+        anteriores = c.execute(
+            "SELECT id,projecao FROM coordenacao.tarefa WHERE coorte=%s", (p["coorte"],)
+        ).fetchall()
+        novas = {item["id"]: item for item in p["tarefas"]}
+        ids_historicos = {item["id"] for item in p["historico"]}
+        preservados = c.execute(
+            "SELECT h.id FROM coordenacao.historico h JOIN coordenacao.tarefa t ON t.id=h.tarefa WHERE t.coorte=%s",
+            (p["coorte"],),
+        ).fetchall()
+        if any(t["id"] not in novas for t in anteriores) or any(
+            h["id"] not in ids_historicos for h in preservados
+        ):
+            raise Recusa(
+                "Snapshot omite tarefas ou eventos já importados. Reexporte o histórico completo antes de retomar."
+            )
+        if any(
+            t["projecao"].get("estado") in ("concluída", "cancelada")
+            and novas[t["id"]]["projecao"].get("estado") != t["projecao"]["estado"]
+            for t in anteriores
+        ):
+            raise Recusa(
+                "Snapshot tenta reabrir estado terminal. Preserve a projeção e reconcilie a origem."
+            )
         if autoridade["backend"] != "git":
             raise Recusa(
                 "Importação recusada após transferência. Exporte e reconcilie as novas escritas."
@@ -398,15 +565,19 @@ def _aplicar(c, p, ator, autoridade):
                 raise Recusa(
                     "Tarefa pertence a outra coorte. Preserve sua autoridade original."
                 )
-            c.execute(
-                "INSERT INTO coordenacao.tarefa(id,coorte,documento,projecao) VALUES(%s,%s,%s,%s) ON CONFLICT(id) DO UPDATE SET documento=EXCLUDED.documento,projecao=EXCLUDED.projecao",
+            gravada = c.execute(
+                "INSERT INTO coordenacao.tarefa(id,coorte,documento,projecao) VALUES(%s,%s,%s,%s) ON CONFLICT(id) DO UPDATE SET documento=EXCLUDED.documento,projecao=EXCLUDED.projecao WHERE coordenacao.tarefa.coorte=EXCLUDED.coorte RETURNING id",
                 (
                     item["id"],
                     p["coorte"],
                     Jsonb(item["documento"]),
                     Jsonb(item["projecao"]),
                 ),
-            )
+            ).fetchone()
+            if not gravada:
+                raise Recusa(
+                    "Tarefa disputada por outra coorte. Preserve sua autoridade original."
+                )
         for item in p["historico"]:
             digest = hash_conteudo(item["conteudo"])
             anterior = c.execute(
@@ -439,6 +610,31 @@ def _aplicar(c, p, ator, autoridade):
     if op in ("adquirir", "renovar", "checkpoint", "candidato"):
         tarefa = _tarefa(c, p)
         if op == "adquirir":
+            if tarefa["projecao"].get("estado") not in (
+                "na fila",
+                "reivindicada",
+                "em execução",
+            ):
+                raise Recusa(
+                    "Estado da tarefa não permite aquisição. Reconcilie bloqueio ou preserve o estado terminal."
+                )
+            dependencias = tarefa["documento"].get("depende_de", [])
+            if not isinstance(dependencias, list) or not all(
+                isinstance(d, str) for d in dependencias
+            ):
+                raise Recusa(
+                    "Dependências inválidas. Corrija o documento canônico antes de adquirir.",
+                    422,
+                )
+            for dependencia in dependencias:
+                estado = c.execute(
+                    "SELECT projecao FROM coordenacao.tarefa WHERE id=%s",
+                    (dependencia,),
+                ).fetchone()
+                if not estado or estado["projecao"].get("estado") != "concluída":
+                    raise Recusa(
+                        "Dependência ainda não concluída. Reconcilie sua projeção antes de adquirir a tarefa."
+                    )
             if tarefa["dono"] and tarefa["vigente"]:
                 raise Recusa(
                     "Tarefa ocupada. Escolha outra tarefa ou reconcilie a tentativa vigente."
@@ -473,6 +669,10 @@ def _aplicar(c, p, ator, autoridade):
             (p["tarefa"],),
         ).fetchone() | {"epoca": p["epoca"]}
     if op == "adquirir_publicador":
+        c.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
+            ("coordenacao/publicador/" + p["celula"],),
+        )
         atual = c.execute(
             "SELECT *,expira_em>clock_timestamp() AS vigente FROM coordenacao.publicador WHERE celula=%s FOR UPDATE",
             (p["celula"],),
@@ -493,6 +693,13 @@ def _aplicar(c, p, ator, autoridade):
         _publicador(c, p, ator)
         candidato = _candidato(c, p)
         manifesto = p["manifesto"]
+        _verificar_recibo(p["aceitacao"], _conteudo_aceitacao(p, candidato["tarefa"]))
+        if "imagem" in candidato["manifesto"] and hash_conteudo(
+            candidato["manifesto"]
+        ) != hash_conteudo(manifesto):
+            raise Recusa(
+                "Aceitação já registrada com conteúdo diferente. Preserve o candidato durável e investigue a origem."
+            )
         if (
             not isinstance(manifesto, dict)
             or manifesto.get("id") != p["candidato"]
@@ -544,6 +751,34 @@ def _aplicar(c, p, ator, autoridade):
                 Jsonb(p["estado_anterior"]),
             ),
         ).fetchone()
+
+    if op == "reconciliar_publicacao":
+        c.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
+            ("coordenacao/publicador/" + p["celula"],),
+        )
+        registro = c.execute(
+            "SELECT pu.*,ca.manifesto FROM coordenacao.publicacao pu JOIN coordenacao.candidato ca ON ca.id=pu.candidato JOIN coordenacao.tarefa t ON t.id=ca.tarefa WHERE pu.id=%s AND pu.celula=%s AND t.coorte=%s FOR UPDATE OF pu",
+            (p["publicacao"], p["celula"], p["coorte"]),
+        ).fetchone()
+        if not registro or registro["estado"] not in ("autorizada", "incerta"):
+            raise Recusa(
+                "Publicação sem pendência nesta coorte. Consulte o estado antes de reconciliar."
+            )
+        _validar_resultado(p, registro, registro["manifesto"], reconciliacao=True)
+        _verificar_recibo(
+            p["recibo"], _conteudo_resultado(p, registro, "reconciliacao")
+        )
+        resultado = c.execute(
+            "UPDATE coordenacao.publicacao SET estado=%s,prova=%s WHERE id=%s RETURNING id,estado",
+            (p["resultado"], Jsonb(p["prova"]), registro["id"]),
+        ).fetchone()
+        if p["resultado"] != "incerta":
+            c.execute(
+                "UPDATE coordenacao.publicador SET expira_em=clock_timestamp(),concessao=concessao+1 WHERE celula=%s",
+                (p["celula"],),
+            )
+        return resultado
     registro = _publicacao(c, p, ator)
     if (
         registro["estado"] not in ("autorizada", "incerta")
@@ -554,6 +789,9 @@ def _aplicar(c, p, ator, autoridade):
         raise Recusa(
             "Resultado sem prova ou publicação já terminal. Consulte e reconcilie o efeito real."
         )
+    candidato = _candidato(c, dict(p, candidato=registro["candidato"]))
+    _validar_resultado(p, registro, candidato["manifesto"])
+    _verificar_recibo(p["recibo"], _conteudo_resultado(p, registro, "confirmacao"))
     return c.execute(
         "UPDATE coordenacao.publicacao SET estado=%s,prova=%s WHERE id=%s RETURNING id,estado",
         (p["resultado"], Jsonb(p["prova"]), registro["id"]),
@@ -572,6 +810,11 @@ class PedidoFechado(Schema):
     model_config = {"extra": "forbid"}
 
 
+class ReciboReceptor(PedidoFechado):
+    conteudo: dict
+    assinatura: str
+
+
 TIPOS = {
     "epoca": StrictInt,
     "versao": StrictInt,
@@ -582,6 +825,8 @@ TIPOS = {
     "manifesto": dict,
     "estado_anterior": dict,
     "prova": dict,
+    "aceitacao": ReciboReceptor,
+    "recibo": ReciboReceptor,
 }
 PEDIDOS = tuple(
     create_model(
@@ -602,7 +847,7 @@ router = Router(tags=["Coordenação"], auth=CoordenacaoAuth())
     response={200: dict, 401: dict, 403: dict, 409: dict, 422: dict, 503: dict},
     operation_id="coordenarEntrega",
     summary="Coordenação durável por função e coorte",
-    description="Importa snapshots enquanto Git governa. Operações PostgreSQL exigem época, versão e concessão vigentes. O publicador tem concessão própria e verifica o candidato assinado antes de pedir autorização.",
+    description="Importa snapshots enquanto Git governa. Operações PostgreSQL exigem época, versão e concessão vigentes. O publicador tem concessão própria. Autorizações e resultados exigem recibo do receptor oficial, que verifica a origem assinada e o efeito sob bloqueio de publicação.",
 )
 def operar(request, pedido: PedidoCoordenacao):
     try:
