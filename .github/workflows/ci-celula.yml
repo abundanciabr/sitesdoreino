@@ -128,6 +128,19 @@ jobs:
           python-version: '3.12'
       - name: Instalar dependências da célula
         run: pip install -r "services/$CELULA/requirements.txt"
+      - name: Banco e papel exclusivos para ensaio da coordenação
+        if: matrix.celula == 'admin'
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          SENHA_COORDENACAO="$(python -c 'import secrets; print(secrets.token_hex(24))')"
+          echo "::add-mask::$SENHA_COORDENACAO"
+          psql -h localhost -U ci -d ci_db -v ON_ERROR_STOP=1 --set=senha="$SENHA_COORDENACAO" <<'SQL'
+          SELECT format('CREATE ROLE coordenacao_user LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'senha') \gexec
+          CREATE DATABASE coordenacao_db OWNER coordenacao_user;
+          SQL
+          printf 'COORDENACAO_DATABASE_URL=postgresql://coordenacao_user:%s@localhost:5432/coordenacao_db\n' "$SENHA_COORDENACAO" >> "$GITHUB_ENV"
       - name: CI da célula (lint + import-linter + type + testes + freeze de contrato)
         run: make -C "services/$CELULA" ci
       - name: Cross-smoke Pix↔Cartão (só na fortaleza)

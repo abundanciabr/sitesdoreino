@@ -11,18 +11,53 @@ jobs:
   muralhas:
     name: muralhas
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     env:
       BASE_REF: origin/${{ github.base_ref }}
       PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+      DATABASE_URL: 'sqlite:///:memory:'
+      DJANGO_SECRET_KEY: ci-apenas-freeze-misto
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Leitor da fonte de linhagem
+        run: python -m pip install --quiet PyYAML==6.0.2
+      - name: Conferir a implementação-base da linhagem
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: git worktree add --detach "$RUNNER_TEMP/linhagem-base" "$PR_BASE"
+      - name: Conferir a linhagem da submissão no HEAD real
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMERO: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: python -I "$RUNNER_TEMP/linhagem-base/ci/fila.py" verificar-linhagem --pr "$PR_NUMERO" --head "$PR_HEAD" --checkout "$GITHUB_WORKSPACE"
       - name: Dependências dos portões
         run: python -m pip install --quiet -r requirements-ci.txt
+      - name: Dependências para conferir contrato junto ao provedor
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+          caminhos = subprocess.check_output(["git", "diff", "--name-only", os.environ["BASE_REF"], "HEAD"], text=True).splitlines()
+          celulas = set()
+          for caminho in caminhos:
+              contrato = re.fullmatch(r"contracts/([a-z][a-z0-9_-]*)\.openapi\.yaml", caminho)
+              if contrato and any(p.startswith(f"services/{contrato[1]}/") for p in caminhos):
+                  celulas.add(contrato[1])
+          for celula in sorted(celulas):
+              requisitos = Path("services") / celula / "requirements.txt"
+              subprocess.run(["python", "-m", "pip", "install", "--quiet", "-r", str(requisitos)], check=True)
+          PY
       # UMA fonte de verdade para quais muralhas rodam e o que cada estado
       # significa: ci/ci.py. O YAML cuida de checkout, Python e env — não de
       # decidir PASS/FAIL. Antes, este workflow listava os três scripts à mão,

@@ -193,12 +193,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
+      checks: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Leitor da fonte de aceite
+        run: python -m pip install --quiet PyYAML==6.0.2
       - name: Preparar dados do painel
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: needs.detectar.outputs.painel_dados == 'true'
         run: |
           set -eu
@@ -247,6 +256,8 @@ jobs:
             exit 1
           fi
       - name: Preparar dados da fila
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: needs.detectar.outputs.fila_dados == 'true'
         run: |
           set -eu
@@ -309,6 +320,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
+      checks: read
+      pull-requests: read
       packages: write
     strategy:
       max-parallel: 1
@@ -324,15 +338,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        if: matrix.celula == 'admin'
+        with:
+          python-version: '3.12'
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Embutir snapshot de segurança dos dados admin no build (só a célula admin)
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: matrix.celula == 'admin'
         run: |
           set -eu
+          python -m pip install --quiet PyYAML==6.0.2
           # Fallback da MIGRACAO INICIAL. A publicação normal de painel/fila
           # mora no job `publicar-dados-admin` e não reconstrói imagem. Este
           # snapshot só protege a janela em que a imagem nova chega antes de o
