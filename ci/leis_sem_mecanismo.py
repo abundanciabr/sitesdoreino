@@ -72,7 +72,6 @@ DIVIDA = "ci/leis-sem-mecanismo.txt"
 # e o censo passaria a mentir por omissão, que é a própria doença.
 ARQUIVOS_LEI = {
     "CONSTITUICAO.md": r"^## (Lei \d+[^\n]*)$",
-    "RITOS.md": r"^## (§\d+[^\n]*)$",
     "CAMINHO-DOURADO.md": r"^## ([^\n]+)$",
 }
 

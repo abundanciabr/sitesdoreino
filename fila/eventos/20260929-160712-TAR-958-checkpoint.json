@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-160712-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:07:12.659713+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "Adendo em integracao; confirmacao especifica do controle de permissoes recebida",
+  "ultimo_avanco": "Mantenedor respondeu Autorizo aplicar esse patch ao arquivo origem-base.patch SHA2566E14D784C71E316944254287DA6BC681C1D16710FEE33E8AA0B8D65B3FD66355, dois arquivos ci/padrao_de_trabalho.py e seu teste, sem alterar ruleset. FrenteGOV recebeu resposta e reaplicara pela mesma revisao.",
+  "proxima_acao": "Aplicar somente patch autorizado se controle permitir; validar fonte aplicada; continuar piloto real e costuras03-08",
+  "verificacoes": [
+    "Pergunta e resposta autenticadas na conversa01a0ed71; arquivo lido e hash conferido por Get-FileHash; recusa anterior preservada, nenhuma troca de ferramenta para contornar"
+  ]
+}

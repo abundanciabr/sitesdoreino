@@ -318,12 +318,12 @@ def test_plano_nao_para_em_sombra_nem_devolve_o_pouso() -> None:
 
 
 def test_regra_de_parada_preserva_arquivos_e_commits() -> None:
-    arquivos = ('RITOS.md', 'PLAYBOOK.md', 'RUNBOOK-LOTES.md',
+    arquivos = ('CAMINHO-DOURADO.md', 'PLAYBOOK.md', 'RUNBOOK-LOTES.md',
                 '.claude/agents/despacho.md', 'painel/ia/01-leis-ritos-e-invariantes.md')
     for nome in arquivos:
         texto = (RAIZ / nome).read_text(encoding='utf-8')
         assert 'reset --hard' not in texto, f'{nome}: a parada não pode apagar trabalho'
-        assert 'preserve os arquivos e commits' in texto, f'{nome}: a parada precisa preservar a bancada'
+        assert re.search(r'preserv(?:e|a)(?: os)?\s+(?:arquivos e commits|commits e arquivos)', texto, re.I), f'{nome}: a parada precisa preservar a bancada'
 
 
 # Fontes operacionais, incluindo moldes que voltam a virar instruções.
@@ -361,7 +361,7 @@ def test_escrivao_nao_repete_fechamento_automatizado():
 
 
 def test_receitas_ativas_nao_reconstroem_abertura_nem_merge():
-    for nome in ("ARMADILHAS.md", "RITOS.md", "docs/despachos/DESPACHO-PARTE-DO-SITE.md",
+    for nome in ("ARMADILHAS.md", "CAMINHO-DOURADO.md", "docs/despachos/DESPACHO-PARTE-DO-SITE.md",
                  "docs/caixa-de-sugestoes/MODELO-DESPACHO.md"):
         texto = (RAIZ / nome).read_text(encoding="utf-8")
         assert "git worktree add" not in texto, nome

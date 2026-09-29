@@ -1,0 +1,63 @@
+{
+  "arquivo": "20260929-191145-TAR-992-contrato_execucao",
+  "tarefa": "TAR-992",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T19:11:45.880298+00:00",
+  "quem": "despacho-ci-barreira-coorte",
+  "contrato": {
+    "plano": "PME05-I1-TAR-992-barreira-coorte",
+    "versao": 1,
+    "objetivo": "Impedir que claim Git piloto e pausa da mesma coorte avancem sem disputar a mesma referencia CAS, antes de qualquer transferencia para PostgreSQL.",
+    "entregaveis": [
+      "Helper CAS de claim/pausa e testes bare Git, seguido da costura dos receptores inevitaveis apos liberacao TAR-969.",
+      "PR Draft-first com provas de corrida e limite do cliente antigo, sem ativar coorte real."
+    ],
+    "escopo_incluido": [
+      "Inicialmente somente ci/reservar.py e ci/tests/test_reservar.py mais tarefa/eventos/recibo proprios.",
+      "Apos liberacao expressa: fila/coortes/piloto.json, ci/fila.py, ci/muralha-da-fila.sh, ci/mergear.py, ci/tests/test_fila.py e ci/tests/test_mergear.py."
+    ],
+    "nao_objetivos": [
+      "Nao ativar TAR-968/TAR-975, ref remota real ou autoridade PostgreSQL.",
+      "Nao editar ci/pr.py, publicador TAR-990, testemunho TAR-982 nem arquivos de TAR-969 antes de liberacao.",
+      "Nao afirmar que CAS de biblioteca revoga cliente antigo."
+    ],
+    "restricoes": [
+      "Maximo oito alvos tecnicos no incremento e apenas dois antes da liberacao.",
+      "Claims e pausa disputam refs/coordenacao/barreira/piloto com lease e push --atomic para reserva da tarefa; nonce evita falso sucesso.",
+      "Erro ou resposta perdida exige reler barreira e reserva; ambiguidade recusa efeito piloto.",
+      "Coorte e digest pertencem ao manifesto, nunca sao decisao do cliente; nao pilota conserva semantica Git."
+    ],
+    "decisoes_aprovadas": [
+      "Mandato direto do mantenedor em 29/09 autoriza programa integral e alteracoes protegidas pertinentes sem nova aprovacao, sem custo novo/perda de dados/atalhos de acesso.",
+      "Coordenador /root criou TAR-992, reservou pme-barreira-coorte e autorizou somente dois alvos iniciais ate liberar TAR-969.",
+      "A integracao deste I1 nao e corte; coorte Git ou pausada e nenhuma escrita PG."
+    ],
+    "etapas": [
+      "Abrir sessao em bancada exclusiva, reivindicar e contratar antes de codigo.",
+      "Provar atomicidade real claim/pausa em bare Git, resposta perdida, claim expirado, manifesto divergente e nao piloto.",
+      "Provar que cliente antigo sem barreira ainda cria reserva e definir rejeicao no receptor inevitavel com drenagem.",
+      "Apos liberacao expressa, ligar fila/muralha/merge e testar efeitos antigos antes de publica-la.",
+      "Revisar, publicar PR Draft-first e medir portoes sem confundir integracao com transferencia."
+    ],
+    "criterios_entrada": [
+      "Ramo codex/ci/pme-barreira-coorte em main atual e worktree exclusiva limpa.",
+      "Tarefa e explicacao TAR-992 copiadas com hash identico, reivindicacao atomica obtida.",
+      "Somente dois alvos de codigo livres antes da liberacao TAR-969."
+    ],
+    "criterios_aceite": [
+      "Duas corridas reais CAS em bare remoto produzem no maximo um vencedor por barreira/reserva.",
+      "Resposta perdida e claim vencido nao criam sucesso falso; coorte divergente fecha caminho piloto.",
+      "Cliente antigo e PR/job ja em voo sao recusados por receptores inevitaveis antes de qualquer pausa segura.",
+      "Tarefa fora da coorte segue semantica vigente; nenhum corte de autoridade neste I1."
+    ],
+    "evidencias_exigidas": [
+      "Comandos/testes de dois bare remotos e resultado real dos negativos.",
+      "Prova que cliente antigo atravessa CAS isolado e prova de rejeicao posterior em muralha/merge.",
+      "Revisao independente de concorrencia, diff/mandato literal ci/ fila/ e recibo tipo entrega.",
+      "Checks remotos e integracao/publicacao medidos separadamente."
+    ],
+    "condicao_encerramento": "TAR-992 apenas apos receptor real recusar efeito antigo, testes de corrida e integracao oficial; PME05 permanece aberta ate transferencia posterior com export/import/testemunho.",
+    "limites_autonomia": "Ate liberacao expressa TAR-969, editar somente reservar.py e test_reservar.py; nunca ativar coorte real ou cortar autoridade sem drenagem conferida pelo root.",
+    "acoes_do_mantenedor": "Nenhuma agora; as autorizacoes do mandato existente cobrem I1. Coordenacao root libera alvos compartilhados e confere drenagem dos pilotos."
+  }
+}

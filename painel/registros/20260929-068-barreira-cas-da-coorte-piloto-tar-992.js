@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-068-barreira-cas-da-coorte-piloto-tar-992",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "Barreira CAS da coorte piloto (TAR-992)",
+  detalhe: "Reserva e pouso disputam a pausa no mesmo CAS; efeito incerto não libera o corte. Coorte piloto inativa.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2358. Validação local: árvore 40f7b0ed26b8512cd8e4f367be3fbe721187aec6; commit 23bdf67c7e43f856861adef5032e0cb872a53d4b; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-992",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

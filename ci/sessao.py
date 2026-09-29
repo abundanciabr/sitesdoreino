@@ -1,4 +1,4 @@
-"""BOOTSTRAP DE SESSÃO — o RITOS.md §1 inteiro em UM comando.
+"""BOOTSTRAP DE SESSÃO — a receita do CAMINHO-DOURADO.md em um comando.
 
     make sessao CELULA=quiz TAREFA=fuso-horario TAR=178
     ==  python ci/sessao.py --celula quiz --tarefa fuso-horario --tar 178
@@ -42,7 +42,7 @@ duplica nada — o que já existe é reusado, e reusar não é falhar):
     11. python ci/doctor.py
     12. baseline da main isolada: `make ci` da célula, com log completo e cache
         por revisão e ambiente; as mudanças da tarefa têm validação própria
-    e então imprime a Declaração de Abertura do RITOS §1 já preenchida, e
+    e então imprime a Declaração de Abertura da receita vigente já preenchida, e
     fecha com `BANCADA PRONTA: <caminho absoluto>` para o robô copiar.
 
 Cada passo diz `PASS` quando termina, e o número `[n/N]` conta os passos DESTA
@@ -458,7 +458,7 @@ class Plano:
 
     @property
     def quem_no_balcao(self) -> str:
-        """Quem está pegando a tarefa, no vocabulário do RITOS §5 peça 1."""
+        """Quem está pegando a tarefa, no vocabulário da fila vigente."""
         return f"despacho-{self.celula}-{self.tarefa}"
 
     @property
@@ -653,11 +653,11 @@ def resumo_do_baseline(saida: str) -> str:
 
 
 def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", estado_git: str = "limpo", metodo_baseline: str = "`make ci`") -> str:
-    """A Declaração de Abertura do RITOS §1, em UMA linha, pronta para colar."""
+    """A declaração de abertura da receita vigente, em uma linha."""
     primeira = (
-        f"Leituras exigidas: CONSTITUICAO.md e {constituicao_da_celula}."
+        f"Leituras exigidas: CAMINHO-DOURADO.md, CONSTITUICAO.md e {constituicao_da_celula}."
         if constituicao_da_celula
-        else "Leituras exigidas: CONSTITUICAO.md e RITOS.md §1."
+        else "Leituras exigidas: CAMINHO-DOURADO.md e CONSTITUICAO.md."
     )
     frase = plano.frase or plano.tarefa_da_fila or "não informada; complete o brief antes de editar"
     # Sem ambiente não houve baseline, e afirmar um seria assinar o que não se
@@ -678,7 +678,7 @@ def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", e
 def cabecalho(plano: Plano) -> str:
     """O plano inteiro em texto, antes de qualquer efeito colateral."""
     linhas = [
-        "SITE DO REINO — BOOTSTRAP DE SESSÃO (RITOS.md §1)",
+        "SITE DO REINO — BOOTSTRAP DE SESSÃO (CAMINHO-DOURADO.md)",
         "",
         f"  célula        {plano.celula}",
         f"  tarefa        {plano.tarefa}",
@@ -712,7 +712,7 @@ def moldura_da_declaracao(texto: str) -> str:
         [
             "",
             risca,
-            "DECLARAÇÃO DE ABERTURA (RITOS.md §1) — primeira linha da sua primeira",
+            "DECLARAÇÃO DE ABERTURA (CAMINHO-DOURADO.md) — primeira linha da sua primeira",
             "resposta. Troque só a frase final pela tarefa do despacho.",
             risca,
             texto,
@@ -2406,12 +2406,12 @@ def contexto_direcionado(
     from licao_do_caminho import licoes_do_caminho
     from sino_das_armadilhas import carregar_sinais, reconhecer, resumo_da_armadilha
 
-    globais = [nome for nome in ("CLAUDE.md", "AGENTS.md") if (raiz / nome).is_file()]
+    globais = [nome for nome in ("AGENTS.md", "CLAUDE.md") if (raiz / nome).is_file()]
     limites = []
     if not globais:
         limites.append("Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
                        "confira o checkout e as instruções da sessão antes de editar.")
-    candidatas = [*globais, "CAMINHO-DOURADO.md", "CONSTITUICAO.md", "RITOS.md",
+    candidatas = [*globais, "CAMINHO-DOURADO.md", "CONSTITUICAO.md",
                   "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
     for caminho in caminhos:
         partes = Path(caminho.replace("\\", "/")).parts
@@ -2532,7 +2532,7 @@ def emitir_contexto(plano: Plano, tentativa: str, pacote: str, *, checkout=None)
 
 def construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Prepara uma sessão de agente inteira (RITOS.md §1) em um comando."
+        description="Prepara uma sessão de agente pela receita do CAMINHO-DOURADO.md."
     )
     parser.add_argument("--celula", required=True, help="nome da célula em services/")
     parser.add_argument(

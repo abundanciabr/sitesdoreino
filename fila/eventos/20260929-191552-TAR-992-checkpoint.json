@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-191552-TAR-992-checkpoint",
+  "tarefa": "TAR-992",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T19:15:52.575783+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME05: liberar integracao da barreira apos origem969 integrada",
+  "ultimo_avanco": "API confirmou PR2354 MERGED em19:13:41Z, merge debe0faf7e00de1697819d60a6f7b3c0d23c731b; autor03 prossegue verificacoes de publicacao, sem codigo novo autorizado",
+  "proxima_acao": "Liberar propriedade exclusiva para05/TAR992 dos seis alvos restantes do brief: fila/coortes/piloto.json, ci/fila.py, ci/muralha-da-fila.sh, ci/mergear.py, ci/tests/test_fila.py, ci/tests/test_mergear.py; incorporar origem969 antes de editar e registrar contrato atualizado",
+  "verificacoes": [
+    "Preservar integralmente aceite/proveniencia e retomada de969; auditor09 confirmou prioridade atual de merge funcionando nos4casos, portanto nao alterar sua politica; recusa auto-review do patchCAS continua sujeita ao mesmo controle e mandato documentado"
+  ]
+}
