@@ -1518,6 +1518,8 @@ def test_limite_do_recibo_conta_bytes_e_preserva_campos(tmp_path, bytes_totais):
 @pytest.mark.parametrize("remoto", [
     "https://github.com/abundanciabr/sitesdoreino.git",
     "git@github.com:abundanciabr/sitesdoreino.git",
+    "ssh://git@github.com/abundanciabr/sitesdoreino.git",
+    "ssh://git@github.com:22/abundanciabr/sitesdoreino.git",
 ])
 def test_orcamento_minimo_nao_cria_efeito_remoto(tmp_path, remoto):
     raiz = bancada(tmp_path)

@@ -363,6 +363,8 @@ def _conferir_orcamento_do_recibo(raiz, pedido, correr, dia, area, commit, quant
     achado = re.fullmatch(r"https://([^/@]+/[\w.-]+/[\w.-]+?)(?:\.git)?", remoto)
     if not achado:
         achado = re.fullmatch(r"git@([^:]+):([\w.-]+/[\w.-]+?)(?:\.git)?", remoto)
+        if not achado:
+            achado = re.fullmatch(r"ssh://git@([^/:]+)(?::\d+)?/([\w.-]+/[\w.-]+?)(?:\.git)?", remoto)
         repositorio = f"{achado[1]}/{achado[2]}" if achado else None
     else:
         repositorio = achado[1]
