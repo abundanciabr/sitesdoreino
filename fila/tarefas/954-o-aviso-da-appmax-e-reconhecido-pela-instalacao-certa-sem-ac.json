@@ -1,0 +1,19 @@
+{
+  "arquivo": "954-o-aviso-da-appmax-e-reconhecido-pela-instalacao-certa-sem-ac",
+  "id": "TAR-954",
+  "titulo": "O aviso da Appmax é reconhecido pela instalação certa, sem aceitar aviso falso",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "testes com aviso fictício no formato real, vermelho antes e verde depois com mutação, recusa contada sem dado pessoal, e um aviso real de compra de teste gravado na caixa de entrada em produção",
+  "despacho": "O aviso da Appmax chega ao endereco certo, mas o receptor nao acha a instalacao.\n\nFatos (29/09/2026, sessao 2549a52a):\n- Endereco consertado (PR 2327, publicado): GET .../api/pagamentos/appmax/webhooks = 405.\n- Compra de teste aprovada as 13:54Z (run 36578512612). appmax-inbox-latencia as 13:59Z\n  e 14:00Z (runs 36579002492 e 36579274460): avisos [] e 1 efeito.\n- services/pagamentos/pagamentos/api/webhooks.py (webhook_appmax) busca\n  InstalacaoAppmax por app_id E appmax_site_id iguais aos do aviso; sem linha, 403\n  \"Instalacao desconhecida\" e nada e gravado.\n- pagamentos/core/models.py: InstalacaoAppmax.app_id e \"ID NUMERICO, nao UUID\";\n  appmax_site_id pode ficar vazio (api/appmax.py le corpo.get(\"site_id\")).\n- O aviso real enviado pela Appmax (exemplo order_pix_created do suporte, guardado\n  fora do repositorio porque tem e-mail e CNPJ do lojista) tem: event, event_type,\n  app_id (UUID), site_id (UUID com maiusculas), client_key e external_key (mesmo\n  valor), data.order_id inteiro, data.payment_info.pix com campos nulos, e\n  partner_merchant com dados do lojista.\n\nO que decidir e fazer (celula pagamentos):\n1. Com a leitura appmax-instalacao (tarefa irma em ci/) rodada pela coordenacao,\n   saber o formato real gravado em producao.\n2. Casar o aviso com a instalacao pelo que a Appmax de fato envia, sem aceitar\n   aviso falso: o aviso de estorno vira efeito financeiro (tarefa 644). Se a\n   Appmax assina o aviso ou tem campo proprio de identificacao, usar; nunca guardar\n   client_key/external_key em claro (INV-P8), no maximo hash.\n3. Resposta de recusa diz o motivo (403, 409, 400) e fica contada, sem dado pessoal,\n   para a leitura do servidor enxergar aviso recusado (hoje some sem rastro).\n4. Testes com aviso ficticio no formato do real (valores inventados), vermelho antes,\n   verde depois, mutacao provada. Nada do exemplo real entra no repositorio.\n\nBloqueio: espera a leitura appmax-instalacao e a resposta da Appmax sobre como\nautenticar o aviso (o mantenedor pergunta no suporte).",
+  "origem": "compra de teste e leitura da caixa de entrada, sessão 2549a52a, 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

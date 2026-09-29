@@ -1,0 +1,19 @@
+{
+  "arquivo": "955-o-mapa-do-site-diz-o-que-o-endereco-dos-avisos-da-appmax-faz",
+  "id": "TAR-955",
+  "titulo": "O mapa do site diz o que o endereço dos avisos da Appmax faz de verdade",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "título e descrição da rota corrigidos em painel/mapa-do-site.json e testes do mapa verdes",
+  "despacho": "O revisor do PR 2327 (29/09/2026) apontou: em painel/mapa-do-site.json (linhas ~2383-2384),\na entrada da rota api/pagamentos/appmax/webhooks diz \"A Appmax avisa quando o dinheiro volta\"\ne \"Recebe avisos de estorno e contestacao. Confere o pedido com a Appmax antes de atualizar o\nlivro financeiro\". O receptor recebe todos os avisos (cartao aprovado, Pix, estorno) e, pelo\ncomentario do codigo em services/pagamentos/pagamentos/api/webhooks.py, persiste o aviso e\nencerra a requisicao sem consultar o provedor. Corrigir titulo e descricao para dizer o que a\nrota faz, sem travessao. So painel/mapa-do-site.json; testes do mapa verdes.",
+  "origem": "revisor do PR 2327, 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
