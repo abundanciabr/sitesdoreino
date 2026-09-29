@@ -1,5 +1,7 @@
 """Ensaia o provisionamento no Linux com PostgreSQL 17 descartável."""
 
+import os
+import re
 import shutil
 import subprocess
 import time
@@ -11,23 +13,84 @@ RAIZ = Path(__file__).resolve().parents[2]
 
 
 def docker(*args, check=True):
-    return subprocess.run(
-        ["docker", *args], text=True, capture_output=True, check=check, timeout=90
+    resultado = subprocess.run(
+        ["docker", *args], text=True, capture_output=True, timeout=90
     )
+    if check and resultado.returncode:
+        erro = re.sub(r"postgres(?:ql)?://\S+", "postgres://[oculto]", resultado.stderr)
+        erro = re.sub(r"SENTINELA_[A-Z_]+", "[oculto]", erro)
+        erro = re.sub(
+            r"(?i)(password|token|secret|chave)(=|:)\S+", r"\1\2[oculto]", erro
+        )
+        raise AssertionError(
+            f"Docker do fixture falhou ({resultado.returncode}): {erro[-500:]}"
+        )
+    return resultado
+
+
+def preparar_compose_real(tmp_path):
+    compose = tmp_path / "docker-compose.yml"
+    conteudo = (RAIZ / "infra/docker-compose.yml").read_text(encoding="utf-8")
+    compose.write_text(conteudo, encoding="utf-8")
+    for nome in set(re.findall(r"env/[a-z0-9-]+\.env", conteudo)):
+        arquivo = tmp_path / nome
+        arquivo.parent.mkdir(exist_ok=True)
+        arquivo.write_text("FIXTURE=1\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        "POSTGRES_SUPER_PASSWORD=fixture-descartavel\n", encoding="utf-8"
+    )
+    docker_config = tmp_path / "docker-config"
+    docker_config.mkdir()
+    (docker_config / "config.json").write_text("{}\n", encoding="utf-8")
+    return compose, {**os.environ, "DOCKER_CONFIG": str(docker_config)}
+
+
+def test_compose_real_exige_chaves_nominais(tmp_path):
+    compose, ambiente = preparar_compose_real(tmp_path)
+    ambiente.pop("ALUNOS_API_TOKEN", None)
+    ambiente.pop("TOKEN_CATALOGO", None)
+
+    def configurar(chaves, *argumentos):
+        return subprocess.run(
+            ["docker", "compose", "-f", str(compose), "config", *argumentos],
+            cwd=tmp_path,
+            env={**ambiente, **chaves},
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+
+    valores = {
+        "ALUNOS_API_TOKEN": "sentinela-alunos-descartavel",
+        "TOKEN_CATALOGO": "sentinela-catalogo-descartavel",
+    }
+    for ausente in valores:
+        parcial = {chave: valor for chave, valor in valores.items() if chave != ausente}
+        vermelho = configurar(parcial, "--quiet")
+        assert vermelho.returncode != 0 and ausente in vermelho.stderr
+        assert not any(
+            valor in vermelho.stdout + vermelho.stderr for valor in valores.values()
+        )
+    verde = configurar(valores, "--services")
+    assert verde.returncode == 0, verde.stderr
+    assert {"postgres", "admin"}.issubset(set(verde.stdout.splitlines()))
+    assert not any(valor in verde.stdout + verde.stderr for valor in valores.values())
 
 
 def test_provisionamento_preserva_configuracao_e_recupera_falhas(tmp_path):
     nome = "pme995-" + uuid.uuid4().hex[:12]
     (tmp_path / "env").mkdir()
     (tmp_path / "bin").mkdir()
-    (tmp_path / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    compose, ambiente_compose = preparar_compose_real(tmp_path)
     (tmp_path / "env" / "admin.env").write_text(
         "DJANGO_SECRET_KEY=fixture\nDATABASE_URL=postgres://admin:fixture@postgres/admin_db\n"
         "DEBUG=0\nSCRIPT_NAME=/admin\nIDENTIDADE_API_URL=http://identidade:8000/interno\n"
         "IDENTIDADE_API_TOKEN=fixture\nADMIN_EMAILS=admin@exemplo.test\n"
         "TOKENS_ACEITOS_PAGES=fixture-pages\nGITHUB_TOKEN_FILA=SENTINELA_NAO_VAZAR\n"
         "ANTHROPIC_API_KEY=fixture-ia\nANTHROPIC_WORKSPACE_ID=fixture-workspace\n"
-        "VARIAVEL_ALHEIA=preservar\n",
+        "VARIAVEL_ALHEIA=preservar\n"
+        "ALUNOS_API_TOKEN=SENTINELA_GATEWAY_ALUNOS\n"
+        "TOKEN_CATALOGO=SENTINELA_GATEWAY_CATALOGO\n",
         encoding="utf-8",
     )
     (tmp_path / "env" / "identidade.env").write_text(
@@ -48,6 +111,20 @@ if [ "$1" = inspect ]; then
   exit 0
 fi
 [ "$1" = compose ] || exit 2
+if [ -n "${PME_COORD_VERIFICACAO:-}" ]; then
+  umask 077
+  printf 'ALUNOS_API_TOKEN=%s\nTOKEN_CATALOGO=%s\n' "${ALUNOS_API_TOKEN:-}" "${TOKEN_CATALOGO:-}" >"/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
+  mv "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp" "/opt/plataforma/compose-$PME_COORD_VERIFICACAO"
+  tentativas=0
+  while [ ! -f "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" ] && [ "$tentativas" -lt 100 ]; do
+    sleep .05
+    tentativas=$((tentativas + 1))
+  done
+  [ "$(cat "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" 2>/dev/null || true)" = ok ] || exit 47
+fi
+if [ "${PME_COORD_FIXTURE:-}" = 1 ]; then
+  [ "${ALUNOS_API_TOKEN:-}" = SENTINELA_GATEWAY_ALUNOS ] && [ "${TOKEN_CATALOGO:-}" = SENTINELA_GATEWAY_CATALOGO ] || exit 47
+fi
 shift
 case "$1" in
   ps)
@@ -106,7 +183,14 @@ exit 2
         for _ in range(30):
             if (
                 docker(
-                    "exec", nome, "pg_isready", "-U", "postgres", check=False
+                    "exec",
+                    nome,
+                    "pg_isready",
+                    "-h",
+                    "127.0.0.1",
+                    "-U",
+                    "postgres",
+                    check=False,
                 ).returncode
                 == 0
             ):
@@ -136,24 +220,94 @@ exit 2
             "REVOKE ALL ON DATABASE admin_db FROM PUBLIC",
         )
 
-        def executar(script="provisionar-coordenacao.sh", timeout=90):
-            return subprocess.run(
-                [
-                    "docker",
-                    "exec",
-                    "-e",
-                    "PATH=/opt/plataforma/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                    nome,
-                    "bash",
-                    f"/opt/plataforma/{script}",
-                ],
+        def executar(
+            script="provisionar-coordenacao.sh", timeout=90, validar_compose_real=False
+        ):
+            identificador = uuid.uuid4().hex if validar_compose_real else ""
+            comando = [
+                "docker",
+                "exec",
+                "-e",
+                "PATH=/opt/plataforma/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "-e",
+                (
+                    "PME_COORD_FIXTURE=1"
+                    if script == "provisionar-coordenacao.sh"
+                    else "PME_COORD_FIXTURE=0"
+                ),
+                "-e",
+                f"PME_COORD_VERIFICACAO={identificador}",
+                nome,
+                "bash",
+                f"/opt/plataforma/{script}",
+            ]
+            if not validar_compose_real:
+                return subprocess.run(
+                    comando, text=True, capture_output=True, timeout=timeout
+                )
+            processo = subprocess.Popen(
+                comando, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            captura = tmp_path / f"compose-{identificador}"
+            limite = time.monotonic() + 10
+            while (
+                not captura.exists()
+                and processo.poll() is None
+                and time.monotonic() < limite
+            ):
+                time.sleep(0.05)
+            assert captura.exists(), "provisionador não alcançou o Compose real"
+            valores = dict(
+                linha.split("=", 1) for linha in captura.read_text().splitlines()
+            )
+            resultado_compose = subprocess.run(
+                ["docker", "compose", "-f", str(compose), "config", "--quiet"],
+                cwd=tmp_path,
+                env={**ambiente_compose, **valores},
                 text=True,
                 capture_output=True,
-                timeout=timeout,
+                timeout=30,
+            )
+            (tmp_path / f"compose-{identificador}.resultado").write_text(
+                "ok" if resultado_compose.returncode == 0 else "erro",
+                encoding="utf-8",
+                newline="\n",
+            )
+            stdout, stderr = processo.communicate(timeout=timeout)
+            return (
+                subprocess.CompletedProcess(
+                    comando, processo.returncode, stdout, stderr
+                ),
+                resultado_compose,
             )
 
+        env_admin = tmp_path / "env" / "admin.env"
+        original = env_admin.read_text(encoding="utf-8")
+        for chave, valor in (
+            ("ALUNOS_API_TOKEN", "SENTINELA_GATEWAY_ALUNOS"),
+            ("TOKEN_CATALOGO", "SENTINELA_GATEWAY_CATALOGO"),
+        ):
+            env_admin.write_text(
+                original.replace(f"{chave}={valor}\n", ""),
+                encoding="utf-8",
+                newline="\n",
+            )
+            sem_chave = executar()
+            assert sem_chave.returncode != 0 and chave in sem_chave.stderr
+            assert not (tmp_path / "env" / "coordenacao.preparo").exists()
+            assert valor not in sem_chave.stdout + sem_chave.stderr
+            env_admin.write_text(original, encoding="utf-8", newline="\n")
+        env_admin.write_text(
+            original + "TOKEN_CATALOGO=duplicada\n", encoding="utf-8", newline="\n"
+        )
+        duplicada = executar()
+        assert duplicada.returncode != 0 and "TOKEN_CATALOGO" in duplicada.stderr
+        assert not (tmp_path / "env" / "coordenacao.preparo").exists()
+        env_admin.write_text(original, encoding="utf-8", newline="\n")
+
         (tmp_path / "falha-esquema").touch()
-        esquema = executar()
+        esquema, composicao = executar(validar_compose_real=True)
+        assert composicao.returncode == 0, composicao.stderr
         assert esquema.returncode != 0 and "esquema" in esquema.stderr
         assert (
             "COORDENACAO_DATABASE_URL="
@@ -304,7 +458,9 @@ exit 2
             "bash",
             "-c",
             "cd /opt/plataforma; exec 8<.publicacao.lock; flock --exclusive 8; bash provisionar-coordenacao.sh",
+            check=False,
         )
+        assert herdada.returncode == 0, herdada.stderr
         assert "PRONTO:" in herdada.stdout
 
         docker(
@@ -400,10 +556,13 @@ exit 2
 
         # A reprovisão da admin conhece e preserva as três chaves da coordenação.
         (tmp_path / "env" / "admin.env").write_bytes(
-            env.replace("VARIAVEL_ALHEIA=preservar\n", "").encode()
+            env.replace("VARIAVEL_ALHEIA=preservar\n", "")
+            .replace("ALUNOS_API_TOKEN=SENTINELA_GATEWAY_ALUNOS\n", "")
+            .replace("TOKEN_CATALOGO=SENTINELA_GATEWAY_CATALOGO\n", "")
+            .encode()
         )
         admin = executar("provisionar-admin.sh")
-        assert admin.returncode == 0, admin.stderr
+        assert admin.returncode == 0, admin.stdout + admin.stderr
         novo = (tmp_path / "env" / "admin.env").read_text()
         for chave in (
             "COORDENACAO_DATABASE_URL",

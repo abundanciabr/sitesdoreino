@@ -1,0 +1,29 @@
+{
+  "arquivo": "20260929-212226-TAR-964-concluida",
+  "tarefa": "TAR-964",
+  "evento": "concluida",
+  "quando": "2026-09-29T21:22:26.981945+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/2334; revisao=c692850018d560e1475dfeb546bd88b868492103; arvore=5e2be688224311c2bebf1098bc44cfc49d0a46b7; head=e5cbb335a2fbfefab9a0bec06a37b56396729dd3; merge=3a7bb67c1068524ec3dfc68aeae721cb00e9a4b7; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/36609546273; linhagem=linhagem comprovada; aceite=painel/registros/20260929-052-aceite-funcional-do-executor-supervisionado.js",
+  "verificado_em": "2026-09-29",
+  "aceite_entrega": {
+    "tarefa": "TAR-964",
+    "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2334",
+    "revisao": "c692850018d560e1475dfeb546bd88b868492103",
+    "arvore": "5e2be688224311c2bebf1098bc44cfc49d0a46b7",
+    "integracao": "3a7bb67c1068524ec3dfc68aeae721cb00e9a4b7",
+    "publicacao": "PUBLICADO",
+    "publicacoes": [
+      "https://github.com/abundanciabr/sitesdoreino/actions/runs/36609546273"
+    ],
+    "registro": "painel/registros/20260929-052-aceite-funcional-do-executor-supervisionado.js",
+    "registro_sha256": "c6a587a423ffe948c9a2103d2b97399c6a4a59c86e34ecf1232073c6270bd9f9",
+    "aceite_funcional": {
+      "resultado": "PASS",
+      "criterio": "A implementação integrada conserva e reconcilia a tentativa supervisionada B com posse válida, resultado terminal e processos encerrados; a jornada dos pilotos confirma retomada da mesma sessão em A e isolamento dos quatro arquivos de A durante B.",
+      "evidencia": "Comando local Windows python ci/executor_codex.py reconciliar às 18:15 UTC sobre tentativa B já criada: resultado_recebido, exit 0, processos_encerrados true, soma 18; A permaneceu com seus quatro hashes e soma 10. Fonte do executor e dependências da revisão 3a7bb67c1068524ec3dfc68aeae721cb00e9a4b7; deploy-celula 36609546273 concluído às 18:11 UTC. Reconciliação pós-merge, sem nova criação ou retomada nesse passo. Rastros privados SHA256 0B2C739CBF78CF7DF351CBC6E6396696B5884BA40ACD9625CEBAA27635E48B6A e DB498E787DF8AAA54290841550BB9A57631305A969CD45F874A3328ED4CBDB7B.",
+      "revisao": "3a7bb67c1068524ec3dfc68aeae721cb00e9a4b7",
+      "ambiente": "producao"
+    }
+  }
+}

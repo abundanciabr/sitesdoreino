@@ -1,0 +1,29 @@
+{
+  "arquivo": "20260929-212239-TAR-969-concluida",
+  "tarefa": "TAR-969",
+  "evento": "concluida",
+  "quando": "2026-09-29T21:22:39.651926+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/2354; revisao=1b0336506a957d178fb71887e0ba7316ee92c137; arvore=e38b6516297b0dc57daa545cf86cdf129c035ccf; head=22a77550e022fbde9e120434ae94c9428e0ac00f; merge=debe0faf7e00de1697819d60a6f7b3c0d23c731b; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/36617734854; linhagem=linhagem comprovada; aceite=painel/registros/20260929-053-aceite-canonico-da-origem-publicada-na-caixa.js",
+  "verificado_em": "2026-09-29",
+  "aceite_entrega": {
+    "tarefa": "TAR-969",
+    "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2354",
+    "revisao": "1b0336506a957d178fb71887e0ba7316ee92c137",
+    "arvore": "e38b6516297b0dc57daa545cf86cdf129c035ccf",
+    "integracao": "debe0faf7e00de1697819d60a6f7b3c0d23c731b",
+    "publicacao": "PUBLICADO",
+    "publicacoes": [
+      "https://github.com/abundanciabr/sitesdoreino/actions/runs/36617734854"
+    ],
+    "registro": "painel/registros/20260929-053-aceite-canonico-da-origem-publicada-na-caixa.js",
+    "registro_sha256": "ee36150f1b57ff600bd783121fd6cab7b224782a88c0b2bd4d9f521021e49d7d",
+    "aceite_funcional": {
+      "resultado": "PASS",
+      "criterio": "A caixa publicada identifica a revisão e o run oficiais, mantém TAR-969 submetida sem aceite até reconciliação e não promove conclusões legadas nem erro da consulta GitHub a prova funcional.",
+      "evidencia": "Jornada autenticada em https://meshcraft.top/admin/caixa/robos/: origem conferida com revisão debe0faf7e00de1697819d60a6f7b3c0d23c731b e execução 36617734854; cartão TAR-969 no grupo aguardando aceite com Submissão Registrada e Aceite funcional Não comprovado; 763 conclusões registradas; erro GitHub explícito sem invalidar o retrato. Testes do consumidor admin: 57 passed.",
+      "revisao": "debe0faf7e00de1697819d60a6f7b3c0d23c731b",
+      "ambiente": "producao"
+    }
+  }
+}

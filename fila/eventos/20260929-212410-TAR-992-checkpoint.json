@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-212410-TAR-992-checkpoint",
+  "tarefa": "TAR-992",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T21:24:10.399678+00:00",
+  "quem": "codex/ci/pme-barreira-coorte",
+  "plano": "PME05 I1 entregue; I2 TAR-1001 e corte I3 seguem separados",
+  "ultimo_avanco": "PR #2358 integrado em 2db356a80608fee430ba48528e09489005498189 e deploy admin run 36631635347 PUBLICADO; livro 071 de aceite I1 preparado e validado SHA256 DBCDD10583C0D3D2B9C4DBFBD6E1DA405BE07166682BDC0F76B95C9DCE70A31C.",
+  "proxima_acao": "Embarcar livro 071 e este checkpoint no próximo incremento independente; depois executar ci/fila.py reconciliar TAR-992 com o registro publicado. Só iniciar TAR-1001 após suas dependências legítimas e propriedade liberada; não ativar coorte neste aceite.",
+  "verificacoes": [
+    "python -m pytest focal pós-integração: 29 passed, 456 deselected; git diff --exit-code da cabeça 7915789 ao merge 2db356a nos oito alvos: exit 0",
+    "python ci/esperar.py --entrega 2358 --so-desfecho: PUBLICADO, jobs_sem_prova []; node painel/gerar_manifesto.js --conferir: 2412 registros válidos; provar_conteudo_do_aceite: PASS"
+  ]
+}
