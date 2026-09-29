@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-162357-TAR-977-explicada",
+  "tarefa": "TAR-977",
+  "evento": "explicada",
+  "quando": "2026-09-29T16:23:57.291622+00:00",
+  "quem": "TAR958 adendo; dependencia concreta TAR973; continuacao969; fonte corrigida da interface proposta03",
+  "o_que_e": "Uma revisao inicial pode aparecer pronta antes de receber o comprovante completo.",
+  "o_que_muda": "O controle obrigatorio recusa integrar essa revisao, mesmo que ela saia do rascunho.",
+  "exemplo": "Liberar o pacote na tela nao substitui conferir a etiqueta e o conteudo do pacote exato.",
+  "importancia": 95
+}
