@@ -32,61 +32,123 @@
 # =============================================================================
 set -euo pipefail
 
-ORIGEM=${1:-/opt/plataforma/provisionar-usuario-ponte.sh}
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+ORIGEM=${1:-$RAIZ/provisionar-usuario-ponte.sh}
 DESTINO=/usr/local/sbin/provisionar-usuario-ponte
 SUDOERS=/etc/sudoers.d/90-deploy-provisionar-ponte
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "PAROU: este roteiro precisa de root, e voce nao esta como root. Nada foi alterado." >&2
-  echo "       No console da VPS, rode antes:  sudo -i" >&2
+  echo "       No console da VPS, rode antes: sudo -i" >&2
   exit 1
 fi
-if [ ! -f "$ORIGEM" ]; then
-  echo "PAROU: nao encontrei o provisionador em $ORIGEM. Nada foi alterado." >&2
-  echo "       Ele chega sozinho a /opt/plataforma na sincronizacao de infraestrutura." >&2
-  echo "       Espere o proximo deploy de infra terminar e repita esta mesma linha." >&2
+case "$ORIGEM" in
+  "$RAIZ/provisionar-usuario-ponte.sh"|"$RAIZ/infra.new/provisionar-usuario-ponte.sh") ;;
+  *) echo "PAROU: a fonte deve ser a copia oficial em $RAIZ ou $RAIZ/infra.new; nada foi alterado." >&2; exit 1 ;;
+esac
+if [ ! -f "$ORIGEM" ] || [ -L "$ORIGEM" ]; then
+  echo "PAROU: a fonte oficial $ORIGEM esta ausente ou e link; nada foi alterado." >&2
+  echo "       Reenvie a infraestrutura pelo deploy-infra e repita o mesmo comando." >&2
   exit 1
 fi
-# Nunca instalar como root um arquivo que nem analisa: uma copia pela metade
-# vira um arquivo valido no disco e um erro incompreensivel semanas depois.
-if ! bash -n "$ORIGEM"; then
-  echo "PAROU: $ORIGEM nao e um roteiro valido (copia pela metade?). Nada foi alterado." >&2
-  echo "       Espere o proximo deploy de infra reescrever o arquivo e repita esta linha." >&2
+if ! bash -n "$ORIGEM" || ! grep -Fq 'flock --exclusive 8' "$ORIGEM"; then
+  echo "PAROU: $ORIGEM nao contem o provisionador valido e protegido; nada foi alterado." >&2
+  echo "       Corrija o PR, reenvie a infraestrutura e repita o mesmo comando." >&2
   exit 1
 fi
+cd "$RAIZ"
 
+# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
+TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
+command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
+if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
+  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
+    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
+  fi
+  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
+fi
+flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
+unset TRAVA_PUBLICACAO
+
+CANDIDATO=$(mktemp "$DESTINO.new.XXXXXX")
 REGRA_NOVA=$(mktemp)
-trap 'rm -f "$REGRA_NOVA"' EXIT
+SUDOERS_NOVO=$(mktemp "$SUDOERS.new.XXXXXX")
+ANTERIOR_PROVISIONADOR=
+ANTERIOR_SUDOERS=
+PUBLICADO=0
+limpar_ou_restaurar() {
+  local CODIGO=$?
+  local RESTAURACAO_INCERTA=0
+  local TEMP_RESTAURACAO
+  trap - EXIT
+  set +e
+  if [ "$CODIGO" -ne 0 ] && [ "$PUBLICADO" = 1 ]; then
+    if [ -n "$ANTERIOR_PROVISIONADOR" ]; then
+      TEMP_RESTAURACAO=$(mktemp "$DESTINO.restore.XXXXXX")
+      if ! cp -a "$ANTERIOR_PROVISIONADOR" "$TEMP_RESTAURACAO" || ! cmp -s "$ANTERIOR_PROVISIONADOR" "$TEMP_RESTAURACAO" || ! mv -Tf "$TEMP_RESTAURACAO" "$DESTINO" || ! cmp -s "$ANTERIOR_PROVISIONADOR" "$DESTINO"; then
+        RESTAURACAO_INCERTA=1
+      fi
+      rm -f "$TEMP_RESTAURACAO"
+    else
+      if ! rm -f "$DESTINO" || [ -e "$DESTINO" ]; then RESTAURACAO_INCERTA=1; fi
+    fi
+    if [ -n "$ANTERIOR_SUDOERS" ]; then
+      TEMP_RESTAURACAO=$(mktemp "$SUDOERS.restore.XXXXXX")
+      if ! cp -a "$ANTERIOR_SUDOERS" "$TEMP_RESTAURACAO" || ! cmp -s "$ANTERIOR_SUDOERS" "$TEMP_RESTAURACAO" || ! mv -Tf "$TEMP_RESTAURACAO" "$SUDOERS" || ! cmp -s "$ANTERIOR_SUDOERS" "$SUDOERS"; then
+        RESTAURACAO_INCERTA=1
+      fi
+      rm -f "$TEMP_RESTAURACAO"
+    else
+      if ! rm -f "$SUDOERS" || [ -e "$SUDOERS" ]; then RESTAURACAO_INCERTA=1; fi
+    fi
+    if ! visudo -c >/dev/null; then RESTAURACAO_INCERTA=1; fi
+    if [ "$RESTAURACAO_INCERTA" = 0 ]; then
+      echo "PONTE: copia root e regra sudo anteriores restauradas apos a falha." >&2
+    else
+      echo "ERRO: recuperacao incerta; no console root, confira $DESTINO e $SUDOERS com visudo -c antes de repetir." >&2
+      echo "      Copias anteriores preservadas: ${ANTERIOR_PROVISIONADOR:-nenhuma} ${ANTERIOR_SUDOERS:-nenhuma}" >&2
+    fi
+  fi
+  rm -f "$CANDIDATO" "$REGRA_NOVA" "$SUDOERS_NOVO"
+  if [ "$RESTAURACAO_INCERTA" = 0 ]; then
+    [ -z "$ANTERIOR_PROVISIONADOR" ] || rm -f "$ANTERIOR_PROVISIONADOR"
+    [ -z "$ANTERIOR_SUDOERS" ] || rm -f "$ANTERIOR_SUDOERS"
+  fi
+  exit "$CODIGO"
+}
+trap limpar_ou_restaurar EXIT
 
-echo "1/3 congelando o provisionador em $DESTINO (dono root)..."
-install -o root -g root -m 755 "$ORIGEM" "$DESTINO"
-
-echo "2/3 autorizando o deploy a executar SO esse caminho..."
+install -o root -g root -m 755 "$ORIGEM" "$CANDIDATO"
+if [ ! -f "$ORIGEM" ] || [ -L "$ORIGEM" ] || ! cmp -s "$ORIGEM" "$CANDIDATO" || ! bash -n "$CANDIDATO" || ! grep -Fq 'flock --exclusive 8' "$CANDIDATO"; then
+  echo "PAROU: a fonte mudou durante a copia ou o candidato falhou; a instalacao anterior continua." >&2
+  exit 1
+fi
 printf '%s\n' "deploy ALL=(root) NOPASSWD: $DESTINO" > "$REGRA_NOVA"
 if ! visudo -cf "$REGRA_NOVA"; then
-  echo "PAROU: a regra do sudo nao passou na conferencia e NAO foi instalada." >&2
-  echo "       O sudo desta maquina continua exatamente como estava." >&2
+  echo "PAROU: a regra sudo nova reprovou antes de ser publicada; a anterior continua." >&2
   exit 1
 fi
-install -o root -g root -m 440 "$REGRA_NOVA" "$SUDOERS"
-if ! visudo -c >/dev/null; then
-  rm -f "$SUDOERS"
-  echo "PAROU: com a regra nova o conjunto do sudo ficou invalido; removi a regra e o sudo voltou ao que era." >&2
-  exit 1
+install -o root -g root -m 440 "$REGRA_NOVA" "$SUDOERS_NOVO"
+visudo -c >/dev/null || {
+  echo "PAROU: o sudoers existente ja e invalido; nenhuma copia ou regra nova foi publicada." >&2; exit 1;
+}
+if [ -e "$DESTINO" ]; then
+  ANTERIOR_PROVISIONADOR=$(mktemp "$DESTINO.old.XXXXXX")
+  cp -a "$DESTINO" "$ANTERIOR_PROVISIONADOR"
+fi
+if [ -e "$SUDOERS" ]; then
+  ANTERIOR_SUDOERS=$(mktemp "$SUDOERS.old.XXXXXX")
+  cp -a "$SUDOERS" "$ANTERIOR_SUDOERS"
 fi
 
-echo "3/3 criando a conta ponte agora, para nao ter de esperar o proximo deploy..."
-echo
+PUBLICADO=1
+mv -Tf "$CANDIDATO" "$DESTINO"
+mv -Tf "$SUDOERS_NOVO" "$SUDOERS"
+visudo -c >/dev/null || {
+  echo "PAROU: o conjunto sudoers reprovou; copia e regra anteriores serao restauradas." >&2; exit 1;
+}
 "$DESTINO"
+PUBLICADO=0
 
-echo
-echo "==============================================================================="
-echo "PRONTO. A ponte esta ligada nesta VPS."
-echo
-echo "Nao ha mais nada a fazer aqui: daqui para frente a esteira mantem a ponte"
-echo "sozinha a cada sincronizacao de infraestrutura."
-echo
-echo "Para DESLIGAR a ponte um dia, neste mesmo console:"
-echo "  rm -f $SUDOERS $DESTINO /etc/ssh/sshd_config.d/90-ponte.conf"
-echo "  systemctl reload ssh && userdel -r ponte"
-echo "==============================================================================="
+echo "PRONTO: a copia root e a regra sudo foram instaladas e a ponte foi conferida."
+echo "A esteira podera reconciliar a ponte no proximo deploy-infra."

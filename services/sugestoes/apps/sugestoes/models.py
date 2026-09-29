@@ -239,6 +239,11 @@ class Sugestao(models.Model):
         related_name="ideias_apagadas",
         on_delete=models.PROTECT,
     )
+    # O que a equipe escreveu na própria ideia ao entregá-la (pedido do
+    # mantenedor, 29/09/2026). Já gravada filtrada por
+    # `apps.core.resposta_rica`, e filtrada de novo na página: só aparece com a
+    # ideia em Implementado.
+    resposta_da_equipe = models.TextField(blank=True, default="")
 
     objects = SugestaoQuerySet.as_manager()
 

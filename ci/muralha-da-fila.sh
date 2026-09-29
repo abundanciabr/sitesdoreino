@@ -72,3 +72,15 @@ if [[ $codigo -ne 0 ]]; then
   exit 1
 fi
 echo "$saida_imutavel" | tail -n 1
+
+saida_coorte="$("$PY_BIN" ci/fila.py portao-coorte --base "${BASE_REF:-origin/main}" 2>&1)"
+codigo=$?
+if [[ $codigo -ne 0 ]]; then
+  echo "❌ MURALHA DA FILA — efeito piloto recusado (exit $codigo)"
+  echo "$saida_coorte" | tail -n 30 | sed 's/^/   /'
+  if [[ $codigo -eq 2 ]]; then
+    exit 2
+  fi
+  exit 1
+fi
+echo "$saida_coorte" | tail -n 1

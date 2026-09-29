@@ -1,0 +1,19 @@
+{
+  "arquivo": "1007-a-caixa-descreve-no-codigo-as-regras-da-resposta-da-equipe",
+  "id": "TAR-1007",
+  "titulo": "A Caixa descreve no codigo as regras da resposta da equipe",
+  "toca": [
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR da celula sugestoes integrado e publicado, com freeze do contrato verde",
+  "despacho": "Provedor da emenda so de description do contrato da Caixa, autorizada pelo mantenedor na sessao de 29/09/2026 (\"sim, publique as descricoes do contrato\"): as mesmas descricoes do campo resposta e de setIdeaStatus no codigo da celula sugestoes, para o freeze voltar a PASS. O contrato ja pousou no PR 2368; a fila recusa a mesma tarefa em dois PRs quando o primeiro ja foi integrado, por isso esta tarefa propria. Nenhum comportamento muda.",
+  "origem": "mantenedor na sessao Claude Code de 29/09/2026: sim, publique as descricoes do contrato",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

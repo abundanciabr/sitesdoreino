@@ -83,6 +83,7 @@ from _nucleo import (  # noqa: E402
 # permanente (nunca se solta), intenção é temporária (vence e pode ser roubada).
 NS_NUMERO = "refs/numeros"
 NS_RESERVA = "refs/reservas"
+REF_BARREIRA_PILOTO = "refs/coordenacao/barreira/piloto"
 
 HORAS_DE_RESERVA = 3
 TENTATIVAS = 25
@@ -147,7 +148,8 @@ def _git(raiz: Path, args: list[str]) -> subprocess.CompletedProcess:
 
 
 def criar_ref_atomica(
-    raiz: Path, ref: str, corpo: dict, *, ref_chave: str | None = None, lease: str = ""
+    raiz: Path, ref: str, corpo: dict, *, ref_chave: str | None = None,
+    lease: str = "", lease_chave: str = "",
 ) -> bool:
     """Tenta criar `ref` no servidor. True = ganhou, False = já era de outro.
 
@@ -189,7 +191,7 @@ def criar_ref_atomica(
     comando = ["push", f"--force-with-lease={ref}:{lease}", "origin", f"{commit}:{ref}"]
     if ref_chave:
         comando = ["push", "--atomic", f"--force-with-lease={ref}:{lease}",
-                   f"--force-with-lease={ref_chave}:", "origin",
+                   f"--force-with-lease={ref_chave}:{lease_chave}", "origin",
                    f"{commit}:{ref}", f"{commit}:{ref_chave}"]
     resultado = _git(raiz, comando)
     saida = f"{resultado.stdout}\n{resultado.stderr}"
@@ -417,6 +419,218 @@ def ler_reserva(raiz: Path, chave: str) -> tuple[str, dict] | None:
     if not isinstance(corpo, dict):
         raise ErroDeInstrumentacao("reserva remota incompatível", f"O comprovante de {ref} não é um objeto JSON.")
     return sha, corpo
+
+
+def digest_da_coorte_piloto(ids: list[str]) -> str:
+    if (not isinstance(ids, list) or not ids
+            or any(not isinstance(tid, str) or not re.fullmatch(r"TAR-\d{3}", tid)
+                   for tid in ids)
+            or len(ids) != len(set(ids))):
+        raise ErroDeInstrumentacao(
+            "manifesto da coorte piloto inválido",
+            "Use a lista de IDs TAR únicos publicada em fila/coortes/piloto.json; não escolha a coorte no cliente.",
+        )
+    canonico = json.dumps(sorted(ids), ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
+
+
+def ler_barreira_piloto(raiz: Path) -> tuple[str, dict]:
+    leitura = executar(
+        ["git", "ls-remote", "origin", REF_BARREIRA_PILOTO], cwd=raiz,
+        descricao="conferir barreira da coorte piloto no servidor",
+    ).stdout.strip()
+    partes = leitura.split()
+    if len(partes) != 2 or partes[1] != REF_BARREIRA_PILOTO or not re.fullmatch(r"[0-9a-f]{40}", partes[0]):
+        raise ErroDeInstrumentacao(
+            "barreira piloto ausente ou inválida",
+            "Mantenha a coorte no Git e confira a referência remota antes de reivindicar ou pausar.",
+        )
+    sha = partes[0]
+    executar(["git", "fetch", "--no-tags", "origin", sha], cwd=raiz,
+             descricao="ler comprovante remoto da barreira piloto")
+    mensagem = executar(["git", "show", "-s", "--format=%B", sha], cwd=raiz,
+                        descricao="conferir conteúdo da barreira piloto").stdout
+    try:
+        corpo = json.loads(mensagem)
+        barreira = corpo["barreira"]
+        if (barreira["coorte"] != "piloto" or barreira["estado"] not in ("git", "pausada")
+                or not re.fullmatch(r"[0-9a-f]{64}", barreira["ids_sha256"])
+                or type(barreira["sequencia"]) is not int or barreira["sequencia"] < 0):
+            raise ValueError("barreira fora do contrato")
+        efeito = barreira.get("efeito")
+        if efeito is not None and (not isinstance(efeito, dict)
+                or type(efeito.get("pr")) is not int or efeito["pr"] < 1
+                or not isinstance(efeito.get("head"), str)
+                or not re.fullmatch(r"[0-9a-f]{40}", efeito["head"])
+                or not isinstance(efeito.get("operacao"), str)
+                or not re.fullmatch(r"[0-9a-f]{32}", efeito["operacao"])
+                or not isinstance(efeito.get("run_id", ""), str)
+                or (efeito.get("run_id") and not re.fullmatch(r"[1-9][0-9]*", efeito["run_id"]))):
+            raise ValueError("intenção de pouso fora do contrato")
+        if efeito is not None and barreira["estado"] != "git":
+            raise ValueError("intenção de pouso numa coorte pausada")
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as erro:
+        raise ErroDeInstrumentacao(
+            "comprovante remoto da barreira piloto inválido",
+            "Não prossiga com a coorte; confira a referência e o manifesto publicados.",
+        ) from erro
+    return sha, barreira
+
+
+def _reserva_ativa(corpo: dict, chave: str, agora: datetime) -> bool:
+    try:
+        prazo = datetime.fromisoformat(corpo["expira_em"])
+    except (KeyError, TypeError, ValueError) as erro:
+        raise ErroDeInstrumentacao(
+            f"prazo da reserva {chave} inválido",
+            "Confira o comprovante remoto; não substitua uma reserva cujo prazo é desconhecido.",
+        ) from erro
+    if prazo.tzinfo is None:
+        raise ErroDeInstrumentacao(
+            f"prazo da reserva {chave} sem fuso",
+            "Confira o comprovante remoto antes de reivindicar ou pausar a coorte.",
+        )
+    return prazo > agora
+
+
+def reservar_intencao_piloto(
+    raiz: Path, chave: str, objetivo: str, ids: list[str],
+    horas: int = HORAS_DE_RESERVA, agora: datetime | None = None,
+) -> tuple[bool, str]:
+    agora = agora or datetime.now(timezone.utc)
+    digest = digest_da_coorte_piloto(ids)
+    if not re.fullmatch(r"tarefa-TAR-\d{3}", chave) or chave.removeprefix("tarefa-") not in ids:
+        raise ErroDeInstrumentacao(
+            "tarefa fora da coorte piloto",
+            "Use o caminho Git normal para tarefas fora do manifesto piloto.",
+        )
+    sha, barreira = ler_barreira_piloto(raiz)
+    if barreira["ids_sha256"] != digest:
+        raise ErroDeInstrumentacao(
+            "manifesto piloto diverge da barreira remota",
+            "Releia o manifesto oficial; não reivindique com uma lista escolhida nesta bancada.",
+        )
+    if barreira["estado"] != "git":
+        return False, "coorte piloto pausada; não reivindique a tarefa até a transição oficial."
+    anterior = ler_reserva(raiz, chave)
+    if anterior and _reserva_ativa(anterior[1], chave, agora):
+        return False, f"'{chave}' ainda está reservado; confira o dono e o prazo no servidor."
+    operacao = uuid.uuid4().hex
+    corpo = {
+        "tipo": "intencao", "dono": identidade_da_bancada(raiz), "chave": chave,
+        "objetivo": objetivo, "criado_em": agora.isoformat(),
+        "expira_em": (agora + timedelta(hours=horas)).isoformat(),
+        "barreira": dict(barreira, sequencia=barreira["sequencia"] + 1,
+                         ultima_reserva=chave, operacao=operacao),
+    }
+    try:
+        ganhou = criar_ref_atomica(
+            raiz, REF_BARREIRA_PILOTO, corpo,
+            ref_chave=f"{NS_RESERVA}/{chave}", lease=sha,
+            lease_chave=anterior[0] if anterior else "",
+        )
+    except ErroDeInstrumentacao:
+        remota_sha, remota = ler_barreira_piloto(raiz)
+        reserva = ler_reserva(raiz, chave)
+        if (remota["estado"] == "git" and remota.get("operacao") == operacao
+                and reserva and reserva[0] == remota_sha
+                and reserva[1].get("dono") == corpo["dono"]):
+            ganhou = True
+        else:
+            raise
+    return ganhou, (
+        f"reserva '{chave}' e barreira piloto avançaram no mesmo push atômico."
+        if ganhou else "claim piloto perdeu o CAS da barreira; releia a coorte antes de tentar outra vez."
+    )
+
+
+def pausar_barreira_piloto(raiz: Path, ids: list[str], agora: datetime | None = None) -> bool:
+    agora = agora or datetime.now(timezone.utc)
+    digest = digest_da_coorte_piloto(ids)
+    sha, barreira = ler_barreira_piloto(raiz)
+    if barreira["ids_sha256"] != digest:
+        raise ErroDeInstrumentacao(
+            "manifesto piloto diverge da barreira remota",
+            "Releia o manifesto oficial antes de pausar a coorte.",
+        )
+    if barreira["estado"] != "git" or barreira.get("efeito") is not None:
+        return False
+    for tid in ids:
+        chave = f"tarefa-{tid}"
+        reserva = ler_reserva(raiz, chave)
+        if reserva and _reserva_ativa(reserva[1], chave, agora):
+            return False
+    operacao = uuid.uuid4().hex
+    corpo = {"barreira": dict(barreira, estado="pausada",
+                              sequencia=barreira["sequencia"] + 1, operacao=operacao)}
+    try:
+        ganhou = criar_ref_atomica(raiz, REF_BARREIRA_PILOTO, corpo, lease=sha)
+    except ErroDeInstrumentacao:
+        _, remota = ler_barreira_piloto(raiz)
+        if remota["estado"] == "pausada" and remota.get("operacao") == operacao:
+            ganhou = True
+        else:
+            raise
+    return ganhou
+
+
+def adquirir_efeito_piloto(raiz: Path, ids: list[str], pr: int, head: str,
+                          run_id: str = "") -> str | None:
+    """Reserva o intervalo entre o último portão e o pouso na mesma CAS da pausa."""
+    digest = digest_da_coorte_piloto(ids)
+    if (type(pr) is not int or pr < 1 or not re.fullmatch(r"[0-9a-f]{40}", head)
+            or (run_id and not re.fullmatch(r"[1-9][0-9]*", run_id))):
+        raise ErroDeInstrumentacao(
+            "identidade do PR inválida para reservar o pouso",
+            "Reconsulte número e HEAD exatos do PR antes de tentar integrar.",
+        )
+    sha, barreira = ler_barreira_piloto(raiz)
+    if barreira["ids_sha256"] != digest:
+        raise ErroDeInstrumentacao(
+            "manifesto piloto diverge da barreira remota",
+            "Releia o manifesto oficial antes de integrar qualquer PR.",
+        )
+    if barreira["estado"] != "git" or barreira.get("efeito") is not None:
+        return None
+    operacao = uuid.uuid4().hex
+    corpo = {"barreira": dict(barreira, sequencia=barreira["sequencia"] + 1,
+                              efeito={"pr": pr, "head": head, "operacao": operacao,
+                                      "run_id": run_id})}
+    try:
+        ganhou = criar_ref_atomica(raiz, REF_BARREIRA_PILOTO, corpo, lease=sha)
+    except ErroDeInstrumentacao:
+        _, remota = ler_barreira_piloto(raiz)
+        if remota.get("efeito") == corpo["barreira"]["efeito"] and remota["estado"] == "git":
+            ganhou = True
+        else:
+            raise
+    return operacao if ganhou else None
+
+
+def concluir_efeito_piloto(raiz: Path, ids: list[str], pr: int, head: str,
+                          operacao: str, run_id: str = "") -> bool:
+    """Solta só a própria intenção após o integrador comprovar MERGED."""
+    digest = digest_da_coorte_piloto(ids)
+    sha, barreira = ler_barreira_piloto(raiz)
+    if barreira["ids_sha256"] != digest or barreira["estado"] != "git":
+        return False
+    if barreira.get("efeito") != {"pr": pr, "head": head, "operacao": operacao,
+                                  "run_id": run_id}:
+        return False
+    corpo = {"barreira": dict(barreira, sequencia=barreira["sequencia"] + 1,
+                              efeito_concluido=operacao)}
+    del corpo["barreira"]["efeito"]
+    try:
+        ganhou = criar_ref_atomica(raiz, REF_BARREIRA_PILOTO, corpo, lease=sha)
+    except ErroDeInstrumentacao:
+        _, remota = ler_barreira_piloto(raiz)
+        if (remota["estado"] == "git" and remota["ids_sha256"] == digest
+                and remota.get("efeito") is None
+                and remota.get("efeito_concluido") == operacao):
+            ganhou = True
+        else:
+            raise
+    return ganhou
 
 
 def confirmar_intencao(raiz: Path, chave: str) -> bool:

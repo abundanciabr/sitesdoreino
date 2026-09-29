@@ -47,6 +47,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.sugestoes import eventos
@@ -54,6 +55,7 @@ from apps.sugestoes.models import Comentario, Quadro, Sugestao, Voto
 from apps.sugestoes.tasks import relay_apos_commit
 
 from . import sessao as ses
+from .resposta_rica import resposta_em_html_seguro
 
 # Rate limit leve da §10 — "sem camadas de reputação ainda". É contagem de
 # linhas numa janela, não uma tabela nova: qualquer estado extra aqui seria uma
@@ -922,6 +924,14 @@ def _pagina_da_sugestao(request, ator, sugestao, *, erros=(), status=200):
             "explicacao_da_situacao": EXPLICACAO_DAS_ETAPAS.get(sugestao.status, ""),
             "votar_nunca_fecha": VOTAR_NUNCA_FECHA,
             "notas_da_equipe": notas_da_equipe(sugestao),
+            # Filtrada de novo aqui, e só então marcada segura: a coluna já
+            # nasce filtrada, mas a página não confia numa linha que pode ter
+            # sido escrita por baixo do Python.
+            "resposta_da_equipe": (
+                mark_safe(resposta_em_html_seguro(sugestao.resposta_da_equipe))
+                if sugestao.status == Sugestao.Status.IMPLEMENTADO
+                else ""
+            ),
             "erros": list(erros),
         },
         status=status,

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-070-infra-sincronizar-a-ponte-com-trava-comum",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: sincronizar a ponte com trava comum",
+  detalhe: "Trava comum protege sincronização e kit root. Sudo recebe FD8 fechado; staging e cópia root são revalidados. Instalação na VPS ainda não ocorreu.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2350. Validação local: árvore aa398ad5e1288f0f0102d180e0d4459b17ad430e; commit d6994fb20c3712836cc0eb38e2b9bdfcba3b5d75; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-987",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
