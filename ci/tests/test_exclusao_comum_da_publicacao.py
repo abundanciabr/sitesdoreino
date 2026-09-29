@@ -68,6 +68,28 @@ def test_provisionador_trava_antes_de_operar(nome):
     assert not alterado[entrada_alterada.end():].startswith("\n" + fragmento + "\n")
 
 
+MUTADORES_PARES = (
+    "par-da-caixa", "par-da-economia", "par-da-gamificacao-com-o-forum",
+    "par-da-gamificacao-com-os-alunos", "par-da-medicao",
+    "par-do-forum-com-a-gamificacao", "par-do-funil-com-a-gamificacao",
+    "par-do-menu", "par-do-portfolio-com-a-admin", "par-do-teste-de-aviso",
+    "par-dos-parametros", "pares-da-prancheta", "pares-da-sala-de-aula",
+    "pares-de-categorias",
+)
+
+
+@pytest.mark.parametrize("nome", MUTADORES_PARES)
+def test_par_trava_mesma_raiz_antes_de_operar(nome):
+    texto = (RAIZ / "infra" / f"provisionar-{nome}.sh").read_text(encoding="utf-8")
+    fragmento = TRAVA.read_text(encoding="utf-8").strip()
+    assert 'RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"' in texto
+    assert trava_imediata_apos_entrada(texto, fragmento)
+    sem_trava = texto.replace(fragmento, "", 1)
+    escrita_antecipada = texto.replace(fragmento, 'printf %s alterado > "env/prova.env"\n' + fragmento, 1)
+    assert not trava_imediata_apos_entrada(sem_trava, fragmento)
+    assert not trava_imediata_apos_entrada(escrita_antecipada, fragmento)
+
+
 def executar(codigo, pasta, *, como_root=False, **kwargs):
     ambiente = os.environ | {"PLATAFORMA_DIR": str(pasta), "FRAGMENTO": str(TRAVA)}
     comando = ["bash", "-eu", "-c", "echo preparado; " + codigo]
@@ -197,12 +219,17 @@ def test_root_e_deploy_revezam_mesmo_inode_com_umask_restritiva(tmp_path):
 
 
 
-@pytest.mark.parametrize("nome", ("ligar-a-appmax.sh", "provisionar-admin.sh", "provisionar-identidade.sh"))
-def test_receptor_manual_ou_provisionador_espera_sem_escrever_env(tmp_path, nome):
+@pytest.mark.parametrize(("nome", "ambiente", "erro"), (
+    ("ligar-a-appmax.sh", "env/pagamentos.env", "docker-compose.yml"),
+    ("provisionar-admin.sh", "env/pagamentos.env", "docker-compose.yml"),
+    ("provisionar-identidade.sh", "env/pagamentos.env", "docker-compose.yml"),
+    ("provisionar-par-da-caixa.sh", "env/sugestoes.env", "env/admin.env"),
+))
+def test_receptor_manual_ou_provisionador_espera_sem_escrever_env(tmp_path, nome, ambiente, erro):
     roteiro = RAIZ / "infra" / nome
     (tmp_path / roteiro.name).write_bytes(roteiro.read_bytes())
-    (tmp_path / "env").mkdir()
-    env = tmp_path / "env/pagamentos.env"
+    env = tmp_path / ambiente
+    env.parent.mkdir(parents=True)
     env.write_bytes(b"inalterado\n")
     codigo = r"""
     mkfifo "$PLATAFORMA_DIR/liberar"
@@ -222,18 +249,19 @@ def test_receptor_manual_ou_provisionador_espera_sem_escrever_env(tmp_path, nome
     if flock --nonblock --exclusive "$PLATAFORMA_DIR/.publicacao.lock" -c true; then
       echo "segunda posse atravessou a trava" >&2; exit 1
     fi
-    test "$(cat "$PLATAFORMA_DIR/env/pagamentos.env")" = inalterado
+    test "$(cat "$PLATAFORMA_DIR/{ambiente}")" = inalterado
     printf 'liberar\n' > "$PLATAFORMA_DIR/liberar"
     wait "$detentor"
     if wait "$receptor"; then
       echo "roteiro sem Compose terminou com sucesso indevido" >&2; exit 1
     fi
-    grep -q 'docker-compose.yml' "$PLATAFORMA_DIR/resultado"
+    grep -Fq '{erro}' "$PLATAFORMA_DIR/resultado"
     if [ "{nome}" = provisionar-identidade.sh ]; then
       grep -Fq "$PLATAFORMA_DIR" "$PLATAFORMA_DIR/resultado"
     fi
-    test "$(cat "$PLATAFORMA_DIR/env/pagamentos.env")" = inalterado
+    test "$(cat "$PLATAFORMA_DIR/{ambiente}")" = inalterado
     echo exclusao-manual-confirmada
     """
-    assert concluir(executar(codigo.replace("{nome}", nome), tmp_path)).strip() == "exclusao-manual-confirmada"
+    codigo = codigo.replace("{nome}", nome).replace("{ambiente}", ambiente).replace("{erro}", erro)
+    assert concluir(executar(codigo, tmp_path)).strip() == "exclusao-manual-confirmada"
     assert env.read_text(encoding="utf-8") == "inalterado\n"

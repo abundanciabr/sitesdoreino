@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-044-infra-serializar-quatorze-provisionadores-de-pares",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: serializar quatorze provisionadores de pares",
+  detalhe: "Quatorze roteiros de pares passam a esperar a trava comum antes de escrever no estado vivo. O kit root e os demais mutadores seguem na PME08.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2355. Validação local: árvore f7d117d8f447c371c64a71d2181cffeaae01c35a; commit 094f12d45300605428a7590a1b561f83847af260; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-989",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
