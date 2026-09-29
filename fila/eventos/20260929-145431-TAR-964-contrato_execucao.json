@@ -1,0 +1,61 @@
+{
+  "arquivo": "20260929-145431-TAR-964-contrato_execucao",
+  "tarefa": "TAR-964",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T14:54:31.617228+00:00",
+  "quem": "agent/ci/pme04-executor",
+  "contrato": {
+    "plano": "PME04 TAR964",
+    "versao": 1,
+    "objetivo": "Execução Codex supervisionada rastreável, isolada e recuperável",
+    "entregaveis": [
+      "Adaptador iniciar/retomar/reconciliar com provas determinísticas",
+      "Procedimento de piloto real ao coordenador"
+    ],
+    "escopo_incluido": [
+      "ci/sessao.py e testes de sessao",
+      "ci/executor_codex.py e ci/tests/test_executor_codex.py",
+      "ci/pr_processos_windows.py e ci/pr_processos_linux.py com API existente preservada",
+      "Eventos próprios de TAR964"
+    ],
+    "nao_objetivos": [
+      "Daemon contínuo",
+      "Nova autoridade da fila",
+      "Publicação fora do canal oficial"
+    ],
+    "restricoes": [
+      "Principal somente leitura",
+      "Modelos gpt-6-sol/luna, esforço explícito e sem fallback introduzido pelo adaptador",
+      "Piloto real disparado somente pelo coordenador",
+      "Nenhuma remoção de hooks/sandbox/aprovações"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato29/09 TAR958",
+      "Coordenador autorizou expansão mínima dos grupos Windows/Linux"
+    ],
+    "etapas": [
+      "Protocolo",
+      "Implementação",
+      "Testes Windows/Linux",
+      "Piloto coordenado e submissão"
+    ],
+    "criterios_entrada": [
+      "222 testes atuais de sessão aprovados",
+      "TAR964 adquirida e anúncio conferido"
+    ],
+    "criterios_aceite": [
+      "Posse versionada antes/durante/depois",
+      "Retomada preserva tentativa/thread/bancada",
+      "Limpeza de processos própria e resultado incerto sem falso sucesso",
+      "Modelo/esforço observáveis no rollout"
+    ],
+    "evidencias_exigidas": [
+      "Testes com processos reais não IA",
+      "Preparo frio/quente",
+      "Piloto IA real supervisionado"
+    ],
+    "condicao_encerramento": "Validação, piloto autorizado e entrega oficial comprovados",
+    "limites_autonomia": "Implementação e testes nesta bancada; IA real e operações exclusivas ficam no coordenador",
+    "acoes_do_mantenedor": "Nenhum gesto adicional exigido nesta frente; mandato vigente"
+  }
+}
