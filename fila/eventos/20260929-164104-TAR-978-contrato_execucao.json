@@ -1,0 +1,64 @@
+{
+  "arquivo": "20260929-164104-TAR-978-contrato_execucao",
+  "tarefa": "TAR-978",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T16:41:04.678981+00:00",
+  "quem": "pme_backup_recuperacao",
+  "contrato": {
+    "versao": 1,
+    "nao_objetivos": [
+      "sobrescrever coordenacao_db oficial",
+      "ler chave privada ou senha",
+      "comprar provedor",
+      "editar nucleo 05 ou workflows 07"
+    ],
+    "etapas": [
+      "capturar e cifrar",
+      "transportar para artefato externo",
+      "restaurar isolado e conferir hashes",
+      "provar adulteracao e continuidade"
+    ],
+    "evidencias_exigidas": [
+      "run do canal oficial e artefato externo",
+      "saida de restauro isolado",
+      "testes de adulteracao e tail",
+      "tempos reais"
+    ],
+    "criterios_aceite": [
+      "copia cifrada fora da VPS",
+      "hashes iguais em restauro isolado",
+      "adulteracao recusada",
+      "tail ausente bloqueia retomada",
+      "RPO e RTO medidos"
+    ],
+    "escopo_incluido": [
+      "novos infra/backup-coordenacao.py, infra/restaurar-coordenacao.py, .github/workflows/backup-coordenacao.yml, ci/backup_coordenacao.py, testes e fila"
+    ],
+    "objetivo": "Gerar copia cifrada da coordenacao fora da VPS e comprovar restauro isolado sem perder escritas posteriores",
+    "entregaveis": [
+      "backup diario cifrado no artefato oficial com retencao de um dia e limite de 16 MiB",
+      "restauro isolado com verificacao das nove tabelas e pausa se faltarem eventos posteriores",
+      "RPO e RTO cronometrados"
+    ],
+    "acoes_do_mantenedor": "Nenhuma agora; se faltar controle superior, coordenador recebe bloqueio e gesto minimo",
+    "condicao_encerramento": "Copia externa e restauro isolado comprovados; retomada so liberada com continuidade dos eventos",
+    "plano": "PME-05/08 recuperacao da coordenacao",
+    "criterios_entrada": [
+      "TAR-978 reservada",
+      "certificado publico existente",
+      "contrato capturar_snapshot confirmado"
+    ],
+    "limites_autonomia": "Implementacao, teste e canal oficial autorizados; proibido leitura de privada, sobrescrita de dados oficiais ou compra",
+    "restricoes": [
+      "snapshot RR READ ONLY vivo ate terminar pg_dump",
+      "CMS AES-256-GCM RSA-4096 OAEP-SHA256",
+      "canal oficial com host pin",
+      "sem perder historico ou escritas novas"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato TAR958 de 29/09 cobre arquivos protegidos pertinentes, canal oficial e migracoes compativeis",
+      "Restauro somente em base nova isolada; retomada bloqueada sem continuidade externa comprovada",
+      "Chave publica fornecida pelo coordenador; privada exclusiva dele"
+    ]
+  }
+}
