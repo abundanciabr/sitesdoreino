@@ -40,7 +40,6 @@ SEM_ATRIBUTOS = {
     "blockquote",
     "hr",
 }
-COM_ATRIBUTOS = {"a", "img", "video", "source", "iframe"}
 SEM_FECHAMENTO = {"br", "hr", "img", "source"}
 # O conteúdo destas sai junto com a etiqueta: código de script ou estilo
 # mostrado como texto não é resposta para ninguém, e o que mora dentro de um
@@ -204,8 +203,6 @@ class _Filtro(HTMLParser):
 def _linha_solta(linha: str) -> str:
     """Um link sozinho na linha vira player ou imagem; outra coisa, vazio."""
     link = linha.strip()
-    if " " in link:
-        return ""
     if player := endereco_do_player(link):
         return f'<iframe src="{player}" allowfullscreen></iframe>'
     imagem = _endereco(link, ("https",))
