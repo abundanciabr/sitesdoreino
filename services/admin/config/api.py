@@ -28,28 +28,10 @@ api = NinjaAPI(
     title="Admin - API interna",
     version="1.0.0",
     description=(
-        "Superficie de MAQUINA da area administrativa.\n"
-        "\n"
-        "Existe porque a permissao de conferir o trabalho do aluno mora numa\n"
-        "lista so, e essa lista e a desta celula. Antes desta porta, a `pages`\n"
-        "so sabia quem confere lendo um IDS_DA_EQUIPE escrito a mao no env da\n"
-        "VPS: uma segunda casa do mesmo fato, que ninguem atualiza no dia em que\n"
-        "o mantenedor promove alguem pela tela de /admin/escola/.\n"
-        "\n"
-        "UMA OPERACAO SO, e ela so LE. Nao ha verbo que promova nem que remova\n"
-        "administrador: quem faz isso e o mantenedor, na tela desta casa, com\n"
-        "sessao. Todo par que tem token para ler tem o mesmo token, entao uma\n"
-        "operacao de escrita aqui daria poder de escrita a quem so precisava\n"
-        "desenhar uma tela de consulta (armadilhas/318). Por isso ela nasce sem\n"
-        "escrita nenhuma, e nao por esquecimento.\n"
-        "\n"
-        "Entra e-mail, sai sim ou nao. Esta porta nunca devolve nome, papel, id\n"
-        "nem a lista inteira: quem pergunta ja conhece a pessoa por quem\n"
-        "perguntou, e cada campo a mais aqui e um campo a mais vazando por um\n"
-        "par de tokens.\n"
-        "\n"
-        "Lei do assunto: docs/decisoes/DECISAO-celula-admin.md e\n"
-        "docs/decisoes/DECISAO-administradores-e-apagar.md.\n"
+        "Porta de máquina da área administrativa. A consulta de administradores "
+        "preserva o bearer por par. A coordenação usa identidade própria por "
+        "função, coorte e célula; credencial de leitura não permite executar "
+        "nem publicar. Git governa a coorte até a transferência conciliada."
     ),
     servers=[{"url": "http://admin:8000/interno"}],
     auth=bearerAuth(),

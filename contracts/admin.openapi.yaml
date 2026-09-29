@@ -2,9 +2,9 @@
 # CONTRATO DA CELULA `admin`: a PRIMEIRA porta de MAQUINA da area
 # administrativa.
 #
-# CONGELADO. Mudar este arquivo e o Rito de Contrato (RITOS.md secao 3): PR so
-# de `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores
-# em PRs seguintes. O portao que faz valer e `ci/contract_freeze.py`, que
+# CONGELADO. Mudar este arquivo segue o Rito de Contrato (RITOS.md secao 3):
+# etiqueta `contrato`, adicao compativel comprovada e exportacao viva igual ao
+# congelado permitem acompanhar somente o codigo do proprio provedor. O portao que faz valer e `ci/contract_freeze.py`, que
 # compara este arquivo com o que a celula EXPORTA de verdade, e divergencia
 # reprova.
 #
@@ -75,47 +75,10 @@ openapi: 3.1.0
 info:
   title: Admin - API interna
   version: 1.0.0
-  description: 'Superficie de MAQUINA da area administrativa.
-
-
-    Existe porque a permissao de conferir o trabalho do aluno mora numa
-
-    lista so, e essa lista e a desta celula. Antes desta porta, a `pages`
-
-    so sabia quem confere lendo um IDS_DA_EQUIPE escrito a mao no env da
-
-    VPS: uma segunda casa do mesmo fato, que ninguem atualiza no dia em que
-
-    o mantenedor promove alguem pela tela de /admin/escola/.
-
-
-    UMA OPERACAO SO, e ela so LE. Nao ha verbo que promova nem que remova
-
-    administrador: quem faz isso e o mantenedor, na tela desta casa, com
-
-    sessao. Todo par que tem token para ler tem o mesmo token, entao uma
-
-    operacao de escrita aqui daria poder de escrita a quem so precisava
-
-    desenhar uma tela de consulta (armadilhas/318). Por isso ela nasce sem
-
-    escrita nenhuma, e nao por esquecimento.
-
-
-    Entra e-mail, sai sim ou nao. Esta porta nunca devolve nome, papel, id
-
-    nem a lista inteira: quem pergunta ja conhece a pessoa por quem
-
-    perguntou, e cada campo a mais aqui e um campo a mais vazando por um
-
-    par de tokens.
-
-
-    Lei do assunto: docs/decisoes/DECISAO-celula-admin.md e
-
-    docs/decisoes/DECISAO-administradores-e-apagar.md.
-
-    '
+  description: Porta de máquina da área administrativa. A consulta de administradores
+    preserva o bearer por par. A coordenação usa identidade própria por função, coorte
+    e célula; credencial de leitura não permite executar nem publicar. Git governa
+    a coorte até a transferência conciliada.
 paths:
   /administradores/consultar:
     post:
@@ -183,6 +146,76 @@ paths:
             schema:
               $ref: '#/components/schemas/PedidoDeConsulta'
         required: true
+  /coordenacao:
+    post:
+      operationId: coordenarEntrega
+      summary: Coordenação durável por função e coorte
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+      description: Importa snapshots enquanto Git governa. Operações PostgreSQL exigem
+        época, versão e concessão vigentes. O publicador tem concessão própria. Autorizações
+        e resultados exigem recibo do receptor oficial, que verifica a origem assinada
+        e o efeito sob bloqueio de publicação.
+      tags:
+      - Coordenação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/Coordenacao_listar'
+              - $ref: '#/components/schemas/Coordenacao_importar'
+              - $ref: '#/components/schemas/Coordenacao_adquirir'
+              - $ref: '#/components/schemas/Coordenacao_renovar'
+              - $ref: '#/components/schemas/Coordenacao_checkpoint'
+              - $ref: '#/components/schemas/Coordenacao_candidato'
+              - $ref: '#/components/schemas/Coordenacao_adquirir_publicador'
+              - $ref: '#/components/schemas/Coordenacao_autorizar_publicacao'
+              - $ref: '#/components/schemas/Coordenacao_conferir_publicacao'
+              - $ref: '#/components/schemas/Coordenacao_confirmar_publicacao'
+              - $ref: '#/components/schemas/Coordenacao_reconciliar_publicacao'
+        required: true
 components:
   schemas:
     RespostaDeConsulta:
@@ -203,8 +236,335 @@ components:
       required:
       - email
       type: object
+    Coordenacao_adquirir:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: adquirir
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        tarefa:
+          type: string
+        epoca:
+          type: integer
+        versao:
+          type: integer
+      required:
+      - operacao
+      - coorte
+      - chave
+      - tarefa
+      - epoca
+      - versao
+      type: object
+    Coordenacao_adquirir_publicador:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: adquirir_publicador
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        celula:
+          type: string
+        epoca:
+          type: integer
+      required:
+      - operacao
+      - coorte
+      - chave
+      - celula
+      - epoca
+      type: object
+    Coordenacao_autorizar_publicacao:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: autorizar_publicacao
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        celula:
+          type: string
+        epoca:
+          type: integer
+        concessao:
+          type: integer
+        candidato:
+          type: string
+        manifesto:
+          additionalProperties: true
+          type: object
+        estado_anterior:
+          additionalProperties: true
+          type: object
+        aceitacao:
+          $ref: '#/components/schemas/ReciboReceptor'
+      required:
+      - operacao
+      - coorte
+      - chave
+      - celula
+      - epoca
+      - concessao
+      - candidato
+      - manifesto
+      - estado_anterior
+      - aceitacao
+      type: object
+    Coordenacao_candidato:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: candidato
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        tarefa:
+          type: string
+        epoca:
+          type: integer
+        versao:
+          type: integer
+        concessao:
+          type: integer
+        candidato:
+          type: string
+      required:
+      - operacao
+      - coorte
+      - chave
+      - tarefa
+      - epoca
+      - versao
+      - concessao
+      - candidato
+      type: object
+    Coordenacao_checkpoint:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: checkpoint
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        tarefa:
+          type: string
+        epoca:
+          type: integer
+        versao:
+          type: integer
+        concessao:
+          type: integer
+        checkpoint:
+          additionalProperties: true
+          type: object
+      required:
+      - operacao
+      - coorte
+      - chave
+      - tarefa
+      - epoca
+      - versao
+      - concessao
+      - checkpoint
+      type: object
+    Coordenacao_conferir_publicacao:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: conferir_publicacao
+          type: string
+        coorte:
+          type: string
+        celula:
+          type: string
+        epoca:
+          type: integer
+        concessao:
+          type: integer
+        publicacao:
+          type: string
+        estado_anterior:
+          additionalProperties: true
+          type: object
+      required:
+      - operacao
+      - coorte
+      - celula
+      - epoca
+      - concessao
+      - publicacao
+      - estado_anterior
+      type: object
+    Coordenacao_confirmar_publicacao:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: confirmar_publicacao
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        celula:
+          type: string
+        epoca:
+          type: integer
+        concessao:
+          type: integer
+        publicacao:
+          type: string
+        resultado:
+          type: string
+        prova:
+          additionalProperties: true
+          type: object
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
+      required:
+      - operacao
+      - coorte
+      - chave
+      - celula
+      - epoca
+      - concessao
+      - publicacao
+      - resultado
+      - prova
+      - recibo
+      type: object
+    Coordenacao_importar:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: importar
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        origem_sha:
+          type: string
+        tarefas:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+        historico:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+      required:
+      - operacao
+      - coorte
+      - chave
+      - origem_sha
+      - tarefas
+      - historico
+      type: object
+    Coordenacao_listar:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: listar
+          type: string
+        coorte:
+          type: string
+      required:
+      - operacao
+      - coorte
+      type: object
+    Coordenacao_reconciliar_publicacao:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: reconciliar_publicacao
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        celula:
+          type: string
+        epoca:
+          type: integer
+        publicacao:
+          type: string
+        resultado:
+          type: string
+        prova:
+          additionalProperties: true
+          type: object
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
+      required:
+      - operacao
+      - coorte
+      - chave
+      - celula
+      - epoca
+      - publicacao
+      - resultado
+      - prova
+      - recibo
+      type: object
+    Coordenacao_renovar:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: renovar
+          type: string
+        coorte:
+          type: string
+        chave:
+          type: string
+        tarefa:
+          type: string
+        epoca:
+          type: integer
+        versao:
+          type: integer
+        concessao:
+          type: integer
+      required:
+      - operacao
+      - coorte
+      - chave
+      - tarefa
+      - epoca
+      - versao
+      - concessao
+      type: object
+    ReciboReceptor:
+      additionalProperties: false
+      properties:
+        conteudo:
+          additionalProperties: true
+          type: object
+        assinatura:
+          type: string
+      required:
+      - conteudo
+      - assinatura
+      type: object
   securitySchemes:
     bearerAuth:
+      type: http
+      scheme: bearer
+    CoordenacaoAuth:
       type: http
       scheme: bearer
 servers:
