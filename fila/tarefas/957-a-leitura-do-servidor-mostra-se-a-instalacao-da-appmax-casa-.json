@@ -1,0 +1,20 @@
+{
+  "arquivo": "957-a-leitura-do-servidor-mostra-se-a-instalacao-da-appmax-casa-",
+  "id": "TAR-957",
+  "titulo": "A leitura do servidor mostra se a instalação da Appmax casa com o aviso",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "testes da leitura nova vermelho antes e verde depois com mutação, e nenhuma saída com valor bruto",
+  "despacho": "Brief fechado, célula ci (coordenação Appmax, sessão 2549a52a, 29/09/2026).\nObjetivo: nova operação somente-leitura appmax-instalacao no catálogo de ci/operacoes_vps.py e na lista de opções de .github/workflows/operacoes-vps.yml.\nA medição devolve sem valor bruto: total de instalações; por instalação: formato_app_id (numerico, uuid, outro), app_id_casa, site_id_preenchido, site_id_casa (também em minúsculas), quantidade de platform_site_ids, client_secret_recebido. Referência de entrada é sha256 hex de 64 caracteres; sem referência, os campos casa saem null.\nNunca imprimir app_id, site_id, external_id, alias, segredo, nem prefixo de hash. Testes em ci/tests/test_operacoes_vps.py: vermelho antes, verde depois, mutação provada.\nMotivo: compra de teste aprovada não gerou aviso na caixa; hipótese de que a instalação gravada não casa com o app_id e o site_id do aviso.\nProibido: gh workflow run, compra, cobrança, estorno, SSH, POST na Appmax.",
+  "origem": "coordenação Appmax, sessão 2549a52a, 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

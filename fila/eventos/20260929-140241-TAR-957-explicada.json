@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-140241-TAR-957-explicada",
+  "tarefa": "TAR-957",
+  "evento": "explicada",
+  "quando": "2026-09-29T14:02:41.424458+00:00",
+  "quem": "coordenação Appmax, sessão 2549a52a, 29/09/2026",
+  "o_que_e": "Hoje o servidor guarda os dados da instalação do aplicativo na Appmax, mas ninguém consegue conferir, sem expor segredo, se eles batem com o que a Appmax manda nos avisos de compra.",
+  "o_que_muda": "Passa a existir uma leitura que só responde sim ou não sobre o formato e o casamento desses dados, sem mostrar nenhum valor. Sem ela, o aviso de compra segue sem chegar e ninguém sabe o motivo.",
+  "exemplo": "É como conferir se a chave entra na fechadura olhando só o desenho dela, sem ler o número gravado.",
+  "importancia": 80
+}

@@ -4350,3 +4350,291 @@ def test_appmax_pendentes_so_aceita_catalogo_fechado_e_recusa_dado_pessoal(tenta
     # guarda: ci/operacoes_vps.py (bloco "elif operacao == 'appmax-pendentes':")
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pendentes", {"tentativas": [tentativa]})
+
+
+# ---------------------------------------------------------------------------
+# appmax-instalacao: leitura sem valor bruto das instalações do aplicativo.
+# Só formato e casamento por hash com uma referência sha256; nunca app_id,
+# site_id, external_id, alias, segredo nem prefixo de hash.
+# ---------------------------------------------------------------------------
+_APP_ID_NUMERICO = "48151623"
+_APP_ID_UUID = "9F1C2A3B-4D5E-4F60-8A7B-1C2D3E4F5A6B"
+_SITE_ID_MISTURADO = "A1B2C3D4-e5f6-4A7B-8c9d-0E1F2A3B4C5D"
+_ALIAS_PRIVADO = "Loja Sigilosa do Fulano"
+_INSTALACOES_APPMAX = [
+    (_APP_ID_NUMERICO, _SITE_ID_MISTURADO, ["site-a", "site-b"], True),
+    (_APP_ID_UUID, "", [], False),
+    ("app-livre-xyz", "   ", None, False),
+]
+
+
+def _sha(texto):
+    return hashlib.sha256(texto.encode()).hexdigest()
+
+
+class _InstalacoesFalsas:
+    def __init__(self, linhas):
+        self.linhas = list(linhas)
+        self.campos = None
+
+    def count(self):
+        return len(self.linhas)
+
+    def order_by(self, *_):
+        return self
+
+    def values_list(self, *campos):
+        self.campos = campos
+        return self
+
+    def __getitem__(self, corte):
+        return self.linhas[corte]
+
+
+def _executar_codigo_appmax_instalacao(monkeypatch, referencia=""):
+    instalacoes = _InstalacoesFalsas(_INSTALACOES_APPMAX)
+    modelos = SimpleNamespace(InstalacaoAppmax=SimpleNamespace(objects=instalacoes))
+    importador_real = builtins.__import__
+
+    def importar(nome, *args, **kwargs):
+        if nome == "pagamentos.core.models":
+            return modelos
+        return importador_real(nome, *args, **kwargs)
+
+    codigos = []
+
+    def comando(args):
+        if args[1] == "ps":
+            return "a" * 64
+        codigos.append(args[-1])
+        saida = StringIO()
+        with redirect_stdout(saida):
+            exec(args[-1], {"__builtins__": {**vars(builtins), "__import__": importar}})
+        return saida.getvalue()
+
+    monkeypatch.setattr(ops, "comando", comando)
+    return ops.medir("appmax-instalacao", "pagamentos", referencia), codigos, instalacoes
+
+
+def _instalacao_valida(**alteracoes):
+    item = {
+        "formato_app_id": "numerico",
+        "app_id_casa": None,
+        "site_id_preenchido": True,
+        "site_id_casa": None,
+        "quantidade_platform_site_ids": 2,
+        "client_secret_recebido": True,
+    }
+    item.update(alteracoes)
+    return item
+
+
+def _medicao_instalacao(*itens, total=None):
+    itens = itens or (_instalacao_valida(),)
+    return {"total": len(itens) if total is None else total, "instalacoes": list(itens)}
+
+
+def test_appmax_instalacao_esta_no_catalogo_e_so_le_pagamentos(monkeypatch, capsys):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert "appmax-instalacao" in ops.OPERACOES
+    assert ops.executar("appmax-instalacao", "admin", {"admin"}) == 2
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+@pytest.mark.parametrize(
+    "referencia", ["x" * 64, "B" * 64, "b" * 63, "b" * 65, PRIVADO, " "]
+)
+def test_appmax_instalacao_recusa_referencia_que_nao_e_sha256_hex(
+    monkeypatch, capsys, referencia
+):
+    monkeypatch.setattr(ops, "medir", lambda *args: pytest.fail("não pode medir"))
+    assert (
+        ops.executar("appmax-instalacao", "pagamentos", {"pagamentos"}, referencia) == 2
+    )
+    assert json.loads(capsys.readouterr().out)["erro"] == "entrada"
+
+
+def test_appmax_instalacao_sem_referencia_mede_formato_e_deixa_casamento_nulo(
+    monkeypatch,
+):
+    dados, _, _ = _executar_codigo_appmax_instalacao(monkeypatch)
+    assert dados == {
+        "total": 3,
+        "instalacoes": [
+            _instalacao_valida(),
+            _instalacao_valida(
+                formato_app_id="uuid",
+                site_id_preenchido=False,
+                quantidade_platform_site_ids=0,
+                client_secret_recebido=False,
+            ),
+            _instalacao_valida(
+                formato_app_id="outro",
+                site_id_preenchido=False,
+                quantidade_platform_site_ids=0,
+                client_secret_recebido=False,
+            ),
+        ],
+    }
+    assert ops.conferir_medicao("appmax-instalacao", dados) == dados
+
+
+def test_appmax_instalacao_casa_app_id_por_hash_exato(monkeypatch):
+    dados, _, _ = _executar_codigo_appmax_instalacao(monkeypatch, _sha(_APP_ID_UUID))
+    assert [i["app_id_casa"] for i in dados["instalacoes"]] == [False, True, False]
+    assert [i["site_id_casa"] for i in dados["instalacoes"]] == [False, False, False]
+    # maiúsculas trocadas não casam o app_id: o webhook compara igualdade exata
+    dados, _, _ = _executar_codigo_appmax_instalacao(
+        monkeypatch, _sha(_APP_ID_UUID.lower())
+    )
+    assert [i["app_id_casa"] for i in dados["instalacoes"]] == [False, False, False]
+    assert ops.conferir_medicao("appmax-instalacao", dados, _sha("x")) == dados
+
+
+@pytest.mark.parametrize("aviso", [_SITE_ID_MISTURADO, _SITE_ID_MISTURADO.lower()])
+def test_appmax_instalacao_casa_site_id_exato_ou_em_minusculas(monkeypatch, aviso):
+    dados, _, _ = _executar_codigo_appmax_instalacao(monkeypatch, _sha(aviso))
+    assert [i["site_id_casa"] for i in dados["instalacoes"]] == [True, False, False]
+    assert [i["app_id_casa"] for i in dados["instalacoes"]] == [False, False, False]
+    assert ops.conferir_medicao("appmax-instalacao", dados, _sha(aviso)) == dados
+
+
+def test_appmax_instalacao_nao_devolve_valor_bruto_nem_prefixo_de_hash(monkeypatch):
+    referencia = _sha(_SITE_ID_MISTURADO.lower())
+    dados, codigos, instalacoes = _executar_codigo_appmax_instalacao(
+        monkeypatch, referencia
+    )
+    saida = json.dumps(dados)
+    for bruto in (
+        _APP_ID_NUMERICO,
+        _APP_ID_UUID,
+        _SITE_ID_MISTURADO,
+        _SITE_ID_MISTURADO.lower(),
+        "app-livre-xyz",
+        "site-a",
+        _ALIAS_PRIVADO,
+        referencia[:8],
+    ):
+        assert bruto not in saida
+    assert instalacoes.campos == (
+        "app_id",
+        "appmax_site_id",
+        "platform_site_ids",
+        "client_secret_recebido",
+    )
+    codigo = codigos[0]
+    assert codigo.count("print(") == 1 and "print(json.dumps(" in codigo
+    for proibido in ("external_id", "alias", "client_key"):
+        assert proibido not in codigo
+
+
+@pytest.mark.parametrize(
+    "medicao",
+    [
+        {**_medicao_instalacao(), "app_id": _APP_ID_NUMERICO},
+        {"total": 0},
+        _medicao_instalacao(total=2),
+        _medicao_instalacao(total=True),
+        _medicao_instalacao(total=-1),
+        _medicao_instalacao(_instalacao_valida(app_id=_APP_ID_NUMERICO)),
+        _medicao_instalacao(_instalacao_valida(alias=_ALIAS_PRIVADO)),
+        _medicao_instalacao(
+            {k: v for k, v in _instalacao_valida().items() if k != "site_id_casa"}
+        ),
+        _medicao_instalacao(_instalacao_valida(formato_app_id=_APP_ID_NUMERICO)),
+        _medicao_instalacao(_instalacao_valida(formato_app_id="UUID")),
+        _medicao_instalacao(_instalacao_valida(app_id_casa=_sha("x"))),
+        _medicao_instalacao(_instalacao_valida(app_id_casa="true")),
+        _medicao_instalacao(_instalacao_valida(app_id_casa=1)),
+        _medicao_instalacao(_instalacao_valida(site_id_preenchido=None)),
+        _medicao_instalacao(_instalacao_valida(site_id_casa=_SITE_ID_MISTURADO)),
+        _medicao_instalacao(_instalacao_valida(client_secret_recebido="sim")),
+        _medicao_instalacao(_instalacao_valida(quantidade_platform_site_ids=True)),
+        _medicao_instalacao(_instalacao_valida(quantidade_platform_site_ids=-1)),
+        _medicao_instalacao(_instalacao_valida(quantidade_platform_site_ids=["a"])),
+        _medicao_instalacao(_instalacao_valida(quantidade_platform_site_ids=1000001)),
+        _medicao_instalacao(_instalacao_valida(app_id_casa=True)),
+        _medicao_instalacao(_instalacao_valida(site_id_casa=False)),
+        {"total": 1, "instalacoes": [PRIVADO]},
+        {"total": 1, "instalacoes": PRIVADO},
+        [],
+        PRIVADO,
+    ],
+)
+def test_appmax_instalacao_so_aceita_chaves_e_tipos_fechados(medicao):
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-instalacao", medicao)
+
+
+def test_appmax_instalacao_casamento_e_tudo_ou_nada_e_exige_referencia_quando_dada():
+    misto = _medicao_instalacao(
+        _instalacao_valida(app_id_casa=True, site_id_casa=False),
+        _instalacao_valida(),
+    )
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-instalacao", misto)
+    sem_casar = _medicao_instalacao(_instalacao_valida())
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("appmax-instalacao", sem_casar, REFERENCIA)
+    casado = _medicao_instalacao(
+        _instalacao_valida(app_id_casa=False, site_id_casa=True)
+    )
+    assert ops.conferir_medicao("appmax-instalacao", casado, REFERENCIA) == casado
+
+
+def test_appmax_instalacao_nao_vaza_saida_livre_e_publica_resumo(monkeypatch, capsys):
+    medicao = _medicao_instalacao(_instalacao_valida(client_secret_recebido=False))
+
+    def rodar(args, **kwargs):
+        saida = "a" * 64 if args[1] == "ps" else json.dumps(medicao)
+        return subprocess.CompletedProcess(args, 0, saida, PRIVADO)
+
+    monkeypatch.setattr(ops.subprocess, "run", rodar)
+    assert ops.executar("appmax-instalacao", "pagamentos", {"pagamentos"}) == 0
+    saida = capsys.readouterr()
+    assert json.loads(saida.out)["medicao"] == medicao
+    assert PRIVADO not in saida.out + saida.err
+
+    livre = json.dumps(_medicao_instalacao(_instalacao_valida(app_id=_APP_ID_NUMERICO)))
+    for bruto in (PRIVADO, livre):
+
+        def rodar_livre(args, bruto=bruto, **kwargs):
+            saida = "a" * 64 if args[1] == "ps" else bruto
+            return subprocess.CompletedProcess(args, 0, saida, "")
+
+        monkeypatch.setattr(ops.subprocess, "run", rodar_livre)
+        assert ops.executar("appmax-instalacao", "pagamentos", {"pagamentos"}) == 2
+        saida = capsys.readouterr()
+        assert json.loads(saida.out)["erro"] == "formato"
+        assert PRIVADO not in saida.out + saida.err
+        assert _APP_ID_NUMERICO not in saida.out + saida.err
+
+    resumo = []
+
+    class Resumo:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def write(self, texto):
+            resumo.append(texto)
+
+    monkeypatch.setattr(ops, "open", lambda *args, **kwargs: Resumo(), raising=False)
+    for nome, valor in {
+        "SAIDA": json.dumps(
+            {
+                "resultado": "PASS",
+                "operacao": "appmax-instalacao",
+                "servico": "pagamentos",
+                "medicao": medicao,
+            }
+        ),
+        "OPERACAO": "appmax-instalacao",
+        "SERVICO": "pagamentos",
+        "GITHUB_STEP_SUMMARY": "summary",
+    }.items():
+        monkeypatch.setenv(nome, valor)
+    ops.conferir()
+    assert '"formato_app_id": "numerico"' in "".join(resumo)
