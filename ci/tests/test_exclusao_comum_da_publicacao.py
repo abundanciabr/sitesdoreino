@@ -50,6 +50,24 @@ def test_escrita_de_env_antes_da_trava_e_reprovada():
     assert not trava_imediata_apos_entrada(mutado, fragmento)
 
 
+PROVISIONADORES_1 = (
+    "admin", "aprovadores", "aviso-de-liberacao", "aviso-no-celular",
+    "cursos", "email", "encomendas", "equipe-da-gamificacao",
+    "evolution", "forum", "gamificacao", "identidade", "metricas",
+)
+
+
+@pytest.mark.parametrize("nome", PROVISIONADORES_1)
+def test_provisionador_trava_antes_de_operar(nome):
+    texto = (RAIZ / "infra" / f"provisionar-{nome}.sh").read_text(encoding="utf-8")
+    fragmento = TRAVA.read_text(encoding="utf-8").strip()
+    entrada = re.search(r'(?m)^cd (?:"\$RAIZ"|/opt/plataforma)[^\n]*\n', texto)
+    assert entrada and texto[entrada.end():].startswith("\n" + fragmento + "\n")
+    alterado = texto[:entrada.end()] + 'printf %s alterado > "env/prova.env"\n' + texto[entrada.end():]
+    entrada_alterada = re.search(r'(?m)^cd (?:"\$RAIZ"|/opt/plataforma)[^\n]*\n', alterado)
+    assert not alterado[entrada_alterada.end():].startswith("\n" + fragmento + "\n")
+
+
 def executar(codigo, pasta, *, como_root=False, **kwargs):
     ambiente = os.environ | {"PLATAFORMA_DIR": str(pasta), "FRAGMENTO": str(TRAVA)}
     comando = ["bash", "-eu", "-c", "echo preparado; " + codigo]
@@ -179,8 +197,9 @@ def test_root_e_deploy_revezam_mesmo_inode_com_umask_restritiva(tmp_path):
 
 
 
-def test_receptor_manual_espera_sem_escrever_env(tmp_path):
-    roteiro = RAIZ / "infra/ligar-a-appmax.sh"
+@pytest.mark.parametrize("nome", ("ligar-a-appmax.sh", "provisionar-admin.sh", "provisionar-identidade.sh"))
+def test_receptor_manual_ou_provisionador_espera_sem_escrever_env(tmp_path, nome):
+    roteiro = RAIZ / "infra" / nome
     (tmp_path / roteiro.name).write_bytes(roteiro.read_bytes())
     (tmp_path / "env").mkdir()
     env = tmp_path / "env/pagamentos.env"
@@ -196,7 +215,7 @@ def test_receptor_manual_espera_sem_escrever_env(tmp_path):
       sleep 0.05
     done
     test -f "$PLATAFORMA_DIR/segurando" || { echo "detentor nao assumiu a trava" >&2; exit 1; }
-    bash "$PLATAFORMA_DIR/ligar-a-appmax.sh" > "$PLATAFORMA_DIR/resultado" 2>&1 &
+    bash "$PLATAFORMA_DIR/{nome}" > "$PLATAFORMA_DIR/resultado" 2>&1 &
     receptor=$!
     sleep 0.3
     kill -0 "$receptor" || { echo "receptor nao esperou a trava" >&2; exit 1; }
@@ -210,8 +229,11 @@ def test_receptor_manual_espera_sem_escrever_env(tmp_path):
       echo "roteiro sem Compose terminou com sucesso indevido" >&2; exit 1
     fi
     grep -q 'docker-compose.yml' "$PLATAFORMA_DIR/resultado"
+    if [ "{nome}" = provisionar-identidade.sh ]; then
+      grep -Fq "$PLATAFORMA_DIR" "$PLATAFORMA_DIR/resultado"
+    fi
     test "$(cat "$PLATAFORMA_DIR/env/pagamentos.env")" = inalterado
     echo exclusao-manual-confirmada
     """
-    assert concluir(executar(codigo, tmp_path)).strip() == "exclusao-manual-confirmada"
+    assert concluir(executar(codigo.replace("{nome}", nome), tmp_path)).strip() == "exclusao-manual-confirmada"
     assert env.read_text(encoding="utf-8") == "inalterado\n"
