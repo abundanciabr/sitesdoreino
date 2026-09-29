@@ -25,7 +25,10 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 11 | Conversa é mudança real; interrompa loops. Nunca pergunte nem informe a outra IA o estado de Git, PR, checks, branches ou pouso: consulte a fonte e aja. |
 
 No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
-`python ci/economia_da_fabrica.py brief`. A sessão executa o pedido dentro
+`python ci/economia_da_fabrica.py brief`. Somente a sessão responsável cria
+frentes Codex, com Sol ou Luna explícitos, esforço por risco e `fork_turns=none`.
+Antes do disparo, confira o brief e os parâmetros por `validar-brief`; ausência,
+divergência e fallback são recusados. Preserve o modelo principal. A sessão executa o pedido dentro
 do mandato recebido, com validação, PR e registro pelo `make pr`.
 As competências das fichas são por tarefa, sem papéis fixos por fornecedor.
 Subagente não cria outro nem pergunta ao mantenedor; devolve por escrito
