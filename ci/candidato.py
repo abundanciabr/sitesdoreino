@@ -23,6 +23,7 @@ from pathlib import Path
 REPO = "abundanciabr/sitesdoreino"
 WORKFLOW = ".github/workflows/deploy-celula.yml"
 IDENTIDADE = f"https://github.com/{REPO}/{WORKFLOW}@refs/heads/main"
+VERSAO = 2
 GRUPOS = frozenset(
     {
         "codigo",
@@ -36,6 +37,7 @@ GRUPOS = frozenset(
     }
 )
 BUILD = GRUPOS - {"politicas"}
+FONTE = frozenset({"codigo", "configuracao", "contratos", "migrations", "politicas"})
 OBRIGATORIOS = frozenset({"muralhas", "ci-celula-gate", "build"})
 CAMPOS = {
     "versao",
@@ -50,6 +52,20 @@ CAMPOS = {
     "provas",
     "execucao",
     "imagem",
+}
+EMISSAO = {
+    "versao",
+    "nome",
+    "resultado",
+    "escopo",
+    "entradas",
+    "ambiente",
+    "verificador",
+    "insumos",
+    "run_id",
+    "tentativa",
+    "job_id",
+    "revisao",
 }
 
 
@@ -112,7 +128,15 @@ def _identificador(valor: object, nome: str) -> None:
 
 
 def _snapshot(snapshot: dict) -> None:
-    _campos(snapshot, {"entradas", "ambiente", "verificadores"}, "snapshot")
+    _exigir(
+        isinstance(snapshot, dict)
+        and set(snapshot)
+        in (
+            {"entradas", "ambiente", "verificadores"},
+            {"entradas", "ambiente", "verificadores", "ambientes"},
+        ),
+        "snapshot: campos ausentes ou desconhecidos",
+    )
     _campos(snapshot["entradas"], GRUPOS, "entradas")
     for grupo, valores in snapshot["entradas"].items():
         _exigir(isinstance(valores, dict), f"entradas.{grupo}: mapa obrigatório")
@@ -130,6 +154,11 @@ def _snapshot(snapshot: dict) -> None:
     for nome, valor in verificadores.items():
         _identificador(nome, "verificador")
         _sha(valor, f"verificador.{nome}")
+    if "ambientes" in snapshot:
+        _exigir(isinstance(snapshot["ambientes"], dict), "ambientes por prova ausentes")
+        for nome, valor in snapshot["ambientes"].items():
+            _identificador(nome, "ambiente por prova")
+            _sha(valor, f"ambientes.{nome}")
 
 
 def snapshot(manifesto: dict) -> dict:
@@ -137,12 +166,19 @@ def snapshot(manifesto: dict) -> dict:
 
 
 def assinatura_prova(atual: dict, nome: str, escopo: list[str]) -> str:
-    _snapshot(atual)
     _exigir(
         bool(escopo) and len(escopo) == len(set(escopo)) and set(escopo) <= GRUPOS,
         "escopo da prova inválido",
     )
-    _exigir(nome in atual["verificadores"], "versão do verificador ausente")
+    _exigir(
+        isinstance(atual, dict)
+        and isinstance(atual.get("entradas"), dict)
+        and set(escopo) <= set(atual["entradas"])
+        and isinstance(atual.get("verificadores"), dict)
+        and nome in atual["verificadores"],
+        "entradas ou versão do verificador ausentes",
+    )
+    _sha(atual.get("ambiente"), "ambiente")
     return digest(
         {
             "entradas": {g: atual["entradas"][g] for g in sorted(escopo)},
@@ -219,7 +255,7 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
         "conteúdo do candidato foi alterado",
     )
     _exigir(
-        type(manifesto["versao"]) is int and manifesto["versao"] == 1,
+        type(manifesto["versao"]) is int and manifesto["versao"] == VERSAO,
         "versão não suportada",
     )
     _exigir(
@@ -263,6 +299,8 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
                 "tentativa",
                 "job_id",
                 "revisao",
+                "emissao",
+                "bundle",
             },
             "prova",
         )
@@ -277,9 +315,8 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
             _inteiro(prova[campo], f"prova.{campo}")
         _sha(prova["revisao"], "prova.revisao", 40)
         _exigir(
-            prova["revisao"]
-            in {manifesto["fonte"]["revisao"], manifesto["integracao"]["revisao"]},
-            f"{nome}: revisão não pertence ao candidato",
+            prova["revisao"] == manifesto["integracao"]["revisao"],
+            f"{nome}: somente prova oficial push main da revisão integrada autoriza",
         )
         _exigir(
             isinstance(prova["escopo"], list)
@@ -287,18 +324,79 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
             "escopo precisa ser lista de grupos",
         )
         if nome in OBRIGATORIOS:
-            esperado = BUILD if nome == "build" else GRUPOS
+            esperado = BUILD if nome == "build" else FONTE
             _exigir(
                 set(prova["escopo"]) == esperado,
                 f"{nome}: escopo obrigatório incompleto",
             )
+        emissao = prova["emissao"]
+        _campos(emissao, EMISSAO, f"{nome}: emissão")
         _exigir(
-            prova["entradas"] == assinatura_prova(original, nome, prova["escopo"]),
+            type(emissao["versao"]) is int
+            and emissao["versao"] == 1
+            and all(
+                emissao[campo] == prova[campo]
+                for campo in (
+                    "nome",
+                    "resultado",
+                    "escopo",
+                    "entradas",
+                    "run_id",
+                    "tentativa",
+                    "revisao",
+                )
+            )
+            and emissao["verificador"] == original["verificadores"][nome]
+            and emissao["insumos"]
+            == {grupo: original["entradas"][grupo] for grupo in prova["escopo"]},
+            f"{nome}: emissão do job não corresponde às entradas do candidato",
+        )
+        _exigir(
+            prova["entradas"]
+            == digest(
+                {
+                    "entradas": emissao["insumos"],
+                    "ambiente": emissao["ambiente"],
+                    "verificador": emissao["verificador"],
+                }
+            )
+            and (nome != "build" or emissao["ambiente"] == original["ambiente"]),
             f"{nome}: prova não mediu estas entradas",
+        )
+        _inteiro(emissao["job_id"], f"{nome}: job emissor")
+        if nome == "build":
+            _exigir(
+                prova["revisao"] == manifesto["integracao"]["revisao"]
+                and all(
+                    prova[campo] == manifesto["execucao"][campo]
+                    for campo in ("run_id", "tentativa", "job_id")
+                ),
+                "build não pertence ao job preparar da integração",
+            )
+        _exigir(
+            emissao["job_id"] == prova["job_id"] or nome == "ci-celula-gate",
+            f"{nome}: job emissor divergente",
+        )
+        _exigir(
+            nome != "ci-celula-gate" or emissao["job_id"] != prova["job_id"],
+            "ci-celula-gate: agregador não emite pela matriz",
+        )
+        _sha(emissao["entradas"], f"{nome}: entradas da emissão")
+        _sha(emissao["ambiente"], f"{nome}: ambiente da emissão")
+        _sha(emissao["verificador"], f"{nome}: verificador da emissão")
+        _exigir(
+            isinstance(prova["bundle"], dict) and bool(prova["bundle"]),
+            f"{nome}: bundle assinado ausente",
         )
         if atual is not None and (
             nome not in atual["verificadores"]
-            or prova["entradas"] != assinatura_prova(atual, nome, prova["escopo"])
+            or any(
+                emissao["insumos"][grupo] != atual["entradas"][grupo]
+                for grupo in prova["escopo"]
+            )
+            or emissao["verificador"] != atual["verificadores"][nome]
+            or emissao["ambiente"]
+            != atual.get("ambientes", {}).get(nome, atual["ambiente"])
         ):
             invalidadas.append(nome)
     _exigir(
@@ -397,6 +495,86 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             ],
             raiz,
         )
+        for prova in manifesto["provas"]:
+            nome = prova["nome"]
+            workflow_prova = (
+                WORKFLOW
+                if nome == "build"
+                else (
+                    ".github/workflows/muralhas.yml"
+                    if nome == "muralhas"
+                    else ".github/workflows/ci-celula.yml"
+                )
+            )
+            arquivo_prova = pasta / f"{nome}.json"
+            bundle_prova = pasta / f"{nome}-bundle.json"
+            arquivo_prova.write_bytes(canonico(prova["emissao"]))
+            bundle_prova.write_bytes(canonico(prova["bundle"]))
+            parametros = [
+                "gh",
+                "attestation",
+                "verify",
+                str(arquivo_prova),
+                "--bundle",
+                str(bundle_prova),
+                "--repo",
+                REPO,
+                "--source-digest",
+                prova["revisao"],
+                "--deny-self-hosted-runners",
+                "--format",
+                "json",
+            ]
+            parametros += [
+                "--cert-identity",
+                f"https://github.com/{REPO}/{workflow_prova}@refs/heads/main",
+                "--source-ref",
+                "refs/heads/main",
+                "--signer-digest",
+                prova["revisao"],
+            ]
+            respostas = _json_comando(parametros, raiz)
+            esperada = hashlib.sha256(canonico(prova["emissao"])).hexdigest()
+            uri_prova = (
+                f"https://github.com/{REPO}/actions/runs/{prova['run_id']}"
+                f"/attempts/{prova['tentativa']}"
+            )
+            _exigir(
+                isinstance(respostas, list) and bool(respostas),
+                f"{nome}: emissão sem assinatura verificada",
+            )
+            emissao_verificada = any(
+                isinstance(resposta, dict)
+                and isinstance(resposta.get("verificationResult"), dict)
+                and resposta["verificationResult"]
+                .get("signature", {})
+                .get("certificate", {})
+                .get("runInvocationURI")
+                == uri_prova
+                and resposta["verificationResult"]
+                .get("signature", {})
+                .get("certificate", {})
+                .get("sourceRepositoryDigest")
+                == prova["revisao"]
+                and resposta["verificationResult"]
+                .get("signature", {})
+                .get("certificate", {})
+                .get("buildTrigger")
+                == "push"
+                and resposta["verificationResult"].get("verifiedTimestamps")
+                and any(
+                    isinstance(assunto, dict)
+                    and assunto.get("digest", {}).get("sha256") == esperada
+                    for assunto in resposta["verificationResult"]
+                    .get("statement", {})
+                    .get("subject", [])
+                )
+                for resposta in respostas
+            )
+            _exigir(
+                emissao_verificada,
+                f"{nome}: assinatura não vincula emissão, revisão e tentativa",
+            )
     execucao = manifesto["execucao"]
     uri = f"https://github.com/{REPO}/actions/runs/{execucao['run_id']}/attempts/{execucao['tentativa']}"
     _exigir(
@@ -476,10 +654,8 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             f"{nome}: execução pertence a outra fonte",
         )
         _exigir(
-            run.get("event")
-            in ({"push"} if nome == "build" else {"push", "pull_request"})
-            and (run.get("event") != "push" or run.get("head_branch") == "main"),
-            f"{nome}: execução não autorizada",
+            run.get("event") == "push" and run.get("head_branch") == "main",
+            f"{nome}: somente execução push main autoriza",
         )
         _exigir(
             (run.get("status") == "completed" and run.get("conclusion") == "success")
@@ -514,7 +690,11 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             for j in pagina["jobs"]
             if j.get("id") == prova["job_id"]
         ]
-        esperado = f"preparar ({manifesto['celula']})" if nome == "build" else nome
+        esperado = (
+            f"preparar ({manifesto['celula']})"
+            if nome == "build"
+            else "muralhas-main" if nome == "muralhas" else "ci-celula-gate-main"
+        )
         _exigir(
             len(jobs) == 1
             and jobs[0].get("name") == esperado
@@ -522,6 +702,20 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             and jobs[0].get("conclusion") == "success",
             f"{nome}: job obrigatório não aprovou",
         )
+        if nome == "ci-celula-gate":
+            emissores = [
+                j
+                for pagina in pages
+                for j in pagina["jobs"]
+                if j.get("id") == prova["emissao"]["job_id"]
+            ]
+            _exigir(
+                len(emissores) == 1
+                and emissores[0].get("name") == f"rodar-main ({manifesto['celula']})"
+                and emissores[0].get("status") == "completed"
+                and emissores[0].get("conclusion") == "success",
+                "ci-celula-gate: matriz emissora não aprovou",
+            )
 
 
 def _ler_ref(raiz: Path, identificador: str) -> dict | None:

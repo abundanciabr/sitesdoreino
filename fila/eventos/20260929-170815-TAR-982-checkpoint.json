@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-170815-TAR-982-checkpoint",
+  "tarefa": "TAR-982",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:08:15.419906+00:00",
+  "quem": "pme_testemunho_epoca",
+  "plano": "Retomada PME05/08 testemunho apos aprovacao especifica",
+  "ultimo_avanco": "Mantenedor respondeu diretamente Autorizo esse patch e escopo em call_s09vY8bAPsNMSXuQABKQiLOH; patch B4DF6602DD10CA457DBFC725FE5E4FC1BD7AF5921A518C7DCB7F85ABAA403815 aplicado; contrato 7405CB73229E3E50F87F5A607B1E96F78802E4A2219A70EB6060D4B1A7CD658A registrado como v2.",
+  "proxima_acao": "Executar nove testes e implementar workflow main com consulta PG pelo SSH oficial; nenhuma tag ou regra remota antes das provas.",
+  "verificacoes": [
+    "Get-FileHash SHA256 conferiu os dois hashes aprovados; git apply saiu 0; fila.py contrato registrou evento 20260929-170752."
+  ]
+}
