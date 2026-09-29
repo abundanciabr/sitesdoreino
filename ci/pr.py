@@ -303,7 +303,7 @@ def renderizar(campos: dict) -> str:
         "(function(){ (window.REGISTROS = window.REGISTROS || []).push({",
     ]
     for chave, valor in campos.items():
-        linhas.append(f" {chave}: {json.dumps(valor, ensure_ascii=False)},")
+        linhas.append(f"  {chave}: {json.dumps(valor, ensure_ascii=False)},")
     linhas[-1] = linhas[-1].rstrip(",")
     linhas.append("}); })();")
     return "\n".join(linhas) + "\n"
@@ -337,7 +337,28 @@ def _texto_do_recibo(pedido, nome, url, dia, area, arvore, commit, quantidade):
     return texto
 
 
-def _conferir_orcamento_do_recibo(pedido, correr, dia, area, commit, quantidade):
+def _conferir_orcamento_do_recibo(raiz, pedido, correr, dia, area, commit, quantidade):
+    if pedido.continuar:
+        try:
+            existentes = json.loads(correr([
+                "gh", "pr", "list", "--head", correr(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip(),
+                "--state", "all", "--json", "number,url,state",
+            ]))
+        except (TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao("consulta de PR inválida", "Confira gh pr list antes de retomar.") from erro
+        if not isinstance(existentes, list) or len(existentes) > 1:
+            raise ParouPorSeguranca("PR do ramo é ambíguo", "Confira gh pr list --head antes de retomar.")
+        if existentes:
+            existente = existentes[0]
+            if existente.get("state", "OPEN") != "OPEN":
+                raise ParouPorSeguranca("PR do ramo já foi encerrado", "Use uma nova bancada para um novo trabalho.")
+            if not correr(["git", "status", "--porcelain"]).strip():
+                arvore = _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"]))
+                if _recibo_reutilizavel(raiz, int(existente["number"]), arvore, pedido, correr):
+                    return
+            _texto_do_recibo(pedido, f"{dia:%Y%m%d}-999-{slug_do_titulo(pedido.titulo)}",
+                             existente["url"], dia, area, commit, commit, quantidade)
+            return
     remoto = correr(["git", "remote", "get-url", "origin"]).strip()
     achado = re.fullmatch(r"https://([^/@]+/[\w.-]+/[\w.-]+?)(?:\.git)?", remoto)
     if not achado:
@@ -350,8 +371,8 @@ def _conferir_orcamento_do_recibo(pedido, correr, dia, area, commit, quantidade)
             "origin não identifica a URL do recibo",
             "Confira git remote get-url origin; use a URL HTTPS ou SSH do repositório GitHub antes de submeter.",
         )
-    # Reserva 20 dígitos para o número futuro; a URL efetiva também é conferida.
-    url = f"https://{repositorio}/pull/" + "9" * 20
+    # O número mínimo prova apenas excessos certos; a URL efetiva é conferida depois.
+    url = f"https://{repositorio}/pull/1"
     nome = f"{dia:%Y%m%d}-999-{slug_do_titulo(pedido.titulo)}"
     _texto_do_recibo(pedido, nome, url, dia, area, commit, commit, quantidade)
 
@@ -802,7 +823,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
-    _conferir_orcamento_do_recibo(pedido, correr, hoje, ramo.split("/")[1], inicial, len(comandos))
+    _conferir_orcamento_do_recibo(raiz, pedido, correr, hoje, ramo.split("/")[1], inicial, len(comandos))
     telemetria.registrar_fase("fechamento", "iniciado", commit=inicial, **correlacao)
     dizer(f"PASS preparação concluída: {ramo}")
     preparados = correr(["git", "diff", "--cached", "--name-only"]).splitlines()
@@ -838,19 +859,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
     dizer(f"PASS PR aberto: #{numero} {url}")
     # A identidade é do fato (ramo, PR e árvore), nunca de uma tentativa.
-    destino = _registro_que_cita(raiz, numero, arvore)
-    if destino is None:
-        anterior = _registro_que_cita(raiz, numero)
-        if anterior:
-            evidencia = campos_lidos(anterior.read_text(encoding="utf-8"))["evidencia"]
-            origem = re.search(r"commit ([0-9a-f]{40,64})", evidencia)
-            if origem:
-                diferenca = set(correr(["git", "diff", "--name-only", origem[1], "HEAD"]).splitlines())
-                permitidos = {anterior.relative_to(raiz).as_posix()}
-                if pedido.tarefa:
-                    permitidos.update(p.relative_to(raiz).as_posix() for p in (raiz / "fila/eventos").glob("*.json") if json.loads(p.read_text(encoding="utf-8")).get("tarefa") == pedido.tarefa)
-                if not diferenca - permitidos:
-                    destino = anterior
+    destino = _recibo_reutilizavel(raiz, numero, arvore, pedido, correr)
     chave = hashlib.sha256(f"{ramo}:{numero}:{arvore}".encode()).hexdigest()
     if destino is None:
         sequencia = correr([sys.executable, "ci/reservar.py", "numero", "registro", "--chave", chave, "--com-dia"]).strip()
@@ -862,7 +871,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
                                 arvore, commit, len(provas))
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
-        destino.write_text(texto, encoding="utf-8")
+        destino.write_text(texto, encoding="utf-8", newline="\n")
     eventos = _submeter_fila(raiz, correr, pedido.tarefa, ramo, url, commit, arvore)
     correr(["node", "painel/gerar_manifesto.js"])
     relativo = destino.relative_to(raiz).as_posix()
@@ -944,6 +953,23 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
             "isso o recibo automático não consegue identificar esta entrega.",
         )
     return int(achado.group(1)), achado.group(0)
+
+
+def _recibo_reutilizavel(raiz, numero, arvore, pedido, correr):
+    destino = _registro_que_cita(raiz, numero, arvore)
+    if destino is None:
+        anterior = _registro_que_cita(raiz, numero)
+        if anterior:
+            evidencia = campos_lidos(anterior.read_text(encoding="utf-8"))["evidencia"]
+            origem = re.search(r"commit ([0-9a-f]{40,64})", evidencia)
+            if origem:
+                diferenca = set(correr(["git", "diff", "--name-only", origem[1], "HEAD"]).splitlines())
+                permitidos = {anterior.relative_to(raiz).as_posix()}
+                if pedido.tarefa:
+                    permitidos.update(p.relative_to(raiz).as_posix() for p in (raiz / "fila/eventos").glob("*.json") if json.loads(p.read_text(encoding="utf-8")).get("tarefa") == pedido.tarefa)
+                if not diferenca - permitidos:
+                    destino = anterior
+    return destino
 
 
 def _registro_que_cita(raiz: Path, numero: int, arvore: str | None = None) -> Path | None:
