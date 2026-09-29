@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260929-175822-TAR-985-checkpoint",
+  "tarefa": "TAR-985",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:58:22.6535009Z",
+  "quem": "codex/pme07-publicacao",
+  "plano": "Lote 1 de TAR985: emissão verificada no próprio job oficial",
+  "ultimo_avanco": "TAR976 publicada, branch nova limpa, task/evento985 copiados e abertura real concluída",
+  "proxima_acao": "Aguardar interface produtora TAR980 congelada, ensaiar emissão com snapshot-fonte e incorporar sem alterar produtor nem receptor de outro dono",
+  "verificacoes": [
+    "Leitor oficial PR2343 estado PUBLICADO SHA integrado 3c12084940b659bb6e15e4d82f0a101dd59f54f6",
+    "Abertura TAR985 exit0, fonte04 SHA256 0AC7BC12789E10E3ACF4C529754AC0C2193D96A4E7C5665ECB1C404B7F97757F",
+    "Evento incidental TAR958 de reivindicação expirada preservado separadamente e comunicado ao coordenador"
+  ]
+}
