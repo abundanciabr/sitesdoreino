@@ -90,6 +90,7 @@ RESPOSTAS_FELIZES = {
     "diff --cached --name-only": "ci/pr.py\n",
     "gh pr create": f"{URL_DO_PR}\n",
     "gh pr list": "[]\n",
+    "git remote get-url origin": "https://github.com/abundanciabr/sitesdoreino.git",
     "reservar.py numero registro": "20260906-077\n",
 }
 
@@ -708,7 +709,13 @@ def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aber
     monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
     declarada = tarefa_aberta if tarefa_aberta.startswith('TAR-') else None
     pr.abrir(raiz, pedido(raiz, tarefa=declarada), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
-    assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('validacao','concluido'), ('fechamento','concluido')]
+    assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('candidato','concluido'), ('validacao','iniciado'), ('validacao','concluido'), ('validacao','iniciado'), ('validacao','concluido'), ('fechamento','concluido')]
+    validacoes = [d for f,r,d in fases if f == 'validacao']
+    assert validacoes[0]['rodada'] == validacoes[1]['rodada']
+    assert validacoes[2]['rodada'] == validacoes[3]['rodada']
+    assert validacoes[0]['rodada'] != validacoes[2]['rodada']
+    assert 'pr' not in validacoes[0] and 'pr' not in validacoes[1]
+    assert validacoes[2]['pr'] == validacoes[3]['pr'] == 1210
     assert {d['tentativa'] for f,r,d in fases} == {'tentativa-abertura'}
     assert {d['tarefa'] for f,r,d in fases} == {tarefa_aberta}
     assert fases[-1][2]['pr'] == 1210
@@ -790,6 +797,7 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, monkeypatch, ig
         return subprocess.run(['git',*args],cwd=cwd,check=True,capture_output=True,text=True).stdout.strip()
     git('config','user.name','Teste')
     git('config','user.email','teste@example.com')
+    git('remote','add','origin','https://github.com/abundanciabr/sitesdoreino.git')
     (origem/'.gitignore').write_text('necessario.py\n' if ignorado else '',encoding='utf-8')
     (origem/'ci').mkdir()
     (origem/'ci/pr.py').write_text('def abrir(): pass\n',encoding='utf-8')
@@ -1459,3 +1467,114 @@ def test_validacao_recusa_fonte_ignorada_extra_apos_preparar_artefatos(tmp_path,
         pr._validar(raiz, commit, pr.rodar, [[sys.executable, "-c",
             f"from pathlib import Path; p=Path({arquivo!r}); p.parent.mkdir(exist_ok=True); p.write_text('arbitrario')"
         ]], lambda *_: None)
+
+
+@pytest.mark.parametrize("troca", [
+    {"detalhe": "x" * 1100},
+    {"detalhe": "á" * 300},
+    {"evidencia": "prova " * 170},
+])
+def test_recibo_invalido_recusa_antes_de_validacao_e_efeitos(tmp_path, troca):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="1 KB"):
+        pr.abrir(raiz, pedido(raiz, **troca), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("pytest")
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+    assert not dub.pediu("gh pr create")
+    assert not dub.pediu("reservar.py")
+    assert not list((raiz / "painel/registros").glob("*.js"))
+
+
+def test_codex_preserva_area_e_provas_da_bancada(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *a: ("tentativa", "legada"))
+    monkeypatch.setattr(pr, "_identificar_tarefa", lambda *a: None)
+    dub = Duble({**RESPOSTAS_FELIZES, "rev-parse --abbrev-ref": "codex/ci/make-pr"})
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    recibo = next((raiz / "painel/registros").glob("*.js"))
+    assert pr.campos_lidos(recibo.read_text(encoding="utf-8"))["area"] == "ci"
+    assert dub.pediu("git push -u origin codex/ci/make-pr")
+    assert dub.linhas.count("pytest ci/tests") == 2
+
+
+@pytest.mark.parametrize("bytes_totais", [1023, 1024])
+def test_limite_do_recibo_conta_bytes_e_preserva_campos(tmp_path, bytes_totais):
+    raiz = bancada(tmp_path)
+    entrada = pedido(raiz)
+    args = (entrada, "20260906-077-teste", URL_DO_PR, HOJE, "ci", "a" * 40, "b" * 40, 1)
+    texto = pr._texto_do_recibo(*args)
+    entrada.detalhe += "x" * (bytes_totais - len(texto.encode("utf-8")))
+    if bytes_totais == 1024:
+        with pytest.raises(pr.ParouPorSeguranca, match="1 KB"):
+            pr._texto_do_recibo(*args)
+    else:
+        texto = pr._texto_do_recibo(*args)
+        assert len(texto.encode("utf-8")) == 1023
+        assert pr.campos_lidos(texto)["detalhe"] == entrada.detalhe
+
+
+@pytest.mark.parametrize("remoto", [
+    "https://github.com/abundanciabr/sitesdoreino.git",
+    "git@github.com:abundanciabr/sitesdoreino.git",
+    "ssh://git@github.com/abundanciabr/sitesdoreino.git",
+    "ssh://git@github.com:22/abundanciabr/sitesdoreino.git",
+])
+def test_orcamento_minimo_nao_cria_efeito_remoto(tmp_path, remoto):
+    raiz = bancada(tmp_path)
+    dub = Duble({"git remote get-url origin": remoto})
+    pr._conferir_orcamento_do_recibo(raiz, pedido(raiz), dub, HOJE, "ci", "b" * 40, 1)
+    assert dub.linhas == ["git remote get-url origin"]
+
+
+def test_origin_invalido_recusa_antes_da_validacao(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "git remote get-url origin": "arquivo-local"})
+    with pytest.raises(pr.ParouPorSeguranca, match="origin"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("pytest")
+
+
+
+def test_recibo_valido_de_1023_bytes_e_retomada_reutilizam_prova(tmp_path):
+    raiz = bancada(tmp_path)
+    entrada = pedido(raiz)
+    nome = "20260906-077-" + pr.slug_do_titulo(entrada.titulo)
+    texto = pr._texto_do_recibo(entrada, nome, URL_DO_PR, HOJE, "ci", "a" * 40, "b" * 40, 1)
+    entrada.detalhe += "x" * (1023 - len(texto.encode("utf-8")))
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, entrada, rodar=dub, hoje=HOJE)
+    recibo = next((raiz / "painel/registros").glob("*.js"))
+    assert len(recibo.read_bytes()) == 1023
+    retomada = Duble({**RESPOSTAS_FELIZES, "status --porcelain": "", "diff --cached --name-only": "",
+                     "gh pr list": json.dumps([{"number": 1210, "url": URL_DO_PR, "state": "OPEN"}])})
+    pr.abrir(raiz, pedido(raiz, detalhe="x" * 2000, continuar=True), rodar=retomada, hoje=HOJE)
+    assert len(list((raiz / "painel/registros").glob("*.js"))) == 1
+    assert len(recibo.read_bytes()) == 1023
+    assert not retomada.pediu("reservar.py")
+    assert retomada.linhas.count("pytest ci/tests") == 2
+
+
+
+def test_scratch_codex_canonico_e_exclusivo(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    scratch = tmp_path / "sessoes"
+    monkeypatch.setattr(pr, "base_de_scratch_padrao", lambda: scratch)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *a: ("tentativa", "legada"))
+    monkeypatch.setattr(pr, "_identificar_tarefa", lambda *a: None)
+    for nome_pasta in ("codex-ci-make-pr", "ci-make-pr"):
+        pasta = scratch / nome_pasta
+        pasta.mkdir(parents=True)
+        for nome in ("mensagem.txt", "corpo.md", "validacao.json"):
+            (pasta / nome).write_text((raiz / nome).read_text(encoding="utf-8"), encoding="utf-8")
+        entrada = pedido(raiz, mensagem_arquivo=pasta / "mensagem.txt", corpo_arquivo=pasta / "corpo.md",
+                         validacao_arquivo=pasta / "validacao.json")
+        dub = Duble({**RESPOSTAS_FELIZES, "rev-parse --abbrev-ref": "codex/ci/make-pr"})
+        if nome_pasta == "codex-ci-make-pr":
+            pr.abrir(raiz, entrada, rodar=dub, hoje=HOJE)
+        else:
+            with pytest.raises(pr.ParouPorSeguranca, match="fora da bancada"):
+                pr.abrir(raiz, entrada, rodar=dub, hoje=HOJE)
+            assert not dub.pediu("git add")
