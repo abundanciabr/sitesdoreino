@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -64,7 +65,7 @@ def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path, monkeypat
         json.dumps({"esperas": {}}), encoding="utf-8"
     )
     (raiz / "ci" / "fila.py").write_text(
-        "import json; print(json.dumps({'TAR-001': {'estado': 'na fila'}}))",
+        "import json; print(json.dumps({'estados': {'TAR-001': {'estado': 'na fila'}}, 'aceites': {'formato': 'aceites-publicados.v1', 'tarefas': {}}}))",
         encoding="utf-8",
     )
 
@@ -81,6 +82,7 @@ def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path, monkeypat
     assert manifesto["formato"] == "admin-dados.v1"
     assert manifesto["origem"]["sha"] == SHA_DA_PUBLICACAO
     assert "estados.json" in manifesto["integridade"]["arquivos"]
+    assert "aceites-comprovados.json" in manifesto["integridade"]["arquivos"]
 
 
 def test_publicador_recusa_arquivo_com_hash_quebrado(tmp_path):
@@ -236,3 +238,27 @@ def test_deploy_infra_prepara_admin_dados_antes_do_compose_up():
     preparo = script.index("mkdir -p admin-dados")
     assert preparo < script.index("docker compose up -d")
     assert "touch admin-dados/.permissao-deploy-teste" in script
+
+
+@pytest.mark.parametrize("falha", ["recusa", "erro", "prazo", "instrumento", "utf8"])
+def test_preparo_nao_sobrescreve_payload_sem_prova(tmp_path, monkeypatch, falha):
+    import preparar_dados_admin as dados
+    raiz = tmp_path / "repo"
+    (raiz / "fila/tarefas").mkdir(parents=True)
+    destino = tmp_path / "payload"
+    destino.mkdir()
+    anterior = destino / "estados.json"
+    anterior.write_text("fonte anterior íntegra", encoding="utf-8")
+    def recusar(*a, **kw):
+        if falha == "prazo":
+            raise subprocess.TimeoutExpired(a[0], 300)
+        if falha == "instrumento":
+            raise OSError("Python indisponível")
+        if falha == "utf8":
+            raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "byte inválido")
+        raise subprocess.CalledProcessError(1 if falha == "recusa" else 2, a[0])
+    monkeypatch.setattr(dados.subprocess, "run", recusar)
+    with pytest.raises(SystemExit) as resultado:
+        dados.preparar_fila(raiz, destino)
+    assert resultado.value.code == (1 if falha == "recusa" else 2)
+    assert anterior.read_text(encoding="utf-8") == "fonte anterior íntegra"

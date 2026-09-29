@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-046-ci-acelerar-catalogo-e-corrigir-recibo",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: acelerar catalogo e corrigir recibo",
+  detalhe: "O catalogo evita digests repetidos e preserva a conferência final. O rito recusa tipo incompatível e não reutiliza medição como entrega; provas e histórico ficam preservados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2353. Validação local: árvore 602e5fc7e00c1c789a8c3e8ec0f51415a47bd069; commit 84ebea913bfe6969c975f654bf199f1adf75c859; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-988",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

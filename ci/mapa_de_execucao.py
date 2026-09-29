@@ -1043,7 +1043,7 @@ def materializar_pacote(
             base["retomada"].update(_bancada_da_tentativa(raiz, dono))
             base["trabalho_aproveitavel"]["bancada"] = base["retomada"]["worktree"]
         if snapshot:
-            if not conferir_frescor(raiz, base, agora)["valido"]:
+            if _coleta is None and not conferir_frescor(raiz, base, agora)["valido"]:
                 raise ErroDeInstrumentacao(
                     "Uma fonte local mudou. Gere novamente o snapshot."
                 )

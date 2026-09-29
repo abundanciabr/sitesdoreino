@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-185912-TAR-988-checkpoint",
+  "tarefa": "TAR-988",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T18:59:12.497345+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME02: concluir corte medido e corrigir reuso do recibo pelo tipo solicitado",
+  "ultimo_avanco": "Revisao independente aprovou a linha de otimizacao; rito revelou que recibo medicao era reutilizado como entrega sem conferir tipo",
+  "proxima_acao": "Extensao exclusiva para pme02_submissao: ci/pr.py e ci/tests/test_pr.py alem dos dois alvos988; registrar contrato v2, filtrar recibo pelo tipo solicitado e reexecutar rito mantendo o registro antigo",
+  "verificacoes": [
+    "Autor leu _registro_que_cita sorted reverse e duas chamadas de _recibo_reutilizavel; pr.py livre desde973,03 nao e escritora; caso negativo tipo divergente e positivo idempotencia exigidos; revisao independente antes de integrar"
+  ]
+}

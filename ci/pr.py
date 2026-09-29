@@ -405,6 +405,11 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
             f"tipo de registro desconhecido: {pedido.tipo!r}",
             f"Use `--tipo` com um destes: {', '.join(TIPOS)}.",
         )
+    if pedido.tarefa and pedido.tipo != "entrega":
+        raise ParouPorSeguranca(
+            "tipo de registro incompatível com PR de tarefa",
+            "Use --tipo entrega para --tarefa TAR-NNN; outro tipo de recibo não passa no portão de integração.",
+        )
     if pedido.gravidade not in GRAVIDADES:
         raise ParouPorSeguranca(
             f"gravidade desconhecida: {pedido.gravidade!r}",
@@ -1010,9 +1015,9 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
 
 
 def _recibo_reutilizavel(raiz, numero, arvore, pedido, correr):
-    destino = _registro_que_cita(raiz, numero, arvore)
+    destino = _registro_que_cita(raiz, numero, arvore, tipo=pedido.tipo)
     if destino is None:
-        anterior = _registro_que_cita(raiz, numero)
+        anterior = _registro_que_cita(raiz, numero, tipo=pedido.tipo)
         if anterior:
             evidencia = campos_lidos(anterior.read_text(encoding="utf-8"))["evidencia"]
             origem = re.search(r"commit ([0-9a-f]{40,64})", evidencia)
@@ -1026,7 +1031,7 @@ def _recibo_reutilizavel(raiz, numero, arvore, pedido, correr):
     return destino
 
 
-def _registro_que_cita(raiz: Path, numero: int, arvore: str | None = None) -> Path | None:
+def _registro_que_cita(raiz: Path, numero: int, arvore: str | None = None, *, tipo: str | None = None) -> Path | None:
     """O recibo deste PR já está na pasta? (é o que torna `--continuar` seguro)"""
     pasta = raiz / "painel" / "registros"
     if not pasta.is_dir():
@@ -1038,7 +1043,9 @@ def _registro_que_cita(raiz: Path, numero: int, arvore: str | None = None) -> Pa
         except (ValueError, KeyError):
             continue
         evidencia = campos.get("evidencia") or ""
-        if re.search(rf"/pull/{numero}(?![0-9])", evidencia) and (arvore is None or f"árvore {arvore}" in evidencia):
+        if (re.search(rf"/pull/{numero}(?![0-9])", evidencia)
+                and (arvore is None or f"árvore {arvore}" in evidencia)
+                and (tipo is None or campos.get("tipo") == tipo)):
             return arquivo
     return None
 
