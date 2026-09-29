@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -4253,3 +4254,201 @@ def test_aceite_recusa_submissao_incompleta_sem_quebrar_leitor(tmp_path, campo):
     montar(tmp_path, [tarefa()], [sub, conclusao])
     _, _, erros = carregar(tmp_path)
     assert erros
+
+
+def repo_do_portao_pr(tmp_path, monkeypatch, *, com_recibo=True):
+    import pr as rito
+    repo = tmp_path / "portao"
+    repo.mkdir()
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, encoding="utf-8").stdout.strip()
+    git("init", "-b", "main")
+    git("config", "user.name", "Teste")
+    git("config", "user.email", "teste@example.com")
+    montar(repo, [tarefa()], [])
+    (repo / "codigo.py").write_text("base\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "base")
+    base = git("rev-parse", "HEAD")
+    git("checkout", "-b", "topico")
+    (repo / "codigo.py").write_text("candidato\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "codigo validado")
+    revisao = git("rev-parse", "HEAD")
+    arvore = git("rev-parse", "HEAD^{tree}")
+    if com_recibo:
+        sub = submissao_reconciliavel()
+        sub.update(revisao=revisao, arvore=arvore)
+        (repo / "fila/eventos" / (sub["arquivo"] + ".json")).write_text(json.dumps(sub, ensure_ascii=False), encoding="utf-8")
+        if com_recibo == "sem_livro":
+            pasta = None
+        else:
+            pasta = repo / "painel/registros"
+            pasta.mkdir(parents=True)
+        campos = rito.montar_campos(arquivo="20260929-001-recibo", titulo="ci: candidato", detalhe="O candidato foi validado na revisão e árvore identificadas; integração e publicação não foram medidas.", url_do_pr=URL_SUBMISSAO, dia=date(2026, 9, 29), tipo="entrega", gravidade="info", frente="fabrica", tarefa="TAR-001", evidencia_extra=f"Validação local: árvore {arvore}; commit {revisao}; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.")
+        if pasta:
+            (pasta / "20260929-001-recibo.js").write_text(rito.renderizar(campos), encoding="utf-8")
+        git("add", ".")
+        git("commit", "-m", "recibo e submissao")
+    head = git("rev-parse", "HEAD")
+    remoto = {"number":1494,"html_url":URL_SUBMISSAO,"state":"open","head":{"sha":head},"base":{"sha":base,"repo":{"full_name":"abundanciabr/sitesdoreino"}}}
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda *a, **kw: remoto)
+    return repo, git, remoto, revisao, arvore
+
+
+def test_portao_cli_recusa_primeiro_head_sem_recibo(tmp_path, monkeypatch):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch, com_recibo=False)
+    try:
+        codigo = fila.main(["verificar-linhagem", "--pr", "1494", "--head", remoto["head"]["sha"], "--checkout", str(repo)])
+    except SystemExit as erro:
+        codigo = erro.code
+    assert codigo == 1
+
+
+def test_portao_aceita_pr_aberto_com_submissao_recibo_e_codigo_integros(tmp_path, monkeypatch, capsys):
+    repo, _, remoto, revisao, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    monkeypatch.setattr(fila, "raiz_do_repo", lambda: tmp_path / "fonte-confiavel")
+    assert fila.main(["verificar-linhagem", "--pr", "1494", "--head", remoto["head"]["sha"], "--checkout", str(repo)]) == 0
+    saida = capsys.readouterr().out
+    assert "PASS linhagem: TAR-001 PR 1494" in saida
+    assert revisao == fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])["revisao"]
+
+
+def test_portao_recusa_fonte_executavel_no_mesmo_checkout(tmp_path, monkeypatch, capsys):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    monkeypatch.setattr(fila, "raiz_do_repo", lambda: repo)
+    assert fila.main(["verificar-linhagem", "--pr", "1494", "--head", remoto["head"]["sha"], "--checkout", str(repo)]) == 1
+    assert "fonte do portão coincide" in capsys.readouterr().out
+
+
+def test_portao_recusa_submissao_sem_registro_do_livro(tmp_path, monkeypatch):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch, com_recibo="sem_livro")
+    with pytest.raises(fila.RecusaDeReconciliacao, match="recibo"):
+        fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])
+
+
+def test_portao_recusa_fonte_ignorada_fora_do_head(tmp_path, monkeypatch):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    (repo / ".git/info/exclude").open("a", encoding="utf-8").write("\nfila/eventos/injetado.json\n")
+    (repo / "fila/eventos/injetado.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(fila.RecusaDeReconciliacao, match="diferem do HEAD"):
+        fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])
+
+
+@pytest.mark.parametrize("origem_confiavel", [
+    "https://github.com/abundanciabr/sitesdoreino.git",
+    "git@github.com:abundanciabr/sitesdoreino.git",
+    "ssh://git@github.com:443/abundanciabr/sitesdoreino.git",
+])
+def test_portao_consulta_pr_na_origem_confiavel_nao_na_candidata(tmp_path, monkeypatch, origem_confiavel):
+    repo, git, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    git("remote", "add", "origin", "https://github.com/outra-conta/outro-repo.git")
+    git_original = fila._git_da_fila
+    def git_confiavel(raiz, *args, **kwargs):
+        if raiz == fila.CI.parent and args == ("remote", "get-url", "origin"):
+            return origem_confiavel
+        return git_original(raiz, *args, **kwargs)
+    monkeypatch.setattr(fila, "_git_da_fila", git_confiavel)
+    def api(raiz, caminho):
+        assert raiz == fila.CI.parent
+        assert caminho == "pulls/1494"
+        return remoto
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", api)
+    assert fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])["tarefa"] == "TAR-001"
+
+
+@pytest.mark.parametrize("restaurado", [False, True])
+def test_portao_recusa_codigo_posterior_mesmo_revertido(tmp_path, monkeypatch, restaurado):
+    repo, git, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    (repo / "codigo.py").write_text("codigo posterior\n", encoding="utf-8")
+    git("add", "codigo.py")
+    git("commit", "-m", "alteração não validada")
+    if restaurado:
+        (repo / "codigo.py").write_text("candidato\n", encoding="utf-8")
+        git("add", "codigo.py")
+        git("commit", "-m", "reverte código")
+    remoto["head"]["sha"] = git("rev-parse", "HEAD")
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])
+
+
+def test_portao_ignora_git_replace_que_esconde_codigo_posterior(tmp_path, monkeypatch):
+    repo, git, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    head_com_recibo = remoto["head"]["sha"]
+    (repo / "codigo.py").write_text("ataque posterior\n", encoding="utf-8")
+    git("add", "codigo.py")
+    git("commit", "-m", "codigo fora da prova")
+    head_real = git("rev-parse", "HEAD")
+    git("replace", head_real, head_com_recibo)
+    remoto["head"]["sha"] = head_real
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.verificar_linhagem_submissao(repo, 1494, head_real)
+
+
+def test_portao_nao_executa_fsmonitor_do_checkout_candidato(tmp_path, monkeypatch):
+    repo, git, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    sentinela = tmp_path / "fsmonitor-executado"
+    monitor = repo / "monitor.py"
+    monitor.write_text(f"from pathlib import Path\nPath({str(sentinela)!r}).write_text('EXECUTADO')\n", encoding="utf-8")
+    git("config", "core.fsmonitor", "python monitor.py")
+    git("status", "--porcelain=v1", "--untracked-files=all", "--ignored", "--", "fila/tarefas", "fila/eventos", "painel/registros")
+    assert sentinela.exists()
+    sentinela.unlink()
+    assert fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])["tarefa"] == "TAR-001"
+    assert not sentinela.exists()
+
+
+def test_portao_aceita_sincronizacao_legitima_da_base(tmp_path, monkeypatch):
+    repo, git, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    git("checkout", "main")
+    (repo / "codigo-da-base.py").write_text("mudança da base\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "main avançou")
+    remoto["base"]["sha"] = git("rev-parse", "HEAD")
+    git("checkout", "topico")
+    git("merge", "main", "-m", "sincroniza base sem autoria nova")
+    remoto["head"]["sha"] = git("rev-parse", "HEAD")
+    assert fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])["tarefa"] == "TAR-001"
+
+
+@pytest.mark.parametrize("campo", ["head", "url", "base", "repo"])
+def test_portao_recusa_origem_divergente_ou_incompleta(tmp_path, monkeypatch, campo):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    if campo == "head":
+        head = remoto["head"]["sha"]
+        remoto["head"]["sha"] = "f" * 40
+        with pytest.raises(fila.RecusaDeReconciliacao, match="HEAD do PR diverge"):
+            fila.verificar_linhagem_submissao(repo, 1494, head)
+    elif campo == "url":
+        remoto["html_url"] += "0"
+        with pytest.raises(ErroDeInstrumentacao, match="URL"):
+            fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])
+    elif campo == "base":
+        remoto["base"]["sha"] = None
+        with pytest.raises(ErroDeInstrumentacao, match="base"):
+            fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])
+    else:
+        remoto["base"]["repo"]["full_name"] = "outra-conta/outro-repo"
+        with pytest.raises(ErroDeInstrumentacao, match="base"):
+            fila.verificar_linhagem_submissao(repo, 1494, remoto["head"]["sha"])
+
+
+def test_portao_preserva_error_quando_api_nao_responde(tmp_path, monkeypatch, capsys):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    def sem_api(*a, **kw):
+        raise ErroDeInstrumentacao("GitHub não respondeu", "Confira a API e repita.")
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", sem_api)
+    assert fila.main(["verificar-linhagem", "--pr", "1494", "--head", remoto["head"]["sha"], "--checkout", str(repo)]) == 2
+    assert "GitHub não respondeu" in capsys.readouterr().out
+
+
+def test_portao_preserva_error_para_historico_raso(tmp_path, monkeypatch, capsys):
+    repo, _, remoto, _, _ = repo_do_portao_pr(tmp_path, monkeypatch)
+    original = fila._git_da_fila
+    def historico_raso(raiz, *args, **kw):
+        if args == ("rev-parse", "--is-shallow-repository"):
+            return "true"
+        return original(raiz, *args, **kw)
+    monkeypatch.setattr(fila, "_git_da_fila", historico_raso)
+    assert fila.main(["verificar-linhagem", "--pr", "1494", "--head", remoto["head"]["sha"], "--checkout", str(repo)]) == 2
+    assert "fetch-depth 0" in capsys.readouterr().out

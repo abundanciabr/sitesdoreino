@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-018-infra-trava-comum",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: trava comum",
+  detalhe: "Lote um cobre doze entradas com a mesma trava fisica e preserva os portoes atuais da publicacao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2336. Validação local: árvore 898a766bc851c915e9b36e9c11997707b271f508; commit 2d6afe6900c250d2aef30d4dcbd094a2586adf64; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-971",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

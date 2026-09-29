@@ -1452,8 +1452,9 @@ def consultar_pr_submetido(raiz: Path, url: str) -> dict:
 def _git_predicado(raiz: Path, *argumentos: str, descricao: str) -> bool:
     try:
         proc = subprocess.run(
-            ["git", *argumentos],
+            ["git", "-c", "core.fsmonitor=false", "-c", f"core.hooksPath={CI / '__no_hooks__'}", *argumentos],
             cwd=str(raiz),
+            env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -1488,29 +1489,26 @@ def bancada_contem_main_publicada(raiz: Path) -> bool:
     )
 
 
-def problemas_da_linhagem(
-    submissao: dict,
-    medicao: dict,
-) -> list[str]:
+def _problemas_do_candidato(submissao: dict, medicao: dict) -> list[str]:
     problemas = []
     if medicao.get("arvore_medida") != submissao.get("arvore"):
         problemas.append("a árvore da revisão difere da árvore submetida")
     if not medicao.get("revisao_ancestral"):
         problemas.append("a revisão submetida não é ancestral do HEAD final")
-    if not medicao.get("head_ancestral"):
-        problemas.append("o HEAD final não é ancestral do merge publicado")
-    posteriores = medicao.get("caminhos_posteriores") or []
-    codigo = [
-        caminho
-        for caminho in posteriores
-        if not caminho.startswith(CAMINHOS_POSTERIORES_PERMITIDOS)
-    ]
+    codigo = [c for c in medicao.get("caminhos_posteriores", []) if not c.startswith(CAMINHOS_POSTERIORES_PERMITIDOS)]
     if codigo:
         problemas.append("há código posterior à revisão: " + ", ".join(codigo))
     return problemas
 
 
-def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
+def problemas_da_linhagem(submissao: dict, medicao: dict) -> list[str]:
+    problemas = _problemas_do_candidato(submissao, medicao)
+    if not medicao.get("head_ancestral"):
+        problemas.append("o HEAD final não é ancestral do merge publicado")
+    return problemas
+
+
+def _medir_linhagem_candidato(raiz: Path, submissao: dict, head: str, base: str) -> dict:
     profundidade = _git_da_fila(
         raiz,
         "rev-parse",
@@ -1550,7 +1548,7 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
                 "merge-base",
                 "--is-ancestor",
                 pai,
-                f"{merge}^1",
+                base,
                 descricao="conferir se o pai lateral já pertence à base publicada",
             )
             for pai in pais[1:]
@@ -1562,6 +1560,8 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
                 raiz,
                 "show",
                 f"--diff-merges={modo}",
+                "--no-ext-diff",
+                "--no-textconv",
                 "--format=",
                 "--name-only",
                 commit,
@@ -1579,19 +1579,85 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
             head,
             descricao="conferir revisão ancestral do HEAD",
         ),
-        "head_ancestral": _git_predicado(
-            raiz,
-            "merge-base",
-            "--is-ancestor",
-            head,
-            merge,
-            descricao="conferir HEAD ancestral do merge",
-        ),
         "caminhos_posteriores": sorted(caminhos),
     }
+    return medicao
+
+
+def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
+    medicao = _medir_linhagem_candidato(raiz, submissao, head, f"{merge}^1")
+    medicao["head_ancestral"] = _git_predicado(
+        raiz, "merge-base", "--is-ancestor", head, merge,
+        descricao="conferir HEAD ancestral do merge",
+    )
     problemas = problemas_da_linhagem(submissao, medicao)
     if problemas:
         raise RecusaDeReconciliacao("; ".join(problemas))
+
+
+def verificar_linhagem_submissao(raiz: Path, numero: int, head: str) -> dict:
+    """Confere o candidato aberto sem inferir integração ou publicação."""
+    if type(numero) is not int or numero < 1 or not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise RecusaDeReconciliacao("informe número de PR e SHA completo do HEAD a conferir")
+    local = _git_da_fila(raiz, "rev-parse", "HEAD", para_que="identificar o checkout do candidato").strip()
+    if local != head:
+        raise RecusaDeReconciliacao("o checkout não é o HEAD informado; use pull_request.head.sha e refaça a medição")
+    sujo = _git_da_fila(raiz, "status", "--porcelain=v1", "--untracked-files=all", "--ignored", "--", "fila/tarefas", "fila/eventos", "painel/registros", para_que="conferir as fontes embarcadas no HEAD")
+    if sujo.strip():
+        raise RecusaDeReconciliacao("fila ou livro diferem do HEAD; embarque o recibo e os eventos antes de conferir")
+    origem = _git_da_fila(CI.parent, "remote", "get-url", "origin", para_que="identificar a origem confiável do portão").strip()
+    url_origem = urlsplit(origem)
+    caminho = url_origem.path.strip("/") if url_origem.hostname == "github.com" else ""
+    if not caminho:
+        scp = re.fullmatch(r"git@github\.com:([\w.-]+/[\w.-]+)", origem.removesuffix(".git"))
+        caminho = scp.group(1) if scp else ""
+    repositorio = caminho.removesuffix(".git")
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repositorio):
+        raise ErroDeInstrumentacao("a origem confiável do portão não identifica um repositório GitHub")
+    pr = estado_da_entrega._api(CI.parent, f"pulls/{numero}")
+    if not isinstance(pr, dict) or pr.get("number") != numero or pr.get("state") != "open":
+        raise ErroDeInstrumentacao("o PR aberto não foi identificado; confira o acesso ao GitHub e repita")
+    cabeca, base = pr.get("head"), pr.get("base")
+    base_sha = base.get("sha") if isinstance(base, dict) else None
+    base_repo = base.get("repo") if isinstance(base, dict) else None
+    if (not isinstance(cabeca, dict) or not re.fullmatch(r"[0-9a-f]{40}", str(base_sha or ""))
+            or not isinstance(base_repo, dict) or base_repo.get("full_name") != repositorio):
+        raise ErroDeInstrumentacao("a base ou o HEAD do PR não vieram completos; repita a consulta")
+    if cabeca.get("sha") != head:
+        raise RecusaDeReconciliacao("o HEAD do PR diverge do checkout; atualize a revisão e repita")
+    url = pr.get("html_url")
+    if url != f"https://github.com/{repositorio}/pull/{numero}":
+        raise ErroDeInstrumentacao("a URL do PR não identifica a entrega consultada; confira o repositório")
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    candidatas = {ev["tarefa"] for ev in eventos if ev["evento"] == "submetida" and ev.get("pr") == url}
+    vinculadas = [ultima_submissao(eventos, tid) for tid in candidatas if tid in tarefas]
+    vinculadas = [ev for ev in vinculadas if ev and ev.get("pr") == url]
+    if len(vinculadas) != 1:
+        raise RecusaDeReconciliacao("o PR não tem uma última submissão única na fila; registre a entrega pelo rito")
+    submissao = vinculadas[0]
+    tid = submissao["tarefa"]
+    if problemas_da_submissao(submissao):
+        raise RecusaDeReconciliacao("a submissão está incompleta; confira PR, revisão e árvore")
+    import pr as rito
+    recibo = rito._registro_que_cita(raiz, numero, submissao["arvore"])
+    if recibo is None:
+        raise RecusaDeReconciliacao("o recibo desta árvore não está no HEAD; conclua o rito do PR")
+    try:
+        registro = rito.campos_lidos(recibo.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError, KeyError) as erro:
+        raise ErroDeInstrumentacao("o recibo não pôde ser lido; confira o livro e repita") from erro
+    evidencia = registro.get("evidencia")
+    marcador = f"{url}. Validação local: árvore {submissao['arvore']}; commit {submissao['revisao']}; "
+    if (registro.get("arquivo") != recibo.stem or registro.get("tarefa") != tid
+            or registro.get("tipo") != "entrega" or not isinstance(evidencia, str)
+            or not evidencia.startswith(marcador)
+            or not re.match(r"[1-9][0-9]* comando\(s\), exit 0\. Revisão, integração e publicação não verificadas\.", evidencia[len(marcador):])):
+        raise RecusaDeReconciliacao("o recibo não vincula TAR, PR, revisão e árvore; gere um recibo completo pelo rito")
+    medicao = _medir_linhagem_candidato(raiz, submissao, head, base_sha)
+    problemas = _problemas_do_candidato(submissao, medicao)
+    if problemas:
+        raise RecusaDeReconciliacao("; ".join(problemas))
+    return {"tarefa":tid,"pr":url,"head":head,"revisao":submissao["revisao"],"arvore":submissao["arvore"],"recibo":recibo.relative_to(raiz).as_posix()}
 
 
 def provar_estado_terminal(estado: dict) -> None:
@@ -3768,7 +3834,8 @@ def _git_da_fila(raiz: Path, *args: str, para_que: str) -> str:
     """Um `git` que, quando não responde, vira ERROR e não silêncio."""
     try:
         proc = subprocess.run(
-            ["git", "-C", str(raiz), *args],
+            ["git", "-c", "core.fsmonitor=false", "-c", f"core.hooksPath={CI / '__no_hooks__'}", "-C", str(raiz), *args],
+            env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=60, stdin=subprocess.DEVNULL,
         )
@@ -4044,6 +4111,11 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--quem", required=True)
     p.add_argument("--motivo", required=True, help="por que ela não vai mais ser feita")
 
+    p = sub.add_parser("verificar-linhagem", help="confere PR, HEAD, submissão e recibo antes da integração")
+    p.add_argument("--pr", required=True, type=int)
+    p.add_argument("--head", required=True)
+    p.add_argument("--checkout", required=True, help="checkout do candidato, distinto da fonte confiável deste comando")
+
     p = sub.add_parser("submeter", help="vincula a entrega validada sem concluir a tarefa")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
@@ -4124,6 +4196,19 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_bloquear(raiz, args)
         if args.acao == "cancelar":
             return cmd_cancelar(raiz, args)
+        if args.acao == "verificar-linhagem":
+            try:
+                checkout = Path(args.checkout).resolve()
+                if checkout == raiz:
+                    raise RecusaDeReconciliacao(
+                        "a fonte do portão coincide com o candidato; execute o comando da base confiável"
+                    )
+                prova = verificar_linhagem_submissao(checkout, args.pr, args.head)
+            except RecusaDeReconciliacao as erro:
+                print("RECUSADO: " + str(erro))
+                return 1
+            print("PASS linhagem: " + prova["tarefa"] + " PR " + str(args.pr) + " HEAD " + prova["head"] + " recibo " + prova["recibo"])
+            return 0
         if args.acao == "submeter":
             return cmd_submeter(raiz, args)
         if args.acao == "fechar-pela-entrega":

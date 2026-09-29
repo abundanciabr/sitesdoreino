@@ -613,11 +613,15 @@ def aceitar(raiz: Path, manifesto: dict, bundle: dict) -> str:
     return manifesto["id"]
 
 
-def carregar(raiz: Path, identificador: str) -> dict:
+def carregar_registro(raiz: Path, identificador: str) -> dict:
     registro = _ler_ref(raiz, identificador)
     _exigir(registro is not None, "candidato não foi aceito duravelmente")
     conferir_origem(registro["manifesto"], registro["bundle"], raiz)
-    return registro["manifesto"]
+    return registro
+
+
+def carregar(raiz: Path, identificador: str) -> dict:
+    return carregar_registro(raiz, identificador)["manifesto"]
 
 
 def _ler_json(caminho: str) -> dict:
@@ -652,18 +656,22 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.comando == "aceitar":
             manifesto = _ler_json(args.arquivo)
-            aceitar(raiz, manifesto, _ler_json(args.bundle))
+            bundle = _ler_json(args.bundle)
+            aceitar(raiz, manifesto, bundle)
             resultado = {
                 **validar(manifesto),
                 "aceito": True,
+                "registro_sha256": digest({"manifesto": manifesto, "bundle": bundle}),
                 "ref": f"refs/candidatos/{manifesto['id']}",
             }
         else:
-            manifesto = carregar(raiz, args.id)
+            registro = carregar_registro(raiz, args.id)
+            manifesto = registro["manifesto"]
             Path(args.saida).write_bytes(canonico(manifesto))
             resultado = {
                 **validar(manifesto),
                 "aceito": True,
+                "registro_sha256": digest(registro),
                 "ref": f"refs/candidatos/{manifesto['id']}",
             }
         print(json.dumps(resultado, ensure_ascii=False, sort_keys=True))
