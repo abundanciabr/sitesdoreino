@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -21,7 +23,7 @@ def _cenario(tmp_path: Path, **trocas: tuple[str, str]) -> Path:
     porque um teste que "mutila" sem mutilar dá verde e não prova nada.
     """
     raiz = tmp_path / "repo"
-    arquivos = ["CLAUDE.md", "AGENTS.md", *padrao.PORTAS]
+    arquivos = [padrao.FONTE, "CLAUDE.md", "AGENTS.md", *padrao.PORTAS]
     for nome in arquivos:
         destino = raiz / nome
         destino.parent.mkdir(parents=True, exist_ok=True)
@@ -74,7 +76,7 @@ def test_o_aviso_de_sessao_lista_as_onze_regras(capsys):
 
 def test_regra_apagada_reprova(tmp_path):
     relatorio = padrao.conferir(
-        _cenario(tmp_path, **{"CLAUDE.md": ("#### 7. Faça o passe de remoção", "#### 7. Limpeza")})
+        _cenario(tmp_path, **{padrao.FONTE: ("#### 7. Faça o passe de remoção", "#### 7. Limpeza")})
     )
     _falha(relatorio, "as 11 regras, íntegras")
 
@@ -90,7 +92,7 @@ def test_exigencia_parafraseada_reprova(tmp_path):
         _cenario(
             tmp_path,
             **{
-                "CLAUDE.md": (
+                padrao.FONTE: (
                     'Rodou de verdade, com comando e saída real, ou escreva "NÃO RODEI".',
                     "Sempre teste antes de entregar.",
                 )
@@ -105,7 +107,7 @@ def test_seção_rebaixada_reprova(tmp_path):
     relatorio = padrao.conferir(
         _cenario(
             tmp_path,
-            **{"CLAUDE.md": (padrao.TITULO, "## Um aviso qualquer\n\nTexto.\n\n" + padrao.TITULO)},
+            **{padrao.FONTE: (padrao.TITULO, "## Um aviso qualquer\n\nTexto.\n\n" + padrao.TITULO)},
         )
     )
     _falha(relatorio, "é a primeira seção")
@@ -116,7 +118,7 @@ def test_costura_apagada_reprova(tmp_path):
     relatorio = padrao.conferir(
         _cenario(
             tmp_path,
-            **{"CLAUDE.md": ("A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.", "O agente decide sempre.")},
+            **{padrao.FONTE: ("A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.", "O agente decide sempre.")},
         )
     )
     _falha(relatorio, "as 3 costuras conciliadas")
@@ -136,7 +138,7 @@ def test_porta_muda_reprova(tmp_path):
 def test_arquivo_acima_do_teto_reprova(tmp_path):
     """A história voltando para dentro da lei.
 
-    O CLAUDE.md inteiro entra em cada chamada de cada robô. Nenhuma regra some
+    As entradas dos agentes são carregadas antes da consulta da receita. Nenhuma regra some
     neste cenário — o arquivo só engorda — e é exatamente assim que ele voltou
     a 60 mil caracteres uma vez: cada lei nova trazendo o próprio porquê.
     """
@@ -156,7 +158,7 @@ def test_arquivo_acima_do_teto_reprova(tmp_path):
 
 def test_secao_inteira_ausente_e_erro_de_instrumentacao(tmp_path):
     raiz = _cenario(tmp_path)
-    (raiz / "CLAUDE.md").write_text("# CLAUDE.md\n\n## Outra coisa\n\nTexto.\n", encoding="utf-8")
+    (raiz / padrao.FONTE).write_text("# CLAUDE.md\n\n## Outra coisa\n\nTexto.\n", encoding="utf-8")
     with pytest.raises(ErroDeInstrumentacao) as erro:
         padrao.conferir(raiz)
     assert "SUMIU" in erro.value.resumo
@@ -170,7 +172,7 @@ def test_o_aviso_nao_derruba_a_sessao_quando_nao_acha_o_texto(tmp_path, capsys):
     desligar o hook, que é como um guarda morre.
     """
     raiz = _cenario(tmp_path)
-    (raiz / "CLAUDE.md").write_text("# CLAUDE.md\n", encoding="utf-8")
+    (raiz / padrao.FONTE).write_text("# CLAUDE.md\n", encoding="utf-8")
     assert padrao.aviso(raiz) == 0
     assert "PADRÃO DE TRABALHO" in capsys.readouterr().out
 
@@ -212,7 +214,7 @@ def test_teto_mede_o_blob_e_nao_o_fim_de_linha_do_disco(tmp_path, nome, teto):
 def test_obrigacao_removida_reprova(tmp_path, obrigacao):
     import re
     raiz = _cenario(tmp_path)
-    p = raiz / "CLAUDE.md"
+    p = raiz / padrao.FONTE
     texto = p.read_text(encoding="utf-8")
     padrao_frase = r"\s+".join(re.escape(s) for s in obrigacao.split())
     texto, n = re.subn(padrao_frase, "", texto)
@@ -230,5 +232,56 @@ def test_constituicao_preserva_a_lei_canonica_compacta():
 
 
 def test_codex_sem_ponteiro_canonico_reprova(tmp_path):
-    raiz = _cenario(tmp_path, **{"AGENTS.md": ("Leia `CLAUDE.md` antes de agir", "Leia o resumo")})
-    _falha(padrao.conferir(raiz), "Codex aponta para a lei")
+    raiz = _cenario(tmp_path, **{"AGENTS.md": ("CAMINHO-DOURADO.md", "Leia o resumo")})
+    _falha(padrao.conferir(raiz), "entrada direta AGENTS.md")
+
+
+def test_entrada_que_restaura_a_ponte_claude_reprova(tmp_path):
+    raiz = _cenario(tmp_path)
+    caminho = raiz / "AGENTS.md"
+    caminho.write_text(caminho.read_text(encoding="utf-8") + "\nLeia `CLAUDE.md` antes de agir\n", encoding="utf-8")
+    _falha(padrao.conferir(raiz), "entrada direta AGENTS.md")
+
+
+def test_adaptador_com_regua_duplicada_reprova(tmp_path):
+    raiz = _cenario(tmp_path)
+    caminho = raiz / "CLAUDE.md"
+    caminho.write_text(caminho.read_text(encoding="utf-8") + "\n" + padrao.TITULO, encoding="utf-8")
+    _falha(padrao.conferir(raiz), "entrada direta CLAUDE.md")
+
+
+def _executar_verificador_externo(tmp_path: Path, candidato: Path):
+    base = tmp_path / "origem-base" / "ci"
+    base.mkdir(parents=True)
+    for nome in ("padrao_de_trabalho.py", "_nucleo.py"):
+        shutil.copyfile(RAIZ / "ci" / nome, base / nome)
+    return subprocess.run(
+        [sys.executable, "-I", str(base / "padrao_de_trabalho.py"), "--candidato", str(candidato)],
+        cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", timeout=30,
+    )
+
+
+def test_origem_base_nao_executa_o_verificador_candidato(tmp_path):
+    raiz = _cenario(tmp_path)
+    candidato = raiz / "ci" / "padrao_de_trabalho.py"
+    candidato.write_text("raise RuntimeError('a versão candidata não deve ser executada')\n", encoding="utf-8")
+    resultado = _executar_verificador_externo(tmp_path, raiz)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+
+
+def test_origem_base_recusa_regressao_mesmo_com_verificador_candidato_autoaprovador(tmp_path):
+    raiz = _cenario(tmp_path, **{padrao.FONTE: ('Rodou de verdade, com comando e saída real, ou escreva "NÃO RODEI".', "Sempre teste antes de entregar.")})
+    candidato = raiz / "ci" / "padrao_de_trabalho.py"
+    candidato.write_text("print('PASS')\n", encoding="utf-8")
+    resultado = _executar_verificador_externo(tmp_path, raiz)
+    assert resultado.returncode == 1, resultado.stdout + resultado.stderr
+    assert "as exigências literais" in resultado.stdout
+
+
+def test_modo_origem_base_recusa_executar_de_dentro_do_proprio_candidato():
+    resultado = subprocess.run(
+        [sys.executable, "-I", str(RAIZ / "ci" / "padrao_de_trabalho.py"), "--candidato", str(RAIZ)],
+        capture_output=True, text=True, encoding="utf-8", timeout=30,
+    )
+    assert resultado.returncode == 2, resultado.stdout + resultado.stderr
+    assert "dentro da árvore candidata" in resultado.stdout

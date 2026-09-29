@@ -325,3 +325,18 @@ def test_a_muralha_reprova_de_verdade(tmp_path: Path):
     )
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "Lei 2" in proc.stdout
+
+
+def test_censo_mede_receita_vigente_sem_tratar_receitas_tecnicas_como_novas_leis():
+    leis = censo.levantar(RAIZ)
+    ids = {lei.id for lei in leis}
+    assert "CAMINHO-DOURADO.md::O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa" in ids
+    assert not any(lei.arquivo == "CLAUDE.md" for lei in leis)
+    assert not any(lei.titulo.startswith(("R1", "§0")) for lei in leis)
+
+
+def test_lei_operacional_sem_mecanismo_continua_reprovada_na_nova_fonte(tmp_path):
+    raiz = _cenario(tmp_path, {"CAMINHO-DOURADO.md": "## Operação obrigatória\n\nSem mecanismo.\n\n## §0 — Receitas\n"})
+    relatorio = censo.conferir(raiz)
+    assert relatorio.estado is Estado.FAIL, relatorio.render()
+    assert "CAMINHO-DOURADO.md::Operação obrigatória" in relatorio.render()

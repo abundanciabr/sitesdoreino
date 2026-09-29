@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-163146-TAR-972-checkpoint",
+  "tarefa": "TAR-972",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:31:46.498362+00:00",
+  "quem": "pme-governanca",
+  "plano": "PME GOV primeiro incremento: consumidor legado medido no CI",
+  "ultimo_avanco": "CI remoto encontrou duas exigencias de conteudo no adaptadorCLAUDE. Reproduzidas16PASS2FAIL; consumidor fichas migrado paraCAMINHO preservando contexto sobdemanda e nao-duplicacao,18PASS. Fontes originais congeladas95509f777.",
+  "proxima_acao": "Embarcar suplemento consumidor com duas novas provas isoladas e revisao focal.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_fichas_de_robo.py -q -p no:cacheprovider:18PASS; antes16PASS2FAIL mesmos dois casos CI."
+  ]
+}
