@@ -46,6 +46,16 @@ def executar_linux(codigo, pasta):
     )
 
 
+def test_sintaxe_dos_oito_shell_no_linux(tmp_path):
+    for nome in SHELL:
+        shutil.copy2(RAIZ / "infra" / nome, tmp_path / nome)
+    nomes = " ".join(SHELL)
+    codigo = f'for nome in {nomes}; do bash -n "$PLATAFORMA_DIR/$nome"; done; echo sintaxe-confirmada'
+    processo = executar_linux(codigo, tmp_path)
+    assert processo.returncode == 0, (processo.stdout, processo.stderr)
+    assert "sintaxe-confirmada" in processo.stdout
+
+
 @pytest.mark.parametrize(
     ("nome", "comando"),
     (
