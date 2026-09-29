@@ -749,3 +749,107 @@ def test_a_ideia_apagada_nao_oferece_corrigir():
     pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
 
     assert reverse("caixa_corrigir", args=[7]) not in pagina
+
+
+# ---------------------------------------------------------------------------
+# A resposta publicada quando a ideia vira "Implementado" (29/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def _bloco_da_resposta(pagina: str) -> str:
+    """A tag de abertura do bloco que guarda o campo `resposta`."""
+    fim = pagina.index('name="resposta"')
+    inicio = pagina.rindex('<div class="resposta-da-ideia"', 0, fim)
+    return pagina[inicio : pagina.index(">", inicio) + 1]
+
+
+@respx.mock
+def test_o_campo_da_resposta_nasce_escondido_fora_de_implementado():
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(status="planejado"))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert 'name="resposta"' in pagina
+    assert "hidden" in _bloco_da_resposta(pagina)
+    assert "A resposta publicada na ideia" in pagina
+
+
+@respx.mock
+def test_o_campo_da_resposta_aparece_quando_a_ideia_ja_esta_implementada():
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(status="implementado", resposta="<p>Já está no ar.</p>"))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert "hidden" not in _bloco_da_resposta(pagina)
+    assert (
+        "&lt;p&gt;Já está no ar.&lt;/p&gt;" in pagina
+    ), "o valor de agora vem preenchido, escapado para o navegador"
+
+
+@respx.mock
+def test_a_ideia_sem_resposta_gravada_nao_quebra_a_tela():
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(status="implementado"))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert 'name="resposta"' in pagina
+    assert "None" not in pagina.split('name="resposta"')[1].split("</textarea>")[0]
+
+
+@respx.mock
+def test_a_tela_alterna_o_campo_sem_script():
+    """A política da porta é `script-src 'self'`: script embutido não roda."""
+    cliente = _dentro()
+    a_caixa_conta()
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert ':has(select[name="fase"] option[value="implementado"]:checked)' in pagina
+    assert "<script" not in pagina
+
+
+@respx.mock
+def test_mover_para_implementado_manda_a_resposta():
+    cliente = _dentro()
+    a_caixa_conta()
+    escrita = respx.post(f"{IDEIAS}/7/status").mock(
+        return_value=httpx.Response(200, json=uma_ideia(status="implementado"))
+    )
+
+    resposta = cliente.post(
+        reverse("caixa_mover", args=[7]),
+        {
+            "fase": "implementado",
+            "nota": "no ar",
+            "resposta": "  <p>Veja o vídeo: https://youtu.be/abc</p>  ",
+        },
+    )
+
+    assert resposta.status_code == 302
+    enviado = json.loads(escrita.calls.last.request.content)
+    assert enviado["resposta"] == "<p>Veja o vídeo: https://youtu.be/abc</p>"
+    assert enviado["nota"] == "no ar"
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "fase", ["em_analise", "planejado", "em_desenvolvimento", "nao_planejado"]
+)
+def test_outra_fase_manda_a_resposta_vazia_mesmo_com_o_campo_preenchido(fase):
+    """O campo escondido não pode vazar para uma fase que não publica resposta."""
+    cliente = _dentro()
+    a_caixa_conta()
+    escrita = respx.post(f"{IDEIAS}/7/status").mock(
+        return_value=httpx.Response(200, json=uma_ideia(status=fase))
+    )
+
+    cliente.post(
+        reverse("caixa_mover", args=[7]),
+        {"fase": fase, "nota": "porque sim", "resposta": "<p>sobrou</p>"},
+    )
+
+    enviado = json.loads(escrita.calls.last.request.content)
+    assert enviado["resposta"] == ""

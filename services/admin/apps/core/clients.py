@@ -996,10 +996,12 @@ class CaixaClient:
         logger.error("caixa: escrita em %s respondeu HTTP %s", caminho, r.status_code)
         return self.NAO_RESPONDEU, "a Caixa respondeu com erro"
 
-    def mudar_status(self, ideia_id: int, *, status: str, nota: str, quem: dict):
+    def mudar_status(
+        self, ideia_id: int, *, status: str, nota: str, quem: dict, resposta: str = ""
+    ):
         return self._escrever(
             f"/gestao/ideias/{ideia_id}/status",
-            {"status": status, "nota": nota, **quem},
+            {"status": status, "nota": nota, "resposta": resposta, **quem},
         )
 
     def avaliar(self, ideia_id: int, *, campos: dict, quem: dict):

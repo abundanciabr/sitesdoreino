@@ -539,12 +539,17 @@ def mover_ideia(request, ideia_id: int):
         return _voltar(
             ideia_id, CaixaClient.RECUSADO, "Escolha uma das fases da lista."
         )
+    # O campo mora escondido nas outras fases; o que sobrou escrito nele não
+    # pode chegar a uma fase que não publica resposta.
+    resposta = (
+        (request.POST.get("resposta") or "").strip() if fase == "implementado" else ""
+    )
     return _agir(
         request,
         ideia_id,
         Registro.MOVER_IDEIA,
         lambda: CaixaClient().mudar_status(
-            ideia_id, status=fase, nota=nota, quem=_quem(request)
+            ideia_id, status=fase, nota=nota, resposta=resposta, quem=_quem(request)
         ),
         "Pronto: a ideia mudou de fase, e todo mundo que interagiu com ela foi avisado.",
         alvo_extra=f":{fase}",
