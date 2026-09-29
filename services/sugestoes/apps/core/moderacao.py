@@ -49,6 +49,7 @@ from apps.sugestoes.tasks import relay_apos_commit
 
 from .avisos import avisar_os_interessados, ids_de_plataforma
 from .participacao import exige_sessao
+from .resposta_rica import resposta_em_html_seguro
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,10 @@ class JustificativaObrigatoria(Exception):
     """`nao_planejado` sem nota. Recusado ANTES de qualquer escrita."""
 
 
+class RespostaForaDeImplementado(Exception):
+    """Resposta escrita para uma fase que não é Implementado. Recusada ANTES."""
+
+
 def exige_staff(view):
     """Sessão de aluno não basta: aqui é preciso o papel `staff`.
 
@@ -114,7 +119,7 @@ def exige_staff(view):
     return exige_sessao(cracha)
 
 
-def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
+def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por, resposta=None):
     """Muda o status e grava o histórico **na mesma transação**.
 
     [INVARIANTE 2] As duas escritas são uma só: um status alterado sem rastro é
@@ -137,6 +142,16 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
     ("seguimos analisando, e o motivo é este"). Recusar o caso levaria a equipe
     a agir sem nada ficar escrito, que é exatamente o que o histórico existe
     para impedir.
+
+    A exceção é de Implementado para Implementado SEM nota: o gesto é só
+    editar a resposta da equipe. Nenhuma fase andou e não há frase nova para
+    ninguém ler, então não nasce histórico, aviso nem evento.
+
+    `resposta` é a resposta da equipe publicada na ideia (29/09/2026). Com
+    Implementado ela SUBSTITUI a guardada por inteiro, e vazia apaga: o Admin
+    sempre manda o texto inteiro, pré-preenchido. Fora de Implementado, não
+    vazia é recusada antes de qualquer escrita, e vazia não toca na guardada.
+    `None` é quem chama sem conhecer o campo: a guardada fica como está.
     """
     nota = (nota or "").strip()
     if status_novo in EXIGEM_JUSTIFICATIVA and not nota:
@@ -144,6 +159,14 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             "Para marcar como “Não planejado” é preciso escrever o porquê — "
             "quem sugeriu vai ler essa justificativa (spec §10)."
         )
+    entrega = status_novo == Sugestao.Status.IMPLEMENTADO
+    if resposta is not None:
+        resposta = resposta_em_html_seguro(resposta)
+        if resposta and not entrega:
+            raise RespostaForaDeImplementado(
+                "A resposta publicada na ideia só vale para a fase Implementado."
+            )
+    grava_resposta = entrega and resposta is not None
 
     with transaction.atomic():
         travada = (
@@ -152,8 +175,15 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             .get(pk=sugestao.pk)
         )
         status_anterior = travada.status
+        campos = ["status"]
+        if grava_resposta:
+            travada.resposta_da_equipe = resposta
+            campos.append("resposta_da_equipe")
+        if entrega and status_anterior == status_novo and not nota:
+            travada.save(update_fields=campos)
+            return status_anterior
         travada.status = status_novo
-        travada.save(update_fields=["status"])
+        travada.save(update_fields=campos)
         HistoricoStatus.objects.create(
             sugestao=travada,
             status_anterior=status_anterior,
