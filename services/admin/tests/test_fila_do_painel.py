@@ -323,7 +323,7 @@ def test_sem_fila_vira_erro_nunca_500_e_tarefas_vazia(tmp_path, monkeypatch):
     dados = json.loads(resposta.content)
 
     assert resposta.status_code == 200, "fila ausente não pode derrubar o painel"
-    assert dados["erro"] == "a fila dos robôs não veio nesta imagem"
+    assert "republicar os dados" in dados["erro"]
     assert dados["tarefas"] == []
 
 
@@ -336,7 +336,7 @@ def test_estados_json_ilegivel_tambem_vira_erro_declarado(tmp_path, monkeypatch)
     painel_de_mentira(tmp_path, monkeypatch, AREAS_DE_MENTIRA)
 
     dados = json.loads(_dentro().get(reverse("painel_fila")).content)
-    assert dados["erro"] == "a fila dos robôs não veio nesta imagem"
+    assert "republicar os dados" in dados["erro"]
     assert dados["tarefas"] == []
 
 
@@ -362,13 +362,53 @@ def test_sem_sessao_a_rota_nao_entrega_a_fila():
 
 
 def test_a_funcao_pura_nao_levanta_com_dados_estranhos_no_meio(tmp_path):
-    """Uma tarefa que não é um dicionário (build antigo, campo corrompido)
-    desaparece da lista em vez de derrubar a resposta inteira."""
+    """Retrato corrompido declara erro e não devolve falso zero."""
     pasta = tmp_path / "fila_embutida"
     pasta.mkdir()
     (pasta / "estados.json").write_text(
         json.dumps({"TAR-900": "isto deveria ser um objeto"}), encoding="utf-8"
     )
     resultado = modulo.fila_para_o_painel(pasta, None)
-    assert resultado["erro"] is None
+    assert "ausente ou ilegível" in resultado["erro"]
     assert resultado["tarefas"] == []
+
+
+def test_prioridades_preserva_provas_sem_transformar_submissao_em_aceite(
+    tmp_path, monkeypatch
+):
+    pasta = fila_de_mentira(
+        tmp_path,
+        monkeypatch,
+        {
+            "TAR-962": {
+                "estado": "em execução",
+                "titulo": "Conferir a entrega",
+                "toca": ["admin"],
+                "submissao": "registrada",
+                "integracao": "nao_comprovada",
+                "publicacao": "nao_comprovada",
+                "aceite": "nao_comprovado",
+            }
+        },
+    )
+    painel = painel_de_mentira(tmp_path, monkeypatch, AREAS_DE_MENTIRA)
+    resultado = modulo.fila_para_o_painel(pasta, painel)
+    assert resultado["erro"] is None
+    tarefa = resultado["tarefas"][0]
+    assert tarefa["aceite"] == "nao_comprovado"
+    assert tarefa["integracao"] == "nao_comprovada"
+    assert tarefa["comprovacoes_entrega"][-1] == {
+        "etapa": "Aceite funcional",
+        "resultado": "Não comprovado",
+    }
+
+
+def test_prioridades_recusa_prova_invalida_e_da_acao_para_recuperar(
+    tmp_path, monkeypatch
+):
+    pasta = fila_de_mentira(
+        tmp_path, monkeypatch, {"TAR-962": {"estado": "em execução", "aceite": []}}
+    )
+    resultado = modulo.fila_para_o_painel(pasta, None)
+    assert resultado["tarefas"] == []
+    assert "republicar" in resultado["erro"]
