@@ -1,0 +1,72 @@
+{
+  "arquivo": "20260929-173501-TAR-980-contrato_execucao",
+  "tarefa": "TAR-980",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T17:35:01.430995+00:00",
+  "quem": "pme_preparo_candidato",
+  "contrato": {
+    "modelo_recomendado": "gpt-6-sol",
+    "limites_autonomia": "Escritor unico ci/preparar_candidato.py, ci/tests/test_preparar_candidato.py, ci/candidato.py, ci/tests/test_candidato.py; workflows exclusivos07; sem subdelegacao ou fallback",
+    "restricoes": [
+      "Cada emissao nasce no job que executa a prova: muralhas, rodar por celula, preparar por celula",
+      "ci-celula-gate agrega e confere emissao do job rodar sem assumir snapshot retrospectivo",
+      "Emissao e bundle entram no envelope duravel; assinatura cobre bytes canonicos exatos",
+      "Sem emissao verificavel nao reaproveitar prova antiga; reexecutar somente a prova afetada na main",
+      "Job ausente, falho, cancelado ou skipped nao aprova",
+      "Preservar exclusao antiga ate mutadores cobertos e nao ativar antes de ensaio oficial"
+    ],
+    "plano": "pme-06-07-preparo-candidato",
+    "versao": 2,
+    "objetivo": "Produzir manifesto de imagem real e aceitar somente provas cujos insumos foram emitidos e assinados pelo proprio job oficial",
+    "evidencias_exigidas": [
+      "Teste adversarial PR22 versus MAIN24 vermelho antes e verde depois",
+      "Teste positivo de reuso equivalente e falha de bundle/emitente/job",
+      "Execucao oficial assinada e verificacao posterior ao job preparar success",
+      "Benchmark de cache em amostras equivalentes sem concorrencia de CPU"
+    ],
+    "escopo_incluido": [
+      "ci/preparar_candidato.py",
+      "ci/tests/test_preparar_candidato.py",
+      "ci/candidato.py",
+      "ci/tests/test_candidato.py",
+      "fila/eventos da TAR-980",
+      "workflows somente patch privado para 07"
+    ],
+    "acoes_do_mantenedor": "Nenhuma acao ate eventual bloqueio real de origem/registry.",
+    "condicao_encerramento": "TAR-980 so fecha com cadeia real job emissor assinado -> manifesto -> registro duravel -> imagem digest -> aceitação posterior verificada e cache medido",
+    "etapas": [
+      "Registrar contrato v2 e copiar checkpoint de redistribuicao",
+      "Alterar produtor e validador de candidato com emissaobundle duraveis",
+      "Executar provas locais positivas e negativas",
+      "Entregar interface dos jobs a 07",
+      "Revisar e integrar por rito draft seguro, sem ativacao ate prova real"
+    ],
+    "nao_objetivos": [
+      "editar ci/candidato.py",
+      "editar workflows ou deploy script da frente 07",
+      "mover exclusao antes da prova dos mutadores",
+      "gasto novo ou acesso SSH alternativo"
+    ],
+    "criterios_entrada": [
+      "TAR-980 copiada da coordenacao e reserva remota atomica existente",
+      "ci/candidato.py integrado define contrato fechado"
+    ],
+    "criterios_aceite": [
+      "Payload assinado liga nome, run, tentativa, job, revisao, escopo, entradas, ambiente e verificador",
+      "Troca apenas do ambiente entre PR e main invalida prova PR, sem falsificar entradas",
+      "Entradas equivalentes e emissao verificada permitem reaproveitamento",
+      "ci/candidato.py revalida bundle e job emissor/gate apos carregar registro duravel",
+      "Imagem oficial por digest e atestado oficial rastreaveis antes da publicacao"
+    ],
+    "decisoes_aprovadas": [
+      "mantenedor autorizou implementacao completa, caminhos protegidos e publicador oficial na sessao TAR958 de 29/09/2026"
+    ],
+    "esforco_recomendado": "high",
+    "entregaveis": [
+      "Produtor consome emissao canonica e bundle de cada job sem autoatribuir assinatura antiga",
+      "ci/candidato.py conserva emissao e bundle no manifesto/registro duravel e verifica origem criptografica, job emissor e gate",
+      "Teste adversarial PR ubuntu-22.04 versus main ubuntu-24.04 recusa; reuse equivalente passa",
+      "Patch privado dos jobs emissores entregue ao escritor unico 07"
+    ]
+  }
+}

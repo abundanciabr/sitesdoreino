@@ -68,7 +68,7 @@ def bancada(tmp_path):
 
 
 def provas(atual, revisao, execucao):
-    return [
+    lista = [
         {
             "nome": nome,
             "resultado": "PASS",
@@ -79,12 +79,40 @@ def provas(atual, revisao, execucao):
         }
         for indice, nome in enumerate(sorted(atual["verificadores"]), 1)
     ]
+    for prova in lista:
+        nome = prova["nome"]
+        escopo = sorted(candidato.BUILD if nome == "build" else candidato.FONTE)
+        prova["emissao"] = {
+            "versao": 1,
+            **{
+                campo: prova[campo]
+                for campo in (
+                    "nome",
+                    "resultado",
+                    "run_id",
+                    "tentativa",
+                    "job_id",
+                    "revisao",
+                )
+            },
+            "escopo": escopo,
+            "entradas": candidato.assinatura_prova(atual, nome, escopo),
+            "ambiente": atual["ambiente"],
+            "verificador": atual["verificadores"][nome],
+            "insumos": {grupo: atual["entradas"][grupo] for grupo in escopo},
+        }
+        if nome == "ci-celula-gate":
+            prova["emissao"]["job_id"] += 1000
+        prova["bundle"] = {"dsseEnvelope": {"payload": "assinada-pelo-job"}}
+    return lista
 
 
 def montar(raiz, base, fonte, integracao, atual, revisao_provas):
     execucao = {"run_id": 10, "tentativa": 1, "job_id": 20}
     lista = provas(atual, revisao_provas, execucao)
-    next(p for p in lista if p["nome"] == "build")["revisao"] = integracao
+    build = next(p for p in lista if p["nome"] == "build")
+    build["revisao"] = integracao
+    build["emissao"]["revisao"] = integracao
     return preparo.criar(
         raiz,
         "admin",
@@ -113,6 +141,18 @@ def test_snapshot_mede_dependencias_transitivas_e_dockerfile_pinado(bancada):
         b"FROM docker.io/library/python@sha256:"
     )
     assert atual["entradas"]["build"]["dockerfile_pinado"]
+
+
+def test_snapshot_fonte_nao_depende_da_imagem_futura(bancada):
+    raiz, _, _ = bancada
+    fonte = preparo.snapshot_fonte(raiz, "admin", AMBIENTE)
+    completo = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
+    assert set(fonte["entradas"]) == candidato.FONTE
+    assert fonte["entradas"] == {
+        grupo: completo["entradas"][grupo] for grupo in candidato.FONTE
+    }
+    assert "services/admin/requirements.txt" in fonte["entradas"]["codigo"]
+    assert "dependencias" not in fonte["entradas"]
 
 
 def test_mudanca_de_dependencia_invalida_prova_e_imagem(bancada):
@@ -235,3 +275,84 @@ def test_checkout_modificado_nao_gera_snapshot_oficial(bancada):
         preparo.conferir_checkout(raiz, fonte)
     with pytest.raises(preparo.PreparoInvalido, match="revisão integrada"):
         preparo.conferir_checkout(raiz, "f" * 40)
+
+
+def test_prova_pr_nao_recebe_ambiente_main_retroativamente(bancada):
+    raiz, base, fonte = bancada
+    ambiente_pr = {**AMBIENTE, "runner": "ubuntu-22.04"}
+    medido_no_pr = preparo.snapshot(raiz, "admin", BASE, PACOTES, ambiente_pr)
+    escrever(raiz, "README.md", "merge sem mudança relevante\n")
+    git(raiz, "add", ".")
+    git(raiz, "commit", "-qm", "integração")
+    integracao = git(raiz, "rev-parse", "HEAD")
+    medido_na_main = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
+    assert candidato.assinatura_prova(
+        medido_no_pr, "muralhas", sorted(candidato.FONTE)
+    ) != candidato.assinatura_prova(medido_na_main, "muralhas", sorted(candidato.FONTE))
+    emissao_pr = provas(
+        medido_no_pr, fonte, {"run_id": 10, "tentativa": 1, "job_id": 20}
+    )
+    emissao_build = next(
+        p
+        for p in provas(
+            medido_na_main, integracao, {"run_id": 10, "tentativa": 1, "job_id": 20}
+        )
+        if p["nome"] == "build"
+    )
+    emissao_pr = [p for p in emissao_pr if p["nome"] != "build"] + [emissao_build]
+    with pytest.raises((preparo.PreparoInvalido, candidato.CandidatoInvalido)):
+        preparo.criar(
+            raiz,
+            "admin",
+            "TAR-980",
+            1,
+            fonte,
+            base,
+            integracao,
+            medido_na_main,
+            emissao_pr,
+            {"run_id": 10, "tentativa": 1, "job_id": 20},
+            IMAGEM,
+            candidato.assinatura_build(medido_na_main),
+        )
+
+
+def test_emissao_usa_identidade_do_job_oficial(monkeypatch, bancada):
+    raiz, _, fonte = bancada
+    medido = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
+    ambiente = {
+        "GITHUB_ACTIONS": "true",
+        "GITHUB_REPOSITORY": candidato.REPO,
+        "GITHUB_WORKFLOW_REF": f"{candidato.REPO}/.github/workflows/ci-celula.yml@refs/heads/main",
+        "GITHUB_JOB": "rodar",
+        "GITHUB_SHA": fonte,
+        "GITHUB_RUN_ID": "42",
+        "GITHUB_RUN_ATTEMPT": "2",
+        "GITHUB_EVENT_NAME": "push",
+    }
+    for chave, valor in ambiente.items():
+        monkeypatch.setenv(chave, valor)
+
+    def api(args, _):
+        if "jobs?" in args[-1]:
+            return [
+                {"jobs": [{"id": 99, "name": "rodar (admin)", "status": "in_progress"}]}
+            ]
+        return {
+            "head_sha": fonte,
+            "path": ".github/workflows/ci-celula.yml",
+            "head_repository": {"full_name": candidato.REPO},
+            "run_attempt": 2,
+            "event": "push",
+        }
+
+    monkeypatch.setattr(candidato, "_json_comando", api)
+    emissao = preparo.emitir(raiz, "ci-celula-gate", "admin", medido)
+    assert emissao["job_id"] == 99
+    assert emissao["run_id"] == 42
+    assert emissao["entradas"] == candidato.assinatura_prova(
+        medido, "ci-celula-gate", emissao["escopo"]
+    )
+    monkeypatch.setenv("GITHUB_JOB", "ci-celula-gate")
+    with pytest.raises(preparo.PreparoInvalido, match="job emissor"):
+        preparo.emitir(raiz, "ci-celula-gate", "admin", medido)

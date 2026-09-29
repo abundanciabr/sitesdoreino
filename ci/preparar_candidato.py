@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -24,6 +25,118 @@ VERIFICADORES = {
     "ci-celula-gate": (".github/workflows/ci-celula.yml", "ci", "celulas.yml"),
     "build": (".github/workflows/deploy-celula.yml", "ci/preparar_candidato.py"),
 }
+
+
+def emitir(raiz: Path, nome: str, celula: str, medido: dict) -> dict:
+    """Identifica o job pela API Actions e fixa as entradas medidas nele."""
+    exigir(nome in VERIFICADORES, "verificador não reconhecido")
+    exigir(os.environ.get("GITHUB_ACTIONS") == "true", "emissão fora do GitHub Actions")
+    exigir(
+        os.environ.get("GITHUB_REPOSITORY") == candidato.REPO,
+        "repositório emissor inesperado",
+    )
+    workflow = (
+        candidato.WORKFLOW
+        if nome == "build"
+        else (
+            ".github/workflows/muralhas.yml"
+            if nome == "muralhas"
+            else ".github/workflows/ci-celula.yml"
+        )
+    )
+    exigir(
+        os.environ.get("GITHUB_WORKFLOW_REF", "").startswith(
+            f"{candidato.REPO}/{workflow}@"
+        ),
+        "workflow emissor inesperado",
+    )
+    exigir(
+        os.environ.get("GITHUB_JOB")
+        == (
+            "rodar"
+            if nome == "ci-celula-gate"
+            else "preparar" if nome == "build" else "muralhas"
+        ),
+        "job emissor inesperado",
+    )
+    revisao = os.environ.get("GITHUB_SHA", "")
+    exigir(
+        re.fullmatch(r"[0-9a-f]{40}", revisao) is not None, "revisão Actions inválida"
+    )
+    try:
+        run_id = int(os.environ["GITHUB_RUN_ID"])
+        tentativa = int(os.environ["GITHUB_RUN_ATTEMPT"])
+    except (KeyError, ValueError) as erro:
+        raise PreparoInvalido(
+            "execução Actions inválida. Reexecute o job oficial."
+        ) from erro
+    exigir(run_id > 0 and tentativa > 0, "execução Actions inválida")
+    execucao = candidato._json_comando(
+        [
+            "gh",
+            "api",
+            f"repos/{candidato.REPO}/actions/runs/{run_id}/attempts/{tentativa}",
+        ],
+        raiz,
+    )
+    exigir(
+        isinstance(execucao, dict)
+        and execucao.get("head_sha") == revisao
+        and execucao.get("path") == workflow
+        and execucao.get("head_repository", {}).get("full_name") == candidato.REPO
+        and execucao.get("run_attempt") == tentativa
+        and execucao.get("event") == os.environ.get("GITHUB_EVENT_NAME")
+        and execucao.get("event")
+        in ({"push"} if nome == "build" else {"push", "pull_request"}),
+        "execução não pertence ao job oficial",
+    )
+    paginas = candidato._json_comando(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            "--slurp",
+            f"repos/{candidato.REPO}/actions/runs/{run_id}/attempts/{tentativa}/jobs?per_page=100",
+        ],
+        raiz,
+    )
+    esperado = (
+        f"rodar ({celula})"
+        if nome == "ci-celula-gate"
+        else f"preparar ({celula})" if nome == "build" else "muralhas"
+    )
+    exigir(
+        isinstance(paginas, list)
+        and all(
+            isinstance(p, dict) and isinstance(p.get("jobs"), list) for p in paginas
+        ),
+        "jobs oficiais não medidos",
+    )
+    jobs = [
+        job
+        for pagina in paginas
+        for job in pagina["jobs"]
+        if job.get("name") == esperado and job.get("status") == "in_progress"
+    ]
+    exigir(
+        len(jobs) == 1 and type(jobs[0].get("id")) is int and jobs[0]["id"] > 0,
+        "job emissor único não identificado",
+    )
+    escopo = sorted(candidato.BUILD if nome == "build" else candidato.FONTE)
+    return {
+        "versao": 1,
+        "nome": nome,
+        "resultado": "PASS",
+        "escopo": escopo,
+        "entradas": candidato.assinatura_prova(medido, nome, escopo),
+        "ambiente": medido["ambiente"],
+        "verificador": medido["verificadores"][nome],
+        "insumos": {grupo: medido["entradas"][grupo] for grupo in escopo},
+        "run_id": run_id,
+        "tentativa": tentativa,
+        "job_id": jobs[0]["id"],
+        "revisao": revisao,
+    }
 
 
 class PreparoInvalido(ValueError):
@@ -288,8 +401,7 @@ def snapshot(
     codigo = {
         caminho: hash_arquivo(raiz, caminho)
         for caminho in encontrados
-        if caminho not in dependencias
-        and caminho not in migrations
+        if caminho not in migrations
         and caminho not in configuracao
         and caminho not in build
     }
@@ -311,6 +423,65 @@ def snapshot(
         },
         "ambiente": candidato.digest(ambiente),
         "verificadores": verificadores,
+    }
+
+
+def snapshot_fonte(raiz: Path, celula: str, ambiente: object) -> dict:
+    exigir(re.fullmatch(r"[a-z][a-z0-9-]*", celula) is not None, "célula inválida")
+    exigir(
+        isinstance(ambiente, dict)
+        and set(ambiente) == {"runner", "arquitetura", "docker", "python"}
+        and all(isinstance(v, str) and v for v in ambiente.values()),
+        "ambiente sem runner, arquitetura, Docker ou Python",
+    )
+    encontrados = arquivos(raiz, f"services/{celula}")
+    exigir(
+        f"services/{celula}/Dockerfile" in encontrados, "Dockerfile da célula ausente"
+    )
+    configuracao = {
+        caminho: hash_arquivo(raiz, caminho)
+        for caminho in ("celulas.yml", "infra/docker-compose.yml")
+    }
+    configuracao.update(
+        {
+            caminho: hash_arquivo(raiz, caminho)
+            for caminho in encontrados
+            if caminho.endswith((".yml", ".yaml", ".toml", ".ini", ".env.example"))
+        }
+    )
+    migrations = {
+        caminho: hash_arquivo(raiz, caminho)
+        for caminho in encontrados
+        if "/migrations/" in caminho
+    }
+    codigo = {
+        caminho: hash_arquivo(raiz, caminho)
+        for caminho in encontrados
+        if caminho not in migrations
+        and caminho not in configuracao
+        and caminho != f"services/{celula}/Dockerfile"
+        and caminho != f"services/{celula}/.dockerignore"
+    }
+    exigir(bool(codigo), "código da célula vazio")
+    return {
+        "entradas": {
+            "codigo": codigo,
+            "configuracao": configuracao,
+            "contratos": {
+                caminho: hash_arquivo(raiz, caminho)
+                for caminho in arquivos(raiz, "contracts")
+            },
+            "migrations": migrations,
+            "politicas": {
+                caminho: hash_arquivo(raiz, caminho) for caminho in POLITICAS
+            },
+        },
+        "ambiente": candidato.digest(ambiente),
+        "verificadores": {
+            nome: candidato.digest(hashes(raiz, caminhos))
+            for nome, caminhos in VERIFICADORES.items()
+            if nome != "build"
+        },
     }
 
 
@@ -348,7 +519,16 @@ def criar(
         exigir(
             isinstance(prova, dict)
             and set(prova)
-            == {"nome", "resultado", "run_id", "tentativa", "job_id", "revisao"},
+            == {
+                "nome",
+                "resultado",
+                "run_id",
+                "tentativa",
+                "job_id",
+                "revisao",
+                "emissao",
+                "bundle",
+            },
             "prova sem identidade exata",
         )
         nome = prova["nome"]
@@ -374,12 +554,34 @@ def criar(
                 ),
                 "build não pertence ao job preparar da integração",
             )
-        escopo = sorted(candidato.BUILD if nome == "build" else candidato.GRUPOS)
+        escopo = sorted(candidato.BUILD if nome == "build" else candidato.FONTE)
+        emissao = prova["emissao"]
+        exigir(isinstance(emissao, dict), f"{nome}: emissão do job ausente")
+        exigir(
+            emissao.get("escopo") == escopo
+            and emissao.get("entradas")
+            == candidato.digest(
+                {
+                    "entradas": {grupo: atual["entradas"][grupo] for grupo in escopo},
+                    "ambiente": emissao.get("ambiente"),
+                    "verificador": atual["verificadores"][nome],
+                }
+            )
+            and emissao.get("verificador") == atual["verificadores"][nome]
+            and emissao.get("insumos")
+            == {grupo: atual["entradas"][grupo] for grupo in escopo},
+            f"{nome}: emissão medida pelo job diverge do snapshot atual",
+        )
+        if prova["revisao"] != identidade_integracao["revisao"]:
+            exigir(
+                emissao.get("ambiente") == atual["ambiente"],
+                f"{nome}: ambiente anterior sem equivalência com a integração",
+            )
         provas_completas.append(
             {
                 **prova,
                 "escopo": escopo,
-                "entradas": candidato.assinatura_prova(atual, nome, escopo),
+                "entradas": emissao["entradas"],
             }
         )
     exigir(
@@ -388,7 +590,7 @@ def criar(
     )
     return candidato.criar(
         {
-            "versao": 1,
+            "versao": candidato.VERSAO,
             "tarefa": tarefa,
             "tentativa": tentativa,
             "celula": celula,
@@ -417,9 +619,15 @@ def main(argv: list[str] | None = None) -> int:
     foto = sub.add_parser("snapshot")
     for nome in ("celula", "base", "imagem-local", "ambiente", "integracao", "saida"):
         foto.add_argument(f"--{nome}", required=True)
+    fonte = sub.add_parser("snapshot-fonte")
+    for nome in ("celula", "ambiente", "integracao", "saida"):
+        fonte.add_argument(f"--{nome}", required=True)
     pin = sub.add_parser("pin-base")
     for nome in ("celula", "base", "saida"):
         pin.add_argument(f"--{nome}", required=True)
+    emissor = sub.add_parser("emitir")
+    for nome in ("nome", "celula", "snapshot", "saida"):
+        emissor.add_argument(f"--{nome}", required=True)
     montar = sub.add_parser("criar")
     for nome in (
         "celula",
@@ -449,7 +657,18 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             return 0
-        if args.acao == "snapshot":
+        if args.acao == "emitir":
+            conferir_checkout(Path.cwd(), os.environ.get("GITHUB_SHA", ""))
+            valor = emitir(Path.cwd(), args.nome, args.celula, ler_json(args.snapshot))
+            saida = {
+                "estado": "PASS",
+                "emissao_sha256": hashlib.sha256(candidato.canonico(valor)).hexdigest(),
+            }
+        elif args.acao == "snapshot-fonte":
+            conferir_checkout(Path.cwd(), args.integracao)
+            valor = snapshot_fonte(Path.cwd(), args.celula, ler_json(args.ambiente))
+            saida = {"estado": "PASS", "grupos": sorted(valor["entradas"])}
+        elif args.acao == "snapshot":
             conferir_checkout(Path.cwd(), args.integracao)
             valor = snapshot(
                 Path.cwd(),
