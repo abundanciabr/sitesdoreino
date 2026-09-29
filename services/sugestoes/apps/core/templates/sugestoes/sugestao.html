@@ -42,23 +42,29 @@ pessoa mais precisa de uma frase.
   <p class="situacao">{{ explicacao_da_situacao }}</p>
 {% endif %}
 
-<div class="ficha">
-  <h3>O problema</h3>
-  <p>{{ sugestao.problema|linebreaksbr }}</p>
-</div>
-
-<div class="ficha">
-  <h3>A solução proposta</h3>
-  <p>{% if sugestao.solucao_proposta %}{{ sugestao.solucao_proposta|linebreaksbr }}{% else %}Quem sugeriu não propôs uma solução específica, e o que vale aqui é o problema.{% endif %}</p>
-</div>
-
+{% comment %}
+A ideia implementada (pedido do mantenedor, 29/09/2026): a resposta da equipe
+toma o lugar do problema e da solução, e o voto, a conversa e o caminho das
+etapas saem da página. Votos e comentários continuam no banco.
+{% endcomment %}
 {% if resposta_da_equipe %}
   <section class="ficha resposta-da-equipe">
-    <h3>A resposta da equipe</h3>
+    <h3 class="rotulo-da-resposta">A resposta da equipe</h3>
     {{ resposta_da_equipe }}
   </section>
+{% else %}
+  <div class="ficha">
+    <h3>O problema</h3>
+    <p>{{ sugestao.problema|linebreaksbr }}</p>
+  </div>
+
+  <div class="ficha">
+    <h3>A solução proposta</h3>
+    <p>{% if sugestao.solucao_proposta %}{{ sugestao.solucao_proposta|linebreaksbr }}{% else %}Quem sugeriu não propôs uma solução específica, e o que vale aqui é o problema.{% endif %}</p>
+  </div>
 {% endif %}
 
+{% if sugestao.status != "implementado" %}
 <form method="post"
       action="{% if ja_votou %}{% url 'desvotar' sugestao.id %}{% else %}{% url 'votar' sugestao.id %}{% endif %}">
   {% csrf_token %}
@@ -99,9 +105,11 @@ pessoa mais precisa de uma frase.
   </div>
   <button type="submit" class="botao">Comentar</button>
 </form>
+{% endif %}
 {% endblock %}
 
 {% block inspetor %}
+{% if sugestao.status != "implementado" %}
 <aside class="inspetor">
   <p class="identificacao">
     #{{ sugestao.id }} · {{ sugestao.categoria.nome }}<br>
@@ -133,4 +141,5 @@ pessoa mais precisa de uma frase.
     </div>
   {% endif %}
 </aside>
+{% endif %}
 {% endblock %}
