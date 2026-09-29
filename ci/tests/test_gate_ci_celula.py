@@ -203,11 +203,11 @@ def test_o_bypass_existia_de_verdade_no_gate_antigo() -> None:
     assert novo.returncode != 0, "o gate novo NÃO pode aprovar o mesmo estado"
 
 
-def test_gate_e_o_job_terminal_e_sempre_conclui() -> None:
-    """Se o gate deixar de rodar `always()`, ele para de ser o check terminal."""
+def test_gate_e_o_job_terminal_do_pr_e_sempre_conclui() -> None:
+    """O gate do PR conclui mesmo se a detecção ou a matriz falhar."""
     doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     gate = doc["jobs"]["gate"]
-    assert gate["if"] == "always()"
+    assert gate["if"] == "always() && github.event_name == 'pull_request'"
     assert set(gate["needs"]) == {"detectar", "rodar"}
 
 
