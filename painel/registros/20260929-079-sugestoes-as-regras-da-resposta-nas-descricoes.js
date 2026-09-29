@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-079-sugestoes-as-regras-da-resposta-nas-descricoes",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "sugestoes: as regras da resposta nas descricoes",
+  detalhe: "Descricoes do campo resposta e de setIdeaStatus no codigo da Caixa, iguais ao contrato emendado; so texto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2374. Validação local: árvore 488377376efce129cfd6287a24a6404a4899c9b2; commit 5d12dbc966c59fc1fef0b249ebd00fa1813cbda4; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1007",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "sugestoes",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

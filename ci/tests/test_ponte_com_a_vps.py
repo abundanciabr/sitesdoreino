@@ -18,8 +18,11 @@ próprio `infra/provisionar-usuario-ponte.sh`.
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
+import subprocess
+import sys
 
 RAIZ = Path(__file__).resolve().parents[2]
 PROVISIONADOR = RAIZ / "infra" / "provisionar-usuario-ponte.sh"
@@ -156,12 +159,15 @@ def test_a_ponte_nao_segura_a_sincronizacao_da_infraestrutura():
     codigo = so_codigo(SINCRONIZADOR)
     chamada = re.search(r"^\s*sudo -n .*$", codigo, re.M)
     assert chamada, "a esteira precisa chamar o provisionador congelado"
-    guarda = re.search(r'^\s*if \[ -x "?\$PROVISIONADOR_DA_PONTE"? \]; then$', codigo, re.M)
+    guarda = re.search(r'^\s*if \[ -e "\$PROVISIONADOR_DA_PONTE" \]; then$', codigo, re.M)
     assert guarda and guarda.start() < chamada.start(), (
         "o `sudo -n` tem de estar atrás da guarda de existência: sem a regra de "
         "sudo instalada ele devolve `sudo: a password is required` e, sob "
         "`set -eu` e depois da sentinela SINCRONIZACAO-INICIADA, derruba a "
         "sincronização inteira sem repetição"
+    )
+    assert '! cmp -s "$PROVISIONADOR_DA_PONTE"' in codigo[:chamada.start()], (
+        "copia root divergente precisa falhar antes do sudo e antes de consumir infra.new"
     )
     assert "instalar-provisionador-usuario-ponte.sh" in codigo, (
         "o log tem de dizer a linha exata que liga a ponte"
@@ -206,3 +212,217 @@ def test_o_pipeline_leva_os_dois_roteiros_para_a_vps():
     assert texto.count(
         "infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
     ) == 3, "as três tentativas do SCP têm de levar os dois roteiros"
+
+
+
+def linux_isolado(pasta: Path, codigo: str) -> None:
+    processo = subprocess.run(
+        ["docker", "run", "--rm", "--network", "none", "--cpus", "1",
+         "--memory", "1g", "--volume", f"{pasta}:/plataforma",
+         "--volume", f"{RAIZ / 'infra'}:/fontes:ro",
+         "--entrypoint", "bash", "ubuntu:24.04", "-c", codigo],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert processo.returncode == 0, (processo.stdout, processo.stderr)
+
+
+def test_estado_admin_recusa_publicacao_indecisa_pin_e_link(tmp_path):
+    trecho = SINCRONIZADOR.read_text(encoding="utf-8").split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    pasta = tmp_path / "publicacoes-candidatos"
+    pasta.mkdir()
+    estado_path = pasta / "admin.json"
+    ambiente = tmp_path / ".env"
+
+    def conferir():
+        return subprocess.run(
+            [sys.executable, "-", str(estado_path), str(ambiente)],
+            input=trecho, capture_output=True, text=True,
+        )
+
+    assert conferir().returncode == 0
+    if sys.platform != "win32":
+        estado_path.symlink_to("inexistente")
+        assert "estado duravel nao pode ser link" in conferir().stderr
+        estado_path.unlink()
+    digest = "sha256:" + "a" * 64
+    estado = {
+        "estado": "autorizada", "candidato": "teste", "digest": digest,
+        "imagem_id": "sha256:" + "b" * 64, "anterior": {},
+        "anterior_digest": "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64,
+        "aceite_funcional": "pendente",
+    }
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
+    assert "autorizada ou incerta" in conferir().stderr
+    estado["estado"] = "publicada"
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@" + digest + "\n", encoding="utf-8")
+    assert "aguarda aceite funcional" in conferir().stderr
+    estado["aceite_funcional"] = "conferido"
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
+    assert "ADMIN_IMAGE nao corresponde" in conferir().stderr
+    ambiente.write_text("ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@" + digest + "\n", encoding="utf-8")
+    assert conferir().returncode == 0
+    estado["estado"] = "falhou"
+    estado["aceite_funcional"] = "pendente"
+    estado_path.write_text(json.dumps(estado), encoding="utf-8")
+    ambiente.write_text("ADMIN_IMAGE=" + estado["anterior_digest"] + "\n", encoding="utf-8")
+    assert conferir().returncode == 0
+
+
+def test_sincronizador_recusa_copia_stale_compose_e_staging_trocado(tmp_path):
+    stage = tmp_path / "infra.new"
+    stage.mkdir()
+    (stage / "traefik").mkdir()
+    (stage / "traefik" / "rota.yml").write_text("rota\n", encoding="utf-8")
+    (stage / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (stage / "sites.json").write_text("{}\n", encoding="utf-8")
+    (stage / "sincronizar_sites.py").write_text("pass\n", encoding="utf-8")
+    (stage / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
+    (stage / INSTALADOR.name).write_bytes(INSTALADOR.read_bytes())
+    (tmp_path / "env").mkdir()
+    (tmp_path / "env/admin.env").write_text(
+        "ALUNOS_API_TOKEN=teste\nTOKEN_CATALOGO=teste\n", encoding="utf-8"
+    )
+    binarios = tmp_path / "bin"
+    binarios.mkdir()
+    (binarios / "docker").write_text(
+        "#!/bin/bash\n[ ! -e /plataforma/compose-reprova ]\n", encoding="utf-8"
+    )
+    (binarios / "sudo").write_text(
+        "#!/bin/bash\n"
+        "[ ! -e /proc/$$/fd/8 ] || { echo fd8-herdado >&2; exit 88; }\n"
+        "printf sem-fd8 > /plataforma/sudo-prova\n"
+        "printf '{\"trocado\":true}\\n' > /plataforma/infra.new/sites.json\n",
+        encoding="utf-8",
+    )
+    (binarios / "python3").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+    linux_isolado(tmp_path, r'''
+set -euo pipefail
+export PLATAFORMA_DIR=/plataforma PATH=/plataforma/bin:$PATH
+sed -i 's/\r$//' /plataforma/bin/*
+chmod +x /plataforma/bin/*
+cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
+chmod 755 /usr/local/sbin/provisionar-usuario-ponte
+printf '\n# stale\n' >> /usr/local/sbin/provisionar-usuario-ponte
+# A copia root antiga falha antes de executar sudo ou consumir infra.new.
+if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
+grep -Fq 'copia root da ponte diverge' /plataforma/saida
+test ! -e /plataforma/sudo-prova
+cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
+chmod 755 /usr/local/sbin/provisionar-usuario-ponte
+# Compose inválido recusa antes do provisionador root, que poderia tocar SSH.
+touch /plataforma/compose-reprova
+if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
+grep -Fq 'nenhuma mutacao root' /plataforma/saida
+test ! -e /plataforma/sudo-prova
+rm /plataforma/compose-reprova
+# sudo simula troca concorrente do staging e atesta FD8 fechado.
+if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
+test "$(cat /plataforma/sudo-prova)" = sem-fd8
+grep -Fq 'infra.new mudou durante a fase root' /plataforma/saida
+test -f /plataforma/infra.new/docker-compose.yml
+test ! -e /plataforma/docker-compose.yml.new
+echo rejeicoes-e-ordem-confirmadas
+''')
+
+
+def test_instalador_restaura_kit_e_reentra_na_mesma_trava(tmp_path):
+    (tmp_path / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
+    (tmp_path / INSTALADOR.name).write_bytes(INSTALADOR.read_bytes())
+    (tmp_path / "trava-de-publicacao.sh").write_bytes(
+        (RAIZ / "infra/trava-de-publicacao.sh").read_bytes()
+    )
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin/visudo").write_text(
+        "#!/bin/bash\n"
+        "[ \"$1\" = -cf ] && exit 0\n"
+        "n=$(cat /plataforma/visudo-contagem 2>/dev/null || echo 0)\n"
+        "n=$((n+1)); echo \"$n\" > /plataforma/visudo-contagem\n"
+        "[ \"$n\" -ne 2 ]\n", encoding="utf-8"
+    )
+    linux_isolado(tmp_path, r'''
+set -euo pipefail
+export PLATAFORMA_DIR=/plataforma PATH=/plataforma/bin:$PATH
+sed -i 's/\r$//' /plataforma/bin/visudo
+chmod +x /plataforma/bin/visudo
+mkdir -p /etc/sudoers.d
+printf 'provisionador-antigo\n' > /usr/local/sbin/provisionar-usuario-ponte
+printf 'regra-antiga\n' > /etc/sudoers.d/90-deploy-provisionar-ponte
+if bash /fontes/instalar-provisionador-usuario-ponte.sh /plataforma/provisionar-usuario-ponte.sh > /plataforma/saida 2>&1; then exit 1; fi
+grep -Fq 'conjunto sudoers reprovou' /plataforma/saida
+test "$(cat /usr/local/sbin/provisionar-usuario-ponte)" = provisionador-antigo
+test "$(cat /etc/sudoers.d/90-deploy-provisionar-ponte)" = regra-antiga
+# Injeta falha no mv de restauração: o backup não pode desaparecer nem a
+# mensagem afirmar restauração concluída.
+printf '0\n' > /plataforma/visudo-contagem
+cat > /plataforma/bin/mv <<'SH'
+#!/bin/bash
+if [[ "${2:-}" == *.restore.* ]]; then exit 81; fi
+exec /usr/bin/mv "$@"
+SH
+chmod +x /plataforma/bin/mv
+if bash /fontes/instalar-provisionador-usuario-ponte.sh /plataforma/provisionar-usuario-ponte.sh > /plataforma/saida 2>&1; then exit 1; fi
+grep -Fq 'recuperacao incerta' /plataforma/saida
+if grep -Fq 'anteriores restauradas' /plataforma/saida; then exit 1; fi
+copias=(/usr/local/sbin/provisionar-usuario-ponte.old.*)
+test -f "${copias[0]}"
+test "$(cat "${copias[0]}")" = provisionador-antigo
+rm /plataforma/bin/mv
+# Segunda execução usa um provisionador mínimo com o fragmento exato;
+# ele herda FD8 do instalador e precisa concluir sem esperar a si mesmo.
+cat > /plataforma/provisionar-usuario-ponte.sh <<'SH'
+#!/bin/bash
+set -e
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ"
+SH
+cat /plataforma/trava-de-publicacao.sh >> /plataforma/provisionar-usuario-ponte.sh
+printf 'echo reentrou > "$RAIZ/reentrada"\n' >> /plataforma/provisionar-usuario-ponte.sh
+cat > /plataforma/bin/visudo <<'SH'
+#!/bin/bash
+exit 0
+SH
+chmod +x /plataforma/bin/visudo
+bash /fontes/instalar-provisionador-usuario-ponte.sh /plataforma/provisionar-usuario-ponte.sh > /plataforma/saida 2>&1
+test -f /plataforma/reentrada
+cmp -s /plataforma/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
+grep -Fq 'NOPASSWD: /usr/local/sbin/provisionar-usuario-ponte' /etc/sudoers.d/90-deploy-provisionar-ponte
+echo rollback-e-reentrada-confirmados
+''')
+
+
+def test_provisionador_root_espera_o_mesmo_inode_antes_de_tocar_ssh(tmp_path):
+    (tmp_path / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
+    (tmp_path / "trava-de-publicacao.sh").write_bytes(
+        (RAIZ / "infra/trava-de-publicacao.sh").read_bytes()
+    )
+    linux_isolado(tmp_path, r'''
+set -euo pipefail
+export PLATAFORMA_DIR=/plataforma
+cp /plataforma/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
+mkfifo /plataforma/liberar
+(source /plataforma/trava-de-publicacao.sh; touch /plataforma/segurando;
+ read -r sinal < /plataforma/liberar) &
+detentor=$!
+for tentativa in {1..100}; do
+  [ -e /plataforma/segurando ] && break
+  kill -0 "$detentor"
+  sleep 0.02
+done
+test -e /plataforma/segurando
+inode=$(stat -c %i /plataforma/.publicacao.lock)
+bash /fontes/provisionar-usuario-ponte.sh > /plataforma/saida 2>&1 &
+receptor=$!
+sleep 0.2
+kill -0 "$receptor"
+test ! -e /var/backups/ponte-*
+if flock --nonblock --exclusive /plataforma/.publicacao.lock -c true; then exit 1; fi
+printf 'liberar\n' > /plataforma/liberar
+wait "$detentor"
+if wait "$receptor"; then exit 1; fi
+grep -Fq 'sshd' /plataforma/saida
+test "$(stat -c %i /plataforma/.publicacao.lock)" = "$inode"
+echo provisionador-esperou-a-trava-comum
+''')
