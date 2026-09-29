@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-185653-TAR-991-explicada",
+  "tarefa": "TAR-991",
+  "evento": "explicada",
+  "quando": "2026-09-29T18:56:53.892907+00:00",
+  "quem": "Frente18 PME08 TAR958; inventario medido identifica comandos distintos dos pares e do kit root bloqueado",
+  "o_que_e": "Alguns comandos de configuracao ainda podem disputar os mesmos servicos durante uma publicacao",
+  "o_que_muda": "Cada alteracao espera sua vez e a recuperacao conserva a protecao dos dados",
+  "exemplo": "Trocar uma chave de servico nao reinicia o container enquanto uma versao esta entrando no ar",
+  "importancia": 90
+}
