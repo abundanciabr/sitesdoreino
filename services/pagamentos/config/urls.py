@@ -16,7 +16,7 @@ urlpatterns = [
     # NinjaAPI (ver pagamentos/api/appmax.py) e, declarada aqui em cima, não
     # depende de como o resolvedor trata um prefixo que casa sem subrota.
     path("api/pagamentos/appmax/instalacao", instalacao_appmax),
-    path("api/pagamentos/appmax/webhook", webhook_appmax),
+    path("api/pagamentos/appmax/webhooks", webhook_appmax),
     path("api/pagamentos/", api.urls),
     # Rota fora do NinjaAPI de propósito: nunca aparece no export_openapi/freeze
     # de contrato. simulate_webhook() checa settings.DEBUG e 404 sozinha (ver

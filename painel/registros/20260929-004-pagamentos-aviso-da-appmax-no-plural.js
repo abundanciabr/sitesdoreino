@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-004-pagamentos-aviso-da-appmax-no-plural",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "pagamentos: aviso da Appmax no plural",
+  detalhe: "A Appmax avisa em /appmax/webhooks e a rota era do singular, com 404. Rota trocada; guarda e mapa provados por mutação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2327. Validação local: árvore 323719629dcfd28df2ec124e2a24d2fa8be4e88e; commit c3d94b31f81c7271e4a331195bcd27ade9b7315e; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-951",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

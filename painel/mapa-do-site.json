@@ -2376,8 +2376,8 @@
     },
     {
       "celula": "pagamentos",
-      "rota": "api/pagamentos/appmax/webhook",
-      "endereco": "/api/pagamentos/appmax/webhook",
+      "rota": "api/pagamentos/appmax/webhooks",
+      "endereco": "/api/pagamentos/appmax/webhooks",
       "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "A Appmax avisa quando o dinheiro volta",
