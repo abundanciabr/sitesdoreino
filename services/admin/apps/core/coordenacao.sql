@@ -4,6 +4,14 @@ CREATE TABLE IF NOT EXISTS coordenacao.autoridade (
  epoca bigint NOT NULL DEFAULT 1 CHECK (epoca > 0), origem_sha text NOT NULL,
  hash_historico text NOT NULL, atualizado_em timestamptz NOT NULL DEFAULT clock_timestamp()
 );
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS modo text NOT NULL DEFAULT 'ativa' CHECK (modo IN ('ativa','pausada'));
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS transicao text;
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS watermark_sha256 text;
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS limite_evento bigint;
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS testemunho_preparado_sha256 text;
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS testemunho_ativo_sha256 text;
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS testemunho_preparado_oid text;
+ALTER TABLE coordenacao.autoridade ADD COLUMN IF NOT EXISTS testemunho_ativo_oid text;
 CREATE TABLE IF NOT EXISTS coordenacao.tarefa (
  id text PRIMARY KEY, coorte text NOT NULL REFERENCES coordenacao.autoridade,
  documento jsonb NOT NULL, projecao jsonb NOT NULL, versao bigint NOT NULL DEFAULT 1,
