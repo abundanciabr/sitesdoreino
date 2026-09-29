@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-194304-TAR-994-explicada",
+  "tarefa": "TAR-994",
+  "evento": "explicada",
+  "quando": "2026-09-29T19:43:04.743203+00:00",
+  "quem": "Mandato integral do mantenedor PME05 e contrato de transferencia TAR992; ensaio operacional, mesma frente",
+  "o_que_e": "A mudanca da fila precisa provar que um novo trabalho pode ser reservado depois da transferencia.",
+  "o_que_muda": "Confere que apenas o responsavel autorizado consegue assumir o trabalho no novo controle.",
+  "exemplo": "Uma tarefa de ensaio permanece livre no sistema antigo e e assumida uma unica vez no novo, sem mexer no site.",
+  "importancia": 85
+}
