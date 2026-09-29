@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-031-ci-guardar-candidata-ate-a-prova-final",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: guardar candidata ate a prova final",
+  detalhe: "O candidato fica em rascunho ate o recibo e a segunda prova completos. Retomadas guardam o PR antes de publicar a nova revisao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2341. Validação local: árvore b3c075c1980ab80130e2ca62f922b241f1921fc0; commit 45de70ff3c1f3de9f29a345d08355c243fe57451; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-973",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

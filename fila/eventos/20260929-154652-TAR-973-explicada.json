@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-154652-TAR-973-explicada",
+  "tarefa": "TAR-973",
+  "evento": "explicada",
+  "quando": "2026-09-29T15:46:52.403312+00:00",
+  "quem": "TAR958 descoberta154452 e transferencia03 apos PR2338; mandato fase0",
+  "o_que_e": "A solicitacao de integracao pode ficar pronta antes da ultima verificacao da versao completa.",
+  "o_que_muda": "Somente uma versao com todas as provas finais pode entrar automaticamente no produto.",
+  "exemplo": "O pacote fica lacrado ate a conferencia da ultima peca.",
+  "importancia": 95
+}
