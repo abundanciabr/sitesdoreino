@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-012-ci-recusar-recibo-antes-de-validar",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: recusar recibo antes de validar",
+  detalhe: "Recusa recibo grande antes de validar ou publicar. Preserva provas completas e as duas validacoes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2333. Validação local: árvore e9598f49f7128db732e8ba405fbad44117b4af90; commit b8ee4b9df2af6fdea27a8543f2cc177f5f6b3b98; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-961",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

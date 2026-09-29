@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-143543-TAR-959-checkpoint",
+  "tarefa": "TAR-959",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T14:35:43.856480+00:00",
+  "quem": "codex/pme01-medicao",
+  "plano": "PME-01: caminho real medido; instrumentacao de rodada em validacao",
+  "ultimo_avanco": "TAR-950 reconstruida: explicada 2026-09-28T18:58:11Z; reivindicada19:14:40Z; candidato19:16:27Z; validacao final20:06:25Z; fechamento20:06:34Z; integrado20:09:31Z; deploy36477204659 de20:09:33Z ate20:14:27Z. Pedido original e aceite funcional ausentes. Concluida19:58:32Z nao comprova aceite. CI final20:06:33Z ate20:09:18Z (parede165s); deploy294s, jobs dados/admin sobrepostos nao somados. Repeticoes locais no mesmo candidato: 4 conclusoes de validacao19:26:37Z,19:36:49Z,19:47:53Z,19:58:17Z sem inicio medido; tempos de execucao e espera locais desconhecidos. Corte PME02: recibo>=1024bytes recusado so depois de validar/push/abrirPR/reservarregistro em pr.py826. Gates ativos: pr.py chama _validar duas vezes; muralhas.yml chama ci.py muralhas/testador/contratos/infra; ci-celula.yml make ci das celulas detectadas e gate terminal; pouso.yml chama mergear.py--automatico obrigatorios atuais+mandato+congelamento+dependencias; deploy chama portao_de_deploy.py. Mutadores piloto: deploy-celula grupo deploy engloba detectar/portao/build/push/ativacao/dados; max-parallel1 na matriz; infra/rollback mesmo grupo; operacoes-vps grupo proprio mas catalogo atual de medicao somente leitura. Piloto escolhido: PME02 submissao de instrumentacao CI, sem pagamento/schema/autorizacao. Ganho total/aceite nao demonstrados.",
+  "proxima_acao": "Integrar chamadas rodada=time.time_ns() antes de cada _validar e mesmo valor no terminal; candidato/concluido apos commit. Submeter instrumentacao quando pr.py aceitar codex pelo ajuste coordenado; medir nova chamada com consumidor metricas_da_fabrica.py--local e comprovar jornada do piloto.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_medir_tempos.py ci/tests/test_metricas_percurso.py -q: 50passed1.06s; gh pr view2324 e gh run view36477204659--json jobs confirmam marcos; caderno privado filtrado TAR-950/tentativa09178343830c43ee88969ba194f79fe1 confirma repeticoes. Historico previo medicao-telemetria-20260928.json:909 terminais sem inicio; uso limitado, nao inferir zero ou 10x."
+  ]
+}

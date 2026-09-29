@@ -104,11 +104,11 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 
 # ÍNDICE DAS ARMADILHAS — uma linha por entrada
 
-> **Antes de tudo, o Padrão de Trabalho:** a PRIMEIRA seção do `CLAUDE.md` da
+> **Antes de tudo, o Padrão de Trabalho:** a PRIMEIRA seção do `CAMINHO-DOURADO.md` da
 > raiz é a régua de toda tarefa desta casa — resolver o problema real por trás
 > do pedido, discordar antes e executar depois, decidir em vez de servir
 > cardápio, a Definição de "Pronto" da regra 6 e as frases proibidas da 10. Ela
-> já chegou no seu contexto junto com o `CLAUDE.md`; este lembrete existe porque
+> já chegou no seu contexto pela entrada do agente; este lembrete existe porque
 > chegar no contexto e ser USADA são coisas diferentes.
 
 > **Antes de codar, leia os 8 padrões:** `docs/decisoes/RETROSPECTIVA-FASE-D.md`.
@@ -121,7 +121,7 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 > **Consulta de aprofundamento:** a abertura (`ci/sessao.py`) já emite contexto
 > direcionado por caminho e sintoma, com origens e limitações. Este índice completo
 > continua disponível quando necessário ou solicitado; não é leitura padrão.
-> Nenhuma regra exclusiva mora aqui: Padrão e reservas estão no `CLAUDE.md`,
+> Nenhuma regra exclusiva mora aqui: Padrão e reservas estão no `CAMINHO-DOURADO.md`,
 > os oito padrões na Retrospectiva e as entradas individuais são suas origens.
 > **Como usar nesta consulta:** dê Ctrl+F pela **mensagem de erro crua** que você está vendo (ou
 > pela tecnologia: `django-ninja`, `respx`, `middleware`, `mypy`, `traefik`,

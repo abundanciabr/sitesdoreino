@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-006-ci-medir-rodadas-de-validacao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: medir rodadas de validacao",
+  detalhe: "Rodadas distintas preservam inicio e resultado da validacao; o leitor mede somente pares exatos e mantem ausencias explicitas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2331. Validação local: árvore e0ea173d5bf0e900b848a23c6b9dc00c50e72503; commit db1029cae60cd0d085d18a0d814581d2b84c91ff; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-959",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

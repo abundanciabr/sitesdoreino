@@ -1,0 +1,55 @@
+{
+  "arquivo": "20260929-154427-TAR-971-contrato_execucao",
+  "tarefa": "TAR-971",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T15:44:27.877581+00:00",
+  "quem": "codex/pme07-publicacao",
+  "contrato": {
+    "plano": "PME07/08 plano-mestre A88666E0F; coordenação TAR958",
+    "versao": 1,
+    "objetivo": "Publicar candidato por digest com preparação fora da exclusão comum e recuperação sem perda de dados.",
+    "entregaveis": [
+      "Cobertura comum de todas entradas mutadoras",
+      "Publicador Actions com candidato durável e revalidação",
+      "Ensaios e piloto oficial com jornada e recuperação"
+    ],
+    "escopo_incluido": [
+      "Workflows mutadores pertinentes e scripts receptores infra",
+      "ci/rollback.py e testes do protocolo"
+    ],
+    "nao_objetivos": [
+      "Alterar ci/candidato.py fila.py pr.py sessao.py de outros donos",
+      "Entregar credenciais ou gastar dinheiro"
+    ],
+    "restricoes": [
+      "15 arquivos por incremento; banco oficial preservado",
+      "Trava atual mantida até cobertura comum comprovada; não cancelar mutação"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato direto mantenedor 29/09: protegido integração publicação compatível recuperação",
+      "root aprovou flock comum em receptor e reentrada vinculada a inode",
+      "Preservar conclusão TAR967; checkpoint não submetido pós-terminal preservado privado SHA256 A00396C91E7B5ED51BDC74014585C0E4FD7F30C315F110FBE5EB78DD9BDCD19F"
+    ],
+    "etapas": [
+      "Inventário e contrato",
+      "Lotes de exclusão no receptor",
+      "Separação preparação/ativação por digest",
+      "Ensaios recuperação revalidação e piloto oficial"
+    ],
+    "criterios_entrada": [
+      "TAR971 continuação autorizada da mesma frente TAR967; fontes do rito PR2338 integradas"
+    ],
+    "criterios_aceite": [
+      "Todos mutadores cobertos antes mover trava",
+      "Candidato atrasado não regride; prova inválida recusa",
+      "Digest corrente idêntico aprovado; jornada e recuperação sob proteção"
+    ],
+    "evidencias_exigidas": [
+      "Ensaios Linux concorrência/reentrada/instrumento quebrado",
+      "Revisão independente e run Actions piloto com jornada"
+    ],
+    "condicao_encerramento": "Publicação funcional e recuperação ensaiadas pelo fluxo oficial, resultado durável registrado.",
+    "limites_autonomia": "Implementar e validar protegido autorizado; root dispara piloto após revisão; nenhum SSH ao agente.",
+    "acoes_do_mantenedor": "Nenhuma nova autorização necessária; coordenação executa disparo oficial após provas."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-152754-TAR-962-checkpoint",
+  "tarefa": "TAR-962",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T15:27:54.923086+00:00",
+  "quem": "codex/ci/pme03-aceite",
+  "plano": "PME-03: corte compatível prioritário na submissão",
+  "ultimo_avanco": "448 testes aprovaram o candidato completo preservado em referência local; corte de dois arquivos conserva a tarefa aberta e permite a reconciliação posterior.",
+  "proxima_acao": "Publicar o corte de submissão pelo rito e continuar a proveniência do snapshot oficial.",
+  "verificacoes": [
+    "Rito anterior interrompido antes da criação de PR; processos próprios encerrados; candidato completo preservado em 635657aea092e2617607b1bce06082c1f1152e89"
+  ]
+}

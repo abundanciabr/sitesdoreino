@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-007-ci-aplicar-modelos-e-esforco-autorizados-por-risco",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: aplicar modelos e esforço autorizados por risco",
+  detalhe: "Sol e Luna por risco; consistência do brief recusa modelo ausente/alheio e fallback. Principal preservado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2332. Validação local: árvore 0d810f38c8ae9f69368a84ba45bcfdb96f1320c9; commit 07532664b28ee1d4ce9e17ba4ca7d4ed88c4647c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-960",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

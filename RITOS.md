@@ -1,6 +1,8 @@
 # RITOS DA PLATAFORMA
 
-Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e antídoto.
+Procedimentos ainda referenciados pelos consumidores em migração. A fonte
+operacional vigente é CAMINHO-DOURADO.md; a entrada do agente aponta diretamente
+para ela. Este arquivo preserva os detalhes até sua migração sem perda de prova.
 
 ---
 
@@ -33,7 +35,7 @@ ficam no caminho que a abertura informa; a declaração só descreve o observado
 
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 
-> "Li o **Padrão de Trabalho** (1ª seção do `CLAUDE.md`), `CONSTITUICAO.md` e
+> "Li o **Padrão de Trabalho** (1ª seção do `CAMINHO-DOURADO.md`), `CONSTITUICAO.md` e
 > `constituicoes/AGENTS.<celula>.md`. Worktree:
 > `wt-<celula>-<tarefa>`. Branch: `agent/<celula>/<tarefa>`. `git status`: limpo.
 > Baseline: `make ci` verde. Tarefa: [uma frase]."
@@ -90,9 +92,15 @@ Decisão do mantenedor em 13/09/2026, registrada em
    houver check sem resultado; `--entrega <N> --so-desfecho` devolve revisão,
    integração e publicação em JSON. Deploy cancelado ou recusado pela VPS
    (`armadilhas/127` e `188`) é instrumento quebrado, não código:
-   `python ci/rerun_de_deploy.py --ultimo`. Integrado e publicado: registro com
-   `evidencia` e `verificado_em`, e `python ci/fila.py reconciliar TAR-NNN
-   --quem <voce> --aceite-registro painel/registros/<arquivo>` fecha a tarefa.
+   `python ci/rerun_de_deploy.py --ultimo`. Integração e publicação não são
+   aceite funcional. Antes de reconciliar,
+   comprove a jornada afetada na revisão integrada e no ambiente publicado:
+   comando, resultado e origem verificados, inclusive o efeito final se houver
+   operação assíncrona. Só então registre essa prova em `evidencia` e
+   `verificado_em` e use `python ci/fila.py reconciliar TAR-NNN --quem <voce>
+   --aceite-registro painel/registros/<arquivo>`. Sem a prova, mantenha a tarefa
+   submetida e registre a pendência; recibo, merge ou saúde isolados não fecham.
+   O produtor mecânico dessa prova ainda depende da continuação TAR-969.
    Teto estourado ou decisão exclusiva do mantenedor: informe NÃO
    PRONTO com o que falta. O Stop recusa o fecho enquanto o PR desta sessão não
    tiver resultado terminal (`ci/prestacao_de_contas.py`, Lei 11).
