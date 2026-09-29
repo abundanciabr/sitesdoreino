@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-143656-TAR-963-explicada",
+  "tarefa": "TAR-963",
+  "evento": "explicada",
+  "quando": "2026-09-29T14:36:56.480635+00:00",
+  "quem": "TAR958 auditoria independente exigida pelo plano e mandato 2026-09-29",
+  "o_que_e": "Os controles de modelos, dados e publicacao precisam de uma conferência independente nas mudancas.",
+  "o_que_muda": "Falhas reais sao encontradas e corrigidas antes de integrar os incrementos.",
+  "exemplo": "Uma configuracao escrita mas nunca aplicada nao pode contar como prova de modelo.",
+  "importancia": 80
+}

@@ -158,9 +158,17 @@ O fluxo está em `RUNBOOK-LOTES.md`.
 
 ## O que uma chamada custa
 
-Modelo e esforço: `python ci/economia_da_fabrica.py brief`; rotina usa
-econômico, arquitetura/dúvida usa superior. Sub-agente nasce só em `sonnet`
-ou `opus` declarado.
+Modelo e esforço: `python ci/economia_da_fabrica.py brief`.
+Codex: somente `gpt-6-luna` ou `gpt-6-sol`, explícitos com `fork_turns=none`.
+Luna low lê mecanicamente; Luna medium implementa mudanças pequenas. Sol medium
+executa múltiplas etapas; Sol high trata arquitetura, dados, autorização,
+concorrência e recuperação. xhigh exige razão concreta; max é excepcional.
+Valide arquivo e parâmetros do disparo por `python ci/economia_da_fabrica.py validar-brief`.
+Brief ausente, modelo alheio, divergência ou fallback impedem execução.
+Só a sessão responsável cria frentes e recebe indisponibilidade.
+Preserve o modelo principal; confira metadados. Consistência não prova runtime.
+No Claude Code, subagente usa `sonnet` ou `opus` declarado.
+
 Meça o estado nas fontes estruturadas de Git, GitHub e fila.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.

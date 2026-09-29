@@ -29,7 +29,8 @@ from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa
 MODELO_ROTINA = "sonnet"
 MODELO_TOPO = "opus"
 MODELOS_CODEX = {"rotina": "gpt-6-sol", "delimitado": "gpt-6-luna"}
-TIPOS_CODEX_LUNA = {"escrita", "espera"}
+ESFORCOS_CODEX_LUNA = {"escrita": "medium", "texto": "medium", "leitura": "low", "implementacao-pequena": "medium", "espera": "low"}
+ESFORCOS_CODEX_SOL = {"medium", "high", "xhigh", "max"}
 
 
 def harness_ativo(raiz: Path | None = None) -> str:
@@ -42,8 +43,8 @@ def harness_ativo(raiz: Path | None = None) -> str:
 
 def _perfil_do_harness(perfil: Perfil) -> Perfil:
     if harness_ativo() == "codex":
-        if perfil.tipo in TIPOS_CODEX_LUNA:
-            return replace(perfil, modelo=MODELOS_CODEX["delimitado"], esforco="high")
+        if perfil.tipo in ESFORCOS_CODEX_LUNA:
+            return replace(perfil, modelo=MODELOS_CODEX["delimitado"], esforco=ESFORCOS_CODEX_LUNA[perfil.tipo])
         esforco = "medium" if perfil.tipo == "geral" else perfil.esforco
         return replace(perfil, modelo=MODELOS_CODEX["rotina"], esforco=esforco)
     return perfil
@@ -58,6 +59,8 @@ class Perfil:
 
 
 PERFIS: dict[str, Perfil] = {
+    "leitura": Perfil("leitura", MODELO_ROTINA, "low", "consulta mecânica com critério fechado; interpretação de causa usa diagnóstico"),
+    "implementacao-pequena": Perfil("implementacao-pequena", MODELO_ROTINA, "medium", "implementa mudança pequena com comportamento e fronteira já definidos"),
     "geral": Perfil(
         "geral",
         MODELO_TOPO,
@@ -122,7 +125,7 @@ PERFIS: dict[str, Perfil] = {
 
 PALAVRAS_POR_TIPO = {
     "contrato": ("contrato", "openapi", "freeze", "api publica", "api pública"),
-    "arquitetura": ("arquitetura", "fronteira", "codeowners", "infra", "pipeline"),
+    "arquitetura": ("arquitetura", "fronteira", "codeowners", "infra", "pipeline", "dados", "autorização", "autorizacao", "concorrência", "concorrencia", "recuperação", "recuperacao"),
     "produto": ("produto", "comportamento", "checkout", "pagamento", "compra"),
     "revisao": ("revisar", "review", "revisor", "diff", "pr "),
     "escrita": ("registro", "armadilha", "fila", "livro", "escrivao", "escrivão"),
@@ -218,11 +221,17 @@ def auditar_fichas(raiz: Path) -> list[str]:
         modelo = str(campos.get("model", "")).strip()
         nome = campos.get("name") or caminho.stem
         if harness == "codex":
-            esperado = MODELOS_CODEX["rotina"]
-            if modelo != esperado:
-                falhas.append(f"{relativo}: model precisa ser {esperado}, recebido {modelo!r}")
-            if campos.get("model_reasoning_effort") not in {"low", "medium", "high", "xhigh"}:
-                falhas.append(f"{relativo}: declare model_reasoning_effort suportado")
+            if modelo not in MODELOS_CODEX.values():
+                falhas.append(f"{relativo}: declare model gpt-6-sol ou gpt-6-luna, recebido {modelo!r}")
+            esforco = campos.get("model_reasoning_effort")
+            permitidos = {"low", "medium"} if modelo == "gpt-6-luna" else ESFORCOS_CODEX_SOL
+            if esforco not in permitidos:
+                falhas.append(f"{relativo}: declare model_reasoning_effort permitido para {modelo}")
+            if any("fallback" in chave.lower() for chave in campos):
+                falhas.append(f"{relativo}: fallback não autorizado; remova a substituição de modelo")
+            instrucoes = campos.get("developer_instructions", "")
+            if "validar-brief" not in instrucoes or "Não dispare subagentes" not in instrucoes:
+                falhas.append(f"{relativo}: exija validar-brief e proíba subdelegação")
             if nome == "revisor" and campos.get("sandbox_mode") != "read-only":
                 falhas.append(f"{relativo}: revisor exige sandbox_mode read-only")
             if not campos.get("developer_instructions") or campos.get("name") != caminho.stem:
@@ -234,6 +243,25 @@ def auditar_fichas(raiz: Path) -> list[str]:
                 f"{relativo}: {nome} não usa modelo de topo para rito fechado"
             )
     return falhas
+
+
+def validar_brief_codex(texto: str, *, modelo: str, esforco: str) -> None:
+    campos: dict[str, str] = {}
+    for chave, valor in re.findall(r"^[ \t]*([A-Za-z_][A-Za-z0-9_-]*):[^\S\n]*(.*?)$", texto, re.MULTILINE):
+        if chave in campos or "fallback" in chave.lower():
+            raise ErroDeInstrumentacao("brief ambíguo ou fallback não autorizado", "Remova campos duplicados e fallback; devolva a escolha à sessão responsável.")
+        campos[chave] = valor.strip()
+    recomendado = campos.get("modelo_recomendado", "")
+    recomendado_esforco = campos.get("esforco_recomendado", "")
+    if recomendado not in MODELOS_CODEX.values() or not recomendado_esforco:
+        raise ErroDeInstrumentacao("brief sem modelo e esforço permitidos", "Gere o brief com economia_da_fabrica.py brief; somente gpt-6-sol e gpt-6-luna estão autorizados.")
+    permitidos = {"low", "medium"} if recomendado == "gpt-6-luna" else ESFORCOS_CODEX_SOL
+    if recomendado_esforco not in permitidos:
+        raise ErroDeInstrumentacao("esforço não permitido para o modelo", "Use Luna low/medium ou Sol medium/high; xhigh e max exigem justificativa_esforco concreta.")
+    if recomendado_esforco in {"xhigh", "max"} and not campos.get("justificativa_esforco"):
+        raise ErroDeInstrumentacao("esforço excepcional sem justificativa", "Declare justificativa_esforco com a razão concreta da exceção no brief.")
+    if (modelo, esforco) != (recomendado, recomendado_esforco):
+        raise ErroDeInstrumentacao("disparo diverge do brief", "Declare modelo e esforço iguais ao brief nos parâmetros do disparo; não herde nem substitua em silêncio.")
 
 
 def _titulo_da_armadilha(caminho: Path) -> str:
@@ -342,6 +370,16 @@ def cmd_brief(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_validar_brief(args: argparse.Namespace) -> int:
+    try:
+        texto = Path(args.arquivo).read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as erro:
+        raise ErroDeInstrumentacao("brief indisponível", f"{erro}. Confira o caminho e gere um brief UTF-8 antes de despachar.") from erro
+    validar_brief_codex(texto, modelo=args.modelo, esforco=args.esforco)
+    print("PASS consistência-brief-codex: parâmetros informados conferem; runtime não verificado.")
+    return 0
+
+
 def cmd_auditar_fichas(args: argparse.Namespace) -> int:
     raiz = raiz_do_repo()
     falhas = auditar_fichas(raiz)
@@ -351,7 +389,7 @@ def cmd_auditar_fichas(args: argparse.Namespace) -> int:
             print(f"  - {falha}")
         return 1
     print(
-        "PASS economia-fichas: toda ficha abre como YAML, as mecânicas declaram modelo "
+        "PASS economia-fichas: toda ficha abre no formato nativo, as mecânicas declaram modelo "
         "e o despacho exige brief roteado."
     )
     return 0
@@ -375,6 +413,12 @@ def main(argv: list[str] | None = None) -> int:
     brief.add_argument("--armadilha", action="append", default=[])
     brief.add_argument("--saida")
     brief.set_defaults(func=cmd_brief)
+
+    validar = sub.add_parser("validar-brief")
+    validar.add_argument("--arquivo", required=True)
+    validar.add_argument("--modelo", required=True)
+    validar.add_argument("--esforco", required=True)
+    validar.set_defaults(func=cmd_validar_brief)
 
     fichas = sub.add_parser("auditar-fichas")
     fichas.set_defaults(func=cmd_auditar_fichas)

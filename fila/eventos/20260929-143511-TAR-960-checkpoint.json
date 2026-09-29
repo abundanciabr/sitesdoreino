@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-143511-TAR-960-checkpoint",
+  "tarefa": "TAR-960",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T14:35:11.741167+00:00",
+  "quem": "codex/pme-modelos",
+  "plano": "TAR-958 fase 0, TAR-960 passo 2",
+  "ultimo_avanco": "Baseline 82 PASS; regressao 16 FAIL e 11 PASS; correcao de politica aplicada",
+  "proxima_acao": "Provar guardas e abrir entrega oficial",
+  "verificacoes": [
+    "pytest focal atualizado executado na bancada exclusiva"
+  ]
+}
