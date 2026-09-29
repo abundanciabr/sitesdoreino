@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-165339-TAR-976-checkpoint",
+  "tarefa": "TAR-976",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:53:39.349759+00:00",
+  "quem": "codex/pme07-publicacao",
+  "plano": "TAR976 consumidor de linhagem com fonte-base confiável",
+  "ultimo_avanco": "199 testes regressão e37 guardas PASS; interface TAR977 exige --checkout e python -I da base",
+  "proxima_acao": "Dentro dos mesmos alvos muralhas.yml e test_preparo_das_provas_no_workflow.py executar verificador da base SHA fora candidata; fixture Git autoaprovação deve falhar",
+  "verificacoes": [
+    "Fonte interface03: --checkout candidato, base.sha real e exit0/1/2; workflow anterior se autoaprovaria executando ci/fila.py candidato",
+    "pytest relacionado199PASS; guarda workflow37PASS antes da correção"
+  ]
+}

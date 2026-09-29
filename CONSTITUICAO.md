@@ -128,7 +128,8 @@ nunca por cirurgia de infra.
 
 Toda tarefa desta plataforma obedece ao **Padrão de Trabalho (Modelo Steve Jobs /
 Apple)**, preservado em forma compacta, sem perda das obrigações, na PRIMEIRA
-seção do `CLAUDE.md` da raiz, a fonte canônica referenciada por `AGENTS.md`.
+seção do `CAMINHO-DOURADO.md` da raiz, fonte diretamente referenciada por
+`AGENTS.md` e pelo adaptador `CLAUDE.md`.
 A autorização está em `docs/decisoes/DECISAO-contexto-sob-demanda.md`.
 É lei deste repositório
 desde 04/09/2026, por ordem do mantenedor, e não sugestão: resolver o problema

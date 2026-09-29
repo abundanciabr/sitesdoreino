@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-144834-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T14:48:34.327860+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-04 e politica modelos em execucao",
+  "ultimo_avanco": "PME04 TAR964 Sol high despachada com escopo sessao/adaptador; Docker e CodexCLI reais confirmados; revisao detectou e tratou regressao de parser e limite conservador de recibo",
+  "proxima_acao": "Concluir integracao dos primeiros incrementos, corrigir leitura de reserva se fonte confirmar defeito e preparar candidato PME06",
+  "verificacoes": [
+    "seis agentes running confirmados por collaboration.list_agents; CPU58%, memoria livre13431632KiB; nenhuma nova contratacao; snapshots de provas distinguem revisoes"
+  ]
+}

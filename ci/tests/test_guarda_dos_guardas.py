@@ -883,3 +883,43 @@ def test_a_linha_de_comando_do_portao_roda_sozinha() -> None:
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "guardas/inverso" in proc.stdout
+
+
+def test_substituicao_de_guarda_preserva_caso_valido_e_regressao(repo: Path) -> None:
+    antigo = "services/falsa/tests/test_inv_f1.py"
+    novo = "services/falsa/tests/test_inv_cobranca_unica.py"
+    implementacao = _escrever(repo, "services/falsa/cobranca.py", "def cobrar(chaves):\n    return len(set(chaves))\n")
+    carregamento = (
+        "from pathlib import Path\nimport runpy\n"
+        "cobrar = runpy.run_path(str(Path(__file__).parents[1] / 'cobranca.py'))['cobrar']\n"
+    )
+    _escrever(repo, antigo, carregamento + "def test_duplicata_nao_cobra_duas_vezes():\n    assert cobrar(['pedido', 'pedido']) == 1\n")
+
+    def executar_guarda(caminho: str) -> int:
+        resultado = subprocess.run(
+            [sys.executable, "-m", "pytest", caminho, "-q", "-p", "no:cacheprovider"],
+            cwd=repo, capture_output=True, text=True, encoding="utf-8", timeout=30,
+        )
+        return resultado.returncode
+
+    assert executar_guarda(antigo) == 0
+    (repo / antigo).unlink()
+    _escrever(repo, novo, carregamento + "def test_cobranca_unica_e_entrada_valida():\n    assert [cobrar(chaves) for chaves in ([], ['pedido'], ['pedido', 'pedido'])] == [0, 1, 1]\n")
+    documento = (repo / gg.DOCUMENTO).read_text(encoding="utf-8").replace(antigo, novo)
+    _escrever(repo, gg.DOCUMENTO, documento)
+    _git(repo, "add", "-A")
+    assert _estado(repo) is Estado.PASS
+    assert executar_guarda(novo) == 0
+    implementacao.write_text("def cobrar(chaves):\n    return len(chaves)\n", encoding="utf-8")
+    assert executar_guarda(novo) == 1
+
+
+def test_troca_que_apaga_a_protecao_continua_reprovada(repo: Path) -> None:
+    antigo = "services/falsa/tests/test_inv_f1.py"
+    novo = "services/falsa/tests/test_inv_substituido.py"
+    (repo / antigo).unlink()
+    _escrever(repo, novo, "def test_nada():\n    pass\n")
+    texto = (repo / gg.DOCUMENTO).read_text(encoding="utf-8").replace(antigo, novo)
+    _escrever(repo, gg.DOCUMENTO, texto)
+    _git(repo, "add", "-A")
+    assert _estado(repo) is Estado.FAIL

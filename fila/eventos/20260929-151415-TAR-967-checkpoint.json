@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-151415-TAR-967-checkpoint",
+  "tarefa": "TAR-967",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T15:14:15.028140+00:00",
+  "quem": "codex/pme07-publicacao",
+  "plano": "Exclusão comum lote 1/6 validado",
+  "ultimo_avanco": "16 testes Linux passaram; 110 regressões Linux e 111 baseline Windows; cobertura12receptores, trava Actions mantida",
+  "proxima_acao": "Provar sabotagem automática; publicar incremento pelo make pr e continuar lote semear/provisionar",
+  "verificacoes": [
+    "pytest test_exclusao_comum_da_publicacao:16pass; Docker1CPU512MB rede none:110pass"
+  ]
+}
