@@ -18,7 +18,7 @@ from django.urls import reverse
 
 from apps.core.apagamento import apagar_definitivamente
 from apps.core.resposta_rica import resposta_em_html_seguro
-from apps.sugestoes.models import HistoricoStatus, Sugestao
+from apps.sugestoes.models import Aviso, HistoricoStatus, OutboxEvent, Sugestao
 
 TOKEN = "token-do-par-admin-sugestoes"
 IDEIAS = "/interno/gestao/ideias"
@@ -33,12 +33,12 @@ def par_autorizado(settings):
     return TOKEN
 
 
-def mover(client, sugestao, status: str, resposta=None):
+def mover(client, sugestao, status: str, resposta=None, nota="entregue"):
     corpo = {
         "por_email": MANTENEDOR,
         "por_id_da_plataforma": ID_DA_PLATAFORMA,
         "status": status,
-        "nota": "entregue",
+        "nota": nota,
     }
     if resposta is not None:
         corpo["resposta"] = resposta
@@ -251,14 +251,58 @@ def test_implementado_grava_a_resposta_filtrada(client, db, par_autorizado, suge
     assert Sugestao.objects.get(pk=sugestao.pk).resposta_da_equipe == "<p>No ar!</p>"
 
 
-def test_resposta_vazia_mantem_a_que_ja_existe(client, db, par_autorizado, sugestao):
-    """Ausente e vazio são a mesma coisa num JSON: não podem apagar em silêncio."""
+def test_com_implementado_a_resposta_substitui_e_vazia_apaga(
+    client, db, par_autorizado, sugestao
+):
+    """O Admin sempre manda o texto inteiro, pré-preenchido: o que chega vale."""
+    mover(client, sugestao, "implementado", resposta="Primeira.")
+    trocada = mover(client, sugestao, "implementado", resposta="Segunda.")
+    assert trocada.json()["resposta"] == "<p>Segunda.</p>"
+
+    apagada = mover(client, sugestao, "implementado", resposta="")
+
+    assert apagada.status_code == 200, apagada.content
+    assert apagada.json()["resposta"] == ""
+    assert Sugestao.objects.get(pk=sugestao.pk).resposta_da_equipe == ""
+
+
+def test_fora_de_implementado_a_vazia_nao_toca_na_guardada(
+    client, db, par_autorizado, sugestao
+):
     mover(client, sugestao, "implementado", resposta="Entregue.")
 
-    resposta = mover(client, sugestao, "implementado")
+    resposta = mover(client, sugestao, "em_desenvolvimento", resposta="")
 
     assert resposta.status_code == 200, resposta.content
     assert resposta.json()["resposta"] == "<p>Entregue.</p>"
+
+
+def test_editar_a_resposta_sem_nota_nao_move_nem_avisa(
+    client, db, par_autorizado, sugestao, plateia
+):
+    """De Implementado para Implementado sem nota é só a resposta que muda."""
+    plateia(sugestao, votantes=2, marca="edita")
+    mover(client, sugestao, "implementado", resposta="Primeira.")
+    historico = HistoricoStatus.objects.filter(sugestao=sugestao).count()
+    avisos = Aviso.objects.filter(sugestao=sugestao).count()
+    fatos = OutboxEvent.objects.count()
+
+    resposta = mover(client, sugestao, "implementado", resposta="Corrigida.", nota="")
+
+    assert resposta.status_code == 200, resposta.content
+    assert resposta.json()["resposta"] == "<p>Corrigida.</p>"
+    assert HistoricoStatus.objects.filter(sugestao=sugestao).count() == historico
+    assert Aviso.objects.filter(sugestao=sugestao).count() == avisos
+    assert OutboxEvent.objects.count() == fatos
+
+
+def test_editar_a_resposta_com_nota_registra_como_sempre(
+    client, db, par_autorizado, sugestao
+):
+    mover(client, sugestao, "implementado", resposta="Primeira.")
+
+    mover(client, sugestao, "implementado", resposta="Segunda.", nota="ajuste")
+
     assert HistoricoStatus.objects.filter(sugestao=sugestao).count() == 2
 
 

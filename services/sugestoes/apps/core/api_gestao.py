@@ -170,10 +170,15 @@ class IdeiaEmGestao(Schema):
     # campo que diz à tela que não há mais nada para restaurar: o botão
     # "Restaurar" não aparece, e o conteúdo que viaja aqui já está vazio.
     apagada: bool = False
-    # A resposta da equipe publicada na ideia ao entregá-la (29/09/2026), já
-    # filtrada: é o que o formulário do Admin mostra de volta para editar.
-    # Vazio é "a equipe não escreveu resposta".
-    resposta: str = ""
+    # O que o formulário do Admin mostra de volta para editar (29/09/2026).
+    resposta: str = Field(
+        "",
+        description=(
+            "A resposta da equipe guardada na ideia, já filtrada pela lista de "
+            "permissão de HTML da Caixa. A página da ideia só a mostra com a "
+            "ideia em 'implementado'. Vazia: a equipe não escreveu resposta."
+        ),
+    )
     # A conversa embaixo da ideia, e ela só vem para quem PEDE
     # (`incluir_conversa=true`). O padrão continua sendo a lista sem ela, pelo
     # mesmo motivo escrito em `IdeiaComHistorico`: carregá-la sempre
@@ -352,8 +357,16 @@ class QuemAge(Schema):
 class MudancaDeStatus(QuemAge):
     status: str
     nota: str = ""
-    # Só vale com `status` Implementado; vazio mantém a resposta que já existe.
-    resposta: str = ""
+    resposta: str = Field(
+        "",
+        description=(
+            "A resposta da equipe publicada na ideia. Só vale com status "
+            "'implementado', e então substitui a guardada por inteiro: vazia "
+            "apaga. Fora de 'implementado', não vazia é recusada com 422 e "
+            "vazia não toca na guardada. O HTML passa pela lista de permissão "
+            "da Caixa antes de ser gravado."
+        ),
+    )
 
 
 class AvaliacaoEscrita(QuemAge):
@@ -658,14 +671,15 @@ def _quem(payload: QuemAge):
     operation_id="setIdeaStatus",
     summary="Move a ideia de fase, com histórico e avisos",
     description=(
-        # A frase do ChangeSpec continua aqui porque este texto É o contrato
-        # congelado (`contracts/sugestoes.openapi.yaml`), e emendá-lo é Rito
-        # §3 com o mantenedor presente — nunca de dentro da célula. A trava
-        # saiu em 06/09/2026; esta linha some na próxima emenda do contrato.
         "Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA "
-        "transação, a plateia inteira recebe aviso, 'não planejado' exige "
-        "justificativa e 'planejado → em desenvolvimento' exige ChangeSpec "
-        "aprovado registrado. Recusa 422 com a frase que ensina o caminho."
+        "transação, a plateia inteira recebe aviso e 'não planejado' exige "
+        "justificativa. `resposta` só vale com 'implementado': substitui por "
+        "inteiro a resposta publicada na ideia, filtrada pela lista de "
+        "permissão de HTML, e vazia apaga. Fora de 'implementado', resposta "
+        "não vazia é recusada com 422 e vazia não toca na guardada. De "
+        "'implementado' para 'implementado' sem nota, só a resposta é "
+        "gravada: nenhuma linha de histórico, nenhum aviso, nenhum evento. "
+        "Recusa 422 com a frase que ensina o caminho."
     ),
 )
 def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
