@@ -784,7 +784,7 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     return pedido.tarefa
 
 
-def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
+def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False, exigir_rascunho=False):
     for tentativa in range(3):
         try:
             remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
@@ -795,7 +795,8 @@ def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
             ) from erro
         if (isinstance(remoto, dict) and remoto.get("headRefOid") == entregue
                 and remoto.get("state") == "OPEN" and type(remoto.get("isDraft")) is bool
-                and (not exigir_pronto or remoto["isDraft"] is False)):
+                and (not exigir_pronto or remoto["isDraft"] is False)
+                and (not exigir_rascunho or remoto["isDraft"] is True)):
             return remoto
         if tentativa < 2:
             time.sleep(2)
@@ -856,6 +857,9 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "resultado": "concluido",
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=commit, rodada=rodada, **correlacao)
+    existente = _achar_o_pr(correr, ramo)
+    if existente:
+        _guardar_o_pr(correr, existente["number"])
     correr(["git", "push", "-u", "origin", ramo])
     numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
     dizer(f"PASS PR aberto: #{numero} {url}")
@@ -904,11 +908,11 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, rodada=rodada, **correlacao)
+    _guardar_o_pr(correr, numero)
     correr(["git", "push", "origin", ramo])
-    remoto = _conferir_revisao_remota(correr, numero, entregue)
-    if remoto["isDraft"]:
-        correr(["gh", "pr", "ready", str(numero)])
-        _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
+    _conferir_revisao_remota(correr, numero, entregue, exigir_rascunho=True)
+    correr(["gh", "pr", "ready", str(numero)])
+    _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
         dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
@@ -925,7 +929,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     return final
 
 
-def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
+def _achar_o_pr(correr, ramo):
     bruto = correr(["gh", "pr", "list", "--head", ramo, "--state", "all", "--json", "number,url,state"]).strip()
     try:
         encontrados = json.loads(bruto)
@@ -935,12 +939,40 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
         raise ParouPorSeguranca("PR do ramo é ambíguo", "Confira gh pr list --head antes de retomar.")
     if encontrados:
         existente = encontrados[0]
+        if not isinstance(existente, dict):
+            raise ErroDeInstrumentacao("identidade do PR inválida", "Confira gh pr list antes de publicar a candidata.")
         if existente.get("state", "OPEN") != "OPEN":
             raise ParouPorSeguranca("PR do ramo já foi encerrado", "Use uma nova bancada para um novo trabalho.")
+        if (type(existente.get("number")) is not int or existente["number"] < 1
+                or not isinstance(existente.get("url"), str)
+                or not existente["url"].endswith(f"/pull/{existente['number']}")):
+            raise ErroDeInstrumentacao("identidade do PR inválida", "Confira gh pr list antes de publicar a candidata.")
+        return existente
+    return None
+
+
+def _guardar_o_pr(correr, numero):
+    try:
+        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+    except (TypeError, ValueError) as erro:
+        raise ErroDeInstrumentacao("consulta do rascunho inválida", "Confira gh pr view antes de publicar a candidata.") from erro
+    if (not isinstance(remoto, dict) or remoto.get("state") != "OPEN"
+            or type(remoto.get("isDraft")) is not bool
+            or not re.fullmatch(r"[0-9a-f]{40,64}", str(remoto.get("headRefOid", "")))):
+        raise ParouPorSeguranca("PR não pode receber a candidata", "Confira estado e revisão em gh pr view; nenhum push foi autorizado.")
+    if not remoto["isDraft"]:
+        correr(["gh", "pr", "ready", str(numero), "--undo"])
+        _conferir_revisao_remota(correr, numero, remoto["headRefOid"], exigir_rascunho=True)
+
+
+def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
+    existente = _achar_o_pr(correr, ramo)
+    if existente:
+        _guardar_o_pr(correr, existente["number"])
         correr(["gh", "pr", "edit", str(existente["number"]), "--title", pedido.titulo, "--body-file", str(pedido.corpo_arquivo)])
-        return int(existente["number"]), existente["url"]
+        return existente["number"], existente["url"]
     saida = correr([
-        "gh", "pr", "create",
+        "gh", "pr", "create", "--draft",
         "--base", "main",
         "--title", pedido.titulo,
         "--body-file", str(pedido.corpo_arquivo),
