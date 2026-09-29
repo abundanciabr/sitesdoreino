@@ -559,9 +559,6 @@ components:
         apagada:
           default: false
           type: boolean
-        resposta:
-          default: ''
-          type: string
         conversa:
           default: []
           items:
@@ -696,9 +693,6 @@ components:
         apagada:
           default: false
           type: boolean
-        resposta:
-          default: ''
-          type: string
         conversa:
           default: []
           items:
@@ -861,9 +855,6 @@ components:
         status:
           type: string
         nota:
-          default: ''
-          type: string
-        resposta:
           default: ''
           type: string
       required:
