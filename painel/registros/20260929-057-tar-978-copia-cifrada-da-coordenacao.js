@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-057-tar-978-copia-cifrada-da-coordenacao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "TAR-978: cópia cifrada da coordenação",
+  detalhe: "Cópia cifrada e restauro isolado da coordenação com nove tabelas conferidas. O workflow é manual; a retomada exige continuidade comprovada das escritas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2364. Validação local: árvore d756f1073a29cf576f0a93e558be7c212ce28f42; commit bf5d60277d060ce53000716ae9d451f193fdb440; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-978",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
