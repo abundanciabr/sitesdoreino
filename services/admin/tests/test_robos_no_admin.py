@@ -973,4 +973,7 @@ print(json.dumps({'estados': fila.tarefas_para_snapshot(tarefas, eventos, estado
         condicao == "conferido"
     )
     if condicao != "conferido":
-        assert "Reconciliação registrada, mas o aceite não foi confirmado neste painel" in html
+        assert (
+            "Reconciliação registrada, mas o aceite não foi confirmado neste painel"
+            in html
+        )
