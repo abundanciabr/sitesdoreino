@@ -20,7 +20,7 @@ O que este teste prova, e só isto:
    de digitação é ignorado em silêncio pelo harness, e a ficha passa a valer
    menos do que parece.
 3. Nenhuma ficha pode abrir a caixa de pergunta: sub-agente nunca fala com o
-   mantenedor (CLAUDE.md, "Como trabalhar com o mantenedor"); quem pergunta é
+   mantenedor (CAMINHO-DOURADO.md, "Como trabalhar com o mantenedor"); quem pergunta é
    a maestro. Nenhuma pode disparar outros sub-agentes: o time é plano.
 4. Quem só mede e relata não tem ferramenta de escrita: quem corrige é o
    despacho.
@@ -32,7 +32,7 @@ O que este teste prova, e só isto:
    `medium`.
 
 O que ele NÃO prova: que a maestro divide o pedido e dispara as fichas em
-paralelo. Isso é julgamento de sessão, sem mecanismo, e a seção do CLAUDE.md
+paralelo. Isso é julgamento de sessão, sem mecanismo, e a seção do CAMINHO-DOURADO.md
 diz isso com todas as letras.
 """
 
@@ -134,7 +134,7 @@ def test_toda_ficha_declara_o_modelo_menos_o_despacho() -> None:
     """Sub-agente sem `model` herda o da maestro, que é o modelo de cima.
 
     Em 06/09/2026 a medição mostrou 53 dos 81 sub-agentes de um fim de semana
-    rodando no modelo mais caro sem ninguém ter escolhido (CLAUDE.md, "O que uma
+    rodando no modelo mais caro sem ninguém ter escolhido (CAMINHO-DOURADO.md, "O que uma
     chamada custa"). Herdar em silêncio não é decisão. O despacho é a exceção
     declarada: o modelo dele vem do brief, e o guarda logo abaixo cobra isso.
     """
@@ -160,7 +160,7 @@ def test_quem_preenche_molde_declara_modelo_de_rotina() -> None:
         modelo = _frontmatter(FICHAS / f"{nome}.md").get("model", "")
         assert "opus" not in modelo.lower(), (
             f"{nome}.md: model={modelo!r}. A ficha que segue molde fechado não "
-            "usa o modelo de cima; veja CLAUDE.md, \"O que uma chamada custa\"."
+            "usa o modelo de cima; veja CAMINHO-DOURADO.md, \"O que uma chamada custa\"."
         )
 
 
@@ -220,7 +220,7 @@ def test_ficha_nova_devolve_em_secao_propria_e_bloqueia_em_vez_de_perguntar() ->
     """A regra que não pode sumir da ficha nova, medida pelo mecanismo dela.
 
     Sub-agente nunca fala com o mantenedor: bloqueio vira evento na fila mais
-    registro com `precisa_do_dono: true` (CLAUDE.md, "Como trabalhar com o
+    registro com `precisa_do_dono: true` (CAMINHO-DOURADO.md, "Como trabalhar com o
     mantenedor"). Este guarda mede os dois gestos e a seção de devolução, não a
     prosa em volta, porque cada ficha escreve a frase com palavras próprias.
     """
@@ -329,7 +329,7 @@ def test_regra_de_parada_preserva_arquivos_e_commits() -> None:
 # Fontes operacionais, incluindo moldes que voltam a virar instruções.
 # 00-LEIA-PRIMEIRO é história declarada no PLAYBOOK; RUNBOOK §9 é retrospectiva.
 FONTES_DE_CONTEXTO = (
-    "CLAUDE.md", "ARMADILHAS.md", "PLAYBOOK.md", "CAMINHO-DOURADO.md",
+    "ARMADILHAS.md", "PLAYBOOK.md", "CAMINHO-DOURADO.md",
     ".claude/agents/despacho.md", "docs/decisoes/RETROSPECTIVA-FASE-D.md",
     "docs/caixa-de-sugestoes/MODELO-DESPACHO.md",
     "docs/despachos/DESPACHO-PARTE-DO-SITE.md",
@@ -353,7 +353,7 @@ def test_fontes_ativas_usam_contexto_e_indice_so_para_aprofundamento():
 
 
 def test_escrivao_nao_repete_fechamento_automatizado():
-    for nome in ("CLAUDE.md", "RUNBOOK-LOTES.md", ".claude/agents/escrivao.md"):
+    for nome in ("CAMINHO-DOURADO.md", "RUNBOOK-LOTES.md", ".claude/agents/escrivao.md"):
         texto = (RAIZ / nome).read_text(encoding="utf-8").split("## §9", 1)[0]
         assert "make pr" in texto and "não repita" in texto.lower(), nome
     ficha = (FICHAS / "escrivao.md").read_text(encoding="utf-8")
