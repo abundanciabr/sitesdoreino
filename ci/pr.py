@@ -893,7 +893,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         if alterados - {relativo, *eventos} or correr(["git", "diff", "HEAD", "--name-only"]).strip():
             raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
         entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
-        rodada = time.time_ns()
+        rodada = max(time.time_ns(), rodada + 1)
         telemetria.registrar_fase("validacao", "iniciado", commit=entregue, pr=numero, rodada=rodada, **correlacao)
         try:
             provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos,
