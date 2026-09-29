@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-220721-TAR-1003-checkpoint",
+  "tarefa": "TAR-1003",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T22:07:21.970781+00:00",
+  "quem": "despacho-ci-pme-cache-medido",
+  "plano": "Publicar PR do ensaio remoto após autorização específica do pacote V2",
+  "ultimo_avanco": "Mantenedor autorizou expressamente publicar os nove arquivos do ZIP V2 SHA-256 971ebd5f21633d9b2e1febeb4f5e7a9e6ee33405637c8024cd7c901f3159a3a7 e os registros do rito no repositório público https://github.com/abundanciabr/sitesdoreino; origem: resposta item 0 de call_4Rejk2D4Ak7cmPIMu9rqm0XN encaminhada pela coordenação. ZIP, manifesto e nove fontes locais conferidos byte a byte.",
+  "proxima_acao": "Retomar o mesmo ci/pr.py, acompanhar integração, disparar workflow manual main e decidir com resultado remoto, sem ativar cache no deploy.",
+  "verificacoes": [
+    "ZIP V2 SHA256 confere; nove caminhos e hashes das fontes locais conferem; pytest 20 passed; muralhas RESULTADO PASS"
+  ]
+}

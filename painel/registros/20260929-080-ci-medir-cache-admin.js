@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-080-ci-medir-cache-admin",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: medir cache admin",
+  detalhe: "Ensaio manual na main mede build frio e cache externo entre runners com contexto admin fixo, base pinada e imagem OCI igual.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2370. Validação local: árvore de5ad399cb1028d735be599b4dcabc2bb37f9ef2; commit 003bc0b949891d1ea77fa7c3b968449e381eac94; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1003",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
