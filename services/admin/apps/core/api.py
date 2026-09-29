@@ -36,6 +36,7 @@ porta não responde essa pergunta.
 """
 
 from ninja import Router, Schema
+from .coordenacao import router as coordenacao_router
 
 from .porta import _emails_autorizados
 
@@ -97,3 +98,6 @@ DESCRICAO_DA_OPERACAO = (
 )
 def is_administrator(request, pedido: PedidoDeConsulta):
     return {"e_administrador": pedido.email.strip().lower() in _emails_autorizados()}
+
+
+router.add_router("", coordenacao_router)

@@ -109,8 +109,11 @@ Contratos congelados são o que impede o pronto-e-funcionando de virar labirinto
 Mudá-los é legítimo — mas é um RITO, nunca uma decisão de sessão:
 
 1. Sessão de arquitetura **com o mantenedor presente** (CODEOWNERS torna isso mecânico).
-2. PR contendo **somente** `contracts/`, com a label `contrato` (a cerca reprova
-   contrato misturado com código de célula).
+2. PR de `contracts/`, com a label `contrato`. Uma extensão pode acompanhar seu
+   provedor se acrescenta somente operações e definições, preserva as anteriores
+   e executa freeze vivo e sonda de autenticação. A cerca recusa remoção, mudança
+   de tipo, drift, outro provedor e prova ausente; `contrato-remocao` não libera
+   essa exceção (mandato de 29/09/2026).
 3. **Provedor primeiro**, mantendo retrocompatibilidade (campo novo opcional, nunca
    renomear). Breaking em evento ⇒ nasce `*.v2.json`; o `v1` continua sendo emitido
    até o último consumidor migrar.
@@ -119,7 +122,7 @@ Mudá-los é legítimo — mas é um RITO, nunca uma decisão de sessão:
 
 ---
 
-**Quem faz valer:** `ci/cerca-de-celula.sh` (contrato não muda junto com código; exige a etiqueta) · `ci/contract_freeze.py` (o congelado) · `ci/contrato_aditivo.py` (crescer sim, encolher só autorizado).
+**Quem faz valer:** `ci/cerca-de-celula.sh` (extensão junto ao provedor exige prova aditiva e viva; exige a etiqueta) · `ci/contract_freeze.py` (o congelado) · `ci/contrato_aditivo.py` (crescer sim, encolher só autorizado).
 
 ## §4 — Rito de Emergência (a Lei das 2h da Manhã)
 

@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260929-155009-TAR-965-checkpoint",
+  "tarefa": "TAR-965",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T15:50:09.239733+00:00",
+  "quem": "codex/pme05-coordenacao",
+  "plano": "PME05 etapa núcleo isolado e contrato aditivo",
+  "ultimo_avanco": "ADOTAR fundamentado. Núcleo/admin35testesPASS; CI25PASS; freeze579linhas e autenticação2operaçõesPASS; dumpnúcleo18330bytes restaurado0.4347s com1tarefa/1histórico/1evento/1outbox/1operação hashesidênticos e época2recusaépoca1. Restauração somenteisolada, semRTO/RPOprodução.",
+  "proxima_acao": "Publicar incremento pelo rito disponível; continuar leitura/corte piloto após contratoPME03, provisionamento07 e prova debackupforaVPS. Git governa até corte único reconciliado.",
+  "verificacoes": [
+    "Auto-review recusou fixture de credencialfixa compartilhada; alternativa segura aceita: DSNexplicitamente exclusivo e setup07emjobdescartável comsenhaaleatória.",
+    "Regras antigas PRsomentecontracts e proibircontracts+services substituídas por exceção restrita: novasoperações/definições no mesmo provedor, labelcontrato, lintsemremoção e freeze/authreais. Remoção/tipo/parâmetro de caminho/drift/outracélula/exportadorausente/authdivergente recusam.",
+    "Inventáriooffsite repo semdestinoexterno, secrets sóPISTA_TOKEN/VPS_HOST, variables/artifacts0; Windows108480741376byteslivres. Propostadumpcifrado+SHA canaloficial07→artifact→cópiaexternaverificada; quota/retornoVPSnãoatestados. AlvosRPO24h/RTO30min semgarantia antesdrill."
+  ]
+}

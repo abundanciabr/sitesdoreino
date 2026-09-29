@@ -27,7 +27,7 @@
 # de verdade. Quem mede é ci/orcamento-de-mudanca.sh, não este arquivo.
 #
 # O que este script ainda faz: o Rito de Contrato (RITOS.md §3) — contrato não
-# muda junto com código de célula, e mudança em `contracts/` exige a etiqueta.
+# pode crescer junto com seu provedor apenas com prova aditiva e freeze vivo; exige etiqueta.
 # Roda em todo PR (workflow muralhas.yml).
 # =============================================================================
 set -euo pipefail
@@ -51,10 +51,14 @@ mapfile -t FILES <<< "$DIFF_BRUTO"
 
 CELULAS=()
 TEM_CONTRATO=0
+CONTRATOS_HTTP=()
+CONTRATO_FORA_HTTP=0
 for f in "${FILES[@]}"; do
   case "$f" in
     services/*)  CELULAS+=("$(echo "$f" | cut -d/ -f2)") ;;
-    contracts/*) TEM_CONTRATO=1 ;;
+    contracts/README.md) TEM_CONTRATO=1 ;;
+    contracts/*.openapi.yaml) TEM_CONTRATO=1; CONTRATOS_HTTP+=("$f") ;;
+    contracts/*) TEM_CONTRATO=1; CONTRATO_FORA_HTTP=1 ;;
   esac
 done
 
@@ -64,14 +68,60 @@ UNICAS=$(printf '%s\n' "${CELULAS[@]:-}" | sed '/^$/d' | sort -u)
 if [[ -z "$UNICAS" ]]; then N=0; else N=$(printf '%s\n' "$UNICAS" | wc -l); fi
 
 if (( TEM_CONTRATO == 1 )); then
-  if (( N > 0 )); then
-    echo "❌ MURALHA: contracts/ não muda junto com services/."
-    echo "   Rito de Contrato (RITOS.md §3): contrato primeiro, consumidores em PRs seguintes."
-    exit 1
-  fi
   if [[ ",$PR_LABELS," != *",contrato,"* ]]; then
     echo "❌ MURALHA: mudança em contracts/ exige a label 'contrato' (Rito de Contrato)."
     exit 1
+  fi
+  if (( N > 0 )); then
+    if (( CONTRATO_FORA_HTTP == 1 || ${#CONTRATOS_HTTP[@]} == 0 )); then
+      echo "❌ MURALHA: apenas contratos HTTP do próprio provedor podem acompanhar código. Separe os demais contratos."
+      exit 1
+    fi
+    for contrato in "${CONTRATOS_HTTP[@]}"; do
+      celula="${contrato#contracts/}"; celula="${celula%.openapi.yaml}"
+      if ! printf '%s\n' "$UNICAS" | grep -Fxq "$celula"; then
+        echo "❌ MURALHA: $contrato não pertence ao provedor tocado. Separe a mudança."
+        exit 1
+      fi
+    done
+    # Uma autorização de remoção não amplia esta exceção: o PR misto só cresce.
+    PR_LABELS="" python ci/contrato_aditivo.py
+    python - "$BASE" "${CONTRATOS_HTTP[@]}" <<'PY'
+import copy, subprocess, sys
+from pathlib import Path
+import yaml
+for arquivo in sys.argv[2:]:
+    anterior = subprocess.run(["git", "show", f"{sys.argv[1]}:{arquivo}"], capture_output=True, text=True, encoding="utf-8")
+    if anterior.returncode:
+        print(f"ERROR: base de {arquivo} ausente. Publique o contrato novo pelo rito separado.")
+        sys.exit(2)
+    antigo, novo = yaml.safe_load(anterior.stdout), yaml.safe_load(Path(arquivo).read_text(encoding="utf-8"))
+    reduzido = copy.deepcopy(novo)
+    for doc in (antigo, reduzido):
+        doc.get("info", {}).pop("description", None)
+    metodos_http = {"get", "post", "put", "patch", "delete", "head", "options", "trace"}
+    for caminho, item in antigo["paths"].items():
+        extras = set(novo.get("paths", {}).get(caminho, {})) - set(item)
+        if extras - metodos_http:
+            print(f"FAIL: {arquivo} altera parâmetros ou configuração de caminho publicado. Use o rito separado.")
+            sys.exit(1)
+    try:
+        reduzido["paths"] = {p: {m: novo["paths"][p][m] for m in metodos} for p, metodos in antigo["paths"].items()}
+        if "components" in antigo:
+            reduzido["components"] = {grupo: {nome: novo["components"][grupo][nome] for nome in itens} for grupo, itens in antigo["components"].items()}
+        else:
+            reduzido.pop("components", None)
+    except (KeyError, TypeError):
+        print(f"FAIL: {arquivo} remove estrutura publicada. Use o rito separado.")
+        sys.exit(1)
+    if reduzido != antigo:
+        print(f"FAIL: {arquivo} altera uma operação ou definição publicada. O PR misto aceita apenas novas operações e definições.")
+        sys.exit(1)
+PY
+    for contrato in "${CONTRATOS_HTTP[@]}"; do
+      celula="${contrato#contracts/}"; celula="${celula%.openapi.yaml}"
+      python ci/contract_freeze.py "$celula"
+    done
   fi
 fi
 
