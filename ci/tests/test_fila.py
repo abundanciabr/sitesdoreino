@@ -660,6 +660,147 @@ def test_pegar_ganha_escreve_o_evento_e_mostra_o_despacho(tmp_path, monkeypatch,
     assert "faça a coisa" in capsys.readouterr().out
 
 
+def _manifesto_piloto(raiz, estado="ativa", ids=None):
+    ids = ids or ["TAR-001"]
+    pasta = raiz / "fila" / "coortes"
+    pasta.mkdir(parents=True, exist_ok=True)
+    manifesto = {
+        "versao": 1, "coorte": "piloto", "estado": estado,
+        "tarefas": ids, "ids_sha256": fila.reservar.digest_da_coorte_piloto(ids),
+    }
+    (pasta / "piloto.json").write_text(json.dumps(manifesto), encoding="utf-8")
+    return manifesto
+
+
+def test_piloto_ativo_rota_claim_para_cas_sem_usar_reserva_antiga(tmp_path, monkeypatch, capsys):
+    montar(tmp_path, [tarefa()])
+    manifesto = _manifesto_piloto(tmp_path)
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "ler_barreira_piloto", lambda _: (
+        "a" * 40, {"ids_sha256": manifesto["ids_sha256"], "estado": "git"}
+    ))
+    monkeypatch.setattr(
+        fila.reservar, "reservar_intencao",
+        lambda *a, **k: pytest.fail("cliente piloto não pode usar a reserva antiga"),
+    )
+    vistos = []
+    monkeypatch.setattr(fila.reservar, "reservar_intencao_piloto", lambda *a: (
+        vistos.append(a), (False, "CAS perdido")
+    )[1])
+    assert fila.cmd_pegar(tmp_path, argparse.Namespace(tarefa="TAR-001", quem="sessao")) == 1
+    assert vistos[0][1] == "tarefa-TAR-001"
+    assert vistos[0][3] == ["TAR-001"]
+    assert not list((tmp_path / "fila" / "eventos").glob("*.json"))
+    assert "CAS perdido" in capsys.readouterr().out
+
+
+def test_cliente_antigo_pausado_e_recusado_no_portao_do_evento(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()])
+    manifesto = _manifesto_piloto(tmp_path)
+    caminho = tmp_path / "fila/eventos/20260929-000000-evento.json"
+    caminho.write_text(json.dumps({
+        "arquivo": caminho.stem, "tarefa": "TAR-001", "evento": "reivindicada",
+        "quando": "2026-09-29T00:00:00+00:00", "quem": "cliente-antigo",
+    }), encoding="utf-8")
+    erros = []
+    assert fila.carregar_eventos(tmp_path, {"TAR-001": tarefa()}, erros)[0]["tarefa"] == "TAR-001"
+    assert erros == []
+    monkeypatch.setattr(fila, "_git_da_fila", lambda *a, **k: (
+        "fila/eventos/20260929-000000-evento.json\n"
+    ))
+    monkeypatch.setattr(fila.reservar, "ler_barreira_piloto", lambda _: (
+        "a" * 40, {"ids_sha256": manifesto["ids_sha256"], "estado": "pausada"}
+    ))
+    with pytest.raises(ErroDeInstrumentacao, match="efeito da coorte piloto recusado"):
+        fila.cmd_portao_coorte(tmp_path, "base")
+
+
+def test_tarefa_piloto_em_nome_generico_e_recusada_no_portao(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()])
+    manifesto = _manifesto_piloto(tmp_path)
+    caminho = tmp_path / "fila/tarefas/001-ajuste.json"
+    caminho.write_text(json.dumps({"arquivo": caminho.stem, "id": "TAR-001"}), encoding="utf-8")
+    monkeypatch.setattr(fila, "_git_da_fila", lambda *a, **k: "fila/tarefas/001-ajuste.json\n")
+    monkeypatch.setattr(fila.reservar, "ler_barreira_piloto", lambda _: (
+        "a" * 40, {"ids_sha256": manifesto["ids_sha256"], "estado": "pausada"}
+    ))
+    with pytest.raises(ErroDeInstrumentacao, match="efeito da coorte piloto recusado"):
+        fila.cmd_portao_coorte(tmp_path, "base")
+
+
+def test_cliente_antigo_escreve_no_bare_mas_receptor_real_recusa(tmp_path, monkeypatch):
+    raiz = tmp_path / "bancada"
+    remoto = tmp_path / "servidor.git"
+    raiz.mkdir()
+    montar(raiz, [tarefa()])
+    manifesto = _manifesto_piloto(raiz)
+
+    def git(*args, cwd=raiz):
+        return subprocess.run(
+            ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Teste")
+    git("config", "user.email", "teste@example.com")
+    git("add", ".")
+    git("commit", "-m", "base")
+    git("init", "--bare", str(remoto), cwd=tmp_path)
+    git("remote", "add", "origin", str(remoto))
+    git("push", "-u", "origin", "main")
+    assert fila.reservar.criar_ref_atomica(
+        raiz, fila.reservar.REF_BARREIRA_PILOTO,
+        {"barreira": {"coorte": "piloto", "estado": "git",
+                      "ids_sha256": manifesto["ids_sha256"], "sequencia": 0}},
+    )
+    assert fila.reservar.pausar_barreira_piloto(raiz, manifesto["tarefas"])
+    assert fila.reservar.reservar_intencao(raiz, "tarefa-TAR-001", "cliente antigo")[0]
+    assert git("ls-remote", "origin", "refs/reservas/tarefa-TAR-001")
+    caminho = raiz / "fila/eventos/20260929-000000-evento.json"
+    caminho.write_text(json.dumps({
+        "arquivo": caminho.stem, "tarefa": "TAR-001", "evento": "reivindicada",
+        "quando": "2026-09-29T00:00:00+00:00", "quem": "cliente-antigo",
+    }), encoding="utf-8")
+    monkeypatch.setattr(fila, "_git_da_fila", lambda *a, **k: (
+        "fila/eventos/20260929-000000-evento.json\n"
+    ))
+    with pytest.raises(ErroDeInstrumentacao, match="efeito da coorte piloto recusado"):
+        fila.cmd_portao_coorte(raiz, "main")
+
+
+def test_tarefa_fora_da_coorte_nao_consulta_barreira(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa("002")])
+    _manifesto_piloto(tmp_path)
+    monkeypatch.setattr(fila.reservar, "ler_barreira_piloto", lambda *a: pytest.fail(
+        "fora da coorte não consulta barreira"
+    ))
+    fila.conferir_efeito_piloto(tmp_path, {"TAR-002"})
+
+
+def test_pegar_tarefa_fora_da_coorte_mantem_reserva_git(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa("002")])
+    _manifesto_piloto(tmp_path)
+    sem_rede(monkeypatch)
+    aquisicao_ok(monkeypatch, tid="TAR-002")
+    monkeypatch.setattr(fila.reservar, "ler_barreira_piloto", lambda *a: pytest.fail(
+        "tarefa fora da coorte não lê barreira"
+    ))
+    monkeypatch.setattr(fila.reservar, "reservar_intencao_piloto", lambda *a: pytest.fail(
+        "tarefa fora da coorte usa caminho Git vigente"
+    ))
+    assert fila.cmd_pegar(tmp_path, argparse.Namespace(tarefa="TAR-002", quem="sessao")) == 0
+    assert list((tmp_path / "fila/eventos").glob("*-TAR-002-reivindicada.json"))
+
+
+def test_manifesto_piloto_divergente_recusa_sem_fallback(tmp_path):
+    montar(tmp_path, [tarefa()])
+    manifesto = _manifesto_piloto(tmp_path)
+    manifesto["tarefas"] = ["TAR-001", "TAR-002"]
+    (tmp_path / "fila/coortes/piloto.json").write_text(json.dumps(manifesto), encoding="utf-8")
+    with pytest.raises(ErroDeInstrumentacao, match="manifesto da coorte piloto inválido"):
+        fila.conferir_efeito_piloto(tmp_path, {"TAR-001"})
+
+
 def test_pegar_retoma_devolvida_com_reserva_nova(tmp_path, monkeypatch, capsys):
     montar(
         tmp_path,

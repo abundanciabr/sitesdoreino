@@ -15,6 +15,8 @@ nada errado, então pode" é o falso positivo original em outra roupa.
 
 from __future__ import annotations
 
+import base64
+import json
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -60,6 +62,7 @@ def _pr(**alteracoes: Any) -> dict[str, Any]:
         ],
     }
     base.update(alteracoes)
+    base.setdefault("changedFiles", len(base["files"]))
     return base
 
 
@@ -88,6 +91,279 @@ def _git(raiz: Path, *args: str) -> str:
 
 def test_tudo_verde_passa() -> None:
     assert _pior(mergear.checar_checks(_pr())) is Estado.PASS
+
+
+def test_pouso_recusa_pr_piloto_antigo_apos_pausa(tmp_path, monkeypatch):
+    manifesto = {"estado": "ativa", "tarefas": ["TAR-001"]}
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: manifesto)
+
+    def pausar(_, tids):
+        assert tids == {"TAR-001"}
+        raise mergear.ErroDeInstrumentacao("coorte pausada", "aguarde transição oficial")
+
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", pausar)
+    resultado = mergear.checar_barreira_piloto(
+        tmp_path, _pr(title="rascunho: TAR-001", files=[{"path": "ci/algo.py"}])
+    )
+    assert resultado.estado is Estado.ERROR
+
+
+def test_pouso_reconhece_evento_piloto_mesmo_com_titulo_generico(tmp_path, monkeypatch):
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    vistos = []
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", lambda _, ids: vistos.append(ids))
+    caminho = "fila/eventos/20260929-000000-evento.json"
+    bruto = json.dumps({"arquivo": "20260929-000000-evento", "tarefa": "TAR-001"}).encode()
+    def ler_head(args, *_a, **_kw):
+        assert args[0] == "api" and args[1].endswith("?ref=" + "a" * 40)
+        return json.dumps({
+            "path": caminho, "type": "file", "encoding": "base64",
+            "content": base64.b64encode(bruto).decode(),
+        })
+    monkeypatch.setattr(mergear, "_gh", ler_head)
+    pr = _pr(title="mudança genérica", body="", headRefName="codex/ajuste",
+             files=[{"path": caminho}])
+    assert mergear.checar_barreira_piloto(tmp_path, pr).estado is Estado.PASS
+    assert vistos == [{"TAR-001"}]
+
+
+def test_pouso_recusa_evento_generico_de_pr_antigo_com_barreira_pausada(tmp_path, monkeypatch):
+    caminho = "fila/eventos/20260929-000000-evento.json"
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **k: json.dumps({
+        "path": caminho, "type": "file", "encoding": "base64",
+        "content": base64.b64encode(json.dumps({
+            "arquivo": "20260929-000000-evento", "tarefa": "TAR-001",
+        }).encode()).decode(),
+    }))
+    def recusar(_, ids):
+        assert ids == {"TAR-001"}
+        raise mergear.ErroDeInstrumentacao("coorte pausada", "evento antigo recusado")
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", recusar)
+    pr = _pr(title="ajuste", body="", headRefName="codex/ajuste",
+             files=[{"path": caminho}])
+    assert mergear.checar_barreira_piloto(tmp_path, pr).estado is Estado.ERROR
+
+
+def test_pouso_reconhece_tarefa_piloto_em_arquivo_de_nome_generico(tmp_path, monkeypatch):
+    caminho = "fila/tarefas/001-ajuste.json"
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    bruto = json.dumps({"arquivo": "001-ajuste", "id": "TAR-001"}).encode()
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **k: json.dumps({
+        "path": caminho, "type": "file", "encoding": "base64",
+        "content": base64.b64encode(bruto).decode(),
+    }))
+    def recusar(_, ids):
+        assert ids == {"TAR-001"}
+        raise mergear.ErroDeInstrumentacao("coorte pausada", "tarefa antiga recusada")
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", recusar)
+    assert mergear.checar_barreira_piloto(tmp_path, _pr(
+        title="ajuste", body="", headRefName="codex/ajuste", files=[{"path": caminho}]
+    )).estado is Estado.ERROR
+
+
+def test_pouso_encontra_evento_piloto_na_segunda_pagina_do_pr(tmp_path, monkeypatch):
+    caminho = "fila/eventos/20260929-000000-evento.json"
+    vistos = []
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    arquivos = [f"ci/arquivo_{n:03d}.py" for n in range(100)]
+    bruto = json.dumps({"arquivo": "20260929-000000-evento", "tarefa": "TAR-001"}).encode()
+    def gh(args, *_a, **_kw):
+        if "/pulls/99/files?" in args[-1]:
+            return json.dumps([[{"filename": a} for a in arquivos], [{"filename": caminho}]])
+        assert "/contents/" in args[-1]
+        return json.dumps({"path": caminho, "type": "file", "encoding": "base64",
+                           "content": base64.b64encode(bruto).decode()})
+    monkeypatch.setattr(mergear, "_gh", gh)
+    def recusar(_, ids):
+        vistos.append(ids)
+        raise mergear.ErroDeInstrumentacao("coorte pausada", "evento antigo recusado")
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", recusar)
+    pr = _pr(title="ajuste", body="", headRefName="codex/ajuste",
+             files=[{"path": a} for a in arquivos], changedFiles=101)
+    assert mergear.checar_barreira_piloto(tmp_path, pr).estado is Estado.ERROR
+    assert vistos == [{"TAR-001"}]
+
+
+def test_pouso_recusa_lista_paginada_incompleta(tmp_path, monkeypatch):
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **k: json.dumps([
+        [{"filename": f"ci/arquivo_{n:03d}.py"} for n in range(100)]
+    ]))
+    pr = _pr(files=[{"path": f"ci/arquivo_{n:03d}.py"} for n in range(100)],
+             changedFiles=101)
+    assert mergear.checar_barreira_piloto(tmp_path, pr).estado is Estado.ERROR
+
+
+@pytest.mark.parametrize("resposta", [
+    {"path": "fila/eventos/outro.json", "type": "file", "encoding": "base64", "content": "e30="},
+    {"path": "fila/eventos/evento.json", "type": "file", "encoding": "base64", "content": "%%%"},
+])
+def test_pouso_falha_fechado_se_api_nao_prova_evento_do_head(tmp_path, monkeypatch, resposta):
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **k: json.dumps(resposta))
+    pr = _pr(title="ajuste", body="", headRefName="codex/ajuste",
+             files=[{"path": "fila/eventos/evento.json"}])
+    assert mergear.checar_barreira_piloto(tmp_path, pr).estado is Estado.ERROR
+
+
+def test_pouso_reconhece_tarefa_piloto_so_no_corpo(tmp_path, monkeypatch):
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    vistos = []
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", lambda _, ids: vistos.append(ids))
+    pr = _pr(title="ajuste", body="TAR-001", headRefName="codex/ajuste")
+    assert mergear.checar_barreira_piloto(tmp_path, pr).estado is Estado.PASS
+    assert vistos == [{"TAR-001"}]
+
+
+def test_pouso_nao_consulta_barreira_para_pr_sem_piloto(tmp_path, monkeypatch):
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: None)
+    monkeypatch.setattr(mergear.fila, "conferir_efeito_piloto", lambda _, ids: (
+        None if not ids else pytest.fail("PR alheio à coorte")
+    ))
+    assert mergear.checar_barreira_piloto(tmp_path, _pr()).estado is Estado.PASS
+
+
+def test_pouso_reconsulta_barreira_imediatamente_antes_do_merge(tmp_path, monkeypatch):
+    monkeypatch.setattr(mergear, "conferir", lambda *a: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "checar_barreira_piloto", lambda *a: mergear.Resultado(
+        "coorte piloto", Estado.ERROR, "coorte pausada", "nenhum efeito antigo autorizado"
+    ))
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **k: pytest.fail(
+        "merge não pode acontecer depois da pausa"
+    ))
+    assert mergear.integrar(99, tmp_path) == 2
+
+
+def test_pouso_adquire_efeito_antes_do_merge_e_soltar_so_apos_confirmar(tmp_path, monkeypatch):
+    pr = _pr(title="TAR-001")
+    passos = []
+    monkeypatch.setenv("GITHUB_RUN_ID", "123")
+    monkeypatch.setattr(mergear, "conferir", lambda *a: (_relatorio_verde(), pr))
+    monkeypatch.setattr(mergear, "checar_barreira_piloto", lambda *a: mergear.Resultado(
+        "coorte piloto", Estado.PASS, "portão passou"
+    ))
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    def adquirir(*args):
+        passos.append("CAS-pouso")
+        return "1" * 32
+    def concluir(*args):
+        passos.append("CAS-conclusao")
+        return True
+    def gh(args, *_a, **_kw):
+        if args[:2] == ["pr", "merge"]:
+            passos.append("merge")
+            return ""
+        passos.append("confirmar-MERGED")
+        return json.dumps({"state": "MERGED", "mergeCommit": {"oid": "b" * 40}})
+    monkeypatch.setattr(mergear.reservar, "adquirir_efeito_piloto", adquirir)
+    monkeypatch.setattr(mergear.reservar, "concluir_efeito_piloto", concluir)
+    monkeypatch.setattr(mergear, "_gh", gh)
+    monkeypatch.setattr(mergear, "DiffDoPR", lambda *a: object())
+    monkeypatch.setattr(mergear, "sombra_do_evento_da_fila", lambda *a: None)
+    monkeypatch.setattr(mergear, "sombra_da_area_do_registro", lambda *a: None)
+    assert mergear.integrar(99, tmp_path) == 0
+    assert passos == ["CAS-pouso", "merge", "confirmar-MERGED", "CAS-conclusao"]
+
+
+def test_pouso_incerto_conserva_intencao_e_impede_pausa(tmp_path, monkeypatch):
+    pr = _pr(title="TAR-001")
+    passos = []
+    monkeypatch.setenv("GITHUB_RUN_ID", "123")
+    monkeypatch.setattr(mergear, "conferir", lambda *a: (_relatorio_verde(), pr))
+    monkeypatch.setattr(mergear, "checar_barreira_piloto", lambda *a: mergear.Resultado(
+        "coorte piloto", Estado.PASS, "portão passou"
+    ))
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    monkeypatch.setattr(mergear.reservar, "adquirir_efeito_piloto", lambda *a: "1" * 32)
+    monkeypatch.setattr(mergear.reservar, "concluir_efeito_piloto", lambda *a: passos.append("soltou"))
+    def falhar(*_a, **_kw):
+        raise mergear.ErroDeInstrumentacao("rede caiu", "estado remoto incerto")
+    monkeypatch.setattr(mergear, "_gh", falhar)
+    with pytest.raises(mergear.ErroDeInstrumentacao, match="intenção de efeito mantida"):
+        mergear.integrar(99, tmp_path)
+    assert passos == []
+
+
+def test_pouso_alheio_a_coorte_continua_apos_pausa(tmp_path, monkeypatch):
+    pr = _pr(title="ajuste geral", body="", headRefName="codex/ajuste")
+    monkeypatch.setattr(mergear, "conferir", lambda *a: (_relatorio_verde(), pr))
+    monkeypatch.setattr(mergear, "checar_barreira_piloto", lambda *a: mergear.Resultado(
+        "coorte piloto", Estado.PASS, "PR alheio à coorte"
+    ))
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: {
+        "estado": "ativa", "tarefas": ["TAR-001"]
+    })
+    monkeypatch.setattr(mergear.reservar, "adquirir_efeito_piloto", lambda *a: pytest.fail(
+        "PR alheio não disputa a barreira piloto"
+    ))
+    comandos = []
+    def gh(args, *_a, **_kw):
+        comandos.append(args)
+        return (json.dumps({"state": "MERGED", "mergeCommit": {"oid": "b" * 40}})
+                if args[:2] == ["pr", "view"] else "")
+    monkeypatch.setattr(mergear, "_gh", gh)
+    monkeypatch.setattr(mergear, "DiffDoPR", lambda *a: object())
+    monkeypatch.setattr(mergear, "sombra_do_evento_da_fila", lambda *a: None)
+    monkeypatch.setattr(mergear, "sombra_da_area_do_registro", lambda *a: None)
+    assert mergear.integrar(99, tmp_path) == 0
+    assert any(comando[:2] == ["pr", "merge"] for comando in comandos)
+
+
+@pytest.mark.parametrize("status,head,path,estado_pr,esperado", [
+    ("in_progress", "a" * 40, ".github/workflows/pouso.yml", "MERGED", False),
+    ("completed", "b" * 40, ".github/workflows/pouso.yml", "MERGED", "erro_pr"),
+    ("completed", "a" * 40, ".github/workflows/pouso.yml@ramo", "MERGED", "erro_run"),
+    ("completed", "a" * 40, ".github/workflows/pouso.yml", "OPEN", False),
+    ("completed", "a" * 40, ".github/workflows/pouso.yml", "CLOSED", True),
+    ("completed", "a" * 40, ".github/workflows/pouso.yml", "MERGED", True),
+])
+def test_pista_reconcilia_efeito_incerto_so_apos_run_terminado_e_head_igual(
+        tmp_path, monkeypatch, status, head, path, estado_pr, esperado):
+    efeito = {"pr": 99, "head": "a" * 40, "operacao": "1" * 32, "run_id": "123"}
+    manifesto = {"estado": "ativa", "tarefas": ["TAR-001"], "ids_sha256": "f" * 64}
+    monkeypatch.setattr(mergear.fila, "ler_manifesto_piloto", lambda _: manifesto)
+    monkeypatch.setattr(mergear.reservar, "ler_barreira_piloto", lambda _: (
+        "c" * 40, {"estado": "git", "ids_sha256": "f" * 64, "efeito": efeito}
+    ))
+    def gh(args, *_a, **_kw):
+        if args[0] == "api":
+            if "/actions/workflows/" in args[-1]:
+                return json.dumps({"id": 456, "path": ".github/workflows/pouso.yml"})
+            return json.dumps({"id": 123, "path": path, "workflow_id": 456,
+                               "event": "pull_request_target", "status": status})
+        return json.dumps({"number": 99, "state": estado_pr, "headRefOid": head,
+                           "baseRefName": "main"})
+    monkeypatch.setattr(mergear, "_gh", gh)
+    solturas = []
+    monkeypatch.setattr(mergear.reservar, "concluir_efeito_piloto", lambda *a: (
+        solturas.append(a), True
+    )[1])
+    if isinstance(esperado, str):
+        with pytest.raises(mergear.ErroDeInstrumentacao,
+                           match="execução" if esperado == "erro_run" else "diverge"):
+            mergear.reconciliar_efeito_piloto(tmp_path)
+    else:
+        assert mergear.reconciliar_efeito_piloto(tmp_path) is esperado
+    assert len(solturas) == (1 if esperado is True else 0)
 
 
 def test_sem_checks_e_error() -> None:

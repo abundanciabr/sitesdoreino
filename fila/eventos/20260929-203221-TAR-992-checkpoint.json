@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260929-203221-TAR-992-checkpoint",
+  "tarefa": "TAR-992",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T20:32:21.552005+00:00",
+  "quem": "despacho-ci-barreira-coorte",
+  "plano": "PME05 I1: barreira Git piloto e receptor de pouso, sem corte PG",
+  "ultimo_avanco": "Decisão adotada em PME05: medição GPS fila/eventos/20260929-150839-TAR-965-checkpoint.json mostrou 3 consultas de 6 reservas em 42.396044/44.956888/55.498524 s e 11/30 PRs apenas administrativos; protótipo PostgreSQL17 teve 1 vencedor/4, idempotência e 3 eventos/3 outbox. Limites: transporte/autenticação API, custo operacional e ganho fim a fim não medidos; coorte piloto restrita TAR-968/975/994, ainda Git. I1 fechou corrida claim/pausa/pouso por CAS e reconciliação sem TTL; 485 testes PASS, painel 2402 registros PASS, main df22bf4 incorporada, revisão974 em curso. Nenhuma ref piloto real criada.",
+  "proxima_acao": "Receber reensaio adversarial 974 da revisão congelada; corrigir achados materiais; publicar PR2358 pelo ci/pr.py e medir muralhas, sem ativar coorte nem reivindicar TAR-994.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_reservar.py ci/tests/test_fila.py ci/tests/test_mergear.py -q -p no:cacheprovider => 485 passed in 175.35s",
+    "node painel/gerar_manifesto.js => 2402 registros válidos; --conferir => painel em dia",
+    "python ci/fila.py validar => 886 tarefas, 3149 eventos, exit 0; avisos apenas 17 eventos ainda não commitados"
+  ]
+}
