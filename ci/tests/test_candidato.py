@@ -222,7 +222,7 @@ def test_merge_alterou_entrada_prova_antiga_nao_vira_verde(entrada):
 
 
 @pytest.mark.parametrize("campo", ["segredo", "official", "lease", "autor"])
-def test_campos_autodeclarados_ou_segretos_recusados(entrada, campo):
+def test_campos_autodeclarados_ou_segredos_recusados(entrada, campo):
     entrada[campo] = "token"
     with pytest.raises(candidato.CandidatoInvalido, match="desconhecidos"):
         candidato.criar(entrada)
@@ -260,6 +260,7 @@ def test_origem_confere_certificado_e_jobs_sem_artifact(entrada, monkeypatch, tm
         "workflow",
         "fork",
         "cancelled",
+        "desfecho_ausente",
         "skipped",
         "ausente",
         "json",
@@ -296,6 +297,8 @@ def test_origem_falsa_ou_instrumento_quebrado_nunca_aprova(
                 resposta["head_repository"]["full_name"] = "invasor/fork"
             if falha == "cancelled":
                 resposta["conclusion"] = "cancelled"
+            if falha == "desfecho_ausente":
+                resposta["conclusion"] = None
         return resposta
 
     monkeypatch.setattr(candidato, "_json_comando", sabotado)
@@ -365,7 +368,7 @@ def test_escrita_incerta_reconcilia_antes_de_repetir(entrada, monkeypatch, tmp_p
 
 
 def test_leitura_duravel_rejeita_ref_forjada(entrada, monkeypatch, tmp_path):
-    # guarda: ci/candidato.py:614
+    # guarda: ci/candidato.py:619
     raiz = repo_local(tmp_path)
     manifesto = candidato.criar(entrada)
     fonte_oficial(monkeypatch, manifesto)

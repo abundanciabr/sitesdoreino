@@ -327,6 +327,7 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
     ] != assinatura_build(atual)
     return {
         "estado": "FAIL" if invalidadas or imagem_invalida else "PASS",
+        "aceito": False,
         "id": manifesto["id"],
         "celula": manifesto["celula"],
         "revisao_integrada": manifesto["integracao"]["revisao"],
@@ -481,8 +482,12 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             f"{nome}: execução não autorizada",
         )
         _exigir(
-            run.get("conclusion") in (None, "success")
-            and run.get("status") in {"in_progress", "completed"},
+            (run.get("status") == "completed" and run.get("conclusion") == "success")
+            or (
+                nome == "build"
+                and run.get("status") == "in_progress"
+                and run.get("conclusion") is None
+            ),
             f"{nome}: execução falhou ou foi cancelada",
         )
         pages = _json_comando(
