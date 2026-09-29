@@ -1,0 +1,55 @@
+{
+  "arquivo": "20260929-145846-TAR-965-contrato_execucao",
+  "tarefa": "TAR-965",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T14:58:46.046154+00:00",
+  "quem": "codex/pme05-coordenacao",
+  "contrato": {
+    "nao_objetivos": [
+      "Alterar ci/fila.py ou ci/reservar.py",
+      "Implantar serviço ou migrar autoridade sem contrato redistribuído"
+    ],
+    "evidencias_exigidas": [
+      "Comandos e tempos reais",
+      "Ensaio concorrente e idempotente",
+      "Testes executados"
+    ],
+    "criterios_aceite": [
+      "Amostra e limites explícitos",
+      "Instrumento quebrado produz ERROR",
+      "Decisão positiva, não converter falta de acesso em não adoção"
+    ],
+    "escopo_incluido": [
+      "Reservas, consultas, atualização, conflitos, PRs administrativos, reconciliação e espera",
+      "Protótipo descartável isolado fora do Git"
+    ],
+    "criterios_entrada": [
+      "Worktree exclusivo",
+      "Baseline do medidor existente verde"
+    ],
+    "etapas": [
+      "Medir coordenação atual",
+      "Executar protótipo de concorrência e idempotência",
+      "Comparar operação e decidir",
+      "Validar e integrar pelo rito"
+    ],
+    "condicao_encerramento": "Medição testada integrada e decisão registrada; migração favorável encaminhada à distribuição de contrato pelo coordenador",
+    "restricoes": [
+      "Sem custos novos, perda de dados ou atalhos de acesso",
+      "Chaves de experimento próprias; limpeza com SHA e dono",
+      "Não criar subagentes"
+    ],
+    "plano": "PME-05: plano-mestre entrega enxuta 29/09/2026",
+    "decisoes_aprovadas": [
+      "Mandato integral mantenedor 29/09/2026 no despacho TAR-965 autoriza ci e integrações oficiais"
+    ],
+    "versao": 1,
+    "acoes_do_mantenedor": "Nenhuma ação agora; mandato recebido cobre a medição",
+    "objetivo": "Decidir o custo-benefício da coordenação durável com medidas reais e protótipo limitado",
+    "entregaveis": [
+      "ci/medir_coordenacao.py e testes",
+      "Medições, limites e decisão registrados na TAR-965"
+    ],
+    "limites_autonomia": "Escrita somente nos dois alvos ci e fila própria; protótipo temporário; não implantar serviço"
+  }
+}

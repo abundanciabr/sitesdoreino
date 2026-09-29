@@ -4,7 +4,7 @@ Os arquivos desta pasta são **a fronteira oficial entre células**. Depois de r
 (Portão do brief da Fase 0), eles congelam:
 
 1. **Nenhum agente altera `contracts/`** em sessão normal. Mudança = Rito de Contrato
-   (RITOS.md §3): PR contendo SÓ `contracts/`, label `contrato`, aprovação do mantenedor
+   (RITOS.md §3): PR de `contracts/`, label `contrato`, aprovação do mantenedor
    (CODEOWNERS), provedor implementa primeiro com retrocompatibilidade, consumidores em
    PRs seguintes.
 
@@ -16,6 +16,11 @@ Os arquivos desta pasta são **a fronteira oficial entre células**. Depois de r
    `contracts/` **+** essa uma linha do manifesto — não um PR à parte. Eventos
    (`contracts/eventos/*.json`) não têm essa exigência: o manifesto só existe para os
    `*.openapi.yaml`.
+   **Extensão aditiva junto ao provedor (mandato de 29/09/2026):** pode acompanhar
+   código do mesmo provedor quando acrescenta operações e definições, preserva
+   integralmente as anteriores e passa o freeze vivo com a sonda de autenticação.
+   A cerca executa essas provas; mudança de tipo, remoção, drift, outro provedor ou
+   instrumento ausente recusam. `contrato-remocao` não autoriza esta exceção.
 2. **O CI compara o schema vivo com o congelado** (`ci/freeze-de-contrato.sh`) e reprova
    drift — mudar o código não muda o contrato "por acidente".
 3. **Consumidor desenvolve contra o mock, nunca contra o provedor:**
