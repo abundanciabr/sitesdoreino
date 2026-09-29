@@ -51,3 +51,26 @@ def test_2xx_sem_resultado_nao_e_aceite(monkeypatch):
     monkeypatch.setattr(coordenacao, "urlopen", lambda *a, **k: io.BytesIO(b"{}"))
     with pytest.raises(ErroDeInstrumentacao, match="incompatível"):
         coordenacao.chamar({"operacao": "listar"})
+
+
+@pytest.mark.parametrize("falha", ["CandidatoInvalido", "InstrumentoIndisponivel"])
+def test_candidato_sem_prova_recusa_antes_da_rede(monkeypatch, falha):
+    import candidato
+
+    monkeypatch.setenv(
+        "COORDENACAO_API_URL", "https://meshcraft.top/admin/interno/coordenacao"
+    )
+    monkeypatch.setenv("COORDENACAO_PUBLICADOR_TOKEN", "segredo-de-ensaio")
+
+    def carregar(*args):
+        raise getattr(candidato, falha)("sem prova")
+
+    monkeypatch.setattr(candidato, "carregar", carregar)
+    monkeypatch.setattr(
+        coordenacao,
+        "urlopen",
+        lambda *a, **k: pytest.fail("não pode operar sem prova de origem"),
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="não comprovada") as erro:
+        coordenacao.chamar({"operacao": "autorizar_publicacao", "candidato": "aceito"})
+    assert "segredo" not in str(erro.value)

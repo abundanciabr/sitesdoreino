@@ -38,7 +38,7 @@ def chamar(pedido):
         )
     if pedido.get("operacao") == "autorizar_publicacao":
         try:
-            from candidato import carregar
+            from candidato import carregar, CandidatoInvalido, InstrumentoIndisponivel
         except ImportError as erro:
             raise ErroDeInstrumentacao(
                 "Verificador de candidato ausente. Instale o incremento PME06 antes de autorizar publicação."
@@ -47,7 +47,12 @@ def chamar(pedido):
             raise ErroDeInstrumentacao(
                 "Candidato ausente. Envie o identificador da aceitação assinada."
             )
-        aceito = carregar(Path(__file__).resolve().parents[1], pedido["candidato"])
+        try:
+            aceito = carregar(Path(__file__).resolve().parents[1], pedido["candidato"])
+        except (CandidatoInvalido, InstrumentoIndisponivel) as erro:
+            raise ErroDeInstrumentacao(
+                "Aceitação do candidato não comprovada. Confira o verificador e a origem oficial antes de autorizar."
+            ) from erro
         if pedido.get("manifesto") != aceito:
             raise ErroDeInstrumentacao(
                 "Manifesto diverge da aceitação assinada. Recarregue o candidato antes de publicar."
