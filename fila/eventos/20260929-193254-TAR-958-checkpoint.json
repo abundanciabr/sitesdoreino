@@ -1,0 +1,46 @@
+{
+  "arquivo": "20260929-193254-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T19:32:54.066048+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-09: integração e publicação funcional em paralelo",
+  "ultimo_avanco": "988 integrado e publicado; 991 revisado; assinatura985 autenticada; 992 autorizado especificamente e retomado",
+  "proxima_acao": "Integrar991, avançar992, concluir propostas990/993 e reconciliar provas de aceite",
+  "verificacoes": [
+    "API36619214819 success4jobs; review991 dois testes focaisPASS; reserva coordenadora renovada CAS mesmo dono até22:30Z; aprovação992 direta"
+  ],
+  "contexto": {
+    "coordenador": "01a0ed71-4e7f-7680-821e-4d655a7ad405",
+    "reserva_coordenacao": {
+      "mesmo_dono": true,
+      "expira_em": "2026-09-29T22:30:30.755970+00:00",
+      "sha": "ba3b5db3f21b781d9971a5585daf4022fafac6d6"
+    },
+    "reivindicacao_958": "20260929-192036-TAR-958-reivindicada",
+    "frentes_historicas": 18,
+    "frentes_abertas": 17,
+    "marco": {
+      "TAR969": "debe0faf7 publicado; jornada autenticada medida; registro048 aguarda integrar em991 antes do evento de aceite",
+      "TAR991": "129testes Linux e8bash-n; revisão independente 2focais sem achado; rito em execução",
+      "TAR988": "1ff7745e publicado run36619214819 4/4jobs success;294testes;11checks",
+      "TAR985": "duas emissões oficiais de fonte autenticadas; muralhas por autorização específica direta cumprida"
+    },
+    "autorizacao_992": {
+      "origem": "Resposta direta mantenedor call_QrcdRXl3zI6HHPP6Suh5TDVD item0",
+      "patch_sha256": "CFC701B2430565A885C4320DDEED5A0BA0379F76DE75A348F82570A7E2D30EEC",
+      "contrato_sha256": "CDD727B6BA849E2CF78FB98800947A8216F93BAAFED91D96242779E43CF12DB8",
+      "acao": "Mesmo agente05 retomado para aplicação pelo mecanismo normal; sem ativar coorte nem transferirPG"
+    },
+    "bloqueios_aguardando_resposta": [
+      "978 publicação payload82D584",
+      "983 reuso800855/contextoDA398B",
+      "987 dependência AE54"
+    ],
+    "propostas_em_preparo": [
+      "993 migração das fontes e consumidores, bloqueada auto-review apesar do mandato; patch exato pendente",
+      "990 ativação oficial por digest, bloqueada auto-review apesar do mandato; patch exato pendente"
+    ],
+    "proxima_acao": "Integrar991 com registros047/048; implementar992; concluir preparação990/993 e obter decisão específica; reconciliar aceites válidos sem novo PR só de livro"
+  }
+}

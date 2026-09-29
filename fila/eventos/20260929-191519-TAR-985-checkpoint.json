@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-191519-TAR-985-checkpoint",
+  "tarefa": "TAR-985",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T19:15:19.342535+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME07: autenticar emissoes reais de fonte na main",
+  "ultimo_avanco": "Muralhas autenticada apos aprovacao especifica do mantenedor; duas emissoes oficiais de fonte verificadas, sem aceitar build ou ativacao",
+  "proxima_acao": "TAR990 vincula build real, candidato duravel e digest; preservar estes bundles como prova de origem da revisao e9b88a",
+  "verificacoes": [
+    "gh attestation verify exit0: subject2a5badac5813b54684cd48215fda02a0f5725f299b41b32920fd43a659f54995, certmuralhas.yml@main, run36616192119/attempts/1, source/signer e9b88a0c95cd06625f40303c1068f4107e0543b6, timestamp1; bundle2982F1 identico ao autorizado; CI559ad409 verificado pelo revisor974",
+    "Origem da liberacao: resposta explicita do mantenedor a call_1bPxuaHqb4WAts1uXTloLN1Z pergunta0, Autorizo essa verificacao de leitura; bloqueio especifico985 resolvido sem trocar condicoes"
+  ]
+}

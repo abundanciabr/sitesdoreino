@@ -3,7 +3,7 @@
 
 Por que ela existe (26/08/2026): duas sessões trabalharam ao mesmo tempo no
 clone principal; uma trocou o ramo e as edições da outra sumiram. A lei já
-existia (RITOS.md §1: cada agente em worktree próprio) mas não tinha mecanismo
+existia (CAMINHO-DOURADO.md: cada agente em worktree próprio) mas não tinha mecanismo
 — e garantia sem mecanismo apodrece (RETROSPECTIVA-FASE-D §2). Esta é a
 muralha: um hook do harness que RECUSA, no clone principal, o que só se faz em
 worktree. Detalhes e histórico: armadilhas/135.
@@ -33,7 +33,7 @@ As três coisas que o aviso pode dizer sobre a idade, e só estas:
   0 commits atrás ........... NADA. Silêncio é o estado normal, e aviso que
                               fala à toa se aprende a ignorar (armadilhas/174).
   N > 0 commits atrás ....... fala, com o número; e diz se o atraso ALCANÇOU o
-                              CLAUDE.md (aí as ordens podem estar revogadas) ou
+                              CLAUDE.md ou CAMINHO-DOURADO.md (aí as ordens podem estar revogadas) ou
                               não (aí só o código lido daqui está velho).
   não conseguiu medir ....... fala DIZENDO que não mediu. "Não medi" nunca vira
                               "está em dia" (INV-CI01) — e nunca inventa número.
@@ -135,6 +135,7 @@ REF_DA_VERDADE = "origin/main"
 # "espelho velho" em "ordens revogadas", e é ele que torna o aviso PRECISO em
 # vez de probabilístico.
 ARQUIVO_DE_ORDENS = "CLAUDE.md"
+FONTE_DAS_ORDENS = "CAMINHO-DOURADO.md"
 CABECALHO_DA_IDADE = "📅 IDADE DO ESPELHO:"
 
 
@@ -288,7 +289,7 @@ class IdadeDoEspelho(NamedTuple):
     """Quanto o espelho está atrás de `origin/main`, medido sem rede.
 
     commits=None significa NÃO MEDI — nunca "está em dia" (INV-CI01).
-    ordens_divergem=None significa que a comparação do CLAUDE.md não foi
+    ordens_divergem=None significa que a comparação do adaptador e da fonte não foi
     feita (ou porque não havia atraso para investigar, ou porque o git não
     respondeu); ela também nunca vira "as ordens estão iguais".
     """
@@ -331,9 +332,10 @@ def medir_idade_do_espelho(raiz: Path) -> IdadeDoEspelho:
 
     # Há atraso. Só agora vale a pena perguntar se ele ALCANÇOU as ordens.
     # A comparação é contra a ÁRVORE DE TRABALHO, não contra o HEAD, porque é
-    # o arquivo em disco que o harness injetou no prompt de sistema.
+    # o adaptador injetado e a receita a que ele aponta estão em disco.
     diferenca = _git_de_leitura(
-        raiz, "diff", "--name-only", REF_DA_VERDADE, "--", ARQUIVO_DE_ORDENS
+        raiz, "diff", "--name-only", REF_DA_VERDADE, "--",
+        ARQUIVO_DE_ORDENS, FONTE_DAS_ORDENS
     )
     if diferenca is None or diferenca.returncode != 0:
         return IdadeDoEspelho(commits, None, "")
@@ -354,6 +356,7 @@ _LEIA_DO_ORIGIN = (
 )
 _CONFIRA_AS_ORDENS = (
     f"Confira o texto vivo com `git show {REF_DA_VERDADE}:{ARQUIVO_DE_ORDENS}` "
+    f"e `git show {REF_DA_VERDADE}:{FONTE_DAS_ORDENS}` "
     "antes de seguir qualquer regra que te pareça estranha. "
 )
 
@@ -443,9 +446,9 @@ def frase_da_idade(idade: IdadeDoEspelho) -> str | None:
         return (
             f"{CABECALHO_DA_IDADE} NÃO MEDIDA ({idade.motivo}). Não medir não "
             "é estar em dia (INV-CI01, RETROSPECTIVA-FASE-D §1): trate esta "
-            f"pasta como possivelmente atrasada. O `{ARQUIVO_DE_ORDENS}` que o "
-            "harness injetou no seu prompt de sistema veio DAQUI e pode estar "
-            f"revogado. {_CONFIRA_AS_ORDENS}(Se faltou a ref, um `git fetch "
+            f"pasta como possivelmente atrasada. O `{ARQUIVO_DE_ORDENS}` injetado "
+            f"e sua fonte `{FONTE_DAS_ORDENS}` podem estar revogados. "
+            f"{_CONFIRA_AS_ORDENS}(Se faltou a ref, um `git fetch "
             f"origin` no espelho é permitido e a repõe.) {_LEIA_DO_ORIGIN}"
             f"{_NAO_ATUALIZE}"
         )
@@ -459,20 +462,20 @@ def frase_da_idade(idade: IdadeDoEspelho) -> str | None:
     if idade.ordens_divergem is False:
         return (
             cabeca
-            + f"O `{ARQUIVO_DE_ORDENS}` daqui está IGUAL ao de "
+            + f"O `{ARQUIVO_DE_ORDENS}` e o `{FONTE_DAS_ORDENS}` daqui estão IGUAIS aos de "
             f"{REF_DA_VERDADE}, então as ordens que você recebeu valem. "
             f"O resto desta pasta, não. {_LEIA_DO_ORIGIN}{_NAO_ATUALIZE}"
         )
 
     certeza = (
-        f"e o `{ARQUIVO_DE_ORDENS}` daqui DIVERGE do de {REF_DA_VERDADE}"
+        f"e o `{ARQUIVO_DE_ORDENS}` ou o `{FONTE_DAS_ORDENS}` daqui DIVERGE de {REF_DA_VERDADE}"
         if idade.ordens_divergem
-        else f"e não consegui comparar o `{ARQUIVO_DE_ORDENS}` daqui com o de "
+        else f"e não consegui comparar o `{ARQUIVO_DE_ORDENS}` e o `{FONTE_DAS_ORDENS}` daqui com "
              f"{REF_DA_VERDADE}"
     )
     return (
         cabeca
-        + f"O harness injetou o `{ARQUIVO_DE_ORDENS}` DESTA pasta no seu "
+        + f"O harness injetou o `{ARQUIVO_DE_ORDENS}` DESTA pasta, que aponta a `{FONTE_DAS_ORDENS}`, no seu "
         f"prompt de sistema, {certeza}: parte das ordens que você recebeu pode "
         f"estar REVOGADA. {_CONFIRA_AS_ORDENS}{_LEIA_DO_ORIGIN}{_NAO_ATUALIZE}"
     )
@@ -484,7 +487,7 @@ def _recusa_de_git(sub: str, raiz: Path) -> str:
         f"principal ({raiz}). O clone principal é ESPELHO compartilhado entre "
         "sessões — trocar ramo/estado aqui apaga o trabalho de outra sessão "
         "(aconteceu em 26/08/2026; armadilhas/135). Trabalhe num worktree "
-        f"(RITOS.md §1): {RITO} — a ferramenta EnterWorktree do harness também "
+        f"(CAMINHO-DOURADO.md, 'Abrir e retomar uma sessão'): {RITO} — a ferramenta EnterWorktree do harness também "
         "serve. No principal continuam livres: leituras, git fetch, "
         "git worktree, gh — e, com a árvore limpa, `git switch main` e "
         "`git pull` na main, para manter o espelho fresco."
@@ -600,7 +603,7 @@ def decidir(dados: dict) -> str | None:
             f"está dentro do clone principal ({raiz}), que é ESPELHO "
             "compartilhado entre sessões, não bancada. Outra sessão pode estar "
             "usando esta pasta AGORA; foi assim que edições se perderam em "
-            "26/08/2026 (armadilhas/135). Crie seu worktree (RITOS.md §1): "
+            "26/08/2026 (armadilhas/135). Crie seu worktree (CAMINHO-DOURADO.md, 'Abrir e retomar uma sessão'): "
             f"{RITO} — e refaça a edição lá dentro (a ferramenta EnterWorktree "
             "do harness também cria um)."
         )
@@ -659,7 +662,7 @@ def _hook_aviso_de_sessao() -> int:
         f"compartilhado ({raiz}), ramo atual: {ramo}. Esta pasta é ESPELHO — "
         "outras sessões podem estar usando-a agora, e trabalho já foi perdido "
         "assim (armadilhas/135). Antes de editar qualquer arquivo ou mexer no "
-        f"git daqui, crie seu worktree (RITOS.md §1): {RITO} — e trabalhe lá. "
+        f"git daqui, crie seu worktree (CAMINHO-DOURADO.md, 'Abrir e retomar uma sessão'): {RITO} — e trabalhe lá. "
         "A muralha recusará edição e troca de ramo feitas aqui; leituras, "
         "git fetch, git worktree e gh continuam livres."
     )

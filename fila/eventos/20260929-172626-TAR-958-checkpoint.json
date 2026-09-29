@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-172626-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:26:26.045915+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-09, 17 frentes historicas, 16 abertas; construcao e integracao",
+  "ultimo_avanco": "Pilotos A/B segregados comprovados; GOV primeiro incremento integrado d3613e3 e deploy36601567026 success. TAR977 PR2345 em validacao. TAR979 tentativa2 Luna medium acionada para integrar lote fechado; mesma frente, Sol anterior parado por capacidade.",
+  "proxima_acao": "Liberar setup976 apos gate977; integrar executor e backup verificados; implementar epocas e prova independente dos insumos nos jobs; preparar identidade App sem alterar portoes antes de provas.",
+  "verificacoes": [
+    "list_agents: seis Sol com indisponibilidade de capacidade; construcao independente continua, retomadas limitadas por evidencias. Revisao TAR977 recusada pelo filtro de seguranca da plataforma: nao repetir nem substituir ator para contornar. Nao ha parecer final independente nem aceite completo; 10x nao demonstrado."
+  ]
+}

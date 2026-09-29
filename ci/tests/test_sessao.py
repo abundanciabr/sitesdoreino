@@ -82,7 +82,7 @@ def test_deriva_worktree_branch_e_containers_a_partir_de_celula_e_tarefa():
     assert plano.postgres == "sitesdoreino-postgres-shared"
     assert plano.redis == "sessao-quiz-fuso-horario-redis"
     assert plano.banco.startswith("quiz_")
-    # O worktree nasce IRMÃO do clone principal, nunca dentro dele (RITOS §1).
+    # O worktree nasce IRMÃO do clone principal, nunca dentro dele (receita de abertura).
     assert not sessao.esta_dentro(plano.worktree, plano.raiz)
 
 
@@ -290,12 +290,12 @@ def test_env_avisa_que_nao_deve_ser_comitado():
 # ---------------------------------------------------------------------------
 
 
-def test_declaracao_traz_todas_as_pecas_que_o_RITOS_1_exige():
+def test_declaracao_traz_as_leituras_e_provas_da_receita_vigente():
     plano = plano_de_teste(frase="fechar a peça C3 do PLANO-10X")
     texto = sessao.declaracao(
         plano, resumo="6 passed", constituicao_da_celula="constituicoes/AGENTS.quiz.md"
     )
-    assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
+    assert texto.startswith("Leituras exigidas: CAMINHO-DOURADO.md, CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
     assert "Worktree: wt-quiz-fuso-horario." in texto
     assert "Branch: agent/quiz/fuso-horario." in texto
     assert "git status: limpo." in texto
@@ -304,10 +304,20 @@ def test_declaracao_traz_todas_as_pecas_que_o_RITOS_1_exige():
     assert texto.count("\n") == 0  # uma linha só, para colar
 
 
-def test_declaracao_sem_constituicao_de_celula_cita_o_RITOS():
+def test_declaracao_sem_constituicao_de_celula_cita_a_receita():
     plano = plano_de_teste(celula="identidade")
     texto = sessao.declaracao(plano, resumo="verde")
-    assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e RITOS.md §1.")
+    assert texto.startswith("Leituras exigidas: CAMINHO-DOURADO.md e CONSTITUICAO.md.")
+
+
+def test_contexto_prioriza_receita_e_nao_carrega_rito_historico(tmp_path):
+    for nome in ("AGENTS.md", "CLAUDE.md", "CAMINHO-DOURADO.md", "CONSTITUICAO.md", "RITOS.md"):
+        (tmp_path / nome).write_text(nome, encoding="utf-8")
+    texto = sessao.contexto_direcionado(tmp_path, objetivo="Retomar", caminhos=["ci/sessao.py"])
+    obrigatorias = next(linha for linha in texto.splitlines() if linha.startswith("Leituras obrigatórias:"))
+    assert "CAMINHO-DOURADO.md" in obrigatorias
+    assert "CONSTITUICAO.md" in obrigatorias
+    assert "RITOS.md" not in obrigatorias
 
 
 def test_declaracao_sem_frase_deixa_um_buraco_visivel_em_vez_de_inventar():
@@ -517,7 +527,7 @@ class MundoFalso:
 def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     mundo = MundoFalso(plano_de_teste(), falhar={"rev-parse --verify": 1})
     texto = mundo.sessao().rodar()
-    assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
+    assert texto.startswith("Leituras exigidas: CAMINHO-DOURADO.md, CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
     assert "6 passed" in texto
     assert "gh pr create" in "\n".join(mundo.chamadas)
     assert "--draft" in "\n".join(mundo.chamadas)
@@ -906,7 +916,7 @@ def test_bootstrap_e_alvo_explicito_e_nunca_padrao_de_outro():
 # 4. O rito de abertura INTEIRO — balcão, índice, bancada sem ambiente
 #
 # O que estas guardas seguram: o `ci/sessao.py` deixou de ser só "prepare o
-# ambiente" e passou a ser o RITOS.md §1 do começo ao fim. Cada peça nova tem
+# ambiente" e passou a executar a receita de abertura do começo ao fim. Cada peça nova tem
 # uma forma barata de morrer em silêncio, e é essa forma que está testada aqui:
 # o índice gerado no clone principal em vez da bancada (`armadilhas/148`), o
 # comprovante do balcão nascendo órfão no espelho (`armadilhas/192`), e a

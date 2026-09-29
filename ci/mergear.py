@@ -7,15 +7,19 @@ As rotinas de diagnóstico legado não são condições de integração.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import json
 import os
 import re
 import shutil
 import sys
 import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -32,6 +36,7 @@ from _nucleo import (  # noqa: E402
 import fila  # noqa: E402
 import mapa_de_celulas  # noqa: E402
 import rollback  # noqa: E402
+import reservar  # noqa: E402
 import telemetria  # noqa: E402
 from registros_de_entrega import (  # noqa: E402
     PASTAS_DE_ESCRITURACAO,
@@ -129,10 +134,56 @@ def _gh(
     ).stdout
 
 
+def arquivos_completos_do_pr(raiz: Path, pr: dict[str, Any]) -> list[str]:
+    itens = pr.get("files")
+    if not isinstance(itens, list) or any(
+            not isinstance(item, dict) or not isinstance(item.get("path"), str)
+            for item in itens):
+        raise ErroDeInstrumentacao(
+            "lista de arquivos do PR inválida",
+            "Reconsulte o PR antes de decidir a autoridade da coorte.",
+        )
+    total = pr.get("changedFiles")
+    if total is None:
+        return [item["path"] for item in itens]
+    if type(total) is not int or total < 0 or total < len(itens):
+        raise ErroDeInstrumentacao(
+            "contagem de arquivos do PR inválida",
+            "Reconsulte a lista completa de arquivos antes de integrar.",
+        )
+    if total == len(itens):
+        return [item["path"] for item in itens]
+    numero = pr.get("number")
+    if type(numero) is not int or numero < 1:
+        raise ErroDeInstrumentacao(
+            "número do PR inválido para paginação",
+            "Reconsulte o PR antes de integrar.",
+        )
+    try:
+        paginas = json.loads(_gh(
+            ["api", "--paginate", "--slurp",
+             f"repos/{{owner}}/{{repo}}/pulls/{numero}/files?per_page=100"],
+            raiz, f"listar todos os arquivos do PR #{numero}",
+        ))
+        if not isinstance(paginas, list) or any(not isinstance(p, list) for p in paginas):
+            raise ValueError("paginação não retornou páginas de arquivos")
+        caminhos = [item["filename"] for pagina in paginas for item in pagina]
+        if (len(caminhos) != total or len(set(caminhos)) != total
+                or any(not isinstance(caminho, str) or not caminho for caminho in caminhos)):
+            raise ValueError(f"REST retornou {len(caminhos)} arquivos distintos; PR declara {total}")
+    except (ValueError, KeyError, TypeError) as erro:
+        raise ErroDeInstrumentacao(
+            "lista paginada do PR incompleta ou inválida",
+            f"{erro}. Reconsulte todas as páginas antes de integrar.",
+        ) from erro
+    pr["files"] = [{"path": caminho} for caminho in caminhos]
+    return caminhos
+
+
 def carregar_pr(raiz: Path, numero: int) -> dict[str, Any]:
     campos = (
         "number,title,body,state,isDraft,mergeable,mergeStateStatus,baseRefName,"
-        "headRefName,headRefOid,labels,files,commits,author,url,statusCheckRollup"
+        "headRefName,headRefOid,labels,files,changedFiles,commits,author,url,statusCheckRollup"
     )
     saida = _gh(
         ["pr", "view", str(numero), "--json", campos],
@@ -140,7 +191,9 @@ def carregar_pr(raiz: Path, numero: int) -> dict[str, Any]:
         f"consultar o PR #{numero}",
     )
     try:
-        return json.loads(saida)
+        pr = json.loads(saida)
+        arquivos_completos_do_pr(raiz, pr)
+        return pr
     except json.JSONDecodeError as exc:
         raise ErroDeInstrumentacao(
             f"resposta do gh para o PR #{numero} não é JSON",
@@ -845,6 +898,114 @@ def checar_congelamento(raiz: Path, pr: dict[str, Any]) -> Resultado:
     )
 
 
+def tarefas_da_fila_no_head(raiz: Path, pr: dict[str, Any], arquivos: list[str]) -> set[str]:
+    head = str(pr.get("headRefOid") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise ErroDeInstrumentacao(
+            "SHA do PR inválido para conferir a coorte",
+            "Reconsulte o HEAD exato do PR antes de integrar eventos da fila.",
+        )
+    ids = set()
+    for caminho in arquivos:
+        if not (caminho.startswith(("fila/eventos/", "fila/tarefas/"))
+                and caminho.endswith(".json")):
+            continue
+        try:
+            resposta = json.loads(_gh(
+                ["api", f"repos/{{owner}}/{{repo}}/contents/{quote(caminho, safe='/')}?ref={head}"],
+                raiz, f"ler {caminho} no HEAD {head} do PR",
+            ))
+            if (not isinstance(resposta, dict) or resposta.get("path") != caminho
+                    or resposta.get("type") != "file" or resposta.get("encoding") != "base64"
+                    or not isinstance(resposta.get("content"), str)):
+                raise ValueError("conteúdo ou caminho não corresponde ao HEAD solicitado")
+            bruto = base64.b64decode(
+                resposta["content"].replace("\n", "").replace("\r", ""), validate=True
+            )
+            if len(bruto) > 65536:
+                raise ValueError("evento excede 64 KiB")
+            evento = json.loads(bruto.decode("utf-8"))
+            campo = "tarefa" if caminho.startswith("fila/eventos/") else "id"
+            if (not isinstance(evento, dict) or evento.get("arquivo") != Path(caminho).stem
+                    or not isinstance(evento.get(campo), str)):
+                raise ValueError("registro sem identidade válida")
+            ids.add(evento[campo])
+        except (ValueError, TypeError, UnicodeError, binascii.Error) as erro:
+            raise ErroDeInstrumentacao(
+                "registro da fila no PR ilegível ou divergente",
+                f"{caminho} no HEAD {head}: {erro}. Revalide o arquivo no PR antes de integrar.",
+            ) from erro
+    return ids
+
+
+def tarefas_do_pr_na_coorte(raiz: Path, pr: dict[str, Any], manifesto: dict | None) -> set[str]:
+    arquivos = arquivos_completos_do_pr(raiz, pr)
+    ids = set(fila.tarefas_citadas("\n".join([
+        str(pr.get("title") or ""), str(pr.get("body") or ""),
+        str(pr.get("headRefName") or ""), *arquivos,
+    ])))
+    if manifesto and manifesto["estado"] == "ativa":
+        ids.update(tarefas_da_fila_no_head(raiz, pr, arquivos))
+    return ids
+
+
+def checar_barreira_piloto(raiz: Path, pr: dict[str, Any]) -> Resultado:
+    try:
+        manifesto = fila.ler_manifesto_piloto(raiz)
+        if manifesto and manifesto["estado"] == "ativa" and type(pr.get("changedFiles")) is not int:
+            raise ErroDeInstrumentacao(
+                "contagem de arquivos do PR ausente",
+                "Reconsulte o PR com changedFiles antes de decidir a autoridade da coorte.",
+            )
+        arquivos = arquivos_completos_do_pr(raiz, pr)
+        if (manifesto and manifesto["estado"] == "ativa"
+                and str(fila.MANIFESTO_PILOTO).replace("\\", "/") in arquivos):
+            return Resultado(
+                "coorte piloto", Estado.FAIL, "PR altera manifesto piloto ativo",
+                "Preserve o manifesto ativo; uma nova coorte exige transição própria.",
+            )
+        ids = tarefas_do_pr_na_coorte(raiz, pr, manifesto)
+        fila.conferir_efeito_piloto(raiz, ids)
+    except ErroDeInstrumentacao as erro:
+        return Resultado.de_erro("coorte piloto", erro)
+    return Resultado("coorte piloto", Estado.PASS, "PR compatível com a barreira atual")
+
+
+@contextmanager
+def credencial_git_do_pouso():
+    """Oferece o GH_TOKEN ao git só durante o CAS, sem gravá-lo em disco."""
+    if not os.environ.get("GH_TOKEN"):
+        yield
+        return
+    try:
+        indice = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    except ValueError as erro:
+        raise ErroDeInstrumentacao(
+            "configuração Git da pista inválida",
+            "Corrija GIT_CONFIG_COUNT antes de executar o pouso protegido.",
+        ) from erro
+    if (indice > 0 and os.environ.get(f"GIT_CONFIG_KEY_{indice - 1}")
+            == "credential.https://github.com.helper"
+            and os.environ.get(f"GIT_CONFIG_VALUE_{indice - 1}")
+            == "!gh auth git-credential"):
+        yield
+        return
+    nomes = ("GIT_CONFIG_COUNT", f"GIT_CONFIG_KEY_{indice}",
+             f"GIT_CONFIG_VALUE_{indice}")
+    anteriores = {nome: os.environ.get(nome) for nome in nomes}
+    os.environ[nomes[0]] = str(indice + 1)
+    os.environ[nomes[1]] = "credential.https://github.com.helper"
+    os.environ[nomes[2]] = "!gh auth git-credential"
+    try:
+        yield
+    finally:
+        for nome, anterior in anteriores.items():
+            if anterior is None:
+                os.environ.pop(nome, None)
+            else:
+                os.environ[nome] = anterior
+
+
 def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str, Any]]:
     relatorio = Relatorio(f"MERGE GUARDADO — PR #{numero}")
     try:
@@ -876,6 +1037,7 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
         relatorio.registrar(resultado)
     relatorio.registrar(checar_mandato(raiz_real, pr))
     relatorio.registrar(checar_congelamento(raiz_real, pr))
+    relatorio.registrar(checar_barreira_piloto(raiz_real, pr))
     for resultado in checar_dependencias(raiz_real, pr):
         relatorio.registrar(resultado)
     return relatorio, pr
@@ -1279,24 +1441,55 @@ def integrar(numero: int, raiz: Path, *, conferir_apenas=False) -> int:
         return relatorio.exit_code
     if conferir_apenas:
         return 0
-    _gh(
-        comando_de_merge(numero, "merge", pr["headRefOid"]),
-        raiz,
-        f"integrar PR #{numero}",
-        exigir_stdout=False,
-    )
-    final = json.loads(
-        _gh(
-            ["pr", "view", str(numero), "--json", "state,mergedAt,mergeCommit"],
-            raiz,
-            "confirmar integração",
-        )
-    )
-    if final.get("state") != "MERGED":
-        print(
-            "FAIL: o comando executou, mas o PR não consta como MERGED. Confira o PR antes de repetir."
-        )
-        return 1
+    barreira = checar_barreira_piloto(raiz, pr)
+    if barreira.estado is not Estado.PASS:
+        print(f"{barreira.nome}: {barreira.resumo}. {barreira.detalhe}")
+        return barreira.estado.exit_code
+    manifesto = fila.ler_manifesto_piloto(raiz)
+    with credencial_git_do_pouso():
+        operacao = None
+        if (manifesto and manifesto["estado"] == "ativa" and
+                set(manifesto["tarefas"]).intersection(
+                    tarefas_do_pr_na_coorte(raiz, pr, manifesto))):
+            run_id = os.environ.get("GITHUB_RUN_ID", "")
+            if not re.fullmatch(r"[1-9][0-9]*", run_id):
+                print("PAROU POR SEGURANÇA: pouso piloto exige GITHUB_RUN_ID da pista oficial para reconciliar resposta perdida.")
+                return 2
+            operacao = reservar.adquirir_efeito_piloto(
+                raiz, manifesto["tarefas"], numero, pr["headRefOid"], run_id
+            )
+            if operacao is None:
+                print("PAROU POR SEGURANÇA: a pausa ou outro pouso venceu o CAS da coorte piloto. Releia a barreira antes de integrar.")
+                return 2
+        try:
+            _gh(
+                comando_de_merge(numero, "merge", pr["headRefOid"]),
+                raiz,
+                f"integrar PR #{numero}",
+                exigir_stdout=False,
+            )
+            final = json.loads(
+                _gh(
+                    ["pr", "view", str(numero), "--json", "state,mergedAt,mergeCommit"],
+                    raiz,
+                    "confirmar integração",
+                )
+            )
+        except (ErroDeInstrumentacao, ValueError) as erro:
+            if operacao is not None:
+                raise ErroDeInstrumentacao(
+                    "resultado do pouso incerto; intenção de efeito mantida na barreira",
+                    "Confira o PR e encerre a execução da pista antes de reconciliar a intenção; não pause a coorte.",
+                ) from erro
+            raise
+        if final.get("state") != "MERGED":
+            print("FAIL: pouso sem confirmação MERGED; intenção de efeito mantida. Confira o PR e encerre a pista antes de reconciliar.")
+            return 1
+        if operacao is not None and not reservar.concluir_efeito_piloto(
+                raiz, manifesto["tarefas"], numero, pr["headRefOid"], operacao,
+                run_id):
+            print("PAROU POR SEGURANÇA: PR integrado, mas a intenção de efeito não foi conciliada. Releia a barreira antes de pausar.")
+            return 2
     print(json.dumps(dict(pr=numero, **final), ensure_ascii=False))
     diff = DiffDoPR(raiz, numero)
     sombra_do_evento_da_fila(raiz, pr, final["mergeCommit"]["oid"], diff)
@@ -1447,7 +1640,81 @@ def pr_prioritario(raiz: Path) -> tuple[int, datetime] | None:
     return None
 
 
+def reconciliar_efeito_piloto(raiz: Path) -> bool:
+    manifesto = fila.ler_manifesto_piloto(raiz)
+    if not manifesto or manifesto["estado"] != "ativa":
+        return True
+    _, barreira = reservar.ler_barreira_piloto(raiz)
+    if barreira["ids_sha256"] != manifesto["ids_sha256"]:
+        raise ErroDeInstrumentacao(
+            "manifesto piloto diverge da barreira remota",
+            "Releia o manifesto oficial antes de reconciliar o pouso.",
+        )
+    efeito = barreira.get("efeito")
+    if efeito is None:
+        return True
+    run_id = efeito.get("run_id", "")
+    if not re.fullmatch(r"[1-9][0-9]*", run_id):
+        raise ErroDeInstrumentacao(
+            "intenção de pouso sem execução oficial identificável",
+            "Mantenha a coorte no Git; confira o PR e a execução da pista antes de conciliar manualmente.",
+        )
+    run = json.loads(_gh(
+        ["api", f"repos/{{owner}}/{{repo}}/actions/runs/{run_id}"],
+        raiz, f"conferir execução #{run_id} do pouso incerto",
+    ))
+    workflow = json.loads(_gh(
+        ["api", "repos/{owner}/{repo}/actions/workflows/pouso.yml"],
+        raiz, "conferir identidade do workflow oficial de pouso",
+    ))
+    if (not isinstance(run, dict) or run.get("id") != int(run_id)
+            or not isinstance(workflow, dict)
+            or workflow.get("path") != ".github/workflows/pouso.yml"
+            or type(workflow.get("id")) is not int or workflow["id"] < 1
+            or run.get("workflow_id") != workflow.get("id")
+            or run.get("event") not in (
+                "pull_request_target", "workflow_run", "schedule", "workflow_dispatch"
+            )
+            or run.get("path") not in (
+                ".github/workflows/pouso.yml",
+                ".github/workflows/pouso.yml@main",
+            )):
+        raise ErroDeInstrumentacao(
+            "execução de pouso não corresponde à intenção",
+            "Confira o workflow e o run vinculados à barreira antes de soltar a intenção.",
+        )
+    if run.get("status") != "completed":
+        print(f"PAROU POR SEGURANÇA: execução de pouso #{run_id} ainda não terminou; intenção mantida.")
+        return False
+    pr = json.loads(_gh(
+        ["pr", "view", str(efeito["pr"]), "--json", "number,state,headRefOid,baseRefName"],
+        raiz, f"conferir PR #{efeito['pr']} após a execução #{run_id}",
+    ))
+    if (not isinstance(pr, dict) or pr.get("number") != efeito["pr"]
+            or pr.get("headRefOid") != efeito["head"]
+            or pr.get("baseRefName") != "main"
+            or pr.get("state") not in ("OPEN", "CLOSED", "MERGED")):
+        raise ErroDeInstrumentacao(
+            "PR do pouso incerto diverge da intenção",
+            "Não solte a barreira; confira o HEAD, a base e o estado do PR oficial.",
+        )
+    if pr["state"] == "OPEN":
+        print(f"PAROU POR SEGURANÇA: PR #{efeito['pr']} ainda aberto após run #{run_id}; resultado remoto incerto. Conclua ou feche o PR pelo rito oficial antes de reconciliar a coorte.")
+        return False
+    if not reservar.concluir_efeito_piloto(
+            raiz, manifesto["tarefas"], efeito["pr"], efeito["head"],
+            efeito["operacao"], run_id):
+        raise ErroDeInstrumentacao(
+            "reconciliação do pouso perdeu o CAS",
+            "Releia a barreira remota antes de repetir a pista; não pause a coorte.",
+        )
+    print(f"Pouso #{efeito['pr']} conciliado após run #{run_id} terminado: PR {pr['state']}.")
+    return True
+
+
 def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
+    if not reconciliar_efeito_piloto(raiz):
+        return 2
     prs = json.loads(
         _gh(
             [
@@ -1544,11 +1811,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("informe um PR ou --automatico")
     try:
         raiz = raiz_do_repo()
-        return (
-            integrar_abertos(raiz, ramo=os.environ.get("RAMO_DO_EVENTO", ""))
-            if args.automatico
-            else integrar(args.pr, raiz, conferir_apenas=args.conferir)
-        )
+        with credencial_git_do_pouso():
+            return (
+                integrar_abertos(raiz, ramo=os.environ.get("RAMO_DO_EVENTO", ""))
+                if args.automatico
+                else integrar(args.pr, raiz, conferir_apenas=args.conferir)
+            )
     except (ErroDeInstrumentacao, OSError, ValueError) as erro:
         print(f"ERROR: {erro}. Confira a consulta no GitHub antes de repetir.")
         return 2
