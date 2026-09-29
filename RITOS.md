@@ -1,6 +1,8 @@
 # RITOS DA PLATAFORMA
 
-Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e antídoto.
+Procedimentos ainda referenciados pelos consumidores em migração. A fonte
+operacional vigente é CAMINHO-DOURADO.md; a entrada do agente aponta diretamente
+para ela. Este arquivo preserva os detalhes até sua migração sem perda de prova.
 
 ---
 
@@ -33,7 +35,7 @@ ficam no caminho que a abertura informa; a declaração só descreve o observado
 
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 
-> "Li o **Padrão de Trabalho** (1ª seção do `CLAUDE.md`), `CONSTITUICAO.md` e
+> "Li o **Padrão de Trabalho** (1ª seção do `CAMINHO-DOURADO.md`), `CONSTITUICAO.md` e
 > `constituicoes/AGENTS.<celula>.md`. Worktree:
 > `wt-<celula>-<tarefa>`. Branch: `agent/<celula>/<tarefa>`. `git status`: limpo.
 > Baseline: `make ci` verde. Tarefa: [uma frase]."

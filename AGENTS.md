@@ -1,94 +1,18 @@
 # AGENTS.md | sitesdoreino
 
-Regra de intenção: todo pedido neste projeto é execução com validação e entrega
-no destino que o mantenedor pediu. Conteúdo destinado a pessoas fica no site;
-artefato técnico indispensável ao funcionamento fica no repositório. Conversa
-informal fica fora deste fluxo.
+Leia diretamente CONSTITUICAO.md (autoridade), INVARIANTES.md (propriedades) e
+CAMINHO-DOURADO.md (Padrão de Trabalho e receita operacional vigente). Leia
+também a constituição da célula e as instruções dos caminhos do brief.
+CLAUDE.md é adaptador de ferramenta; não é etapa para encontrar a lei.
 
-Leia `CLAUDE.md` antes de agir: é a lei canônica, com o significado integral do
-Padrão abaixo, as três costuras e as regras de operação. Não há uma segunda
-versão dessas leis aqui. Leia `CONSTITUICAO.md`, `RITOS.md` e instruções
-dos caminhos do brief; contexto direcionado não dispensa leis.
+Sempre PT-BR. Execute no PowerShell o que estiver ao alcance. Declare a pasta
+ativa e trabalhe na bancada isolada indicada por ci/sessao.py; o principal é
+espelho. Preserve trabalho alheio e os alvos do brief.
 
-| Regra | Padrão de Trabalho, referência para a lei canônica |
-|---|---|
-| 1 | Resolva o problema real; comece pela experiência e protótipo quando necessário. |
-| 2 | Discorde antes, com alternativa e trade-off; execute a decisão dele. |
-| 3 | Justifique adições; o pedido vira o menor caminho funcional que já funciona; elimine excesso. |
-| 4 | Decida o que é seu; decisões exclusivas ou irreversíveis voltam ao mantenedor. |
-| 5 | Responda pelo caminho inteiro, do primeiro comando até a tela. |
-| 6 | Prove com comando e saída real; sem prova escreva NÃO RODEI. Prometer o conserto não é consertar. |
-| 7 | Remova o que não faz falta ao pedido. |
-| 8 | Revise como crítico, corrija antes de entregar. |
-| 9 | Demonstre; checklist e cinco blocos finais, sem enchimento. |
-| 10 | Não substitua prova por promessa nem use as frases proibidas. |
-| 11 | Conversa é mudança real; interrompa loops. Nunca pergunte nem informe a outra IA o estado de Git, PR, checks, branches ou pouso: consulte a fonte e aja. |
-
-No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
-`python ci/economia_da_fabrica.py brief`. Somente a sessão responsável cria
-frentes Codex, com Sol ou Luna explícitos, esforço por risco e `fork_turns=none`.
-Antes do disparo, confira o brief e os parâmetros por `validar-brief`; ausência,
-divergência e fallback são recusados. Preserve o modelo principal. A sessão executa o pedido dentro
-do mandato recebido, com validação, PR e registro pelo `make pr`.
-As competências das fichas são por tarefa, sem papéis fixos por fornecedor.
-Subagente não cria outro nem pergunta ao mantenedor; devolve por escrito
-bloqueio, impacto e ação para destravar à sessão responsável.
-Nunca edite o clone principal nem amplie o mandato. Trabalho descoberto
-fora do brief vira tarefa na fila. Integração é automática pelos portões.
-
-## Destino padrão do pedido do mantenedor
-
-Manual, documento, página, guia, roteiro, texto, conteúdo, anúncio,
-explicação ou qualquer material feito para ser lido no site deve nascer no
-site, pelo editor de documentos de `/admin/documentos/`, e terminar privado,
-com leitura autenticada conferida. Todo documento é somente para administradores,
-salvo pedido explícito do mantenedor para publicar aquele documento para o
-público, registrado na evidência da entrega. Nesse caso, confira a URL sem sessão.
-`como-funciona-a-entrada` é a exceção pública já autorizada. A lei é
-`CLAUDE.md`, seção Regra de destino do conteúdo. Criar um Markdown em `docs/`
-ou outro arquivo no GitHub não substitui essa entrega.
-
-O GitHub só recebe a parte obrigatória para o funcionamento do site, sistema
-ou projeto: código, template, teste, contrato, configuração, infraestrutura,
-workflow, lei mecânica e registro exigido pelo rito. Um manual ou documento
-pedido pelo mantenedor não vai para o GitHub apenas por ser mais fácil de
-editar ali.
-
-Se a publicação exigir acesso, rota ou mecanismo que ainda não exista, a sessão
-registra o bloqueio e o que falta. Ela não troca o destino para um PR de
-documentação. Quando o pedido for ambíguo, o destino padrão é o site, salvo se
-o mantenedor disser que o artefato é interno, técnico ou obrigatório ao código.
-
-Execute no PowerShell tudo que puder executar. Antes de passo manual ou
-decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.
-Na primeira resposta de qualquer sessão que vá trabalhar no projeto, declare
-o caminho absoluto da pasta ativa. Se for
-`C:\Users\davia\abundanciabr\sitesdoreino`, pare: é a pasta antiga preservada.
-Use `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923` para trabalho novo.
-`python ci/sessao.py --celula <area> --tarefa <slug>` abre a bancada;
-sem serviço, acrescente `--sem-container`. Principal é somente leitura,
-salvas as operações permitidas na lei canônica.
-Para execução, descobertas, checkpoints, retomada e ausência de progresso,
-use `docs/decisoes/ROTEIRO-EXECUCAO-DOS-AGENTES.md`; o estado continua vindo
-da fila e de seus eventos, não do roteiro.
-
-Hooks nativos estão em `.codex/hooks.json`: SessionStart, UserPromptSubmit,
-Stop e a guarda de Monitor. Ações comuns não injetam documentos nem leem
-transcript. Pontuação não exige revisão nem bloqueia a publicação.
-Consulte erros por `python ci/consultar_armadilhas.py "<mensagem>"` ou
-`--caminho <arquivo>`; abra somente origens pertinentes.
-
-No fecho, checklist atualizado e **O que mudou**, **O que foi verificado**,
-**Pendências**, **Veredito** PRONTO ou NÃO PRONTO, e **Instruções** com o que
-acontece agora. NÃO PRONTO exige lista em português de leigo: o que houve, de
-quem é a bola, o que destrava e o prazo, mesmo que nada dependa dele; o gancho
-recusa o fecho sem ela. Auditoria item a item
-somente quando relevante; cortes somente quando houver.
-Despacho devolve número do PR, ramo, SHA, arquivos, CODEOWNERS e provas.
-O PR pronto integra automaticamente quando muralhas e ci-celula-gate ficam
-verdes, sem revisor obrigatório, atestado ou etiqueta de pouso.
-CODEOWNERS e contrato congelado continuam exigindo mandato do mantenedor.
-Validação local, integração e publicação são estados distintos e exigem prova.
-
-**Quem faz valer:** `ci/padrao_de_trabalho.py`, `ci/hook_codex.py`,
-`ci/prestacao_de_contas.py`, `ci/mergear.py` e respectivos testes.
+As fichas Codex ficam em .codex/agents/. Modelo/esforço vêm do mandato e de
+ci/economia_da_fabrica.py brief; validar-brief confere o disparo. Só a sessão
+responsável cria frentes; subagente não cria outro nem pergunta ao mantenedor.
+Hooks nativos em .codex/hooks.json consultam a receita pelo guarda existente.
+A entrega usa ci/pr.py e distingue validação, integração, publicação e aceite.
+O GPS vive na fila e nos eventos; ci/mapa_de_execucao.py reconstrói a retomada.
+Antes de decisão ou passo manual, leia docs/guia-mantenedor.md.
