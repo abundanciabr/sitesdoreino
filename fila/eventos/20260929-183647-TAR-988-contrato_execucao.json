@@ -1,0 +1,53 @@
+{
+  "arquivo": "20260929-183647-TAR-988-contrato_execucao",
+  "tarefa": "TAR-988",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T18:36:47.644886+00:00",
+  "quem": "pme02_submissao",
+  "contrato": {
+    "versao": 1,
+    "plano": "PLANO-MESTRE-ENTREGA-ENXUTA-SITESDOREINO.md / PME-02 TAR-988",
+    "objetivo": "Reduzir trabalho repetido na materializacao do catalogo local sem mudar seu conteudo ou garantias.",
+    "condicao_encerramento": "Medicao comparavel, equivalencia integral, invalidacao demonstrada e rito oficial publicado, ou bloqueio concreto registrado.",
+    "limites_autonomia": "Mandato vigente autoriza ci/mapa_de_execucao.py, ci/tests/test_mapa_de_execucao.py e eventos proprios; sem subdelegacao nem edicao de fila.py/preparar_dados_admin.py.",
+    "acoes_do_mantenedor": "Nenhuma adicional no escopo vigente.",
+    "entregaveis": [
+      "Catalogo equivalente com trabalho invariavel computado uma vez por captura"
+    ],
+    "escopo_incluido": [
+      "ci/mapa_de_execucao.py",
+      "ci/tests/test_mapa_de_execucao.py",
+      "eventos e recibo TAR-988"
+    ],
+    "nao_objetivos": [
+      "Cache persistente",
+      "Cortar instrucoes ou contextos",
+      "Alterar produtor admin ou fila"
+    ],
+    "restricoes": [
+      "Somente dois alvos de codigo e eventos proprios; preservar contrato de envelope estados/aceites e snapshot-publicado de TAR-969"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato PME-02 da sessao 01a0ed71-4e7f-7680-821e-4d655a7ad405 em 2026-09-29",
+      "Propriedade dos dois arquivos transferida por PME-03"
+    ],
+    "etapas": [
+      "Medir recorte real e localizar recomputacao",
+      "Cortar somente redundancia comprovada",
+      "Provar equivalencia, invalidacao, ganho e rito"
+    ],
+    "criterios_entrada": [
+      "Bancada isolada atualizada e TAR-988 reivindicada"
+    ],
+    "criterios_aceite": [
+      "Saida igual no mesmo corpus",
+      "Entrada relevante invalida a parte correta",
+      "Duas medidas comparaveis e suite do mapa verde"
+    ],
+    "evidencias_exigidas": [
+      "Comandos, saidas e perfil real",
+      "Comparacao byte a byte ou canonica",
+      "Rito oficial e desfecho separados"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "arquivo": "988-preparar-o-catalogo-das-tarefas-sem-repetir-o-mesmo-trabalho",
+  "id": "TAR-988",
+  "titulo": "Preparar o catalogo das tarefas sem repetir o mesmo trabalho",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Saida equivalente no mesmo corpus; medicao antes e depois; entrada relevante invalida a parte correta; nenhum contexto obrigatorio omitido",
+  "despacho": "Continuação da frente PME02 na TAR958, responsável único pme02_submissao, GPT-6 Sol medium já configurado, sem fallback/subagentes. Problema medido pelo produtor969: 872 tarefas, materializar_catalogo consumiu quase todo run24m43.9s; estados/aceites ficaram prontos em2.9s. Snapshot focal atualizado878tarefas4.092s. Não atribuir a demora ao verificador de origem sem prova.\nObjetivo: reduzir tempo de construção do catálogo mantendo exatamente entradas, conteúdo, dependências, regras e mensagens. Primeiro medir recorte pequeno real e localizar recomputação; depois implementar só corte confirmado. Escopo exclusivo de escrita ci/mapa_de_execucao.py e ci/tests/test_mapa_de_execucao.py, além dos eventos/recibo desta tarefa. Todo o resto somente leitura, inclusive ci/preparar_dados_admin.py e ci/fila.py da03. 03 transferiu os dois alvos: módulo intacto, teste contém duas linhas já commitadas em969 para envelope estados/aceites e snapshot-publicado; preserve esse contrato ao integrar. Não editar ramo969.\nBancada pme02-submissao livre após2341 publicado, reusar com nova branch codex/ci/pme-catalogo-reuso. Abrir com ci/sessao.py --worktree caminho absoluto existente --sem-container, claim/contrato antes editar. Base main atual; se precisar fixture nova, compare delta e coordene rebase de integração, sem cherry-pick concorrente em03.\nAceite: saída equivalente byte a byte ou comparação canônica de mesmo conteúdo e propriedades, duas medidas comparáveis no mesmo corpus e ambiente, invalidação de entrada relevante, zero aprovação nova por omissão de contexto. Evitar caches persistentes ou flags futuras: preferir computar uma vez por snapshot fechado a parte invariável, se análise provar. Não cortar contextos ou instruções por velocidade.\nProva final focal em corpus e suíte do mapa; experimento amplo uma vez só após corte demonstrado, para evitar repetir24min sem ganho. Medir duração/custo de CPU e explicar diferençaWindows/Linux; sem alegar10xgeral. Integração rito Draft-first vigente com revisão focal. Recuperação reverter corte conserva produtor antigo. Parada bloqueio: equivalência não se comprova, fonte muda durante captura ou ganho não existe; preserve diagnóstico e não adote mecanismo sembenefício. Próxima ação medirprofilarrecorteeexecutarcorreçãocommandatojáconcedido.",
+  "origem": "Continuidade PME02 TAR958; maior custo real medido no produtor969; propriedade transferida pela PME03 em29/09",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

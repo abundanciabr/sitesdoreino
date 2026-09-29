@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-049-infra-serializar-configuracoes-da-vps",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: serializar configuracoes da VPS",
+  detalhe: "Os 11 comandos aguardam a trava comum antes de alterar env, servicos ou firewall.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2356. Validação local: árvore 010c022eb50930ea6ec47caa1ae8c3c95baa26d2; commit 50f95d0f788c87c34c816030c4b785e23d33e6cc; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-991",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -820,6 +820,42 @@ def test_prompt_carrega_a_descricao_e_as_restricoes_registradas(caso, capsys):
     assert pacote["descricao"] == caso[2]["despacho"]
 
 
+def test_catalogo_calcula_digest_da_fila_so_na_abertura_e_no_fecho(caso, monkeypatch):
+    mapa, raiz, tarefa, *_ = caso
+    gravar(raiz, "fila/tarefas/002-segundo.json", dict(tarefa, arquivo="002-segundo", id="TAR-002"))
+    original = mapa._digest
+    chamadas = []
+
+    def medir(raiz, nome):
+        chamadas.append(nome)
+        return original(raiz, nome)
+
+    monkeypatch.setattr(mapa, "_digest", medir)
+    catalogo = mapa.materializar_catalogo(raiz, agora=datetime.fromisoformat(AGORA))
+    assert set(catalogo["pacotes"]) == {"TAR-001", "TAR-002"}
+    assert chamadas.count("fila/tarefas") == 2
+    assert chamadas.count("fila/eventos") == 2
+
+
+def test_catalogo_recusa_mecanismo_alterado_entre_pacotes(caso, monkeypatch):
+    mapa, raiz, tarefa, *_ = caso
+    gravar(raiz, "fila/tarefas/002-segundo.json", dict(tarefa, arquivo="002-segundo", id="TAR-002"))
+    original = mapa.materializar_pacote
+    chamadas = 0
+
+    def pacote_e_mudanca(*args, **kwargs):
+        nonlocal chamadas
+        resultado = original(*args, **kwargs)
+        chamadas += 1
+        if chamadas == 1:
+            gravar(raiz, "ci/pr.py", "fonte alterada durante a captura\n")
+        return resultado
+
+    monkeypatch.setattr(mapa, "materializar_pacote", pacote_e_mudanca)
+    with pytest.raises(ValueError, match="Fontes mudaram"):
+        mapa.materializar_catalogo(raiz, agora=datetime.fromisoformat(AGORA))
+    assert chamadas == 2
+
 def test_catalogo_recusa_fila_que_muda_entre_leitura_e_digest(caso, monkeypatch):
     mapa, raiz, *_ = caso
     original = mapa.fila.carregar_tarefas
