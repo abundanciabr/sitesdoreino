@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-143522-TAR-962-explicada",
+  "tarefa": "TAR-962",
+  "evento": "explicada",
+  "quando": "2026-09-29T14:35:22.257393+00:00",
+  "quem": "TAR958 PME-03; evidencia PME01 TAR950 concluiu 15m54s antes do termino tecnico e sem aceite funcional registrado",
+  "o_que_e": "A fila pode chamar de entregue uma melhoria cujo funcionamento ainda nao foi comprovado.",
+  "o_que_muda": "A tela separa o que foi enviado, publicado e realmente conferido, mantendo a historia.",
+  "exemplo": "Se o container responde mas a tela falha, a tarefa continua pendente.",
+  "importancia": 85
+}
