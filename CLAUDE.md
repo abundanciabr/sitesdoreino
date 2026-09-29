@@ -158,17 +158,17 @@ O fluxo está em `RUNBOOK-LOTES.md`.
 
 ## O que uma chamada custa
 
-Modelo e esforço: `python ci/economia_da_fabrica.py brief`. No Codex, somente
-`gpt-6-luna` e `gpt-6-sol`, explícitos no disparo com `fork_turns=none`: Luna
-low para leitura mecânica, Luna medium para implementação pequena, Sol medium
-para múltiplas etapas e Sol high para arquitetura, dados, autorização,
-concorrência ou recuperação. xhigh exige razão concreta; max é excepcional.
-Antes de criar a frente, execute `python ci/economia_da_fabrica.py validar-brief`
-com arquivo, modelo e esforço do disparo. Sem brief, modelo permitido ou
-coincidência dos parâmetros, não execute. Sem fallback: indisponibilidade volta
-à sessão responsável, que é a única a criar frentes. Preserve o modelo principal
-e confira os metadados disponíveis; configuração aceita não prova o runtime.
+Modelo e esforço: `python ci/economia_da_fabrica.py brief`.
+Codex: somente `gpt-6-luna` ou `gpt-6-sol`, explícitos com `fork_turns=none`.
+Luna low lê mecanicamente; Luna medium implementa mudanças pequenas. Sol medium
+executa múltiplas etapas; Sol high trata arquitetura, dados, autorização,
+concorrência e recuperação. xhigh exige razão concreta; max é excepcional.
+Valide arquivo e parâmetros do disparo por `python ci/economia_da_fabrica.py validar-brief`.
+Brief ausente, modelo alheio, divergência ou fallback impedem execução.
+Só a sessão responsável cria frentes e recebe indisponibilidade.
+Preserve o modelo principal; confira metadados. Consistência não prova runtime.
 No Claude Code, subagente usa `sonnet` ou `opus` declarado.
+
 Meça o estado nas fontes estruturadas de Git, GitHub e fila.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
