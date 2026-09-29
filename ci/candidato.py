@@ -315,9 +315,8 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
             _inteiro(prova[campo], f"prova.{campo}")
         _sha(prova["revisao"], "prova.revisao", 40)
         _exigir(
-            prova["revisao"]
-            in {manifesto["fonte"]["revisao"], manifesto["integracao"]["revisao"]},
-            f"{nome}: revisão não pertence ao candidato",
+            prova["revisao"] == manifesto["integracao"]["revisao"],
+            f"{nome}: somente prova oficial push main da revisão integrada autoriza",
         )
         _exigir(
             isinstance(prova["escopo"], list)
@@ -364,11 +363,6 @@ def validar(manifesto: dict, atual: dict | None = None) -> dict:
             and (nome != "build" or emissao["ambiente"] == original["ambiente"]),
             f"{nome}: prova não mediu estas entradas",
         )
-        if prova["revisao"] != manifesto["integracao"]["revisao"]:
-            _exigir(
-                emissao["ambiente"] == original["ambiente"],
-                f"{nome}: ambiente da prova anterior não equivale ao integrado",
-            )
         _inteiro(emissao["job_id"], f"{nome}: job emissor")
         if nome == "build":
             _exigir(
@@ -531,20 +525,14 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
                 "--format",
                 "json",
             ]
-            if nome == "build":
-                parametros += [
-                    "--cert-identity",
-                    IDENTIDADE,
-                    "--source-ref",
-                    "refs/heads/main",
-                ]
-            else:
-                parametros += [
-                    "--cert-identity-regex",
-                    "^https://github\\.com/"
-                    + re.escape(REPO + "/" + workflow_prova)
-                    + "@.+$",
-                ]
+            parametros += [
+                "--cert-identity",
+                f"https://github.com/{REPO}/{workflow_prova}@refs/heads/main",
+                "--source-ref",
+                "refs/heads/main",
+                "--signer-digest",
+                prova["revisao"],
+            ]
             respostas = _json_comando(parametros, raiz)
             esperada = hashlib.sha256(canonico(prova["emissao"])).hexdigest()
             uri_prova = (
@@ -572,7 +560,7 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
                 .get("signature", {})
                 .get("certificate", {})
                 .get("buildTrigger")
-                in ({"push"} if nome == "build" else {"push", "pull_request"})
+                == "push"
                 and resposta["verificationResult"].get("verifiedTimestamps")
                 and any(
                     isinstance(assunto, dict)
@@ -666,10 +654,8 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             f"{nome}: execução pertence a outra fonte",
         )
         _exigir(
-            run.get("event")
-            in ({"push"} if nome == "build" else {"push", "pull_request"})
-            and (run.get("event") != "push" or run.get("head_branch") == "main"),
-            f"{nome}: execução não autorizada",
+            run.get("event") == "push" and run.get("head_branch") == "main",
+            f"{nome}: somente execução push main autoriza",
         )
         _exigir(
             (run.get("status") == "completed" and run.get("conclusion") == "success")
@@ -704,7 +690,11 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             for j in pagina["jobs"]
             if j.get("id") == prova["job_id"]
         ]
-        esperado = f"preparar ({manifesto['celula']})" if nome == "build" else nome
+        esperado = (
+            f"preparar ({manifesto['celula']})"
+            if nome == "build"
+            else "muralhas-main" if nome == "muralhas" else "ci-celula-gate-main"
+        )
         _exigir(
             len(jobs) == 1
             and jobs[0].get("name") == esperado
@@ -721,7 +711,7 @@ def conferir_origem(manifesto: dict, bundle: dict, raiz: Path) -> None:
             ]
             _exigir(
                 len(emissores) == 1
-                and emissores[0].get("name") == f"rodar ({manifesto['celula']})"
+                and emissores[0].get("name") == f"rodar-main ({manifesto['celula']})"
                 and emissores[0].get("status") == "completed"
                 and emissores[0].get("conclusion") == "success",
                 "ci-celula-gate: matriz emissora não aprovou",

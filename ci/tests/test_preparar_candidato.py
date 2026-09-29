@@ -225,9 +225,13 @@ def test_merge_que_muda_codigo_exige_nova_prova(bancada):
     git(raiz, "commit", "-qm", "merge independente")
     integracao_sem_mudanca = git(raiz, "rev-parse", "HEAD")
     atual = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
+    with pytest.raises(preparo.PreparoInvalido, match="push main"):
+        montar(raiz, base, fonte, integracao_sem_mudanca, atual, fonte)
     assert (
         candidato.validar(
-            montar(raiz, base, fonte, integracao_sem_mudanca, atual, fonte)
+            montar(
+                raiz, base, fonte, integracao_sem_mudanca, atual, integracao_sem_mudanca
+            )
         )["estado"]
         == "PASS"
     )
@@ -236,7 +240,7 @@ def test_merge_que_muda_codigo_exige_nova_prova(bancada):
     git(raiz, "commit", "-qm", "merge alterou candidato")
     integracao = git(raiz, "rev-parse", "HEAD")
     atual = preparo.snapshot(raiz, "admin", BASE, PACOTES, AMBIENTE)
-    with pytest.raises(preparo.PreparoInvalido, match="novas provas"):
+    with pytest.raises(preparo.PreparoInvalido, match="push main"):
         montar(raiz, base, fonte, integracao, atual, fonte)
     manifesto = montar(raiz, base, fonte, integracao, atual, integracao)
     assert candidato.validar(manifesto)["estado"] == "PASS"
@@ -372,7 +376,7 @@ def test_emissao_usa_identidade_do_job_oficial(monkeypatch, bancada):
         "GITHUB_ACTIONS": "true",
         "GITHUB_REPOSITORY": candidato.REPO,
         "GITHUB_WORKFLOW_REF": f"{candidato.REPO}/.github/workflows/ci-celula.yml@refs/heads/main",
-        "GITHUB_JOB": "rodar",
+        "GITHUB_JOB": "rodar-main",
         "GITHUB_SHA": fonte,
         "GITHUB_RUN_ID": "42",
         "GITHUB_RUN_ATTEMPT": "2",
@@ -384,7 +388,15 @@ def test_emissao_usa_identidade_do_job_oficial(monkeypatch, bancada):
     def api(args, _):
         if "jobs?" in args[-1]:
             return [
-                {"jobs": [{"id": 99, "name": "rodar (admin)", "status": "in_progress"}]}
+                {
+                    "jobs": [
+                        {
+                            "id": 99,
+                            "name": "rodar-main (admin)",
+                            "status": "in_progress",
+                        }
+                    ]
+                }
             ]
         return {
             "head_sha": fonte,
@@ -392,6 +404,7 @@ def test_emissao_usa_identidade_do_job_oficial(monkeypatch, bancada):
             "head_repository": {"full_name": candidato.REPO},
             "run_attempt": 2,
             "event": "push",
+            "head_branch": "main",
         }
 
     monkeypatch.setattr(candidato, "_json_comando", api)
@@ -403,4 +416,8 @@ def test_emissao_usa_identidade_do_job_oficial(monkeypatch, bancada):
     )
     monkeypatch.setenv("GITHUB_JOB", "ci-celula-gate")
     with pytest.raises(preparo.PreparoInvalido, match="job emissor"):
+        preparo.emitir(raiz, "ci-celula-gate", "admin", medido)
+    monkeypatch.setenv("GITHUB_JOB", "rodar-main")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    with pytest.raises(preparo.PreparoInvalido, match="execução não pertence"):
         preparo.emitir(raiz, "ci-celula-gate", "admin", medido)

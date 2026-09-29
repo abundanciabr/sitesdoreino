@@ -45,17 +45,16 @@ def emitir(raiz: Path, nome: str, celula: str, medido: dict) -> dict:
         )
     )
     exigir(
-        os.environ.get("GITHUB_WORKFLOW_REF", "").startswith(
-            f"{candidato.REPO}/{workflow}@"
-        ),
+        os.environ.get("GITHUB_WORKFLOW_REF")
+        == f"{candidato.REPO}/{workflow}@refs/heads/main",
         "workflow emissor inesperado",
     )
     exigir(
         os.environ.get("GITHUB_JOB")
         == (
-            "rodar"
+            "rodar-main"
             if nome == "ci-celula-gate"
-            else "preparar" if nome == "build" else "muralhas"
+            else "preparar" if nome == "build" else "muralhas-main"
         ),
         "job emissor inesperado",
     )
@@ -86,8 +85,8 @@ def emitir(raiz: Path, nome: str, celula: str, medido: dict) -> dict:
         and execucao.get("head_repository", {}).get("full_name") == candidato.REPO
         and execucao.get("run_attempt") == tentativa
         and execucao.get("event") == os.environ.get("GITHUB_EVENT_NAME")
-        and execucao.get("event")
-        in ({"push"} if nome == "build" else {"push", "pull_request"}),
+        and execucao.get("event") == "push"
+        and execucao.get("head_branch") == "main",
         "execução não pertence ao job oficial",
     )
     paginas = candidato._json_comando(
@@ -101,9 +100,9 @@ def emitir(raiz: Path, nome: str, celula: str, medido: dict) -> dict:
         raiz,
     )
     esperado = (
-        f"rodar ({celula})"
+        f"rodar-main ({celula})"
         if nome == "ci-celula-gate"
-        else f"preparar ({celula})" if nome == "build" else "muralhas"
+        else f"preparar ({celula})" if nome == "build" else "muralhas-main"
     )
     exigir(
         isinstance(paginas, list)
@@ -320,26 +319,6 @@ def pacotes_da_imagem(raiz: Path, imagem: str) -> object:
         ) from erro
 
 
-def conferir_revalidacao(raiz: Path, celula: str, fonte: str, integracao: str) -> None:
-    caminhos = [
-        f"services/{celula}",
-        "contracts",
-        "ci",
-        ".github/workflows",
-        "infra/docker-compose.yml",
-        "celulas.yml",
-    ]
-    if celula == "admin":
-        caminhos.extend(("painel", "fila", "documentos", "docs/decisoes"))
-    mudancas = comando_git(
-        raiz, "diff", "--name-only", fonte, integracao, "--", *caminhos
-    )
-    exigir(
-        not mudancas,
-        "merge alterou entradas relevantes e exige novas provas na revisão integrada",
-    )
-
-
 def snapshot(
     raiz: Path, celula: str, base: str, pacotes: object, ambiente: object
 ) -> dict:
@@ -542,17 +521,9 @@ def criar(
         nome = prova["nome"]
         exigir(nome in atual["verificadores"], f"verificador {nome} não medido")
         exigir(
-            prova["revisao"]
-            in (identidade_fonte["revisao"], identidade_integracao["revisao"]),
-            f"{nome}: revisão fora do candidato",
+            prova["revisao"] == identidade_integracao["revisao"],
+            f"{nome}: somente prova oficial push main da revisão integrada autoriza",
         )
-        if prova["revisao"] == identidade_fonte["revisao"]:
-            conferir_revalidacao(
-                raiz,
-                celula,
-                identidade_fonte["revisao"],
-                identidade_integracao["revisao"],
-            )
         if nome == "build":
             exigir(
                 prova["revisao"] == identidade_integracao["revisao"]
@@ -580,11 +551,6 @@ def criar(
             == {grupo: atual["entradas"][grupo] for grupo in escopo},
             f"{nome}: emissão medida pelo job diverge do snapshot atual",
         )
-        if prova["revisao"] != identidade_integracao["revisao"]:
-            exigir(
-                emissao.get("ambiente") == atual["ambiente"],
-                f"{nome}: ambiente anterior sem equivalência com a integração",
-            )
         provas_completas.append(
             {
                 **prova,

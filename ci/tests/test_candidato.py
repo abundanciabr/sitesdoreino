@@ -40,7 +40,7 @@ def entrada():
             "run_id": 10 if nome == "build" else 20 + indice,
             "tentativa": 1,
             "job_id": indice,
-            "revisao": "d" * 40 if nome == "build" else "e" * 40,
+            "revisao": "d" * 40,
         }
         prova["emissao"] = {
             "versao": 1,
@@ -92,11 +92,7 @@ def assinado(manifesto, prova=None):
                 "signature": {
                     "certificate": {
                         "runInvocationURI": f"https://github.com/abundanciabr/sitesdoreino/actions/runs/{run_id}/attempts/1",
-                        "buildTrigger": (
-                            "push"
-                            if prova is None or prova["nome"] == "build"
-                            else "pull_request"
-                        ),
+                        "buildTrigger": "push",
                         "sourceRepositoryDigest": revisao,
                     }
                 },
@@ -131,8 +127,19 @@ def fonte_oficial(monkeypatch, manifesto):
             prova = next(
                 (p for p in manifesto["provas"] if arquivo == f"{p['nome']}.json"), None
             )
-            if prova is None or prova["nome"] == "build":
-                assert args[args.index("--cert-identity") + 1] == candidato.IDENTIDADE
+            workflow = (
+                candidato.WORKFLOW
+                if prova is None or prova["nome"] == "build"
+                else (
+                    ".github/workflows/muralhas.yml"
+                    if prova["nome"] == "muralhas"
+                    else ".github/workflows/ci-celula.yml"
+                )
+            )
+            assert (
+                args[args.index("--cert-identity") + 1]
+                == f"https://github.com/{candidato.REPO}/{workflow}@refs/heads/main"
+            )
             assert args[args.index("--source-digest") + 1] == (
                 prova["revisao"] if prova else "d" * 40
             )
@@ -154,7 +161,15 @@ def fonte_oficial(monkeypatch, manifesto):
             jobs = [
                 {
                     "id": prova["job_id"],
-                    "name": "preparar (admin)" if nome == "build" else nome,
+                    "name": (
+                        "preparar (admin)"
+                        if nome == "build"
+                        else (
+                            "muralhas-main"
+                            if nome == "muralhas"
+                            else "ci-celula-gate-main"
+                        )
+                    ),
                     "status": "completed",
                     "conclusion": "success",
                 }
@@ -163,7 +178,7 @@ def fonte_oficial(monkeypatch, manifesto):
                 jobs.append(
                     {
                         "id": prova["emissao"]["job_id"],
-                        "name": "rodar (admin)",
+                        "name": "rodar-main (admin)",
                         "status": "completed",
                         "conclusion": "success",
                     }
@@ -182,7 +197,7 @@ def fonte_oficial(monkeypatch, manifesto):
             ),
             "head_repository": {"full_name": candidato.REPO},
             "run_attempt": 1,
-            "event": "push" if nome == "build" else "pull_request",
+            "event": "push",
             "head_branch": "main",
             "status": "completed",
             "conclusion": "success",
@@ -254,6 +269,14 @@ def test_resultado_nao_aprovado_recusado(entrada, resultado):
 def test_prova_ausente_nao_vira_verde(entrada):
     entrada["provas"].pop()
     with pytest.raises(candidato.CandidatoInvalido, match="sem prova"):
+        candidato.criar(entrada)
+
+
+def test_prova_pr_nao_autoriza_candidato_main(entrada):
+    prova = next(p for p in entrada["provas"] if p["nome"] == "muralhas")
+    prova["revisao"] = entrada["fonte"]["revisao"]
+    prova["emissao"]["revisao"] = prova["revisao"]
+    with pytest.raises(candidato.CandidatoInvalido, match="push main"):
         candidato.criar(entrada)
 
 
