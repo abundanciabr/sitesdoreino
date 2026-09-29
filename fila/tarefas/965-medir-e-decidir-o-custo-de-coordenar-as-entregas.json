@@ -1,0 +1,19 @@
+{
+  "arquivo": "965-medir-e-decidir-o-custo-de-coordenar-as-entregas",
+  "id": "TAR-965",
+  "titulo": "Medir e decidir o custo de coordenar as entregas",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Medidas reais reservas/consultas/atualizacoes/conflitos/PRs administrativos, prototipo limitado com concorrencia/idempotencia, comparacao custo operacional e decisao explicita fundamentada. Nao-adocao requer evidencia positiva; inconclusivo nao vira nao-adotar.",
+  "despacho": "Mandato integral direto do mantenedor em29/09/2026, TAR958 GPS central; plano A88666E0FDADADF30A0B0F68ECD133534B0755A8606004112F98E1F743E3C5C2; prompts742A1D14DBE21BF662926E5C237219AD6AEE1386D6884AB90844B083C62A3B7E. Apenas coordenador01a0ed71 despacha; não criar subagentes. Sem custos novos/acessoalternativo/exposição de segredos. Outras bancadas existem; não reverter outros.\nPME05 tentativa1, responsavel unico pme05_coordenacao, gpt-6-sol high explicitamente pela ferramenta, sem fallback configurado; runtime independente nao atestado. Pode medir e prototipar em paralelo, migracao somente apos decisao fundamentada/contrato redistribuido pelo coordenador. Baseorigin/main ee596c9. Integracao pelo rito ci/pr.py; rollback reverte script de medicao sem dados. Proximaacao medir e executar prototipo; parar apenas em impedimento real, preservando provas.\nEscrita: ci/medir_coordenacao.py ci/tests/test_medir_coordenacao.py; fila da propria tarefa; prototipo descartavel fora do repo. ci/fila.py reservar.py somente leitura, dono PME03. Sem mutacao producao.\nAceite: Medidas reais reservas/consultas/atualizacoes/conflitos/PRs administrativos, prototipo limitado com concorrencia/idempotencia, comparacao custo operacional e decisao explicita fundamentada. Nao-adocao requer evidencia positiva; inconclusivo nao vira nao-adotar.",
+  "origem": "Mandato PME 29/09/2026; TAR-958",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

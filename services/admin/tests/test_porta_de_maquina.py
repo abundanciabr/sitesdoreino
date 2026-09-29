@@ -88,7 +88,10 @@ def test_a_porta_tem_a_operacao_que_o_contrato_congelou_e_so_ela():
     Guarda varrendo lista vazia é verde que não mede nada (`armadilhas/351`):
     apagar a rota deixaria os testes de cadeado passando por falta de caso.
     """
-    assert operacoes_da_porta() == [("post", "/administradores/consultar")]
+    assert operacoes_da_porta() == [
+        ("post", "/administradores/consultar"),
+        ("post", "/coordenacao"),
+    ]
 
 
 @pytest.mark.parametrize("verbo,caminho", operacoes_da_porta())

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-019-ci-nucleo-de-coordenacao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: núcleo de coordenação",
+  detalhe: "Núcleo adota transação e concessões separadas. Git governa até corte e backup externo provados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2340. Validação local: árvore 8e3369c3c2f4fa58584d7915743ed7fd4afb962a; commit 9f0e2e6ed0a41d3c79e9ddce24e6eb7344cb3ef6; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-965",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
