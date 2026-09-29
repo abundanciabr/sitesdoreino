@@ -216,6 +216,70 @@ paths:
               - $ref: '#/components/schemas/Coordenacao_confirmar_publicacao'
               - $ref: '#/components/schemas/Coordenacao_reconciliar_publicacao'
         required: true
+  /coordenacao/epocas:
+    post:
+      operationId: transicionarEpocaCoordenacao
+      summary: Pausar, consultar e retomar época sob testemunho oficial
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+      description: A transição usa somente a autoridade PostgreSQL já cortada. A fase
+        preparada precede o avanço do banco; a fase ativa só permite retomada após
+        prova do testemunho remoto. O receptor oficial fornece recibos, sem transferir
+        a chave ao cliente.
+      tags:
+      - Coordenação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/Transicao_pausar'
+              - $ref: '#/components/schemas/Transicao_consultar_transicao'
+              - $ref: '#/components/schemas/Transicao_registrar_preparada'
+              - $ref: '#/components/schemas/Transicao_registrar_ativa'
+              - $ref: '#/components/schemas/Transicao_retomar'
+        required: true
 components:
   schemas:
     RespostaDeConsulta:
@@ -559,6 +623,135 @@ components:
       required:
       - conteudo
       - assinatura
+      type: object
+    Transicao_consultar_transicao:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: consultar_transicao
+          type: string
+        coorte:
+          type: string
+        transicao:
+          type: string
+        fase:
+          enum:
+          - preparada
+          - ativa
+          type: string
+        nonce:
+          type: string
+      required:
+      - operacao
+      - coorte
+      - transicao
+      - fase
+      - nonce
+      type: object
+    Transicao_pausar:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: pausar
+          type: string
+        coorte:
+          type: string
+        transicao:
+          type: string
+        chave:
+          type: string
+        epoca:
+          type: integer
+      required:
+      - operacao
+      - coorte
+      - transicao
+      - chave
+      - epoca
+      type: object
+    Transicao_registrar_ativa:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: registrar_ativa
+          type: string
+        coorte:
+          type: string
+        transicao:
+          type: string
+        chave:
+          type: string
+        epoca:
+          type: integer
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
+        testemunho_oid:
+          type: string
+        testemunho_sha256:
+          type: string
+      required:
+      - operacao
+      - coorte
+      - transicao
+      - chave
+      - epoca
+      - recibo
+      - testemunho_oid
+      - testemunho_sha256
+      type: object
+    Transicao_registrar_preparada:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: registrar_preparada
+          type: string
+        coorte:
+          type: string
+        transicao:
+          type: string
+        chave:
+          type: string
+        epoca:
+          type: integer
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
+        testemunho_oid:
+          type: string
+        testemunho_sha256:
+          type: string
+      required:
+      - operacao
+      - coorte
+      - transicao
+      - chave
+      - epoca
+      - recibo
+      - testemunho_oid
+      - testemunho_sha256
+      type: object
+    Transicao_retomar:
+      additionalProperties: false
+      properties:
+        operacao:
+          const: retomar
+          type: string
+        coorte:
+          type: string
+        transicao:
+          type: string
+        chave:
+          type: string
+        epoca:
+          type: integer
+        recibo:
+          $ref: '#/components/schemas/ReciboReceptor'
+      required:
+      - operacao
+      - coorte
+      - transicao
+      - chave
+      - epoca
+      - recibo
       type: object
   securitySchemes:
     bearerAuth:

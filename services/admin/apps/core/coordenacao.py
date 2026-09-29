@@ -7,8 +7,11 @@ import hmac
 import json
 import os
 import re
+import secrets
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import psycopg
 from django.http import JsonResponse
@@ -475,6 +478,10 @@ def executar(p, identidade):
                 (coorte,),
             ).fetchall()
             return {"autoridade": autoridade, "tarefas": tarefas}
+        if autoridade["modo"] != "ativa":
+            raise Recusa(
+                "Coorte pausada para troca de época. Consulte o testemunho e reconcilie antes de operar."
+            )
         if "epoca" in p and autoridade["epoca"] != p["epoca"]:
             raise Recusa("Época obsoleta. Reconsulte a autoridade antes de operar.")
         if op != "importar" and autoridade["backend"] != "postgres":
@@ -681,6 +688,18 @@ def _aplicar(c, p, ator, autoridade):
             "SELECT id FROM coordenacao.publicacao WHERE celula=%s AND estado IN ('autorizada','incerta')",
             (p["celula"],),
         ).fetchone()
+        anterior_pausada = (
+            atual
+            and c.execute(
+                "SELECT modo FROM coordenacao.autoridade WHERE coorte=%s",
+                (atual["coorte"],),
+            ).fetchone()["modo"]
+            == "pausada"
+        )
+        if anterior_pausada:
+            raise Recusa(
+                "Célula pertence a uma coorte pausada. Conclua a transição antes de trocar o publicador."
+            )
         if incerta or (atual and atual["vigente"]):
             raise Recusa(
                 "Célula possui publicador ou operação pendente. Reconcilie e comprove a parada antes de assumir."
@@ -853,6 +872,481 @@ def operar(request, pedido: PedidoCoordenacao):
     try:
         return JsonResponse(
             {"estado": "PASS", "resultado": executar(pedido.model_dump(), request.auth)}
+        )
+    except Recusa as erro:
+        return JsonResponse(
+            {"estado": "ERROR" if erro.status == 503 else "FAIL", "erro": str(erro)},
+            status=erro.status,
+        )
+
+
+CAMPOS_EPOCA = {
+    "pausar": {"operacao", "coorte", "transicao", "epoca", "chave"},
+    "consultar_transicao": {"operacao", "coorte", "transicao", "fase", "nonce"},
+    "registrar_preparada": {
+        "operacao",
+        "coorte",
+        "transicao",
+        "epoca",
+        "chave",
+        "testemunho_sha256",
+        "testemunho_oid",
+        "recibo",
+    },
+    "registrar_ativa": {
+        "operacao",
+        "coorte",
+        "transicao",
+        "epoca",
+        "chave",
+        "testemunho_sha256",
+        "testemunho_oid",
+        "recibo",
+    },
+    "retomar": {"operacao", "coorte", "transicao", "epoca", "chave", "recibo"},
+}
+
+
+TIPOS_EPOCA = {
+    "epoca": StrictInt,
+    "chave": str,
+    "fase": Literal["preparada", "ativa"],
+    "nonce": str,
+    "testemunho_sha256": str,
+    "testemunho_oid": str,
+    "recibo": ReciboReceptor,
+}
+PEDIDOS_EPOCA = tuple(
+    create_model(
+        "Transicao_" + nome,
+        __base__=PedidoFechado,
+        operacao=(Literal[nome], ...),
+        coorte=(str, ...),
+        transicao=(str, ...),
+        **{
+            campo: (TIPOS_EPOCA[campo], ...)
+            for campo in sorted(campos - {"operacao", "coorte", "transicao"})
+        },
+    )
+    for nome, campos in CAMPOS_EPOCA.items()
+)
+PedidoEpoca = Union[PEDIDOS_EPOCA]
+
+
+def _validar_epoca(p, identidade):
+    op = p["operacao"]
+    if set(p) != CAMPOS_EPOCA[op]:
+        raise Recusa(
+            "Campos da transição incompatíveis. Consulte o contrato e reenvie a operação completa.",
+            422,
+        )
+    if (
+        "transicionador" not in identidade["papeis"]
+        or p["coorte"] not in identidade["coortes"]
+    ):
+        raise Recusa(
+            "Identidade sem função ou coorte para transição. Use a identidade técnica oficial.",
+            403,
+        )
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", p["coorte"]) or not re.fullmatch(
+        r"[a-zA-Z0-9][a-zA-Z0-9-]{0,79}", p["transicao"]
+    ):
+        raise Recusa(
+            "Coorte ou transição inválida. Use coorte de até 63 caracteres e IDs estáveis sem caminho.",
+            422,
+        )
+    if "nonce" in p and not re.fullmatch("[0-9a-f]{32}", p["nonce"]):
+        raise Recusa(
+            "Nonce da consulta inválido. Use 16 bytes aleatórios por leitura oficial.",
+            422,
+        )
+    if "epoca" in p and (p["epoca"] < 1 or p["epoca"] >= 2**63 - 1):
+        raise Recusa("Época fora do intervalo do banco. Reconsulte a autoridade.", 422)
+    if "chave" in p and (
+        not isinstance(p["chave"], str) or not 1 <= len(p["chave"]) <= 200
+    ):
+        raise Recusa(
+            "Chave de operação inválida. Envie uma chave estável de até 200 caracteres.",
+            422,
+        )
+    if "testemunho_sha256" in p and not re.fullmatch(
+        "[0-9a-f]{64}", p["testemunho_sha256"]
+    ):
+        raise Recusa(
+            "Hash do testemunho inválido. Releia a tag assinada antes de operar.", 422
+        )
+    if "testemunho_oid" in p and not re.fullmatch("[0-9a-f]{40}", p["testemunho_oid"]):
+        raise Recusa("OID da tag inválido. Releia a referência anotada oficial.", 422)
+
+
+def _hash_autoridade(a):
+    return hash_conteudo(
+        {
+            campo: a[campo]
+            for campo in (
+                "coorte",
+                "backend",
+                "epoca",
+                "modo",
+                "transicao",
+                "watermark_sha256",
+                "limite_evento",
+                "origem_sha",
+                "hash_historico",
+                "testemunho_preparado_sha256",
+                "testemunho_preparado_oid",
+            )
+        }
+    )
+
+
+def _watermark(c, coorte, limite):
+    linhas = c.execute(
+        "SELECT id,conteudo FROM coordenacao.evento WHERE coorte=%s AND id<=%s ORDER BY id",
+        (coorte, limite),
+    ).fetchall()
+    return hash_conteudo(linhas)
+
+
+def _conferir_testemunho_remoto(coorte, epoca, fase, oid):
+    prefixo = f"refs/tags/coordenacao-epoca/{coorte}/"
+    url = (
+        "https://api.github.com/repos/abundanciabr/sitesdoreino/git/"
+        f"matching-refs/tags/coordenacao-epoca/{coorte}?verificacao={secrets.token_hex(16)}"
+    )
+    requisicao = Request(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Cache-Control": "no-cache",
+            "User-Agent": "sitesdoreino-coordenacao",
+        },
+    )
+    try:
+        with urlopen(requisicao, timeout=10) as resposta:
+            if (
+                resposta.status != 200
+                or resposta.geturl() != url
+                or resposta.headers.get("Link")
+            ):
+                raise Recusa(
+                    "Lista remota de épocas incompleta. Mantenha a coorte pausada e reconsulte o testemunho.",
+                    503,
+                )
+            bruto = resposta.read(1_000_001)
+            if len(bruto) > 1_000_000 or (
+                resposta.headers.get("Content-Length")
+                and len(bruto) != int(resposta.headers["Content-Length"])
+            ):
+                raise Recusa(
+                    "Lista remota de épocas incompleta. Mantenha a coorte pausada e reconsulte o testemunho.",
+                    503,
+                )
+            referencias = json.loads(bruto)
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError) as erro:
+        raise Recusa(
+            "Testemunho remoto indisponível. Mantenha a coorte pausada e repita a consulta oficial.",
+            503,
+        ) from erro
+    if not isinstance(referencias, list) or not 1 <= len(referencias) <= 5000:
+        raise Recusa(
+            "Lista remota de épocas inválida. Mantenha a coorte pausada e reconsulte o testemunho.",
+            503,
+        )
+    registros = {}
+    for item in referencias:
+        if not isinstance(item, dict) or not isinstance(item.get("ref"), str):
+            raise Recusa("Referência remota inválida. Mantenha a coorte pausada.", 503)
+        referencia = item["ref"]
+        if not referencia.startswith(prefixo):
+            continue
+        sufixo = referencia[len(prefixo) :]
+        partes = re.fullmatch(r"([0-9]{20})/(preparada|ativa)", sufixo)
+        objeto = item.get("object")
+        if (
+            partes is None
+            or not isinstance(objeto, dict)
+            or objeto.get("type") != "tag"
+            or not isinstance(objeto.get("sha"), str)
+            or not re.fullmatch("[0-9a-f]{40}", objeto["sha"])
+            or sufixo in registros
+        ):
+            raise Recusa(
+                "Referência remota conflitante. Mantenha a coorte pausada.", 503
+            )
+        registros[sufixo] = objeto["sha"]
+    maior = max(
+        ((int(nome[:20]), nome[21:]) for nome in registros),
+        default=None,
+        key=lambda parte: (parte[0], parte[1] == "ativa"),
+    )
+    esperado = (epoca, fase)
+    nome_esperado = f"{epoca:020d}/{fase}"
+    if maior != esperado or registros.get(nome_esperado) != oid:
+        raise Recusa(
+            "Época remota divergiu ou foi superada. Preserve a pausa e reconcilie as tags oficiais."
+        )
+
+
+def _situacao_transicao(c, a, fase):
+    if (
+        a["modo"] != "pausada"
+        or not a["watermark_sha256"]
+        or a["limite_evento"] is None
+    ):
+        raise Recusa(
+            "Coorte sem pausa íntegra. Pare os mutadores e capture o watermark primeiro."
+        )
+    if _watermark(c, a["coorte"], a["limite_evento"]) != a["watermark_sha256"]:
+        raise Recusa(
+            "Eventos anteriores à pausa não conferem. Restaure o tail sem descartar escritas."
+        )
+    tarefas = c.execute(
+        "SELECT count(*) AS n FROM coordenacao.tarefa WHERE coorte=%s AND dono IS NOT NULL",
+        (a["coorte"],),
+    ).fetchone()["n"]
+    publicadores = c.execute(
+        "SELECT count(*) AS n FROM coordenacao.publicador WHERE coorte=%s AND expira_em>clock_timestamp()",
+        (a["coorte"],),
+    ).fetchone()["n"]
+    pendencias = c.execute(
+        "SELECT count(*) AS n FROM coordenacao.publicacao pu JOIN coordenacao.candidato ca ON ca.id=pu.candidato JOIN coordenacao.tarefa t ON t.id=ca.tarefa WHERE t.coorte=%s AND pu.estado IN ('autorizada','incerta')",
+        (a["coorte"],),
+    ).fetchone()["n"]
+    if tarefas or publicadores or pendencias:
+        raise Recusa(
+            "Concessão ou publicação ainda pode produzir efeito. Reconcilie antes de avançar."
+        )
+    if fase == "preparada" and a["testemunho_preparado_sha256"]:
+        raise Recusa("Época já avançou. Consulte a fase ativa antes de criar nova tag.")
+    if fase == "ativa" and (
+        not a["testemunho_preparado_sha256"] or not a["testemunho_preparado_oid"]
+    ):
+        raise Recusa(
+            "Tag preparada não consta no banco. Reconcile a transição antes de ativar."
+        )
+    return {
+        "coorte": a["coorte"],
+        "epoca_atual": a["epoca"],
+        "epoca": a["epoca"] + (fase == "preparada"),
+        "transicao": a["transicao"],
+        "fase": fase,
+        "pausada": True,
+        "concessoes_invalidas": True,
+        "watermark_sha256": a["watermark_sha256"],
+        "autoridade_sha256": _hash_autoridade(a),
+    }
+
+
+def _conferir_repeticao_epoca(a, p, resultado):
+    op = p["operacao"]
+    epoca = p["epoca"] + (op == "registrar_preparada")
+    modo = "ativa" if op == "retomar" else "pausada"
+    if a["epoca"] != epoca or a["modo"] != modo or a["transicao"] != p["transicao"]:
+        raise Recusa(
+            "A fase mudou desde a resposta anterior. Reconsulte a autoridade antes de repetir."
+        )
+    if op == "pausar":
+        atual = (
+            a["watermark_sha256"] == resultado["watermark_sha256"]
+            and not a["testemunho_preparado_sha256"]
+            and not a["testemunho_ativo_sha256"]
+        )
+    elif op == "registrar_preparada":
+        atual = (
+            a["testemunho_preparado_sha256"] == p["testemunho_sha256"]
+            and a["testemunho_preparado_oid"] == p["testemunho_oid"]
+            and not a["testemunho_ativo_sha256"]
+        )
+    elif op == "registrar_ativa":
+        atual = (
+            a["testemunho_ativo_sha256"] == p["testemunho_sha256"]
+            and a["testemunho_ativo_oid"] == p["testemunho_oid"]
+        )
+    else:
+        atual = (
+            a["testemunho_ativo_sha256"] == p["recibo"]["conteudo"]["registro_sha256"]
+            and a["testemunho_ativo_oid"] == p["recibo"]["conteudo"]["testemunho_oid"]
+        )
+    if not atual:
+        raise Recusa(
+            "Testemunho local mudou desde a resposta anterior. Reconcilie a época antes de repetir."
+        )
+    if op != "pausar":
+        fase = "preparada" if op == "registrar_preparada" else "ativa"
+        oid = (
+            p["testemunho_oid"] if "testemunho_oid" in p else a["testemunho_ativo_oid"]
+        )
+        _conferir_testemunho_remoto(a["coorte"], epoca, fase, oid)
+
+
+def executar_epoca(p, identidade):
+    _validar_epoca(p, identidade)
+    op, coorte, ator = p["operacao"], p["coorte"], identidade["id"]
+    with banco() as c:
+        a = c.execute(
+            "SELECT * FROM coordenacao.autoridade WHERE coorte=%s FOR UPDATE", (coorte,)
+        ).fetchone()
+        if not a or a["backend"] != "postgres":
+            raise Recusa(
+                "PostgreSQL não governa esta coorte. Concilie o corte antes da época."
+            )
+        if op == "consultar_transicao":
+            if a["transicao"] != p["transicao"]:
+                raise Recusa(
+                    "Transição não corresponde à pausa atual. Consulte o controle oficial."
+                )
+            return dict(_situacao_transicao(c, a, p["fase"]), nonce=p["nonce"])
+        fingerprint = hash_conteudo({"ator": ator, "pedido": p})
+        anterior = c.execute(
+            "SELECT sha256,resultado FROM coordenacao.operacao WHERE coorte=%s AND chave=%s",
+            (coorte, p["chave"]),
+        ).fetchone()
+        if anterior:
+            if anterior["sha256"] != fingerprint or a["transicao"] != p["transicao"]:
+                raise Recusa(
+                    "Chave divergiu ou transição mudou. Reconsulte antes de repetir."
+                )
+            _conferir_repeticao_epoca(a, p, anterior["resultado"])
+            return anterior["resultado"]
+        if a["epoca"] != p["epoca"]:
+            raise Recusa("Época mudou. Reconsulte o testemunho antes de operar.")
+        if op == "pausar":
+            if a["modo"] != "ativa":
+                raise Recusa(
+                    "Coorte já pausada. Consulte a transição vigente antes de repetir."
+                )
+            pendencia = c.execute(
+                "SELECT pu.id FROM coordenacao.publicacao pu JOIN coordenacao.candidato ca ON ca.id=pu.candidato JOIN coordenacao.tarefa t ON t.id=ca.tarefa WHERE t.coorte=%s AND pu.estado IN ('autorizada','incerta') LIMIT 1",
+                (coorte,),
+            ).fetchone()
+            if pendencia:
+                raise Recusa(
+                    "Publicação pendente. Reconcilie seu efeito antes de pausar a coorte."
+                )
+            limite = c.execute(
+                "SELECT COALESCE(max(id),0) AS id FROM coordenacao.evento WHERE coorte=%s",
+                (coorte,),
+            ).fetchone()["id"]
+            watermark = _watermark(c, coorte, limite)
+            c.execute(
+                "UPDATE coordenacao.tarefa SET dono=NULL,expira_em=NULL,concessao=concessao+1 WHERE coorte=%s AND dono IS NOT NULL",
+                (coorte,),
+            )
+            c.execute(
+                "UPDATE coordenacao.publicador SET expira_em=clock_timestamp(),concessao=concessao+1 WHERE coorte=%s",
+                (coorte,),
+            )
+            a = c.execute(
+                "UPDATE coordenacao.autoridade SET modo='pausada',transicao=%s,watermark_sha256=%s,limite_evento=%s,testemunho_preparado_sha256=NULL,testemunho_preparado_oid=NULL,testemunho_ativo_sha256=NULL,testemunho_ativo_oid=NULL WHERE coorte=%s RETURNING *",
+                (p["transicao"], watermark, limite, coorte),
+            ).fetchone()
+            resultado = _situacao_transicao(c, a, "preparada")
+        else:
+            if a["modo"] != "pausada" or a["transicao"] != p["transicao"]:
+                raise Recusa(
+                    "Pausa ou transição não confere. Preserve a coorte parada."
+                )
+            fase = "preparada" if op == "registrar_preparada" else "ativa"
+            situacao = _situacao_transicao(c, a, fase)
+            if op == "registrar_preparada":
+                esperado = {
+                    "tipo": "testemunho_preparado",
+                    "coorte": coorte,
+                    "epoca": p["epoca"] + 1,
+                    "transicao": p["transicao"],
+                    "watermark_sha256": a["watermark_sha256"],
+                    "autoridade_sha256": situacao["autoridade_sha256"],
+                    "registro_sha256": p["testemunho_sha256"],
+                    "testemunho_oid": p["testemunho_oid"],
+                }
+                _verificar_recibo(p["recibo"], esperado)
+                _conferir_testemunho_remoto(
+                    coorte, p["epoca"] + 1, "preparada", p["testemunho_oid"]
+                )
+                a = c.execute(
+                    "UPDATE coordenacao.autoridade SET epoca=epoca+1,testemunho_preparado_sha256=%s,testemunho_preparado_oid=%s WHERE coorte=%s RETURNING *",
+                    (p["testemunho_sha256"], p["testemunho_oid"], coorte),
+                ).fetchone()
+                resultado = _situacao_transicao(c, a, "ativa")
+            elif op == "registrar_ativa":
+                if a["testemunho_ativo_sha256"]:
+                    raise Recusa(
+                        "Tag ativa já registrada. Reuse a chave original e confira o testemunho."
+                    )
+                esperado = {
+                    "tipo": "testemunho_ativo",
+                    "coorte": coorte,
+                    "epoca": p["epoca"],
+                    "transicao": p["transicao"],
+                    "watermark_sha256": a["watermark_sha256"],
+                    "autoridade_sha256": situacao["autoridade_sha256"],
+                    "preparada_sha256": a["testemunho_preparado_sha256"],
+                    "registro_sha256": p["testemunho_sha256"],
+                    "testemunho_oid": p["testemunho_oid"],
+                }
+                _verificar_recibo(p["recibo"], esperado)
+                _conferir_testemunho_remoto(
+                    coorte, p["epoca"], "ativa", p["testemunho_oid"]
+                )
+                c.execute(
+                    "UPDATE coordenacao.autoridade SET testemunho_ativo_sha256=%s,testemunho_ativo_oid=%s WHERE coorte=%s",
+                    (p["testemunho_sha256"], p["testemunho_oid"], coorte),
+                )
+                resultado = dict(
+                    situacao, testemunho_ativo_sha256=p["testemunho_sha256"]
+                )
+            else:
+                if not a["testemunho_ativo_sha256"] or not a["testemunho_ativo_oid"]:
+                    raise Recusa(
+                        "Tag ativa não consta no banco. Não retome esta coorte."
+                    )
+                esperado = {
+                    "tipo": "retomada",
+                    "coorte": coorte,
+                    "epoca": p["epoca"],
+                    "transicao": p["transicao"],
+                    "watermark_sha256": a["watermark_sha256"],
+                    "registro_sha256": a["testemunho_ativo_sha256"],
+                    "testemunho_oid": a["testemunho_ativo_oid"],
+                }
+                _verificar_recibo(p["recibo"], esperado)
+                _conferir_testemunho_remoto(
+                    coorte, p["epoca"], "ativa", a["testemunho_ativo_oid"]
+                )
+                c.execute(
+                    "UPDATE coordenacao.autoridade SET modo='ativa' WHERE coorte=%s",
+                    (coorte,),
+                )
+                resultado = {"coorte": coorte, "epoca": p["epoca"], "modo": "ativa"}
+        evento = c.execute(
+            "INSERT INTO coordenacao.evento(coorte,ator,operacao,conteudo) VALUES(%s,%s,%s,%s) RETURNING id",
+            (coorte, ator, op, Jsonb({"pedido": p, "resultado": resultado})),
+        ).fetchone()["id"]
+        c.execute("INSERT INTO coordenacao.outbox(evento) VALUES(%s)", (evento,))
+        c.execute(
+            "INSERT INTO coordenacao.operacao(coorte,chave,sha256,resultado) VALUES(%s,%s,%s,%s)",
+            (coorte, p["chave"], fingerprint, Jsonb(resultado)),
+        )
+        return resultado
+
+
+@router.post(
+    "/coordenacao/epocas",
+    response={200: dict, 401: dict, 403: dict, 409: dict, 422: dict, 503: dict},
+    operation_id="transicionarEpocaCoordenacao",
+    summary="Pausar, consultar e retomar época sob testemunho oficial",
+    description="A transição usa somente a autoridade PostgreSQL já cortada. A fase preparada precede o avanço do banco; a fase ativa só permite retomada após prova do testemunho remoto. O receptor oficial fornece recibos, sem transferir a chave ao cliente.",
+)
+def transicionar_epoca(request, pedido: PedidoEpoca):
+    try:
+        return JsonResponse(
+            {
+                "estado": "PASS",
+                "resultado": executar_epoca(
+                    pedido.model_dump(exclude_none=True), request.auth
+                ),
+            }
         )
     except Recusa as erro:
         return JsonResponse(

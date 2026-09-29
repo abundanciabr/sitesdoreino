@@ -2,10 +2,12 @@
 
 import hashlib
 import hmac
+import io
 import os
 import secrets
 import json
 from concurrent.futures import ThreadPoolExecutor
+from urllib.error import URLError
 
 import pytest
 from django.test import Client
@@ -107,7 +109,7 @@ def test_sem_token_e_token_leitura_antigo_nao_abrem_coordenacao(monkeypatch):
                 "/interno/coordenacao",
                 data=json.dumps({"operacao": "listar", "coorte": "piloto"}),
                 content_type="application/json",
-                **headers
+                **headers,
             )
             .status_code
             == 401
@@ -725,3 +727,374 @@ def test_reconciliacao_sem_parada_comprovada_mantem_pendencia(banco_limpo):
             c.execute("SELECT estado FROM coordenacao.publicacao").fetchone()["estado"]
             == "autorizada"
         )
+
+
+CONTROLADOR = {
+    "id": "controle-de-epoca",
+    "papeis": ["transicionador"],
+    "coortes": ["piloto"],
+    "celulas": [],
+}
+
+
+def test_transicao_de_epoca_so_retoma_apos_duas_tags_e_recibos(
+    banco_limpo, monkeypatch
+):
+    remotas = []
+    bloqueio = {"ativo": False}
+
+    def conferir(*args):
+        remotas.append(args)
+        if bloqueio["ativo"]:
+            raise coord.Recusa("Testemunho remoto indisponível. Preserve a pausa.", 503)
+
+    monkeypatch.setattr(coord, "_conferir_testemunho_remoto", conferir)
+    ativo()
+    concessao = adquirir()
+    pausa = {
+        "operacao": "pausar",
+        "coorte": "piloto",
+        "chave": "pausa-1",
+        "transicao": "tentativa-1",
+        "epoca": 1,
+    }
+    estado = coord.executar_epoca(pausa, CONTROLADOR)
+    assert estado["epoca_atual"] == 1
+    assert estado["epoca"] == 2
+    assert estado["pausada"] and estado["concessoes_invalidas"]
+    assert coord.executar_epoca(pausa, CONTROLADOR) == estado
+    with pytest.raises(coord.Recusa, match="pausada"):
+        adquirir("claim-pausada")
+    consulta = {
+        "operacao": "consultar_transicao",
+        "coorte": "piloto",
+        "transicao": "tentativa-1",
+        "fase": "preparada",
+        "nonce": "a" * 32,
+    }
+    assert coord.executar_epoca(consulta, CONTROLADOR) == dict(estado, nonce="a" * 32)
+    preparada = {
+        "operacao": "registrar_preparada",
+        "coorte": "piloto",
+        "transicao": "tentativa-1",
+        "chave": "preparar-1",
+        "epoca": 1,
+        "testemunho_sha256": "a" * 64,
+        "testemunho_oid": "1" * 40,
+    }
+    conteudo = {
+        "tipo": "testemunho_preparado",
+        "coorte": "piloto",
+        "epoca": 2,
+        "transicao": "tentativa-1",
+        "watermark_sha256": estado["watermark_sha256"],
+        "autoridade_sha256": estado["autoridade_sha256"],
+        "registro_sha256": "a" * 64,
+        "testemunho_oid": "1" * 40,
+    }
+    with pytest.raises(coord.Recusa):
+        coord.executar_epoca(
+            {**preparada, "recibo": recibo_de_ensaio({**conteudo, "epoca": 3})},
+            CONTROLADOR,
+        )
+    with coord.banco() as c:
+        assert c.execute(
+            "SELECT epoca,modo FROM coordenacao.autoridade WHERE coorte='piloto'"
+        ).fetchone() == {"epoca": 1, "modo": "pausada"}
+    preparada["recibo"] = recibo_de_ensaio(conteudo)
+    avancado = coord.executar_epoca(preparada, CONTROLADOR)
+    assert avancado["epoca_atual"] == 2 and avancado["pausada"]
+    assert coord.executar_epoca(preparada, CONTROLADOR) == avancado
+    ativa = {
+        "operacao": "registrar_ativa",
+        "coorte": "piloto",
+        "transicao": "tentativa-1",
+        "chave": "ativar-1",
+        "epoca": 2,
+        "testemunho_sha256": "b" * 64,
+        "testemunho_oid": "2" * 40,
+    }
+    conteudo_ativo = {
+        "tipo": "testemunho_ativo",
+        "coorte": "piloto",
+        "epoca": 2,
+        "transicao": "tentativa-1",
+        "watermark_sha256": estado["watermark_sha256"],
+        "autoridade_sha256": avancado["autoridade_sha256"],
+        "preparada_sha256": "a" * 64,
+        "registro_sha256": "b" * 64,
+        "testemunho_oid": "2" * 40,
+    }
+    ativa["recibo"] = recibo_de_ensaio(conteudo_ativo)
+    afirmado = coord.executar_epoca(ativa, CONTROLADOR)
+    assert afirmado["testemunho_ativo_sha256"] == "b" * 64
+    assert coord.executar_epoca(ativa, CONTROLADOR) == afirmado
+    retomada = {
+        "operacao": "retomar",
+        "coorte": "piloto",
+        "transicao": "tentativa-1",
+        "chave": "retomar-1",
+        "epoca": 2,
+        "recibo": recibo_de_ensaio(
+            {
+                "tipo": "retomada",
+                "coorte": "piloto",
+                "epoca": 2,
+                "transicao": "tentativa-1",
+                "watermark_sha256": estado["watermark_sha256"],
+                "registro_sha256": "b" * 64,
+                "testemunho_oid": "2" * 40,
+            }
+        ),
+    }
+    bloqueio["ativo"] = True
+    with pytest.raises(coord.Recusa, match="indisponível"):
+        coord.executar_epoca(retomada, CONTROLADOR)
+    with coord.banco() as c:
+        assert (
+            c.execute(
+                "SELECT modo FROM coordenacao.autoridade WHERE coorte='piloto'"
+            ).fetchone()["modo"]
+            == "pausada"
+        )
+    bloqueio["ativo"] = False
+    assert coord.executar_epoca(retomada, CONTROLADOR)["modo"] == "ativa"
+    assert coord.executar_epoca(retomada, CONTROLADOR)["modo"] == "ativa"
+    assert remotas == [
+        ("piloto", 2, "preparada", "1" * 40),
+        ("piloto", 2, "preparada", "1" * 40),
+        ("piloto", 2, "ativa", "2" * 40),
+        ("piloto", 2, "ativa", "2" * 40),
+        ("piloto", 2, "ativa", "2" * 40),
+        ("piloto", 2, "ativa", "2" * 40),
+        ("piloto", 2, "ativa", "2" * 40),
+    ]
+    with coord.banco() as c:
+        assert (
+            c.execute(
+                "SELECT count(*) AS n FROM coordenacao.evento WHERE coorte='piloto'"
+            ).fetchone()["n"]
+            == 6
+        )
+        assert (
+            c.execute("SELECT count(*) AS n FROM coordenacao.outbox").fetchone()["n"]
+            == 6
+        )
+    with pytest.raises(coord.Recusa, match="Época obsoleta"):
+        coord.executar(
+            {
+                "operacao": "renovar",
+                "coorte": "piloto",
+                "chave": "lease-antiga",
+                "tarefa": "TAR-1",
+                "epoca": 1,
+                "versao": concessao["versao"],
+                "concessao": concessao["concessao"],
+            },
+            EX,
+        )
+    coord.executar_epoca({**pausa, "chave": "pausa-2", "epoca": 2}, CONTROLADOR)
+    with pytest.raises(coord.Recusa, match="fase mudou"):
+        coord.executar_epoca(retomada, CONTROLADOR)
+    with coord.banco() as c:
+        assert (
+            c.execute(
+                "SELECT modo FROM coordenacao.autoridade WHERE coorte='piloto'"
+            ).fetchone()["modo"]
+            == "pausada"
+        )
+
+
+def test_coorte_fora_do_limite_do_testemunho_recusa_antes_da_pausa(banco_limpo):
+    ativo()
+    with pytest.raises(coord.Recusa, match="até 63"):
+        coord.executar_epoca(
+            {
+                "operacao": "pausar",
+                "coorte": "a" * 64,
+                "transicao": "tentativa-longa",
+                "chave": "pausa-longa",
+                "epoca": 1,
+            },
+            {**CONTROLADOR, "coortes": ["a" * 64]},
+        )
+    with coord.banco() as c:
+        assert (
+            c.execute(
+                "SELECT modo FROM coordenacao.autoridade WHERE coorte='piloto'"
+            ).fetchone()["modo"]
+            == "ativa"
+        )
+
+
+def test_pausa_recusa_publicacao_pendente_e_ausencia_de_tag_mantem_bloqueio(
+    banco_limpo,
+):
+    ativo()
+    p, _ = publicacao_de_ensaio()
+    coord.executar(p, PUB)
+    pausa = {
+        "operacao": "pausar",
+        "coorte": "piloto",
+        "chave": "pausa-bloqueada",
+        "transicao": "tentativa-2",
+        "epoca": 1,
+    }
+    with pytest.raises(coord.Recusa, match="Publicação pendente"):
+        coord.executar_epoca(pausa, CONTROLADOR)
+    with coord.banco() as c:
+        c.execute("UPDATE coordenacao.publicacao SET estado='incerta' WHERE id='aut'")
+    with pytest.raises(coord.Recusa, match="Publicação pendente"):
+        coord.executar_epoca(pausa, CONTROLADOR)
+    with coord.banco() as c:
+        c.execute("UPDATE coordenacao.publicacao SET estado='falhou' WHERE id='aut'")
+    estado = coord.executar_epoca(pausa, CONTROLADOR)
+    assert estado["pausada"]
+    with coord.banco() as c:
+        c.execute(
+            "INSERT INTO coordenacao.autoridade(coorte,backend,origem_sha,hash_historico) VALUES('outra','postgres',%s,%s)",
+            ("b" * 40, "c" * 64),
+        )
+    outra = {**PUB, "id": "publicador-outra", "coortes": ["outra"]}
+    with pytest.raises(coord.Recusa, match="coorte pausada"):
+        coord.executar(
+            {
+                "operacao": "adquirir_publicador",
+                "coorte": "outra",
+                "chave": "publicador-outra",
+                "celula": "admin",
+                "epoca": 1,
+            },
+            outra,
+        )
+    with pytest.raises(coord.Recusa, match="Tag preparada"):
+        coord.executar_epoca(
+            {
+                "operacao": "consultar_transicao",
+                "coorte": "piloto",
+                "transicao": "tentativa-2",
+                "fase": "ativa",
+                "nonce": "b" * 32,
+            },
+            CONTROLADOR,
+        )
+    with coord.banco() as c:
+        assert c.execute(
+            "SELECT epoca,modo FROM coordenacao.autoridade WHERE coorte='piloto'"
+        ).fetchone() == {"epoca": 1, "modo": "pausada"}
+
+
+def test_rota_de_epoca_exige_papel_e_responde_nonce_do_job(banco_limpo, monkeypatch):
+    ativo()
+    token = "transicionador-fixture"
+    monkeypatch.setenv(
+        "COORDENACAO_IDENTIDADES",
+        json.dumps({hashlib.sha256(token.encode()).hexdigest(): CONTROLADOR}),
+    )
+    cliente = Client()
+    pausa = {
+        "operacao": "pausar",
+        "coorte": "piloto",
+        "transicao": "tentativa-http",
+        "epoca": 1,
+        "chave": "pausar-http",
+    }
+    resposta = cliente.post(
+        "/interno/coordenacao/epocas",
+        data=json.dumps(pausa),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer " + token,
+    )
+    assert resposta.status_code == 200
+    nonce = "a" * 32
+    consulta = {
+        "operacao": "consultar_transicao",
+        "coorte": "piloto",
+        "transicao": "tentativa-http",
+        "fase": "preparada",
+        "nonce": nonce,
+    }
+    resposta = cliente.post(
+        "/interno/coordenacao/epocas",
+        data=json.dumps(consulta),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer " + token,
+    )
+    assert resposta.status_code == 200
+    resultado = resposta.json()["resultado"]
+    assert resultado["nonce"] == nonce
+    assert resultado["epoca_atual"] == 1 and resultado["epoca"] == 2
+    assert resultado["pausada"] and resultado["concessoes_invalidas"]
+    assert len(resultado) == 10
+    consulta["nonce"] = "sem-aleatoriedade"
+    resposta = cliente.post(
+        "/interno/coordenacao/epocas",
+        data=json.dumps(consulta),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer " + token,
+    )
+    assert resposta.status_code == 422
+
+
+def test_consulta_remota_recusa_backup_antigo_e_particao(monkeypatch):
+    class Resposta(io.BytesIO):
+        status = 200
+        headers = {}
+
+        def __init__(self, conteudo, url):
+            super().__init__(conteudo)
+            self.url = url
+
+        def geturl(self):
+            return self.url
+
+    def fonte(epoca, fase, oid, url):
+        return Resposta(
+            json.dumps(
+                [
+                    {
+                        "ref": f"refs/tags/coordenacao-epoca/piloto/{epoca:020d}/{fase}",
+                        "object": {"type": "tag", "sha": oid},
+                    }
+                ]
+            ).encode(),
+            url,
+        )
+
+    monkeypatch.setattr(
+        coord, "urlopen", lambda req, **k: fonte(3, "ativa", "3" * 40, req.full_url)
+    )
+    with pytest.raises(coord.Recusa, match="superada"):
+        coord._conferir_testemunho_remoto("piloto", 2, "ativa", "2" * 40)
+    monkeypatch.setattr(
+        coord, "urlopen", lambda req, **k: fonte(2, "ativa", "2" * 40, req.full_url)
+    )
+    coord._conferir_testemunho_remoto("piloto", 2, "ativa", "2" * 40)
+    with pytest.raises(coord.Recusa, match="divergiu"):
+        coord._conferir_testemunho_remoto("piloto", 2, "ativa", "4" * 40)
+    monkeypatch.setattr(
+        coord,
+        "urlopen",
+        lambda req, **k: fonte(
+            2, "ativa", "2" * 40, req.full_url.replace("https://", "http://")
+        ),
+    )
+    with pytest.raises(coord.Recusa, match="incompleta"):
+        coord._conferir_testemunho_remoto("piloto", 2, "ativa", "2" * 40)
+    monkeypatch.setattr(
+        coord,
+        "urlopen",
+        lambda req, **k: fonte(
+            2,
+            "ativa",
+            "2" * 40,
+            req.full_url.replace("/abundanciabr/sitesdoreino/", "/outro/repo/"),
+        ),
+    )
+    with pytest.raises(coord.Recusa, match="incompleta"):
+        coord._conferir_testemunho_remoto("piloto", 2, "ativa", "2" * 40)
+    monkeypatch.setattr(
+        coord, "urlopen", lambda *a, **k: (_ for _ in ()).throw(URLError("partição"))
+    )
+    with pytest.raises(coord.Recusa, match="indisponível"):
+        coord._conferir_testemunho_remoto("piloto", 2, "ativa", "2" * 40)
