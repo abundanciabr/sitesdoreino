@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-190415-TAR-992-explicada",
+  "tarefa": "TAR-992",
+  "evento": "explicada",
+  "quando": "2026-09-29T19:04:15.797489+00:00",
+  "quem": "Continuacao PME05 TAR958; protocolo minimo I1, construcao limitada a arquivos livres ate liberação969",
+  "o_que_e": "Uma tarefa pode tentar iniciar enquanto a coordenacao esta sendo transferida",
+  "o_que_muda": "A inicio da tarefa e a pausa passam pela mesma decisao indivisivel",
+  "exemplo": "Se a pausa vencer a corrida nenhum executor antigo recebe uma nova autorizacao valida",
+  "importancia": 90
+}
