@@ -1,0 +1,20 @@
+{
+  "arquivo": "979-impedir-alteracoes-simultaneas-em-todos-os-caminhos-de-produ",
+  "id": "TAR-979",
+  "titulo": "Impedir alteracoes simultaneas em todos os caminhos de producao",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Inventario completo ligado a testes; mutadores antigos/novos recusam concorrencia pelo mesmoinode; kitroot revisavel; copia instalada conferida; exclusaoantiga mantida ate evidencia completa.",
+  "despacho": "Frente MUTADORES da TAR958 PME08; responsavel pme_mutadores_producao tentativa1 gpt-6-sol high explicito semfallback/subagentes. Bancada pme-mutadores-producao ramo codex/pme-mutadores-producao base main837148ac. Transferencia07: escritura exclusiva receptores ainda SEMtrava infra/semear-*.sh, abrir-a-sala-de-aula/cadastrar-os-dois-cursos/conceder-fundador/ligar-a-appmax/por-a-chave-*/provisionar-*.sh, ativar-appmax-canario/meshcraft-sandbox/drill+estorno, conferir-as-fichas quando CONSERTAR=sim; infra/sincronizar-infra-na-vps.sh ordemsudo e infra/provisionar-usuario-ponte.sh/instaladorroot; ci/tests/test_exclusao_comum_da_publicacao.py e testesnovos proprios. Nao tocar infra/deploy-celula-na-vps.sh, workflows existentes ou trava-de-publicacao.sh sem redistribuicaoroot. Inventariar alvosreais antesedit; dividirincrementos<=15arquivossemfracionarprotecao. Trava existente FD8readonly mesmoinode root/deploy, nao removerrecriarchmodinode; sudo fechaFD8, provisaoroot antesposseinfra depoisadquirirerevalidar. Kitroot deve atualizar copia congelada protegida e demonstrar estado; canaloficialsemSSHagente/novosprivilegios. Manter concurrencyantigaatetodacoberturaprovada; FIFOnaopresumido. TestesLinux positvosnegativos/concorrencia/recuperacaoisolados, Dockerexclusivo. PRrito/revisaoroot, nao deployindependenteconcorrente. Condicaobloqueio atualizacao rootexclusiva preparekitconcretoeprova antespedirgesto. Proximoacao assumircontrato e cobrir entradas mutadoras.",
+  "origem": "TAR958 mandato29set; ampliacao expressa do mantenedor; transferencia exclusiva07/05",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
