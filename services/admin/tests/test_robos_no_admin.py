@@ -967,7 +967,10 @@ print(json.dumps({'estados': fila.tarefas_para_snapshot(tarefas, eventos, estado
     assert resposta.status_code == 200
     grupo = next(g for g in resposta.context["colunas"] if g["cartoes"])
     assert grupo["cor"] == ("verde" if condicao == "conferido" else "cinza")
+    assert grupo["cartoes"][0]["origem_conclusao"] == "reconciliacao"
     html = texto_sem_estilo(resposta)
     assert ("Resultados com aceite funcional comprovado" in html) == (
         condicao == "conferido"
     )
+    if condicao != "conferido":
+        assert "Reconciliação registrada, mas o aceite não foi confirmado neste painel" in html

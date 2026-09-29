@@ -104,6 +104,8 @@ mantenedor a selecionar e copiar à mão.
       <p class="motivo">Conclusão histórica registrada pelo PR. O aceite funcional não foi comprovado.</p>
     {% elif cartao.origem_conclusao == "registro_legado" %}
       <p class="motivo">Conclusão histórica preservada. O registro não comprova o aceite funcional.</p>
+    {% elif cartao.origem_conclusao == "reconciliacao" and cartao.aceite != "comprovado" %}
+      <p class="motivo">Reconciliação registrada, mas o aceite não foi confirmado neste painel. Peça ao robô para conferir o registro e atualizar os dados.</p>
     {% endif %}
   {% endif %}
   {% if cartao.pr %}

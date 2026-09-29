@@ -523,7 +523,6 @@ def ler_estados(pasta: Path | None) -> dict | None:
                     "integracao": "nao_comprovada",
                     "publicacao": "nao_comprovada",
                     "aceite": "nao_comprovado",
-                    "origem_conclusao": "registro_legado",
                 }
             )
     return estados
