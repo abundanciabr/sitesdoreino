@@ -15,11 +15,11 @@ ROTA_DO_AVISO = "/api/pagamentos/appmax/webhooks"
 ROTA_ANTIGA = "/api/pagamentos/appmax/webhook"
 
 
-def test_rota_do_aviso_e_a_do_plural_que_a_appmax_usa():
+def test_rota_do_aviso_e_a_do_plural_que_a_appmax_usa() -> None:
     assert resolve(ROTA_DO_AVISO).func is webhook_appmax
 
 
-def test_singular_nao_e_apelido_do_receptor():
+def test_singular_nao_e_apelido_do_receptor() -> None:
     try:
         destino = resolve(ROTA_ANTIGA).func
     except Resolver404:
@@ -27,7 +27,7 @@ def test_singular_nao_e_apelido_do_receptor():
     assert destino is not webhook_appmax
 
 
-def test_post_no_plural_chega_ao_receptor_e_o_singular_nao():
+def test_post_no_plural_chega_ao_receptor_e_o_singular_nao() -> None:
     cliente = Client()
     assert (
         cliente.post(ROTA_ANTIGA, "{}", content_type="application/json").status_code
