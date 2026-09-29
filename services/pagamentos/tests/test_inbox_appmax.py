@@ -24,7 +24,7 @@ from pagamentos.core.models import (
 )
 
 pytestmark = pytest.mark.django_db
-URL = "/api/pagamentos/appmax/webhook"
+URL = "/api/pagamentos/appmax/webhooks"
 
 
 def _preparar_tentativa_appmax(
