@@ -158,6 +158,7 @@ Três coisas ditas de propósito na tela:
     <h2 class="secao">Mover de fase</h2>
     <form method="post" action="{% url 'caixa_mover' ideia.id %}" class="forma">
       {% csrf_token %}
+      <input type="hidden" name="fase_atual" value="{{ ideia.status }}">
       <label>
         <span class="rotulo">Para qual fase</span>
         <select name="fase">
@@ -176,9 +177,10 @@ Três coisas ditas de propósito na tela:
           <textarea name="resposta" rows="8">{{ ideia.resposta|default:"" }}</textarea>
         </label>
         <p class="nota">
-          Aceita texto, HTML, imagem (link ou &lt;img&gt;) e vídeo do YouTube ou Vimeo (link ou
-          embed). Quem sugeriu e todo aluno veem esta resposta na página da ideia. Scripts são
-          removidos.
+          Aceita texto e HTML simples; imagem por link https ou &lt;img&gt;; vídeo do YouTube ou
+          Vimeo por link ou embed; vídeo por link https com &lt;video&gt;. Scripts e o que estiver
+          fora desta lista são removidos. Quem sugeriu e todo aluno veem esta resposta na página
+          da ideia. Com Implementado escolhido, deixar o campo vazio tira a resposta da ideia.
         </p>
       </div>
       <button type="submit" class="botao">Mover a ideia</button>

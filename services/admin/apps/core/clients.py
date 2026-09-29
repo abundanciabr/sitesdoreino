@@ -997,7 +997,7 @@ class CaixaClient:
         return self.NAO_RESPONDEU, "a Caixa respondeu com erro"
 
     def mudar_status(
-        self, ideia_id: int, *, status: str, nota: str, quem: dict, resposta: str = ""
+        self, ideia_id: int, *, status: str, nota: str, resposta: str, quem: dict
     ):
         return self._escrever(
             f"/gestao/ideias/{ideia_id}/status",

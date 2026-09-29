@@ -20,7 +20,7 @@ O que estes guardas protegem:
 """
 
 import json
-from urllib.parse import quote
+from urllib.parse import quote, unquote_plus
 
 import httpx
 import pytest
@@ -807,7 +807,14 @@ def test_a_tela_alterna_o_campo_sem_script():
 
     pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
 
-    assert ':has(select[name="fase"] option[value="implementado"]:checked)' in pagina
+    assert (
+        '.forma:has(select[name="fase"] option[value="implementado"]:checked) '
+        ".resposta-da-ideia { display: block; }"
+    ) in pagina, "sem esta regra o campo não aparece ao escolher Implementado"
+    assert (
+        '.forma:has(select[name="fase"] option:checked:not([value="implementado"])) '
+        ".resposta-da-ideia { display: none; }"
+    ) in pagina, "sem esta regra o campo não some ao sair de Implementado"
     assert "<script" not in pagina
 
 
@@ -853,3 +860,77 @@ def test_outra_fase_manda_a_resposta_vazia_mesmo_com_o_campo_preenchido(fase):
 
     enviado = json.loads(escrita.calls.last.request.content)
     assert enviado["resposta"] == ""
+
+
+@respx.mock
+def test_a_ajuda_do_campo_diz_o_que_o_filtro_aceita_e_que_vazio_apaga():
+    cliente = _dentro()
+    a_caixa_conta()
+
+    pagina = " ".join(texto(cliente.get(reverse("caixa_ideia", args=[7]))).split())
+
+    for frase in (
+        "texto e HTML simples",
+        "imagem por link https ou &lt;img&gt;",
+        "vídeo do YouTube ou Vimeo por link ou embed",
+        "vídeo por link https com &lt;video&gt;",
+        "Scripts e o que estiver fora desta lista são removidos",
+        "deixar o campo vazio tira a resposta da ideia",
+    ):
+        assert frase in pagina, frase
+
+
+@respx.mock
+def test_a_tela_manda_a_fase_atual_junto():
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(status="planejado"))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert '<input type="hidden" name="fase_atual" value="planejado">' in pagina
+
+
+def _mover(fase, fase_atual, resposta):
+    cliente = _dentro()
+    a_caixa_conta()
+    escrita = respx.post(f"{IDEIAS}/7/status").mock(
+        return_value=httpx.Response(200, json=uma_ideia(status=fase))
+    )
+    saida = cliente.post(
+        reverse("caixa_mover", args=[7]),
+        {"fase": fase, "fase_atual": fase_atual, "nota": "", "resposta": resposta},
+    )
+    return escrita, unquote_plus(saida["Location"])
+
+
+@respx.mock
+def test_implementado_para_implementado_diz_que_so_a_resposta_foi_atualizada():
+    escrita, destino = _mover("implementado", "implementado", "<p>nova</p>")
+
+    assert "Pronto: a resposta publicada na ideia foi atualizada." in destino
+    assert "mudou de fase" not in destino
+    assert json.loads(escrita.calls.last.request.content)["resposta"] == "<p>nova</p>"
+
+
+@respx.mock
+def test_implementado_com_campo_vazio_manda_vazio_para_apagar():
+    escrita, destino = _mover("implementado", "implementado", "   ")
+
+    assert json.loads(escrita.calls.last.request.content)["resposta"] == ""
+    assert "foi atualizada" in destino
+
+
+@respx.mock
+def test_chegar_em_implementado_de_outra_fase_diz_que_mudou_de_fase():
+    _, destino = _mover("implementado", "planejado", "<p>no ar</p>")
+
+    assert "a ideia mudou de fase" in destino
+    assert "foi atualizada" not in destino
+
+
+@respx.mock
+def test_sair_de_implementado_para_outra_fase_diz_que_mudou_de_fase():
+    _, destino = _mover("planejado", "implementado", "")
+
+    assert "a ideia mudou de fase" in destino
+    assert "foi atualizada" not in destino

@@ -544,6 +544,12 @@ def mover_ideia(request, ideia_id: int):
     resposta = (
         (request.POST.get("resposta") or "").strip() if fase == "implementado" else ""
     )
+    # Implementado para Implementado não muda de fase: a Caixa só atualiza a
+    # resposta, sem histórico e sem aviso, e o recado precisa dizer isso.
+    so_a_resposta = (
+        fase == "implementado"
+        and (request.POST.get("fase_atual") or "").strip() == "implementado"
+    )
     return _agir(
         request,
         ideia_id,
@@ -551,7 +557,11 @@ def mover_ideia(request, ideia_id: int):
         lambda: CaixaClient().mudar_status(
             ideia_id, status=fase, nota=nota, resposta=resposta, quem=_quem(request)
         ),
-        "Pronto: a ideia mudou de fase, e todo mundo que interagiu com ela foi avisado.",
+        (
+            "Pronto: a resposta publicada na ideia foi atualizada."
+            if so_a_resposta
+            else "Pronto: a ideia mudou de fase, e todo mundo que interagiu com ela foi avisado."
+        ),
         alvo_extra=f":{fase}",
     )
 
