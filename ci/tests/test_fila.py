@@ -342,6 +342,17 @@ def test_reivindicacao_expirada_volta_para_a_fila_com_a_marca_da_causa(tmp_path)
     assert estado["motivo"] == "a reserva venceu e não havia PR aberto"
 
 
+def test_reserva_nova_apos_reivindicacao_expirada_reabre_a_reivindicacao(tmp_path):
+    eventos = [
+        evento(hora="10:00:00", quem="agent-a"),
+        evento(tipo="reivindicacao_expirada", hora="11:00:00", detalhe="reserva venceu"),
+    ]
+    estado = estados_de(tmp_path, [tarefa()], eventos, reservas={"TAR-001"})["TAR-001"]
+    assert (estado["estado"], estado["quem"]) == (
+        fila.REIVINDICADA, "reserva ativa no almoxarife"
+    )
+
+
 def test_zelador_rotula_reivindicacao_sem_reserva_e_sem_pr_sem_apagar(tmp_path):
     raiz = montar(tmp_path, [tarefa()], [evento()])
     tarefas, eventos, erros = carregar(raiz)
@@ -665,6 +676,24 @@ def test_pegar_retoma_devolvida_com_reserva_nova(tmp_path, monkeypatch, capsys):
     assert fila.cmd_pegar(tmp_path, args) == 0
     assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))) == 2
     assert "✅ TAR-001" in capsys.readouterr().out
+
+
+def test_pegar_retoma_reivindicacao_expirada_com_reserva_nova(tmp_path, monkeypatch):
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(hora="10:00:00", quem="agent-a"),
+            evento(tipo="reivindicacao_expirada", hora="11:00:00", detalhe="reserva venceu"),
+        ],
+    )
+    sem_rede(monkeypatch)
+    aquisicao_ok(monkeypatch)
+
+    assert fila.cmd_pegar(raiz, argparse.Namespace(tarefa="TAR-001", quem="sessao-b")) == 0
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["quem"] == "sessao-b"
 
 
 def test_pegar_recusa_reserva_alheia_depois_de_devolvida(tmp_path, monkeypatch, capsys):

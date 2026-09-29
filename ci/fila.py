@@ -1263,7 +1263,8 @@ def calcular_estados(
             }
             estados[tid] = resultado
             return resultado
-        if ultimo_ciclo is not None and ultimo_ciclo["evento"] == "reivindicacao_expirada":
+        if (ultimo_ciclo is not None and ultimo_ciclo["evento"] == "reivindicacao_expirada"
+                and tid not in reservas_ativas):
             resultado = {
                 "estado": NA_FILA,
                 "motivo": ultimo_ciclo.get("detalhe") or "reivindicação expirada",
