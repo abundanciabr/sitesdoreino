@@ -1,0 +1,20 @@
+{
+  "arquivo": "971-concluir-a-exclusao-comum-e-a-publicacao-comprovada-da-versa",
+  "id": "TAR-971",
+  "titulo": "Concluir a exclusao comum e a publicacao comprovada da versao",
+  "toca": [
+    "ci",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Todos receptores mutantes sob exclusao comum; preparo fora da trava somente depois da cobertura; candidato por digest com origem; jornada real e recuperacao preservando escritas",
+  "despacho": "Continuacao da MESMA frente PME07/08/TAR967; nao aumenta frentes. Responsavel pme07_publicacao, gpt-6-sol high, sem subdelegacao. Reserva pme07-publicacao e bancada exclusiva existente. Primeiro corrigir prova Linux no PR2336 ainda aberto, preservando eventos terminais historicos. Checkpoint local posterior ao terminal deve ser preservado fora da fila ativa com bytes/hash referenciado aqui, nao apagar historia publicada. Escrita infra receptores, workflows pertinentes e seus testes; ci/candidato.py propriedade06, preparar_dados_admin propriedade03, settings/API/contracts propriedade05, fontes normativas integrador exclusivo. Base vigente origin/main, incluir cortePR2338 antes de novos incrementos. Manter trava anterior ate cobertura comum comprovada; grupo Actions mais flock receptor. PME03 requer permissions actions:read pull-requests:read GH_TOKEN e fetch-depth0 na preparacao de dados. PME05 requer PG exclusivo descartavel CI e provisao oficial minima. Testes negativos, guardas sabotadas e piloto oficial com recuperacao. Nao tocar dados de clientes nem acesso alternativo. Proxima acao assumir contrato e publicar correcao2336; parar apenas por acesso ou dependencia real medida.",
+  "origem": "TAR-958; continuacao TAR-967 apos conclusao prematura pelo rito antigo, historico preservado; adendo governanca29/09",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
