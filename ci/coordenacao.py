@@ -23,6 +23,13 @@ def chamar(pedido):
         raise ErroDeInstrumentacao(
             "COORDENACAO_API_URL precisa usar HTTPS ou loopback local. Configure o endpoint oficial."
         )
+    transicao = pedido.get("operacao") in (
+        "pausar",
+        "consultar_transicao",
+        "registrar_preparada",
+        "registrar_ativa",
+        "retomar",
+    )
     publicador = pedido.get("operacao") in (
         "adquirir_publicador",
         "autorizar_publicacao",
@@ -30,9 +37,13 @@ def chamar(pedido):
         "confirmar_publicacao",
     )
     identidade = (
-        "COORDENACAO_RECONCILIADOR_TOKEN"
-        if pedido.get("operacao") == "reconciliar_publicacao"
-        else ("COORDENACAO_PUBLICADOR_TOKEN" if publicador else "COORDENACAO_TOKEN")
+        "COORDENACAO_TRANSICIONADOR_TOKEN"
+        if transicao
+        else (
+            "COORDENACAO_RECONCILIADOR_TOKEN"
+            if pedido.get("operacao") == "reconciliar_publicacao"
+            else ("COORDENACAO_PUBLICADOR_TOKEN" if publicador else "COORDENACAO_TOKEN")
+        )
     )
     token = os.environ.get(identidade, "")
     if not token:
@@ -43,6 +54,9 @@ def chamar(pedido):
         "autorizar_publicacao",
         "confirmar_publicacao",
         "reconciliar_publicacao",
+        "registrar_preparada",
+        "registrar_ativa",
+        "retomar",
     ):
         recibo = pedido.get(
             "aceitacao" if pedido["operacao"] == "autorizar_publicacao" else "recibo"
@@ -51,6 +65,12 @@ def chamar(pedido):
             raise ErroDeInstrumentacao(
                 "Recibo do receptor oficial ausente. Revalide origem e efeito no receptor antes de publicar."
             )
+    if transicao:
+        if not endereco.path.endswith("/coordenacao"):
+            raise ErroDeInstrumentacao(
+                "Rota base de coordenação inválida. Configure a URL oficial terminada em /coordenacao."
+            )
+        url += "/epocas"
     requisicao = Request(
         url,
         data=json.dumps(pedido, allow_nan=False).encode(),
