@@ -1,0 +1,57 @@
+{
+  "arquivo": "20260929-142620-TAR-958-contrato_execucao",
+  "tarefa": "TAR-958",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T14:26:20.244644+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "contrato": {
+    "restricoes": [
+      "Isolamento de celulas e tentativas; contratos e migrations compativeis; codigo antes da ativacao; digest; publicador oficial e exclusao comum; sem SSH ou segredos para agentes",
+      "Somente coordenador despacha; sem subdelegacao; teto inicial 30 frentes, global 50; modelo explicito Sol/Luna; sem fallback externo"
+    ],
+    "plano": "PLANO-MESTRE-ENTREGA-ENXUTA-SITESDOREINO.md",
+    "escopo_incluido": [
+      "ci/ .github/ infra/ painel/ fila/ governanca e celula piloto estritamente pertinentes ao plano"
+    ],
+    "condicao_encerramento": "Escopo adotado implementado e comprovado, ou somente bloqueio externo documentado com trabalho independente concluido. Ganho 10x separado do aceite da implementacao.",
+    "entregaveis": [
+      "PME-01 linha do tempo e piloto",
+      "PME-02 corte medido",
+      "PME-03 estados e fecho duravel",
+      "PME-04 executor e retomada isolada",
+      "PME-05 decisao medida e migracao somente se justificada",
+      "PME-06 candidato e provas vinculadas",
+      "PME-07 preparacao fora da exclusao quando PME-08 comprovar protecao comum",
+      "PME-08 digest, jornada e recuperacao",
+      "PME-09 adocao, comparacao e retirada do legado"
+    ],
+    "etapas": [
+      "Fase 0 mandato GPS e conflitos pertinentes",
+      "Fase 1 PME-01/02/03",
+      "Fase 2 PME-04/05; fase 3 PME-06/07/08 conforme dependencias reais",
+      "Fase 4 PME-09 e auditoria"
+    ],
+    "objetivo": "Implementar PME-01 a PME-09 e medir pedido ate aceite funcional em producao, buscando 10x sem alterar o relogio.",
+    "versao": 1,
+    "limites_autonomia": "Mandato permite revisao das regras locais, arquivos protegidos pertinentes, integracao verificada, publicacao oficial, migrations compativeis e recuperacao; nao permite contornar ambiente/plataforma.",
+    "criterios_aceite": [
+      "Todos os requisitos obrigatorios comprovados por revisao e ambiente; decisoes condicionais fundamentadas; implementacao, integracao, publicacao e aceite separados"
+    ],
+    "acoes_do_mantenedor": "Nenhuma autorizacao adicional para passos cobertos. Somente acesso ou decisao exclusiva ainda inexistente, se demonstrada.",
+    "nao_objetivos": [
+      "Nova contratacao, ampliacao de orcamento, mudanca de produto, exclusao de historico e restauracao com perda de escritas"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato do mantenedor nesta sessao 01a0ed71-4e7f-7680-821e-4d655a7ad405 em 2026-09-29 adota fase 0 dos quatro prompts e implementacao integral",
+      "Correcao expressa revoga proibicao de GPT e uso de outro fornecedor nesta missao: exclusivamente gpt-6-sol/gpt-6-luna delegados; modelo principal preservado",
+      "Plano SHA256 A88666E0FDADADF30A0B0F68ECD133534B0755A8606004112F98E1F743E3C5C2; prompts SHA256 742A1D14DBE21BF662926E5C237219AD6AEE1386D6884AB90844B083C62A3B7E",
+      "Autoridade: refs/reservas/entrega-enxuta-coordenacao, adquirida nesta bancada; base ee596c94855d9f2ae9039a5116802b8b2e9baf90"
+    ],
+    "criterios_entrada": [
+      "Autoridade atomica confirmada; escopos sem colisao e dependencias suficientes antes de cada despacho"
+    ],
+    "evidencias_exigidas": [
+      "Comando e resultado real, provas de falha/recuperacao e jornada; origem e identidade de cada artefato; medicao comparavel com lacunas explicitas"
+    ]
+  }
+}

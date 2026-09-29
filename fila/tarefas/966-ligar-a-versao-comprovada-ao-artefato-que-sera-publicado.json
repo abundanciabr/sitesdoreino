@@ -1,0 +1,19 @@
+{
+  "arquivo": "966-ligar-a-versao-comprovada-ao-artefato-que-sera-publicado",
+  "id": "TAR-966",
+  "titulo": "Ligar a versao comprovada ao artefato que sera publicado",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Manifesto completo e restrito; invalida provas e digest com alteracao pertinente; erro ausente cancelado nao aprova; cadeia verificavel fonte ate artefato",
+  "despacho": "Mandato integral direto do mantenedor em29/09/2026, TAR958 GPS central; plano A88666E0FDADADF30A0B0F68ECD133534B0755A8606004112F98E1F743E3C5C2; prompts742A1D14DBE21BF662926E5C237219AD6AEE1386D6884AB90844B083C62A3B7E. Apenas coordenador01a0ed71 despacha; não criar subagentes. Sem custos novos/acessoalternativo/exposição de segredos. Outras bancadas existem; não reverter outros.\nPME06 tentativa1, responsavel unico pme06_candidato, gpt-6-sol high explicitamente pela ferramenta, sem fallback configurado; runtime independente nao atestado. Baseorigin/main ee596c9. Dependencia semantica PME03 aceite e PME01 telemetria; naoeditarconsumidores concorrentes. Propor contrato minimo cedo ao coordenador; armazenamento duravel restrito pelo canal oficial, nunca soartifacttemporario. Integracao rito ci/pr.py, recuperacao semalterar producao. Proximaacao implementar/testar manifesto e contrato; parada porfalta real deinterface/acesso.\nEscrita: ci/candidato.py ci/tests/test_candidato.py; fila da propria tarefa. Workflows/infra/pr.py/fila.py somenteleitura (outros donos). Entregarcontrato executavel minimo para PME07/08; integracao workflow tera dono posterior.\nAceite: Manifesto pequeno duravel associa tarefa/tentativa fonte/base entradas/deps/imagem-base/configcontratos/migrations verificadores/ambiente/provas integracao/digest; cadeia efetiva e invalidacao por entradas alteradas; faltante erro cancelado skipped nao aprovam. Sem segredos. Usado pela preparacao/publicador subsequentemente.",
+  "origem": "Mandato PME 29/09/2026; TAR-958",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
