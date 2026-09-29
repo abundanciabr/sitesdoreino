@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-037-ci-atestar-provas-em-main",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: atestar provas em main",
+  detalhe: "Jobs de main emitem provas assinadas; o portão exige gate novo e recusa PR com SHA de merge divergente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2347. Validação local: árvore bf29a60ac37999ee49c1bc3f099c4cd400ad25cc; commit 1095f7053ac67c0a7f0439d44b4945b96f873d7e; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-985",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

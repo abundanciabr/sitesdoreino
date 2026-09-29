@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-163852-TAR-982-explicada",
+  "tarefa": "TAR-982",
+  "evento": "explicada",
+  "quando": "2026-09-29T16:38:52.504883+00:00",
+  "quem": "TAR958 ampliacao expressa29set; interface e transferencia05",
+  "o_que_e": "Uma copia antiga nao pode devolver a um executor o direito de mudar producao.",
+  "o_que_muda": "A recuperacao confere a autoridade fora do banco restaurado antes de liberar trabalho.",
+  "exemplo": "Restaurar o banco de ontem nao libera a tentativa que venceu hoje.",
+  "importancia": 95
+}

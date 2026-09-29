@@ -16,8 +16,8 @@ Exit codes (contrato de comportamento):
 Decisões herdadas da especificação:
   - chaveado por PATH de workflow, nunca por nome de check (F2: o nome
     `detectar` colide entre ci-celula e deploy-celula);
-  - as muralhas nunca rodam no commit do deploy (F1: `on: pull_request`) — a
-    evidência delas mora no head do PR de origem, achado via commits/<sha>/pulls;
+  - a muralha do PR mora no head do PR de origem, achado via
+    commits/<sha>/pulls; `muralhas-main` mede a revisão integrada em outro job;
   - polling com `gh api`, sem action de terceiro (supply chain no portão de
     segurança é o oposto do objetivo); graça para o run APARECER distingue
     "fila do GitHub" de "workflow deletado";
@@ -28,10 +28,10 @@ Decisões herdadas da especificação:
     alguém decidir isso por escrito.
 
 Modos (env PORTAO_MODO):
-  celula  deploy-celula: exige 1 célula exata no diff e o job `ci-celula`
-          (o `rodar`) verde — services/** mudou, pulo ali é instrumentação.
-  infra   deploy-infra: não há célula; `ci-celula` pode ter pulado o `rodar`
-          legitimamente, mas o `ci-celula-gate` (if: always()) continua exigido.
+  celula  deploy-celula: exige 1 célula exata no diff e `rodar-main` verde;
+          services/** mudou, pulo ali é instrumentação.
+  infra   deploy-infra: não há célula; `rodar-main` pula legitimamente, mas
+          `ci-celula-gate-main` continua exigido.
 
 Ambiente esperado (fiação em .github/workflows/deploy-*.yml):
   GH_TOKEN, REPO, SHA, RUN_ID, EVENTO, CELULAS (json), PORTAO_MODO,
@@ -537,13 +537,12 @@ def pr_de_origem(ctx: Contexto) -> dict:
     exatos = [p for p in prs if p.get("merge_commit_sha") == ctx.sha]
     if len(exatos) == 1:
         return exatos[0]
-    if len(prs) == 1:
-        return prs[0]
     numeros = [p.get("number") for p in prs]
     raise ErroDeInstrumentacao(
-        f"PR de origem ambíguo: {len(prs)} PRs contêm o commit ({numeros}) e "
-        "nenhum deles (ou mais de um) tem merge_commit_sha igual ao SHA",
-        "Sem PR único não há como saber QUAL evidência de muralhas vale.",
+        f"PR de origem não comprovado: {len(exatos)} PR(s) com "
+        f"merge_commit_sha igual ao SHA publicado entre {numeros}",
+        "Sem um único PR cujo merge_commit_sha seja exatamente o SHA do deploy, "
+        "as muralhas de outro commit não autorizam publicação. Confira o PR e reexecute.",
     )
 
 
@@ -625,19 +624,19 @@ def main() -> int:
                     f"{len(ctx.celulas)} célula(s): {', '.join(ctx.celulas)}",
                 )
             )
-            # services/** mudou por definição: o job `ci-celula` (o rodar) tem
-            # de ter RODADO verde — skipped aqui é instrumentação quebrada (F3).
+            # A matriz main é distinta da matriz do PR: só ela mede a revisão
+            # integrada e emite os insumos assinados. Skipped aqui é erro (F3).
             exigidos = {
-                CI_CELULA: ("ci-celula-gate", "ci-celula"),
+                CI_CELULA: ("ci-celula-gate-main", "rodar-main"),
             }
         else:
             relatorio.registrar(
                 Resultado("escopo", Estado.PASS, "modo infra — sem célula por desenho")
             )
-            # Sem célula, o `rodar` pula LEGITIMAMENTE; o gate (if: always())
-            # continua obrigatório e carimba que a detecção concluiu.
+            # Sem célula, a matriz main pula legitimamente; o gate main ainda
+            # atesta que a detecção concluiu sem confundir skip com falha.
             exigidos = {
-                CI_CELULA: ("ci-celula-gate",),
+                CI_CELULA: ("ci-celula-gate-main",),
             }
 
         escolhidos, runs_do_commit = esperar_workflows(
