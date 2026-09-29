@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260929-175201-TAR-958-reivindicacao_expirada",
+  "tarefa": "TAR-958",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-29T17:52:01.763893+00:00",
+  "quem": "pme_mutadores_producao",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}
