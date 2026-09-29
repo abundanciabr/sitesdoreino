@@ -81,6 +81,7 @@ from .gestao import (
 # (`EXIGEM_JUSTIFICATIVA`), o histórico na mesma transação e o leque de avisos.
 from .moderacao import (
     JustificativaObrigatoria,
+    RespostaForaDeImplementado,
     STATUS_QUE_A_EQUIPE_ESCOLHE,
     registrar_mudanca_de_status,
 )
@@ -169,6 +170,10 @@ class IdeiaEmGestao(Schema):
     # campo que diz à tela que não há mais nada para restaurar: o botão
     # "Restaurar" não aparece, e o conteúdo que viaja aqui já está vazio.
     apagada: bool = False
+    # A resposta da equipe publicada na ideia ao entregá-la (29/09/2026), já
+    # filtrada: é o que o formulário do Admin mostra de volta para editar.
+    # Vazio é "a equipe não escreveu resposta".
+    resposta: str = ""
     # A conversa embaixo da ideia, e ela só vem para quem PEDE
     # (`incluir_conversa=true`). O padrão continua sendo a lista sem ela, pelo
     # mesmo motivo escrito em `IdeiaComHistorico`: carregá-la sempre
@@ -347,6 +352,8 @@ class QuemAge(Schema):
 class MudancaDeStatus(QuemAge):
     status: str
     nota: str = ""
+    # Só vale com `status` Implementado; vazio mantém a resposta que já existe.
+    resposta: str = ""
 
 
 class AvaliacaoEscrita(QuemAge):
@@ -474,6 +481,7 @@ def _como_fato(ideia, plateias, com_conversa: bool = False) -> dict:
         "arquivada_em": ideia.arquivada_em.isoformat() if ideia.arquivada_em else "",
         "motivo_do_arquivamento": ideia.motivo_do_arquivamento,
         "apagada": ideia.apagada_em is not None,
+        "resposta": ideia.resposta_da_equipe,
         "conversa": (
             [
                 {"texto": fala.texto, "quando": fala.criado_em.isoformat()}
@@ -670,7 +678,15 @@ def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
             status_novo=payload.status,
             nota=payload.nota,
             por=_quem(payload),
+            resposta=payload.resposta,
         )
+    except RespostaForaDeImplementado:
+        return 422, {
+            "erro": (
+                "A resposta publicada na ideia só vale para a fase Implementado. "
+                "Escolha Implementado ou deixe o campo vazio."
+            )
+        }
     except JustificativaObrigatoria:
         return 422, {
             "erro": (

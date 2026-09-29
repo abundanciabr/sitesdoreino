@@ -49,6 +49,7 @@ from apps.sugestoes.tasks import relay_apos_commit
 
 from .avisos import avisar_os_interessados, ids_de_plataforma
 from .participacao import exige_sessao
+from .resposta_rica import resposta_em_html_seguro
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,10 @@ class JustificativaObrigatoria(Exception):
     """`nao_planejado` sem nota. Recusado ANTES de qualquer escrita."""
 
 
+class RespostaForaDeImplementado(Exception):
+    """Resposta escrita para uma fase que não é Implementado. Recusada ANTES."""
+
+
 def exige_staff(view):
     """Sessão de aluno não basta: aqui é preciso o papel `staff`.
 
@@ -114,7 +119,7 @@ def exige_staff(view):
     return exige_sessao(cracha)
 
 
-def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
+def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por, resposta=""):
     """Muda o status e grava o histórico **na mesma transação**.
 
     [INVARIANTE 2] As duas escritas são uma só: um status alterado sem rastro é
@@ -144,6 +149,14 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             "Para marcar como “Não planejado” é preciso escrever o porquê — "
             "quem sugeriu vai ler essa justificativa (spec §10)."
         )
+    # A resposta da equipe (29/09/2026) só existe na entrega. Vazia MANTÉM a
+    # que já existe: num JSON, "não mandei" e "mandei vazio" são a mesma
+    # ausência, e um consumidor que não conhece o campo não pode apagá-la.
+    resposta = resposta_em_html_seguro(resposta)
+    if resposta and status_novo != Sugestao.Status.IMPLEMENTADO:
+        raise RespostaForaDeImplementado(
+            "A resposta publicada na ideia só vale para a fase Implementado."
+        )
 
     with transaction.atomic():
         travada = (
@@ -153,7 +166,11 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
         )
         status_anterior = travada.status
         travada.status = status_novo
-        travada.save(update_fields=["status"])
+        campos = ["status"]
+        if resposta:
+            travada.resposta_da_equipe = resposta
+            campos.append("resposta_da_equipe")
+        travada.save(update_fields=campos)
         HistoricoStatus.objects.create(
             sugestao=travada,
             status_anterior=status_anterior,
