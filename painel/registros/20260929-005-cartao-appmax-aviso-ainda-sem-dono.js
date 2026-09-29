@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-005-cartao-appmax-aviso-ainda-sem-dono",
+  tipo: "medicao",
+  quando: "2026-09-29",
+  titulo: "Cartão Appmax: aviso ainda sem dono",
+  detalhe: "Endereço do aviso consertado e uma compra de teste aprovada, mas o aviso não chegou: a instalação não casa com o aviso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2330. Validação local: árvore 8be98f90bafe0c35a2553ecbf8e27e5ced43d19c; commit 0052e5560779269dfddfdb4fb8e2a9de7d6ad237; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas. runs 36578512612 e 36579274460",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-956",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
