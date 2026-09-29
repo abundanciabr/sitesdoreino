@@ -1,0 +1,20 @@
+{
+  "arquivo": "996-contrato-da-caixa-passa-a-levar-a-resposta-da-equipe-na-idei",
+  "id": "TAR-996",
+  "titulo": "Contrato da Caixa passa a levar a resposta da equipe na ideia implementada",
+  "toca": [
+    "contratos",
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR so de contracts/sugestoes.openapi.yaml integrado, com contrato aditivo e testes de contrato verdes",
+  "despacho": "Frente A1 do pedido do mantenedor de 29/09/2026 (resposta rica na sugestao ao mover para Implementado): emenda aditiva em contracts/sugestoes.openapi.yaml. MudancaDeStatus ganha resposta (string, default vazio); IdeiaEmGestao e IdeiaComHistorico ganham resposta (string, default vazio). PR so de contrato, etiqueta contrato, Mandato-do-mantenedor transcrito. O provedor (celula sugestoes) vem no PR seguinte com Depende-de deste; o formulario do Admin vem depois.",
+  "origem": "pedido do mantenedor na sessao Claude Code de 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}
