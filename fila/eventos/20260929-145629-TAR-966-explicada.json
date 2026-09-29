@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-145629-TAR-966-explicada",
+  "tarefa": "TAR-966",
+  "evento": "explicada",
+  "quando": "2026-09-29T14:56:29.691468+00:00",
+  "quem": "Mandato PME 29/09/2026; TAR-958",
+  "o_que_e": "A imagem publicada precisa corresponder ao codigo que passou nas provas",
+  "o_que_muda": "Impede publicar imagem diferente ou aproveitar prova vencida",
+  "exemplo": "Mudar contrato exige nova prova mesmo sem mudar codigo da celula",
+  "importancia": 90
+}
