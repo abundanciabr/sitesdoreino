@@ -18,21 +18,21 @@ MUTADORES = (
 )
 
 
-def executar(codigo, pasta, **kwargs):
+def executar(codigo, pasta, *, como_root=False, **kwargs):
     ambiente = os.environ | {"PLATAFORMA_DIR": str(pasta), "FRAGMENTO": str(TRAVA)}
     comando = ["bash", "-eu", "-c", "echo preparado; " + codigo]
-    if os.name == "nt":
+    if os.name == "nt" or (como_root and os.geteuid() != 0):
         comando = ["docker", "run", "--rm", "--network", "none", "--cpus", "1",
                    "--memory", "512m", "--volume", f"{pasta}:/plataforma",
                    "--volume", f"{TRAVA}:/fragmento:ro", "--env",
                    "PLATAFORMA_DIR=/plataforma", "--env", "FRAGMENTO=/fragmento",
-                   "--entrypoint", "bash", "dev-admin-app:latest", "-eu", "-c",
+                   "--entrypoint", "bash", "ubuntu:24.04", "-eu", "-c",
                    "echo preparado; " + codigo]
         if "stdin" in kwargs:
             comando.insert(2, "--interactive")
     processo = subprocess.Popen(comando, env=ambiente, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True, **kwargs)
-    assert processo.stdout.readline().strip() == "preparado"
+    assert processo.stdout.readline().strip() == "preparado", processo.stderr.read()
     return processo
 
 
@@ -142,4 +142,4 @@ def test_root_e_deploy_revezam_mesmo_inode_com_umask_restritiva(tmp_path):
     test "$(stat -c %i "$pasta/.publicacao.lock")" = "$inode"
     echo alternancia-confirmada
     """
-    assert concluir(executar(codigo, tmp_path)).strip() == "alternancia-confirmada"
+    assert concluir(executar(codigo, tmp_path, como_root=True)).strip() == "alternancia-confirmada"
