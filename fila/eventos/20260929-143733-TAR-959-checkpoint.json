@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-143733-TAR-959-checkpoint",
+  "tarefa": "TAR-959",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T14:37:33.092361+00:00",
+  "quem": "codex/pme01-medicao",
+  "plano": "PME01 instrumentacao validada; rito de submissao",
+  "ultimo_avanco": "78 testes focados passaram em7.48s. API registrar_fase ganha rodada inteira positiva e candidato; consumidor consolidar_percurso preserva rodada e expoe pares exatos, sem duração para ausência/legado ou relógio invertido. Rename codex/pme01-medicao para agent/ci/pme01-medicao autorizado coordenador para usar caminho legado, mesma bancada/reserva/tentativa1; ocorrido2026-09-29 durante submissao, sem backdate de pedido.",
+  "proxima_acao": "Submeter os quatro alvos e eventos próprios pelo ci/pr.py; consumidor PME02 vai registrar rodada=time.time_ns() por chamada e mesmo valor no terminal; medir primeira execução real no novo candidato.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_telemetria.py ci/tests/test_medir_tempos.py ci/tests/test_metricas_percurso.py ci/tests/test_metricas_da_fabrica.py -q:78passed7.48s; git diff--check:exit0."
+  ]
+}

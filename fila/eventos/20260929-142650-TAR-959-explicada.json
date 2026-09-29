@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-142650-TAR-959-explicada",
+  "tarefa": "TAR-959",
+  "evento": "explicada",
+  "quando": "2026-09-29T14:26:50.570372+00:00",
+  "quem": "TAR-958; plano PME-01; mandato 2026-09-29 sessao 01a0ed71-4e7f-7680-821e-4d655a7ad405",
+  "o_que_e": "Ainda faltam marcos completos do pedido ate o uso da melhoria no site.",
+  "o_que_muda": "O tempo real e as esperas passam a ser visiveis e permitem escolher o primeiro corte.",
+  "exemplo": "O relogio continua contando depois do merge ate a jornada funcionar.",
+  "importancia": 85
+}
