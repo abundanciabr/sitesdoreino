@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-152222-TAR-968-explicada",
+  "tarefa": "TAR-968",
+  "evento": "explicada",
+  "quando": "2026-09-29T15:22:22.263764+00:00",
+  "quem": "Mandato PME04 TAR958 e TAR964; ensaio do adaptador",
+  "o_que_e": "A prova local automatizada ainda precisa confirmar que uma sessao real pode parar e continuar",
+  "o_que_muda": "Uma interrupcao conserva o trabalho e a proxima tentativa nao mistura arquivos ou processos",
+  "exemplo": "O executor grava um marco, e interrompido, e retoma o teste na mesma thread sem recriar trabalho",
+  "importancia": 90
+}

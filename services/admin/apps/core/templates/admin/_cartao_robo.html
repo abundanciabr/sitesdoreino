@@ -94,6 +94,20 @@ mantenedor a selecionar e copiar à mão.
   {% elif cartao.motivo and not coluna.ranqueada %}
     <div class="motivo">{{ cartao.motivo|urlize }}</div>
   {% endif %}
+  {% if cartao.comprovacoes_entrega %}
+    <dl class="motivo">
+      {% for prova in cartao.comprovacoes_entrega %}
+        <dt>{{ prova.etapa }}</dt><dd>{{ prova.resultado }}</dd>
+      {% endfor %}
+    </dl>
+    {% if cartao.origem_conclusao == "pr" %}
+      <p class="motivo">Conclusão histórica registrada pelo PR. O aceite funcional não foi comprovado.</p>
+    {% elif cartao.origem_conclusao == "registro_legado" %}
+      <p class="motivo">Conclusão histórica preservada. O registro não comprova o aceite funcional.</p>
+    {% elif cartao.origem_conclusao == "reconciliacao" and cartao.aceite != "comprovado" %}
+      <p class="motivo">Reconciliação registrada, mas o aceite não foi confirmado neste painel. Peça ao robô para conferir o registro e atualizar os dados.</p>
+    {% endif %}
+  {% endif %}
   {% if cartao.pr %}
     <div class="motivo">
       {% if cartao.entrega_url %}<a href="{{ cartao.entrega_url }}" target="_blank" rel="noopener">Conferir entrega submetida</a>

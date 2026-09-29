@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-161343-TAR-968-checkpoint",
+  "tarefa": "TAR-968",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:13:43.586417+00:00",
+  "quem": "despacho-ci-pme04-piloto",
+  "plano": "PME04 / execução supervisionada",
+  "ultimo_avanco": "Tentativa 50ef964317e8456f8619a70bce0e8ca6: interrompida; sessão 01a0edee-a33a-7ad3-89f3-22782302d6ed",
+  "proxima_acao": "Reconciliar os processos e retomar a mesma tentativa",
+  "verificacoes": [
+    "Seleção local gpt-6-luna / medium. O CLI atesta a seleção local; o modelo usado pelo backend não é verificável por este adaptador."
+  ]
+}

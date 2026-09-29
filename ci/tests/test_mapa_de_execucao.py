@@ -720,14 +720,14 @@ def test_payload_existente_embarca_catalogo_validado(caso, tmp_path, monkeypatch
     gravar(raiz, "ci/tempos_esperados.json", {"esperas": {}})
 
     class Saida:
-        stdout = json.dumps({"TAR-001": {"estado": "na fila"}})
+        stdout = json.dumps({"estados": {"TAR-001": {"estado": "na fila"}}, "aceites": {"formato": "aceites-publicados.v1", "tarefas": {}}})
 
     original = dados.subprocess.run
 
     def rodar(args, **kwargs):
         return (
             Saida()
-            if args[1:3] == ["ci/fila.py", "listar"]
+            if args[1:3] == ["ci/fila.py", "snapshot-publicado"]
             else original(args, **kwargs)
         )
 
