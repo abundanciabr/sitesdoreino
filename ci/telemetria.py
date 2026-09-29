@@ -166,7 +166,7 @@ def ler_tudo(raiz_git: Path, cobertura: dict | None = None) -> list[dict]:
 
 
 FASES = ("abertura", "contexto", "execucao", "validacao", "fechamento",
-         "revisao", "integracao", "publicacao")
+         "revisao", "integracao", "publicacao", "candidato")
 RESULTADOS = ("iniciado", "concluido", "falhou", "nao_executado", "verificado")
 PILOTOS = ("fase1", "fase2", "fase3")
 CONDICOES = ("antes", "depois")
@@ -183,7 +183,7 @@ METRICAS_DA_TAREFA = (
 def registrar_fase(fase: str, resultado: str, *, tarefa: str, tentativa: str,
                    branch: str, commit: str, pr: int | None = None,
                    contexto_bytes: int | None = None,
-                   cwd: str | None = None) -> Path | None:
+                   rodada: int | None = None, cwd: str | None = None) -> Path | None:
     """Observação local, nunca prova de aprovação: sem texto, comando ou segredo.
 
     A tentativa vem da entrada operacional, não deste medidor. O mesmo fato
@@ -193,6 +193,8 @@ def registrar_fase(fase: str, resultado: str, *, tarefa: str, tentativa: str,
     try:
         dados = dict(tarefa=tarefa, tentativa=tentativa, branch=branch, commit=commit,
                      pr=pr, fase=fase, resultado=resultado, contexto_bytes=contexto_bytes)
+        if rodada is not None:
+            dados["rodada"] = rodada
         dados["id"] = identidade_fase(dados)
         if dados["id"] is None:
             return None
@@ -219,8 +221,14 @@ def identidade_fase(dados: dict) -> str | None:
         valor = dados.get(campo)
         if valor is not None and (type(valor) is not int or valor < (1 if campo == "pr" else 0)):
             return None
+    rodada = dados.get("rodada")
+    if rodada is not None and (type(rodada) is not int or rodada < 1):
+        return None
     campos = ("tarefa", "tentativa", "branch", "commit", "pr", "fase", "resultado", "contexto_bytes")
-    return hashlib.sha256(json.dumps({c: dados.get(c) for c in campos}, sort_keys=True).encode()).hexdigest()
+    identidade = {c: dados.get(c) for c in campos}
+    if rodada is not None:
+        identidade["rodada"] = rodada
+    return hashlib.sha256(json.dumps(identidade, sort_keys=True).encode()).hexdigest()
 
 
 def identidade_tarefa(dados: dict) -> str | None:
