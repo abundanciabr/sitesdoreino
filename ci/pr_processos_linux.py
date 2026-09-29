@@ -13,6 +13,8 @@ import threading
 import time
 from pathlib import Path
 
+from _nucleo import configurar_saida
+
 TRAVA = threading.Lock()
 PR_GET_CHILD_SUBREAPER = 37
 PR_SET_CHILD_SUBREAPER = 36
@@ -257,5 +259,6 @@ def _repassar_pipe(origem, destino, concluido):
 
 
 if __name__ == "__main__":
+    configurar_saida()
     if len(sys.argv) >= 2 and sys.argv[1] == "--supervisionar":
         raise SystemExit(_supervisionar())
