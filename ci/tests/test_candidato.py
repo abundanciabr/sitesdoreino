@@ -478,3 +478,35 @@ def test_arvore_e_base_medidas_na_fonte_externa(
     monkeypatch.setattr(candidato, "_json_comando", falso)
     with pytest.raises(candidato.CandidatoInvalido):
         candidato.conferir_origem(manifesto, {}, tmp_path)
+
+
+def test_receptor_recebe_hash_dos_mesmos_bytes_assinados(
+    entrada, monkeypatch, tmp_path, capsys
+):
+    manifesto = candidato.criar(entrada)
+    registro = {
+        "manifesto": manifesto,
+        "bundle": {"dsseEnvelope": {"signatures": ["ensaio"]}},
+    }
+    fonte_oficial(monkeypatch, manifesto)
+    vistos = []
+
+    def ler(raiz, identificador):
+        vistos.append(identificador)
+        return registro
+
+    monkeypatch.setattr(candidato, "_ler_ref", ler)
+    saida = tmp_path / "candidato.json"
+    assert (
+        candidato.main(["carregar", "--id", manifesto["id"], "--saida", str(saida)])
+        == 0
+    )
+    relatorio = json.loads(capsys.readouterr().out)
+    assert relatorio["aceito"] is True
+    assert relatorio["registro_sha256"] == candidato.digest(registro)
+    assert vistos == [manifesto["id"]]
+    assert (
+        candidato.digest({"manifesto": manifesto, "bundle": {"outra": "assinatura"}})
+        != relatorio["registro_sha256"]
+    )
+    assert saida.read_bytes() == candidato.canonico(manifesto)

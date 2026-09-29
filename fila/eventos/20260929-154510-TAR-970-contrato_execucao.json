@@ -1,0 +1,50 @@
+{
+  "arquivo": "20260929-154510-TAR-970-contrato_execucao",
+  "tarefa": "TAR-970",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T15:45:10.125771+00:00",
+  "quem": "codex/pme06-candidato",
+  "contrato": {
+    "plano": "PME06 TAR-970 continuidade TAR-966",
+    "versao": 1,
+    "objetivo": "Reconfirmar o envelope manifesto e bundle verificado por hash no receptor de publicacao",
+    "entregaveis": [
+      "ci/candidato.py",
+      "ci/tests/test_candidato.py"
+    ],
+    "escopo_incluido": [
+      "carregar_registro com fetch unico verificado e registro_sha256 fechado sobre manifesto e bundle"
+    ],
+    "nao_objetivos": [
+      "Workflows, VPS, publicacao ou alteracao de fila.py"
+    ],
+    "restricoes": [
+      "Sem segredos; sem refs reais durante ensaio; demais bancadas somente leitura"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato integral PME 29/09/2026 encaminhado pela sessao responsavel"
+    ],
+    "etapas": [
+      "Leitura",
+      "Implementacao",
+      "Provas e PR"
+    ],
+    "criterios_entrada": [
+      "Nucleo PME06 integrado em 59f16cace572080d393bc018a2c886e36f56da02; corte2338 incorporado; complemento preservado"
+    ],
+    "criterios_aceite": [
+      "Hash do envelope completo liga manifesto e bundle verificado",
+      "Alteracao do bundle muda registro_sha256",
+      "Leitura unica impede combinar registros de consultas diferentes",
+      "Origem assinada real e piloto oficial comprovados com PME07 antes do encerramento"
+    ],
+    "evidencias_exigidas": [
+      "69 testes determinísticos passam",
+      "Duas guardas negativas com mutacao FAIL e restauracao PASS",
+      "Cadeia assinada oficial e reconsulta do mesmo envelope no piloto PME07"
+    ],
+    "condicao_encerramento": "Complemento integrado pelo rito; cadeia assinada e piloto oficiais comprovados com PME07; merge isolado nao encerra PME06",
+    "limites_autonomia": "Apenas arquivos-alvo e fila propria; sem deploy ou ampliacao de mandato",
+    "acoes_do_mantenedor": "Nenhuma decisao nova; coordenador encaminha consumidores oficiais"
+  }
+}
