@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-165254-TAR-979-checkpoint",
+  "tarefa": "TAR-979",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:52:54.164599+00:00",
+  "quem": "pme_mutadores_producao",
+  "plano": "incremento 1 de receptores",
+  "ultimo_avanco": "Treze receptores semear e manuais usam FD8 comum; inventario focal e sintaxe verificados.",
+  "proxima_acao": "Abrir PR incremental pelo rito; depois cobrir provisionadores restantes sem retirar concurrency antigo.",
+  "verificacoes": [
+    "pytest ci/tests/test_exclusao_comum_da_publicacao.py -q -k mutador_manual: 13 passed; bash -n: 13 validos; python ci/fila.py validar: fila valida"
+  ]
+}

@@ -77,6 +77,19 @@ ler_de() {  # arquivo, chave: devolve o valor limpo, sem comentário nem espaço
 #    para desfazer, e é a metade que ninguém percebe que ficou.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…, nunca PS C:\\>)"
+
+# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
+TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
+command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
+if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
+  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
+    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
+  fi
+  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
+fi
+flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
+unset TRAVA_PUBLICACAO
+
 [ -f docker-compose.yml ] || parar "não achei docker-compose.yml em $RAIZ."
 [ -f "$ENV_CURSOS" ] || parar "não achei $RAIZ/$ENV_CURSOS. A sala de aula ainda não foi provisionada nesta máquina: rode antes o infra/provisionar-cursos.sh. Nada foi alterado."
 [ -w "$ENV_CURSOS" ] || parar "não consigo escrever em $RAIZ/$ENV_CURSOS. Rode como root ou como o dono dos env. Nada foi alterado."

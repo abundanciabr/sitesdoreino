@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-162241-TAR-976-checkpoint",
+  "tarefa": "TAR-976",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T16:22:41.977200+00:00",
+  "quem": "codex/pme07-publicacao",
+  "plano": "PME07/08 TAR976 setup das provas em cinco alvos",
+  "ultimo_avanco": "Abertura real04 exit0; baseline gateway Windows FAIL flock ausente, causa reproduzida",
+  "proxima_acao": "Editar .github/workflows/deploy-celula.yml .github/workflows/ci-celula.yml .github/workflows/muralhas.yml ci/tests/test_preparo_das_provas_no_workflow.py ci/tests/test_chaves_do_gateway_no_deploy.py; ensaiar PostgreSQL e freeze reais",
+  "verificacoes": [
+    "Fonte04 SHA2560AC7BC12789E10E3ACF4C529754AC0C2193D96A4E7C5665ECB1C404B7F97757F; log abertura-b814c17a9b4540e5872c7a766f6577a1.log exit0",
+    "python -m pytest -q ci/tests/test_chaves_do_gateway_no_deploy.py --maxfail=1: 1FAIL no Windows por falta de flock; produção preservada"
+  ]
+}

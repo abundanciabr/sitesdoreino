@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-161558-TAR-976-explicada",
+  "tarefa": "TAR-976",
+  "evento": "explicada",
+  "quando": "2026-09-29T16:15:58.384807+00:00",
+  "quem": "TAR958/971; dependencias concretas de TAR969 e965; mando atual de07/08",
+  "o_que_e": "Os testes novos precisam de banco proprio e o painel precisa conferir a origem das provas.",
+  "o_que_muda": "O canal oficial consegue executar essas verificacoes com os acessos minimos necessarios.",
+  "exemplo": "A bancada de teste recebe ferramentas e banco descartavel, sem usar dados do servidor.",
+  "importancia": 95
+}

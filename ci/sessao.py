@@ -78,7 +78,7 @@ import json
 import hashlib
 import platform
 import secrets
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager, nullcontext, redirect_stdout
 import os
 import re
 import shutil
@@ -659,7 +659,7 @@ def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", e
         if constituicao_da_celula
         else "Leituras exigidas: CONSTITUICAO.md e RITOS.md §1."
     )
-    frase = plano.frase or "não informada; complete o brief antes de editar"
+    frase = plano.frase or plano.tarefa_da_fila or "não informada; complete o brief antes de editar"
     # Sem ambiente não houve baseline, e afirmar um seria assinar o que não se
     # mediu. "não medido" com o motivo é honesto; "verde" seria falso-verde.
     baseline = (
@@ -844,7 +844,7 @@ def escrever_de_verdade(caminho: Path, texto: str) -> None:
 
 
 @contextmanager
-def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
+def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV, esperar: bool = True):
     """O SO libera a trava também se o processo morrer, sem apagar lock alheio."""
     caminho.parent.mkdir(parents=True, exist_ok=True)
     with caminho.open("a+b") as arquivo:
@@ -863,7 +863,7 @@ def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
                     fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError as erro:
-                if time.monotonic() >= limite:
+                if not esperar or time.monotonic() >= limite:
                     raise ErroDeSessao(passo, "ambiente em preparação por outra sessão",
                                        detalhe=f"Aguarde e repita a abertura. Trava: {caminho}") from erro
                 time.sleep(0.1)
@@ -933,7 +933,7 @@ _TRAVAS_DA_BANCADA_NO_PROCESSO: dict[str, int] = {}
 
 
 @contextmanager
-def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE):
+def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE, esperar: bool = True):
     """Exclusividade ativa da bancada; arquivo antigo nunca autoriza a entrada."""
     identidade = identidade_duravel_da_bancada(bancada)
     if _TRAVAS_DA_BANCADA_NO_PROCESSO.get(identidade, 0):
@@ -957,7 +957,7 @@ def trava_da_bancada(bancada: Path, *, passo: str = P_WORKTREE):
     caminho = caminho_da_trava_da_bancada(bancada)
     ativo = caminho.with_suffix(".json")
     token = uuid.uuid4().hex
-    with trava_de_ambiente(caminho, passo=passo):
+    with trava_de_ambiente(caminho, passo=passo, esperar=esperar):
         ativo.parent.mkdir(parents=True, exist_ok=True)
         estado = {
             "schema_version": 1,
@@ -1067,7 +1067,7 @@ def registrar_estado_inicial(
             )
         return caminho
     status = correr(
-        [git, "-C", str(plano.worktree), "status", "--porcelain=v1", "-z"],
+        [git, "-C", str(plano.worktree), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
         cwd=plano.raiz,
         timeout=300,
     )
@@ -2260,6 +2260,7 @@ class Sessao:
             self.anunciar_pr(gh)
             self.gerar_indice(git)
             if not self.plano.sobe_ambiente:
+                registrar_sessao_atual(self.plano)
                 return declaracao(self.plano, resumo="", estado_git=self._estado_git)
             self.preparar_venv()
             self.instalar()
@@ -2270,6 +2271,7 @@ class Sessao:
             constituicao = f"constituicoes/AGENTS.{self.plano.celula}.md"
             if not self._existe(self.plano.worktree / constituicao):
                 constituicao = ""
+            registrar_sessao_atual(self.plano)
             return declaracao(
                 self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git,
                 metodo_baseline=self._metodo_baseline,
@@ -2277,6 +2279,107 @@ class Sessao:
 
 
 # ---------------------------------------------------------------------------
+
+
+def carregar_env_de_sessao(arquivo: Path) -> dict[str, str]:
+    try:
+        linhas = arquivo.read_text(encoding="utf-8").splitlines()
+    except OSError as erro:
+        raise ErroDeSessao(
+            "executor da sessão",
+            ".env da sessão indisponível",
+            detalhe=f"Esperado em {arquivo}. Trabalho preservado; nenhum filho executou. Reabra pelo comando original da sessão ou rode `python ci/sessao.py --help` para conferir a sintaxe antes de tentar de novo.",
+        ) from erro
+    env: dict[str, str] = {}
+    for numero, linha in enumerate(linhas, 1):
+        if not linha.strip() or linha.startswith("#"):
+            continue
+        casou = re.fullmatch(r"([A-Z0-9_]+)='([^'\n]*)'", linha)
+        if not casou:
+            raise ErroDeSessao(
+                "executor da sessão",
+                ".env da sessão tem formato inválido",
+                detalhe=f"Linha {numero} não segue KEY='valor'. Preserve o arquivo e rode a abertura para regenerar.",
+            )
+        chave = casou.group(1)
+        if chave in env:
+            raise ErroDeSessao(
+                "executor da sessão",
+                ".env da sessão tem chave duplicada",
+                detalhe=f"Linha {numero} repete {chave}. Preserve o arquivo e rode a abertura para regenerar.",
+            )
+        env[chave] = casou.group(2)
+    return env
+
+
+def arquivo_de_sessao_atual(bancada: Path) -> Path:
+    return arquivo_de_estado_inicial(bancada).with_name("codex-sessao-atual.json")
+
+
+def registrar_sessao_atual(plano: Plano) -> None:
+    caminho = arquivo_de_sessao_atual(plano.worktree)
+    dados = {"schema_version": 1, "identidade": identidade_duravel_da_bancada(plano.worktree),
+             "preparada_em": datetime.now(timezone.utc).isoformat(), "plano": metadados_da_bancada(plano)}
+    temporario = caminho.with_suffix(".tmp")
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario.write_text(json.dumps(dados, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporario.replace(caminho)
+
+
+def adotar_bancada_existente(plano: Plano, bancada: Path) -> Plano:
+    bancada = bancada.resolve()
+    if bancada == plano.raiz.resolve() or esta_dentro(bancada, plano.raiz) or not (bancada / ".git").is_file():
+        raise ErroDeSessao(P_WORKTREE, "a bancada existente não é um worktree isolado",
+                          detalhe="Use create_worktree ou uma bancada livre registrada no Git; o principal foi preservado.")
+    lista = correr_de_verdade(["git", "-C", str(plano.raiz), "worktree", "list", "--porcelain"])
+    if lista.exit_code or not worktree_ja_existe(lista.stdout, bancada):
+        raise ErroDeSessao(P_WORKTREE, "a bancada não está registrada neste repositório",
+                          detalhe="Confira o caminho devolvido por create_worktree antes de repetir.")
+    branch = correr_de_verdade(["git", "-C", str(bancada), "symbolic-ref", "--short", "HEAD"])
+    if branch.exit_code or not branch.stdout.strip():
+        raise ErroDeSessao(P_WORKTREE, "a bancada está sem ramo de trabalho",
+                          detalhe="Prepare um ramo novo na bancada livre e repita --worktree; nenhum ramo foi criado por esta conferência.")
+    anterior = arquivo_de_sessao_atual(bancada)
+    if not anterior.exists():
+        anterior = arquivo_de_estado_inicial(bancada)
+    mesma = False
+    if anterior.exists():
+        try:
+            registro = json.loads(anterior.read_text(encoding="utf-8"))
+            if registro.get("identidade") != identidade_duravel_da_bancada(bancada):
+                raise ValueError("identidade de outra bancada")
+            antigo = registro["plano"]
+            mesma = (antigo.get("tarefa_da_fila") == plano.tarefa_da_fila and antigo.get("branch") == branch.stdout.strip())
+            if not mesma and antigo.get("tarefa_da_fila"):
+                import reservar
+                if reservar.ler_reserva(bancada, "tarefa-" + antigo["tarefa_da_fila"]) is not None:
+                    raise ErroDeSessao(P_WORKTREE, "a bancada ainda tem reserva da tarefa anterior",
+                                      detalhe="Conclua ou devolva a tarefa anterior pelo balcão antes de reutilizar a bancada.")
+        except (OSError, ValueError, KeyError, TypeError) as erro:
+            raise ErroDeSessao(P_WORKTREE, "a preparação anterior está ilegível",
+                              detalhe="Preserve a bancada e confira seu registro antes de retomar.") from erro
+    if not mesma:
+        status = correr_de_verdade(["git", "-C", str(bancada), "status", "--porcelain=v1", "-z", "--untracked-files=all"])
+        if status.exit_code:
+            raise ErroDeSessao(P_WORKTREE, "não consegui medir o trabalho da bancada",
+                              detalhe="Confira git status antes de repetir; nenhum arquivo foi alterado.")
+        for item in status.stdout.split("\0"):
+            if not item:
+                continue
+            caminho = item[3:]
+            try:
+                proprio = (item[:2] in {"??", "A "} and caminho.startswith(("fila/tarefas/", "fila/eventos/"))
+                           and ".." not in Path(caminho).parts)
+                dados = json.loads((bancada / caminho).read_text(encoding="utf-8")) if proprio else {}
+                proprio = proprio and (dados.get("tarefa") or dados.get("id")) == plano.tarefa_da_fila
+            except (OSError, ValueError, AttributeError):
+                proprio = False
+            if not proprio:
+                raise ErroDeSessao(P_WORKTREE, "a bancada tem trabalho anterior ainda não contabilizado",
+                                  detalhe="Preserve e registre esse trabalho antes de iniciar outra tarefa nesta bancada.")
+    from executor_codex import conferir_devolucao
+    conferir_devolucao(bancada)
+    return replace(plano, worktree=bancada, branch=branch.stdout.strip())
 
 
 def caminhos_da_tarefa(tarefa: dict, celulas: Sequence[str]) -> list[str]:
@@ -2308,7 +2411,7 @@ def contexto_direcionado(
     if not globais:
         limites.append("Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
                        "confira o checkout e as instruções da sessão antes de editar.")
-    candidatas = [*globais, "CONSTITUICAO.md", "RITOS.md",
+    candidatas = [*globais, "CAMINHO-DOURADO.md", "CONSTITUICAO.md", "RITOS.md",
                   "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
     for caminho in caminhos:
         partes = Path(caminho.replace("\\", "/")).parts
@@ -2472,6 +2575,7 @@ def construir_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="só mostra o plano — não cria worktree, venv nem container",
     )
+    parser.add_argument("--worktree", type=Path, help="adota a bancada isolada existente e registrada; não cria checkout")
     parser.add_argument("--contexto", action="store_true", help="só recupera contexto no checkout indicado, sem preparar ambiente")
     parser.add_argument("--caminho", action="append", default=[], help="caminho afetado, repetível")
     parser.add_argument("--sintoma", default="", help="sintoma para a busca existente por sinal")
@@ -2505,7 +2609,11 @@ def raiz_do_clone(checkout: Path) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
-    args = construir_parser().parse_args(argv)
+    argumentos = list(sys.argv[1:] if argv is None else argv)
+    if argumentos[:1] == ["codex"]:
+        from executor_codex import main as executar_codex
+        return executar_codex(argumentos[1:])
+    args = construir_parser().parse_args(argumentos)
     try:
         raiz = raiz_declarada(Path(args.raiz)) if args.raiz else raiz_do_repo()
         if not args.contexto:
@@ -2536,6 +2644,8 @@ def main(argv: list[str] | None = None) -> int:
             porta_redis=args.porta_redis,
             prefixo=args.prefixo,
         )
+        if args.worktree:
+            plano = adotar_bancada_existente(plano, args.worktree)
     except ErroDeSessao as erro:
         print(erro.render())
         return erro.codigo
@@ -2588,7 +2698,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from boletim import coletar, montar
 
-        print(montar(coletar(raiz)))
+        checkout_do_boletim = plano.worktree if args.worktree else raiz
+        print(f"Boletim da bancada: {checkout_do_boletim}")
+        print(montar(coletar(checkout_do_boletim)))
     except ErroDeInstrumentacao as erro:
         print(
             ErroDeSessao(
@@ -2608,9 +2720,12 @@ def main(argv: list[str] | None = None) -> int:
     detalhes = []
     log_abertura = plano.scratch / f"abertura-{tentativa}.log"
     try:
-        abertura = Sessao(plano, log=detalhes.append)
-        texto = abertura.rodar()
-        plano = abertura.plano
+        with trava_da_bancada(plano.worktree, esperar=False) if args.worktree else nullcontext():
+            if args.worktree:
+                plano = adotar_bancada_existente(plano, args.worktree)
+            abertura = Sessao(plano, log=detalhes.append)
+            texto = abertura.rodar()
+            plano = abertura.plano
     except ErroDeSessao as erro:
         escrever_de_verdade(log_abertura, "\n".join(detalhes + [erro.render()]))
         print(erro.render())

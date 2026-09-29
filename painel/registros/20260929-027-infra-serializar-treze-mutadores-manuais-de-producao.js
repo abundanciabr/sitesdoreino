@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-027-infra-serializar-treze-mutadores-manuais-de-producao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "infra: serializar treze mutadores manuais de producao",
+  detalhe: "Treze mutadores usam a trava comum antes da primeira escrita; os demais seguem na TAR-979 ate cobrir kit root e concorrencia antiga.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2346. Validação local: árvore a3f0225f81e20e0c738fcf2dcdcf7d881b91f276; commit 5715cbc5d15af738bd13d760d7d14c0242f7d61e; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-979",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
