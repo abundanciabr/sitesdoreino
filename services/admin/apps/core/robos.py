@@ -10,7 +10,7 @@ do plano de 29/08/2026 — desenho em
 
 | O quê | De onde | Quem escreveu |
 |---|---|---|
-| O quadro (estados) | `admin-dados/fila_ativo/estados.json` | `ci/fila.py listar --json`, no publicador (escritor único) |
+| O quadro (estados) | `admin-dados/fila_ativo/estados.json` | `ci/fila.py snapshot-publicado`, no publicador (escritor único) |
 | As tarefas/eventos | `admin-dados/fila_ativo/tarefas|eventos/` | os robôs, por PR |
 | A régua das esperas | `admin-dados/fila_ativo/regua.json` | `ci/medir_tempos.py` (a régua viva) |
 | Os estouros | `admin-dados/fila_ativo/esperas/resumo-*.json` | `ci/exportar_esperas.py` (curado e redigido) |
@@ -187,10 +187,20 @@ COLUNAS = (
     },
     {
         "estado": "concluída",
+        "aceite": "comprovado",
+        "rotulo": "Resultados com aceite funcional comprovado",
+        "curto": "aceite comprovado",
+        "explicacao": "A integração, a publicação aplicável e o resultado funcional foram conferidos e vinculados ao registro de aceite.",
+        "cor": "verde",
+        "recolhida": True,
+    },
+    {
+        "estado": "concluída",
+        "aceite": "nao_comprovado",
         "rotulo": "Conclusões registradas",
         "curto": "conclusão registrada",
-        "explicacao": "A fila registrou a conclusão destas tarefas. Cada cartão traz o motivo e a referência disponíveis; este histórico não verifica novamente o aceite nem a publicação.",
-        "cor": "verde",
+        "explicacao": "O histórico preserva a conclusão registrada. A referência ao PR ou ao registro antigo não comprova o aceite funcional; os cartões mostram as provas disponíveis.",
+        "cor": "cinza",
         "recolhida": True,
     },
     {
@@ -378,10 +388,43 @@ def selo_da_importancia(valor) -> dict:
     return {"texto": "pode esperar", "classe": "baixa"}
 
 
+COMPROVACOES_DA_ENTREGA = {
+    "submissao": (
+        "Submissão",
+        {"registrada": "Registrada", "nao_comprovada": "Não comprovada"},
+    ),
+    "integracao": (
+        "Integração",
+        {"comprovada": "Comprovada", "nao_comprovada": "Não comprovada"},
+    ),
+    "publicacao": (
+        "Publicação técnica",
+        {
+            "comprovada": "Comprovada",
+            "nao_comprovada": "Não comprovada",
+            "nao_aplicavel": "Não se aplica à entrega",
+        },
+    ),
+    "aceite": (
+        "Aceite funcional",
+        {"comprovado": "Comprovado", "nao_comprovado": "Não comprovado"},
+    ),
+}
+
+
+def comprovacoes_para_tela(dados: dict) -> list[dict]:
+    return [
+        {"etapa": rotulo, "resultado": nomes.get(dados.get(campo), "Não comprovado")}
+        for campo, (rotulo, nomes) in COMPROVACOES_DA_ENTREGA.items()
+    ]
+
+
 def e_deste_grupo(dados: dict, grupo: dict) -> bool:
     """Usa a classificação da fila; responsável ausente fica visível à parte."""
     if dados.get("estado") != grupo["estado"]:
         return False
+    if grupo.get("aceite") is not None:
+        return dados.get("aceite", "nao_comprovado") == grupo["aceite"]
     esperado = grupo.get("espera")
     if esperado is None:
         return True
@@ -422,9 +465,66 @@ def ler_estados(pasta: Path | None) -> dict | None:
         or not isinstance(dados, dict)
         or not isinstance(dados.get("estado"), str)
         or dados.get("estado") not in conhecidos
+        or any(
+            campo in dados
+            and (not isinstance(dados[campo], str) or dados[campo] not in nomes)
+            for campo, (_, nomes) in COMPROVACOES_DA_ENTREGA.items()
+        )
+        or (
+            dados.get("aceite") == "comprovado"
+            and (
+                dados.get("estado") != "concluída"
+                or dados.get("origem_conclusao") != "reconciliacao"
+                or dados.get("integracao") != "comprovada"
+                or dados.get("publicacao") not in ("comprovada", "nao_aplicavel")
+            )
+        )
         for tid, dados in estados.items()
     ):
         return None
+    publicacao = (
+        dados_da_fila()
+        if any(d.get("aceite") == "comprovado" for d in estados.values())
+        else None
+    )
+    indice = (
+        _ler_json(pasta / "aceites-comprovados.json")
+        if publicacao and publicacao.pasta == pasta and publicacao.sha
+        else None
+    )
+    provas = (
+        indice.get("tarefas", {})
+        if isinstance(indice, dict) and indice.get("formato") == "aceites-publicados.v1"
+        else {}
+    )
+    for tid, dados in estados.items():
+        if dados.get("aceite") != "comprovado":
+            continue
+        registro = provas.get(tid) if isinstance(provas, dict) else None
+        prova = registro.get("prova") if isinstance(registro, dict) else None
+        digest = (
+            hashlib.sha256(
+                json.dumps(
+                    prova, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
+            ).hexdigest()
+            if isinstance(prova, dict)
+            else None
+        )
+        if (
+            digest is None
+            or digest != registro.get("sha256")
+            or digest != dados.get("aceite_prova_sha256")
+            or prova.get("tarefa") != tid
+            or any(prova.get(c) != dados.get(c) for c in ("pr", "revisao", "arvore"))
+        ):
+            dados.update(
+                {
+                    "integracao": "nao_comprovada",
+                    "publicacao": "nao_comprovada",
+                    "aceite": "nao_comprovado",
+                }
+            )
     return estados
 
 
@@ -599,6 +699,11 @@ def _quadro(request, *, resultado=None, rascunho=None):
                             dados["pr"],
                         )
                         else None
+                    ),
+                    "comprovacoes_entrega": (
+                        comprovacoes_para_tela(dados)
+                        if dados.get("pr") or dados.get("estado") == "concluída"
+                        else []
                     ),
                     "onde": onde_isso_mexe(dados.get("toca")),
                     "quando": ultima_mexida.get(tid),

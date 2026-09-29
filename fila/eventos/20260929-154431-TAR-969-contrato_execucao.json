@@ -1,0 +1,75 @@
+{
+  "arquivo": "20260929-154431-TAR-969-contrato_execucao",
+  "tarefa": "TAR-969",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T15:44:31.029536+00:00",
+  "quem": "codex/ci/pme03-proveniencia",
+  "contrato": {
+    "plano": "PME-03 — continuação TAR-969 de TAR-962",
+    "versao": 1,
+    "objetivo": "O mantenedor só vê aceite funcional quando a origem integrada, publicação e jornada foram conferidas no preparo do snapshot oficial.",
+    "entregaveis": [
+      "produtor de fila confere fontes antes do pacote",
+      "cartão vinculado à prova no snapshot íntegro",
+      "regressões adversariais e jornada administrativa publicada"
+    ],
+    "escopo_incluido": [
+      "ci/fila.py",
+      "ci/tests/test_fila.py",
+      "ci/preparar_dados_admin.py",
+      "ci/tests/test_publicacao_dados_admin.py",
+      "testes pertinentes do produtor",
+      "services/admin/apps/core/robos.py",
+      "services/admin/apps/core/fila_do_painel.py",
+      "services/admin/apps/core/templates/admin/_cartao_robo.html",
+      "testes administrativos pertinentes",
+      "registros próprios"
+    ],
+    "nao_objetivos": [
+      "editar workflows de PME-07",
+      "editar APIs/settings/urls/contracts de PME-05",
+      "editar candidato de PME-06",
+      "reabrir ou reescrever a história de TAR-962",
+      "adicionar aprovação manual"
+    ],
+    "restricoes": [
+      "principal somente leitura",
+      "sem fallback/modelo novo/subagentes",
+      "manter fontes e dependências legítimas",
+      "sem GitHub no render",
+      "somente publicador oficial altera produção"
+    ],
+    "decisoes_aprovadas": [
+      "mandato integral de 29/09/2026 sessão 01a0ed71-4e7f-7680-821e-4d655a7ad405",
+      "corte PR2338 é pré-condição técnica sem depende-de circular",
+      "TAR969 continua PME03 sem nova frente",
+      "origem conferida no produtor e índice coberto pelo manifesto existente"
+    ],
+    "etapas": [
+      "regressão negativa do retrato local",
+      "vincular produtor às fontes integradas e publicação",
+      "vincular consumidor ao retrato íntegro",
+      "validar e enviar rito",
+      "publicação oficial e jornada pertinente"
+    ],
+    "criterios_entrada": [
+      "registros centrais copiados exatamente",
+      "TAR969 reivindicada na bancada gerenciada exclusiva"
+    ],
+    "criterios_aceite": [
+      "run inventado e registro fabricado não comprovam aceite",
+      "ausência/erro não viram verde nem fila vazia",
+      "histórico permanece intacto",
+      "jornada publicada na revisão pertinente"
+    ],
+    "evidencias_exigidas": [
+      "pytest focal e admin",
+      "muralhas/guardas/contrato",
+      "prova de fonte integrada/publicação",
+      "registro com jornada pertinente"
+    ],
+    "condicao_encerramento": "Código publicado, jornada comprovada na revisão publicada e registro durável reconciliado; GPS PME03 permanece aberto até isso.",
+    "limites_autonomia": "Reparos reversíveis dentro dos arquivos da frente; precondição para integrar produtor inclui permissões do workflow em main.",
+    "acoes_do_mantenedor": "Nenhuma ação técnica rotineira; decisões de autoridade seguem a coordenação autorizada."
+  }
+}

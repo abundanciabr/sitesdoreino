@@ -1,0 +1,63 @@
+{
+  "arquivo": "20260929-170752-TAR-982-contrato_execucao",
+  "tarefa": "TAR-982",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T17:07:52.394938+00:00",
+  "quem": "pme_testemunho_epoca",
+  "contrato": {
+    "versao": 2,
+    "plano": "TAR-958 fase 0 PME-05/08: testemunho de epoca protegido e assinado antes da retomada.",
+    "decisoes_aprovadas": [
+      "Mandato expresso do mantenedor na sessao 01a0ed71-4e7f-7680-821e-4d655a7ad405 em 2026-09-29 para fase 0 protegidos, publicacao oficial e recuperacao compativel"
+    ],
+    "objetivo": "Impedir que uma copia antiga do banco ou do ponteiro devolva autoridade ao executor vencido.",
+    "entregaveis": [
+      "Testemunho externo por coorte e epoca em tags GitHub anotadas, assinadas pelo workflow oficial main e imutaveis por regra nativa.",
+      "Consulta que enumera todas as tags, verifica origem, protecao e cadeia e entrega a maior epoca.",
+      "Preparacao e ativacao com confirmacao por releitura apos resposta incerta e CAS apenas no ponteiro.",
+      "Testes de rewind, restauracao antiga, particao, perda de resposta, conflito e falta de protecao."
+    ],
+    "escopo_incluido": [
+      "ci/testemunho_epoca.py",
+      "ci/tests/test_testemunho_epoca.py",
+      ".github/workflows/coordenacao-epoca.yml",
+      "eventos obrigatorios da TAR-982"
+    ],
+    "nao_objetivos": [
+      "Alterar o nucleo PG/API da PME-05",
+      "Alterar rulesets remotos sem proposta revisada pelo coordenador",
+      "Restaurar dados ou apagar historico",
+      "Alterar outros workflows ou criar segredos/credenciais"
+    ],
+    "restricoes": [
+      "Tags coordenacao-epoca/<coorte>/<epoca20digitos>/preparada e /ativa, create-only e sem bypass em regras nativas.",
+      "Registro canonico Sigstore do workflow oficial main com versao, coorte, epoca, transicao, estado, anterior, watermark_sha256 e autoridade_sha256.",
+      "Nenhuma epoca concedida deriva do ponteiro; ausencia de tag, lacuna, assinatura, protecao ou remoto verificavel falha fechada.",
+      "Ativar exige prova PG autenticada da mesma transicao, pausada em nova epoca e concessoes invalidadas."
+    ],
+    "etapas": [
+      "Ler fontes e registrar contrato",
+      "Implementar protocolo e interfaces",
+      "Testar falhas e revisar",
+      "Entregar para integracao sob coordenador"
+    ],
+    "criterios_entrada": [
+      "Mandato TAR-958 para fase 0 e TAR-982 explicada e reivindicada"
+    ],
+    "criterios_aceite": [
+      "Consulta nunca aceita epoca menor que tag preparada mais recente, mesmo com ponteiro antigo.",
+      "Resposta perdida so confirma conteudo identico; conflito e particao falham fechados.",
+      "Assinatura oficial main e ruleset nativo ativo sem bypass sao verificados no consumo.",
+      "Prova PG autenticada e equivalente ao registro antes de ativar."
+    ],
+    "evidencias_exigidas": [
+      "Saida real dos testes unitarios",
+      "Consulta real das regras nativas e assinatura",
+      "Ensaio integrado oficial com consumidor PG antes de declarar corte"
+    ],
+    "condicao_encerramento": "Codigo integrado e testemunho protegido e assinado consumido pelo servidor; ensaio integrado de restauracao e falhas aprovado.",
+    "limites_autonomia": "PROPOSTA NAO REGISTRADA: workflow novo coordenacao-epoca.yml pendente de aprovacao especifica do mantenedor e revisao automatica; nenhuma publicacao ou corte antes de assinatura Sigstore, protecao nativa e consumidor PG comprovados.",
+    "acoes_do_mantenedor": "Nenhuma acao para codigo coberto; apenas decisao exclusiva se regras nativas ou identidade oficial nao puderem ser estabelecidas no ambiente autorizado.",
+    "decisao_pendente": "Mantenedor deve aprovar explicitamente escopo do workflow novo e as duas correcoes de seguranca do modulo; checkpoint 20260929-164901 descreve pedido do coordenador, nao substitui aprovacao do controle."
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "arquivo": "20260929-184936-TAR-989-contrato_execucao",
+  "tarefa": "TAR-989",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T18:49:36.958269+00:00",
+  "quem": "pme_mutadores_producao",
+  "contrato": {
+    "plano": "TAR-989-pme08-pares-exclusao",
+    "versao": 1,
+    "objetivo": "Serializar os 14 provisionadores de pares com a trava comum da producao antes de qualquer alteracao, preservando a raiz operada e o transporte oficial.",
+    "entregaveis": [
+      "14 roteiros com FD8 readonly no mesmo inode antes da primeira mutacao.",
+      "Teste compartilhado com inventario, caso negativo e disputa Linux de roteiro real.",
+      "PR pelo rito oficial e evidencia separada de integracao/publicacao."
+    ],
+    "escopo_incluido": [
+      "Os 14 infra/provisionar-par*.sh nomeados na TAR-989.",
+      "ci/tests/test_exclusao_comum_da_publicacao.py.",
+      "Tarefa, eventos e recibo proprios da TAR-989."
+    ],
+    "nao_objetivos": [
+      "Alterar TAR-987 ou concluir TAR-986 parcialmente.",
+      "Editar outros mutadores, workflows, deploy-celula ou trava canonica.",
+      "Executar provisionamento real, alterar segredos ou retirar concurrency Actions."
+    ],
+    "restricoes": [
+      "No maximo 15 arquivos tecnicos neste incremento.",
+      "Mesma raiz do cd e da trava, FD8 somente leitura e inode revalidado.",
+      "Preservar ajuda/preview sem efeitos e reentrada de shell sem deadlock.",
+      "Nao usar SSH agente ou privilegio novo."
+    ],
+    "decisoes_aprovadas": [
+      "Mandato TAR-958 do mantenedor autoriza codigo protegido pertinente e publicacao oficial.",
+      "Reserva pme-pares-exclusao e propriedade temporaria do teste compartilhado foram dadas pela coordenacao."
+    ],
+    "etapas": [
+      "Abrir bancada gerenciada, copiar fonte, reivindicar e contratar.",
+      "Inventariar primeira mutacao e caller dos 14 alvos.",
+      "Inserir fragmento canonico antes da mutacao.",
+      "Provar Bash, caso negativo e concorrencia Linux isolada.",
+      "Revisar, publicar pelo rito Draft-first e medir cadeia de integracao."
+    ],
+    "criterios_entrada": [
+      "Bancada pme-mutadores-restantes limpa, branch codex/infra/pme-pares-exclusao em main atual.",
+      "Tarefa e evento TAR-989 copiados da coordenacao.",
+      "Reivindicacao atomica da TAR-989."
+    ],
+    "criterios_aceite": [
+      "14 alvos protegidos antes da primeira alteracao com a mesma raiz.",
+      "Teste negativo detecta guarda removida ou escrita anterior a posse.",
+      "Disputa Linux prova que receptor real espera e preserva env.",
+      "Rota oficial transporta codigo da main sem executar efeitos de negocio."
+    ],
+    "evidencias_exigidas": [
+      "Diff de 15 arquivos tecnicos no maximo e inventario de callers.",
+      "bash -n e pytest de exclusao com resultado real.",
+      "Revisao independente e checks remotos do PR.",
+      "Integracao e publicacao medidas separadamente."
+    ],
+    "condicao_encerramento": "TAR-989 concluida somente apos aceitar 14 alvos, integracao oficial e cadeia verificada, sem declarar PME08 inteira concluida.",
+    "limites_autonomia": "Executar somente os 15 arquivos tecnicos autorizados e o rito de publicacao; sem acesso SSH, segredos ou gestos root.",
+    "acoes_do_mantenedor": "Nenhuma neste incremento; so responder a pergunta exclusiva ja pendente da coordenacao sobre a dependencia TAR-987 se desejar destrava-la."
+  }
+}

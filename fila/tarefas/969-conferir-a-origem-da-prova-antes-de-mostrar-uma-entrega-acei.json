@@ -1,0 +1,20 @@
+{
+  "arquivo": "969-conferir-a-origem-da-prova-antes-de-mostrar-uma-entrega-acei",
+  "id": "TAR-969",
+  "titulo": "Conferir a origem da prova antes de mostrar uma entrega aceita",
+  "toca": [
+    "ci",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Origem integrada e jornada real vinculadas a submissao, revisao, ambiente e publicacao; produtor recusa fonte fabricada; leitor usa snapshot oficial validado; historia preservada; jornada administrativa conferida",
+  "despacho": "Continuacao da mesma frente PME03 TAR962, requisito restante apos corte compatível PR2338. Nao aumenta contagem de frentes nem substitui PR integrado. Responsavel unico pme03_aceite, modelo gpt-6-sol high configurado explicitamente no agente existente, sem fallback/subdelegacao. Worktree gerenciada C:\\Users\\davia\\.codex\\worktrees\\pme03-proveniencia\\sitesdoreino-limpo-20260923 criada da referencia preservada do candidato completo; conferirbranch/base e registrar anteseditar. Escrita exclusiva ci/fila.py ci/tests/test_fila*.py services/admin/apps/core/robos.py services/admin/apps/core/fila_do_painel.py services/admin/templates/admin/_cartao_robo.html testes administrativos pertinentes ci/preparar_dados_admin.py e testes pertinentes; ajustarpaths aosreais semampliarcomponentes. pr.py/test_pr.py propriedade mesmafrente mas primeiroincremento readonlyenquantoritoativo; workflows donoPME07, APInova/settings/urls/api/contracts donoPME05, candidato donoPME06, sessao/processos donoPME04. Precondicao para integrar produtor: PR2338 e permissoes workflow exigidas pelo produtor emmain; semdependencia circular do estado TAR962. Provas adversariais faltante/runfalso/registrofabricado juntosnaoaprovam, semGitHub porcartao. FonteGPS TAR958, mandato direto29/09 fase0 ecorrecao OpenAI. Entrega por ci/pr.py novo que apenas submete; aceite soapos jornada publicada. Recuperacao reverte compatível semapagarhistorico. Proximaacao copiarregistros e reivindicarnabancada anteseditar; parada somentebloqueioreal comacaoconcreta.",
+  "origem": "TAR958; continuacao PME03 TAR962 apos PR2338; nao e frente adicional",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
