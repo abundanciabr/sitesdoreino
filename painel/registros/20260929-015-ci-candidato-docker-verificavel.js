@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-015-ci-candidato-docker-verificavel",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: candidato Docker verificavel",
+  detalhe: "Candidato liga fonte, provas e digest; bundle Actions e equivalencia sao conferidos. Publicacao pertence ao consumidor PME07/08.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2335. Validação local: árvore 4c5b7122bab95889b4e184064beb37b93792d5ff; commit a68fcfc069741be83ef6dca3983af6c8d4da11ae; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-966",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
