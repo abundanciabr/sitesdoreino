@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260929-144506-TAR-960-concluida",
+  "tarefa": "TAR-960",
+  "evento": "concluida",
+  "quando": "2026-09-29T14:45:06.288181+00:00",
+  "quem": "agent/ci/pme-modelos",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2332",
+  "verificado_em": "2026-09-29"
+}

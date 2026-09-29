@@ -106,7 +106,7 @@ def test_modelos_codex_sao_explicitos(monkeypatch):
     assert "modelo_recomendado: gpt-6-luna" in brief
     assert economia.perfil_por_tipo("arquitetura").modelo == "gpt-6-sol"
     assert economia.perfil_por_tipo("escrita").modelo == "gpt-6-luna"
-    assert economia.perfil_por_tipo("escrita").esforco == "high"
+    assert economia.perfil_por_tipo("escrita").esforco == "medium"
 
 def test_auditoria_codex_nao_aprova_so_as_fichas_claude(monkeypatch, bancada):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
