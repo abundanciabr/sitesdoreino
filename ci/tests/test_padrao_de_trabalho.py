@@ -62,6 +62,12 @@ def test_toda_porta_declarada_existe_em_disco():
     assert not sumidas, f"portas declaradas que não existem: {sumidas}"
 
 
+def test_indice_historico_nao_e_porta_mas_entradas_diretas_continuam_guardadas(tmp_path):
+    assert "RITOS.md" not in padrao.PORTAS
+    raiz = _cenario(tmp_path, **{"AGENTS.md": ("CAMINHO-DOURADO.md", "RITOS.md")})
+    _falha(padrao.conferir(raiz), "entrada direta AGENTS.md")
+
+
 def test_o_aviso_de_sessao_lista_as_onze_regras(capsys):
     padrao.aviso(RAIZ)
     saida = capsys.readouterr().out
