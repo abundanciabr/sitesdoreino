@@ -303,10 +303,57 @@ def renderizar(campos: dict) -> str:
         "(function(){ (window.REGISTROS = window.REGISTROS || []).push({",
     ]
     for chave, valor in campos.items():
-        linhas.append(f"  {chave}: {json.dumps(valor, ensure_ascii=False)},")
+        linhas.append(f" {chave}: {json.dumps(valor, ensure_ascii=False)},")
     linhas[-1] = linhas[-1].rstrip(",")
     linhas.append("}); })();")
     return "\n".join(linhas) + "\n"
+
+
+def _texto_do_recibo(pedido, nome, url, dia, area, arvore, commit, quantidade):
+    evidencia = (
+        f"Validação local: árvore {arvore}; commit {commit}; "
+        f"{quantidade} comando(s), exit 0. Revisão, integração e publicação não verificadas."
+    )
+    if pedido.evidencia.strip():
+        evidencia += " " + pedido.evidencia.strip()
+    texto = renderizar(montar_campos(
+        arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
+        url_do_pr=url, dia=dia, tipo=pedido.tipo, gravidade=pedido.gravidade,
+        frente=pedido.frente or derivar_frente(pedido.arquivos), area=area,
+        tarefa=pedido.tarefa, evidencia_extra=evidencia,
+    ))
+    if len(texto.encode("utf-8")) >= 1024:
+        if pedido.evidencia.strip():
+            raise ParouPorSeguranca(
+                "recibo excede 1 KB com --evidencia",
+                "Encurte o texto de --evidencia e o detalhe; preserve a prova. "
+                "Nenhuma evidência foi cortada. Retome com --continuar se houver commit ou PR.",
+            )
+        raise ParouPorSeguranca(
+            "recibo excede 1 KB",
+            "Encurte título e detalhe; preserve a evidência determinística. "
+            "Retome com --continuar se houver commit ou PR.",
+        )
+    return texto
+
+
+def _conferir_orcamento_do_recibo(pedido, correr, dia, area, commit, quantidade):
+    remoto = correr(["git", "remote", "get-url", "origin"]).strip()
+    achado = re.fullmatch(r"https://([^/@]+/[\w.-]+/[\w.-]+?)(?:\.git)?", remoto)
+    if not achado:
+        achado = re.fullmatch(r"git@([^:]+):([\w.-]+/[\w.-]+?)(?:\.git)?", remoto)
+        repositorio = f"{achado[1]}/{achado[2]}" if achado else None
+    else:
+        repositorio = achado[1]
+    if not repositorio:
+        raise ParouPorSeguranca(
+            "origin não identifica a URL do recibo",
+            "Confira git remote get-url origin; use a URL HTTPS ou SSH do repositório GitHub antes de submeter.",
+        )
+    # Reserva 20 dígitos para o número futuro; a URL efetiva também é conferida.
+    url = f"https://{repositorio}/pull/" + "9" * 20
+    nome = f"{dia:%Y%m%d}-999-{slug_do_titulo(pedido.titulo)}"
+    _texto_do_recibo(pedido, nome, url, dia, area, commit, commit, quantidade)
 
 
 def campos_lidos(texto: str) -> dict:
@@ -744,8 +791,8 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     _conferir_o_pedido(raiz, pedido)
     comandos, prazo_segundos = _configuracao_de_validacao(pedido)
     ramo = correr(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
-    if not ramo.startswith("agent/"):
-        raise ParouPorSeguranca("ramo incompatível", "Use agent/<área>/<tarefa> na sua bancada.")
+    if not re.fullmatch(r"(?:agent|codex)/[^/]+/.+", ramo):
+        raise ParouPorSeguranca("ramo incompatível", "Use agent/<área>/<tarefa> ou codex/<área>/<tarefa> na sua bancada.")
     _conferir_que_as_entradas_sao_da_bancada(raiz, pedido, ramo)
     sujo = correr(["git", "status", "--porcelain"]).strip()
     if not sujo and not pedido.continuar:
@@ -755,6 +802,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
+    _conferir_orcamento_do_recibo(pedido, correr, hoje, ramo.split("/")[1], inicial, len(comandos))
     telemetria.registrar_fase("fechamento", "iniciado", commit=inicial, **correlacao)
     dizer(f"PASS preparação concluída: {ramo}")
     preparados = correr(["git", "diff", "--cached", "--name-only"]).splitlines()
@@ -769,10 +817,13 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     commit = _hash_git(correr(["git", "rev-parse", "HEAD"]))
     if _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])) != arvore:
         raise ParouPorSeguranca("commit diverge da árvore validada", "Confira os hooks e valide novamente o commit efetivamente entregue.")
+    telemetria.registrar_fase("candidato", "concluido", commit=commit, **correlacao)
+    rodada = time.time_ns()
+    telemetria.registrar_fase("validacao", "iniciado", commit=commit, rodada=rodada, **correlacao)
     try:
         provas = _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos, arvore)
     except ErroDeInstrumentacao:
-        telemetria.registrar_fase("validacao", "falhou", commit=commit, **correlacao)
+        telemetria.registrar_fase("validacao", "falhou", commit=commit, rodada=rodada, **correlacao)
         raise
     if correr(["git", "diff", "--name-only"]).strip() or _hash_git(correr(["git", "write-tree"])) != arvore:
         raise ParouPorSeguranca("a validação alterou a árvore", "Confira o diff e execute novamente a validação do conteúdo final.")
@@ -782,7 +833,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
         "resultado": "concluido",
     }, cwd=str(raiz), sessao=tentativa)
-    telemetria.registrar_fase("validacao", "concluido", commit=commit, **correlacao)
+    telemetria.registrar_fase("validacao", "concluido", commit=commit, rodada=rodada, **correlacao)
     correr(["git", "push", "-u", "origin", ramo])
     numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
     dizer(f"PASS PR aberto: #{numero} {url}")
@@ -807,29 +858,8 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
             raise ErroDeInstrumentacao("reserva não devolveu número válido", "Confira python ci/reservar.py listar; retome com a mesma revisão.")
         nome = f"{sequencia}-{slug_do_titulo(pedido.titulo)}"
         destino = raiz / "painel/registros" / f"{nome}.js"
-        validacao_local = (
-            f"Validação local: árvore {arvore}; commit {commit}; "
-            f"{len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas."
-        )
-        evidencia_extra = validacao_local
-        if pedido.evidencia.strip():
-            evidencia_extra = f"{validacao_local} {pedido.evidencia.strip()}"
-        campos = montar_campos(
-            arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
-            url_do_pr=url, dia=hoje, tipo=pedido.tipo, gravidade=pedido.gravidade,
-            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1], tarefa=pedido.tarefa,
-            evidencia_extra=evidencia_extra,
-        )
-        texto = renderizar(campos)
-        if len(texto.encode("utf-8")) >= 1024:
-            if pedido.evidencia.strip():
-                raise ParouPorSeguranca(
-                    "recibo excede 1 KB com --evidencia",
-                    "A prova passada em --evidencia deixou o recibo grande demais.\n"
-                    "Encurte o texto de --evidencia (ou remova) e rode de novo; nada\n"
-                    "foi gravado, e a prova não foi cortada em silêncio.",
-                )
-            raise ParouPorSeguranca("recibo excede 1 KB", "Encurte título e detalhe; preserve a evidência determinística.")
+        texto = _texto_do_recibo(pedido, nome, url, hoje, ramo.split('/')[1],
+                                arvore, commit, len(provas))
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
         destino.write_text(texto, encoding="utf-8")
@@ -847,11 +877,13 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if alterados - {relativo, *eventos} or correr(["git", "diff", "HEAD", "--name-only"]).strip():
         raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
     entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
+    rodada = time.time_ns()
+    telemetria.registrar_fase("validacao", "iniciado", commit=entregue, pr=numero, rodada=rodada, **correlacao)
     try:
         provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos,
                                  _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])))
     except ErroDeInstrumentacao:
-        telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, **correlacao)
+        telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, rodada=rodada, **correlacao)
         raise
     if (_hash_git(correr(["git", "rev-parse", "HEAD"])) != entregue
             or correr(["git", "diff", "HEAD", "--name-only"]).strip()):
@@ -861,7 +893,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "saidas_sha256": provas_finais, "resultado": "concluido", "pr": numero,
         "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
     }, cwd=str(raiz), sessao=tentativa)
-    telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
+    telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, rodada=rodada, **correlacao)
     correr(["git", "push", "origin", ramo])
     remoto = _conferir_revisao_remota(correr, numero, entregue)
     if remoto["isDraft"]:
