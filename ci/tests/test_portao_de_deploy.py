@@ -102,8 +102,8 @@ def cenario_verde() -> dict:
             },
             "runs/11/jobs": jobs_(
                 ("detectar", "success"),
-                ("ci-celula", "success"),
-                ("ci-celula-gate", "success"),
+                ("rodar-main", "success"),
+                ("ci-celula-gate-main", "success"),
             ),
             "runs/12/jobs": jobs_(
                 ("guardas do repositório", "success"), ("alarme", "skipped")
@@ -169,6 +169,18 @@ def test_tudo_verde_passa(tmp_path):
     assert "RESULTADO  PASS" in proc.stdout
 
 
+def test_nomes_antigos_verdes_no_push_nao_substituem_prova_main(tmp_path):
+    cen = cenario_verde()
+    cen["respostas"]["runs/11/jobs"] = jobs_(
+        ("detectar", "success"),
+        ("ci-celula (quiz)", "success"),
+        ("ci-celula-gate", "success"),
+    )
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "ci-celula-gate-main" in proc.stdout
+
+
 def test_teste_da_celula_quebrou_reprova(tmp_path):
     cen = cenario_verde()
     cen["respostas"][f"runs?head_sha={SHA_MERGE}"]["workflow_runs"][1][
@@ -192,8 +204,8 @@ def test_ci_celula_pulado_com_celula_tocada_e_error(tmp_path):
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
         ("detectar", "success"),
-        ("ci-celula", "skipped"),
-        ("ci-celula-gate", "success"),
+        ("rodar-main", "skipped"),
+        ("ci-celula-gate-main", "success"),
     )
     proc = rodar_portao(tmp_path, cen)
     assert proc.returncode == 2, proc.stdout + proc.stderr
@@ -235,7 +247,7 @@ def test_resposta_nao_json_e_error(tmp_path):
 def test_job_exigido_cancelled_e_error(tmp_path):
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
-        ("ci-celula", "success"), ("ci-celula-gate", "cancelled")
+        ("rodar-main", "success"), ("ci-celula-gate-main", "cancelled")
     )
     proc = rodar_portao(tmp_path, cen)
     assert proc.returncode == 2, proc.stdout + proc.stderr
@@ -260,9 +272,9 @@ def test_job_de_matriz_conta_pelo_nome_com_sufixo(tmp_path):
     """
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
-        ("ci-celula (admin)", "success"),
-        ("ci-celula (quiz)", "success"),
-        ("ci-celula-gate", "success"),
+        ("rodar-main (admin)", "success"),
+        ("rodar-main (quiz)", "success"),
+        ("ci-celula-gate-main", "success"),
     )
     proc = rodar_portao(tmp_path, cen)
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -277,9 +289,9 @@ def test_uma_celula_verde_nao_fala_pelas_outras(tmp_path):
     """
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
-        ("ci-celula (admin)", "success"),
-        ("ci-celula (quiz)", "failure"),
-        ("ci-celula-gate", "success"),
+        ("rodar-main (admin)", "success"),
+        ("rodar-main (quiz)", "failure"),
+        ("ci-celula-gate-main", "success"),
     )
     proc = rodar_portao(tmp_path, cen)
     assert proc.returncode == 1, proc.stdout + proc.stderr
@@ -302,6 +314,14 @@ def test_push_direto_na_main_sem_pr_e_error(tmp_path):
     assert "push direto" in proc.stdout
 
 
+def test_pr_unico_com_merge_commit_divergente_nao_autoriza_deploy(tmp_path):
+    cen = cenario_verde()
+    cen["respostas"][f"commits/{SHA_MERGE}/pulls"][0]["merge_commit_sha"] = "c" * 40
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "merge_commit_sha" in proc.stdout
+
+
 def test_pr_de_origem_ambiguo_e_error(tmp_path):
     cen = cenario_verde()
     cen["respostas"][f"commits/{SHA_MERGE}/pulls"] = [
@@ -310,7 +330,7 @@ def test_pr_de_origem_ambiguo_e_error(tmp_path):
     ]
     proc = rodar_portao(tmp_path, cen)
     assert proc.returncode == 2, proc.stdout + proc.stderr
-    assert "ambíguo" in proc.stdout
+    assert "PR de origem não comprovado" in proc.stdout
 
 
 def test_dois_prs_mas_um_exato_passa(tmp_path):
@@ -341,7 +361,7 @@ def test_check_homonimo_de_outro_workflow_nao_engana(tmp_path):
         run_(31, ".github/workflows/impostor.yml")
     ]
     cen["respostas"]["runs/31/jobs"] = jobs_(
-        ("ci-celula", "success"), ("ci-celula-gate", "success")
+        ("rodar-main", "success"), ("ci-celula-gate-main", "success")
     )
     cen["respostas"][f"runs?head_sha={SHA_MERGE}"]["workflow_runs"][1][
         "conclusion"
@@ -383,9 +403,9 @@ def test_duas_celulas_num_push_PASSAM_desde_que_ambas_tenham_evidencia(tmp_path)
     """
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
-        ("ci-celula (quiz)", "success"),
-        ("ci-celula (leads)", "success"),
-        ("ci-celula-gate", "success"),
+        ("rodar-main (quiz)", "success"),
+        ("rodar-main (leads)", "success"),
+        ("ci-celula-gate-main", "success"),
     )
     proc = rodar_portao(tmp_path, cen, CELULAS='["quiz", "leads"]')
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -395,9 +415,9 @@ def test_duas_celulas_com_UMA_sem_evidencia_reprova(tmp_path):
     """O que substituiu a proibição: prova. Faltando prova de uma, reprova."""
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
-        ("ci-celula (quiz)", "success"),
-        ("ci-celula (leads)", "failure"),
-        ("ci-celula-gate", "success"),
+        ("rodar-main (quiz)", "success"),
+        ("rodar-main (leads)", "failure"),
+        ("ci-celula-gate-main", "success"),
     )
     proc = rodar_portao(tmp_path, cen, CELULAS='["quiz", "leads"]')
     assert proc.returncode == 1, proc.stdout + proc.stderr
@@ -418,8 +438,8 @@ def test_modo_infra_aceita_rodar_pulado_mas_exige_o_gate(tmp_path):
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
         ("detectar", "success"),
-        ("ci-celula", "skipped"),  # sem célula, o rodar pula LEGITIMAMENTE
-        ("ci-celula-gate", "success"),
+        ("rodar-main", "skipped"),  # sem célula, o rodar pula LEGITIMAMENTE
+        ("ci-celula-gate-main", "success"),
     )
     proc = rodar_portao(tmp_path, cen, PORTAO_MODO="infra", CELULAS="[]")
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -429,8 +449,8 @@ def test_modo_infra_gate_pulado_e_error(tmp_path):
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(
         ("detectar", "success"),
-        ("ci-celula", "skipped"),
-        ("ci-celula-gate", "skipped"),
+        ("rodar-main", "skipped"),
+        ("ci-celula-gate-main", "skipped"),
     )
     proc = rodar_portao(tmp_path, cen, PORTAO_MODO="infra", CELULAS="[]")
     assert proc.returncode == 2, proc.stdout + proc.stderr

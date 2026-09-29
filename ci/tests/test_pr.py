@@ -417,7 +417,9 @@ def test_continuar_reusa_o_pr_ja_aberto_em_vez_de_abrir_outro(tmp_path):
 def test_continuar_com_o_registro_ja_embarcado_nao_pede_outro_numero(tmp_path):
     raiz = bancada(tmp_path)
     ja = raiz / "painel" / "registros" / "20260906-077-ci-do-commit.js"
-    ja.write_text(pr.renderizar({"evidencia": f"{URL_DO_PR}. árvore {'a' * 40}"}), encoding="utf-8")
+    ja.write_text(pr._texto_do_recibo(
+        pedido(raiz), ja.stem, URL_DO_PR, HOJE, "ci", "a" * 40, "b" * 40, 1
+    ), encoding="utf-8")
     dub = Duble({
         **RESPOSTAS_FELIZES,
         "status --porcelain": "\n",
@@ -668,6 +670,40 @@ def test_interrupcao_apos_reserva_reusa_identidade(tmp_path):
     assert not segunda.pediu('gh pr create')
     assert len(list((raiz/'painel/registros').glob('*.js'))) == 1
 
+
+def test_recibo_de_tipo_divergente_nao_cobre_a_entrega(tmp_path):
+    raiz = bancada(tmp_path)
+    antigo = raiz / "painel/registros/20260906-077-prova.js"
+    antigo.write_text(pr._texto_do_recibo(
+        pedido(raiz, tipo="medicao", tarefa="TAR-001"), antigo.stem,
+        URL_DO_PR, HOJE, "ci", "a" * 40, "b" * 40, 1,
+    ), encoding="utf-8")
+    correr = lambda comando: ""
+    assert pr._recibo_reutilizavel(
+        raiz, 1210, "a" * 40, pedido(raiz, tipo="entrega", tarefa="TAR-001"), correr
+    ) is None
+    assert pr._recibo_reutilizavel(
+        raiz, 1210, "a" * 40, pedido(raiz, tipo="medicao", tarefa="TAR-001"), correr
+    ) == antigo
+    assert pr.campos_lidos(antigo.read_text(encoding="utf-8"))["tipo"] == "medicao"
+    novo = raiz / "painel/registros/20260906-078-prova.js"
+    novo.write_text(pr._texto_do_recibo(
+        pedido(raiz, tipo="entrega", tarefa="TAR-001"), novo.stem,
+        URL_DO_PR, HOJE, "ci", "a" * 40, "b" * 40, 1,
+    ), encoding="utf-8")
+    assert pr._registro_que_cita(raiz, 1210, "a" * 40) == novo
+    assert pr._recibo_reutilizavel(
+        raiz, 1210, "a" * 40, pedido(raiz, tipo="entrega", tarefa="TAR-001"), correr
+    ) == novo
+
+
+def test_tarefa_recusa_tipo_que_nao_integra_antes_de_efeitos(tmp_path):
+    raiz = bancada(tmp_path)
+    duble = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca) as erro:
+        pr.abrir(raiz, pedido(raiz, tipo="medicao", tarefa="TAR-001"), rodar=duble, hoje=HOJE)
+    assert "--tipo entrega" in erro.value.o_que_fazer
+    assert not duble.chamadas
 
 def test_retry_apos_recibo_commitado_nao_duplica_registro(tmp_path):
     raiz = bancada(tmp_path)

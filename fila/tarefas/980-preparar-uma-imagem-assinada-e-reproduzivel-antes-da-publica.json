@@ -1,0 +1,19 @@
+{
+  "arquivo": "980-preparar-uma-imagem-assinada-e-reproduzivel-antes-da-publica",
+  "id": "TAR-980",
+  "titulo": "Preparar uma imagem assinada e reproduzivel antes da publicacao",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Manifesto produzido do candidato real com entradas resolvidas; provas invalidam com mudanca relevante; imagem digest e atestado oficial rastreaveis; cache decidido pormedicao.",
+  "despacho": "Frente PREPARO da TAR958 PME06/07; responsavel pme_preparo_candidato tentativa1 gpt-6-sol high explicito semfallback/subagentes. Bancada pme-preparo-candidato ramo codex/pme-preparo-candidato base837148ac. Escritura exclusiva NOVOS ci/preparar_candidato.py e testesproprios; ci/candidato.py somenteleitura salvotransferenciaexpressaroot. Workflows07/deployscript07somenteleitura: entregue patchprivado dosjobs paraunicoescritor07 integrar. Contrato06 integrado criar/validar aceito:false; aceitar/carregar criptograficos aceito:true registro_sha256 envelope completo duravel refs/candidatos/id. Origemexata deploy-celula.yml@refs/heads/main jobpreparar porcelula SHA/run/tentativaoficial; atestado so validado porjobposterior apos preparar success. Entradascodigo/dependencias/imagem_basedigest/build/config/contratos/migrations/politicas/ambiente/verificadores; dependenciastransitivasreais; assinatura_build label semautorreferenciacandidato. Provarprodutorreal, mudancaentradainvalida, mergealterandocandidatorevalida; assinaturareal via oficial07 naoatestadolocal. Medircache limitadocomamostrasequivalentes semCPUconcorrentealto; nao assumir10x. Build/pushforalocksomenteapos coberturaMUTADORESvalidada, preserveantigoateentao. Rito/revisao/sigstorepiloto com07. Proximo assumircontrato, implementarprodutor e patchdeintegracao. Bloqueioorigem/registry semacessoregistreexato, continuecomponentesprovaveis.",
+  "origem": "TAR958 mandato29set; ampliacao expressa do mantenedor; transferencia exclusiva07/05",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

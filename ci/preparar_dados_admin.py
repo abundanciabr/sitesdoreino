@@ -74,23 +74,42 @@ def preparar_fila(raiz: Path, destino: Path) -> None:
     fila = raiz / "fila"
     if not (fila / "tarefas").is_dir():
         raise SystemExit("PAROU: fila/tarefas/ nao existe")
+    try:
+        resultado = subprocess.run(
+            [sys.executable, "ci/fila.py", "snapshot-publicado"],
+            cwd=raiz,
+            check=True,
+            capture_output=True,
+            text=True,
+            # Estrito, sem `errors`: este texto vira `estados.json` publicado e
+            # entra no manifesto de integridade. Trocar um byte ruim por `?` aqui
+            # certificaria o lixo com um sha256 válido; melhor o deploy parar.
+            encoding="utf-8",
+            timeout=300,
+        )
+    except subprocess.CalledProcessError as erro:
+        causa = (erro.stdout or erro.stderr or "A consulta da prova não terminou com sucesso.").strip()
+        print("PAROU: a origem do aceite não foi confirmada; o pacote anterior foi preservado.")
+        print(causa[:4000])
+        print("Confira as fontes integradas e o acesso de leitura do workflow; reconcilie a jornada antes de publicar.")
+        raise SystemExit(erro.returncode if erro.returncode in (1, 2) else 2) from erro
+    except (OSError, subprocess.TimeoutExpired, UnicodeError) as erro:
+        print("PAROU: a leitura da prova falhou; o pacote anterior foi preservado.")
+        print("Confira Python, o prazo da consulta, UTF-8 e o acesso de leitura; refaça o preparo.")
+        raise SystemExit(2) from erro
+    try:
+        snapshot = json.loads(resultado.stdout)
+    except json.JSONDecodeError as erro:
+        raise SystemExit("PAROU: snapshot da fila não é JSON válido; confira a prova antes de publicar") from erro
+    if (not isinstance(snapshot, dict) or not isinstance(snapshot.get("estados"), dict)
+            or not isinstance(snapshot.get("aceites"), dict)
+            or snapshot["aceites"].get("formato") != "aceites-publicados.v1"
+            or not isinstance(snapshot["aceites"].get("tarefas"), dict)):
+        raise SystemExit("PAROU: snapshot da fila não contém estados e aceites conferidos; refaça o preparo")
     _copiar_arvore(fila, destino)
-    resultado = subprocess.run(
-        [sys.executable, "ci/fila.py", "listar", "--json"],
-        cwd=raiz,
-        check=True,
-        capture_output=True,
-        text=True,
-        # Estrito, sem `errors`: este texto vira `estados.json` publicado e
-        # entra no manifesto de integridade. Trocar um byte ruim por `?` aqui
-        # certificaria o lixo com um sha256 válido; melhor o deploy parar.
-        encoding="utf-8",
-        timeout=300,
-    )
-    (destino / "estados.json").write_text(resultado.stdout, encoding="utf-8")
-    estados = _validar_json(destino / "estados.json", "fila/estados.json")
-    if not isinstance(estados, dict):
-        raise SystemExit("PAROU: fila/estados.json nao descreve um objeto")
+    for nome, conteudo in (("estados.json", snapshot["estados"]),
+                           ("aceites-comprovados.json", snapshot["aceites"])):
+        (destino / nome).write_text(json.dumps(conteudo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     regua = raiz / "ci" / "tempos_esperados.json"
     if not regua.is_file():
         raise SystemExit("PAROU: ci/tempos_esperados.json nao existe")

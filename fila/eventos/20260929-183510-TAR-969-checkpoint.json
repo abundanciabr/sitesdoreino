@@ -1,0 +1,16 @@
+{
+  "arquivo": "20260929-183510-TAR-969-checkpoint",
+  "tarefa": "TAR-969",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T18:35:10.344341+00:00",
+  "quem": "codex/ci/pme03-proveniencia",
+  "plano": "PME-03: provar origem no snapshot e exibir aceite no admin",
+  "ultimo_avanco": "Produtor focal snapshot-publicado passou em 4.092 s com 878 estados e zero aceites; registro 034 e eventos 968/975 copiados byte a byte; corrigida retomada de reserva expirada sem apagar historia.",
+  "proxima_acao": "Fechar validacao local e abrir PR da TAR969; apos integracao, reconciliar jornada real antes de exibir aceite comprovado.",
+  "verificacoes": [
+    "ci/fila.py validar: 878 tarefas, 3079 eventos, exit 0",
+    "pytest ci/tests/test_fila.py: 327 passed",
+    "pytest ci/tests/test_mapa_de_execucao.py ci/tests/test_publicacao_dados_admin.py: 119 passed",
+    "pytest services/admin/tests/test_fila_do_painel.py services/admin/tests/test_robos_no_admin.py: 57 passed"
+  ]
+}

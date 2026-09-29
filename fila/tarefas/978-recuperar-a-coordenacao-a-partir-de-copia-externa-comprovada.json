@@ -1,0 +1,20 @@
+{
+  "arquivo": "978-recuperar-a-coordenacao-a-partir-de-copia-externa-comprovada",
+  "id": "TAR-978",
+  "titulo": "Recuperar a coordenacao a partir de copia externa comprovada",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Copia cifrada fora da VPS; restauro isolado com mesmos hashes; adulteracao recusada; escritas posteriores preservadas ou retomada bloqueada; temposRPO/RTO reais; canal oficial integrado.",
+  "despacho": "Frente BACKUP da TAR958 PME05/08. Responsavel unico pme_backup_recuperacao; tentativa1; gpt-6-sol high explicitamente sem fallback/subagentes. Bancada gerenciada pme-backup-recuperacao, ramo codex/pme-backup-recuperacao, base origin/main837148ac. Escrita exclusiva NOVOS infra/backup-coordenacao.py, infra/restaurar-coordenacao.py, infra/gerar-chave-backup-coordenacao.ps1, .github/workflows/backup-coordenacao.yml, ci/backup_coordenacao.py e testes proprios mais fila/registro da tarefa. Nao editar nucleocoordenacao05 nem workflows existentes07. Leia leis por caminho e plano/adendo. Captura RRREADONLY capturar_snapshot mantem contexto vivo durante pg_dump--snapshot, nove tabelas/hashes. Contrato05 disponivel na bancada pme05-coordenacao somente leitura. Cifra CMS AES256GCM RSA4096 OAEP-SHA256; cert publico no TEMP/sitesdoreino-sessoes/ci-pme07-publicacao/coordenacao-backup-destinatario.pem; proibido ler privada/senha/DPAPI. Chave ja criada pelo root; nao recriar. Transporte so canal oficial, hostpin existente, artefato cifrado piloto16MiB1dia; nao novo provedor pago. Provar backup externo/restauro isolado cronometrado, integridade/adulteracao/escritas posteriores e pausa se tail ausente. Nunca sobrescrever dados oficiais nem presumir zeroRPO; RPO24h/RTO30m alvosmedidos. TestePG Docker exclusivo nomesdestaTAR, no max um processo pesado; coordene janela comroot. Integracao por rito apos review; rollbackcodigo nao autoriza perderhistorico. Proximo: reivindicar/contrato/inspecionar artefatos07 e construir caminho funcional. Bloqueio real acessochave privada exclusivo root, transporte semcredencial ou origem ambigua; devolva gesto concreto, continue construcao isolada.",
+  "origem": "TAR958 mandato29set; ampliacao expressa do mantenedor; transferencia exclusiva07/05",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

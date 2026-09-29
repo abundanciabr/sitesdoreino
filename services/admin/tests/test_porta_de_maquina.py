@@ -91,6 +91,7 @@ def test_a_porta_tem_a_operacao_que_o_contrato_congelou_e_so_ela():
     assert operacoes_da_porta() == [
         ("post", "/administradores/consultar"),
         ("post", "/coordenacao"),
+        ("post", "/coordenacao/epocas"),
     ]
 
 
