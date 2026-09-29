@@ -5,6 +5,7 @@ Mudança semântica continua exigindo mandato; o portão não julga obediência.
 
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -19,6 +20,8 @@ from _nucleo import (  # noqa: E402
     configurar_saida,
     raiz_do_repo,
 )
+
+FONTE = "CAMINHO-DOURADO.md"
 
 TITULO = "## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa"
 
@@ -93,36 +96,24 @@ COSTURAS = ('A regra 3 proíbe adição não pedida. Tudo o que foi pedido entra
 # nenhum — some, e a lei volta a depender de alguém lembrar.
 PORTAS = {
     "CONSTITUICAO.md": "## Lei 10 — O Padrão de Trabalho",
-    "RITOS.md": "> \"Li o **Padrão de Trabalho** (1ª seção do `CLAUDE.md`)",
+    "RITOS.md": "> \"Li o **Padrão de Trabalho** (1ª seção do `CAMINHO-DOURADO.md`)",
     "ci/indice_de_armadilhas.py": "> **Antes de tudo, o Padrão de Trabalho:**",
-    "CAMINHO-DOURADO.md": "PADRÃO: o Padrão de Trabalho (1ª seção do CLAUDE.md)",
+    "CAMINHO-DOURADO.md": "PADRÃO: o Padrão de Trabalho (1ª seção do CAMINHO-DOURADO.md)",
     "00-LEIA-PRIMEIRO.md": "**O Padrão de Trabalho, íntegro, na 1ª seção**",
     "painel/ia/01-leis-ritos-e-invariantes.md": "| 10 | O Padrão de Trabalho |",
 }
 
-# O teto do CLAUDE.md subiu de 12_500 para 13_500 em 20/09/2026, quando a regra
-# 9 ganhou o bloco **Instruções**. O teto protege o contexto de TODA sessão, e
-# continua valendo: o que ele não pode virar é uma catraca que só deixa entrar
-# obrigação nova se outra sair em silêncio: o arquivo estava a 11 bytes do
-# limite e a alternativa era apagar lei que ninguém mandou apagar.
-# Em 21/09/2026 o PR #1839 encolheu o CLAUDE.md de 13_298 para 12_672 bytes,
-# movendo o porquê das seções 2 a 13 para
-# `docs/decisoes/DECISAO-historia-das-leis-do-claude-md.md`. Em seguida o PR
-# #1657 pousou com a regra 11, que pesa 801 bytes, e a margem contra o teto
-# de 13_500 caiu para 27 bytes, sem porquê nenhum restante para mover. Nesta
-# mesma data o mantenedor decidiu subir o teto para 16_000, sabendo que isso
-# dá folga para várias leis novas de uma vez e custa mais contexto gasto em
-# toda sessão, com menos pressão para manter a lei enxuta.
+# O orçamento das entradas continua o anterior; receitas técnicas são sob demanda.
 TETOS_EM_BYTES = {"CLAUDE.md": 16_000, "AGENTS.md": 10_000}
 
 
-def _claude_md(raiz: Path) -> str:
-    caminho = raiz / "CLAUDE.md"
+def _fonte(raiz: Path) -> str:
+    caminho = raiz / FONTE
     try:
         return caminho.read_text(encoding="utf-8").replace("\r\n", "\n")
     except OSError as exc:
         raise ErroDeInstrumentacao(
-            "CLAUDE.md ilegível",
+            "CAMINHO-DOURADO.md ilegível",
             f"{exc}\n\nSem ele não há como saber se o Padrão continua lá — e "
             "'não consegui ler' NUNCA é 'está tudo certo'.",
         ) from exc
@@ -133,7 +124,7 @@ def secao(texto: str) -> str:
     inicio = texto.find(TITULO)
     if inicio < 0:
         raise ErroDeInstrumentacao(
-            "a seção do Padrão de Trabalho SUMIU do CLAUDE.md",
+            "a seção do Padrão de Trabalho SUMIU do CAMINHO-DOURADO.md",
             f"Procurei pelo título exato:\n\n    {TITULO}\n\n"
             "Ela é a primeira seção do arquivo por decisão do mantenedor "
             "(04/09/2026). Se o título mudou, mude também a constante TITULO "
@@ -149,7 +140,7 @@ def regras_no_texto(bloco: str) -> list[str]:
 
 def conferir(raiz: Path) -> Relatorio:
     relatorio = Relatorio(titulo="PADRÃO DE TRABALHO — a régua está no lugar?")
-    texto = _claude_md(raiz)
+    texto = _fonte(raiz)
     bloco = secao(texto)
 
     # 1. Primeira seção. "Está no arquivo" não basta: enterrada na linha 600 de
@@ -160,7 +151,7 @@ def conferir(raiz: Path) -> Relatorio:
         Resultado(
             "é a primeira seção",
             Estado.PASS if e_primeira else Estado.FAIL,
-            "o Padrão abre o CLAUDE.md"
+            "o Padrão abre o CAMINHO-DOURADO.md"
             if e_primeira
             else f"a primeira seção é outra: {primeira.group(0) if primeira else '(nenhuma)'}",
             "O Padrão é a régua de toda tarefa: ele vem antes de tudo no "
@@ -250,7 +241,7 @@ def conferir(raiz: Path) -> Relatorio:
             raise ErroDeInstrumentacao(f"{nome} ilegível", str(erro)) from erro
         # O que conta é o BLOB, não o fim de linha do disco. Com core.autocrlf
         # o Windows guarda CRLF e o Git guarda LF: medir o disco reprovava aqui
-        # e passava na CI pelos mesmos bytes (~242 no CLAUDE.md). Portão que
+        # e passava na CI pelos mesmos bytes (~242 na fonte antiga). Portão que
         # mente em toda máquina do mantenedor é portão que se aprende a ignorar.
         medido = len(conteudo.replace(b"\r\n", b"\n"))
         relatorio.registrar(Resultado(
@@ -258,14 +249,15 @@ def conferir(raiz: Path) -> Relatorio:
             f"{medido} de {teto} bytes",
             "Mova história para docs/decisoes, preservando obrigações e referências.",
         ))
-    agentes = (raiz / "AGENTS.md").read_text(encoding="utf-8")
-    aponta = "Leia `CLAUDE.md` antes de agir" in agentes
-    resumo = re.findall(r"^\| (\d+) \|", agentes, re.M)
-    relatorio.registrar(Resultado(
-        "Codex aponta para a lei", Estado.PASS if aponta and resumo == [str(n) for n in range(1, 12)] else Estado.FAIL,
-        "ponteiro canônico e onze referências",
-        "AGENTS.md precisa apontar para CLAUDE.md e listar as onze regras.",
-    ))
+    for nome in ("AGENTS.md", "CLAUDE.md"):
+        entrada = (raiz / nome).read_text(encoding="utf-8")
+        aponta = all(fonte in entrada for fonte in (FONTE, "CONSTITUICAO.md", "INVARIANTES.md"))
+        concorrente = TITULO in entrada or "Leia `CLAUDE.md` antes de agir" in entrada
+        relatorio.registrar(Resultado(
+            f"entrada direta {nome}", Estado.PASS if aponta and not concorrente else Estado.FAIL,
+            "fontes diretas, sem régua duplicada",
+            f"A entrada deve apontar diretamente para {FONTE}, CONSTITUICAO.md e INVARIANTES.md.",
+        ))
     return relatorio
 
 
@@ -274,15 +266,15 @@ def aviso(raiz: Path) -> int:
 
     Se ele repetisse o Padrão com as próprias palavras, as duas versões
     divergiriam no primeiro mês e a sessão passaria a ler a errada. Aqui só
-    saem os títulos que estão no `CLAUDE.md` de agora.
+    saem os títulos que estão no `CAMINHO-DOURADO.md` de agora.
     """
     try:
-        regras = regras_no_texto(secao(_claude_md(raiz)))
+        regras = regras_no_texto(secao(_fonte(raiz)))
     except ErroDeInstrumentacao as erro:
-        print("⚠️  PADRÃO DE TRABALHO: não consegui lê-lo no CLAUDE.md —", erro.resumo)
-        print("   Isto NÃO significa que ele não vale. Abra o CLAUDE.md e leia a 1ª seção.")
+        print("⚠️  PADRÃO DE TRABALHO: não consegui lê-lo no CAMINHO-DOURADO.md —", erro.resumo)
+        print("   Isto NÃO significa que ele não vale. Abra o CAMINHO-DOURADO.md e leia a 1ª seção.")
         return 0
-    print("📐 O PADRÃO DE TRABALHO vale nesta tarefa (1ª seção do CLAUDE.md, integral):")
+    print("📐 O PADRÃO DE TRABALHO vale nesta tarefa (1ª seção do CAMINHO-DOURADO.md, integral):")
     for regra in regras:
         print(f"   · {regra}")
     print(
@@ -295,10 +287,19 @@ def aviso(raiz: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
-    argumentos = list(sys.argv[1:] if argv is None else argv)
+    parser = argparse.ArgumentParser(description="Confere a régua e suas entradas na árvore candidata.")
+    parser.add_argument("--aviso", action="store_true")
+    parser.add_argument("--candidato", type=Path, help="árvore lida como dados por esta implementação confiável")
+    argumentos = parser.parse_args(argv)
     try:
-        raiz = raiz_do_repo()
-        if "--aviso" in argumentos:
+        raiz = argumentos.candidato.resolve() if argumentos.candidato else raiz_do_repo()
+        if argumentos.candidato and Path(__file__).resolve().is_relative_to(raiz):
+            raise ErroDeInstrumentacao(
+                "o verificador está dentro da árvore candidata",
+                "Execute a implementação da revisão-base confiável fora do candidato, com Python -I. "
+                "A versão editada pelo próprio candidato não fornece prova independente.",
+            )
+        if argumentos.aviso:
             return aviso(raiz)
         relatorio = conferir(raiz)
     except ErroDeInstrumentacao as erro:
