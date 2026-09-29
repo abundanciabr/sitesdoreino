@@ -115,13 +115,27 @@ def test_mutacoes_de_remocao_estado_e_nulo_sao_detectadas():
     assert original["metricas_ausentes_nao_convertidas_em_zero"] == 55
 
 
-def test_revisoes_publicadas_sao_derivadas_dos_textos_versionados():
-    resultado = auditor.auditar_eventos([], RAIZ)
-
-    assert resultado["revisao_instrumento"] == "8cdc4905084d1d5c68745523897edf36367d6b7d"
+def test_revisoes_publicadas_sao_derivadas_dos_textos_versionados(tmp_path):
+    arquivos = ("ci/telemetria.py", "ci/registrar_tarefa_fase4.py",
+                "ci/analise_fase4.py", "docs/decisoes/PROTOCOLO-FASE4-MEDICAO.md")
+    for relativo in arquivos:
+        caminho = tmp_path / relativo
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.write_bytes(f"fonte {relativo}\nlição\n".encode("utf-8"))
+    resultado = auditor.auditar_eventos([], tmp_path)
+    assert resultado["revisao_instrumento"] == "8d26b4980931e4f1b222ce76b0865c6ad3982a92"
     assert resultado["revisao_analise"] == (
-        "62f318c5aa70b7d9a1769c989824c50af71b13a161b1af1ac6b5c0fb6c6ca5e0"
+        "828d40b8d25c7b822c44fcace286894070806b112ad81c5f929deeb41474d596"
     )
+    caminho = tmp_path / "ci/analise_fase4.py"
+    caminho.write_bytes(caminho.read_bytes().replace(b"\n", b"\r\n"))
+    normalizado = auditor.auditar_eventos([], tmp_path)
+    assert normalizado["revisao_instrumento"] == resultado["revisao_instrumento"]
+    assert normalizado["revisao_analise"] == resultado["revisao_analise"]
+    caminho.write_bytes(caminho.read_bytes() + b"mudanca\n")
+    alterado = auditor.auditar_eventos([], tmp_path)
+    assert alterado["revisao_instrumento"] != resultado["revisao_instrumento"]
+    assert alterado["revisao_analise"] != resultado["revisao_analise"]
 
 
 def test_fonte_privada_ausente_reprova_com_caminho_e_acao(
