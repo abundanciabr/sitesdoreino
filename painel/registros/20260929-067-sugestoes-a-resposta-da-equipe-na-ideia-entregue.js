@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-067-sugestoes-a-resposta-da-equipe-na-ideia-entregue",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "sugestoes: a resposta da equipe na ideia entregue",
+  detalhe: "Resposta da equipe gravada filtrada ao mover para Implementado, 422 fora dele, e mostrada na pagina da ideia.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2362. Validação local: árvore 74f8f9de3d5aa7e5bb5a5c669236418ea74b7729; commit 1c0ca9ac71417d1f8d31fa027f826484ad14c226; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-997",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "sugestoes",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
