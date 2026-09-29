@@ -80,6 +80,19 @@ unset TRAVA_PUBLICACAO
 [ -f env/identidade.env ]  || parar "não achei env/identidade.env — a identidade precisa estar provisionada antes (é dela que eu herdo a lista de quem entra, e é nela que registro o token do par)."
 
 docker compose ps postgres >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
+ESTADO_PUBLICACAO="$RAIZ/publicacoes-candidatos/admin.json"
+if [ -e "$ESTADO_PUBLICACAO" ] || [ -L "$ESTADO_PUBLICACAO" ]; then
+  [ -f "$ESTADO_PUBLICACAO" ] && [ ! -L "$ESTADO_PUBLICACAO" ] \
+    || parar "registro da publicação admin inválido; reconcilie antes de provisionar."
+  [ -f .env ] || parar "imagem admin não declarada em .env; reconcilie a publicação antes de provisionar."
+  [ "$(grep -c '^ADMIN_IMAGE=' .env || true)" -eq 1 ] \
+    || parar "ADMIN_IMAGE ausente ou duplicada; reconcilie a publicação antes de provisionar."
+  ADMIN_IMAGE_ATUAL="$(grep '^ADMIN_IMAGE=' .env | cut -d= -f2-)"
+  { printf '%s\n' "$ADMIN_IMAGE_ATUAL"; cat "$ESTADO_PUBLICACAO"; } | docker compose exec -T admin python -c \
+    'import json,re,sys; imagem=sys.stdin.readline().strip(); d=json.load(sys.stdin); e=d.get("estado"); h=d.get("digest"); a=d.get("anterior_digest"); assert e in ("publicada","falhou") and (e!="publicada" or d.get("aceite_funcional")=="conferido") and isinstance(h,str) and re.fullmatch("sha256:[0-9a-f]{64}",h) and isinstance(a,str) and re.fullmatch("ghcr.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}",a) and imagem == ("ghcr.io/abundanciabr/plataforma-admin@"+h if e=="publicada" else a)' \
+    >/dev/null 2>&1 \
+    || parar "publicação admin em curso, incerta ou divergente; reconcilie o estado oficial antes de provisionar."
+fi
 psql_super() { docker compose exec -T postgres psql -U postgres "$@"; }
 
 # --- herda da identidade a semente da lista de admins ------------------------
@@ -156,7 +169,7 @@ esac
 # VAZIAS SÃO RESULTADO LEGÍTIMO, como a chave do GitHub: sem elas o robô
 # analista fica desligado dizendo o que fazer, e nada mais na área
 # administrativa muda.
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID COORDENACAO_DATABASE_URL COORDENACAO_IDENTIDADES COORDENACAO_RECIBOS_CHAVE DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
 
 if [ -f env/admin.env ]; then
   SOBRANDO=""
@@ -212,9 +225,29 @@ else echo "  chave do GitHub da fila ...... não existe (gravo vazia; quem a põ
 if [ -f env/admin.env ]; then
   CHAVE_IA="$(ler_de env/admin.env ANTHROPIC_API_KEY)"
   WORKSPACE_IA="$(ler_de env/admin.env ANTHROPIC_WORKSPACE_ID)"
+  COORD_DSN="$(ler_de env/admin.env COORDENACAO_DATABASE_URL)"
+  COORD_IDENTIDADES="$(ler_de env/admin.env COORDENACAO_IDENTIDADES)"
+  COORD_RECIBOS="$(ler_de env/admin.env COORDENACAO_RECIBOS_CHAVE)"
 else
   CHAVE_IA=""
   WORKSPACE_IA=""
+  COORD_DSN=""
+  COORD_IDENTIDADES=""
+  COORD_RECIBOS=""
+fi
+for chave in COORDENACAO_DATABASE_URL COORDENACAO_IDENTIDADES COORDENACAO_RECIBOS_CHAVE; do
+  if [ -f env/admin.env ] && [ "$(grep -c "^$chave=" env/admin.env || true)" -gt 1 ]; then
+    parar "$chave duplicada em env/admin.env; corrija antes de reprovisionar."
+  fi
+done
+if [ -n "$COORD_DSN" ] || [ -n "$COORD_IDENTIDADES" ] || [ -n "$COORD_RECIBOS" ]; then
+  printf '%s' "$COORD_DSN" | grep -qE '^postgres://coordenacao_user:[0-9a-f]{64}@postgres:5432/coordenacao_db$' \
+    || parar "configuração da coordenação parcial ou inválida; recupere env/admin.env antes de reprovisionar."
+  printf '%s' "$COORD_RECIBOS" | grep -qE '^[0-9a-f]{64}$' \
+    || parar "chave de recibos da coordenação inválida; recupere env/admin.env antes de reprovisionar."
+  printf '%s' "$COORD_IDENTIDADES" | docker compose exec -T admin python -c \
+    'import json,sys,re; d=json.load(sys.stdin); assert isinstance(d,dict); assert all(re.fullmatch("[0-9a-f]{64}", k) and isinstance(v,dict) and isinstance(v.get("id"),str) and v["id"] and all(isinstance(v.get(f),list) and all(isinstance(x,str) for x in v[f]) for f in ("papeis","coortes","celulas")) for k,v in d.items())' \
+    >/dev/null 2>&1 || parar "identidades técnicas da coordenação inválidas; corrija env/admin.env antes de reprovisionar."
 fi
 if [ -n "$CHAVE_IA" ]
 then echo "  chave da IA do analista ...... já existe (releio e regravo igual, sem apagar)"
@@ -268,6 +301,9 @@ TOKENS_ACEITOS_PAGES=$T_PAGES
 GITHUB_TOKEN_FILA=$TOKEN_FILA
 ANTHROPIC_API_KEY=$CHAVE_IA
 ANTHROPIC_WORKSPACE_ID=$WORKSPACE_IA
+COORDENACAO_DATABASE_URL=$COORD_DSN
+COORDENACAO_IDENTIDADES=$COORD_IDENTIDADES
+COORDENACAO_RECIBOS_CHAVE=$COORD_RECIBOS
 ENV
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, em vez de escolhidos por mim:
@@ -294,7 +330,7 @@ por_linha env/identidade.env TOKENS_COMPLETOS_ADMIN "$TOKEN_ADMIN"
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null | grep -q 1
 then echo "  banco admin_db ............... OK"; else echo "  banco admin_db ............... FALTANDO"; fi
-echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 11)"
+echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 14)"
 echo "  dono/modo do env ............. $(stat -c '%U:%G %a' env/admin.env) (igual ao identidade.env: $(stat -c '%U:%G %a' env/identidade.env))"
 
 faltou=0
@@ -306,6 +342,16 @@ for chave in IDENTIDADE_API_URL IDENTIDADE_API_TOKEN ADMIN_EMAILS; do
   if grep -q "^$chave=..*" env/admin.env
   then echo "  admin.env / $chave ... OK"
   else echo "  admin.env / $chave ... FALTANDO"; faltou=1; fi
+done
+
+for chave in COORDENACAO_DATABASE_URL COORDENACAO_IDENTIDADES COORDENACAO_RECIBOS_CHAVE; do
+  if [ -n "$BAK" ]; then ANTES_COORD="$(ler_de "$BAK" "$chave")"; else ANTES_COORD=""; fi
+  if [ "$(ler_de env/admin.env "$chave")" = "$ANTES_COORD" ]; then
+    echo "  admin.env / $chave ... OK (preservada)"
+  else
+    echo "  admin.env / $chave ... ALTERADA (recupere o valor de $BAK antes de repetir)"
+    faltou=1
+  fi
 done
 
 # A CONFERÊNCIA nº 1b: o par em que esta célula é PROVEDORA sobreviveu à
