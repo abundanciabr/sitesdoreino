@@ -52,7 +52,11 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE="origin/${{ github.base_ref }}"
           else
-            BASE="HEAD^"
+            BASE="${{ github.event.before }}"
+            if [[ ! "$BASE" =~ ^[0-9a-f]{40}$ ]] || [[ "$BASE" == 0000000000000000000000000000000000000000 ]]; then
+              echo '::error::ERROR — revisão anterior do push ausente; não é possível medir as células. Reexecute o envio oficial.'
+              exit 2
+            fi
           fi
           # A semântica de detecção vive em ci/ci.py — a mesma que o agente roda
           # localmente. O YAML só faz wiring. O `| head -1 || true` que morava
@@ -83,7 +87,7 @@ jobs:
     needs: detectar
     # Defesa em profundidade: além de haver célula, a detecção precisa ter
     # carimbado sucesso. (Se `detectar` falha, o GitHub já pula este job.)
-    if: needs.detectar.outputs.celulas != '[]' && needs.detectar.outputs.deteccao == 'ok'
+    if: github.event_name == 'pull_request' && needs.detectar.outputs.celulas != '[]' && needs.detectar.outputs.deteccao == 'ok'
     runs-on: ubuntu-latest
     strategy:
       # `fail-fast: false` de propósito: com duas células tocadas, quero ver o
@@ -149,6 +153,152 @@ jobs:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD^' }}
         run: bash ci/cross-smoke.sh
 
+  rodar-main:
+    name: rodar-main (${{ matrix.celula }})
+    needs: detectar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detectar.outputs.celulas != '[]' && needs.detectar.outputs.deteccao == 'ok'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    strategy:
+      fail-fast: false
+      matrix:
+        celula: ${{ fromJSON(needs.detectar.outputs.celulas) }}
+    env:
+      CELULA: ${{ matrix.celula }}
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci_db
+      REDIS_STREAMS_URL: redis://localhost:6379/0
+      HUEY_REDIS_URL: redis://localhost:6379/1
+      DJANGO_SECRET_KEY: ci-apenas-nunca-em-producao
+      MP_ACCESS_TOKEN: TEST-ci-0000000000000000-000000-fake000000000000000000000000000-000000000
+      MP_WEBHOOK_SECRET: ci-apenas-nunca-em-producao-webhook-secret
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci_db
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependências da célula
+        run: pip install -r "services/$CELULA/requirements.txt"
+      - name: Banco e papel exclusivos para ensaio da coordenação
+        if: matrix.celula == 'admin'
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          SENHA_COORDENACAO="$(python -c 'import secrets; print(secrets.token_hex(24))')"
+          echo "::add-mask::$SENHA_COORDENACAO"
+          psql -h localhost -U ci -d ci_db -v ON_ERROR_STOP=1 --set=senha="$SENHA_COORDENACAO" <<'SQL'
+          SELECT format('CREATE ROLE coordenacao_user LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'senha') \gexec
+          CREATE DATABASE coordenacao_db OWNER coordenacao_user;
+          SQL
+          printf 'COORDENACAO_DATABASE_URL=postgresql://coordenacao_user:%s@localhost:5432/coordenacao_db\n' "$SENHA_COORDENACAO" >> "$GITHUB_ENV"
+      - name: CI da célula na revisão integrada
+        run: make -C "services/$CELULA" ci
+      - name: Cross-smoke Pix↔Cartão na revisão integrada
+        if: matrix.celula == 'pagamentos'
+        env:
+          BASE_REF: ${{ github.event.before }}
+        run: bash ci/cross-smoke.sh
+      - name: Medir insumos do verificador da célula em main
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import platform
+          import subprocess
+          ambiente = {
+              "runner": f"{os.environ['RUNNER_OS']}/{os.environ['ImageVersion']}",
+              "arquitetura": platform.machine(),
+              "docker": subprocess.check_output(["docker", "version", "--format", "{{.Server.Version}}"], text=True).strip(),
+              "python": platform.python_version(),
+              "pacotes": json.loads(subprocess.check_output(["python", "-m", "pip", "list", "--format=json"], text=True)),
+          }
+          with open("ambiente-fonte.json", "w", encoding="utf-8") as arquivo:
+              json.dump(ambiente, arquivo, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+          PY
+          python ci/preparar_candidato.py snapshot-fonte --celula "$CELULA" --ambiente ambiente-fonte.json --integracao "$GITHUB_SHA" --saida snapshot-fonte.json
+          python ci/preparar_candidato.py emitir --nome ci-celula-gate --celula "$CELULA" --snapshot snapshot-fonte.json --saida emissao.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - id: atestar
+        name: Atestar os bytes da emissão do próprio job
+        uses: actions/attest@v4
+        with:
+          subject-path: emissao.json
+      - name: Preservar emissão e bundle de transporte
+        run: cp '${{ steps.atestar.outputs.bundle-path }}' emissao-bundle.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: emissao-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.celula }}
+          path: |
+            emissao.json
+            emissao-bundle.json
+          if-no-files-found: error
+          retention-days: 1
+
+  gate-main:
+    name: ci-celula-gate-main
+    needs: [detectar, rodar-main]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consolidar revisão integrada
+        shell: bash
+        env:
+          D_RESULT: ${{ needs.detectar.result }}
+          D_STATUS: ${{ needs.detectar.outputs.deteccao }}
+          CELULAS: ${{ needs.detectar.outputs.celulas }}
+          N: ${{ needs.detectar.outputs.n }}
+          R: ${{ needs['rodar-main'].result }}
+        run: |
+          set -euo pipefail
+          if [ "$D_RESULT" != success ] || [ "$D_STATUS" != ok ]; then
+            echo '::error::ERROR — detecção de células na revisão integrada não concluiu. Reexecute o workflow oficial.'
+            exit 2
+          fi
+          if ! [[ "$N" =~ ^[0-9]+$ ]]; then
+            echo '::error::ERROR — lista ou contagem de células inválida. Corrija a detecção.'
+            exit 2
+          fi
+          CONTAGEM="$(python -c 'import json,sys; celulas=json.load(sys.stdin); assert isinstance(celulas,list) and all(isinstance(c,str) for c in celulas); print(len(celulas))' <<< "$CELULAS")" || {
+            echo '::error::ERROR — lista de células inválida. Corrija a detecção.'
+            exit 2
+          }
+          if [ "$CONTAGEM" != "$N" ]; then
+            echo '::error::ERROR — lista e contagem de células discordam. Corrija a detecção.'
+            exit 2
+          fi
+          if [ "$N" -eq 0 ] && [ "$R" = skipped ]; then
+            echo 'SKIP — nenhuma célula alterada na revisão integrada.'
+          elif [ "$N" -gt 0 ] && [ "$R" = success ]; then
+            echo "PASS — $N célula(s) testada(s) e emissão assinada no próprio job."
+          else
+            echo "::error::FAIL — $N célula(s), matriz main em '$R'. Corrija a célula e reexecute."
+            exit 1
+          fi
+
   # Job terminal que SEMPRE conclui — é ele que a branch protection exige como
   # required check. Um PR que não toca célula alguma (ex.: um PR só de `ci/`)
   # não trava a proteção com um check "skipped".
@@ -166,7 +316,7 @@ jobs:
   gate:
     name: ci-celula-gate
     needs: [detectar, rodar]
-    if: always()
+    if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Consolidar resultado
