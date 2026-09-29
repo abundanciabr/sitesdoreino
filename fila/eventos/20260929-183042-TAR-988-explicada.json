@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-183042-TAR-988-explicada",
+  "tarefa": "TAR-988",
+  "evento": "explicada",
+  "quando": "2026-09-29T18:30:42.196916+00:00",
+  "quem": "Continuidade PME02 TAR958; maior custo real medido no produtor969; propriedade transferida pela PME03 em29/09",
+  "o_que_e": "O preparo do catalogo local de tarefas tomou quase25minutos em uma publicacao de dados",
+  "o_que_muda": "O painel recebe os dados corretos sem refazer leituras iguais para cada tarefa",
+  "exemplo": "As mesmas instrucoes comuns sao medidas uma vez na captura e reutilizadas somente quando suas entradas nao mudam",
+  "importancia": 90
+}
