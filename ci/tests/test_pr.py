@@ -617,7 +617,7 @@ def test_falha_de_validacao_ou_rede_nunca_imprime_sucesso(tmp_path, capsys, onde
 
 def test_revisao_remota_antiga_recusa(tmp_path):
     raiz = bancada(tmp_path)
-    dub = Duble({**RESPOSTAS_FELIZES, 'gh pr view': json.dumps({'headRefOid': 'c'*40, 'state': 'OPEN'})})
+    dub = Duble({**RESPOSTAS_FELIZES, 'gh pr view': json.dumps({'headRefOid': 'c'*40, 'state': 'OPEN', 'isDraft': True})})
     with pytest.raises(pr.ParouPorSeguranca, match='revisão entregue'):
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
 
