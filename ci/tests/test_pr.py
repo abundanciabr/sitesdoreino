@@ -751,15 +751,14 @@ def _acoes_da_fila(dub):
     return [c[2] for c in dub.chamadas if len(c) > 2 and c[1] == 'ci/fila.py']
 
 
-def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
-    """O "feito" viaja na entrega: um PR de entrega submete E fecha."""
-    # guarda: ci/pr.py:592
+def test_entrega_submete_sem_fechar_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
+    """Submissão conserva a tarefa aberta até o aceite reconciliado."""
+    # guarda: ci/pr.py:660
     raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [])
     dub = Duble()
     pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
-    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
-    fechamento = [c for c in dub.chamadas if 'fechar-pela-entrega' in c][0]
-    assert fechamento[-2:] == ['--pr', URL_DO_PR]
+    assert _acoes_da_fila(dub) == ['submeter']
+    assert not any('fechar-pela-entrega' in c for c in dub.chamadas)
 
 
 def test_continuar_preserva_a_conclusao_sem_criar_evento_posterior(tmp_path, monkeypatch):

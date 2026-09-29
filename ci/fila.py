@@ -243,6 +243,7 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     # Só em `concluida` de tarefa da medição: a cadeia que provou a guarda da
     # armadilha da origem. Quem a confere é `problemas_da_cadeia_automatica`.
     "prova_da_guarda": dict,
+    "aceite_entrega": dict,
     # Eventos do protocolo de execução. Eles não mudam a coluna da tarefa: só
     # preservam contrato, descoberta, retomada e ausência de progresso dentro
     # da mesma fonte append-only da fila.
@@ -916,6 +917,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             continue
         nome = caminho.name
         _conferir_campos(nome, dados, CAMPOS_DO_EVENTO, CAMPOS_OPCIONAIS_DO_EVENTO, erros)
+        dados.pop("_aceite_verificado", None)
         if dados.get("arquivo") != caminho.stem:
             erros.append(f"{nome}: campo 'arquivo' ≠ nome do arquivo")
         tipo = dados.get("evento")
@@ -989,6 +991,28 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
     _conferir_cadeias_de_submissao(eventos, erros)
+    registros_de_aceite = {}
+    for ev in eventos:
+        if "aceite_entrega" not in ev:
+            continue
+        if ev["evento"] != "concluida":
+            erros.append(f"{ev['arquivo']}: aceite_entrega só pertence à conclusão reconciliada")
+            continue
+        submissao = ultima_submissao(eventos, ev["tarefa"])
+        problemas = problemas_do_aceite_entrega(ev["aceite_entrega"], submissao)
+        if not problemas:
+            caminho = ev["aceite_entrega"]["registro"]
+            if caminho not in registros_de_aceite:
+                try:
+                    registros_de_aceite[caminho] = _ler_registro(raiz, caminho)
+                except (ErroDeInstrumentacao, OSError):
+                    registros_de_aceite[caminho] = None
+            problemas = problemas_do_registro_canonico(
+                ev["aceite_entrega"], registros_de_aceite[caminho]
+            )
+        erros.extend(f"{ev['arquivo']}: {problema}" for problema in problemas)
+        if not problemas:
+            ev["_aceite_verificado"] = True
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
     # A ÚNICA exceção é `explicada`, e ela é deliberada: a regra existe para que
     # ninguém reescreva o que ACONTECEU com a tarefa, e a explicação não conta
@@ -1052,6 +1076,121 @@ def _conferir_cadeias_de_submissao(eventos: list[dict], erros: list[str]) -> Non
 def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
     return next((e for e in reversed(_em_ordem(eventos))
                  if e.get("tarefa") == tid and e.get("evento") == "submetida"), None)
+
+
+def problemas_do_aceite_funcional(funcional, revisao=None, ambiente=None) -> list[str]:
+    if (not isinstance(funcional, dict)
+            or funcional.get("resultado") != "PASS"
+            or any(not isinstance(funcional.get(campo), str)
+                   or not funcional[campo].strip()
+                   for campo in ("criterio", "evidencia"))):
+        return ["aceite funcional exige resultado PASS, critério e evidência da jornada ou comando"]
+    problemas = []
+    if not re.fullmatch(r"[0-9a-f]{40}", str(funcional.get("revisao") or "")):
+        problemas.append("aceite funcional exige a revisão completa verificada")
+    elif revisao is not None and funcional["revisao"] != revisao:
+        problemas.append("a revisão do aceite funcional difere do SHA integrado")
+    if funcional.get("ambiente") not in ("producao", "repositorio-integrado"):
+        problemas.append("aceite funcional exige o ambiente da verificação")
+    elif ambiente is not None and funcional["ambiente"] != ambiente:
+        problemas.append("o ambiente do aceite funcional difere da publicação comprovada")
+    return problemas
+
+
+def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
+    if not isinstance(prova, dict):
+        return ["aceite_entrega exige uma prova estruturada"]
+    if not submissao:
+        return ["aceite_entrega exige a submissão correspondente"]
+    problemas = [
+        f"aceite_entrega: {campo} diverge da última submissão"
+        for campo in ("tarefa", "pr", "revisao", "arvore")
+        if prova.get(campo) != submissao.get(campo)
+    ]
+    if not re.fullmatch(r"[0-9a-f]{40}", str(prova.get("integracao") or "")):
+        problemas.append("aceite_entrega exige o SHA integrado completo")
+    estado = prova.get("publicacao")
+    if estado not in ("PUBLICADO", "SEM_PUBLICACAO"):
+        problemas.append("aceite_entrega exige o resultado da publicação comprovada")
+    ambiente = "producao" if estado == "PUBLICADO" else "repositorio-integrado"
+    problemas.extend(problemas_do_aceite_funcional(
+        prova.get("aceite_funcional"), prova.get("integracao"), ambiente
+    ))
+    if not RE_REGISTRO_DE_ACEITE.fullmatch(str(prova.get("registro") or "")):
+        problemas.append("aceite_entrega exige o registro de aceite do livro")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(prova.get("registro_sha256") or "")):
+        problemas.append("aceite_entrega exige o SHA256 do registro canônico")
+    publicacoes = prova.get("publicacoes")
+    prefixo = str(submissao["pr"]).split("/pull/")[0]
+    if estado == "SEM_PUBLICACAO":
+        if publicacoes != [submissao["pr"]]:
+            problemas.append("aceite_entrega sem publicação exige o PR integrado correspondente")
+    elif (not isinstance(publicacoes, list) or not publicacoes
+          or any(not isinstance(url, str) or not re.fullmatch(
+              re.escape(prefixo) + r"/actions/runs/[1-9][0-9]*", url
+          ) for url in publicacoes)):
+        problemas.append("aceite_entrega exige as execuções da publicação deste repositório")
+    return problemas
+
+
+def hash_do_registro(registro: dict) -> str:
+    conteudo = json.dumps(registro, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
+
+
+def problemas_do_registro_canonico(prova: dict, registro) -> list[str]:
+    if not isinstance(registro, dict):
+        return ["registro canônico de aceite ausente ou ilegível; confira o livro antes de reconciliar"]
+    problemas = []
+    if registro.get("arquivo") != Path(prova["registro"]).stem:
+        problemas.append("a identidade do registro canônico diverge do arquivo")
+    if hash_do_registro(registro) != prova["registro_sha256"]:
+        problemas.append("o SHA256 do registro canônico diverge do aceite")
+    if registro.get("tarefa") != prova["tarefa"]:
+        problemas.append("o registro canônico pertence a outra tarefa")
+    if registro.get("aceite_funcional") != prova["aceite_funcional"]:
+        problemas.append("a jornada do registro canônico diverge do aceite")
+    entrega = {c: prova[c] for c in ("pr", "revisao", "arvore", "integracao", "publicacao", "publicacoes")}
+    if registro.get("entrega") != entrega:
+        problemas.append("os vínculos da entrega divergem do registro canônico")
+    try:
+        provar_conteudo_do_aceite(registro, prova["publicacoes"])
+    except RecusaDeReconciliacao as erro:
+        problemas.append(str(erro))
+    return problemas
+
+
+def comprovacoes_da_entrega(eventos: list[dict], tid: str) -> dict:
+    submissao = ultima_submissao(eventos, tid)
+    conclusao = next((e for e in eventos
+                     if e.get("tarefa") == tid and e.get("evento") == "concluida"), None)
+    resultado = {
+        "submissao": "registrada" if submissao else "nao_comprovada",
+        "integracao": "nao_comprovada",
+        "publicacao": "nao_comprovada",
+        "aceite": "nao_comprovado",
+        "origem_conclusao": None,
+    }
+    if submissao:
+        resultado.update({c: submissao[c] for c in ("pr", "revisao", "arvore")})
+    if not conclusao:
+        return resultado
+    evidencia = str(conclusao.get("evidencia") or "")
+    resultado["origem_conclusao"] = (
+        "pr" if re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9][0-9]*",
+                            evidencia) else "registro_legado"
+    )
+    prova = conclusao.get("aceite_entrega")
+    if (conclusao.get("_aceite_verificado") is True
+            and prova is not None and not problemas_do_aceite_entrega(prova, submissao)):
+        resultado.update({
+            "integracao": "comprovada",
+            "publicacao": ("comprovada" if prova["publicacao"] == "PUBLICADO"
+                           else "nao_aplicavel"),
+            "aceite": "comprovado",
+            "origem_conclusao": "reconciliacao",
+        })
+    return resultado
 
 
 def calcular_estados(
@@ -1175,6 +1314,7 @@ def calcular_estados(
     # que dizer no lugar, e um "sem descrição" escrito aqui seria uma segunda
     # definição de tela morando no cálculo.
     for tid, resultado in estados.items():
+        resultado.update(comprovacoes_da_entrega(por_tarefa[tid], tid))
         ultima = next(
             (e for e in reversed(por_tarefa[tid]) if e["evento"] == EXPLICADA), None
         )
@@ -1527,9 +1667,16 @@ def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -
         except ValueError:
             continue
         citadas.add(texto)
-    if not provas_da_publicacao or not citadas.intersection(provas_da_publicacao):
+    if not provas_da_publicacao or not set(provas_da_publicacao).issubset(citadas):
         raise RecusaDeReconciliacao(
             "o registro de aceite não cita a prova da publicação correspondente"
+        )
+
+    problemas = problemas_do_aceite_funcional(registro.get("aceite_funcional"))
+    if problemas:
+        raise RecusaDeReconciliacao(
+            "; ".join(problemas) + "; registre a jornada ou comando executado, "
+            "a revisão completa e o ambiente verificado antes de reconciliar"
         )
 
 
@@ -1648,7 +1795,7 @@ def provar_reconciliacao(
     submissao: dict,
     aceite_registro: str,
     retroativa: str = "",
-) -> tuple[str, str]:
+) -> tuple[str, str, dict]:
     numero = int(submissao["pr"].rsplit("/", 1)[1])
     pr = estado_da_entrega.ler_pr(raiz, numero)
     if pr.get("url") != submissao["pr"]:
@@ -1686,6 +1833,30 @@ def provar_reconciliacao(
 
     provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
     registro = carregar_aceite(raiz, aceite_registro, merge, provas)
+    if registro.get("tarefa") != submissao["tarefa"]:
+        raise RecusaDeReconciliacao(
+            "o registro de aceite funcional pertence a outra tarefa ou não informa a TAR; "
+            "registre a jornada desta tarefa antes de reconciliar"
+        )
+    ambiente = "producao" if estado["estado"] == "PUBLICADO" else "repositorio-integrado"
+    problemas = problemas_do_aceite_funcional(registro.get("aceite_funcional"), merge, ambiente)
+    if problemas:
+        raise RecusaDeReconciliacao("; ".join(problemas) + "; refaça a verificação no alvo publicado")
+    aceite_entrega = {
+        **{c: submissao[c] for c in ("tarefa", "pr", "revisao", "arvore")},
+        "integracao": merge,
+        "publicacao": estado["estado"],
+        "publicacoes": provas,
+        "registro": aceite_registro.replace("\\", "/"),
+        "registro_sha256": hash_do_registro(registro),
+        "aceite_funcional": registro["aceite_funcional"],
+    }
+    problemas = problemas_do_aceite_entrega(aceite_entrega, submissao)
+    if problemas:
+        raise RecusaDeReconciliacao("; ".join(problemas))
+    problemas = problemas_do_registro_canonico(aceite_entrega, registro)
+    if problemas:
+        raise RecusaDeReconciliacao("; ".join(problemas) + "; complete o registro canônico antes de reconciliar")
     publicacao = ",".join(provas)
     evidencia = (
         f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
@@ -1693,7 +1864,7 @@ def provar_reconciliacao(
         f"estado={estado['estado']}; publicacao={publicacao}; "
         f"linhagem={linhagem}; aceite={aceite_registro.replace('\\', '/')}"
     )
-    return evidencia, registro["verificado_em"]
+    return evidencia, registro["verificado_em"], aceite_entrega
 
 
 def _ultimos_ciclos(eventos: list[dict]) -> dict[str, dict]:
@@ -2031,34 +2202,7 @@ def evento_de_conclusao_em_sombra(
 
 
 # ---------------------------------------------------------------------------
-# O "FEITO" VIAJA NA ENTREGA (12/09/2026)
-#
-# A sombra acima previa graduar gravando o evento na porta do pouso, DEPOIS do
-# merge. Não dá: a `main` tem ruleset ativo com `pull_request` e
-# `required_status_checks` e `bypass_actors: []` (ruleset 21570247), então push
-# direto na `main` é recusado para todo mundo, a pista inclusive. A porta não
-# tem onde gravar.
-#
-# O que sobra é o caminho que o livro do painel já usa desde 31/08/2026
-# (`armadilhas/248`): o "feito" entra na `main` DENTRO do próprio PR da
-# entrega, escrito por `ci/pr.py` junto da submissão. O preço, autorizado
-# pelo mantenedor: a tarefa fecha no merge do PR, não no aceite do
-# mantenedor.
-#
-# O guarda de `cmd_concluir` ("aguarda comprovação do aceite") fica de pé:
-# este caminho não passa por ele, e concluir por texto livre continua
-# recusado.
-# ---------------------------------------------------------------------------
-
-
-def ja_tem_conclusao(raiz: Path, tid: str) -> bool:
-    """Existe um evento de conclusão desta tarefa no livro do disco?
-
-    Olha pelo PADRÃO DO NOME, não pelo nome inteiro: o arquivo carrega o
-    segundo em que foi montado, então a mesma tarefa concluída duas vezes
-    geraria dois nomes diferentes e a idempotência por nome não veria nada.
-    """
-    return any(pasta_eventos(raiz).glob(f"*-{tid}-concluida.json"))
+# Compatibilidade de conclusões históricas, sem criar novas pelo PR.
 
 
 def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
@@ -2071,30 +2215,6 @@ def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
     finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
     nossas = [e for e in finais if e["evento"] == "concluida" and str(e.get("evidencia") or "") == str(pr)]
     return bool(finais) and len(finais) == len(nossas)
-
-
-def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str) -> bool:
-    """Escreve o "feito" desta tarefa no ramo da entrega. Devolve se escreveu.
-
-    A evidência é a URL do PR, exata: é por ela que `ci/pr.py` reconhece a
-    conclusão como sua e que `fechada_por_esta_entrega` a distingue de um
-    encerramento alheio.
-
-    Passa por `_concluir_com_prova` de propósito, e não por uma segunda
-    receita: é lá que moram as guardas de responsabilidade e a soltura da
-    reserva, e as duas valem aqui igual.
-    """
-    if ja_tem_conclusao(raiz, tid):
-        return False
-    hoje = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    codigo = _concluir_com_prova(raiz, tid, quem, pr, hoje)
-    if codigo != 0:
-        raise ErroDeInstrumentacao(
-            f"a entrega de {tid} não pôde escrever a conclusão",
-            "Leia a recusa acima, corrija a fila e repita python ci/pr.py --continuar.",
-        )
-    return True
-
 
 
 def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
@@ -2637,15 +2757,27 @@ def _json_arquivo(caminho: str, campo: str) -> dict:
     return dados
 
 
+def recusar_execucao_terminal(eventos: list[dict], tid: str) -> bool:
+    if not any(e.get("tarefa") == tid and e.get("evento") in EVENTOS_TERMINAIS
+               for e in eventos):
+        return False
+    print(f"RECUSADO: {tid} já terminou; nenhum evento de execução foi escrito.")
+    print("Registre a descoberta em uma tarefa aberta ou crie uma nova tarefa vinculada.")
+    return True
+
+
+@_transicao_exclusiva
 def cmd_contrato_execucao(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("contrato", raiz)
     if recusa:
         print(recusa)
         return 1
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    if recusar_execucao_terminal(eventos, tid):
         return 1
     contrato = _json_arquivo(args.arquivo, "--arquivo")
     problemas = problemas_do_contrato_execucao(contrato)
@@ -2660,15 +2792,18 @@ def cmd_contrato_execucao(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_descoberta(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("descoberta", raiz)
     if recusa:
         print(recusa)
         return 1
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    if recusar_execucao_terminal(eventos, tid):
         return 1
     extra = {
         "classificacao": args.classificacao,
@@ -2695,15 +2830,18 @@ def cmd_descoberta(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_checkpoint(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("checkpoint", raiz)
     if recusa:
         print(recusa)
         return 1
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    if recusar_execucao_terminal(eventos, tid):
         return 1
     extra = {
         "plano": args.plano,
@@ -2719,6 +2857,7 @@ def cmd_checkpoint(raiz: Path, args) -> int:
     return 0
 
 
+@_transicao_exclusiva
 def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("tentativa-sem-progresso", raiz)
     if recusa:
@@ -2728,6 +2867,8 @@ def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    if recusar_execucao_terminal(eventos, tid):
         return 1
     execucao = resumo_da_execucao(eventos, tid)
     if (
@@ -3228,6 +3369,7 @@ def _concluir_com_prova(
     quem: str,
     evidencia: str,
     verificado_em: str,
+    aceite_entrega: dict | None = None,
 ) -> int:
     """Único ponto terminal para `concluir` e `reconciliar`.
 
@@ -3244,6 +3386,20 @@ def _concluir_com_prova(
         print(f"RECUSADO: {recusa[0]}.")
         print(recusa[1])
         return 1
+    if ultima_submissao(eventos, tid) and aceite_entrega is None:
+        print(f"RECUSADO: {tid} exige reconciliação do aceite funcional da entrega.")
+        return 1
+    if aceite_entrega is not None:
+        problemas = problemas_do_aceite_entrega(aceite_entrega, ultima_submissao(eventos, tid))
+        if not problemas:
+            try:
+                registro = _ler_registro(raiz, aceite_entrega["registro"])
+            except (ErroDeInstrumentacao, OSError):
+                registro = None
+            problemas = problemas_do_registro_canonico(aceite_entrega, registro)
+        if problemas:
+            print("RECUSADO: " + "; ".join(problemas))
+            return 1
     responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
     if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:
         print("RECUSADO: tarefa nova sem responsabilidade declarada.")
@@ -3265,11 +3421,8 @@ def _concluir_com_prova(
             for problema in problemas:
                 print(f"   - {problema}")
             return 1
-    # A tarefa que a medição abriu só fecha com a guarda da SUA armadilha
-    # reprovando sabotada. Aqui, e não em `cmd_concluir`, porque as três portas
-    # terminais desta fila desembocam neste ponto — `concluir`, `reconciliar` e o
-    # feito que viaja na entrega, escrito por `ci/pr.py` — e um portão em uma só
-    # delas é meio portão. Tarefa de gente não passa por nada disto.
+    # A tarefa da medição exige a guarda da sua armadilha reprovando sabotada
+    # nos dois caminhos de conclusão, antes da escrita e da soltura da reserva.
     prova_da_guarda = None
     if tarefa and RE_ORIGEM_AUTOMATICA.fullmatch(str(tarefa.get("origem") or "").strip()):
         problemas, prova_da_guarda = provar_guarda_da_armadilha(
@@ -3291,6 +3444,7 @@ def _concluir_com_prova(
         evidencia=evidencia,
         verificado_em=verificado_em,
         prova_da_guarda=prova_da_guarda,
+        extra={"aceite_entrega": aceite_entrega} if aceite_entrega is not None else None,
     )
     try:
         _soltar_reserva_se_houver(raiz, tid)
@@ -3348,14 +3502,7 @@ def cmd_concluir(raiz: Path, args) -> int:
 
 @_transicao_exclusiva
 def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
-    """O "feito" que viaja na entrega, escrito por `ci/pr.py`.
-
-    Não passa pelo guarda do aceite de `cmd_concluir` de propósito: a decisão
-    de 12/09/2026 é que o merge do PR fecha a tarefa. Em troca, a evidência não
-    pode ser texto livre: o `--pr` tem de ser, exatamente, o PR da submissão que
-    a fila já registrou. Sem essa amarra qualquer string fecharia qualquer
-    tarefa, e a folga de `cmd_submeter` reabriria uma tarefa alheia por ela.
-    """
+    """Recusa o fechamento automático antigo, preservando seus registros."""
     recusa = _parar_se_for_o_espelho("fechar-pela-entrega", raiz)
     if recusa:
         print(recusa)
@@ -3376,9 +3523,12 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     if alheio:
         print(f"RECUSADO: {tid} já terminou por outro fato; nada foi escrito.")
         return 1
-    if not fechar_pela_entrega(raiz, tid, args.quem, args.pr):
-        print(f"{tid}: o feito desta entrega já está no ramo; nada repetido.")
-    return 0
+    print(
+        f"RECUSADO: {tid} tem uma entrega submetida, mas o aceite funcional "
+        "não foi comprovado. Nenhum evento ou reserva foi alterado."
+    )
+    print("Use reconciliar com --aceite-registro após verificar a jornada da tarefa.")
+    return 1
 
 
 def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
@@ -3419,7 +3569,7 @@ def cmd_reconciliar(raiz: Path, args) -> int:
         )
         return 1
     try:
-        evidencia, verificado_em = provar_reconciliacao(
+        evidencia, verificado_em, aceite_entrega = provar_reconciliacao(
             raiz, submissao, args.aceite_registro, args.retroativa or ""
         )
     except RecusaDeReconciliacao as erro:
@@ -3432,6 +3582,7 @@ def cmd_reconciliar(raiz: Path, args) -> int:
         args.quem,
         evidencia,
         verificado_em,
+        aceite_entrega=aceite_entrega,
     )
 
 def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:
@@ -3848,7 +3999,7 @@ def construir_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser(
         "fechar-pela-entrega",
-        help="escreve o feito no ramo da entrega; é o que ci/pr.py chama",
+        help="recusa o fechamento por PR sem comprovar o aceite funcional",
     )
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)

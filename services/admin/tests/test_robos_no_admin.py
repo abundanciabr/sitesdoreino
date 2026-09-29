@@ -19,6 +19,8 @@ import json
 import re
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 import httpx
 import pytest
@@ -798,3 +800,111 @@ def test_sem_a_pasta_de_eventos_a_tela_fica_mais_pobre_e_nao_quebra(
 
     assert conta["ultima_mexida"] == {} and conta["terminadas"] == 0
     assert _dentro().get(reverse("caixa_robos")).status_code == 200
+
+
+@respx.mock
+@pytest.mark.parametrize("origem", ["pr", "registro_legado"])
+def test_conclusao_legada_mostra_origem_e_aceite_nao_comprovado(
+    tmp_path, monkeypatch, origem
+):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-950": {
+                    "estado": "concluída",
+                    "titulo": "Entrega histórica",
+                    "submissao": "registrada",
+                    "integracao": "nao_comprovada",
+                    "publicacao": "nao_comprovada",
+                    "aceite": "nao_comprovado",
+                    "origem_conclusao": origem,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    resposta = _dentro().get(reverse("caixa_robos"))
+    html = texto_sem_estilo(resposta)
+    assert resposta.status_code == 200
+    assert "Conclusão histórica" in html
+    assert "Aceite funcional" in html
+    assert "não comprova o aceite funcional" in html or "não foi comprovado" in html
+    grupo = next(g for g in resposta.context["colunas"] if g["cartoes"])
+    assert grupo["cor"] == "cinza"
+    assert grupo["rotulo"] == "Conclusões registradas"
+
+
+@respx.mock
+def test_aceite_funcional_comprovado_tem_grupo_e_quatro_provas(tmp_path, monkeypatch):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-962": {
+                    "estado": "concluída",
+                    "titulo": "Cartões conferidos",
+                    "submissao": "registrada",
+                    "integracao": "comprovada",
+                    "publicacao": "comprovada",
+                    "aceite": "comprovado",
+                    "origem_conclusao": "reconciliacao",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    resposta = _dentro().get(reverse("caixa_robos"))
+    assert resposta.status_code == 200
+    html = texto_sem_estilo(resposta)
+    for etapa in ("Submissão", "Integração", "Publicação técnica", "Aceite funcional"):
+        assert etapa in html
+    grupo = next(g for g in resposta.context["colunas"] if g["cartoes"])
+    assert grupo["cor"] == "verde"
+    assert grupo["curto"] == "aceite comprovado"
+
+
+@respx.mock
+@pytest.mark.parametrize("prova", [None, [], "inventado"])
+def test_prova_de_entrega_invalida_nao_vira_aceite(tmp_path, monkeypatch, prova):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {"TAR-962": {"estado": "concluída", "titulo": "Conferir", "aceite": prova}}
+        ),
+        encoding="utf-8",
+    )
+    resposta = _dentro().get(reverse("caixa_robos"))
+    assert resposta.status_code == 500
+
+
+@respx.mock
+def test_projecao_do_produtor_chega_ao_cartao_sem_aceite_inventado(
+    tmp_path, monkeypatch
+):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    produtor = Path(__file__).resolve().parents[3] / "ci"
+    programa = (
+        "import json,sys; sys.path.insert(0,sys.argv[1]); import fila; "
+        "tarefas={'TAR-950':{'titulo':'Histórico preservado'}}; "
+        "eventos=[{'tarefa':'TAR-950','evento':'submetida','quem':'executor',"
+        "'pr':'https://github.com/abundanciabr/sitesdoreino/pull/2322',"
+        "'revisao':'a'*40,'arvore':'b'*40},"
+        "{'tarefa':'TAR-950','evento':'concluida','quem':'executor',"
+        "'evidencia':'https://github.com/abundanciabr/sitesdoreino/pull/2322'}]; "
+        "print(json.dumps(fila.calcular_estados(tarefas,eventos)))"
+    )
+    estados = subprocess.run(
+        [sys.executable, "-c", programa, str(produtor)],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    ).stdout
+    (pasta / "estados.json").write_text(estados, encoding="utf-8")
+    resposta = _dentro().get(reverse("caixa_robos"))
+    assert resposta.status_code == 200
+    html = texto_sem_estilo(resposta)
+    assert "Conclusão histórica registrada pelo PR" in html
+    assert "O aceite funcional não foi comprovado" in html
+    assert "Resultados com aceite funcional comprovado" not in html

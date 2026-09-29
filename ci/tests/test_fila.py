@@ -320,7 +320,7 @@ def test_reserva_nova_depois_de_devolvida_e_do_almoxarife(tmp_path):
     ]
     estado = estados_de(tmp_path, [tarefa()], eventos, reservas={"TAR-001"})["TAR-001"]
     # guarda: ci/fila.py:1163
-    assert estado == {
+    assert {c: estado[c] for c in ("estado", "motivo", "quem")} == {
         "estado": fila.REIVINDICADA,
         "motivo": "",
         "quem": "reserva ativa no almoxarife",
@@ -419,7 +419,7 @@ def test_bloqueada_pelo_evento_carrega_o_motivo(tmp_path):
         [tarefa()],
         [evento(tipo="bloqueada", detalhe="falta decisão do dono", espera="mantenedor")],
     )
-    assert e["TAR-001"] == {
+    assert {c: e["TAR-001"][c] for c in ("estado", "motivo", "quem", "espera")} == {
         "estado": fila.BLOQUEADA,
         "motivo": "falta decisão do dono",
         "quem": "sessao-a",
@@ -447,7 +447,7 @@ def test_dependencia_aberta_bloqueia_por_conta(tmp_path):
     e = estados_de(tmp_path, [tarefa("001", "a"), tarefa("002", "b", deps=["TAR-001"])])
     # `espera` sai calculado como `fila`: esta trava se desfaz sozinha quando a
     # de cima terminar, e por isso nunca é assunto do mantenedor.
-    assert e["TAR-002"] == {
+    assert {c: e["TAR-002"][c] for c in ("estado", "motivo", "quem", "espera")} == {
         "estado": fila.BLOQUEADA,
         "motivo": "esperando TAR-001",
         "quem": None,
@@ -468,7 +468,7 @@ def test_reserva_viva_no_servidor_conta_como_reivindicada(tmp_path):
 
 def test_pr_aberto_conta_como_em_execucao(tmp_path):
     e = estados_de(tmp_path, [tarefa()], [evento()], prs={"TAR-001": "PR #77"})
-    assert e["TAR-001"] == {"estado": fila.EM_EXECUCAO, "motivo": "PR #77", "quem": "sessao-a"}
+    assert {c: e["TAR-001"][c] for c in ("estado", "motivo", "quem")} == {"estado": fila.EM_EXECUCAO, "motivo": "PR #77", "quem": "sessao-a"}
 
 
 def test_contrato_de_execucao_viaja_no_resumo_sem_mudar_estado(tmp_path):
@@ -1113,7 +1113,7 @@ def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_p
         assert fila.cmd_concluir(tmp_path, args) == 1
     else:
         monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
-        monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a: ("prova", "2026-09-10"))
+        monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a: ("prova", "2026-09-10", aceite_entrega_de_teste()))
         args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", aceite_registro="aceite.js", retroativa="")
         assert fila.cmd_reconciliar(tmp_path, args) == 1
 
@@ -2253,6 +2253,47 @@ def submissao_reconciliavel(**extra):
     )
 
 
+
+def funcional_de_teste(publicacao="PUBLICADO"):
+    return {
+        "resultado": "PASS", "criterio": "Cartão mostra a entrega e a ausência de aceite",
+        "evidencia": "GET /admin/caixa/robos/: 200 e cartão conferido",
+        "revisao": MERGE_RECONCILIADO,
+        "ambiente": "producao" if publicacao == "PUBLICADO" else "repositorio-integrado",
+    }
+
+
+def aceite_entrega_de_teste(publicacao="PUBLICADO"):
+    submetida = submissao_reconciliavel()
+    prova = {
+        **{c: submetida[c] for c in ("tarefa", "pr", "revisao", "arvore")},
+        "integracao": MERGE_RECONCILIADO, "publicacao": publicacao,
+        "publicacoes": [RUN_RECONCILIADO] if publicacao == "PUBLICADO" else [URL_SUBMISSAO],
+        "registro": REGISTRO_DE_ACEITE, "aceite_funcional": funcional_de_teste(publicacao),
+    }
+    prova["registro_sha256"] = fila.hash_do_registro(registro_de_aceite_de_teste(prova))
+    return prova
+
+
+def registro_de_aceite_de_teste(prova=None):
+    prova = prova or aceite_entrega_de_teste()
+    return {
+        "arquivo": Path(REGISTRO_DE_ACEITE).stem, "tarefa": "TAR-001",
+        "gravidade": "verde", "precisa_do_dono": False, "verificado_em": "2026-09-10",
+        "evidencia": ", ".join(prova["publicacoes"]),
+        "aceite_funcional": prova["aceite_funcional"],
+        "entrega": {c: prova[c] for c in ("pr", "revisao", "arvore", "integracao", "publicacao", "publicacoes")},
+    }
+
+
+def escrever_registro_de_aceite(raiz, prova=None):
+    caminho = raiz / REGISTRO_DE_ACEITE
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    registro = registro_de_aceite_de_teste(prova)
+    caminho.write_text("window.REGISTROS = [" + json.dumps(registro) + "];", encoding="utf-8")
+    return caminho
+
+
 def args_de_reconciliar(**extra):
     return argparse.Namespace(
         tarefa="TAR-001",
@@ -2288,9 +2329,10 @@ def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypa
     monkeypatch.setattr(
         fila,
         "provar_reconciliacao",
-        lambda *a: (evidencia, "2026-09-10"),
+        lambda *a: (evidencia, "2026-09-10", aceite_entrega_de_teste()),
     )
 
+    escrever_registro_de_aceite(tmp_path)
     assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 0
     escritos = list((tmp_path / "fila/eventos").glob("*-TAR-001-concluida.json"))
     assert len(escritos) == 1
@@ -2479,6 +2521,12 @@ def test_reconciliacao_aceita_url_canonica_com_pontuacao_textual():
             "precisa_do_dono": False,
             "verificado_em": "2026-09-10",
             "evidencia": f"Publicação conferida em {RUN_RECONCILIADO}.",
+            "aceite_funcional": {
+                "resultado": "PASS",
+                "criterio": "O comando da fila conserva a tarefa sem aceite",
+                "evidencia": "python ci/fila.py listar --json: em execução",
+                "revisao": MERGE_RECONCILIADO, "ambiente": "repositorio-integrado",
+            },
         },
         [RUN_RECONCILIADO],
     )
@@ -2562,9 +2610,9 @@ def test_reconciliacao_nao_exige_atestado(
     monkeypatch.setattr(
         fila,
         "carregar_aceite",
-        lambda *a: {"verificado_em": "2026-09-10"},
+        lambda *a: registro_de_aceite_de_teste(),
     )
-    evidencia, _ = fila.provar_reconciliacao(
+    evidencia, _, prova = fila.provar_reconciliacao(
         tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
     )
     assert "atestado=" not in evidencia
@@ -2985,20 +3033,16 @@ def args_de_fechar(**extra):
     return argparse.Namespace(**dados)
 
 
-def test_entrega_escreve_o_feito_e_a_fila_mostra_concluida(tmp_path, monkeypatch):
-    """O PR de entrega submete e fecha, e o estado calculado vira concluída."""
-    # guarda: ci/fila.py:3381
+def test_entrega_submetida_nao_fecha_a_fila(tmp_path, monkeypatch, capsys):
     montar(tmp_path, [tarefa()], [evento(), submissao()])
-    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
-    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
-    escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
-    assert len(escrito) == 1
-    dados = json.loads(escrito[0].read_text(encoding="utf-8"))
-    assert dados["evidencia"] == URL_SUBMISSAO
-    assert dados["verificado_em"]
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver",
+                        lambda *a: pytest.fail("não solta antes do aceite"))
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 1
+    assert "Use reconciliar" in capsys.readouterr().out
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
     tarefas, eventos, erros = carregar(tmp_path)
     assert not erros
-    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CONCLUIDA
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.EM_EXECUCAO
 
 
 def test_fechar_pela_entrega_exige_a_submissao_daquele_pr(tmp_path, monkeypatch, capsys):
@@ -3026,15 +3070,14 @@ def test_fechar_pela_entrega_recusa_pr_diferente_da_submissao(tmp_path, monkeypa
 
 
 def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys):
-    """`--continuar` chama de novo e nada é repetido."""
-    # guarda: ci/fila.py:2088
-    montar(tmp_path, [tarefa()], [evento(), submissao()])
-    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
-    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
-    capsys.readouterr()
-    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
-    assert "já está no ramo" in capsys.readouterr().out
-    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))) == 1
+    nossa = evento(tipo="concluida", hora="12:00:00",
+                   evidencia=URL_SUBMISSAO, verificado_em="2026-09-12")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), nossa])
+    antes = {p.name: p.read_bytes() for p in (tmp_path / "fila/eventos").glob("*.json")}
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 1
+    assert "Nenhum evento" in capsys.readouterr().out
+    depois = {p.name: p.read_bytes() for p in (tmp_path / "fila/eventos").glob("*.json")}
+    assert depois == antes
 
 
 def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
@@ -3777,28 +3820,15 @@ def test_cadeia_INVENTADA_para_a_088_REAL_e_RECUSADA():
     assert "test_inventado" in problemas[0]
     assert "test_celula_sem_servico_continua_dizendo_exatamente_isso" in problemas[0]
 
-def test_o_feito_que_viaja_na_entrega_passa_pelo_MESMO_portao(
-    tmp_path, monkeypatch, capsys
-):
-    """A terceira porta terminal, e a que roda de verdade hoje.
-
-    Quem escreve o feito é `ci/pr.py`, na submissão, e não `concluir` à mão. Ela
-    fecha por `fechar_pela_entrega`, que chama `_concluir_com_prova` de propósito
-    — e é por isso que o portão mora ali, e não em `cmd_concluir`.
-    """
+def test_fechamento_por_pr_nao_contorna_a_guarda_funcional(tmp_path, monkeypatch, capsys):
     raiz = armadilha_com_guarda(
         montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento(), submissao()])
     )
-    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
-    monkeypatch.setattr(
-        fila,
-        "provar_guarda_da_armadilha",
-        lambda *a: (["a guarda sabotada continuou verde"], {}),
-    )
-    with pytest.raises(ErroDeInstrumentacao, match="não pôde escrever a conclusão"):
-        fila.cmd_fechar_pela_entrega(raiz, args_de_fechar())
-    assert "continuou verde" in capsys.readouterr().out
-    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+    monkeypatch.setattr(fila, "provar_guarda_da_armadilha",
+                        lambda *a: pytest.fail("PR não chega ao fechamento"))
+    assert fila.cmd_fechar_pela_entrega(raiz, args_de_fechar()) == 1
+    assert "aceite funcional" in capsys.readouterr().out
+    assert not list((raiz / "fila/eventos").glob("*-concluida.json"))
 
 
 # ---------------------------------------------------------------------------
@@ -3855,7 +3885,7 @@ def reconciliar_com_linhagem_recusada(tmp_path, monkeypatch, checks, **extra):
     monkeypatch.setattr(
         fila,
         "carregar_aceite",
-        lambda *a: {"verificado_em": "2026-09-10"},
+        lambda *a: registro_de_aceite_de_teste(),
     )
 
     def api(raiz, caminho, **k):
@@ -3880,7 +3910,7 @@ def test_sem_declarar_retroativa_a_linhagem_recusada_continua_recusando(
 def test_retroativa_troca_a_linhagem_pelos_checks_verdes_e_grava_o_motivo(
     tmp_path, monkeypatch
 ):
-    evidencia, verificado_em = reconciliar_com_linhagem_recusada(
+    evidencia, verificado_em, prova = reconciliar_com_linhagem_recusada(
         tmp_path,
         monkeypatch,
         checks_do_head(),
@@ -3918,3 +3948,234 @@ def test_retroativa_e_recusada_quando_a_linhagem_se_comprova_sozinha(
             linhagem=lambda *a: None,
             retroativa="motivo",
         )
+
+
+@pytest.mark.parametrize("resultado", [None, "FAIL", "ERROR"])
+def test_health_verde_nao_substitui_aceite_funcional(resultado):
+    registro = {
+        "gravidade": "verde",
+        "precisa_do_dono": False,
+        "verificado_em": "2026-09-29",
+        "evidencia": RUN_RECONCILIADO + " /healthz respondeu 200",
+    }
+    if resultado:
+        registro["aceite_funcional"] = {
+            "resultado": resultado,
+            "criterio": "O administrador vê os níveis de entrega no cartão",
+            "evidencia": "GET /admin/robos/ devolveu 500",
+        }
+    with pytest.raises(fila.RecusaDeReconciliacao, match="funcional"):
+        fila.provar_conteudo_do_aceite(registro, [RUN_RECONCILIADO])
+
+
+def test_conclusao_por_pr_preserva_historico_sem_inventar_aceite():
+    concluida = evento(tipo="concluida", evidencia=URL_SUBMISSAO,
+                       verificado_em="2026-09-12")
+    eventos = [submissao(), concluida]
+    original = json.dumps(eventos, sort_keys=True)
+    estados = fila.calcular_estados({"TAR-001": tarefa(),
+                                    "TAR-002": tarefa("002", deps=["TAR-001"])}, eventos)
+    assert estados["TAR-001"]["estado"] == fila.CONCLUIDA
+    assert estados["TAR-001"]["aceite"] == "nao_comprovado"
+    assert estados["TAR-001"]["origem_conclusao"] == "pr"
+    assert estados["TAR-001"]["integracao"] == "nao_comprovada"
+    assert estados["TAR-002"]["estado"] == fila.NA_FILA
+    assert json.dumps(eventos, sort_keys=True) == original
+
+
+def test_submissao_nao_comprova_integracao_publicacao_ou_aceite():
+    estados = fila.calcular_estados({"TAR-001": tarefa()}, [submissao()])
+    assert estados["TAR-001"]["estado"] == fila.EM_EXECUCAO
+    assert estados["TAR-001"]["submissao"] == "registrada"
+    assert estados["TAR-001"]["integracao"] == "nao_comprovada"
+    assert estados["TAR-001"]["publicacao"] == "nao_comprovada"
+    assert estados["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+def test_envio_da_entrega_nao_escreve_conclusao(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver",
+                        lambda *a: pytest.fail("não solta antes do aceite"))
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 1
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+@pytest.mark.parametrize("terminal", ["concluida", "cancelada"])
+@pytest.mark.parametrize("comando", ["cmd_descoberta", "cmd_checkpoint", "cmd_contrato_execucao", "cmd_tentativa_sem_progresso"])
+def test_execucao_recusa_terminal_antes_de_escrever_evento(tmp_path, capsys, terminal, comando):
+    concluida = evento(tipo=terminal, evidencia="prova anterior", verificado_em="2026-09-12",
+                       detalhe="encerramento anterior")
+    montar(tmp_path, [tarefa()], [concluida])
+    antes = {p.name: p.read_bytes() for p in (tmp_path / "fila/eventos").glob("*.json")}
+    contrato = tmp_path / "contrato.json"
+    contrato.write_text(json.dumps(contrato_execucao()), encoding="utf-8")
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="codex/ci/pme03-aceite",
+        arquivo=str(contrato), classificacao="C", criterio="jornada",
+        encaminhamento="nova tarefa", detalhe="achado medido", evidencia="comando real",
+        plano="fase 1", ultimo_avanco="prova registrada", proxima_acao="verificar a tela",
+        verificacao=["pytest: PASS"], contexto=None, bloqueio="instrumento sem resposta",
+        hipotese="validar a origem", resultado="não houve avanço",
+    )
+    assert getattr(fila, comando)(tmp_path, args) == 1
+    assert "já terminou" in capsys.readouterr().out
+    depois = {p.name: p.read_bytes() for p in (tmp_path / "fila/eventos").glob("*.json")}
+    assert depois == antes
+    assert not carregar(tmp_path)[-1]
+
+@pytest.mark.parametrize("funcional", [None, {}, [], {"resultado": "PASS"}, {
+    "resultado": "PASS", "criterio": " ", "evidencia": "GET /admin: 200"
+}])
+def test_aceite_funcional_exige_criterio_e_evidencia(funcional):
+    registro = {
+        "gravidade": "verde", "precisa_do_dono": False,
+        "verificado_em": "2026-09-29", "evidencia": RUN_RECONCILIADO,
+        "aceite_funcional": funcional,
+    }
+    with pytest.raises(fila.RecusaDeReconciliacao, match="funcional"):
+        fila.provar_conteudo_do_aceite(registro, [RUN_RECONCILIADO])
+
+
+
+@pytest.mark.parametrize("publicacao", ["PUBLICADO", "SEM_PUBLICACAO"])
+def test_reconciliacao_com_aceite_distingue_as_quatro_provas(tmp_path, publicacao):
+    prova = aceite_entrega_de_teste(publicacao)
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="registro da reconciliação",
+                       verificado_em="2026-09-29", aceite_entrega=prova)
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    escrever_registro_de_aceite(tmp_path, prova)
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["estado"] == fila.CONCLUIDA
+    assert estado["submissao"] == "registrada"
+    assert estado["integracao"] == "comprovada"
+    assert estado["publicacao"] == ("comprovada" if publicacao == "PUBLICADO" else "nao_aplicavel")
+    assert estado["aceite"] == "comprovado"
+    assert estado["origem_conclusao"] == "reconciliacao"
+    conclusao.pop("aceite_entrega")
+    legado = fila.calcular_estados({"TAR-001": tarefa()},
+                                  [submissao_reconciliavel(), conclusao])["TAR-001"]
+    assert legado["aceite"] == "nao_comprovado"
+
+
+@pytest.mark.parametrize("tarefa_registro", [None, "TAR-002"])
+def test_aceite_de_outra_tarefa_nao_encerra_a_submissao(tmp_path, monkeypatch, tarefa_registro):
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: {
+        "verificado_em": "2026-09-29", "tarefa": tarefa_registro
+    })
+    with pytest.raises(fila.RecusaDeReconciliacao, match="outra tarefa"):
+        fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+
+@pytest.mark.parametrize("campo,valor", [
+    ("revisao", "f" * 40), ("ambiente", "repositorio-integrado"), ("resultado", "FAIL")
+])
+def test_reconciliacao_recusa_jornada_de_outra_revisao_ambiente_ou_reprovada(tmp_path, monkeypatch, campo, valor):
+    pr, estado = pr_e_estado_reconciliaveis()
+    funcional = funcional_de_teste()
+    funcional[campo] = valor
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: {
+        "verificado_em": "2026-09-29", "tarefa": "TAR-001", "aceite_funcional": funcional
+    })
+    with pytest.raises(fila.RecusaDeReconciliacao, match="funcional"):
+        fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+
+
+@pytest.mark.parametrize("mudanca", [
+    {"pr": URL_SUBMISSAO + "9"}, {"revisao": "f" * 40}, {"arvore": "f" * 40},
+    {"publicacoes": ["texto livre"]}, {"integracao": "curto"}, {"tarefa": "TAR-002"},
+])
+def test_evento_de_aceite_recusa_vinculo_divergente_na_carga_e_na_projecao(tmp_path, mudanca):
+    prova = aceite_entrega_de_teste()
+    prova.update(mudanca)
+    conclusao = evento(tipo="concluida", evidencia="aceite declarado",
+                       verificado_em="2026-09-29", aceite_entrega=prova)
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+def test_evento_de_aceite_sem_submissao_nao_comprova_entrega(tmp_path):
+    conclusao = evento(tipo="concluida", evidencia="aceite declarado",
+                       verificado_em="2026-09-29", aceite_entrega=aceite_entrega_de_teste())
+    montar(tmp_path, [tarefa()], [conclusao])
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert any("submissão" in erro for erro in erros)
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+def test_texto_imitando_reconciliacao_nao_comprova_aceite():
+    evidencia = (
+        f"entrega={URL_SUBMISSAO}; revisao={'a' * 40}; arvore={'b' * 40}; "
+        f"head={'c' * 40}; merge={'d' * 40}; estado=PUBLICADO; "
+        f"publicacao={RUN_RECONCILIADO}; linhagem=linhagem comprovada; "
+        f"aceite={REGISTRO_DE_ACEITE}; aceite_funcional=PASS"
+    )
+    eventos = [submissao(), evento(tipo="concluida", evidencia=evidencia,
+                                  verificado_em="2026-09-29")]
+    estado = fila.calcular_estados({"TAR-001": tarefa()}, eventos)["TAR-001"]
+    assert estado["aceite"] == "nao_comprovado"
+    assert estado["integracao"] == "nao_comprovada"
+
+def test_concluir_texto_livre_nao_produz_aceite_final(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="codex/ci/pme03-aceite",
+        evidencia="aceite_funcional=PASS; ambiente=producao; revisão integrada",
+        verificado_em="2026-09-29",
+    )
+    assert fila.cmd_concluir(tmp_path, args) == 0
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    assert all("aceite_entrega" not in e for e in eventos)
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["aceite"] == "nao_comprovado"
+
+
+@pytest.mark.parametrize("alteracao", ["ausente", "hash", "sha", "run", "candidato", "jornada", "marca_serializada"])
+def test_leitura_nao_aprova_estrutura_sem_registro_canonico_correspondente(tmp_path, alteracao):
+    prova = aceite_entrega_de_teste()
+    caminho = escrever_registro_de_aceite(tmp_path, prova)
+    if alteracao == "ausente":
+        caminho.unlink()
+    elif alteracao == "hash":
+        prova["registro_sha256"] = "0" * 64
+    elif alteracao == "sha":
+        prova["integracao"] = "f" * 40
+        prova["aceite_funcional"]["revisao"] = "f" * 40
+    elif alteracao == "run":
+        prova["publicacoes"] = [RUN_RECONCILIADO.rsplit("/", 1)[0] + "/99999999999"]
+    elif alteracao == "candidato":
+        prova["revisao"] = "f" * 40
+    elif alteracao == "jornada":
+        prova["aceite_funcional"]["evidencia"] = "jornada inventada"
+    else:
+        caminho.unlink()
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação", verificado_em="2026-09-29", aceite_entrega=prova)
+    if alteracao == "marca_serializada":
+        conclusao["_aceite_verificado"] = True
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["aceite"] == "nao_comprovado"
+
+
+def test_projecao_nao_trata_serializacao_valida_como_aceite():
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação", verificado_em="2026-09-29", aceite_entrega=aceite_entrega_de_teste())
+    estado = fila.calcular_estados({"TAR-001": tarefa()}, [submissao_reconciliavel(), conclusao])["TAR-001"]
+    assert estado["aceite"] == "nao_comprovado"
+
+
+def test_porta_terminal_recusa_prova_sem_registro_canonico(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: pytest.fail("não libera sem prova"))
+    assert fila._concluir_com_prova(tmp_path, "TAR-001", "executor", "reconciliação", "2026-09-29", aceite_entrega_de_teste()) == 1
+    assert not list((tmp_path / "fila/eventos").glob("*concluida.json"))

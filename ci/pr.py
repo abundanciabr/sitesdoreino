@@ -659,7 +659,6 @@ def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
             revisao, arvore = anterior["revisao"], anterior["arvore"]
     correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
             "--pr", url, "--revisao", revisao, "--arvore", arvore])
-    correr([sys.executable, "ci/fila.py", "fechar-pela-entrega", tarefa, "--quem", ramo, "--pr", url])
     arquivos = []
     for caminho in (raiz / "fila/eventos").glob("*.json"):
         if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa:

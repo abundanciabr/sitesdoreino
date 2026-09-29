@@ -41,7 +41,10 @@ from .painel import diretorio_do_painel
 _ESTADOS_FECHADOS = frozenset({"concluída", "cancelada"})
 
 _AVISO_SEM_AREAS = "painel/areas.json não veio nesta imagem: as tarefas chegam sem área"
-_ERRO_SEM_FILA = "a fila dos robôs não veio nesta imagem"
+_ERRO_SEM_FILA = (
+    "A fila dos robôs está ausente ou ilegível. "
+    "Peça ao robô para conferir fila/estados.json e republicar os dados."
+)
 
 
 def _celula_para_area(
@@ -75,6 +78,9 @@ def _tarefa_para_o_painel(tarefa_id: str, dados: dict, celula_para_area: dict) -
         "titulo": dados.get("titulo"),
         "estado": dados.get("estado"),
         "espera": dados.get("espera"),
+        **{campo: dados.get(campo) for campo in robos.COMPROVACOES_DA_ENTREGA},
+        "origem_conclusao": dados.get("origem_conclusao"),
+        "comprovacoes_entrega": robos.comprovacoes_para_tela(dados),
         "situacao": grupo["rotulo"] if grupo else None,
         "para_o_dono": bool(grupo) and grupo.get("espera") == "mantenedor",
         "importancia": importancia,
@@ -102,7 +108,7 @@ def fila_para_o_painel(
     if pasta_da_fila is None:
         return {"erro": _ERRO_SEM_FILA, "aviso": None, "tarefas": []}
 
-    estados = robos._ler_json(pasta_da_fila / "estados.json")
+    estados = robos.ler_estados(pasta_da_fila)
     if not isinstance(estados, dict):
         return {"erro": _ERRO_SEM_FILA, "aviso": None, "tarefas": []}
 
