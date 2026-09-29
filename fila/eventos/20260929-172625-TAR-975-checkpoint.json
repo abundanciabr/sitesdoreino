@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-172625-TAR-975-checkpoint",
+  "tarefa": "TAR-975",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:26:25.617037+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME-04 piloto B, mesma tentativa e sessao",
+  "ultimo_avanco": "Retomada minima concluiu em 17:16:16Z, arquivos duraveis na bancada correta, soma18 e duas entradas invalidas recusadas; quatro hashes de A identicos. Processos encerrados, estado resultado_recebido. Incidentes anteriores nao eram PASS e permanecem no historico.",
+  "proxima_acao": "Integrar executor corrigido na TAR964 e submeter artefatos do piloto sem modificar codigo de produto; conferir implantacao e aceitar somente com evidencias pertinentes.",
+  "verificacoes": [
+    "Root executou verificador B real, leu resultado TAR975-B soma18, recusou bool e tentativaA mantendo resultado; hashlib conferiu quatro arquivos A; estado confirmou attempt1e95895ec26545018b26695ce7a884d0 e thread01a0edfa-9fd7-79c3-8e15-a24efc467afd. Selecao local gpt-6-luna medium, backend nao atestado independentemente."
+  ]
+}
