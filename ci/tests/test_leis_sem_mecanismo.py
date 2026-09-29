@@ -90,7 +90,7 @@ def test_o_censo_enxerga_as_leis_de_verdade():
     ids = {lei.id for lei in leis}
     assert len(leis) >= 15, f"o censo só achou {len(leis)} leis"
     assert any("Lei 4" in i for i in ids), "sumiu a Lei 4 (separação de poderes)"
-    assert any("§2" in i for i in ids), "sumiu o §2 do RITOS"
+    assert any("Integrar, publicar e aceitar" in i for i in ids), "sumiu a integração da receita"
 
 
 # --------------------------------------------------------------------------
@@ -332,7 +332,32 @@ def test_censo_mede_receita_vigente_sem_tratar_receitas_tecnicas_como_novas_leis
     ids = {lei.id for lei in leis}
     assert "CAMINHO-DOURADO.md::O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa" in ids
     assert not any(lei.arquivo == "CLAUDE.md" for lei in leis)
+    assert not any(lei.arquivo == "RITOS.md" for lei in leis)
     assert not any(lei.titulo.startswith(("R1", "§0")) for lei in leis)
+
+
+def test_indice_historico_nao_conta_como_lei_nova(tmp_path):
+    raiz = _cenario(
+        tmp_path,
+        {"CONSTITUICAO.md": LEI_COM_PORTAO, "RITOS.md": "## §99 — registro histórico sem mecanismo\n"},
+    )
+    assert all(lei.arquivo != "RITOS.md" for lei in censo.levantar(raiz))
+
+
+def test_cinco_ritos_tem_sucessores_explicitos_na_receita():
+    receita = (RAIZ / "CAMINHO-DOURADO.md").read_text(encoding="utf-8")
+    indice = (RAIZ / "RITOS.md").read_text(encoding="utf-8")
+    sucessores = (
+        ("§1", "Abrir e retomar uma sessão"),
+        ("§2", "Integrar, publicar e aceitar"),
+        ("§3", "Mudar contrato"),
+        ("§4", "Reverter uma emergência"),
+        ("§5", "Pegar e registrar trabalho na fila"),
+    )
+    for rito, titulo in sucessores:
+        assert f"## {titulo} — sucessor de RITOS {rito}" in receita
+        assert f"CAMINHO-DOURADO.md, “{titulo}”" in indice
+    assert sum("sucessor de RITOS" in lei.titulo for lei in censo.levantar(RAIZ)) == 5
 
 
 def test_lei_operacional_sem_mecanismo_continua_reprovada_na_nova_fonte(tmp_path):

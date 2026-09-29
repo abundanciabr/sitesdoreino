@@ -1,0 +1,94 @@
+{
+  "arquivo": "20260929-200404-TAR-993-contrato_execucao",
+  "tarefa": "TAR-993",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T20:04:04.472513+00:00",
+  "quem": "despacho-ci-pme-receita-vigente",
+  "contrato": {
+    "versao": 3,
+    "objetivo": "Fazer sessão nova e retomada encontrar uma receita operacional vigente, sem perda das propriedades nem ampliação de autoridade.",
+    "entregaveis": [
+      "Sessão nova e retomada declaram CAMINHO-DOURADO.md como receita vigente",
+      "RITOS torna-se índice histórico para cinco sucessores operacionais; teste confere correspondência e censo recusa obrigação sem mecanismo",
+      "Mapa de execução põe CAMINHO no contexto/fronteira e invalida pacote quando a receita local muda sem commit",
+      "Muralha compara adaptador CLAUDE.md e CAMINHO-DOURADO.md sem retirar recusa do clone ou estados de erro",
+      "Guarda do Padrão mantém 11 regras, costuras e entradas diretas; a porta RITOS histórica sai",
+      "Testes positivos e negativos e evidências de integração/publicação/aceite distintas",
+      "Teste adjacente da abertura exige CAMINHO na leitura e RITOS ausente mesmo quando o índice histórico existe"
+    ],
+    "escopo_incluido": [
+      "ci/sessao.py",
+      "ci/tests/test_sessao.py",
+      "ci/leis_sem_mecanismo.py",
+      "ci/tests/test_leis_sem_mecanismo.py",
+      "ci/muralha_pasta_compartilhada.py",
+      "ci/tests/test_muralha_pasta_compartilhada.py",
+      "ci/mapa_de_execucao.py",
+      "ci/tests/test_mapa_de_execucao.py",
+      "ci/padrao_de_trabalho.py",
+      "ci/tests/test_padrao_de_trabalho.py",
+      "CAMINHO-DOURADO.md",
+      "RITOS.md",
+      "CONSTITUICAO.md",
+      "INVARIANTES.md",
+      "ci/tests/test_sessao_contexto.py"
+    ],
+    "nao_objetivos": [
+      "Aplicar reuso de mandato TAR-983 ou seu patch bloqueado",
+      "Alterar App, ruleset ou check de autoridade",
+      "Editar ci/pr.py, ci/fila.py, hooks, constituições de células ou guias manuais",
+      "Editar .codex/agents/despacho.toml, .claude/agents/LEIA-ME.md, ci/guarda_dos_guardas.py e teste próprio, ci/catraca_de_testes.py ou ci/muralha_da_espera.py neste incremento; referências residuais seguem para corte seguinte",
+      "Apagar histórico ou declarar aceite integral do adendo"
+    ],
+    "restricoes": [
+      "Máximo 15 arquivos de código no incremento",
+      "Lei 8 e testes-guardas dinheiro/dados/acesso permanecem",
+      "Fonte canônica única sem duplicar procedimento",
+      "Permissões de células não aumentam"
+    ],
+    "etapas": [
+      "Abertura e contrato",
+      "Baselines e correspondência fonte-consumidor",
+      "Migração mínima coerente",
+      "Testes negativos e positivos",
+      "Rito Draft-first e revisão independente"
+    ],
+    "criterios_entrada": [
+      "Reserva pme-receita-vigente ativa",
+      "Bancada gerenciada exclusiva e TAR-993 reivindicada",
+      "Base origin/main aferida"
+    ],
+    "criterios_aceite": [
+      "Sessão nova e retomada apontam a receita vigente",
+      "Censo recusa obrigação vigente sem mecanismo e variante inválida",
+      "Muralha preserva recusa do clone e erro",
+      "Fontes e consumidores mudam conjuntamente"
+    ],
+    "evidencias_exigidas": [
+      "Comandos e saída real dos testes",
+      "Saída de abertura limpa e retomada",
+      "Negativo de obrigação sem mecanismo",
+      "Diff e revisão independente",
+      "Estados de validação, integração, publicação e aceite separados"
+    ],
+    "condicao_encerramento": "Incremento integrado com fontes e consumidores conferidos, sem declarar adendo integral aceito; bloqueio externo registrado com ação para destravar.",
+    "limites_autonomia": "Somente 14 fontes da revisão de escopo feita pelo coordenador e registros próprios. A proposta fica fora da árvore até decisão legítima da revisão automática; não alterar TAR-983 nem arquivos de outras frentes.",
+    "acoes_do_mantenedor": "O mandato original cobre fontes de autoridade, mas o auto-review recusou a edição de CAMINHO-DOURADO.md. O coordenador apresentará o patch exato e seu SHA256 para eventual aprovação específica; até lá nenhuma fonte recusada é aplicada.",
+    "decisoes_aprovadas": [
+      "Mandato fase 0, PROMPTS-EXECUCAO-PLANO-MESTRE-SITESDOREINO.md SHA256 742A1D14DBE21BF662926E5C237219AD6AEE1386D6884AB90844B083C62A3B7E, itens Autorizo 1, 2, 3 e 7; fase 4 PME-09",
+      "Adendo proposto SHA256 DC87674030B4BC3A553D2F3F70F4672832865BB76EC74D6FD4EDE66E4802CCCD, §§2-5, orientação não aceite integral",
+      "Despacho TAR-993 e revisão de escopo do coordenador em 2026-09-29",
+      "TAR-983 e patch SHA256 800855DB541BCA9D5B04539211C74FEA6510341044C1E0F8315183572759D661 permanecem não aplicados",
+      "Extensão exata de ci/tests/test_sessao_contexto.py transferida pelo coordenador após falha medida 23 PASS/1 FAIL; limite 15 arquivos de código"
+    ],
+    "plano": "GOV PME09 / TAR-958 / TAR-993 — migração da receita vigente",
+    "protecao_anterior_e_equivalente": {
+      "RITOS §§1-5": "Cinco seções operacionais em CAMINHO com correspondência testada no índice histórico; executores de sessão, integração, cerca contratual, rollback e fila permanecem. Baseline vermelho exige parar antes de editar; rollback mantém janela de congelamento de 6h, renovação e alerta de retorno automático a :main.",
+      "Lei 8": "INVARIANTES Teste-Guarda e guarda_dos_guardas.py continuam recusando guarda ausente, desativada ou esvaziada. A referência obsoleta em mensagem de guarda_dos_guardas.py fica pendente de corte próprio; nenhuma recusa foi retirada.",
+      "Padrão": "ci/padrao_de_trabalho.py continua exigindo 11 regras, costuras e entradas diretas AGENTS/CLAUDE; a porta de RITOS cede à porta CAMINHO já existente.",
+      "Muralha": "Recusa do clone principal e erro sem medição inalterados; defasagem da fonte CAMINHO agora avisa mesmo quando adaptador CLAUDE está igual.",
+      "Mapa de retomada": "A fonte CAMINHO passa a GLOBAIS, fonte com digest e fronteira de somente leitura. Mudança local sem commit invalida pacote antigo; RITOS histórico deixa GLOBAIS."
+    },
+    "limite_da_prova": "Censo 29/29 mede seções e caminhos de mecanismo, não demonstra por si equivalência semântica. Correspondência dos cinco procedimentos, resultados negativos e sessão real precisam de revisão e prova após aplicação autorizada."
+  }
+}
