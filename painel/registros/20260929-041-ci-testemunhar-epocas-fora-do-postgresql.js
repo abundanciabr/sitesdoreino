@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-041-ci-testemunhar-epocas-fora-do-postgresql",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "ci: testemunhar épocas fora do PostgreSQL",
+  detalhe: "Tags assinadas e protegidas testemunham as épocas fora do banco e recusam a retomada após restauração antiga; receptor TAR-984 e proteção real seguem como dependências para qualquer corte.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2352. Validação local: árvore ab01a190d0eb1315d243fda27176a82674c4a958; commit 20d21a598ee2c3b86e377c05ca4b470e4a621802; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-982",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

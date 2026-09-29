@@ -1,0 +1,19 @@
+{
+  "arquivo": "982-impedir-que-uma-copia-antiga-devolva-poderes-a-um-executor-v",
+  "id": "TAR-982",
+  "titulo": "Impedir que uma copia antiga devolva poderes a um executor vencido",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testemunho externo assinado e protegido; rewind/restauroantigo/particao/perdaresposta naoautorizam epocavencida; servidor consome antesretomar; ensaiointegrado oficial",
+  "despacho": "Frente EPOCA da TAR958 PME05/08; responsavel unico pme_testemunho_epoca tentativa1 gpt-6-sol high explicito semfallback/subagentes. Bancada gerenciada pme-testemunho-epoca ramo codex/pme-testemunho-epoca base837148ac. Escrita exclusiva NOVOS ci/testemunho_epoca.py e ci/tests/test_testemunho_epoca.py; nucleoSQL/API/contrato05 somenteleitura; workflows07 somenteleitura, entregar patchprivado ao dono para integrar. Nenhumcodigotestemunho existente ate transferencia05. Contrato: tags unicas coordenacao-epoca/<coorte>/<epoca20digitos>/preparada e /ativa, nativamente protegidas update/delete sembypass; registro canonico assinado por joboficialmain {versao:1,coorte,epoca,transicao,estado,anterior:{epoca,registro_sha256},watermark_sha256,autoridade_sha256}. consultar(coorte) enumera todastags remoto, verifica protecao/origem/cadeia retorna {max_epoca,estado,transicao,registro_sha256,watermark_sha256}; preparada maisnova bloqueia ativaantiga. preparar(registro,esperado) criatag+CASponteiro; respostaperdida aceitaapenasmesmoconteudo. ativar(registro,esperado) exige provaPGmesmatransicaopausada, CASso ponteiro, maior epoca derivatags. Rewind ponteiro nao reduzepoca. Tagsfaltantes/removidas/regravadas/conflito/particao/semprotecao ERROR, nuncaativacao. Administradorquealteraraizfora da garantia; nao inventar controle absoluto.05 implementara pausaPG/watermark -> preparada -> PGnovaepocapausada invalidaleases -> ativa -> retomadaso consistente/tail. Root/GOV medem regras nativas, propoe delta concreto minimo antes aplicar; mandatocobreprotecao pertinente mas naocontornarrevisaoplataforma. Privilegio/assinaturafora dacandidata, reutilize sigstore06 sejustificado, naoautoreferenciacredencialinventada. Provasrestauraantigo/ponteirovoltou/perdaresposta/particao/concessaoantiga. RitoPRdraft+reviewSolindependente. Recuperacaofailclosed; naoaceitarbackup.epoca+1. Proximo assumircontrato, implementarprotocolo e enviarinterfacesestaveis05/07. Bloqueiosautenticidadeoucontroleplataforma registrar exato; continuar unidadeprovavel semdeclararcorte.",
+  "origem": "TAR958 ampliacao expressa29set; interface e transferencia05",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
