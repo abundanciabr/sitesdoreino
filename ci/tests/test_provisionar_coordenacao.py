@@ -82,6 +82,8 @@ def test_provisionamento_preserva_configuracao_e_recupera_falhas(tmp_path):
     (tmp_path / "env").mkdir()
     (tmp_path / "bin").mkdir()
     compose, ambiente_compose = preparar_compose_real(tmp_path)
+    ambiente_compose.pop("ALUNOS_API_TOKEN", None)
+    ambiente_compose.pop("TOKEN_CATALOGO", None)
     (tmp_path / "env" / "admin.env").write_text(
         "DJANGO_SECRET_KEY=fixture\nDATABASE_URL=postgres://admin:fixture@postgres/admin_db\n"
         "DEBUG=0\nSCRIPT_NAME=/admin\nIDENTIDADE_API_URL=http://identidade:8000/interno\n"
@@ -112,8 +114,12 @@ if [ "$1" = inspect ]; then
 fi
 [ "$1" = compose ] || exit 2
 if [ -n "${PME_COORD_VERIFICACAO:-}" ]; then
-  umask 077
-  printf 'ALUNOS_API_TOKEN=%s\nTOKEN_CATALOGO=%s\n' "${ALUNOS_API_TOKEN:-}" "${TOKEN_CATALOGO:-}" >"/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
+  if [ "${ALUNOS_API_TOKEN:-}" = SENTINELA_GATEWAY_ALUNOS ] && [ "${TOKEN_CATALOGO:-}" = SENTINELA_GATEWAY_CATALOGO ]; then
+    printf 'ok\n' >"/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
+  else
+    printf 'sem-chaves\n' >"/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
+  fi
+  chmod 644 "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
   mv "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp" "/opt/plataforma/compose-$PME_COORD_VERIFICACAO"
   tentativas=0
   while [ ! -f "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" ] && [ "$tentativas" -lt 100 ]; do
@@ -257,8 +263,16 @@ exit 2
             ):
                 time.sleep(0.05)
             assert captura.exists(), "provisionador não alcançou o Compose real"
-            valores = dict(
-                linha.split("=", 1) for linha in captura.read_text().splitlines()
+            marcador = captura.read_text(encoding="utf-8").strip()
+            assert marcador in ("ok", "sem-chaves")
+            exportou_chaves = marcador == "ok"
+            valores = (
+                {
+                    "ALUNOS_API_TOKEN": "SENTINELA_GATEWAY_ALUNOS",
+                    "TOKEN_CATALOGO": "SENTINELA_GATEWAY_CATALOGO",
+                }
+                if exportou_chaves
+                else {}
             )
             resultado_compose = subprocess.run(
                 ["docker", "compose", "-f", str(compose), "config", "--quiet"],
