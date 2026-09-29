@@ -140,9 +140,25 @@ Três coisas ditas de propósito na tela:
       <p class="nota">Este rastro nunca é editado nem apagado, nem por mim. O aluno não o vê.</p>
     {% endif %}
 
+    {% comment %}
+    A RESPOSTA PUBLICADA (29/09/2026). Só existe quando a fase é "Implementado":
+    é o "já está no ar, veja como usar" que quem sugeriu e todo aluno leem na
+    página da ideia. O campo NASCE escondido nas outras fases e a troca do select
+    é feita só por CSS (`:has`), sem script: a porta manda `script-src 'self'` e
+    esta célula não serve estático, então um `<script>` embutido seria bloqueado.
+    O `hidden` do servidor cobre o carregamento; a regra de baixo cobre a troca.
+    E mesmo que o texto fique escrito num campo escondido, `mover_ideia` só o
+    envia quando a fase escolhida é "implementado".
+    {% endcomment %}
+    <style>
+      .resposta-da-ideia { grid-column: 1 / -1; }
+      .forma:has(select[name="fase"] option[value="implementado"]:checked) .resposta-da-ideia { display: block; }
+      .forma:has(select[name="fase"] option:checked:not([value="implementado"])) .resposta-da-ideia { display: none; }
+    </style>
     <h2 class="secao">Mover de fase</h2>
     <form method="post" action="{% url 'caixa_mover' ideia.id %}" class="forma">
       {% csrf_token %}
+      <input type="hidden" name="fase_atual" value="{{ ideia.status }}">
       <label>
         <span class="rotulo">Para qual fase</span>
         <select name="fase">
@@ -155,6 +171,18 @@ Três coisas ditas de propósito na tela:
         <span class="rotulo">O que dizer a quem está esperando</span>
         <textarea name="nota" rows="2" placeholder="Obrigatório em “Não vamos fazer” — quem sugeriu vai ler esta frase."></textarea>
       </label>
+      <div class="resposta-da-ideia"{% if ideia.status != "implementado" %} hidden{% endif %}>
+        <label class="largo">
+          <span class="rotulo">A resposta publicada na ideia</span>
+          <textarea name="resposta" rows="8">{{ ideia.resposta|default:"" }}</textarea>
+        </label>
+        <p class="nota">
+          Aceita texto e HTML simples; imagem por link https ou &lt;img&gt;; vídeo do YouTube ou
+          Vimeo por link ou embed; vídeo por link https com &lt;video&gt;. Scripts e o que estiver
+          fora desta lista são removidos. Quem sugeriu e todo aluno veem esta resposta na página
+          da ideia. Com Implementado escolhido, deixar o campo vazio tira a resposta da ideia.
+        </p>
+      </div>
       <button type="submit" class="botao">Mover a ideia</button>
     </form>
 
