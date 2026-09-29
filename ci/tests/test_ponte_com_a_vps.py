@@ -304,12 +304,14 @@ export PLATAFORMA_DIR=/plataforma PATH=/plataforma/bin:$PATH
 sed -i 's/\r$//' /plataforma/bin/*
 chmod +x /plataforma/bin/*
 cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
+chmod 755 /usr/local/sbin/provisionar-usuario-ponte
 printf '\n# stale\n' >> /usr/local/sbin/provisionar-usuario-ponte
 # A copia root antiga falha antes de executar sudo ou consumir infra.new.
 if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
 grep -Fq 'copia root da ponte diverge' /plataforma/saida
 test ! -e /plataforma/sudo-prova
 cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
+chmod 755 /usr/local/sbin/provisionar-usuario-ponte
 # Compose inválido recusa antes do provisionador root, que poderia tocar SSH.
 touch /plataforma/compose-reprova
 if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
