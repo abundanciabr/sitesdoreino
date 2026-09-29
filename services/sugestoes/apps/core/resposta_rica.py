@@ -60,8 +60,6 @@ PARECE_HTML = re.compile(r"</?[A-Za-z][A-Za-z0-9]*(\s[^>]*)?/?>")
 def _endereco(valor: str | None, esquemas: tuple[str, ...]) -> str:
     """O endereço, se ele é de um dos esquemas aceitos; vazio se não é."""
     valor = (valor or "").strip()
-    if not valor or any(ord(c) < 33 for c in valor):
-        return ""
     partes = urlsplit(valor)
     if partes.scheme.lower() not in esquemas or not partes.netloc:
         return ""

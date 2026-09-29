@@ -178,6 +178,20 @@ def test_link_solto_de_imagem_vira_imagem():
     assert html == '<p>Antes e depois<br><img src="https://meshcraft.top/tela.PNG"></p>'
 
 
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://youtu.be/curto",
+        'https://youtu.be/dQw4w9WgXc"',
+        "https://www.youtube.com/watch?list=dQw4w9WgXcQ",
+    ],
+)
+def test_link_do_youtube_sem_identificador_valido_continua_texto(link):
+    html = resposta_em_html_seguro(link)
+
+    assert "<iframe" not in html
+
+
 def test_link_no_meio_da_frase_continua_texto():
     html = resposta_em_html_seguro("veja https://youtu.be/dQw4w9WgXcQ depois")
 
