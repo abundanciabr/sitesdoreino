@@ -25,6 +25,9 @@ IDEIAS = "/interno/gestao/ideias"
 MANTENEDOR = "mantenedor@meshcraft.test"
 ID_DA_PLATAFORMA = "idt-do-mantenedor"
 YOUTUBE_EMBED = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+# O YouTube recusa embed sem Referer (Erro 153), e a página responde
+# `Referrer-Policy: same-origin`: o próprio iframe precisa pedir a origem.
+DO_PLAYER = 'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"'
 
 
 @pytest.fixture
@@ -112,7 +115,28 @@ def test_iframe_do_youtube_vira_o_player_sem_rastreio_e_perde_o_resto():
         'onload="alert(1)" width="560"></iframe>'
     )
 
-    assert html == f'<iframe src="{YOUTUBE_EMBED}" allowfullscreen></iframe>'
+    assert html == f'<iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe>'
+
+
+def test_iframe_do_vimeo_vira_o_player_que_manda_a_origem():
+    html = resposta_em_html_seguro(
+        '<iframe src="https://player.vimeo.com/video/76979871?h=x"></iframe>'
+    )
+
+    assert html == (
+        f'<iframe src="https://player.vimeo.com/video/76979871" {DO_PLAYER}></iframe>'
+    )
+
+
+def test_referrerpolicy_da_entrada_nao_passa_e_o_do_filtro_prevalece():
+    """`unsafe-url` entregaria o endereço inteiro da página ao YouTube."""
+    html = resposta_em_html_seguro(
+        '<iframe referrerpolicy="unsafe-url" '
+        'src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
+    )
+
+    assert html == f'<iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe>'
+    assert resposta_em_html_seguro(html) == html
 
 
 def test_video_ganha_controles_e_so_aceita_https():
@@ -159,7 +183,7 @@ def test_link_solto_do_youtube_numa_linha_vira_o_player(link):
     html = resposta_em_html_seguro(f"Ficou assim:\n{link}")
 
     assert html == (
-        f'<p>Ficou assim:<br><iframe src="{YOUTUBE_EMBED}" allowfullscreen></iframe></p>'
+        f'<p>Ficou assim:<br><iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe></p>'
     )
 
 
@@ -167,8 +191,7 @@ def test_link_solto_do_vimeo_vira_o_player():
     html = resposta_em_html_seguro("https://vimeo.com/76979871")
 
     assert html == (
-        '<p><iframe src="https://player.vimeo.com/video/76979871" '
-        "allowfullscreen></iframe></p>"
+        f'<p><iframe src="https://player.vimeo.com/video/76979871" {DO_PLAYER}></iframe></p>'
     )
 
 
@@ -355,6 +378,18 @@ def test_a_pagina_filtra_de_novo_o_que_veio_do_banco(dentro, sugestao):
 
     assert "onerror" not in corpo
     assert "<p>ok</p>" in corpo
+
+
+def test_o_video_da_resposta_chega_a_pagina_pedindo_a_origem(dentro, sugestao):
+    """O defeito medido em produção: o player sem Referer mostrava o Erro 153."""
+    Sugestao.objects.filter(pk=sugestao.pk).update(
+        status=Sugestao.Status.IMPLEMENTADO,
+        resposta_da_equipe="Veja:\nhttps://youtu.be/dQw4w9WgXcQ",
+    )
+
+    corpo = dentro.client.get(reverse("sugestao", args=[sugestao.id])).content.decode()
+
+    assert f'<iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe>' in corpo
 
 
 def test_a_pagina_nao_mostra_resposta_fora_de_implementado(dentro, sugestao):
