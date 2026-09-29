@@ -3,8 +3,21 @@ name: appmax-sandbox-tela
 # no computador e no celular, e conta na VPS, só lendo, o que cada pedido gerou
 # (TAR-808). Cada disparo cria compras sintéticas NOVAS no sandbox; nenhum
 # pedido antigo é reenviado e nada é ligado ou desligado.
+# Sem entradas, compra a matriz inteira (12 compras). Com `cartao` (4 últimos
+# dígitos) e `perfil` (desktop ou celular), compra só o pedido: um cartão, uma tela.
 on:
   workflow_dispatch:
+    inputs:
+      cartao:
+        description: 'Opcional. 4 últimos dígitos de um cartão da matriz (0010, 0028, 0002, 0036, 0044 ou 9999). Vazio compra todos.'
+        required: false
+        default: ''
+        type: string
+      perfil:
+        description: 'Opcional. desktop ou celular. Vazio compra os dois.'
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -32,11 +45,14 @@ jobs:
         run: |
           npm install --no-save playwright@1.62.1
           npx playwright install --with-deps chromium
-      - name: Comprar pela tela os seis cartões, no computador e no celular
+      - name: Comprar pela tela a matriz pedida (sem entradas, os seis cartões nos dois perfis)
         id: conferir
+        env:
+          CARTAO: ${{ inputs.cartao }}
+          PERFIL: ${{ inputs.perfil }}
         run: |
           set -euo pipefail
-          node e2e/appmax_sandbox.js --etapa=comprar --dados="$RUNNER_TEMP/compras.json" --script="$RUNNER_TEMP/contagem.sh"
+          node e2e/appmax_sandbox.js --etapa=comprar --cartao="$CARTAO" --perfil="$PERFIL" --dados="$RUNNER_TEMP/compras.json" --script="$RUNNER_TEMP/contagem.sh"
           SCRIPT="$RUNNER_TEMP/contagem.sh"
           if [ ! -f "$SCRIPT" ]; then
             echo '::error::A compra pela tela não gerou o script de contagem.'
@@ -61,4 +77,6 @@ jobs:
         if: always() && steps.remoto.outcome != 'skipped'
         env:
           SAIDA: ${{ steps.remoto.outputs.stdout }}
-        run: node e2e/appmax_sandbox.js --etapa=conferir --dados="$RUNNER_TEMP/compras.json"
+          CARTAO: ${{ inputs.cartao }}
+          PERFIL: ${{ inputs.perfil }}
+        run: node e2e/appmax_sandbox.js --etapa=conferir --cartao="$CARTAO" --perfil="$PERFIL" --dados="$RUNNER_TEMP/compras.json"
