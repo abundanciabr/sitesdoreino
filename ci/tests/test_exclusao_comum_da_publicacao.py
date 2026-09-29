@@ -122,7 +122,8 @@ def test_mutador_transportado_tem_mesma_trava_antes_de_docker(nome):
     codigo = [linha for linha in texto.splitlines() if not linha.lstrip().startswith("#")]
     indice_trava = next(i for i, linha in enumerate(codigo) if "flock --exclusive 8" in linha)
     operacao = {"publicar-dados-admin-na-vps.sh": 'mkdir -p "$RAIZ_DADOS"',
-                "restaurar-backup.sh": "$COMPOSE exec"}.get(nome, "docker compose")
+                "restaurar-backup.sh": "$COMPOSE exec",
+                "sincronizar-infra-na-vps.sh": "docker compose up -d"}.get(nome, "docker compose")
     indice_operacao = next(i for i, linha in enumerate(codigo) if operacao in linha
                             and not linha.lstrip().startswith(("echo ", "COMPOSE=")))
     assert indice_trava < indice_operacao
@@ -265,3 +266,25 @@ def test_receptor_manual_ou_provisionador_espera_sem_escrever_env(tmp_path, nome
     codigo = codigo.replace("{nome}", nome).replace("{ambiente}", ambiente).replace("{erro}", erro)
     assert concluir(executar(codigo, tmp_path)).strip() == "exclusao-manual-confirmada"
     assert env.read_text(encoding="utf-8") == "inalterado\n"
+
+
+@pytest.mark.parametrize("nome", (
+    "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
+))
+def test_kit_root_trava_mesmo_inode_antes_de_operar(nome):
+    texto = (RAIZ / "infra" / nome).read_text(encoding="utf-8")
+    fragmento = TRAVA.read_text(encoding="utf-8").strip()
+    assert trava_imediata_apos_entrada(texto, fragmento)
+    assert not trava_imediata_apos_entrada(texto.replace(fragmento, "", 1), fragmento)
+
+
+def test_sincronizador_fecha_fd8_antes_do_sudo_e_revalida_apos_a_posse():
+    texto = (RAIZ / "infra/sincronizar-infra-na-vps.sh").read_text(encoding="utf-8")
+    fragmento = TRAVA.read_text(encoding="utf-8").strip()
+    assert texto.count(fragmento) == 1
+    assert texto.index('if ! docker compose --project-directory') < texto.index('sudo -n "$PROVISIONADOR_DA_PONTE"')
+    assert texto.index("exec 8<&-\n  sudo -n") < texto.index(fragmento)
+    assert texto.index(fragmento) < texto.index("STAGING_AGORA=")
+    assert texto.index(fragmento) < texto.rindex('if ! docker compose --project-directory')
+    assert texto.index("STAGING_AGORA=") < texto.index("mv -f infra.new/docker-compose.yml")
+    assert texto.index("conferir_publicacao_admin\nSTAGING_AGORA=") > texto.index(fragmento)
