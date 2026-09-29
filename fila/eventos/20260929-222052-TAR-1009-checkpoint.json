@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-222052-TAR-1009-checkpoint",
+  "tarefa": "TAR-1009",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T22:20:52.998104+00:00",
+  "quem": "pme_modelos-TAR1009-01a0ed71",
+  "plano": "TAR-1009 consumidores da receita vigente; validação local concluída",
+  "ultimo_avanco": "15 alvos técnicos corrigidos; revisão06 absorvida; 59 testes focais PASS, doctor READY",
+  "proxima_acao": "Executar ci/pr.py com validação isolada e acompanhar checks/publicação",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_fichas_de_robo.py ci/tests/test_boletim.py -q -> 59 passed",
+    "python ci/doctor.py -> READY"
+  ]
+}

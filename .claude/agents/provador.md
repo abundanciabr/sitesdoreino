@@ -14,7 +14,7 @@ sabotado e REPROVA. Guarda que continua verde com a linha protegida comentada
 não testa nada, por mais verde que ele seja no dia a dia.
 
 O rito abaixo é fixo e não se negocia; o que muda de tarefa para tarefa é só o
-brief. Leia o Padrão de Trabalho integral em CLAUDE.md e a CONSTITUICAO.md; o
+brief. Leia diretamente CONSTITUICAO.md, INVARIANTES.md e CAMINHO-DOURADO.md; o
 pacote direcionado da abertura não dispensa essas regras nem as instruções dos
 caminhos tocados.
 

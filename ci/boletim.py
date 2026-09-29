@@ -67,15 +67,15 @@ from _nucleo import (  # noqa: E402
 )
 from reservar import NS_RESERVA, refs_existentes  # noqa: E402
 
-# Os arquivos que mudam o que um agente PODE fazer. Lei nova desde a base da
-# sessão é a diferença entre trabalhar certo e trabalhar contra uma regra que
-# já não existe — e é barato de contar, então conta-se sempre.
-LEIS = (
+# Fontes vigentes e entradas/índices ainda consultados: mudança exige releitura,
+# mas o aviso não torna adaptadores ou índices em leis concorrentes.
+FONTES_OPERACIONAIS = (
     "CONSTITUICAO.md",
     "INVARIANTES.md",
-    "RITOS.md",
-    "CLAUDE.md",
     "CAMINHO-DOURADO.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "RITOS.md",
     "ARMADILHAS.md",
     "RUNBOOK-LOTES.md",
     "painel/LEIA-ME.md",
@@ -108,7 +108,7 @@ class Dados:
     prs_abertos: list[dict]
     pousos: list[dict]
     pousos_total: int
-    leis_mudadas: list[str]
+    fontes_mudadas: list[str]
     reservas: list[str]
     proximo_registro: str
     proxima_armadilha: str
@@ -295,7 +295,7 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
         {
             linha.strip().replace("\\", "/")
             for linha in tocados.splitlines()
-            if linha.strip().replace("\\", "/") in LEIS
+            if linha.strip().replace("\\", "/") in FONTES_OPERACIONAIS
         }
     )
 
@@ -315,7 +315,7 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
         prs_abertos=abertos,
         pousos=pousos,
         pousos_total=pousos_total,
-        leis_mudadas=mudadas,
+        fontes_mudadas=mudadas,
         reservas=sorted(reservas),
         proximo_registro=proximo_numero_livre(
             [p.name for p in registros.glob(f"{hoje}-*.js")], f"{hoje}-", 3
@@ -338,7 +338,7 @@ def montar(dados: Dados) -> str:
             "prs_abertos",
             "pousos",
             "pousos_total",
-            "leis_mudadas",
+            "fontes_mudadas",
             "reservas",
             "proximo_registro",
             "proxima_armadilha",
@@ -413,10 +413,10 @@ def montar(dados: Dados) -> str:
         "",
     ]
 
-    if dados.leis_mudadas:
+    if dados.fontes_mudadas:
         linhas += [
-            "!! LEI MUDOU NAS ÚLTIMAS HORAS — releia antes de decidir qualquer coisa:",
-            *[f"     {lei}" for lei in dados.leis_mudadas],
+            "!! FONTE OPERACIONAL MUDOU NAS ÚLTIMAS HORAS — confira a receita vigente antes de decidir:",
+            *[f"     {lei}" for lei in dados.fontes_mudadas],
             "",
         ]
 

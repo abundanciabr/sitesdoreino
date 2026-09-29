@@ -42,7 +42,7 @@ def dados(**mudancas) -> Dados:
         prs_abertos=[],
         pousos=[],
         pousos_total=0,
-        leis_mudadas=[],
+        fontes_mudadas=[],
         reservas=[],
         proximo_registro="001",
         proxima_armadilha="001",
@@ -62,7 +62,7 @@ def dados(**mudancas) -> Dados:
         "prs_abertos",
         "pousos_total",
         "pousos",
-        "leis_mudadas",
+        "fontes_mudadas",
         "reservas",
         "proximo_registro",
         "proxima_armadilha",
@@ -149,14 +149,14 @@ def test_arvore_em_dia_nao_grita_a_toa():
     assert "SUSPEITO" not in texto
 
 
-def test_lei_mudada_aparece_em_destaque():
-    texto = montar(dados(leis_mudadas=["RITOS.md"]))
-    assert "LEI MUDOU" in texto
-    assert "RITOS.md" in texto
+def test_fonte_operacional_mudada_aparece_em_destaque():
+    texto = montar(dados(fontes_mudadas=["CAMINHO-DOURADO.md"]))
+    assert "FONTE OPERACIONAL MUDOU" in texto
+    assert "CAMINHO-DOURADO.md" in texto
 
 
-def test_sem_lei_mudada_a_secao_nao_aparece():
-    assert "LEI MUDOU" not in montar(dados())
+def test_sem_fonte_mudada_a_secao_nao_aparece():
+    assert "FONTE OPERACIONAL MUDOU" not in montar(dados())
 
 
 def test_intencao_reservada_aparece_para_os_outros():
@@ -380,3 +380,28 @@ def test_contagem_ilegivel_para_o_boletim_em_vez_de_virar_zero(tmp_path, monkeyp
     monkeypatch.setattr(boletim, "_gh_json", lambda *a, **k: [])
     with pytest.raises(ErroDeInstrumentacao):
         coletar(tmp_path, agora=AGORA)
+
+
+def test_boletim_distingue_fontes_vigentes_de_indice_historico(tmp_path, monkeypatch):
+    import boletim
+
+    class Saida:
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def git(args, **kwargs):
+        if args[:2] == ["git", "log"]:
+            return Saida("RITOS.md\nCLAUDE.md\nAGENTS.md\nCONSTITUICAO.md\nINVARIANTES.md\nCAMINHO-DOURADO.md")
+        return Saida("0")
+
+    (tmp_path / "painel" / "registros").mkdir(parents=True)
+    (tmp_path / "armadilhas").mkdir()
+    monkeypatch.setattr(boletim, "executar", git)
+    monkeypatch.setattr(boletim, "_gh_json", lambda *a, **k: [])
+    monkeypatch.setattr(boletim, "refs_existentes", lambda *a, **k: [])
+    resultado = coletar(tmp_path, agora=AGORA)
+    assert resultado.fontes_mudadas == ["AGENTS.md", "CAMINHO-DOURADO.md", "CLAUDE.md", "CONSTITUICAO.md", "INVARIANTES.md", "RITOS.md"]
+    aviso = montar(resultado)
+    assert "FONTE OPERACIONAL MUDOU" in aviso
+    assert "LEI MUDOU" not in aviso
+    assert all(nome in aviso for nome in ("AGENTS.md", "CLAUDE.md", "RITOS.md"))
