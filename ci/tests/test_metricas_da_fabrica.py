@@ -355,3 +355,46 @@ def test_livro_ilegivel_e_ERROR_nunca_zero(tmp_path: Path):
     raiz = _livro(tmp_path, ["isto nao e javascript valido ((("])
     with pytest.raises(ErroDeInstrumentacao):
         metricas.pedidos_ao_dono(raiz)
+
+
+def test_percurso_pareia_chamada_exata_e_preserva_lacunas():
+    import telemetria
+
+    def fase(resultado, quando, rodada):
+        dados = dict(evento="fase_operacional", tarefa="TAR-959", tentativa="t1",
+                     branch="codex/pme01-medicao", commit="a" * 40, pr=10,
+                     fase="validacao", resultado=resultado, contexto_bytes=None,
+                     quando=quando, rodada=rodada)
+        dados["id"] = telemetria.identidade_fase(dados)
+        return dados
+
+    eventos = [fase("iniciado", "2026-09-29T10:00:00Z", 1),
+               fase("concluido", "2026-09-29T10:00:12Z", 2)]
+    incompleto = metricas.consolidar_percurso(eventos)
+    assert all(m["duracao_s"] is None for m in incompleto["rodadas_validacao"])
+    eventos.append(fase("falhou", "2026-09-29T10:00:10Z", 1))
+    eventos.append(eventos[-1].copy())
+    medidas = metricas.consolidar_percurso(eventos)["rodadas_validacao"]
+    assert medidas[0]["duracao_s"] == 10
+    assert medidas[0]["resultado"] == "falhou"
+    assert medidas[1]["duracao_s"] is None
+    assert medidas[0]["rodada"] == 1
+
+
+def test_percurso_nao_fabrica_duracao_para_legado_ou_relogio_invertido():
+    import telemetria
+
+    def fase(resultado, quando, rodada):
+        dados = dict(evento="fase_operacional", tarefa="TAR-959", tentativa="t1",
+                     branch="codex/pme01-medicao", commit="a" * 40, pr=10,
+                     fase="validacao", resultado=resultado, contexto_bytes=None,
+                     quando=quando, rodada=rodada)
+        dados["id"] = telemetria.identidade_fase(dados)
+        return dados
+
+    for rodada in (None, 1):
+        eventos = [fase("iniciado", "2026-09-29T10:00:12Z", rodada),
+                   fase("concluido", "2026-09-29T10:00:00Z", rodada)]
+        medida = metricas.consolidar_percurso(eventos)["rodadas_validacao"][0]
+        assert medida["duracao_s"] is None
+        assert medida["estado"] == ("sem_evidencia" if rodada is None else "inconclusivo")

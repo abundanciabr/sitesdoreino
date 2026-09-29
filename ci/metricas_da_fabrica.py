@@ -229,6 +229,32 @@ def cobertura_das_tentativas(eventos: list[dict]) -> list[dict]:
     return tentativas
 
 
+def medir_rodadas_de_validacao(eventos: list[dict]) -> list[dict]:
+    """Pareia somente a chamada identificada; lacunas não viram duração zero."""
+    grupos = {}
+    for evento in eventos:
+        if evento["fase"] == "validacao":
+            chave = tuple(evento.get(c) for c in ("tarefa", "tentativa", "branch", "commit", "pr", "rodada"))
+            grupos.setdefault(chave, []).append(evento)
+    medidas = []
+    for chave, linhas in grupos.items():
+        inicio = {q for e in linhas if e["resultado"] == "iniciado" for q in e["observado_em"]}
+        fim = {(q, e["resultado"]) for e in linhas if e["resultado"] in ("concluido", "falhou") for q in e["observado_em"]}
+        medida = dict(zip(("tarefa", "tentativa", "branch", "commit", "pr", "rodada"), chave))
+        medida.update(estado="sem_evidencia", inicio=None, fim=None, resultado=None, duracao_s=None)
+        if chave[-1] is not None and len(inicio) == 1 and len(fim) == 1:
+            a = next(iter(inicio))
+            b, resultado = next(iter(fim))
+            segundos = (_quando(b) - _quando(a)).total_seconds()
+            medida.update(inicio=a, fim=b, resultado=resultado,
+                          estado="medido" if segundos >= 0 else "inconclusivo",
+                          duracao_s=segundos if segundos >= 0 else None)
+        elif len(inicio) > 1 or len(fim) > 1:
+            medida["estado"] = "inconclusivo"
+        medidas.append(medida)
+    return medidas
+
+
 def consolidar_percurso(eventos: list[dict]) -> dict:
     """Observações distintas por tentativa e revisão, sem inferir aprovação."""
     from telemetria import FASES, identidade_fase
@@ -237,7 +263,7 @@ def consolidar_percurso(eventos: list[dict]) -> dict:
     invalidos = 0
     antigos = 0
     campos = ("quando", "tarefa", "tentativa", "branch", "commit", "pr", "fase",
-              "resultado", "contexto_bytes")
+              "resultado", "contexto_bytes", "rodada")
     for evento in eventos:
         if not isinstance(evento, dict) or evento.get("evento") != "fase_operacional":
             antigos += 1
@@ -269,7 +295,7 @@ def consolidar_percurso(eventos: list[dict]) -> dict:
                 (e["tarefa"], e["tentativa"], e["branch"]) for e in vinculados})]))
     return dict(tarefas=len({e["tarefa"] for e in linhas}),
                 tentativas=len({(e["tarefa"], e["tentativa"], e["branch"]) for e in linhas}),
-                eventos=linhas,
+                eventos=linhas, rodadas_validacao=medir_rodadas_de_validacao(linhas),
                 por_tentativa=cobertura_das_tentativas(linhas), por_entrega=entregas,
                 publicacoes_verificadas=sum(e["fase"] == "publicacao" and e["resultado"] == "verificado" for e in linhas),
                 cobertura=dict(escopo="presenca_global", eventos_invalidos=invalidos, eventos_sem_correlacao=antigos,
