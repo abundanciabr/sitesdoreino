@@ -47,17 +47,121 @@
 # reais sao segredos escritos a mao pelo mantenedor (INV-P8); nenhum comando
 # aqui menciona env/.
 #
-# set -eu, sem `|| true`: padrao da casa (armadilhas/040) — falha de ferramenta
+# set -eo pipefail, sem engolir falhas: padrao da casa (armadilhas/040) — falha de ferramenta
 # nunca pode virar "nada a fazer".
 # =============================================================================
-set -eu
+set -eo pipefail
 
 # PRIMEIRA linha, antes ate do `cd`: a partir daqui a VPS executou alguma
 # coisa, e o workflow para de repetir. Se o `cd` abaixo falhar, repetir nao
 # ajudaria mesmo — o diretorio nao aparece por insistencia.
 echo "SINCRONIZACAO-INICIADA: $(date -u +%Y%m%dT%H%M%SZ)"
 
-cd /opt/plataforma
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ"
+
+conferir_publicacao_admin() {
+  python3 - "$RAIZ/publicacoes-candidatos/admin.json" "$RAIZ/.env" <<'PY'
+import json
+import re
+from pathlib import Path
+import sys
+
+estado, ambiente = map(Path, sys.argv[1:])
+try:
+    estado.lstat()
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as erro:
+    print(f"ERRO: nao li o estado duravel da publicacao admin: {erro}. Confira permissoes antes de repetir.", file=sys.stderr)
+    raise SystemExit(1)
+try:
+    if estado.is_symlink():
+        raise ValueError("estado duravel nao pode ser link")
+    dado = json.loads(estado.read_text(encoding="utf-8"))
+    campos = {"estado", "candidato", "digest", "imagem_id", "anterior", "anterior_digest", "aceite_funcional"}
+    if not isinstance(dado, dict) or set(dado) != campos:
+        raise ValueError("estrutura inesperada")
+    if dado["estado"] not in {"autorizada", "incerta", "publicada", "falhou"}:
+        raise ValueError("estado desconhecido")
+    if any(not isinstance(dado[chave], str) or not dado[chave]
+           for chave in ("candidato", "digest", "imagem_id", "anterior_digest")):
+        raise ValueError("identidade de imagem incompleta")
+    if not isinstance(dado["anterior"], dict):
+        raise ValueError("mapa de imagens anteriores invalido")
+    if dado["estado"] in {"autorizada", "incerta"}:
+        raise ValueError("publicacao admin autorizada ou incerta em andamento")
+    if dado["aceite_funcional"] not in {"pendente", "conferido"}:
+        raise ValueError("aceite funcional desconhecido")
+    if dado["estado"] == "publicada" and dado["aceite_funcional"] == "pendente":
+        raise ValueError("publicacao admin aguarda aceite funcional")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", dado["digest"]):
+        raise ValueError("digest publicado invalido")
+    prefixo = "ghcr.io/abundanciabr/plataforma-admin@"
+    if not re.fullmatch(re.escape(prefixo) + r"sha256:[0-9a-f]{64}", dado["anterior_digest"]):
+        raise ValueError("digest anterior invalido")
+    pin_esperado = (prefixo + dado["digest"] if dado["estado"] == "publicada"
+                    else dado["anterior_digest"])
+    pinos = [linha.removeprefix("ADMIN_IMAGE=") for linha in ambiente.read_text(encoding="utf-8").splitlines()
+             if linha.startswith("ADMIN_IMAGE=")]
+    if pinos != [pin_esperado]:
+        raise ValueError("ADMIN_IMAGE nao corresponde ao estado duravel")
+except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as erro:
+    print(f"ERRO: publicacao admin nao permite sincronizar: {erro}. Confira o estado duravel e o pin antes de repetir.", file=sys.stderr)
+    raise SystemExit(1)
+PY
+}
+# Leitura antecipada evita ate a fase root se o candidato ja esta protegido.
+conferir_publicacao_admin
+
+# O staging continua intacto ate a ponte e a trava comum aceitarem este lote.
+for ARQUIVO in docker-compose.yml sites.json sincronizar_sites.py provisionar-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh; do
+  [ -f "infra.new/$ARQUIVO" ] || { echo "ERRO: infra.new/$ARQUIVO ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
+done
+[ -d infra.new/traefik ] || { echo "ERRO: infra.new/traefik ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
+bash -n infra.new/provisionar-usuario-ponte.sh infra.new/instalar-provisionador-usuario-ponte.sh || {
+  echo "ERRO: roteiro da ponte incompleto ou invalido no staging; corrija o PR e reenvie infra.new." >&2; exit 1;
+}
+python3 -m json.tool infra.new/sites.json >/dev/null || {
+  echo "ERRO: sites.json invalido em infra.new; NADA foi trocado. Corrija o PR e reenvie." >&2; exit 1;
+}
+for CHAVE in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR=$(grep -m1 "^$CHAVE=" env/admin.env | cut -d= -f2-) || VALOR=""
+  if [ -z "$VALOR" ]; then
+    echo "ERRO: $CHAVE ausente em /opt/plataforma/env/admin.env — a entrada privada nao pode nascer sem ele. NADA foi trocado."
+    exit 1
+  fi
+  export "$CHAVE=$VALOR"
+done
+unset VALOR
+
+if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/infra.new/docker-compose.yml" config --quiet; then
+  echo "ERRO: compose novo reprovou ainda em infra.new; nenhuma mutacao root ou troca foi iniciada. Corrija o PR e reenvie." >&2
+  exit 1
+fi
+STAGING_ANTES=$(tar -C infra.new --sort=name -cf - . | sha256sum | cut -d' ' -f1)
+
+# O provisionador root toma a propria trava. O pai nao pode conservar FD8 ao chama-lo.
+PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
+PONTE_INSTALADA=0
+if [ -e "$PROVISIONADOR_DA_PONTE" ]; then
+  if [ ! -x "$PROVISIONADOR_DA_PONTE" ] || ! cmp -s "$PROVISIONADOR_DA_PONTE" infra.new/provisionar-usuario-ponte.sh; then
+    echo "ERRO: a copia root da ponte diverge do staging; infra.new foi preservada." >&2
+    echo "      No console root, confira o kit e rode: bash $RAIZ/infra.new/instalar-provisionador-usuario-ponte.sh $RAIZ/infra.new/provisionar-usuario-ponte.sh" >&2
+    exit 1
+  fi
+  PONTE_INSTALADA=1
+  if [ -e /proc/$$/fd/8 ] && [ "$RAIZ/.publicacao.lock" -ef /proc/$$/fd/8 ]; then
+    echo "ERRO: o chamador ja segura FD8; execute o sincronizador sem trava herdada para evitar deadlock no sudo." >&2
+    exit 1
+  fi
+  exec 8<&-
+  sudo -n "$PROVISIONADOR_DA_PONTE" 8<&-
+else
+  echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
+  echo "       Para ligar no console root depois deste deploy:"
+  echo "       bash $RAIZ/instalar-provisionador-usuario-ponte.sh $RAIZ/provisionar-usuario-ponte.sh"
+fi
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -70,6 +174,26 @@ if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
 fi
 flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
 unset TRAVA_PUBLICACAO
+
+conferir_publicacao_admin
+STAGING_AGORA=$(tar -C infra.new --sort=name -cf - . | sha256sum | cut -d' ' -f1)
+if [ "$STAGING_AGORA" != "$STAGING_ANTES" ]; then
+  echo "ERRO: infra.new mudou durante a fase root; NADA foi consumido. Reenvie o staging pelo deploy-infra." >&2
+  exit 1
+fi
+if [ "$PONTE_INSTALADA" = 1 ]; then
+  cmp -s "$PROVISIONADOR_DA_PONTE" infra.new/provisionar-usuario-ponte.sh || {
+    echo "ERRO: a copia root mudou antes da troca; infra.new foi preservada. Confira o kit root e repita." >&2; exit 1;
+  }
+elif [ -e "$PROVISIONADOR_DA_PONTE" ]; then
+  echo "ERRO: a copia root apareceu durante a fase root; infra.new foi preservada. Confira o kit e repita." >&2
+  exit 1
+fi
+if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/infra.new/docker-compose.yml" config --quiet; then
+  echo "ERRO: compose novo reprovou apos a fase root; nenhuma troca de infraestrutura foi iniciada. Confira a ponte e reenvie o staging." >&2
+  exit 1
+fi
+unset STAGING_ANTES STAGING_AGORA PONTE_INSTALADA
 
 # ── 0) staging → caminhos temporários. Nada EM USO muda aqui. ──
 #
@@ -86,62 +210,6 @@ mv -f infra.new/sincronizar_sites.py sincronizar_sites.py.new
 mv -f infra.new/provisionar-usuario-ponte.sh provisionar-usuario-ponte.sh
 mv -f infra.new/instalar-provisionador-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh
 rmdir infra.new
-
-# ── A PONTE, ANTES DE QUALQUER TROCA, E ELA NAO SEGURA A INFRAESTRUTURA ────
-#
-# A conta `ponte` e reconciliada aqui de proposito: nada EM USO mudou ainda
-# (`TROCADO` nem existe), entao uma falha nesta altura deixa a VPS exatamente
-# como estava — que e a regra 2 do brief da TAR-419, "erro de sintaxe para o
-# lote ali, sem recarregar nada".
-#
-# O que roda como root NAO e o arquivo que acabou de chegar por SCP: e a copia
-# congelada em /usr/local/sbin, pertencente ao root, que o mantenedor instalou
-# uma vez com `infra/instalar-provisionador-usuario-ponte.sh`. A esteira entra
-# como `deploy`, que nao e root, e so pode executar aquele caminho fixo, sem
-# argumentos, pela regra estreita de sudo que o instalador escreveu.
-#
-# O `if` NAO E ZELO, E CONSERTO DE UMA QUEDA MEDIDA. Ate 16/09/2026 esta linha
-# era um `sudo -n` incondicional. Sob `set -eu`, e depois de a sentinela
-# `SINCRONIZACAO-INICIADA` ja ter saido (o que desliga a repeticao por
-# desenho), numa VPS que ainda nao tinha a regra de sudo ela devolveu
-# `sudo: a password is required` e derrubou a sincronizacao inteira: run
-# 35047777635 do `deploy-infra`, vermelho nas tres tentativas, com o compose e
-# o Traefik NAO sincronizados por causa de um recurso que nem tinha sido ligado
-# ainda. A ponte e um recurso a mais, nao pre-requisito do Traefik; faltar a
-# ponte nao pode custar uma plataforma desatualizada. Sem o instalador rodado,
-# o log diz a linha exata e a sincronizacao segue.
-#
-# COM o instalador rodado, uma falha AQUI reprova o run: o provisionador desfaz
-# sozinho o que tiver mexido, e defeito no sshd tem de ser visto, nao engolido.
-PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
-if [ -x "$PROVISIONADOR_DA_PONTE" ]; then
-  sudo -n "$PROVISIONADOR_DA_PONTE"
-else
-  echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
-  echo "       Os dois roteiros acabaram de chegar aqui. Para ligar a ponte, no"
-  echo "       console root da VPS, uma linha, uma vez so:"
-  echo "       bash /opt/plataforma/instalar-provisionador-usuario-ponte.sh /opt/plataforma/provisionar-usuario-ponte.sh"
-fi
-
-# ── 0.1) OS DOIS VALORES QUE O GATEWAY PRECISA, E MAIS NENHUM ──────────────
-#
-# Os roteadores da entrada privada injetam um Bearer por celula, e o valor vem
-# do env REAL desta VPS. Este e o unico ponto do script que le `env/`, ele le
-# DUAS chaves nominais e nunca imprime o valor: `--quiet` no compose existe
-# exatamente para nenhum segredo interpolado cair no log do Actions.
-#
-# Sem esta leitura, a interpolacao do compose receberia vazio, o `:?` derrubaria
-# a validacao e NADA seria trocado. E fail-closed de proposito: gateway sem
-# token e melhor que gateway aberto.
-for CHAVE in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
-  VALOR=$(grep -m1 "^$CHAVE=" env/admin.env | cut -d= -f2-) || VALOR=""
-  if [ -z "$VALOR" ]; then
-    echo "ERRO: $CHAVE ausente em /opt/plataforma/env/admin.env — a entrada privada nao pode nascer sem ele. NADA foi trocado."
-    exit 1
-  fi
-  export "$CHAVE=$VALOR"
-done
-unset VALOR
 
 # ── 1) VALIDAR ANTES DE TROCAR. O -f aponta para o .new, mas o
 # project dir continua /opt/plataforma: a interpolação roda contra

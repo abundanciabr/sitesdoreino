@@ -1,0 +1,20 @@
+{
+  "arquivo": "987-sincronizar-a-infraestrutura-sob-a-mesma-trava-dos-comandos-",
+  "id": "TAR-987",
+  "titulo": "Sincronizar a infraestrutura sob a mesma trava dos comandos privilegiados",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Mesmo inode antes de qualquer mutacao; sudo sem FD8 herdado; staging e copia root revalidados; falhas e recuperacao provadas em Linux; kit oficial preparado e instalacao conferida",
+  "despacho": "Continuação da mesma frente MUTADORES / PME08, sem aumentar 17 frentes históricas e 16 abertas. Responsável único pme_mutadores_producao, GPT-6 Sol high explicitamente configurado na frente; sem fallback e sem subagentes. Leitura auxiliar pme_mutadores_integracao, GPT-6 Luna medium já configurado, somente classifica os 31 candidatos restantes e devolve caminhos/mutações/consumidores; não escreve.\nObjetivo: impedir que sincronização, provisionador root e instalador alterem produção fora da exclusão comum ou esperem um pelo outro com FD8 herdado. Cinco arquivos técnicos permitidos: infra/sincronizar-infra-na-vps.sh; infra/provisionar-usuario-ponte.sh; infra/instalar-provisionador-usuario-ponte.sh; ci/tests/test_exclusao_comum_da_publicacao.py; ci/tests/test_ponte_com_a_vps.py. Eventos/recibos da própria tarefa pelo rito. Demais alvos somente leitura, especialmente workflows e deploy-celula da PME07, trava canônica e código de outros agentes.\nBancada gerenciada livre conferida: C:\\Users\\davia\\.codex\\worktrees\\pme-mutadores-producao\\sitesdoreino-limpo-20260923, árvore limpa, primeiro lote979 integrado. Reusar sem renomear diretório, nova branch codex/infra/pme-ponte-exclusao. Nova tentativa com ci/sessao e claim atômico antes de editar; não há processo antigo nessa bancada. A bancada pme-mutadores-restantes/986 fica congelada, sem nova escrita, enquanto termina seu rito.\nDependência: lote986/#2348. Base de construção é o HEAD verificado daquele lote, integração só depois de sua main; se o orçamento somar lote anterior, aguarde integração antes de abrir PR, mas avance construção isolada. Integração por helper Draft-first inteiro vigente, sem copiar fragmentos nem declarar ready manual.\nContrato: validar infra.new sem consumir; conferir cópia root congelada com fonte nova e com guarda; chamar sudo -n do provisionador com FD8 fechado ANTES do lock deploy; adquirir FD8 readonly do mesmo inode, revalidar staging/cópia e só então mutar. Ausência de ponte conserva caminho existente; cópia stale falha com comando root concreto do kit. Instalador prepara/valida fonte e sudoers antes de publicar atomicamente e preserva anterior em falha. Sem SSH agente, sem segredo/privilégio novo, sem retirar Actions concurrency.\nProvas: negativos stale/staging trocado; ordem+igualdade; Linux isolado sudo/reentrada/disputa mesmo inode/falha/recuperação; suíte ponte/rollback afetada. Revisor independente lê antes integração. Prepare kit completo e gesto root concreto antes de eventual passo exclusivo do mantenedor, consultando guia. Recuperação: falhar antes de consumir staging; rollback infra mantém FD8; nunca executar root antigo; instalador conserva cópia/regra anterior.\nPróxima ação: copiar tarefa/evento canônicos, abrir nova tentativa e contrato, construir cinco arquivos. Parada real: prova root isolada falha, identidade instalada não confere ou revalidação pós-lock diverge; preservar artefatos, informar coordenação e não ativar produção. Aceite deste incremento não encerra PME08 enquanto restarem mutadores e ativação do kit sem comprovar. Conciliacao proposta antes da primeira reivindicacao: TAR987 implementa parte do aceite de TAR986 e nao pode depender de sua conclusao. A construcao usa o candidato986 validado; a integracao continua obrigatoriamente dependente do PR2348, conferida pelo portao Depende-de. O aceite integral de TAR986 permanece inalterado.",
+  "origem": "Continuacao PME08 TAR958 e TAR986; mandato integral do mantenedor; mesmo responsavel e frente",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
