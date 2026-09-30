@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-032531-TAR-1025-explicada",
+  "tarefa": "TAR-1025",
+  "evento": "explicada",
+  "quando": "2026-09-30T03:25:31.305215+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "Um comando da sincronizacao pode consumir a entrada que ainda contem o restante do roteiro.",
+  "o_que_muda": "Todo o roteiro fica carregado antes de comecar, e o resultado so e aceito com confirmacao final.",
+  "exemplo": "Um comando que le a entrada nao pode impedir que as conferencias seguintes sejam executadas.",
+  "importancia": 100
+}

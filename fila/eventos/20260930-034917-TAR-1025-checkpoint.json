@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260930-034917-TAR-1025-checkpoint",
+  "tarefa": "TAR-1025",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T03:49:17.725909+00:00",
+  "quem": "codex/infra/pme-sincronizacao-stdin",
+  "plano": "PR corretivo em Draft ate leitura TAR-1021",
+  "ultimo_avanco": "PR2392 SHA d9d40a46e criado com recibo; validacao local inicial/final 3/3 exit0; revisao independente sem achado; Draft confirmado",
+  "proxima_acao": "Aguardar coleta oficial somente leitura TAR-1021 e reconciliar run36657313864; depois atualizar base/checks e liberar integracao conforme estado medido",
+  "verificacoes": [
+    "gh pr view2392: OPEN isDraft true head d9d40a46e; nenhuma nova sincronizacao iniciada nesta sessao",
+    "ci/pr.py: validacoes 1,2,3 iniciais e finais exit0; recibo embarcado"
+  ]
+}
