@@ -362,11 +362,7 @@ def test_pseudo_locale_detecta_string_hardcoded(monkeypatch):
 # (nem um byte). É também a prova da degradação da fase 4: se o provedor não
 # estiver no ar, é exatamente isto que o site multilíngue vira.
 # ---------------------------------------------------------------------------
-HTML_DE_HOJE = """<!-- templates/base_mobile.html  [RECEITA:R6 v1] -->
-<!-- O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
-     verifica esta tag em toda página que estende este arquivo. Não troque por
-     um viewport de largura fixa. -->
-<!doctype html>
+HTML_DE_HOJE = """<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">

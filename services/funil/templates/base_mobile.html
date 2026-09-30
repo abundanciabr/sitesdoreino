@@ -1,14 +1,15 @@
-<!-- templates/base_mobile.html  [RECEITA:R6 v1] -->
-<!-- O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
-     verifica esta tag em toda página que estende este arquivo. Não troque por
-     um viewport de largura fixa. -->{% comment %}
+{% comment %}
+templates/base_mobile.html  [RECEITA:R6 v1]
+O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
+verifica esta tag em toda página que estende este arquivo. Não troque por
+um viewport de largura fixa.
+
 i18n (PLANO-I18N D5): request.i18n_seo só existe para site que o catálogo
 serve COM idiomas (campo languages do contrato) — TODAS as tags {% if %} e
 este {% comment %} colam no fim da linha anterior de propósito, para que site
 monolíngue renderize saída byte-idêntica à de antes (o teste de regressão
 compara os bytes).
-{% endcomment %}
-{% load menu %}{% menu_do_topo as itens_do_menu %}<!doctype html>
+{% endcomment %}{% load menu %}{% menu_do_topo as itens_do_menu %}<!doctype html>
 {% if request.i18n_seo %}<html lang="{{ request.i18n_seo.lang }}" dir="{{ request.i18n_seo.dir }}">{% else %}<html lang="pt-br">{% endif %}
 <head>
   <meta charset="utf-8">
@@ -43,11 +44,11 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { width: 100%; max-width: 32rem; margin: 0 auto; padding: 1rem; }
     .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }{% if itens_do_menu %}
-    /* O menu do topo. Mobile-first: uma fila que ROLA na horizontal, em vez de
+    {% comment %} O menu do topo. Mobile-first: uma fila que ROLA na horizontal, em vez de
        quebrar em duas linhas ou virar um botao de tres riscas. Num celular
        estreito, tres opcoes visiveis e o resto a um arrasto valem mais do que
-       um menu inteiro escondido atras de um toque. */
-    /* A BARRA DO SITE. Decisao do mantenedor em 31/08/2026, olhando o site:
+       um menu inteiro escondido atras de um toque. {% endcomment %}
+    {% comment %} A BARRA DO SITE. Decisao do mantenedor em 31/08/2026, olhando o site:
        "quero um menu que seja padrao para todo o site, que fique sempre no topo
        e sempre no mesmo lugar em todas as paginas".
 
@@ -61,7 +62,7 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
            reconhecivel como "a barra do site" e nao como parte da area.
 
        `z-index` porque ela passa POR CIMA do conteudo ao rolar; sem ele, um
-       cartao com fundo proprio passaria na frente dela. */
+       cartao com fundo proprio passaria na frente dela. {% endcomment %}
     .barra-do-site { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid #e4e4e7; }
     .menu-topo { display: flex; gap: .25rem; overflow-x: auto; width: 100%; max-width: 32rem; margin: 0 auto; padding: .5rem 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .menu-topo::-webkit-scrollbar { display: none; }
