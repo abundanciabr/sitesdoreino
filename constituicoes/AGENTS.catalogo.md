@@ -30,4 +30,4 @@ não conhece aluno.
 evidência falsificável se tocar invariante. **Não inclui:** E2E, deploy (o CI faz), tocar outras células.
 
 ## Ritos
-RITOS.md §1 (worktree + declaração), §2 (catraca verde + parada após 2 falhas), §3 (nunca alterar `contracts/` — rito próprio).
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1), [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2) (catraca verde + parada após 2 falhas) e [Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3) (nunca alterar `contracts/` fora do rito próprio).

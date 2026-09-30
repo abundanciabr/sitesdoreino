@@ -1,0 +1,22 @@
+{
+  "arquivo": "20260929-222842-TAR-998-checkpoint",
+  "tarefa": "TAR-998",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T22:28:42.724736+00:00",
+  "quem": "despacho-admin-pme-fontes-auxiliares",
+  "plano": "Referências de instruções das células para CAMINHO-DOURADO; preparação e integração da entrega",
+  "ultimo_avanco": "Main reconciliada até d4671c9; pacote/hash conferidos; autorização explícita do mantenedor registrada no contexto; evento de nascimento já consta na base",
+  "proxima_acao": "Executar validações após atualização, abrir PR autorizado, acompanhar integração e conferir contexto e consumidor",
+  "verificacoes": [
+    "git diff --check: PASS",
+    "SHA-256 do pacote conferido: 11DC32E802F25EA5BB9F486B240D25B9C06C47BC5DED43E2BF633343C2D51D43"
+  ],
+  "contexto": {
+    "autorizacao": "mantenedor autorizou no call_toXLig3sjskcsoNjI3uh2XHu, item 0, o pacote TAR-998 de 18 arquivos, SHA-256 11DC32E802F25EA5BB9F486B240D25B9C06C47BC5DED43E2BF633343C2D51D43, e registros do rito em https://github.com/abundanciabr/sitesdoreino; origem comunicada pela coordenação raiz.",
+    "ramo": "codex/ci/pme-fontes-auxiliares",
+    "worktree": "C:\\Users\\davia\\.codex\\worktrees\\pme-configuracao-exclusiva\\sitesdoreino-limpo-20260923",
+    "head": "5b4695d2da86d31f303b6867cbfaa2b77f60dd36",
+    "base": "d4671c9fa28271167561e747a847935566004e52",
+    "pacoteSha256": "11DC32E802F25EA5BB9F486B240D25B9C06C47BC5DED43E2BF633343C2D51D43"
+  }
+}

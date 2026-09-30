@@ -27,4 +27,4 @@ história de cada pessoa — nunca lê o banco de ninguém.
 `make ci` verde · replay de evento duplicado coberto por teste · diff no escopo.
 
 ## Ritos
-RITOS.md §1, §2.
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2).

@@ -79,6 +79,6 @@ diff dentro do brief. **Não inclui:** E2E, deploy, credencial de produção.
 
 ## Ritos
 
-RITOS.md §1 (worktree DENTRO de `services/pagamentos/`), §2 (catraca verde; 2 falhas ⇒
-reset ao último verde ⇒ reportar — a terceira tentativa é onde nascem labirintos),
-§3 (contrato), §4 (emergência = rollback; jamais hotfix no servidor).
+Sessão: [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) em worktree DENTRO de `services/pagamentos/`. Validação: [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2) (catraca verde; 2 falhas ⇒
+reset ao último verde ⇒ reportar — a terceira tentativa é onde nascem labirintos).
+Contrato: [Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3). Emergência: [Reverter uma emergência](../CAMINHO-DOURADO.md#reverter-uma-emergência--sucessor-de-ritos-4) — jamais hotfix no servidor.

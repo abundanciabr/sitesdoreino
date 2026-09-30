@@ -106,8 +106,8 @@ célula dona do recurso."*
 por mutação (vermelho sem o fix, verde com) · diff no escopo.
 
 ## Ritos
-RITOS.md §1, §2. Operação, campo ou payload novo em
-`contracts/identidade.openapi.yaml` é Rito §3 — dois PRs e sessão com o
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2). Operação, campo ou payload novo em
+`contracts/identidade.openapi.yaml` exige [Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3) — dois PRs e sessão com o
 mantenedor. Quatro coisas **não se decidem em sessão**: página HTML, rota com
 forma de idioma e consulta de matrícula na porta já têm casa, e é outra (§6.1 da
 lei); par novo em `TOKENS_COMPLETOS_*` exige o registro escrito do §6.3.
