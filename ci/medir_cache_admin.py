@@ -255,8 +255,6 @@ def construir(args: argparse.Namespace) -> None:
             ):
                 falhar("digest OCI não foi emitido")
             acertos = contar_acertos_cache(log)
-            if args.modo == "importar" and acertos == 0:
-                falhar("importação não mostrou nenhum passo CACHED")
             resultado = {
                 "modo": args.modo,
                 "identidade": identidade,
@@ -399,6 +397,185 @@ def comparar(args: argparse.Namespace) -> None:
     )
 
 
+def comparar_candidatos(args: argparse.Namespace) -> None:
+    anterior_frio, referencia, controle, frio, importado = [
+        ler_json(Path(caminho))
+        for caminho in (
+            args.anterior_frio,
+            args.referencia,
+            args.controle,
+            args.novo_frio,
+            args.novo_importar,
+        )
+    ]
+    if [
+        r.get("modo") for r in (anterior_frio, referencia, controle, frio, importado)
+    ] != ["frio", "exportar", "importar", "frio", "importar"]:
+        falhar("faltam os braços de referência, controle ou candidata nova")
+    anterior = referencia.get("identidade")
+    novo = frio.get("identidade")
+    if not isinstance(anterior, dict) or not isinstance(novo, dict):
+        falhar("identidade dos candidatos ausente")
+    if (
+        anterior_frio.get("identidade") != anterior
+        or controle.get("identidade") != anterior
+        or importado.get("identidade") != novo
+    ):
+        falhar("braços da mesma candidata têm entradas diferentes")
+    if (
+        not SHA.fullmatch(str(anterior.get("revisao", "")))
+        or not SHA.fullmatch(str(novo.get("revisao", "")))
+        or anterior["revisao"] == novo["revisao"]
+        or not re.fullmatch(
+            r"[0-9a-f]{64}", str(anterior.get("contexto_tar_sha256", ""))
+        )
+        or not re.fullmatch(r"[0-9a-f]{64}", str(novo.get("contexto_tar_sha256", "")))
+        or anterior["contexto_tar_sha256"] == novo["contexto_tar_sha256"]
+    ):
+        falhar("candidatos não têm revisões e contextos reais distintos")
+    for campo in ("base", "dockerfile_sha256"):
+        if not anterior.get(campo) or anterior[campo] != novo.get(campo):
+            falhar(f"receita mudou entre candidatos: {campo}")
+    for primeiro, segundo, rotulo in (
+        (anterior_frio, referencia, "referência sem cache"),
+        (referencia, controle, "controle"),
+        (frio, importado, "candidata nova"),
+    ):
+        digest = primeiro.get("digest_oci")
+        if (
+            not isinstance(digest, str)
+            or not re.fullmatch(r"sha256:[0-9a-f]{64}", digest)
+            or digest != segundo.get("digest_oci")
+        ):
+            falhar(f"imagens OCI diferentes nos braços da {rotulo}")
+    cache_hash = referencia.get("cache_tar_sha256")
+    if (
+        not isinstance(cache_hash, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", cache_hash)
+        or any(r.get("cache_tar_sha256") != cache_hash for r in (controle, importado))
+        or type(referencia.get("cache_tar_bytes")) is not int
+        or referencia["cache_tar_bytes"] <= 0
+        or any(
+            r.get("cache_tar_bytes") != referencia["cache_tar_bytes"]
+            for r in (controle, importado)
+        )
+    ):
+        falhar("cache transportado difere do exportado")
+    if type(controle.get("acertos_cache")) is not int or controle["acertos_cache"] <= 0:
+        falhar("controle positivo não reutilizou cache")
+    if (
+        type(importado.get("acertos_cache")) is not int
+        or importado["acertos_cache"] < 0
+    ):
+        falhar("acertos da candidata nova ausentes")
+    for r in (anterior_frio, referencia, controle, frio, importado):
+        for campo in ("bootstrap_s", "build_com_export_s", "imagem_oci_bytes"):
+            valor = r.get(campo)
+            if (
+                isinstance(valor, bool)
+                or not isinstance(valor, (int, float))
+                or not math.isfinite(valor)
+                or valor <= 0
+            ):
+                falhar(f"resultado {r['modo']} sem {campo}")
+    for r, campo in (
+        (referencia, "cache_empacotar_s"),
+        (controle, "cache_extracao_s"),
+        (importado, "cache_extracao_s"),
+    ):
+        valor = r.get(campo)
+        if (
+            isinstance(valor, bool)
+            or not isinstance(valor, (int, float))
+            or not math.isfinite(valor)
+            or valor < 0
+        ):
+            falhar(f"resultado {r['modo']} sem {campo}")
+    for campo in (
+        "preparar_referencia_s",
+        "preparar_novo_total_s",
+        "contexto_download_s",
+        "cache_upload_s",
+        "cache_download_s",
+    ):
+        valor = getattr(args, campo)
+        if not math.isfinite(valor) or valor <= 0:
+            falhar(f"transporte ou preparo sem {campo}")
+    if args.cache_artifact_bytes <= 0 or args.contexto_artifact_bytes <= 0:
+        falhar("bytes reais dos artefatos não medidos")
+    comum = args.preparar_novo_total_s + args.contexto_download_s
+    anterior_frio_total = (
+        args.preparar_referencia_s
+        + anterior_frio["bootstrap_s"]
+        + anterior_frio["build_com_export_s"]
+    )
+    frio_total = comum + frio["bootstrap_s"] + frio["build_com_export_s"]
+    importado_total = (
+        comum
+        + args.cache_download_s
+        + importado["cache_extracao_s"]
+        + importado["bootstrap_s"]
+        + importado["build_com_export_s"]
+    )
+    inicial_total = (
+        args.preparar_referencia_s
+        + referencia["bootstrap_s"]
+        + referencia["build_com_export_s"]
+        + referencia["cache_empacotar_s"]
+        + args.cache_upload_s
+    )
+    ciclo_frio_total = anterior_frio_total + frio_total
+    ciclo_cache_total = inicial_total + importado_total
+    relatorio = {
+        "estado": "MEDIDO",
+        "classe": "candidatos_distintos",
+        "referencia": anterior,
+        "candidata_nova": novo,
+        "referencia_digest_oci": referencia["digest_oci"],
+        "novo_digest_oci": frio["digest_oci"],
+        "referencia_frio_total_s": round(anterior_frio_total, 3),
+        "referencia_com_cache_total_s": round(inicial_total, 3),
+        "novo_frio_total_s": round(frio_total, 3),
+        "novo_importado_total_s": round(importado_total, 3),
+        "diferenca_importado_menos_frio_s": round(importado_total - frio_total, 3),
+        "ciclo_frio_total_s": round(ciclo_frio_total, 3),
+        "ciclo_cache_total_s": round(ciclo_cache_total, 3),
+        "diferenca_ciclo_cache_menos_frio_s": round(
+            ciclo_cache_total - ciclo_frio_total, 3
+        ),
+        "controle_acertos_cache": controle["acertos_cache"],
+        "novo_acertos_cache": importado["acertos_cache"],
+        "cache_tar_bytes": referencia["cache_tar_bytes"],
+        "cache_artifact_bytes": args.cache_artifact_bytes,
+        "contexto_artifact_bytes": args.contexto_artifact_bytes,
+        "cache_sha256": cache_hash,
+        "tempos_s": {
+            campo: getattr(args, campo)
+            for campo in (
+                "preparar_referencia_s",
+                "preparar_novo_total_s",
+                "contexto_download_s",
+                "cache_upload_s",
+                "cache_download_s",
+            )
+        },
+        "bracos": [anterior_frio, referencia, controle, frio, importado],
+    }
+    Path(args.saida).write_text(
+        json.dumps(relatorio, indent=2) + "\n", encoding="utf-8"
+    )
+    print(
+        json.dumps(
+            {
+                k: v
+                for k, v in relatorio.items()
+                if k not in ("bracos", "referencia", "candidata_nova")
+            },
+            sort_keys=True,
+        )
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="acao", required=True)
@@ -434,10 +611,33 @@ def main() -> None:
         p.add_argument("--" + campo.replace("_", "-"), type=float, required=True)
     for campo in ("cache_artifact_bytes", "contexto_artifact_bytes"):
         p.add_argument("--" + campo.replace("_", "-"), type=int, required=True)
+    p = sub.add_parser("comparar-candidatos")
+    for campo in (
+        "anterior_frio",
+        "referencia",
+        "controle",
+        "novo_frio",
+        "novo_importar",
+        "saida",
+    ):
+        p.add_argument("--" + campo.replace("_", "-"), required=True)
+    for campo in (
+        "preparar_referencia_s",
+        "preparar_novo_total_s",
+        "contexto_download_s",
+        "cache_upload_s",
+        "cache_download_s",
+    ):
+        p.add_argument("--" + campo.replace("_", "-"), type=float, required=True)
+    for campo in ("cache_artifact_bytes", "contexto_artifact_bytes"):
+        p.add_argument("--" + campo.replace("_", "-"), type=int, required=True)
     args = parser.parse_args()
-    {"preparar": preparar, "construir": construir, "comparar": comparar}[args.acao](
-        args
-    )
+    {
+        "preparar": preparar,
+        "construir": construir,
+        "comparar": comparar,
+        "comparar-candidatos": comparar_candidatos,
+    }[args.acao](args)
 
 
 if __name__ == "__main__":
