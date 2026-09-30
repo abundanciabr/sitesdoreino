@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-015-sugestoes-implementada-aparece-so-na-aba-implementadas",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "sugestoes: implementada aparece só na aba Implementadas",
+  detalhe: "Quadro do aluno: ideia implementada sai de Em alta, Mais votadas e Novas e fica só na aba Implementadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2387. Validação local: árvore 683d13f966c559e4b7770d3a18ab5ec24b384334; commit ac444b8d335bab9cbb0f3d85a50939d8aebfcc31; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas. make ci 720 passed",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1020",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "sugestoes",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,55 @@
+{
+  "arquivo": "20260930-012516-TAR-1013-contrato_execucao",
+  "tarefa": "TAR-1013",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T01:25:16.827770+00:00",
+  "quem": "despacho-ci-pme-toca-isolado",
+  "contrato": {
+    "plano": "tar-1013-isolar-fixture-tar998",
+    "versao": 1,
+    "objetivo": "Fazer o cenário de tarefa desconhecida retornar SKIP sem depender da fila real nem consultar rede.",
+    "entregaveis": [
+      "Ajuste restrito à fixture test_tarefa_que_nasce_dentro_do_proprio_pr_e_SKIP em ci/tests/test_conferencia_do_toca.py."
+    ],
+    "escopo_incluido": [
+      "Isolar o retorno de ci.fila.carregar_tarefas para representar a fila da base anterior à tarefa nova.",
+      "Instalar sentinela que falha se ci.conferencia_do_toca._gh for chamado."
+    ],
+    "nao_objetivos": [
+      "Alterar código de produção ou guardas.",
+      "Mudar a tarefa, trocar TAR-998 por outro número ou remover asserções."
+    ],
+    "restricoes": [
+      "Somente ci/tests/test_conferencia_do_toca.py, na fixture autorizada.",
+      "Preservar Estado.SKIP e divergencia is None.",
+      "Não acessar rede real no teste."
+    ],
+    "decisoes_aprovadas": [
+      "Retornar fila vazia pelo carregador monkeypatchado para que o cenário não dependa de números ausentes na fila real.",
+      "Usar pytest.fail como sentinela de _gh para provar ausência de chamadas de rede."
+    ],
+    "etapas": [
+      "Confirmar reprodução da falha no teste focal.",
+      "Editar exclusivamente a fixture.",
+      "Executar teste focal e Black.",
+      "Revisar diff e entregar via make pr; solicitar revisão independente do alvo."
+    ],
+    "criterios_entrada": [
+      "Fila válida e reserva TAR-1013 reconciliada.",
+      "Evento de contrato registrado antes da edição."
+    ],
+    "criterios_aceite": [
+      "TAR-998 ausente da fila isolada leva a Estado.SKIP e divergencia None.",
+      "Qualquer chamada a _gh reprova diretamente o teste.",
+      "Teste focal passa e Black aprova o arquivo."
+    ],
+    "evidencias_exigidas": [
+      "Saída do teste focal antes e depois da alteração.",
+      "Saída de Black --check.",
+      "Diff limitado à fixture autorizada e recibos do rito."
+    ],
+    "condicao_encerramento": "PR submetido pelo make pr, com revisão independente do arquivo alvo e evidências registradas; integração segue portões automáticos.",
+    "limites_autonomia": "Agente decide a implementação da fixture; produção e demais arquivos são somente leitura. Nenhuma decisão exclusiva do mantenedor está pendente.",
+    "acoes_do_mantenedor": "Nenhuma ação para destravar a edição ou submissão desta correção."
+  }
+}

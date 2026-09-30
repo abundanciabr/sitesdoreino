@@ -335,6 +335,16 @@ def test_tarefa_que_nasce_dentro_do_proprio_pr_e_SKIP(monkeypatch):
         "dados_do_pr",
         lambda raiz, n: {"title": "feat: TAR-998 tarefa nova", "headRefName": "x"},
     )
+    monkeypatch.setattr(
+        conf.fila,
+        "carregar_tarefas",
+        lambda raiz, erros: {},
+    )
+    monkeypatch.setattr(
+        conf,
+        "_gh",
+        lambda *args, **kwargs: pytest.fail("consulta ao GitHub não era esperada"),
+    )
     relatorio, divergencia = conf.rodar(RAIZ, 570)
     assert divergencia is None
     assert relatorio.estado is Estado.SKIP

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-013143-TAR-1019-explicada",
+  "tarefa": "TAR-1019",
+  "evento": "explicada",
+  "quando": "2026-09-30T01:31:43.633862+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "O ensaio de cache para antes de construir porque a reconciliacao da fila recusa historico raso.",
+  "o_que_muda": "O ensaio consulta historico completo e pode gerar dados validos para comparar os custos da imagem.",
+  "exemplo": "A medicao deixa de parar antes da primeira construcao por falta do historico necessario.",
+  "importancia": 90
+}

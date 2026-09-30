@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260929-215432-TAR-983-descoberta",
+  "tarefa": "TAR-983",
+  "evento": "descoberta",
+  "quando": "2026-09-29T21:54:32.734116+00:00",
+  "quem": "pme-governanca-app",
+  "detalhe": "A V5 passou a proteger AGENTS.md e 00-LEIA-PRIMEIRO.md; a fixture do mapa não copiava essas duas fontes, e o teste saía 2 por caminho ausente antes de conferir mandato.",
+  "evidencia": "PR2373 run36635642417 muralhas/testar-o-testador: 4664/4696 PASS, 2 falhas; reprodução local do teste parametrizado: 18 PASS, 2 FAIL.",
+  "classificacao": "B",
+  "criterio": "Todos os caminhos novos em CODEOWNERS exigem mandato no mapa de execução",
+  "encaminhamento": "Adicionar somente AGENTS.md e 00-LEIA-PRIMEIRO.md à fixture em ci/tests/test_mapa_de_execucao.py; manter asserção e repetir 20 casos e 26 focais."
+}

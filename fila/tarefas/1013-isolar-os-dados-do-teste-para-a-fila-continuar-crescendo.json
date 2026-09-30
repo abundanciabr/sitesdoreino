@@ -1,0 +1,19 @@
+{
+  "arquivo": "1013-isolar-os-dados-do-teste-para-a-fila-continuar-crescendo",
+  "id": "TAR-1013",
+  "titulo": "Isolar os dados do teste para a fila continuar crescendo",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de tarefa desconhecida retorna SKIP sem consultar rede mesmo quando TAR998 existe; suite focal e checks passam; TAR998 pode retomar.",
+  "despacho": "Continuacao de validacao da frente de fontes do programaTAR958, sem nova frente no teto21. Responsavel pme_modelos, gpt-6-sol medium explicito da frente mantido; sem filhos/fallback. Nao esta sozinho: preserve outras bancadas/edicoes. Reutilize pme-modelos agora limpa e publicada, preservando ramo1009 e provas, apos confirmar nenhum processo dependente. Novo ramo codex/ci/pme-toca-isolado da main atual. Exclusivo de escrita tecnica ci/tests/test_conferencia_do_toca.py, somente fixture test_tarefa_que_nasce_dentro_do_proprio_pr_e_SKIP. Producao/guarda conferencia_do_toca.py readonly. Causa comprovada CI36640933691: fixture TAR998 consulta fila real que agora contem tarefa998, chega a API PR570 falso e falha. Simule fila ausente explicitamente com monkeypatch do carregador ou raiz temporaria minima; nao trocar por outro numero ainda ausente pois repetiria o defeito. Preserve teste de SKIP/resultado; demonstre que crescimento real da fila nao muda o cenario e que nenhuma rede e chamada. Nao enfraquecer guarda, nao silenciar erro real, nao apagar asserts. Claim atomico e contrato antes de editar, testes focais/Black pelo Python existente, rito oficial Draft-first, revisao independente pela raiz. Pacote sem segredos apenas1teste+registros. Integracao pelos portoes; se auto-review recusar preserve proposta concreta e pare a acao bloqueada, sem outro caminho. Recuperacao pelo PR; nao tocaVPS. Proxima acao conferir runtime/bancada, adotar --worktree e reivindicar tarefa. Aceite: cenario desconhecido retornaSKIP isolado, suiteconferencia passa semrede, checks e PR998 revalidado depois da integracao. Base atual e dependencias dinamicas reais, nao inventar espera por TAR998 concluida pois esta correcao e prerequisite dela.",
+  "origem": "TAR958 adendo; bloqueio deterministico da validacao TAR998 no run36640933691",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

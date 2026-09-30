@@ -44,7 +44,10 @@ Jmo5emmYZfG3Qh4fVWfAQ6EuMHoAdO5w8GhTQrYdWxSYNCWXlojMsSNCb5EMEgbg
 SdkNrRc3ziNIw7TiTVN6BKsgO/gKMcY7RXaqiPcYrNAnGvFzVK8svGcoidXbV1wr
 UV+gfWWEIHIf0IXlh+FSRGFykgUFoeE+/r97JctRGExsQU3+Ge+9oB8=
 -----END CERTIFICATE-----'''
-CAPTURA = '''import json, sys
+CAPTURA = '''import json, os, sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+import django
+django.setup()
 from apps.core.coordenacao import capturar_snapshot
 with capturar_snapshot() as manifesto:
     print(json.dumps(manifesto, ensure_ascii=False, separators=(',', ':')), flush=True)

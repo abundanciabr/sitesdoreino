@@ -1,0 +1,20 @@
+{
+  "arquivo": "1017-inicializar-a-aplicacao-antes-de-capturar-a-copia-da-fila",
+  "id": "TAR-1017",
+  "titulo": "Inicializar a aplicacao antes de capturar a copia da fila",
+  "toca": [
+    "infra/backup-coordenacao.py",
+    "ci/tests/test_backup_coordenacao.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Importacao real com Django 5.1.4 e teste que reproduz a falha anterior; copia oficial cifrada e restauracao continuam exigidas pela TAR-978",
+  "despacho": "Corrigir somente a inicializacao em infra/backup-coordenacao.py e teste focal em ci/tests/test_backup_coordenacao.py. Provar com Django 5.1.4 real. Nao habilitar agenda nem executar copia em producao antes do aceite do banco e despacho da coordenacao.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

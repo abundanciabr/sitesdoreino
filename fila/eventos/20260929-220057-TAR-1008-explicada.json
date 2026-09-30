@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-220057-TAR-1008-explicada",
+  "tarefa": "TAR-1008",
+  "evento": "explicada",
+  "quando": "2026-09-29T22:00:57.545085+00:00",
+  "quem": "TAR958 mandato e adendo29set; continuacao de frente existente, coordenador01a0ed71",
+  "o_que_e": "A sincronizacao pode executar no servidor, perder a resposta e tentar novamente como se nada tivesse acontecido.",
+  "o_que_muda": "Conserva a resposta da operacao e interrompe novas tentativas quando nao ha prova do que aconteceu.",
+  "exemplo": "Se o servidor iniciou uma troca e recusou uma condicao, a esteira mostra essa recusa e nao repete a troca.",
+  "importancia": 90
+}

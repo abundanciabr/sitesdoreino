@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-225227-TAR-1013-explicada",
+  "tarefa": "TAR-1013",
+  "evento": "explicada",
+  "quando": "2026-09-29T22:52:27.248891+00:00",
+  "quem": "TAR958 adendo; bloqueio deterministico da validacao TAR998 no run36640933691",
+  "o_que_e": "Uma verificacao usa um numero ficticio que passou a existir na fila e por isso tenta consultar um pedido ficticio.",
+  "o_que_muda": "O crescimento da fila deixa de quebrar uma verificacao que deveria usar dados isolados.",
+  "exemplo": "Cadastrar a tarefa998 nao interfere mais no ensaio de uma tarefa desconhecida.",
+  "importancia": 90
+}
