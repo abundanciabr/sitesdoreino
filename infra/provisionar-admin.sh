@@ -136,24 +136,8 @@ esac
 # quando falta dos dois lados, como marcador, até
 # `infra/provisionar-par-do-portfolio-com-a-admin.sh` alinhar os dois envs.
 #
-# A NONA CHAVE ENTROU EM 06/09/2026, e é a SEGUNDA que este roteiro não gera.
-# `GITHUB_TOKEN_FILA` é a chave do GitHub com que a tela dos robôs grava a
-# exclusão de uma tarefa da fila, e quem a preenche é o mantenedor, na VPS, por
-# `infra/por-a-chave-do-github.sh`. Ela nasce aqui VAZIA de propósito: vazia, o
-# botão de excluir tarefa fica desligado dizendo o que fazer, e nada mais na
-# área administrativa muda.
-#
-# ELA TAMBÉM É RELIDA do arquivo vivo antes da reescrita, pelo motivo do
-# parágrafo acima e por um a mais, que a torna a pior desta lista para se
-# perder: uma chave do GitHub aparece UMA VEZ SÓ na tela de quem a cria. Apagá-la
-# aqui não custaria uma reprovisão, custaria uma ida do mantenedor ao navegador
-# para gerar outra, e o sintoma seria um botão que voltou a ficar desligado sem
-# ninguém ter mexido nele. É a `armadilhas/111` de novo, e é exatamente o defeito
-# que a TAR-172 tem aberto contra o `infra/provisionar-forum.sh`, que escreve a
-# lista de professores vazia sem relê-la. Este roteiro não nasce com ele.
-#
-# A DÉCIMA E A DÉCIMA PRIMEIRA CHAVES ENTRARAM EM 07/09/2026, e são a TERCEIRA e
-# a QUARTA que este roteiro não gera. `ANTHROPIC_API_KEY` e
+# A DÉCIMA E A DÉCIMA PRIMEIRA CHAVES ENTRARAM EM 07/09/2026, e são a SEGUNDA e
+# a TERCEIRA que este roteiro não gera. `ANTHROPIC_API_KEY` e
 # `ANTHROPIC_WORKSPACE_ID` são a chave da IA (e o workspace dela) com que o robô
 # analista do painel de gestão lê o livro de ocorrências e escreve o que está
 # vendo. Elas não nascem aqui: são COPIADAS de `env/forum.env`, onde o
@@ -169,7 +153,7 @@ esac
 # VAZIAS SÃO RESULTADO LEGÍTIMO, como a chave do GitHub: sem elas o robô
 # analista fica desligado dizendo o que fazer, e nada mais na área
 # administrativa muda.
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID COORDENACAO_DATABASE_URL COORDENACAO_IDENTIDADES COORDENACAO_RECIBOS_CHAVE DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
 
 if [ -f env/admin.env ]; then
   SOBRANDO=""
@@ -209,14 +193,6 @@ else
   T_PAGES="$(openssl rand -hex 32)"
   echo "  par pages na admin ........... não existe (gravo um marcador; quem alinha os dois lados é o roteiro do par)"
 fi
-# A chave do GitHub do botão de excluir tarefa: RELIDA do arquivo vivo, nunca
-# gerada aqui (ver a lista da trava, lá em cima). Vazia é resposta legítima e o
-# roteiro não para por isso: quem a põe é `infra/por-a-chave-do-github.sh`, e
-# sem ela o botão apenas nasce desligado dizendo o que fazer.
-if [ -f env/admin.env ]; then TOKEN_FILA="$(ler_de env/admin.env GITHUB_TOKEN_FILA)"; else TOKEN_FILA=""; fi
-if [ -n "$TOKEN_FILA" ]
-then echo "  chave do GitHub da fila ...... já existe (releio e regravo igual, sem apagar)"
-else echo "  chave do GitHub da fila ...... não existe (gravo vazia; quem a põe é infra/por-a-chave-do-github.sh)"; fi
 # A chave da IA do robô analista e o workspace dela: RELIDAS do arquivo vivo,
 # nunca geradas aqui (ver a lista da trava, lá em cima). Vazias são resposta
 # legítima e o roteiro não para por isso: quem as copia do fórum para cá é
@@ -225,29 +201,9 @@ else echo "  chave do GitHub da fila ...... não existe (gravo vazia; quem a põ
 if [ -f env/admin.env ]; then
   CHAVE_IA="$(ler_de env/admin.env ANTHROPIC_API_KEY)"
   WORKSPACE_IA="$(ler_de env/admin.env ANTHROPIC_WORKSPACE_ID)"
-  COORD_DSN="$(ler_de env/admin.env COORDENACAO_DATABASE_URL)"
-  COORD_IDENTIDADES="$(ler_de env/admin.env COORDENACAO_IDENTIDADES)"
-  COORD_RECIBOS="$(ler_de env/admin.env COORDENACAO_RECIBOS_CHAVE)"
 else
   CHAVE_IA=""
   WORKSPACE_IA=""
-  COORD_DSN=""
-  COORD_IDENTIDADES=""
-  COORD_RECIBOS=""
-fi
-for chave in COORDENACAO_DATABASE_URL COORDENACAO_IDENTIDADES COORDENACAO_RECIBOS_CHAVE; do
-  if [ -f env/admin.env ] && [ "$(grep -c "^$chave=" env/admin.env || true)" -gt 1 ]; then
-    parar "$chave duplicada em env/admin.env; corrija antes de reprovisionar."
-  fi
-done
-if [ -n "$COORD_DSN" ] || [ -n "$COORD_IDENTIDADES" ] || [ -n "$COORD_RECIBOS" ]; then
-  printf '%s' "$COORD_DSN" | grep -qE '^postgres://coordenacao_user:[0-9a-f]{64}@postgres:5432/coordenacao_db$' \
-    || parar "configuração da coordenação parcial ou inválida; recupere env/admin.env antes de reprovisionar."
-  printf '%s' "$COORD_RECIBOS" | grep -qE '^[0-9a-f]{64}$' \
-    || parar "chave de recibos da coordenação inválida; recupere env/admin.env antes de reprovisionar."
-  printf '%s' "$COORD_IDENTIDADES" | docker compose exec -T admin python -c \
-    'import json,sys,re; d=json.load(sys.stdin); assert isinstance(d,dict); assert all(re.fullmatch("[0-9a-f]{64}", k) and isinstance(v,dict) and isinstance(v.get("id"),str) and v["id"] and all(isinstance(v.get(f),list) and all(isinstance(x,str) for x in v[f]) for f in ("papeis","coortes","celulas")) for k,v in d.items())' \
-    >/dev/null 2>&1 || parar "identidades técnicas da coordenação inválidas; corrija env/admin.env antes de reprovisionar."
 fi
 if [ -n "$CHAVE_IA" ]
 then echo "  chave da IA do analista ...... já existe (releio e regravo igual, sem apagar)"
@@ -298,12 +254,8 @@ IDENTIDADE_API_URL=http://identidade:8000/interno
 IDENTIDADE_API_TOKEN=$TOKEN_ADMIN
 ADMIN_EMAILS=$STAFF
 TOKENS_ACEITOS_PAGES=$T_PAGES
-GITHUB_TOKEN_FILA=$TOKEN_FILA
 ANTHROPIC_API_KEY=$CHAVE_IA
 ANTHROPIC_WORKSPACE_ID=$WORKSPACE_IA
-COORDENACAO_DATABASE_URL=$COORD_DSN
-COORDENACAO_IDENTIDADES=$COORD_IDENTIDADES
-COORDENACAO_RECIBOS_CHAVE=$COORD_RECIBOS
 ENV
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, em vez de escolhidos por mim:
@@ -344,16 +296,6 @@ for chave in IDENTIDADE_API_URL IDENTIDADE_API_TOKEN ADMIN_EMAILS; do
   else echo "  admin.env / $chave ... FALTANDO"; faltou=1; fi
 done
 
-for chave in COORDENACAO_DATABASE_URL COORDENACAO_IDENTIDADES COORDENACAO_RECIBOS_CHAVE; do
-  if [ -n "$BAK" ]; then ANTES_COORD="$(ler_de "$BAK" "$chave")"; else ANTES_COORD=""; fi
-  if [ "$(ler_de env/admin.env "$chave")" = "$ANTES_COORD" ]; then
-    echo "  admin.env / $chave ... OK (preservada)"
-  else
-    echo "  admin.env / $chave ... ALTERADA (recupere o valor de $BAK antes de repetir)"
-    faltou=1
-  fi
-done
-
 # A CONFERÊNCIA nº 1b: o par em que esta célula é PROVEDORA sobreviveu à
 # reescrita, com o MESMO valor que estava na cópia de segurança. Se ele sumir
 # ou mudar, a fila da conferência do portfólio passa a responder 401 para todo
@@ -370,22 +312,7 @@ else
   faltou=1
 fi
 
-# A CONFERÊNCIA nº 1c: a chave do GitHub do botão de excluir tarefa sobreviveu
-# à reescrita, com o MESMO valor que estava no arquivo. VAZIA É RESULTADO
-# LEGÍTIMO e não reprova nada, porque quem a põe é
-# `infra/por-a-chave-do-github.sh` e ela pode simplesmente ainda não existir. O
-# que NÃO pode acontecer é ela existir antes e sumir aqui: uma chave do GitHub
-# aparece uma vez só na tela de quem a cria, e o mantenedor teria de gerar
-# outra (`armadilhas/111`, e o defeito que a TAR-172 acusa no fórum).
-if [ -n "$BAK" ]; then ANTES_FILA="$(ler_de "$BAK" GITHUB_TOKEN_FILA)"; else ANTES_FILA=""; fi
-if [ "$(ler_de env/admin.env GITHUB_TOKEN_FILA)" = "$ANTES_FILA" ]
-then
-  if [ -n "$ANTES_FILA" ]
-  then echo "  admin.env / GITHUB_TOKEN_FILA ... OK (preservada, o mesmo valor que estava em $BAK)"
-  else echo "  admin.env / GITHUB_TOKEN_FILA ... vazia, como já estava (o botão de excluir tarefa segue desligado)"; fi
-else echo "  admin.env / GITHUB_TOKEN_FILA ... PERDI A CHAVE QUE ESTAVA AQUI (ela está intacta em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
-
-# A CONFERÊNCIA nº 1d: a chave da IA do robô analista e o workspace dela
+# A CONFERÊNCIA nº 1c: a chave da IA do robô analista e o workspace dela
 # sobreviveram à reescrita, com o MESMO valor que estava no arquivo. VAZIAS SÃO
 # RESULTADO LEGÍTIMO e não reprovam nada, porque quem as põe é
 # `infra/por-a-chave-da-ia-do-admin.sh` e elas podem simplesmente ainda não
