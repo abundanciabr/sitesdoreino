@@ -1,0 +1,66 @@
+{
+  "arquivo": "20260930-040851-TAR-1026-contrato_execucao",
+  "tarefa": "TAR-1026",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T04:08:51.758965+00:00",
+  "quem": "despacho-ci-pme-cache-cross-candidate",
+  "contrato": {
+    "versao": 1,
+    "objetivo": "Medir reaproveitamento de cache entre duas revisões reais da imagem admin na receita oficial",
+    "plano": "Preparar referência e candidata, executar controle positivo e braços frio/importado no mesmo runner, comparar identidade, OCI, hits e custo total",
+    "entregaveis": [
+      "Workflow manual com medição entre candidatos distintos",
+      "Comparador estrito e teste focal",
+      "PR com revisão e provas locais",
+      "Run remoto pela coordenação após integração"
+    ],
+    "escopo_incluido": [
+      ".github/workflows/medir-cache-admin.yml",
+      "ci/medir_cache_admin.py",
+      "ci/tests/test_medir_cache_admin.py",
+      "registros próprios TAR-1026"
+    ],
+    "nao_objetivos": [
+      "Ativar cache na publicação",
+      "Mudar o comparador anterior",
+      "Disparar workflow remoto nesta sessão",
+      "Alterar Dockerfile ou receptor TAR-990"
+    ],
+    "restricoes": [
+      "Mesmo runner e receita para os braços comparados",
+      "Revisões reais diferentes, Dockerfile e base idênticos, contextos distintos",
+      "Controle positivo exige hit; candidata pode ter zero hits com resultado válido",
+      "Falha fechada para fonte ou prova ausente"
+    ],
+    "etapas": [
+      "Validar desenho e baseline",
+      "Implementar apenas três alvos",
+      "Testar positivo e mutações negativas",
+      "Revisar e abrir PR",
+      "Coordenação integra e executa ensaio oficial"
+    ],
+    "criterios_entrada": [
+      "TAR-1026 reivindicada",
+      "Reserva exclusiva ativa",
+      "Run 36662046218 confirmado"
+    ],
+    "criterios_aceite": [
+      "Controle com cache da mesma candidata de referência mostra acertos",
+      "Candidata nova fria e importada têm OCI igual",
+      "Custo total inclui preparo e transporte",
+      "Zero acertos na candidata nova produz medição sem alegar benefício"
+    ],
+    "evidencias_exigidas": [
+      "Teste focal vermelho/verde",
+      "Checks oficiais",
+      "Run remoto após integração com resultado estruturado"
+    ],
+    "condicao_encerramento": "Ensaio remoto oficial mede duas revisões reais e fundamenta decisão de cache sem deploy",
+    "limites_autonomia": "TAR-1026 delegada pela coordenação; somente três alvos técnicos e registros próprios, sem deploy ou novo workflow antes da integração",
+    "acoes_do_mantenedor": "Nenhuma",
+    "decisoes_aprovadas": [
+      "Mandato TAR-1026 da coordenação para os três alvos técnicos",
+      "Workflow remoto somente após integração e acionado pela coordenação"
+    ]
+  }
+}

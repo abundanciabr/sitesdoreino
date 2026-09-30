@@ -130,7 +130,8 @@ def test_workflow_so_main_sem_runtime_e_com_contexto_real():
     assert workflow["permissions"] == {"contents": "read", "actions": "read"}
     assert "preparar" in workflow["jobs"]
     checkout_preparo = next(
-        passo for passo in workflow["jobs"]["preparar"]["steps"]
+        passo
+        for passo in workflow["jobs"]["preparar"]["steps"]
         if passo.get("uses", "").startswith("actions/checkout@")
     )
     assert checkout_preparo["with"]["fetch-depth"] == 0
@@ -186,3 +187,91 @@ def test_acertos_buildkit_aceita_linha_real_e_recusa_falso_positivo():
         contar_acertos_cache("#8 FETCHED\n#11 CACHED extra\n#13 [7/7] RUN pip CACHED\n")
         == 0
     )
+
+
+def test_candidatos_distintos_aceitam_zero_hits_no_novo_com_controle_positivo(tmp_path):
+    anterior_frio = amostra("frio", identidade=IDENTIDADE)
+    referencia = amostra("exportar", identidade=IDENTIDADE)
+    controle = amostra("importar", identidade=IDENTIDADE)
+    receita = {"dockerfile_sha256": "3" * 64}
+    nova_identidade = {
+        **IDENTIDADE,
+        **receita,
+        "revisao": "f" * 40,
+        "contexto_tar_sha256": "1" * 64,
+    }
+    anterior = {**IDENTIDADE, **receita, "contexto_tar_sha256": "2" * 64}
+    anterior_frio["identidade"] = referencia["identidade"] = controle["identidade"] = (
+        anterior
+    )
+    frio = amostra("frio", identidade=nova_identidade, digest="sha256:" + "a" * 64)
+    importado = amostra(
+        "importar", identidade=nova_identidade, digest=frio["digest_oci"]
+    )
+    importado["acertos_cache"] = 0
+    arquivos = []
+    for nome, resultado in (
+        ("anterior-frio", anterior_frio),
+        ("referencia", referencia),
+        ("controle", controle),
+        ("novo-frio", frio),
+        ("novo-importar", importado),
+    ):
+        caminho = tmp_path / (nome + ".json")
+        caminho.write_text(json.dumps(resultado), encoding="utf-8")
+        arquivos += ["--" + nome, str(caminho)]
+    processo = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "comparar-candidatos",
+            *arquivos,
+            "--saida",
+            str(tmp_path / "comparacao.json"),
+            "--preparar-referencia-s",
+            "20",
+            "--preparar-novo-total-s",
+            "30",
+            "--contexto-download-s",
+            "2",
+            "--cache-upload-s",
+            "3",
+            "--cache-download-s",
+            "4",
+            "--cache-artifact-bytes",
+            "2000",
+            "--contexto-artifact-bytes",
+            "1000",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert processo.returncode == 0, processo.stdout + processo.stderr
+    resultado = json.loads((tmp_path / "comparacao.json").read_text())
+    assert resultado["novo_acertos_cache"] == 0
+    assert resultado["novo_frio_total_s"] == 44
+    assert resultado["novo_importado_total_s"] == 42.5
+    assert resultado["ciclo_frio_total_s"] == 76
+    assert resultado["ciclo_cache_total_s"] == 78
+    assert resultado["diferenca_ciclo_cache_menos_frio_s"] == 2
+
+    controle["acertos_cache"] = 0
+    (tmp_path / "controle.json").write_text(json.dumps(controle), encoding="utf-8")
+    sem_controle = subprocess.run(
+        processo.args, capture_output=True, text=True, encoding="utf-8"
+    )
+    assert sem_controle.returncode != 0
+    assert "controle positivo" in sem_controle.stdout + sem_controle.stderr
+
+    controle["acertos_cache"] = 4
+    (tmp_path / "controle.json").write_text(json.dumps(controle), encoding="utf-8")
+    importado["digest_oci"] = "sha256:" + "9" * 64
+    (tmp_path / "novo-importar.json").write_text(
+        json.dumps(importado), encoding="utf-8"
+    )
+    sem_equivalencia = subprocess.run(
+        processo.args, capture_output=True, text=True, encoding="utf-8"
+    )
+    assert sem_equivalencia.returncode != 0
+    assert "imagens OCI diferentes" in sem_equivalencia.stdout + sem_equivalencia.stderr
