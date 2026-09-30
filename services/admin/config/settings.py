@@ -178,7 +178,6 @@ SITE_ERROR_SERVICE = "admin"
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # ---------------------------------------------------------------------------
 # ONDE MORAM AS IMAGENS E OS VÍDEOS DOS DOCUMENTOS (21/09/2026, TAR-597)

@@ -38,7 +38,7 @@ para fazer (`PLANO-AREA-ADMIN.md` §5).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.shortcuts import render
 from django.utils import timezone
