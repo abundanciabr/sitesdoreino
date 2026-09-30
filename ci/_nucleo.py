@@ -36,7 +36,7 @@ from pathlib import Path
 # raiz sem conferir isso foi a segunda falha da ferida original: sem git, a
 # resolução caía para "." e o contrato "não era encontrado" — o que o script
 # lia como "nada a checar".
-MARCAS_DA_RAIZ = ("CONSTITUICAO.md", "INVARIANTES.md", "ci", "contracts", "services")
+MARCAS_DA_RAIZ = ("ci", "contracts", "services")
 
 
 class Estado(enum.Enum):
