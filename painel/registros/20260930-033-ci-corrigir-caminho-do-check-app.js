@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-033-ci-corrigir-caminho-do-check-app",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: corrigir caminho do check App",
+  detalhe: "O caminho relativo candidate virava base/candidate e reprovava entregas comuns. Agora é absoluto; 27 testes focais passaram. Pin aguarda prova real.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2389. Validação local: árvore ba1ec0cd9249d6b6b8c994c43bb89072f8493335; commit 3d01e1279c0abfa8eaa181bcc5f4ec26f141963d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1024",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
