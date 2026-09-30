@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260930-044756-TAR-1030-checkpoint",
+  "tarefa": "TAR-1030",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T04:47:56.217486+00:00",
+  "quem": "codex",
+  "plano": "Reparo do classificador sem dependencia circular de aceite.",
+  "ultimo_avanco": "Corrigido somente depende_de, campo permitido em ci/fila.py CAMPO_QUE_PODE_MUDAR: TAR1025 ja integrou mas seu aceite depende do reparo1030. Nenhum criterio de aceite foi reduzido.",
+  "proxima_acao": "Frente sincronizacao1008 reivindicar1030 e validar reparo com log real.",
+  "verificacoes": [
+    "Run36670376716 estado-infra PASS, todos .new ausentes e admin/catalogo saudaveis; sincronizacao remota anterior concluiuSTATUS0."
+  ]
+}
