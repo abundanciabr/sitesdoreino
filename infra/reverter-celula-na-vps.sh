@@ -1,33 +1,11 @@
 #!/usr/bin/env bash
-# =============================================================================
-# O QUE RODA DENTRO DA VPS para VOLTAR uma célula a uma imagem anterior.
-#
-# UMA definição, dois chamadores — e é o ponto deste arquivo existir:
-#   .github/workflows/rollback.yml       o rollback MANUAL (RITOS §4)
-#   .github/workflows/deploy-celula.yml  a reversão AUTOMÁTICA (Onda 4, fatia 2)
-#
-# Duas cópias divergiriam no primeiro dia em que alguém mexesse numa delas, e a
-# que rodaria às 2h da manhã seria, por lei de Murphy, a que ficou para trás.
-# Guarda: `ci/tests/test_reversao.py::test_a_reversao_e_o_rollback_usam_o_MESMO_script_na_vps`.
-#
-# ENTRADA (por `envs:`, nunca por interpolação no YAML — texto vindo de fora
-# dentro de um script é injeção esperando acontecer):
-#   CELULA   nome já provado contra o manifesto por ci/rollback.py ou ci/reversao.py
-#   VAR_TAG  ex.: QUIZ_TAG
-#   TAG      sha de 40 hex de uma imagem que EXISTE no registry, ou `main`
-#
-# IDEMPOTENTE POR CONSTRUÇÃO: `pull` e `up -d` sobre o estado já correto não
-# fazem nada. Repetir é seguro, e é o que permite tentar de novo sem medo.
-#
-# O PIN NÃO PERSISTE, DE PROPÓSITO: a variável é exportada só para este `up`.
-# O próximo deploy da célula volta para `:main` (RITOS §4 item 3 — estado manual
-# jamais persiste como fonte de verdade).
-# =============================================================================
+# Recupera uma versão aprovada distinta e compatível; mantém banco e pin durável.
+
 set -eu
 
-cd /opt/plataforma
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ"
 
-# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
 command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
 if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
@@ -46,26 +24,6 @@ if [ -z "${CELULA:-}" ] || [ -z "${VAR_TAG:-}" ] || [ -z "${TAG:-}" ]; then
   exit 1
 fi
 
-# =============================================================================
-# AS CHAVES DO GATEWAY, ANTES DE QUALQUER COMANDO COMPOSE.
-#
-# Este bloco é CÓPIA do contrato que `infra/deploy-celula-na-vps.sh` já cumpre,
-# e a cópia é obrigatória, não preguiça: a `appleboy/ssh-action` envia o
-# CONTEÚDO de um único arquivo, e /opt/plataforma não tem o repositório. Um
-# trecho compartilhado por `source` não existiria na VPS, e o rollback pararia
-# em toda execução. Quem impede as duas cópias de divergirem é o guarda de
-# paridade `ci/tests/test_paridade_das_chaves_do_gateway.py`.
-#
-# POR QUE ELE FALTAVA AQUI, medido em 19/09/2026 (TAR-486): sem estas duas
-# variáveis exportadas, a interpolação do compose falha, `docker compose config
-# --services` devolve VAZIO, e o script abortava logo abaixo com "não tem
-# serviço algum" — para TODA célula. O diagnóstico honesto custou uma noite: a
-# mensagem parecia dizer que faltava segredo na VPS, e o que faltava era este
-# bloco. Quatro smokes reais mostraram o mesmo sintoma nas quatro tentativas.
-#
-# NENHUM VALOR APARECE NA TELA: o log do run é lido por gente, e segredo nele é
-# incidente. Este é o único ponto do script que abre um `env/`.
-# =============================================================================
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 ENV_DO_ADMIN="$RAIZ/env/admin.env"
 for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
@@ -84,43 +42,8 @@ for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
 done
 unset VALOR_DO_GATEWAY
 
-# A célula não é UM container: consumers de evento e worker Huey vivem em
-# "<celula>-<papel>". Voltar só "<celula>" deixaria o auxiliar na imagem nova,
-# em silêncio — duas versões do mesmo código no ar durante uma emergência. A
-# lista sai do PRÓPRIO compose da VPS, como no deploy.
-SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
-if [ -z "$SERVICOS" ]; then
-  echo "ERRO: '$CELULA' não tem serviço algum em /opt/plataforma/docker-compose.yml."
-  echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
-  exit 1
+if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
+  export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 fi
-echo "Serviços desta célula: $SERVICOS"
-
-echo "Imagens ANTES:"
-docker compose images $SERVICOS
-
-# export com name=value: o nome da variável é indireto, e `$VAR_TAG=$TAG` sem as
-# aspas não é atribuição em sh nenhum.
-export "${VAR_TAG}=${TAG}"
-echo "Aplicando ${VAR_TAG}=${TAG}"
-
-INICIO=$(date +%s)
-docker compose pull $SERVICOS
-# --wait reprova se algum container não ficar de pé/healthy. Numa reversão isso
-# importa MAIS que num deploy: voltar para uma imagem que não sobe é ficar sem
-# serviço nenhum, e em silêncio.
-docker compose up -d --wait --wait-timeout 180 $SERVICOS
-FIM=$(date +%s)
-
-echo "Imagens DEPOIS:"
-docker compose images $SERVICOS
-docker compose ps $SERVICOS
-echo "SEGUNDOS_NA_VPS=$((FIM - INICIO))"
-
-# A PROVA DE QUE ESTE SCRIPT RODOU ATE O FIM — a mesma trava do deploy, pelo
-# mesmo motivo medido em 28/08/2026: a acao de SSH ja conectou sem executar
-# nada e devolveu sucesso. Numa reversao isso seria pior que no deploy: o run
-# anunciaria "revertido" com a imagem doente ainda no ar.
-# ASCII de proposito: acento numa sentinela e um jeito barato de o grep falhar
-# por codificacao e a trava virar decoracao.
+python3 "$RAIZ/publicacao-local.py" recuperar
 echo "REVERSAO-CONCLUIDA: $CELULA -> $TAG"

@@ -1,27 +1,3 @@
-# =============================================================================
-# VIGIA DO CADEADO — o único workflow deste repositório que acorda pelo RELÓGIO.
-#
-# POR QUE ELE PRECISA DE UM RELÓGIO, e os outros não:
-# todo o resto aqui acorda em EVENTO (push, PR, conclusão de check) — foi
-# decisão medida, e a pista de pouso até PERDEU o agendamento dela em
-# 29/08/2026 porque o relógio a fazia esperar 13 min por algo que levava 2.
-#
-# Um certificado é o caso oposto, e é o único: ele não vence porque alguém
-# mexeu no código. Ele vence no calendário, sozinho, num dia em que talvez
-# ninguém encoste no repositório. Evento nenhum avisa isso.
-#
-# O QUE ELE NÃO É: um portão. Ele não impede nada e não roda em PR — avisa
-# depois, como o `alarme-main`. O modo de falha dele é "não avisou", nunca
-# "aprovou o que não devia" (INV-CI01).
-#
-# CONTEXTO — por que ele existe (armadilhas/018 + /177):
-# a renovação do certificado JÁ é automática (o Traefik pede um novo ~30 dias
-# antes de vencer, e o `acme.json` vive num volume que sobrevive às entregas).
-# O que faltava era alguém CONFERIR se ela aconteceu: se o ACME falhar, o
-# Traefik serve o `TRAEFIK DEFAULT CERT` indefinidamente e não avisa ninguém —
-# o site cai na tela vermelha e quem descobre é um visitante. "Renova sozinho"
-# sem medição é garantia sem mecanismo. Este arquivo é o mecanismo.
-# =============================================================================
 name: vigia-do-cadeado
 on:
   schedule:
@@ -33,7 +9,7 @@ on:
 permissions:
   contents: read
 # Grupo PRÓPRIO, nunca o `deploy`: naquele grupo o GitHub guarda um único run
-# pendente e CANCELA o anterior quando chega outro (armadilhas/173) — um vigia
+# pendente e CANCELA o anterior quando chega outro — um vigia
 # cancelado em silêncio é pior que vigia nenhum, porque parece que rodou.
 concurrency:
   group: vigia-do-cadeado
@@ -66,6 +42,7 @@ jobs:
       - name: Abrir (ou atualizar) a issue do cadeado
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
@@ -86,7 +63,7 @@ jobs:
 
           1. **\`TRAEFIK DEFAULT CERT\`** — a emissão do Let's Encrypt falhou e o
              Traefik voltou ao crachá de fábrica. Ele **não** re-tenta a cada acesso:
-             só ao recarregar a config (\`armadilhas/018\`). O empurrão é qualquer diff
+             só ao recarregar a config. O empurrão é qualquer diff
              em \`infra/traefik/**\` — até um comentário — que faz o \`deploy-infra\`
              recriar o container e tentar na hora.
           2. **Vence em poucos dias** — a renovação automática teve mais de uma semana
@@ -106,15 +83,14 @@ jobs:
           EOF
           )"
 
-          # Não empilhar issue: se já existe uma aberta, comenta nela. Um vigia
+          # Não repetir aviso enquanto o mesmo incidente estiver aberto. Um vigia
           # diário que abre um chamado por dia vira ruído, e ruído se ignora —
           # que é o mesmo que não avisar.
           EXISTENTE="$(gh issue list --label cadeado-vermelho --state open \
             --json number --jq '.[0].number // empty')"
 
           if [ -n "$EXISTENTE" ]; then
-            echo "Issue #$EXISTENTE já aberta — comentando nela."
-            gh issue comment "$EXISTENTE" --body "$CORPO"
+            echo "Issue #$EXISTENTE já aberta. Medição atual: $RUN_URL"
           else
             # A label pode não existir ainda. `|| true` aqui esconderia "não
             # consegui criar" junto com "já existe", então distingo os dois.

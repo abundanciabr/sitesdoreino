@@ -59,7 +59,7 @@ def test_aprova_exatamente_na_regua_nao_um_dia_antes():
 # O que ele REPROVA. Cada caso é um jeito real de o cadeado morrer.
 # ---------------------------------------------------------------------------
 def test_reprova_o_cracha_de_fabrica_e_o_chama_pelo_nome():
-    # O incidente de 29/08/2026 (armadilhas/177): o www servindo o default do
+    # O incidente de 29/08/2026 (certificado padrão): o www servindo o default do
     # Traefik com o site inteiro saudável ao lado. Se este teste ficar verde,
     # o vigia teria dormido naquele dia.
     queixas = julgar(
@@ -67,7 +67,8 @@ def test_reprova_o_cracha_de_fabrica_e_o_chama_pelo_nome():
     )
     assert queixas != []
     assert "TRAEFIK DEFAULT CERT" in queixas[0]
-    assert "armadilhas/018" in queixas[0]
+    assert "ACME" in queixas[0]
+    assert "infraestrutura" in queixas[0]
 
 
 def test_reprova_certificado_nao_confiavel():
@@ -91,7 +92,7 @@ def test_reprova_quando_falta_pouco_porque_a_renovacao_ja_devia_ter_ocorrido():
 
 
 def test_reprova_quando_nao_conseguiu_medir():
-    # INV-CI01: "não medi" jamais vira "está limpo".
+    # "não medi" jamais vira "está limpo".
     assert julgar("x.top", Medicao(confia=False, erro="não consegui medir: timeout"), HOJE) != []
 
 
@@ -181,3 +182,10 @@ def test_o_www_de_hoje_esta_sendo_vigiado():
         ROTAS.read_text(encoding="utf-8"),
     )
     assert "www.meshcraft.top" in vigiados
+
+
+def test_fonte_ilegivel_informa_erro_sem_falso_verde(monkeypatch, tmp_path, capsys):
+    import vigia_do_cadeado as vigia
+    monkeypatch.setattr(vigia, "SITES", tmp_path / "ausente.json")
+    assert vigia.main([]) == 2
+    assert "RESULTADO ERROR" in capsys.readouterr().out
