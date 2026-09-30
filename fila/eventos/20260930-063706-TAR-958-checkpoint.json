@@ -1,0 +1,30 @@
+{
+  "arquivo": "20260930-063706-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T06:37:06.655415+00:00",
+  "quem": "codex",
+  "plano": "PME09: concessao minima para ensaio TAR-1032, fase B.",
+  "ultimo_avanco": "Fase A PR2399 Draft fechada sem merge, HEAD46f48cfe85d4ee8ca1973bed3bd23e8376c7af97: mandato aguardou aprovacao nominal, deployment6752945345 aprovado pela raiz e check109768647648 do App5125381 SUCCESS.",
+  "proxima_acao": "Integrar este checkpoint revisado pela main protegida; conferir seu hash remoto antes de configurar AUTH_MANDATE_SHA256. Abrir B Draft separado apenas apos pin; revogar por novo checkpoint antes da fase C.",
+  "verificacoes": [
+    "Run36677790420: analisar, mandato e emitir SUCCESS; job109766560907 WAITING antes da aprovacao. PR2399 CLOSED, mergedAt null.",
+    "Concessao limitada ao hash exato da tarefa TAR1032, contrato TAR958 e unico caminho inerte infra/autoridade-app-prova.txt. Nao permite integrar arquivo de ensaio."
+  ],
+  "contexto": {
+    "mandato_reutilizavel": {
+      "contrato": "20260929-142620-TAR-958-contrato_execucao.json",
+      "contrato_sha256": "f6efff245165ccb071566b5f9dcf7f45716222d948f6e8b0d7489f628bb201a7",
+      "valido_enquanto": "TAR-958-aberta",
+      "tarefas": {
+        "TAR-1032": {
+          "arquivo": "1032-comprovar-a-retirada-de-uma-autorizacao-limitada-sem-aprovar.json",
+          "sha256": "5c254ee4520e51beddcf11c13711a73ac2933f1b33407381f472c49edb7cb92c",
+          "caminhos": [
+            "infra/autoridade-app-prova.txt"
+          ]
+        }
+      }
+    }
+  }
+}
