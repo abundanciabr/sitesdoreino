@@ -1,5 +1,9 @@
 # .claude/agents/: as fichas dos robôs desta casa
 
+Antes de convocar uma ficha, leia diretamente CONSTITUICAO.md, INVARIANTES.md e
+CAMINHO-DOURADO.md. Esta página explica o formato das fichas, sem criar outra
+receita operacional.
+
 > Nascida em 05/09/2026, degrau 1 do
 > `docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md` (registro
 > `20260905-013`). A lei desta pasta: **o rito fixo mora aqui; o brief só
@@ -17,7 +21,7 @@ sub-agente segue como rito.
 | `description` | obrigatória; é por ela que a sessão responsável escolhe a ficha. Texto com `: ` ou ` #` vai entre aspas, senão o YAML não abre e o harness descarta a ficha em silêncio |
 | `tools` | a lista fechada do que aquele papel alcança; ficha sem lista herda tudo, inclusive escrita |
 | `disallowedTools` | precisa negar `AskUserQuestion` e `Agent`, sempre, em toda ficha |
-| `model` | declarado, nunca herdado; ficha sem `model` usa o modelo da sessão responsável, que é o mais caro (CLAUDE.md, "O que uma chamada custa") |
+| `model` | declarado, nunca herdado; ficha sem `model` usa o modelo da sessão responsável, que é o mais caro (CAMINHO-DOURADO.md, “O que uma chamada custa”) |
 | `effort`, `maxTurns` | o teto de esforço e de voltas daquele papel |
 
 Campo fora da tabela de campos conhecidos é **ignorado em silêncio** pelo

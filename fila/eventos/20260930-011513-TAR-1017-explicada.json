@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-011513-TAR-1017-explicada",
+  "tarefa": "TAR-1017",
+  "evento": "explicada",
+  "quando": "2026-09-30T01:15:13.198882+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "A copia da fila importa a aplicacao sem preparar suas configuracoes e interrompe antes de copiar os dados.",
+  "o_que_muda": "O comando carrega a aplicacao corretamente antes de capturar a copia, sem expor credenciais.",
+  "exemplo": "Ao pedir a copia de seguranca, o comando consegue ler a fila em vez de falhar na inicializacao.",
+  "importancia": 100
+}

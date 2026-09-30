@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-213959-TAR-1004-explicada",
+  "tarefa": "TAR-1004",
+  "evento": "explicada",
+  "quando": "2026-09-29T21:39:59.778160+00:00",
+  "quem": "Correção de falha real TAR995/run36633979489, mesma frente PME05 do mandato TAR958",
+  "o_que_e": "O banco está saudável, mas a preparação não carregou duas informações exigidas para consultar os serviços.",
+  "o_que_muda": "Permite preparar o banco da fila preservando as configurações e as travas existentes.",
+  "exemplo": "Antes de verificar um equipamento, o comando precisa receber as mesmas informações que o publicador já usa.",
+  "importancia": 97
+}

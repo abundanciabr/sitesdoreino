@@ -367,3 +367,37 @@ def test_receitas_ativas_nao_reconstroem_abertura_nem_merge():
         assert "git worktree add" not in texto, nome
         assert not re.search(r"python ci/mergear\.py[^`\n]*--confirmo", texto), nome
         assert "make sessao" in texto, nome
+
+
+def test_executores_consultam_as_tres_fontes_vigentes() -> None:
+    import tomllib
+
+    for nome in ("adversario", "despacho", "despacho-medio", "provador", "maquinista"):
+        instrucoes = (FICHAS / f"{nome}.md").read_text(encoding="utf-8")
+        for fonte in ("CONSTITUICAO.md", "INVARIANTES.md", "CAMINHO-DOURADO.md"):
+            assert fonte in instrucoes, f"{nome}: não consulta {fonte}"
+        assert not re.search(r"Leia[^\n]*CLAUDE\.md", instrucoes), nome
+
+    for nome in ("despacho", "escrivao", "revisor", "maquinista"):
+        ficha = tomllib.loads((RAIZ / ".codex" / "agents" / f"{nome}.toml").read_text(encoding="utf-8"))
+        instrucoes = ficha["developer_instructions"]
+        for fonte in ("CONSTITUICAO.md", "INVARIANTES.md", "CAMINHO-DOURADO.md"):
+            assert fonte in instrucoes, f"{nome}: não consulta {fonte}"
+        assert not re.search(r"Leia[^\n]*CLAUDE\.md", instrucoes), nome
+
+
+def test_doctor_exige_fontes_vigentes_e_preserva_checagens(tmp_path) -> None:
+    import doctor
+    from _nucleo import Estado
+
+    outros = ("ci/contract_freeze.py", "ci/manifesto-de-contratos.json",
+              ".github/workflows/muralhas.yml", ".github/workflows/ci-celula.yml")
+    for nome in (*outros, "CONSTITUICAO.md", "INVARIANTES.md", "CAMINHO-DOURADO.md"):
+        caminho = tmp_path / nome
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.touch()
+    assert doctor.checar_arquivos_fundamentais(tmp_path).estado is Estado.PASS
+    (tmp_path / "CAMINHO-DOURADO.md").unlink()
+    resultado = doctor.checar_arquivos_fundamentais(tmp_path)
+    assert resultado.estado is Estado.ERROR
+    assert "CAMINHO-DOURADO.md" in resultado.detalhe

@@ -5,6 +5,10 @@
 > A lei é a mesma do livro (`painel/LEIA-ME.md`): **acontecimento se
 > acrescenta; estado se calcula; fato nenhum mora em dois lugares.**
 
+A operação da fila segue diretamente CONSTITUICAO.md, INVARIANTES.md e
+CAMINHO-DOURADO.md. O estado nasce das tarefas e eventos versionados desta
+pasta, das reservas atômicas do almoxarife e, na leitura ao vivo, dos PRs abertos.
+
 ## O que isto é
 
 A resposta à pergunta que nenhuma superfície do projeto respondia: *"a tarefa
@@ -39,7 +43,7 @@ python ci/fila.py validar              # o que a muralha roda em todo PR
 | Papel | Quem | Verbos |
 |---|---|---|
 | Maestro | Claude Code | `criar`, `explicar`, `bloquear`, `cancelar`, `reconciliar` |
-| Executor | Codex | `pegar`, `submeter`, `soltar`, `criar` (tarefa que descobre no caminho, RITOS §5) e `bloquear` (dúvida que só o mantenedor decide, devolvida à maestro); a conclusão da própria entrega viaja pelo `make pr` (PR #1603) |
+| Executor | Codex | `pegar`, `submeter`, `soltar`, `criar` (tarefa descoberta; CAMINHO-DOURADO.md, “Pegar e registrar trabalho na fila”) e `bloquear` (dúvida que só o mantenedor decide, devolvida à maestro); a conclusão da própria entrega viaja pelo `make pr` (PR #1603) |
 | Sentinela | Antigravity | só `listar` e `validar`; nunca grava evento |
 
 **`pegar` é a trava.** Ele chama o almoxarife (`ci/reservar.py`), que cria uma

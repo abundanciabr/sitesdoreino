@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-012143-TAR-1018-explicada",
+  "tarefa": "TAR-1018",
+  "evento": "explicada",
+  "quando": "2026-09-30T01:21:43.222549+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "O quadro recusa a leitura completa quando encontra uma reserva de trabalho que nao representa uma tarefa numerada.",
+  "o_que_muda": "A consulta pede somente reservas de tarefas numeradas e preserva a validacao rigorosa da resposta.",
+  "exemplo": "Uma reserva chamada mapa de rota nao impede mostrar as tarefas TAR no quadro.",
+  "importancia": 90
+}
