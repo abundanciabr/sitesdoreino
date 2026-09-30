@@ -1,0 +1,20 @@
+{
+  "arquivo": "1028-mostrar-a-etapa-exata-que-impede-abrir-a-copia-da-coordenaca",
+  "id": "TAR-1028",
+  "titulo": "Mostrar a etapa exata que impede abrir a copia da coordenacao",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Falhas antes do manifesto emitem categoria fechada e acao util sem DSN nem segredo; teste real isolado diferencia inicializacao, conexao e captura; canal oficial produz diagnostico ou pacote cifrado valido, jamais falso sucesso.",
+  "despacho": "Frente backup978, corretiva do run36667463612, no mandato TAR958. Escrita exclusiva infra/backup-coordenacao.py e ci/tests/test_backup_coordenacao.py mais registros proprios. Backup atual descarta stderr e so mostra Snapshot nao abriu; reproducoes PG17 isoladas passam, causa real ainda desconhecida. Instrumentar fronteira de captura com categorias fechadas por etapa, sem imprimir mensagem bruta, DSN, env ou segredos; manter cifra, pin SSH, limites e snapshot consistente. Testes de falha adversarial e segredo sintetico nao vazado. Nenhuma alteracao especulativa no provisionador; se diagnostico provar necessidade, registrar alvo concreto antes de editar. Integrar pelo rito e root executa novo run oficial somente apos codigo revisado. Continuar recuperacao externa ate restauracao isolada comprovada.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
