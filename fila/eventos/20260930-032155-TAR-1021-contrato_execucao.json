@@ -1,0 +1,58 @@
+{
+  "arquivo": "20260930-032155-TAR-1021-contrato_execucao",
+  "tarefa": "TAR-1021",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T03:21:55.491351+00:00",
+  "quem": "despacho-infra-estado-infra",
+  "contrato": {
+    "plano": "tar-1021-estado-infra",
+    "versao": 1,
+    "objetivo": "Permitir reconciliar a sincronização da infraestrutura iniciada sem comprovante, por leitura fechada do estado atual da VPS.",
+    "entregaveis": [
+      "Operação estado-infra no workflow oficial, coletor com saída sanitizada e testes do protocolo."
+    ],
+    "escopo_incluido": [
+      "Acrescentar estado-infra ao catálogo do workflow.",
+      "Medir hashes de caminhos fixos usados na sincronização e sondas mínimas de serviço e borda pública.",
+      "Validar integralmente os campos antes do resumo público."
+    ],
+    "nao_objetivos": [
+      "Reexecutar sincronização, reiniciar serviço ou alterar workflow de deploy.",
+      "Ler env, credenciais, logs de aplicação ou dados pessoais.",
+      "Decidir recuperação só por um código de saída."
+    ],
+    "restricoes": [
+      "Escrita técnica exclusiva em .github/workflows/operacoes-vps.yml, ci/operacoes_vps.py e ci/tests/test_operacoes_vps.py.",
+      "Nenhum comando remoto livre; caminhos e serviços fixos no código da main.",
+      "Somente o coordenador dispara o workflow após integração.",
+      "Preservar os demais agentes e a bancada TAR-978."
+    ],
+    "decisoes_aprovadas": [
+      "Usar o canal de operações da VPS existente e sua captura de JSON, com veredito posterior à leitura."
+    ],
+    "etapas": [
+      "Medir baseline.",
+      "Implementar leitura e validação fechadas.",
+      "Testar saída válida, ausente, adulterada e instrumento quebrado.",
+      "Revisar diff, entregar pelo rito e passar ao coordenador o comando oficial."
+    ],
+    "criterios_entrada": [
+      "Reserva atômica e reivindicação TAR-1021 confirmadas.",
+      "Baseline focal medido antes da edição."
+    ],
+    "criterios_aceite": [
+      "Hashes dos arquivos de infraestrutura usados e estado das sondas permitem comparar a VPS com a revisão pretendida.",
+      "Nenhum env, segredo, log ou resposta corporal sai na medição.",
+      "Falha ou campo inesperado nunca vira PASS.",
+      "Workflow limitado à main e ao ambiente vps."
+    ],
+    "evidencias_exigidas": [
+      "Teste focal antes e depois com saída real.",
+      "Inspeção dos comandos remotos gerados quanto a leitura apenas.",
+      "Validação pelo rito oficial e run remoto identificado pelo coordenador após integração."
+    ],
+    "condicao_encerramento": "Operação integrada e executada uma vez pelo coordenador, com resultado real vinculado à revisão e à sincronização incerta.",
+    "limites_autonomia": "Agente implementa e entrega os três alvos técnicos; somente o coordenador dispara a leitura da VPS e decide a próxima mutação após reconciliação.",
+    "acoes_do_mantenedor": "Nenhuma ação técnica rotineira; mandato amplo para os caminhos foi dado no pedido de 30/09/2026."
+  }
+}
