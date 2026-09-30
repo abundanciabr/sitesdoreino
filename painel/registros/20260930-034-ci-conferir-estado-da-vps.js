@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-034-ci-conferir-estado-da-vps",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: conferir estado da VPS",
+  detalhe: "A operação oficial mede hashes fixos sem seguir symlinks, três serviços, identidade GHCR do admin e HTTP local sem redirecionamento. A coordenação ainda precisa executar a medição na VPS.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2391. Validação local: árvore 48481aa15d94cafa58df183a48a30ad1003926b1; commit b7287043521047707f626acea09953b04636fdfe; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1021",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
