@@ -165,7 +165,7 @@ MURALHAS = [
     PortaoDeShell(
         "cerca-de-celula",
         "ci/cerca-de-celula.sh",
-        "contrato só muda com rito (RITOS.md §3) — a cerca de largura caiu na Onda 5",
+        "contrato só muda pelo rito em CAMINHO-DOURADO.md, “Mudar contrato”; CONSTITUICAO.md, Lei 2 — a cerca de largura caiu na Onda 5",
     ),
     PortaoDeShell(
         "orcamento-de-mudanca",
@@ -372,9 +372,13 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
     defeito = defeito_do_make(make)
     if defeito is not None:
         resumo, detalhe = defeito
-        return Resultado(f"celula/{celula}", Estado.ERROR, resumo, f"{detalhe}\n\n{sem_make}")
+        return Resultado(
+            f"celula/{celula}", Estado.ERROR, resumo, f"{detalhe}\n\n{sem_make}"
+        )
 
-    def _correr(argumentos: list[str], limite: int) -> subprocess.CompletedProcess | int:
+    def _correr(
+        argumentos: list[str], limite: int
+    ) -> subprocess.CompletedProcess | int:
         """Roda o make; devolve o processo, ou 124 se estourou o tempo.
 
         `subprocess.run(timeout=...)` LEVANTA em vez de devolver um código —
@@ -403,8 +407,10 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
     ensaio = _correr(["-n", "ci"], 120)
     if isinstance(ensaio, int) or ensaio.returncode != 0:
         codigo = ensaio if isinstance(ensaio, int) else ensaio.returncode
-        detalhe = "" if isinstance(ensaio, int) else (ensaio.stdout or "") + (
-            ensaio.stderr or ""
+        detalhe = (
+            ""
+            if isinstance(ensaio, int)
+            else (ensaio.stdout or "") + (ensaio.stderr or "")
         )
         return Resultado(
             f"celula/{celula}",
@@ -585,8 +591,7 @@ def main(argv: list[str] | None = None) -> int:
             "(pytest contracts)"
         )
         print(
-            "  infra      — os testes das operações da infraestrutura "
-            "(pytest infra)"
+            "  infra      — os testes das operações da infraestrutura " "(pytest infra)"
         )
         print("\nAlém deles: --celula <nome> encadeia o `make ci` daquela célula.")
         return 0

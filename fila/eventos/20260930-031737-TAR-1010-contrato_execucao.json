@@ -1,0 +1,80 @@
+{
+  "arquivo": "20260930-031737-TAR-1010-contrato_execucao",
+  "tarefa": "TAR-1010",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T03:17:37.626275+00:00",
+  "quem": "codex-pme-fontes-diagnosticos-retomada",
+  "contrato": {
+    "plano": "docs/decisoes/CAMINHO-DOURADO.md#Integrar-publicar-e-aceitar",
+    "versao": 2,
+    "objetivo": "Atualizar nove diagnósticos operacionais para apontarem aos procedimentos vigentes.",
+    "entregaveis": [
+      "ci/pr.py",
+      "ci/fila.py",
+      "ci/muralha_da_espera.py",
+      "ci/esperar.py",
+      "ci/guarda_dos_guardas.py",
+      "ci/catraca_de_testes.py",
+      "ci/mergear.py",
+      "ci/ci.py",
+      "ci/contract_freeze.py",
+      "fila/eventos/20260930-014113-TAR-1010-reivindicada.json",
+      "ci/tests/test_espera.py"
+    ],
+    "escopo_incluido": [
+      "Alterar somente literais de mensagens nos nove arquivos autorizados.",
+      "Adicionar registros oficiais exigidos pelo rito e contrato.",
+      "Alinhar somente as asserções de referência normativa do teste de recusa de --pouso com a mensagem vigente; manter a recusa e os requisitos já cobrados."
+    ],
+    "nao_objetivos": [
+      "Não alterar comportamento de produção, regras de recusa, validações, permissões, imports, contratos de API ou arquivos fora do escopo desta versão.",
+      "Não enfraquecer o teste: preservar retorno não zero, indicação de ci/mergear.py e o número de PR citado."
+    ],
+    "restricoes": [
+      "Manter comandos, códigos de saída, exigências e propriedade protegida.",
+      "Referenciar somente fontes e âncoras vigentes verificadas.",
+      "Preservar histórico, base integrada e alterações de outras tarefas.",
+      "Em ci/tests/test_espera.py, substituir a expectativa RITOS pela âncora CAMINHO-DOURADO.md, seção “Integrar, publicar e aceitar”, mantendo todas as demais asserções."
+    ],
+    "decisoes_aprovadas": [
+      "Pacote offline TAR-1010 SHA-256 AD173B8520AC2BBFC0A898414F59B7DDAF444194B8FBD1B6B68E77BF4DB9EB37 autorizado após testes.",
+      "O mantenedor autorizou a correção causal do teste após a suíte identificar uma expectativa histórica incompatível com a mensagem aprovada."
+    ],
+    "etapas": [
+      "Registrar contrato antes da edição.",
+      "Aplicar exatamente os nove arquivos autorizados.",
+      "Provar AST fora de strings idêntico e Black 24.10.0 aprovado.",
+      "Atualizar as duas asserções da referência normativa no único teste causal autorizado; manter os controles de recusa e orientação operacional.",
+      "Executar testes focais e consumo CLI real.",
+      "Executar rito oficial make pr e acompanhar integração e publicação."
+    ],
+    "criterios_entrada": [
+      "TAR-1010 reivindicada em codex/ci/pme-fontes-diagnosticos.",
+      "Cinco registros de origem preservados e sem colisões.",
+      "Pacote e hashes conferidos."
+    ],
+    "criterios_aceite": [
+      "Nove diagnósticos apontam fontes atuais existentes.",
+      "Diff de código altera apenas strings; AST restante permanece equivalente.",
+      "Black 24.10.0 sem diffs.",
+      "Testes focais e consumo CLI passam.",
+      "Rito oficial registra recibo e eventos.",
+      "O teste de recusa para --pouso continua exigindo retorno não zero, ci/mergear.py e PR 447, e exige a âncora CAMINHO-DOURADO.md vigente."
+    ],
+    "evidencias_exigidas": [
+      "Hash do ZIP aprovado.",
+      "Prova AST e Black.",
+      "Saída dos testes focais e CLI.",
+      "Recibo/eventos do rito e status dos portões.",
+      "Resultado do teste causal ci/tests/test_espera.py e da suíte focal após o ajuste."
+    ],
+    "condicao_encerramento": "PR integrado pelos portões e consumidor real conferido na revisão integrada/publicada.",
+    "limites_autonomia": "Escrita apenas nos nove arquivos de produção aprovados, em ci/tests/test_espera.py somente nas asserções de referência normativa, e nos registros oficiais do rito; qualquer outra exigência deve ser devolvida à coordenação.",
+    "acoes_do_mantenedor": "Autorização específica já recebida para adotar este pacote e publicar após testes; nenhuma nova ação necessária dentro do escopo.",
+    "historico_versao": {
+      "versao_anterior": 1,
+      "evento_anterior": "20260930-014250-TAR-1010-contrato_execucao.json",
+      "motivo": "O teste focal exigiu alinhar sua expectativa de fonte normativa à mensagem vigente; nenhuma regra de recusa muda."
+    }
+  }
+}

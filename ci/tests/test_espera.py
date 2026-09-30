@@ -341,7 +341,8 @@ def test_a_espera_que_nao_devia_existir_recusa_e_ensina_o_caminho(alvo, tmp_path
     assert proc.returncode != 0, saida
     assert "ci/mergear.py" in saida, "a recusa precisa ENSINAR o caminho certo"
     assert "447" in saida, "a recusa precisa citar o PR de quem a leu"
-    assert "RITOS" in saida
+    assert "CAMINHO-DOURADO.md, “Integrar, publicar e aceitar”" in saida
+    assert "CONSTITUICAO.md, Lei 11" in saida
 
 
 @pytest.mark.parametrize("alvo", sorted(ESPERAS_QUE_NAO_DEVIAM_EXISTIR))
