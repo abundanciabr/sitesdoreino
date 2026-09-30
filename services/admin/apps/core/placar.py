@@ -17,7 +17,7 @@ número de fichas:
 ## As leis desta tela, e de onde vêm
 
 1. **Número sem cartão não aparece** (plano, §2). O cartão de uma métrica é um
-   arquivo em `painel/cartoes/<nome>.json` que diz o que o número é, de onde
+   arquivo em `apps/core/cartoes/<nome>.json` que diz o que o número é, de onde
    vem, quem tem o direito de declará-lo e qual métrica o segura (o "par").
    Cartão ausente ou inválido ⇒ a página abre, DIZ o que faltou, e não mostra
    o número. Guarda: `tests/test_placar.py`.
@@ -40,7 +40,7 @@ número de fichas:
 
 O **alvo** (Y), a **data** e a **partida** moram no cartão, porque são
 parâmetros da régua, versionados por PR. O FATO de que o mantenedor decidiu
-mora no livro (`painel/registros/`, tipo `decisao`). A meta do mês
+mora no livro de ocorrências (tipo `decisao`). A meta do mês
 (`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da régua do ciclo que
 cai no mês; ele fixa um número quando quiser.
 
@@ -72,11 +72,13 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .clients import AlunosClient, CatalogoClient
-from .painel import diretorio_do_painel
 
-#: A subpasta do painel onde moram os cartões. Viaja para a imagem junto com o
-#: resto de `painel/` (o `deploy-celula` copia a pasta inteira).
+#: Onde moram os cartões: `apps/core/cartoes/`, dentro da célula. Viajam para a
+#: imagem junto com o código, então a pasta sempre existe no deploy.
 PASTA_DOS_CARTOES = "cartoes"
+
+# `apps/core/placar.py` → `apps/core` → `apps` → a raiz da célula.
+RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 
 #: A Meta Crucialmente Importante nº 1 (o ciclo), a barra do mês, o par que
 #: segura as duas, e o total de alunos que desceu ao andar 1.
@@ -147,7 +149,8 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 
 #: Os blocos da capa, na ordem do plano (§3), e o TETO: a capa se recusa a
 #: crescer. Realidade nova entra como cartão, não como bloco. O guarda mede o
-#: template (`tests/test_capa.py`): cada `titulo-de-bloco` é um bloco.
+#: template (`tests/test_capa.py`): cada `titulo-de-bloco` é um bloco. O teto é
+#: o do plano, e não a contagem de hoje: a vaga que sobra é para realidade nova.
 BLOCOS_DA_CAPA = (
     "a barra do mês e a meta grande",
     "as estrelas-guia",
@@ -157,18 +160,13 @@ BLOCOS_DA_CAPA = (
     "o par que segura a meta",
     "o que mudou (degrau 6)",
     "o laboratório (degrau 12)",
-    "precisa de você e os robôs (atalhos)",
 )
 TETO_DE_BLOCOS = 9
 
 
-def diretorio_dos_cartoes() -> Path | None:
-    """`painel/cartoes/`, embutida ou de checkout; `None` se não veio."""
-    painel = diretorio_do_painel()
-    if painel is None:
-        return None
-    pasta = painel / PASTA_DOS_CARTOES
-    return pasta if pasta.is_dir() else None
+def diretorio_dos_cartoes() -> Path:
+    """`apps/core/cartoes/`, a pasta dos cartões que a célula carrega consigo."""
+    return RAIZ_DA_CELULA / "apps" / "core" / PASTA_DOS_CARTOES
 
 
 def validar(cartao: object) -> list[str]:
@@ -352,11 +350,9 @@ def _data(texto: object) -> dt.date | None:
 def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[str]]:
     """`(cartao, problemas)`. Cartão só volta se for válido; senão, `None` + o porquê."""
     pasta = pasta if pasta is not None else diretorio_dos_cartoes()
-    if pasta is None:
-        return None, ["a pasta `painel/cartoes/` não veio nesta versão do site"]
     caminho = pasta / f"{nome}.json"
     if not caminho.is_file():
-        return None, [f"o cartão `{nome}` não existe em `painel/cartoes/`"]
+        return None, [f"o cartão `{nome}` não existe em `apps/core/cartoes/`"]
     try:
         cartao = json.loads(caminho.read_text(encoding="utf-8"))
     except (OSError, ValueError) as erro:
@@ -640,10 +636,11 @@ def site_de(request) -> str | None:
 def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     """Tudo que o placar mostra, calculado UMA vez por requisição.
 
-    Existe como função porque DUAS telas leem o mesmo placar: `/admin/placar/`
-    e o modo reunião (`/admin/reuniao/`, degrau 3). Duas montagens à mão
-    divergiriam no primeiro bloco novo, e o mantenedor leria a que abrisse
-    primeiro sem saber que a outra discorda.
+    Existe como função porque mais de uma tela lê o mesmo placar:
+    `/admin/placar/`, o fechamento do ciclo (`fechamento.py`) e a rede de
+    talentos (`talentos.py`). Montagens à mão divergiriam no primeiro bloco
+    novo, e o mantenedor leria a que abrisse primeiro sem saber que as outras
+    discordam.
 
     `site_id` é opcional e não tem default de mentira: sem ele a linha da
     memória diz que não soube de qual site perguntar, e todo o resto da tela
@@ -683,28 +680,10 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     os_doze = None
     estrelas = None
     confianca_dos_doze = None
-    latencias = None
     mudancas = None
-    cartoes_de_latencia = {
-        nome: ler_cartao(nome, pasta)[0]
-        for nome in (
-            "latencia-de-decisao",
-            "latencia-de-execucao",
-            "latencia-de-aprendizado",
-        )
-    }
-    # O import é tardio pelo mesmo motivo dos de cima (o ciclo se fecha na view),
-    # mas a LEITURA sai de dentro do `if meta`: "o que está sendo feito por este
-    # número" não depende de o cartão da meta existir.
-    from . import elo as elo_
-    from . import latencias as lat_
-
-    a_fila = lat_.ler_a_fila()
-    trabalho = elo_.trabalho_por_cartao(a_fila)
-    declaracao = elo_.resumo_da_declaracao(a_fila)
 
     # FORA do `if meta`, e devolvido no contexto: o livro é caro de ler (uma
-    # varredura de `painel/registros/`, com um `read_text` por arquivo) e as
+    # varredura de `apps/core/registros/`, com um `read_text` por arquivo) e as
     # telas que montam o placar E olham o livro pagariam essa conta duas vezes
     # na mesma requisição. Quem quiser os registros já lidos os pega daqui, e
     # `None` continua querendo dizer "o livro não chegou até esta imagem" para
@@ -748,7 +727,6 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         )
         confianca_dos_doze = doze_.confianca(os_doze)
         estrelas = [d for d in os_doze if d["nome"] in doze_.ESTRELAS]
-        latencias = lat_.medir_as_latencias(registros, a_fila, hoje)
 
         from . import mudancas as mud_
 
@@ -758,12 +736,10 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
                 "contagem": contagem,
                 "direcao": direcao,
                 "doze": os_doze,
-                "latencias": latencias,
                 "meta": meta,
                 "total": total,
                 "cartao_pedidos": cartao_pedidos,
                 "cartao_48h": cartao_48h,
-                "cartoes_de_latencia": cartoes_de_latencia,
             },
             registros,
             hoje,
@@ -779,7 +755,6 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         "medicao": med_.a_memoria(site_id, timezone.now()),
         "registros": registros,
         "mudancas": mudancas,
-        "latencias": latencias,
         "doze": os_doze,
         "estrelas": estrelas,
         "confianca_dos_doze": confianca_dos_doze,
@@ -804,6 +779,4 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         "recusas_do_caminho_da_venda": recusas_do_caminho_da_venda,
         "direcao": direcao,
         "compromissos": compromissos,
-        "trabalho": trabalho,
-        "declaracao": declaracao,
     }

@@ -24,8 +24,8 @@ com o mesmo defeito de raiz (a peça dependendo de alguém lembrar).
 
 `ROTAS_PUBLICAS` é escrita à mão, e lista escrita à mão apodrece. O guarda em
 `tests/test_rodape_publico.py` a compara com as rotas que
-`painel/mapa-do-site.json` declara públicas nesta célula — o mesmo mapa que já
-tem varredor provando que ele não mente sobre o roteamento. Página pública nova
+`apps/core/mapa-do-site.json` declara públicas nesta célula, o mesmo mapa que
+`tests/test_mapa_do_site.py` já confere contra o roteamento. Página pública nova
 na `admin` reprova o PR até entrar aqui.
 
 ## As páginas de erro NÃO entram, e é medição, não esquecimento

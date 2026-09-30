@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-076-painel-auditar-a-medicao-pareto-do-capitulo-1",
+  tipo: "medicao",
+  quando: "2026-09-11",
+  titulo: "painel: auditar a medição Pareto do capítulo 1",
+  detalhe: "A auditoria agora embarca o programa independente, o comando exato, testes de independência e mutações que tornam os números reproduzíveis.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1572. Validação local: árvore 07b19316103954a82461ffe183b7acb2eb27bda3; commit c1b5cf860a8d418804b1057597d472e9b1f930fb; 8 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-348",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

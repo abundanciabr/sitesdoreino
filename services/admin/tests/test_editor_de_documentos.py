@@ -22,6 +22,12 @@ este arquivo trava:
    daqui: a auditoria entra no MESMO PR da primeira escrita, nunca depois. O
    histórico de versões, que é a outra metade do que substituiu o `git log`
    destes textos, vem no PR seguinte.
+
+6. **O pedido privado da reunião fica fora da biblioteca.** O banco de produção
+   pode ainda ter linhas com o prefixo `pedido-reuniao-`: texto privado que não
+   é documento. Elas não aparecem em lista nenhuma, nenhuma porta por endereço
+   as abre, altera ou publica, e o editor recusa criar um documento com esse
+   prefixo.
 """
 
 import httpx
@@ -355,6 +361,89 @@ def test_uma_gravacao_recusada_nao_deixa_rastro_de_nada():
     _criar(_dentro(), titulo="", corpo="texto preservado")
 
     assert Registro.objects.count() == 0
+
+
+# ------------------ 6. o prefixo `pedido-reuniao-` é reservado
+
+
+def _pedido_privado() -> Documento:
+    """Uma linha como as que o banco de produção pode ainda ter.
+
+    PÚBLICA de propósito: é o pior caso, e o que o prefixo precisa conter mesmo
+    assim. O prefixo vai por extenso, e não lido da constante, porque é o nome
+    gravado nas linhas: trocar a constante sem trocar as linhas devolveria os
+    pedidos à biblioteca.
+    """
+    return Documento.objects.create(
+        nome="pedido-reuniao-3f2a",
+        titulo="Pedido de segunda",
+        corpo="Texto privado do pedido",
+        publico=True,
+    )
+
+
+@respx.mock
+@pytest.mark.parametrize("lista", ["/docs/", "/documentos/"])
+def test_o_pedido_privado_nao_aparece_nas_listas_da_biblioteca(lista):
+    """As duas listas que existem: a pública e a do admin. O documento comum ao
+    lado prova que a página não ficou sem o pedido por estar vazia."""
+    Documento.objects.create(nome="guia", titulo="Guia do aluno", publico=True)
+    _pedido_privado()
+
+    corpo = _dentro().get(lista).content.decode()
+
+    assert "Guia do aluno" in corpo
+    assert "Pedido de segunda" not in corpo
+    assert "pedido-reuniao-" not in corpo
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "metodo,caminho",
+    [
+        ("get", "/docs/{}"),
+        ("get", "/documentos/{}"),
+        ("get", "/documentos/{}/editar"),
+        ("get", "/documentos/{}/versoes"),
+        ("post", "/documentos/{}/salvar"),
+        ("post", "/documentos/{}/publicar"),
+        ("post", "/documentos/{}/arquivar"),
+        ("post", "/documentos/{}/desarquivar"),
+        ("post", "/documentos/{}/restaurar"),
+        ("post", "/documentos/{}/apagar"),
+    ],
+)
+def test_o_pedido_privado_nao_abre_nem_muda_pela_biblioteca(metodo, caminho):
+    """Toda porta por endereço da lista abaixo dá 404, como num endereço que não
+    existe, e a linha inteira fica como estava."""
+    pedido = _pedido_privado()
+    formulario = {
+        "titulo": "Texto exposto",
+        "corpo": "Não pode entrar",
+        "confirmacao": pedido.nome,
+    }
+    antes = Documento.objects.values().get(pk=pedido.pk)
+
+    resposta = getattr(_dentro(), metodo)(caminho.format(pedido.nome), formulario)
+
+    assert resposta.status_code == 404
+    assert Documento.objects.values().get(pk=pedido.pk) == antes
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "campos",
+    [{"nome": "pedido-reuniao-3f2a"}, {"titulo": "Pedido Reunião 3F2A", "nome": ""}],
+    ids=["endereco-digitado", "endereco-vindo-do-titulo"],
+)
+def test_a_biblioteca_recusa_criar_no_prefixo_do_pedido_privado(campos):
+    """O guarda confere o endereço já aparado, então o título com acento e
+    maiúscula chega no mesmo prefixo e também é recusado."""
+    resposta = _criar(_dentro(), **campos)
+
+    assert resposta.status_code == 422
+    assert "são reservados. Escolha outro endereço" in resposta.content.decode()
+    assert Documento.objects.count() == 0
 
 
 # ------------------------------------------------- a tela, de ponta a ponta

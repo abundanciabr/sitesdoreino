@@ -270,8 +270,8 @@ def documento_criar(request):
             rascunho,
             criando=True,
             erro=(
-                "Esse endereço é reservado aos pedidos da reunião. Escolha "
-                "outro endereço para o documento."
+                f"Endereços que começam com {documentos.PREFIXO_PEDIDO_REUNIAO!r} "
+                "são reservados. Escolha outro endereço para o documento."
             ),
             status=422,
         )

@@ -32,9 +32,9 @@ ausência dele.
 
 Aqui embaixo, cada etapa lista só o **endereço** das portas que já a servem
 hoje. O nome de cada porta, a explicação e o link clicável saem de
-`painel/mapa-do-site.json`, que é a única fonte de endereços do projeto — o
-`ci/mapa_do_site.py` a confere em todo PR, nos dois sentidos (rota sem entrada
-no mapa reprova, entrada sem rota também).
+`apps/core/mapa-do-site.json`, que é a fonte de endereços desta tela: o
+`tests/test_mapa_do_site.py` o confere em todo PR contra as rotas da célula
+(entrada sem rota reprova).
 
 É a lei anti-duplicação do `CLAUDE.md` aplicada: se o nome de uma tela mudasse,
 uma cópia dele aqui continuaria mostrando o nome velho, e ninguém saberia qual
@@ -60,7 +60,7 @@ mantenedor leria a que abrisse primeiro sem saber que a outra discorda.
 
 Não guarda lista própria de "o que já está pronto" nem de "o que falta". Isso é
 superfície paralela de acompanhamento, e o `CLAUDE.md` a proíbe: o que está
-pronto se lê no livro de ocorrências, calculado, em `/admin/painel/`.
+pronto mora no livro de ocorrências, e não aqui.
 """
 
 from __future__ import annotations
@@ -131,7 +131,7 @@ NAO_RESPONDEU = "nao-respondeu"
 # As seis peças da máquina, na ordem em que uma pessoa as atravessa: de quem
 # nunca ouviu falar da escola até quem já está dentro dela.
 #
-# `portas` são os endereços EXATOS do `painel/mapa-do-site.json`. Escrever o
+# `portas` são os endereços EXATOS do `apps/core/mapa-do-site.json`. Escrever o
 # endereço e nada mais é o que mantém esta lista pequena e verdadeira: tudo o
 # que se pode medir, o mapa mede.
 #
@@ -451,7 +451,7 @@ def vereditos(site_id: "str | None") -> dict:
 
 
 def _mapa_por_endereco() -> "dict | None":
-    """O `painel/mapa-do-site.json` indexado pelo endereço, ou `None`.
+    """O `apps/core/mapa-do-site.json` indexado pelo endereço, ou `None`.
 
     `None` é *"não consegui ler o mapa"*, e nunca um dicionário vazio: um vazio
     faria toda porta desta tela virar buraco, e o mantenedor leria "a máquina

@@ -49,9 +49,8 @@ from pathlib import Path
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 
 # A ordem importa: em produção só a primeira existe; num checkout só a segunda.
-# Se um dia as duas existirem na mesma máquina, a embutida vence — é a que
-# produção serve, e teste que mede outra coisa mente. Mesmo desenho de
-# `painel.py::CANDIDATOS`.
+# Se um dia as duas existirem na mesma máquina, a embutida vence: é a que
+# produção serve, e teste que mede outra coisa mente.
 CANDIDATOS = (
     RAIZ_DA_CELULA / "documentos_embutidos",
     RAIZ_DA_CELULA.parent.parent / "documentos",
@@ -68,9 +67,9 @@ FORA_DA_LISTA = frozenset({"LEIA-ME"})
 #: pasta; mesmo assim `_arquivo` confere o resultado resolvido.
 RE_NOME = re.compile(r"^[a-z0-9-]+$")
 
-#: Pedidos da reunião usam a tabela de documentos como armazenamento privado,
-#: mas não pertencem à biblioteca editorial. O prefixo separa as duas famílias
-#: em toda porta de leitura e escrita da biblioteca.
+#: Linhas com este prefixo são pedidos de reunião antigos, guardados como texto
+#: privado nesta tabela. Não pertencem à biblioteca editorial: o prefixo as
+#: mantém fora de toda porta de leitura e escrita dela.
 PREFIXO_PEDIDO_REUNIAO = "pedido-reuniao-"
 
 #: O maior endereço que as telas desta área aceitam. Casa com o `max_length` da

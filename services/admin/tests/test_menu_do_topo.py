@@ -5,8 +5,8 @@ O que estes guardas protegem:
 1. **Esta tela não guarda nada.** Ela lê e grava no `catalogo`, que é onde dado
    de site mora. Uma cópia aqui seria o mesmo fato em dois lugares, e no dia em
    que as duas discordassem o site mostraria uma coisa e a tela outra.
-2. **A lista de páginas sai de `painel/mapa-do-site.json`**, o mesmo arquivo de
-   `/admin/mapa/`. Uma lista própria envelheceria em silêncio (a Classe 8).
+2. **A lista de páginas sai de `apps/core/mapa-do-site.json`**, o mesmo arquivo
+   de `/admin/mapa/`. Uma lista própria envelheceria em silêncio (a Classe 8).
 3. **Cada gesto grava o documento inteiro**, porque a coerência é do conjunto:
    apagar uma versão sem apagar as regras que apontavam para ela produziria uma
    configuração que o catálogo (com razão) recusa.

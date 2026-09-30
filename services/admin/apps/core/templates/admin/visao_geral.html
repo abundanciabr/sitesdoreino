@@ -20,13 +20,6 @@
     </div>
   </div>
 
-  {% comment %}
-  Os DOIS painéis, e o nome de cada um é o que os separa. Até 28/08/2026 o
-  link de cima se chamava "Abrir o painel da escola" e levava ao painel do
-  SISTEMA — o livro de ocorrências da construção da plataforma. O mantenedor
-  clicava esperando ver alunos e via merges. Renomear resolveu metade; a outra
-  metade foi a escola ganhar painel próprio, ao lado.
-  {% endcomment %}
   <h2 class="titulo-de-bloco">Os painéis</h2>
   <div class="cartoes">
     {% comment %}
@@ -43,17 +36,9 @@
     <a class="cartao porta" href="{% url 'pendencias' %}">
       <div class="rotulo">Ver o que está esperando você &rarr;</div>
       <div class="nota">
-        As filas do site num lugar só: quem quer entrar na escola, o que espera
-        a sua assinatura e as decisões paradas. Cada linha diz há quanto tempo
-        espera e leva para onde se resolve.
-      </div>
-    </a>
-    <a class="cartao porta" href="{% url 'painel' %}">
-      <div class="rotulo">Abrir o painel do sistema &rarr;</div>
-      <div class="nota">
-        Como a plataforma está sendo construída: o que ficou pronto, o que
-        falhou e o que espera por você. O mesmo painel que você abre no
-        computador, sempre atualizado, aqui dentro.
+        Quem quer entrar na escola e há quanto tempo espera. As filas que a tela
+        ainda não enxerga aparecem por extenso, com o endereço de cada uma,
+        para você abrir à mão.
       </div>
     </a>
     <a class="cartao porta" href="{% url 'escola' %}">
@@ -71,38 +56,21 @@
     <a class="cartao porta" href="{% url 'caixa' %}">
       <div class="rotulo">Abrir a Caixa de Sugestões &rarr;</div>
       <div class="nota">
-        O que os alunos pediram, e o que está esperando por você para andar —
-        uma decisão por vez.
+        O que os alunos pediram, e o que está esperando por você para andar.
+        Uma decisão por vez.
       </div>
     </a>
     {% comment %}
     A quarta porta (30/08/2026), a pedido do mantenedor. Ela não é um painel de
-    acompanhamento como as três de cima — é a planta da casa: que endereços o
-    site tem, e o que cada um é. Entra na mesma grade porque a decisão de "uma
-    porta só" vale para ela também.
+    acompanhamento como as duas de cima, a escola e a Caixa de Sugestões. É a
+    planta da casa: que endereços o site tem, e o que cada um é. Entra na mesma
+    grade porque a decisão de "uma porta só" vale para ela também.
     {% endcomment %}
     <a class="cartao porta" href="{% url 'mapa_do_site' %}">
       <div class="rotulo">Ver o mapa do site &rarr;</div>
       <div class="nota">
         Todo endereço que o site tem hoje, agrupado por quem consegue abrir:
         visitante, aluno, você, e as portas que só as máquinas usam.
-      </div>
-    </a>
-    {% comment %}
-    O ranking das IAs (17/09/2026), a pedido dele. Vizinha do mapa do site
-    porque é o mesmo tipo de tela: não é acompanhamento do produto, é retrato
-    de como a casa está sendo construída, e por quem.
-
-    Entra na grade pela lição que o editor de documentos deixou logo abaixo: um
-    botão que ninguém encontra é uma funcionalidade que não existe. Esta aqui é
-    a tela que decide qual IA continua no projeto, e a decisão não pode depender
-    de alguém lembrar o endereço de cor.
-    {% endcomment %}
-    <a class="cartao porta" href="{% url 'ranking_das_ias' %}">
-      <div class="rotulo">Ver o ranking das IAs &rarr;</div>
-      <div class="nota">
-        Quanto cada uma das três IAs publicou de verdade, e quanto escreveu para
-        publicar. Os números saem do Git, não do que cada uma diz de si.
       </div>
     </a>
     {% comment %}
@@ -211,7 +179,7 @@
     A oitava porta (03/09/2026), a pedido do mantenedor depois de um caso real:
     o botão de ligar os avisos falhava no navegador dele com o servidor verde,
     e não havia como saber de qual lado sem entrar na VPS. Um botão que
-    ninguém encontra é uma funcionalidade que não existe — mesma lição das
+    ninguém encontra é uma funcionalidade que não existe. Mesma lição das
     outras sete portas desta grade.
     {% endcomment %}
     <a class="cartao porta" href="{% url 'avisos' %}">
@@ -221,32 +189,16 @@
         para quantos aparelhos ele chegou.
       </div>
     </a>
-    {% comment %}
-    A nona porta (17/09/2026). A Reunião existe desde o degrau 3 do plano do
-    painel de gestão — a pauta de segunda-feira que `apps/core/reuniao.py`
-    monta — mas não tinha porta nesta capa: quem não soubesse o endereço de
-    cor não chegava nela. Mesma lição das outras oito: um botão que ninguém
-    encontra é uma funcionalidade que não existe.
-    Lei: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md.
-    {% endcomment %}
-    <a class="cartao porta" href="{% url 'reuniao' %}">
-      <div class="rotulo">Abrir a pauta da reunião &rarr;</div>
-      <div class="nota">
-        Os oito passos da sua reunião de segunda-feira, lendo o mesmo placar
-        que a escola usa e terminando num pedido pronto para você mandar ao
-        robô.
-      </div>
-    </a>
   </div>
 
   {% comment %}
   Estado vazio HONESTO, e ele e deliberado: no dia 1 tudo aqui seria zero, e
   uma parede de zeros sem explicacao e lida como "esta tudo quebrado". A
-  cadeira de produto apontou isso na auditoria — todo numero desta area nasce
+  cadeira de produto apontou isso na auditoria. Todo numero desta area nasce
   com a frase que diz o que ele significa.
   {% endcomment %}
   <p class="aviso espaco-28">
-    <b>Ainda não há métricas aqui — e isso é o esperado.</b>
+    <b>Ainda não há métricas aqui, e isso é o esperado.</b>
     Esta página é o primeiro degrau: ela existe para provar que a porta funciona
     (quem não está na lista não chega até aqui). Os painéis de números vêm na
     próxima fase, um por vez, e cada um só aparece depois que a parte do sistema

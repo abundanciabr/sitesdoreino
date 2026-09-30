@@ -10,7 +10,6 @@ from apps.core.modelos_de_paginas import (
     modelos_de_paginas,
 )
 from apps.core.modelo_series_flp import modelo_series_flp, modelo_series_flp_conteudo
-from apps.core.diagnostico import diag_json
 from apps.core.analise_da_caixa import analise, desfazer_fusao, fundir
 from apps.core.caixa import (
     apagar_ideia,
@@ -25,7 +24,6 @@ from apps.core.caixa import (
     quem_espera,
     travessia,
 )
-from apps.core.fila_do_painel import fila_json
 from apps.core.documento_em_pagina import (
     doc_publico_moldura,
     documento_admin_moldura,
@@ -90,7 +88,6 @@ from apps.core.paginas import (
     pagina_de_venda_salvar,
 )
 from apps.core.experimentos import experimento_iniciar, experimento_novo, experimentos
-from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import (
     plano_mestre,
     plano_mestre_documento,
@@ -98,9 +95,7 @@ from apps.core.planos_para_ia import (
     plano_publico,
     planos_indice,
 )
-from apps.core.painel import painel, painel_arquivo
 from apps.core.pendencias import pendencias
-from apps.core.ranking_das_ias import ranking_das_ias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -111,10 +106,6 @@ from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_exp
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.resultado_do_experimento import resultado_do_experimento
-from apps.core.reuniao import reuniao, pedido_reuniao
-from apps.core.robos import excluir_tarefa, robos
-from apps.core.appmax import appmax
-from apps.core.comunidade import comunidade
 from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
@@ -227,65 +218,11 @@ urlpatterns = [
     # (`apps/core/porta.py`): maquina nao tem cookie para apresentar, e passar
     # por la trocaria o 401 do contrato por um 302 para a tela de login.
     path("interno/", api.urls),
-    # O PAINEL DO SISTEMA, vivo (`apps/core/painel.py`). A barra final é
-    # ESTRUTURAL, não estilo: o HTML pede `manifesto.js` e `registros/*.js` por
-    # caminho RELATIVO, e sem ela o navegador os buscaria um nível acima, na
-    # raiz da área — a página abriria vazia, sem erro nenhum. Quem manda
-    # `/painel` para `/painel/` é o APPEND_SLASH do CommonMiddleware, que já
-    # está na cadeia.
-    path("painel/", painel, name="painel"),
-    # Pelo mesmo motivo da linha acima: medição, não arquivo em disco — a rota
-    # genérica abaixo responderia 404 por ela. Aqui o SERVIDOR conta o que
-    # aconteceu com ele (apps/core/medidor.py): quantas vezes perguntou à
-    # identidade, quantas estourou o tempo, quantas ela recusou, e a latência.
-    # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
-    path("painel/diag.json", diag_json, name="painel_diag"),
-    # Pelo mesmo motivo das duas linhas acima: a fila dos robôs chegando à aba
-    # "Prioridades" (`apps/core/fila_do_painel.py`, 07/09/2026) — medição do que
-    # o build já materializou, não arquivo em disco; a rota genérica abaixo
-    # responderia 404 por ela.
-    path("painel/fila.json", fila_json, name="painel_fila"),
-    re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
-    # O MAPA DO SITE (`apps/core/mapa_do_site.py`, 30/08/2026) — todo endereço
-    # que a plataforma tem, numa página só, em português.
-    #
-    # FORA do prefixo `painel/`: a rota genérica logo acima engoliria qualquer
-    # irmão dele (ela casa `painel/<qualquer coisa>`), e este mapa não é uma
-    # peça do painel — é uma tela da área, vizinha da escola e da Caixa.
-    #
-    # Barra final pela convenção das outras telas; quem chega sem ela é
-    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
     path("mapa/", mapa_do_site, name="mapa_do_site"),
-    # A CENTRAL DE PENDENCIAS (`apps/core/pendencias.py`, 07/09/2026), degrau 1
-    # de `documentos/pendencias-e-conferencia-por-pares.md`. A portaria: tudo
-    # que espera pelo mantenedor numa tela so.
-    #
-    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e do menu logo
-    # abaixo: a rota generica `painel/<qualquer coisa>` engoliria qualquer
-    # irmao dela. Esta e uma tela da area, nao uma peca do painel, ainda que
-    # LEIA um numero de dentro dele.
-    #
-    # Barra final pela convencao das outras telas; quem chega sem ela e
-    # redirecionado pelo APPEND_SLASH, que ja esta na cadeia.
     path("pendencias/", pendencias, name="pendencias"),
-    # O PLACAR DAS IAS (`apps/core/ranking_das_ias.py`, 17/09/2026) — quanto cada
-    # IA da tríade publicou em `main` e quanto escreveu para publicar. Quem mede
-    # é `ci/ranking_das_ias.py`, contra `origin/main`; esta tela só ordena.
-    #
-    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e da central acima: a
-    # rota genérica `painel/<qualquer coisa>` engoliria qualquer irmã dela, e
-    # esta é uma tela da área, ainda que LEIA um arquivo publicado com o painel.
-    #
-    # Barra final pela convenção das outras telas; quem chega sem ela é
-    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
-    path("ranking-ias/", ranking_das_ias, name="ranking_das_ias"),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.
-    #
-    # FORA do prefixo `painel/` pelo mesmo motivo do mapa acima: a rota
-    # genérica `painel/<qualquer coisa>` engoliria qualquer irmão dela, e esta
-    # não é uma peça do painel — é uma tela da área, vizinha do mapa.
     #
     # Barra final pela convenção das outras telas; quem chega sem ela é
     # redirecionado pelo APPEND_SLASH, que já está na cadeia.
@@ -364,12 +301,6 @@ urlpatterns = [
         economia_mudar_degrau,
         name="economia_mudar_degrau",
     ),
-    # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
-    # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
-    # `apps/core/porta.py`). Nasce fora do prefixo `painel/` de propósito: um
-    # nome de rota que começa com `painel/` sinaliza "atrás da porta" em todo
-    # o resto deste arquivo, e misturar os dois seria o tipo de detalhe que
-    # engana quem lê o diff rápido demais.
     # A AREA DE DOCUMENTOS (`DECISAO-a-area-de-documentos.md`, 29/08/2026).
     #
     # DOIS prefixos, e a diferenca entre eles nao e estilo: esta celula roda sob
@@ -562,17 +493,14 @@ urlpatterns = [
         name="texto_restaurar",
     ),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/apagar$", texto_apagar, name="texto_apagar"),
-    # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — e as duas
-    # linhas vêm ANTES das do mapa, porque a ordem é o que faz funcionar: a rota
-    # genérica de baixo (`^mapa-ia/([\w.-]+)$`) casaria `mapa-ia/planos` e
-    # tentaria servir um arquivo com esse nome. Com estas duas na frente, o
-    # índice responde e a genérica nunca vê o caminho.
+    # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — duas
+    # rotas, e só duas: `tests/test_planos_para_ia.py` reprova rota nova sob o
+    # prefixo, porque tudo o que mora nele responde sem crachá.
     #
     # Mora sob `/mapa-ia/` de propósito: o gateway já roteia esse prefixo
-    # (`PathPrefix`), então a área nasceu sem tocar em `infra/` e sem
-    # `deploy-infra`. O que ela NÃO herda é a isenção — `/mapa-ia/` continua
-    # com a lista exata de `CAMINHOS_ISENTOS`, e estes caminhos têm prefixo
-    # próprio na porta (`PREFIXO_PUBLICO_DOS_PLANOS`).
+    # (`PathPrefix`), sem `infra/` nem `deploy-infra`. É o único caminho de
+    # `/mapa-ia/` que abre sem crachá, pelo prefixo próprio da porta
+    # (`PREFIXO_PUBLICO_DOS_PLANOS`); o resto cai no login.
     path("mapa-ia/planos/", planos_indice, name="planos_indice"),
     re_path(
         # O `(\.md)?` no fim e opcional e a segunda diferenca medida contra o
@@ -583,8 +511,6 @@ urlpatterns = [
         plano_publico,
         name="plano_publico",
     ),
-    path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
-    re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),
     path("plano-mestre/", plano_mestre, name="plano_mestre"),
     path("plano-mestre/mtime.json", plano_mestre_mtime, name="plano_mestre_mtime"),
     re_path(
@@ -592,11 +518,7 @@ urlpatterns = [
         plano_mestre_documento,
         name="plano_mestre_documento",
     ),
-    # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA
-    # acima. Os dois são "painéis" e é por isso que a separação precisa estar
-    # no endereço, e não só no texto do link: `/painel/` mostra como a
-    # plataforma está sendo construída (o livro de ocorrências); `/escola/`
-    # mostra a escola funcionando — alunos, e o que vier depois deles.
+    # A ESCOLA — a escola funcionando: alunos, e o que vier depois deles.
     #
     # Barra final nas duas, e aqui ela é só convenção (nenhuma delas pede
     # arquivo por caminho relativo) — mas convenção MISTURADA é o que produz
@@ -607,34 +529,18 @@ urlpatterns = [
     # dele: "nao vamos espalhar paineis ou gestao por ai, tudo sera em /admin".
     # Lei: docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
     #
-    # NAO fica sob /painel/: aquele prefixo ja tem dono (o livro do projeto, e a
-    # rota generica de arquivo acima engoliria qualquer irmao). Fica ao lado de
-    # /escola/, na mesma gramatica — e com barra final, pela mesma convencao.
-    #
     # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
     # contrato congelado (contracts/sugestoes.openapi.yaml).
     path("caixa/", mesa, name="caixa"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
-    # A aba 4 — "Os robôs": o quadro da fila de trabalho (fila/ na raiz),
-    # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
-    # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
-    path("caixa/robos/", robos, name="caixa_robos"),
-    path("appmax/", appmax, name="appmax"),
-    path("comunidade/", comunidade, name="comunidade"),
-    # O único gesto de escrita desta aba (06/09/2026): tirar uma tarefa da fila
-    # para sempre. Não apaga nada aqui — abre um PR no GitHub com o evento
-    # `cancelada`, e quem mergeia é a pista. O `TAR-NNN` viaja no CORPO do POST
-    # e é conferido contra o formato antes de virar nome de ramo
-    # (`armadilhas/047`): endereço nenhum desta rota carrega dado de formulário.
-    path("caixa/robos/excluir", excluir_tarefa, name="caixa_robos_excluir"),
-    # A aba 5 — "Exportar": a Caixa inteira em texto, num campo só, para o
+    # A aba "Exportar": a Caixa inteira em texto, num campo só, para o
     # mantenedor copiar de uma vez. Nasceu em 02/09/2026, quando ele pediu uma
     # análise das sugestões e o robô esbarrou no que o livro já registrava em
     # 31/08 (`20260831-002`): o conteúdo de uma ideia só se lê atrás do login,
     # e a porta é dele. GET puro, sem escrita, sem nome de aluno no que sai.
     path("caixa/exportar/", exportar, name="caixa_exportar"),
-    # A aba 6 — "A análise": a leitura das ideias da turma, com os fatos vivos
+    # A aba "A análise": a leitura das ideias da turma, com os fatos vivos
     # e o julgamento escrito à mão (apps/core/analise_da_caixa.py). Nasceu em
     # 05/09/2026, quando o mantenedor recebeu essa leitura numa página fora do
     # site e decidiu que entrega dele mora no site
@@ -676,11 +582,8 @@ urlpatterns = [
     # o mantenedor pediu para reunir "várias coisas sobre o lançamento
     # perpétuo": a máquina que vende todo dia, sem depender de uma data.
     #
-    # FORA do prefixo `painel/`, pelo mesmo motivo do mapa e do menu: a rota
-    # genérica `painel/<qualquer coisa>` engoliria qualquer irmã dela. Nasce
-    # vizinha de `/escola/` e de `/caixa/`, na mesma gramática — e a barra
-    # final segue a convenção das outras telas, com o APPEND_SLASH atendendo
-    # quem digitar `/admin/perpetuo` sem ela.
+    # Barra final pela convenção das outras telas, com o APPEND_SLASH
+    # atendendo quem digitar `/admin/perpetuo` sem ela.
     #
     # UMA rota hoje, e a área foi desenhada para ganhar irmãs: cada painel novo
     # entra como `perpetuo/<coisa>/`, e nunca como uma tela solta noutro canto.
@@ -688,8 +591,6 @@ urlpatterns = [
     # O PLACAR (`apps/core/placar.py`, 03/09/2026) — o andar zero do painel de
     # gestão do negócio (`docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`, degrau 0):
     # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
-    # Fora do prefixo `painel/` pelo mesmo motivo do perpétuo: a rota genérica
-    # `painel/<qualquer coisa>` engoliria esta.
     path("placar/", placar, name="placar"),
     # O CALENDÁRIO DO CICLO (`apps/core/ciclo.py`, 04/09/2026) — as 12
     # semanas do ano de 12 semanas, mais a de preparação e a de
@@ -779,9 +680,9 @@ urlpatterns = [
     # o mantenedor teria de aprender que "fechamento" fala do placar.
     #
     # Aceita GET e POST, e o POST não escreve nada: ele calcula o pedido para o
-    # robô e devolve, como a reunião de segunda. Por isso a entrada dela no
-    # `painel/mapa-do-site.json` é `"gesto": false` — o endereço abre no
-    # navegador, e é para abrir mesmo (`armadilhas/330`).
+    # robô e devolve. Por isso a entrada dela no `apps/core/mapa-do-site.json`
+    # é `"gesto": false` — o endereço abre no navegador, e é para abrir mesmo
+    # (`armadilhas/330`).
     path("placar/fechamento/", fechamento, name="fechamento"),
     # A REDE DE TALENTOS (`apps/core/talentos.py`, 07/09/2026) — o laço de
     # talentos do Scale OS desenhado inteiro, e as três contagens que só a
@@ -790,10 +691,8 @@ urlpatterns = [
     # razão das cinco irmãs acima: o laço termina na estrela-guia "alunos com
     # resultado profissional", que É um número do placar. Aceita POST, e o
     # POST não escreve nada (devolve o pedido para o robô), então a entrada
-    # dela no `painel/mapa-do-site.json` é `"gesto": false`.
+    # dela no `apps/core/mapa-do-site.json` é `"gesto": false`.
     path("placar/talentos/", talentos, name="talentos"),
-    path("reuniao/", reuniao, name="reuniao"),
-    path("reuniao/pedidos/<uuid:identidade>/", pedido_reuniao, name="pedido_reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro

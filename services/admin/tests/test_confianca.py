@@ -15,8 +15,10 @@ O que cada grupo de guardas protege, e por que ele existe:
    cartão e a idade sai da última foto do livro. Cartão que nunca foi anotado
    não é "velho" (é "nunca anotado"), e cartão sem fonte não é nem uma coisa
    nem outra.
-4. **Todo bloco termina num gesto** (régua 5 do §2 do plano). Os três gestos
-   desta tela são links para telas que já existem, e o guarda exige os três.
+4. **O que pede ação termina num gesto** (régua 5 do §2 do plano). Assunto
+   calado pede a uma sessão que olhe, evento quebrado leva à inspeção dele e
+   número sem foto leva à tela que monta o pedido da foto; o guarda exige os
+   três.
 5. **O corpo cru só sai por inspeção deliberada.** A lista de quebrados não o
    traz (o contrato o esconde em lote de propósito); a página de um evento
    traz. Id que não existe é dito, e não uma página vazia que parece resposta.
@@ -437,23 +439,39 @@ def test_medicao_muda_na_inspecao_nao_vira_evento_vazio():
 
 
 # ---------------------------------------------------------------------------
-# 6. Todo bloco termina num gesto (régua 5 do §2 do plano)
+# 6. O que pede ação termina num gesto (régua 5 do §2 do plano)
 # ---------------------------------------------------------------------------
 
 
 @respx.mock
-def test_cada_uma_das_tres_perguntas_termina_num_gesto():
+def test_assunto_calado_e_evento_quebrado_terminam_num_gesto():
     cliente = _dentro()
     _a_cobertura_responde([_tipo("forum.topico-criado", 4, dias=19)])
     _a_fila_responde([_morto(7)])
 
     corpo = cliente.get(reverse("confianca")).content.decode()
+    texto = " ".join(corpo.split())
 
     assert (
-        reverse("caixa_robos") in corpo
+        "peça a uma sessão que olhe por que esse aviso parou de sair" in texto
     ), "o gesto da cobertura: pedir que um robô olhe"
-    assert reverse("reuniao") in corpo, "o gesto do frescor: tirar a foto da semana"
     assert reverse("confianca_quebrado", args=[7]) in corpo, "o gesto: inspecionar"
+
+
+@respx.mock
+def test_numero_sem_foto_leva_a_tela_que_monta_o_pedido_da_foto(tmp_path, monkeypatch):
+    _cartao(tmp_path, "nunca-anotado", frescor_maximo=2)
+    monkeypatch.setattr(conf, "diretorio_dos_cartoes", lambda: tmp_path)
+    monkeypatch.setattr(conf, "ler_registros", lambda: [])
+    _a_cobertura_responde([_tipo("quiz.completado", 1)])
+    _a_fila_responde([])
+
+    corpo = _dentro().get(reverse("confianca")).content.decode()
+    texto = " ".join(corpo.split())
+
+    assert "Nunca anotados: 1." in corpo
+    assert reverse("talentos") in corpo, "o gesto do frescor: montar o pedido da foto"
+    assert "A foto da semana é o registro semanal dos números do placar" in texto
 
 
 @respx.mock

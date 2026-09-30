@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260925-008-vps-provada",
+  tipo: "medicao",
+  quando: "2026-09-25",
+  titulo: "Diagnóstico da VPS comprovado",
+  detalhe: "Admin saudável, zero reinícios; disco com 67943682048 bytes livres. Ramo externo barrado antes do runner. Revisão gpt-6-sol/high aprovada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2069. https://github.com/abundanciabr/sitesdoreino/actions/runs/36136970240 https://github.com/abundanciabr/sitesdoreino/actions/runs/36136980033 https://github.com/abundanciabr/sitesdoreino/actions/runs/36136138891",
+  verificado_em: "2026-09-25",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-713",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

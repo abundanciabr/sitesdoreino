@@ -13,14 +13,14 @@
   {% comment %}
   Mapa ausente se DECLARA (500), nunca vira página vazia. "Este site não tem
   endereço nenhum" seria a mentira mais convincente que esta tela poderia
-  contar — o falso-verde do padrão 1 da RETROSPECTIVA-FASE-D, em forma de
-  tela em branco.
+  contar: o falso-verde do padrão 1 da RETROSPECTIVA-FASE-D, em forma de tela
+  em branco.
   {% endcomment %}
   <p class="aviso borda-vermelha">
     <b>O mapa não veio nesta versão do site.</b>
-    O arquivo <code>painel/mapa-do-site.json</code> não chegou na imagem — é falha
-    de empacotamento, não site sem endereços. Avise o agente: nada do que você vê
-    no site mudou por causa disso.
+    O arquivo <code>apps/core/mapa-do-site.json</code> não chegou na imagem. É
+    falha de empacotamento, não site sem endereços. Avise o agente: nada do que
+    você vê no site mudou por causa disso.
   </p>
   {% else %}
 
@@ -46,21 +46,14 @@
       <div class="rotulo">Só as máquinas usam</div>
       <div class="valor">{{ total_maquina }}</div>
       <div class="nota">
-        Portas de conversa entre as partes do site e sinais de vida —
-        {{ total_internos }} delas nem sequer alcançáveis pela internet.
+        Portas de conversa entre as partes do site e sinais de vida, das quais
+        {{ total_internos }} nem sequer são alcançáveis pela internet.
       </div>
     </div>
-    {% if obra %}
-    <a class="cartao porta" href="#em-obra">
-      <div class="rotulo">Ainda sendo construído</div>
-      <div class="valor">{{ obra.total }}</div>
-      <div class="nota">Tarefas que os robôs ainda não terminaram. Clique para ver.</div>
-    </a>
-    {% endif %}
   </div>
 
   {% comment %}
-  A BUSCA é um formulário do servidor, e não um filtro em script — a mesma
+  A BUSCA é um formulário do servidor e não um filtro em script, a mesma
   peneira da lista de alunos. Assim ela funciona com script bloqueado, não pede
   nada da política de segurança, e o endereço `?q=forum` fica guardável nos
   favoritos e compartilhável. Ela NÃO quebra a árvore: quem casa fica, e as
@@ -106,8 +99,8 @@
   {% if not areas %}
   <p class="aviso">
     <b>Nenhum endereço com essa palavra.</b>
-    A busca olha o nome, a explicação, o endereço e as notas de cada linha —
-    tente uma palavra mais curta, ou
+    A busca olha o nome, a explicação, o endereço e as notas de cada linha.
+    Tente uma palavra mais curta, ou
     <a href="{% url 'mapa_do_site' %}">mostre todos os {{ total }}</a>.
   </p>
   {% endif %}
@@ -140,7 +133,7 @@
   {% comment %}
   Zero hoje, e a seção existe para o dia em que não for: um endereço que nenhuma
   área do mapa acolhe apareceria aqui em vez de sumir. Endereço que some do mapa
-  é exatamente o que este mapa existe para impedir — e o teste-guarda de
+  é exatamente o que este mapa existe para impedir, e o teste-guarda de
   `services/admin/tests/test_mapa_do_site.py` reprova o PR antes de chegar aqui.
   {% endcomment %}
   <div class="mapa-grupo">
@@ -159,57 +152,18 @@
   </div>
   {% endif %}
 
-  {% comment %}
-  O QUE AINDA ESTÁ SENDO CONSTRUÍDO. A árvore acima é o que existe; esta seção é
-  o que está a caminho, e vem da fila de trabalho dos robôs (a mesma fonte da
-  aba "Os robôs"). Ela fica AO LADO da árvore, e não dentro dela, porque a fila
-  sabe em que parte do sistema a tarefa mexe e não em que endereço ela vai
-  nascer — pendurar a tarefa num galho exigiria adivinhar qual.
-  {% endcomment %}
-  <div class="mapa-grupo" id="em-obra">
-    <h2 class="faixa">Ainda sendo construído</h2>
-    {% if obra %}
-    <p class="subtitulo">
-      {{ obra.total }} tarefa{{ obra.total|pluralize:"s" }} que os robôs ainda
-      não terminaram, por onde ela mexe. Uma tarefa que mexe em dois lugares
-      aparece nos dois, então a soma dos lugares é maior que {{ obra.total }}.
-      O quadro completo, com o que está esperando por você, fica em
-      <a href="{% url 'caixa_robos' %}">Os robôs</a>.
-    </p>
-    {% for lugar in obra.lugares %}
-    <details class="cadastrar">
-      <summary>{{ lugar.nome }} &middot; {{ lugar.quantas }}</summary>
-      {% for tarefa in lugar.tarefas %}
-      <p class="nota tarefa-em-obra">
-        <span class="mapa-selo">{{ tarefa.estado }}</span>
-        {{ tarefa.titulo }}
-      </p>
-      {% endfor %}
-    </details>
-    {% endfor %}
-    {% else %}
-    <p class="aviso borda-amarela">
-      <b>A fila de trabalho não veio nesta versão do site.</b>
-      Não quer dizer que não há nada em obra: quer dizer que esta página não
-      conseguiu ler a fila. O mapa acima continua valendo.
-    </p>
-    {% endif %}
-  </div>
-
   <p class="aviso espaco-34">
-    <b>Por que dá para confiar neste mapa.</b>
-    Ele não é uma lista digitada à mão que alguém precisa lembrar de atualizar.
-    O endereço de cada linha é conferido, a cada mudança no site, contra o
-    roteamento de verdade e contra o código das 13 partes da plataforma: um robô
-    que criar uma página nova e não a escrever aqui <b>é reprovado antes de a
-    mudança entrar</b>, e o mesmo vale para uma linha que sobrar depois que uma
-    página deixar de existir. Um endereço marcado <span class="mapa-selo">molde</span>
-    não é um lugar só: é a forma de muitos — cada aluno, cada ideia, cada pedido
-    tem o seu.
+    <b>O que este mapa é.</b>
+    Uma entrada escrita por endereço, guardada dentro desta parte do site
+    (<code>apps/core/mapa-do-site.json</code>). Página nova entra aqui no mesmo
+    trabalho que a cria, e linha de página que deixou de existir sai do mesmo
+    jeito. Um endereço marcado <span class="mapa-selo">molde</span>
+    não é um lugar só, e sim a forma de muitos. Cada aluno, cada ideia e cada
+    pedido tem o seu.
   </p>
 
   {% comment %}
-  A LUZ DE "ESTÁ NO AR?" — e quem pergunta é o SEU navegador, não o servidor.
+  A LUZ DE "ESTÁ NO AR?": quem pergunta é o SEU navegador, não o servidor.
   Isso é de propósito: um servidor conferindo a si mesmo por dentro da rede do
   Docker não passaria pelo roteador nem pelo cadeado, e responderia "no ar" para
   uma porta que a internet não alcança. Daqui, o caminho é o mesmo que qualquer
@@ -218,7 +172,7 @@
   `redirect: "manual"` porque várias destas portas respondem com um desvio
   (para o login, por exemplo): sem isso o navegador seguiria o desvio até o
   Google e a pergunta morreria numa regra de origem cruzada. Com ele, o desvio
-  JÁ É a resposta — a porta respondeu.
+  JÁ É a resposta: a porta respondeu.
 
   A ilha entra na política de segurança por HASH (`apps/core/mapa_do_site.py`),
   nunca por `'unsafe-inline'`.

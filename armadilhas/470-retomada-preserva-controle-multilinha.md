@@ -8,10 +8,8 @@ custo_por_queda: medio
 gatilho:
   - services/admin/apps/core/templates/admin/caixa_robos.html
 guarda:
-  tipo: CI
-  dono: services/admin/tests/test_tela_de_trabalho_dos_robos.py
-  detector: test_motivo_multilinha_sobrevive_ao_formulario_e_a_retomada
-  motivo: repetir o formulario nao pode alterar o motivo persistido
+  tipo: nenhum
+  motivo: a tela dos robos (caixa_robos.html) e o teste dono sairam do admin em 30/09/2026, no corte da governanca
 licao: Um motivo aceito em textarea precisa continuar multilinha em toda retomada. Input de texto remove CR/LF mesmo quando o HTML conserva os caracteres no atributo value. A prova deve reenviar os controles renderizados, nao apenas conferir o contexto da view.
 ---
 

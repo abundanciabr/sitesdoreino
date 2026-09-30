@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-066-auditoria-fase-5-gamificacao-ja-integrada",
+  tipo: "medicao",
+  quando: "2026-09-08",
+  titulo: "Auditoria da Fase 5 encontrou a integração já entregue",
+  detalhe: "O curso livre já emite aula.concluida.v1; a gamificação já consome o evento; semear_economia já cria aula-concluida com 50 XP, ator, zero cristais e desligada. A suíte da gamificação passou com 37 testes e a superfície visual passou com 42 testes. Os testes de cursos não rodaram por falta de credencial PostgreSQL local, após falha de autenticação do usuário dev; a tentativa SQLite parou na migração PostgreSQL específica.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

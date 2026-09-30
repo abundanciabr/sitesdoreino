@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260927-023-pagamentos-status-appmax-medidos-tar-811-aberta",
+  tipo: "medicao",
+  quando: "2026-09-27",
+  titulo: "pagamentos: status Appmax medidos, TAR-811 aberta",
+  detalhe: "7 status Appmax do cartao/Pix medidos: 2 e o status desconhecido sem teste. Estorno/chargeback ja bloqueado (644). TAR-811 cobre so os testes que faltam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2158. Validação local: árvore 483852814211e797e2449e4ee582d757180d6a33; commit b5f7f0a741caf7602bfd1fbf608c571d349f90f6; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-811",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

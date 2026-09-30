@@ -1,0 +1,25 @@
+{
+  "nome": "alunos-ativos-30d",
+  "tipo": "par",
+  "andar": 0,
+  "pergunta": "Quantos desses alunos entraram na escola nos últimos 30 dias?",
+  "definicao": "Alunos (na lista de permissão) com ao menos uma entrada registrada na plataforma nos últimos 30 dias. Segura a meta de compras: liberar contas que nunca entram faria a meta subir sem a escola crescer.",
+  "formula": "contagem de alunos com último acesso há no máximo 30 dias, dividida pelo total de alunos",
+  "fonte": null,
+  "sem_fonte_porque": "A plataforma ainda não guarda o último acesso de cada aluno em lugar nenhum: nem a célula alunos nem a identidade registram isso hoje. O número nasce quando a célula de medição receber o evento de entrada, e este cartão ganha fonte e versão 3 nesse PR. Até lá, o placar mostra 'sem dados' em vez de um número inventado.",
+  "autoridade": "metricas",
+  "dono": "mantenedor",
+  "frequencia": "diária",
+  "direcao": "subir",
+  "unidade": "pessoas",
+  "par": "compras-no-ciclo",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "frescor_maximo": 10,
+  "dimensoes": [
+    "turma"
+  ],
+  "versao": 2,
+  "desde": "2026-09-03",
+  "_por_que": "CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Sem ruído e foto de 10 dias: o par tem de se mover junto com a meta, e uma pessoa a menos já é sinal."
+}

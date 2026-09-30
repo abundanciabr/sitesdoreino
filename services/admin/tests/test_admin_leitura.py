@@ -49,7 +49,6 @@ def test_documentos_publicos_continuam_vivos_e_privados_ficam_fechados():
         "/",
         "/admin/",
         "/admin/docs/",
-        "/painel/",
         "/caixa/",
         "/escola/",
         "/entrar",
@@ -70,10 +69,14 @@ def test_painel_login_escrita_e_demais_endpoints_nao_existem(caminho):
         assert client.post(caminho, {}).status_code == 404
 
 
-def test_mapa_preserva_o_indice_publico():
+def test_healthz_responde_no_processo_de_leitura():
     with cliente_leitura():
         assert Client().get("/healthz").status_code == 200
-        resposta = Client().get("/mapa-ia/")
+
+
+def test_indice_publico_dos_planos_responde_no_processo_de_leitura():
+    with cliente_leitura():
+        resposta = Client().get("/mapa-ia/planos/")
         assert resposta.status_code == 200
         assert resposta["Content-Type"].startswith("text/plain")
 
@@ -106,12 +109,6 @@ def test_configuracao_de_leitura_nao_carrega_porta_nem_prefixo_local():
         assert config.DEBUG is False
         assert config.FORCE_SCRIPT_NAME is None
         assert "apps.core.porta.PortaAdministrativa" not in config.MIDDLEWARE
-
-
-def test_urlconf_nao_deixa_chegar_a_tela_do_painel():
-    # guarda: services/admin/config/settings_leitura.py:9
-    with cliente_leitura():
-        assert Client().get("/painel/").status_code == 404
 
 
 def test_postgres_do_processo_recusa_transacoes_de_escrita():

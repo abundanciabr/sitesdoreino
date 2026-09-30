@@ -4,8 +4,8 @@ O buraco que estes guardas fecham foi medido em produção, não imaginado: a
 porta mandava `style-src 'self'` em toda resposta, e o estilo desta área mora
 EMBUTIDO no `<head>` (`admin/base.html` explica por quê). `style-src 'self'`
 proíbe estilo embutido — então toda tela desta área chegava **sem estilo
-nenhum** ao navegador do dono. Só `/admin/painel/` e a aba "Os robôs"
-escapavam, porque mandam política própria.
+nenhum** ao navegador do dono. Só as telas que mandam política própria
+escapavam.
 
 **Por que ninguém viu:** o test client do Django não aplica CSP, e o `curl`
 baixa o HTML com o `<style>` lá dentro sem nunca renderizá-lo. Os dois davam
@@ -135,9 +135,9 @@ def test_resposta_sem_corpo_mantem_a_politica_de_sempre():
 
 @respx.mock
 def test_quem_manda_a_propria_politica_continua_mandando():
-    """O painel declara CSP própria (com o hash do script dele). A porta não
-    pode sobrescrevê-la — `setdefault`, nunca atribuição."""
-    resposta = _dentro().get(reverse("painel"))
+    """O mapa do site declara CSP própria (com o hash do estilo e do script
+    dele). A porta não pode sobrescrevê-la: `setdefault`, nunca atribuição."""
+    resposta = _dentro().get(reverse("mapa_do_site"))
     csp = resposta["Content-Security-Policy"]
-    assert "sha256-" in _style_src(csp) or "'unsafe-inline'" in _style_src(csp)
-    assert "fonts.googleapis.com" in csp, "esta é a política do painel, não a da porta"
+    assert "sha256-" in _style_src(csp)
+    assert "connect-src 'self'" in csp, "esta é a política do mapa, não a da porta"

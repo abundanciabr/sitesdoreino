@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260926-066-quiz-botao-refazer-conferido-e-rota-fechada",
+  tipo: "medicao",
+  quando: "2026-09-26",
+  titulo: "quiz: botão Refazer conferido e rota fechada",
+  detalhe: "Botão Refazer do quiz Crivo conferido no ar (405 e 403 na rota) e rota de retomada fechada com as provas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2125. Validação local: árvore 66e9fd51ac3332aadf5e98905053b19da0af69ce; commit 17b6fcd47883e776ea77a4858111caecd275a00f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-26",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-764",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

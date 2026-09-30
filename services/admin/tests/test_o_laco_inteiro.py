@@ -8,16 +8,16 @@ traduzido para as peças que esta casa realmente tem.
 
 Cada estação do laço já é testada sozinha: `test_placar.py` mede a régua,
 `test_direcao.py` as duas medidas da semana, `test_restricao.py` a suspeita,
-`test_laboratorio.py` o experimento, `test_reuniao.py` a pauta, `test_doze.py`
-o placar de doze. **O que ninguém testava é o LAÇO**: se o que sai de uma
-estação entra na próxima sem ninguém traduzir à mão.
+`test_laboratorio.py` o experimento, `test_doze.py` o placar de doze.
+**O que ninguém testava é o LAÇO**: se o que sai de uma estação entra na
+próxima sem ninguém traduzir à mão.
 
-É a diferença entre doze peças que funcionam e uma máquina que gira. Uma peça
+É a diferença entre peças que funcionam e uma máquina que gira. Uma peça
 pode mudar de formato (um `None` que virou `0`, uma chave renomeada, um
 veredito com palavra nova) sem nenhum teste próprio ficar vermelho, e o laço
 para de fechar em silêncio. A partir daqui, para.
 
-## As treze estações, na ordem em que a semana acontece
+## As onze estações, na ordem em que a semana acontece
 
 1. ciclo ativo (o cartão da meta é válido e declara a curva);
 2. a meta (o veredito ganhando/perdendo sai da curva);
@@ -25,13 +25,11 @@ para de fechar em silêncio. A partir daqui, para.
 4. a medição (as duas medidas saem das listas de gente de verdade);
 5. a restrição detectada (a suspeita da semana sai da medição);
 6. o experimento (a aposta escrita ANTES, no livro, aparece rodando);
-7. a semana aberta (a pauta de segunda monta o pedido para o robô);
-8. a tarefa gerada (o pedido carrega o compromisso, com prazo);
-9. a tarefa executada (a resposta no livro fecha o compromisso, calculada);
-10. a semana encerrada (o resultado no livro fecha o experimento);
-11. o aprendizado registrado (o experimento fechado vira número);
-12. o placar atualizado (o número do laboratório e o veredito do ciclo mudam);
-13. o ciclo fechado (o degrau 13: e ele se RECUSA a fechar sem a decisão do
+7. a tarefa executada (a resposta no livro fecha o compromisso, calculada);
+8. a semana encerrada (o resultado no livro fecha o experimento);
+9. o aprendizado registrado (o experimento fechado vira número);
+10. o placar atualizado (o número do laboratório e o veredito do ciclo mudam);
+11. o ciclo fechado (o degrau 13: e ele se RECUSA a fechar sem a decisão do
     que a escola para de fazer).
 
 ## Um relógio só, e uma fonte só
@@ -45,7 +43,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from apps.core import direcao, doze, fechamento, laboratorio, placar, restricao, reuniao
+from apps.core import direcao, doze, fechamento, laboratorio, placar, restricao
 
 #: Uma segunda-feira dentro do ciclo sintético abaixo.
 HOJE = dt.date(2026, 10, 26)
@@ -166,7 +164,7 @@ def _registro(arquivo: str, tipo: str, quando: str, **extra) -> dict:
 
 
 def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
-    """As treze estações, em ordem, com um relógio só e uma fonte só."""
+    """As onze estações, em ordem, com um relógio só e uma fonte só."""
 
     # ---------------------------------------------- 1. ciclo ativo
     assert (
@@ -240,25 +238,13 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
     assert [e["arquivo"] for e in lab["rodando"]] == [experimento["arquivo"]]
     assert lab["vencidos"] == [], "o experimento ainda está no prazo"
 
-    # ---------------------------------------------- 7 e 8. semana aberta, tarefa gerada
-    compromisso_texto = "confirmar toda a sala de espera até quarta"
-    pedido_da_semana = reuniao.montar_o_pedido(
-        {"compromisso1": compromisso_texto, "confirmar_restricao": "a liberação"},
-        HOJE,
-    )
-    assert pedido_da_semana is not None, "a pauta de segunda não gerou tarefa nenhuma"
-    assert compromisso_texto in pedido_da_semana
-    assert (
-        f"vence_em_dias: {reuniao.VENCE_EM_DIAS}" in pedido_da_semana
-    ), "tarefa sem prazo nunca vence, e o que não vence nunca é cobrado"
-
-    # ---------------------------------------------- 9. a tarefa executada
+    # ---------------------------------------------- 7. a tarefa executada
     compromisso = _registro(
         "20261026-002-confirmar-a-sala-de-espera",
         "compromisso",
         "2026-10-26",
-        titulo=compromisso_texto,
-        vence_em_dias=reuniao.VENCE_EM_DIAS,
+        titulo="confirmar toda a sala de espera até quarta",
+        vence_em_dias=7,
     )
     livro = livro + [compromisso]
     em_aberto = direcao.compromissos(livro, HOJE)
@@ -277,7 +263,7 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
         "cumprido"
     ], "a resposta no livro tinha de fechar o compromisso sozinha, sem ninguém digitar"
 
-    # ---------------------------------------------- 10 e 11. semana encerrada, aprendizado
+    # ---------------------------------------------- 8 e 9. semana encerrada, aprendizado
     livro = livro + [
         _registro(
             "20261028-004-avisar-funcionou",
@@ -294,7 +280,7 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
         laboratorio.aprendizados_validados(livro, PARTIDA) == 1
     ), "o experimento fechado tinha de virar aprendizado validado do ciclo"
 
-    # ---------------------------------------------- 12. o placar atualizado
+    # ---------------------------------------------- 10. o placar atualizado
     # A aposta venceu: a sala de espera foi confirmada, e as duas pessoas que
     # esperavam viraram alunas. O MESMO placar, relido, muda de veredito.
     alunos_depois = alunos + [
@@ -331,10 +317,10 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
     assert aprendizados, "o placar de doze perdeu o número do laboratório"
     assert aprendizados[0]["valor"] == 1, (
         "o aprendizado do laboratório não chegou ao placar de doze: o laço "
-        "quebrou entre a estação 11 e a 12"
+        "quebrou entre a estação 9 e a 10"
     )
 
-    # ---------------------------------------------- 13. o ciclo fechado
+    # ---------------------------------------------- 11. o ciclo fechado
     dia_do_fechamento = dt.date(2026, 11, 7)  # o dia seguinte ao `ate` do cartão
     dados = fechamento.montar(
         meta=CARTAO_DO_CICLO,

@@ -91,16 +91,6 @@ def test_o_indice_lista_so_os_marcados(pasta_de_planos):
     assert "A decisao fechada" not in corpo
 
 
-def test_o_indice_aponta_para_o_mapa_tecnico(pasta_de_planos):
-    """Quem chega aqui procurando arquitetura precisa achar o caminho.
-
-    As duas áreas moram sob o mesmo prefixo e respondem perguntas diferentes;
-    sem esta linha, uma IA que caísse aqui concluiria que é tudo que existe.
-    """
-    corpo = Client().get("/mapa-ia/planos/").content.decode()
-    assert "/mapa-ia/INDICE.md" in corpo
-
-
 @pytest.mark.parametrize(
     "nome", ["..%2f..%2fsettings", "../../config/settings", "plano.aberto", "plano/sub"]
 )
@@ -135,7 +125,7 @@ def test_a_area_nao_pede_para_ser_ignorada(pasta_de_planos):
     pedir que ela desobedeca.
 
     Se alguem quiser o header de volta, que seja por conversa com o mantenedor
-    (a troca e visibilidade em busca), e nao por copiar `mapa_ia.py` sem ler.
+    (a troca e visibilidade em busca).
     """
     for endereco in ("/mapa-ia/planos/", "/mapa-ia/planos/plano-aberto"):
         assert "X-Robots-Tag" not in Client().get(endereco)
@@ -164,8 +154,7 @@ def test_o_prefixo_dos_planos_tem_so_as_duas_rotas():
     """Nenhuma rota de ESCRITA pode nascer sob o prefixo isento.
 
     É o guarda que torna o prefixo seguro: sem ele, alguém pendura uma rota
-    nova aqui embaixo e ela fica pública em silêncio — que é exatamente o modo
-    de falha que a lista exata do `/mapa-ia/` evita por outro caminho.
+    nova aqui embaixo e ela fica pública em silêncio.
     """
     prefixo_sem_barras = PREFIXO_PUBLICO_DOS_PLANOS.strip("/")
     padroes = [
@@ -176,15 +165,13 @@ def test_o_prefixo_dos_planos_tem_so_as_duas_rotas():
     assert len(padroes) == 2, f"rota nova sob o prefixo público: {padroes}"
 
 
-def test_a_lista_exata_do_mapa_ia_nao_foi_afrouxada():
-    """A área nova NÃO herda nem amplia a isenção do mapa técnico.
+def test_os_planos_abrem_por_prefixo_e_nao_pela_lista_exata():
+    """Os planos abrem pelo prefixo da porta, nunca por `CAMINHOS_ISENTOS`.
 
-    `/mapa-ia/` continua com a decisão arquivo por arquivo (INV-P14). Se um dia
-    alguém puser um prefixo lá, este teste reprova e a conversa acontece antes.
+    Aquela é a lista EXATA de endereços sem crachá. O guarda de rotas acima
+    mede o que mora sob o prefixo; se um dia alguém pendurar um endereço dos
+    planos na lista exata, este teste reprova e a conversa acontece antes.
     """
-    assert all(
-        caminho.endswith((".md", "/healthz", "/")) for caminho in CAMINHOS_ISENTOS
-    )
     assert not any(
         caminho.startswith(PREFIXO_PUBLICO_DOS_PLANOS) for caminho in CAMINHOS_ISENTOS
     )

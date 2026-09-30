@@ -1,0 +1,22 @@
+{
+  "nome": "alunos-selecionados-para-a-rede",
+  "tipo": "resultado",
+  "andar": 1,
+  "pergunta": "Quantas alunas já foram selecionadas para a rede de talentos?",
+  "definicao": "As alunas que a escola escolheu para apresentar a estúdios: portfólio olhado, nível conferido, e o nome numa lista que a escola de fato manda. Não conta quem se candidatou e não foi escolhida, nem quem foi elogiada numa aula.",
+  "formula": "a contagem que a escola digita na tela da rede de talentos, gravada no livro como medição",
+  "fonte": "o livro de ocorrências (painel/registros/): a última medição digitada com este nome, lida pela admin em apps/core/talentos.py",
+  "autoridade": "mantenedor",
+  "dono": "mantenedor",
+  "frequencia": "quando muda; a escola redigita a contagem na tela da rede de talentos",
+  "direcao": "subir",
+  "unidade": "alunas",
+  "par": "alunos-com-resultado-profissional",
+  "acao": "Parada por muitas semanas: o gargalo é a seleção. O gesto é olhar os portfólios das alunas ativas e escolher as próximas, uma por uma, na reunião de segunda.",
+  "frescor_maximo": 30,
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-07",
+  "_por_que": "Segundo passo do laço de talentos (Scale OS 2 §45), degrau 17 do PLANO-PAINEL-DE-GESTAO.md. É contagem digitada de propósito: nenhuma célula sabe quem foi selecionada, e o plano §9 proíbe marketplace automatizado e banco novo. O par é a estrela-guia de valor porque selecionar muita gente com a régua baixa aparece lá, e não aqui."
+}

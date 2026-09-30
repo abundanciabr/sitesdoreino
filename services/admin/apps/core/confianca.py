@@ -12,7 +12,7 @@ o que mudou foi o negócio ou a medição.
    calado. Um aviso que deixou de sair de uma célula não quebra nada visível:
    os números históricos daquele assunto simplesmente param de crescer, e todo
    gráfico que os usa começa a mentir devagar.
-2. **Frescor.** Cada cartão de `painel/cartoes/` declara `frescor_maximo` em
+2. **Frescor.** Cada cartão de `apps/core/cartoes/` declara `frescor_maximo` em
    dias. A tela diz quais números foram anotados dentro do prazo e quais
    envelheceram, com quantos dias de atraso.
 3. **O que chegou quebrado.** A fila de eventos mortos à vista, com o motivo de
@@ -123,19 +123,14 @@ def ultima_anotacao(registros: list[dict] | None) -> dict[str, dt.date]:
     return ultimas
 
 
-def o_frescor(pasta: Path | None, registros: list[dict] | None, hoje: dt.date) -> dict:
+def o_frescor(pasta: Path, registros: list[dict] | None, hoje: dt.date) -> dict:
     """Uma linha por cartão: o prazo, a idade, e se o número envelheceu.
 
-    Dois desfechos que não são medição, e por isso vêm com a lista VAZIA em
-    vez de com zeros:
-
-    - `sem-cartoes`: a pasta `painel/cartoes/` não veio nesta versão do site.
-    - `sem-livro`: não deu para ler `painel/registros/`. Sem o livro não há
-      foto nenhuma, e dizer que todos os números estão velhos por causa disso
-      seria a tela inventando um atraso a partir da própria cegueira.
+    Um desfecho que não é medição, e por isso vem com a lista VAZIA em vez de
+    com zeros: `sem-livro`, quando `registros` é `None`. Sem o livro não há foto
+    nenhuma, e dizer que todos os números estão velhos por causa disso seria a
+    tela inventando um atraso a partir da própria cegueira.
     """
-    if pasta is None:
-        return {"veredito": "sem-cartoes", "linhas": []}
     if registros is None:
         return {"veredito": "sem-livro", "linhas": []}
 

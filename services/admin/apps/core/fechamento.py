@@ -7,7 +7,7 @@ ninguém nunca decide nada por causa dele.
 ## As cinco perguntas do fechamento, e de onde cada uma sai
 
 1. **A meta bateu, e por quê?** Sai da MESMA régua do placar
-   (`placar.calcular_placar` sobre `painel/cartoes/compras-no-ciclo.json`). A
+   (`placar.calcular_placar` sobre `apps/core/cartoes/compras-no-ciclo.json`). A
    curva não é reescrita aqui: uma segunda régua discordaria da primeira no
    primeiro ajuste de meta, e as duas teriam ar de certeza.
 2. **As medidas de direção previram a meta?** Compara o veredito das duas
@@ -24,21 +24,20 @@ ninguém nunca decide nada por causa dele.
 O plano exige que a fase seja calculada: "cada portão é um registro com
 `evidencia` e `verificado_em`". Para isso um registro precisa poder DIZER qual
 portão ele prova, e por isso nasceu o campo `portao` no cabeçalho do livro. O
-vocabulário fechado dos oito é imposto na ESCRITA por `painel/logica.js` (o
-gerador recusa portão inventado), pelo mesmo desenho de `veredito` no
-laboratório: o livro é JavaScript, esta tela é Python, e um dos dois lados
-impõe as palavras. Aqui a leitura é fail-open e ainda assim honesta: portão
-declarado com nome que não existe aparece na tela pelo nome, nunca sumindo.
+vocabulário fechado dos oito mora em `PORTOES`, aqui embaixo. Esta tela lê só o
+cabeçalho dos registros de `apps/core/registros/` e não valida a escrita. A
+leitura é fail-open e ainda assim honesta: portão declarado com nome que não
+existe aparece na tela pelo nome, nunca sumindo.
 
 **Declarar não é provar.** Um registro com `portao` mas sem `evidencia` e sem
-`verificado_em` NÃO conta, e aparece à parte. É a mesma lei do verde do livro
-(`painel/LEIA-ME.md`): prova conferida, ou não é verde.
+`verificado_em` NÃO conta, e aparece à parte. É a mesma lei do verde do livro:
+prova conferida, ou não é verde.
 
 ## Esta tela não escreve nada, e isso é desenho
 
-Como a reunião de segunda (degrau 3): o que ela produz é o PEDIDO para o robô,
-um bloco de texto para colar numa sessão. Registro entra por PR, e cartão
-também. Recarregar a página apaga o que foi digitado, e a tela diz isso.
+O que ela produz é o PEDIDO para o robô, um bloco de texto para colar numa
+sessão. Registro entra por PR, e cartão também. Recarregar a página apaga o que
+foi digitado, e a tela diz isso.
 
 ## O estado vazio é o estado principal, e vai ser por três meses
 
@@ -130,7 +129,7 @@ OBRIGATORIOS = (
 
 #: O arquivo que o robô edita para virar o ciclo. Escrito por extenso porque é
 #: ele que o pedido manda mexer, e um caminho errado ali custa uma rodada.
-CARTAO_DA_META_NO_REPOSITORIO = "painel/cartoes/compras-no-ciclo.json"
+CARTAO_DA_META_NO_REPOSITORIO = "services/admin/apps/core/cartoes/compras-no-ciclo.json"
 
 
 def _data(texto: object) -> dt.date | None:
@@ -400,8 +399,8 @@ def montar_o_pedido(
     linhas = [
         f"Fechamento do ciclo de 12 semanas do painel de gestão, {hoje.strftime('%d/%m/%Y')}.",
         "Lei: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, degrau 13.",
-        "Registre no livro de ocorrências (painel/registros/), um registro por item,",
-        "pelo rito de sempre (PR com o registro a bordo; molde em painel/LEIA-ME.md).",
+        "Registre em services/admin/apps/core/registros/ (molde no LEIA-ME.md da pasta),",
+        "um registro por item, por PR.",
         "",
     ]
     if dados.get("estado") != "terminou":
@@ -474,13 +473,11 @@ def fechamento(request):
             "faltando": faltando,
             "hoje": hoje,
             "analista": analista_.para_a_tela(
-                momento="fechamento",
                 dossie=(
                     analista_.dossie_do_fechamento(dados, contexto, hoje)
                     if pediram_o_analista
                     else ""
                 ),
-                hoje=hoje,
                 pediram=pediram_o_analista,
             ),
         },
