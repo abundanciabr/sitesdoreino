@@ -379,6 +379,7 @@ FORMATO = (
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
     '"reinicios":{{.RestartCount}},"imagem":{{json .Image}}}'
 )
+FORMATO_IMAGEM_ADMIN = '{"id":{{json .Id}},"repo_digests":{{json .RepoDigests}}}'
 ACOES = {
     "entrada": "Escolha uma operação e um serviço do catálogo na main.",
     "instrumento": "Confira Docker e disponibilidade da VPS pela esteira; não cole comandos no servidor.",
@@ -433,7 +434,7 @@ def validar(operacao, servico, permitidos, referencia=""):
         raise Falha("entrada")
 
 
-def comando(argumentos):
+def comando(argumentos, prazo_segundos=30):
     try:
         resultado = subprocess.run(
             argumentos,
@@ -441,7 +442,7 @@ def comando(argumentos):
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=30,
+            timeout=prazo_segundos,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
@@ -454,17 +455,47 @@ def comando(argumentos):
 
 
 def hash_arquivo_infra(relativo):
-    atual = RAIZ_INFRA
+    partes = Path(relativo).parts
+    if os.name != "posix":
+        atual = RAIZ_INFRA
+        try:
+            if not stat.S_ISDIR(atual.lstat().st_mode):
+                raise Falha("infra")
+            for indice, parte in enumerate(partes):
+                atual = atual / parte
+                try:
+                    metadados = atual.lstat()
+                except FileNotFoundError:
+                    return None
+                if indice < len(partes) - 1:
+                    if not stat.S_ISDIR(metadados.st_mode):
+                        raise Falha("infra")
+                elif (
+                    not stat.S_ISREG(metadados.st_mode)
+                    or metadados.st_size > 4 * 1024 * 1024
+                ):
+                    raise Falha("infra")
+            with atual.open("rb") as arquivo:
+                return hashlib.file_digest(arquivo, "sha256").hexdigest()
+        except OSError:
+            raise Falha("infra") from None
+
+    descritor = None
     try:
-        if not stat.S_ISDIR(atual.lstat().st_mode):
+        descritor = os.open(RAIZ_INFRA, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        if not stat.S_ISDIR(os.fstat(descritor).st_mode):
             raise Falha("infra")
-        partes = Path(relativo).parts
         for indice, parte in enumerate(partes):
-            atual = atual / parte
+            flags = os.O_RDONLY | os.O_NOFOLLOW
+            if indice < len(partes) - 1:
+                flags |= os.O_DIRECTORY
             try:
-                metadados = atual.lstat()
+                proximo = os.open(parte, flags, dir_fd=descritor)
             except FileNotFoundError:
                 return None
+            os.close(descritor)
+            descritor = proximo
+            metadados = os.fstat(descritor)
             if indice < len(partes) - 1:
                 if not stat.S_ISDIR(metadados.st_mode):
                     raise Falha("infra")
@@ -473,10 +504,13 @@ def hash_arquivo_infra(relativo):
                 or metadados.st_size > 4 * 1024 * 1024
             ):
                 raise Falha("infra")
-        with atual.open("rb") as arquivo:
+        with os.fdopen(descritor, "rb", closefd=False) as arquivo:
             return hashlib.file_digest(arquivo, "sha256").hexdigest()
     except OSError:
         raise Falha("infra") from None
+    finally:
+        if descritor is not None:
+            os.close(descritor)
 
 
 def conferir_medicao(operacao, dados, referencia=""):
@@ -497,7 +531,7 @@ def conferir_medicao(operacao, dados, referencia=""):
         ):
             raise Falha("formato")
     elif operacao == "estado-infra":
-        if set(dados) != {"arquivos", "servicos", "borda_http"}:
+        if set(dados) != {"arquivos", "servicos", "imagem_admin", "borda_http"}:
             raise Falha("formato")
         arquivos, servicos = dados["arquivos"], dados["servicos"]
         if not isinstance(arquivos, dict) or set(arquivos) != set(
@@ -517,6 +551,39 @@ def conferir_medicao(operacao, dados, referencia=""):
         for valor in servicos.values():
             if valor is not None:
                 conferir_medicao("estado-servico", valor)
+        imagem = dados["imagem_admin"]
+        if servicos["admin"] is None:
+            if imagem is not None:
+                raise Falha("formato")
+        else:
+            if not isinstance(imagem, dict) or set(imagem) != {
+                "container_image",
+                "id",
+                "repo_digests",
+            }:
+                raise Falha("formato")
+            if imagem["container_image"] != servicos["admin"]["imagem"]:
+                raise Falha("formato")
+            if not isinstance(imagem["id"], str) or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}", imagem["id"]
+            ):
+                raise Falha("formato")
+            digests = imagem["repo_digests"]
+            if (
+                not isinstance(digests, list)
+                or not digests
+                or len(digests) > 8
+                or any(
+                    not isinstance(digest, str)
+                    or not re.fullmatch(
+                        r"ghcr\.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}",
+                        digest,
+                    )
+                    for digest in digests
+                )
+                or len(digests) != len(set(digests))
+            ):
+                raise Falha("formato")
         if (
             type(dados["borda_http"]) is not int
             or not 100 <= dados["borda_http"] <= 599
@@ -1136,25 +1203,73 @@ def conferir_medicao(operacao, dados, referencia=""):
     return dados
 
 
+def medir_servico_estado_infra(nome):
+    identificador = comando(
+        [
+            "docker",
+            "ps",
+            "--all",
+            "--quiet",
+            "--no-trunc",
+            "--filter",
+            "label=com.docker.compose.project=plataforma",
+            "--filter",
+            "label=com.docker.compose.service=" + nome,
+        ],
+        prazo_segundos=10,
+    ).strip()
+    if not identificador:
+        return None
+    if not re.fullmatch(r"[0-9a-f]{12,64}", identificador):
+        raise Falha("formato")
+    try:
+        dados = json.loads(
+            comando(
+                ["docker", "inspect", "--format", FORMATO, identificador],
+                prazo_segundos=10,
+            )
+        )
+    except (ValueError, TypeError):
+        raise Falha("formato") from None
+    return conferir_medicao("estado-servico", dados)
+
+
 def medir(operacao, servico, referencia=""):
     if operacao == "estado-infra":
         arquivos = {nome: hash_arquivo_infra(nome) for nome in ARQUIVOS_ESTADO_INFRA}
         servicos = {}
         for nome in SERVICOS_ESTADO_INFRA:
+            servicos[nome] = medir_servico_estado_infra(nome)
+        imagem_admin = None
+        if servicos["admin"] is not None:
+            container_image = servicos["admin"]["imagem"]
             try:
-                servicos[nome] = medir("estado-servico", nome)
-            except Falha as erro:
-                if str(erro) != "ausente":
-                    raise
-                servicos[nome] = None
+                inspeccionada = json.loads(
+                    comando(
+                        [
+                            "docker",
+                            "image",
+                            "inspect",
+                            "--format",
+                            FORMATO_IMAGEM_ADMIN,
+                            container_image,
+                        ],
+                        prazo_segundos=10,
+                    )
+                )
+            except (ValueError, TypeError):
+                raise Falha("formato") from None
+            if not isinstance(inspeccionada, dict):
+                raise Falha("formato")
+            imagem_admin = {
+                "container_image": container_image,
+                **inspeccionada,
+            }
         try:
             codigo = comando(
                 [
                     "curl",
                     "-skS",
-                    "-L",
-                    "--max-redirs",
-                    "3",
                     "--connect-timeout",
                     "3",
                     "--max-time",
@@ -1168,7 +1283,8 @@ def medir(operacao, servico, referencia=""):
                     "-w",
                     "%{http_code}",
                     "https://meshcraft.top/",
-                ]
+                ],
+                prazo_segundos=15,
             ).strip()
         except Falha:
             raise Falha("borda") from None
@@ -1179,6 +1295,7 @@ def medir(operacao, servico, referencia=""):
             {
                 "arquivos": arquivos,
                 "servicos": servicos,
+                "imagem_admin": imagem_admin,
                 "borda_http": int(codigo),
             },
         )

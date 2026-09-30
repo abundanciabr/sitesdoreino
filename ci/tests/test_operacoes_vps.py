@@ -4367,14 +4367,33 @@ def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, ca
         return abertura_real(caminho, *args, **kwargs)
 
     monkeypatch.setattr(Path, "open", abrir_controlado)
+    abertura_os_real = ops.os.open
+    abertos = []
+
+    def abrir_os_controlado(caminho, *args, **kwargs):
+        if caminho == tmp_path or caminho == "sites.json":
+            abertos.append(str(caminho))
+        assert "env" not in Path(caminho).parts
+        return abertura_os_real(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(ops.os, "open", abrir_os_controlado)
     comandos = []
 
-    def comando_falso(argumentos):
-        comandos.append(argumentos)
+    def comando_falso(argumentos, **kwargs):
+        comandos.append((argumentos, kwargs))
         if argumentos[:2] == ["docker", "ps"]:
             return "a" * 64
         if argumentos[:2] == ["docker", "inspect"]:
             return json.dumps(MEDICAO)
+        if argumentos[:3] == ["docker", "image", "inspect"]:
+            return json.dumps(
+                {
+                    "id": "sha256:" + "b" * 64,
+                    "repo_digests": [
+                        "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64
+                    ],
+                }
+            )
         if argumentos[0] == "curl":
             return "200"
         pytest.fail(f"Comando inesperado: {argumentos}")
@@ -4394,21 +4413,38 @@ def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, ca
     )
     assert set(dados["servicos"]) == {"traefik", "catalogo", "admin"}
     assert all(valor == MEDICAO for valor in dados["servicos"].values())
+    assert dados["imagem_admin"] == {
+        "container_image": MEDICAO["imagem"],
+        "id": "sha256:" + "b" * 64,
+        "repo_digests": ["ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64],
+    }
     assert dados["borda_http"] == 200
-    assert lidos == [str(tmp_path / "sites.json")]
+    if os.name == "posix":
+        assert abertos.count(str(tmp_path)) == len(ops.ARQUIVOS_ESTADO_INFRA)
+        assert abertos.count("sites.json") == 1
+    else:
+        assert lidos == [str(tmp_path / "sites.json")]
     assert PRIVADO not in saida
-    assert all(argumentos[0] in {"docker", "curl"} for argumentos in comandos)
+    assert all(argumentos[0] in {"docker", "curl"} for argumentos, _ in comandos)
     assert all(
         argumentos[:2] in (["docker", "ps"], ["docker", "inspect"])
-        for argumentos in comandos
+        or argumentos[:3] == ["docker", "image", "inspect"]
+        for argumentos, _ in comandos
         if argumentos[0] == "docker"
     )
-    assert comandos[-1] == [
+    assert [kwargs["prazo_segundos"] for _, kwargs in comandos] == [10] * 7 + [15]
+    assert comandos[-2][0] == [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        ops.FORMATO_IMAGEM_ADMIN,
+        MEDICAO["imagem"],
+    ]
+    assert ".Config" not in ops.FORMATO_IMAGEM_ADMIN
+    assert comandos[-1][0] == [
         "curl",
         "-skS",
-        "-L",
-        "--max-redirs",
-        "3",
         "--connect-timeout",
         "3",
         "--max-time",
@@ -4429,6 +4465,7 @@ def test_estado_infra_recusa_saida_livre_ou_incompleta():
     dados = {
         "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
         "servicos": {nome: None for nome in ("traefik", "catalogo", "admin")},
+        "imagem_admin": None,
         "borda_http": 200,
     }
     assert ops.conferir_medicao("estado-infra", dados) == dados
@@ -4463,7 +4500,7 @@ def test_estado_infra_recusa_arquivo_nao_regular_sem_ler(monkeypatch, tmp_path, 
 def test_estado_infra_mede_ausencia_e_http_503(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
 
-    def comando_falso(argumentos):
+    def comando_falso(argumentos, **kwargs):
         if argumentos[:2] == ["docker", "ps"]:
             return ""
         if argumentos[0] == "curl":
@@ -4475,13 +4512,14 @@ def test_estado_infra_mede_ausencia_e_http_503(monkeypatch, tmp_path, capsys):
     medicao = json.loads(capsys.readouterr().out)["medicao"]
     assert all(valor is None for valor in medicao["arquivos"].values())
     assert all(valor is None for valor in medicao["servicos"].values())
+    assert medicao["imagem_admin"] is None
     assert medicao["borda_http"] == 503
 
 
 def test_estado_infra_borda_indisponivel_nao_vira_pass(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
 
-    def comando_falso(argumentos):
+    def comando_falso(argumentos, **kwargs):
         if argumentos[:2] == ["docker", "ps"]:
             return ""
         if argumentos[0] == "curl":
@@ -4493,3 +4531,52 @@ def test_estado_infra_borda_indisponivel_nao_vira_pass(monkeypatch, tmp_path, ca
     saida = capsys.readouterr().out
     assert json.loads(saida)["erro"] == "borda"
     assert PRIVADO not in saida
+
+
+def test_estado_infra_recusa_identidade_admin_de_outro_repositorio():
+    dados = {
+        "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
+        "servicos": {
+            "traefik": None,
+            "catalogo": None,
+            "admin": MEDICAO,
+        },
+        "imagem_admin": {
+            "container_image": MEDICAO["imagem"],
+            "id": "sha256:" + "b" * 64,
+            "repo_digests": ["ghcr.io/externo/plataforma-admin@sha256:" + "c" * 64],
+        },
+        "borda_http": 302,
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("estado-infra", dados)
+    dados["imagem_admin"]["repo_digests"] = []
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("estado-infra", dados)
+    dados["imagem_admin"]["repo_digests"] = [
+        "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64
+    ]
+    assert ops.conferir_medicao("estado-infra", dados) == dados
+    dados["imagem_admin"]["container_image"] = "sha256:" + "d" * 64
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("estado-infra", dados)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="O_NOFOLLOW e dir_fd da VPS Linux")
+def test_estado_infra_recusa_troca_por_symlink_antes_de_abrir(monkeypatch, tmp_path):
+    seguro = tmp_path / "sites.json"
+    seguro.write_text("publico", encoding="utf-8")
+    segredo = tmp_path / "secret"
+    segredo.write_text(PRIVADO, encoding="utf-8")
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    abrir_real = ops.os.open
+
+    def trocar_antes_de_abrir(caminho, *args, **kwargs):
+        if caminho == "sites.json":
+            seguro.rename(tmp_path / "salvo")
+            seguro.symlink_to(segredo)
+        return abrir_real(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(ops.os, "open", trocar_antes_de_abrir)
+    with pytest.raises(ops.Falha, match="infra"):
+        ops.hash_arquivo_infra("sites.json")
