@@ -125,8 +125,8 @@
     ninguém.</b>
     Toda pessoa entra em um curso, e eu não escolho por você. O resto desta tela
     continua funcionando, e recusar quem está esperando continua possível. O que
-    falta é a senha de par entre esta área e o catálogo, e ela aparece na caixa
-    <b>Precisa de você</b> do painel do sistema.
+    falta é a senha de par entre esta área e o catálogo. Peça a uma sessão para
+    ligar esse par no servidor e recarregue esta página.
   </p>
   {% elif not cursos %}
   <p class="aviso">
@@ -140,10 +140,10 @@
   {% if nao_consigo_perguntar %}
   <p class="aviso">
     <b>Ainda não consigo perguntar quem está esperando.</b>
-    A fila existe e está recebendo gente — o que falta é a senha de par entre
-    esta área e a parte do sistema que guarda os alunos. Ela só pode ser
-    escrita dentro do servidor, por você, com um comando de uma linha. Ele está
-    no painel do sistema, na caixa <b>Precisa de você</b>.
+    A fila existe e está recebendo gente. O que falta é a senha de par entre
+    esta área e a parte do sistema que guarda os alunos, e ela só pode ser
+    ligada dentro do servidor. Peça a uma sessão para ligar esse par e
+    recarregue esta página.
   </p>
   {% elif not esperando and peneirando %}
   {% comment %}
@@ -340,8 +340,8 @@
   <p class="aviso">
     <b>Ainda não consigo ver a lista de alunos.</b>
     Falta a senha de par entre esta área e a parte do sistema que guarda os
-    alunos — um comando de uma linha, no servidor, que está no painel do
-    sistema, na caixa <b>Precisa de você</b>.
+    alunos. Peça a uma sessão para ligar esse par no servidor e recarregue esta
+    página.
   </p>
   {% elif not alunos and peneirando %}
   <p class="aviso">

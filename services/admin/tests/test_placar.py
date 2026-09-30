@@ -22,12 +22,15 @@ O que estes guardas protegem (plano: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`):
    mesma linha, quando o mantenedor não fixou uma.
 6. **O par sem fonte se declara**, em vez de mostrar número inventado.
 7. **A porta continua sendo a porta**, e a visão geral leva até aqui.
+8. **Todo link da capa aponta para uma rota que existe**, inclusive nos ramos
+   que nenhum teste abre.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -104,9 +107,9 @@ def _a_escola_caiu():
 def test_os_cartoes_do_repositorio_sao_validos():
     """Cartão torto reprova aqui, não na tela do mantenedor."""
     pasta = placar.diretorio_dos_cartoes()
-    assert pasta is not None, (
-        "a pasta painel/cartoes/ não foi encontrada — em produção ela vem em "
-        "painel_embutido/, num checkout em painel/. Sem ela o placar abre sem número."
+    assert pasta.is_dir(), (
+        "a pasta apps/core/cartoes/ não foi encontrada. Ela viaja com o código "
+        "da célula; sem ela o placar abre sem número."
     )
     for arquivo in sorted(pasta.glob("*.json")):
         cartao, problemas = placar.ler_cartao(arquivo.stem, pasta)
@@ -409,6 +412,17 @@ def test_a_visao_geral_leva_ate_o_placar():
     _a_escola_responde([_ficha()])
     html = _dentro().get(reverse("visao_geral")).content.decode()
     assert reverse("placar") in html
+
+
+def test_todo_link_da_pagina_aponta_para_rota_que_existe():
+    """Um `{% url %}` num ramo que nenhum teste abre só quebra em produção, no dia
+    em que o ramo abrir. Aqui todos são resolvidos, abertos ou não."""
+    tela = Path(placar.__file__).parent / "templates" / "admin" / "placar.html"
+    fonte = tela.read_text(encoding="utf-8")
+    nomes = set(re.findall(r"\{% url '([\w-]+)' %\}", fonte))
+    assert nomes, "a capa tem links, e este guarda não os está achando"
+    for nome in sorted(nomes):
+        reverse(nome)
 
 
 @respx.mock

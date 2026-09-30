@@ -4,7 +4,8 @@ O que estes guardas protegem:
 
 1. **A foto é do que a tela mostra**: `valores_atuais` lê a montagem do
    placar, só o que foi medido, e a linha `nome=valor; ...` sai ordenada.
-2. **A linha da foto tem forma fixa**, e torta não vira número.
+2. **A linha da foto tem forma fixa** (decimal e sinal passam), e torta não
+   vira número.
 3. **A comparação é com a foto ANTERIOR a hoje**, a mais recente.
 4. **Ruído não é movimento; a direção quem pinta é o cartão; foto velha é
    dita; número mensal não compara entre meses.**
@@ -12,7 +13,6 @@ O que estes guardas protegem:
    livro, "não medi".
 6. **Os campos novos do cartão** (`frescor_maximo`, `dimensoes`, `ruido`)
    passam quando certos e reprovam quando tortos.
-7. **A reunião põe a foto no pedido** quando a caixa está marcada, e só então.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import datetime as dt
 
 import pytest
 
-from apps.core import mudancas, placar, reuniao
+from apps.core import mudancas, placar
 
 HOJE = dt.date(2026, 9, 21)
 
@@ -56,11 +56,6 @@ def _contexto():
                 "cartao": _cartao("margem-mensal"),
             },
         ],
-        "latencias": {
-            "decisao": {"veredito": "medido", "mediana_dias": 1.5},
-            "execucao": {"veredito": "sem-dados-ainda"},
-            "aprendizado": {"veredito": "medido", "mediana_dias": None},
-        },
     }
 
 
@@ -70,16 +65,22 @@ def test_a_foto_e_do_que_a_tela_mostra_e_sai_ordenada():
         "alunos-na-plataforma": 12,
         "compras-no-ciclo": 7,
         "compras-no-mes": 3,
-        "latencia-de-decisao": 1.5,
         "liberacoes-em-48h": 100,
         "pedidos-de-entrada-por-semana": 4,
-    }, "sem-fonte, sem-dados-ainda e mediana nula ficam de fora"
+    }, "cartão sem fonte fica de fora"
     linha = mudancas.foto_em_texto(atuais)
     assert linha == (
         "alunos-na-plataforma=12; compras-no-ciclo=7; compras-no-mes=3; "
-        "latencia-de-decisao=1.5; liberacoes-em-48h=100; pedidos-de-entrada-por-semana=4"
+        "liberacoes-em-48h=100; pedidos-de-entrada-por-semana=4"
     )
     assert mudancas.ler_foto(linha) == atuais, "a linha volta ao dicionário sem perda"
+
+
+def test_a_linha_da_foto_guarda_decimal_e_sinal():
+    atuais = {"crescimento-mes-a-mes": -12, "margem-mensal": 1234.5}
+    linha = mudancas.foto_em_texto(atuais)
+    assert linha == "crescimento-mes-a-mes=-12; margem-mensal=1234.5"
+    assert mudancas.ler_foto(linha) == atuais
 
 
 @pytest.mark.parametrize(
@@ -110,7 +111,7 @@ def test_a_comparacao_e_com_a_foto_anterior_mais_recente():
 def test_ruido_direcao_frescor_e_mes():
     cartoes = {
         "compras-no-ciclo": _cartao("compras-no-ciclo", ruido=1, unidade="pessoas"),
-        "latencia-de-decisao": _cartao("latencia-de-decisao", direcao="descer"),
+        "restricao-da-semana": _cartao("restricao-da-semana", direcao="descer"),
         "liberacoes-em-48h": _cartao(
             "liberacoes-em-48h", frescor_maximo=3, acao="abra a fila"
         ),
@@ -124,7 +125,7 @@ def test_ruido_direcao_frescor_e_mes():
         "arquivo": "f",
         "valores": {
             "compras-no-ciclo": 6,
-            "latencia-de-decisao": 1,
+            "restricao-da-semana": 1,
             "liberacoes-em-48h": 100,
             "compras-no-mes": 9,
             "aprendizados-validados-no-ciclo": 1,
@@ -132,7 +133,7 @@ def test_ruido_direcao_frescor_e_mes():
     }
     atuais = {
         "compras-no-ciclo": 7,  # +1 = ruído, parado
-        "latencia-de-decisao": 3,  # subiu com direção descer: piorou
+        "restricao-da-semana": 3,  # subiu com direção descer: piorou
         "liberacoes-em-48h": 50,  # caiu com direção subir: piorou, foto velha, com ação
         "compras-no-mes": 2,  # mês diferente: nem entra
         "aprendizados-validados-no-ciclo": 2,  # faixa: mudou
@@ -143,13 +144,13 @@ def test_ruido_direcao_frescor_e_mes():
     assert r["parados"] == 1 and r["sem_par"] == 1
     por_nome = {m["nome"]: m for m in r["movidos"]}
     assert set(por_nome) == {
-        "latencia-de-decisao",
+        "restricao-da-semana",
         "liberacoes-em-48h",
         "aprendizados-validados-no-ciclo",
     }
-    assert por_nome["latencia-de-decisao"]["sentido"] == "piorou"
+    assert por_nome["restricao-da-semana"]["sentido"] == "piorou"
     assert (
-        por_nome["latencia-de-decisao"]["foto_velha"] is True
+        por_nome["restricao-da-semana"]["foto_velha"] is True
     ), "21 dias > frescor padrão de 10"
     assert por_nome["liberacoes-em-48h"]["sentido"] == "piorou"
     assert por_nome["liberacoes-em-48h"]["foto_velha"] is True
@@ -190,7 +191,7 @@ def test_frescor_padrao_e_dez_dias():
 
 def test_sem_foto_e_dito_e_sem_livro_e_nao_medi():
     r = mudancas.o_que_mudou(_contexto(), [], HOJE)
-    assert r["veredito"] == "sem-foto" and r["quantos_atuais"] == 6
+    assert r["veredito"] == "sem-foto" and r["quantos_atuais"] == 5
     assert r["foto_de_hoje"].startswith("alunos-na-plataforma=12; ")
     assert mudancas.o_que_mudou(_contexto(), None, HOJE) == {
         "veredito": "nao-consigo-medir"
@@ -210,7 +211,7 @@ def test_a_montagem_inteira_compara_e_pinta_pelo_cartao():
     por_nome = {m["nome"]: m for m in r["movidos"]}
     assert por_nome["compras-no-ciclo"]["sentido"] == "melhorou"
     assert por_nome["pedidos-de-entrada-por-semana"]["sentido"] == "piorou"
-    assert r["sem_par"] == 4
+    assert r["sem_par"] == 3
 
 
 # ------------------------------------------------------- os campos do cartão
@@ -260,22 +261,6 @@ def test_os_campos_novos_do_cartao_reprovam_quando_tortos(torto, trecho):
     assert any(trecho in p for p in problemas), problemas
 
 
-# --------------------------------------------------------------- a reunião
-
-
-def test_a_reuniao_poe_a_foto_no_pedido_so_com_a_caixa_marcada():
-    foto = "compras-no-mes=3; liberacoes-em-48h=100"
-    texto = reuniao.montar_o_pedido({"tirar_foto": "sim"}, HOJE, foto)
-    assert "FOTO DA SEMANA" in texto and f'foto: "{foto}"' in texto
-    assert "tipo `medicao`" in texto and "2026-09-21" in texto
-    assert reuniao.montar_o_pedido({}, HOJE, foto) is None, "sem a caixa, sem pedido"
-    assert (
-        reuniao.montar_o_pedido({"tirar_foto": "sim"}, HOJE, None) is None
-    ), "sem número com fonte não há o que fotografar"
-    com_compromisso = reuniao.montar_o_pedido({"compromisso1": "ligar"}, HOJE, foto)
-    assert "FOTO DA SEMANA" not in com_compromisso
-
-
 def test_todo_cartao_com_fonte_diz_quando_a_foto_dele_envelhece():
     """Número com fonte nasce dizendo em quantos dias a foto fica velha.
 
@@ -285,7 +270,7 @@ def test_todo_cartao_com_fonte_diz_quando_a_foto_dele_envelhece():
     entra na foto e por isso não é cobrado aqui.
     """
     pasta = placar.diretorio_dos_cartoes()
-    assert pasta is not None
+    assert pasta.is_dir()
     mudos = []
     for arquivo in sorted(pasta.glob("*.json")):
         cartao, problemas = placar.ler_cartao(arquivo.stem, pasta)

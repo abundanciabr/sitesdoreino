@@ -11,9 +11,9 @@ saber.
 acontecimento se acrescenta, estado se calcula. O experimento é uma `medicao`
 que declara a aposta ANTES de saber o resultado (o problema que dói, a
 hipótese, qual número ela quer mover, o que a faz parar antes da hora, e o
-prazo em `vence_em_dias`). O contrato desses campos é imposto por
-`painel/logica.js`, dos dois lados: o gerador do livro RECUSA construir com um
-experimento pela metade.
+prazo em `vence_em_dias`). Esta tela lê só o cabeçalho dos
+registros de `apps/core/registros/` e trata como experimento o que declara a
+hipótese.
 
 **O resultado é um registro NOVO que aponta para o experimento** (`responde_a`),
 com o `veredito`. Nunca a edição do experimento — e é justamente por isso que a
@@ -82,11 +82,9 @@ from .paginas import SLUG_DA_PAGINA, _site
 #: O tipo de registro que carrega um experimento e o resultado dele.
 TIPO = "medicao"
 
-#: Os três desfechos, com o nome que aparece na tela. O vocabulário é o mesmo
-#: de `VEREDITOS` em `painel/logica.js`, que é quem o IMPÕE na escrita; aqui ele
-#: se repete pelo mesmo motivo de `TIPO_DO_COMPROMISSO` em `direcao.py` — o
-#: livro é JavaScript e esta tela é Python, e um dos dois lados tem de dizer as
-#: palavras. Quem reprova palavra inventada é o gerador do livro, na escrita.
+#: Os três desfechos, com o nome que aparece na tela. São as palavras que o
+#: campo `veredito` dos registros de `apps/core/registros/` pode ter; palavra
+#: fora desta lista aparece como "Sem veredito escrito".
 VEREDITOS = {
     "venceu": "Venceu",
     "perdeu": "Perdeu",
@@ -100,7 +98,7 @@ APRENDERAM = ("venceu", "perdeu")
 
 def eh_experimento(registro: dict) -> bool:
     """Uma `medicao` que declara uma hipótese. Os outros quatro campos vêm com
-    ela por contrato (`painel/logica.js` recusa experimento pela metade)."""
+    ela (`problema`, `metrica`, `guarda` e `vence_em_dias`)."""
     return registro.get("tipo") == TIPO and bool(registro.get("hipotese"))
 
 

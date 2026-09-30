@@ -36,8 +36,8 @@ coisa de uma vez por mês, não de uma vez por segundo.
 
 ## De onde vem a lista de páginas
 
-De `painel/mapa-do-site.json`, o mesmo arquivo de `/admin/mapa/`, nunca de uma
-lista escrita à mão aqui. Página nova aparece nesta tela sozinha, sem ninguém
+De `apps/core/mapa-do-site.json`, o mesmo arquivo de `/admin/mapa/`, nunca de
+uma lista escrita à mão aqui. Página nova aparece nesta tela sozinha, sem ninguém
 lembrar de atualizar uma segunda lista. É a lei anti-duplicação outra vez, e é
 o caso em que ela já cobrou caro nesta casa (a Classe 8, mapa velho).
 """

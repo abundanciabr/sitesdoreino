@@ -94,8 +94,9 @@ mais aparece.
   <p class="aviso borda-vermelha">
     <b>Não consegui olhar.</b> O livro de ocorrências não chegou até esta tela,
     então ela não sabe se existem experimentos. Isto não é "nenhum experimento":
-    é a tela sem a fonte. Abra a <a href="{% url 'painel' %}">porta do painel</a>
-    e diga a uma sessão que o livro não está chegando à área administrativa.
+    é a tela sem a fonte. Isto é falha do sistema, não sua. Peça a uma sessão
+    para conferir a pasta do livro (apps/core/registros) na área administrativa e
+    recarregue esta página.
   </p>
 
   {% elif lab.total == 0 %}
@@ -109,11 +110,9 @@ mais aparece.
     jeito que der mais certo.
   </p>
   <p class="recado">
-    <b>Como nasce o primeiro:</b> leve a aposta à
-    <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>. No fim da pauta
-    você monta o pedido para o robô, um bloco de texto para colar numa sessão:
-    descreva ali as cinco partes. É o robô que escreve o registro no livro, e a
-    partir daí o experimento aparece nesta tela como "rodando".
+    <b>Como nasce o primeiro:</b> descreva as cinco partes numa sessão. É o
+    robô que escreve o registro no livro, e a partir daí o experimento aparece
+    nesta tela como "rodando".
   </p>
   <p class="nota">
     Enquanto nenhum experimento fechar, o número "aprendizados validados no
@@ -136,7 +135,7 @@ mais aparece.
     </div>
   </div>
 
-  {% comment %}1. O QUE PASSOU DO PRAZO — primeiro, porque é o que cobra alguém{% endcomment %}
+  {% comment %}1. O QUE PASSOU DO PRAZO (primeiro, porque é o que cobra alguém){% endcomment %}
   {% if lab.vencidos %}
   <h2 class="titulo-de-lista espaco-34">Passaram do prazo e ninguém escreveu o resultado</h2>
   <p class="aviso borda-amarela">
@@ -155,9 +154,9 @@ mais aparece.
     {% endfor %}
   </ul>
   <p class="recado">
-    <b>O gesto:</b> leve-os à <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>
-    e feche cada um, mesmo que o veredito seja "não deu para saber". Fechar sem
-    conclusão vale mais do que deixar a aposta aberta para sempre.
+    <b>O gesto:</b> peça a uma sessão que escreva o resultado de cada um, mesmo
+    que o veredito seja "não deu para saber". Fechar sem conclusão vale mais do
+    que deixar a aposta aberta para sempre.
   </p>
   {% endif %}
 
@@ -179,8 +178,8 @@ mais aparece.
   </ul>
   {% else %}
   <p class="recado-fraco">
-    Nenhuma aposta em campo neste momento. A próxima nasce na
-    <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>.
+    Nenhuma aposta em campo neste momento. A próxima nasce quando você descreve
+    a aposta a uma sessão.
   </p>
   {% endif %}
 
@@ -204,9 +203,8 @@ mais aparece.
     {% endif %}
     {% endfor %}
   <p class="recado">
-    <b>O gesto:</b> aposta que venceu não vira produto sozinha. Abra a
-    <a href="{% url 'caixa_robos' %}">fila dos robôs</a> e transforme o que
-    funcionou em tarefa.
+    <b>O gesto:</b> aposta que venceu não vira produto sozinha. Peça a uma
+    sessão que transforme o que funcionou em tarefa.
   </p>
   <p class="nota">
     "Não deu para saber" é desfecho legítimo, e por isso tem um lugar próprio

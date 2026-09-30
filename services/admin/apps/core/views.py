@@ -253,10 +253,8 @@ def documento_admin(request, nome):
 
 # ---------------------------------------------------------------- a escola
 #
-# A ESCOLA é a segunda casa desta área, e a separação dela para o painel do
-# sistema (`/painel/`) é de ASSUNTO, não de gosto: um mostra a plataforma sendo
-# construída, o outro mostra a escola funcionando. Enquanto os dois se
-# chamavam "painel da escola" na tela, o mantenedor abria um esperando o outro.
+# A ESCOLA é a segunda casa desta área: mostra a escola funcionando, os alunos
+# e o que vier depois deles.
 
 
 class FonteAusente:

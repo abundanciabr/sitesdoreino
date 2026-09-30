@@ -2,7 +2,7 @@
 
 O que estes guardas protegem:
 
-1. **A tela serve o arquivo do repositório** (`painel/mapa-do-site.json`), e não
+1. **A tela serve o arquivo da célula** (`apps/core/mapa-do-site.json`), e não
    uma lista própria. Uma segunda lista aqui dentro seria a duplicação que o
    `CLAUDE.md` proíbe — e o dia em que as duas divergissem, o dono estaria
    olhando a planta errada da casa.
@@ -10,10 +10,13 @@ O que estes guardas protegem:
    Uma linha que some não deixa rastro — é a pior forma de perder um fato.
 3. **Molde não vira link.** `/forum/t/<int:topico_id>` não é um lugar; oferecê-lo
    como link manda o dono para um 404 e ele conclui que o site quebrou.
-4. **Mapa ausente se DECLARA** (500 + explicação), nunca vira página vazia — a
-   mesma lei do painel ausente. "Este site não tem endereço nenhum" seria a
-   mentira mais convincente que esta tela poderia contar.
+4. **Mapa ausente se DECLARA** (500 + explicação), nunca vira página vazia.
+   "Este site não tem endereço nenhum" seria a mentira mais convincente que
+   esta tela poderia contar.
 5. **A porta continua sendo a porta**: sem crachá, esta página não abre.
+6. **Nenhuma linha aponta para página que não existe**: toda entrada da célula
+   `admin` tem a rota dela no urlconf. Sem este guarda, a próxima página
+   apagada deixaria no mapa uma linha que leva ao nada.
 """
 
 import json
@@ -24,7 +27,8 @@ import respx
 from django.test import Client
 from django.urls import get_script_prefix, reverse, set_script_prefix
 
-from apps.core import mapa_do_site, painel, robos
+from apps.core import mapa_do_site
+from config.urls import urlpatterns
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -61,9 +65,8 @@ def _dentro() -> Client:
 def _arquivo() -> dict:
     caminho = mapa_do_site.arquivo_do_mapa()
     assert caminho is not None, (
-        "o mapa do site não foi encontrado — em produção ele vem em "
-        "`painel_embutido/`, num checkout em `painel/`. Se este assert falhou, "
-        "a tela do dono abriria em 500."
+        "o mapa do site não foi encontrado em `apps/core/mapa-do-site.json`. "
+        "Se este assert falhou, a tela do dono abriria em 500."
     )
     return json.loads(caminho.read_text(encoding="utf-8"))
 
@@ -133,11 +136,15 @@ def test_gesto_nao_vira_link():
 
 
 @respx.mock
-def test_mapa_ausente_diz_isso_em_voz_alta(monkeypatch):
-    monkeypatch.setattr(mapa_do_site, "diretorio_do_painel", lambda: None)
+def test_mapa_ausente_diz_isso_em_voz_alta(monkeypatch, tmp_path):
+    monkeypatch.setattr(mapa_do_site, "ARQUIVO_DO_MAPA", tmp_path / "nao-veio.json")
     resposta = _dentro().get(reverse("mapa_do_site"))
     assert resposta.status_code == 500
-    assert "não veio nesta versão" in resposta.content.decode()
+    html = resposta.content.decode()
+    assert "não veio nesta versão" in html
+    assert (
+        "apps/core/mapa-do-site.json" in html
+    ), "a mensagem não diz qual arquivo faltou"
 
 
 @respx.mock
@@ -326,7 +333,7 @@ def _linha(resposta, endereco: str) -> dict:
 def test_toda_pagina_do_arquivo_cabe_em_alguma_area():
     """O guarda que impede a lista de áreas de envelhecer em silêncio.
 
-    Rota nova exige entrada em `painel/mapa-do-site.json`, que é da célula
+    Rota nova exige entrada em `apps/core/mapa-do-site.json`, que é da célula
     `admin` — então esta suíte roda no PR que a criar. Se o endereço novo não
     couber em nenhuma área, é aqui que ele reprova, com o conserto escrito.
     """
@@ -348,6 +355,27 @@ def test_toda_pagina_do_arquivo_cabe_em_alguma_area():
     assert nas_areas == resposta.context["total"], (
         f"a árvore mostra {nas_areas} endereços e o arquivo tem "
         f"{resposta.context['total']} — algum sumiu no caminho"
+    )
+
+
+def test_nenhuma_entrada_da_celula_aponta_para_rota_que_nao_existe():
+    """O outro sentido do guarda acima: página apagada leva a linha embora.
+
+    Só as entradas da célula `admin` são conferidas, porque só o urlconf desta
+    célula está aqui para responder. Uma linha que sobra depois que a página
+    some é um endereço que o mapa promete e que devolve 404.
+    """
+    rotas = {str(rota.pattern) for rota in urlpatterns}
+    fantasmas = [
+        e["endereco"]
+        for e in _arquivo()["enderecos"]
+        if e["celula"] == "admin" and e["rota"] not in rotas
+    ]
+    assert not fantasmas, (
+        "estas linhas de `apps/core/mapa-do-site.json` apontam para rota que "
+        f"não existe em `config/urls.py`: {fantasmas}.\n"
+        "Conserto: tire a linha do arquivo, e tire também a menção a essa página "
+        "no texto das outras linhas."
     )
 
 
@@ -495,92 +523,6 @@ def test_a_area_de_cada_endereco_e_uma_so():
     assert mapa_do_site.area_de("/cursos/") == "sala"
     # Endereço que ninguém previu devolve None, e a tela o mostra em voz alta.
     assert mapa_do_site.area_de("/coisa-que-ninguem-declarou") is None
-
-
-# ------------------------------------------------------ o que está em obra
-
-
-def _fila_de_mentira(tmp_path, monkeypatch):
-    """Uma fila embutida como o deploy a deixaria, com os dois lados medidos.
-
-    A mistura é de propósito: duas tarefas abertas em lugares diferentes, e uma
-    já concluída que NÃO pode aparecer como obra. Sem a concluída no dado, o
-    guarda passaria mesmo com a regra de "em aberto" adulterada — foi o que
-    aconteceu na primeira mutação (`armadilhas/195`).
-    """
-    pasta = tmp_path / "fila_embutida"
-    pasta.mkdir(parents=True)
-    (pasta / "estados.json").write_text(
-        json.dumps(
-            {
-                "TAR-001": {
-                    "estado": "concluída",
-                    "titulo": "Coisa que já ficou pronta",
-                    "toca": ["forum"],
-                },
-                "TAR-002": {
-                    "estado": "na fila",
-                    "titulo": "Coisa que ainda vai ser feita",
-                    "toca": ["forum"],
-                },
-                "TAR-003": {
-                    "estado": "bloqueada",
-                    "titulo": "Coisa que parou no meio",
-                    "toca": ["quiz", "funil"],
-                },
-            },
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
-    mapa_original = mapa_do_site.arquivo_do_mapa()
-    painel_local = tmp_path / "painel_embutido"
-    painel_local.mkdir()
-    (painel_local / "painel.html").write_text("<html></html>", encoding="utf-8")
-    (painel_local / "mapa-do-site.json").write_bytes(mapa_original.read_bytes())
-    monkeypatch.setattr(painel, "CANDIDATOS", (painel_local,))
-    monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
-
-
-@respx.mock
-def test_o_que_esta_em_obra_vem_da_fila_e_nao_de_uma_lista_daqui(tmp_path, monkeypatch):
-    """A segunda metade do pedido: o que existe, e o que ainda está sendo feito.
-
-    Os estados são escritos AQUI por extenso, e não lidos de `EM_ABERTO`: um
-    teste que lê a mesma constante que deveria vigiar passa mesmo quando ela é
-    adulterada.
-    """
-    _fila_de_mentira(tmp_path, monkeypatch)
-    resposta = _dentro().get(reverse("mapa_do_site"))
-    html = resposta.content.decode()
-    assert "Ainda sendo construído" in html
-
-    obra = resposta.context["obra"]
-    assert obra is not None, "a fila estava lá e a tela não a leu"
-    assert obra["total"] == 2, "a tarefa já concluída entrou na conta do que falta"
-    assert "Coisa que já ficou pronta" not in html
-    assert "Coisa que ainda vai ser feita" in html
-    assert "Coisa que parou no meio" in html
-
-    for lugar in obra["lugares"]:
-        for tarefa in lugar["tarefas"]:
-            assert tarefa["estado"] not in ("concluída", "cancelada")
-
-    # O `toca` vira lugar que o dono reconhece, e uma tarefa que mexe em dois
-    # aparece nos dois: por isso a soma dos lugares passa do total, e a tela diz
-    # isso com todas as letras em vez de deixar a conta parecer errada.
-    lugares = {lugar["nome"] for lugar in obra["lugares"]}
-    assert "o fórum" in lugares and "o quiz" in lugares
-    assert sum(lugar["quantas"] for lugar in obra["lugares"]) == 3
-
-
-@respx.mock
-def test_fila_ausente_nao_vira_nada_em_obra(monkeypatch):
-    """Sem a fila, a tela DIZ que não a leu. "Nada em obra" seria mentira."""
-    monkeypatch.setattr(mapa_do_site, "diretorio_da_fila", lambda: None)
-    html = _dentro().get(reverse("mapa_do_site")).content.decode()
-    assert "A fila de trabalho não veio nesta versão do site." in html
-    assert "Ainda sendo construído" in html
 
 
 # --------------------------------------------------------------------------

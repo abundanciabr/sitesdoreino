@@ -53,10 +53,9 @@ conseguir apagar a própria navegação do bastidor pelo bastidor.
 Mesma escolha de `ROTAS_PUBLICAS` em `apps/core/rodape.py`, pelo mesmo motivo:
 o rótulo curto ("Pontos", "Menu do site") é uma decisão de linguagem para um
 leigo, e não sai por regra de nenhum arquivo. O que sai por regra é a LISTA, e
-`tests/test_moldura_do_admin.py` a compara com as seções que
-`painel/mapa-do-site.json` declara — o mesmo mapa que já tem varredor no CI
-provando que ele não mente sobre o roteamento. Seção nova na área reprova o PR
-até ganhar nome aqui.
+`tests/test_moldura_do_admin.py` a compara com as seções que o mapa do site
+(`mapa-do-site.json`, o arquivo que `/admin/mapa/` serve) declara. Seção nova na
+área reprova o PR até ganhar nome aqui.
 
 **O `href` sai de `reverse()`, nunca do endereço escrito no mapa.** O mapa diz
 `/admin/escola/`, que é o endereço PÚBLICO; esta célula roda sob `SCRIPT_NAME` e
@@ -72,19 +71,14 @@ from django.urls import NoReverseMatch, get_script_prefix, reverse
 from django.utils import timezone
 
 # As SEÇÕES da área administrativa, na ordem em que o menu as desenha, e o nome
-# curto de cada uma. A ordem é a de quem trabalha aqui, não a alfabética: as
-# três primeiras são o dia a dia da escola, as três do meio são o que o site
-# publica, e as três últimas são as ferramentas de olhar o sistema por dentro.
+# curto de cada uma. A ordem é a de quem trabalha aqui, não a alfabética.
 #
-# Os rótulos são para um leigo, e três deles são deliberados:
+# Os rótulos são para um leigo, e dois deles são deliberados:
 #
 #   · "Pontos", e não "Economia": a tela se chama "Os pontos da escola", e é
 #     assim que o mantenedor fala dela.
 #   · "Menu do site", e não "Menu": estando DENTRO do menu do admin, um item
 #     chamado "Menu" seria a pergunta "menu de quê?" em toda visita.
-#   · "Painel do sistema", e não "Painel": esta casa tem dois painéis, e chamar
-#     um deles pelo nome curto já custou uma confusão ao mantenedor, contada no
-#     comentário de `visao_geral.html`.
 SECOES = (
     ("visao_geral", "Visão geral"),
     # "Pendências", e vem logo depois da capa (07/09/2026): é a tela que diz o
@@ -113,20 +107,8 @@ SECOES = (
     # "Placar", e não "Metas": é UMA meta por vez (4DX), e o que a tela mostra
     # é o número contra o alvo, não uma lista (03/09/2026).
     ("placar", "Placar"),
-    # A pauta de segunda-feira do painel de gestão (degrau 3, 03/09/2026): lê o
-    # placar e termina no pedido para o robô. "Reunião", curto, porque é o que
-    # o mantenedor abre toda segunda.
-    ("reuniao", "Reunião"),
     ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
-    ("appmax", "Appmax"),
-    ("comunidade", "Comunidade"),
-    # "Ranking das IAs", e nunca "Placar": já existe um item "Placar" nesta
-    # mesma barra, e ele é a meta de alunos. Dois "placar" lado a lado fariam o
-    # mantenedor clicar no errado, que é exatamente o atrito que renomeou
-    # "Abrir o painel da escola" em 28/08/2026 (17/09/2026).
-    ("ranking_das_ias", "Ranking das IAs"),
-    ("painel", "Painel do sistema"),
 )
 
 # A CASA é a visão geral, e ela é o único item que casa por igualdade em vez de

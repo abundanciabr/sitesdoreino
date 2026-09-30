@@ -1,14 +1,13 @@
-"""Teste-guarda: os DOIS painéis da área, e a tela de alunos da escola.
+"""Teste-guarda: o painel da escola, e a tela de alunos da escola.
 
 Três coisas diferentes são travadas aqui, e nenhuma delas seria pega por um
 teste que só perguntasse "a página abriu?":
 
-1. **Os dois painéis têm nomes distintos, e o do sistema não se chama mais
-   "painel da escola".** Foi um defeito de VERDADE, relatado pelo mantenedor em
-   28/08/2026: o único link da visão geral levava ao livro de ocorrências da
-   construção da plataforma, mas se anunciava como painel da escola. Ele
-   clicava esperando alunos e via merges. Um teste de status nunca veria isso —
-   a página abria perfeitamente, dizendo a coisa errada.
+1. **O cartão "painel da escola" leva à escola.** Foi um defeito de VERDADE,
+   relatado pelo mantenedor em 28/08/2026: o link da visão geral se anunciava
+   como painel da escola e abria outra tela, então ele clicava esperando alunos
+   e não encontrava alunos. Um teste de status nunca veria isso: a página abria
+   perfeitamente, dizendo a coisa errada.
 
 2. **As duas rotas novas nascem ATRÁS da porta.** `CAMINHOS_ISENTOS` é uma
    igualdade exata (`test_inv_porta_fail_closed.py`), mas ela prova que
@@ -83,14 +82,7 @@ def _texto(resposta) -> str:
     return resposta.content.decode()
 
 
-# ------------------------------------------------------- 1. os dois painéis
-
-
-@respx.mock
-def test_a_visao_geral_oferece_os_dois_paineis_com_nomes_distintos():
-    html = _texto(_dentro().get("/"))
-    assert "Abrir o painel do sistema" in html
-    assert "Abrir o painel da escola" in html
+# ------------------------------------------------------- 1. o painel da escola
 
 
 def _href_do_cartao(html: str, rotulo: str) -> str:
@@ -113,16 +105,15 @@ def _href_do_cartao(html: str, rotulo: str) -> str:
 
 
 @respx.mock
-def test_o_painel_do_sistema_nao_se_chama_mais_painel_da_escola():
+def test_o_cartao_do_painel_da_escola_leva_a_escola():
     """O defeito relatado, travado pelo DESTINO e não pelo texto solto.
 
-    Não basta que as duas frases existam na página: o que quebrou foi a
-    ligação entre elas. Este teste confere que o cartão chamado "painel do
-    sistema" aponta para `painel` e o chamado "painel da escola" aponta para
-    `escola` — trocar os dois de lugar deixaria o teste acima verde.
+    Não basta que a frase exista na página: o que quebrou foi a ligação entre
+    o nome e a tela. Este teste confere que o cartão chamado "painel da
+    escola" aponta para `escola`.
     """
     html = _texto(_dentro().get("/"))
-    assert _href_do_cartao(html, "Abrir o painel do sistema") == reverse("painel")
+    assert "Abrir o painel da escola" in html
     assert _href_do_cartao(html, "Abrir o painel da escola") == reverse("escola")
 
 
@@ -161,7 +152,7 @@ def test_os_enderecos_carregam_o_prefixo_publico(sob_o_prefixo_publico):
     """
     html = _texto(_dentro().get("/"))
     assert 'href="/admin/escola/"' in html
-    assert 'href="/admin/painel/"' in html
+    assert 'href="/admin/caixa/"' in html
 
     html_escola = _texto(_dentro().get("/escola/"))
     assert 'href="/admin/escola/alunos/"' in html_escola

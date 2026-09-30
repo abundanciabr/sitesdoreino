@@ -8,8 +8,8 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
 ---------------------------------------
 1. **A lista `ROTAS_PUBLICAS` envelhecendo.** Ela é escrita à mão, e lista
    escrita à mão apodrece — é a Classe 8 do plano dos robôs sem colisão. O
-   guarda a compara com o que `painel/mapa-do-site.json` declara público NESTA
-   célula: página pública nova reprova o PR até entrar na lista.
+   guarda a compara com o que `apps/core/mapa-do-site.json` declara público
+   NESTA célula: página pública nova reprova o PR até entrar na lista.
 2. **O bastidor ganhando a assinatura do site sem ninguém pedir.** A barra e o
    rodapé do site em cima da área de administração diriam ao mantenedor "você
    está no site" quando ele está na sala de máquinas.
@@ -22,15 +22,12 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from django.urls import get_resolver, reverse
 
 from apps.core import rodape as regras
-
-RAIZ_DO_REPO = Path(__file__).resolve().parents[3]
-MAPA = RAIZ_DO_REPO / "painel" / "mapa-do-site.json"
+from apps.core.mapa_do_site import arquivo_do_mapa
 
 
 def rotas_publicas_pelo_mapa() -> set:
@@ -41,11 +38,13 @@ def rotas_publicas_pelo_mapa() -> set:
     que faz esta comparação valer alguma coisa — duas listas à mão concordariam
     por copiar uma da outra.
     """
-    assert MAPA.is_file(), (
-        f"{MAPA} não existe. Este guarda não tem o que medir, e isso não é um "
-        "OK — [INV-CI01]."
+    mapa = arquivo_do_mapa()
+    assert mapa is not None, (
+        "o mapa do site não existe (`arquivo_do_mapa()` devolveu `None`). Este "
+        "guarda não tem o que medir, e isso não é um OK [INV-CI01]. Devolva o "
+        "arquivo ao lugar que `apps/core/mapa_do_site.py` declara."
     )
-    dados = json.loads(MAPA.read_text(encoding="utf-8"))
+    dados = json.loads(mapa.read_text(encoding="utf-8"))
     padroes = {
         entrada["rota"]
         for entrada in dados["enderecos"]
@@ -97,7 +96,7 @@ def test_o_bastidor_nao_ganha_a_assinatura_do_site():
     precisar lembrar de tirá-los.
     """
     assert regras.variante_da_rota("visao_geral") is None
-    assert regras.variante_da_rota("painel") is None
+    assert regras.variante_da_rota("placar") is None
     assert regras.variante_da_rota("uma-tela-do-bastidor-que-nascer-amanha") is None
     assert regras.variante_da_rota(None) is None
 

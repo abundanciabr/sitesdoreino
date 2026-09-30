@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-013-ci-medir-o-que-acontece-quando-a-biblioteca-compartilhada-mu",
+  tipo: "medicao",
+  quando: "2026-09-18",
+  titulo: "ci: medir o que acontece quando a biblioteca compartilhada muda",
+  detalhe: "Medido: PR so em packages/ detecta zero celula, o gate fica SKIP verde e integra sem teste rodar. Registrado em TAR-465 e armadilhas/487.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1728. Validação local: árvore fae54e373c5b9385847a9b95ce33e874c2d2a2da; commit 76de0a4528ea5e7ad0a9b44ad775591b27188ec0; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-470",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

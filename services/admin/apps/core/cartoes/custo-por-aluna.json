@@ -1,0 +1,22 @@
+{
+  "nome": "custo-por-aluna",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quanto custou trazer cada pessoa que virou aluna?",
+  "definicao": "O gasto do mês (anúncio, criativo, ferramenta) dividido pelas pessoas que viraram alunas no mês. Custo de aquisição.",
+  "formula": "gasto do mês dividido por compras-no-mes",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até existir gasto digitado: a plataforma não sabe quanto foi gasto em anúncio. Entra como medição digitada pelo mantenedor (autoridade mantenedor, com data), no degrau 7 do plano, quando a célula de medição guardar medições.",
+  "autoridade": "mantenedor",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "descer",
+  "unidade": "reais",
+  "par": "compras-no-ciclo",
+  "acao": "Sem dados: o gesto é digitar o gasto do mês quando a célula de medição existir.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Buyer CAC'."
+}

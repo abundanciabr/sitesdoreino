@@ -13,7 +13,7 @@ O que estes guardas protegem, e por que cada um existe:
    que nunca vem.
 3b. **Nenhuma falha sobe crua até a tela.** HTTP 200 com o corpo cortado no
    meio, com a forma errada, sem `usage` ou com a página de um proxy dentro
-   virava a página de erro do Django, e o formulário inteiro da reunião se
+   virava a página de erro do Django, e o formulário inteiro do fechamento se
    perdia junto. Os quatro cenários foram medidos contra o SDK de verdade e
    cada um tem o guarda dele aqui.
 4. **O contrato de saída é imposto, não pedido.** Resposta sem evidência, sem
@@ -22,8 +22,9 @@ O que estes guardas protegem, e por que cada um existe:
    traz a prova.
 5. **Ausência de dado nunca vira zero no dossiê** (`armadilhas/271`). Porta que
    não respondeu vira "não consegui medir", nunca 0.
-6. **As duas telas não escrevem nada**, nem no banco nem no livro: o que sai é
-   o bloco para colar numa sessão.
+6. **A tela do fechamento não escreve nada**, nem no banco nem no livro: a
+   análise é só texto na tela, o robô recomenda e a pessoa decide. Pedir a
+   análise também não fecha o ciclo, e fechar o ciclo não pergunta nada à IA.
 
 A rede é cortada em dois lugares, porque são duas bibliotecas. O `respx` dubla
 aqui o `httpx` com que a `admin` fala com as células vizinhas. O `httpx2` (o
@@ -37,7 +38,6 @@ de mentira.
 
 from __future__ import annotations
 
-from dataclasses import replace
 import datetime as dt
 import json
 import os
@@ -50,7 +50,7 @@ import respx
 from django.test import Client
 from django.urls import reverse
 
-from apps.core import analista, fechamento as fechamento_, placar, reuniao
+from apps.core import analista, fechamento as fechamento_, placar
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -60,6 +60,13 @@ ALUNOS = "http://alunos:8000/api/alunos"
 FILA = f"{ALUNOS}/pre-matriculas"
 ALUNOS_LISTA = f"{ALUNOS}/matriculas"
 HOJE = dt.date(2026, 9, 21)
+
+#: O que o mantenedor digita no formulário do fechamento.
+CAMPOS_DO_FECHAMENTO = {
+    "paramos_de_fazer": "parar de vender por mensagem uma a uma",
+    "proximo_alvo": "2000",
+    "proxima_ate": "2027-03-09",
+}
 
 RESPOSTA_INTEIRA = """\
 TÍTULO: Ninguém cobrou o compromisso da semana passada
@@ -85,7 +92,6 @@ def ambiente(settings, monkeypatch):
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
     monkeypatch.setattr(placar.timezone, "localdate", lambda: HOJE)
-    monkeypatch.setattr(reuniao.timezone, "localdate", lambda: HOJE)
     monkeypatch.setattr(fechamento_.timezone, "localdate", lambda: HOJE)
 
 
@@ -239,7 +245,7 @@ def test_sem_chave_o_robo_esta_desligado_e_diz_por_que(monkeypatch):
     monkeypatch.delenv(analista.VARIAVEL_DA_CHAVE, raising=False)
     assert analista.ligado() is False
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="qualquer coisa")
+        analista.analisar(dossie="qualquer coisa")
     assert str(caiu.value) == analista.SEM_CHAVE
     assert "desligado" in analista.SEM_CHAVE and "VPS" in analista.SEM_CHAVE
 
@@ -257,11 +263,11 @@ def test_o_workspace_so_viaja_quando_a_variavel_existe(monkeypatch):
     dublar_a_anthropic(
         monkeypatch, corpo=corpo_de_resposta(RESPOSTA_INTEIRA), capturado=capturado
     )
-    analista.analisar(momento="reuniao", dossie="x")
+    analista.analisar(dossie="x")
     assert analista.CABECALHO_DO_WORKSPACE not in capturado["headers"]
 
     monkeypatch.setenv(analista.VARIAVEL_DO_WORKSPACE, "wrkspc_123")
-    analista.analisar(momento="reuniao", dossie="x")
+    analista.analisar(dossie="x")
     assert capturado["headers"][analista.CABECALHO_DO_WORKSPACE] == "wrkspc_123"
 
 
@@ -271,7 +277,7 @@ def test_o_modelo_e_o_haiku_que_o_mantenedor_escolheu(monkeypatch):
     dublar_a_anthropic(
         monkeypatch, corpo=corpo_de_resposta(RESPOSTA_INTEIRA), capturado=capturado
     )
-    analista.analisar(momento="reuniao", dossie="o dossie")
+    analista.analisar(dossie="o dossie")
     assert capturado["corpo"]["model"] == "claude-haiku-4-5-20251001"
     assert "o dossie" in capturado["corpo"]["messages"][0]["content"]
 
@@ -285,7 +291,7 @@ def _recusa(monkeypatch, *, status=200, corpo=None) -> str:
     monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
     dublar_a_anthropic(monkeypatch, status=status, corpo=corpo)
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="x")
+        analista.analisar(dossie="x")
     return str(caiu.value)
 
 
@@ -315,7 +321,7 @@ def test_demora_tem_a_frase_dela(monkeypatch):
 
     monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", estourou)
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="x")
+        analista.analisar(dossie="x")
     assert str(caiu.value) == analista.DEMOROU_DEMAIS
 
 
@@ -384,7 +390,7 @@ def test_a_rede_do_servidor_e_a_recusa_deles_sao_frases_diferentes(monkeypatch):
 
     monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", nao_saiu)
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="x")
+        analista.analisar(dossie="x")
     assert str(caiu.value) == analista.NAO_SAIU_DAQUI
     assert analista.NAO_SAIU_DAQUI != analista.PROBLEMA_DELES
 
@@ -430,7 +436,7 @@ def test_a_recusa_do_proprio_modelo_tem_a_frase_dela(monkeypatch):
 # Os quatro cenários abaixo foram MEDIDOS contra o SDK de verdade, em
 # 07/09/2026: antes deste conserto, cada um subia um erro cru até a view e
 # virava a página de erro do Django na cara do mantenedor, com o formulário
-# inteiro da reunião perdido junto.
+# inteiro do fechamento perdido junto.
 
 
 def test_o_corpo_cortado_no_meio_nao_sobe_erro_cru(monkeypatch):
@@ -438,7 +444,7 @@ def test_o_corpo_cortado_no_meio_nao_sobe_erro_cru(monkeypatch):
     monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
     dublar_um_corpo_cru(monkeypatch, b'{"id": "msg_de_teste", "content": [{"ty')
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="x")
+        analista.analisar(dossie="x")
     assert str(caiu.value) == analista.VEIO_CORROMPIDA
 
 
@@ -468,7 +474,7 @@ def test_a_pagina_de_um_proxy_no_caminho_nao_sobe_erro_cru(monkeypatch):
         tipo="text/html",
     )
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="x")
+        analista.analisar(dossie="x")
     assert str(caiu.value) == analista.VEIO_CORROMPIDA
 
 
@@ -498,7 +504,7 @@ def test_um_erro_do_sdk_que_nao_e_status_nem_conexao_nao_sobe_cru(monkeypatch):
 
     monkeypatch.setattr(anthropic.resources.Messages, "create", o_sdk_recusa)
     with pytest.raises(analista.AnalistaIndisponivel) as caiu:
-        analista.analisar(momento="reuniao", dossie="x")
+        analista.analisar(dossie="x")
     assert str(caiu.value) == analista.VEIO_CORROMPIDA
 
 
@@ -513,25 +519,27 @@ def test_uma_analise_boa_nao_se_perde_por_causa_de_uma_linha_de_registro(monkeyp
     corpo = corpo_de_resposta(RESPOSTA_INTEIRA)
     corpo["usage"] = None
     dublar_a_anthropic(monkeypatch, corpo=corpo)
-    analise = analista.analisar(momento="reuniao", dossie="x")
+    analise = analista.analisar(dossie="x")
     assert analise.titulo.startswith("Ninguém cobrou")
     assert analise.confianca == "média"
 
 
 @respx.mock
-def test_o_corpo_quebrado_nao_apaga_a_tela_da_reuniao(monkeypatch):
-    """O caminho inteiro, da cadeira dele: a pauta continua na tela."""
+def test_o_corpo_quebrado_nao_apaga_a_tela_do_fechamento(monkeypatch):
+    """O caminho inteiro, da cadeira dele: o formulário continua na tela."""
     _a_escola_responde()
     monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
     dublar_um_corpo_cru(monkeypatch, b'{"id": "msg_de_teste", "content": [{"ty')
     resposta = _dentro().post(
-        reverse("reuniao"), {"acao": "analista", "compromisso1": "Ligar para a fila"}
+        reverse("fechamento"), {"acao": "analista", **CAMPOS_DO_FECHAMENTO}
     )
     assert resposta.status_code == 200
     html = resposta.content.decode()
     assert analista.VEIO_CORROMPIDA[:40] in html
-    assert "8. Os compromissos novos" in html, "a pauta continua inteira"
-    assert "Ligar para a fila" in html, "o que ele digitou continua na tela"
+    assert "4. Fechar o ciclo" in html, "o formulário continua inteiro"
+    assert (
+        CAMPOS_DO_FECHAMENTO["paramos_de_fazer"] in html
+    ), "o que ele digitou continua na tela"
 
 
 # ---------------------------------------------------------------------------
@@ -549,14 +557,11 @@ def test_a_resposta_inteira_vira_os_cinco_campos_do_contrato():
     assert a.alternativas[0].startswith("As pessoas foram chamadas")
     assert a.proximo_passo.startswith("Abrir a fila")
     assert a.precisa_do_dono is False
-    assert a.tipo_de_registro == "nota"
 
 
-def test_quando_pede_decisao_dele_o_registro_nasce_pendencia():
+def test_quando_pede_decisao_dele_a_analise_diz_que_precisa_do_dono():
     texto = RESPOSTA_INTEIRA.replace("PRECISA DO DONO: não", "PRECISA DO DONO: sim")
-    a = analista.ler_a_resposta(texto)
-    assert a.precisa_do_dono is True
-    assert a.tipo_de_registro == "pendencia"
+    assert analista.ler_a_resposta(texto).precisa_do_dono is True
 
 
 def test_o_rotulo_sem_acento_continua_sendo_lido():
@@ -612,7 +617,7 @@ def test_precisa_do_dono_fora_de_sim_e_nao_e_recusado():
 
 def test_o_dossie_diz_nao_consegui_medir_e_nunca_escreve_zero():
     """`armadilhas/271`: porta que não respondeu não é escola que não vendeu."""
-    texto = analista.dossie_da_reuniao(
+    texto = analista.dossie_do_placar(
         {
             "meta": None,
             "placar": None,
@@ -621,7 +626,6 @@ def test_o_dossie_diz_nao_consegui_medir_e_nunca_escreve_zero():
             "restricao": None,
             "compromissos": None,
             "doze": None,
-            "latencias": None,
             "mudancas": None,
         },
         HOJE,
@@ -634,7 +638,7 @@ def test_o_dossie_diz_nao_consegui_medir_e_nunca_escreve_zero():
     assert "None" not in texto, "ausência nunca chega à tela como o nome do vazio"
 
 
-def test_o_dossie_do_fechamento_leva_o_ciclo_e_a_semana():
+def test_o_dossie_do_fechamento_leva_o_ciclo_e_o_placar_de_hoje():
     dados = {
         "estado": "correndo",
         "ate": dt.date(2026, 12, 15),
@@ -655,7 +659,7 @@ def test_o_dossie_do_fechamento_leva_o_ciclo_e_a_semana():
     texto = analista.dossie_do_fechamento(dados, {"meta": None}, HOJE)
     assert "achando" in texto and "0 de 8" in texto
     assert "[em aberto] Demanda" in texto
-    assert "A META DO CICLO" in texto, "o dossiê da semana vem junto"
+    assert "A META DO CICLO" in texto, "o placar de hoje vem junto"
 
 
 def test_livro_ausente_no_fechamento_nao_vira_nenhum_portao_provado():
@@ -667,80 +671,8 @@ def test_livro_ausente_no_fechamento_nao_vira_nenhum_portao_provado():
 
 
 # ---------------------------------------------------------------------------
-# 5. O BLOCO PARA COLAR — o vocabulário do livro, e nada de escrita
+# 5. A TELA DO FECHAMENTO
 # ---------------------------------------------------------------------------
-
-
-def test_o_pedido_carrega_o_vocabulario_do_livro():
-    a = analista.ler_a_resposta(RESPOSTA_INTEIRA)
-    texto = analista.montar_o_pedido(a, "reuniao", HOJE)
-    assert "21/09/2026" in texto
-    assert "tipo: nota" in texto
-    assert "PLANO-PAINEL-DE-GESTAO.md, degrau 16" in texto
-    assert "painel/registros/" in texto
-    assert "precisa_do_dono: false" in texto
-    assert "AFIRMAÇÃO:" in texto and "EVIDÊNCIA:" in texto
-    assert "CONFIANÇA: média" in texto
-    assert "PRÓXIMO PASSO:" in texto
-
-
-@pytest.mark.parametrize("momento", ["reuniao", "fechamento"])
-def test_o_pedido_que_pede_decisao_dele_exige_os_seis_campos(momento):
-    texto = RESPOSTA_INTEIRA.replace("PRECISA DO DONO: não", "PRECISA DO DONO: sim")
-    pedido = analista.montar_o_pedido(analista.ler_a_resposta(texto), momento, HOJE)
-    assert "tipo: pendencia" in pedido
-    assert "precisa_do_dono: true" in pedido
-    assert "se_eu_nao_decidir" in pedido and "Central de Pendências" in pedido
-    assert "seis campos obrigatórios" in pedido
-    for campo in (
-        "porque_so_voce",
-        "proximo_passo",
-        "se_eu_nao_decidir",
-        "recomendacao",
-        "reversivel",
-        "impacto",
-    ):
-        assert f"  {campo}: " in pedido, f"falta instrução para {campo}"
-    assert "O robô justifica por que só o mantenedor pode decidir" in pedido
-    assert "não peça ao mantenedor para completar esses campos" in pedido
-
-
-@pytest.mark.parametrize(
-    "passo",
-    [
-        "Autorizar a despesa de R$ 30 ou manter o serviço atual.",
-        'Escolher entre "publicar" e "revisar". A evidência está no painel.',
-    ],
-)
-def test_o_pedido_reaproveita_o_proximo_passo_da_analise(passo):
-    a = analista.ler_a_resposta(
-        RESPOSTA_INTEIRA.replace("PRECISA DO DONO: não", "PRECISA DO DONO: sim")
-    )
-    a = replace(a, proximo_passo=passo)
-    pedido = analista.montar_o_pedido(a, "reuniao", HOJE)
-    assert f"  proximo_passo: {passo}" in pedido
-    assert f"    PRÓXIMO PASSO: {passo}" in pedido
-
-
-def test_o_pedido_tecnico_nao_exige_campos_de_decisao_do_mantenedor():
-    a = analista.ler_a_resposta(RESPOSTA_INTEIRA)
-    pedido = analista.montar_o_pedido(a, "reuniao", HOJE)
-    assert "tipo: nota" in pedido and "precisa_do_dono: false" in pedido
-    assert "porque_so_voce:" not in pedido
-    assert "  proximo_passo:" not in pedido
-
-
-# ---------------------------------------------------------------------------
-# 6. AS DUAS TELAS
-# ---------------------------------------------------------------------------
-
-
-@respx.mock
-def test_a_reuniao_sem_chave_explica_que_o_robo_esta_desligado():
-    _a_escola_responde()
-    html = _dentro().get(reverse("reuniao")).content.decode()
-    assert "robô analista" in html
-    assert "desligado neste servidor" in html
 
 
 @respx.mock
@@ -754,38 +686,48 @@ def test_o_fechamento_sem_chave_explica_que_o_robo_esta_desligado():
 @respx.mock
 def test_pedir_a_analise_sem_chave_devolve_a_tela_inteira_com_a_frase():
     _a_escola_responde()
-    resposta = _dentro().post(reverse("reuniao"), {"acao": "analista"})
+    resposta = _dentro().post(reverse("fechamento"), {"acao": "analista"})
     assert resposta.status_code == 200
     html = resposta.content.decode()
     assert "desligado neste servidor" in html
-    assert "8. Os compromissos novos" in html, "a pauta continua inteira"
+    assert "4. Fechar o ciclo" in html, "o formulário continua inteiro"
 
 
 @respx.mock
-def test_a_reuniao_mostra_a_analise_e_o_bloco_para_colar(monkeypatch):
-    _a_escola_responde()
-    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
-    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta(RESPOSTA_INTEIRA))
-    resposta = _dentro().post(reverse("reuniao"), {"acao": "analista"})
-    html = resposta.content.decode()
-    assert "Ninguém cobrou o compromisso" in html
-    assert "Confiança" in html and "média" in html
-    assert "Outras leituras possíveis" in html
-    assert "tipo: nota" in html, "o bloco para colar veio junto"
-    assert all(c.request.method == "GET" for c in respx.calls), "a tela só lê"
-
-
-@respx.mock
-def test_o_fechamento_mostra_a_analise_do_ciclo(monkeypatch):
+def test_o_fechamento_mostra_a_analise_do_ciclo_sem_bloco_para_colar(monkeypatch):
+    """A análise é texto na tela e mais nada: nenhum pedido para uma sessão."""
     _a_escola_responde()
     monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
     capturado: dict = {}
     dublar_a_anthropic(
         monkeypatch, corpo=corpo_de_resposta(RESPOSTA_INTEIRA), capturado=capturado
     )
-    html = _dentro().post(reverse("fechamento"), {"acao": "analista"}).content.decode()
+    resposta = _dentro().post(reverse("fechamento"), {"acao": "analista"})
+    html = resposta.content.decode()
     assert "Ninguém cobrou o compromisso" in html
+    assert "Confiança" in html and "média" in html
+    assert "Outras leituras possíveis" in html
+    assert "Registre em services/admin/apps/core/registros/" not in html
+    assert "tipo: nota" not in html and "tipo: pendencia" not in html
+    assert "readonly" not in html, "nenhuma caixa para copiar e colar numa sessão"
+    assert "pedido" not in resposta.context["analista"]
     assert "FECHAMENTO DO CICLO" in capturado["corpo"]["messages"][0]["content"]
+    assert all(c.request.method == "GET" for c in respx.calls), "a tela só lê"
+
+
+@respx.mock
+@pytest.mark.parametrize(("dito", "aparece"), [("não", False), ("sim", True)])
+def test_a_tela_avisa_que_a_decisao_e_dele_so_quando_a_analise_pede(
+    monkeypatch, dito, aparece
+):
+    """`precisa do dono` é parte da análise na tela: o aviso nasce dele."""
+    _a_escola_responde()
+    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
+    texto = RESPOSTA_INTEIRA.replace("PRECISA DO DONO: não", f"PRECISA DO DONO: {dito}")
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta(texto))
+    html = _dentro().post(reverse("fechamento"), {"acao": "analista"}).content.decode()
+    assert ("Isto pede uma decisão sua." in html) is aparece
+    assert "mandar registrar" not in html, "nada é registrado a partir desta tela"
 
 
 @respx.mock
@@ -799,34 +741,28 @@ def test_a_falha_da_ia_nao_apaga_a_tela_nem_o_que_foi_digitado(monkeypatch):
     )
     html = (
         _dentro()
-        .post(
-            reverse("reuniao"),
-            {"acao": "analista", "compromisso1": "Ligar para a fila"},
-        )
+        .post(reverse("fechamento"), {"acao": "analista", **CAMPOS_DO_FECHAMENTO})
         .content.decode()
     )
     assert analista.SEM_SALDO_OU_LIMITE[:40] in html
-    assert "Ligar para a fila" in html, "o que ele digitou continua na tela"
+    assert (
+        CAMPOS_DO_FECHAMENTO["paramos_de_fazer"] in html
+    ), "o que ele digitou continua na tela"
 
 
 @respx.mock
 def test_o_botao_de_montar_o_pedido_continua_fazendo_o_que_fazia():
-    """O analista não roubou o POST antigo da reunião."""
+    """O analista não roubou o POST do fechamento, e o dele não fecha o ciclo."""
     _a_escola_responde()
     cliente = _dentro()
-    formulario = cliente.get(reverse("reuniao")).context["formulario"]
-    resposta = cliente.post(
-        reverse("reuniao"),
-        {
-            "formulario": formulario,
-            "compromisso1": "Abrir a fila toda manhã",
-        },
+
+    montou = cliente.post(reverse("fechamento"), CAMPOS_DO_FECHAMENTO)
+    assert montou.context["pedido"] is not None
+    assert montou.context["analista"]["pediram"] is False
+
+    perguntou = cliente.post(
+        reverse("fechamento"), {"acao": "analista", **CAMPOS_DO_FECHAMENTO}
     )
-    assert resposta.status_code == 302
-    pagina = cliente.get(resposta.url)
-    html = pagina.content.decode()
-    assert "Pedido privado salvo" in html
-    assert "tipo `compromisso`" in html
-    assert not pagina.context["documento"].publico
-    assert not pagina.context["envelope"]
+    assert perguntou.context["pedido"] is None
+    assert perguntou.context["analista"]["pediram"] is True
     assert all(chamada.request.method == "GET" for chamada in respx.calls)

@@ -10,7 +10,7 @@ O que cada grupo de guardas protege, e por que ele existe:
    pergunta sem resposta, e nunca um zero que parece medição.
 2. **A contagem digitada é registro do livro, não tabela.** O pedido que a
    tela monta pede uma `medicao` com o campo `foto`, e a linha que ele escreve
-   passa no MESMO formato que `painel/logica.js` impõe ao livro. Um pedido que
+   passa no MESMO formato que `mudancas.ler_foto` lê de volta. Um pedido que
    produzisse uma linha torta só seria descoberto pelo robô, horas depois.
 3. **A foto que vai ao livro nasce completa.** O bloco "o que mudou" da capa
    compara a foto mais recente do livro com o que o placar mostra agora. Uma
@@ -198,7 +198,7 @@ def test_o_pedido_pede_uma_medicao_com_o_campo_foto():
     assert "tipo `medicao`" in texto
     assert "autoridade: mantenedor" in texto
     assert f'foto: "{TALENTOS}=4"' in texto
-    assert "painel/registros/" in texto
+    assert "services/admin/apps/core/registros/ (molde no LEIA-ME.md da pasta)" in texto
 
 
 def test_o_pedido_manda_gravar_a_data_de_hoje_no_campo_quando():
@@ -265,8 +265,7 @@ def test_placar_que_nao_mediu_nao_produz_meia_foto(foto_do_placar):
 
     Meia foto vira a mais recente do livro sem os outros números, e na segunda
     seguinte o placar inteiro aparece como `sem_par`. O estrago só se vê uma
-    semana depois, e ninguém liga uma coisa à outra. Precedente da casa:
-    `reuniao.py` se recusa a pedir a foto quando não há foto.
+    semana depois, e ninguém liga uma coisa à outra.
     """
     assert talentos.montar_o_pedido({ESTUDIOS: 2}, HOJE, foto_do_placar) is None
 
@@ -299,10 +298,17 @@ def test_sem_livro_e_sem_placar_a_tela_nao_entrega_bloco_nenhum(monkeypatch):
     monkeypatch.setattr(direcao, "ler_registros", lambda pasta=None: None)
 
     html = _dentro().post(reverse("talentos"), {"estudios": "2"}).content.decode()
+    texto = " ".join(html.split())
 
     assert "<textarea" not in html
     assert "Não dá para gravar esta contagem agora" in html
     assert "não mediu nada" in html
+    assert "Não consegui olhar as contagens" in html
+    assert "Isto é falha do sistema, não sua." in texto
+    assert (
+        "Peça a uma sessão para conferir a pasta do livro (apps/core/registros)"
+        in texto
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +523,7 @@ def test_a_data_da_contagem_sai_em_portugues(monkeypatch):
 
 @respx.mock
 def test_a_tela_le_o_livro_uma_vez_por_requisicao(monkeypatch):
-    """Duas varreduras de `painel/registros/` custam o dobro e podem discordar.
+    """Duas varreduras de `apps/core/registros/` custam o dobro e podem discordar.
 
     O placar já paga a leitura (`placar.py`) e a devolve no contexto; ler de
     novo aqui seria um `read_text` por arquivo, mais de mil deles, para chegar

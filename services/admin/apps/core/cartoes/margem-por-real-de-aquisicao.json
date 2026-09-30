@@ -1,0 +1,22 @@
+{
+  "nome": "margem-por-real-de-aquisicao",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Cada real gasto para trazer uma pessoa volta quantas vezes em 90 dias?",
+  "definicao": "A margem de contribuição que uma coorte gera em 90 dias, dividida pelo custo de trazer a coorte.",
+  "formula": "margem acumulada da coorte em 90 dias dividida pelo custo de aquisição da coorte",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até o site vender: a venda acontece fora do site e o checkout está congelado por decisão do mantenedor (22/08/2026). O cartão fica desenhado e acende no dia em que a ordem vier. E depende de custo-por-aluna.",
+  "autoridade": "pagamentos",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "subir",
+  "unidade": "vezes",
+  "par": "compras-no-ciclo",
+  "acao": "Sem dados até o site vender.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'CM-LTV90/CAC'."
+}

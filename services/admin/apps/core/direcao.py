@@ -43,14 +43,13 @@ O Scale OS pede "commitments" com dono e um veredito na semana seguinte
 tipo `compromisso`, com `vence_em_dias` (7, normalmente). O veredito é
 CALCULADO, nunca marcado à mão: compromisso com um registro que `responde_a`
 ele é *cumprido*; vencido sem resposta é *não cumprido*; o resto está *em
-aberto*. Sem tabela nova, sem estado em lugar nenhum: a reunião de segunda
-(degrau 3) escreve o registro, e esta tela lê.
+aberto*. Sem tabela nova, sem estado em lugar nenhum: o compromisso é escrito
+no livro, e esta tela lê.
 
-A leitura dos registros aqui é a MESMA fotografia que a `admin` serve em
-`/admin/painel/` (`painel_embutido/registros/`), lida por um leitor mínimo em
-Python que só extrai os campos de que esta tela precisa: o livro é lido do
-lado de fora, sem reimplementar a lógica dele, e a validação continua sendo
-a de `painel/logica.js`.
+Os registros lidos aqui moram em `apps/core/registros/`, dentro da célula: só
+as medições e os compromissos, que são os únicos tipos que as telas leem. Um
+leitor mínimo em Python extrai só os campos de que esta tela precisa, sem
+validar o registro: quem o valida é quem o escreve.
 """
 
 from __future__ import annotations
@@ -59,7 +58,6 @@ import datetime as dt
 import re
 from pathlib import Path
 
-from .painel import diretorio_do_painel
 from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo, esperado_em
 
 #: Confirmar em até 48 horas: o mesmo limiar da restrição.
@@ -105,12 +103,9 @@ _CAMPO = {
 # ------------------------------------------------------------------ o livro
 
 
-def diretorio_dos_registros() -> Path | None:
-    painel = diretorio_do_painel()
-    if painel is None:
-        return None
-    pasta = painel / "registros"
-    return pasta if pasta.is_dir() else None
+def diretorio_dos_registros() -> Path:
+    """`apps/core/registros/`: as medições e os compromissos que as telas leem."""
+    return Path(__file__).resolve().parent / "registros"
 
 
 def _campo(texto: str, nome: str):
@@ -127,13 +122,13 @@ def _campo(texto: str, nome: str):
 
 
 def ler_registros(pasta: Path | None = None) -> list[dict] | None:
-    """Os campos de cabeçalho de cada registro; `None` se o livro não veio.
+    """Os campos de cabeçalho de cada registro; `None` se a pasta sumiu.
 
     Só cabeçalho: `detalhe` é concatenação de várias linhas e esta tela não o
-    lê. Quem valida o livro é `painel/logica.js`; aqui só se lê o que passou.
+    lê. Aqui não se valida o registro, só se lê.
     """
     pasta = pasta if pasta is not None else diretorio_dos_registros()
-    if pasta is None:
+    if not pasta.is_dir():
         return None
     registros = []
     for arquivo in sorted(pasta.glob("*.js")):

@@ -1,0 +1,22 @@
+{
+  "nome": "margem-mensal",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quanto sobra por mês depois dos custos que variam com cada venda?",
+  "definicao": "Receita do mês menos taxa do meio de pagamento, imposto, reembolso e custo variável de entrega. Não é lucro; é o que contribui para pagar o resto. É a estrela-guia econômica dos documentos do Scale OS: a que impede a outra estrela (resultado do aluno) de virar um projeto lindo e inviável.",
+  "formula": "receita menos taxa menos imposto menos reembolso menos custo variável, por mês",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até o site vender: a venda acontece fora do site e o checkout está congelado por decisão do mantenedor (22/08/2026). O cartão fica desenhado e acende no dia em que a ordem vier.",
+  "autoridade": "pagamentos",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "subir",
+  "unidade": "reais",
+  "par": "alunos-com-resultado-profissional",
+  "acao": "Sem dados até o site vender.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Contribution Margin' e a segunda estrela-guia (decisão do mantenedor de 03/09/2026: entra desenhada, sem dados)."
+}

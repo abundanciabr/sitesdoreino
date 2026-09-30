@@ -23,10 +23,10 @@ campo `foto` que a foto da semana já usa (`mudancas.py`, degrau 6): uma
 nenhum estado escrito à mão, e a data em que a contagem foi feita sai da data
 do registro, não de um campo que alguém preenche.
 
-**2. Esta tela não escreve nada.** Como a reunião de segunda, o que ela produz
-é o PEDIDO PARA O ROBÔ: um bloco de texto que o mantenedor cola numa sessão, e
-que vira registro por PR. Recarregar a página apaga o que foi digitado, e isso
-é dito na tela: o que vale é o que chegar ao livro.
+**2. Esta tela não escreve nada.** O que ela produz é o PEDIDO PARA O ROBÔ: um
+bloco de texto que o mantenedor cola numa sessão, e que vira registro por PR.
+Recarregar a página apaga o que foi digitado, e isso é dito na tela: o que vale
+é o que chegar ao livro.
 
 **3. A foto que este pedido monta é COMPLETA, ou não existe.** A linha `foto`
 leva junto os números que o placar já mede sozinho hoje. O bloco "o que mudou"
@@ -35,10 +35,9 @@ foto só com as três contagens da rede seria a mais recente sem ter os outros
 números, e todo o resto do placar apareceria como "sem par" na segunda-feira
 seguinte. Por isso o pedido só se monta quando o placar mediu de verdade: se
 ele não mediu (o cartão da meta faltou, o livro não chegou), a tela recusa
-montar o bloco e diz o que fazer, exatamente como a reunião de segunda se
-recusa a pedir a foto quando não há foto. Meio bloco copiado é pior do que
-bloco nenhum: o estrago só aparece na segunda seguinte, e aí ninguém liga uma
-coisa à outra.
+montar o bloco e diz o que fazer. Meio bloco copiado é pior do que bloco
+nenhum: o estrago só aparece na segunda seguinte, e aí ninguém liga uma coisa
+à outra.
 
 **O efeito de lado desta lei, dito em voz alta.** A foto que este pedido grava
 é completa, então ela vira a foto mais recente do livro. A comparação de
@@ -297,9 +296,8 @@ def montar_o_pedido(
     Placar que não mediu devolve `None`, e não meia foto. `ler_foto` diz `None`
     tanto para a linha ausente (o cartão da meta faltou, ou o livro não chegou
     e `o_que_mudou` devolveu só o veredito) quanto para a linha torta, e os
-    dois casos dão no mesmo: não há foto completa para gravar. É o mesmo gesto
-    da reunião de segunda, que só pede a foto quando existe foto
-    (`reuniao.py`). Quem avisa o mantenedor é a tela.
+    dois casos dão no mesmo: não há foto completa para gravar. Quem avisa o
+    mantenedor é a tela.
     """
     foto = ler_foto(foto_do_placar)
     if not contagens or foto is None:
@@ -309,8 +307,8 @@ def montar_o_pedido(
     foto.update(contagens)
     linhas = [
         f"Contagem da rede de talentos, {hoje.strftime('%d/%m/%Y')}.",
-        "Registre no livro de ocorrências (painel/registros/), UM registro,",
-        "pelo rito de sempre (PR com o registro a bordo; molde em painel/LEIA-ME.md):",
+        "Registre em services/admin/apps/core/registros/ (molde no LEIA-ME.md da pasta),",
+        "UM registro, por PR:",
         "",
         "- MEDIÇÃO (tipo `medicao`, autoridade: mantenedor, gravidade: info,",
         # `quando` é o dia em que a contagem foi FEITA, e é essa data que
@@ -348,7 +346,7 @@ def talentos(request):
 
     O livro é lido UMA vez por requisição, e a leitura é a que `montar_o_placar`
     já pagou (`contexto["registros"]`). Chamar `ler_registros()` de novo aqui
-    varreria a pasta inteira de `painel/registros/` uma segunda vez, com um
+    varreria a pasta inteira de `apps/core/registros/` uma segunda vez, com um
     `read_text` por arquivo, para chegar exatamente à mesma lista. É a mesma
     regra que o placar escreve para as portas de rede ("UMA leitura de cada
     porta por requisição"), e pelo mesmo motivo: duas leituras podem discordar

@@ -10,7 +10,7 @@ funis"*.
 ## O que esta tela é, e o que ela NÃO é
 
 Ela é a **leitura** da curva. A curva em si não mora aqui: mora em
-`painel/cartoes/compras-no-ciclo.json`, no campo `semanas`, que é onde a régua
+`apps/core/cartoes/compras-no-ciclo.json`, no campo `semanas`, que é onde a régua
 da meta já morava. Mudar a meta de uma semana é editar aquele arquivo, por PR,
 e esta tela mostra o que ele disser no minuto seguinte.
 

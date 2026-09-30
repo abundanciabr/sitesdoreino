@@ -688,7 +688,7 @@ def corrigir_ideia(request, ideia_id: int):
 
 
 # ---------------------------------------------------------------------------
-# Aba 5 — EXPORTAR: a Caixa inteira em texto, para levar embora
+# Aba 4 — EXPORTAR: a Caixa inteira em texto, para levar embora
 # ---------------------------------------------------------------------------
 #
 # Nasceu em 02/09/2026, de um pedido que esbarrou numa parede: o mantenedor

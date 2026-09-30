@@ -5,8 +5,8 @@ Scale OS 1.1 §159 pede que a primeira tela diga o que se MOVEU, não só o que
 casa ainda não tem a célula de medição (`metricas`, degrau 7). Até ela
 nascer, a memória é o livro: **a foto da semana** é um registro tipo
 `medicao` com o campo `foto`, uma linha `nome=valor; nome=valor` com os
-cartões que tinham fonte no dia. Quem tira a foto é o modo reunião, que a
-põe no pedido para o robô; quem a grava é o robô, por PR, como todo registro.
+cartões que tinham fonte no dia. A linha de hoje sai de `o_que_mudou`
+(`foto_de_hoje`); quem a grava é o robô, por PR, como todo registro.
 
 Três regras, e cada uma é um teste:
 
@@ -27,7 +27,7 @@ import datetime as dt
 import re
 
 #: Se o cartão não diz em quantos dias a foto envelhece, é isto (a semana e
-#: uma folga de três dias para a reunião de segunda atrasar).
+#: uma folga de três dias para a foto semanal atrasar).
 FRESCOR_PADRAO = 10
 
 #: `nome=valor; nome=valor`. O valor aceita decimal com ponto e sinal.
@@ -65,16 +65,6 @@ def valores_atuais(contexto: dict) -> dict[str, int | float]:
     for item in contexto.get("doze") or []:
         if item.get("veredito") == "medido" and _numero(item.get("valor")) is not None:
             atuais[item["nome"]] = item["valor"]
-    latencias = contexto.get("latencias") or {}
-    for chave, nome in (
-        ("decisao", "latencia-de-decisao"),
-        ("execucao", "latencia-de-execucao"),
-        ("aprendizado", "latencia-de-aprendizado"),
-    ):
-        medida = latencias.get(chave) or {}
-        if medida.get("veredito") == "medido":
-            if _numero(medida.get("mediana_dias")) is not None:
-                atuais[nome] = medida["mediana_dias"]
     return atuais
 
 
@@ -198,8 +188,6 @@ def o_que_mudou(contexto: dict, registros: list[dict] | None, hoje: dt.date) -> 
         cartao = contexto.get(chave)
         if cartao:
             cartoes[cartao["nome"]] = cartao
-    for chave, cartao in (contexto.get("cartoes_de_latencia") or {}).items():
-        cartoes[chave] = cartao
     saida = comparar(atuais, ultima_foto(registros, hoje), cartoes, hoje)
     saida["foto_de_hoje"] = foto_em_texto(atuais)
     return saida

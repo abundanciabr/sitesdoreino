@@ -6,11 +6,10 @@ conseguiu abrir** — artefato é privado e exige sessão. O conteúdo nunca foi
 segredo (este repositório é público de propósito); o que faltava era um endereço
 do próprio site que uma IA pudesse ler.
 
-**Por que aqui embaixo, e não numa área nova.** `/mapa-ia` já tem regra de
+**Por que aqui embaixo, e não numa área nova.** `/mapa-ia` tem regra de
 roteamento no gateway (`PathPrefix`), e prefixo cobre subcaminho — então esta
-área nasce sem tocar em `infra/` e sem `deploy-infra`. É a mesma economia que
-fez o mapa técnico morar sob o backend da `admin` em vez de ganhar serviço
-próprio.
+área vive sob o backend da `admin`, sem serviço próprio, sem tocar em `infra/`
+e sem `deploy-infra`.
 
 **As duas decisões do mantenedor que este módulo executa:**
 
@@ -23,12 +22,12 @@ próprio.
    decidido isso.
 2. **Serve `docs/decisoes/`** — planos e decisões —, não o repositório inteiro.
 
-**O que NÃO mudou, de propósito:** o `CAMINHOS_ISENTOS` exato do `/mapa-ia/`
-continua exato. Aquela lista é outra decisão (INV-P14) e afrouxá-la de carona
-seria mudar uma postura de segurança sem ninguém ter pedido. Esta área ganha o
-próprio prefixo isento, ao lado dela.
+**A exceção é só esta:** `/mapa-ia/planos/` é o único caminho de `/mapa-ia/` que
+responde sem crachá, por prefixo próprio na porta (`PREFIXO_PUBLICO_DOS_PLANOS`).
+O resto de `/mapa-ia/` exige login como qualquer outro caminho da área, e esta
+área não entra em `CAMINHOS_ISENTOS`.
 
-**As duas travas que tornam a exceção segura**, herdadas de `mapa_ia.py`:
+**As duas travas que tornam a exceção segura:**
 
 1. Servido como `text/plain`, **nunca HTML** — não executa nada, não injeta
    nada, e nenhum documento consegue virar página.
@@ -37,8 +36,8 @@ próprio prefixo isento, ao lado dela.
    defesa em profundidade, não confiança no regex.
 
 **O `X-Robots-Tag: noindex` SAIU em 31/08/2026, e a razão é medição.** Ele
-estava aqui copiado de `mapa_ia.py`, com a intenção de "não competir com o site
-nas buscas" — e derrotava o único propósito da área. No dia em que ela subiu, o
+estava aqui, com a intenção de "não competir com o site nas buscas" — e
+derrotava o único propósito da área. No dia em que ela subiu, o
 mantenedor mandou o endereço para o Gemini e ouviu *"não consegui acessar o
 conteúdo"*. A investigação descartou, uma a uma, as causas plausíveis: o
 servidor responde **200 a todo User-Agent**, inclusive `GPTBot`, `GoogleOther` e
@@ -87,7 +86,7 @@ RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 # A ordem importa: em produção só a primeira existe; num checkout só a segunda.
 # Se um dia as duas existirem na mesma máquina, a embutida vence — é a que
 # produção serve, e teste que mede outra coisa mente. Mesmo desenho de
-# `painel.py::CANDIDATOS` e `documentos.py::CANDIDATOS`.
+# `documentos.py::CANDIDATOS`.
 CANDIDATOS = (
     RAIZ_DA_CELULA / "planos_embutidos",
     RAIZ_DA_CELULA.parent.parent / "docs" / "decisoes",
@@ -437,10 +436,6 @@ def planos_indice(request) -> HttpResponse:
         "",
         "Você é uma IA lendo os planos deste projeto. Cada documento abaixo está",
         "em texto puro, sem login, no endereço indicado.",
-        "",
-        "O mapa TÉCNICO do projeto (arquitetura, leis, CI/CD) é outro e fica em",
-        "/mapa-ia/INDICE.md — comece por lá se o que você precisa é entender o",
-        "sistema, e não uma decisão específica.",
         "",
     ]
     if not planos:
