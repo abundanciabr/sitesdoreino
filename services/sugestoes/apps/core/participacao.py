@@ -780,6 +780,11 @@ def ver_quadro(request, ator):
     ordem = (request.GET.get("ordem") or ORDEM_PADRAO).strip()
     if ordem not in ORDENS:
         raise Http404("essa aba não existe no quadro")
+    # A ideia implementada mora só na aba dela (mantenedor, 29/09/2026): as
+    # outras três mostram o que ainda está em jogo.
+    fora_da_grade = [Sugestao.Status.NAO_PLANEJADO]
+    if ordem != ORDEM_IMPLEMENTADAS:
+        fora_da_grade.append(Sugestao.Status.IMPLEMENTADO)
     return render(
         request,
         PAGINA_QUADRO,
@@ -806,7 +811,7 @@ def ver_quadro(request, ator):
                 categoria_slug=escolhida,
                 ordem=ordem,
                 agora=timezone.now(),
-            ).exclude(status=Sugestao.Status.NAO_PLANEJADO),
+            ).exclude(status__in=fora_da_grade),
             "votadas": _ids_votados(ator, quadro),
             "numeros": numeros_do_quadro(quadro),
             # A faixa de roadmap (EVO-31) mora DENTRO do quadro, como no

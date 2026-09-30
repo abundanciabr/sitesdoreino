@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-014938-TAR-1020-explicada",
+  "tarefa": "TAR-1020",
+  "evento": "explicada",
+  "quando": "2026-09-30T01:49:38.495449+00:00",
+  "quem": "pedido do mantenedor na sessão Claude Code de 29/09/2026",
+  "o_que_e": "A ideia já entregue aparece em todas as abas do quadro de sugestões, misturada com as que ainda estão em votação.",
+  "o_que_muda": "As abas Em alta, Mais votadas e Novas mostram só o que ainda está em jogo; a ideia entregue aparece só na aba Implementadas.",
+  "exemplo": "O tutorial de chapéu, já implementado, sai do topo de Mais votadas e fica só em Implementadas.",
+  "importancia": 60
+}
