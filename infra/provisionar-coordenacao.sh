@@ -27,8 +27,16 @@ conferir_preparo() {
     || parar "preparo protegido ilegível, incompleto ou permissivo; recupere env/coordenacao.preparo antes de repetir."
 }
 [ -f docker-compose.yml ] && [ -f "$ENV_ADMIN" ] || parar "compose ou env/admin.env ausente; provisione a administração primeiro."
-docker compose ps postgres >/dev/null 2>&1 || parar "PostgreSQL indisponível; confira o serviço antes de repetir."
-docker compose ps admin >/dev/null 2>&1 || parar "admin indisponível; confira o serviço antes de repetir."
+for CHAVE_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  [ "$(grep -c "^$CHAVE_GATEWAY=" "$ENV_ADMIN" || true)" -eq 1 ] \
+    || parar "$CHAVE_GATEWAY ausente ou duplicada em env/admin.env; corrija a configuração antes de repetir."
+  VALOR_GATEWAY="$(grep "^$CHAVE_GATEWAY=" "$ENV_ADMIN" | cut -d= -f2-)"
+  [ -n "$VALOR_GATEWAY" ] || parar "$CHAVE_GATEWAY vazia em env/admin.env; corrija a configuração antes de repetir."
+  export "$CHAVE_GATEWAY=$VALOR_GATEWAY"
+done
+unset CHAVE_GATEWAY VALOR_GATEWAY
+docker compose ps postgres >/dev/null 2>&1 || parar "não consultei o Compose; execute versao-compose e estado-servico no canal oficial antes de repetir."
+docker compose ps admin >/dev/null 2>&1 || parar "não consultei admin pelo Compose; execute versao-compose e estado-servico no canal oficial antes de repetir."
 CID_INICIAL="$(docker compose ps -q admin)"
 [ -n "$CID_INICIAL" ] && [ "$(docker inspect -f '{{.State.Health.Status}}' "$CID_INICIAL" 2>/dev/null)" = healthy ] \
   || parar "admin não está saudável; recupere o serviço antes de preparar o banco."
