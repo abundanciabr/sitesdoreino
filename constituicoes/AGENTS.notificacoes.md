@@ -27,7 +27,7 @@ publicando — e é decisão registrada, não simplicidade acidental.
 - **Expõe:** `/healthz`, e **mais nada**. A célula nasce sem tela e sem
   superfície de máquina (`freeze: not-applicable` no
   `ci/manifesto-de-contratos.json`). Quem for consumi-la passa pela **Fase 4** do
-  PLANO-MESTRE, que é Rito de Contrato (`RITOS.md` §3, com o mantenedor
+  PLANO-MESTRE, que é Rito de Contrato ([Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3), com o mantenedor
   presente). Rota nova aqui antes disso é fronteira fabricada dentro de um
   despacho — e o `tests/test_healthz.py` reprova
 - **Consome:** o fio, stream `eventos.notificacao.devida`. Só isso. Nenhuma
@@ -69,8 +69,8 @@ publicando — e é decisão registrada, não simplicidade acidental.
 declarado) + evidência vermelho→verde de todo guarda novo no corpo do PR.
 
 ## Ritos
-- Sessão nasce em worktree próprio (`RITOS.md` §1), citando este arquivo.
-- Superfície pública nova ⇒ **Rito de Contrato** (`RITOS.md` §3), nunca dentro de
+- Sessão nasce em worktree próprio ([Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1)), citando este arquivo.
+- Superfície pública nova ⇒ **Rito de Contrato** ([Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3)), nunca dentro de
   um lote (`RUNBOOK-LOTES.md` §7).
 - Assunto novo de notificação é **um PR pequeno**: um valor no `enum` do contrato
   e um ramo em `parametros`. Se exigir mexer na forma da tabela, do consumidor ou

@@ -119,7 +119,7 @@ não aqui: esta célula guarda o fato, o cartão diz o que ele significa.
 | **7.3 FEITO** | A recepção, e ela NÃO virou porta HTTP: é o consumidor de Redis Streams, com recusa de duplicata pelo id externo e fila de mortos |
 | **7.4 FEITO** | A API de leitura (`/api/metricas/`), Bearer de par, teste de 401 em todas as operações medidas do schema vivo |
 | 7.5 | O compose (`infra/`), em PR próprio (`armadilhas/134`), com o env e o banco na VPS antes (`armadilhas/088`) |
-| 7.6 | O contrato congelado pelo `RITOS.md` §3 (PR só de `contracts/`, etiqueta `contrato`, o mantenedor presente) e a `admin` como cliente, com o token do par |
+| 7.6 | O contrato congelado pelo [Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3) (PR só de `contracts/`, etiqueta `contrato`, o mantenedor presente) e a `admin` como cliente, com o token do par |
 | **9 (do plano) FEITO** | Os MARCOS inteiros: a tabela `Marco`, a derivação automática dentro da recepção, a passada `manage.py derivar_marcos` sobre o livro já guardado e a porta de leitura (`countMilestones`, `listMilestones`), que veio por emenda do contrato com o mantenedor presente |
 
 Até o 7.5, o `deploy-celula` desta célula fica vermelho em todo merge que a
