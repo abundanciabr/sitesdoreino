@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260930-054720-TAR-1031-submetida",
+  "tarefa": "TAR-1031",
+  "evento": "submetida",
+  "quando": "2026-09-30T05:47:20.080299+00:00",
+  "quem": "codex/infra/tar1031-backup-docker-id",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2397",
+  "revisao": "c239223da4a53e7e41e249203a674dfcaa4f84b9",
+  "arvore": "42daf5a2b3462273aa2a6996841e78471b1d442d"
+}

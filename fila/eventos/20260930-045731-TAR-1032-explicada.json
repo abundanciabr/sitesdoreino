@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-045731-TAR-1032-explicada",
+  "tarefa": "TAR-1032",
+  "evento": "explicada",
+  "quando": "2026-09-30T04:57:31.751582+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "O App independente ja protege a integracao, mas falta provar no canal real que uma autorizacao restrita deixa de valer quando e retirada.",
+  "o_que_muda": "Uma aprovacao antiga nao pode continuar liberando mudancas depois de revogada.",
+  "exemplo": "Uma candidata de ensaio passa com permissao para um unico arquivo; retirada essa permissao, ela volta a aguardar aprovacao e nao integra.",
+  "importancia": 91
+}

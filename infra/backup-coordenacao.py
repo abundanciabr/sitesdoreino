@@ -68,6 +68,47 @@ except Exception:
 '''
 
 
+def id_conteiner(servico):
+    try:
+        lista = subprocess.run(
+            ['docker', 'ps', '--all', '--quiet', '--no-trunc',
+             '--filter', 'label=com.docker.compose.project=plataforma',
+             '--filter', f'label=com.docker.compose.service={servico}'],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10,
+            text=True, encoding='ascii', errors='replace',
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise RuntimeError(f'Docker não listou {servico}; confira o serviço na VPS.') from erro
+    if lista.returncode:
+        raise RuntimeError(f'Docker não listou {servico}; confira o serviço na VPS.')
+    ids = lista.stdout.splitlines()
+    if not ids:
+        raise RuntimeError(f'Contêiner {servico} ausente; confira o serviço na VPS.')
+    if len(ids) != 1:
+        raise RuntimeError(f'Contêiner {servico} duplicado; reconcilie o serviço na VPS.')
+    identificador = ids[0]
+    if not re.fullmatch(r'[0-9a-f]{64}', identificador):
+        raise RuntimeError(f'ID do contêiner {servico} inválido; confira o Docker na VPS.')
+    try:
+        inspecao = subprocess.run(
+            ['docker', 'inspect', '--format',
+             '{{json .State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|'
+             '{{index .Config.Labels "com.docker.compose.service"}}', identificador],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10,
+            text=True, encoding='ascii', errors='replace',
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise RuntimeError(f'Docker não conferiu {servico}; confira o serviço na VPS.') from erro
+    if inspecao.returncode:
+        raise RuntimeError(f'Docker não conferiu {servico}; confira o serviço na VPS.')
+    estado = inspecao.stdout.strip()
+    if estado == f'false|plataforma|{servico}':
+        raise RuntimeError(f'Contêiner {servico} parado; recupere o serviço na VPS.')
+    if estado != f'true|plataforma|{servico}':
+        raise RuntimeError(f'Identidade do contêiner {servico} divergiu; reconcilie o serviço na VPS.')
+    return identificador
+
+
 def executar(identificador):
     if not re.fullmatch(r'[0-9]{1,20}', identificador):
         raise ValueError('Identificador de execução inválido; use o número do run oficial.')
@@ -86,8 +127,10 @@ def executar(identificador):
     cifra = None
     dump = None
     try:
+        admin = id_conteiner('admin')
+        postgres = id_conteiner('postgres')
         captura = subprocess.Popen(
-            ['docker', 'compose', 'exec', '-T', 'admin', 'python', '-c', CAPTURA],
+            ['docker', 'exec', '-i', admin, 'python', '-c', CAPTURA],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         if not select.select([captura.stdout], [], [], 60)[0]:
@@ -127,7 +170,7 @@ def executar(identificador):
             stdin=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         dump = subprocess.Popen(
-            ['docker', 'compose', 'exec', '-T', 'postgres', 'pg_dump', '-U', 'postgres',
+            ['docker', 'exec', postgres, 'pg_dump', '-U', 'postgres',
              '-d', 'coordenacao_db', '-Fc', '--no-owner', '--no-acl',
              '--snapshot', snapshot_id, '--lock-wait-timeout=30000'],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,

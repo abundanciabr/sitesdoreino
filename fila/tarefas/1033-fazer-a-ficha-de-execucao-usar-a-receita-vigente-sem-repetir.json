@@ -1,0 +1,19 @@
+{
+  "arquivo": "1033-fazer-a-ficha-de-execucao-usar-a-receita-vigente-sem-repetir",
+  "id": "TAR-1033",
+  "titulo": "Fazer a ficha de execucao usar a receita vigente sem repetir a antiga",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Ficha TOML parseavel e consumida pelo despacho Codex aponta fontes canonicas diretamente; nao manda tratar CLAUDE como lei nem repete roteiro substituido; valida mecanismos pertinentes sem mudar modelos ou permissoes.",
+  "despacho": "Frente fontes998 reutilizada, sem subdelegacao. Dono exclusivo .codex/agents/despacho.toml e registros obrigatorios. Corrigir consumidor ativo observado no corpo developer_instructions, que ainda declara CLAUDE lei canonica e duplica passos operacionais apesar de AGENTS e CAMINHO-DOURADO vigentes. Preferir menor alteracao de referencias e retirar somente receita repetida ja substituida, conservando responsabilidades e entregaveis da ficha, modelo/esforco e limites. Sem mudancas nas outras fichas, ferramentas, hooks ou workflow. Ler fonte vigente, comparar responsabilidades antes/depois e testar parse TOML e consumidor real. Nao criar teste de espelho se verificacoes atuais cobrem. Revisao independente e rito oficial, escopo e mandato exatos no corpoPR. Voce nao esta sozinho; preservar alheios. Trabalho dentro de PME09/adendo fontes, nao amplia produto.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

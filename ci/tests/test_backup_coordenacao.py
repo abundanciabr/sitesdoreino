@@ -177,16 +177,18 @@ def test_wrapper_cifra_com_snapshot_vivo_ate_pg_dump(tmp_path, monkeypatch, caps
     monkeypatch.setattr(backup, 'RAIZ', tmp_path)
     monkeypatch.setattr(backup, 'DESTINO', tmp_path / 'backups-coordenacao')
     monkeypatch.setattr(backup.select, 'select', lambda readable, *_: (readable, [], []))
+    monkeypatch.setattr(backup, 'id_conteiner',
+                        lambda servico: {'admin': 'a' * 64, 'postgres': 'b' * 64}[servico])
     popen_real = subprocess.Popen
     captura = []
 
     def iniciar(argumentos, **kwargs):
-        if argumentos[:4] == ['docker', 'compose', 'exec', '-T']:
-            if argumentos[4] == 'admin':
+        if argumentos[:2] == ['docker', 'exec']:
+            if argumentos[2:4] == ['-i', 'a' * 64]:
                 processo = popen_real([sys.executable, '-c', argumentos[-1]], **kwargs)
                 captura.append(processo)
                 return processo
-            assert argumentos[4] == 'postgres'
+            assert argumentos[2] == 'b' * 64
             assert '--snapshot' in argumentos
             assert argumentos[argumentos.index('--snapshot') + 1] == 'snapshot-978'
             assert captura[0].poll() is None
@@ -280,10 +282,12 @@ def test_backup_classifica_falha_antes_do_manifesto_sem_vazar_segredo(
     monkeypatch.setattr(backup, 'RAIZ', tmp_path)
     monkeypatch.setattr(backup, 'DESTINO', tmp_path / 'backups-coordenacao')
     monkeypatch.setattr(backup.select, 'select', lambda readable, *_: (readable, [], []))
+    monkeypatch.setattr(backup, 'id_conteiner',
+                        lambda servico: {'admin': 'a' * 64, 'postgres': 'b' * 64}[servico])
     popen_real = subprocess.Popen
 
     def iniciar(argumentos, **kwargs):
-        if argumentos[:5] == ['docker', 'compose', 'exec', '-T', 'admin']:
+        if argumentos[:4] == ['docker', 'exec', '-i', 'a' * 64]:
             return popen_real([sys.executable, '-c', argumentos[-1]], **kwargs)
         pytest.fail('Não pode iniciar pg_dump nem cifra sem manifesto.')
 
@@ -296,3 +300,80 @@ def test_backup_classifica_falha_antes_do_manifesto_sem_vazar_segredo(
         os.chdir(anterior)
     assert segredo not in str(falha.value)
     assert not (backup.DESTINO / '1028.p7m').exists()
+
+
+@pytest.mark.parametrize('servico', ['admin', 'postgres'])
+def test_id_conteiner_exige_docker_running_e_labels_exatos(monkeypatch, servico):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    identificador = 'a' * 64
+    chamadas = []
+
+    def executar(argumentos, **kwargs):
+        chamadas.append(argumentos)
+        assert kwargs['stderr'] is subprocess.DEVNULL
+        assert kwargs['timeout'] == 10
+        if argumentos[:2] == ['docker', 'ps']:
+            return subprocess.CompletedProcess(argumentos, 0, identificador + '\n')
+        return subprocess.CompletedProcess(
+            argumentos, 0, f'true|plataforma|{servico}\n'
+        )
+
+    monkeypatch.setattr(backup.subprocess, 'run', executar)
+    assert backup.id_conteiner(servico) == identificador
+    assert chamadas[0] == [
+        'docker', 'ps', '--all', '--quiet', '--no-trunc',
+        '--filter', 'label=com.docker.compose.project=plataforma',
+        '--filter', f'label=com.docker.compose.service={servico}',
+    ]
+    assert chamadas[1][-1] == identificador
+    assert 'com.docker.compose.project' in chamadas[1][3]
+    assert 'com.docker.compose.service' in chamadas[1][3]
+
+
+@pytest.mark.parametrize(
+    'lista,inspecao,esperado',
+    [
+        ('', None, 'ausente'),
+        ('a' * 64 + '\n' + 'b' * 64 + '\n', None, 'duplicado'),
+        ('a' * 12 + '\n', None, 'inválido'),
+        ('a' * 64 + '\n', 'false|plataforma|admin\n', 'parado'),
+        ('a' * 64 + '\n', 'true|outra|admin\n', 'divergiu'),
+        ('a' * 64 + '\n', 'true|plataforma|outro\n', 'divergiu'),
+    ],
+)
+def test_id_conteiner_recusa_alvo_ambiguo_ou_incompativel_sem_vazar(
+    monkeypatch, lista, inspecao, esperado
+):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    segredo = 'SENHA_SINTETICA_NAO_PUBLICAR_1031'
+
+    def executar(argumentos, **kwargs):
+        assert kwargs['stderr'] is subprocess.DEVNULL
+        saida = lista if argumentos[:2] == ['docker', 'ps'] else inspecao
+        return subprocess.CompletedProcess(argumentos, 0, saida, segredo)
+
+    monkeypatch.setattr(backup.subprocess, 'run', executar)
+    with pytest.raises(RuntimeError, match=esperado) as falha:
+        backup.id_conteiner('admin')
+    assert segredo not in str(falha.value)
+
+
+def test_backup_recusa_sem_conteiner_antes_da_cifra(tmp_path, monkeypatch):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    monkeypatch.setattr(backup, 'RAIZ', tmp_path)
+    monkeypatch.setattr(backup, 'DESTINO', tmp_path / 'backups-coordenacao')
+
+    def ausente(_servico):
+        raise RuntimeError('Contêiner admin ausente; confira o serviço na VPS.')
+
+    monkeypatch.setattr(backup, 'id_conteiner', ausente)
+    monkeypatch.setattr(backup.subprocess, 'Popen',
+                        lambda *_args, **_kwargs: pytest.fail('Processo não pode iniciar.'))
+    anterior = Path.cwd()
+    try:
+        with pytest.raises(RuntimeError, match='admin ausente'):
+            backup.executar('1031')
+    finally:
+        os.chdir(anterior)
+    assert not (backup.DESTINO / '1031.p7m').exists()
+    assert not (backup.DESTINO / '.1031.cert.pem').exists()

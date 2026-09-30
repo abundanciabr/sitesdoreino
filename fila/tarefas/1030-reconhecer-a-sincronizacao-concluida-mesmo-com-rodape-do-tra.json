@@ -1,0 +1,20 @@
+{
+  "arquivo": "1030-reconhecer-a-sincronizacao-concluida-mesmo-com-rodape-do-tra",
+  "id": "TAR-1030",
+  "titulo": "Reconhecer a sincronizacao concluida mesmo com rodape do transporte",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste com saida real do run36668918131 e casos adversariais; sentinelas unicas e ordenadas, sucesso SSH e somente rodape fixo permitido; workflow oficial posterior concluido com prova do estado remoto.",
+  "despacho": "Frente sincronizacao1008, sem subdelegacao. Dono somente .github/workflows/deploy-infra.yml e ci/tests/test_deploy_infra_sobrevive_ao_soluco.py, mais registros obrigatorios. Corrigir classificador que usa ultima linha e confunde footer fixo drone-ssh com falha apesar de INICIADA, CONCLUIDA e STATUS0. Preservar fail-closed em status nao zero, sentinelas ausentes duplicadas ou fora de ordem, conteudo arbitrario e transporte falho. Reproduzir log real e testes adversariais. Nao repetir sincronizacao manual. Integracao altera workflow e dispara sincronizacao automatica: root deve medir estado atual antes da liberacao. Embarcar checkpoint1025 20260930-043756 existente. Rito oficial, revisao independente, sem contornar guardas. Nao esta sozinho: preservar edicoes alheias.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
