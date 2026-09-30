@@ -1,0 +1,19 @@
+{
+  "arquivo": "1038-registrar-o-guia-visual-do-portfolio-publicado",
+  "id": "TAR-1038",
+  "titulo": "Registrar o guia visual do portfolio publicado",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "URL publica do guia com seis passos e vinte visuais renderizados; registro validado no livro",
+  "despacho": "Registrar em painel/registros/ a publicacao de https://meshcraft.top/docs/guia-do-portfolio. Provar seis passos, dez imagens e dez figuras no documento publicado; validar o livro. Nao editar o conteudo do site nem ampliar o mandato.",
+  "origem": "Pedido do mantenedor de 30/09/2026 para revisar o manual do portfolio",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
