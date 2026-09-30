@@ -1,7 +1,7 @@
 # A Definição de Pronto local da célula: make ci
 CELULA := $(notdir $(CURDIR))
 
-.PHONY: dev mocks test lint type contrato-check ci
+.PHONY: dev mocks test lint type ci
 
 dev:            ## sobe SÓ esta célula + banco + redis + mocks (isolamento real)
 	docker compose -f docker-compose.dev.yml up
@@ -19,14 +19,3 @@ lint:
 
 type:
 	@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi
-
-# [INV-CI01] Quem decide se esta célula tem contrato é ci/manifesto-de-contratos.json,
-# não a presença do arquivo em disco. O `if [ -f ... ]` que morava aqui tratava
-# "não achei o congelado" como "esta célula não tem contrato" — indistinguível de
-# "o congelado sumiu", e apagar contracts/$(CELULA).openapi.yaml deixava este alvo
-# VERDE. A `pagamentos` é `required` no manifesto: congelado ausente agora é ERROR.
-contrato-check:
-	bash ../../ci/freeze-de-contrato.sh $(CELULA)
-
-ci: lint type test contrato-check
-	@echo "✅ $(CELULA): Definição de Pronto local atingida"

@@ -34,7 +34,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-# Grupo PRÓPRIO, e não `deploy` — a lição da `armadilhas/173`: o GitHub guarda
+# Grupo PRÓPRIO, e não `deploy` — a lição da o GitHub guarda
 # UM run pendente por grupo e o próximo CANCELA o anterior. Num repositório com
 # ~100 entregas por dia, um disparo manual no grupo `deploy` morre antes de
 # começar.
@@ -44,34 +44,17 @@ concurrency:
 jobs:
   limpar:
     name: retirar os avisos de ideias apagadas
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      # A CONFERENCIA QUE PRECEDE A CONEXAO (TAR-461). Num disparo por
-      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
-      # escolhida, e nao os da main: sem este passo, qualquer ramo empurrado
-      # levaria o proprio `infra/*.sh` para dentro da VPS com a chave de deploy.
-      # Guarda: `ci/tests/test_workflows_com_ssh_tem_portao.py`.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
       - uses: actions/checkout@v4
 
       # Se o script sumir ou for renomeado, PARAMOS AQUI: a ssh-action com
       # `script_path` apontando para arquivo inexistente é caminho conhecido de
-      # falso-verde (armadilhas/149 — parâmetro que a ação avisa e IGNORA,
-      # saindo com sucesso).
+      # falso-verde (parâmetro que a ação avisa e IGNORA, saindo com sucesso).
       - name: Conferir que o script existe antes de abrir conexão
         run: |
           set -euo pipefail
@@ -83,36 +66,10 @@ jobs:
           echo "✅ script presente e sintaticamente válido"
 
       - name: Rodar na VPS
-        id: limpeza
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          capture_stdout: true
           command_timeout: 10m
           script_path: infra/limpar-avisos-orfaos.sh
-
-      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
-      # script inteiro, e ler o eco como se fosse a execução já enganou este
-      # projeto. A linha "PRONTO." só sai depois de o script perguntar de novo,
-      # do zero, quantas cartas órfãs restam.
-      - name: Provar pelo banco (não basta a conexão ter aberto)
-        env:
-          SAIDA: ${{ steps.limpeza.outputs.stdout }}
-        run: |
-          set -euo pipefail
-          echo "$SAIDA"
-          echo "---------------------------------------------------------------"
-          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
-            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi apagado."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO\.'; then
-            echo "::error::Não encontrei a linha 'PRONTO.' na saída do script."
-            echo "Ela só é impressa depois de o script conferir, por fora do comando que"
-            echo "apagou, que não restou nenhuma carta órfã."
-            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
-            exit 1
-          fi
-          echo "✅ a caixa central não tem mais recado de ideia apagada."

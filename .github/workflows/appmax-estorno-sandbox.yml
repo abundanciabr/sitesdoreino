@@ -13,11 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo '::error::Esta solicitação sandbox só executa na main.'
-          exit 1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}

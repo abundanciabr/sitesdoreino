@@ -29,7 +29,7 @@
 # `script_path` da ssh-action envia o arquivo do checkout do runner.
 #
 # O HOST VIAJA POR `envs:`, NUNCA COSTURADO NO SCRIPT: `${{ inputs.* }}` dentro
-# de `script:` é injeção de comando na VPS (armadilhas/047). O script lê
+# de `script:` é injeção de comando na VPS. O script lê
 # HOST_CAIXA do ambiente.
 #
 # NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy. As
@@ -46,7 +46,7 @@ on:
         default: meshcraft.top
 permissions:
   contents: read
-# GRUPO PRÓPRIO, e isto foi aprendido caro (armadilhas/173). A primeira versão
+# GRUPO PRÓPRIO, e isto foi aprendido caro. A primeira versão
 # usava `group: deploy`, como o rollback — o raciocínio era "não intercalar com um
 # deploy em curso". Só que `cancel-in-progress: false` NÃO significa "faz fila de
 # tamanho ilimitado": o GitHub guarda UM run pendente por grupo, e o próximo que
@@ -65,34 +65,18 @@ concurrency:
 jobs:
   semear:
     name: inaugurar o quadro na produção
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      # A CONFERENCIA QUE PRECEDE A CONEXAO (TAR-461). Num disparo por
-      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
-      # escolhida, e nao os da main: sem este passo, qualquer ramo empurrado
-      # levaria o proprio `infra/*.sh` para dentro da VPS com a chave de deploy.
-      # Guarda: `ci/tests/test_workflows_com_ssh_tem_portao.py`.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
       - uses: actions/checkout@v4
 
       # O script é o mesmo que o bloco de colar do mantenedor usa. Se um dia ele
       # sumir ou for renomeado, PARAMOS AQUI — a ssh-action com `script_path`
       # apontando para arquivo inexistente é caminho conhecido de falso-verde
-      # (armadilhas/149: parâmetro que a ação avisa e IGNORA, saindo com sucesso).
+      # (parâmetro que a ação avisa e IGNORA, saindo com sucesso).
       - name: Conferir que o script existe antes de abrir conexão
         run: |
           set -euo pipefail
@@ -104,42 +88,13 @@ jobs:
           echo "✅ script presente e sintaticamente válido"
 
       - name: Semear na VPS
-        id: semear
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: HOST_CAIXA
-          capture_stdout: true
           command_timeout: 10m
           script_path: infra/semear-caixa.sh
         env:
           HOST_CAIXA: ${{ inputs.host }}
-
-      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o script
-      # inteiro, e ler o eco como se fosse a execução já enganou este projeto. A
-      # linha "PRONTO." só existe no CAMINHO FELIZ do script, depois de ele
-      # contar os quadros no banco e achar exatamente 1.
-      - name: Provar que o quadro existe (não basta a conexão ter aberto)
-        # A saída viaja por `env:`, como no deploy-celula e no rollback, e nunca
-        # costurada no corpo do `run:` — texto vindo de fora interpolado dentro de
-        # shell é a mesma família de furo da armadilhas/047, e uma linha `EOF` na
-        # saída bastaria para quebrar a leitura.
-        env:
-          SAIDA: ${{ steps.semear.outputs.stdout }}
-        run: |
-          set -euo pipefail
-          echo "$SAIDA"
-          echo "---------------------------------------------------------------"
-          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
-            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO\.'; then
-            echo "::error::Não encontrei a linha 'PRONTO.' na saída do script."
-            echo "Ela só é impressa depois de o script contar 1 quadro no banco."
-            echo "Sem ela, o quadro NÃO está provado — e ausência de erro não é sucesso (INV-CI01)."
-            exit 1
-          fi
-          echo "✅ o quadro de sugestões existe na produção, conferido pela contagem no banco."

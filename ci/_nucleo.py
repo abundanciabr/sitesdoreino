@@ -1,23 +1,14 @@
-"""Núcleo dos portões de CI — [INV-CI01] portão crítico é fail-closed.
+"""Núcleo das ferramentas de `ci/`: estados, raiz do repositório e subprocesso.
 
-A regra que este módulo mecaniza é uma só:
+Toda ferramenta construída sobre este núcleo devolve um de quatro estados:
 
-    ausência de evidência nunca é evidência de sucesso.
-
-Todo portão construído sobre este núcleo devolve um de quatro estados
-semânticos, e nenhum deles pode ser produzido por acidente:
-
-    PASS   a medição rodou e não encontrou violação
-    FAIL   a medição rodou e encontrou violação
+    PASS   a medição rodou e não encontrou problema
+    FAIL   a medição rodou e encontrou problema
     ERROR  a medição NÃO pôde ser feita de forma confiável
     SKIP   a medição foi DECLARADA não aplicável (nunca inferida)
 
-O modo de falha que originou este arquivo: `freeze-de-contrato.sh` chamava
-`python3`, que nesta máquina não existia; as duas pontas do `diff` viraram
-vazio; `diff(vazio, vazio)` deu igualdade; o portão imprimiu "OK". Uma
-ferramenta ausente virou um PASS. Aqui isso é estruturalmente impossível:
-qualquer coisa que impeça a medição levanta `ErroDeInstrumentacao`, que vira
-ERROR, que vira exit code 2.
+Qualquer coisa que impeça a medição levanta `ErroDeInstrumentacao`, que vira
+ERROR, que vira exit code 2. Ferramenta ausente nunca vira sucesso.
 """
 
 from __future__ import annotations
@@ -27,16 +18,12 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# As marcas que provam que um diretório é a raiz DESTE repositório. Resolver a
-# raiz sem conferir isso foi a segunda falha da ferida original: sem git, a
-# resolução caía para "." e o contrato "não era encontrado" — o que o script
-# lia como "nada a checar".
-MARCAS_DA_RAIZ = ("ci", "contracts", "services")
+# As marcas que provam que um diretório é a raiz DESTE repositório: sem elas a
+# resolução cairia para "." e mediria outra coisa em silêncio.
+MARCAS_DA_RAIZ = ("ci", "services", "celulas.yml")
 
 
 class Estado(enum.Enum):
@@ -298,8 +285,7 @@ def executar(
             cwd=str(cwd),
             # Portão nunca espera teclado: stdin fechado por construção. Sem
             # isto, um subprocesso que resolva perguntar algo (ex.: `gh pr
-            # merge` com TTY) ficaria travado até o timeout — e com stdin
-            # fechado o `gh` nem pergunta, age direto (docs/historico/RESOLVIDAS.md §5.9.1/H6).
+            # merge` com TTY) ficaria travado até o timeout.
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -371,102 +357,6 @@ def recortar(texto: str, limite: int = 2000) -> str:
     return "\n".join(f"  {linha}" for linha in texto.splitlines())
 
 
-# ---------------------------------------------------------------------------
-# O make do PATH roda as receitas das células? Medido, nunca deduzido.
-# ---------------------------------------------------------------------------
-#
-# `ci/ci.py` (`rodar_celula`) e `ci/sessao.py` (baseline) perguntam a mesma
-# coisa antes do `make ci`, e por isso a resposta mora aqui, uma vez só.
-# Conferir `make --version` pegava a fachada do Codex (`armadilhas/529`), mas
-# não o GNU Make do Windows sem `sh` no PATH: ele roda a receita no cmd.exe, o
-# `if [ ... ]` das células quebra no shell e a célula leva a culpa
-# (`armadilhas/536`). A sonda roda uma receita com uma linha simples e uma de
-# shell POSIX, do mesmo jeito que a porta vai rodar o `make ci`.
-#
-# Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
-# rodar (127 ausente, 126 erro de SO, 124 timeout). Só eles significam "não
-# foi possível medir"; qualquer outro número veio do programa e é veredito
-# dele. Moram aqui porque a sonda, o `make ci` do `ci.py` e o do baseline de
-# `sessao.py` leem a mesma tabela.
-SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
-
-MAKEFILE_DA_SONDA = (
-    "sonda:\n"
-    "\t@echo linha-simples\n"
-    "\t@test -n x && echo linha-posix\n"
-)
-
-O_QUE_FAZER_COM_O_MAKE = (
-    "Nada foi medido e a célula não reprovou: o defeito é do instrumento, não da base.\n"
-    "No Windows, deixe o GNU Make na frente do PATH (`winget install ezwinports.make`,\n"
-    "que fica em %LOCALAPPDATA%\\Microsoft\\WinGet\\Links) e `C:\\Program Files\\Git\\usr\\bin`\n"
-    "no FIM do PATH. Só o GNU Make não basta, e `Git\\bin` no lugar de `Git\\usr\\bin`\n"
-    "também não. Fora do Windows, instale o GNU Make e um `sh` POSIX. Depois abra uma\n"
-    "janela nova e repita. Veja armadilhas/529 e armadilhas/536."
-)
-
-
-def _correr_a_sonda(comando: list[str]) -> tuple[int, str]:
-    """Ausência, erro de SO e timeout viram as sentinelas 127, 126 e 124."""
-    try:
-        proc = subprocess.run(comando, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", timeout=120, check=False)
-    except FileNotFoundError as exc:
-        return 127, str(exc)
-    except subprocess.TimeoutExpired:
-        return 124, f"{comando[0]}: timeout após 120s"
-    except OSError as exc:
-        return 126, str(exc)
-    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
-
-
-def defeito_do_make(
-    make: str,
-    correr: Callable[[list[str]], tuple[int, str]] = _correr_a_sonda,
-    argumentos_do_make: Sequence[str] = (),
-) -> tuple[str, str] | None:
-    """None se `make` roda receita de shell POSIX; senão (resumo, detalhe) do defeito.
-
-    `correr` devolve (exit, stdout+stderr). `argumentos_do_make` são os mesmos
-    que a porta acrescenta ao `make ci` (o baseline passa `SHELL=`), para a
-    sonda medir o instrumento do jeito que ele vai ser usado. Sem cache: são
-    dois processos curtos por célula, e o `make ci` que vem depois custa minutos.
-    """
-    with tempfile.TemporaryDirectory(prefix="sonda-do-make-") as pasta:
-        Path(pasta, "Makefile").write_text(MAKEFILE_DA_SONDA, encoding="utf-8", newline="\n")
-        codigo, saida = correr([make, "-C", pasta, "sonda", *argumentos_do_make])
-    linhas = {linha.strip() for linha in saida.splitlines()}
-    if codigo == 0 and "linha-posix" in linhas:
-        return None
-    _, versao = correr([make, "--version"])
-    resumo = f"o `make` do PATH não roda as receitas das células: {make}"
-    causa = "A receita de prova não imprimiu o que devia; a saída acima mostra onde ela parou."
-    if "linha-simples" not in linhas:
-        resumo = f"o `make` do PATH é GNU Make, mas não executa nem `echo` numa receita: {make}"
-        causa = ("O GNU Make achou um `sh`, mas não as ferramentas POSIX ao lado dele. No\n"
-                 "Windows isso é `Git\\bin` no PATH no lugar de `Git\\usr\\bin`.")
-    if "linha-simples" in linhas and "linha-posix" not in linhas:
-        resumo = f"o `make` do PATH é GNU Make, mas roda as receitas sem shell POSIX: {make}"
-        causa = ("O GNU Make rodou a linha simples e quebrou na de shell POSIX: sem `sh` no\n"
-                 "PATH, no Windows, ele usa o cmd.exe. Todo Makefile de célula usa shell POSIX\n"
-                 "(`if [ ... ]`, `&&`), e o `make ci` quebraria no shell, não no código.")
-    if not versao.startswith("GNU Make"):
-        resumo = f"o `make` do PATH não é GNU Make: {make}"
-        causa = "Um programa chamado `make` que não é o GNU Make não roda o `make ci` das células."
-    if codigo in SENTINELAS_DE_INSTRUMENTACAO:
-        resumo = f"a sonda do `make` do PATH não chegou a rodar (exit {codigo}): {make}"
-        causa = ("O make não abriu ou não terminou a tempo (124 = tempo esgotado, 126 = erro do\n"
-                 "sistema, 127 = não encontrado). Com a máquina carregada, espere e repita.")
-    comando = subprocess.list2cmdline([make, "-C", "<pasta temporária>", "sonda", *argumentos_do_make])
-    detalhe = (
-        f"A sonda `{comando}`, com a receita\n{recortar(MAKEFILE_DA_SONDA)}\n"
-        f"saiu {codigo}:\n{recortar(saida, 1500)}\n"
-        f"`{make} --version` respondeu:\n{recortar(versao, 500)}\n\n"
-        f"{causa}\n\n{O_QUE_FAZER_COM_O_MAKE}"
-    )
-    return resumo, detalhe
-
-
 def configurar_saida() -> None:
     """UTF-8 na minha saída E na de todo filho meu.
 
@@ -485,20 +375,10 @@ def configurar_saida() -> None:
         o pai leu ....... 'calcula isso de forma ass\\ufffdncrona\\n'
         a marca casa? ... False        ← e a decisão do pai virou pó
 
-    Foi assim que a remedição do ERROR do portão (`ci/esperar.py`, construída
-    em 03/09/2026 porque os PRs #954 e #956 morreram sem ela) nasceu MORTA
-    nesta máquina, que é justamente a única onde ela roda: verde na CI (Linux,
-    utf-8 por padrão), inerte em casa. Dois testes de `ci/tests/test_espera.py`
-    reprovavam aqui e passavam lá — e a `armadilhas/138` já tinha previsto essa
-    cegueira por escrito em 27/08/2026, sem que nada fosse construído.
-
-    Por que AQUI, e não em cada chamada de `subprocess`: são 90 fronteiras que
-    decodificam texto em `ci/`, e 89 delas não declaravam ambiente nenhum
-    (medido em 04/09/2026). Filho herda `os.environ`, então uma linha na porta
-    por onde as 33 ferramentas desta casa já passam cobre as 90 de uma vez.
-    Remendar chamada por chamada seria a esteira infinita: quem escrevesse a
-    de número 91 recomeçaria a doença. `setdefault` porque quem já escolheu o
-    próprio ambiente continua mandando nele.
+    Por que AQUI, e não em cada chamada de `subprocess`: filho herda
+    `os.environ`, então uma linha na porta por onde todas as ferramentas de
+    `ci/` passam cobre todas as fronteiras de uma vez. `setdefault` porque quem
+    já escolheu o próprio ambiente continua mandando nele.
 
     Não cobre filho que não é Python (`git`, `gh`, `node`) — `PYTHONUTF8` é uma
     chave do interpretador, e dizer o contrário seria garantia sem mecanismo.
