@@ -20,11 +20,10 @@ O que estes guardas protegem, e por que cada um existe:
   `target` que é a área de staging, nunca um caminho em uso. Se alguém tirar o
   `rm`, restos de uma tentativa interrompida passam a contaminar a seguinte; se
   alguém apontar o `target` para `/opt/plataforma`, o `rm` apaga a produção.
-- **E a repetição só acontece quando a VPS não executou UMA LINHA.** É a
-  diferença de desenho em relação ao `deploy-celula`, e a razão de ela existir
-  é que o script daqui troca arquivos em uso e data um backup: repetir depois
-  de ele ter começado dataria um backup do estado meio-trocado. A marca
-  `SINCRONIZACAO-INICIADA:` é quem separa os dois mundos.
+- **A repetição só acontece se o SCP falhou antes de chamar SSH.** O script
+  troca arquivos em uso e data um backup; a ação perde stdout quando o
+  receptor falha. Saída vazia após SSH significa resultado incerto, não prova
+  de ausência de efeito.
 - **Verde sem ter trocado nada continua sendo o pior verde.** As duas
   primeiras tentativas são `continue-on-error` (senão não haveria repetição), e
   sem um portão de conclusão um script que reprovou na 1ª deixaria o job verde.
@@ -33,6 +32,8 @@ O que estes guardas protegem, e por que cada um existe:
 from __future__ import annotations
 
 import sys
+import os
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -232,19 +233,7 @@ def test_ha_pausa_entre_as_tentativas():
 
 
 def test_a_repeticao_so_acontece_quando_a_VPS_NAO_EXECUTOU_NADA():
-    """O guarda mais importante deste arquivo — a diferença para o deploy-celula.
-
-    Lá o script é trivialmente idempotente (`pull` + `up -d`), e por isso ele
-    repete diante de qualquer falha. Aqui o script troca arquivos EM USO e data
-    um backup: uma repetição cega depois de ele ter começado dataria um backup
-    novo do estado já meio-trocado, e o caminho de volta impresso no bloco 4
-    passaria a apontar para um estado misto.
-
-    Quem fecha essa porta é a marca de partida: sem ela na saída capturada,
-    está PROVADO que a VPS não executou uma linha, e repetir é tão seguro
-    quanto o primeiro envio. Se alguém trocar esta condição por
-    `outcome == 'failure'`, a segurança vira argumento outra vez.
-    """
+    """Saída vazia não prova ausência de efeito: só SCP falho antes do SSH permite retry."""
     repeticoes = [
         p
         for p in _passos()
@@ -254,14 +243,12 @@ def test_a_repeticao_so_acontece_quando_a_VPS_NAO_EXECUTOU_NADA():
     assert repeticoes, "não achei os passos que decidem repetir"
     for passo in repeticoes:
         condicao = str(passo.get("if", ""))
-        assert MARCA_DE_PARTIDA in condicao, (
-            f"{passo.get('name')}: repete sem provar que a VPS não executou "
-            f"nada — if={condicao!r}"
-        )
-        assert "outcome == 'failure'" not in condicao, (
-            f"{passo.get('name')}: voltou a repetir por 'falhou', que inclui o "
-            "script que rodou e reprovou"
-        )
+        assert "steps.enviar1.outcome == 'failure'" in condicao
+        assert "steps.aplicar1.outcome == 'skipped'" in condicao
+        if passo.get("id") in {"sonda2", "enviar3"} or "última" in str(passo.get("name", "")):
+            assert "steps.enviar2.outcome == 'failure'" in condicao
+            assert "steps.aplicar2.outcome == 'skipped'" in condicao
+        assert "outputs.stdout" not in condicao
 
 
 def test_a_saida_da_aplicacao_e_capturada_senao_nada_disso_e_mensuravel():
@@ -331,16 +318,7 @@ def test_a_parada_antecipada_reprova_de_verdade():
 
 
 def _portao_de_conclusao() -> dict:
-    portoes = [
-        p
-        for p in _passos()
-        if MARCA_DE_CONCLUSAO in str(p.get("run", "")) and "exit 1" in str(p.get("run", ""))
-    ]
-    assert portoes, (
-        "nada exige a marca de conclusão: com as duas primeiras tentativas em "
-        "continue-on-error, um script que reprovou na 1ª deixaria o job VERDE"
-    )
-    return portoes[0]
+    return next(p for p in _passos() if p.get("name") == "Exigir a conclusão comprovada da sincronização")
 
 
 def test_conectar_sem_trocar_nada_nao_e_sucesso():
@@ -352,6 +330,9 @@ def test_conectar_sem_trocar_nada_nao_e_sucesso():
     nas duas primeiras tentativas.
     """
     portao = _portao_de_conclusao()
+    classificador = next(p for p in _passos() if p.get("id") == "classificar_resultado")
+    assert MARCA_DE_CONCLUSAO in str(classificador.get("run", ""))
+    assert "SINCRONIZACAO-STATUS" in str(classificador.get("run", ""))
     assert "cancelled()" in str(portao.get("if", "")), (
         "o portão de conclusão precisa rodar também quando a entrega falhou — e "
         "NÃO quando o run foi cancelado sem rodar nada (armadilhas/173 e /188)"
@@ -367,9 +348,8 @@ def test_o_portao_separa_nao_comecou_de_comecou_e_parou_no_meio():
     duas faria o leitor procurar rede quando o problema era o compose.
     """
     corpo = str(_portao_de_conclusao().get("run", ""))
-    assert MARCA_DE_PARTIDA in corpo, (
-        "o portão não distingue 'não começou' de 'começou e parou no meio'"
-    )
+    assert "falhou)" in corpo and "nao_iniciada)" in corpo
+    assert "Resultado INCERTO" in corpo and "Meça o estado da VPS" in corpo
 
 
 def test_as_sentinelas_sao_as_mesmas_no_script_e_no_workflow():
@@ -387,6 +367,9 @@ def test_o_script_da_vps_mora_num_arquivo_e_nao_dentro_do_yaml():
     de shell — a duplicação que esta casa proíbe, e a mesma razão que tirou o
     script da célula do YAML em 28/08/2026."""
     assert SCRIPT_DA_VPS.exists(), f"{SCRIPT_DA_VPS} não existe"
+    preparador = next(p for p in _passos() if p.get("id") == "preparar_resultado")
+    assert "cat \"$FONTE\"" in str(preparador.get("run", ""))
+    assert "FONTE=infra/sincronizar-infra-na-vps.sh" in str(preparador.get("run", ""))
     for aplicacao in _aplicacoes():
         com = aplicacao.get("with") or {}
         assert "script" not in com, (
@@ -446,24 +429,149 @@ def test_o_narrador_nao_afirma_producao_intacta_quando_nao_sabe():
     onde a troca acontece. Afirmar produção intacta sem saber é a mesma família
     do falso-verde: o leitor para de investigar por causa de uma frase.
 
-    Por isso o narrador separa os dois desfechos pela marca de partida, do mesmo
-    jeito que o portão de conclusão faz — e é a marca, e não o `outcome`, que
-    decide (`outcome` não sabe distinguir os dois).
+    O narrador lê a classificação que exige status terminal e sentinelas;
+    resultado incerto nunca pode ser convertido em produção intacta.
     """
     narrador = [p for p in _passos() if "GITHUB_STEP_SUMMARY" in str(p.get("run", ""))][0]
     corpo = str(narrador.get("run", ""))
-    assert MARCA_DE_PARTIDA in corpo, (
-        "o narrador voltou a contar uma história só para os dois desfechos de "
-        "falha — e um deles não pode afirmar que a produção está intacta"
+    assert "RESULTADO" in (narrador.get("env") or {})
+    assert "[ \"$RESULTADO\" = incerta ]" not in corpo
+    assert "Resultado INCERTO" in corpo
+    assert "Não há prova de que a produção esteja intacta" in corpo
+    assert "[ \"$RESULTADO\" = nao_iniciada ]" in corpo
+
+
+def _bash() -> str:
+    if os.name == "nt":
+        return r"C:\Program Files\Git\bin\bash.exe"
+    return "bash"
+
+
+def _ambiente_bash() -> dict[str, str]:
+    ambiente = os.environ.copy()
+    if os.name == "nt":
+        ambiente["PATH"] = str(Path(_bash()).parent) + os.pathsep + ambiente["PATH"]
+    return ambiente
+
+
+def _executar_bloco(bloco: str, pasta: Path, **variaveis: str) -> subprocess.CompletedProcess[str]:
+    ambiente = _ambiente_bash()
+    ambiente.update({chave: valor.replace("\\", "/") for chave, valor in variaveis.items()})
+    return subprocess.run(
+        [_bash(), "-e", "-o", "pipefail", "-c", bloco],
+        cwd=pasta,
+        env=ambiente,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
-    intactas = [
-        linha
-        for linha in corpo.splitlines()
-        if "ANTERIORES" in linha and "GITHUB_STEP_SUMMARY" in linha
+
+
+def test_wrapper_conserva_o_status_42_apesar_do_trap_remoto(tmp_path):
+    preparador = next(p for p in _passos() if p.get("id") == "preparar_resultado")
+    fonte = tmp_path / "infra" / "sincronizar-infra-na-vps.sh"
+    fonte.parent.mkdir()
+    fonte.write_text(
+        "set -eo pipefail\n"
+        "trap 'codigo=$?; exit $codigo' EXIT\n"
+        "printf 'SINCRONIZACAO-INICIADA: teste\\n'\n"
+        "exit 42\n",
+        encoding="utf-8",
+    )
+    original = tmp_path / "sincronizador-original.sh"
+    original.write_bytes(fonte.read_bytes())
+    saida = tmp_path / "saida-do-preparo"
+    preparo = _executar_bloco(
+        str(preparador["run"]), tmp_path,
+        RUNNER_TEMP=str(tmp_path), GITHUB_OUTPUT=str(saida),
+    )
+    assert preparo.returncode == 0, preparo.stderr
+    caminho = next(
+        linha.partition("=")[2] for linha in saida.read_text().splitlines()
+        if linha.startswith("script=")
+    )
+    remoto = subprocess.run(
+        [_bash(), caminho], cwd=tmp_path, env=_ambiente_bash(),
+        capture_output=True, text=True, check=False,
+    )
+    assert remoto.returncode == 0, remoto.stderr
+    assert "SINCRONIZACAO-INICIADA: teste" in remoto.stdout
+    assert remoto.stdout.splitlines()[-1] == "SINCRONIZACAO-STATUS:42"
+
+    captura = (
+        "printf 'stdout<<EOF\\n' >> \"$GITHUB_OUTPUT\"\n"
+        "bash \"$SCRIPT\" | tee -a \"$GITHUB_OUTPUT\"\n"
+        "printf 'EOF\\n' >> \"$GITHUB_OUTPUT\"\n"
+    )
+    saida_bruta = tmp_path / "captura-bruta"
+    antiga = _executar_bloco(
+        captura, tmp_path, SCRIPT=str(original), GITHUB_OUTPUT=str(saida_bruta)
+    )
+    assert antiga.returncode == 42
+    assert saida_bruta.read_text(encoding="utf-8").splitlines()[-1] != "EOF"
+
+    saida_completa = tmp_path / "captura-completa"
+    nova = _executar_bloco(
+        captura, tmp_path, SCRIPT=caminho, GITHUB_OUTPUT=str(saida_completa)
+    )
+    assert nova.returncode == 0, nova.stderr
+    assert saida_completa.read_text(encoding="utf-8").splitlines()[-2:] == [
+        "SINCRONIZACAO-STATUS:42", "EOF",
     ]
-    assert intactas, "sumiu a frase que tranquiliza quando NADA foi tocado"
-    for linha in intactas:
-        assert "não executou uma linha" in linha, (
-            "a frase 'continua com o compose ANTERIOR' só pode aparecer no ramo "
-            f"em que está provado que nada rodou na VPS — achei: {linha.strip()[:120]}"
+
+
+def test_classificacao_retem_falha_remota_e_recusa_resposta_ausente(tmp_path):
+    classificador = next(p for p in _passos() if p.get("id") == "classificar_resultado")
+
+    def classificar(saida: str, aplicacao: str, envio: str = "success") -> str:
+        caminho = tmp_path / "classificacao"
+        caminho.unlink(missing_ok=True)
+        resultado = _executar_bloco(
+            str(classificador["run"]), tmp_path,
+            GITHUB_OUTPUT=str(caminho),
+            E1=envio, E2="skipped", E3="skipped",
+            A1=aplicacao, A2="skipped", A3="skipped",
+            SAIDA_1=saida, SAIDA_2="", SAIDA_3="",
         )
+        assert resultado.returncode == 0, resultado.stderr
+        return caminho.read_text(encoding="utf-8")
+
+    assert "resultado=falhou" in classificar(
+        "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-STATUS:42\n", "success"
+    )
+    assert "resultado=incerta" in classificar("", "failure")
+    assert "resultado=incerta" in classificar("SINCRONIZACAO-INICIADA: teste", "success")
+    assert "resultado=incerta" in classificar(
+        "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-CONCLUIDA: teste\n"
+        "SINCRONIZACAO-STATUS:0\n", "failure"
+    )
+    assert "resultado=incerta" in classificar(
+        "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-CONCLUIDA: teste\n"
+        "SINCRONIZACAO-STATUS:42\n", "success"
+    )
+    assert "resultado=concluida" in classificar(
+        "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-CONCLUIDA: teste\n"
+        "SINCRONIZACAO-STATUS:0\n", "success"
+    )
+    assert "resultado=nao_iniciada" in classificar("", "skipped", envio="failure")
+
+
+def test_portao_e_resumo_recusam_resultado_incerto_sem_atestar_estado_intacto(tmp_path):
+    portao = _portao_de_conclusao()
+    narrador = next(p for p in _passos() if "GITHUB_STEP_SUMMARY" in str(p.get("run", "")))
+    resumo = tmp_path / "resumo"
+    for estado, codigo in (("concluida", 0), ("falhou", 1), ("nao_iniciada", 1), ("incerta", 1)):
+        resultado = _executar_bloco(str(portao["run"]), tmp_path, RESULTADO=estado)
+        assert resultado.returncode == codigo, (estado, resultado.stdout, resultado.stderr)
+    escrito = _executar_bloco(
+        str(narrador["run"]), tmp_path,
+        GITHUB_STEP_SUMMARY=str(resumo), RESULTADO="incerta", TENTATIVA="1",
+        E1="success", E2="skipped", E3="skipped",
+        A1="failure", A2="skipped", A3="skipped",
+    )
+    assert escrito.returncode == 0, escrito.stderr
+    conteudo = resumo.read_text(encoding="utf-8")
+    assert "Resultado INCERTO" in conteudo
+    assert "Não há prova de que a produção esteja intacta" in conteudo
+    assert "a infraestrutura nova ESTÁ em produção" not in conteudo
