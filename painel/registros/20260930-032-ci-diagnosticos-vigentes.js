@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-032-ci-diagnosticos-vigentes",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: diagnósticos vigentes",
+  detalhe: "Nove diagnósticos apontam à receita vigente; a recusa permanece e o teste cita a âncora atual.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2384. Validação local: árvore 7d335b60c046401dae79c8a27de6cfce4dfeeebc; commit 9c66659b951eb8725256f9a82d4b7a1de6587857; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1010",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
