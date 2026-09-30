@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-030-infra-preservar-sonda-final",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "infra: preservar sonda final",
+  detalhe: "O run 36657313864 perdeu a sonda final porque um comando leu o script pelo stdin; o wrapper corrigido preserva o final.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2392. Validação local: árvore 2830fcdc4f6907e9c90e6a7a6c06ad7b68ee62bf; commit 6329b4fa39010824098be0ce0a0ef8d3caa351e8; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1025",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
