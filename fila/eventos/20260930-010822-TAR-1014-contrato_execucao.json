@@ -1,0 +1,62 @@
+{
+  "arquivo": "20260930-010822-TAR-1014-contrato_execucao",
+  "tarefa": "TAR-1014",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T01:08:22.052883+00:00",
+  "quem": "despacho-ci-pme-sessao-dois-bancos",
+  "contrato": {
+    "plano": "PME04-TAR-1014-dois-bancos-locais",
+    "versao": 1,
+    "objetivo": "Abrir e retomar a sessao admin com bancos admin e coordenacao isolados por tarefa, aptos ao baseline local.",
+    "entregaveis": [
+      "ci/sessao.py prepara Postgres dedicado para admin e exporta COORDENACAO_DATABASE_URL local",
+      "ci/tests/test_sessao.py prova derivacao, falha fechada, privilegios, isolamento e retomada",
+      "PR pelo rito oficial com tarefa e eventos TAR-1014"
+    ],
+    "escopo_incluido": [
+      "Somente ci/sessao.py e ci/tests/test_sessao.py como fontes tecnicas; registros proprios da TAR-1014",
+      "PostgreSQL 17 descartavel e exclusivo dos ensaios desta tarefa"
+    ],
+    "nao_objetivos": [
+      "Nao alterar consumidor de coordenacao nem provisionamento de producao",
+      "Nao parar nem destruir sitesdoreino-postgres-shared ou bancos alheios",
+      "Nao usar DSN ou segredo de producao"
+    ],
+    "restricoes": [
+      "Nomes locais coordenacao_db e coordenacao_user preservados literalmente",
+      "Role de coordenacao sem CREATEDB, SUPERUSER, CREATEROLE, REPLICATION ou BYPASSRLS",
+      "Sem URL herdada do host nem segredo em erro, log ou registro",
+      "Sem ampliar mandato para outro arquivo tecnico"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato PME04 e despacho TAR-1014 pela coordenacao em 30/09/2026",
+      "Postgres dedicado por tarefa admin e porta dinamica; demais celulas mantem banco compartilhado"
+    ],
+    "etapas": [
+      "Adotar bancada, reconciliar e registrar contrato",
+      "Provar vermelho focal da lacuna",
+      "Implementar preparo minimo e testes",
+      "Provar PostgreSQL real, retomada e baseline admin",
+      "Revisar, validar e submeter PR"
+    ],
+    "criterios_entrada": [
+      "Tarefa1014 e evento005411 recuperados byte-identicos do snapshot local",
+      "Bancada propria em origin/main e TAR-1014 reivindicada",
+      "Dois alvos tecnicos exclusivos livres"
+    ],
+    "criterios_aceite": [
+      "Duas tarefas admin usam clusters distintos, ambas com nomes coordenacao_db/coordenacao_user",
+      "Retomada reutiliza apenas segredo e dados da propria tarefa",
+      "Admin nao conecta ao banco coordenacao e coordenacao nao conecta ao banco admin",
+      "Baseline admin roda sem os 30 erros de setup por URL ausente; suite focal e real passam"
+    ],
+    "evidencias_exigidas": [
+      "Saida vermelha e verde dos testes novos",
+      "Comandos e saidas PostgreSQL17 local sem segredos",
+      "Differences revisados e CI do PR"
+    ],
+    "condicao_encerramento": "Codigo integrado por PR e sessao admin nova/retomada comprovada em PostgreSQL dedicado; nenhuma alegacao de publicacao de produto.",
+    "limites_autonomia": "Executor edita apenas ci/sessao.py, ci/tests/test_sessao.py e registros da TAR-1014; coordenacao conduz revisao independente.",
+    "acoes_do_mantenedor": "Nenhuma decisao tecnica adicional; se houver bloqueio real de recurso ou aprovacao automatica, coordenacao apresenta artefato concreto."
+  }
+}

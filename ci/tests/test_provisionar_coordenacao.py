@@ -122,7 +122,7 @@ if [ -n "${PME_COORD_VERIFICACAO:-}" ]; then
   chmod 644 "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
   mv "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp" "/opt/plataforma/compose-$PME_COORD_VERIFICACAO"
   tentativas=0
-  while [ ! -f "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" ] && [ "$tentativas" -lt 100 ]; do
+  while [ ! -f "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" ] && [ "$tentativas" -lt 700 ]; do
     sleep .05
     tentativas=$((tentativas + 1))
   done
@@ -152,6 +152,7 @@ case "$1" in
       exit $?
     fi
     if [[ "$entrada" = postgres://coordenacao_user:* ]]; then
+      [[ "$*" = *'DJANGO_SETTINGS_MODULE'*'django.setup()'*'from apps.core.coordenacao import preparar'* ]] || exit 48
       [ ! -e /opt/plataforma/falha-esquema ] || exit 1
       senha="${entrada#postgres://coordenacao_user:}"
       senha="${senha%%@*}"
@@ -186,24 +187,18 @@ exit 2
         "postgres:17",
     )
     try:
-        for _ in range(30):
-            if (
-                docker(
-                    "exec",
-                    nome,
-                    "pg_isready",
-                    "-h",
-                    "127.0.0.1",
-                    "-U",
-                    "postgres",
-                    check=False,
-                ).returncode
-                == 0
-            ):
-                break
-            time.sleep(1)
-        else:
-            raise AssertionError("PostgreSQL 17 não ficou pronto")
+        def aguardar_postgres():
+            for _ in range(30):
+                consulta = docker(
+                    "exec", nome, "psql", "-h", "127.0.0.1",
+                    "-U", "postgres", "-tAc", "SELECT 1", check=False,
+                )
+                if consulta.returncode == 0 and consulta.stdout.strip() == "1":
+                    return
+                time.sleep(1)
+            raise AssertionError("PostgreSQL 17 não aceitou consulta em 30 segundos")
+
+        aguardar_postgres()
         docker(
             "exec", nome, "psql", "-U", "postgres", "-c", "CREATE ROLE admin_user LOGIN"
         )
@@ -464,6 +459,7 @@ exit 2
             assert (tmp_path / "env" / "admin.env").read_text() == env
         finally:
             holder.wait(timeout=10)
+        aguardar_postgres()
         herdada = docker(
             "exec",
             "-e",

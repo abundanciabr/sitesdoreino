@@ -82,12 +82,13 @@ from contextlib import contextmanager, nullcontext, redirect_stdout
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
 from typing import Callable, Sequence
@@ -443,7 +444,8 @@ class Plano:
     porta_postgres: int
     redis: str
     porta_redis: int
-    senha_banco: str = SENHA_DO_BANCO
+    senha_banco: str = field(default=SENHA_DO_BANCO, repr=False)
+    senha_coordenacao: str = field(default="", repr=False)
 
     @property
     def banco(self) -> str:
@@ -539,7 +541,7 @@ def derivar_plano(
             redis="",
             porta_redis=0,
         )
-    return Plano(
+    plano = Plano(
         celula=celula,
         tarefa=tarefa,
         frase=frase.strip(),
@@ -552,10 +554,15 @@ def derivar_plano(
         venv=Path.home() / ".sitesdoreino" / "venvs" / celula,
         arquivo_env=scratch / ".env",
         postgres="sitesdoreino-postgres-shared",
-        porta_postgres=porta_postgres if porta_postgres is not None else 15432,
+        porta_postgres=(
+            porta_postgres if porta_postgres is not None else (0 if celula == "admin" else 15432)
+        ),
         redis=f"{prefixo}-{celula}-{tarefa}-redis" if usa_redis else "",
         porta_redis=porta_redis if usa_redis and porta_redis is not None else 0,
     )
+    if celula == "admin":
+        return replace(plano, postgres=f"{prefixo}-{plano.banco}-postgres")
+    return plano
 
 
 def passos_do_plano(plano: Plano) -> tuple[str, ...]:
@@ -601,6 +608,14 @@ def variaveis_de_sessao(
             f"@localhost:{porta_postgres}/{plano.banco}"
         ),
     }
+    if plano.celula == "admin":
+        if not re.fullmatch(r"[a-f0-9]{48}", plano.senha_coordenacao):
+            raise ErroDeSessao(P_ENV, "credencial local da coordenação indisponível",
+                               detalhe="Prepare o Postgres exclusivo da tarefa antes de escrever o .env.")
+        variaveis["COORDENACAO_DATABASE_URL"] = (
+            f"postgres://coordenacao_user:{plano.senha_coordenacao}"
+            f"@localhost:{porta_postgres}/coordenacao_db"
+        )
     if plano.usa_redis:
         variaveis["REDIS_STREAMS_URL"] = f"redis://localhost:{porta_redis}/0"
         variaveis["HUEY_REDIS_URL"] = f"redis://localhost:{porta_redis}/1"
@@ -696,7 +711,7 @@ def cabecalho(plano: Plano) -> str:
     linhas += [
         f"  venv          {plano.venv}   (FORA do worktree)",
         f"  .env          {plano.arquivo_env}",
-        f"  postgres      {plano.postgres} em localhost:{plano.porta_postgres}",
+        f"  postgres      {plano.postgres} em localhost:{plano.porta_postgres or 'porta automática'}",
     ]
     if plano.usa_redis:
         linhas.append(f"  redis         {plano.redis} em localhost:{plano.porta_redis}")
@@ -794,6 +809,7 @@ def correr_de_verdade(
     env: dict[str, str] | None = None,
     timeout: int = 1800,
     binario: bool = False,
+    entrada: str | None = None,
 ) -> Saida:
     """Roda um comando. Exit != 0 é INFORMAÇÃO para quem chama, nunca engolido.
 
@@ -808,7 +824,8 @@ def correr_de_verdade(
                 comando,
                 cwd=str(cwd) if cwd is not None else None,
                 env=env,
-                stdin=subprocess.DEVNULL,
+                input=entrada.encode("utf-8") if entrada is not None else None,
+                **({"stdin": subprocess.DEVNULL} if entrada is None else {}),
                 capture_output=True,
                 timeout=timeout,
                 check=False,
@@ -820,7 +837,8 @@ def correr_de_verdade(
                 comando,
                 cwd=str(cwd) if cwd is not None else None,
                 env=env,
-                stdin=subprocess.DEVNULL,
+                input=entrada,
+                **({"stdin": subprocess.DEVNULL} if entrada is None else {}),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -841,6 +859,135 @@ def correr_de_verdade(
 def escrever_de_verdade(caminho: Path, texto: str) -> None:
     caminho.parent.mkdir(parents=True, exist_ok=True)
     caminho.write_text(texto, encoding="utf-8", newline="\n")
+
+
+def conferir_acl_windows(caminho: Path, passo: str) -> None:
+    verificacao = (
+        "$ErrorActionPreference = 'Stop'; "
+        "try { $acl = Get-Acl -LiteralPath $args[0]; "
+        "$dono = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; "
+        "if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $dono) { exit 1 }; "
+        "foreach ($ace in $acl.Access) { "
+        "if ($ace.AccessControlType -ne 'Allow') { continue }; "
+        "try { $sid = $ace.IdentityReference.Translate("
+        "[Security.Principal.SecurityIdentifier]).Value } catch { exit 2 }; "
+        "if ($sid -notin @($dono, 'S-1-3-4', 'S-1-5-18', 'S-1-5-32-544')) { exit 1 } "
+        "} } catch { exit 2 }"
+    )
+    caminho_literal = "'" + str(caminho).replace("'", "''") + "'"
+    try:
+        resultado = subprocess.run(
+            ["pwsh", "-NoProfile", "-NonInteractive", "-Command",
+             verificacao.replace("$args[0]", caminho_literal)],
+            capture_output=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise ErroDeSessao(
+            passo, "não consegui conferir as permissões da sessão",
+            detalhe=f"Confira {caminho} e repita a abertura.",
+        ) from erro
+    if resultado.returncode != 0:
+        raise ErroDeSessao(
+            passo, "arquivo da sessão acessível por outros usuários",
+            detalhe=f"Proteja as permissões de {caminho} ou escolha outro --scratch.",
+        )
+
+
+def conferir_scratch_privado(plano: Plano, passo: str) -> None:
+    scratch = plano.scratch.resolve()
+    if any((p / ".git").exists() for p in (scratch, *scratch.parents)):
+        raise ErroDeSessao(
+            passo, "scratch dentro de um repositório",
+            detalhe="Escolha --scratch fora de qualquer checkout e repita a abertura.",
+        )
+    if os.name == "nt" and not scratch.is_relative_to(Path.home().resolve()):
+        raise ErroDeSessao(
+            passo, "scratch fora do perfil privado",
+            detalhe="Escolha --scratch dentro do seu perfil de usuário e repita a abertura.",
+        )
+    plano.scratch.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.name == "nt":
+        conferir_acl_windows(plano.scratch, passo)
+    else:
+        dados = plano.scratch.stat()
+        if dados.st_uid != os.getuid() or stat.S_IMODE(dados.st_mode) & 0o077:
+            raise ErroDeSessao(
+                passo, "scratch acessível por outros usuários",
+                detalhe=f"Proteja {plano.scratch} com chmod 700 ou escolha outro --scratch.",
+            )
+
+
+def ler_arquivo_privado(caminho: Path, passo: str) -> str:
+    if caminho.is_symlink():
+        raise ErroDeSessao(
+            passo, "credencial local aponta para outro caminho",
+            detalhe=f"Remova o link {caminho} e repita a abertura.",
+        )
+    if os.name == "nt" and caminho.exists():
+        conferir_acl_windows(caminho, passo)
+    try:
+        descritor = os.open(caminho, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except FileNotFoundError:
+        return ""
+    except OSError as erro:
+        raise ErroDeSessao(
+            passo, "credencial local inacessível",
+            detalhe=f"Confira {caminho}, preserve os dados e repita a abertura.",
+        ) from erro
+    try:
+        dados = os.fstat(descritor)
+        if not stat.S_ISREG(dados.st_mode) or (
+            os.name != "nt" and
+            (dados.st_uid != os.getuid() or stat.S_IMODE(dados.st_mode) & 0o077)
+        ):
+            raise ErroDeSessao(
+                passo, "credencial local acessível por outros usuários",
+                detalhe=f"Proteja {caminho} com chmod 600 ou escolha outro --scratch.",
+            )
+        with os.fdopen(descritor, "r", encoding="utf-8") as arquivo:
+            descritor = -1
+            return arquivo.read().strip()
+    finally:
+        if descritor != -1:
+            os.close(descritor)
+
+
+def escrever_arquivo_privado(caminho: Path, texto: str, passo: str) -> None:
+    if caminho.is_symlink():
+        raise ErroDeSessao(
+            passo, "arquivo da sessão aponta para outro caminho",
+            detalhe=f"Remova o link {caminho} e repita a abertura.",
+        )
+    if os.name == "nt" and caminho.exists():
+        conferir_acl_windows(caminho, passo)
+    try:
+        descritor = os.open(
+            caminho,
+            os.O_WRONLY | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+    except OSError as erro:
+        raise ErroDeSessao(
+            passo, "não consegui abrir arquivo privado da sessão",
+            detalhe=f"Confira {caminho}, preserve os dados e repita a abertura.",
+        ) from erro
+    try:
+        dados = os.fstat(descritor)
+        if not stat.S_ISREG(dados.st_mode) or (
+            os.name != "nt" and
+            (dados.st_uid != os.getuid() or stat.S_IMODE(dados.st_mode) & 0o077)
+        ):
+            raise ErroDeSessao(
+                passo, "arquivo da sessão acessível por outros usuários",
+                detalhe=f"Proteja {caminho} com chmod 600 ou escolha outro --scratch.",
+            )
+        os.ftruncate(descritor, 0)
+        with os.fdopen(descritor, "w", encoding="utf-8", newline="\n") as arquivo:
+            descritor = -1
+            arquivo.write(texto)
+    finally:
+        if descritor != -1:
+            os.close(descritor)
 
 
 @contextmanager
@@ -1250,15 +1397,23 @@ class Sessao:
         timeout: int = 1800,
         dica: str = "",
         codigo: int = 2,
+        segredos: Sequence[str] = (),
+        entrada: str | None = None,
     ) -> Saida:
         """Roda e FALHA FECHADO. Não existe caminho em que exit != 0 siga adiante."""
-        saida = self._correr(comando, cwd=cwd, env=env, timeout=timeout)
+        argumentos = {"entrada": entrada} if entrada is not None else {}
+        saida = self._correr(comando, cwd=cwd, env=env, timeout=timeout, **argumentos)
         if saida.exit_code != 0:
             detalhe = (f"{dica}\n\n" if dica else "") + recortar(saida.texto, 3000)
+            comando_exibido = " ".join(str(c) for c in comando)
+            for segredo in segredos:
+                if segredo:
+                    comando_exibido = comando_exibido.replace(segredo, "[oculto]")
+                    detalhe = detalhe.replace(segredo, "[oculto]")
             raise ErroDeSessao(
                 passo,
                 f"o comando saiu com exit code {saida.exit_code}",
-                comando=" ".join(str(c) for c in comando),
+                comando=comando_exibido,
                 detalhe=detalhe,
                 codigo=codigo,
             )
@@ -1334,6 +1489,7 @@ class Sessao:
 
     def _ambiente(self) -> dict[str, str]:
         env = dict(os.environ)
+        env.pop("COORDENACAO_DATABASE_URL", None)
         env.update(self._variaveis)
         env.pop("PYTHONHOME", None)
         env["VIRTUAL_ENV"] = str(self.plano.venv)
@@ -1873,7 +2029,7 @@ class Sessao:
                 f"outra com --porta-postgres/--porta-redis. NÃO remova container que\n"
                 "não foi você quem criou: pode ser de outra sessão do lote.",
             )
-            self._nota(f"{nome} criado ({imagem}) em localhost:{porta}")
+            self._nota(f"{nome} criado ({imagem}); porta solicitada: {porta or 'automática'}")
         elif estado != "running":
             self._exigir(
                 passo, [docker, "start", nome], cwd=self.plano.raiz, timeout=300
@@ -1890,7 +2046,7 @@ class Sessao:
                 timeout=120,
             ).stdout
         )
-        if efetiva != porta:
+        if porta and efetiva != porta:
             self._nota(
                 f"ATENÇÃO: {nome} publica a porta {efetiva}, não a {porta} derivada. "
                 "O .env usa a REAL."
@@ -1925,6 +2081,8 @@ class Sessao:
 
     def preparar_servicos(self) -> tuple[int, int]:
         passo = self._abrir(P_SERVICOS)
+        if self.plano.celula == "admin" and self._escrever is escrever_de_verdade:
+            conferir_scratch_privado(self.plano, passo)
         docker = self._ferramenta(
             "docker",
             passo,
@@ -1968,11 +2126,16 @@ class Sessao:
             )
             consulta = [docker, "exec", self.plano.postgres, "psql", "-U", USUARIO_DO_BANCO,
                         "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-tAc"]
+            consulta_stdin = [docker, "exec", "-i", self.plano.postgres, "psql", "-U", USUARIO_DO_BANCO,
+                              "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-tA"]
             senha_arquivo = self.plano.scratch / ".senha-banco"
-            try:
-                senha = senha_arquivo.read_text(encoding="utf-8").strip()
-            except FileNotFoundError:
-                senha = ""
+            if self.plano.celula == "admin":
+                senha = ler_arquivo_privado(senha_arquivo, passo)
+            else:
+                try:
+                    senha = senha_arquivo.read_text(encoding="utf-8").strip()
+                except FileNotFoundError:
+                    senha = ""
             papel = self._exigir(passo, [*consulta,
                 f"SELECT 1 FROM pg_roles WHERE rolname = '{self.plano.banco}'"],
                 cwd=self.plano.raiz).stdout.strip()
@@ -1981,13 +2144,16 @@ class Sessao:
                                    detalhe="Preserve o banco existente e recupere o scratch da tarefa ou abra uma tarefa nova.")
             if not senha:
                 senha = secrets.token_hex(24)
-                self._escrever(senha_arquivo, senha)
+                if self.plano.celula == "admin" and self._escrever is escrever_de_verdade:
+                    escrever_arquivo_privado(senha_arquivo, senha, passo)
+                else:
+                    self._escrever(senha_arquivo, senha)
             if not re.fullmatch(r"[a-f0-9]{48}", senha):
                 raise ErroDeSessao(passo, "credencial local inválida", detalhe=f"Confira {senha_arquivo} e repita a abertura.")
             if papel != "1":
-                self._exigir(passo, [*consulta,
-                    f"""CREATE ROLE "{self.plano.banco}" LOGIN CREATEDB NOSUPERUSER NOCREATEROLE PASSWORD '{senha}'"""],
-                    cwd=self.plano.raiz)
+                self._exigir(passo, consulta_stdin, cwd=self.plano.raiz,
+                    entrada=f"""CREATE ROLE "{self.plano.banco}" LOGIN CREATEDB NOSUPERUSER NOCREATEROLE PASSWORD '{senha}';""",
+                    segredos=(senha,))
             self.plano = replace(self.plano, senha_banco=senha)
             dono = self._exigir(passo, [*consulta,
                 f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '{self.plano.banco}'"],
@@ -2001,6 +2167,71 @@ class Sessao:
                     cwd=self.plano.raiz)
             self._exigir(passo, [*consulta, f'REVOKE CONNECT ON DATABASE "{self.plano.banco}" FROM PUBLIC'],
                           cwd=self.plano.raiz)
+            if self.plano.celula == "admin":
+                senha_coordenacao_arquivo = self.plano.scratch / ".senha-coordenacao"
+                senha_coordenacao = ler_arquivo_privado(senha_coordenacao_arquivo, passo)
+                papel_coordenacao = self._exigir(passo, [*consulta,
+                    "SELECT 1 FROM pg_roles WHERE rolname = 'coordenacao_user'"],
+                    cwd=self.plano.raiz).stdout.strip()
+                if papel_coordenacao not in ("", "1") or (papel_coordenacao == "1" and not senha_coordenacao):
+                    raise ErroDeSessao(passo, "credencial local da coordenação indisponível",
+                                       detalhe="Preserve o banco existente e recupere o scratch da tarefa ou abra outra tarefa.")
+                if not senha_coordenacao:
+                    senha_coordenacao = secrets.token_hex(24)
+                    if self._escrever is escrever_de_verdade:
+                        escrever_arquivo_privado(senha_coordenacao_arquivo, senha_coordenacao, passo)
+                    else:
+                        self._escrever(senha_coordenacao_arquivo, senha_coordenacao)
+                if not re.fullmatch(r"[a-f0-9]{48}", senha_coordenacao):
+                    raise ErroDeSessao(passo, "credencial local da coordenação inválida",
+                                       detalhe=f"Confira {senha_coordenacao_arquivo} e repita a abertura.")
+                if not papel_coordenacao:
+                    self._exigir(passo, consulta_stdin, cwd=self.plano.raiz,
+                        entrada=("CREATE ROLE coordenacao_user LOGIN NOSUPERUSER NOCREATEDB "
+                                 "NOCREATEROLE NOREPLICATION NOBYPASSRLS "
+                                 f"PASSWORD '{senha_coordenacao}';"),
+                        segredos=(senha_coordenacao,))
+                privilegios = self._exigir(passo, [*consulta,
+                    "SELECT CASE WHEN rolcanlogin AND NOT rolsuper AND NOT rolcreatedb "
+                    "AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls "
+                    "AND NOT EXISTS (SELECT 1 FROM pg_auth_members WHERE member=pg_roles.oid) "
+                    "THEN 'minimo' ELSE 'privilegiado' END FROM pg_roles "
+                    "WHERE rolname='coordenacao_user'"], cwd=self.plano.raiz).stdout.strip()
+                if privilegios != "minimo":
+                    raise ErroDeSessao(passo, "papel local da coordenação tem privilégios indevidos",
+                                       detalhe="Preserve os dados e confira o container exclusivo da tarefa antes de repetir.")
+                dono_coordenacao = self._exigir(passo, [*consulta,
+                    "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = 'coordenacao_db'"],
+                    cwd=self.plano.raiz).stdout.strip()
+                if dono_coordenacao and dono_coordenacao != "coordenacao_user":
+                    raise ErroDeSessao(passo, "banco local da coordenação pertence a outro papel",
+                                       detalhe="Preserve os dados e confira o container exclusivo da tarefa antes de repetir.")
+                if not dono_coordenacao:
+                    self._exigir(passo, [*consulta,
+                        'CREATE DATABASE coordenacao_db WITH OWNER coordenacao_user'], cwd=self.plano.raiz)
+                self._exigir(passo, [*consulta,
+                    'REVOKE CONNECT ON DATABASE coordenacao_db FROM PUBLIC'], cwd=self.plano.raiz)
+                for papel, banco in ((self.plano.banco, "coordenacao_db"),
+                                     ("coordenacao_user", self.plano.banco)):
+                    acesso = self._exigir(passo, [*consulta,
+                        f"SELECT has_database_privilege('{papel}', '{banco}', 'CONNECT')"],
+                        cwd=self.plano.raiz).stdout.strip()
+                    if acesso != "f":
+                        raise ErroDeSessao(passo, "acesso cruzado entre bancos locais",
+                                           detalhe="Preserve os dados e remova o GRANT indevido no container exclusivo antes de repetir.")
+                autenticacao = self._correr(
+                    [docker, "exec", "-i", self.plano.postgres, "sh", "-c",
+                     "IFS= read -r PGPASSWORD; export PGPASSWORD; set -- $(hostname -i); "
+                     "case \"$1\" in ''|127.*|::1) exit 2;; esac; "
+                     "exec psql -h \"$1\" -U coordenacao_user -d coordenacao_db -tAc 'SELECT current_user'"],
+                    cwd=self.plano.raiz, entrada=senha_coordenacao + "\n", binario=True,
+                )
+                if autenticacao.exit_code != 0 or autenticacao.stdout.strip() != b"coordenacao_user":
+                    raise ErroDeSessao(
+                        passo, "credencial local da coordenação não autentica",
+                        detalhe="Preserve os bancos e recupere a credencial original no scratch da tarefa antes de repetir.",
+                    )
+                self.plano = replace(self.plano, senha_coordenacao=senha_coordenacao)
             porta_redis = 0
             if self.plano.usa_redis:
                 porta_redis = self._garantir_container(
@@ -2043,8 +2274,13 @@ class Sessao:
             self.plano, porta_postgres=porta_pg, porta_redis=porta_redis
         )
         texto = renderizar_env(self.plano, self._variaveis)
+        if self.plano.celula == "admin" and self._escrever is escrever_de_verdade:
+            conferir_scratch_privado(self.plano, passo)
         try:
-            self._escrever(self.plano.arquivo_env, texto)
+            if self.plano.celula == "admin" and self._escrever is escrever_de_verdade:
+                escrever_arquivo_privado(self.plano.arquivo_env, texto, passo)
+            else:
+                self._escrever(self.plano.arquivo_env, texto)
         except OSError as exc:
             raise ErroDeSessao(
                 passo,
@@ -2125,8 +2361,8 @@ class Sessao:
                       log=lambda texto: self._nota(texto.replace("PASS", "BASE")))
         base._variaveis = {**self._variaveis, "SESSAO_VENV": str(plano_base.venv)}
         ambiente = base.ambiente_da_base()
-        for chave in ("DATABASE_URL", "REDIS_STREAMS_URL", "HUEY_REDIS_URL",
-                      "SESSAO_WORKTREE", "SESSAO_SCRATCH"):
+        for chave in ("DATABASE_URL", "COORDENACAO_DATABASE_URL", "REDIS_STREAMS_URL",
+                      "HUEY_REDIS_URL", "SESSAO_WORKTREE", "SESSAO_SCRATCH"):
             if chave in ambiente:
                 ambiente[chave] = "isolado-por-tarefa"
         identidade = repr((revisao, str(plano_base.venv), sorted(ambiente.items()), sorted(self._servicos.items()), getattr(self, "_metodo_baseline", "`make ci`")))
@@ -2250,6 +2486,8 @@ class Sessao:
         ferramentas = self.conferir_pecas_locais()
         git = ferramentas["git"]
         self.conferir()
+        if self.plano.celula == "admin" and self.plano.sobe_ambiente and self._escrever is escrever_de_verdade:
+            conferir_scratch_privado(self.plano, P_CONFERIR)
         self.buscar(git)
         with trava_da_bancada(self.plano.worktree):
             self.preparar_worktree(git)

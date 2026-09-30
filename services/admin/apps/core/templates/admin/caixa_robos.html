@@ -467,7 +467,7 @@ não tem sigla (lei do CLAUDE.md).
           emConsulta = true;
           estado.textContent = "Consultando reservas e trabalhos abertos…";
           Promise.all([
-            consultar("/git/matching-refs/reservas%2Ftarefa-"),
+            consultar("/git/matching-refs/reservas%2Ftarefa-TAR-"),
             consultar("/pulls?state=open&per_page=100")
           ]).then(function (respostas) {
             var reservas = respostas[0].itens;

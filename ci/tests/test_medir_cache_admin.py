@@ -129,6 +129,11 @@ def test_workflow_so_main_sem_runtime_e_com_contexto_real():
     assert workflow.get("on", workflow.get(True)) == {"workflow_dispatch": None}
     assert workflow["permissions"] == {"contents": "read", "actions": "read"}
     assert "preparar" in workflow["jobs"]
+    checkout_preparo = next(
+        passo for passo in workflow["jobs"]["preparar"]["steps"]
+        if passo.get("uses", "").startswith("actions/checkout@")
+    )
+    assert checkout_preparo["with"]["fetch-depth"] == 0
     assert "workflow_dispatch" in bruto
     assert "refs/heads/main" in bruto
     assert "workflow_dispatch:" in bruto
