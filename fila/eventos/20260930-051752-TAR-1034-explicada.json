@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-051752-TAR-1034-explicada",
+  "tarefa": "TAR-1034",
+  "evento": "explicada",
+  "quando": "2026-09-30T05:17:52.156244+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "Para reservar uma tarefa, o balcao repete a conexao com o servidor para cada reserva existente, tornando a abertura de trabalho lenta.",
+  "o_que_muda": "A mesma verificacao completa passa a reunir as leituras, mantendo a exclusividade e reduzindo espera.",
+  "exemplo": "Uma consulta listou29 reservas em4.62segundos; a implementacao atual volta ao servidor varias vezes para cada uma antes de liberar uma unica tarefa.",
+  "importancia": 92
+}
