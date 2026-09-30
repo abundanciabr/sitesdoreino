@@ -586,6 +586,47 @@ def test_classificacao_retem_falha_remota_e_recusa_resposta_ausente(tmp_path):
         "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-CONCLUIDA: teste\n"
         "SINCRONIZACAO-STATUS:0\n", "success"
     )
+    rodape_real = (
+        "===============================================\n"
+        "✅ Successfully executed commands to all hosts.\n"
+        "==============================================="
+    )
+    marcadores = (
+        "SINCRONIZACAO-INICIADA: 20260930T043412Z\n"
+        "SINCRONIZACAO-CONCLUIDA: 20260930T043413Z\n"
+        "SINCRONIZACAO-STATUS:0"
+    )
+    assert "resultado=concluida" in classificar(
+        marcadores + "\n" + rodape_real, "success"
+    )
+    for resposta in (
+        marcadores + "\n" + rodape_real + "\ntexto arbitrario",
+        rodape_real + "\n" + marcadores + "\n" + rodape_real,
+        marcadores + "\nrodape desconhecido",
+        marcadores + "\nSINCRONIZACAO-STATUS:0",
+        marcadores.replace(
+            "SINCRONIZACAO-INICIADA: 20260930T043412Z",
+            "SINCRONIZACAO-INICIADA: 20260930T043412Z\n"
+            "SINCRONIZACAO-INICIADA: repetida",
+        ),
+        marcadores.replace("SINCRONIZACAO-INICIADA: 20260930T043412Z\n", ""),
+        marcadores.replace("SINCRONIZACAO-CONCLUIDA: 20260930T043413Z\n", ""),
+        marcadores.replace("SINCRONIZACAO-STATUS:0", "SINCRONIZACAO-STATUS:42"),
+        "SINCRONIZACAO-CONCLUIDA: teste\nSINCRONIZACAO-INICIADA: teste\n"
+        "SINCRONIZACAO-STATUS:0",
+        "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-STATUS:0\n"
+        "SINCRONIZACAO-CONCLUIDA: teste",
+        marcadores.replace(
+            "SINCRONIZACAO-CONCLUIDA: 20260930T043413Z",
+            "SINCRONIZACAO-CONCLUIDA: 20260930T043413Z\n"
+            "SINCRONIZACAO-CONCLUIDA: repetida",
+        ),
+        marcadores + "\n" + rodape_real.replace("Successfully", "Partially"),
+    ):
+        assert "resultado=incerta" in classificar(resposta, "success")
+    assert "resultado=incerta" in classificar(
+        marcadores + "\n" + rodape_real, "failure"
+    )
     assert "resultado=nao_iniciada" in classificar("", "skipped", envio="failure")
 
 
