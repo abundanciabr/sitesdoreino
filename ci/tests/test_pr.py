@@ -553,9 +553,14 @@ def test_o_exemplo_canonico_do_make_pr_ensina_a_tarefa_obrigatoria():
     )["developer_instructions"]
     textos = {
         ".claude/agents/despacho.md": (RAIZ_DO_REPO / ".claude/agents/despacho.md").read_text(encoding="utf-8"),
-        ".codex/agents/despacho.toml": ficha_codex,
         "painel/LEIA-ME.md": (RAIZ_DO_REPO / "painel/LEIA-ME.md").read_text(encoding="utf-8"),
     }
+    assert "CAMINHO-DOURADO.md" in ficha_codex
+    assert "Siga a receita aplicável" in ficha_codex
+    assert "make pr" in ficha_codex
+    assert "quando aplicável" not in ficha_codex
+    assert "quando esta entrega" not in ficha_codex
+    assert "TAR=TAR-NNN" in (RAIZ_DO_REPO / "CAMINHO-DOURADO.md").read_text(encoding="utf-8")
     for nome, texto in textos.items():
         exemplo = texto.split("make pr TITULO=", 1)[1].split("```", 1)[0]
         assert "TAR=TAR-NNN" in exemplo, nome

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260930-062119-TAR-1033-submetida",
+  "tarefa": "TAR-1033",
+  "evento": "submetida",
+  "quando": "2026-09-30T06:21:19.745877+00:00",
+  "quem": "agent/ci/ficha-codex-receita-vigente",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2398",
+  "revisao": "8711c84d20c3b736ac0d9bf8f9bbbf2a28565f0a",
+  "arvore": "1ae6d17dc6aeb998ca01c8126f744cdda53157a0"
+}

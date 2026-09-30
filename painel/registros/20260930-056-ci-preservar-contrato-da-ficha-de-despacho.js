@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-056-ci-preservar-contrato-da-ficha-de-despacho",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: preservar contrato da ficha de despacho",
+  detalhe: "A ficha Codex agora segue as fontes canônicas e remete a receita operacional ao CAMINHO-DOURADO, eliminando passos duplicados sem alterar papel, modelo, esforço ou limites.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2398. Validação local: árvore a167ecad7fb38e64a24029d7de7ae65ac6b2e0b8; commit 249a9f17b1272fa34092c784b7ad65d16656bcf8; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1033",
+  gravidade: "info",
+  frente: null,
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
