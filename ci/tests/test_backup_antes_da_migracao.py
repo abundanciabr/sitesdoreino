@@ -46,6 +46,7 @@ import re
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 DEPLOY = RAIZ / "infra" / "deploy-celula-na-vps.sh"
@@ -441,9 +442,8 @@ def test_o_restaurador_para_a_celula_antes_de_trocar_o_banco():
 @pytest.mark.parametrize("recusado", [False, True])
 def test_bloco_backup_executavel_recusa_troca_se_dump_falhar(tmp_path, recusado):
     import os
-    import shutil
     import subprocess
-    bash = shutil.which("bash")
+    bash = BASH
     if os.name == "nt":
         bash = "C:/Program Files/Git/bin/bash.exe"
     assert bash, "Bash necessário para exercer o backup"

@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 import yaml
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -52,7 +53,7 @@ def test_captura_preserva_stdout_e_status_do_receptor_que_falhou(tmp_path):
     receptor.write_text("echo ESTADO-PUBLICACAO: '{}'\nexit 17\n")
     resultado = subprocess.run([sys.executable, "-c", fonte], cwd=tmp_path, capture_output=True)
     assert resultado.returncode == 0, resultado.stderr
-    bash = shutil.which("bash")
+    bash = BASH
     if os.name == "nt":
         bash = r"C:\Program Files\Git\bin\bash.exe"
     ambiente = dict(os.environ, PATH=str(Path(bash).parent) + os.pathsep + os.environ["PATH"])

@@ -123,6 +123,7 @@ def test_mutador_transportado_tem_mesma_trava_antes_de_docker(nome):
     indice_trava = next(i for i, linha in enumerate(codigo) if "flock --exclusive 8" in linha)
     operacao = {"publicar-dados-admin-na-vps.sh": 'mkdir -p "$RAIZ_DADOS"',
                 "restaurar-backup.sh": "$COMPOSE exec",
+                "reverter-celula-na-vps.sh": 'publicacao-local.py" recuperar',
                 "sincronizar-infra-na-vps.sh": "docker compose up -d"}.get(nome, "docker compose")
     indice_operacao = next(i for i, linha in enumerate(codigo) if operacao in linha
                             and not linha.lstrip().startswith(("echo ", "COMPOSE=")))
@@ -282,7 +283,7 @@ def test_sincronizador_fecha_fd8_antes_do_sudo_e_revalida_apos_a_posse():
     texto = (RAIZ / "infra/sincronizar-infra-na-vps.sh").read_text(encoding="utf-8")
     fragmento = TRAVA.read_text(encoding="utf-8").strip()
     assert texto.count(fragmento) == 1
-    assert texto.index("conferir_publicacao_admin\n\n# O staging") < texto.index('sudo -n "$PROVISIONADOR_DA_PONTE"')
+    assert texto.index("\nconferir_publicacao_admin\n") < texto.index('sudo -n "$PROVISIONADOR_DA_PONTE"')
     assert texto.index('if ! docker compose --project-directory') < texto.index('sudo -n "$PROVISIONADOR_DA_PONTE"')
     assert texto.index("exec 8<&-\n  sudo -n") < texto.index(fragmento)
     assert texto.index(fragmento) < texto.index("STAGING_AGORA=")

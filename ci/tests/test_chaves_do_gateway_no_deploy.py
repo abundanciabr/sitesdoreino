@@ -187,6 +187,13 @@ def _rodar(
     executavel.write_bytes(DOCKER_DE_MENTIRA.encode("utf-8"))
     executavel.chmod(0o755)
 
+    # O deploy chama `python3 publicacao-local.py`; a máquina de estados da
+    # publicação tem prova própria em test_publicacao_local.py. Aqui só se mede
+    # o que o script entrega ao compose, então o python3 é de mentira.
+    python_de_mentira = pasta / "python3"
+    python_de_mentira.write_bytes(b"#!/usr/bin/env bash\nexit 0\n")
+    python_de_mentira.chmod(0o755)
+
     diario = tmp_path / "comandos-do-docker.txt"
     diario.write_text("", encoding="utf-8")
 

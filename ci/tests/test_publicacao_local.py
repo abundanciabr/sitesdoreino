@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import pytest
+from conftest import BASH
 
 ROOT = Path(__file__).resolve().parents[2]
 A = "a" * 40
@@ -182,9 +183,8 @@ def test_aprovacao_inicial_tem_horario_com_fuso(runtime):
 @pytest.mark.parametrize("falha_prova", [False, True])
 def test_retorno_infra_prova_uma_vez_e_para(tmp_path, falha_prova):
     import os
-    import shutil
     import subprocess
-    bash = "C:/Program Files/Git/bin/bash.exe" if os.name == "nt" else shutil.which("bash")
+    bash = BASH
     assert bash
     fonte = (ROOT / "infra/sincronizar-infra-na-vps.sh").read_text(encoding="utf-8")
     funcao = fonte[fonte.index("restaurar_o_que_estava_no_ar() {"):fonte.index("# O trap cobre")]
@@ -278,10 +278,9 @@ def test_latch_global_nao_adivinha_celula_e_so_aprovacao_limpa(runtime, monkeypa
 @pytest.mark.parametrize("http", ["200", "503"])
 def test_bootstrap_tag_main_exige_pull_sha_e_prova_sem_troca(tmp_path, http):
     import os
-    import shutil
     import subprocess
     import sys
-    bash = "C:/Program Files/Git/bin/bash.exe" if os.name == "nt" else shutil.which("bash")
+    bash = BASH
     assert bash
     fonte = (ROOT / "infra/deploy-celula-na-vps.sh").read_text(encoding="utf-8")
     inicio = fonte.index('if [ "${MODO:-publicar}" = "inicializar" ]; then')

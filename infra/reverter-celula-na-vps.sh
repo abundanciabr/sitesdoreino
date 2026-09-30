@@ -6,6 +6,7 @@ set -eu
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ"
 
+# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
 command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
 if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
