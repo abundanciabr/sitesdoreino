@@ -1330,29 +1330,40 @@ def test_scratch_de_admin_nao_pode_entrar_no_checkout(tmp_path):
     assert not plano.scratch.exists()
 
 
-def test_arquivo_privado_recusa_link_e_preserva_destino(tmp_path):
+def test_arquivo_privado_recusa_link_e_preserva_destino(tmp_path, monkeypatch):
     destino = tmp_path / "destino"
     destino.write_text("intacto", encoding="utf-8")
     link = tmp_path / ".env"
     try:
         link.symlink_to(destino)
     except OSError:
-        pytest.skip("sistema não permite criar symlink neste processo")
+        is_symlink_original = Path.is_symlink
+        monkeypatch.setattr(
+            Path, "is_symlink",
+            lambda caminho: caminho == link or is_symlink_original(caminho),
+        )
     with pytest.raises(sessao.ErroDeSessao, match="aponta para outro caminho"):
         sessao.escrever_arquivo_privado(link, "segredo", "teste")
     assert destino.read_text(encoding="utf-8") == "intacto"
 
 
-@pytest.mark.skipif(os.name != "nt", reason="ACL do Windows")
-def test_arquivo_privado_windows_recusa_acl_aberta(tmp_path):
-    import subprocess
-
+def test_arquivo_privado_recusa_permissao_aberta(tmp_path):
     pasta = tmp_path / "scratch"
-    pasta.mkdir()
-    sessao.conferir_acl_windows(pasta, "teste")
-    subprocess.run(
-        ["icacls", str(pasta), "/grant", "*S-1-1-0:(R)"],
-        check=True, capture_output=True,
-    )
-    with pytest.raises(sessao.ErroDeSessao, match="acessível por outros usuários"):
+    pasta.mkdir(mode=0o700)
+    if os.name == "nt":
+        import subprocess
+
         sessao.conferir_acl_windows(pasta, "teste")
+        subprocess.run(
+            ["icacls", str(pasta), "/grant", "*S-1-1-0:(R)"],
+            check=True, capture_output=True,
+        )
+        with pytest.raises(sessao.ErroDeSessao, match="acessível por outros usuários"):
+            sessao.conferir_acl_windows(pasta, "teste")
+    else:
+        arquivo = pasta / ".env"
+        arquivo.write_text("intacto", encoding="utf-8")
+        arquivo.chmod(0o644)
+        with pytest.raises(sessao.ErroDeSessao, match="acessível por outros usuários"):
+            sessao.escrever_arquivo_privado(arquivo, "segredo", "teste")
+        assert arquivo.read_text(encoding="utf-8") == "intacto"
