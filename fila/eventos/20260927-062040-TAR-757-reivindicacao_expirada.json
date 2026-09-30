@@ -1,8 +1,0 @@
-{
-  "arquivo": "20260927-062040-TAR-757-reivindicacao_expirada",
-  "tarefa": "TAR-757",
-  "evento": "reivindicacao_expirada",
-  "quando": "2026-09-27T06:20:40.058958+00:00",
-  "quem": "despacho:pagamentos/appmax-coordenacao",
-  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
-}

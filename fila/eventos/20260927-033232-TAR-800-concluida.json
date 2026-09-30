@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-033232-TAR-800-concluida",
-  "tarefa": "TAR-800",
-  "evento": "concluida",
-  "quando": "2026-09-27T03:32:32.632947+00:00",
-  "quem": "agent/metricas/quiz-limpar-lead",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2178",
-  "verificado_em": "2026-09-27"
-}

@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260928-185551-TAR-949-concluida",
-  "tarefa": "TAR-949",
-  "evento": "concluida",
-  "quando": "2026-09-28T18:55:51.723967+00:00",
-  "quem": "agent/ci/alertas-sem-divida",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2325",
-  "verificado_em": "2026-09-28"
-}

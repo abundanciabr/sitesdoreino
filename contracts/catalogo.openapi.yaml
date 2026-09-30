@@ -514,7 +514,7 @@ components:
               items:
                 properties:
                   page:
-                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de painel/mapa-do-site.json
+                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de services/admin/apps/core/mapa-do-site.json
                       (ex.: ''funil/'' ou ''funil/login'').'
                     type: string
                   version:
@@ -595,7 +595,7 @@ components:
               items:
                 properties:
                   page:
-                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de painel/mapa-do-site.json
+                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de services/admin/apps/core/mapa-do-site.json
                       (ex.: ''funil/'' ou ''funil/login'').'
                     type: string
                   version:

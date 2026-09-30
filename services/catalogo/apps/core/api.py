@@ -162,7 +162,7 @@ ESQUEMA_DO_MENU = {
                         "type": "string",
                         "description": (
                             "Chave da página na forma 'celula/rota', a mesma dupla de "
-                            "painel/mapa-do-site.json (ex.: 'funil/' ou 'funil/login')."
+                            "services/admin/apps/core/mapa-do-site.json (ex.: 'funil/' ou 'funil/login')."
                         ),
                     },
                     "version": {

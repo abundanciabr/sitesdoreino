@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-043725-TAR-758-concluida",
-  "tarefa": "TAR-758",
-  "evento": "concluida",
-  "quando": "2026-09-27T04:37:25.336038+00:00",
-  "quem": "agent/pagamentos/appmax-emissor-reversao-v2",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2166",
-  "verificado_em": "2026-09-27"
-}

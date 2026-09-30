@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-105309-TAR-854-bloqueada",
-  "tarefa": "TAR-854",
-  "evento": "bloqueada",
-  "quando": "2026-09-27T10:53:09.164568+00:00",
-  "quem": "agent/mensageria/comunidade-convite",
-  "detalhe": "Fato: nem o comando espelho (semear_convite_para_a_prancheta) tem workflow ou script de infra em producao; criar o caminho para o novo comando exige .github/workflows/semear-convite-para-a-comunidade.yml + infra/semear-convite-para-a-comunidade.sh, e ci/mandato_por_faixa.py classifica infra/*.sh como LISTA A (servidor e infraestrutura), sem mandato nominal neste brief. Impacto: o criterio 'semeadura executada em producao ou caminho de execucao comprovado' desta TAR fica sem prova; o resto (comando, textos, testes, nao simultaneidade, suite verde) esta pronto e vai a PR. Responsavel: mantenedor, unico que autoriza gesto de infraestrutura/VPS. Acao que destrava: ele conceder mandato nominal para os dois arquivos de infra (mesmo molde de semear-boas-vindas.yml/.sh) ou escolher rodar o comando manualmente por acesso que ja tenha a producao.",
-  "espera": "mantenedor"
-}

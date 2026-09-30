@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-131231-TAR-862-concluida",
-  "tarefa": "TAR-862",
-  "evento": "concluida",
-  "quando": "2026-09-27T13:12:31.336926+00:00",
-  "quem": "agent/pagamentos/appmax-cartao-recusado",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2229",
-  "verificado_em": "2026-09-27"
-}

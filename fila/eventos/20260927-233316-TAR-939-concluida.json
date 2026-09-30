@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-233316-TAR-939-concluida",
-  "tarefa": "TAR-939",
-  "evento": "concluida",
-  "quando": "2026-09-27T23:33:16.842103+00:00",
-  "quem": "agent/ci/economia-sem-pyyaml-no-deploy",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2307",
-  "verificado_em": "2026-09-27"
-}

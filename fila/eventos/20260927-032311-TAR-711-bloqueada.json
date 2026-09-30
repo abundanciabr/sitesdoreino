@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-032311-TAR-711-bloqueada",
-  "tarefa": "TAR-711",
-  "evento": "bloqueada",
-  "quando": "2026-09-27T03:23:11.392492+00:00",
-  "quem": "despacho-pagamentos-appmax-pix-aceite",
-  "detalhe": "O que houve: a compra Pix sandbox nova (27/09 02h53 UTC, sessão de referência SHA-256 7272efcf0d0556af) deu erro 500 no checkout; a repetição na mesma sessão também deu 500 em 1,3 s, o que indica que pagamentos respondeu 502 'Pix ainda sem QR pagável' e o checkout escondeu isso (clients.py criar_intent sem tratar httpx.HTTPError). O que trava: saber o que a Appmax devolveu exige a leitura operacoes-vps appmax-pix, e o disparo desse workflow foi negado pela permissão desta sessão; a única compra nova autorizada já foi usada. O que destrava: o mantenedor dispara ou libera 'gh workflow run operacoes-vps.yml --ref main -f operacao=appmax-pix -f servico=pagamentos -f referencia=7272efcf0d0556af6331fb5fb691d712adc4171a6a239befc2429857d5fe2cd6' (só leitura, sem POST na Appmax); com o motivo em mãos, corrige-se pagamentos ou leva-se a prova à Appmax. Quanto leva: 5 minutos de leitura. Corrigir o 500 mudo do checkout exige mandato para services/checkout/.",
-  "espera": "mantenedor"
-}

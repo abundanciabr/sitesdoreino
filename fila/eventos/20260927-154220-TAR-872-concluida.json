@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-154220-TAR-872-concluida",
-  "tarefa": "TAR-872",
-  "evento": "concluida",
-  "quando": "2026-09-27T15:42:20.558845+00:00",
-  "quem": "coordenacao-appmax-r3",
-  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/2226; revisao=57f103a27578241cb6df19e2174af61fed698211; arvore=952e7719968cd40fe7c551ca976f032ebc683ce8; head=7d8d4fc9afd8baaf104fd9b8843a086d59014068; merge=3af2ed6e1d9c5103870f98243749503256f98c82; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/36323757139; linhagem=retroativa: ci/operacoes_vps.py avancou por outros PRs depois do 2226; aceite verde integrado pelo PR 2277; linhagem recusada (há código posterior à revisão: ci/operacoes_vps.py, ci/tests/test_operacoes_vps.py); suíte verde no HEAD entregue: muralhas=1x success, ci-celula-gate=1x success; aceite=painel/registros/20260927-279-latencia-do-aviso-de-cartao-medida-no-sandbox.js",
-  "verificado_em": "2026-09-27"
-}

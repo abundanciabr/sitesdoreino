@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260929-193900-TAR-968-concluida",
-  "tarefa": "TAR-968",
-  "evento": "concluida",
-  "quando": "2026-09-29T19:39:00.171584+00:00",
-  "quem": "codex/coordenador-01a0ed71",
-  "evidencia": "Ensaio real concluido: Luna medium configurado, tentativa50ef964317e8456f8619a70bce0e8ca6 e thread01a0edee-a33a-7ad3-89f3-22782302d6ed; marco, interrupcao e retomada da mesma thread com soma10, provas nos checkpoints161231/161343/161553. EnsaioB posterior preservou4hashesA, comando real pos-integracao3a7bb67 em18:15 comprova soma18 e hashes, artefato privado0B2C739CBF78CF7DF351CBC6E6396696B5884BA40ACD9625CEBAA27635E48B6A. Livro034 e eventos preservados emmain. Em29/09 19:38Z CIM confirmou0processosA/B, API0jobs pendentes, PR2337 de metadados fechado apos2/2eventos iguais a main; reserva5614adf liberada porCAS e ausencia conferida. Bancada/branch/logs preservados; nao entrega de produto nem atestado de runtime backend.",
-  "verificado_em": "2026-09-29"
-}

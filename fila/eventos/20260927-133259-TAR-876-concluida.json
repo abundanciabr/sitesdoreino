@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-133259-TAR-876-concluida",
-  "tarefa": "TAR-876",
-  "evento": "concluida",
-  "quando": "2026-09-27T13:32:59.931278+00:00",
-  "quem": "agent/ci/make-roda-receita-da-celula",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2251",
-  "verificado_em": "2026-09-27"
-}

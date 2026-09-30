@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-232551-TAR-936-bloqueada",
-  "tarefa": "TAR-936",
-  "evento": "bloqueada",
-  "quando": "2026-09-27T23:25:51.062100+00:00",
-  "quem": "coordenacao/comunidade-pronta",
-  "detalhe": "Trava: robô nesta casa só chega à produção por workflow, e a sessão que recebeu o pedido não tem permissão para disparar nem para preparar execução automática de gestos de produção (recusa do modo automático em 27/09/2026, registro 20260927-324). Destrava: decisão dele no registro 324, ou ele mesmo faz os quatro cliques nas telas e pede o cancelamento desta tarefa.",
-  "espera": "mantenedor"
-}

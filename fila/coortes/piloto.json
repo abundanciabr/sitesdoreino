@@ -1,7 +1,0 @@
-{
-  "versao": 1,
-  "coorte": "piloto",
-  "estado": "preparada",
-  "tarefas": ["TAR-968", "TAR-975", "TAR-994"],
-  "ids_sha256": "6c415b24a19827095f15c4616d7e7f2d79031bbd9cdd2139ed17ab4cdd300268"
-}

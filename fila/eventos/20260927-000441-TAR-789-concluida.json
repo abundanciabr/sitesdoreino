@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-000441-TAR-789-concluida",
-  "tarefa": "TAR-789",
-  "evento": "concluida",
-  "quando": "2026-09-27T00:04:41.799520+00:00",
-  "quem": "agent/ci/testes-de-contrato-no-ci",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2147",
-  "verificado_em": "2026-09-27"
-}

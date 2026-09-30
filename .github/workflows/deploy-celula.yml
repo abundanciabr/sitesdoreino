@@ -76,7 +76,7 @@ jobs:
               echo "ERROR: github.event.before inutilizável ('$BASE')." >&2
               exit 1;;
           esac
-          CEL="$(python ci/ci.py --detectar-celulas --base "$BASE")"
+          CEL="$(python ci/detectar_celulas.py --base "$BASE")"
           JSON="$(printf '%s' "$CEL" | jq -R . | jq -sc 'map(select(length>0))')"
           JSON="$(python ci/ordem_de_publicacao.py "$JSON")"
           echo "celulas=$JSON" >> "$GITHUB_OUTPUT"

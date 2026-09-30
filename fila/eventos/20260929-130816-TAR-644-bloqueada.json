@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260929-130816-TAR-644-bloqueada",
-  "tarefa": "TAR-644",
-  "evento": "bloqueada",
-  "quando": "2026-09-29T13:08:16.119469+00:00",
-  "quem": "coordenacao/appmax-janela-de-terca",
-  "detalhe": "O que houve: a Appmax respondeu em 29/09 que estorno parcial mantém o pedido Integrado e que o valor estornado só vem pelo aviso (webhook); a consulta GET nunca traz. A solicitação 904 do pedido 22864 consta Aprovada no painel sandbox. O aviso dela se perdeu: a Appmax chama o endereço no plural e o nosso responde 404 (tarefa 951). O que destrava: a tarefa 951 publicada; depois, o aviso de estorno do pedido 22864 reenviado pela Appmax (o mantenedor pede no suporte) ou um exemplo oficial do aviso de estorno; então o registro do estorno passa a ler o valor do aviso. Nada de novo POST de estorno.",
-  "espera": "fila"
-}

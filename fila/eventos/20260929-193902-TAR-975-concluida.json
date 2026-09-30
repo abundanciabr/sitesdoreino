@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260929-193902-TAR-975-concluida",
-  "tarefa": "TAR-975",
-  "evento": "concluida",
-  "quando": "2026-09-29T19:39:02.657504+00:00",
-  "quem": "codex/coordenador-01a0ed71",
-  "evidencia": "Ensaio real B concluido: Luna medium configurado, tentativa1e95895ec26545018b26695ce7a884d0/thread01a0edfa-9fd7-79c3-8e15-a24efc467afd distinta deA. Soma18, recusas de entradas invalidas e4hashesA preservados. Comando executor_codex.py da bancada coordenadora em3a7bb67 reconciliar rodou em18:15Z: resultado_recebido, processos_encerrados=true, exit0. Estado privado SHA256DB498E787DF8AAA54290841550BB9A57631305A969CD45F874A3328ED4CBDB7B; chamada/resultado0B2C739CBF78CF7DF351CBC6E6396696B5884BA40ACD9625CEBAA27635E48B6A; checkpoint181509 e livro034 integrados. Em19:38Z CIM0processosA/B e API0jobs; PR2342 de metadados fechado com2/2eventos identicos a main; reserva7c34a2e liberada porCAS. Arquivos/logs preservados; nenhum deploy de ensaio nem nova autoridade.",
-  "verificado_em": "2026-09-29"
-}
