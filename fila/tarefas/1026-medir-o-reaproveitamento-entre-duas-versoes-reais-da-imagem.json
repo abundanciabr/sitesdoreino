@@ -1,0 +1,20 @@
+{
+  "arquivo": "1026-medir-o-reaproveitamento-entre-duas-versoes-reais-da-imagem",
+  "id": "TAR-1026",
+  "titulo": "Medir o reaproveitamento entre duas versoes reais da imagem",
+  "toca": [
+    "ci",
+    ".github/workflows/medir-cache-admin.yml"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Ensaio oficial no mesmo runner com duas revisoes reais: controle do mesmo contexto reutiliza cache; contexto novo frio e importado produzem a mesma imagem; custo total inclui transporte e preparacao; decisao de adocao deriva do ganho medido.",
+  "despacho": "Continuacao TAR958 PME07 pela frente cache1012. Escrita exclusiva .github/workflows/medir-cache-admin.yml ci/medir_cache_admin.py ci/tests/test_medir_cache_admin.py e registros proprios. Comparar pai material anterior e revisao atual da main na mesma receita e runner oficial, base e Dockerfile iguais, contextos distintos, controle positivo, igualdade OCI entre bracos de cada candidato e custo completo. Preservar comparador e provas existentes. Nenhuma nova dependencia nem capacidade contratada. Provar entradas e hashes, exigir falha fechada quando comparacao invalida; zero ganho e resultado valido sem adocao. Implementar em bancada isolada pelo rito, revisao independente. Execucao remota pela coordenacao somente depois de integrar. Mandato do mantenedor cobre caminhos protegidos e publicacao oficial.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
