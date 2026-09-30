@@ -453,6 +453,8 @@ class MundoFalso:
         if ".instalado." in caminho.name or caminho.name in {".senha-banco", ".senha-coordenacao"}:
             caminho.parent.mkdir(parents=True, exist_ok=True)
             caminho.write_text(texto, encoding="utf-8")
+            if os.name != "nt" and caminho.name in {".senha-banco", ".senha-coordenacao"}:
+                caminho.chmod(0o600)
 
     def anotar(self, texto: str = "") -> None:
         self.log.append(str(texto))
