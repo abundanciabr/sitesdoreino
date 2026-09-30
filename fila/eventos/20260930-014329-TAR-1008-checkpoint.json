@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260930-014329-TAR-1008-checkpoint",
+  "tarefa": "TAR-1008",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T01:43:29.317209+00:00",
+  "quem": "pme_mutadores_producao",
+  "plano": "Patch autorizado B53DB83 entregue no PR 2375; aguardar portoes oficiais",
+  "ultimo_avanco": "SHA remoto 5585c8bff293ee88417e14a76552b37649a1a93a; 65 testes focais PASS; ci/pr.py --continuar validou duas vezes antes e depois do recibo exit 0",
+  "proxima_acao": "Medir muralhas e ci-celula-gate no SHA atual, corrigir somente falha do proprio escopo, conferir integracao e publicacao oficiais; reconciliar TAR987 depois do livro081 na main",
+  "verificacoes": [
+    "gh pr view 2375: head 5585c8bff293ee88417e14a76552b37649a1a93a, OPEN, checks em execucao as 01:43 UTC; git status limpo"
+  ]
+}
