@@ -220,14 +220,6 @@ AREAS = (
         ("/docs",),
     ),
     (
-        "mapa-ia",
-        "Os planos para uma IA de fora ler",
-        "As páginas sem porta que existem para outra inteligência artificial "
-        "ler os planos e as decisões do projeto quando você pedir uma segunda "
-        "opinião.",
-        ("/mapa-ia",),
-    ),
-    (
         "sinais",
         "Os arquivos e os sinais do site",
         "Ninguém abre à mão: as imagens e o estilo, o app instalável, o mapa "

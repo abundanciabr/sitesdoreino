@@ -53,9 +53,9 @@ def acesso_local(request, token=""):
         "nome": settings.ADMIN_LOCAL_NOME,
         "email": settings.ADMIN_LOCAL_EMAIL.strip().lower(),
     }
-    destino = request.GET.get("next") or reverse("plano_mestre")
+    destino = request.GET.get("next") or reverse("visao_geral")
     if not destino.startswith("/") or destino.startswith("//"):
-        destino = reverse("plano_mestre")
+        destino = reverse("visao_geral")
     resposta = HttpResponseRedirect(destino)
     resposta.set_cookie(
         settings.ADMIN_LOCAL_COOKIE_NAME,

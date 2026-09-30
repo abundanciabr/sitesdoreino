@@ -208,7 +208,7 @@ def test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes():
     Este conjunto é o que separa "a porta protege tudo" de "a porta protege o
     que alguém lembrou de proteger". Acrescentar caminho aqui é decisão
     visível no diff — que é o ponto. Hoje a lista tem um caminho só: `/healthz`
-    (máquina). Os prefixos públicos (`/docs/`, `/mapa-ia/planos/`, `/midia/`)
+    (máquina). Os prefixos públicos (`/docs/`, `/midia/`)
     moram em constantes próprias da porta, cada uma com o guarda dela.
 
     **O que NUNCA fazer:** trocar por `<=`, ou pôr um prefixo no lugar de um
@@ -220,27 +220,6 @@ def test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes():
     from apps.core.porta import CAMINHOS_ISENTOS
 
     assert CAMINHOS_ISENTOS == {"/healthz"}
-
-
-@pytest.mark.parametrize(
-    "caminho",
-    [
-        "/mapa-ia/",
-        "/mapa-ia/INDICE.md",
-        "/mapa-ia/01-leis-ritos-e-invariantes.md",
-    ],
-)
-def test_fora_de_planos_o_mapa_ia_exige_cracha(caminho):
-    """Só `/mapa-ia/planos/` responde sem crachá; o resto de `/mapa-ia/` é da porta.
-
-    Sem cookie, o endereço cai no login como qualquer outro caminho da área.
-    Isenção para página que não existe é acesso aberto sem nada atrás, e este
-    guarda a mantém fechada.
-    """
-    resposta = Client().get(caminho)
-
-    assert resposta.status_code == 302, caminho
-    assert resposta["Location"].startswith("/entrar/google?next="), caminho
 
 
 def test_healthz_responde_sem_cookie_nenhum():
@@ -329,17 +308,3 @@ def test_a_recusa_tambem_nao_fica_guardada():
     trancariam o dono para fora depois que o acesso dele fosse consertado.
     """
     assert Client().get("/")["Cache-Control"] == "no-store"
-
-
-@respx.mock
-def test_quem_manda_o_proprio_cache_continua_mandando():
-    """`setdefault`, e não atribuição — senão a correção atropelaria os planos.
-
-    `/mapa-ia/planos/` manda `public, max-age=300` de propósito: é texto
-    público que uma IA de fora lê, e reler o mesmo texto a cada pedido é gasto
-    sem ganho. Sem este guarda, um `resposta["Cache-Control"]` no lugar do
-    `setdefault` apagaria essa decisão sem nada ficar vermelho.
-    """
-    resposta = Client().get("/mapa-ia/planos/")
-    assert resposta.status_code == 200, resposta.content
-    assert resposta["Cache-Control"] == "public, max-age=300"

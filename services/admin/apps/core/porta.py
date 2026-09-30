@@ -76,26 +76,6 @@ CAMINHOS_ISENTOS = frozenset({"/healthz"})
 #: (`tests/test_area_de_documentos.py::test_o_prefixo_publico_tem_so_as_duas_rotas`).
 PREFIXO_PUBLICO_DOS_DOCUMENTOS = "/docs/"
 
-#: [PLANOS PARA IA] O prefixo público dos planos e decisões (31/08/2026).
-#:
-#: Nasceu de um atrito medido: o mantenedor mandou a IAs externas o link de um
-#: artefato hospedado fora, e NENHUMA conseguiu abrir — artefato é privado e
-#: exige sessão. O conteúdo nunca foi segredo (este repositório é público de
-#: propósito); faltava um endereço do próprio site que uma IA pudesse ler.
-#:
-#: **Prefixo, e não lista exata.** A decisão de "isto é público" mora NO PRÓPRIO
-#: DOCUMENTO (`publico-para-ia: true`, fail-closed), escolha do mantenedor em
-#: 31/08/2026. Enumerar os endereços aqui criaria uma SEGUNDA lista sobre o
-#: mesmo fato — o mesmo argumento que `/docs/` já usa acima. Só este prefixo,
-#: e nenhum outro sob `/mapa-ia/`, responde sem crachá.
-#:
-#: O que impede o prefixo de virar uma fresta: sob `/mapa-ia/planos/` existem
-#: EXATAMENTE duas rotas, as duas de leitura, e as duas conferem
-#: `publico-para-ia` antes de responder. Guarda que varre o urlconf e reprova
-#: rota nova aqui embaixo:
-#: `tests/test_planos_para_ia.py::test_o_prefixo_dos_planos_tem_so_as_duas_rotas`.
-PREFIXO_PUBLICO_DOS_PLANOS = "/mapa-ia/planos/"
-
 #: [MIDIA PUBLICA] O prefixo que entrega imagem e vídeo de documento no ar
 #: (TAR-598, 21/09/2026).
 #:
@@ -212,7 +192,6 @@ class PortaAdministrativa:
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
             (
                 PREFIXO_PUBLICO_DOS_DOCUMENTOS,
-                PREFIXO_PUBLICO_DOS_PLANOS,
                 PREFIXO_PUBLICO_DA_MIDIA,
             )
         ):
@@ -349,9 +328,8 @@ class PortaAdministrativa:
         # como uma tela certa. O dono não tem como perceber a diferença — só
         # percebe que "continua do jeito antigo".
         #
-        # `setdefault` de propósito, e não atribuição: `/mapa-ia/planos/` manda
-        # `public, max-age=300` porque é texto público que uma IA de fora lê, e
-        # ele continua decidindo por si.
+        # `setdefault` de propósito, e não atribuição: a view que já decidiu o
+        # próprio cache continua decidindo por si.
         #
         # É a mesma família do `no-store` que a resposta 503 já levava, e pelo
         # mesmo motivo: resposta que não deve sobreviver ao momento em que
@@ -381,8 +359,8 @@ class PortaAdministrativa:
              Policy directive 'style-src 'self''. ... The action has been
              blocked."
 
-        **Hash, e nunca `'unsafe-inline'`** — o mesmo desenho que `livro.py` e
-        `planos_para_ia.py` usam para o script embutido, e pelo mesmo motivo:
+        **Hash, e nunca `'unsafe-inline'`** — o mesmo desenho que `livro.py` usa
+        para o script embutido, e pelo mesmo motivo:
         `'unsafe-inline'` liberaria QUALQUER estilo injetado, inclusive um
         vindo de conteúdo de terceiro. O hash libera exatamente estes bytes. E,
         por ser calculado da resposta servida, ninguém precisa lembrar de

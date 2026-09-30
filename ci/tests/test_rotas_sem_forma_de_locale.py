@@ -232,7 +232,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # (`PathPrefix(/entrar)`, DECISAO-celula-de-identidade, 25/08/2026).
     # `admin` VOLTOU em 22/09/2026 (TAR-618), com autenticação preservada na
     # célula. Tem cinco letras, portanto não casa a forma de locale, nem é
-    # idioma declarado. `mapa-ia` continua no mesmo backend, em rota própria.
+    # idioma declarado.
     # `forum` entrou com o fórum da escola
     # (`PathPrefix(/forum)`, DECISAO-forum-da-escola, 28/08/2026) — e ali o
     # caminho é LEI, não preferência: em subdomínio o cookie de sessão não
@@ -241,13 +241,13 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # uma regra de segurança: rota nova obriga quem a acrescenta a passar por
     # aqui e olhar as duas regras acima. As regras que julgam de fato (A: forma
     # de locale; B: colisão com idioma declarado) continuam medindo a tabela
-    # real e nada nelas foi afrouxado — `forms`, `entrar`, `mapa-ia`, `docs` e
-    # `forum` têm 5, 6, 7, 4 e 5 letras, logo nenhum casa a FORMA
+    # real e nada nelas foi afrouxado — `forms`, `entrar`, `docs` e
+    # `forum` têm 5, 6, 4 e 5 letras, logo nenhum casa a FORMA
     # (que exige 2-3). E nenhum deles é idioma declarado em `infra/sites.json`.
     #
     # `docs` entrou com a área PÚBLICA de documentos (`PathPrefix(/docs)`,
     # `DECISAO-a-area-de-documentos.md`, 29/08/2026), no mesmo backend da
-    # `admin` — o mesmo desenho do `mapa-ia`. Ele mereceu um segundo olhar por
+    # `admin`. Ele mereceu um segundo olhar por
     # causa do outro lado do `PathPrefix`, que casa string CRUA e sem fronteira
     # de segmento: ele engoliria `/docsomething` junto. Não há rota assim hoje,
     # e não haverá por acidente — quem criar uma vai encontrar esta linha.
@@ -276,7 +276,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # `pages` e `estudio` entraram JUNTOS com a casa das Páginas do aluno
     # (corredor `CS-PAGES-0001`, degrau 05, 05/09/2026) — a primeira célula da
     # plataforma com DOIS prefixos públicos apontando para o mesmo serviço,
-    # como a `admin` já fazia com `/docs` e `/mapa-ia`. Passei pelas duas
+    # como a `admin` já fazia com `/docs`. Passei pelas duas
     # regras com cada um dos dois, que é para isto que este inventário existe:
     #   A (forma de locale): 5 e 7 letras, e a forma exige 2-3. Nenhum casa.
     #   B (idioma declarado): `infra/sites.json` declara `en`, `es` e `pt-br`,
@@ -314,7 +314,6 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "alunos",
         "admin",
         "api",
-        "mapa-ia",
         "forms",
         "entrar",
         "docs",

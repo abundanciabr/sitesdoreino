@@ -88,13 +88,6 @@ from apps.core.paginas import (
     pagina_de_venda_salvar,
 )
 from apps.core.experimentos import experimento_iniciar, experimento_novo, experimentos
-from apps.core.planos_para_ia import (
-    plano_mestre,
-    plano_mestre_documento,
-    plano_mestre_mtime,
-    plano_publico,
-    planos_indice,
-)
 from apps.core.pendencias import pendencias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
@@ -493,31 +486,6 @@ urlpatterns = [
         name="texto_restaurar",
     ),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/apagar$", texto_apagar, name="texto_apagar"),
-    # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — duas
-    # rotas, e só duas: `tests/test_planos_para_ia.py` reprova rota nova sob o
-    # prefixo, porque tudo o que mora nele responde sem crachá.
-    #
-    # Mora sob `/mapa-ia/` de propósito: o gateway já roteia esse prefixo
-    # (`PathPrefix`), sem `infra/` nem `deploy-infra`. É o único caminho de
-    # `/mapa-ia/` que abre sem crachá, pelo prefixo próprio da porta
-    # (`PREFIXO_PUBLICO_DOS_PLANOS`); o resto cai no login.
-    path("mapa-ia/planos/", planos_indice, name="planos_indice"),
-    re_path(
-        # O `(\.md)?` no fim e opcional e a segunda diferenca medida contra o
-        # `raw.githubusercontent.com` (31/08/2026): os dois enderecos servem o
-        # mesmo arquivo, e a view descarta a extensao. O ponto NAO abre caminho
-        # para escapar da pasta — so casa a sequencia exata `.md` no fim.
-        r"^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+(?:\.md)?)$",
-        plano_publico,
-        name="plano_publico",
-    ),
-    path("plano-mestre/", plano_mestre, name="plano_mestre"),
-    path("plano-mestre/mtime.json", plano_mestre_mtime, name="plano_mestre_mtime"),
-    re_path(
-        r"^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\.md)?)$",
-        plano_mestre_documento,
-        name="plano_mestre_documento",
-    ),
     # A ESCOLA — a escola funcionando: alunos, e o que vier depois deles.
     #
     # Barra final nas duas, e aqui ela é só convenção (nenhuma delas pede

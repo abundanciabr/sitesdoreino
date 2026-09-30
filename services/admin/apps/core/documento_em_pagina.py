@@ -119,7 +119,7 @@ SCRIPT_DA_ALTURA = """
 CSP_DA_MOLDURA = "frame-ancestors 'self'"
 
 #: O `<script>` embutido da página de FORA, para o hash do CSP. Mesma regex de
-#: `mapa_do_site.py`, `livro.py` e `planos_para_ia.py`, letra por letra:
+#: `mapa_do_site.py` e `livro.py`, letra por letra:
 #: divergir aqui seria a Lei 3 (duplicar e divergir) escondida numa expressão
 #: regular.
 _SCRIPT_EMBUTIDO = re.compile(

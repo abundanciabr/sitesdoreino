@@ -297,8 +297,8 @@ def _ler(nome: str) -> TextoDoLivro:
 
 
 #: O `<script>` embutido de `livro_ler.html` — os controles de fonte, tema e
-#: "onde você parou". Mesma regex de `mapa_do_site.py`, `documento_em_pagina.py`
-#: e `planos_para_ia.py`, letra por letra: as telas hasheiam o mesmo jeito, e
+#: "onde você parou". Mesma regex de `mapa_do_site.py` e `documento_em_pagina.py`,
+#: letra por letra: as telas hasheiam o mesmo jeito, e
 #: divergir aqui seria a Lei 3 (duplicar e divergir) escondida numa expressão
 #: regular.
 _SCRIPT_EMBUTIDO = re.compile(
