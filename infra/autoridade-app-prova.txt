@@ -1,0 +1,1 @@
+TAR-1032: prova inerte do escopo exato do App.

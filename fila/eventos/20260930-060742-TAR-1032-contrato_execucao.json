@@ -1,0 +1,60 @@
+{
+  "arquivo": "20260930-060742-TAR-1032-contrato_execucao",
+  "tarefa": "TAR-1032",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T06:07:42.078652+00:00",
+  "quem": "despacho-ci-autoridade-app-pin-fase-a",
+  "contrato": {
+    "plano": "TAR-1032-ensaio-pin-revogacao",
+    "versao": 1,
+    "objetivo": "Provar no App oficial que uma concessao exata funciona e que sua revogacao na main volta a exigir aprovacao protegida, sem integrar candidatas de ensaio.",
+    "entregaveis": [
+      "Tres PRs Draft separados e fechados sem merge, com SHAs e checks App medidos",
+      "Checkpoint de grant exato e revogacao versionada produzidos pela coordenacao fora das candidatas"
+    ],
+    "escopo_incluido": [
+      "infra/autoridade-app-prova.txt como unico arquivo tecnico inerte",
+      "Eventos e recibos obrigatorios da TAR-1032",
+      "Leitura das configuracoes e checks do App"
+    ],
+    "nao_objetivos": [
+      "Integrar o arquivo inerte",
+      "Alterar verificador, workflow, ruleset, segredos ou grant TAR-989",
+      "Aprovar a fase negativa"
+    ],
+    "restricoes": [
+      "Fase A somente apos tarefa e explicada presentes na main; abrir sempre Draft e nunca Ready",
+      "Grant minimo: TAR-1032, contrato TAR-958, hash exato da tarefa, um unico caminho infra",
+      "A raiz aprova somente o deployment protegido da revisao A e controla checkpoint, pin e revogacao",
+      "PR anterior fechado sem merge antes da proxima fase; preservar eventos historicos"
+    ],
+    "decisoes_aprovadas": [
+      "Mandato integral do mantenedor para validacoes/publicacoes desta tarefa; raiz revisou roteiro A/B/C e contexto grant SHA256 C43421E694E63A93CC9C5067EF36402C7505227AEA33A81DA0754939D7EAD5DB",
+      "Somente fase A autorizada agora; B/C dependem de checkpoint, pin e revogacao medidos na main pela raiz"
+    ],
+    "etapas": [
+      "Abrir PR A Draft protegido e receber aprovacao nominal do ambiente pela raiz",
+      "Integrar grant exato na main e pin SHA256 pela raiz; abrir PR B Draft e comprovar mandato dispensado",
+      "Revogar pin na main mantendo variavel; abrir PR C Draft e comprovar retorno a espera e falha sem aprovacao"
+    ],
+    "criterios_entrada": [
+      "TAR-1032 e evento explicada byte-identicos publicados na main",
+      "Sessao oficial reivindicou TAR-1032 na bancada isolada",
+      "Pin AUTH_MANDATE_SHA256 ausente no inicio"
+    ],
+    "criterios_aceite": [
+      "Fase A: analise PASS, mandato WAITING antes da aprovacao, App5125381 SUCCESS depois, no HEAD exato",
+      "Fase B: grant enumerado na base e App SUCCESS sem novo mandato somente no escopo exato",
+      "Fase C: revogacao na base com pin ainda configurado causa WAITING e ausencia de aprovacao impede check verde"
+    ],
+    "evidencias_exigidas": [
+      "URL, numero, estado Draft, base e HEAD de cada PR",
+      "Run, job e check_id App5125381 em cada fase",
+      "Hashes dos checkpoints de grant e revogacao lidos da main",
+      "Prova de fechamento sem merge e preservacao dos eventos"
+    ],
+    "condicao_encerramento": "Tres fases comprovadas e PRs de ensaio fechados sem merge; registro factual embarcado em incremento tecnico pertinente.",
+    "limites_autonomia": "Esta frente so escreve o arquivo inerte e artefatos da propria TAR; raiz controla configuracao remota, aprovacoes e checkpoints TAR-958. Nao ampliar permissao nem contornar recusa.",
+    "acoes_do_mantenedor": "Nenhum gesto exclusivo identificado: a raiz opera a revisao do ambiente pela conta autorizada, como ja comprovado."
+  }
+}
