@@ -1,0 +1,13 @@
+{
+  "arquivo": "20260929-215401-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T21:54:01.159774+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME05 I2: dependencia corrigida com autorizacao especifica do mantenedor",
+  "ultimo_avanco": "Resposta call_NivO776JZTm5alZh6YT4AF9q item0 autorizou o patch A246707D62D477029D4B4144E0009BCCAA8107063C64BE2EEB334F7D02E92533. Aplicada somente a substituicao TAR-995 por TAR-1004 em depende_de da TAR-1001; TAR-992 preservada.",
+  "proxima_acao": "Embarcar tarefa e este checkpoint com TAR-1004; I2 continua sem reivindicacao ate dependencias concluidas e provas canonicas. O despacho original fica como historico da dependencia corrigida explicitamente neste checkpoint.",
+  "verificacoes": [
+    "Get-FileHash do patch igual ao autorizado; tarefa resultante SHA256 8E2933530A16ED290283ED758F513FDE83FB14FF13BE1289610CB3D7EDDF8BD3; python ci/fila.py validar PASS: 902 tarefas e 3208 eventos."
+  ]
+}

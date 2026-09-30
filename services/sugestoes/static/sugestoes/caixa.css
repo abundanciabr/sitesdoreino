@@ -418,6 +418,7 @@ textarea { resize: vertical; min-height: 72px; }
 /* A resposta da equipe numa ideia implementada: HTML filtrado, com midia que
    nunca passa da largura da coluna e player de video em 16:9. */
 .resposta-da-equipe p { margin: 0 0 10px; }
+.resposta-da-equipe :is(h2, h3, h4):not(.rotulo-da-resposta) { font-size: 1.05rem; text-transform: none; letter-spacing: normal; color: var(--texto); font-weight: 600; margin: 14px 0 6px; }
 .resposta-da-equipe img,
 .resposta-da-equipe video { display: block; max-width: 100%; height: auto; margin: 8px 0; }
 .resposta-da-equipe iframe { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; margin: 8px 0; }

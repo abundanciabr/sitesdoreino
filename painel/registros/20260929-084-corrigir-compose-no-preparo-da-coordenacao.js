@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-084-corrigir-compose-no-preparo-da-coordenacao",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "Corrigir Compose no preparo da coordenação",
+  detalhe: "O Compose real exige duas chaves do gateway; o provisionador agora lê somente essas chaves do env vivo sob FD8 antes da primeira consulta, sem exibir valores.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2372. Validação local: árvore fb6fee17a6d907615ac23c9eae7cad1ef60b05c7; commit 78859888dab38724cbcae50c2bd9812176d82982; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas. 995 vermelho, 1004 verde; 35 PASS",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1004",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
