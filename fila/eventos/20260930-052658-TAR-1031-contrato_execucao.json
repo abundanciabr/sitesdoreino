@@ -1,0 +1,54 @@
+{
+  "arquivo": "20260930-052658-TAR-1031-contrato_execucao",
+  "tarefa": "TAR-1031",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T05:26:58.871208+00:00",
+  "quem": "despacho-admin-tar1031-backup-docker-id",
+  "contrato": {
+    "plano": "tar1031-backup-docker-id",
+    "versao": 1,
+    "objetivo": "Abrir a cópia da coordenação sem depender da interpolação do Compose nem ler credenciais locais.",
+    "entregaveis": [
+      "Resolver admin e postgres por IDs Docker únicos, completos, running e com labels exatos; usar docker exec; testar casos válidos e adversariais.",
+      "Embarcar byte a byte os metadados oficiais TAR-958, TAR-1032, TAR-1033 e TAR-1034 autorizados pela coordenação."
+    ],
+    "escopo_incluido": [
+      "Alterar somente infra/backup-coordenacao.py e ci/tests/test_backup_coordenacao.py.",
+      "Embarcar tarefa, explicação, checkpoint e comprovantes próprios e os sete registros oficiais adicionais."
+    ],
+    "nao_objetivos": [
+      "Ler env/admin.env, DSN, chaves, DPAPI ou stderr cru.",
+      "Alterar workflow, provisionador ou código de TAR-1032/1033/1034.",
+      "Disparar backup de produção antes de integração e liberação do root."
+    ],
+    "restricoes": [
+      "Falhar se ID ausente, duplicado, parado, truncado ou com labels incompatíveis.",
+      "Preservar cifra CMS, host pin, limite 16 MiB e snapshot vivo até o pg_dump terminar.",
+      "Nenhum falso sucesso nem publicação sem artefato válido."
+    ],
+    "decisoes_aprovadas": [
+      "Checkpoint TAR-1031 de 30/09/2026 adota docker exec por ID no lugar de leitura protegida de env, dentro dos mesmos dois alvos."
+    ],
+    "etapas": [
+      "Medir baseline e simular ausência das variáveis exigidas pelo Compose.",
+      "Implementar resolução estrita e adaptar testes de captura, pg_dump e falha.",
+      "Validar localmente, obter revisão independente e passar pelo rito oficial."
+    ],
+    "criterios_entrada": [
+      "Reserva e reivindicação TAR-1031 conferidas.",
+      "Baseline focal de oito testes passou."
+    ],
+    "criterios_aceite": [
+      "Backup alcança processo admin e postgres por IDs Docker únicos sem leitura de segredos.",
+      "Falhas adversariais recusam antes de criar pacote e mostram ação útil.",
+      "Root integra e mede novo run oficial; se pacote existir, restauração isolada confere nove hashes."
+    ],
+    "evidencias_exigidas": [
+      "Testes adversariais e ensaio Docker local isolado.",
+      "Validação isolada do PR e revisão independente."
+    ],
+    "condicao_encerramento": "Novo run oficial publica cópia cifrada e restauro isolado confere nove tabelas, RPO/RTO e época.",
+    "limites_autonomia": "Agente edita dois arquivos técnicos e registros autorizados; root comanda execução de produção após integração.",
+    "acoes_do_mantenedor": "Nenhuma ação técnica rotineira; mandato integral da sessão TAR-958 rege esta corretiva."
+  }
+}

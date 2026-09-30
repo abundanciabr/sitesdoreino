@@ -1,0 +1,19 @@
+{
+  "arquivo": "1034-consultar-as-reservas-em-conjunto-sem-repetir-a-conexao-para",
+  "id": "TAR-1034",
+  "titulo": "Consultar as reservas em conjunto sem repetir a conexao para cada tarefa",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Mesmas reservas, expiracoes e recusas de identidade da leitura atual; consulta remota em lote com prova de erro ausente ou malformado fail-closed; antes/depois com tempo e numero de conexoes, claim CAS e releitura final intactos.",
+  "despacho": "Frente fixture1013 reutilizada para PME02 medicao e reparo do gargalo comprovado. Somente prototipo TEMP ate handoff de painel962: ci/fila.py funcao reservas_no_servidor e testes pertinentes em ci/tests/test_fila.py. Root mediu29 refs de tarefa em4.62s por uma consulta, enquanto pegar passa maisde8min em estado_ao_vivo: implementacao faz ls-remote,fetch,show sequenciais por reserva e repete antes/depois do claim. Reduzir conexoes mediante inventario completo de ref+SHA e fetch em lote, preservando TODAS as reservas, validacao tipo/chave/fuso/expiracao, erros fail-closed e nenhuma confianca em ref local antiga. Nao restringir ao alvo, nao retirar zelador nem verificacoes CAS, nao alterar semantica do claim, nao criar flags ou cache persistente. Prefira primitivas Git existentes e lote seguro em Windows; validar que ref alterada ou ausente durante leitura nao libera claim errado. Nao editar bancada1023 nem implementar antes da transferencia formal. Prototipo revisavel e comparacao causal antes/depois usando os mesmos objetos publicos, sem escrever reservas alheias. Depois handoff repetir testes e rito. Voce nao esta sozinho: preserve trabalho dos demais.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
