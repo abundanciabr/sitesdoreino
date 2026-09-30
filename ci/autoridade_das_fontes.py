@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fila  # noqa: E402
 from _nucleo import ErroDeInstrumentacao, Estado  # noqa: E402
 from mergear import checar_mandato  # noqa: E402
+from guarda_dos_guardas import invariantes_declarados  # noqa: E402
 from padrao_de_trabalho import FONTE, PORTAS, TETOS_EM_BYTES  # noqa: E402
 
 NOME_CHECK = "autoridade-das-fontes"
@@ -84,6 +85,25 @@ def caminhos_protegidos_por_codeowners(raiz: Path, arquivos: list[dict]) -> list
         if marcados:
             protegidos.extend(c for c in caminhos if c is not None)
     return protegidos
+
+
+def fontes_de_invariante_alteradas(raiz: Path, arquivos: list[dict]) -> list[str]:
+    documento = (raiz / "INVARIANTES.md").read_text(encoding="utf-8")
+    guardas = {
+        caminho
+        for invariante in invariantes_declarados(documento)
+        for caminho in invariante.guardas
+    }
+    if not guardas:
+        raise ValueError("a base não declarou guardas de invariante")
+    alterados = []
+    for item in arquivos:
+        for caminho in (item.get("filename"), item.get("previous_filename")):
+            if caminho in guardas:
+                alterados.append(caminho)
+        if "INVARIANTES.md" in (item.get("filename"), item.get("previous_filename")):
+            alterados.append("INVARIANTES.md")
+    return sorted(set(alterados))
 
 
 def mandato_reutilizavel(
@@ -277,13 +297,15 @@ def analisar(numero: int, sha: str, candidato: Path, consulta) -> tuple[str, boo
     if not arquivos:
         raise ValueError("PR sem lista de arquivos")
     protegidos = caminhos_protegidos_por_codeowners(BASE, arquivos)
+    fontes_alteradas = fontes_de_invariante_alteradas(BASE, arquivos)
+    protegidos = sorted(set(protegidos + fontes_alteradas))
     candidato_inerte(candidato, sha)
     valido, detalhe, tarefa, recibo = prova_da_base(candidato, numero, sha)
     if not valido or tarefa is None or recibo is None:
         return "FAIL", bool(protegidos), detalhe
-    revisao_necessaria = bool(protegidos) and not mandato_reutilizavel(
+    revisao_necessaria = bool(fontes_alteradas) or (bool(protegidos) and not mandato_reutilizavel(
         BASE, candidato, arquivos, os.environ.get("AUTH_MANDATE_SHA256", ""),
-        tarefa, pr.get("html_url", ""), recibo)
+        tarefa, pr.get("html_url", ""), recibo))
     if revisao_necessaria:
         caminhos = [
             {"path": caminho}
@@ -328,7 +350,7 @@ def main() -> int:
                 args.pr, args.head, args.candidato,
                 lambda rota: consultar(os.environ["GH_TOKEN"], repositorio, rota),
             )
-        except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as erro:
+        except (OSError, ValueError, KeyError, ErroDeInstrumentacao, subprocess.TimeoutExpired) as erro:
             detalhe = f"Não foi possível medir a autoridade: {type(erro).__name__}. Confira API, checkout e base; repita o check."
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as saida:
             saida.write(f"estado={estado}\nrevisao_necessaria={str(revisao_necessaria).lower()}\n")

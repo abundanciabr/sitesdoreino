@@ -19,8 +19,8 @@ O buraco que este portão fecha, medido em 25/08/2026 contra a `main`:
 Escada da Imposição (CONSTITUICAO Lei 1): a regra sobe de *documento* para
 *portão mecânico*.
 
-AS CINCO REGRAS
----------------
+AS REGRAS
+---------
 1. **Declaração resolve.** Todo caminho citado numa linha `Teste-Guarda:`
    existe em disco. Uma linha pode citar mais de um.
 2. **Guarda `.py` tem teste.** Ao menos um `def test_`.
@@ -32,6 +32,8 @@ AS CINCO REGRAS
 5. **INVERSO, com catraca.** Todo `services/*/tests/test_inv_*.py` em disco ou
    está declarado no `INVARIANTES.md`, ou está na dívida versionada
    `ci/guardas-nao-declarados.txt`. Guarda novo fora dos dois ⇒ FAIL.
+6. **Sucessão.** Alterar um guarda declarado exige sucessor e caso adversarial
+   executado; a revisão protegida decide se o caso preserva a propriedade.
 
 As regras 2 e 3 valem para **todos** os guardas em disco, declarados ou não.
 A dívida do item 5 isenta de DECLARAÇÃO, nunca de MORDER — é isso que impede a
@@ -57,7 +59,9 @@ from __future__ import annotations
 
 import argparse
 import ast
+import os
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -309,6 +313,129 @@ def problemas_do_guarda(caminho: Path, relativo: str) -> list[str]:
     return problemas
 
 
+def _guardas_por_codigo(invariantes: list[Invariante]) -> dict[str, set[str]]:
+    por_codigo: dict[str, set[str]] = {}
+    for invariante in invariantes:
+        por_codigo.setdefault(invariante.codigo, set()).update(invariante.guardas)
+    return por_codigo
+
+
+def _conteudo_na_base(raiz: Path, base: str, caminho: str) -> bytes:
+    resultado = subprocess.run(
+        ["git", "show", f"{base}:{caminho}"], cwd=raiz,
+        capture_output=True, timeout=120, check=False,
+    )
+    if resultado.returncode:
+        raise ErroDeInstrumentacao(
+            f"não foi possível ler {caminho} na base {base}",
+            "Confira BASE_REF e o arquivo versionado; sem a fonte anterior não há comparação.",
+        )
+    return resultado.stdout
+
+
+def _base_de_equivalencia(raiz: Path) -> str | None:
+    base = os.environ.get("BASE_REF", "").strip()
+    if base:
+        return base
+    if (os.environ.get("GITHUB_EVENT_NAME") == "push"
+            and os.environ.get("GITHUB_REF") == "refs/heads/main"):
+        return None
+    ramo = subprocess.run(
+        ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
+        cwd=raiz, capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+    )
+    if ramo.returncode == 0 and ramo.stdout.strip() == "main":
+        return None
+    remoto = subprocess.run(
+        ["git", "rev-parse", "--verify", "origin/main"],
+        cwd=raiz, capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+    )
+    if remoto.returncode == 0 and remoto.stdout.strip():
+        return "origin/main"
+    raise ErroDeInstrumentacao(
+        "base de equivalência ausente fora da main",
+        "Informe BASE_REF para comparar os guardas; sem base, a proteção não foi medida.",
+    )
+
+
+def _regra_equivalencia(raiz: Path, base: str, atuais: list[Invariante]) -> Resultado:
+    anteriores = _guardas_por_codigo(
+        invariantes_declarados(_conteudo_na_base(raiz, base, DOCUMENTO).decode("utf-8"))
+    )
+    sucessores = _guardas_por_codigo(atuais)
+    problemas: list[str] = []
+    comprovados: list[str] = []
+    provas_por_testes: dict[tuple[str, ...], tuple[Estado, dict]] = {}
+    alteracoes_por_guarda: dict[str, bool] = {}
+    for codigo, guardas_antigos in sorted(anteriores.items()):
+        guardas_novos = sucessores.get(codigo)
+        if not guardas_novos:
+            problemas.append(f"{codigo}: propriedade ou último guarda removido sem sucessor")
+            continue
+        alterado = guardas_antigos != guardas_novos
+        for guarda in guardas_antigos:
+            if guarda not in alteracoes_por_guarda:
+                novo = raiz / guarda
+                if not novo.is_file():
+                    alteracoes_por_guarda[guarda] = True
+                else:
+                    anterior = subprocess.run(
+                        ["git", "rev-parse", f"{base}:{guarda}"], cwd=raiz,
+                        capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+                    )
+                    atual = subprocess.run(
+                        ["git", "hash-object", f"--path={guarda}", str(novo)], cwd=raiz,
+                        capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+                    )
+                    if anterior.returncode or atual.returncode:
+                        raise ErroDeInstrumentacao(
+                            f"não foi possível comparar {guarda} com a base {base}",
+                            "Confira BASE_REF e os filtros Git do arquivo; repita a prova.",
+                        )
+                    alteracoes_por_guarda[guarda] = anterior.stdout.strip() != atual.stdout.strip()
+            alterado = alterado or alteracoes_por_guarda[guarda]
+        if not alterado:
+            continue
+        testes = sorted(g for g in guardas_novos if g.endswith(".py"))
+        if not testes:
+            problemas.append(f"{codigo}: guarda alterado sem sucessor Python com caso adversarial")
+            continue
+        import provar_guardas
+        chave = tuple(testes)
+        if chave not in provas_por_testes:
+            evidencia: dict = {}
+            try:
+                estado = provar_guardas.provar(raiz, testes, evidencia)
+            except (OSError, ValueError, subprocess.SubprocessError) as erro:
+                raise ErroDeInstrumentacao(
+                    f"não foi possível provar o guarda sucessor de {codigo}",
+                    f"{erro}. Corrija o caso adversarial e repita a prova.",
+                ) from erro
+            provas_por_testes[chave] = (estado, evidencia)
+        estado, evidencia = provas_por_testes[chave]
+        if estado is not Estado.PASS:
+            problemas.append(f"{codigo}: caso adversarial do guarda sucessor não falhou na chamada do teste")
+            continue
+        casos = ", ".join(
+            f"{g['teste']} -> {g['protege']}:{g['linha']} "
+            f"[{g['baseline']}→{g['mutacao']}→{g['restauracao']}]"
+            for g in evidencia.get("guardas", [])
+        )
+        comprovados.append(
+            f"{codigo}: {', '.join(sorted(guardas_antigos))} -> {', '.join(testes)}\n  {casos}"
+        )
+    if problemas:
+        return Resultado(
+            "guardas/equivalencia", Estado.FAIL,
+            f"{len(problemas)} propriedade(s) sem sucessão comprovada",
+            "\n".join(problemas) + "\nMapeie o guarda antigo ao sucessor em INVARIANTES.md e prove um caso que viole a propriedade.",
+        )
+    return Resultado(
+        "guardas/equivalencia", Estado.PASS,
+        f"{len(comprovados)} alteração(ões) com caso adversarial executado; revisão protegida confere pertinência",
+        "\n".join(comprovados),
+    )
+
 # -------------------------------------------------------------- a catraca
 
 
@@ -441,11 +568,9 @@ def _regra_dentes(raiz: Path, alvos: list[str]) -> Resultado:
             f"{len(problemas)} guarda(s) desativado(s) ou esvaziado(s)",
             "Guardas que existem mas deixaram de morder:\n  "
             + "\n  ".join(problemas)
-            + "\n\nINVARIANTES.md, regra 2; CONSTITUICAO.md, Lei 8: proibido deletar, desativar, comentar ou afrouxar\n"
-            "teste para passar. Se o guarda está quebrado, conserte o CÓDIGO que\n"
-            "ele acusa — desligar o guarda transforma a lei em decoração.\n"
-            "Se você acredita que este guarda precisa mesmo de um skip, isso é\n"
-            "conversa com o mantenedor, não uma decisão de sessão.",
+            + "\n\nINVARIANTES.md, regra 2; CONSTITUICAO.md, Lei 8: preserve a propriedade.\n"
+            "Corrija o teste ou identifique um sucessor com caso adversarial e revisão protegida.\n"
+            "Skip, xfail ou teste vazio não provam a proteção declarada.",
         )
     return Resultado(
         "guardas/dentes",
@@ -595,6 +720,14 @@ def rodar(raiz: Path | None = None) -> Relatorio:
         relatorio.registrar(_regra_nao_python(raiz, alvos_outros))
 
         relatorio.registrar(_regra_inverso(em_disco, set(declarados), divida))
+        base = _base_de_equivalencia(raiz)
+        if base is None:
+            relatorio.registrar(Resultado(
+                "guardas/equivalencia", Estado.SKIP,
+                "main sem base anterior aplicável",
+            ))
+        else:
+            relatorio.registrar(_regra_equivalencia(raiz, base, invariantes))
     except ErroDeInstrumentacao as erro:
         relatorio.registrar(Resultado.de_erro("guarda-dos-guardas", erro))
     return relatorio

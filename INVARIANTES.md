@@ -6,7 +6,9 @@ primeira oportunidade de violá-la.
 
 **Regras de trabalho:**
 1. Código que toca um invariante referencia o código dele em comentário (ex.: `[INV-P3]`).
-2. Teste-guarda é intocável: nunca deletar, desativar ou afrouxar para passar.
+2. Preserve a propriedade: trocar um teste-guarda exige sucessor identificado e
+   caso adversarial que ele rejeite, com revisão protegida da pertinência. Revogar
+   a propriedade exige decisão autenticada do mantenedor, escopo e consequência.
 3. Evidência falsificável: correção em invariante apresenta a saída crua vermelho→verde.
 4. Invariante sem guarda no mesmo PR só entra na seção final (dívida), com dono e prazo.
 

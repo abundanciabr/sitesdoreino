@@ -4416,6 +4416,342 @@ def test_snapshot_instrumento_quebrado_preserva_erro(tmp_path, monkeypatch):
         fila.cmd_snapshot_publicado(tmp_path)
 
 
+@pytest.mark.parametrize("falha", [
+    None, "config", "infra", "infra_digest", "infra_servico", "ancestralidade", "run_sha", "workflow", "job_imagem",
+    "job_dados", "job_reprovado", "medicao_antiga", "sem_horario",
+    "medicao_invalida", "digest", "url_falsa", "dado_antigo", "sem_fila",
+    "tipo_painel", "sha_dados_divergente", "run_dados_divergente",
+    "dado_futuro", "dado_tardio",
+])
+def test_publicacao_efetiva_confere_fontes_independentes_sem_conceder_aceite(
+    tmp_path, monkeypatch, falha
+):
+    from types import SimpleNamespace
+
+    imagem_sha = "5" * 40
+    dados_sha = "6" * 40
+    digest = "sha256:" + "a" * 64
+    pr = "https://github.com/abundanciabr/sitesdoreino/pull/123"
+    runs = {
+        11: dict(id=11, html_url=pr.split("/pull/")[0] + "/actions/runs/11",
+                 path=".github/workflows/deploy-celula.yml", event="push",
+                 head_branch="main", head_sha=imagem_sha, status="completed",
+                 conclusion="success", run_attempt=1, updated_at="2026-09-30T03:15:00Z"),
+        12: dict(id=12, html_url=pr.split("/pull/")[0] + "/actions/runs/12",
+                 path=".github/workflows/deploy-celula.yml", event="push",
+                 head_branch="main", head_sha=dados_sha, status="completed",
+                 conclusion="success", run_attempt=1, run_number=1945,
+                 updated_at="2026-09-30T03:20:00Z"),
+        13: dict(id=13, html_url=pr.split("/pull/")[0] + "/actions/runs/13",
+                 path=".github/workflows/operacoes-vps.yml", event="workflow_dispatch",
+                 head_branch="main", head_sha=dados_sha, status="completed",
+                 conclusion="success", run_attempt=1, created_at="2026-09-30T03:29:00Z"),
+    }
+    if falha == "run_sha":
+        runs[11]["head_sha"] = "7" * 40
+    if falha == "workflow":
+        runs[11]["path"] = ".github/workflows/other.yml"
+    if falha == "medicao_antiga":
+        runs[13]["created_at"] = "2026-09-30T03:10:00Z"
+    if falha == "sem_horario":
+        runs[13].pop("created_at")
+    if falha == "dado_futuro":
+        runs[13]["head_sha"] = imagem_sha
+    if falha == "dado_tardio":
+        runs[12]["updated_at"] = "2026-09-30T03:35:00Z"
+    jobs = {
+        11: {"detectar", "portao-de-deploy", "deploy (admin)"},
+        12: {"detectar", "portao-de-deploy", "publicar-dados-admin"},
+        13: {"medir"},
+    }
+    if falha == "job_imagem":
+        jobs[11].remove("deploy (admin)")
+    if falha == "job_dados":
+        jobs[12].remove("publicar-dados-admin")
+
+    def api(raiz, caminho):
+        if caminho.startswith("compare/"):
+            divergiu = falha == "ancestralidade" or (
+                falha == "dado_futuro" and caminho == f"compare/{dados_sha}...{imagem_sha}"
+            )
+            return {"status": "diverged" if divergiu else "ahead"}
+        return runs[int(caminho.rsplit("/", 1)[1])]
+
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", api)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_jobs", lambda raiz, run: [
+        dict(name=nome, status="completed",
+             conclusion="failure" if falha == "job_reprovado" and nome == "deploy (admin)"
+             else "success")
+        for nome in jobs[run["id"]]
+    ])
+
+    medicao = {"resultado": "PASS", "operacao": "estado-servico", "servico": "admin",
+               "medicao": {"estado": "running", "saude": "healthy", "reinicios": 0,
+                           "imagem": digest if falha not in {"digest", "config"}
+                           else "sha256:" + "b" * 64}}
+    if falha in {"infra", "infra_digest", "infra_servico"}:
+        admin = medicao["medicao"]
+        medicao = {"resultado": "PASS", "operacao": "estado-infra", "servico": "plataforma",
+                   "medicao": {"borda_http": 200, "servicos": {"admin": admin},
+                               "imagem_admin": {"id": digest,
+                                                "container_image": digest if falha != "infra_digest"
+                                                else "sha256:" + "c" * 64,
+                                                "repo_digests": ["ghcr.io/abundanciabr/plataforma-admin@" + digest]}}}
+        if falha == "infra_servico":
+            medicao["medicao"]["servicos"]["admin"]["saude"] = "unhealthy"
+
+    def comando(args, **kwargs):
+        if args[:3] == ["gh", "run", "view"]:
+            if args[3] == "12":
+                if falha == "sem_fila":
+                    return SimpleNamespace(stdout="publicar-dados-admin\tPublicar dados do painel na VPS\t"
+                                           + "2026-09-30T03:15:04Z ADMIN-DADOS-PUBLICADOS: tipo=painel\n")
+                estado = "ANTIGO-IGNORADO" if falha == "dado_antigo" else "PUBLICADOS"
+                tipo = "painel" if falha == "tipo_painel" else "fila"
+                sha = "7" * 40 if falha == "sha_dados_divergente" else dados_sha
+                numero = 1946 if falha == "run_dados_divergente" else 1945
+                linha = (f"ADMIN-DADOS-{estado}: tipo={tipo} sha={sha} run={numero} "
+                         f"ativo=/opt/plataforma/admin-dados/{tipo}_{numero}_{sha}")
+                return SimpleNamespace(stdout="publicar-dados-admin\tPublicar dados da fila na VPS\t"
+                                       + "2026-09-30T03:15:04Z " + linha + "\n")
+            dado = dict(medicao)
+            if falha == "medicao_invalida":
+                dado["resultado"] = "ERROR"
+            return SimpleNamespace(stdout="medir\tConferir evidência e publicar resumo\t"
+                                   + "2026-09-30T03:29:21Z " + json.dumps(dado) + "\n")
+        if args[-1] == "--raw":
+            config = "sha256:" + "b" * 64 if falha == "config" else digest
+            return SimpleNamespace(stdout=json.dumps({"config": {"digest": config}}))
+        return SimpleNamespace(stdout=json.dumps({"digest": digest}))
+
+    monkeypatch.setattr(fila, "executar", comando)
+    prova = {"run_imagem": runs[11]["html_url"], "run_dados": runs[12]["html_url"],
+             "run_medicao": runs[13]["html_url"], "revisao_dados": dados_sha}
+    if falha == "url_falsa":
+        prova["run_imagem"] = "https://github.com/outro/repositorio/actions/runs/11"
+    funcional = {"revisao": imagem_sha, "publicacao_efetiva": prova}
+    if falha not in {None, "config", "infra"}:
+        with pytest.raises(fila.RecusaDeReconciliacao):
+            fila.provar_publicacao_efetiva(tmp_path, pr, "4" * 40, funcional)
+    else:
+        assert fila.provar_publicacao_efetiva(tmp_path, pr, "4" * 40, funcional) == [
+            prova["run_imagem"], prova["run_dados"], prova["run_medicao"]
+        ]
+    assert fila.problemas_do_aceite_funcional(
+        {"resultado": "PASS", "criterio": "jornada", "evidencia": "tela",
+         "revisao": imagem_sha, "ambiente": "producao"}, "4" * 40, "producao"
+    )
+
+
+def test_aceite_posterior_preserva_merge_e_exige_fontes_no_livro(tmp_path, monkeypatch):
+    pr, estado = pr_e_estado_reconciliaveis()
+    pr["files"] = [{"path": "services/admin/apps/core/robos.py"}]
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    novas = [RUN_RECONCILIADO.rsplit("/", 1)[0] + "/" + numero for numero in ("11", "12", "13")]
+    funcional = funcional_de_teste()
+    funcional["revisao"] = "5" * 40
+    funcional["publicacao_efetiva"] = {
+        "run_imagem": novas[0], "run_dados": novas[1], "run_medicao": novas[2],
+        "revisao_dados": "6" * 40,
+    }
+    funcional["evidencia"] = f"Imagem {'5' * 40}; origem dos dados {'6' * 40} {novas[1]}"
+    prova = aceite_entrega_de_teste()
+    prova["aceite_funcional"] = funcional
+    prova["publicacoes"] = [RUN_RECONCILIADO, *novas]
+    registro = registro_de_aceite_de_teste(prova)
+    registro["evidencia"] = " ".join(prova["publicacoes"])
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro)
+    monkeypatch.setattr(fila, "provar_publicacao_efetiva", lambda *a: novas)
+    _, _, confirmado = fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+    assert confirmado["integracao"] == MERGE_RECONCILIADO
+    assert confirmado["aceite_funcional"]["revisao"] == "5" * 40
+    assert confirmado["publicacoes"] == prova["publicacoes"]
+    assert not fila.problemas_do_registro_canonico(confirmado, registro)
+
+
+@pytest.mark.parametrize("alteracao", ["sem_prova", "sem_url", "sem_publicacao"])
+def test_aceite_posterior_recusa_vinculo_incompleto(tmp_path, monkeypatch, alteracao):
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    funcional = funcional_de_teste()
+    funcional["revisao"] = "5" * 40
+    if alteracao != "sem_prova":
+        funcional["publicacao_efetiva"] = {
+            "run_imagem": RUN_RECONCILIADO, "run_dados": RUN_RECONCILIADO,
+            "run_medicao": RUN_RECONCILIADO, "revisao_dados": "5" * 40,
+        }
+    registro = registro_de_aceite_de_teste()
+    registro["aceite_funcional"] = funcional
+    registro["evidencia"] = "" if alteracao == "sem_url" else RUN_RECONCILIADO
+    if alteracao == "sem_publicacao":
+        estado["estado"] = "SEM_PUBLICACAO"
+        estado["runs"] = []
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro)
+    if alteracao == "sem_url":
+        monkeypatch.setattr(fila, "provar_publicacao_efetiva", lambda *a: [RUN_RECONCILIADO])
+    with pytest.raises(fila.RecusaDeReconciliacao):
+        fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+
+
+def test_deploy_incidental_de_ci_aceita_comando_no_repositorio(tmp_path, monkeypatch):
+    pr, estado = pr_e_estado_reconciliaveis()
+    pr["files"] = [{"path": "ci/tests/test_conferencia_do_toca.py"}]
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda *a: {"changed_files": 1})
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    vistos = []
+    monkeypatch.setattr(fila, "provar_suite_no_head", lambda raiz, sha: vistos.append(sha) or ["checks=PASS"])
+    prova = aceite_entrega_de_teste()
+    prova["aceite_funcional"]["ambiente"] = "repositorio-integrado"
+    prova["aceite_funcional"]["comando"] = "python -m pytest ci/tests/test_conferencia_do_toca.py"
+    prova["aceite_funcional"]["evidencia"] = (
+        prova["aceite_funcional"]["comando"] + ": 33 passed"
+    )
+    registro = registro_de_aceite_de_teste(prova)
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro)
+    _, _, confirmado = fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+    assert confirmado["publicacao"] == "PUBLICADO"
+    assert confirmado["aceite_funcional"]["ambiente"] == "repositorio-integrado"
+    assert vistos == [HEAD_RECONCILIADO]
+
+
+@pytest.mark.parametrize("alteracao", ["valido", "registro_alheio", "script_extra", "schema_invalido", "modificado", "produto", "conclusao_precipitada", "pr_alheio"])
+def test_aceite_tecnico_confere_artefatos_do_rito(tmp_path, monkeypatch, alteracao):
+    pr, estado = pr_e_estado_reconciliaveis()
+    tarefa = "fila/tarefas/001-diagnosticos.json"
+    contrato = "fila/contratos/001-diagnosticos.json"
+    evento = "fila/eventos/20260930-010101-TAR-001-submetida.json"
+    registro = "painel/registros/20260930-032-diagnosticos.js"
+    caminhos = ["ci/fila.py", tarefa, contrato, evento, registro]
+    if alteracao == "produto":
+        caminhos.append("services/admin/apps/core/admin_dados.py")
+    pr["files"] = [{"path": caminho} for caminho in caminhos]
+    arquivos_api = [{"filename": caminho, "status": "added"} for caminho in caminhos]
+    if alteracao == "modificado":
+        arquivos_api[-1]["status"] = "modified"
+    fontes = {
+        tarefa: '{"arquivo":"001-diagnosticos","id":"TAR-001","toca":["ci"]}',
+        contrato: '{"plano":"docs/decisoes/CAMINHO-DOURADO.md","objetivo":"Diagnósticos","entregaveis":["ci/fila.py"]}',
+        evento: json.dumps({"arquivo": "20260930-010101-TAR-001-submetida",
+                            "tarefa": "TAR-001", "evento": "submetida", "pr": URL_SUBMISSAO,
+                            "revisao": REVISAO_RECONCILIADA, "arvore": ARVORE_RECONCILIADA}),
+        registro: '(function(){ (window.REGISTROS = window.REGISTROS || []).push({\n'
+                  '  arquivo: "20260930-032-diagnosticos",\n'
+                  '  tarefa: "TAR-001",\n'
+                  '  tipo: "entrega",\n'
+                  '  gravidade: "info"\n}); })();',
+    }
+    if alteracao == "registro_alheio":
+        fontes[registro] = fontes[registro].replace('TAR-001', 'TAR-002')
+    if alteracao == "script_extra":
+        fontes[registro] += '\nwindow.efeito = true;'
+    if alteracao == "conclusao_precipitada":
+        dado_evento = json.loads(fontes[evento])
+        dado_evento["evento"] = "concluida"
+        fontes[evento] = json.dumps(dado_evento)
+    if alteracao == "pr_alheio":
+        fontes[evento] = fontes[evento].replace(URL_SUBMISSAO, "https://github.com/abundanciabr/sitesdoreino/pull/2")
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda _raiz, url, **_kw:
+                        arquivos_api if url.endswith("/files") else {"changed_files": len(caminhos)})
+    monkeypatch.setattr(fila, "_git_da_fila", lambda _raiz, _cmd, revisao, **_kw:
+                        fontes[revisao.split(":", 1)[1]])
+    monkeypatch.setattr(fila, "executar", lambda *a, **_kw:
+                        type("Resposta", (), {"stdout": '["inválido"]' if alteracao == "schema_invalido" else "[]"})())
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(fila, "provar_suite_no_head", lambda *a: ["checks=PASS"])
+    prova = aceite_entrega_de_teste()
+    prova["aceite_funcional"]["ambiente"] = "repositorio-integrado"
+    prova["aceite_funcional"]["comando"] = "python -m pytest ci/tests/test_fila.py"
+    prova["aceite_funcional"]["evidencia"] = "python -m pytest ci/tests/test_fila.py: 365 passed"
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro_de_aceite_de_teste(prova))
+    if alteracao == "valido":
+        _, _, confirmado = fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+        assert confirmado["aceite_funcional"]["ambiente"] == "repositorio-integrado"
+    else:
+        with pytest.raises(fila.RecusaDeReconciliacao):
+            fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+
+
+def test_aceite_tecnico_recusa_lista_parcial_do_pr(tmp_path, monkeypatch):
+    pr, estado = pr_e_estado_reconciliaveis()
+    pr["files"] = [{"path": "ci/tests/test_conferencia_do_toca.py"}]
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda *a: {"changed_files": 2})
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    prova = aceite_entrega_de_teste()
+    prova["aceite_funcional"]["ambiente"] = "repositorio-integrado"
+    prova["aceite_funcional"]["comando"] = "python -m pytest ci/tests/test_conferencia_do_toca.py"
+    prova["aceite_funcional"]["evidencia"] = (
+        prova["aceite_funcional"]["comando"] + ": 33 passed"
+    )
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro_de_aceite_de_teste(prova))
+    with pytest.raises(fila.RecusaDeReconciliacao, match="lista completa"):
+        fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+
+
+def test_aceite_tecnico_recusa_jornada_de_tela_disfarcada_de_comando(tmp_path, monkeypatch):
+    pr, estado = pr_e_estado_reconciliaveis()
+    pr["files"] = [{"path": "ci/tests/test_conferencia_do_toca.py"}]
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    prova = aceite_entrega_de_teste()
+    prova["aceite_funcional"]["ambiente"] = "repositorio-integrado"
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro_de_aceite_de_teste(prova))
+    with pytest.raises(fila.RecusaDeReconciliacao, match="comando executado"):
+        fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+
+
+def test_leitor_publicado_reconfere_a_publicacao_posterior(tmp_path, monkeypatch):
+    novas = [RUN_RECONCILIADO.rsplit("/", 1)[0] + "/" + numero for numero in ("11", "12", "13")]
+    prova = aceite_entrega_de_teste()
+    prova["aceite_funcional"]["revisao"] = "5" * 40
+    prova["aceite_funcional"]["publicacao_efetiva"] = {
+        "run_imagem": novas[0], "run_dados": novas[1], "run_medicao": novas[2],
+        "revisao_dados": "6" * 40,
+    }
+    prova["aceite_funcional"]["evidencia"] = (
+        f"Imagem {'5' * 40}; origem dos dados {'6' * 40} {novas[1]}"
+    )
+    prova["publicacoes"] = [RUN_RECONCILIADO, *novas]
+    prova["registro_sha256"] = fila.hash_do_conteudo(registro_de_aceite_de_teste(prova))
+    registro = registro_de_aceite_de_teste(prova)
+    registro["evidencia"] = " ".join(prova["publicacoes"])
+    prova["registro_sha256"] = fila.hash_do_conteudo(registro)
+    conclusao = evento(tipo="concluida", hora="12:00:00", evidencia="reconciliação",
+                       verificado_em="2026-09-10", aceite_entrega=prova)
+    montar(tmp_path, [tarefa()], [submissao_reconciliavel(), conclusao])
+    escrever_registro_de_aceite(tmp_path, prova)
+    caminho = tmp_path / REGISTRO_DE_ACEITE
+    caminho.write_text("window.REGISTROS = [" + json.dumps(registro) + "];", encoding="utf-8")
+    _, eventos, erros = carregar(tmp_path)
+    assert not erros
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(fila, "carregar_aceite", lambda *a: registro)
+    monkeypatch.setattr(fila, "provar_publicacao_efetiva", lambda *a: novas)
+    indice = fila.comprovar_aceites_publicados(tmp_path, eventos)
+    assert indice["tarefas"]["TAR-001"]["prova"]["publicacoes"] == prova["publicacoes"]
+    eventos[-1]["aceite_entrega"]["publicacoes"] = [RUN_RECONCILIADO]
+    with pytest.raises(fila.RecusaDeReconciliacao):
+        fila.comprovar_aceites_publicados(tmp_path, eventos)
+    eventos[-1]["aceite_entrega"]["publicacoes"] = prova["publicacoes"]
+    monkeypatch.setattr(fila, "provar_publicacao_efetiva", lambda *a: (_ for _ in ()).throw(
+        fila.RecusaDeReconciliacao("imagem mudou")))
+    with pytest.raises(fila.RecusaDeReconciliacao, match="imagem mudou"):
+        fila.comprovar_aceites_publicados(tmp_path, eventos)
+
+
 @pytest.mark.parametrize("campo", ["pr", "revisao", "arvore"])
 def test_aceite_recusa_submissao_incompleta_sem_quebrar_leitor(tmp_path, campo):
     sub = submissao_reconciliavel()
