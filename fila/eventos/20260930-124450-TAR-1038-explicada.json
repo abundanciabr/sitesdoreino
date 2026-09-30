@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-124450-TAR-1038-explicada",
+  "tarefa": "TAR-1038",
+  "evento": "explicada",
+  "quando": "2026-09-30T12:44:50.293537+00:00",
+  "quem": "Pedido do mantenedor de 30/09/2026 para revisar o manual do portfolio",
+  "o_que_e": "O guia ja foi publicado no site, mas a ocorrencia ainda precisa entrar no livro do projeto.",
+  "o_que_muda": "A entrega publicada fica rastreavel no painel sem duplicar o conteudo do guia no repositorio.",
+  "exemplo": "Ao abrir a URL publica, o aluno encontra seis passos e vinte visuais; o livro registra essa entrega.",
+  "importancia": 45
+}
