@@ -342,13 +342,13 @@ def _base_de_equivalencia(raiz: Path) -> str | None:
         return None
     ramo = subprocess.run(
         ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
-        cwd=raiz, capture_output=True, text=True, timeout=30, check=False,
+        cwd=raiz, capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
     )
     if ramo.returncode == 0 and ramo.stdout.strip() == "main":
         return None
     remoto = subprocess.run(
         ["git", "rev-parse", "--verify", "origin/main"],
-        cwd=raiz, capture_output=True, text=True, timeout=30, check=False,
+        cwd=raiz, capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
     )
     if remoto.returncode == 0 and remoto.stdout.strip():
         return "origin/main"
@@ -381,11 +381,11 @@ def _regra_equivalencia(raiz: Path, base: str, atuais: list[Invariante]) -> Resu
                 else:
                     anterior = subprocess.run(
                         ["git", "rev-parse", f"{base}:{guarda}"], cwd=raiz,
-                        capture_output=True, text=True, timeout=30, check=False,
+                        capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
                     )
                     atual = subprocess.run(
                         ["git", "hash-object", f"--path={guarda}", str(novo)], cwd=raiz,
-                        capture_output=True, text=True, timeout=30, check=False,
+                        capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
                     )
                     if anterior.returncode or atual.returncode:
                         raise ErroDeInstrumentacao(
