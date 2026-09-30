@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-040-test-ensaiar-autoridade-do-app-sem-integracao",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "test: ensaiar autoridade do App sem integração",
+  detalhe: "Ensaio comum mede App e SHA sem aprovação; este PR Draft será fechado sem merge.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2394. Validação local: árvore abdce9a048b90ac64bd779e695be06bc9917225b; commit 16da7df3730265524a3f78af291d5cc9071b88f4; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1027",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
