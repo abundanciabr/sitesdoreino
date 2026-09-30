@@ -106,6 +106,7 @@ from _nucleo import (  # noqa: E402
 
 ETIQUETA = "remove-teste"
 
+
 # O que conta como arquivo de teste. Lista fechada: um lugar novo de teste que
 # ninguém acrescente aqui fica fora da catraca — e a catraca passaria a
 # proteger menos do que aparenta.
@@ -475,7 +476,7 @@ def rodar(raiz: Path | None = None) -> Relatorio:
                 Estado.FAIL,
                 f"{len(achados)} teste(s) apagado(s), reduzido(s) ou desligado(s)",
                 detalhe
-                + "\n\nRITOS §2.3 e Lei 6: teste não se deleta, desativa nem "
+                + "\n\nINVARIANTES.md, regra 2; CONSTITUICAO.md, Lei 8: teste não se deleta, desativa nem "
                 "afrouxa para passar. Se o teste ficou obsoleto de verdade "
                 f"(a regra mudou, o código saiu), ponha a etiqueta `{ETIQUETA}` "
                 "no PR e explique na descrição — ela não apaga o achado, "
