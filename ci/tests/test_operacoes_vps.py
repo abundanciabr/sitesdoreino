@@ -4350,3 +4350,263 @@ def test_appmax_pendentes_so_aceita_catalogo_fechado_e_recusa_dado_pessoal(tenta
     # guarda: ci/operacoes_vps.py (bloco "elif operacao == 'appmax-pendentes':")
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pendentes", {"tentativas": [tentativa]})
+
+
+def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, capsys):
+    (tmp_path / "sites.json").write_bytes(b'{"sites":[]}')
+    privado = tmp_path / "env" / "admin.env"
+    privado.parent.mkdir()
+    privado.write_text(PRIVADO, encoding="utf-8")
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    abertura_real = Path.open
+    lidos = []
+
+    def abrir_controlado(caminho, *args, **kwargs):
+        lidos.append(str(caminho))
+        assert "env" not in Path(caminho).parts
+        return abertura_real(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", abrir_controlado)
+    abertura_os_real = ops.os.open
+    abertos = []
+
+    def abrir_os_controlado(caminho, *args, **kwargs):
+        if caminho == tmp_path or caminho == "sites.json":
+            abertos.append(str(caminho))
+        assert "env" not in Path(caminho).parts
+        return abertura_os_real(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(ops.os, "open", abrir_os_controlado)
+    comandos = []
+
+    def comando_falso(argumentos, **kwargs):
+        comandos.append((argumentos, kwargs))
+        if argumentos[:2] == ["docker", "ps"]:
+            return "a" * 64
+        if argumentos[:2] == ["docker", "inspect"]:
+            return json.dumps(MEDICAO)
+        if argumentos[:3] == ["docker", "image", "inspect"]:
+            return json.dumps(
+                {
+                    "id": "sha256:" + "b" * 64,
+                    "repo_digests": [
+                        "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64
+                    ],
+                }
+            )
+        if argumentos[0] == "curl":
+            return "200"
+        pytest.fail(f"Comando inesperado: {argumentos}")
+
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 0
+    saida = capsys.readouterr().out
+    dados = json.loads(saida)["medicao"]
+    assert set(dados["arquivos"]) == set(ops.ARQUIVOS_ESTADO_INFRA)
+    assert (
+        dados["arquivos"]["sites.json"] == hashlib.sha256(b'{"sites":[]}').hexdigest()
+    )
+    assert all(
+        valor is None
+        for nome, valor in dados["arquivos"].items()
+        if nome != "sites.json"
+    )
+    assert set(dados["servicos"]) == {"traefik", "catalogo", "admin"}
+    assert all(valor == MEDICAO for valor in dados["servicos"].values())
+    assert dados["imagem_admin"] == {
+        "container_image": MEDICAO["imagem"],
+        "id": "sha256:" + "b" * 64,
+        "repo_digests": ["ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64],
+    }
+    assert dados["borda_http"] == 200
+    if os.name == "posix":
+        assert abertos.count(str(tmp_path)) == len(ops.ARQUIVOS_ESTADO_INFRA)
+        assert abertos.count("sites.json") == 1
+    else:
+        assert lidos == [str(tmp_path / "sites.json")]
+    assert PRIVADO not in saida
+    assert all(argumentos[0] in {"docker", "curl"} for argumentos, _ in comandos)
+    assert all(
+        argumentos[:2] in (["docker", "ps"], ["docker", "inspect"])
+        or argumentos[:3] == ["docker", "image", "inspect"]
+        for argumentos, _ in comandos
+        if argumentos[0] == "docker"
+    )
+    assert [kwargs["prazo_segundos"] for _, kwargs in comandos] == [10] * 7 + [15]
+    assert comandos[-2][0] == [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        ops.FORMATO_IMAGEM_ADMIN,
+        MEDICAO["imagem"],
+    ]
+    assert ".Config" not in ops.FORMATO_IMAGEM_ADMIN
+    assert comandos[-1][0] == [
+        "curl",
+        "-skS",
+        "--connect-timeout",
+        "3",
+        "--max-time",
+        "12",
+        "--resolve",
+        "meshcraft.top:443:127.0.0.1",
+        "--resolve",
+        "meshcraft.top:80:127.0.0.1",
+        "-o",
+        "/dev/null",
+        "-w",
+        "%{http_code}",
+        "https://meshcraft.top/",
+    ]
+
+
+def test_estado_infra_recusa_saida_livre_ou_incompleta():
+    dados = {
+        "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
+        "servicos": {nome: None for nome in ("traefik", "catalogo", "admin")},
+        "imagem_admin": None,
+        "borda_http": 200,
+    }
+    assert ops.conferir_medicao("estado-infra", dados) == dados
+    for campo, valor in (
+        ("arquivos", {**dados["arquivos"], "env/admin.env": "0" * 64}),
+        ("servicos", {**dados["servicos"], "env": MEDICAO}),
+        ("borda_http", 0),
+    ):
+        adulterado = dict(dados)
+        adulterado[campo] = valor
+        with pytest.raises(ops.Falha):
+            ops.conferir_medicao("estado-infra", adulterado)
+    adulterado = dict(dados)
+    adulterado["arquivos"] = dict(dados["arquivos"])
+    adulterado["arquivos"]["sites.json"] = PRIVADO
+    with pytest.raises(ops.Falha):
+        ops.conferir_medicao("estado-infra", adulterado)
+
+
+def test_estado_infra_recusa_arquivo_nao_regular_sem_ler(monkeypatch, tmp_path, capsys):
+    (tmp_path / "sites.json").mkdir()
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    monkeypatch.setattr(
+        ops, "comando", lambda _: pytest.fail("não deve consultar Docker")
+    )
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 2
+    saida = capsys.readouterr().out
+    assert json.loads(saida)["erro"] == "infra"
+    assert PRIVADO not in saida
+
+
+def test_estado_infra_mede_ausencia_e_http_503(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+
+    def comando_falso(argumentos, **kwargs):
+        if argumentos[:2] == ["docker", "ps"]:
+            return ""
+        if argumentos[0] == "curl":
+            return "503"
+        pytest.fail(f"Comando inesperado: {argumentos}")
+
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 0
+    medicao = json.loads(capsys.readouterr().out)["medicao"]
+    assert all(valor is None for valor in medicao["arquivos"].values())
+    assert all(valor is None for valor in medicao["servicos"].values())
+    assert medicao["imagem_admin"] is None
+    assert medicao["borda_http"] == 503
+
+
+def test_estado_infra_borda_indisponivel_nao_vira_pass(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+
+    def comando_falso(argumentos, **kwargs):
+        if argumentos[:2] == ["docker", "ps"]:
+            return ""
+        if argumentos[0] == "curl":
+            raise ops.Falha("instrumento")
+        pytest.fail(f"Comando inesperado: {argumentos}")
+
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 2
+    saida = capsys.readouterr().out
+    assert json.loads(saida)["erro"] == "borda"
+    assert PRIVADO not in saida
+
+
+def test_estado_infra_recusa_identidade_admin_de_outro_repositorio():
+    dados = {
+        "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
+        "servicos": {
+            "traefik": None,
+            "catalogo": None,
+            "admin": MEDICAO,
+        },
+        "imagem_admin": {
+            "container_image": MEDICAO["imagem"],
+            "id": "sha256:" + "b" * 64,
+            "repo_digests": ["ghcr.io/externo/plataforma-admin@sha256:" + "c" * 64],
+        },
+        "borda_http": 302,
+    }
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("estado-infra", dados)
+    dados["imagem_admin"]["repo_digests"] = []
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("estado-infra", dados)
+    dados["imagem_admin"]["repo_digests"] = [
+        "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64
+    ]
+    assert ops.conferir_medicao("estado-infra", dados) == dados
+    dados["imagem_admin"]["container_image"] = "sha256:" + "d" * 64
+    with pytest.raises(ops.Falha, match="formato"):
+        ops.conferir_medicao("estado-infra", dados)
+
+
+def test_estado_infra_recusa_troca_por_symlink_antes_de_abrir(monkeypatch, tmp_path):
+    seguro = tmp_path / "sites.json"
+    seguro.write_text("publico", encoding="utf-8")
+    segredo = tmp_path / "secret"
+    segredo.write_text(PRIVADO, encoding="utf-8")
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    if os.name == "posix":
+        abrir_real = ops.os.open
+
+        def trocar_antes_de_abrir(caminho, *args, **kwargs):
+            if caminho == "sites.json":
+                seguro.rename(tmp_path / "salvo")
+                seguro.symlink_to(segredo)
+            return abrir_real(caminho, *args, **kwargs)
+
+        monkeypatch.setattr(ops.os, "open", trocar_antes_de_abrir)
+    else:
+        sem_follow = 0x200000
+        abertos = []
+        fechados = []
+
+        def abrir_simulado(caminho, flags, dir_fd=None):
+            assert flags & sem_follow
+            if dir_fd is None:
+                assert caminho == tmp_path
+                return 41
+            assert caminho == "sites.json" and dir_fd == 41
+            abertos.append(caminho)
+            raise OSError("link simbólico trocado antes da abertura")
+
+        monkeypatch.setattr(
+            ops,
+            "os",
+            SimpleNamespace(
+                name="posix",
+                O_RDONLY=0,
+                O_DIRECTORY=0x100000,
+                O_NOFOLLOW=sem_follow,
+                open=abrir_simulado,
+                fstat=lambda _: SimpleNamespace(st_mode=stat.S_IFDIR),
+                close=fechados.append,
+            ),
+        )
+    with pytest.raises(ops.Falha, match="infra"):
+        ops.hash_arquivo_infra("sites.json")
+    if os.name != "posix":
+        assert abertos == ["sites.json"]
+        assert fechados == [41]

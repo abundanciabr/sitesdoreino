@@ -47,6 +47,25 @@ def _consulta(caminho="services/catalogo/models.py", autor="abundanciabr", manda
     return consultar
 
 
+def test_caminho_relativo_da_candidata_e_resolvido_antes_de_mudar_cwd(monkeypatch, tmp_path):
+    candidato = tmp_path / "candidate"
+    candidato.mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(autoridade, "base_na_main",
+                        lambda consulta, numero, sha: consulta(f"pulls/{numero}"))
+    vistos = []
+    monkeypatch.setattr(autoridade, "candidato_inerte",
+                        lambda caminho, sha: vistos.append(caminho))
+
+    def provar(caminho, numero, sha):
+        vistos.append(caminho)
+        return True, "PASS", "TAR-991", RECIBO
+
+    monkeypatch.setattr(autoridade, "prova_da_base", provar)
+    assert autoridade.analisar(1, "a" * 40, Path("candidate"), _consulta())[:2] == ("PASS", False)
+    assert vistos == [candidato, candidato]
+
+
 def test_entrega_comum_recebe_app_sem_revisao_humana(monkeypatch, tmp_path):
     monkeypatch.setattr(autoridade, "candidato_inerte", lambda *a: None)
     monkeypatch.setattr(autoridade, "base_na_main",

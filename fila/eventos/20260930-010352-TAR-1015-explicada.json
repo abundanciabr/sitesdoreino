@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-010352-TAR-1015-explicada",
+  "tarefa": "TAR-1015",
+  "evento": "explicada",
+  "quando": "2026-09-30T01:03:52.555132+00:00",
+  "quem": "TAR-958/TAR-1004 run36652757805; correcao causal da mesma frente",
+  "o_que_e": "O preparo do banco para antes de carregar a aplicacao.",
+  "o_que_muda": "O comando prepara o esquema e permite conferir a copia de recuperacao.",
+  "exemplo": "O banco ja existe mas o instalador precisa ligar a aplicacao antes de criar suas tabelas.",
+  "importancia": 100
+}
