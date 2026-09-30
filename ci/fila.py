@@ -1516,40 +1516,96 @@ def calcular_estados(
 
 
 def reservas_no_servidor(raiz: Path) -> set[str]:
-    """Ids de tarefa com referência NÃO vencida em refs/reservas/tarefa-*."""
-    ativos: set[str] = set()
-    for ref in reservar.refs_existentes(raiz, reservar.NS_RESERVA):
-        cauda = ref.rsplit("/", 1)[-1]
-        if not cauda.startswith(PREFIXO_DA_RESERVA):
-            continue
-        leitura = reservar.executar(
-            ["git", "ls-remote", "origin", ref],
+    """Ids de tarefa com reserva NÃO vencida, lidos em lote e sem corridas."""
+
+    def inventariar() -> dict[str, str]:
+        saida = reservar.executar(
+            ["git", "ls-remote", "origin", f"{reservar.NS_RESERVA}/*"],
             cwd=raiz,
-            descricao="ler a validade da reserva da tarefa",
-        ).stdout.strip()
-        partes = leitura.split()
-        if (
-            len(partes) != 2
-            or partes[1] != ref
-            or not re.fullmatch(r"[0-9a-f]{40}", partes[0])
-        ):
+            descricao="inventariar as reservas no servidor",
+        ).stdout
+        reservas: dict[str, str] = {}
+        for numero, linha in enumerate(saida.splitlines(), start=1):
+            partes = linha.split("\t")
+            if len(partes) != 2:
+                raise ErroDeInstrumentacao(
+                    "resposta da reserva inválida",
+                    f"A linha {numero} do inventário remoto está malformada.",
+                )
+            sha, ref = partes
+            if not ref.startswith(f"{reservar.NS_RESERVA}/") or not re.fullmatch(
+                r"[0-9a-f]{40}", sha
+            ):
+                raise ErroDeInstrumentacao(
+                    "resposta da reserva inválida",
+                    f"Não consegui conferir a linha {numero} do inventário remoto.",
+                )
+            cauda = ref.rsplit("/", 1)[-1]
+            if not cauda.startswith(PREFIXO_DA_RESERVA):
+                continue
+            if (
+                not re.fullmatch(r"refs/reservas/tarefa-[A-Za-z0-9._-]+", ref)
+                or ref in reservas
+            ):
+                raise ErroDeInstrumentacao(
+                    "resposta da reserva inválida",
+                    f"Não consegui conferir {ref}. Sem saber se a reserva está viva, não libero a tarefa.",
+                )
+            reservas[ref] = sha
+        return reservas
+
+    reservas = inventariar()
+    shas = sorted(set(reservas.values()))
+    corpos: dict[str, str] = {}
+    if shas:
+        reservar.executar(
+            ["git", "fetch", "--no-tags", "origin", *shas],
+            cwd=raiz,
+            descricao="ler os comprovantes das reservas de tarefa",
+        )
+        leitura = reservar.executar(
+            ["git", "log", "--no-walk", "--format=%H%x00%B%x00", *shas],
+            cwd=raiz,
+            descricao="conferir a validade dos comprovantes de reserva",
+            exigir_stdout=True,
+        ).stdout
+        campos = leitura.split("\x00")
+        if len(campos) != 2 * len(shas) + 1 or campos[-1].strip():
             raise ErroDeInstrumentacao(
                 "resposta da reserva inválida",
-                f"Não consegui conferir {ref}. Sem saber se a reserva está viva, não libero a tarefa.",
+                "O Git não devolveu um lote completo de comprovantes.",
             )
-        sha = partes[0]
-        reservar.executar(
-            ["git", "fetch", "--no-tags", "origin", sha],
-            cwd=raiz,
-            descricao="ler o comprovante da reserva da tarefa",
+        for indice in range(0, len(campos) - 1, 2):
+            sha = campos[indice].strip()
+            if (
+                not re.fullmatch(r"[0-9a-f]{40}", sha)
+                or sha not in shas
+                or sha in corpos
+            ):
+                raise ErroDeInstrumentacao(
+                    "resposta da reserva inválida",
+                    "O Git não devolveu exatamente os comprovantes inventariados.",
+                )
+            corpos[sha] = campos[indice + 1].strip()
+        if set(corpos) != set(shas):
+            raise ErroDeInstrumentacao(
+                "resposta da reserva inválida",
+                "O Git não devolveu todos os comprovantes inventariados.",
+            )
+
+    if inventariar() != reservas:
+        raise ErroDeInstrumentacao(
+            "inventário de reservas mudou durante a leitura",
+            "As referências remotas mudaram enquanto eu lia os comprovantes. "
+            "Não libero a tarefa; consulte novamente o estado da fila.",
         )
-        corpo = reservar.executar(
-            ["git", "show", "-s", "--format=%B", sha],
-            cwd=raiz,
-            descricao="conferir a validade da reserva da tarefa",
-        ).stdout
+
+    ativos: set[str] = set()
+    agora = datetime.now(timezone.utc)
+    for ref, sha in reservas.items():
+        cauda = ref.rsplit("/", 1)[-1]
         try:
-            dados = json.loads(corpo)
+            dados = json.loads(corpos[sha])
             expira = datetime.fromisoformat(str(dados["expira_em"]))
             if dados.get("tipo") != "intencao" or dados.get("chave") != cauda:
                 raise ValueError("identidade incompatível")
@@ -1563,10 +1619,9 @@ def reservas_no_servidor(raiz: Path) -> set[str]:
                 "reserva de tarefa incompatível",
                 f"O comprovante remoto {ref} não informa fuso horário na expiração.",
             )
-        if expira > datetime.now(timezone.utc):
+        if expira > agora:
             ativos.add(cauda[len(PREFIXO_DA_RESERVA) :])
     return ativos
-
 
 def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
     """id → 'PR #N' para todo PR ABERTO cujo título ou ramo cita TAR-NNN."""

@@ -473,6 +473,198 @@ def test_dependencia_concluida_libera(tmp_path):
     assert e["TAR-002"]["estado"] == fila.NA_FILA
 
 
+def _repo_com_reservas_no_servidor(tmp_path, comprovantes):
+    remoto = tmp_path / "reservas.git"
+    _git("init", "--bare", str(remoto), cwd=tmp_path)
+    criador = tmp_path / "criador"
+    criador.mkdir()
+    _git("init", cwd=criador)
+    _git("config", "user.email", "teste@teste", cwd=criador)
+    _git("config", "user.name", "Teste", cwd=criador)
+    for chave, dados in comprovantes:
+        _git(
+            "commit",
+            "--allow-empty",
+            "-m",
+            json.dumps(dados, separators=(",", ":")),
+            cwd=criador,
+        )
+        _git("push", str(remoto), f"HEAD:refs/reservas/tarefa-{chave}", cwd=criador)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", cwd=repo)
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    return repo
+
+
+def test_reservas_no_servidor_em_lote_preserva_vivas_vencidas_e_vazio(
+    tmp_path, monkeypatch
+):
+    futuro = "2099-01-01T00:00:00+00:00"
+    passado = "2000-01-01T00:00:00+00:00"
+    repo = _repo_com_reservas_no_servidor(
+        tmp_path,
+        [
+            (
+                "TAR-101",
+                {"tipo": "intencao", "chave": "tarefa-TAR-101", "expira_em": futuro},
+            ),
+            (
+                "TAR-102",
+                {"tipo": "intencao", "chave": "tarefa-TAR-102", "expira_em": passado},
+            ),
+        ],
+    )
+    executar_real = fila.reservar.executar
+    comandos = []
+
+    def medir(comando, **opcoes):
+        comandos.append(comando)
+        return executar_real(comando, **opcoes)
+
+    monkeypatch.setattr(fila.reservar, "executar", medir)
+    assert fila.reservas_no_servidor(repo) == {"TAR-101"}
+    assert [comando[1] for comando in comandos] == [
+        "ls-remote",
+        "fetch",
+        "log",
+        "ls-remote",
+    ]
+
+    vazio = tmp_path / "vazio.git"
+    _git("init", "--bare", str(vazio), cwd=tmp_path)
+    repo_vazio = tmp_path / "repo-vazio"
+    repo_vazio.mkdir()
+    _git("init", cwd=repo_vazio)
+    _git("remote", "add", "origin", str(vazio), cwd=repo_vazio)
+    assert fila.reservas_no_servidor(repo_vazio) == set()
+
+
+def test_reservas_no_servidor_em_lote_recusa_comprovante_invalido(tmp_path):
+    repo = _repo_com_reservas_no_servidor(
+        tmp_path,
+        [
+            (
+                "TAR-201",
+                {
+                    "tipo": "outro",
+                    "chave": "tarefa-TAR-201",
+                    "expira_em": "2099-01-01T00:00:00+00:00",
+                },
+            ),
+        ],
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="reserva de tarefa incompatível"):
+        fila.reservas_no_servidor(repo)
+
+
+@pytest.mark.parametrize(
+    "inventario,log,comandos_esperados",
+    [
+        ("a" * 40 + " refs/reservas/tarefa-TAR-301", "", ["ls-remote"]),
+        (
+            "a" * 40 + chr(9) + "refs/reservas/tarefa-TAR-302",
+            "a" * 40
+            + chr(0)
+            + json.dumps(
+                {
+                    "tipo": "intencao",
+                    "chave": "tarefa-TAR-302",
+                    "expira_em": "2099-01-01T00:00:00+00:00",
+                }
+            )
+            + chr(0)
+            + chr(10)
+            + "LIXO",
+            ["ls-remote", "fetch", "log"],
+        ),
+    ],
+)
+def test_reservas_no_servidor_em_lote_recusa_linhas_incompletas(
+    tmp_path, monkeypatch, inventario, log, comandos_esperados
+):
+    executar_real = subprocess.run
+    comandos = []
+
+    def executar_git(comando, **opcoes):
+        if comando and comando[0] == "git":
+            comandos.append(comando)
+            stdout = (
+                inventario
+                if comando[1] == "ls-remote"
+                else log if comando[1] == "log" else ""
+            )
+            return subprocess.CompletedProcess(comando, 0, stdout=stdout, stderr="")
+        return executar_real(comando, **opcoes)
+
+    monkeypatch.setattr(subprocess, "run", executar_git)
+    with pytest.raises(ErroDeInstrumentacao, match="resposta da reserva inválida"):
+        fila.reservas_no_servidor(tmp_path)
+    assert [comando[1] for comando in comandos] == comandos_esperados
+
+
+@pytest.mark.parametrize("mudanca", ["sha", "removida", "adicionada"])
+def test_reservas_no_servidor_em_lote_falha_fechado_se_inventario_muda(
+    tmp_path, monkeypatch, mudanca
+):
+    sha = "a" * 40
+    sha_novo = "b" * 40
+    ref = "refs/reservas/tarefa-TAR-401"
+    linha = f"{sha}\t{ref}"
+    inventario_final = {
+        "sha": f"{sha_novo}\t{ref}",
+        "removida": "",
+        "adicionada": f"{sha}\t{ref}",
+    }[mudanca]
+    inventario_inicial = "" if mudanca == "adicionada" else linha
+    corpo = (
+        sha
+        + '\x00{"tipo":"intencao","chave":"tarefa-TAR-401","expira_em":"2099-01-01T00:00:00+00:00"}\x00\n'
+    )
+    consultas = 0
+    comandos = []
+
+    def executar_git(comando, **opcoes):
+        nonlocal consultas
+        if comando and comando[0] == "git":
+            operacao = comando[1]
+            comandos.append(operacao)
+            if operacao == "ls-remote":
+                consultas += 1
+                saida = inventario_inicial if consultas == 1 else inventario_final
+            elif operacao == "log":
+                saida = corpo
+            else:
+                saida = ""
+            return subprocess.CompletedProcess(comando, 0, stdout=saida, stderr="")
+        raise AssertionError(f"subprocesso inesperado: {comando}")
+
+    monkeypatch.setattr(subprocess, "run", executar_git)
+    with pytest.raises(ErroDeInstrumentacao, match="mudou durante a leitura"):
+        fila.reservas_no_servidor(tmp_path)
+    assert comandos[-1] == "ls-remote"
+    assert consultas == 2
+
+
+def test_reservas_no_servidor_em_lote_ve_ref_nova_depois_de_inventario_vazio(
+    tmp_path, monkeypatch
+):
+    corpo = "a" * 40 + "\trefs/reservas/tarefa-TAR-402"
+    consultas = 0
+
+    def executar_git(comando, **opcoes):
+        nonlocal consultas
+        if comando and comando[0] == "git" and comando[1] == "ls-remote":
+            consultas += 1
+            stdout = "" if consultas == 1 else corpo
+            return subprocess.CompletedProcess(comando, 0, stdout=stdout, stderr="")
+        raise AssertionError(f"subprocesso inesperado: {comando}")
+
+    monkeypatch.setattr(subprocess, "run", executar_git)
+    with pytest.raises(ErroDeInstrumentacao, match="mudou durante a leitura"):
+        fila.reservas_no_servidor(tmp_path)
+    assert consultas == 2
+
 def test_reserva_viva_no_servidor_conta_como_reivindicada(tmp_path):
     e = estados_de(tmp_path, [tarefa()], reservas={"TAR-001"})
     assert e["TAR-001"]["estado"] == fila.REIVINDICADA
