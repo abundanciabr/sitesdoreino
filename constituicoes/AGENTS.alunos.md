@@ -38,4 +38,4 @@ de formação, comunidade, CRM), a integração obedece à lei da ponte:
 `make ci` verde · teste de evento duplicado/concorrente verde · diff no escopo.
 
 ## Ritos
-RITOS.md §1, §2.
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2).

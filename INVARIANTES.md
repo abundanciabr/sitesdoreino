@@ -1756,7 +1756,7 @@ quem for mexer no ruleset: `armadilhas/126-ruleset-de-main-que-trava-todo-merge.
 GitHub e não há outra forma disponível. Não recomende "assine o Pro" — essa
 porta está fechada. Ver ARMADILHAS-OPERACAO.md §1 H3.)
 
-Os degraus grátis da Escada da Imposição (RITOS.md §2), em ordem de força:
+Os degraus grátis da Escada da Imposição (CAMINHO-DOURADO.md, “Integrar, publicar e aceitar”), em ordem de força:
 
 1. `ci/mergear.py` — recusa mergear PR com check vermelho quando o merge sai
    do terminal. Não vê o botão do site. Desde 22/08/2026 é o caminho único

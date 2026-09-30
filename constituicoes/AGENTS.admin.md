@@ -77,8 +77,8 @@ completo, com o mapa das seções por fase: `docs/decisoes/PLANO-AREA-ADMIN.md`.
 com) · diff no escopo.
 
 ## Ritos
-RITOS.md §1, §2. Operação de métrica nova numa célula de contrato congelado é
-Rito de Contrato (§3) — dois PRs e sessão com o mantenedor, nunca decisão
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2). Operação de métrica nova numa célula de contrato congelado é
+Rito de Contrato ([Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3)) — dois PRs e sessão com o mantenedor, nunca decisão
 local. Escrita fora do próprio banco, login próprio, domínio separado e
 qualquer coisa que toque vendas só se re-decidem em sessão de arquitetura com o
 mantenedor presente, como foi a de 25/08/2026.

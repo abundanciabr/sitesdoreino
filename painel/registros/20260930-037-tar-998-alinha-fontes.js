@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-037-tar-998-alinha-fontes",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "TAR-998 alinha fontes",
+  detalhe: "15 fontes atualizadas após sincronizar a main; os testes focais validam o escopo TAR-998.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2367. Validação local: árvore e832b129cbfabaaae7d9c442e5ed02480dae2d0c; commit 44a41a3874e058f6495e7c606043f2f7cd7cd90e; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-998",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
