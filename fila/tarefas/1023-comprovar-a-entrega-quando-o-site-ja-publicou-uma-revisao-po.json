@@ -1,0 +1,20 @@
+{
+  "arquivo": "1023-comprovar-a-entrega-quando-o-site-ja-publicou-uma-revisao-po",
+  "id": "TAR-1023",
+  "titulo": "Comprovar a entrega quando o site ja publicou uma revisao posterior",
+  "toca": [
+    "ci",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Aceite preserva submissao original e prova revisao realmente verificada em producao, ancestralidade e publicacao oficial; imagem e dados distintos nao se confundem; negativar SHA sem vinculo, run divergente, apenas saude e jornada ausente",
+  "despacho": "Correcao causal PME03 TAR958/962. Responsavel painel962, escrita ci/fila.py ci/tests/test_fila.py e somente testes/admin consumidores indispensaveis se identificados antes de editar. ci/fila.py depende de transferencia apos diagnosticos1010; antes disso proposta e testes em TEMP. Manter compatibilidade dos aceites antigos e validacao por fonte independente; nao aceitar revisao posterior por mera declaracao. Reusar estado_da_entrega e protocolos de publicacao existentes, nenhum validador paralelo. Preservar PR/submissao/merge originais e permitir prova de jornada na revisao posterior realmente publicada e descendente, com dados publicados identificados separadamente da imagem. Imagem e digest exigidos para jornada de produto; comandos em repositorio-integrado usam prova pertinente. Registro de aceite introduzido depois do merge, hash canonico, fontes GitHub verificadas, sem falsificar observacao ou retrodatacao. Testes positivos e negativos, revisao independente e prova no painel para TAR962. Rito oficial sem PR so administrativo. Nao alterar codigo financeiro ou dados de negocio. Mandato integral do mantenedor nesta sessao.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

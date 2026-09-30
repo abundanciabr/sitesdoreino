@@ -1214,12 +1214,42 @@ def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
     estado = prova.get("publicacao")
     if estado not in ("PUBLICADO", "SEM_PUBLICACAO"):
         problemas.append("aceite_entrega exige o resultado da publicação comprovada")
-    ambiente = "producao" if estado == "PUBLICADO" else "repositorio-integrado"
-    problemas.extend(
-        problemas_do_aceite_funcional(
-            prova.get("aceite_funcional"), prova.get("integracao"), ambiente
-        )
-    )
+    funcional = prova.get("aceite_funcional")
+    posterior = (estado == "PUBLICADO" and isinstance(funcional, dict)
+                 and funcional.get("ambiente") == "producao"
+                 and funcional.get("revisao") != prova.get("integracao"))
+    tecnico = (estado == "PUBLICADO" and isinstance(funcional, dict)
+               and funcional.get("ambiente") == "repositorio-integrado"
+               and funcional.get("revisao") == prova.get("integracao"))
+    ambiente = (None if tecnico else "producao") if estado == "PUBLICADO" else "repositorio-integrado"
+    problemas.extend(problemas_do_aceite_funcional(
+        funcional, None if posterior else prova.get("integracao"), ambiente
+    ))
+    if tecnico and (
+        not isinstance(funcional.get("comando"), str)
+        or not funcional["comando"].strip()
+        or funcional["comando"] not in str(funcional.get("evidencia") or "")
+        or not re.search(r"\b(?:PASS|passed)\b", str(funcional.get("evidencia") or ""))
+    ):
+        problemas.append("aceite técnico exige comando executado e resultado PASS na evidência")
+    if posterior:
+        efetiva = funcional.get("publicacao_efetiva")
+        if (not isinstance(efetiva, dict) or set(efetiva) != {
+            "run_imagem", "run_dados", "run_medicao", "revisao_dados"
+        } or not re.fullmatch(r"[0-9a-f]{40}", str(efetiva.get("revisao_dados") or ""))):
+            problemas.append("jornada posterior exige prova estruturada da imagem e dos dados")
+        else:
+            prefixo_runs = str(submissao["pr"]).split("/pull/")[0]
+            urls = [efetiva[c] for c in ("run_imagem", "run_dados", "run_medicao")]
+            if any(not re.fullmatch(re.escape(prefixo_runs) + r"/actions/runs/[1-9][0-9]*",
+                                    str(url or "")) for url in urls):
+                problemas.append("jornada posterior exige runs deste repositório")
+            if (not isinstance(prova.get("publicacoes"), list)
+                    or any(not isinstance(url, str) for url in prova["publicacoes"])
+                    or not set(urls) <= set(prova["publicacoes"])):
+                problemas.append("as três fontes efetivas devem constar nas publicações da entrega")
+    elif isinstance(funcional, dict) and funcional.get("publicacao_efetiva") is not None:
+        problemas.append("prova de revisão posterior não cabe no aceite da revisão integrada")
     if not RE_REGISTRO_DE_ACEITE.fullmatch(str(prova.get("registro") or "")):
         problemas.append("aceite_entrega exige o registro de aceite do livro")
     if not re.fullmatch(r"[0-9a-f]{64}", str(prova.get("registro_sha256") or "")):
@@ -2002,7 +2032,21 @@ def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -
             "o registro de aceite não cita a prova da publicação correspondente"
         )
 
-    problemas = problemas_do_aceite_funcional(registro.get("aceite_funcional"))
+    funcional = registro.get("aceite_funcional")
+    efetiva = funcional.get("publicacao_efetiva") if isinstance(funcional, dict) else None
+    if efetiva is not None and (
+        not isinstance(efetiva, dict)
+        or any(efetiva.get(campo) not in citadas for campo in
+               ("run_imagem", "run_dados", "run_medicao"))
+    ):
+        raise RecusaDeReconciliacao("o registro não cita as fontes da imagem, dados e medição")
+    if isinstance(efetiva, dict) and (
+        str(funcional.get("revisao") or "") not in str(funcional.get("evidencia") or "")
+        or str(efetiva.get("revisao_dados") or "") not in str(funcional.get("evidencia") or "")
+        or str(efetiva.get("run_dados") or "") not in str(funcional.get("evidencia") or "")
+    ):
+        raise RecusaDeReconciliacao("a jornada não identifica a imagem e a origem dos dados vistos")
+    problemas = problemas_do_aceite_funcional(funcional)
     if problemas:
         raise RecusaDeReconciliacao(
             "; ".join(problemas) + "; registre a jornada ou comando executado, "
@@ -2023,6 +2067,170 @@ def urls_da_publicacao_comprovada(estado: dict, pr: str) -> list[str]:
             if isinstance(item, dict) and item.get("url")
         }
     )
+
+
+def provar_publicacao_efetiva(
+    raiz: Path, pr: str, integracao: str, funcional: dict
+) -> list[str]:
+    """Confere a imagem e os dados vistos após um merge, sem conceder aceite."""
+    prova = funcional.get("publicacao_efetiva")
+    if not isinstance(prova, dict) or set(prova) != {
+        "run_imagem", "run_dados", "run_medicao", "revisao_dados"
+    }:
+        raise RecusaDeReconciliacao("publicação efetiva exige imagem, dados e medição separados")
+    imagem_sha = funcional.get("revisao")
+    dados_sha = prova["revisao_dados"]
+    for sha in (integracao, imagem_sha, dados_sha):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(sha or "")):
+            raise RecusaDeReconciliacao("publicação efetiva exige revisões completas")
+
+    def ancestral(antes: str, depois: str) -> None:
+        comparacao = estado_da_entrega._api(raiz, f"compare/{antes}...{depois}")
+        if not isinstance(comparacao, dict) or comparacao.get("status") not in {"ahead", "identical"}:
+            raise RecusaDeReconciliacao("a revisão observada não descende da entrega integrada")
+
+    ancestral(integracao, imagem_sha)
+    ancestral(integracao, dados_sha)
+    prefixo = pr.split("/pull/")[0]
+
+    def run(campo: str, workflow: str, evento: str, sha: str, jobs: set[str]) -> dict:
+        url = prova[campo]
+        encontrado = re.fullmatch(re.escape(prefixo) + r"/actions/runs/([1-9][0-9]*)", str(url or ""))
+        if not encontrado:
+            raise RecusaDeReconciliacao(f"{campo} não é um run deste repositório")
+        numero = int(encontrado.group(1))
+        medido = estado_da_entrega._api(raiz, f"actions/runs/{numero}")
+        if (not isinstance(medido, dict)
+                or medido.get("id") != numero or medido.get("html_url") != url
+                or medido.get("path") != workflow or medido.get("event") != evento
+                or medido.get("head_branch") != "main" or medido.get("head_sha") != sha
+                or medido.get("status") != "completed" or medido.get("conclusion") != "success"):
+            raise RecusaDeReconciliacao(f"{campo} diverge da revisão ou do workflow oficial")
+        lidos = estado_da_entrega.jobs_por_nome_com_prova(
+            estado_da_entrega.consultar_jobs(raiz, medido)
+        )
+        if any(lidos.get(nome, {}).get("status") != "completed"
+               or lidos[nome].get("conclusion") != "success" for nome in jobs):
+            raise RecusaDeReconciliacao(f"{campo} não concluiu os jobs exigidos")
+        return medido
+
+    imagem = run("run_imagem", ".github/workflows/deploy-celula.yml", "push",
+                 imagem_sha, {"detectar", "portao-de-deploy", "deploy (admin)"})
+    dados_run = run("run_dados", ".github/workflows/deploy-celula.yml", "push",
+                    dados_sha, {"detectar", "portao-de-deploy", "publicar-dados-admin"})
+    numero_dados = dados_run.get("run_number")
+    if type(numero_dados) is not int or numero_dados < 1:
+        raise RecusaDeReconciliacao("run_dados não informa o número da publicação")
+    log_dados = executar(
+        ["gh", "run", "view", str(dados_run["id"]), "--attempt",
+         str(dados_run["run_attempt"]), "--log"], cwd=raiz,
+        descricao="ler a publicação oficial dos dados da fila", exigir_stdout=True,
+    ).stdout
+    sentinela = (
+        f"ADMIN-DADOS-PUBLICADOS: tipo=fila sha={dados_sha} run={numero_dados} "
+        f"ativo=/opt/plataforma/admin-dados/fila_{numero_dados}_{dados_sha}"
+    )
+    publicadas = [linha.strip() for linha in re.findall(
+        r"^publicar-dados-admin\tPublicar dados da fila na VPS\t\S+ (ADMIN-DADOS-[A-Z-]+:.*)$",
+        log_dados, re.M,
+    )]
+    if publicadas != [sentinela]:
+        raise RecusaDeReconciliacao(
+            "run_dados não confirma ADMIN-DADOS-PUBLICADOS da fila e revisão indicadas"
+        )
+    medicao_url = prova["run_medicao"]
+    medicao_id = re.fullmatch(re.escape(prefixo) + r"/actions/runs/([1-9][0-9]*)", str(medicao_url or ""))
+    if not medicao_id:
+        raise RecusaDeReconciliacao("run_medicao não é um run deste repositório")
+    medicao = estado_da_entrega._api(raiz, f"actions/runs/{int(medicao_id.group(1))}")
+    if not isinstance(medicao, dict) or not re.fullmatch(r"[0-9a-f]{40}", str(medicao.get("head_sha") or "")):
+        raise RecusaDeReconciliacao("run_medicao não informou a revisão da operação")
+    ancestral(imagem_sha, medicao["head_sha"])
+    ancestral(dados_sha, medicao["head_sha"])
+    run("run_medicao", ".github/workflows/operacoes-vps.yml", "workflow_dispatch",
+        medicao["head_sha"], {"medir"})
+    try:
+        medida_em = datetime.fromisoformat(medicao["created_at"].replace("Z", "+00:00"))
+        publicada_em = datetime.fromisoformat(imagem["updated_at"].replace("Z", "+00:00"))
+        dados_em = datetime.fromisoformat(dados_run["updated_at"].replace("Z", "+00:00"))
+        if any(instante.tzinfo is None for instante in (medida_em, publicada_em, dados_em)):
+            raise ValueError("instante sem fuso")
+    except (KeyError, TypeError, ValueError, AttributeError):
+        raise RecusaDeReconciliacao("runs não informam instantes confiáveis da publicação e medição") from None
+    if medida_em < max(publicada_em, dados_em):
+        raise RecusaDeReconciliacao("a medição da VPS antecede a publicação da imagem ou dos dados")
+
+    log = executar(
+        ["gh", "run", "view", str(medicao["id"]), "--attempt",
+         str(medicao["run_attempt"]), "--log"], cwd=raiz,
+        descricao="ler a medição oficial da imagem", exigir_stdout=True,
+    ).stdout
+    linhas = re.findall(
+        r"^medir\tConferir evidência e publicar resumo\t\S+ (\{.*\})$", log, re.M
+    )
+    try:
+        medidas = [json.loads(linha) for linha in linhas]
+    except json.JSONDecodeError as erro:
+        raise ErroDeInstrumentacao("saída da medição VPS ilegível", str(erro)) from erro
+    if len(medidas) != 1 or not isinstance(medidas[0], dict) or medidas[0].get("resultado") != "PASS":
+        raise RecusaDeReconciliacao("a medição oficial não comprova a imagem admin")
+    from operacoes_vps import Falha, conferir_medicao
+    operacao = medidas[0].get("operacao")
+    origem = medidas[0].get("medicao")
+    if operacao == "estado-servico" and medidas[0].get("servico") == "admin":
+        dados_admin = origem
+    elif operacao == "estado-infra" and medidas[0].get("servico") == "plataforma":
+        if not isinstance(origem, dict):
+            raise RecusaDeReconciliacao("estado-infra não contém medição estruturada")
+        servicos = origem.get("servicos")
+        dados_admin = servicos.get("admin") if isinstance(servicos, dict) else None
+        imagem_admin = origem.get("imagem_admin")
+        if (not isinstance(imagem_admin, dict) or not isinstance(dados_admin, dict)
+                or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(dados_admin.get("imagem") or ""))
+                or imagem_admin.get("id") != dados_admin.get("imagem")
+                or imagem_admin.get("container_image") != dados_admin.get("imagem")
+                or origem.get("borda_http") != 200
+                or not isinstance(imagem_admin.get("repo_digests"), list)
+                or "ghcr.io/abundanciabr/plataforma-admin@" + dados_admin["imagem"]
+                not in imagem_admin["repo_digests"]):
+            raise RecusaDeReconciliacao("estado-infra não vincula admin à imagem em uso")
+    else:
+        raise RecusaDeReconciliacao("a operação oficial não mediu a imagem admin")
+    try:
+        dados = conferir_medicao("estado-servico", dados_admin)
+    except (Falha, KeyError, TypeError):
+        raise RecusaDeReconciliacao("a medição da imagem tem formato inválido") from None
+    if dados["estado"] != "running" or dados["saude"] != "healthy":
+        raise RecusaDeReconciliacao("a imagem observada não está saudável")
+
+    referencia = f"ghcr.io/abundanciabr/plataforma-admin:{imagem_sha}"
+    manifesto = executar(
+        ["docker", "buildx", "imagetools", "inspect", referencia,
+         "--format", "{{json .Manifest}}"], cwd=raiz,
+        descricao="conferir manifesto da imagem publicada", exigir_stdout=True,
+    ).stdout
+    try:
+        digest = json.loads(manifesto)["digest"]
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+            raise ValueError("digest inválido")
+    except (ValueError, TypeError, KeyError) as erro:
+        raise ErroDeInstrumentacao("manifesto da imagem ilegível", str(erro)) from erro
+    identidades = {digest}
+    if dados["imagem"] not in identidades:
+        bruto = executar(
+            ["docker", "buildx", "imagetools", "inspect",
+             f"ghcr.io/abundanciabr/plataforma-admin@{digest}", "--raw"], cwd=raiz,
+            descricao="conferir conteúdo do manifesto publicado", exigir_stdout=True,
+        ).stdout
+        try:
+            conteudo = json.loads(bruto)
+            identidades.add(conteudo.get("config", {}).get("digest"))
+            identidades.update(item.get("digest") for item in conteudo.get("manifests", []))
+        except (ValueError, TypeError, AttributeError) as erro:
+            raise ErroDeInstrumentacao("conteúdo do manifesto ilegível", str(erro)) from erro
+    if dados["imagem"] not in identidades:
+        raise RecusaDeReconciliacao("a imagem da VPS diverge do tag publicado no GHCR")
+    return [prova[c] for c in ("run_imagem", "run_dados", "run_medicao")]
 
 
 def _ler_registro(raiz: Path, caminho: str) -> dict:
@@ -2161,18 +2369,160 @@ def provar_reconciliacao(
             )
         linhagem = "linhagem comprovada"
 
-    provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
-    registro = carregar_aceite(raiz, aceite_registro, merge, provas)
+    provas_originais = urls_da_publicacao_comprovada(estado, submissao["pr"])
+    registro = carregar_aceite(raiz, aceite_registro, merge, provas_originais)
     if registro.get("tarefa") != submissao["tarefa"]:
         raise RecusaDeReconciliacao(
             "o registro de aceite funcional pertence a outra tarefa ou não informa a TAR; "
             "registre a jornada desta tarefa antes de reconciliar"
         )
-    ambiente = (
-        "producao" if estado["estado"] == "PUBLICADO" else "repositorio-integrado"
-    )
+    funcional = registro.get("aceite_funcional")
+    ambiente = "producao" if estado["estado"] == "PUBLICADO" else "repositorio-integrado"
+    posterior = (estado["estado"] == "PUBLICADO" and isinstance(funcional, dict)
+                 and funcional.get("ambiente") == "producao"
+                 and funcional.get("revisao") != merge)
+    tecnico = (estado["estado"] == "PUBLICADO" and isinstance(funcional, dict)
+               and funcional.get("ambiente") == "repositorio-integrado"
+               and funcional.get("revisao") == merge)
+    provas = provas_originais
+    if posterior:
+        if not isinstance(funcional.get("publicacao_efetiva"), dict):
+            raise RecusaDeReconciliacao(
+                "aceite funcional posterior exige prova da imagem, dados e medição"
+            )
+        provas = list(dict.fromkeys(provas_originais + provar_publicacao_efetiva(
+            raiz, submissao["pr"], merge, funcional
+        )))
+        provar_conteudo_do_aceite(registro, provas)
+    elif isinstance(funcional, dict) and funcional.get("publicacao_efetiva") is not None:
+        raise RecusaDeReconciliacao(
+            "prova de revisão posterior não cabe no aceite da revisão integrada"
+        )
+    elif tecnico:
+        if (not isinstance(funcional.get("comando"), str) or not funcional["comando"].strip()
+                or funcional["comando"] not in str(funcional.get("evidencia") or "")
+                or not re.search(r"\b(?:PASS|passed)\b", str(funcional.get("evidencia") or ""))):
+            raise RecusaDeReconciliacao(
+                "aceite funcional técnico exige comando executado e resultado PASS"
+            )
+        arquivos = [item.get("path") for item in pr.get("files", [])]
+        artefato_do_rito = re.compile(
+            r"(?:fila/(?:contratos|eventos|tarefas)/[^/]+\.json|painel/registros/[^/]+\.js)\Z"
+        )
+        if not arquivos or any(
+            not isinstance(caminho, str)
+            or not (caminho.startswith("ci/") or artefato_do_rito.fullmatch(caminho))
+            for caminho in arquivos
+        ):
+            raise RecusaDeReconciliacao(
+                "aceite funcional no repositório exige código em ci/ e artefatos do rito"
+            )
+        metadados_pr = estado_da_entrega._api(raiz, f"pulls/{numero}")
+        if (not isinstance(metadados_pr, dict)
+                or type(metadados_pr.get("changed_files")) is not int
+                or metadados_pr["changed_files"] != len(arquivos)):
+            raise RecusaDeReconciliacao(
+                "aceite funcional técnico exige a lista completa dos arquivos do PR"
+            )
+        artefatos = [caminho for caminho in arquivos if not caminho.startswith("ci/")]
+        if artefatos:
+            arquivos_api = estado_da_entrega._api(raiz, f"pulls/{numero}/files", paginas=True)
+            if (not isinstance(arquivos_api, list)
+                    or len(arquivos_api) != len(arquivos)
+                    or {a.get("filename") for a in arquivos_api if isinstance(a, dict)} != set(arquivos)):
+                raise RecusaDeReconciliacao(
+                    "aceite técnico exige inventário completo dos artefatos do rito"
+                )
+            tarefa = submissao["tarefa"]
+            numero_tarefa = tarefa.removeprefix("TAR-")
+            tarefas = [c for c in artefatos if c.startswith(f"fila/tarefas/{numero_tarefa}-")]
+            if len(tarefas) != 1:
+                raise RecusaDeReconciliacao("artefatos do rito exigem a tarefa correspondente")
+            slug_tarefa = Path(tarefas[0]).stem
+            submissao_vista = False
+            for arquivo in arquivos_api:
+                caminho = arquivo["filename"]
+                if caminho.startswith("ci/"):
+                    continue
+                if arquivo.get("status") != "added":
+                    raise RecusaDeReconciliacao("artefato do rito não pode alterar arquivo existente")
+                conteudo = _git_da_fila(
+                    raiz, "show", f"{merge}:{caminho}",
+                    para_que="conferir o artefato do rito na revisão integrada",
+                )
+                if caminho.startswith("painel/registros/"):
+                    inicio = "(function(){ (window.REGISTROS = window.REGISTROS || []).push({\n"
+                    fim = "\n}); })();"
+                    if not conteudo.startswith(inicio) or not conteudo.rstrip().endswith(fim):
+                        raise RecusaDeReconciliacao("registro do rito contém código fora do objeto literal")
+                    corpo = conteudo[len(inicio):len(conteudo.rstrip()) - len(fim)]
+                    registro_rito = {}
+                    for linha in corpo.splitlines():
+                        campo = re.fullmatch(r"  ([a-z_]+): (.+),?", linha)
+                        if not campo or campo[1] in registro_rito:
+                            raise RecusaDeReconciliacao("registro do rito não é um objeto literal simples")
+                        try:
+                            registro_rito[campo[1]] = json.loads(campo[2].removesuffix(","))
+                        except json.JSONDecodeError as erro:
+                            raise RecusaDeReconciliacao("registro do rito tem campo inválido") from erro
+                    if (registro_rito.get("arquivo") != Path(caminho).stem
+                            or registro_rito.get("tarefa") != tarefa
+                            or registro_rito.get("tipo") != "entrega"
+                            or registro_rito.get("gravidade") != "info"):
+                        raise RecusaDeReconciliacao("registro do rito não pertence à entrega técnica")
+                    script = (
+                        "const l=require('./painel/logica.js');"
+                        "const a=require('./painel/areas.json').areas;"
+                        "const r=JSON.parse(process.argv[1]);"
+                        "process.stdout.write(JSON.stringify(l.validarRegistros([r],a)));"
+                    )
+                    erros_registro = json.loads(executar(
+                        ["node", "-e", script, json.dumps(registro_rito, ensure_ascii=False)],
+                        cwd=raiz, descricao="validar objeto literal do registro",
+                        exigir_stdout=True,
+                    ).stdout)
+                    if not isinstance(erros_registro, list) or erros_registro:
+                        raise RecusaDeReconciliacao("registro do rito não passa no esquema do livro")
+                else:
+                    try:
+                        dado_rito = json.loads(conteudo)
+                    except json.JSONDecodeError as erro:
+                        raise RecusaDeReconciliacao("JSON do rito inválido") from erro
+                    if not isinstance(dado_rito, dict):
+                        raise RecusaDeReconciliacao("artefato do rito exige objeto JSON")
+                    if caminho.startswith("fila/tarefas/"):
+                        valido = (caminho == tarefas[0] and dado_rito.get("id") == tarefa
+                                  and dado_rito.get("arquivo") == slug_tarefa
+                                  and dado_rito.get("toca") == ["ci"])
+                    elif caminho.startswith("fila/eventos/"):
+                        tipo_evento = dado_rito.get("evento")
+                        valido = (f"-TAR-{numero_tarefa}-" in caminho
+                                  and dado_rito.get("tarefa") == tarefa
+                                  and dado_rito.get("arquivo") == Path(caminho).stem
+                                  and tipo_evento in {"explicada", "reivindicada", "contrato_execucao",
+                                                      "checkpoint", "submetida"}
+                                  and caminho.endswith(f"-{tipo_evento}.json")
+                                  and (tipo_evento != "submetida"
+                                       or not problemas_da_submissao(dado_rito)))
+                        if tipo_evento == "submetida" and valido:
+                            submissao_vista |= all(
+                                dado_rito.get(campo) == submissao[campo]
+                                for campo in ("pr", "revisao", "arvore")
+                            )
+                    else:
+                        valido = (caminho.startswith(f"fila/contratos/{slug_tarefa}")
+                                  and re.fullmatch(re.escape(slug_tarefa) + r"(?:-v[1-9][0-9]*)?\.json",
+                                                   Path(caminho).name)
+                                  and isinstance(dado_rito.get("objetivo"), str)
+                                  and isinstance(dado_rito.get("entregaveis"), list))
+                    if not valido:
+                        raise RecusaDeReconciliacao("artefato do rito pertence a outra tarefa")
+            if not submissao_vista:
+                raise RecusaDeReconciliacao("artefatos do rito não incluem a submissão atual")
+        provar_suite_no_head(raiz, head)
+        ambiente = "repositorio-integrado"
     problemas = problemas_do_aceite_funcional(
-        registro.get("aceite_funcional"), merge, ambiente
+        funcional, None if posterior else merge, ambiente
     )
     if problemas:
         raise RecusaDeReconciliacao(
