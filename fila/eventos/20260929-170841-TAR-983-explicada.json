@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-170841-TAR-983-explicada",
+  "tarefa": "TAR-983",
+  "evento": "explicada",
+  "quando": "2026-09-29T17:08:41.466327+00:00",
+  "quem": "Continuacao TAR972, mesma frente GOV; adendo TAR958; propriedade redistribuida pelo coordenador",
+  "o_que_e": "A alteracao nao pode escolher a propria regra nem fingir a aprovacao dessa regra.",
+  "o_que_muda": "A origem da prova fica protegida fora dos arquivos que estao sendo alterados.",
+  "exemplo": "Apagar uma verificacao no mesmo pacote nao pode tornar esse pacote aprovado.",
+  "importancia": 95
+}
