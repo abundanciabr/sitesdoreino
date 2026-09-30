@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260930-014615-TAR-983-checkpoint",
+  "tarefa": "TAR-983",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T01:46:15.590086+00:00",
+  "quem": "codex/ci/pme-governanca-app",
+  "plano": "V5 integrada; provas App pendentes antes de pin do ruleset",
+  "ultimo_avanco": "PR 2373 integrado em d5b3287a; suite focal 48 PASS; pouso 36655768255 SUCCESS; emissor App check failure 109700699266 no SHA 0a0955d6; fonte extraida do mesmo SHA passou 9/9 localmente",
+  "proxima_acao": "Expor diagnostico limitado do subprocesso padrao_de_trabalho na falha 2383; reproduzir positivo comum e negativos distintos em PRs reais; somente raiz avalia pin com conjunto completo",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_autoridade_das_fontes.py ci/tests/test_provisionar_coordenacao.py ci/tests/test_mapa_de_execucao.py::test_todos_os_codeowners_vigentes_exigem_mandato -q --tb=short --maxfail=1: 48 passed",
+    "python -I ci/padrao_de_trabalho.py --candidato extracao-das-oito-fontes-do-commit-0a0955d6: RESULTADO PASS, 9 itens",
+    "gh run view 36656072104: analisar failure, emitir failure App nativo"
+  ]
+}
