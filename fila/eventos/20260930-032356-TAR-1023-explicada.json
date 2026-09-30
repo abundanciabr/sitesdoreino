@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-032356-TAR-1023-explicada",
+  "tarefa": "TAR-1023",
+  "evento": "explicada",
+  "quando": "2026-09-30T03:23:56.145740+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "O site pode avancar antes da conferencia e a fila recusa o aceite porque exige a revisao exata de uma entrega antiga.",
+  "o_que_muda": "A equipe comprova a versao que realmente testou e a sua ligacao com a entrega, sem registrar uma verificacao que nao aconteceu.",
+  "exemplo": "Uma melhoria permanece no site apos outra atualizacao; sua conferencia deve apontar a versao atual, preservando a origem.",
+  "importancia": 100
+}

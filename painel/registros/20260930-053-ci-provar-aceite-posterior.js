@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-053-ci-provar-aceite-posterior",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: provar aceite posterior",
+  detalhe: "O aceite liga a entrega à revisão publicada e exige provas independentes de imagem, dados e jornada. A TAR-962 continua sem aceite funcional.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2390. Validação local: árvore 0cd998ce4cdfab21ee4036cf6c02d77a6e7ca4cd; commit 66f514b672f269ce587e3537d5e51c047f12a469; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1023",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
