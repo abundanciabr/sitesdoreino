@@ -1,40 +1,11 @@
 #!/usr/bin/env python3
-"""VIGIA DO CADEADO — o certificado de cada site, medido DE FORA, todo dia.
+"""Mede diariamente o certificado TLS entregue ao visitante, com SNI.
 
-POR QUE ESTE ARQUIVO EXISTE
----------------------------
-A renovação do certificado já é automática: o Traefik pede um novo ~30 dias
-antes de vencer (`certResolver: le`), e o `acme.json` mora num volume nomeado
-(`letsencrypt:` em `infra/docker-compose.yml`) que sobrevive a toda republicação
-— os dois pré-requisitos estão certos.
-
-O que NÃO existia era alguém conferindo se a renovação ACONTECEU. E é aí que
-mora o perigo, porque a `armadilhas/018` mediu o modo de falha: **se o ACME
-falhar, o Traefik serve o `TRAEFIK DEFAULT CERT` indefinidamente e não avisa
-ninguém.** O site cai na tela vermelha `NET::ERR_CERT_AUTHORITY_INVALID` e a
-primeira pessoa a descobrir é um visitante — ou o mantenedor, por acaso, como
-em 29/08/2026 (`armadilhas/177`).
-
-"Renova sozinho" sem ninguém medindo é GARANTIA SEM MECANISMO, um dos oito
-padrões da `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Este arquivo é o mecanismo.
-
-PROVA DE FORA
--------------
-A medição é feita pela internet, do runner do Actions — não por dentro da VPS.
-É a mesma doutrina do smoke do `deploy-infra`: o que vale é o que o VISITANTE
-recebe. Um certificado perfeito no disco do servidor não serve de nada se o
-handshake entrega outra coisa (e entregar outra coisa é exatamente a falha da
-018, que só se enxerga por SNI, de fora).
-
-FAIL-CLOSED (INV-CI01)
-----------------------
-"Não consegui medir" NUNCA vira "está limpo". Host que não responde reprova,
-lista de hosts vazia reprova, `notAfter` ilegível reprova. O modo de falha
-deste arquivo é gritar demais, nunca calar.
-
-O oposto disso também está guardado: uma queda de rede de um segundo não pode
-abrir chamado. Por isso `medir()` insiste algumas vezes, com pausa, ANTES de
-declarar que não conseguiu — espera com limite, nunca laço aberto.
+A renovação automática do Traefik não garante que a emissão tenha ocorrido.
+O vigia verifica confiança e validade e identifica TRAEFIK DEFAULT CERT.
+O volume letsencrypt preserva acme.json entre publicações.
+Falha de rede recebe tentativas limitadas; certificado recusado reprova de
+imediato. Fonte ilegível, lista vazia e validade desconhecida também reprovam.
 """
 
 from __future__ import annotations
@@ -62,7 +33,7 @@ ROTAS = RAIZ / "infra" / "traefik" / "dynamic" / "plataforma.yml"
 # ninguém ser acordado. Se ainda faltam menos de 21 dias, a renovação teve mais
 # de uma semana e NÃO aconteceu: isso não é "ainda dá tempo", é defeito.
 # Sobram 21 dias de folga para consertar com calma — mais do que o suficiente,
-# já que o conserto é um merge que recria o container (armadilhas/018).
+# a publicação de infraestrutura permite recarregar o Traefik.
 DIAS_PARA_GRITAR = 21
 
 # O crachá de fábrica do Traefik. Não é um parser de X.509: é uma checagem
@@ -115,7 +86,7 @@ def a_vigiar(registro: dict, texto_das_rotas: str) -> tuple[list[str], list[str]
     Vigiamos: todo site ativo, MAIS todo `www.` que tenha router próprio — é o
     caso do `www.meshcraft.top`, que não está (e não deve estar) no sites.json,
     porque o smoke do deploy-infra exige 200 na raiz de todo host listado e a
-    raiz do `www.` responde 301 de propósito (`armadilhas/177`).
+    raiz do `www.` responde 301 de propósito.
 
     Dispensamos, POR ESCRITO e visível na saída: host de router que não é `www.`
     de um site nosso — hoje, só o domínio de operações dos webhooks, que está no
@@ -219,9 +190,9 @@ def julgar(
         return [
             f"{host}: está servindo o `TRAEFIK DEFAULT CERT` — o crachá de fábrica, "
             "que navegador nenhum aceita. O visitante vê a tela vermelha "
-            "NET::ERR_CERT_AUTHORITY_INVALID. Causa e conserto: armadilhas/018 "
-            "(a emissão só é re-tentada ao RECARREGAR a config; qualquer diff em "
-            "infra/traefik/** faz o deploy-infra recriar o container)."
+            "NET::ERR_CERT_AUTHORITY_INVALID. Confira a emissão ACME, o DNS e os "
+            "logs do Traefik; recarregue a configuração pela publicação de "
+            "infraestrutura depois de corrigir a causa."
         ]
     if not medicao.confia:
         return [f"{host}: certificado não confiável — {medicao.erro}"]
@@ -261,16 +232,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=10.0)
     args = parser.parse_args(argv)
 
-    print("VIGIA DO CADEADO — [INV-CI01] fail-closed · prova de fora\n")
+    print("VIGIA DO CADEADO — medição externa · prova de fora\n")
 
     if args.host:
         hosts, dispensados = list(args.host), []
     else:
-        registro = json.loads(SITES.read_text(encoding="utf-8"))
-        hosts, dispensados = a_vigiar(registro, ROTAS.read_text(encoding="utf-8"))
+        try:
+            registro = json.loads(SITES.read_text(encoding="utf-8"))
+            hosts, dispensados = a_vigiar(registro, ROTAS.read_text(encoding="utf-8"))
+        except (OSError, ValueError, AssertionError) as erro:
+            print(f"RESULTADO ERROR — não consegui montar lista de hosts: {erro}")
+            return 2
 
     # Falso-verde de instrumentação: sem host, não há o que medir — e "medi zero
-    # hosts, todos passaram" é a mentira que o INV-CI01 existe para matar.
+    # hosts, todos passaram" seria uma aprovação sem medição.
     if not hosts:
         print("  hosts a vigiar     ERROR  a lista saiu VAZIA — nada foi medido")
         print("\nRESULTADO  ERROR")

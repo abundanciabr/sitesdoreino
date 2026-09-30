@@ -1,40 +1,3 @@
-# =============================================================================
-# DEPLOY DE INFRA — merge na main tocando infra/docker-compose.yml,
-# infra/traefik/** ou infra/sites.json ⇒ sincroniza esses arquivos para
-# /opt/plataforma/ na VPS e aplica — fail-closed: valida ANTES de trocar,
-# backup datado ANTES de sobrescrever, verificação DEPOIS de aplicar, e
-# `docker compose ps` impresso SEMPRE como evidência do run.
-#
-# O QUE RODA NA VPS mora em `infra/sincronizar-infra-na-vps.sh`, e não aqui
-# dentro, desde 30/08/2026 (TAR-024): a sincronização passou a ser TENTADA MAIS
-# DE UMA VEZ, e repetir ~120 linhas de shell três vezes dentro deste YAML seria
-# a duplicação que esta casa proíbe. É a mesma mudança que o `deploy-celula`
-# fez em 28/08/2026, pelo mesmo motivo.
-#
-# SITES (R11 mecanizada): infra/sites.json é o registro declarativo dos sites;
-# o passo 5 do script converge o catálogo da PRODUÇÃO a ele (via manage.py
-# dentro do container do catalogo) e prova cada host com smoke na raiz. Domínio
-# novo = PR neste arquivo + DNS no Cloudflare — nenhum comando manual na VPS.
-#
-# Mata o H11 (ARMADILHAS-OPERACAO.md §1): até este workflow existir, o compose e o
-# traefik só chegavam à VPS copiados à mão — todo PR de infra mergeado ficava
-# sem efeito real em produção, e o deploy-celula (que descobre os serviços
-# auxiliares lendo o compose DA VPS) ficava silenciosamente incompleto.
-#
-# O QUE ESTE WORKFLOW JAMAIS TOCA: infra/env/ e /opt/plataforma/env/.
-# Os .env reais são segredos escritos à mão pelo mantenedor (INV-P8); este
-# workflow não os lê, não os escreve e não os lista — nenhum comando de cópia
-# aqui menciona env/. Os scripts de provisionamento também não viajam: são de
-# execução única, pelo humano, como root (infra/provisionamento-vps.sh).
-#
-# SEM workflow_dispatch, DE PROPÓSITO: caminho de entrega que ninguém amarra a
-# commit revisado na main não existe aqui (mesma razão do portão de deploy).
-#
-# O CI conhece apenas VPS_HOST e a chave do usuário `deploy` — os MESMOS
-# secrets do deploy-celula. Lei 5 (CONSTITUICAO.md): agente não tem chave SSH
-# por inexistência; o canal do repositório para a VPS é este pipeline,
-# auditável, revisado e reversível (o backup datado é o caminho de volta).
-# =============================================================================
 name: deploy-infra
 on:
   push:
@@ -44,124 +7,21 @@ on:
       - 'infra/traefik/**'
       - 'infra/sites.json'
       - 'infra/sincronizar_sites.py'
-      # O script que roda DENTRO da VPS: mudá-lo muda o que a produção executa,
-      # e um deploy que não disparasse deixaria a mudança só no Git.
       - 'infra/sincronizar-infra-na-vps.sh'
-      # O próprio workflow nos paths, de propósito: o merge do PR que o cria
-      # já dispara a primeira sincronização — é ela que finalmente entrega à
-      # produção os consumers criados no PR #45, sem passo manual nenhum.
       - '.github/workflows/deploy-infra.yml'
 permissions:
   contents: read
-# MESMO grupo do deploy-celula: dois workflows fazendo SSH na VPS ao mesmo
-# tempo (um merge de célula + um de infra) seriam intercalados; o grupo único
-# os enfileira, sem cancelar o que já está no meio de um deploy.
-#
-# -----------------------------------------------------------------------------
-# SEPARAR OS DOIS GRUPOS FOI CONSIDERADO E RECUSADO — TAR-029, 30/08/2026
-#
-# A pergunta é legítima e volta sempre: as duas esteiras publicam COISAS
-# DIFERENTES (uma imagem de célula e o compose/traefik da VPS), e o grupo único
-# é a causa raiz dos deploys que terminam `cancelled` em silêncio
-# (`armadilhas/183`, `/188`). Se elas não disputassem nada, dar grupo próprio a
-# cada uma acabaria com a cadeira musical na origem.
-#
-# Elas disputam. MEDIDO nos dois scripts que rodam DENTRO da VPS, e o conflito é
-# de ESCRITA no mesmo recurso — não é "usam a mesma máquina":
-#
-#   `infra/sincronizar-infra-na-vps.sh`   (esta esteira)
-#     mv -f docker-compose.yml.new docker-compose.yml   ← TROCA o arquivo
-#     rm -rf traefik && mv traefik.new traefik          ← TROCA o diretório
-#     docker compose up -d                              ← SEM argumento: age
-#                                                          sobre o PROJETO INTEIRO
-#     docker compose up -d --force-recreate traefik
-#
-#   `infra/deploy-celula-na-vps.sh`       (o deploy-celula)
-#     docker compose config --services  ← LÊ o arquivo que o de cima troca, e é
-#                                          dele que sai a lista de serviços
-#     docker compose pull $SERVICOS
-#     docker compose up -d --wait --wait-timeout 180 $SERVICOS
-#
-# Correndo juntos, três coisas quebram — e nenhuma delas fica necessariamente
-# vermelha:
-#   1. o `config --services` lê o compose no meio da troca: a lista de serviços
-#      da célula sai errada, ou vazia (e aí o script aborta dizendo que a célula
-#      não existe no compose);
-#   2. o `up -d` SEM argumento recria containers da plataforma inteira enquanto o
-#      outro está no meio do `pull`/`up --wait` de uma célula — a célula termina
-#      servindo a imagem que o compose apontava, não a que acabou de subir;
-#   3. o `rm -rf traefik` acontece enquanto o outro depende daquele bind mount.
-#
-# É exatamente o caso que a `armadilhas/173` já tinha escrito: *"um workflow que
-# de fato mexesse no `docker compose up` (deploy, rollback) DEVE ficar no grupo
-# `deploy`, e para ele a cadeira musical é o preço certo: melhor um disparo
-# perdido que dois donos do mesmo comando"*. O grupo único FICA.
-#
-# O preço — o expulso que fica fora do ar em silêncio — passou a ser coberto por
-# `.github/workflows/vacina-do-deploy.yml`, que acorda no `cancelled` das DUAS
-# esteiras, repete quando republicar só AVANÇA e abre issue quando não dá.
-#
-# -----------------------------------------------------------------------------
-# O PREÇO DO GRUPO ÚNICO ACABOU — TAR-529, 20/09/2026
-#
-# A conclusão de 30/08/2026 era que o expulso da vaga de pendente é o preço
-# certo, e que acabar com ele exigiria FUNDIR as duas esteiras numa só. Isso
-# deixou de valer: desde 07/05/2026 o `concurrency` aceita `queue: max`, que
-# guarda até 100 runs pendentes atendidos em ordem de chegada, no lugar do
-# `queue: single` que era o padrão. A fila nativa enfileira sem fundir nada e
-# sem separar nada, e o `cancelled` em silêncio das `armadilhas/183` e `/188`
-# deixa de nascer por disputa de vaga. A chave só é inválida junto com
-# `cancel-in-progress: true`, que este bloco não usa.
-#
-# O que ainda cancela: fila cheia acima de 100 pendentes, ou cancelamento à mão.
 concurrency:
   group: deploy
   cancel-in-progress: false
   queue: max
 jobs:
-  # O MESMO portão do deploy-celula (docs/decisoes/PROJETO-PORTAO-DEPLOY.md),
-  # em modo infra: prova que ci-celula-gate, alarme-main e as muralhas do PR
-  # de origem estão verdes ANTES de tocar a VPS. Sem célula no diff, o job
-  # `ci-celula` (rodar) pula legitimamente — o gate continua obrigatório.
-  portao:
-    name: portao-de-deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    permissions:
-      contents: read
-      actions: read
-      checks: read
-      pull-requests: read
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      SHA: ${{ github.sha }}
-      RUN_ID: ${{ github.run_id }}
-      EVENTO: ${{ github.event_name }}
-      CELULAS: '[]'
-      PORTAO_MODO: infra
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Portão de deploy (0 = verde provado · 1 = reprovado · 2 = não mediu)
-        run: python ci/portao_de_deploy.py
-
   sincronizar:
-    needs: portao
-    # Explícito de propósito; NUNCA always()/failure().
-    if: needs.portao.result == 'success'
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # A ssh-action perde outputs.stdout quando o receptor sai nao-zero.
-      # O Bash filho preserva o EXIT trap do sincronizador; o pai entrega seu
-      # codigo como ultima linha e deixa a decisao ao portao deste workflow.
       - name: Preparar a captura do resultado remoto
         id: preparar_resultado
         run: |
@@ -184,92 +44,14 @@ jobs:
           mv "$SCRIPT" "$FONTE"
           echo "script=$FONTE" >> "$GITHUB_OUTPUT"
 
-      # =====================================================================
-      # A VACINA DA armadilhas/127 CHEGA AO DEPLOY-INFRA (TAR-024, 30/08/2026).
-      #
-      # A `armadilhas/127` é a campeã de reincidência do catálogo: o runner do
-      # GitHub falha em `dial tcp ***:22: i/o timeout` com a VPS viva e o site
-      # em 200 o tempo inteiro — soluço de rede entre as duas pontas, seis
-      # quedas em três dias. Ela manda fazer TRÊS coisas: **medir a porta 22**,
-      # **repetir com pausa**, **registrar o que fez**.
-      #
-      # Desde 30/08/2026 (TAR-013) o `deploy-celula` faz as três. Este workflow
-      # não fazia NENHUMA: falava com a VPS por SCP e depois por SSH **uma vez
-      # só**, sem medição e sem repetição. Medido contra a `main` daquele dia,
-      # no job `sincronizar`: 0 passos medindo a porta 22, 0 passos lendo o
-      # veredito da sonda, 0 pausas, 1 tentativa. O primeiro engasgo matava a
-      # publicação da infraestrutura sem chance nenhuma de recuperação — e o
-      # merge ficava na `main` sem estar em produção, que é o pior desfecho
-      # possível: tudo parece normal.
-      #
-      # A MEDIÇÃO É A MESMA DO DEPLOY-CELULA, importada e não reescrita:
-      # `ci/sonda_da_vps.py --sondar-porta`. A pergunta "a VPS está alcançável
-      # daqui?" não pode ter duas implementações neste repositório — duas
-      # poderiam discordar sobre o mesmo fato, e aí nenhuma das duas serve para
-      # decidir nada (é o mesmo cuidado que fez a TAR-013 mandar o
-      # `ci/rerun_de_deploy.py` importar esta peça em vez de copiá-la).
-      #
-      # ---------------------------------------------------------------------
-      # O QUE É DIFERENTE AQUI, E POR QUÊ: SÃO **DOIS** PASSOS DE REDE.
-      #
-      # O deploy-celula tem um passo de rede só (SSH) e um script trivialmente
-      # idempotente (`pull` + `up -d` sobre o estado correto não fazem nada) —
-      # por isso ele repete diante de QUALQUER falha. Aqui a entrega tem duas
-      # pernas em sequência: o SCP que enche a área de staging e o SSH que a
-      # consome. Isso muda três coisas do desenho:
-      #
-      # 1. **A unidade de repetição é o PAR, nunca o SSH sozinho.** O script na
-      #    VPS termina o bloco 0 com `rmdir infra.new`: ele CONSOME o staging.
-      #    Um segundo SSH sem um SCP antes morreria no primeiro `ls infra.new`.
-      #
-      # 2. **Repetir o par só é seguro porque o staging é limpo.** Confirmado
-      #    lendo os três lugares que decidem isto, e não por suposição:
-      #      · `target: /opt/plataforma/infra.new` — uma ÁREA DE STAGING, nunca
-      #        um caminho em uso. O `docker-compose.yml` e o `traefik/` reais só
-      #        são tocados no bloco 3 do script, DEPOIS da validação;
-      #      · `rm: true` na `appleboy/scp-action`, cuja própria documentação
-      #        define o parâmetro como *"Remove target directory before
-      #        upload"* — ou seja, toda tentativa recomeça de um staging vazio,
-      #        e restos de uma tentativa interrompida nunca contaminam a
-      #        seguinte;
-      #      · `rm -rf traefik.new` na abertura do script, que apaga o único
-      #        resto que sobrevive FORA do staging quando uma tentativa morre
-      #        depois do bloco 0 (sem ele, `mv origem destino` com o destino já
-      #        existindo moveria a origem para DENTRO dele).
-      #
-      # 3. **Só repetir antes de chamar SSH.** A ssh-action perde a saída
-      #    capturada quando o receptor falha, embora ele tenha iniciado na VPS.
-      #    Por isso uma saída vazia é INCERTA. Outra tentativa só é autorizada
-      #    quando o SCP falhou e o SSH da tentativa ficou skipped. Se o SSH foi
-      #    chamado, o marcador terminal distingue sucesso e erro conhecido;
-      #    sem marcador, o run reprova e exige reconciliação antes de repetir.
-      #
-      # DUAS REGRAS QUE MANTÊM A SONDA VACINA, E NÃO ARMA (as mesmas da
-      # TAR-013): ela nunca derruba entrega que ainda poderia dar certo — só
-      # encurta o laço quando DUAS medições independentes concordam que a porta
-      # está morta; e a decisão sai por `outputs.veredito`, NUNCA por `outcome`,
-      # que só tem dois valores e juntaria "a porta está morta" com "não
-      # consegui medir" — a confusão exata que o [INV-CI01] proíbe.
-      # =====================================================================
       - name: Medir a porta 22 antes de tentar (só registra, não decide)
         id: sonda0
         continue-on-error: true
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          # `partida` muda o que a sonda DIZ, não o que ela mede: aqui nada
-          # falhou ainda, e a frase "o que falhou foi a rede" seria falsa no
-          # log de toda sincronização saudável. Esta é a linha de base — a
-          # única medição que roda mesmo quando a VPS atende de primeira.
           MOMENTO: partida
         run: python3 ci/sonda_da_vps.py --sondar-porta
 
-      # ── TENTATIVA 1 ────────────────────────────────────────────────────────
-      # Transferência via appleboy/scp-action: mesmo autor da appleboy/ssh-action
-      # que o deploy-celula já usa com runs verdes medidos — nenhuma família
-      # nova de action de terceiro entra no repositório, e não reimplementamos
-      # à mão o manuseio de chave/known_hosts que essa família já resolve.
-      # O destino é uma ÁREA DE STAGING (infra.new/), nunca os caminhos finais:
-      # a troca só acontece no passo seguinte, DEPOIS da validação na VPS.
       - name: Enviar compose e traefik para staging na VPS (tentativa 1 de 3)
         id: enviar1
         continue-on-error: true
@@ -279,13 +61,9 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
-          # SÓ estes caminhos. env/ NUNCA entra nesta lista (INV-P8).
-          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh,infra/publicacao-local.py"
           target: /opt/plataforma/infra.new
           strip_components: 1
-          # rm limpa SÓ o staging (o target acima) antes do upload, para que
-          # restos de um run anterior interrompido não contaminem este.
-          # JAMAIS aponte o target para /opt/plataforma com rm ligado.
           rm: true
 
       - name: Validar, trocar com backup datado e aplicar (tentativa 1 de 3)
@@ -298,17 +76,11 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
-          # O primeiro run recria as 8 células (ganham healthcheck) e espera
-          # cada uma ficar healthy antes de subir os consumers — folga real.
           command_timeout: 30m
-          # O Bash pai conserva status e sentinelas mesmo se o filho falhar.
           capture_stdout: true
           script_path: infra/sincronizar-infra-na-vps.sh
 
-      # A MEDIÇÃO QUE SEPARA AS DUAS DOENÇAS. Ela vem ANTES da pausa de
-      # propósito: se a porta estiver morta, é isso que a pausa vai esperar
-      # passar, e é bom saber disso já na primeira medição.
-      - name: Medir a porta 22 depois da 1ª recusa (127 ou 017?)
+      - name: Medir a porta 22 depois da primeira recusa
         id: sonda1
         if: steps.enviar1.outcome == 'failure' && steps.aplicar1.outcome == 'skipped'
         continue-on-error: true
@@ -316,16 +88,12 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: python3 ci/sonda_da_vps.py --sondar-porta
 
-      # A espera entre tentativas é conselho medido, não superstição: em
-      # 26/08/2026 duas tentativas emendadas falharam e a terceira, depois de
-      # ~1 minuto, passou (`armadilhas/127`).
       - name: Esperar antes de tentar de novo
         if: steps.enviar1.outcome == 'failure' && steps.aplicar1.outcome == 'skipped'
         run: |
-          echo "O SCP falhou e o SSH não foi chamado. Esperando 45s — ver armadilhas/127."
+          echo "O SCP falhou e o SSH não foi chamado. Esperando 45s antes de repetir o envio."
           sleep 45
 
-      # ── TENTATIVA 2 ────────────────────────────────────────────────────────
       - name: Enviar compose e traefik para staging na VPS (tentativa 2 de 3)
         id: enviar2
         if: steps.enviar1.outcome == 'failure' && steps.aplicar1.outcome == 'skipped'
@@ -336,7 +104,7 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
-          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh,infra/publicacao-local.py"
           target: /opt/plataforma/infra.new
           strip_components: 1
           rm: true
@@ -363,21 +131,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: python3 ci/sonda_da_vps.py --sondar-porta
 
-      # A REGRA DE PARADA ANTECIPADA — e por que ela exige DUAS medições.
-      #
-      # Uma medição isolada dizendo "porta morta" pode ser defeito da própria
-      # sonda no runner. Duas, tomadas com ~1 minuto de distância e cada uma
-      # depois de uma recusa real da VPS, são evidência: isto não é o soluço
-      # intermitente da `armadilhas/127`, é a `armadilhas/017` — falha de
-      # alcance, que nenhuma tentativa nova conserta.
-      #
-      # Só aqui a sonda tem poder de decisão, e só nesta direção: pular a 3ª
-      # tentativa quando já está provado que ela não pode dar certo.
-      #
-      # Comparamos com `outputs.veredito`, NUNCA com `outcome`: 'não consegui
-      # medir' também produz `outcome == failure`, e ler assim faria a sonda
-      # abortar sincronizações por defeito próprio.
-      - name: PARAR — a porta 22 não respondeu nas DUAS medições (é a 017)
+      - name: PARAR — a porta 22 não respondeu nas duas medições
         if: steps.sonda1.outputs.veredito == 'permanente' && steps.sonda2.outputs.veredito == 'permanente'
         run: |
           set -eu
@@ -385,15 +139,14 @@ jobs:
           echo "   runner em NENHUMA das duas medições, tomadas depois de duas"
           echo "   recusas reais da conexão."
           echo
-          echo "   Isto NÃO é o soluço de rede da armadilhas/127 — é a"
-          echo "   armadilhas/017: falha PERMANENTE de alcance. Uma terceira"
-          echo "   tentativa não é diagnóstico, é teimosia."
+          echo "   A porta permaneceu inacessível nas duas medições. Confira"
+          echo "   DNS, firewall e alcance da VPS antes de repetir o envio."
           echo
           echo "   Os dois SCP falharam e nenhum SSH foi chamado: o script não"
           echo "   alterou o compose ou o traefik em uso. Confira o staging antes"
           echo "   de repetir; o que foi mergeado NÃO está em produção."
           echo
-          echo "   O conserto é de configuração e passa pelo mantenedor (Lei 5):"
+          echo "   Confira a configuração de acesso:"
           echo "   o que o VPS_HOST resolve? entrou CDN na frente do domínio? o"
           echo "   firewall da VPS passou a recusar a faixa dos runners?"
           exit 1
@@ -404,11 +157,6 @@ jobs:
           echo "O segundo SCP falhou e nenhum SSH foi chamado. Esperando 60s antes da última tentativa."
           sleep 60
 
-      # ── TENTATIVA 3 — esta decide ─────────────────────────────────────────
-      # Sem `continue-on-error`: se esta falhar, o deploy é vermelho — e aí não
-      # é mais blip. O que É, o passo de parada acima já mediu: se chegou aqui,
-      # a porta 22 respondeu pelo menos uma vez, então a 017 está descartada por
-      # medição, não por suspeita.
       - name: Enviar compose e traefik para staging na VPS (tentativa 3 de 3)
         id: enviar3
         if: steps.enviar1.outcome == 'failure' && steps.aplicar1.outcome == 'skipped' && steps.enviar2.outcome == 'failure' && steps.aplicar2.outcome == 'skipped'
@@ -418,7 +166,7 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
-          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh,infra/publicacao-local.py"
           target: /opt/plataforma/infra.new
           strip_components: 1
           rm: true
@@ -436,8 +184,6 @@ jobs:
           capture_stdout: true
           script_path: infra/sincronizar-infra-na-vps.sh
 
-      # O marcador terminal vem do Bash pai, inclusive quando o filho falha.
-      # Sem ele, a conexao pode ter executado e perdido a resposta: INCERTA.
       - name: Classificar a resposta da sincronização
         id: classificar_resultado
         if: ${{ !cancelled() }}
@@ -504,25 +250,10 @@ jobs:
           case "$RESULTADO" in
             concluida) echo '✅ A sincronização terminou na VPS com status zero e sentinela final.' ;;
             falhou) echo '❌ O receptor começou e falhou. Confira seu erro e o backup no log; reconcilie antes de outra tentativa.'; exit 1 ;;
-            nao_iniciada) echo '❌ Todos os envios falharam antes de chamar SSH. Confira a rede e repita pelo canal oficial.'; exit 1 ;;
+            nao_iniciada) echo '❌ Todos os envios falharam antes de chamar SSH. Confira a rede e reexecute este workflow.'; exit 1 ;;
             *) echo '❌ Resultado INCERTO: a resposta remota está ausente ou contraditória. Meça o estado da VPS antes de repetir.'; exit 1 ;;
           esac
 
-      # =====================================================================
-      # REGISTRAR O QUE A SINCRONIZAÇÃO FEZ — a terceira ordem da
-      # armadilhas/127. O log já preservava as tentativas dentro do mesmo run;
-      # o problema é que ninguém lê log. Uma sincronização salva na 2ª
-      # tentativa era, para quem abre a execução, idêntica a uma que passou de
-      # primeira — e o padrão da VPS recusando ficava invisível justamente nos
-      # dias em que ela mais recusou.
-      #
-      # Este passo NÃO traduz veredito nenhum: cada `--sondar-porta` já escreve
-      # a própria explicação em português no resumo do run. Aqui vai só o que a
-      # sonda não tem como saber — quantas tentativas foram precisas e se a
-      # troca aconteceu. O narrador NUNCA reprova: quem reprova são os passos
-      # acima, e um narrador que pudesse derrubar o job transformaria "não
-      # consegui contar a história" em "a entrega falhou".
-      # =====================================================================
       - name: Registrar no resumo do run o que a sincronização fez
         if: ${{ !cancelled() }}
         env:
@@ -549,11 +280,11 @@ jobs:
           if [ "$RESULTADO" = concluida ] && [ "$TENTATIVA" = 1 ]; then
             echo "**Resultado: a infraestrutura nova ESTÁ em produção**, e a VPS atendeu de primeira — nada de anormal nesta sincronização." >> "$GITHUB_STEP_SUMMARY"
           elif [ "$RESULTADO" = concluida ]; then
-            echo "**Resultado: a infraestrutura nova ESTÁ em produção** após $TENTATIVA tentativas; só envios SCP falhos sem SSH chamado foram repetidos. Registre a ocorrência em painel/registros/." >> "$GITHUB_STEP_SUMMARY"
+            echo "**Resultado: a infraestrutura nova ESTÁ em produção** após $TENTATIVA tentativas; só envios SCP falhos sem SSH chamado foram repetidos. Confira as tentativas no log." >> "$GITHUB_STEP_SUMMARY"
           elif [ "$RESULTADO" = falhou ]; then
             echo "**Resultado: o receptor começou e falhou na tentativa $TENTATIVA.** O log mostra o erro e eventual backup. A produção pode ter mudado; reconcilie antes de repetir." >> "$GITHUB_STEP_SUMMARY"
           elif [ "$RESULTADO" = nao_iniciada ]; then
-            echo "**Resultado: nenhum SSH foi chamado.** Os envios SCP falharam; o sincronizador não alterou a infraestrutura em uso. Confira o transporte e repita pelo canal oficial." >> "$GITHUB_STEP_SUMMARY"
+            echo "**Resultado: nenhum SSH foi chamado.** Os envios SCP falharam; o sincronizador não alterou a infraestrutura em uso. Confira o transporte e reexecute este workflow." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "**Resultado INCERTO.** A resposta remota faltou ou se contradisse. Não há prova de que a produção esteja intacta; meça o estado na VPS antes de repetir." >> "$GITHUB_STEP_SUMMARY"
           fi

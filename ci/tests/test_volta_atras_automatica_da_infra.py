@@ -59,9 +59,10 @@ def test_a_volta_dispara_sozinha_por_trap_e_so_depois_da_troca():
         "o trap precisa de uma marca dizendo que a troca já aconteceu; sem ela "
         "uma falha ANTES da troca restauraria por cima de um estado intacto."
     )
-    assert texto.index("TROCADO=1") > texto.index("mv -f docker-compose.yml.new"), (
-        "a marca TROCADO=1 tem de vir DEPOIS da troca dos arquivos."
-    )
+    # A marca é armada antes da primeira mutação: uma falha no segundo mv
+    # também precisa recuperar o primeiro arquivo já substituído.
+    assert texto.index("TROCADO=1") < texto.index("mv -f docker-compose.yml.new")
+
 
 
 def test_o_script_nao_manda_mais_o_mantenedor_restaurar_a_mao():
@@ -97,6 +98,8 @@ def test_a_funcao_traz_de_volta_o_que_estava_no_ar(tmp_path):
     roteiro.write_text(
         "set -eu\n"
         f'cd "{plataforma}"\n'
+        'RAIZ=$PWD\n'
+        'python3() { echo PROVA-RETORNO; }\n'
         'STAMP=STAMP\n'
         f"{corpo_da_funcao()}\n"
         f"{NOME_DA_FUNCAO}\n",
@@ -108,6 +111,7 @@ def test_a_funcao_traz_de_volta_o_que_estava_no_ar(tmp_path):
         [bash_de_verdade(), str(roteiro)], capture_output=True, text=True, env=ambiente
     )
     assert fim.returncode == 0, fim.stderr
+    assert "PROVA-RETORNO" in fim.stdout
 
     assert (plataforma / "docker-compose.yml").read_text(encoding="utf-8") == "versao: boa\n"
     assert (traefik / "traefik.yml").read_text(encoding="utf-8") == "entryPoints: bom\n"

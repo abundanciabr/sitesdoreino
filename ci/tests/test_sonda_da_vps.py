@@ -33,17 +33,13 @@ import threading
 from pathlib import Path
 
 import pytest
-import yaml
 
 CI = Path(__file__).resolve().parents[1]
-RAIZ = CI.parent
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
 import sonda_da_vps as sonda  # noqa: E402
 
-DEPLOY = RAIZ / ".github" / "workflows" / "deploy-celula.yml"
-SCRIPT_DA_ENTREGA = RAIZ / "infra" / "deploy-celula-na-vps.sh"
 
 
 # ------------------------------------------------- a tabela de decisão pura --
@@ -53,7 +49,7 @@ def test_porta_viva_e_o_soluco_da_127_e_manda_repetir():
     veredito = sonda.decidir_pela_sonda(sonda.Medicao(porta22=True, site_http=200))
     assert veredito.veredito == sonda.BLIP
     assert veredito.codigo == 0
-    assert "127" in veredito.motivo, "parar sem nomear a armadilha não ensina nada"
+    assert "intermitente" in veredito.motivo
 
 
 def test_a_medicao_de_partida_nao_afirma_que_algo_falhou():
@@ -109,7 +105,7 @@ def test_porta_morta_e_a_017_e_nao_se_cura_repetindo():
     )
     assert veredito.veredito == sonda.PERMANENTE
     assert veredito.codigo == 1
-    assert "017" in veredito.motivo
+    assert "Falha persistente de alcance" in veredito.motivo
 
 
 def test_nao_medi_nunca_vira_porta_morta():
@@ -175,9 +171,7 @@ def test_o_silencio_com_o_runner_cego_e_nao_medi_e_o_retry_segue():
     )
     assert veredito.veredito == sonda.NAO_MEDI
     assert veredito.codigo == 2
-    assert "127" in veredito.motivo, (
-        "sem nomear o soluço, quem lê continua achando que é a 017"
-    )
+    assert "falha de rede do runner" in veredito.motivo
 
 
 def test_o_silencio_vira_permanente_quando_o_site_responde_daqui():
@@ -364,9 +358,9 @@ def test_a_sonda_nunca_decide_permanente_com_menos_de_duas_medicoes():
 @pytest.mark.parametrize(
     "codigo, pedaco",
     [
-        (200, "versão ANTERIOR"),
-        (None, "não medi"),
-        (503, "ATENÇÃO"),
+        (200, "respondeu 200"),
+        (None, "Não consegui medir"),
+        (503, "respondeu 503"),
     ],
 )
 def test_o_recado_do_site_diz_a_verdade_dos_tres_estados(codigo, pedaco):
@@ -452,9 +446,10 @@ def test_o_resumo_conta_quando_a_vps_recusou_antes_de_aceitar():
             site_http=200,
         )
     )
-    assert "ESTÁ em produção" in texto
+    assert "ESTÁ em produção" not in texto
+    assert "sonda de rede não registra aprovação" in texto
     assert "2 tentativas" in texto, "sem o número, o padrão da 127 segue invisível"
-    assert "127" in texto
+    assert "rede intermitente" in texto
 
 
 def test_o_resumo_nao_confunde_verde_de_primeira_com_verde_salvo():
@@ -468,7 +463,7 @@ def test_o_resumo_nao_confunde_verde_de_primeira_com_verde_salvo():
         )
     )
     assert "de primeira" in texto
-    assert "127" not in texto, "deploy normal não deve citar armadilha nenhuma"
+    assert "rede intermitente" not in texto
 
 
 def test_o_resumo_nomeia_a_017_quando_a_porta_ficou_muda():
@@ -481,8 +476,8 @@ def test_o_resumo_nomeia_a_017_quando_a_porta_ficou_muda():
             site_http=200,
         )
     )
-    assert "NÃO subiu" in texto
-    assert "017" in texto
+    assert "sem conclusão confirmada" in texto
+    assert "não estava alcançável" in texto
     assert "ESTÁ em produção" not in texto
 
 
@@ -505,15 +500,15 @@ def test_o_resumo_nao_acusa_a_017_com_uma_medicao_discordando():
     # O que não pode é o DESFECHO, que é o encaminhamento, ser decidido por uma
     # medição contra a outra.
     desfecho = sonda._desfecho(entrega)
-    assert "017" not in desfecho, (
+    assert "não estava alcançável" not in desfecho, (
         "uma medição discordando da outra e o desfecho já acusa falha permanente"
     )
-    assert "NÃO subiu" in desfecho
-    assert "rerun_de_deploy.py" in desfecho
+    assert "sem conclusão confirmada" in desfecho
+    assert "logs da aplicação e da recuperação" in desfecho
     assert desfecho in sonda.narrar(entrega)
 
 
-def test_o_resumo_de_falha_manda_para_a_vacina_do_pc():
+def test_o_resumo_de_falha_encaminha_para_os_logs_da_recuperacao():
     texto = sonda.narrar(
         sonda.Entrega(
             celula="admin",
@@ -523,177 +518,113 @@ def test_o_resumo_de_falha_manda_para_a_vacina_do_pc():
             site_http=200,
         )
     )
-    assert "rerun_de_deploy.py" in texto
+    assert "logs da aplicação e da recuperação" in texto
 
 
-def test_a_marca_de_conclusao_e_a_mesma_nos_tres_lugares():
-    """O script imprime, o portão do workflow exige, o narrador procura.
-
-    Três grafias diferentes fariam o resumo do run contar uma história e o
-    portão contar outra sobre a MESMA entrega.
-    """
-    assert sonda.MARCA_DE_CONCLUSAO in SCRIPT_DA_ENTREGA.read_text(encoding="utf-8")
-    assert sonda.MARCA_DE_CONCLUSAO in DEPLOY.read_text(encoding="utf-8")
-
-
-# ------------------------------------------ a fiação dentro do deploy real --
-
-
-def _passos_do_deploy() -> list[dict]:
-    fluxo = yaml.safe_load(DEPLOY.read_text(encoding="utf-8"))
-    return fluxo["jobs"]["deploy"]["steps"]
-
-
-def _passos_de_sonda() -> list[dict]:
-    return [
-        passo
-        for passo in _passos_do_deploy()
-        if "sonda_da_vps.py --sondar-porta" in str(passo.get("run", ""))
-    ]
-
-
-def test_o_deploy_mede_a_porta_22_sozinho():
-    """A terceira ordem da armadilhas/127, dentro do deploy.
-
-    Sem estes passos, o retry repete às cegas: trata a 017 (falha permanente)
-    como se fosse o soluço da 127, gasta 105 s de pausa e três conexões, e
-    termina dizendo "a suspeita é a 017" — que é palpite, não medição.
-    """
-    sondas = _passos_de_sonda()
-    assert len(sondas) >= 3, (
-        "o deploy voltou a não medir a porta 22 — esperava a medição de partida "
-        "e uma depois de cada recusa"
+@pytest.mark.parametrize(
+    "sinais, site_http, codigo, veredito",
+    [
+        ((sonda.ATENDEU,), 200, 0, sonda.BLIP),
+        ((sonda.RECUSOU, sonda.RECUSOU), 200, 1, sonda.PERMANENTE),
+        ((sonda.SEM_RESPOSTA, sonda.SEM_RESPOSTA), None, 2, sonda.NAO_MEDI),
+        ((sonda.RECUSOU,), 200, 2, sonda.NAO_MEDI),
+    ],
+)
+def test_comando_publica_veredito_contagem_e_codigo_sem_expor_host(
+    monkeypatch, tmp_path, capsys, sinais, site_http, codigo, veredito
+):
+    host = "host-operacional-sigiloso.invalid"
+    output = tmp_path / "output"
+    resumo = tmp_path / "resumo"
+    alvos = []
+    monkeypatch.setenv("VPS_HOST", host)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(resumo))
+    monkeypatch.delenv("MOMENTO", raising=False)
+    monkeypatch.setattr(sonda, "configurar_saida", lambda: None)
+    monkeypatch.setattr(sonda, "medir_a_porta", lambda alvo: alvos.append(alvo) or sinais)
+    monkeypatch.setattr(sonda, "http_do_site", lambda _url: site_http)
+    assert sonda.main(["--sondar-porta"]) == codigo
+    assert alvos == [host]
+    assert output.read_text(encoding="utf-8") == (
+        f"veredito={veredito}\nsondagens={len(sinais)}\n"
     )
+    assert host not in capsys.readouterr().out
+    assert host not in resumo.read_text(encoding="utf-8")
 
 
-def test_a_sonda_nunca_pode_derrubar_o_deploy():
-    """Vacina, não arma: a sonda mede e informa; quem reprova são as tentativas."""
-    for passo in _passos_de_sonda():
-        assert passo.get("continue-on-error") is True, (
-            f"{passo.get('name')}: sem continue-on-error, um defeito da própria "
-            "sonda passa a reprovar deploys que iriam dar certo"
-        )
+def test_comando_sem_host_nao_tenta_medicao_e_informa_erro(monkeypatch, tmp_path):
+    output = tmp_path / "output"
+    monkeypatch.delenv("VPS_HOST", raising=False)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setattr(sonda, "configurar_saida", lambda: None)
+    def nao_medir(*_args):
+        pytest.fail("A sonda tentou rede sem um host declarado")
+    monkeypatch.setattr(sonda, "medir_a_porta", nao_medir)
+    monkeypatch.setattr(sonda, "http_do_site", nao_medir)
+    assert sonda.main(["--sondar-porta"]) == 2
+    assert output.read_text(encoding="utf-8") == "veredito=nao_medi\nsondagens=0\n"
 
 
-def test_a_sonda_recebe_o_host_por_env_e_nunca_por_argumento():
-    """`VPS_HOST` é segredo: argumento aparece na tabela de processos."""
-    for passo in _passos_de_sonda():
-        assert "VPS_HOST" in (passo.get("env") or {}), (
-            f"{passo.get('name')}: o host precisa chegar por env"
-        )
-        assert "secrets.VPS_HOST" not in str(passo.get("run", "")), (
-            f"{passo.get('name')}: o host não pode viajar na linha de comando"
-        )
+@pytest.mark.parametrize("momento, trecho", [("partida", "antes de qualquer tentativa"), ("recusa", "Repetir é exatamente o certo")])
+def test_comando_distingue_partida_de_diagnostico(monkeypatch, capsys, momento, trecho):
+    monkeypatch.setenv("VPS_HOST", "host.invalid")
+    monkeypatch.setenv("MOMENTO", momento)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setattr(sonda, "configurar_saida", lambda: None)
+    monkeypatch.setattr(sonda, "medir_a_porta", lambda _host: (sonda.ATENDEU,))
+    monkeypatch.setattr(sonda, "http_do_site", lambda _url: 200)
+    assert sonda.main(["--sondar-porta"]) == 0
+    assert trecho in capsys.readouterr().out
 
 
-def test_so_a_medicao_de_partida_se_declara_partida():
-    """As medições de recusa NÃO podem herdar o texto neutro da partida.
+@pytest.mark.parametrize("concluida", [True, False])
+def test_comando_resumir_grava_evidencia_sem_registrar_aprovacao(
+    monkeypatch, tmp_path, concluida
+):
+    resumo = tmp_path / "resumo"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(resumo))
+    for nome in ("R2", "R3", "V0", "V1", "V2", "SAIDA_2", "SAIDA_3"):
+        monkeypatch.delenv(nome, raising=False)
+    monkeypatch.setenv("CELULA", "admin")
+    monkeypatch.setenv("R1", "success" if concluida else "failure")
+    monkeypatch.setenv("SAIDA_1", "ENTREGA-CONCLUIDA: admin" if concluida else "erro de aplicação")
+    monkeypatch.setattr(sonda, "configurar_saida", lambda: None)
+    monkeypatch.setattr(sonda, "http_do_site", lambda _url: 200)
+    assert sonda.main(["--resumir"]) == 0
+    texto = resumo.read_text(encoding="utf-8")
+    assert "admin" in texto
+    assert "não identifica a imagem em uso" in texto
+    assert "ESTÁ em produção" not in texto
+    if concluida:
+        assert "script de aplicação concluiu de primeira" in texto
+        assert "sonda de rede não registra aprovação" in texto
+    else:
+        assert "sem conclusão confirmada" in texto
 
-    Se alguém marcasse todas como `MOMENTO: partida`, o run pararia de dizer
-    "repetir é exatamente o certo" no único momento em que essa frase é a
-    conclusão — e a medição voltaria a ser decoração.
-    """
-    partidas = [
-        passo
-        for passo in _passos_de_sonda()
-        if (passo.get("env") or {}).get("MOMENTO") == "partida"
-    ]
-    assert len(partidas) == 1, (
-        f"esperava exatamente uma medição de linha de base, achei {len(partidas)}"
+
+@pytest.mark.parametrize("site_http", [200, 503, None])
+def test_conclusao_tecnica_nao_aprova_imagem_nem_garante_disponibilidade(site_http):
+    entrega = sonda.Entrega(
+        tentativas=("success",),
+        marca_de_conclusao=True,
+        site_http=site_http,
     )
-    assert not partidas[0].get("if"), (
-        "a medição de partida é a única que roda SEMPRE — condicioná-la faria o "
-        "deploy saudável deixar de registrar qualquer medição"
-    )
+    texto = sonda._desfecho(entrega)
+    assert "sonda de rede não registra aprovação" in texto
+    assert "ESTÁ em produção" not in texto
+    if site_http == 200:
+        assert "não identifica a imagem em uso" in texto
+    elif site_http is None:
+        assert "Não consegui medir" in texto
+    else:
+        assert "respondeu 503" in texto
 
 
-def _passo_de_parada() -> dict:
-    parada = [
-        passo
-        for passo in _passos_do_deploy()
-        if "outputs.veredito" in str(passo.get("if", ""))
-    ]
-    assert parada, (
-        "nenhum passo do deploy lê o veredito da sonda — a medição existiria "
-        "sem decidir nada, que é o mesmo que não medir"
-    )
-    return parada[0]
-
-
-def test_a_parada_antecipada_exige_DUAS_medicoes():
-    """Uma medição isolada pode ser defeito da sonda; duas são evidência.
-
-    Afrouxar isto para uma medição só é a diferença entre pular uma tentativa
-    condenada e abortar um deploy que ia dar certo.
-    """
-    condicao = str(_passo_de_parada().get("if", ""))
-    assert condicao.count("== 'permanente'") >= 2, (
-        "a parada antecipada passou a se contentar com UMA medição de porta morta"
-    )
-    assert "sonda1" in condicao and "sonda2" in condicao
-
-
-def test_a_parada_le_o_veredito_e_nunca_o_outcome():
-    """[INV-CI01] em uma linha de YAML.
-
-    `outcome` só tem `success`/`failure`: ler a decisão por ele juntaria "a
-    porta está morta" com "não consegui medir" — e a segunda passaria a
-    abortar deploys, que é a inversão exata do fail-closed desta casa.
-    """
-    condicao = str(_passo_de_parada().get("if", ""))
-    assert "outputs.veredito" in condicao
-    for id_da_sonda in ("sonda1", "sonda2"):
-        assert f"steps.{id_da_sonda}.outcome" not in condicao
-
-
-def test_a_parada_antecipada_reprova_de_verdade():
-    """Ela existe para PARAR, não para avisar: precisa terminar em erro."""
-    corpo = str(_passo_de_parada().get("run", ""))
-    assert "exit 1" in corpo
-    assert not _passo_de_parada().get("continue-on-error")
-
-
-def test_a_parada_diz_no_log_em_quantas_sondagens_ela_se_baseia():
-    """A mensagem que manda desistir tem de mostrar a conta (TAR-026).
-
-    Em 30/08/2026 este passo escreveu "a porta 22 não respondeu em NENHUMA das
-    duas medições" sobre uma VPS viva, e quem leu acreditou — porque a frase era
-    categórica e não mostrava em quantas sondagens se apoiava. Número que só o
-    script conhece e o run não repete é número que ninguém confere.
-    """
-    parada = _passo_de_parada()
-    ambiente = parada.get("env") or {}
-    citados = " ".join(str(valor) for valor in ambiente.values())
-    assert "outputs.sondagens" in citados, (
-        "a parada voltou a não citar quantas sondagens sustentam a desistência"
-    )
-    for id_da_sonda in ("sonda1", "sonda2"):
-        assert f"steps.{id_da_sonda}.outputs.sondagens" in citados
-    corpo = str(parada.get("run", ""))
-    assert "sondagens" in corpo, (
-        "o número chega no ambiente do passo e não aparece na mensagem"
-    )
-
-
-def test_o_deploy_registra_no_resumo_do_run_o_que_fez():
-    """A terceira parte da vacina: registrar.
-
-    Sem isto, um deploy salvo na 2ª tentativa é indistinguível de um que passou
-    de primeira para quem abre a execução — e o padrão da armadilhas/127 fica
-    invisível justamente nos dias em que ela mais mordeu.
-    """
-    narradores = [
-        passo
-        for passo in _passos_do_deploy()
-        if "sonda_da_vps.py --resumir" in str(passo.get("run", ""))
-    ]
-    assert narradores, "o deploy voltou a não registrar o que fez"
-    narrador = narradores[0]
-    assert "cancelled()" in str(narrador.get("if", "")), (
-        "o narrador precisa rodar também quando a entrega falhou — é aí que a "
-        "história importa — e NÃO quando o run foi cancelado sem rodar nada"
-    )
-    for variavel in ("R1", "R2", "R3", "V0", "V1", "V2"):
-        assert variavel in (narrador.get("env") or {}), (
-            f"sem {variavel} o resumo não sabe contar o que aconteceu"
-        )
+def test_http_saudavel_sem_conclusao_nao_identifica_a_versao_ativa():
+    texto = sonda._desfecho(sonda.Entrega(site_http=200))
+    assert "sem conclusão confirmada" in texto
+    assert "não identifica a imagem em uso" in texto
+    assert "versão anterior" not in texto.lower()

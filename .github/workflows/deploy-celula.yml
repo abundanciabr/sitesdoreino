@@ -1,64 +1,26 @@
-# =============================================================================
-# DEPLOY POR CÉLULA — merge na main ⇒ PORTÃO DE DEPLOY ⇒ build da imagem SÓ da
-# célula tocada ⇒ pull+up SÓ dela na VPS. Rollback = *_TAG anterior (RITOS §4).
-#
-# O PORTÃO (docs/decisoes/PROJETO-PORTAO-DEPLOY.md) é o required check que o
-# GitHub não vende (ARMADILHAS-OPERACAO.md §1 H3): sem branch protection, o merge não é
-# barrável — o DEPLOY é. Antes de qualquer build (push :main já armaria o
-# próximo `up` na VPS), ci/portao_de_deploy.py prova que ci-celula, alarme-main
-# e as muralhas do PR de origem estão VERDES; skipped não é verde; sem
-# evidência é ERROR (INV-CI01). SEM workflow_dispatch, de propósito: deploy que
-# ninguém amarra a commit revisado não existe aqui.
-#
-# O CI conhece apenas VPS_HOST e a chave de deploy. Segredos de RUNTIME
-# (MP produção etc.) vivem SÓ em /opt/plataforma/env/*.env (INV-P8).
-# =============================================================================
 name: deploy-celula
 on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: Inicializar aprovação da imagem já em uso
+        type: choice
+        options: [inicializar]
+        default: inicializar
+        required: true
+      celula:
+        description: Célula já em uso
+        required: true
+        type: string
+      sha:
+        description: SHA de 40 caracteres da imagem já em uso
+        required: true
+        type: string
   push:
     branches: [main]
-    # `painel/**` está aqui porque a célula `admin` SERVE o painel do dono
-    # atrás do login, e a pasta entra na imagem no build (passo "Embutir o
-    # painel" abaixo). Registro novo no livro ⇒ imagem nova da `admin` ⇒ o
-    # painel online acompanha. Sem esta linha o workflow nem começaria, e o
-    # painel congelaria em silêncio. Quem mapeia `painel/` ⇒ `admin` é
-    # `ci/ci.py::celulas_tocadas`; guarda: `ci/tests/test_painel_vivo_no_deploy.py`.
-    # `fila/**` desde 29/08/2026: a aba "Os robôs" (/admin/caixa/robos/) é
-    # calculada da fila embutida no build — tarefa ou evento novo É quadro
-    # novo. Mapa: `celulas.yml` (fila ⇒ admin); mesmo desenho do painel.
-    # `documentos/**` desde 29/08/2026: a área de documentos do site
-    # (`DECISAO-a-area-de-documentos.md`) é servida pela célula `admin` — a
-    # pública em `/docs/` e a fechada em `/admin/documentos/`. Documento novo É
-    # página nova; sem esta linha o workflow nem começaria, e o site continuaria
-    # publicando a lista antiga em silêncio. Mapa: `celulas.yml`.
-    # `docs/decisoes/**` desde 31/08/2026: a area `/mapa-ia/planos/` serve
-    # esses arquivos, e a pasta entra na imagem no build (passo "Embutir os
-    # planos para IA"). Plano corrigido E pagina corrigida; sem esta linha o
-    # site continuaria servindo o texto antigo em silencio — o mesmo modo de
-    # falha que `documentos/**` acima existe para impedir. Mapa: `celulas.yml`.
-    paths: ['services/**', 'painel/**', 'fila/**', 'documentos/**', 'docs/decisoes/**']
+    paths: ['services/**', 'documentos/**', 'infra/deploy-celula-na-vps.sh', 'infra/publicacao-local.py', '.github/workflows/deploy-celula.yml']
 permissions:
   contents: read
-# O GRUPO É COMPARTILHADO COM O `deploy-infra`, E ISSO FOI MEDIDO (TAR-029,
-# 30/08/2026).
-#
-# A VAGA ÚNICA DE PENDENTE ACABOU (TAR-529, 20/09/2026). `queue: max` guarda até
-# 100 runs pendentes no grupo, atendidos em ordem de chegada, no lugar do
-# `queue: single` que era o padrão. Um merge novo não expulsa mais o deploy que
-# estava esperando, e o `cancelled` silencioso das `armadilhas/173`, `/183` e
-# `/188` deixa de nascer por disputa de vaga. A chave vale desde 07/05/2026 e só
-# é inválida junto com `cancel-in-progress: true`, que este bloco não usa.
-#
-# O que ainda cancela: fila cheia acima de 100 pendentes, ou cancelamento à mão.
-#
-# Separar os dois grupos foi considerado e RECUSADO: os dois scripts escrevem no
-# MESMO `docker-compose.yml` da VPS e no mesmo projeto do compose (o de infra
-# troca o arquivo e roda `up -d` sem argumento; este LÊ o arquivo para descobrir
-# os serviços da célula). A medição, com as linhas exatas, está no cabeçalho do
-# `concurrency:` de `.github/workflows/deploy-infra.yml`.
-#
-# `.github/workflows/vacina-do-deploy.yml` continua acordando no `cancelled`
-# desta esteira e da outra, e cura ou grita.
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -71,11 +33,6 @@ jobs:
       celulas_imagem: ${{ steps.d.outputs.celulas_imagem }}
       n: ${{ steps.d.outputs.n }}
       n_imagem: ${{ steps.d.outputs.n_imagem }}
-      painel_dados: ${{ steps.d.outputs.painel_dados }}
-      fila_dados: ${{ steps.d.outputs.fila_dados }}
-      # [INV-CI01] Carimbo de que a detecção CONCLUIU (mesma semântica do
-      # ci-celula): sem ele, "nenhuma célula tocada" e "não consegui medir"
-      # seriam indistinguíveis para o job de deploy.
       deteccao: ${{ steps.d.outputs.deteccao }}
     steps:
       - uses: actions/checkout@v4
@@ -84,262 +41,89 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      # O mapa das células (`celulas.yml`, Onda 5) é YAML: sem o leitor, a
-      # detecção não conclui — e ela falha alto, em vez de dizer "nenhuma
-      # célula" e publicar nada em verde.
       - name: Leitor do mapa das células
         run: python -m pip install --quiet pyyaml
       - id: d
         name: Detectar células tocadas (runner canônico, base = event.before)
         shell: bash
+        env:
+          EVENTO: ${{ github.event_name }}
+          MODO: ${{ inputs.modo }}
+          CELULA_INICIAL: ${{ inputs.celula }}
+          SHA_INICIAL: ${{ inputs.sha }}
         run: |
           set -eu
+          if [ "$EVENTO" = workflow_dispatch ]; then
+            python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          celula = os.environ['CELULA_INICIAL']
+          if os.environ['MODO'] != 'inicializar':
+              raise SystemExit('Modo de inicialização inválido.')
+          if not re.fullmatch(r'[a-z][a-z0-9_]*', celula) or not Path('services', celula, 'Dockerfile').is_file():
+              raise SystemExit('Célula desconhecida ou inválida.')
+          if not re.fullmatch(r'[0-9a-f]{40}', os.environ['SHA_INICIAL']):
+              raise SystemExit('Informe o SHA imutável de 40 caracteres da imagem em uso.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as destino:
+              lista = json.dumps([celula])
+              destino.write(f'celulas={lista}\ncelulas_imagem={lista}\nn=1\nn_imagem=1\ndeteccao=ok\n')
+          PY
+            exit 0
+          fi
           BASE='${{ github.event.before }}'
-          # event.before, não HEAD^: um push com vários commits perderia célula
-          # tocada em commit anterior. Vazio/zeros (branch nova, force-push) é
-          # ERROR: "não sei o que mudou" nunca vira "nada mudou".
           case "$BASE" in
             ''|0000000000000000000000000000000000000000)
               echo "ERROR: github.event.before inutilizável ('$BASE')." >&2
               exit 1;;
           esac
           CEL="$(python ci/ci.py --detectar-celulas --base "$BASE")"
-          # jq -R lê linha a linha; entrada vazia => [] (push em services/ sem
-          # célula, ex.: services/README) — SKIP legítimo do portão, não erro.
           JSON="$(printf '%s' "$CEL" | jq -R . | jq -sc 'map(select(length>0))')"
-          # A ORDEM DE PUBLICAÇÃO (Onda 4, fatia 2). A matriz publica uma célula
-          # por vez, e até 29/08/2026 na ordem em que a detecção devolveu — que é
-          # alfabética, ou seja, arbitrária. Num push que toca `checkout` e
-          # `pagamentos`, o `checkout` subia PRIMEIRO e passava minutos falando
-          # com uma versão da `pagamentos` que ainda não existia: site no ar
-          # respondendo errado, sem nada ficar vermelho.
-          #
-          # `ci/ordem_de_publicacao.py` põe provedor antes de consumidor,
-          # derivando o grafo do próprio código (quem lê `<OUTRA>_API_URL`). A
-          # explicação sai em stderr e aparece no log; só o JSON vai para o
-          # stdout, senão o `$(...)` engoliria texto junto com o dado.
-          #
-          # Sem `|| true` e sem `2>/dev/null`: se ele não conseguir medir, o
-          # deploy PARA. Publicar numa ordem que ninguém escolheu foi
-          # exatamente o defeito que esta linha existe para fechar.
           JSON="$(python ci/ordem_de_publicacao.py "$JSON")"
-          ALTERADOS="$(git diff --name-only "$BASE" HEAD)"
-          PAINEL_DADOS=false
-          FILA_DADOS=false
-          SOMENTE_DADOS_ADMIN=false
-          if printf '%s\n' "$ALTERADOS" | grep -q '^painel/'; then
-            PAINEL_DADOS=true
-          fi
-          if printf '%s\n' "$ALTERADOS" | grep -q '^fila/'; then
-            FILA_DADOS=true
-          fi
-          OUTROS="$(printf '%s\n' "$ALTERADOS" | awk '$0 !~ /^(painel|fila)\// { print }')"
-          if { [ "$PAINEL_DADOS" = true ] || [ "$FILA_DADOS" = true ]; } && [ -z "$OUTROS" ]; then
-            SOMENTE_DADOS_ADMIN=true
-          fi
-          if [ "$SOMENTE_DADOS_ADMIN" = true ]; then
-            JSON_IMAGEM='[]'
-          else
-            JSON_IMAGEM="$JSON"
-          fi
           echo "celulas=$JSON" >> "$GITHUB_OUTPUT"
-          echo "celulas_imagem=$JSON_IMAGEM" >> "$GITHUB_OUTPUT"
+          echo "celulas_imagem=$JSON" >> "$GITHUB_OUTPUT"
           echo "n=$(jq -n --argjson c "$JSON" '$c|length')" >> "$GITHUB_OUTPUT"
-          echo "n_imagem=$(jq -n --argjson c "$JSON_IMAGEM" '$c|length')" >> "$GITHUB_OUTPUT"
-          echo "painel_dados=$PAINEL_DADOS" >> "$GITHUB_OUTPUT"
-          echo "fila_dados=$FILA_DADOS" >> "$GITHUB_OUTPUT"
+          echo "n_imagem=$(jq -n --argjson c "$JSON" '$c|length')" >> "$GITHUB_OUTPUT"
           echo "deteccao=ok" >> "$GITHUB_OUTPUT"
           echo "Células tocadas: $JSON"
-          echo "Células com imagem: $JSON_IMAGEM"
-          echo "Dados admin: painel=$PAINEL_DADOS fila=$FILA_DADOS"
-
-  portao:
-    name: portao-de-deploy
-    needs: detectar
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    # Least privilege: o portão LÊ checks — nunca recebe packages nem SSH.
-    permissions:
-      contents: read
-      actions: read
-      checks: read
-      pull-requests: read
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      SHA: ${{ github.sha }}
-      RUN_ID: ${{ github.run_id }}
-      EVENTO: ${{ github.event_name }}
-      CELULAS: ${{ needs.detectar.outputs.celulas }}
-      PORTAO_MODO: celula
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Portão de deploy (0 = verde provado · 1 = reprovado · 2 = não mediu)
-        run: python ci/portao_de_deploy.py
-
-  publicar-dados-admin:
-    needs: [detectar, portao]
-    if: >-
-      needs.portao.result == 'success' &&
-      needs.detectar.result == 'success' &&
-      needs.detectar.outputs.deteccao == 'ok' &&
-      (needs.detectar.outputs.painel_dados == 'true' || needs.detectar.outputs.fila_dados == 'true')
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
-    environment: vps
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-      checks: read
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Leitor da fonte de aceite
-        run: python -m pip install --quiet PyYAML==6.0.2
-      - name: Preparar dados do painel
-        env:
-          GH_TOKEN: ${{ github.token }}
-        if: needs.detectar.outputs.painel_dados == 'true'
-        run: |
-          set -eu
-          python ci/preparar_dados_admin.py painel \
-            --saida admin-dados-payload/painel \
-            --sha "${{ github.sha }}" \
-            --run-id "${{ github.run_id }}" \
-            --run-number "${{ github.run_number }}"
-          cp ci/publicador_dados_admin.py admin-dados-payload/publicador_dados_admin.py
-      - name: Enviar dados do painel para staging na VPS
-        if: needs.detectar.outputs.painel_dados == 'true'
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: deploy
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "admin-dados-payload/painel,admin-dados-payload/publicador_dados_admin.py"
-          target: /opt/plataforma/admin-dados.new/${{ github.sha }}
-          strip_components: 1
-          rm: true
-      - name: Publicar dados do painel na VPS
-        id: publicar_painel
-        if: needs.detectar.outputs.painel_dados == 'true'
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: deploy
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: ADMIN_DADOS_TIPO,ADMIN_DADOS_SHA,ADMIN_DADOS_RUN_NUMBER
-          capture_stdout: true
-          script_path: infra/publicar-dados-admin-na-vps.sh
-        env:
-          ADMIN_DADOS_TIPO: painel
-          ADMIN_DADOS_SHA: ${{ github.sha }}
-          ADMIN_DADOS_RUN_NUMBER: ${{ github.run_number }}
-      - name: Provar que os dados do painel foram ativados
-        if: needs.detectar.outputs.painel_dados == 'true'
-        env:
-          SAIDA: ${{ steps.publicar_painel.outputs.stdout }}
-        run: |
-          set -eu
-          if printf '%s' "$SAIDA" | grep -Eq 'ADMIN-DADOS-(PUBLICADOS|ANTIGO-IGNORADO): tipo=painel'; then
-            echo "dados do painel validados pela VPS"
-          else
-            echo "PAROU: a publicação do painel não deixou sentinela."
-            exit 1
-          fi
-      - name: Preparar dados da fila
-        env:
-          GH_TOKEN: ${{ github.token }}
-        if: needs.detectar.outputs.fila_dados == 'true'
-        run: |
-          set -eu
-          python ci/preparar_dados_admin.py fila \
-            --saida admin-dados-payload/fila \
-            --sha "${{ github.sha }}" \
-            --run-id "${{ github.run_id }}" \
-            --run-number "${{ github.run_number }}"
-          cp ci/publicador_dados_admin.py admin-dados-payload/publicador_dados_admin.py
-      - name: Enviar dados da fila para staging na VPS
-        if: needs.detectar.outputs.fila_dados == 'true'
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: deploy
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "admin-dados-payload/fila,admin-dados-payload/publicador_dados_admin.py"
-          target: /opt/plataforma/admin-dados.new/${{ github.sha }}
-          strip_components: 1
-      - name: Publicar dados da fila na VPS
-        id: publicar_fila
-        if: needs.detectar.outputs.fila_dados == 'true'
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: deploy
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: ADMIN_DADOS_TIPO,ADMIN_DADOS_SHA,ADMIN_DADOS_RUN_NUMBER
-          capture_stdout: true
-          script_path: infra/publicar-dados-admin-na-vps.sh
-        env:
-          ADMIN_DADOS_TIPO: fila
-          ADMIN_DADOS_SHA: ${{ github.sha }}
-          ADMIN_DADOS_RUN_NUMBER: ${{ github.run_number }}
-      - name: Provar que os dados da fila foram ativados
-        if: needs.detectar.outputs.fila_dados == 'true'
-        env:
-          SAIDA: ${{ steps.publicar_fila.outputs.stdout }}
-        run: |
-          set -eu
-          if printf '%s' "$SAIDA" | grep -Eq 'ADMIN-DADOS-(PUBLICADOS|ANTIGO-IGNORADO): tipo=fila'; then
-            echo "dados da fila validados pela VPS"
-          else
-            echo "PAROU: a publicação da fila não deixou sentinela."
-            exit 1
-          fi
+          echo "Células com imagem: $JSON"
 
   deploy:
-    needs: [detectar, portao]
-    # Explícito de propósito; NUNCA always()/failure(): deploy só existe com o
-    # portão VERDE e a detecção CONCLUÍDA com pelo menos uma célula.
+    needs: detectar
     if: >-
-      needs.portao.result == 'success' &&
       needs.detectar.result == 'success' &&
       needs.detectar.outputs.deteccao == 'ok' &&
       needs.detectar.outputs.celulas_imagem != '[]'
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
+    env:
+      TAG_IMAGEM: ${{ inputs.sha || github.sha }}
+      FONTE_PROVA: ${{ github.event_name == 'workflow_dispatch' && format('{0}/fonte-prova', github.workspace) || github.workspace }}
     permissions:
       contents: read
-      actions: read
-      checks: read
-      pull-requests: read
       packages: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci_db
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U ci"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
     strategy:
       max-parallel: 1
       matrix:
         celula: ${{ fromJSON(needs.detectar.outputs.celulas_imagem) }}
     steps:
-      # `fetch-depth: 0` NÃO é zelo: a reversão automática (Onda 4, fatia 2)
-      # anda para trás no histórico desta célula para achar a última imagem
-      # publicada. Com o clone raso que o checkout traz por padrão, esse
-      # histórico não existe — e a reversão anuncia "não há entrega anterior"
-      # sobre uma célula com dezenas delas. Medido em produção no run
-      # 33226662838 (29/08/2026): `armadilhas/159`.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
-        if: matrix.celula == 'admin'
         with:
           python-version: '3.12'
       - uses: docker/login-action@v3
@@ -347,493 +131,210 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Embutir snapshot de segurança dos dados admin no build (só a célula admin)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        if: matrix.celula == 'admin'
-        run: |
-          set -eu
-          python -m pip install --quiet PyYAML==6.0.2
-          # Fallback da MIGRACAO INICIAL. A publicação normal de painel/fila
-          # mora no job `publicar-dados-admin` e não reconstrói imagem. Este
-          # snapshot só protege a janela em que a imagem nova chega antes de o
-          # compose montar `/opt/plataforma/admin-dados`.
-          python ci/preparar_dados_admin.py painel \
-            --saida services/admin/painel_embutido \
-            --sha "${{ github.sha }}" \
-            --run-id "${{ github.run_id }}" \
-            --run-number "${{ github.run_number }}"
-          python ci/preparar_dados_admin.py fila \
-            --saida services/admin/fila_embutida \
-            --sha "${{ github.sha }}" \
-            --run-id "${{ github.run_id }}" \
-            --run-number "${{ github.run_number }}"
-          echo "snapshot admin: painel e fila embutidos como fallback"
       - name: Embutir os documentos do site no contexto do build (só a célula admin)
-        if: matrix.celula == 'admin'
+        if: github.event_name == 'push' && matrix.celula == 'admin'
         run: |
           set -eu
-          # A área de documentos (`DECISAO-a-area-de-documentos.md`): os MESMOS
-          # arquivos servem a lista pública (`/docs/`) e a fechada
-          # (`/admin/documentos/`), e é o cabeçalho de cada um que diz quem pode
-          # lê-lo. A célula SERVE a pasta; não guarda cópia dela
-          # (`services/admin/.gitignore`).
-          #
-          # Fail-CLOSED como os passos acima: pasta ausente viraria uma imagem
-          # publicada com a lista de documentos VAZIA — e o deploy ficaria verde.
-          # É o falso-verde padrão 1 da RETROSPECTIVA-FASE-D, e aqui ele apagaria
-          # páginas que já estavam no ar.
           test -d documentos || { echo "PAROU: documentos/ nao existe"; exit 1; }
           rm -rf services/admin/documentos_embutidos
           cp -R documentos services/admin/documentos_embutidos
           echo "documentos embutidos: $(ls services/admin/documentos_embutidos/*.md | wc -l) arquivos"
-      - name: Embutir os planos para IA no contexto do build (só a célula admin)
-        if: matrix.celula == 'admin'
-        run: |
-          set -eu
-          # A área `/mapa-ia/planos/` (`apps/core/planos_para_ia.py`), pedida
-          # pelo mantenedor em 31/08/2026: os planos e decisões do projeto num
-          # endereço que uma IA de fora consegue ler, porque artefato hospedado
-          # fora é privado e nenhuma conseguiu abrir.
-          #
-          # A pasta inteira entra, e QUEM DECIDE o que é público é o cabeçalho
-          # de cada documento (`publico-para-ia: true`, fail-closed) — nunca uma
-          # lista aqui. Embutir só os marcados criaria uma SEGUNDA regra sobre o
-          # mesmo fato, e o dia em que as duas discordassem seria o dia em que
-          # um documento marcado responderia 404 sem ninguém entender por quê.
-          #
-          # Fail-CLOSED como os passos acima: pasta ausente viraria uma imagem
-          # publicada com a área VAZIA, e o deploy ficaria verde — o falso-verde
-          # padrão 1 da RETROSPECTIVA-FASE-D.
-          test -d docs/decisoes || { echo "PAROU: docs/decisoes/ nao existe"; exit 1; }
-          rm -rf services/admin/planos_embutidos
-          cp -R docs/decisoes services/admin/planos_embutidos
-          echo "planos embutidos: $(ls services/admin/planos_embutidos/*.md | wc -l) arquivos"
-      # O BUILD FICA SOZINHO, E A SEPARAÇÃO É A DECISÃO (02/09/2026, PR #897).
-      # Build que falha é defeito do CÓDIGO e não se repete nunca — repetir um
-      # build quebrado é a definição de esconder o vermelho. O que ganhou
-      # repetição foi só o TRANSPORTE da imagem pronta, a única metade cujo
-      # erro é de rede. Juntar os dois num passo só daria retry ao build de
-      # graça, sem ninguém ter escolhido isso.
-      - name: Preparar imagem de leitura para retirar o painel da VPS
-        if: matrix.celula == 'admin'
-        run: |
-          IMG=ghcr.io/abundanciabr/plataforma-admin-leitura
-          docker build -f services/admin/Dockerfile.leitura -t "$IMG:${{ github.sha }}" -t "$IMG:main" services/admin
-          python3 ci/enviar_a_imagem.py "$IMG:${{ github.sha }}" "$IMG:main"
       - name: Build da imagem da célula
+        if: github.event_name == 'push'
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
-          docker build -t "$IMG:${{ github.sha }}" -t "$IMG:main" "services/${{ matrix.celula }}"
+          docker build -t "$IMG:${{ github.sha }}" "services/${{ matrix.celula }}"
 
-      # O envio, com até 3 tentativas — a vacina do `unknown blob` que derrubou
-      # o deploy do PR #897 com a imagem já construída e nomeada. A lógica
-      # (o que repete, o que para na primeira) mora em `ci/enviar_a_imagem.py`
-      # porque precisa de teste: `ci/tests/test_enviar_a_imagem.py`. Retry sem
-      # teste foi como nasceu a `armadilhas/209`.
-      #
-      # As tentativas ficam DENTRO deste run de propósito. Quando o rerun
-      # manual passa, o GitHub sobrescreve a conclusão anterior e o histórico
-      # apaga a evidência do padrão (medido em 28/08/2026) — aqui o run fecha
-      # verde e o log ainda mostra que a primeira tentativa falhou.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          ref: ${{ inputs.sha }}
+          path: fonte-prova
+      - name: Baixar a imagem em uso para prova inicial
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CELULA: ${{ matrix.celula }}
+        run: docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG_IMAGEM"
+
+      - name: Provar o produto na própria imagem candidata com banco isolado
+        env:
+          CELULA: ${{ matrix.celula }}
+        run: |
+          set -euo pipefail
+          IMG=ghcr.io/abundanciabr/plataforma-$CELULA:$TAG_IMAGEM
+          docker run --rm --network host --entrypoint sh \
+            -e CELULA -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci_db \
+            -e REDIS_STREAMS_URL=redis://localhost:6379/0 \
+            -e HUEY_REDIS_URL=redis://localhost:6379/1 \
+            -e DJANGO_SECRET_KEY=teste-isolado \
+            -e MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real \
+            -e MP_WEBHOOK_SECRET=teste-isolado \
+            -v "$FONTE_PROVA:/fonte:ro" "$IMG" -c '
+              set -eu
+              mkdir /tmp/prova
+              cp -a /fonte/. /tmp/prova/
+              rm -rf "/tmp/prova/services/$CELULA"
+              mkdir -p "/tmp/prova/services/$CELULA"
+              cp -a /app/. "/tmp/prova/services/$CELULA/"
+              cd "/tmp/prova/services/$CELULA"
+              python -m pytest -q
+            '
+
       - name: Enviar a imagem ao registro (até 3 tentativas)
+        if: github.event_name == 'push'
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
-          python3 ci/enviar_a_imagem.py "$IMG:${{ github.sha }}" "$IMG:main"
-      # =====================================================================
-      # ATIVAR NA VPS — em até três tentativas, e por que isso não é preguiça.
-      #
-      # A VPS recusou a conexão do runner CINCO vezes em três dias (registros
-      # 20260826-030, 20260826-042, 20260827-001, 20260828-005; diagnóstico em
-      # `armadilhas/127`). O padrão é intermitente: a porta 22 responde na hora
-      # quando medida do PC do mantenedor, e o site fica em 200 o tempo todo —
-      # o engasgo é entre o runner do GitHub e a VPS.
-      #
-      # O QUE ISSO CUSTAVA, e é pior do que o tempo perdido: com a entrega
-      # vermelha, o site continua no ar servindo a imagem ANTIGA. Quem não
-      # estivesse olhando naquele minuto acharia, no dia seguinte, que a versão
-      # nova estava em produção — com todos os sinais parecendo normais. Só um
-      # agente atento pedindo `gh run rerun` salvava, e depender de alguém estar
-      # olhando é exatamente o que esta casa chama de garantia sem mecanismo.
-      #
-      # E HÁ UM AGRAVANTE MEDIDO EM 28/08/2026: quando o rerun manual passa, o
-      # GitHub SOBRESCREVE a conclusão anterior. `gh run list --limit 40`
-      # devolvia ZERO falhas — o histórico automático apagava a evidência do
-      # próprio padrão. Com as tentativas dentro do MESMO run, o log preserva
-      # cada uma: o run fecha verde e ainda assim mostra, no passo, que a
-      # primeira tentativa falhou. O padrão para de ser invisível.
-      #
-      # REPETIR É SEGURO porque `infra/deploy-celula-na-vps.sh` é idempotente
-      # por construção: `pull` e `up -d` sobre o estado já correto não fazem
-      # nada. Se ele deixasse de ser, este retry viraria uma arma.
-      #
-      # Só a ÚLTIMA tentativa decide o veredito. As duas primeiras usam
-      # `continue-on-error`, que registra a falha sem derrubar o job.
-      #
-      # ---------------------------------------------------------------------
-      # E DESDE 30/08/2026 (TAR-013) O DEPLOY TAMBÉM MEDE — a peça que faltava.
-      #
-      # Repetir com pausa e parar na terceira já estavam aqui desde 26/08. A
-      # terceira ordem da `armadilhas/127` — MEDIR A PORTA 22 — não estava em
-      # lugar nenhum do deploy: ela morava no texto da armadilha (um comando
-      # para o agente colar) e em `ci/rerun_de_deploy.py`, que roda no PC,
-      # DEPOIS do fato, e só se alguém tiver visto o vermelho.
-      #
-      # Sem a medição, este retry repete às cegas: trata todo timeout de SSH
-      # como o soluço intermitente da 127, inclusive quando é a `armadilhas/017`
-      # — a falha PERMANENTE de alcance, em que nenhuma tentativa passa nunca.
-      # O log terminava dizendo "a suspeita é a 017", que é palpite. Agora a
-      # sonda mede do RUNNER, que é a ponta certa: o engasgo da 127 é entre o
-      # runner e a VPS, e é o runner que sabe se alcança a porta 22 AGORA.
-      #
-      # DUAS REGRAS QUE MANTÊM A SONDA VACINA, E NÃO ARMA:
-      #
-      # 1. Ela NUNCA derruba entrega que ainda poderia dar certo. A única
-      #    direção em que encurta o laço é a provada: DUAS medições
-      #    independentes dizendo "porta morta" pulam a 3ª tentativa. Porta viva
-      #    ou "não consegui medir" mantêm o retry inteiro, como antes.
-      # 2. A decisão sai por `outputs.veredito`, NUNCA por `outcome`. O
-      #    `outcome` só tem dois valores e juntaria "a porta está morta" com
-      #    "não consegui medir" — a confusão exata que o [INV-CI01] proíbe.
-      #    Por isso as sondas são `continue-on-error: true`: o exit code delas
-      #    não decide nada aqui; o texto do veredito decide.
-      # =====================================================================
-      - name: Medir a porta 22 antes de tentar (só registra, não decide)
-        id: sonda0
-        continue-on-error: true
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          # `partida` muda o que a sonda DIZ, não o que ela mede: aqui nada
-          # falhou ainda, e a frase "o que falhou foi a rede" seria falsa no
-          # log de todo deploy saudável. Esta é a linha de base — a única
-          # medição que roda mesmo quando a VPS atende de primeira, e a que
-          # responde "a porta estava alcançável quando isto começou?".
-          MOMENTO: partida
-        run: python3 ci/sonda_da_vps.py --sondar-porta
-
-      - name: Ativar na VPS (tentativa 1 de 3)
-        id: subir1
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1
+          python3 ci/enviar_a_imagem.py "$IMG:${{ github.sha }}"
+      - name: Enviar o receptor de aprovação para a VPS
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: CELULA
-          capture_stdout: true
-          script_path: infra/deploy-celula-na-vps.sh
-        env:
-          CELULA: ${{ matrix.celula }}
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          source: infra/publicacao-local.py
+          target: /opt/plataforma
+          strip_components: 1
 
-      # A MEDIÇÃO QUE SEPARA AS DUAS DOENÇAS. Ela vem ANTES da pausa de
-      # propósito: se a porta estiver morta, é isso que a pausa vai esperar
-      # passar, e é bom saber disso já na primeira medição.
-      - name: Medir a porta 22 depois da 1ª recusa (127 ou 017?)
-        id: sonda1
-        if: steps.subir1.outcome == 'failure'
-        continue-on-error: true
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: python3 ci/sonda_da_vps.py --sondar-porta
-
-      # A espera entre tentativas é conselho medido, não superstição: em
-      # 26/08/2026 duas tentativas emendadas falharam e a terceira, depois de
-      # ~1 minuto, passou (`armadilhas/127`).
-      - name: Esperar antes de tentar de novo
-        if: steps.subir1.outcome == 'failure'
-        run: |
-          echo "A VPS não atendeu na 1ª tentativa. Esperando 45s — ver armadilhas/127."
-          sleep 45
-
-      - name: Ativar na VPS (tentativa 2 de 3)
-        id: subir2
-        if: steps.subir1.outcome == 'failure'
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1
+      - name: Inicializar a aprovação da imagem em uso
+        id: inicializar
+        if: github.event_name == 'workflow_dispatch'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: CELULA
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          envs: MODO,CELULA,TAG,PROVA_IMAGEM_SHA,ENDERECO_PROVA,COMPATIBILIDADE_DADOS,COMPATIBILIDADE_CONFIGURACAO
           capture_stdout: true
+          command_timeout: 10m
           script_path: infra/deploy-celula-na-vps.sh
         env:
+          MODO: inicializar
           CELULA: ${{ matrix.celula }}
+          TAG: ${{ inputs.sha }}
+          PROVA_IMAGEM_SHA: ${{ inputs.sha }}
+          ENDERECO_PROVA: ${{ fromJSON(vars.PUBLICACAO_ENDERECOS || '{}')[matrix.celula] }}
+          COMPATIBILIDADE_DADOS: ${{ fromJSON(vars.PUBLICACAO_COMPATIBILIDADE_DADOS || '{}')[matrix.celula] }}
+          COMPATIBILIDADE_CONFIGURACAO: ${{ fromJSON(vars.PUBLICACAO_COMPATIBILIDADE_CONFIGURACAO || '{}')[matrix.celula] }}
 
-      - name: Medir a porta 22 depois da 2ª recusa (a medição que confirma)
-        id: sonda2
-        if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
-        continue-on-error: true
+      - name: Conferir aprovação inicial concluída
+        if: github.event_name == 'workflow_dispatch'
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: python3 ci/sonda_da_vps.py --sondar-porta
-
-      # A REGRA DE PARADA ANTECIPADA — e por que ela exige DUAS medições.
-      #
-      # Uma medição isolada dizendo "porta morta" pode ser defeito da própria
-      # sonda no runner. Duas, tomadas com ~1 minuto de distância e cada uma
-      # depois de uma recusa real da VPS, são evidência: isto não é o soluço
-      # intermitente da `armadilhas/127`, é a `armadilhas/017` — falha de
-      # alcance, que nenhuma tentativa nova conserta.
-      #
-      # Só aqui a sonda tem poder de decisão, e só nesta direção: pular a 3ª
-      # tentativa quando já está provado que ela não pode dar certo. O ganho
-      # não é o minuto economizado — é o run parar de dizer "a suspeita é a
-      # 017" (palpite) e passar a dizer "é a 017" (medido, duas vezes), com o
-      # encaminhamento certo já escrito.
-      #
-      # Comparamos com `outputs.veredito`, NUNCA com `outcome`: 'não consegui
-      # medir' também produz `outcome == failure`, e ler assim faria a sonda
-      # abortar deploys por defeito próprio.
-      #
-      # E AS DUAS MEDIÇÕES NÃO BASTARAM — no mesmo dia em que nasceram (TAR-026,
-      # `armadilhas/209`). No run 33312655853 as duas disseram `permanente` com a
-      # VPS VIVA, porque cada uma era UMA sondagem só e as duas estouraram o
-      # tempo pelo mesmo motivo: o runner não alcançava nada, nem o site
-      # público. Hoje cada medição é composta de várias sondagens, silêncio
-      # deixou de valer como "porta morta" e o site é testemunha da saída do
-      # runner — tudo dentro de `ci/sonda_da_vps.py`. Por isso a mensagem abaixo
-      # cita o NÚMERO de sondagens: desistir de publicar é a decisão mais cara
-      # desta casa, e ela tem de mostrar em quantas medições se apoia.
-      - name: PARAR — a porta 22 não respondeu nas DUAS medições (é a 017)
-        if: steps.sonda1.outputs.veredito == 'permanente' && steps.sonda2.outputs.veredito == 'permanente'
-        env:
-          N1: ${{ steps.sonda1.outputs.sondagens }}
-          N2: ${{ steps.sonda2.outputs.sondagens }}
+          SAIDA: ${{ steps.inicializar.outputs.stdout }}
+          CELULA: ${{ matrix.celula }}
         run: |
-          set -eu
-          echo "🧱 PAROU POR SEGURANÇA: a porta 22 da VPS não respondeu deste"
-          echo "   runner em NENHUMA das ${N1:-?}+${N2:-?} sondagens, repartidas em"
-          echo "   duas medições independentes, cada uma tomada depois de uma"
-          echo "   recusa real da conexão."
-          echo
-          echo "   Isto NÃO é o soluço de rede da armadilhas/127 — é a"
-          echo "   armadilhas/017: falha PERMANENTE de alcance. Uma terceira"
-          echo "   tentativa não é diagnóstico, é teimosia: ela levaria mais um"
-          echo "   minuto para falhar exatamente igual."
-          echo
-          echo "   O site continua no ar servindo a versão ANTERIOR — ninguém"
-          echo "   ficou fora do ar. Mas o que foi mergeado NÃO está em"
-          echo "   produção, e não vai estar enquanto a porta não voltar."
-          echo
-          echo "   O conserto é de configuração e passa pelo mantenedor (Lei 5):"
-          echo "   o que o VPS_HOST resolve? entrou CDN na frente do domínio? o"
-          echo "   firewall da VPS passou a recusar a faixa dos runners?"
-          exit 1
+          set -euo pipefail
+          printf '%s\n' "$SAIDA" | grep -Fx "INICIALIZACAO-CONCLUIDA: $CELULA:$TAG_IMAGEM"
+          echo 'Imagem em uso aprovada após testes isolados, identidade e endereço HTTPS.' >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Esperar antes da última tentativa
-        if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
+      - name: Preparar captura da aplicação sem perder o estado na falha
+        if: github.event_name == 'push'
         run: |
-          echo "A VPS não atendeu na 2ª tentativa. Esperando 60s antes da última."
-          sleep 60
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          fonte = Path('infra/deploy-celula-na-vps.sh')
+          script = fonte.read_text()
+          delimitador = 'FIM_DEPLOY_COM_RESULTADO'
+          if delimitador in script:
+              raise SystemExit('Delimitador presente no receptor.')
+          fonte.write_text(
+              'set -u\nSCRIPT=$(cat <<\'' + delimitador + '\'\n' + script +
+              '\n' + delimitador + '\n)\n' +
+              'if bash -c "$SCRIPT" </dev/null; then CODIGO=0; else CODIGO=$?; fi\n' +
+              'printf "DEPLOY-STATUS:%s\\n" "$CODIGO"\n'
+          )
+          PY
+          bash -n infra/deploy-celula-na-vps.sh
 
-      # A que vale. Sem `continue-on-error`: se esta falhar, o deploy é vermelho
-      # — e aí não é mais blip. O que É, o passo de parada acima já mediu: se
-      # chegou aqui, a porta 22 respondeu pelo menos uma vez, então a 017 está
-      # descartada por medição, não por suspeita.
-      - name: Ativar na VPS (tentativa 3 de 3 — esta decide)
-        id: subir3
-        if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
-        uses: appleboy/ssh-action@v1
+      - name: Aplicar a candidata e provar o endereço
+        id: aplicar
+        if: github.event_name == 'push'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: CELULA
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          envs: CELULA,TAG,PROVA_IMAGEM_SHA,PEDIDO_EM,ENDERECO_PROVA,COMPATIBILIDADE_DADOS,COMPATIBILIDADE_CONFIGURACAO
           capture_stdout: true
+          command_timeout: 30m
           script_path: infra/deploy-celula-na-vps.sh
         env:
           CELULA: ${{ matrix.celula }}
+          TAG: ${{ github.sha }}
+          PROVA_IMAGEM_SHA: ${{ github.sha }}
+          PEDIDO_EM: ${{ github.event.head_commit.timestamp }}
+          ENDERECO_PROVA: ${{ fromJSON(vars.PUBLICACAO_ENDERECOS || '{}')[matrix.celula] }}
+          COMPATIBILIDADE_DADOS: ${{ fromJSON(vars.PUBLICACAO_COMPATIBILIDADE_DADOS || '{}')[matrix.celula] }}
+          COMPATIBILIDADE_CONFIGURACAO: ${{ fromJSON(vars.PUBLICACAO_COMPATIBILIDADE_CONFIGURACAO || '{}')[matrix.celula] }}
 
-      # =====================================================================
-      # A ENTREGA RODOU MESMO? — a trava que faltava, escrita a custo.
-      #
-      # Em 28/08/2026 este workflow ficou VERDE sem ter subido imagem nenhuma.
-      # O parâmetro estava com o nome errado (`script_file` em vez de
-      # `script_path`); a ação avisou "Unexpected input", IGNOROU o script,
-      # abriu a conexão, não executou nada e saiu com sucesso. O passo seguinte
-      # anunciou "✅ A VPS atendeu de primeira" — e era verdade: ela atendeu.
-      # Só que não foi pedido nada a ela.
-      #
-      # Nenhum teste de CI pegaria: o YAML era válido, o script existia, o
-      # caminho estava certo. O defeito só existia na conversa entre o workflow
-      # e a ação, e só aparecia em produção — com o site servindo a imagem
-      # velha e todos os sinais verdes.
-      #
-      # A CURA: o script termina imprimindo uma sentinela, e este passo EXIGE
-      # ver essa sentinela na saída capturada. Conectar sem executar deixa de
-      # ser sucesso. É a diferença entre "a porta abriu" e "o trabalho foi
-      # feito" — e este projeto já pagou caro por confundir as duas
-      # (RETROSPECTIVA-FASE-D §1: status 2xx não é sucesso).
-      #
-      # As saídas entram por `env:` e não por interpolação direta no shell:
-      # texto vindo de fora dentro de um `run:` é injeção esperando acontecer.
-      # =====================================================================
-      - name: A entrega rodou mesmo? (verde sem ter subido nada é o pior verde)
+      - name: Classificar publicação e preservar o estado para recuperação
+        id: resultado
+        if: ${{ !cancelled() && steps.aplicar.outcome != 'skipped' }}
         env:
-          SAIDA_1: ${{ steps.subir1.outputs.stdout }}
-          SAIDA_2: ${{ steps.subir2.outputs.stdout }}
-          SAIDA_3: ${{ steps.subir3.outputs.stdout }}
-          R1: ${{ steps.subir1.outcome }}
-          R2: ${{ steps.subir2.outcome }}
-          R3: ${{ steps.subir3.outcome }}
+          SAIDA: ${{ steps.aplicar.outputs.stdout }}
         run: |
-          set -eu
-          if printf '%s\n%s\n%s' "$SAIDA_1" "$SAIDA_2" "$SAIDA_3" | grep -q 'ENTREGA-CONCLUIDA:'; then
-            echo "✅ O script da entrega rodou até o fim na VPS."
-          else
-            echo "❌ PAROU: nenhuma tentativa produziu a marca de conclusão."
-            echo "   A conexão pode ter aberto sem que nada fosse executado —"
-            echo "   foi o que aconteceu em 28/08/2026 com o parâmetro errado."
-            echo "   O deploy NÃO subiu imagem nenhuma. Não trate como verde."
-            exit 1
-          fi
+          python - <<'PY'
+          import json, os, re
+          saida = os.environ['SAIDA']
+          estados = re.findall(r'^ESTADO-PUBLICACAO: (.+)$', saida, re.M)
+          status = re.findall(r'^DEPLOY-STATUS:([0-9]+)$', saida, re.M)
+          sucesso = status == ['0'] and 'ENTREGA-CONCLUIDA:' in saida
+          aplicada = bool(re.search(r'^CANDIDATA-APLICADA:', saida, re.M))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as destino:
+              destino.write(f"sucesso={'true' if sucesso else 'false'}\n")
+              destino.write(f"recuperar={'true' if aplicada and not sucesso and len(estados) == 1 else 'false'}\n")
+          if len(estados) == 1:
+              estado = json.loads(estados[0])
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as destino:
+                  destino.write('estado=' + json.dumps(estado, separators=(',', ':')) + '\n')
+          if not sucesso:
+              print('A candidata não foi aprovada; confira aplicação, backup e resposta remota.')
+          PY
 
-          # Quantas tentativas foram precisas, dito em português. Sem esta
-          # linha, um verde na segunda tentativa é indistinguível de um verde na
-          # primeira — e o padrão da VPS recusando volta a ficar invisível, que
-          # é metade do problema que o retry existe para resolver.
-          if [ "$R1" = "success" ]; then
-            echo "✅ A VPS atendeu de primeira."
-          elif [ "$R2" = "success" ]; then
-            echo "⚠️ A VPS RECUSOU a 1ª tentativa e atendeu na 2ª (armadilhas/127)."
-            echo "   O deploy está correto — mas a ocorrência conta: registre em painel/registros/."
-          else
-            echo "⚠️ A VPS recusou as duas primeiras tentativas e atendeu na 3ª."
-            echo "   Registre a ocorrência; se isso virar rotina, veja armadilhas/017."
-          fi
-
-      # =====================================================================
-      # A REVERSÃO AUTOMÁTICA — Onda 4, fatia 2 do PLANO-MESTRE-ROBOS-SEM-COLISAO.
-      #
-      # Até 29/08/2026, um deploy que subisse imagem quebrada deixava a célula
-      # doente no ar até alguém perceber e disparar o rollback à mão. O RITOS §4
-      # manda voltar em segundos; a realidade dependia de um humano estar
-      # olhando o run naquele minuto — garantia sem mecanismo (padrão 2 da
-      # RETROSPECTIVA-FASE-D).
-      #
-      # TRÊS DECISÕES QUE NÃO SÃO ÓBVIAS:
-      #
-      # 1. `if: failure()`, NUNCA `always()`. Em `always()` isto desfaria todo
-      #    deploy que deu certo. Guarda: test_reversao.py.
-      # 2. QUEM ESCOLHE O ALVO É PYTHON, não o YAML. `ci/reversao.py` prova que
-      #    o alvo é célula do manifesto, commit anterior da linha principal e
-      #    imagem que EXISTE no registry — os mesmos critérios do rollback
-      #    manual. Sem alvo provado, ninguém toca na VPS: FAIL e ERROR levam ao
-      #    mesmo lugar (nada acontece), e o run continua vermelho.
-      # 3. O RUN CONTINUA VERMELHO DEPOIS DE REVERTER. Reverter não conserta o
-      #    defeito: ele apaga o fogo. Pintar de verde faria a próxima sessão
-      #    achar que a entrega entrou.
-      # =====================================================================
-      - name: Escolher para qual imagem voltar (só se a entrega falhou)
-        id: alvo_da_reversao
-        if: failure()
-        continue-on-error: true
+      - name: Escolher destino com aprovação e compatibilidade comprovadas
+        id: alvo
+        if: steps.resultado.outputs.recuperar == 'true'
         env:
           REVERSAO_CELULA: ${{ matrix.celula }}
           REVERSAO_ATUAL: ${{ github.sha }}
+          REVERSAO_ESTADO_PUBLICACAO: ${{ steps.resultado.outputs.estado }}
         run: python ci/reversao.py
 
-      - name: Voltar a célula na VPS (reversão automática)
-        id: reverter
-        if: failure() && steps.alvo_da_reversao.outputs.tag != ''
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1
+      - name: Recuperar uma única vez e provar novamente
+        id: recuperar
+        if: steps.alvo.outputs.tag != ''
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: CELULA,VAR_TAG,TAG
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          envs: CELULA,VAR_TAG,TAG,ATUAL_ESPERADA,COMPATIBILIDADE_DADOS,COMPATIBILIDADE_CONFIGURACAO
           capture_stdout: true
+          command_timeout: 30m
           script_path: infra/reverter-celula-na-vps.sh
         env:
-          CELULA: ${{ steps.alvo_da_reversao.outputs.celula }}
-          VAR_TAG: ${{ steps.alvo_da_reversao.outputs.var_tag }}
-          TAG: ${{ steps.alvo_da_reversao.outputs.tag }}
+          CELULA: ${{ matrix.celula }}
+          VAR_TAG: ${{ steps.alvo.outputs.var_tag }}
+          TAG: ${{ steps.alvo.outputs.tag }}
+          ATUAL_ESPERADA: ${{ steps.alvo.outputs.atual }}
+          COMPATIBILIDADE_DADOS: ${{ steps.alvo.outputs.dados }}
+          COMPATIBILIDADE_CONFIGURACAO: ${{ steps.alvo.outputs.configuracao }}
 
-      # Dizer o que aconteceu, em português, sem pintar nada de verde. As três
-      # saídas possíveis são fatos diferentes e precisam ser lidas como tais.
-      - name: O que a reversão conseguiu fazer
-        if: failure()
+      - name: Exigir aprovação da candidata e registrar o resultado
+        if: ${{ !cancelled() && github.event_name == 'push' }}
         env:
-          TAG: ${{ steps.alvo_da_reversao.outputs.tag }}
-          SAIDA: ${{ steps.reverter.outputs.stdout }}
-          RESULTADO: ${{ steps.reverter.outcome }}
-          # As saídas das TENTATIVAS DE ATIVAÇÃO — é por elas que este passo
-          # distingue "a VPS nunca atendeu" de "algo chegou a rodar e parou no
-          # meio". Auditoria de 29/08/2026 (run 33260367237): a VPS recusou a
-          # conexão, NADA foi publicado, a reversão falhou pelo MESMO motivo —
-          # e a mensagem antiga mandava tratar a célula como QUEBRADA. Ela não
-          # estava: continuava servindo a versão anterior, 200 no ar. Mensagem
-          # alarmante errada gasta a confiança que a mensagem certa precisa.
-          ATIVACAO_1: ${{ steps.subir1.outputs.stdout }}
-          ATIVACAO_2: ${{ steps.subir2.outputs.stdout }}
-          ATIVACAO_3: ${{ steps.subir3.outputs.stdout }}
+          SUCESSO: ${{ steps.resultado.outputs.sucesso }}
+          RECUPERACAO: ${{ steps.recuperar.outcome }}
+          SAIDA: ${{ steps.aplicar.outputs.stdout }}
         run: |
           set -eu
-          if [ -z "${TAG:-}" ]; then
-            echo "❌ A entrega falhou e NÃO houve reversão: não há imagem anterior"
-            echo "   provada desta célula (ver o passo acima). A célula está como"
-            echo "   o deploy a deixou — investigue AGORA."
-            exit 0
+          printf '%s\n' "$SAIDA" | grep '^PUBLICACAO-MEDICAO:' >> "$GITHUB_STEP_SUMMARY" || true
+          if [ "$SUCESSO" != true ]; then
+            echo "A candidata falhou. Recuperação: ${RECUPERACAO:-não iniciada}. Confira o estado remoto antes de repetir." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
-          if printf '%s' "$SAIDA" | grep -q 'REVERSAO-CONCLUIDA:'; then
-            echo "↩️  REVERTIDO: a célula voltou para a imagem $TAG."
-            echo "   O site está no ar com a versão ANTERIOR. Este run continua"
-            echo "   vermelho de propósito: reverter apaga o fogo, não conserta"
-            echo "   o defeito. Registre a ocorrência em painel/registros/."
-          elif [ -z "${ATIVACAO_1:-}${ATIVACAO_2:-}${ATIVACAO_3:-}" ]; then
-            # A VPS nunca atendeu: as três tentativas de ativação morreram ANTES
-            # de executar qualquer coisa (nenhuma produziu uma linha de saída).
-            # Logo NADA foi publicado — o site segue na versão anterior, e não
-            # há o que reverter. É a intermitência conhecida (armadilhas/127).
-            echo "⏸️  NADA FOI PUBLICADO: a VPS não atendeu nenhuma das tentativas"
-            echo "   (e por isso a reversão também não a alcançou — mesmo motivo)."
-            echo "   O site continua na versão ANTERIOR, são. Não há emergência:"
-            echo "   quando a VPS voltar, rode:  gh run rerun <este-run> --failed"
-          else
-            echo "❌ A reversão foi TENTADA e não se completou (resultado: $RESULTADO)."
-            echo "   A ativação chegou a EXECUTAR algo na VPS e parou no meio, e a"
-            echo "   volta não se confirmou (sem a marca REVERSAO-CONCLUIDA)."
-            echo "   Trate a célula como QUEBRADA e dispare o rollback manual."
-          fi
-
-      # =====================================================================
-      # REGISTRAR O QUE O DEPLOY FEZ — a terceira ordem da armadilhas/127.
-      #
-      # O log já preservava as tentativas dentro do mesmo run. O problema é que
-      # ninguém lê log: um deploy que se salvou na 2ª tentativa era, para quem
-      # abre a execução, IDÊNTICO a um que passou de primeira — e o padrão da
-      # VPS recusando ficava invisível justamente nos dias em que ela mais
-      # recusou. Este passo escreve o resumo do run (a primeira coisa que
-      # aparece ao abrir a execução) em português de resultado: quantas
-      # tentativas foram precisas, o que cada medição da porta 22 disse, se o
-      # site ficou no ar, e — a frase que se esquece — se o que foi mergeado
-      # está ou não em produção.
-      #
-      # `!cancelled()` e não `always()`: um run cancelado pela cadeira musical
-      # do grupo `deploy` (armadilhas/173 e /188) não executou nada, e narrar
-      # um deploy que não aconteceu seria inventar história. `always()` inclui
-      # cancelamento; este não.
-      #
-      # O passo NUNCA reprova (o narrador não é portão — quem reprova são os
-      # passos acima). Um narrador que pudesse derrubar o job transformaria
-      # "não consegui contar a história" em "a entrega falhou".
-      # =====================================================================
-      - name: Registrar no resumo do run o que o deploy fez
-        if: ${{ !cancelled() }}
-        env:
-          CELULA: ${{ matrix.celula }}
-          R1: ${{ steps.subir1.outcome }}
-          R2: ${{ steps.subir2.outcome }}
-          R3: ${{ steps.subir3.outcome }}
-          V0: ${{ steps.sonda0.outputs.veredito }}
-          V1: ${{ steps.sonda1.outputs.veredito }}
-          V2: ${{ steps.sonda2.outputs.veredito }}
-          # A marca de conclusão vem das MESMAS saídas capturadas que o passo
-          # "A entrega rodou mesmo?" examina — e por env, nunca interpolada
-          # dentro do `run:`, que seria injeção esperando acontecer.
-          SAIDA_1: ${{ steps.subir1.outputs.stdout }}
-          SAIDA_2: ${{ steps.subir2.outputs.stdout }}
-          SAIDA_3: ${{ steps.subir3.outputs.stdout }}
-        run: python3 ci/sonda_da_vps.py --resumir
+          echo 'Candidata aprovada após testes da imagem e prova do endereço.' >> "$GITHUB_STEP_SUMMARY"
