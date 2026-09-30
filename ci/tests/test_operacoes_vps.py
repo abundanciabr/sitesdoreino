@@ -4562,21 +4562,51 @@ def test_estado_infra_recusa_identidade_admin_de_outro_repositorio():
         ops.conferir_medicao("estado-infra", dados)
 
 
-@pytest.mark.skipif(os.name != "posix", reason="O_NOFOLLOW e dir_fd da VPS Linux")
 def test_estado_infra_recusa_troca_por_symlink_antes_de_abrir(monkeypatch, tmp_path):
     seguro = tmp_path / "sites.json"
     seguro.write_text("publico", encoding="utf-8")
     segredo = tmp_path / "secret"
     segredo.write_text(PRIVADO, encoding="utf-8")
     monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
-    abrir_real = ops.os.open
+    if os.name == "posix":
+        abrir_real = ops.os.open
 
-    def trocar_antes_de_abrir(caminho, *args, **kwargs):
-        if caminho == "sites.json":
-            seguro.rename(tmp_path / "salvo")
-            seguro.symlink_to(segredo)
-        return abrir_real(caminho, *args, **kwargs)
+        def trocar_antes_de_abrir(caminho, *args, **kwargs):
+            if caminho == "sites.json":
+                seguro.rename(tmp_path / "salvo")
+                seguro.symlink_to(segredo)
+            return abrir_real(caminho, *args, **kwargs)
 
-    monkeypatch.setattr(ops.os, "open", trocar_antes_de_abrir)
+        monkeypatch.setattr(ops.os, "open", trocar_antes_de_abrir)
+    else:
+        sem_follow = 0x200000
+        abertos = []
+        fechados = []
+
+        def abrir_simulado(caminho, flags, dir_fd=None):
+            assert flags & sem_follow
+            if dir_fd is None:
+                assert caminho == tmp_path
+                return 41
+            assert caminho == "sites.json" and dir_fd == 41
+            abertos.append(caminho)
+            raise OSError("link simbólico trocado antes da abertura")
+
+        monkeypatch.setattr(
+            ops,
+            "os",
+            SimpleNamespace(
+                name="posix",
+                O_RDONLY=0,
+                O_DIRECTORY=0x100000,
+                O_NOFOLLOW=sem_follow,
+                open=abrir_simulado,
+                fstat=lambda _: SimpleNamespace(st_mode=stat.S_IFDIR),
+                close=fechados.append,
+            ),
+        )
     with pytest.raises(ops.Falha, match="infra"):
         ops.hash_arquivo_infra("sites.json")
+    if os.name != "posix":
+        assert abertos == ["sites.json"]
+        assert fechados == [41]
