@@ -1,0 +1,19 @@
+{
+  "arquivo": "1009-fazer-os-executores-consultarem-a-receita-vigente",
+  "id": "TAR-1009",
+  "titulo": "Fazer os executores consultarem a receita vigente",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Consumidores apontam CONSTITUICAO/INVARIANTES/CAMINHO-DOURADO; Sol/Luna explicitos e restricoes preservados; testes de fichas, boletim e verificadores existentes passam; nao sobra exigencia operacional no legado tocado.",
+  "despacho": "Continuacao da frente de modelos/fontes TAR960/TAR719, programa TAR958; nao cria outra frente. Responsavel unico pme_modelos, gpt-6-sol medium explicitamente configurado, sem fallback/subagentes. Leia mandato/adendo e fontes canonicas; nao esta sozinho, preserve trabalho alheio. Reutilizar bancada pme-modelos livre apos conferir processos/artefatos; ramo codex/ci/pme-fontes-dos-executores, base main atual. Registrar contrato e claim oficial antes de editar. Escopo exato de 15 arquivos: fila/LEIA-ME.md; .claude/agents/LEIA-ME.md; .claude/agents/adversario.md; .claude/agents/despacho.md; .claude/agents/despacho-medio.md; .claude/agents/provador.md; .claude/agents/maquinista.md; .codex/agents/despacho.toml; .codex/agents/escrivao.toml; .codex/agents/revisor.toml; .codex/agents/maquinista.toml; ci/boletim.py; ci/doctor.py; ci/tests/test_fichas_de_robo.py; ci/tests/test_boletim.py. .codex/agents/procurador.toml nao precisa mudar. Outras fontes e testes somente leitura. Nao editar CLAUDE/AGENTS/CAMINHO/CODEOWNERS nem fontes da TAR998.\nMigrar apenas consumidores vigentes: fontes diretas CONSTITUICAO, INVARIANTES, CAMINHO-DOURADO; RITOS e adaptadores podem constar como historicos sem criar regra concorrente. Fila continua autoridade de eventos/reservas; nao mudar protocolo/aceite/estado. Preservar allowlist Sol/Luna e selecao explicita: correcao do mantenedor vale para programa, nao retirar por interpretar acoplamento de fornecedor. Retirar criterio ANTHROPIC_API_KEY de ficha operacional somente substituindo pela observacao das ferramentas/modelos efetivamente autorizados, sem consultar valores de segredos ou configuracao pessoal. Preservar avisos do boletim e conferencias de arquivos fundamentais do doctor; receita vigente entra no lugar do legado. Testes existentes de fichas/boletim e comandos baratos de doctor/fontes comprovam; nao criar teste que apenas repete texto sem propriedade.\nPasse de remocao: nenhum wrapper, nova dependencia, lei paralela ou documento de estado. Rito oficial com recibo/eventos e mandato dos15caminhos; separar codigo integrado, publicado e aceite de abertura nova. Revisao independente focada em perda de instrucoes tecnicas; bloqueio de plataforma volta ao root com diff/hash, nunca alternativa. Recuperacao por PR que preserve fonte unica. Proxima acao: reconciliar bancada e abrir TAR; parar apenas bloqueio concreto.",
+  "origem": "TAR958 mandato e adendo29set; continuacao de frente existente, coordenador01a0ed71",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

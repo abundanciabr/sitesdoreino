@@ -51,6 +51,10 @@ ID_DO_VIMEO = re.compile(r"^[0-9]+$")
 TIPO_DE_MIDIA = re.compile(r"^[a-z]+/[a-z0-9.+-]+$")
 MEDIDA = re.compile(r"^[0-9]{1,4}$")
 EXTENSOES_DE_IMAGEM = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+# A página responde `Referrer-Policy: same-origin`, e o YouTube recusa embed
+# sem Referer (Erro 153). O iframe pede só a origem, com valor fixo daqui:
+# o que a equipe escrever nesse atributo nunca passa.
+POLITICA_DO_PLAYER = "strict-origin-when-cross-origin"
 # Uma etiqueta de verdade: nome só com letras e dígitos ASCII. "<parágrafo>"
 # escrito num texto puro continua texto, e aparece escapado.
 PARECE_HTML = re.compile(r"</?[A-Za-z][A-Za-z0-9]*(\s[^>]*)?/?>")
@@ -157,7 +161,13 @@ class _Filtro(HTMLParser):
             return pares
         if etiqueta == "iframe":
             src = endereco_do_player(attrs.get("src"))
-            return [("src", src), ("allowfullscreen", None)] if src else None
+            if not src:
+                return None
+            return [
+                ("src", src),
+                ("allowfullscreen", None),
+                ("referrerpolicy", POLITICA_DO_PLAYER),
+            ]
         return None
 
     def handle_starttag(self, etiqueta, attrs):

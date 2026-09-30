@@ -25,6 +25,9 @@ IDEIAS = "/interno/gestao/ideias"
 MANTENEDOR = "mantenedor@meshcraft.test"
 ID_DA_PLATAFORMA = "idt-do-mantenedor"
 YOUTUBE_EMBED = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+# O YouTube recusa embed sem Referer (Erro 153), e a página responde
+# `Referrer-Policy: same-origin`: o próprio iframe precisa pedir a origem.
+DO_PLAYER = 'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"'
 
 
 @pytest.fixture
@@ -112,7 +115,28 @@ def test_iframe_do_youtube_vira_o_player_sem_rastreio_e_perde_o_resto():
         'onload="alert(1)" width="560"></iframe>'
     )
 
-    assert html == f'<iframe src="{YOUTUBE_EMBED}" allowfullscreen></iframe>'
+    assert html == f'<iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe>'
+
+
+def test_iframe_do_vimeo_vira_o_player_que_manda_a_origem():
+    html = resposta_em_html_seguro(
+        '<iframe src="https://player.vimeo.com/video/76979871?h=x"></iframe>'
+    )
+
+    assert html == (
+        f'<iframe src="https://player.vimeo.com/video/76979871" {DO_PLAYER}></iframe>'
+    )
+
+
+def test_referrerpolicy_da_entrada_nao_passa_e_o_do_filtro_prevalece():
+    """`unsafe-url` entregaria o endereço inteiro da página ao YouTube."""
+    html = resposta_em_html_seguro(
+        '<iframe referrerpolicy="unsafe-url" '
+        'src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
+    )
+
+    assert html == f'<iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe>'
+    assert resposta_em_html_seguro(html) == html
 
 
 def test_video_ganha_controles_e_so_aceita_https():
@@ -159,7 +183,7 @@ def test_link_solto_do_youtube_numa_linha_vira_o_player(link):
     html = resposta_em_html_seguro(f"Ficou assim:\n{link}")
 
     assert html == (
-        f'<p>Ficou assim:<br><iframe src="{YOUTUBE_EMBED}" allowfullscreen></iframe></p>'
+        f'<p>Ficou assim:<br><iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe></p>'
     )
 
 
@@ -167,8 +191,7 @@ def test_link_solto_do_vimeo_vira_o_player():
     html = resposta_em_html_seguro("https://vimeo.com/76979871")
 
     assert html == (
-        '<p><iframe src="https://player.vimeo.com/video/76979871" '
-        "allowfullscreen></iframe></p>"
+        f'<p><iframe src="https://player.vimeo.com/video/76979871" {DO_PLAYER}></iframe></p>'
     )
 
 
@@ -357,6 +380,18 @@ def test_a_pagina_filtra_de_novo_o_que_veio_do_banco(dentro, sugestao):
     assert "<p>ok</p>" in corpo
 
 
+def test_o_video_da_resposta_chega_a_pagina_pedindo_a_origem(dentro, sugestao):
+    """O defeito medido em produção: o player sem Referer mostrava o Erro 153."""
+    Sugestao.objects.filter(pk=sugestao.pk).update(
+        status=Sugestao.Status.IMPLEMENTADO,
+        resposta_da_equipe="Veja:\nhttps://youtu.be/dQw4w9WgXcQ",
+    )
+
+    corpo = dentro.client.get(reverse("sugestao", args=[sugestao.id])).content.decode()
+
+    assert f'<iframe src="{YOUTUBE_EMBED}" {DO_PLAYER}></iframe>' in corpo
+
+
 def test_a_pagina_nao_mostra_resposta_fora_de_implementado(dentro, sugestao):
     Sugestao.objects.filter(pk=sugestao.pk).update(
         status=Sugestao.Status.PLANEJADO, resposta_da_equipe="<p>antiga</p>"
@@ -375,3 +410,59 @@ def test_apagar_a_ideia_apaga_a_resposta_junto(db, sugestao):
     apagar_definitivamente(Sugestao.objects.get(pk=sugestao.pk))
 
     assert Sugestao.objects.get(pk=sugestao.pk).resposta_da_equipe == ""
+
+
+# A página da ideia implementada (pedido do mantenedor, 29/09/2026): a resposta
+# toma o lugar do problema e da solução, e o voto, os comentários e o caminho
+# das etapas saem. Os dados continuam no banco; só a página muda.
+
+VOTO = "Votar nesta"
+CONVERSA = "Acrescentar alguma coisa"
+CAMINHO = "Por onde ela andou"
+PROBLEMA = "<h3>O problema</h3>"
+SOLUCAO = "<h3>A solução proposta</h3>"
+
+
+def _pagina(dentro, sugestao, status, resposta=""):
+    Sugestao.objects.filter(pk=sugestao.pk).update(
+        status=status, resposta_da_equipe=resposta
+    )
+    return dentro.client.get(reverse("sugestao", args=[sugestao.id])).content.decode()
+
+
+def test_implementada_com_resposta_mostra_so_a_resposta(dentro, sugestao):
+    corpo = _pagina(dentro, sugestao, Sugestao.Status.IMPLEMENTADO, "<p>no ar</p>")
+
+    assert "<p>no ar</p>" in corpo
+    for parte in (PROBLEMA, SOLUCAO, VOTO, CONVERSA, CAMINHO):
+        assert parte not in corpo, parte
+
+
+def test_implementada_sem_resposta_guarda_o_problema_e_tira_o_resto(dentro, sugestao):
+    corpo = _pagina(dentro, sugestao, Sugestao.Status.IMPLEMENTADO)
+
+    assert PROBLEMA in corpo
+    assert SOLUCAO in corpo
+    for parte in (VOTO, CONVERSA, CAMINHO):
+        assert parte not in corpo, parte
+
+
+def test_ideia_em_andamento_continua_com_tudo(dentro, sugestao):
+    corpo = _pagina(dentro, sugestao, Sugestao.Status.EM_DESENVOLVIMENTO)
+
+    for parte in (PROBLEMA, SOLUCAO, VOTO, CONVERSA, CAMINHO):
+        assert parte in corpo, parte
+
+
+def test_titulo_dentro_da_resposta_nao_herda_o_estilo_de_rotulo():
+    """`.ficha h3` é rótulo miúdo; o rótulo da resposta tem classe própria."""
+    from pathlib import Path
+
+    base = Path(__file__).resolve().parents[1]
+    pagina = (base / "apps/core/templates/sugestoes/sugestao.html").read_text(
+        encoding="utf-8"
+    )
+    folha = (base / "static/sugestoes/caixa.css").read_text(encoding="utf-8")
+
+    assert '<h3 class="rotulo-da-resposta">A resposta da equipe</h3>' in pagina
+    assert ".resposta-da-equipe :is(h2, h3, h4):not(.rotulo-da-resposta) {" in folha

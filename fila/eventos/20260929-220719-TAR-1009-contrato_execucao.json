@@ -1,0 +1,75 @@
+{
+  "arquivo": "20260929-220719-TAR-1009-contrato_execucao",
+  "tarefa": "TAR-1009",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T22:07:19.478096+00:00",
+  "quem": "pme_modelos-TAR1009-01a0ed71",
+  "contrato": {
+    "versao": 1,
+    "plano": "GOV PME09 / TAR-958 / TAR-1009 — fontes dos executores",
+    "objetivo": "Fazer consumidores operacionais consultar CONSTITUICAO, INVARIANTES e CAMINHO-DOURADO como receita vigente sem perder as protecoes tecnicas e a allowlist Sol/Luna.",
+    "entregaveis": [
+      "Fichas e fila apontam diretamente as tres fontes vigentes",
+      "Boletim e doctor usam receita vigente sem perder alertas ou conferencias",
+      "Testes pertinentes verificam o comportamento corrigido"
+    ],
+    "escopo_incluido": [
+      "fila/LEIA-ME.md",
+      ".claude/agents/LEIA-ME.md",
+      ".claude/agents/adversario.md",
+      ".claude/agents/despacho.md",
+      ".claude/agents/despacho-medio.md",
+      ".claude/agents/provador.md",
+      ".claude/agents/maquinista.md",
+      ".codex/agents/despacho.toml",
+      ".codex/agents/escrivao.toml",
+      ".codex/agents/revisor.toml",
+      ".codex/agents/maquinista.toml",
+      "ci/boletim.py",
+      "ci/doctor.py",
+      "ci/tests/test_fichas_de_robo.py",
+      "ci/tests/test_boletim.py"
+    ],
+    "nao_objetivos": [
+      "Nao editar CLAUDE.md, AGENTS.md, CAMINHO-DOURADO.md, CODEOWNERS, fontes TAR-998 ou .codex/agents/procurador.toml",
+      "Nao modificar protocolo, eventos, reservas nem aceite da fila",
+      "Nao retirar allowlist gpt-6-sol e gpt-6-luna ou selecao explicita"
+    ],
+    "restricoes": [
+      "Somente 15 alvos tecnicos do brief e eventos/recibo proprios",
+      "Preservar fontes unicas e protecoes existentes",
+      "Sem wrapper, dependencia, lei paralela ou subdelegacao"
+    ],
+    "etapas": [
+      "Claim e contrato",
+      "Baseline focal e teste vermelho",
+      "Migracao minima",
+      "Provas, remocao e revisao",
+      "Rito PR e medicao de integracao/publicacao/aceite"
+    ],
+    "criterios_entrada": [
+      "Bancada pme-modelos livre e ramo da main atual",
+      "Reserva de intencao da raiz e TAR-1009 reivindicada",
+      "Dois JSON TAR-1009 copiados byte a byte"
+    ],
+    "criterios_aceite": [
+      "Consumidores apontam fontes vigentes sem exigencia operacional concorrente",
+      "Allowlist Sol/Luna e selecao explicita preservadas",
+      "Boletim e doctor preservam diagnosticos e avisos"
+    ],
+    "evidencias_exigidas": [
+      "Baseline e testes de fichas e boletim",
+      "Comandos baratos de doctor e fontes",
+      "Diff final e revisao independente",
+      "Separacao entre validacao, integracao, publicacao e aceite"
+    ],
+    "condicao_encerramento": "Incremento validado e enviado por PR oficial, sem declarar aceite do programa TAR-958; bloqueio externo documentado com acao para destravar.",
+    "limites_autonomia": "Exatamente 15 arquivos tecnicos do brief mais cadastro/eventos/recibo proprios. Nenhum arquivo protegido adicional.",
+    "acoes_do_mantenedor": "Nenhuma decisao adicional para este delta; mandato integral e adendo de 29/09 autorizam correcao e publicacao no canal oficial.",
+    "decisoes_aprovadas": [
+      "Mandato fase0 no PROMPTS-EXECUCAO-PLANO-MESTRE-SITESDOREINO.md de 29/09/2026, itens 1,2,3,7",
+      "Adendo TAR-958 de 29/09: manter apenas gpt-6-sol/gpt-6-luna nos delegados, com modelo e esforco explicitos, sem fallback",
+      "Brief TAR-1009 e coordenacao 01a0ed71-4e7f-7680-821e-4d655a7ad405"
+    ]
+  }
+}

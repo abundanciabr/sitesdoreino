@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260929-205441-TAR-980-checkpoint",
+  "tarefa": "TAR-980",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T20:54:41.857755+00:00",
+  "quem": "pme_preparo_candidato",
+  "plano": "Microbenchmark local de cache concluido; aceite de cache externo PME07 depende de transporte real Actions e contexto admin gerado pelo produtor TAR990",
+  "ultimo_avanco": "Contexto congelado manifesto sha256:c9e3353ce3614c7108f3633403734e5378c9682a3f1e8d2a9d7ecd955bebfa0c, 376 arquivos/7268052 bytes, base sha256:f77ac9e4..., Buildx privado 1 CPU/1 GiB. Bootstrap frio 4.887 s; build frio+cache local export+OCI 41.973 s; quente mesmo builder+OCI 5.226 s; cache 75477836 B, tar 75492352 B, empacotar/extrair 0.210/0.128 s; bootstrap novo 9.659 s; build importado+OCI 25.426 s; total ensaio 90.992 s. Tres OCI com digest sha256:ce9623f024c6490f8a956e8e0d4b6123d5824af2f173127468ac08c2fd2d91ea; importado mostrou pip e collectstatic CACHED. Builders privados removidos; cache compartilhado intocado.",
+  "proxima_acao": "07, dono do workflow/produtor TAR990, mede no fluxo oficial existente o mesmo contexto admin apos geracao e imagem-base digest fixa com controle frio e cache remoto escolhido, incluindo upload/download, bootstrap, bytes, hits e digest; nao usar cache na publicacao ate custo total e equivalencia comprovados. pme_preparo_candidato fornece TEMP/pme980-cache-3e008bcb/medidas.json e logs para essa comparacao. Cache externo segue pendente, nao adotado nem rejeitado.",
+  "verificacoes": [
+    "PowerShell TEMP/pme980-cache-3e008bcb/medir.ps1 -JanelaAutorizada => exit 0; medidas.json: 41.973 s frio+export, 5.226 s quente, 25.426 s importado, cache 75477836 B, total 90.992 s.",
+    "docker inspect builders privados: Memory=MemorySwap=1073741824, CpuQuota=CpuPeriod=100000; docker buildx rm apenas pme980-frio/importado; docker ps --filter name=pme980 vazio.",
+    "Metadados frio/quente/importado containerimage.digest iguais sha256:ce9623f024c6490f8a956e8e0d4b6123d5824af2f173127468ac08c2fd2d91ea; log importado prova passos CACHED, mas materializacao local de camadas levou build a 25.426 s."
+  ]
+}

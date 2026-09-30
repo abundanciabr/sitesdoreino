@@ -1,0 +1,19 @@
+{
+  "arquivo": "1011-a-pagina-da-ideia-implementada-mostra-so-a-resposta-da-equip",
+  "id": "TAR-1011",
+  "titulo": "A página da ideia implementada mostra só a resposta da equipe",
+  "toca": [
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR integrado e publicado; ideia implementada sem voto, comentários e caminho das etapas, e com resposta no lugar do problema e da solução",
+  "despacho": "Em services/sugestoes/apps/core/templates/sugestoes/sugestao.html: com resposta, a resposta toma o lugar das fichas O problema e A solução proposta; com status implementado, saem o voto, os comentários e o inspetor Por onde ela andou; o rótulo da resposta ganha a classe rotulo-da-resposta e caixa.css dá estilo de título aos h2, h3 e h4 do conteúdo. Testes em test_resposta_da_equipe.py.",
+  "origem": "pedido do mantenedor na sessão Claude Code de 29/09/2026",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}
