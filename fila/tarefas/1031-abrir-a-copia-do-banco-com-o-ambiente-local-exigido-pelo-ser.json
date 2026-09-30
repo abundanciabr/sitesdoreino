@@ -1,0 +1,20 @@
+{
+  "arquivo": "1031-abrir-a-copia-do-banco-com-o-ambiente-local-exigido-pelo-ser",
+  "id": "TAR-1031",
+  "titulo": "Abrir a copia do banco com o ambiente local exigido pelo servidor",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Reproduzir Compose com variaveis obrigatorias ausentes; carregar somente duas chaves locais sem log ou vazamento; testes de ausente duplicada e leitura falha, captura real iniciada e backup oficial restaurado com nove hashes.",
+  "despacho": "Frente backup978, sem subdelegacao. Dono infra/backup-coordenacao.py e ci/tests/test_backup_coordenacao.py mais registros obrigatorios. Corrigir causa comprovada do EOF: Compose ativo hash7f609035 exige ALUNOS_API_TOKEN e TOKEN_CATALOGO, carregados por provisionador e deploy mas ausentes no wrapper backup. Autoriza leitura local protegida de /opt/plataforma/env/admin.env SOMENTE para essas duas chaves e uso no ambiente dos subprocessos Docker necessarios; nenhum valor em stdout stderr artefatos commit ou runner. Nao imprimir arquivo nem persistir segredos. Validar ausencia duplicidade e falha com mensagens fechadas, manter CAPTURA sanitizada e stderr descartado. Preferir semantica de parsing existente correta e escopo minimo. Testes de segredo sintetico e processo Docker real, revisao independente. Nao alterar workflow ou provisionador. Root dispara backup oficial apos integracao; restauracao isolada pela frente com mecanismo privado. Voce nao esta sozinho, preserve outras mudancas.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

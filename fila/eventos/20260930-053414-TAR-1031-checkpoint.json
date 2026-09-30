@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260930-053414-TAR-1031-checkpoint",
+  "tarefa": "TAR-1031",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T05:34:14.569547+00:00",
+  "quem": "despacho-admin-tar1031-backup-docker-id",
+  "plano": "Dois alvos técnicos concluídos; revisão independente antes do rito PR.",
+  "ultimo_avanco": "Run 36670218396 falhou antes da CAPTURA; Compose ativo hash 7f609035 exige duas variáveis globais. IDs Docker únicos substituíram Compose sem leitura env; 17 testes passaram e ensaio Docker local provou IDs, exec, duplicado e parado.",
+  "proxima_acao": "Root revisa diff; agente incorpora correções, valida isolado e abre PR. Root só dispara novo backup após integração.",
+  "verificacoes": [
+    "pytest ci/tests/test_backup_coordenacao.py: 17 passed",
+    "Docker local sem rede/volumes: IDs completos distintos, docker exec real, duplicado e parado recusados; resíduos zero",
+    "estado-infra 36670376716: admin healthy, Compose hash 7f609035 casou fonte com variáveis obrigatórias"
+  ]
+}

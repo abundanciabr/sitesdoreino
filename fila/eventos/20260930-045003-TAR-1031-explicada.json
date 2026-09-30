@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-045003-TAR-1031-explicada",
+  "tarefa": "TAR-1031",
+  "evento": "explicada",
+  "quando": "2026-09-30T04:50:03.745173+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "O banco foi preparado, mas o comando de copia para antes de abrir o processo porque faltam duas variaveis locais exigidas pelo servidor.",
+  "o_que_muda": "A copia passa a iniciar com a configuracao que ja existe no servidor, sem revelar seus valores.",
+  "exemplo": "O mesmo Compose funciona no provisionamento porque ele carrega as duas variaveis; o backup precisa fazer essa leitura protegida tambem.",
+  "importancia": 97
+}
