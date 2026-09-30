@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -13,6 +15,7 @@ from pathlib import Path
 
 OPERACOES = {
     "estado-servico",
+    "estado-infra",
     "espaco-disco",
     "versao-compose",
     "appmax-pix",
@@ -24,9 +27,35 @@ OPERACOES = {
     "appmax-pendentes",
     "quiz-configuracao",
 }
-OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
+OPERACOES_DA_PLATAFORMA = {"estado-infra", "espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
+RAIZ_INFRA = Path("/opt/plataforma")
+ARQUIVOS_ESTADO_INFRA = (
+    "docker-compose.yml",
+    "sites.json",
+    "sincronizar_sites.py",
+    "provisionar-usuario-ponte.sh",
+    "instalar-provisionador-usuario-ponte.sh",
+    "traefik/traefik.yml",
+    "traefik/dynamic/plataforma.yml",
+    "traefik/dynamic/entrada-privada.yml",
+    "docker-compose.yml.new",
+    "sites.json.new",
+    "sincronizar_sites.py.new",
+    "traefik.new/traefik.yml",
+    "traefik.new/dynamic/plataforma.yml",
+    "traefik.new/dynamic/entrada-privada.yml",
+    "infra.new/docker-compose.yml",
+    "infra.new/sites.json",
+    "infra.new/sincronizar_sites.py",
+    "infra.new/provisionar-usuario-ponte.sh",
+    "infra.new/instalar-provisionador-usuario-ponte.sh",
+    "infra.new/traefik/traefik.yml",
+    "infra.new/traefik/dynamic/plataforma.yml",
+    "infra.new/traefik/dynamic/entrada-privada.yml",
+)
+SERVICOS_ESTADO_INFRA = ("traefik", "catalogo", "admin")
 ESTADOS_TENTATIVA = {
     "sending",
     "reconciliation_required",
@@ -355,6 +384,8 @@ ACOES = {
     "instrumento": "Confira Docker e disponibilidade da VPS pela esteira; não cole comandos no servidor.",
     "sandbox": "A leitura foi bloqueada porque o serviço não está apontado ao sandbox. Corrija APPMAX_AUTH_URL e APPMAX_API_URL na configuração do sandbox e repita.",
     "ausente": "Confira o deploy desse serviço e corrija pelo PR e pipeline.",
+    "infra": "Arquivo da infraestrutura inacessível ou inesperado; preserve a VPS e confira a publicação antes de repetir.",
+    "borda": "A borda local não respondeu; confira Traefik e a rota pública pelo canal oficial antes de repetir.",
     "formato": "A medição não corresponde ao protocolo; corrija o coletor por PR.",
 }
 
@@ -422,6 +453,32 @@ def comando(argumentos):
     return resultado.stdout
 
 
+def hash_arquivo_infra(relativo):
+    atual = RAIZ_INFRA
+    try:
+        if not stat.S_ISDIR(atual.lstat().st_mode):
+            raise Falha("infra")
+        partes = Path(relativo).parts
+        for indice, parte in enumerate(partes):
+            atual = atual / parte
+            try:
+                metadados = atual.lstat()
+            except FileNotFoundError:
+                return None
+            if indice < len(partes) - 1:
+                if not stat.S_ISDIR(metadados.st_mode):
+                    raise Falha("infra")
+            elif (
+                not stat.S_ISREG(metadados.st_mode)
+                or metadados.st_size > 4 * 1024 * 1024
+            ):
+                raise Falha("infra")
+        with atual.open("rb") as arquivo:
+            return hashlib.file_digest(arquivo, "sha256").hexdigest()
+    except OSError:
+        raise Falha("infra") from None
+
+
 def conferir_medicao(operacao, dados, referencia=""):
     if not isinstance(dados, dict):
         raise Falha("formato")
@@ -437,6 +494,32 @@ def conferir_medicao(operacao, dados, referencia=""):
             raise Falha("formato")
         if not isinstance(dados["imagem"], str) or not re.fullmatch(
             r"sha256:[0-9a-f]{64}", dados["imagem"]
+        ):
+            raise Falha("formato")
+    elif operacao == "estado-infra":
+        if set(dados) != {"arquivos", "servicos", "borda_http"}:
+            raise Falha("formato")
+        arquivos, servicos = dados["arquivos"], dados["servicos"]
+        if not isinstance(arquivos, dict) or set(arquivos) != set(
+            ARQUIVOS_ESTADO_INFRA
+        ):
+            raise Falha("formato")
+        if any(
+            valor is not None
+            and (not isinstance(valor, str) or not re.fullmatch(r"[0-9a-f]{64}", valor))
+            for valor in arquivos.values()
+        ):
+            raise Falha("formato")
+        if not isinstance(servicos, dict) or set(servicos) != set(
+            SERVICOS_ESTADO_INFRA
+        ):
+            raise Falha("formato")
+        for valor in servicos.values():
+            if valor is not None:
+                conferir_medicao("estado-servico", valor)
+        if (
+            type(dados["borda_http"]) is not int
+            or not 100 <= dados["borda_http"] <= 599
         ):
             raise Falha("formato")
     elif operacao == "espaco-disco":
@@ -1054,6 +1137,51 @@ def conferir_medicao(operacao, dados, referencia=""):
 
 
 def medir(operacao, servico, referencia=""):
+    if operacao == "estado-infra":
+        arquivos = {nome: hash_arquivo_infra(nome) for nome in ARQUIVOS_ESTADO_INFRA}
+        servicos = {}
+        for nome in SERVICOS_ESTADO_INFRA:
+            try:
+                servicos[nome] = medir("estado-servico", nome)
+            except Falha as erro:
+                if str(erro) != "ausente":
+                    raise
+                servicos[nome] = None
+        try:
+            codigo = comando(
+                [
+                    "curl",
+                    "-skS",
+                    "-L",
+                    "--max-redirs",
+                    "3",
+                    "--connect-timeout",
+                    "3",
+                    "--max-time",
+                    "12",
+                    "--resolve",
+                    "meshcraft.top:443:127.0.0.1",
+                    "--resolve",
+                    "meshcraft.top:80:127.0.0.1",
+                    "-o",
+                    "/dev/null",
+                    "-w",
+                    "%{http_code}",
+                    "https://meshcraft.top/",
+                ]
+            ).strip()
+        except Falha:
+            raise Falha("borda") from None
+        if not re.fullmatch(r"[1-5][0-9]{2}", codigo):
+            raise Falha("borda")
+        return conferir_medicao(
+            operacao,
+            {
+                "arquivos": arquivos,
+                "servicos": servicos,
+                "borda_http": int(codigo),
+            },
+        )
     if operacao == "espaco-disco":
         try:
             disco = shutil.disk_usage("/opt/plataforma")

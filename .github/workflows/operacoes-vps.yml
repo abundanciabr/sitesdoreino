@@ -8,6 +8,7 @@ on:
         type: choice
         options:
           - estado-servico
+          - estado-infra
           - espaco-disco
           - versao-compose
           - appmax-pix
@@ -19,7 +20,7 @@ on:
           - appmax-pendentes
           - quiz-configuracao
       servico:
-        description: 'Nome exato do serviço no Compose; para espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
+        description: 'Nome exato do serviço no Compose; para estado-infra e espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true
         type: string
       referencia:

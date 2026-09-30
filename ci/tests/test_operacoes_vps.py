@@ -4350,3 +4350,146 @@ def test_appmax_pendentes_so_aceita_catalogo_fechado_e_recusa_dado_pessoal(tenta
     # guarda: ci/operacoes_vps.py (bloco "elif operacao == 'appmax-pendentes':")
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("appmax-pendentes", {"tentativas": [tentativa]})
+
+
+def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, capsys):
+    (tmp_path / "sites.json").write_bytes(b'{"sites":[]}')
+    privado = tmp_path / "env" / "admin.env"
+    privado.parent.mkdir()
+    privado.write_text(PRIVADO, encoding="utf-8")
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    abertura_real = Path.open
+    lidos = []
+
+    def abrir_controlado(caminho, *args, **kwargs):
+        lidos.append(str(caminho))
+        assert "env" not in Path(caminho).parts
+        return abertura_real(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", abrir_controlado)
+    comandos = []
+
+    def comando_falso(argumentos):
+        comandos.append(argumentos)
+        if argumentos[:2] == ["docker", "ps"]:
+            return "a" * 64
+        if argumentos[:2] == ["docker", "inspect"]:
+            return json.dumps(MEDICAO)
+        if argumentos[0] == "curl":
+            return "200"
+        pytest.fail(f"Comando inesperado: {argumentos}")
+
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 0
+    saida = capsys.readouterr().out
+    dados = json.loads(saida)["medicao"]
+    assert set(dados["arquivos"]) == set(ops.ARQUIVOS_ESTADO_INFRA)
+    assert (
+        dados["arquivos"]["sites.json"] == hashlib.sha256(b'{"sites":[]}').hexdigest()
+    )
+    assert all(
+        valor is None
+        for nome, valor in dados["arquivos"].items()
+        if nome != "sites.json"
+    )
+    assert set(dados["servicos"]) == {"traefik", "catalogo", "admin"}
+    assert all(valor == MEDICAO for valor in dados["servicos"].values())
+    assert dados["borda_http"] == 200
+    assert lidos == [str(tmp_path / "sites.json")]
+    assert PRIVADO not in saida
+    assert all(argumentos[0] in {"docker", "curl"} for argumentos in comandos)
+    assert all(
+        argumentos[:2] in (["docker", "ps"], ["docker", "inspect"])
+        for argumentos in comandos
+        if argumentos[0] == "docker"
+    )
+    assert comandos[-1] == [
+        "curl",
+        "-skS",
+        "-L",
+        "--max-redirs",
+        "3",
+        "--connect-timeout",
+        "3",
+        "--max-time",
+        "12",
+        "--resolve",
+        "meshcraft.top:443:127.0.0.1",
+        "--resolve",
+        "meshcraft.top:80:127.0.0.1",
+        "-o",
+        "/dev/null",
+        "-w",
+        "%{http_code}",
+        "https://meshcraft.top/",
+    ]
+
+
+def test_estado_infra_recusa_saida_livre_ou_incompleta():
+    dados = {
+        "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
+        "servicos": {nome: None for nome in ("traefik", "catalogo", "admin")},
+        "borda_http": 200,
+    }
+    assert ops.conferir_medicao("estado-infra", dados) == dados
+    for campo, valor in (
+        ("arquivos", {**dados["arquivos"], "env/admin.env": "0" * 64}),
+        ("servicos", {**dados["servicos"], "env": MEDICAO}),
+        ("borda_http", 0),
+    ):
+        adulterado = dict(dados)
+        adulterado[campo] = valor
+        with pytest.raises(ops.Falha):
+            ops.conferir_medicao("estado-infra", adulterado)
+    adulterado = dict(dados)
+    adulterado["arquivos"] = dict(dados["arquivos"])
+    adulterado["arquivos"]["sites.json"] = PRIVADO
+    with pytest.raises(ops.Falha):
+        ops.conferir_medicao("estado-infra", adulterado)
+
+
+def test_estado_infra_recusa_arquivo_nao_regular_sem_ler(monkeypatch, tmp_path, capsys):
+    (tmp_path / "sites.json").mkdir()
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    monkeypatch.setattr(
+        ops, "comando", lambda _: pytest.fail("não deve consultar Docker")
+    )
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 2
+    saida = capsys.readouterr().out
+    assert json.loads(saida)["erro"] == "infra"
+    assert PRIVADO not in saida
+
+
+def test_estado_infra_mede_ausencia_e_http_503(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+
+    def comando_falso(argumentos):
+        if argumentos[:2] == ["docker", "ps"]:
+            return ""
+        if argumentos[0] == "curl":
+            return "503"
+        pytest.fail(f"Comando inesperado: {argumentos}")
+
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 0
+    medicao = json.loads(capsys.readouterr().out)["medicao"]
+    assert all(valor is None for valor in medicao["arquivos"].values())
+    assert all(valor is None for valor in medicao["servicos"].values())
+    assert medicao["borda_http"] == 503
+
+
+def test_estado_infra_borda_indisponivel_nao_vira_pass(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+
+    def comando_falso(argumentos):
+        if argumentos[:2] == ["docker", "ps"]:
+            return ""
+        if argumentos[0] == "curl":
+            raise ops.Falha("instrumento")
+        pytest.fail(f"Comando inesperado: {argumentos}")
+
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    assert ops.executar("estado-infra", "plataforma", {"plataforma"}) == 2
+    saida = capsys.readouterr().out
+    assert json.loads(saida)["erro"] == "borda"
+    assert PRIVADO not in saida
