@@ -76,8 +76,9 @@ def test_o_quadro_abre_para_o_aluno_logado_e_desenha_a_grade(caixa):
     assert 'rel="stylesheet"' in corpo
 
 
-def test_as_abas_sao_tres_e_a_acesa_continua_sendo_mais_votadas(caixa):
-    """As três do protótipo, na ordem dele — "Em alta" entrou na V1.2.
+def test_as_abas_sao_quatro_e_a_acesa_continua_sendo_mais_votadas(caixa):
+    """As três do protótipo, na ordem dele — "Em alta" entrou na V1.2 — e
+    "Implementadas" por último, pedida pelo mantenedor em 29/09/2026.
 
     A ORDEM da fila é a do protótipo; a aba ACESA continua sendo "Mais
     votadas", que é o ranking que a spec §10 crava para o MVP. As duas coisas
@@ -90,6 +91,7 @@ def test_as_abas_sao_tres_e_a_acesa_continua_sendo_mais_votadas(caixa):
         ("em-alta", "", "Em alta"),
         ("mais-votadas", "ativo", "Mais votadas"),
         ("novas", "", "Novas"),
+        ("implementadas", "", "Implementadas"),
     ]
 
 
