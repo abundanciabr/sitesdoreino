@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-052-tar-1032-mandato-protegido-fase-a",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "TAR-1032: medir aprovacao protegida do App na fase A",
+  detalhe: "PR Draft com arquivo inerte; medir aprovacao protegida no HEAD e fechar sem merge.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2399. Validação local: árvore 17f962a2a34029ead289255980d61fb3f9666982; commit 79e1ce848e279c50f3c58b1cc1f5fc21540d454b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas. TAR-1032: 27 testes passaram; fila valida; sem integracao.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1032",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
