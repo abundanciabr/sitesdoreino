@@ -104,15 +104,16 @@ BLOCO_F2 = _bloco("INV-F2", "`services/outra/tests/test_inv_f2.py`", "outra")
 
 
 @pytest.fixture()
-def repo(tmp_path: Path) -> Path:
+def repo(tmp_path: Path, monkeypatch) -> Path:
     """Repositório de mentira NO ESTADO CORRETO: dois invariantes, dois guardas.
 
     Tem git de verdade porque `arquivos_versionados` pergunta ao git — testar
     contra um mock do git testaria o mock.
     """
+    monkeypatch.delenv("BASE_REF", raising=False)
     raiz = tmp_path / "repo-falso"
     raiz.mkdir()
-    _git(raiz, "init", "-q")
+    _git(raiz, "init", "-q", "-b", "main")
     _git(raiz, "config", "user.email", "falso@exemplo.invalid")
     _git(raiz, "config", "user.name", "Falso")
 
@@ -923,3 +924,146 @@ def test_troca_que_apaga_a_protecao_continua_reprovada(repo: Path) -> None:
     _escrever(repo, gg.DOCUMENTO, texto)
     _git(repo, "add", "-A")
     assert _estado(repo) is Estado.FAIL
+
+
+def _versao_com_sucessor(repo: Path, assercao: str) -> None:
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "base")
+    antigo = repo / "services/falsa/tests/test_inv_f1.py"
+    antigo.unlink()
+    novo = repo / "services/falsa/tests/test_inv_f1_sucessor.py"
+    novo.write_text(
+        "def test_identificadores_unicos():\n"
+        "    ids = ['A', 'A']\n"
+        "    ids = ['A', 'B']\n"
+        "    # guarda: services/falsa/tests/test_inv_f1_sucessor.py:3\n"
+        f"    assert {assercao}\n", encoding="utf-8",
+    )
+    documento = repo / "INVARIANTES.md"
+    documento.write_text(
+        documento.read_text(encoding="utf-8").replace(
+            "services/falsa/tests/test_inv_f1.py",
+            "services/falsa/tests/test_inv_f1_sucessor.py",
+        ), encoding="utf-8",
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "sucessor")
+
+
+def test_substituicao_equivalente_com_adversario_passa(repo: Path, monkeypatch) -> None:
+    _versao_com_sucessor(repo, "len(set(ids)) == 2")
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    relatorio = gg.rodar(repo)
+    assert relatorio.estado is Estado.PASS, relatorio.render()
+    assert any(r.nome == "guardas/equivalencia" and r.estado is Estado.PASS
+               for r in relatorio.resultados)
+
+
+def test_assercao_enfraquecida_mantem_ast_mas_perde_equivalencia(repo: Path, monkeypatch) -> None:
+    _versao_com_sucessor(repo, "len(ids) == 2")
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    relatorio = gg.rodar(repo)
+    assert any(r.nome == "guardas/dentes" and r.estado is Estado.PASS
+               for r in relatorio.resultados)
+    assert any(r.nome == "guardas/equivalencia" and r.estado is Estado.FAIL
+               for r in relatorio.resultados), relatorio.render()
+
+
+def test_remove_teste_nao_revoga_propriedade(repo: Path, monkeypatch) -> None:
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "base")
+    (repo / "services/falsa/tests/test_inv_f1.py").unlink()
+    documento = repo / "INVARIANTES.md"
+    documento.write_text(_documento(BLOCO_F2), encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "remocao")
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    monkeypatch.setenv("PR_LABELS", "remove-teste")
+    relatorio = gg.rodar(repo)
+    assert any(r.nome == "guardas/equivalencia" and r.estado is Estado.FAIL
+               for r in relatorio.resultados), relatorio.render()
+
+
+def test_mesmo_arquivo_e_contagem_com_assert_fraco_reprova(repo: Path, monkeypatch) -> None:
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "base")
+    (repo / "services/falsa/tests/test_inv_f1.py").write_text(
+        "def test_identificadores_unicos():\n"
+        "    ids = ['A', 'A']\n"
+        "    ids = ['A', 'B']\n"
+        "    # guarda: services/falsa/tests/test_inv_f1.py:3\n"
+        "    assert len(ids) == 2\n", encoding="utf-8",
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "asserção fraca")
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    relatorio = gg.rodar(repo)
+    assert any(r.nome == "guardas/dentes" and r.estado is Estado.PASS
+               for r in relatorio.resultados)
+    assert any(r.nome == "guardas/equivalencia" and r.estado is Estado.FAIL
+               for r in relatorio.resultados), relatorio.render()
+
+
+
+def test_pr_sem_base_nao_recebe_verde_de_equivalencia(repo: Path, monkeypatch) -> None:
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "base")
+    _git(repo, "checkout", "-qb", "candidato")
+    monkeypatch.delenv("BASE_REF", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("GITHUB_REF", "refs/pull/1/merge")
+    relatorio = gg.rodar(repo)
+    assert any(r.nome == "guarda-dos-guardas" and r.estado is Estado.ERROR
+               and "base de equivalência ausente" in r.resumo
+               for r in relatorio.resultados), relatorio.render()
+
+
+def test_main_sem_base_registra_skip_explicito(repo: Path, monkeypatch) -> None:
+    monkeypatch.delenv("BASE_REF", raising=False)
+    monkeypatch.delenv("GITHUB_REF", raising=False)
+    relatorio = gg.rodar(repo)
+    assert any(r.nome == "guardas/equivalencia" and r.estado is Estado.SKIP
+               for r in relatorio.resultados), relatorio.render()
+
+
+def test_bancada_com_origin_main_infere_base_e_mede(repo: Path, monkeypatch) -> None:
+    _git(repo, "-c", "user.name=Teste", "-c", "user.email=teste@example.org", "commit", "-qm", "base")
+    _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    _git(repo, "checkout", "-qb", "candidato")
+    monkeypatch.delenv("BASE_REF", raising=False)
+    monkeypatch.delenv("GITHUB_REF", raising=False)
+    relatorio = gg.rodar(repo)
+    assert any(r.nome == "guardas/equivalencia" and r.estado is Estado.PASS
+               for r in relatorio.resultados), relatorio.render()
+
+
+def test_guardas_compartilhados_executam_uma_prova(repo: Path, monkeypatch) -> None:
+    import provar_guardas
+    documento = _documento(BLOCO_F1 + _bloco("INV-F2", "`services/falsa/tests/test_inv_f1.py`"))
+    _escrever(repo, gg.DOCUMENTO, documento)
+    _git(repo, "commit", "-qm", "base")
+    alvo = repo / "services/falsa/tests/test_inv_f1.py"
+    alvo.write_text(GUARDA_QUE_MORDE + "\n", encoding="utf-8")
+    chamadas = []
+    def provar_uma_vez(raiz, testes, evidencia):
+        chamadas.append(tuple(testes))
+        return Estado.PASS
+    monkeypatch.setattr(provar_guardas, "provar", provar_uma_vez)
+    resultado = gg._regra_equivalencia(repo, "HEAD", gg.invariantes_declarados(documento))
+    assert resultado.estado is Estado.PASS
+    assert chamadas == [("services/falsa/tests/test_inv_f1.py",)]
+
+
+def test_resultado_mostra_o_caso_adversarial(repo: Path, monkeypatch) -> None:
+    _versao_com_sucessor(repo, "len(set(ids)) == 2")
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    resultado = next(r for r in gg.rodar(repo).resultados if r.nome == "guardas/equivalencia")
+    assert resultado.estado is Estado.PASS
+    assert "test_identificadores_unicos" in resultado.detalhe
+    assert "PASS→FAIL→PASS" in resultado.detalhe
+
+def test_crlf_do_checkout_nao_e_mudanca_de_guarda(repo: Path, monkeypatch) -> None:
+    _git(repo, "commit", "-qm", "base")
+    _git(repo, "config", "core.autocrlf", "true")
+    guarda = repo / "services/falsa/tests/test_inv_f1.py"
+    guarda.write_bytes(guarda.read_bytes().replace(b"\n", b"\r\n"))
+    assert guarda.read_bytes() != gg._conteudo_na_base(repo, "HEAD", "services/falsa/tests/test_inv_f1.py")
+    monkeypatch.setenv("BASE_REF", "HEAD")
+    relatorio = gg.rodar(repo)
+    assert relatorio.estado is Estado.PASS, relatorio.render()
