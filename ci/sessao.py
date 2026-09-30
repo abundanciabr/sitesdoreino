@@ -2222,6 +2222,7 @@ class Sessao:
                 autenticacao = self._correr(
                     [docker, "exec", "-i", self.plano.postgres, "sh", "-c",
                      "IFS= read -r PGPASSWORD; export PGPASSWORD; set -- $(hostname -i); "
+                     "case \"$1\" in ''|127.*|::1) exit 2;; esac; "
                      "exec psql -h \"$1\" -U coordenacao_user -d coordenacao_db -tAc 'SELECT current_user'"],
                     cwd=self.plano.raiz, entrada=senha_coordenacao + "\n", binario=True,
                 )

@@ -1209,6 +1209,7 @@ def test_admin_cria_banco_coord_e_retomada_preserva_segredo(monkeypatch):
     assert "CREATE DATABASE coordenacao_db WITH OWNER coordenacao_user" in chamadas
     assert "REVOKE CONNECT ON DATABASE coordenacao_db FROM PUBLIC" in chamadas
     assert "set -- $(hostname -i)" in chamadas
+    assert "127.*|::1) exit 2" in chamadas
     assert len(primeira.plano.senha_coordenacao) == 48
     assert primeira.plano.senha_coordenacao != primeira.plano.senha_banco
     assert primeira._ambiente()["COORDENACAO_DATABASE_URL"].endswith(
