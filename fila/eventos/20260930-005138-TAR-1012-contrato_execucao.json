@@ -1,0 +1,59 @@
+{
+  "arquivo": "20260930-005138-TAR-1012-contrato_execucao",
+  "tarefa": "TAR-1012",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T00:51:38.060095+00:00",
+  "quem": "despacho-admin-pme-bytecode-reproduzivel",
+  "contrato": {
+    "versao": 1,
+    "objetivo": "Produzir OCI igual para builds frios do admin com fonte e base iguais",
+    "entregaveis": [
+      "Uma RUN corrigida em services/admin/Dockerfile",
+      "Validação de dois builds frios, importação e arranque",
+      "PR e ensaio remoto oficial após integração"
+    ],
+    "escopo_incluido": [
+      "services/admin/Dockerfile",
+      "registros exigidos pelo rito"
+    ],
+    "nao_objetivos": [
+      "Ativar cache no deploy",
+      "Alterar dependências, base da imagem, produtor ou comparador",
+      "Mudar exigência de isolamento do banco de coordenação"
+    ],
+    "restricoes": [
+      "Somente SOURCE_DATE_EPOCH=0 no comando pip",
+      "Preservar banco compartilhado e arquivos preexistentes",
+      "Builds sequenciais com um CPU e um GiB"
+    ],
+    "etapas": [
+      "Corrigir Dockerfile",
+      "Validar builds e arranque",
+      "Abrir PR e conferir gates",
+      "Executar ensaio remoto oficial integrado"
+    ],
+    "criterios_entrada": [
+      "Reserva e claim TAR-1012 ativos",
+      "Baseline antigo classificado como erro de ambiente",
+      "Causa da divergência dos pyc comprovada"
+    ],
+    "criterios_aceite": [
+      "Duas builds frias da receita real com OCI igual",
+      "Importação e arranque preservados",
+      "Ensaio remoto mede frio, exportação e importação antes da decisão sobre cache"
+    ],
+    "evidencias_exigidas": [
+      "Digests OCI das duas builds",
+      "Comando e saída de importação e arranque",
+      "Checks e resultado estruturado do ensaio remoto"
+    ],
+    "condicao_encerramento": "Correção integrada e ensaio remoto oficial analisado sem ativar cache de produção",
+    "limites_autonomia": "Mandato TAR-1012 e retomada 2026-09-29; nenhuma mudança fora da RUN e registros do rito",
+    "acoes_do_mantenedor": "Nenhuma, salvo bloqueio de autorização exclusiva",
+    "plano": "TAR1012: RUN pip determinística, validação fiel, PR e ensaio remoto oficial integrado",
+    "decisoes_aprovadas": [
+      "Mandato integral PME07/TAR1012 e confirmação de retomada preservados no PROMPT-DE-RETOMADA.md",
+      "Escrita técnica exclusiva de uma RUN em services/admin/Dockerfile; sem ativação de cache"
+    ]
+  }
+}
