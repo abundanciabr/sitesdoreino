@@ -1,0 +1,21 @@
+{
+  "arquivo": "20260930-014311-TAR-1015-checkpoint",
+  "tarefa": "TAR-1015",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T01:43:11.131078+00:00",
+  "quem": "agent/infra/pme04-executor",
+  "plano": "Correcao causal validada localmente; PR2382 aguarda atualizacao autorizada",
+  "ultimo_avanco": "Livro002 reformatado no commit ab46d611; teste do fixture espera SELECT 1 apos recovery mode; 2 testes focais PASS em 61.09s; leitor real admin leu 2430 registros sem tipo ausente",
+  "proxima_acao": "Apos autorizacao especifica da atualizacao publica, retomar ci/pr.py --continuar, medir checks e entregar producao somente a coordenacao",
+  "verificacoes": [
+    "python -m pytest -q ci/tests/test_provisionar_coordenacao.py: 2 passed in 61.09s",
+    "Docker Django5.1.4 direcao.ler_registros: registros 2430 sem_tipo []"
+  ],
+  "contexto": {
+    "branch": "codex/infra/pme-coordenacao-django",
+    "worktree": "C:/Users/davia/.codex/worktrees/pme04-executor/sitesdoreino-limpo-20260923",
+    "sha": "ab46d611793306581f0940420c7c9d3ead299c03",
+    "pr": 2382,
+    "bloqueio": "auto-review recusou atualizacao publica"
+  }
+}

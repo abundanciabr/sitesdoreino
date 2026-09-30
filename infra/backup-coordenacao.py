@@ -46,13 +46,25 @@ UV+gfWWEIHIf0IXlh+FSRGFykgUFoeE+/r97JctRGExsQU3+Ge+9oB8=
 -----END CERTIFICATE-----'''
 CAPTURA = '''import json, os, sys
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-import django
-django.setup()
-from apps.core.coordenacao import capturar_snapshot
-with capturar_snapshot() as manifesto:
-    print(json.dumps(manifesto, ensure_ascii=False, separators=(',', ':')), flush=True)
-    if sys.stdin.readline() != 'concluido\\n':
-        raise RuntimeError('pg_dump não confirmou conclusão; snapshot descartado')
+fase = 'inicializacao'
+manifesto_emitido = False
+try:
+    import django
+    django.setup()
+    from apps.core.coordenacao import banco, capturar_snapshot
+    fase = 'conexao'
+    with banco():
+        pass
+    fase = 'captura'
+    with capturar_snapshot() as manifesto:
+        print(json.dumps(manifesto, ensure_ascii=False, separators=(',', ':')), flush=True)
+        manifesto_emitido = True
+        if sys.stdin.readline() != 'concluido\\n':
+            raise RuntimeError('pg_dump não confirmou conclusão; snapshot descartado')
+except Exception:
+    if not manifesto_emitido:
+        print(json.dumps({'falha': fase}), flush=True)
+    raise SystemExit(1)
 '''
 
 
@@ -83,7 +95,20 @@ def executar(identificador):
         linha = captura.stdout.readline()
         if not linha:
             raise RuntimeError('Snapshot não abriu; confira a célula admin e o banco de coordenação.')
-        manifesto = json.loads(linha)
+        try:
+            manifesto = json.loads(linha)
+        except json.JSONDecodeError as erro:
+            raise RuntimeError('Resposta da captura inválida; confira a célula admin.') from erro
+        if isinstance(manifesto, dict) and set(manifesto) == {'falha'}:
+            acoes = {
+                'inicializacao': 'Falha na inicialização da captura; confira a imagem e o serviço admin.',
+                'conexao': 'Falha na conexão com o banco de coordenação; confira o banco na célula admin.',
+                'captura': 'Falha na captura do esquema; confira as nove tabelas da coordenação.',
+            }
+            fase = manifesto['falha']
+            if not isinstance(fase, str) or fase not in acoes:
+                raise RuntimeError('Fase de falha inválida; confira a célula admin.')
+            raise RuntimeError(acoes[fase])
         if (not isinstance(manifesto, dict) or not manifesto.get('snapshot_id')
                 or not isinstance(manifesto.get('tabelas'), dict)
                 or len(manifesto['tabelas']) != 9):

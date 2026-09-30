@@ -43,4 +43,4 @@ uma linha sobre Pix, e a página do Pix nem carrega o SDK do MP.
 em invariante · diff no escopo/orçamento. **Não inclui:** E2E, deploy, tocar pagamentos.
 
 ## Ritos
-RITOS.md §1, §2. Mudança no contrato próprio ou no de pagamentos = rito §3 com o mantenedor.
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2). Mudança no contrato próprio ou no de pagamentos = [Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3), com o mantenedor.

@@ -1,0 +1,20 @@
+{
+  "arquivo": "1015-inicializar-a-aplicacao-antes-de-preparar-o-banco-da-fila",
+  "id": "TAR-1015",
+  "titulo": "Inicializar a aplicacao antes de preparar o banco da fila",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Import real Django reproduz falha sem inicializacao e passa com correcao; provisionamento oficial prepara esquema isolado sem rotacionar segredos existentes",
+  "despacho": "Continuacao da frente TAR1004. Exclusivo infra/provisionar-coordenacao.sh e ci/tests/test_provisionar_coordenacao.py. Inicializar Django antes import preparar; teste com framework real. Preservar FD8, DSN e preparacao privada, nunca repetir producao antes efeito reconciliado. Rito oficial e prova do provisionador pela coordenacao.",
+  "origem": "TAR-958/TAR-1004 run36652757805; correcao causal da mesma frente",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

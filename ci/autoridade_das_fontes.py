@@ -271,6 +271,7 @@ def base_na_main(consulta, numero: int, sha: str, rodar=subprocess.run) -> dict:
 def analisar(numero: int, sha: str, candidato: Path, consulta) -> tuple[str, bool, str]:
     if not SHA.fullmatch(sha):
         raise ValueError("SHA do evento inválido")
+    candidato = candidato.resolve()
     pr = base_na_main(consulta, numero, sha)
     arquivos = arquivos_do_pr(consulta, numero)
     if not arquivos:

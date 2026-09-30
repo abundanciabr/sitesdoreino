@@ -1,0 +1,19 @@
+{
+  "arquivo": "1010-fazer-as-mensagens-de-erro-apontarem-ao-procedimento-vigente",
+  "id": "TAR-1010",
+  "titulo": "Fazer as mensagens de erro apontarem ao procedimento vigente",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Nove diagnosticos apontam fontes vigentes existentes; somente textos mudam, comandos e decisoes preservados; testes focais e consumo CLI conferidos na revisao integrada.",
+  "despacho": "Frente 21 do programa TAR958, PME09/adendo: retirar nove consumidores operacionais de RITOS sem apagar historia. Coordenador01a0ed71; responsavel unico pme_fontes_diagnosticos tentativa1, gpt-6-luna medium explicito via spawn fork none, nenhum fallback/subagente. Motivo: alteracao mecanica de referencias em mensagens, sem decisao arquitetural. Ferramenta collaboration declara modelo/esforco aceitos; configuracao nao atesta runtime. A politica da sessao principal permanece.\nLeia leis canonicas, regras de ci e armadilhas pertinentes. Nao esta sozinho: preserve trabalho alheio. Bancada gerenciada pme06-candidato reutilizada: arvore limpa conferida, executor anterior encerrado, nenhum python/bash/docker dependente encontrado por CIM. Ramo novo codex/ci/pme-fontes-diagnosticos; base main d4671c9fa28271167561e747a847935566004e52 ou sucessora conferida. Registre claim atomico e contrato antes de editar. Intencao pme-fontes-diagnosticos reservada pela raiz; titulo/tarefa vem do GPS criado por este script.\nEscrita exclusiva em ci/pr.py, ci/fila.py, ci/muralha_da_espera.py, ci/esperar.py, ci/guarda_dos_guardas.py, ci/catraca_de_testes.py, ci/mergear.py, ci/ci.py, ci/contract_freeze.py, apenas literais de diagnosticos operacionais. Nao alterar funcoes, condicionais, validadores, permissoes, importacoes ou contratos. Demais fontes/testes somente leitura, especialmente ci/rollback.py de TAR990 e fontes de TAR998/1009. Se um teste exigir mudar assercao, devolva necessidade para redistribuicao antes da edicao.\nAuditoria TAR981 em main identificou RITOS em mensagens executadas: pr449; fila431/502/506/4049; muralha_da_espera72-75/119; esperar945-951; guarda_dos_guardas412-417/444-448; catraca_de_testes478-482; mergear546-553; ci164-169; contract_freeze152-156/521-527/603-609. Confira linhas e sucessor real, nao copie numero de lei por memoria. Substitua referencias ao indice historico por CAMINHO-DOURADO com secao correspondente e Constituicao/Invariantes pertinentes. Preserve comandos sugeridos, erros, codigos de saida, exigencias e propriedade protegida. Comentarios historicos/docstrings de origem ficam. Nao acrescente guarda nova, wrapper, dependencia, flag ou documento de estado paralelo.\nAceite: mensagens conduzem ao procedimento vigente; diff comprova apenas literais; fontes/ancoras existem; testes focais pertinentes e CLI reais de leitura passam, sem suites amplas repetidas. Rito make pr/ci.pr com recibo/eventos e mandato/adendo, revisao independente enquanto checks rodam; integrar por portoes e verificar consumidor real na revisao publicada. Recuperacao por PR. Se auto-review recusar, pare a acao afetada e preserve patch/manifesto/hash para root, sem contorno. Root decide redistribuicoes. Nada de VPS ou credenciais. Proxima acao: reconciliar bancada, abrir tarefa e contrato. Parada somente bloqueio efetivo documentado.",
+  "origem": "TAR958 PME09 adendo; auditoria focal TAR981; frente21 coordenador01a0ed71",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

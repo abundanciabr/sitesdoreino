@@ -212,9 +212,10 @@ def teto_da_regua(regua: dict | None) -> float | None:
     if p50 <= 0:
         return None
     base = p90 if amostra >= AMOSTRA_MINIMA and p90 > 0 else p50 * 1.5
-    return math.ceil(
-        base * FATOR_DE_FOLGA_DO_TETO / ARREDONDAMENTO_DO_TETO_S
-    ) * ARREDONDAMENTO_DO_TETO_S
+    return (
+        math.ceil(base * FATOR_DE_FOLGA_DO_TETO / ARREDONDAMENTO_DO_TETO_S)
+        * ARREDONDAMENTO_DO_TETO_S
+    )
 
 
 # ------------------------------------------------------------ observadores ----
@@ -253,13 +254,18 @@ def resolver_sha_inteiro(valor: str, parser, bastidor=None) -> str:
     RECUSA e ensina — nunca começa uma espera que não pode terminar.
     """
     valor = (valor or "").strip()
-    if len(valor) == SHA_INTEIRO and all(c in "0123456789abcdef" for c in valor.lower()):
+    if len(valor) == SHA_INTEIRO and all(
+        c in "0123456789abcdef" for c in valor.lower()
+    ):
         return valor.lower()
     try:
         achado = subprocess.run(
             ["git", "rev-parse", "--verify", f"{valor}^{{commit}}"],
-            capture_output=True, text=True, timeout=30,
-            encoding="utf-8", errors="replace",
+            capture_output=True,
+            text=True,
+            timeout=30,
+            encoding="utf-8",
+            errors="replace",
         )
     except (OSError, subprocess.TimeoutExpired) as erro:
         parser.error(
@@ -282,8 +288,11 @@ def resolver_sha_inteiro(valor: str, parser, bastidor=None) -> str:
     if len(inteiro) != SHA_INTEIRO:
         parser.error(f"git rev-parse devolveu algo que não é um sha: {inteiro!r}")
     if inteiro != valor.lower():
-        print(f"(resolvi {valor} para o sha inteiro {inteiro[:12]}…)",
-              flush=True, file=bastidor or sys.stdout)
+        print(
+            f"(resolvi {valor} para o sha inteiro {inteiro[:12]}…)",
+            flush=True,
+            file=bastidor or sys.stdout,
+        )
     return inteiro
 
 
@@ -316,8 +325,7 @@ def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
     return Olhada(
         pronta=True,
         resumo=nomes,
-        dados={"verde": verde,
-               "run": str(caidos[0].get("id") or "") if caidos else ""},
+        dados={"verde": verde, "run": str(caidos[0].get("id") or "") if caidos else ""},
     )
 
 
@@ -363,7 +371,9 @@ def conferir_o_pr(gh: list[str], repo: str, pr: str, flag: str, parser) -> None:
             gh, ["pr", "view", str(pr), "--json", "state,title,mergedAt", "-R", repo]
         )
     except ErroDeInstrumentacao as erro:
-        if not any(m in f"{erro.resumo}\n{erro.detalhe}".lower() for m in NAO_E_UM_PR_DAQUI):
+        if not any(
+            m in f"{erro.resumo}\n{erro.detalhe}".lower() for m in NAO_E_UM_PR_DAQUI
+        ):
             return
         parser.error(
             f"--{flag} recebeu {pr}, e o repositório {repo} não tem PR com esse "
@@ -454,9 +464,7 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
     # aprovava no mesmo segundo. A regra é a do portão, importada e nunca
     # copiada, para os dois não poderem discordar — `armadilhas/381`.
     rollup = mais_recente_por_nome(bruto)
-    pendentes = [
-        c for c in rollup if str(c.get("status", "")).upper() != "COMPLETED"
-    ]
+    pendentes = [c for c in rollup if str(c.get("status", "")).upper() != "COMPLETED"]
     if pendentes:
         return Olhada(
             pronta=False,
@@ -487,8 +495,7 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
             apareceu=False,
             resumo=(
                 f"os checks que existem no PR {pr} estão todos verdes e não "
-                "bastam, porque os OBRIGATÓRIOS não reportaram: "
-                + ", ".join(faltando)
+                "bastam, porque os OBRIGATÓRIOS não reportaram: " + ", ".join(faltando)
             ),
         )
     return Olhada(
@@ -499,9 +506,7 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
 
 
 def observar_pouso(gh: list[str], repo: str, pr: str) -> Olhada:
-    dados = _gh_json(
-        gh, ["pr", "view", pr, "--json", "state,labels,url", "-R", repo]
-    )
+    dados = _gh_json(gh, ["pr", "view", pr, "--json", "state,labels,url", "-R", repo])
     estado = str(dados.get("state", "?")).upper()
     if estado == "MERGED":
         return Olhada(
@@ -525,12 +530,20 @@ def observar_pouso(gh: list[str], repo: str, pr: str) -> Olhada:
 
 def observar_sonda(comando: str) -> Olhada:
     proc = subprocess.run(
-        comando, shell=True, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=60,
+        comando,
+        shell=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
     )
     if proc.returncode == 0:
-        return Olhada(pronta=True, resumo="a sonda respondeu PRONTO (exit 0)",
-                      dados={"verde": True})
+        return Olhada(
+            pronta=True,
+            resumo="a sonda respondeu PRONTO (exit 0)",
+            dados={"verde": True},
+        )
     if proc.returncode == 127:
         raise ErroDeInstrumentacao(
             f"a sonda nem existe (exit 127): {comando!r}",
@@ -568,8 +581,14 @@ class Voz:
     `registrar_espera`: o que sai do stdout NÃO pode sair da auditoria.
     """
 
-    def __init__(self, dizendo: str, teto_s: float, voz_s: float,
-                 regua: dict | None, so_desfecho: bool = False):
+    def __init__(
+        self,
+        dizendo: str,
+        teto_s: float,
+        voz_s: float,
+        regua: dict | None,
+        so_desfecho: bool = False,
+    ):
         self.dizendo = dizendo
         self.teto_s = teto_s
         self.voz_s = voz_s
@@ -587,8 +606,7 @@ class Voz:
     def bastidor(self, linha: str) -> None:
         """Partida, batimento e placar: mudam de cano, nunca somem."""
         self.linhas.append(linha)
-        print(linha, flush=True,
-              file=sys.stderr if self.so_desfecho else sys.stdout)
+        print(linha, flush=True, file=sys.stderr if self.so_desfecho else sys.stdout)
 
     def eco(self, linhas: list[str]) -> str:
         """O bastidor repetido dentro do desfecho — só quando ele foi ao
@@ -632,9 +650,16 @@ class Voz:
         self._ultimo_resumo = v.olhada.resumo
 
 
-def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
-                     desfecho: str, detalhe: str, regua: str = "",
-                     voz: list[str] | None = None) -> None:
+def registrar_espera(
+    alvo: str,
+    dizendo: str,
+    teto_s: float,
+    decorrido: float,
+    desfecho: str,
+    detalhe: str,
+    regua: str = "",
+    voz: list[str] | None = None,
+) -> None:
     """A casa única do fato "quanto durou esta espera". Nunca derruba a espera.
 
     `regua` é a CHAVE de tempos_esperados.json que esta espera alimenta. Sem
@@ -652,17 +677,25 @@ def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
     try:
         LOG_DAS_ESPERAS.parent.mkdir(parents=True, exist_ok=True)
         with LOG_DAS_ESPERAS.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "quando_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "alvo": alvo,
-                "dizendo": dizendo,
-                "teto_s": round(teto_s),
-                "decorrido_s": round(decorrido),
-                "desfecho": desfecho,
-                "detalhe": detalhe[:300],
-                "regua": regua,
-                "voz": [l[:300] for l in (voz or [])][-LINHAS_DE_VOZ_NO_LOG:],
-            }, ensure_ascii=False) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "quando_utc": datetime.now(timezone.utc).isoformat(
+                            timespec="seconds"
+                        ),
+                        "alvo": alvo,
+                        "dizendo": dizendo,
+                        "teto_s": round(teto_s),
+                        "decorrido_s": round(decorrido),
+                        "desfecho": desfecho,
+                        "detalhe": detalhe[:300],
+                        "regua": regua,
+                        "voz": [l[:300] for l in (voz or [])][-LINHAS_DE_VOZ_NO_LOG:],
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
     except OSError:
         pass
 
@@ -697,9 +730,7 @@ RUN_NA_URL = re.compile(r"/actions/runs/(\d+)")
 # São ~45 caracteres de ruído por linha: num teto de 600, o carimbo comeria
 # metade da causa. Ele sai do que se MOSTRA; o log cru continua inteiro para o
 # sino casar.
-CARIMBO_DO_GH = re.compile(
-    r"^[^\t\n]*\t[^\t\n]*\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?"
-)
+CARIMBO_DO_GH = re.compile(r"^[^\t\n]*\t[^\t\n]*\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?")
 
 
 def run_do_check(check: dict) -> str:
@@ -720,8 +751,10 @@ def bloco_de_falha(log: str) -> str:
     for i, linha in enumerate(linhas):
         if MARCA_DO_PORTAO.search(linha):
             bloco = [linha]
-            for seguinte in linhas[i + 1:]:
-                if MARCA_DO_PORTAO.search(seguinte) or FIM_DO_RELATORIO.search(seguinte):
+            for seguinte in linhas[i + 1 :]:
+                if MARCA_DO_PORTAO.search(seguinte) or FIM_DO_RELATORIO.search(
+                    seguinte
+                ):
                     break
                 if seguinte.strip():
                     bloco.append(seguinte)
@@ -761,9 +794,7 @@ def sino_do_log(log: str) -> str:
     sinal = achados[0][0]
     numero = str(sinal["armadilha"])
     licao = licao_da_armadilha(numero) or str(sinal.get("titulo") or "").strip()
-    return (
-        f"   🔔 isto casa a armadilhas/{numero} (leia {sinal['arquivo']}) — {licao}"
-    )
+    return f"   🔔 isto casa a armadilhas/{numero} (leia {sinal['arquivo']}) — {licao}"
 
 
 def diagnosticar(gh: list[str], repo: str, run_id: str) -> str:
@@ -774,8 +805,11 @@ def diagnosticar(gh: list[str], repo: str, run_id: str) -> str:
     try:
         proc = subprocess.run(
             [*gh, "run", "view", run_id, "--log-failed", "-R", repo],
-            capture_output=True, text=True, timeout=TETO_DO_LOG_S,
-            encoding="utf-8", errors="replace",
+            capture_output=True,
+            text=True,
+            timeout=TETO_DO_LOG_S,
+            encoding="utf-8",
+            errors="replace",
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -818,7 +852,9 @@ def autoteste() -> int:
     try:
         vigiar(
             lambda: Olhada(pronta=False, resumo="o alvo continua sem responder"),
-            teto=1.2, intervalo=0.3, ao_observar=voz.volta,
+            teto=1.2,
+            intervalo=0.3,
+            ao_observar=voz.volta,
         )
     except TetoVencido as falha:
         print(
@@ -826,11 +862,15 @@ def autoteste() -> int:
             f"Parei — como prometido na partida. (decorrido: {_fmt(falha.decorrido)})",
             flush=True,
         )
-        print("AUTOTESTE OK: a espera falou na partida, no batimento e na morte.",
-              flush=True)
+        print(
+            "AUTOTESTE OK: a espera falou na partida, no batimento e na morte.",
+            flush=True,
+        )
         return 0
-    print("AUTOTESTE FALHOU: o teto não estourou — isso nunca deveria acontecer.",
-          flush=True)
+    print(
+        "AUTOTESTE FALHOU: o teto não estourou — isso nunca deveria acontecer.",
+        flush=True,
+    )
     return 2
 
 
@@ -838,54 +878,113 @@ def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     alvo = p.add_mutually_exclusive_group(required=False)
-    alvo.add_argument("--entrega", type=int, metavar="PR",
-                      help="consulta uma vez revisão, integração e publicação; saída JSON")
+    alvo.add_argument(
+        "--entrega",
+        type=int,
+        metavar="PR",
+        help="consulta uma vez revisão, integração e publicação; saída JSON",
+    )
     alvo.add_argument("--run", help="id de um run do Actions (o veredito do deploy)")
-    alvo.add_argument("--deploy", metavar="SHA",
-                      help="sha na main — espera os runs de deploy dele")
-    alvo.add_argument("--checks", metavar="PR",
-                      help="checks de um PR — a espera OBRIGATÓRIA antes do --pousar")
-    alvo.add_argument("--pouso", metavar="PR",
-                      help="RECUSA: a fila não precisa de plateia — peça pouso e siga")
-    alvo.add_argument("--sonda", metavar="CMD",
-                      help="comando local: exit 0 = pronto (Docker, Postgres…)")
-    alvo.add_argument("--autoteste", action="store_true",
-                      help="prova viva de que a espera fala e morre no teto")
-    p.add_argument("--teto", type=float, metavar="MIN",
-                   help="teto manual em MINUTOS; sem ele, calculo pela régua viva")
+    alvo.add_argument(
+        "--deploy", metavar="SHA", help="sha na main — espera os runs de deploy dele"
+    )
+    alvo.add_argument(
+        "--checks",
+        metavar="PR",
+        help="checks de um PR — a espera OBRIGATÓRIA antes do --pousar",
+    )
+    alvo.add_argument(
+        "--pouso",
+        metavar="PR",
+        help="RECUSA: a fila não precisa de plateia — peça pouso e siga",
+    )
+    alvo.add_argument(
+        "--sonda",
+        metavar="CMD",
+        help="comando local: exit 0 = pronto (Docker, Postgres…)",
+    )
+    alvo.add_argument(
+        "--autoteste",
+        action="store_true",
+        help="prova viva de que a espera fala e morre no teto",
+    )
+    p.add_argument(
+        "--teto",
+        type=float,
+        metavar="MIN",
+        help="teto manual em MINUTOS; sem ele, calculo pela régua viva",
+    )
     p.add_argument("--dizendo", default="", help="o que estou esperando, para leigo")
-    p.add_argument("--voz", type=float, default=60.0,
-                   help="segundos entre batimentos falados (padrão 60)")
-    p.add_argument("--intervalo", type=float, default=15.0,
-                   help="segundos entre consultas (padrão 15, como o portão)")
-    p.add_argument("--graca", type=float, default=300.0,
-                   help="segundos para o alvo APARECER (padrão 300, como o portão)")
-    p.add_argument("--ao-estourar", choices=("parar", "pousar"), default="parar",
-                   dest="ao_estourar",
-                   help="o plano Z — e 'continuar esperando' não é opção")
+    p.add_argument(
+        "--voz",
+        type=float,
+        default=60.0,
+        help="segundos entre batimentos falados (padrão 60)",
+    )
+    p.add_argument(
+        "--intervalo",
+        type=float,
+        default=15.0,
+        help="segundos entre consultas (padrão 15, como o portão)",
+    )
+    p.add_argument(
+        "--graca",
+        type=float,
+        default=300.0,
+        help="segundos para o alvo APARECER (padrão 300, como o portão)",
+    )
+    p.add_argument(
+        "--ao-estourar",
+        choices=("parar", "pousar"),
+        default="parar",
+        dest="ao_estourar",
+        help="o plano Z — e 'continuar esperando' não é opção",
+    )
     p.add_argument("--pr", help="o PR do --ao-estourar pousar (se o alvo não for PR)")
-    p.add_argument("--e-pousar", dest="e_pousar", action="store_true",
-                   help="ao ficar verde, passa pelo portão (ci/mergear.py) "
-                        "e pede pouso sozinho — só com --checks")
-    p.add_argument("--so-desfecho", dest="so_desfecho", action="store_true",
-                   help="stdout recebe SÓ o desfecho (o robô acorda uma vez); "
-                        "partida e batimento vão para o stderr e para o log. "
-                        "--e-pousar já liga isto sozinho")
+    p.add_argument(
+        "--e-pousar",
+        dest="e_pousar",
+        action="store_true",
+        help="ao ficar verde, passa pelo portão (ci/mergear.py) "
+        "e pede pouso sozinho — só com --checks",
+    )
+    p.add_argument(
+        "--so-desfecho",
+        dest="so_desfecho",
+        action="store_true",
+        help="stdout recebe SÓ o desfecho (o robô acorda uma vez); "
+        "partida e batimento vão para o stderr e para o log. "
+        "--e-pousar já liga isto sozinho",
+    )
     p.add_argument("--regua", help="chave em tempos_esperados.json (senão, deduzo)")
-    p.add_argument("--mesmo-assim", dest="mesmo_assim", metavar="MOTIVO",
-                   help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito")
+    p.add_argument(
+        "--mesmo-assim",
+        dest="mesmo_assim",
+        metavar="MOTIVO",
+        help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito",
+    )
     args = p.parse_args(argv)
 
     if args.entrega is not None:
         from estado_da_entrega import consultar_entrega
         from _nucleo import raiz_do_repo
+
         try:
             estado = consultar_entrega(raiz_do_repo(), args.entrega)
             print(json.dumps(estado, ensure_ascii=False))
             return 0 if estado["estado"] in {"PUBLICADO", "SEM_PUBLICACAO"} else 1
         except Exception as erro:
-            print(json.dumps(dict(pr=args.entrega, estado="ERROR", terminal=False,
-                                  acao="Corrija a consulta antes de decidir: " + str(erro)), ensure_ascii=False))
+            print(
+                json.dumps(
+                    dict(
+                        pr=args.entrega,
+                        estado="ERROR",
+                        terminal=False,
+                        acao="Corrija a consulta antes de decidir: " + str(erro),
+                    ),
+                    ensure_ascii=False,
+                )
+            )
             return 2
     if args.autoteste:
         return autoteste()
@@ -945,7 +1044,7 @@ def main(argv: list[str] | None = None) -> int:
     if chave in ESPERAS_QUE_NAO_DEVIAM_EXISTIR and not args.mesmo_assim:
         p.error(
             f"esperar {rotulo} é a espera que a lei manda NÃO existir "
-            "(RITOS.md §2 peça 6: \"a melhor espera é a que não acontece\"). "
+            "(CAMINHO-DOURADO.md, “Integrar, publicar e aceitar”; CONSTITUICAO.md, Lei 11). "
             f"{ESPERAS_QUE_NAO_DEVIAM_EXISTIR[chave]}.\n\n"
             f"  O caminho:  python ci/mergear.py {pr_do_pouso}\n"
             "              …e SIGA para a próxima tarefa.\n\n"
@@ -955,21 +1054,24 @@ def main(argv: list[str] | None = None) -> int:
             "mantenedor de batimento sem fato novo. A espera que a lei manda "
             "ter é o veredito do deploy: --run/--deploy.\n\n"
             "Se você tem motivo real (depurar a própria pista), repita com "
-            "--mesmo-assim \"<o motivo>\"."
+            '--mesmo-assim "<o motivo>".'
         )
 
     if args.ao_estourar == "pousar" and not pr_do_pouso:
         p.error("--ao-estourar pousar precisa de um PR (--pr N)")
     if args.e_pousar and not args.checks:
-        p.error("--e-pousar só faz sentido com --checks <PR>: é ao ficarem verdes "
-                "os checks que o portão é chamado e o pouso pedido")
+        p.error(
+            "--e-pousar só faz sentido com --checks <PR>: é ao ficarem verdes "
+            "os checks que o portão é chamado e o pouso pedido"
+        )
     # O NÚMERO É UM PR DAQUI? (07/09/2026, TAR-202 — armadilhas/354.) Aqui, e
     # não mais cedo, porque é a única checagem que custa uma ida ao GitHub; e
     # aqui, e não mais tarde, porque anunciar "vou esperar" e desistir em
     # seguida ensina o oposto do que a lei quer — a mesma ordem da recusa acima.
     if args.checks or args.pouso:
-        conferir_o_pr(gh, repo, args.checks or args.pouso,
-                      "checks" if args.checks else "pouso", p)
+        conferir_o_pr(
+            gh, repo, args.checks or args.pouso, "checks" if args.checks else "pouso", p
+        )
     plano_z = (
         f"peço pouso do PR {pr_do_pouso} e sigo"
         if args.ao_estourar == "pousar"
@@ -996,8 +1098,16 @@ def main(argv: list[str] | None = None) -> int:
             f"🔴 ESTOUREI o teto de {_fmt(teto_s)} esperando {dizendo}. "
             f"Parei.{acao}"
         )
-        registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "estouro", str(falha), chave_da_regua, voz.linhas)
+        registrar_espera(
+            alvo_txt,
+            dizendo,
+            teto_s,
+            falha.decorrido,
+            "estouro",
+            str(falha),
+            chave_da_regua,
+            voz.linhas,
+        )
         return 2
     except GracaVencida as falha:
         # A graça só morre com o alvo INCOMPLETO, e a última olhada é a única
@@ -1013,8 +1123,16 @@ def main(argv: list[str] | None = None) -> int:
             "Isso NÃO é fila: parei, investigue."
             + (f" Última olhada: {visto}." if visto else "")
         )
-        registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "nao-apareceu", str(falha), chave_da_regua, voz.linhas)
+        registrar_espera(
+            alvo_txt,
+            dizendo,
+            teto_s,
+            falha.decorrido,
+            "nao-apareceu",
+            str(falha),
+            chave_da_regua,
+            voz.linhas,
+        )
         return 2
     except FalhasSeguidas as falha:
         detalhe = falha.erro.resumo if falha.erro else str(falha)
@@ -1023,8 +1141,16 @@ def main(argv: list[str] | None = None) -> int:
             f"parei e estou reportando (isso NUNCA é um verde). "
             f"Última falha: {detalhe}"
         )
-        registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "falha-de-medicao", detalhe, chave_da_regua, voz.linhas)
+        registrar_espera(
+            alvo_txt,
+            dizendo,
+            teto_s,
+            falha.decorrido,
+            "falha-de-medicao",
+            detalhe,
+            chave_da_regua,
+            voz.linhas,
+        )
         return 2
 
     verde = bool((olhada.dados or {}).get("verde"))
@@ -1037,17 +1163,25 @@ def main(argv: list[str] | None = None) -> int:
         )
         causa = diagnosticar(gh, repo, str((olhada.dados or {}).get("run") or ""))
         voz.desfecho(
-            cabeca + "\n" + causa if causa
+            cabeca + "\n" + causa
+            if causa
             else cabeca + " O veredito real está no link do run/PR; "
-                          "não re-tente às cegas."
+            "não re-tente às cegas."
         )
     elif not args.e_pousar:
         voz.desfecho(linha_verde)
     # verde COM --e-pousar: este desfecho sai na MESMA linha do pouso, logo
     # abaixo — dois desfechos acordariam o robô duas vezes pelo mesmo fato.
-    registrar_espera(alvo_txt, dizendo, teto_s, decorrido,
-                     "verde" if verde else "vermelho", olhada.resumo,
-                     chave_da_regua, voz.linhas)
+    registrar_espera(
+        alvo_txt,
+        dizendo,
+        teto_s,
+        decorrido,
+        "verde" if verde else "vermelho",
+        olhada.resumo,
+        chave_da_regua,
+        voz.linhas,
+    )
     if verde and args.e_pousar:
         return pousar_pelo_portao(str(args.checks), voz, linha_verde)
     return 0 if verde else 1
@@ -1065,7 +1199,9 @@ def _mergear() -> list[str]:
 
 
 VOLTAS_DE_REMEDICAO = int(os.environ.get("ESPERAR_VOLTAS_DE_REMEDICAO", "6"))
-SEGUNDOS_ENTRE_REMEDICOES = float(os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDICOES", "20"))
+SEGUNDOS_ENTRE_REMEDICOES = float(
+    os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDICOES", "20")
+)
 
 
 def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
@@ -1091,8 +1227,11 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
         try:
             proc = subprocess.run(
                 [*_mergear(), pr],
-                capture_output=True, text=True, timeout=300,
-                encoding="utf-8", errors="replace",
+                capture_output=True,
+                text=True,
+                timeout=300,
+                encoding="utf-8",
+                errors="replace",
             )
         except (OSError, subprocess.TimeoutExpired) as erro:
             voz.desfecho(
@@ -1101,9 +1240,7 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
             )
             return 2
         saida = (proc.stdout or "") + (proc.stderr or "")
-        recalculando = (
-            proc.returncode == 2 and MOTIVO_GITHUB_AINDA_CALCULANDO in saida
-        )
+        recalculando = proc.returncode == 2 and MOTIVO_GITHUB_AINDA_CALCULANDO in saida
         if not recalculando or volta == VOLTAS_DE_REMEDICAO:
             break
         voz.bastidor(
@@ -1127,8 +1264,7 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
     voz.desfecho(
         f"{prefixo}🔴 o portão RECUSOU o pouso do PR {pr} "
         f"(exit {proc.returncode}) — o motivo é o do portão, abaixo. "
-        "Conserte e rode de novo; não re-tente às cegas."
-        + voz.eco(cauda)
+        "Conserte e rode de novo; não re-tente às cegas." + voz.eco(cauda)
     )
     # A mesma distinção que o portão faz, preservada até aqui: FAIL é sobre o
     # PR e sai 1; ERROR é "não consegui medir" e sai 2, como o estouro do teto.

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-032450-TAR-1024-explicada",
+  "tarefa": "TAR-1024",
+  "evento": "explicada",
+  "quando": "2026-09-30T03:24:50.494908+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "A verificacao oficial procura a copia candidata no diretorio errado e falha antes de conferir suas fontes.",
+  "o_que_muda": "O verificador encontra a revisao certa e aplica as protecoes ja definidas.",
+  "exemplo": "O endereco relativo vira absoluto antes de mudar o diretorio de trabalho.",
+  "importancia": 100
+}

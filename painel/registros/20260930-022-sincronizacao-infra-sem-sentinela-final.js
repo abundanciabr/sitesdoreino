@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-022-sincronizacao-infra-sem-sentinela-final",
+  tipo: "incidente",
+  quando: "2026-09-30",
+  titulo: "Sincronizacao da infraestrutura parou sem prova final",
+  detalhe: "O run 36657313864 chamou a VPS e recebeu INICIADA e status zero, mas nao recebeu CONCLUIDA. O portao marcou resultado incerto e impediu novas tentativas. O sincronizador rodava pelo stdin; um comando Docker consumiu o restante do script. A TAR-1008 corrige a captura e a TAR-1021 medira o estado em uso sem repetir a sincronizacao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/36657313864",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1008",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
