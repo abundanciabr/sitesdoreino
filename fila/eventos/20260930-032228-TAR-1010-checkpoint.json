@@ -1,0 +1,16 @@
+{
+  "arquivo": "20260930-032228-TAR-1010-checkpoint",
+  "tarefa": "TAR-1010",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T03:22:28.572553+00:00",
+  "quem": "codex-pme-fontes-diagnosticos-retomada",
+  "plano": "TAR-1010: testes corrigidos e preparando rito do PR 2384",
+  "ultimo_avanco": "Versão 2 do contrato registrada com ci/tests/test_espera.py como décimo alvo; o teste causal conserva a recusa e aponta à seção vigente. Teste paramétrico causal PASS 1; módulo completo ci/tests/test_espera.py PASS 58; fila válida com 907 tarefas e 3265 eventos.",
+  "proxima_acao": "Conferir diff/revisão, executar os comandos CLI focais restantes e o rito make pr no PR 2384 existente; acompanhar portões e aceite da revisão integrada.",
+  "verificacoes": [
+    "python -m pytest ci/tests/test_espera.py::test_a_espera_que_nao_devia_existir_recusa_e_ensina_o_caminho -q: 1 passed in 2.42s; exercício CLI da recusa manteve returncode não zero, ci/mergear.py, PR 447 e a nova âncora.",
+    "python -m pytest ci/tests/test_espera.py -q: 58 passed in 49.71s.",
+    "python ci/fila.py validar: PASS; 907 tarefas, 3265 eventos. O validador listou 8 comprovantes TAR-1010/958 ainda locais, a serem embarcados no PR.",
+    "python -m black --check --workers 1 ci/tests/test_espera.py: informa que o módulo inteiro preexistente seria reformatado; diff em memória mostrou que as linhas alteradas são estáveis, portanto nenhum reformatamento amplo foi aplicado."
+  ]
+}

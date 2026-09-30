@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -13,6 +15,7 @@ from pathlib import Path
 
 OPERACOES = {
     "estado-servico",
+    "estado-infra",
     "espaco-disco",
     "versao-compose",
     "appmax-pix",
@@ -24,9 +27,35 @@ OPERACOES = {
     "appmax-pendentes",
     "quiz-configuracao",
 }
-OPERACOES_DA_PLATAFORMA = {"espaco-disco", "versao-compose"}
+OPERACOES_DA_PLATAFORMA = {"estado-infra", "espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
+RAIZ_INFRA = Path("/opt/plataforma")
+ARQUIVOS_ESTADO_INFRA = (
+    "docker-compose.yml",
+    "sites.json",
+    "sincronizar_sites.py",
+    "provisionar-usuario-ponte.sh",
+    "instalar-provisionador-usuario-ponte.sh",
+    "traefik/traefik.yml",
+    "traefik/dynamic/plataforma.yml",
+    "traefik/dynamic/entrada-privada.yml",
+    "docker-compose.yml.new",
+    "sites.json.new",
+    "sincronizar_sites.py.new",
+    "traefik.new/traefik.yml",
+    "traefik.new/dynamic/plataforma.yml",
+    "traefik.new/dynamic/entrada-privada.yml",
+    "infra.new/docker-compose.yml",
+    "infra.new/sites.json",
+    "infra.new/sincronizar_sites.py",
+    "infra.new/provisionar-usuario-ponte.sh",
+    "infra.new/instalar-provisionador-usuario-ponte.sh",
+    "infra.new/traefik/traefik.yml",
+    "infra.new/traefik/dynamic/plataforma.yml",
+    "infra.new/traefik/dynamic/entrada-privada.yml",
+)
+SERVICOS_ESTADO_INFRA = ("traefik", "catalogo", "admin")
 ESTADOS_TENTATIVA = {
     "sending",
     "reconciliation_required",
@@ -350,11 +379,14 @@ FORMATO = (
     '"saude":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"ausente"{{end}},'
     '"reinicios":{{.RestartCount}},"imagem":{{json .Image}}}'
 )
+FORMATO_IMAGEM_ADMIN = '{"id":{{json .Id}},"repo_digests":{{json .RepoDigests}}}'
 ACOES = {
     "entrada": "Escolha uma operação e um serviço do catálogo na main.",
     "instrumento": "Confira Docker e disponibilidade da VPS pela esteira; não cole comandos no servidor.",
     "sandbox": "A leitura foi bloqueada porque o serviço não está apontado ao sandbox. Corrija APPMAX_AUTH_URL e APPMAX_API_URL na configuração do sandbox e repita.",
     "ausente": "Confira o deploy desse serviço e corrija pelo PR e pipeline.",
+    "infra": "Arquivo da infraestrutura inacessível ou inesperado; preserve a VPS e confira a publicação antes de repetir.",
+    "borda": "A borda local não respondeu; confira Traefik e a rota pública pelo canal oficial antes de repetir.",
     "formato": "A medição não corresponde ao protocolo; corrija o coletor por PR.",
 }
 
@@ -402,7 +434,7 @@ def validar(operacao, servico, permitidos, referencia=""):
         raise Falha("entrada")
 
 
-def comando(argumentos):
+def comando(argumentos, prazo_segundos=30):
     try:
         resultado = subprocess.run(
             argumentos,
@@ -410,7 +442,7 @@ def comando(argumentos):
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=30,
+            timeout=prazo_segundos,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
@@ -420,6 +452,65 @@ def comando(argumentos):
             raise Falha("sandbox")
         raise Falha("instrumento")
     return resultado.stdout
+
+
+def hash_arquivo_infra(relativo):
+    partes = Path(relativo).parts
+    if os.name != "posix":
+        atual = RAIZ_INFRA
+        try:
+            if not stat.S_ISDIR(atual.lstat().st_mode):
+                raise Falha("infra")
+            for indice, parte in enumerate(partes):
+                atual = atual / parte
+                try:
+                    metadados = atual.lstat()
+                except FileNotFoundError:
+                    return None
+                if indice < len(partes) - 1:
+                    if not stat.S_ISDIR(metadados.st_mode):
+                        raise Falha("infra")
+                elif (
+                    not stat.S_ISREG(metadados.st_mode)
+                    or metadados.st_size > 4 * 1024 * 1024
+                ):
+                    raise Falha("infra")
+            with atual.open("rb") as arquivo:
+                return hashlib.file_digest(arquivo, "sha256").hexdigest()
+        except OSError:
+            raise Falha("infra") from None
+
+    descritor = None
+    try:
+        descritor = os.open(RAIZ_INFRA, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        if not stat.S_ISDIR(os.fstat(descritor).st_mode):
+            raise Falha("infra")
+        for indice, parte in enumerate(partes):
+            flags = os.O_RDONLY | os.O_NOFOLLOW
+            if indice < len(partes) - 1:
+                flags |= os.O_DIRECTORY
+            try:
+                proximo = os.open(parte, flags, dir_fd=descritor)
+            except FileNotFoundError:
+                return None
+            os.close(descritor)
+            descritor = proximo
+            metadados = os.fstat(descritor)
+            if indice < len(partes) - 1:
+                if not stat.S_ISDIR(metadados.st_mode):
+                    raise Falha("infra")
+            elif (
+                not stat.S_ISREG(metadados.st_mode)
+                or metadados.st_size > 4 * 1024 * 1024
+            ):
+                raise Falha("infra")
+        with os.fdopen(descritor, "rb", closefd=False) as arquivo:
+            return hashlib.file_digest(arquivo, "sha256").hexdigest()
+    except OSError:
+        raise Falha("infra") from None
+    finally:
+        if descritor is not None:
+            os.close(descritor)
 
 
 def conferir_medicao(operacao, dados, referencia=""):
@@ -437,6 +528,65 @@ def conferir_medicao(operacao, dados, referencia=""):
             raise Falha("formato")
         if not isinstance(dados["imagem"], str) or not re.fullmatch(
             r"sha256:[0-9a-f]{64}", dados["imagem"]
+        ):
+            raise Falha("formato")
+    elif operacao == "estado-infra":
+        if set(dados) != {"arquivos", "servicos", "imagem_admin", "borda_http"}:
+            raise Falha("formato")
+        arquivos, servicos = dados["arquivos"], dados["servicos"]
+        if not isinstance(arquivos, dict) or set(arquivos) != set(
+            ARQUIVOS_ESTADO_INFRA
+        ):
+            raise Falha("formato")
+        if any(
+            valor is not None
+            and (not isinstance(valor, str) or not re.fullmatch(r"[0-9a-f]{64}", valor))
+            for valor in arquivos.values()
+        ):
+            raise Falha("formato")
+        if not isinstance(servicos, dict) or set(servicos) != set(
+            SERVICOS_ESTADO_INFRA
+        ):
+            raise Falha("formato")
+        for valor in servicos.values():
+            if valor is not None:
+                conferir_medicao("estado-servico", valor)
+        imagem = dados["imagem_admin"]
+        if servicos["admin"] is None:
+            if imagem is not None:
+                raise Falha("formato")
+        else:
+            if not isinstance(imagem, dict) or set(imagem) != {
+                "container_image",
+                "id",
+                "repo_digests",
+            }:
+                raise Falha("formato")
+            if imagem["container_image"] != servicos["admin"]["imagem"]:
+                raise Falha("formato")
+            if not isinstance(imagem["id"], str) or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}", imagem["id"]
+            ):
+                raise Falha("formato")
+            digests = imagem["repo_digests"]
+            if (
+                not isinstance(digests, list)
+                or not digests
+                or len(digests) > 8
+                or any(
+                    not isinstance(digest, str)
+                    or not re.fullmatch(
+                        r"ghcr\.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}",
+                        digest,
+                    )
+                    for digest in digests
+                )
+                or len(digests) != len(set(digests))
+            ):
+                raise Falha("formato")
+        if (
+            type(dados["borda_http"]) is not int
+            or not 100 <= dados["borda_http"] <= 599
         ):
             raise Falha("formato")
     elif operacao == "espaco-disco":
@@ -1053,7 +1203,102 @@ def conferir_medicao(operacao, dados, referencia=""):
     return dados
 
 
+def medir_servico_estado_infra(nome):
+    identificador = comando(
+        [
+            "docker",
+            "ps",
+            "--all",
+            "--quiet",
+            "--no-trunc",
+            "--filter",
+            "label=com.docker.compose.project=plataforma",
+            "--filter",
+            "label=com.docker.compose.service=" + nome,
+        ],
+        prazo_segundos=10,
+    ).strip()
+    if not identificador:
+        return None
+    if not re.fullmatch(r"[0-9a-f]{12,64}", identificador):
+        raise Falha("formato")
+    try:
+        dados = json.loads(
+            comando(
+                ["docker", "inspect", "--format", FORMATO, identificador],
+                prazo_segundos=10,
+            )
+        )
+    except (ValueError, TypeError):
+        raise Falha("formato") from None
+    return conferir_medicao("estado-servico", dados)
+
+
 def medir(operacao, servico, referencia=""):
+    if operacao == "estado-infra":
+        arquivos = {nome: hash_arquivo_infra(nome) for nome in ARQUIVOS_ESTADO_INFRA}
+        servicos = {}
+        for nome in SERVICOS_ESTADO_INFRA:
+            servicos[nome] = medir_servico_estado_infra(nome)
+        imagem_admin = None
+        if servicos["admin"] is not None:
+            container_image = servicos["admin"]["imagem"]
+            try:
+                inspeccionada = json.loads(
+                    comando(
+                        [
+                            "docker",
+                            "image",
+                            "inspect",
+                            "--format",
+                            FORMATO_IMAGEM_ADMIN,
+                            container_image,
+                        ],
+                        prazo_segundos=10,
+                    )
+                )
+            except (ValueError, TypeError):
+                raise Falha("formato") from None
+            if not isinstance(inspeccionada, dict):
+                raise Falha("formato")
+            imagem_admin = {
+                "container_image": container_image,
+                **inspeccionada,
+            }
+        try:
+            codigo = comando(
+                [
+                    "curl",
+                    "-skS",
+                    "--connect-timeout",
+                    "3",
+                    "--max-time",
+                    "12",
+                    "--resolve",
+                    "meshcraft.top:443:127.0.0.1",
+                    "--resolve",
+                    "meshcraft.top:80:127.0.0.1",
+                    "-o",
+                    "/dev/null",
+                    "-w",
+                    "%{http_code}",
+                    "https://meshcraft.top/",
+                ],
+                prazo_segundos=15,
+            ).strip()
+        except Falha:
+            raise Falha("borda") from None
+        if not re.fullmatch(r"[1-5][0-9]{2}", codigo):
+            raise Falha("borda")
+        return conferir_medicao(
+            operacao,
+            {
+                "arquivos": arquivos,
+                "servicos": servicos,
+                "imagem_admin": imagem_admin,
+                "borda_http": int(codigo),
+            },
+        )
     if operacao == "espaco-disco":
         try:
             disco = shutil.disk_usage("/opt/plataforma")

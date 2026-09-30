@@ -28,4 +28,4 @@ redireciona com `?lead=…` — quem cria pedido é o checkout, quem guarda pess
 `make ci` verde · schema do evento validado contra o contrato · diff no escopo.
 
 ## Ritos
-RITOS.md §1, §2. Evento novo ou mudança de payload = rito de contrato (§3), nunca decisão local.
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2). Evento novo ou mudança de payload exige [Mudar contrato](../CAMINHO-DOURADO.md#mudar-contrato--sucessor-de-ritos-3), nunca decisão local.
