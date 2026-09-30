@@ -1,0 +1,20 @@
+{
+  "arquivo": "983-impedir-que-uma-alteracao-aprove-suas-proprias-regras",
+  "id": "TAR-983",
+  "titulo": "Impedir que uma alteracao aprove suas proprias regras",
+  "toca": [
+    "ci",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Candidata nao emite prova aceita da propria autoridade; origem App nativa isolada; entrega comum automatica; renomeacao, autoaprovacao, import malicioso e check ausente recusados; kit e ativacao verificados",
+  "despacho": "Continuação da mesma frente GOV, TAR-972, sem contar nova frente. Responsável único pme_governanca, tentativa 2, gpt-6-sol high explicitamente configurado, sem fallback ou subagentes.\nBancada gerenciada C:/Users/davia/.codex/worktrees/pme-governanca-app/sitesdoreino-limpo-20260923; ramo codex/ci/pme-governanca-app. Base: integração do primeiro incremento.\nEscrita exclusiva dos novos .github/workflows/autoridade-das-fontes.yml, ci/autoridade_das_fontes.py e ci/tests/test_autoridade_das_fontes.py; ajuste pertinente de .github/CODEOWNERS para AGENTS/00/constituições/.claude/.codex. Workflows existentes são do 07; fila e gate são do 03.\nO mandato expresso da TAR-958 e o adendo exigem que a autoridade não venha da própria candidata e que a entrega comum continue automática. Identidade técnica mínima, sem novo serviço ou gasto. App privado com checks/statuses write e contents/PR/actions read; chave só em execução confiável da main. Candidata é dado: nenhum import, hook, dependência ou workflow dela pode executar com segredo. Comprovar a custódia e a política de branches nativa antes de ativar.\nUsar a fonte confiável da interface977, com PR/HEAD/repositório reais e checkout explícito. Mudanças protegidas exigem mandato nominal fora da candidata; login e texto autodeclarados não bastam. Proposta de ruleset preserva muralhas, ci-celula-gate, strict, bypass vazio e zero revisores globais.\nPreparar implementação, testes e kit concretos antes de operação remota pelo coordenador. Recusa efetiva da plataforma não pode ser contornada. Provar autoaprovação, renomeação protegida, import malicioso, emissor divergente e check ausente recusados; entrega comum válida passa.\nRito com PR inicialmente draft e fonte02 segura; revisão independente. Copiar registros novos958/963 exatamente, sem alterar eventos existentes. Não tratar configuração observada como runtime atestado. Parar somente por bloqueio real de identidade/custódia/plataforma, com ação exclusiva concreta; continuar partes independentes.",
+  "origem": "Continuacao TAR972, mesma frente GOV; adendo TAR958; propriedade redistribuida pelo coordenador",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

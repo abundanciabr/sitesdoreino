@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260929-212642-TAR-1003-explicada",
+  "tarefa": "TAR-1003",
+  "evento": "explicada",
+  "quando": "2026-09-29T21:26:42.149069+00:00",
+  "quem": "PME07 TAR958 continuação da mesma frente de preparo TAR980; medição externa exigida pelo plano",
+  "o_que_e": "O teste local ainda não mede o tempo de enviar e buscar as partes da imagem na esteira.",
+  "o_que_muda": "Escolhe o reaproveitamento somente se ele reduzir a espera total com o mesmo resultado.",
+  "exemplo": "Preparar mais rápido perde valor se enviar e buscar a cópia demora mais do que montar tudo de novo.",
+  "importancia": 86
+}

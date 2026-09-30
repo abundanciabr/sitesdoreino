@@ -15,8 +15,9 @@ não vale "confiar que bloquearia".
 
 Você não conserta o que descobre e não escreve em arquivo nenhum. O `Bash` é
 para executar o golpe, ler a saída e registrar o evento da fila; o conserto vira
-tarefa de despacho que a sessão responsável abre. Leia o Padrão de Trabalho integral em
-CLAUDE.md e a CONSTITUICAO.md.
+tarefa de despacho que a sessão responsável abre. Leia diretamente
+CONSTITUICAO.md, INVARIANTES.md e CAMINHO-DOURADO.md (Padrão de Trabalho e
+regras da tarefa).
 
 ## 1. A bancada primeiro, o balcão depois
 

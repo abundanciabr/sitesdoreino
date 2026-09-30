@@ -1,0 +1,34 @@
+{
+  "arquivo": "20260929-172139-TAR-983-checkpoint",
+  "tarefa": "TAR-983",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:21:39.300746+00:00",
+  "quem": "pme-governanca-app",
+  "plano": "GOV TAR983: implementação da fonte-base e kit de identidade App, sem ativação",
+  "ultimo_avanco": "81 testes locais PASS; fonte confiável lê candidata distinta; contrato e GPS copiados com SHA256",
+  "proxima_acao": "Revisão independente; integrar fonte03 de linhagem e fonte02 de PR draft; rito e ativação App após prova",
+  "verificacoes": [
+    "pytest ci/tests/test_autoridade_das_fontes.py ci/tests/test_padrao_de_trabalho.py: 81 PASS",
+    "python ci/fila.py validar: 870 tarefas e 3012 eventos, válido"
+  ],
+  "contexto": {
+    "item_pme": "GOV/TAR-983, continuacao TAR-972 na PME01-09",
+    "escopo": "autoridade do verificador fora da revisao candidata; check GitHub App de origem esperada no ruleset",
+    "situacao": "implementacao e testes locais; identidade, environments e ruleset nao ativados; aceite funcional remoto pendente",
+    "regra": "Entrega comum sem revisao humana global; protegido exige mandato nominal; check por SHA e emissor App separado; falta de prova recusa",
+    "fontes": [
+      "TAR-958 adendo SHA256 DC87674030B4BC3A553D2F3F70F4672832865BB76EC74D6FD4EDE66E4802CCCD",
+      "CAMINHO-DOURADO.md/CLAUDE.md/CONSTITUICAO.md integrados no PR2344; CODEOWNERS da base",
+      "ci/fila.py verificar-linhagem da TAR-977, ainda em correcao e revisao da frente03",
+      "GitHub ruleset 21570247 lido com dois checks Actions, strict true, bypass vazio"
+    ],
+    "prova": [
+      "pytest ci/tests/test_autoridade_das_fontes.py ci/tests/test_padrao_de_trabalho.py: 81 PASS",
+      "python -I ci/padrao_de_trabalho.py --candidato segunda bancada: PASS 11 regras/46 frases/3 costuras/6 portas",
+      "python ci/fila.py validar: 870 tarefas/3012 eventos, valido",
+      "kit C:/Users/davia/AppData/Local/Temp/pme-governanca-app-kit983.json SHA256 65E46A4D41C3937052184D7ED5808668F3AFCBBE3394C69D777B37763613A45F"
+    ],
+    "revisao": "solicitada ao coordenador; ainda sem parecer",
+    "propriedade": "GOV 4 arquivos tecnicos; workflow existente07, fila03, pr02 permanecem com donos"
+  }
+}

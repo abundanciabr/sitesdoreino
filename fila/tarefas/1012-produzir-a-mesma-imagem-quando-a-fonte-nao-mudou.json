@@ -1,0 +1,20 @@
+{
+  "arquivo": "1012-produzir-a-mesma-imagem-quando-a-fonte-nao-mudou",
+  "id": "TAR-1012",
+  "titulo": "Produzir a mesma imagem quando a fonte nao mudou",
+  "toca": [
+    "admin",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Duas builds frias da receita real com entradas iguais geram OCI igual; importacao e arranque preservados; ensaio remoto compara frio/exportado/importado e mede custo total antes de decidir cache.",
+  "despacho": "Continuacao da frente existente preparo/cache TAR980/TAR1003, sem nova frente no teto21. Responsavel unico pme_cache_actions, gpt-6-sol medium explicitamente configurado; sem fallback/subagentes. ProgramaTAR958 mandato integral/adendo. Nao esta sozinho, preserve trabalho alheio. Reutilize bancada pme-preparo-candidato apos confirmar ausencia de processos dependentes dos arquivos a trocar, preserve diagnosticos e ramo1003; novo ramo codex/admin/pme-bytecode-reproduzivel, base main atual. Root reserva intencao pme-bytecode-reproduzivel; reivindique tarefa e registre contrato antes de editar.\nEscrita tecnica exclusiva: services/admin/Dockerfile, apenas comando pip para produzir bytecode deterministico por hash. ci/medir_cache_admin.py, teste e workflow de medicao permanecem SOMENTE LEITURA salvo necessidade causal devolvida ao coordenador. ci/preparar_candidato.py e workflow/receptor990 tambem readonly. Nada de ARG/flag por flexibilidade, cache de producao, mudanca em dependencias/base da imagem ou outras celulas. Registros proprios e provas oficiais podem acompanhar o rito.\nCausa medida: ensaio remoto36639065722 falha igualdade OCI; dois cold locais mesma base/contexto/epoch tambem divergem. Primeiro campo config.rootfs.diff_ids[7], camada pip,3140pyc distintos e zerooutros. Headers levam mtime50s diferente apesar de rewrite-timestamp nos metadados tar. ARG SOURCE_DATE_EPOCH isolado provou duasOCI iguais; confirmar a forma menor RUN SOURCE_DATE_EPOCH=0 pip install na receita real, restrita ao comando, usando documentacao primaria Python e comportamento real. Valor nao vira configuracao opcional.\nAceite: duas builds frias independentes com mesma receita real/contexto/base/epoch produzem digest OCI igual; bytecode/imports/boot pertinentes preservados; ensaio remoto oficial frio/exportado/importado comparaOCI iguais e mede preparacao/transporte/build/bytes/hits/custo inicial e repetido sem extrapolar10x. Nao decidir nao adotar a partir de ensaio inconclusivo. Red antes ja preservado; verde na receita alterada obrigatorio. Provas afetadas e checks admin oficiais, sem teste espelho da linha. Revisao independente focal por root. Recuperacao por PR que preserva comparador estrito; nenhuma operacao VPS pelo agente. Make pr/ci.pr com mandato e registros, integracao pelos portoes. Bloqueio de auto-review preserva proposta imutavel e volta a raiz, sem rota alternativa. Proxima acao: conferir diagnostico menor, abrir claim/contrato e aplicar somente causa comprovada.",
+  "origem": "TAR958 PME07 continuacao TAR1003; divergencia real de bytecode no ensaio36639065722",
+  "criada_em": "2026-09-29",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

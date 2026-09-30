@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260929-077-sugestoes-o-video-do-youtube-na-resposta-da-equipe-passa-a-t",
+  tipo: "entrega",
+  quando: "2026-09-29",
+  titulo: "sugestoes: o vídeo do YouTube na resposta da equipe passa a tocar",
+  detalhe: "Iframe de player da resposta da equipe sai com referrerpolicy fixo strict-origin-when-cross-origin; entrada nunca define o valor. Fim do Erro 153.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2371. Validação local: árvore 298b5ac5f2d885d93517c8929d3216bc657c64b7; commit 1c900dfde7079d98a11caf9d3a492f1e1ce44d5a; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1006",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "sugestoes",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

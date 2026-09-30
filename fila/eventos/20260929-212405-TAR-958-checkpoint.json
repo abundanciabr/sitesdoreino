@@ -1,0 +1,56 @@
+{
+  "arquivo": "20260929-212405-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T21:24:05.831325+00:00",
+  "quem": "codex/coordenador-01a0ed71",
+  "plano": "PME01-09;20frentes historicas/19abertas;sem reduzir aceite",
+  "ultimo_avanco": "992integrado/publicado; cinco livros conferidos e cinco reconciliacoes oficiais registradas;993/978integrados",
+  "proxima_acao": "Integrar995 e provisionar pelo workflow; provar copia externa/restauro; iniciar1001 somente com entradas/reserva; fechar propostas983/990 e fontes; medir percurso/auditoriafinal.",
+  "verificacoes": [
+    "Blobs051-055 iguais; reconciliar988/964/969/989/991 exit0; run36631635347success; recusas e revisoes preservadas"
+  ],
+  "contexto": {
+    "coordenador": "01a0ed71-4e7f-7680-821e-4d655a7ad405",
+    "frentes_planejadas_total_historico": 20,
+    "frentes_abertas": 19,
+    "main_conferida": "d4eceb8234adb47f06e7ab71db58a173af715e42",
+    "integrados": {
+      "TAR-993": "42fc140b4901f77bad44f7f3c23d4eaf3bf8b002",
+      "TAR-978": "6626e387a18cfc2c895b89dd33e33a483dc6db98",
+      "TAR-992": {
+        "merge": "2db356a80608fee430ba48528e09489005498189",
+        "publicacao_run": 36631635347,
+        "publicacao": "success",
+        "corte_pg": false
+      }
+    },
+    "aceites_incrementais": {
+      "livros_051_055": "Cinco blobs da main conferidos contra hashes aprovados; checkout CRLF normalizado sem divergencia de conteudo.",
+      "reconciliacoes_locais": [
+        "TAR-988",
+        "TAR-964",
+        "TAR-969",
+        "TAR-989",
+        "TAR-991"
+      ],
+      "eventos": "20260929-212112/212226/212239/212251/212305; ainda precisam embarcar.",
+      "livro_992": "071 preparado pelo executor, nao integrado; nao fecha PME05."
+    },
+    "bloqueios": {
+      "TAR-998": "Publicacao negada pelo auto-review por conteudo/destino especificos; pergunta com ZIP18arquivos SHA11DC32E802F25EA5BB9F486B240D25B9C06C47BC5DED43E2BF633343C2D51D43 pendente. Nao houve retry alternativo.",
+      "TAR-995": "GitHub mergeable UNKNOWN por 3 leituras no pouso36632544342; update-branch anterior nao moveu head. Executor retomou incorporacao normal da main, sem bypass.",
+      "TAR-1001": "Alterar depende_de foi recusado antes da integracao das entradas; nao aplicado. Mantidas dependencias992/995; despacho nao iniciado."
+    },
+    "revisao": {
+      "TAR-983": "V4 TEMP reprovada: evento terminal nao grantado e ausencia de mergeCommit na resposta. Autor corrige; nenhuma ativacao/pin.",
+      "TAR-990": "P1 falso PUBLICADO corrigido; rollback A/B por digest proposto TEMP E007E954892E222C2847A8ADD3FED0BF7D57F2E3C0ED19EF99E7456593691C08 em revisao focal. Nenhuma ativacao.",
+      "TAR-987": "CI falhou ao tentar obter imagem Python ausente; teste passa a usar parser real host e shellUbuntu existente. Reensaio78PASS; mesmoPR."
+    },
+    "recuperacao": "Backup manual integrado; guarda de testemunho e agenda preparadas; copia externa real/restauro ainda dependem995.",
+    "fontes": "998 local revisada10testesPASS; auditor09 inventaria consumidores operacionais remanescentes sem repetir historico.",
+    "modelo": "Configuracao explicita das frentes Sol/Luna preservada; sem inferir atestado independente de runtime.",
+    "ganho10x": "NAO DEMONSTRADO",
+    "proxima_acao": "Integrar995 e provisionar pelo workflow; provar copia externa/restauro; iniciar1001 somente com entradas/reserva; fechar propostas983/990 e fontes; medir percurso/auditoriafinal."
+  }
+}
