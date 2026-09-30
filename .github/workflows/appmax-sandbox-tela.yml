@@ -29,11 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo '::error::A matriz sandbox só executa na main. Integre o PR e dispare com --ref main.'
-          exit 1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}

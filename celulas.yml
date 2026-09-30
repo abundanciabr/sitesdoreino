@@ -1,63 +1,26 @@
 # =============================================================================
-# O MAPA DAS CÉLULAS — quem é quem, o que é de quem, e quem consome quem.
+# O MAPA DAS CÉLULAS: quem é quem, o que é de quem, e quem consome quem.
 #
-# Onda 5 do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md` (o Cartógrafo).
-# É este arquivo que substitui a cerca "1 PR = 1 célula": em vez de RECUSAR um
-# PR por largura, o CI passa a DERIVAR do diff o que precisa rodar. Restringir
-# largura para comprar exclusividade cobra o pedágio na moeda errada — e a
-# cerca não teria evitado o pior incidente já medido aqui (Opus-2, P1 e P2).
+# Duas coisas moram aqui, e só estas duas:
 #
-# ---------------------------------------------------------------------------
-# DUAS COISAS MORAM AQUI, E SÓ ESTAS DUAS
-#
-#   caminhos:  que pedaços do repositório PERTENCEM a esta célula. É o mapa que
-#              responde "o que este PR toca?" — e existia em DOIS lugares
-#              (`ci/ci.py::celulas_tocadas` e `ci/cerca-de-celula.sh`), que já
-#              discordavam sobre `painel/`. Fato do projeto não mora em dois
-#              lugares (CLAUDE.md); agora mora aqui.
+#   caminhos:  que pedaços do repositório PERTENCEM a esta célula. É o que
+#              responde "o que este push toca?" e decide o que publicar.
 #
 #   consome:   de quais OUTRAS células esta lê API. É o que decide a ordem de
-#              publicação (provedor antes de consumidor) e o que torna visível
-#              uma dependência nova.
+#              publicação (provedor antes de consumidor). A convenção: quem
+#              consome a `alunos` lê `ALUNOS_API_URL`.
 #
-# ---------------------------------------------------------------------------
-# O QUE IMPEDE ESTE MAPA DE MENTIR
-#
-# Um mapa mantido à mão envelhece em silêncio — é a Classe 8 (mapa velho), a
-# doença que este plano inteiro existe para curar, e que já cobrou caro aqui.
-# Por isso ele tem um VARREDOR: `ci/mapa_de_celulas.py --verificar` compara o
-# que está escrito com o que o código faz, nos DOIS sentidos:
-#
-#   consumo no código e não declarado aqui  -> FAIL (dependência escondida)
-#   declarado aqui e ausente do código      -> FAIL (declaração órfã)
-#   célula no manifesto e ausente daqui     -> FAIL (e vice-versa)
-#
-# Ele roda na muralha de todo PR. Declarar é barato; declarar errado, não passa.
-#
-# A medição do consumo é a convenção que as 13 células já seguem: quem consome
-# a `alunos` lê `ALUNOS_API_URL`. Trocar essa convenção sem ensinar o varredor
-# deixa o mapa cego — e é por isso que o teste-guarda mede contra o código real.
+# Quem lê: `ci/mapa_de_celulas.py` (leitor), o detector de células tocadas e
+# `ci/ordem_de_publicacao.py`. Célula nova entra aqui e no
+# `ci/manifesto-de-contratos.json`, no mesmo commit.
 # =============================================================================
 celulas:
 
   admin:
-    # `painel/` entra na imagem da `admin` no build (deploy-celula.yml embute a
-    # pasta), então mexer no livro de ocorrências É mexer nesta célula: sem esta
-    # linha, um registro novo mergearia sem disparar deploy e o painel online
-    # congelaria em silêncio.
-    # `fila/` idem, desde 29/08/2026: a aba "Os robôs" da gestão da Caixa é
-    # calculada da fila embutida — evento novo na fila É quadro novo na admin.
-    # `documentos/` entra pela MESMA razão de `painel/` e `fila/`: a área de
-    # documentos do site (`DECISAO-a-area-de-documentos.md`) é servida por esta
-    # célula, e a pasta entra na imagem no build. Documento novo é página nova —
-    # sem esta linha, mexer num documento mergearia sem disparar deploy e o site
-    # continuaria publicando o texto antigo, em silêncio.
-    # `docs/decisoes/` desde 31/08/2026, pela MESMA razao das tres acima: a
-    # area `/mapa-ia/planos/` serve esses arquivos e a pasta entra na imagem
-    # no build. Plano corrigido e pagina corrigida — sem esta linha, mexer
-    # num plano mergearia sem disparar deploy e o site continuaria servindo
-    # o texto antigo, em silencio.
-    caminhos: [services/admin, painel, fila, documentos, docs/decisoes]
+    # `documentos/`: a área de documentos do site é servida por esta célula e a
+    # pasta entra na imagem no build. Documento novo é página nova, e sem esta
+    # linha mexer num documento não dispararia publicação.
+    caminhos: [services/admin, documentos]
     compartilhados: [packages/site_errors]
     # `catalogo` desde 31/08/2026: o menu do topo do site e DADO DO SITE, e
     # dado de site mora no catalogo. A tela /admin/menu/ le e grava la, pela
@@ -113,7 +76,7 @@ celulas:
     #
     # Sao DOIS graus do mesmo par (TOKENS_ACEITOS_ADMIN le, TOKENS_ESCRITA_ADMIN
     # grava), e o de escrita ja contem o de leitura: ler a regua e MUDAR a regua
-    # da fila inteira nao podem ser o mesmo poder (`armadilhas/318`).
+    # da fila inteira nao podem ser o mesmo poder.
     consome:
       [
         alunos,
@@ -151,7 +114,7 @@ celulas:
     caminhos: [services/cursos]
     compartilhados: [packages/site_errors]
     # Os três pares entraram JUNTOS com os clientes que os leem (degrau 1.8, a
-    # sala do aluno, `apps/core/clients.py`), e não antes (`armadilhas/224`):
+    # sala do aluno, `apps/core/clients.py`), e não antes:
     # - alunos: a matrícula ativa decide quem vê a aula (`getStudentStanding`,
     #   fail-closed; `ALUNOS_API_URL`).
     # - catalogo: o menu do topo é dado do site (`getSiteByHost`, fail-open;
@@ -168,7 +131,7 @@ celulas:
     # tem um e-mail) e `ALUNOS_API_URL` (a categoria da pessoa na escola). As
     # duas linhas entram no MESMO PR dos clientes, nunca antes: até aqui,
     # `consome: []` era a declaração honesta, e declarar o roadmap teria sido
-    # declaração órfã (`armadilhas/224`).
+    # declaração órfã.
     #
     # Quem pergunta é a tela do plantão: a `alunos` diz se a pessoa é aluna de
     # verdade antes de o título de Banca abrir a Fila para ela, e a
@@ -249,7 +212,7 @@ celulas:
     # qualquer tropeço.
     #
     # É o par que faltava quando o mantenedor abriu `/conquistas/` e viu a única
-    # área do site sem menu e sem rodapé (`armadilhas/286`). Quem o instala é
+    # área do site sem menu e sem rodapé. Quem o instala é
     # `infra/provisionar-par-do-menu.sh`, o mesmo que já ligou o Admin, o fórum
     # e a Caixa: o quinto degrau dele nasceu junto com esta linha.
     consome: [alunos, catalogo, forum, identidade]
@@ -280,8 +243,7 @@ celulas:
     # `consome` neste mapa mede leitura de API de outra célula (a convenção
     # é ler `<CELULA>_API_URL`), e esta célula não fará isso nem quando
     # estiver completa. Quem vai consumi-la é a `admin`, e é o mapa DELA que
-    # ganha `metricas` no degrau 7.4 — no mesmo PR do cliente, senão o
-    # varredor reprova por declaração órfã, com razão (`armadilhas/224`).
+    # ganha `metricas` no degrau 7.4, no mesmo commit do cliente.
     consome: []
 
   notificacoes:
@@ -298,10 +260,8 @@ celulas:
     caminhos: [services/pages]
     compartilhados: [packages/site_errors]
     # AS DUAS LINHAS ENTRARAM NO DEGRAU 06 (05/09/2026), no MESMO PR do código
-    # que as consome, e não antes: a gênese declarou `consome: []` de propósito,
-    # porque declaração escrita antes do cliente é declaração órfã e o varredor
-    # reprova por isso, com razão (`armadilhas/224`). Um mapa que promete a mais
-    # é tão mentiroso quanto um que promete a menos.
+    # que as consome, e não antes: um mapa que promete a mais é tão mentiroso
+    # quanto um que promete a menos.
     #
     # `identidade`: quem é a pessoa do outro lado do cookie. A casa REPASSA o
     # cookie e pergunta; nunca o lê e nunca o assina ([INV-P12]).
@@ -331,11 +291,7 @@ celulas:
     consome: [admin, alunos, catalogo, identidade]
 
   quiz:
-    # `services/quiz/LICOES.md` MENCIONA `CATALOGO_API_URL`, mas o código não a
-    # lê — o varredor não olha `.md` de propósito: documento não é dependência,
-    # e tratar prosa como consumo inventaria uma ordem de publicação que o
-    # mundo real não pede. (Este mapa nasceu declarando o consumo, e foi o
-    # próprio varredor que corrigiu a mão que o escreveu.)
+    # Documento não é dependência: só conta consumo que o código faz.
     caminhos: [services/quiz]
     compartilhados: [packages/site_errors]
     consome: []

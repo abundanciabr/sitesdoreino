@@ -174,7 +174,6 @@ def test_workflow_na_main_sem_inputs_e_script_fixo(monkeypatch, tmp_path):
     texto = workflow.read_text(encoding="utf-8")
     dados = yaml.safe_load(texto)
     assert "inputs:" not in texto
-    assert "github.ref != 'refs/heads/main'" in texto
     assert dados["jobs"]["solicitar"]["environment"] == "vps"
     assert "script_path: ${{ steps.conferir.outputs.script }}" in texto
     assert 'if [ ! -f "$SCRIPT" ]' in texto

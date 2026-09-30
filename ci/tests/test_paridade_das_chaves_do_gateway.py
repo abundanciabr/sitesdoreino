@@ -62,7 +62,7 @@ CI = Path(__file__).resolve().parents[1]
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
-import ci  # noqa: E402
+from conftest import BASH  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
 CHAVES_ESPERADAS = {"ALUNOS_API_TOKEN", "TOKEN_CATALOGO"}
@@ -206,12 +206,14 @@ def _bloco_do_contrato(caminho: Path) -> str:
 
 def _rodar_o_contrato(caminho: Path, raiz: Path) -> subprocess.CompletedProcess:
     """Roda o bloco de verdade, com a raiz apontada para um diretório de teste."""
+    if BASH is None:
+        pytest.skip("sem bash utilizável nesta máquina")
     provas = "\n".join(
         'printf "%s=%s\\n" ' + chave + ' "$' + chave + '"'
         for chave in sorted(CHAVES_ESPERADAS)
     )
     return subprocess.run(
-        [ci._bash(), "-c", _bloco_do_contrato(caminho) + "\n" + provas],
+        [BASH, "-c", _bloco_do_contrato(caminho) + "\n" + provas],
         capture_output=True,
         text=True,
         encoding="utf-8",
