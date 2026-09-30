@@ -124,10 +124,11 @@ jobs:
 
       - name: Provisionar na VPS
         id: provisionar
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           capture_stdout: true
           command_timeout: 10m

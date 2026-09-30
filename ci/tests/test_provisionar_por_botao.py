@@ -122,3 +122,22 @@ def test_nenhum_input_do_disparo_entra_no_corpo_de_um_run():
                 f"o passo `{passo.get('name')}` costura um input do disparo dentro "
                 f"do `run:`. Passe por `env:` e leia a variável no shell."
             )
+
+
+def test_ssh_action_fixa_fingerprint_publico_da_vps():
+    """A conexão só prossegue se a VPS apresentar a chave pública conhecida."""
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    passos = workflow["jobs"]["provisionar"]["steps"]
+    acoes_ssh = [
+        passo for passo in passos
+        if passo.get("uses", "").startswith("appleboy/ssh-action@")
+    ]
+
+    assert acoes_ssh, "o workflow precisa manter uma ação SSH para provisionar na VPS"
+    for passo in acoes_ssh:
+        assert passo.get("uses") == (
+            "appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2"
+        ), "fixe a ação SSH na revisão já usada pelos workflows oficiais"
+        assert passo.get("with", {}).get("fingerprint") == (
+            "SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ"
+        ), "fixe o fingerprint público já confiado da VPS antes da conexão SSH"
