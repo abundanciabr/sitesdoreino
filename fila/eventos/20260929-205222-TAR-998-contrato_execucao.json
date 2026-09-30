@@ -1,0 +1,81 @@
+{
+  "arquivo": "20260929-205222-TAR-998-contrato_execucao",
+  "tarefa": "TAR-998",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-29T20:52:22.061276+00:00",
+  "quem": "despacho-admin-pme-fontes-auxiliares",
+  "contrato": {
+    "plano": "corrigir-referencias-operacionais-das-fontes-auxiliares",
+    "versao": 3,
+    "objetivo": "Atualizar fontes auxiliares para que instruções de célula e guia levem à lei e ao procedimento vigente, preservando obrigações e histórico.",
+    "entregaveis": [
+      "13 instruções de célula e guia do mantenedor corrigidos",
+      "uma linha autorizada em INVARIANTES.md:1759 transferida do despacho993"
+    ],
+    "escopo_incluido": [
+      "constituicoes/AGENTS.alunos.md",
+      "constituicoes/AGENTS.catalogo.md",
+      "constituicoes/AGENTS.checkout.md",
+      "constituicoes/AGENTS.admin.md",
+      "constituicoes/AGENTS.funil.md",
+      "constituicoes/AGENTS.leads.md",
+      "constituicoes/AGENTS.identidade.md",
+      "constituicoes/AGENTS.mensageria.md",
+      "constituicoes/AGENTS.notificacoes.md",
+      "constituicoes/AGENTS.quiz.md",
+      "constituicoes/AGENTS.pagamentos.md",
+      "constituicoes/AGENTS.metricas.md",
+      "constituicoes/AGENTS.sugestoes.md",
+      "docs/guia-mantenedor.md",
+      "INVARIANTES.md:1759 (transferência autorizada; somente a referência RITOS §2 → CAMINHO, Integrar, publicar e aceitar)"
+    ],
+    "nao_objetivos": [
+      "Reescrever planos",
+      "alterar outras leis, fontes centrais, fichas, hooks, workflows, CI ou CODEOWNERS",
+      "remover guardas ou histórico",
+      "publicar conteúdo como documento de produto"
+    ],
+    "restricoes": [
+      "Preservar parâmetros, obrigações de contrato, compatibilidade e dados e exemplos funcionais",
+      "Atualizar apenas referências operacionais conflitantes; históricas continuam históricas",
+      "Base origin/main atual; após merge TAR-993/PR2359 reconciliar para prova final",
+      "Depende-de: #2359 antes de promover",
+      "Sem Docker, build ou suíte pesada",
+      "Sem subagentes"
+    ],
+    "decisoes_aprovadas": [
+      "O mandato autoriza edição nos 14 fontes originais",
+      "A raiz transferiu em separado a única linha INVARIANTES.md:1759 de TAR-993 para este contrato; patch SHA256 393611FB6B6472B722BDF11493422E4AEFD3F20177ABE192AD0B456DE5B6846E",
+      "A nova base será reconciliada após integração993"
+    ],
+    "etapas": [
+      "Validar os cinco procedimentos e suas âncoras na revisão993",
+      "Corrigir somente as referências autorizadas",
+      "Executar verificadores pertinentes e exercitar contexto real de uma célula",
+      "Submeter Draft-first com dependência #2359, revisão do coordenador e revalidar após merge993"
+    ],
+    "criterios_entrada": [
+      "TAR-998 copiada byte a byte",
+      "Claim próprio confirmado",
+      "Patch de transferência INVARIANTES recebido"
+    ],
+    "criterios_aceite": [
+      "15 fontes autorizadas coerentes com a revisão993 sem perda de obrigações",
+      "Links e âncoras reais",
+      "Censo de lei, Padrão e guardas preservado",
+      "Contexto de célula aponta CAMINHO",
+      "Verificadores pertinentes aprovados"
+    ],
+    "evidencias_exigidas": [
+      "Hashes iguais da cópia canônica da tarefa e evento",
+      "Saídas dos verificadores",
+      "Diff restrito ao contrato",
+      "Prova de contexto de célula",
+      "Dependência #2359 e reconciliação após merge",
+      "Eventos de devolução e nova reivindicação TAR-998 alinhados à identidade oficial da sessão"
+    ],
+    "condicao_encerramento": "Após revisão, integração do PR e reconciliação da dependência993; integração, publicação e aceite funcional permanecem estados distintos.",
+    "limites_autonomia": "Escrita exclusiva dos 15 alvos; novos achados fora do escopo voltam ao coordenador; não trocar ferramenta, conta ou modelo para contornar bloqueios; recuperar revertendo somente este delta.",
+    "acoes_do_mantenedor": "Nenhuma ação do mantenedor prevista neste despacho."
+  }
+}

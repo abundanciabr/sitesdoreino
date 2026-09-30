@@ -41,4 +41,4 @@ A IA pode reescrever a vitrine 100 vezes sem encostar em dinheiro.
 `make ci` verde · Lighthouse mobile ≥ 90 nas páginas críticas (meta, não portão) · diff no escopo.
 
 ## Ritos
-RITOS.md §1, §2. Zero acesso a `contracts/` para escrita.
+Consulte [Abrir e retomar uma sessão](../CAMINHO-DOURADO.md#abrir-e-retomar-uma-sessão--sucessor-de-ritos-1) e [Integrar, publicar e aceitar](../CAMINHO-DOURADO.md#integrar-publicar-e-aceitar--sucessor-de-ritos-2). Zero acesso a `contracts/` para escrita.

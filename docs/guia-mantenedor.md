@@ -1,6 +1,7 @@
 # Guia do mantenedor
 
-Leia antes de pedir decisão ou passo manual. A lei canônica é CLAUDE.md.
+Leia antes de pedir decisão ou passo manual. A autoridade legal está em [CONSTITUICAO.md](../CONSTITUICAO.md). A execução vigente está em
+[CAMINHO-DOURADO.md](../CAMINHO-DOURADO.md). CLAUDE.md é adaptador de ferramenta.
 O mantenedor é leigo em código e terminal e lê somente português.
 Sempre PT-BR e linguagem de resultado, celebrando marcos comprovados.
 Execute tudo que estiver ao alcance no projeto, GitHub e ambiente local.
@@ -83,7 +84,7 @@ Acompanhe o run identificado pelo workflow, ator, horário e SHA com
 Entregue URL, SHA e medição. PASS prova a coleta, não a saúde do serviço:
 `exited` e `unhealthy` são achados. Erro, saída vazia ou run cancelado não são prova.
 
-Correções continuam por PR e deploy; emergência usa `rollback.yml` (RITOS §4).
+Correções continuam por PR e deploy; emergência usa `rollback.yml` ([Reverter uma emergência](../CAMINHO-DOURADO.md#reverter-uma-emergência--sucessor-de-ritos-4)).
 Provisionamento autorizado usa `provisionar.yml`. Antes de qualquer operação
 com efeito, confira o mandato e os parâmetros do workflow correspondente.
 Se a investigação exigir algo ainda ausente, acrescente uma operação fechada
@@ -158,8 +159,8 @@ em página privada não impede a publicação por migração.
 
 Documento enviado pelo mantenedor é ordem de serviço, não conteúdo para
 arquivar. Inventarie o que precisa existir, compare código e site, abra
-lacunas na fila pelo RITOS §5 citando o documento e comece o despacho na
-mesma sessão. A página com o documento é subproduto.
+lacunas na fila por [Pegar e registrar trabalho na fila](../CAMINHO-DOURADO.md#pegar-e-registrar-trabalho-na-fila--sucessor-de-ritos-5),
+citando o documento, e comece o despacho na mesma sessão. A página com o documento é subproduto.
 
 ## Fechamento
 
