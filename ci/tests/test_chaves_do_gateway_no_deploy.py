@@ -202,6 +202,7 @@ def _rodar(
         PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
         PLATAFORMA_DIR=str(raiz),
         CELULA=celula,
+        TAG="ensaio",
         DOCKER_FALSO_DIARIO=str(diario),
     )
     # Herdadas do ambiente de quem roda a suíte, elas fariam o teste passar sem
@@ -218,6 +219,7 @@ def _rodar(
             "--volume", f"{SCRIPT}:/deploy.sh:ro",
             "--env", "PATH=/ensaio/docker-de-mentira:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             "--env", "PLATAFORMA_DIR=/ensaio/plataforma", "--env", f"CELULA={celula}",
+            "--env", "TAG=ensaio",
             "--env", "DOCKER_FALSO_DIARIO=/ensaio/comandos-do-docker.txt",
             *[item for nome, valor in ajustes.items() for item in ("--env", f"{nome}={valor}")],
             "ubuntu:24.04", "bash", "/deploy.sh",
