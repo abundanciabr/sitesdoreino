@@ -499,7 +499,7 @@ def test_wrapper_conserva_o_status_42_apesar_do_trap_remoto(tmp_path):
 
     captura = (
         "printf 'stdout<<EOF\\n' >> \"$GITHUB_OUTPUT\"\n"
-        "\"$SCRIPT\" | tee -a \"$GITHUB_OUTPUT\"\n"
+        "bash \"$SCRIPT\" | tee -a \"$GITHUB_OUTPUT\"\n"
         "printf 'EOF\\n' >> \"$GITHUB_OUTPUT\"\n"
     )
     saida_bruta = tmp_path / "captura-bruta"
