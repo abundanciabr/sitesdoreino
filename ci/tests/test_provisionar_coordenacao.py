@@ -152,6 +152,7 @@ case "$1" in
       exit $?
     fi
     if [[ "$entrada" = postgres://coordenacao_user:* ]]; then
+      [[ "$*" = *'DJANGO_SETTINGS_MODULE'*'django.setup()'*'from apps.core.coordenacao import preparar'* ]] || exit 48
       [ ! -e /opt/plataforma/falha-esquema ] || exit 1
       senha="${entrada#postgres://coordenacao_user:}"
       senha="${senha%%@*}"
