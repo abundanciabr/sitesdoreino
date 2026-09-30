@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-028-infra-inicializar-django-no-preparo-da-coordenacao",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "infra: Inicializar Django no preparo da coordenação",
+  detalhe: "Django Ninja falhava antes do esquema; bootstrap corrigido e provado em Django 5.1.4. Testes focais: 2 PASS. Banco e segredos preservados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2382. Validação local: árvore f062d9e43e6080e792dc5250a6ace256ddefba14; commit b32ea47a349d05f11364183e0f0c5ede22fc186c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1015",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

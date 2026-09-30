@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-016-ci-abrir-coordenacao-isolada-por-tarefa-na-admin",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: abrir coordenacao isolada por tarefa na admin",
+  detalhe: "A admin precisa de dois bancos por tarefa; o cluster isolado cumpre os nomes fixos e retoma dados sem acesso cruzado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2380. Validação local: árvore 2e0ddbeb51b6eb8870d311572d2dd9357c8e2d84; commit 73893832a14b4db546fc85c27da4582e5045c2e2; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1014",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

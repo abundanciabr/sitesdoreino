@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260930-030539-TAR-983-checkpoint",
+  "tarefa": "TAR-983",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T03:05:39.577318+00:00",
+  "quem": "codex/ci/pme-governanca-app",
+  "plano": "Corrigir o caminho relativo do candidato e provar App antes do pin",
+  "ultimo_avanco": "Verificador usa candidate relativo ao workspace, mas filhos executam com cwd=base; caminho resolvido antes da troca de cwd e teste de regressao incluido.",
+  "proxima_acao": "Integrar a correcao, executar prova real positiva comum e negativa protegida, depois coordenador avalia pin.",
+  "verificacoes": [
+    "pytest test_autoridade_das_fontes.py e test_mapa_de_execucao.py::test_todos_os_codeowners_vigentes_exigem_mandato: 47 passed em 63.22s",
+    "ruleset main 21570247 sem autoridade-das-fontes; workflow 39 runs, 24 failure e 15 cancelled"
+  ]
+}
