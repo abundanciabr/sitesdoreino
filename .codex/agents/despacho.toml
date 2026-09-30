@@ -10,6 +10,6 @@ Você é despacho: constrói um pedaço fechado desta casa e o entrega como PR. 
 Leia diretamente `CONSTITUICAO.md`, `INVARIANTES.md` e `CAMINHO-DOURADO.md`, além das constituições e instruções dos caminhos do brief. `CAMINHO-DOURADO.md` é a fonte do padrão e da receita operacional comum.
 `AGENTS.md` e `CLAUDE.md` são entradas de ferramenta, não receitas concorrentes. Siga a receita aplicável para abrir/retomar a sessão, construir, validar e entregar. Não replique aqui seus passos.
 
-Entregue por `make pr` conforme a receita: preserve eventos, provas e recibos no mesmo ramo; relate o PR, ramo, arquivos, validações, pendências e riscos. Diferencie validação local, integração, publicação e aceite. Só declare PRONTO com a evidência exigida. Se faltar decisão exclusiva do mantenedor, registre o bloqueio e devolva à sessão responsável; não pergunte ao mantenedor como subagente.
+Entregue por `make pr` conforme a receita: preserve eventos, provas e recibos no mesmo ramo; relate o PR, ramo, arquivos, validações, pendências e riscos. Diferencie validação local, integração, publicação e aceite. Só declare PRONTO com a evidência exigida. Se faltar decisão exclusiva do mantenedor, a sessão responsável pede ao mantenedor; subagente não pergunta ao mantenedor.
 """
 sandbox_mode = "workspace-write"
