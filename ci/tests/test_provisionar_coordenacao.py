@@ -122,7 +122,7 @@ if [ -n "${PME_COORD_VERIFICACAO:-}" ]; then
   chmod 644 "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp"
   mv "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.tmp" "/opt/plataforma/compose-$PME_COORD_VERIFICACAO"
   tentativas=0
-  while [ ! -f "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" ] && [ "$tentativas" -lt 100 ]; do
+  while [ ! -f "/opt/plataforma/compose-$PME_COORD_VERIFICACAO.resultado" ] && [ "$tentativas" -lt 700 ]; do
     sleep .05
     tentativas=$((tentativas + 1))
   done
