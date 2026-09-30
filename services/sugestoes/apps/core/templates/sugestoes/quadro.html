@@ -74,8 +74,13 @@ essas palavras que os guardas do EVO-12b medem de quem é o voto.
     </article>
   {% empty %}
     <div class="recado">
-      <h2>Ainda não há sugestões aqui</h2>
-      <p>Seja a primeira pessoa a dizer o que está faltando.</p>
+      {% if ordem_escolhida == "implementadas" %}
+        <h2>Nenhuma ideia implementada aqui ainda</h2>
+        <p>Quando a equipe entregar uma ideia desta Caixa, ela aparece nesta aba.</p>
+      {% else %}
+        <h2>Ainda não há sugestões aqui</h2>
+        <p>Seja a primeira pessoa a dizer o que está faltando.</p>
+      {% endif %}
     </div>
   {% endfor %}
 </div>

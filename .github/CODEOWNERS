@@ -1,8 +1,6 @@
-# =============================================================================
-# SEPARAÇÃO DE PODERES (Lei 4) — no repo real, este arquivo vive em .github/CODEOWNERS
-# Com "Require review from Code Owners" ativo, o botão de merge NÃO EXISTE para
-# agentes nestes caminhos. Troque @abundanciabr pelo seu usuário.
-# =============================================================================
+# Mandato nominal nestes caminhos é verificado por ci/mergear.py.
+# CODEOWNERS declara escopo; sozinho não autentica o pedido do mantenedor nem
+# exige aprovação. O check App ativa revisão de ambiente só nestes caminhos.
 /contracts/                 @abundanciabr
 /packages/                  @abundanciabr
 /services/pagamentos/       @abundanciabr
@@ -10,10 +8,13 @@
 /infra/                     @abundanciabr
 /ci/                        @abundanciabr
 /.github/                   @abundanciabr
-/.claude/settings.json      @abundanciabr
-/.codex/hooks.json          @abundanciabr
+/.claude/                   @abundanciabr
+/.codex/                    @abundanciabr
 /.cursor/                   @abundanciabr
 /.githooks/                 @abundanciabr
+/AGENTS.md                  @abundanciabr
+/00-LEIA-PRIMEIRO.md       @abundanciabr
+/constituicoes/             @abundanciabr
 /CONSTITUICAO.md            @abundanciabr
 /CLAUDE.md                  @abundanciabr
 /INVARIANTES.md             @abundanciabr
