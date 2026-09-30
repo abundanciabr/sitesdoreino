@@ -181,7 +181,8 @@ jobs:
             printf 'printf "SINCRONIZACAO-STATUS:%%s\\n" "$CODIGO"\nexit 0\n'
           } > "$SCRIPT"
           bash -n "$SCRIPT"
-          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+          mv "$SCRIPT" "$FONTE"
+          echo "script=$FONTE" >> "$GITHUB_OUTPUT"
 
       # =====================================================================
       # A VACINA DA armadilhas/127 CHEGA AO DEPLOY-INFRA (TAR-024, 30/08/2026).
@@ -302,7 +303,7 @@ jobs:
           command_timeout: 30m
           # O Bash pai conserva status e sentinelas mesmo se o filho falhar.
           capture_stdout: true
-          script_path: ${{ steps.preparar_resultado.outputs.script }}
+          script_path: infra/sincronizar-infra-na-vps.sh
 
       # A MEDIÇÃO QUE SEPARA AS DUAS DOENÇAS. Ela vem ANTES da pausa de
       # propósito: se a porta estiver morta, é isso que a pausa vai esperar
@@ -352,7 +353,7 @@ jobs:
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
           command_timeout: 30m
           capture_stdout: true
-          script_path: ${{ steps.preparar_resultado.outputs.script }}
+          script_path: infra/sincronizar-infra-na-vps.sh
 
       - name: Medir a porta 22 depois da 2ª recusa (a medição que confirma)
         id: sonda2
@@ -433,7 +434,7 @@ jobs:
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
           command_timeout: 30m
           capture_stdout: true
-          script_path: ${{ steps.preparar_resultado.outputs.script }}
+          script_path: infra/sincronizar-infra-na-vps.sh
 
       # O marcador terminal vem do Bash pai, inclusive quando o filho falha.
       # Sem ele, a conexao pode ter executado e perdido a resposta: INCERTA.

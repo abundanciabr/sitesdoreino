@@ -376,7 +376,7 @@ def test_o_script_da_vps_mora_num_arquivo_e_nao_dentro_do_yaml():
             f"{aplicacao.get('name')}: script embutido no YAML voltou — com três "
             "tentativas isso são três cópias que podem divergir"
         )
-        assert com.get("script_path") == "${{ steps.preparar_resultado.outputs.script }}", (
+        assert com.get("script_path") == "infra/sincronizar-infra-na-vps.sh", (
             f"{aplicacao.get('name')}: script_path={com.get('script_path')!r}. O "
             "nome errado do parâmetro já deixou um deploy verde sem fazer nada "
             "(28/08/2026) — aqui ele é conferido."
@@ -479,6 +479,8 @@ def test_wrapper_conserva_o_status_42_apesar_do_trap_remoto(tmp_path):
         "exit 42\n",
         encoding="utf-8",
     )
+    original = tmp_path / "sincronizador-original.sh"
+    original.write_bytes(fonte.read_bytes())
     saida = tmp_path / "saida-do-preparo"
     preparo = _executar_bloco(
         str(preparador["run"]), tmp_path,
@@ -504,7 +506,7 @@ def test_wrapper_conserva_o_status_42_apesar_do_trap_remoto(tmp_path):
     )
     saida_bruta = tmp_path / "captura-bruta"
     antiga = _executar_bloco(
-        captura, tmp_path, SCRIPT=str(fonte), GITHUB_OUTPUT=str(saida_bruta)
+        captura, tmp_path, SCRIPT=str(original), GITHUB_OUTPUT=str(saida_bruta)
     )
     assert antiga.returncode == 42
     assert saida_bruta.read_text(encoding="utf-8").splitlines()[-1] != "EOF"
