@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-072-infra-fixar-identidade-ssh-do-provisionamento",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "infra: fixar identidade SSH do provisionamento",
+  detalhe: "Fixa a action SSH no commit oficial e valida o fingerprint público da VPS no passo de provisionamento. O teste exige os dois pins exatos antes da execução remota.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2403. Validação local: árvore 836c3992de14ac9ffd87f738a69938472b4e39ff; commit d9a5702ee9c9867c2cb7afbc421f22e32d574916; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1040",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260930-135926-TAR-1040-devolvida",
+  "tarefa": "TAR-1040",
+  "evento": "devolvida",
+  "quando": "2026-09-30T13:59:26.390742+00:00",
+  "quem": "agent/infra/provisionar-host-pin",
+  "detalhe": "Corrigir a identidade da reivindicação para despacho-infra-provisionar-host-pin, identidade que a sessão oficial exige; a reserva ativa foi confirmada como pertencente a esta bancada (5c53b0ab379b750f37a80fe70ca9cc4ce055ff47)."
+}

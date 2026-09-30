@@ -1,0 +1,20 @@
+{
+  "arquivo": "1040-conferir-a-identidade-do-servidor-antes-de-provisionar",
+  "id": "TAR-1040",
+  "titulo": "Conferir a identidade do servidor antes de provisionar",
+  "toca": [
+    "ci",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR #2403 integrado e teste focal confirmado para a revisão exata da ação SSH e o fingerprint público da VPS.",
+  "despacho": "Correção de segurança identificada durante a retomada da TAR-958 em 2026-09-30, necessária antes do bootstrap de identidades da I2.\n\nALVOS EXCLUSIVOS: .github/workflows/provisionar.yml e ci/tests/test_provisionar_por_botao.py.\n\nFixar a revisão imutável da appleboy/ssh-action na mesma revisão já usada por operacoes-vps.yml e fixar o fingerprint público conhecido da VPS no passo que provisiona. O teste deve exigir os dois valores exatos e falhar se qualquer pin faltar ou mudar.\n\nNão alterar outras etapas ou ações, permissões, inputs, segredos ou FD8. Não disparar o workflow nem executar provisionamento. A proposta existente é o PR #2403; teste focal e suíte já têm prova vermelho/verde no pacote preservado da sessão.",
+  "origem": "Correção necessária para I2 descoberta durante a retomada da TAR-958 em 2026-09-30; mandato e caminhos vieram dessa retomada.",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
