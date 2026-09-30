@@ -104,12 +104,13 @@ BLOCO_F2 = _bloco("INV-F2", "`services/outra/tests/test_inv_f2.py`", "outra")
 
 
 @pytest.fixture()
-def repo(tmp_path: Path) -> Path:
+def repo(tmp_path: Path, monkeypatch) -> Path:
     """Repositório de mentira NO ESTADO CORRETO: dois invariantes, dois guardas.
 
     Tem git de verdade porque `arquivos_versionados` pergunta ao git — testar
     contra um mock do git testaria o mock.
     """
+    monkeypatch.delenv("BASE_REF", raising=False)
     raiz = tmp_path / "repo-falso"
     raiz.mkdir()
     _git(raiz, "init", "-q", "-b", "main")
