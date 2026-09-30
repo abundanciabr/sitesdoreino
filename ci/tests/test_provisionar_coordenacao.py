@@ -190,7 +190,8 @@ exit 2
         def aguardar_postgres():
             for _ in range(30):
                 consulta = docker(
-                    "exec", nome, "psql", "-U", "postgres", "-tAc", "SELECT 1", check=False
+                    "exec", nome, "psql", "-h", "127.0.0.1",
+                    "-U", "postgres", "-tAc", "SELECT 1", check=False,
                 )
                 if consulta.returncode == 0 and consulta.stdout.strip() == "1":
                     return
