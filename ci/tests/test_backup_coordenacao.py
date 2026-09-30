@@ -160,6 +160,7 @@ def test_wrapper_cifra_com_snapshot_vivo_ate_pg_dump(tmp_path, monkeypatch, caps
     modulo.mkdir(parents=True)
     (tmp_path / 'apps' / '__init__.py').write_text('')
     (modulo / '__init__.py').write_text('')
+    (tmp_path / 'django.py').write_text('def setup(): pass\n')
     (modulo / 'coordenacao.py').write_text(
         'from contextlib import contextmanager\n'
         '@contextmanager\n'
@@ -202,3 +203,26 @@ def test_wrapper_cifra_com_snapshot_vivo_ate_pg_dump(tmp_path, monkeypatch, caps
     resumo_path = tmp_path / 'resumo.json'
     resumo_path.write_text(json.dumps(resumo))
     verificador.verificar(resumo_path, backup.DESTINO / '978.p7m')
+
+
+def test_captura_importa_coordenacao_com_django_real(tmp_path):
+    pytest.importorskip('django')
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    codigo = backup.CAPTURA.split('with capturar_snapshot()', 1)[0] + "print('IMPORTOU')\n"
+    configuracao = tmp_path / 'config'
+    configuracao.mkdir()
+    (configuracao / '__init__.py').write_text('')
+    (configuracao / 'settings.py').write_text(
+        "SECRET_KEY = 'teste'\n"
+        "INSTALLED_APPS = []\n"
+        "DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}}\n"
+    )
+    ambiente = os.environ.copy()
+    ambiente.pop('DJANGO_SETTINGS_MODULE', None)
+    ambiente['PYTHONPATH'] = os.pathsep.join((str(tmp_path), str(RAIZ / 'services' / 'admin')))
+    resultado = subprocess.run(
+        [sys.executable, '-c', codigo], cwd=tmp_path,
+        env=ambiente, capture_output=True, text=True, encoding='utf-8', timeout=30,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert resultado.stdout.strip() == 'IMPORTOU'

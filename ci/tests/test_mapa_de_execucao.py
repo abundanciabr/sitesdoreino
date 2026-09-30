@@ -39,6 +39,8 @@ def git(raiz, *args):
 def caso(tmp_path, monkeypatch):
     mapa = importlib.import_module("mapa_de_execucao")
     for nome in (
+        "AGENTS.md",
+        "00-LEIA-PRIMEIRO.md",
         "CLAUDE.md",
         "CONSTITUICAO.md",
         "RITOS.md",

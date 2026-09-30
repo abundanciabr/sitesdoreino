@@ -34,6 +34,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import (
     Case,
     Count,
+    F,
     IntegerField,
     OuterRef,
     Q,
@@ -51,7 +52,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.sugestoes import eventos
-from apps.sugestoes.models import Comentario, Quadro, Sugestao, Voto
+from apps.sugestoes.models import Comentario, HistoricoStatus, Quadro, Sugestao, Voto
 from apps.sugestoes.tasks import relay_apos_commit
 
 from . import sessao as ses
@@ -86,11 +87,22 @@ PAGINA_SUGESTAO = "sugestoes/sugestao.html"
 # quadro "muda sozinho" entre dois carregamentos. Em "Em alta" o desempate é o
 # ranking inteiro de "Mais votadas" — quadro novo, em que ninguém votou ainda,
 # tem calor zero em tudo, e sem essa cauda a primeira aba seria aleatória.
+#
+# "Implementadas" (pedido do mantenedor, 29/09/2026) é a única aba que também
+# FILTRA: mostra só o que a equipe entregou, e a entregue por último vem
+# primeiro, porque a aba responde "o que a Caixa já virou de verdade?". A data
+# da entrega vem do `HistoricoStatus`; ideia marcada sem histórico fica no fim
+# (`nulls_last`), senão o `DESC` do Postgres a poria no topo.
 ORDEM_EM_ALTA = "em-alta"
+ORDEM_IMPLEMENTADAS = "implementadas"
 ORDENS = {
     ORDEM_EM_ALTA: ("Em alta", ("-calor", "-total_votos", "criado_em", "id")),
     "mais-votadas": ("Mais votadas", ("-total_votos", "criado_em", "id")),
     "novas": ("Novas", ("-criado_em", "-id")),
+    ORDEM_IMPLEMENTADAS: (
+        "Implementadas",
+        (F("implementada_em").desc(nulls_last=True), "-total_votos", "id"),
+    ),
 }
 
 # **A aba padrão continua sendo "Mais votadas", e isso é decisão, não sobra.**
@@ -404,7 +416,8 @@ def sugestoes_ordenadas(
     agora=None,
     incluir_arquivadas: bool = False,
 ):
-    """O ranking da §10 (mais votadas), a fila do que chegou ou o que está em alta.
+    """O ranking da §10 (mais votadas), a fila do que chegou, o que está em alta
+    ou o que já foi implementado.
 
     A contagem de comentários entra aqui e não numa consulta por linha: o card
     do protótipo mostra "N comentários", e um `sugestao.comentarios.count()` no
@@ -441,6 +454,17 @@ def sugestoes_ordenadas(
         consulta = consulta.visiveis()
     if ordem == ORDEM_EM_ALTA:
         consulta = consulta.annotate(calor=calor_de_recencia(agora or timezone.now()))
+    if ordem == ORDEM_IMPLEMENTADAS:
+        consulta = consulta.filter(status=Sugestao.Status.IMPLEMENTADO).annotate(
+            implementada_em=Subquery(
+                HistoricoStatus.objects.filter(
+                    sugestao=OuterRef("pk"),
+                    status_novo=Sugestao.Status.IMPLEMENTADO,
+                )
+                .order_by("-criado_em")
+                .values("criado_em")[:1]
+            )
+        )
     if categoria_slug:
         consulta = consulta.filter(categoria__slug=categoria_slug)
     return consulta.order_by(*ORDENS[ordem][1])
@@ -756,6 +780,11 @@ def ver_quadro(request, ator):
     ordem = (request.GET.get("ordem") or ORDEM_PADRAO).strip()
     if ordem not in ORDENS:
         raise Http404("essa aba não existe no quadro")
+    # A ideia implementada mora só na aba dela (mantenedor, 29/09/2026): as
+    # outras três mostram o que ainda está em jogo.
+    fora_da_grade = [Sugestao.Status.NAO_PLANEJADO]
+    if ordem != ORDEM_IMPLEMENTADAS:
+        fora_da_grade.append(Sugestao.Status.IMPLEMENTADO)
     return render(
         request,
         PAGINA_QUADRO,
@@ -782,7 +811,7 @@ def ver_quadro(request, ator):
                 categoria_slug=escolhida,
                 ordem=ordem,
                 agora=timezone.now(),
-            ).exclude(status=Sugestao.Status.NAO_PLANEJADO),
+            ).exclude(status__in=fora_da_grade),
             "votadas": _ids_votados(ator, quadro),
             "numeros": numeros_do_quadro(quadro),
             # A faixa de roadmap (EVO-31) mora DENTRO do quadro, como no
