@@ -1,0 +1,16 @@
+{
+  "arquivo": "20260929-225732-TAR-1008-checkpoint",
+  "tarefa": "TAR-1008",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T22:57:32.267578+00:00",
+  "quem": "pme_mutadores_producao",
+  "plano": "Pausa expressa do mantenedor; pacote local congelado antes do rito de publicacao",
+  "ultimo_avanco": "63 testes PASS; revisao independente sem achado material; patch8 D59EE78E0FFB99437301AA76B8CCA1BCE787773D17A0CB26B3460BCA6E431C98; pr.abrir primeira tentativa recusou recibo maior que 1KB, segunda chamada TurnAborted; nenhum commit ou push novo",
+  "proxima_acao": "Apos retomada expressa, conferir worktree wt-infra-pme-ponte-exclusao, HEAD8940, PR2375 draft head8940, patch e ausencia de executor; retomar o MESMO pr.abrir com titulo/detalhe curtos, validar em copia isolada, sem repetir resultado incerto",
+  "verificacoes": [
+    "git status: seis arquivos staged; HEAD local e remoto 8940f635e34afa6d016631d1c151163b8f250f1c",
+    "gh pr view 2375: draft de intencao criado 22:06:30Z, head8940, corpo inicial; nenhum pacote tecnico publicado",
+    "Get-CimInstance: nenhum processo Python/Git/GH/Node/Bash/SSH desta bancada ou TAR1008 ainda ativo",
+    "Patch em TEMP/sitesdoreino-sessoes/codex-infra-pme-sincronizacao-sem-repeticao-incerta/TAR-1008-proposta.patch, SHA256 D59EE78E0FFB99437301AA76B8CCA1BCE787773D17A0CB26B3460BCA6E431C98; nenhum run novo disparado"
+  ]
+}
