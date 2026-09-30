@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-135954-TAR-1042-explicada",
+  "tarefa": "TAR-1042",
+  "evento": "explicada",
+  "quando": "2026-09-30T13:59:54.622788+00:00",
+  "quem": "TAR-958; correção filha autorizada pelo coordenador em 2026-09-30; mandato nominal para ci/fila.py e ci/tests/test_fila.py",
+  "o_que_e": "O verificador de publicação pode não reconhecer uma prova legítima quando a plataforma muda a forma de mostrar o nome da etapa.",
+  "o_que_muda": "A confirmação usa o arquivo oficial do job e continua recusando provas ausentes, ambíguas ou de outra publicação.",
+  "exemplo": "Se o relatório mostrar UNKNOWN STEP, ainda conferimos a saída do job oficial e a validação que o runner executou.",
+  "importancia": 100
+}
