@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-041608-TAR-1027-explicada",
+  "tarefa": "TAR-1027",
+  "evento": "explicada",
+  "quando": "2026-09-30T04:16:08.291800+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "A emissao protegida ja respondeu, mas faltam dois cenarios reais para conferir quem tem poder de aprovar.",
+  "o_que_muda": "Permite exigir a aprovacao sem aceitar que a propria mudanca escolha sua regra.",
+  "exemplo": "Um pacote comum passa sozinho; trocar a regra dentro do proprio pacote nao libera o pacote protegido.",
+  "importancia": 85
+}
