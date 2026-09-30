@@ -62,3 +62,17 @@ def test_a_aba_vazia_diz_o_que_vai_aparecer_nela(caixa):
 
     assert TITULO_DE_PECA.findall(corpo) == []
     assert "Nenhuma ideia implementada aqui ainda" in corpo
+
+
+@pytest.mark.parametrize("ordem", ["em-alta", "mais-votadas", "novas"])
+def test_a_implementada_sai_das_outras_abas(caixa, ordem):
+    """Pedido do mantenedor, 29/09/2026: a ideia entregue só aparece quando
+    alguém clica em Implementadas."""
+    entregue = caixa.publicar("Tutorial de chapéu")
+    caixa.publicar("Ideia ainda em votação")
+    caixa.votar(entregue)
+    _implementar(caixa, entregue)
+
+    assert TITULO_DE_PECA.findall(_corpo(caixa.aluno, ordem=ordem)) == [
+        "Ideia ainda em votação"
+    ]
