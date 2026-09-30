@@ -1,0 +1,20 @@
+{
+  "arquivo": "1039-registrar-o-aceite-medido-da-tar-1026",
+  "id": "TAR-1039",
+  "titulo": "Registrar o aceite medido da TAR-1026",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com os dois artefatos de aceite revisados, a definicao da TAR-1039 e seus dois eventos de fila exigidos pelo rito; JSON byte a byte original preservado, validadores da fila e do painel aprovados e referência reproduzível ao PR 2393, run 36713838480 e artifact 11095393706",
+  "despacho": "Filha técnica de escopo fechado da TAR-958 para registrar e preservar o aceite já medido da TAR-1026. Inclua somente o registro de aceite painel/registros/20260930-070-aceite-da-medicao-cache-tar1026.js e a cópia byte a byte ci/dados/tar1026-run36713838480-resultado-candidatos.json, mais este registro da filha e seus eventos de fila exigidos pelo rito. Não reabra TAR-1026 nem fabrique segunda submissão dela; PR 2393 já integrou a medição. Não altere cache, workflow, runtime, nem feche TAR-1014 ou TAR-1033. Preserve os valores aceitos: frio 226,838 s; cache 228,354 s; aumento 1,516 s; controle 6 acertos e novo candidato 0; imagens iguais em cada braço. O JSON precisa continuar idêntico ao artifact oficial. Feche esta filha com o PR de intenção associado e validadores aprovados; depois o coordenador reconciliará TAR-1026 pelo comando próprio.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-070-aceite-da-medicao-cache-tar1026",
+  tipo: "medicao",
+  quando: "2026-09-30",
+  titulo: "A medição completa mostrou que o cache aumentou o tempo",
+  detalhe: "A medição oficial da TAR-1026 comparou duas revisões reais, com a mesma imagem-base e o mesmo Dockerfile, no run 36713838480, após o PR 2393 ser integrado. No ciclo completo, sem cache levou 226,838 s; com cache, 228,354 s. A cache somou 1,516 s a mais. O controle positivo da revisão de referência teve 6 acertos; a nova revisão teve 0. Frio e importado produziram a mesma imagem em cada revisão. O resultado é válido e negativo: o cache não será adotado. O JSON consolidado original está em ci/dados/tar1026-run36713838480-resultado-candidatos.json, SHA-256 36e97208a1f64d380a5a127f5294ab4c5b918ab04f1ac10ffa74465cb1dd8ea6. O artefato Actions 11095393706 tem digest SHA-256 9c00c14194d3d783eff0c24a73d3e7fe8dcba454b5fd802e3997eafbd6837ee9 e expira em 02/10/2026.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2393; https://github.com/abundanciabr/sitesdoreino/actions/runs/36713838480; artifact 11095393706, digest sha256:9c00c14194d3d783eff0c24a73d3e7fe8dcba454b5fd802e3997eafbd6837ee9",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "aceite",
+  tarefa: "TAR-1026",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-134833-TAR-1039-explicada",
+  "tarefa": "TAR-1039",
+  "evento": "explicada",
+  "quando": "2026-09-30T13:48:33.226576+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "A medição da TAR-1026 já foi concluída e revisada, mas seu resultado e o arquivo técnico original ainda precisam entrar no repositório pelo rito de registro.",
+  "o_que_muda": "O resultado negativo válido fica preservado para consulta e pode ser usado para reconciliar a tarefa de medição sem repetir o experimento.",
+  "exemplo": "Quem abrir o registro verá que o ciclo com cache levou 1,516 s a mais e que o cache não foi adotado, junto do JSON original e das referências oficiais.",
+  "importancia": 30
+}

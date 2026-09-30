@@ -1,0 +1,151 @@
+{
+  "estado": "MEDIDO",
+  "classe": "candidatos_distintos",
+  "referencia": {
+    "revisao": "0d594de6d741c72c8ef9d038b2b934b5c5a731dc",
+    "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+    "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+    "manifesto_sha256": "c9dc451b028445cb2d5ef7361b3474af5e203c3f3a6e4b2b8397fe33dd1dac34",
+    "arquivos": 7352,
+    "bytes": 39597711,
+    "contexto_tar_sha256": "e7865c68ff883d47f7c3de076eb93792cf70c53aa818f2839265acfd2d40d27c",
+    "contexto_tar_bytes": 52500480
+  },
+  "candidata_nova": {
+    "revisao": "8257d2cd525be020b425a8623ec36b88b1308fe2",
+    "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+    "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+    "manifesto_sha256": "503557723eb4aa7e03576a3845d0e3922baf3eb50010d3542d7fc81ab0581ad3",
+    "arquivos": 7358,
+    "bytes": 39630164,
+    "contexto_tar_sha256": "9acadb28ee5fe5bad3aee1fd065fc49f6f5f15f8aba8314eaa6e59f9a1bcd3e8",
+    "contexto_tar_bytes": 52551680
+  },
+  "referencia_digest_oci": "sha256:97071c506139cf8f8c7d76c2405b8a62609b84595cb87aaa6554cb96e0c84930",
+  "novo_digest_oci": "sha256:6604d99ecc83f6eb04208b610326f796d6ff48646b8d44a3d8646d90972af283",
+  "referencia_frio_total_s": 101.107,
+  "referencia_com_cache_total_s": 100.338,
+  "novo_frio_total_s": 125.732,
+  "novo_importado_total_s": 128.016,
+  "diferenca_importado_menos_frio_s": 2.284,
+  "ciclo_frio_total_s": 226.838,
+  "ciclo_cache_total_s": 228.354,
+  "diferenca_ciclo_cache_menos_frio_s": 1.516,
+  "controle_acertos_cache": 6,
+  "novo_acertos_cache": 0,
+  "cache_tar_bytes": 80640000,
+  "cache_artifact_bytes": 80640132,
+  "contexto_artifact_bytes": 52552441,
+  "cache_sha256": "14e2267f7d7bac58b57acf131adb385a23172b36d9a686815185987f5e4a5c88",
+  "tempos_s": {
+    "preparar_referencia_s": 71.6056,
+    "preparar_novo_total_s": 97.7131,
+    "contexto_download_s": 1.45775,
+    "cache_upload_s": 1.65656,
+    "cache_download_s": 1.9112
+  },
+  "bracos": [
+    {
+      "modo": "frio",
+      "identidade": {
+        "revisao": "0d594de6d741c72c8ef9d038b2b934b5c5a731dc",
+        "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+        "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+        "manifesto_sha256": "c9dc451b028445cb2d5ef7361b3474af5e203c3f3a6e4b2b8397fe33dd1dac34",
+        "arquivos": 7352,
+        "bytes": 39597711,
+        "contexto_tar_sha256": "e7865c68ff883d47f7c3de076eb93792cf70c53aa818f2839265acfd2d40d27c",
+        "contexto_tar_bytes": 52500480
+      },
+      "bootstrap_s": 3.223,
+      "build_com_export_s": 26.278,
+      "cache_extracao_s": 0.0,
+      "acertos_cache": 0,
+      "digest_oci": "sha256:97071c506139cf8f8c7d76c2405b8a62609b84595cb87aaa6554cb96e0c84930",
+      "imagem_oci_bytes": 80619520
+    },
+    {
+      "modo": "exportar",
+      "identidade": {
+        "revisao": "0d594de6d741c72c8ef9d038b2b934b5c5a731dc",
+        "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+        "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+        "manifesto_sha256": "c9dc451b028445cb2d5ef7361b3474af5e203c3f3a6e4b2b8397fe33dd1dac34",
+        "arquivos": 7352,
+        "bytes": 39597711,
+        "contexto_tar_sha256": "e7865c68ff883d47f7c3de076eb93792cf70c53aa818f2839265acfd2d40d27c",
+        "contexto_tar_bytes": 52500480
+      },
+      "bootstrap_s": 0.81,
+      "build_com_export_s": 26.205,
+      "cache_extracao_s": 0.0,
+      "acertos_cache": 0,
+      "digest_oci": "sha256:97071c506139cf8f8c7d76c2405b8a62609b84595cb87aaa6554cb96e0c84930",
+      "imagem_oci_bytes": 80619520,
+      "cache_empacotar_s": 0.061,
+      "cache_tar_bytes": 80640000,
+      "cache_tar_sha256": "14e2267f7d7bac58b57acf131adb385a23172b36d9a686815185987f5e4a5c88"
+    },
+    {
+      "modo": "importar",
+      "identidade": {
+        "revisao": "0d594de6d741c72c8ef9d038b2b934b5c5a731dc",
+        "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+        "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+        "manifesto_sha256": "c9dc451b028445cb2d5ef7361b3474af5e203c3f3a6e4b2b8397fe33dd1dac34",
+        "arquivos": 7352,
+        "bytes": 39597711,
+        "contexto_tar_sha256": "e7865c68ff883d47f7c3de076eb93792cf70c53aa818f2839265acfd2d40d27c",
+        "contexto_tar_bytes": 52500480
+      },
+      "bootstrap_s": 0.818,
+      "build_com_export_s": 17.518,
+      "cache_extracao_s": 0.054,
+      "acertos_cache": 6,
+      "digest_oci": "sha256:97071c506139cf8f8c7d76c2405b8a62609b84595cb87aaa6554cb96e0c84930",
+      "imagem_oci_bytes": 80619520,
+      "cache_tar_bytes": 80640000,
+      "cache_tar_sha256": "14e2267f7d7bac58b57acf131adb385a23172b36d9a686815185987f5e4a5c88"
+    },
+    {
+      "modo": "frio",
+      "identidade": {
+        "revisao": "8257d2cd525be020b425a8623ec36b88b1308fe2",
+        "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+        "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+        "manifesto_sha256": "503557723eb4aa7e03576a3845d0e3922baf3eb50010d3542d7fc81ab0581ad3",
+        "arquivos": 7358,
+        "bytes": 39630164,
+        "contexto_tar_sha256": "9acadb28ee5fe5bad3aee1fd065fc49f6f5f15f8aba8314eaa6e59f9a1bcd3e8",
+        "contexto_tar_bytes": 52551680
+      },
+      "bootstrap_s": 0.759,
+      "build_com_export_s": 25.802,
+      "cache_extracao_s": 0.0,
+      "acertos_cache": 0,
+      "digest_oci": "sha256:6604d99ecc83f6eb04208b610326f796d6ff48646b8d44a3d8646d90972af283",
+      "imagem_oci_bytes": 80624640
+    },
+    {
+      "modo": "importar",
+      "identidade": {
+        "revisao": "8257d2cd525be020b425a8623ec36b88b1308fe2",
+        "base": "python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+        "dockerfile_sha256": "3ad7c72aa9fddc7f2740681f76fa1836758e25d7e8d694189b0fc307b258e538",
+        "manifesto_sha256": "503557723eb4aa7e03576a3845d0e3922baf3eb50010d3542d7fc81ab0581ad3",
+        "arquivos": 7358,
+        "bytes": 39630164,
+        "contexto_tar_sha256": "9acadb28ee5fe5bad3aee1fd065fc49f6f5f15f8aba8314eaa6e59f9a1bcd3e8",
+        "contexto_tar_bytes": 52551680
+      },
+      "bootstrap_s": 0.96,
+      "build_com_export_s": 25.919,
+      "cache_extracao_s": 0.055,
+      "acertos_cache": 0,
+      "digest_oci": "sha256:6604d99ecc83f6eb04208b610326f796d6ff48646b8d44a3d8646d90972af283",
+      "imagem_oci_bytes": 80624640,
+      "cache_tar_bytes": 80640000,
+      "cache_tar_sha256": "14e2267f7d7bac58b57acf131adb385a23172b36d9a686815185987f5e4a5c88"
+    }
+  ]
+}
