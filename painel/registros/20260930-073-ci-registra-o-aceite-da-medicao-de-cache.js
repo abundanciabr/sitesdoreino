@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-073-ci-registra-o-aceite-da-medicao-de-cache",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: registra o aceite da medição de cache",
+  detalhe: "Registro do resultado negativo, com o JSON original preservado e aceite rastreável.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2404. Validação local: árvore c180947fb2816cc80f665ecfad53244a2510885f; commit 222bb10c91c51cb49693a29283129cb55aef1253; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1039",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

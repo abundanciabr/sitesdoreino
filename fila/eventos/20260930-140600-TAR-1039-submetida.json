@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260930-140600-TAR-1039-submetida",
+  "tarefa": "TAR-1039",
+  "evento": "submetida",
+  "quando": "2026-09-30T14:06:00.111096+00:00",
+  "quem": "codex/ci/tar1026-aceite-cache",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/2404",
+  "revisao": "222bb10c91c51cb49693a29283129cb55aef1253",
+  "arvore": "c180947fb2816cc80f665ecfad53244a2510885f"
+}
