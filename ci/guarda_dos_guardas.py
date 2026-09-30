@@ -412,7 +412,7 @@ def _regra_declaracao(
                 "Teste-Guarda citado em INVARIANTES.md e ausente do disco:\n  "
                 + "\n  ".join(faltando)
                 + "\n\nOu o arquivo foi apagado/renomeado sem atualizar o documento\n"
-                "(e aí um invariante ficou sem guarda — RITOS.md §2.3 proíbe), ou\n"
+                "(e aí um invariante ficou sem guarda — INVARIANTES.md, regra 2; CONSTITUICAO.md, Lei 8), ou\n"
                 "o documento cita um caminho errado. Nos dois casos, a lei está\n"
                 "sem mecanismo até isto ser consertado.",
             ),
@@ -441,7 +441,7 @@ def _regra_dentes(raiz: Path, alvos: list[str]) -> Resultado:
             f"{len(problemas)} guarda(s) desativado(s) ou esvaziado(s)",
             "Guardas que existem mas deixaram de morder:\n  "
             + "\n  ".join(problemas)
-            + "\n\nRITOS.md §2.3: proibido deletar, desativar, comentar ou afrouxar\n"
+            + "\n\nINVARIANTES.md, regra 2; CONSTITUICAO.md, Lei 8: proibido deletar, desativar, comentar ou afrouxar\n"
             "teste para passar. Se o guarda está quebrado, conserte o CÓDIGO que\n"
             "ele acusa — desligar o guarda transforma a lei em decoração.\n"
             "Se você acredita que este guarda precisa mesmo de um skip, isso é\n"

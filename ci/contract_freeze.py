@@ -153,7 +153,7 @@ def auditar_manifesto(raiz: Path, celulas: dict[str, dict[str, Any]]) -> None:
         problemas.append(
             f"'{celula}' está declarada como '{celulas[celula].get('freeze')}' mas "
             f"contracts/{celula}.openapi.yaml existe — declaração e realidade "
-            f"discordam (mudança de contrato tem rito: RITOS.md §3)"
+            f"discordam (mudança de contrato tem rito: CAMINHO-DOURADO.md, “Mudar contrato”; CONSTITUICAO.md, Lei 2)"
         )
 
     for nome, spec in sorted(celulas.items()):
@@ -522,7 +522,7 @@ def checar_seguranca(
             f"({len(divergencias)} operação(ões))",
             "\n".join(divergencias)
             + "\n\nMudar quem pode chamar um endpoint é mudança de contrato "
-            "público: tem rito próprio (RITOS.md §3). Note que a comparação "
+            "público: tem rito próprio (CAMINHO-DOURADO.md, “Mudar contrato”; CONSTITUICAO.md, Lei 2). Note que a comparação "
             "documental do freeze NÃO enxerga isto — ver docstring de "
             "checar_seguranca.",
         )
@@ -605,7 +605,7 @@ def checar_celula(
             Estado.FAIL,
             "o schema vivo derivou do contrato congelado",
             "\n".join(diff.splitlines()[:80])
-            + "\n\nMudança de contrato tem rito próprio (RITOS.md §3) — nunca "
+            + "\n\nMudança de contrato tem rito próprio (CAMINHO-DOURADO.md, “Mudar contrato”; CONSTITUICAO.md, Lei 2) — nunca "
             "nasce dentro da célula. NÃO atualize o congelado para o freeze passar.",
         ),
         *extras,
