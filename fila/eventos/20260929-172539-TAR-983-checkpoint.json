@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-172539-TAR-983-checkpoint",
+  "tarefa": "TAR-983",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:25:39.822028+00:00",
+  "quem": "pme-governanca-app",
+  "plano": "GOV TAR983: redução de privilégio da identidade App aprovada pela coordenação",
+  "ultimo_avanco": "O despacho histórico lista contents/PR/actions read no App; a decisão posterior da coordenação retirou essas permissões sem uso. App: checks write + statuses write; token de emissão: checks write. Metadata read é implícito da plataforma, não segredo nem permissão removível.",
+  "proxima_acao": "Manter código congelado; validar CLI977 quando fonte base estiver integrada; preparar rito PR com fonte02 draft antes de push",
+  "verificacoes": [
+    "Workflow novo usa só permission-checks write; kit983 SHA256 65E46A4D41C3937052184D7ED5808668F3AFCBBE3394C69D777B37763613A45F",
+    "GitHub Docs: expected source de ruleset requer App instalado com statuses write e check recente; actions/create-github-app-token v3 aceita client-id/chave e token restrito"
+  ]
+}
