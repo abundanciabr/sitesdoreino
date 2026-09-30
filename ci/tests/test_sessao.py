@@ -407,12 +407,15 @@ class MundoFalso:
 
     # -- as quatro injeções ------------------------------------------------
 
-    def correr(self, comando, *, cwd=None, env=None, timeout=1800, entrada=None) -> sessao.Saida:
+    def correr(self, comando, *, cwd=None, env=None, timeout=1800, entrada=None, binario=False) -> sessao.Saida:
         comando = [str(c) for c in comando]
         linha = " ".join(comando)
         self.chamadas.append(linha)
         if entrada:
-            self.chamadas.append(sessao.re.sub(r"PASSWORD '[a-f0-9]+'", "PASSWORD [oculto]", entrada))
+            self.chamadas.append(
+                "stdin: [oculto]" if "SELECT current_user" in linha
+                else sessao.re.sub(r"PASSWORD '[a-f0-9]+'", "PASSWORD [oculto]", entrada)
+            )
         if "sonda-do-make-" in linha:
             self.sonda = (comando, env)
             codigo, texto = self.saidas.get("sonda", (0, "linha-simples\nlinha-posix"))
@@ -433,7 +436,8 @@ class MundoFalso:
             and self.plano.worktree.as_posix() not in linha
         ):
             return sessao.Saida(comando, 0, "", "")
-        return sessao.Saida(comando, 0, self._stdout(linha), "")
+        stdout = self._stdout(linha)
+        return sessao.Saida(comando, 0, stdout.encode() if binario else stdout, "")
 
     def existe(self, caminho) -> bool:
         return _n(caminho) in self.existentes
@@ -492,6 +496,8 @@ class MundoFalso:
                 else (self.plano.porta_redis or 16468)
             )
             return f"0.0.0.0:{porta}"
+        if "SELECT current_user" in linha:
+            return self.saidas.get("autenticacao_coord", "coordenacao_user")
         if "has_database_privilege" in linha:
             return self.saidas.get("acesso_cruzado", "f")
         if "SELECT 1 FROM pg_roles WHERE rolname = 'coordenacao_user'" in linha:
@@ -1202,6 +1208,7 @@ def test_admin_cria_banco_coord_e_retomada_preserva_segredo(monkeypatch):
     assert "NOCREATEROLE NOREPLICATION NOBYPASSRLS" in chamadas
     assert "CREATE DATABASE coordenacao_db WITH OWNER coordenacao_user" in chamadas
     assert "REVOKE CONNECT ON DATABASE coordenacao_db FROM PUBLIC" in chamadas
+    assert "set -- $(hostname -i)" in chamadas
     assert len(primeira.plano.senha_coordenacao) == 48
     assert primeira.plano.senha_coordenacao != primeira.plano.senha_banco
     assert primeira._ambiente()["COORDENACAO_DATABASE_URL"].endswith(
@@ -1219,6 +1226,25 @@ def test_admin_cria_banco_coord_e_retomada_preserva_segredo(monkeypatch):
     assert segunda.plano.senha_coordenacao == primeira.plano.senha_coordenacao
     assert not any("CREATE ROLE" in chamada or "CREATE DATABASE" in chamada
                    for chamada in mundo.chamadas)
+
+
+def test_admin_recusa_segredo_divergente_antes_de_escrever_env():
+    plano = plano_de_teste(celula="admin", usa_redis=False)
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    primeira = mundo.sessao()
+    primeira.rodar()
+    mundo.saidas.update(
+        papel_existe="1", banco_existe=plano.banco,
+        papel_coord_existe="1", banco_coord_existe="coordenacao_user",
+        autenticacao_coord="",
+    )
+    mundo.escritos.clear()
+    mundo.chamadas.clear()
+    with pytest.raises(sessao.ErroDeSessao, match="credencial local da coordenação não autentica"):
+        mundo.sessao().rodar()
+    assert _n(plano.arquivo_env) not in mundo.escritos
+    assert not any("ci/doctor.py" in chamada for chamada in mundo.chamadas)
+    assert primeira.plano.senha_coordenacao not in "\n".join(mundo.chamadas)
 
 
 def test_admin_recusa_papel_coord_sem_segredo_e_nao_altera_role():

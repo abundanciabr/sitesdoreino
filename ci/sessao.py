@@ -2219,6 +2219,17 @@ class Sessao:
                     if acesso != "f":
                         raise ErroDeSessao(passo, "acesso cruzado entre bancos locais",
                                            detalhe="Preserve os dados e remova o GRANT indevido no container exclusivo antes de repetir.")
+                autenticacao = self._correr(
+                    [docker, "exec", "-i", self.plano.postgres, "sh", "-c",
+                     "IFS= read -r PGPASSWORD; export PGPASSWORD; set -- $(hostname -i); "
+                     "exec psql -h \"$1\" -U coordenacao_user -d coordenacao_db -tAc 'SELECT current_user'"],
+                    cwd=self.plano.raiz, entrada=senha_coordenacao + "\n", binario=True,
+                )
+                if autenticacao.exit_code != 0 or autenticacao.stdout.strip() != b"coordenacao_user":
+                    raise ErroDeSessao(
+                        passo, "credencial local da coordenação não autentica",
+                        detalhe="Preserve os bancos e recupere a credencial original no scratch da tarefa antes de repetir.",
+                    )
                 self.plano = replace(self.plano, senha_coordenacao=senha_coordenacao)
             porta_redis = 0
             if self.plano.usa_redis:
