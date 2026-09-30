@@ -65,6 +65,8 @@ def plano_de_teste(**extra) -> sessao.Plano:
     )
     padrao.update(extra)
     celula = padrao.pop("celula", "quiz")
+    if celula == "admin":
+        padrao["celulas"] = [*CELULAS, "admin"]
     tarefa = padrao.pop("tarefa", "fuso-horario")
     plano = sessao.derivar_plano(celula, tarefa, **padrao)
     return sessao.replace(plano, venv=plano.venv / ("f" * 64))
@@ -405,17 +407,20 @@ class MundoFalso:
 
     # -- as quatro injeções ------------------------------------------------
 
-    def correr(self, comando, *, cwd=None, env=None, timeout=1800) -> sessao.Saida:
+    def correr(self, comando, *, cwd=None, env=None, timeout=1800, entrada=None) -> sessao.Saida:
         comando = [str(c) for c in comando]
         linha = " ".join(comando)
         self.chamadas.append(linha)
+        if entrada:
+            self.chamadas.append(sessao.re.sub(r"PASSWORD '[a-f0-9]+'", "PASSWORD [oculto]", entrada))
         if "sonda-do-make-" in linha:
             self.sonda = (comando, env)
             codigo, texto = self.saidas.get("sonda", (0, "linha-simples\nlinha-posix"))
             return sessao.Saida(comando, codigo, texto, "")
         for fragmento, codigo in self.falhar.items():
-            if fragmento in linha:
-                return sessao.Saida(comando, codigo, "", f"falha simulada: {fragmento}")
+            if fragmento in linha or (entrada and fragmento in entrada):
+                detalhe = entrada if fragmento == "CREATE ROLE coordenacao_user" else fragmento
+                return sessao.Saida(comando, codigo, "", f"falha simulada: {detalhe}")
         if "worktree add" in linha:
             self.existentes.add(_n(self.plano.worktree / ".git"))
         if "-m venv" in linha:
@@ -445,7 +450,7 @@ class MundoFalso:
 
     def escrever(self, caminho: Path, texto: str) -> None:
         self.escritos[_n(caminho)] = texto
-        if ".instalado." in caminho.name or caminho.name == ".senha-banco":
+        if ".instalado." in caminho.name or caminho.name in {".senha-banco", ".senha-coordenacao"}:
             caminho.parent.mkdir(parents=True, exist_ok=True)
             caminho.write_text(texto, encoding="utf-8")
 
@@ -480,11 +485,19 @@ class MundoFalso:
         if "docker port" in linha:
             nome = linha.split()[2]
             porta = (
-                self.plano.porta_postgres
+                (self.plano.porta_postgres or 55468)
                 if nome == self.plano.postgres
                 else (self.plano.porta_redis or 16468)
             )
             return f"0.0.0.0:{porta}"
+        if "has_database_privilege" in linha:
+            return self.saidas.get("acesso_cruzado", "f")
+        if "SELECT 1 FROM pg_roles WHERE rolname = 'coordenacao_user'" in linha:
+            return self.saidas.get("papel_coord_existe", "")
+        if "THEN 'minimo' ELSE 'privilegiado'" in linha:
+            return self.saidas.get("privilegios_coord", "minimo")
+        if "WHERE datname = 'coordenacao_db'" in linha:
+            return self.saidas.get("banco_coord_existe", "")
         if "SELECT 1 FROM pg_roles" in linha:
             return self.saidas.get("papel_existe", "")
         if "SELECT pg_get_userbyid" in linha:
@@ -1158,6 +1171,111 @@ def test_bancos_de_tarefas_distintas_nao_colidem():
     assert len(a.banco) <= 58
 
 
+def test_admin_usa_postgres_exclusivo_e_nome_fixo_da_coordenacao():
+    raiz = Path('C:/repo') if os.name == 'nt' else Path('/repo')
+    kwargs = dict(raiz=raiz, celulas=[*CELULAS, 'admin'], usa_redis=False)
+    a = sessao.derivar_plano('admin', 'uma', **kwargs)
+    b = sessao.derivar_plano('admin', 'outra', **kwargs)
+    assert a.postgres != b.postgres
+    assert a.postgres != 'sitesdoreino-postgres-shared'
+    assert a.porta_postgres == b.porta_postgres == 0
+    with pytest.raises(sessao.ErroDeSessao, match='credencial local da coordenação'):
+        sessao.variaveis_de_sessao(a, porta_postgres=55468)
+    a = sessao.replace(a, senha_coordenacao='c' * 48)
+    assert 'c' * 48 not in repr(a)
+    variaveis = sessao.variaveis_de_sessao(a, porta_postgres=55468)
+    assert variaveis['COORDENACAO_DATABASE_URL'] == (
+        'postgres://coordenacao_user:' + 'c' * 48 + '@localhost:55468/coordenacao_db'
+    )
+
+
+def test_admin_cria_banco_coord_e_retomada_preserva_segredo(monkeypatch):
+    plano = plano_de_teste(celula="admin", usa_redis=False)
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    monkeypatch.setenv("COORDENACAO_DATABASE_URL", "postgres://externo")
+    primeira = mundo.sessao()
+    primeira.rodar()
+    chamadas = "\n".join(mundo.chamadas)
+    assert "CREATE ROLE coordenacao_user LOGIN NOSUPERUSER NOCREATEDB" in chamadas
+    assert "NOCREATEROLE NOREPLICATION NOBYPASSRLS" in chamadas
+    assert "CREATE DATABASE coordenacao_db WITH OWNER coordenacao_user" in chamadas
+    assert "REVOKE CONNECT ON DATABASE coordenacao_db FROM PUBLIC" in chamadas
+    assert len(primeira.plano.senha_coordenacao) == 48
+    assert primeira.plano.senha_coordenacao != primeira.plano.senha_banco
+    assert primeira._ambiente()["COORDENACAO_DATABASE_URL"].endswith(
+        "@localhost:55468/coordenacao_db"
+    )
+    assert "externo" not in primeira._ambiente()["COORDENACAO_DATABASE_URL"]
+    assert primeira.plano.senha_coordenacao not in chamadas
+    mundo.saidas.update(
+        papel_existe="1", banco_existe=plano.banco,
+        papel_coord_existe="1", banco_coord_existe="coordenacao_user",
+    )
+    mundo.chamadas.clear()
+    segunda = mundo.sessao()
+    segunda.rodar()
+    assert segunda.plano.senha_coordenacao == primeira.plano.senha_coordenacao
+    assert not any("CREATE ROLE" in chamada or "CREATE DATABASE" in chamada
+                   for chamada in mundo.chamadas)
+
+
+def test_admin_recusa_papel_coord_sem_segredo_e_nao_altera_role():
+    mundo = MundoFalso(
+        plano_de_teste(celula="admin", usa_redis=False),
+        falhar={"rev-parse --verify": 1},
+        papel_coord_existe="1",
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="credencial local da coordenação"):
+        mundo.sessao().rodar()
+    assert not any("ALTER ROLE" in chamada for chamada in mundo.chamadas)
+    assert not any("ci/doctor.py" in chamada for chamada in mundo.chamadas)
+
+
+@pytest.mark.parametrize("saida,mensagem", [
+    ({"privilegios_coord": "privilegiado"}, "privilégios indevidos"),
+    ({"banco_coord_existe": "outro_papel"}, "pertence a outro papel"),
+])
+def test_admin_recusa_coordenacao_incompativel_antes_do_baseline(saida, mensagem):
+    mundo = MundoFalso(
+        plano_de_teste(celula="admin", usa_redis=False),
+        falhar={"rev-parse --verify": 1},
+        **saida,
+    )
+    with pytest.raises(sessao.ErroDeSessao, match=mensagem):
+        mundo.sessao().rodar()
+    assert not any("ci/doctor.py" in chamada for chamada in mundo.chamadas)
+
+
+def test_admin_recusa_grant_cruzado_existente():
+    mundo = MundoFalso(
+        plano_de_teste(celula="admin", usa_redis=False),
+        falhar={"rev-parse --verify": 1},
+        acesso_cruzado="t",
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="acesso cruzado"):
+        mundo.sessao().rodar()
+    assert not any("ci/doctor.py" in chamada for chamada in mundo.chamadas)
+
+
+def test_outra_celula_descarta_dsn_de_coordenacao_herdada(monkeypatch):
+    monkeypatch.setenv("COORDENACAO_DATABASE_URL", "postgres://externo")
+    mundo = MundoFalso(plano_de_teste())
+    assert "COORDENACAO_DATABASE_URL" not in mundo.sessao()._ambiente()
+
+
+def test_falha_criar_role_coord_nao_expoe_segredo():
+    plano = plano_de_teste(celula="admin", usa_redis=False)
+    mundo = MundoFalso(
+        plano,
+        falhar={"rev-parse --verify": 1, "CREATE ROLE coordenacao_user": 1},
+    )
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    segredo = (plano.scratch / ".senha-coordenacao").read_text(encoding="utf-8")
+    assert segredo not in erro.value.render()
+    assert "[oculto]" in erro.value.render()
+
+
 def test_falha_ao_criar_banco_impede_baseline():
     mundo = MundoFalso(plano_de_teste(), falhar={"CREATE DATABASE": 1})
     with pytest.raises(sessao.ErroDeSessao, match="exit code"):
@@ -1196,3 +1314,45 @@ def test_role_existente_sem_credencial_preserva_banco():
     with pytest.raises(sessao.ErroDeSessao, match="credencial da tarefa indisponível"):
         mundo.sessao().rodar()
     assert not any("CREATE ROLE" in c or "ALTER ROLE" in c for c in mundo.chamadas)
+
+
+
+def test_scratch_de_admin_nao_pode_entrar_no_checkout(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".git").mkdir()
+    plano = sessao.replace(
+        plano_de_teste(celula="admin"),
+        raiz=repo, scratch=repo / "scratch",
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="scratch dentro de um repositório"):
+        sessao.conferir_scratch_privado(plano, "teste")
+    assert not plano.scratch.exists()
+
+
+def test_arquivo_privado_recusa_link_e_preserva_destino(tmp_path):
+    destino = tmp_path / "destino"
+    destino.write_text("intacto", encoding="utf-8")
+    link = tmp_path / ".env"
+    try:
+        link.symlink_to(destino)
+    except OSError:
+        pytest.skip("sistema não permite criar symlink neste processo")
+    with pytest.raises(sessao.ErroDeSessao, match="aponta para outro caminho"):
+        sessao.escrever_arquivo_privado(link, "segredo", "teste")
+    assert destino.read_text(encoding="utf-8") == "intacto"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="ACL do Windows")
+def test_arquivo_privado_windows_recusa_acl_aberta(tmp_path):
+    import subprocess
+
+    pasta = tmp_path / "scratch"
+    pasta.mkdir()
+    sessao.conferir_acl_windows(pasta, "teste")
+    subprocess.run(
+        ["icacls", str(pasta), "/grant", "*S-1-1-0:(R)"],
+        check=True, capture_output=True,
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="acessível por outros usuários"):
+        sessao.conferir_acl_windows(pasta, "teste")
