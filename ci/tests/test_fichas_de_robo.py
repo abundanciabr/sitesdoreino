@@ -286,19 +286,41 @@ def _secao_7(texto: str) -> str:
 
 def test_despacho_fecha_entrega_na_sessao_sem_devolver_conferencia_a_maestro() -> None:
     """O intervalo PR aberto, outra sessão confere, a pista mergeia reabriu o #1898."""
-    fontes = [
-        (FICHAS / "despacho.md").read_text(encoding="utf-8"),
-        (RAIZ / ".codex" / "agents" / "despacho.toml").read_text(encoding="utf-8"),
-    ]
-    for texto in fontes:
-        secao = _secao_7(texto)
-        assert "ci/esperar.py --entrega" in secao
-        assert "ci/esperar.py --checks" in secao
-        assert "mergear.py --automatico" in secao
-        assert "maestro confere" not in secao.lower()
-        assert "que responde pelo resultado terminal" not in secao
-        assert "--pousar" not in secao
-        assert "Monitor" in secao
+    import tomllib
+
+    secao = _secao_7((FICHAS / "despacho.md").read_text(encoding="utf-8"))
+    assert "ci/esperar.py --entrega" in secao
+    assert "ci/esperar.py --checks" in secao
+    assert "mergear.py --automatico" in secao
+    assert "maestro confere" not in secao.lower()
+    assert "que responde pelo resultado terminal" not in secao
+    assert "--pousar" not in secao
+    assert "Nunca use `Monitor`" in secao
+
+    ficha = tomllib.loads(
+        (RAIZ / ".codex" / "agents" / "despacho.toml").read_text(encoding="utf-8")
+    )
+    instrucoes = ficha["developer_instructions"]
+    assert "CAMINHO-DOURADO.md" in instrucoes
+    assert "Siga a receita aplicável" in instrucoes
+    assert "Não replique aqui seus passos" in instrucoes
+    assert "make pr" in instrucoes
+    assert "Diferencie validação local, integração, publicação e aceite" in instrucoes
+
+    caminho = (RAIZ / "CAMINHO-DOURADO.md").read_text(encoding="utf-8")
+
+    def secao_canonica(titulo: str) -> str:
+        marcador = f"## {titulo}"
+        assert marcador in caminho, f"CAMINHO-DOURADO.md sem a seção {marcador}"
+        return caminho.split(marcador, 1)[1].split("\n## ", 1)[0]
+
+    integracao = secao_canonica("Integração automática")
+    espera = secao_canonica("Integrar, publicar e aceitar")
+    assert "mergear.py --automatico" in integracao
+    assert "sem revisor" in integracao and "gesto de coordenação" in integracao
+    assert "--pousar" not in integracao
+    assert "ci/esperar.py --entrega" in espera
+    assert "ci/esperar.py --checks" in espera
 
 
 def test_plano_nao_para_em_sombra_nem_devolve_o_pouso() -> None:
