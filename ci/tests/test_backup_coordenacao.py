@@ -164,6 +164,9 @@ def test_wrapper_cifra_com_snapshot_vivo_ate_pg_dump(tmp_path, monkeypatch, caps
     (modulo / 'coordenacao.py').write_text(
         'from contextlib import contextmanager\n'
         '@contextmanager\n'
+        'def banco():\n'
+        '    yield\n'
+        '@contextmanager\n'
         'def capturar_snapshot():\n'
         "    yield {'snapshot_id': 'snapshot-978', 'autoridades': [], "
         "'tabelas': {nome: {'linhas': 0, 'sha256': '0'*64} for nome in "
@@ -174,16 +177,18 @@ def test_wrapper_cifra_com_snapshot_vivo_ate_pg_dump(tmp_path, monkeypatch, caps
     monkeypatch.setattr(backup, 'RAIZ', tmp_path)
     monkeypatch.setattr(backup, 'DESTINO', tmp_path / 'backups-coordenacao')
     monkeypatch.setattr(backup.select, 'select', lambda readable, *_: (readable, [], []))
+    monkeypatch.setattr(backup, 'id_conteiner',
+                        lambda servico: {'admin': 'a' * 64, 'postgres': 'b' * 64}[servico])
     popen_real = subprocess.Popen
     captura = []
 
     def iniciar(argumentos, **kwargs):
-        if argumentos[:4] == ['docker', 'compose', 'exec', '-T']:
-            if argumentos[4] == 'admin':
+        if argumentos[:2] == ['docker', 'exec']:
+            if argumentos[2:4] == ['-i', 'a' * 64]:
                 processo = popen_real([sys.executable, '-c', argumentos[-1]], **kwargs)
                 captura.append(processo)
                 return processo
-            assert argumentos[4] == 'postgres'
+            assert argumentos[2] == 'b' * 64
             assert '--snapshot' in argumentos
             assert argumentos[argumentos.index('--snapshot') + 1] == 'snapshot-978'
             assert captura[0].poll() is None
@@ -208,7 +213,8 @@ def test_wrapper_cifra_com_snapshot_vivo_ate_pg_dump(tmp_path, monkeypatch, caps
 def test_captura_importa_coordenacao_com_django_real(tmp_path):
     pytest.importorskip('django')
     backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
-    codigo = backup.CAPTURA.split('with capturar_snapshot()', 1)[0] + "print('IMPORTOU')\n"
+    codigo = (backup.CAPTURA.split("    fase = 'conexao'", 1)[0]
+              + "    print('IMPORTOU')\nexcept Exception:\n    raise\n")
     configuracao = tmp_path / 'config'
     configuracao.mkdir()
     (configuracao / '__init__.py').write_text('')
@@ -226,3 +232,148 @@ def test_captura_importa_coordenacao_com_django_real(tmp_path):
     )
     assert resultado.returncode == 0, resultado.stderr
     assert resultado.stdout.strip() == 'IMPORTOU'
+
+
+@pytest.mark.parametrize(
+    'fase,acao',
+    [
+        ('inicializacao', 'inicialização da captura'),
+        ('conexao', 'conexão com o banco'),
+        ('captura', 'captura do esquema'),
+    ],
+)
+def test_backup_classifica_falha_antes_do_manifesto_sem_vazar_segredo(
+    tmp_path, monkeypatch, fase, acao
+):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    segredo = 'SENHA_SINTETICA_NAO_PUBLICAR_1028'
+    (tmp_path / 'django.py').write_text(
+        "def setup():\n"
+        + (
+            f"    raise RuntimeError('{segredo}')\n"
+            if fase == 'inicializacao'
+            else "    pass\n"
+        ),
+        encoding='utf-8',
+    )
+    modulo = tmp_path / 'apps' / 'core'
+    modulo.mkdir(parents=True)
+    (tmp_path / 'apps' / '__init__.py').write_text('', encoding='utf-8')
+    (modulo / '__init__.py').write_text('', encoding='utf-8')
+    (modulo / 'coordenacao.py').write_text(
+        'from contextlib import contextmanager\n'
+        '@contextmanager\n'
+        'def banco():\n'
+        + (
+            f"    raise RuntimeError('{segredo}')\n"
+            if fase == 'conexao'
+            else "    yield\n"
+        )
+        + '@contextmanager\n'
+        + 'def capturar_snapshot():\n'
+        + (
+            f"    raise RuntimeError('{segredo}')\n"
+            if fase == 'captura'
+            else "    yield {'snapshot_id':'ok','autoridades':[],'tabelas':{}}\n"
+        ),
+        encoding='utf-8',
+    )
+    monkeypatch.setenv('PYTHONPATH', str(tmp_path))
+    monkeypatch.setattr(backup, 'RAIZ', tmp_path)
+    monkeypatch.setattr(backup, 'DESTINO', tmp_path / 'backups-coordenacao')
+    monkeypatch.setattr(backup.select, 'select', lambda readable, *_: (readable, [], []))
+    monkeypatch.setattr(backup, 'id_conteiner',
+                        lambda servico: {'admin': 'a' * 64, 'postgres': 'b' * 64}[servico])
+    popen_real = subprocess.Popen
+
+    def iniciar(argumentos, **kwargs):
+        if argumentos[:4] == ['docker', 'exec', '-i', 'a' * 64]:
+            return popen_real([sys.executable, '-c', argumentos[-1]], **kwargs)
+        pytest.fail('Não pode iniciar pg_dump nem cifra sem manifesto.')
+
+    monkeypatch.setattr(backup.subprocess, 'Popen', iniciar)
+    anterior = Path.cwd()
+    try:
+        with pytest.raises(RuntimeError, match=acao) as falha:
+            backup.executar('1028')
+    finally:
+        os.chdir(anterior)
+    assert segredo not in str(falha.value)
+    assert not (backup.DESTINO / '1028.p7m').exists()
+
+
+@pytest.mark.parametrize('servico', ['admin', 'postgres'])
+def test_id_conteiner_exige_docker_running_e_labels_exatos(monkeypatch, servico):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    identificador = 'a' * 64
+    chamadas = []
+
+    def executar(argumentos, **kwargs):
+        chamadas.append(argumentos)
+        assert kwargs['stderr'] is subprocess.DEVNULL
+        assert kwargs['timeout'] == 10
+        if argumentos[:2] == ['docker', 'ps']:
+            return subprocess.CompletedProcess(argumentos, 0, identificador + '\n')
+        return subprocess.CompletedProcess(
+            argumentos, 0, f'true|plataforma|{servico}\n'
+        )
+
+    monkeypatch.setattr(backup.subprocess, 'run', executar)
+    assert backup.id_conteiner(servico) == identificador
+    assert chamadas[0] == [
+        'docker', 'ps', '--all', '--quiet', '--no-trunc',
+        '--filter', 'label=com.docker.compose.project=plataforma',
+        '--filter', f'label=com.docker.compose.service={servico}',
+    ]
+    assert chamadas[1][-1] == identificador
+    assert 'com.docker.compose.project' in chamadas[1][3]
+    assert 'com.docker.compose.service' in chamadas[1][3]
+
+
+@pytest.mark.parametrize(
+    'lista,inspecao,esperado',
+    [
+        ('', None, 'ausente'),
+        ('a' * 64 + '\n' + 'b' * 64 + '\n', None, 'duplicado'),
+        ('a' * 12 + '\n', None, 'inválido'),
+        ('a' * 64 + '\n', 'false|plataforma|admin\n', 'parado'),
+        ('a' * 64 + '\n', 'true|outra|admin\n', 'divergiu'),
+        ('a' * 64 + '\n', 'true|plataforma|outro\n', 'divergiu'),
+    ],
+)
+def test_id_conteiner_recusa_alvo_ambiguo_ou_incompativel_sem_vazar(
+    monkeypatch, lista, inspecao, esperado
+):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    segredo = 'SENHA_SINTETICA_NAO_PUBLICAR_1031'
+
+    def executar(argumentos, **kwargs):
+        assert kwargs['stderr'] is subprocess.DEVNULL
+        saida = lista if argumentos[:2] == ['docker', 'ps'] else inspecao
+        return subprocess.CompletedProcess(argumentos, 0, saida, segredo)
+
+    monkeypatch.setattr(backup.subprocess, 'run', executar)
+    with pytest.raises(RuntimeError, match=esperado) as falha:
+        backup.id_conteiner('admin')
+    assert segredo not in str(falha.value)
+
+
+def test_backup_recusa_sem_conteiner_antes_da_cifra(tmp_path, monkeypatch):
+    backup = carregar(RAIZ / 'infra' / 'backup-coordenacao.py')
+    monkeypatch.setattr(backup, 'RAIZ', tmp_path)
+    monkeypatch.setattr(backup, 'DESTINO', tmp_path / 'backups-coordenacao')
+
+    def ausente(_servico):
+        raise RuntimeError('Contêiner admin ausente; confira o serviço na VPS.')
+
+    monkeypatch.setattr(backup, 'id_conteiner', ausente)
+    monkeypatch.setattr(backup.subprocess, 'Popen',
+                        lambda *_args, **_kwargs: pytest.fail('Processo não pode iniciar.'))
+    anterior = Path.cwd()
+    try:
+        with pytest.raises(RuntimeError, match='admin ausente'):
+            backup.executar('1031')
+    finally:
+        os.chdir(anterior)
+    assert not (backup.DESTINO / '1031.p7m').exists()
+    assert not (backup.DESTINO / '.1031.cert.pem').exists()

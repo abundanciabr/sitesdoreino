@@ -1608,7 +1608,7 @@ silêncio. `armadilhas/481` é o relato.
 |---|---|
 | "Vou importar esse util da outra célula" | R2 (API) — ou issue `arquitetura:` propondo pacote versionado |
 | "Leio o banco dela só pra conferir" | API dela (R2) ou evento (R4). O Postgres vai negar mesmo. |
-| "O teste está errado, ajusto o assert" | PARE. CONSTITUICAO.md Lei 8 — a guarda não pode ser afrouxada para passar; reporte. |
+| "O teste está errado, ajusto o assert" | Identifique a propriedade e o guarda sucessor. Mostre o caso adversarial que ele rejeita; a revisão protegida confirma a pertinência. Enfraquecer a asserção para obter verde reduz a proteção. |
 | "Crio um base.html compartilhado" | Cada célula tem o seu (Lei 7). Copie o padrão, não o arquivo. |
 | "Só dessa vez o contrato muda junto" | A cerca exige “Mudar contrato”, com o mantenedor. |
 | "Float facilita o cálculo do desconto" | `amount_cents` inteiro. Sempre. |

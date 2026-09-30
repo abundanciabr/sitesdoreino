@@ -46,14 +46,67 @@ UV+gfWWEIHIf0IXlh+FSRGFykgUFoeE+/r97JctRGExsQU3+Ge+9oB8=
 -----END CERTIFICATE-----'''
 CAPTURA = '''import json, os, sys
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-import django
-django.setup()
-from apps.core.coordenacao import capturar_snapshot
-with capturar_snapshot() as manifesto:
-    print(json.dumps(manifesto, ensure_ascii=False, separators=(',', ':')), flush=True)
-    if sys.stdin.readline() != 'concluido\\n':
-        raise RuntimeError('pg_dump não confirmou conclusão; snapshot descartado')
+fase = 'inicializacao'
+manifesto_emitido = False
+try:
+    import django
+    django.setup()
+    from apps.core.coordenacao import banco, capturar_snapshot
+    fase = 'conexao'
+    with banco():
+        pass
+    fase = 'captura'
+    with capturar_snapshot() as manifesto:
+        print(json.dumps(manifesto, ensure_ascii=False, separators=(',', ':')), flush=True)
+        manifesto_emitido = True
+        if sys.stdin.readline() != 'concluido\\n':
+            raise RuntimeError('pg_dump não confirmou conclusão; snapshot descartado')
+except Exception:
+    if not manifesto_emitido:
+        print(json.dumps({'falha': fase}), flush=True)
+    raise SystemExit(1)
 '''
+
+
+def id_conteiner(servico):
+    try:
+        lista = subprocess.run(
+            ['docker', 'ps', '--all', '--quiet', '--no-trunc',
+             '--filter', 'label=com.docker.compose.project=plataforma',
+             '--filter', f'label=com.docker.compose.service={servico}'],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10,
+            text=True, encoding='ascii', errors='replace',
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise RuntimeError(f'Docker não listou {servico}; confira o serviço na VPS.') from erro
+    if lista.returncode:
+        raise RuntimeError(f'Docker não listou {servico}; confira o serviço na VPS.')
+    ids = lista.stdout.splitlines()
+    if not ids:
+        raise RuntimeError(f'Contêiner {servico} ausente; confira o serviço na VPS.')
+    if len(ids) != 1:
+        raise RuntimeError(f'Contêiner {servico} duplicado; reconcilie o serviço na VPS.')
+    identificador = ids[0]
+    if not re.fullmatch(r'[0-9a-f]{64}', identificador):
+        raise RuntimeError(f'ID do contêiner {servico} inválido; confira o Docker na VPS.')
+    try:
+        inspecao = subprocess.run(
+            ['docker', 'inspect', '--format',
+             '{{json .State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|'
+             '{{index .Config.Labels "com.docker.compose.service"}}', identificador],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10,
+            text=True, encoding='ascii', errors='replace',
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise RuntimeError(f'Docker não conferiu {servico}; confira o serviço na VPS.') from erro
+    if inspecao.returncode:
+        raise RuntimeError(f'Docker não conferiu {servico}; confira o serviço na VPS.')
+    estado = inspecao.stdout.strip()
+    if estado == f'false|plataforma|{servico}':
+        raise RuntimeError(f'Contêiner {servico} parado; recupere o serviço na VPS.')
+    if estado != f'true|plataforma|{servico}':
+        raise RuntimeError(f'Identidade do contêiner {servico} divergiu; reconcilie o serviço na VPS.')
+    return identificador
 
 
 def executar(identificador):
@@ -74,8 +127,10 @@ def executar(identificador):
     cifra = None
     dump = None
     try:
+        admin = id_conteiner('admin')
+        postgres = id_conteiner('postgres')
         captura = subprocess.Popen(
-            ['docker', 'compose', 'exec', '-T', 'admin', 'python', '-c', CAPTURA],
+            ['docker', 'exec', '-i', admin, 'python', '-c', CAPTURA],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         if not select.select([captura.stdout], [], [], 60)[0]:
@@ -83,7 +138,20 @@ def executar(identificador):
         linha = captura.stdout.readline()
         if not linha:
             raise RuntimeError('Snapshot não abriu; confira a célula admin e o banco de coordenação.')
-        manifesto = json.loads(linha)
+        try:
+            manifesto = json.loads(linha)
+        except json.JSONDecodeError as erro:
+            raise RuntimeError('Resposta da captura inválida; confira a célula admin.') from erro
+        if isinstance(manifesto, dict) and set(manifesto) == {'falha'}:
+            acoes = {
+                'inicializacao': 'Falha na inicialização da captura; confira a imagem e o serviço admin.',
+                'conexao': 'Falha na conexão com o banco de coordenação; confira o banco na célula admin.',
+                'captura': 'Falha na captura do esquema; confira as nove tabelas da coordenação.',
+            }
+            fase = manifesto['falha']
+            if not isinstance(fase, str) or fase not in acoes:
+                raise RuntimeError('Fase de falha inválida; confira a célula admin.')
+            raise RuntimeError(acoes[fase])
         if (not isinstance(manifesto, dict) or not manifesto.get('snapshot_id')
                 or not isinstance(manifesto.get('tabelas'), dict)
                 or len(manifesto['tabelas']) != 9):
@@ -102,7 +170,7 @@ def executar(identificador):
             stdin=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         dump = subprocess.Popen(
-            ['docker', 'compose', 'exec', '-T', 'postgres', 'pg_dump', '-U', 'postgres',
+            ['docker', 'exec', postgres, 'pg_dump', '-U', 'postgres',
              '-d', 'coordenacao_db', '-Fc', '--no-owner', '--no-acl',
              '--snapshot', snapshot_id, '--lock-wait-timeout=30000'],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,

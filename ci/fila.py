@@ -89,7 +89,12 @@ EVENTOS_TERMINAIS = ("concluida", "cancelada")
 # Adiamento não é estado da fila. Uma palavra diferente não pode criar um
 # estado paralelo que o painel não mostre nem o mantenedor seja avisado.
 EVENTOS_DE_ADIAMENTO_PROIBIDOS = (
-    "adiada", "adiado", "postergada", "postergado", "deferida", "deferido"
+    "adiada",
+    "adiado",
+    "postergada",
+    "postergado",
+    "deferida",
+    "deferido",
 )
 
 # A EXPLICAÇÃO PARA GENTE — o evento que não é ciclo nem fim (06/09/2026)
@@ -213,8 +218,16 @@ CAMPOS_OPCIONAIS_DA_TAREFA = {
 }
 
 CAMPOS_DA_MEDICAO_FASE4 = {
-    "piloto", "condicao", "tipo", "complexidade", "natureza", "componentes",
-    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+    "piloto",
+    "condicao",
+    "tipo",
+    "complexidade",
+    "natureza",
+    "componentes",
+    "fronteiras_integracao",
+    "migracao",
+    "risco",
+    "escopo_publicacao",
     "revisao_instrumento",
 }
 
@@ -295,9 +308,7 @@ RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # divergiriam no primeiro dia em que alguém mexesse numa só.
 RE_CITACAO = re.compile(r"TAR-\d{3,}")
 PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
-RE_REGISTRO_DE_ACEITE = re.compile(
-    r"painel/registros/\d{8}-\d{3}-[a-z0-9-]+\.js"
-)
+RE_REGISTRO_DE_ACEITE = re.compile(r"painel/registros/\d{8}-\d{3}-[a-z0-9-]+\.js")
 RE_URL = re.compile(r"https?://[^\s<>\"']+")
 # A ORIGEM QUE O TERMÔMETRO ESCREVE — e que não é texto livre nenhum.
 # `origem` nasceu campo morto: `criar` gravava, `validar` cobrava uma string não
@@ -428,7 +439,7 @@ def _parar_se_for_o_espelho(gesto: str, raiz: Path) -> str | None:
         "   PRINCIPAL —\n"
         f"     {checkout}\n"
         "   e o comprovante nasceria numa pasta onde você não pode commitar nada\n"
-        "   (RITOS.md §1, a muralha da pasta compartilhada). Ele ficaria órfão, e\n"
+        "   (CAMINHO-DOURADO.md, “Abrir e retomar uma sessão”; a muralha da pasta compartilhada). Ele ficaria órfão, e\n"
         "   o seu PR iria sem ele.\n"
         "\n"
         f"   ISTO NÃO É RECUSA DA TAREFA — ela continua livre, e a reserva no\n"
@@ -457,10 +468,22 @@ def comprovantes_que_o_git_nao_conhece(raiz: Path) -> list[str] | None:
         return []
     try:
         proc = subprocess.run(
-            ["git", "-C", str(raiz), "ls-files", "--others", "--exclude-standard",
-             "--", "fila/eventos"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=30, stdin=subprocess.DEVNULL,
+            [
+                "git",
+                "-C",
+                str(raiz),
+                "ls-files",
+                "--others",
+                "--exclude-standard",
+                "--",
+                "fila/eventos",
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -497,13 +520,21 @@ def dizer_os_comprovantes_soltos(raiz: Path) -> None:
     no_espelho = bool(encontrado and encontrado[1])
     print()
     if no_espelho:
-        print(f"🧱 COMPROVANTE ÓRFÃO — {len(achados)} arquivo(s) de fila/eventos/ que o Git")
+        print(
+            f"🧱 COMPROVANTE ÓRFÃO — {len(achados)} arquivo(s) de fila/eventos/ que o Git"
+        )
         print("   não conhece, e esta pasta é o CLONE PRINCIPAL: aqui não se commita")
-        print("   nada (RITOS.md §1). Eles não vão viajar em PR nenhum, e o histórico")
+        print(
+            "   nada (CAMINHO-DOURADO.md, “Abrir e retomar uma sessão”). Eles não vão viajar em PR nenhum, e o histórico"
+        )
         print("   de quem pegou o trabalho some (armadilhas/192).")
     else:
-        print(f"⚠️  {len(achados)} comprovante(s) de fila/eventos/ ainda fora do Git — o")
-        print("   evento viaja no PR do trabalho (RITOS.md §5). Commite antes de pedir")
+        print(
+            f"⚠️  {len(achados)} comprovante(s) de fila/eventos/ ainda fora do Git — o"
+        )
+        print(
+            "   evento viaja no PR do trabalho (CAMINHO-DOURADO.md, “Pegar e registrar trabalho na fila”). Commite antes de pedir"
+        )
         print("   pouso, senão o PR vai sem ele (armadilhas/192).")
     for arquivo in achados:
         print(f"     - {arquivo}")
@@ -563,7 +594,11 @@ def _conferir_campos(
                 "por PR neste arquivo, não por invenção num JSON"
             )
     for campo, tipo in opcionais.items():
-        if campo in dados and dados[campo] is not None and not isinstance(dados[campo], tipo):
+        if (
+            campo in dados
+            and dados[campo] is not None
+            and not isinstance(dados[campo], tipo)
+        ):
             erros.append(f"{nome}: '{campo}' deveria ser {tipo.__name__} ou null")
 
 
@@ -616,9 +651,11 @@ def problemas_do_contrato_execucao(contrato) -> list[str]:
         return problemas
     if not str(contrato.get("plano") or "").strip():
         problemas.append("contrato.plano precisa identificar o plano")
-    if isinstance(contrato.get("versao"), bool) or not isinstance(
-        contrato.get("versao"), int
-    ) or contrato["versao"] < 1:
+    if (
+        isinstance(contrato.get("versao"), bool)
+        or not isinstance(contrato.get("versao"), int)
+        or contrato["versao"] < 1
+    ):
         problemas.append("contrato.versao precisa ser inteiro positivo")
     for campo in (
         "objetivo",
@@ -676,7 +713,11 @@ def _conferir_evento_de_execucao(nome: str, dados: dict, erros: list[str]) -> No
         for campo in ("bloqueio", "hipotese", "resultado"):
             _texto_nao_vazio(dados, campo, nome, erros)
         tentativa = dados.get("tentativa")
-        if isinstance(tentativa, bool) or not isinstance(tentativa, int) or tentativa < 1:
+        if (
+            isinstance(tentativa, bool)
+            or not isinstance(tentativa, int)
+            or tentativa < 1
+        ):
             erros.append(f"{nome}: 'tentativa' precisa ser inteiro positivo")
         return
 
@@ -771,7 +812,7 @@ def _conferir_move(nome: str, move: list, raiz: Path, erros: list[str]) -> None:
     if not move:
         erros.append(
             f"{nome}: 'move' vazio não diz nada — para dizer que a tarefa mantém "
-            f"a fábrica de pé, escreva [\"{MANUTENCAO}\"]; para não declarar nada, "
+            f'a fábrica de pé, escreva ["{MANUTENCAO}"]; para não declarar nada, '
             "tire o campo (ausência e manutenção são coisas diferentes)"
         )
         return
@@ -814,18 +855,30 @@ def _conferir_medicao_fase4(nome: str, medicao: object, erros: list[str]) -> Non
     if ausentes:
         erros.append(f"{nome}: 'medicao_fase4' sem campos: {', '.join(ausentes)}")
     if extras:
-        erros.append(f"{nome}: 'medicao_fase4' com campos desconhecidos: {', '.join(extras)}")
+        erros.append(
+            f"{nome}: 'medicao_fase4' com campos desconhecidos: {', '.join(extras)}"
+        )
     for campo in CAMPOS_DA_MEDICAO_FASE4:
-        if campo in medicao and (not isinstance(medicao[campo], str) or not medicao[campo].strip()):
+        if campo in medicao and (
+            not isinstance(medicao[campo], str) or not medicao[campo].strip()
+        ):
             erros.append(f"{nome}: 'medicao_fase4.{campo}' precisa ser texto não vazio")
     if medicao.get("piloto") not in ("fase1", "fase2", "fase3"):
-        erros.append(f"{nome}: 'medicao_fase4.piloto' precisa ser fase1, fase2 ou fase3")
+        erros.append(
+            f"{nome}: 'medicao_fase4.piloto' precisa ser fase1, fase2 ou fase3"
+        )
     if medicao.get("condicao") not in ("antes", "depois"):
         erros.append(f"{nome}: 'medicao_fase4.condicao' precisa ser antes ou depois")
     revisao = medicao.get("revisao_instrumento")
     if not isinstance(revisao, str) or not re.fullmatch(r"[a-f0-9]{40}", revisao):
-        erros.append(f"{nome}: 'medicao_fase4.revisao_instrumento' precisa ser SHA-1 hexadecimal")
-    if "par_id" in medicao and medicao["par_id"] is not None and not isinstance(medicao["par_id"], str):
+        erros.append(
+            f"{nome}: 'medicao_fase4.revisao_instrumento' precisa ser SHA-1 hexadecimal"
+        )
+    if (
+        "par_id" in medicao
+        and medicao["par_id"] is not None
+        and not isinstance(medicao["par_id"], str)
+    ):
         erros.append(f"{nome}: 'medicao_fase4.par_id' precisa ser texto ou null")
 
 
@@ -841,17 +894,23 @@ def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
         if dados is None:
             continue
         nome = caminho.name
-        _conferir_campos(nome, dados, CAMPOS_DA_TAREFA, CAMPOS_OPCIONAIS_DA_TAREFA, erros)
+        _conferir_campos(
+            nome, dados, CAMPOS_DA_TAREFA, CAMPOS_OPCIONAIS_DA_TAREFA, erros
+        )
         stem = caminho.stem
         if dados.get("arquivo") != stem:
-            erros.append(f"{nome}: campo 'arquivo' ({dados.get('arquivo')!r}) ≠ nome do arquivo")
+            erros.append(
+                f"{nome}: campo 'arquivo' ({dados.get('arquivo')!r}) ≠ nome do arquivo"
+            )
         numero = stem.split("-", 1)[0]
         if not numero.isdigit():
             erros.append(f"{nome}: o nome precisa começar com o número (NNN-slug.json)")
             continue
         esperado = f"TAR-{numero}"
         if dados.get("id") != esperado:
-            erros.append(f"{nome}: 'id' ({dados.get('id')!r}) ≠ {esperado} (o número vem do nome)")
+            erros.append(
+                f"{nome}: 'id' ({dados.get('id')!r}) ≠ {esperado} (o número vem do nome)"
+            )
         if numero in numeros:
             erros.append(
                 f"{nome}: número {numero} repetido (já usado por {numeros[numero]}) — "
@@ -860,10 +919,14 @@ def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
             continue
         numeros[numero] = nome
         toca = dados.get("toca")
-        if isinstance(toca, list) and (not toca or not all(isinstance(t, str) and t.strip() for t in toca)):
+        if isinstance(toca, list) and (
+            not toca or not all(isinstance(t, str) and t.strip() for t in toca)
+        ):
             erros.append(f"{nome}: 'toca' precisa ser lista não vazia de textos")
         cria = dados.get("cria")
-        if isinstance(cria, list) and not all(isinstance(c, str) and c.strip() for c in cria):
+        if isinstance(cria, list) and not all(
+            isinstance(c, str) and c.strip() for c in cria
+        ):
             erros.append(f"{nome}: 'cria' precisa ser lista de caminhos não vazios")
         move = dados.get("move")
         if isinstance(move, list):
@@ -905,7 +968,9 @@ def _conferir_ciclos(tarefas: dict[str, dict], erros: list[str]) -> None:
             visitar(tid, [])
 
 
-def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> list[dict]:
+def carregar_eventos(
+    raiz: Path, tarefas: dict[str, dict], erros: list[str]
+) -> list[dict]:
     """Todos os eventos, validados e em ordem cronológica (quando, arquivo)."""
     pasta = pasta_eventos(raiz)
     eventos: list[dict] = []
@@ -916,7 +981,9 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         if dados is None:
             continue
         nome = caminho.name
-        _conferir_campos(nome, dados, CAMPOS_DO_EVENTO, CAMPOS_OPCIONAIS_DO_EVENTO, erros)
+        _conferir_campos(
+            nome, dados, CAMPOS_DO_EVENTO, CAMPOS_OPCIONAIS_DO_EVENTO, erros
+        )
         dados.pop("_aceite_verificado", None)
         dados.pop("_aceite_reconciliado", None)
         if dados.get("arquivo") != caminho.stem:
@@ -929,20 +996,28 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                 "e informe o mantenedor no mesmo retorno"
             )
         if tipo not in EVENTOS_VALIDOS:
-            erros.append(f"{nome}: evento {tipo!r} não existe (válidos: {', '.join(EVENTOS_VALIDOS)})")
+            erros.append(
+                f"{nome}: evento {tipo!r} não existe (válidos: {', '.join(EVENTOS_VALIDOS)})"
+            )
             continue
         if tarefas and dados.get("tarefa") not in tarefas:
-            erros.append(f"{nome}: fala da tarefa {dados.get('tarefa')!r}, que não existe")
+            erros.append(
+                f"{nome}: fala da tarefa {dados.get('tarefa')!r}, que não existe"
+            )
         quando = dados.get("quando")
         try:
             dados["_quando"] = datetime.fromisoformat(str(quando))
         except (TypeError, ValueError):
-            erros.append(f"{nome}: 'quando' precisa ser data-hora ISO (veio {quando!r})")
+            erros.append(
+                f"{nome}: 'quando' precisa ser data-hora ISO (veio {quando!r})"
+            )
             continue
         if tipo == "submetida":
             erros.extend(f"{nome}: {erro}" for erro in problemas_da_submissao(dados))
         elif any(campo in dados for campo in ("pr", "revisao", "arvore", "substitui")):
-            erros.append(f"{nome}: pr, revisao, arvore e substitui pertencem ao evento submetida")
+            erros.append(
+                f"{nome}: pr, revisao, arvore e substitui pertencem ao evento submetida"
+            )
         if tipo == "concluida":
             if not str(dados.get("evidencia") or "").strip():
                 erros.append(
@@ -951,8 +1026,13 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                 )
             if not RE_DATA.match(str(dados.get("verificado_em") or "")):
                 erros.append(f"{nome}: concluída exige 'verificado_em' (AAAA-MM-DD)")
-        if tipo in ("bloqueada", "cancelada", "reivindicacao_expirada") and not str(dados.get("detalhe") or "").strip():
-            erros.append(f"{nome}: '{tipo}' sem 'detalhe' não conta a história — diga o motivo")
+        if (
+            tipo in ("bloqueada", "cancelada", "reivindicacao_expirada")
+            and not str(dados.get("detalhe") or "").strip()
+        ):
+            erros.append(
+                f"{nome}: '{tipo}' sem 'detalhe' não conta a história — diga o motivo"
+            )
         espera = dados.get("espera")
         if espera is not None:
             if tipo != "bloqueada":
@@ -997,7 +1077,9 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         if "aceite_entrega" not in ev:
             continue
         if ev["evento"] != "concluida":
-            erros.append(f"{ev['arquivo']}: aceite_entrega só pertence à conclusão reconciliada")
+            erros.append(
+                f"{ev['arquivo']}: aceite_entrega só pertence à conclusão reconciliada"
+            )
             continue
         submissao = ultima_submissao(eventos, ev["tarefa"])
         problemas = problemas_do_aceite_entrega(ev["aceite_entrega"], submissao)
@@ -1038,7 +1120,9 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
 
 def problemas_da_submissao(dados: dict) -> list[str]:
     erros = []
-    if not re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9]\d*", str(dados.get("pr") or "")):
+    if not re.fullmatch(
+        r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9]\d*", str(dados.get("pr") or "")
+    ):
         erros.append("pr exige a URL completa do pull request no GitHub")
     for campo in ("revisao", "arvore"):
         if not re.fullmatch(r"[0-9a-f]{40}", str(dados.get(campo) or "")):
@@ -1075,17 +1159,28 @@ def _conferir_cadeias_de_submissao(eventos: list[dict], erros: list[str]) -> Non
 
 
 def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
-    return next((e for e in reversed(_em_ordem(eventos))
-                 if e.get("tarefa") == tid and e.get("evento") == "submetida"), None)
+    return next(
+        (
+            e
+            for e in reversed(_em_ordem(eventos))
+            if e.get("tarefa") == tid and e.get("evento") == "submetida"
+        ),
+        None,
+    )
 
 
 def problemas_do_aceite_funcional(funcional, revisao=None, ambiente=None) -> list[str]:
-    if (not isinstance(funcional, dict)
-            or funcional.get("resultado") != "PASS"
-            or any(not isinstance(funcional.get(campo), str)
-                   or not funcional[campo].strip()
-                   for campo in ("criterio", "evidencia"))):
-        return ["aceite funcional exige resultado PASS, critério e evidência da jornada ou comando"]
+    if (
+        not isinstance(funcional, dict)
+        or funcional.get("resultado") != "PASS"
+        or any(
+            not isinstance(funcional.get(campo), str) or not funcional[campo].strip()
+            for campo in ("criterio", "evidencia")
+        )
+    ):
+        return [
+            "aceite funcional exige resultado PASS, critério e evidência da jornada ou comando"
+        ]
     problemas = []
     if not re.fullmatch(r"[0-9a-f]{40}", str(funcional.get("revisao") or "")):
         problemas.append("aceite funcional exige a revisão completa verificada")
@@ -1094,7 +1189,9 @@ def problemas_do_aceite_funcional(funcional, revisao=None, ambiente=None) -> lis
     if funcional.get("ambiente") not in ("producao", "repositorio-integrado"):
         problemas.append("aceite funcional exige o ambiente da verificação")
     elif ambiente is not None and funcional["ambiente"] != ambiente:
-        problemas.append("o ambiente do aceite funcional difere da publicação comprovada")
+        problemas.append(
+            "o ambiente do aceite funcional difere da publicação comprovada"
+        )
     return problemas
 
 
@@ -1104,7 +1201,9 @@ def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
     if not isinstance(submissao, dict) or not submissao:
         return ["aceite_entrega exige a submissão correspondente"]
     if problemas_da_submissao(submissao):
-        return ["aceite_entrega exige submissão válida; confira PR, revisão e árvore antes de reconciliar"]
+        return [
+            "aceite_entrega exige submissão válida; confira PR, revisão e árvore antes de reconciliar"
+        ]
     problemas = [
         f"aceite_entrega: {campo} diverge da última submissão"
         for campo in ("tarefa", "pr", "revisao", "arvore")
@@ -1115,37 +1214,86 @@ def problemas_do_aceite_entrega(prova, submissao) -> list[str]:
     estado = prova.get("publicacao")
     if estado not in ("PUBLICADO", "SEM_PUBLICACAO"):
         problemas.append("aceite_entrega exige o resultado da publicação comprovada")
-    ambiente = "producao" if estado == "PUBLICADO" else "repositorio-integrado"
+    funcional = prova.get("aceite_funcional")
+    posterior = (estado == "PUBLICADO" and isinstance(funcional, dict)
+                 and funcional.get("ambiente") == "producao"
+                 and funcional.get("revisao") != prova.get("integracao"))
+    tecnico = (estado == "PUBLICADO" and isinstance(funcional, dict)
+               and funcional.get("ambiente") == "repositorio-integrado"
+               and funcional.get("revisao") == prova.get("integracao"))
+    ambiente = (None if tecnico else "producao") if estado == "PUBLICADO" else "repositorio-integrado"
     problemas.extend(problemas_do_aceite_funcional(
-        prova.get("aceite_funcional"), prova.get("integracao"), ambiente
+        funcional, None if posterior else prova.get("integracao"), ambiente
     ))
+    if tecnico and (
+        not isinstance(funcional.get("comando"), str)
+        or not funcional["comando"].strip()
+        or funcional["comando"] not in str(funcional.get("evidencia") or "")
+        or not re.search(r"\b(?:PASS|passed)\b", str(funcional.get("evidencia") or ""))
+    ):
+        problemas.append("aceite técnico exige comando executado e resultado PASS na evidência")
+    if posterior:
+        efetiva = funcional.get("publicacao_efetiva")
+        if (not isinstance(efetiva, dict) or set(efetiva) != {
+            "run_imagem", "run_dados", "run_medicao", "revisao_dados"
+        } or not re.fullmatch(r"[0-9a-f]{40}", str(efetiva.get("revisao_dados") or ""))):
+            problemas.append("jornada posterior exige prova estruturada da imagem e dos dados")
+        else:
+            prefixo_runs = str(submissao["pr"]).split("/pull/")[0]
+            urls = [efetiva[c] for c in ("run_imagem", "run_dados", "run_medicao")]
+            if any(not re.fullmatch(re.escape(prefixo_runs) + r"/actions/runs/[1-9][0-9]*",
+                                    str(url or "")) for url in urls):
+                problemas.append("jornada posterior exige runs deste repositório")
+            if (not isinstance(prova.get("publicacoes"), list)
+                    or any(not isinstance(url, str) for url in prova["publicacoes"])
+                    or not set(urls) <= set(prova["publicacoes"])):
+                problemas.append("as três fontes efetivas devem constar nas publicações da entrega")
+    elif isinstance(funcional, dict) and funcional.get("publicacao_efetiva") is not None:
+        problemas.append("prova de revisão posterior não cabe no aceite da revisão integrada")
     if not RE_REGISTRO_DE_ACEITE.fullmatch(str(prova.get("registro") or "")):
         problemas.append("aceite_entrega exige o registro de aceite do livro")
     if not re.fullmatch(r"[0-9a-f]{64}", str(prova.get("registro_sha256") or "")):
         problemas.append("aceite_entrega exige o SHA256 do registro canônico")
-    if "retroativa" in prova and (not isinstance(prova["retroativa"], str) or not prova["retroativa"].strip()):
-        problemas.append("aceite_entrega exige motivo textual para a reconciliação retroativa")
+    if "retroativa" in prova and (
+        not isinstance(prova["retroativa"], str) or not prova["retroativa"].strip()
+    ):
+        problemas.append(
+            "aceite_entrega exige motivo textual para a reconciliação retroativa"
+        )
     publicacoes = prova.get("publicacoes")
     prefixo = str(submissao["pr"]).split("/pull/")[0]
     if estado == "SEM_PUBLICACAO":
         if publicacoes != [submissao["pr"]]:
-            problemas.append("aceite_entrega sem publicação exige o PR integrado correspondente")
-    elif (not isinstance(publicacoes, list) or not publicacoes
-          or any(not isinstance(url, str) or not re.fullmatch(
-              re.escape(prefixo) + r"/actions/runs/[1-9][0-9]*", url
-          ) for url in publicacoes)):
-        problemas.append("aceite_entrega exige as execuções da publicação deste repositório")
+            problemas.append(
+                "aceite_entrega sem publicação exige o PR integrado correspondente"
+            )
+    elif (
+        not isinstance(publicacoes, list)
+        or not publicacoes
+        or any(
+            not isinstance(url, str)
+            or not re.fullmatch(re.escape(prefixo) + r"/actions/runs/[1-9][0-9]*", url)
+            for url in publicacoes
+        )
+    ):
+        problemas.append(
+            "aceite_entrega exige as execuções da publicação deste repositório"
+        )
     return problemas
 
 
 def hash_do_conteudo(registro: dict) -> str:
-    conteudo = json.dumps(registro, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    conteudo = json.dumps(
+        registro, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
 
 
 def problemas_do_registro_canonico(prova: dict, registro) -> list[str]:
     if not isinstance(registro, dict):
-        return ["registro canônico de aceite ausente ou ilegível; confira o livro antes de reconciliar"]
+        return [
+            "registro canônico de aceite ausente ou ilegível; confira o livro antes de reconciliar"
+        ]
     problemas = []
     if registro.get("arquivo") != Path(prova["registro"]).stem:
         problemas.append("a identidade do registro canônico diverge do arquivo")
@@ -1155,7 +1303,10 @@ def problemas_do_registro_canonico(prova: dict, registro) -> list[str]:
         problemas.append("o registro canônico pertence a outra tarefa")
     if registro.get("aceite_funcional") != prova["aceite_funcional"]:
         problemas.append("a jornada do registro canônico diverge do aceite")
-    entrega = {c: prova[c] for c in ("pr", "revisao", "arvore", "integracao", "publicacao", "publicacoes")}
+    entrega = {
+        c: prova[c]
+        for c in ("pr", "revisao", "arvore", "integracao", "publicacao", "publicacoes")
+    }
     if registro.get("entrega") != entrega:
         problemas.append("os vínculos da entrega divergem do registro canônico")
     try:
@@ -1167,8 +1318,14 @@ def problemas_do_registro_canonico(prova: dict, registro) -> list[str]:
 
 def comprovacoes_da_entrega(eventos: list[dict], tid: str) -> dict:
     submissao = ultima_submissao(eventos, tid)
-    conclusao = next((e for e in eventos
-                     if e.get("tarefa") == tid and e.get("evento") == "concluida"), None)
+    conclusao = next(
+        (
+            e
+            for e in eventos
+            if e.get("tarefa") == tid and e.get("evento") == "concluida"
+        ),
+        None,
+    )
     resultado = {
         "submissao": "registrada" if submissao else "nao_comprovada",
         "integracao": "nao_comprovada",
@@ -1182,21 +1339,32 @@ def comprovacoes_da_entrega(eventos: list[dict], tid: str) -> dict:
         return resultado
     evidencia = str(conclusao.get("evidencia") or "")
     resultado["origem_conclusao"] = (
-        "pr" if re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9][0-9]*",
-                            evidencia) else "registro_legado"
+        "pr"
+        if re.fullmatch(
+            r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9][0-9]*", evidencia
+        )
+        else "registro_legado"
     )
     prova = conclusao.get("aceite_entrega")
-    if (conclusao.get("_aceite_verificado") is True
-            and conclusao.get("_aceite_reconciliado") is True
-            and prova is not None and not problemas_do_aceite_entrega(prova, submissao)):
-        resultado.update({
-            "integracao": "comprovada",
-            "publicacao": ("comprovada" if prova["publicacao"] == "PUBLICADO"
-                           else "nao_aplicavel"),
-            "aceite": "comprovado",
-            "origem_conclusao": "reconciliacao",
-            "aceite_prova_sha256": hash_do_conteudo(prova),
-        })
+    if (
+        conclusao.get("_aceite_verificado") is True
+        and conclusao.get("_aceite_reconciliado") is True
+        and prova is not None
+        and not problemas_do_aceite_entrega(prova, submissao)
+    ):
+        resultado.update(
+            {
+                "integracao": "comprovada",
+                "publicacao": (
+                    "comprovada"
+                    if prova["publicacao"] == "PUBLICADO"
+                    else "nao_aplicavel"
+                ),
+                "aceite": "comprovado",
+                "origem_conclusao": "reconciliacao",
+                "aceite_prova_sha256": hash_do_conteudo(prova),
+            }
+        )
     return resultado
 
 
@@ -1238,8 +1406,14 @@ def calcular_estados(
             (e for e in reversed(cadeia) if e["evento"] in EVENTOS_DE_CICLO), None
         )
         submetida = ultima_submissao(cadeia, tid)
-        if (ultimo_ciclo is not None and ultimo_ciclo["evento"] == "bloqueada"
-                and (submetida is None or cadeia.index(ultimo_ciclo) > cadeia.index(submetida))):
+        if (
+            ultimo_ciclo is not None
+            and ultimo_ciclo["evento"] == "bloqueada"
+            and (
+                submetida is None
+                or cadeia.index(ultimo_ciclo) > cadeia.index(submetida)
+            )
+        ):
             resultado = {
                 "estado": BLOQUEADA,
                 "motivo": ultimo_ciclo.get("detalhe") or "",
@@ -1263,8 +1437,11 @@ def calcular_estados(
             }
             estados[tid] = resultado
             return resultado
-        if (ultimo_ciclo is not None and ultimo_ciclo["evento"] == "reivindicacao_expirada"
-                and tid not in reservas_ativas):
+        if (
+            ultimo_ciclo is not None
+            and ultimo_ciclo["evento"] == "reivindicacao_expirada"
+            and tid not in reservas_ativas
+        ):
             resultado = {
                 "estado": NA_FILA,
                 "motivo": ultimo_ciclo.get("detalhe") or "reivindicação expirada",
@@ -1351,7 +1528,11 @@ def reservas_no_servidor(raiz: Path) -> set[str]:
             descricao="ler a validade da reserva da tarefa",
         ).stdout.strip()
         partes = leitura.split()
-        if len(partes) != 2 or partes[1] != ref or not re.fullmatch(r"[0-9a-f]{40}", partes[0]):
+        if (
+            len(partes) != 2
+            or partes[1] != ref
+            or not re.fullmatch(r"[0-9a-f]{40}", partes[0])
+        ):
             raise ErroDeInstrumentacao(
                 "resposta da reserva inválida",
                 f"Não consegui conferir {ref}. Sem saber se a reserva está viva, não libero a tarefa.",
@@ -1383,7 +1564,7 @@ def reservas_no_servidor(raiz: Path) -> set[str]:
                 f"O comprovante remoto {ref} não informa fuso horário na expiração.",
             )
         if expira > datetime.now(timezone.utc):
-            ativos.add(cauda[len(PREFIXO_DA_RESERVA):])
+            ativos.add(cauda[len(PREFIXO_DA_RESERVA) :])
     return ativos
 
 
@@ -1402,14 +1583,16 @@ def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
         cwd=str(raiz),
         capture_output=True,
         text=True,
-        encoding="utf-8", errors="replace",
+        encoding="utf-8",
+        errors="replace",
         timeout=120,
         stdin=subprocess.DEVNULL,
     )
     if proc.returncode != 0:
         raise ErroDeInstrumentacao(
             "não consegui listar os PRs abertos",
-            proc.stderr.strip()[:400] + "\nSem essa leitura, 'em execução' viraria chute.",
+            proc.stderr.strip()[:400]
+            + "\nSem essa leitura, 'em execução' viraria chute.",
         )
     achados: dict[str, str] = {}
     for pr in json.loads(proc.stdout or "[]"):
@@ -1433,14 +1616,21 @@ def consultar_pr_submetido(raiz: Path, url: str) -> dict:
     try:
         proc = subprocess.run(
             ["gh", "pr", "view", url, "--json", "url,state,headRefOid,mergeCommit"],
-            cwd=str(raiz), capture_output=True, text=True, encoding="utf-8",
-            timeout=120, stdin=subprocess.DEVNULL,
+            cwd=str(raiz),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=120,
+            stdin=subprocess.DEVNULL,
         )
         if proc.returncode != 0:
             raise ValueError("consulta recusada pelo GitHub")
         dados = json.loads(proc.stdout)
-        if (not isinstance(dados, dict) or dados.get("url") != url
-                or dados.get("state") not in ("OPEN", "MERGED", "CLOSED")):
+        if (
+            not isinstance(dados, dict)
+            or dados.get("url") != url
+            or dados.get("state") not in ("OPEN", "MERGED", "CLOSED")
+        ):
             raise ValueError("identidade ou estado do PR incompatível")
         return dados
     except (OSError, subprocess.TimeoutExpired, ValueError) as erro:
@@ -1453,7 +1643,14 @@ def consultar_pr_submetido(raiz: Path, url: str) -> dict:
 def _git_predicado(raiz: Path, *argumentos: str, descricao: str) -> bool:
     try:
         proc = subprocess.run(
-            ["git", "-c", "core.fsmonitor=false", "-c", f"core.hooksPath={CI / '__no_hooks__'}", *argumentos],
+            [
+                "git",
+                "-c",
+                "core.fsmonitor=false",
+                "-c",
+                f"core.hooksPath={CI / '__no_hooks__'}",
+                *argumentos,
+            ],
             cwd=str(raiz),
             env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
             capture_output=True,
@@ -1477,9 +1674,7 @@ def _git_predicado(raiz: Path, *argumentos: str, descricao: str) -> bool:
 
 
 def bancada_contem_main_publicada(raiz: Path) -> bool:
-    _git_da_fila(
-        raiz, "fetch", "origin", "main", para_que="atualizar a fila publicada"
-    )
+    _git_da_fila(raiz, "fetch", "origin", "main", para_que="atualizar a fila publicada")
     return _git_predicado(
         raiz,
         "merge-base",
@@ -1496,7 +1691,11 @@ def _problemas_do_candidato(submissao: dict, medicao: dict) -> list[str]:
         problemas.append("a árvore da revisão difere da árvore submetida")
     if not medicao.get("revisao_ancestral"):
         problemas.append("a revisão submetida não é ancestral do HEAD final")
-    codigo = [c for c in medicao.get("caminhos_posteriores", []) if not c.startswith(CAMINHOS_POSTERIORES_PERMITIDOS)]
+    codigo = [
+        c
+        for c in medicao.get("caminhos_posteriores", [])
+        if not c.startswith(CAMINHOS_POSTERIORES_PERMITIDOS)
+    ]
     if codigo:
         problemas.append("há código posterior à revisão: " + ", ".join(codigo))
     return problemas
@@ -1509,7 +1708,9 @@ def problemas_da_linhagem(submissao: dict, medicao: dict) -> list[str]:
     return problemas
 
 
-def _medir_linhagem_candidato(raiz: Path, submissao: dict, head: str, base: str) -> dict:
+def _medir_linhagem_candidato(
+    raiz: Path, submissao: dict, head: str, base: str
+) -> dict:
     profundidade = _git_da_fila(
         raiz,
         "rev-parse",
@@ -1588,7 +1789,11 @@ def _medir_linhagem_candidato(raiz: Path, submissao: dict, head: str, base: str)
 def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
     medicao = _medir_linhagem_candidato(raiz, submissao, head, f"{merge}^1")
     medicao["head_ancestral"] = _git_predicado(
-        raiz, "merge-base", "--is-ancestor", head, merge,
+        raiz,
+        "merge-base",
+        "--is-ancestor",
+        head,
+        merge,
         descricao="conferir HEAD ancestral do merge",
     )
     problemas = problemas_da_linhagem(submissao, medicao)
@@ -1598,67 +1803,148 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
 
 def verificar_linhagem_submissao(raiz: Path, numero: int, head: str) -> dict:
     """Confere o candidato aberto sem inferir integração ou publicação."""
-    if type(numero) is not int or numero < 1 or not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):
-        raise RecusaDeReconciliacao("informe número de PR e SHA completo do HEAD a conferir")
-    local = _git_da_fila(raiz, "rev-parse", "HEAD", para_que="identificar o checkout do candidato").strip()
+    if (
+        type(numero) is not int
+        or numero < 1
+        or not isinstance(head, str)
+        or not re.fullmatch(r"[0-9a-f]{40}", head)
+    ):
+        raise RecusaDeReconciliacao(
+            "informe número de PR e SHA completo do HEAD a conferir"
+        )
+    local = _git_da_fila(
+        raiz, "rev-parse", "HEAD", para_que="identificar o checkout do candidato"
+    ).strip()
     if local != head:
-        raise RecusaDeReconciliacao("o checkout não é o HEAD informado; use pull_request.head.sha e refaça a medição")
-    sujo = _git_da_fila(raiz, "status", "--porcelain=v1", "--untracked-files=all", "--ignored", "--", "fila/tarefas", "fila/eventos", "painel/registros", para_que="conferir as fontes embarcadas no HEAD")
+        raise RecusaDeReconciliacao(
+            "o checkout não é o HEAD informado; use pull_request.head.sha e refaça a medição"
+        )
+    sujo = _git_da_fila(
+        raiz,
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        "--ignored",
+        "--",
+        "fila/tarefas",
+        "fila/eventos",
+        "painel/registros",
+        para_que="conferir as fontes embarcadas no HEAD",
+    )
     if sujo.strip():
-        raise RecusaDeReconciliacao("fila ou livro diferem do HEAD; embarque o recibo e os eventos antes de conferir")
-    origem = _git_da_fila(CI.parent, "remote", "get-url", "origin", para_que="identificar a origem confiável do portão").strip()
+        raise RecusaDeReconciliacao(
+            "fila ou livro diferem do HEAD; embarque o recibo e os eventos antes de conferir"
+        )
+    origem = _git_da_fila(
+        CI.parent,
+        "remote",
+        "get-url",
+        "origin",
+        para_que="identificar a origem confiável do portão",
+    ).strip()
     url_origem = urlsplit(origem)
     caminho = url_origem.path.strip("/") if url_origem.hostname == "github.com" else ""
     if not caminho:
-        scp = re.fullmatch(r"git@github\.com:([\w.-]+/[\w.-]+)", origem.removesuffix(".git"))
+        scp = re.fullmatch(
+            r"git@github\.com:([\w.-]+/[\w.-]+)", origem.removesuffix(".git")
+        )
         caminho = scp.group(1) if scp else ""
     repositorio = caminho.removesuffix(".git")
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", repositorio):
-        raise ErroDeInstrumentacao("a origem confiável do portão não identifica um repositório GitHub")
+        raise ErroDeInstrumentacao(
+            "a origem confiável do portão não identifica um repositório GitHub"
+        )
     pr = estado_da_entrega._api(CI.parent, f"pulls/{numero}")
-    if not isinstance(pr, dict) or pr.get("number") != numero or pr.get("state") != "open":
-        raise ErroDeInstrumentacao("o PR aberto não foi identificado; confira o acesso ao GitHub e repita")
+    if (
+        not isinstance(pr, dict)
+        or pr.get("number") != numero
+        or pr.get("state") != "open"
+    ):
+        raise ErroDeInstrumentacao(
+            "o PR aberto não foi identificado; confira o acesso ao GitHub e repita"
+        )
     cabeca, base = pr.get("head"), pr.get("base")
     base_sha = base.get("sha") if isinstance(base, dict) else None
     base_repo = base.get("repo") if isinstance(base, dict) else None
-    if (not isinstance(cabeca, dict) or not re.fullmatch(r"[0-9a-f]{40}", str(base_sha or ""))
-            or not isinstance(base_repo, dict) or base_repo.get("full_name") != repositorio):
-        raise ErroDeInstrumentacao("a base ou o HEAD do PR não vieram completos; repita a consulta")
+    if (
+        not isinstance(cabeca, dict)
+        or not re.fullmatch(r"[0-9a-f]{40}", str(base_sha or ""))
+        or not isinstance(base_repo, dict)
+        or base_repo.get("full_name") != repositorio
+    ):
+        raise ErroDeInstrumentacao(
+            "a base ou o HEAD do PR não vieram completos; repita a consulta"
+        )
     if cabeca.get("sha") != head:
-        raise RecusaDeReconciliacao("o HEAD do PR diverge do checkout; atualize a revisão e repita")
+        raise RecusaDeReconciliacao(
+            "o HEAD do PR diverge do checkout; atualize a revisão e repita"
+        )
     url = pr.get("html_url")
     if url != f"https://github.com/{repositorio}/pull/{numero}":
-        raise ErroDeInstrumentacao("a URL do PR não identifica a entrega consultada; confira o repositório")
+        raise ErroDeInstrumentacao(
+            "a URL do PR não identifica a entrega consultada; confira o repositório"
+        )
     tarefas, eventos = _carregar_ou_parar(raiz)
-    candidatas = {ev["tarefa"] for ev in eventos if ev["evento"] == "submetida" and ev.get("pr") == url}
-    vinculadas = [ultima_submissao(eventos, tid) for tid in candidatas if tid in tarefas]
+    candidatas = {
+        ev["tarefa"]
+        for ev in eventos
+        if ev["evento"] == "submetida" and ev.get("pr") == url
+    }
+    vinculadas = [
+        ultima_submissao(eventos, tid) for tid in candidatas if tid in tarefas
+    ]
     vinculadas = [ev for ev in vinculadas if ev and ev.get("pr") == url]
     if len(vinculadas) != 1:
-        raise RecusaDeReconciliacao("o PR não tem uma última submissão única na fila; registre a entrega pelo rito")
+        raise RecusaDeReconciliacao(
+            "o PR não tem uma última submissão única na fila; registre a entrega pelo rito"
+        )
     submissao = vinculadas[0]
     tid = submissao["tarefa"]
     if problemas_da_submissao(submissao):
-        raise RecusaDeReconciliacao("a submissão está incompleta; confira PR, revisão e árvore")
+        raise RecusaDeReconciliacao(
+            "a submissão está incompleta; confira PR, revisão e árvore"
+        )
     import pr as rito
+
     recibo = rito._registro_que_cita(raiz, numero, submissao["arvore"])
     if recibo is None:
-        raise RecusaDeReconciliacao("o recibo desta árvore não está no HEAD; conclua o rito do PR")
+        raise RecusaDeReconciliacao(
+            "o recibo desta árvore não está no HEAD; conclua o rito do PR"
+        )
     try:
         registro = rito.campos_lidos(recibo.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError, KeyError) as erro:
-        raise ErroDeInstrumentacao("o recibo não pôde ser lido; confira o livro e repita") from erro
+        raise ErroDeInstrumentacao(
+            "o recibo não pôde ser lido; confira o livro e repita"
+        ) from erro
     evidencia = registro.get("evidencia")
     marcador = f"{url}. Validação local: árvore {submissao['arvore']}; commit {submissao['revisao']}; "
-    if (registro.get("arquivo") != recibo.stem or registro.get("tarefa") != tid
-            or registro.get("tipo") != "entrega" or not isinstance(evidencia, str)
-            or not evidencia.startswith(marcador)
-            or not re.match(r"[1-9][0-9]* comando\(s\), exit 0\. Revisão, integração e publicação não verificadas\.", evidencia[len(marcador):])):
-        raise RecusaDeReconciliacao("o recibo não vincula TAR, PR, revisão e árvore; gere um recibo completo pelo rito")
+    if (
+        registro.get("arquivo") != recibo.stem
+        or registro.get("tarefa") != tid
+        or registro.get("tipo") != "entrega"
+        or not isinstance(evidencia, str)
+        or not evidencia.startswith(marcador)
+        or not re.match(
+            r"[1-9][0-9]* comando\(s\), exit 0\. Revisão, integração e publicação não verificadas\.",
+            evidencia[len(marcador) :],
+        )
+    ):
+        raise RecusaDeReconciliacao(
+            "o recibo não vincula TAR, PR, revisão e árvore; gere um recibo completo pelo rito"
+        )
     medicao = _medir_linhagem_candidato(raiz, submissao, head, base_sha)
     problemas = _problemas_do_candidato(submissao, medicao)
     if problemas:
         raise RecusaDeReconciliacao("; ".join(problemas))
-    return {"tarefa":tid,"pr":url,"head":head,"revisao":submissao["revisao"],"arvore":submissao["arvore"],"recibo":recibo.relative_to(raiz).as_posix()}
+    return {
+        "tarefa": tid,
+        "pr": url,
+        "head": head,
+        "revisao": submissao["revisao"],
+        "arvore": submissao["arvore"],
+        "recibo": recibo.relative_to(raiz).as_posix(),
+    }
 
 
 def provar_estado_terminal(estado: dict) -> None:
@@ -1746,7 +2032,21 @@ def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -
             "o registro de aceite não cita a prova da publicação correspondente"
         )
 
-    problemas = problemas_do_aceite_funcional(registro.get("aceite_funcional"))
+    funcional = registro.get("aceite_funcional")
+    efetiva = funcional.get("publicacao_efetiva") if isinstance(funcional, dict) else None
+    if efetiva is not None and (
+        not isinstance(efetiva, dict)
+        or any(efetiva.get(campo) not in citadas for campo in
+               ("run_imagem", "run_dados", "run_medicao"))
+    ):
+        raise RecusaDeReconciliacao("o registro não cita as fontes da imagem, dados e medição")
+    if isinstance(efetiva, dict) and (
+        str(funcional.get("revisao") or "") not in str(funcional.get("evidencia") or "")
+        or str(efetiva.get("revisao_dados") or "") not in str(funcional.get("evidencia") or "")
+        or str(efetiva.get("run_dados") or "") not in str(funcional.get("evidencia") or "")
+    ):
+        raise RecusaDeReconciliacao("a jornada não identifica a imagem e a origem dos dados vistos")
+    problemas = problemas_do_aceite_funcional(funcional)
     if problemas:
         raise RecusaDeReconciliacao(
             "; ".join(problemas) + "; registre a jornada ou comando executado, "
@@ -1767,6 +2067,170 @@ def urls_da_publicacao_comprovada(estado: dict, pr: str) -> list[str]:
             if isinstance(item, dict) and item.get("url")
         }
     )
+
+
+def provar_publicacao_efetiva(
+    raiz: Path, pr: str, integracao: str, funcional: dict
+) -> list[str]:
+    """Confere a imagem e os dados vistos após um merge, sem conceder aceite."""
+    prova = funcional.get("publicacao_efetiva")
+    if not isinstance(prova, dict) or set(prova) != {
+        "run_imagem", "run_dados", "run_medicao", "revisao_dados"
+    }:
+        raise RecusaDeReconciliacao("publicação efetiva exige imagem, dados e medição separados")
+    imagem_sha = funcional.get("revisao")
+    dados_sha = prova["revisao_dados"]
+    for sha in (integracao, imagem_sha, dados_sha):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(sha or "")):
+            raise RecusaDeReconciliacao("publicação efetiva exige revisões completas")
+
+    def ancestral(antes: str, depois: str) -> None:
+        comparacao = estado_da_entrega._api(raiz, f"compare/{antes}...{depois}")
+        if not isinstance(comparacao, dict) or comparacao.get("status") not in {"ahead", "identical"}:
+            raise RecusaDeReconciliacao("a revisão observada não descende da entrega integrada")
+
+    ancestral(integracao, imagem_sha)
+    ancestral(integracao, dados_sha)
+    prefixo = pr.split("/pull/")[0]
+
+    def run(campo: str, workflow: str, evento: str, sha: str, jobs: set[str]) -> dict:
+        url = prova[campo]
+        encontrado = re.fullmatch(re.escape(prefixo) + r"/actions/runs/([1-9][0-9]*)", str(url or ""))
+        if not encontrado:
+            raise RecusaDeReconciliacao(f"{campo} não é um run deste repositório")
+        numero = int(encontrado.group(1))
+        medido = estado_da_entrega._api(raiz, f"actions/runs/{numero}")
+        if (not isinstance(medido, dict)
+                or medido.get("id") != numero or medido.get("html_url") != url
+                or medido.get("path") != workflow or medido.get("event") != evento
+                or medido.get("head_branch") != "main" or medido.get("head_sha") != sha
+                or medido.get("status") != "completed" or medido.get("conclusion") != "success"):
+            raise RecusaDeReconciliacao(f"{campo} diverge da revisão ou do workflow oficial")
+        lidos = estado_da_entrega.jobs_por_nome_com_prova(
+            estado_da_entrega.consultar_jobs(raiz, medido)
+        )
+        if any(lidos.get(nome, {}).get("status") != "completed"
+               or lidos[nome].get("conclusion") != "success" for nome in jobs):
+            raise RecusaDeReconciliacao(f"{campo} não concluiu os jobs exigidos")
+        return medido
+
+    imagem = run("run_imagem", ".github/workflows/deploy-celula.yml", "push",
+                 imagem_sha, {"detectar", "portao-de-deploy", "deploy (admin)"})
+    dados_run = run("run_dados", ".github/workflows/deploy-celula.yml", "push",
+                    dados_sha, {"detectar", "portao-de-deploy", "publicar-dados-admin"})
+    numero_dados = dados_run.get("run_number")
+    if type(numero_dados) is not int or numero_dados < 1:
+        raise RecusaDeReconciliacao("run_dados não informa o número da publicação")
+    log_dados = executar(
+        ["gh", "run", "view", str(dados_run["id"]), "--attempt",
+         str(dados_run["run_attempt"]), "--log"], cwd=raiz,
+        descricao="ler a publicação oficial dos dados da fila", exigir_stdout=True,
+    ).stdout
+    sentinela = (
+        f"ADMIN-DADOS-PUBLICADOS: tipo=fila sha={dados_sha} run={numero_dados} "
+        f"ativo=/opt/plataforma/admin-dados/fila_{numero_dados}_{dados_sha}"
+    )
+    publicadas = [linha.strip() for linha in re.findall(
+        r"^publicar-dados-admin\tPublicar dados da fila na VPS\t\S+ (ADMIN-DADOS-[A-Z-]+:.*)$",
+        log_dados, re.M,
+    )]
+    if publicadas != [sentinela]:
+        raise RecusaDeReconciliacao(
+            "run_dados não confirma ADMIN-DADOS-PUBLICADOS da fila e revisão indicadas"
+        )
+    medicao_url = prova["run_medicao"]
+    medicao_id = re.fullmatch(re.escape(prefixo) + r"/actions/runs/([1-9][0-9]*)", str(medicao_url or ""))
+    if not medicao_id:
+        raise RecusaDeReconciliacao("run_medicao não é um run deste repositório")
+    medicao = estado_da_entrega._api(raiz, f"actions/runs/{int(medicao_id.group(1))}")
+    if not isinstance(medicao, dict) or not re.fullmatch(r"[0-9a-f]{40}", str(medicao.get("head_sha") or "")):
+        raise RecusaDeReconciliacao("run_medicao não informou a revisão da operação")
+    ancestral(imagem_sha, medicao["head_sha"])
+    ancestral(dados_sha, medicao["head_sha"])
+    run("run_medicao", ".github/workflows/operacoes-vps.yml", "workflow_dispatch",
+        medicao["head_sha"], {"medir"})
+    try:
+        medida_em = datetime.fromisoformat(medicao["created_at"].replace("Z", "+00:00"))
+        publicada_em = datetime.fromisoformat(imagem["updated_at"].replace("Z", "+00:00"))
+        dados_em = datetime.fromisoformat(dados_run["updated_at"].replace("Z", "+00:00"))
+        if any(instante.tzinfo is None for instante in (medida_em, publicada_em, dados_em)):
+            raise ValueError("instante sem fuso")
+    except (KeyError, TypeError, ValueError, AttributeError):
+        raise RecusaDeReconciliacao("runs não informam instantes confiáveis da publicação e medição") from None
+    if medida_em < max(publicada_em, dados_em):
+        raise RecusaDeReconciliacao("a medição da VPS antecede a publicação da imagem ou dos dados")
+
+    log = executar(
+        ["gh", "run", "view", str(medicao["id"]), "--attempt",
+         str(medicao["run_attempt"]), "--log"], cwd=raiz,
+        descricao="ler a medição oficial da imagem", exigir_stdout=True,
+    ).stdout
+    linhas = re.findall(
+        r"^medir\tConferir evidência e publicar resumo\t\S+ (\{.*\})$", log, re.M
+    )
+    try:
+        medidas = [json.loads(linha) for linha in linhas]
+    except json.JSONDecodeError as erro:
+        raise ErroDeInstrumentacao("saída da medição VPS ilegível", str(erro)) from erro
+    if len(medidas) != 1 or not isinstance(medidas[0], dict) or medidas[0].get("resultado") != "PASS":
+        raise RecusaDeReconciliacao("a medição oficial não comprova a imagem admin")
+    from operacoes_vps import Falha, conferir_medicao
+    operacao = medidas[0].get("operacao")
+    origem = medidas[0].get("medicao")
+    if operacao == "estado-servico" and medidas[0].get("servico") == "admin":
+        dados_admin = origem
+    elif operacao == "estado-infra" and medidas[0].get("servico") == "plataforma":
+        if not isinstance(origem, dict):
+            raise RecusaDeReconciliacao("estado-infra não contém medição estruturada")
+        servicos = origem.get("servicos")
+        dados_admin = servicos.get("admin") if isinstance(servicos, dict) else None
+        imagem_admin = origem.get("imagem_admin")
+        if (not isinstance(imagem_admin, dict) or not isinstance(dados_admin, dict)
+                or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(dados_admin.get("imagem") or ""))
+                or imagem_admin.get("id") != dados_admin.get("imagem")
+                or imagem_admin.get("container_image") != dados_admin.get("imagem")
+                or origem.get("borda_http") != 200
+                or not isinstance(imagem_admin.get("repo_digests"), list)
+                or "ghcr.io/abundanciabr/plataforma-admin@" + dados_admin["imagem"]
+                not in imagem_admin["repo_digests"]):
+            raise RecusaDeReconciliacao("estado-infra não vincula admin à imagem em uso")
+    else:
+        raise RecusaDeReconciliacao("a operação oficial não mediu a imagem admin")
+    try:
+        dados = conferir_medicao("estado-servico", dados_admin)
+    except (Falha, KeyError, TypeError):
+        raise RecusaDeReconciliacao("a medição da imagem tem formato inválido") from None
+    if dados["estado"] != "running" or dados["saude"] != "healthy":
+        raise RecusaDeReconciliacao("a imagem observada não está saudável")
+
+    referencia = f"ghcr.io/abundanciabr/plataforma-admin:{imagem_sha}"
+    manifesto = executar(
+        ["docker", "buildx", "imagetools", "inspect", referencia,
+         "--format", "{{json .Manifest}}"], cwd=raiz,
+        descricao="conferir manifesto da imagem publicada", exigir_stdout=True,
+    ).stdout
+    try:
+        digest = json.loads(manifesto)["digest"]
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+            raise ValueError("digest inválido")
+    except (ValueError, TypeError, KeyError) as erro:
+        raise ErroDeInstrumentacao("manifesto da imagem ilegível", str(erro)) from erro
+    identidades = {digest}
+    if dados["imagem"] not in identidades:
+        bruto = executar(
+            ["docker", "buildx", "imagetools", "inspect",
+             f"ghcr.io/abundanciabr/plataforma-admin@{digest}", "--raw"], cwd=raiz,
+            descricao="conferir conteúdo do manifesto publicado", exigir_stdout=True,
+        ).stdout
+        try:
+            conteudo = json.loads(bruto)
+            identidades.add(conteudo.get("config", {}).get("digest"))
+            identidades.update(item.get("digest") for item in conteudo.get("manifests", []))
+        except (ValueError, TypeError, AttributeError) as erro:
+            raise ErroDeInstrumentacao("conteúdo do manifesto ilegível", str(erro)) from erro
+    if dados["imagem"] not in identidades:
+        raise RecusaDeReconciliacao("a imagem da VPS diverge do tag publicado no GHCR")
+    return [prova[c] for c in ("run_imagem", "run_dados", "run_medicao")]
 
 
 def _ler_registro(raiz: Path, caminho: str) -> dict:
@@ -1905,17 +2369,165 @@ def provar_reconciliacao(
             )
         linhagem = "linhagem comprovada"
 
-    provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
-    registro = carregar_aceite(raiz, aceite_registro, merge, provas)
+    provas_originais = urls_da_publicacao_comprovada(estado, submissao["pr"])
+    registro = carregar_aceite(raiz, aceite_registro, merge, provas_originais)
     if registro.get("tarefa") != submissao["tarefa"]:
         raise RecusaDeReconciliacao(
             "o registro de aceite funcional pertence a outra tarefa ou não informa a TAR; "
             "registre a jornada desta tarefa antes de reconciliar"
         )
+    funcional = registro.get("aceite_funcional")
     ambiente = "producao" if estado["estado"] == "PUBLICADO" else "repositorio-integrado"
-    problemas = problemas_do_aceite_funcional(registro.get("aceite_funcional"), merge, ambiente)
+    posterior = (estado["estado"] == "PUBLICADO" and isinstance(funcional, dict)
+                 and funcional.get("ambiente") == "producao"
+                 and funcional.get("revisao") != merge)
+    tecnico = (estado["estado"] == "PUBLICADO" and isinstance(funcional, dict)
+               and funcional.get("ambiente") == "repositorio-integrado"
+               and funcional.get("revisao") == merge)
+    provas = provas_originais
+    if posterior:
+        if not isinstance(funcional.get("publicacao_efetiva"), dict):
+            raise RecusaDeReconciliacao(
+                "aceite funcional posterior exige prova da imagem, dados e medição"
+            )
+        provas = list(dict.fromkeys(provas_originais + provar_publicacao_efetiva(
+            raiz, submissao["pr"], merge, funcional
+        )))
+        provar_conteudo_do_aceite(registro, provas)
+    elif isinstance(funcional, dict) and funcional.get("publicacao_efetiva") is not None:
+        raise RecusaDeReconciliacao(
+            "prova de revisão posterior não cabe no aceite da revisão integrada"
+        )
+    elif tecnico:
+        if (not isinstance(funcional.get("comando"), str) or not funcional["comando"].strip()
+                or funcional["comando"] not in str(funcional.get("evidencia") or "")
+                or not re.search(r"\b(?:PASS|passed)\b", str(funcional.get("evidencia") or ""))):
+            raise RecusaDeReconciliacao(
+                "aceite funcional técnico exige comando executado e resultado PASS"
+            )
+        arquivos = [item.get("path") for item in pr.get("files", [])]
+        artefato_do_rito = re.compile(
+            r"(?:fila/(?:contratos|eventos|tarefas)/[^/]+\.json|painel/registros/[^/]+\.js)\Z"
+        )
+        if not arquivos or any(
+            not isinstance(caminho, str)
+            or not (caminho.startswith("ci/") or artefato_do_rito.fullmatch(caminho))
+            for caminho in arquivos
+        ):
+            raise RecusaDeReconciliacao(
+                "aceite funcional no repositório exige código em ci/ e artefatos do rito"
+            )
+        metadados_pr = estado_da_entrega._api(raiz, f"pulls/{numero}")
+        if (not isinstance(metadados_pr, dict)
+                or type(metadados_pr.get("changed_files")) is not int
+                or metadados_pr["changed_files"] != len(arquivos)):
+            raise RecusaDeReconciliacao(
+                "aceite funcional técnico exige a lista completa dos arquivos do PR"
+            )
+        artefatos = [caminho for caminho in arquivos if not caminho.startswith("ci/")]
+        if artefatos:
+            arquivos_api = estado_da_entrega._api(raiz, f"pulls/{numero}/files", paginas=True)
+            if (not isinstance(arquivos_api, list)
+                    or len(arquivos_api) != len(arquivos)
+                    or {a.get("filename") for a in arquivos_api if isinstance(a, dict)} != set(arquivos)):
+                raise RecusaDeReconciliacao(
+                    "aceite técnico exige inventário completo dos artefatos do rito"
+                )
+            tarefa = submissao["tarefa"]
+            numero_tarefa = tarefa.removeprefix("TAR-")
+            tarefas = [c for c in artefatos if c.startswith(f"fila/tarefas/{numero_tarefa}-")]
+            if len(tarefas) != 1:
+                raise RecusaDeReconciliacao("artefatos do rito exigem a tarefa correspondente")
+            slug_tarefa = Path(tarefas[0]).stem
+            submissao_vista = False
+            for arquivo in arquivos_api:
+                caminho = arquivo["filename"]
+                if caminho.startswith("ci/"):
+                    continue
+                if arquivo.get("status") != "added":
+                    raise RecusaDeReconciliacao("artefato do rito não pode alterar arquivo existente")
+                conteudo = _git_da_fila(
+                    raiz, "show", f"{merge}:{caminho}",
+                    para_que="conferir o artefato do rito na revisão integrada",
+                )
+                if caminho.startswith("painel/registros/"):
+                    inicio = "(function(){ (window.REGISTROS = window.REGISTROS || []).push({\n"
+                    fim = "\n}); })();"
+                    if not conteudo.startswith(inicio) or not conteudo.rstrip().endswith(fim):
+                        raise RecusaDeReconciliacao("registro do rito contém código fora do objeto literal")
+                    corpo = conteudo[len(inicio):len(conteudo.rstrip()) - len(fim)]
+                    registro_rito = {}
+                    for linha in corpo.splitlines():
+                        campo = re.fullmatch(r"  ([a-z_]+): (.+),?", linha)
+                        if not campo or campo[1] in registro_rito:
+                            raise RecusaDeReconciliacao("registro do rito não é um objeto literal simples")
+                        try:
+                            registro_rito[campo[1]] = json.loads(campo[2].removesuffix(","))
+                        except json.JSONDecodeError as erro:
+                            raise RecusaDeReconciliacao("registro do rito tem campo inválido") from erro
+                    if (registro_rito.get("arquivo") != Path(caminho).stem
+                            or registro_rito.get("tarefa") != tarefa
+                            or registro_rito.get("tipo") != "entrega"
+                            or registro_rito.get("gravidade") != "info"):
+                        raise RecusaDeReconciliacao("registro do rito não pertence à entrega técnica")
+                    script = (
+                        "const l=require('./painel/logica.js');"
+                        "const a=require('./painel/areas.json').areas;"
+                        "const r=JSON.parse(process.argv[1]);"
+                        "process.stdout.write(JSON.stringify(l.validarRegistros([r],a)));"
+                    )
+                    erros_registro = json.loads(executar(
+                        ["node", "-e", script, json.dumps(registro_rito, ensure_ascii=False)],
+                        cwd=raiz, descricao="validar objeto literal do registro",
+                        exigir_stdout=True,
+                    ).stdout)
+                    if not isinstance(erros_registro, list) or erros_registro:
+                        raise RecusaDeReconciliacao("registro do rito não passa no esquema do livro")
+                else:
+                    try:
+                        dado_rito = json.loads(conteudo)
+                    except json.JSONDecodeError as erro:
+                        raise RecusaDeReconciliacao("JSON do rito inválido") from erro
+                    if not isinstance(dado_rito, dict):
+                        raise RecusaDeReconciliacao("artefato do rito exige objeto JSON")
+                    if caminho.startswith("fila/tarefas/"):
+                        valido = (caminho == tarefas[0] and dado_rito.get("id") == tarefa
+                                  and dado_rito.get("arquivo") == slug_tarefa
+                                  and dado_rito.get("toca") == ["ci"])
+                    elif caminho.startswith("fila/eventos/"):
+                        tipo_evento = dado_rito.get("evento")
+                        valido = (f"-TAR-{numero_tarefa}-" in caminho
+                                  and dado_rito.get("tarefa") == tarefa
+                                  and dado_rito.get("arquivo") == Path(caminho).stem
+                                  and tipo_evento in {"explicada", "reivindicada", "contrato_execucao",
+                                                      "checkpoint", "submetida"}
+                                  and caminho.endswith(f"-{tipo_evento}.json")
+                                  and (tipo_evento != "submetida"
+                                       or not problemas_da_submissao(dado_rito)))
+                        if tipo_evento == "submetida" and valido:
+                            submissao_vista |= all(
+                                dado_rito.get(campo) == submissao[campo]
+                                for campo in ("pr", "revisao", "arvore")
+                            )
+                    else:
+                        valido = (caminho.startswith(f"fila/contratos/{slug_tarefa}")
+                                  and re.fullmatch(re.escape(slug_tarefa) + r"(?:-v[1-9][0-9]*)?\.json",
+                                                   Path(caminho).name)
+                                  and isinstance(dado_rito.get("objetivo"), str)
+                                  and isinstance(dado_rito.get("entregaveis"), list))
+                    if not valido:
+                        raise RecusaDeReconciliacao("artefato do rito pertence a outra tarefa")
+            if not submissao_vista:
+                raise RecusaDeReconciliacao("artefatos do rito não incluem a submissão atual")
+        provar_suite_no_head(raiz, head)
+        ambiente = "repositorio-integrado"
+    problemas = problemas_do_aceite_funcional(
+        funcional, None if posterior else merge, ambiente
+    )
     if problemas:
-        raise RecusaDeReconciliacao("; ".join(problemas) + "; refaça a verificação no alvo publicado")
+        raise RecusaDeReconciliacao(
+            "; ".join(problemas) + "; refaça a verificação no alvo publicado"
+        )
     aceite_entrega = {
         **{c: submissao[c] for c in ("tarefa", "pr", "revisao", "arvore")},
         "integracao": merge,
@@ -1932,7 +2544,9 @@ def provar_reconciliacao(
         raise RecusaDeReconciliacao("; ".join(problemas))
     problemas = problemas_do_registro_canonico(aceite_entrega, registro)
     if problemas:
-        raise RecusaDeReconciliacao("; ".join(problemas) + "; complete o registro canônico antes de reconciliar")
+        raise RecusaDeReconciliacao(
+            "; ".join(problemas) + "; complete o registro canônico antes de reconciliar"
+        )
     publicacao = ",".join(provas)
     evidencia = (
         f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
@@ -1951,11 +2565,15 @@ def comprovar_aceites_publicados(raiz: Path, eventos: list[dict]) -> dict:
         if ev.get("evento") != "concluida" or prova is None:
             continue
         if ev.get("_aceite_verificado") is not True:
-            raise RecusaDeReconciliacao("o aceite não passou pela leitura do registro canônico")
+            raise RecusaDeReconciliacao(
+                "o aceite não passou pela leitura do registro canônico"
+            )
         digest = hash_do_conteudo(prova)
         if digest not in conferidas:
             _, verificado_em, fonte = provar_reconciliacao(
-                raiz, ultima_submissao(eventos, ev["tarefa"]), prova["registro"],
+                raiz,
+                ultima_submissao(eventos, ev["tarefa"]),
+                prova["registro"],
                 retroativa=prova.get("retroativa", ""),
             )
             if fonte != prova or verificado_em != ev["verificado_em"]:
@@ -2100,8 +2718,17 @@ def _escrever_evento(
     extra: dict | None = None,
 ) -> Path:
     dados = montar_evento(
-        tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao,
-        agora, prova_da_guarda, extra,
+        tid,
+        evento,
+        quem,
+        detalhe,
+        evidencia,
+        verificado_em,
+        espera,
+        explicacao,
+        agora,
+        prova_da_guarda,
+        extra,
     )
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
@@ -2177,7 +2804,9 @@ def eventos_no_diff(remessas: list[dict]) -> list[dict]:
     achados: list[dict] = []
     for remessa in remessas or []:
         caminho = str(remessa.get("filename") or "").replace("\\", "/")
-        if not (caminho.startswith(PASTA_DE_EVENTOS_NO_DIFF) and caminho.endswith(".json")):
+        if not (
+            caminho.startswith(PASTA_DE_EVENTOS_NO_DIFF) and caminho.endswith(".json")
+        ):
             continue
         corpo = "\n".join(
             linha[1:]
@@ -2210,7 +2839,12 @@ def _em_ordem(eventos: list[dict]) -> list[dict]:
 
 
 def _silencio(tid: str, motivo: str) -> dict:
-    return {"tarefa": tid, "desfecho": SOMBRA_SILENCIO, "motivo": motivo, "evento": None}
+    return {
+        "tarefa": tid,
+        "desfecho": SOMBRA_SILENCIO,
+        "motivo": motivo,
+        "evento": None,
+    }
 
 
 def evento_de_conclusao_em_sombra(
@@ -2244,7 +2878,9 @@ def evento_de_conclusao_em_sombra(
     eventos = carregar_eventos(raiz, tarefas, erros)
     if erros:
         # Não conseguir ler a fila nunca vira "então pode gravar" (INV-CI01).
-        return [_silencio(tid, "a fila está inválida no disco de quem julga") for tid in ids]
+        return [
+            _silencio(tid, "a fila está inválida no disco de quem julga") for tid in ids
+        ]
 
     do_pr = eventos_no_diff(arquivos_do_diff)
     ja_a_bordo = {
@@ -2314,8 +2950,14 @@ def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
     `cmd_submeter` que ele próprio acabou de criar, e pararia de atualizar a
     submissão.
     """
-    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
-    nossas = [e for e in finais if e["evento"] == "concluida" and str(e.get("evidencia") or "") == str(pr)]
+    finais = [
+        e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS
+    ]
+    nossas = [
+        e
+        for e in finais
+        if e["evento"] == "concluida" and str(e.get("evidencia") or "") == str(pr)
+    ]
     return bool(finais) and len(finais) == len(nossas)
 
 
@@ -2415,68 +3057,92 @@ def guarda_declarada(raiz: Path, origem: str) -> tuple[list[str], str]:
     numero = RE_ORIGEM_AUTOMATICA.fullmatch(str(origem or "").strip())[1]
     caminho = armadilha_da_origem(raiz, origem)
     if caminho is None:
-        return ([
-            f"a origem aponta armadilhas/{numero}, que não existe (ou existe em "
-            f"duplicata) nesta árvore. Confira o número na origem da tarefa, ou "
-            f"traga o catálogo para a bancada antes de concluir"
-        ], "")
+        return (
+            [
+                f"a origem aponta armadilhas/{numero}, que não existe (ou existe em "
+                f"duplicata) nesta árvore. Confira o número na origem da tarefa, ou "
+                f"traga o catálogo para a bancada antes de concluir"
+            ],
+            "",
+        )
     linhas = caminho.read_text(encoding="utf-8").splitlines()
     frontmatter = indice_de_armadilhas.ler_frontmatter(linhas, caminho.name)
     if frontmatter is None:
-        return ([
-            f"{caminho.name} é entrada legada, sem frontmatter, e por isso não "
-            f"declara guarda nenhuma. Migre a entrada para schema_version 2 com "
-            f"'guarda: {{tipo: ..., dono: ...}}' antes de concluir"
-        ], "")
+        return (
+            [
+                f"{caminho.name} é entrada legada, sem frontmatter, e por isso não "
+                f"declara guarda nenhuma. Migre a entrada para schema_version 2 com "
+                f"'guarda: {{tipo: ..., dono: ...}}' antes de concluir"
+            ],
+            "",
+        )
     guarda = frontmatter.get("guarda") or {}
     tipo = guarda.get("tipo")
     if tipo in (None, "nenhum", "sino"):
-        return ([
-            f"{caminho.name} declara guarda {tipo!r}, que não reprova nada: sino "
-            f"avisa e 'nenhum' assume o buraco. Construa a guarda mecânica e "
-            f"atualize o frontmatter da armadilha antes de concluir esta tarefa"
-        ], "")
+        return (
+            [
+                f"{caminho.name} declara guarda {tipo!r}, que não reprova nada: sino "
+                f"avisa e 'nenhum' assume o buraco. Construa a guarda mecânica e "
+                f"atualize o frontmatter da armadilha antes de concluir esta tarefa"
+            ],
+            "",
+        )
     dono = str(guarda.get("dono") or "").strip()
     if not dono:
-        return ([
-            f"{caminho.name} declara guarda {tipo!r} sem 'dono', então ninguém "
-            f"sabe qual arquivo provar. Acrescente 'dono: <caminho do teste>' ao "
-            f"frontmatter da armadilha"
-        ], "")
+        return (
+            [
+                f"{caminho.name} declara guarda {tipo!r} sem 'dono', então ninguém "
+                f"sabe qual arquivo provar. Acrescente 'dono: <caminho do teste>' ao "
+                f"frontmatter da armadilha"
+            ],
+            "",
+        )
     if not (dono.endswith(".py") and Path(dono).name.startswith("test_")):
-        return ([
-            f"{caminho.name} declara 'dono: {dono}', que não é um teste Python: a "
-            f"prova de mutação roda pytest, e o arquivo protegido já se declara no "
-            f"marcador '# guarda: {dono}:<linha>' de dentro do teste. Esta tarefa "
-            f"só fecha com 'dono' apontando o teste (caminho de um test_*.py) e "
-            f"'detector' nomeando o teste que reprova sabotado"
-        ], "")
+        return (
+            [
+                f"{caminho.name} declara 'dono: {dono}', que não é um teste Python: a "
+                f"prova de mutação roda pytest, e o arquivo protegido já se declara no "
+                f"marcador '# guarda: {dono}:<linha>' de dentro do teste. Esta tarefa "
+                f"só fecha com 'dono' apontando o teste (caminho de um test_*.py) e "
+                f"'detector' nomeando o teste que reprova sabotado"
+            ],
+            "",
+        )
     detector = str(guarda.get("detector") or "").strip()
     if not detector:
-        return ([
-            f"{caminho.name} declara guarda em '{dono}' sem 'detector', e provar o "
-            f"arquivo inteiro provaria qualquer teste dele. Acrescente "
-            f"'detector: test_<nome do teste que reprova>' ao frontmatter da "
-            f"armadilha"
-        ], "")
+        return (
+            [
+                f"{caminho.name} declara guarda em '{dono}' sem 'detector', e provar o "
+                f"arquivo inteiro provaria qualquer teste dele. Acrescente "
+                f"'detector: test_<nome do teste que reprova>' ao frontmatter da "
+                f"armadilha"
+            ],
+            "",
+        )
     if not (raiz / dono).is_file():
-        return ([
-            f"{caminho.name} aponta a guarda '{dono}', que não existe nesta "
-            f"árvore. Corrija o caminho no frontmatter da armadilha, ou traga o "
-            f"arquivo para a bancada"
-        ], "")
+        return (
+            [
+                f"{caminho.name} aponta a guarda '{dono}', que não existe nesta "
+                f"árvore. Corrija o caminho no frontmatter da armadilha, ou traga o "
+                f"arquivo para a bancada"
+            ],
+            "",
+        )
     # Oito entradas vivas escrevem `detector: test_x: a explicação`, e colar o
     # campo cru produziria um node ID com a prosa dentro. Quem sabe separar o
     # nome do teste do resto é o índice, e ele é o único que sabe: duas leituras
     # do mesmo campo divergiriam no primeiro dia em que alguém mexesse numa só.
     arquivo, teste = indice_de_armadilhas.alvo_do_detector(detector, dono)
     if not teste:
-        return ([
-            f"{caminho.name} declara 'detector: {detector}', que não nomeia um "
-            f"teste de dentro de '{dono}': provar o arquivo inteiro provaria "
-            f"qualquer teste dele. Escreva 'detector: test_<nome do teste que "
-            f"reprova sabotado>'; `grep -n 'def test_' {dono}` mostra quais existem"
-        ], "")
+        return (
+            [
+                f"{caminho.name} declara 'detector: {detector}', que não nomeia um "
+                f"teste de dentro de '{dono}': provar o arquivo inteiro provaria "
+                f"qualquer teste dele. Escreva 'detector: test_<nome do teste que "
+                f"reprova sabotado>'; `grep -n 'def test_' {dono}` mostra quais existem"
+            ],
+            "",
+        )
     return ([], f"{arquivo or dono}::{teste}")
 
 
@@ -2532,14 +3198,17 @@ def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict
         # worktree do git e a sabotagem de `.sh` chama o bash sondado da casa,
         # e nenhum dos dois levanta `ProvaInvalida`. Deixar a exceção subir
         # trocava a recusa explicada por um traceback.
-        return ([
-            f"a prova de '{node}' não pôde ser feita: "
-            f"{type(erro).__name__}: {erro}. Rode "
-            f"`python ci/provar_guardas.py {node.split('::')[0]}` para ver a "
-            f"mesma falha com o log inteiro: se ela citar o marcador, conserte "
-            f"o '# guarda: caminho:linha' do teste; se citar git ou bash, é a "
-            f"bancada que precisa estar limpa e com o bash no PATH"
-        ], {})
+        return (
+            [
+                f"a prova de '{node}' não pôde ser feita: "
+                f"{type(erro).__name__}: {erro}. Rode "
+                f"`python ci/provar_guardas.py {node.split('::')[0]}` para ver a "
+                f"mesma falha com o log inteiro: se ela citar o marcador, conserte "
+                f"o '# guarda: caminho:linha' do teste; se citar git ou bash, é a "
+                f"bancada que precisa estar limpa e com o bash no PATH"
+            ],
+            {},
+        )
     cadeia = {
         "armadilha": RE_ORIGEM_AUTOMATICA.fullmatch(origem.strip())[1],
         "revisao": evidencia.get("revisao", ""),
@@ -2558,11 +3227,14 @@ def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict
         ],
     }
     if estado is not Estado.PASS:
-        return ([
-            f"a guarda '{node}' não fechou o ciclo PASS→FAIL→PASS (veredito "
-            f"{estado.value}). Rode python ci/provar_guardas.py {dono} e leia o "
-            f"log apontado antes de tentar concluir de novo"
-        ], cadeia)
+        return (
+            [
+                f"a guarda '{node}' não fechou o ciclo PASS→FAIL→PASS (veredito "
+                f"{estado.value}). Rode python ci/provar_guardas.py {dono} e leia o "
+                f"log apontado antes de tentar concluir de novo"
+            ],
+            cadeia,
+        )
     return ([], cadeia)
 
 
@@ -2644,7 +3316,11 @@ def problemas_da_cadeia_automatica(raiz: Path, tarefa: dict, prova) -> list[str]
                 f"sabotada, e guarda que não morde não prova nada. Rode python "
                 f"ci/provar_guardas.py {dono}, conserte o teste e conclua de novo"
             )
-        ciclo = (guarda.get("baseline"), guarda.get("mutacao"), guarda.get("restauracao"))
+        ciclo = (
+            guarda.get("baseline"),
+            guarda.get("mutacao"),
+            guarda.get("restauracao"),
+        )
         if ciclo != (Estado.PASS.value, Estado.FAIL.value, Estado.PASS.value):
             achados.append(
                 f"a guarda de armadilhas/{numero}, '{teste}', registrou {ciclo}, e "
@@ -2660,7 +3336,9 @@ def cmd_criar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    responsabilidade = normalizar_responsabilidade(getattr(args, "responsabilidade", ""))
+    responsabilidade = normalizar_responsabilidade(
+        getattr(args, "responsabilidade", "")
+    )
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -2699,16 +3377,31 @@ def cmd_criar(raiz: Path, args) -> int:
         print("quatro campos ela chega lá como um título que ninguém entende.")
         return 1
     if not responsabilidade:
-        print("RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada.")
+        print(
+            "RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada."
+        )
         return 1
     cadastro = raiz / "painel" / "responsabilidades.json"
     if not cadastro.exists():
-        print("RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa.")
+        print(
+            "RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa."
+        )
         return 1
     try:
-        problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
-    except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
-        print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+        problemas_da_responsabilidade = responsabilidades.validar_entrega(
+            raiz, responsabilidade
+        )
+    except (
+        FileNotFoundError,
+        json.JSONDecodeError,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+    ) as erro:
+        print(
+            f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita."
+        )
         return 1
     if problemas_da_responsabilidade:
         print(f"RECUSADO: responsabilidade {responsabilidade} não é válida.")
@@ -2723,7 +3416,8 @@ def cmd_criar(raiz: Path, args) -> int:
         gemea = origem_ja_na_fila(tarefas, origem)
         if gemea:
             fechamentos = [
-                e for e in eventos
+                e
+                for e in eventos
                 if e.get("tarefa") == gemea and e.get("evento") == "concluida"
             ]
             for fechamento in fechamentos:
@@ -2838,7 +3532,9 @@ def cmd_explicar(raiz: Path, args) -> int:
             "importancia": args.importancia,
         },
     )
-    print(f"📖 {tid} explicada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    print(
+        f"📖 {tid} explicada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
+    )
     print(f"   importância {args.importancia}: {args.o_que_e}")
     return 0
 
@@ -2860,11 +3556,14 @@ def _json_arquivo(caminho: str, campo: str) -> dict:
 
 
 def recusar_execucao_terminal(eventos: list[dict], tid: str) -> bool:
-    if not any(e.get("tarefa") == tid and e.get("evento") in EVENTOS_TERMINAIS
-               for e in eventos):
+    if not any(
+        e.get("tarefa") == tid and e.get("evento") in EVENTOS_TERMINAIS for e in eventos
+    ):
         return False
     print(f"RECUSADO: {tid} já terminou; nenhum evento de execução foi escrito.")
-    print("Registre a descoberta em uma tarefa aberta ou crie uma nova tarefa vinculada.")
+    print(
+        "Registre a descoberta em uma tarefa aberta ou crie uma nova tarefa vinculada."
+    )
     return True
 
 
@@ -2890,7 +3589,9 @@ def cmd_contrato_execucao(raiz: Path, args) -> int:
     caminho = _escrever_evento(
         raiz, tid, CONTRATO_EXECUCAO, args.quem, extra={"contrato": contrato}
     )
-    print(f"{tid}: contrato de execução registrado. Evento: {caminho.relative_to(raiz)}")
+    print(
+        f"{tid}: contrato de execução registrado. Evento: {caminho.relative_to(raiz)}"
+    )
     return 0
 
 
@@ -2926,9 +3627,13 @@ def cmd_descoberta(raiz: Path, args) -> int:
         f"Evento: {caminho.relative_to(raiz)}"
     )
     if args.classificacao in ("C", "D"):
-        print("Ela não amplia o plano ativo; registre trabalho novo separado se precisar.")
+        print(
+            "Ela não amplia o plano ativo; registre trabalho novo separado se precisar."
+        )
     if args.classificacao == "E":
-        print("Mudança material de escopo: preserve o contrato anterior e peça decisão.")
+        print(
+            "Mudança material de escopo: preserve o contrato anterior e peça decisão."
+        )
     return 0
 
 
@@ -2978,9 +3683,7 @@ def cmd_tentativa_sem_progresso(raiz: Path, args) -> int:
         and execucao["tentativas_sem_progresso"]["consecutivas_no_mesmo_bloqueio"]
         >= LIMITE_TENTATIVAS_SEM_PROGRESSO
     ):
-        print(
-            "RECUSADO: limite de tentativas sem avanço atingido para este bloqueio."
-        )
+        print("RECUSADO: limite de tentativas sem avanço atingido para este bloqueio.")
         print("Registre um checkpoint com mudança de abordagem ou bloqueie a tarefa.")
         return 1
     tentativa = (
@@ -3028,10 +3731,16 @@ def cmd_snapshot_publicado(raiz: Path) -> int:
         print("RECUSADO: " + str(erro))
         return 1
     estados = calcular_estados(tarefas, eventos)
-    print(json.dumps({
-        "estados": tarefas_para_snapshot(tarefas, eventos, estados),
-        "aceites": aceites,
-    }, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "estados": tarefas_para_snapshot(tarefas, eventos, estados),
+                "aceites": aceites,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -3050,7 +3759,11 @@ def cmd_listar(raiz: Path, args) -> int:
     if not tarefas:
         print("a fila está vazia.")
         return 0
-    modo = "ao vivo (arquivos + reservas + PRs)" if args.ao_vivo else "só arquivos (use --ao-vivo para reservas e PRs)"
+    modo = (
+        "ao vivo (arquivos + reservas + PRs)"
+        if args.ao_vivo
+        else "só arquivos (use --ao-vivo para reservas e PRs)"
+    )
     print(f"A FILA DE TRABALHO — {len(tarefas)} tarefa(s) · {modo}\n")
     for tid in sorted(tarefas):
         t, e = tarefas[tid], estados[tid]
@@ -3076,7 +3789,9 @@ def cmd_zelar(raiz: Path, args) -> int:
     print(f"🏷️  Zelador: {len(escritos)} reivindicação(ões) órfã(s) rotulada(s).")
     for caminho in escritos:
         print(f"   {caminho.relative_to(raiz)}")
-    print("Nenhum ramo, PR ou reserva foi apagado. Commite os eventos no PR desta bancada.")
+    print(
+        "Nenhum ramo, PR ou reserva foi apagado. Commite os eventos no PR desta bancada."
+    )
     return 0
 
 
@@ -3089,8 +3804,12 @@ def cmd_pegar(raiz: Path, args) -> int:
         print(recusa)
         return 1
     if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
-        print("RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou.")
-        print("Atualize a bancada antes de pegar a tarefa; nenhuma reserva ou evento foi alterado.")
+        print(
+            "RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou."
+        )
+        print(
+            "Atualize a bancada antes de pegar a tarefa; nenhuma reserva ou evento foi alterado."
+        )
         return 1
     tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
@@ -3102,15 +3821,23 @@ def cmd_pegar(raiz: Path, args) -> int:
     escritos = rotular_orfaos(raiz, tarefas, eventos, reservas, prs, args.quem)
     if escritos:
         eventos = _carregar_ou_parar(raiz)[1]
-        print(f"🏷️  Zelador: {len(escritos)} reivindicação(ões) órfã(s) rotulada(s) antes da aquisição.")
+        print(
+            f"🏷️  Zelador: {len(escritos)} reivindicação(ões) órfã(s) rotulada(s) antes da aquisição."
+        )
         for caminho in escritos:
             print(f"   {caminho.relative_to(raiz)}")
         estados = calcular_estados(tarefas, eventos, reservas, prs)
     estado = estados[tid]
     if estado["estado"] == REIVINDICADA and tid in reservas:
-        cadeia = [ev for ev in eventos if ev.get("tarefa") == tid and ev.get("evento") in EVENTOS_DE_CICLO]
+        cadeia = [
+            ev
+            for ev in eventos
+            if ev.get("tarefa") == tid and ev.get("evento") in EVENTOS_DE_CICLO
+        ]
         ultimo = cadeia[-1] if cadeia else None
-        coerente = ultimo is None or (ultimo["evento"] == "reivindicada" and ultimo.get("quem") == args.quem)
+        coerente = ultimo is None or (
+            ultimo["evento"] == "reivindicada" and ultimo.get("quem") == args.quem
+        )
         if coerente and reservar.confirmar_intencao(raiz, f"{PREFIXO_DA_RESERVA}{tid}"):
             if ultimo is None:
                 caminho = _escrever_evento(raiz, tid, "reivindicada", args.quem)
@@ -3134,7 +3861,11 @@ def cmd_pegar(raiz: Path, args) -> int:
             print(tarefas[tid]["despacho"])
             return 0
     if estado["estado"] != NA_FILA:
-        print(f"RECUSADO: {tid} está '{estado['estado']}'" + (f" ({estado['motivo']})" if estado["motivo"] else "") + ".")
+        print(
+            f"RECUSADO: {tid} está '{estado['estado']}'"
+            + (f" ({estado['motivo']})" if estado["motivo"] else "")
+            + "."
+        )
         print(
             "Preservado: nenhuma reserva, evento, PR, staged, unstaged ou "
             "untracked foi alterado por esta recusa."
@@ -3163,7 +3894,9 @@ def cmd_pegar(raiz: Path, args) -> int:
     reserva_dono = str(reserva_corpo.get("dono") or "")
     if reserva_dono != reservar.identidade_da_bancada(raiz):
         print("RECUSADO: a reserva recém-obtida não pertence a esta bancada.")
-        print("Preservado: nenhum evento foi escrito; confira a reserva antes de retomar.")
+        print(
+            "Preservado: nenhum evento foi escrito; confira a reserva antes de retomar."
+        )
         return 1
     try:
         conferir_efeito_piloto(raiz, {tid})
@@ -3171,14 +3904,18 @@ def cmd_pegar(raiz: Path, args) -> int:
         _soltar_reserva_condicionado(
             raiz, chave_reserva, esperado=reserva_sha, dono=reserva_dono
         )
-        print(f"RECUSADO: {erro.resumo}. Reserva recém-obtida liberada; confira a barreira remota.")
+        print(
+            f"RECUSADO: {erro.resumo}. Reserva recém-obtida liberada; confira a barreira remota."
+        )
         return 1
     if (raiz / ".git").exists() and not bancada_contem_main_publicada(raiz):
         _soltar_reserva_condicionado(
             raiz, chave_reserva, esperado=reserva_sha, dono=reserva_dono
         )
         print("RECUSADO: a fila publicada mudou durante a aquisição.")
-        print("A reserva recém-obtida foi liberada; atualize a bancada e consulte de novo.")
+        print(
+            "A reserva recém-obtida foi liberada; atualize a bancada e consulte de novo."
+        )
         return 1
     tarefas, eventos = _carregar_ou_parar(raiz)
     estados, reservas, prs = estado_ao_vivo(raiz, tarefas, eventos)
@@ -3199,7 +3936,9 @@ def cmd_pegar(raiz: Path, args) -> int:
             + (f" ({estado['motivo']})" if estado.get("motivo") else "")
             + " durante a aquisição."
         )
-        print("A reserva recém-obtida foi liberada; consulte python ci/fila.py listar --ao-vivo.")
+        print(
+            "A reserva recém-obtida foi liberada; consulte python ci/fila.py listar --ao-vivo."
+        )
         return 1
     caminho = _escrever_evento(raiz, tid, "reivindicada", args.quem)
     print(f"✅ {tid} é sua — {recado}")
@@ -3273,7 +4012,9 @@ def cmd_bloquear(raiz: Path, args) -> int:
     caminho = _escrever_evento(
         raiz, tid, "bloqueada", args.quem, detalhe=args.motivo, espera=args.espera
     )
-    print(f"⛔ {tid} bloqueada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    print(
+        f"⛔ {tid} bloqueada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
+    )
     if args.espera == ESPERA_O_MANTENEDOR:
         print("Ela vai aparecer em 'Esperando uma decisão sua' no /admin/caixa/robos/,")
         print("e o `motivo` é o texto que ele vai ler ali — escreva para leigo.")
@@ -3338,7 +4079,9 @@ def cmd_cancelar(raiz: Path, args) -> int:
         print("   Dependência só se destrava CONCLUÍDA. Cancele-as ou dê substituta.")
     _soltar_reserva_se_houver(raiz, tid)
     caminho = _escrever_evento(raiz, tid, "cancelada", args.quem, detalhe=args.motivo)
-    print(f"🗑️  {tid} cancelada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    print(
+        f"🗑️  {tid} cancelada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
+    )
     print("Não há volta: depois do terminal, a fila não aceita mais nenhum evento.")
     return 0
 
@@ -3354,14 +4097,18 @@ def cmd_submeter(raiz: Path, args) -> int:
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe. Confira python ci/fila.py listar.")
         return 1
-    if (calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA)
-            and not fechada_por_esta_entrega(eventos, tid, args.pr)):
+    if calcular_estados(tarefas, eventos)[tid]["estado"] in (
+        CONCLUIDA,
+        CANCELADA,
+    ) and not fechada_por_esta_entrega(eventos, tid, args.pr):
         print(f"RECUSADO: {tid} já terminou. Confira sua cadeia antes de submeter.")
         return 1
     vinculo = {campo: getattr(args, campo) for campo in ("pr", "revisao", "arvore")}
     erros = problemas_da_submissao(vinculo)
     if erros:
-        print("RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados.")
+        print(
+            "RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados."
+        )
         return 1
     anterior = ultima_submissao(eventos, tid)
     substitui = str(getattr(args, "substitui", "") or "").strip()
@@ -3370,8 +4117,10 @@ def cmd_submeter(raiz: Path, args) -> int:
         anterior.get(campo) == valor for campo, valor in vinculo.items()
     )
     if mesmo_vinculo and substitui:
-        if (anterior.get("substitui") == substitui
-                and str(anterior.get("detalhe") or "").strip() == motivo):
+        if (
+            anterior.get("substitui") == substitui
+            and str(anterior.get("detalhe") or "").strip() == motivo
+        ):
             _soltar_reserva_se_houver(raiz, tid)
             print(
                 f"{tid}: esta substituição já está registrada em {args.pr}; "
@@ -3405,9 +4154,13 @@ def cmd_submeter(raiz: Path, args) -> int:
         print(f"RECUSADO: --substitui não cabe em {contexto}.")
         return 1
     elif motivo:
-        print("RECUSADO: --motivo só acompanha uma substituição indicada por --substitui.")
+        print(
+            "RECUSADO: --motivo só acompanha uma substituição indicada por --substitui."
+        )
         return 1
-    if not anterior or any(anterior.get(campo) != valor for campo, valor in vinculo.items()):
+    if not anterior or any(
+        anterior.get(campo) != valor for campo, valor in vinculo.items()
+    ):
         dados = montar_evento(tid, "submetida", args.quem)
         dados.update(vinculo)
         if substitui:
@@ -3416,7 +4169,10 @@ def cmd_submeter(raiz: Path, args) -> int:
         pasta_eventos(raiz).mkdir(parents=True, exist_ok=True)
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
-            raise ErroDeInstrumentacao("evento de submissão já existe", "Repita após conferir o evento; não sobrescreva a história.")
+            raise ErroDeInstrumentacao(
+                "evento de submissão já existe",
+                "Repita após conferir o evento; não sobrescreva a história.",
+            )
         _escrever_json(caminho, dados)
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
@@ -3435,8 +4191,10 @@ def _problemas_da_substituicao(
             f"Confira gh pr view {anterior['pr']} --json state,mergeCommit e repita.",
         )
     problemas = []
-    if (pr_anterior.get("state") == "MERGED"
-            or pr_anterior.get("mergeCommit") is not None):
+    if (
+        pr_anterior.get("state") == "MERGED"
+        or pr_anterior.get("mergeCommit") is not None
+    ):
         problemas.append("o PR anterior foi integrado")
     elif pr_anterior.get("state") == "OPEN":
         problemas.append("o PR anterior ainda está aberto")
@@ -3528,7 +4286,9 @@ def _concluir_com_prova(
         print(f"RECUSADO: {tid} exige reconciliação do aceite funcional da entrega.")
         return 1
     if aceite_entrega is not None:
-        problemas = problemas_do_aceite_entrega(aceite_entrega, ultima_submissao(eventos, tid))
+        problemas = problemas_do_aceite_entrega(
+            aceite_entrega, ultima_submissao(eventos, tid)
+        )
         if not problemas:
             try:
                 registro = _ler_registro(raiz, aceite_entrega["registro"])
@@ -3538,7 +4298,9 @@ def _concluir_com_prova(
         if problemas:
             print("RECUSADO: " + "; ".join(problemas))
             return 1
-    responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
+    responsabilidade = (
+        normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
+    )
     if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:
         print("RECUSADO: tarefa nova sem responsabilidade declarada.")
         print("Cadastre uma unidade de responsabilidade antes de concluir.")
@@ -3551,18 +4313,31 @@ def _concluir_com_prova(
     if responsabilidade and cadastro.exists():
         try:
             problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
-        except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
-            print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+        ) as erro:
+            print(
+                f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita."
+            )
             return 1
         if problemas:
-            print("RECUSADO: a entrega não pode ser concluída sem responsabilidade comprovada.")
+            print(
+                "RECUSADO: a entrega não pode ser concluída sem responsabilidade comprovada."
+            )
             for problema in problemas:
                 print(f"   - {problema}")
             return 1
     # A tarefa da medição exige a guarda da sua armadilha reprovando sabotada
     # nos dois caminhos de conclusão, antes da escrita e da soltura da reserva.
     prova_da_guarda = None
-    if tarefa and RE_ORIGEM_AUTOMATICA.fullmatch(str(tarefa.get("origem") or "").strip()):
+    if tarefa and RE_ORIGEM_AUTOMATICA.fullmatch(
+        str(tarefa.get("origem") or "").strip()
+    ):
         problemas, prova_da_guarda = provar_guarda_da_armadilha(
             raiz, str(tarefa["origem"]).strip()
         )
@@ -3582,7 +4357,9 @@ def _concluir_com_prova(
         evidencia=evidencia,
         verificado_em=verificado_em,
         prova_da_guarda=prova_da_guarda,
-        extra={"aceite_entrega": aceite_entrega} if aceite_entrega is not None else None,
+        extra=(
+            {"aceite_entrega": aceite_entrega} if aceite_entrega is not None else None
+        ),
     )
     try:
         _soltar_reserva_se_houver(raiz, tid)
@@ -3653,10 +4430,16 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     entrega = ultima_submissao(eventos, tid)
     nossa = entrega is not None and entrega.get("pr") == args.pr
     if not nossa:
-        print(f"RECUSADO: {args.pr} não é a entrega submetida de {tid}; nada foi escrito.")
-        print("O feito viaja na entrega: submeta primeiro, e cite o PR exato da submissão.")
+        print(
+            f"RECUSADO: {args.pr} não é a entrega submetida de {tid}; nada foi escrito."
+        )
+        print(
+            "O feito viaja na entrega: submeta primeiro, e cite o PR exato da submissão."
+        )
         return 1
-    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    finais = [
+        e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS
+    ]
     alheio = bool(finais) and not fechada_por_esta_entrega(eventos, tid, args.pr)
     if alheio:
         print(f"RECUSADO: {tid} já terminou por outro fato; nada foi escrito.")
@@ -3672,6 +4455,7 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
 def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
     """Somente tarefas criadas pela guarda exigem responsabilidade."""
     return tarefa.get("responsabilidade_obrigatoria") is True
+
 
 @_transicao_exclusiva
 def cmd_reconciliar(raiz: Path, args) -> int:
@@ -3723,13 +4507,16 @@ def cmd_reconciliar(raiz: Path, args) -> int:
         aceite_entrega=aceite_entrega,
     )
 
+
 def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:
     """Solta apenas a referência que ainda pertence a esta bancada."""
     try:
         reservada = _soltar_reserva_condicionado(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
         if not reservada:
             atual = reservar.ler_reserva(raiz, f"{PREFIXO_DA_RESERVA}{tid}")
-            if atual is not None and atual[1].get("dono") != reservar.identidade_da_bancada(raiz):
+            if atual is not None and atual[1].get(
+                "dono"
+            ) != reservar.identidade_da_bancada(raiz):
                 raise ErroDeInstrumentacao(
                     "a reserva mudou de dono durante a transição",
                     f"A conclusão foi preservada, mas a reserva de {tid} não foi apagada. "
@@ -3755,9 +4542,14 @@ def cmd_validar(raiz: Path) -> int:
         erros.append(f"{erro.resumo}: {erro.detalhe}")
     tarefas = carregar_tarefas(raiz, erros)
     eventos = carregar_eventos(raiz, tarefas, erros)
-    if (raiz / "painel" / "responsabilidades.json").exists() or any(tarefa_exige_responsabilidade(tarefa) for tarefa in tarefas.values()):
+    if (raiz / "painel" / "responsabilidades.json").exists() or any(
+        tarefa_exige_responsabilidade(tarefa) for tarefa in tarefas.values()
+    ):
         problemas_do_cadastro = responsabilidades.auditar(raiz)
-        erros.extend(f"{erro}. Corrija painel/responsabilidades.json e repita a validação." for erro in problemas_do_cadastro)
+        erros.extend(
+            f"{erro}. Corrija painel/responsabilidades.json e repita a validação."
+            for erro in problemas_do_cadastro
+        )
     if erros:
         print(f"❌ FILA INVÁLIDA — {len(erros)} problema(s):")
         for erro in erros:
@@ -3803,7 +4595,9 @@ def cmd_validar(raiz: Path) -> int:
     for e in estados.values():
         contagem[e["estado"]] = contagem.get(e["estado"], 0) + 1
     resumo = " · ".join(f"{k}: {v}" for k, v in sorted(contagem.items())) or "vazia"
-    print(f"✅ Fila válida — {len(tarefas)} tarefa(s), {len(eventos)} evento(s) ({resumo}).")
+    print(
+        f"✅ Fila válida — {len(tarefas)} tarefa(s), {len(eventos)} evento(s) ({resumo})."
+    )
     # E, em SOMBRA, o que o ✅ sozinho já escondeu uma vez: comprovante que
     # existe no disco e o Git não conhece (armadilhas/192). Avisa, não reprova.
     dizer_os_comprovantes_soltos(raiz)
@@ -3859,12 +4653,23 @@ def ler_manifesto_piloto(raiz: Path) -> dict | None:
         return None
     try:
         manifesto = json.loads(caminho.read_text(encoding="utf-8"))
-        if (set(manifesto) != {"versao", "coorte", "estado", "tarefas", "ids_sha256"}
-                or manifesto["versao"] != 1 or manifesto["coorte"] != "piloto"
-                or manifesto["estado"] not in ("preparada", "ativa")
-                or manifesto["ids_sha256"] != reservar.digest_da_coorte_piloto(manifesto["tarefas"])):
+        if (
+            set(manifesto) != {"versao", "coorte", "estado", "tarefas", "ids_sha256"}
+            or manifesto["versao"] != 1
+            or manifesto["coorte"] != "piloto"
+            or manifesto["estado"] not in ("preparada", "ativa")
+            or manifesto["ids_sha256"]
+            != reservar.digest_da_coorte_piloto(manifesto["tarefas"])
+        ):
             raise ValueError("campos, estado ou digest divergentes")
-    except (OSError, UnicodeError, ValueError, TypeError, KeyError, ErroDeInstrumentacao) as erro:
+    except (
+        OSError,
+        UnicodeError,
+        ValueError,
+        TypeError,
+        KeyError,
+        ErroDeInstrumentacao,
+    ) as erro:
         raise ErroDeInstrumentacao(
             "manifesto da coorte piloto inválido",
             f"{MANIFESTO_PILOTO}: {erro}. Corrija o manifesto publicado antes de operar a fila.",
@@ -3879,8 +4684,7 @@ def conferir_efeito_piloto(raiz: Path, tids: set[str]) -> None:
     if manifesto["estado"] == "preparada":
         return
     _, barreira = reservar.ler_barreira_piloto(raiz)
-    if (barreira["ids_sha256"] != manifesto["ids_sha256"]
-            or barreira["estado"] != "git"):
+    if barreira["ids_sha256"] != manifesto["ids_sha256"] or barreira["estado"] != "git":
         raise ErroDeInstrumentacao(
             "efeito da coorte piloto recusado pela barreira",
             "A coorte está pausada ou o manifesto diverge; não crie eventos nem integre PRs piloto. Releia a barreira remota e aguarde a transição oficial.",
@@ -3889,8 +4693,15 @@ def conferir_efeito_piloto(raiz: Path, tids: set[str]) -> None:
 
 def cmd_portao_coorte(raiz: Path, base: str) -> int:
     alterados = _git_da_fila(
-        raiz, "diff", "--name-only", "--no-renames", f"{base}...HEAD",
-        "--", "fila/eventos", "fila/tarefas", para_que="diff da fila na coorte piloto",
+        raiz,
+        "diff",
+        "--name-only",
+        "--no-renames",
+        f"{base}...HEAD",
+        "--",
+        "fila/eventos",
+        "fila/tarefas",
+        para_que="diff da fila na coorte piloto",
     )
     ids = set()
     for caminho in alterados.splitlines():
@@ -3898,8 +4709,11 @@ def cmd_portao_coorte(raiz: Path, base: str) -> int:
         try:
             registro = json.loads(arquivo.read_text(encoding="utf-8"))
             campo = "tarefa" if caminho.startswith("fila/eventos/") else "id"
-            if (not isinstance(registro, dict) or registro.get("arquivo") != arquivo.stem
-                    or not isinstance(registro.get(campo), str)):
+            if (
+                not isinstance(registro, dict)
+                or registro.get("arquivo") != arquivo.stem
+                or not isinstance(registro.get(campo), str)
+            ):
                 raise ValueError("registro sem identidade válida")
             ids.add(registro[campo])
         except (OSError, UnicodeError, ValueError, TypeError) as erro:
@@ -3916,10 +4730,23 @@ def _git_da_fila(raiz: Path, *args: str, para_que: str) -> str:
     """Um `git` que, quando não responde, vira ERROR e não silêncio."""
     try:
         proc = subprocess.run(
-            ["git", "-c", "core.fsmonitor=false", "-c", f"core.hooksPath={CI / '__no_hooks__'}", "-C", str(raiz), *args],
+            [
+                "git",
+                "-c",
+                "core.fsmonitor=false",
+                "-c",
+                f"core.hooksPath={CI / '__no_hooks__'}",
+                "-C",
+                str(raiz),
+                *args,
+            ],
             env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=60, stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise ErroDeInstrumentacao(
@@ -3945,8 +4772,14 @@ def mudancas_em_tarefas(raiz: Path, base: str) -> list[tuple[str, str]]:
     tarefa têm acento, e fora do modo NUL o git citaria o caminho.
     """
     saida = _git_da_fila(
-        raiz, "diff", "--raw", "--no-renames", "-z", f"{base}...HEAD",
-        "--", "fila/tarefas",
+        raiz,
+        "diff",
+        "--raw",
+        "--no-renames",
+        "-z",
+        f"{base}...HEAD",
+        "--",
+        "fila/tarefas",
         para_que="diff de fila/tarefas contra a base",
     )
     pedacos = [p for p in saida.split("\0") if p]
@@ -3965,7 +4798,9 @@ def mudancas_em_tarefas(raiz: Path, base: str) -> list[tuple[str, str]]:
 
 def _tarefa_na_revisao(raiz: Path, revisao: str, caminho: str) -> dict:
     bruto = _git_da_fila(
-        raiz, "show", f"{revisao}:{caminho}",
+        raiz,
+        "show",
+        f"{revisao}:{caminho}",
         para_que=f"leitura de {caminho} em {revisao}",
     )
     try:
@@ -3983,34 +4818,53 @@ def conferir_imutabilidade(raiz: Path, base: str) -> list[str]:
     problemas: list[str] = []
     caminho_manifesto = "fila/coortes/piloto.json"
     if _git_da_fila(
-        raiz, "ls-tree", "--name-only", base, caminho_manifesto,
+        raiz,
+        "ls-tree",
+        "--name-only",
+        base,
+        caminho_manifesto,
         para_que="presença do manifesto piloto na base",
     ).strip():
-        anterior = json.loads(_git_da_fila(
-            raiz, "show", f"{base}:{caminho_manifesto}",
-            para_que="manifesto piloto na base",
-        ))
+        anterior = json.loads(
+            _git_da_fila(
+                raiz,
+                "show",
+                f"{base}:{caminho_manifesto}",
+                para_que="manifesto piloto na base",
+            )
+        )
         atual = ler_manifesto_piloto(raiz)
         if atual is None:
-            problemas.append(f"{caminho_manifesto} foi apagado — a coorte perderia o portão")
+            problemas.append(
+                f"{caminho_manifesto} foi apagado — a coorte perderia o portão"
+            )
         elif anterior != atual and not (
             anterior.get("estado") == "preparada"
             and atual.get("estado") == "ativa"
             and {**anterior, "estado": "ativa"} == atual
         ):
-            problemas.append(f"{caminho_manifesto} mudou fora da transição preparada→ativa com os mesmos IDs e digest")
+            problemas.append(
+                f"{caminho_manifesto} mudou fora da transição preparada→ativa com os mesmos IDs e digest"
+            )
     for status, caminho in mudancas_em_tarefas(raiz, base):
         if status.startswith("A"):
             tarefa = _tarefa_na_revisao(raiz, "HEAD", caminho)
-            responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade"))
+            responsabilidade = normalizar_responsabilidade(
+                tarefa.get("responsabilidade")
+            )
             if not responsabilidade or not tarefa_exige_responsabilidade(tarefa):
-                problemas.append(f"{caminho}: tarefa nova sem responsabilidade obrigatória. Corrija responsabilidade e responsabilidade_obrigatoria antes de entregar.")
+                problemas.append(
+                    f"{caminho}: tarefa nova sem responsabilidade obrigatória. Corrija responsabilidade e responsabilidade_obrigatoria antes de entregar."
+                )
             else:
                 try:
                     erros = responsabilidades.validar_entrega(raiz, responsabilidade)
                 except (OSError, ValueError) as erro:
                     erros = [f"cadastro de responsabilidades ilegível: {erro}"]
-                problemas.extend(f"{caminho}: {erro}. Corrija a responsabilidade da tarefa ou painel/responsabilidades.json antes de entregar." for erro in erros)
+                problemas.extend(
+                    f"{caminho}: {erro}. Corrija a responsabilidade da tarefa ou painel/responsabilidades.json antes de entregar."
+                    for erro in erros
+                )
             continue
         if status.startswith("D"):
             problemas.append(
@@ -4042,17 +4896,25 @@ def cmd_imutabilidade(raiz: Path, base: str) -> int:
         )
     problemas = conferir_imutabilidade(raiz, base)
     if problemas:
-        print(f"❌ FILA EDITADA — {len(problemas)} violação(ões) da lei 'nada se edita':")
+        print(
+            f"❌ FILA EDITADA — {len(problemas)} violação(ões) da lei 'nada se edita':"
+        )
         for problema in problemas:
             print(f"   - {problema}")
         print()
-        print("   O arquivo de uma tarefa nunca muda depois de criado (RITOS.md §5).")
-        print(f"   A ÚNICA exceção é o campo '{CAMPO_QUE_PODE_MUDAR}', porque nenhum evento")
+        print(
+            "   O arquivo de uma tarefa nunca muda depois de criado (CAMINHO-DOURADO.md, “Pegar e registrar trabalho na fila”; armadilhas/356)."
+        )
+        print(
+            f"   A ÚNICA exceção é o campo '{CAMPO_QUE_PODE_MUDAR}', porque nenhum evento"
+        )
         print("   conserta uma corrente errada, e cancelar-e-recriar trava a vizinha")
         print("   para sempre (armadilhas/356).")
         print()
         print("   Trabalho diferente do que a tarefa descreve? Crie uma tarefa NOVA:")
-        print("     python ci/fila.py criar --titulo ... --toca <celula> --move <cartao>")
+        print(
+            "     python ci/fila.py criar --titulo ... --toca <celula> --move <cartao>"
+        )
         print("   Mudou de estado (pegou, devolveu, travou, concluiu)? Isso é EVENTO,")
         print("   nunca campo: pegar, soltar, bloquear, concluir.")
         return 1
@@ -4099,9 +4961,13 @@ def construir_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="acao", required=True)
 
-    p = sub.add_parser("criar", help="registra uma tarefa nova (número vem do almoxarife)")
+    p = sub.add_parser(
+        "criar", help="registra uma tarefa nova (número vem do almoxarife)"
+    )
     p.add_argument("--titulo", required=True, help="uma linha, para leigo, sem sigla")
-    p.add_argument("--toca", required=True, nargs="+", help="o que ela mexe (ex.: admin painel)")
+    p.add_argument(
+        "--toca", required=True, nargs="+", help="o que ela mexe (ex.: admin painel)"
+    )
     p.add_argument("--depende-de", nargs="*", default=[], metavar="TAR-NNN")
     p.add_argument(
         "--cria",
@@ -4120,11 +4986,21 @@ def construir_parser() -> argparse.ArgumentParser:
             f"ou '{MANUTENCAO}' se ela mantém a fábrica de pé sem mover número"
         ),
     )
-    p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
-    p.add_argument("--responsabilidade", required=True, help="id da unidade de responsabilidade que acompanha o desfecho")
+    p.add_argument(
+        "--evidencia-exigida", required=True, help="que prova fecha esta tarefa"
+    )
+    p.add_argument(
+        "--responsabilidade",
+        required=True,
+        help="id da unidade de responsabilidade que acompanha o desfecho",
+    )
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
-    p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")
-    p.add_argument("--origem", default="despacho do mantenedor", help="de onde a tarefa veio")
+    p.add_argument(
+        "--despacho-arquivo", default="", help="ou um arquivo com o despacho"
+    )
+    p.add_argument(
+        "--origem", default="despacho do mantenedor", help="de onde a tarefa veio"
+    )
     _argumentos_da_explicacao(p)
 
     p = sub.add_parser(
@@ -4140,11 +5016,17 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--quem", required=True)
     p.add_argument("--arquivo", required=True, help="JSON com o contrato completo")
 
-    p = sub.add_parser("descoberta", help="classifica uma descoberta sem ampliar o plano")
+    p = sub.add_parser(
+        "descoberta", help="classifica uma descoberta sem ampliar o plano"
+    )
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
-    p.add_argument("--classificacao", required=True, choices=sorted(CLASSIFICACOES_DA_DESCOBERTA))
-    p.add_argument("--criterio", required=True, help="critério de aceite ou limite afetado")
+    p.add_argument(
+        "--classificacao", required=True, choices=sorted(CLASSIFICACOES_DA_DESCOBERTA)
+    )
+    p.add_argument(
+        "--criterio", required=True, help="critério de aceite ou limite afetado"
+    )
     p.add_argument("--detalhe", required=True, help="o que foi descoberto")
     p.add_argument("--evidencia", required=True, help="prova da relação com o critério")
     p.add_argument("--encaminhamento", required=True, help="ação mínima ou backlog")
@@ -4161,7 +5043,9 @@ def construir_parser() -> argparse.ArgumentParser:
         required=True,
         help="comando ou conferência executada; repita para várias",
     )
-    p.add_argument("--contexto", default="", help="JSON opcional com branch, worktree e SHA")
+    p.add_argument(
+        "--contexto", default="", help="JSON opcional com branch, worktree e SHA"
+    )
 
     p = sub.add_parser(
         "tentativa-sem-progresso",
@@ -4173,17 +5057,26 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--hipotese", required=True)
     p.add_argument("--resultado", required=True)
 
-    sub.add_parser("snapshot-publicado", help="confere as fontes dos aceites antes do pacote de dados admin")
+    sub.add_parser(
+        "snapshot-publicado",
+        help="confere as fontes dos aceites antes do pacote de dados admin",
+    )
 
     p = sub.add_parser("listar", help="o quadro, com estados calculados")
-    p.add_argument("--ao-vivo", action="store_true", help="soma reservas do servidor e PRs abertos")
+    p.add_argument(
+        "--ao-vivo", action="store_true", help="soma reservas do servidor e PRs abertos"
+    )
     p.add_argument("--json", action="store_true")
 
     p = sub.add_parser("pegar", help="trava a tarefa no servidor e escreve o evento")
     p.add_argument("tarefa", metavar="TAR-NNN")
-    p.add_argument("--quem", required=True, help="quem está pegando (ex.: sessao-fila-2908)")
+    p.add_argument(
+        "--quem", required=True, help="quem está pegando (ex.: sessao-fila-2908)"
+    )
 
-    p = sub.add_parser("zelar", help="rotula reivindicações órfãs sem apagar ramos ou PRs")
+    p = sub.add_parser(
+        "zelar", help="rotula reivindicações órfãs sem apagar ramos ou PRs"
+    )
     p.add_argument("--quem", required=True, help="quem registrou a varredura")
 
     p = sub.add_parser("soltar", help="devolve a tarefa à fila")
@@ -4206,24 +5099,43 @@ def construir_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    p = sub.add_parser("cancelar", help="tira a tarefa da fila para sempre — exige motivo")
+    p = sub.add_parser(
+        "cancelar", help="tira a tarefa da fila para sempre — exige motivo"
+    )
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
     p.add_argument("--motivo", required=True, help="por que ela não vai mais ser feita")
 
-    p = sub.add_parser("verificar-linhagem", help="confere PR, HEAD, submissão e recibo antes da integração")
+    p = sub.add_parser(
+        "verificar-linhagem",
+        help="confere PR, HEAD, submissão e recibo antes da integração",
+    )
     p.add_argument("--pr", required=True, type=int)
     p.add_argument("--head", required=True)
-    p.add_argument("--checkout", required=True, help="checkout do candidato, distinto da fonte confiável deste comando")
+    p.add_argument(
+        "--checkout",
+        required=True,
+        help="checkout do candidato, distinto da fonte confiável deste comando",
+    )
 
-    p = sub.add_parser("submeter", help="vincula a entrega validada sem concluir a tarefa")
+    p = sub.add_parser(
+        "submeter", help="vincula a entrega validada sem concluir a tarefa"
+    )
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
     p.add_argument("--pr", required=True, help="URL completa do pull request")
     p.add_argument("--revisao", required=True, help="SHA completo do código validado")
     p.add_argument("--arvore", required=True, help="SHA completo da árvore validada")
-    p.add_argument("--substitui", default="", help="URL exata da última submissão, somente ao trocar de PR")
-    p.add_argument("--motivo", default="", help="por que o PR anterior fechado sem merge está sendo substituído")
+    p.add_argument(
+        "--substitui",
+        default="",
+        help="URL exata da última submissão, somente ao trocar de PR",
+    )
+    p.add_argument(
+        "--motivo",
+        default="",
+        help="por que o PR anterior fechado sem merge está sendo substituído",
+    )
 
     p = sub.add_parser(
         "fechar-pela-entrega",
@@ -4231,13 +5143,19 @@ def construir_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
-    p.add_argument("--pr", required=True, help="URL completa do pull request da entrega")
+    p.add_argument(
+        "--pr", required=True, help="URL completa do pull request da entrega"
+    )
 
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
-    p.add_argument("--evidencia", required=True, help="a prova (URL de PR, saída de teste…)")
-    p.add_argument("--verificado-em", default="", help="quando a prova foi conferida (AAAA-MM-DD)")
+    p.add_argument(
+        "--evidencia", required=True, help="a prova (URL de PR, saída de teste…)"
+    )
+    p.add_argument(
+        "--verificado-em", default="", help="quando a prova foi conferida (AAAA-MM-DD)"
+    )
 
     p = sub.add_parser(
         "reconciliar",
@@ -4263,7 +5181,10 @@ def construir_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("validar", help="fail-closed; é o que a muralha roda")
 
-    p = sub.add_parser("portao-coorte", help="recusa eventos piloto incompatíveis com a barreira remota")
+    p = sub.add_parser(
+        "portao-coorte",
+        help="recusa eventos piloto incompatíveis com a barreira remota",
+    )
     p.add_argument("--base", default=os.environ.get("BASE_REF") or BASE_PADRAO)
 
     p = sub.add_parser(
@@ -4310,7 +5231,16 @@ def main(argv: list[str] | None = None) -> int:
             except RecusaDeReconciliacao as erro:
                 print("RECUSADO: " + str(erro))
                 return 1
-            print("PASS linhagem: " + prova["tarefa"] + " PR " + str(args.pr) + " HEAD " + prova["head"] + " recibo " + prova["recibo"])
+            print(
+                "PASS linhagem: "
+                + prova["tarefa"]
+                + " PR "
+                + str(args.pr)
+                + " HEAD "
+                + prova["head"]
+                + " recibo "
+                + prova["recibo"]
+            )
             return 0
         if args.acao == "submeter":
             return cmd_submeter(raiz, args)

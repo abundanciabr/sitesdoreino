@@ -521,6 +521,38 @@ def test_wrapper_conserva_o_status_42_apesar_do_trap_remoto(tmp_path):
     ]
 
 
+def test_wrapper_nao_entrega_o_restante_do_script_ao_comando_que_le_stdin(tmp_path):
+    preparador = next(p for p in _passos() if p.get("id") == "preparar_resultado")
+    fonte = tmp_path / "infra" / "sincronizar-infra-na-vps.sh"
+    fonte.parent.mkdir()
+    fonte.write_text(
+        "printf 'SINCRONIZACAO-INICIADA: teste\\n'\n"
+        "cat >/dev/null\n"
+        "printf 'SINCRONIZACAO-CONCLUIDA: teste\\n'\n",
+        encoding="utf-8",
+    )
+    saida = tmp_path / "saida-do-preparo"
+    preparo = _executar_bloco(
+        str(preparador["run"]), tmp_path,
+        RUNNER_TEMP=str(tmp_path), GITHUB_OUTPUT=str(saida),
+    )
+    assert preparo.returncode == 0, preparo.stderr
+    caminho = next(
+        linha.partition("=")[2] for linha in saida.read_text().splitlines()
+        if linha.startswith("script=")
+    )
+    remoto = subprocess.run(
+        [_bash(), caminho], cwd=tmp_path, env=_ambiente_bash(),
+        capture_output=True, text=True, check=False,
+    )
+    assert remoto.returncode == 0, remoto.stderr
+    assert remoto.stdout.splitlines() == [
+        "SINCRONIZACAO-INICIADA: teste",
+        "SINCRONIZACAO-CONCLUIDA: teste",
+        "SINCRONIZACAO-STATUS:0",
+    ]
+
+
 def test_classificacao_retem_falha_remota_e_recusa_resposta_ausente(tmp_path):
     classificador = next(p for p in _passos() if p.get("id") == "classificar_resultado")
 
@@ -553,6 +585,47 @@ def test_classificacao_retem_falha_remota_e_recusa_resposta_ausente(tmp_path):
     assert "resultado=concluida" in classificar(
         "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-CONCLUIDA: teste\n"
         "SINCRONIZACAO-STATUS:0\n", "success"
+    )
+    rodape_real = (
+        "===============================================\n"
+        "✅ Successfully executed commands to all hosts.\n"
+        "==============================================="
+    )
+    marcadores = (
+        "SINCRONIZACAO-INICIADA: 20260930T043412Z\n"
+        "SINCRONIZACAO-CONCLUIDA: 20260930T043413Z\n"
+        "SINCRONIZACAO-STATUS:0"
+    )
+    assert "resultado=concluida" in classificar(
+        marcadores + "\n" + rodape_real, "success"
+    )
+    for resposta in (
+        marcadores + "\n" + rodape_real + "\ntexto arbitrario",
+        rodape_real + "\n" + marcadores + "\n" + rodape_real,
+        marcadores + "\nrodape desconhecido",
+        marcadores + "\nSINCRONIZACAO-STATUS:0",
+        marcadores.replace(
+            "SINCRONIZACAO-INICIADA: 20260930T043412Z",
+            "SINCRONIZACAO-INICIADA: 20260930T043412Z\n"
+            "SINCRONIZACAO-INICIADA: repetida",
+        ),
+        marcadores.replace("SINCRONIZACAO-INICIADA: 20260930T043412Z\n", ""),
+        marcadores.replace("SINCRONIZACAO-CONCLUIDA: 20260930T043413Z\n", ""),
+        marcadores.replace("SINCRONIZACAO-STATUS:0", "SINCRONIZACAO-STATUS:42"),
+        "SINCRONIZACAO-CONCLUIDA: teste\nSINCRONIZACAO-INICIADA: teste\n"
+        "SINCRONIZACAO-STATUS:0",
+        "SINCRONIZACAO-INICIADA: teste\nSINCRONIZACAO-STATUS:0\n"
+        "SINCRONIZACAO-CONCLUIDA: teste",
+        marcadores.replace(
+            "SINCRONIZACAO-CONCLUIDA: 20260930T043413Z",
+            "SINCRONIZACAO-CONCLUIDA: 20260930T043413Z\n"
+            "SINCRONIZACAO-CONCLUIDA: repetida",
+        ),
+        marcadores + "\n" + rodape_real.replace("Successfully", "Partially"),
+    ):
+        assert "resultado=incerta" in classificar(resposta, "success")
+    assert "resultado=incerta" in classificar(
+        marcadores + "\n" + rodape_real, "failure"
     )
     assert "resultado=nao_iniciada" in classificar("", "skipped", envio="failure")
 

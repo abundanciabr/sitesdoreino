@@ -1,0 +1,15 @@
+{
+  "arquivo": "20260930-044646-TAR-958-checkpoint",
+  "tarefa": "TAR-958",
+  "evento": "checkpoint",
+  "quando": "2026-09-30T04:46:46.487343+00:00",
+  "quem": "codex",
+  "plano": "Passo3de4: concluir integracao e provas; producao ainda incompleta.",
+  "ultimo_avanco": "TAR1010 integrado45b6a842 e PUBLICADO; TAR1028 integradoef1b3f82. App5125381 exigido em ruleset21570247 apos positivo e adversarial, demaisregras preservadas. Backup36670218396 falhou antes de marcador da captura; artefato nao criado. TAR1030 registrada para classificador do footerSSH.",
+  "proxima_acao": "Diagnosticar execucao docker anterior a captura, restaurar backup externo, integrar1023/1022 e liberarI2; revisar I3 perda de ACK; medir estado remoto antesde1030. Cache1026 aguarda aprovacao especifica apos recusa automatica.",
+  "verificacoes": [
+    "GET ruleset e comparacao estrutural aposPUT PASS; confirmado.json SHA1cdb7abfe02493255f8593c18bd9019e4bf1b74d15d5679c8de4eb4dffcef68e",
+    "Backup36670218396 ef1b3f82 FAILURE: Snapshot nao abriu; uploadartifactSKIPPED",
+    "PR2394CLOSED semmerge: run36669123089 AppSUCCESS, run36669581472 fontebase e mandatonaoaprovado/AppFAILURE"
+  ]
+}

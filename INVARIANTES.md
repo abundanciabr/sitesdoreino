@@ -6,7 +6,9 @@ primeira oportunidade de violá-la.
 
 **Regras de trabalho:**
 1. Código que toca um invariante referencia o código dele em comentário (ex.: `[INV-P3]`).
-2. Teste-guarda é intocável: nunca deletar, desativar ou afrouxar para passar.
+2. Preserve a propriedade: trocar um teste-guarda exige sucessor identificado e
+   caso adversarial que ele rejeite, com revisão protegida da pertinência. Revogar
+   a propriedade exige decisão autenticada do mantenedor, escopo e consequência.
 3. Evidência falsificável: correção em invariante apresenta a saída crua vermelho→verde.
 4. Invariante sem guarda no mesmo PR só entra na seção final (dívida), com dono e prazo.
 
@@ -1756,7 +1758,7 @@ quem for mexer no ruleset: `armadilhas/126-ruleset-de-main-que-trava-todo-merge.
 GitHub e não há outra forma disponível. Não recomende "assine o Pro" — essa
 porta está fechada. Ver ARMADILHAS-OPERACAO.md §1 H3.)
 
-Os degraus grátis da Escada da Imposição (RITOS.md §2), em ordem de força:
+Os degraus grátis da Escada da Imposição (CAMINHO-DOURADO.md, “Integrar, publicar e aceitar”), em ordem de força:
 
 1. `ci/mergear.py` — recusa mergear PR com check vermelho quando o merge sai
    do terminal. Não vê o botão do site. Desde 22/08/2026 é o caminho único

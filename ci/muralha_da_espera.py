@@ -64,30 +64,39 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from esperar import carregar_regua, teto_da_regua  # noqa: E402
 
-TIMEOUT_PADRAO_MS = 120_000       # o padrão do Bash do harness (2 min)
-MONITOR_PADRAO_MS = 300_000       # o padrão do Monitor (5 min)
-SONECA_MAXIMA_S = 120             # sleep/Start-Sleep acima disso é espera, não pausa
-FOLGA_DA_VOZ_MS = 30_000          # a linha de morte precisa de tempo para falar
+TIMEOUT_PADRAO_MS = 120_000  # o padrão do Bash do harness (2 min)
+MONITOR_PADRAO_MS = 300_000  # o padrão do Monitor (5 min)
+SONECA_MAXIMA_S = 120  # sleep/Start-Sleep acima disso é espera, não pausa
+FOLGA_DA_VOZ_MS = 30_000  # a linha de morte precisa de tempo para falar
 
 RITO = (
     'python ci/esperar.py --run <id> --teto <min> --dizendo "<o que espero>" '
     "— rodado pela ferramenta Monitor com timeout_ms MAIOR que o teto "
-    "(armadilhas/161; RITOS.md §2)"
+    "(armadilhas/161; CAMINHO-DOURADO.md, “Integrar, publicar e aceitar”)"
 )
 
 SEPARADOR = re.compile(r"(?:&&|\|\||[;|&\n])")
-TEM_TIMEOUT_PREFIXO = re.compile(r"(?:^|[;&|(\n]\s*)timeout(?:\.exe)?\s+(?:-\S+\s+)*\d+")
+TEM_TIMEOUT_PREFIXO = re.compile(
+    r"(?:^|[;&|(\n]\s*)timeout(?:\.exe)?\s+(?:-\S+\s+)*\d+"
+)
 ESPERA_MUDA = (
     (re.compile(r"\bgh\s+run\s+watch\b"), "gh run watch é espera muda e sem teto"),
-    (re.compile(r"\bgh\s+pr\s+checks\b[^\n;|&]*--watch"),
-     "gh pr checks --watch é espera muda e sem teto"),
-    (re.compile(r"\bwhile\s+(?:true|:|\(\s*\$true\s*\))"),
-     "laço while-true sem teto — foi um destes que custou 2h de silêncio"),
-    (re.compile(r"\buntil\s+[^\n;]*;\s*do\b|\buntil\b[^\n]*\bdo\b"),
-     "laço until aberto — foi um destes que custou 2h de silêncio"),
+    (
+        re.compile(r"\bgh\s+pr\s+checks\b[^\n;|&]*--watch"),
+        "gh pr checks --watch é espera muda e sem teto",
+    ),
+    (
+        re.compile(r"\bwhile\s+(?:true|:|\(\s*\$true\s*\))"),
+        "laço while-true sem teto — foi um destes que custou 2h de silêncio",
+    ),
+    (
+        re.compile(r"\buntil\s+[^\n;]*;\s*do\b|\buntil\b[^\n]*\bdo\b"),
+        "laço until aberto — foi um destes que custou 2h de silêncio",
+    ),
 )
-SONECA = re.compile(r"\b(?:sleep|Start-Sleep)\s+(?:-s(?:econds)?\s+)?(\d+)\b",
-                    re.IGNORECASE)
+SONECA = re.compile(
+    r"\b(?:sleep|Start-Sleep)\s+(?:-s(?:econds)?\s+)?(\d+)\b", re.IGNORECASE
+)
 TETO_DO_WRAPPER = re.compile(r"--teto[=\s]+(\d+(?:\.\d+)?)")
 REGUA_DO_WRAPPER = re.compile(r"--regua[=\s]+([A-Za-z0-9_.-]+)")
 
@@ -118,8 +127,7 @@ def _utf8_na_saida() -> None:
 
 def _recusar(motivo: str, caminho_certo: str = RITO) -> int:
     print(
-        "🧱 MURALHA DA ESPERA: " + motivo + "\n"
-        "   O caminho certo: " + caminho_certo,
+        "🧱 MURALHA DA ESPERA: " + motivo + "\n" "   O caminho certo: " + caminho_certo,
         file=sys.stderr,
     )
     return 2
@@ -198,7 +206,11 @@ def decidir_monitor(entrada: dict) -> tuple[int, str]:
     janela_ms = float(timeout_ms) if timeout_ms else float(MONITOR_PADRAO_MS)
 
     teto_ms = _teto_do_wrapper_ms(comando)
-    if teto_ms is not None and not persistente and teto_ms + FOLGA_DA_VOZ_MS > janela_ms:
+    if (
+        teto_ms is not None
+        and not persistente
+        and teto_ms + FOLGA_DA_VOZ_MS > janela_ms
+    ):
         return 2, (
             f"o --teto ({teto_ms / 60000:g} min) não cabe no timeout_ms deste "
             f"Monitor ({janela_ms / 60000:g} min) — ele mataria o esperador "

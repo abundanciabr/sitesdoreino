@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260930-030259-TAR-1021-explicada",
+  "tarefa": "TAR-1021",
+  "evento": "explicada",
+  "quando": "2026-09-30T03:02:59.453857+00:00",
+  "quem": "TAR-958",
+  "o_que_e": "A sincronizacao iniciou no servidor e terminou sem confirmar todos os passos.",
+  "o_que_muda": "Permite saber o que ficou no servidor antes de repetir uma alteracao.",
+  "exemplo": "Antes de mandar novamente uma entrega, a equipe confere quais volumes ja chegaram.",
+  "importancia": 100
+}

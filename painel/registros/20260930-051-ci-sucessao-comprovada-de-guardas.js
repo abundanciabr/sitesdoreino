@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-051-ci-sucessao-comprovada-de-guardas",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: sucessão comprovada de guardas",
+  detalhe: "A Lei 8 admite trocar um guarda com sucessor e caso adversarial executado, sob revisão protegida. Asserção fraca e remoção sem sucessor reprovam; equivalência universal não é afirmada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2388. Validação local: árvore d75019410d10e6661d3b0e4ed6b3c8d2b8986d86; commit 9970ecc96f291532456765ea051cda2882448801; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1022",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
