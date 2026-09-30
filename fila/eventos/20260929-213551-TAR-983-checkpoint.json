@@ -1,0 +1,32 @@
+{
+  "arquivo": "20260929-213551-TAR-983-checkpoint",
+  "tarefa": "TAR-983",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T21:35:51.573876+00:00",
+  "quem": "pme-governanca-app",
+  "plano": "PME-GOV TAR-983: aplicar V5, provar na bancada e publicar pelo rito",
+  "ultimo_avanco": "Patch V5 autorizado aplicado pelo controle original; contrato V5 registrado; 26 testes PASS na bancada real, sem ativar App ou ruleset",
+  "proxima_acao": "Integrar contexto958 pinado pela base protegida, completar rito ci/pr.py em draft e conferir check App antes da ativação do ruleset",
+  "verificacoes": [
+    "SHA256 patch 13A271074A6B972348D6AD34509F2D1F05AB06BC8F6456E9CF2BFB30A27809C6 e contrato 90B9118345B86C4C1D2987D6EF999518CFF216EADBBB8919188E7FF9D93DB4CA conferidos",
+    "python -m pytest ci/tests/test_autoridade_das_fontes.py -q --basetemp C:/Users/davia/AppData/Local/Temp/pme983-v5-worktree-run -p no:cacheprovider --maxfail=3: 26 passed in 1.16s"
+  ],
+  "contexto": {
+    "item_pme": "PME-GOV / TAR-983",
+    "situacao": "V5 aplicada na bancada e testada; PR, integração, check App, pin e ruleset ainda pendentes",
+    "autorizacao": {
+      "origem": "resposta direta do mantenedor call_94jqU3w1Bu3TIdc66ElSk7v2 item0, 2026-09-29",
+      "escopo": "aplicar/publicar TAR-983 V5 e registros do rito no repositório público abundanciabr/sitesdoreino",
+      "patch_sha256": "13a271074a6b972348d6ad34509f2d1f05ab06bc8f6456e9cf2bfb30a27809c6",
+      "contexto_sha256": "02556f8de0314888e74f577dd469f570ebff991d0a68e7ca2ada234222d1957e",
+      "contrato_sha256": "90b9118345b86c4c1d2987d6ef999518cff216eadbbb8919188e7ff9d93db4ca"
+    },
+    "prova_local": {
+      "teste": "python -m pytest ci/tests/test_autoridade_das_fontes.py -q --basetemp C:/Users/davia/AppData/Local/Temp/pme983-v5-worktree-run -p no:cacheprovider --maxfail=3",
+      "resultado": "26 passed in 1.16s",
+      "fila": "python ci/fila.py validar: exit 0; 871 tarefas, 3022 eventos (antes deste checkpoint)",
+      "replay": "patch V5 conferido 3/3 no texto normalizado; apply_patch no Windows gravou CRLF, sem alteração semântica"
+    },
+    "limite": "App e ruleset inativos; contexto958 ainda não pinado na base protegida; checagem remota positiva/negativa não feita"
+  }
+}

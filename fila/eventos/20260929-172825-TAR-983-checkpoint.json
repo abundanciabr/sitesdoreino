@@ -1,0 +1,14 @@
+{
+  "arquivo": "20260929-172825-TAR-983-checkpoint",
+  "tarefa": "TAR-983",
+  "evento": "checkpoint",
+  "quando": "2026-09-29T17:28:25.573323+00:00",
+  "quem": "pme-governanca-app",
+  "plano": "GOV TAR983: kit de ativação versão 2 sem operação remota",
+  "ultimo_avanco": "Kit v1 foi preservado no hash registrado; v2 explicita restrição GitHub de check recente/contexto requerido preexistente para expected App source e manda parar se PUT vinculado direto for recusado.",
+  "proxima_acao": "Coordenador revisa kit v2; GOV comprova CLI977 quando integrada e executa rito sob fonte02 draft",
+  "verificacoes": [
+    "Kit v2 C:/Users/davia/AppData/Local/Temp/pme-governanca-app-kit983-v2.json SHA256 6EFBFF6617FA567DA9AAC3680FA725C6BBA882F87C1620377985344A64C8D90B",
+    "GitHub Docs available-rules-for-rulesets: expected source exige App instalado com statuses write, check recente e contexto requerido preexistente"
+  ]
+}
