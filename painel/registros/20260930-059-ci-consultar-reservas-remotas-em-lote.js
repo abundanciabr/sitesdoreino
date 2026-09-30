@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-059-ci-consultar-reservas-remotas-em-lote",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: consultar reservas remotas em lote",
+  detalhe: "A leitura de reservas passa a agrupar inventário, fetch e comprovantes com conferência integral de estabilidade. Tests confirmam estados, vazio, entradas inválidas e corrida de refs; CAS segue intacto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2400. Validação local: árvore 43ae4a36a3ba215e7c0d08855ce0f81c442b39e1; commit af5f5ae69932a63305b9c52ae363bb04233a6ccc; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1034",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
