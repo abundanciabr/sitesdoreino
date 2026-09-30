@@ -1,0 +1,57 @@
+{
+  "arquivo": "20260930-033357-TAR-1024-contrato_execucao",
+  "tarefa": "TAR-1024",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T03:33:57.940885+00:00",
+  "quem": "codex/ci/pme-governanca-app-correcao",
+  "contrato": {
+    "plano": "TAR-958/PME governança; TAR-1024 correção causal da TAR-983",
+    "versao": 1,
+    "objetivo": "Encontrar a revisão candidata correta na validação oficial da autoridade.",
+    "entregaveis": [
+      "Caminho da candidata resolvido antes de subprocessos com cwd na base",
+      "Teste de regressão positivo e negativo",
+      "PR2389 e registros da TAR-1024 pelo rito"
+    ],
+    "escopo_incluido": [
+      "ci/autoridade_das_fontes.py",
+      "ci/tests/test_autoridade_das_fontes.py",
+      "Tarefa e eventos próprios da TAR-1024; checkpoints preservados da TAR-983"
+    ],
+    "nao_objetivos": [
+      "Alterar concessões, pin, ruleset, permissões ou segredos",
+      "Afrouxar o confinamento da base ou aprovar a candidata por sua própria fonte"
+    ],
+    "restricoes": [
+      "Bancada exclusiva pme-governanca-app-correcao; sem subdelegação",
+      "Root coordena ativação externa e prova operacional real",
+      "Preservar a recusa histórica de substituição de TAR-983 submetida"
+    ],
+    "decisoes_aprovadas": [
+      "Despacho TAR-1024 transfere o commit causal e0029a286 para esta tarefa",
+      "Mandato do mantenedor cobre o caminho protegido e a publicação oficial"
+    ],
+    "etapas": [
+      "Reivindicar e contratar TAR-1024",
+      "Validar regressão e conferir revisão independente",
+      "Concluir PR2389 pelo make pr e observar checks"
+    ],
+    "criterios_entrada": [
+      "PR2373 integrado; correção causal isolada em e0029a286",
+      "Reserva da bancada reconciliada e TAR-1024 reivindicada"
+    ],
+    "criterios_aceite": [
+      "Candidata relativa vira caminho absoluto antes de trocar cwd",
+      "27 testes focais passam",
+      "PR inclui tarefa, eventos, recibo e submissão próprios sem reabrir TAR-983"
+    ],
+    "evidencias_exigidas": [
+      "pytest focal 27 passed e revisão independente sem bloqueantes",
+      "Validação isolada do make pr e estado remoto do PR2389",
+      "Workflow oficial posterior à integração emite check pelo App no SHA exato; root coordena esta prova"
+    ],
+    "condicao_encerramento": "Correção integrada e evidência operacional do check App no SHA exato; PR isolado não encerra o programa TAR-958.",
+    "limites_autonomia": "Não alterar configuração remota, pin, variables, App ou segredos; somente código causal e registros próprios pelo rito.",
+    "acoes_do_mantenedor": "Root coordena prova real positiva e negativa e eventual ativação remota após integração."
+  }
+}
