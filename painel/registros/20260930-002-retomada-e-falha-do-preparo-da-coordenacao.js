@@ -1,1 +1,21 @@
-(function(){ (window.REGISTROS = window.REGISTROS || []).push({"arquivo":"20260930-002-retomada-e-falha-do-preparo-da-coordenacao","tipo":"nota","quando":"2026-09-30","titulo":"Retomada preservada e preparo do banco interrompido","detalhe":"PR2372 integrado. O provisionamento parou ao importar a aplicacao sem inicializar Django; TAR1015 corrige. Backup e migracao seguem bloqueados. A limpeza automatica startup-cleanup removeu bancadas; registros foram recuperados dos snapshots com bytes iguais.","autoridade":"github","evidencia":"https://github.com/abundanciabr/sitesdoreino/actions/runs/36652757805; merge3c0ef993; snapshot87f62d6.","verificado_em":"2026-09-30","precisa_do_dono":false,"responde_a":null,"relacao":"comentario","tarefa":"TAR-958","gravidade":"info","frente":"fabrica","area":"infra","vence_em_dias":null,"se_eu_nao_decidir":null,"recomendacao":null,"reversivel":null}); })();
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-002-retomada-e-falha-do-preparo-da-coordenacao",
+  tipo: "nota",
+  quando: "2026-09-30",
+  titulo: "Retomada preservada e preparo do banco interrompido",
+  detalhe: "PR2372 integrado. O provisionamento parou ao importar a aplicacao sem inicializar Django; TAR1015 corrige. Backup e migracao seguem bloqueados. A limpeza automatica startup-cleanup removeu bancadas; registros foram recuperados dos snapshots com bytes iguais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/36652757805; merge3c0ef993; snapshot87f62d6.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-958",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
