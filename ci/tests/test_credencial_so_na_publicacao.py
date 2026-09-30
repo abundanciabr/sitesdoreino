@@ -62,7 +62,7 @@ def _sem_o_banco_do_runner(fluxo: dict) -> dict:
     for job in fluxo.get("jobs", {}).values():
         job.pop("services", None)
     texto = json.dumps(fluxo, ensure_ascii=False)
-    texto = re.sub(r"DATABASE_URL=postgres://[^@\s\"]+@localhost[^\s\"\]*", "", texto)
+    texto = re.sub(r'DATABASE_URL=postgres://[^@\s"]+@localhost[^\s"\\]*', "", texto)
     return json.loads(texto)
 
 

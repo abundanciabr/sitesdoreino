@@ -93,7 +93,7 @@ def test_inicializacao_valida_imagem_e_celula_sem_detector(tmp_path, modo, celul
 ])
 def test_inicializacao_exige_marcador_da_mesma_imagem(tmp_path, saida, aceita):
     passo = next(p for p in passos() if p.get("name") == "Conferir aprovação inicial concluída")
-    bash = r"C:\Program Files\Git\bin\bash.exe" if os.name == "nt" else shutil.which("bash")
+    bash = BASH
     resumo = tmp_path / "resumo"
     resultado = subprocess.run([bash], input=passo["run"].encode("utf-8"), capture_output=True,
         env=dict(os.environ, SAIDA=saida, CELULA="admin", TAG_IMAGEM="a" * 40,
