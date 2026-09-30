@@ -463,12 +463,28 @@ jobs:
             esac
             if [ "$APLICACAO" != skipped ]; then
               TENTATIVA="$NUMERO"
-              ULTIMA=$(printf '%s' "$SAIDA" | tail -n 1)
-              if [ "$APLICACAO" = success ] && [[ "$ULTIMA" =~ ^SINCRONIZACAO-STATUS:([0-9]{1,3})$ ]]; then
+              RODAPE=$'===============================================\n✅ Successfully executed commands to all hosts.\n==============================================='
+              SAIDA="${SAIDA%$'\n'}"
+              if [[ "$SAIDA" == *$'\n'"$RODAPE" ]]; then
+                SAIDA="${SAIDA%$'\n'"$RODAPE"}"
+              fi
+              mapfile -t LINHAS < <(printf '%s' "$SAIDA")
+              INICIOS=0; CONCLUSOES=0; STATUS=0
+              POS_INICIO=0; POS_CONCLUSAO=0; POS_STATUS=0
+              for INDICE in "${!LINHAS[@]}"; do
+                case "${LINHAS[$INDICE]}" in
+                  SINCRONIZACAO-INICIADA:*) INICIOS=$((INICIOS+1)); POS_INICIO="$INDICE" ;;
+                  SINCRONIZACAO-CONCLUIDA:*) CONCLUSOES=$((CONCLUSOES+1)); POS_CONCLUSAO="$INDICE" ;;
+                  SINCRONIZACAO-STATUS:*) STATUS=$((STATUS+1)); POS_STATUS="$INDICE" ;;
+                esac
+              done
+              ULTIMA=""
+              if [ "${#LINHAS[@]}" -gt 0 ]; then ULTIMA="${LINHAS[-1]}"; fi
+              if [ "$APLICACAO" = success ] && [ "$INICIOS" = 1 ] && [ "$STATUS" = 1 ] && [ "$POS_STATUS" = "$((${#LINHAS[@]}-1))" ] && [[ "$SAIDA" != *'✅ Successfully executed commands to all hosts.'* ]] && [[ "$ULTIMA" =~ ^SINCRONIZACAO-STATUS:([0-9]{1,3})$ ]]; then
                 CODIGO="${BASH_REMATCH[1]}"
-                if [ "$CODIGO" = 0 ] && [[ "$SAIDA" == *SINCRONIZACAO-INICIADA:* && "$SAIDA" == *SINCRONIZACAO-CONCLUIDA:* ]]; then
+                if [ "$CODIGO" = 0 ] && [ "$CONCLUSOES" = 1 ] && [ "$POS_INICIO" -lt "$POS_CONCLUSAO" ] && [ "$POS_CONCLUSAO" -lt "$POS_STATUS" ]; then
                   RESULTADO=concluida
-                elif [ "$CODIGO" != 0 ] && [[ "$SAIDA" == *SINCRONIZACAO-INICIADA:* && "$SAIDA" != *SINCRONIZACAO-CONCLUIDA:* ]]; then
+                elif [ "$CODIGO" != 0 ] && [ "$CONCLUSOES" = 0 ] && [ "$POS_INICIO" -lt "$POS_STATUS" ]; then
                   RESULTADO=falhou
                 fi
               fi
