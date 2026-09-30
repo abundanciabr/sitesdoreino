@@ -1,0 +1,20 @@
+{
+  "arquivo": "1027-comprovar-que-a-aprovacao-oficial-nao-pode-ser-fabricada-pel",
+  "id": "TAR-1027",
+  "titulo": "Comprovar que a aprovacao oficial nao pode ser fabricada pela candidata",
+  "toca": [
+    "ci",
+    "catalogo"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de ensaio sempre Draft e nunca integrado: alteracao comum recebe App5125381 SUCCESS sem mandato; candidata que tenta usar verificador proprio permanece sem aprovacao protegida, executando verificador da base; SHA exato de cada fase, fechamento preservado.",
+  "despacho": "Frente app983 no mandato TAR958. Ensaio de integracao controlado em unica bancada e PR Draft descartavel, nunca integrar. Fase comum: somente services/catalogo/tests/autoridade_app_probe.txt inerte mais tarefa/eventos/recibo do rito. Fase adversarial: somente copia candidata .github/workflows/autoridade-das-fontes.yml tenta selecionar candidate/ci/autoridade_das_fontes.py no comando de analise. A fonte confiavel da main nunca muda, segredos nunca sao lidos ou expostos, nenhuma configuracao/ruleset muda nesta tarefa. Validar linhagem com make pr, manter Draft inclusive apos rito, nao aprovar ambiente na fase negativa. Capturar prova de base executada e emissor App correto. Fechar PR sem merge preservando historico; resultado factual sera embarcado com consolidacao real da governanca. Nao tocar ci/autoridade_das_fontes.py em posse da frente Lei8. Root registra e executa eventual configuracao final apos provas.",
+  "origem": "TAR-958",
+  "criada_em": "2026-09-30",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

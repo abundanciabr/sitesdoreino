@@ -1,0 +1,1 @@
+TAR-1027: marcador inerte da fase comum do ensaio App; PR Draft não integrável.

@@ -1,0 +1,61 @@
+{
+  "arquivo": "20260930-042405-TAR-1027-contrato_execucao",
+  "tarefa": "TAR-1027",
+  "evento": "contrato_execucao",
+  "quando": "2026-09-30T04:24:05.120097+00:00",
+  "quem": "despacho-ci-autoridade-app-ensaio",
+  "contrato": {
+    "plano": "TAR-958 governança; TAR-1027 ensaio controlado do App",
+    "versao": 1,
+    "objetivo": "Provar em PR Draft que entrega comum recebe check do App sem aprovação e que a candidata não escolhe seu próprio verificador.",
+    "entregaveis": [
+      "PR Draft único com fase comum e fase adversarial em SHAs distintos",
+      "Evidência de análise, mandato e check App por SHA",
+      "PR fechado sem merge e relato factual da prova"
+    ],
+    "escopo_incluido": [
+      "services/catalogo/tests/autoridade_app_probe.txt inerte",
+      ".github/workflows/autoridade-das-fontes.yml somente na cópia candidata da fase adversarial",
+      "Tarefa, eventos e recibos próprios da TAR-1027"
+    ],
+    "nao_objetivos": [
+      "Integrar o fixture ou a alteração adversarial",
+      "Alterar main, ruleset, pin, segredos ou permissões",
+      "Editar ci/autoridade_das_fontes.py em posse da frente Lei8"
+    ],
+    "restricoes": [
+      "PR permanece Draft da criação até o fechamento",
+      "Não usar make pr porque sua etapa final marca ready",
+      "Nenhuma aprovação de ambiente na fase adversarial",
+      "Preservar SHAs, eventos e logs sem reescrever história"
+    ],
+    "decisoes_aprovadas": [
+      "Mantenedor autorizou ensaio controlado reversível; coordenação registrou TAR-1027",
+      "Root retém configurações remotas e consolidação final"
+    ],
+    "etapas": [
+      "Reivindicar tarefa na sessão oficial",
+      "Submeter fase comum com linhagem e recibo, medir App success sem mandato",
+      "Submeter alteração adversarial em novo SHA e medir que workflow base continua executado e mandato não é fabricado",
+      "Fechar PR Draft sem merge"
+    ],
+    "criterios_entrada": [
+      "Base main contém a correção TAR-1024",
+      "Bancada exclusiva e PR Draft verificados"
+    ],
+    "criterios_aceite": [
+      "App 5125381 SUCCESS no SHA comum com mandato skipped",
+      "Mudança candidata do workflow não altera comando do run pull_request_target da base",
+      "Fase adversarial não recebe aprovação protegida nem integração",
+      "PR termina CLOSED sem merge"
+    ],
+    "evidencias_exigidas": [
+      "Comandos locais e saída da validação de linhagem e fila",
+      "Run IDs, SHAs, conclusões de jobs e app_id do check remoto",
+      "Estado Draft durante ambas fases e CLOSED sem merge ao fim"
+    ],
+    "condicao_encerramento": "Duas fases e fechamento sem merge medidos; consolidação da governança registra o resultado factual.",
+    "limites_autonomia": "Somente bancada e PR Draft do ensaio; nenhum pin, ruleset, segredo, deploy ou aprovação de ambiente.",
+    "acoes_do_mantenedor": "Root decide ativação remota após revisar as provas; nenhuma ação técnica rotineira do mantenedor."
+  }
+}
