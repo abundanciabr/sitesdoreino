@@ -138,7 +138,7 @@ printf '%s\n' 'REVOKE ALL ON DATABASE coordenacao_db FROM PUBLIC' | psql_super >
 
 # O preparo do esquema usa o contrato SQL já integrado na imagem da admin.
 printf '%s\n' "$DSN" | docker compose exec -T admin python -c \
-  'import os,sys; os.environ["COORDENACAO_DATABASE_URL"]=sys.stdin.readline().strip(); from apps.core.coordenacao import preparar; preparar()' >/dev/null 2>&1 \
+  'import os,sys,django; os.environ["COORDENACAO_DATABASE_URL"]=sys.stdin.readline().strip(); os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings"); django.setup(); from apps.core.coordenacao import preparar; preparar()' >/dev/null 2>&1 \
   || parar "esquema da coordenação não foi preparado; confira a imagem admin e repita sem restaurar o banco."
 
 BACKUP=""
