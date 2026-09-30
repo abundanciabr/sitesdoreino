@@ -175,9 +175,9 @@ jobs:
           bash -n "$FONTE"
           SCRIPT="$RUNNER_TEMP/sincronizar-infra-com-resultado.sh"
           {
-            printf 'set -euo pipefail\nif bash <<%s\n' "'$FIM'"
+            printf 'set -euo pipefail\nSINCRONIZADOR=$(cat <<%s\n' "'$FIM'"
             cat "$FONTE"
-            printf '\n%s\nthen\n  CODIGO=0\nelse\n  CODIGO=$?\nfi\n' "$FIM"
+            printf '\n%s\n)\nif bash -c "$SINCRONIZADOR" </dev/null; then\n  CODIGO=0\nelse\n  CODIGO=$?\nfi\n' "$FIM"
             printf 'printf "SINCRONIZACAO-STATUS:%%s\\n" "$CODIGO"\nexit 0\n'
           } > "$SCRIPT"
           bash -n "$SCRIPT"
