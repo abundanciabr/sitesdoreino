@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           AUTH_MANDATE_SHA256: ${{ vars.AUTH_MANDATE_SHA256 }}
         run: >-
-          python -I base/ci/autoridade_das_fontes.py analisar
+          python -I candidate/ci/autoridade_das_fontes.py analisar
           --pr ${{ github.event.pull_request.number }}
           --head ${{ github.event.pull_request.head.sha }}
           --candidato candidate
