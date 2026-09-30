@@ -195,7 +195,9 @@ const doc = {visibilityState: "visible", hidden: false,
   createTextNode(t) {if(interromperMontagem && t.includes("interromper montagem")) throw Error("montagem interrompida"); return {textContent: t};},
   addEventListener(n, f) {eventos[n] = f;}};
 let agora = 1000000, chamadas = 0, falha = false, incompleta = false;
-let reservas = [{ref: "refs/reservas/tarefa-TAR-002"}];
+let reservas = [{ref: "refs/reservas/tarefa-TAR-002"},
+ {ref: "refs/reservas/tarefa-mapa-rota-edicao-aulas-avulsas"}];
+let respostaCrua = false;
 let prs = [{number: 1, draft: true, title: "TAR-002 desenho", html_url: "https://github.com/x/y/pull/1"},
  {number: 2, draft: false, title: "TAR-003 revisão", html_url: "https://github.com/x/y/pull/2"}];
 const contexto = {document: doc, window: {addEventListener(n,f) {eventosJanela[n]=f;},
@@ -203,8 +205,10 @@ const contexto = {document: doc, window: {addEventListener(n,f) {eventosJanela[n
  Date: class extends Date {constructor(...a) {super(...(a.length ? a : [agora]));} static now() {return agora;}},
  AbortSignal, setTimeout, clearTimeout,
  fetch: async url => {chamadas++; if(falha && url.includes("/pulls?")) throw Error("offline");
+ if (url.includes("matching-refs")) assert.match(url, /\/git\/matching-refs\/reservas%2Ftarefa-TAR-$/);
  return {ok: true, headers: {get() {return incompleta ? '<https://api.github.com/repos/x/y/pulls?page=2>; rel="next"' : null;}},
- json: async () => url.includes("matching-refs") ? reservas : prs};}};
+ json: async () => url.includes("matching-refs") ?
+  (respostaCrua ? reservas : reservas.filter(r => typeof r.ref === "string" && r.ref.startsWith("refs/reservas/tarefa-TAR-"))) : prs};}};
 vm.runInNewContext(fonte, contexto);
 const texto = e => e.textContent + (e.children || []).map(texto).join("");
 const ciclo = () => new Promise(resolve => setImmediate(resolve));
@@ -213,6 +217,7 @@ const ciclo = () => new Promise(resolve => setImmediate(resolve));
  assert.match(texto(lista), /rascunho/i);
  assert.doesNotMatch(texto(lista), /trabalho pronto/i);
  assert.match(texto(lista), /aceite.*não comprovado/i);
+ assert.doesNotMatch(texto(lista), /mapa-rota-edicao-aulas-avulsas/);
  assert.ok(cartao.classList.valores.has("reservada-agora"));
  assert.equal(chamadas, 2);
  const primeiroCarimbo = carimbo.textContent;
@@ -228,7 +233,7 @@ const ciclo = () => new Promise(resolve => setImmediate(resolve));
  eventos.visibilitychange(); await ciclo();
  assert.equal(texto(lista), anterior); assert.match(estado.textContent, /não consegui/i);
  assert.match(estado.textContent, /anterior|última/i);
- falha = false; agora += 301000; reservas = [{ref: 7}];
+ falha = false; respostaCrua = true; agora += 301000; reservas = [{ref: 7}];
  eventos.visibilitychange(); await ciclo();
  assert.equal(texto(lista), anterior); assert.match(estado.textContent, /não consegui/i);
  reservas = [];

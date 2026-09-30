@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-011-admin-ler-somente-reservas-tar-na-caixa-dos-robos",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "admin: ler somente reservas TAR na Caixa dos Robôs",
+  detalhe: "Consulta GitHub agora pede só reservas tarefa-TAR; teste com reserva de intenção coexistente e 45 testes admin passaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2385. Validação local: árvore 90af909a5d1984bb69bd6acdec77a75da3704f09; commit a12b067a9c4b88515786c4674ebed64e5066c495; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1018",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
