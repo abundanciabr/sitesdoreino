@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-065-ci-preservar-contrato-da-ficha-de-despacho",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: preservar contrato da ficha de despacho",
+  detalhe: "A guarda da ficha passa a conferir a receita vigente. TAR-1035 entra na fila com metadados originais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2398. Validação local: árvore 64fc4b6d534a48f93e8d3862e7cf3bd38142ad99; commit 9ddef4803e7dd06d8897b7ef25bb73a250ac2353; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1033",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

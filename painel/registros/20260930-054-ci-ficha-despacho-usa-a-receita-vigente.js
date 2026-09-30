@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260930-054-ci-ficha-despacho-usa-a-receita-vigente",
+  tipo: "entrega",
+  quando: "2026-09-30",
+  titulo: "ci: ficha despacho usa a receita vigente",
+  detalhe: "A ficha Codex agora segue as fontes canônicas e remete a receita operacional ao CAMINHO-DOURADO, eliminando passos duplicados sem alterar papel, modelo, esforço ou limites.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/2398. Validação local: árvore 1ae6d17dc6aeb998ca01c8126f744cdda53157a0; commit 8711c84d20c3b736ac0d9bf8f9bbbf2a28565f0a; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-1033",
+  gravidade: "info",
+  frente: null,
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
