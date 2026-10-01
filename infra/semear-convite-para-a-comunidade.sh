@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # SEMEAR O CONVITE PARA A COMUNIDADE, DESLIGADO, na produção.
 #
@@ -99,19 +100,19 @@ unset VALOR_DO_GATEWAY
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/5: conferindo se a mensageria está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "mensageria") || ESTADO=""
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "mensageria") || ESTADO=""
 [ -n "$ESTADO" ] || parar "o serviço 'mensageria' não está rodando. Sem ele não há banco a semear."
 echo "  mensageria ....... de pé"
 
 echo
 echo "== 2/5: descobrindo de qual escola é o convite =="
-SITE=$(docker compose exec -T gamificacao printenv SITE_ID 2>/dev/null | tr -d '\r[:space:]') || SITE=""
+SITE=$(env_servico gamificacao SITE_ID 2>/dev/null | tr -d '\r[:space:]') || SITE=""
 [ -n "$SITE" ] || parar "não consegui ler SITE_ID do contêiner da gamificação. Sem ele eu criaria um convite que nenhum aluno recebe, e isso não dá erro em lugar nenhum."
 echo "  site lido do contêiner ...... ${SITE}"
 
 echo
 echo "== 3/5: conferindo contra o site que um cadastro REAL carimba =="
-SITE_REAL=$(docker compose exec -T identidade python manage.py shell -c \
+SITE_REAL=$(comando_servico identidade shell -c \
   "from apps.identidade.models import OutboxEvent as O; e=O.objects.filter(event='identidade.pessoa-cadastrada').order_by('-id').first(); print(e.payload.get('site_id','') if e else '')" 2>/dev/null | tr -d '\r[:space:]') || SITE_REAL=""
 if [ -z "$SITE_REAL" ]; then
   echo "  a identidade ainda não publicou nenhum cadastro: nada a comparar."
@@ -125,7 +126,7 @@ fi
 echo
 echo "== 4/5: semeando (sem ligar: o convite nasce DESLIGADO) =="
 NOTA_DO_BANCO="O comando de semear já rodou. Dispare de novo depois de corrigir: ele não duplica."
-if SAIDA=$(docker compose exec -T mensageria python manage.py semear_convite_para_a_comunidade --site-id "$SITE" 2>&1); then
+if SAIDA=$(comando_servico mensageria semear_convite_para_a_comunidade --site-id "$SITE" 2>&1); then
   echo "$SAIDA"
 else
   echo "$SAIDA"
@@ -145,7 +146,7 @@ echo "== 5/5: conferindo do lado de fora do comando =="
 # Conta por outro caminho, pelo site e pelo slug, em vez de acreditar no que o
 # comando disse. Mede a versão 1, que é publicada e imutável: se o mantenedor
 # publicar uma versão nova na tela, esta contagem continua valendo.
-MEDIDA=$(docker compose exec -T mensageria python manage.py shell -c \
+MEDIDA=$(comando_servico mensageria shell -c \
   "from apps.jornadas.models import Jornada, JornadaVersao, Passo, TextoDoPasso as T; q=dict(jornada_versao__jornada__site_id='$SITE', jornada_versao__jornada__slug='$SLUG', jornada_versao__numero=1); j=Jornada.objects.filter(site_id='$SITE', slug='$SLUG'); print(j.count(), JornadaVersao.objects.filter(jornada__in=j).count(), Passo.objects.filter(**q).count(), T.objects.filter(**{'passo__'+k: v for k, v in q.items()}).count(), int(j.filter(ativa=True).exists()))" 2>/dev/null | tr -d '\r') || MEDIDA=""
 set -- $MEDIDA
 JORNADAS="${1:-}" VERSOES="${2:-}" PASSOS="${3:-}" TEXTOS="${4:-}" ATIVA="${5:-}"

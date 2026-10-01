@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # SEMEAR AS DÚVIDAS DA ESCOLA NO FÓRUM — para ele não abrir deserto.
 #
@@ -87,7 +88,7 @@ unset VALOR_DO_GATEWAY
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/4 — conferindo se o fórum está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "forum" || true)
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "forum" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'forum' não está rodando. Sem ele não há banco a semear."
 echo "  forum ...... de pé"
 
@@ -96,7 +97,7 @@ echo "== 2/4 — conferindo se a imagem já sabe publicar em nome da escola =="
 # Fail-closed contra a ordem errada: se o deploy que traz a migração ainda não
 # passou, a coluna não existe e o comando morreria com erro de SQL cru. Aqui a
 # recusa diz o que fazer, em português.
-SABE=$(docker compose exec -T forum python manage.py shell -c \
+SABE=$(comando_servico forum shell -c \
   "from apps.forum.models import Topico; print(Topico.objects.filter(publicado_pela_escola=True).count())" 2>&1)
 case "$SABE" in
   ''|*[!0-9]*) echo "$SABE"; parar "esta imagem do fórum ainda não tem a autoria da escola. Espere o deploy da célula 'forum' ficar verde e rode de novo." ;;
@@ -106,7 +107,7 @@ echo "  autoria da escola ...... disponível (tópicos da escola hoje: $SABE)"
 echo
 echo "== 3/4 — publicando as dúvidas =="
 # `-T` porque não há terminal do outro lado (o pipeline não aloca TTY).
-SAIDA=$(docker compose exec -T forum python manage.py semear_duvidas 2>&1) \
+SAIDA=$(comando_servico forum semear_duvidas 2>&1) \
   || { echo "$SAIDA"; parar "o comando semear_duvidas falhou. A saída acima diz por quê."; }
 echo "$SAIDA"
 
@@ -122,7 +123,7 @@ echo "== 4/4 — conferindo do lado de fora do comando =="
 # disse ter feito. E confere a REGRA DURA junto: nenhuma mensagem semeada pode
 # ter autor de pessoa. Contagem zero na primeira, ou qualquer número na segunda,
 # é motivo de parada.
-QUANTOS=$(docker compose exec -T forum python manage.py shell -c \
+QUANTOS=$(comando_servico forum shell -c \
   "from apps.forum.models import Topico; print(Topico.objects.filter(publicado_pela_escola=True).count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$QUANTOS" in
   ''|*[!0-9]*) parar "não consegui contar os tópicos da escola depois de publicar." ;;
@@ -130,7 +131,7 @@ esac
 [ "$QUANTOS" -ge 8 ] || parar "esperava ao menos 8 tópicos da escola e contei $QUANTOS."
 echo "  tópicos da escola no banco ...... $QUANTOS"
 
-FINGINDO=$(docker compose exec -T forum python manage.py shell -c \
+FINGINDO=$(comando_servico forum shell -c \
   "from apps.forum.models import Mensagem; print(Mensagem.objects.filter(publicado_pela_escola=True, autor__isnull=False).count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$FINGINDO" in
   ''|*[!0-9]*) parar "não consegui conferir se alguma mensagem da escola tem autor de pessoa." ;;

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # SEMEAR A SEQUÊNCIA DE BOAS-VINDAS — as linhas da jornada na produção.
 #
@@ -104,13 +105,13 @@ unset VALOR_DO_GATEWAY
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/5 — conferindo se a mensageria está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "mensageria" || true)
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "mensageria" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'mensageria' não está rodando. Sem ele não há banco a semear."
 echo "  mensageria ....... de pé"
 
 echo
 echo "== 2/5 — descobrindo de qual escola é a sequência =="
-SITE=$(docker compose exec -T gamificacao printenv SITE_ID 2>/dev/null | tr -d '\r[:space:]')
+SITE=$(env_servico gamificacao SITE_ID 2>/dev/null | tr -d '\r[:space:]')
 [ -n "$SITE" ] || parar "não consegui ler SITE_ID do contêiner da gamificação. Sem ele eu criaria uma jornada que nenhum cadastro acha — e isso não dá erro em lugar nenhum."
 echo "  site lido do contêiner ...... ${SITE}"
 
@@ -118,7 +119,7 @@ echo
 echo "== 3/5 — conferindo contra o site que um cadastro REAL carimba =="
 # Mede em vez de supor. Se a identidade nunca publicou nada, não há o que
 # comparar, e o script diz isso em voz alta em vez de fingir que conferiu.
-SITE_REAL=$(docker compose exec -T identidade python manage.py shell -c \
+SITE_REAL=$(comando_servico identidade shell -c \
   "from apps.identidade.models import OutboxEvent as O; e=O.objects.filter(event='identidade.pessoa-cadastrada').order_by('-id').first(); print(e.payload.get('site_id','') if e else '')" 2>/dev/null | tr -d '\r[:space:]')
 if [ -z "$SITE_REAL" ]; then
   echo "  a identidade ainda não publicou nenhum cadastro: nada a comparar."
@@ -133,11 +134,11 @@ echo
 echo "== 4/5 — semeando =="
 if [ "$LIGAR" = "1" ]; then
   echo "  modo: SEMEAR E LIGAR (novos cadastros passam a entrar na sequência)"
-  SAIDA=$(docker compose exec -T mensageria python manage.py semear_boas_vindas --site-id "$SITE" --ligar 2>&1) \
+  SAIDA=$(comando_servico mensageria semear_boas_vindas --site-id "$SITE" --ligar 2>&1) \
     || { echo "$SAIDA"; parar "o comando semear_boas_vindas falhou. A saída acima diz por quê."; }
 else
   echo "  modo: SÓ SEMEAR (a sequência nasce DESLIGADA e não escreve para ninguém)"
-  SAIDA=$(docker compose exec -T mensageria python manage.py semear_boas_vindas --site-id "$SITE" 2>&1) \
+  SAIDA=$(comando_servico mensageria semear_boas_vindas --site-id "$SITE" 2>&1) \
     || { echo "$SAIDA"; parar "o comando semear_boas_vindas falhou. A saída acima diz por quê."; }
 fi
 echo "$SAIDA"
@@ -146,7 +147,7 @@ echo
 echo "== 5/5 — conferindo do lado de fora do comando =="
 # Conta por outro caminho, em vez de acreditar no que o próprio comando disse
 # ter feito. E conta PELO SITE, que é como o motor pergunta.
-QUANTOS=$(docker compose exec -T mensageria python manage.py shell -c \
+QUANTOS=$(comando_servico mensageria shell -c \
   "from apps.jornadas.models import Passo; print(Passo.objects.filter(jornada_versao__jornada__site_id='$SITE', jornada_versao__jornada__slug='boas-vindas').count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$QUANTOS" in
   ''|*[!0-9]*) parar "não consegui contar os passos depois de semear." ;;
@@ -154,7 +155,7 @@ esac
 [ "$QUANTOS" -eq 3 ] || parar "esperava 3 passos na sequência de boas-vindas e contei $QUANTOS."
 echo "  passos da sequência ...... $QUANTOS"
 
-TEXTOS=$(docker compose exec -T mensageria python manage.py shell -c \
+TEXTOS=$(comando_servico mensageria shell -c \
   "from apps.jornadas.models import TextoDoPasso as T; print(T.objects.filter(passo__jornada_versao__jornada__site_id='$SITE').count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$TEXTOS" in
   ''|*[!0-9]*) parar "não consegui contar os textos depois de semear." ;;
@@ -162,7 +163,7 @@ esac
 [ "$TEXTOS" -eq 9 ] || parar "esperava 9 textos (3 passos x 3 idiomas) e contei $TEXTOS."
 echo "  textos nos três idiomas .. $TEXTOS"
 
-ATIVA=$(docker compose exec -T mensageria python manage.py shell -c \
+ATIVA=$(comando_servico mensageria shell -c \
   "from apps.jornadas.models import Jornada; j=Jornada.objects.get(site_id='$SITE', slug='boas-vindas'); print('1' if j.ativa else '0')" 2>/dev/null | tr -d '\r[:space:]')
 echo "  a sequência está ligada? . $([ "$ATIVA" = "1" ] && echo SIM || echo NAO)"
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # SEMEAR EXPERIMENTO: liga, desliga ou mede, na produção, o A/A técnico da
 # página de oferta de meshcraft.top, pela mesma porta das telas da área
@@ -124,7 +125,7 @@ alterado."
 
 echo "== 1/3: conferindo as duas peças =="
 for SERVICO in catalogo admin; do
-  ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
+  ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo. NADA foi alterado."
   echo "  $SERVICO ...... de pé"
 done
@@ -134,7 +135,7 @@ echo "  ação ...... $ACAO_PEDIDA"
 
 echo
 echo "== 2/3: rodando o comando da área administrativa =="
-SAIDA=$(docker compose exec -T admin python manage.py semear_experimento \
+SAIDA=$(comando_servico admin semear_experimento \
   --acao "$ACAO_PEDIDA" 2>&1) \
   || { echo "$SAIDA"; parar "o comando semear_experimento parou. A saída acima diz o que houve e o que fazer."; }
 SAIDA=$(printf '%s\n' "$SAIDA" | tr -d '\r')

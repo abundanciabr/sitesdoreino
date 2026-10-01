@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # CONFERIR AS FICHAS DOS ALUNOS contra o histórico de pontos — e, se pedirem,
 # acertar as que estiverem fora do lugar.
@@ -64,7 +65,7 @@ unset TRAVA_PUBLICACAO
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/3 — conferindo se a gamificação está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "gamificacao" || true)
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "gamificacao" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'gamificacao' não está rodando. Sem ele não há ficha a conferir."
 echo "  gamificacao ...... de pé"
 
@@ -85,7 +86,7 @@ echo
 echo "== 3/3 — conferindo as fichas contra o histórico de pontos =="
 # `$ARGS` sem aspas de propósito: são duas opções fixas escolhidas acima, nunca
 # texto de fora. O conjunto possível é o das três linhas do bloco anterior.
-SAIDA=$(docker compose exec -T gamificacao python manage.py reconciliar_perfis $ARGS 2>&1) \
+SAIDA=$(comando_servico gamificacao reconciliar_perfis $ARGS 2>&1) \
   || { echo "$SAIDA"; parar "o comando reconciliar_perfis recusou. A saída acima diz por quê."; }
 echo "$SAIDA"
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # LIMPAR OS AVISOS ÓRFÃOS — apaga da caixa central os recados sobre ideias que
 # foram apagadas definitivamente da Caixa de Sugestões.
@@ -58,7 +59,7 @@ docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Com
 
 echo "== 1/5 — conferindo se as duas peças estão de pé =="
 for SERVICO in sugestoes notificacoes; do
-  ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
+  ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo."
   echo "  $SERVICO ...... de pé"
 done
@@ -68,7 +69,7 @@ echo "== 2/5 — conferindo se a imagem já conhece o comando =="
 # Fail-closed contra a ORDEM ERRADA: rodar isto antes do deploy faria o
 # `manage.py` responder "Unknown command" em inglês cru, sem dizer que a
 # resposta certa é "espere o deploy".
-SABE=$(docker compose exec -T notificacoes python manage.py shell -c \
+SABE=$(comando_servico notificacoes shell -c \
   "from django.core.management import get_commands; print('retirar_cartas' in get_commands())" 2>&1 | tr -d '\r[:space:]')
 case "$SABE" in
   True) echo "  comando retirar_cartas ...... disponível" ;;
@@ -78,7 +79,7 @@ esac
 
 echo
 echo "== 3/5 — perguntando à Caixa quais ideias foram apagadas =="
-IDS=$(docker compose exec -T sugestoes python manage.py shell -c \
+IDS=$(comando_servico sugestoes shell -c \
   "from apps.sugestoes.models import Sugestao
 print(','.join(str(i) for i in Sugestao.objects.filter(apagada_em__isnull=False).values_list('id', flat=True)))" \
   2>/dev/null | tr -d '\r[:space:]')
@@ -102,7 +103,7 @@ echo "  ideias apagadas ...... $QUANTAS_IDEIAS"
 
 echo
 echo "== 4/5 — quem tem aviso dessas ideias (SIMULAÇÃO, nada é apagado) =="
-ANTES=$(docker compose exec -T notificacoes python manage.py retirar_cartas \
+ANTES=$(comando_servico notificacoes retirar_cartas \
   --assunto "$ASSUNTO" --parametro suggestion_id --valores "$IDS" --simular 2>&1 | tr -d '\r') \
   || { echo "$ANTES"; parar "não consegui simular a retirada."; }
 echo "$ANTES"
@@ -121,7 +122,7 @@ fi
 
 echo
 echo "== 5/5 — apagando =="
-SAIDA=$(docker compose exec -T notificacoes python manage.py retirar_cartas \
+SAIDA=$(comando_servico notificacoes retirar_cartas \
   --assunto "$ASSUNTO" --parametro suggestion_id --valores "$IDS" --confirmo 2>&1 | tr -d '\r') \
   || { echo "$SAIDA"; parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."; }
 echo "$SAIDA"
@@ -130,7 +131,7 @@ printf '%s' "$SAIDA" | grep -q 'RETIRADA OK' \
   || parar "o comando rodou mas não imprimiu a linha de conclusão — não posso afirmar que apagou."
 
 # A PROVA, por FORA do comando que apagou: pergunta de novo, do zero.
-DEPOIS=$(docker compose exec -T notificacoes python manage.py retirar_cartas \
+DEPOIS=$(comando_servico notificacoes retirar_cartas \
   --assunto "$ASSUNTO" --parametro suggestion_id --valores "$IDS" --simular 2>&1 | tr -d '\r')
 RESTAM=$(printf '%s' "$DEPOIS" | sed -n 's/^ *cartas na caixa \.*  *\([0-9]*\)$/\1/p' | head -n1)
 

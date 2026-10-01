@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # IDEIAS DE VITRINE NA CAIXA — põe (e tira) um quadro cheio, para o dono ver
 # como a Caixa fica com gente dentro antes de a turma entrar.
@@ -115,7 +116,7 @@ docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Com
 
 echo "== 1/4 — conferindo se as duas peças estão de pé =="
 for SERVICO in catalogo sugestoes; do
-  ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
+  ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo."
   echo "  $SERVICO ...... de pé"
 done
@@ -125,7 +126,7 @@ echo "== 2/4 — descobrindo o site no catálogo =="
 # A MESMA regra do `semear-caixa.sh` e do `quadro_atual()` da célula, de
 # propósito: um site ativo serve; zero ou vários PARAM. Escolher "o primeiro"
 # aqui seria este script inventando um site padrão.
-SITES=$(docker compose exec -T catalogo python manage.py shell -c \
+SITES=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}\s') \
@@ -169,7 +170,7 @@ echo "  número .... $SITE_ID"
 # uma: o número que prova a ação é o das FICTÍCIAS, e o das reais é a
 # testemunha de que nada de aluno foi tocado no caminho.
 contar() {
-  docker compose exec -T sugestoes python manage.py shell -c \
+  comando_servico sugestoes shell -c \
     "from apps.sugestoes.models import Sugestao
 demo = Sugestao.objects.filter(autor__email__endswith='demo.invalid')
 print(f'{demo.count()}\t{Sugestao.objects.exclude(autor__email__endswith=\"demo.invalid\").count()}')" \
@@ -187,11 +188,11 @@ echo "  ideias de gente de verdade  $REAIS_ANTES"
 echo
 if [ "$ACAO" = "criar" ]; then
   echo "== 4/4 — semeando a vitrine =="
-  docker compose exec -T sugestoes python manage.py semear_demo --site-id "$SITE_ID" \
+  comando_servico sugestoes semear_demo --site-id "$SITE_ID" \
     || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
 else
   echo "== 4/4 — retirando a vitrine =="
-  docker compose exec -T sugestoes python manage.py semear_demo --site-id "$SITE_ID" --remover \
+  comando_servico sugestoes semear_demo --site-id "$SITE_ID" --remover \
     || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
 fi
 

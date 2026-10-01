@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # SEMEAR O CRIVO — publica na produção o quiz de um site: as perguntas, as
 # opções, a pontuação e as faixas de resultado.
@@ -141,7 +142,7 @@ alterado."
 
 echo "== 1/6 — conferindo se as duas peças estão de pé =="
 for SERVICO in catalogo quiz; do
-  ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
+  ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo. NADA foi alterado."
   echo "  $SERVICO ...... de pé"
 done
@@ -150,7 +151,7 @@ echo
 echo "== 2/6 — descobrindo o site no catálogo =="
 # O catálogo é a fonte do número. Perguntar a ele é o único jeito de o Site
 # local do quiz nascer com o mesmo uuid que leads e checkout enxergam.
-SITES=$(docker compose exec -T catalogo python manage.py shell -c \
+SITES=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}\t{s.name}\t{s.default_offer_slug}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}\s') \
@@ -221,7 +222,7 @@ echo
 echo "== 3/6 — conferindo o cadastro local do quiz contra o catálogo =="
 # Os dois sentidos da mesma pergunta. O primeiro pega o quiz que já conhece o
 # host por outro número; o segundo pega o número já usado para outro host.
-LOCAL=$(docker compose exec -T -e ALVO_ID="$SITE_ID" -e ALVO_HOST="$SITE_HOST" quiz python manage.py shell -c \
+LOCAL=$(comando_servico_env quiz ALVO_ID="$SITE_ID" ALVO_HOST="$SITE_HOST" -- shell -c \
   "import os
 from apps.quiz.models import Site
 por_host = Site.objects.filter(host=os.environ['ALVO_HOST'].lower()).first()
@@ -261,7 +262,7 @@ echo "== 4/6 — conferindo a assinatura do comando seed_quiz =="
 # cravada. Um argumento obrigatório que este script não sabe preencher para
 # tudo ANTES de o banco receber a primeira linha; um argumento novo que seja
 # apenas opcional é dito em voz alta no log, porque ninguém mais vai dizer.
-AJUDA=$(docker compose exec -T quiz python manage.py seed_quiz --help 2>&1 | tr -d '\r') \
+AJUDA=$(comando_servico quiz seed_quiz --help 2>&1 | tr -d '\r') \
   || { echo "$AJUDA"; parar "não consegui pedir a ajuda do comando seed_quiz. A saída acima diz por quê. NADA foi alterado."; }
 
 USO=$(printf '%s\n' "$AJUDA" | awk '/^usage:/{lendo=1} lendo && NF==0 {exit} lendo {print}')
@@ -320,12 +321,12 @@ echo "== 5/6 — semeando (idempotente: rodar de novo não duplica) =="
 # solta dentro de um comando se parte em espaços, e o destino do botão é texto
 # que vem de fora.
 if [ "$ACEITA_DESTINO" = "1" ]; then
-  SAIDA=$(docker compose exec -T quiz python manage.py seed_quiz \
+  SAIDA=$(comando_servico quiz seed_quiz \
     --host "$SITE_HOST" --site-id "$SITE_ID" --site-name "$SITE_NOME" \
     --destino-do-botao "$DESTINO" 2>&1) \
     || { echo "$SAIDA"; parar "o comando seed_quiz falhou. A saída acima diz por quê."; }
 else
-  SAIDA=$(docker compose exec -T quiz python manage.py seed_quiz \
+  SAIDA=$(comando_servico quiz seed_quiz \
     --host "$SITE_HOST" --site-id "$SITE_ID" --site-name "$SITE_NOME" 2>&1) \
     || { echo "$SAIDA"; parar "o comando seed_quiz falhou. A saída acima diz por quê."; }
 fi
@@ -336,7 +337,7 @@ echo "== 6/6 — conferindo no banco, por fora do comando que semeou =="
 # `armadilhas/114`: o log ecoa o script, e ler o eco como execução já enganou
 # esta casa. Aqui a prova é contada de novo, por outro caminho, e filtrada
 # PELO SITE pedido — é assim que se vê que o site vizinho não foi tocado.
-RESUMO=$(docker compose exec -T -e ALVO_ID="$SITE_ID" quiz python manage.py shell -c \
+RESUMO=$(comando_servico_env quiz ALVO_ID="$SITE_ID" -- shell -c \
   "import os
 from django.urls import reverse
 from apps.quiz.models import Quiz, Site

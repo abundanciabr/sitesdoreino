@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # LIGAR A ESCADA DE DEGRAUS DA ESCOLA — para a página de conquistas deixar de
 # dizer "a sua escada está sendo montada".
@@ -64,19 +65,19 @@ unset TRAVA_PUBLICACAO
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/4 — conferindo se a gamificação está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "gamificacao" || true)
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "gamificacao" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'gamificacao' não está rodando. Sem ele não há escada a ligar."
 echo "  gamificacao ...... de pé"
 
 echo
 echo "== 2/4 — descobrindo de qual escola é a escada =="
-SITE=$(docker compose exec -T gamificacao printenv SITE_ID 2>/dev/null | tr -d '\r[:space:]')
+SITE=$(env_servico gamificacao SITE_ID 2>/dev/null | tr -d '\r[:space:]')
 [ -n "$SITE" ] || parar "o contêiner da gamificação não declara SITE_ID. Sem ele eu ligaria uma escada que a tela nunca consulta — e isso não dá erro em lugar nenhum, que é o pior desfecho."
 echo "  site lido do contêiner ...... ${SITE}"
 
 echo
 echo "== 3/4 — ligando SÓ os degraus =="
-SAIDA=$(docker compose exec -T gamificacao python manage.py ligar_degraus --site "$SITE" 2>&1) \
+SAIDA=$(comando_servico gamificacao ligar_degraus --site "$SITE" 2>&1) \
   || { echo "$SAIDA"; parar "o comando ligar_degraus recusou. A saída acima diz por quê."; }
 echo "$SAIDA"
 
@@ -89,7 +90,7 @@ echo
 echo "== 4/4 — conferindo do lado de fora do comando =="
 # Conta de novo, por outro caminho, em vez de acreditar no que o comando disse
 # ter feito. E conta PELO SITE, que é como a tela do aluno pergunta.
-LIGADOS=$(docker compose exec -T gamificacao python manage.py shell -c \
+LIGADOS=$(comando_servico gamificacao shell -c \
   "from apps.gamificacao.models import NivelDefinicao as N; print(N.objects.filter(site_id='$SITE', ativa=True).count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$LIGADOS" in
   ''|*[!0-9]*) parar "não consegui contar os degraus ligados depois de ligar." ;;
@@ -102,7 +103,7 @@ echo "  degraus ligados ................... $LIGADOS"
 # E a conferência que o mantenedor mais precisa: a escada subiu, o PAGAMENTO
 # não. Se este número mudar sozinho um dia, é sinal de que alguém ampliou o
 # comando para ligar economia — que é decisão de tela, nunca de disparo.
-REGRAS=$(docker compose exec -T gamificacao python manage.py shell -c \
+REGRAS=$(comando_servico gamificacao shell -c \
   "from apps.gamificacao.models import RegraDePontuacao as R; print(R.objects.filter(site_id='$SITE', ativa=True).count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$REGRAS" in
   ''|*[!0-9]*) parar "não consegui conferir quantas regras de pontuação estão ligadas." ;;

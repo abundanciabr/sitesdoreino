@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # ACERTO DE CONTAS ÚNICO DO FÓRUM — paga retroativamente o XP que as regras
 # forum-topico-criado e forum-resposta-aceita deixaram de fora enquanto
@@ -60,13 +61,13 @@ unset TRAVA_PUBLICACAO
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/3 — conferindo se a gamificação está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "gamificacao" || true)
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "gamificacao" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'gamificacao' não está rodando."
 echo "  gamificacao ...... de pé"
 
 echo
 echo "== 2/3 — descobrindo de qual escola são as linhas =="
-SITE=$(docker compose exec -T gamificacao printenv SITE_ID 2>/dev/null | tr -d '\r[:space:]')
+SITE=$(env_servico gamificacao SITE_ID 2>/dev/null | tr -d '\r[:space:]')
 [ -n "$SITE" ] || parar "o contêiner da gamificação não declara SITE_ID."
 echo "  site lido do contêiner ...... ${SITE}"
 
@@ -78,7 +79,7 @@ else
 fi
 FLAG=""
 [ "$CONFIRMAR" = "sim" ] && FLAG="--confirmo"
-SAIDA=$(docker compose exec -T gamificacao python manage.py backfill_pontos_do_forum --site-id "$SITE" $FLAG 2>&1) \
+SAIDA=$(comando_servico gamificacao backfill_pontos_do_forum --site-id "$SITE" $FLAG 2>&1) \
   || { echo "$SAIDA"; parar "o comando falhou. A saída acima diz por quê."; }
 echo "$SAIDA"
 

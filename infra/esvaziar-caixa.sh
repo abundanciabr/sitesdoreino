@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # ESVAZIAR A CAIXA DE SUGESTÕES — apaga DEFINITIVAMENTE toda ideia que ainda
 # tem conteúdo no quadro de um site. Sem volta.
@@ -78,7 +79,7 @@ docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Com
 
 echo "== 1/5 — conferindo se as duas peças estão de pé =="
 for SERVICO in catalogo sugestoes; do
-  ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
+  ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo."
   echo "  $SERVICO ...... de pé"
 done
@@ -90,7 +91,7 @@ echo "== 2/5 — conferindo se a imagem já conhece o comando =="
 # `manage.py` responde "Unknown command" em inglês cru, e quem estiver lendo não
 # tem como saber que a resposta é "espere o deploy". A recusa daqui diz isso em
 # português, e diz antes de qualquer conta ser feita.
-SABE=$(docker compose exec -T sugestoes python manage.py shell -c \
+SABE=$(comando_servico sugestoes shell -c \
   "from django.core.management import get_commands; print('esvaziar_caixa' in get_commands())" 2>&1 | tr -d '\r[:space:]')
 case "$SABE" in
   True) echo "  comando esvaziar_caixa ...... disponível" ;;
@@ -104,7 +105,7 @@ echo "== 3/5 — descobrindo o site no catálogo =="
 # zero ou vários PARAM. Escolher "o primeiro" aqui seria este script inventando
 # um site padrão — e, num comando sem volta, inventar é o pior que ele podia
 # fazer.
-SITES=$(docker compose exec -T catalogo python manage.py shell -c \
+SITES=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}\s') \
@@ -127,7 +128,7 @@ echo "  número .... $SITE_ID"
 # foram apagadas antes (a testemunha de que a segunda conta não encolheu no
 # caminho — nada aqui pode DESapagar coisa nenhuma).
 contar() {
-  docker compose exec -T sugestoes python manage.py shell -c \
+  comando_servico sugestoes shell -c \
     "from apps.sugestoes.models import Sugestao
 com = Sugestao.objects.filter(apagada_em__isnull=True)
 sem = Sugestao.objects.filter(apagada_em__isnull=False)
@@ -151,7 +152,7 @@ fi
 
 echo
 echo "== 5/5 — apagando definitivamente =="
-docker compose exec -T sugestoes python manage.py esvaziar_caixa \
+comando_servico sugestoes esvaziar_caixa \
   --site-id "$SITE_ID" --confirmo "$QUANTAS_ESPERO" \
   || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
 

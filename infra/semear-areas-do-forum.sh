@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # SEMEAR AS PRIMEIRAS ÁREAS DO FÓRUM — para ele deixar de nascer vazio.
 #
@@ -84,14 +85,14 @@ unset VALOR_DO_GATEWAY
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/3 — conferindo se o fórum está de pé =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "forum" || true)
+ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "forum" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'forum' não está rodando. Sem ele não há banco a semear."
 echo "  forum ...... de pé"
 
 echo
 echo "== 2/3 — semeando =="
 # `-T` porque não há terminal do outro lado (o pipeline não aloca TTY).
-SAIDA=$(docker compose exec -T forum python manage.py semear_areas 2>&1) \
+SAIDA=$(comando_servico forum semear_areas 2>&1) \
   || { echo "$SAIDA"; parar "o comando semear_areas falhou. A saída acima diz por quê."; }
 echo "$SAIDA"
 
@@ -105,7 +106,7 @@ echo
 echo "== 3/3 — conferindo do lado de fora do comando =="
 # Conta de novo, por outro caminho, em vez de confiar no que o próprio comando
 # disse ter feito. Contagem zero aqui seria falso-verde.
-QUANTAS=$(docker compose exec -T forum python manage.py shell -c \
+QUANTAS=$(comando_servico forum shell -c \
   "from apps.forum.models import Area; print(Area.objects.filter(ativa=True).count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$QUANTAS" in
   ''|*[!0-9]*) parar "não consegui contar as áreas depois de semear." ;;

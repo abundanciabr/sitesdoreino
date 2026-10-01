@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 # =============================================================================
 # INAUGURAR A CAIXA DE SUGESTÕES — cria o quadro de ideias no banco dela.
 #
@@ -108,7 +109,7 @@ docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Com
 
 echo "== 1/4 — conferindo se as duas peças estão de pé =="
 for SERVICO in catalogo sugestoes; do
-  ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
+  ESTADO=$(servicos_rodando 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo."
   echo "  $SERVICO ...... de pé"
 done
@@ -118,7 +119,7 @@ echo "== 2/4 — descobrindo o site no catálogo =="
 # A regra é a MESMA do `quadro_atual()` da célula, de propósito: um site ativo
 # serve; zero ou vários PARAM. Escolher "o primeiro" aqui seria este script
 # inventando um site padrão — a decisão que a própria Caixa se recusa a tomar.
-SITES=$(docker compose exec -T catalogo python manage.py shell -c \
+SITES=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}\s') \
@@ -175,7 +176,7 @@ echo "  número .... $SITE_ID"
 
 echo
 echo "== 3/4 — estado ANTES =="
-ANTES=$(docker compose exec -T sugestoes python manage.py shell -c \
+ANTES=$(comando_servico sugestoes shell -c \
   "from apps.sugestoes.models import Quadro, Categoria
 print(f'{Quadro.objects.count()}\t{Categoria.objects.count()}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9]+\s+[0-9]+$' | head -n1) \
   || parar "não consegui perguntar à Caixa quantos quadros ela tem."
@@ -184,10 +185,10 @@ echo "  categorias .... $(printf '%s' "$ANTES" | cut -f2)"
 
 echo
 echo "== 4/4 — inaugurando (idempotente: rodar de novo não duplica) =="
-docker compose exec -T sugestoes python manage.py seed_sugestoes --site-id "$SITE_ID" \
+comando_servico sugestoes seed_sugestoes --site-id "$SITE_ID" \
   || parar "o comando de seed falhou. A tela acima diz por quê — mande-a ao agente."
 
-DEPOIS=$(docker compose exec -T sugestoes python manage.py shell -c \
+DEPOIS=$(comando_servico sugestoes shell -c \
   "from apps.sugestoes.models import Quadro, Categoria
 print(f'{Quadro.objects.count()}\t{Categoria.objects.count()}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9]+\s+[0-9]+$' | head -n1)
 
