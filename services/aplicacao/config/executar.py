@@ -30,6 +30,8 @@ def main(argv=None) -> None:
     django.setup()
     load_original_settings()
     install_contextual_settings()
+    from internal import instalar
+    instalar()
     fonte = (sys.stdin.read() if args.script == "-"
              else Path(args.script).read_text(encoding="utf-8"))
     raiz = Path(__file__).resolve().parent.parent / "modules" / args.servico

@@ -43,6 +43,25 @@ HUEYS = (
 )
 
 
+def registrar_nomes_legados(huey, servico: str) -> int:
+    """Read queued jobs created by the previous per-service Python package.
+
+    Huey serializes the task class' module path. The bundle prefixes that
+    path with ``modules.<service>.``; the existing Redis queue still contains
+    the original ``apps.*`` identifiers until it drains.
+    """
+    prefixo = f"modules.{servico}."
+    registro = huey._registry._registry
+    adicionados = 0
+    for nome, classe in tuple(registro.items()):
+        if nome.startswith(prefixo):
+            antigo = nome[len(prefixo):]
+            if antigo not in registro:
+                registro[antigo] = classe
+                adicionados += 1
+    return adicionados
+
+
 class HueyIncorporado(Consumer):
     """Huey usa threads próprias; sinais pertencem ao servidor ASGI principal."""
 
@@ -133,6 +152,7 @@ class Workers:
                 import_module(nome)
 
         huey = import_module(f"modules.{servico}.config.huey").huey
+        registrar_nomes_legados(huey, servico)
         consumer = HueyIncorporado(huey, servico=servico, workers=1,
                                    worker_type="thread")
         self._huey_ativos[servico] = consumer

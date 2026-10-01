@@ -65,6 +65,15 @@ def ambiente(servico: str, urls: dict[str, str]) -> dict[str, str]:
         "REDIS_STREAMS_URL": os.environ.get("REDIS_STREAMS_URL", "redis://redis:6379/0"),
         "MP_ACCESS_TOKEN": "TEST-prova-isolada",
         "MP_WEBHOOK_SECRET": "prova-isolada",
+        "CATALOGO_API_URL": "http://catalogo:8000/api/catalogo",
+        "TOKEN_CATALOGO": "prova-token-catalogo",
+        "TOKENS_ACEITOS_FUNIL": "prova-token-catalogo",
+        "IDENTIDADE_API_URL": "http://identidade:8000/interno",
+        "IDENTIDADE_API_TOKEN": "prova-token-identidade",
+        "TOKENS_ACEITOS_PAGES": "prova-token-identidade",
+        "TOKENS_COMPLETOS_PAGES": "prova-token-identidade",
+        "ALUNOS_API_URL": "http://alunos:8000/api/alunos",
+        "ALUNOS_API_TOKEN": "prova-token-alunos",
     }
     if servico in urls:
         valores["DATABASE_URL"] = urls[servico]
@@ -97,6 +106,16 @@ def migrar_legado(urls: dict[str, str], pasta_env: Path) -> dict[str, dict[str, 
             cwd=origem, env={**os.environ, **valores}, check=True,
             stdout=subprocess.DEVNULL,
         )
+        if servico == "catalogo":
+            # A real legacy ORM row proves more than a comparison of empty
+            # schemas after adopting the namespaced migration history.
+            subprocess.run(
+                [sys.executable, "manage.py", "shell", "-c",
+                 "from apps.sites.models import Site; "
+                 "Site.objects.create(host='meshcraft.top', name='Prova legada')"],
+                cwd=origem, env={**os.environ, **valores}, check=True,
+                stdout=subprocess.DEVNULL,
+            )
         with psycopg.connect(urls[servico]) as conexao:
             contagens[servico] = _contagens(conexao)
     return contagens
@@ -105,6 +124,7 @@ def migrar_legado(urls: dict[str, str], pasta_env: Path) -> dict[str, dict[str, 
 def migrar_unificado(urls: dict[str, str], antes: dict[str, dict[str, int]]) -> None:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
     import django
+    from django.apps import apps
     from django.core.management import call_command
     from config.migracoes import preparar_migracoes
     from config.runtime import install_contextual_settings, load_original_settings, serving
@@ -120,6 +140,13 @@ def migrar_unificado(urls: dict[str, str], antes: dict[str, dict[str, int]]) -> 
             call_command("migrate", database=servico, interactive=False, verbosity=0)
         with psycopg.connect(urls[servico]) as conexao:
             depois = _contagens(conexao)
+            for modelo in apps.get_models():
+                meta = modelo._meta
+                if (meta.app_label.startswith(servico + "_") and meta.managed
+                        and not meta.proxy and meta.db_table not in antes[servico]):
+                    raise AssertionError(
+                        f"modelo {meta.label} aponta a tabela não legada {meta.db_table}"
+                    )
             if not set(antes[servico]) <= set(depois):
                 raise AssertionError(f"tabelas antigas desapareceram em {servico}")
             for tabela, quantidade in antes[servico].items():
@@ -128,6 +155,13 @@ def migrar_unificado(urls: dict[str, str], antes: dict[str, dict[str, int]]) -> 
                 if depois[tabela] < quantidade:
                     raise AssertionError(f"linhas antigas desapareceram em {servico}.{tabela}")
             with conexao.cursor() as cursor:
+                if servico == "catalogo":
+                    cursor.execute(
+                        "SELECT name FROM sites_site WHERE host = %s",
+                        ["meshcraft.top"],
+                    )
+                    if cursor.fetchone() != ("Prova legada",):
+                        raise AssertionError("registro legado de site não sobreviveu")
                 cursor.execute(
                     "SELECT count(*) FROM django_migrations WHERE app LIKE %s",
                     [servico + "_%"],
@@ -147,6 +181,8 @@ def migrar_unificado(urls: dict[str, str], antes: dict[str, dict[str, int]]) -> 
 
 async def provar_http() -> None:
     import config.asgi
+    from internal import instalar
+    instalar()
     for servico in MODULOS:
         cliente = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=config.asgi.app_do_servico(servico)),
@@ -165,6 +201,22 @@ async def provar_http() -> None:
             resposta = await cliente.get(caminho)
             if resposta.status_code != 200 or not resposta.content:
                 raise AssertionError(f"estático {caminho}: HTTP {resposta.status_code}")
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=config.asgi.application),
+        base_url="https://meshcraft.top", follow_redirects=False,
+    ) as cliente:
+        for antigo, novo in (
+            ("/pages/trabalhos?origem=antiga", "/portfolio/trabalhos?origem=antiga"),
+            ("/estudio/pecas", "/portfolio/trabalhos"),
+        ):
+            resposta = await cliente.get(antigo)
+            if (resposta.status_code != 308 or resposta.headers.get("location") != novo
+                    or resposta.headers.get("content-length") != "0"):
+                raise AssertionError(f"redirecionamento legado inválido: {antigo}")
+        for caminho in ("/", "/portfolio/", "/forum/", "/quiz/", "/admin/"):
+            resposta = await cliente.get(caminho)
+            if resposta.status_code >= 500:
+                raise AssertionError(f"rota pública {caminho}: HTTP {resposta.status_code}")
 
 
 def main() -> None:

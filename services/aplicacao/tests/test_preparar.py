@@ -34,3 +34,17 @@ class Pessoa(models.Model):
     rewritten = _preservar_tabelas_modelos(source, "forum")
     assert "db_table = 'forum_pessoa'" in rewritten
     compile(rewritten, "models.py", "exec")
+
+
+def test_concrete_model_inheriting_abstract_base_keeps_old_table():
+    source = """
+from django.db import models
+class Registro(models.Model):
+    class Meta:
+        abstract = True
+class Historico(Registro):
+    conteudo = models.TextField()
+"""
+    rewritten = _preservar_tabelas_modelos(source, "sugestoes")
+    assert "db_table = 'sugestoes_historico'" in rewritten
+    compile(rewritten, "models.py", "exec")

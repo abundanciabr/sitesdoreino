@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # A base so muda quando dependencias ou sistema mudam. O codigo de cada SHA
 # pode ser montado em /app pelo publicador sem reconstruir a imagem.

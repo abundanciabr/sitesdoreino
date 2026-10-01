@@ -91,11 +91,27 @@ def _tem_opcao(meta: ast.ClassDef, nome: str) -> bool:
 def _preservar_tabelas_modelos(codigo: str, app: str) -> str:
     arvore = ast.parse(codigo)
     alterado = False
+    classes = {no.name: no for no in arvore.body if isinstance(no, ast.ClassDef)}
+    modelos = {
+        no.name for no in classes.values()
+        if any(isinstance(base, ast.Attribute) and base.attr == "Model"
+               for base in no.bases)
+    }
+    # A concrete model can inherit an abstract Model declared in this file.
+    # Django still derives its table from the original (unprefixed) app label.
+    while True:
+        derivados = {
+            no.name for no in classes.values()
+            if any(isinstance(base, ast.Name) and base.id in modelos
+                   for base in no.bases)
+        }
+        if derivados <= modelos:
+            break
+        modelos |= derivados
     for classe in arvore.body:
         if not isinstance(classe, ast.ClassDef):
             continue
-        if not any(isinstance(base, ast.Attribute) and base.attr == "Model"
-                   for base in classe.bases):
+        if classe.name not in modelos:
             continue
         meta = next((no for no in classe.body
                      if isinstance(no, ast.ClassDef) and no.name == "Meta"), None)
