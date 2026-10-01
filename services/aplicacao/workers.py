@@ -65,6 +65,7 @@ class Workers:
             self._thread(f"eventos-{servico}", self._consumir, servico, app)
         for servico in self.hueys:
             self._thread(f"huey-{servico}", self._huey, servico)
+        self._thread("pagamentos-appmax", self._processar_appmax)
         return self
 
     def _thread(self, nome: str, funcao, *args) -> None:
@@ -78,9 +79,13 @@ class Workers:
         self.threads.append(thread)
 
     def _supervisionar(self, nome: str, funcao, args: tuple) -> None:
+        from config.runtime import serving
+
+        servico = nome.split("-", 1)[-1] if nome != "pagamentos-appmax" else "pagamentos"
         while not self.parar.is_set():
             try:
-                funcao(*args)
+                with serving(servico):
+                    funcao(*args)
             except Exception:
                 log.exception("Worker %s falhou; reiniciando", nome)
             else:
@@ -114,6 +119,14 @@ class Workers:
             consumer.run()
         finally:
             self._huey_ativos.pop(servico, None)
+
+    def _processar_appmax(self) -> None:
+        modulo = import_module(
+            "modules.pagamentos.pagamentos.api.management.commands.processar_appmax"
+        )
+        while not self.parar.is_set():
+            modulo.Command().handle()
+            self.parar.wait(30)
 
     def encerrar(self) -> None:
         self.parar.set()
