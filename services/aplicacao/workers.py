@@ -46,8 +46,28 @@ HUEYS = (
 class HueyIncorporado(Consumer):
     """Huey usa threads próprias; sinais pertencem ao servidor ASGI principal."""
 
+    def __init__(self, huey, *, servico: str, **kwargs):
+        self.servico = servico
+        super().__init__(huey, **kwargs)
+
     def _set_signal_handlers(self) -> None:
         pass
+
+    def _create_process(self, process, name):
+        # Huey cria outras threads depois da nossa. ContextVar não atravessa
+        # Thread automaticamente; cada passo do worker/scheduler recebe o
+        # contexto do serviço dono da fila.
+        from config.runtime import serving
+
+        for nome in ("initialize", "loop", "shutdown"):
+            original = getattr(process, nome)
+
+            def contextual(*args, _original=original, **kwargs):
+                with serving(self.servico):
+                    return _original(*args, **kwargs)
+
+            setattr(process, nome, contextual)
+        return super()._create_process(process, name)
 
 
 class Workers:
@@ -113,7 +133,8 @@ class Workers:
                 import_module(nome)
 
         huey = import_module(f"modules.{servico}.config.huey").huey
-        consumer = HueyIncorporado(huey, workers=1, worker_type="thread")
+        consumer = HueyIncorporado(huey, servico=servico, workers=1,
+                                   worker_type="thread")
         self._huey_ativos[servico] = consumer
         try:
             consumer.run()

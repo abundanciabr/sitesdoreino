@@ -176,6 +176,9 @@ class ContextualEnvironment(MutableMapping):
     def __len__(self):
         return len(set(iter(self)))
 
+    def copy(self):
+        return dict(self.items())
+
 
 def context_processors(request):
     """Run only processors belonging to the selected former cell."""

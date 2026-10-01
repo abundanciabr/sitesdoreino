@@ -3,7 +3,11 @@
 **/__pycache__
 **/.pytest_cache
 **/tests
+!services/aplicacao/tests
+!services/aplicacao/tests/**
 **/vendor
 **/staticfiles
 services/aplicacao/.generated
+services/aplicacao/env
+services/aplicacao/modules
 infra/env/*.env
