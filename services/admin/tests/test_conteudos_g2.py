@@ -158,3 +158,24 @@ def test_sem_cracha_nao_alcanca_editor_nem_publicacao():
     )
     assert pagina.status_code in (302, 404)
     assert publicacao.status_code in (302, 404)
+
+
+@pytest.mark.parametrize(
+    "tipo,url,chave",
+    [
+        ("forum", "http://forum:8000/interno/editor/areas", "areas"),
+        ("turma", "http://alunos:8000/api/alunos/turmas?site_id=site-teste", "items"),
+    ],
+)
+@respx.mock
+def test_listas_com_nome_sem_title_abrem(tipo, url, chave):
+    cliente = _cliente()
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            json={chave: [{"slug": "primeiro", "nome": "Nome publicado", "has_draft": False}]},
+        )
+    )
+    pagina = cliente.get(reverse("conteudos", kwargs={"tipo": tipo}))
+    assert pagina.status_code == 200
+    assert "Nome publicado" in pagina.content.decode()

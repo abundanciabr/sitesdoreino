@@ -17,7 +17,7 @@
   </div>
   {% for linha in linhas %}
   <div class="cartao">
-    <a href="{% url 'conteudo_editar' tipo linha.slug %}">{{ linha.nome|default:linha.title|default:linha.slug }}</a>
+    <a href="{% url 'conteudo_editar' tipo linha.slug %}">{% firstof linha.nome linha.title linha.slug %}</a>
     {% if linha.rascunho or linha.has_draft %}<span class="nota">Rascunho guardado</span>{% endif %}
   </div>
   {% empty %}
