@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Conversa do fórum{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'forum_topicos' %}">← Conversas da escola</a>
+  <h1>{% if rascunho.rascunho_id %}Prévia privada da conversa{% else %}Nova conversa{% endif %}</h1>
+  {% if erro %}<p class="aviso">{{ erro }}</p>{% endif %}
+  {% if recado %}<p class="aviso">Rascunho salvo. O público continua vendo apenas a versão publicada.</p>{% endif %}
+  <div class="cartao">
+    <form method="post" action="{% if rascunho.rascunho_id %}{% url 'forum_topico_salvar' rascunho.rascunho_id %}{% else %}{% url 'forum_topico_criar' %}{% endif %}">{% csrf_token %}
+      <p><label>Área do fórum<br>
+        <select name="area_slug" required>
+          {% for area in areas %}<option value="{{ area.slug }}" {% if area.slug == rascunho.area_slug %}selected{% endif %}>{{ area.nome }}</option>{% endfor %}
+        </select>
+      </label></p>
+      <p><label>Título<br><input name="titulo" maxlength="180" required value="{{ rascunho.titulo|default:'' }}"></label></p>
+      <p><label>Texto inicial<br><textarea name="texto" rows="12" required>{{ rascunho.texto|default:'' }}</textarea></label></p>
+      <button type="submit">Salvar rascunho</button>
+    </form>
+  </div>
+  {% if rascunho.rascunho_id %}
+  <div class="cartao">
+    <p><b>Prévia:</b> {{ rascunho.titulo }}</p>
+    <p>{{ rascunho.texto|linebreaksbr }}</p>
+    <form method="post" action="{% url 'forum_topico_publicar' rascunho.rascunho_id %}">{% csrf_token %}
+      <button type="submit">Publicar conversa</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -86,6 +86,11 @@ from apps.core.menu import (
 from apps.core.conteudos import (
     conteudos, conteudo_novo, conteudo_editar, conteudo_salvar, conteudo_publicar,
 )
+from apps.core.topicos_do_forum import (
+    forum_topicos, forum_topico_novo, forum_topico_criar,
+    forum_topico_abrir_edicao, forum_topico_editar, forum_topico_salvar,
+    forum_topico_publicar,
+)
 from apps.core.paginas import (
     pagina_de_venda,
     pagina_de_venda_publicar,
@@ -199,6 +204,13 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
+    path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
+    path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),
+    path("conteudos/forum/topicos/criar", forum_topico_criar, name="forum_topico_criar"),
+    path("conteudos/forum/topicos/<int:topico_id>/editar", forum_topico_abrir_edicao, name="forum_topico_abrir_edicao"),
+    path("conteudos/forum/topicos/rascunho/<uuid:rascunho_id>/", forum_topico_editar, name="forum_topico_editar"),
+    path("conteudos/forum/topicos/rascunho/<uuid:rascunho_id>/salvar", forum_topico_salvar, name="forum_topico_salvar"),
+    path("conteudos/forum/topicos/rascunho/<uuid:rascunho_id>/publicar", forum_topico_publicar, name="forum_topico_publicar"),
     path("conteudos/<slug:tipo>/", conteudos, name="conteudos"),
     path("conteudos/<slug:tipo>/novo", conteudo_novo, name="conteudo_novo"),
     path("conteudos/<slug:tipo>/<slug:slug>/", conteudo_editar, name="conteudo_editar"),

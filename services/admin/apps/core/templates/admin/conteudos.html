@@ -4,6 +4,7 @@
 <div class="envolucro">
   <h1>{{ nome }}</h1>
   <p class="subtitulo">Edite um rascunho, confira a prévia e publique quando estiver pronto.</p>
+  {% if tipo == 'forum' %}<p><a class="botao" href="{% url 'forum_topicos' %}">Conversas da escola</a></p>{% endif %}
   {% if erro %}<p class="aviso">{{ erro }}</p>{% endif %}
   {% if recado %}<p class="aviso">{{ recado }}</p>{% endif %}
   <div class="cartao">

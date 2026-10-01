@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Conversas do fórum{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'conteudos' 'forum' %}">← Áreas do fórum</a>
+  <h1>Conversas da escola</h1>
+  <p class="subtitulo">Escreva, confira o rascunho e publique a conversa separadamente.</p>
+  <p><a class="botao" href="{% url 'forum_topico_novo' %}">Nova conversa</a></p>
+  {% for item in itens %}
+  <div class="cartao">
+    <b>{{ item.titulo }}</b> · {{ item.area_slug }}
+    {% if item.rascunho %}
+      <span class="nota">Rascunho privado</span>
+      <a href="{% url 'forum_topico_editar' item.rascunho_id %}">Editar e pré visualizar</a>
+    {% elif item.topico_id %}
+      <form method="post" action="{% url 'forum_topico_abrir_edicao' item.topico_id %}">{% csrf_token %}
+        <button type="submit">Editar como rascunho</button>
+      </form>
+    {% endif %}
+  </div>
+  {% empty %}<p class="aviso">Ainda não há conversas da escola.</p>{% endfor %}
+</div>
+{% endblock %}
