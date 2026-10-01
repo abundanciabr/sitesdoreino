@@ -486,3 +486,42 @@ html:has(dialog.videoaula[open]), html:has(dialog.videoaula:not(.com-script):tar
 .navegacao-aulas small { color: var(--tinta-fraca); display: block; font-size: 12px; font-weight: 400; margin-top: 4px; }
 .navegacao-aulas a:hover, .navegacao-aulas a:focus-visible { border-color: var(--marca); color: var(--marca); }
 .navegacao-aulas button:disabled { cursor: default; opacity: .6; }
+
+/* O conteúdo acompanha o vídeo; em telas menores vem logo abaixo dele. */
+main.sala-com-conteudo { max-width: 1480px; }
+.aula-layout { align-items: start; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) 320px; margin-bottom: 20px; }
+.aula-layout .video { margin-bottom: 0; min-width: 0; }
+.conteudo-curso { background: var(--caixa); border: 1px solid var(--borda); border-radius: 14px; max-height: calc(100vh - 48px); overflow-y: auto; position: sticky; top: 24px; }
+.conteudo-topo { align-items: center; border-bottom: 1px solid var(--borda); display: flex; gap: 8px; justify-content: space-between; padding: 18px 20px; }
+.conteudo-topo h2 { font-size: 18px; margin: 0; }
+.conteudo-topo .fechar-conteudo { background: transparent; color: var(--tinta-fraca); flex: 0 0 auto; font-size: 28px; font-weight: 400; height: 32px; line-height: 1; padding: 0; width: 32px; }
+.conteudo-progresso { padding: 16px 20px; }
+.conteudo-progresso p { color: var(--tinta-fraca); font-size: 13px; margin: 0 0 10px; }
+.conteudo-bloco { border-top: 1px solid var(--borda); }
+.conteudo-bloco summary { align-items: center; background: #f5f4f8; cursor: pointer; display: flex; gap: 12px; justify-content: space-between; list-style: none; padding: 18px 20px; }
+.conteudo-bloco summary::-webkit-details-marker { display: none; }
+.conteudo-bloco summary strong { display: block; font-size: 15px; }
+.conteudo-bloco summary small { color: var(--tinta-fraca); display: block; font-size: 12px; margin-top: 4px; }
+.conteudo-bloco summary svg { flex: 0 0 auto; height: 18px; width: 18px; }
+.conteudo-bloco[open] summary svg { transform: rotate(180deg); }
+.conteudo-aulas { list-style: none; margin: 0; padding: 0; }
+.conteudo-aula { align-items: start; border-left: 3px solid transparent; color: var(--tinta); display: flex; gap: 12px; padding: 18px 16px; text-decoration: none; }
+.conteudo-aula:hover { background: #f7f5fc; }
+.conteudo-marca { align-items: center; border: 2px solid #9c97ac; border-radius: 3px; display: flex; flex: 0 0 22px; height: 22px; justify-content: center; margin-top: 1px; }
+.conteudo-marca svg { height: 17px; width: 17px; }
+.conteudo-titulo { display: block; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.conteudo-info small { color: var(--tinta-fraca); display: block; font-size: 12px; margin-top: 4px; }
+.conteudo-item.estado-concluida .conteudo-marca { background: var(--marca); border-color: var(--marca); color: #fff; }
+.conteudo-item.aula-selecionada .conteudo-aula { background: var(--marca-fraca); border-left-color: var(--marca); }
+.conteudo-aula[aria-disabled="true"] { color: var(--tinta-fraca); }
+.conteudo-aula[aria-disabled="true"] .conteudo-marca { border: 0; }
+.conteudo-aula:focus-visible, .conteudo-bloco summary:focus-visible, .fechar-conteudo:focus-visible { outline: 2px solid var(--marca); outline-offset: -3px; }
+.atalho-conteudo { text-align: right; }
+.abrir-conteudo { font-size: 14px; margin-bottom: 12px; }
+.conteudo-curso[hidden], .abrir-conteudo[hidden], .fechar-conteudo[hidden] { display: none; }
+.aula-layout.conteudo-fechado, .vsl-modo-cinema .aula-layout { grid-template-columns: minmax(0, 1fr); }
+.vsl-modo-cinema .conteudo-curso { position: static; }
+@media (max-width: 1099px) {
+  .aula-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .conteudo-curso { max-height: none; position: static; }
+}

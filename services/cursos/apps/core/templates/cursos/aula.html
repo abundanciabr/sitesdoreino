@@ -19,6 +19,7 @@ script. O HTML das peças vem do renderizador da casa (`apps/core/markdown.py`),
 que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% endcomment %}
 {% block titulo %}{{ aula.titulo_exibido }}{% endblock %}
+{% block atributos_principal %} class="sala-com-conteudo"{% endblock %}
 
 {% block faixa %}
   <a href="{{ url_do_mapa }}">Mapa das portas</a>
@@ -87,7 +88,9 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 </script>
 {% endif %}
 
+<div class="aula-layout">
 <section class="video" id="video">
+  <div class="atalho-conteudo"><button type="button" class="abrir-conteudo" aria-controls="conteudo-do-curso" aria-expanded="false" hidden><span aria-hidden="true">☰</span> Conteúdo do curso</button></div>
   {% if not video.youtube_id %}<h2>O vídeo da aula</h2>{% endif %}
   {% if video.youtube_id %}
   {% include "cursos/_player_youtube_vsl.html" with youtube_id=video.youtube_id titulo=aula.titulo_exibido vertical=video.vertical %}
@@ -116,6 +119,9 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   segundo marcado, registre o que a pausa pede, e só então retome.</p>
   {% endif %}
 </section>
+{% include "cursos/_conteudo_do_curso.html" %}
+</div>
+<script src="{% url 'estatico' 'cursos/sala_aula.js' %}" defer></script>
 
 {% for pausa in pausas %}
 <section class="pausa{% if pausa.registro %} registrada{% endif %}" id="pausa-{{ pausa.ordem }}">

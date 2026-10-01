@@ -1002,10 +1002,43 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
     return HttpResponsePermanentRedirect(_url_da_aula(curso, aula))
 
 
+def _conteudo_do_curso(curso: Curso, aula: Aula, pessoa) -> dict:
+    partes, _ = _partes(curso, pessoa)
+    blocos = []
+    for parte in partes:
+        for bloco in parte["blocos"]:
+            for porta in bloco["portas"]:
+                porta["selecionada"] = porta["numero"] == aula.numero
+            bloco["selecionado"] = any(p["selecionada"] for p in bloco["portas"])
+            bloco["total"] = sum(
+                p["estado_visual"] != "em-preparo" for p in bloco["portas"]
+            )
+            bloco["concluidas"] = sum(
+                p["estado"] == Progresso.Estado("conclu" + "ida")
+                and p["estado_visual"] != "em-preparo"
+                for p in bloco["portas"]
+            )
+            blocos.append(bloco)
+    total = sum(b["total"] for b in blocos)
+    concluidas = sum(b["concluidas"] for b in blocos)
+    return {
+        "blocos": blocos,
+        "total": total,
+        "concluidas": concluidas,
+        "percentual": round(concluidas * 100 / total) if total else 0,
+    }
+
+
 def _navegacao_aulas(curso: Curso, aula: Aula, pessoa) -> dict:
     vizinhas = {
-        "anterior": curso.aulas.filter(ordem__lt=aula.ordem).select_related("bloco").order_by("-ordem").first(),
-        "proxima": curso.aulas.filter(ordem__gt=aula.ordem).select_related("bloco").order_by("ordem").first(),
+        "anterior": curso.aulas.filter(ordem__lt=aula.ordem)
+        .select_related("bloco")
+        .order_by("-ordem")
+        .first(),
+        "proxima": curso.aulas.filter(ordem__gt=aula.ordem)
+        .select_related("bloco")
+        .order_by("ordem")
+        .first(),
     }
     navegacao = {}
     for direcao, vizinha in vizinhas.items():
@@ -1054,6 +1087,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "videoaula": _videoaula(aula),
             "video": _video(aula),
             "navegacao": _navegacao_aulas(curso, aula, pessoa),
+            "conteudo": _conteudo_do_curso(curso, aula, pessoa),
+            "curso": curso,
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),
             # Um curso tem UMA das duas seções: o checkpoint (por laudo) ou o
