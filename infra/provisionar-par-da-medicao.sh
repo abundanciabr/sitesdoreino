@@ -221,25 +221,7 @@ echo
 #    os arquivos JÁ estão certos, e o env é lido no start de cada container.
 # -----------------------------------------------------------------------------
 echo "== recarregando as duas células =="
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  for servico in metricas admin; do
-    if docker compose ps --services 2>/dev/null | grep -qx "$servico"; then
-      ALVOS="$ALVOS $servico"
-    fi
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-    else
-      echo "  (aviso: não consegui recarregar$ALVOS — os arquivos JÁ estão certos; a próxima entrega de cada célula relê o env. Avise o agente.)"
-    fi
-  else
-    echo "  (aviso: não achei estes serviços no compose desta máquina — a próxima entrega relê o env.)"
-  fi
-else
-  echo "  (aviso: não achei o docker aqui — os arquivos JÁ estão certos; a próxima entrega relê o env.)"
-fi
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora o painel consegue perguntar à medição o que aconteceu no"

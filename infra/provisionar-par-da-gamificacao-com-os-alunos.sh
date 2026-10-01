@@ -228,39 +228,7 @@ echo
 #    atende o login do site inteiro) só reinicia se o grau for novo para ela.
 #    Os consumidores e relays das três células não usam estas chaves.
 # -----------------------------------------------------------------------------
-lido_por() {  # serviço, chave: o valor que o container em pé enxerga
-  docker compose exec -T "$1" printenv "$2" 2>/dev/null | tr -d '[:space:]'
-}
-precisa_reiniciar() {  # serviço
-  case "$1" in
-    alunos) [ "$(lido_por alunos TOKENS_ACEITOS_GAMIFICACAO)" != "$A" ] ;;
-    identidade) [ "$(lido_por identidade TOKENS_COMPLETOS_GAMIFICACAO)" != "$T_IDENTIDADE" ] ;;
-    gamificacao) [ "$(lido_por gamificacao ALUNOS_API_TOKEN)" != "$A" ] \
-                   || [ "$(lido_por gamificacao ALUNOS_API_URL)" != "$ALUNOS_URL" ] ;;
-  esac
-}
-
-ALVOS=""
-for servico in alunos identidade gamificacao; do
-  if precisa_reiniciar "$servico"; then ALVOS="$ALVOS $servico"; fi
-done
-if [ -n "$ALVOS" ]; then
-  echo "== reiniciando só quem ainda não lê o env novo:$ALVOS =="
-  # O VEREDITO VEM DO COMANDO, NUNCA DO PIPE (ARMADILHAS §5.10): a saída é
-  # guardada e só depois impressa, para o estado medido ser o do compose.
-  saida_do_reinicio="$(docker compose up -d --force-recreate $ALVOS 2>&1)"
-  estado_do_reinicio=$?
-  printf '%s\n' "$saida_do_reinicio" | tail -5
-  [ "$estado_do_reinicio" -eq 0 ] \
-    || parar "os arquivos ficaram certos e conferidos, mas o reinício falhou. Rodar este mesmo provisionador de novo refaz o reinício."
-  for servico in $ALVOS; do
-    if precisa_reiniciar "$servico"; then
-      parar "$servico reiniciou, mas não lê o valor gravado. Rodar este mesmo provisionador de novo confere e reinicia outra vez."
-    fi
-  done
-else
-  echo "== as três células já leem o env novo; nada reiniciado =="
-fi
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os arquivos foram conferidos, mas a aplicação não passou na prova após a recarga."
 echo
 
 # -----------------------------------------------------------------------------
@@ -271,7 +239,7 @@ echo
 #    Sai só o código HTTP; nenhum token vai para a tela.
 # -----------------------------------------------------------------------------
 provar() {
-  docker compose exec -T gamificacao python - 2>/dev/null <<'PY'
+  docker compose exec -T aplicacao python -m config.executar gamificacao - 2>/dev/null <<'PY'
 import os
 
 import httpx

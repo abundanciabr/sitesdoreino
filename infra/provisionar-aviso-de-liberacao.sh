@@ -220,25 +220,7 @@ echo
 #    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  # Ordem: provedor, depois quem pergunta. O `alunos-relay` entra porque é ele
-  # que republica a carta que o processo web não conseguiu publicar na hora.
-  for servico in identidade alunos alunos-relay; do
-    docker compose config --services 2>/dev/null | grep -qx "$servico" && ALVOS="$ALVOS $servico"
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-    else
-      echo "  (aviso: não consegui recarregar$ALVOS — os arquivos JÁ estão certos; o próximo deploy de cada célula relê o env. Avise o agente.)"
-    fi
-  else
-    echo "  (aviso: não achei estes serviços no compose desta máquina — o próximo deploy relê o env.)"
-  fi
-else
-  echo "  (aviso: não achei o docker aqui — os arquivos JÁ estão certos; o próximo deploy relê o env.)"
-fi
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora, quando você liberar alguém da fila, essa pessoa recebe um"

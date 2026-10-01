@@ -219,7 +219,7 @@ if [ -n "$MEXIDOS" ]; then
   # É o falso-verde do ARMADILHAS §5.10, o mesmo que fez os greens do
   # deploy-celula mentirem até 21/08/2026 (H13). A saída é guardada e só depois
   # impressa, para que o estado medido seja o do `docker compose`.
-  saida_do_reinicio="$(docker compose up -d --force-recreate notificacoes notificacoes-consumer admin 2>&1)"
+  saida_do_reinicio="$(python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" 2>&1)"
   estado_do_reinicio=$?
   printf '%s\n' "$saida_do_reinicio" | tail -5
   if [ "$estado_do_reinicio" -eq 0 ]; then
@@ -230,7 +230,7 @@ if [ -n "$MEXIDOS" ]; then
     echo "Os arquivos ficaram certos, mas o reinicio das celulas FALHOU."
     echo "Nada foi perdido: os dois lados do par estao gravados e conferidos."
     echo "Rode a linha abaixo e me mande a saida:"
-    echo "  cd $RAIZ && docker compose up -d --force-recreate notificacoes notificacoes-consumer admin"
+    echo "  rode este mesmo provisionador novamente"
     exit 1
   fi
 else

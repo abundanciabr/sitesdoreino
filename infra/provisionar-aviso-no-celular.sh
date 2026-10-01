@@ -195,26 +195,7 @@ echo
 # células à tag :main do compose.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  for servico in funil notificacoes notificacoes-consumer; do
-    if docker compose config --services 2>/dev/null | grep -qx "$servico"; then
-      ALVOS="$ALVOS $servico"
-    fi
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-    else
-      echo "  (aviso: não consegui recarregar$ALVOS — os arquivos JÁ estão certos; o próximo deploy relê o env de qualquer forma. Avise o agente.)"
-      exit 1
-    fi
-  else
-    echo "  (aviso: não achei os serviços no compose desta máquina — o próximo deploy relê o env.)"
-  fi
-else
-  echo "  (aviso: não achei o docker aqui — os arquivos JÁ estão certos; o próximo deploy relê o env.)"
-fi
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "PRONTO. O aviso na tela do celular está ligado."

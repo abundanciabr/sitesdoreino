@@ -240,7 +240,7 @@ if [ -n "$MEXIDOS" ]; then
   # viraria código morto: o script diria PRONTO com as células paradas, e ele
   # abriria uma tela que não funciona sem nada na saída explicando por quê. É o
   # falso-verde do ARMADILHAS §5.10.
-  saida_do_reinicio="$(docker compose up -d --force-recreate encomendas admin 2>&1)"
+  saida_do_reinicio="$(python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" 2>&1)"
   estado_do_reinicio=$?
   printf '%s\n' "$saida_do_reinicio" | tail -5
   if [ "$estado_do_reinicio" -eq 0 ]; then
@@ -254,7 +254,7 @@ if [ -n "$MEXIDOS" ]; then
     echo "Os arquivos ficaram certos, mas o reinicio das celulas FALHOU."
     echo "Nada foi perdido: os dois lados do par estao gravados e conferidos."
     echo "Rode a linha abaixo e me mande a saida:"
-    echo "  cd $RAIZ && docker compose up -d --force-recreate encomendas admin"
+    echo "  rode este mesmo provisionador novamente"
   fi
 else
   echo "Nada a fazer: os dois lados ja estavam ligados."

@@ -323,28 +323,7 @@ echo
 #    nasce lendo um env que já está pronto, e não há o que recarregar.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  # Ordem: provedores, depois quem pergunta.
-  for servico in identidade alunos catalogo cursos admin; do
-    docker compose config --services 2>/dev/null | grep -qx "$servico" && ALVOS="$ALVOS $servico"
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-    else
-      echo "  (aviso: não consegui recarregar$ALVOS. Os arquivos JÁ estão certos; o próximo deploy de cada célula relê o env. Avise o agente.)"
-    fi
-    case " $ALVOS " in
-      *" cursos "*) : ;;
-      *) echo "  (a sala de aula ainda não está no compose desta máquina; quando entrar, nasce lendo o env já pronto)" ;;
-    esac
-  else
-    echo "  (aviso: não achei estes serviços no compose desta máquina. O próximo deploy relê o env.)"
-  fi
-else
-  echo "  (aviso: não achei o docker aqui. Os arquivos JÁ estão certos; o próximo deploy relê o env.)"
-fi
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora a sala de aula sabe QUEM entrou, se a pessoa TEM matrícula"
