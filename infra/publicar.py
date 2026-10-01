@@ -101,7 +101,9 @@ def travar(caminho: Path, exclusiva=True, esperar=True) -> int | None:
 def travas_da_celula(celula: str) -> tuple[int, int, float]:
     """Mesma ordem do infra/trava-da-celula.sh: comum compartilhada, depois a célula."""
     inicio = time.monotonic()
-    comum = travar(RAIZ / ".publicacao.lock", exclusiva=False)
+    # A ativação da aplicação troca a topologia comum; nenhuma célula antiga
+    # pode trocar de versão enquanto esse corte acontece.
+    comum = travar(RAIZ / ".publicacao.lock", exclusiva=celula == "aplicacao")
     propria = travar(RAIZ / f".publicacao-{celula}.lock")
     return comum, propria, round(time.monotonic() - inicio, 3)
 
@@ -112,6 +114,23 @@ def com_travas(roteiro: Path, travas: tuple[int, int], ambiente: dict, registro)
                str(travas[0]), str(travas[1]), str(roteiro)]
     processo = subprocess.Popen(comando, cwd=RAIZ, env=ambiente, pass_fds=travas, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+    linhas = []
+    for linha in processo.stdout:
+        linhas.append(linha)
+        registro.write(linha)
+        registro.flush()
+    return processo.wait(), "".join(linhas)
+
+
+def ativar_primeira_aplicacao(sha: str, imagem: str, codigo: Path, fonte: Path,
+                             travas: tuple[int, int], ambiente: dict, registro) -> tuple[int, str]:
+    """Troca inicial da topologia já sob a trava comum exclusiva."""
+    comando = [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), sha, imagem, str(codigo)]
+    processo = subprocess.Popen(comando, cwd=RAIZ,
+                                env=ambiente | {"FONTE_INFRA": str(fonte / "infra"),
+                                                "TRAVA_COMUM_HERDADA": "1"},
+                                pass_fds=travas, text=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
     linhas = []
     for linha in processo.stdout:
         linhas.append(linha)
@@ -136,6 +155,18 @@ def extrair(sha: str, destino: Path, *caminhos: str) -> None:
 
 def hash_da_base(celula: str, sha: str) -> str:
     """O que exige reconstruir a imagem: Dockerfile, requirements.txt e vendor/ da célula."""
+    if celula == "aplicacao":
+        listagem = git("ls-tree", "-r", sha, "--", "services", "packages")
+        linhas = [linha for linha in listagem.splitlines()
+                  if "\tservices/aplicacao/Dockerfile" in linha
+                  or re.search(r"\tservices/[^/]+/requirements\.txt$", linha)
+                  or re.search(r"\tservices/[^/]+/vendor/", linha)
+                  or "\tpackages/" in linha]
+        if not any("\tservices/aplicacao/Dockerfile" in linha for linha in linhas):
+            raise RuntimeError(f"aplicacao sem Dockerfile em {sha}")
+        if not any("\tservices/aplicacao/requirements.txt" in linha for linha in linhas):
+            raise RuntimeError(f"aplicacao sem requirements.txt em {sha}")
+        return hashlib.sha256("\n".join(linhas).encode()).hexdigest()[:16]
     base = f"services/{celula}"
     listagem = git("ls-tree", "-r", sha, "--", f"{base}/Dockerfile", f"{base}/requirements.txt", f"{base}/vendor")
     if f"{base}/Dockerfile" not in listagem:
@@ -167,7 +198,10 @@ def garantir_base(celula: str, sha: str, contexto: Path, registro) -> tuple[str,
             return imagem, False, 0.0
     dizer(f"BASE-MUDOU: {celula} constrói {imagem}")
     inicio = time.monotonic()
-    processo = subprocess.run(["nice", "-n", "10", "docker", "build", "-t", imagem, str(contexto)],
+    dockerfile = (["-f", str(contexto / "services/aplicacao/Dockerfile")]
+                  if celula == "aplicacao" else [])
+    processo = subprocess.run(["nice", "-n", "10", "docker", "build", *dockerfile,
+                              "-t", imagem, str(contexto)],
                               stdout=registro, stderr=subprocess.STDOUT)
     if processo.returncode != 0:
         raise RuntimeError(f"build da base de {celula} falhou")
@@ -185,16 +219,24 @@ def preparar_codigo(celula: str, sha: str, fonte: Path, registro) -> tuple[Path,
     """Pasta imutável do código desta versão, com estáticos coletados, e a imagem da base."""
     final = VERSOES / celula / sha
     if final.is_dir():
-        imagem, construida, build_s = garantir_base(celula, sha, final, registro)
+        imagem, construida, build_s = garantir_base(celula, sha,
+                                                   fonte if celula == "aplicacao" else final, registro)
         return final, imagem, construida, build_s
     final.parent.mkdir(parents=True, exist_ok=True)
     temporaria = final.parent / f".{sha}.{os.getpid()}"
     shutil.rmtree(temporaria, ignore_errors=True)
     shutil.copytree(fonte / "services" / celula, temporaria, symlinks=True)
-    if celula == "admin":
-        shutil.copytree(fonte / "documentos", temporaria / "documentos_embutidos", symlinks=True)
     try:
-        imagem, construida, build_s = garantir_base(celula, sha, temporaria, registro)
+        if celula == "aplicacao":
+            processo = subprocess.run(
+                [sys.executable, str(temporaria / "preparar.py"), "--origem", str(fonte / "services"),
+                 "--destino", str(temporaria / "modules")], stdout=registro, stderr=subprocess.STDOUT)
+            if processo.returncode != 0:
+                raise RuntimeError("montagem dos módulos da aplicação falhou")
+        if celula in {"admin", "aplicacao"}:
+            shutil.copytree(fonte / "documentos", temporaria / "documentos_embutidos", symlinks=True)
+        imagem, construida, build_s = garantir_base(celula, sha,
+                                                   fonte if celula == "aplicacao" else temporaria, registro)
         estaticos = comando_de_estaticos(celula, temporaria)
         if estaticos:
             processo = subprocess.run(
@@ -227,6 +269,9 @@ def vaga_de_prova() -> tuple[int, float]:
 
 
 def roteiro_de_prova(celula: str) -> str:
+    if celula == "aplicacao":
+        return ("set -eu\ncd /app\n"
+                "python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n")
     extras = ""
     if celula == "checkout":
         extras = "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null\n"
@@ -257,6 +302,8 @@ def provar_produto(celula: str, sha: str, imagem: str, codigo: Path, fonte: Path
             time.sleep(1)
         else:
             raise RuntimeError("banco de teste não ficou pronto")
+        montagens = (["-v", f"{codigo}:/app:ro", "-w", "/app", "-e", "PYTHONPATH=/app"]
+                     if celula == "aplicacao" else [])
         processo = subprocess.run(
             ["docker", "run", "--rm", "--name", nome, "--network", nome, "--cpus", "1", "--cpu-shares", "256",
              "--memory", "2g", "-e", f"CELULA={celula}",
@@ -265,7 +312,8 @@ def provar_produto(celula: str, sha: str, imagem: str, codigo: Path, fonte: Path
              "-e", f"HUEY_REDIS_URL=redis://{nome}-redis:6379/1",
              "-e", "DJANGO_SECRET_KEY=teste-isolado", "-e", "MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real",
              "-e", "MP_WEBHOOK_SECRET=teste-isolado",
-             "-v", f"{fonte}:/fonte:ro", "-v", f"{codigo}:/codigo:ro", "--entrypoint", "sh", imagem,
+             "-v", f"{fonte}:/fonte:ro", "-v", f"{codigo}:/codigo:ro", *montagens,
+             "--entrypoint", "sh", imagem,
              "-c", roteiro_de_prova(celula)],
             stdout=registro, stderr=subprocess.STDOUT, timeout=1800)
         if processo.returncode != 0:
@@ -316,6 +364,14 @@ def recuperar_sob_travas(celula: str, travas: tuple[int, int], registro, motivo:
 
     estado = journal(celula)
     ambiente = ambiente_base() | {"CELULA": celula, "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py")}
+    if (celula == "aplicacao" and estado and not estado.get("anterior_aprovada")
+            and (PUBLICACOES / "aplicacao-transicao.json").is_file()):
+        processo = subprocess.run(
+            [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), "--recuperar"],
+            cwd=RAIZ, env=ambiente | {"ATUAL_ESPERADA": estado["atual"],
+                                     "TRAVA_COMUM_HERDADA": "1"}, pass_fds=travas,
+            stdout=registro, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        return processo.returncode == 0
     try:
         alvo = escolher_alvo(estado)
     except Exception as erro:  # noqa: BLE001
@@ -397,9 +453,14 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
                     "COMPATIBILIDADE_CONFIGURACAO": estado["compatibilidade"]["configuracao"],
                     "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py"),
                     "MEDICAO_EXTRA": json.dumps(medidas), **({"MODO": "inicializar"} if inicial else {})}
-                retorno, saida = com_travas(FERRAMENTAS / "infra/deploy-celula-na-vps.sh", (comum, propria),
-                                            ambiente, registro)
-                concluida = f"INICIALIZACAO-CONCLUIDA: {celula}:{sha}" if inicial else f"ENTREGA-CONCLUIDA: {celula}"
+                if celula == "aplicacao" and inicial:
+                    retorno, saida = ativar_primeira_aplicacao(sha, imagem, codigo, fonte,
+                                                               (comum, propria), ambiente, registro)
+                    concluida = f"APLICACAO-ATIVADA: {sha}"
+                else:
+                    retorno, saida = com_travas(FERRAMENTAS / "infra/deploy-celula-na-vps.sh", (comum, propria),
+                                                ambiente, registro)
+                    concluida = f"INICIALIZACAO-CONCLUIDA: {celula}:{sha}" if inicial else f"ENTREGA-CONCLUIDA: {celula}"
                 if retorno == 0 and concluida in saida:
                     for linha in saida.splitlines():
                         if linha.startswith("PUBLICACAO-MEDICAO:"):
@@ -466,6 +527,8 @@ def lote(base: str, head: str) -> int:
     arquivo_lote = LOTES / f"{head}.json"
     arquivos = git("diff", "--name-only", base, head).splitlines()
     celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(FERRAMENTAS))
+    if "aplicacao" in celulas:
+        celulas = ["aplicacao"]
     infra = any(a.startswith(GATILHOS_DA_INFRA) for a in arquivos)
     pedido_em = git("log", "-1", "--format=%cI", head)
     situacao = {"base": base, "head": head, "infra": infra, "celulas": celulas, "inicio": agora(),
@@ -474,7 +537,7 @@ def lote(base: str, head: str) -> int:
     dizer(f"LOTE {base[:9]}..{head[:9]}: infra={infra} celulas={celulas}")
     falhas = 0
     with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
-        if infra and not sincronizar_infra(head, registro):
+        if infra and "aplicacao" not in celulas and not sincronizar_infra(head, registro):
             falhas += 1
             situacao["resultado"]["infra"] = 1
             avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.",

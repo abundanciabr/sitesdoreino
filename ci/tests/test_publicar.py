@@ -50,6 +50,87 @@ def test_codigo_novo_mantem_a_base_e_requirements_muda(repo):
     assert publicar.hash_da_base("demo", c2) != publicar.hash_da_base("demo", c1)
 
 
+def test_base_da_aplicacao_inclui_requirements_e_vendor_de_todos(repo):
+    publicar, celula, commit = repo
+    raiz = celula.parents[1]
+    app = raiz / "services" / "aplicacao"
+    app.mkdir()
+    (app / "Dockerfile").write_text("FROM python:3.12-slim\n")
+    (app / "requirements.txt").write_text("Django==5.1.4\n")
+    outra = raiz / "services" / "forum"
+    outra.mkdir()
+    (outra / "requirements.txt").write_text("Django==5.1.4\n")
+    c0 = commit("base inicial")
+    (outra / "view.py").write_text("VERSAO = 2\n")
+    c1 = commit("codigo de modulo")
+    assert publicar.hash_da_base("aplicacao", c0) == publicar.hash_da_base("aplicacao", c1)
+    (outra / "requirements.txt").write_text("Django==5.1.4\nredis==5.1.1\n")
+    c2 = commit("dependencia de modulo")
+    assert publicar.hash_da_base("aplicacao", c2) != publicar.hash_da_base("aplicacao", c1)
+    (outra / "vendor").mkdir()
+    (outra / "vendor" / "pacote.whl").write_bytes(b"wheel")
+    c3 = commit("wheel de modulo")
+    assert publicar.hash_da_base("aplicacao", c3) != publicar.hash_da_base("aplicacao", c2)
+
+
+def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, monkeypatch):
+    publicar = carregar("publicar_bundle", "infra/publicar.py")
+    fonte = tmp_path / "fonte"
+    app = fonte / "services" / "aplicacao"
+    app.mkdir(parents=True)
+    (app / "Dockerfile").write_text("FROM python:3.12-slim\n")
+    (app / "preparar.py").write_text(
+        "import argparse\nfrom pathlib import Path\n"
+        "p=argparse.ArgumentParser();p.add_argument('--origem');p.add_argument('--destino');a=p.parse_args()\n"
+        "Path(a.destino).mkdir();(Path(a.destino)/'origem').write_text(a.origem)\n")
+    (fonte / "documentos").mkdir()
+    (fonte / "documentos" / "pagina.md").write_text("conteúdo")
+    monkeypatch.setattr(publicar, "VERSOES", tmp_path / "versoes")
+    contextos = []
+    monkeypatch.setattr(publicar, "garantir_base", lambda _c, _s, contexto, _r: (
+        contextos.append(contexto) or "plataforma-aplicacao:base-x", False, 0.0))
+    with (tmp_path / "prova.log").open("w") as registro:
+        final, imagem, _, _ = publicar.preparar_codigo("aplicacao", "a" * 40, fonte, registro)
+    assert contextos == [fonte]
+    assert (final / "modules" / "origem").read_text() == str(fonte / "services")
+    assert (final / "documentos_embutidos" / "pagina.md").read_text() == "conteúdo"
+    assert imagem == "plataforma-aplicacao:base-x"
+    assert "/fonte/services/aplicacao/tests" in publicar.roteiro_de_prova("aplicacao")
+
+
+def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, monkeypatch):
+    publicar = carregar("publicar_ativacao", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
+    chamadas = []
+    monkeypatch.setattr(publicar, "travar", lambda caminho, **opcoes: (
+        chamadas.append((caminho.name, opcoes)) or len(chamadas)))
+    comum, propria, _ = publicar.travas_da_celula("aplicacao")
+    assert chamadas[0] == (".publicacao.lock", {"exclusiva": True})
+    assert chamadas[1][0] == ".publicacao-aplicacao.lock"
+
+    class Processo:
+        stdout = ["APLICACAO-ATIVADA: " + "a" * 40 + "\n"]
+
+        def wait(self):
+            return 0
+
+    def popen(comando, **opcoes):
+        chamadas.append((comando, opcoes))
+        return Processo()
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    fonte = tmp_path / "fonte"
+    codigo = tmp_path / "versoes" / "aplicacao" / ("a" * 40)
+    with (tmp_path / "ativacao.log").open("w") as registro:
+        retorno, saida = publicar.ativar_primeira_aplicacao("a" * 40, "imagem:test", codigo,
+                                                            fonte, (comum, propria), {}, registro)
+    assert retorno == 0 and "APLICACAO-ATIVADA" in saida
+    comando, opcoes = chamadas[-1]
+    assert comando[-3:] == ["a" * 40, "imagem:test", str(codigo)]
+    assert opcoes["pass_fds"] == (comum, propria)
+    assert opcoes["env"]["FONTE_INFRA"] == str(fonte / "infra")
+
+
 def test_versao_atrasada_nao_substitui_a_mais_recente(repo):
     publicar, celula, commit = repo
     c0 = commit("c0")
