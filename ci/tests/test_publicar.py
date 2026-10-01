@@ -149,6 +149,33 @@ def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, m
     assert "python /app/prova.py" in roteiro
 
 
+def test_prova_integrada_usa_bancos_redis_distintos_das_suites_legadas(tmp_path, monkeypatch):
+    publicar = carregar("publicar_redis_prova", "infra/publicar.py")
+    comandos = []
+    monkeypatch.setattr(publicar, "rodar", lambda *args: comandos.append(args))
+
+    def executar(args, **_opcoes):
+        comandos.append(args)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(publicar.subprocess, "run", executar)
+    with (tmp_path / "prova.log").open("w") as registro:
+        publicar.provar_produto("aplicacao", "a" * 40, "imagem:teste", tmp_path, tmp_path, registro)
+    prova = next(comando for comando in comandos if comando[:3] == ["docker", "run", "--rm"])
+    ambiente = [valor for indice, valor in enumerate(prova) if prova[indice - 1] == "-e"]
+    redis = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("REDIS_STREAMS_URL="))
+    huey = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("HUEY_REDIS_URL="))
+    prova_redis = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("PROVA_REDIS_URL="))
+    prova_huey = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("PROVA_HUEY_URL="))
+    assert redis.endswith("/0") and huey.endswith("/1")
+    assert prova_redis.endswith("/2") and prova_huey.endswith("/3")
+    assert len({redis, huey, prova_redis, prova_huey}) == 4
+    roteiro = prova[-1]
+    assert roteiro.index("done\ncd /app\n") < roteiro.index(
+        'export REDIS_STREAMS_URL="$PROVA_REDIS_URL" HUEY_REDIS_URL="$PROVA_HUEY_URL"'
+    ) < roteiro.index("/app/tests") < roteiro.index("/app/prova.py")
+
+
 def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, monkeypatch):
     publicar = carregar("publicar_ativacao", "infra/publicar.py")
     monkeypatch.setattr(publicar, "RAIZ", tmp_path)

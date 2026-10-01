@@ -306,6 +306,7 @@ def roteiro_de_prova(celula: str) -> str:
                 "    *) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider ;;\n"
                 "  esac\n"
                 "done\ncd /app\n"
+                "export REDIS_STREAMS_URL=\"$PROVA_REDIS_URL\" HUEY_REDIS_URL=\"$PROVA_HUEY_URL\"\n"
                 "PYTHONPATH=/app python -m pytest -q -p no:cacheprovider /app/tests\n"
                 "PYTHONPATH=/app python /app/prova.py\n")
     extras = ""
@@ -347,6 +348,9 @@ def provar_produto(celula: str, sha: str, imagem: str, codigo: Path, fonte: Path
              "-e", f"PROVA_POSTGRES_URL=postgres://ci:ci@{nome}-pg:5432/ci_db",
              "-e", f"REDIS_STREAMS_URL=redis://{nome}-redis:6379/0",
              "-e", f"HUEY_REDIS_URL=redis://{nome}-redis:6379/1",
+             *(["-e", f"PROVA_REDIS_URL=redis://{nome}-redis:6379/2",
+                "-e", f"PROVA_HUEY_URL=redis://{nome}-redis:6379/3"]
+               if celula == "aplicacao" else []),
              "-e", "DJANGO_SECRET_KEY=teste-isolado", "-e", "MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real",
              "-e", "MP_WEBHOOK_SECRET=teste-isolado",
              "-v", f"{fonte}:/fonte:ro", "-v", f"{codigo}:/codigo:ro", *montagens,
