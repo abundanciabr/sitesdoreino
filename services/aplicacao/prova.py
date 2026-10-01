@@ -86,6 +86,17 @@ def ambiente(servico: str, urls: dict[str, str]) -> dict[str, str]:
     return valores
 
 
+def ambiente_legado(servico: str, urls: dict[str, str]) -> dict[str, str]:
+    """Isola os manage.py antigos do pacote regular /app/config unificado."""
+    return {
+        **os.environ,
+        **ambiente(servico, urls),
+        "PYTHONPATH": str((RAIZ_SERVICOS / servico).resolve()),
+        "CELULA": servico,
+        "DJANGO_SETTINGS_MODULE": "config.settings",
+    }
+
+
 def _contagens(conexao) -> dict[str, int]:
     resultado = {}
     with conexao.cursor() as cursor:
@@ -109,7 +120,7 @@ def migrar_legado(urls: dict[str, str], pasta_env: Path) -> dict[str, dict[str, 
         origem = RAIZ_SERVICOS / servico
         subprocess.run(
             [sys.executable, "manage.py", "migrate", "--noinput"],
-            cwd=origem, env={**os.environ, **valores}, check=True,
+            cwd=origem, env=ambiente_legado(servico, urls), check=True,
             stdout=subprocess.DEVNULL,
         )
         if servico == "catalogo":
@@ -119,7 +130,7 @@ def migrar_legado(urls: dict[str, str], pasta_env: Path) -> dict[str, dict[str, 
                 [sys.executable, "manage.py", "shell", "-c",
                  "from apps.sites.models import Site; "
                  "Site.objects.create(host='meshcraft.top', name='Prova legada')"],
-                cwd=origem, env={**os.environ, **valores}, check=True,
+                cwd=origem, env=ambiente_legado(servico, urls), check=True,
                 stdout=subprocess.DEVNULL,
             )
         with psycopg.connect(urls[servico]) as conexao:
@@ -177,10 +188,9 @@ def migrar_unificado(urls: dict[str, str], antes: dict[str, dict[str, int]]) -> 
 
         # O código anterior continua apto a iniciar após adoção aditiva;
         # a reversão de imagem depende dessa compatibilidade.
-        valores = ambiente(servico, urls)
         subprocess.run(
             [sys.executable, "manage.py", "check"],
-            cwd=RAIZ_SERVICOS / servico, env={**os.environ, **valores},
+            cwd=RAIZ_SERVICOS / servico, env=ambiente_legado(servico, urls),
             check=True, stdout=subprocess.DEVNULL,
         )
 
