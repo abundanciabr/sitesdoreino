@@ -481,14 +481,14 @@
   <div class="cartao">
     <h2>Prévia das permissões preparadas</h2>
     {% for rascunho in rascunhos_de_permissao %}
-    <p>{{ rascunho.alvo }}: {% if rascunho.conteudo.ativo %}ganhará acesso de administrador{% else %}perderá acesso de administrador{% endif %}.
+    <div>{{ rascunho.alvo }}: {% if rascunho.conteudo.ativo %}ganhará acesso de administrador{% else %}perderá acesso de administrador{% endif %}.
       {% if pode_publicar_permissoes %}
       <form method="post" action="{% url 'escola_admin_publicar' %}">{% csrf_token %}
         <input type="hidden" name="email" value="{{ rascunho.alvo }}">
         <button type="submit">Publicar esta permissão</button>
       </form>
       {% endif %}
-    </p>
+    </div>
     {% endfor %}
   </div>
   {% endif %}
