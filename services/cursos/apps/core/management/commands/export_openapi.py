@@ -44,7 +44,8 @@ def _strip_redundant_operation_noise(schema: dict) -> None:
     lê daqui: ele sonda `auth_callbacks` na fonte (`ci/contract_freeze.py`)."""
     for path_item in schema.get("paths", {}).values():
         for operation in path_item.values():
-            operation.pop("security", None)
+            if operation.get("security") == [{"bearerAuth": []}]:
+                operation.pop("security", None)
             for param in operation.get("parameters", []):
                 if "description" in param and "description" in param.get("schema", {}):
                     del param["schema"]["description"]

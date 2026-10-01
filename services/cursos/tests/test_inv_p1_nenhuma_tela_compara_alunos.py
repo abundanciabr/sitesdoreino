@@ -63,6 +63,7 @@ AS_ROTAS_DA_CELULA = {
     # o número da Parte do livro. A sala continua sendo a de quem a abriu.
     "curso",
     "aula-do-curso",
+    "enviar-comentario",
     # O laudo recebido (degrau 2.2, TAR-156): a mesma porta da sessão, sem
     # parâmetro novo — só `numero`, como `aula`.
     "laudo-recebido",

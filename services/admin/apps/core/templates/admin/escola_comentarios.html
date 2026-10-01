@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Comentários das aulas{% endblock %}
+{% block corpo %}
+<style>
+  .comentario-moderacao { border-top: 1px solid var(--linha); padding: 24px 0; overflow-wrap: anywhere; }
+  .comentario-moderacao h2 { font-size: 18px; margin: 0 0 10px; }
+  .comentario-moderacao .texto { white-space: normal; line-height: 1.7; }
+  .comentario-moderacao form { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .comentario-moderacao button { font: inherit; cursor: pointer; padding: 10px 14px; border: 1px solid var(--linha); background: var(--painel); color: var(--texto); border-radius: 8px; }
+  .comentarios-paginacao { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 24px; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a></p>
+  <h1>Comentários das aulas</h1>
+  <p class="subtitulo">Os comentários chegam privados. Você decide quais podem aparecer para os alunos da mesma aula e pode voltar a torná-los privados.</p>
+  {% if sem_site %}<p class="aviso borda-vermelha">Não consegui identificar a escola. Recarregue a página em um minuto.</p>
+  {% elif falha %}<p class="aviso borda-vermelha"><b>{{ falha.titulo }}</b> {{ falha.explicacao }}</p>
+  {% else %}
+  {% if recado %}<p class="aviso">{{ recado }}</p>{% endif %}
+  <p>{{ total }} comentário{{ total|pluralize:'s' }}</p>
+  {% for comentario in itens %}
+  <article class="comentario-moderacao" id="comentario-{{ comentario.id }}">
+    <h2>{{ comentario.curso_nome }} · {{ comentario.aula_titulo }}</h2>
+    <p>{{ comentario.autor }} · {{ comentario.criado_em }} · <b>{% if comentario.publico %}Público{% else %}Privado{% endif %}</b></p>
+    <p class="texto">{{ comentario.corpo|linebreaksbr }}</p>
+    <form method="post" action="{% url 'escola_comentario_visibilidade' comentario.id %}">
+      {% csrf_token %}<input type="hidden" name="pagina" value="{{ pagina }}">
+      {% if comentario.publico %}<button name="visibilidade" value="privado" type="submit">Tornar privado</button>
+      {% else %}<button name="visibilidade" value="publico" type="submit">Tornar público para os alunos</button>{% endif %}
+    </form>
+  </article>
+  {% empty %}<p class="aviso">Ainda não há comentários nas aulas desta escola.</p>{% endfor %}
+  <nav class="comentarios-paginacao" aria-label="Páginas de comentários">
+    {% if anterior %}<a href="?pagina={{ anterior }}">Mais recentes</a>{% endif %}
+    <span>Página {{ pagina }} de {{ paginas }}</span>
+    {% if proxima %}<a href="?pagina={{ proxima }}">Mais antigos</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

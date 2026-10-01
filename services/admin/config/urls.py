@@ -65,6 +65,10 @@ from apps.core.economia import (
     economia_mudar_conquista,
     economia_mudar_degrau,
 )
+from apps.core.comentarios_aulas import (
+    escola_comentarios_aulas,
+    escola_comentario_visibilidade,
+)
 from apps.core.cursos import escola_curso_alterar, escola_curso_criar, escola_cursos
 from apps.core.escola_pontos import escola_pontos
 from apps.core.parametros_da_fila import (
@@ -866,6 +870,14 @@ urlpatterns = [
     # MESMO gesto para a porta (`putCourse`, campo ausente é não mexer), e por
     # isso uma rota só: são dois formulários pequenos, cada um mandando o campo
     # dele.
+    path(
+        "escola/comentarios/", escola_comentarios_aulas, name="escola_comentarios_aulas"
+    ),
+    path(
+        "escola/comentarios/<int:comentario_id>/visibilidade",
+        escola_comentario_visibilidade,
+        name="escola_comentario_visibilidade",
+    ),
     path("escola/cursos/", escola_cursos, name="escola_cursos"),
     path("escola/cursos/criar", escola_curso_criar, name="escola_curso_criar"),
     path("escola/cursos/alterar", escola_curso_alterar, name="escola_curso_alterar"),

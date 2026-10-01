@@ -4,6 +4,7 @@ from ninja.errors import HttpError, ValidationError
 
 from apps.core.api import SlugDeAulaAvulsaInvalido, router as cursos_router
 from apps.core.auth import bearerAuth
+from apps.core.comentarios_api import router as comentarios_router
 
 # `servers` aponta para a REDE INTERNA do Docker: é o endereço que a célula
 # `admin` (o editor, degrau 1.5) porá no env dela. O valor congela em
@@ -32,6 +33,7 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", cursos_router)
+api.add_router("", comentarios_router)
 
 
 def _e_edicao_de_aula_avulsa(request) -> bool:

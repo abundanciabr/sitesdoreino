@@ -262,4 +262,5 @@ def test_o_guarda_percorre_todas_as_operacoes_da_porta():
         for view in roteador.path_operations.values()
         for operacao in view.operations
     }
-    assert na_porta == set(IDS)
+    # A moderação tem Bearer exclusivo e é exercitada em test_comentarios_aulas.
+    assert na_porta == set(IDS) | {"listLessonComments", "setLessonCommentVisibility"}

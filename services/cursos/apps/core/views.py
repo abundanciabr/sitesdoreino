@@ -41,6 +41,10 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from django.conf import settings
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.views.decorators.cache import never_cache
+from django.views.decorators.vary import vary_on_cookie
 from django.http import (
     FileResponse,
     Http404,
@@ -62,6 +66,7 @@ from apps.cursos import progresso as portas
 from apps.cursos.models import (
     Aula,
     AulaAvulsa,
+    ComentarioDeAula,
     Curso,
     Envio,
     Laudo,
@@ -81,6 +86,7 @@ from .sessao import quem_e, site_atual
 # não frases: o texto vive aqui, e uma frase pronta viajando na barra de
 # endereço é uma frase que alguém troca por outra e manda por link a um aluno.
 RECADOS = {
+    "comentario-enviado": "Comentário enviado. Só você e os admins podem vê-lo.",
     "pausa-registrada": "Registro guardado. Pode retomar o vídeo.",
     "autoavaliacao-gravada": (
         "Sua autoavaliação foi gravada. As respostas-modelo estão abertas abaixo."
@@ -1054,6 +1060,8 @@ def _navegacao_aulas(curso: Curso, aula: Aula, pessoa) -> dict:
     return navegacao
 
 
+@never_cache
+@vary_on_cookie
 @require_GET
 def aula(request, numero: str, curso: str | None = None, parte: int | None = None):
     """A aula: as 16 peças, o botão da vídeo-aula em texto, o vídeo com as
@@ -1088,6 +1096,15 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "video": _video(aula),
             "navegacao": _navegacao_aulas(curso, aula, pessoa),
             "conteudo": _conteudo_do_curso(curso, aula, pessoa),
+            "comentarios": Paginator(
+                ComentarioDeAula.objects.filter(aula=aula)
+                .filter(Q(autor=pessoa) | Q(publico=True))
+                .select_related("autor"),
+                20,
+            ).get_page(request.GET.get("comentarios_pagina")),
+            "url_enviar_comentario": reverse(
+                "enviar-comentario", args=[curso.slug, aula.bloco.parte, aula.numero]
+            ),
             "curso": curso,
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),
@@ -1106,6 +1123,28 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "erro": request.GET.get("erro", ""),
             **_de_fora(curso),
         },
+    )
+
+
+@never_cache
+@require_POST
+def enviar_comentario(request, numero: str, curso: str, parte: int):
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
+    if recusa is not None:
+        return recusa
+    corpo = (request.POST.get("corpo") or "").strip()
+    if not corpo or len(corpo) > 4000:
+        return _voltar_a_aula(
+            curso,
+            aula,
+            erro="Escreva um comentário com até 4.000 caracteres.",
+            ancora="comentarios",
+        )
+    ComentarioDeAula.objects.create(aula=aula, autor=pessoa, corpo=corpo)
+    return _voltar_a_aula(
+        curso, aula, recado="comentario-enviado", ancora="comentarios"
     )
 
 

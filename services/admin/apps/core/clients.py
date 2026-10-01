@@ -2409,6 +2409,21 @@ class CursosClient:
         return params
 
     # -- as tres operacoes do CURSO ------------------------------------------
+    def comentarios_das_aulas(self, site_id: str, pagina: int = 1):
+        return self._pedir(
+            "get", "comentarios", params={"site_id": site_id, "pagina": pagina}
+        )
+
+    def visibilidade_do_comentario(
+        self, site_id: str, comentario_id: int, publico: bool, moderador_id: str
+    ):
+        return self._pedir(
+            "put",
+            f"comentarios/{comentario_id}/visibilidade",
+            params={"site_id": site_id},
+            json={"publico": publico, "moderador_id": moderador_id},
+        )
+
     def cursos(self, site_id: str) -> "tuple[str, list | None]":
         """`listCourses`: os cursos deste site, em ordem de apelido.
 

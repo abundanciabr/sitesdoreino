@@ -525,3 +525,16 @@ main.sala-com-conteudo { max-width: 1480px; }
   .aula-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .conteudo-curso { max-height: none; position: static; }
 }
+
+.comentarios-aula { margin-top: 28px; padding: clamp(20px, 3vw, 36px); background: #fff; border: 1px solid #e4e0d8; border-radius: 20px; }
+.comentarios-aula h2 { margin-top: 0; }
+.comentarios-privacidade, .comentarios-vazio { color: #68645d; line-height: 1.6; }
+.comentarios-formulario { display: grid; gap: 12px; margin: 24px 0; }
+.comentarios-formulario textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 112px; padding: 14px; border: 1px solid #d8d3ca; border-radius: 12px; font: inherit; background: #fff; color: inherit; }
+.comentarios-formulario button { justify-self: start; }
+.comentario-aula { border-top: 1px solid #e4e0d8; padding: 20px 0; overflow-wrap: anywhere; }
+.comentario-cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.comentario-visibilidade { border: 1px solid #dedbd5; border-radius: 999px; padding: 3px 10px; font-size: .8rem; color: #68645d; }
+.comentario-aula time { display: block; font-size: .85rem; color: #68645d; margin-top: 8px; }
+.comentario-texto { line-height: 1.7; white-space: normal; }
+.comentarios-paginacao { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }

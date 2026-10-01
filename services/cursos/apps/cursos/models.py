@@ -1113,3 +1113,26 @@ class Laudo(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return f"laudo de {self.envio_id} ({self.decisao})"
+
+
+class ComentarioDeAula(models.Model):
+    aula = models.ForeignKey(Aula, on_delete=models.PROTECT, related_name="comentarios")
+    autor = models.ForeignKey(
+        Pessoa, on_delete=models.PROTECT, related_name="comentarios"
+    )
+    corpo = models.TextField(max_length=4000)
+    publico = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    moderador_id = models.CharField(max_length=160, blank=True, default="")
+    moderado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em", "-pk"]
+        indexes = [
+            models.Index(fields=["aula", "-criado_em"], name="comentario_aula_data_idx")
+        ]
+
+    @property
+    def nome_do_autor(self):
+        nome = self.autor.nome_exibido.strip()
+        return nome if nome and "@" not in nome else "Aluno"

@@ -7,6 +7,7 @@ from apps.core.views import (
     catalogo,
     concluir_aula,
     entregar_checkpoint,
+    enviar_comentario,
     gravar_autoavaliacao,
     healthz,
     laudo_recebido,
@@ -85,6 +86,11 @@ urlpatterns = [
     # de um curso tem dois segmentos, a aula antiga tem um.
     path("<slug:curso>/", mapa, name="curso"),
     path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/comentarios",
+        enviar_comentario,
+        name="enviar-comentario",
+    ),
     path(
         "<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
         registrar_pausa,

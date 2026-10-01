@@ -1,0 +1,25 @@
+<section class="comentarios-aula" id="comentarios" aria-labelledby="titulo-comentarios">
+  <h2 id="titulo-comentarios">Comentários</h2>
+  <p class="comentarios-privacidade">Seu comentário é privado: só você e os admins podem vê-lo. Os admins podem torná-lo público para os alunos desta aula.</p>
+  <form method="post" action="{{ url_enviar_comentario }}" class="comentarios-formulario">
+    {% csrf_token %}
+    <label for="corpo-comentario">Seu comentário</label>
+    <textarea id="corpo-comentario" name="corpo" rows="4" maxlength="4000" required placeholder="Escreva sua dúvida ou comentário"></textarea>
+    <button type="submit">Enviar comentário</button>
+  </form>
+  <div class="comentarios-lista">
+    {% for comentario in comentarios %}
+    <article class="comentario-aula">
+      <div class="comentario-cabecalho"><strong>{{ comentario.nome_do_autor }}</strong><span class="comentario-visibilidade">{% if comentario.publico %}Público{% else %}Privado{% endif %}</span></div>
+      <time datetime="{{ comentario.criado_em|date:'c' }}">{{ comentario.criado_em|date:'d/m/Y H:i' }}</time>
+      <p class="comentario-texto">{{ comentario.corpo|linebreaksbr }}</p>
+    </article>
+    {% empty %}<p class="comentarios-vazio">Seus comentários e os comentários públicos aparecerão aqui.</p>{% endfor %}
+  </div>
+  {% if comentarios.has_other_pages %}
+  <nav class="comentarios-paginacao" aria-label="Páginas de comentários">
+    {% if comentarios.has_previous %}<a href="?comentarios_pagina={{ comentarios.previous_page_number }}#comentarios">Mais recentes</a>{% endif %}
+    <span>Página {{ comentarios.number }} de {{ comentarios.paginator.num_pages }}</span>
+    {% if comentarios.has_next %}<a href="?comentarios_pagina={{ comentarios.next_page_number }}#comentarios">Mais antigos</a>{% endif %}
+  </nav>{% endif %}
+</section>
