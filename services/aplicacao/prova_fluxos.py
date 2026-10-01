@@ -16,6 +16,8 @@ from config.runtime import serving
 SLUG = "prova-fluxo-unico"
 SITE_ID = "prova-fluxo-unico"
 TOKEN = "prova-editor-quiz"
+ROBO_TOKEN = "credencial-sintetica-da-prova-isolada"
+ROBO_DOCUMENTO = "prova-robo-fluxo-unico"
 
 
 def _semear():
@@ -132,11 +134,81 @@ async def _exercitar_http():
             raise AssertionError(f"quiz publicado não abriu: HTTP {after.status_code}")
 
 
+def _semear_robo() -> None:
+    from modules.admin.apps.auditoria.models import Registro
+    from modules.admin.apps.core.conta_do_robo import ALVO, impressao
+
+    with serving("admin"):
+        Registro.objects.create(
+            quem_email="prova@localhost.invalid", quem_id="prova-aplicacao",
+            acao=Registro.EMITIR_CREDENCIAL_DO_ROBO,
+            alvo=ALVO, desfecho=Registro.OK,
+            detalhe="sha256=" + impressao(ROBO_TOKEN),
+        )
+
+
+async def _exercitar_robo() -> None:
+    import config.asgi
+
+    headers = {"Authorization": f"Robo {ROBO_TOKEN}"}
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=config.asgi.application),
+        base_url="https://meshcraft.top", follow_redirects=False,
+    ) as site:
+        denied = await site.get(
+            "/admin/documentos/", headers={"Authorization": "Robo outro-token"}
+        )
+        allowed = await site.get("/admin/documentos/", headers=headers)
+        if denied.status_code != 404 or allowed.status_code != 200:
+            raise AssertionError("credencial do robô não atravessou a porta correta")
+
+        created = await site.post(
+            "/admin/documentos/criar",
+            data={
+                "titulo": "Rascunho da prova isolada",
+                "nome": ROBO_DOCUMENTO,
+                "corpo": "Conteúdo privado da prova isolada",
+            },
+            headers=headers,
+        )
+        if created.status_code != 302:
+            raise AssertionError(f"robô não criou rascunho: HTTP {created.status_code}")
+        public = await site.get(f"/docs/{ROBO_DOCUMENTO}")
+        if public.status_code != 404:
+            raise AssertionError("rascunho do robô apareceu ao visitante")
+
+        power = await site.post(
+            "/admin/escola/administradores/publicar",
+            data={"email": "editor-sintetico@localhost.invalid"},
+            headers=headers,
+        )
+        if power.status_code != 403:
+            raise AssertionError("robô conseguiu publicar permissão administrativa")
+
+
+def _conferir_robo() -> None:
+    from modules.admin.apps.auditoria.models import Registro
+    from modules.admin.apps.core.models import Administrador, Documento
+
+    with serving("admin"):
+        documento = Documento.objects.get(nome=ROBO_DOCUMENTO)
+        if documento.publico or not Registro.objects.filter(
+            acao=Registro.CRIAR_DOCUMENTO,
+            alvo=ROBO_DOCUMENTO,
+            quem_email="robo@conta-do-robo.invalid",
+        ).exists():
+            raise AssertionError("rascunho privado ou auditoria do robô falhou")
+        if Administrador.objects.filter(email="editor-sintetico@localhost.invalid").exists():
+            raise AssertionError("robô concedeu acesso administrativo")
+
+
 def provar() -> None:
     from modules.quiz.apps.quiz.models import Quiz, QuizVersion
 
     quiz_id, antiga_id = _semear()
+    _semear_robo()
     asyncio.run(_exercitar_http())
+    asyncio.run(_exercitar_robo())
     with serving("quiz"):
         quiz = Quiz.objects.get(pk=quiz_id)
         old = QuizVersion.objects.get(pk=antiga_id)
@@ -146,6 +218,7 @@ def provar() -> None:
             raise AssertionError("quiz não tem exatamente uma versão ativa")
         if old.questions.count() != 1 or hasattr(quiz, "draft"):
             raise AssertionError("versão anterior foi perdida ou rascunho não foi consumido")
+    _conferir_robo()
 
 
 if __name__ == "__main__":
