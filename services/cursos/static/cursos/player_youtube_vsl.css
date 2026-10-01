@@ -19,7 +19,7 @@
   aspect-ratio: 16 / 9;
   background: #000;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: clip;
   position: relative;
 }
 
