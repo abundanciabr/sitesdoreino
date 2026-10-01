@@ -132,6 +132,39 @@ def test_conversa_existente_abre_rascunho_sem_publicar():
 
 
 @respx.mock
+def test_falha_de_publicacao_mantem_previa_e_acao_de_corrigir():
+    cliente = _cliente()
+    respx.get(EDITOR + "/areas").mock(
+        return_value=httpx.Response(
+            200, json={"areas": [{"slug": "duvidas", "nome": "Dúvidas"}]}
+        )
+    )
+    respx.get(EDITOR + f"/topicos/rascunho/{RASCUNHO_ID}").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "rascunho_id": RASCUNHO_ID,
+                "area_slug": "duvidas",
+                "titulo": "Uma pergunta",
+                "texto": "Texto",
+            },
+        )
+    )
+    respx.post(EDITOR + f"/topicos/rascunho/{RASCUNHO_ID}/publicar").mock(
+        return_value=httpx.Response(422, json={"detail": "invalido"})
+    )
+    resposta = cliente.post(
+        reverse("forum_topico_publicar", kwargs={"rascunho_id": RASCUNHO_ID})
+    )
+    assert resposta.status_code == 422
+    assert "Uma pergunta" in resposta.content.decode()
+    assert (
+        reverse("forum_topico_salvar", kwargs={"rascunho_id": RASCUNHO_ID})
+        in resposta.content.decode()
+    )
+
+
+@respx.mock
 def test_sem_sessao_nao_edita_nem_publica_conversas():
     cliente = Client()
     assert cliente.get(reverse("forum_topicos")).status_code in (302, 404)

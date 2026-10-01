@@ -143,7 +143,7 @@ def forum_topico_salvar(request, rascunho_id: UUID):
         return _pagina(
             request,
             erro="Não consegui salvar o rascunho da conversa.",
-            draft=corpo,
+            draft={**corpo, "rascunho_id": str(rascunho_id)},
             status=422 if status in (400, 422) else 503,
         )
     return HttpResponseRedirect(
@@ -156,9 +156,11 @@ def forum_topico_salvar(request, rascunho_id: UUID):
 def forum_topico_publicar(request, rascunho_id: UUID):
     status, _ = _pedir("POST", f"topicos/rascunho/{rascunho_id}/publicar")
     if status not in (200, 201):
+        _, rascunho = _pedir("GET", f"topicos/rascunho/{rascunho_id}")
         return _pagina(
             request,
             erro="Não consegui publicar a conversa; o rascunho continua guardado.",
+            draft=rascunho,
             status=422 if status in (400, 409, 422) else 503,
         )
     return HttpResponseRedirect(reverse("forum_topicos"))
