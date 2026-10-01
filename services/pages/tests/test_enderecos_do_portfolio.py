@@ -30,6 +30,8 @@ def test_links_antigos_preservam_destino_e_metodo(origem, destino):
     resposta = async_to_sync(consultar)()
     assert resposta.status_code == 308
     assert resposta.headers["location"] == destino
+    assert resposta.headers["content-length"] == "0"
+    assert resposta.content == b""
 
 
 @pytest.mark.django_db(transaction=True)

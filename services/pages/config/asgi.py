@@ -19,7 +19,13 @@ async def application(scope, receive, send):
             {
                 "type": "http.response.start",
                 "status": 308,
-                "headers": [(b"location", local), (b"cache-control", b"no-store")],
+                # O buffer do gateway precisa distinguir corpo vazio de uma
+                # resposta em chunks ainda sem dados.
+                "headers": [
+                    (b"location", local),
+                    (b"cache-control", b"no-store"),
+                    (b"content-length", b"0"),
+                ],
             }
         )
         await send({"type": "http.response.body", "body": b""})
