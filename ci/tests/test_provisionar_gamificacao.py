@@ -117,6 +117,12 @@ def plataforma(tmp_path: Path) -> Path:
     raiz = tmp_path / "plataforma"
     (raiz / "env").mkdir(parents=True)
     _escrever(raiz / "docker-compose.yml", "services: {}\n")
+    _escrever(
+        raiz / "codigo" / "ferramentas" / "atual" / "infra" / "operacao-aplicacao.sh",
+        "servicos_rodando() { docker compose ps --status running --services; }\n"
+        'comando_servico() { local servico="$1"; shift; docker compose exec -T "$servico" python manage.py "$@"; }\n'
+        "recarregar_servicos() { return 0; }\n",
+    )
     _escrever(raiz / "env" / "identidade.env", ENV_IDENTIDADE)
 
     binario = tmp_path / "bin"

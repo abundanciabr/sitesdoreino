@@ -191,6 +191,12 @@ def _plataforma(tmp_path: Path, faltando: str | None = None, ja_ligado: bool = F
     raiz = tmp_path / "plataforma"
     (raiz / "env").mkdir(parents=True)
     _escrever(raiz / "docker-compose.yml", "services: {}\n")
+    _escrever(
+        raiz / "codigo" / "ferramentas" / "atual" / "infra" / "operacao-aplicacao.sh",
+        "servicos_rodando() { docker compose ps --status running --services; }\n"
+        'comando_servico() { local servico="$1"; shift; docker compose exec -T "$servico" python manage.py "$@"; }\n'
+        "recarregar_servicos() { return 0; }\n",
+    )
     for nome, conteudo in SEMENTES.items():
         if nome == faltando:
             continue
