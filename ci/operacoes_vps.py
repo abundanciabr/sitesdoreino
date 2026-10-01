@@ -56,7 +56,12 @@ ARQUIVOS_ESTADO_INFRA = (
     "infra.new/traefik/dynamic/plataforma.yml",
     "infra.new/traefik/dynamic/entrada-privada.yml",
 )
-SERVICOS_ESTADO_INFRA = ("traefik", "catalogo", "admin")
+SERVICOS_ESTADO_INFRA = ("traefik", "aplicacao")
+SERVICOS_INCORPORADOS = frozenset({
+    "admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
+    "forum", "funil", "gamificacao", "identidade", "leads", "mensageria",
+    "metricas", "notificacoes", "pagamentos", "pages", "quiz", "sugestoes",
+})
 ESTADOS_TENTATIVA = {
     "sending",
     "reconciliation_required",
@@ -459,6 +464,11 @@ def comando(argumentos, prazo_segundos=30):
     return resultado.stdout
 
 
+def nome_container(servico):
+    """As células continuam endereçáveis, mas compartilham um contêiner."""
+    return "aplicacao" if servico in SERVICOS_INCORPORADOS else servico
+
+
 def medir_coordenacao_db(identificador):
     # PGOPTIONS impõe leitura antes de qualquer SQL, inclusive nas consultas
     # montadas a partir dos identificadores devolvidos pelo próprio catálogo.
@@ -634,7 +644,7 @@ def conferir_medicao(operacao, dados, referencia=""):
         ):
             raise Falha("formato")
     elif operacao == "estado-infra":
-        if set(dados) != {"arquivos", "servicos", "imagem_admin", "borda_http"}:
+        if set(dados) != {"arquivos", "servicos", "imagem_aplicacao", "borda_http"}:
             raise Falha("formato")
         arquivos, servicos = dados["arquivos"], dados["servicos"]
         if not isinstance(arquivos, dict) or set(arquivos) != set(
@@ -654,8 +664,8 @@ def conferir_medicao(operacao, dados, referencia=""):
         for valor in servicos.values():
             if valor is not None:
                 conferir_medicao("estado-servico", valor)
-        imagem = dados["imagem_admin"]
-        if servicos["admin"] is None:
+        imagem = dados["imagem_aplicacao"]
+        if servicos["aplicacao"] is None:
             if imagem is not None:
                 raise Falha("formato")
         else:
@@ -665,7 +675,7 @@ def conferir_medicao(operacao, dados, referencia=""):
                 "repo_digests",
             }:
                 raise Falha("formato")
-            if imagem["container_image"] != servicos["admin"]["imagem"]:
+            if imagem["container_image"] != servicos["aplicacao"]["imagem"]:
                 raise Falha("formato")
             if not isinstance(imagem["id"], str) or not re.fullmatch(
                 r"sha256:[0-9a-f]{64}", imagem["id"]
@@ -674,12 +684,11 @@ def conferir_medicao(operacao, dados, referencia=""):
             digests = imagem["repo_digests"]
             if (
                 not isinstance(digests, list)
-                or not digests
                 or len(digests) > 8
                 or any(
                     not isinstance(digest, str)
                     or not re.fullmatch(
-                        r"ghcr\.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}",
+                        r"ghcr\.io/abundanciabr/plataforma-aplicacao@sha256:[0-9a-f]{64}",
                         digest,
                     )
                     for digest in digests
@@ -1317,7 +1326,7 @@ def medir_servico_estado_infra(nome):
             "--filter",
             "label=com.docker.compose.project=plataforma",
             "--filter",
-            "label=com.docker.compose.service=" + nome,
+            "label=com.docker.compose.service=" + nome_container(nome),
         ],
         prazo_segundos=10,
     ).strip()
@@ -1343,9 +1352,9 @@ def medir(operacao, servico, referencia=""):
         servicos = {}
         for nome in SERVICOS_ESTADO_INFRA:
             servicos[nome] = medir_servico_estado_infra(nome)
-        imagem_admin = None
-        if servicos["admin"] is not None:
-            container_image = servicos["admin"]["imagem"]
+        imagem_aplicacao = None
+        if servicos["aplicacao"] is not None:
+            container_image = servicos["aplicacao"]["imagem"]
             try:
                 inspeccionada = json.loads(
                     comando(
@@ -1364,7 +1373,9 @@ def medir(operacao, servico, referencia=""):
                 raise Falha("formato") from None
             if not isinstance(inspeccionada, dict):
                 raise Falha("formato")
-            imagem_admin = {
+            if inspeccionada.get("repo_digests") is None:
+                inspeccionada["repo_digests"] = []
+            imagem_aplicacao = {
                 "container_image": container_image,
                 **inspeccionada,
             }
@@ -1398,7 +1409,7 @@ def medir(operacao, servico, referencia=""):
             {
                 "arquivos": arquivos,
                 "servicos": servicos,
-                "imagem_admin": imagem_admin,
+                "imagem_aplicacao": imagem_aplicacao,
                 "borda_http": int(codigo),
             },
         )
@@ -1423,7 +1434,7 @@ def medir(operacao, servico, referencia=""):
             "--filter",
             "label=com.docker.compose.project=plataforma",
             "--filter",
-            "label=com.docker.compose.service=" + servico,
+            "label=com.docker.compose.service=" + nome_container(servico),
         ]
     ).strip()
     if not identificador:
@@ -1473,7 +1484,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         codigo,
@@ -1554,7 +1565,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         codigo,
@@ -1644,7 +1655,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         codigo,
@@ -1762,7 +1773,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         codigo,
@@ -1875,7 +1886,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         codigo,
@@ -1919,7 +1930,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         codigo,
@@ -1938,7 +1949,7 @@ def medir(operacao, servico, referencia=""):
                         "exec",
                         identificador,
                         "python",
-                        "manage.py",
+                        "-m", "config.comando", servico,
                         "shell",
                         "-c",
                         CODIGOS_FECHADOS[operacao],
@@ -1991,7 +2002,7 @@ def preparar():
     compose = yaml.safe_load(
         (raiz / "infra/docker-compose.yml").read_text(encoding="utf-8")
     )
-    permitidos = sorted(set(compose["services"]) | {"plataforma"})
+    permitidos = sorted(set(compose["services"]) | SERVICOS_INCORPORADOS | {"plataforma"})
     operacao, servico = os.environ.get("OPERACAO", ""), os.environ.get("SERVICO", "")
     evento = json.loads(
         Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8")

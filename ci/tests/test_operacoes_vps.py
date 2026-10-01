@@ -121,7 +121,7 @@ def test_estado_so_emite_campos_permitidos(monkeypatch, capsys):
         "--filter",
         "label=com.docker.compose.project=plataforma",
         "--filter",
-        "label=com.docker.compose.service=admin",
+        "label=com.docker.compose.service=aplicacao",
     ]
     assert chamadas[1] == ["docker", "inspect", "--format", ops.FORMATO, "a" * 64]
 
@@ -1429,7 +1429,7 @@ def test_quiz_configuracao_recusa_saida_fora_do_formato(mutacao):
         ops.conferir_medicao("quiz-configuracao", medicao)
 
 
-def test_quiz_configuracao_medir_usa_container_do_quiz_e_roda_script_fechado(
+def test_quiz_configuracao_medir_usa_aplicacao_e_roda_script_fechado(
     monkeypatch,
 ):
     chamadas = []
@@ -1438,12 +1438,14 @@ def test_quiz_configuracao_medir_usa_container_do_quiz_e_roda_script_fechado(
         chamadas.append(args)
         if args[1] == "ps":
             return "a" * 64
-        assert args[:7] == [
+        assert args[:9] == [
             "docker",
             "exec",
             "a" * 64,
             "python",
-            "manage.py",
+            "-m",
+            "config.comando",
+            "quiz",
             "shell",
             "-c",
         ]
@@ -1462,7 +1464,7 @@ def test_quiz_configuracao_medir_usa_container_do_quiz_e_roda_script_fechado(
         "--filter",
         "label=com.docker.compose.project=plataforma",
         "--filter",
-        "label=com.docker.compose.service=quiz",
+        "label=com.docker.compose.service=aplicacao",
     ]
     codigo = chamadas[1][-1]
     assert codigo == ops.QUIZ_CONFIGURACAO_CODIGO
@@ -4388,7 +4390,7 @@ def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, ca
                 {
                     "id": "sha256:" + "b" * 64,
                     "repo_digests": [
-                        "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64
+                        "ghcr.io/abundanciabr/plataforma-aplicacao@sha256:" + "c" * 64
                     ],
                 }
             )
@@ -4409,12 +4411,12 @@ def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, ca
         for nome, valor in dados["arquivos"].items()
         if nome != "sites.json"
     )
-    assert set(dados["servicos"]) == {"traefik", "catalogo", "admin"}
+    assert set(dados["servicos"]) == {"traefik", "aplicacao"}
     assert all(valor == MEDICAO for valor in dados["servicos"].values())
-    assert dados["imagem_admin"] == {
+    assert dados["imagem_aplicacao"] == {
         "container_image": MEDICAO["imagem"],
         "id": "sha256:" + "b" * 64,
-        "repo_digests": ["ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64],
+        "repo_digests": ["ghcr.io/abundanciabr/plataforma-aplicacao@sha256:" + "c" * 64],
     }
     assert dados["borda_http"] == 200
     if os.name == "posix":
@@ -4430,7 +4432,7 @@ def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, ca
         for argumentos, _ in comandos
         if argumentos[0] == "docker"
     )
-    assert [kwargs["prazo_segundos"] for _, kwargs in comandos] == [10] * 7 + [15]
+    assert [kwargs["prazo_segundos"] for _, kwargs in comandos] == [10] * 5 + [15]
     assert comandos[-2][0] == [
         "docker",
         "image",
@@ -4462,8 +4464,8 @@ def test_estado_infra_le_hashes_fixos_e_sondas_sem_env(monkeypatch, tmp_path, ca
 def test_estado_infra_recusa_saida_livre_ou_incompleta():
     dados = {
         "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
-        "servicos": {nome: None for nome in ("traefik", "catalogo", "admin")},
-        "imagem_admin": None,
+        "servicos": {nome: None for nome in ("traefik", "aplicacao")},
+        "imagem_aplicacao": None,
         "borda_http": 200,
     }
     assert ops.conferir_medicao("estado-infra", dados) == dados
@@ -4481,6 +4483,20 @@ def test_estado_infra_recusa_saida_livre_ou_incompleta():
     adulterado["arquivos"]["sites.json"] = PRIVADO
     with pytest.raises(ops.Falha):
         ops.conferir_medicao("estado-infra", adulterado)
+
+
+def test_estado_infra_aceita_imagem_local_sem_repo_digest():
+    dados = {
+        "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
+        "servicos": {"traefik": None, "aplicacao": MEDICAO},
+        "imagem_aplicacao": {
+            "container_image": MEDICAO["imagem"],
+            "id": MEDICAO["imagem"],
+            "repo_digests": [],
+        },
+        "borda_http": 200,
+    }
+    assert ops.conferir_medicao("estado-infra", dados) == dados
 
 
 def test_estado_infra_recusa_arquivo_nao_regular_sem_ler(monkeypatch, tmp_path, capsys):
@@ -4510,7 +4526,7 @@ def test_estado_infra_mede_ausencia_e_http_503(monkeypatch, tmp_path, capsys):
     medicao = json.loads(capsys.readouterr().out)["medicao"]
     assert all(valor is None for valor in medicao["arquivos"].values())
     assert all(valor is None for valor in medicao["servicos"].values())
-    assert medicao["imagem_admin"] is None
+    assert medicao["imagem_aplicacao"] is None
     assert medicao["borda_http"] == 503
 
 
@@ -4531,31 +4547,29 @@ def test_estado_infra_borda_indisponivel_nao_vira_pass(monkeypatch, tmp_path, ca
     assert PRIVADO not in saida
 
 
-def test_estado_infra_recusa_identidade_admin_de_outro_repositorio():
+def test_estado_infra_recusa_identidade_aplicacao_de_outro_repositorio():
     dados = {
         "arquivos": {nome: None for nome in ops.ARQUIVOS_ESTADO_INFRA},
         "servicos": {
             "traefik": None,
-            "catalogo": None,
-            "admin": MEDICAO,
+            "aplicacao": MEDICAO,
         },
-        "imagem_admin": {
+        "imagem_aplicacao": {
             "container_image": MEDICAO["imagem"],
             "id": "sha256:" + "b" * 64,
-            "repo_digests": ["ghcr.io/externo/plataforma-admin@sha256:" + "c" * 64],
+            "repo_digests": ["ghcr.io/externo/plataforma-aplicacao@sha256:" + "c" * 64],
         },
         "borda_http": 302,
     }
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("estado-infra", dados)
-    dados["imagem_admin"]["repo_digests"] = []
-    with pytest.raises(ops.Falha, match="formato"):
-        ops.conferir_medicao("estado-infra", dados)
-    dados["imagem_admin"]["repo_digests"] = [
-        "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64
+    dados["imagem_aplicacao"]["repo_digests"] = []
+    assert ops.conferir_medicao("estado-infra", dados) == dados
+    dados["imagem_aplicacao"]["repo_digests"] = [
+        "ghcr.io/abundanciabr/plataforma-aplicacao@sha256:" + "c" * 64
     ]
     assert ops.conferir_medicao("estado-infra", dados) == dados
-    dados["imagem_admin"]["container_image"] = "sha256:" + "d" * 64
+    dados["imagem_aplicacao"]["container_image"] = "sha256:" + "d" * 64
     with pytest.raises(ops.Falha, match="formato"):
         ops.conferir_medicao("estado-infra", dados)
 
