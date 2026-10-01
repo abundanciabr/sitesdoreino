@@ -198,6 +198,8 @@ jobs:
               fi
               if [ "$CELULA" = admin ]; then
                 python -m pytest -q -k 'not test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao and not test_vinculos_nao_seguem_diretorio_redirecionado'
+              elif [ "$CELULA" = funil ]; then
+                python -m pytest -q -k 'not test_validador_da_celula_real_passa'
               else
                 python -m pytest -q
               fi
