@@ -26,6 +26,7 @@ OPERACOES = {
     "appmax-estorno",
     "appmax-pendentes",
     "quiz-configuracao",
+    "coordenacao-db",
 }
 OPERACOES_DA_PLATAFORMA = {"estado-infra", "espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
@@ -388,6 +389,8 @@ ACOES = {
     "infra": "Arquivo da infraestrutura inacessível ou inesperado; preserve a VPS e confira a publicação antes de repetir.",
     "borda": "A borda local não respondeu; confira Traefik e a rota pública pelo canal oficial antes de repetir.",
     "formato": "A medição não corresponde ao protocolo; corrija o coletor por PR.",
+    "banco_ausente": "O banco coordenacao_db não existe neste PostgreSQL.",
+    "banco_inacessivel": "O PostgreSQL ou coordenacao_db está inacessível para a leitura.",
 }
 
 
@@ -417,6 +420,8 @@ def validar(operacao, servico, permitidos, referencia=""):
     ):
         raise Falha("entrada")
     if operacao == "quiz-configuracao" and servico != "quiz":
+        raise Falha("entrada")
+    if operacao == "coordenacao-db" and servico != "postgres":
         raise Falha("entrada")
     if operacao in {"appmax-pix", "appmax-inbox-latencia"}:
         if referencia and not re.fullmatch(r"[0-9a-f]{64}", referencia):
@@ -452,6 +457,80 @@ def comando(argumentos, prazo_segundos=30):
             raise Falha("sandbox")
         raise Falha("instrumento")
     return resultado.stdout
+
+
+def medir_coordenacao_db(identificador):
+    # PGOPTIONS impõe leitura antes de qualquer SQL, inclusive nas consultas
+    # montadas a partir dos identificadores devolvidos pelo próprio catálogo.
+    def consultar(banco, sql):
+        try:
+            return comando(
+                [
+                    "docker", "exec", "-e",
+                    "PGOPTIONS=-c default_transaction_read_only=on -c statement_timeout=15000",
+                    identificador, "psql", "-X", "-w", "-A", "-t",
+                    "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", banco,
+                    "-c", sql,
+                ],
+                prazo_segundos=20,
+            ).strip()
+        except Falha:
+            raise Falha("banco_inacessivel") from None
+
+    def ler_json(banco, sql):
+        try:
+            return json.loads(consultar(banco, sql))
+        except (ValueError, TypeError):
+            raise Falha("formato") from None
+
+    bancos = ler_json(
+        "postgres",
+        "SELECT coalesce(json_agg(datname ORDER BY datname), '[]'::json) "
+        "FROM pg_database WHERE datallowconn AND NOT datistemplate",
+    )
+    if not isinstance(bancos, list) or any(
+        not isinstance(nome, str) or not 0 < len(nome) <= 63 for nome in bancos
+    ):
+        raise Falha("formato")
+    if "coordenacao_db" not in bancos:
+        raise Falha("banco_ausente")
+
+    esquemas = ler_json(
+        "coordenacao_db",
+        "SELECT coalesce(json_agg(nspname ORDER BY nspname), '[]'::json) "
+        "FROM pg_namespace WHERE nspname <> 'information_schema' "
+        "AND nspname NOT LIKE 'pg_%'",
+    )
+    tabelas = ler_json(
+        "coordenacao_db",
+        "SELECT coalesce(json_agg(json_build_object('esquema', n.nspname, "
+        "'tabela', c.relname) ORDER BY n.nspname, c.relname), '[]'::json) "
+        "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE c.relkind IN ('r', 'p') AND n.nspname <> 'information_schema' "
+        "AND n.nspname NOT LIKE 'pg_%'",
+    )
+    if not isinstance(tabelas, list) or len(tabelas) > 1000:
+        raise Falha("formato")
+    saida = []
+    for tabela in tabelas:
+        if not isinstance(tabela, dict) or set(tabela) != {"esquema", "tabela"}:
+            raise Falha("formato")
+        esquema, nome = tabela["esquema"], tabela["tabela"]
+        if any(
+            not isinstance(valor, str) or not 0 < len(valor) <= 63
+            or any(ord(c) < 32 for c in valor)
+            for valor in (esquema, nome)
+        ):
+            raise Falha("formato")
+        citado = lambda valor: '"' + valor.replace('"', '""') + '"'
+        contagem = consultar(
+            "coordenacao_db",
+            f"SELECT count(*) FROM {citado(esquema)}.{citado(nome)}",
+        )
+        if not re.fullmatch(r"[0-9]{1,20}", contagem):
+            raise Falha("formato")
+        saida.append({"esquema": esquema, "tabela": nome, "linhas": int(contagem)})
+    return {"bancos": bancos, "esquemas": esquemas, "tabelas": saida}
 
 
 def hash_arquivo_infra(relativo):
@@ -516,7 +595,31 @@ def hash_arquivo_infra(relativo):
 def conferir_medicao(operacao, dados, referencia=""):
     if not isinstance(dados, dict):
         raise Falha("formato")
-    if operacao == "estado-servico":
+    if operacao == "coordenacao-db":
+        if set(dados) != {"bancos", "esquemas", "tabelas"}:
+            raise Falha("formato")
+        for lista in (dados["bancos"], dados["esquemas"]):
+            if not isinstance(lista, list) or len(lista) > 1000 or any(
+                not isinstance(nome, str) or not 0 < len(nome) <= 63
+                or any(ord(c) < 32 for c in nome)
+                for nome in lista
+            ):
+                raise Falha("formato")
+        if "coordenacao_db" not in dados["bancos"]:
+            raise Falha("formato")
+        tabelas = dados["tabelas"]
+        if not isinstance(tabelas, list) or len(tabelas) > 1000:
+            raise Falha("formato")
+        for tabela in tabelas:
+            if not isinstance(tabela, dict) or set(tabela) != {"esquema", "tabela", "linhas"}:
+                raise Falha("formato")
+            if tabela["esquema"] not in dados["esquemas"] or any(
+                not isinstance(tabela[campo], str) or not 0 < len(tabela[campo]) <= 63
+                or any(ord(c) < 32 for c in tabela[campo])
+                for campo in ("esquema", "tabela")
+            ) or type(tabela["linhas"]) is not int or tabela["linhas"] < 0:
+                raise Falha("formato")
+    elif operacao == "estado-servico":
         if set(dados) != {"estado", "saude", "reinicios", "imagem"}:
             raise Falha("formato")
         if dados["estado"] not in ESTADOS or dados["saude"] not in SAUDES:
@@ -1327,6 +1430,8 @@ def medir(operacao, servico, referencia=""):
         raise Falha("ausente")
     if not re.fullmatch(r"[0-9a-f]{12,64}", identificador):
         raise Falha("formato")
+    if operacao == "coordenacao-db":
+        return conferir_medicao(operacao, medir_coordenacao_db(identificador))
     if operacao == "appmax-pix":
         sandbox_urls = (APPMAX_AUTH_SANDBOX, APPMAX_API_SANDBOX)
         codigo = (
@@ -1926,6 +2031,13 @@ def conferir():
         if saida.endswith(rodape):
             saida = saida[: -len(rodape)]
         dados = json.loads(saida)
+        if (
+            os.environ.get("OPERACAO") == "coordenacao-db"
+            and isinstance(dados, dict)
+            and dados.get("resultado") == "ERROR"
+            and dados.get("erro") in {"banco_ausente", "banco_inacessivel"}
+        ):
+            raise Falha(dados["erro"])
         if set(dados) != {"resultado", "operacao", "servico", "medicao"}:
             raise Falha("formato")
         if (
@@ -1963,8 +2075,11 @@ if __name__ == "__main__":
             conferir()
         else:
             raise Falha("entrada")
-    except (Falha, OSError, ValueError, TypeError, KeyError):
-        print(
-            "ERROR: operação ou evidência inválida. Confira o catálogo e o run na main; corrija por PR."
-        )
+    except (Falha, OSError, ValueError, TypeError, KeyError) as erro:
+        if isinstance(erro, Falha) and str(erro) in {"banco_ausente", "banco_inacessivel"}:
+            print("ERROR: " + ACOES[str(erro)])
+        else:
+            print(
+                "ERROR: operação ou evidência inválida. Confira o catálogo e o run na main; corrija por PR."
+            )
         sys.exit(2)
