@@ -1,0 +1,26 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{{ nome }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>{{ nome }}</h1>
+  <p class="subtitulo">Edite um rascunho, confira a prévia e publique quando estiver pronto.</p>
+  {% if erro %}<p class="aviso">{{ erro }}</p>{% endif %}
+  {% if recado %}<p class="aviso">{{ recado }}</p>{% endif %}
+  <div class="cartao">
+    <h2>Novo rascunho</h2>
+    <form method="post" action="{% url 'conteudo_novo' tipo %}">{% csrf_token %}
+      <label for="novo-slug">Endereço curto</label>
+      <input id="novo-slug" name="slug" required pattern="[a-z0-9-]+" maxlength="100" placeholder="ex.: modelagem-basica">
+      <button type="submit">Começar</button>
+    </form>
+  </div>
+  {% for linha in linhas %}
+  <div class="cartao">
+    <a href="{% url 'conteudo_editar' tipo linha.slug %}">{{ linha.nome|default:linha.title|default:linha.slug }}</a>
+    {% if linha.rascunho %}<span class="nota">Rascunho guardado</span>{% endif %}
+  </div>
+  {% empty %}
+  <p class="aviso">Ainda não há conteúdo deste tipo.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{{ nome }} · {{ slug }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'conteudos' tipo %}">← {{ nome }}</a>
+  <h1>{{ nome }}: {{ slug }}</h1>
+  {% if recado %}<p class="aviso">{% if recado == 'publicado' %}Publicado no site.{% else %}Rascunho salvo. O público ainda vê a versão anterior.{% endif %}</p>{% endif %}
+  <div class="cartao">
+    <h2>{% if tem_rascunho %}Prévia privada do rascunho{% else %}Editar{% endif %}</h2>
+    <form method="post" action="{% url 'conteudo_salvar' tipo slug %}">{% csrf_token %}
+      {% if tipo == 'forum' %}
+        <p><label>Nome<br><input name="nome" required maxlength="100" value="{{ conteudo.nome|default:'' }}"></label></p>
+        <p><label>Descrição<br><textarea name="descricao" rows="5">{{ conteudo.descricao|default:'' }}</textarea></label></p>
+        <p><label>Ordem<br><input name="ordem" type="number" min="0" value="{{ conteudo.ordem|default:0 }}"></label></p>
+        <p><label>Visibilidade<br><select name="visibilidade">
+          <option value="publica" {% if conteudo.visibilidade == 'publica' %}selected{% endif %}>Pública</option>
+          <option value="alunos" {% if conteudo.visibilidade == 'alunos' %}selected{% endif %}>Alunos</option>
+          <option value="turma" {% if conteudo.visibilidade == 'turma' %}selected{% endif %}>Turma</option>
+        </select></label></p>
+        <p><label>Quem escreve<br><select name="quem_escreve">
+          <option value="equipe" {% if conteudo.quem_escreve == 'equipe' %}selected{% endif %}>Equipe</option>
+          <option value="aluno" {% if conteudo.quem_escreve == 'aluno' %}selected{% endif %}>Alunos</option>
+          <option value="cadastrado" {% if conteudo.quem_escreve == 'cadastrado' %}selected{% endif %}>Pessoas cadastradas</option>
+        </select></label></p>
+        <p><label>Curso da turma (quando a visibilidade é Turma)<br><input name="curso_id" value="{{ conteudo.curso_id|default:'' }}"></label></p>
+        <p><label><input type="checkbox" name="ativa" value="sim" {% if conteudo.ativa %}checked{% endif %}> Área ativa após publicar</label></p>
+      {% elif tipo == 'turma' %}
+        <p><label>Nome<br><input name="nome" required maxlength="120" value="{{ conteudo.nome|default:'' }}"></label></p>
+        <p><label>Descrição<br><textarea name="descricao" rows="6">{{ conteudo.descricao|default:'' }}</textarea></label></p>
+      {% else %}
+        <p><label>Título<br><input name="title" required maxlength="200" value="{{ conteudo.title|default:'' }}"></label></p>
+        <input type="hidden" name="total_perguntas" value="{{ total_perguntas }}">
+        <h3>Perguntas</h3>
+        {% for pergunta in perguntas %}
+          <fieldset><legend>Pergunta {{ forloop.counter }}{% if forloop.last %} (nova){% endif %}</legend>
+            <p><label>Enunciado<br><input name="pergunta_{{ pergunta.indice }}" value="{{ pergunta.texto }}" maxlength="500"></label></p>
+            <p><label>Opções, uma por linha, no formato resposta | pontos<br>
+              <textarea name="opcoes_{{ pergunta.indice }}" rows="5">{{ pergunta.opcoes }}</textarea>
+            </label></p>
+          </fieldset>
+        {% endfor %}
+        <input type="hidden" name="total_faixas" value="{{ total_faixas }}">
+        <h3>Faixas de resultado</h3>
+        {% for faixa in faixas %}
+          <fieldset><legend>Faixa {{ forloop.counter }}{% if forloop.last %} (nova){% endif %}</legend>
+            <p><label>Chave<br><input name="faixa_chave_{{ faixa.indice }}" value="{{ faixa.key }}"></label></p>
+            <p><label>Título<br><input name="faixa_titulo_{{ faixa.indice }}" value="{{ faixa.title }}"></label></p>
+            <p><label>Descrição<br><textarea name="faixa_descricao_{{ faixa.indice }}" rows="3">{{ faixa.description }}</textarea></label></p>
+            <p><label>Pontos mínimos<br><input type="number" name="faixa_min_{{ faixa.indice }}" value="{{ faixa.min_score }}"></label>
+               <label>Pontos máximos<br><input type="number" name="faixa_max_{{ faixa.indice }}" value="{{ faixa.max_score }}"></label></p>
+            <p><label>Endereço do botão<br><input name="faixa_destino_{{ faixa.indice }}" value="{{ faixa.botao_destino }}"></label>
+               <label>Texto do botão<br><input name="faixa_rotulo_{{ faixa.indice }}" value="{{ faixa.botao_rotulo }}"></label></p>
+          </fieldset>
+        {% endfor %}
+      {% endif %}
+      <button type="submit">Salvar rascunho</button>
+    </form>
+  </div>
+  {% if tem_rascunho %}
+  <div class="cartao">
+    <p>Esta prévia é privada. Quem visita o site continua vendo apenas o conteúdo publicado.</p>
+    {% if tipo == 'quiz' %}<p>Ao publicar, esta versão substitui as versões ativas do quiz. As versões antigas continuam guardadas.</p>{% endif %}
+    <form method="post" action="{% url 'conteudo_publicar' tipo slug %}">{% csrf_token %}
+      <button type="submit">Publicar {{ nome|lower }}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

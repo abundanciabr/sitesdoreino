@@ -430,14 +430,14 @@
           <form method="post" action="{% url 'escola_admin_remover' %}">
             {% csrf_token %}
             <input type="hidden" name="email" value="{{ pessoa.email }}">
-            <button class="nao" type="submit">Remover de administrador</button>
+            <button class="nao" type="submit">Preparar remoção</button>
           </form>
           {% endif %}
         {% else %}
         <form method="post" action="{% url 'escola_admin_promover' %}">
           {% csrf_token %}
           <input type="hidden" name="email" value="{{ pessoa.email }}">
-          <button type="submit">Tornar administrador</button>
+          <button type="submit">Preparar promoção</button>
         </form>
         {% endif %}
       </div>
@@ -465,6 +465,7 @@
   {% endcomment %}
   <p class="aviso espaco-16">
     <b>Quem é administrador desta área:</b> {{ administradores|join:", " }}.
+    <br><br>As mudanças preparadas ficam privadas até o mantenedor publicar.
     <br><br>
     Os botões acima promovem e removem — menos quem vem da lista do servidor,
     que o botão não alcança. Isso é de propósito: é o que garante que sempre
@@ -475,6 +476,22 @@
     não é mais — e por isso toda promoção e toda remoção ficam registradas, num
     registro que ninguém consegue editar nem apagar.
   </p>
+
+  {% if rascunhos_de_permissao %}
+  <div class="cartao">
+    <h2>Prévia das permissões preparadas</h2>
+    {% for rascunho in rascunhos_de_permissao %}
+    <p>{{ rascunho.alvo }}: {% if rascunho.conteudo.ativo %}ganhará acesso de administrador{% else %}perderá acesso de administrador{% endif %}.
+      {% if pode_publicar_permissoes %}
+      <form method="post" action="{% url 'escola_admin_publicar' %}">{% csrf_token %}
+        <input type="hidden" name="email" value="{{ rascunho.alvo }}">
+        <button type="submit">Publicar esta permissão</button>
+      </form>
+      {% endif %}
+    </p>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <p class="aviso espaco-16">
     <b>Nenhuma ficha se apaga por aqui — e isso é de propósito.</b>

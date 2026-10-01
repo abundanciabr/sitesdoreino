@@ -83,6 +83,9 @@ from apps.core.menu import (
     menu_remover_item,
     menu_versao_padrao,
 )
+from apps.core.conteudos import (
+    conteudos, conteudo_novo, conteudo_editar, conteudo_salvar, conteudo_publicar,
+)
 from apps.core.paginas import (
     pagina_de_venda,
     pagina_de_venda_publicar,
@@ -159,6 +162,7 @@ from apps.core.views import (
     acesso_local,
     escola,
     escola_admin_promover,
+    escola_admin_publicar,
     escola_admin_remover,
     escola_aluno_salvar,
     doc_publico,
@@ -195,6 +199,11 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
+    path("conteudos/<slug:tipo>/", conteudos, name="conteudos"),
+    path("conteudos/<slug:tipo>/novo", conteudo_novo, name="conteudo_novo"),
+    path("conteudos/<slug:tipo>/<slug:slug>/", conteudo_editar, name="conteudo_editar"),
+    path("conteudos/<slug:tipo>/<slug:slug>/salvar", conteudo_salvar, name="conteudo_salvar"),
+    path("conteudos/<slug:tipo>/<slug:slug>/publicar", conteudo_publicar, name="conteudo_publicar"),
     path("modelos-de-paginas/", modelos_de_paginas, name="modelos_de_paginas"),
     path(
         "modelos-de-paginas/flp-0/editar", modelo_flp_editar, name="modelo_flp_editar"
@@ -1024,6 +1033,7 @@ urlpatterns = [
     # minha lista ja chegou?" — perguntas diferentes, e uma caixa de colar no
     # meio da lista empurraria para baixo o que ele abre aquela tela para ver.
     path("escola/turmas/", escola_turmas, name="escola_turmas"),
+    path("escola/administradores/publicar", escola_admin_publicar, name="escola_admin_publicar"),
     # A conferencia e POST mesmo sendo LEITURA, e a excecao e deliberada: a
     # lista nao caberia numa querystring, e um telefone nao tem por que passar
     # pela barra de enderecos, pelo historico do navegador e pelo log de acesso.

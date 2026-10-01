@@ -47,7 +47,7 @@ from django.urls import NoReverseMatch, reverse
 
 from apps.auditoria.models import Registro
 from apps.core.clients import AlunosClient
-from apps.core.models import Administrador
+from apps.core.models import Administrador, RascunhoDeConfiguracao
 from apps.core.porta import _emails_autorizados
 
 BASE = "http://identidade:8000/interno"
@@ -143,7 +143,10 @@ def test_banco_fora_do_ar_vale_so_o_env(monkeypatch):
 def test_promover_deixa_a_pessoa_entrar_e_deixa_rastro():
     r = _dentro().post(reverse("escola_admin_promover"), {"email": OUTRO})
 
-    assert r["Location"].endswith("?resultado=promovido")
+    assert r["Location"].endswith("?resultado=rascunho")
+    assert OUTRO not in _emails_autorizados()
+    r = _dentro().post(reverse("escola_admin_publicar"), {"email": OUTRO})
+    assert r["Location"].endswith("?resultado=publicado")
     assert OUTRO in _emails_autorizados()
     linha = Registro.objects.get()
     assert linha.acao == Registro.PROMOVER
@@ -156,6 +159,8 @@ def test_promover_deixa_a_pessoa_entrar_e_deixa_rastro():
 def test_promover_duas_vezes_nao_cria_duas_linhas():
     _dentro().post(reverse("escola_admin_promover"), {"email": OUTRO})
     _dentro().post(reverse("escola_admin_promover"), {"email": OUTRO})
+    assert Administrador.objects.filter(email=OUTRO).count() == 0
+    _dentro().post(reverse("escola_admin_publicar"), {"email": OUTRO})
     assert Administrador.objects.filter(email=OUTRO).count() == 1
 
 
@@ -164,6 +169,8 @@ def test_promover_duas_vezes_nao_cria_duas_linhas():
 def test_promover_de_novo_quem_foi_removido_reativa():
     Administrador.objects.create(email=OUTRO, ativo=False)
     _dentro().post(reverse("escola_admin_promover"), {"email": OUTRO})
+    assert OUTRO not in _emails_autorizados()
+    _dentro().post(reverse("escola_admin_publicar"), {"email": OUTRO})
     assert OUTRO in _emails_autorizados()
 
 
@@ -173,7 +180,10 @@ def test_remover_tira_o_cracha_e_deixa_rastro():
     Administrador.objects.create(email=OUTRO)
     r = _dentro().post(reverse("escola_admin_remover"), {"email": OUTRO})
 
-    assert r["Location"].endswith("?resultado=despromovido")
+    assert r["Location"].endswith("?resultado=rascunho")
+    assert OUTRO in _emails_autorizados()
+    r = _dentro().post(reverse("escola_admin_publicar"), {"email": OUTRO})
+    assert r["Location"].endswith("?resultado=publicado")
     assert OUTRO not in _emails_autorizados()
     assert Registro.objects.get().acao == Registro.DESPROMOVER
 
@@ -229,6 +239,48 @@ def test_quem_nao_e_admin_nao_promove_ninguem():
     )
     assert r.status_code == 404
     assert Administrador.objects.count() == 0
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_editor_pode_rascunhar_mas_nao_publicar_ou_se_promover():
+    Administrador.objects.create(email=OUTRO)
+    editor = _dentro(OUTRO)
+    propria = editor.post(reverse("escola_admin_promover"), {"email": OUTRO})
+    assert propria["Location"].endswith("?resultado=voce-mesmo")
+    assert not RascunhoDeConfiguracao.objects.filter(alvo=OUTRO).exists()
+    alvo = "nova@exemplo.com"
+    assert (
+        editor.post(reverse("escola_admin_promover"), {"email": alvo}).status_code
+        == 302
+    )
+    assert alvo not in _emails_autorizados()
+    assert (
+        editor.post(reverse("escola_admin_publicar"), {"email": alvo}).status_code
+        == 403
+    )
+    assert alvo not in _emails_autorizados()
+    assert RascunhoDeConfiguracao.objects.filter(alvo=alvo).exists()
+
+
+@pytest.mark.django_db
+def test_robo_rejeitado_explicitamente_mesmo_que_a_rota_nao_o_bloqueie():
+    from django.test import RequestFactory
+    from apps.core.views import escola_admin_publicar
+
+    rascunho = RascunhoDeConfiguracao.objects.create(
+        tipo="permissao",
+        site_id="",
+        alvo="nova@exemplo.com",
+        conteudo={"ativo": True},
+        base={"ativo": False},
+    )
+    request = RequestFactory().post(
+        reverse("escola_admin_publicar"), {"email": rascunho.alvo}
+    )
+    request.admin = {"email": DONO, "robo": True}
+    assert escola_admin_publicar(request).status_code == 403
+    assert not Administrador.objects.filter(email=rascunho.alvo).exists()
 
 
 # ------------------------------------------------------- a ficha NAO se apaga

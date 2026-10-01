@@ -21,6 +21,9 @@ from datetime import date, datetime
 
 from django.core import signing
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
@@ -32,7 +35,7 @@ from apps.auditoria.models import Registro
 
 from . import documento_em_pagina, documentos
 from .clients import AlunosClient, CatalogoClient, IdentidadeClient
-from .models import Administrador, Documento
+from .models import Administrador, Documento, RascunhoDeConfiguracao
 from .porta import _emails_autorizados
 from .telefone import numeros_no_texto
 from .turmas import conferir
@@ -845,6 +848,13 @@ def escola_alunos(request):
             # célula, lida na hora (`DECISAO-gestao-de-alunos` §4). A tela
             # MOSTRA; quem muda é o mantenedor, no servidor.
             "administradores": sorted(_emails_autorizados()),
+            "rascunhos_de_permissao": RascunhoDeConfiguracao.objects.filter(
+                tipo="permissao", site_id=""
+            ).order_by("alvo"),
+            "pode_publicar_permissoes": (
+                not request.admin.get("robo")
+                and (request.admin.get("email") or "").strip().lower() in _do_servidor()
+            ),
             # Separados porque o botao de remover so alcanca uma das metades —
             # e a tela precisa dizer isso ANTES do clique, nao depois.
             "admins_do_servidor": sorted(_do_servidor()),
@@ -1889,14 +1899,28 @@ def _auditar(request, acao, alvo, desfecho, detalhe=""):
 
 @require_POST
 def escola_admin_promover(request):
-    """Torna alguém administrador desta área — a reversão do §2 em ação."""
+    """Prepara a promoção sem alterar a porta de acesso."""
     email = (request.POST.get("email") or "").strip().lower()
     if not email:
         return HttpResponseRedirect(reverse("escola_alunos"))
+    try:
+        validate_email(email)
+    except ValidationError:
+        return HttpResponse(status=400)
 
-    Administrador.objects.update_or_create(email=email, defaults={"ativo": True})
-    _auditar(request, Registro.PROMOVER, email, Registro.OK)
-    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=promovido")
+    if email == (request.admin.get("email") or "").strip().lower():
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=voce-mesmo")
+    existente = RascunhoDeConfiguracao.objects.filter(
+        tipo="permissao", site_id="", alvo=email
+    ).first()
+    atual = existente.base.get("ativo") if existente else email in _emails_autorizados()
+    RascunhoDeConfiguracao.objects.update_or_create(
+        tipo="permissao",
+        site_id="",
+        alvo=email,
+        defaults={"conteudo": {"ativo": True}, "base": {"ativo": atual}},
+    )
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=rascunho")
 
 
 @require_POST
@@ -1909,6 +1933,10 @@ def escola_admin_remover(request):
     email = (request.POST.get("email") or "").strip().lower()
     if not email:
         return HttpResponseRedirect(reverse("escola_alunos"))
+    try:
+        validate_email(email)
+    except ValidationError:
+        return HttpResponse(status=400)
 
     if email in _do_servidor():
         # §3.1: o env é o CHÃO. Se o botão pudesse removê-lo, existiria uma
@@ -1922,9 +1950,58 @@ def escola_admin_remover(request):
         # administrador deixaria a casa sem dono.
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=voce-mesmo")
 
-    Administrador.objects.filter(email=email).update(ativo=False)
-    _auditar(request, Registro.DESPROMOVER, email, Registro.OK)
-    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=despromovido")
+    existente = RascunhoDeConfiguracao.objects.filter(
+        tipo="permissao", site_id="", alvo=email
+    ).first()
+    atual = existente.base.get("ativo") if existente else email in _emails_autorizados()
+    RascunhoDeConfiguracao.objects.update_or_create(
+        tipo="permissao",
+        site_id="",
+        alvo=email,
+        defaults={"conteudo": {"ativo": False}, "base": {"ativo": atual}},
+    )
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=rascunho")
+
+
+@require_POST
+def escola_admin_publicar(request):
+    """Só mantenedor com sessão pessoal publica; robô e editor não elevam acesso."""
+    email_do_editor = (request.admin.get("email") or "").strip().lower()
+    if request.admin.get("robo") or email_do_editor not in _do_servidor():
+        return HttpResponse(status=403)
+
+    alvo = (request.POST.get("email") or "").strip().lower()
+    if not alvo or alvo == email_do_editor:
+        return HttpResponse(status=403)
+    try:
+        validate_email(alvo)
+    except ValidationError:
+        return HttpResponse(status=400)
+
+    with transaction.atomic():
+        rascunho = (
+            RascunhoDeConfiguracao.objects.select_for_update()
+            .filter(tipo="permissao", site_id="", alvo=alvo)
+            .first()
+        )
+        if rascunho is None:
+            return HttpResponse(status=404)
+        ativo = rascunho.conteudo.get("ativo")
+        if type(ativo) is not bool:
+            return HttpResponse(status=422)
+        if not ativo and alvo in _do_servidor():
+            return HttpResponse(status=403)
+        if rascunho.base.get("ativo") != (alvo in _emails_autorizados()):
+            return HttpResponse(status=409)
+        Administrador.objects.update_or_create(email=alvo, defaults={"ativo": ativo})
+        rascunho.delete()
+        _auditar(
+            request,
+            Registro.PROMOVER if ativo else Registro.DESPROMOVER,
+            alvo,
+            Registro.OK,
+        )
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=publicado")
 
 
 # ------------------------------------------ liberar em lote pela lista de turmas
