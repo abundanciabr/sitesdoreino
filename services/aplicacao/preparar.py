@@ -115,6 +115,10 @@ def _preservar_tabelas_modelos(codigo: str, app: str) -> str:
 
 
 def _preservar_tabelas_migracoes(codigo: str, app: str) -> str:
+    # Uma migracao legada consultava o alias global `default` para detectar o
+    # dialeto. No registry unico, o alias correto e o do schema_editor.
+    codigo = re.sub(r"(?<!schema_editor\.)\bconnection\.vendor\b",
+                    "schema_editor.connection.vendor", codigo)
     arvore = ast.parse(codigo)
     alterado = False
     for no in ast.walk(arvore):
