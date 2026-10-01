@@ -36,6 +36,9 @@ set -u
 parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+OPERACAO_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$OPERACAO_APLICACAO" ] || OPERACAO_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$OPERACAO_APLICACAO"
 ENV_FORUM="env/forum.env"
 # A referência de dono/permissão: um env que JÁ funciona nesta máquina
 # (`armadilhas/091`). Rodando como root, uma edição recria o arquivo e pode
@@ -196,12 +199,14 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 0
 fi
 
-if ! docker compose config --services 2>/dev/null | grep -qx forum; then
+SERVICO_FORUM=forum
+aplicacao_ativa && SERVICO_FORUM=aplicacao
+if ! docker compose config --services 2>/dev/null | grep -qx "$SERVICO_FORUM"; then
   echo "  (aviso: o serviço 'forum' não está neste compose. O arquivo JÁ está certo. Avise o agente.)"
   exit 0
 fi
 
-if docker compose up -d forum >/dev/null 2>&1; then
+if recarregar_servicos por-a-chave-da-ia-do-forum >/dev/null 2>&1; then
   echo "  recarreguei o fórum"
 else
   parar "não consegui recarregar o fórum. A chave JÁ está no arquivo, e há cópia do anterior em $ENV_FORUM.bak-*. Mande esta tela ao agente."
@@ -209,7 +214,7 @@ fi
 
 # A conferência é de PRESENÇA, e o valor nunca aparece: `printenv` imprimiria a
 # chave inteira na tela, que é exatamente o que este script existe para evitar.
-LIDA="$(docker compose exec -T forum sh -c 'printf %s "${ANTHROPIC_API_KEY:-}" | wc -c' 2>/dev/null | tr -d '[:space:]')"
+LIDA="$(comando_servico forum shell -c 'import os; print(len(os.environ.get("ANTHROPIC_API_KEY", "")))' 2>/dev/null | tr -d '[:space:]')"
 echo
 if [ "$LIDA" = "${#CHAVE}" ]; then
   echo "== PRONTO =="

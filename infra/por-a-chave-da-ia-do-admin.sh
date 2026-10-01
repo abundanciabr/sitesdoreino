@@ -78,6 +78,9 @@ set -u
 parar() { echo; echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+OPERACAO_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$OPERACAO_APLICACAO" ] || OPERACAO_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$OPERACAO_APLICACAO"
 ENV_ADMIN="env/admin.env"
 ENV_FORUM="env/forum.env"
 # A referencia de dono e permissao: um env que JA funciona nesta maquina
@@ -259,6 +262,9 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 0
 fi
 
+SERVICO_ADMIN=admin
+aplicacao_ativa && SERVICO_ADMIN=aplicacao
+
 # O texto de conserto que serve a TODAS as recusas daqui para baixo: a partir
 # deste ponto as linhas ja estao gravadas, e o que pode dar errado e sempre a
 # area administrativa nao ter voltado.
@@ -267,7 +273,7 @@ $RAIZ/$ENV_ADMIN.bak-*, entao nao rode este roteiro de novo por causa dela.
 
 COLE ESTA LINHA AQUI MESMO, nesta janela da VPS, para levantar de volta:
 
-  cd $RAIZ && docker compose up -d admin; docker compose ps admin
+  cd $RAIZ && python3 codigo/ferramentas/atual/infra/recarregar-aplicacao.py por-a-chave-da-ia-do-admin.sh; docker compose ps $SERVICO_ADMIN
 
 Se depois disso ela continuar fora do ar, mande esta tela inteira ao agente."
 
@@ -286,7 +292,7 @@ $(printf '%s\n' "$SERVICOS" | sed 's/^/    /')
 
 Mande esta tela ao agente."
 
-if ! printf '%s\n' "$SERVICOS" | grep -qx admin; then
+if ! printf '%s\n' "$SERVICOS" | grep -qx "$SERVICO_ADMIN"; then
   echo "  (aviso: o servico 'admin' nao esta no docker-compose.yml desta maquina. O arquivo JA esta certo; o proximo deploy da area administrativa rele o env. Avise o agente.)"
   exit 0
 fi
@@ -295,7 +301,7 @@ fi
 # "nunca foi tocado". Um `up` que falha no meio deixa o container ANTIGO
 # rodando, e ai o `docker compose ps` continua dizendo "Up" com a maior calma:
 # quem le so o "Up" esta lendo o container errado, com o env antigo dentro.
-ID_ANTES="$(docker compose ps -q admin 2>/dev/null | tr -d '[:space:]')"
+ID_ANTES="$(docker compose ps -q "$SERVICO_ADMIN" 2>/dev/null | tr -d '[:space:]')"
 
 # A SAIDA DE ERRO NUNCA VAI PARA O LIXO AQUI (`armadilhas/377`). Em 06/09/2026
 # um roteiro desta casa recarregou duas celulas com `>/dev/null 2>&1`, o comando
@@ -305,7 +311,7 @@ ID_ANTES="$(docker compose ps -q admin 2>/dev/null | tr -d '[:space:]')"
 # `--force-recreate` porque `up -d` sozinho ve a mesma imagem e a mesma
 # configuracao de compose e nao faz nada, e mudanca DENTRO do env_file nao conta
 # como mudanca para ele. Sem isso, a chave ficaria no arquivo e fora do processo.
-SAIDA_UP="$(docker compose up -d --force-recreate --wait --wait-timeout 180 admin 2>&1)"
+SAIDA_UP="$(recarregar_servicos por-a-chave-da-ia-do-admin 2>&1)"
 CODIGO_UP=$?
 
 # O CODIGO DE SAIDA NAO SE JOGA FORA. Ele e a unica coisa que sabe a diferenca
@@ -325,14 +331,14 @@ $(printf '%s\n' "$SAIDA_UP" | sed 's/^/    /')"
 # diagnostico: "nao renasceu" e "renasceu e mesmo assim leu outra coisa" sao
 # dois problemas diferentes, com conserto diferente, e sem esta medicao os dois
 # chegariam ao agente com a mesma cara.
-ID_DEPOIS="$(docker compose ps -q admin 2>/dev/null | tr -d '[:space:]')"
+ID_DEPOIS="$(docker compose ps -q "$SERVICO_ADMIN" 2>/dev/null | tr -d '[:space:]')"
 if [ "$ID_DEPOIS" = "$ID_ANTES" ]; then
   RENASCEU="NAO: o container e exatamente o mesmo de antes, e um container so le o env quando renasce"
 else
   RENASCEU="sim, este container e outro"
 fi
 
-ESTADO="$(docker compose ps admin 2>&1)"
+ESTADO="$(docker compose ps "$SERVICO_ADMIN" 2>&1)"
 case "$ESTADO" in
   *[Uu]p*) ;;
   *) parar "eu recarreguei a area administrativa e ela NAO voltou de pe. Ela esta fora do ar NESTE MOMENTO.
@@ -372,7 +378,7 @@ MEDIDA_ESPERADA="$RESUMO_ESPERADO:${#CHAVE_DA_IA}"
 # o segredo nunca passa pelo argv do docker (`armadilhas/090`). Vem de la o
 # resumo e a contagem, e e a contagem que separa "nao chegou nada" de "chegou
 # outra coisa" na hora de dizer ao mantenedor o que houve.
-MEDIDA_LIDA="$(docker compose exec -T admin sh -c 'printf %s "${ANTHROPIC_API_KEY:-}" | sha256sum | cut -c1-12; printf ":"; printf %s "${ANTHROPIC_API_KEY:-}" | wc -c' 2>&1 | tr -d '[:space:]')"
+MEDIDA_LIDA="$(comando_servico admin shell -c 'import hashlib, os; valor=os.environ.get("ANTHROPIC_API_KEY", "").encode(); print(hashlib.sha256(valor).hexdigest()[:12] + ":" + str(len(valor)))' 2>&1 | tr -d '[:space:]')"
 
 # A FORMA DA RESPOSTA E CONFERIDA, e nao so o conteudo dela. Qualquer coisa que
 # nao seja doze digitos de resumo, dois-pontos e um numero e uma resposta que

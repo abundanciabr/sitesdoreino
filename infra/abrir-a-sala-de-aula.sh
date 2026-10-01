@@ -54,6 +54,9 @@ set -u
 parar() { echo; echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+OPERACAO_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$OPERACAO_APLICACAO" ] || OPERACAO_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$OPERACAO_APLICACAO"
 ENV_CURSOS="env/cursos.env"
 ENV_ADMIN="env/admin.env"
 ENV_FORUM="env/forum.env"
@@ -98,7 +101,8 @@ unset TRAVA_PUBLICACAO
 [ -f "$ENV_REF" ] || parar "não achei $RAIZ/$ENV_REF, que é de onde eu copio dono e permissão. Nada foi alterado."
 command -v docker >/dev/null 2>&1 || parar "não achei o docker nesta máquina, e sem ele eu não consigo recarregar a sala de aula nem semear o curso. Nada foi alterado."
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui. Nada foi alterado."
-for SERVICO in cursos cursos-relay; do
+if aplicacao_ativa; then SERVICOS_SALA=(aplicacao); else SERVICOS_SALA=(cursos cursos-relay); fi
+for SERVICO in "${SERVICOS_SALA[@]}"; do
   docker compose config --services 2>/dev/null | grep -qx "$SERVICO" \
     || parar "o serviço '$SERVICO' não está no docker-compose.yml desta máquina. A sala de aula ainda não foi entregue à VPS: espere o deploy da infraestrutura terminar e rode de novo. Nada foi alterado."
 done
@@ -242,7 +246,7 @@ echo
 #    células à tag :main do compose (RITOS §4). Só estes dois, pelo nome.
 # -----------------------------------------------------------------------------
 echo "== 3/5: recarregando a sala de aula (leva um minuto) =="
-docker compose up -d --force-recreate --wait --wait-timeout 180 cursos cursos-relay \
+recarregar_servicos abrir-a-sala-de-aula \
   || parar "não consegui recarregar a sala de aula. As linhas JÁ estão em $ENV_CURSOS e há cópia do anterior em $ENV_CURSOS.bak-*. Rode 'docker compose logs --tail 50 cursos' e mande esta tela ao agente."
 echo "  cursos e cursos-relay ..... de pé"
 echo
@@ -256,7 +260,7 @@ echo
 # -----------------------------------------------------------------------------
 echo "== 4/5: semeando o esqueleto do curso =="
 # `-T` porque não há terminal do outro lado quando isto roda por um pipeline.
-SAIDA=$(docker compose exec -T cursos python manage.py semear_esqueleto --site "$SITE_ID" 2>&1) \
+SAIDA=$(comando_servico cursos semear_esqueleto --site "$SITE_ID" 2>&1) \
   || { echo "$SAIDA"; parar "o comando semear_esqueleto falhou. A saída acima diz por quê. O env JÁ está certo; só a semeadura não aconteceu, e rodar este script de novo é seguro."; }
 echo "  $SAIDA"
 echo
@@ -268,7 +272,7 @@ echo
 # -----------------------------------------------------------------------------
 echo "== 5/5: conferindo =="
 
-QUANTAS=$(docker compose exec -T cursos python manage.py shell -c \
+QUANTAS=$(comando_servico cursos shell -c \
   "from apps.cursos.models import Aula; print(Aula.objects.filter(curso__site_id='$SITE_ID').count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$QUANTAS" in
   ''|*[!0-9]*) parar "semeei, mas não consegui contar as aulas depois para provar. Mande esta tela ao agente." ;;
@@ -284,8 +288,8 @@ echo "  aulas no banco ............ $QUANTAS"
 # PRONTO lá embaixo ser um fato e não uma gentileza: o arquivo estar certo e o
 # processo estar com ele são duas coisas diferentes, e a segunda é a que vale.
 # O valor da chave nunca aparece: só o tamanho dela.
-LIDOS=$(docker compose exec -T cursos sh -c 'printf %s "${ADMIN_EMAILS:-}" | wc -c' 2>/dev/null | tr -d '\r[:space:]')
-LIDA=$(docker compose exec -T cursos sh -c 'printf %s "${ANTHROPIC_API_KEY:-}" | wc -c' 2>/dev/null | tr -d '\r[:space:]')
+LIDOS=$(comando_servico cursos shell -c 'import os; print(len(os.environ.get("ADMIN_EMAILS", "")))' 2>/dev/null | tr -d '\r[:space:]')
+LIDA=$(comando_servico cursos shell -c 'import os; print(len(os.environ.get("ANTHROPIC_API_KEY", "")))' 2>/dev/null | tr -d '\r[:space:]')
 [ "$LIDOS" = "${#ADMINS}" ] || parar "gravei e recarreguei, mas dentro do container o ADMIN_EMAILS chegou com '$LIDOS' caracteres e eu esperava '${#ADMINS}'. O plantão pode não abrir para você. Mande esta tela ao agente."
 [ "$LIDA" = "${#CHAVE_DA_IA}" ] || parar "gravei e recarreguei, mas dentro do container a chave da IA chegou com '$LIDA' caracteres e eu esperava '${#CHAVE_DA_IA}'. Mande esta tela ao agente."
 echo "  dentro do container ....... ADMIN_EMAILS e a chave da IA chegaram"

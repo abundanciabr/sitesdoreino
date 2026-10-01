@@ -82,6 +82,9 @@ if [ "$MODO" = "invalido" ]; then
 fi
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+OPERACAO_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$OPERACAO_APLICACAO" ] || OPERACAO_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$OPERACAO_APLICACAO"
 ENV_PAGAMENTOS="env/pagamentos.env"
 
 # -----------------------------------------------------------------------------
@@ -127,8 +130,16 @@ docker_compose() {
   ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" docker compose "$@"
 }
 
+comando_appmax() {
+  ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" comando_servico "$@"
+}
+
+recarregar_appmax() {
+  ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" recarregar_servicos ligar-a-appmax
+}
+
 consultar_servicos_rodando() {
-  if ! RODANDO="$(docker_compose ps --services --status running 2>/dev/null)"; then
+  if ! RODANDO="$(ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" servicos_rodando 2>/dev/null)"; then
     parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Não rode diagnóstico no terminal: o agente deve usar operacoes-vps.yml, primeiro versao-compose e depois estado-servico para o serviço necessário. Não envie env nem valores de tokens. Nada foi alterado."
   fi
 }
@@ -264,7 +275,7 @@ print("OK" if isinstance(products, list) else "API_RESPOSTA_INVALIDA")
     [ "$ENCONTRADA" -eq 1 ] || TEMP="$TEMP$CHAVE=$VALOR"$'\n'
     printf '%s' "$TEMP" > "$ENV_PAGAMENTOS" || parar "não consegui gravar o par MERCHANT. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
   done
-  SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
+  SAIDA_UP="$(recarregar_appmax 2>&1)"
   CODIGO_UP=$?
   if [ "$CODIGO_UP" -ne 0 ]; then
     echo "$SAIDA_UP"
@@ -285,7 +296,7 @@ if [ "$MODO" = "preparar-reinstalacao" ]; then
   printf '%s\n' "$RODANDO" | grep -qx pagamentos \
     || parar "pagamentos não está em execução. Nada foi alterado. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
 
-  SITES_ATIVOS="$(docker_compose exec -T catalogo python manage.py shell -c \
+  SITES_ATIVOS="$(comando_appmax catalogo shell -c \
     "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(s.id)" 2>/dev/null)" \
@@ -326,7 +337,7 @@ print("ROTACAO_SANDBOX_OK")
 PYTHON
   )"
   ROTACAO_SAIDA=""
-  if ROTACAO_SAIDA="$(printf '%s\n' "$SITES_ATIVOS" | docker_compose exec -T pagamentos python manage.py shell -c "$CODIGO_ROTACAO" 2>/dev/null)"; then
+  if ROTACAO_SAIDA="$(printf '%s\n' "$SITES_ATIVOS" | comando_appmax pagamentos shell -c "$CODIGO_ROTACAO" 2>/dev/null)"; then
     [ "$ROTACAO_SAIDA" = "ROTACAO_SANDBOX_OK" ] \
       || parar "a consulta privada não confirmou a rotação. Não execute novamente; mantenha o cartão desligado e peça conferência do estado antes de nova tentativa."
   else
@@ -366,7 +377,7 @@ printf '%s\n' "$RODANDO" | grep -qx pagamentos \
 #    consegui perguntar" quando o problema é outro (`armadilhas/240`).
 # -----------------------------------------------------------------------------
 echo "== 1/4: descobrindo o site no catálogo =="
-BRUTO="$(docker_compose exec -T catalogo python manage.py shell -c \
+BRUTO="$(comando_appmax catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}\t{s.name}')" 2>/dev/null)" \
@@ -536,7 +547,7 @@ echo "  cópia do env ...... $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA"
 #
 # JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as células à
 # tag :main do compose (RITOS §4). Só `pagamentos`, pelo nome.
-SAIDA_UP="$(docker_compose up -d --force-recreate --wait --wait-timeout 180 pagamentos 2>&1)"
+SAIDA_UP="$(recarregar_appmax 2>&1)"
 CODIGO_UP=$?
 if [ "$CODIGO_UP" -ne 0 ]; then
   echo "$SAIDA_UP"

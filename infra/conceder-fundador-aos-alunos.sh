@@ -78,6 +78,9 @@ for argumento in "$@"; do
 done
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+OPERACAO_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$OPERACAO_APLICACAO" ] || OPERACAO_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$OPERACAO_APLICACAO"
 ENV_IDENTIDADE="env/identidade.env"
 ENV_GAMIFICACAO="env/gamificacao.env"
 
@@ -185,10 +188,10 @@ echo
 # -----------------------------------------------------------------------------
 listar() {  # os argumentos extras do comando da célula alunos
   if [ -n "$EXCETO" ]; then
-    docker compose exec -T alunos python manage.py listar_pedidos_de_entrada \
+    comando_servico alunos listar_pedidos_de_entrada \
       --site "$SITE" --exceto "$EXCETO" "$@" 2>&1
   else
-    docker compose exec -T alunos python manage.py listar_pedidos_de_entrada \
+    comando_servico alunos listar_pedidos_de_entrada \
       --site "$SITE" "$@" 2>&1
   fi
 }
@@ -233,10 +236,10 @@ echo
 # -----------------------------------------------------------------------------
 if [ "$CONFIRMO" -eq 1 ]; then
   echo "== concedendo a medalha =="
-  saida_da_concessao="$(docker compose exec -T gamificacao python manage.py conceder_fundador --site "$SITE" --emails "$EMAILS" --confirmo 2>&1)"
+  saida_da_concessao="$(comando_servico gamificacao conceder_fundador --site "$SITE" --emails "$EMAILS" --confirmo 2>&1)"
 else
   echo "== ENSAIO: mostrando quem receberia, sem conceder nada =="
-  saida_da_concessao="$(docker compose exec -T gamificacao python manage.py conceder_fundador --site "$SITE" --emails "$EMAILS" 2>&1)"
+  saida_da_concessao="$(comando_servico gamificacao conceder_fundador --site "$SITE" --emails "$EMAILS" 2>&1)"
 fi
 estado_da_concessao=$?
 printf '%s\n' "$saida_da_concessao"

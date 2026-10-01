@@ -51,6 +51,9 @@ set -u
 parar() { echo; echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+OPERACAO_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$OPERACAO_APLICACAO" ] || OPERACAO_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$OPERACAO_APLICACAO"
 
 APELIDO_1="primeiros-dolares"
 NOME_1="Primeiros Dolares com Roblox"
@@ -85,17 +88,17 @@ command -v docker >/dev/null 2>&1 || parar "nao achei o docker nesta maquina. Na
 docker compose ps >/dev/null 2>&1 || parar "nao consegui falar com o Docker Compose aqui. Nada foi alterado."
 
 for SERVICO in catalogo alunos cursos; do
-  docker compose config --services 2>/dev/null | grep -qx "$SERVICO" \
+  servicos_rodando 2>/dev/null | grep -qx "$SERVICO" \
     || parar "o servico '$SERVICO' nao esta no docker-compose.yml desta maquina. Nada foi alterado."
 done
 
 # Os dois comandos chegam por deploy, cada um da sua celula. Se um deles ainda
 # nao chegou, a metade que rodasse deixaria o trabalho pela metade em silencio.
-docker compose exec -T catalogo python manage.py help criar_curso >/dev/null 2>&1 \
+comando_servico catalogo help criar_curso >/dev/null 2>&1 \
   || parar "a celula 'catalogo' desta maquina ainda nao conhece o comando criar_curso. Ele viaja no deploy: espere o deploy do catalogo terminar (alguns minutos) e rode este script de novo. Nada foi alterado."
-docker compose exec -T alunos python manage.py help apontar_o_curso_das_matriculas >/dev/null 2>&1 \
+comando_servico alunos help apontar_o_curso_das_matriculas >/dev/null 2>&1 \
   || parar "a celula 'alunos' desta maquina ainda nao conhece o comando apontar_o_curso_das_matriculas. Ele viaja no deploy: espere o deploy dos alunos terminar (alguns minutos) e rode este script de novo. Nada foi alterado."
-docker compose exec -T cursos python manage.py help apontar_o_produto_do_curso >/dev/null 2>&1 \
+comando_servico cursos help apontar_o_produto_do_curso >/dev/null 2>&1 \
   || parar "a celula 'cursos' desta maquina ainda nao conhece o comando apontar_o_produto_do_curso. Ele viaja no deploy: espere o deploy da sala de aula terminar (alguns minutos) e rode este script de novo. Nada foi alterado."
 
 # -----------------------------------------------------------------------------
@@ -106,7 +109,7 @@ echo "== 2/5: descobrindo de qual escola sao as matriculas =="
 
 SITE="${SITE:-}"
 if [ -z "$SITE" ]; then
-  SITES="$(docker compose exec -T catalogo python manage.py shell -c "
+  SITES="$(comando_servico catalogo shell -c "
 from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id} {s.host}')
@@ -141,19 +144,19 @@ fi
 echo
 echo "== 3/5: cadastrando os dois cursos =="
 
-docker compose exec -T catalogo python manage.py criar_curso "$APELIDO_1" "$NOME_1" \
+comando_servico catalogo criar_curso "$APELIDO_1" "$NOME_1" \
   || parar "nao consegui cadastrar o curso '$NOME_1'. A mensagem acima diz o que houve. Nada mais foi alterado."
-docker compose exec -T catalogo python manage.py criar_curso "$APELIDO_2" "$NOME_2" \
+comando_servico catalogo criar_curso "$APELIDO_2" "$NOME_2" \
   || parar "nao consegui cadastrar o curso '$NOME_2'. O curso '$NOME_1' JA FOI cadastrado e nao precisa ser refeito: rode este script de novo depois de resolver a mensagem acima."
 
-CURSO_1="$(docker compose exec -T catalogo python manage.py shell -c "
+CURSO_1="$(comando_servico catalogo shell -c "
 from apps.produtos.models import Product
 print(Product.objects.get(slug='$APELIDO_1').id)
 " 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-f-]{36}$')"
 
 [ -n "$CURSO_1" ] || parar "cadastrei os cursos mas nao consegui reler o codigo do '$NOME_1' para apontar as matriculas. Os cursos ESTAO criados; rode este script de novo, que ele retoma daqui. Nenhuma matricula foi alterada."
 
-CURSO_2="$(docker compose exec -T catalogo python manage.py shell -c "
+CURSO_2="$(comando_servico catalogo shell -c "
 from apps.produtos.models import Product
 print(Product.objects.get(slug='$APELIDO_2').id)
 " 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-f-]{36}$')"
@@ -172,19 +175,19 @@ echo "== 4/5: ligando a sala de aula ao curso do livro =="
 echo
 echo "   Sem esta ligacao a sala nao sabe de qual curso a pessoa e aluna, e"
 echo "   por seguranca ela nao deixa ninguem entrar."
-docker compose exec -T cursos python manage.py apontar_o_produto_do_curso --site "$SITE" --curso "$APELIDO_2" --produto "$CURSO_2" \
+comando_servico cursos apontar_o_produto_do_curso --site "$SITE" --curso "$APELIDO_2" --produto "$CURSO_2" \
   || parar "nao consegui ligar a sala de aula ao curso '$NOME_2'. A mensagem acima diz o que houve. Os dois cursos ESTAO cadastrados e NENHUMA matricula foi alterada: rode este script de novo depois de resolver."
 
 echo
 echo "== 5/5: apontando as matriculas de hoje para '$NOME_1' =="
 echo
 echo "-- primeiro so olhando, sem escrever nada --"
-docker compose exec -T alunos python manage.py apontar_o_curso_das_matriculas --site "$SITE" --curso "$CURSO_1" \
+comando_servico alunos apontar_o_curso_das_matriculas --site "$SITE" --curso "$CURSO_1" \
   || parar "a conferencia falhou e por isso eu nao escrevi nada. A mensagem acima diz o que houve. Os dois cursos ESTAO cadastrados; nenhuma matricula foi alterada."
 
 echo
 echo "-- agora escrevendo --"
-docker compose exec -T alunos python manage.py apontar_o_curso_das_matriculas --site "$SITE" --curso "$CURSO_1" --confirmar \
+comando_servico alunos apontar_o_curso_das_matriculas --site "$SITE" --curso "$CURSO_1" --confirmar \
   || parar "a escrita falhou. A mensagem acima diz o que houve, e o comando so escreve tudo ou nada. Rode este script de novo depois de resolver."
 
 echo
