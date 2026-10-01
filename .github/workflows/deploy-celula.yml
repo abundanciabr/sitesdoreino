@@ -181,6 +181,14 @@ jobs:
                 [ -f "$teste" ] || continue
                 [ -f "/corte/services/$CELULA/$teste" ] || rm "$teste"
               done
+              if [ "$CELULA" = cursos ]; then
+                cp /corte/services/cursos/tests/test_ciclo_do_desafio_da_comunidade.py tests/
+                cp /corte/services/cursos/tests/test_regua_no_laudo.py tests/
+              fi
+              if [ "$CELULA" = checkout ]; then
+                apt-get update -qq
+                DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null
+              fi
               python -m pytest -q
             '
 
