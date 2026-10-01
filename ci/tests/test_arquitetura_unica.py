@@ -1,5 +1,5 @@
 """O corte publica um processo web e conserva os antigos para recuperação."""
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import yaml
 
@@ -15,7 +15,9 @@ def test_compose_padrao_so_sobe_aplicacao_e_infra_compartilhada():
     assert len(servicos) == 41
     app = servicos["aplicacao"]
     volumes = app["volumes"]
-    assert any("/app/env:ro" in volume for volume in volumes)
+    env_dir = app["environment"]["APLICACAO_ENV_DIR"]
+    assert not PurePosixPath(env_dir).is_relative_to("/app")
+    assert f"/opt/plataforma/env:{env_dir}:ro" in volumes
     assert any("/opt/plataforma/admin-dados:ro" in volume for volume in volumes)
     assert any("/opt/plataforma/admin-midia" in volume for volume in volumes)
 
