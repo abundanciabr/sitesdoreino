@@ -122,6 +122,22 @@ def _plataforma(
     raiz = tmp_path / "plataforma"
     (raiz / "env").mkdir(parents=True)
     (raiz / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    helper = raiz / "codigo" / "ferramentas" / "atual" / "infra" / "operacao-aplicacao.sh"
+    helper.parent.mkdir(parents=True)
+    helper.write_bytes(
+        b'aplicacao_ativa() { return 1; }\n'
+        b'recarregar_servicos() { [ "$1" = por-a-chave-da-ia-do-admin ] && docker compose up -d --force-recreate admin; }\n'
+        b'comando_servico() {\n'
+        b'  [ "${DOCKER_FALSO_EXEC:-0}" -eq 0 ] || return "$DOCKER_FALSO_EXEC"\n'
+        b'  local chave\n'
+        b'  chave="$(cat "$DOCKER_FALSO_ESTADO/chave")"\n'
+        b'  printf "%s:" "$(printf %s "$chave" | sha256sum | cut -c1-12)"\n'
+        b'  printf "%s\\n" "${#chave}"\n'
+        b'}\n'
+    )
+    (raiz / "sites.json").write_text(
+        '{"sites":[{"host":"meshcraft.top"}]}\n', encoding="utf-8"
+    )
     # A referência de dono e permissão que o roteiro copia.
     (raiz / "env" / "identidade.env").write_text(
         "DJANGO_SECRET_KEY=y\n", encoding="utf-8"
