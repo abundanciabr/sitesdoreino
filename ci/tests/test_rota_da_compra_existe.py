@@ -105,15 +105,14 @@ CAMINHOS_DE_PAGINA = ("/checkout", "/quiz", "/alunos", "/entrar", "/forms/sugest
 CAMINHO_QUALQUER = "/uma-pagina-que-ninguem-declarou"
 
 # Matchers que este guarda sabe julgar, e como. Qualquer outro ⇒ AssertionError
-# (INV-CI01). `Path` (casamento EXATO) está fora de propósito: julgá-lo exige
-# decidir semântica que este guarda não vai adivinhar. `PathRegexp` só existe
+# `Path` compara o caminho exato, como na entrada /portfolio. `PathRegexp` só existe
 # para o desvio legado, em forma fechada: liberar o tipo todo esconderia uma
 # rota futura da análise da compra.
 PATHREGEXP_LEGADO_DE_AULAS = r"^/aulas/[A-Za-z0-9_-]+/?$"
 PATHREGEXP_PERMITIDOS = {
     "aulas-avulsas-legadas": PATHREGEXP_LEGADO_DE_AULAS,
 }
-CONHECIDOS = frozenset({"Host", "PathPrefix", "PathRegexp"})
+CONHECIDOS = frozenset({"Host", "Path", "PathPrefix", "PathRegexp"})
 
 # Um matcher inteiro: `Nome(`arg`)`, `Nome(`a`, `b`)`. Os argumentos do Traefik
 # vêm sempre entre crases.
@@ -212,6 +211,8 @@ def _avaliar_matcher(nome: str, texto: str, host: str, caminho: str) -> bool:
     if funcao == "Host":
         # `Host` é casamento EXATO de host no Traefik (padrão é `HostRegexp`).
         return any(host.lower() == valor.lower() for valor in argumentos)
+    if funcao == "Path":
+        return caminho in argumentos
     if funcao == "PathRegexp":
         permitido = PATHREGEXP_PERMITIDOS.get(nome)
         if len(argumentos) != 1 or argumentos[0] != permitido:
@@ -705,7 +706,7 @@ def test_matcher_desconhecido_e_erro_nunca_silencio():
 def test_matcher_desconhecido_escondido_atras_de_um_E_tambem_e_erro():
     # Sem curto-circuito: `Host(...)` falso à esquerda não pode fazer o guarda
     # deixar de olhar o matcher que ele não conhece à direita.
-    regra = "Host(`outro.exemplo`) && Path(`/api/checkout`)"
+    regra = "Host(`outro.exemplo`) && Method(`GET`)"
     with pytest.raises(AssertionError, match="não sabe julgar"):
         problemas(_tabela({**COMPRA_BOA, "rule": regra}))
 
