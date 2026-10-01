@@ -6,13 +6,13 @@ import json
 import os
 import stat
 import subprocess
+import sys
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-import yaml
 
 from conftest import BASH
 
@@ -168,20 +168,44 @@ def test_falha_ambigua_preserva_marcador_e_oculta_dados(monkeypatch, tmp_path, c
     assert len(chamadas) == 5
 
 
-def test_workflow_na_main_sem_inputs_e_script_fixo(monkeypatch, tmp_path):
-    workflow = (
-        Path(__file__).resolve().parents[2]
-        / ".github/workflows/appmax-estorno-sandbox.yml"
-    )
-    texto = workflow.read_text(encoding="utf-8")
-    dados = yaml.safe_load(texto)
-    assert "inputs:" not in texto
-    assert dados["jobs"]["solicitar"]["environment"] == "vps"
-    assert "script_path: ${{ steps.conferir.outputs.script }}" in texto
-    assert 'if [ ! -f "$SCRIPT" ]' in texto
-    assert "capture_stdout: true" in texto
-    assert "cancel-in-progress: false" in texto
+def test_cli_vps_sem_inputs_executa_uma_vez_e_confere_evidencia(monkeypatch, tmp_path, capsys):
+    raiz = Path(__file__).resolve().parents[2]
+    spec = importlib.util.spec_from_file_location("operar_appmax_estorno", raiz / "infra/operar.py")
+    operador = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = operador
+    spec.loader.exec_module(operador)
+    assert operador.OPERACOES["appmax-estorno-sandbox"].params == ()
+    chamadas = []
+    carregamentos = []
 
+    def executar():
+        chamadas.append("POST sandbox")
+        print(json.dumps({
+            "resultado": "PASS", "ambiente": "sandbox", "solicitacao": "aceita",
+            "valor_solicitado_centavos": ensaio.PARCIAL, "pedido_confere": True,
+        }))
+        return 0
+
+    def carregar(_raiz, caminho, nome):
+        carregamentos.append((caminho, nome))
+        return SimpleNamespace(executar=executar, conferir=ensaio.conferir)
+
+    ctx = operador.Contexto(
+        raiz=raiz, ambiente={"OPERAR_ESTADO": str(tmp_path / "estado")},
+        carregar=carregar, espera=0,
+    )
+    assert operador.main(["appmax-estorno-sandbox", "--pedido", "outro"], ctx) == 2
+    assert chamadas == []
+    capsys.readouterr()
+    assert operador.main(["appmax-estorno-sandbox"], ctx) == 0
+    saida = capsys.readouterr().out
+    assert chamadas == ["POST sandbox"]
+    assert carregamentos == [("ci/appmax_estorno_sandbox.py", "appmax_estorno_sandbox")]
+    assert '"solicitacao": "aceita"' in saida
+    assert "3531" not in saida
+
+
+def test_script_gerado_preserva_o_estorno_fixo(monkeypatch, tmp_path):
     saidas = tmp_path / "outputs"
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.setenv("GITHUB_OUTPUT", str(saidas))

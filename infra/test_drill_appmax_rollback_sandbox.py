@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -149,7 +150,8 @@ def preparar(
         encoding="utf-8",
     )
     vps = VPS(tmp_path)
-    monkeypatch.setattr(drill.canario, "trava_publicacao", lambda _raiz: nullcontext())
+    if os.name == "nt":
+        monkeypatch.setattr(drill.canario, "trava_publicacao", lambda _raiz: nullcontext())
     monkeypatch.setattr(drill.canario, "compose", vps.compose)
     monkeypatch.setattr(drill.canario, "recarregar", vps.recarregar)
     monkeypatch.setattr(drill, "buscar_pagina", vps.buscar_pagina)
@@ -611,21 +613,35 @@ def test_executar_recusado_informa_que_nada_mudou(tmp_path, monkeypatch, capsys)
     assert evidencia["alterou_a_vps"] is False
 
 
-def test_workflow_roda_so_da_main_no_ambiente_protegido_e_publica_a_evidencia():
-    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    assert set(doc[True]) == {"workflow_dispatch"}
-    assert doc["concurrency"] == {"group": "deploy", "cancel-in-progress": False, "queue": "max"}
-    (job,) = doc["jobs"].values()
-    assert job["environment"] == "vps"
-    passos = job["steps"]
-    assert "exit 1" in passos[0]["run"] and passos[0]["if"] == "github.ref != 'refs/heads/main'"
-    checkout = next(p for p in passos if p.get("uses", "").startswith("actions/checkout"))
-    assert checkout["with"] == {"ref": "${{ github.sha }}", "persist-credentials": False}
-    conferir = next(p for p in passos if p.get("id") == "conferir")
-    assert "python infra/drill-appmax-rollback-sandbox.py preparar" in conferir["run"]
-    assert 'if [ ! -f "$SCRIPT" ]' in conferir["run"]
-    remoto = next(p for p in passos if p.get("id") == "remoto")
-    assert remoto["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
-    ultimo = passos[-1]
-    assert ultimo["if"] == "always() && steps.remoto.outcome != 'skipped'"
-    assert ultimo["run"] == "python infra/drill-appmax-rollback-sandbox.py conferir"
+def test_cli_vps_roda_drill_uma_vez_e_confere_evidencia(tmp_path, capsys):
+    spec = importlib.util.spec_from_file_location("operar_appmax_drill", RAIZ / "infra/operar.py")
+    operador = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = operador
+    spec.loader.exec_module(operador)
+    assert operador.OPERACOES["appmax-drill-rollback"].params == ()
+    chamadas = []
+    evidencia = drill.evidencia("PASS", env_devolvido_identico=True, sondas={
+        "antes": LIGADO,
+        "desligado": {**LIGADO, "cartao_ligado": False},
+        "religado": LIGADO,
+    })
+
+    def processo(comando, *, env, timeout, juntar=True, cwd=None):
+        chamadas.append((comando, env, timeout, juntar))
+        return 0, json.dumps(evidencia) + "\n"
+
+    ctx = operador.Contexto(
+        raiz=RAIZ, ambiente={"OPERAR_ESTADO": str(tmp_path / "estado"),
+                              "PLATAFORMA_DIR": "/opt/plataforma"},
+        processo=processo, carregar=lambda *_args: drill, espera=0,
+    )
+    assert operador.main(["appmax-drill-rollback", "--site", SITE], ctx) == 2
+    assert chamadas == []
+    capsys.readouterr()
+    assert operador.main(["appmax-drill-rollback"], ctx) == 0
+    assert len(chamadas) == 1
+    comando, ambiente, timeout, juntar = chamadas[0]
+    assert comando[-2:] == [str(CAMINHO), "executar"]
+    assert ambiente["PLATAFORMA_DIR"] == "/opt/plataforma"
+    assert timeout == 20 * 60 and juntar is False
+    assert "Resultado: PASS" in capsys.readouterr().out
