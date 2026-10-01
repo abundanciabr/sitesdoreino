@@ -45,7 +45,7 @@ from tests.conftest import ANA, COOKIE, dublar_matricula, dublar_sessao
 
 # O que só quem entrou pode ler. Escrito por extenso, e não lido do template:
 # um teste que lesse a mesma fonte que o código passaria com o template vazio.
-FRASE_DA_PRANCHETA = "Prepare seu portfólio aqui"
+FRASE_DA_PRANCHETA = "O que você quer criar?"
 
 
 def bater(caminho: str = "/", *, cookie: str | None = None):
@@ -148,14 +148,14 @@ def test_a_recusa_temporaria_nao_fica_guardada_no_navegador(env_dos_pares, rede)
 # ---------------------------------------------------------------------------
 # 3. A tela mínima, para quem passou
 # ---------------------------------------------------------------------------
-def test_o_aluno_com_matricula_ativa_ve_a_prancheta_e_o_proprio_nome(aluna):
+def test_o_aluno_com_matricula_ativa_ve_a_jornada(aluna, site_declarado):
     resposta = bater(cookie=COOKIE)
     assert resposta.status_code == 200
     assert FRASE_DA_PRANCHETA in texto(resposta)
-    assert aluna["nome_exibido"] in texto(resposta)
+    assert "Criar meu projeto sem quiz" in texto(resposta)
 
 
-def test_a_tela_nao_mostra_o_email_de_ninguem(aluna):
+def test_a_tela_nao_mostra_o_email_de_ninguem(aluna, site_declarado):
     """O e-mail serve para perguntar a matrícula, e é descartado depois."""
     assert aluna["email"] not in texto(bater(cookie=COOKIE))
 

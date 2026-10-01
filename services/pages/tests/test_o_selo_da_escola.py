@@ -405,8 +405,8 @@ def test_o_aluno_ve_o_selo_com_a_data_e_com_o_que_ele_vale(
 
     corpo = Client().get("/trabalhos", HTTP_COOKIE=COOKIE).content.decode()
 
-    assert "Selo da escola" in corpo
-    assert "viu no dia da avaliação" in corpo
+    assert "A escola concluiu a avaliação" in corpo
+    assert "Selo da escola" not in corpo
 
 
 def test_quem_nao_foi_conferido_nao_ve_selo_nenhum(
@@ -438,7 +438,8 @@ def test_o_selo_continua_na_tela_depois_de_uma_devolucao_posterior(
 
     corpo = Client().get("/trabalhos", HTTP_COOKIE=COOKIE).content.decode()
 
-    assert "Selo da escola" in corpo
+    assert "Feedback recebido" in corpo
+    assert "Selo da escola" not in corpo
 
 
 def test_o_selo_de_um_aluno_nao_aparece_para_outro(

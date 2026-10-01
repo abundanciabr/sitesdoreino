@@ -230,7 +230,10 @@ def test_todas_as_telas_vestem_a_mesma_moldura():
     `TELAS_SEM_MOLDURA` com o motivo por extenso.
     """
     pasta = Path(core.__file__).parent / "templates" / "pages"
-    telas = sorted(p for p in pasta.glob("*.html") if p.name != "moldura.html")
+    telas = sorted(
+        p for p in pasta.glob("*.html")
+        if p.name != "moldura.html" and not p.name.startswith("_")
+    )
     assert telas, "a varredura não encontrou tela nenhuma — isto é falha de medição"
 
     soltas = [

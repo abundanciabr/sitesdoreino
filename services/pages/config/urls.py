@@ -1,4 +1,5 @@
 from django.urls import path, re_path
+from apps.core import jornada
 
 from apps.core.views import (
     assumir,
@@ -24,6 +25,29 @@ from apps.portfolio.imagens import servir_imagem
 urlpatterns = [
     path("healthz", healthz),
     path("interno/", api.urls),
+    path("quiz/iniciar", jornada.iniciar_quiz, name="iniciar_quiz"),
+    path(
+        "quiz/<uuid:exploracao_id>/comecar",
+        jornada.comecar_projeto,
+        name="comecar_projeto",
+    ),
+    path(
+        "quiz/<uuid:exploracao_id>/<slug:etapa>", jornada.quiz_etapa, name="quiz_etapa"
+    ),
+    path("projetos/novo", jornada.novo_projeto, name="novo_projeto"),
+    path("projetos/<uuid:projeto_id>", jornada.projeto, name="projeto"),
+    path(
+        "trabalhos/<int:peca_id>/contexto",
+        jornada.contexto_trabalho,
+        name="trabalho_contexto",
+    ),
+    path("apresentacao", jornada.apresentacao_publica, name="apresentacao_publica"),
+    path("equipe/quiz", jornada.catalogo_equipe, name="catalogo_equipe"),
+    path(
+        "equipe/quiz/projetos/<slug:chave>",
+        jornada.catalogo_equipe,
+        name="editar_catalogo_equipe",
+    ),
     path("marcar", marcar, name="marcar"),
     path("trabalhos", pecas, name="pecas"),
     path("trabalhos/guardar", guardar_peca, name="guardar_peca"),
@@ -39,7 +63,7 @@ urlpatterns = [
     path("imagens/<uuid:imagem_id>", servir_imagem, name="imagem_portfolio"),
     path("pecas", trabalhos_antigos),
     path("pecas/<path:restante>", trabalhos_antigos),
-    path("", prancheta, name="prancheta"),
+    path("", jornada.inicio, name="prancheta"),
     re_path(r"^(?P<apelido>[a-z0-9-]+)/?$", vitrine_publica, name="vitrine"),
 ]
 

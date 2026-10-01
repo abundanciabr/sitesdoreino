@@ -451,4 +451,5 @@ def test_a_peca_quebrada_aparece_marcada_na_estante_do_aluno(
 
     assert "parou de abrir" in corpo
     assert "01/09/2026" in corpo
-    assert "continua guardado até você removê-lo" in corpo
+    assert "a que quebrou" in corpo
+    assert Peca.objects.filter(legenda="a que quebrou").exists()

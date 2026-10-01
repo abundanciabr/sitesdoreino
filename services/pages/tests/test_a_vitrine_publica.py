@@ -48,6 +48,7 @@ def vitrine_no_ar(criar_portfolio, criar_peca, site_declarado):
         link=LINK_DA_PECA,
         legenda="Dragão de pedra",
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
     return portfolio
 
@@ -265,15 +266,16 @@ def test_a_vitrine_sem_obras_explica_em_vez_de_mostrar_pagina_vazia(
     assert "ainda não" in resposta.content.decode()
 
 
-def test_a_vitrine_mostra_o_selo_da_escola_com_a_data(
+def test_a_vitrine_nao_parece_conferida_so_pelo_selo_global_antigo(
     client, vitrine_no_ar, criar_estado
 ):
-    """O selo é o que vale para o cliente, e ele carrega a data (AC-12)."""
+    """Uma marca antiga não afirma que a seleção atual passou pela escola."""
     criar_estado(vitrine_no_ar, selo_conferido_em=agora(), selo_conferido_por="p_bia")
 
     corpo = client.get(ENDERECO).content.decode()
 
-    assert "conferi" in corpo.lower()
+    assert "Dragão de pedra" in corpo
+    assert "conferi" not in corpo.lower()
 
 
 def test_a_vitrine_de_outra_escola_nao_abre_com_o_mesmo_apelido(

@@ -480,12 +480,13 @@ def test_o_aluno_le_o_motivo_da_devolucao_na_tela_dele(
     conferencia.devolver(
         pedido=conferencia.pedir(portfolio_com_peca(ANA["id"])),
         conferido_por=MONITORA,
-        motivo=MotivoDaDevolucao.POUCOS_TIPOS,
+        motivo=MotivoDaDevolucao.ORIENTACAO,
+        feedback_melhorar="Defina onde pretende usar esse trabalho.",
     )
 
     corpo = texto(Client().get("/trabalhos", **como()))
 
-    assert MotivoDaDevolucao.POUCOS_TIPOS.label in corpo
+    assert "Defina onde pretende usar esse trabalho." in corpo
 
 
 def test_o_aluno_ve_o_prazo_enquanto_espera(aluna, site_declarado, portfolio_com_peca):

@@ -18,6 +18,7 @@ RESERVADOS = frozenset(
         "preparar",
         "projetos",
         "quiz",
+        "apresentacao",
     }
 )
 

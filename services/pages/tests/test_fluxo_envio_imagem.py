@@ -35,6 +35,12 @@ def test_envio_publicacao_e_despublicacao_protegem_os_bytes(
         ).status_code
         == 302
     )
+    assert client.get(caminho).status_code == 404
+    assert client.post(
+        f"/trabalhos/{peca.pk}/contexto",
+        {"legenda": "Meu veículo", "mostrar_na_pagina_publica": "1"},
+        HTTP_COOKIE=COOKIE,
+    ).status_code == 302
     assert client.get(caminho).status_code == 200
     assert peca.link in client.get("/ana-3d").content.decode()
     assert client.post("/vitrine/despublicar", HTTP_COOKIE=COOKIE).status_code == 302
@@ -82,6 +88,8 @@ def test_imagem_publicada_abre_no_asgi_com_prefixo_real(settings, site_declarado
         legenda="Veículo",
         base_url="https://testserver",
     )
+    peca.mostrar_na_pagina_publica = True
+    peca.save(update_fields=["mostrar_na_pagina_publica"])
     vitrine.publicar(site_id=site_atual(), aluno_id="p_ana", texto="ana-3d")
     caminho = "/portfolio/imagens/" + str(peca.imagem_enviada.pk)
     resposta = async_to_sync(AsyncClient().get)(caminho)

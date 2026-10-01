@@ -207,3 +207,45 @@ class TelemetryEvent(models.Model):
                 name="quiz_telemetria_funil",
             )
         ]
+
+
+class PortfolioCatalog(models.Model):
+    """Uma versão do catálogo de projetos publicada para um site."""
+
+    site = models.ForeignKey(
+        Site, on_delete=models.CASCADE, related_name="portfolio_catalogs"
+    )
+    version = models.PositiveIntegerField()
+    content = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "version"], name="portfolio_catalog_site_version"
+            )
+        ]
+
+
+class PortfolioExploration(models.Model):
+    """Rascunho privado do aluno, independente do quiz comercial."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(
+        Site, on_delete=models.CASCADE, related_name="portfolio_explorations"
+    )
+    aluno_id = models.CharField(max_length=64, db_index=True)
+    entrada = models.CharField(max_length=16)
+    etapa = models.CharField(max_length=32, default="interesses")
+    respostas = models.JSONField(default=dict)
+    versao = models.CharField(max_length=32)
+    catalogo_snapshot = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["site", "aluno_id", "-created_at"], name="portfolio_aluno_atual"
+            )
+        ]

@@ -23,19 +23,12 @@ _semeadura = importlib.import_module(
 NOME = "guia-do-portfolio"
 TITULO = "Como montar o seu portfólio"
 
-#: As quatro regras objetivas da professora, uma frase de cada. Elas são o
-#: motivo de a semente existir: um guia que perdesse uma delas continuaria
-#: abrindo com 200, e ninguém veria a falta.
-#:
-#: Isto NÃO duplica o guia. O texto que vale é o do banco, que o mantenedor
-#: edita pela tela, e nenhum teste manda nele. O que estas frases prendem é a
-#: SEMENTE de uma instalação nova: quem editar `documentos/guia-do-portfolio.md`
-#: e derrubar uma das quatro é avisado aqui.
-AS_QUATRO_REGRAS = (
-    "escolha pelo menos 3 desses tipos",
-    "pelo menos 3 peças de cada um",
-    "a maioria seja mesmo high poly",
-    "não se pareçam com a aula",
+# A semente acompanha as escolhas do aluno e o apoio da escola.
+PASSOS_DA_JORNADA = (
+    "explorar sugestões no quiz",
+    "Criar meu projeto sem quiz",
+    "pedir feedback sobre um projeto em desenvolvimento",
+    "obras selecionadas quando você decidir publicá-la",
 )
 
 
@@ -75,14 +68,16 @@ def test_visitante_nao_le_o_guia_nem_o_encontra_na_lista_publica(
     assert TITULO not in Client().get("/docs/").content.decode()
 
 
-def test_o_guia_carrega_as_quatro_regras_da_professora(
+def test_o_guia_carrega_a_jornada_autoral(
     banco_de_producao_antes_do_documento,
 ):
     _semear()
 
     corpo = Documento.objects.get(nome=NOME).corpo
-    for regra in AS_QUATRO_REGRAS:
-        assert regra in corpo
+    for passo in PASSOS_DA_JORNADA:
+        assert passo in corpo
+    assert "escolha pelo menos 3 desses tipos" not in corpo
+    assert "a maioria seja mesmo high poly" not in corpo
 
 
 def test_o_guia_diz_ao_aluno_que_ainda_e_rascunho(

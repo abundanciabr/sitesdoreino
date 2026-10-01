@@ -153,5 +153,7 @@ def obras(portfolio: Portfolio) -> list[Peca]:
     rede seria a mesma injustiça que aquele módulo recusou.
     """
     return list(
-        portfolio.pecas.exclude(estado_do_link=EstadoDoLink.QUEBRADO).order_by("ordem")
+        portfolio.pecas.filter(mostrar_na_pagina_publica=True)
+        .exclude(estado_do_link=EstadoDoLink.QUEBRADO)
+        .order_by("ordem")
     )

@@ -39,11 +39,9 @@ Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
   outro e-mail.</p>
 {% elif motivo == "sem-escola" %}
   <h1>A escola ainda não terminou de ligar o seu portfólio</h1>
-  <p>O roteiro já está no ar e você pode lê-lo inteiro, mas a marcação do que
-  você já fez ainda não abriu por aqui. Nada do que você marcar agora seria
-  guardado, então preferimos não guardar pela metade.</p>
-  <p class="miudo">Volte para <a href="{% url 'prancheta' %}">o seu portfólio</a>
-  e continue lendo. Assim que a escola terminar, a marcação aparece sozinha.</p>
+  <p>Não foi possível identificar a escola para abrir seus projetos.
+  Seus trabalhos continuam guardados. Tente novamente daqui a pouco.</p>
+  <p class="miudo"><a href="{% url 'prancheta' %}">Voltar ao meu portfólio</a>.</p>
 {% elif motivo == "nao-e-da-equipe" %}
   <h1>Esta área é da equipe da escola</h1>
   <p>Aqui a equipe confere os portfólios que os alunos mandam. Você entrou na
@@ -62,7 +60,7 @@ Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
   <a href="{{ url_da_capa }}">página inicial</a>.</p>
 {% else %}
   <h1>Entre para ver o seu portfólio</h1>
-  <p>Aqui você prepara o portfólio dentro da escola: o roteiro, os seus trabalhos,
+  <p>Aqui você prepara o portfólio dentro da escola: suas ideias, seus projetos,
   a avaliação da escola e a página que você pode compartilhar. Por
   isso ela precisa saber quem você é.</p>
   <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>

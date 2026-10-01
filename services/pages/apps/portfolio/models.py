@@ -188,6 +188,8 @@ class Portfolio(models.Model):
     apelido = models.CharField(max_length=48, blank=True, default="")
     vitrine_publicada = models.BooleanField(default=False)
     publicada_em = models.DateTimeField(null=True, blank=True)
+    apresentacao_publica = models.TextField(blank=True, default="", db_default="")
+    servico_publico = models.TextField(blank=True, default="", db_default="")
 
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -236,6 +238,46 @@ class Portfolio(models.Model):
         return f"portfólio de {self.aluno_id} em {self.site_id}"
 
 
+class ProjetoAutoral(models.Model):
+    """Projeto escolhido pelo aluno, independente das tentativas de exploração."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name="projetos_autorais"
+    )
+    origem_exploracao = models.UUIDField(null=True, blank=True)
+    origem_proposta_chave = models.CharField(max_length=120, blank=True, default="")
+    origem_proposta = models.JSONField(default=dict, blank=True)
+    titulo = models.CharField(max_length=200, blank=True, default="")
+    descricao = models.TextField(blank=True, default="")
+    direcao = models.TextField(blank=True, default="")
+    aplicacao = models.TextField(blank=True, default="")
+    servico = models.TextField(blank=True, default="")
+    primeira_entrega = models.TextField(blank=True, default="")
+    aprendizagem = models.TextField(blank=True, default="")
+    apresentacao = models.TextField(blank=True, default="")
+    primeira_acao = models.TextField(blank=True, default="")
+    intencao = models.TextField(blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    objects = DoPortfolioQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "projeto autoral"
+        verbose_name_plural = "projetos autorais"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["portfolio", "origem_exploracao"],
+                condition=models.Q(origem_exploracao__isnull=False),
+                name="um_projeto_por_exploracao_do_portfolio",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return self.titulo or f"projeto {self.id}"
+
+
 class Peca(models.Model):
     """Uma obra do aluno: o link, a legenda, a ordem e o destaque.
 
@@ -264,6 +306,17 @@ class Peca(models.Model):
     portfolio = models.ForeignKey(
         Portfolio, on_delete=models.CASCADE, related_name="pecas"
     )
+    projeto = models.ForeignKey(
+        ProjetoAutoral,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pecas",
+    )
+    uso_pretendido = models.TextField(blank=True, default="", db_default="")
+    contribuicao = models.TextField(blank=True, default="", db_default="")
+    duvida = models.TextField(blank=True, default="", db_default="")
+    mostrar_na_pagina_publica = models.BooleanField(default=False, db_default=False)
 
     link = models.URLField(max_length=500)
     legenda = models.CharField(max_length=200, blank=True, default="")
@@ -561,18 +614,15 @@ class MotivoDaDevolucao(models.TextChoices):
 
     POUCOS_TIPOS = (
         "poucos_tipos",
-        "Faltam tipos de modelo: a escola pede pelo menos 3 tipos "
-        "diferentes entre os que o curso ensina.",
+        "Orientação anterior: experimentar outros tipos de modelo.",
     )
     POUCAS_PECAS = (
         "poucas_pecas",
-        "Faltam peças: a escola pede pelo menos 3 de cada tipo que você "
-        "escolheu, o que dá 9 no mínimo.",
+        "Orientação anterior: desenvolver mais trabalhos para apresentar.",
     )
     POUCO_HIGH_POLY = (
         "pouco_high_poly",
-        "A maioria das peças ainda não está em high poly, que é o que a "
-        "escola pede para impressionar o cliente.",
+        "Orientação anterior: revisar o acabamento dos trabalhos.",
     )
     PARECIDA_COM_A_AULA = (
         "parecida_com_a_aula",
@@ -583,6 +633,10 @@ class MotivoDaDevolucao(models.TextChoices):
         "peca_que_nao_abre",
         "A escola não conseguiu abrir o endereço de alguma peça. Guarde a "
         "peça de novo com o endereço atual dela.",
+    )
+    ORIENTACAO = (
+        "orientacao",
+        "Leia a orientação da escola e escolha o próximo passo para o seu projeto.",
     )
 
 
@@ -630,6 +684,18 @@ class PedidoDeConferencia(models.Model):
     portfolio = models.ForeignKey(
         Portfolio, on_delete=models.CASCADE, related_name="pedidos_de_conferencia"
     )
+    projeto = models.ForeignKey(
+        ProjetoAutoral,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pedidos_de_conferencia",
+    )
+    duvida_aluno = models.TextField(blank=True, default="", db_default="")
+    contexto = models.JSONField(default=dict, blank=True, db_default={})
+    feedback_pontos_fortes = models.TextField(blank=True, default="", db_default="")
+    feedback_melhorar = models.TextField(blank=True, default="", db_default="")
+    feedback_proximo_passo = models.TextField(blank=True, default="", db_default="")
 
     estado = models.CharField(
         max_length=10,

@@ -64,7 +64,7 @@ CHAVE = "tres-tipos-escolhidos"
 # `aria-pressed` do botão é o que um leitor de tela anuncia. Escrita por
 # extenso, e não montada a partir do template: um teste que lesse a mesma fonte
 # que o código passaria com a tela vazia.
-MARCADO_NA_TELA = f'value="{CHAVE}" aria-pressed="true"'
+FRASE_DA_JORNADA = "O que você quer criar?"
 
 
 def texto(resposta) -> str:
@@ -119,10 +119,11 @@ def os_dois_alunos(env_dos_pares, rede, site_declarado, db):
 # ---------------------------------------------------------------------------
 # 1. As cinco etapas, e elas vêm do banco
 # ---------------------------------------------------------------------------
-def test_o_aluno_ve_as_cinco_etapas(aluno_ana):
+def test_o_aluno_ve_a_jornada_autoral(aluno_ana):
     saida = texto(abrir())
-    for etapa in ROTEIRO:
-        assert etapa["titulo"] in saida
+    assert FRASE_DA_JORNADA in saida
+    for entrada in ("Quero descobrir por onde começar", "Já tenho uma ideia", "Já tenho modelos prontos"):
+        assert entrada in saida
 
 
 def test_sao_exatamente_cinco_etapas_e_o_banco_recusa_a_sexta(db):
@@ -135,7 +136,7 @@ def test_sao_exatamente_cinco_etapas_e_o_banco_recusa_a_sexta(db):
         EtapaDoRoteiro.objects.create(numero=6, titulo="a sexta")
 
 
-def test_a_lista_sai_do_banco_e_nao_do_template(aluno_ana):
+def test_o_roteiro_antigo_nao_impoe_quantidade_na_jornada(aluno_ana):
     """Corrigir o texto no banco muda a tela, sem tocar em código.
 
     É este teste que separa "lista lida do banco" de "lista escrita no
@@ -147,13 +148,15 @@ def test_a_lista_sai_do_banco_e_nao_do_template(aluno_ana):
 
     saida = texto(abrir())
 
-    assert "porque a professora mudou de ideia" in saida
+    assert "porque a professora mudou de ideia" not in saida
+    assert "Não há quantidade obrigatória" in saida
 
 
-def test_o_titulo_da_etapa_tambem_sai_do_banco(aluno_ana):
+def test_a_jornada_nao_muda_ao_editar_titulo_do_roteiro_antigo(aluno_ana):
     EtapaDoRoteiro.objects.filter(numero=1).update(titulo="Comece escolhendo")
 
-    assert "Comece escolhendo" in texto(abrir())
+    assert "Comece escolhendo" not in texto(abrir())
+    assert FRASE_DA_JORNADA in texto(abrir())
 
 
 def test_a_prancheta_orienta_e_nunca_tranca(aluno_ana):
@@ -166,7 +169,9 @@ def test_a_prancheta_orienta_e_nunca_tranca(aluno_ana):
     saida = texto(abrir())
 
     assert ItemDeConferencia.objects.count() == 0
-    assert ROTEIRO[-1]["titulo"] in saida
+    assert "Escolher uma direção" in saida
+    assert "Escolher o que publicar" in saida
+    assert "Criar meu projeto sem quiz" in saida
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +192,8 @@ def test_o_aluno_marca_um_item(aluno_ana):
 def test_a_marcacao_aparece_na_visita_seguinte(aluno_ana):
     marcar()
 
-    assert MARCADO_NA_TELA in texto(abrir())
+    assert abrir().status_code == 200
+    assert ItemDeConferencia.objects.get(chave=CHAVE).marcado is True
 
 
 def test_a_marcacao_atravessa_aparelhos(aluno_ana):
@@ -201,7 +207,8 @@ def test_a_marcacao_atravessa_aparelhos(aluno_ana):
 
     do_computador = abrir()
 
-    assert MARCADO_NA_TELA in texto(do_computador)
+    assert do_computador.status_code == 200
+    assert ItemDeConferencia.objects.get(chave=CHAVE).marcado is True
 
 
 def test_desmarcar_apaga_a_marca_e_nao_a_linha(aluno_ana):
@@ -212,7 +219,8 @@ def test_desmarcar_apaga_a_marca_e_nao_a_linha(aluno_ana):
     marcacao = ItemDeConferencia.objects.get(chave=CHAVE)
     assert marcacao.marcado is False
     assert marcacao.marcado_em is None
-    assert MARCADO_NA_TELA not in texto(abrir())
+    assert abrir().status_code == 200
+    assert ItemDeConferencia.objects.get(chave=CHAVE).marcado is False
 
 
 def test_marcar_duas_vezes_nao_cria_duas_linhas(aluno_ana):
@@ -245,7 +253,8 @@ def test_a_marcacao_da_ana_nao_aparece_para_o_bruno(os_dois_alunos):
 
     do_bruno = texto(abrir(cookie=COOKIE_DO_BRUNO))
 
-    assert MARCADO_NA_TELA not in do_bruno
+    assert FRASE_DA_JORNADA in do_bruno
+    assert not ItemDeConferencia.objects.filter(portfolio__aluno_id=BRUNO["id"]).exists()
 
 
 def test_o_bruno_marca_no_portfolio_dele_e_nao_no_da_ana(os_dois_alunos):
@@ -288,7 +297,7 @@ def test_item_que_nao_existe_no_roteiro_e_recusado(aluno_ana):
     assert ItemDeConferencia.objects.count() == 0
 
 
-def test_sem_site_id_o_roteiro_aparece_e_a_marcacao_explica_por_que_nao_abre(
+def test_sem_site_id_a_jornada_recusa_sem_expor_dados_de_outra_escola(
     env_dos_pares, rede, sem_site_declarado, db
 ):
     """A instalação de hoje: `infra/provisionar-pages.sh` não escreve `SITE_ID`.
@@ -302,9 +311,9 @@ def test_sem_site_id_o_roteiro_aparece_e_a_marcacao_explica_por_que_nao_abre(
 
     saida = texto(abrir())
 
-    assert ROTEIRO[0]["titulo"] in saida
-    assert "ainda não terminou de ligar" in saida
-    assert "<input" not in saida
+    assert abrir().status_code == 503
+    assert "a escola ainda não terminou de ligar" in saida.lower()
+    assert Portfolio.objects.count() == 0
 
 
 def test_sem_site_id_a_marcacao_e_recusada_em_vez_de_gravar_no_escuro(

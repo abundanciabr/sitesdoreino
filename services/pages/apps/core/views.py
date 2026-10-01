@@ -29,17 +29,19 @@ from __future__ import annotations
 
 import logging
 import os
+from uuid import UUID
 
 from django.conf import settings
 from django.db import models, transaction
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.portfolio import (
     conferencia,
+    projetos,
     imagens,
     conferencia_do_link,
     dossie,
@@ -56,6 +58,7 @@ from apps.portfolio.models import (
     ParecidaComAAula,
     Peca,
     Portfolio,
+    ProjetoAutoral,
     TipoDeModelo,
 )
 from apps.portfolio.roteiro_da_escola import AVISO_DE_RASCUNHO
@@ -345,16 +348,24 @@ def desenhar_estante(
     da frase sobre o link mandaria o aluno procurar o erro no formulário errado.
     """
     portfolio = meu_portfolio(request, site_id) if site_id else None
+    projeto_id = request.GET.get("projeto") or request.POST.get("projeto_id") or ""
+    projeto_selecionado = None
+    if projeto_id:
+        try:
+            projeto_selecionado = get_object_or_404(
+                ProjetoAutoral, pk=UUID(projeto_id), portfolio=portfolio
+            )
+        except ValueError:
+            raise Http404 from None
     return render(
         request,
         "pages/pecas.html",
         {
             "aluno": request.aluno,
-            "pecas": (
-                com_semaforo(estante_de(request, site_id), regras_da_escola())
-                if site_id
-                else []
-            ),
+            "portfolio": portfolio,
+            "projetos": portfolio.projetos_autorais.all() if portfolio else [],
+            "projeto_selecionado": projeto_selecionado,
+            "pecas": estante_de(request, site_id) if site_id else [],
             "pode_guardar": site_id is not None,
             "recusa": recusa,
             "link_recusado": link,
@@ -456,15 +467,30 @@ def guardar_peca(request):
 
     link = (request.POST.get("link") or "").strip()
     legenda = (request.POST.get("legenda") or "").strip()[:200]
+    projeto = None
+    if request.POST.get("projeto_id"):
+        try:
+            projeto = get_object_or_404(
+                ProjetoAutoral,
+                pk=UUID(request.POST["projeto_id"]),
+                portfolio__site_id=site_id,
+                portfolio__aluno_id=request.aluno["id"],
+            )
+        except ValueError:
+            raise Http404 from None
     if request.FILES.get("imagem"):
         try:
-            imagens.guardar(
-                request.FILES["imagem"],
-                site_id=site_id,
-                aluno_id=request.aluno["id"],
-                legenda=legenda,
-                base_url=request.build_absolute_uri("/"),
-            )
+            with transaction.atomic():
+                peca = imagens.guardar(
+                    request.FILES["imagem"],
+                    site_id=site_id,
+                    aluno_id=request.aluno["id"],
+                    legenda=legenda,
+                    base_url=request.build_absolute_uri("/"),
+                )
+                if projeto:
+                    peca.projeto = projeto
+                    peca.save(update_fields=["projeto"])
         except imagens.ImagemRecusada as erro:
             return desenhar_estante(
                 request, site_id, recusa=str(erro), legenda=legenda, status=422
@@ -503,6 +529,7 @@ def guardar_peca(request):
         ultima = portfolio.pecas.aggregate(fim=models.Max("ordem"))["fim"] or 0
         Peca.objects.create(
             portfolio=portfolio,
+            projeto=projeto,
             link=link,
             legenda=legenda,
             ordem=ultima + 1,
@@ -696,8 +723,11 @@ def pedir_conferencia(request):
         return sem_escola(request)
 
     try:
-        conferencia.pedir(meu_portfolio(request, site_id))
-    except conferencia.ConferenciaRecusada as recusa:
+        conferencia.pedir(
+            meu_portfolio(request, site_id),
+            duvida_aluno=request.POST.get("duvida_aluno", ""),
+        )
+    except (conferencia.ConferenciaRecusada, ValueError) as recusa:
         return desenhar_estante(
             request, site_id, recusa_da_conferencia=str(recusa), status=422
         )
@@ -721,15 +751,15 @@ def desenhar_fila(request, site_id, *, recusa="", feito="", status=200):
     é a mesma recusa honesta que a Prancheta já faz, e o motivo por extenso está
     em `site_atual`.
     """
-    regras = regras_da_escola() if site_id else {}
     agora = timezone.now()
     quem_olha = request.membro_da_equipe["id"]
     linhas = [
         {
             "pedido": pedido,
-            "pecas": com_semaforo(
-                list(pedido.portfolio.pecas.order_by("ordem")), regras
-            ),
+            "pecas": list(pedido.portfolio.pecas.order_by("ordem")),
+            "contexto": pedido.contexto,
+            "contexto_atual": projetos.contexto_atual(pedido),
+            "snapshot_trabalhos": pedido.contexto.get("trabalhos", []),
             "atrasado": pedido.prazo_ate < agora,
             "dias_de_espera": conferencia.dias_uteis_de_espera(pedido.criado_em, agora),
             "assumido_por_voce": pedido.assumido_por == quem_olha,
@@ -782,20 +812,29 @@ def decidir(request):
         return pedido_fora_da_fila(request, site_id)
 
     gesto = request.POST.get("gesto") or ""
+    feedback = {
+        chave: request.POST.get(chave, "")
+        for chave in (
+            "feedback_pontos_fortes",
+            "feedback_melhorar",
+            "feedback_proximo_passo",
+        )
+    }
     try:
         if gesto == "aceitar":
             conferencia.aceitar(
-                pedido=pedido, conferido_por=request.membro_da_equipe["id"]
+                pedido=pedido, conferido_por=request.membro_da_equipe["id"], **feedback
             )
         elif gesto == "devolver":
             conferencia.devolver(
                 pedido=pedido,
                 conferido_por=request.membro_da_equipe["id"],
                 motivo=(request.POST.get("motivo") or "").strip(),
+                **feedback,
             )
         else:
             raise Http404(f"a fila não sabe fazer {gesto!r}")
-    except conferencia.ConferenciaRecusada as recusa:
+    except (conferencia.ConferenciaRecusada, ValueError) as recusa:
         return desenhar_fila(request, site_id, recusa=str(recusa), status=422)
 
     return redirect(f"{reverse('equipe')}?feito={gesto}")
@@ -934,6 +973,7 @@ def vitrine_publica(request, apelido: str):
             request,
             "pages/vitrine.html",
             {
+                "portfolio": portfolio,
                 "apelido": portfolio.apelido,
                 "obras": vitrine.obras(portfolio),
                 # O SELO DA ESCOLA (AC-12) é o que mais vale para quem contrata,

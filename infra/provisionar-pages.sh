@@ -172,7 +172,7 @@ unset TRAVA_PUBLICACAO
 #    logo abaixo como APOSENTADA, e o arquivo vivo que ainda a tiver perde a
 #    linha com um aviso na tela, em vez de a trava barrar o roteiro para sempre.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_API_TOKEN ADMIN_API_URL ALUNOS_API_TOKEN ALUNOS_API_URL CATALOGO_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKEN_CATALOGO"
+CHAVES_QUE_EU_GERO="ADMIN_API_TOKEN ADMIN_API_URL ALUNOS_API_TOKEN ALUNOS_API_URL CATALOGO_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL QUIZ_PORTFOLIO_API_URL QUIZ_PORTFOLIO_API_TOKEN SCRIPT_NAME SITE_ID TOKEN_CATALOGO"
 
 # AS CHAVES APOSENTADAS: as que este roteiro escreveu um dia e hoje não escreve
 # mais, porque nenhum código da célula as lê. Sem esta lista elas cairiam na
@@ -381,6 +381,10 @@ T_ADMIN="$(ler_de "$ENV_ADMIN" TOKENS_ACEITOS_PAGES)"
 [ -n "$T_ADMIN" ] || T_ADMIN="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_ADMIN} -ge 32 ] || parar "o token do par pages->admin ficou curto demais. Nada foi alterado."
 
+# Preserva o par da jornada autoral ao reescrever o env desta célula.
+QUIZ_PORTFOLIO_URL="$(ler_de "$ENV_PAGES" QUIZ_PORTFOLIO_API_URL)"
+T_QUIZ_PORTFOLIO="$(ler_de "$ENV_PAGES" QUIZ_PORTFOLIO_API_TOKEN)"
+
 SENHA_DB="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 [ ${#SENHA_DB} -ge 32 ] || parar "a senha do banco ficou curta demais. Nada foi alterado."
@@ -448,6 +452,8 @@ CATALOGO_API_URL=$CATALOGO_URL
 TOKEN_CATALOGO=$T_CATALOGO
 ADMIN_API_URL=$ADMIN_URL
 ADMIN_API_TOKEN=$T_ADMIN
+QUIZ_PORTFOLIO_API_URL=$QUIZ_PORTFOLIO_URL
+QUIZ_PORTFOLIO_API_TOKEN=$T_QUIZ_PORTFOLIO
 SITE_ID=$SITE_ID
 ENV
 

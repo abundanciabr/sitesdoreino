@@ -4,12 +4,22 @@ from apps.core.views import healthz
 from apps.quiz import views as quiz_views
 from apps.quiz.laboratorio import observacao
 from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
+from apps.quiz import portfolio
 
 urlpatterns = [
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),
     path("interno/editor/quizzes/<slug:slug>/rascunho", quiz_draft),
     path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
+    path("interno/portfolio/catalogo", portfolio.catalogo),
+    path("interno/portfolio/exploracoes", portfolio.exploracoes),
+    path("interno/portfolio/exploracoes/atual", portfolio.exploracao_atual),
+    path("interno/portfolio/exploracoes/<uuid:exploracao_id>", portfolio.exploracao),
+    path(
+        "interno/portfolio/exploracoes/<uuid:exploracao_id>/respostas",
+        portfolio.respostas,
+    ),
+    path("portfolio/referencias/<slug:chave>.svg", portfolio.referencia),
     # SEM o prefixo "quiz/" dentro das rotas. Em produção esta célula sobe com
     # SCRIPT_NAME=/quiz (FORCE_SCRIPT_NAME) e o handler ASGI REMOVE esse prefixo
     # antes do casamento de rotas — `django/core/handlers/asgi.py`, lido no

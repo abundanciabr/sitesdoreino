@@ -290,18 +290,21 @@ def test_a_estante_lista_item_a_item_o_que_falta_na_peca(estante, peca_da_ana):
 
     corpo = estante.get("/trabalhos").content.decode()
 
-    assert "Falta preencher neste trabalho:" in corpo
-    assert FALTA_O_ACABAMENTO in corpo
-    assert FALTA_A_AULA in corpo
-    assert FALTA_O_TIPO not in corpo
+    assert "Meus trabalhos guardados" in corpo
+    assert "Projeto, intenção e apresentação deste trabalho" in corpo
+    assert "Selecionar para minha página pública" in corpo
+    assert FALTA_O_ACABAMENTO not in corpo
+    assert FALTA_A_AULA not in corpo
 
 
 def test_a_tela_mostra_a_regra_da_escola_ao_lado_do_que_falta(estante, peca_da_ana):
-    """A lista não é só o pedido: ela traz a frase que a professora escreveu."""
+    """A obra é apresentada pela intenção da aluna, sem checklist obrigatório."""
     corpo = estante.get("/trabalhos").content.decode()
 
     esperada = ItemDoRoteiro.objects.get(chave=AULA).texto
-    assert esperada in corpo
+    assert esperada not in corpo
+    assert "Onde você imagina usar este trabalho no Roblox?" in corpo
+    assert "Sobre o que você gostaria de receber feedback?" in corpo
 
 
 def test_o_aluno_responde_e_a_lista_some(estante, peca_da_ana):
@@ -317,9 +320,8 @@ def test_o_aluno_responde_e_a_lista_some(estante, peca_da_ana):
     assert peca_da_ana.parecida_com_a_aula == ParecidaComAAula.NAO
 
     corpo = estante.get("/trabalhos").content.decode()
-    assert (
-        "Você já respondeu tudo o que a escola pergunta sobre este trabalho." in corpo
-    )
+    assert "Projeto, intenção e apresentação deste trabalho" in corpo
+    assert "Você já respondeu tudo o que a escola pergunta" not in corpo
     assert FALTA_O_TIPO not in corpo
 
 
@@ -333,7 +335,7 @@ def test_o_aluno_desfaz_uma_resposta_deixando_a_em_branco(estante, peca_da_ana):
 
     peca_da_ana.refresh_from_db()
     assert peca_da_ana.acabamento == ""
-    assert FALTA_O_ACABAMENTO in estante.get("/trabalhos").content.decode()
+    assert "Projeto, intenção e apresentação deste trabalho" in estante.get("/trabalhos").content.decode()
 
 
 def test_a_resposta_que_a_escola_nao_oferece_e_recusada(estante, peca_da_ana):
@@ -433,10 +435,10 @@ def test_as_perguntas_vem_abertas_so_onde_falta_responder(estante, peca_da_ana):
     Vinte formulários abertos fariam o aluno rolar a tela inteira para achar a
     única peça que ainda espera resposta dele.
     """
-    assert 'class="responder" open' in estante.get("/trabalhos").content.decode()
+    assert 'class="responder" open' not in estante.get("/trabalhos").content.decode()
 
     estante.post("/trabalhos/responder", {"peca": peca_da_ana.pk, **TUDO_RESPONDIDO})
 
     corpo = estante.get("/trabalhos").content.decode()
     assert 'class="responder" open' not in corpo
-    assert "Informações deste trabalho" in corpo
+    assert "Projeto, intenção e apresentação deste trabalho" in corpo

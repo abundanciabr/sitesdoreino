@@ -288,7 +288,7 @@ celulas:
     # `services/pages/apps/core/clients.py`, e a decisão que ela alimenta mora em
     # `services/pages/apps/core/porta.py`, fail-CLOSED: não conseguir perguntar
     # fecha a fila da equipe com 503, e nunca a abre.
-    consome: [admin, alunos, catalogo, identidade]
+    consome: [admin, alunos, catalogo, identidade, quiz]
 
   quiz:
     # Documento não é dependência: só conta consumo que o código faz.

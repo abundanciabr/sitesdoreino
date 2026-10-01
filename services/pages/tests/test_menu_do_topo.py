@@ -145,7 +145,7 @@ def so_o_menu(corpo: str) -> str:
 # 1. A Prancheta abre, tenha menu ou não
 # ---------------------------------------------------------------------------
 def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(
-    aluna, rede, monkeypatch
+    aluna, rede, monkeypatch, site_declarado
 ):
     """O estado REAL desta célula enquanto o passo do mantenedor não roda.
 
@@ -158,7 +158,7 @@ def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(
     assert BARRA not in texto(resposta)
 
 
-def test_catalogo_fora_do_ar_nao_derruba_a_prancheta(aluna, rede):
+def test_catalogo_fora_do_ar_nao_derruba_a_prancheta(aluna, rede, site_declarado):
     """O guarda mais importante do arquivo: um menu é enfeite de navegação, e
     derrubar a tela do aluno por causa dele seria a troca errada."""
     rede.get(POR_HOST).mock(side_effect=httpx.ConnectError("sem rede"))
@@ -167,21 +167,21 @@ def test_catalogo_fora_do_ar_nao_derruba_a_prancheta(aluna, rede):
     assert BARRA not in texto(resposta)
 
 
-def test_host_desconhecido_no_catalogo_e_pagina_sem_menu(aluna, rede):
+def test_host_desconcido_no_catalogo_e_pagina_sem_menu(aluna, rede, site_declarado):
     rede.get(POR_HOST).mock(return_value=httpx.Response(404))
     resposta = abrir(cookie=COOKIE)
     assert resposta.status_code == 200
     assert BARRA not in texto(resposta)
 
 
-def test_resposta_fora_do_contrato_nao_derruba_a_pagina(aluna, rede):
+def test_resposta_fora_do_contrato_nao_derruba_a_pagina(aluna, rede, site_declarado):
     dublar_catalogo(rede, text="isto não é json")
     resposta = abrir(cookie=COOKIE)
     assert resposta.status_code == 200
     assert BARRA not in texto(resposta)
 
 
-def test_versao_apontada_que_sumiu_nao_derruba_a_pagina(aluna, rede):
+def test_versao_apontada_que_sumiu_nao_derruba_a_pagina(aluna, rede, site_declarado):
     morto = {"default_version": "fantasma", "versions": [], "pages": []}
     dublar_catalogo(rede, dict(SITE, menu=morto))
     resposta = abrir(cookie=COOKIE)

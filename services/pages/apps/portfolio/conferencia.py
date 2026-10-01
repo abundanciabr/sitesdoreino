@@ -141,7 +141,9 @@ def ultimo_pedido(portfolio: Portfolio) -> PedidoDeConferencia | None:
     return portfolio.pedidos_de_conferencia.order_by("-criado_em", "-id").first()
 
 
-def pedir(portfolio: Portfolio | None) -> PedidoDeConferencia:
+def pedir(
+    portfolio: Portfolio | None, *, projeto=None, duvida_aluno: str = ""
+) -> PedidoDeConferencia:
     """O aluno manda o portfólio para a escola olhar. O relógio começa a correr.
 
     **Pedir de novo depois de uma devolução é um pedido NOVO**, e não a edição
@@ -157,7 +159,9 @@ def pedir(portfolio: Portfolio | None) -> PedidoDeConferencia:
     não tem linha nenhuma. É a MESMA recusa da estante vazia, e escrevê-la aqui
     uma vez só é o que impede a tela de ter a segunda cópia da frase.
     """
-    if portfolio is None or not portfolio.pecas.exists():
+    from apps.portfolio import projetos
+
+    if portfolio is None or (projeto is None and not portfolio.pecas.exists()):
         raise ConferenciaRecusada(
             "Adicione pelo menos um trabalho antes de pedir a avaliação. A escola "
             "olha os trabalhos do seu portfólio, e um portfólio vazio não tem o que "
@@ -170,7 +174,16 @@ def pedir(portfolio: Portfolio | None) -> PedidoDeConferencia:
             "resposta continua sendo a que aparece aqui embaixo."
         )
 
-    return PedidoDeConferencia.objects.create(portfolio=portfolio, prazo_ate=prazo_de())
+    if projeto is not None and projeto.portfolio_id != portfolio.pk:
+        raise ConferenciaRecusada("Este projeto não pertence ao portfólio do aluno.")
+    duvida_aluno = projetos._texto("duvida_aluno", duvida_aluno, 3000)
+    return PedidoDeConferencia.objects.create(
+        portfolio=portfolio,
+        projeto=projeto,
+        duvida_aluno=duvida_aluno,
+        contexto=projetos.capturar_contexto(portfolio, projeto),
+        prazo_ate=prazo_de(),
+    )
 
 
 def dias_uteis_de_espera(desde, agora=None) -> int:
@@ -263,7 +276,14 @@ def _conferir_quem_responde(pedido: PedidoDeConferencia, conferido_por: str) -> 
         )
 
 
-def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConferencia:
+def aceitar(
+    *,
+    pedido: PedidoDeConferencia,
+    conferido_por: str,
+    feedback_pontos_fortes: str = "",
+    feedback_melhorar: str = "",
+    feedback_proximo_passo: str = "",
+) -> PedidoDeConferencia:
     """Alguém da escola olhou o portfólio e disse sim, e o SELO sai (AC-12).
 
     Quatro escritas, e as quatro na MESMA transação: o pedido fecha, o selo é
@@ -305,11 +325,34 @@ def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConfe
         _travar(pedido)
         _conferir_quem_responde(pedido, conferido_por)
 
+        from apps.portfolio import projetos
+
+        feedback = {
+            "feedback_pontos_fortes": projetos._texto(
+                "feedback_pontos_fortes", feedback_pontos_fortes, 3000
+            ),
+            "feedback_melhorar": projetos._texto(
+                "feedback_melhorar", feedback_melhorar, 3000
+            ),
+            "feedback_proximo_passo": projetos._texto(
+                "feedback_proximo_passo", feedback_proximo_passo, 3000
+            ),
+        }
+
         agora = timezone.now()
         pedido.estado = EstadoDoPedido.ACEITO
         pedido.respondido_em = agora
         pedido.respondido_por = conferido_por
-        pedido.save(update_fields=["estado", "respondido_em", "respondido_por"])
+        for nome, valor in feedback.items():
+            setattr(pedido, nome, valor)
+        pedido.save(
+            update_fields=["estado", "respondido_em", "respondido_por", *feedback]
+        )
+
+        # Um feedback de projeto confere apenas esta versão da escolha. O selo
+        # global continua reservado à conferência do portfólio completo.
+        if pedido.projeto_id is not None or not projetos.contexto_atual(pedido):
+            return pedido
 
         estado, _ = EstadoDoAluno.objects.get_or_create(portfolio=pedido.portfolio)
         estado.selo_conferido_em = agora
@@ -331,7 +374,13 @@ def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConfe
 
 
 def devolver(
-    *, pedido: PedidoDeConferencia, conferido_por: str, motivo: str
+    *,
+    pedido: PedidoDeConferencia,
+    conferido_por: str,
+    motivo: str,
+    feedback_pontos_fortes: str = "",
+    feedback_melhorar: str = "",
+    feedback_proximo_passo: str = "",
 ) -> PedidoDeConferencia:
     """Ainda não. Com o que falta dito por escrito, e em português.
 
@@ -356,16 +405,37 @@ def devolver(
         _travar(pedido)
         _conferir_quem_responde(pedido, conferido_por)
 
+        from apps.portfolio import projetos
+
+        feedback = {
+            "feedback_pontos_fortes": projetos._texto(
+                "feedback_pontos_fortes", feedback_pontos_fortes, 3000
+            ),
+            "feedback_melhorar": projetos._texto(
+                "feedback_melhorar", feedback_melhorar, 3000
+            ),
+            "feedback_proximo_passo": projetos._texto(
+                "feedback_proximo_passo", feedback_proximo_passo, 3000
+            ),
+        }
+        if motivo == MotivoDaDevolucao.ORIENTACAO and not any(feedback.values()):
+            raise ConferenciaRecusada(
+                "Escreva a orientação para o aluno antes de devolver."
+            )
+
         pedido.estado = EstadoDoPedido.DEVOLVIDO
         pedido.motivo_da_devolucao = motivo
         pedido.respondido_em = timezone.now()
         pedido.respondido_por = conferido_por
+        for nome, valor in feedback.items():
+            setattr(pedido, nome, valor)
         pedido.save(
             update_fields=[
                 "estado",
                 "motivo_da_devolucao",
                 "respondido_em",
                 "respondido_por",
+                *feedback,
             ]
         )
     return pedido

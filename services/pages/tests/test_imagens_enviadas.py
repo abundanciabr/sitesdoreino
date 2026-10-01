@@ -142,6 +142,9 @@ def test_publica_e_privada_outra_escola_e_despublicada(monkeypatch):
 
     portfolio.publicada_em = timezone.now()
     portfolio.save()
+    assert servir_imagem(pedido, imagem.id).status_code == 404
+    peca.mostrar_na_pagina_publica = True
+    peca.save(update_fields=["mostrar_na_pagina_publica"])
     resposta = servir_imagem(pedido, imagem.id)
     assert resposta.status_code == 200
     assert resposta["Content-Type"] == "image/webp"

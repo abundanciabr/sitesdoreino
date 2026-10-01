@@ -101,6 +101,7 @@ def portfolio_da_ana(criar_portfolio, criar_peca, site_declarado):
         link=LINK_TRES,
         legenda="Castelo de pedra",
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
     criar_peca(
         portfolio,
@@ -109,6 +110,7 @@ def portfolio_da_ana(criar_portfolio, criar_peca, site_declarado):
         legenda="Dragão de escamas",
         destaque=True,
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
     criar_peca(
         portfolio,
@@ -116,6 +118,7 @@ def portfolio_da_ana(criar_portfolio, criar_peca, site_declarado):
         link=LINK_DOIS,
         legenda="Espada élfica",
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
     return portfolio
 
@@ -263,6 +266,7 @@ def test_um_aluno_nao_baixa_o_dossie_de_outro(
         link="https://cdn.exemplo.test/bruno/nave.png",
         legenda="Nave do Bruno",
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
 
     da_ana = criar_portfolio(ANA["id"], apelido=APELIDO, publicada=True)
@@ -272,6 +276,7 @@ def test_um_aluno_nao_baixa_o_dossie_de_outro(
         link=LINK_UM,
         legenda="Dragão de escamas",
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
 
     arquivo = logada.get(ENDERECO).content
@@ -325,6 +330,7 @@ def test_uma_estante_grande_vira_mais_de_uma_pagina(
             link=f"https://cdn.exemplo.test/ana/obra-{numero}.png",
             legenda=f"Obra número {numero}",
             estado_do_link=EstadoDoLink.RESPONDENDO,
+            mostrar_na_pagina_publica=True,
         )
 
     arquivo = logada.get(ENDERECO).content
@@ -349,6 +355,7 @@ def test_a_legenda_comprida_e_quebrada_em_linhas_e_nao_cortada(
         link="https://cdn.exemplo.test/ana/oficina.png",
         legenda=comprida,
         estado_do_link=EstadoDoLink.RESPONDENDO,
+        mostrar_na_pagina_publica=True,
     )
 
     escrito = textos_do_pdf(logada.get(ENDERECO).content)

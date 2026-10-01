@@ -1,0 +1,443 @@
+{
+  "versao": "1",
+  "familias": [
+    {
+      "chave": "objetos",
+      "nome": "Objetos e acessórios",
+      "descricao": "Peças que ajudam a contar a história de um lugar e podem ser usadas em cenários."
+    },
+    {
+      "chave": "construcoes",
+      "nome": "Construções e estruturas",
+      "descricao": "Espaços que dão forma a uma experiência e orientam a circulação."
+    },
+    {
+      "chave": "veiculos",
+      "nome": "Veículos",
+      "descricao": "Meios de transporte que podem definir o clima e a função de uma experiência."
+    },
+    {
+      "chave": "mobiliario",
+      "nome": "Mobiliário e decoração",
+      "descricao": "Móveis e detalhes que tornam ambientes reconhecíveis e utilizáveis."
+    },
+    {
+      "chave": "natureza",
+      "nome": "Elementos naturais",
+      "descricao": "Formas de vegetação, relevo e materiais naturais para compor mundos."
+    },
+    {
+      "chave": "personagens",
+      "nome": "Personagens e criaturas",
+      "descricao": "Figuras com silhueta e personalidade para habitar experiências."
+    }
+  ],
+  "projetos": [
+    {
+      "chave": "bancada-oficina",
+      "familia": "objetos",
+      "titulo": "Bancada de oficina",
+      "descricao": "Um canto de trabalho com ferramentas, peças e sinais de uso.",
+      "direcao": "Objetos de cenário com linguagem visual coerente.",
+      "aplicacao": "Ambientar garagem, oficina ou ponto de manutenção.",
+      "contextos": [
+        "corrida",
+        "social",
+        "simulador",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio objetos e pequenos conjuntos para cenários de experiências Roblox.",
+      "primeira_entrega": "Uma bancada e uma ferramenta que mostrem a mesma linguagem visual.",
+      "aprendizagem": "Proporção, repetição de formas e materiais que distinguem cada peça.",
+      "apresentacao": "Mostrar a bancada no Roblox, uma vista do conjunto e detalhes das peças.",
+      "primeira_acao": "Escolher qual ferramenta define o visual da bancada.",
+      "versao_pequena": "Comece só pela bancada e um objeto fácil de reconhecer.",
+      "expansao": "Adicionar caixas, luminária, gavetas e versões usadas ou novas.",
+      "feedback": "A silhueta da bancada comunica sua função? As peças parecem pertencer ao mesmo lugar?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/bancada-oficina.svg"
+    },
+    {
+      "chave": "carrinho-cafeteria",
+      "familia": "objetos",
+      "titulo": "Carrinho de cafeteria",
+      "descricao": "Um carrinho móvel com balcão, cardápio e utensílios.",
+      "direcao": "Objetos acolhedores para espaços de convivência.",
+      "aplicacao": "Criar um ponto de encontro em praça, escola ou bairro virtual.",
+      "contextos": [
+        "social",
+        "simulador",
+        "proprio",
+        "explorar"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio objetos de cenário para espaços sociais no Roblox.",
+      "primeira_entrega": "Um carrinho com balcão e uma xícara.",
+      "aprendizagem": "Proporção entre componentes, hierarquia visual e leitura à distância.",
+      "apresentacao": "Mostrar o carrinho no ambiente e destacar como cardápio e utensílios completam a cena.",
+      "primeira_acao": "Desenhar a silhueta do carrinho antes de detalhar.",
+      "versao_pequena": "Criar o corpo do carrinho e um acessório.",
+      "expansao": "Expandir com cobertura, letreiro, rodas, bandeja e variações de cor.",
+      "feedback": "O carrinho é reconhecível de longe? Os acessórios reforçam o tema sem poluir a cena?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/carrinho-cafeteria.svg"
+    },
+    {
+      "chave": "loja-de-bairro",
+      "familia": "construcoes",
+      "titulo": "Loja de bairro",
+      "descricao": "Uma pequena fachada com entrada, vitrine e identidade visual.",
+      "direcao": "Construção compacta para rua ou vila.",
+      "aplicacao": "Compor uma área comercial explorável em uma experiência Roblox.",
+      "contextos": [
+        "social",
+        "simulador",
+        "aventura",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio fachadas e pequenas construções para mapas Roblox.",
+      "primeira_entrega": "Uma fachada com porta e vitrine legíveis.",
+      "aprendizagem": "Volumes principais, escala das aberturas e identidade visual.",
+      "apresentacao": "Mostrar frente e lateral no Roblox, incluindo a escala de um personagem.",
+      "primeira_acao": "Escolher o produto da loja e desenhar a fachada em blocos simples.",
+      "versao_pequena": "Modelar fachada, porta e uma vitrine.",
+      "expansao": "Adicionar interior breve, letreiro, toldo e lojas vizinhas compatíveis.",
+      "feedback": "A fachada revela a função da loja? Entrada e vitrine ficam claras para quem explora?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/loja-de-bairro.svg"
+    },
+    {
+      "chave": "estacao-trilha",
+      "familia": "construcoes",
+      "titulo": "Estação de trilha",
+      "descricao": "Um abrigo de passagem com plataforma, mapa e sinalização.",
+      "direcao": "Estrutura que orienta a jornada do jogador.",
+      "aplicacao": "Marcar partida, chegada ou ponto de pausa em aventura e exploração.",
+      "contextos": [
+        "aventura",
+        "explorar",
+        "proprio",
+        "simulador"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio estruturas e pontos de referência para mapas Roblox.",
+      "primeira_entrega": "Um abrigo pequeno com cobertura e placa de direção.",
+      "aprendizagem": "Silhueta arquitetônica, escala, repetição modular e clareza de percurso.",
+      "apresentacao": "Mostrar a estação vista do caminho e um detalhe da sinalização.",
+      "primeira_acao": "Decidir por onde o jogador chega e posicionar a entrada.",
+      "versao_pequena": "Criar plataforma, cobertura e uma placa.",
+      "expansao": "Expandir com bancos, trilhas, iluminação e variações para outros pontos do mapa.",
+      "feedback": "É fácil entender por onde entrar e continuar? A estrutura se destaca sem esconder o caminho?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/estacao-trilha.svg"
+    },
+    {
+      "chave": "kart-de-corrida",
+      "familia": "veiculos",
+      "titulo": "Kart de corrida",
+      "descricao": "Um kart estilizado com carroceria marcante e rodas bem proporcionadas.",
+      "direcao": "Veículo de competição com personalidade própria.",
+      "aplicacao": "Representar uma equipe ou uma classe de veículos em jogo de corrida.",
+      "contextos": [
+        "corrida",
+        "simulador",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio veículos estilizados para experiências Roblox.",
+      "primeira_entrega": "Um kart com corpo, quatro rodas e banco.",
+      "aprendizagem": "Silhueta, proporção, encaixe dos componentes e leitura em movimento.",
+      "apresentacao": "Mostrar três ângulos no Roblox e uma vista próxima dos detalhes que diferenciam o kart.",
+      "primeira_acao": "Escolher uma forma dominante para a carroceria.",
+      "versao_pequena": "Fazer um kart estático de formas simples.",
+      "expansao": "Criar pintura alternativa, acessórios e uma pequena linha de modelos.",
+      "feedback": "O kart parece estável e reconhecível em miniatura? Quais detalhes dão identidade sem atrapalhar a silhueta?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/kart-de-corrida.svg"
+    },
+    {
+      "chave": "barco-explorador",
+      "familia": "veiculos",
+      "titulo": "Barco explorador",
+      "descricao": "Um pequeno barco para cruzar rios ou alcançar ilhas.",
+      "direcao": "Veículo de exploração com espaço para carga leve.",
+      "aplicacao": "Apoiar deslocamentos em mapa de aventura, viagem ou simulação.",
+      "contextos": [
+        "aventura",
+        "explorar",
+        "simulador",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio veículos e objetos de transporte para mundos Roblox.",
+      "primeira_entrega": "Casco, banco e um elemento de direção.",
+      "aprendizagem": "Formas funcionais, proporção do casco e equilíbrio dos volumes.",
+      "apresentacao": "Mostrar o barco na água do Roblox e destacar como suas partes se conectam.",
+      "primeira_acao": "Definir quem usa o barco e o que precisa transportar.",
+      "versao_pequena": "Criar casco e um banco.",
+      "expansao": "Adicionar bagagem, cobertura, remos ou variações para outros ambientes.",
+      "feedback": "A função do barco fica clara? As peças mantêm boa leitura vistas de cima e de lado?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/barco-explorador.svg"
+    },
+    {
+      "chave": "quarto-criativo",
+      "familia": "mobiliario",
+      "titulo": "Quarto criativo",
+      "descricao": "Mesa, cadeira e estante que revelam os interesses de quem vive no espaço.",
+      "direcao": "Móveis para um ambiente pessoal e narrativo.",
+      "aplicacao": "Montar quarto visitável em casa, dormitório ou experiência social.",
+      "contextos": [
+        "social",
+        "simulador",
+        "proprio",
+        "explorar"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio móveis e decoração para interiores Roblox.",
+      "primeira_entrega": "Uma mesa e uma cadeira com estilo comum.",
+      "aprendizagem": "Escala de uso, consistência de formas e composição do ambiente.",
+      "apresentacao": "Mostrar os móveis em um quarto no Roblox e aproximar a câmera dos encaixes e materiais.",
+      "primeira_acao": "Escolher um objeto que conte algo sobre o morador.",
+      "versao_pequena": "Modelar mesa e cadeira.",
+      "expansao": "Adicionar estante, luminária, decoração e outra configuração do quarto.",
+      "feedback": "Os móveis parecem feitos para a mesma pessoa? Há espaço visual e físico para usá-los?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/quarto-criativo.svg"
+    },
+    {
+      "chave": "sala-de-controle",
+      "familia": "mobiliario",
+      "titulo": "Sala de controle",
+      "descricao": "Console, cadeira e telas para acompanhar uma missão.",
+      "direcao": "Mobiliário que cria função e atmosfera para um interior.",
+      "aplicacao": "Compor nave, laboratório ou centro de operações em jogo Roblox.",
+      "contextos": [
+        "aventura",
+        "simulador",
+        "proprio",
+        "explorar"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio mobiliário temático e interiores para experiências Roblox.",
+      "primeira_entrega": "Um console e uma cadeira.",
+      "aprendizagem": "Ritmo de painéis, hierarquia de informação e proporção entre móvel e personagem.",
+      "apresentacao": "Mostrar o console no Roblox com uma visão geral e detalhes dos comandos.",
+      "primeira_acao": "Escolher qual ação principal acontece no console.",
+      "versao_pequena": "Criar uma bancada de controle com um painel.",
+      "expansao": "Expandir com monitores, armários, iluminação e postos adicionais.",
+      "feedback": "O jogador identifica o comando principal? Painéis e assentos têm escala coerente?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/sala-de-controle.svg"
+    },
+    {
+      "chave": "bosque-de-arvores",
+      "familia": "natureza",
+      "titulo": "Bosque de árvores",
+      "descricao": "Um grupo de árvores com formatos relacionados e pequenas diferenças.",
+      "direcao": "Vegetação que define o clima de um lugar.",
+      "aplicacao": "Criar borda de trilha, praça ou área de exploração em Roblox.",
+      "contextos": [
+        "aventura",
+        "explorar",
+        "social",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio conjuntos de vegetação para mapas Roblox.",
+      "primeira_entrega": "Uma árvore com tronco e copa bem definidos.",
+      "aprendizagem": "Silhueta orgânica, variação controlada e composição em grupos.",
+      "apresentacao": "Mostrar árvore isolada e bosque montado no Roblox para revelar escala e variedade.",
+      "primeira_acao": "Escolher a forma básica da copa e testar sua leitura de longe.",
+      "versao_pequena": "Modelar uma árvore.",
+      "expansao": "Criar duas variações, arbustos, raízes e composição de trilha.",
+      "feedback": "As árvores pertencem ao mesmo ambiente sem parecer cópias? A trilha continua legível?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/bosque-de-arvores.svg"
+    },
+    {
+      "chave": "rochedos-caverna",
+      "familia": "natureza",
+      "titulo": "Rochedos de caverna",
+      "descricao": "Pedras e cristais que anunciam a entrada de uma caverna.",
+      "direcao": "Elementos naturais para orientar exploração.",
+      "aplicacao": "Criar uma passagem reconhecível em mapa de aventura Roblox.",
+      "contextos": [
+        "aventura",
+        "explorar",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio rochas e elementos naturais para cenários Roblox.",
+      "primeira_entrega": "Duas pedras que enquadram uma abertura.",
+      "aprendizagem": "Planos, agrupamento, contraste de materiais e leitura de caminho.",
+      "apresentacao": "Mostrar a entrada no Roblox por fora e por dentro, com detalhe dos materiais.",
+      "primeira_acao": "Marcar a abertura antes de acrescentar pedras.",
+      "versao_pequena": "Criar uma pedra principal e outra de apoio.",
+      "expansao": "Adicionar cristais, estalagmites, texturas e trechos internos.",
+      "feedback": "O jogador percebe a entrada? As pedras parecem parte da mesma formação?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/rochedos-caverna.svg"
+    },
+    {
+      "chave": "exploradora-urbana",
+      "familia": "personagens",
+      "titulo": "Exploradora urbana",
+      "descricao": "Uma personagem com mochila e roupa pensadas para o lugar que percorre.",
+      "direcao": "Personagem de aventura com identidade visual clara.",
+      "aplicacao": "Habitar missões, exploração ou encontros em mundo Roblox.",
+      "contextos": [
+        "aventura",
+        "explorar",
+        "social",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio personagens estilizados para experiências Roblox.",
+      "primeira_entrega": "Silhueta do corpo, cabeça e um acessório marcante.",
+      "aprendizagem": "Proporção, leitura de silhueta e relação entre roupa e função.",
+      "apresentacao": "Mostrar frente, costas e a personagem no ambiente Roblox.",
+      "primeira_acao": "Escolher uma característica que apareça na silhueta.",
+      "versao_pequena": "Criar corpo e mochila em formas simples.",
+      "expansao": "Adicionar variações de roupa, equipamentos e expressões.",
+      "feedback": "A personagem é reconhecível sem cores? O acessório ajuda a entender sua função?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/exploradora-urbana.svg"
+    },
+    {
+      "chave": "criatura-do-jardim",
+      "familia": "personagens",
+      "titulo": "Criatura do jardim",
+      "descricao": "Uma pequena criatura que se camufla entre folhas e flores.",
+      "direcao": "Mascote ou habitante de um ambiente natural.",
+      "aplicacao": "Dar vida a jardim, parque ou percurso de descoberta em Roblox.",
+      "contextos": [
+        "explorar",
+        "aventura",
+        "social",
+        "proprio"
+      ],
+      "estilos": [
+        "cartunesco",
+        "low_poly",
+        "detalhado"
+      ],
+      "servico": "Crio criaturas e mascotes para mundos Roblox.",
+      "primeira_entrega": "Corpo simples, rosto e uma folha que marque sua identidade.",
+      "aprendizagem": "Silhueta expressiva, equilíbrio dos volumes e detalhes de personalidade.",
+      "apresentacao": "Mostrar a criatura isolada e no jardim Roblox, com vistas que expliquem sua forma.",
+      "primeira_acao": "Desenhar três silhuetas e escolher a mais clara.",
+      "versao_pequena": "Modelar corpo e um traço vegetal.",
+      "expansao": "Expandir com poses, cores sazonais e variantes da mesma espécie.",
+      "feedback": "A expressão é legível? A criatura combina com o ambiente sem desaparecer nele?",
+      "escopos": [
+        "um",
+        "conjunto",
+        "cena",
+        "existente"
+      ],
+      "referencia": "/quiz/portfolio/referencias/criatura-do-jardim.svg"
+    }
+  ]
+}
