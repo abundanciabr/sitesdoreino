@@ -147,6 +147,31 @@ def test_variavel_de_controle_herdada_nunca_chega_ao_script(fazer_ctx):
     assert processos.rodadas()[0]["env"]["CONFIRMAR"] == "nao"
 
 
+def test_as_chaves_do_gateway_entram_no_script_sem_aparecer_na_tela(fazer_ctx, tmp_path, capsys):
+    plataforma = tmp_path / "plataforma"
+    (plataforma / "env").mkdir(parents=True)
+    (plataforma / "env" / "admin.env").write_text(
+        "OUTRA=1\nALUNOS_API_TOKEN=segredo-alunos==\nTOKEN_CATALOGO=\nALUNOS_API_TOKEN=segunda-linha\n",
+        encoding="utf-8",
+    )
+    processos = Processos()
+    ctx = fazer_ctx(processos, ambiente={"PLATAFORMA_DIR": str(plataforma)})
+    assert operar.main(["conferir-as-fichas"], ctx) == 0
+    env = processos.rodadas()[0]["env"]
+    assert env["ALUNOS_API_TOKEN"] == "segredo-alunos=="  # a primeira linha, como o `grep -m1`
+    assert "TOKEN_CATALOGO" not in env  # vazia não vira chave
+    assert "segredo-alunos" not in capsys.readouterr().out
+
+
+def test_chave_do_gateway_ja_no_ambiente_nao_e_trocada_e_env_ausente_nao_derruba(fazer_ctx, tmp_path):
+    plataforma = tmp_path / "plataforma"
+    (plataforma / "env").mkdir(parents=True)
+    (plataforma / "env" / "admin.env").write_text("ALUNOS_API_TOKEN=do-arquivo\n", encoding="utf-8")
+    ctx = fazer_ctx(ambiente={"PLATAFORMA_DIR": str(plataforma), "ALUNOS_API_TOKEN": "de-fora"})
+    assert operar.chaves_do_gateway(ctx) == {}
+    assert operar.chaves_do_gateway(fazer_ctx(ambiente={"PLATAFORMA_DIR": str(tmp_path / "nao-existe")})) == {}
+
+
 @pytest.mark.parametrize(
     "argv",
     [

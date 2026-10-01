@@ -63,6 +63,10 @@ SERVICOS_PADRAO = {
     "quiz-configuracao": "quiz",
     "coordenacao-db": "postgres",
 }
+# O compose da VPS exige estas duas chaves em QUALQUER `docker compose` (traefik as interpola).
+# Os semeadores as leem de env/admin.env; os outros scripts não, e param em "não consegui
+# falar com o Docker Compose". Aqui elas entram no ambiente do script, sem nunca aparecer.
+CHAVES_DO_GATEWAY = ("ALUNOS_API_TOKEN", "TOKEN_CATALOGO")
 # Variáveis que só as operações definem: nunca herdadas do ambiente de quem chama.
 VARIAVEIS_DE_CONTROLE = frozenset(
     {
@@ -243,13 +247,29 @@ def ambiente_do_filho(ctx: Contexto, extra: dict | None = None) -> dict:
     return env
 
 
+def chaves_do_gateway(ctx: Contexto) -> dict:
+    """As duas chaves de env/admin.env que o compose exige, como `grep -m1 | cut -d= -f2-`."""
+    try:
+        linhas = (Path(ctx.plataforma) / "env" / "admin.env").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return {}
+    achadas = {}
+    for chave in CHAVES_DO_GATEWAY:
+        if ctx.ambiente.get(chave):
+            continue
+        valor = next((l.split("=", 1)[1] for l in linhas if l.startswith(chave + "=")), "")
+        if valor:
+            achadas[chave] = valor
+    return achadas
+
+
 def rodar_script(ctx: Contexto, script: Path, extra: dict, prazo: int) -> int:
     """O que o workflow fazia: o script existe, passa em `bash -n`, roda, e a saída confere."""
     nome = f"infra/{script.name}"
     if not script.is_file():
         print(f"{MARCA_DE_PARADA}: {nome} não existe nesta cópia.")
         return 1
-    env = ambiente_do_filho(ctx, extra)
+    env = ambiente_do_filho(ctx, {**chaves_do_gateway(ctx), **extra})
     sintaxe, _ = ctx.processo(["bash", "-n", str(script)], env=env, timeout=60)
     if sintaxe != 0:
         print(f"{MARCA_DE_PARADA}: {nome} não passa em `bash -n`.")
