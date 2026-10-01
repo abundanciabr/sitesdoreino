@@ -20,15 +20,15 @@ Dois tipos de teste aqui, e eles medem coisas diferentes:
 from __future__ import annotations
 
 import json
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-import yaml
 
 RAIZ = Path(__file__).resolve().parents[2]
-DEPLOY = RAIZ / ".github" / "workflows" / "deploy-celula.yml"
+PUBLICADOR = RAIZ / "infra" / "publicar.py"
 
 sys.path.insert(0, str(RAIZ / "ci"))
 
@@ -60,44 +60,34 @@ def _roda(argumento: str, raiz: Path | None = None):
 
 
 def test_o_provedor_sobe_antes_do_consumidor_no_repositorio_real():
-    """`checkout` consome `pagamentos` e `catalogo` — e sobe depois dos dois.
-
-    Se alguém trocar a convenção `<OUTRA>_API_URL` sem ensinar este script, ele
-    devolveria a ordem alfabética e ninguém notaria. Este teste é o que faz essa
-    troca ficar vermelha.
-    """
-    proc = _roda('["checkout", "pagamentos", "catalogo"]')
+    """O mapa publicado reconhece uma única aplicação para código do produto."""
+    proc = _roda('["aplicacao"]')
     assert proc.returncode == 0, proc.stderr
     ordem = json.loads(proc.stdout)
-    assert ordem.index("pagamentos") < ordem.index("checkout")
-    assert ordem.index("catalogo") < ordem.index("checkout")
+    assert ordem == ["aplicacao"]
 
 
 def test_a_admin_sobe_por_ultimo_porque_consome_tres():
-    proc = _roda('["admin", "identidade", "alunos", "sugestoes"]')
-    assert proc.returncode == 0, proc.stderr
-    ordem = json.loads(proc.stdout)
+    """O algoritmo ainda respeita dependências em cenários isolados."""
+    grafo = {"admin": {"identidade", "alunos", "sugestoes"},
+             "identidade": set(), "alunos": set(), "sugestoes": set()}
+    ordem, _ = ordenar(list(grafo), grafo)
     assert ordem[-1] == "admin", ordem
     assert ordem.index("sugestoes") < ordem.index("admin")
 
 
 def test_a_explicacao_vai_para_o_stderr_e_o_dado_para_o_stdout():
-    """Quem consome isto é um `$(...)` dentro do YAML.
-
-    Uma linha de explicação no stdout entraria na matriz do deploy como se
-    fosse nome de célula — e o job tentaria publicar uma célula chamada
-    "ORDEM DE PUBLICAÇÃO".
-    """
-    proc = _roda('["quiz", "catalogo"]')
+    """O dado da publicação é JSON puro; a explicação fica no stderr."""
+    proc = _roda('["aplicacao"]')
     assert proc.returncode == 0
-    assert json.loads(proc.stdout) == ["catalogo", "quiz"]
+    assert json.loads(proc.stdout) == ["aplicacao"]
     assert "provedor antes de consumidor" in proc.stderr
 
 
 def test_celula_sozinha_continua_sendo_uma_lista_de_uma():
-    proc = _roda('["quiz"]')
+    proc = _roda('["aplicacao"]')
     assert proc.returncode == 0
-    assert json.loads(proc.stdout) == ["quiz"]
+    assert json.loads(proc.stdout) == ["aplicacao"]
 
 
 # --------------------------------------------------------------------------
@@ -139,7 +129,7 @@ def test_dependencia_que_nao_esta_sendo_publicada_nao_entra_na_ordem():
 
 
 @pytest.mark.parametrize(
-    "entrada", ['["inventada"]', '["quiz", "nao-existe"]', '"quiz"', "isso não é json"]
+    "entrada", ['["inventada"]', '["aplicacao", "nao-existe"]', '"aplicacao"', "isso não é json"]
 )
 def test_entrada_invalida_e_ERROR_e_nunca_uma_ordem_chutada(entrada: str):
     proc = _roda(entrada)
@@ -148,38 +138,34 @@ def test_entrada_invalida_e_ERROR_e_nunca_uma_ordem_chutada(entrada: str):
 
 
 # --------------------------------------------------------------------------
-# A fiação: o workflow de verdade usa isto
+# A fiação do publicador atual
 # --------------------------------------------------------------------------
 
 
-def test_o_deploy_ordena_antes_de_montar_a_matriz():
-    """Ordenar depois de publicar não ordena nada.
-
-    A matriz sai de `celulas=` no GITHUB_OUTPUT; a ordenação precisa acontecer
-    ANTES dessa linha, senão a saída ordenada não chega a lugar nenhum.
-    """
-    texto = DEPLOY.read_text(encoding="utf-8")
-    assert "ci/ordem_de_publicacao.py" in texto, (
-        "o deploy voltou a publicar na ordem em que a detecção devolveu — que é "
-        "alfabética, isto é, arbitrária"
-    )
-    assert texto.index("ci/ordem_de_publicacao.py") < texto.index('echo "celulas=$JSON"')
+def _publicador():
+    spec = importlib.util.spec_from_file_location("publicador_ordem", PUBLICADOR)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
 
 
-def test_a_matriz_continua_publicando_uma_celula_por_vez():
-    """Ordem sem serialização não é ordem: em paralelo, todas sobem juntas."""
-    fluxo = yaml.safe_load(DEPLOY.read_text(encoding="utf-8"))
-    estrategia = fluxo["jobs"]["deploy"]["strategy"]
-    assert estrategia.get("max-parallel") == 1, (
-        "a matriz voltou a publicar em paralelo — a ordem de dependência deixa "
-        "de existir na prática"
-    )
+def test_o_publicador_reconhece_a_aplicacao_como_uma_unica_onda():
+    publicar = _publicador()
+    assert publicar.ondas(["aplicacao"]) == [["aplicacao"]]
 
 
-def test_a_falha_da_ordem_para_o_deploy_em_vez_de_seguir():
-    """`|| true` aqui devolveria a lista vazia e publicaria NADA, em verde."""
-    texto = DEPLOY.read_text(encoding="utf-8")
-    linha = [ln for ln in texto.splitlines() if "ordem_de_publicacao.py" in ln]
-    assert linha, "sumiu a chamada"
-    for candidata in linha:
-        assert "|| true" not in candidata and "2>/dev/null" not in candidata
+def test_ativacao_da_aplicacao_exclui_troca_concorrente(monkeypatch, tmp_path):
+    publicar = _publicador()
+    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
+    chamadas = []
+    monkeypatch.setattr(publicar, "travar", lambda caminho, **opcoes: (
+        chamadas.append((caminho.name, opcoes)) or len(chamadas)))
+    publicar.travas_da_celula("aplicacao")
+    assert chamadas[0] == (".publicacao.lock", {"exclusiva": True})
+    assert chamadas[1][0] == ".publicacao-aplicacao.lock"
+
+
+def test_celula_desconhecida_nao_vira_publicacao_vazia():
+    proc = _roda('["servico-inventado"]')
+    assert proc.returncode == 2
+    assert not proc.stdout.strip()

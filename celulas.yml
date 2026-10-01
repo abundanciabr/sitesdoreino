@@ -16,6 +16,10 @@
 # =============================================================================
 celulas:
 
+  aplicacao:
+    caminhos: [services, packages, documentos]
+    consome: []
+
   admin:
     # `documentos/`: a área de documentos do site é servida por esta célula e a
     # pasta entra na imagem no build. Documento novo é página nova, e sem esta

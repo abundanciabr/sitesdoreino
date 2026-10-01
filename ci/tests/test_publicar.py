@@ -71,6 +71,11 @@ def test_base_da_aplicacao_inclui_requirements_e_vendor_de_todos(repo):
     (outra / "vendor" / "pacote.whl").write_bytes(b"wheel")
     c3 = commit("wheel de modulo")
     assert publicar.hash_da_base("aplicacao", c3) != publicar.hash_da_base("aplicacao", c2)
+    pacote = raiz / "packages" / "compartilhado"
+    pacote.mkdir(parents=True)
+    (pacote / "base.py").write_text("VERSAO = 1\n")
+    c4 = commit("pacote compartilhado")
+    assert publicar.hash_da_base("aplicacao", c4) != publicar.hash_da_base("aplicacao", c3)
 
 
 def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, monkeypatch):
@@ -131,6 +136,28 @@ def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, m
     assert opcoes["env"]["FONTE_INFRA"] == str(fonte / "infra")
 
 
+def test_primeira_aplicacao_agrega_compatibilidade_dos_journals_aprovados(tmp_path, monkeypatch):
+    publicar = carregar("publicar_metadados", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)
+    for modulo in publicar.MODULOS_DA_APLICACAO:
+        (tmp_path / f"{modulo}.json").write_text(json.dumps({
+            "aprovada": {"sha": "a" * 40, "dados": f"dados-{modulo}",
+                         "configuracao": f"config-{modulo}"}}))
+    primeiro = publicar.metadados_da_primeira_aplicacao()
+    assert primeiro["endereco"] == "https://meshcraft.top/"
+    assert primeiro["dados"].startswith("unificada-dados-")
+    assert primeiro["configuracao"].startswith("unificada-configuracao-")
+    assert primeiro == publicar.metadados_da_primeira_aplicacao()
+    estado = json.loads((tmp_path / "quiz.json").read_text())
+    estado["aprovada"]["dados"] = "nova-migracao"
+    (tmp_path / "quiz.json").write_text(json.dumps(estado))
+    assert publicar.metadados_da_primeira_aplicacao()["dados"] != primeiro["dados"]
+    assert publicar.metadados_da_primeira_aplicacao()["configuracao"] == primeiro["configuracao"]
+    (tmp_path / "forum.json").unlink()
+    with pytest.raises(RuntimeError, match="forum:dados"):
+        publicar.metadados_da_primeira_aplicacao()
+
+
 def test_versao_atrasada_nao_substitui_a_mais_recente(repo):
     publicar, celula, commit = repo
     c0 = commit("c0")
@@ -184,6 +211,8 @@ def test_versao_existente_e_reaproveitada_sem_copiar_de_novo(repo, monkeypatch, 
 
 def test_infra_reprovada_nao_inicia_publicacao_de_celula(tmp_path, monkeypatch):
     publicar = carregar("publicar_infra_reprovada", "infra/publicar.py")
+    import mapa_de_celulas
+    monkeypatch.setattr(mapa_de_celulas, "celulas_do_diff", lambda *_: ["admin"])
     monkeypatch.setattr(publicar, "LOTES", tmp_path / "lotes")
     monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
     (tmp_path / "logs").mkdir()
@@ -197,6 +226,28 @@ def test_infra_reprovada_nao_inicia_publicacao_de_celula(tmp_path, monkeypatch):
     assert publicar.lote("a" * 40, "b" * 40) == 1
     resultado = json.loads((tmp_path / "lotes" / ("b" * 40 + ".json")).read_text())
     assert resultado["resultado"] == {"infra": 1}
+
+
+def test_infra_sem_codigo_apos_corte_usa_sincronizador_da_aplicacao(tmp_path, monkeypatch):
+    publicar = carregar("publicar_infra_aplicacao", "infra/publicar.py")
+    import mapa_de_celulas
+    monkeypatch.setattr(mapa_de_celulas, "celulas_do_diff", lambda *_: [])
+    monkeypatch.setattr(publicar, "LOTES", tmp_path / "lotes")
+    monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path / "publicacoes")
+    (tmp_path / "logs").mkdir()
+    (tmp_path / "publicacoes").mkdir()
+    (tmp_path / "publicacoes" / "aplicacao.json").write_text(json.dumps({"atual": "a" * 40}))
+    monkeypatch.setattr(publicar, "git", lambda *args: (
+        "infra/traefik/dynamic/plataforma.yml" if args[0] == "diff"
+        else "2026-10-01T12:00:00+00:00"))
+    chamadas = []
+    monkeypatch.setattr(publicar, "sincronizar_infra", lambda *args: pytest.fail("sincronizador antigo"))
+    monkeypatch.setattr(publicar, "sincronizar_infra_aplicacao", lambda sha, _log: (
+        chamadas.append(sha) or True))
+    monkeypatch.setattr(publicar, "ondas", lambda celulas: [])
+    assert publicar.lote("a" * 40, "b" * 40) == 0
+    assert chamadas == ["b" * 40]
 
 
 @pytest.fixture

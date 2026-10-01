@@ -41,16 +41,20 @@ def test_mapa_ausente_e_ERROR(tmp_path: Path):
 
 def test_o_arquivo_da_celula_pertence_a_ela_e_um_arquivo_solto_nao_pertence_a_ninguem():
     mapa = mapa_de_celulas.carregar(RAIZ)
-    assert mapa_de_celulas.celula_do_caminho("services/admin/config/urls.py", mapa) == "admin"
-    assert mapa_de_celulas.celula_do_caminho("services/quiz/app.py", mapa) == "quiz"
+    assert list(mapa) == ["aplicacao"]
+    assert mapa_de_celulas.celula_do_caminho("services/admin/config/urls.py", mapa) == "aplicacao"
+    assert mapa_de_celulas.celula_do_caminho("services/quiz/app.py", mapa) == "aplicacao"
+    assert mapa_de_celulas.celula_do_caminho("packages/site_errors/src/x.py", mapa) == "aplicacao"
+    assert mapa_de_celulas.celula_do_caminho("documentos/pagina.md", mapa) == "aplicacao"
     assert mapa_de_celulas.celula_do_caminho("README.md", mapa) is None
     assert mapa_de_celulas.celula_do_caminho("ci/_nucleo.py", mapa) is None
 
 
 def test_prefixo_casa_por_SEGMENTO_e_nao_por_texto():
-    """`services/quiz` não pode capturar `services/quizzes`."""
+    """`services` captura módulos novos, mas não um prefixo apenas parecido."""
     mapa = mapa_de_celulas.carregar(RAIZ)
-    assert mapa_de_celulas.celula_do_caminho("services/quizzes/app.py", mapa) is None
+    assert mapa_de_celulas.celula_do_caminho("services/quizzes/app.py", mapa) == "aplicacao"
+    assert mapa_de_celulas.celula_do_caminho("services-extra/app.py", mapa) is None
 
 
 def test_celulas_do_diff_e_ordenado_e_sem_repeticao():
@@ -64,7 +68,7 @@ def test_celulas_do_diff_e_ordenado_e_sem_repeticao():
         ],
         mapa,
     )
-    assert achadas == ["admin", "quiz"]
+    assert achadas == ["aplicacao"]
 
 
 def test_toda_celula_declarada_existe_no_disco():
@@ -108,9 +112,6 @@ def test_pacote_site_errors_acorda_todas_as_celulas_consumidoras():
     )
 
     assert consumidores, "o pacote site_errors não tem consumidor vendorizado"
-    assert (
-        mapa_de_celulas.celulas_do_diff(
-            ["packages/site_errors/src/site_errors/handlers.py"], mapa
-        )
-        == consumidores
-    )
+    assert mapa_de_celulas.celulas_do_diff(
+        ["packages/site_errors/src/site_errors/handlers.py"], mapa
+    ) == ["aplicacao"]

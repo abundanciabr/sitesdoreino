@@ -56,6 +56,9 @@ EXCLUSOES = {
 }
 SHA = re.compile(r"[0-9a-f]{40}")
 CELULA = re.compile(r"[a-z][a-z0-9_]*")
+MODULOS_DA_APLICACAO = ("admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
+                        "forum", "funil", "gamificacao", "identidade", "leads", "mensageria",
+                        "metricas", "notificacoes", "pagamentos", "pages", "quiz", "sugestoes")
 
 sys.path.insert(0, str(FERRAMENTAS / "ci"))
 
@@ -84,6 +87,28 @@ def git(*args) -> str:
 def journal(celula: str) -> dict | None:
     caminho = PUBLICACOES / f"{celula}.json"
     return json.loads(caminho.read_text()) if caminho.exists() else None
+
+
+def metadados_da_primeira_aplicacao() -> dict:
+    """Reaproveita compatibilidade já aprovada no site antes da unificação."""
+    tokens = {"dados": [], "configuracao": []}
+    faltantes = []
+    for modulo in MODULOS_DA_APLICACAO:
+        estado = journal(modulo) or {}
+        aprovada = estado.get("aprovada") or {}
+        for tipo in tokens:
+            if tipo == "dados" and modulo == "funil":
+                continue
+            token = aprovada.get(tipo) or (estado.get("compatibilidade") or {}).get(tipo)
+            if token:
+                tokens[tipo].append(f"{modulo}:{token}")
+            else:
+                faltantes.append(f"{modulo}:{tipo}")
+    if faltantes:
+        raise RuntimeError("compatibilidade aprovada ausente em " + ", ".join(faltantes))
+    return {"endereco": "https://meshcraft.top/", **{
+        tipo: f"unificada-{tipo}-" + hashlib.sha256("\n".join(pares).encode()).hexdigest()[:16]
+        for tipo, pares in tokens.items()}}
 
 
 def travar(caminho: Path, exclusiva=True, esperar=True) -> int | None:
@@ -403,6 +428,8 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
     if not CELULA.fullmatch(celula) or not SHA.fullmatch(sha):
         raise SystemExit("célula ou SHA inválido")
     git("cat-file", "-e", f"{sha}^{{commit}}")
+    if celula == "aplicacao" and inicial is None and not journal(celula):
+        inicial = metadados_da_primeira_aplicacao()
     if inicial and journal(celula):
         raise SystemExit(f"{celula} já tem aprovação; use publicar")
     situacao = "nova" if inicial else ordem(celula, sha)
@@ -436,6 +463,10 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
             comum, propria, espera_trava = travas_da_celula(celula)
             medidas["espera_segundos"] = round(espera_prova + espera_trava, 3)
             try:
+                if inicial and journal(celula):
+                    # Outra recepção pode ter aprovado a primeira versão
+                    # enquanto esta prova isolada ainda rodava.
+                    inicial = None
                 situacao = "nova" if inicial else ordem(celula, sha)
                 if situacao != "nova":
                     dizer(f"{situacao.upper()}: {celula} {sha[:9]} ficou para trás enquanto testava; nada aplicado")
@@ -520,6 +551,35 @@ def sincronizar_infra(sha: str, registro) -> bool:
         shutil.rmtree(fonte, ignore_errors=True)
 
 
+def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
+    """Depois do corte, atualiza Compose e rotas com snapshot e volta própria."""
+    fonte = TRABALHO / f"infra-aplicacao-{sha[:12]}-{os.getpid()}"
+    trava = None
+    try:
+        extrair(sha, fonte, "infra")
+        trava = travar(RAIZ / ".publicacao.lock", exclusiva=True)
+        processo = subprocess.Popen(
+            [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), "--sincronizar-infra", sha],
+            cwd=RAIZ, env=ambiente_base() | {"FONTE_INFRA": str(fonte / "infra"),
+                                            "TRAVA_COMUM_HERDADA": "1"},
+            pass_fds=(trava,), text=True, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        linhas = []
+        for linha in processo.stdout:
+            linhas.append(linha)
+            registro.write(linha)
+            registro.flush()
+        return processo.wait() == 0 and f"INFRA-APLICACAO-SINCRONIZADA: {sha}" in "".join(linhas)
+    except Exception as erro:
+        registro.write(f"INFRA-APLICACAO-FALHOU: {type(erro).__name__}\n")
+        registro.flush()
+        return False
+    finally:
+        if trava is not None:
+            os.close(trava)
+        shutil.rmtree(fonte, ignore_errors=True)
+
+
 def lote(base: str, head: str) -> int:
     import mapa_de_celulas  # noqa: PLC0415
 
@@ -530,6 +590,7 @@ def lote(base: str, head: str) -> int:
     if "aplicacao" in celulas:
         celulas = ["aplicacao"]
     infra = any(a.startswith(GATILHOS_DA_INFRA) for a in arquivos)
+    aplicacao_antes = (journal("aplicacao") or {}).get("atual")
     pedido_em = git("log", "-1", "--format=%cI", head)
     situacao = {"base": base, "head": head, "infra": infra, "celulas": celulas, "inicio": agora(),
                 "resultado": {}, "estado": "publicando"}
@@ -537,7 +598,7 @@ def lote(base: str, head: str) -> int:
     dizer(f"LOTE {base[:9]}..{head[:9]}: infra={infra} celulas={celulas}")
     falhas = 0
     with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
-        if infra and "aplicacao" not in celulas and not sincronizar_infra(head, registro):
+        if infra and not aplicacao_antes and "aplicacao" not in celulas and not sincronizar_infra(head, registro):
             falhas += 1
             situacao["resultado"]["infra"] = 1
             avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.",
@@ -551,6 +612,16 @@ def lote(base: str, head: str) -> int:
             situacao["resultado"][celula] = processo.wait()
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
+    if infra and aplicacao_antes and falhas == 0:
+        with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
+            if not sincronizar_infra_aplicacao(head, registro):
+                falhas += 1
+                situacao["resultado"]["infra"] = 1
+                atual = (journal("aplicacao") or {}).get("atual")
+                if atual and atual != aplicacao_antes:
+                    situacao["resultado"]["recuperacao_aplicacao"] = recuperar("aplicacao")
+                avisar(f"A infra {head[:9]} falhou depois da publicação da aplicação; "
+                       f"confira publicacoes/logs/lote-{head[:12]}.log.", "infra")
     situacao.update(estado="concluido", fim=agora(), falhas=falhas)
     arquivo_lote.write_text(json.dumps(situacao))
     dizer(f"LOTE-CONCLUIDO {head[:9]}: falhas={falhas} {situacao['resultado']}")
