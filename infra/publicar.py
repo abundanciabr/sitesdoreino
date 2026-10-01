@@ -296,7 +296,8 @@ def vaga_de_prova() -> tuple[int, float]:
 def roteiro_de_prova(celula: str) -> str:
     if celula == "aplicacao":
         return ("set -eu\ncd /app\n"
-                "python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n")
+                "python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n"
+                "python /app/prova.py\n")
     extras = ""
     if celula == "checkout":
         extras = "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null\n"
@@ -315,7 +316,7 @@ def provar_produto(celula: str, sha: str, imagem: str, codigo: Path, fonte: Path
     nome = f"prova-{celula}-{sha[:8]}-{os.getpid()}"
     inicio = time.monotonic()
     try:
-        rodar("docker", "network", "create", nome)
+        rodar("docker", "network", "create", *(["--internal"] if celula == "aplicacao" else []), nome)
         rodar("docker", "run", "-d", "--name", f"{nome}-pg", "--network", nome, "-e", "POSTGRES_USER=ci",
               "-e", "POSTGRES_PASSWORD=ci", "-e", "POSTGRES_DB=ci_db", "--tmpfs", "/var/lib/postgresql/data",
               "postgres:17")
@@ -333,6 +334,7 @@ def provar_produto(celula: str, sha: str, imagem: str, codigo: Path, fonte: Path
             ["docker", "run", "--rm", "--name", nome, "--network", nome, "--cpus", "1", "--cpu-shares", "256",
              "--memory", "2g", "-e", f"CELULA={celula}",
              "-e", f"DATABASE_URL=postgres://ci:ci@{nome}-pg:5432/ci_db",
+             "-e", f"PROVA_POSTGRES_URL=postgres://ci:ci@{nome}-pg:5432/ci_db",
              "-e", f"REDIS_STREAMS_URL=redis://{nome}-redis:6379/0",
              "-e", f"HUEY_REDIS_URL=redis://{nome}-redis:6379/1",
              "-e", "DJANGO_SECRET_KEY=teste-isolado", "-e", "MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real",

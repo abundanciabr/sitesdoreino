@@ -101,6 +101,7 @@ def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, m
     assert (final / "documentos_embutidos" / "pagina.md").read_text() == "conteúdo"
     assert imagem == "plataforma-aplicacao:base-x"
     assert "/fonte/services/aplicacao/tests" in publicar.roteiro_de_prova("aplicacao")
+    assert "python /app/prova.py" in publicar.roteiro_de_prova("aplicacao")
 
 
 def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, monkeypatch):
