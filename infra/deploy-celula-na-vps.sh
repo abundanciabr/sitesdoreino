@@ -110,9 +110,12 @@ parar_o_deploy() {
 PASTA_DOS_DUMPS="$RAIZ/backups-de-banco"
 REFERENCIA_DE_PERMISSAO="${BACKUP_REFERENCIA:-$RAIZ/env}"
 
-RETENCAO=20
-
-BASE="${CELULA}_db"
+if [ "$CELULA" = aplicacao ]; then
+  BASES_BACKUP="admin_db alunos_db catalogo_db checkout_db cursos_db encomendas_db forum_db gamificacao_db identidade_db leads_db mensageria_db metricas_db notificacoes_db pagamentos_db pages_db quiz_db sugestoes_db"
+else
+  BASES_BACKUP="${CELULA}_db"
+fi
+for BASE in $BASES_BACKUP; do
 case "$BASE" in
   *[!A-Za-z0-9_]*) parar_o_deploy "o nome de base '$BASE' tem caractere que nao e letra, numero ou sublinhado. Nada foi tocado." ;;
 esac
@@ -132,20 +135,6 @@ else
     parar_o_deploy "nao achei $REFERENCIA_DE_PERMISSAO para copiar dono e modo da pasta de dumps. Nada foi tocado."
   fi
 
-  rm -f "$PASTA_DOS_DUMPS/$BASE"-*.dump.parcial
-
-  EXISTENTES=$(ls -1 "$PASTA_DOS_DUMPS/$BASE"-*.dump 2>/dev/null || true)
-  if [ -n "$EXISTENTES" ]; then
-    A_APAGAR=$(printf '%s\n' "$EXISTENTES" | sort -r | tail -n +"$RETENCAO")
-    if [ -n "$A_APAGAR" ]; then
-      QUANTOS=$(printf '%s\n' "$A_APAGAR" | wc -l)
-      echo "Retencao: a pasta fica com no maximo $RETENCAO copias de $BASE (as mais recentes, mais a desta entrega); apagando $QUANTOS antiga(s)."
-      printf '%s\n' "$A_APAGAR" | while IFS= read -r velho; do
-        if [ -n "$velho" ]; then rm -f "$velho"; fi
-      done
-    fi
-  fi
-
   TAMANHO_DA_BASE=$(docker compose exec -T postgres psql -U postgres -tAc "SELECT pg_database_size('$BASE')") \
     || parar_o_deploy "nao consegui medir o tamanho da base '$BASE'. Nada foi tocado."
   TAMANHO_DA_BASE=$(printf '%s' "$TAMANHO_DA_BASE" | tr -d '[:space:]')
@@ -163,7 +152,7 @@ else
   FOLGA_KB=262144
   PRECISO_KB=$(( TAMANHO_DA_BASE / 1024 + FOLGA_KB ))
   if [ "$LIVRE_KB" -lt "$PRECISO_KB" ]; then
-    parar_o_deploy "nao ha espaco em disco para a copia de seguranca de '$BASE'. Livre: $((LIVRE_KB / 1024)) MB. Necessario com folga: $((PRECISO_KB / 1024)) MB. A pasta dos dumps e $PASTA_DOS_DUMPS e ela ja foi limpa ate as $RETENCAO copias mais recentes por base, entao o disco da VPS esta cheio por outro motivo, e isso e para o dono olhar. Nada foi tocado."
+    parar_o_deploy "nao ha espaco em disco para a copia de seguranca de '$BASE'. Livre: $((LIVRE_KB / 1024)) MB. Necessario com folga: $((PRECISO_KB / 1024)) MB. A pasta dos dumps e $PASTA_DOS_DUMPS. Nada foi tocado."
   fi
 
   CARIMBO=$(date -u +%Y%m%d-%H%M%SZ)
@@ -189,6 +178,7 @@ else
   echo "BACKUP-ANTES-DA-MIGRACAO: o carimbo do nome e UTC; em Brasilia sao tres horas a menos."
   echo "BACKUP-ANTES-DA-MIGRACAO: o caminho de volta e infra/restaurar-backup.sh"
 fi
+done
 
 # --wait reprova o deploy se algum container não ficar de pé (ou não ficar
 python3 "$PUBLICACAO_LOCAL" aplicar
