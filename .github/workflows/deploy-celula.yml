@@ -185,9 +185,14 @@ jobs:
                 cp /corte/services/cursos/tests/test_ciclo_do_desafio_da_comunidade.py tests/
                 cp /corte/services/cursos/tests/test_regua_no_laudo.py tests/
               fi
-              if [ "$CELULA" = checkout ]; then
+              if [ "$CELULA" = gamificacao ]; then
+                cp /corte/services/gamificacao/tests/test_quadro_de_contribuicoes.py tests/
+                cp /corte/services/gamificacao/tests/test_tela_de_medalhas.py tests/
+              fi
+              if [ "$CELULA" = checkout ] || [ "$CELULA" = funil ]; then
                 apt-get update -qq
-                DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null
+                if [ "$CELULA" = checkout ]; then PACOTE=nodejs; else PACOTE=git; fi
+                DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "$PACOTE" >/dev/null
               fi
               python -m pytest -q
             '
