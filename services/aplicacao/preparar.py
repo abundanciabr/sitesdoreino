@@ -208,7 +208,17 @@ def preparar(origem: Path, destino: Path) -> None:
             (pacote / "unified_config.py").write_text(
                 f"{heranca}\n"
                 f"    name = 'modules.{modulo}.{'pagamentos' if modulo == 'pagamentos' else 'apps'}.{app}'\n"
-                f"    label = '{modulo}_{app}'\n",
+                f"    label = '{modulo}_{app}'\n\n"
+                f"    def import_models(self):\n"
+                f"        from config.runtime import load_original_settings, install_contextual_settings, serving\n"
+                f"        load_original_settings()\n"
+                f"        install_contextual_settings()\n"
+                f"        with serving('{modulo}'):\n"
+                f"            return super().import_models()\n\n"
+                f"    def ready(self):\n"
+                f"        from config.runtime import serving\n"
+                f"        with serving('{modulo}'):\n"
+                f"            return super().ready()\n",
                 encoding="utf-8",
             )
     documentos = origem.parent / "documentos"

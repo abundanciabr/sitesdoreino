@@ -92,6 +92,59 @@ class RuntimeTest(unittest.TestCase):
                 self.assertFalse(called)
             self.assertEqual(called, [True])
 
+    def test_home_translation_uses_funil_catalog_and_base_dir(self):
+        from django.conf import settings
+        from django.template import Context, Template
+        from django.template.loader import get_template
+        from django.test import RequestFactory
+        from config.runtime import serving
+        from modules.funil.apps.i18n.catalogo import catalogo_instalado
+        from modules.funil.apps.core.rodape import montar
+
+        with serving("funil"):
+            self.assertEqual(Path(settings.BASE_DIR),
+                             Path(__file__).resolve().parents[1] / "modules" / "funil")
+            self.assertIn("landing.titulo", catalogo_instalado())
+            request = RequestFactory().get("/")
+            request.idioma = "pt-br"
+            rendered = Template('{% load t %}{% t "landing.titulo" %}').render(
+                Context({"request": request})
+            )
+            self.assertEqual(rendered, "Meshcraft")
+            home = get_template("funil/landing_i18n.html").render({
+                "request": request, "rodape": montar("completo", ano=2026),
+            })
+            self.assertIn("Meshcraft", home)
+            self.assertNotIn("landing.titulo", home)
+            self.assertNotIn("rodape.link_inicio", home)
+            self.assertIn('href="/"', home)
+            self.assertIn('href="/cadastro"', home)
+
+    def test_internal_asgi_restores_outer_url_state(self):
+        import httpx
+        from django.urls import (
+            get_script_prefix, get_urlconf, set_script_prefix, set_urlconf,
+        )
+
+        async def check():
+            before_prefix, before_urlconf = get_script_prefix(), get_urlconf()
+            try:
+                set_script_prefix("/funil/")
+                set_urlconf("modules.funil.config.urls")
+                async with httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=self.app_do_servico("gamificacao")),
+                    base_url="http://gamificacao:8000",
+                ) as client:
+                    response = await client.get("/healthz")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(get_script_prefix(), "/funil/")
+                self.assertEqual(get_urlconf(), "modules.funil.config.urls")
+            finally:
+                set_script_prefix(before_prefix)
+                set_urlconf(before_urlconf)
+
+        asyncio.run(check())
+
     def test_migration_contenttype_and_permission_copy(self):
         from django.db import connections
         from config.migracoes import adotar_contenttypes_permissoes, adotar_historico

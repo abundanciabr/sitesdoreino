@@ -5,6 +5,7 @@ from importlib import import_module
 
 from django.core.handlers.asgi import ASGIHandler
 from django.core.asgi import get_asgi_application
+from django.urls import get_script_prefix, get_urlconf, set_script_prefix, set_urlconf
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -56,8 +57,16 @@ async def application(scope, receive, send):
         script_name = ""
     routed_scope = dict(scope)
     routed_scope["root_path"] = script_name
-    with serving(service):
-        await _handlers[service](routed_scope, receive, send)
+    # Django leaves both values in asgiref.local.Local after a response. An
+    # in-process HTTP call can nest inside another module's rendering; restore
+    # the outer request's URL state before its templates reverse links.
+    old_prefix, old_urlconf = get_script_prefix(), get_urlconf()
+    try:
+        with serving(service):
+            await _handlers[service](routed_scope, receive, send)
+    finally:
+        set_script_prefix(old_prefix)
+        set_urlconf(old_urlconf)
 
 
 def app_do_servico(service):
