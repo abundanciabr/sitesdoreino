@@ -1,9 +1,5 @@
 """ORDEM DE PUBLICAÇÃO — quem sobe antes de quem, derivado do código.
 
-Onda 4, fatia 2 do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`: a pista
-"publica as células afetadas **em ordem de dependência** com verificação de
-saúde". Este arquivo é a metade da ordem.
-
 O PROBLEMA QUE ISTO FECHA
 -------------------------
 O `deploy-celula` publica uma célula por vez (`max-parallel: 1`), mas na ordem
@@ -15,16 +11,9 @@ site fica no ar respondendo errado, sem nada ficar vermelho.
 A ordem certa é **provedor antes de consumidor**: quando o consumidor chega, a
 API de que ele precisa já está de pé.
 
-DE ONDE VEM O GRAFO (e por que não de uma lista escrita à mão)
---------------------------------------------------------------
-Do próprio código: uma célula que consome outra lê o endereço dela numa variável
-`<OUTRA>_API_URL` — a convenção que as 13 células já seguem hoje. Uma lista
-mantida à mão envelheceria em silêncio no primeiro consumo novo, e ninguém
-descobriria até um deploy fora de ordem: é a Classe 8 (mapa velho) que este
-plano inteiro existe para curar. Aqui o mapa É o código.
-
-Quando `celulas.yml` chegar (Onda 5), ele herda esta derivação em vez de
-recomeçar — o que muda é onde o grafo mora, não como ele é medido.
+DE ONDE VEM O GRAFO
+-------------------
+De `celulas.yml`: a chave `consome` de cada célula diz de quem ela lê API.
 
 CICLO NÃO BLOQUEIA A ENTREGA — MAS NUNCA PASSA CALADO
 ------------------------------------------------------
@@ -42,11 +31,11 @@ Escreve em stdout o JSON ordenado (é isso que o workflow consome) e a
 explicação legível em stderr — separados de propósito, para o `$(...)` do YAML
 nunca engolir texto de explicação junto com o dado.
 
-Exit codes (o mesmo contrato dos outros portões):
+Exit codes:
 
     0  ordenei (a explicação diz como)
-    2  ERROR — não consegui medir. Célula fora do manifesto entra aqui: um nome
-       que ninguém declarou viraria uma matriz de deploy inventada.
+    2  ERROR: não consegui medir. Célula fora de `celulas.yml` entra aqui: um
+       nome que ninguém declarou viraria uma matriz de deploy inventada.
 """
 
 from __future__ import annotations
@@ -67,27 +56,18 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
 )
 
-# O GRAFO VEM DO MAPA — `celulas.yml`, verificado contra o código pelo varredor
-# de `ci/mapa_de_celulas.py` em toda muralha (Onda 5). Até 29/08/2026 este
-# arquivo varria o código por conta própria: funcionava, e era uma segunda
-# implementação da mesma pergunta. Duas implementações divergem no primeiro dia
-# em que alguém mexe numa delas — e a que ia decidir a ordem de publicação em
-# produção seria, por lei de Murphy, a atrasada.
-
-
 def _raiz() -> Path:
     declarada = os.environ.get("ORDEM_RAIZ", "").strip()
     return raiz_declarada(Path(declarada)) if declarada else raiz_do_repo()
 
 
 def celulas_declaradas(raiz: Path) -> list[str]:
-    """A lista autoritativa é o mapa; o varredor garante que ela bate com o
-    manifesto de contratos em toda muralha (`ci/mapa_de_celulas.py`)."""
+    """A lista autoritativa é `celulas.yml`."""
     return sorted(mapa_de_celulas.carregar(raiz))
 
 
 def dependencias(raiz: Path, celulas: list[str]) -> dict[str, set[str]]:
-    """Para cada célula, de quais OUTRAS ela consome — lido do mapa único."""
+    """Para cada célula, de quais OUTRAS ela consome, lido de `celulas.yml`."""
     mapa = mapa_de_celulas.carregar(raiz)
     return {nome: set(celula.consome) for nome, celula in mapa.items() if nome in celulas}
 
@@ -166,9 +146,9 @@ def main() -> int:
         desconhecidas = sorted(set(tocadas) - set(declaradas))
         if desconhecidas:
             raise ErroDeInstrumentacao(
-                "célula fora do manifesto na lista a publicar: "
+                "célula fora de celulas.yml na lista a publicar: "
                 + ", ".join(desconhecidas),
-                "Declaradas em ci/manifesto-de-contratos.json:\n"
+                "Declaradas em celulas.yml:\n"
                 + "\n".join(f"  - {c}" for c in declaradas)
                 + "\n\nOrdenar um nome que ninguém declarou seria montar uma "
                 "matriz de deploy inventada.",

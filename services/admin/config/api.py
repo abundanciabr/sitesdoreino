@@ -29,9 +29,7 @@ api = NinjaAPI(
     version="1.0.0",
     description=(
         "Porta de máquina da área administrativa. A consulta de administradores "
-        "preserva o bearer por par. A coordenação usa identidade própria por "
-        "função, coorte e célula; credencial de leitura não permite executar "
-        "nem publicar. Git governa a coorte até a transferência conciliada."
+        "preserva o bearer por par."
     ),
     servers=[{"url": "http://admin:8000/interno"}],
     auth=bearerAuth(),

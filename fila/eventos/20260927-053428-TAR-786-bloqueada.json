@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-053428-TAR-786-bloqueada",
-  "tarefa": "TAR-786",
-  "evento": "bloqueada",
-  "quando": "2026-09-27T05:34:28.544358+00:00",
-  "quem": "escrivao",
-  "detalhe": "o ensaio contra producao exige um experimento A/A ativo na pagina, criado e iniciado pela tela da admin, cuja entrada e so Google ou senha do mantenedor; roteiro provado em 27/09 01h55 (modo rota verde, modo ensaio reprova so por falta de experimento ativo)",
-  "espera": "mantenedor"
-}

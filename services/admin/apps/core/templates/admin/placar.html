@@ -74,7 +74,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
 
   {% comment %}
   O GESTO da linha da memória (degrau 11, 05/09/2026). Não é um bloco novo:
-  é uma linha de texto, e a capa continua com os mesmos nove. Ela sai SEMPRE,
+  é uma linha de texto, e a capa não ganha bloco. Ela sai SEMPRE,
   em todos os cinco desfechos, porque a tela da confiança é justamente onde se
   descobre por que a memória não respondeu.
   {% endcomment %}
@@ -82,68 +82,6 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     <a href="{% url 'confianca' %}">Dá para acreditar nestes números?</a>
     Cobertura, frescor e o que chegou quebrado.
   </p>
-
-  {% comment %}
-  A LINHA DO TRABALHO (degrau 19, a volta do grafo causal). Não é um bloco,
-  pelo mesmo motivo da linha da memória logo acima: a capa tem teto de nove e
-  se recusa a crescer. Aqui a tela responde a segunda pergunta do quinto
-  documento do Scale OS: "que ações estão sendo executadas para movimentar
-  este indicador?".
-
-  A distinção que este trecho existe para preservar: "ninguém declarou" NUNCA
-  pode virar "nada está sendo feito". As tarefas anteriores a 04/09/2026
-  nasceram antes do campo, e dizer que a meta está abandonada por causa delas
-  seria a tela mentindo com cara de precisão. Regras em apps/core/elo.py.
-  {% endcomment %}
-  {% if declaracao is None %}
-  <p class="aviso borda-amarela">
-    <b>A fila de trabalho não veio nesta versão do site</b>, então não dá para
-    dizer o que está sendo feito por estes números. Isto não é "nada está sendo
-    feito": é a pergunta que não pôde ser feita.
-  </p>
-  {% elif trabalho %}
-  <p class="nota">
-    <b>O que está sendo feito pelos números desta tela:</b>
-  </p>
-  <ul class="notas">
-    {% for cartao, tarefas in trabalho.items %}
-    <li>
-      <b>{{ cartao }}</b>:
-      {% for t in tarefas %}{{ t.id }} ({{ t.estado }}){% if not forloop.last %}, {% endif %}{% endfor %}
-    </li>
-    {% endfor %}
-  </ul>
-    {% if declaracao.nao_declararam %}
-    <p class="nota">
-      Outras {{ declaracao.nao_declararam }} tarefa{{ declaracao.nao_declararam|pluralize:"s" }}
-      em aberto não declararam que número movem, então esta lista ainda não é o
-      trabalho todo.
-    </p>
-    {% endif %}
-  {% elif declaracao.nao_declararam %}
-  <p class="nota">
-    <b>O trabalho ainda não está ligado aos números.</b>
-    {% if declaracao.nao_declararam == declaracao.vivas %}
-    Nenhuma das {{ declaracao.vivas }} tarefa{{ declaracao.vivas|pluralize:"s" }} em
-    aberto diz que número move: todas nasceram antes desta regra.
-    {% else %}
-    Das {{ declaracao.vivas }} tarefa{{ declaracao.vivas|pluralize:"s" }} em aberto,
-    {{ declaracao.nao_declararam }} não diz{{ declaracao.nao_declararam|pluralize:"em" }}
-    que número move{% if declaracao.manutencao %}, e {{ declaracao.manutencao }} se
-    declarou manutenção da fábrica{% endif %}.
-    {% endif %}
-    Toda tarefa criada a partir de agora é obrigada a declarar, e aparece aqui.
-  </p>
-  {% elif declaracao.vivas %}
-  <p class="nota">
-    <b>Nenhuma tarefa em aberto está movendo um número desta tela.</b>
-    As {{ declaracao.vivas }} em aberto se declararam manutenção da fábrica.
-  </p>
-  {% else %}
-  <p class="nota">
-    <b>Não há tarefa em aberto na fila.</b>
-  </p>
-  {% endif %}
 
   {% if not meta %}
   <p class="aviso borda-vermelha">
@@ -331,7 +269,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% endif %}
     </p>
 
-    <h3 class="titulo-da-conta">Os compromissos da semana <a href="{% url 'reuniao' %}">(a reunião de segunda-feira)</a></h3>
+    <h3 class="titulo-da-conta">Os compromissos da semana</h3>
     {% if compromissos is None %}
       <p class="recado-fraco">O livro não veio nesta versão do site; os compromissos não aparecem.</p>
     {% elif not compromissos %}
@@ -434,8 +372,9 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   estrelas-guia, e não como um bloco novo da capa. A razão é a mesma do
   laboratório mais abaixo: o laço de talentos TERMINA na primeira estrela
   ("alunos com resultado profissional"), então ele mora ao lado do número que
-  pretende mover. E a capa tem teto de nove blocos (tests/test_capa.py), que já
-  usa nove: bloco novo aqui derrubaria o guarda.
+  pretende mover. E a capa tem teto de nove blocos (tests/test_capa.py): vaga
+  de bloco é para realidade nova, e não para o caminho de um número que já
+  está na capa.
   {% endcomment %}
   <p class="recado-fraco">
     O caminho que faz a primeira estrela subir tem nome e tem tela:
@@ -467,53 +406,18 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   </ul>
   {% comment %}
   O LABORATÓRIO (05/09/2026, degrau 12) entra AQUI, dentro do bloco dos doze, e
-  não como um nono bloco da capa. Duas razões, e a segunda é a que decide:
+  não como um bloco novo da capa. Duas razões, e a segunda é a que decide:
 
   1. O laboratório é a FONTE do décimo segundo número desta lista
      (aprendizados-validados-no-ciclo). Ele mora ao lado do número que produz.
-  2. A capa tem teto de nove blocos (tests/test_capa.py) e usa oito. Gastar o
-     nono aqui fecharia a porta para sempre, e por uma tela que já tem a casa
-     natural dela dentro deste bloco.
+  2. A capa tem teto de nove blocos (tests/test_capa.py). Gastar uma vaga aqui
+     seria por uma tela que já tem a casa natural dela dentro deste bloco.
   {% endcomment %}
   <p class="recado-fraco">
     O último dos doze sai do <a href="{% url 'laboratorio' %}">laboratório</a>:
     as apostas da escola, o que está rodando, o que passou do prazo e o que já
     ensinou alguma coisa.
   </p>
-  {% endif %}
-
-  {% if latencias %}
-  <h2 class="titulo-de-bloco espaco-20">As três latências da gestão</h2>
-  <p class="recado">Quanto tempo a casa leva para decidir, para começar e para aprender. Medem a gestão, não a escola, e continuam funcionando quando todo o resto estiver cego.</p>
-  <ul class="notas">
-    <li>
-      <b>Sinal → decisão.</b>
-      {% if latencias.decisao.veredito == "nao-consigo-medir" %}<span class="rotulo">não medi</span> o livro não veio.
-      {% elif latencias.decisao.veredito == "sem-dados-ainda" %}nenhum pedido a você no período.
-      {% else %}
-        {% if latencias.decisao.mediana_dias is not None %}Tempo típico até você responder, nos últimos 28 dias: <b>{{ latencias.decisao.mediana_dias }} dia{{ latencias.decisao.mediana_dias|pluralize:"s" }}</b> ({{ latencias.decisao.respondidos_28 }} respondido{{ latencias.decisao.respondidos_28|pluralize:"s" }}).{% endif %}
-        {% if latencias.decisao.abertos %}<b>{{ latencias.decisao.abertos }}</b> pedido{{ latencias.decisao.abertos|pluralize:"s" }} aberto{{ latencias.decisao.abertos|pluralize:"s" }} agora, o mais velho há {{ latencias.decisao.mais_velho_dias }} dia{{ latencias.decisao.mais_velho_dias|pluralize:"s" }}: a caixa "precisa de você" em <a href="{% url 'painel' %}">/admin/painel/</a>.{% else %}Nenhum pedido aberto.{% endif %}
-      {% endif %}
-    </li>
-    <li>
-      <b>Decisão → execução.</b>
-      {% if latencias.execucao.veredito == "nao-consigo-medir" %}<span class="rotulo">não medi</span> a fila não veio.
-      {% elif latencias.execucao.veredito == "sem-dados-ainda" %}nenhuma tarefa pega no período.
-      {% else %}
-        {% if latencias.execucao.mediana_dias is not None %}Tempo típico até um robô pegar uma tarefa, nos últimos 28 dias: <b>{{ latencias.execucao.mediana_dias }} dia{{ latencias.execucao.mediana_dias|pluralize:"s" }}</b> ({{ latencias.execucao.pegas_28 }} pega{{ latencias.execucao.pegas_28|pluralize:"s" }}).{% endif %}
-        {% if latencias.execucao.paradas %}<b>{{ latencias.execucao.paradas }}</b> tarefa{{ latencias.execucao.paradas|pluralize:"s" }} na fila há mais de 7 dias sem ninguém pegar: trabalho decidido e parado (<a href="{% url 'caixa_robos' %}">os robôs</a>).{% else %}Nada parado há mais de 7 dias.{% endif %}
-      {% endif %}
-    </li>
-    <li>
-      <b>Experimento → aprendizado.</b>
-      {% if latencias.aprendizado.veredito == "nao-consigo-medir" %}<span class="rotulo">não medi</span> o livro não veio.
-      {% elif latencias.aprendizado.veredito == "sem-dados-ainda" %}nenhum experimento fechado nos últimos 28 dias; o laboratório é o degrau 12.
-      {% else %}
-        {% if latencias.aprendizado.mediana_dias is not None %}Tempo típico até o aprendizado ser incorporado: <b>{{ latencias.aprendizado.mediana_dias }} dia{{ latencias.aprendizado.mediana_dias|pluralize:"s" }}</b>.{% endif %}
-        {% if latencias.aprendizado.sem_aprendizado %}<b>{{ latencias.aprendizado.sem_aprendizado }}</b> experimento{{ latencias.aprendizado.sem_aprendizado|pluralize:"s" }} fechado{{ latencias.aprendizado.sem_aprendizado|pluralize:"s" }} sem aprendizado registrado.{% endif %}
-      {% endif %}
-    </li>
-  </ul>
   {% endif %}
 
   {% if mudancas %}
@@ -523,7 +427,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% elif mudancas.veredito == "sem-foto" %}
     <p class="recado">
       <span class="rotulo">sem foto</span> Ainda não existe uma foto anterior do placar para comparar.
-      A primeira nasce na <a href="{% url 'reuniao' %}">reunião de segunda</a>: marque "tirar a foto da semana" no passo 8 e cole o pedido numa sessão.
+      A primeira nasce quando a contagem da <a href="{% url 'talentos' %}">rede de talentos</a> é registrada: o pedido dela leva junto a foto do placar.
       Hoje o placar tem {{ mudancas.quantos_atuais }} número{{ mudancas.quantos_atuais|pluralize:"s" }} com fonte para fotografar.
     </p>
   {% else %}

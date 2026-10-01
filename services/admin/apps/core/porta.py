@@ -38,8 +38,6 @@ from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from . import medidor
-from .admin_dados import dados_da_resposta
 from .clients import IdentidadeClient, IdentidadeIndisponivel
 from .models import Administrador
 
@@ -59,40 +57,17 @@ _ESTILO_EMBUTIDO = re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNO
 #
 # `/healthz` é rota de MÁQUINA, exigida pelo healthcheck do compose, que não
 # tem cookie nenhum para apresentar.
-#
-# [INV-P14] Os `/mapa-ia/*` são a segunda exceção, e a única pensada para
-# gente de fora: o mantenedor pediu (28/08/2026) um link público do mapa
-# técnico do projeto (`painel/ia/`, escrito para IA auditar o projeto) para
-# poder mandar a IAs externas sem exigir login. Cada caminho aqui é um
-# arquivo `.md` exato de `painel/ia/` — nenhum outro caminho desta célula
-# muda de comportamento. `apps/core/mapa_ia.py` serve como texto puro, nunca
-# HTML, e confere de novo (por disco) que o arquivo pedido existe dentro da
-# pasta antes de ler — esta lista NÃO é a única trava, é a primeira.
-CAMINHOS_ISENTOS = frozenset(
-    {
-        "/healthz",
-        "/mapa-ia/",
-        "/mapa-ia/INDICE.md",
-        "/mapa-ia/01-leis-ritos-e-invariantes.md",
-        "/mapa-ia/02-armadilhas-e-padroes-recorrentes.md",
-        "/mapa-ia/03-sistema-do-painel-e-livro.md",
-        "/mapa-ia/04-arquitetura-de-celulas-e-contratos.md",
-        "/mapa-ia/05-infraestrutura-ci-e-deploy.md",
-        "/mapa-ia/06-produto-decisoes-e-roadmap.md",
-        "/mapa-ia/07-oportunidades-e-fronteiras.md",
-    }
-)
+CAMINHOS_ISENTOS = frozenset({"/healthz"})
 
 #: [DOCUMENTOS] O prefixo público da área de documentos
 #: (`DECISAO-a-area-de-documentos.md`, 29/08/2026).
 #:
-#: **Por que aqui é PREFIXO e no `/mapa-ia/` é lista exata.** Lá, a decisão de
-#: "isto é público" mora nesta lista e em lugar nenhum mais — arquivo novo em
-#: `painel/ia/` não fica público sozinho. Aqui a decisão mora no PRÓPRIO
-#: documento (`publico: true` no cabeçalho, fail-closed), e enumerar os
-#: endereços aqui criaria uma SEGUNDA lista sobre o mesmo fato: no dia em que as
-#: duas discordassem, ou um documento público ficaria inacessível, ou — o lado
-#: caro — alguém tiraria o `publico: true` achando que bastava.
+#: **Por que aqui é PREFIXO, e não uma lista de endereços.** A decisão de "isto
+#: é público" mora no PRÓPRIO documento (`publico: true` no cabeçalho,
+#: fail-closed), e enumerar os endereços aqui criaria uma SEGUNDA lista sobre o
+#: mesmo fato: no dia em que as duas discordassem, ou um documento público
+#: ficaria inacessível, ou — o lado caro — alguém tiraria o `publico: true`
+#: achando que bastava.
 #:
 #: O que impede o prefixo de virar uma fresta: sob `/docs/` existem EXATAMENTE
 #: duas rotas, as duas de leitura, e as duas conferem `publico` antes de
@@ -100,37 +75,6 @@ CAMINHOS_ISENTOS = frozenset(
 #: varre o urlconf e reprova
 #: (`tests/test_area_de_documentos.py::test_o_prefixo_publico_tem_so_as_duas_rotas`).
 PREFIXO_PUBLICO_DOS_DOCUMENTOS = "/docs/"
-
-#: [PLANOS PARA IA] O prefixo público dos planos e decisões (31/08/2026).
-#:
-#: Nasceu de um atrito medido: o mantenedor mandou a IAs externas o link de um
-#: artefato hospedado fora, e NENHUMA conseguiu abrir — artefato é privado e
-#: exige sessão. O conteúdo nunca foi segredo (este repositório é público de
-#: propósito); faltava um endereço do próprio site que uma IA pudesse ler.
-#:
-#: **Prefixo, e não lista exata — ao contrário do `/mapa-ia/` logo acima.** As
-#: duas áreas moram sob o mesmo prefixo de roteamento e têm posturas
-#: deliberadamente diferentes, porque a pergunta "quem decide que isto é
-#: público" tem resposta diferente em cada uma:
-#:
-#:   `/mapa-ia/…`         a decisão mora AQUI, arquivo por arquivo. São sete
-#:                        arquivos de um mapa curado, e a raridade da mudança é
-#:                        o que torna a lista exata barata.
-#:   `/mapa-ia/planos/…`  a decisão mora NO PRÓPRIO DOCUMENTO
-#:                        (`publico-para-ia: true`, fail-closed), escolha do
-#:                        mantenedor em 31/08/2026. Enumerar os endereços aqui
-#:                        criaria uma SEGUNDA lista sobre o mesmo fato — o
-#:                        mesmo argumento que `/docs/` já usa acima.
-#:
-#: **Não afrouxei a lista do `/mapa-ia/` de carona**: aquilo é o INV-P14 e é
-#: outra decisão. Área nova ganha prefixo novo.
-#:
-#: O que impede o prefixo de virar uma fresta: sob `/mapa-ia/planos/` existem
-#: EXATAMENTE duas rotas, as duas de leitura, e as duas conferem
-#: `publico-para-ia` antes de responder. Guarda que varre o urlconf e reprova
-#: rota nova aqui embaixo:
-#: `tests/test_planos_para_ia.py::test_o_prefixo_dos_planos_tem_so_as_duas_rotas`.
-PREFIXO_PUBLICO_DOS_PLANOS = "/mapa-ia/planos/"
 
 #: [MIDIA PUBLICA] O prefixo que entrega imagem e vídeo de documento no ar
 #: (TAR-598, 21/09/2026).
@@ -225,26 +169,6 @@ def _emails_autorizados() -> frozenset[str]:
     return do_servidor | do_banco
 
 
-def _anota(registrar, *args) -> None:
-    """Medir JAMAIS derruba a porta. Nem por defeito, nem por assinatura.
-
-    O `try` de dentro do medidor cobre um erro no corpo dele. Não cobre a
-    chamada em si: se um dia alguém acrescentar um parâmetro obrigatório lá, a
-    chamada estoura ANTES de entrar na função, e um TypeError sobe pelo
-    middleware — transformando um 302 para o login num 500. Numa área
-    fail-closed isso é o mantenedor trancado para fora das próprias ferramentas
-    por causa de um contador.
-
-    Por isso a fronteira é guardada AQUI, no lado que sofre a consequência.
-    Provado em `tests/test_medidor.py::test_medidor_quebrado_nao_muda_a_porta`,
-    que substitui o medidor por um que explode e exige a mesma resposta.
-    """
-    try:
-        registrar(*args)
-    except Exception:  # noqa: BLE001 — observar não pode derrubar quem decide
-        logger.warning("porta: a medição falhou e foi ignorada", exc_info=True)
-
-
 class PortaAdministrativa:
     """Middleware que decide quem passa. Único ponto de autorização da célula."""
 
@@ -253,8 +177,7 @@ class PortaAdministrativa:
         self.identidade = IdentidadeClient()
 
     def __call__(self, request):
-        with dados_da_resposta():
-            return self._responder(request)
+        return self._responder(request)
 
     def _responder(self, request):
         if _sob_a_porta_de_maquina(request.path_info):
@@ -269,7 +192,6 @@ class PortaAdministrativa:
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
             (
                 PREFIXO_PUBLICO_DOS_DOCUMENTOS,
-                PREFIXO_PUBLICO_DOS_PLANOS,
                 PREFIXO_PUBLICO_DA_MIDIA,
             )
         ):
@@ -287,7 +209,6 @@ class PortaAdministrativa:
         admin_local = self._admin_local_da_requisicao(request)
         if admin_local:
             request.admin = admin_local
-            _anota(medidor.registrar_resposta, "entrou")
             return self._com_seguranca(self.get_response(request))
         if tem_cookie_local:
             return self._para_o_login(request)
@@ -328,7 +249,6 @@ class PortaAdministrativa:
             "nome": sessao.get("nome_exibido") or email,
             "email": email,
         }
-        _anota(medidor.registrar_resposta, "entrou")
         return self._com_seguranca(self.get_response(request))
 
     # ---------------------------------------------------------------- respostas
@@ -356,22 +276,15 @@ class PortaAdministrativa:
         }
 
     def _para_o_login(self, request):
-        _anota(medidor.registrar_resposta, "mandou_para_o_login")
         destino = f"{settings.URL_DE_ENTRADA}?next={request.path}"
         return self._com_seguranca(HttpResponseRedirect(destino))
 
     def _nao_existe(self):
-        _anota(medidor.registrar_resposta, "nao_existe_para_voce")
         return self._com_seguranca(
             HttpResponseNotFound(render_to_string("admin/404.html"))
         )
 
     def _indisponivel(self):
-        # O contador que fecha o caso de 27/08: durante um incidente, 503 por
-        # minuto deveria bater com quantos registros o painel deixou de
-        # carregar. Depois do conserto, zero — e se sobrarem 503 com o painel
-        # pedindo pouco, a identidade está doente por conta própria.
-        _anota(medidor.registrar_resposta, "indisponivel_503")
         resposta = HttpResponse(render_to_string("admin/503.html"), status=503)
         # Diz ao navegador (e a qualquer cache no caminho) que isto é
         # temporário e não deve ser guardado — 503 sem isto pode ser cacheado.
@@ -383,11 +296,12 @@ class PortaAdministrativa:
         """CSP em TODA resposta desta célula, inclusive nas de recusa.
 
         `frame-ancestors 'self'` e **nunca `'none'`**: `'none'` proíbe
-        enquadramento inclusive de mesma origem, e a galeria de painéis (fase
-        3) serve painel em iframe a partir da própria área. Este erro já foi
-        cometido uma vez, no papel, e pego na revisão (`armadilhas/109`). O
-        `X-Frame-Options: SAMEORIGIN` correspondente vem do Traefik
-        (`seguranca-admin`) — as duas precisam concordar.
+        enquadramento inclusive de mesma origem, e esta área mostra páginas
+        próprias dentro de iframe (o modelo de lançamento, a página visual do
+        documento). Este erro já foi cometido uma vez, no papel, e pego na
+        revisão (`armadilhas/109`). O `X-Frame-Options: SAMEORIGIN`
+        correspondente vem do Traefik (`seguranca-admin`) — as duas precisam
+        concordar.
 
         O resto é o que fecha a porta do lado do navegador: sem `script-src`
         de terceiro, sem `object-src`, sem `<base>` sequestrado, e formulário
@@ -409,14 +323,13 @@ class PortaAdministrativa:
         # ficava livre para decidir sozinho — inclusive para reexibir a cópia
         # que já tinha ao voltar, ao restaurar uma aba ou ao trocar de aba. Numa
         # área cujo conteúdo INTEIRO é calculado do estado de agora (quem pediu
-        # acesso, quanto entrou, o que os robôs fizeram, que endereços o site
-        # tem), uma cópia velha não é uma tela desatualizada: é uma tela que
-        # MENTE, e mente exatamente como uma tela certa. O dono não tem como
-        # perceber a diferença — só percebe que "continua do jeito antigo".
+        # acesso, quanto entrou, que endereços o site tem), uma cópia velha não
+        # é uma tela desatualizada: é uma tela que MENTE, e mente exatamente
+        # como uma tela certa. O dono não tem como perceber a diferença — só
+        # percebe que "continua do jeito antigo".
         #
-        # `setdefault` de propósito, e não atribuição: `/mapa-ia/` e
-        # `/mapa-ia/planos/` mandam `public, max-age=300` porque são texto
-        # público que uma IA de fora lê, e essas duas continuam decidindo por si.
+        # `setdefault` de propósito, e não atribuição: a view que já decidiu o
+        # próprio cache continua decidindo por si.
         #
         # É a mesma família do `no-store` que a resposta 503 já levava, e pelo
         # mesmo motivo: resposta que não deve sobreviver ao momento em que
@@ -435,8 +348,7 @@ class PortaAdministrativa:
         método mandava dizia `style-src 'self'`, que **proíbe estilo embutido**.
         Resultado: TODA tela desta área — visão geral, escola, alunos, Caixa,
         documentos, o mapa do site — chegava ao navegador do dono **sem estilo
-        nenhum**. As duas exceções eram `/admin/painel/` e a aba "Os robôs",
-        que mandam CSP própria e por isso nunca sofreram.
+        nenhum**.
 
         Ninguém viu porque nada media: o teste do Django não executa CSP, e o
         `curl` baixa o HTML inteiro (com o `<style>` lá dentro) e não o aplica.
@@ -447,12 +359,13 @@ class PortaAdministrativa:
              Policy directive 'style-src 'self''. ... The action has been
              blocked."
 
-        **Hash, e nunca `'unsafe-inline'`** — o mesmo desenho de `painel.py`
-        para o script embutido, e pelo mesmo motivo: `'unsafe-inline'` liberaria
-        QUALQUER estilo injetado, inclusive um vindo de conteúdo de terceiro. O
-        hash libera exatamente estes bytes. E, por ser calculado da resposta
-        servida, ninguém precisa lembrar de atualizá-lo quando o CSS mudar —
-        que é a diferença entre um mecanismo e uma promessa.
+        **Hash, e nunca `'unsafe-inline'`** — o mesmo desenho que `livro.py` usa
+        para o script embutido, e pelo mesmo motivo:
+        `'unsafe-inline'` liberaria QUALQUER estilo injetado, inclusive um
+        vindo de conteúdo de terceiro. O hash libera exatamente estes bytes. E,
+        por ser calculado da resposta servida, ninguém precisa lembrar de
+        atualizá-lo quando o CSS mudar — que é a diferença entre um mecanismo e
+        uma promessa.
 
         Resposta sem corpo (302, 404 de redirecionamento) simplesmente não tem
         `<style>`: a política sai igual à de antes, sem hash nenhum.

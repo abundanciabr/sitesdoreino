@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-151448-TAR-900-concluida",
-  "tarefa": "TAR-900",
-  "evento": "concluida",
-  "quando": "2026-09-27T15:14:48.691616+00:00",
-  "quem": "agent/pagamentos/appmax-fecho-r3",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2273",
-  "verificado_em": "2026-09-27"
-}

@@ -1,123 +1,68 @@
-# =============================================================================
-# ROLLBACK — a resposta canônica a qualquer emergência (RITOS §4), pelo
-# pipeline. Volta UMA célula a uma imagem que a produção JÁ rodou:
-# `<CELULA>_TAG=<sha> docker compose up -d <servicos-da-celula>`.
-#
-# POR QUE ESTE TEM workflow_dispatch E OS DOIS DEPLOYS NÃO: deploy-celula e
-# deploy-infra ENTREGAM código — caminho de entrega que ninguém amarra a commit
-# revisado não existe aqui. Este workflow só ANDA PARA TRÁS, e ci/rollback.py
-# prova antes de qualquer SSH que o alvo é (a) uma célula declarada no
-# manifesto, (b) um commit ANCESTRAL da main — logo, um commit que já passou
-# pelo portão de deploy — e (c) uma imagem que existe no registry. Fora dessas
-# três, o job de aplicar é pulado (INV-CI01: não medir nunca vira verde).
-#
-# Antes disto, o rollback existia só como bloco de SSH no RITOS §4 — e agente
-# não tem chave (Lei 5). Na prática, o caminho MAIS RÁPIDO numa emergência
-# dependia de acordar o mantenedor e fazê-lo colar comando em terminal, que é
-# exatamente o que a Lei das 2h da Manhã existe para impedir.
-#
-# O PIN NÃO PERSISTE, DE PROPÓSITO: a variável é exportada só para este `up`.
-# O próximo deploy da célula (ou qualquer `up` sem ela) volta para `:main`.
-# É o RITOS §4 item 3 — "estado manual jamais persiste como fonte de verdade":
-# o rollback segura o fogo; quem apaga é o PR com a correção. Enquanto a
-# correção não vem, disparar de novo é o caminho — nunca editar o servidor.
-#
-# COMO DESFAZER: dispare com alvo = `main`.
-#
-# O CI conhece apenas VPS_HOST e a chave do usuário `deploy` — os MESMOS
-# secrets do deploy-celula. Segredos de RUNTIME vivem SÓ em
-# /opt/plataforma/env/*.env (INV-P8) e este workflow não os lê nem os escreve.
-# =============================================================================
 name: rollback
 on:
   workflow_dispatch:
     inputs:
-      celula:
-        description: 'Célula a voltar (uma só — rollback de uma não toca nenhuma outra)'
-        required: true
+      modo:
+        description: Recuperar célula ou selecionar a última publicação
         type: choice
-        options:
-          - admin
-          - alunos
-          - catalogo
-          - checkout
-          - cursos
-          - encomendas
-          - forum
-          - funil
-          - gamificacao
-          - identidade
-          - leads
-          - mensageria
-          - metricas
-          - notificacoes
-          - pagamentos
-          - pages
-          - quiz
-          - sugestoes
-      alvo:
-        description: 'sha COMPLETO (40 hex) de um commit da main — ou "main" para desfazer o pin'
-        required: true
+        options: [recuperar, recuperar-auto]
+        default: recuperar
+      celula:
+        description: Célula (vazio no modo recuperar-auto)
+        required: false
         type: string
       motivo:
-        description: 'Por que estamos voltando (vai para o log do run — é a trilha de auditoria)'
+        description: Motivo da recuperação
         required: true
         type: string
+  workflow_call:
+    inputs:
+      modo:
+        type: string
+        default: recuperar
+      celula:
+        type: string
+        default: ''
+      motivo:
+        type: string
+        required: true
+    secrets:
+      VPS_HOST:
+        required: true
+      DEPLOY_SSH_KEY:
+        required: true
 permissions:
   contents: read
-# MESMO grupo dos dois deploys: um rollback disparado no meio de um deploy
-# seria intercalado no mesmo `docker compose`. O grupo os enfileira sem
-# cancelar — cancelar um deploy pela metade é pior que esperar por ele.
-# Com `queue: max` (TAR-529, 20/09/2026) ele passa a só esperar a vez: antes
-# esperava e ainda podia ser expulso da vaga única de pendente.
+  packages: read
 concurrency:
   group: deploy
   cancel-in-progress: false
   queue: max
 jobs:
   validar:
-    name: validar-alvo
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Least privilege: quem VALIDA lê o registry — nunca recebe a chave SSH.
-    permissions:
-      contents: read
-      packages: read
+    timeout-minutes: 5
     outputs:
       celula: ${{ steps.v.outputs.celula }}
-      tag: ${{ steps.v.outputs.tag }}
-      var_tag: ${{ steps.v.outputs.var_tag }}
+      modo: ${{ steps.v.outputs.modo }}
     steps:
-      # A CONFERENCIA QUE PRECEDE A CONEXAO (TAR-461). Num disparo por
-      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
-      # escolhida, e nao os da main: sem este passo, qualquer ramo empurrado
-      # levaria o proprio `infra/*.sh` para dentro da VPS com a chave de deploy.
-      # Guarda: `ci/tests/test_workflows_com_ssh_tem_portao.py`.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
-      # `ref: main` NÃO é decoração — é a régua da checagem de linhagem.
-      # `workflow_dispatch` aceita ser disparado de QUALQUER ref (`gh workflow
-      # run --ref <branch>`), e com o checkout padrão o repositório viria nesse
-      # ref: a promessa "o alvo é ancestral da MAIN" viraria, na prática, "é
-      # ancestral da branch de quem disparou". Fixando aqui, a régua é sempre a
-      # linha principal — e, de quebra, o `ci/rollback.py` que julga também vem
-      # da main, não da branch do disparo.
-      #
-      # fetch-depth: 0 pelo mesmo peso — a ancestralidade precisa do histórico
-      # inteiro. Com clone raso, um sha legítimo de dois dias atrás seria
-      # "desconhecido", e o portão reprovaria um alvo BOM (ERROR honesto, mas no
-      # meio de uma emergência isso custa os minutos que o rito conta).
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          ref: main
-          fetch-depth: 0
+          python-version: '3.12'
+      - id: v
+        env:
+          ROLLBACK_CELULA: ${{ inputs.celula }}
+          ROLLBACK_MODO: ${{ inputs.modo }}
+          ROLLBACK_MOTIVO: ${{ inputs.motivo }}
+        run: python ci/rollback.py validar-celula
+  aplicar:
+    needs: validar
+    environment: vps
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -126,192 +71,100 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: v
-        name: Validar o alvo (0 = seguro · 1 = reprovado · 2 = não mediu)
+      - name: Consultar publicações comprovadas na VPS
+        id: estado
+        uses: appleboy/ssh-action@v1
         env:
-          ROLLBACK_CELULA: ${{ inputs.celula }}
-          ROLLBACK_ALVO: ${{ inputs.alvo }}
-          ROLLBACK_MOTIVO: ${{ inputs.motivo }}
-          # HEAD, e não `github.sha`: o checkout acima fixa `ref: main`, então
-          # HEAD É a main. Usar `github.sha` aqui era o furo — ele é o sha do
-          # ref DO DISPARO, o que deixava a régua nas mãos de quem dispara.
-          ROLLBACK_BASE: HEAD
-        run: python ci/rollback.py
-
-  aplicar:
-    name: aplicar-na-vps
-    needs: validar
-    # Explícito de propósito; NUNCA always()/failure(). E as saídas conferidas
-    # uma a uma: um job que "passou" sem produzir plano é instrumentação
-    # quebrada, não autorização para mexer na produção.
-    if: >-
-      needs.validar.result == 'success' &&
-      needs.validar.outputs.celula != '' &&
-      needs.validar.outputs.tag != '' &&
-      needs.validar.outputs.var_tag != ''
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
-    environment: vps
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # ESTE JOB NÃO GANHA ESCRITA, E ISSO É DECISÃO, NÃO ESQUECIMENTO.
-    # Ele é o único lugar da casa que abre um SSH na produção com a chave de
-    # deploy. Somar a isso o direito de gravar no repositório juntaria os dois
-    # poderes num passo só. Quem congela é o job `congelamento`, que não tem a
-    # chave; quem entra na VPS é este, que não tem a caneta.
-    permissions:
-      contents: read
-    steps:
-      # O CHECKOUT QUE FALTAVA, e cuja falta quebrava a válvula em silêncio.
-      #
-      # Medido em 19/09/2026: o passo do SSH manda rodar
-      # `script_path: infra/reverter-celula-na-vps.sh`, e `script_path` lê um
-      # arquivo DO RUNNER. Sem checkout esse arquivo não existe. O `script_path`
-      # entrou aqui em 28/08/2026 (c6f90bfe) e o job `aplicar-na-vps` não roda
-      # desde 24/08/2026: a resposta canônica a QUALQUER emergência passou 22
-      # dias quebrada sem um único run vermelho, porque ninguém dispara um
-      # rollback sem incêndio. Todo outro job da casa que usa `script_path`
-      # (deploy-celula, deploy-infra) começa por aqui.
-      #
-      # `ref: main` EXPLÍCITO, pelo mesmo peso do job que valida: o roteiro que
-      # entra na VPS vem da linha principal, nunca do ref de quem disparou.
-      # `workflow_dispatch` aceita ser disparado de qualquer ref, e sem esta
-      # linha um ramo de rascunho escolheria o que roda no servidor.
-      - uses: actions/checkout@v4
+          CELULA: ${{ needs.validar.outputs.celula }}
         with:
-          ref: main
-      # O motivo é texto LIVRE — ele nunca entra no script do SSH. Interpolar
-      # `${{ inputs.* }}` dentro de um `script:` é substituição de TEXTO: um
-      # motivo com aspas e `;` viraria comando na VPS. Por env não vira: o
-      # shell recebe o valor como dado, não como código. Os outros valores
-      # usados lá embaixo podem ser interpolados porque ci/rollback.py já
-      # provou que são um nome do manifesto e um sha/`main` — é para isso que
-      # a validação existe antes do SSH.
-      - name: Motivo declarado no disparo (trilha de auditoria)
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          envs: CELULA
+          capture_stdout: true
+          script: |
+            set -eu
+            cd /opt/plataforma
+            python3 - <<'PY'
+            import glob, json, os
+            from pathlib import Path
+            celula = os.environ.get('CELULA', '')
+            caminhos = [f'publicacoes/{celula}.json'] if celula else sorted(glob.glob('publicacoes/*.json'))
+            caminhos = [p for p in caminhos if Path(p).name not in {'imagens.json', 'recuperacao-terminal.json'}]
+            try:
+                publicacoes = [json.loads(Path(p).read_text()) for p in caminhos if Path(p).is_file()]
+            except (OSError, ValueError):
+                publicacoes = None
+            print(json.dumps({'publicacoes': publicacoes, 'recuperacao_global': Path('publicacoes/recuperacao-terminal.json').exists()}))
+            PY
+      - name: Escolher uma única versão aprovada compatível
+        id: alvo
         env:
-          MOTIVO: ${{ inputs.motivo }}
-        run: |
-          printf 'MOTIVO: %s\n' "$MOTIVO"
-      # O CORPO DA REVERSÃO MORA NUM ARQUIVO, e não aqui dentro: desde
-      # 29/08/2026 a reversão AUTOMÁTICA do `deploy-celula` usa exatamente o
-      # mesmo script (`infra/reverter-celula-na-vps.sh`). Duas cópias
-      # divergiriam no primeiro dia em que alguém mexesse numa delas, e a que
-      # rodaria às 2h da manhã seria a que ficou para trás. Guarda:
-      # `ci/tests/test_reversao.py`.
-      #
-      # Por `envs:` e não por interpolação: os valores já foram provados por
-      # `ci/rollback.py`, mas passá-los como DADOS (e não como texto costurado
-      # dentro do script) é o que mantém a porta fechada por construção.
-      - name: Voltar a célula na VPS (pull + up dela E dos auxiliares dela)
-        id: voltar
+          ROLLBACK_CELULA: ${{ needs.validar.outputs.celula }}
+          ROLLBACK_MODO: ${{ needs.validar.outputs.modo }}
+          ROLLBACK_MOTIVO: ${{ inputs.motivo }}
+          REVERSAO_ESTADO_PUBLICACAO: ${{ steps.estado.outputs.stdout }}
+        run: python ci/rollback.py
+      - name: Encerrar tentativa quando a seleção não encontrou destino
+        if: ${{ failure() && steps.alvo.outcome == 'failure' && steps.alvo.outputs.celula != '' && steps.alvo.outputs.atual != '' }}
+        uses: appleboy/ssh-action@v1
+        env:
+          CELULA: ${{ steps.alvo.outputs.celula }}
+          ATUAL_ESPERADA: ${{ steps.alvo.outputs.atual }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          envs: CELULA,ATUAL_ESPERADA
+          script: |
+            set -eu
+            cd /opt/plataforma
+            exec 8<.publicacao.lock
+            flock --exclusive 8
+            python3 publicacao-local.py encerrar-recuperacao
+      - name: Encerrar tentativa automática sem célula identificável
+        if: ${{ failure() && steps.alvo.outcome == 'failure' && inputs.modo == 'recuperar-auto' && steps.alvo.outputs.celula == '' }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: CELULA,VAR_TAG,TAG
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          script: |
+            set -eu
+            cd /opt/plataforma
+            exec 8<.publicacao.lock
+            flock --exclusive 8
+            CELULA='' python3 publicacao-local.py encerrar-recuperacao
+      - name: Aplicar recuperação e repetir a prova
+        id: recuperar
+        uses: appleboy/ssh-action@v1
+        env:
+          CELULA: ${{ steps.alvo.outputs.celula }}
+          VAR_TAG: ${{ steps.alvo.outputs.var_tag }}
+          TAG: ${{ steps.alvo.outputs.tag }}
+          ATUAL_ESPERADA: ${{ steps.alvo.outputs.atual }}
+          COMPATIBILIDADE_DADOS: ${{ steps.alvo.outputs.dados }}
+          COMPATIBILIDADE_CONFIGURACAO: ${{ steps.alvo.outputs.configuracao }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
+          envs: CELULA,VAR_TAG,TAG,ATUAL_ESPERADA,COMPATIBILIDADE_DADOS,COMPATIBILIDADE_CONFIGURACAO
           capture_stdout: true
           script_path: infra/reverter-celula-na-vps.sh
+      - name: Conferir conclusão da recuperação
         env:
-          CELULA: ${{ needs.validar.outputs.celula }}
-          VAR_TAG: ${{ needs.validar.outputs.var_tag }}
-          TAG: ${{ needs.validar.outputs.tag }}
-
-      # A MESMA trava do deploy, e aqui ela vale ainda mais: um rollback que
-      # anuncia sucesso sem ter rodado deixa a emergência de pé com todos os
-      # sinais verdes. Em 28/08/2026 a ação de SSH conectou, ignorou o script e
-      # saiu com sucesso — o script termina imprimindo esta marca justamente
-      # para "a porta abriu" nunca mais ser lido como "o trabalho foi feito".
-      - name: O rollback rodou mesmo na VPS?
-        env:
-          SAIDA: ${{ steps.voltar.outputs.stdout }}
+          SAIDA: ${{ steps.recuperar.outputs.stdout }}
+          CELULA: ${{ steps.alvo.outputs.celula }}
+          TAG: ${{ steps.alvo.outputs.tag }}
         run: |
           set -eu
-          if printf '%s' "$SAIDA" | grep -q 'REVERSAO-CONCLUIDA:'; then
-            echo "✅ A célula voltou para a imagem pedida, e o script rodou até o fim."
-          else
-            echo "❌ PAROU: a saída da VPS não traz a marca REVERSAO-CONCLUIDA."
-            echo "   A conexão pode ter aberto sem que nada fosse executado."
-            echo "   NÃO trate a emergência como resolvida."
-            exit 1
-          fi
-
-  # ===========================================================================
-  # CONGELAMENTO — o rollback continua de pé depois que o run termina.
-  #
-  # Voltar a imagem é metade do trabalho. A outra metade é o rollback SOBREVIVER
-  # aos 15 minutos seguintes: desde 13/09/2026 quem integra é
-  # `ci/mergear.py --automatico`, acordado por cron, e mergear um PR da célula
-  # dispara o `deploy-celula` dela, que republica `:main` por cima da imagem
-  # para a qual ela acabou de voltar. Com o run verde e ninguém no circuito.
-  # O PR #1739 deu à casa a referência `refs/congelamentos/<celula>` e o portão
-  # que a lê; este job é quem a liga e desliga, para ninguém precisar lembrar.
-  #
-  # JOB SEPARADO, E ESSA É A DECISÃO CENTRAL: a escrita no repositório mora
-  # aqui, e a chave SSH da produção mora no job de cima. Nenhum passo desta
-  # esteira tem os dois. Quem entra na VPS não escreve no repositório; quem
-  # escreve no repositório não entra na VPS.
-  # ===========================================================================
-  congelamento:
-    name: congelar-ou-descongelar
-    needs: [validar, aplicar]
-    # `always()` aqui é o coração da regra, e ele NÃO afrouxa o `if` do job que
-    # aplica: aquele continua exigindo o alvo provado. Este job só existe
-    # depois que a produção já foi tocada, e é justamente o desfecho INCERTO
-    # (SSH pela metade, marca de conclusão ausente, run cancelado no meio) que
-    # mais precisa de congelamento — a célula está num estado que ninguém
-    # garante E destravada para a integração automática. Congelar de menos
-    # custa um rollback desfeito em silêncio; congelar de mais custa um
-    # comando de seis palavras. A guarda de verdade está no `if` de cada passo.
-    if: ${{ always() && needs.validar.result == 'success' && needs.validar.outputs.celula != '' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # A ÚNICA escrita desta esteira, e ela não tem a chave da VPS.
-    # `ci/tests/test_rollback_congela_ao_aplicar.py` mede, em TODOS os
-    # workflows da casa, que nenhum outro job ganhou escrita e que o job do SSH
-    # não a tem.
-    permissions:
-      contents: write
-    steps:
-      # `ref: main` pelo mesmo peso dos outros dois: o `ci/rollback.py` que
-      # decide o congelamento vem da linha principal, nunca do ref do disparo.
-      # A credencial do checkout FICA (padrão), porque é o token deste job que
-      # o `git push` da referência usa; `persist-credentials: false` aqui faria
-      # o congelamento falhar calado no meio de uma emergência.
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      # IDENTIDADE, e ela não é burocracia: o congelamento grava a referência
-      # montando um commit com `git commit-tree`, e commit-tree EXIGE autor.
-      # A bancada de um agente tem identidade configurada; o runner do GitHub
-      # não tem nenhuma. Medido no smoke da TAR-486 (run 35417675479): o passo
-      # morreu com `fatal: empty ident name`, exit 128 — ou seja, sem esta
-      # linha o congelamento falharia exatamente às 2h da manhã, e só ali.
-      - name: Identidade de quem assina o congelamento
+          printf '%s\n' "$SAIDA" | grep -Fx "REVERSAO-CONCLUIDA: $CELULA -> $TAG"
+      - name: Informar falha terminal
+        if: failure()
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-      # CONGELAR — alvo antigo, desfecho QUALQUER.
-      # Se a aplicação terminou incerta, a célula pode estar na imagem antiga,
-      # na nova, ou no meio. Nenhum desses três estados é seguro para receber
-      # um deploy automático, então os três congelam.
-      - name: Segurar o rollback de pé (congelar a célula)
-        if: ${{ needs.validar.outputs.tag != 'main' }}
-        env:
-          CELULA: ${{ needs.validar.outputs.celula }}
-          MOTIVO: ${{ inputs.motivo }}
-        run: python ci/rollback.py congelar "$CELULA" --motivo "$MOTIVO"
-
-      # DESCONGELAR — `alvo=main` é o DESFAZER do RITOS §4, e só depois do
-      # SUCESSO. Um retorno à linha principal que terminou incerto não prova
-      # que a célula voltou ao normal, e soltar a trava ali devolveria a
-      # integração automática a uma célula que ninguém sabe onde está.
-      - name: Devolver a célula à fila normal (descongelar)
-        if: ${{ needs.validar.outputs.tag == 'main' && needs.aplicar.result == 'success' }}
-        env:
-          CELULA: ${{ needs.validar.outputs.celula }}
-        run: python ci/rollback.py descongelar "$CELULA"
+          echo '::error::Recuperação interrompida. Consulte journal publicacoes/CELULA.json, alvo, compatibilidade e saída da prova. Nenhuma segunda tentativa ou restauração do banco será executada automaticamente.'

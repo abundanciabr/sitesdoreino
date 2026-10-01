@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 {% comment %}
-A ANÁLISE — aba 6 da gestão da Caixa, nascida em 05/09/2026.
+A ANÁLISE, aba 5 da gestão da Caixa, nascida em 05/09/2026.
 
 Por que ela existe: o mantenedor pediu a leitura das sugestões da turma, recebeu
 uma página fora do site e respondeu com a regra que virou lei — entrega dele
@@ -470,11 +470,9 @@ copiado e mandado para alguém.
               aba de exportar: a porta manda `script-src 'self'`. Clicar dentro
               e apertar Ctrl+A seleciona só o que está aqui dentro.
 
-              O botão que manda isto direto para o painel de tarefas ainda não
-              existe porque o painel ainda não existe (o mantenedor está
-              terminando-o em 05/09/2026). Quando existir, é este mesmo texto
-              que ele leva — e um botão que não leva a lugar nenhum seria pior
-              do que um campo que a pessoa copia.
+              Não há botão que mande isto direto para uma tela de tarefas, e um
+              botão que não leva a lugar nenhum seria pior do que um campo que
+              a pessoa copia.
               {% endcomment %}
               <textarea class="campo-tarefa" readonly spellcheck="false" aria-label="A tarefa pronta desta ideia, para copiar">{{ ideia.tarefa.titulo }}
 

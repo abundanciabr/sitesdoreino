@@ -1,57 +1,19 @@
 #!/usr/bin/env python3
-"""VIGIA DO SITE — a loja abre? Perguntado DE FORA, pela internet pública.
+"""Mede pela internet pública se a raiz de cada site entrega HTTP 200.
 
-POR QUE ESTE ARQUIVO EXISTE
----------------------------
-Até 18/09/2026 nenhum mecanismo desta casa perguntava se o site RESPONDE.
-O inventário, medido na `origin/main`:
-
-  - `ci/vigia_do_cadeado.py` era o único olho externo, e ele importa `ssl`,
-    abre um handshake e lê `notAfter`. Nenhuma requisição HTTP, nenhum código
-    de status. Um Traefik com cadeado perfeito na frente de células mortas
-    passava nele todo dia.
-  - `git grep -niE "autoheal|watchtower|uptime" -- infra/ ci/ .github/` volta
-    vazio.
-  - `ci/sonda_da_vps.py::http_do_site` sabe medir um status, mas só é chamada
-    DENTRO do diagnóstico de um deploy doente, num endereço fixo. Deploy que
-    não acontece é medição que não acontece.
-  - O `healthcheck` do compose só é LIDO no `up -d --wait` da publicação. Em
-    regime, `restart: unless-stopped` reage a processo MORTO, nunca a processo
-    vivo e travado: uvicorn com pool esgotado, consumidor em deadlock, migrate
-    pendurado.
-
-Resultado: a loja podia amanhecer fechada e o primeiro a descobrir seria um
-visitante. É GARANTIA SEM MECANISMO, um dos oito padrões da
-`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Este arquivo é o mecanismo.
-
-PROVA DE FORA
--------------
-A medição sai do runner do Actions, pela internet pública, como a do vigia do
-cadeado e a do smoke do `deploy-infra`. O que vale é o que o VISITANTE recebe:
-perguntar ao container se ele está bem é deixá-lo dar a própria nota.
-
-FAIL-CLOSED (INV-CI01)
-----------------------
-"Não consegui medir" nunca vira "está no ar". A distinção entre os dois modos
-de não passar está escrita aqui e é deliberada:
-
-  FAIL  (1) — o host não entregou a página: status diferente de 200, DNS que
-              não resolve, porta fechada, tempo estourado. Tudo isso é a loja
-              fechada para quem chega, que é exatamente o fato a vigiar.
-  ERROR (2) — o INSTRUMENTO quebrou: a lista de hosts saiu vazia, o registro
-              de sites não abriu. "Medi zero hosts, todos passaram" é o
-              falso-verde de vacuidade, e é a mentira que o INV-CI01 mata.
-
-O oposto também está guardado: uma queda de rede de um segundo não pode abrir
-chamado. Por isso `medir()` insiste algumas vezes, com pausa, ANTES de dizer
-que não conseguiu. Um status ruim, ao contrário, é fato estável: repeti-lo só
-atrasaria o alarme.
+A leitura externa detecta serviços travados mesmo quando TLS e processos
+continuam funcionando. Redirecionamentos são seguidos como no navegador.
+Falha de rede recebe tentativas limitadas; status HTTP ruim reprova de imediato.
+Retorno 1 significa indisponibilidade; 2 significa instrumento quebrado,
+incluindo lista vazia ou fonte ilegível. Nenhum deles significa site saudável.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+from pathlib import Path
 import sys
 import time
 import urllib.error
@@ -105,7 +67,7 @@ def _uma_tentativa(host: str, timeout: float) -> Resposta:
     )
     try:
         # Redirecionamento é seguido de propósito: a raiz do `www.` responde
-        # 301 por desenho (armadilhas/177), e o visitante que digita o `www.`
+        # 301 por desenho, e o visitante que digita o `www.`
         # termina na página. O que se julga é onde ele CHEGA.
         with urllib.request.urlopen(pedido, timeout=timeout) as resposta:
             return Resposta(status=int(resposta.status), url_final=resposta.geturl())
@@ -169,6 +131,15 @@ def linha_de_estado(host: str, resposta: Resposta) -> str:
 
 
 # ---------------------------------------------------------------------------
+def registrar_estado(estado: str, hosts_falhos: list[str]) -> None:
+    """Entrega ao Actions apenas medição; nunca deduz célula pelo endereço."""
+    destino = os.environ.get("GITHUB_OUTPUT")
+    if destino:
+        with Path(destino).open("a", encoding="utf-8") as arquivo:
+            arquivo.write(f"estado={estado}\n")
+            arquivo.write("hosts_falhos=" + json.dumps(hosts_falhos) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Vigia do site: pergunta de fora se cada host responde."
@@ -177,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=TEMPO_MAXIMO)
     args = parser.parse_args(argv)
 
-    print("VIGIA DO SITE — [INV-CI01] fail-closed · prova de fora\n")
+    print("VIGIA DO SITE — medição externa · prova de fora\n")
 
     if args.host:
         hosts, dispensados = list(args.host), []
@@ -188,18 +159,24 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError, AssertionError) as erro:
             print(f"  lista de hosts       ERROR  não consegui montá-la: {erro}")
             print("\nRESULTADO  ERROR — instrumento quebrado, nada foi medido.")
+            registrar_estado("erro", [])
             return 2
 
     if not hosts:
         print("  lista de hosts       ERROR  saiu VAZIA — nada foi medido")
         print("\nRESULTADO  ERROR — instrumento quebrado, nada foi medido.")
+        registrar_estado("erro", [])
         return 2
 
     queixas: list[str] = []
+    hosts_falhos: list[str] = []
     for host in hosts:
         resposta = medir(host, timeout=args.timeout)
         print(linha_de_estado(host, resposta))
-        queixas.extend(julgar(host, resposta))
+        falhas = julgar(host, resposta)
+        queixas.extend(falhas)
+        if falhas:
+            hosts_falhos.append(host)
 
     if dispensados:
         print("\n  dispensados de propósito (declarado, não esquecido):")
@@ -211,8 +188,10 @@ def main(argv: list[str] | None = None) -> int:
         for queixa in queixas:
             print(f"  {queixa}")
         print("\nRESULTADO  FAIL")
+        registrar_estado("indisponivel", hosts_falhos)
         return 1
 
+    registrar_estado("disponivel", [])
     print(f"\nRESULTADO  PASS — {len(hosts)} host(s), todos entregando a página.")
     return 0
 

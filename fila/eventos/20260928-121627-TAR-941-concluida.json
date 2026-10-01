@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260928-121627-TAR-941-concluida",
-  "tarefa": "TAR-941",
-  "evento": "concluida",
-  "quando": "2026-09-28T12:16:27.399841+00:00",
-  "quem": "agent/identidade/recusa-do-login-na-raiz",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2316",
-  "verificado_em": "2026-09-28"
-}

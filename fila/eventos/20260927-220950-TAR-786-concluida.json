@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-220950-TAR-786-concluida",
-  "tarefa": "TAR-786",
-  "evento": "concluida",
-  "quando": "2026-09-27T22:09:50.166641+00:00",
-  "quem": "sessao-experimentos-cc631e70",
-  "evidencia": "saida verde de node e2e/ensaio_experimento.js --modo=ensaio contra producao em 27/09/2026 (nenhum caso falhou, exit 0) com o A/A b1bf8484 ligado e desligado pelo semeador; contagem pelo medir a +1/+1/+1 e b +1/+1/+1, run https://github.com/abundanciabr/sitesdoreino/actions/runs/36354066660; registro painel/registros/20260927-312",
-  "verificado_em": "2026-09-27"
-}

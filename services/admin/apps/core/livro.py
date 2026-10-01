@@ -43,7 +43,7 @@ tomada, e o dia em que for, ela vira uma tela nova com o nome disso.
 Toda tela editorial desta área continua sem script, como sempre — mas
 `texto_ler` tem os controles de fonte, tema e "onde você parou", e por isso
 sobrescreve o `Content-Security-Policy` com o hash do `<script>` embutido,
-seguindo o mesmo desenho de `painel.py` e `robos.py` (`armadilhas/199`).
+seguindo o mesmo desenho de `mapa_do_site.py` (`armadilhas/199`).
 """
 
 from __future__ import annotations
@@ -297,9 +297,10 @@ def _ler(nome: str) -> TextoDoLivro:
 
 
 #: O `<script>` embutido de `livro_ler.html` — os controles de fonte, tema e
-#: "onde você parou". Mesma regex de `painel.py` e `robos.py`, letra por
-#: letra: as três telas hasheiam o mesmo jeito, e divergir aqui seria a Lei 3
-#: (duplicar e divergir) escondida numa expressão regular.
+#: "onde você parou". Mesma regex de `mapa_do_site.py` e `documento_em_pagina.py`,
+#: letra por letra: as telas hasheiam o mesmo jeito, e
+#: divergir aqui seria a Lei 3 (duplicar e divergir) escondida numa expressão
+#: regular.
 _SCRIPT_EMBUTIDO = re.compile(
     rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE
 )
@@ -307,7 +308,7 @@ _SCRIPT_EMBUTIDO = re.compile(
 
 def _csp(html: bytes) -> str:
     """O CSP da tela de leitura: hash do `<script>` embutido, nunca
-    `'unsafe-inline'` — o mesmo desenho de `painel.py` e `robos.py`.
+    `'unsafe-inline'`, o mesmo desenho de `mapa_do_site.py`.
     """
     hashes = " ".join(
         "'sha256-"

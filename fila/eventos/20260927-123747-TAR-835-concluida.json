@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-123747-TAR-835-concluida",
-  "tarefa": "TAR-835",
-  "evento": "concluida",
-  "quando": "2026-09-27T12:37:47.361984+00:00",
-  "quem": "agent/ci/tar-835-rito-so-tarefa-declarada",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2238",
-  "verificado_em": "2026-09-27"
-}

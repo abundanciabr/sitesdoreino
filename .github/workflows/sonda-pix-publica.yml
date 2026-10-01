@@ -9,8 +9,7 @@
 # Só por disparo manual: cada execução cria um pedido pendente real em
 # produção, então relógio e gatilho de PR estão fora de propósito. Sem
 # segredo: a sonda usa só a página pública. Grupo próprio sem cancelamento,
-# para duas execuções nunca correrem juntas nem uma sumir em silêncio
-# (armadilhas/173).
+# para duas execuções nunca correrem juntas nem uma sumir em silêncio.
 # =============================================================================
 name: sonda-pix-publica
 on:

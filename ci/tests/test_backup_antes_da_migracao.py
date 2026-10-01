@@ -11,14 +11,10 @@ medem não é "existe uma linha de backup", e sim **onde ela está em relação 
 `up -d`** — uma asserção de existência passaria com o bloco inteiro movido para
 o fim do arquivo, que é exatamente a mutação que destrói a funcionalidade.
 
-**E por que o backup mora DENTRO do script de deploy, e não num `.sh` só dele:**
-o `deploy-celula.yml` não copia arquivo nenhum para a VPS. A `appleboy/ssh-action`
-recebe `script_path: infra/deploy-celula-na-vps.sh` e envia o CONTEÚDO desse
-arquivo pelo canal SSH; o `deploy-infra` copia uma lista fixa que não inclui `.sh`
-avulso. Um `infra/backup-antes-da-migracao.sh` separado não existiria em
-`/opt/plataforma` na hora do deploy e, como o backup é fail-closed, o deploy
-pararia em toda entrega. O `test_o_workflow_ainda_envia_este_arquivo` abaixo é o
-alarme que dispara se essa premissa mudar.
+O backup continua autocontido no script enviado por SSH. O workflow também
+copia o módulo de publicação e recuperação; sua ausência não muda a ordem
+backup antes do boot e das migrations. O bloco é exercido abaixo com Docker
+simulado, incluindo recusa do dump antes da troca.
 
 -------------------------------------------------------------------------------
 O QUE ESTA SUÍTE **NÃO** PROVA, declarado em vez de fingido (INV-CI01)
@@ -50,6 +46,7 @@ import re
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 DEPLOY = RAIZ / "infra" / "deploy-celula-na-vps.sh"
@@ -441,34 +438,39 @@ def test_o_restaurador_para_a_celula_antes_de_trocar_o_banco():
     )
 
 
-# ---------------------------------------------------------------------------
-# A PREMISSA DO DESENHO — o alarme que dispara se ela mudar
-# ---------------------------------------------------------------------------
-def test_o_workflow_ainda_envia_este_arquivo_e_nao_copia_outros():
-    """Se o deploy da imagem passar a copiar arquivos, o backup pode sair daqui.
-
-    Hoje ele não copia: a `appleboy/ssh-action` manda o CONTEÚDO de
-    `infra/deploy-celula-na-vps.sh` e nada mais chega a `/opt/plataforma`. É por
-    isso, e só por isso, que a cópia de segurança mora dentro do script de
-    deploy. Este teste não proíbe a mudança — ele garante que quem a fizer leia
-    esta explicação em vez de descobrir o acoplamento pelo deploy vermelho.
-    """
-    texto = WORKFLOW.read_text(encoding="utf-8")
-    assert "script_path: infra/deploy-celula-na-vps.sh" in texto, (
-        "o deploy-celula não envia mais infra/deploy-celula-na-vps.sh por "
-        "script_path — reveja onde a cópia de segurança do banco deve morar"
-    )
-    import yaml
-
-    fluxo = yaml.safe_load(texto)
-    deploy = fluxo["jobs"]["deploy"]
-    assert "scp-action" not in str(deploy), (
-        "o job de deploy da imagem ganhou um passo de cópia de arquivos para a VPS.\n"
-        "Isso muda a premissa do desenho da TAR-003: com arquivos chegando em "
-        "/opt/plataforma, a cópia de segurança PODE virar um script próprio "
-        "(infra/backup-antes-da-migracao.sh), que é o desenho preferível.\n"
-        "Se foi isso que você fez de propósito, mova o bloco, atualize estes "
-        "guardas e apague esta asserção — mas faça a mudança inteira, e não pela "
-        "metade: um backup fail-closed que aponta para um arquivo ausente para "
-        "TODA entrega da plataforma."
-    )
+# A ordem do backup é exercida sem Docker nem banco reais.
+@pytest.mark.parametrize("recusado", [False, True])
+def test_bloco_backup_executavel_recusa_troca_se_dump_falhar(tmp_path, recusado):
+    import os
+    import subprocess
+    bash = BASH
+    if os.name == "nt":
+        bash = "C:/Program Files/Git/bin/bash.exe"
+    assert bash, "Bash necessário para exercer o backup"
+    ambiente = tmp_path / "env"
+    ambiente.mkdir()
+    texto = DEPLOY.read_text(encoding="utf-8")
+    bloco = texto[texto.index("parar_o_deploy() {"):texto.index("# --wait reprova o deploy")]
+    fonte = """set -eu
+RAIZ=$PWD
+CELULA=admin
+BACKUP_REFERENCIA=$PWD/env
+docker() {
+  case "$*" in
+    *pg_database_size*) echo 1024 ;;
+    *pg_database*) echo 1 ;;
+    *pg_dump*) if [ "$RECUSADO" = 1 ]; then return 1; fi; echo DUMP_VALIDO ;;
+    *pg_restore*) cat >/dev/null ;;
+    *) return 1 ;;
+  esac
+}
+""" + bloco + '\necho TROCA-PERMITIDA\n'
+    script = tmp_path / "backup.sh"
+    script.write_text(fonte, encoding="utf-8", newline="\n")
+    resultado = subprocess.run([bash, "backup.sh"], cwd=tmp_path,
+                               env=dict(os.environ, RECUSADO=str(int(recusado))),
+                               capture_output=True, text=True)
+    assert (resultado.returncode != 0) == recusado, resultado.stdout + resultado.stderr
+    assert ("TROCA-PERMITIDA" in resultado.stdout) != recusado
+    dumps = list((tmp_path / "backups-de-banco").glob("*.dump"))
+    assert bool(dumps) != recusado

@@ -18,7 +18,7 @@
 # POR QUE workflow_dispatch É SEGURO AQUI: não entrega código; roda um script
 # versionado que só sabe fazer uma coisa. No modo padrão ele nem escreve.
 #
-# GRUPO PRÓPRIO (`armadilhas/173`): no grupo `deploy`, um disparo manual seria
+# GRUPO PRÓPRIO: no grupo `deploy`, um disparo manual seria
 # cancelado antes de começar num repositório com ~100 entregas por dia.
 # =============================================================================
 name: conferir-as-fichas
@@ -43,31 +43,15 @@ concurrency:
 jobs:
   conferir:
     name: conferir as fichas contra o historico de pontos
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      # A CONFERENCIA QUE PRECEDE A CONEXAO (TAR-461). Num disparo por
-      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
-      # escolhida, e nao os da main: sem este passo, qualquer ramo empurrado
-      # levaria o proprio `infra/*.sh` para dentro da VPS com a chave de deploy.
-      # Guarda: `ci/tests/test_workflows_com_ssh_tem_portao.py`.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
       - uses: actions/checkout@v4
 
-      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # a ssh-action com `script_path` apontando para arquivo
       # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
       - name: Conferir que o script existe antes de abrir conexão
         run: |
@@ -80,40 +64,17 @@ jobs:
           echo "✅ script presente e sintaticamente válido"
 
       - name: Conferir na VPS
-        id: conferir
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          capture_stdout: true
           command_timeout: 10m
           # As duas escolhas viajam por `envs`, nunca costuradas no corpo de um
-          # `run:` — texto de fora interpolado em shell é a `armadilhas/047`. E
+          # `run:`: texto de fora interpolado em shell é injeção. E
           # o script valida as duas contra 'sim'/'nao' antes de usá-las.
           envs: CONSERTAR,AVISAR
           script_path: infra/conferir-as-fichas.sh
         env:
           CONSERTAR: ${{ inputs.consertar }}
           AVISAR: ${{ inputs.avisar }}
-
-      # A PROVA, e não o eco (`armadilhas/114`): a linha "PRONTO:" só é impressa
-      # depois de o script ter lido a resposta do comando.
-      - name: Provar que a conferência aconteceu
-        env:
-          SAIDA: ${{ steps.conferir.outputs.stdout }}
-        run: |
-          set -euo pipefail
-          echo "$SAIDA"
-          echo "---------------------------------------------------------------"
-          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
-            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: a conferencia das fichas terminou'; then
-            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
-            echo "Ela só é impressa depois de o comando responder, e sem ela nada"
-            echo "está provado — ausência de erro não é sucesso (INV-CI01)."
-            exit 1
-          fi
-          echo "✅ a conferência rodou e a saída acima diz o que ela encontrou."

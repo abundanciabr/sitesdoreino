@@ -9,19 +9,14 @@ respondesse a pergunta mais simples de todas: **que endereços este site tem?**
 
 | O quê | De onde | Quem escreveu |
 |---|---|---|
-| O texto de cada endereço | `painel/mapa-do-site.json` | gente, uma entrada por rota |
-| O endereço real, o alcance | o mesmo arquivo, **conferido** | `ci/mapa_do_site.py`, na muralha de todo PR |
+| O texto de cada endereço | `apps/core/mapa-do-site.json` | gente, uma entrada por rota |
+| O endereço real, o alcance | o mesmo arquivo | gente, na mesma entrada |
 
-A pasta `painel/` já viaja para dentro desta imagem (o `deploy-celula` copia a
-pasta inteira — é o mesmo caminho por onde o painel do dono e o mapa para IA
-chegam aqui), então este arquivo não precisa de passo de build próprio.
+O arquivo viaja na imagem porque mora dentro da célula, ao lado desta tela:
+não há passo de build próprio nem segunda cópia a manter em dia.
 
-**Nada aqui é recalculado.** O endereço, o alcance e a existência de cada rota
-são medidos pelo cartógrafo do CI a partir do roteamento do Traefik e dos
-`urls.py` das 13 células — e o PR reprova se o mapa e o código discordarem, nos
-dois sentidos. Recalcular aqui dentro seria a segunda definição do mesmo fato,
-que é exatamente a lei anti-duplicação do `CLAUDE.md`: no dia em que as duas
-divergissem, ninguém saberia qual está certa.
+**Nada aqui é recalculado.** Esta tela lê o arquivo e desenha; escrever a
+segunda definição do mesmo fato é o que faria um mapa discordar de si mesmo.
 
 **Se o arquivo não vier, a página DIZ isso** (500 e uma frase clara), nunca um
 mapa vazio. "Este site não tem endereço nenhum" seria a mentira mais convincente
@@ -48,10 +43,9 @@ from pathlib import Path
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
-from .painel import diretorio_do_painel
-from .robos import diretorio_da_fila, onde_isso_mexe
-
-NOME_DO_ARQUIVO = "mapa-do-site.json"
+# O arquivo mora NESTA célula, ao lado da tela que o serve. Quem mais precisa
+# dele (o menu do topo, a máquina do perpétuo) o pede a `arquivo_do_mapa()`.
+ARQUIVO_DO_MAPA = Path(__file__).resolve().parent / "mapa-do-site.json"
 
 _EMBUTIDO = {
     "script-src": re.compile(
@@ -60,10 +54,9 @@ _EMBUTIDO = {
     "style-src": re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNORECASE),
 }
 
-# Os quatro públicos. O vocabulário é o mesmo de `ci/mapa_do_site.py` (que o
-# exige fechado), e desde 06/09/2026 ele DEIXOU DE SER O EIXO da tela: a página
-# passou a se organizar pela árvore de endereços, e o público virou um selo em
-# cada linha, com esta legenda em cima.
+# Os quatro públicos do campo `para_quem` do arquivo. Desde 06/09/2026 eles
+# DEIXARAM DE SER O EIXO da tela: a página passou a se organizar pela árvore de
+# endereços, e o público virou um selo em cada linha, com esta legenda em cima.
 #
 # Por que o eixo mudou: agrupar por público partia a mesma área do site em
 # quatro lugares distantes — a lista de alunos ficava a oitenta linhas da sala
@@ -134,8 +127,8 @@ SELO_DO_PUBLICO = {chave: curto for chave, curto, _, _ in GRUPOS}
 # **Endereço que nenhuma área cobre NÃO some: ele aparece na tela, em voz alta,
 # e reprova o teste-guarda** (`services/admin/tests/test_mapa_do_site.py`).
 # Isso é o que impede esta lista de envelhecer: rota nova exige entrada em
-# `painel/mapa-do-site.json`, o arquivo é da célula `admin`, e a suíte dela roda
-# em todo PR que o toca. Cair num grupo mudo é como um mapa morre.
+# `apps/core/mapa-do-site.json`, e a suíte desta célula roda em todo PR que o
+# toca. Cair num grupo mudo é como um mapa morre.
 AREA_INTERNA = "por-dentro"
 
 AREAS = (
@@ -217,7 +210,7 @@ AREAS = (
         "administracao",
         "A sua área de administração",
         "Tudo o que só você abre: a gestão da escola, a Caixa, o livro, os "
-        "documentos, o placar e o seu painel.",
+        "documentos e o placar.",
         ("/admin",),
     ),
     (
@@ -225,13 +218,6 @@ AREAS = (
         "Os documentos publicados",
         "Os textos que você escreve no editor e ficam no ar para quem tem o link.",
         ("/docs",),
-    ),
-    (
-        "mapa-ia",
-        "O mapa para uma IA de fora ler",
-        "As páginas sem porta que existem para outra inteligência artificial "
-        "auditar este sistema quando você pedir uma segunda opinião.",
-        ("/mapa-ia",),
     ),
     (
         "sinais",
@@ -404,78 +390,9 @@ def _aninhar(linhas: list[dict]) -> list[dict]:
     return raizes
 
 
-# ------------------------------------------------------------- o que está em obra
-#
-# A segunda metade do pedido de 06/09/2026: *"quero poder verificar tudo o que
-# existe E o que ainda está sendo construído"*. O que existe é a árvore acima;
-# o que está sendo construído é a FILA DE TRABALHO, e ela já viaja nesta imagem
-# (a aba "Os robôs" da gestão da Caixa lê a mesma pasta).
-#
-# **Nada é recalculado aqui.** Os estados saem de `fila_embutida/estados.json`,
-# materializado no build por `ci/fila.py listar --json`, e a tradução do `toca`
-# para lugares que o dono reconhece é a de `robos.py`. Uma segunda régua de "em
-# que pé está" seria a duplicação que o `CLAUDE.md` proíbe.
-#
-# **O limite, dito na cara:** a fila sabe em que CÉLULA a tarefa mexe, e não em
-# que endereço ela vai nascer. Por isso esta seção fica ao lado da árvore, e não
-# dentro dela: pendurar a tarefa num galho exigiria adivinhar qual, e um mapa
-# que adivinha é pior que um mapa que declara o que não sabe.
-EM_ABERTO = ("bloqueada", "reivindicada", "em execução", "na fila")
-
-
-def em_obra() -> dict | None:
-    """As tarefas ainda não terminadas, agrupadas por lugar. `None` sem a fila.
-
-    Fila ausente devolve `None` e a tela diz isso numa linha, em vez de mostrar
-    "nada em obra" — que seria a mentira mais convincente desta seção. O mapa em
-    si continua de pé: a fila é o segundo assunto da página, não o primeiro.
-    """
-    pasta = diretorio_da_fila()
-    if pasta is None:
-        return None
-    try:
-        estados = json.loads((pasta / "estados.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(estados, dict):
-        return None
-
-    por_lugar: dict[str, list[dict]] = {}
-    total = 0
-    for identificador, tarefa in sorted(estados.items()):
-        if not isinstance(tarefa, dict) or tarefa.get("estado") not in EM_ABERTO:
-            continue
-        total += 1
-        cartao = {
-            "id": identificador,
-            "titulo": tarefa.get("titulo", ""),
-            "estado": tarefa.get("estado", ""),
-        }
-        # Uma tarefa que mexe em dois lugares aparece nos dois. A conta do topo
-        # é a de TAREFAS (contadas uma vez), e a de cada lugar é a de tarefas
-        # daquele lugar: as duas respondem perguntas diferentes, e somar as
-        # segundas não dá a primeira de propósito.
-        for lugar in onde_isso_mexe(tarefa.get("toca")) or ["sem lugar declarado"]:
-            por_lugar.setdefault(lugar, []).append(cartao)
-
-    return {
-        "total": total,
-        "lugares": [
-            {"nome": nome, "tarefas": tarefas, "quantas": len(tarefas)}
-            for nome, tarefas in sorted(
-                por_lugar.items(), key=lambda par: (-len(par[1]), par[0])
-            )
-        ],
-    }
-
-
 def arquivo_do_mapa() -> Path | None:
-    """`painel/mapa-do-site.json`, na mesma pasta (embutida ou de checkout)."""
-    pasta = diretorio_do_painel()
-    if pasta is None:
-        return None
-    candidato = pasta / NOME_DO_ARQUIVO
-    return candidato if candidato.is_file() else None
+    """O arquivo do mapa, ou `None` se ele não veio nesta versão da imagem."""
+    return ARQUIVO_DO_MAPA if ARQUIVO_DO_MAPA.is_file() else None
 
 
 def _e_molde(endereco: str) -> bool:
@@ -523,8 +440,7 @@ def _preparar(entrada: dict) -> dict:
         ),
         # A luz de "está no ar?". Quem a acende é o NAVEGADOR do dono, pedindo
         # o endereço público de verdade — a prova de fora, do jeito que ele
-        # veria. O que pode ser sondado é cercado em `ci/mapa_do_site.py`:
-        # gesto, endereço interno e molde sem exemplo são recusados no portão.
+        # veria. Gesto nunca é sondado (`test_nenhum_gesto_e_sondado`).
         "sonda": (entrada.get("exemplo") or endereco) if entrada.get("sonda") else None,
     }
 
@@ -556,7 +472,7 @@ def _politica(html: bytes) -> str:
 
     Esta tela manda a própria política porque tem uma ILHA DE SCRIPT (a luz de
     "está no ar?"), e a política da porta diz `script-src 'self'` — sob ela a
-    ilha não roda. O caminho é o hash, o mesmo de `painel.py` e `robos.py`:
+    ilha não roda. O caminho é o hash:
     `'unsafe-inline'` liberaria QUALQUER script injetado, e nunca entra aqui.
 
     O `style-src` leva o hash pelo mesmo motivo, e não pode ser esquecido: como
@@ -623,7 +539,7 @@ def _peneirar(linhas: list[dict], procurado: str) -> list[dict]:
 
 @require_GET
 def mapa_do_site(request):
-    """A página: uma árvore por área do site, e o que ainda está em obra."""
+    """A página: uma árvore por área do site."""
     caminho = arquivo_do_mapa()
     if caminho is None:
         return render(
@@ -721,7 +637,6 @@ def mapa_do_site(request):
     if not procurado:
         achados = len(entradas)
 
-    obra = em_obra()
     resposta = render(
         request,
         "admin/mapa_do_site.html",
@@ -746,7 +661,6 @@ def mapa_do_site(request):
                 1 for e in entradas if not e["gesto"] and e["para_quem"] == "maquina"
             ),
             "total_internos": sum(1 for e in entradas if e["interno"]),
-            "obra": obra,
             "legenda": GRUPOS,
             # As entradas que nenhuma área acolheu. Zero hoje, e a tela as
             # mostra em voz alta se um dia não for: linha que some sem erro é a

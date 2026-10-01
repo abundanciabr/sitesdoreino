@@ -1,8 +1,0 @@
-{
-  "arquivo": "20260930-012233-TAR-958-reivindicacao_expirada",
-  "tarefa": "TAR-958",
-  "evento": "reivindicacao_expirada",
-  "quando": "2026-09-30T01:22:33.227959+00:00",
-  "quem": "codex/infra/pme-backup-recuperacao",
-  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
-}

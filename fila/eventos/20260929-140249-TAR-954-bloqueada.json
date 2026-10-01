@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260929-140249-TAR-954-bloqueada",
-  "tarefa": "TAR-954",
-  "evento": "bloqueada",
-  "quando": "2026-09-29T14:02:49.593055+00:00",
-  "quem": "coordenacao/appmax-aviso-sem-dono",
-  "detalhe": "O que trava: não sabemos com segurança como a Appmax identifica e autentica o aviso (o exemplo traz app_id e site_id em UUID, e a instalação guarda o número da conta). Aceitar aviso sem isso abriria espaço para estorno falso. O que destrava: (1) a leitura appmax-instalacao rodada pela coordenação, que mostra o formato gravado em produção; (2) o mantenedor pergunta no suporte da Appmax qual campo identifica a instalação no aviso e se o aviso é assinado. Com as duas respostas, um escritor em pagamentos faz o casamento.",
-  "espera": "mantenedor"
-}

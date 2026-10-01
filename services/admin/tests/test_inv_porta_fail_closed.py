@@ -207,31 +207,19 @@ def test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes():
 
     Este conjunto é o que separa "a porta protege tudo" de "a porta protege o
     que alguém lembrou de proteger". Acrescentar caminho aqui é decisão
-    visível no diff — que é o ponto. [INV-P14] fez a lista crescer de 1 para
-    10 em 28/08/2026: `/healthz` (máquina) mais os 9 arquivos exatos de
-    `/mapa-ia/` (o mapa técnico do projeto, pedido público pelo mantenedor).
+    visível no diff — que é o ponto. Hoje a lista tem um caminho só: `/healthz`
+    (máquina). Os prefixos públicos (`/docs/`, `/midia/`)
+    moram em constantes próprias da porta, cada uma com o guarda dela.
 
-    **O que NUNCA fazer:** trocar por `<=`, ou pôr um prefixo (`/mapa-ia/…`
-    sem listar cada arquivo) — um prefixo isentaria qualquer coisa que algum
-    dia nascer sob esse caminho, não só o que existe hoje. A `sugestoes` tem
-    uma rota pública de estático declarada; esta célula não tem estático
-    servido — o CSS é embutido no template, justamente para não abrir essa
-    porta agora.
+    **O que NUNCA fazer:** trocar por `<=`, ou pôr um prefixo no lugar de um
+    caminho exato — um prefixo isentaria qualquer coisa que algum dia nascer
+    sob esse caminho, não só o que existe hoje. A `sugestoes` tem uma rota
+    pública de estático declarada; esta célula não tem estático servido — o
+    CSS é embutido no template, justamente para não abrir essa porta agora.
     """
     from apps.core.porta import CAMINHOS_ISENTOS
 
-    assert CAMINHOS_ISENTOS == {
-        "/healthz",
-        "/mapa-ia/",
-        "/mapa-ia/INDICE.md",
-        "/mapa-ia/01-leis-ritos-e-invariantes.md",
-        "/mapa-ia/02-armadilhas-e-padroes-recorrentes.md",
-        "/mapa-ia/03-sistema-do-painel-e-livro.md",
-        "/mapa-ia/04-arquitetura-de-celulas-e-contratos.md",
-        "/mapa-ia/05-infraestrutura-ci-e-deploy.md",
-        "/mapa-ia/06-produto-decisoes-e-roadmap.md",
-        "/mapa-ia/07-oportunidades-e-fronteiras.md",
-    }
+    assert CAMINHOS_ISENTOS == {"/healthz"}
 
 
 def test_healthz_responde_sem_cookie_nenhum():
@@ -260,11 +248,11 @@ def test_healthz_nao_pergunta_a_identidade():
 def test_csp_permite_iframe_de_mesma_origem_e_nao_none():
     """`frame-ancestors 'self'` — NUNCA `'none'`.
 
-    `'none'` proíbe enquadramento inclusive de mesma origem, e a galeria de
-    painéis (fase 3) serve painel em iframe a partir da própria área. O erro
-    já foi cometido uma vez, no papel, e pego na revisão (`armadilhas/109`) —
-    este guarda existe para que a próxima vez seja vermelha em vez de
-    descoberta em produção.
+    `'none'` proíbe enquadramento inclusive de mesma origem, e esta área mostra
+    páginas próprias dentro de iframe (o modelo de lançamento, a página visual
+    do documento). O erro já foi cometido uma vez, no papel, e pego na revisão
+    (`armadilhas/109`) — este guarda existe para que a próxima vez seja
+    vermelha em vez de descoberta em produção.
     """
     respx.get(SESSAO).mock(
         return_value=httpx.Response(200, json=_pessoa("dono@exemplo.com"))
@@ -283,9 +271,9 @@ def test_csp_vale_tambem_nas_respostas_de_recusa():
 # NENHUMA TELA DESTA ÁREA PODE FICAR GUARDADA NO NAVEGADOR (06/09/2026)
 #
 # Toda tela daqui é CALCULADA do estado de agora — quem pediu acesso, quanto
-# entrou, o que os robôs fizeram, que endereços o site tem. Uma cópia velha
-# não é uma tela desatualizada: é uma tela que mente, e mente exatamente como
-# uma tela certa. O dono não tem como perceber a diferença.
+# entrou, que endereços o site tem. Uma cópia velha não é uma tela
+# desatualizada: é uma tela que mente, e mente exatamente como uma tela certa.
+# O dono não tem como perceber a diferença.
 # --------------------------------------------------------------------------
 
 
@@ -320,17 +308,3 @@ def test_a_recusa_tambem_nao_fica_guardada():
     trancariam o dono para fora depois que o acesso dele fosse consertado.
     """
     assert Client().get("/")["Cache-Control"] == "no-store"
-
-
-@respx.mock
-def test_quem_manda_o_proprio_cache_continua_mandando():
-    """`setdefault`, e não atribuição — senão a correção atropelaria o mapa-ia.
-
-    `/mapa-ia/` e `/mapa-ia/planos/` mandam `public, max-age=300` de propósito:
-    são texto público que uma IA de fora lê, e reler o mesmo texto a cada
-    pedido é gasto sem ganho. Sem este guarda, um `resposta["Cache-Control"]`
-    no lugar do `setdefault` apagaria essa decisão sem nada ficar vermelho.
-    """
-    resposta = Client().get("/mapa-ia/")
-    assert resposta.status_code == 200, resposta.content
-    assert resposta["Cache-Control"] == "public, max-age=300"

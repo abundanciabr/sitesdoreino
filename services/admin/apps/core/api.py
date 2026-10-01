@@ -36,7 +36,6 @@ porta não responde essa pergunta.
 """
 
 from ninja import Router, Schema
-from .coordenacao import router as coordenacao_router
 
 from .porta import _emails_autorizados
 
@@ -84,8 +83,7 @@ DESCRICAO_DA_OPERACAO = (
     "lista abre a tela de /admin/, com sessao e com o 404 fail-closed da\n"
     "porta desta celula na frente. A resposta desta porta RECONHECE um grau,\n"
     "e nunca AUTORIZA nada: quem decide o que fazer com o sim e a celula\n"
-    "dona do recurso, fail-closed, como manda\n"
-    "docs/decisoes/DECISAO-onde-mora-a-sessao.md secao 4.\n"
+    "dona do recurso, fail-closed.\n"
 )
 
 
@@ -98,6 +96,3 @@ DESCRICAO_DA_OPERACAO = (
 )
 def is_administrator(request, pedido: PedidoDeConsulta):
     return {"e_administrador": pedido.email.strip().lower() in _emails_autorizados()}
-
-
-router.add_router("", coordenacao_router)

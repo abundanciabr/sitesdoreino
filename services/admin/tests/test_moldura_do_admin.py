@@ -15,9 +15,8 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
    pode".
 2. **`SECOES` envelhecendo.** Ela é escrita à mão, e lista escrita à mão
    apodrece (Classe 8 do plano dos robôs sem colisão). O guarda a compara com
-   as seções que `painel/mapa-do-site.json` declara, o mesmo mapa que tem
-   varredor no CI provando que ele não mente sobre o roteamento. Seção nova
-   reprova o PR até ganhar nome curto.
+   as seções que o mapa do site declara (`mapa-do-site.json`, o arquivo que
+   `/admin/mapa/` serve). Seção nova reprova o PR até ganhar nome curto.
 3. **A faixa copiada à mão voltando.** Ela morreu em 21 templates para nascer
    uma vez no molde. Se voltar num merge, a página passa a ter duas.
 4. **"Onde você está" mentindo sob o prefixo de produção.** Esta área mora sob
@@ -48,9 +47,7 @@ from django.test import Client
 from django.urls import get_script_prefix, reverse, set_script_prefix
 
 from apps.core import moldura
-
-RAIZ_DO_REPO = Path(__file__).resolve().parents[3]
-MAPA = RAIZ_DO_REPO / "painel" / "mapa-do-site.json"
+from apps.core.mapa_do_site import arquivo_do_mapa
 
 BASE = "http://identidade:8000/interno"
 SESSAO = f"{BASE}/sessao/completa"
@@ -152,11 +149,13 @@ def secoes_pelo_mapa() -> set:
     de reescrever é o que faz esta comparação valer alguma coisa: duas listas à
     mão concordariam por terem sido copiadas uma da outra.
     """
-    assert MAPA.is_file(), (
-        f"{MAPA} não existe. Este guarda não tem o que medir, e isso não é um "
-        "OK — [INV-CI01]."
+    mapa = arquivo_do_mapa()
+    assert mapa is not None, (
+        "o mapa do site não existe (`arquivo_do_mapa()` devolveu `None`). Este "
+        "guarda não tem o que medir, e isso não é um OK — [INV-CI01]. Devolva o "
+        "arquivo ao lugar que `apps/core/mapa_do_site.py` declara."
     )
-    dados = json.loads(MAPA.read_text(encoding="utf-8"))
+    dados = json.loads(mapa.read_text(encoding="utf-8"))
     padroes = set()
     for entrada in dados["enderecos"]:
         if entrada.get("celula") != "admin":
@@ -180,7 +179,8 @@ def secoes_pelo_mapa() -> set:
     assert len(nomes) == len(padroes), (
         f"o mapa declara {len(padroes)} seção(ões) nesta área e eu casei "
         f"{len(nomes)} pelo urlconf. Seção nova precisa de nome curto em "
-        f"`apps/core/moldura.py::SECOES`; seção que morreu precisa sair de lá. "
+        f"`apps/core/moldura.py::SECOES`; seção que morreu precisa sair de lá e "
+        "do mapa do site. "
         f"Não relaxe esta asserção: é ela que impede o menu de envelhecer."
     )
     return nomes
@@ -443,7 +443,7 @@ def test_a_saida_nao_entra_na_conta_das_secoes():
 
     Se algum dia alguém a empurrar para dentro de `SECOES` para "simplificar",
     duas coisas quebram de uma vez: `reverse()` estoura num endereço de outra
-    célula, e a comparação com `painel/mapa-do-site.json` deixa de fechar. É
+    célula, e a comparação com o mapa do site deixa de fechar. É
     mais barato reprovar aqui, dizendo o porquê.
     """
     assert moldura.URL_DO_SITE not in [nome for nome, _ in moldura.SECOES]

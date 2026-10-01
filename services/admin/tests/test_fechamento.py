@@ -466,6 +466,27 @@ def test_a_tela_abre_mesmo_sem_a_alunos_e_nao_chama_ausencia_de_zero():
 
 
 @respx.mock
+def test_a_tela_abre_sem_o_livro_e_nao_chama_ausencia_de_nenhum_portao(monkeypatch):
+    """Livro que não chegou é "não consegui olhar" (`armadilhas/271`)."""
+    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
+    respx.get(f"{ALUNOS}/pre-matriculas").mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    monkeypatch.setattr(fechamento, "ler_registros", lambda: None)
+
+    resposta = _dentro().get(reverse("fechamento"))
+    texto = " ".join(resposta.content.decode().split())
+    assert resposta.status_code == 200
+    assert "Não consegui olhar" in texto
+    assert "Isto é falha do sistema, não sua." in texto
+    assert (
+        "Peça a uma sessão para conferir a pasta do livro (apps/core/registros)"
+        in texto
+    )
+    assert resposta.context["fechamento"]["fase"]["fase"] is None
+
+
+@respx.mock
 def test_a_tela_nao_diz_ganhando_com_zero_de_mil():
     """O caso REAL de hoje, renderizado: 0 comprado, 0 esperado pela curva."""
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))

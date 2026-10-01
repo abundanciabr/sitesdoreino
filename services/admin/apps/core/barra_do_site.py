@@ -19,7 +19,7 @@ mantenedor. O bastidor tem navegação própria, e a barra do site em cima dela
 diria ao mantenedor "você está no site" quando ele está na sala de máquinas.
 
 Quem confere que a lista de rotas públicas não envelheceu é
-`tests/test_rodape_publico.py`, comparando-a com `painel/mapa-do-site.json`.
+`tests/test_rodape_publico.py`, comparando-a com `apps/core/mapa-do-site.json`.
 
 ## O par de credenciais JÁ existe, e essa é a boa notícia
 

@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-055730-TAR-830-concluida",
-  "tarefa": "TAR-830",
-  "evento": "concluida",
-  "quando": "2026-09-27T05:57:30.092557+00:00",
-  "quem": "agent/pagamentos/appmax-status-testados",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2173",
-  "verificado_em": "2026-09-27"
-}

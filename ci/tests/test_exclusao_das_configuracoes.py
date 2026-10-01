@@ -14,7 +14,6 @@ SHELL = (
     "provisionar-porta-de-avisos.sh",
     "por-a-chave-da-ia-do-admin.sh",
     "por-a-chave-da-ia-do-forum.sh",
-    "por-a-chave-do-github.sh",
     "fechar-porta-lateral.sh",
 )
 PYTHON = (

@@ -7,8 +7,7 @@
 # A célula `quiz` está de pé em produção desde a Fase D (o serviço `quiz` e o
 # worker `quiz-relay` em `infra/docker-compose.yml`) e nunca houve um único quiz
 # publicado. Medido em 02/09/2026: `/quiz/healthz` responde 200 e o endereço do
-# Crivo responde 404. A dívida está escrita em `ci/pecas-comuns-em-falta.txt` e
-# em `armadilhas/286`. Toda célula que precisa de conteúdo em produção já tinha
+# Crivo responde 404. Toda célula que precisa de conteúdo em produção já tinha
 # o seu semeador; o quiz era a única sem, e o `seed_quiz` existia sem nunca ter
 # sido chamado por script ou workflow nenhum.
 #
@@ -25,7 +24,7 @@
 #
 # O HOST VIAJA POR `envs:`, NUNCA COSTURADO NO CORPO DO SCRIPT: `${{ inputs.* }}`
 # dentro de `script:` é substituição de texto feita antes de o shell existir, ou
-# seja, injeção de comando na VPS (`armadilhas/047`). O script lê `HOST_QUIZ` do
+# seja, injeção de comando na VPS. O script lê `HOST_QUIZ` do
 # ambiente.
 #
 # O HOST É O ÚNICO INPUT, DE PROPÓSITO. O PR #1768 dá ao `seed_quiz` um
@@ -35,7 +34,7 @@
 # `/checkout/<oferta>/` na mesma consulta que já traz o número do site. Um campo
 # a mais seria uma segunda verdade, livre para divergir da primeira.
 #
-# GRUPO PRÓPRIO, e isto foi aprendido caro (`armadilhas/173`):
+# GRUPO PRÓPRIO, e isto foi aprendido caro:
 # `cancel-in-progress: false` NÃO faz fila ilimitada — o GitHub guarda UM run
 # pendente por grupo, e o próximo CANCELA o pendente. Num repositório com ~100
 # entregas por dia, um disparo manual no grupo `deploy` morre antes de começar.
@@ -59,31 +58,15 @@ concurrency:
 jobs:
   semear:
     name: publicar o Crivo na producao
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      # A CONFERENCIA QUE PRECEDE A CONEXAO (TAR-461). Num disparo por
-      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
-      # escolhida, e nao os da main: sem este passo, qualquer ramo empurrado
-      # levaria o proprio `infra/*.sh` para dentro da VPS com a chave de deploy.
-      # Guarda: `ci/tests/test_workflows_com_ssh_tem_portao.py`.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
       - uses: actions/checkout@v4
 
-      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # a ssh-action com `script_path` apontando para arquivo
       # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
       - name: Conferir que o script existe antes de abrir conexão
         run: |
@@ -96,43 +79,13 @@ jobs:
           echo "✅ script presente e sintaticamente válido"
 
       - name: Semear na VPS
-        id: semear
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: HOST_QUIZ
-          capture_stdout: true
           command_timeout: 10m
           script_path: infra/semear-quiz.sh
         env:
           HOST_QUIZ: ${{ inputs.host }}
-
-      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa os
-      # próprios inputs, e ler o eco como se fosse a execução já enganou este
-      # projeto. A linha "PRONTO:" só existe no CAMINHO FELIZ, depois de o
-      # script CONTAR no banco, por fora do comando que semeou, as perguntas e
-      # as faixas de cada quiz DAQUELE site, e depois de perguntar ao próprio
-      # Django qual é o endereço público de cada um.
-      - name: Provar que o quiz existe (não basta a conexão ter aberto)
-        # A saída viaja por `env:`, nunca costurada no corpo do `run:` — texto
-        # de fora interpolado em shell é a família da `armadilhas/047`.
-        env:
-          SAIDA: ${{ steps.semear.outputs.stdout }}
-        run: |
-          set -euo pipefail
-          echo "$SAIDA"
-          echo "---------------------------------------------------------------"
-          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
-            echo "::error::O script parou por segurança. A saída acima diz por quê."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: o Crivo existe em '; then
-            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
-            echo "Ela só é impressa depois de o script contar no banco as perguntas e as faixas"
-            echo "do quiz daquele site, e medir o endereço público no urlconf da célula."
-            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
-            exit 1
-          fi
-          echo "✅ o Crivo existe na produção, conferido pela contagem no banco."

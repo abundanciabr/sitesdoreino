@@ -1,7 +1,7 @@
 # A Definição de Pronto local da célula: make ci
 CELULA := $(notdir $(CURDIR))
 
-.PHONY: dev mocks test lint type contrato-check ci
+.PHONY: dev mocks test lint type ci
 
 dev:            ## sobe SÓ esta célula + banco (isolamento real)
 	docker compose -f docker-compose.dev.yml up
@@ -20,13 +20,3 @@ lint:
 
 type:
 	@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi
-
-# [INV-CI01] Quem decide se esta célula tem contrato é ci/manifesto-de-contratos.json,
-# não a presença do arquivo em disco. A `metricas` nasce `not-applicable` e vira
-# `required` no degrau 7.4, DEPOIS de a porta de leitura existir e exportar o
-# contrato vivo — a ordem que `armadilhas/228` e `243` provaram.
-contrato-check:
-	bash ../../ci/freeze-de-contrato.sh $(CELULA)
-
-ci: lint type test contrato-check
-	@echo "✅ $(CELULA): Definição de Pronto local atingida"

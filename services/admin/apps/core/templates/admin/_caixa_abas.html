@@ -5,10 +5,6 @@ Ela descobre sozinha onde a pessoa está, por `request.resolver_match.url_name`,
 como o resto desta casa faz. Aba nova não precisa que ninguém lembre de passar
 nada no contexto para a faixa continuar honesta.
 
-"Os robôs" ficou `<span>` apagado de 28/08 a 29/08/2026 — dependia de uma fonte
-que não existia (qual robô está com qual tarefa). A fonte nasceu (a fila de
-trabalho, `fila/LEIA-ME.md`) e a aba virou link de verdade: `caixa_robos`.
-
 O número na primeira aba sai de `na_mesa`, que as TRÊS telas calculam pela mesma
 função (`caixa.esperando`) — uma contagem própria por tela seria uma segunda
 definição de "o que espera por você".
@@ -18,7 +14,6 @@ definição de "o que espera por você".
     <a href="{% url 'caixa' %}" class="aba{% if atual == 'caixa' %} ativa{% endif %}"{% if atual == 'caixa' %} aria-current="page"{% endif %}>A sua mesa{% if na_mesa %} <span class="aba-conta">{{ na_mesa }}</span>{% endif %}</a>
     <a href="{% url 'caixa_travessia' %}" class="aba{% if atual == 'caixa_travessia' %} ativa{% endif %}"{% if atual == 'caixa_travessia' %} aria-current="page"{% endif %}>A travessia</a>
     <a href="{% url 'caixa_esperando' %}" class="aba{% if atual == 'caixa_esperando' %} ativa{% endif %}"{% if atual == 'caixa_esperando' %} aria-current="page"{% endif %}>Quem está esperando</a>
-    <a href="{% url 'caixa_robos' %}" class="aba{% if atual == 'caixa_robos' %} ativa{% endif %}"{% if atual == 'caixa_robos' %} aria-current="page"{% endif %}>Os robôs</a>
     <a href="{% url 'caixa_exportar' %}" class="aba{% if atual == 'caixa_exportar' %} ativa{% endif %}"{% if atual == 'caixa_exportar' %} aria-current="page"{% endif %}>Exportar</a>
     <a href="{% url 'caixa_analise' %}" class="aba{% if atual == 'caixa_analise' %} ativa{% endif %}"{% if atual == 'caixa_analise' %} aria-current="page"{% endif %}>A análise</a>
   {% endwith %}

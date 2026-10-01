@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-145911-TAR-894-concluida",
-  "tarefa": "TAR-894",
-  "evento": "concluida",
-  "quando": "2026-09-27T14:59:11.042103+00:00",
-  "quem": "agent/ci/wheel-base-binaria",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2250",
-  "verificado_em": "2026-09-27"
-}

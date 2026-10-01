@@ -20,7 +20,6 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ / "ci"))
 
-import portao_de_deploy as pd  # noqa: E402
 from vigia_do_site import (  # noqa: E402
     ROTAS,
     SITES,
@@ -33,7 +32,6 @@ from vigia_do_site import (  # noqa: E402
     medir,
 )
 
-WORKFLOW = RAIZ / ".github" / "workflows" / "vigia-do-site.yml"
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +67,7 @@ def test_reprova_a_raiz_que_virou_pagina_nao_encontrada():
 
 
 def test_reprova_quando_nao_conseguiu_medir():
-    # INV-CI01: "não medi" jamais vira "está no ar".
+    # "não medi" jamais vira "está no ar".
     queixas = julgar("x.top", Resposta(erro="não consegui medir: timeout"))
     assert queixas != []
     assert "timeout" in queixas[0]
@@ -148,7 +146,7 @@ def test_o_host_dispensado_e_DECLARADO_nunca_sumido_em_silencio():
 
 
 # ---------------------------------------------------------------------------
-# O VEREDITO — e o falso-verde que o INV-CI01 existe para matar.
+# O VEREDITO — e a aprovação sem medição.
 # ---------------------------------------------------------------------------
 def test_lista_vazia_e_ERROR_nunca_PASS(monkeypatch, capsys):
     monkeypatch.setattr("vigia_do_site.a_sondar", lambda *a: ([], []))
@@ -182,41 +180,32 @@ def test_a_regua_e_o_200_e_e_dela_que_sai_o_veredito():
     assert julgar("x.top", Resposta(status=RESPOSTA_ESPERADA + 1)) != []
 
 
-# ---------------------------------------------------------------------------
-# O PORTÃO DE DEPLOY — um vigia vermelho não pode trancar a porta por dentro.
-# ---------------------------------------------------------------------------
-def _linha_dos_conhecidos() -> str:
-    fonte = Path(pd.__file__).read_text(encoding="utf-8")
-    linhas = [ln for ln in fonte.splitlines() if "conhecidos = set(exigidos)" in ln]
-    assert len(linhas) == 1, f"esperava UMA linha montando `conhecidos`, achei {len(linhas)}"
-    return linhas[0]
+def test_saida_aciona_recuperacao_apenas_para_indisponibilidade(monkeypatch, tmp_path):
+    destino = tmp_path / "outputs"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(destino))
+    monkeypatch.setattr("vigia_do_site.medir", lambda *a, **k: Resposta(status=503))
+    assert main(["--host", "exemplo.top"]) == 1
+    assert "estado=indisponivel" in destino.read_text(encoding="utf-8")
+    assert 'hosts_falhos=["exemplo.top"]' in destino.read_text(encoding="utf-8")
 
 
-def test_o_vigia_do_site_esta_em_conhecidos_e_NAO_em_exigidos():
-    # O conserto de um site fora do ar É UMA PUBLICAÇÃO (armadilhas/180). Se o
-    # vigia vermelho barrasse o deploy, ele trancaria a porta por dentro
-    # justamente no dia em que o conserto precisa passar.
-    assert "VIGIA_DO_SITE" in _linha_dos_conhecidos()
-    fonte = Path(pd.__file__).read_text(encoding="utf-8")
-    assert "VIGIA_DO_SITE: (" not in fonte, "vigia não é portão: fora de `exigidos`"
-    assert pd.VIGIA_DO_SITE == ".github/workflows/vigia-do-site.yml"
+def test_instrumento_quebrado_nao_aciona_recuperacao(monkeypatch, tmp_path):
+    destino = tmp_path / "outputs"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(destino))
+    monkeypatch.setattr("vigia_do_site.a_sondar", lambda *a: ([], []))
+    assert main([]) == 2
+    assert "estado=erro" in destino.read_text(encoding="utf-8")
+    assert "indisponivel" not in destino.read_text(encoding="utf-8")
 
 
-def test_um_vermelho_do_vigia_do_site_nao_reprova_a_entrega():
-    runs = [{"path": pd.VIGIA_DO_SITE, "conclusion": "failure", "databaseId": 1}]
-    conhecidos = {pd.VIGIA_DO_SITE}
-    assert pd.vermelhos_nao_previstos(runs, conhecidos).estado is not pd.Estado.FAIL
-
-
-# ---------------------------------------------------------------------------
-# A ESTEIRA — sem ela, o vigia é um script que ninguém roda.
-# ---------------------------------------------------------------------------
-def test_a_esteira_existe_acorda_pelo_relogio_e_chama_o_vigia():
-    assert WORKFLOW.is_file(), f"esteira ausente: {WORKFLOW}"
-    texto = WORKFLOW.read_text(encoding="utf-8")
-    assert "cron:" in texto, "sem relógio, o vigia só roda quando alguém lembra"
-    # `run:` colado, e não o nome solto: o comando aparece de novo no corpo da
-    # issue, em "como conferir na mão", e a busca solta ficaria verde com uma
-    # esteira que não chama vigia nenhum.
-    assert "run: python ci/vigia_do_site.py" in texto
-    assert "workflow_dispatch" in texto, "sem botão, ninguém confere na hora do incidente"
+def test_nova_sonda_comprova_recuperacao_ou_informa_falha_terminal(monkeypatch, tmp_path):
+    destino = tmp_path / "outputs"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(destino))
+    respostas = iter([503, 200, 503, 503])
+    monkeypatch.setattr("vigia_do_site.medir", lambda *a, **k: Resposta(status=next(respostas)))
+    assert main(["--host", "exemplo.top"]) == 1
+    assert main(["--host", "exemplo.top"]) == 0
+    assert main(["--host", "exemplo.top"]) == 1
+    assert main(["--host", "exemplo.top"]) == 1
+    assert destino.read_text(encoding="utf-8").count("estado=indisponivel") == 3
+    assert destino.read_text(encoding="utf-8").count("estado=disponivel") == 1

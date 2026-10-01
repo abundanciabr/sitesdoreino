@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-000750-TAR-792-concluida",
-  "tarefa": "TAR-792",
-  "evento": "concluida",
-  "quando": "2026-09-27T00:07:50.382667+00:00",
-  "quem": "agent/e2e/tar792-clique-cta",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2151",
-  "verificado_em": "2026-09-27"
-}

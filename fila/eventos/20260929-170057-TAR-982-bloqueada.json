@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260929-170057-TAR-982-bloqueada",
-  "tarefa": "TAR-982",
-  "evento": "bloqueada",
-  "quando": "2026-09-29T17:00:57.216181+00:00",
-  "quem": "pme_testemunho_epoca",
-  "detalhe": "Revisao automatica recusou workflow novo e duas correcoes de origem/protecao; modulo atual tem falso verde de glob e nao pode autorizar corte. Destrava: aprovacao especifica do mantenedor ao patch nao aplicado em TEMP, seguida de revisao automatica e prova de ruleset/Sigstore/PG.",
-  "espera": "mantenedor"
-}

@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-054430-TAR-831-concluida",
-  "tarefa": "TAR-831",
-  "evento": "concluida",
-  "quando": "2026-09-27T05:44:30.439443+00:00",
-  "quem": "agent/infra/appmax-drill-rollback-sandbox",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2198",
-  "verificado_em": "2026-09-27"
-}

@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-030839-TAR-811-concluida",
-  "tarefa": "TAR-811",
-  "evento": "concluida",
-  "quando": "2026-09-27T03:08:39.595543+00:00",
-  "quem": "agent/pagamentos/appmax-status-medicao",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2158",
-  "verificado_em": "2026-09-27"
-}

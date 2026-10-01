@@ -1,7 +1,6 @@
 """A retirada do rádio fecha os acessos e conserva o histórico no banco."""
 
 import json
-from pathlib import Path
 
 import pytest
 from django.apps import apps
@@ -10,6 +9,7 @@ from django.db.utils import ConnectionHandler
 from django.test import RequestFactory
 from django.urls import Resolver404, resolve
 
+from apps.core.mapa_do_site import arquivo_do_mapa
 from apps.core.views import acesso_local
 
 
@@ -41,8 +41,12 @@ def test_modelo_do_radio_nao_e_carregado():
 
 
 def test_mapa_nao_oferece_radio():
-    raiz = Path(__file__).resolve().parents[3]
-    mapa = json.loads((raiz / "painel/mapa-do-site.json").read_text(encoding="utf-8"))
+    arquivo = arquivo_do_mapa()
+    assert arquivo is not None, (
+        "o mapa do site não existe (`arquivo_do_mapa()` devolveu `None`). Devolva "
+        "o arquivo ao lugar que `apps/core/mapa_do_site.py` declara."
+    )
+    mapa = json.loads(arquivo.read_text(encoding="utf-8"))
     assert "caixa/radio" not in json.dumps(mapa)
 
 

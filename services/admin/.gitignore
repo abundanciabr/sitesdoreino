@@ -4,29 +4,8 @@ __pycache__/
 staticfiles/
 .env.dev
 
-# O snapshot de segurança do painel, embutido só quando a imagem da admin muda.
-# A publicação normal mora em /opt/plataforma/admin-dados e não reconstrói
-# imagem. NÃO se commita: duas pastas com os mesmos registros dentro do
-# repositório seria exatamente a duplicação que o CLAUDE.md proíbe.
-painel_embutido/
-
-# A regra da dívida do livro (`ci/divida_do_livro.py`), embutida pelo mesmo
-# passo do deploy. Também não se commita: a fonte é `ci/`, e uma cópia
-# versionada aqui viraria a segunda definição de "contado".
-regra_do_livro/
-
-# O snapshot de segurança da fila, pelo mesmo motivo do painel. A fonte viva é
-# o publicador de dados; cópia versionada aqui seria a segunda casa do fato.
-fila_embutida/
-
 # A área de documentos (`documentos/`), embutida pelo mesmo passo do deploy
-# (`apps/core/documentos.py`). Mesma lei das três de cima — e aqui ela tem um
-# lado extra: dois lugares com o mesmo documento significa dois cabeçalhos
-# `publico:`, e o dia em que discordassem um texto interno estaria no ar.
+# (`apps/core/documentos.py`). Dois lugares com o mesmo documento significam
+# dois cabeçalhos `publico:`, e o dia em que discordassem um texto interno
+# estaria no ar.
 documentos_embutidos/
-
-# Os planos para IA (`docs/decisoes/`), embutidos pelo mesmo passo do deploy
-# (`apps/core/planos_para_ia.py`). Mesma lei das de cima: a celula SERVE a
-# pasta, nunca guarda copia dela — duas copias divergiriam, e a que o site
-# mostra seria a errada.
-planos_embutidos/

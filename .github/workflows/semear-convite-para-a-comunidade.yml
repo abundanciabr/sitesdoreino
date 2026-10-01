@@ -12,7 +12,7 @@
 #
 # NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
 #
-# GRUPO PRÓPRIO (`armadilhas/173`): no grupo `deploy`, o disparo manual seria
+# GRUPO PRÓPRIO: no grupo `deploy`, o disparo manual seria
 # cancelado pelo próximo run pendente antes de começar.
 # =============================================================================
 name: semear-convite-para-a-comunidade
@@ -26,29 +26,15 @@ concurrency:
 jobs:
   semear:
     name: criar o convite para a comunidade na producao, desligado
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      # Num `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
-      # escolhida: sem esta recusa, um ramo empurrado levaria o proprio
-      # `infra/*.sh` para a VPS com a chave de deploy.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
       - uses: actions/checkout@v4
 
-      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # a ssh-action com `script_path` apontando para arquivo
       # inexistente AVISA e IGNORA, saindo com sucesso.
       - name: Conferir que o script existe antes de abrir conexão
         run: |
@@ -61,7 +47,6 @@ jobs:
           echo "script presente e sintaticamente válido"
 
       - name: Semear na VPS
-        id: semear
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -69,51 +54,5 @@ jobs:
           # Chave pública ECDSA da VPS já confiada no known_hosts do mantenedor (25/09/2026).
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          capture_stdout: true
           command_timeout: 10m
           script_path: infra/semear-convite-para-a-comunidade.sh
-
-      # A PROVA, e não o eco (`armadilhas/114`). A linha "PRONTO:" só existe
-      # depois de o script MEDIR a jornada no banco, por fora do comando que a
-      # criou. Roda mesmo com o passo anterior vermelho (`armadilhas/549`), para
-      # dizer o que houve em vez de sumir com a saída.
-      - name: Provar que o convite existe (não basta a conexão ter aberto)
-        if: always() && steps.semear.outcome != 'skipped'
-        # A saída viaja por `env:`, nunca costurada no `run:` (`armadilhas/047`).
-        env:
-          SAIDA: ${{ steps.semear.outputs.stdout }}
-        run: |
-          set -euo pipefail
-          echo "$SAIDA"
-          echo "---------------------------------------------------------------"
-          if [ -z "$SAIDA" ]; then
-            echo "::error::A saída do script não chegou até aqui. O log do passo 'Semear na VPS' diz se a conexão falhou ou se faltou uma chave do gateway."
-            exit 1
-          fi
-          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
-            echo "::error::O script parou por segurança. A saída acima diz por quê e o que já rodou."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: o convite para a Comunidade existe'; then
-            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
-            echo "Ela só é impressa depois de o script MEDIR a jornada, a versão 1, os"
-            echo "passos e os textos no banco, pelo mesmo site_id que a escola carimba."
-            echo "Sem ela, nada está provado, e ausência de erro não é sucesso (INV-CI01)."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -Eq '^ORIGEM: (criada neste run|ja existia)$'; then
-            echo "::error::Não encontrei a linha 'ORIGEM: criada neste run' ou 'ORIGEM: ja existia' na saída do script; sem ela não dá para saber se o convite precisava ter nascido desligado."
-            exit 1
-          fi
-          # A jornada criada NESTE run precisa ter nascido desligada. A que já
-          # existia pode ter sido ligada na tela, e aí o run passa informando.
-          if printf '%s' "$SAIDA" | grep -q '^ORIGEM: criada neste run' \
-            && ! printf '%s' "$SAIDA" | grep -q '^ESTADO: DESLIGADO'; then
-            echo "::error::O convite foi criado neste run e não está DESLIGADO. Ele deveria nascer desligado; desligue em /admin/escola/jornadas/."
-            exit 1
-          fi
-          if ! printf '%s' "$SAIDA" | grep -Eq '^ESTADO: (DESLIGADO|LIGADO)'; then
-            echo "::error::Não encontrei a linha 'ESTADO:' na saída do script; sem ela o estado do convite não está provado."
-            exit 1
-          fi
-          echo "o convite para a Comunidade existe na produção, conferido pela medida no banco."

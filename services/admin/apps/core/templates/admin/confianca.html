@@ -41,9 +41,7 @@ ramo onde a medição não respondeu. Regras em apps/core/confianca.py.
       históricos desses assuntos envelhecem calados.
     </p>
     <p class="recado">
-      <b>O gesto:</b>
-      <a href="{% url 'caixa_robos' %}">abra a fila dos robôs</a> e peça que alguém
-      olhe por que esse aviso parou de sair.
+      <b>O gesto:</b> peça a uma sessão que olhe por que esse aviso parou de sair.
     </p>
     {% else %}
     <p class="nota">Tudo que a plataforma conta continua chegando.</p>
@@ -140,15 +138,20 @@ ramo onde a medição não respondeu. Regras em apps/core/confianca.py.
 
   {% if frescor.nunca_anotados %}
   <p class="recado-fraco espaco-16">
-    "Nunca anotado" não é atraso: é um número que nenhuma foto do livro pegou
+    "Nunca anotado" não é atraso: é um número que nenhuma foto da semana pegou
     ainda. Não há prazo estourado a contar, há uma primeira medição a fazer.
   </p>
   {% endif %}
 
+  <p class="recado-fraco espaco-16">
+    A idade de um número é o tempo desde a última foto da semana em que ele
+    foi anotado. A foto da semana é o registro semanal dos números do placar.
+  </p>
+
   <p class="recado espaco-16">
-    <b>O gesto:</b> quem anota a idade de um número é a foto da semana, e ela
-    sai da <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>, no pedido
-    para o robô do fim da pauta.
+    <b>O gesto:</b> a foto da semana nasce do pedido da
+    <a href="{% url 'talentos' %}">rede de talentos</a>. Conte as três etapas,
+    monte o pedido e cole numa sessão.
   </p>
 
   {% elif frescor.veredito == "sem-livro" %}

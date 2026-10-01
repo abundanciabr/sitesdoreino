@@ -18,8 +18,9 @@ O que cada grupo de guardas protege, e por que ele existe:
 5. **Vazio é estado de primeira classe.** A tela nasceu vazia, e é esse o
    estado que o mantenedor vê no primeiro dia: ela explica o que é um
    experimento e como nasce o primeiro, em vez de mostrar uma lista em branco.
-6. **Todo grupo termina num gesto que já existe** (régua 5 do §2 do plano): a
-   reunião de segunda escreve registro, e a fila dos robôs vira tarefa.
+6. **Todo grupo termina num gesto** (régua 5 do §2 do plano): pedir a uma
+   sessão que escreva o registro da aposta ou o resultado do que venceu de
+   prazo, e que vire tarefa o que funcionou.
 7. **Os experimentos da página de oferta vêm do catálogo** (decisão 5 do
    mantenedor, 26/09/2026), com estado, hipótese, métrica, datas, decisão e
    vencedora, e cada um leva às telas de resultado e de decisão. Catálogo fora
@@ -245,8 +246,14 @@ def test_livro_ausente_e_none_e_nunca_lista_vazia():
 def test_a_tela_diz_que_nao_olhou_quando_o_livro_nao_veio(monkeypatch):
     monkeypatch.setattr(laboratorio, "ler_registros", lambda: None)
     corpo = _dentro().get(reverse("laboratorio")).content.decode()
+    texto = " ".join(corpo.split())
 
     assert "Não consegui olhar." in corpo
+    assert "Isto é falha do sistema, não sua." in texto
+    assert (
+        "Peça a uma sessão para conferir a pasta do livro (apps/core/registros)"
+        in texto
+    )
     assert "Ainda não há nenhum experimento" not in corpo, (
         "a tela afirmou que não há experimentos sem ter conseguido ler o livro: "
         "é o falso-verde que este ramo existe para impedir"
@@ -261,11 +268,14 @@ def test_a_tela_nasce_vazia_explicando_o_que_e_um_experimento(monkeypatch):
     monkeypatch.setattr(laboratorio, "ler_registros", lambda: [])
     resposta = _dentro().get(reverse("laboratorio"))
     corpo = resposta.content.decode()
+    texto = " ".join(corpo.split())
 
     assert resposta.status_code == 200
     assert "Ainda não há nenhum experimento" in corpo
     assert "o problema que dói hoje" in corpo and "a hipótese" in corpo
-    assert reverse("reuniao") in corpo, "o vazio termina no gesto que cria o primeiro"
+    assert (
+        "descreva as cinco partes numa sessão" in texto
+    ), "o vazio termina no gesto que cria o primeiro"
 
 
 @respx.mock
@@ -280,13 +290,18 @@ def test_a_tela_mostra_os_quatro_grupos_e_os_gestos(monkeypatch):
     ]
     monkeypatch.setattr(laboratorio, "ler_registros", lambda: registros)
     corpo = _dentro().get(reverse("laboratorio")).content.decode()
+    texto = " ".join(corpo.split())
 
     assert "Rodando agora" in corpo
     assert "Passaram do prazo e ninguém escreveu o resultado" in corpo
     assert "Venceu (1)" in corpo and "Perdeu (0)" in corpo
     assert "Não deu para saber (1)" in corpo
-    assert reverse("reuniao") in corpo, "o gesto de fechar o que venceu de prazo"
-    assert reverse("caixa_robos") in corpo, "o gesto de virar tarefa o que venceu"
+    assert (
+        "peça a uma sessão que escreva o resultado de cada um" in texto
+    ), "o gesto de fechar o que venceu de prazo"
+    assert (
+        "Peça a uma sessão que transforme o que funcionou em tarefa" in texto
+    ), "o gesto de virar tarefa o que venceu"
 
 
 @respx.mock

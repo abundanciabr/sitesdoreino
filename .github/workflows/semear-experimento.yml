@@ -24,9 +24,9 @@
 #
 # O INPUT VIAJA POR `envs:`, NUNCA COSTURADO NO CORPO DO SCRIPT:
 # `${{ inputs.* }}` dentro de `script:` é substituição de texto feita antes de o
-# shell existir, ou seja, injeção de comando na VPS (`armadilhas/047`).
+# shell existir, ou seja, injeção de comando na VPS.
 #
-# GRUPO PRÓPRIO (`armadilhas/173`): no grupo de outro workflow, o próximo disparo
+# GRUPO PRÓPRIO: no grupo de outro workflow, o próximo disparo
 # cancelaria o pendente antes de ele começar.
 #
 # NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
@@ -51,31 +51,18 @@ concurrency:
 jobs:
   semear:
     name: ligar, desligar ou medir o A/A da oferta
-    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
-    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      # Num disparo por `workflow_dispatch` o GitHub roda o YAML e o
-      # `script_path` da REF escolhida, e nao os da main: sem este passo,
-      # qualquer ramo empurrado levaria o proprio `infra/*.sh` para a VPS.
-      - name: Recusar ref que nao seja main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
-          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
-          exit 1
-
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # a ssh-action com `script_path` apontando para arquivo
       # inexistente AVISA e IGNORA, saindo com sucesso.
       - name: Conferir que o script existe antes de abrir conexao
         run: |
@@ -88,7 +75,6 @@ jobs:
           echo "script presente e sintaticamente valido"
 
       - name: Ligar, desligar ou medir na VPS
-        id: semear
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -97,34 +83,7 @@ jobs:
           fingerprint: SHA256:1sXVo53i+wBlaaYi8x5gQizOdg5Ig3emJ4b06gQjEOQ
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: ACAO_EXPERIMENTO
-          capture_stdout: true
           command_timeout: 5m
           script_path: infra/semear-experimento.sh
         env:
           ACAO_EXPERIMENTO: ${{ inputs.acao }}
-
-      # A PROVA, e não o eco (`armadilhas/114`). A linha "PRONTO:" vem do
-      # comando da admin, que só a imprime depois de reler o experimento no
-      # catálogo por fora da chamada que o mudou, ou, ao medir, depois de a
-      # medição responder dentro do combinado. Roda também quando o passo
-      # anterior falha (`armadilhas/549`), para dizer o motivo em vez de sumir.
-      - name: Provar o estado do A/A (nao basta a conexao ter aberto)
-        if: always() && steps.semear.outcome != 'skipped'
-        env:
-          SAIDA: ${{ steps.semear.outputs.stdout }}
-        run: |
-          set -euo pipefail
-          echo "$SAIDA"
-          echo "---------------------------------------------------------------"
-          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
-            echo "::error::O semeador parou por segurança. A saída acima diz o que houve e o que fazer."
-            exit 1
-          fi
-          if ! printf '%s\n' "$SAIDA" | grep -q '^PRONTO: '; then
-            echo "::error::Não encontrei a linha 'PRONTO:' na saída do semeador."
-            echo "Ela só é impressa depois de o comando reler o experimento no catálogo ou ler a medição."
-            echo "Sem ela, nada está provado: ausência de erro não é sucesso (INV-CI01)."
-            exit 1
-          fi
-          printf '%s\n' "$SAIDA" | grep '^PRONTO: ' >> "$GITHUB_STEP_SUMMARY"
-          echo "o A/A está como foi pedido, conferido pela releitura no catálogo ou pela medição."

@@ -295,7 +295,7 @@ class Command(BaseCommand):
                 "A tela recusaria este plano: "
                 + " ".join(erros.values())
                 + " Nada foi alterado. O QUE FAZER: corrija o PLANO em "
-                "apps/core/management/commands/semear_experimento.py por PR."
+                "apps/core/management/commands/semear_experimento.py."
             )
         situacao, resposta = criar_rascunho(ATOR, self.site, escrito)
         if situacao != CatalogoClient.OK:

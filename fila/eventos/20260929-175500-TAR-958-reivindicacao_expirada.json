@@ -1,8 +1,0 @@
-{
-  "arquivo": "20260929-175500-TAR-958-reivindicacao_expirada",
-  "tarefa": "TAR-958",
-  "evento": "reivindicacao_expirada",
-  "quando": "2026-09-29T17:55:00.803931+00:00",
-  "quem": "despacho-infra-pme-publicacao-candidato",
-  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
-}

@@ -187,6 +187,13 @@ def _rodar(
     executavel.write_bytes(DOCKER_DE_MENTIRA.encode("utf-8"))
     executavel.chmod(0o755)
 
+    # O deploy chama `python3 publicacao-local.py`; a máquina de estados da
+    # publicação tem prova própria em test_publicacao_local.py. Aqui só se mede
+    # o que o script entrega ao compose, então o python3 é de mentira.
+    python_de_mentira = pasta / "python3"
+    python_de_mentira.write_bytes(b"#!/usr/bin/env bash\nexit 0\n")
+    python_de_mentira.chmod(0o755)
+
     diario = tmp_path / "comandos-do-docker.txt"
     diario.write_text("", encoding="utf-8")
 
@@ -195,6 +202,7 @@ def _rodar(
         PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
         PLATAFORMA_DIR=str(raiz),
         CELULA=celula,
+        TAG="ensaio",
         DOCKER_FALSO_DIARIO=str(diario),
     )
     # Herdadas do ambiente de quem roda a suíte, elas fariam o teste passar sem
@@ -211,6 +219,7 @@ def _rodar(
             "--volume", f"{SCRIPT}:/deploy.sh:ro",
             "--env", "PATH=/ensaio/docker-de-mentira:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             "--env", "PLATAFORMA_DIR=/ensaio/plataforma", "--env", f"CELULA={celula}",
+            "--env", "TAG=ensaio",
             "--env", "DOCKER_FALSO_DIARIO=/ensaio/comandos-do-docker.txt",
             *[item for nome, valor in ajustes.items() for item in ("--env", f"{nome}={valor}")],
             "ubuntu:24.04", "bash", "/deploy.sh",

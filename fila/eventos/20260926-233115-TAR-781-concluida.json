@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260926-233115-TAR-781-concluida",
-  "tarefa": "TAR-781",
-  "evento": "concluida",
-  "quando": "2026-09-26T23:31:15.448855+00:00",
-  "quem": "agent/metricas/priv-guarda-livro-sem-dado-pessoal",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2132",
-  "verificado_em": "2026-09-26"
-}

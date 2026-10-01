@@ -14,8 +14,7 @@ tamanho de letra, tema claro/escuro (guardados em `localStorage`, comuns a
 todo capítulo de todo livro) e "onde você parou" (guardado POR LIVRO, porque
 parar no capítulo 3 de um livro não diz nada sobre o capítulo que você lia no
 outro). A view (`apps/core/livro.py::texto_ler`) sobrescreve o CSP com o hash
-deste bloco, seguindo o mesmo desenho de `painel.py`/`robos.py`
-(`armadilhas/199`) — NUNCA `'unsafe-inline'` para script.
+deste bloco (`armadilhas/199`) — NUNCA `'unsafe-inline'` para script.
 
 O `|safe` do corpo é seguro pelo mesmo motivo de `livro_texto.html`: quem monta
 o HTML (`documentos.para_html`) escapa o texto ANTES de formatar.

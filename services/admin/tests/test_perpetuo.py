@@ -4,7 +4,7 @@ O que estes guardas protegem:
 
 1. **Nenhuma porta escrita na máquina aponta para o vazio.** As seis peças
    nomeiam endereços do site, e quem descreve esses endereços é
-   `painel/mapa-do-site.json`. Um endereço que mudar de forma lá e continuar
+   `apps/core/mapa-do-site.json`. Um endereço que mudar de forma lá e continuar
    escrito aqui vira link para 404, e o mantenedor conclui que o site quebrou.
    Este é o guarda principal do arquivo, e o motivo de ele existir.
 2. **A tela não guarda cópia de nome nem de explicação.** O que ela mostra de
@@ -66,12 +66,11 @@ def _dentro() -> Client:
 
 
 def _mapa() -> dict:
-    """O `painel/mapa-do-site.json` de verdade, indexado pelo endereço."""
+    """O `apps/core/mapa-do-site.json` de verdade, indexado pelo endereço."""
     mapa = perpetuo._mapa_por_endereco()
     assert mapa is not None, (
-        "o mapa do site não foi encontrado — em produção ele vem em "
-        "`painel_embutido/`, num checkout em `painel/`. Se este assert falhou, "
-        "a tela do perpétuo abriria sem link nenhum."
+        "o mapa do site não foi encontrado em `apps/core/mapa-do-site.json`. "
+        "Se este assert falhou, a tela do perpétuo abriria sem link nenhum."
     )
     return mapa
 
@@ -80,8 +79,8 @@ def test_toda_porta_existe_no_mapa_do_site():
     """O guarda principal: endereço escrito numa peça que o mapa não conhece.
 
     Sem ele, o dia em que alguém renomear uma rota (e atualizar o mapa, porque
-    lá a muralha obriga) esta tela continuaria oferecendo o endereço velho, e
-    ninguém saberia até o mantenedor clicar e cair num 404.
+    `tests/test_mapa_do_site.py` obriga) esta tela continuaria oferecendo o
+    endereço velho, e ninguém saberia até o mantenedor clicar e cair num 404.
 
     A mensagem de falha traz o endereço EXATO e o que fazer, porque quem vai
     lê-la é o robô que quebrou isto sem saber que esta tela existia.
@@ -96,7 +95,7 @@ def test_toda_porta_existe_no_mapa_do_site():
     assert not orfas, (
         f"endereços que a máquina do perpétuo cita e o mapa do site não tem: "
         f"{orfas}. Conserte a lista `ETAPAS` em apps/core/perpetuo.py com o "
-        f"endereço novo (o certo está em painel/mapa-do-site.json), ou tire a "
+        f"endereço novo (o certo está em apps/core/mapa-do-site.json), ou tire a "
         f"porta da peça se a tela deixou de existir."
     )
 
@@ -246,8 +245,8 @@ def test_a_visao_geral_leva_ate_a_area():
 
 
 def test_o_mapa_do_site_conhece_esta_tela():
-    """A muralha do cartógrafo já exige isto no CI; aqui a suíte da célula
-    reprova antes, com a mensagem que diz onde escrever.
+    """O mapa precisa da entrada desta tela, e a suíte da célula reprova sem
+    ela, com a mensagem que diz onde escrever.
 
     A pergunta é pela ROTA (`perpetuo/`, a string exata do `urls.py`), e NÃO
     por `reverse()`: nesta suíte não há `SCRIPT_NAME`, então `reverse` devolve
@@ -261,7 +260,7 @@ def test_o_mapa_do_site_conhece_esta_tela():
     assert any(
         e.get("celula") == "admin" and e.get("rota") == "perpetuo/" for e in entradas
     ), (
-        "a rota nova precisa de uma entrada em painel/mapa-do-site.json — "
+        "a rota nova precisa de uma entrada em apps/core/mapa-do-site.json: "
         "o formato está no `_doc` do próprio arquivo"
     )
 

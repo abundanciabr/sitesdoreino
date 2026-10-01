@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-145418-TAR-898-concluida",
-  "tarefa": "TAR-898",
-  "evento": "concluida",
-  "quando": "2026-09-27T14:54:18.070747+00:00",
-  "quem": "agent/ci/tar-898-registro-medicao-cartao",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2272",
-  "verificado_em": "2026-09-27"
-}

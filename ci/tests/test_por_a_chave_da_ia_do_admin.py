@@ -93,7 +93,7 @@ ADMIN_ENV = (
     "IDENTIDADE_API_TOKEN=abc123\n"
     "ADMIN_EMAILS=dono@exemplo.com\n"
     "TOKENS_ACEITOS_PAGES=def456\n"
-    "GITHUB_TOKEN_FILA=github_pat_naoereal\n"
+    "OUTRA_CHAVE_QUE_FICA=valor_que_fica\n"
     "ANTHROPIC_API_KEY=\n"
     "ANTHROPIC_WORKSPACE_ID=\n"
 )
@@ -456,7 +456,7 @@ def test_rodar_de_novo_acompanha_a_troca_e_nao_duplica_a_linha(tmp_path):
 def test_o_resto_do_env_sobrevive_inteiro(tmp_path):
     """`armadilhas/111`: variável que some do env é falha silenciosa com deploy
     verde. Aqui, perder `IDENTIDADE_API_TOKEN` fecharia a área administrativa
-    inteira, e perder `GITHUB_TOKEN_FILA` custaria uma ida do mantenedor ao
+    inteira, e perder `OUTRA_CHAVE_QUE_FICA` custaria uma ida do mantenedor ao
     navegador, porque uma chave do GitHub aparece uma vez só."""
     raiz = _plataforma(tmp_path)
 
@@ -467,7 +467,7 @@ def test_o_resto_do_env_sobrevive_inteiro(tmp_path):
     assert _valor(raiz, "ADMIN_EMAILS") == "dono@exemplo.com"
     assert _valor(raiz, "IDENTIDADE_API_TOKEN") == "abc123"
     assert _valor(raiz, "TOKENS_ACEITOS_PAGES") == "def456"
-    assert _valor(raiz, "GITHUB_TOKEN_FILA") == "github_pat_naoereal"
+    assert _valor(raiz, "OUTRA_CHAVE_QUE_FICA") == "valor_que_fica"
     assert _valor(raiz, "DATABASE_URL") == (
         "postgres://admin_user:senha@postgres:5432/admin_db"
     )

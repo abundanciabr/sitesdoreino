@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-043801-TAR-814-concluida",
-  "tarefa": "TAR-814",
-  "evento": "concluida",
-  "quando": "2026-09-27T04:38:01.159514+00:00",
-  "quem": "agent/checkout/tela-cartao-tres-defeitos",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2172",
-  "verificado_em": "2026-09-27"
-}

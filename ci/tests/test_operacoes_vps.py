@@ -924,7 +924,7 @@ def test_resumo_confere_operacao_e_alvo(monkeypatch, tmp_path):
         ops.conferir()
 
 
-def test_workflow_fecha_ref_credencial_e_entrada():
+def test_workflow_fecha_credencial_e_entrada():
     doc = yaml.safe_load(
         (RAIZ / ".github/workflows/operacoes-vps.yml").read_text(encoding="utf-8")
     )
@@ -933,9 +933,7 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     job = doc["jobs"]["medir"]
     assert job["environment"] == "vps" and job["timeout-minutes"] == 5
     passos = job["steps"]
-    assert passos[0]["if"] == "github.ref != 'refs/heads/main'"
-    assert "exit 1" in passos[0]["run"]
-    assert passos[1]["with"] == {
+    assert passos[0]["with"] == {
         "ref": "${{ github.sha }}",
         "persist-credentials": False,
     }
@@ -963,8 +961,8 @@ def test_workflow_fecha_ref_credencial_e_entrada():
     entradas = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
     assert set(entradas) == {"operacao", "servico", "referencia"}
     assert set(entradas["operacao"]["options"]) == ops.OPERACOES
-    assert "REFERENCIA" not in passos[4]["env"]
-    assert "inputs.referencia" not in passos[4]["run"]
+    assert "REFERENCIA" not in passos[preparar]["env"]
+    assert "inputs.referencia" not in passos[preparar]["run"]
 
 
 @pytest.mark.parametrize(

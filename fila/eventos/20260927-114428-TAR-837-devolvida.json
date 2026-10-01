@@ -1,8 +1,0 @@
-{
-  "arquivo": "20260927-114428-TAR-837-devolvida",
-  "tarefa": "TAR-837",
-  "evento": "devolvida",
-  "quando": "2026-09-27T11:44:28.032269+00:00",
-  "quem": "despacho-pagamentos-sha256-wheel-checkout-pagamentos",
-  "detalhe": "mandato nominal do mantenedor recebido em 27/09/2026 08h29 BRT para services/checkout/requirements.txt e services/pagamentos/requirements.txt; destrava o bloqueio de Lista A registrado em 20260927-053809-TAR-837-bloqueada"
-}

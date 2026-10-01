@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-045103-TAR-804-concluida",
-  "tarefa": "TAR-804",
-  "evento": "concluida",
-  "quando": "2026-09-27T04:51:03.466511+00:00",
-  "quem": "agent/pagamentos/pix-appmax-vencido-terminal",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2165",
-  "verificado_em": "2026-09-27"
-}

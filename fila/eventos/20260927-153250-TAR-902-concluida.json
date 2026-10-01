@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-153250-TAR-902-concluida",
-  "tarefa": "TAR-902",
-  "evento": "concluida",
-  "quando": "2026-09-27T15:32:50.299343+00:00",
-  "quem": "agent/ci/appmax-licoes-rodada-3",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2276",
-  "verificado_em": "2026-09-27"
-}

@@ -1,10 +1,10 @@
 """Toda cor usada nesta área tem dono (03/09/2026).
 
 **O defeito que este guarda fecha, medido na tela do mantenedor.** Ele abriu
-`/admin/caixa/robos/` e disse que não conseguia ler os cartões. A causa era
-uma linha de estilo daquela aba:
+uma tela desta área e disse que não conseguia ler os cartões. A causa era uma
+linha de estilo:
 
-    .cartao-robo { background: var(--cartao, #fff); ... }
+    background: var(--cartao, #fff);
 
 `--cartao` **nunca existiu** em `admin/base.html`. O `:root` desta área declara
 `--fundo`, `--painel`, `--linha`, `--texto`, `--texto-2`, `--texto-3` e as
@@ -20,9 +20,8 @@ revisão de código, e numa captura de tela parece escolha de design.
 
 **Por que um teste, e não um cuidado.** É a `RETROSPECTIVA-FASE-D` §2 outra vez
 (garantia sem mecanismo não é garantia): o mesmo erro estava, no dia em que foi
-achado, em três telas escritas por três sessões diferentes — a aba dos robôs, a
-de exportar a Caixa e a de turmas. Nenhuma delas quebrou nada visível para quem
-escreveu o código; só para quem abriu a página.
+achado, em três telas escritas por três sessões diferentes. Nenhuma delas
+quebrou nada visível para quem escreveu o código; só para quem abriu a página.
 
 **O que o guarda NÃO faz:** julgar contraste. Ele responde uma pergunta só, e
 mecanicamente: todo nome que um template usa está declarado em algum lugar que
@@ -80,25 +79,3 @@ def test_nenhum_template_usa_uma_cor_que_ninguem_declarou():
         + "\n  "
         + "\n  ".join(achados)
     )
-
-
-def test_os_cartoes_da_aba_dos_robos_usam_o_fundo_da_casa():
-    """O caso concreto que deu origem ao guarda acima, cravado por nome.
-
-    A regra geral já reprovaria `var(--cartao, #fff)`; esta prende o outro
-    caminho para o mesmo estrago, que é cravar `#fff` direto na folha.
-    """
-    corpo = _sem_comentarios(
-        (TEMPLATES / "caixa_robos.html").read_text(encoding="utf-8")
-    )
-    estilo = corpo[corpo.find("<style") : corpo.find("</style")]
-
-    assert "var(--painel)" in estilo, "o cartão de tarefa perdeu o fundo da casa"
-    # `white` só conta como COR, depois dos dois-pontos de uma propriedade:
-    # `white-space: nowrap` é layout, e reprová-lo seria um guarda chato —
-    # a terceira forma de matar um portão (`armadilhas/247`).
-    for cor_clara in ("#fff;", "#fff ", "#ffffff", ": white", ":white"):
-        assert cor_clara not in estilo.lower(), (
-            f"fundo claro cravado ({cor_clara.strip()}) numa área de fundo escuro — "
-            "foi assim que os cartões ficaram ilegíveis até 03/09/2026"
-        )

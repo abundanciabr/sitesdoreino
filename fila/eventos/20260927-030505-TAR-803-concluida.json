@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260927-030505-TAR-803-concluida",
-  "tarefa": "TAR-803",
-  "evento": "concluida",
-  "quando": "2026-09-27T03:05:05.097023+00:00",
-  "quem": "agent/e2e/sonda-pix-publica",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/2161",
-  "verificado_em": "2026-09-27"
-}

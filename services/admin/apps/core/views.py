@@ -53,9 +53,9 @@ def acesso_local(request, token=""):
         "nome": settings.ADMIN_LOCAL_NOME,
         "email": settings.ADMIN_LOCAL_EMAIL.strip().lower(),
     }
-    destino = request.GET.get("next") or reverse("plano_mestre")
+    destino = request.GET.get("next") or reverse("visao_geral")
     if not destino.startswith("/") or destino.startswith("//"):
-        destino = reverse("plano_mestre")
+        destino = reverse("visao_geral")
     resposta = HttpResponseRedirect(destino)
     resposta.set_cookie(
         settings.ADMIN_LOCAL_COOKIE_NAME,
@@ -253,10 +253,8 @@ def documento_admin(request, nome):
 
 # ---------------------------------------------------------------- a escola
 #
-# A ESCOLA é a segunda casa desta área, e a separação dela para o painel do
-# sistema (`/painel/`) é de ASSUNTO, não de gosto: um mostra a plataforma sendo
-# construída, o outro mostra a escola funcionando. Enquanto os dois se
-# chamavam "painel da escola" na tela, o mantenedor abria um esperando o outro.
+# A ESCOLA é a segunda casa desta área: mostra a escola funcionando, os alunos
+# e o que vier depois deles.
 
 
 class FonteAusente:

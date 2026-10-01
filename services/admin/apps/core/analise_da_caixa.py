@@ -1,5 +1,5 @@
 # apps/core/analise_da_caixa.py — a leitura da Caixa, com os fatos sempre vivos
-"""A sexta aba da gestão da Caixa: o que a turma pediu, lido e ordenado.
+"""A quinta aba da gestão da Caixa: o que a turma pediu, lido e ordenado.
 
 Nasceu em 05/09/2026, de um pedido do mantenedor: *"analise as sugestões dos
 alunos e liste tudo num documento único, da mais votada para a menos votada"*.
@@ -113,7 +113,7 @@ FAMILIAS = (
 #   junta_com  ideias que são, na prática, o mesmo trabalho
 #   ja_existe  um comentário da turma diz que a coisa já existe (confira antes)
 #   em_obra    a casa já está construindo isto por outro caminho
-#   tarefa     o despacho pronto, para virar tarefa no painel de quem executa
+#   tarefa     o despacho pronto, para a pessoa copiar e entregar a quem executa
 ANALISE = {
     20: {
         "familia": "cabelos",
