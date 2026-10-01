@@ -99,6 +99,18 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% else %}
   <p class="miudo">Esta aula ainda não tem vídeo.</p>
   {% endif %}
+  <nav class="navegacao-aulas" aria-label="Navegação entre aulas">
+    {% if navegacao.anterior.url %}
+    <a class="aula-anterior" href="{{ navegacao.anterior.url }}" rel="prev"><span aria-hidden="true">←</span> Aula anterior <small>{{ navegacao.anterior.titulo }}</small></a>
+    {% else %}
+    <button class="aula-anterior" type="button" disabled title="{{ navegacao.anterior.explicacao }}"><span aria-hidden="true">←</span> Aula anterior <small>{% if navegacao.anterior %}{{ navegacao.anterior.titulo }}{% else %}Primeira aula{% endif %}</small></button>
+    {% endif %}
+    {% if navegacao.proxima.url %}
+    <a class="aula-proxima" href="{{ navegacao.proxima.url }}" rel="next">Próxima aula <span aria-hidden="true">→</span><small>{{ navegacao.proxima.titulo }}</small></a>
+    {% else %}
+    <button class="aula-proxima" type="button" disabled title="{{ navegacao.proxima.explicacao }}">Próxima aula <span aria-hidden="true">→</span><small>{% if navegacao.proxima %}{{ navegacao.proxima.explicacao }}{% else %}Última aula{% endif %}</small></button>
+    {% endif %}
+  </nav>
   {% if pausas %}
   <p>O vídeo tem {{ pausas|length }} pausa{{ pausas|length|pluralize }}. Pause no
   segundo marcado, registre o que a pausa pede, e só então retome.</p>

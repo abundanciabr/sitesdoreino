@@ -10,8 +10,22 @@ Player YouTube com play, pause e tela cheia. Exige `youtube_id` (11 caracteres).
       <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
     </button>
     <div class="vsl-youtube__barra">
-      <button type="button" class="vsl-youtube__toggle" aria-label="Reproduzir"></button>
-      <button type="button" class="vsl-youtube__tela-cheia" aria-label="Tela cheia"></button>
+      <input class="vsl-youtube__progresso" type="range" min="0" max="0" step="1" value="0" aria-label="Progresso do vídeo" disabled>
+      <div class="vsl-youtube__controles">
+        <button type="button" class="vsl-youtube__toggle" aria-label="Reproduzir" disabled></button>
+        <span class="vsl-youtube__tempo">0:00 / 0:00</span>
+        <div class="vsl-youtube__som">
+          <button type="button" class="vsl-youtube__mudo" aria-label="Silenciar" aria-pressed="false" disabled></button>
+          <input class="vsl-youtube__volume" type="range" min="0" max="100" step="5" value="100" aria-label="Volume" disabled>
+        </div>
+        <select class="vsl-youtube__velocidade" aria-label="Velocidade de reprodução" disabled>
+          <option value="1">1x</option>
+          <option value="1.5">1,5x</option>
+          <option value="2">2x</option>
+        </select>
+        <button type="button" class="vsl-youtube__cinema" aria-label="Modo cinema" aria-pressed="false"></button>
+        <button type="button" class="vsl-youtube__tela-cheia" aria-label="Tela cheia"></button>
+      </div>
     </div>
   </div>
 </div>

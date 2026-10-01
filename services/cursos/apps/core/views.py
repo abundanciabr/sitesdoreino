@@ -1002,6 +1002,25 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
     return HttpResponsePermanentRedirect(_url_da_aula(curso, aula))
 
 
+def _navegacao_aulas(curso: Curso, aula: Aula, pessoa) -> dict:
+    vizinhas = {
+        "anterior": curso.aulas.filter(ordem__lt=aula.ordem).select_related("bloco").order_by("-ordem").first(),
+        "proxima": curso.aulas.filter(ordem__gt=aula.ordem).select_related("bloco").order_by("ordem").first(),
+    }
+    navegacao = {}
+    for direcao, vizinha in vizinhas.items():
+        if vizinha is None:
+            navegacao[direcao] = None
+            continue
+        porta = _porta(vizinha, portas.progresso_de(pessoa, vizinha))
+        navegacao[direcao] = {
+            "titulo": vizinha.titulo_exibido,
+            "url": _url_da_aula(curso, vizinha) if porta["abre"] else "",
+            "explicacao": porta["explicacao"],
+        }
+    return navegacao
+
+
 @require_GET
 def aula(request, numero: str, curso: str | None = None, parte: int | None = None):
     """A aula: as 16 peças, o botão da vídeo-aula em texto, o vídeo com as
@@ -1034,6 +1053,7 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "pecas": _pecas(aula),
             "videoaula": _videoaula(aula),
             "video": _video(aula),
+            "navegacao": _navegacao_aulas(curso, aula, pessoa),
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),
             # Um curso tem UMA das duas seções: o checkpoint (por laudo) ou o
