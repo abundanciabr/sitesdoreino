@@ -101,6 +101,23 @@ def test_versao_existente_e_reaproveitada_sem_copiar_de_novo(repo, monkeypatch, 
     assert (imagem, construida, build) == ("plataforma-demo:base-x", False, 0.0)
 
 
+def test_infra_reprovada_nao_inicia_publicacao_de_celula(tmp_path, monkeypatch):
+    publicar = carregar("publicar_infra_reprovada", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "LOTES", tmp_path / "lotes")
+    monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
+    (tmp_path / "logs").mkdir()
+    monkeypatch.setattr(publicar, "git", lambda *args: (
+        "infra/docker-compose.yml\nservices/admin/apps/core/views.py"
+        if args[0] == "diff" else "2026-10-01T12:00:00+00:00"))
+    monkeypatch.setattr(publicar, "sincronizar_infra", lambda *args: False)
+    monkeypatch.setattr(publicar, "avisar", lambda *args: None)
+    monkeypatch.setattr(publicar, "ondas", lambda celulas: [celulas])
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: pytest.fail("publicação iniciou sem infra"))
+    assert publicar.lote("a" * 40, "b" * 40) == 1
+    resultado = json.loads((tmp_path / "lotes" / ("b" * 40 + ".json")).read_text())
+    assert resultado["resultado"] == {"infra": 1}
+
+
 @pytest.fixture
 def receptor(tmp_path, monkeypatch):
     modulo = carregar("publicacao_local_montada", "infra/publicacao-local.py")

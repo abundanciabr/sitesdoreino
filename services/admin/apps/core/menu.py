@@ -54,6 +54,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
+from .models import RascunhoDeConfiguracao
 
 from .clients import CatalogoClient
 from .mapa_do_site import _e_molde, arquivo_do_mapa
@@ -246,6 +247,9 @@ def _contexto(request, site, menu, erro="", recado=""):
         "sem_menu": SEM_MENU,
         "erro": erro,
         "recado": recado,
+        "em_rascunho": RascunhoDeConfiguracao.objects.filter(
+            tipo="menu", site_id=str(site["id"]), alvo="topo"
+        ).exists(),
     }
 
 
@@ -254,7 +258,10 @@ def _carregar(request):
     site = CatalogoClient().site_por_host(request.get_host().split(":")[0].lower())
     if site is None:
         return None, None
-    return site, site.get("menu") or {}
+    rascunho = RascunhoDeConfiguracao.objects.filter(
+        tipo="menu", site_id=str(site["id"]), alvo="topo"
+    ).first()
+    return site, rascunho.conteudo if rascunho else site.get("menu") or {}
 
 
 @require_GET
@@ -275,30 +282,49 @@ def menu_do_topo(request):
 
 
 def _gravar(request, site, menu, detalhe: str):
-    """Grava o documento inteiro e volta para a tela com o que aconteceu.
+    """Guarda o documento inteiro em rascunho, sem alterar o menu público.
 
     Padrão POST-redirect-GET: sem ele, um F5 depois de salvar repetiria o
     gesto, e "adicionar item" repetido é um menu com o item em dobro.
     """
-    situacao, frase = CatalogoClient().gravar_menu(site["id"], menu)
-    if situacao == CatalogoClient.OK:
-        _auditar(request, Registro.EDITAR_MENU, str(site["id"]), Registro.OK, detalhe)
-        return HttpResponseRedirect(f"{reverse('menu_do_topo')}?recado=salvo")
+    existente = RascunhoDeConfiguracao.objects.filter(
+        tipo="menu", site_id=str(site["id"]), alvo="topo"
+    ).first()
+    RascunhoDeConfiguracao.objects.update_or_create(
+        tipo="menu", site_id=str(site["id"]), alvo="topo",
+        defaults={"conteudo": menu, "base": existente.base if existente else site.get("menu") or {}},
+    )
+    _auditar(request, Registro.EDITAR_MENU, str(site["id"]), Registro.OK, detalhe)
+    return HttpResponseRedirect(f"{reverse('menu_do_topo')}?recado=rascunho")
 
-    desfecho = (
-        Registro.RECUSADO_PELA_CELULA
-        if situacao == CatalogoClient.RECUSADO
-        else Registro.NAO_RESPONDEU
-    )
-    _auditar(request, Registro.EDITAR_MENU, str(site["id"]), desfecho, detalhe)
-    # A tela volta com o menu COMO ESTÁ GRAVADO, não com o que foi recusado:
-    # mostrar o rascunho recusado faria a página discordar do site.
-    return render(
-        request,
-        "admin/menu.html",
-        _contexto(request, site, site.get("menu") or {}, erro=frase),
-        status=422 if situacao == CatalogoClient.RECUSADO else 503,
-    )
+
+@require_POST
+def menu_publicar(request):
+    site, _ = _carregar(request)
+    if site is None:
+        return _sem_catalogo(request)
+    rascunho = RascunhoDeConfiguracao.objects.filter(
+        tipo="menu", site_id=str(site["id"]), alvo="topo"
+    ).first()
+    if rascunho is None:
+        return HttpResponseRedirect(reverse("menu_do_topo"))
+    if (site.get("menu") or {}) != rascunho.base:
+        return _erro(request, site, rascunho.conteudo, "O menu público mudou desde o início deste rascunho. Recarregue antes de publicar.")
+    situacao, frase = CatalogoClient().gravar_menu(site["id"], rascunho.conteudo)
+    if situacao != CatalogoClient.OK:
+        _auditar(
+            request, Registro.EDITAR_MENU, str(site["id"]),
+            Registro.RECUSADO_PELA_CELULA if situacao == CatalogoClient.RECUSADO else Registro.NAO_RESPONDEU,
+            "tentou publicar menu",
+        )
+        return render(
+            request, "admin/menu.html",
+            _contexto(request, site, rascunho.conteudo, erro=frase),
+            status=422 if situacao == CatalogoClient.RECUSADO else 503,
+        )
+    rascunho.delete()
+    _auditar(request, Registro.EDITAR_MENU, str(site["id"]), Registro.OK, "publicou menu")
+    return HttpResponseRedirect(f"{reverse('menu_do_topo')}?recado=publicado")
 
 
 def _sem_catalogo(request):

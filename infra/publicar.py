@@ -479,7 +479,9 @@ def lote(base: str, head: str) -> int:
             situacao["resultado"]["infra"] = 1
             avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.",
                    "infra")
-    for onda in ondas(celulas):
+    # Uma célula que depende do Compose novo não pode avançar com a infra antiga.
+    # A sincronização já tentou sua própria volta e preservou o staging para reparo.
+    for onda in ondas(celulas) if situacao["resultado"].get("infra") != 1 else ():
         processos = {c: subprocess.Popen([sys.executable, __file__, "publicar", c, head, "--pedido-em", pedido_em])
                      for c in onda}
         for celula, processo in processos.items():
