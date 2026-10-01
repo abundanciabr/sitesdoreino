@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from uuid import uuid4
 from datetime import datetime, timezone
 
 
@@ -71,7 +72,7 @@ def salvar(caminho: Path, valor: dict) -> None:
 
 
 def id_tentativa(sha: str) -> str:
-    return f"{sha}-{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}-{os.getpid()}"
+    return f"{sha}-{uuid4().hex}"
 
 
 def ambiente_da_aplicacao(imagem: str, codigo: Path) -> dict:

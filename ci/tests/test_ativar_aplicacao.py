@@ -1,5 +1,6 @@
 """A falha após a troca de rota repõe a topologia e deixa os bancos intactos."""
 from importlib.util import module_from_spec, spec_from_file_location
+from datetime import datetime
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,6 +16,21 @@ def carregar():
     modulo = module_from_spec(spec)
     spec.loader.exec_module(modulo)
     return modulo
+
+
+def test_id_da_tentativa_nao_depende_do_relogio(monkeypatch):
+    ativacao = carregar()
+
+    class RelogioCongelado(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 1, 17, 12, 14, 955694, tzinfo=tz)
+
+    monkeypatch.setattr(ativacao, "datetime", RelogioCongelado)
+    primeiro = ativacao.id_tentativa("a" * 40)
+    segundo = ativacao.id_tentativa("a" * 40)
+    assert primeiro != segundo
+    assert primeiro.startswith("a" * 40 + "-")
 
 
 def test_primeira_troca_reverte_compose_e_rotas_quando_a_prova_falha(tmp_path, monkeypatch):
