@@ -4517,6 +4517,42 @@ def test_estado_infra_aceita_imagem_local_sem_repo_digest():
     assert ops.conferir_medicao("estado-infra", dados) == dados
 
 
+@pytest.mark.parametrize("modo_aplicacao", [False, True])
+def test_estado_infra_aceita_repo_digest_local_exato_e_recusa_outros(modo_aplicacao):
+    nome = "aplicacao" if modo_aplicacao else "admin"
+    servicos = {
+        servico: None
+        for servico in (
+            ops.SERVICOS_ESTADO_INFRA_APLICACAO if modo_aplicacao
+            else ops.SERVICOS_ESTADO_INFRA_LEGADO
+        )
+    }
+    servicos[nome] = MEDICAO
+    digest = "sha256:" + "c" * 64
+    local = f"plataforma-{nome}@{digest}"
+    remoto = f"ghcr.io/abundanciabr/plataforma-{nome}@{digest}"
+    dados = {
+        "arquivos": {arquivo: None for arquivo in ops.ARQUIVOS_ESTADO_INFRA},
+        "servicos": servicos,
+        f"imagem_{nome}": {
+            "container_image": MEDICAO["imagem"],
+            "id": MEDICAO["imagem"],
+            "repo_digests": [local, remoto],
+        },
+        "borda_http": 200,
+    }
+    assert ops.conferir_medicao("estado-infra", dados) == dados
+    for invalido in (
+        f"plataforma-{'admin' if modo_aplicacao else 'aplicacao'}@{digest}",
+        f"ghcr.io/externo/plataforma-{nome}@{digest}",
+        f"outro/plataforma-{nome}@{digest}",
+    ):
+        alterado = dict(dados)
+        alterado[f"imagem_{nome}"] = {**dados[f"imagem_{nome}"], "repo_digests": [invalido]}
+        with pytest.raises(ops.Falha):
+            ops.conferir_medicao("estado-infra", alterado)
+
+
 def test_estado_infra_legado_apos_recuperacao(monkeypatch, tmp_path):
     monkeypatch.setattr(ops, "aplicacao_ativa", lambda: False)
     monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)

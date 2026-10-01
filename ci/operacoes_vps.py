@@ -707,9 +707,9 @@ def conferir_medicao(operacao, dados, referencia=""):
                 or any(
                     not isinstance(digest, str)
                     or not re.fullmatch(
-                        (r"ghcr\.io/abundanciabr/plataforma-aplicacao@sha256:[0-9a-f]{64}"
+                        (r"(?:ghcr\.io/abundanciabr/)?plataforma-aplicacao@sha256:[0-9a-f]{64}"
                          if modo_aplicacao else
-                         r"ghcr\.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}"),
+                         r"(?:ghcr\.io/abundanciabr/)?plataforma-admin@sha256:[0-9a-f]{64}"),
                         digest,
                     )
                     for digest in digests
