@@ -24,6 +24,12 @@ SPEC = importlib.util.spec_from_file_location(
 )
 ops = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ops)
+APLICACAO_ATIVA_REAL = ops.aplicacao_ativa
+
+
+@pytest.fixture(autouse=True)
+def aplicacao_publicada(monkeypatch):
+    monkeypatch.setattr(ops, "aplicacao_ativa", lambda: True)
 MEDICAO = {
     "estado": "running",
     "saude": "healthy",
@@ -124,6 +130,29 @@ def test_estado_so_emite_campos_permitidos(monkeypatch, capsys):
         "label=com.docker.compose.service=aplicacao",
     ]
     assert chamadas[1] == ["docker", "inspect", "--format", ops.FORMATO, "a" * 64]
+
+
+def test_rollback_restaura_alias_e_shell_legados(monkeypatch):
+    monkeypatch.setattr(ops, "aplicacao_ativa", lambda: False)
+    assert ops.nome_container("catalogo") == "catalogo"
+    assert ops.nome_container("quiz") == "quiz"
+    chamadas = []
+    monkeypatch.setattr(ops, "comando", lambda args: chamadas.append(args) or "{}")
+    ops.comando_shell("quiz", "a" * 64, "print('{}')")
+    assert chamadas == [["docker", "exec", "a" * 64, "python", "manage.py",
+                         "shell", "-c", "print('{}')"]]
+
+
+def test_diario_da_aplicacao_controla_modo_sem_ler_conteudo(monkeypatch, tmp_path):
+    monkeypatch.setattr(ops, "aplicacao_ativa", APLICACAO_ATIVA_REAL)
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    assert not ops.aplicacao_ativa()
+    diario = tmp_path / "publicacoes" / "aplicacao.json"
+    diario.parent.mkdir()
+    diario.write_text(PRIVADO, encoding="utf-8")
+    assert ops.aplicacao_ativa()
+    diario.rename(diario.with_suffix(".recuperada"))
+    assert not ops.aplicacao_ativa()
 
 
 @pytest.mark.parametrize(
@@ -924,45 +953,34 @@ def test_resumo_confere_operacao_e_alvo(monkeypatch, tmp_path):
         ops.conferir()
 
 
-def test_workflow_fecha_credencial_e_entrada():
-    doc = yaml.safe_load(
-        (RAIZ / ".github/workflows/operacoes-vps.yml").read_text(encoding="utf-8")
+def test_operar_fecha_entrada_e_so_publica_evidencia_validada(monkeypatch, capsys):
+    spec = importlib.util.spec_from_file_location(
+        "operar_vps_integracao", RAIZ / "infra/operar.py"
     )
-    assert doc["permissions"] == {"contents": "read"}
-    assert doc["concurrency"]["group"] == "operacoes-vps"
-    job = doc["jobs"]["medir"]
-    assert job["environment"] == "vps" and job["timeout-minutes"] == 5
-    passos = job["steps"]
-    assert passos[0]["with"] == {
-        "ref": "${{ github.sha }}",
-        "persist-credentials": False,
-    }
-    for passo in passos:
-        if "uses" in passo:
-            assert re.fullmatch(r"[^@]+@[0-9a-f]{40}", passo["uses"])
-    preparar = next(i for i, p in enumerate(passos) if p.get("id") == "conferir")
-    remoto = next(i for i, p in enumerate(passos) if p.get("id") == "remoto")
-    assert preparar < remoto
-    assert re.fullmatch(
-        r"SHA256:[A-Za-z0-9+/]{43}", passos[remoto]["with"]["fingerprint"]
-    )
-    assert passos[remoto]["with"]["capture_stdout"] is True
-    # TAR-nova (PR #2249 replicado): o remoto pode sair sempre 0 (o veredito vem
-    # do JSON), então o passo de conferência precisa rodar mesmo quando o
-    # GitHub o marca como falho por outro motivo, e nunca ser pulado em ERROR.
-    assert passos[-1]["if"] == "always() && steps.remoto.outcome != 'skipped'"
-    assert (
-        passos[remoto]["with"]["script_path"] == "${{ steps.conferir.outputs.script }}"
-    )
-    assert passos[-1]["run"] == "python ci/operacoes_vps.py conferir"
-    for passo in passos:
-        assert "inputs." not in passo.get("run", "")
-        assert "script" not in passo.get("with", {})
-    entradas = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
-    assert set(entradas) == {"operacao", "servico", "referencia"}
-    assert set(entradas["operacao"]["options"]) == ops.OPERACOES
-    assert "REFERENCIA" not in passos[preparar]["env"]
-    assert "inputs.referencia" not in passos[preparar]["run"]
+    operar = importlib.util.module_from_spec(spec)
+    import sys
+    sys.modules[spec.name] = operar
+    spec.loader.exec_module(operar)
+    catalogo = operar.OPERACOES["operacoes-vps"]
+    assert catalogo.muta == "não: só lê"
+    assert set(catalogo.params[0].escolhas) == ops.OPERACOES
+    assert catalogo.prazo == 120
+    ctx = operar.Contexto(raiz=RAIZ, carregar=lambda *args: ops)
+    chamadas = []
+    def medir(operacao, servico, referencia=""):
+        chamadas.append((operacao, servico, referencia))
+        return MEDICAO
+    monkeypatch.setattr(ops, "medir", medir)
+    valores = {"operacao": "estado-servico", "servico": "admin", "referencia": ""}
+    assert operar.op_operacoes_vps(ctx, valores) == 0
+    saida = capsys.readouterr().out
+    assert '"resultado": "PASS"' in saida
+    assert '"imagem":' in saida
+    assert chamadas == [("estado-servico", "admin", "")]
+    valores["servico"] = "admin; " + PRIVADO
+    assert operar.op_operacoes_vps(ctx, valores) == 2
+    assert chamadas == [("estado-servico", "admin", "")]
+    assert PRIVADO not in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(
@@ -4497,6 +4515,33 @@ def test_estado_infra_aceita_imagem_local_sem_repo_digest():
         "borda_http": 200,
     }
     assert ops.conferir_medicao("estado-infra", dados) == dados
+
+
+def test_estado_infra_legado_apos_recuperacao(monkeypatch, tmp_path):
+    monkeypatch.setattr(ops, "aplicacao_ativa", lambda: False)
+    monkeypatch.setattr(ops, "RAIZ_INFRA", tmp_path)
+    chamadas = []
+    def comando_falso(args, **kwargs):
+        chamadas.append(args)
+        if args[:2] == ["docker", "ps"]:
+            return "a" * 64
+        if args[:2] == ["docker", "inspect"]:
+            return json.dumps(MEDICAO)
+        if args[:3] == ["docker", "image", "inspect"]:
+            return json.dumps({"id": MEDICAO["imagem"], "repo_digests": [
+                "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "b" * 64]})
+        if args[0] == "curl":
+            return "200"
+        pytest.fail(f"comando inesperado: {args}")
+    monkeypatch.setattr(ops, "comando", comando_falso)
+    dados = ops.medir("estado-infra", "plataforma")
+    assert set(dados["servicos"]) == {"traefik", "catalogo", "admin"}
+    assert "imagem_admin" in dados and "imagem_aplicacao" not in dados
+    assert [c[-1] for c in chamadas if c[:2] == ["docker", "ps"]] == [
+        "label=com.docker.compose.service=traefik",
+        "label=com.docker.compose.service=catalogo",
+        "label=com.docker.compose.service=admin",
+    ]
 
 
 def test_estado_infra_recusa_arquivo_nao_regular_sem_ler(monkeypatch, tmp_path, capsys):

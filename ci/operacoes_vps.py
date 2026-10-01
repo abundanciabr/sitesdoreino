@@ -56,7 +56,8 @@ ARQUIVOS_ESTADO_INFRA = (
     "infra.new/traefik/dynamic/plataforma.yml",
     "infra.new/traefik/dynamic/entrada-privada.yml",
 )
-SERVICOS_ESTADO_INFRA = ("traefik", "aplicacao")
+SERVICOS_ESTADO_INFRA_LEGADO = ("traefik", "catalogo", "admin")
+SERVICOS_ESTADO_INFRA_APLICACAO = ("traefik", "aplicacao")
 SERVICOS_INCORPORADOS = frozenset({
     "admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
     "forum", "funil", "gamificacao", "identidade", "leads", "mensageria",
@@ -465,8 +466,20 @@ def comando(argumentos, prazo_segundos=30):
 
 
 def nome_container(servico):
-    """As células continuam endereçáveis, mas compartilham um contêiner."""
-    return "aplicacao" if servico in SERVICOS_INCORPORADOS else servico
+    """Na publicação unificada, as células compartilham um contêiner."""
+    return "aplicacao" if aplicacao_ativa() and servico in SERVICOS_INCORPORADOS else servico
+
+
+def aplicacao_ativa():
+    """O rollback move o diário da aplicação e reativa os contêineres antigos."""
+    return (RAIZ_INFRA / "publicacoes" / "aplicacao.json").is_file()
+
+
+def comando_shell(servico, identificador, codigo):
+    executor = (["-m", "config.comando", servico] if aplicacao_ativa()
+                else ["manage.py"])
+    return comando(["docker", "exec", identificador, "python", *executor,
+                    "shell", "-c", codigo])
 
 
 def medir_coordenacao_db(identificador):
@@ -644,7 +657,10 @@ def conferir_medicao(operacao, dados, referencia=""):
         ):
             raise Falha("formato")
     elif operacao == "estado-infra":
-        if set(dados) != {"arquivos", "servicos", "imagem_aplicacao", "borda_http"}:
+        if set(dados) not in (
+            {"arquivos", "servicos", "imagem_admin", "borda_http"},
+            {"arquivos", "servicos", "imagem_aplicacao", "borda_http"},
+        ):
             raise Falha("formato")
         arquivos, servicos = dados["arquivos"], dados["servicos"]
         if not isinstance(arquivos, dict) or set(arquivos) != set(
@@ -657,15 +673,18 @@ def conferir_medicao(operacao, dados, referencia=""):
             for valor in arquivos.values()
         ):
             raise Falha("formato")
-        if not isinstance(servicos, dict) or set(servicos) != set(
-            SERVICOS_ESTADO_INFRA
-        ):
+        modo_aplicacao = "imagem_aplicacao" in dados
+        esperados = (SERVICOS_ESTADO_INFRA_APLICACAO if modo_aplicacao
+                     else SERVICOS_ESTADO_INFRA_LEGADO)
+        if not isinstance(servicos, dict) or set(servicos) != set(esperados):
             raise Falha("formato")
         for valor in servicos.values():
             if valor is not None:
                 conferir_medicao("estado-servico", valor)
-        imagem = dados["imagem_aplicacao"]
-        if servicos["aplicacao"] is None:
+        chave_imagem = "imagem_aplicacao" if modo_aplicacao else "imagem_admin"
+        servico_imagem = "aplicacao" if modo_aplicacao else "admin"
+        imagem = dados[chave_imagem]
+        if servicos[servico_imagem] is None:
             if imagem is not None:
                 raise Falha("formato")
         else:
@@ -675,7 +694,7 @@ def conferir_medicao(operacao, dados, referencia=""):
                 "repo_digests",
             }:
                 raise Falha("formato")
-            if imagem["container_image"] != servicos["aplicacao"]["imagem"]:
+            if imagem["container_image"] != servicos[servico_imagem]["imagem"]:
                 raise Falha("formato")
             if not isinstance(imagem["id"], str) or not re.fullmatch(
                 r"sha256:[0-9a-f]{64}", imagem["id"]
@@ -688,7 +707,9 @@ def conferir_medicao(operacao, dados, referencia=""):
                 or any(
                     not isinstance(digest, str)
                     or not re.fullmatch(
-                        r"ghcr\.io/abundanciabr/plataforma-aplicacao@sha256:[0-9a-f]{64}",
+                        (r"ghcr\.io/abundanciabr/plataforma-aplicacao@sha256:[0-9a-f]{64}"
+                         if modo_aplicacao else
+                         r"ghcr\.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}"),
                         digest,
                     )
                     for digest in digests
@@ -1350,11 +1371,15 @@ def medir(operacao, servico, referencia=""):
     if operacao == "estado-infra":
         arquivos = {nome: hash_arquivo_infra(nome) for nome in ARQUIVOS_ESTADO_INFRA}
         servicos = {}
-        for nome in SERVICOS_ESTADO_INFRA:
+        modo_aplicacao = aplicacao_ativa()
+        for nome in (SERVICOS_ESTADO_INFRA_APLICACAO if modo_aplicacao
+                     else SERVICOS_ESTADO_INFRA_LEGADO):
             servicos[nome] = medir_servico_estado_infra(nome)
-        imagem_aplicacao = None
-        if servicos["aplicacao"] is not None:
-            container_image = servicos["aplicacao"]["imagem"]
+        servico_imagem = "aplicacao" if modo_aplicacao else "admin"
+        chave_imagem = "imagem_aplicacao" if modo_aplicacao else "imagem_admin"
+        imagem = None
+        if servicos[servico_imagem] is not None:
+            container_image = servicos[servico_imagem]["imagem"]
             try:
                 inspeccionada = json.loads(
                     comando(
@@ -1375,7 +1400,7 @@ def medir(operacao, servico, referencia=""):
                 raise Falha("formato")
             if inspeccionada.get("repo_digests") is None:
                 inspeccionada["repo_digests"] = []
-            imagem_aplicacao = {
+            imagem = {
                 "container_image": container_image,
                 **inspeccionada,
             }
@@ -1409,7 +1434,7 @@ def medir(operacao, servico, referencia=""):
             {
                 "arquivos": arquivos,
                 "servicos": servicos,
-                "imagem_aplicacao": imagem_aplicacao,
+                chave_imagem: imagem,
                 "borda_http": int(codigo),
             },
         )
@@ -1478,18 +1503,7 @@ def medir(operacao, servico, referencia=""):
         )
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        codigo,
-                    ]
-                )
+                comando_shell(servico, identificador, codigo)
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
@@ -1559,18 +1573,7 @@ def medir(operacao, servico, referencia=""):
         )
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        codigo,
-                    ]
-                )
+                comando_shell(servico, identificador, codigo)
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
@@ -1649,18 +1652,7 @@ def medir(operacao, servico, referencia=""):
             )
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        codigo,
-                    ]
-                )
+                comando_shell(servico, identificador, codigo)
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
@@ -1767,18 +1759,7 @@ def medir(operacao, servico, referencia=""):
         )
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        codigo,
-                    ]
-                )
+                comando_shell(servico, identificador, codigo)
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
@@ -1880,18 +1861,7 @@ def medir(operacao, servico, referencia=""):
         )
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        codigo,
-                    ]
-                )
+                comando_shell(servico, identificador, codigo)
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
@@ -1924,18 +1894,7 @@ def medir(operacao, servico, referencia=""):
         )
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        codigo,
-                    ]
-                )
+                comando_shell(servico, identificador, codigo)
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
@@ -1943,18 +1902,7 @@ def medir(operacao, servico, referencia=""):
     if operacao in CODIGOS_FECHADOS:
         try:
             dados = json.loads(
-                comando(
-                    [
-                        "docker",
-                        "exec",
-                        identificador,
-                        "python",
-                        "-m", "config.comando", servico,
-                        "shell",
-                        "-c",
-                        CODIGOS_FECHADOS[operacao],
-                    ]
-                )
+                comando_shell(servico, identificador, CODIGOS_FECHADOS[operacao])
             )
         except (ValueError, TypeError):
             raise Falha("formato") from None
