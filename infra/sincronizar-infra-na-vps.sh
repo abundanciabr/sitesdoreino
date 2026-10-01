@@ -7,6 +7,9 @@ echo "SINCRONIZACAO-INICIADA: $(date -u +%Y%m%dT%H%M%SZ)"
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ"
+# Pasta de envio própria de cada sincronização (o publicador da VPS cria uma por vez).
+STAGING="${STAGING:-infra.new}"
+case "$STAGING" in infra.new|infra.new.[A-Za-z0-9_-]*) ;; *) echo "ERRO: STAGING invalido; use infra.new ou infra.new.<id>." >&2; exit 1 ;; esac
 if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
   export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 fi
@@ -65,14 +68,14 @@ PY
 conferir_publicacao_admin
 
 for ARQUIVO in docker-compose.yml sites.json sincronizar_sites.py provisionar-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh; do
-  [ -f "infra.new/$ARQUIVO" ] || { echo "ERRO: infra.new/$ARQUIVO ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
+  [ -f "${STAGING}/$ARQUIVO" ] || { echo "ERRO: ${STAGING}/$ARQUIVO ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
 done
-[ -d infra.new/traefik ] || { echo "ERRO: infra.new/traefik ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
-bash -n infra.new/provisionar-usuario-ponte.sh infra.new/instalar-provisionador-usuario-ponte.sh || {
-  echo "ERRO: roteiro da ponte incompleto ou invalido no staging; corrija o PR e reenvie infra.new." >&2; exit 1;
+[ -d ${STAGING}/traefik ] || { echo "ERRO: ${STAGING}/traefik ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
+bash -n ${STAGING}/provisionar-usuario-ponte.sh ${STAGING}/instalar-provisionador-usuario-ponte.sh || {
+  echo "ERRO: roteiro da ponte incompleto ou invalido no staging; corrija o PR e reenvie ${STAGING}." >&2; exit 1;
 }
-python3 -m json.tool infra.new/sites.json >/dev/null || {
-  echo "ERRO: sites.json invalido em infra.new; NADA foi trocado. Corrija o PR e reenvie." >&2; exit 1;
+python3 -m json.tool ${STAGING}/sites.json >/dev/null || {
+  echo "ERRO: sites.json invalido em ${STAGING}; NADA foi trocado. Corrija o PR e reenvie." >&2; exit 1;
 }
 for CHAVE in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
   VALOR=$(grep -m1 "^$CHAVE=" env/admin.env | cut -d= -f2-) || VALOR=""
@@ -84,18 +87,18 @@ for CHAVE in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
 done
 unset VALOR
 
-if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/infra.new/docker-compose.yml" config --quiet; then
-  echo "ERRO: compose novo reprovou ainda em infra.new; nenhuma mutacao root ou troca foi iniciada. Corrija o PR e reenvie." >&2
+if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/${STAGING}/docker-compose.yml" config --quiet; then
+  echo "ERRO: compose novo reprovou ainda em ${STAGING}; nenhuma mutacao root ou troca foi iniciada. Corrija o PR e reenvie." >&2
   exit 1
 fi
-STAGING_ANTES=$(tar -C infra.new --sort=name -cf - . | sha256sum | cut -d' ' -f1)
+STAGING_ANTES=$(tar -C ${STAGING} --sort=name -cf - . | sha256sum | cut -d' ' -f1)
 
 PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
 PONTE_INSTALADA=0
 if [ -e "$PROVISIONADOR_DA_PONTE" ]; then
-  if [ ! -x "$PROVISIONADOR_DA_PONTE" ] || ! cmp -s "$PROVISIONADOR_DA_PONTE" infra.new/provisionar-usuario-ponte.sh; then
-    echo "ERRO: a copia root da ponte diverge do staging; infra.new foi preservada." >&2
-    echo "      No console root, confira o kit e rode: bash $RAIZ/infra.new/instalar-provisionador-usuario-ponte.sh $RAIZ/infra.new/provisionar-usuario-ponte.sh" >&2
+  if [ ! -x "$PROVISIONADOR_DA_PONTE" ] || ! cmp -s "$PROVISIONADOR_DA_PONTE" ${STAGING}/provisionar-usuario-ponte.sh; then
+    echo "ERRO: a copia root da ponte diverge do staging; ${STAGING} foi preservada." >&2
+    echo "      No console root, confira o kit e rode: bash $RAIZ/${STAGING}/instalar-provisionador-usuario-ponte.sh $RAIZ/${STAGING}/provisionar-usuario-ponte.sh" >&2
     exit 1
   fi
   PONTE_INSTALADA=1
@@ -124,35 +127,35 @@ flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador
 unset TRAVA_PUBLICACAO
 
 conferir_publicacao_admin
-STAGING_AGORA=$(tar -C infra.new --sort=name -cf - . | sha256sum | cut -d' ' -f1)
+STAGING_AGORA=$(tar -C ${STAGING} --sort=name -cf - . | sha256sum | cut -d' ' -f1)
 if [ "$STAGING_AGORA" != "$STAGING_ANTES" ]; then
-  echo "ERRO: infra.new mudou durante a fase root; NADA foi consumido. Reenvie o staging pelo deploy-infra." >&2
+  echo "ERRO: ${STAGING} mudou durante a fase root; NADA foi consumido. Reenvie o staging pelo deploy-infra." >&2
   exit 1
 fi
 if [ "$PONTE_INSTALADA" = 1 ]; then
-  cmp -s "$PROVISIONADOR_DA_PONTE" infra.new/provisionar-usuario-ponte.sh || {
-    echo "ERRO: a copia root mudou antes da troca; infra.new foi preservada. Confira o kit root e repita." >&2; exit 1;
+  cmp -s "$PROVISIONADOR_DA_PONTE" ${STAGING}/provisionar-usuario-ponte.sh || {
+    echo "ERRO: a copia root mudou antes da troca; ${STAGING} foi preservada. Confira o kit root e repita." >&2; exit 1;
   }
 elif [ -e "$PROVISIONADOR_DA_PONTE" ]; then
-  echo "ERRO: a copia root apareceu durante a fase root; infra.new foi preservada. Confira o kit e repita." >&2
+  echo "ERRO: a copia root apareceu durante a fase root; ${STAGING} foi preservada. Confira o kit e repita." >&2
   exit 1
 fi
-if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/infra.new/docker-compose.yml" config --quiet; then
+if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/${STAGING}/docker-compose.yml" config --quiet; then
   echo "ERRO: compose novo reprovou apos a fase root; nenhuma troca de infraestrutura foi iniciada. Confira a ponte e reenvie o staging." >&2
   exit 1
 fi
 unset STAGING_ANTES STAGING_AGORA PONTE_INSTALADA
 
-ls infra.new
+ls ${STAGING}
 rm -rf traefik.new
-mv -f infra.new/docker-compose.yml docker-compose.yml.new
-mv infra.new/traefik traefik.new
-mv -f infra.new/sites.json sites.json.new
-mv -f infra.new/sincronizar_sites.py sincronizar_sites.py.new
-mv -f infra.new/provisionar-usuario-ponte.sh provisionar-usuario-ponte.sh
-mv -f infra.new/instalar-provisionador-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh
-mv -f infra.new/publicacao-local.py publicacao-local.py
-rmdir infra.new
+mv -f ${STAGING}/docker-compose.yml docker-compose.yml.new
+mv ${STAGING}/traefik traefik.new
+mv -f ${STAGING}/sites.json sites.json.new
+mv -f ${STAGING}/sincronizar_sites.py sincronizar_sites.py.new
+mv -f ${STAGING}/provisionar-usuario-ponte.sh provisionar-usuario-ponte.sh
+mv -f ${STAGING}/instalar-provisionador-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh
+mv -f ${STAGING}/publicacao-local.py publicacao-local.py
+rmdir ${STAGING}
 
 if ! docker compose -f docker-compose.yml.new config --quiet; then
   echo "ERRO: o compose novo reprovou na validação — NADA foi trocado."

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Publica uma célula sob trava, com backup antes do boot/migrations e prova da imagem.
+# IMAGEM e CODIGO vêm do publicador da VPS (base local + código montado); sem eles, imagem do registro.
 
 set -eu
 
@@ -7,24 +8,34 @@ if (set -o pipefail) 2>/dev/null; then set -o pipefail; fi
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ"
-
-# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
-TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
-command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
-if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
-  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
-    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
-  fi
-  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
-fi
-flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
-unset TRAVA_PUBLICACAO
+PUBLICACAO_LOCAL="${PUBLICACAO_LOCAL:-$RAIZ/publicacao-local.py}"
 
 if [ -z "${CELULA:-}" ]; then
   echo "PAROU POR SEGURANÇA: a variável CELULA chegou vazia."
   echo "Sem ela, os comandos abaixo agiriam sobre a plataforma inteira."
   exit 1
 fi
+
+# Publicacao de celula: convive com outras celulas, exclui a mesma celula e espera os mutadores comuns.
+TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
+command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
+case "${CELULA:-}" in ''|[!a-z]*|*[!a-z0-9_]*) echo "PAROU POR SEGURANÇA: a variável CELULA chegou vazia ou inválida." >&2; exit 1 ;; esac
+if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
+  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
+    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
+  fi
+  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
+fi
+flock --shared 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
+TRAVA_CELULA="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao-$CELULA.lock"
+if ! [ "$TRAVA_CELULA" -ef "/proc/$$/fd/9" ]; then
+  if [ ! -f "$TRAVA_CELULA" ]; then
+    (umask 022; : >>"$TRAVA_CELULA") || { echo "ERRO: nao criei a trava da celula; confira permissoes da plataforma." >&2; exit 1; }
+  fi
+  exec 9<"$TRAVA_CELULA" || { echo "ERRO: nao li a trava da celula." >&2; exit 1; }
+fi
+flock --exclusive 9 || { echo "ERRO: nao obtive a trava da celula; confira a publicacao em andamento antes de repetir." >&2; exit 1; }
+unset TRAVA_PUBLICACAO TRAVA_CELULA
 
 ENV_DO_ADMIN="$RAIZ/env/admin.env"
 for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
@@ -47,8 +58,24 @@ if [ "${MODO:-publicar}" = "inicializar" ]; then
   if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
     export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
   fi
-  docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
-  python3 "$RAIZ/publicacao-local.py" inicializar
+  if [ -n "${IMAGEM:-}" ]; then
+    # Célula ainda sem journal: sobe a versão já testada antes de registrar a primeira aprovação.
+    SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
+    [ -n "$SERVICOS" ] || { echo "ERRO: '$CELULA' não tem serviço no compose."; exit 1; }
+    mkdir -p "$RAIZ/publicacoes"
+    INICIAL=$(mktemp "$RAIZ/publicacoes/.inicial-$CELULA.XXXXXX")
+    python3 - "$INICIAL" "$IMAGEM" "${CODIGO:-}" $SERVICOS <<'PY'
+import json, sys
+destino, imagem, codigo, *servicos = sys.argv[1:]
+entrada = {"image": imagem, **({"volumes": [codigo + ":/app:ro"]} if codigo else {})}
+open(destino, "w").write(json.dumps({"services": {s: entrada for s in servicos}}))
+PY
+    COMPOSE_FILE="${COMPOSE_FILE:-$RAIZ/docker-compose.yml}:$INICIAL" docker compose up -d --wait --wait-timeout 180 $SERVICOS
+    rm -f "$INICIAL"
+  else
+    docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
+  fi
+  python3 "$PUBLICACAO_LOCAL" inicializar
   echo "INICIALIZACAO-CONCLUIDA: $CELULA:$TAG"
   exit 0
 fi
@@ -77,12 +104,12 @@ if [ -z "$SERVICOS" ]; then
 fi
 echo "Serviços desta célula: $SERVICOS"
 
-python3 "$RAIZ/publicacao-local.py" preparar
-trap 'CODIGO=$?; if [ "$CODIGO" -ne 0 ]; then python3 "$RAIZ/publicacao-local.py" abortar || true; echo "ESTADO-PUBLICACAO: $(cat "$RAIZ/publicacoes/$CELULA.json")"; fi; exit "$CODIGO"' EXIT
+python3 "$PUBLICACAO_LOCAL" preparar
+trap 'CODIGO=$?; if [ "$CODIGO" -ne 0 ]; then python3 "$PUBLICACAO_LOCAL" abortar || true; echo "ESTADO-PUBLICACAO: $(cat "$RAIZ/publicacoes/$CELULA.json")"; fi; exit "$CODIGO"' EXIT
 if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
   export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 fi
-docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
+[ -n "${IMAGEM:-}" ] || docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
 
 parar_o_deploy() {
   echo
@@ -180,7 +207,7 @@ else
 fi
 
 # --wait reprova o deploy se algum container não ficar de pé (ou não ficar
-python3 "$RAIZ/publicacao-local.py" aplicar
+python3 "$PUBLICACAO_LOCAL" aplicar
 export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 echo "CANDIDATA-APLICADA: $TAG"
 docker compose up -d --wait --wait-timeout 180 $SERVICOS
@@ -191,5 +218,5 @@ if [ "$CELULA" = "cursos" ]; then
     || parar_o_deploy "nao consegui marcar os Bosses de Primeiros Dolares. Nada foi considerado publicado."
 fi
 
-python3 "$RAIZ/publicacao-local.py" aprovar
+python3 "$PUBLICACAO_LOCAL" aprovar
 echo "ENTREGA-CONCLUIDA: $CELULA"

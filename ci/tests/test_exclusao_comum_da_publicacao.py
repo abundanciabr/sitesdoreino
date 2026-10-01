@@ -10,8 +10,9 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 TRAVA = RAIZ / "infra/trava-de-publicacao.sh"
+TRAVA_DA_CELULA = RAIZ / "infra/trava-da-celula.sh"
+PUBLICADORES_DE_CELULA = ("deploy-celula-na-vps.sh", "reverter-celula-na-vps.sh")
 MUTADORES = (
-    "deploy-celula-na-vps.sh", "reverter-celula-na-vps.sh",
     "sincronizar-infra-na-vps.sh", "publicar-dados-admin-na-vps.sh",
     "backfill-mensagens-do-forum.sh", "backfill-pontos-do-forum.sh",
     "canario-fase-3-outbox.sh", "conferir-as-fichas.sh", "esvaziar-caixa.sh",
@@ -91,12 +92,15 @@ def test_par_trava_mesma_raiz_antes_de_operar(nome):
 
 
 def executar(codigo, pasta, *, como_root=False, **kwargs):
-    ambiente = os.environ | {"PLATAFORMA_DIR": str(pasta), "FRAGMENTO": str(TRAVA)}
+    ambiente = os.environ | {"PLATAFORMA_DIR": str(pasta), "FRAGMENTO": str(TRAVA),
+                             "FRAGMENTO_CELULA": str(TRAVA_DA_CELULA)}
     comando = ["bash", "-eu", "-c", "echo preparado; " + codigo]
     if os.name == "nt" or (como_root and os.geteuid() != 0):
         comando = ["docker", "run", "--rm", "--network", "none", "--cpus", "1",
                    "--memory", "512m", "--volume", f"{pasta}:/plataforma",
-                   "--volume", f"{TRAVA}:/fragmento:ro", "--env",
+                   "--volume", f"{TRAVA}:/fragmento:ro",
+                   "--volume", f"{TRAVA_DA_CELULA}:/fragmento-celula:ro",
+                   "--env", "FRAGMENTO_CELULA=/fragmento-celula", "--env",
                    "PLATAFORMA_DIR=/plataforma", "--env", "FRAGMENTO=/fragmento",
                    "--entrypoint", "bash", "ubuntu:24.04", "-eu", "-c",
                    "echo preparado; " + codigo]
@@ -288,5 +292,54 @@ def test_sincronizador_fecha_fd8_antes_do_sudo_e_revalida_apos_a_posse():
     assert texto.index("exec 8<&-\n  sudo -n") < texto.index(fragmento)
     assert texto.index(fragmento) < texto.index("STAGING_AGORA=")
     assert texto.index(fragmento) < texto.rindex('if ! docker compose --project-directory')
-    assert texto.index("STAGING_AGORA=") < texto.index("mv -f infra.new/docker-compose.yml")
+    assert texto.index("STAGING_AGORA=") < texto.index("mv -f ${STAGING}/docker-compose.yml")
     assert texto.index("conferir_publicacao_admin\nSTAGING_AGORA=") > texto.index(fragmento)
+
+
+@pytest.mark.parametrize("nome", PUBLICADORES_DE_CELULA)
+def test_publicador_de_celula_trava_a_celula_antes_de_docker(nome):
+    fragmento = TRAVA_DA_CELULA.read_text(encoding="utf-8").strip()
+    texto = (RAIZ / "infra" / nome).read_text(encoding="utf-8")
+    assert fragmento in texto
+    assert texto.index(fragmento) < texto.index("docker ", texto.index(fragmento))
+
+
+def _celula(codigo, pasta, celula, **kwargs):
+    return executar(f"export CELULA={celula}; " + codigo, pasta, **kwargs)
+
+
+def test_celulas_diferentes_publicam_juntas_e_a_mesma_espera(tmp_path):
+    # G6: sem fila global; a exclusão é da célula e dos mutadores comuns.
+    admin = _celula('source "$FRAGMENTO_CELULA"; echo iniciou; read -r sinal', tmp_path, "admin",
+                    stdin=subprocess.PIPE)
+    assert admin.stdout.readline().strip() == "iniciou"
+    outros = []
+    try:
+        funil = _celula('source "$FRAGMENTO_CELULA"; echo funil', tmp_path, "funil")
+        outros.append(funil)
+        assert concluir(funil).strip() == "funil"
+        segundo_admin = _celula('source "$FRAGMENTO_CELULA"; echo segundo', tmp_path, "admin")
+        outros.append(segundo_admin)
+        with pytest.raises(subprocess.TimeoutExpired):
+            segundo_admin.communicate(timeout=0.3)
+        infra = _celula('source "$FRAGMENTO"; echo infra', tmp_path, "admin")
+        outros.append(infra)
+        with pytest.raises(subprocess.TimeoutExpired):
+            infra.communicate(timeout=0.3)
+        admin.stdin.write("liberar\n")
+        admin.stdin.flush()
+        concluir(admin)
+        assert concluir(segundo_admin).strip() == "segundo"
+        assert concluir(infra).strip() == "infra"
+    finally:
+        for processo in (admin, *outros):
+            if processo.poll() is None:
+                if processo.stdin is not None:
+                    processo.stdin.close()
+                processo.wait(timeout=30)
+
+
+def test_celula_invalida_para_antes_de_travar(tmp_path):
+    processo = _celula('source "$FRAGMENTO_CELULA"; echo travou', tmp_path, "../x")
+    saida, erro = processo.communicate(timeout=30)
+    assert processo.returncode != 0 and "travou" not in saida

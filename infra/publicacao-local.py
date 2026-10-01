@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Publicação por imagem testada e prova HTTP, sem escrever testes no banco vivo."""
+"""Publicação por imagem testada e prova HTTP, sem escrever testes no banco vivo.
+
+Uma versão é a imagem da base mais, quando o publicador da VPS a montou, a pasta
+imutável do código em /app (somente leitura). Sem pasta, vale o código da imagem.
+"""
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -8,6 +13,11 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
+
+try:
+    import fcntl
+except ImportError:  # testes no Windows
+    fcntl = None
 
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 PASTA = RAIZ / "publicacoes"
@@ -39,6 +49,55 @@ def validar_sha(sha):
     return sha
 
 
+def imagem_padrao(sha):
+    return f"ghcr.io/abundanciabr/plataforma-{CELULA}:{sha}"
+
+
+def versao_pedida(tag):
+    """Imagem e código que o publicador testou; sem variáveis, a imagem do registro."""
+    imagem = os.environ.get("IMAGEM") or imagem_padrao(tag)
+    codigo = os.environ.get("CODIGO") or None
+    if not re.fullmatch(r"[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9_.-]+)?", imagem):
+        raise ValueError("referência de imagem inválida")
+    if codigo is not None:
+        pasta = Path(codigo)
+        if not codigo.startswith("/") or ".." in pasta.parts or not pasta.is_dir():
+            raise ValueError("pasta de código ausente ou fora do lugar")
+    return {"imagem": imagem, "codigo": codigo}
+
+
+def versao_de(estado, sha):
+    """Imagem e código registrados para um SHA deste journal."""
+    for chave, chave_versao in (("atual", "atual_versao"), ("candidata", "candidata_versao")):
+        if estado.get(chave) == sha and estado.get(chave_versao):
+            return estado[chave_versao]
+    for registro in (estado.get("aprovada"), estado.get("anterior_aprovada")):
+        if registro and registro.get("sha") == sha:
+            return {"imagem": registro.get("imagem") or imagem_padrao(sha), "codigo": registro.get("codigo")}
+    return {"imagem": imagem_padrao(sha), "codigo": None}
+
+
+@contextmanager
+def trava_curta(caminho):
+    """Exclusão só durante a escrita de um arquivo comum a várias células."""
+    PASTA.mkdir(mode=0o700, exist_ok=True)
+    with open(caminho, "a") as arquivo:
+        if fcntl:
+            fcntl.flock(arquivo, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl:
+                fcntl.flock(arquivo, fcntl.LOCK_UN)
+
+
+def garantir_imagem(imagem):
+    try:
+        comando("docker", "image", "inspect", "--format", "{{.Id}}", imagem)
+    except subprocess.CalledProcessError:
+        comando("docker", "pull", imagem)
+
+
 def compatibilidade():
     valores = {chave: os.environ.get(env, "") for chave, env in
                (("dados", "COMPATIBILIDADE_DADOS"), ("configuracao", "COMPATIBILIDADE_CONFIGURACAO"))}
@@ -47,7 +106,8 @@ def compatibilidade():
     return valores
 
 
-def provar(estado, sha):
+def provar(estado, sha, versao=None):
+    versao = versao or versao_de(estado, sha)
     servicos = estado["servicos"]
     for servico in servicos:
         container = compose("ps", "-q", servico)
@@ -59,10 +119,14 @@ def provar(estado, sha):
         if situacao.get("Health", {}).get("Status", "healthy") != "healthy":
             raise ValueError("serviço sem saúde durante a prova: " + servico)
         imagem = comando("docker", "inspect", "--format", "{{.Image}}", container)
-        esperada = comando("docker", "image", "inspect", "--format", "{{.Id}}",
-                           f"ghcr.io/abundanciabr/plataforma-{CELULA}:{sha}")
+        esperada = comando("docker", "image", "inspect", "--format", "{{.Id}}", versao["imagem"])
         if not imagem or imagem != esperada:
             raise ValueError("imagem aplicada diverge da imagem testada: " + servico)
+        if versao.get("codigo"):
+            montagens = json.loads(comando("docker", "inspect", "--format", "{{json .Mounts}}", container))
+            if not any(m.get("Destination") == "/app" and m.get("Source") == versao["codigo"]
+                       and m.get("RW") is False for m in montagens):
+                raise ValueError("código montado diverge do código testado: " + servico)
     endereco = estado["endereco"]
     if not re.fullmatch(r"https://[^\s/@?#]+(?:/[^\s?#]*)?", endereco):
         raise ValueError("endereço da prova precisa ser HTTPS sem credenciais ou query")
@@ -72,12 +136,18 @@ def provar(estado, sha):
         raise ValueError("prova do endereço recusada: HTTP " + codigo)
 
 
-def pin(estado, sha):
+def pin(estado, sha, versao=None):
+    versao = versao or versao_de(estado, sha)
     caminho = PASTA / "imagens.json"
-    documento = json.loads(caminho.read_text()) if caminho.exists() else {"services": {}}
-    for servico in estado["servicos"]:
-        documento["services"][servico] = {"image": f"ghcr.io/abundanciabr/plataforma-{CELULA}:{sha}"}
-    salvar(caminho, documento)
+    # O override é de todas as células; cada uma reescreve só os próprios serviços.
+    with trava_curta(PASTA / ".imagens.lock"):
+        documento = json.loads(caminho.read_text()) if caminho.exists() else {"services": {}}
+        for servico in estado["servicos"]:
+            entrada = {"image": versao["imagem"]}
+            if versao.get("codigo"):
+                entrada["volumes"] = [versao["codigo"] + ":/app:ro"]
+            documento["services"][servico] = entrada
+        salvar(caminho, documento)
     os.environ["COMPOSE_FILE"] = str(RAIZ / "docker-compose.yml") + ":" + str(caminho)
 
 
@@ -89,7 +159,7 @@ def executar(acao):
                 continue
             estado = json.loads(journal.read_text())
             CELULA = estado["celula"]
-            provar(estado, estado["atual"])
+            provar(estado, estado["atual"], versao_de(estado, estado["atual"]))
         return
     if acao == "encerrar-recuperacao-global" or (acao == "encerrar-recuperacao" and not CELULA):
         terminal = PASTA / "recuperacao-terminal.json"
@@ -124,9 +194,11 @@ def executar(acao):
                       "aprovada": None, "anterior_aprovada": None, "compatibilidade": comp,
                       "servicos": servicos, "endereco": os.environ.get("ENDERECO_PROVA", ""),
                       "publicada_em": agora()}
-            provar(estado, tag)
-            estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **comp)
-            pin(estado, tag)
+            versao = versao_pedida(tag)
+            provar(estado, tag, versao)
+            estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **comp, **versao)
+            estado["atual_versao"] = versao
+            pin(estado, tag, versao)
         else:
             if estado is None or not estado.get("aprovada"):
                 raise ValueError("inicialize aprovação com testes da imagem atual e prova do endereço antes da primeira troca")
@@ -142,6 +214,7 @@ def executar(acao):
             if not estado["servicos"]:
                 raise ValueError("célula sem serviços no Compose atual")
             estado["candidata"] = tag
+            estado["candidata_versao"] = versao_pedida(tag)
             estado["pedido_em"] = os.environ.get("PEDIDO_EM") or agora()
             estado["endereco"] = os.environ.get("ENDERECO_PROVA") or estado["endereco"]
             print("ALVO-APROVADO: " + estado["aprovada"]["sha"])
@@ -154,30 +227,35 @@ def executar(acao):
     if acao == "abortar":
         if estado["candidata"] and estado["atual"] != estado["candidata"]:
             estado["candidata"] = None
+            estado.pop("candidata_versao", None)
             salvar(caminho, estado)
             medir(estado, False, False, 0)
         return
     if acao == "aplicar":
         if estado["candidata"] != tag:
             raise ValueError("candidata não corresponde ao pedido")
-        pin(estado, tag)
+        versao = estado.get("candidata_versao") or versao_pedida(tag)
+        pin(estado, tag, versao)
         estado["atual"] = tag
+        estado["atual_versao"] = versao
         estado["publicada_em"] = agora()
         salvar(caminho, estado)
         return
     if acao == "aprovar":
         if estado["candidata"] != tag or estado["atual"] != tag:
             raise ValueError("imagem não é a candidata aplicada")
+        versao = versao_de(estado, tag)
         try:
-            provar(estado, tag)
+            provar(estado, tag, versao)
         except Exception:
             estado["prova_falhou"] = True
             salvar(caminho, estado)
             raise
         if estado["aprovada"]["sha"] != tag:
             estado["anterior_aprovada"] = estado["aprovada"]
-        estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **estado["compatibilidade"])
+        estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **estado["compatibilidade"], **versao)
         estado["candidata"] = None
+        estado.pop("candidata_versao", None)
         salvar(caminho, estado)
         (PASTA / "recuperacao-terminal.json").unlink(missing_ok=True)
         medir(estado, False, False, 0, estado["aprovada"]["verificada_em"])
@@ -199,13 +277,18 @@ def executar(acao):
     salvar(caminho, estado)
     inicio = time.monotonic()
     try:
-        pin(estado, tag)
-        compose("pull", *estado["servicos"])
+        versao = {"imagem": alvo.get("imagem") or imagem_padrao(tag), "codigo": alvo.get("codigo")}
+        if versao["codigo"] and not Path(versao["codigo"]).is_dir():
+            raise ValueError("pasta de código da aprovada ausente")
+        garantir_imagem(versao["imagem"])
+        pin(estado, tag, versao)
         compose("up", "-d", "--wait", "--wait-timeout", "180", *estado["servicos"])
         estado["atual"] = tag
+        estado["atual_versao"] = versao
         salvar(caminho, estado)
-        provar(estado, tag)
+        provar(estado, tag, versao)
         estado["candidata"] = None
+        estado.pop("candidata_versao", None)
         estado["aprovada"] = alvo
         estado["anterior_aprovada"] = None
         estado["recuperacao"]["estado"] = "concluida"
@@ -222,6 +305,15 @@ def executar(acao):
 def medir(estado, falhou, voltou, duracao, publicado_em=None):
     linha = dict(celula=CELULA, pedido_em=estado.get("pedido_em"), publicado_em=publicado_em,
                  prova_falhou=falhou, reversao=voltou, recuperacao_segundos=duracao)
+    # Tempos que o publicador da VPS mediu antes desta etapa (build, testes, espera).
+    try:
+        extra = json.loads(os.environ.get("MEDICAO_EXTRA") or "{}")
+    except ValueError:
+        extra = {}
+    if isinstance(extra, dict):
+        linha.update({chave: valor for chave, valor in extra.items()
+                      if re.fullmatch(r"[a-z_]{1,40}", str(chave)) and chave not in linha
+                      and isinstance(valor, (int, float, str, bool))})
     with (PASTA / "medicoes.jsonl").open("a", encoding="utf-8") as arquivo:
         arquivo.write(json.dumps(linha) + "\n")
     print("PUBLICACAO-MEDICAO: " + json.dumps(linha))
