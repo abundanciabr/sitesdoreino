@@ -39,6 +39,7 @@ from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 
+from . import conta_do_robo
 from .clients import IdentidadeClient, IdentidadeIndisponivel
 from .equipe_acesso import aparelho_da_requisicao, gravar_cookie_do_aparelho
 from .models import Administrador, MembroDaEquipe
@@ -232,6 +233,23 @@ class PortaAdministrativa:
             # moldura de navegador: sai sem CSP e sem `Cache-Control` de tela,
             # porque quem consome e outra celula, nunca um navegador.
             return self.get_response(request)
+
+        if conta_do_robo.apresentou(request):
+            # A conta do robô (01/10/2026): `apps/core/conta_do_robo.py`.
+            # Credencial errada ou revogada é um estranho (404); gesto sem
+            # volta é 403. CSRF desligado só aqui: a credencial vem num
+            # cabeçalho que o navegador não manda sozinho.
+            robo = conta_do_robo.reconhecer(request)
+            if robo is None:
+                logger.warning(
+                    "porta: credencial de robô recusada em %s", request.path_info
+                )
+                return self._nao_existe()
+            if conta_do_robo.gesto_sem_volta(request):
+                return self._com_seguranca(conta_do_robo.recusa())
+            request.admin = robo
+            request._dont_enforce_csrf_checks = True
+            return self._com_seguranca(self.get_response(request))
 
         if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
             return self._com_seguranca(self.get_response(request))

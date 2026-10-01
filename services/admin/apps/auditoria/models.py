@@ -330,6 +330,12 @@ class Registro(models.Model):
     # (`armadilhas/331`).
     CRIAR_EXPERIMENTO = "criar_experimento"
     INICIAR_EXPERIMENTO = "iniciar_experimento"
+    # [CONTA DO ROBÔ] 01/10/2026 (`apps/core/conta_do_robo.py`). A linha de
+    # emissão É o registro da credencial: o `detalhe` guarda só o sha256 dela,
+    # e a que vale é a da última emissão sem revogação depois. Append-only por
+    # gatilho, então trocar a credencial sempre deixa uma linha.
+    EMITIR_CREDENCIAL_DO_ROBO = "emitir_credencial_do_robo"
+    REVOGAR_CREDENCIAL_DO_ROBO = "revogar_credencial_do_robo"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -391,6 +397,8 @@ class Registro(models.Model):
         (DECIDIR_EXPERIMENTO, "promover, reverter ou encerrar um experimento"),
         (CRIAR_EXPERIMENTO, "criar um experimento na pagina de venda"),
         (INICIAR_EXPERIMENTO, "por um experimento da pagina no ar"),
+        (EMITIR_CREDENCIAL_DO_ROBO, "emitir a credencial da conta do robo"),
+        (REVOGAR_CREDENCIAL_DO_ROBO, "revogar a credencial da conta do robo"),
     ]
 
     OK = "ok"
