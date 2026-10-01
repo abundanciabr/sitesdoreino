@@ -24,11 +24,11 @@ A credencial não é recuperável: o servidor guarda só o sha256 dela. Perdeu,
 vazou ou quer trocar? Emita outra pela VPS, que a anterior deixa de valer no
 mesmo instante, e o valor vai do cano direto para este cofre, sem tela:
 
-    ssh sitesdoreino-vps 'docker exec $(docker ps -q --filter label=com.docker.compose.project=plataforma --filter label=com.docker.compose.service=admin | head -n1) python manage.py conta_do_robo emitir' | python ci/cofre.py guardar robo-admin
+    ssh sitesdoreino-vps 'docker exec $(docker ps -q --filter label=com.docker.compose.project=plataforma --filter label=com.docker.compose.service=aplicacao | head -n1) python -m config.comando admin conta_do_robo emitir' | python ci/cofre.py guardar robo-admin
 
 Para cortar o acesso do robô sem emitir outra:
 
-    ssh sitesdoreino-vps 'docker exec $(docker ps -q --filter label=com.docker.compose.project=plataforma --filter label=com.docker.compose.service=admin | head -n1) python manage.py conta_do_robo revogar'
+    ssh sitesdoreino-vps 'docker exec $(docker ps -q --filter label=com.docker.compose.project=plataforma --filter label=com.docker.compose.service=aplicacao | head -n1) python -m config.comando admin conta_do_robo revogar'
     python ci/cofre.py revogar robo-admin
 """
 
