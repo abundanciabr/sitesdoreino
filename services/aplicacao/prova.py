@@ -256,11 +256,26 @@ def provar_entrada_real() -> None:
             with serving("forum"):
                 from modules.forum.apps.forum.tasks import relay_outbox_periodico
                 from modules.forum.config.huey import huey as fila
-                resultado = relay_outbox_periodico()
+                from modules.forum.apps.forum.models import OutboxEvent
+                import redis
+                evento = OutboxEvent.objects.create(
+                    event="forum.prova-unificada", payload={"prova": True},
+                )
+                relay_outbox_periodico()
                 print(f"Huey fórum: {fila.storage.queue_key}; pendentes={fila.pending_count()}",
                       flush=True)
-                if resultado.get(blocking=True, timeout=15) != 0:
-                    raise AssertionError("task Huey não executou no banco do fórum")
+                limite = time.monotonic() + 20
+                while time.monotonic() < limite:
+                    evento.refresh_from_db()
+                    if evento.published_at:
+                        break
+                    time.sleep(0.3)
+                else:
+                    raise AssertionError("task Huey não publicou outbox no banco do fórum")
+                canal = redis.Redis.from_url(os.environ["REDIS_STREAMS_URL"])
+                cartas = canal.xrevrange("eventos.forum.prova-unificada", count=1)
+                if not cartas or str(evento.event_id).encode() not in cartas[0][1][b"json"]:
+                    raise AssertionError("task Huey não publicou no Redis isolado")
             time.sleep(2)
             log.seek(0)
             texto = log.read()
@@ -301,6 +316,8 @@ def main() -> None:
         if comando.stdout.strip() != "Prova legada":
             raise AssertionError("CLI unificada não leu registro legado")
         asyncio.run(provar_http())
+        from prova_fluxos import provar as provar_fluxos
+        provar_fluxos()
         provar_entrada_real()
     print(f"Aplicação única: {len(urls)} bancos legados preservados; "
           f"{len(MODULOS)} módulos HTTP saudáveis; estáticos servidos.")

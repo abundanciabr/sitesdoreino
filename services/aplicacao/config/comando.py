@@ -66,6 +66,12 @@ def main(argv=None) -> None:
     instalar()
 
     with serving(args.servico):
+        if args.comando == "help":
+            if len(args.argumentos) != 1:
+                parser.error("help requer um comando do módulo")
+            alvo = args.argumentos[0]
+            _local_command(args.servico, alvo).create_parser("manage.py", alvo).print_help()
+            return
         if args.comando == "env":
             if len(args.argumentos) != 1:
                 parser.error("env requer o nome de uma variável")
