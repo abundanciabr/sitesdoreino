@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO"
 # =============================================================================
 # LIGAR O PAINEL NA MEDIÇÃO — o passo do mantenedor.
 #
@@ -221,7 +224,7 @@ echo
 #    os arquivos JÁ estão certos, e o env é lido no start de cada container.
 # -----------------------------------------------------------------------------
 echo "== recarregando as duas células =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-da-medicao.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+recarregar_servicos "provisionar-par-da-medicao.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora o painel consegue perguntar à medição o que aconteceu no"

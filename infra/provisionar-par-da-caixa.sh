@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO"
 # =============================================================================
 # LIGAR A CAIXA DE SUGESTÕES DENTRO DO ADMIN — o passo do mantenedor.
 #
@@ -231,7 +234,7 @@ echo
 #    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-da-caixa.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+recarregar_servicos "provisionar-par-da-caixa.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora meshcraft.top/admin/caixa/ consegue perguntar à Caixa o que"

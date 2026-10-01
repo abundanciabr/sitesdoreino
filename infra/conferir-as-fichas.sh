@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO"
 # =============================================================================
 # CONFERIR AS FICHAS DOS ALUNOS contra o histórico de pontos — e, se pedirem,
 # acertar as que estiverem fora do lugar.

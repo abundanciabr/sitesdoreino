@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO"
 # =============================================================================
 # SEMEAR EXPERIMENTO: liga, desliga ou mede, na produção, o A/A técnico da
 # página de oferta de meshcraft.top, pela mesma porta das telas da área

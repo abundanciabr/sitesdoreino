@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO"
 # =============================================================================
 # LIGAR A TELA DO MENU DO TOPO — o passo do mantenedor.
 #
@@ -278,7 +281,7 @@ if [ -n "$MEXIDOS" ]; then
   # que fez os greens do deploy-celula mentirem até 21/08/2026 (H13). Achado
   # pelo guarda irmão `ci/tests/test_provisionar_par_da_economia.py`, que EXECUTA
   # o script com o docker fora de alcance.
-  saida_do_reinicio="$(python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-do-menu.sh" 2>&1)"
+  saida_do_reinicio="$(recarregar_servicos "provisionar-par-do-menu.sh" 2>&1)"
   estado_do_reinicio=$?
   printf '%s\n' "$saida_do_reinicio" | tail -5
   if [ "$estado_do_reinicio" -eq 0 ]; then

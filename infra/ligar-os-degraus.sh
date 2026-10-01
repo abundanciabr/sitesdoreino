@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-. "$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO"
 # =============================================================================
 # LIGAR A ESCADA DE DEGRAUS DA ESCOLA — para a página de conquistas deixar de
 # dizer "a sua escada está sendo montada".
