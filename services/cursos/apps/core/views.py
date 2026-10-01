@@ -731,7 +731,16 @@ def _video(aula: Aula) -> dict:
 
 def _video_por_url(video_url: str) -> dict:
     url = (video_url or "").strip()
-    return {"link": url, "embutido": _embutir(url) if url else None}
+    embutido = _embutir(url) if url else None
+    youtube = bool(
+        embutido and embutido.startswith("https://www.youtube-nocookie.com/embed/")
+    )
+    return {
+        "link": url,
+        "embutido": embutido,
+        "youtube_id": embutido.rsplit("/", 1)[-1] if youtube else "",
+        "vertical": youtube and urlsplit(url).path.startswith("/shorts/"),
+    }
 
 
 def _porta_de_aulas_avulsas(request):

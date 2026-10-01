@@ -292,8 +292,9 @@ def test_o_modal_da_videoaula_fecha_por_x_por_esc_e_por_clique_fora(
     assert 'class="videoaula-fundo" href="#abrir-videoaula"' in corpo  # clique fora
     assert "caixa.showModal()" in corpo
     assert "botao.focus()" in corpo
-    # Nada de fora: nenhum `<script src=...>` e nenhuma biblioteca.
-    assert "<script src" not in corpo
+    # O modal continua nativo; o script externo desta página é só o player.
+    scripts = re.findall(r'<script src="([^"]+)"', corpo)
+    assert scripts == ["/static/cursos/player_youtube_vsl.js"]
 
 
 def test_html_dentro_de_uma_peca_chega_escapado_na_pagina(
@@ -371,6 +372,22 @@ def test_a_aula_abre_direto_sem_passar_pelo_mapa(aluna, aula_publicada, client):
             "https://www.youtube.com/embed/dQw4w9WgXcQ",
             "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
         ),
+        (
+            "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+            "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+        ),
+        (
+            "https://www.youtube.com/watch?v=3DqQzY2-uOw",
+            "https://www.youtube-nocookie.com/embed/3DqQzY2-uOw",
+        ),
+        (
+            "https://www.youtube.com/watch?v=ryJ4utK4G60",
+            "https://www.youtube-nocookie.com/embed/ryJ4utK4G60",
+        ),
+        (
+            "https://www.youtube.com/watch?v=4lF0RQ_XfMc",
+            "https://www.youtube-nocookie.com/embed/4lF0RQ_XfMc",
+        ),
         ("https://vimeo.com/123456789", "https://player.vimeo.com/video/123456789"),
         (
             "https://player.vimeo.com/video/123456789",
@@ -383,9 +400,19 @@ def test_youtube_e_vimeo_entram_embutidos(aluna, esqueleto, client, url, embutid
     corpo = corpo_de(
         abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
     )
-    assert (
-        f'<iframe src="{embutido}" ' 'referrerpolicy="strict-origin-when-cross-origin"'
-    ) in corpo
+    if "youtube-nocookie.com" in embutido:
+        assert (
+            f'data-vsl-youtube data-video-id="{embutido.rsplit("/", 1)[-1]}"' in corpo
+        )
+        assert "player_youtube_vsl.css" in corpo
+        assert "player_youtube_vsl.js" in corpo
+        formato = "short" if "/shorts/" in url else "largo"
+        assert f'class="vsl-youtube vsl-youtube--{formato}"' in corpo
+    else:
+        assert (
+            f'<iframe src="{embutido}" '
+            'referrerpolicy="strict-origin-when-cross-origin"'
+        ) in corpo
     assert "Abrir o vídeo em outra aba" in corpo
 
 
