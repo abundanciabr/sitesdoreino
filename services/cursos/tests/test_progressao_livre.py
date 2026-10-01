@@ -290,11 +290,11 @@ def test_no_curso_por_laudo_a_rota_de_concluir_recusa(
 
 def test_navegacao_na_primeira_aula_nao_libera_a_seguinte(aluna_do_roblox, client):
     corpo = corpo_da_aula(client, "1")
-    nav = corpo.split('<nav class="navegacao-aulas"', 1)[1].split('</nav>', 1)[0]
-    assert 'Primeira aula' in nav
+    nav = corpo.split('<nav class="navegacao-aulas"', 1)[1].split("</nav>", 1)[0]
+    assert "Primeira aula" in nav
     assert 'rel="next"' not in nav
-    assert 'Conclua a aula anterior' in nav
-    assert nav.count('disabled') == 2
+    assert "Conclua a aula anterior" in nav
+    assert nav.count("disabled") == 2
 
 
 def test_navegacao_abre_a_proxima_so_apos_concluir(aluna_do_roblox, client):
@@ -302,15 +302,24 @@ def test_navegacao_abre_a_proxima_so_apos_concluir(aluna_do_roblox, client):
     registrar_as_pausas(client, "1")
     concluir(client, "1")
     corpo = corpo_da_aula(client, "1")
-    assert f'href="{reverse("aula-do-curso", args=["roblox", 1, "2"])}" rel="next"' in corpo
+    assert (
+        f'href="{reverse("aula-do-curso", args=["roblox", 1, "2"])}" rel="next"'
+        in corpo
+    )
     corpo = corpo_da_aula(client, "2")
-    assert f'href="{reverse("aula-do-curso", args=["roblox", 1, "1"])}" rel="prev"' in corpo
+    assert (
+        f'href="{reverse("aula-do-curso", args=["roblox", 1, "1"])}" rel="prev"'
+        in corpo
+    )
     assert 'rel="next"' not in corpo
     registrar_as_pausas(client, "2")
     concluir(client, "2")
     corpo = corpo_da_aula(client, "3")
-    assert f'href="{reverse("aula-do-curso", args=["roblox", 1, "2"])}" rel="prev"' in corpo
-    assert 'Última aula' in corpo
+    assert (
+        f'href="{reverse("aula-do-curso", args=["roblox", 1, "2"])}" rel="prev"'
+        in corpo
+    )
+    assert "Última aula" in corpo
     assert 'rel="next"' not in corpo
 
 
@@ -321,4 +330,52 @@ def test_navegacao_nao_aponta_para_aula_em_rascunho(aluna_do_roblox, roblox, cli
     roblox.aulas.filter(numero="2").update(estado=Aula.Estado.RASCUNHO)
     corpo = corpo_da_aula(client, "1")
     assert 'rel="next"' not in corpo
-    assert 'A escola está preparando esta aula.' in corpo
+    assert "A escola está preparando esta aula." in corpo
+
+
+def sidebar(corpo):
+    return corpo.split('<aside class="conteudo-curso"', 1)[1].split("</aside>", 1)[0]
+
+
+def test_sidebar_mostra_a_aula_atual_e_nao_abre_as_trancadas(aluna_do_roblox, client):
+    corpo = sidebar(corpo_da_aula(client, "1"))
+    assert "0 de 3 aulas concluídas" in corpo
+    assert "Aula 1" in corpo and "Aula 2" in corpo and "Aula 3" in corpo
+    assert corpo.count('aria-current="page"') == 1
+    assert corpo.count('aria-disabled="true"') == 2
+    assert f'href="{reverse("aula-do-curso", args=["roblox", 1, "2"])}"' not in corpo
+
+
+def test_sidebar_reflete_a_conclusao_e_a_troca_de_aula(aluna_do_roblox, client):
+    abrir(client, "1")
+    registrar_as_pausas(client, "1")
+    concluir(client, "1")
+    corpo = sidebar(corpo_da_aula(client, "2"))
+    assert "1 de 3 aulas concluídas" in corpo
+    assert 'aria-valuenow="33"' in corpo
+    assert (
+        f'href="{reverse("aula-do-curso", args=["roblox", 1, "2"])}" aria-current="page"'
+        in corpo
+    )
+    assert "estado-concluida" in corpo
+    assert corpo.count('aria-disabled="true"') == 1
+
+
+def test_sidebar_nao_mistura_cursos(aluna_do_roblox, roblox, client):
+    outro = Curso.objects.create(site_id=SITE, slug="outro-sidebar", nome="Outro curso")
+    bloco = Bloco.objects.create(
+        curso=outro, ordem=1, letra="A", parte=1, nome="Outra seção"
+    )
+    publicar(
+        Aula.objects.create(
+            curso=outro,
+            bloco=bloco,
+            ordem=0,
+            numero="1",
+            titulo_exibido="Conteúdo de outro curso",
+        )
+    )
+    corpo = sidebar(corpo_da_aula(client, "1"))
+    assert "Outra seção" not in corpo
+    assert "Conteúdo de outro curso" not in corpo
+    assert "0 de 3 aulas concluídas" in corpo

@@ -294,7 +294,10 @@ def test_o_modal_da_videoaula_fecha_por_x_por_esc_e_por_clique_fora(
     assert "botao.focus()" in corpo
     # O modal continua nativo; o script externo desta página é só o player.
     scripts = re.findall(r'<script src="([^"]+)"', corpo)
-    assert scripts == ["/static/cursos/player_youtube_vsl.js"]
+    assert scripts == [
+        "/static/cursos/player_youtube_vsl.js",
+        "/static/cursos/sala_aula.js",
+    ]
 
 
 def test_html_dentro_de_uma_peca_chega_escapado_na_pagina(

@@ -1,0 +1,27 @@
+<aside class="conteudo-curso" id="conteudo-do-curso" aria-labelledby="titulo-conteudo">
+  <div class="conteudo-topo">
+    <h2 id="titulo-conteudo">Conteúdo do curso</h2>
+    <button type="button" class="fechar-conteudo" aria-label="Fechar conteúdo do curso" aria-controls="conteudo-do-curso" hidden><span aria-hidden="true">×</span></button>
+  </div>
+  <div class="conteudo-progresso">
+    <p>{{ conteudo.concluidas }} de {{ conteudo.total }} aulas concluídas</p>
+    <div class="barra-progresso" role="progressbar" aria-label="Progresso do curso" aria-valuenow="{{ conteudo.percentual }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ conteudo.percentual }}%"></span></div>
+  </div>
+  <nav aria-label="Aulas do curso">
+    {% for bloco in conteudo.blocos %}
+    <details class="conteudo-bloco"{% if bloco.selecionado %} open{% endif %}>
+      <summary><span><strong>Seção {{ forloop.counter }}: {{ bloco.nome }}</strong><small>{{ bloco.concluidas }} / {{ bloco.total }} concluídas</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></summary>
+      <ol class="conteudo-aulas">
+        {% for porta in bloco.portas %}
+        <li class="conteudo-item estado-{{ porta.estado_visual }}{% if porta.selecionada %} aula-selecionada{% endif %}">
+          {% if porta.abre %}<a class="conteudo-aula" href="{% url 'aula-do-curso' curso.slug porta.parte porta.numero %}"{% if porta.selecionada %} aria-current="page"{% endif %}>{% else %}<span class="conteudo-aula" aria-disabled="true" title="{{ porta.explicacao }}">{% endif %}
+            <span class="conteudo-marca" aria-hidden="true">{% if porta.estado == "concluida" %}<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>{% elif not porta.abre %}<svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0110 0v3M5 10h14v11H5z" fill="none" stroke="currentColor" stroke-width="2"/></svg>{% endif %}</span>
+            <span class="conteudo-info"><span class="conteudo-titulo">{{ porta.titulo }}</span><small>{{ porta.rotulo }}{% if porta.selecionada %} · Aula atual{% endif %}</small></span>
+          {% if porta.abre %}</a>{% else %}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </details>
+    {% endfor %}
+  </nav>
+</aside>
