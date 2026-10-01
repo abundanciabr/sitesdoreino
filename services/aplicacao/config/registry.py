@@ -22,6 +22,7 @@ PUBLIC_PREFIXES = (
     ("/alunos", "alunos", "/alunos"),
     ("/cursos", "cursos", "/cursos"),
     ("/forum", "forum", "/forum"),
+    ("/portfolio", "pages", "/portfolio"),
     ("/pages", "pages", "/pages"),
     ("/admin", "admin", "/admin"),
     ("/docs", "admin", "/admin"),

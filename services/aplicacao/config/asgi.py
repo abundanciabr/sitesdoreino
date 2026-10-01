@@ -1,6 +1,7 @@
 """Dispatch public and internal traffic to 18 handlers of one Django app."""
 
 import os
+from importlib import import_module
 
 from django.core.handlers.asgi import ASGIHandler
 from django.core.asgi import get_asgi_application
@@ -27,7 +28,12 @@ install_ninja_namespaces()
 _handlers = {}
 for _service in SERVICES:
     with serving(_service):
-        _handlers[_service] = ASGIHandler()
+        # Pages has an ASGI wrapper for legacy /pages and /estudio redirects.
+        # Constructing a bare Django handler would silently bypass it.
+        _handlers[_service] = (
+            import_module("modules.pages.config.asgi").application
+            if _service == "pages" else ASGIHandler()
+        )
 
 
 async def application(scope, receive, send):
