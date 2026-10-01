@@ -184,6 +184,10 @@ TOKENS_ACEITOS = {
     if chave.startswith("TOKENS_ACEITOS_") and valor
 }
 
+# O painel do administrador pode editar conteudo privado. Apenas o token do
+# par ADMIN recebe esse poder; os demais tokens continuam nas leituras publicas.
+TOKEN_DO_EDITOR_FORUM = os.environ.get("TOKENS_ACEITOS_ADMIN", "")
+
 # O DEGRAU A MAIS, e ele nasceu com a porta da Galeria (TOKENS_DA_GALERIA_<PAR>).
 # A frase acima dizia que aqui nao havia segundo degrau porque nenhuma operacao
 # devolvia dado privado. `GET /galeria/candidatas/{pessoa_id}` mudou isso: ela e
