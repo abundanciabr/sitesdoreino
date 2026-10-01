@@ -33,6 +33,8 @@ BASES = (
     "gamificacao", "metricas", "cursos", "pages", "encomendas",
 )
 SHA = re.compile(r"[0-9a-f]{40}\Z")
+CURL_RETRY = ("--retry", "5", "--retry-delay", "1", "--retry-all-errors",
+              "--retry-max-time", "45", "--connect-timeout", "3")
 
 
 def executar(*comando: str, saida: bool = False, ambiente: dict | None = None) -> str:
@@ -153,7 +155,7 @@ def provar_site() -> None:
     for site in sites:
         host = site["host"]
         tls = [] if host == "meshcraft.top" else ["-k"]
-        codigo = executar("curl", "-sL", *tls, "--max-time", "20", "--max-redirs", "3",
+        codigo = executar("curl", "-sL", *tls, *CURL_RETRY, "--max-time", "20", "--max-redirs", "3",
                           "--resolve", f"{host}:443:127.0.0.1", "-o", "/dev/null",
                           "-w", "%{http_code}", f"https://{host}/", saida=True)
         if codigo != "200":
@@ -165,13 +167,13 @@ def provar_site() -> None:
         ("/cursos/", {"200", "302", "303"}),
         ("/admin/", {"302"}),
     ):
-        codigo = executar("curl", "-s", "--max-time", "20", "--resolve",
+        codigo = executar("curl", "-s", *CURL_RETRY, "--max-time", "20", "--resolve",
                           "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
                           "-w", "%{http_code}", f"https://meshcraft.top{caminho}", saida=True)
         if codigo not in esperados:
             raise RuntimeError(f"rota {caminho} respondeu {codigo}")
     for caminho in ("/static/funil/api.js", "/checkout/static/checkout/api.js"):
-        resposta = executar("curl", "-s", "--max-time", "20", "--resolve",
+        resposta = executar("curl", "-s", *CURL_RETRY, "--max-time", "20", "--resolve",
                             "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
                             "-w", "%{http_code} %{content_type}",
                             f"https://meshcraft.top{caminho}", saida=True)
@@ -184,7 +186,7 @@ def provar_site() -> None:
         "/alunos/api/alunos/matriculas",
         "/catalogo/api/catalogo/produtos",
     ):
-        codigo = executar("curl", "-s", "--max-time", "15", "-o", "/dev/null",
+        codigo = executar("curl", "-s", *CURL_RETRY, "--max-time", "15", "-o", "/dev/null",
                           "-w", "%{http_code}", f"http://127.0.0.1:8443{caminho}", saida=True)
         if codigo != "200":
             raise RuntimeError(f"entrada privada {caminho} respondeu {codigo}")
@@ -356,6 +358,23 @@ def recuperar() -> None:
     print("APLICACAO-RECUPERADA: topologia anterior no ar; bancos preservados", flush=True)
 
 
+def concluir_recuperacao() -> None:
+    """Repete a volta do código após falha transitória, sem restaurar bancos."""
+    estado = json.loads(TRANSICAO.read_text(encoding="utf-8"))
+    if estado.get("fase") != "recuperacao-falhou":
+        raise RuntimeError("não há recuperação pendente para concluir")
+    esperado = os.environ.get("ATUAL_ESPERADA")
+    if esperado and esperado != estado["sha"]:
+        raise RuntimeError("versão mudou desde o incidente")
+    snapshot = Path(estado["snapshot"])
+    restaurar(snapshot)
+    if JOURNAL.exists():
+        os.replace(JOURNAL, snapshot / "aplicacao-journal-falhou.json")
+    estado["fase"] = "revertida"
+    salvar(TRANSICAO, estado)
+    print("APLICACAO-RECUPERADA: topologia anterior no ar; bancos preservados", flush=True)
+
+
 def sincronizar_infra(sha: str) -> None:
     """Atualiza só Compose/rotas após o primeiro corte; nunca sobe os legados."""
     if not SHA.fullmatch(sha):
@@ -410,12 +429,14 @@ def main(argumentos: list[str]) -> int:
             fcntl.flock(trava.fileno(), fcntl.LOCK_EX)
         if argumentos == ["--recuperar"]:
             recuperar()
+        elif argumentos == ["--concluir-recuperacao"]:
+            concluir_recuperacao()
         elif len(argumentos) == 2 and argumentos[0] == "--sincronizar-infra":
             sincronizar_infra(argumentos[1])
         elif len(argumentos) == 3:
             ativar(*argumentos)
         else:
-            raise RuntimeError("uso: ativar-aplicacao.py SHA IMAGEM CODIGO | --recuperar")
+            raise RuntimeError("uso: ativar-aplicacao.py SHA IMAGEM CODIGO | --recuperar | --concluir-recuperacao")
         return 0
     except Exception as erro:
         print(f"APLICACAO-FALHOU: {erro}", file=sys.stderr)

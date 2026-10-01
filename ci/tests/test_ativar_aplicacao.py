@@ -197,3 +197,48 @@ def test_journal_nao_fica_aprovado_se_gravacao_da_recuperacao_falha(tmp_path, mo
     monkeypatch.setattr(ativacao, "salvar", gravar_real)
     ativacao.recuperar()
     assert json.loads(transicao.read_text(encoding="utf-8"))["fase"] == "recuperada"
+
+
+def test_prova_http_repete_transporte_sem_reduzir_rotas(tmp_path, monkeypatch):
+    ativacao = carregar()
+    (tmp_path / "sites.json").write_text(
+        json.dumps({"sites": [{"host": "meshcraft.top"}]}), encoding="utf-8")
+    monkeypatch.setattr(ativacao, "RAIZ", tmp_path)
+    chamadas = []
+
+    def executar(*args, **kwargs):
+        chamadas.append(args)
+        url = args[-1]
+        if args[args.index("-w") + 1] == "%{http_code} %{content_type}":
+            return "200 text/javascript"
+        if url.endswith("/admin/"):
+            return "302"
+        return "200"
+
+    monkeypatch.setattr(ativacao, "executar", executar)
+    ativacao.provar_site()
+    assert len(chamadas) == 12  # raiz, 5 rotas, 2 scripts e 4 leituras privadas
+    assert all("--retry-all-errors" in chamada and
+               chamada[chamada.index("--retry") + 1] == "5" for chamada in chamadas)
+
+
+def test_concluir_recuperacao_repete_topologia_e_salva_fase(tmp_path, monkeypatch):
+    ativacao = carregar()
+    publicacoes = tmp_path / "publicacoes"
+    snapshot = publicacoes / "topologias" / "primeira"
+    snapshot.mkdir(parents=True)
+    transicao = publicacoes / "aplicacao-transicao.json"
+    transicao.write_text(json.dumps({"fase": "recuperacao-falhou", "sha": "a" * 40,
+                                     "snapshot": str(snapshot)}), encoding="utf-8")
+    journal = publicacoes / "aplicacao.json"
+    journal.write_text("candidata", encoding="utf-8")
+    monkeypatch.setattr(ativacao, "TRANSICAO", transicao)
+    monkeypatch.setattr(ativacao, "JOURNAL", journal)
+    restaurados = []
+    monkeypatch.setattr(ativacao, "restaurar", lambda path: restaurados.append(path))
+    monkeypatch.setattr(ativacao, "copiar_bancos", lambda *_: pytest.fail("banco tocado"))
+    ativacao.concluir_recuperacao()
+    assert restaurados == [snapshot]
+    assert not journal.exists()
+    assert (snapshot / "aplicacao-journal-falhou.json").read_text(encoding="utf-8") == "candidata"
+    assert json.loads(transicao.read_text(encoding="utf-8"))["fase"] == "revertida"
