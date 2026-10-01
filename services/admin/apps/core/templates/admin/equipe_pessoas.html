@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Pessoas da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
+  <h1>Pessoas e contas</h1>
+  <p class="subtitulo">Quem é da equipe, e com que conta do site cada pessoa entra no painel.</p>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  <p class="aviso">
+    <b>O nome é quem responde pela tarefa. A conta é quem entra.</b>
+    Uma pessoa sem conta associada aparece como responsável, mas ainda não
+    consegue abrir o painel. Escreva aqui o e-mail com que ela entra no site
+    (o mesmo da conta dela na escola). Quem entra pela conta associada enxerga
+    só o painel da equipe, e nada mais desta área.
+  </p>
+
+  <div class="pessoas">
+    {% for pessoa in pessoas %}
+    <form class="pessoa{% if not pessoa.ativo %} inativa{% endif %}" method="post" action="{% url 'pessoas_da_equipe_associar' %}">
+      {% csrf_token %}
+      <input type="hidden" name="pessoa" value="{{ pessoa.id }}">
+      <div>
+        <b>{{ pessoa.nome }}</b>
+        <span class="nota">{{ pessoa.area }}</span>
+        {% if not pessoa.email %}<span class="nota falta">Sem conta associada.</span>{% endif %}
+      </div>
+      <label>
+        <span class="rotulo">E-mail da conta</span>
+        <input type="email" name="email" maxlength="254" value="{{ pessoa.email }}" placeholder="Vazio tira a associação">
+      </label>
+      <button class="botao-pequeno" type="submit">Salvar</button>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

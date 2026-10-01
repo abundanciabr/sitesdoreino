@@ -832,6 +832,72 @@ primeira versão deste arquivo, e o teste pegou.
     }
     .selo-verde { color: var(--verde); border-color: var(--verde); }
     .selo-vermelho { color: var(--vermelho); border-color: var(--vermelho); }
+    /* ── O painel da equipe (/admin/equipe/, 01/10/2026) ──────────────────
+       Quatro colunas na tela larga, duas no tablet, uma no celular: a ORDEM
+       das situações é a informação, e ela continua legível de cima para
+       baixo. Nenhuma cor nova: atrasada é o vermelho que a casa já reserva.
+       ------------------------------------------------------------------- */
+    .equipe-topo { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; justify-content: space-between; }
+    .equipe-gestos { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .recado-da-equipe { border: 1px solid var(--verde); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin: 0 0 14px; }
+    .texto-atrasado { color: var(--vermelho); font-weight: 600; }
+    .peneira-equipe { display: grid; gap: 10px; grid-template-columns: 1fr; align-items: end; margin: 0 0 18px; }
+    .peneira-equipe .campo { display: grid; gap: 3px; }
+    .peneira-equipe .campo .rotulo { margin: 0; }
+    .peneira-equipe select, .peneira-equipe button {
+      width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit;
+      background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px;
+    }
+    .peneira-equipe button { cursor: pointer; }
+    @media (min-width: 700px) { .peneira-equipe { grid-template-columns: 1fr 1fr 1fr auto auto; } }
+    .quadro { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 700px) { .quadro { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1000px) { .quadro { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .coluna-da-equipe { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 10px; min-width: 0; }
+    .coluna-da-equipe h2 { font-size: 14px; margin: 0 0 8px; display: flex; justify-content: space-between; padding-bottom: 6px; border-bottom: 2px solid var(--linha); }
+    .coluna-da-equipe.em_andamento h2 { border-bottom-color: var(--azul); }
+    .coluna-da-equipe.bloqueada h2 { border-bottom-color: var(--vermelho); }
+    .coluna-da-equipe.concluida h2 { border-bottom-color: var(--verde); }
+    .coluna-da-equipe h2 .conta { color: var(--texto-3); font-weight: 400; }
+    .tarefa { border: 1px solid var(--linha); border-radius: 8px; padding: 10px; margin-bottom: 8px; background: var(--fundo); font-size: 14px; }
+    .tarefa.atrasada { border-color: var(--vermelho); }
+    .tarefa .titulo { font-weight: 600; display: block; color: var(--texto); text-decoration: none; overflow-wrap: anywhere; }
+    .tarefa .titulo:hover { color: var(--azul); }
+    .tarefa .meta { color: var(--texto-3); font-size: 12px; margin-top: 6px; }
+    .tarefa .prazo.atrasado { color: var(--vermelho); font-weight: 600; }
+    .tarefa .impedimento { margin: 6px 0 0; padding: 6px 8px; border-left: 2px solid var(--vermelho); color: var(--texto-2); font-size: 13px; overflow-wrap: anywhere; }
+    .tarefa .gestos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+    .tarefa .gestos form { display: inline; }
+    .tarefa details { margin-top: 6px; }
+    .tarefa summary { cursor: pointer; font-size: 13px; color: var(--azul); }
+    .tarefa .mudar { display: grid; gap: 6px; margin-top: 6px; }
+    .tarefa .mudar label { display: block; }
+    .tarefa .mudar .rotulo { margin: 0 0 3px; }
+    .tarefa .mudar select, .tarefa .mudar input {
+      width: 100%; box-sizing: border-box; padding: 7px 8px; font: inherit;
+      background: var(--painel); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px;
+    }
+    .botao-pequeno {
+      display: inline-block; cursor: pointer; font: inherit; font-size: 13px; text-decoration: none;
+      padding: 6px 10px; border-radius: 8px; border: 1px solid var(--linha); background: var(--painel); color: var(--texto);
+    }
+    .botao-pequeno:hover { border-color: var(--azul); }
+    .erro-do-formulario { border-style: solid; border-color: var(--vermelho); color: var(--texto); }
+    .erro-do-formulario ul { margin: 6px 0; padding-left: 20px; }
+    .forma-da-equipe .rotulo { margin: 0 0 3px; }
+    .forma-da-equipe button.botao { font: inherit; font-weight: 600; cursor: pointer; color: var(--texto); }
+    .pessoas { display: grid; gap: 10px; }
+    .pessoa { display: grid; gap: 8px; grid-template-columns: 1fr; align-items: end; background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 12px 14px; }
+    .pessoa .nota { display: block; color: var(--texto-3); font-size: 13px; }
+    .pessoa .nota.falta { color: var(--amarelo); }
+    .pessoa label { display: block; }
+    .pessoa .rotulo { margin: 0 0 3px; }
+    .pessoa input {
+      width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit;
+      background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px;
+    }
+    .pessoa.inativa { opacity: .6; }
+    @media (min-width: 700px) { .pessoa { grid-template-columns: 1fr 2fr auto; } }
   </style>
 </head>
 <body>

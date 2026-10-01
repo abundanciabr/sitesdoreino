@@ -39,7 +39,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from .clients import IdentidadeClient, IdentidadeIndisponivel
-from .models import Administrador
+from .models import Administrador, MembroDaEquipe
 
 logger = logging.getLogger("admin.porta")
 
@@ -115,12 +115,41 @@ PREFIXO_PUBLICO_DA_MIDIA = "/midia/"
 PREFIXO_DA_PORTA_DE_MAQUINA = "/interno"
 PREFIXO_ACESSO_LOCAL = "/acesso-local/"
 
+#: [PAINEL DA EQUIPE] O único pedaço desta área que abre para quem NÃO é
+#: administrador (01/10/2026). As quatro pessoas da equipe entram com a conta
+#: delas no site e enxergam SÓ o que mora sob `/equipe/`: as tarefas. Para
+#: elas, o resto desta área continua não existindo (404), como para qualquer
+#: estranho. Quem é da equipe é dado da tabela `MembroDaEquipe`, associado pelo
+#: mantenedor na tela `/equipe/pessoas`; o papel da identidade continua não
+#: autorizando nada aqui.
+PREFIXO_DO_PAINEL_DA_EQUIPE = "/equipe"
+
 
 def _sob_a_porta_de_maquina(caminho: str) -> bool:
     """O caminho e `/interno`, ou esta debaixo dele?"""
     return caminho == PREFIXO_DA_PORTA_DE_MAQUINA or caminho.startswith(
         PREFIXO_DA_PORTA_DE_MAQUINA + "/"
     )
+
+
+def _sob_o_painel_da_equipe(caminho: str) -> bool:
+    """O caminho é `/equipe`, ou está debaixo dele?"""
+    return caminho == PREFIXO_DO_PAINEL_DA_EQUIPE or caminho.startswith(
+        PREFIXO_DO_PAINEL_DA_EQUIPE + "/"
+    )
+
+
+def _e_da_equipe(email: str) -> bool:
+    """Este e-mail é a conta de alguém da equipe? Banco fora ⇒ não."""
+    if not email:
+        return False
+    try:
+        return MembroDaEquipe.objects.filter(ativo=True, email=email).exists()
+    except DatabaseError:
+        logger.error(
+            "porta: não deu para ler a equipe do banco — ninguém da equipe entra até ele voltar"
+        )
+        return False
 
 
 def _emails_autorizados() -> frozenset[str]:
@@ -229,7 +258,13 @@ class PortaAdministrativa:
             return self._para_o_login(request)
 
         email = (sessao.get("email") or "").strip().lower()
-        if not email or email not in _emails_autorizados():
+        if email and email in _emails_autorizados():
+            equipe_apenas = False
+        elif _sob_o_painel_da_equipe(request.path_info) and _e_da_equipe(email):
+            # O segundo crachá (01/10/2026): quem é da equipe entra SÓ no
+            # painel da equipe. Fora dele, a resposta é a mesma de um estranho.
+            equipe_apenas = True
+        else:
             # WARNING, e não silêncio: tentativa de entrar na área de operação
             # por conta que não está na lista é coisa que o dono precisa poder
             # ver. Sem e-mail no log — o id opaco identifica sem espalhar dado
@@ -243,11 +278,14 @@ class PortaAdministrativa:
 
         # A partir daqui a pessoa está dentro. O que as páginas recebem é o
         # necessário para exibição — nunca um objeto de permissão: quem decide
-        # o que ela pode é cada recurso, na hora.
+        # o que ela pode é cada recurso, na hora. `equipe_apenas` é a única
+        # exceção, e ela é uma bandeira de leitura: a moldura encolhe o menu, e
+        # a tela de pessoas recusa; o que fecha as rotas é a porta, acima.
         request.admin = {
             "id": sessao.get("id"),
             "nome": sessao.get("nome_exibido") or email,
             "email": email,
+            "equipe_apenas": equipe_apenas,
         }
         return self._com_seguranca(self.get_response(request))
 

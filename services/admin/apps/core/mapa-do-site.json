@@ -1418,6 +1418,67 @@
     },
     {
       "celula": "admin",
+      "rota": "equipe/",
+      "endereco": "/admin/equipe/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Painel da equipe",
+      "descricao": "O trabalho das quatro pessoas da casa, por situacao: A fazer, Em andamento, Bloqueada e Concluida. Duas visoes do mesmo trabalho (Minhas tarefas e Equipe), filtros por responsavel e prazo, e as atrasadas em destaque. E o unico trecho da area administrativa que abre para quem e da equipe sem ser administrador: a conta associada em Pessoas e contas entra so aqui."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/nova",
+      "endereco": "/admin/equipe/nova",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Nova tarefa",
+      "descricao": "Cria uma tarefa com titulo, descricao, responsavel, prazo e situacao."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/<int:id>/editar",
+      "endereco": "/admin/equipe/<int:id>/editar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Editar uma tarefa",
+      "descricao": "A ficha de uma tarefa: quem criou, a ultima alteracao, quando concluiu, e os campos para mudar.",
+      "exemplo": "/admin/equipe/1/editar"
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/<int:id>/situacao",
+      "endereco": "/admin/equipe/<int:id>/situacao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Mudar a situacao de uma tarefa",
+      "descricao": "O botao do cartao: concluir, reabrir, por em andamento ou bloquear (com o impedimento escrito)."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/pessoas",
+      "endereco": "/admin/equipe/pessoas",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Pessoas e contas da equipe",
+      "descricao": "Quem e da equipe e com que conta do site cada pessoa entra no painel. So o administrador abre; quem e so da equipe recebe 404 aqui."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/pessoas/associar",
+      "endereco": "/admin/equipe/pessoas/associar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Associar uma conta a uma pessoa da equipe",
+      "descricao": "Grava o e-mail com que a pessoa entra. Vazio tira a associacao."
+    },
+    {
+      "celula": "admin",
       "rota": "mapa/",
       "endereco": "/admin/mapa/",
       "alcance": "publico",

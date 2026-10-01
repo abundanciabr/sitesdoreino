@@ -89,6 +89,14 @@ from apps.core.paginas import (
 )
 from apps.core.experimentos import experimento_iniciar, experimento_novo, experimentos
 from apps.core.pendencias import pendencias
+from apps.core.equipe import (
+    painel_da_equipe,
+    pessoas_da_equipe,
+    pessoas_da_equipe_associar,
+    tarefa_editar,
+    tarefa_nova,
+    tarefa_situacao,
+)
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -213,6 +221,19 @@ urlpatterns = [
     path("interno/", api.urls),
     path("mapa/", mapa_do_site, name="mapa_do_site"),
     path("pendencias/", pendencias, name="pendencias"),
+    # O PAINEL DA EQUIPE (01/10/2026). É o único trecho desta área aberto a quem
+    # não é administrador: a porta deixa quem é da equipe passar SÓ aqui
+    # (`porta.py::PREFIXO_DO_PAINEL_DA_EQUIPE`).
+    path("equipe/", painel_da_equipe, name="painel_da_equipe"),
+    path("equipe/nova", tarefa_nova, name="tarefa_nova"),
+    path("equipe/<int:id>/editar", tarefa_editar, name="tarefa_editar"),
+    path("equipe/<int:id>/situacao", tarefa_situacao, name="tarefa_situacao"),
+    path("equipe/pessoas", pessoas_da_equipe, name="pessoas_da_equipe"),
+    path(
+        "equipe/pessoas/associar",
+        pessoas_da_equipe_associar,
+        name="pessoas_da_equipe_associar",
+    ),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.

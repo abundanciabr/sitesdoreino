@@ -1,0 +1,152 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Painel da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <div class="equipe-topo">
+    <div>
+      <h1>Painel da equipe</h1>
+      <p class="subtitulo">O trabalho das pessoas da casa, por situação. Hoje é {{ hoje|date:"d/m/Y" }}.</p>
+    </div>
+    <div class="equipe-gestos">
+      <a class="botao" href="{% url 'tarefa_nova' %}">Nova tarefa</a>
+      {% if pode_gerir_pessoas %}<a class="volta" href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>{% endif %}
+    </div>
+  </div>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  <nav class="abas" aria-label="Visões do painel">
+    <a class="aba{% if visao == 'minhas' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=minhas">Minhas tarefas</a>
+    <a class="aba{% if visao == 'equipe' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=equipe">Equipe</a>
+  </nav>
+
+  {% if sem_pessoa %}
+  <p class="aviso">
+    <b>A sua conta ({{ admin.email }}) ainda não está associada a ninguém da equipe.</b>
+    Por isso "Minhas tarefas" está vazia. {% if pode_gerir_pessoas %}Associe a conta em <a href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>.{% else %}Peça ao mantenedor para associar a sua conta.{% endif %}
+    Enquanto isso, a visão <a href="{% url 'painel_da_equipe' %}?visao=equipe">Equipe</a> mostra o trabalho de todos.
+  </p>
+  {% endif %}
+
+  {% if visao == 'equipe' %}
+  <form class="peneira-equipe" method="get" action="{% url 'painel_da_equipe' %}">
+    <input type="hidden" name="visao" value="equipe">
+    <label class="campo">
+      <span class="rotulo">Responsável</span>
+      <select name="responsavel">
+        <option value="">Todas as pessoas</option>
+        {% for pessoa in membros %}
+        <option value="{{ pessoa.id }}"{% if responsavel_escolhido == pessoa.id|stringformat:"s" %} selected{% endif %}>{{ pessoa.nome }}</option>
+        {% endfor %}
+        <option value="sem"{% if responsavel_escolhido == 'sem' %} selected{% endif %}>Sem responsável</option>
+      </select>
+    </label>
+    <label class="campo">
+      <span class="rotulo">Prazo</span>
+      <select name="prazo">
+        {% for valor, texto in filtros_de_prazo %}
+        <option value="{{ valor }}"{% if prazo_escolhido == valor %} selected{% endif %}>{{ texto }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="campo">
+      <span class="rotulo">Situação</span>
+      <select name="situacao">
+        <option value="">Todas</option>
+        {% for valor, texto in situacoes %}
+        <option value="{{ valor }}"{% if situacao_escolhida == valor %} selected{% endif %}>{{ texto }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Filtrar</button>
+    {% if peneirando %}<a class="volta" href="{% url 'painel_da_equipe' %}?visao=equipe">Limpar</a>{% endif %}
+  </form>
+  {% endif %}
+
+  {% if primeiro_uso %}
+  <p class="aviso">
+    <b>Ainda não há nenhuma tarefa.</b>
+    Este painel começa vazio de propósito: nada aqui é exemplo. Crie a primeira
+    com o botão <a href="{% url 'tarefa_nova' %}">Nova tarefa</a>, escolha quem
+    responde por ela e um prazo, e ela aparece na coluna A fazer.
+  </p>
+  {% elif total == 0 and not sem_pessoa %}
+  <p class="aviso">
+    <b>Nenhuma tarefa com esses filtros.</b>
+    {% if visao == 'minhas' and membro %}Nada está em seu nome agora.{% else %}Mude o filtro ou <a href="{% url 'painel_da_equipe' %}?visao={{ visao }}">veja todas</a>.{% endif %}
+  </p>
+  {% endif %}
+
+  {% if total %}
+  <p class="nota">{{ total }} tarefa{{ total|pluralize }}{% if atrasadas %}, <span class="texto-atrasado">{{ atrasadas }} atrasada{{ atrasadas|pluralize }}</span>{% endif %}.</p>
+  {% endif %}
+
+  <div class="quadro">
+    {% for coluna in colunas %}
+    <section class="coluna-da-equipe {{ coluna.codigo }}">
+      <h2>{{ coluna.rotulo }} <span class="conta">{{ coluna.tarefas|length }}</span></h2>
+      {% for tarefa in coluna.tarefas %}
+      <article class="tarefa{% if tarefa.atrasada %} atrasada{% endif %}">
+        <a class="titulo" href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a>
+        <div class="meta">
+          {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% else %}Sem responsável{% endif %}
+          {% if tarefa.prazo %}
+            &middot; <span class="prazo{% if tarefa.atrasada %} atrasado{% endif %}">{% if tarefa.atrasada %}Atrasada: {% elif tarefa.vence_hoje %}Hoje: {% endif %}{{ tarefa.prazo|date:"d/m" }}</span>
+          {% endif %}
+        </div>
+        {% if tarefa.situacao == 'bloqueada' and tarefa.impedimento %}
+        <p class="impedimento">{{ tarefa.impedimento }}</p>
+        {% endif %}
+        <div class="meta">
+          Criada por {{ tarefa.criada_por }} em {{ tarefa.criada_em|date:"d/m H:i" }}.
+          {% if tarefa.concluida_em %}Concluída em {{ tarefa.concluida_em|date:"d/m H:i" }}.{% elif tarefa.alterada_por %}Última alteração: {{ tarefa.alterada_por }}, {{ tarefa.alterada_em|date:"d/m H:i" }}.{% endif %}
+        </div>
+        <div class="gestos">
+          {% if tarefa.situacao == 'concluida' %}
+          <form method="post" action="{% url 'tarefa_situacao' tarefa.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ endereco_atual }}">
+            <input type="hidden" name="situacao" value="a_fazer">
+            <button class="botao-pequeno" type="submit">Reabrir</button>
+          </form>
+          {% else %}
+          <form method="post" action="{% url 'tarefa_situacao' tarefa.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ endereco_atual }}">
+            <input type="hidden" name="situacao" value="concluida">
+            <button class="botao-pequeno" type="submit">Concluir</button>
+          </form>
+          {% endif %}
+          <a class="botao-pequeno" href="{% url 'tarefa_editar' tarefa.id %}">Editar</a>
+        </div>
+        <details>
+          <summary>Mudar situação</summary>
+          <form class="mudar" method="post" action="{% url 'tarefa_situacao' tarefa.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ endereco_atual }}">
+            <label>
+              <span class="rotulo">Situação</span>
+              <select name="situacao">
+                {% for valor, texto in situacoes %}
+                <option value="{{ valor }}"{% if tarefa.situacao == valor %} selected{% endif %}>{{ texto }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span class="rotulo">Impedimento (obrigatório ao bloquear)</span>
+              <input type="text" name="impedimento" maxlength="2000" value="{{ tarefa.impedimento }}">
+            </label>
+            <button class="botao-pequeno" type="submit">Salvar situação</button>
+          </form>
+        </details>
+      </article>
+      {% empty %}
+      <p class="vazio-da-coluna">{{ coluna.vazia }}</p>
+      {% endfor %}
+    </section>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

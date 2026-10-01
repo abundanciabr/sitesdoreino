@@ -5,7 +5,7 @@ import json
 import pytest
 from django.apps import apps
 from django.db.migrations.executor import MigrationExecutor
-from django.db.utils import ConnectionHandler
+from django.db import connection
 from django.test import RequestFactory
 from django.urls import Resolver404, resolve
 
@@ -51,9 +51,15 @@ def test_mapa_nao_oferece_radio():
 
 
 def test_migracao_retira_modelo_sem_apagar_historico():
-    banco = ConnectionHandler(
-        {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
-    )["default"]
+    # O MESMO banco da suíte, como `tests/test_livro.py` já faz. Um
+    # `ConnectionHandler` avulso com apelido `default` deixava o registro de
+    # migrações (que resolve o apelido pelo handler global) cair no Postgres da
+    # suíte enquanto o esquema ia para um SQLite em memória, e a ida e volta
+    # passava por acidente até a 35ª migração chegar. No Postgres o DDL é
+    # transacional e a transação do teste desfaz tudo; no SQLite o `finally`
+    # leva o banco de volta às folhas.
+    banco = connection
+    folhas = MigrationExecutor(banco).loader.graph.leaf_nodes()
     anterior = [("core", "0022_midia")]
     atual = [("core", "0024_retirar_radio_preservando_historico")]
     try:
@@ -91,4 +97,5 @@ def test_migracao_retira_modelo_sem_apagar_historico():
             cursor.execute("SELECT * FROM core_mensagemdoradio")
             assert cursor.fetchall() == historico
     finally:
-        banco.close()
+        if banco.vendor == "sqlite":
+            MigrationExecutor(banco).migrate(folhas)

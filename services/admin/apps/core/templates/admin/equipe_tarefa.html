@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{% if tarefa %}Editar tarefa{% else %}Nova tarefa{% endif %}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
+  <h1>{% if tarefa %}Editar tarefa{% else %}Nova tarefa{% endif %}</h1>
+  <p class="subtitulo">{% if tarefa %}Criada por {{ tarefa.criada_por }} em {{ tarefa.criada_em|date:"d/m/Y H:i" }}.{% if tarefa.alterada_por %} Última alteração: {{ tarefa.alterada_por }}, {{ tarefa.alterada_em|date:"d/m/Y H:i" }}.{% endif %}{% if tarefa.concluida_em %} Concluída em {{ tarefa.concluida_em|date:"d/m/Y H:i" }}.{% endif %}{% else %}Título e responsável bastam; o resto pode vir depois.{% endif %}</p>
+
+  {% if erros %}
+  <div class="aviso erro-do-formulario">
+    <b>Não deu para salvar.</b>
+    <ul>
+      {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
+    </ul>
+    O que você escreveu continua aqui embaixo. Corrija e salve de novo.
+  </div>
+  {% endif %}
+
+  <form class="forma forma-da-equipe" method="post" action="{% if tarefa %}{% url 'tarefa_editar' tarefa.id %}{% else %}{% url 'tarefa_nova' %}{% endif %}">
+    {% csrf_token %}
+    <label class="largo">
+      <span class="rotulo">Título</span>
+      <input type="text" name="titulo" maxlength="200" required value="{{ dados.titulo }}">
+    </label>
+    <label class="largo">
+      <span class="rotulo">Descrição (opcional)</span>
+      <textarea name="descricao" rows="4">{{ dados.descricao }}</textarea>
+    </label>
+    <label>
+      <span class="rotulo">Responsável</span>
+      <select name="responsavel">
+        <option value="">Sem responsável</option>
+        {% for pessoa in membros %}
+        <option value="{{ pessoa.id }}"{% if dados.responsavel == pessoa.id|stringformat:"s" %} selected{% endif %}>{{ pessoa.nome }}{% if pessoa.area %} ({{ pessoa.area }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span class="rotulo">Prazo (opcional)</span>
+      <input type="date" name="prazo" value="{{ dados.prazo }}">
+    </label>
+    <label>
+      <span class="rotulo">Situação</span>
+      <select name="situacao">
+        {% for valor, texto in situacoes %}
+        <option value="{{ valor }}"{% if dados.situacao == valor %} selected{% endif %}>{{ texto }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="largo">
+      <span class="rotulo">Impedimento (obrigatório quando a situação é Bloqueada)</span>
+      <input type="text" name="impedimento" maxlength="2000" value="{{ dados.impedimento }}">
+    </label>
+    <button class="botao" type="submit">{% if tarefa %}Salvar{% else %}Criar tarefa{% endif %}</button>
+  </form>
+</div>
+{% endblock %}

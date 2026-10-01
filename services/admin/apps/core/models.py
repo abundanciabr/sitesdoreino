@@ -442,3 +442,94 @@ class VersaoDoTexto(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
         return f"{self.texto_id} @ {self.salvo_em:%Y-%m-%d %H:%M}"
+
+
+# ---------------------------------------------------------------- a equipe
+#
+# O painel da equipe (01/10/2026): o trabalho das quatro pessoas da casa, numa
+# tela. Pedido do mantenedor: "abrir o site, enxergar o trabalho da equipe,
+# criar uma tarefa, definir quem responde por ela e acompanhar a execução até a
+# conclusão". É o MVP; objetivos, compromissos semanais e placar virão por cima
+# desta base, e por isso a tarefa já nasce com dono, prazo e situação próprios.
+
+
+class MembroDaEquipe(models.Model):
+    """Uma pessoa da equipe, e a conta do site que responde por ela.
+
+    O NOME e a CONTA são duas coisas de propósito. "Arameu" é quem responde
+    pela tarefa na tela; `email` é a conta da `identidade` com que essa pessoa
+    entra. O painel reconhece a pessoa pelo e-mail da sessão, e só por ele:
+    uma pessoa sem e-mail associado aparece como responsável, mas ainda não
+    tem como entrar. A associação é feita pelo mantenedor em
+    `/admin/equipe/pessoas`.
+    """
+
+    nome = models.CharField(max_length=80)
+    area = models.CharField(max_length=120, blank=True, default="")
+    email = models.EmailField(blank=True, default="")
+    ativo = models.BooleanField(default=True)
+    ordem = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordem", "nome"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["email"],
+                condition=~models.Q(email=""),
+                name="um_membro_por_email",
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        self.email = (self.email or "").strip().lower()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return self.nome
+
+
+class Tarefa(models.Model):
+    """Uma tarefa do trabalho diário da equipe.
+
+    Quem criou, quem alterou por último e quando concluiu moram na própria
+    linha, como texto: é o rastro que a tela mostra, e não um sistema de
+    auditoria. `responsavel` é PROTECT porque apagar uma pessoa com tarefas
+    apagaria trabalho junto; a saída é desativar a pessoa.
+    """
+
+    class Situacao(models.TextChoices):
+        A_FAZER = "a_fazer", "A fazer"
+        EM_ANDAMENTO = "em_andamento", "Em andamento"
+        BLOQUEADA = "bloqueada", "Bloqueada"
+        CONCLUIDA = "concluida", "Concluída"
+
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True, default="")
+    responsavel = models.ForeignKey(
+        MembroDaEquipe,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="tarefas",
+    )
+    prazo = models.DateField(null=True, blank=True)
+    situacao = models.CharField(
+        max_length=20, choices=Situacao.choices, default=Situacao.A_FAZER
+    )
+    impedimento = models.TextField(blank=True, default="")
+
+    criada_por = models.CharField(max_length=200, blank=True, default="")
+    criada_em = models.DateTimeField(auto_now_add=True)
+    alterada_por = models.CharField(max_length=200, blank=True, default="")
+    alterada_em = models.DateTimeField(auto_now=True)
+    concluida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criada_em"]
+        indexes = [
+            models.Index(fields=["situacao"]),
+            models.Index(fields=["responsavel", "situacao"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return self.titulo

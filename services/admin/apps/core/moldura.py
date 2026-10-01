@@ -86,6 +86,7 @@ SECOES = (
     # de treze é um item que ninguém vê. O nome é o da própria tela, e não
     # "Fila" ou "Caixa de entrada", que já significam outra coisa nesta casa.
     ("pendencias", "Pendências"),
+    ("painel_da_equipe", "Equipe"),
     ("escola", "Escola"),
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
@@ -211,9 +212,20 @@ def moldura_do_contexto(request) -> dict:
 
     Sem crachá, devolve `{}`: ver "fail-closed" no cabeçalho deste arquivo.
     """
-    if not getattr(request, "admin", None):
+    admin = getattr(request, "admin", None)
+    if not admin:
         return {}
+    menu = secoes_do_menu(request.path_info)
+    if admin.get("equipe_apenas"):
+        # Quem é só da equipe enxerga só a porta que tem: a saída para o site e
+        # o painel. Desenhar as outras seções para alguém que recebe 404 nelas
+        # seria um menu de links quebrados.
+        menu = [
+            item
+            for item in menu
+            if item["rotulo"] in (SAIDA_PARA_O_SITE["rotulo"], "Equipe")
+        ]
     return {
-        "menu_do_admin": secoes_do_menu(request.path_info),
+        "menu_do_admin": menu,
         "rodape_do_admin": rodape(timezone.localdate().year),
     }
