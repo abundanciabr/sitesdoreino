@@ -19,8 +19,9 @@ on:
           - appmax-estorno
           - appmax-pendentes
           - quiz-configuracao
+          - coordenacao-db
       servico:
-        description: 'Nome exato do serviço no Compose; para estado-infra e espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
+        description: 'Nome exato do serviço no Compose; para coordenacao-db use postgres; para estado-infra e espaco-disco use plataforma. Nunca informe dados pessoais ou segredos.'
         required: true
         type: string
       referencia:
