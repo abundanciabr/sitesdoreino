@@ -248,9 +248,21 @@ def copia_com_provisionadores(tmp_path):
     return raiz
 
 
-def test_provisionar_roda_o_que_nao_pede_nada(fazer_ctx, copia_com_provisionadores):
+@pytest.fixture
+def plataforma_da_aplicacao(tmp_path):
+    raiz = tmp_path / "plataforma"
+    (raiz / "env").mkdir(parents=True)
+    (raiz / "publicacoes").mkdir()
+    (raiz / "env" / "admin.env").write_text("TOKEN=anterior\n", encoding="utf-8")
+    (raiz / "publicacoes" / "aplicacao.json").write_text("{}", encoding="utf-8")
+    return raiz
+
+
+def test_provisionar_roda_o_que_nao_pede_nada(fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao):
     processos = Processos()
-    assert operar.main(["provisionar", "--alvo", "livre"], fazer_ctx(processos, raiz=copia_com_provisionadores)) == 0
+    ctx = fazer_ctx(processos, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.main(["provisionar", "--alvo", "livre"], ctx) == 0
     assert processos.rodadas()[0]["comando"] == ["bash", str(copia_com_provisionadores / "infra" / "provisionar-livre.sh")]
 
 
@@ -268,16 +280,64 @@ def test_provisionar_alvo_inexistente_lista_os_nomes(fazer_ctx, copia_com_provis
     assert "livre" in saida and "pede-valor" in saida
 
 
-def test_no_repositorio_real_ha_provisionador_que_roda_e_outro_que_e_recusado(fazer_ctx):
+def test_no_repositorio_real_ha_provisionador_que_roda_e_outro_que_e_recusado(fazer_ctx, plataforma_da_aplicacao):
     # A mesma regra do workflow: os que citam $@, $# ou ${1:- ficam de fora.
     todos = sorted((ROOT / "infra").glob("provisionar-*.sh"))
     pedem = [p for p in todos if operar.re.search(r"\$\{1:-|\$@|\$#", p.read_text(encoding="utf-8"))]
     assert pedem and len(pedem) < len(todos)
     livre = next(p for p in todos if p not in pedem)
     alvo = livre.name[len("provisionar-"):-len(".sh")]
-    assert operar.main(["provisionar", "--alvo", alvo], fazer_ctx(Processos())) == 0
+    ctx = fazer_ctx(Processos(), ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.main(["provisionar", "--alvo", alvo], ctx) == 0
     recusado = pedem[0].name[len("provisionar-"):-len(".sh")]
     assert operar.main(["provisionar", "--alvo", recusado], fazer_ctx(Processos())) == 1
+
+
+def test_provisionar_falhou_restaura_env_e_reprova_app(
+    fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao, capsys,
+):
+    ambiente = plataforma_da_aplicacao / "env"
+    chamadas = []
+
+    def processo(comando, *, env, timeout, juntar=True, cwd=None):
+        chamadas.append(comando)
+        if comando[:2] == ["bash", "-n"]:
+            return 0, ""
+        if comando[0] == "bash":
+            (ambiente / "admin.env").write_text("TOKEN=novo\n", encoding="utf-8")
+            (ambiente / "novo.env").write_text("SEGREDO=preservado\n", encoding="utf-8")
+            return 1, "falha do provisionador"
+        assert comando[-1].endswith("recarregar-aplicacao.py")
+        assert (ambiente / "admin.env").read_text(encoding="utf-8") == "TOKEN=anterior\n"
+        assert not (ambiente / "novo.env").exists()
+        return 0, "APLICACAO-RECARREGADA-E-PROVADA"
+
+    ctx = fazer_ctx(processo, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.op_provisionar(ctx, {"alvo": "livre"}) == 1
+    assert len(chamadas) == 3
+    assert list((plataforma_da_aplicacao / "publicacoes").glob("provisionar-livre-*/novo-novo.env"))
+    assert "preservado" not in capsys.readouterr().out
+
+
+def test_provisionar_nao_anuncia_retorno_se_prova_falhar(
+    fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao, capsys,
+):
+    ambiente = plataforma_da_aplicacao / "env"
+
+    def processo(comando, *, env, timeout, juntar=True, cwd=None):
+        if comando[:2] == ["bash", "-n"]:
+            return 0, ""
+        if comando[0] == "bash":
+            (ambiente / "admin.env").write_text("TOKEN=novo\n", encoding="utf-8")
+            return 1, "falha"
+        return 1, "site fora"
+
+    ctx = fazer_ctx(processo, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.op_provisionar(ctx, {"alvo": "livre"}) == 1
+    assert (ambiente / "admin.env").read_text(encoding="utf-8") == "TOKEN=anterior\n"
+    assert "não passou na prova de retorno" in capsys.readouterr().out
 
 
 # --------------------------------------------------------------------------- operacoes-vps
@@ -322,7 +382,7 @@ def test_operacoes_vps_mede_confere_e_imprime_so_a_evidencia_validada(fazer_ctx,
     dados = json.loads(linha)
     assert dados["resultado"] == "PASS" and dados["operacao"] == "estado-servico"
     assert dados["servico"] == "catalogo" and dados["medicao"]["estado"] == "running"
-    assert any("label=com.docker.compose.service=catalogo" in a for a in comando.chamadas[0])
+    assert any("label=com.docker.compose.service=aplicacao" in a for a in comando.chamadas[0])
 
 
 def test_operacoes_vps_com_servico_fora_do_compose_nem_chega_a_medir(fazer_ctx, capsys):

@@ -301,13 +301,13 @@ def roteiro_de_prova(celula: str) -> str:
                 "  echo \"PROVA-LEGADA: $modulo\"\n"
                 "  cd \"/tmp/prova/services/$modulo\"\n"
                 "  case \"$modulo\" in\n"
-                f"    admin) CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['admin']}' ;;\n"
-                f"    funil) CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['funil']}' ;;\n"
-                "    *) CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider ;;\n"
+                f"    admin) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['admin']}' ;;\n"
+                f"    funil) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['funil']}' ;;\n"
+                "    *) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider ;;\n"
                 "  esac\n"
                 "done\ncd /app\n"
-                "python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n"
-                "python /app/prova.py\n")
+                "PYTHONPATH=/app python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n"
+                "PYTHONPATH=/app python /app/prova.py\n")
     extras = ""
     if celula == "checkout":
         extras = "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null\n"
