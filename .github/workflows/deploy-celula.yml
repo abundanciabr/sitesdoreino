@@ -182,6 +182,9 @@ jobs:
                 [ -f "$teste" ] || continue
                 [ -f "/corte/services/$CELULA/$teste" ] || rm "$teste"
               done
+              if [ "$CELULA" = admin ]; then
+                cp /corte/services/admin/tests/test_central_de_pendencias.py tests/
+              fi
               if [ "$CELULA" = cursos ]; then
                 cp /corte/services/cursos/tests/test_ciclo_do_desafio_da_comunidade.py tests/
                 cp /corte/services/cursos/tests/test_regua_no_laudo.py tests/
