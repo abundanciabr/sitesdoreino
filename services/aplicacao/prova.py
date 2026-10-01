@@ -12,6 +12,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
@@ -74,6 +75,11 @@ def ambiente(servico: str, urls: dict[str, str]) -> dict[str, str]:
         "TOKENS_COMPLETOS_PAGES": "prova-token-identidade",
         "ALUNOS_API_URL": "http://alunos:8000/api/alunos",
         "ALUNOS_API_TOKEN": "prova-token-alunos",
+        "QUIZ_API_URL": "http://quiz:8000/interno",
+        "QUIZ_API_TOKEN": "prova-editor-quiz",
+        "TOKENS_ACEITOS_ADMIN": "prova-editor-quiz",
+        "ADMIN_EMAILS": "equipe@prova.local",
+        "HUEY_REDIS_URL": os.environ.get("REDIS_STREAMS_URL", "redis://redis:6379/0"),
     }
     if servico in urls:
         valores["DATABASE_URL"] = urls[servico]
@@ -219,6 +225,65 @@ async def provar_http() -> None:
                 raise AssertionError(f"rota pública {caminho}: HTTP {resposta.status_code}")
 
 
+def provar_entrada_real() -> None:
+    """Boot the production entrypoint, including its workers, on test services."""
+    from config.runtime import serving
+
+    with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as log:
+        processo = subprocess.Popen(
+            [sys.executable, "entrypoint.py"], cwd=Path(__file__).resolve().parent,
+            env=os.environ.copy(), stdout=log, stderr=subprocess.STDOUT,
+        )
+        try:
+            prazo = time.monotonic() + 90
+            while time.monotonic() < prazo:
+                if processo.poll() is not None:
+                    break
+                try:
+                    resposta = httpx.get("http://127.0.0.1:8000/healthz", timeout=1)
+                    if resposta.status_code == 200:
+                        break
+                except httpx.RequestError:
+                    pass
+                time.sleep(0.5)
+            else:
+                raise AssertionError("entrypoint não iniciou HTTP em 90 segundos")
+            if processo.poll() is not None:
+                raise AssertionError("entrypoint encerrou antes do HTTP")
+
+            # A periodic task with an empty outbox is side-effect-free; its
+            # result proves the real Huey worker restored forum context/DB.
+            with serving("forum"):
+                from modules.forum.apps.forum.tasks import relay_outbox_periodico
+                from modules.forum.config.huey import huey as fila
+                resultado = relay_outbox_periodico()
+                print(f"Huey fórum: {fila.storage.queue_key}; pendentes={fila.pending_count()}",
+                      flush=True)
+                if resultado.get(blocking=True, timeout=15) != 0:
+                    raise AssertionError("task Huey não executou no banco do fórum")
+            time.sleep(2)
+            log.seek(0)
+            texto = log.read()
+            if "Worker " in texto and " falhou" in texto:
+                raise AssertionError(f"worker da aplicação falhou: {texto[-4000:]}")
+        except Exception as erro:
+            log.flush()
+            log.seek(0)
+            linhas = [linha for linha in log.read().splitlines()
+                      if any(palavra in linha for palavra in
+                             ("Worker", "huey", "Huey", "ERROR", "Traceback", "Connection"))]
+            raise AssertionError(
+                f"entrypoint/workers: {erro}; log: {' | '.join(linhas[-80:])}"
+            ) from erro
+        finally:
+            processo.terminate()
+            try:
+                processo.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                processo.kill()
+                processo.wait()
+
+
 def main() -> None:
     urls = criar_bancos()
     with tempfile.TemporaryDirectory(prefix="prova-aplicacao-") as temporario:
@@ -226,7 +291,17 @@ def main() -> None:
         antes = migrar_legado(urls, pasta_env)
         os.environ["APLICACAO_ENV_DIR"] = str(pasta_env)
         migrar_unificado(urls, antes)
+        comando = subprocess.run(
+            [sys.executable, "-m", "config.comando", "catalogo", "shell", "-c",
+             "from apps.sites.models import Site; "
+             "print(Site.objects.get(host='meshcraft.top').name)"],
+            cwd=Path(__file__).resolve().parent, env=os.environ.copy(),
+            check=True, capture_output=True, text=True,
+        )
+        if comando.stdout.strip() != "Prova legada":
+            raise AssertionError("CLI unificada não leu registro legado")
         asyncio.run(provar_http())
+        provar_entrada_real()
     print(f"Aplicação única: {len(urls)} bancos legados preservados; "
           f"{len(MODULOS)} módulos HTTP saudáveis; estáticos servidos.")
 

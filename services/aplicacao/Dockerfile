@@ -7,6 +7,7 @@ RUN apt-get update \
 
 # A base so muda quando dependencias ou sistema mudam. O codigo de cada SHA
 # pode ser montado em /app pelo publicador sem reconstruir a imagem.
+# Manifesto único das dependências da aplicação incorporada.
 COPY services/aplicacao/requirements.txt /tmp/requirements.txt
 COPY packages/site_errors /tmp/packages/site_errors
 COPY packages/outbox-relay /tmp/packages/outbox-relay
