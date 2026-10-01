@@ -473,7 +473,9 @@ def mudar_situacao_da_tarefa(ctx: Contexto, args: dict) -> dict:
 
 def comentar_tarefa(ctx: Contexto, args: dict) -> dict:
     tarefa = _tarefa(args)
-    codigo, _ = operacoes.comentar(tarefa, args.get("texto") or "", ctx.quem, ctx.membro)
+    # Sem `autor_membro`: a ficha mostra o nome da pessoa quando ele existe, e
+    # o comentário é do robô (o texto do autor já diz a pedido de quem).
+    codigo, _ = operacoes.comentar(tarefa, args.get("texto") or "", ctx.quem, None)
     return _resultado_do_painel(codigo, tarefa)
 
 
@@ -527,7 +529,7 @@ def salvar_entrega(ctx: Contexto, args: dict) -> dict:
             f"Entrega do robô salva: «{titulo}» (nº {entrega.id}). Abra na seção "
             "Robô desta ficha.",
             ctx.quem,
-            ctx.membro,
+            None,
         )
     return {"salva": True, "entrega_id": entrega.id, "titulo": titulo}
 

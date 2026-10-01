@@ -121,7 +121,7 @@ def delegar_panorama(
         ).first()
         if aberta is not None:
             return aberta, False
-        quem = f"{robo.nome} (a pedido de {pedido_por})"
+        quem = f"{robo.nome} (a pedido de {membro.nome})"
         segunda = operacoes.segunda(operacoes.hoje())
         if tarefa_id:
             tarefa = Tarefa.objects.select_for_update().get(pk=tarefa_id)

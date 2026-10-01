@@ -478,7 +478,9 @@ def test_panorama_sem_chave_sai_parcial_e_a_pessoa_abre_a_entrega():
     assert "Esperando render" in entrega.conteudo
     tarefa.refresh_from_db()
     assert tarefa.situacao == Tarefa.Situacao.EM_ANDAMENTO
-    assert Comentario.objects.filter(tarefa=tarefa, texto__contains="Entrega parcial").exists()
+    assert execucao.etapa_atual == ""
+    comentario = Comentario.objects.get(tarefa=tarefa, texto__contains="Entrega parcial")
+    assert comentario.autor == "Robô de Lívia (a pedido de Lívia)"
 
     pagina = cliente.get(reverse("entrega_do_robo", args=[entrega.id]))
     assert pagina.status_code == 200
@@ -489,6 +491,8 @@ def test_panorama_sem_chave_sai_parcial_e_a_pessoa_abre_a_entrega():
     assert reverse("entrega_do_robo", args=[entrega.id]) in painel
     ficha = cliente.get(reverse("tarefa_editar", args=[tarefa.id])).content.decode()
     assert 'id="robo"' in ficha and entrega.titulo in ficha
+    # O comentário aparece como do robô, não como se a pessoa tivesse escrito.
+    assert "Robô de Lívia (a pedido de Lívia)," in ficha
 
 
 @respx.mock

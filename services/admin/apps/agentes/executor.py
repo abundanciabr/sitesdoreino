@@ -138,6 +138,9 @@ def terminar(execucao: Execucao, situacao: str, motivo: str = "", resultado: str
             campos["progresso"] = 100
     if situacao == S.NA_FILA:
         campos["nao_antes_de"] = agora + timedelta(seconds=30 * max(execucao.tentativas, 1))
+    if situacao in Execucao.ESPERANDO:
+        # Esperando, a etapa em que parou não está acontecendo: o motivo diz o porquê.
+        campos["etapa_atual"] = ""
     if not _minha(execucao).update(**campos):
         raise PerdeuAPosse()
     for chave, valor in campos.items():

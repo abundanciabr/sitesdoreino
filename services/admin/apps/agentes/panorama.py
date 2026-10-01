@@ -312,7 +312,7 @@ def _comentar_uma_vez(execucao: Execucao, membro, entrega: Entrega, texto: str) 
     if tarefa is None:
         return
     quem = f"{execucao.robo.nome} (a pedido de {membro.nome})"
-    operacoes.comentar(tarefa, texto[:500], quem, membro)
+    operacoes.comentar(tarefa, texto[:500], quem, None)
     execucao.estado["comentado"] = marca
     guardar_estado(execucao)
 
