@@ -34,6 +34,8 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
     )
     arquivos = [ln.strip() for ln in execucao.stdout.splitlines() if ln.strip()]
     mapa = mapa_de_celulas.carregar(raiz)
+    if {".github/workflows/deploy-celula.yml", "ci/detectar_celulas.py"} & set(arquivos):
+        return sorted(mapa)
     return mapa_de_celulas.celulas_do_diff(arquivos, mapa)
 
 

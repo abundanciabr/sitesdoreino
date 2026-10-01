@@ -64,7 +64,6 @@ cat <<'FIM'
     "unauthorized" (medido em 21/08/2026; ARMADILHAS-OPERACAO.md §1, H13).
  4. Rodar infra/provisionamento-postgres.sql no Postgres (senhas: openssl rand -hex 24)
  5. GitHub → Secrets do repo: VPS_HOST e DEPLOY_SSH_KEY (a chave PRIVADA do par do CI)
- 6. GitHub → Branch protection de main: checklist no 00-LEIA-PRIMEIRO.md
- 7. Apontar o DNS do domínio novo para esta VPS (ou configurar o Cloudflare na frente)
+ 6. Apontar o DNS do domínio novo para esta VPS (ou configurar o Cloudflare na frente)
 ===============================================================================
 FIM

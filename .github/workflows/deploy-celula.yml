@@ -18,7 +18,7 @@ on:
         type: string
   push:
     branches: [main]
-    paths: ['services/**', 'documentos/**', 'infra/deploy-celula-na-vps.sh', 'infra/publicacao-local.py', '.github/workflows/deploy-celula.yml']
+    paths: ['services/**', 'documentos/**', 'infra/deploy-celula-na-vps.sh', 'infra/publicacao-local.py', 'ci/detectar_celulas.py', '.github/workflows/deploy-celula.yml']
 permissions:
   contents: read
 concurrency:

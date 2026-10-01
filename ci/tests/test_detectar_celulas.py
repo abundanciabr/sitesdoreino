@@ -80,6 +80,15 @@ def test_nenhuma_celula_tocada(repo: Path) -> None:
     assert detectar_celulas.celulas_tocadas(repo, base) == []
 
 
+@pytest.mark.parametrize(
+    "caminho", [".github/workflows/deploy-celula.yml", "ci/detectar_celulas.py"]
+)
+def test_mudanca_na_publicacao_reprova_todas_as_celulas(repo: Path, caminho: str) -> None:
+    base = _base(repo)
+    _commit(repo, caminho)
+    assert detectar_celulas.celulas_tocadas(repo, base) == ["alunos", "quiz"]
+
+
 def test_cli_imprime_uma_por_linha_e_sai_zero(
     repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
