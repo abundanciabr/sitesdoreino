@@ -408,12 +408,14 @@ def test_youtube_e_vimeo_entram_embutidos(aluna, esqueleto, client, url, embutid
         assert "player_youtube_vsl.js" in corpo
         formato = "short" if "/shorts/" in url else "largo"
         assert f'class="vsl-youtube vsl-youtube--{formato}"' in corpo
+        assert "Abrir o vídeo em outra aba" not in corpo
+        assert "<h2>O vídeo da aula</h2>" not in corpo
     else:
         assert (
             f'<iframe src="{embutido}" '
             'referrerpolicy="strict-origin-when-cross-origin"'
         ) in corpo
-    assert "Abrir o vídeo em outra aba" in corpo
+        assert "Abrir o vídeo em outra aba" in corpo
 
 
 @pytest.mark.parametrize(

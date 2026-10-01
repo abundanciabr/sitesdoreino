@@ -86,6 +86,7 @@
       videoId: idVideo,
       playerVars: {
         autoplay: 0,
+        cc_load_policy: 0,
         controls: 0,
         disablekb: 1,
         enablejsapi: 1,
@@ -99,13 +100,24 @@
         onReady: function () {
           player.getIframe().setAttribute("title", "Reprodutor de vídeo");
           player.getIframe().setAttribute("tabindex", "-1");
+          desativarLegendas();
           sincronizarBotoes(raiz, player, botaoBarra, botaoGrande);
         },
+        onApiChange: desativarLegendas,
         onStateChange: function () {
+          desativarLegendas();
           sincronizarBotoes(raiz, player, botaoBarra, botaoGrande);
         },
       },
     });
+
+    function desativarLegendas() {
+      if (typeof player.unloadModule === "function" &&
+          typeof player.getOptions === "function" &&
+          player.getOptions().indexOf("captions") !== -1) {
+        player.unloadModule("captions");
+      }
+    }
 
     function clicouPlay(evento) {
       evento.preventDefault();
