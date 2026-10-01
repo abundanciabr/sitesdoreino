@@ -19,6 +19,10 @@ class Migration(migrations.Migration):
                 ("site_id", models.CharField(max_length=64)),
                 ("slug", models.SlugField(max_length=120)),
                 ("nome", models.CharField(blank=True, default="", max_length=120)),
+                (
+                    "chave_matricula",
+                    models.CharField(blank=True, default="", max_length=120),
+                ),
                 ("descricao", models.TextField(blank=True, default="")),
                 ("published", models.BooleanField(default=False)),
                 ("draft", models.JSONField(blank=True, null=True)),

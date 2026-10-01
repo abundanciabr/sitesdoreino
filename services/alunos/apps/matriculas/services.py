@@ -7,6 +7,7 @@ from django.utils import timezone
 from .eventos import carta_de_situacao, fato_de_situacao
 from .models import Matricula, Pagamento
 from .tasks import relay_apos_commit
+from .turmas_publicadas import mapa_de_nomes, nome_para_exibir
 
 
 class OrderIdReservado(ValueError):
@@ -627,7 +628,7 @@ def alunos_do_painel(*, site_id: str = None, status: str = None):
     return consulta.order_by("-enrolled_at")
 
 
-def como_o_painel_ve(matricula: Matricula) -> dict:
+def como_o_painel_ve(matricula: Matricula, nomes_de_turma=None) -> dict:
     """A forma que as duas portas do painel devolvem — uma função só.
 
     Duas montagens à mão da mesma forma divergem no primeiro campo novo, e o
@@ -639,7 +640,7 @@ def como_o_painel_ve(matricula: Matricula) -> dict:
         "email": matricula.email,
         "nome_completo": matricula.name,
         "whatsapp": matricula.whatsapp,
-        "turma": matricula.turma or None,
+        "turma": nome_para_exibir(matricula, nomes_de_turma),
         "comprou_em": (
             matricula.comprou_em.isoformat() if matricula.comprou_em else None
         ),
@@ -766,7 +767,7 @@ def atualizar_matricula(
 # continua sem existir — esta e uma funcao NOVA, com fronteira propria.
 
 
-def como_o_prontuario_ve(matricula: Matricula) -> dict:
+def como_o_prontuario_ve(matricula: Matricula, nomes_de_turma=None) -> dict:
     """Uma PASSAGEM pela escola, como o prontuario a mostra.
 
     Reusa `como_o_painel_ve` em vez de remontar a forma: os campos comuns tem
@@ -778,7 +779,7 @@ def como_o_prontuario_ve(matricula: Matricula) -> dict:
     ser diferente entre elas — e a porta que edita ficha recusa mexer nele
     exatamente porque ele e a identidade.
     """
-    forma = como_o_painel_ve(matricula)
+    forma = como_o_painel_ve(matricula, nomes_de_turma)
     forma.pop("email")
     forma.update(
         {
@@ -813,6 +814,7 @@ def prontuario_de(email: str) -> dict:
     # `categoria: cadastrado` — a tela diria "nunca esteve aqui" logo acima da
     # historia dela.
     fichas = list(Matricula.objects.filter(email=email).order_by("enrolled_at"))
+    nomes_de_turma = mapa_de_nomes(fichas)
     recente = fichas[-1] if fichas else None
     return {
         "email": email,
@@ -822,11 +824,11 @@ def prontuario_de(email: str) -> dict:
         # para falar com a pessoa e o dado de hoje.
         "nome_completo": recente.name if recente else "",
         "whatsapp": recente.whatsapp if recente else "",
-        "turma": (recente.turma or None) if recente else None,
+        "turma": nome_para_exibir(recente, nomes_de_turma) if recente else None,
         "comprou_em": (
             recente.comprou_em.isoformat() if recente and recente.comprou_em else None
         ),
-        "passagens": [como_o_prontuario_ve(m) for m in fichas],
+        "passagens": [como_o_prontuario_ve(m, nomes_de_turma) for m in fichas],
     }
 
 

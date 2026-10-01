@@ -20,6 +20,7 @@ from ninja.errors import HttpError
 
 from apps.core.clients import IdentidadeClient
 from apps.matriculas.models import Matricula
+from apps.matriculas.turmas_publicadas import mapa_de_nomes, nome_para_exibir
 from apps.matriculas.services import (
     OrderIdReservado,
     apagar_recusado,
@@ -768,6 +769,7 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
     # seja, exatamente quando ela importa.
     fila = list(fila)
     passado = passado_de_quem_espera(fila)
+    nomes_de_turma = mapa_de_nomes(fila)
 
     corpo = [
         {
@@ -780,7 +782,7 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
             "nome_completo": m.name,
             "whatsapp": m.whatsapp,
             "comprou_em": m.comprou_em.isoformat() if m.comprou_em else None,
-            "turma": m.turma or None,
+            "turma": nome_para_exibir(m, nomes_de_turma),
             "status": m.status,
             # `criada_em` é o `enrolled_at` que já existia: um segundo carimbo
             # de "quando esta linha nasceu" seriam dois lugares para o mesmo
@@ -1628,9 +1630,9 @@ def list_all_enrollments(request, site_id: str = None, status: str = None):
         # esconder alunos faria o painel dizer "não há ninguém" para quem tem
         # gente. Mostrar demais para quem já está autenticado não custa nada.
         status = None
-    corpo = [
-        como_o_painel_ve(m) for m in alunos_do_painel(site_id=site_id, status=status)
-    ]
+    matriculas = list(alunos_do_painel(site_id=site_id, status=status))
+    nomes_de_turma = mapa_de_nomes(matriculas)
+    corpo = [como_o_painel_ve(m, nomes_de_turma) for m in matriculas]
     return JsonResponse(corpo, safe=False, status=200)
 
 
@@ -1768,7 +1770,9 @@ def list_enrollments_page(
     consulta = alunos_do_painel(site_id=site_id, status=status)
     offset = _cursor_para_offset(cursor)
     total = consulta.count()
-    itens = [como_o_painel_ve(m) for m in consulta[offset : offset + limite]]
+    matriculas = list(consulta[offset : offset + limite])
+    nomes_de_turma = mapa_de_nomes(matriculas)
+    itens = [como_o_painel_ve(m, nomes_de_turma) for m in matriculas]
     # Os contadores NAO herdam o filtro de estado: a tela mostra os quatro ao
     # mesmo tempo, e zera-los quando o mantenedor filtra por um deles faria a
     # tela dizer que os outros tres nao existem.

@@ -358,6 +358,7 @@ class Turma(models.Model):
     site_id = models.CharField(max_length=64)
     slug = models.SlugField(max_length=120)
     nome = models.CharField(max_length=120, blank=True, default="")
+    chave_matricula = models.CharField(max_length=120, blank=True, default="")
     descricao = models.TextField(blank=True, default="")
     published = models.BooleanField(default=False)
     draft = models.JSONField(null=True, blank=True)

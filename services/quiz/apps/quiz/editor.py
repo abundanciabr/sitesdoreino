@@ -3,6 +3,7 @@
 import json
 import secrets
 import uuid
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.db import transaction
@@ -17,10 +18,8 @@ def _authorized(request):
     return (
         scheme.lower() == "bearer"
         and bool(token)
-        and any(
-            secrets.compare_digest(token, accepted)
-            for accepted in settings.TOKENS_ACEITOS
-        )
+        and bool(settings.TOKEN_EDITOR_ADMIN)
+        and secrets.compare_digest(token, settings.TOKEN_EDITOR_ADMIN)
     )
 
 
@@ -78,6 +77,8 @@ def _validate(payload):
         raise ValueError("Informe de 1 a 255 perguntas.")
     if not isinstance(bands, list) or not 1 <= len(bands) <= 255:
         raise ValueError("Informe de 1 a 255 faixas.")
+    possible_scores = {0}
+    minimum_score = maximum_score = 0
     for question in questions:
         if not isinstance(question, dict) or set(question) != {"text", "options"}:
             raise ValueError("Cada pergunta precisa de text e options.")
@@ -102,6 +103,18 @@ def _validate(payload):
                 or not -(2**31) <= option["points"] < 2**31
             ):
                 raise ValueError("Pontuação inválida.")
+        points = {option["points"] for option in options}
+        minimum_score += min(points)
+        maximum_score += max(points)
+        if possible_scores is not None:
+            if len(possible_scores) * len(points) > 50000:
+                possible_scores = None
+            else:
+                possible_scores = {
+                    score + point for score in possible_scores for point in points
+                }
+    if not -(2**31) <= minimum_score <= maximum_score < 2**31:
+        raise ValueError("Pontuação total fora do intervalo permitido.")
     keys = set()
     for band in bands:
         required = {"key", "title", "min_score", "max_score"}
@@ -127,6 +140,8 @@ def _validate(payload):
         if (
             type(band["min_score"]) is not int
             or type(band["max_score"]) is not int
+            or not -(2**31) <= band["min_score"] < 2**31
+            or not -(2**31) <= band["max_score"] < 2**31
             or band["min_score"] > band["max_score"]
         ):
             raise ValueError("Intervalo de pontuação inválido.")
@@ -141,9 +156,38 @@ def _validate(payload):
                 raise ValueError(f"{key} inválido.")
         if bool(band.get("botao_destino")) != bool(band.get("botao_rotulo")):
             raise ValueError("Destino e rótulo do botão devem ser preenchidos juntos.")
+        destination = band.get("botao_destino", "")
+        if destination:
+            parsed = urlsplit(destination)
+            safe_relative = destination.startswith("/") and not destination.startswith(
+                "//"
+            )
+            safe_absolute = parsed.scheme in {"http", "https"} and bool(parsed.hostname)
+            if (
+                destination != destination.strip()
+                or "\\" in destination
+                or any(ord(char) < 32 for char in destination)
+                or not (safe_relative or safe_absolute)
+            ):
+                raise ValueError(
+                    "Destino do botão deve ser caminho local ou URL HTTP(S)."
+                )
     ranges = sorted((b["min_score"], b["max_score"]) for b in bands)
     if any(right[0] <= left[1] for left, right in zip(ranges, ranges[1:])):
         raise ValueError("Faixas de pontuação não podem se sobrepor.")
+    if possible_scores is None:
+        covered_until = minimum_score - 1
+        for low, high in ranges:
+            if low > covered_until + 1 and covered_until < maximum_score:
+                raise ValueError("Há pontuações possíveis sem faixa de resultado.")
+            covered_until = max(covered_until, high)
+        if covered_until < maximum_score:
+            raise ValueError("Há pontuações possíveis sem faixa de resultado.")
+    elif any(
+        not any(low <= score <= high for low, high in ranges)
+        for score in possible_scores
+    ):
+        raise ValueError("Há pontuações possíveis sem faixa de resultado.")
 
 
 @csrf_exempt

@@ -27,6 +27,7 @@ ALLOWED_HOSTS = ["*"]  # rede Docker interna; célula não tem rota pública dir
 TOKENS_ACEITOS = {
     v for k, v in os.environ.items() if k.startswith("TOKENS_ACEITOS_") and v
 }
+TOKEN_EDITOR_ADMIN = os.environ.get("TOKENS_ACEITOS_ADMIN", "")
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 

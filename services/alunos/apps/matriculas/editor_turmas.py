@@ -1,6 +1,5 @@
 """Admin editor for cohorts without changing existing enrollment records."""
 
-import hashlib
 import json
 import secrets
 
@@ -10,6 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import Matricula, Turma
+from .turmas_publicadas import legacy_slug
 
 
 def _authorized(request):
@@ -17,10 +17,8 @@ def _authorized(request):
     return (
         scheme.lower() == "bearer"
         and bool(token)
-        and any(
-            secrets.compare_digest(token, accepted)
-            for accepted in settings.TOKENS_ACEITOS
-        )
+        and bool(settings.TOKEN_EDITOR_ADMIN)
+        and secrets.compare_digest(token, settings.TOKEN_EDITOR_ADMIN)
     )
 
 
@@ -40,10 +38,7 @@ def _legacy(site_id):
         .values_list("turma", flat=True)
         .distinct()
     )
-    return {
-        "legacy-" + hashlib.sha256(name.encode("utf-8")).hexdigest()[:20]: name
-        for name in names
-    }
+    return {legacy_slug(name): name for name in names}
 
 
 def _content(turma):
@@ -74,7 +69,7 @@ def turmas(request):
     items = [
         {
             "slug": row.slug,
-            "nome": row.nome,
+            "nome": row.nome or (row.draft or {}).get("nome", ""),
             "published": row.published,
             "has_draft": row.draft is not None,
         }
@@ -89,6 +84,21 @@ def turmas(request):
     return JsonResponse(
         {"items": sorted(items, key=lambda row: row["nome"].casefold())}
     )
+
+
+@csrf_exempt
+def turma_publicada(request, slug):
+    if not _authorized(request):
+        return _error("Não autorizado.", 401)
+    if request.method != "GET":
+        return _error("Método não permitido.", 405)
+    site_id = _site(request)
+    if site_id is None:
+        return _error("site_id obrigatório.", 422)
+    turma = Turma.objects.filter(site_id=site_id, slug=slug, published=True).first()
+    if turma is None:
+        return _error("Turma publicada não encontrada.", 404)
+    return JsonResponse({"slug": turma.slug, "content": _content(turma)})
 
 
 @csrf_exempt
@@ -163,10 +173,14 @@ def publish_turma(request, slug):
         except ValueError as exc:
             return _error(str(exc), 422)
         turma.nome = turma.draft["nome"].strip()
+        if not turma.chave_matricula:
+            turma.chave_matricula = _legacy(site_id).get(slug) or turma.nome
         turma.descricao = turma.draft["descricao"]
         turma.published = True
         turma.draft = None
-        turma.save(update_fields=["nome", "descricao", "published", "draft"])
+        turma.save(
+            update_fields=["nome", "chave_matricula", "descricao", "published", "draft"]
+        )
     return JsonResponse(
         {
             "slug": slug,

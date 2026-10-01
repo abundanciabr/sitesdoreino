@@ -19,11 +19,7 @@ def env(nome: str) -> str:
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
-TOKENS_ACEITOS = {
-    value
-    for name, value in os.environ.items()
-    if name.startswith("TOKENS_ACEITOS_") and value
-}
+TOKEN_EDITOR_ADMIN = os.environ.get("TOKENS_ACEITOS_ADMIN", "")
 FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
