@@ -105,6 +105,7 @@ class Workers:
         for servico in self.hueys:
             self._thread(f"huey-{servico}", self._huey, servico)
         self._thread("pagamentos-appmax", self._processar_appmax)
+        self._thread("robos-admin", self._robos_admin)
         return self
 
     def _thread(self, nome: str, funcao, *args) -> None:
@@ -168,6 +169,12 @@ class Workers:
         while not self.parar.is_set():
             modulo.Command().handle()
             self.parar.wait(30)
+
+    def _robos_admin(self) -> None:
+        # O executor dos robôs pessoais da equipe (apps/agentes do admin):
+        # pega da fila no banco as conversas e os trabalhos delegados.
+        modulo = import_module("modules.admin.apps.agentes.executor")
+        modulo.rodar_para_sempre(self.parar)
 
     def encerrar(self) -> None:
         self.parar.set()

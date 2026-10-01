@@ -120,6 +120,9 @@
         {% if tarefa.situacao == 'bloqueada' and tarefa.impedimento %}
         <p class="impedimento">{{ tarefa.impedimento }}</p>
         {% endif %}
+        {% if tarefa.executor != 'pessoa' or tarefa.trabalho_do_robo %}
+        <div class="meta robo-da-tarefa">Executor: {{ tarefa.get_executor_display }}{% with e=tarefa.trabalho_do_robo %}{% if e %} &middot; <a href="{% url 'execucao_do_robo' e.id %}">{{ e.get_situacao_display }}{% if e.aberta and e.etapa_atual %}: {{ e.etapa_atual }}{% endif %}</a>{% if e.esperando and e.motivo %} — {{ e.motivo }}{% endif %}{% endif %}{% endwith %}{% for en in tarefa.entregas_do_robo %} &middot; <a href="{% url 'entrega_do_robo' en.id %}">Entrega{% if en.parcial %} parcial{% endif %}</a>{% endfor %}</div>
+        {% endif %}
         <div class="meta">
           Criada por {{ tarefa.criada_por }} em {{ tarefa.criada_em|date:"d/m H:i" }}.
           {% if tarefa.concluida_em %}Concluída em {{ tarefa.concluida_em|date:"d/m H:i" }}.{% elif tarefa.alterada_por %}Última alteração: {{ tarefa.alterada_por }}, {{ tarefa.alterada_em|date:"d/m H:i" }}.{% endif %}

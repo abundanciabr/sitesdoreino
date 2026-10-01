@@ -928,6 +928,34 @@ primeira versão deste arquivo, e o teste pegou.
     .comentario { border-left: 2px solid var(--linha); padding: 4px 0 4px 10px; margin-bottom: 10px; }
     .comentario .texto { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
     .comentario .meta { color: var(--texto-3); font-size: 12px; margin-top: 4px; }
+    /* Os robôs pessoais (01/10/2026, apps/agentes): a conversa, os trabalhos
+       no servidor e as entregas. Esperando usa o amarelo e falha o vermelho
+       que a casa já tem; nenhuma cor nova. */
+    .robo-grade { display: grid; gap: 18px; grid-template-columns: 1fr; }
+    @media (min-width: 1000px) { .robo-grade { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
+    .titulo-de-secao { font-size: 16px; margin: 18px 0 10px; }
+    .robo-grade .titulo-de-secao:first-child { margin-top: 0; }
+    .conversa-do-robo { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 12px; display: grid; gap: 10px; max-height: 70vh; overflow-y: auto; margin-bottom: 10px; }
+    .fala { max-width: 92%; padding: 8px 12px; border-radius: 10px; font-size: 14px; overflow-wrap: anywhere; }
+    .fala.membro { justify-self: end; border: 1px solid var(--azul); }
+    .fala.robo { justify-self: start; border: 1px solid var(--linha); background: var(--fundo); }
+    .fala.aviso { justify-self: center; color: var(--texto-2); font-size: 13px; border: 1px dashed var(--amarelo); }
+    .fala p { margin: 0 0 6px; }
+    .fala p:last-child { margin-bottom: 0; }
+    .fala .meta { color: var(--texto-3); font-size: 11px; margin-top: 4px; }
+    .pensando { color: var(--texto-2); font-size: 13px; margin: 0; }
+    .trabalho-do-robo { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 0 0 8px; overflow-wrap: anywhere; }
+    .trabalho-do-robo .meta { color: var(--texto-3); font-size: 12px; margin-top: 4px; }
+    .trabalho-do-robo.esperando { border-color: var(--amarelo); }
+    .trabalho-do-robo.falhou { border-color: var(--vermelho); }
+    .trabalho-do-robo.concluida { border-color: var(--verde); }
+    .trabalho-do-robo progress { display: block; width: 100%; height: 6px; margin-top: 6px; }
+    .entrega-do-robo { margin: 0 0 8px; font-size: 14px; }
+    .selo-parcial { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 11px; color: var(--amarelo); border: 1px solid var(--amarelo); }
+    .passos-do-robo { font-size: 14px; padding-left: 20px; }
+    .passos-do-robo li { margin-bottom: 4px; overflow-wrap: anywhere; }
+    .lista-planejada { font-size: 13px; color: var(--texto-2); padding-left: 20px; }
+    .tarefa .robo-da-tarefa { color: var(--texto-2); }
     /* O acesso por aparelho (01/10/2026): o link com QR code, a ficha da
        pessoa e Meu perfil. O QR sai em fundo branco de propósito: câmera de
        celular lê mal QR claro sobre escuro. */

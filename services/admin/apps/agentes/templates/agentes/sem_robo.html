@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Meu robô{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <h1>Painel da equipe</h1>
+  {% include "admin/_abas_da_equipe.html" %}
+  <p class="aviso">
+    <b>O robô é de uma pessoa da equipe, e esta conta ({{ admin.email|default:admin.nome }}) não está ligada a ninguém.</b>
+    {% if e_admin %}Associe a conta em <a href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>, ou veja todos os robôs em <a href="{% url 'robos_admin' %}">Robôs</a>.{% else %}Peça ao mantenedor para associar a sua conta.{% endif %}
+  </p>
+</div>
+{% endblock %}

@@ -55,6 +55,10 @@ INSTALLED_APPS = [
     # nunca depois: um botão que muda a vida de alguém sem deixar rastro é o
     # tipo de coisa que ninguém consegue reconstruir mais tarde.
     "apps.auditoria",
+    # Os robôs pessoais da equipe (plano-mestre dos robôs, 01/10/2026): a
+    # identidade de cada robô, as conversas, as execuções no servidor e as
+    # entregas. Dados próprios; as tarefas continuam em `apps.core`.
+    "apps.agentes",
 ]
 
 MIDDLEWARE = [

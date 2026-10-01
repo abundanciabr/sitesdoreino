@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Robôs{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
+  <h1>Robôs da equipe</h1>
+  <p class="subtitulo">Cada pessoa da equipe tem um robô, que nasce quando ela abre a aba Meu robô. Aqui ficam a conexão com a OpenAI, o gasto e o que cada robô está fazendo.</p>
+
+  {% if resultado %}<p class="recado-da-equipe">{{ resultado }}</p>{% endif %}
+
+  <section id="conexao">
+    <h2 class="titulo-de-secao">Conexão com a OpenAI</h2>
+    <p>Situação: <b>{{ conexao.get_situacao_display }}</b>{% if conexao.final_da_chave %} &middot; chave guardada terminando em …{{ conexao.final_da_chave }}{% endif %}{% if conexao.conferida_em %} &middot; conferida em {{ conexao.conferida_em|date:"d/m/Y H:i" }}{% endif %}</p>
+    {% if conexao.detalhe %}<p class="nota">{{ conexao.detalhe }}</p>{% endif %}
+    {% if chave_do_ambiente %}<p class="nota">O servidor também tem OPENAI_API_KEY no ambiente, e ela vale por cima da guardada aqui.</p>{% endif %}
+    {% if chave_ilegivel %}<p class="aviso">A chave guardada não pode mais ser lida (a chave secreta do servidor mudou). Guarde a chave de novo.</p>{% endif %}
+    {% if conexao.modelos_disponiveis %}<p class="nota">Modelos GPT-6 nesta conta: {{ conexao.modelos_disponiveis|join:", " }}</p>{% endif %}
+
+    <details{% if not conexao.final_da_chave %} open{% endif %}>
+      <summary>Guardar a chave da OpenAI</summary>
+      <ol class="passos-do-robo">
+        <li>Entre em platform.openai.com com a conta que tem crédito.</li>
+        <li>Abra <b>API keys</b> e clique em <b>Create new secret key</b>. Dê o nome "meshcraft-robos" e copie a chave (começa com "sk-").</li>
+        <li>Cole no campo abaixo e clique em <b>Guardar e conferir</b>. A chave fica cifrada no banco; a tela só mostra os quatro últimos caracteres.</li>
+        <li>A conferência usa a lista de modelos da conta, que não cobra nada. Os gastos só começam quando alguém conversa com um robô, dentro do teto abaixo.</li>
+      </ol>
+      <form class="forma" method="post" action="{% url 'robos_admin' %}" autocomplete="off">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="guardar">
+        <label class="largo"><span class="rotulo">Chave da OpenAI</span><input type="password" name="chave" autocomplete="new-password" spellcheck="false" required></label>
+        <button class="botao" type="submit">Guardar e conferir</button>
+      </form>
+    </details>
+
+    <div class="equipe-gestos">
+      <form method="post" action="{% url 'robos_admin' %}">{% csrf_token %}<input type="hidden" name="acao" value="conferir"><button class="botao-pequeno" type="submit">Conferir de novo</button></form>
+      {% if conexao.final_da_chave %}
+      <form method="post" action="{% url 'robos_admin' %}">{% csrf_token %}<input type="hidden" name="acao" value="tirar"><button class="botao-pequeno" type="submit">Apagar a chave guardada</button></form>
+      {% endif %}
+    </div>
+
+    <details>
+      <summary>Modelos usados</summary>
+      <form class="forma" method="post" action="{% url 'robos_admin' %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="modelos">
+        <label><span class="rotulo">Conversa (rápido)</span><input type="text" name="modelo_rapido" maxlength="60" value="{{ conexao.modelo_rapido }}"></label>
+        <label><span class="rotulo">Panorama (forte)</span><input type="text" name="modelo_forte" maxlength="60" value="{{ conexao.modelo_forte }}"></label>
+        <button class="botao-pequeno" type="submit">Salvar e conferir</button>
+      </form>
+    </details>
+  </section>
+
+  <section id="gasto">
+    <h2 class="titulo-de-secao">Gasto deste mês</h2>
+    {% if consumo.autorizacao %}
+    <p>US$ {{ consumo.gasto|floatformat:4 }} de US$ {{ consumo.teto|floatformat:2 }}. {{ consumo.autorizacao.descricao }}.</p>
+    <p class="nota">De onde veio a autorização: {{ consumo.autorizacao.fonte }}</p>
+    {% else %}
+    <p class="aviso">Nenhuma autorização de gasto ativa: nenhuma chamada paga sai.</p>
+    {% endif %}
+  </section>
+
+  <section id="robos">
+    <h2 class="titulo-de-secao">Os robôs</h2>
+    {% for robo in robos %}
+    <article class="trabalho-do-robo">
+      <b>{{ robo.nome }}</b> &middot; de {{ robo.membro.nome }} &middot; {{ robo.get_situacao_display }}
+      <div class="meta">{{ robo.abertas }} trabalho{{ robo.abertas|pluralize }} aberto{{ robo.abertas|pluralize }}{% if robo.ultima %} &middot; último: <a href="{% url 'execucao_do_robo' robo.ultima.id %}">{{ robo.ultima.get_tipo_display }} ({{ robo.ultima.get_situacao_display|lower }})</a>{% endif %}</div>
+    </article>
+    {% empty %}
+    <p class="nota">Nenhum robô ainda. Cada um nasce quando a pessoa abre a aba Meu robô.</p>
+    {% endfor %}
+    {% if membros_sem_robo %}<p class="nota">Ainda sem robô: {% for m in membros_sem_robo %}{{ m.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+  </section>
+
+  <section id="execucoes">
+    <h2 class="titulo-de-secao">Últimos trabalhos</h2>
+    <ul class="passos-do-robo">
+      {% for e in execucoes %}<li><a href="{% url 'execucao_do_robo' e.id %}">nº {{ e.id }}</a> &middot; {{ e.robo.nome }} &middot; {{ e.get_tipo_display }} &middot; {{ e.get_situacao_display }}{% if e.motivo %} — {{ e.motivo }}{% endif %} &middot; {{ e.criada_em|date:"d/m H:i" }}</li>
+      {% empty %}<li>Nenhum ainda.</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

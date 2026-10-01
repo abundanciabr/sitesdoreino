@@ -798,7 +798,9 @@ def test_a_tela_nao_guarda_nada_desta_celula():
     """
     from django.apps import apps
 
-    nomes = {m._meta.db_table for m in apps.get_models()}
+    # `agentes_entrega` é o documento que o robô pessoal produz (plano dos
+    # robôs), não a entrega de mensagem de uma sequência.
+    nomes = {m._meta.db_table for m in apps.get_models() if not m._meta.db_table.startswith("agentes_")}
     for proibida in ("jornada", "sequencia", "passo", "inscricao", "entrega"):
         assert not any(proibida in n for n in nomes), (
             f"apareceu uma tabela com '{proibida}' nesta célula: o dado das "

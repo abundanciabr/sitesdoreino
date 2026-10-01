@@ -632,6 +632,11 @@ class Tarefa(models.Model):
         BLOQUEADA = "bloqueada", "Bloqueada"
         CONCLUIDA = "concluida", "Concluída"
 
+    class Executor(models.TextChoices):
+        PESSOA = "pessoa", "A pessoa"
+        ROBO = "robo", "O robô"
+        COMPARTILHADA = "compartilhada", "Pessoa e robô"
+
     titulo = models.CharField(max_length=200)
     descricao = models.TextField(blank=True, default="")
     responsavel = models.ForeignKey(
@@ -653,6 +658,12 @@ class Tarefa(models.Model):
         max_length=20, choices=Situacao.choices, default=Situacao.A_FAZER
     )
     impedimento = models.TextField(blank=True, default="")
+    # Quem FAZ o trabalho, separado de quem RESPONDE por ele (`responsavel`):
+    # o robô executa, a pessoa continua respondendo. As execuções do robô
+    # apontam para a tarefa pelo número dela (`apps.agentes.Execucao`).
+    executor = models.CharField(
+        max_length=20, choices=Executor.choices, default=Executor.PESSOA
+    )
 
     criada_por = models.CharField(max_length=200, blank=True, default="")
     criada_em = models.DateTimeField(auto_now_add=True)
