@@ -16,6 +16,21 @@ except ImportError:  # testes Windows
 
 
 SERVICOS_ANTERIORES = {
+    "abrir-a-sala-de-aula.sh": ("cursos", "cursos-relay"),
+    "ligar-a-appmax.sh": ("pagamentos",),
+    "por-a-chave-da-ia-do-admin.sh": ("admin",),
+    "por-a-chave-da-ia-do-forum.sh": ("forum",),
+    "provisionar-admin.sh": ("admin",),
+    "provisionar-aprovadores.sh": ("sugestoes", "sugestoes-relay"),
+    "provisionar-cursos.sh": ("identidade", "alunos"),
+    "provisionar-email.sh": ("mensageria", "mensageria-consumer", "mensageria-huey"),
+    "provisionar-encomendas.sh": ("identidade", "alunos", "admin", "encomendas", "encomendas-tique"),
+    "provisionar-equipe-da-gamificacao.sh": ("gamificacao",),
+    "provisionar-forum.sh": ("identidade", "alunos"),
+    "provisionar-gamificacao.sh": ("identidade",),
+    "provisionar-pages.sh": ("pages",),
+    "provisionar-pares-da-prancheta.sh": ("identidade", "alunos", "catalogo", "pages"),
+    "provisionar-sugestoes.sh": ("alunos",),
     "provisionar-aviso-de-liberacao.sh": ("identidade", "alunos", "alunos-relay"),
     "provisionar-aviso-no-celular.sh": ("funil", "notificacoes", "notificacoes-consumer"),
     "provisionar-par-da-caixa.sh": ("sugestoes", "admin"),

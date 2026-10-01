@@ -59,3 +59,26 @@ comando_servico_env() {
     docker compose exec -T "${ambientes[@]}" "$servico" python manage.py "$@"
   fi
 }
+
+# Código Python pelo stdin, com os imports originais do módulo reescritos no
+# runtime único. Aceita o '-' opcional usado por `python -` nos roteiros antigos.
+codigo_servico() {
+  local servico="$1"
+  shift
+  if [ "${1:-}" = - ]; then shift; fi
+  [ "$#" -eq 0 ] || return 2
+  if aplicacao_ativa; then
+    docker compose exec -T aplicacao python -m config.executar "$servico" -
+  else
+    docker compose exec -T "$servico" python -
+  fi
+}
+
+# Recria somente a aplicação vigente, ou os serviços correspondentes à origem
+# depois de uma recuperação. O helper Python sempre prova as rotas públicas.
+recarregar_servicos() {
+  [ "$#" -eq 1 ] || return 2
+  local origem="$1"
+  case "$origem" in *.sh) ;; *) origem="$origem.sh" ;; esac
+  python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "$origem"
+}
