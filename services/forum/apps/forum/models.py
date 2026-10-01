@@ -228,6 +228,18 @@ class Area(models.Model):
         return self.nome
 
 
+class RascunhoDeArea(models.Model):
+    """Edicao do painel guardada sem alterar a area visivel no forum."""
+
+    slug = models.SlugField(max_length=60, unique=True)
+    dados = models.JSONField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+    publicado_em = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return self.slug
+
+
 class MembroDoGrupo(models.Model):
     """Esta pessoa está NESTE grupo de prática, desde quando e até quando.
 
