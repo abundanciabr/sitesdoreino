@@ -47,11 +47,13 @@ http:
       headers:
         customRequestHeaders:
           Authorization: 'Bearer {{ env "ALUNOS_API_TOKEN" }}'
+          X-Plataforma-Entrada: privada
 
     bearer-da-ponte-catalogo:
       headers:
         customRequestHeaders:
           Authorization: 'Bearer {{ env "TOKEN_CATALOGO" }}'
+          X-Plataforma-Entrada: privada
 
     # A célula `catalogo` não tem `SCRIPT_NAME`, então o prefixo da ponte sai
     # antes de a requisição chegar nela. `alunos` tem, e por isso recebe o
@@ -96,9 +98,9 @@ http:
     ponte-alunos:
       loadBalancer:
         servers:
-          - url: "http://alunos:8000"
+          - url: "http://aplicacao:8000"
 
     ponte-catalogo:
       loadBalancer:
         servers:
-          - url: "http://catalogo:8000"
+          - url: "http://aplicacao:8000"

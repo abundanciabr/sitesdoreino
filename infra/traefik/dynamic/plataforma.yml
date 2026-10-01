@@ -21,6 +21,8 @@ http:
         memRequestBodyBytes: 1048576
     seguranca:
       headers:
+        customRequestHeaders:
+          X-Plataforma-Entrada: ""
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         contentTypeNosniff: true
@@ -46,6 +48,8 @@ http:
     # aqui, CSP lá — se qualquer uma disser DENY/none, o iframe não abre.
     seguranca-admin:
       headers:
+        customRequestHeaders:
+          X-Plataforma-Entrada: ""
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         contentTypeNosniff: true
@@ -591,42 +595,42 @@ http:
   services:
     funil:
       loadBalancer:
-        servers: [ { url: "http://funil:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     quiz:
       loadBalancer:
-        servers: [ { url: "http://quiz:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     checkout:
       loadBalancer:
-        servers: [ { url: "http://checkout:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     alunos:
       loadBalancer:
-        servers: [ { url: "http://alunos:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     pagamentos:
       loadBalancer:
-        servers: [ { url: "http://pagamentos:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     sugestoes:
       loadBalancer:
-        servers: [ { url: "http://sugestoes:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     identidade:
       loadBalancer:
-        servers: [ { url: "http://identidade:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     admin:
       loadBalancer:
-        servers: [ { url: "http://admin:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     forum:
       loadBalancer:
-        servers: [ { url: "http://forum:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     gamificacao:
       loadBalancer:
-        servers: [ { url: "http://gamificacao:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     cursos:
       loadBalancer:
-        servers: [ { url: "http://cursos:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     # Um servico so para os DOIS roteadores (`pages` e `estudio`): e a mesma
     # celula, e a peca do aluno mora em uma casa so.
     pages:
       loadBalancer:
-        servers: [ { url: "http://pages:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]
     encomendas:
       loadBalancer:
-        servers: [ { url: "http://encomendas:8000" } ]
+        servers: [ { url: "http://aplicacao:8000" } ]

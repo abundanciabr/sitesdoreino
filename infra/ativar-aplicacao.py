@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""Primeiro corte para a aplicação única, com cópia e retorno da topologia anterior.
+
+Chamado pelo publicador somente depois de construir e provar a imagem isolada.
+O chamador detém a trava comum exclusiva; o script também funciona sozinho.
+O banco é copiado antes do primeiro boot e nunca restaurado automaticamente.
+"""
+from __future__ import annotations
+
+try:
+    import fcntl
+except ImportError:  # testes de lógica no Windows; ativação roda na VPS Linux
+    fcntl = None
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+
+
+RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
+PUBLICACOES = RAIZ / "publicacoes"
+TRANSICAO = PUBLICACOES / "aplicacao-transicao.json"
+JOURNAL = PUBLICACOES / "aplicacao.json"
+BASES = (
+    "catalogo", "identidade", "notificacoes", "admin", "quiz", "leads",
+    "checkout", "pagamentos", "alunos", "mensageria", "sugestoes", "forum",
+    "gamificacao", "metricas", "cursos", "pages", "encomendas",
+)
+SHA = re.compile(r"[0-9a-f]{40}\Z")
+
+
+def executar(*comando: str, saida: bool = False, ambiente: dict | None = None) -> str:
+    resultado = subprocess.run(comando, cwd=RAIZ, env=ambiente, text=True,
+                               capture_output=True, stdin=subprocess.DEVNULL)
+    if resultado.returncode:
+        # Saídas dos comandos podem conter detalhes do ambiente. O log registra
+        # somente o comando fixo e código de retorno; nunca os valores dos env.
+        raise RuntimeError(f"{comando[0]} {comando[1] if len(comando)>1 else ''} falhou ({resultado.returncode})")
+    return resultado.stdout.strip() if saida else ""
+
+
+def compose(*argumentos: str, arquivo: Path | None = None, override: Path | None = None,
+            ambiente: dict | None = None) -> str:
+    comando = ["docker", "compose", "--project-directory", str(RAIZ), "-p", "plataforma"]
+    if arquivo:
+        comando += ["-f", str(arquivo)]
+    if override and override.is_file():
+        comando += ["-f", str(override)]
+    return executar(*comando, *argumentos, saida=True, ambiente=ambiente)
+
+
+def salvar(caminho: Path, valor: dict) -> None:
+    caminho.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd, temporario = tempfile.mkstemp(prefix=f".{caminho.name}-", dir=caminho.parent)
+    try:
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as arquivo:
+            json.dump(valor, arquivo, ensure_ascii=False)
+            arquivo.write("\n")
+            arquivo.flush()
+            os.fsync(arquivo.fileno())
+        os.replace(temporario, caminho)
+    finally:
+        Path(temporario).unlink(missing_ok=True)
+
+
+def ambiente_da_aplicacao(imagem: str, codigo: Path) -> dict:
+    ambiente = os.environ.copy()
+    ambiente["APLICACAO_IMAGEM"] = imagem
+    ambiente["APLICACAO_CODIGO"] = str(codigo)
+    admin = RAIZ / "env" / "admin.env"
+    # O Compose precisa dos nomes dos tokens para renderizar o Traefik. Valores
+    # ficam somente no ambiente do processo e nunca são escritos no journal.
+    chaves = ("ALUNOS_API_TOKEN", "TOKEN_CATALOGO")
+    for linha in admin.read_text(encoding="utf-8").splitlines():
+        chave, separador, valor = linha.partition("=")
+        if separador and chave in chaves and valor:
+            ambiente[chave] = valor
+    if any(not ambiente.get(chave) for chave in chaves):
+        raise RuntimeError("tokens da entrada privada ausentes em env/admin.env")
+    return ambiente
+
+
+def conferir_fonte(fonte: Path, codigo: Path, imagem: str) -> None:
+    if not fonte.is_dir() or not (fonte / "docker-compose.yml").is_file():
+        raise RuntimeError("FONTE_INFRA sem Compose")
+    if not (fonte / "traefik" / "dynamic" / "plataforma.yml").is_file():
+        raise RuntimeError("FONTE_INFRA sem rotas")
+    if not codigo.is_dir() or not (codigo / "entrypoint.py").is_file():
+        raise RuntimeError("bundle da aplicação ausente")
+    if not imagem or any(c.isspace() for c in imagem):
+        raise RuntimeError("imagem inválida")
+    if subprocess.run(["docker", "image", "inspect", imagem], capture_output=True).returncode:
+        raise RuntimeError("imagem testada indisponível")
+
+
+def copiar_bancos(ambiente: dict) -> list[str]:
+    destino = RAIZ / "backups-de-banco"
+    destino.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(destino, 0o700)
+    carimbo = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
+    copias = []
+    override = PUBLICACOES / "imagens.json"
+    for base in BASES:
+        nome = base + "_db"
+        presente = compose("exec", "-T", "postgres", "psql", "-U", "postgres",
+                           "-tAc", f"SELECT 1 FROM pg_database WHERE datname = '{nome}'",
+                           arquivo=RAIZ / "docker-compose.yml", override=override, ambiente=ambiente)
+        if presente.strip() != "1":
+            raise RuntimeError(f"base esperada ausente: {nome}")
+        final = destino / f"{nome}-{carimbo}.dump"
+        parcial = final.with_suffix(".dump.parcial")
+        with parcial.open("wb") as arquivo:
+            processo = subprocess.run(
+                ["docker", "compose", "--project-directory", str(RAIZ), "-p", "plataforma",
+                 "-f", str(RAIZ / "docker-compose.yml"),
+                 *([] if not override.is_file() else ["-f", str(override)]),
+                 "exec", "-T", "postgres", "pg_dump", "-U", "postgres", "-Fc", "-d", nome],
+                cwd=RAIZ, env=ambiente, stdout=arquivo, stderr=subprocess.DEVNULL)
+        if processo.returncode or parcial.stat().st_size == 0:
+            parcial.unlink(missing_ok=True)
+            raise RuntimeError(f"backup falhou: {nome}")
+        with parcial.open("rb") as arquivo:
+            prova = subprocess.run(
+                ["docker", "compose", "--project-directory", str(RAIZ), "-p", "plataforma",
+                 "-f", str(RAIZ / "docker-compose.yml"),
+                 *([] if not override.is_file() else ["-f", str(override)]),
+                 "exec", "-T", "postgres", "pg_restore", "-l"],
+                cwd=RAIZ, env=ambiente, stdin=arquivo, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)
+        if prova.returncode:
+            parcial.unlink(missing_ok=True)
+            raise RuntimeError(f"backup não abre: {nome}")
+        os.chmod(parcial, 0o600)
+        os.replace(parcial, final)
+        copias.append(str(final))
+    return copias
+
+
+def provar_site() -> None:
+    sites = json.loads((RAIZ / "sites.json").read_text(encoding="utf-8"))["sites"]
+    for site in sites:
+        host = site["host"]
+        tls = [] if host == "meshcraft.top" else ["-k"]
+        codigo = executar("curl", "-sL", *tls, "--max-time", "20", "--max-redirs", "3",
+                          "--resolve", f"{host}:443:127.0.0.1", "-o", "/dev/null",
+                          "-w", "%{http_code}", f"https://{host}/", saida=True)
+        if codigo != "200":
+            raise RuntimeError(f"site {host} respondeu {codigo}")
+    for caminho in (
+        "/alunos/api/alunos/pre-matriculas?status=aguardando",
+        "/alunos/api/alunos/pre-matriculas?status=recusada",
+        "/alunos/api/alunos/matriculas",
+        "/catalogo/api/catalogo/produtos",
+    ):
+        codigo = executar("curl", "-s", "--max-time", "15", "-o", "/dev/null",
+                          "-w", "%{http_code}", f"http://127.0.0.1:8443{caminho}", saida=True)
+        if codigo != "200":
+            raise RuntimeError(f"entrada privada {caminho} respondeu {codigo}")
+
+
+def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
+    compose_antigo = snapshot / "docker-compose.yml"
+    if not compose_antigo.is_file() or not (snapshot / "traefik").is_dir():
+        raise RuntimeError("snapshot da topologia anterior incompleto")
+    shutil.copy2(compose_antigo, RAIZ / "docker-compose.yml")
+    atual = RAIZ / "traefik"
+    antigo = RAIZ / ("traefik.candidata-" + snapshot.name)
+    if antigo.exists():
+        raise RuntimeError("configuração candidata anterior ainda presente")
+    if atual.exists():
+        atual.rename(antigo)
+    shutil.copytree(snapshot / "traefik", atual)
+    env_antigo = snapshot / ".env"
+    if env_antigo.is_file():
+        shutil.copy2(env_antigo, RAIZ / ".env")
+    if (snapshot / "imagens.json").is_file():
+        shutil.copy2(snapshot / "imagens.json", PUBLICACOES / "imagens.json")
+    ambiente = ambiente_da_aplicacao("imagem-antiga", snapshot)
+    override = snapshot / "imagens.json"
+    antigos = [s for s in compose("config", "--services", arquivo=compose_antigo,
+                                  override=override, ambiente=ambiente).splitlines()
+               if s not in {"aplicacao"}]
+    compose("up", "-d", "--wait", "--wait-timeout", "180", *antigos,
+            arquivo=compose_antigo, override=override, ambiente=ambiente)
+    compose("up", "-d", "--force-recreate", "traefik", arquivo=compose_antigo,
+            override=override, ambiente=ambiente)
+    provar_site()
+    if parar_aplicacao:
+        subprocess.run(["docker", "stop", "plataforma-aplicacao-1"], capture_output=True)
+
+
+def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
+    if not SHA.fullmatch(sha):
+        raise RuntimeError("SHA inválido")
+    if TRANSICAO.exists() or JOURNAL.exists():
+        raise RuntimeError("primeira transição já registrada")
+    fonte = Path(os.environ["FONTE_INFRA"]).resolve()
+    codigo = Path(codigo_arg).resolve()
+    conferir_fonte(fonte, codigo, imagem)
+    ambiente = ambiente_da_aplicacao(imagem, codigo)
+    compose("config", "--quiet", arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
+    # O publicador já provou a imagem com dados isolados. Antes do primeiro boot
+    # contra produção, preservamos cada banco e a configuração anterior.
+    copias = copiar_bancos(ambiente)
+    snapshot = PUBLICACOES / "topologias" / sha
+    snapshot.mkdir(mode=0o700, parents=True, exist_ok=False)
+    os.chmod(snapshot, 0o700)
+    shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
+    shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
+    if (PUBLICACOES / "imagens.json").is_file():
+        shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
+    if (RAIZ / ".env").is_file():
+        shutil.copy2(RAIZ / ".env", snapshot / ".env")
+        os.chmod(snapshot / ".env", 0o600)
+    estado = {"sha": sha, "snapshot": str(snapshot), "backups": copias,
+              "fase": "candidato"}
+    salvar(TRANSICAO, estado)
+    try:
+        # Mesmo projeto e redes, porém só a nova aplicação. Traefik ainda
+        # aponta para os serviços antigos enquanto as migrações terminam.
+        compose("up", "-d", "--wait", "--wait-timeout", "240", "aplicacao",
+                arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
+        shutil.copy2(fonte / "docker-compose.yml", RAIZ / "docker-compose.yml")
+        rota_atual = RAIZ / "traefik"
+        rota_anterior = RAIZ / ("traefik.anterior-" + sha)
+        if rota_anterior.exists():
+            raise RuntimeError("snapshot da rota anterior já existe")
+        rota_atual.rename(rota_anterior)
+        shutil.copytree(fonte / "traefik", rota_atual)
+        # Variáveis de pin sem segredos. A .env antiga foi preservada acima.
+        with (RAIZ / ".env").open("a", encoding="utf-8") as arquivo:
+            arquivo.write(f"\nAPLICACAO_IMAGEM={imagem}\nAPLICACAO_CODIGO={codigo}\n")
+        estado["fase"] = "rotas-trocadas"
+        salvar(TRANSICAO, estado)
+        compose("up", "-d", "--force-recreate", "traefik", ambiente=ambiente)
+        provar_site()
+        # Os antigos ficam parados, ainda existentes para recuperação. O novo
+        # Compose põe esses serviços sob profile legado para futuros 'up'.
+        anteriores = [s for s in compose("config", "--services", arquivo=snapshot / "docker-compose.yml",
+                                          ambiente=ambiente).splitlines()
+                      if s not in {"traefik", "postgres", "redis"}]
+        compose("stop", *anteriores, arquivo=snapshot / "docker-compose.yml", ambiente=ambiente)
+        provar_site()
+        versao = {"imagem": imagem, "codigo": str(codigo)}
+        compatibilidade = {"dados": os.environ.get("COMPATIBILIDADE_DADOS", "existente"),
+                            "configuracao": os.environ.get("COMPATIBILIDADE_CONFIGURACAO", "existente")}
+        salvar(JOURNAL, {"celula": "aplicacao", "atual": sha, "candidata": None,
+                         "aprovada": {"sha": sha, "verificada_em": datetime.now(timezone.utc).isoformat(),
+                                      **compatibilidade, **versao},
+                         "anterior_aprovada": None, "atual_versao": versao,
+                         "compatibilidade": compatibilidade, "servicos": ["aplicacao"],
+                         "endereco": os.environ.get("ENDERECO_PROVA", "https://meshcraft.top/")})
+        estado["fase"] = "aprovada"
+        salvar(TRANSICAO, estado)
+        print(f"APLICACAO-ATIVADA: {sha}", flush=True)
+    except BaseException:
+        try:
+            restaurar(snapshot)
+            estado["fase"] = "revertida"
+            salvar(TRANSICAO, estado)
+        except BaseException as erro:
+            estado["fase"] = "recuperacao-falhou"
+            salvar(TRANSICAO, estado)
+            print(f"RECUPERACAO-TERMINAL: {erro}", file=sys.stderr)
+        raise
+
+
+def recuperar() -> None:
+    estado = json.loads(TRANSICAO.read_text(encoding="utf-8"))
+    if estado["fase"] != "aprovada":
+        raise RuntimeError("transição sem primeira aprovação")
+    esperado = os.environ.get("ATUAL_ESPERADA")
+    if esperado and esperado != estado["sha"]:
+        raise RuntimeError("versão mudou desde o incidente")
+    restaurar(Path(estado["snapshot"]))
+    estado["fase"] = "recuperada"
+    salvar(TRANSICAO, estado)
+    if JOURNAL.exists():
+        os.replace(JOURNAL, Path(estado["snapshot"]) / "aplicacao-journal-recuperado.json")
+    print("APLICACAO-RECUPERADA: topologia anterior no ar; bancos preservados", flush=True)
+
+
+def sincronizar_infra(sha: str) -> None:
+    """Atualiza só Compose/rotas após o primeiro corte; nunca sobe os legados."""
+    if not SHA.fullmatch(sha):
+        raise RuntimeError("SHA inválido")
+    if not JOURNAL.is_file():
+        raise RuntimeError("aplicação ainda sem primeira aprovação")
+    fonte = Path(os.environ["FONTE_INFRA"]).resolve()
+    if not (fonte / "docker-compose.yml").is_file() or not (fonte / "traefik").is_dir():
+        raise RuntimeError("infra de origem incompleta")
+    estado = json.loads(JOURNAL.read_text(encoding="utf-8"))
+    versao = estado["atual_versao"]
+    ambiente = ambiente_da_aplicacao(versao["imagem"], Path(versao["codigo"]))
+    compose("config", "--quiet", arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
+    snapshot = PUBLICACOES / "topologias" / ("infra-" + sha)
+    snapshot.mkdir(mode=0o700, parents=True, exist_ok=False)
+    shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
+    shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
+    if (PUBLICACOES / "imagens.json").is_file():
+        shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
+    if (RAIZ / ".env").exists():
+        shutil.copy2(RAIZ / ".env", snapshot / ".env")
+    try:
+        shutil.copy2(fonte / "docker-compose.yml", RAIZ / "docker-compose.yml")
+        alvo = RAIZ / "traefik"
+        anterior = RAIZ / ("traefik.anterior-infra-" + sha)
+        if anterior.exists():
+            raise RuntimeError("snapshot da rota anterior já existe")
+        alvo.rename(anterior)
+        shutil.copytree(fonte / "traefik", alvo)
+        compose("up", "-d", "--wait", "--wait-timeout", "180", "aplicacao", ambiente=ambiente)
+        compose("up", "-d", "--force-recreate", "traefik", ambiente=ambiente)
+        provar_site()
+        print(f"INFRA-APLICACAO-SINCRONIZADA: {sha}", flush=True)
+    except BaseException:
+        restaurar(snapshot, parar_aplicacao=False)
+        raise
+
+
+def main(argumentos: list[str]) -> int:
+    trava = None
+    try:
+        if os.environ.get("TRAVA_COMUM_HERDADA") != "1":
+            caminho = RAIZ / ".publicacao.lock"
+            trava = caminho.open("a")
+            fcntl.flock(trava.fileno(), fcntl.LOCK_EX)
+        if argumentos == ["--recuperar"]:
+            recuperar()
+        elif len(argumentos) == 2 and argumentos[0] == "--sincronizar-infra":
+            sincronizar_infra(argumentos[1])
+        elif len(argumentos) == 3:
+            ativar(*argumentos)
+        else:
+            raise RuntimeError("uso: ativar-aplicacao.py SHA IMAGEM CODIGO | --recuperar")
+        return 0
+    except Exception as erro:
+        print(f"APLICACAO-FALHOU: {erro}", file=sys.stderr)
+        return 1
+    finally:
+        if trava:
+            trava.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

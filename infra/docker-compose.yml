@@ -46,6 +46,17 @@ x-processo: &processo
   networks: [interna]
 
 services:
+  aplicacao:
+    <<: *celula
+    image: ${APLICACAO_IMAGEM:-ghcr.io/abundanciabr/plataforma-aplicacao:main}
+    environment:
+      APLICACAO_ENV_DIR: /app/env
+    volumes:
+      - ${APLICACAO_CODIGO:?defina APLICACAO_CODIGO}:/app:ro
+      - /opt/plataforma/env:/app/env:ro
+      - /opt/plataforma/admin-dados:/opt/plataforma/admin-dados:ro
+      - /opt/plataforma/admin-midia:/opt/plataforma/admin-midia
+
   traefik:
     image: traefik:v3.4
     restart: unless-stopped
