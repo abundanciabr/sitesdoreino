@@ -121,3 +121,63 @@ def test_cadastro_de_sites_usa_a_aplicacao_e_o_mesmo_roteiro(tmp_path, monkeypat
     assert observado["comando"][-5:] == ["python", "-m", "config.executar", "catalogo", "-"]
     assert observado["input"] == "print('ok')\n"
     assert observado["env"]["SITES_JSON"] == '{"sites":[]}'
+
+
+def test_recuperacao_pode_ser_repetida_apos_falha_na_subida(tmp_path, monkeypatch):
+    ativacao = carregar()
+    raiz = tmp_path / "vps"
+    snapshot = raiz / "publicacoes" / "topologias" / "primeira"
+    snapshot.mkdir(parents=True)
+    (snapshot / "docker-compose.yml").write_text("antigo", encoding="utf-8")
+    (snapshot / "traefik").mkdir()
+    (snapshot / "traefik" / "rota").write_text("antiga", encoding="utf-8")
+    (raiz / "docker-compose.yml").write_text("novo", encoding="utf-8")
+    (raiz / "traefik").mkdir()
+    (raiz / "traefik" / "rota").write_text("nova", encoding="utf-8")
+    monkeypatch.setattr(ativacao, "RAIZ", raiz)
+    monkeypatch.setattr(ativacao, "PUBLICACOES", raiz / "publicacoes")
+    monkeypatch.setattr(ativacao, "JOURNAL", raiz / "publicacoes" / "aplicacao.json")
+    monkeypatch.setattr(ativacao, "ambiente_da_aplicacao", lambda *_: {})
+    chamadas = 0
+
+    def compose(*args, **_):
+        nonlocal chamadas
+        if args == ("config", "--services"):
+            return "traefik\npostgres\nredis\nfunil"
+        if args[:2] == ("up", "-d"):
+            chamadas += 1
+            if chamadas == 1:
+                raise RuntimeError("subida falhou")
+        return ""
+
+    monkeypatch.setattr(ativacao, "compose", compose)
+    monkeypatch.setattr(ativacao, "provar_site", lambda: None)
+    with pytest.raises(RuntimeError, match="subida falhou"):
+        ativacao.restaurar(snapshot, parar_aplicacao=False)
+    ativacao.restaurar(snapshot, parar_aplicacao=False)
+    assert chamadas >= 3
+    assert (raiz / "traefik" / "rota").read_text(encoding="utf-8") == "antiga"
+
+
+def test_journal_nao_fica_aprovado_se_gravacao_da_recuperacao_falha(tmp_path, monkeypatch):
+    ativacao = carregar()
+    publicacoes = tmp_path / "publicacoes"
+    snapshot = publicacoes / "topologias" / "primeira"
+    snapshot.mkdir(parents=True)
+    transicao = publicacoes / "aplicacao-transicao.json"
+    transicao.write_text(json.dumps({"fase": "aprovada", "sha": "a" * 40,
+                                     "snapshot": str(snapshot)}), encoding="utf-8")
+    journal = publicacoes / "aplicacao.json"
+    journal.write_text("aprovado", encoding="utf-8")
+    monkeypatch.setattr(ativacao, "TRANSICAO", transicao)
+    monkeypatch.setattr(ativacao, "JOURNAL", journal)
+    monkeypatch.setattr(ativacao, "restaurar", lambda *_: None)
+    gravar_real = ativacao.salvar
+    monkeypatch.setattr(ativacao, "salvar", lambda *_: (_ for _ in ()).throw(OSError("disco")))
+    with pytest.raises(OSError, match="disco"):
+        ativacao.recuperar()
+    assert not journal.exists()
+    assert (snapshot / "aplicacao-journal-recuperado.json").read_text(encoding="utf-8") == "aprovado"
+    monkeypatch.setattr(ativacao, "salvar", gravar_real)
+    ativacao.recuperar()
+    assert json.loads(transicao.read_text(encoding="utf-8"))["fase"] == "recuperada"

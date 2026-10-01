@@ -212,9 +212,10 @@ def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
         raise RuntimeError("snapshot da topologia anterior incompleto")
     shutil.copy2(compose_antigo, RAIZ / "docker-compose.yml")
     atual = RAIZ / "traefik"
-    antigo = RAIZ / ("traefik.candidata-" + snapshot.name)
-    if antigo.exists():
-        raise RuntimeError("configuração candidata anterior ainda presente")
+    # Uma tentativa de recuperação pode falhar depois de mover a rota atual.
+    # Cada nova tentativa guarda a candidata em caminho próprio, sem apagar a
+    # cópia anterior nem impedir que a topologia aprovada volte novamente.
+    antigo = RAIZ / ("traefik.candidata-" + id_tentativa(snapshot.name))
     if atual.exists():
         atual.rename(antigo)
     shutil.copytree(snapshot / "traefik", atual)
@@ -347,10 +348,10 @@ def recuperar() -> None:
     if esperado and esperado != estado["sha"]:
         raise RuntimeError("versão mudou desde o incidente")
     restaurar(Path(estado["snapshot"]))
-    estado["fase"] = "recuperada"
-    salvar(TRANSICAO, estado)
     if JOURNAL.exists():
         os.replace(JOURNAL, Path(estado["snapshot"]) / "aplicacao-journal-recuperado.json")
+    estado["fase"] = "recuperada"
+    salvar(TRANSICAO, estado)
     print("APLICACAO-RECUPERADA: topologia anterior no ar; bancos preservados", flush=True)
 
 
