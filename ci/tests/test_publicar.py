@@ -145,7 +145,7 @@ def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, m
     assert 'PYTHONPATH="/tmp/prova/services/$modulo"' in roteiro
     assert "for modulo in " + " ".join(publicar.MODULOS_DA_APLICACAO) in roteiro
     assert "CELULA=\"$modulo\" python -m pytest" in roteiro
-    assert "/fonte/services/aplicacao/tests" in roteiro
+    assert "/app/tests" in roteiro
     assert "python /app/prova.py" in roteiro
 
 

@@ -306,7 +306,7 @@ def roteiro_de_prova(celula: str) -> str:
                 "    *) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider ;;\n"
                 "  esac\n"
                 "done\ncd /app\n"
-                "PYTHONPATH=/app python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n"
+                "PYTHONPATH=/app python -m pytest -q -p no:cacheprovider /app/tests\n"
                 "PYTHONPATH=/app python /app/prova.py\n")
     extras = ""
     if celula == "checkout":
