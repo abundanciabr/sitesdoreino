@@ -469,6 +469,18 @@ class MembroDaEquipe(models.Model):
     email = models.EmailField(blank=True, default="")
     ativo = models.BooleanField(default=True)
     ordem = models.PositiveSmallIntegerField(default=0)
+    # A senha que a própria pessoa escolhe em "Meus dados", para entrar com
+    # e-mail e senha num aparelho sem link (01/10/2026). Guardada só como hash
+    # do Django; vazia quer dizer "não entra por senha".
+    senha = models.CharField(max_length=128, blank=True, default="")
+    erros_de_senha = models.PositiveSmallIntegerField(default=0)
+    senha_travada_ate = models.DateTimeField(null=True, blank=True)
+    # E-mail que a PRÓPRIA pessoa escreveu em "Meu perfil" e que o mantenedor
+    # ainda não conferiu. Serve de nome de usuário para entrar com senha, mas
+    # não abre a porta para a conta Google desse e-mail: digitar o e-mail de
+    # outra pessoa não pode dar a ela o painel. Salvar o e-mail em Pessoas e
+    # contas confere.
+    email_a_conferir = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["ordem", "nome"]
@@ -486,6 +498,53 @@ class MembroDaEquipe(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return self.nome
+
+
+class LinkDeAcesso(models.Model):
+    """Um link que conecta UM aparelho a uma pessoa da equipe (01/10/2026).
+
+    O código do link mora depois do `#` do endereço, que o navegador nunca
+    manda ao servidor: não fica em log, nem em pré-visualização de mensagem.
+    Aqui só se guarda o hash dele. Vale uma vez e tem prazo; gerar outro da
+    mesma `origem` cancela o que ainda não foi usado.
+    """
+
+    class Origem(models.TextChoices):
+        MANTENEDOR = "mantenedor", "Gerado na ficha da pessoa"
+        PROPRIO = "proprio", "Conectar meu celular"
+
+    membro = models.ForeignKey(
+        MembroDaEquipe, on_delete=models.CASCADE, related_name="links"
+    )
+    origem = models.CharField(max_length=12, choices=Origem.choices)
+    codigo_hash = models.CharField(max_length=64, unique=True)
+    criado_por = models.CharField(max_length=200, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField()
+    usado_em = models.DateTimeField(null=True, blank=True)
+    cancelado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+
+class AparelhoDaEquipe(models.Model):
+    """Um aparelho que ficou conectado ao painel da equipe, pelo link ou pela
+    senha. O navegador guarda a chave num cookie; aqui só o hash dela.
+    Desconectar marca a hora e não apaga a linha."""
+
+    membro = models.ForeignKey(
+        MembroDaEquipe, on_delete=models.CASCADE, related_name="aparelhos"
+    )
+    chave_hash = models.CharField(max_length=64, unique=True)
+    como_entrou = models.CharField(max_length=10)
+    tipo = models.CharField(max_length=20, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ultimo_uso_em = models.DateTimeField()
+    desconectado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-ultimo_uso_em"]
 
 
 class Objetivo(models.Model):
@@ -602,6 +661,16 @@ class Comentario(models.Model):
     )
     texto = models.CharField(max_length=500)
     autor = models.CharField(max_length=200, blank=True, default="")
+    # A PESSOA da equipe que comentou, pelo identificador: trocar nome ou
+    # e-mail em "Meu perfil" não desliga o comentário de quem o escreveu.
+    # Vazio quando quem comentou é o administrador sem ficha na equipe.
+    autor_membro = models.ForeignKey(
+        MembroDaEquipe,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="comentarios",
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

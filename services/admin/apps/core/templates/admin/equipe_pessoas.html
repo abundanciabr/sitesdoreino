@@ -4,36 +4,32 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
   <h1>Pessoas e contas</h1>
-  <p class="subtitulo">Quem é da equipe, e com que conta do site cada pessoa entra no painel.</p>
+  <p class="subtitulo">Quem é da equipe, e como cada pessoa entra no painel.</p>
 
   {% if resultado %}
   <p class="recado-da-equipe">{{ resultado }}</p>
   {% endif %}
 
   <p class="aviso">
-    <b>O nome é quem responde pela tarefa. A conta é quem entra.</b>
-    Uma pessoa sem conta associada aparece como responsável, mas ainda não
-    consegue abrir o painel. Escreva aqui o e-mail com que ela entra no site
-    (o mesmo da conta dela na escola). Quem entra pela conta associada enxerga
-    só o painel da equipe, e nada mais desta área.
+    <b>Para alguém entrar, abra a ficha da pessoa e gere o link de acesso dela.</b>
+    O aparelho que abrir o link fica conectado àquela pessoa e cai direto nas
+    tarefas dela, sem e-mail nem senha. Quem entra assim enxerga só o painel
+    da equipe, e nada mais desta área.
   </p>
 
   <div class="pessoas">
     {% for pessoa in pessoas %}
-    <form class="pessoa{% if not pessoa.ativo %} inativa{% endif %}" method="post" action="{% url 'pessoas_da_equipe_associar' %}">
-      {% csrf_token %}
-      <input type="hidden" name="pessoa" value="{{ pessoa.id }}">
+    <div class="pessoa pessoa-da-lista{% if not pessoa.ativo %} inativa{% endif %}">
       <div>
         <b>{{ pessoa.nome }}</b>
-        <span class="nota">{{ pessoa.area }}</span>
-        {% if not pessoa.email %}<span class="nota falta">Sem conta associada.</span>{% endif %}
+        <span class="nota">{{ pessoa.area }}{% if not pessoa.ativo %} &middot; fora da equipe{% endif %}</span>
+        <span class="nota{% if not pessoa.n_aparelhos and not pessoa.email %} falta{% endif %}">
+          {% if pessoa.n_aparelhos %}{{ pessoa.n_aparelhos }} aparelho{{ pessoa.n_aparelhos|pluralize }} conectado{{ pessoa.n_aparelhos|pluralize }}{% else %}Nenhum aparelho conectado{% endif %}
+          &middot; {% if pessoa.email %}{{ pessoa.email }}{% if pessoa.email_a_conferir %} (a conferir){% endif %}{% else %}sem e-mail{% endif %}
+        </span>
       </div>
-      <label>
-        <span class="rotulo">E-mail da conta</span>
-        <input type="email" name="email" maxlength="254" value="{{ pessoa.email }}" placeholder="Vazio tira a associação">
-      </label>
-      <button class="botao-pequeno" type="submit">Salvar</button>
-    </form>
+      <a class="botao-pequeno" href="{% url 'ficha_da_pessoa' pessoa.id %}">Abrir ficha</a>
+    </div>
     {% endfor %}
   </div>
 </div>

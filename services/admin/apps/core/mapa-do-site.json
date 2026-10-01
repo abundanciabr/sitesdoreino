@@ -1549,6 +1549,98 @@
     },
     {
       "celula": "admin",
+      "rota": "equipe/magic-link",
+      "endereco": "/admin/equipe/magic-link",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Link de acesso da equipe",
+      "descricao": "A pagina que o link de acesso abre. Ela conecta este aparelho a pessoa da equipe para quem o link foi gerado e leva direto as tarefas dela, sem e-mail nem senha.",
+      "observacao": "Abre sem login, porque o acesso e o que ela entrega. Sem o codigo que vem no link, ela so explica que o link esta incompleto. Cada link vale uma vez."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/entrar",
+      "endereco": "/admin/equipe/entrar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Entrar no painel da equipe",
+      "descricao": "Para quem esta num aparelho ainda nao conectado: entrar com o e-mail e a senha escolhidos em Meu perfil, ou com a conta Google.",
+      "observacao": "Abre sem login. E para onde vai quem tenta abrir o painel da equipe sem acesso naquele navegador."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/sair",
+      "endereco": "/admin/equipe/sair",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Sair deste aparelho",
+      "descricao": "Desconecta o aparelho em que a pessoa esta. Os outros aparelhos dela continuam conectados."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/perfil",
+      "endereco": "/admin/equipe/perfil",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Meu perfil",
+      "descricao": "Nome, e-mail e senha da propria pessoa da equipe, para preencher quando quiser. Trocar o e-mail nao muda quem responde pelas tarefas."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/perfil/conectar-celular",
+      "endereco": "/admin/equipe/perfil/conectar-celular",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Conectar meu celular",
+      "descricao": "Gera, do aparelho ja conectado, um link e um QR code para conectar outro aparelho da mesma pessoa. Vale uma vez, por 30 minutos."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/pessoas/<int:id>",
+      "endereco": "/admin/equipe/pessoas/<int:id>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Ficha de uma pessoa da equipe",
+      "descricao": "A conta, os aparelhos conectados e o link de acesso de uma pessoa. E daqui que se gera o link, se desconecta um aparelho perdido e se retira alguem da equipe. So o administrador abre."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/pessoas/<int:id>/link",
+      "endereco": "/admin/equipe/pessoas/<int:id>/link",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Gerar o link de acesso de uma pessoa",
+      "descricao": "Mostra uma unica vez o link (e o QR code) que conecta um aparelho a pessoa. Vale uma vez, por 7 dias; gerar outro cancela o anterior."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/pessoas/<int:id>/desconectar",
+      "endereco": "/admin/equipe/pessoas/<int:id>/desconectar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Desconectar aparelho de uma pessoa",
+      "descricao": "Desconecta um aparelho so (o perdido), ou todos, cancelando tambem o link ainda nao usado."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/pessoas/<int:id>/ativo",
+      "endereco": "/admin/equipe/pessoas/<int:id>/ativo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Retirar ou trazer de volta uma pessoa da equipe",
+      "descricao": "Retirar desconecta todos os aparelhos e guarda tarefas, comentarios e compromissos. Trazer de volta devolve a pessoa as escolhas de responsavel."
+    },
+    {
+      "celula": "admin",
       "rota": "mapa/",
       "endereco": "/admin/mapa/",
       "alcance": "publico",

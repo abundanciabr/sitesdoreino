@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{% if para_si %}Conectar meu celular{% else %}Link de acesso{% endif %}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  {% if para_si %}
+  <a class="volta" href="{% url 'meu_perfil' %}">&larr; Meu perfil</a>
+  <h1>Conectar meu celular</h1>
+  <p class="subtitulo">Aponte a câmera do celular para o código, ou abra o link nele. O celular entra direto como você, com uma credencial só dele.</p>
+  {% else %}
+  <a class="volta" href="{% url 'ficha_da_pessoa' pessoa.id %}">&larr; Ficha de {{ pessoa.nome }}</a>
+  <h1>Link de acesso de {{ pessoa.nome }}</h1>
+  <p class="subtitulo">Mande este link só para {{ pessoa.nome }}, pelo WhatsApp, por exemplo. Ao abrir, o aparelho fica conectado a {{ pessoa.nome }} e cai direto nas tarefas de {{ pessoa.nome }}, sem e-mail nem senha.</p>
+  {% endif %}
+
+  <div class="link-de-acesso">
+    <div class="qr" aria-label="QR code do link">{{ qr }}</div>
+    <label class="campo">
+      <span class="rotulo">Link</span>
+      <textarea readonly rows="4">{{ endereco }}</textarea>
+    </label>
+  </div>
+
+  <p class="aviso">
+    <b>Vale uma vez, até {{ link.expira_em|date:"d/m/Y H:i" }}.</b>
+    Quem abrir este link antes disso entra como {{ pessoa.nome }}; depois de
+    usado, copiar o link não abre mais nada. Ele aparece só agora: se perder,
+    gere outro, e o anterior fica cancelado.
+  </p>
+</div>
+{% endblock %}

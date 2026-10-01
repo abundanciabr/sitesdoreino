@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Entrar no painel da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Entrar no painel da equipe</h1>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  <p class="aviso">
+    <b>Recebeu um link de acesso?</b>
+    Abra o link neste aparelho e pronto: você entra direto nas suas tarefas,
+    sem e-mail nem senha.
+  </p>
+
+  <h2 class="titulo-de-entrada">Com e-mail e senha</h2>
+  {% if erro %}
+  <div class="aviso erro-do-formulario">{{ erro }}</div>
+  {% endif %}
+  <form class="forma forma-da-equipe" method="post" action="{% url 'entrar_na_equipe' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ destino }}">
+    <label class="largo">
+      <span class="rotulo">E-mail</span>
+      <input type="email" name="email" maxlength="254" autocomplete="username" required value="{{ email }}">
+    </label>
+    <label class="largo">
+      <span class="rotulo">Senha</span>
+      <input type="password" name="senha" autocomplete="current-password" required>
+    </label>
+    <button class="botao" type="submit">Entrar</button>
+  </form>
+  <p class="nota">São o e-mail e a senha que você escolheu em Meu perfil, num aparelho já conectado.</p>
+
+  <h2 class="titulo-de-entrada">Com a conta Google</h2>
+  <p><a class="botao" href="{{ entrar_com_google }}">Entrar com Google</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Meu perfil{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
+  <h1>Meu perfil</h1>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  {% if not membro %}
+  <p class="aviso">
+    <b>A sua conta não está ligada a ninguém da equipe.</b>
+    {% if admin.equipe_apenas %}Peça ao mantenedor um link de acesso.{% else %}O perfil é de quem é da equipe; os dados de cada pessoa ficam na ficha dela, em <a href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>.{% endif %}
+  </p>
+  {% else %}
+  <p class="subtitulo">Você é {{ membro.nome }}{% if membro.area %}, {{ membro.area }}{% endif %}. Estes dados complementam a sua entrada: as suas tarefas, comentários e compromissos continuam os mesmos.</p>
+
+  {% if erros %}
+  <div class="aviso erro-do-formulario">
+    <b>Não deu para salvar.</b>
+    <ul>
+      {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form class="forma forma-da-equipe" method="post" action="{% url 'meu_perfil' %}">
+    {% csrf_token %}
+    <label class="largo">
+      <span class="rotulo">Nome</span>
+      <input type="text" name="nome" maxlength="80" required value="{{ dados.nome }}" autocomplete="name">
+    </label>
+    <label class="largo">
+      <span class="rotulo">E-mail (opcional)</span>
+      <input type="email" name="email" maxlength="254" value="{{ dados.email }}" autocomplete="email">
+    </label>
+    <label>
+      <span class="rotulo">Senha nova (em branco não muda)</span>
+      <input type="password" name="senha" minlength="{{ tamanho_minimo }}" autocomplete="new-password">
+    </label>
+    <label>
+      <span class="rotulo">Repita a senha nova</span>
+      <input type="password" name="confirmacao" autocomplete="new-password">
+    </label>
+    <button class="botao" type="submit">Salvar</button>
+  </form>
+  <p class="nota">
+    Com e-mail e senha você entra em qualquer aparelho, pela tela de entrada do painel.
+    {% if membro.senha %}Você já tem senha.{% else %}Você ainda não tem senha, e não precisa: os aparelhos conectados continuam entrando sozinhos.{% endif %}
+  </p>
+  {% if membro.email_a_conferir %}
+  <p class="nota">O e-mail {{ membro.email }} ainda não foi conferido pelo mantenedor: ele já serve para entrar com senha, mas a conta Google dele só abre o painel depois da conferência.</p>
+  {% endif %}
+
+  <section class="ficha-bloco" id="aparelhos">
+    <h2>Meus aparelhos</h2>
+    {% for aparelho in aparelhos %}
+    <div class="aparelho">
+      <span>{{ aparelho.tipo|capfirst|default:"Aparelho" }}, conectado em {{ aparelho.criado_em|date:"d/m/Y" }}{% if aparelho.id == aparelho_atual %} <b>(este aparelho)</b>{% endif %}</span>
+    </div>
+    {% empty %}
+    <p class="nota">Nenhum aparelho conectado: você entrou com a conta Google.</p>
+    {% endfor %}
+    <div class="gestos-da-ficha">
+      <form method="post" action="{% url 'conectar_meu_celular' %}">
+        {% csrf_token %}
+        <button class="botao" type="submit">Conectar meu celular</button>
+      </form>
+      {% if aparelho_atual %}
+      <form method="post" action="{% url 'sair_da_equipe' %}">
+        {% csrf_token %}
+        <button class="botao-pequeno" type="submit">Sair deste aparelho</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

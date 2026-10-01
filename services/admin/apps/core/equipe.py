@@ -106,6 +106,24 @@ RESULTADOS = {
         "Compromisso é de alguém: escolha antes quem responde pela tarefa. "
         "Nada mudou."
     ),
+    "aparelho_conectado": (
+        "Pronto: este aparelho ficou conectado a você e continua conectado. "
+        "Quando quiser, preencha nome, e-mail e senha em Meu perfil."
+    ),
+    "perfil_salvo": "Perfil salvo.",
+    "saiu": "Este aparelho foi desconectado.",
+    "aparelho_desconectado": "Aparelho desconectado. Os outros continuam.",
+    "aparelhos_desconectados": (
+        "Todos os aparelhos desconectados, e o link que ainda não tinha sido "
+        "usado foi cancelado."
+    ),
+    "pessoa_retirada": (
+        "Pessoa retirada da equipe: os aparelhos foram desconectados, e as "
+        "tarefas, comentários e compromissos continuam guardados."
+    ),
+    "pessoa_de_volta": (
+        "Pessoa de volta à equipe. Para ela entrar de novo, gere um link."
+    ),
     "comentado": "Comentário publicado.",
     "comentario_vazio": "O comentário estava vazio. Nada foi publicado.",
     "comentario_longo": (
@@ -127,19 +145,35 @@ def _hoje() -> date:
 
 
 def _quem(request) -> str:
-    """Quem está agindo, como a tela mostra: nome e conta."""
+    """Quem está agindo, como a tela mostra: nome e conta (quando há conta).
+
+    Quem entrou por aparelho conectado pode não ter e-mail ainda: aí é só o
+    nome."""
     admin = request.admin
     nome = (admin.get("nome") or "").strip()
     email = (admin.get("email") or "").strip().lower()
-    texto = f"{nome} ({email})" if nome and nome != email else email
+    if nome and email and nome != email:
+        texto = f"{nome} ({email})"
+    else:
+        texto = nome or email
     return texto[:200]
 
 
 def _membro_da_sessao(request) -> MembroDaEquipe | None:
+    """A pessoa da equipe que está usando a tela.
+
+    Quem entrou por aparelho conectado é reconhecido pelo IDENTIFICADOR da
+    pessoa, que a porta põe em `membro_id`; quem entrou com a conta Google,
+    pelo e-mail que o mantenedor conferiu."""
+    membro_id = request.admin.get("membro_id")
+    if membro_id:
+        return MembroDaEquipe.objects.filter(ativo=True, pk=membro_id).first()
     email = (request.admin.get("email") or "").strip().lower()
     if not email:
         return None
-    return MembroDaEquipe.objects.filter(ativo=True, email=email).first()
+    return MembroDaEquipe.objects.filter(
+        ativo=True, email=email, email_a_conferir=False
+    ).first()
 
 
 def _membros():
@@ -414,7 +448,11 @@ def _tela_do_formulario(request, dados, erros, objetivos, tarefa=None, status=20
             "objetivos": objetivos,
             "situacoes": Situacao.choices,
             "hoje": _hoje(),
-            "comentarios": list(tarefa.comentarios.all()) if tarefa else [],
+            "comentarios": (
+                list(tarefa.comentarios.select_related("autor_membro"))
+                if tarefa
+                else []
+            ),
             "tamanho_do_comentario": TAMANHO_DO_COMENTARIO,
             "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
         },
@@ -529,7 +567,12 @@ def tarefa_comentar(request, id: int):
     elif len(texto) > TAMANHO_DO_COMENTARIO:
         resultado = "comentario_longo"
     else:
-        Comentario.objects.create(tarefa=tarefa, texto=texto, autor=_quem(request))
+        Comentario.objects.create(
+            tarefa=tarefa,
+            texto=texto,
+            autor=_quem(request),
+            autor_membro=_membro_da_sessao(request),
+        )
         resultado = "comentado"
     ficha = reverse("tarefa_editar", args=[tarefa.id])
     return HttpResponseRedirect(f"{ficha}?resultado={resultado}#comentarios")
@@ -715,7 +758,13 @@ def pessoas_da_equipe(request):
         "admin/equipe_pessoas.html",
         {
             "admin": request.admin,
-            "pessoas": list(MembroDaEquipe.objects.all()),
+            "pessoas": list(
+                MembroDaEquipe.objects.annotate(
+                    n_aparelhos=Count(
+                        "aparelhos", filter=Q(aparelhos__desconectado_em__isnull=True)
+                    )
+                )
+            ),
             "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
         },
     )
@@ -726,12 +775,13 @@ def pessoas_da_equipe_associar(request):
     """Associa (ou tira) a conta de uma pessoa. E-mail vazio desassocia."""
     if request.admin.get("equipe_apenas"):
         return _nao_existe(request)
-    destino = reverse("pessoas_da_equipe")
     pessoa = get_object_or_404(MembroDaEquipe, pk=request.POST.get("pessoa") or 0)
+    destino = reverse("ficha_da_pessoa", args=[pessoa.id])
     email = (request.POST.get("email") or "").strip().lower()
     if not email:
         pessoa.email = ""
-        pessoa.save(update_fields=["email"])
+        pessoa.email_a_conferir = False
+        pessoa.save(update_fields=["email", "email_a_conferir"])
         return _com_resultado(destino, "desassociada")
     try:
         validate_email(email)
@@ -739,6 +789,9 @@ def pessoas_da_equipe_associar(request):
         return _com_resultado(destino, "email_invalido")
     if MembroDaEquipe.objects.filter(email=email).exclude(pk=pessoa.pk).exists():
         return _com_resultado(destino, "email_em_uso")
+    # Salvar aqui é o mantenedor conferindo: o e-mail passa a abrir a porta
+    # para a conta Google dele, inclusive o que a própria pessoa escreveu.
     pessoa.email = email
-    pessoa.save(update_fields=["email"])
+    pessoa.email_a_conferir = False
+    pessoa.save(update_fields=["email", "email_a_conferir"])
     return _com_resultado(destino, "associada")

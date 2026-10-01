@@ -1,0 +1,54 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Painel da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Painel da equipe</h1>
+  {% if recusado %}
+  <div class="aviso erro-do-formulario">
+    <b>Este link não vale mais.</b>
+    Ele já foi usado, foi cancelado ou passou do prazo: cada link conecta um
+    aparelho só, uma vez. Peça um link novo a quem mandou. Se você já
+    escolheu e-mail e senha no seu perfil, <a href="{% url 'entrar_na_equipe' %}">entre por aqui</a>.
+  </div>
+  {% else %}
+  <p class="subtitulo" id="conectando">Conectando este aparelho<span id="como"></span>…</p>
+  <form id="entrar-pelo-link" method="post">
+    {% csrf_token %}
+    <input type="hidden" name="codigo" value="">
+    <button class="botao" type="submit">Entrar</button>
+  </form>
+  <p class="aviso" id="sem-codigo" hidden>
+    <b>Este link chegou incompleto.</b>
+    Falta a parte que vem depois do <code>#</code>. Abra o link inteiro que
+    você recebeu, sem cortar o final.
+  </p>
+  <noscript><p class="aviso">Para conectar este aparelho, o navegador precisa estar com o JavaScript ligado.</p></noscript>
+  {# O código vem depois do `#`, que o navegador não manda ao servidor: quem o lê é este script, que o entrega por POST e apaga o `#` da barra de endereço. Ver `apps/core/equipe_acesso.py`. #}
+  <script>
+(function () {
+  var forma = document.getElementById("entrar-pelo-link");
+  var partes = window.location.hash.replace(/^#/, "").split(":");
+  var codigo = partes[0] || "";
+  if (!/^[0-9a-f]{32}$/i.test(codigo)) {
+    forma.hidden = true;
+    document.getElementById("conectando").hidden = true;
+    document.getElementById("sem-codigo").hidden = false;
+    return;
+  }
+  try {
+    var b = (partes[1] || "").replace(/-/g, "+").replace(/_/g, "/");
+    while (b.length % 4) { b += "="; }
+    var bytes = window.atob(b);
+    var quem = new TextDecoder().decode(Uint8Array.from(bytes, function (c) { return c.charCodeAt(0); }));
+    if (quem) { document.getElementById("como").textContent = " como " + quem; }
+  } catch (e) {}
+  forma.elements.codigo.value = codigo;
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+  forma.submit();
+})();
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

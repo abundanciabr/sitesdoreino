@@ -104,6 +104,17 @@ from apps.core.equipe import (
     tarefa_nova,
     tarefa_situacao,
 )
+from apps.core.equipe_acesso import (
+    conectar_meu_celular,
+    entrar_na_equipe,
+    ficha_ativo,
+    ficha_da_pessoa,
+    ficha_desconectar,
+    ficha_gerar_link,
+    magic_link,
+    meu_perfil,
+    sair_da_equipe,
+)
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -242,7 +253,26 @@ urlpatterns = [
     path("equipe/objetivos/novo", objetivo_novo, name="objetivo_novo"),
     path("equipe/objetivos/<int:id>/editar", objetivo_editar, name="objetivo_editar"),
     path("equipe/objetivos/<int:id>/ativo", objetivo_ativo, name="objetivo_ativo"),
+    # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
+    # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
+    path("equipe/magic-link", magic_link, name="magic_link"),
+    path("equipe/entrar", entrar_na_equipe, name="entrar_na_equipe"),
+    path("equipe/sair", sair_da_equipe, name="sair_da_equipe"),
+    path("equipe/perfil", meu_perfil, name="meu_perfil"),
+    path(
+        "equipe/perfil/conectar-celular",
+        conectar_meu_celular,
+        name="conectar_meu_celular",
+    ),
     path("equipe/pessoas", pessoas_da_equipe, name="pessoas_da_equipe"),
+    path("equipe/pessoas/<int:id>", ficha_da_pessoa, name="ficha_da_pessoa"),
+    path("equipe/pessoas/<int:id>/link", ficha_gerar_link, name="ficha_gerar_link"),
+    path(
+        "equipe/pessoas/<int:id>/desconectar",
+        ficha_desconectar,
+        name="ficha_desconectar",
+    ),
+    path("equipe/pessoas/<int:id>/ativo", ficha_ativo, name="ficha_ativo"),
     path(
         "equipe/pessoas/associar",
         pessoas_da_equipe_associar,

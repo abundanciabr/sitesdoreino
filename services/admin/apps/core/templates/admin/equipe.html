@@ -9,6 +9,13 @@
     </div>
     <div class="equipe-gestos">
       <a class="botao" href="{% url 'tarefa_nova' %}">Nova tarefa</a>
+      {% if membro %}
+      <form method="post" action="{% url 'conectar_meu_celular' %}">
+        {% csrf_token %}
+        <button class="botao-pequeno" type="submit">Conectar meu celular</button>
+      </form>
+      <a class="volta" href="{% url 'meu_perfil' %}">Meu perfil</a>
+      {% endif %}
       {% if pode_gerir_pessoas %}<a class="volta" href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>{% endif %}
     </div>
   </div>

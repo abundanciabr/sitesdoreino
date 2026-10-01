@@ -1,0 +1,86 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{{ pessoa.nome }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'pessoas_da_equipe' %}">&larr; Pessoas e contas</a>
+  <h1>{{ pessoa.nome }}</h1>
+  <p class="subtitulo">{% if pessoa.area %}{{ pessoa.area }} &middot; {% endif %}{% if pessoa.ativo %}{{ tarefas_abertas }} tarefa{{ tarefas_abertas|pluralize }} aberta{{ tarefas_abertas|pluralize }}{% else %}Fora da equipe{% endif %}</p>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  <section class="ficha-bloco">
+    <h2>Link de acesso</h2>
+    {% if pessoa.ativo %}
+    <p class="nota-da-ficha">Gere um link e mande para {{ pessoa.nome }}. Ao abrir, o aparelho fica conectado a {{ pessoa.nome }} e cai direto nas tarefas de {{ pessoa.nome }}, sem e-mail nem senha.</p>
+    <form method="post" action="{% url 'ficha_gerar_link' pessoa.id %}">
+      {% csrf_token %}
+      <button class="botao" type="submit">Gerar link de acesso</button>
+    </form>
+    {% for link in links_pendentes %}
+    <p class="nota">Link gerado em {{ link.criado_em|date:"d/m H:i" }} ({{ link.get_origem_display|lower }}), ainda não usado, vale até {{ link.expira_em|date:"d/m H:i" }}.</p>
+    {% endfor %}
+    {% else %}
+    <p class="nota-da-ficha">{{ pessoa.nome }} está fora da equipe. Traga de volta para gerar um link.</p>
+    {% endif %}
+  </section>
+
+  <section class="ficha-bloco">
+    <h2>Aparelhos conectados</h2>
+    {% for aparelho in aparelhos %}
+    <form class="aparelho" method="post" action="{% url 'ficha_desconectar' pessoa.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="aparelho" value="{{ aparelho.id }}">
+      <span>{{ aparelho.tipo|capfirst|default:"Aparelho" }}, entrou {% if aparelho.como_entrou == 'senha' %}com e-mail e senha{% else %}pelo link{% endif %} em {{ aparelho.criado_em|date:"d/m/Y" }}; usado por último em {{ aparelho.ultimo_uso_em|date:"d/m/Y" }}.</span>
+      <button class="botao-pequeno" type="submit">Desconectar</button>
+    </form>
+    {% empty %}
+    <p class="nota-da-ficha">Nenhum aparelho conectado.</p>
+    {% endfor %}
+    {% if aparelhos or links_pendentes %}
+    <form method="post" action="{% url 'ficha_desconectar' pessoa.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="aparelho" value="todos">
+      <button class="botao-pequeno" type="submit">Desconectar todos e cancelar o link</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="ficha-bloco">
+    <h2>Conta</h2>
+    <form class="pessoa" method="post" action="{% url 'pessoas_da_equipe_associar' %}">
+      {% csrf_token %}
+      <input type="hidden" name="pessoa" value="{{ pessoa.id }}">
+      <div>
+        <b>E-mail</b>
+        <span class="nota">{% if pessoa.email and pessoa.email_a_conferir %}Escrito pela própria pessoa, ainda não conferido. Salvar aqui confere: a conta Google deste e-mail passa a abrir o painel.{% elif pessoa.email %}Conferido: a conta Google deste e-mail abre o painel.{% else %}Sem e-mail. Não faz falta para entrar pelo link.{% endif %}</span>
+      </div>
+      <label>
+        <span class="rotulo">E-mail da conta</span>
+        <input type="email" name="email" maxlength="254" value="{{ pessoa.email }}" placeholder="Vazio tira o e-mail">
+      </label>
+      <button class="botao-pequeno" type="submit">Salvar</button>
+    </form>
+    <p class="nota">{% if pessoa.senha %}Escolheu uma senha: entra com e-mail e senha em qualquer aparelho.{% else %}Sem senha.{% endif %}</p>
+  </section>
+
+  <section class="ficha-bloco">
+    <h2>Na equipe</h2>
+    {% if pessoa.ativo %}
+    <form method="post" action="{% url 'ficha_ativo' pessoa.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="ativo" value="0">
+      <button class="botao-pequeno" type="submit">Retirar da equipe</button>
+    </form>
+    <p class="nota">Desconecta todos os aparelhos. Tarefas, comentários e compromissos continuam guardados.</p>
+    {% else %}
+    <form method="post" action="{% url 'ficha_ativo' pessoa.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="ativo" value="1">
+      <button class="botao-pequeno" type="submit">Trazer de volta à equipe</button>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

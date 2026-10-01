@@ -30,6 +30,7 @@ import base64
 import hashlib
 import logging
 import re
+from urllib.parse import quote
 
 from django.core import signing
 from django.conf import settings
@@ -39,6 +40,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from .clients import IdentidadeClient, IdentidadeIndisponivel
+from .equipe_acesso import aparelho_da_requisicao, gravar_cookie_do_aparelho
 from .models import Administrador, MembroDaEquipe
 
 logger = logging.getLogger("admin.porta")
@@ -124,6 +126,18 @@ PREFIXO_ACESSO_LOCAL = "/acesso-local/"
 #: autorizando nada aqui.
 PREFIXO_DO_PAINEL_DA_EQUIPE = "/equipe"
 
+#: [ENTRADA DA EQUIPE] As duas páginas do painel que abrem SEM crachá
+#: (01/10/2026), porque o crachá é o que elas entregam: a do link de acesso,
+#: que conecta o aparelho à pessoa, e a de entrar com e-mail e senha. Lista
+#: EXATA, como `CAMINHOS_ISENTOS`, e pelo mesmo motivo: rota nova sob
+#: `/equipe/` não escapa da porta em silêncio. Guarda em
+#: `tests/test_acesso_da_equipe.py`.
+ENTRADAS_DA_EQUIPE = frozenset({"/equipe/magic-link", "/equipe/entrar"})
+
+#: O cookie de sessão do site, que só a `identidade` assina. Um navegador que
+#: apresenta SÓ o aparelho conectado da equipe não tem o que perguntar a ela.
+COOKIE_DA_SESSAO_DO_SITE = "meshcraft_sessao"
+
 
 def _sob_a_porta_de_maquina(caminho: str) -> bool:
     """O caminho e `/interno`, ou esta debaixo dele?"""
@@ -144,7 +158,11 @@ def _e_da_equipe(email: str) -> bool:
     if not email:
         return False
     try:
-        return MembroDaEquipe.objects.filter(ativo=True, email=email).exists()
+        # Só e-mail CONFERIDO pelo mantenedor abre a porta para a conta Google:
+        # o que a própria pessoa escreveu em "Meu perfil" espera a conferência.
+        return MembroDaEquipe.objects.filter(
+            ativo=True, email=email, email_a_conferir=False
+        ).exists()
     except DatabaseError:
         logger.error(
             "porta: não deu para ler a equipe do banco — ninguém da equipe entra até ele voltar"
@@ -234,12 +252,33 @@ class PortaAdministrativa:
                     request.admin = admin_local
             return self._com_seguranca(self.get_response(request))
 
+        if request.path_info in ENTRADAS_DA_EQUIPE:
+            return self._com_seguranca(self.get_response(request))
+
         tem_cookie_local = settings.ADMIN_LOCAL_COOKIE_NAME in request.COOKIES
         admin_local = self._admin_local_da_requisicao(request)
         if admin_local:
             request.admin = admin_local
             return self._com_seguranca(self.get_response(request))
         if tem_cookie_local:
+            return self._para_o_login(request)
+
+        # O terceiro crachá (01/10/2026): o aparelho conectado à pessoa da
+        # equipe pelo link. Vale SÓ sob `/equipe/`, e só é olhado ali.
+        aparelho = (
+            aparelho_da_requisicao(request)
+            if _sob_o_painel_da_equipe(request.path_info)
+            else None
+        )
+        if COOKIE_DA_SESSAO_DO_SITE not in request.COOKIES and _sob_o_painel_da_equipe(
+            request.path_info
+        ):
+            # No painel da equipe, navegador sem a sessão do site não tem o que
+            # perguntar à identidade: ou apresenta um aparelho que vale, ou vai
+            # à entrada da equipe. Assim um aparelho desconectado não cai na
+            # tela de "indisponível" quando a identidade está fora.
+            if aparelho:
+                return self._pelo_aparelho(request, aparelho)
             return self._para_o_login(request)
 
         cookie = request.META.get("HTTP_COOKIE", "")
@@ -251,10 +290,15 @@ class PortaAdministrativa:
         try:
             sessao = self.identidade.sessao_completa(cookie)
         except IdentidadeIndisponivel:
-            # NÃO redireciona: ver o cabeçalho deste arquivo.
+            # NÃO redireciona: ver o cabeçalho deste arquivo. O aparelho
+            # conectado não depende da identidade, e continua entrando.
+            if aparelho:
+                return self._pelo_aparelho(request, aparelho)
             return self._indisponivel()
 
         if not sessao.get("autenticado"):
+            if aparelho:
+                return self._pelo_aparelho(request, aparelho)
             return self._para_o_login(request)
 
         email = (sessao.get("email") or "").strip().lower()
@@ -264,6 +308,10 @@ class PortaAdministrativa:
             # O segundo crachá (01/10/2026): quem é da equipe entra SÓ no
             # painel da equipe. Fora dele, a resposta é a mesma de um estranho.
             equipe_apenas = True
+        elif aparelho:
+            # Conta do site que não é de administrador nem conferida para a
+            # equipe, num navegador conectado à pessoa: vale o aparelho.
+            return self._pelo_aparelho(request, aparelho)
         else:
             # WARNING, e não silêncio: tentativa de entrar na área de operação
             # por conta que não está na lista é coisa que o dono precisa poder
@@ -313,8 +361,33 @@ class PortaAdministrativa:
             "email": email,
         }
 
+    def _pelo_aparelho(self, request, aparelho):
+        """Entra quem apresentou o aparelho conectado: a pessoa da equipe,
+        reconhecida pelo identificador dela, com o crachá de equipe."""
+        membro = aparelho.membro
+        request.admin = {
+            "id": f"aparelho-{aparelho.pk}",
+            "nome": membro.nome,
+            "email": membro.email,
+            "equipe_apenas": True,
+            "membro_id": membro.pk,
+            "aparelho_id": aparelho.pk,
+        }
+        resposta = self.get_response(request)
+        if aparelho.renovar:
+            # Um dia de uso renova o prazo da credencial no navegador.
+            gravar_cookie_do_aparelho(resposta, aparelho.chave)
+        return self._com_seguranca(resposta)
+
     def _para_o_login(self, request):
-        destino = f"{settings.URL_DE_ENTRADA}?next={request.path}"
+        if _sob_o_painel_da_equipe(request.path_info):
+            # Quem é da equipe e chegou sem acesso neste navegador vai para a
+            # entrada DA EQUIPE: e-mail e senha, ou a conta Google.
+            destino = (
+                f"{reverse('entrar_na_equipe')}?next={quote(request.path, safe='/')}"
+            )
+        else:
+            destino = f"{settings.URL_DE_ENTRADA}?next={request.path}"
         return self._com_seguranca(HttpResponseRedirect(destino))
 
     def _nao_existe(self):

@@ -73,7 +73,7 @@
     {% for comentario in comentarios %}
     <div class="comentario">
       <p class="texto">{{ comentario.texto|linebreaksbr }}</p>
-      <div class="meta">{{ comentario.autor }}, {{ comentario.criado_em|date:"d/m/Y H:i" }}</div>
+      <div class="meta">{% if comentario.autor_membro %}{{ comentario.autor_membro.nome }}{% else %}{{ comentario.autor }}{% endif %}, {{ comentario.criado_em|date:"d/m/Y H:i" }}</div>
     </div>
     {% empty %}
     <p class="nota">Nenhum comentário ainda.</p>

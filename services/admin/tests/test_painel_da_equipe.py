@@ -102,10 +102,12 @@ def test_as_quatro_pessoas_existem_sem_conta():
 
 
 @respx.mock
-def test_sem_cookie_vai_para_o_login():
+def test_sem_cookie_vai_para_a_entrada_da_equipe():
+    # Desde o acesso por aparelho (01/10/2026), quem chega sem acesso ao painel
+    # vai para a entrada DA EQUIPE, que oferece e-mail e senha e a conta Google.
     resposta = Client().get(reverse(PAINEL))
     assert resposta.status_code == 302
-    assert resposta["Location"].startswith("/entrar/google?next=")
+    assert resposta["Location"] == reverse("entrar_na_equipe") + "?next=/equipe/"
 
 
 @respx.mock
@@ -421,7 +423,7 @@ def test_o_administrador_associa_uma_conta_e_a_pessoa_passa_a_entrar():
 
     cliente = _cliente()
     html = _texto(cliente.get(reverse("pessoas_da_equipe")))
-    assert "Sem conta associada." in html
+    assert "sem e-mail" in html
 
     resposta = cliente.post(
         reverse("pessoas_da_equipe_associar"), {"pessoa": livia.id, "email": LIVIA}
@@ -742,7 +744,7 @@ def test_comentar_mostra_texto_quem_e_quando_na_ficha_e_conta_no_cartao():
     html = _texto(cliente.get(ficha + "?resultado=comentado"))
     assert "Comentário publicado." in html
     assert "TESTE Faltam as páginas 3 e 4.<br>Vejo amanhã." in html
-    assert f"Lívia ({LIVIA}), " in html
+    assert "Lívia, " in html, "o comentário mostra a pessoa, pelo vínculo"
     assert "1 comentário" in _texto(cliente.get(reverse(PAINEL) + "?visao=equipe"))
 
 
