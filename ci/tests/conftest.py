@@ -65,6 +65,29 @@ def bash_utilizavel() -> str | None:
 BASH = bash_utilizavel()
 
 
+@pytest.fixture(autouse=True)
+def recarga_da_aplicacao_para_provisionadores(request, tmp_path, monkeypatch):
+    """Os testes de env executam Bash real; a recarga externa fica simulada."""
+    if not request.node.path.name.startswith("test_provisionar_"):
+        return
+    binarios = tmp_path / "bin-aplicacao"
+    binarios.mkdir()
+    programa = binarios / "python3"
+    programa.write_text(
+        "#!/usr/bin/env bash\n"
+        'case "${1:-}" in\n'
+        '  */recarregar-aplicacao.py)\n'
+        '    if [ "${PROVISIONAR_RECARGA_FALHA:-0}" = 1 ]; then exit 37; fi\n'
+        '    printf "%s\\n" APLICACAO-RECARREGADA-E-PROVADA\n'
+        '    exit 0 ;;\n'
+        'esac\n'
+        'exec python "$@"\n',
+        encoding="utf-8",
+    )
+    programa.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{binarios}{os.pathsep}{os.environ.get('PATH', '')}")
+
+
 @dataclass
 class RepoFalso:
     raiz: Path

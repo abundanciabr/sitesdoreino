@@ -323,7 +323,7 @@ echo
 #    nasce lendo um env que já está pronto, e não há o que recarregar.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-pares-da-sala-de-aula.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora a sala de aula sabe QUEM entrou, se a pessoa TEM matrícula"

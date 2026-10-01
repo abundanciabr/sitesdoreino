@@ -244,6 +244,7 @@ def test_o_veredito_do_reinicio_vem_do_comando_e_nao_do_pipe(tmp_path):
     vazio.mkdir()
     ambiente["PATH"] = f"{vazio}{os.pathsep}{ambiente.get('PATH', '')}"
     ambiente["DOCKER_HOST"] = "tcp://127.0.0.1:1"  # não há daemon aqui
+    ambiente["PROVISIONAR_RECARGA_FALHA"] = "1"
 
     r = subprocess.run(
         [_bash(), str(SCRIPT)],
@@ -262,4 +263,4 @@ def test_o_veredito_do_reinicio_vem_do_comando_e_nao_do_pipe(tmp_path):
         "virou codigo morto (ARMADILHAS §5.10). Saida: " + r.stdout
     )
     assert "FALHOU" in r.stdout, r.stdout
-    assert "docker compose up -d" in r.stdout, "a recusa nao ensina o proximo passo"
+    assert "rode este mesmo provisionador novamente" in r.stdout

@@ -63,6 +63,11 @@ SERVICOS_PADRAO = {
     "quiz-configuracao": "quiz",
     "coordenacao-db": "postgres",
 }
+MODULOS_DA_APLICACAO = frozenset((
+    "admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
+    "forum", "funil", "gamificacao", "identidade", "leads", "mensageria",
+    "metricas", "notificacoes", "pagamentos", "pages", "quiz", "sugestoes",
+))
 # O compose da VPS exige estas duas chaves em QUALQUER `docker compose` (traefik as interpola).
 # Os semeadores as leem de env/admin.env; os outros scripts não, e param em "não consegui
 # falar com o Docker Compose". Aqui elas entram no ambiente do script, sem nunca aparecer.
@@ -194,6 +199,9 @@ def executar_processo(
     stdout (é o que a ssh-action capturava como evidência).
     """
     try:
+        argumentos_de_processo = {}
+        if os.name != "nt" and env.get("TRAVA_COMUM_HERDADA") == "1":
+            argumentos_de_processo["pass_fds"] = (8,)
         processo = subprocess.Popen(
             comando,
             env=env,
@@ -206,6 +214,7 @@ def executar_processo(
             errors="replace",
             bufsize=1,
             start_new_session=hasattr(os, "killpg"),
+            **argumentos_de_processo,
         )
     except OSError as erro:
         print(f"{MARCA_DE_PARADA}: não consegui iniciar {comando[0]} ({erro.__class__.__name__}).")
@@ -368,7 +377,8 @@ def op_operacoes_vps(ctx: Contexto, valores: dict) -> int:
     operacao = valores["operacao"]
     servico = valores["servico"] or SERVICOS_PADRAO.get(operacao, "")
     referencia = valores["referencia"] or ""
-    permitidos = servicos_do_compose(ctx.raiz / "infra" / "docker-compose.yml")
+    permitidos = sorted(set(servicos_do_compose(ctx.raiz / "infra" / "docker-compose.yml"))
+                       | MODULOS_DA_APLICACAO)
     try:
         modulo.validar(operacao, servico, permitidos, referencia)
     except modulo.Falha:
@@ -566,7 +576,87 @@ def op_provisionar(ctx: Contexto, valores: dict) -> int:
         print(f"{MARCA_DE_PARADA}: {script.name} espera um valor que só o mantenedor conhece.")
         print("Esta operação roda só os provisionadores que não pedem nada.")
         return 1
-    return rodar_script(ctx, script, {}, PRAZO_PADRAO)
+    if fcntl is None:  # testes Windows; a operação real roda em Linux
+        return _provisionar_sob_trava(ctx, alvo, script)
+    trava = Path(ctx.plataforma) / ".publicacao.lock"
+    try:
+        with trava.open("a+b") as arquivo:
+            fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX)
+            try:
+                descritor_anterior = os.dup(8)
+            except OSError:
+                descritor_anterior = None
+            os.dup2(arquivo.fileno(), 8, inheritable=True)
+            valor_anterior = ctx.ambiente.get("TRAVA_COMUM_HERDADA")
+            ctx.ambiente["TRAVA_COMUM_HERDADA"] = "1"
+            try:
+                return _provisionar_sob_trava(ctx, alvo, script)
+            finally:
+                if valor_anterior is None:
+                    ctx.ambiente.pop("TRAVA_COMUM_HERDADA", None)
+                else:
+                    ctx.ambiente["TRAVA_COMUM_HERDADA"] = valor_anterior
+                if descritor_anterior is None:
+                    os.close(8)
+                else:
+                    os.dup2(descritor_anterior, 8)
+                    os.close(descritor_anterior)
+    except OSError as erro:
+        print(f"{MARCA_DE_PARADA}: não consegui obter a trava comum ({type(erro).__name__}).")
+        return 1
+
+
+def _provisionar_sob_trava(ctx: Contexto, alvo: str, script: Path) -> int:
+    ambiente = Path(ctx.plataforma) / "env"
+    publicacoes = Path(ctx.plataforma) / "publicacoes"
+    if not ambiente.is_dir():
+        print(f"{MARCA_DE_PARADA}: diretório env ausente nesta plataforma.")
+        return 1
+    publicacoes.mkdir(mode=0o700, parents=True, exist_ok=True)
+    copias = Path(tempfile.mkdtemp(
+        prefix=f"provisionar-{alvo}-", dir=publicacoes,
+    ))
+    anteriores = {}
+    try:
+        for arquivo in ambiente.glob("*.env"):
+            if not arquivo.is_file():
+                continue
+            copia = copias / arquivo.name
+            shutil.copy2(arquivo, copia)
+            anteriores[arquivo.name] = copia
+    except OSError as erro:
+        print(f"{MARCA_DE_PARADA}: não consegui preservar os env antes de provisionar ({type(erro).__name__}).")
+        return 1
+
+    codigo = rodar_script(ctx, script, {}, PRAZO_PADRAO)
+    if codigo == 0:
+        return 0
+
+    # Os scripts preservam os próprios backups; esta cópia cobre a operação
+    # inteira, inclusive uma falha depois de editar mais de um arquivo.
+    try:
+        for nome, copia in anteriores.items():
+            atual = ambiente / nome
+            if not atual.is_file() or atual.read_bytes() != copia.read_bytes():
+                temporario = ambiente / f".{nome}.retorno-{os.getpid()}"
+                shutil.copy2(copia, temporario)
+                os.replace(temporario, atual)
+        for novo in ambiente.glob("*.env"):
+            if novo.name not in anteriores:
+                os.replace(novo, copias / f"novo-{novo.name}")
+    except OSError as erro:
+        print(f"{MARCA_DE_PARADA}: retorno dos env falhou ({type(erro).__name__}); cópias preservadas em {copias}.")
+        return 1
+
+    retorno, _ = ctx.processo(
+        [sys.executable, str(ctx.raiz / "infra" / "recarregar-aplicacao.py"), script.name],
+        env=ambiente_do_filho(ctx), timeout=4 * 60,
+    )
+    if retorno:
+        print(f"{MARCA_DE_PARADA}: os env anteriores foram restaurados, mas a aplicação não passou na prova de retorno. Cópias em {copias}.")
+    else:
+        print("operar: env anteriores restaurados e aplicação aprovada novamente no ar.")
+    return 1
 
 
 # ---------------------------------------------------------------------------
@@ -588,8 +678,8 @@ OPERACOES: dict[str, Operacao] = {
     for op in (
         Operacao(
             "appmax-drill-rollback",
-            "ensaio de rollback do cartão Appmax no sandbox da Meshcraft (recria checkout e pagamentos)",
-            "sim: recria checkout e pagamentos por alguns minutos; religa sempre",
+            "ensaio de rollback do cartão Appmax no sandbox da Meshcraft (recria aplicação)",
+            "sim: recria aplicação por alguns minutos; religa sempre",
             op_appmax_drill, prazo=25 * 60,
         ),
         Operacao(

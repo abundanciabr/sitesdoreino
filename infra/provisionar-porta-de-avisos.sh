@@ -185,7 +185,7 @@ echo
 # células à tag :main do compose.
 # -----------------------------------------------------------------------------
 echo "== recarregando as três células para elas relerem o env =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-porta-de-avisos.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "PRONTO. O sino ao lado do seu nome e a tela de avisos da Caixa já podem"

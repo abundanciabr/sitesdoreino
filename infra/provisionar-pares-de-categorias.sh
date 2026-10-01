@@ -247,7 +247,7 @@ echo
 #    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-pares-de-categorias.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora a home e a área administrativa conseguem PERGUNTAR em que"

@@ -240,7 +240,7 @@ if [ -n "$MEXIDOS" ]; then
   # viraria código morto: o script diria PRONTO com as células paradas, e ele
   # abriria uma tela que não funciona sem nada na saída explicando por quê. É o
   # falso-verde do ARMADILHAS §5.10.
-  saida_do_reinicio="$(python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" 2>&1)"
+  saida_do_reinicio="$(python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-dos-parametros.sh" 2>&1)"
   estado_do_reinicio=$?
   printf '%s\n' "$saida_do_reinicio" | tail -5
   if [ "$estado_do_reinicio" -eq 0 ]; then

@@ -195,7 +195,7 @@ echo
 # células à tag :main do compose.
 # -----------------------------------------------------------------------------
 echo "== recarregando as células para elas relerem o env =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-aviso-no-celular.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "PRONTO. O aviso na tela do celular está ligado."

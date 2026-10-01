@@ -228,7 +228,7 @@ echo
 #    atende o login do site inteiro) só reinicia se o grau for novo para ela.
 #    Os consumidores e relays das três células não usam estas chaves.
 # -----------------------------------------------------------------------------
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os arquivos foram conferidos, mas a aplicação não passou na prova após a recarga."
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-da-gamificacao-com-os-alunos.sh" || parar "os arquivos foram conferidos, mas a aplicação não passou na prova após a recarga."
 echo
 
 # -----------------------------------------------------------------------------

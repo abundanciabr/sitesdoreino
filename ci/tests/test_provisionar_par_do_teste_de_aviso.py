@@ -44,6 +44,7 @@ def test_falha_do_reinicio_deixa_o_script_com_erro(tmp_path):
         **os.environ,
         "PLATAFORMA_DIR": str(plataforma),
         "PATH": f"{binarios}{os.pathsep}{os.environ['PATH']}",
+        "PROVISIONAR_RECARGA_FALHA": "1",
     }
     resultado = subprocess.run(
         [bash, str(SCRIPT)],

@@ -273,7 +273,7 @@ echo
 #    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
 # -----------------------------------------------------------------------------
 echo "== recarregando as duas células =="
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
+python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-do-portfolio-com-a-admin.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
 echo "A partir de agora, quem confere o portfólio dos alunos é todo administrador"

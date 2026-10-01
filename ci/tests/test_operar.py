@@ -266,6 +266,15 @@ def test_provisionar_roda_o_que_nao_pede_nada(fazer_ctx, copia_com_provisionador
     assert processos.rodadas()[0]["comando"] == ["bash", str(copia_com_provisionadores / "infra" / "provisionar-livre.sh")]
 
 
+def test_provisionar_funciona_no_retorno_legado(fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao):
+    (plataforma_da_aplicacao / "publicacoes" / "aplicacao.json").unlink()
+    processos = Processos()
+    ctx = fazer_ctx(processos, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.main(["provisionar", "--alvo", "livre"], ctx) == 0
+    assert processos.rodadas()[0]["comando"][0] == "bash"
+
+
 @pytest.mark.parametrize("alvo", ["pede-valor", "pede-todos", "conta"])
 def test_provisionar_recusa_o_que_pede_valor_ao_mantenedor(fazer_ctx, copia_com_provisionadores, alvo, capsys):
     processos = Processos()
@@ -307,7 +316,8 @@ def test_provisionar_falhou_restaura_env_e_reprova_app(
             (ambiente / "admin.env").write_text("TOKEN=novo\n", encoding="utf-8")
             (ambiente / "novo.env").write_text("SEGREDO=preservado\n", encoding="utf-8")
             return 1, "falha do provisionador"
-        assert comando[-1].endswith("recarregar-aplicacao.py")
+        assert comando[-2].endswith("recarregar-aplicacao.py")
+        assert comando[-1] == "provisionar-livre.sh"
         assert (ambiente / "admin.env").read_text(encoding="utf-8") == "TOKEN=anterior\n"
         assert not (ambiente / "novo.env").exists()
         return 0, "APLICACAO-RECARREGADA-E-PROVADA"

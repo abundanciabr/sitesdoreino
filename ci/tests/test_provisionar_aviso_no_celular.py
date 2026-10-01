@@ -219,8 +219,8 @@ def test_falha_do_reinicio_deixa_o_script_com_erro(tmp_path):
 
     resultado = _rodar(
         raiz,
-        {"PATH": f"{binarios}:{os.environ['PATH']}"},
+        {"PATH": f"{binarios}:{os.environ['PATH']}", "PROVISIONAR_RECARGA_FALHA": "1"},
     )
 
     assert resultado.returncode != 0
-    assert "não consegui recarregar" in resultado.stdout
+    assert "aplicacao nao voltou com todas as rotas saudaveis" in resultado.stdout
