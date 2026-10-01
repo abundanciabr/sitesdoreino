@@ -121,7 +121,7 @@ def test_a_medalha_conquistada_diz_quando(monkeypatch):
 
     corpo = _corpo()
 
-    assert f"Conquistada em {concessao.concedida_em:%d/%m/%Y}." in corpo
+    assert f"Conquistada em {timezone.localtime(concessao.concedida_em):%d/%m/%Y}." in corpo
     assert "Seu progresso" not in corpo
 
 

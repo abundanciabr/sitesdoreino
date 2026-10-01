@@ -116,6 +116,7 @@ jobs:
         image: redis:7
         ports: ['6379:6379']
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         celula: ${{ fromJSON(needs.detectar.outputs.celulas_imagem) }}
@@ -169,7 +170,7 @@ jobs:
             -e DJANGO_SECRET_KEY=teste-isolado \
             -e MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real \
             -e MP_WEBHOOK_SECRET=teste-isolado \
-            -v "$FONTE_PROVA:/fonte:ro" "$IMG" -c '
+            -v "$FONTE_PROVA:/fonte:ro" -v "$GITHUB_WORKSPACE:/corte:ro" "$IMG" -c '
               set -eu
               mkdir /tmp/prova
               cp -a /fonte/. /tmp/prova/
@@ -177,6 +178,23 @@ jobs:
               mkdir -p "/tmp/prova/services/$CELULA"
               cp -a /app/. "/tmp/prova/services/$CELULA/"
               cd "/tmp/prova/services/$CELULA"
+              for teste in tests/test_*.py; do
+                [ -f "$teste" ] || continue
+                [ -f "/corte/services/$CELULA/$teste" ] || rm "$teste"
+              done
+              if [ "$CELULA" = cursos ]; then
+                cp /corte/services/cursos/tests/test_ciclo_do_desafio_da_comunidade.py tests/
+                cp /corte/services/cursos/tests/test_regua_no_laudo.py tests/
+              fi
+              if [ "$CELULA" = gamificacao ]; then
+                cp /corte/services/gamificacao/tests/test_quadro_de_contribuicoes.py tests/
+                cp /corte/services/gamificacao/tests/test_tela_de_medalhas.py tests/
+              fi
+              if [ "$CELULA" = checkout ] || [ "$CELULA" = funil ]; then
+                apt-get update -qq
+                if [ "$CELULA" = checkout ]; then PACOTE=nodejs; else PACOTE=git; fi
+                DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "$PACOTE" >/dev/null
+              fi
               python -m pytest -q
             '
 

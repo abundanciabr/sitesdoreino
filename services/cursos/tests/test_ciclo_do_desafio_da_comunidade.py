@@ -187,7 +187,7 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
     assert "Enviada" in corpo
     # O relógio: a data e a hora exatas da revisão, não a palavra "24 horas"
     # (essa só aparece no recado efêmero de quem acabou de entregar).
-    assert envio_1.prazo_em.strftime("%d/%m/%Y") in corpo
+    assert timezone.localtime(envio_1.prazo_em).strftime("%d/%m/%Y") in corpo
     assert "Revisão até" in corpo
 
     resposta = get("curso", CURSO)

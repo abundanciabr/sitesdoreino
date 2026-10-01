@@ -30,6 +30,7 @@ from django.apps import apps as registro_de_apps
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import Client
+from django.utils import timezone
 
 from apps.core import equipe as porta_da_equipe
 from apps.gamificacao import contribuicoes
@@ -529,7 +530,7 @@ def test_o_aluno_assume_envia_e_ve_aguardando_com_prazo(monkeypatch):
     compromisso = CompromissoDeContribuicao.objects.get()
     assert compromisso.estado == CompromissoDeContribuicao.Estado.ENVIADA
     assert "Aguardando avaliação. A escola responde até" in pagina
-    assert compromisso.prazo_ate.strftime("%d/%m/%Y") in pagina
+    assert timezone.localtime(compromisso.prazo_ate).strftime("%d/%m/%Y") in pagina
 
 
 def test_o_aluno_ve_a_devolucao_com_data_motivo_e_orientacao(monkeypatch):

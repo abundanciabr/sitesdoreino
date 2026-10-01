@@ -17,6 +17,7 @@ from django.db import connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.cursos import laudo as parecer
 from apps.cursos.models import Instrumento, Laudo
@@ -96,7 +97,9 @@ def test_o_laudo_diz_qual_rubrica_e_versao_mediram_a_peca_e_abre_o_texto_dela(
     aluna, envio_na_fila, professora, regua_da_epoca, client
 ):
     laudo = _emitir(envio_na_fila, professora)
-    guardada_em = laudo.versao_do_instrumento.guardada_em.strftime("%d/%m/%Y")
+    guardada_em = timezone.localtime(
+        laudo.versao_do_instrumento.guardada_em
+    ).strftime("%d/%m/%Y")
 
     corpo = _tela(client)
 
