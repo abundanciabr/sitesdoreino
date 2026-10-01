@@ -417,6 +417,14 @@ http:
       service: pages
       tls: {}
 
+    portfolio:
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/portfolio`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: pages
+      tls: {}
+
     estudio:
       # A vitrine publica do aluno: o link que ele manda ao cliente pagante,
       # `meshcraft.top/estudio/<apelido>` (plano secao 4, criterio AC-13).

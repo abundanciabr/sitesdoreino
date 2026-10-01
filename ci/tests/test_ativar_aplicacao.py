@@ -2,6 +2,7 @@
 from importlib.util import module_from_spec, spec_from_file_location
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -44,7 +45,7 @@ def test_primeira_troca_reverte_compose_e_rotas_quando_a_prova_falha(tmp_path, m
     def compose(*argumentos, **kwargs):
         chamadas.append(argumentos)
         if argumentos == ("config", "--services"):
-            return "traefik\npostgres\nredis\nfunil\nadmin"
+            return "traefik\npostgres\nredis\nfunil\nadmin\nquiz-relay"
         return ""
 
     provas = iter([RuntimeError("endereco fora"), None])
@@ -64,3 +65,59 @@ def test_primeira_troca_reverte_compose_e_rotas_quando_a_prova_falha(tmp_path, m
     assert not ativacao.JOURNAL.exists()
     assert json.loads(ativacao.TRANSICAO.read_text(encoding="utf-8"))["fase"] == "revertida"
     assert any(chamada[:2] == ("up", "-d") for chamada in chamadas)
+    assert chamadas.index(("stop", "quiz-relay")) < next(
+        indice for indice, chamada in enumerate(chamadas)
+        if chamada[:2] == ("up", "-d") and "aplicacao" in chamada
+    )
+
+
+def test_retorno_de_infra_reusa_imagem_e_codigo_aprovados(tmp_path, monkeypatch):
+    ativacao = carregar()
+    raiz = tmp_path / "vps"
+    snapshot = raiz / "publicacoes" / "topologias" / "anterior"
+    snapshot.mkdir(parents=True)
+    (snapshot / "docker-compose.yml").write_text("anterior", encoding="utf-8")
+    (snapshot / "traefik").mkdir()
+    (snapshot / "traefik" / "rota").write_text("anterior", encoding="utf-8")
+    (raiz / "traefik").mkdir()
+    (raiz / "traefik" / "rota").write_text("candidata", encoding="utf-8")
+    (raiz / "docker-compose.yml").write_text("candidata", encoding="utf-8")
+    journal = raiz / "publicacoes" / "aplicacao.json"
+    journal.write_text(json.dumps({"atual_versao": {
+        "imagem": "imagem-aprovada", "codigo": "/codigo/aprovado"}}), encoding="utf-8")
+    monkeypatch.setattr(ativacao, "RAIZ", raiz)
+    monkeypatch.setattr(ativacao, "PUBLICACOES", raiz / "publicacoes")
+    monkeypatch.setattr(ativacao, "JOURNAL", journal)
+    usados = []
+    monkeypatch.setattr(ativacao, "ambiente_da_aplicacao",
+                        lambda imagem, codigo: {"IMAGEM": imagem, "CODIGO": str(codigo)})
+
+    def compose(*args, **kwargs):
+        usados.append(kwargs.get("ambiente"))
+        return "aplicacao\ntraefik\npostgres\nredis" if args == ("config", "--services") else ""
+
+    monkeypatch.setattr(ativacao, "compose", compose)
+    monkeypatch.setattr(ativacao, "provar_site", lambda: None)
+    ativacao.restaurar(snapshot, parar_aplicacao=False)
+    assert all(valor == {"IMAGEM": "imagem-aprovada", "CODIGO": str(Path("/codigo/aprovado"))}
+               for valor in usados)
+    assert (raiz / "docker-compose.yml").read_text(encoding="utf-8") == "anterior"
+
+
+def test_cadastro_de_sites_usa_a_aplicacao_e_o_mesmo_roteiro(tmp_path, monkeypatch):
+    ativacao = carregar()
+    fonte = tmp_path / "infra"
+    fonte.mkdir()
+    (fonte / "sites.json").write_text('{"sites":[]}', encoding="utf-8")
+    (fonte / "sincronizar_sites.py").write_text("print('ok')\n", encoding="utf-8")
+    observado = {}
+
+    def rodar(comando, **kwargs):
+        observado.update(comando=comando, **kwargs)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(ativacao.subprocess, "run", rodar)
+    ativacao.sincronizar_sites(fonte, {"SEM_SEGREDOS": "1"})
+    assert observado["comando"][-5:] == ["python", "-m", "config.executar", "catalogo", "-"]
+    assert observado["input"] == "print('ok')\n"
+    assert observado["env"]["SITES_JSON"] == '{"sites":[]}'

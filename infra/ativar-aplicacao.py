@@ -70,6 +70,10 @@ def salvar(caminho: Path, valor: dict) -> None:
         Path(temporario).unlink(missing_ok=True)
 
 
+def id_tentativa(sha: str) -> str:
+    return f"{sha}-{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}-{os.getpid()}"
+
+
 def ambiente_da_aplicacao(imagem: str, codigo: Path) -> dict:
     ambiente = os.environ.copy()
     ambiente["APLICACAO_IMAGEM"] = imagem
@@ -153,6 +157,26 @@ def provar_site() -> None:
                           "-w", "%{http_code}", f"https://{host}/", saida=True)
         if codigo != "200":
             raise RuntimeError(f"site {host} respondeu {codigo}")
+    for caminho, esperados in (
+        ("/forum/", {"200", "302", "303"}),
+        ("/quiz/crivo/", {"200", "302", "303"}),
+        ("/portfolio/", {"200", "302", "303"}),
+        ("/cursos/", {"200", "302", "303"}),
+        ("/admin/", {"302"}),
+    ):
+        codigo = executar("curl", "-s", "--max-time", "20", "--resolve",
+                          "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
+                          "-w", "%{http_code}", f"https://meshcraft.top{caminho}", saida=True)
+        if codigo not in esperados:
+            raise RuntimeError(f"rota {caminho} respondeu {codigo}")
+    for caminho in ("/static/funil/api.js", "/checkout/static/checkout/api.js"):
+        resposta = executar("curl", "-s", "--max-time", "20", "--resolve",
+                            "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
+                            "-w", "%{http_code} %{content_type}",
+                            f"https://meshcraft.top{caminho}", saida=True)
+        codigo, _, tipo = resposta.partition(" ")
+        if codigo != "200" or "javascript" not in tipo.lower():
+            raise RuntimeError(f"estático {caminho} respondeu {codigo} ({tipo})")
     for caminho in (
         "/alunos/api/alunos/pre-matriculas?status=aguardando",
         "/alunos/api/alunos/pre-matriculas?status=recusada",
@@ -163,6 +187,23 @@ def provar_site() -> None:
                           "-w", "%{http_code}", f"http://127.0.0.1:8443{caminho}", saida=True)
         if codigo != "200":
             raise RuntimeError(f"entrada privada {caminho} respondeu {codigo}")
+
+
+def sincronizar_sites(fonte: Path, ambiente: dict) -> None:
+    """Executa a convergência aditiva do catálogo já usada pelo deploy antigo."""
+    sites = fonte / "sites.json"
+    roteiro = fonte / "sincronizar_sites.py"
+    if not sites.is_file() or not roteiro.is_file():
+        return
+    ambiente = ambiente | {"SITES_JSON": sites.read_text(encoding="utf-8")}
+    comando = ["docker", "compose", "--project-directory", str(RAIZ), "-p", "plataforma",
+               "-f", str(fonte / "docker-compose.yml"), "exec", "-T", "-e", "SITES_JSON",
+               "aplicacao", "python", "-m", "config.executar", "catalogo", "-"]
+    processo = subprocess.run(comando, cwd=RAIZ, env=ambiente,
+                              input=roteiro.read_text(encoding="utf-8"), text=True,
+                              capture_output=True)
+    if processo.returncode:
+        raise RuntimeError("sincronização dos sites no catálogo falhou")
 
 
 def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
@@ -180,13 +221,19 @@ def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
     env_antigo = snapshot / ".env"
     if env_antigo.is_file():
         shutil.copy2(env_antigo, RAIZ / ".env")
+    for nome in ("sites.json", "sincronizar_sites.py"):
+        if (snapshot / nome).is_file():
+            shutil.copy2(snapshot / nome, RAIZ / nome)
     if (snapshot / "imagens.json").is_file():
         shutil.copy2(snapshot / "imagens.json", PUBLICACOES / "imagens.json")
-    ambiente = ambiente_da_aplicacao("imagem-antiga", snapshot)
+    if JOURNAL.is_file():
+        versao = json.loads(JOURNAL.read_text(encoding="utf-8"))["atual_versao"]
+        ambiente = ambiente_da_aplicacao(versao["imagem"], Path(versao["codigo"]))
+    else:
+        ambiente = ambiente_da_aplicacao("imagem-antiga", snapshot)
     override = snapshot / "imagens.json"
-    antigos = [s for s in compose("config", "--services", arquivo=compose_antigo,
-                                  override=override, ambiente=ambiente).splitlines()
-               if s not in {"aplicacao"}]
+    antigos = compose("config", "--services", arquivo=compose_antigo,
+                      override=override, ambiente=ambiente).splitlines()
     compose("up", "-d", "--wait", "--wait-timeout", "180", *antigos,
             arquivo=compose_antigo, override=override, ambiente=ambiente)
     compose("up", "-d", "--force-recreate", "traefik", arquivo=compose_antigo,
@@ -199,8 +246,12 @@ def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
 def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
     if not SHA.fullmatch(sha):
         raise RuntimeError("SHA inválido")
-    if TRANSICAO.exists() or JOURNAL.exists():
+    if JOURNAL.exists():
         raise RuntimeError("primeira transição já registrada")
+    if TRANSICAO.exists():
+        fase = json.loads(TRANSICAO.read_text(encoding="utf-8")).get("fase")
+        if fase not in {"revertida", "recuperada"}:
+            raise RuntimeError("transição anterior pendente")
     fonte = Path(os.environ["FONTE_INFRA"]).resolve()
     codigo = Path(codigo_arg).resolve()
     conferir_fonte(fonte, codigo, imagem)
@@ -209,11 +260,14 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
     # O publicador já provou a imagem com dados isolados. Antes do primeiro boot
     # contra produção, preservamos cada banco e a configuração anterior.
     copias = copiar_bancos(ambiente)
-    snapshot = PUBLICACOES / "topologias" / sha
+    snapshot = PUBLICACOES / "topologias" / id_tentativa(sha)
     snapshot.mkdir(mode=0o700, parents=True, exist_ok=False)
     os.chmod(snapshot, 0o700)
     shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
     shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
+    for nome in ("sites.json", "sincronizar_sites.py"):
+        if (RAIZ / nome).is_file():
+            shutil.copy2(RAIZ / nome, snapshot / nome)
     if (PUBLICACOES / "imagens.json").is_file():
         shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
     if (RAIZ / ".env").is_file():
@@ -223,17 +277,29 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
               "fase": "candidato"}
     salvar(TRANSICAO, estado)
     try:
+        # As filas Redis preservam o trabalho enquanto os auxiliares antigos
+        # param. Assim o novo processo nunca compete com outro consumidor.
+        anteriores = compose("config", "--services", arquivo=snapshot / "docker-compose.yml",
+                             override=snapshot / "imagens.json", ambiente=ambiente).splitlines()
+        auxiliares = [servico for servico in anteriores if "-" in servico]
+        if auxiliares:
+            compose("stop", *auxiliares, arquivo=snapshot / "docker-compose.yml",
+                    override=snapshot / "imagens.json", ambiente=ambiente)
         # Mesmo projeto e redes, porém só a nova aplicação. Traefik ainda
         # aponta para os serviços antigos enquanto as migrações terminam.
         compose("up", "-d", "--wait", "--wait-timeout", "240", "aplicacao",
                 arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
+        sincronizar_sites(fonte, ambiente)
         shutil.copy2(fonte / "docker-compose.yml", RAIZ / "docker-compose.yml")
         rota_atual = RAIZ / "traefik"
-        rota_anterior = RAIZ / ("traefik.anterior-" + sha)
+        rota_anterior = RAIZ / ("traefik.anterior-" + snapshot.name)
         if rota_anterior.exists():
             raise RuntimeError("snapshot da rota anterior já existe")
         rota_atual.rename(rota_anterior)
         shutil.copytree(fonte / "traefik", rota_atual)
+        for nome in ("sites.json", "sincronizar_sites.py"):
+            if (fonte / nome).is_file():
+                shutil.copy2(fonte / nome, RAIZ / nome)
         # Variáveis de pin sem segredos. A .env antiga foi preservada acima.
         with (RAIZ / ".env").open("a", encoding="utf-8") as arquivo:
             arquivo.write(f"\nAPLICACAO_IMAGEM={imagem}\nAPLICACAO_CODIGO={codigo}\n")
@@ -243,10 +309,9 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
         provar_site()
         # Os antigos ficam parados, ainda existentes para recuperação. O novo
         # Compose põe esses serviços sob profile legado para futuros 'up'.
-        anteriores = [s for s in compose("config", "--services", arquivo=snapshot / "docker-compose.yml",
-                                          ambiente=ambiente).splitlines()
-                      if s not in {"traefik", "postgres", "redis"}]
-        compose("stop", *anteriores, arquivo=snapshot / "docker-compose.yml", ambiente=ambiente)
+        anteriores = [s for s in anteriores if s not in {"traefik", "postgres", "redis"}]
+        compose("stop", *anteriores, arquivo=snapshot / "docker-compose.yml",
+                override=snapshot / "imagens.json", ambiente=ambiente)
         provar_site()
         versao = {"imagem": imagem, "codigo": str(codigo)}
         compatibilidade = {"dados": os.environ.get("COMPATIBILIDADE_DADOS", "existente"),
@@ -263,6 +328,8 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
     except BaseException:
         try:
             restaurar(snapshot)
+            if JOURNAL.is_file():
+                os.replace(JOURNAL, snapshot / "aplicacao-journal-falhou.json")
             estado["fase"] = "revertida"
             salvar(TRANSICAO, estado)
         except BaseException as erro:
@@ -300,10 +367,13 @@ def sincronizar_infra(sha: str) -> None:
     versao = estado["atual_versao"]
     ambiente = ambiente_da_aplicacao(versao["imagem"], Path(versao["codigo"]))
     compose("config", "--quiet", arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
-    snapshot = PUBLICACOES / "topologias" / ("infra-" + sha)
+    snapshot = PUBLICACOES / "topologias" / ("infra-" + id_tentativa(sha))
     snapshot.mkdir(mode=0o700, parents=True, exist_ok=False)
     shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
     shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
+    for nome in ("sites.json", "sincronizar_sites.py"):
+        if (RAIZ / nome).is_file():
+            shutil.copy2(RAIZ / nome, snapshot / nome)
     if (PUBLICACOES / "imagens.json").is_file():
         shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
     if (RAIZ / ".env").exists():
@@ -311,12 +381,16 @@ def sincronizar_infra(sha: str) -> None:
     try:
         shutil.copy2(fonte / "docker-compose.yml", RAIZ / "docker-compose.yml")
         alvo = RAIZ / "traefik"
-        anterior = RAIZ / ("traefik.anterior-infra-" + sha)
+        anterior = RAIZ / ("traefik.anterior-" + snapshot.name)
         if anterior.exists():
             raise RuntimeError("snapshot da rota anterior já existe")
         alvo.rename(anterior)
         shutil.copytree(fonte / "traefik", alvo)
+        for nome in ("sites.json", "sincronizar_sites.py"):
+            if (fonte / nome).is_file():
+                shutil.copy2(fonte / nome, RAIZ / nome)
         compose("up", "-d", "--wait", "--wait-timeout", "180", "aplicacao", ambiente=ambiente)
+        sincronizar_sites(fonte, ambiente)
         compose("up", "-d", "--force-recreate", "traefik", ambiente=ambiente)
         provar_site()
         print(f"INFRA-APLICACAO-SINCRONIZADA: {sha}", flush=True)
