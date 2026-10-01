@@ -1,8 +1,10 @@
 """Publicador direto pela VPS: base, ordem das versões, ondas e código montado."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,6 +16,45 @@ def carregar(nome, arquivo):
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)
     return modulo
+
+
+def test_journals_ativos_trocam_com_a_topologia(tmp_path, monkeypatch, capsys):
+    publicar = carregar("publicar_journals_ativos", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)
+    legado = {"celula": "admin", "atual": "a" * 40,
+              "aprovada": {"sha": "a" * 40}}
+    aplicacao = {"celula": "aplicacao", "atual": "b" * 40,
+                 "aprovada": {"sha": "b" * 40}}
+    (tmp_path / "admin.json").write_text(json.dumps(legado))
+    (tmp_path / "aplicacao-transicao.json").write_text(json.dumps({"fase": "aprovada"}))
+    assert publicar.journals_em_uso() == [legado]
+    (tmp_path / "aplicacao.json").write_text(json.dumps(aplicacao))
+    assert publicar.journals_em_uso() == [aplicacao]
+    assert publicar.estado() == 0
+    assert "aplicacao" in capsys.readouterr().out
+    (tmp_path / "aplicacao.json").unlink()
+    (tmp_path / "aplicacao-transicao.json").write_text(json.dumps({"fase": "recuperada"}))
+    assert publicar.journals_em_uso() == [legado]
+
+
+def test_vigia_recupera_aplicacao_sem_escolher_journal_da_transicao(tmp_path, monkeypatch):
+    publicar = carregar("publicar_vigia_aplicacao", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)
+    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
+    (tmp_path / "aplicacao.json").write_text(json.dumps({"celula": "aplicacao", "atual": "b" * 40,
+                                                         "publicada_em": "2026-10-01T12:00:00+00:00"}))
+    (tmp_path / "admin.json").write_text(json.dumps({"celula": "admin", "atual": "a" * 40,
+                                                      "publicada_em": "2026-10-01T13:00:00+00:00"}))
+    (tmp_path / "aplicacao-transicao.json").write_text(json.dumps({"fase": "aprovada"}))
+    monkeypatch.setattr(publicar, "publicacao_em_andamento", lambda: False)
+    medicoes = iter([(1, "fora"), (1, "fora"), (0, "ok")])
+    monkeypatch.setattr(publicar, "medir_site", lambda: next(medicoes))
+    monkeypatch.setattr(publicar, "time", SimpleNamespace(sleep=lambda *_: None))
+    monkeypatch.setattr(publicar, "travar", lambda *_args, **_kwargs: os.open(os.devnull, os.O_RDONLY))
+    chamados = []
+    monkeypatch.setattr(publicar, "recuperar", lambda celula: chamados.append(celula) or 0)
+    assert publicar.vigiar() == 0
+    assert chamados == ["aplicacao"]
 
 
 @pytest.fixture
@@ -100,8 +141,11 @@ def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, m
     assert (final / "modules" / "origem").read_text() == str(fonte / "services")
     assert (final / "documentos_embutidos" / "pagina.md").read_text() == "conteúdo"
     assert imagem == "plataforma-aplicacao:base-x"
-    assert "/fonte/services/aplicacao/tests" in publicar.roteiro_de_prova("aplicacao")
-    assert "python /app/prova.py" in publicar.roteiro_de_prova("aplicacao")
+    roteiro = publicar.roteiro_de_prova("aplicacao")
+    assert "for modulo in " + " ".join(publicar.MODULOS_DA_APLICACAO) in roteiro
+    assert "CELULA=\"$modulo\" python -m pytest" in roteiro
+    assert "/fonte/services/aplicacao/tests" in roteiro
+    assert "python /app/prova.py" in roteiro
 
 
 def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, monkeypatch):

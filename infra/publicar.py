@@ -295,7 +295,17 @@ def vaga_de_prova() -> tuple[int, float]:
 
 def roteiro_de_prova(celula: str) -> str:
     if celula == "aplicacao":
-        return ("set -eu\ncd /app\n"
+        modulos = " ".join(MODULOS_DA_APLICACAO)
+        return ("set -eu\nmkdir /tmp/prova\ncp -a /fonte/. /tmp/prova/\n"
+                f"for modulo in {modulos}; do\n"
+                "  echo \"PROVA-LEGADA: $modulo\"\n"
+                "  cd \"/tmp/prova/services/$modulo\"\n"
+                "  case \"$modulo\" in\n"
+                f"    admin) CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['admin']}' ;;\n"
+                f"    funil) CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['funil']}' ;;\n"
+                "    *) CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider ;;\n"
+                "  esac\n"
+                "done\ncd /app\n"
                 "python -m pytest -q -p no:cacheprovider /fonte/services/aplicacao/tests\n"
                 "python /app/prova.py\n")
     extras = ""
@@ -710,6 +720,21 @@ def publicacao_em_andamento() -> bool:
     return False
 
 
+def journals_em_uso() -> list[dict]:
+    """Após o corte, só a aplicação representa o site; na recuperação, os legados voltam."""
+    aplicacao = journal("aplicacao")
+    if aplicacao and aplicacao.get("atual"):
+        return [aplicacao]
+    estados = []
+    for caminho in PUBLICACOES.glob("*.json"):
+        if caminho.stem in {"imagens", "recuperacao-terminal", "incidente", "aplicacao-transicao"}:
+            continue
+        dado = json.loads(caminho.read_text())
+        if isinstance(dado, dict) and dado.get("celula") and dado.get("atual"):
+            estados.append(dado)
+    return estados
+
+
 def vigiar() -> int:
     trava = travar(PUBLICACOES / ".vigia.lock", esperar=False)
     if trava is None:
@@ -733,12 +758,13 @@ def vigiar() -> int:
             return 1
         resolvido = False
         if codigo == 1:
-            from reversao import selecionar_estado  # noqa: PLC0415
-
-            publicacoes = [json.loads(p.read_text()) for p in PUBLICACOES.glob("*.json")
-                           if p.name not in {"imagens.json", "recuperacao-terminal.json", "incidente.json"}]
+            publicacoes = journals_em_uso()
             try:
-                celula = selecionar_estado(json.dumps(publicacoes))["celula"]
+                if len(publicacoes) == 1 and publicacoes[0]["celula"] == "aplicacao":
+                    celula = "aplicacao"
+                else:
+                    from reversao import selecionar_estado  # noqa: PLC0415
+                    celula = selecionar_estado(json.dumps(publicacoes))["celula"]
             except Exception as erro:  # noqa: BLE001
                 dizer(f"SEM-CELULA: {erro}")
             else:
@@ -754,10 +780,7 @@ def vigiar() -> int:
 
 
 def estado() -> int:
-    for caminho in sorted(PUBLICACOES.glob("*.json")):
-        if caminho.name in {"imagens.json", "recuperacao-terminal.json", "incidente.json"}:
-            continue
-        dado = json.loads(caminho.read_text())
+    for dado in sorted(journals_em_uso(), key=lambda estado: estado["celula"]):
         versao = dado.get("atual_versao") or {}
         print(f"{dado['celula']:<14} no ar {dado['atual'][:9]} aprovada {(dado.get('aprovada') or {}).get('sha', '-')[:9]} "
               f"{'código montado' if versao.get('codigo') else 'código da imagem'}")
