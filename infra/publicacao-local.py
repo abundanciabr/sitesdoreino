@@ -151,6 +151,23 @@ def pin(estado, sha, versao=None):
     os.environ["COMPOSE_FILE"] = str(RAIZ / "docker-compose.yml") + ":" + str(caminho)
 
 
+def subir_antes_da_aprovacao(estado, versao):
+    """Célula sem journal: sobe a versão já testada pelo publicador antes da primeira prova."""
+    inicial = PASTA / f".inicial-{CELULA}.json"
+    entrada = {"image": versao["imagem"], **({"volumes": [versao["codigo"] + ":/app:ro"]} if versao.get("codigo") else {})}
+    salvar(inicial, {"services": {servico: entrada for servico in estado["servicos"]}})
+    anterior = os.environ.get("COMPOSE_FILE")
+    os.environ["COMPOSE_FILE"] = (anterior or str(RAIZ / "docker-compose.yml")) + ":" + str(inicial)
+    try:
+        compose("up", "-d", "--wait", "--wait-timeout", "180", *estado["servicos"])
+    finally:
+        if anterior is None:
+            os.environ.pop("COMPOSE_FILE", None)
+        else:
+            os.environ["COMPOSE_FILE"] = anterior
+        inicial.unlink(missing_ok=True)
+
+
 def executar(acao):
     global CELULA
     if acao == "conferir-infra":
@@ -195,6 +212,8 @@ def executar(acao):
                       "servicos": servicos, "endereco": os.environ.get("ENDERECO_PROVA", ""),
                       "publicada_em": agora()}
             versao = versao_pedida(tag)
+            if os.environ.get("IMAGEM"):
+                subir_antes_da_aprovacao(estado, versao)
             provar(estado, tag, versao)
             estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **comp, **versao)
             estado["atual_versao"] = versao

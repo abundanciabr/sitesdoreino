@@ -58,24 +58,8 @@ if [ "${MODO:-publicar}" = "inicializar" ]; then
   if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
     export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
   fi
-  if [ -n "${IMAGEM:-}" ]; then
-    # Célula ainda sem journal: sobe a versão já testada antes de registrar a primeira aprovação.
-    SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
-    [ -n "$SERVICOS" ] || { echo "ERRO: '$CELULA' não tem serviço no compose."; exit 1; }
-    mkdir -p "$RAIZ/publicacoes"
-    INICIAL=$(mktemp "$RAIZ/publicacoes/.inicial-$CELULA.XXXXXX")
-    python3 - "$INICIAL" "$IMAGEM" "${CODIGO:-}" $SERVICOS <<'PY'
-import json, sys
-destino, imagem, codigo, *servicos = sys.argv[1:]
-entrada = {"image": imagem, **({"volumes": [codigo + ":/app:ro"]} if codigo else {})}
-open(destino, "w").write(json.dumps({"services": {s: entrada for s in servicos}}))
-PY
-    COMPOSE_FILE="${COMPOSE_FILE:-$RAIZ/docker-compose.yml}:$INICIAL" docker compose up -d --wait --wait-timeout 180 $SERVICOS
-    rm -f "$INICIAL"
-  else
-    docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
-  fi
-  python3 "$PUBLICACAO_LOCAL" inicializar
+  [ -n "${IMAGEM:-}" ] || docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
+  python3 "${PUBLICACAO_LOCAL:-$RAIZ/publicacao-local.py}" inicializar
   echo "INICIALIZACAO-CONCLUIDA: $CELULA:$TAG"
   exit 0
 fi

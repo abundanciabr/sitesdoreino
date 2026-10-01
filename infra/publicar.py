@@ -298,13 +298,13 @@ def registrar_medicao(linha: dict) -> None:
     print("PUBLICACAO-MEDICAO: " + json.dumps(linha), flush=True)
 
 
-def avisar(texto: str) -> None:
-    """Aviso ao mantenedor quando a volta automática não resolveu."""
+def avisar(texto: str, chave: str) -> None:
+    """Aviso ao mantenedor (e-mail pelo canal da mensageria) quando a volta automática não resolveu."""
     try:
         sys.path.insert(0, str(FERRAMENTAS / "infra"))
         import avisar as canal  # noqa: PLC0415
-        canal.avisar(texto)
-        dizer("AVISO-ENVIADO")
+        resultado = canal.avisar(texto, "Meshcraft: a volta automática não resolveu", chave=chave, a_cada_horas=6)
+        dizer(f"AVISO-{str(resultado).upper()}")
     except Exception as erro:  # noqa: BLE001 - aviso não pode derrubar a volta
         with (PUBLICACOES / "avisos.jsonl").open("a", encoding="utf-8") as arquivo:
             arquivo.write(json.dumps({"em": agora(), "texto": texto, "entregue": False}) + "\n")
@@ -413,7 +413,7 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
                         dizer(f"VOLTOU: {celula} para a última aprovada")
                     else:
                         avisar(f"Publicação de {celula} ({sha[:9]}) falhou e a volta automática não resolveu. "
-                               f"Banco preservado. Log na VPS: {caminho_registro}")
+                               f"Banco preservado. Log na VPS: {caminho_registro}", f"publicacao-{celula}")
                 return 1
             finally:
                 os.close(propria)
@@ -477,7 +477,8 @@ def lote(base: str, head: str) -> int:
         if infra and not sincronizar_infra(head, registro):
             falhas += 1
             situacao["resultado"]["infra"] = 1
-            avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.")
+            avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.",
+                   "infra")
     for onda in ondas(celulas):
         processos = {c: subprocess.Popen([sys.executable, __file__, "publicar", c, head, "--pedido-em", pedido_em])
                      for c in onda}
@@ -586,7 +587,7 @@ def vigiar() -> int:
         incidente.write_text(json.dumps({"desde": agora(), "resolvido": resolvido}))
         if not resolvido:
             avisar("Site fora do ar e a volta automática não resolveu. Banco preservado; "
-                   "confira rede, TLS, serviços e disco na VPS (publicacoes/logs/vigia.log).")
+                   "confira rede, TLS, serviços e disco na VPS (publicacoes/logs/vigia.log).", "site-fora-do-ar")
         return 0 if resolvido else 1
     finally:
         os.close(trava)
