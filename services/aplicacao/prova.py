@@ -79,7 +79,10 @@ def ambiente(servico: str, urls: dict[str, str]) -> dict[str, str]:
         "QUIZ_API_TOKEN": "prova-editor-quiz",
         "TOKENS_ACEITOS_ADMIN": "prova-editor-quiz",
         "ADMIN_EMAILS": "equipe@prova.local",
-        "HUEY_REDIS_URL": os.environ.get("REDIS_STREAMS_URL", "redis://redis:6379/0"),
+        "HUEY_REDIS_URL": os.environ.get(
+            "HUEY_REDIS_URL",
+            os.environ.get("REDIS_STREAMS_URL", "redis://redis:6379/0"),
+        ),
     }
     if servico in urls:
         valores["DATABASE_URL"] = urls[servico]

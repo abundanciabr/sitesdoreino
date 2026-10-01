@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 import subprocess
 import sys
 
@@ -29,3 +30,14 @@ def test_subprocesso_legado_importa_settings_da_propria_celula(monkeypatch, tmp_
         cwd=legado, env=env, capture_output=True, text=True, check=True,
     )
     assert resultado.stdout.strip() == "legado"
+
+
+def test_prova_usa_fila_huey_isolada_quando_configurada(monkeypatch):
+    monkeypatch.setenv("PROVA_POSTGRES_URL", "postgresql://ci:ci@localhost/ci_db")
+    monkeypatch.setenv("PROVA_ORIGEM_SERVICES", str(Path(__file__).resolve().parents[2]))
+    monkeypatch.setenv("REDIS_STREAMS_URL", "redis://redis:6379/2")
+    monkeypatch.setenv("HUEY_REDIS_URL", "redis://redis:6379/3")
+    prova = importlib.import_module("prova")
+    valores = prova.ambiente("forum", {})
+    assert valores["REDIS_STREAMS_URL"] == "redis://redis:6379/2"
+    assert valores["HUEY_REDIS_URL"] == "redis://redis:6379/3"
