@@ -75,6 +75,14 @@ ALUNOS_URL="http://alunos:8000/api/alunos"
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…, nunca PS C:\\>)"
 
+# A execução por curl põe este arquivo em /tmp; o helper vive no código aprovado.
+AJUDA_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+if [ ! -f "$AJUDA_APLICACAO" ]; then
+  AJUDA_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+fi
+[ -f "$AJUDA_APLICACAO" ] || parar "não achei o helper de operações da aplicação em $AJUDA_APLICACAO."
+. "$AJUDA_APLICACAO"
+
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
 command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
@@ -173,7 +181,7 @@ echo
 #    lista" seria o chute que amarra a fila de todo mundo ao site errado.
 # -----------------------------------------------------------------------------
 echo "== 2/5 — descobrindo o site no catálogo =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "catalogo" || true)
+ESTADO=$(servicos_rodando | grep -Fx "catalogo" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'catalogo' não está rodando, e é ele quem sabe o número do site. Suba a plataforma (docker compose up -d) e rode de novo. Nada foi criado."
 
 # A resposta CRUA primeiro, e o filtro depois, em dois passos de propósito:
@@ -181,7 +189,7 @@ ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "c
 # site ativo" chegam aqui como o MESMO exit 1 (quem falha é o `grep`), e o
 # mantenedor leria "não consegui perguntar" quando o problema é outro
 # (`armadilhas/240`). Duas causas diferentes precisam de duas telas diferentes.
-BRUTO=$(docker compose exec -T catalogo python manage.py shell -c \
+BRUTO=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}')" 2>/dev/null) \
@@ -371,35 +379,9 @@ garantir "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS "$T_ALUNOS" "par encomendas->al
 #    (`armadilhas/377`). Aqui a saída do erro é MOSTRADA, o estado é conferido
 #    depois, e "não subiu" nunca sai em tom de rodapé.
 # -----------------------------------------------------------------------------
-CAIDOS=""
-for SERVICO in identidade alunos admin encomendas encomendas-tique; do
-  if ! command -v docker >/dev/null 2>&1 || ! docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
-    echo "  (nao achei o servico $SERVICO no compose desta maquina. O arquivo JA esta certo; o proximo deploy dele rele o env.)"
-    continue
-  fi
-  SAIDA="$(docker compose up -d "$SERVICO" 2>&1)" || {
-    echo "  ERRO ao recarregar $SERVICO. O docker disse:"
-    printf '    %s
-' "$SAIDA"
-    CAIDOS="$CAIDOS $SERVICO"
-    continue
-  }
-  if docker compose ps --status running --services 2>/dev/null | grep -qx "$SERVICO"; then
-    echo "  recarreguei: $SERVICO"
-  else
-    echo "  ERRO: $SERVICO NAO esta de pe depois da recarga. O docker disse:"
-    printf '    %s
-' "$SAIDA"
-    CAIDOS="$CAIDOS $SERVICO"
-  fi
-done
+recarregar_servicos provisionar-encomendas ||
+  parar "os serviços não ficaram de pé após a recarga; os env já foram escritos."
 echo
-if [ -n "$CAIDOS" ]; then
-  echo "PAROU POR SEGURANCA: estas partes do site NAO estao de pe:$CAIDOS"
-  echo "O que aconteceu: os arquivos foram gravados certos, mas o container nao subiu."
-  echo "O que fazer: copie esta tela inteira e mande para o robo. Nao rode de novo as cegas."
-  exit 1
-fi
 
 # -----------------------------------------------------------------------------
 # 8. O QUE FICOU

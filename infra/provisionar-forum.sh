@@ -58,6 +58,9 @@ ALUNOS_URL="http://alunos:8000/api/alunos"
 # 1. ONDE — tudo conferido ANTES de gerar ou escrever coisa nenhuma.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…)"
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -321,28 +324,13 @@ garantir "$ENV_ALUNOS" TOKENS_ACEITOS_FORUM "$T_ALUNOS" "par forum->alunos: o fo
 #    E o mesmo passo que `provisionar-pares-de-categorias.sh` da, pelo mesmo
 #    motivo.
 #
-#    JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as
-#    celulas a tag :main do compose (RITOS §4). So estes servicos, pelo nome.
-#    O `forum` NAO entra aqui de proposito — ele ainda nao existe neste compose;
-#    quem o poe la e a entrega de `infra/`, depois desta tela.
+#    Com a aplicação única, a recarga alcança também o fórum no mesmo processo.
 # -----------------------------------------------------------------------------
 echo "== recarregando os pares para eles relerem o env =="
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  for servico in identidade alunos; do
-    docker compose config --services 2>/dev/null | grep -qx "$servico" && ALVOS="$ALVOS $servico"
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-    else
-      echo "  (aviso: nao consegui recarregar$ALVOS — os arquivos JA estao certos; o proximo deploy de cada celula rele o env. Avise o agente.)"
-    fi
-  else
-    echo "  (aviso: nao achei estes servicos no compose desta maquina — o proximo deploy rele o env.)"
-  fi
+if recarregar_servicos provisionar-forum; then
+  echo "  pares recarregados"
 else
-  echo "  (aviso: nao achei o docker aqui — os arquivos JA estao certos; o proximo deploy rele o env.)"
+  echo "  (aviso: nao consegui recarregar os pares; os arquivos JA estao certos. Avise o agente.)"
 fi
 echo
 

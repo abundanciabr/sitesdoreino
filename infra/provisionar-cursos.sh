@@ -80,6 +80,14 @@ CATALOGO_URL="http://catalogo:8000/api/catalogo"
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…, nunca PS C:\\>)"
 
+# A execução por curl põe este arquivo em /tmp; o helper vive no código aprovado.
+AJUDA_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+if [ ! -f "$AJUDA_APLICACAO" ]; then
+  AJUDA_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+fi
+[ -f "$AJUDA_APLICACAO" ] || parar "não achei o helper de operações da aplicação em $AJUDA_APLICACAO."
+. "$AJUDA_APLICACAO"
+
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
 command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
@@ -184,7 +192,7 @@ echo
 #    lista" seria o chute que amarra a sala de aula de todo mundo ao site errado.
 # -----------------------------------------------------------------------------
 echo "== 2/5: descobrindo o site no catálogo =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "catalogo" || true)
+ESTADO=$(servicos_rodando | grep -Fx "catalogo" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'catalogo' não está rodando, e é ele quem sabe o número do site. Suba a plataforma (docker compose up -d) e rode de novo. Nada foi criado."
 
 # A resposta CRUA primeiro, e o filtro depois, em dois passos de propósito:
@@ -192,7 +200,7 @@ ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "c
 # site ativo" chegam aqui como o MESMO exit 1 (quem falha é o `grep`), e o
 # mantenedor leria "não consegui perguntar" quando o problema é outro
 # (`armadilhas/240`). Duas causas diferentes precisam de duas telas diferentes.
-BRUTO=$(docker compose exec -T catalogo python manage.py shell -c \
+BRUTO=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}')" 2>/dev/null) \
@@ -403,17 +411,8 @@ garantir "$ENV_ALUNOS" TOKENS_ACEITOS_CURSOS "$T_ALUNOS" "par cursos->alunos: a 
 #    `cursos` NÃO entra aqui de propósito: ela ainda não existe neste compose;
 #    quem a põe lá é o degrau 1.7, depois desta tela.
 # -----------------------------------------------------------------------------
-for SERVICO in identidade alunos; do
-  if command -v docker >/dev/null 2>&1 && docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
-    if docker compose up -d "$SERVICO" >/dev/null 2>&1; then
-      echo "  recarreguei: $SERVICO"
-    else
-      echo "  (aviso: não consegui recarregar $SERVICO. O arquivo JÁ está certo; o próximo deploy dela relê o env. Avise o agente.)"
-    fi
-  else
-    echo "  (aviso: não achei o serviço $SERVICO no compose desta máquina. O arquivo JÁ está certo; o próximo deploy relê o env.)"
-  fi
-done
+recarregar_servicos provisionar-cursos ||
+  parar "não consegui recarregar os serviços após escrever os env. Confira a aplicação."
 echo
 
 # -----------------------------------------------------------------------------

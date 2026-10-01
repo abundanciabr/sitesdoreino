@@ -121,6 +121,9 @@ done
 # 2. ONDE — a pasta da plataforma e os dois arquivos de que dependo.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…)"
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -253,29 +256,12 @@ fi
 
 # -----------------------------------------------------------------------------
 # 7. RECARREGAR — a Caixa precisa reler o env para a lista valer.
-#    JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as
-#    células à tag :main do compose (RITOS §4). Só os serviços da Caixa, pelo
-#    nome, e só os que existem neste compose.
 # -----------------------------------------------------------------------------
 echo "== recarregando a Caixa para ela reler o env =="
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  for servico in sugestoes sugestoes-relay; do
-    if docker compose config --services 2>/dev/null | grep -qx "$servico"; then
-      ALVOS="$ALVOS $servico"
-    fi
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-    else
-      echo "  (aviso: não consegui recarregar$ALVOS — o arquivo JÁ está certo; o próximo deploy da Caixa relê o env de qualquer forma. Avise o agente.)"
-    fi
-  else
-    echo "  (aviso: não achei os serviços da Caixa no compose desta máquina — o próximo deploy da Caixa relê o env.)"
-  fi
+if recarregar_servicos provisionar-aprovadores; then
+  echo "  Caixa recarregada"
 else
-  echo "  (aviso: não achei o docker aqui — o arquivo JÁ está certo; o próximo deploy da Caixa relê o env.)"
+  echo "  (aviso: não consegui recarregar a Caixa; o arquivo JÁ está certo. Avise o agente.)"
 fi
 echo
 

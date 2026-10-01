@@ -64,6 +64,9 @@ parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 # é a evidência que esta casa exige de quem mexe em provisionamento.
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv…)"
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -81,7 +84,7 @@ unset TRAVA_PUBLICACAO
 
 docker compose ps postgres >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 ESTADO_PUBLICACAO="$RAIZ/publicacoes-candidatos/admin.json"
-if [ -e "$ESTADO_PUBLICACAO" ] || [ -L "$ESTADO_PUBLICACAO" ]; then
+if ! aplicacao_ativa && { [ -e "$ESTADO_PUBLICACAO" ] || [ -L "$ESTADO_PUBLICACAO" ]; }; then
   [ -f "$ESTADO_PUBLICACAO" ] && [ ! -L "$ESTADO_PUBLICACAO" ] \
     || parar "registro da publicação admin inválido; reconcilie antes de provisionar."
   [ -f .env ] || parar "imagem admin não declarada em .env; reconcilie a publicação antes de provisionar."

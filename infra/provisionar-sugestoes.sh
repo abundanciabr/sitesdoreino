@@ -62,6 +62,9 @@ esac
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ" 2>/dev/null || parar "não achei /opt/plataforma — você está na VPS certa?"
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -199,7 +202,7 @@ fi
 
 # `alunos` precisa reler o env para o token novo valer. Segundos, e a célula
 # não tem rota pública direta.
-docker compose up -d alunos >/dev/null 2>&1 || echo "  (aviso: não consegui reiniciar o alunos — avise a sessão do agente)"
+recarregar_servicos provisionar-sugestoes >/dev/null 2>&1 || echo "  (aviso: não consegui reiniciar a aplicação — avise a sessão do agente)"
 
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='sugestoes_db'" 2>/dev/null | grep -q 1

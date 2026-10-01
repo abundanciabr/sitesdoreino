@@ -72,6 +72,9 @@ ALUNOS_URL="http://alunos:8000/api/alunos"
 #    Tudo conferido ANTES de gerar ou escrever coisa nenhuma.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? Nada foi alterado."
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -228,7 +231,7 @@ echo
 #    atende o login do site inteiro) só reinicia se o grau for novo para ela.
 #    Os consumidores e relays das três células não usam estas chaves.
 # -----------------------------------------------------------------------------
-python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "provisionar-par-da-gamificacao-com-os-alunos.sh" || parar "os arquivos foram conferidos, mas a aplicação não passou na prova após a recarga."
+recarregar_servicos provisionar-par-da-gamificacao-com-os-alunos || parar "os arquivos foram conferidos, mas a aplicação não passou na prova após a recarga."
 echo
 
 # -----------------------------------------------------------------------------
@@ -239,7 +242,7 @@ echo
 #    Sai só o código HTTP; nenhum token vai para a tela.
 # -----------------------------------------------------------------------------
 provar() {
-  docker compose exec -T aplicacao python -m config.executar gamificacao - 2>/dev/null <<'PY'
+  codigo_servico gamificacao - 2>/dev/null <<'PY'
 import os
 
 import httpx

@@ -54,6 +54,9 @@ CHAVE="IDS_DA_EQUIPE"
 [ "$#" -ge 1 ] || parar "faltou dizer QUEM entra na equipe. Rode assim: bash /tmp/e.sh seu-email@exemplo.com"
 
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…)"
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -69,7 +72,7 @@ unset TRAVA_PUBLICACAO
 [ -f "$ENV_GAMIFICACAO" ] || parar "não achei $RAIZ/$ENV_GAMIFICACAO — a célula gamificacao não está provisionada nesta máquina. Nada foi alterado."
 [ -w "$ENV_GAMIFICACAO" ] || parar "não consigo escrever em $RAIZ/$ENV_GAMIFICACAO — rode como root ou como o dono dos env. Nada foi alterado."
 
-docker compose ps identidade >/dev/null 2>&1 || parar "não consegui falar com o docker compose desta máquina. Nada foi alterado."
+servicos_rodando | grep -qx identidade || parar "a identidade não está rodando. Nada foi alterado."
 
 ler_de() {  # arquivo, chave — devolve o valor limpo, sem comentário nem espaços
   grep "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '[:space:]'
@@ -95,8 +98,7 @@ for EMAIL in "$@"; do
     *) parar "'$EMAIL' não parece um e-mail. Nada foi alterado." ;;
   esac
 
-  ID="$(docker compose exec -T -e EMAIL_PROCURADO="$EMAIL" identidade \
-        python manage.py shell -c \
+  ID="$(comando_servico_env identidade EMAIL_PROCURADO="$EMAIL" -- shell -c \
         'import os
 from apps.identidade.models import Identidade
 achado = Identidade.objects.filter(email__iexact=os.environ["EMAIL_PROCURADO"]).values_list("id", flat=True).first()
@@ -172,17 +174,14 @@ GRAVADO="$(ler_de "$ENV_GAMIFICACAO" "$CHAVE")"
 #    parte.
 # -----------------------------------------------------------------------------
 echo "== reiniciando a gamificacao para ela ler a lista =="
-docker compose up -d gamificacao >/dev/null 2>&1
+recarregar_servicos provisionar-equipe-da-gamificacao >/dev/null 2>&1 || parar "a gamificacao não reiniciou. A cópia intacta do env está em $RAIZ/$COPIA."
 
 PRONTA=""
 for _ in $(seq 1 30); do
-  ESTADO="$(docker compose ps --format '{{.Service}} {{.State}}' 2>/dev/null | grep '^gamificacao ' | head -1)"
-  case "$ESTADO" in
-    *running*) PRONTA="sim"; break ;;
-  esac
+  if servicos_rodando | grep -qx gamificacao; then PRONTA="sim"; break; fi
   sleep 2
 done
-[ -n "$PRONTA" ] || parar "a gamificacao não voltou de pé depois do reinício. A cópia intacta do env está em $RAIZ/$COPIA, e 'docker compose logs gamificacao' diz o motivo."
+[ -n "$PRONTA" ] || parar "a gamificacao não voltou de pé depois do reinício. A cópia intacta do env está em $RAIZ/$COPIA."
 
 QUANTOS="$(printf '%s' "$LISTA" | tr ',' '\n' | grep -c .)"
 echo

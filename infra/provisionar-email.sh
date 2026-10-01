@@ -137,6 +137,9 @@ esac
 # 3. ONDE — a pasta da plataforma e os arquivos de que dependo.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…; se começar com PS C: é a janela do seu computador)"
+FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+[ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+. "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
@@ -252,31 +255,15 @@ if [ "$(stat -c '%U:%G %a' "$ENV_ALVO" 2>/dev/null)" != "$(stat -c '%U:%G %a' "$
 fi
 
 # -----------------------------------------------------------------------------
-# 7. RECARREGAR — os três containers da célula leem o MESMO env.
-#    JAMAIS `docker compose up -d` sem argumento: devolveria TODAS as células à
-#    tag :main do compose (RITOS §4). Só os serviços da mensageria, pelo nome.
+# 7. RECARREGAR — a aplicação única ou os três processos legados leem o env.
 # -----------------------------------------------------------------------------
 echo "== recarregando a mensageria para ela reler o env =="
 RECARREGOU="nao"
-if command -v docker >/dev/null 2>&1; then
-  ALVOS=""
-  for servico in mensageria mensageria-consumer mensageria-huey; do
-    if docker compose config --services 2>/dev/null | grep -qx "$servico"; then
-      ALVOS="$ALVOS $servico"
-    fi
-  done
-  if [ -n "$ALVOS" ]; then
-    if docker compose up -d $ALVOS >/dev/null 2>&1; then
-      echo "  recarreguei:$ALVOS"
-      RECARREGOU="sim"
-    else
-      echo "  (aviso: não consegui recarregar$ALVOS — o arquivo JÁ está certo; o próximo deploy da célula relê o env. Avise o agente.)"
-    fi
-  else
-    echo "  (aviso: não achei os serviços da mensageria no compose desta máquina.)"
-  fi
+if recarregar_servicos provisionar-email; then
+  RECARREGOU="sim"
+  echo "  mensageria recarregada"
 else
-  echo "  (aviso: não achei o docker aqui — o arquivo JÁ está certo.)"
+  echo "  (aviso: não consegui recarregar a mensageria; o arquivo JÁ está certo. Avise o agente.)"
 fi
 echo
 
@@ -285,20 +272,18 @@ echo
 # -----------------------------------------------------------------------------
 if [ -n "$TESTE_PARA" ] && [ "$RECARREGOU" = "sim" ]; then
   echo "== mandando uma carta de teste para $TESTE_PARA =="
-  if docker compose exec -T mensageria-huey python -c "
+  if comando_servico_env mensageria TESTE_PARA="$TESTE_PARA" -- shell -c '
 from django.core.mail import send_mail
-import django, os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
+import os
 n = send_mail(
-    subject='Teste do e-mail da Meshcraft',
-    message='Se voce esta lendo isto, o e-mail da plataforma esta funcionando.',
-    from_email=os.environ['SMTP_FROM'],
-    recipient_list=['$TESTE_PARA'],
+    subject="Teste do e-mail da Meshcraft",
+    message="Se voce esta lendo isto, o e-mail da plataforma esta funcionando.",
+    from_email=os.environ["SMTP_FROM"],
+    recipient_list=[os.environ["TESTE_PARA"]],
     fail_silently=False,
 )
-print('cartas enviadas:', n)
-" 2>&1 | tail -5; then
+print("cartas enviadas:", n)
+' 2>&1 | tail -5; then
     echo
     echo "  Se a linha acima disser 'cartas enviadas: 1', o Brevo aceitou."
     echo "  AGORA CONFIRA NA CAIXA DE ENTRADA de $TESTE_PARA (e no spam)."

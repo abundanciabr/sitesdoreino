@@ -73,6 +73,14 @@ IDENTIDADE_URL="http://identidade:8000/interno"
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…, nunca PS C:\\>)"
 
+# A execução por curl põe este arquivo em /tmp; o helper vive no código aprovado.
+AJUDA_APLICACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
+if [ ! -f "$AJUDA_APLICACAO" ]; then
+  AJUDA_APLICACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
+fi
+[ -f "$AJUDA_APLICACAO" ] || parar "não achei o helper de operações da aplicação em $AJUDA_APLICACAO."
+. "$AJUDA_APLICACAO"
+
 # Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
 TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
 command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
@@ -160,7 +168,7 @@ echo
 #    lista" seria o chute que amarra o XP de todo mundo ao site errado.
 # -----------------------------------------------------------------------------
 echo "== 2/5 — descobrindo o site no catálogo =="
-ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "catalogo" || true)
+ESTADO=$(servicos_rodando | grep -Fx "catalogo" || true)
 [ -n "$ESTADO" ] || parar "o serviço 'catalogo' não está rodando, e é ele quem sabe o número do site. Suba a plataforma (docker compose up -d) e rode de novo. Nada foi criado."
 
 # A resposta CRUA primeiro, e o filtro depois, em dois passos de propósito:
@@ -169,7 +177,7 @@ ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "c
 # mantenedor leria "não consegui perguntar" quando o problema é outro. Duas
 # causas diferentes precisam de duas telas diferentes: uma manda olhar o
 # serviço, a outra manda cadastrar o site.
-BRUTO=$(docker compose exec -T catalogo python manage.py shell -c \
+BRUTO=$(comando_servico catalogo shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(f'{s.id}\t{s.host}')" 2>/dev/null) \
@@ -333,15 +341,8 @@ garantir "$ENV_IDENTIDADE" TOKENS_ACEITOS_GAMIFICACAO "$T_IDENTIDADE" "par gamif
 #    `gamificacao` NÃO entra aqui de propósito — ela ainda não existe neste
 #    compose; quem a põe lá é a entrega de `infra/`, depois desta tela.
 # -----------------------------------------------------------------------------
-if command -v docker >/dev/null 2>&1 && docker compose config --services 2>/dev/null | grep -qx "identidade"; then
-  if docker compose up -d identidade >/dev/null 2>&1; then
-    echo "  recarreguei: identidade"
-  else
-    echo "  (aviso: não consegui recarregar a identidade. O arquivo JÁ está certo; o próximo deploy dela relê o env. Avise o agente.)"
-  fi
-else
-  echo "  (aviso: não achei o serviço identidade no compose desta máquina. O arquivo JÁ está certo; o próximo deploy relê o env.)"
-fi
+recarregar_servicos provisionar-gamificacao ||
+  parar "não consegui recarregar os serviços após escrever os env. Confira a aplicação."
 echo
 
 # -----------------------------------------------------------------------------
