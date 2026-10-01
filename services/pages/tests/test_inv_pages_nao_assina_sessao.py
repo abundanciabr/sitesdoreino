@@ -74,7 +74,7 @@ def test_o_cookie_de_csrf_tem_nome_proprio():
     Isto não é sessão, mas é o mesmo problema de vizinhança: `meshcraft.top`
     serve o `funil` na raiz, a Caixa em `/forms/sugestoes`, a área
     administrativa em `/admin`, o fórum em `/forum`, as conquistas em
-    `/conquistas`, a sala de aula em `/cursos` e esta célula em `/pages` (mais
+    `/conquistas`, a sala de aula em `/cursos` e esta célula em `/portfolio` (mais
     a vitrine em `/estudio`). Duas células gravando `csrftoken` no mesmo host é
     uma invalidando o formulário da outra.
     """

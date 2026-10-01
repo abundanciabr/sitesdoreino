@@ -54,9 +54,9 @@ ACABAMENTO = "maioria-high-poly"
 AULA = "nada-parecido-com-a-aula"
 
 # As frases que a tela promete, escritas à mão pelo mesmo motivo.
-FALTA_O_TIPO = "Diga de que tipo é esta peça, entre os tipos que o curso ensina."
-FALTA_O_ACABAMENTO = "Diga se esta peça é high poly ou uma variação mais simples."
-FALTA_A_AULA = "Diga se esta peça se parece com o modelo que você fez na aula."
+FALTA_O_TIPO = "Escolha a categoria deste trabalho, como carro, animal ou acessório."
+FALTA_O_ACABAMENTO = "Diga se este trabalho é high poly ou uma variação mais simples."
+FALTA_A_AULA = "Diga se este trabalho se parece com o modelo que você fez na aula."
 
 TUDO_RESPONDIDO = {
     "tipo": TipoDeModelo.ANIMAIS,
@@ -288,9 +288,9 @@ def test_a_estante_lista_item_a_item_o_que_falta_na_peca(estante, peca_da_ana):
     peca_da_ana.tipo = TipoDeModelo.CARROS
     peca_da_ana.save()
 
-    corpo = estante.get("/pecas").content.decode()
+    corpo = estante.get("/trabalhos").content.decode()
 
-    assert "Falta responder sobre esta peça:" in corpo
+    assert "Falta preencher neste trabalho:" in corpo
     assert FALTA_O_ACABAMENTO in corpo
     assert FALTA_A_AULA in corpo
     assert FALTA_O_TIPO not in corpo
@@ -298,7 +298,7 @@ def test_a_estante_lista_item_a_item_o_que_falta_na_peca(estante, peca_da_ana):
 
 def test_a_tela_mostra_a_regra_da_escola_ao_lado_do_que_falta(estante, peca_da_ana):
     """A lista não é só o pedido: ela traz a frase que a professora escreveu."""
-    corpo = estante.get("/pecas").content.decode()
+    corpo = estante.get("/trabalhos").content.decode()
 
     esperada = ItemDoRoteiro.objects.get(chave=AULA).texto
     assert esperada in corpo
@@ -306,7 +306,7 @@ def test_a_tela_mostra_a_regra_da_escola_ao_lado_do_que_falta(estante, peca_da_a
 
 def test_o_aluno_responde_e_a_lista_some(estante, peca_da_ana):
     resposta = estante.post(
-        "/pecas/responder",
+        "/trabalhos/responder",
         {"peca": peca_da_ana.pk, **TUDO_RESPONDIDO},
     )
 
@@ -316,28 +316,30 @@ def test_o_aluno_responde_e_a_lista_some(estante, peca_da_ana):
     assert peca_da_ana.acabamento == Acabamento.HIGH_POLY
     assert peca_da_ana.parecida_com_a_aula == ParecidaComAAula.NAO
 
-    corpo = estante.get("/pecas").content.decode()
-    assert "Você já respondeu tudo o que a escola pergunta sobre esta peça." in corpo
+    corpo = estante.get("/trabalhos").content.decode()
+    assert (
+        "Você já respondeu tudo o que a escola pergunta sobre este trabalho." in corpo
+    )
     assert FALTA_O_TIPO not in corpo
 
 
 def test_o_aluno_desfaz_uma_resposta_deixando_a_em_branco(estante, peca_da_ana):
-    estante.post("/pecas/responder", {"peca": peca_da_ana.pk, **TUDO_RESPONDIDO})
+    estante.post("/trabalhos/responder", {"peca": peca_da_ana.pk, **TUDO_RESPONDIDO})
 
     estante.post(
-        "/pecas/responder",
+        "/trabalhos/responder",
         {**TUDO_RESPONDIDO, "peca": peca_da_ana.pk, "acabamento": ""},
     )
 
     peca_da_ana.refresh_from_db()
     assert peca_da_ana.acabamento == ""
-    assert FALTA_O_ACABAMENTO in estante.get("/pecas").content.decode()
+    assert FALTA_O_ACABAMENTO in estante.get("/trabalhos").content.decode()
 
 
 def test_a_resposta_que_a_escola_nao_oferece_e_recusada(estante, peca_da_ana):
     """Sem esta recusa, um POST gravaria qualquer palavra na coluna."""
     resposta = estante.post(
-        "/pecas/responder", {"peca": peca_da_ana.pk, "tipo": "nota-10"}
+        "/trabalhos/responder", {"peca": peca_da_ana.pk, "tipo": "nota-10"}
     )
 
     assert resposta.status_code == 404
@@ -346,7 +348,7 @@ def test_a_resposta_que_a_escola_nao_oferece_e_recusada(estante, peca_da_ana):
 
 
 def test_a_peca_que_nao_e_numero_nao_derruba_a_tela(estante, peca_da_ana):
-    assert estante.post("/pecas/responder", {"peca": "abc"}).status_code == 404
+    assert estante.post("/trabalhos/responder", {"peca": "abc"}).status_code == 404
 
 
 def test_o_formulario_nao_alcanca_a_peca_de_outro_aluno(
@@ -363,7 +365,7 @@ def test_o_formulario_nao_alcanca_a_peca_de_outro_aluno(
     )
 
     resposta = estante.post(
-        "/pecas/responder", {"peca": do_bruno.pk, "tipo": TipoDeModelo.ARMAS}
+        "/trabalhos/responder", {"peca": do_bruno.pk, "tipo": TipoDeModelo.ARMAS}
     )
 
     assert resposta.status_code == 404
@@ -381,7 +383,7 @@ def test_a_peca_da_outra_escola_nao_e_respondida_daqui(
     )
 
     resposta = estante.post(
-        "/pecas/responder", {"peca": de_outra_escola.pk, "tipo": TipoDeModelo.ARMAS}
+        "/trabalhos/responder", {"peca": de_outra_escola.pk, "tipo": TipoDeModelo.ARMAS}
     )
 
     assert resposta.status_code == 404
@@ -397,7 +399,7 @@ def test_sem_escola_declarada_a_resposta_e_recusada(
     client.cookies["meshcraft_sessao"] = "cookie-opaco-de-ana"
 
     resposta = client.post(
-        "/pecas/responder", {"peca": peca.pk, "tipo": TipoDeModelo.ARMAS}
+        "/trabalhos/responder", {"peca": peca.pk, "tipo": TipoDeModelo.ARMAS}
     )
 
     assert resposta.status_code == 503
@@ -431,10 +433,10 @@ def test_as_perguntas_vem_abertas_so_onde_falta_responder(estante, peca_da_ana):
     Vinte formulários abertos fariam o aluno rolar a tela inteira para achar a
     única peça que ainda espera resposta dele.
     """
-    assert 'class="responder" open' in estante.get("/pecas").content.decode()
+    assert 'class="responder" open' in estante.get("/trabalhos").content.decode()
 
-    estante.post("/pecas/responder", {"peca": peca_da_ana.pk, **TUDO_RESPONDIDO})
+    estante.post("/trabalhos/responder", {"peca": peca_da_ana.pk, **TUDO_RESPONDIDO})
 
-    corpo = estante.get("/pecas").content.decode()
+    corpo = estante.get("/trabalhos").content.decode()
     assert 'class="responder" open' not in corpo
-    assert "As perguntas da escola sobre esta peça" in corpo
+    assert "Informações deste trabalho" in corpo

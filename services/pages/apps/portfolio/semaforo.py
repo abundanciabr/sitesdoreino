@@ -83,17 +83,17 @@ PERGUNTAS = (
     (
         "tipo",
         "tres-tipos-escolhidos",
-        "Diga de que tipo é esta peça, entre os tipos que o curso ensina.",
+        "Escolha a categoria deste trabalho, como carro, animal ou acessório.",
     ),
     (
         "acabamento",
         "maioria-high-poly",
-        "Diga se esta peça é high poly ou uma variação mais simples.",
+        "Diga se este trabalho é high poly ou uma variação mais simples.",
     ),
     (
         "parecida_com_a_aula",
         "nada-parecido-com-a-aula",
-        "Diga se esta peça se parece com o modelo que você fez na aula.",
+        "Diga se este trabalho se parece com o modelo que você fez na aula.",
     ),
 )
 
@@ -101,21 +101,21 @@ PERGUNTAS = (
 # Não é julgamento da obra: é a resposta dele lida contra a regra que a escola
 # escreveu, e a frase diz o caminho de saída em vez de dar um veredito.
 TROCAR_A_PECA_PARECIDA = (
-    "Você respondeu que esta peça se parece com o modelo da aula. Troque a peça "
-    "por uma criação sua, ou mude o que ela tem de igual ao da aula."
+    "Você respondeu que este trabalho se parece com o modelo da aula. Troque-o "
+    "por uma criação sua, ou mude o que ele tem de igual ao da aula."
 )
 
 # O endereço parou de abrir. A frase diz o que aconteceu e o que fazer, como
 # toda recusa desta casa.
 GUARDAR_O_ENDERECO_NOVO = (
-    "O endereço desta peça parou de abrir, então quem visitar o seu portfólio "
-    "não vai ver a imagem. Guarde a peça de novo com o endereço atual dela."
+    "O endereço deste trabalho parou de abrir, então quem visitar o seu portfólio "
+    "não vai ver a imagem. Adicione a imagem de novo com o endereço atual."
 )
 
 RESUMOS = {
-    VERDE: "Você já respondeu tudo o que a escola pergunta sobre esta peça.",
-    AMARELO: "Falta responder sobre esta peça:",
-    VERMELHO: "Esta peça precisa de um ajuste seu:",
+    VERDE: "Você já respondeu tudo o que a escola pergunta sobre este trabalho.",
+    AMARELO: "Falta preencher neste trabalho:",
+    VERMELHO: "Este trabalho precisa de um ajuste seu:",
 }
 
 

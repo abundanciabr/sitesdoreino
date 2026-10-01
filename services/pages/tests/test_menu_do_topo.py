@@ -10,7 +10,7 @@ isto dar errado:
 2. **O par de tokens ainda não provisionado virar um erro por página.** É o
    estado REAL desta célula no dia em que este arquivo nasce: o par
    `pages→catalogo` não existe enquanto o mantenedor não rodar a versão de
-   `infra/provisionar-par-do-menu.sh` que também escreve `env/pages.env`. Ele
+   `infra/provisionar-par-do-menu.sh` que também escreve `env/portfolio.env`. Ele
    tem de ser silencioso, e não pode custar nem uma tentativa de rede.
 3. **As três telas da porta ficarem sem menu.** Elas são desenhadas pelo
    middleware ANTES de a rota ser resolvida, e são as primeiras páginas que um
@@ -18,7 +18,7 @@ isto dar errado:
 4. **A regra "esta página não tem menu" ser ignorada.** Versão vazia numa página
    precisa VENCER a versão padrão do site: é ela a metade "exceto nas páginas
    que já configuramos para não ter" do pedido do mantenedor.
-5. **O prefixo público.** Esta casa é servida em `/pages`, e a marca de "você
+5. **O prefixo público.** Esta casa é servida em `/portfolio`, e a marca de "você
    está aqui" compara com `request.path`, que carrega o prefixo. Medir sem ele
    seria medir um endereço que não existe em lugar nenhum.
 
@@ -44,7 +44,7 @@ POR_HOST = f"{CATALOGO}/sites/by-host/testserver"
 # `FORCE_SCRIPT_NAME`, do env; aqui ele entra pelo test client. Sem ele a
 # Prancheta seria servida em `/`, e a regra "o item da área atual some"
 # compararia um caminho que não existe em lugar nenhum.
-PREFIXO = {"SCRIPT_NAME": "/pages"}
+PREFIXO = {"SCRIPT_NAME": "/portfolio"}
 
 # A marca da barra DESENHADA, e nunca a string `menu-topo` solta: esta casa
 # serve o estilo embutido na moldura, então `.menu-topo { ... }` está no corpo
@@ -74,7 +74,7 @@ MENU = {
                     "new_tab": False,
                 },
                 {
-                    "url": "/pages/",
+                    "url": "/portfolio/",
                     "labels": {"pt-br": "Prancheta", "en": "Board"},
                     "localized": False,
                     "audience": "everyone",
@@ -208,13 +208,13 @@ def test_o_menu_aparece_tambem_na_tela_da_porta(env_dos_pares, rede):
     """
     dublar_catalogo(rede, SITE)
     corpo = texto(abrir(prefixo=True))
-    assert "Entre para ver a sua Prancheta" in corpo
+    assert "Entre para ver o seu portfólio" in corpo
     assert 'href="/forum/"' in so_o_menu(corpo)
 
 
 def test_o_rotulo_sai_no_idioma_padrao_do_site(aluna, rede):
     """Esta célula é monolíngue: o nome do item é o do idioma padrão, e nunca o
-    prefixo de idioma, porque `/pt-br/pages` não existe."""
+    prefixo de idioma, porque `/pt-br/portfolio` não existe."""
     dublar_catalogo(rede, SITE)
     corpo = texto(abrir(cookie=COOKIE, prefixo=True))
     assert "Início" in so_o_menu(corpo)
@@ -232,10 +232,10 @@ def test_a_pagina_marcada_sem_menu_nao_mostra_menu(aluna, rede):
 
 
 def test_o_mesmo_botao_manda_nas_duas_caras_do_endereco(env_dos_pares, rede):
-    """UM botão na tela dele, e ele alcança as duas caras de `/pages/`.
+    """UM botão na tela dele, e ele alcança as duas caras de `/portfolio/`.
 
     A tela `/admin/menu/` monta as opções a partir de `painel/mapa-do-site.json`,
-    e lá `/pages/` é uma página só: a mesma entrada descreve os três desfechos da
+    e lá `/portfolio/` é uma página só: a mesma entrada descreve os três desfechos da
     porta e o aluno reconhecido. Por isso a chave das telas da porta é a da raiz,
     e não um nome próprio, que seria um botão que a tela dele nunca mostraria.
 
@@ -246,7 +246,7 @@ def test_o_mesmo_botao_manda_nas_duas_caras_do_endereco(env_dos_pares, rede):
     sem = dict(MENU, pages=[{"page": "pages/", "version": ""}])
     dublar_catalogo(rede, dict(SITE, menu=sem))
     corpo = texto(abrir(prefixo=True))
-    assert "Entre para ver a sua Prancheta" in corpo
+    assert "Entre para ver o seu portfólio" in corpo
     assert BARRA not in corpo
 
 
@@ -291,11 +291,11 @@ def test_na_prancheta_o_item_da_prancheta_some(aluna, rede):
     desconfiar do menu (pedido do mantenedor em 01/09/2026).
 
     Este é o guarda do SCRIPT_NAME: sem o prefixo, `request.path` seria `/` e o
-    item `/pages/` nunca casaria com a página atual.
+    item `/portfolio/` nunca casaria com a página atual.
     """
     dublar_catalogo(rede, SITE)
     menu = so_o_menu(texto(abrir(cookie=COOKIE, prefixo=True)))
-    assert 'href="/pages/"' not in menu
+    assert 'href="/portfolio/"' not in menu
     assert 'href="/forum/"' in menu
 
 

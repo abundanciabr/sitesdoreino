@@ -110,7 +110,7 @@ def test_a_estante_vazia_recusa_o_pedido_dizendo_o_que_fazer(criar_portfolio):
     with pytest.raises(conferencia.ConferenciaRecusada) as recusa:
         conferencia.pedir(portfolio)
 
-    assert "pelo menos uma peça" in str(recusa.value)
+    assert "pelo menos um trabalho" in str(recusa.value)
     assert not PedidoDeConferencia.objects.exists()
 
 
@@ -119,7 +119,7 @@ def test_quem_nunca_guardou_nada_recebe_a_mesma_recusa(db):
     with pytest.raises(conferencia.ConferenciaRecusada) as recusa:
         conferencia.pedir(None)
 
-    assert "pelo menos uma peça" in str(recusa.value)
+    assert "pelo menos um trabalho" in str(recusa.value)
 
 
 def test_pedir_duas_vezes_nao_poe_o_mesmo_portfolio_duas_vezes_na_fila(
@@ -460,17 +460,17 @@ def test_o_botao_do_aluno_poe_o_pedido_na_fila(
 ):
     portfolio_com_peca(ANA["id"])
 
-    resposta = Client().post("/pecas/conferir", **como())
+    resposta = Client().post("/trabalhos/conferir", **como())
 
     assert resposta.status_code == 302
     assert conferencia.fila_da_equipe(SITE).count() == 1
 
 
 def test_a_estante_vazia_recusa_na_tela_dizendo_o_que_fazer(aluna, site_declarado):
-    resposta = Client().post("/pecas/conferir", **como())
+    resposta = Client().post("/trabalhos/conferir", **como())
 
     assert resposta.status_code == 422
-    assert "pelo menos uma peça" in texto(resposta)
+    assert "pelo menos um trabalho" in texto(resposta)
 
 
 def test_o_aluno_le_o_motivo_da_devolucao_na_tela_dele(
@@ -483,7 +483,7 @@ def test_o_aluno_le_o_motivo_da_devolucao_na_tela_dele(
         motivo=MotivoDaDevolucao.POUCOS_TIPOS,
     )
 
-    corpo = texto(Client().get("/pecas", **como()))
+    corpo = texto(Client().get("/trabalhos", **como()))
 
     assert MotivoDaDevolucao.POUCOS_TIPOS.label in corpo
 
@@ -491,7 +491,7 @@ def test_o_aluno_le_o_motivo_da_devolucao_na_tela_dele(
 def test_o_aluno_ve_o_prazo_enquanto_espera(aluna, site_declarado, portfolio_com_peca):
     pedido = conferencia.pedir(portfolio_com_peca(ANA["id"]))
 
-    corpo = texto(Client().get("/pecas", **como()))
+    corpo = texto(Client().get("/trabalhos", **como()))
 
     assert "está com a escola" in corpo
     assert (

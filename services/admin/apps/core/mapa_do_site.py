@@ -172,7 +172,7 @@ AREAS = (
         "portfolio",
         "O portfólio do aluno",
         "A página que o aluno monta para mostrar o trabalho dele ao mundo.",
-        ("/pages",),
+        ("/portfolio",),
     ),
     (
         "encomendas",

@@ -1,95 +1,65 @@
-{% extends "pages/moldura.html" %}{% comment %}
-A ESTANTE (degrau 08): as obras do aluno, na ordem que ele escolheu, com o
-estado de cada link.
-
-A FOTO ENTRA POR LINK COLADO. Não existe campo de arquivo nesta tela, e a
-ausência é decisão do mantenedor de 01/09/2026 (plano §6.2), não esquecimento.
-
-A IMAGEM NÃO É MOSTRADA AQUI, e isso é escolha. Esta página é a bancada onde o
-aluno organiza; puxar dezenas de renders de terceiros a cada visita deixaria a
-tela pesada e ainda faria o navegador dele conversar com todos os sites da
-lista. Quem mostra as obras é a vitrine (degrau 13), que é a página feita para
-ser vista. Aqui o link é um link, e ele abre em aba nova.
-
-MEXER É UM FORMULÁRIO, e não um script. A regra desta casa é que nenhum caminho
-exista só com JavaScript: cada botão é um `<form>` próprio, com um clique só e
-sem segundo botão de salvar.
-
-TIRAR UMA PEÇA É DO ALUNO, E SÓ DELE (critério AC-09). Nenhuma varredura apaga
-obra de ninguém: este botão é o único caminho de saída.
-
-As tags de formulário ficam numa linha só, coladas, porque soltas cada uma põe
-espaço em branco entre os botões (`armadilhas/033`).
-
-O SEMÁFORO E AS PERGUNTAS (degrau 10, critério AC-10) entraram por último em
-cada peça, e a ordem na tela é a do trabalho do aluno: primeiro ele vê o que
-falta, e logo abaixo estão os campos que respondem exatamente aquilo.
-
-A COR NUNCA CARREGA SOZINHA O RECADO. A frase do resumo e a lista dizem tudo o
-que a cor resume, e a bolinha sai com `aria-hidden` porque quem não a enxerga
-não perde nada. Semáforo que só fala por cor é tela que exclui gente.
-
-AS PERGUNTAS SÃO AS DA PROFESSORA, e as respostas possíveis vêm dos vocabulários
-da `Peca`. Não existe nota, estrela nem classificação nesta tela, e a ausência é
-lei escrita (`PLANO-PORTFOLIO-DO-ALUNO.md` §7).
-
-A CONFERÊNCIA DA ESCOLA (degrau 11, critério AC-11) fecha a página, e é aqui
-mesmo que ela mora: o aluno acabou de ver o que falta em cada peça, e o botão
-que manda tudo para a escola olhar tem de estar ao lado disso, não noutra tela.
-
-QUANDO O PORTFÓLIO VOLTA, O MOTIVO APARECE POR EXTENSO. Devolver sem dizer por
-quê é o que faz um aluno desistir, e esta é a metade do critério que o texto
-carrega: a frase da devolução diz o que falta E o que fazer.
-
-O FORMULÁRIO VEM ABERTO SÓ ONDE HÁ O QUE RESPONDER, e é `<details>` puro, sem
-uma linha de script. Numa estante de vinte peças, vinte formulários abertos
-fariam o aluno rolar a tela inteira para encontrar a única que ainda pede
-alguma coisa. A peça já respondida guarda as perguntas atrás do resumo, e ele
-continua a um clique de distância para quem quiser mudar a resposta.
-{% endcomment %}
-{% block titulo %}Suas peças{% endblock %}
-{% block faixa %}Peças{% endblock %}
+{% extends "pages/moldura.html" %}
+{% block titulo %}Meus trabalhos{% endblock %}
+{% block faixa %}Meus trabalhos{% endblock %}
 
 {% block conteudo %}
-  <h1>Suas peças</h1>
-  <p>Aqui ficam as obras do seu portfólio, na ordem em que você quer mostrá-las.
-  A imagem continua guardada onde ela já está (no Drive, no ArtStation, onde
-  você preferir): o que fica com a escola é o endereço dela.</p>
-  <p>Em cada peça você encontra o que ainda falta nela, segundo o que a
-  professora pediu no roteiro. Nada aqui é nota nem estrela: são só as suas
-  respostas, e a lista some quando você termina de respondê-las.</p>
+  <h1>Meus trabalhos</h1>
+  <p>Adicione uma imagem de cada trabalho que quer mostrar no portfólio. Um trabalho
+  pode ser um modelo ou um conjunto de modelos na mesma imagem. Você escolhe a ordem
+  e quais aparecem em destaque.</p>
+  <p>Em cada trabalho, “O que falta preencher” mostra campos pedidos pela escola.
+  Isso ajuda você a completar as informações; não é nota nem aprovação do trabalho.</p>
+  <p class="miudo">As imagens enviadas ficam na sua área até você publicar a página pública.
+  Se usar um link de outro site, a visibilidade da imagem também depende desse site.</p>
+  <p class="miudo">Se a sua página pública já está publicada, cada novo trabalho
+  aparece nela assim que você o adicionar.</p>
+  <nav class="navegacao-interna" aria-label="Portfólio"><a href="{% url 'prancheta' %}">Meu portfólio</a><a href="{% url 'dossie' %}">Portfólio em PDF</a></nav>
 
 {% if not pode_guardar %}
   <p class="aviso">A escola ainda não terminou de ligar esta página. Volte daqui
-  a pouco para guardar as suas peças.</p>
+  a pouco para adicionar os seus trabalhos.</p>
 {% else %}
 {% if recusa %}
   <p class="recusa" role="alert">{{ recusa }}</p>
 {% endif %}
-  <form method="post" action="{% url 'guardar_peca' %}" class="colar">{% csrf_token %}
+  <form method="post" action="{% url 'guardar_peca' %}" enctype="multipart/form-data" class="colar">{% csrf_token %}
     <p>
-      <label for="link">Endereço da imagem</label>
-      <input type="url" id="link" name="link" value="{{ link_recusado }}"
-             placeholder="https://" required>
+      <label for="imagem">Enviar imagem do seu trabalho</label>
+      <input type="file" id="imagem" name="imagem" accept="image/jpeg,image/png,image/webp" required>
     </p>
     <p>
-      <label for="legenda">Legenda (o que é esta peça)</label>
+      <label for="legenda">Nome ou descrição do trabalho</label>
       <input type="text" id="legenda" name="legenda" maxlength="200"
              value="{{ legenda_recusada }}">
     </p>
-    <p><button type="submit">Guardar esta peça</button></p>
+    <p class="miudo">Use JPG, PNG ou WebP de até 5 MB e 20 megapixels.
+    Imagens grandes são ajustadas para até 1920 pixels. Você pode guardar até 50 MB de imagens no total.</p>
+    <p><button type="submit">Adicionar trabalho</button></p>
   </form>
+  <details class="responder"{% if link_recusado %} open{% endif %}>
+    <summary>Usar um link de imagem</summary>
+    <p>Se a imagem já está em outro site, cole o endereço direto dela.</p>
+    <form method="post" action="{% url 'guardar_peca' %}" class="colar">{% csrf_token %}
+      <p><label for="link">Endereço da imagem</label>
+      <input type="url" id="link" name="link" value="{{ link_recusado }}" placeholder="https://" required></p>
+      <p><label for="legenda-link">Nome ou descrição do trabalho</label>
+      <input type="text" id="legenda-link" name="legenda" maxlength="200" value="{{ legenda_recusada }}"></p>
+      <p><button type="submit">Adicionar pelo link</button></p>
+    </form>
+  </details>
 {% endif %}
 
 {% if pecas %}
   <ol class="estante">
 {% for peca in pecas %}
     <li class="peca estado-{{ peca.estado_do_link }}">
-      <p class="titulo">{% if peca.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ peca.legenda|default:"Peça sem legenda" }}</p>
-      <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">{{ peca.link }}</a></p>
-      <p class="miudo estado">{{ peca.get_estado_do_link_display }}{% if peca.quebrado_desde %}, desde {{ peca.quebrado_desde|date:"d/m/Y" }}. Abra o endereço no navegador para ver o que houve, e cole o novo aqui embaixo se você mudou a imagem de lugar. Ela continua guardada com a escola até você tirá-la{% endif %}.</p>
-      <p class="botoes">{% if not forloop.first %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="subir">Subir</button></form>{% endif %}{% if not forloop.last %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="descer">Descer</button></form>{% endif %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="{% if peca.destaque %}tirar-destaque{% else %}destacar{% endif %}">{% if peca.destaque %}Tirar o destaque{% else %}Pôr em destaque{% endif %}</button></form><form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="remover">Tirar da estante</button></form></p>
+      <p class="titulo">{% if peca.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ peca.legenda|default:"Trabalho sem descrição" }}</p>
+      <a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer"><img class="miniatura" src="{{ peca.link }}" alt="{{ peca.legenda|default:'Imagem do trabalho' }}" loading="lazy"></a>
+      <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">Abrir imagem</a></p>
+      <p class="miudo estado">{{ peca.get_estado_do_link_display }}{% if peca.quebrado_desde %}, desde {{ peca.quebrado_desde|date:"d/m/Y" }}. Abra a imagem para ver o que houve. Se você usou um link e a imagem mudou de lugar, adicione o endereço novo. Este trabalho continua guardado até você removê-lo{% endif %}.</p>
+      <p class="botoes">{% if not forloop.first %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="subir">Subir</button></form>{% endif %}{% if not forloop.last %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="descer">Descer</button></form>{% endif %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="{% if peca.destaque %}tirar-destaque{% else %}destacar{% endif %}">{% if peca.destaque %}Tirar o destaque{% else %}Pôr em destaque{% endif %}</button></form><form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="remover">Remover trabalho</button></form></p>
       <div class="semaforo luz-{{ peca.semaforo.cor }}">
+        <h3>{% if peca.semaforo.pendencias %}O que falta preencher{% else %}Informações preenchidas{% endif %}</h3>
         <p class="resumo"><span class="luz" aria-hidden="true"></span>{{ peca.semaforo.resumo }}</p>
 {% if peca.semaforo.pendencias %}
         <ul class="falta">
@@ -100,45 +70,46 @@ continua a um clique de distância para quem quiser mudar a resposta.
 {% endif %}
       </div>
       <details class="responder"{% if peca.semaforo.pendencias %} open{% endif %}>
-      <summary>As perguntas da escola sobre esta peça</summary>
+      <summary>Informações deste trabalho</summary>
       <form method="post" action="{% url 'responder_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}">
         <p>
-          <label for="tipo-{{ peca.pk }}">De que tipo é esta peça?</label>
+          <label for="tipo-{{ peca.pk }}">O que você modelou?</label>
+          <span class="miudo">Por exemplo: carro, animal ou acessório. Escolha a categoria que mais combina com este trabalho.</span>
           <select id="tipo-{{ peca.pk }}" name="tipo">
             <option value="">Ainda não respondi</option>
 {% for valor, rotulo in tipos %}            <option value="{{ valor }}"{% if peca.tipo == valor %} selected{% endif %}>{{ rotulo }}</option>
 {% endfor %}          </select>
         </p>
         <p>
-          <label for="acabamento-{{ peca.pk }}">Ela é high poly ou uma variação mais simples?</label>
+          <label for="acabamento-{{ peca.pk }}">Este trabalho é high poly ou uma variação mais simples?</label>
           <select id="acabamento-{{ peca.pk }}" name="acabamento">
             <option value="">Ainda não respondi</option>
 {% for valor, rotulo in acabamentos %}            <option value="{{ valor }}"{% if peca.acabamento == valor %} selected{% endif %}>{{ rotulo }}</option>
 {% endfor %}          </select>
         </p>
         <p>
-          <label for="aula-{{ peca.pk }}">Ela se parece com o modelo que você fez na aula?</label>
+          <label for="aula-{{ peca.pk }}">Este trabalho se parece com o modelo que você fez na aula?</label>
           <select id="aula-{{ peca.pk }}" name="parecida_com_a_aula">
             <option value="">Ainda não respondi</option>
 {% for valor, rotulo in semelhancas %}            <option value="{{ valor }}"{% if peca.parecida_com_a_aula == valor %} selected{% endif %}>{{ rotulo }}</option>
 {% endfor %}          </select>
         </p>
-        <p><button type="submit">Salvar as respostas desta peça</button></p>
+        <p><button type="submit">Salvar informações do trabalho</button></p>
       </form>
       </details>
     </li>
 {% endfor %}
   </ol>
 {% elif pode_guardar %}
-  <p class="miudo">Você ainda não guardou nenhuma peça. Abra a imagem que você
-  quer mostrar, copie o endereço da barra do navegador e cole no campo acima.</p>
+  <p class="miudo">Você ainda não adicionou trabalhos. Escolha uma imagem no seu
+  aparelho e envie pelo formulário acima.</p>
 {% endif %}
 
 {% if pode_guardar %}
   <section class="conferencia">
-    <h2>A conferência da escola</h2>
+    <h2>Avaliação da escola</h2>
     <p>Quando você achar que o portfólio está pronto, mande para a escola
-    olhar. Uma pessoa da equipe abre as suas peças, compara com o roteiro e
+    olhar. Uma pessoa da equipe abre os seus trabalhos, compara com o roteiro e
     responde: ou aceita, ou devolve dizendo o que falta.</p>
 
 {% if recusa_da_conferencia %}
@@ -150,19 +121,16 @@ O SELO DA ESCOLA (critério AC-12). Ele sai do estado do aluno, e não do últim
 pedido: quem já foi conferido e pediu uma conferência nova continua com o selo
 da anterior, e ler o pedido faria o selo sumir da tela sem nada tê-lo tirado.
 
-O segundo parágrafo é a metade que o corredor exige por escrito. A foto entra
-por link colado e a escola não controla o que está do outro lado dele (plano
-§6.2), então o selo vale para o dia em que o monitor olhou. Um selo que
-prometesse mais seria uma promessa que a escola não pode cumprir, e o aluno
-levaria essa promessa para um cliente pagante.
+O selo vale para o dia em que a equipe olhou o portfólio. Imagens por link
+podem mudar em sites externos sem que a escola controle essa mudança.
 {% endcomment %}
 {% if selo_em %}
     <p class="selo">Selo da escola: uma pessoa da equipe conferiu o seu
     portfólio em {{ selo_em|date:"d/m/Y" }}.</p>
-    <p class="miudo">O selo vale para o que essa pessoa viu no dia da conferência.
-    Ele não fala do que você mudar depois, e não responde pelos endereços das
-    suas imagens, que ficam em sites que a escola não controla. Trocou ou
-    acrescentou peças? Peça uma conferência nova, e o selo passa a valer para o
+    <p class="miudo">O selo vale para o que essa pessoa viu no dia da avaliação.
+    Ele não fala do que você mudar depois. Se usou imagens por link, a escola
+    também não controla os sites onde elas estão. Trocou ou
+    acrescentou trabalhos? Peça uma avaliação nova, e o selo passa a valer para o
     dia dela.</p>
 {% endif %}
 
@@ -172,62 +140,45 @@ levaria essa promessa para um cliente pagante.
     {{ pedido.prazo_ate|date:"d/m/Y" }}.{% if pedido.prazo_ate < agora %} Essa
     data já passou, e o seu pedido continua na fila: ele não foi esquecido nem
     recusado.{% endif %}</p>
-    <p class="miudo">Você pode continuar arrumando as suas peças enquanto
-    espera. A equipe olha o portfólio como ele estiver no dia da conferência.</p>
+    <p class="miudo">Você pode continuar arrumando os seus trabalhos enquanto
+    espera. A equipe olha o portfólio como ele estiver no dia da avaliação.</p>
 {% else %}
 {% if pedido.estado == "devolvido" %}
     <p class="recusa">A escola devolveu o seu portfólio em
     {{ pedido.respondido_em|date:"d/m/Y" }}, e este é o motivo:
     {{ pedido.get_motivo_da_devolucao_display }}</p>
-    <p>Arrume o que falta e peça a conferência de novo. Devolver não é dizer
+    <p>Arrume o que falta e peça a avaliação de novo. Devolver não é dizer
     não: é dizer o que ainda falta.</p>
 {% elif pedido.estado == "aceito" %}
-    <p>A escola disse sim ao seu portfólio. Se você acrescentar peças novas,
-    pode pedir uma conferência nova.</p>
+    <p>A escola disse sim ao seu portfólio. Se você acrescentar trabalhos novos,
+    pode pedir uma avaliação nova.</p>
 {% endif %}
-    <form method="post" action="{% url 'pedir_conferencia' %}">{% csrf_token %}<button type="submit">Pedir a conferência da escola</button></form>
+    <form method="post" action="{% url 'pedir_conferencia' %}">{% csrf_token %}<button type="submit">Pedir avaliação da escola</button></form>
 {% endif %}
   </section>
 
-{% comment %}
-A VITRINE (degrau 13, critério AC-13). Ela fecha a página de propósito: é o
-último passo do caminho do aluno, depois de guardar as peças e de mandar o
-portfólio para a escola olhar.
-
-O PADRÃO É PRIVADO, e a tela diz isso com todas as letras antes de qualquer
-botão. Enquanto ele não publicar, não existe página nenhuma para ninguém, e essa
-é a frase que ele precisa ler para confiar no que vai fazer.
-
-O ENDEREÇO APARECE INTEIRO, para copiar e colar no chat, e ele não sai de uma
-tag de url: a vitrine não mora sob o prefixo da área do aluno, e o motivo está
-por extenso em `apps/portfolio/vitrine.py`.
-
-TROCAR O ENDEREÇO É O MESMO BOTÃO DE PUBLICAR, e o aviso de que o link antigo
-para de funcionar vem ANTES dele, e não depois. Quem já mandou o link a um
-cliente precisa saber disso antes de apertar, não numa mensagem de sucesso.
-{% endcomment %}
   <section class="conferencia">
-    <h2>A sua vitrine</h2>
-    <p>A vitrine é a página pronta que você manda ao cliente. Ela mostra as suas
-    peças, o seu apelido e o selo da escola, e nada mais: nem o seu e-mail, nem
-    o seu telefone, nem o seu nome. Ela também fica fora dos buscadores, então
-    só chega nela quem tem o link.</p>
+    <h2>Página pública</h2>
+    <p>Esta é a página do portfólio que você pode compartilhar. Ela mostra os seus
+    trabalhos, o apelido escolhido e o selo da escola, se houver. Seu e-mail,
+    telefone e nome completo não aparecem. A página pede aos buscadores que não a
+    incluam nos resultados, mas qualquer pessoa com o endereço pode acessá-la ou compartilhá-la.</p>
 
 {% if recusa_da_vitrine %}
     <p class="recusa" role="alert">{{ recusa_da_vitrine }}</p>
 {% endif %}
 
 {% if vitrine_publicada %}
-    <p class="selo">A sua vitrine está no ar neste endereço:</p>
+    <p class="selo">Sua página pública está no ar neste endereço:</p>
     <p><a href="{{ endereco_da_vitrine }}" target="_blank" rel="noopener">{{ endereco_da_vitrine }}</a></p>
     <p class="miudo">Copie esse endereço e mande para quem você quiser. Tudo o
     que você mudar aqui aparece lá na mesma hora.</p>
-    <form method="post" action="{% url 'despublicar_vitrine' %}">{% csrf_token %}<button type="submit">Tirar a vitrine do ar</button></form>
+    <form method="post" action="{% url 'despublicar_vitrine' %}">{% csrf_token %}<button type="submit">Tirar a página pública do ar</button></form>
     <p class="miudo">Tirar do ar é na hora: quem abrir o link deixa de ver a
     página no mesmo instante. O endereço continua guardado com você, e volta a
     funcionar quando você publicar de novo.</p>
     <details class="responder">
-      <summary>Trocar o endereço da minha vitrine</summary>
+      <summary>Trocar o endereço da minha página pública</summary>
       <p class="miudo">Se você trocar, o endereço de agora para de funcionar, e
       quem já tem o link antigo passa a ver uma página que não existe.</p>
       <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}
@@ -240,7 +191,7 @@ cliente precisa saber disso antes de apertar, não numa mensagem de sucesso.
     </details>
 {% else %}
     <p>Enquanto você não publicar, não existe página nenhuma: ninguém consegue
-    ver as suas peças por fora da escola. Escolha o final do endereço e publique
+    ver os seus trabalhos por fora da escola. Escolha o final do endereço e publique
     quando quiser.</p>
     <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}
       <p>
@@ -248,39 +199,28 @@ cliente precisa saber disso antes de apertar, não numa mensagem de sucesso.
         <input type="text" id="apelido" name="apelido" value="{{ apelido }}" maxlength="48" placeholder="ana-3d" required>
       </p>
       <p class="miudo">Use letras e números, por exemplo o seu nome ou o nome do
-      seu estúdio. O endereço fica assim: meshcraft.top/estudio/ana-3d</p>
-      <p><button type="submit">Publicar a minha vitrine</button></p>
+      seu estúdio. O endereço fica assim: meshcraft.top/portfolio/ana-3d</p>
+      <p><button type="submit">Publicar minha página</button></p>
     </form>
 {% endif %}
   </section>
 
-{% comment %}
-O DOSSIÊ EM PDF (degrau 14, critério AC-16), e ele fecha a página porque é o
-último passo do caminho: guardar as peças, mandar para a escola olhar, publicar
-a vitrine, e sair daqui com o arquivo na mão.
-
-É UM LINK, e não um formulário. Baixar não muda nada no servidor, então a rota
-é `GET` e o navegador faz o resto sozinho, sem uma linha de script e sem POST.
-
-O TEXTO DIZ O QUE O ARQUIVO TEM E O QUE ELE NÃO TEM, porque quem vai anexá-lo a
-um e-mail para um cliente precisa saber disso antes de mandar, e não depois.
-{% endcomment %}
   <section class="conferencia">
-    <h2>O seu dossiê</h2>
-    <p>O dossiê é o arquivo do seu portfólio, pronto para anexar num e-mail,
-    imprimir ou levar a uma reunião. Ele traz as mesmas obras da sua vitrine, na
-    mesma ordem, e o selo da escola quando você já tiver o seu. Cada obra abre
-    no endereço dela com um clique.</p>
-    <p class="miudo">Assim como a vitrine, o arquivo não leva o seu e-mail, o
-    seu telefone nem o seu nome: só o seu apelido e as suas obras.</p>
+    <h2>Portfólio em PDF</h2>
+    <p>Baixe o arquivo do seu portfólio para anexar num e-mail,
+    imprimir ou levar a uma reunião. Ele traz os mesmos trabalhos da sua página pública, na
+    mesma ordem, e o selo da escola quando você já tiver o seu. Cada trabalho abre
+    no próprio endereço com um clique.</p>
+    <p class="miudo">Assim como a página pública, o arquivo não leva o seu e-mail, o
+    seu telefone nem o seu nome: só o seu apelido e os seus trabalhos.</p>
 
 {% if recusa_do_dossie %}
     <p class="recusa" role="alert">{{ recusa_do_dossie }}</p>
 {% endif %}
 
-    <p><a href="{% url 'dossie' %}">Baixar o meu dossiê em PDF</a></p>
+    <p><a href="{% url 'dossie' %}">Baixar portfólio em PDF</a></p>
   </section>
 {% endif %}
 
-  <p class="miudo"><a href="{% url 'prancheta' %}">Voltar para a sua Prancheta</a></p>
+  <p class="miudo"><a href="{% url 'prancheta' %}">Voltar ao meu portfólio</a></p>
 {% endblock %}

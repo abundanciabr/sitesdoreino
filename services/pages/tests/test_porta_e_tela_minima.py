@@ -19,7 +19,7 @@ Quatro coisas se provam aqui, e cada uma tem um modo de falha silencioso:
    desta casa grava `meshcraft_sessao`. O guarda de configuração está em
    `test_inv_pages_nao_assina_sessao.py`; este aqui mede o comportamento.
 
-4. **A vitrine pública não passa pela porta.** `/estudio/<apelido>` é o link
+4. **A vitrine pública não passa pela porta.** `/<apelido>` é o link
    que o aluno manda ao cliente pagante, e uma porta escrita sem essa distinção
    a fecharia. A única prova disso, sem este teste, seria o cliente do aluno
    vendo um pedido de login.
@@ -45,7 +45,7 @@ from tests.conftest import ANA, COOKIE, dublar_matricula, dublar_sessao
 
 # O que só quem entrou pode ler. Escrito por extenso, e não lido do template:
 # um teste que lesse a mesma fonte que o código passaria com o template vazio.
-FRASE_DA_PRANCHETA = "Esta é a sua Prancheta"
+FRASE_DA_PRANCHETA = "Prepare seu portfólio aqui"
 
 
 def bater(caminho: str = "/", *, cookie: str | None = None):
@@ -64,7 +64,7 @@ def texto(resposta) -> str:
 def test_sem_cookie_nenhum_a_prancheta_nao_responde(env_dos_pares, rede):
     resposta = bater()
     assert FRASE_DA_PRANCHETA not in texto(resposta)
-    assert "Entre para ver a sua Prancheta" in texto(resposta)
+    assert "Entre para ver o seu portfólio" in texto(resposta)
     # E a porta não gastou uma ida à rede para receber "visitante".
     assert not rede.calls
 
@@ -74,7 +74,7 @@ def test_sessao_de_visitante_recebe_o_convite(env_dos_pares, rede):
     resposta = bater(cookie=COOKIE)
     assert resposta.status_code == 200
     assert FRASE_DA_PRANCHETA not in texto(resposta)
-    assert "Entre para ver a sua Prancheta" in texto(resposta)
+    assert "Entre para ver o seu portfólio" in texto(resposta)
 
 
 def test_quem_entrou_sem_matricula_ativa_recebe_403_e_a_frase_diz_isso(
@@ -201,22 +201,22 @@ def test_nenhuma_resposta_desta_casa_grava_o_cookie_do_site(
 # 5. A vitrine pública é a exceção, e a exceção não é uma fresta
 # ---------------------------------------------------------------------------
 def test_a_vitrine_publica_nao_passa_pela_porta(env_dos_pares, rede):
-    """`/estudio/<apelido>` é para um cliente que nunca vai entrar na
+    """`/<apelido>` é para um cliente que nunca vai entrar na
     plataforma. A tela dele nasce no degrau 13; o que se prova aqui é que a
     porta o deixa chegar ao urlconf em vez de pedir login.
     """
-    resposta = bater("/estudio/ana-3d")
+    resposta = bater("/ana-3d")
     assert (
         resposta.status_code == 404
     ), "a vitrine chegou ao urlconf, e ele ainda não tem a tela dela (degrau 13)"
-    assert "Entre para ver a sua Prancheta" not in texto(resposta)
+    assert "Entre para ver o seu portfólio" not in texto(resposta)
     assert not rede.calls, "a porta nem perguntou quem é: a vitrine é aberta"
 
 
 def test_um_caminho_parecido_com_a_vitrine_nao_herda_a_isencao(env_dos_pares, rede):
-    """Sem a barra na comparação, `/estudiosecreto` entraria de graça."""
-    resposta = bater("/estudiosecreto")
-    assert "Entre para ver a sua Prancheta" in texto(resposta)
+    """Sem a barra na comparação, `/trabalhossecreto/guardar` entraria de graça."""
+    resposta = bater("/trabalhossecreto/guardar")
+    assert "Entre para ver o seu portfólio" in texto(resposta)
 
 
 def test_as_isencoes_da_porta_sao_exatamente_estas():
@@ -228,4 +228,4 @@ def test_as_isencoes_da_porta_sao_exatamente_estas():
     """
     assert CAMINHOS_ISENTOS == frozenset({"/healthz"})
     assert PREFIXO_DA_PORTA_DE_MAQUINA == "/interno"
-    assert PREFIXO_PUBLICO_DA_VITRINE == "/estudio"
+    assert PREFIXO_PUBLICO_DA_VITRINE == "/portfolio"

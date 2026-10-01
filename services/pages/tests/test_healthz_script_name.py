@@ -1,6 +1,6 @@
 """Teste-guarda de `armadilhas/029`: `/healthz` sob prefixo.
 
-Esta célula serve em `meshcraft.top/pages` (`PLANO-PORTFOLIO-DO-ALUNO.md` §4),
+Esta célula serve em `meshcraft.top/portfolio` (`PLANO-PORTFOLIO-DO-ALUNO.md` §4),
 ou seja **sob SCRIPT_NAME** — a mesma condição que derrubou a sonda do
 `checkout` (PR #65) e do `quiz` (PR #71), e que a `sugestoes`, a `admin`, o
 `forum`, a `gamificacao`, a `encomendas` e a `cursos` já travam do mesmo jeito.
@@ -11,12 +11,12 @@ Duas coisas quebram nesse regime, e as duas estão travadas aqui:
    como `path("pages/healthz", ...)` deixa de resolver assim que o prefixo
    muda — e mudar de endereço passaria a exigir cirurgia em código. Nesta
    célula isso é mais do que higiene: ela tem DOIS endereços públicos
-   (`/pages` e `/estudio`), e a decisão de qual deles vira `SCRIPT_NAME` é do
+   (`/portfolio` e `/estudio`), e a decisão de qual deles vira `SCRIPT_NAME` é do
    degrau 05. Um urlconf que já tivesse cravado um deles tomaria essa decisão
    sozinho, aqui, sem poder prová-la.
 2. **Qualquer isenção de middleware compara `request.path_info`, nunca
    `request.path`.** Pela borda pública o Traefik **não remove** o prefixo: a
-   request line que chega ao uvicorn é `GET /pages/healthz`, e nessa
+   request line que chega ao uvicorn é `GET /portfolio/healthz`, e nessa
    requisição `request.path` contém o prefixo em QUALQUER versão do Django.
    `request.path_info` segue `/healthz` nos dois casos.
 
@@ -27,9 +27,9 @@ a sonda morta em produção e o container nunca ficando `healthy`.
 
 E há um terceiro efeito do mesmo corte, que este arquivo mede de passagem e que
 `armadilhas/186` documenta: como o Django é quem remove o prefixo, tudo o que
-esta célula servir na raiz do urlconf fica alcançável em `/pages/<caminho>`
+esta célula servir na raiz do urlconf fica alcançável em `/portfolio/<caminho>`
 pela internet. Vale para o `/healthz` (o que é desejado) e valerá para
-`/api/pages/` e `/interno/` da porta de máquina do degrau 03 (o que exige
+`/api/portfolio/` e `/interno/` da porta de máquina do degrau 03 (o que exige
 Bearer, não topologia). O `test_o_prefixo_alcanca_a_raiz_do_urlconf` abaixo é a
 prova dessa premissa, escrita agora para que ninguém copie de uma célula
 vizinha a frase *"nada em `/interno` resolve pela borda pública"* — que aqui
@@ -39,7 +39,7 @@ Os dois caminhos de entrada são exercitados pelo transporte REAL de cada um:
 
 | Caminho             | Request line      | Transporte                         |
 |---------------------|-------------------|------------------------------------|
-| borda pública       | `/pages/healthz`  | ASGI (uvicorn atrás do Traefik)    |
+| borda pública       | `/portfolio/healthz`  | ASGI (uvicorn atrás do Traefik)    |
 | healthcheck interno | `/healthz`        | ASGI (docker compose, sem gateway) |
 
 `AsyncClient` é obrigatório para valer como prova: só ele constrói um
@@ -56,12 +56,12 @@ from django.test import AsyncClient
 # `infra/provisionar-pages.sh` e o env de exemplo). Escrito à mão aqui, e não
 # lido de `settings`: um teste que lê a mesma variável que o código passaria
 # mesmo com o valor errado.
-PREFIXO = "/pages"
+PREFIXO = "/portfolio"
 
 
 @pytest.fixture
 def env_de_producao(settings):
-    """O que o env real da VPS faz: SCRIPT_NAME=/pages."""
+    """O que o env real da VPS faz: SCRIPT_NAME=/portfolio."""
     settings.FORCE_SCRIPT_NAME = PREFIXO
 
 
@@ -89,9 +89,9 @@ def test_o_prefixo_alcanca_a_raiz_do_urlconf(env_de_producao):
 
     A consequência que este guarda fixa em teste, para que ela pare de ser
     crença: com `FORCE_SCRIPT_NAME` ligado, uma rota declarada na RAIZ do
-    urlconf é servida em `/pages/<rota>` pela internet. É por isso que o
+    urlconf é servida em `/portfolio/<rota>` pela internet. É por isso que o
     `/healthz` funciona pela borda — e é exatamente por isso que a porta de
-    máquina do degrau 03 (`/api/pages/`, `/interno/`) NÃO poderá contar com a
+    máquina do degrau 03 (`/api/portfolio/`, `/interno/`) NÃO poderá contar com a
     topologia para ficar escondida: ela nascerá publicada, e quem a fecha é o
     Bearer do par.
 
@@ -111,8 +111,8 @@ def test_o_prefixo_alcanca_a_raiz_do_urlconf(env_de_producao):
 def test_urlconf_nao_conhece_o_prefixo(client):
     """O outro lado da moeda: o prefixo mora no env, nunca no `urls.py`.
 
-    Sem SCRIPT_NAME configurado, `/pages/healthz` NÃO é a sonda — se este teste
-    virar 200 com o JSON de saúde, alguém embutiu `/pages` numa rota e a célula
+    Sem SCRIPT_NAME configurado, `/portfolio/healthz` NÃO é a sonda — se este teste
+    virar 200 com o JSON de saúde, alguém embutiu `/portfolio` numa rota e a célula
     deixou de ser dona do próprio prefixo por configuração.
 
     A asserção não é `== 404` de propósito: a gênese já sabia que a forma da

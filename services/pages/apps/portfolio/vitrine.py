@@ -1,50 +1,9 @@
-"""A vitrine pública do aluno: o endereço, o opt-in e o que a página mostra.
+"""Página pública em /portfolio/<apelido>, disponível apenas após publicação.
 
 ci:texto-publicado
 
-A MARCA ACIMA LIGA O PORTÃO DO TRAVESSÃO neste arquivo inteiro
-(`ci/travessao.py`, terceira regra de alcance no `CLAUDE.md`), pelo mesmo motivo
-do `semaforo.py` e do `conferencia.py` ao lado: as recusas daqui são frases que
-o ALUNO lê na estante dele, e elas não estão numa `templates/` nem num rótulo de
-`TextChoices`, que são as duas regras que pegam sozinhas.
-
-Lei: `docs/changespecs/CS-PAGES-0001.md`, critérios AC-13, AC-14 e AC-15, e
-`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md` §4, §5 (degrau 13) e §7. Este módulo
-é a regra do degrau 13 inteiro, tirando as telas.
-
-O PADRÃO É PRIVADO, E ISSO É O CENTRO DO DEGRAU
-------------------------------------------------
-A vitrine só existe se o aluno LIGAR. O banco já defende isso desde o degrau 02
-(`Portfolio.vitrine_publicada` nasce `False`, e a restrição
-`vitrine_publicada_tem_apelido_e_data` recusa os meios-termos); o que este
-módulo acrescenta é o gesto, e a garantia de que quem não ligou não existe para
-a internet.
-
-**Quem não ligou responde 404, e nunca 403.** Um 403 responderia uma pergunta
-que ninguém tem o direito de fazer: *este apelido existe?* Com 404, tentar
-`/estudio/ana` no escuro devolve exatamente a mesma coisa que tentar
-`/estudio/quem-nao-existe`, e a página desligada some junto com a que nunca foi
-criada. Guarda:
-`tests/test_a_vitrine_publica.py::test_a_vitrine_desligada_responde_o_MESMO_que_o_apelido_que_nunca_existiu`.
-
-O ENDEREÇO NÃO SAI DE `{% url %}`, E É O ÚNICO DESTA CASA QUE NÃO SAI
-----------------------------------------------------------------------
-A regra desta casa é que endereço sai de `{% url %}`, senão o prefixo público
-some em produção (`armadilhas/029` e `/081`). Aqui a situação é o INVERSO, e a
-`admin` já a mediu de fora em 29/08/2026 (`armadilhas/102`, e a constante
-`documentos.PREFIXO_PUBLICO` que nasceu dela): `reverse()` monta
-`/pages/estudio/ana` porque `FORCE_SCRIPT_NAME` vale para a célula inteira, e a
-vitrine **não mora sob `/pages`**. Aquele endereço até chega aqui, mas seria um
-SEGUNDO endereço para a mesma página, e ele iria parar no chat de um cliente
-pagante, que é justamente onde o endereço curto foi escolhido para estar
-(plano §4).
-
-Uma constante só, aqui, é o que impede a correção de virar caminho cravado
-espalhado por dois templates. Ela casa com o `PathPrefix(/estudio)` do gateway
-(`infra/traefik/dynamic/plataforma.yml`, roteador `estudio`, sem `StripPrefix`)
-e é a MESMA que a porta da casa lê para isentar a vitrine
-(`apps/core/porta.py`), importada de cá em vez de copiada: duas cadeias
-`"/estudio"` livres para divergir fechariam a vitrine ou abririam a casa.
+O prefixo compartilhado com a área privada é aplicado uma vez ao link público.
+A autorização distingue as rotas resolvidas, não o prefixo comum.
 """
 
 from __future__ import annotations
@@ -56,9 +15,10 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.portfolio.models import EstadoDoLink, Peca, Portfolio
+from apps.core.enderecos import PREFIXO, RESERVADOS
 
 #: O prefixo do endereço PÚBLICO. Leia o cabeçalho deste módulo antes de mexer.
-PREFIXO_PUBLICO = "/estudio"
+PREFIXO_PUBLICO = PREFIXO
 
 #: O tamanho do apelido é o da coluna (`Portfolio.apelido`), e não um número
 #: novo: dois limites para o mesmo fato divergem no dia em que um deles mudar.
@@ -124,6 +84,10 @@ def publicar(*, site_id: str, aluno_id: str, texto: str) -> Portfolio:
     apelido = apelido_de(texto)
     if not apelido:
         raise VitrineRecusada(SEM_LETRA_NEM_NUMERO)
+    if apelido in RESERVADOS:
+        raise VitrineRecusada(
+            "Esse endereço é usado por uma página do site. Escolha outro, como ana-3d."
+        )
 
     try:
         with transaction.atomic():

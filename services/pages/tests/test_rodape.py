@@ -151,7 +151,7 @@ def test_o_link_do_site_sai_do_settings_e_nao_de_uma_segunda_verdade(aluna, sett
 
 def test_o_rodape_leva_para_fora_desta_casa_e_para_mais_nada(aluna, settings):
     """Um link para onde a pessoa já está gasta espaço e ensina a desconfiar da
-    navegação. Toda página que desenha este rodapé está dentro de `/pages`.
+    navegação. Toda página que desenha este rodapé está dentro de `/portfolio`.
 
     A lista é conferida por IGUALDADE, e não por `in`: um terceiro link
     acrescentado com pressa reprova aqui em vez de entrar em silêncio.

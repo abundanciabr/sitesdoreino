@@ -2,7 +2,7 @@
 
 *"Aceita a conferência, o portfólio recebe o selo 'conferido pela escola', o
 evento é publicado e o aluno recebe a carta no sininho. O texto do selo diz que
-ele vale para o que o monitor viu no dia da conferência"*
+ele vale para o que o monitor viu no dia da avaliação"*
 (`CS-PAGES-0001.md`, AC-12). Este é o degrau 12 da escada
 (`PLANO-PORTFOLIO-DO-ALUNO.md` §5).
 
@@ -403,10 +403,10 @@ def test_o_aluno_ve_o_selo_com_a_data_e_com_o_que_ele_vale(
     criar_peca(portfolio)
     conferencia.aceitar(pedido=conferencia.pedir(portfolio), conferido_por=MONITORA)
 
-    corpo = Client().get("/pecas", HTTP_COOKIE=COOKIE).content.decode()
+    corpo = Client().get("/trabalhos", HTTP_COOKIE=COOKIE).content.decode()
 
     assert "Selo da escola" in corpo
-    assert "viu no dia da conferência" in corpo
+    assert "viu no dia da avaliação" in corpo
 
 
 def test_quem_nao_foi_conferido_nao_ve_selo_nenhum(
@@ -414,7 +414,7 @@ def test_quem_nao_foi_conferido_nao_ve_selo_nenhum(
 ):
     criar_peca(criar_portfolio(aluna["id"], site_id=site_declarado))
 
-    corpo = Client().get("/pecas", HTTP_COOKIE=COOKIE).content.decode()
+    corpo = Client().get("/trabalhos", HTTP_COOKIE=COOKIE).content.decode()
 
     assert "Selo da escola" not in corpo
 
@@ -436,7 +436,7 @@ def test_o_selo_continua_na_tela_depois_de_uma_devolucao_posterior(
         motivo=MotivoDaDevolucao.POUCAS_PECAS,
     )
 
-    corpo = Client().get("/pecas", HTTP_COOKIE=COOKIE).content.decode()
+    corpo = Client().get("/trabalhos", HTTP_COOKIE=COOKIE).content.decode()
 
     assert "Selo da escola" in corpo
 
@@ -449,7 +449,7 @@ def test_o_selo_de_um_aluno_nao_aparece_para_outro(
     criar_peca(do_outro)
     conferencia.aceitar(pedido=conferencia.pedir(do_outro), conferido_por=MONITORA)
 
-    corpo = Client().get("/pecas", HTTP_COOKIE=COOKIE).content.decode()
+    corpo = Client().get("/trabalhos", HTTP_COOKIE=COOKIE).content.decode()
 
     assert "Selo da escola" not in corpo
 

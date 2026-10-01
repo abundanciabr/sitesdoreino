@@ -32,7 +32,7 @@ espaço em branco entre os botões (`armadilhas/033`).
 {% block conteudo %}
   <p class="rotulo miudo">Bastidor da escola</p>
   <h1>Portfólios esperando você</h1>
-  <p>O mais urgente em cima. Aceitar fecha a conferência no nome da pessoa;
+  <p>O mais urgente em cima. Aceitar fecha a avaliação no nome da pessoa;
   devolver manda de volta com o que falta, em particular, e o aluno lê o motivo
   na tela dele. Assumir um pedido mostra à equipe quem está cuidando dele.</p>
 
@@ -46,7 +46,7 @@ espaço em branco entre os botões (`armadilhas/033`).
   <p class="recusa" role="alert">{{ recusa }}</p>
 {% endif %}
 {% if feito == "aceitar" %}
-  <p class="recado">Conferência aceita. O pedido saiu da fila.</p>
+  <p class="recado">Avaliação concluída. O pedido saiu da fila.</p>
 {% elif feito == "devolver" %}
   <p class="recado">Devolvido, com o motivo que você escolheu. O aluno lê a
   frase inteira na tela dele.</p>
@@ -68,10 +68,12 @@ espaço em branco entre os botões (`armadilhas/033`).
       <ol class="estante">
 {% for peca in linha.pecas %}
         <li class="peca estado-{{ peca.estado_do_link }}">
-          <p class="titulo">{% if peca.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ peca.legenda|default:"Peça sem legenda" }}</p>
-          <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">{{ peca.link }}</a></p>
+          <p class="titulo">{% if peca.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ peca.legenda|default:"Trabalho sem descrição" }}</p>
+          <a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer"><img class="miniatura" src="{{ peca.link }}" alt="{{ peca.legenda|default:'Imagem do trabalho' }}" loading="lazy"></a>
+          <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">Abrir imagem</a></p>
           <p class="miudo estado">{{ peca.get_estado_do_link_display }}.</p>
           <div class="semaforo luz-{{ peca.semaforo.cor }}">
+            <h3>{% if peca.semaforo.pendencias %}O que falta preencher{% else %}Informações preenchidas{% endif %}</h3>
             <p class="resumo"><span class="luz" aria-hidden="true"></span>{{ peca.semaforo.resumo }}</p>
 {% if peca.semaforo.pendencias %}
             <ul class="falta">
@@ -83,12 +85,12 @@ espaço em branco entre os botões (`armadilhas/033`).
           </div>
         </li>
 {% empty %}
-        <li class="peca"><p class="miudo">Este portfólio está sem peças agora.
-        O aluno pode ter tirado todas depois de pedir a conferência.</p></li>
+        <li class="peca"><p class="miudo">Este portfólio está sem trabalhos agora.
+        O aluno pode ter removido todos depois de pedir a avaliação.</p></li>
 {% endfor %}
       </ol>
 
-      <form method="post" action="{% url 'decidir' %}" class="decidir">{% csrf_token %}<input type="hidden" name="pedido" value="{{ linha.pedido.pk }}"><button type="submit" name="gesto" value="aceitar">Aceitar a conferência</button>
+      <form method="post" action="{% url 'decidir' %}" class="decidir">{% csrf_token %}<input type="hidden" name="pedido" value="{{ linha.pedido.pk }}"><button type="submit" name="gesto" value="aceitar">Concluir avaliação</button>
         <p>
           <label for="motivo-{{ linha.pedido.pk }}">Ou devolver dizendo o que falta</label>
           <select id="motivo-{{ linha.pedido.pk }}" name="motivo">
@@ -101,7 +103,7 @@ espaço em branco entre os botões (`armadilhas/033`).
 {% empty %}
     <section class="aviso">
       <h2>Nada esperando</h2>
-      <p>A fila está vazia. Quando um aluno pedir a conferência do portfólio
+      <p>A fila está vazia. Quando um aluno pedir a avaliação do portfólio
       dele, o pedido aparece aqui com a data até quando responder.</p>
     </section>
 {% endfor %}

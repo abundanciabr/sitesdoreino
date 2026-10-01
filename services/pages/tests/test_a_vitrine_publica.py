@@ -1,4 +1,4 @@
-"""GUARDAS da vitrine pública `/estudio/<apelido>` (degrau 13, AC-13 a AC-15).
+"""GUARDAS da vitrine pública `/<apelido>` (degrau 13, AC-13 a AC-15).
 
 Esta é a ÚNICA página desta casa fora da porta fail-closed, e é por isso que os
 guardas daqui são mais duros que os das telas do aluno: quem abre é o cliente
@@ -31,9 +31,9 @@ from conftest import ANA, OUTRO_SITE, SITE, agora
 # extenso, e nunca montados por `reverse()`: o endereço público da vitrine NÃO
 # leva o prefixo da área do aluno, e um teste que o montasse pela mesma função
 # que o código usa não teria como acusar o dia em que ela passasse a devolver
-# `/pages/estudio/ana` (`armadilhas/102`, a mesma família).
+# `/portfolio/ana` (`armadilhas/102`, a mesma família).
 APELIDO = "ana-3d"
-ENDERECO = "/estudio/ana-3d"
+ENDERECO = "/ana-3d"
 
 LINK_DA_PECA = "https://cdn.exemplo.test/ana/dragao.png"
 
@@ -88,21 +88,21 @@ def test_a_vitrine_desligada_responde_o_MESMO_que_o_apelido_que_nunca_existiu(
 ):
     """403 aqui seria um vazamento: ele confirmaria que o apelido existe.
 
-    Quem tenta `/estudio/ana-3d` no escuro tem de receber exatamente a mesma
-    coisa de quem tenta /estudio/nao-existe-ninguem, salvo a referência
+    Quem tenta `/ana-3d` no escuro tem de receber exatamente a mesma
+    coisa de quem tenta /nao-existe-ninguem, salvo a referência
     de suporte e o endereço que a própria pessoa pediu.
     """
     criar_portfolio(ANA["id"], apelido=APELIDO, publicada=False)
 
     desligada = client.get(ENDERECO)
-    inexistente = client.get("/estudio/nao-existe-ninguem")
+    inexistente = client.get("/nao-existe-ninguem")
 
     assert desligada.status_code == 404
     assert inexistente.status_code == 404
     corpos = []
     for resposta, endereco in (
         (desligada, ENDERECO),
-        (inexistente, "/estudio/nao-existe-ninguem"),
+        (inexistente, "/nao-existe-ninguem"),
     ):
         referencia = resposta["X-Request-ID"]
         assert referencia.startswith("ERR-404-")
@@ -285,7 +285,7 @@ def test_a_vitrine_de_outra_escola_nao_abre_com_o_mesmo_apelido(
     )
     criar_peca(de_outra_escola, ordem=1, link=LINK_DA_PECA, legenda="Obra de fora")
 
-    assert client.get("/estudio/zeca").status_code == 404
+    assert client.get("/zeca").status_code == 404
 
 
 def test_sem_site_id_a_vitrine_nao_abre_no_lugar_de_abrir_no_escuro(
@@ -324,13 +324,13 @@ def test_o_aluno_publica_a_vitrine_e_a_estante_mostra_o_endereco_para_copiar(
     assert portfolio.vitrine_publicada is True
     assert portfolio.apelido == "ana-3d"
     assert portfolio.publicada_em is not None
-    assert ENDERECO in client.get("/pecas").content.decode()
+    assert ENDERECO in client.get("/trabalhos").content.decode()
 
 
-def test_o_endereco_que_o_aluno_copia_nao_leva_o_prefixo_da_area_dele(
+def test_o_endereco_que_o_aluno_copia_leva_o_prefixo_uma_so_vez(
     client, aluna, site_declarado
 ):
-    """`{% url %}` montaria `/pages/estudio/ana-3d`, que é um SEGUNDO endereço
+    """`{% url %}` montaria `/portfolio/ana-3d`, que é um SEGUNDO endereço
     para a mesma página (`armadilhas/102`, medida na `admin` em 29/08/2026). O
     endereço da vitrine é curto de propósito: é o link que vai para o chat de um
     freelancer.
@@ -343,17 +343,18 @@ def test_o_endereco_que_o_aluno_copia_nao_leva_o_prefixo_da_area_dele(
     06/09/2026, sabotando o código com `reverse()` de propósito.
     """
     prefixo_anterior = get_script_prefix()
-    set_script_prefix("/pages/")
+    set_script_prefix("/portfolio/")
     try:
         client.cookies.load({"meshcraft_sessao": "cookie-opaco-de-ana"})
         client.post("/vitrine/publicar", {"apelido": APELIDO})
 
-        corpo = client.get("/pecas").content.decode()
+        corpo = client.get("/trabalhos").content.decode()
     finally:
         set_script_prefix(prefixo_anterior)
 
     assert ENDERECO in corpo
-    assert "/pages/estudio/" not in corpo
+    assert "http://testserver/portfolio/ana-3d" in corpo
+    assert "/portfolio/portfolio/" not in corpo
 
 
 def test_o_aluno_despublica_e_o_apelido_continua_guardado_para_ele(
@@ -415,5 +416,5 @@ def test_ligar_a_vitrine_de_quem_nao_entrou_nao_existe(client, db, site_declarad
     resposta = client.post("/vitrine/publicar", {"apelido": APELIDO})
 
     assert resposta.status_code == 200
-    assert "Entre para ver a sua Prancheta" in resposta.content.decode()
+    assert "Entre para ver o seu portfólio" in resposta.content.decode()
     assert not Portfolio.objects.exists()

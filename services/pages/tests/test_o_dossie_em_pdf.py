@@ -202,7 +202,7 @@ def test_o_dossie_mostra_AS_MESMAS_obras_que_a_vitrine_publica(
     )
 
     no_dossie = enderecos_clicaveis(logada.get(ENDERECO).content)
-    pagina = client.get(f"/estudio/{APELIDO}").content.decode()
+    pagina = client.get(f"/{APELIDO}").content.decode()
     na_vitrine = re.findall(r'<img src="([^"]+)"', pagina)
 
     assert no_dossie == na_vitrine
@@ -298,7 +298,7 @@ def test_sem_obras_a_tela_explica_em_vez_de_baixar_um_arquivo_vazio(
     resposta = logada.get(ENDERECO)
 
     assert not resposta.content.startswith(b"%PDF-")
-    assert "ainda não tem nenhuma obra" in resposta.content.decode()
+    assert "ainda não tem nenhum trabalho" in resposta.content.decode()
 
 
 # ---------------------------------------------------------------------------

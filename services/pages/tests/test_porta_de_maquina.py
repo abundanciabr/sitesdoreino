@@ -2,9 +2,9 @@
 
 Três coisas se provam aqui, e cada uma tem um modo de falha silencioso:
 
-1. **O Bearer é o único cadeado.** Esta célula roda sob `SCRIPT_NAME=/pages` e o
+1. **O Bearer é o único cadeado.** Esta célula roda sob `SCRIPT_NAME=/portfolio` e o
    corte do prefixo é do Django, não do Traefik: `/interno` é alcançável pela
-   borda pública em `meshcraft.top/pages/interno/...` (`armadilhas/186`). Se o
+   borda pública em `meshcraft.top/portfolio/interno/...` (`armadilhas/186`). Se o
    401 sumir, nada quebra, nenhuma tela muda, e o portfólio de qualquer aluno
    passa a responder para a internet inteira. Por isso o guarda cobre o
    sem-token, o token errado E o conjunto de tokens vazio, que é o estado de uma

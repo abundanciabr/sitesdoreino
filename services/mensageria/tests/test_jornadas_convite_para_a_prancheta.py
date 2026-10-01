@@ -282,7 +282,7 @@ def test_o_convite_manda_o_aluno_para_a_prancheta_sem_documento_privado():
     for texto in TextoDoPasso.objects.all():
         assert "meshcraft.top/docs/guia-do-portfolio" not in texto.corpo
         if texto.passo.ordem == 1:
-            assert "meshcraft.top/pages/ " in texto.corpo
+            assert "meshcraft.top/portfolio/ " in texto.corpo
 
 
 def test_semear_duas_vezes_nao_duplica_nem_reescreve():

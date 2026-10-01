@@ -81,7 +81,7 @@ def test_a_peca_entra_com_legenda_ordem_e_destaque(estante, rede):
     dublar_o_endereco(rede)
 
     resposta = estante.post(
-        "/pecas/guardar", {"link": LINK, "legenda": "Cadeira de madeira"}
+        "/trabalhos/guardar", {"link": LINK, "legenda": "Cadeira de madeira"}
     )
 
     assert resposta.status_code == 302
@@ -93,7 +93,7 @@ def test_a_peca_entra_com_legenda_ordem_e_destaque(estante, rede):
     assert peca.estado_do_link == EstadoDoLink.RESPONDENDO
     assert peca.conferido_em is not None
 
-    tela = estante.get("/pecas")
+    tela = estante.get("/trabalhos")
     assert "Cadeira de madeira" in tela.content.decode()
 
 
@@ -101,8 +101,8 @@ def test_a_peca_nova_entra_no_fim_da_estante(estante, rede):
     dublar_o_endereco(rede)
     dublar_o_endereco(rede, link=OUTRO_LINK)
 
-    estante.post("/pecas/guardar", {"link": LINK, "legenda": "primeira"})
-    estante.post("/pecas/guardar", {"link": OUTRO_LINK, "legenda": "segunda"})
+    estante.post("/trabalhos/guardar", {"link": LINK, "legenda": "primeira"})
+    estante.post("/trabalhos/guardar", {"link": OUTRO_LINK, "legenda": "segunda"})
 
     assert list(Peca.objects.order_by("ordem").values_list("legenda", flat=True)) == [
         "primeira",
@@ -114,7 +114,7 @@ def test_o_link_que_o_outro_lado_recusa_nao_entra_e_a_tela_diz_o_motivo(estante,
     """O coração do AC-08: recusar, e dizer POR QUE, com o número na frase."""
     dublar_o_endereco(rede, status=404)
 
-    resposta = estante.post("/pecas/guardar", {"link": LINK, "legenda": "torta"})
+    resposta = estante.post("/trabalhos/guardar", {"link": LINK, "legenda": "torta"})
 
     assert Peca.objects.count() == 0
     assert resposta.status_code == 422
@@ -128,7 +128,7 @@ def test_o_link_que_o_outro_lado_recusa_nao_entra_e_a_tela_diz_o_motivo(estante,
 def test_a_recusa_do_link_privado_ensina_o_que_fazer(estante, rede):
     dublar_o_endereco(rede, status=403)
 
-    corpo = estante.post("/pecas/guardar", {"link": LINK}).content.decode()
+    corpo = estante.post("/trabalhos/guardar", {"link": LINK}).content.decode()
 
     assert "privada" in corpo
     assert "qualquer pessoa com o link" in corpo
@@ -142,7 +142,7 @@ def test_o_endereco_que_ninguem_atendeu_guarda_a_peca_como_nao_conferida(estante
     """
     dublar_o_silencio(rede, erro=httpx.ConnectTimeout("demorou"))
 
-    resposta = estante.post("/pecas/guardar", {"link": LINK, "legenda": "boa"})
+    resposta = estante.post("/trabalhos/guardar", {"link": LINK, "legenda": "boa"})
 
     assert resposta.status_code == 302
     peca = Peca.objects.get()
@@ -152,7 +152,7 @@ def test_o_endereco_que_ninguem_atendeu_guarda_a_peca_como_nao_conferida(estante
 def test_o_endereco_sem_https_e_recusado_antes_de_tocar_na_rede(estante, rede):
     """A vitrine é https, e o navegador do cliente do aluno bloqueia http."""
     corpo = estante.post(
-        "/pecas/guardar", {"link": "http://exemplo.test/render.png"}
+        "/trabalhos/guardar", {"link": "http://exemplo.test/render.png"}
     ).content.decode()
 
     assert Peca.objects.count() == 0
@@ -170,7 +170,7 @@ def test_o_endereco_de_maquina_de_dentro_e_recusado_antes_de_tocar_na_rede(
     respondeu lá dentro.
     """
     corpo = estante.post(
-        "/pecas/guardar", {"link": "https://identidade:8000/interno/sessao"}
+        "/trabalhos/guardar", {"link": "https://identidade:8000/interno/sessao"}
     ).content.decode()
 
     assert Peca.objects.count() == 0
@@ -180,7 +180,7 @@ def test_o_endereco_de_maquina_de_dentro_e_recusado_antes_de_tocar_na_rede(
 
 def test_o_endereco_numerico_e_recusado_antes_de_tocar_na_rede(estante, rede):
     corpo = estante.post(
-        "/pecas/guardar", {"link": "https://127.0.0.1/render.png"}
+        "/trabalhos/guardar", {"link": "https://127.0.0.1/render.png"}
     ).content.decode()
 
     assert Peca.objects.count() == 0
@@ -189,21 +189,21 @@ def test_o_endereco_numerico_e_recusado_antes_de_tocar_na_rede(estante, rede):
 
 
 def test_o_campo_vazio_pede_o_endereco_em_vez_de_gravar_peca_sem_link(estante, rede):
-    corpo = estante.post("/pecas/guardar", {"link": "  "}).content.decode()
+    corpo = estante.post("/trabalhos/guardar", {"link": "  "}).content.decode()
 
     assert Peca.objects.count() == 0
-    assert "Cole o endereço da imagem" in corpo
+    assert "Envie uma imagem ou cole o endereço dela" in corpo
 
 
 def test_a_ordem_e_o_destaque_sao_do_aluno(estante, rede):
     dublar_o_endereco(rede)
     dublar_o_endereco(rede, link=OUTRO_LINK)
-    estante.post("/pecas/guardar", {"link": LINK, "legenda": "primeira"})
-    estante.post("/pecas/guardar", {"link": OUTRO_LINK, "legenda": "segunda"})
+    estante.post("/trabalhos/guardar", {"link": LINK, "legenda": "primeira"})
+    estante.post("/trabalhos/guardar", {"link": OUTRO_LINK, "legenda": "segunda"})
     segunda = Peca.objects.get(legenda="segunda")
 
-    estante.post("/pecas/mudar", {"peca": segunda.pk, "acao": "subir"})
-    estante.post("/pecas/mudar", {"peca": segunda.pk, "acao": "destacar"})
+    estante.post("/trabalhos/mudar", {"peca": segunda.pk, "acao": "subir"})
+    estante.post("/trabalhos/mudar", {"peca": segunda.pk, "acao": "destacar"})
 
     assert list(Peca.objects.order_by("ordem").values_list("legenda", flat=True)) == [
         "segunda",
@@ -214,10 +214,10 @@ def test_a_ordem_e_o_destaque_sao_do_aluno(estante, rede):
 
 def test_subir_a_primeira_peca_nao_faz_nada_e_nao_quebra(estante, rede):
     dublar_o_endereco(rede)
-    estante.post("/pecas/guardar", {"link": LINK, "legenda": "sozinha"})
+    estante.post("/trabalhos/guardar", {"link": LINK, "legenda": "sozinha"})
     unica = Peca.objects.get()
 
-    resposta = estante.post("/pecas/mudar", {"peca": unica.pk, "acao": "subir"})
+    resposta = estante.post("/trabalhos/mudar", {"peca": unica.pk, "acao": "subir"})
 
     assert resposta.status_code == 302
     assert Peca.objects.get(pk=unica.pk).ordem == unica.ordem
@@ -226,18 +226,18 @@ def test_subir_a_primeira_peca_nao_faz_nada_e_nao_quebra(estante, rede):
 def test_o_aluno_tira_a_propria_peca_da_estante(estante, rede):
     """O único caminho de saída de uma peça, e ele começa num botão."""
     dublar_o_endereco(rede)
-    estante.post("/pecas/guardar", {"link": LINK})
+    estante.post("/trabalhos/guardar", {"link": LINK})
     peca = Peca.objects.get()
 
-    estante.post("/pecas/mudar", {"peca": peca.pk, "acao": "remover"})
+    estante.post("/trabalhos/mudar", {"peca": peca.pk, "acao": "remover"})
 
     assert Peca.objects.count() == 0
 
 
 def test_a_estante_de_quem_nunca_guardou_nada_explica_o_que_fazer(estante):
-    corpo = estante.get("/pecas").content.decode()
+    corpo = estante.get("/trabalhos").content.decode()
 
-    assert "ainda não guardou nenhuma peça" in corpo
+    assert "ainda não adicionou trabalhos" in corpo
     assert Portfolio.objects.count() == 0, "abrir a tela não cria portfólio"
 
 
@@ -252,7 +252,7 @@ def test_sem_escola_declarada_a_estante_recusa_gravar_e_diz_por_que(
     """
     client.cookies["meshcraft_sessao"] = "cookie-opaco-de-ana"
 
-    resposta = client.post("/pecas/guardar", {"link": LINK})
+    resposta = client.post("/trabalhos/guardar", {"link": LINK})
 
     assert resposta.status_code == 503
     assert Peca.objects.count() == 0
@@ -273,7 +273,7 @@ def test_a_estante_de_um_aluno_nao_mostra_a_peca_de_outro(
         link=OUTRO_LINK,
     )
 
-    corpo = estante.get("/pecas").content.decode()
+    corpo = estante.get("/trabalhos").content.decode()
 
     assert "a obra do Bruno" not in corpo
 
@@ -286,7 +286,9 @@ def test_o_botao_de_um_aluno_nao_alcanca_a_peca_de_outro(
         criar_portfolio("bruno", site_id=SITE_DECLARADO), link=OUTRO_LINK
     )
 
-    resposta = estante.post("/pecas/mudar", {"peca": do_bruno.pk, "acao": "remover"})
+    resposta = estante.post(
+        "/trabalhos/mudar", {"peca": do_bruno.pk, "acao": "remover"}
+    )
 
     assert resposta.status_code == 404
     assert Peca.objects.filter(pk=do_bruno.pk).exists()
@@ -301,7 +303,7 @@ def test_um_numero_de_peca_que_nao_e_numero_devolve_404_e_nao_500(estante):
     500. Um 500 aqui acende alarme de defeito da casa por causa de um endereço
     que qualquer um digita, e esconde os 500 de verdade no meio do ruído.
     """
-    resposta = estante.post("/pecas/mudar", {"peca": "abc", "acao": "remover"})
+    resposta = estante.post("/trabalhos/mudar", {"peca": "abc", "acao": "remover"})
 
     assert resposta.status_code == 404
 
@@ -445,8 +447,8 @@ def test_a_peca_quebrada_aparece_marcada_na_estante_do_aluno(
         quebrado_desde="2026-09-01T12:00:00Z",
     )
 
-    corpo = estante.get("/pecas").content.decode()
+    corpo = estante.get("/trabalhos").content.decode()
 
     assert "parou de abrir" in corpo
     assert "01/09/2026" in corpo
-    assert "continua guardada com a escola" in corpo
+    assert "continua guardado até você removê-lo" in corpo

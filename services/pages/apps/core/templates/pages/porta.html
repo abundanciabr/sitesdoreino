@@ -28,21 +28,21 @@ que ele já tem.
 
 Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
 {% endcomment %}
-{% block titulo %}Entrar na Prancheta{% endblock %}
+{% block titulo %}Entrar no meu portfólio{% endblock %}
 
 {% block conteudo %}
 {% if motivo == "sem-matricula" %}
   <h1>Não encontramos uma matrícula ativa no seu nome</h1>
-  <p>Você entrou na escola, mas a Prancheta só abre para quem está matriculado.
+  <p>Você entrou na escola, mas o portfólio só abre para quem está matriculado.
   Se você já é aluno e está vendo isto, fale com a escola pela
   <a href="{{ url_da_capa }}">página inicial</a>: pode ser um cadastro feito com
   outro e-mail.</p>
 {% elif motivo == "sem-escola" %}
-  <h1>A escola ainda não terminou de ligar a sua Prancheta</h1>
+  <h1>A escola ainda não terminou de ligar o seu portfólio</h1>
   <p>O roteiro já está no ar e você pode lê-lo inteiro, mas a marcação do que
   você já fez ainda não abriu por aqui. Nada do que você marcar agora seria
   guardado, então preferimos não guardar pela metade.</p>
-  <p class="miudo">Volte para a <a href="{% url 'prancheta' %}">sua Prancheta</a>
+  <p class="miudo">Volte para <a href="{% url 'prancheta' %}">o seu portfólio</a>
   e continue lendo. Assim que a escola terminar, a marcação aparece sozinha.</p>
 {% elif motivo == "nao-e-da-equipe" %}
   <h1>Esta área é da equipe da escola</h1>
@@ -61,9 +61,9 @@ Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
   <p class="miudo">Se continuar assim, avise a escola pela
   <a href="{{ url_da_capa }}">página inicial</a>.</p>
 {% else %}
-  <h1>Entre para ver a sua Prancheta</h1>
-  <p>A Prancheta é o seu portfólio dentro da escola: o roteiro do que entra em
-  cada peça, a conferência da escola e o link que você manda ao cliente. Por
+  <h1>Entre para ver o seu portfólio</h1>
+  <p>Aqui você prepara o portfólio dentro da escola: o roteiro, os seus trabalhos,
+  a avaliação da escola e a página que você pode compartilhar. Por
   isso ela precisa saber quem você é.</p>
   <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
   <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy

@@ -43,7 +43,7 @@ from test_sessao_no_site import COOKIE, logado  # noqa: F401  (fixture)
 
 HOME = "/pt-br/"
 CAIXA = "/forms/sugestoes/"
-PRANCHETA = "/pages/"
+PRANCHETA = "/portfolio/"
 
 
 def _abrir(client):
@@ -107,7 +107,19 @@ def test_o_aluno_ve_o_caminho_da_prancheta(client, com_email):
     """AC-20 (degrau 18, PLANO-PORTFOLIO-DO-ALUNO): o aluno chega à Prancheta
     sem digitar endereço — o link mora na home, pronto para o clique."""
     _situacao(com_email, "aluno")
-    assert PRANCHETA in _abrir(client)
+    html = _abrir(client)
+    assert PRANCHETA in html
+    assert "Meu portfólio" in html
+
+
+def test_endereco_legado_configurado_leva_ao_portfolio_atual(
+    client, com_email, monkeypatch
+):
+    monkeypatch.setenv("URL_DA_PRANCHETA", "/pages/")
+    _situacao(com_email, "aluno")
+    html = _abrir(client)
+    assert 'href="/portfolio/"' in html
+    assert 'href="/pages/"' not in html
 
 
 @pytest.mark.parametrize(

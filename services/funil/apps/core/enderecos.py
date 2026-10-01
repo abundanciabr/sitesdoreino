@@ -51,11 +51,10 @@ ENTRADA_PADRAO = "/entrar/google"
 # `identidade` — o `action` do mini-formulário de senha em `funil/login.html`.
 ENTRADA_SENHA_PADRAO = "/entrar/senha"
 
-# A PRANCHETA do portfólio (degrau 18 do PLANO-PORTFOLIO-DO-ALUNO, célula
-# `pages`). Único botão da home logada para lá: ele manda nas duas caras do
-# endereço, a de quem foi reconhecido e as telas de recusa da porta fail-closed
-# (`AGENTS.pages.md`, INV-P12 e AC-05) — a Prancheta se defende sozinha.
-PRANCHETA_PADRAO = "/pages/"
+# O portfólio do aluno. O valor antigo da configuração aponta para a rota
+# legada e segue para o endereço atual, mesmo antes de corrigir o ambiente.
+PRANCHETA_PADRAO = "/portfolio/"
+PRANCHETA_LEGADO = "/pages/"
 
 
 def _ler(nome: str, padrao: str) -> str:
@@ -92,4 +91,9 @@ def url_dos_documentos() -> str:
 
 
 def url_da_prancheta() -> str:
-    return _ler("URL_DA_PRANCHETA", PRANCHETA_PADRAO)
+    configurado = _ler("URL_DA_PRANCHETA", PRANCHETA_PADRAO)
+    return (
+        PRANCHETA_PADRAO
+        if configurado.rstrip("/") == PRANCHETA_LEGADO.rstrip("/")
+        else configurado
+    )

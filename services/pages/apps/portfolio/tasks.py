@@ -87,7 +87,11 @@ def reconferir_os_links() -> dict[str, int]:
     agora = timezone.now()
     placar = {"conferidas": 0, "quebradas": 0, "voltaram": 0}
 
-    for numero in list(Peca.objects.order_by("pk").values_list("pk", flat=True)):
+    for numero in list(
+        Peca.objects.filter(imagem_enviada__isnull=True)
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    ):
         peca = Peca.objects.filter(pk=numero).first()
         # Sumiu entre a lista e agora: o aluno tirou a peça da estante durante a
         # varredura. É o desfecho certo, e não um erro para registrar.

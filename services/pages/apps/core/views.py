@@ -40,6 +40,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.portfolio import (
     conferencia,
+    imagens,
     conferencia_do_link,
     dossie,
     semaforo,
@@ -262,14 +263,7 @@ def marcar(request):
 # ===========================================================================
 # AS PEÇAS, COLADAS POR LINK (degrau 08, critérios AC-08 e AC-09)
 # ===========================================================================
-# A foto entra por LINK COLADO e nunca hospedada por nós. Decisão do mantenedor
-# de 01/09/2026, informado do preço, e ela não se reabre: não existe envio de
-# arquivo aqui, e o degrau que era isso saiu da escada (plano §6.2).
-#
-# A ESTANTE É TELA PRÓPRIA, e não mais um pedaço da Prancheta. O roteiro das
-# cinco etapas é o que o aluno LÊ; a estante é o que ele MEXE, com um formulário
-# em cada linha. Numa página só, o botão de subir uma peça ficaria a três telas
-# de rolagem do item que ele acabou de marcar.
+# Os trabalhos aceitam imagem enviada ou endereço de imagem já hospedada.
 
 
 def estante_de(request, site_id: str) -> list[Peca]:
@@ -462,13 +456,27 @@ def guardar_peca(request):
 
     link = (request.POST.get("link") or "").strip()
     legenda = (request.POST.get("legenda") or "").strip()[:200]
+    if request.FILES.get("imagem"):
+        try:
+            imagens.guardar(
+                request.FILES["imagem"],
+                site_id=site_id,
+                aluno_id=request.aluno["id"],
+                legenda=legenda,
+                base_url=request.build_absolute_uri("/"),
+            )
+        except imagens.ImagemRecusada as erro:
+            return desenhar_estante(
+                request, site_id, recusa=str(erro), legenda=legenda, status=422
+            )
+        return redirect("pecas")
 
     if not link:
         return desenhar_estante(
             request,
             site_id,
             recusa=(
-                "Cole o endereço da imagem para guardar a peça. Ele é o link "
+                "Envie uma imagem ou cole o endereço dela para adicionar o trabalho. O link é o "
                 "que aparece na barra do navegador quando você abre a imagem."
             ),
             legenda=legenda,
@@ -480,7 +488,7 @@ def guardar_peca(request):
         return desenhar_estante(
             request,
             site_id,
-            recusa=f"A peça não foi guardada porque {veredito.motivo}",
+            recusa=f"O trabalho não foi adicionado porque {veredito.motivo}",
             link=link,
             legenda=legenda,
             status=422,
@@ -491,6 +499,7 @@ def guardar_peca(request):
         portfolio, _ = Portfolio.objects.get_or_create(
             site_id=site_id, aluno_id=request.aluno["id"]
         )
+        portfolio = Portfolio.objects.select_for_update().get(pk=portfolio.pk)
         ultima = portfolio.pecas.aggregate(fim=models.Max("ordem"))["fim"] or 0
         Peca.objects.create(
             portfolio=portfolio,

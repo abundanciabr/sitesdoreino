@@ -34,14 +34,28 @@ endereço de outra célula cravado num template apodrece sem alarme nenhum quand
 alguém do outro lado o renomeia (`armadilhas/289`). O caminho para a biblioteca
 continua no rodapé, que é a peça comum da casa e já é conferida.
 {% endcomment %}
-{% block titulo %}Sua Prancheta{% endblock %}
-{% block faixa %}Prancheta{% endblock %}
+{% block titulo %}Meu portfólio{% endblock %}
+{% block faixa %}Meu portfólio{% endblock %}
 
 {% block conteudo %}
-  <h1>Olá{% if aluno.nome %}, {{ aluno.nome }}{% endif %}. Esta é a sua Prancheta.</h1>
-  <p>Este é o roteiro da escola para montar o seu portfólio, em cinco etapas.
-  Leia na ordem e vá marcando o que você já fez. A marcação fica guardada com a
-  escola, então você pode marcar no celular e continuar no computador.</p>
+  <h1>Olá{% if aluno.nome %}, {{ aluno.nome }}{% endif %}. Prepare seu portfólio aqui.</h1>
+  <p>Este é o roteiro da escola para ajudar você a preparar seu portfólio, em cinco etapas.
+  Leia as orientações e marque o que você já fez. Essas marcações ajudam você a acompanhar
+  seu trabalho; não são uma nota nem uma avaliação da escola. Elas ficam guardadas para
+  você continuar em outro aparelho.</p>
+  <details class="glossario">
+    <summary>Entenda os nomes desta área</summary>
+    <dl>
+      <dt>Portfólio</dt><dd>A apresentação dos seus trabalhos para possíveis clientes.</dd>
+      <dt>Trabalho</dt><dd>Um modelo 3D ou conjunto que você criou e quer apresentar por meio de imagens.</dd>
+      <dt>Modelo 3D</dt><dd>O objeto que você cria no Blender e pode usar no Roblox. Aqui você envia imagens dele, não o arquivo do Blender.</dd>
+      <dt>Categoria</dt><dd>O que você modelou, como um carro, animal ou acessório.</dd>
+      <dt>Preparar meu portfólio</dt><dd>Organizar o que pretende apresentar. Esta área antes se chamava Prancheta.</dd>
+      <dt>O que falta preencher</dt><dd>Informações pendentes sobre o trabalho. As cores resumem o preenchimento; não são uma nota da escola.</dd>
+      <dt>Página pública</dt><dd>A página que você escolhe publicar e compartilhar com possíveis clientes.</dd>
+    </dl>
+  </details>
+  <p><a href="{% url 'pecas' %}">Ver meus trabalhos</a> · <a href="{% url 'dossie' %}">Portfólio em PDF</a></p>
   <p class="miudo">{{ aviso_de_rascunho }}</p>
 {% if not pode_marcar %}
   <p class="aviso">A escola ainda não terminou de ligar a marcação desta página.
@@ -63,14 +77,8 @@ em branco entre a marca e a frase do item (`armadilhas/033`).
 {% endif %}
   </section>
 {% endfor %}
-{% comment %}
-O CAMINHO PARA A ESTANTE (degrau 08). Ele fica no FIM, depois das cinco etapas,
-porque o roteiro é o que se lê primeiro: guardar peça antes de saber o que entra
-no portfólio é exatamente o travamento que este corredor de obra existe para
-curar. O endereço sai de `{% url %}`, nunca cravado a mão (`armadilhas/029`).
-{% endcomment %}  <p><a href="{% url 'pecas' %}">Guardar as suas peças</a></p>
-  <p class="miudo">É onde você cola o endereço de cada obra, escolhe a ordem e
-  marca as que vão em destaque. A escola confere o endereço na hora e avisa se
-  ele parar de abrir depois.</p>
+  <p><a href="{% url 'pecas' %}">Adicionar meus trabalhos</a></p>
+  <p class="miudo">Envie uma imagem de cada trabalho, organize a ordem e escolha
+  quais terão destaque. Cada trabalho pode mostrar um modelo ou um conjunto de modelos.</p>
   <p class="miudo"><a href="{{ url_da_capa }}">Voltar ao início do site</a></p>
 {% endblock %}

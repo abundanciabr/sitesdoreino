@@ -76,7 +76,7 @@ SEM_APELIDO = "Portfólio de modelagem 3D"
 
 SUBTITULO = "Portfólio de modelagem 3D."
 
-OBRA_SEM_LEGENDA = "Obra sem legenda"
+OBRA_SEM_LEGENDA = "Trabalho sem descrição"
 
 EM_DESTAQUE = "Em destaque"
 
@@ -87,7 +87,7 @@ ASSINATURA = "Meshcraft Academy, a escola de modelagem 3D para Roblox."
 #: o que o monitor viu no dia. Prometer mais seria uma promessa que a escola
 #: não pode cumprir, levada por um aluno a um cliente pagante.
 ALCANCE_DO_SELO = (
-    "Uma pessoa da equipe da Meshcraft Academy abriu estas obras e conferiu o "
+    "Uma pessoa da equipe da Meshcraft Academy abriu estes trabalhos e conferiu o "
     "portfólio nessa data. O selo vale para o que ela viu no dia."
 )
 
@@ -96,8 +96,8 @@ ALCANCE_DO_SELO = (
 #: com o título e nenhuma obra, anexado a um e-mail para um cliente pagante,
 #: seria pior do que não existir botão nenhum.
 SEM_OBRAS = (
-    "O dossiê é o arquivo com as suas obras, e você ainda não tem nenhuma obra "
-    "pronta para entrar nele. Guarde uma peça com um endereço que abre, aqui "
+    "O PDF é o arquivo com os seus trabalhos, e você ainda não tem nenhum trabalho "
+    "pronto para entrar nele. Adicione uma imagem ou um link que abre, aqui "
     "em cima, e o arquivo fica pronto na hora."
 )
 

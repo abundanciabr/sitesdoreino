@@ -57,6 +57,9 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
+if FORCE_SCRIPT_NAME == "/pages":
+    # Compatibilidade com a configuração instalada antes da mudança de endereço.
+    FORCE_SCRIPT_NAME = "/portfolio"
 
 # Atrás do Traefik. Esta célula responde em qualquer host servido pela
 # plataforma (Lei 9 — um deploy, N domínios); a defesa de host, se um dia for

@@ -159,8 +159,8 @@ def pedir(portfolio: Portfolio | None) -> PedidoDeConferencia:
     """
     if portfolio is None or not portfolio.pecas.exists():
         raise ConferenciaRecusada(
-            "Guarde pelo menos uma peça antes de pedir a conferência. A escola "
-            "olha as obras do seu portfólio, e uma estante vazia não tem o que "
+            "Adicione pelo menos um trabalho antes de pedir a avaliação. A escola "
+            "olha os trabalhos do seu portfólio, e um portfólio vazio não tem o que "
             "ser olhado."
         )
     if pedido_em_analise(portfolio) is not None:

@@ -1,9 +1,9 @@
-"""Semeia o convite para a Prancheta COMO DADO, versionado, desligado.
+"""Semeia o convite para Meu portfólio como dado versionado e desligado.
 
 Degrau 17 da escada do portfólio (`PLANO-PORTFOLIO-DO-ALUNO.md` §5, corredor
 `CS-PAGES-0001` AC-19). O problema é um aluno que fecha um Bloco do curso e
 trava na montagem do portfólio: esta sequência vai buscar essa pessoa, em vez de
-esperar que ela ache a Prancheta sozinha.
+esperar que ela ache o portfólio sozinha.
 
 O GATILHO É UM FATO DECLARADO, E ISSO É O CRITÉRIO DO DEGRAU
 -------------------------------------------------------------
@@ -22,18 +22,15 @@ recusa é provada por mutação em
 
 O TEXTO SÓ FALA DO QUE JÁ EXISTE
 ---------------------------------
-A Prancheta (degrau 07) mostra o roteiro da escola e guarda o que o aluno marca.
-Peças por link, semáforo, selo, vitrine e dossiê em PDF são os degraus 08 a 14, e
-nenhuma frase daqui os promete. O convite leva à própria Prancheta em
-`meshcraft.top/pages/`.
+Meu portfólio mostra o roteiro da escola e guarda o que o aluno marca.
+O convite leva a `meshcraft.top/portfolio/` e não promete uma avaliação
+automática dos trabalhos.
 
 NASCE DESLIGADA, E ISSO NÃO É EXCESSO DE ZELO
 ----------------------------------------------
 Sem `--ligar`, a jornada entra com `ativa=False` e não inscreve ninguém. Ligar é
 decisão do mantenedor, na tela dele (`/admin/escola/jornadas/`), nunca efeito
-colateral de um deploy. Neste degrau há um motivo a mais, e ele é de data: a
-Prancheta ainda está sendo construída, e convidar alguém para uma tela que ainda
-não responde é a pior mensagem automática possível.
+colateral de um deploy.
 
 IDEMPOTENTE POR CONSTRUÇÃO
 --------------------------
@@ -68,24 +65,24 @@ PASSOS = [
                 "Chegou a hora de montar o seu portfólio",
                 "Você fechou um bloco do curso, e já sabe modelar o bastante "
                 "para começar o portfólio. Ele é o que um cliente olha antes "
-                "de decidir contratar você. Abra a Prancheta em "
-                "meshcraft.top/pages/ para seguir o roteiro da "
+                "de decidir contratar você. Abra Meu portfólio em "
+                "meshcraft.top/portfolio/ para seguir o roteiro da "
                 "escola, etapa por etapa.",
             ),
             "en": (
                 "Time to build your portfolio",
                 "You finished a block of the course, and you already know "
                 "enough modeling to start your portfolio. It is what a client "
-                "looks at before deciding to hire you. Open the Prancheta "
-                "at meshcraft.top/pages/ to follow the school "
+                "looks at before deciding to hire you. Open My portfolio "
+                "at meshcraft.top/portfolio/ to follow the school "
                 "roadmap, step by step.",
             ),
             "es": (
                 "Llegó la hora de armar tu portafolio",
                 "Cerraste un bloque del curso, y ya sabes modelar lo "
                 "suficiente para empezar el portafolio. Es lo que un cliente "
-                "mira antes de decidir contratarte. Abre la Prancheta en "
-                "meshcraft.top/pages/ para seguir la hoja de ruta "
+                "mira antes de decidir contratarte. Abre Mi portafolio en "
+                "meshcraft.top/portfolio/ para seguir la hoja de ruta "
                 "de la escuela, paso a paso.",
             ),
         },
@@ -99,21 +96,21 @@ PASSOS = [
                 "A primeira etapa é a mais curta",
                 "Ninguém monta um portfólio inteiro num dia. A primeira etapa "
                 "do roteiro é só escolher os tipos de modelo que você faz com "
-                "mais gosto, e isso leva alguns minutos. A Prancheta guarda o "
+                "mais gosto, e isso leva alguns minutos. Meu portfólio guarda o "
                 "que você marcar, então dá para voltar quando puder.",
             ),
             "en": (
                 "The first step is the shortest one",
                 "Nobody builds an entire portfolio in one day. The first step "
                 "of the roadmap is just choosing the kinds of model you enjoy "
-                "making the most, and that takes a few minutes. The Prancheta "
+                "making the most, and that takes a few minutes. My portfolio "
                 "keeps what you check, so you can come back whenever you can.",
             ),
             "es": (
                 "La primera etapa es la más corta",
                 "Nadie arma un portafolio entero en un día. La primera etapa "
                 "de la hoja de ruta es solo elegir los tipos de modelo que "
-                "haces con más gusto, y eso toma unos minutos. La Prancheta "
+                "haces con más gusto, y eso toma unos minutos. Mi portafolio "
                 "guarda lo que marcas, así que puedes volver cuando puedas.",
             ),
         },
@@ -122,7 +119,7 @@ PASSOS = [
 
 
 class Command(BaseCommand):
-    help = "Semeia (e opcionalmente liga) o convite para a Prancheta de um site."
+    help = "Semeia (e opcionalmente liga) o convite para Meu portfólio de um site."
 
     def add_arguments(self, parser):
         parser.add_argument("--site-id", required=True)

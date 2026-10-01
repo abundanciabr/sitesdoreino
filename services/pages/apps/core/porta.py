@@ -56,6 +56,7 @@ import logging
 
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import resolve, Resolver404
 
 from apps.portfolio import vitrine
 
@@ -154,10 +155,13 @@ def _isento(caminho: str) -> bool:
     """O caminho responde sem passar pela porta?"""
     if caminho in CAMINHOS_ISENTOS:
         return True
-    return any(
-        _sob(caminho, prefixo)
-        for prefixo in (PREFIXO_DA_PORTA_DE_MAQUINA, PREFIXO_PUBLICO_DA_VITRINE)
-    )
+    if _sob(caminho, PREFIXO_DA_PORTA_DE_MAQUINA):
+        return True
+    try:
+        # Uma única página pública; nunca isentar todo /portfolio.
+        return resolve(caminho).url_name in {"vitrine", "imagem_portfolio"}
+    except Resolver404:
+        return False
 
 
 class PortaDaCasa:

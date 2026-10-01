@@ -4,6 +4,7 @@
 #
 # Django 5.1.4 porque é a versão de todas as células vivas da plataforma.
 Django==5.1.4
+Pillow==12.3.0
 # A porta de máquina do degrau 03. A versão é a MESMA das oito células vizinhas,
 # e aqui a igualdade não é gosto: versões diferentes do django-ninja emitem
 # OpenAPI diferente para o mesmo código, e o freeze de contrato compara os dois

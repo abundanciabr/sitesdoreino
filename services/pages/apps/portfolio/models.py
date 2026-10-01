@@ -38,10 +38,8 @@ O QUE ESTE ARQUIVO NÃO GUARDA, DE PROPÓSITO
 -------------------------------------------
 - **Nota, estrela, ranking ou voto** em portfólio ou em peça. Proibido por
   escrito (plano §7), e a ausência é decisão, não esquecimento.
-- **Arquivo de imagem.** A foto entra por LINK colado, decisão do mantenedor de
-  01/09/2026 (plano §6.2). O campo de uma imagem hospedada por nós cabe no mesmo
-  modelo no dia em que ele pedir o degrau 09, e é isso que mantém a porta de
-  volta barata sem construí-la agora.
+- **Arquivo de imagem na peça.** A peça conserva o link; quando a foto é enviada
+  ao site, seus bytes WebP ficam em `ImagemDoPortfolio`, ligados um a um à peça.
 - **O SEMÁFORO em si.** As três colunas de resposta do aluno moram aqui (degrau
   10), mas a cor e a lista do que falta são CALCULADAS a cada abertura de tela,
   em `apps/portfolio/semaforo.py`. Guardar a cor numa coluna criaria uma segunda
@@ -239,10 +237,10 @@ class Portfolio(models.Model):
 
 
 class Peca(models.Model):
-    """Uma obra do aluno: o link colado, a legenda, a ordem e o destaque.
+    """Uma obra do aluno: o link, a legenda, a ordem e o destaque.
 
-    **O link é colado, e o arquivo nunca sobe para cá** (plano §6.2). O aluno
-    aponta para o render que já está no Drive, no ArtStation ou onde ele guarda.
+    **O link pode ser colado ou apontar para a imagem enviada ao site.** Neste
+    segundo caso, o arquivo normalizado fica em `ImagemDoPortfolio`.
 
     **A ordem é a que o aluno escolheu**, e é ela que a vitrine (AC-13) e o
     dossiê em PDF (AC-16) seguem. A unicidade dela é `DEFERRED` de propósito:
@@ -376,6 +374,34 @@ class Peca(models.Model):
 
     def __str__(self) -> str:
         return self.legenda or self.link
+
+
+class ImagemDoPortfolio(models.Model):
+    """Bytes normalizados de uma peça, na mesma transação e backup do banco."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    peca = models.OneToOneField(
+        Peca, on_delete=models.CASCADE, related_name="imagem_enviada"
+    )
+    bytes = models.BinaryField()
+    tamanho = models.PositiveIntegerField()
+    largura = models.PositiveIntegerField()
+    altura = models.PositiveIntegerField()
+
+    class Meta:
+        verbose_name = "imagem do portfólio"
+        verbose_name_plural = "imagens do portfólio"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(tamanho__gte=1), name="imagem_tem_bytes"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(largura__gte=1), name="imagem_tem_largura"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(altura__gte=1), name="imagem_tem_altura"
+            ),
+        ]
 
 
 class ItemDeConferencia(models.Model):
