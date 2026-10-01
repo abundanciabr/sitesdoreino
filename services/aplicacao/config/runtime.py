@@ -49,6 +49,8 @@ def _source_environment(service):
 
 def load_original_settings():
     """Import the copied configuration once, with its own existing env file."""
+    if len(_service_settings) == len(SERVICES):
+        return
     original_environment = dict(os.environ)
     try:
         for service in SERVICES:
