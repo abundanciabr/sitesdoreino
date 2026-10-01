@@ -209,6 +209,53 @@ def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, m
     assert opcoes["env"]["FONTE_INFRA"] == str(fonte / "infra")
 
 
+@pytest.mark.parametrize("primeira", [True, False])
+def test_publicador_registra_medicao_da_primeira_ativacao_sem_duplicar_a_normal(
+    tmp_path, monkeypatch, capsys, primeira
+):
+    publicar = carregar("publicar_medicao_primeira", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
+    monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(publicar, "TRABALHO", tmp_path / "trabalho")
+    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path / "publicacoes")
+    monkeypatch.setattr(publicar, "git", lambda *_args: "2026-10-01T12:00:00+00:00")
+    monkeypatch.setattr(publicar, "extrair", lambda *_args: None)
+    monkeypatch.setattr(publicar, "preparar_codigo", lambda *_args: (
+        tmp_path / "codigo", "imagem:teste", False, 0.0
+    ))
+    monkeypatch.setattr(publicar, "vaga_de_prova", lambda: (os.open(os.devnull, os.O_RDONLY), 0.002))
+    monkeypatch.setattr(publicar, "provar_produto", lambda *_args: 950.045)
+    monkeypatch.setattr(publicar, "travas_da_celula", lambda *_args: (
+        os.open(os.devnull, os.O_RDONLY), os.open(os.devnull, os.O_RDONLY), 0.003
+    ))
+    monkeypatch.setattr(publicar, "podar_versoes", lambda *_args: None)
+    monkeypatch.setattr(publicar, "ordem", lambda *_args: "nova")
+    estado = {"endereco": "https://meshcraft.top/",
+              "compatibilidade": {"dados": "dado", "configuracao": "config"}}
+    monkeypatch.setattr(publicar, "journal", lambda *_args: None if primeira else estado)
+    monkeypatch.setattr(publicar, "ativar_primeira_aplicacao", lambda *_args: (
+        0, "APLICACAO-ATIVADA: " + "a" * 40 + "\n"
+    ))
+    monkeypatch.setattr(publicar, "com_travas", lambda *_args: (
+        0, 'PUBLICACAO-MEDICAO: {"origem":"publicacao-local"}\nENTREGA-CONCLUIDA: aplicacao\n'
+    ))
+    inicial = {"endereco": estado["endereco"], "dados": "dado", "configuracao": "config"} if primeira else None
+    assert publicar.publicar("aplicacao", "a" * 40, pedido_em="2026-10-01T12:00:00+00:00",
+                            inicial=inicial) == 0
+    linhas = (tmp_path / "publicacoes" / "medicoes.jsonl")
+    if primeira:
+        medicao = json.loads(linhas.read_text(encoding="utf-8").strip())
+        assert medicao["pedido_em"] == "2026-10-01T12:00:00+00:00"
+        assert medicao["publicado_em"] and medicao["prova_falhou"] is False
+        assert medicao["reversao"] is False and medicao["recuperacao_segundos"] == 0
+        assert medicao["testes_segundos"] == 950.045
+        assert medicao["build_segundos"] == 0.0
+        assert medicao["espera_segundos"] == 0.005
+    else:
+        assert not linhas.exists()
+    assert capsys.readouterr().out.count("PUBLICACAO-MEDICAO:") == 1
+
+
 def test_primeira_aplicacao_agrega_compatibilidade_dos_journals_aprovados(tmp_path, monkeypatch):
     publicar = carregar("publicar_metadados", "infra/publicar.py")
     monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)

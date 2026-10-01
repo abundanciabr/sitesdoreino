@@ -509,6 +509,10 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
                                                 ambiente, registro)
                     concluida = f"INICIALIZACAO-CONCLUIDA: {celula}:{sha}" if inicial else f"ENTREGA-CONCLUIDA: {celula}"
                 if retorno == 0 and concluida in saida:
+                    if celula == "aplicacao" and inicial and "PUBLICACAO-MEDICAO:" not in saida:
+                        registrar_medicao(dict(celula=celula, pedido_em=pedido_em, publicado_em=agora(),
+                                               prova_falhou=False, reversao=False, recuperacao_segundos=0,
+                                               **medidas))
                     for linha in saida.splitlines():
                         if linha.startswith("PUBLICACAO-MEDICAO:"):
                             print(linha, flush=True)
