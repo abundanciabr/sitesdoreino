@@ -3,9 +3,13 @@ from django.urls import path
 from apps.core.views import healthz
 from apps.quiz import views as quiz_views
 from apps.quiz.laboratorio import observacao
+from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
 
 urlpatterns = [
     path("healthz", healthz),
+    path("interno/editor/quizzes", quizzes),
+    path("interno/editor/quizzes/<slug:slug>/rascunho", quiz_draft),
+    path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
     # SEM o prefixo "quiz/" dentro das rotas. Em produção esta célula sobe com
     # SCRIPT_NAME=/quiz (FORCE_SCRIPT_NAME) e o handler ASGI REMOVE esse prefixo
     # antes do casamento de rotas — `django/core/handlers/asgi.py`, lido no

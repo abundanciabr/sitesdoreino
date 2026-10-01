@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.urls import path
 
 from config.api import api
+from apps.matriculas.editor_turmas import turmas, turma_draft, publish_turma
 
 
 def healthz(request):
@@ -10,5 +11,8 @@ def healthz(request):
 
 urlpatterns = [
     path("healthz", healthz),
+    path("api/alunos/turmas", turmas),
+    path("api/alunos/turmas/<slug:slug>/rascunho", turma_draft),
+    path("api/alunos/turmas/<slug:slug>/publicar", publish_turma),
     path("api/alunos/", api.urls),
 ]

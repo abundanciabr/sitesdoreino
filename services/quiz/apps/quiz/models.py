@@ -34,6 +34,14 @@ class Quiz(models.Model):
         ]
 
 
+class QuizDraft(models.Model):
+    """Edição privada; a versão servida ao público só muda em publicar."""
+
+    quiz = models.OneToOneField(Quiz, on_delete=models.CASCADE, related_name="draft")
+    content = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class QuizVersion(models.Model):
     """Uma variação servida no mesmo slug. O quiz continua sendo a campanha."""
 

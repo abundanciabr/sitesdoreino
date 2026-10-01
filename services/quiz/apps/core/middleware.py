@@ -1,5 +1,6 @@
 # apps/core/middleware.py  # [RECEITA:CONV-SITE v1] — adaptado: resolução LOCAL
-from django.http import Http404
+from django.http import Http404, JsonResponse
+from apps.quiz.editor import _authorized
 
 from apps.quiz.models import Site
 
@@ -29,6 +30,10 @@ class SiteResolutionMiddleware:
         # de site (medido ao vivo em 22/08/2026 na basileiatoutheou.org).
         # request.path_info segue "/healthz" independente do prefixo do gateway.
         if request.path_info.startswith(CAMINHOS_SEM_SITE):
+            return self.get_response(request)
+        if request.path_info.startswith("/interno/editor/"):
+            if not _authorized(request):
+                return JsonResponse({"detail": "Não autorizado."}, status=401)
             return self.get_response(request)
         host = request.get_host().split(":")[0].lower()
         site = (
