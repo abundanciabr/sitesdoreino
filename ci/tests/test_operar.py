@@ -383,16 +383,23 @@ ESTADO_OK = json.dumps(
 )
 
 
-def test_operacoes_vps_mede_confere_e_imprime_so_a_evidencia_validada(fazer_ctx, capsys):
+@pytest.mark.parametrize("aplicacao_ativa", [False, True])
+def test_operacoes_vps_mede_confere_e_imprime_so_a_evidencia_validada(
+    fazer_ctx, tmp_path, capsys, aplicacao_ativa,
+):
+    (tmp_path / "publicacoes").mkdir()
+    if aplicacao_ativa:
+        (tmp_path / "publicacoes" / "aplicacao.json").write_text("{}", encoding="utf-8")
     comando = docker_falso({"ps": "a" * 64 + "\n", "inspect": ESTADO_OK})
-    ctx = fazer_ctx(carregar=carregar_com(comando=comando))
+    ctx = fazer_ctx(carregar=carregar_com(comando=comando, RAIZ_INFRA=tmp_path))
     assert operar.main(["operacoes-vps", "--operacao", "estado-servico", "--servico", "catalogo"], ctx) == 0
     saida = capsys.readouterr().out
     linha = next(l for l in saida.splitlines() if l.startswith("{"))
     dados = json.loads(linha)
     assert dados["resultado"] == "PASS" and dados["operacao"] == "estado-servico"
     assert dados["servico"] == "catalogo" and dados["medicao"]["estado"] == "running"
-    assert any("label=com.docker.compose.service=aplicacao" in a for a in comando.chamadas[0])
+    destino = "aplicacao" if aplicacao_ativa else "catalogo"
+    assert any(f"label=com.docker.compose.service={destino}" in a for a in comando.chamadas[0])
 
 
 def test_operacoes_vps_com_servico_fora_do_compose_nem_chega_a_medir(fazer_ctx, capsys):
