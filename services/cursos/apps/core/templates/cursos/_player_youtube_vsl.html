@@ -1,0 +1,18 @@
+{% comment %}
+Player YouTube com play, pause e tela cheia. Exige `youtube_id` (11 caracteres).
+`titulo` vira o rótulo acessível do quadro.
+{% endcomment %}
+<link rel="stylesheet" href="{% url 'estatico' 'cursos/player_youtube_vsl.css' %}">
+<div class="vsl-youtube" data-vsl-youtube data-video-id="{{ youtube_id }}" role="region" aria-label="{{ titulo|default:'Vídeo' }}">
+  <div class="vsl-youtube__quadro">
+    <div class="vsl-youtube__mount" id="vsl-yt-{{ youtube_id }}"></div>
+    <button type="button" class="vsl-youtube__bigplay" aria-label="Reproduzir">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="vsl-youtube__barra">
+      <button type="button" class="vsl-youtube__toggle" aria-label="Reproduzir"></button>
+      <button type="button" class="vsl-youtube__tela-cheia" aria-label="Tela cheia"></button>
+    </div>
+  </div>
+</div>
+<script src="{% url 'estatico' 'cursos/player_youtube_vsl.js' %}" defer></script>

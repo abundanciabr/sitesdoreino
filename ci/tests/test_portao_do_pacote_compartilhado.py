@@ -39,6 +39,8 @@ PORTAO = CI / "portao_do_pacote_compartilhado.py"
 
 RELAY = "def publicar():\n    return 1\n"
 INIT = "from .relay import publicar\n"
+SITE_ERRORS = "def not_found(request):\n    return None\n"
+SITE_ERRORS_INIT = "from .views import not_found\n"
 
 
 def _wheel(destino: Path, versao: str, modulos: dict[str, str]) -> Path:
@@ -51,6 +53,19 @@ def _wheel(destino: Path, versao: str, modulos: dict[str, str]) -> Path:
         zf.writestr(
             f"outbox_relay-{versao}.dist-info/METADATA",
             f"Metadata-Version: 2.4\nName: outbox-relay\nVersion: {versao}\n",
+        )
+    return caminho
+
+
+def _wheel_site_errors(destino: Path) -> Path:
+    caminho = destino / "site_errors-0.1.0-py3-none-any.whl"
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(caminho, "w") as zf:
+        zf.writestr("site_errors/views.py", SITE_ERRORS)
+        zf.writestr("site_errors/__init__.py", SITE_ERRORS_INIT)
+        zf.writestr(
+            "site_errors-0.1.0.dist-info/METADATA",
+            "Metadata-Version: 2.4\nName: site-errors\nVersion: 0.1.0\n",
         )
     return caminho
 
@@ -74,6 +89,18 @@ def arvore(repo) -> Path:
     (raiz / "services" / "falsa" / "requirements.txt").write_text(
         "services/falsa/vendor/outbox_relay-0.3.1-py3-none-any.whl\n", encoding="utf-8"
     )
+    site_errors = raiz / portao.SITE_ERRORS / "src" / "site_errors"
+    site_errors.mkdir(parents=True)
+    (site_errors / "views.py").write_text(SITE_ERRORS, encoding="utf-8")
+    (site_errors / "__init__.py").write_text(SITE_ERRORS_INIT, encoding="utf-8")
+    (raiz / portao.SITE_ERRORS / "pyproject.toml").write_text(
+        '[project]\nname = "site-errors"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    _wheel_site_errors(raiz / "services" / "falsa" / "vendor")
+    with (raiz / "services" / "falsa" / "requirements.txt").open(
+        "a", encoding="utf-8"
+    ) as requisitos:
+        requisitos.write("services/falsa/vendor/site_errors-0.1.0-py3-none-any.whl\n")
     return raiz
 
 
@@ -86,10 +113,21 @@ def test_as_wheels_vendorizadas_sao_as_wheels_deste_fonte():
         "uma célula deixou de vendorizar o pacote e o portão passou a conferir "
         "menos do que conferia.\n" + relatorio.render()
     )
+    assert any("site_errors-" in r.nome for r in relatorio.resultados), relatorio.render()
 
 
 def test_arvore_em_dia_passa(arvore: Path):
     assert portao.rodar(arvore).estado is Estado.PASS
+
+
+def test_site_errors_divergente_da_wheel_reprova(arvore: Path):
+    fonte = arvore / portao.SITE_ERRORS / "src" / "site_errors" / "views.py"
+    fonte.write_text(SITE_ERRORS + "# alteração não entregue\n", encoding="utf-8")
+
+    relatorio = portao.rodar(arvore)
+
+    assert relatorio.estado is Estado.FAIL
+    assert "site_errors/views.py divergiu do fonte" in relatorio.render()
 
 
 def test_wheel_que_ficou_para_tras_do_fonte_reprova(arvore: Path):

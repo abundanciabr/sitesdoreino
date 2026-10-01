@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 """O PORTÃO DO PACOTE COMPARTILHADO — quem muda a biblioteca, entrega a wheel.
 
-`packages/outbox-relay` é a única biblioteca compartilhada da plataforma: ela
-transporta os eventos de matrícula e de cadastro, ou seja, o elo que entrega a
-matrícula depois do pagamento aprovado. `alunos` e `identidade` a consomem como
-wheel VENDORIZADA, e é a wheel — não o fonte — que entra na imagem no build.
+`packages/outbox-relay` e `packages/site_errors` são bibliotecas compartilhadas.
+As células as consomem como wheels VENDORIZADAS, e é a wheel — não o fonte —
+que entra na imagem no build.
 
 O BURACO, medido em 18/09/2026 contra `origin/main` e remedido nesta bancada:
 
@@ -22,7 +21,8 @@ wheel antiga, e nenhum teste rodou. Ver `armadilhas/487`.
 
 O QUE ESTE PORTÃO FAZ, e por que é isto que fecha o buraco:
 
-Ele prova, em TODO PR, que cada wheel vendorizada é a wheel deste fonte. Roda
+Ele prova, em TODO PR, que cada wheel vendorizada dos dois pacotes é a wheel
+deste fonte. Roda
 pela suíte `ci/tests/`, que o `muralhas.yml` executa sem filtro de caminho
 (`python ci/ci.py --apenas testador`) — o único portão que enxerga um PR que só
 mexe em `packages/`. E, porque a única forma de deixá-lo verde é reconstruir as
@@ -49,6 +49,7 @@ import sys
 import tempfile
 import tomllib
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 
 CI = Path(__file__).resolve().parent
@@ -67,7 +68,22 @@ from _nucleo import (  # noqa: E402
 
 PACOTE = Path("packages") / "outbox-relay"
 MODULO = "outbox_relay"
+SITE_ERRORS = Path("packages") / "site_errors"
+SITE_ERRORS_MODULO = "site_errors"
 CONSERTO = "python ci/portao_do_pacote_compartilhado.py --reconstruir"
+
+
+@dataclass(frozen=True)
+class Pacote:
+    caminho: Path
+    modulo: str
+
+    @property
+    def wheel_prefixo(self) -> str:
+        return self.modulo.replace("-", "_")
+
+
+PACOTES = (Pacote(PACOTE, MODULO), Pacote(SITE_ERRORS, SITE_ERRORS_MODULO))
 
 
 def _texto(dados: bytes) -> str:
@@ -80,9 +96,10 @@ def _texto(dados: bytes) -> str:
     return dados.decode("utf-8").replace("\r\n", "\n")
 
 
-def fonte_do_pacote(raiz: Path) -> dict[str, str]:
+def fonte_do_pacote(raiz: Path, pacote: Pacote | None = None) -> dict[str, str]:
     """Os módulos do fonte, indexados pelo caminho que eles têm DENTRO da wheel."""
-    src = raiz / PACOTE / "src" / MODULO
+    pacote = pacote or PACOTES[0]
+    src = raiz / pacote.caminho / "src" / pacote.modulo
     if not src.is_dir():
         raise ErroDeInstrumentacao(
             "o pacote compartilhado não está onde este portão o procura",
@@ -90,7 +107,7 @@ def fonte_do_pacote(raiz: Path) -> dict[str, str]:
             "Sem fonte não existe comparação, e comparar nada nunca é PASS.",
         )
     modulos = {
-        f"{MODULO}/{arquivo.name}": _texto(arquivo.read_bytes())
+        f"{pacote.modulo}/{arquivo.name}": _texto(arquivo.read_bytes())
         for arquivo in sorted(src.glob("*.py"))
     }
     if not modulos:
@@ -101,9 +118,10 @@ def fonte_do_pacote(raiz: Path) -> dict[str, str]:
     return modulos
 
 
-def versao_declarada(raiz: Path) -> str:
+def versao_declarada(raiz: Path, pacote: Pacote | None = None) -> str:
     """A versão que o `pyproject.toml` do pacote declara."""
-    pyproject = raiz / PACOTE / "pyproject.toml"
+    pacote = pacote or PACOTES[0]
+    pyproject = raiz / pacote.caminho / "pyproject.toml"
     try:
         dados = tomllib.loads(pyproject.read_text(encoding="utf-8"))
         return str(dados["project"]["version"])
@@ -114,11 +132,12 @@ def versao_declarada(raiz: Path) -> str:
         ) from erro
 
 
-def consumidores(raiz: Path) -> list[tuple[str, Path]]:
+def consumidores(raiz: Path, pacote: Pacote | None = None) -> list[tuple[str, Path]]:
     """As células que vendorizam o pacote, descobertas no disco."""
+    pacote = pacote or PACOTES[0]
     achados: list[tuple[str, Path]] = []
     for vendor in sorted((raiz / "services").glob("*/vendor")):
-        wheels = sorted(vendor.glob(f"{MODULO}-*.whl"))
+        wheels = sorted(vendor.glob(f"{pacote.wheel_prefixo}-*.whl"))
         if not wheels:
             continue
         if len(wheels) > 1:
@@ -133,8 +152,8 @@ def consumidores(raiz: Path) -> list[tuple[str, Path]]:
         achados.append((vendor.parent.name, wheels[0]))
     if not achados:
         raise ErroDeInstrumentacao(
-            "nenhuma célula vendoriza o pacote compartilhado",
-            f"Procurei por services/*/vendor/{MODULO}-*.whl em:\n  {raiz}\n"
+            f"nenhuma célula vendoriza {pacote.caminho.as_posix()}",
+            f"Procurei por services/*/vendor/{pacote.wheel_prefixo}-*.whl em:\n  {raiz}\n"
             "Zero consumidores deixaria este portão verde por não ter o que\n"
             "conferir, que é exatamente o falso-verde que ele existe para "
             "impedir.",
@@ -171,9 +190,15 @@ def _divergencia(caminho: str, na_wheel: str, no_fonte: str) -> str:
 
 
 def conferir(
-    celula: str, wheel: Path, fonte: dict[str, str], versao: str, raiz: Path
+    celula: str,
+    wheel: Path,
+    fonte: dict[str, str],
+    versao: str,
+    raiz: Path,
+    pacote: Pacote | None = None,
 ) -> Resultado:
     """Compara UMA wheel vendorizada com o fonte do pacote."""
+    pacote = pacote or PACOTES[0]
     nome = f"{celula}/{wheel.name}"
     try:
         with zipfile.ZipFile(wheel) as zf:
@@ -181,7 +206,7 @@ def conferir(
             na_wheel = {
                 alvo: _texto(zf.read(alvo))
                 for alvo in sorted(zf.namelist())
-                if alvo.startswith(f"{MODULO}/") and alvo.endswith(".py")
+                if alvo.startswith(f"{pacote.modulo}/") and alvo.endswith(".py")
             }
     except (zipfile.BadZipFile, KeyError, OSError, UnicodeDecodeError) as erro:
         raise ErroDeInstrumentacao(
@@ -246,23 +271,32 @@ def conferir(
 
 def rodar(raiz: Path | None = None) -> Relatorio:
     """O veredito do portão sobre a árvore inteira."""
-    relatorio = Relatorio(
-        titulo="PORTÃO DO PACOTE COMPARTILHADO (packages/outbox-relay)"
-    )
+    relatorio = Relatorio(titulo="PORTÃO DOS PACOTES COMPARTILHADOS")
     try:
         raiz = raiz_declarada(raiz) if raiz is not None else raiz_do_repo()
-        fonte = fonte_do_pacote(raiz)
-        versao = versao_declarada(raiz)
-        alvos = consumidores(raiz)
     except ErroDeInstrumentacao as erro:
         relatorio.registrar(Resultado.de_erro("pacote compartilhado", erro))
         return relatorio
 
-    for celula, wheel in alvos:
+    for pacote in PACOTES:
         try:
-            relatorio.registrar(conferir(celula, wheel, fonte, versao, raiz))
+            fonte = fonte_do_pacote(raiz, pacote)
+            versao = versao_declarada(raiz, pacote)
+            alvos = consumidores(raiz, pacote)
         except ErroDeInstrumentacao as erro:
-            relatorio.registrar(Resultado.de_erro(f"{celula}/{wheel.name}", erro))
+            relatorio.registrar(Resultado.de_erro(pacote.caminho.as_posix(), erro))
+            continue
+        for celula, wheel in alvos:
+            try:
+                relatorio.registrar(
+                    conferir(celula, wheel, fonte, versao, raiz, pacote)
+                )
+            except ErroDeInstrumentacao as erro:
+                relatorio.registrar(
+                    Resultado.de_erro(
+                        f"{pacote.caminho.as_posix()}/{celula}/{wheel.name}", erro
+                    )
+                )
     return relatorio
 
 
@@ -281,41 +315,42 @@ def reconstruir(raiz: Path) -> int:
     A construção acontece sobre uma CÓPIA do pacote, em diretório temporário,
     para que o `build/` e o `*.egg-info` do setuptools não sujem a árvore.
     """
-    alvos = consumidores(raiz)
-    with tempfile.TemporaryDirectory() as tmp:
-        copia = Path(tmp) / "pacote"
-        saida = Path(tmp) / "dist"
-        shutil.copytree(raiz / PACOTE, copia)
-        proc = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel",
-             "--outdir", str(saida), str(copia)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if proc.returncode != 0:
-            raise ErroDeInstrumentacao(
-                "a construção da wheel falhou",
-                f"{proc.stdout}\n{proc.stderr}\n"
-                "Se o módulo `build` não existe nesta máquina:\n"
-                "  python -m pip install build",
+    for pacote in PACOTES:
+        alvos = consumidores(raiz, pacote)
+        with tempfile.TemporaryDirectory() as tmp:
+            copia = Path(tmp) / "pacote"
+            saida = Path(tmp) / "dist"
+            shutil.copytree(raiz / pacote.caminho, copia)
+            proc = subprocess.run(
+                [sys.executable, "-m", "build", "--wheel",
+                 "--outdir", str(saida), str(copia)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
-        produzidas = sorted(saida.glob(f"{MODULO}-*.whl"))
-        if len(produzidas) != 1:
-            raise ErroDeInstrumentacao(
-                f"a construção produziu {len(produzidas)} wheels",
-                f"{proc.stdout}\nEsperava exatamente uma em {saida}.",
-            )
-        nova = produzidas[0]
-        print(f"Wheel construída do fonte: {nova.name}")
-        for celula, antiga in alvos:
-            if antiga.name != nova.name:
-                antiga.unlink()
-                print(f"  {celula}: removida a antiga {antiga.name}")
-            shutil.copy2(nova, antiga.parent / nova.name)
-            entregue = (antiga.parent / nova.name).relative_to(raiz)
-            print(f"  {celula}: {entregue.as_posix()}")
+            if proc.returncode != 0:
+                raise ErroDeInstrumentacao(
+                    f"a construção da wheel de {pacote.caminho.as_posix()} falhou",
+                    f"{proc.stdout}\n{proc.stderr}\n"
+                    "Se o módulo `build` não existe nesta máquina:\n"
+                    "  python -m pip install build",
+                )
+            produzidas = sorted(saida.glob(f"{pacote.wheel_prefixo}-*.whl"))
+            if len(produzidas) != 1:
+                raise ErroDeInstrumentacao(
+                    f"a construção produziu {len(produzidas)} wheels",
+                    f"{proc.stdout}\nEsperava exatamente uma em {saida}.",
+                )
+            nova = produzidas[0]
+            print(f"Wheel construída de {pacote.caminho.as_posix()}: {nova.name}")
+            for celula, antiga in alvos:
+                if antiga.name != nova.name:
+                    antiga.unlink()
+                    print(f"  {celula}: removida a antiga {antiga.name}")
+                shutil.copy2(nova, antiga.parent / nova.name)
+                entregue = (antiga.parent / nova.name).relative_to(raiz)
+                print(f"  {celula}: {entregue.as_posix()}")
     print("")
     relatorio = rodar(raiz)
     print(relatorio.render())

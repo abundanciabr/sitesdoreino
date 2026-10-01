@@ -703,7 +703,13 @@ def _video(aula: Aula) -> dict:
 
 def _video_por_url(video_url: str) -> dict:
     url = (video_url or "").strip()
-    return {"link": url, "embutido": _embutir(url) if url else None}
+    embutido = _embutir(url) if url else None
+    youtube_id = None
+    if embutido and "youtube-nocookie.com/embed/" in embutido:
+        candidato = embutido.rsplit("/", 1)[-1]
+        if _ID_DO_YOUTUBE.match(candidato):
+            youtube_id = candidato
+    return {"link": url, "embutido": embutido, "youtube_id": youtube_id}
 
 
 def _porta_de_aulas_avulsas(request):

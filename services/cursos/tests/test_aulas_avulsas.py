@@ -287,8 +287,8 @@ def test_pagina_mostra_markdown_video_e_capa_do_youtube(aluna, client):
     assert resposta.status_code == 200
     assert "<h1>Comece aqui</h1>" in corpo
     assert "<strong>direta</strong>" in corpo
-    assert 'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"' in corpo
-    assert 'referrerpolicy="strict-origin-when-cross-origin"' in corpo
+    assert 'data-video-id="dQw4w9WgXcQ"' in corpo
+    assert "player_youtube_vsl.js" in corpo
     assert "Abrir o vídeo em outra aba" in corpo
 
 
