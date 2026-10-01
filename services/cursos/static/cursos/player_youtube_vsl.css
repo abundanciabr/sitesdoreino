@@ -86,10 +86,10 @@
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
   bottom: 0;
   box-sizing: border-box;
-  display: flex;
-  gap: 8px;
+  display: grid;
+  gap: 4px;
   left: 0;
-  padding: 28px 12px 10px;
+  padding: 24px 12px 8px;
   position: absolute;
   right: 0;
   z-index: 3;
@@ -120,7 +120,7 @@
 }
 
 .vsl-youtube__tela-cheia {
-  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .vsl-youtube:fullscreen .vsl-youtube__quadro,
@@ -150,3 +150,52 @@
 
 
 
+
+/* A faixa superior permite buscar no vídeo; os controles ficam na segunda linha. */
+.vsl-youtube__controles { align-items: center; display: flex; gap: 8px; min-width: 0; }
+.vsl-youtube__tempo { color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vsl-youtube__som { align-items: center; display: flex; gap: 4px; margin-left: auto; }
+.vsl-youtube__barra input[type="range"] {
+  accent-color: #7a5cff; cursor: pointer; margin: 0; padding: 0;
+  min-width: 0; border: 0;
+}
+.vsl-youtube__volume { width: 76px; }
+.vsl-youtube__progresso {
+  appearance: none; background: transparent; display: block; height: 22px; width: 100%;
+}
+.vsl-youtube__progresso::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, #a78bfa var(--progresso, 0%), #ffffff70 var(--progresso, 0%));
+  border-radius: 4px; height: 4px;
+}
+.vsl-youtube__progresso::-moz-range-track {
+  background: linear-gradient(to right, #a78bfa var(--progresso, 0%), #ffffff70 var(--progresso, 0%));
+  border-radius: 4px; height: 4px;
+}
+.vsl-youtube__progresso::-webkit-slider-thumb {
+  appearance: none; background: #fff; border: 0; border-radius: 50%; height: 12px; margin-top: -4px; width: 12px;
+}
+.vsl-youtube__progresso::-moz-range-thumb { background: #fff; border: 0; border-radius: 50%; height: 12px; width: 12px; }
+.vsl-youtube__barra .vsl-youtube__velocidade {
+  background: #1b1b1fe6; border: 1px solid #ffffff50; border-radius: 6px; color: #fff;
+  cursor: pointer; display: block; font: 600 13px system-ui; height: 32px;
+  margin: 0; padding: 0 6px; width: 66px; flex: 0 0 auto;
+}
+.vsl-youtube__barra :focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; }
+.vsl-youtube__barra :disabled { cursor: default; opacity: .5; }
+.vsl-youtube__barra button { flex: 0 0 auto; }
+.vsl-modo-cinema .video {
+  background: #151519; border-color: #151519; color: #fff; left: 50%; padding: 16px;
+  position: relative; transform: translateX(-50%); width: min(calc(100vw - 32px), 1600px);
+}
+.vsl-modo-cinema .navegacao-aulas a { color: #fff; }
+.vsl-modo-cinema .navegacao-aulas small { color: #b9b5c5; }
+.vsl-modo-cinema .navegacao-aulas button { color: #b9b5c5; }
+.vsl-youtube__quadro:fullscreen .vsl-youtube__cinema { display: none; }
+@media (max-width: 560px) {
+  .vsl-youtube__barra { padding: 16px 6px 4px; gap: 0; }
+  .vsl-youtube__controles { flex-wrap: wrap; gap: 2px; }
+  .vsl-youtube__barra button { width: 32px; height: 32px; }
+  .vsl-youtube__tempo { font-size: 11px; }
+  .vsl-youtube__volume { width: 44px; }
+  .vsl-youtube__barra .vsl-youtube__velocidade { width: 56px; padding: 0 2px; }
+}

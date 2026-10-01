@@ -476,3 +476,13 @@ dialog.videoaula.com-script .videoaula-fundo { display: none; }
 html:has(dialog.videoaula[open]), html:has(dialog.videoaula:not(.com-script):target) {
   overflow: hidden;
 }
+
+.navegacao-aulas { display: flex; gap: 12px; justify-content: space-between; margin-top: 18px; }
+.navegacao-aulas a, .navegacao-aulas button {
+  background: transparent; border: 1px solid var(--borda); border-radius: 10px; color: var(--tinta);
+  flex: 1; font: 600 14px/1.4 system-ui; min-width: 0; padding: 12px 14px; text-align: left; text-decoration: none;
+}
+.navegacao-aulas .aula-proxima { text-align: right; }
+.navegacao-aulas small { color: var(--tinta-fraca); display: block; font-size: 12px; font-weight: 400; margin-top: 4px; }
+.navegacao-aulas a:hover, .navegacao-aulas a:focus-visible { border-color: var(--marca); color: var(--marca); }
+.navegacao-aulas button:disabled { cursor: default; opacity: .6; }
