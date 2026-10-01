@@ -97,11 +97,13 @@ def test_executar_grava_marcador_antes_do_post_e_recusa_repeticao(
     monkeypatch.setattr(ensaio, "MARCADOR", marcador)
     chamadas = []
 
-    def comando(argumentos):
-        chamadas.append(argumentos)
+    def comando(argumentos, entrada=None):
+        chamadas.append((argumentos, entrada))
         if argumentos[:2] == ["docker", "ps"]:
             return "a" * 64
-        if "print('ACEITA')" in argumentos[-1]:
+        assert argumentos[0:3] == ["docker", "exec", "-i"]
+        assert argumentos[-5:] == ["python", "-m", "config.executar", "pagamentos", "-"]
+        if "print('ACEITA')" in entrada:
             assert marcador.is_file()
             return "ACEITA"
         return json.dumps({"order_id": 3531})
@@ -132,8 +134,8 @@ def test_preflight_invalido_impede_marcador_e_post(
     monkeypatch.setattr(ensaio, "MARCADOR", marcador)
     chamadas = []
 
-    def comando(argumentos):
-        chamadas.append(argumentos)
+    def comando(argumentos, entrada=None):
+        chamadas.append((argumentos, entrada))
         return "a" * 64 if argumentos[:2] == ["docker", "ps"] else preflight
 
     monkeypatch.setattr(ensaio, "comando", comando)
@@ -148,11 +150,11 @@ def test_falha_ambigua_preserva_marcador_e_oculta_dados(monkeypatch, tmp_path, c
     monkeypatch.setattr(ensaio, "MARCADOR", marcador)
     chamadas = []
 
-    def comando(argumentos):
-        chamadas.append(argumentos)
+    def comando(argumentos, entrada=None):
+        chamadas.append((argumentos, entrada))
         if argumentos[:2] == ["docker", "ps"]:
             return "a" * 64
-        if "print('ACEITA')" in argumentos[-1]:
+        if "print('ACEITA')" in entrada:
             raise ensaio.Falha("instrumento: pedido 3531, token segredo")
         return json.dumps({"order_id": 3531})
 

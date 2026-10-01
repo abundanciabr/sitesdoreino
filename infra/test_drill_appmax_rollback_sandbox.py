@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -86,23 +87,24 @@ class VPS:
 
     def _ler(self, ambiente: dict[str, str] | None = None) -> dict[str, dict[str, str]]:
         """O que cada serviço lê: o env_file, com o `environment:` das sobreposições por cima."""
+        origem = self.raiz / "env"
+        arquivos = (ambiente or {}).get("COMPOSE_FILE", "").split(os.pathsep)
+        if len(arquivos) > 1:
+            servicos = yaml.safe_load(Path(arquivos[1]).read_text(encoding="utf-8"))["services"]
+            volume = servicos["aplicacao"]["volumes"][0]
+            origem = Path(volume.split(":/app/env-drill:ro")[0])
         lido = {
-            nome: drill.canario.ler_env(self.raiz / f"env/{nome}.env", escrever=False)
+            nome: drill.canario.ler_env(origem / f"{nome}.env", escrever=False)
             for nome in ("pagamentos", "checkout")
         }
-        arquivos = (ambiente or {}).get("COMPOSE_FILE", "").split(os.pathsep)
-        for arquivo in filter(None, arquivos[1:]):
-            servicos = yaml.safe_load(Path(arquivo).read_text(encoding="utf-8"))["services"]
-            for nome in lido:
-                lido[nome].update(servicos.get(nome, {}).get("environment", {}))
         return lido
 
-    def compose(self, _raiz: Path, _ambiente: dict[str, str], *args: str):
+    def compose(self, _raiz: Path, _ambiente: dict[str, str], *args: str, entrada=None):
         if args[0] == "ps":
             return subprocess.CompletedProcess(args, 0, "\n".join(self.ativos), "")
-        if args[:2] == ("exec", "-T") and args[3:5] == ("python", "-c"):
-            esperado = re.search(r"== '([^']*)'", args[5]).group(1)
-            codigo = 0 if self.lido[args[2]].get(drill.TRAVA, "") == esperado else 1
+        if args[:6] == ("exec", "-T", "aplicacao", "python", "-m", "config.executar"):
+            esperado = re.search(r"filter\(None, '([^']*)'\.split", entrada).group(1)
+            codigo = 0 if self.lido[args[6]].get(drill.TRAVA, "") == esperado else 1
             return subprocess.CompletedProcess(args, codigo, "", "")
         raise AssertionError(f"chamada inesperada ao Compose: {args}")
 
@@ -147,6 +149,7 @@ def preparar(
         encoding="utf-8",
     )
     vps = VPS(tmp_path)
+    monkeypatch.setattr(drill.canario, "trava_publicacao", lambda _raiz: nullcontext())
     monkeypatch.setattr(drill.canario, "compose", vps.compose)
     monkeypatch.setattr(drill.canario, "recarregar", vps.recarregar)
     monkeypatch.setattr(drill, "buscar_pagina", vps.buscar_pagina)
@@ -234,9 +237,9 @@ def test_sobreposicao_zera_a_trava_nos_cinco_servicos_e_some_depois(tmp_path, mo
 
     monkeypatch.setattr(drill.canario, "recarregar", recarregar)
     assert drill.executar(raiz)["resultado"] == "PASS"
-    assert lidas == [
-        {"services": {s: {"environment": {drill.TRAVA: ""}} for s in drill.canario.SERVICOS}}
-    ]
+    assert len(lidas) == 1
+    assert set(lidas[0]["services"]) == {"aplicacao"}
+    assert lidas[0]["services"]["aplicacao"]["environment"] == {"APLICACAO_ENV_DIR": "/app/env-drill"}
     assert not Path(vps.sobreposicoes[0].split(os.pathsep)[1]).exists()
 
 
@@ -345,8 +348,8 @@ def test_recusa_antes_de_gravar_fora_do_sandbox_da_meshcraft(
 def test_recusa_servico_parado_antes_de_gravar(tmp_path, monkeypatch):
     # guarda: infra/drill-appmax-rollback-sandbox.py:235
     raiz, vps = preparar(tmp_path, monkeypatch)
-    vps.ativos.remove("checkout")
-    with pytest.raises(drill.canario.ParouPorSeguranca, match="ativos"):
+    vps.ativos.remove("aplicacao")
+    with pytest.raises(drill.canario.ParouPorSeguranca, match="ativa"):
         drill.executar(raiz)
     assert not copias(raiz)
     assert vps.recargas == []
@@ -422,7 +425,7 @@ def test_religacao_que_falha_vira_error_e_ensina_a_religar(tmp_path, monkeypatch
     evidencia = drill.executar(raiz)
     assert evidencia["resultado"] == "ERROR"
     assert "religar" in evidencia["motivo"]
-    assert "deploy de checkout e pagamentos" in evidencia["acao"]
+    assert "deploy da aplicação" in evidencia["acao"]
     assert evidencia["env_devolvido_identico"] is True
     assert fotografar(raiz) == antes
     assert not copias(raiz)

@@ -20,11 +20,12 @@ class Falha(Exception):
     pass
 
 
-def comando(argumentos: list[str]) -> str:
+def comando(argumentos: list[str], entrada: str | None = None) -> str:
     try:
         resposta = subprocess.run(
             argumentos,
             cwd="/opt/plataforma",
+            input=entrada,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -91,25 +92,17 @@ def executar() -> int:
                 "--filter",
                 "label=com.docker.compose.project=plataforma",
                 "--filter",
-                "label=com.docker.compose.service=pagamentos",
+                "label=com.docker.compose.service=aplicacao",
+                "--filter",
+                "status=running",
             ]
         )
         if not re.fullmatch(r"[0-9a-f]{12,64}", ids):
             raise Falha("precondicao")
-        dados = json.loads(
-            comando(
-                [
-                    "docker",
-                    "exec",
-                    ids,
-                    "python",
-                    "manage.py",
-                    "shell",
-                    "-c",
-                    codigo_preflight(),
-                ]
-            )
-        )
+        dados = json.loads(comando(
+            ["docker", "exec", "-i", ids, "python", "-m", "config.executar", "pagamentos", "-"],
+            codigo_preflight(),
+        ))
         if (
             set(dados) != {"order_id"}
             or type(dados["order_id"]) is not int
@@ -124,16 +117,8 @@ def executar() -> int:
         etapa = "indeterminada"
         if (
             comando(
-                [
-                    "docker",
-                    "exec",
-                    ids,
-                    "python",
-                    "manage.py",
-                    "shell",
-                    "-c",
-                    codigo_post(dados["order_id"]),
-                ]
+                ["docker", "exec", "-i", ids, "python", "-m", "config.executar", "pagamentos", "-"],
+                codigo_post(dados["order_id"]),
             )
             != "ACEITA"
         ):

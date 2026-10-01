@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -46,10 +47,10 @@ class Compose:
         self.recargas: list[bool] = []
         self.respostas_de_recarga: list[bool] = []
 
-    def __call__(self, _raiz: Path, _ambiente: dict[str, str], *args: str):
+    def __call__(self, _raiz: Path, _ambiente: dict[str, str], *args: str, entrada=None):
         if args[0] == "ps":
             return subprocess.CompletedProcess(args, 0, "\n".join(self.ativos), "")
-        if args[:5] == ("exec", "-T", "pagamentos", "python", "manage.py"):
+        if args[:6] == ("exec", "-T", "aplicacao", "python", "-m", "config.executar") and "InstalacaoAppmax" in (entrada or ""):
             codigo = 0 if self.consulta_confirma else 1
             return subprocess.CompletedProcess(args, codigo, EXTERNAL_ID + "\n", "")
         if args[0] == "exec":
@@ -77,6 +78,7 @@ def preparar(
         encoding="utf-8",
     )
     compose = Compose()
+    monkeypatch.setattr(canario, "trava_publicacao", lambda _raiz: nullcontext())
     monkeypatch.setattr(canario, "compose", compose)
     monkeypatch.setattr(canario, "recarregar", compose.recarregar)
     return tmp_path, compose
@@ -234,8 +236,8 @@ def test_recusa_antes_de_gravar(tmp_path, monkeypatch, pagamentos, checkout, mot
 
 def test_recusa_servico_parado(tmp_path, monkeypatch):
     raiz, compose = preparar(tmp_path, monkeypatch)
-    compose.ativos.remove("pagamentos-appmax")
-    with pytest.raises(canario.ParouPorSeguranca, match="ativos"):
+    compose.ativos.remove("aplicacao")
+    with pytest.raises(canario.ParouPorSeguranca, match="ativa"):
         canario.executar(raiz, SITE, ligar=True, gravar=True)
     assert not copias(raiz)
     assert compose.recargas == []

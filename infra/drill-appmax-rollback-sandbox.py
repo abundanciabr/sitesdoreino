@@ -10,11 +10,10 @@ explicação e o Pix inalterado. Este ensaio faz isso num dia calmo, no sandbox:
    sem gravar nada;
 2. lê https://meshcraft.top/checkout/curso-teste/ com curl e exige o cartão
    ligado e o Pix oferecido antes de mexer;
-3. recria os serviços com uma sobreposição temporária do Compose que esvazia a
-   trava e prova a leitura; os env/*.env nunca são gravados, porque o usuário
-   deploy da esteira lê esses arquivos mas não escreve neles (run 36316492477);
+3. recria a aplicação única com uma cópia temporária dos envs cuja trava está
+   vazia e prova a leitura; os env/*.env oficiais nunca são gravados;
 4. lê a página de novo: cartão bloqueado, explicação ao comprador e o Pix igual;
-5. religa SEMPRE, recriando os serviços pelos env intactos, e prova que o
+5. religa SEMPRE, recriando a aplicação pelos env intactos, e prova que o
    cartão voltou.
 
 Nenhum pedido, cobrança ou estorno nasce aqui. A saída é uma linha JSON com
@@ -191,10 +190,26 @@ def ler_env(caminho: Path) -> dict[str, str]:
 
 
 def sobrepor_trava_vazia(raiz: Path, pasta: Path) -> str:
-    """COMPOSE_FILE que recria os serviços do cartão com a trava vazia, sem gravar env."""
+    """Recria a aplicação com cópia temporária dos envs; os oficiais ficam intactos."""
+    env_temporario = pasta / "env"
+    env_temporario.mkdir(mode=0o700)
+    for origem in (raiz / "env").glob("*.env"):
+        destino = env_temporario / origem.name
+        destino.write_bytes(origem.read_bytes())
+        destino.chmod(0o600)
+    for nome in ENVS:
+        caminho = env_temporario / f"{nome}.env"
+        original = caminho.read_text(encoding="utf-8")
+        novo, vezes = re.subn(rf"^{TRAVA}=[^\r\n]*", f"{TRAVA}=", original, flags=re.MULTILINE)
+        if vezes != 1:
+            raise canario.ParouPorSeguranca(f"{TRAVA} ausente ou repetida em {nome}.env")
+        caminho.write_text(novo, encoding="utf-8")
+        caminho.chmod(0o600)
     sobreposicao = pasta / "trava-vazia.yml"
-    servicos = {servico: {"environment": {TRAVA: ""}} for servico in canario.SERVICOS}
-    sobreposicao.write_text(json.dumps({"services": servicos}), encoding="utf-8")
+    sobreposicao.write_text(json.dumps({"services": {"aplicacao": {
+        "environment": {"APLICACAO_ENV_DIR": "/app/env-drill"},
+        "volumes": [f"{env_temporario}:/app/env-drill:ro"],
+    }}}), encoding="utf-8")
     return os.pathsep.join((str(raiz / "docker-compose.yml"), str(sobreposicao)))
 
 
@@ -250,10 +265,10 @@ def _executar(raiz: Path) -> dict:
         with tempfile.TemporaryDirectory(prefix="drill-appmax-") as pasta:
             desligado = {**ambiente, "COMPOSE_FILE": sobrepor_trava_vazia(raiz, Path(pasta))}
             if not canario.recarregar(raiz, desligado):
-                raise Falha("recriação das células falhou")
-        canario.provar_leitura(raiz, ambiente, {nome: "" for nome in ENVS})
-        sondas["desligado"] = sondar_ate(cartao_ligado=False)
-        motivo = julgar_desligado(sondas["desligado"], antes)
+                raise Falha("recriação da aplicação falhou")
+            canario.provar_leitura(raiz, desligado, {nome: "" for nome in ENVS})
+            sondas["desligado"] = sondar_ate(cartao_ligado=False)
+            motivo = julgar_desligado(sondas["desligado"], antes)
     except Exception as erro:  # qualquer falha depois de recriar ainda precisa religar
         motivo = f"desligar não se confirmou: {erro}"
 
@@ -266,7 +281,7 @@ def _executar(raiz: Path) -> dict:
             acao=(
                 "O Pix não foi tocado e o cartão sandbox da Meshcraft pode ter ficado "
                 "desligado, que é o estado seguro. Os env não foram gravados; confira "
-                "docker compose ps, e um deploy de checkout e pagamentos religa o cartão."
+                "docker compose ps, e um deploy da aplicação religa o cartão."
             ),
             env_devolvido_identico=identico,
             sondas=sondas,

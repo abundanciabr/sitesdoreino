@@ -4,7 +4,7 @@
 É a chave do canário (plano mestre Appmax, seções 5.4 e 18.2). Sem --executar
 ela só mostra o que mudaria. Ligar confere a Appmax de produção, a instalação
 do site e a ausência de outro site ligado; se a recarga não se confirmar, os
-dois env voltam como estavam. Desligar é o caminho de volta: tira só o site
+   dois env voltam como estavam. Desligar é o caminho de volta: tira só o site
 pedido e, na dúvida, deixa a trava fechada.
 
 Uso na VPS (PLATAFORMA_DIR, padrão /opt/plataforma, é onde moram docker-compose.yml e env/):
@@ -28,13 +28,7 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
-SERVICOS = (
-    "pagamentos",
-    "pagamentos-appmax",
-    "checkout",
-    "checkout-relay",
-    "checkout-consumer",
-)
+SERVICOS = ("aplicacao",)
 TRAVA = "APPMAX_CARD_ENABLED_SITES"
 AUTH_PRODUCAO = "https://auth.appmax.com.br/oauth2/token"
 API_PRODUCAO = "https://api.appmax.com.br"
@@ -212,12 +206,13 @@ def trocar_trava(caminho: Path, sites: list[str]) -> None:
 
 
 def compose(
-    raiz: Path, ambiente: dict[str, str], *args: str
+    raiz: Path, ambiente: dict[str, str], *args: str, entrada: str | None = None
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["docker", "compose", *args],
         cwd=raiz,
         env=ambiente,
+        input=entrada,
         text=True,
         capture_output=True,
         check=False,
@@ -250,7 +245,7 @@ def conferir_servicos(raiz: Path, ambiente: dict[str, str]) -> None:
         raise ParouPorSeguranca("não consegui consultar o Compose; nada foi alterado") from None
     if ativos.returncode != 0 or not set(SERVICOS).issubset(ativos.stdout.splitlines()):
         raise ParouPorSeguranca(
-            "checkout, pagamentos ou consumidores não estão todos ativos; nada foi alterado"
+            "a aplicação não está ativa; nada foi alterado"
         )
 
 
@@ -264,7 +259,8 @@ def external_id_no_banco(
     )
     try:
         resposta = compose(
-            raiz, ambiente, "exec", "-T", "pagamentos", "python", "manage.py", "shell", "-c", script
+            raiz, ambiente, "exec", "-T", "aplicacao", "python", "-m",
+            "config.executar", "pagamentos", "-", entrada=script,
         )
         if resposta.returncode != 0:
             raise ValueError("consulta recusada")
@@ -282,10 +278,16 @@ def provar_leitura(raiz: Path, ambiente: dict[str, str], esperado: dict[str, str
             ambiente,
             "exec",
             "-T",
-            servico,
+            "aplicacao",
             "python",
-            "-c",
-            f"import os; assert os.environ.get({TRAVA!r}, '') == {valor!r}",
+            "-m",
+            "config.executar",
+            servico,
+            "-",
+            entrada=(
+                "from django.conf import settings\n"
+                f"assert settings.{TRAVA} == frozenset(filter(None, {valor!r}.split(',')))\n"
+            ),
         )
         if prova.returncode != 0:
             raise ParouPorSeguranca(f"{servico} não leu a trava nova")
@@ -371,7 +373,7 @@ def _executar(raiz: Path, site: str, *, ligar: bool, gravar: bool) -> None:
         for nome, caminho in caminhos.items():
             trocar_trava(caminho, depois[nome])
         if not recarregar(raiz, ambiente):
-            raise ParouPorSeguranca("recriação das células falhou")
+            raise ParouPorSeguranca("recriação da aplicação falhou")
         provar_leitura(raiz, ambiente, {nome: ",".join(depois[nome]) for nome in envs})
     except (OSError, subprocess.TimeoutExpired, ParouPorSeguranca) as erro:
         if not ligar:

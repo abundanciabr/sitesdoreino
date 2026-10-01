@@ -278,8 +278,8 @@ function julgar(compra, vps) {
 
 var RESUMO = /^[0-9a-f]{16}$/;
 
-/** O script que o workflow leva à VPS. Só lê: três consultas Django, uma por
- *  célula. Ele não carrega ID de pedido, só o resumo SHA-256 de cada pedido
+/** O script que o workflow leva à VPS. Só lê: três consultas Django no
+ *  contexto dos módulos da aplicação. Ele não carrega ID de pedido, só o resumo SHA-256 de cada pedido
  *  que ESTE run criou: o checkout acha, entre os pedidos das últimas seis
  *  horas, os que têm esses resumos, e só dentro da VPS o ID cru alimenta as
  *  consultas de pagamentos e alunos. A saída volta chaveada pelo resumo. */
@@ -330,10 +330,10 @@ function scriptDaVps(resumos) {
     "    raise SystemExit(2)",
     "def django(servico, codigo):",
     "    try:",
-    "        ident = subprocess.run(['docker', 'ps', '--quiet', '--no-trunc', '--filter', 'label=com.docker.compose.project=plataforma', '--filter', 'label=com.docker.compose.service=' + servico, '--filter', 'status=running'], capture_output=True, text=True, timeout=30, check=False).stdout.strip()",
+    "        ident = subprocess.run(['docker', 'ps', '--quiet', '--no-trunc', '--filter', 'label=com.docker.compose.project=plataforma', '--filter', 'label=com.docker.compose.service=aplicacao', '--filter', 'status=running'], capture_output=True, text=True, timeout=30, check=False).stdout.strip()",
     "        if not re.fullmatch(r'[0-9a-f]{12,64}', ident):",
-    "            falhar('conteiner_' + servico)",
-    "        r = subprocess.run(['docker', 'exec', ident, 'python', 'manage.py', 'shell', '-c', codigo], capture_output=True, text=True, timeout=90, check=False)",
+    "            falhar('conteiner_aplicacao')",
+    "        r = subprocess.run(['docker', 'exec', '-i', ident, 'python', '-m', 'config.executar', servico, '-'], input=codigo, capture_output=True, text=True, timeout=90, check=False)",
     "    except (OSError, subprocess.TimeoutExpired):",
     "        falhar('instrumento_' + servico)",
     "    linhas = [l[len('CONTAGEM:'):] for l in r.stdout.splitlines() if l.startswith('CONTAGEM:')]",
@@ -510,6 +510,12 @@ function autoTeste() {
   caso("consulta: exige Appmax sandbox antes de contar", script.indexOf("appmax_fora_do_sandbox") !== -1 &&
     script.indexOf("https://api.sandboxappmax.com.br") !== -1);
   caso("consulta: só lê (nenhuma escrita de ORM)", !/\.(save|delete|update|create|bulk_create)\(/.test(script));
+  caso("consulta: usa a aplicação única com contexto dos três módulos",
+    script.indexOf("service=aplicacao") !== -1 &&
+    script.indexOf("config.executar") !== -1 &&
+    script.indexOf("django('checkout'") !== -1 &&
+    script.indexOf("django('pagamentos'") !== -1 &&
+    script.indexOf("django('alunos'") !== -1);
   caso("consulta: o script leva só o resumo do pedido", script.indexOf(resumo(pedido)) !== -1 && script.indexOf(pedido) === -1);
   // PR #2249 (TAR-868), replicado aqui: sob `bash -e -o pipefail`, o ssh-action
   // fecha a captura multilinha do stdout com um `echo EOF` que só roda se o
