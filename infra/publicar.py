@@ -492,6 +492,15 @@ def lote(base: str, head: str) -> int:
     return 1 if falhas else 0
 
 
+def podar_sobras() -> None:
+    """Logs e lotes com mais de 30 dias; pastas de trabalho de processos mortos há mais de 1 dia."""
+    limite = time.time()
+    for pasta, dias in ((LOGS, 30), (LOTES, 30), (TRABALHO, 1)):
+        for item in pasta.glob("*") if pasta.is_dir() else ():
+            if limite - item.stat().st_mtime > dias * 86400:
+                shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
+
+
 def receber(esperar: bool) -> int:
     trava = travar(PUBLICACOES / ".receber.lock", esperar=esperar)
     if trava is None:
@@ -505,6 +514,7 @@ def receber(esperar: bool) -> int:
             dizer(f"RECEBIDO-INICIAL: {head[:9]}; próximas mudanças publicam a partir daqui")
             return 0
         if base == head:
+            podar_sobras()
             return esperar_lote(head) if esperar else 0
         if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", base, head]).returncode != 0:
             base = git("merge-base", base, head)
@@ -552,12 +562,24 @@ def medir_site() -> tuple[int, str]:
     return processo.returncode, (processo.stdout + processo.stderr)[-1500:]
 
 
+def publicacao_em_andamento() -> bool:
+    """Alguma célula ativando ou a infra sincronizando? Cada uma já prova e volta sozinha."""
+    for caminho in RAIZ.glob(".publicacao*.lock"):
+        fd = travar(caminho, exclusiva=False, esperar=False)
+        if fd is None:
+            return True
+        os.close(fd)
+    return False
+
+
 def vigiar() -> int:
     trava = travar(PUBLICACOES / ".vigia.lock", esperar=False)
     if trava is None:
         return 0
     incidente = PUBLICACOES / "incidente.json"
     try:
+        if publicacao_em_andamento():
+            return 0
         codigo, texto = medir_site()
         if codigo == 0:
             if incidente.exists():
@@ -566,7 +588,7 @@ def vigiar() -> int:
             return 0
         time.sleep(20)
         codigo, texto = medir_site()
-        if codigo == 0:
+        if codigo == 0 or publicacao_em_andamento():
             return 0
         dizer(f"SITE-FORA (código {codigo}):\n{texto}")
         if incidente.exists():
