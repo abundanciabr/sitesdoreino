@@ -46,6 +46,8 @@ x-processo: &processo
   networks: [interna]
 
 services:
+  # O corte ativa a aplicação antes de parar os 37 processos anteriores.
+  # O perfil conserva suas definições para a volta automática da primeira troca.
   aplicacao:
     <<: *celula
     image: ${APLICACAO_IMAGEM:-ghcr.io/abundanciabr/plataforma-aplicacao:main}
@@ -105,11 +107,13 @@ services:
     networks: [interna]
 
   catalogo:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-catalogo:${CATALOGO_TAG:-main}
     env_file: [env/catalogo.env]
 
   funil:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-funil:${FUNIL_TAG:-main}
     env_file: [env/funil.env]
@@ -127,6 +131,7 @@ services:
   # commit. As duas variáveis abaixo são topologia deste compose, não segredo de
   # célula, como nos relays de `cursos`, `pages` e `encomendas`.
   identidade:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
@@ -143,6 +148,7 @@ services:
   # falhar, este worker recolhe a linha pendente no próximo tique. Banco 12
   # porque os bancos 1 a 11 já são filas Huey de outras células neste compose.
   identidade-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
@@ -180,6 +186,7 @@ services:
   # `funil`, na Fase 4, que é Rito de Contrato. O que ela expõe hoje, e só na
   # rede interna, é o `/healthz` que o healthcheck do `x-celula` bate.
   notificacoes:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-notificacoes:${NOTIFICACOES_TAG:-main}
     env_file: [env/notificacoes.env]
@@ -188,6 +195,7 @@ services:
   # por carta. É o único jeito de entrar dado nesta célula — ela não tem porta de
   # escrita pública, e é isso que a mantém impossível de corromper de fora.
   notificacoes-consumer:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-notificacoes:${NOTIFICACOES_TAG:-main}
     env_file: [env/notificacoes.env]
@@ -204,6 +212,7 @@ services:
   # e configuração, atrás do login do site e de uma lista própria de e-mails.
   # Sem auxiliar — não publica evento e não consome fila: ela pergunta e mostra.
   admin:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-admin:${ADMIN_TAG:-main}
     env_file: [env/admin.env]
@@ -222,6 +231,7 @@ services:
       - /opt/plataforma/admin-midia:/opt/plataforma/admin-midia
 
   quiz:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
     env_file: [env/quiz.env]
@@ -229,6 +239,7 @@ services:
   # Relay de outbox (Huey): publica no Redis Streams os eventos que a célula
   # gravou na outbox (ex.: quiz concluído → lead).
   quiz-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
     env_file: [env/quiz.env]
@@ -242,12 +253,14 @@ services:
         condition: service_healthy
 
   leads:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-leads:${LEADS_TAG:-main}
     env_file: [env/leads.env]
 
   # Consome os eventos de pagamento para a linha do tempo do lead.
   leads-consumer:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-leads:${LEADS_TAG:-main}
     env_file: [env/leads.env]
@@ -261,6 +274,7 @@ services:
         condition: service_healthy
 
   checkout:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
     env_file: [env/checkout.env]
@@ -268,6 +282,7 @@ services:
   # Relay de outbox (Huey): publica no Redis Streams os eventos que a célula
   # gravou na outbox. Sem ele, pedido pago não vira evento — nada downstream.
   checkout-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
     env_file: [env/checkout.env]
@@ -282,6 +297,7 @@ services:
 
   # Consome eventos.pagamento.aprovado e tira o pedido de `aguardando_pagamento`.
   checkout-consumer:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
     env_file: [env/checkout.env]
@@ -295,6 +311,7 @@ services:
         condition: service_healthy
 
   pagamentos:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-pagamentos:${PAGAMENTOS_TAG:-main}
     env_file: [env/pagamentos.env]
@@ -302,6 +319,7 @@ services:
   # Processa a inbox Appmax e a reconciliação autenticada sem abrir cartão por
   # si só. A trava financeira continua sendo APPMAX_CARD_ENABLED_SITES vazia.
   pagamentos-appmax:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-pagamentos:${PAGAMENTOS_TAG:-main}
     env_file: [env/pagamentos.env]
@@ -321,12 +339,14 @@ services:
         condition: service_healthy
 
   alunos:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
     env_file: [env/alunos.env]
 
   # Consome eventos.pagamento.aprovado e cria a Matrícula (R4).
   alunos-consumer:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
     env_file: [env/alunos.env]
@@ -355,6 +375,7 @@ services:
   # migrar em paralelo com o CMD do servidor HTTP contra o mesmo banco — um dos
   # dois morreria com IntegrityError (`armadilhas/013`).
   alunos-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
     env_file: [env/alunos.env]
@@ -368,6 +389,7 @@ services:
         condition: service_healthy
 
   mensageria:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
     env_file: [env/mensageria.env]
@@ -375,6 +397,7 @@ services:
   # Consome os eventos e REGISTRA o envio, enfileirando a task no Huey.
   # Quem entrega de fato é o mensageria-huey logo abaixo.
   mensageria-consumer:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
     env_file: [env/mensageria.env]
@@ -391,6 +414,7 @@ services:
   # worker a R8 nunca executa: o handler enfileira `enviar_notificacao` e ninguém
   # tira da fila — nenhum e-mail sai, e o retry de 5 tentativas é decorativo.
   mensageria-huey:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
     env_file: [env/mensageria.env]
@@ -412,6 +436,7 @@ services:
   # `/healthz` e o público `/forms/sugestoes/healthz` — estão travados por
   # services/sugestoes/tests/test_healthz_script_name.py.
   sugestoes:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-sugestoes:${SUGESTOES_TAG:-main}
     env_file: [env/sugestoes.env]
@@ -423,6 +448,7 @@ services:
   # impede este processo de migrar em paralelo com o CMD do servidor HTTP
   # contra o mesmo banco — um dos dois morreria com IntegrityError.
   sugestoes-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-sugestoes:${SUGESTOES_TAG:-main}
     env_file: [env/sugestoes.env]
@@ -450,6 +476,7 @@ services:
   # do CMD (licao H18) — e e por isso que aquele passo vem antes deste PR na
   # escada da §7 da lei.
   forum:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-forum:${FORUM_TAG:-main}
     env_file: [env/forum.env]
@@ -470,6 +497,7 @@ services:
   # intra-celula, o banco 0 e o fio entre celulas: dividir o mesmo faria uma
   # varredura de chaves de uma passar pelas da outra.
   forum-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-forum:${FORUM_TAG:-main}
     env_file: [env/forum.env]
@@ -506,6 +534,7 @@ services:
   # O script se recusa a terminar sem esse campo justamente para que este
   # servico nunca encoste na producao sem ele.
   gamificacao:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
     env_file: [env/gamificacao.env]
@@ -538,6 +567,7 @@ services:
   # configuracao desta celula. O `infra/env/gamificacao.env.exemplo` diz isso
   # por escrito, para ninguem procurar a chave la e concluir que ela sumiu.
   gamificacao-consumer:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
     env_file: [env/gamificacao.env]
@@ -578,6 +608,7 @@ services:
   # celulas sao coisas diferentes, e dividir o mesmo banco faria uma varredura
   # de chaves de uma passar pelas da outra.
   gamificacao-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
     env_file: [env/gamificacao.env]
@@ -606,6 +637,7 @@ services:
   # Sem ele, o processo auxiliar migraria sozinho e nada provaria que a celula
   # subiu (ARMADILHAS §3.13).
   metricas:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-metricas:${METRICAS_TAG:-main}
     env_file: [env/metricas.env]
@@ -614,6 +646,7 @@ services:
   # congelado e guarda cada fato. Envelope torto nao derruba nada e nao some —
   # vira linha na fila de eventos mortos, que o painel mostra.
   metricas-eventos:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-metricas:${METRICAS_TAG:-main}
     env_file: [env/metricas.env]
@@ -641,6 +674,7 @@ services:
   # #1046 a #1067; só faltava este arquivo.
   #
   cursos:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-cursos:${CURSOS_TAG:-main}
     env_file: [env/cursos.env]
@@ -666,6 +700,7 @@ services:
   # banco — dividir um banco entre duas celulas misturaria as tarefas de uma
   # com a outra.
   cursos-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-cursos:${CURSOS_TAG:-main}
     env_file: [env/cursos.env]
@@ -711,6 +746,7 @@ services:
   # `running`: um so que nao suba derruba a verificacao da plataforma inteira
   # (`armadilhas/088`, passo 4).
   pages:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
     env_file: [env/pages.env]
@@ -765,6 +801,7 @@ services:
   # este processo de migrar em paralelo com o CMD do servidor HTTP contra o
   # mesmo banco: um dos dois morreria com IntegrityError.
   pages-relay:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
     env_file: [env/pages.env]
@@ -796,6 +833,7 @@ services:
   # #946 a #1316, e o `deploy-celula` dela vem vermelho desde entao de proposito
   # (`armadilhas/088`): e ESTE arquivo que faltava.
   encomendas:
+    profiles: [legado]
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-encomendas:${ENCOMENDAS_TAG:-main}
     env_file: [env/encomendas.env]
@@ -841,6 +879,7 @@ services:
   # impede este processo de migrar em paralelo com o CMD do servidor HTTP contra
   # o mesmo banco: um dos dois morreria com IntegrityError.
   encomendas-tique:
+    profiles: [legado]
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-encomendas:${ENCOMENDAS_TAG:-main}
     env_file: [env/encomendas.env]

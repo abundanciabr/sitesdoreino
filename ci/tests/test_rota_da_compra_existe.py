@@ -478,12 +478,12 @@ def test_a_ordem_da_escala_de_prioridade_esta_de_pe():
     assert achados == [], "\n  ".join(["Escala de prioridade invertida:", *achados])
 
 
-def test_o_service_da_compra_aponta_para_a_celula_do_checkout():
+def test_o_service_da_compra_aponta_para_a_aplicacao_unica():
     # Quem ganha a disputa é assunto de `problemas()`; aqui se afirma a outra
     # ponta: o service para onde ele aponta leva a um servidor de verdade.
     servidores = servidores_de(services_declarados(_documento_real()), SERVICE_DA_COMPRA)
     assert servidores, f"o service `{SERVICE_DA_COMPRA}` não tem servidor nenhum"
-    assert all(f"//{SERVICE_DA_COMPRA}:" in url for url in servidores), servidores
+    assert servidores == ["http://aplicacao:8000"], servidores
 
 
 def test_o_guarda_nao_depende_do_NOME_do_router_da_compra():
