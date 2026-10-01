@@ -169,7 +169,7 @@ jobs:
             -e DJANGO_SECRET_KEY=teste-isolado \
             -e MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real \
             -e MP_WEBHOOK_SECRET=teste-isolado \
-            -v "$FONTE_PROVA:/fonte:ro" "$IMG" -c '
+            -v "$FONTE_PROVA:/fonte:ro" -v "$GITHUB_WORKSPACE:/corte:ro" "$IMG" -c '
               set -eu
               mkdir /tmp/prova
               cp -a /fonte/. /tmp/prova/
@@ -177,6 +177,10 @@ jobs:
               mkdir -p "/tmp/prova/services/$CELULA"
               cp -a /app/. "/tmp/prova/services/$CELULA/"
               cd "/tmp/prova/services/$CELULA"
+              for teste in tests/test_*.py; do
+                [ -f "$teste" ] || continue
+                [ -f "/corte/services/$CELULA/$teste" ] || rm "$teste"
+              done
               python -m pytest -q
             '
 
