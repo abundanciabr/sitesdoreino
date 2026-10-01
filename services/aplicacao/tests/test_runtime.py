@@ -92,6 +92,50 @@ class RuntimeTest(unittest.TestCase):
                 self.assertFalse(called)
             self.assertEqual(called, [True])
 
+    def test_model_checks_keep_real_database_collisions(self):
+        from types import SimpleNamespace
+
+        from django.core.checks import Tags, run_checks
+        from django.db.models import UniqueConstraint
+
+        from config.checks import check_models_by_database
+
+        actual = run_checks(tags=[Tags.models])
+        self.assertFalse(any(item.id in {"models.E032", "models.W035"} for item in actual), actual)
+
+        from config.comando import main as comando
+        comando(["admin", "check"])
+        comando(["gamificacao", "check"])
+
+        def model(label):
+            meta = SimpleNamespace(
+                managed=True, proxy=False, db_table="evento",
+                label=label, indexes=[],
+                constraints=[UniqueConstraint(fields=["pessoa"], name="um_perfil")],
+            )
+
+            class CheckedModel:
+                _meta = meta
+
+                @classmethod
+                def check(cls, **kwargs):
+                    return []
+
+            return CheckedModel
+
+        def app(label, checked_model):
+            return SimpleNamespace(label=label, get_models=lambda: [checked_model])
+
+        encomendas = app("encomendas_perfis", model("encomendas_perfis.Perfil"))
+        gamificacao = app("gamificacao_perfis", model("gamificacao_perfis.Perfil"))
+        same_database = app("encomendas_outros", model("encomendas_outros.Perfil"))
+
+        separated = check_models_by_database([encomendas, gamificacao])
+        self.assertFalse(any(item.id in {"models.E032", "models.W035"} for item in separated))
+        collided = check_models_by_database([encomendas, same_database])
+        self.assertIn("models.E032", {item.id for item in collided})
+        self.assertIn("models.W035", {item.id for item in collided})
+
     def test_home_translation_uses_funil_catalog_and_base_dir(self):
         from django.conf import settings
         from django.template import Context, Template

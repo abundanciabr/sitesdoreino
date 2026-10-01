@@ -67,6 +67,7 @@ DATABASES["default"] = dict(DATABASES["identidade"])
 DATABASE_ROUTERS = ["config.registry.ServiceDatabaseRouter"]
 
 INSTALLED_APPS = [
+    "config.apps.ApplicationConfig",
     "django.contrib.contenttypes",
     "django.contrib.postgres",
     "django.contrib.staticfiles",
