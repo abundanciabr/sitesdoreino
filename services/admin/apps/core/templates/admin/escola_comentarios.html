@@ -21,7 +21,7 @@
   {% for comentario in itens %}
   <article class="comentario-moderacao" id="comentario-{{ comentario.id }}">
     <h2>{{ comentario.curso_nome }} · {{ comentario.aula_titulo }}</h2>
-    <p>{{ comentario.autor }} · {{ comentario.criado_em }} · <b>{% if comentario.publico %}Público{% else %}Privado{% endif %}</b></p>
+    <p>{{ comentario.autor }} · {{ comentario.criado_em|date:"d/m/Y H:i" }} · <b>{% if comentario.publico %}Público{% else %}Privado{% endif %}</b></p>
     <p class="texto">{{ comentario.corpo|linebreaksbr }}</p>
     <form method="post" action="{% url 'escola_comentario_visibilidade' comentario.id %}">
       {% csrf_token %}<input type="hidden" name="pagina" value="{{ pagina }}">

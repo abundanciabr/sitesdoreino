@@ -3,6 +3,7 @@
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 from .aulas import _falha, _site_desta_requisicao
@@ -30,6 +31,8 @@ def escola_comentarios_aulas(request):
     if desfecho != CursosClient.OK:
         contexto["falha"] = _falha(desfecho)
         return render(request, "admin/escola_comentarios.html", contexto, status=503)
+    for comentario in dados["itens"]:
+        comentario["criado_em"] = parse_datetime(comentario["criado_em"])
     contexto.update(dados)
     contexto["anterior"] = dados["pagina"] - 1 if dados["pagina"] > 1 else None
     contexto["proxima"] = (

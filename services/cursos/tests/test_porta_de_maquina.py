@@ -923,14 +923,17 @@ def exportar() -> dict:
     return json.loads(saida.getvalue())
 
 
-def test_export_openapi_traz_as_vinte_operacoes_e_nenhuma_a_mais():
+def test_export_openapi_traz_as_operacoes_do_editor_e_da_moderacao():
     documento = exportar()
     ids = [
         operacao["operationId"]
         for item in documento["paths"].values()
         for operacao in item.values()
     ]
-    assert set(ids) == AS_VINTE_OPERACOES
+    assert set(ids) == AS_VINTE_OPERACOES | {
+        "listLessonComments",
+        "setLessonCommentVisibility",
+    }
     # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
     # documento inválido que o freeze compara sem reclamar: o caminho novo
     # ficou com o nome canônico, o antigo ganhou o dele.
@@ -951,6 +954,13 @@ def test_o_contrato_declara_o_bearer_na_raiz_e_nenhuma_operacao_o_desliga():
     documento = exportar()
     assert documento["security"] == [{"bearerAuth": []}]
     assert "bearerAuth" in documento["components"]["securitySchemes"]
+    for caminho, metodo in (
+        ("/comentarios", "get"),
+        ("/comentarios/{comentario_id}/visibilidade", "put"),
+    ):
+        assert documento["paths"][caminho][metodo]["security"] == [
+            {"bearerAdminComentarios": []}
+        ]
     for item in documento["paths"].values():
         for operacao in item.values():
             assert operacao.get("security", documento["security"])
