@@ -1,0 +1,36 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{% if objetivo %}Editar objetivo{% else %}Novo objetivo{% endif %}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'objetivos_da_equipe' %}">&larr; Objetivos</a>
+  <h1>{% if objetivo %}Editar objetivo{% else %}Novo objetivo{% endif %}</h1>
+  <p class="subtitulo">{% if objetivo %}Criado por {{ objetivo.criado_por }} em {{ objetivo.criado_em|date:"d/m/Y H:i" }}.{% if not objetivo.ativo %} Está desativado.{% endif %}{% else %}O título basta; descrição e prazo podem vir depois.{% endif %}</p>
+
+  {% if erros %}
+  <div class="aviso erro-do-formulario">
+    <b>Não deu para salvar.</b>
+    <ul>
+      {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
+    </ul>
+    O que você escreveu continua aqui embaixo. Corrija e salve de novo.
+  </div>
+  {% endif %}
+
+  <form class="forma forma-da-equipe" method="post" action="{% if objetivo %}{% url 'objetivo_editar' objetivo.id %}{% else %}{% url 'objetivo_novo' %}{% endif %}">
+    {% csrf_token %}
+    <label class="largo">
+      <span class="rotulo">Título</span>
+      <input type="text" name="titulo" maxlength="200" required value="{{ dados.titulo }}">
+    </label>
+    <label class="largo">
+      <span class="rotulo">Descrição (opcional)</span>
+      <textarea name="descricao" rows="4">{{ dados.descricao }}</textarea>
+    </label>
+    <label>
+      <span class="rotulo">Prazo (opcional)</span>
+      <input type="date" name="prazo" value="{{ dados.prazo }}">
+    </label>
+    <button class="botao" type="submit">{% if objetivo %}Salvar{% else %}Criar objetivo{% endif %}</button>
+  </form>
+</div>
+{% endblock %}

@@ -1459,6 +1459,76 @@
     },
     {
       "celula": "admin",
+      "rota": "equipe/<int:id>/compromisso",
+      "endereco": "/admin/equipe/<int:id>/compromisso",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Assumir uma tarefa como compromisso da semana",
+      "descricao": "O botao do cartao que poe a tarefa nos compromissos da semana corrente, ou a tira de la. So tarefa aberta e com responsavel vira compromisso."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/<int:id>/comentar",
+      "endereco": "/admin/equipe/<int:id>/comentar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Comentar uma tarefa",
+      "descricao": "Publica um comentario curto (ate 500 letras) na ficha da tarefa, com quem escreveu e quando. Comentario nao se edita nem se apaga."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/semana",
+      "endereco": "/admin/equipe/semana",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Esta semana",
+      "descricao": "Os compromissos da semana de cada pessoa da equipe: o que foi cumprido (concluido ate o domingo) e o que ficou. Da para voltar as semanas anteriores, que so se leem."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/objetivos",
+      "endereco": "/admin/equipe/objetivos",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Objetivos da equipe",
+      "descricao": "Os objetivos aos quais as tarefas se ligam, com quantas tarefas abertas e concluidas cada um tem. Objetivo nao se apaga: desativa."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/objetivos/novo",
+      "endereco": "/admin/equipe/objetivos/novo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Novo objetivo",
+      "descricao": "Cria um objetivo com titulo, descricao e prazo, os dois ultimos opcionais."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/objetivos/<int:id>/editar",
+      "endereco": "/admin/equipe/objetivos/<int:id>/editar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Editar um objetivo",
+      "descricao": "Muda o titulo, a descricao ou o prazo de um objetivo."
+    },
+    {
+      "celula": "admin",
+      "rota": "equipe/objetivos/<int:id>/ativo",
+      "endereco": "/admin/equipe/objetivos/<int:id>/ativo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Desativar ou reativar um objetivo",
+      "descricao": "O botao da lista de objetivos. Desativado, o objetivo some das escolhas de tarefa nova; as tarefas que ja apontam para ele continuam mostrando o nome."
+    },
+    {
+      "celula": "admin",
       "rota": "equipe/pessoas",
       "endereco": "/admin/equipe/pessoas",
       "alcance": "publico",

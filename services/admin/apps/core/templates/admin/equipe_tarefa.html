@@ -6,6 +6,10 @@
   <h1>{% if tarefa %}Editar tarefa{% else %}Nova tarefa{% endif %}</h1>
   <p class="subtitulo">{% if tarefa %}Criada por {{ tarefa.criada_por }} em {{ tarefa.criada_em|date:"d/m/Y H:i" }}.{% if tarefa.alterada_por %} Última alteração: {{ tarefa.alterada_por }}, {{ tarefa.alterada_em|date:"d/m/Y H:i" }}.{% endif %}{% if tarefa.concluida_em %} Concluída em {{ tarefa.concluida_em|date:"d/m/Y H:i" }}.{% endif %}{% else %}Título e responsável bastam; o resto pode vir depois.{% endif %}</p>
 
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
   {% if erros %}
   <div class="aviso erro-do-formulario">
     <b>Não deu para salvar.</b>
@@ -36,6 +40,15 @@
       </select>
     </label>
     <label>
+      <span class="rotulo">Objetivo (opcional)</span>
+      <select name="objetivo">
+        <option value="">Sem objetivo</option>
+        {% for objetivo in objetivos %}
+        <option value="{{ objetivo.id }}"{% if dados.objetivo == objetivo.id|stringformat:"s" %} selected{% endif %}>{{ objetivo.titulo }}{% if not objetivo.ativo %} (desativado){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
       <span class="rotulo">Prazo (opcional)</span>
       <input type="date" name="prazo" value="{{ dados.prazo }}">
     </label>
@@ -53,5 +66,27 @@
     </label>
     <button class="botao" type="submit">{% if tarefa %}Salvar{% else %}Criar tarefa{% endif %}</button>
   </form>
+
+  {% if tarefa %}
+  <section class="comentarios" id="comentarios">
+    <h2>Comentários</h2>
+    {% for comentario in comentarios %}
+    <div class="comentario">
+      <p class="texto">{{ comentario.texto|linebreaksbr }}</p>
+      <div class="meta">{{ comentario.autor }}, {{ comentario.criado_em|date:"d/m/Y H:i" }}</div>
+    </div>
+    {% empty %}
+    <p class="nota">Nenhum comentário ainda.</p>
+    {% endfor %}
+    <form class="forma forma-da-equipe novo-comentario" method="post" action="{% url 'tarefa_comentar' tarefa.id %}">
+      {% csrf_token %}
+      <label class="largo">
+        <span class="rotulo">Novo comentário (até {{ tamanho_do_comentario }} letras)</span>
+        <textarea name="texto" rows="3" maxlength="{{ tamanho_do_comentario }}" required></textarea>
+      </label>
+      <button class="botao" type="submit">Publicar comentário</button>
+    </form>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

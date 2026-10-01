@@ -1,0 +1,94 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Esta semana{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <div class="equipe-topo">
+    <div>
+      <h1>Painel da equipe</h1>
+      <p class="subtitulo">Os compromissos de cada pessoa na semana de {{ segunda|date:"d/m" }} a {{ domingo|date:"d/m/Y" }}. Cumprido é o que foi concluído até o domingo.</p>
+    </div>
+    <div class="equipe-gestos">
+      <a class="botao" href="{% url 'tarefa_nova' %}">Nova tarefa</a>
+      {% if pode_gerir_pessoas %}<a class="volta" href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>{% endif %}
+    </div>
+  </div>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  {% include "admin/_abas_da_equipe.html" %}
+
+  <nav class="semanas-da-equipe" aria-label="Outras semanas">
+    <a class="botao-pequeno" href="{% url 'semana_da_equipe' %}?semana={{ anterior }}">&larr; Semana anterior</a>
+    <b>{% if e_corrente %}Esta semana{% else %}Semana de {{ segunda|date:"d/m" }} a {{ domingo|date:"d/m" }}{% endif %}</b>
+    {% if seguinte %}<a class="botao-pequeno" href="{% url 'semana_da_equipe' %}?semana={{ seguinte }}">Semana seguinte &rarr;</a>{% endif %}
+  </nav>
+
+  {% if total %}
+  <p class="nota">Cumpridos{% if e_corrente %} até agora{% endif %}: {{ cumpridos }} de {{ total }} compromisso{{ total|pluralize }}.</p>
+  {% else %}
+  <p class="aviso">
+    <b>Nenhum compromisso {% if e_corrente %}assumido nesta semana{% else %}nesta semana{% endif %}.</b>
+    {% if e_corrente %}No cartão de uma tarefa aberta, com responsável, aperte <b>Assumir na semana</b>: ela passa a contar aqui, no nome de quem responde por ela.{% else %}Ninguém marcou tarefa como compromisso daquela semana.{% endif %}
+  </p>
+  {% endif %}
+
+  <div class="semana-da-equipe">
+    {% for grupo in pessoas %}
+    <section class="pessoa-da-semana">
+      <h2>
+        {% if grupo.pessoa %}{{ grupo.pessoa.nome }}{% if membro and grupo.pessoa.id == membro.id %} (você){% endif %}{% else %}Sem responsável{% endif %}
+        <span class="conta">{% if grupo.total %}{{ grupo.cumpridos|length }} de {{ grupo.total }}{% else %}nenhum{% endif %}</span>
+      </h2>
+      {% if not grupo.total %}
+      <p class="vazio-da-coluna">Nada assumido {% if e_corrente %}nesta semana{% else %}naquela semana{% endif %}.</p>
+      {% endif %}
+
+      {% if grupo.cumpridos %}
+      <h3>Cumprido</h3>
+      {% for tarefa in grupo.cumpridos %}
+      <article class="tarefa cumprida">
+        <a class="titulo" href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a>
+        <div class="meta">Concluída em {{ tarefa.concluida_em|date:"d/m H:i" }}.{% if tarefa.objetivo %} Objetivo: {{ tarefa.objetivo.titulo }}.{% endif %}</div>
+      </article>
+      {% endfor %}
+      {% endif %}
+
+      {% if grupo.abertos %}
+      <h3>{% if e_corrente %}Em aberto{% else %}Ficou{% endif %}</h3>
+      {% for tarefa in grupo.abertos %}
+      <article class="tarefa{% if tarefa.atrasada %} atrasada{% endif %}">
+        <a class="titulo" href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a>
+        <div class="meta">
+          {{ tarefa.get_situacao_display }}{% if tarefa.prazo %} &middot; <span class="prazo{% if tarefa.atrasada %} atrasado{% endif %}">{% if tarefa.atrasada %}Atrasada: {% elif tarefa.vence_hoje %}Hoje: {% endif %}{{ tarefa.prazo|date:"d/m" }}</span>{% endif %}
+          {% if tarefa.concluida_no_dia %}&middot; concluída depois, em {{ tarefa.concluida_no_dia|date:"d/m" }}{% endif %}
+          {% if tarefa.objetivo %}&middot; Objetivo: {{ tarefa.objetivo.titulo }}{% endif %}
+        </div>
+        {% if tarefa.situacao == 'bloqueada' and tarefa.impedimento %}
+        <p class="impedimento">{{ tarefa.impedimento }}</p>
+        {% endif %}
+        {% if e_corrente %}
+        <div class="gestos">
+          <form method="post" action="{% url 'tarefa_situacao' tarefa.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ endereco_atual }}">
+            <input type="hidden" name="situacao" value="concluida">
+            <button class="botao-pequeno" type="submit">Concluir</button>
+          </form>
+          <form method="post" action="{% url 'tarefa_compromisso' tarefa.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ endereco_atual }}">
+            <input type="hidden" name="acao" value="tirar">
+            <button class="botao-pequeno" type="submit">Tirar da semana</button>
+          </form>
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

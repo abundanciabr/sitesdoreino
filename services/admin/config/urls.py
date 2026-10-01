@@ -90,9 +90,16 @@ from apps.core.paginas import (
 from apps.core.experimentos import experimento_iniciar, experimento_novo, experimentos
 from apps.core.pendencias import pendencias
 from apps.core.equipe import (
+    objetivo_ativo,
+    objetivo_editar,
+    objetivo_novo,
+    objetivos_da_equipe,
     painel_da_equipe,
     pessoas_da_equipe,
     pessoas_da_equipe_associar,
+    semana_da_equipe,
+    tarefa_comentar,
+    tarefa_compromisso,
     tarefa_editar,
     tarefa_nova,
     tarefa_situacao,
@@ -228,6 +235,13 @@ urlpatterns = [
     path("equipe/nova", tarefa_nova, name="tarefa_nova"),
     path("equipe/<int:id>/editar", tarefa_editar, name="tarefa_editar"),
     path("equipe/<int:id>/situacao", tarefa_situacao, name="tarefa_situacao"),
+    path("equipe/<int:id>/compromisso", tarefa_compromisso, name="tarefa_compromisso"),
+    path("equipe/<int:id>/comentar", tarefa_comentar, name="tarefa_comentar"),
+    path("equipe/semana", semana_da_equipe, name="semana_da_equipe"),
+    path("equipe/objetivos", objetivos_da_equipe, name="objetivos_da_equipe"),
+    path("equipe/objetivos/novo", objetivo_novo, name="objetivo_novo"),
+    path("equipe/objetivos/<int:id>/editar", objetivo_editar, name="objetivo_editar"),
+    path("equipe/objetivos/<int:id>/ativo", objetivo_ativo, name="objetivo_ativo"),
     path("equipe/pessoas", pessoas_da_equipe, name="pessoas_da_equipe"),
     path(
         "equipe/pessoas/associar",

@@ -849,7 +849,8 @@ primeira versão deste arquivo, e o teste pegou.
       background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px;
     }
     .peneira-equipe button { cursor: pointer; }
-    @media (min-width: 700px) { .peneira-equipe { grid-template-columns: 1fr 1fr 1fr auto auto; } }
+    @media (min-width: 700px) { .peneira-equipe { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 1000px) { .peneira-equipe { grid-template-columns: 1fr 1fr 1fr 1fr auto auto; } }
     .quadro { display: grid; gap: 12px; grid-template-columns: 1fr; }
     @media (min-width: 700px) { .quadro { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (min-width: 1000px) { .quadro { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -898,6 +899,35 @@ primeira versão deste arquivo, e o teste pegou.
     }
     .pessoa.inativa { opacity: .6; }
     @media (min-width: 700px) { .pessoa { grid-template-columns: 1fr 2fr auto; } }
+    /* A segunda camada (01/10/2026): objetivos, compromissos da semana e
+       comentários. Cumprido usa o verde e compromisso o azul que a casa já
+       tem; nenhuma cor nova. */
+    .selo-compromisso { display: inline-block; margin-bottom: 4px; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--azul); border: 1px solid var(--azul); }
+    .tarefa .objetivo-da-tarefa a { color: var(--texto-2); }
+    .tarefa.cumprida { border-color: var(--verde); }
+    .semanas-da-equipe { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 14px; }
+    .semana-da-equipe { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 12px; }
+    @media (min-width: 700px) { .semana-da-equipe { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1000px) { .semana-da-equipe { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .pessoa-da-semana { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 10px; min-width: 0; }
+    .pessoa-da-semana h2 { font-size: 14px; margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--azul); }
+    .pessoa-da-semana h2 .conta { color: var(--texto-3); font-weight: 400; white-space: nowrap; }
+    .pessoa-da-semana h3 { font-size: 12px; font-weight: 600; color: var(--texto-2); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .objetivos { display: grid; gap: 10px; margin-bottom: 18px; }
+    .objetivo { display: grid; gap: 10px; grid-template-columns: 1fr; background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+    .objetivo .titulo { overflow-wrap: anywhere; }
+    .objetivo .descricao { margin: 6px 0 0; color: var(--texto-2); overflow-wrap: anywhere; }
+    .objetivo .meta { color: var(--texto-3); font-size: 12px; margin-top: 6px; }
+    .objetivo .gestos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .objetivo .gestos form { display: inline; }
+    .objetivo.inativo { opacity: .7; }
+    @media (min-width: 700px) { .objetivo { grid-template-columns: 1fr auto; align-items: start; } .objetivo .gestos { justify-content: flex-end; max-width: 420px; } }
+    .titulo-dos-inativos { font-size: 15px; margin: 18px 0 10px; color: var(--texto-2); }
+    .comentarios { margin-top: 28px; border-top: 1px solid var(--linha); padding-top: 14px; }
+    .comentarios h2 { font-size: 16px; margin: 0 0 10px; }
+    .comentario { border-left: 2px solid var(--linha); padding: 4px 0 4px 10px; margin-bottom: 10px; }
+    .comentario .texto { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+    .comentario .meta { color: var(--texto-3); font-size: 12px; margin-top: 4px; }
   </style>
 </head>
 <body>

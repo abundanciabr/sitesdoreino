@@ -12,13 +12,17 @@ O que este arquivo existe para impedir:
    degrau é medido pela tela, não pelo modelo.
 4. **Bloquear sem dizer por quê.** A situação Bloqueada exige impedimento, e a
    recusa chega como frase, não como 500.
+5. **A segunda camada quebrando calada** (01/10/2026): objetivo desativado que
+   some da tarefa que já o tinha, compromisso que conta tarefa reaberta como
+   cumprida, semana passada que muda depois de fechada, comentário que entra
+   vazio, e as telas novas abrindo para quem não é da casa.
 
 A rede é dublada com `respx`, como nos irmãos desta pasta.
 """
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import httpx
 import pytest
@@ -27,7 +31,13 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.models import MembroDaEquipe, Tarefa
+from apps.core.models import (
+    Comentario,
+    Compromisso,
+    MembroDaEquipe,
+    Objetivo,
+    Tarefa,
+)
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -441,3 +451,316 @@ def test_o_administrador_associa_uma_conta_e_a_pessoa_passa_a_entrar():
     )
     livia.refresh_from_db()
     assert livia.email == ""
+
+
+# ---------------------------------------------------------------- a segunda camada
+
+
+def _segunda(dia):
+    return dia - timedelta(days=dia.weekday())
+
+
+def _no_meio_do_dia(dia):
+    return timezone.make_aware(datetime.combine(dia, time(12, 0)))
+
+
+@respx.mock
+def test_quem_nao_e_da_casa_nao_alcanca_as_telas_novas():
+    tarefa = Tarefa.objects.create(titulo="TESTE Qualquer")
+    objetivo = Objetivo.objects.create(titulo="TESTE Objetivo")
+    cliente = _cliente(DE_FORA)
+    for rota, args in (
+        ("objetivos_da_equipe", []),
+        ("objetivo_novo", []),
+        ("objetivo_editar", [objetivo.id]),
+        ("semana_da_equipe", []),
+    ):
+        assert cliente.get(reverse(rota, args=args)).status_code == 404, rota
+    for rota, args, dados in (
+        ("tarefa_compromisso", [tarefa.id], {"acao": "marcar"}),
+        ("tarefa_comentar", [tarefa.id], {"texto": "TESTE intruso"}),
+        ("objetivo_ativo", [objetivo.id], {"ativo": "0"}),
+    ):
+        assert cliente.post(reverse(rota, args=args), dados).status_code == 404, rota
+    assert not Compromisso.objects.exists()
+    assert not Comentario.objects.exists()
+    objetivo.refresh_from_db()
+    assert objetivo.ativo
+
+
+# ---- objetivos
+
+
+@respx.mock
+def test_objetivos_comecam_vazios_e_a_tela_diz_isso():
+    html = _texto(_cliente().get(reverse("objetivos_da_equipe")))
+    assert "Ainda não há nenhum objetivo" in html
+    assert 'href="' + reverse("objetivo_novo") + '"' in html
+    assert ">Objetivos</a>" in html
+
+
+@respx.mock
+def test_quem_e_da_equipe_cria_edita_desativa_e_reativa_um_objetivo():
+    _livia()
+    cliente = _cliente(LIVIA, nome="Lívia")
+    resposta = cliente.post(
+        reverse("objetivo_novo"),
+        {"titulo": "TESTE Lançar a turma de novembro", "prazo": "2026-11-30"},
+    )
+    assert resposta["Location"].endswith("resultado=objetivo_criado")
+    objetivo = Objetivo.objects.get()
+    assert objetivo.criado_por == f"Lívia ({LIVIA})"
+    assert objetivo.ativo
+
+    cliente.post(
+        reverse("objetivo_editar", args=[objetivo.id]),
+        {"titulo": "TESTE Lançar a turma de dezembro", "descricao": "Com aula."},
+    )
+    objetivo.refresh_from_db()
+    assert objetivo.titulo == "TESTE Lançar a turma de dezembro"
+    assert objetivo.descricao == "Com aula."
+    assert objetivo.prazo is None
+
+    resposta = cliente.post(
+        reverse("objetivo_ativo", args=[objetivo.id]), {"ativo": "0"}
+    )
+    assert resposta["Location"].endswith("resultado=objetivo_desativado")
+    objetivo.refresh_from_db()
+    assert not objetivo.ativo
+    html = _texto(cliente.get(reverse("objetivos_da_equipe")))
+    assert "Desativados" in html and ">Reativar</button>" in html
+    assert "TESTE Lançar a turma de dezembro" not in _texto(
+        cliente.get(reverse("tarefa_nova"))
+    ), "objetivo desativado não se oferece a tarefa nova"
+
+    cliente.post(reverse("objetivo_ativo", args=[objetivo.id]), {"ativo": "1"})
+    objetivo.refresh_from_db()
+    assert objetivo.ativo
+
+
+@respx.mock
+def test_objetivo_sem_titulo_ou_com_prazo_torto_nao_salva():
+    resposta = _cliente().post(
+        reverse("objetivo_novo"), {"titulo": "", "prazo": "31/02/2026"}
+    )
+    assert resposta.status_code == 400
+    html = _texto(resposta)
+    assert "precisa de um título" in html and "data válida" in html
+    assert not Objetivo.objects.exists()
+
+
+@respx.mock
+def test_tarefa_ligada_a_objetivo_e_filtro_por_objetivo():
+    objetivo = Objetivo.objects.create(titulo="TESTE Dobrar as matrículas")
+    cliente = _cliente()
+    html = _texto(cliente.get(reverse("tarefa_nova") + f"?objetivo={objetivo.id}"))
+    assert f'<option value="{objetivo.id}" selected>' in html
+
+    cliente.post(
+        reverse("tarefa_nova"),
+        {"titulo": "TESTE Ligada", "objetivo": objetivo.id, "situacao": "a_fazer"},
+    )
+    Tarefa.objects.create(titulo="TESTE Solta")
+    assert Tarefa.objects.get(titulo="TESTE Ligada").objetivo == objetivo
+
+    base = reverse(PAINEL) + "?visao=equipe"
+    do_objetivo = _texto(cliente.get(f"{base}&objetivo={objetivo.id}"))
+    assert "TESTE Ligada" in do_objetivo and "TESTE Solta" not in do_objetivo
+    assert "Objetivo: <a" in do_objetivo
+
+    sem = _texto(cliente.get(f"{base}&objetivo=sem"))
+    assert "TESTE Solta" in sem and "TESTE Ligada" not in sem
+
+    lista = _texto(cliente.get(reverse("objetivos_da_equipe")))
+    assert "1 tarefa aberta, 0 concluídas" in lista
+
+
+@respx.mock
+def test_objetivo_desativado_continua_na_tarefa_que_ja_o_tinha():
+    objetivo = Objetivo.objects.create(titulo="TESTE Antigo", ativo=False)
+    tarefa = Tarefa.objects.create(titulo="TESTE Herdada", objetivo=objetivo)
+    cliente = _cliente()
+
+    ficha = _texto(cliente.get(reverse("tarefa_editar", args=[tarefa.id])))
+    assert "TESTE Antigo (desativado)" in ficha
+    cliente.post(
+        reverse("tarefa_editar", args=[tarefa.id]),
+        {"titulo": "TESTE Herdada", "objetivo": objetivo.id, "situacao": "a_fazer"},
+    )
+    tarefa.refresh_from_db()
+    assert tarefa.objetivo == objetivo, "salvar a ficha largou o objetivo"
+
+    nova = cliente.post(
+        reverse("tarefa_nova"),
+        {"titulo": "TESTE Nova", "objetivo": objetivo.id, "situacao": "a_fazer"},
+    )
+    assert nova.status_code == 400
+    assert "Não conheço esse objetivo" in _texto(nova)
+
+
+# ---- compromissos da semana
+
+
+@respx.mock
+def test_assumir_na_semana_aparece_em_esta_semana_e_concluir_cumpre():
+    livia = _livia()
+    tarefa = Tarefa.objects.create(titulo="TESTE Gravar a aula 4", responsavel=livia)
+    cliente = _cliente(LIVIA, nome="Lívia")
+    destino = reverse(PAINEL) + "?visao=minhas"
+
+    resposta = cliente.post(
+        reverse("tarefa_compromisso", args=[tarefa.id]),
+        {"acao": "marcar", "next": destino},
+    )
+    assert resposta["Location"] == destino + "&resultado=compromisso_marcado"
+    compromisso = Compromisso.objects.get()
+    assert compromisso.semana == _segunda(timezone.localdate())
+    assert compromisso.marcado_por == f"Lívia ({LIVIA})"
+    painel = _texto(cliente.get(destino))
+    assert "Compromisso desta semana" in painel
+    assert ">Tirar da semana</button>" in painel
+
+    semana = _texto(cliente.get(reverse("semana_da_equipe")))
+    assert "Lívia (você)" in semana
+    assert "Em aberto" in semana and "TESTE Gravar a aula 4" in semana
+    assert "0 de 1" in semana
+
+    cliente.post(
+        reverse("tarefa_situacao", args=[tarefa.id]), {"situacao": "concluida"}
+    )
+    semana = _texto(cliente.get(reverse("semana_da_equipe")))
+    assert "Cumprido" in semana and "1 de 1" in semana
+    assert "Em aberto" not in semana
+
+    # Reabrir desfaz o cumprido: cumprido é estar concluída, não ter estado.
+    cliente.post(reverse("tarefa_situacao", args=[tarefa.id]), {"situacao": "a_fazer"})
+    assert "0 de 1" in _texto(cliente.get(reverse("semana_da_equipe")))
+
+
+@respx.mock
+def test_compromisso_exige_tarefa_aberta_e_com_responsavel():
+    cliente = _cliente()
+    solta = Tarefa.objects.create(titulo="TESTE Sem dono")
+    feita = Tarefa.objects.create(
+        titulo="TESTE Já feita",
+        responsavel=MembroDaEquipe.objects.get(nome="Ryan"),
+        situacao="concluida",
+        concluida_em=timezone.now(),
+    )
+    sem_dono = cliente.post(
+        reverse("tarefa_compromisso", args=[solta.id]), {"acao": "marcar"}
+    )
+    assert sem_dono["Location"].endswith("resultado=compromisso_sem_responsavel")
+    ja_feita = cliente.post(
+        reverse("tarefa_compromisso", args=[feita.id]), {"acao": "marcar"}
+    )
+    assert ja_feita["Location"].endswith("resultado=compromisso_concluida")
+    assert not Compromisso.objects.exists()
+    html = _texto(cliente.get(reverse(PAINEL)))
+    assert ">Assumir na semana</button>" not in html
+
+
+@respx.mock
+def test_tirar_da_semana_so_mexe_na_semana_corrente():
+    ryan = MembroDaEquipe.objects.get(nome="Ryan")
+    tarefa = Tarefa.objects.create(titulo="TESTE Campanha", responsavel=ryan)
+    corrente = _segunda(timezone.localdate())
+    Compromisso.objects.create(tarefa=tarefa, semana=corrente - timedelta(days=7))
+    Compromisso.objects.create(tarefa=tarefa, semana=corrente)
+    resposta = _cliente().post(
+        reverse("tarefa_compromisso", args=[tarefa.id]), {"acao": "tirar"}
+    )
+    assert resposta["Location"].endswith("resultado=compromisso_tirado")
+    assert list(Compromisso.objects.values_list("semana", flat=True)) == [
+        corrente - timedelta(days=7)
+    ], "a semana passada é registro e não pode ser reescrita"
+
+
+@respx.mock
+def test_semana_passada_mostra_o_que_foi_cumprido_e_o_que_ficou():
+    ryan = MembroDaEquipe.objects.get(nome="Ryan")
+    passada = _segunda(timezone.localdate()) - timedelta(days=7)
+    cumprida = Tarefa.objects.create(
+        titulo="TESTE Cumprida na quarta",
+        responsavel=ryan,
+        situacao="concluida",
+        concluida_em=_no_meio_do_dia(passada + timedelta(days=2)),
+    )
+    atrasou = Tarefa.objects.create(
+        titulo="TESTE Concluída só depois",
+        responsavel=ryan,
+        situacao="concluida",
+        concluida_em=_no_meio_do_dia(passada + timedelta(days=8)),
+    )
+    parada = Tarefa.objects.create(titulo="TESTE Parada", responsavel=ryan)
+    for tarefa in (cumprida, atrasou, parada):
+        Compromisso.objects.create(tarefa=tarefa, semana=passada)
+
+    html = _texto(
+        _cliente().get(reverse("semana_da_equipe") + f"?semana={passada.isoformat()}")
+    )
+    assert "Semana de " + passada.strftime("%d/%m") in html
+    assert "Cumpridos: 1 de 3 compromissos" in html
+    assert "Ficou" in html and "Em aberto" not in html
+    assert "concluída depois, em" in html
+    assert ">Tirar da semana</button>" not in html, "semana passada só se lê"
+    assert "Semana seguinte" in html
+
+
+@respx.mock
+def test_esta_semana_mostra_toda_pessoa_e_nao_vai_para_o_futuro():
+    cliente = _cliente()
+    html = _texto(cliente.get(reverse("semana_da_equipe")))
+    for nome in ("Arameu", "Ryan", "Lívia", "Maria"):
+        assert nome in html
+    assert "Nenhum compromisso assumido nesta semana" in html
+    assert "Nada assumido nesta semana" in html
+    assert "Semana seguinte" not in html
+
+    futuro = _texto(cliente.get(reverse("semana_da_equipe") + "?semana=2099-01-05"))
+    assert "Semana seguinte" not in futuro and "<b>Esta semana</b>" in futuro
+
+
+# ---- comentários
+
+
+@respx.mock
+def test_comentar_mostra_texto_quem_e_quando_na_ficha_e_conta_no_cartao():
+    _livia()
+    tarefa = Tarefa.objects.create(titulo="TESTE Revisar a apostila")
+    cliente = _cliente(LIVIA, nome="Lívia")
+    resposta = cliente.post(
+        reverse("tarefa_comentar", args=[tarefa.id]),
+        {"texto": "TESTE Faltam as páginas 3 e 4.\r\nVejo amanhã."},
+    )
+    ficha = reverse("tarefa_editar", args=[tarefa.id])
+    assert resposta["Location"] == ficha + "?resultado=comentado#comentarios"
+    comentario = Comentario.objects.get()
+    assert comentario.autor == f"Lívia ({LIVIA})"
+    assert comentario.texto == "TESTE Faltam as páginas 3 e 4.\nVejo amanhã."
+
+    html = _texto(cliente.get(ficha + "?resultado=comentado"))
+    assert "Comentário publicado." in html
+    assert "TESTE Faltam as páginas 3 e 4.<br>Vejo amanhã." in html
+    assert f"Lívia ({LIVIA}), " in html
+    assert "1 comentário" in _texto(cliente.get(reverse(PAINEL) + "?visao=equipe"))
+
+
+@respx.mock
+def test_comentario_vazio_ou_longo_nao_publica():
+    tarefa = Tarefa.objects.create(titulo="TESTE Qualquer")
+    cliente = _cliente()
+    vazio = cliente.post(reverse("tarefa_comentar", args=[tarefa.id]), {"texto": "  "})
+    assert "resultado=comentario_vazio" in vazio["Location"]
+    longo = cliente.post(
+        reverse("tarefa_comentar", args=[tarefa.id]), {"texto": "TESTE " + "x" * 500}
+    )
+    assert "resultado=comentario_longo" in longo["Location"]
+    # 500 letras com quebras de linha cabem: o navegador conta cada quebra como uma.
+    cabe = "TESTE" + "\r\n" * 10 + "y" * 485
+    ok = cliente.post(reverse("tarefa_comentar", args=[tarefa.id]), {"texto": cabe})
+    assert "resultado=comentado" in ok["Location"]
+    assert Comentario.objects.count() == 1
+    assert "Nenhum comentário ainda" not in _texto(
+        cliente.get(reverse("tarefa_editar", args=[tarefa.id]))
+    )

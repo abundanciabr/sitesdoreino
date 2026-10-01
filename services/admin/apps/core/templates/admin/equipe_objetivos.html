@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Objetivos da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <div class="equipe-topo">
+    <div>
+      <h1>Painel da equipe</h1>
+      <p class="subtitulo">Os objetivos aos quais as tarefas se ligam. Na ficha de cada tarefa dá para escolher o objetivo dela.</p>
+    </div>
+    <div class="equipe-gestos">
+      <a class="botao" href="{% url 'objetivo_novo' %}">Novo objetivo</a>
+    </div>
+  </div>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  {% include "admin/_abas_da_equipe.html" %}
+
+  {% if not ativos and not inativos %}
+  <p class="aviso">
+    <b>Ainda não há nenhum objetivo.</b>
+    Esta lista começa vazia de propósito: nada aqui é exemplo. Crie o primeiro
+    com o botão <a href="{% url 'objetivo_novo' %}">Novo objetivo</a>; depois,
+    na ficha de cada tarefa, escolha a qual objetivo ela serve.
+  </p>
+  {% elif not ativos %}
+  <p class="aviso"><b>Nenhum objetivo ativo.</b> Os desativados estão logo abaixo, e podem ser reativados.</p>
+  {% endif %}
+
+  <div class="objetivos">
+    {% for objetivo in ativos %}
+    <article class="objetivo">
+      <div>
+        <b class="titulo">{{ objetivo.titulo }}</b>
+        {% if objetivo.descricao %}<p class="descricao">{{ objetivo.descricao|linebreaksbr }}</p>{% endif %}
+        <div class="meta">
+          {% if objetivo.prazo %}<span class="{% if objetivo.vencido %}texto-atrasado{% endif %}">{% if objetivo.vencido %}Prazo vencido: {% else %}Prazo: {% endif %}{{ objetivo.prazo|date:"d/m/Y" }}</span> &middot; {% endif %}
+          {{ objetivo.abertas }} tarefa{{ objetivo.abertas|pluralize }} aberta{{ objetivo.abertas|pluralize }}, {{ objetivo.concluidas }} concluída{{ objetivo.concluidas|pluralize }}
+        </div>
+      </div>
+      <div class="gestos">
+        <a class="botao-pequeno" href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ objetivo.id }}">Ver tarefas</a>
+        <a class="botao-pequeno" href="{% url 'tarefa_nova' %}?objetivo={{ objetivo.id }}">Nova tarefa neste objetivo</a>
+        <a class="botao-pequeno" href="{% url 'objetivo_editar' objetivo.id %}">Editar</a>
+        <form method="post" action="{% url 'objetivo_ativo' objetivo.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="ativo" value="0">
+          <button class="botao-pequeno" type="submit">Desativar</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if inativos %}
+  <h2 class="titulo-dos-inativos">Desativados</h2>
+  <div class="objetivos">
+    {% for objetivo in inativos %}
+    <article class="objetivo inativo">
+      <div>
+        <b class="titulo">{{ objetivo.titulo }}</b>
+        <div class="meta">{{ objetivo.abertas }} tarefa{{ objetivo.abertas|pluralize }} aberta{{ objetivo.abertas|pluralize }}, {{ objetivo.concluidas }} concluída{{ objetivo.concluidas|pluralize }}</div>
+      </div>
+      <div class="gestos">
+        <a class="botao-pequeno" href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ objetivo.id }}">Ver tarefas</a>
+        <form method="post" action="{% url 'objetivo_ativo' objetivo.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="ativo" value="1">
+          <button class="botao-pequeno" type="submit">Reativar</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

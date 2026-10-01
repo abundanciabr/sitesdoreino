@@ -488,13 +488,37 @@ class MembroDaEquipe(models.Model):
         return self.nome
 
 
+class Objetivo(models.Model):
+    """Um objetivo da equipe, ao qual as tarefas se ligam (01/10/2026).
+
+    É a base para ligar as tarefas à MCI depois: por ora, só título, descrição,
+    prazo e se ainda vale. Objetivo não se apaga pela tela; DESATIVA. Ele some
+    das escolhas de tarefa nova, e as tarefas que já apontam para ele continuam
+    mostrando o nome dele.
+    """
+
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True, default="")
+    prazo = models.DateField(null=True, blank=True)
+    ativo = models.BooleanField(default=True)
+    criado_por = models.CharField(max_length=200, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-ativo", "prazo", "titulo"]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return self.titulo
+
+
 class Tarefa(models.Model):
     """Uma tarefa do trabalho diário da equipe.
 
     Quem criou, quem alterou por último e quando concluiu moram na própria
     linha, como texto: é o rastro que a tela mostra, e não um sistema de
     auditoria. `responsavel` é PROTECT porque apagar uma pessoa com tarefas
-    apagaria trabalho junto; a saída é desativar a pessoa.
+    apagaria trabalho junto; a saída é desativar a pessoa. O mesmo vale para
+    `objetivo`.
     """
 
     class Situacao(models.TextChoices):
@@ -507,6 +531,13 @@ class Tarefa(models.Model):
     descricao = models.TextField(blank=True, default="")
     responsavel = models.ForeignKey(
         MembroDaEquipe,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="tarefas",
+    )
+    objetivo = models.ForeignKey(
+        Objetivo,
         null=True,
         blank=True,
         on_delete=models.PROTECT,
@@ -533,3 +564,45 @@ class Tarefa(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return self.titulo
+
+
+class Compromisso(models.Model):
+    """Uma tarefa que alguém assumiu como compromisso de UMA semana.
+
+    `semana` é a segunda-feira daquela semana. Uma linha por (tarefa, semana),
+    e não uma marca na própria tarefa: a tarefa que ficou para trás na semana
+    passada e foi assumida de novo nesta precisa continuar contando como "ficou"
+    lá. Cumprido é a tarefa concluída até o domingo da semana; não há campo
+    para isso, porque seria a mesma informação escrita duas vezes.
+    """
+
+    tarefa = models.ForeignKey(
+        Tarefa, on_delete=models.CASCADE, related_name="compromissos"
+    )
+    semana = models.DateField()
+    marcado_por = models.CharField(max_length=200, blank=True, default="")
+    marcado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["semana", "marcado_em"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tarefa", "semana"], name="um_compromisso_por_semana"
+            )
+        ]
+        indexes = [models.Index(fields=["semana"])]
+
+
+class Comentario(models.Model):
+    """Um comentário curto numa tarefa: o texto, quem e quando. Não se edita
+    nem se apaga pela tela; não é sistema de auditoria, é a conversa da tarefa."""
+
+    tarefa = models.ForeignKey(
+        Tarefa, on_delete=models.CASCADE, related_name="comentarios"
+    )
+    texto = models.CharField(max_length=500)
+    autor = models.CharField(max_length=200, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["criado_em", "id"]

@@ -17,10 +17,7 @@
   <p class="recado-da-equipe">{{ resultado }}</p>
   {% endif %}
 
-  <nav class="abas" aria-label="Visões do painel">
-    <a class="aba{% if visao == 'minhas' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=minhas">Minhas tarefas</a>
-    <a class="aba{% if visao == 'equipe' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=equipe">Equipe</a>
-  </nav>
+  {% include "admin/_abas_da_equipe.html" %}
 
   {% if sem_pessoa %}
   <p class="aviso">
@@ -41,6 +38,16 @@
         <option value="{{ pessoa.id }}"{% if responsavel_escolhido == pessoa.id|stringformat:"s" %} selected{% endif %}>{{ pessoa.nome }}</option>
         {% endfor %}
         <option value="sem"{% if responsavel_escolhido == 'sem' %} selected{% endif %}>Sem responsável</option>
+      </select>
+    </label>
+    <label class="campo">
+      <span class="rotulo">Objetivo</span>
+      <select name="objetivo">
+        <option value="">Todos os objetivos</option>
+        {% for objetivo in objetivos %}
+        <option value="{{ objetivo.id }}"{% if objetivo_escolhido == objetivo.id|stringformat:"s" %} selected{% endif %}>{{ objetivo.titulo }}{% if not objetivo.ativo %} (desativado){% endif %}</option>
+        {% endfor %}
+        <option value="sem"{% if objetivo_escolhido == 'sem' %} selected{% endif %}>Sem objetivo</option>
       </select>
     </label>
     <label class="campo">
@@ -89,13 +96,20 @@
       <h2>{{ coluna.rotulo }} <span class="conta">{{ coluna.tarefas|length }}</span></h2>
       {% for tarefa in coluna.tarefas %}
       <article class="tarefa{% if tarefa.atrasada %} atrasada{% endif %}">
+        {% if tarefa.compromisso_da_semana %}<span class="selo-compromisso">Compromisso desta semana</span>{% endif %}
         <a class="titulo" href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a>
         <div class="meta">
           {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% else %}Sem responsável{% endif %}
           {% if tarefa.prazo %}
             &middot; <span class="prazo{% if tarefa.atrasada %} atrasado{% endif %}">{% if tarefa.atrasada %}Atrasada: {% elif tarefa.vence_hoje %}Hoje: {% endif %}{{ tarefa.prazo|date:"d/m" }}</span>
           {% endif %}
+          {% if tarefa.n_comentarios %}
+            &middot; <a href="{% url 'tarefa_editar' tarefa.id %}#comentarios">{{ tarefa.n_comentarios }} comentário{{ tarefa.n_comentarios|pluralize }}</a>
+          {% endif %}
         </div>
+        {% if tarefa.objetivo %}
+        <div class="meta objetivo-da-tarefa">Objetivo: <a href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ tarefa.objetivo.id }}">{{ tarefa.objetivo.titulo }}</a></div>
+        {% endif %}
         {% if tarefa.situacao == 'bloqueada' and tarefa.impedimento %}
         <p class="impedimento">{{ tarefa.impedimento }}</p>
         {% endif %}
@@ -120,6 +134,19 @@
           </form>
           {% endif %}
           <a class="botao-pequeno" href="{% url 'tarefa_editar' tarefa.id %}">Editar</a>
+          {% if tarefa.situacao != 'concluida' and tarefa.responsavel %}
+          <form method="post" action="{% url 'tarefa_compromisso' tarefa.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ endereco_atual }}">
+            {% if tarefa.compromisso_da_semana %}
+            <input type="hidden" name="acao" value="tirar">
+            <button class="botao-pequeno" type="submit">Tirar da semana</button>
+            {% else %}
+            <input type="hidden" name="acao" value="marcar">
+            <button class="botao-pequeno" type="submit">Assumir na semana</button>
+            {% endif %}
+          </form>
+          {% endif %}
         </div>
         <details>
           <summary>Mudar situação</summary>

@@ -25,6 +25,18 @@ administrador: quem decide quem é da equipe é o mantenedor.
 Quem criou, quem alterou e quando concluiu moram na própria tarefa, como
 texto. Não há sistema de auditoria separado, porque o pedido foi ver o rastro,
 não guardá-lo para sempre.
+
+## A segunda camada (01/10/2026)
+
+* **Objetivos** (`/equipe/objetivos`): a tarefa pode apontar para um objetivo,
+  e o painel filtra por ele. É a base para ligar as tarefas à MCI depois.
+  Objetivo não se apaga; desativa.
+* **Compromissos da semana** (`/equipe/semana`): uma tarefa aberta, com
+  responsável, pode ser assumida como compromisso da semana corrente. A visão
+  "Esta semana" mostra, por pessoa, o que foi cumprido (concluído até o
+  domingo) e o que ficou. Semana que já passou não se mexe: só se lê.
+* **Comentários**: um texto curto por vez, com quem e quando, na ficha da
+  tarefa. Não se editam nem se apagam.
 """
 
 from __future__ import annotations
@@ -33,13 +45,14 @@ from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import MembroDaEquipe, Tarefa
+from .models import Comentario, Compromisso, MembroDaEquipe, Objetivo, Tarefa
 
 Situacao = Tarefa.Situacao
 
@@ -76,7 +89,34 @@ RESULTADOS = {
     "desassociada": "Conta desassociada.",
     "email_invalido": "Esse e-mail não parece um e-mail. Nada mudou.",
     "email_em_uso": "Esse e-mail já está associado a outra pessoa. Nada mudou.",
+    "objetivo_criado": "Objetivo criado.",
+    "objetivo_salvo": "Objetivo salvo.",
+    "objetivo_desativado": (
+        "Objetivo desativado: some das escolhas de tarefa nova. As tarefas "
+        "que já apontam para ele continuam mostrando o nome."
+    ),
+    "objetivo_reativado": "Objetivo reativado.",
+    "compromisso_marcado": "Tarefa assumida como compromisso desta semana.",
+    "compromisso_tirado": "Tarefa tirada dos compromissos desta semana.",
+    "compromisso_concluida": (
+        "Tarefa já concluída não vira compromisso: compromisso é o que ainda "
+        "vai ser feito. Nada mudou."
+    ),
+    "compromisso_sem_responsavel": (
+        "Compromisso é de alguém: escolha antes quem responde pela tarefa. "
+        "Nada mudou."
+    ),
+    "comentado": "Comentário publicado.",
+    "comentario_vazio": "O comentário estava vazio. Nada foi publicado.",
+    "comentario_longo": (
+        "O comentário passou de 500 letras. Encurte e publique de novo; "
+        "nada foi publicado."
+    ),
 }
+
+# "Curto" é o pedido. O campo do formulário avisa no navegador; o servidor
+# confere de novo, porque o navegador não é a porta.
+TAMANHO_DO_COMENTARIO = 500
 
 
 # ---------------------------------------------------------------- utilitários
@@ -104,6 +144,21 @@ def _membro_da_sessao(request) -> MembroDaEquipe | None:
 
 def _membros():
     return list(MembroDaEquipe.objects.filter(ativo=True))
+
+
+def _objetivos_para_escolher(atual: Objetivo | None = None) -> list[Objetivo]:
+    """Os objetivos que a tarefa pode escolher: os ativos, e o que ela já tem
+    mesmo desativado, para que salvar a ficha não largue o objetivo por baixo
+    dos panos."""
+    escolhiveis = list(Objetivo.objects.filter(ativo=True))
+    if atual is not None and not atual.ativo:
+        escolhiveis.append(atual)
+    return escolhiveis
+
+
+def _segunda(dia: date) -> date:
+    """A segunda-feira da semana de `dia`: é ela que dá nome à semana."""
+    return dia - timedelta(days=dia.weekday())
 
 
 def _marcar(tarefa: Tarefa, hoje: date) -> Tarefa:
@@ -148,13 +203,14 @@ def _ler_prazo(cru: str):
         return None, "O prazo precisa ser uma data válida."
 
 
-def _ler_formulario(request, membros) -> tuple[dict, list[str]]:
+def _ler_formulario(request, membros, objetivos) -> tuple[dict, list[str]]:
     """Lê o formulário de criar/editar. Devolve os dados crus e os erros."""
     post = request.POST
     dados = {
         "titulo": (post.get("titulo") or "").strip()[:200],
         "descricao": (post.get("descricao") or "").strip()[:5000],
         "responsavel": (post.get("responsavel") or "").strip(),
+        "objetivo": (post.get("objetivo") or "").strip(),
         "prazo": (post.get("prazo") or "").strip(),
         "situacao": (post.get("situacao") or Situacao.A_FAZER).strip(),
         "impedimento": (post.get("impedimento") or "").strip()[:2000],
@@ -166,6 +222,8 @@ def _ler_formulario(request, membros) -> tuple[dict, list[str]]:
         str(m.id) for m in membros
     }:
         erros.append("Não conheço essa pessoa. Escolha alguém da equipe.")
+    if dados["objetivo"] and dados["objetivo"] not in {str(o.id) for o in objetivos}:
+        erros.append("Não conheço esse objetivo. Escolha um dos objetivos ativos.")
     _, erro_prazo = _ler_prazo(dados["prazo"])
     if erro_prazo:
         erros.append(erro_prazo)
@@ -176,12 +234,13 @@ def _ler_formulario(request, membros) -> tuple[dict, list[str]]:
     return dados, erros
 
 
-def _aplicar(tarefa: Tarefa, dados: dict, membros, quem: str) -> None:
+def _aplicar(tarefa: Tarefa, dados: dict, membros, objetivos, quem: str) -> None:
     """Grava os dados lidos na tarefa, e cuida de conclusão e impedimento."""
     tarefa.titulo = dados["titulo"]
     tarefa.descricao = dados["descricao"]
     por_id = {str(m.id): m for m in membros}
     tarefa.responsavel = por_id.get(dados["responsavel"])
+    tarefa.objetivo = {str(o.id): o for o in objetivos}.get(dados["objetivo"])
     tarefa.prazo, _ = _ler_prazo(dados["prazo"])
     _mudar_situacao(tarefa, dados["situacao"], dados["impedimento"])
     tarefa.alterada_por = quem
@@ -205,6 +264,7 @@ def _dados_de(tarefa: Tarefa) -> dict:
         "titulo": tarefa.titulo,
         "descricao": tarefa.descricao,
         "responsavel": str(tarefa.responsavel_id or ""),
+        "objetivo": str(tarefa.objetivo_id or ""),
         "prazo": tarefa.prazo.isoformat() if tarefa.prazo else "",
         "situacao": tarefa.situacao,
         "impedimento": tarefa.impedimento,
@@ -230,7 +290,9 @@ def painel_da_equipe(request):
     if visao not in ("minhas", "equipe"):
         visao = "equipe"
 
-    tarefas = Tarefa.objects.select_related("responsavel")
+    tarefas = Tarefa.objects.select_related("responsavel", "objetivo").annotate(
+        n_comentarios=Count("comentarios")
+    )
 
     responsavel_escolhido = (request.GET.get("responsavel") or "").strip()
     if visao == "minhas":
@@ -261,8 +323,22 @@ def painel_da_equipe(request):
     if situacao_escolhida not in Situacao.values:
         situacao_escolhida = ""
 
+    objetivo_escolhido = (request.GET.get("objetivo") or "").strip()
+    if objetivo_escolhido == "sem":
+        tarefas = tarefas.filter(objetivo__isnull=True)
+    elif objetivo_escolhido.isdigit():
+        tarefas = tarefas.filter(objetivo_id=int(objetivo_escolhido))
+    else:
+        objetivo_escolhido = ""
+
+    compromissos_da_semana = set(
+        Compromisso.objects.filter(semana=_segunda(hoje)).values_list(
+            "tarefa_id", flat=True
+        )
+    )
     por_situacao = {codigo: [] for codigo, _, _ in COLUNAS}
     for tarefa in tarefas:
+        tarefa.compromisso_da_semana = tarefa.id in compromissos_da_semana
         por_situacao[tarefa.situacao].append(_marcar(tarefa, hoje))
 
     def ordem(tarefa):
@@ -289,7 +365,12 @@ def painel_da_equipe(request):
 
     total = sum(len(c["tarefas"]) for c in colunas)
     atrasadas = sum(1 for c in colunas for t in c["tarefas"] if t.atrasada)
-    peneirando = bool(responsavel_escolhido or prazo_escolhido or situacao_escolhida)
+    peneirando = bool(
+        responsavel_escolhido
+        or prazo_escolhido
+        or situacao_escolhida
+        or objetivo_escolhido
+    )
 
     return render(
         request,
@@ -308,6 +389,8 @@ def painel_da_equipe(request):
             "responsavel_escolhido": responsavel_escolhido,
             "prazo_escolhido": prazo_escolhido,
             "situacao_escolhida": situacao_escolhida,
+            "objetivo_escolhido": objetivo_escolhido,
+            "objetivos": list(Objetivo.objects.all()),
             "filtros_de_prazo": FILTROS_DE_PRAZO,
             "situacoes": Situacao.choices,
             "primeiro_uso": not Tarefa.objects.exists(),
@@ -318,7 +401,7 @@ def painel_da_equipe(request):
     )
 
 
-def _tela_do_formulario(request, dados, erros, tarefa=None, status=200):
+def _tela_do_formulario(request, dados, erros, objetivos, tarefa=None, status=200):
     return render(
         request,
         "admin/equipe_tarefa.html",
@@ -328,8 +411,12 @@ def _tela_do_formulario(request, dados, erros, tarefa=None, status=200):
             "dados": dados,
             "erros": erros,
             "membros": _membros(),
+            "objetivos": objetivos,
             "situacoes": Situacao.choices,
             "hoje": _hoje(),
+            "comentarios": list(tarefa.comentarios.all()) if tarefa else [],
+            "tamanho_do_comentario": TAMANHO_DO_COMENTARIO,
+            "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
         },
         status=status,
     )
@@ -337,39 +424,47 @@ def _tela_do_formulario(request, dados, erros, tarefa=None, status=200):
 
 @require_http_methods(["GET", "POST"])
 def tarefa_nova(request):
-    """Criar uma tarefa. O responsável vem pré-escolhido quando dá."""
+    """Criar uma tarefa. Responsável e objetivo vêm pré-escolhidos quando dá."""
     membros = _membros()
+    objetivos = _objetivos_para_escolher()
     if request.method == "GET":
         membro = _membro_da_sessao(request)
+        objetivo = (request.GET.get("objetivo") or "").strip()
         dados = {
             "titulo": "",
             "descricao": "",
             "responsavel": str(membro.id) if membro else "",
+            "objetivo": objetivo if objetivo in {str(o.id) for o in objetivos} else "",
             "prazo": "",
             "situacao": Situacao.A_FAZER,
             "impedimento": "",
         }
-        return _tela_do_formulario(request, dados, [])
+        return _tela_do_formulario(request, dados, [], objetivos)
 
-    dados, erros = _ler_formulario(request, membros)
+    dados, erros = _ler_formulario(request, membros, objetivos)
     if erros:
-        return _tela_do_formulario(request, dados, erros, status=400)
+        return _tela_do_formulario(request, dados, erros, objetivos, status=400)
     tarefa = Tarefa(criada_por=_quem(request))
-    _aplicar(tarefa, dados, membros, _quem(request))
+    _aplicar(tarefa, dados, membros, objetivos, _quem(request))
     return _com_resultado(reverse("painel_da_equipe"), "criada")
 
 
 @require_http_methods(["GET", "POST"])
 def tarefa_editar(request, id: int):
-    tarefa = get_object_or_404(Tarefa, pk=id)
+    tarefa = get_object_or_404(Tarefa.objects.select_related("objetivo"), pk=id)
     membros = _membros()
+    objetivos = _objetivos_para_escolher(tarefa.objetivo)
     if request.method == "GET":
-        return _tela_do_formulario(request, _dados_de(tarefa), [], tarefa=tarefa)
+        return _tela_do_formulario(
+            request, _dados_de(tarefa), [], objetivos, tarefa=tarefa
+        )
 
-    dados, erros = _ler_formulario(request, membros)
+    dados, erros = _ler_formulario(request, membros, objetivos)
     if erros:
-        return _tela_do_formulario(request, dados, erros, tarefa=tarefa, status=400)
-    _aplicar(tarefa, dados, membros, _quem(request))
+        return _tela_do_formulario(
+            request, dados, erros, objetivos, tarefa=tarefa, status=400
+        )
+    _aplicar(tarefa, dados, membros, objetivos, _quem(request))
     return _com_resultado(reverse("painel_da_equipe"), "salva")
 
 
@@ -397,6 +492,217 @@ def tarefa_situacao(request, id: int):
     else:
         resultado = "situacao"
     return _com_resultado(destino, resultado)
+
+
+@require_POST
+def tarefa_compromisso(request, id: int):
+    """Assumir a tarefa como compromisso da semana corrente, ou tirá-la.
+
+    Só a semana CORRENTE se mexe: o que ficou numa semana que já passou é o
+    registro dela, e tirar dali seria reescrever o resultado.
+    """
+    tarefa = get_object_or_404(Tarefa, pk=id)
+    destino = _destino_seguro(request, reverse("painel_da_equipe"))
+    semana = _segunda(_hoje())
+    if request.POST.get("acao") == "tirar":
+        Compromisso.objects.filter(tarefa=tarefa, semana=semana).delete()
+        return _com_resultado(destino, "compromisso_tirado")
+    if tarefa.situacao == Situacao.CONCLUIDA:
+        return _com_resultado(destino, "compromisso_concluida")
+    if tarefa.responsavel_id is None:
+        return _com_resultado(destino, "compromisso_sem_responsavel")
+    Compromisso.objects.get_or_create(
+        tarefa=tarefa, semana=semana, defaults={"marcado_por": _quem(request)}
+    )
+    return _com_resultado(destino, "compromisso_marcado")
+
+
+@require_POST
+def tarefa_comentar(request, id: int):
+    """Publica um comentário curto na ficha da tarefa."""
+    tarefa = get_object_or_404(Tarefa, pk=id)
+    # O navegador conta a quebra de linha como uma letra e a envia como duas;
+    # contar do jeito dele é o que impede recusar o que ele deixou escrever.
+    texto = (request.POST.get("texto") or "").replace("\r\n", "\n").strip()
+    if not texto:
+        resultado = "comentario_vazio"
+    elif len(texto) > TAMANHO_DO_COMENTARIO:
+        resultado = "comentario_longo"
+    else:
+        Comentario.objects.create(tarefa=tarefa, texto=texto, autor=_quem(request))
+        resultado = "comentado"
+    ficha = reverse("tarefa_editar", args=[tarefa.id])
+    return HttpResponseRedirect(f"{ficha}?resultado={resultado}#comentarios")
+
+
+@require_GET
+def semana_da_equipe(request):
+    """A visão "Esta semana": os compromissos de cada pessoa, cumpridos e não.
+
+    Cumprido é a tarefa concluída até o domingo da semana. Tarefa reaberta
+    deixa de estar concluída, e por isso deixa de contar como cumprida.
+    """
+    hoje = _hoje()
+    corrente = _segunda(hoje)
+    pedida, _ = _ler_prazo(request.GET.get("semana") or "")
+    segunda = min(_segunda(pedida), corrente) if pedida else corrente
+    domingo = segunda + timedelta(days=6)
+    e_corrente = segunda == corrente
+
+    # Toda pessoa ativa aparece, mesmo sem compromisso: "nada assumido nesta
+    # semana" é informação, não ausência dela.
+    grupos = {
+        membro.id: {"pessoa": membro, "cumpridos": [], "abertos": []}
+        for membro in _membros()
+    }
+    compromissos = Compromisso.objects.filter(semana=segunda).select_related(
+        "tarefa", "tarefa__responsavel", "tarefa__objetivo"
+    )
+    for compromisso in compromissos:
+        tarefa = compromisso.tarefa
+        tarefa.compromisso = compromisso
+        grupo = grupos.setdefault(
+            tarefa.responsavel_id,
+            {"pessoa": tarefa.responsavel, "cumpridos": [], "abertos": []},
+        )
+        tarefa.concluida_no_dia = (
+            timezone.localdate(tarefa.concluida_em) if tarefa.concluida_em else None
+        )
+        if tarefa.concluida_no_dia and tarefa.concluida_no_dia <= domingo:
+            grupo["cumpridos"].append(tarefa)
+        else:
+            grupo["abertos"].append(_marcar(tarefa, hoje))
+    pessoas = list(grupos.values())
+    for grupo in pessoas:
+        grupo["total"] = len(grupo["cumpridos"]) + len(grupo["abertos"])
+
+    membro = _membro_da_sessao(request)
+    return render(
+        request,
+        "admin/equipe_semana.html",
+        {
+            "admin": request.admin,
+            "hoje": hoje,
+            "visao": "semana",
+            "membro": membro,
+            "segunda": segunda,
+            "domingo": domingo,
+            "e_corrente": e_corrente,
+            "anterior": (segunda - timedelta(days=7)).isoformat(),
+            "seguinte": (
+                None if e_corrente else (segunda + timedelta(days=7)).isoformat()
+            ),
+            "pessoas": pessoas,
+            "total": sum(g["total"] for g in pessoas),
+            "cumpridos": sum(len(g["cumpridos"]) for g in pessoas),
+            "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
+            "endereco_atual": _sem_resultado(request.get_full_path()),
+            "pode_gerir_pessoas": not request.admin.get("equipe_apenas"),
+        },
+    )
+
+
+# ---------------------------------------------------------------- objetivos
+
+
+def _ler_objetivo(request) -> tuple[dict, list[str]]:
+    post = request.POST
+    dados = {
+        "titulo": (post.get("titulo") or "").strip()[:200],
+        "descricao": (post.get("descricao") or "").strip()[:5000],
+        "prazo": (post.get("prazo") or "").strip(),
+    }
+    erros = []
+    if not dados["titulo"]:
+        erros.append("O objetivo precisa de um título.")
+    _, erro_prazo = _ler_prazo(dados["prazo"])
+    if erro_prazo:
+        erros.append(erro_prazo)
+    return dados, erros
+
+
+def _gravar_objetivo(objetivo: Objetivo, dados: dict) -> None:
+    objetivo.titulo = dados["titulo"]
+    objetivo.descricao = dados["descricao"]
+    objetivo.prazo, _ = _ler_prazo(dados["prazo"])
+    objetivo.save()
+
+
+def _tela_do_objetivo(request, dados, erros, objetivo=None, status=200):
+    return render(
+        request,
+        "admin/equipe_objetivo.html",
+        {"admin": request.admin, "objetivo": objetivo, "dados": dados, "erros": erros},
+        status=status,
+    )
+
+
+@require_GET
+def objetivos_da_equipe(request):
+    """Os objetivos, ativos em cima, com quantas tarefas cada um tem."""
+    hoje = _hoje()
+    concluida = Q(tarefas__situacao=Situacao.CONCLUIDA)
+    objetivos = list(
+        Objetivo.objects.annotate(
+            abertas=Count("tarefas", filter=~concluida),
+            concluidas=Count("tarefas", filter=concluida),
+        )
+    )
+    for objetivo in objetivos:
+        objetivo.vencido = bool(
+            objetivo.ativo and objetivo.prazo and objetivo.prazo < hoje
+        )
+    return render(
+        request,
+        "admin/equipe_objetivos.html",
+        {
+            "admin": request.admin,
+            "visao": "objetivos",
+            "ativos": [o for o in objetivos if o.ativo],
+            "inativos": [o for o in objetivos if not o.ativo],
+            "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def objetivo_novo(request):
+    if request.method == "GET":
+        return _tela_do_objetivo(
+            request, {"titulo": "", "descricao": "", "prazo": ""}, []
+        )
+    dados, erros = _ler_objetivo(request)
+    if erros:
+        return _tela_do_objetivo(request, dados, erros, status=400)
+    _gravar_objetivo(Objetivo(criado_por=_quem(request)), dados)
+    return _com_resultado(reverse("objetivos_da_equipe"), "objetivo_criado")
+
+
+@require_http_methods(["GET", "POST"])
+def objetivo_editar(request, id: int):
+    objetivo = get_object_or_404(Objetivo, pk=id)
+    if request.method == "GET":
+        dados = {
+            "titulo": objetivo.titulo,
+            "descricao": objetivo.descricao,
+            "prazo": objetivo.prazo.isoformat() if objetivo.prazo else "",
+        }
+        return _tela_do_objetivo(request, dados, [], objetivo=objetivo)
+    dados, erros = _ler_objetivo(request)
+    if erros:
+        return _tela_do_objetivo(request, dados, erros, objetivo=objetivo, status=400)
+    _gravar_objetivo(objetivo, dados)
+    return _com_resultado(reverse("objetivos_da_equipe"), "objetivo_salvo")
+
+
+@require_POST
+def objetivo_ativo(request, id: int):
+    """Desativar (ou reativar) um objetivo. Apagar não existe pela tela."""
+    objetivo = get_object_or_404(Objetivo, pk=id)
+    objetivo.ativo = request.POST.get("ativo") == "1"
+    objetivo.save(update_fields=["ativo"])
+    resultado = "objetivo_reativado" if objetivo.ativo else "objetivo_desativado"
+    return _com_resultado(reverse("objetivos_da_equipe"), resultado)
 
 
 @require_GET
