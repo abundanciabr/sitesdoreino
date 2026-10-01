@@ -31,6 +31,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core import placar
 from apps.core.models import (
     Comentario,
     Compromisso,
@@ -766,3 +767,187 @@ def test_comentario_vazio_ou_longo_nao_publica():
     assert "Nenhum comentário ainda" not in _texto(
         cliente.get(reverse("tarefa_editar", args=[tarefa.id]))
     )
+
+
+# ---------------------------------------------------------------- a terceira camada: o placar
+
+
+ALUNOS = "http://alunos:8000/api/alunos"
+
+
+def _montagem_falsa(veredito: str, esperado: int):
+    """Uma `placar.montar_o_placar` de mentira, no formato da de verdade.
+
+    A conta da meta é guardada em `test_placar.py`; aqui só se mede se o
+    número CHEGA à aba e o que a equipe faz por ele. O veredito vem escrito
+    para o teste não depender do dia em que roda."""
+
+    def montar(hoje, site_id=None):
+        meta, _ = placar.ler_cartao(placar.CARTAO_DA_META)
+        pedidos, _ = placar.ler_cartao(placar.CARTAO_DOS_PEDIDOS)
+        de48, _ = placar.ler_cartao(placar.CARTAO_DAS_48H)
+        return {
+            "meta": meta,
+            "placar": {
+                "x": 37,
+                "alvo": 1000,
+                "partida": 0,
+                "partida_em": "2026-09-03",
+                "ate": "2026-12-15",
+                "esperado_hoje": esperado,
+                "distancia": 963,
+                "dias_restantes": 75,
+                "ritmo_por_semana": 89.9,
+                "veredito": veredito,
+            },
+            "contagem": {"ciclo": 37},
+            "direcao": {
+                "pedidos": {
+                    "veredito": "abaixo",
+                    "esta_semana": 2,
+                    "meta": 5,
+                    "sequencia": 0,
+                },
+                "liberacoes": {
+                    "veredito": "cumprida",
+                    "por_cento": 100,
+                    "total": 3,
+                    "esperando_ha_muito": 0,
+                },
+            },
+            "cartao_pedidos": pedidos,
+            "cartao_48h": de48,
+        }
+
+    return montar
+
+
+def test_o_que_o_objetivo_move_aponta_para_cartoes_que_o_placar_le():
+    """O valor guardado é o NOME DO CARTÃO: se o placar renomear um, a ligação
+    da equipe não pode ficar apontando para um número que não existe mais."""
+    assert set(Objetivo.Move.values) == {
+        placar.CARTAO_DA_META,
+        placar.CARTAO_DOS_PEDIDOS,
+        placar.CARTAO_DAS_48H,
+    }
+    for nome in Objetivo.Move.values:
+        cartao, recusas = placar.ler_cartao(nome)
+        assert cartao is not None, (nome, recusas)
+
+
+@respx.mock
+def test_objetivo_escolhe_o_que_move_e_a_lista_e_o_cartao_dizem():
+    cliente = _cliente()
+    cliente.post(
+        reverse("objetivo_novo"),
+        {"titulo": "TESTE Encher a sala de espera", "move": Objetivo.Move.CHEGADAS},
+    )
+    objetivo = Objetivo.objects.get()
+    assert objetivo.move == placar.CARTAO_DOS_PEDIDOS
+
+    ficha = _texto(cliente.get(reverse("objetivo_editar", args=[objetivo.id])))
+    assert f'value="{placar.CARTAO_DOS_PEDIDOS}" selected' in ficha
+    lista = _texto(cliente.get(reverse("objetivos_da_equipe")))
+    assert "Move: Medida de direção: chegadas à sala de espera" in lista
+
+    Tarefa.objects.create(titulo="TESTE Divulgar a turma", objetivo=objetivo)
+    painel = _texto(cliente.get(reverse(PAINEL) + "?visao=equipe"))
+    assert "move as chegadas" in painel
+
+    # Desligar é escolher "Nada declarado"; a tarefa continua no objetivo.
+    cliente.post(
+        reverse("objetivo_editar", args=[objetivo.id]),
+        {"titulo": objetivo.titulo, "move": ""},
+    )
+    objetivo.refresh_from_db()
+    assert objetivo.move == ""
+    assert "move as chegadas" not in _texto(
+        cliente.get(reverse(PAINEL) + "?visao=equipe")
+    )
+
+
+@respx.mock
+def test_numero_do_placar_desconhecido_nao_salva():
+    resposta = _cliente().post(
+        reverse("objetivo_novo"), {"titulo": "TESTE Qualquer", "move": "faturamento"}
+    )
+    assert resposta.status_code == 400
+    assert "Não conheço esse número do placar" in _texto(resposta)
+    assert not Objetivo.objects.exists()
+
+
+@respx.mock
+def test_quem_nao_e_da_casa_nao_ve_o_placar_da_equipe(monkeypatch):
+    monkeypatch.setattr(placar, "montar_o_placar", _montagem_falsa("ganhando", 30))
+    resposta = _cliente(DE_FORA).get(reverse("placar_da_equipe"))
+    assert resposta.status_code == 404
+    assert "MCI" not in _texto(resposta)
+
+
+@respx.mock
+def test_a_aba_placar_mostra_os_numeros_e_o_que_a_equipe_faz_por_eles(monkeypatch):
+    monkeypatch.setattr(placar, "montar_o_placar", _montagem_falsa("ganhando", 30))
+    livia = _livia()
+    mci = Objetivo.objects.create(
+        titulo="TESTE Bater a meta do ciclo", move=Objetivo.Move.MCI
+    )
+    Objetivo.objects.create(titulo="TESTE Objetivo que não diz o que move")
+    feita = Tarefa.objects.create(titulo="TESTE Feita", responsavel=livia, objetivo=mci)
+    aberta = Tarefa.objects.create(
+        titulo="TESTE Aberta", responsavel=livia, objetivo=mci
+    )
+    solta = Tarefa.objects.create(titulo="TESTE Solta", responsavel=livia)
+    semana = _segunda(timezone.localdate())
+    for tarefa in (feita, aberta, solta):
+        Compromisso.objects.create(tarefa=tarefa, semana=semana)
+    cliente = _cliente(LIVIA, nome="Lívia")
+    cliente.post(reverse("tarefa_situacao", args=[feita.id]), {"situacao": "concluida"})
+
+    resposta = cliente.get(reverse("placar_da_equipe"))
+    assert resposta.status_code == 200, "o crachá de equipe abre a aba"
+    html = _texto(resposta)
+    assert "A meta grande (MCI nº 1)" in html
+    assert ">Ganhando</span>" in html and "estamos em 37" in html
+    assert "De 0 para 1000, de 03/09/2026 até 15/12/2026." in html
+    assert ">Abaixo da meta</span>" in html, "a medida das chegadas"
+    assert ">Na meta</span>" in html, "a medida das 48 horas"
+    assert "TESTE Bater a meta do ciclo" in html
+    assert "1 tarefa aberta." in html
+    assert "<b>1 de 2</b> cumpridos" in html
+    assert "1 não diz mover nenhum destes números (0 cumpridos)" in html
+    assert "Nenhum objetivo ativo diz mover este número" in html
+    assert (
+        f'href="{reverse("placar")}"' not in html
+    ), "o crachá de equipe não vê o link do placar inteiro, que para ele é 404"
+    assert f'class="aba ativa" href="{reverse("placar_da_equipe")}"' in html
+
+    # A semana conta igual: a mesma regra de cumprido nas duas abas.
+    semana_html = _texto(cliente.get(reverse("semana_da_equipe")))
+    assert "1 de 3" in semana_html
+    assert "move a MCI" in semana_html
+
+
+@respx.mock
+def test_a_aba_placar_diz_perdendo_e_o_administrador_ve_o_placar_inteiro(
+    monkeypatch,
+):
+    monkeypatch.setattr(placar, "montar_o_placar", _montagem_falsa("perdendo", 50))
+    html = _texto(_cliente().get(reverse("placar_da_equipe")))
+    assert ">Perdendo</span>" in html
+    assert "deveríamos estar em 50, e estamos em 37" in html
+    assert f'href="{reverse("placar")}"' in html
+    assert "Nenhum compromisso assumido nesta semana" in html
+
+
+@respx.mock
+def test_a_aba_placar_abre_com_a_escola_fora_do_ar_e_nao_inventa_zero(monkeypatch):
+    """Sem dublê na montagem: a de verdade, com a `alunos` recusando a conexão."""
+    monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
+    monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-admin-alunos")
+    respx.get(url__startswith=ALUNOS).mock(side_effect=httpx.ConnectError("recusou"))
+    resposta = _cliente().get(reverse("placar_da_equipe"))
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert "Não consigo contar agora" in html
+    assert "Não consegui medir agora" in html
+    assert 'class="valor">0' not in html

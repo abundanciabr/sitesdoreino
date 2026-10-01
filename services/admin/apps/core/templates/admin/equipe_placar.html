@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Placar da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <div class="equipe-topo">
+    <div>
+      <h1>Painel da equipe</h1>
+      <p class="subtitulo">A meta grande, as duas medidas que a casa move toda semana, e o que a equipe está fazendo por elas. Os números são os mesmos do placar{% if pode_ver_o_placar_inteiro %} (<a href="{% url 'placar' %}">ver o placar inteiro</a>){% endif %}.</p>
+    </div>
+    <div class="equipe-gestos">
+      <a class="botao" href="{% url 'tarefa_nova' %}">Nova tarefa</a>
+      {% if pode_gerir_pessoas %}<a class="volta" href="{% url 'pessoas_da_equipe' %}">Pessoas e contas</a>{% endif %}
+    </div>
+  </div>
+
+  {% include "admin/_abas_da_equipe.html" %}
+
+  <div class="placar-da-equipe">
+
+    {% comment %}1. A MCI: o número que diz se estamos ganhando.{% endcomment %}
+    <section class="numero-do-placar{% if placar.veredito == 'ganhando' or placar.veredito == 'cumprida' %} ganhando{% elif placar.veredito == 'perdendo' or placar.veredito == 'vencida' %} perdendo{% endif %}">
+      <h2>A meta grande (MCI nº 1)</h2>
+      {% if not meta %}
+        <p class="aviso borda-amarela"><b>O número não aparece:</b> falta o cartão dele no placar. Nada aqui está quebrado por sua causa.</p>
+      {% else %}
+        <p class="pergunta">{{ meta.pergunta }}</p>
+        {% if placar.veredito == "nao-consigo-contar" %}
+          <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu{% if contagem.campo_ausente %} com a data que conta{% endif %}. Isto não é zero: abra de novo daqui a pouco.</p>
+        {% else %}
+          <div class="valor">{{ placar.x }}{% if placar.alvo is not None %} <span>de {{ placar.alvo }} {{ meta.unidade }}</span>{% endif %}</div>
+          {% if placar.alvo is not None %}
+          <p class="nota">De {{ placar.partida }} para {{ placar.alvo }}{% if partida_da_meta %}, de {{ partida_da_meta|date:"d/m/Y" }}{% endif %}{% if prazo_da_meta %} até {{ prazo_da_meta|date:"d/m/Y" }}{% endif %}.</p>
+          {% endif %}
+          {% if placar.veredito == "ganhando" %}
+            <p><span class="selo-verde">Ganhando</span> Hoje deveríamos estar em {{ placar.esperado_hoje }}, e estamos em {{ placar.x }}.</p>
+          {% elif placar.veredito == "perdendo" %}
+            <p><span class="selo-vermelho">Perdendo</span> Hoje deveríamos estar em {{ placar.esperado_hoje }}, e estamos em {{ placar.x }}.{% if placar.ritmo_por_semana %} Faltam {{ placar.distancia }}: {{ placar.ritmo_por_semana }} por semana.{% endif %}</p>
+          {% elif placar.veredito == "cumprida" %}
+            <p><span class="selo-verde">Meta cumprida</span></p>
+          {% elif placar.veredito == "vencida" %}
+            <p><span class="selo-vermelho">O prazo passou</span> Faltaram {{ placar.distancia }}.</p>
+          {% elif placar.veredito == "sem-alvo" %}
+            <p class="nota">A meta ainda não tem alvo: quem fixa é o mantenedor.</p>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+      {% include "admin/_ligacao_ao_placar.html" with ligacao=mci %}
+    </section>
+
+    {% comment %}2. As duas medidas de direção: o que a casa move nesta semana.{% endcomment %}
+    <section class="numero-do-placar{% if direcao.pedidos.veredito == 'cumprida' %} ganhando{% elif direcao.pedidos.veredito == 'abaixo' %} perdendo{% endif %}">
+      <h2>Medida de direção: chegadas</h2>
+      {% if not cartao_pedidos or not direcao %}
+        <p class="aviso borda-amarela"><b>Esta medida não aparece agora:</b> o placar está sem o cartão dela ou sem a meta grande.</p>
+      {% else %}
+        <p class="pergunta">{{ cartao_pedidos.pergunta }}</p>
+        {% if direcao.pedidos.veredito == "nao-consigo-medir" %}
+          <p class="aviso borda-amarela"><b>Não consegui medir agora.</b> A sala de espera ou a lista de alunos não respondeu. Isto não é zero.</p>
+        {% else %}
+          <div class="valor">{{ direcao.pedidos.esta_semana }}{% if direcao.pedidos.meta is not None %} <span>meta da semana: {{ direcao.pedidos.meta }}</span>{% endif %}</div>
+          {% if direcao.pedidos.veredito == "cumprida" %}<p><span class="selo-verde">Na meta</span></p>{% elif direcao.pedidos.veredito == "abaixo" %}<p><span class="selo-vermelho">Abaixo da meta</span></p>{% endif %}
+          {% if direcao.pedidos.sequencia %}<p class="nota">{{ direcao.pedidos.sequencia }} semana{{ direcao.pedidos.sequencia|pluralize }} seguida{{ direcao.pedidos.sequencia|pluralize }} na meta antes desta.</p>{% endif %}
+        {% endif %}
+      {% endif %}
+      {% include "admin/_ligacao_ao_placar.html" with ligacao=chegadas %}
+    </section>
+
+    <section class="numero-do-placar{% if direcao.liberacoes.veredito == 'cumprida' %} ganhando{% elif direcao.liberacoes.veredito == 'abaixo' %} perdendo{% endif %}">
+      <h2>Medida de direção: confirmações em 48 horas</h2>
+      {% if not cartao_48h or not direcao %}
+        <p class="aviso borda-amarela"><b>Esta medida não aparece agora:</b> o placar está sem o cartão dela ou sem a meta grande.</p>
+      {% else %}
+        <p class="pergunta">{{ cartao_48h.pergunta }}</p>
+        {% if direcao.liberacoes.veredito == "nao-consigo-medir" %}
+          <p class="aviso borda-amarela"><b>Não consegui medir agora.</b> A sala de espera ou a lista de alunos não respondeu. Isto não é zero.</p>
+        {% elif direcao.liberacoes.veredito == "sem-liberacoes" %}
+          <p class="nota">Nenhuma confirmação nos últimos 28 dias, e ninguém esperando há mais de 2 dias.</p>
+        {% else %}
+          {% if direcao.liberacoes.por_cento is not None %}<div class="valor">{{ direcao.liberacoes.por_cento }}% <span>em até 48 horas, nos últimos 28 dias</span></div>{% endif %}
+          {% if direcao.liberacoes.esperando_ha_muito %}<p class="nota"><b>{{ direcao.liberacoes.esperando_ha_muito }}</b> pessoa{{ direcao.liberacoes.esperando_ha_muito|pluralize }} esperando há mais de 2 dias agora.</p>{% endif %}
+          {% if direcao.liberacoes.veredito == "cumprida" %}<p><span class="selo-verde">Na meta</span></p>{% else %}<p><span class="selo-vermelho">Abaixo da meta</span></p>{% endif %}
+        {% endif %}
+      {% endif %}
+      {% include "admin/_ligacao_ao_placar.html" with ligacao=confirmacoes %}
+    </section>
+  </div>
+
+  {% comment %}3. O resto da semana: o trabalho que não diz mover o placar.{% endcomment %}
+  <p class="nota espaco-acima-placar">
+    {% if total_de_compromissos %}
+      Compromissos desta semana ({{ segunda|date:"d/m" }} a {{ domingo|date:"d/m" }}): {{ total_de_compromissos }}.
+      {% if soltos %}{{ soltos }} {% if soltos == 1 %}não diz{% else %}não dizem{% endif %} mover nenhum destes números ({{ soltos_cumpridos }} cumprido{{ soltos_cumpridos|pluralize }}): é o trabalho do dia a dia, e é bom saber quanto ele é.{% else %}Todos dizem mover um destes números.{% endif %}
+      <a href="{% url 'semana_da_equipe' %}">Ver por pessoa</a>.
+    {% else %}
+      Nenhum compromisso assumido nesta semana. No cartão de uma tarefa aberta, com responsável, aperte <b>Assumir na semana</b>.
+    {% endif %}
+  </p>
+</div>
+{% endblock %}

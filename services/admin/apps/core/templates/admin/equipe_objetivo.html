@@ -30,6 +30,16 @@
       <span class="rotulo">Prazo (opcional)</span>
       <input type="date" name="prazo" value="{{ dados.prazo }}">
     </label>
+    <label class="largo">
+      <span class="rotulo">O que este objetivo move no placar (opcional)</span>
+      <select name="move">
+        <option value="">Nada declarado</option>
+        {% for valor, rotulo in o_que_pode_mover %}
+        <option value="{{ valor }}"{% if dados.move == valor %} selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <span class="nota-do-campo">A MCI é a meta grande. As medidas de direção são o que a casa move toda semana para chegar nela. As tarefas deste objetivo passam a contar para o número escolhido na aba Placar.</span>
+    </label>
     <button class="botao" type="submit">{% if objetivo %}Salvar{% else %}Criar objetivo{% endif %}</button>
   </form>
 </div>

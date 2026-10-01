@@ -1,5 +1,5 @@
 {% comment %}
-As abas do painel da equipe. Moram aqui, e não em cada tela, para que as quatro
+As abas do painel da equipe. Moram aqui, e não em cada tela, para que as cinco
 visões ofereçam sempre as mesmas portas na mesma ordem. `visao` diz qual acende.
 {% endcomment %}
 <nav class="abas" aria-label="Visões do painel">
@@ -7,4 +7,5 @@ visões ofereçam sempre as mesmas portas na mesma ordem. `visao` diz qual acend
   <a class="aba{% if visao == 'equipe' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=equipe">Equipe</a>
   <a class="aba{% if visao == 'semana' %} ativa{% endif %}" href="{% url 'semana_da_equipe' %}">Esta semana</a>
   <a class="aba{% if visao == 'objetivos' %} ativa{% endif %}" href="{% url 'objetivos_da_equipe' %}">Objetivos</a>
+  <a class="aba{% if visao == 'placar' %} ativa{% endif %}" href="{% url 'placar_da_equipe' %}">Placar</a>
 </nav>

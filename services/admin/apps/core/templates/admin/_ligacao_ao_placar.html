@@ -1,0 +1,23 @@
+{% comment %}
+O lado da equipe embaixo de cada número da aba Placar: os objetivos que dizem
+movê-lo, as tarefas abertas deles e os compromissos desta semana. `ligacao` é
+um dos três dicionários que `equipe.placar_da_equipe` monta.
+{% endcomment %}
+<div class="ligacao-ao-placar">
+  <h3>O que a equipe faz por este número</h3>
+  {% if ligacao.objetivos %}
+  <ul>
+    {% for objetivo in ligacao.objetivos %}
+    <li><a href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ objetivo.id }}">{{ objetivo.titulo }}</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="nota">Nenhum objetivo ativo diz mover este número. Em <a href="{% url 'objetivos_da_equipe' %}">Objetivos</a>, edite um objetivo e escolha o que ele move.</p>
+  {% endif %}
+  {% if ligacao.objetivos or ligacao.abertas or ligacao.compromissos %}
+  <p class="nota">
+    {{ ligacao.abertas }} tarefa{{ ligacao.abertas|pluralize }} aberta{{ ligacao.abertas|pluralize }}.
+    {% if ligacao.compromissos %}Compromissos desta semana: <b>{{ ligacao.cumpridos }} de {{ ligacao.compromissos }}</b> cumprido{{ ligacao.compromissos|pluralize }}.{% else %}Nenhum compromisso desta semana move este número.{% endif %}
+  </p>
+  {% endif %}
+</div>

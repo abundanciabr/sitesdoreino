@@ -37,6 +37,17 @@ não guardá-lo para sempre.
   domingo) e o que ficou. Semana que já passou não se mexe: só se lê.
 * **Comentários**: um texto curto por vez, com quem e quando, na ficha da
   tarefa. Não se editam nem se apagam.
+
+## A terceira camada: o placar (01/10/2026)
+
+* **O que o objetivo move** (`Objetivo.move`): a MCI nº 1 ou uma das duas
+  medidas de direção, pelo nome do cartão com que `placar.py` as lê. A tarefa
+  herda do objetivo dela; não há segundo campo na tarefa.
+* **A aba Placar** (`/equipe/placar`): a MCI e as duas medidas da semana, com
+  os números de `placar.montar_o_placar` (a mesma montagem de `/admin/placar/`,
+  nunca uma conta nova), e embaixo de cada número o lado da equipe: que
+  objetivos dizem movê-lo, quantas tarefas abertas eles têm e quantos
+  compromissos desta semana foram cumpridos por ele.
 """
 
 from __future__ import annotations
@@ -193,6 +204,17 @@ def _objetivos_para_escolher(atual: Objetivo | None = None) -> list[Objetivo]:
 def _segunda(dia: date) -> date:
     """A segunda-feira da semana de `dia`: é ela que dá nome à semana."""
     return dia - timedelta(days=dia.weekday())
+
+
+def _cumprido(tarefa: Tarefa, domingo: date) -> bool:
+    """O compromisso da semana que termina em `domingo` foi cumprido?
+
+    Cumprido é a tarefa concluída até o domingo. Tarefa reaberta deixa de
+    estar concluída, e por isso deixa de contar. UMA regra, lida pela aba
+    "Esta semana" e pela aba Placar: duas contas discordariam."""
+    return bool(
+        tarefa.concluida_em and timezone.localdate(tarefa.concluida_em) <= domingo
+    )
 
 
 def _marcar(tarefa: Tarefa, hoje: date) -> Tarefa:
@@ -611,7 +633,7 @@ def semana_da_equipe(request):
         tarefa.concluida_no_dia = (
             timezone.localdate(tarefa.concluida_em) if tarefa.concluida_em else None
         )
-        if tarefa.concluida_no_dia and tarefa.concluida_no_dia <= domingo:
+        if _cumprido(tarefa, domingo):
             grupo["cumpridos"].append(tarefa)
         else:
             grupo["abertos"].append(_marcar(tarefa, hoje))
@@ -654,6 +676,7 @@ def _ler_objetivo(request) -> tuple[dict, list[str]]:
         "titulo": (post.get("titulo") or "").strip()[:200],
         "descricao": (post.get("descricao") or "").strip()[:5000],
         "prazo": (post.get("prazo") or "").strip(),
+        "move": (post.get("move") or "").strip(),
     }
     erros = []
     if not dados["titulo"]:
@@ -661,6 +684,8 @@ def _ler_objetivo(request) -> tuple[dict, list[str]]:
     _, erro_prazo = _ler_prazo(dados["prazo"])
     if erro_prazo:
         erros.append(erro_prazo)
+    if dados["move"] and dados["move"] not in Objetivo.Move.values:
+        erros.append("Não conheço esse número do placar. Escolha um da lista.")
     return dados, erros
 
 
@@ -668,6 +693,7 @@ def _gravar_objetivo(objetivo: Objetivo, dados: dict) -> None:
     objetivo.titulo = dados["titulo"]
     objetivo.descricao = dados["descricao"]
     objetivo.prazo, _ = _ler_prazo(dados["prazo"])
+    objetivo.move = dados["move"]
     objetivo.save()
 
 
@@ -675,7 +701,13 @@ def _tela_do_objetivo(request, dados, erros, objetivo=None, status=200):
     return render(
         request,
         "admin/equipe_objetivo.html",
-        {"admin": request.admin, "objetivo": objetivo, "dados": dados, "erros": erros},
+        {
+            "admin": request.admin,
+            "objetivo": objetivo,
+            "dados": dados,
+            "erros": erros,
+            "o_que_pode_mover": Objetivo.Move.choices,
+        },
         status=status,
     )
 
@@ -712,7 +744,7 @@ def objetivos_da_equipe(request):
 def objetivo_novo(request):
     if request.method == "GET":
         return _tela_do_objetivo(
-            request, {"titulo": "", "descricao": "", "prazo": ""}, []
+            request, {"titulo": "", "descricao": "", "prazo": "", "move": ""}, []
         )
     dados, erros = _ler_objetivo(request)
     if erros:
@@ -729,6 +761,7 @@ def objetivo_editar(request, id: int):
             "titulo": objetivo.titulo,
             "descricao": objetivo.descricao,
             "prazo": objetivo.prazo.isoformat() if objetivo.prazo else "",
+            "move": objetivo.move,
         }
         return _tela_do_objetivo(request, dados, [], objetivo=objetivo)
     dados, erros = _ler_objetivo(request)
@@ -746,6 +779,95 @@ def objetivo_ativo(request, id: int):
     objetivo.save(update_fields=["ativo"])
     resultado = "objetivo_reativado" if objetivo.ativo else "objetivo_desativado"
     return _com_resultado(reverse("objetivos_da_equipe"), resultado)
+
+
+# ---------------------------------------------------------------- o placar
+
+
+@require_GET
+def placar_da_equipe(request):
+    """A aba Placar: a MCI, as duas medidas de direção e o que a equipe faz
+    por elas nesta semana.
+
+    Os números NÃO são calculados aqui. Vêm de `placar.montar_o_placar`, a
+    montagem de `/admin/placar/`, do fechamento e dos talentos: uma segunda
+    conta da mesma meta discordaria da primeira no primeiro ajuste de cartão.
+    Fail-open como lá: a parte que guarda os alunos fora do ar vira "não
+    consigo contar", nunca zero, e a aba abre.
+
+    Sem site (`site_id=None`): a linha da memória fica de fora, e com ela a
+    pergunta à parte que guarda os sites, que esta aba não mostra.
+    """
+    # Import tardio: a montagem lê os cartões e pergunta à `alunos`, e só esta
+    # aba do painel precisa dela.
+    from .placar import montar_o_placar
+
+    hoje = _hoje()
+    numeros = montar_o_placar(hoje)
+    segunda = _segunda(hoje)
+    domingo = segunda + timedelta(days=6)
+
+    compromissos = list(
+        Compromisso.objects.filter(semana=segunda).select_related("tarefa__objetivo")
+    )
+    abertas = dict(
+        Tarefa.objects.exclude(situacao=Situacao.CONCLUIDA)
+        .filter(objetivo__move__in=Objetivo.Move.values)
+        .values_list("objetivo__move")
+        .annotate(n=Count("id"))
+        .order_by()
+    )
+    ativos = list(Objetivo.objects.filter(ativo=True).exclude(move=""))
+
+    def _move(compromisso) -> str:
+        objetivo = compromisso.tarefa.objetivo
+        return objetivo.move if objetivo else ""
+
+    ligacoes = {}
+    for valor, rotulo in Objetivo.Move.choices:
+        deste = [c for c in compromissos if _move(c) == valor]
+        ligacoes[valor] = {
+            "rotulo": rotulo,
+            "objetivos": [o for o in ativos if o.move == valor],
+            "abertas": abertas.get(valor, 0),
+            "compromissos": len(deste),
+            "cumpridos": sum(1 for c in deste if _cumprido(c.tarefa, domingo)),
+        }
+    soltos = [c for c in compromissos if not _move(c)]
+
+    resultado = numeros["placar"] or {}
+    prazo_da_meta, _ = _ler_prazo(str(resultado.get("ate") or ""))
+    partida_da_meta, _ = _ler_prazo(str(resultado.get("partida_em") or ""))
+    return render(
+        request,
+        "admin/equipe_placar.html",
+        {
+            "admin": request.admin,
+            "hoje": hoje,
+            "visao": "placar",
+            "membro": _membro_da_sessao(request),
+            "segunda": segunda,
+            "domingo": domingo,
+            "meta": numeros["meta"],
+            "placar": numeros["placar"],
+            "contagem": numeros["contagem"],
+            "prazo_da_meta": prazo_da_meta,
+            "partida_da_meta": partida_da_meta,
+            "direcao": numeros["direcao"],
+            "cartao_pedidos": numeros["cartao_pedidos"],
+            "cartao_48h": numeros["cartao_48h"],
+            "mci": ligacoes[Objetivo.Move.MCI],
+            "chegadas": ligacoes[Objetivo.Move.CHEGADAS],
+            "confirmacoes": ligacoes[Objetivo.Move.CONFIRMACOES],
+            "total_de_compromissos": len(compromissos),
+            "soltos": len(soltos),
+            "soltos_cumpridos": sum(1 for c in soltos if _cumprido(c.tarefa, domingo)),
+            # O placar inteiro é da administração: quem entra com o crachá de
+            # equipe recebe 404 lá, e por isso nem vê o link.
+            "pode_ver_o_placar_inteiro": not request.admin.get("equipe_apenas"),
+            "pode_gerir_pessoas": not request.admin.get("equipe_apenas"),
+        },
+    )
 
 
 @require_GET

@@ -115,7 +115,7 @@
           {% endif %}
         </div>
         {% if tarefa.objetivo %}
-        <div class="meta objetivo-da-tarefa">Objetivo: <a href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ tarefa.objetivo.id }}">{{ tarefa.objetivo.titulo }}</a></div>
+        <div class="meta objetivo-da-tarefa">Objetivo: <a href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ tarefa.objetivo.id }}">{{ tarefa.objetivo.titulo }}</a>{% if tarefa.objetivo.move %} &middot; <a class="move-do-objetivo" href="{% url 'placar_da_equipe' %}">{{ tarefa.objetivo.o_que_move_curto }}</a>{% endif %}</div>
         {% endif %}
         {% if tarefa.situacao == 'bloqueada' and tarefa.impedimento %}
         <p class="impedimento">{{ tarefa.impedimento }}</p>

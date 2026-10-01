@@ -35,6 +35,7 @@
       <div>
         <b class="titulo">{{ objetivo.titulo }}</b>
         {% if objetivo.descricao %}<p class="descricao">{{ objetivo.descricao|linebreaksbr }}</p>{% endif %}
+        {% if objetivo.move %}<div class="meta move-do-objetivo">Move: {{ objetivo.get_move_display }}</div>{% endif %}
         <div class="meta">
           {% if objetivo.prazo %}<span class="{% if objetivo.vencido %}texto-atrasado{% endif %}">{% if objetivo.vencido %}Prazo vencido: {% else %}Prazo: {% endif %}{{ objetivo.prazo|date:"d/m/Y" }}</span> &middot; {% endif %}
           {{ objetivo.abertas }} tarefa{{ objetivo.abertas|pluralize }} aberta{{ objetivo.abertas|pluralize }}, {{ objetivo.concluidas }} concluída{{ objetivo.concluidas|pluralize }}

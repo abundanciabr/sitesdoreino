@@ -550,16 +550,44 @@ class AparelhoDaEquipe(models.Model):
 class Objetivo(models.Model):
     """Um objetivo da equipe, ao qual as tarefas se ligam (01/10/2026).
 
-    É a base para ligar as tarefas à MCI depois: por ora, só título, descrição,
-    prazo e se ainda vale. Objetivo não se apaga pela tela; DESATIVA. Ele some
+    Título, descrição, prazo, se ainda vale e, desde a terceira camada, o que
+    ele move no placar. Objetivo não se apaga pela tela; DESATIVA. Ele some
     das escolhas de tarefa nova, e as tarefas que já apontam para ele continuam
     mostrando o nome dele.
     """
+
+    class Move(models.TextChoices):
+        """O que o objetivo move no placar: a MCI nº 1 ou uma das duas medidas
+        de direção. O valor é o NOME DO CARTÃO (`apps/core/cartoes/`), o mesmo
+        com que `placar.py` as lê; o guarda confere que os três continuam
+        existindo lá. Vazio é "não declarado", e é permitido: nem todo trabalho
+        move o placar."""
+
+        MCI = "compras-no-ciclo", "A MCI nº 1, a meta grande do placar"
+        CHEGADAS = (
+            "pedidos-de-entrada-por-semana",
+            "Medida de direção: chegadas à sala de espera",
+        )
+        CONFIRMACOES = (
+            "liberacoes-em-48h",
+            "Medida de direção: confirmações em até 48 horas",
+        )
 
     titulo = models.CharField(max_length=200)
     descricao = models.TextField(blank=True, default="")
     prazo = models.DateField(null=True, blank=True)
     ativo = models.BooleanField(default=True)
+    move = models.CharField(max_length=80, blank=True, default="", choices=Move.choices)
+
+    @property
+    def o_que_move_curto(self) -> str:
+        """O rótulo que cabe no cartão da tarefa; o longo fica na ficha."""
+        return {
+            self.Move.MCI: "move a MCI",
+            self.Move.CHEGADAS: "move as chegadas",
+            self.Move.CONFIRMACOES: "move as confirmações em 48 h",
+        }.get(self.move, "")
+
     criado_por = models.CharField(max_length=200, blank=True, default="")
     criado_em = models.DateTimeField(auto_now_add=True)
 

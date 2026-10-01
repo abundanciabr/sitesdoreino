@@ -97,6 +97,7 @@ from apps.core.equipe import (
     painel_da_equipe,
     pessoas_da_equipe,
     pessoas_da_equipe_associar,
+    placar_da_equipe,
     semana_da_equipe,
     tarefa_comentar,
     tarefa_compromisso,
@@ -253,6 +254,11 @@ urlpatterns = [
     path("equipe/objetivos/novo", objetivo_novo, name="objetivo_novo"),
     path("equipe/objetivos/<int:id>/editar", objetivo_editar, name="objetivo_editar"),
     path("equipe/objetivos/<int:id>/ativo", objetivo_ativo, name="objetivo_ativo"),
+    # O PLACAR DENTRO DO PAINEL (01/10/2026): a MCI e as duas medidas de
+    # direção, lidas de `placar.montar_o_placar`, ao lado do que a equipe faz
+    # por elas. Mora sob `equipe/` para o crachá de equipe abrir; o placar
+    # inteiro (`placar/`) continua só da administração.
+    path("equipe/placar", placar_da_equipe, name="placar_da_equipe"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),

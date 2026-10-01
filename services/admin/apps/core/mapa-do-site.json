@@ -1499,6 +1499,16 @@
     },
     {
       "celula": "admin",
+      "rota": "equipe/placar",
+      "endereco": "/admin/equipe/placar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Placar da equipe",
+      "descricao": "A MCI e as duas medidas de direcao da semana, com os mesmos numeros do placar, e embaixo de cada uma os objetivos que dizem move-la, as tarefas abertas e os compromissos desta semana cumpridos por ela."
+    },
+    {
+      "celula": "admin",
       "rota": "equipe/objetivos/novo",
       "endereco": "/admin/equipe/objetivos/novo",
       "alcance": "publico",

@@ -949,6 +949,27 @@ primeira versão deste arquivo, e o teste pegou.
     .pessoa-da-lista { align-items: center; }
     @media (min-width: 700px) { .pessoa-da-lista { grid-template-columns: 1fr auto; } }
     .titulo-de-entrada { font-size: 16px; margin: 22px 0 8px; }
+    /* A terceira camada (01/10/2026): o placar dentro do painel. Ganhando e
+       perdendo pintam a borda E escrevem a palavra no selo: cor sozinha não
+       diz nada a quem não a enxerga. */
+    .placar-da-equipe { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 4px; }
+    @media (min-width: 1000px) { .placar-da-equipe { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .numero-do-placar { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 12px 14px; min-width: 0; font-size: 14px; }
+    .numero-do-placar.ganhando { border-color: var(--verde); }
+    .numero-do-placar.perdendo { border-color: var(--vermelho); }
+    .numero-do-placar h2 { font-size: 15px; margin: 0 0 6px; }
+    .numero-do-placar .pergunta { color: var(--texto-2); margin: 0 0 8px; overflow-wrap: anywhere; }
+    .numero-do-placar .valor { font-size: 32px; font-weight: 700; line-height: 1.15; margin-bottom: 6px; }
+    .numero-do-placar .valor span { font-size: 14px; font-weight: 400; color: var(--texto-2); }
+    .numero-do-placar .selo-verde, .numero-do-placar .selo-vermelho { margin: 0 6px 0 0; }
+    .numero-do-placar p { margin: 0 0 8px; }
+    .ligacao-ao-placar { margin-top: 12px; border-top: 1px solid var(--linha); padding-top: 10px; }
+    .ligacao-ao-placar h3 { font-size: 12px; font-weight: 600; color: var(--texto-2); margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .ligacao-ao-placar ul { margin: 0 0 6px; padding-left: 18px; }
+    .ligacao-ao-placar li { overflow-wrap: anywhere; }
+    .move-do-objetivo, .objetivo .meta.move-do-objetivo, .tarefa .objetivo-da-tarefa a.move-do-objetivo { color: var(--azul); }
+    .nota-do-campo { display: block; font-size: 12px; color: var(--texto-3); margin-top: 4px; }
+    .espaco-acima-placar { margin-top: 16px; }
   </style>
 </head>
 <body>

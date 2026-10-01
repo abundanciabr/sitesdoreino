@@ -50,7 +50,7 @@
       {% for tarefa in grupo.cumpridos %}
       <article class="tarefa cumprida">
         <a class="titulo" href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a>
-        <div class="meta">Concluída em {{ tarefa.concluida_em|date:"d/m H:i" }}.{% if tarefa.objetivo %} Objetivo: {{ tarefa.objetivo.titulo }}.{% endif %}</div>
+        <div class="meta">Concluída em {{ tarefa.concluida_em|date:"d/m H:i" }}.{% if tarefa.objetivo %} Objetivo: {{ tarefa.objetivo.titulo }}{% if tarefa.objetivo.move %} (<span class="move-do-objetivo">{{ tarefa.objetivo.o_que_move_curto }}</span>){% endif %}.{% endif %}</div>
       </article>
       {% endfor %}
       {% endif %}
@@ -63,7 +63,7 @@
         <div class="meta">
           {{ tarefa.get_situacao_display }}{% if tarefa.prazo %} &middot; <span class="prazo{% if tarefa.atrasada %} atrasado{% endif %}">{% if tarefa.atrasada %}Atrasada: {% elif tarefa.vence_hoje %}Hoje: {% endif %}{{ tarefa.prazo|date:"d/m" }}</span>{% endif %}
           {% if tarefa.concluida_no_dia %}&middot; concluída depois, em {{ tarefa.concluida_no_dia|date:"d/m" }}{% endif %}
-          {% if tarefa.objetivo %}&middot; Objetivo: {{ tarefa.objetivo.titulo }}{% endif %}
+          {% if tarefa.objetivo %}&middot; Objetivo: {{ tarefa.objetivo.titulo }}{% if tarefa.objetivo.move %} (<span class="move-do-objetivo">{{ tarefa.objetivo.o_que_move_curto }}</span>){% endif %}{% endif %}
         </div>
         {% if tarefa.situacao == 'bloqueada' and tarefa.impedimento %}
         <p class="impedimento">{{ tarefa.impedimento }}</p>
