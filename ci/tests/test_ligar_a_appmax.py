@@ -130,6 +130,7 @@ case "${1:-}" in
     exit 0
     ;;
   up)
+    [ -z "${DOCKER_FALSO_UP_LOG:-}" ] || printf '%s\n' "$*" >> "$DOCKER_FALSO_UP_LOG"
     exit "${DOCKER_FALSO_UP:-0}"
     ;;
 esac
@@ -290,7 +291,22 @@ def _ambiente(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
         executavel.chmod(0o755)
     python3 = pasta / "python3"
     python3.write_bytes(
-        f'#!/usr/bin/env bash\nexec "{Path(sys.executable).as_posix()}" "$@"\n'.encode("utf-8")
+        (
+            '#!/usr/bin/env bash\n'
+            'case "$1" in\n'
+            '  */recarregar-aplicacao.py)\n'
+            '    if [ -f "$PLATAFORMA_DIR/publicacoes/aplicacao.json" ]; then\n'
+            '      alvo=aplicacao\n'
+            '    else\n'
+            '      alvo=pagamentos\n'
+            '    fi\n'
+            '    docker compose up -d --force-recreate --wait --wait-timeout 180 "$alvo" || exit $?\n'
+            '    [ "${DOCKER_FALSO_PROVA:-OK}" = OK ] || exit 44\n'
+            '    printf "%s\\n" APLICACAO-RECARREGADA-E-PROVADA\n'
+            '    exit 0;;\n'
+            'esac\n'
+            f'exec "{Path(sys.executable).as_posix()}" "$@"\n'
+        ).encode("utf-8")
     )
     python3.chmod(0o755)
     if os.name == "nt":
@@ -440,7 +456,7 @@ def test_ele_pergunta_o_par_com_digitacao_invisivel():
     assert "read -r -s SEGREDO" in fonte
 
 
-def test_a_recarga_force_recreate_e_mostra_o_erro():
+def test_a_recarga_pede_prova_e_mostra_o_erro():
     """Os outros dois defeitos que a execução não pega, e pelo mesmo motivo.
 
     `up -d` sozinho vê a mesma imagem e a mesma configuração de compose e não
@@ -449,12 +465,43 @@ def test_a_recarga_force_recreate_e_mostra_o_erro():
     recarga apaga a única prova de que a célula caiu (`armadilhas/377`).
     """
     fonte = SCRIPT.read_text(encoding="utf-8")
-    recarga = [x for x in fonte.splitlines() if "docker_compose up -d --" in x]
-    assert len(recarga) == 2, recarga
-    assert all("pagamentos" in x for x in recarga)
-    assert "--force-recreate" in recarga[0]
-    assert ">/dev/null" not in recarga[0]
-    assert "pagamentos" in recarga[0], "recarregar tudo devolveria as outras células à tag :main"
+    assert fonte.count('SAIDA_UP="$(recarregar_appmax 2>&1)"') == 2
+    helper = (RAIZ / "infra" / "recarregar-aplicacao.py").read_text(encoding="utf-8")
+    assert '"--force-recreate", "--wait"' in helper
+    assert 'ativador.provar_site()' in helper
+    assert '("pagamentos",)' in helper
+
+
+def test_aplicacao_ativa_recarrega_somente_o_conteiner_unico(tmp_path):
+    raiz = _plataforma(tmp_path)
+    (raiz / "publicacoes").mkdir()
+    (raiz / "publicacoes" / "aplicacao.json").write_text("{}", encoding="utf-8")
+    registro = tmp_path / "recarga.log"
+    ambiente = _ambiente(
+        tmp_path, raiz, DOCKER_FALSO_SERVICOS="aplicacao",
+        DOCKER_FALSO_UP_LOG=str(registro),
+    )
+
+    resultado = _rodar(raiz, ambiente=ambiente)
+
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert registro.read_text(encoding="utf-8").splitlines() == [
+        "up -d --force-recreate --wait --wait-timeout 180 aplicacao"
+    ]
+
+
+def test_prova_da_recarga_falha_sem_anunciar_conclusao(tmp_path):
+    raiz = _plataforma(tmp_path)
+    ambiente = _ambiente(tmp_path, raiz, DOCKER_FALSO_PROVA="FALHA")
+
+    resultado = _rodar(raiz, ambiente=ambiente)
+    tela = resultado.stdout + resultado.stderr
+
+    assert resultado.returncode != 0
+    assert "PAROU POR SEGURANÇA" in tela
+    assert "CONFIGURAÇÃO DE INSTALAÇÃO PREPARADA" not in tela
+    assert _valor(raiz, "APPMAX_APP_CLIENT_SECRET") == SEGREDO
+    assert _copias(raiz)
 
 
 # ---------------------------------------------------------------------------
