@@ -359,6 +359,21 @@ class Topico(models.Model):
         return self.titulo
 
 
+class RascunhoDeTopico(models.Model):
+    """Texto da escola no painel, invisivel ate a publicacao explicita."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    topico = models.OneToOneField(
+        Topico, related_name="rascunho_do_editor", on_delete=models.PROTECT,
+        null=True, blank=True,
+    )
+    area_slug = models.SlugField(max_length=60)
+    titulo = models.CharField(max_length=180)
+    texto = models.TextField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+    publicado_em = models.DateTimeField(null=True, blank=True)
+
+
 class Mensagem(models.Model):
     """Uma fala dentro de um tópico — a primeira é o corpo da pergunta."""
 

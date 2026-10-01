@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.api import router as forum_router
 from apps.core.editor import router as editor_router
+from apps.core.editor_topicos import router as topicos_editor_router
 from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker — é o endereço que outra célula
@@ -57,3 +58,4 @@ api = NinjaAPI(
 )
 api.add_router("", forum_router)
 api.add_router("/editor", editor_router)
+api.add_router("/editor/topicos", topicos_editor_router)
