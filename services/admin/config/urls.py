@@ -114,6 +114,18 @@ from apps.core.equipe import (
     tarefa_nova,
     tarefa_situacao,
 )
+from apps.agentes.views import (
+    andamento as andamento_do_robo,
+    configurar as configurar_robo,
+    delegar as delegar_ao_robo,
+    entrega_detalhe,
+    execucao_detalhe,
+    execucao_interromper,
+    execucao_retomar,
+    mensagem as mensagem_ao_robo,
+    robo_da_pessoa,
+    robos_admin,
+)
 from apps.core.equipe_acesso import (
     conectar_meu_celular,
     entrar_na_equipe,
@@ -281,6 +293,26 @@ urlpatterns = [
     # por elas. Mora sob `equipe/` para o crachá de equipe abrir; o placar
     # inteiro (`placar/`) continua só da administração.
     path("equipe/placar", placar_da_equipe, name="placar_da_equipe"),
+    # OS ROBÔS PESSOAIS (01/10/2026, `apps/agentes`). Debaixo de `/equipe`,
+    # abrem com o crachá de equipe; `robos/` é só do administrador.
+    path("equipe/robo/", robo_da_pessoa, name="robo_da_pessoa"),
+    path("equipe/robo/andamento", andamento_do_robo, name="andamento_do_robo"),
+    path("equipe/robo/mensagem", mensagem_ao_robo, name="mensagem_ao_robo"),
+    path("equipe/robo/delegar", delegar_ao_robo, name="delegar_ao_robo"),
+    path("equipe/robo/configurar", configurar_robo, name="configurar_robo"),
+    path("equipe/robo/execucoes/<int:id>", execucao_detalhe, name="execucao_do_robo"),
+    path(
+        "equipe/robo/execucoes/<int:id>/interromper",
+        execucao_interromper,
+        name="interromper_execucao",
+    ),
+    path(
+        "equipe/robo/execucoes/<int:id>/retomar",
+        execucao_retomar,
+        name="retomar_execucao",
+    ),
+    path("equipe/robo/entregas/<int:id>", entrega_detalhe, name="entrega_do_robo"),
+    path("robos/", robos_admin, name="robos_admin"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),

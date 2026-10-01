@@ -1,0 +1,31 @@
+{% comment %}
+A página aberta pergunta ao servidor, a cada 4 segundos, se algo mudou, e se
+recarrega quando mudou. Só liga quando há trabalho andando (`data-acompanhar`).
+Não recarrega por cima de uma mensagem que a pessoa está escrevendo. O CSP
+libera este script pelo hash dos bytes dele (`views._com_csp_do_script`).
+{% endcomment %}
+<script>
+(function () {
+  var caixa = document.querySelector("[data-acompanhar]");
+  if (!caixa || !window.fetch) { return; }
+  var endereco = caixa.getAttribute("data-acompanhar");
+  var marca = caixa.getAttribute("data-marca");
+  var voltas = 0;
+  function perguntar() {
+    voltas += 1;
+    if (voltas > 450) { return; }
+    fetch(endereco, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.marca && d.marca !== marca) {
+          var campo = document.querySelector("textarea[name=texto]");
+          if (campo && campo.value.trim()) { marca = d.marca; return; }
+          window.location.replace(window.location.pathname + window.location.hash);
+        }
+      })
+      .catch(function () {})
+      .then(function () { setTimeout(perguntar, 4000); });
+  }
+  setTimeout(perguntar, 4000);
+})();
+</script>

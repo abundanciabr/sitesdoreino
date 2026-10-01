@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{{ entrega.titulo }}{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <a class="volta" href="{% if tarefa %}{% url 'tarefa_editar' tarefa.id %}#robo{% else %}{% url 'robo_da_pessoa' %}#entregas{% endif %}">&larr; {% if tarefa %}Tarefa: {{ tarefa.titulo }}{% else %}Página do robô{% endif %}</a>
+  <p class="nota">Entrega nº {{ entrega.id }} do {{ entrega.robo.nome }} &middot; versão {{ entrega.versao }} &middot; {{ entrega.atualizada_em|date:"d/m/Y H:i" }}{% if entrega.execucao_id %} &middot; <a href="{% url 'execucao_do_robo' entrega.execucao_id %}">como foi feita</a>{% endif %}</p>
+  {% if entrega.parcial %}
+  <p class="aviso"><b>Entrega parcial.</b> {% for p in entrega.pendencias %}{{ p }} {% endfor %}</p>
+  {% endif %}
+  <div class="documento">{{ corpo|safe }}</div>
+</div>
+{% endblock %}

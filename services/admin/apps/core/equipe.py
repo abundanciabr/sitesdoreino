@@ -52,6 +52,7 @@ não guardá-lo para sempre.
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
@@ -63,7 +64,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import Comentario, Compromisso, MembroDaEquipe, Objetivo, Tarefa
+from apps.agentes import painel as painel_dos_robos
+from apps.agentes.models import Execucao
+
+from . import equipe_operacoes as operacoes
+from .models import Compromisso, MembroDaEquipe, Objetivo, Tarefa
 
 Situacao = Tarefa.Situacao
 
@@ -135,6 +140,11 @@ RESULTADOS = {
     "pessoa_de_volta": (
         "Pessoa de volta à equipe. Para ela entrar de novo, gere um link."
     ),
+    "robo_delegado": (
+        "Trabalho delegado ao seu robô. Ele roda no servidor e continua mesmo "
+        "com o navegador fechado; o andamento aparece aqui e na página do robô."
+    ),
+    "robo_ja_rodando": "Seu robô já tem um panorama em andamento. Acompanhe na página dele.",
     "comentado": "Comentário publicado.",
     "comentario_vazio": "O comentário estava vazio. Nada foi publicado.",
     "comentario_longo": (
@@ -143,16 +153,13 @@ RESULTADOS = {
     ),
 }
 
-# "Curto" é o pedido. O campo do formulário avisa no navegador; o servidor
-# confere de novo, porque o navegador não é a porta.
-TAMANHO_DO_COMENTARIO = 500
+TAMANHO_DO_COMENTARIO = operacoes.TAMANHO_DO_COMENTARIO
 
 
 # ---------------------------------------------------------------- utilitários
 
 
-def _hoje() -> date:
-    return timezone.localdate()
+_hoje = operacoes.hoje
 
 
 def _quem(request) -> str:
@@ -187,34 +194,14 @@ def _membro_da_sessao(request) -> MembroDaEquipe | None:
     ).first()
 
 
-def _membros():
-    return list(MembroDaEquipe.objects.filter(ativo=True))
+_membros = operacoes.membros_ativos
+_objetivos_para_escolher = operacoes.objetivos_para_escolher
+_segunda = operacoes.segunda
+_ler_prazo = operacoes.ler_prazo
+_dados_de = operacoes.dados_de
 
 
-def _objetivos_para_escolher(atual: Objetivo | None = None) -> list[Objetivo]:
-    """Os objetivos que a tarefa pode escolher: os ativos, e o que ela já tem
-    mesmo desativado, para que salvar a ficha não largue o objetivo por baixo
-    dos panos."""
-    escolhiveis = list(Objetivo.objects.filter(ativo=True))
-    if atual is not None and not atual.ativo:
-        escolhiveis.append(atual)
-    return escolhiveis
-
-
-def _segunda(dia: date) -> date:
-    """A segunda-feira da semana de `dia`: é ela que dá nome à semana."""
-    return dia - timedelta(days=dia.weekday())
-
-
-def _cumprido(tarefa: Tarefa, domingo: date) -> bool:
-    """O compromisso da semana que termina em `domingo` foi cumprido?
-
-    Cumprido é a tarefa concluída até o domingo. Tarefa reaberta deixa de
-    estar concluída, e por isso deixa de contar. UMA regra, lida pela aba
-    "Esta semana" e pela aba Placar: duas contas discordariam."""
-    return bool(
-        tarefa.concluida_em and timezone.localdate(tarefa.concluida_em) <= domingo
-    )
+_cumprido = operacoes.cumprido
 
 
 def _marcar(tarefa: Tarefa, hoje: date) -> Tarefa:
@@ -248,83 +235,15 @@ def _com_resultado(destino: str, resultado: str) -> HttpResponseRedirect:
     return HttpResponseRedirect(f"{destino}{separador}resultado={resultado}")
 
 
-def _ler_prazo(cru: str):
-    """`(data ou None, erro ou None)` a partir do campo de data."""
-    cru = (cru or "").strip()
-    if not cru:
-        return None, None
-    try:
-        return date.fromisoformat(cru), None
-    except ValueError:
-        return None, "O prazo precisa ser uma data válida."
-
-
 def _ler_formulario(request, membros, objetivos) -> tuple[dict, list[str]]:
     """Lê o formulário de criar/editar. Devolve os dados crus e os erros."""
-    post = request.POST
-    dados = {
-        "titulo": (post.get("titulo") or "").strip()[:200],
-        "descricao": (post.get("descricao") or "").strip()[:5000],
-        "responsavel": (post.get("responsavel") or "").strip(),
-        "objetivo": (post.get("objetivo") or "").strip(),
-        "prazo": (post.get("prazo") or "").strip(),
-        "situacao": (post.get("situacao") or Situacao.A_FAZER).strip(),
-        "impedimento": (post.get("impedimento") or "").strip()[:2000],
-    }
-    erros = []
-    if not dados["titulo"]:
-        erros.append("A tarefa precisa de um título.")
-    if dados["responsavel"] and dados["responsavel"] not in {
-        str(m.id) for m in membros
-    }:
-        erros.append("Não conheço essa pessoa. Escolha alguém da equipe.")
-    if dados["objetivo"] and dados["objetivo"] not in {str(o.id) for o in objetivos}:
-        erros.append("Não conheço esse objetivo. Escolha um dos objetivos ativos.")
-    _, erro_prazo = _ler_prazo(dados["prazo"])
-    if erro_prazo:
-        erros.append(erro_prazo)
-    if dados["situacao"] not in Situacao.values:
-        erros.append("Não conheço essa situação.")
-    if dados["situacao"] == Situacao.BLOQUEADA and not dados["impedimento"]:
-        erros.append("Para bloquear uma tarefa, escreva o impedimento.")
-    return dados, erros
+    dados = operacoes.limpar_dados(request.POST)
+    return dados, operacoes.validar_tarefa(dados, membros, objetivos)
 
 
 def _aplicar(tarefa: Tarefa, dados: dict, membros, objetivos, quem: str) -> None:
     """Grava os dados lidos na tarefa, e cuida de conclusão e impedimento."""
-    tarefa.titulo = dados["titulo"]
-    tarefa.descricao = dados["descricao"]
-    por_id = {str(m.id): m for m in membros}
-    tarefa.responsavel = por_id.get(dados["responsavel"])
-    tarefa.objetivo = {str(o.id): o for o in objetivos}.get(dados["objetivo"])
-    tarefa.prazo, _ = _ler_prazo(dados["prazo"])
-    _mudar_situacao(tarefa, dados["situacao"], dados["impedimento"])
-    tarefa.alterada_por = quem
-    tarefa.save()
-
-
-def _mudar_situacao(tarefa: Tarefa, situacao: str, impedimento: str) -> None:
-    """A regra da situação: concluir marca a hora; sair da conclusão limpa;
-    só a bloqueada carrega impedimento."""
-    tarefa.situacao = situacao
-    if situacao == Situacao.CONCLUIDA:
-        if tarefa.concluida_em is None:
-            tarefa.concluida_em = timezone.now()
-    else:
-        tarefa.concluida_em = None
-    tarefa.impedimento = impedimento if situacao == Situacao.BLOQUEADA else ""
-
-
-def _dados_de(tarefa: Tarefa) -> dict:
-    return {
-        "titulo": tarefa.titulo,
-        "descricao": tarefa.descricao,
-        "responsavel": str(tarefa.responsavel_id or ""),
-        "objetivo": str(tarefa.objetivo_id or ""),
-        "prazo": tarefa.prazo.isoformat() if tarefa.prazo else "",
-        "situacao": tarefa.situacao,
-        "impedimento": tarefa.impedimento,
-    }
+    operacoes.gravar_tarefa(tarefa, dados, membros, objetivos, quem)
 
 
 def _nao_existe(request):
@@ -393,8 +312,14 @@ def painel_da_equipe(request):
         )
     )
     por_situacao = {codigo: [] for codigo, _, _ in COLUNAS}
+    tarefas = list(tarefas)
+    ids = [t.id for t in tarefas]
+    trabalhos = painel_dos_robos.trabalhos_das_tarefas(ids)
+    entregas = painel_dos_robos.entregas_das_tarefas(ids)
     for tarefa in tarefas:
         tarefa.compromisso_da_semana = tarefa.id in compromissos_da_semana
+        tarefa.trabalho_do_robo = trabalhos.get(tarefa.id)
+        tarefa.entregas_do_robo = entregas.get(tarefa.id, [])[:1]
         por_situacao[tarefa.situacao].append(_marcar(tarefa, hoje))
 
     def ordem(tarefa):
@@ -458,6 +383,15 @@ def painel_da_equipe(request):
 
 
 def _tela_do_formulario(request, dados, erros, objetivos, tarefa=None, status=200):
+    membro = _membro_da_sessao(request)
+    trabalhos, entregas = [], []
+    if tarefa is not None:
+        trabalhos = list(
+            Execucao.objects.select_related("robo")
+            .filter(tarefa_id=tarefa.id)
+            .exclude(tipo=Execucao.Tipo.CONVERSA)[:10]
+        )
+        entregas = painel_dos_robos.entregas_das_tarefas([tarefa.id]).get(tarefa.id, [])
     return render(
         request,
         "admin/equipe_tarefa.html",
@@ -477,6 +411,15 @@ def _tela_do_formulario(request, dados, erros, objetivos, tarefa=None, status=20
             ),
             "tamanho_do_comentario": TAMANHO_DO_COMENTARIO,
             "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
+            "trabalhos_do_robo": trabalhos,
+            "entregas_do_robo": entregas,
+            "pode_delegar": bool(
+                tarefa is not None
+                and membro is not None
+                and tarefa.responsavel_id == membro.id
+                and tarefa.situacao != Situacao.CONCLUIDA
+            ),
+            "chave_de_envio": uuid.uuid4().hex,
         },
         status=status,
     )
@@ -534,23 +477,8 @@ def tarefa_situacao(request, id: int):
     tarefa = get_object_or_404(Tarefa, pk=id)
     destino = _destino_seguro(request, reverse("painel_da_equipe"))
     situacao = (request.POST.get("situacao") or "").strip()
-    impedimento = (request.POST.get("impedimento") or "").strip()[:2000]
-    if situacao not in Situacao.values:
-        return _com_resultado(destino, "situacao_desconhecida")
-    if situacao == Situacao.BLOQUEADA and not impedimento:
-        return _com_resultado(destino, "sem_impedimento")
-
-    estava_concluida = tarefa.situacao == Situacao.CONCLUIDA
-    _mudar_situacao(tarefa, situacao, impedimento)
-    tarefa.alterada_por = _quem(request)
-    tarefa.save()
-
-    if situacao == Situacao.CONCLUIDA:
-        resultado = "concluida"
-    elif estava_concluida:
-        resultado = "reaberta"
-    else:
-        resultado = "situacao"
+    impedimento = request.POST.get("impedimento") or ""
+    resultado = operacoes.mudar_situacao(tarefa, situacao, impedimento, _quem(request))
     return _com_resultado(destino, resultado)
 
 
@@ -563,39 +491,22 @@ def tarefa_compromisso(request, id: int):
     """
     tarefa = get_object_or_404(Tarefa, pk=id)
     destino = _destino_seguro(request, reverse("painel_da_equipe"))
-    semana = _segunda(_hoje())
-    if request.POST.get("acao") == "tirar":
-        Compromisso.objects.filter(tarefa=tarefa, semana=semana).delete()
-        return _com_resultado(destino, "compromisso_tirado")
-    if tarefa.situacao == Situacao.CONCLUIDA:
-        return _com_resultado(destino, "compromisso_concluida")
-    if tarefa.responsavel_id is None:
-        return _com_resultado(destino, "compromisso_sem_responsavel")
-    Compromisso.objects.get_or_create(
-        tarefa=tarefa, semana=semana, defaults={"marcado_por": _quem(request)}
+    resultado = operacoes.marcar_compromisso(
+        tarefa, _quem(request), tirar=request.POST.get("acao") == "tirar"
     )
-    return _com_resultado(destino, "compromisso_marcado")
+    return _com_resultado(destino, resultado)
 
 
 @require_POST
 def tarefa_comentar(request, id: int):
     """Publica um comentário curto na ficha da tarefa."""
     tarefa = get_object_or_404(Tarefa, pk=id)
-    # O navegador conta a quebra de linha como uma letra e a envia como duas;
-    # contar do jeito dele é o que impede recusar o que ele deixou escrever.
-    texto = (request.POST.get("texto") or "").replace("\r\n", "\n").strip()
-    if not texto:
-        resultado = "comentario_vazio"
-    elif len(texto) > TAMANHO_DO_COMENTARIO:
-        resultado = "comentario_longo"
-    else:
-        Comentario.objects.create(
-            tarefa=tarefa,
-            texto=texto,
-            autor=_quem(request),
-            autor_membro=_membro_da_sessao(request),
-        )
-        resultado = "comentado"
+    resultado, _ = operacoes.comentar(
+        tarefa,
+        request.POST.get("texto") or "",
+        _quem(request),
+        _membro_da_sessao(request),
+    )
     ficha = reverse("tarefa_editar", args=[tarefa.id])
     return HttpResponseRedirect(f"{ficha}?resultado={resultado}#comentarios")
 

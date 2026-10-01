@@ -1,0 +1,53 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{{ execucao.get_tipo_display }} nº {{ execucao.id }}{% endblock %}
+{% block corpo %}
+<div class="envolucro largo"{% if acompanhar %} data-acompanhar="{% url 'andamento_do_robo' %}?execucao={{ execucao.id }}" data-marca="{{ marca }}"{% endif %}>
+  <a class="volta" href="{% url 'robo_da_pessoa' %}#trabalhos">&larr; Página do robô</a>
+  <h1>{{ execucao.get_tipo_display }} nº {{ execucao.id }}</h1>
+  <p class="subtitulo">{{ execucao.robo.nome }} &middot; pedido por {{ execucao.pedido_por }} em {{ execucao.criada_em|date:"d/m/Y H:i" }}{% if execucao.modelo %} &middot; modelo {{ execucao.modelo }}{% endif %}</p>
+
+  {% if resultado %}<p class="recado-da-equipe">{{ resultado }}</p>{% endif %}
+
+  <article class="trabalho-do-robo {{ execucao.situacao }}{% if execucao.esperando %} esperando{% endif %}">
+    <b>{{ execucao.get_situacao_display }}</b>
+    {% if execucao.aberta %}<progress max="100" value="{{ execucao.progresso }}">{{ execucao.progresso }}%</progress>{% endif %}
+    {% if execucao.etapa_atual %}<div class="meta">Etapa: {{ execucao.etapa_atual }}</div>{% endif %}
+    {% if execucao.motivo %}<div class="meta">{{ execucao.motivo }}</div>{% endif %}
+    {% if execucao.resultado %}<div class="meta">Resultado: {{ execucao.resultado }}</div>{% endif %}
+    {% if tarefa %}<div class="meta">Tarefa: <a href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a> ({{ tarefa.get_situacao_display }})</div>{% endif %}
+    {% if execucao.pedido and execucao.tipo != 'conversa' %}<div class="meta">Pedido: {{ execucao.pedido }}</div>{% endif %}
+    {% for en in entregas %}<div class="meta">Entrega: <a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if en.parcial %} (parcial){% endif %}</div>{% endfor %}
+  </article>
+
+  {% if dono %}
+  <div class="equipe-gestos">
+    {% if execucao.aberta %}
+    <form method="post" action="{% url 'interromper_execucao' execucao.id %}">{% csrf_token %}<button class="botao-pequeno" type="submit">Interromper</button></form>
+    {% endif %}
+    {% if execucao.esperando or execucao.situacao == 'falhou' %}
+    <form method="post" action="{% url 'retomar_execucao' execucao.id %}">{% csrf_token %}<button class="botao-pequeno" type="submit">Tentar de novo agora</button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <h2 class="titulo-de-secao">Passo a passo</h2>
+  <ol class="passos-do-robo">
+    {% for r in registros %}<li><span class="nota">{{ r.momento|date:"d/m H:i:s" }}</span> {{ r.texto }}</li>{% endfor %}
+  </ol>
+
+  {% if chamadas %}
+  <h2 class="titulo-de-secao">Ações no painel</h2>
+  <ul class="passos-do-robo">
+    {% for c in chamadas %}<li><b>{{ c.nome }}</b> &middot; {{ c.get_situacao_display }}{% if c.situacao == 'recusada' and c.resultado.erro %}: {{ c.resultado.erro }}{% endif %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if consumos %}
+  <h2 class="titulo-de-secao">Gasto desta execução</h2>
+  <ul class="passos-do-robo">
+    {% for c in consumos %}<li>{{ c.modelo }}: {{ c.tokens_entrada }} tokens de entrada, {{ c.tokens_saida }} de saída &middot; US$ {{ c.custo_estimado_usd|floatformat:6 }}{% if c.desconhecido %} (resultado desconhecido: contado o pior caso){% endif %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% include "agentes/_acompanhar.html" %}
+{% endblock %}
