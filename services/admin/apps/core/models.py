@@ -96,6 +96,24 @@ class Administrador(models.Model):
         return f"{self.email}{'' if self.ativo else ' (removido)'}"
 
 
+class RascunhoDeConfiguracao(models.Model):
+    """Edição privada de uma configuração; só a publicação altera seu dono."""
+
+    tipo = models.CharField(max_length=24)
+    site_id = models.CharField(max_length=64, blank=True, default="")
+    alvo = models.CharField(max_length=120)
+    conteudo = models.JSONField(default=dict)
+    base = models.JSONField(default=dict)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tipo", "site_id", "alvo"], name="um_rascunho_por_configuracao"
+            )
+        ]
+
+
 class Documento(models.Model):
     """Um documento que o site publica. A ÚNICA fonte do texto, desde 31/08/2026."""
 

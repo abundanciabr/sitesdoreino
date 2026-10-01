@@ -78,6 +78,7 @@ from apps.core.menu import (
     menu_criar_versao,
     menu_do_topo,
     menu_mover_item,
+    menu_publicar,
     menu_regras_das_paginas,
     menu_remover_item,
     menu_versao_padrao,
@@ -296,6 +297,7 @@ urlpatterns = [
     # a depender de um valor de formulário, e a leitura deste arquivo deixaria
     # de contar o que a tela faz. Cada rota é um verbo.
     path("menu/", menu_do_topo, name="menu_do_topo"),
+    path("menu/publicar", menu_publicar, name="menu_publicar"),
     path("menu/versao/criar", menu_criar_versao, name="menu_criar_versao"),
     path("menu/versao/apagar", menu_apagar_versao, name="menu_apagar_versao"),
     path("menu/versao/padrao", menu_versao_padrao, name="menu_versao_padrao"),

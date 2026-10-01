@@ -32,7 +32,15 @@ tela.
   <p class="aviso borda-vermelha"><b>Não deu para salvar.</b> {{ erro }}</p>
   {% endif %}
   {% if recado %}
-  <p class="aviso"><b>Salvo.</b> O site já está mostrando o menu assim.</p>
+  <p class="aviso"><b>{% if recado == 'publicado' %}Publicado.{% else %}Rascunho salvo.{% endif %}</b></p>
+  {% endif %}
+  {% if em_rascunho %}
+  <div class="cartao">
+    <p>Prévia do rascunho abaixo. O público continua vendo o menu publicado.</p>
+    <form method="post" action="{% url 'menu_publicar' %}">{% csrf_token %}
+      <button type="submit">Publicar este menu</button>
+    </form>
+  </div>
   {% endif %}
 
   {% comment %}

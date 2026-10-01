@@ -27,6 +27,7 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.auditoria.models import Registro
+from apps.core.models import RascunhoDeConfiguracao
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -113,8 +114,9 @@ def _catalogo(site=None):
 
 
 def _gravado(rota) -> dict:
-    """O menu que a tela mandou gravar, lido da chamada de verdade."""
-    return json.loads(rota.calls.last.request.content)["menu"]
+    """O documento editado, ainda privado até o gesto de publicar."""
+    assert not rota.called
+    return RascunhoDeConfiguracao.objects.get(tipo="menu", site_id=SITE_ID, alvo="topo").conteudo
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +204,22 @@ def test_criar_versao_grava_o_documento_inteiro():
     ]
     # o que já existia viaja junto e intacto: é o documento inteiro
     assert enviado["pages"] == MENU["pages"]
+
+
+@respx.mock
+def test_menu_so_muda_no_catalogo_quando_publicado():
+    gravar = _catalogo()
+    cliente = _dentro()
+    cliente.post(reverse("menu_criar_versao"), {"nome": "Menu futuro"})
+    assert not gravar.called
+    previa = cliente.get(reverse("menu_do_topo")).content.decode()
+    assert "Menu futuro" in previa
+    assert "O público continua vendo o menu publicado" in previa
+    resposta = cliente.post(reverse("menu_publicar"))
+    assert resposta.status_code == 302
+    assert gravar.called
+    assert json.loads(gravar.calls.last.request.content)["menu"]["versions"][-1]["slug"] == "menu-futuro"
+    assert not RascunhoDeConfiguracao.objects.filter(tipo="menu", site_id=SITE_ID).exists()
 
 
 @respx.mock
@@ -361,7 +379,8 @@ def test_recusa_do_catalogo_vira_frase_na_tela_e_o_menu_mostrado_e_o_gravado():
             422, json={"detail": "endereço 'javascript:x' não é aceito"}
         )
     )
-    resp = _dentro().post(
+    cliente = _dentro()
+    resp = cliente.post(
         reverse("menu_adicionar_item"),
         {
             "versao": "completo",
@@ -370,6 +389,8 @@ def test_recusa_do_catalogo_vira_frase_na_tela_e_o_menu_mostrado_e_o_gravado():
             "rotulo_en": "Mal",
         },
     )
+    assert resp.status_code == 302
+    resp = cliente.post(reverse("menu_publicar"))
     assert resp.status_code == 422
     corpo = resp.content.decode()
     assert "não é aceito" in corpo
@@ -387,7 +408,9 @@ def test_toda_tentativa_deixa_linha_de_auditoria_inclusive_a_recusada():
     respx.put(f"{CATALOGO}/sites/{SITE_ID}/menu").mock(
         return_value=httpx.Response(422, json={"detail": "não pode"})
     )
-    _dentro().post(reverse("menu_criar_versao"), {"nome": "Qualquer"})
+    cliente = _dentro()
+    cliente.post(reverse("menu_criar_versao"), {"nome": "Qualquer"})
+    cliente.post(reverse("menu_publicar"))
     registro = Registro.objects.latest("quando")
     assert registro.acao == Registro.EDITAR_MENU
     assert registro.desfecho == Registro.RECUSADO_PELA_CELULA
