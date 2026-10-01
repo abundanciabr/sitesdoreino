@@ -197,6 +197,7 @@ jobs:
                 apt-get update -qq
                 if [ "$CELULA" = checkout ]; then PACOTE=nodejs; else PACOTE=git; fi
                 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "$PACOTE" >/dev/null
+                if [ "$CELULA" = funil ]; then git config --global --add safe.directory /tmp/prova; fi
               fi
               python -m pytest -q
             '
