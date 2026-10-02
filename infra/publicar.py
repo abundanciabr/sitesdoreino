@@ -31,6 +31,11 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:  # só existe na VPS
+    fcntl = None
+
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 FERRAMENTAS = Path(__file__).resolve().parents[1]
 REPO = RAIZ / "codigo" / "repo.git"
@@ -387,16 +392,40 @@ def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
         shutil.rmtree(fonte, ignore_errors=True)
 
 
-def lote(base: str, head: str) -> int:
-    import mapa_de_celulas  # noqa: PLC0415
+def arquivos_do_lote(base: str, head: str) -> list[str]:
+    """O que muda do que está no ar até o HEAD, mais o recebido desde a última vez.
 
+    Um lote interrompido por uma versão mais nova não perde nada: o seguinte compara
+    com a versão no ar, não só com a última recebida.
+    """
+    arquivos = set(git("diff", "--name-only", base, head).splitlines())
+    no_ar = (journal("aplicacao") or {}).get("atual") or ""
+    if SHA.fullmatch(no_ar) and no_ar != head:
+        try:
+            arquivos |= set(git("diff", "--name-only", no_ar, head).splitlines())
+        except RuntimeError:
+            pass
+    return sorted(arquivos)
+
+
+def lote(base: str, head: str) -> int:
     LOTES.mkdir(parents=True, exist_ok=True)
     (LOTES / f"{head}.pid").write_text(str(os.getpid()))
+    # Trava própria do lote: um por vez; o mais velho já foi interrompido pelo receber.
+    with (LOTES / ".lote.lock").open("a") as trava:
+        if fcntl:
+            fcntl.flock(trava, fcntl.LOCK_EX)
+        return lote_travado(base, head)
+
+
+def lote_travado(base: str, head: str) -> int:
+    import mapa_de_celulas  # noqa: PLC0415
+
     if head != git("rev-parse", "refs/heads/main"):
-        dizer(f"SUPERADO: lote {head[:9]} não inicia")
+        dizer(f"SUPERADO: lote {head[:9]} não inicia; a versão mais nova publica o que ele trazia")
         return 0
     arquivo_lote = LOTES / f"{head}.json"
-    arquivos = git("diff", "--name-only", base, head).splitlines()
+    arquivos = arquivos_do_lote(base, head)
     celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(FERRAMENTAS))
     if "aplicacao" in celulas:
         celulas = ["aplicacao"]
@@ -423,7 +452,8 @@ def lote(base: str, head: str) -> int:
             situacao["resultado"][celula] = processo.wait()
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
-    if infra and aplicacao_antes and falhas == 0 and head == git("rev-parse", "refs/heads/main"):
+    # A infra sincroniza com a versão que ficou no ar; a sincronização volta sozinha se o endereço não abrir.
+    if infra and aplicacao_antes and head == git("rev-parse", "refs/heads/main"):
         with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
             if not sincronizar_infra_aplicacao(head, registro):
                 falhas += 1
@@ -560,8 +590,6 @@ def journals_em_uso() -> list[dict]:
 
 def vigiar() -> int:
     """Fora do ar: religa a aplicacao; depois volta a versão, uma vez; depois avisa e só religa."""
-    import fcntl  # noqa: PLC0415 - só existe na VPS
-
     PUBLICACOES.mkdir(parents=True, exist_ok=True)
     with (PUBLICACOES / ".vigia.lock").open("a") as trava:
         try:

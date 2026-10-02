@@ -228,6 +228,28 @@ def test_infra_sem_codigo_apos_corte_usa_sincronizador_da_aplicacao(tmp_path, mo
     assert chamadas == ["b" * 40]
 
 
+def test_lote_compara_com_a_versao_no_ar_e_sincroniza_infra_mesmo_com_falha(tmp_path, monkeypatch):
+    publicar = carregar("publicar_lote_no_ar", "infra/publicar.py")
+    monkeypatch.setattr(publicar, "LOTES", tmp_path / "lotes")
+    monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path / "publicacoes")
+    (tmp_path / "logs").mkdir()
+    (tmp_path / "publicacoes").mkdir()
+    no_ar, base, head = "c" * 40, "a" * 40, "b" * 40
+    (tmp_path / "publicacoes" / "aplicacao.json").write_text(json.dumps({"atual": no_ar}))
+    diffs = {base: "README.md", no_ar: "infra/traefik/dynamic/plataforma.yml\nservices/aplicacao/x.py"}
+    monkeypatch.setattr(publicar, "git", lambda *args: (
+        diffs[args[2]] if args[0] == "diff" else head if args[0] == "rev-parse" else "2026-10-01T12:00:00+00:00"))
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: SimpleNamespace(wait=lambda: 1))
+    chamadas = []
+    monkeypatch.setattr(publicar, "sincronizar_infra_aplicacao", lambda sha, _log: chamadas.append(sha) or True)
+    monkeypatch.setattr(publicar, "avisar", lambda *args: None)
+    assert publicar.lote(base, head) == 1
+    resultado = json.loads((tmp_path / "lotes" / (head + ".json")).read_text())
+    assert resultado["celulas"] == ["aplicacao"] and resultado["infra"] is True
+    assert chamadas == [head]
+
+
 @pytest.fixture
 def receptor(tmp_path, monkeypatch):
     modulo = carregar("publicacao_local_montada", "infra/publicacao-local.py")
