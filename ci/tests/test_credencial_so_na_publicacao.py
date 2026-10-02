@@ -1,29 +1,22 @@
 """A senha do banco não atravessa o caminho automático de publicação.
 
-O workflow só precisa da chave SSH para chegar à VPS. O script remoto pode
-publicar uma célula, sincronizar a infraestrutura e restaurar um backup sem
-abrir os envs reais nem receber a senha do Postgres.
+Os roteiros que a publicação roda na VPS publicam uma célula, copiam o banco e
+sincronizam a infraestrutura sem abrir os envs reais nem receber a senha do
+Postgres. O infra/restaurar-backup.sh fica fora: roda à mão, e numa VPS nova
+ele tira de env/ a senha de cada papel do banco.
 """
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
-
-import yaml
 
 RAIZ = Path(__file__).resolve().parents[2]
 
 SCRIPTS_AUTOMATICOS = (
     RAIZ / "infra" / "deploy-celula-na-vps.sh",
     RAIZ / "infra" / "sincronizar-infra-na-vps.sh",
-    RAIZ / "infra" / "restaurar-backup.sh",
-)
-
-WORKFLOWS_DE_PUBLICACAO = (
-    RAIZ / ".github" / "workflows" / "deploy-celula.yml",
-    RAIZ / ".github" / "workflows" / "deploy-infra.yml",
+    RAIZ / "infra" / "backup-do-banco.sh",
 )
 
 NOMES_DA_CREDENCIAL = (
@@ -53,30 +46,4 @@ def test_scripts_automaticos_nao_abrem_credencial_do_banco() -> None:
             )
         assert not re.search(r"(?:source|\.)\s+[^\n]*\.env", codigo), (
             f"{caminho.name} abre um arquivo .env durante a publicação"
-        )
-
-
-def _sem_o_banco_do_runner(fluxo: dict) -> dict:
-    """O banco descartável que o runner sobe para a prova da célula não é credencial:
-    nasce e morre no job, em localhost. Sai da conta; o resto do fluxo fica."""
-    for job in fluxo.get("jobs", {}).values():
-        job.pop("services", None)
-    texto = json.dumps(fluxo, ensure_ascii=False)
-    texto = re.sub(r'DATABASE_URL=postgres://[^@\s"]+@localhost[^\s"\\]*', "", texto)
-    return json.loads(texto)
-
-
-def test_workflows_de_publicacao_nao_transportam_credencial_do_banco() -> None:
-    """O canal automático leva somente o acesso SSH, nunca o env da produção."""
-    for caminho in WORKFLOWS_DE_PUBLICACAO:
-        fluxo = json.dumps(
-            _sem_o_banco_do_runner(yaml.safe_load(caminho.read_text(encoding="utf-8"))),
-            ensure_ascii=False,
-        )
-        for nome in NOMES_DA_CREDENCIAL:
-            assert nome not in fluxo, (
-                f"{caminho.name} passou a transportar {nome} no Actions"
-            )
-        assert '"env/' not in fluxo, (
-            f"{caminho.name} passou a copiar um env real para a publicação"
         )

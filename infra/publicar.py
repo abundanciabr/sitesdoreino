@@ -7,6 +7,7 @@ Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
   recuperar CELULA      volta a célula para a última aprovada distinta e prova de novo
   vigiar                mede o site; fora do ar, volta a última publicação e avisa se não resolver
   estado                versões no ar e últimas medições
+  backup                cópia de todas as bases (infra/backup-do-banco.sh); o cron roda uma vez por dia
   inicializar CELULA SHA ENDERECO DADOS CONFIGURACAO   primeira aprovação de célula sem journal
   operar ...            operações de produto (infra/operar.py)
 
@@ -672,6 +673,12 @@ def estado() -> int:
     return 0
 
 
+def backup() -> int:
+    """Cópia diária, que não depende de publicação."""
+    return subprocess.run(["bash", str(FERRAMENTAS / "infra/backup-do-banco.sh"), "diario"], cwd=RAIZ,
+                          env=ambiente_base(), stdin=subprocess.DEVNULL).returncode
+
+
 def main(argv: list[str]) -> int:
     if not argv:
         print(__doc__)
@@ -692,6 +699,8 @@ def main(argv: list[str]) -> int:
         return vigiar()
     if acao == "estado":
         return estado()
+    if acao == "backup":
+        return backup()
     if acao == "operar":
         os.chdir(FERRAMENTAS)
         os.execv(sys.executable, [sys.executable, str(FERRAMENTAS / "infra/operar.py"), *resto])

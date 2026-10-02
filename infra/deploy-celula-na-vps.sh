@@ -86,78 +86,16 @@ parar_o_deploy() {
   exit 1
 }
 
-PASTA_DOS_DUMPS="$RAIZ/backups-de-banco"
-REFERENCIA_DE_PERMISSAO="${BACKUP_REFERENCIA:-$RAIZ/env}"
-
+# Cópia de segurança antes de qualquer migração: todas as bases na aplicação única,
+# só a base da célula no caminho antigo. Ver infra/backup-do-banco.sh.
 if [ "$CELULA" = aplicacao ]; then
-  BASES_BACKUP="admin_db alunos_db catalogo_db checkout_db cursos_db encomendas_db forum_db gamificacao_db identidade_db leads_db mensageria_db metricas_db notificacoes_db pagamentos_db pages_db quiz_db sugestoes_db"
+  unset BASES
 else
-  BASES_BACKUP="${CELULA}_db"
+  export BASES="${CELULA}_db"
 fi
-for BASE in $BASES_BACKUP; do
-case "$BASE" in
-  *[!A-Za-z0-9_]*) parar_o_deploy "o nome de base '$BASE' tem caractere que nao e letra, numero ou sublinhado. Nada foi tocado." ;;
-esac
-
-EXISTE_A_BASE=$(docker compose exec -T postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$BASE'") \
-  || parar_o_deploy "nao consegui perguntar ao Postgres se a base '$BASE' existe. O banco pode estar fora do ar, e se ele estiver a migracao no boot da imagem nova falharia do mesmo jeito. Nada foi tocado."
-
-if [ -z "$EXISTE_A_BASE" ]; then
-  echo "BACKUP-ANTES-DA-MIGRACAO: dispensado, a celula '$CELULA' nao tem a base '$BASE' neste Postgres (celula sem banco)."
-else
-  mkdir -p "$PASTA_DOS_DUMPS"
-  if [ -d "$REFERENCIA_DE_PERMISSAO" ]; then
-    chown --reference="$REFERENCIA_DE_PERMISSAO" "$PASTA_DOS_DUMPS" 2>/dev/null || true
-    chmod --reference="$REFERENCIA_DE_PERMISSAO" "$PASTA_DOS_DUMPS" \
-      || parar_o_deploy "nao consegui copiar as permissoes de $REFERENCIA_DE_PERMISSAO para $PASTA_DOS_DUMPS. Um dump e dado pessoal, e eu nao o gravo numa pasta com permissao que eu mesmo escolhi. Nada foi tocado."
-  else
-    parar_o_deploy "nao achei $REFERENCIA_DE_PERMISSAO para copiar dono e modo da pasta de dumps. Nada foi tocado."
-  fi
-
-  TAMANHO_DA_BASE=$(docker compose exec -T postgres psql -U postgres -tAc "SELECT pg_database_size('$BASE')") \
-    || parar_o_deploy "nao consegui medir o tamanho da base '$BASE'. Nada foi tocado."
-  TAMANHO_DA_BASE=$(printf '%s' "$TAMANHO_DA_BASE" | tr -d '[:space:]')
-  case "$TAMANHO_DA_BASE" in
-    ''|*[!0-9]*) parar_o_deploy "o Postgres respondeu algo que nao e um numero ao tamanho da base '$BASE'. 'Nao consegui medir' nunca vira 'pode seguir'. Nada foi tocado." ;;
-  esac
-
-  SAIDA_DO_DF=$(df -Pk "$PASTA_DOS_DUMPS") \
-    || parar_o_deploy "nao consegui medir o espaco livre em $PASTA_DOS_DUMPS. Nada foi tocado."
-  LIVRE_KB=$(printf '%s\n' "$SAIDA_DO_DF" | awk 'NR==2 {print $4}')
-  case "$LIVRE_KB" in
-    ''|*[!0-9]*) parar_o_deploy "nao consegui ler o espaco livre em $PASTA_DOS_DUMPS a partir do df. Nada foi tocado." ;;
-  esac
-
-  FOLGA_KB=262144
-  PRECISO_KB=$(( TAMANHO_DA_BASE / 1024 + FOLGA_KB ))
-  if [ "$LIVRE_KB" -lt "$PRECISO_KB" ]; then
-    parar_o_deploy "nao ha espaco em disco para a copia de seguranca de '$BASE'. Livre: $((LIVRE_KB / 1024)) MB. Necessario com folga: $((PRECISO_KB / 1024)) MB. A pasta dos dumps e $PASTA_DOS_DUMPS. Nada foi tocado."
-  fi
-
-  CARIMBO="$(date -u +%Y%m%d-%H%M%SZ)-${TAG:0:12}-$$"
-  ARQUIVO_FINAL="$PASTA_DOS_DUMPS/$BASE-$CARIMBO.dump"
-  ARQUIVO_PARCIAL="$ARQUIVO_FINAL.parcial"
-
-  docker compose exec -T postgres pg_dump -U postgres -Fc -d "$BASE" > "$ARQUIVO_PARCIAL" \
-    || { rm -f "$ARQUIVO_PARCIAL"; parar_o_deploy "o pg_dump da base '$BASE' falhou. O arquivo incompleto foi descartado e nada mudou em producao."; }
-
-  TAMANHO_DO_DUMP=$(wc -c < "$ARQUIVO_PARCIAL")
-  if [ "$TAMANHO_DO_DUMP" -le 0 ]; then
-    rm -f "$ARQUIVO_PARCIAL"
-    parar_o_deploy "o dump de '$BASE' saiu VAZIO. Arquivo vazio que se chama backup e a pior coisa que existe aqui, e por isso ele foi descartado."
-  fi
-
-  docker compose exec -T postgres pg_restore -l < "$ARQUIVO_PARCIAL" > /dev/null \
-    || { rm -f "$ARQUIVO_PARCIAL"; parar_o_deploy "o dump de '$BASE' foi escrito mas NAO ABRE: esta truncado ou corrompido. Ele foi descartado de proposito, porque um arquivo pela metade que se chama backup mente no dia em que alguem precisar dele."; }
-
-  mv "$ARQUIVO_PARCIAL" "$ARQUIVO_FINAL" \
-    || parar_o_deploy "nao consegui renomear a copia de seguranca para o nome final. Nada foi tocado."
-
-  echo "BACKUP-ANTES-DA-MIGRACAO: $BASE-$CARIMBO.dump ($((TAMANHO_DO_DUMP / 1024)) KB) em $PASTA_DOS_DUMPS"
-  echo "BACKUP-ANTES-DA-MIGRACAO: o carimbo do nome e UTC; em Brasilia sao tres horas a menos."
-  echo "BACKUP-ANTES-DA-MIGRACAO: o caminho de volta e infra/restaurar-backup.sh"
-fi
-done
+bash "$(dirname "$0")/backup-do-banco.sh" "${TAG:0:12}-$$" \
+  || parar_o_deploy "a cópia de segurança do banco não saiu (motivo nas linhas acima)."
+echo "BACKUP-ANTES-DA-MIGRACAO: o caminho de volta é infra/restaurar-backup.sh (guia em infra/COMO-RESTAURAR.md)"
 
 # --wait reprova o deploy se algum container não ficar de pé (ou não ficar
 python3 "$PUBLICACAO_LOCAL" aplicar

@@ -81,6 +81,8 @@ DOCKER_DE_MENTIRA = r"""#!/usr/bin/env bash
 # `docker` de mentira. Imita a única coisa do docker real que decide este
 # incidente: a interpolação do compose reprova, em QUALQUER subcomando, quando
 # falta no ambiente uma variável escrita na forma ${VAR:?mensagem}.
+# `ps` acha um Postgres; o `exec` nele responde vazio: nenhuma base a copiar.
+[ "${1:-}" = "ps" ] && { echo postgres-de-mentira; exit 0; }
 [ "${1:-}" = "compose" ] || exit 0
 shift
 printf '%s\n' "$*" >> "$DOCKER_FALSO_DIARIO"
@@ -216,13 +218,13 @@ def _rodar(
         comando = [
             "docker", "run", "--rm", "--network", "none", "--cpus", "1",
             "--memory", "512m", "--volume", f"{tmp_path}:/ensaio",
-            "--volume", f"{SCRIPT}:/deploy.sh:ro",
+            "--volume", f"{SCRIPT.parent}:/infra:ro",
             "--env", "PATH=/ensaio/docker-de-mentira:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             "--env", "PLATAFORMA_DIR=/ensaio/plataforma", "--env", f"CELULA={celula}",
             "--env", "TAG=ensaio",
             "--env", "DOCKER_FALSO_DIARIO=/ensaio/comandos-do-docker.txt",
             *[item for nome, valor in ajustes.items() for item in ("--env", f"{nome}={valor}")],
-            "ubuntu:24.04", "bash", "/deploy.sh",
+            "ubuntu:24.04", "bash", f"/infra/{SCRIPT.name}",
         ]
     else:
         comando = [_bash(), str(SCRIPT)]

@@ -1,206 +1,258 @@
 #!/usr/bin/env bash
-# =============================================================================
-# O CAMINHO DE VOLTA: devolver o banco de uma célula ao estado de uma cópia de
-# segurança feita antes de uma migração.
+# Devolve bases do Postgres a partir das cópias feitas por infra/backup-do-banco.sh.
+# Guia em português simples: infra/COMO-RESTAURAR.md.
 #
-# Um backup sem caminho de volta não é um backup. O `deploy-celula-na-vps.sh`
-# grava uma cópia da base da célula antes de toda entrega (TAR-003, 01/09/2026);
-# este arquivo é o que faz essa cópia valer alguma coisa. É o irmão de banco do
-# `rollback.yml`, que esta casa já tem para o código.
+# Rode na VPS, em /opt/plataforma. O arquivo pode estar em backups-de-banco/ ou ter vindo do PC.
 #
-# LEIA ISTO ANTES DE RODAR, e leia devagar:
+#   bash infra/restaurar-backup.sh --lado-a-lado ARQUIVO.dump
+#       Restaura numa base nova, <base>__copia_<hora>, sem tocar no site. Serve para consultar e
+#       devolver linhas à mão (uma matrícula apagada, um pagamento). Não sobrescreve nada.
 #
-#   * ELE SOBRESCREVE O BANCO INTEIRO DAQUELA CÉLULA. Tudo o que entrou no
-#     banco DEPOIS da hora do arquivo (aluno novo, mensagem nova, pedido novo)
-#     desaparece. Não é "junta o que falta": é "volta no tempo".
-#   * NÃO DÁ PARA DESFAZER. Não existe um "voltar atrás do voltar atrás".
-#     Se você tem dúvida, faça uma cópia do estado de agora primeiro: rode este
-#     script com --copia-de-agora, que grava um dump do estado ATUAL na mesma
-#     pasta e não muda nada.
-#   * O SITE DA CÉLULA FICA FORA DO AR durante a restauração (segundos a poucos
-#     minutos, conforme o tamanho). Isso é de propósito: restaurar com a célula
-#     escrevendo no banco ao mesmo tempo deixaria o resultado misturado.
-#   * ELE NÃO PERGUNTA NADA E NÃO MUDA NADA sem a palavra mágica no fim. Rodar
-#     sem ela é ENSAIO: ele confere tudo, mostra o que faria e sai.
+#   bash infra/restaurar-backup.sh --trocar ARQUIVO.dump --sim-eu-quero-sobrescrever
+#   bash infra/restaurar-backup.sh --trocar --todas CARIMBO --sim-eu-quero-sobrescrever
+#       Põe a cópia no lugar da base viva. Restaura ao lado, confere dono e contagens, para a
+#       aplicação, renomeia a base viva para <base>__antes_<hora> (sem apagar) e a cópia para
+#       <base>, sobe a aplicação e confere o endereço. Se o site não abrir, desfaz as trocas e
+#       sobe de novo. Sem a palavra no fim, só mostra o que faria.
 #
-# COMO RODAR (dentro da VPS, no prompt que começa com deploy@srv ou root@srv):
+#   bash infra/restaurar-backup.sh --vps-nova CARIMBO
+#       Postgres sem as bases (VPS nova, ou ensaio): cria os papéis de papeis-<CARIMBO>.sql que
+#       faltarem (senha tirada de env/<módulo>.env quando existir), cria cada base com o dono
+#       certo e restaura. Base que já existe fica como está.
 #
-#   1. Ver quais cópias existem:
-#      ls -lh /opt/plataforma/backups-de-banco/
-#
-#   2. Baixar este script e ensaiar (NÃO muda nada):
-#      curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/restaurar-backup.sh -o /tmp/r.sh && bash /tmp/r.sh /opt/plataforma/backups-de-banco/<arquivo>.dump
-#
-#   3. Se o ensaio mostrar o que você espera, rode de novo com a palavra no fim:
-#      bash /tmp/r.sh /opt/plataforma/backups-de-banco/<arquivo>.dump --sim-eu-quero-sobrescrever
-#
-# QUEM É A BASE E QUEM É A CÉLULA: sai do NOME DO ARQUIVO, não de um parâmetro
-# que você digita. O nome é `<base>-AAAAMMDD-HHMMSSZ.dump`, e o carimbo é UTC (em
-# Brasília, três horas a menos). Derivar do nome fecha por construção a porta de
-# restaurar o dump de uma célula em cima do banco de outra, que é o erro caro que
-# um parâmetro digitado à mão permitiria.
-#
-# NENHUM SEGREDO SAI DAQUI: o `pg_restore` roda DENTRO do contêiner do Postgres,
-# pelo socket local, como o superusuário `postgres`. Nenhuma senha em linha de
-# comando, nenhuma `DATABASE_URL` lida, nada de segredo na tela.
-# =============================================================================
-
-# O modo de falha de 24/08 em pessoa: carregado com `source`/`.`, um `exit` daqui
-# derrubaria a sessão do mantenedor. Com `bash /tmp/r.sh` o exit morre no filho.
-if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then
-  echo "PAROU POR SEGURANCA: este arquivo foi carregado com 'source' (ou '.'), e assim um erro derrubaria a sua sessao. Rode com a palavra bash na frente: bash /tmp/r.sh <arquivo>"
-  return 1 2>/dev/null || exit 1
-fi
+# CARIMBO é a parte do nome entre a base e o .dump: alunos_db-20261002-154728Z-825cad58ce30-2907648.dump
+# tem carimbo 20261002-154728Z-825cad58ce30-2907648 (hora UTC; em Brasília, 3 horas a menos).
+# Variáveis: ENDERECO (o que precisa responder 200 depois da troca), ESPERA_SAUDE (tentativas de 2 s
+# esperando cada contêiner ficar saudável; 90), PLATAFORMA_DIR, PROJETO_COMPOSE, PASTA_DOS_BACKUPS.
+# Nunca roda pg_restore --clean nem DROP DATABASE em base viva.
 
 set -eu
-# Ver a explicação longa no cabeçalho do `deploy-celula-na-vps.sh`: nenhum
-# veredito deste script vem de um pipe, e o `pipefail` é o cinto por cima disso.
 if (set -o pipefail) 2>/dev/null; then set -o pipefail; fi
-
-parar() {
-  echo
-  echo "PAROU POR SEGURANCA: $1"
-  echo
-  echo "NADA FOI RESTAURADO. O banco continua exatamente como estava."
-  exit 1
-}
+umask 077
 
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
-COMPOSE="${BACKUP_COMPOSE:-docker compose}"
+PROJETO="${PROJETO_COMPOSE:-plataforma}"
+PASTA="${PASTA_DOS_BACKUPS:-$RAIZ/backups-de-banco}"
+ENDERECO="${ENDERECO:-https://meshcraft.top/}"
+HORA="$(date -u +%Y%m%d%H%M%S)"
 
-ARQUIVO=""
-CONFIRMADO=0
-SO_COPIA_DE_AGORA=0
-for argumento in "$@"; do
-  case "$argumento" in
-    --sim-eu-quero-sobrescrever) CONFIRMADO=1 ;;
-    --copia-de-agora) SO_COPIA_DE_AGORA=1 ;;
-    -*) parar "nao conheco a opcao '$argumento'. As unicas sao --sim-eu-quero-sobrescrever e --copia-de-agora." ;;
-    *)
-      if [ -n "$ARQUIVO" ]; then parar "voce passou mais de um arquivo. Restauro um de cada vez, de proposito."; fi
-      ARQUIVO="$argumento"
-      ;;
+parar() { echo; echo "PAROU: $1"; exit 1; }
+
+MODO=""; ARQUIVO=""; CARIMBO=""; TODAS=0; PALAVRA=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --lado-a-lado) MODO=lado ;;
+    --trocar) MODO=trocar ;;
+    --vps-nova) MODO=nova; CARIMBO="${2:-}"; shift ;;
+    --todas) TODAS=1; CARIMBO="${2:-}"; shift ;;
+    --sim-eu-quero-sobrescrever) PALAVRA=1 ;;
+    -*) parar "não conheço a opção '$1'. Veja o cabeçalho deste arquivo." ;;
+    *) ARQUIVO="$1" ;;
   esac
+  shift
+done
+[ -n "$MODO" ] || { sed -n '2,29p' "$0"; exit 2; }
+
+conteiner() {
+  docker ps -q --filter "label=com.docker.compose.project=$PROJETO" \
+    --filter "label=com.docker.compose.service=$1" | head -n1
+}
+PG="${PG_CONTAINER:-$(conteiner postgres)}"
+[ -n "$PG" ] || parar "não achei o contêiner do Postgres (projeto $PROJETO)."
+sql() { docker exec -i "$PG" psql -U postgres -v ON_ERROR_STOP=1 -AtX "$@"; }
+existe() { [ -n "$(sql -c "SELECT 1 FROM pg_database WHERE datname = '$1'")" ]; }
+
+# alunos_db-20261002-154728Z-<rótulo>.dump -> base alunos_db, carimbo 20261002-154728Z-<rótulo>
+base_do() { basename "$1" | sed -nE 's/^([a-z0-9_]+)-([0-9]{8}-[0-9]{6}Z.*)\.dump$/\1/p'; }
+carimbo_do() { basename "$1" | sed -nE 's/^([a-z0-9_]+)-([0-9]{8}-[0-9]{6}Z.*)\.dump$/\2/p'; }
+
+ARQUIVOS=""
+if [ -n "$CARIMBO" ]; then
+  case "$CARIMBO" in *[!A-Za-z0-9_-]*|"") parar "carimbo '$CARIMBO' inválido." ;; esac
+  for f in "$PASTA"/*-"$CARIMBO".dump; do [ -f "$f" ] && ARQUIVOS="$ARQUIVOS $f"; done
+  [ -n "$ARQUIVOS" ] || parar "não achei nenhum <base>-$CARIMBO.dump em $PASTA."
+else
+  [ -n "$ARQUIVO" ] || parar "falta o arquivo .dump."
+  [ -s "$ARQUIVO" ] || parar "o arquivo '$ARQUIVO' não existe ou está vazio."
+  ARQUIVOS="$ARQUIVO"
+fi
+for f in $ARQUIVOS; do
+  [ -n "$(base_do "$f")" ] || parar "o nome '$(basename "$f")' não segue <base>-AAAAMMDD-HHMMSSZ[...].dump; não sei de qual base ele é."
+  docker exec -i "$PG" pg_restore -l < "$f" > /dev/null || parar "o arquivo '$(basename "$f")' não abre: está truncado ou corrompido."
 done
 
-if [ -z "$ARQUIVO" ]; then
-  echo "COMO USAR:"
-  echo "  bash $0 <caminho do arquivo .dump>"
-  echo
-  echo "As copias de seguranca ficam em $RAIZ/backups-de-banco/."
-  echo "Para ver quais existem:  ls -lh $RAIZ/backups-de-banco/"
-  exit 1
+if command -v flock >/dev/null 2>&1 && [ -d "$RAIZ" ]; then
+  exec 9>"$RAIZ/.backup.lock"
+  flock -w 900 9 || parar "um backup está rodando há mais de 15 min; tente de novo depois."
 fi
 
-cd "$RAIZ" 2>/dev/null || parar "nao achei $RAIZ. Voce esta na VPS certa? O prompt tem de comecar com deploy@srv ou root@srv."
+dono_de() { # o dono da base viva; sem ela, <módulo>_user
+  local dono
+  dono="$(sql -c "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '$1'")"
+  [ -n "$dono" ] && [ "$dono" != postgres ] && { echo "$dono"; return; }
+  echo "${1%_db}_user"
+}
 
+CONTAR="SELECT table_schema || '.' || table_name,
+               (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I.%I',
+                 table_schema, table_name), false, true, '')))[1]::text
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY 1"
 
-[ -f "$ARQUIVO" ] || parar "nao achei o arquivo '$ARQUIVO'. Confira o caminho com: ls -lh $RAIZ/backups-de-banco/"
-[ -r "$ARQUIVO" ] || parar "nao consigo LER o arquivo '$ARQUIVO'. Rode como root ou como o dono da pasta de backups."
+# Restaura ARQUIVO numa base nova DESTINO com dono DONO e confere: dono de todo objeto,
+# o dono consegue alterar tabela (o migrate roda) e as contagens do backup.
+restaurar_e_conferir() {
+  local arquivo="$1" destino="$2" dono="$3" base contagens tabela erradas iguais=0 diferentes=0
+  base="$(base_do "$arquivo")"
+  [ -n "$(sql -c "SELECT 1 FROM pg_roles WHERE rolname = '$dono'")" ] \
+    || parar "o papel '$dono' não existe neste Postgres. Numa VPS nova, use --vps-nova."
+  existe "$destino" && parar "a base '$destino' já existe; nada foi tocado."
+  sql -c "CREATE DATABASE \"$destino\" OWNER \"$dono\" TEMPLATE template0" > /dev/null
+  sql -c "REVOKE ALL ON DATABASE \"$destino\" FROM PUBLIC" > /dev/null
+  if ! docker exec -i "$PG" pg_restore -U postgres -d "$destino" --exit-on-error --single-transaction < "$arquivo"; then
+    sql -c "DROP DATABASE \"$destino\"" > /dev/null || true  # só a cópia recém-criada, vazia
+    parar "o pg_restore de '$(basename "$arquivo")' falhou; a cópia incompleta foi descartada e nada mais mudou."
+  fi
+  erradas="$(sql -d "$destino" -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%'
+        AND c.relkind IN ('r','p','v','m','S','f') AND pg_get_userbyid(c.relowner) <> '$dono'")"
+  [ "$erradas" = 0 ] || parar "$erradas objetos de '$destino' não ficaram com o dono '$dono'."
+  tabela="$(sql -d "$destino" -c "SELECT format('%I.%I', schemaname, tablename) FROM pg_tables
+      WHERE schemaname NOT IN ('pg_catalog', 'information_schema') AND tableowner = '$dono' ORDER BY 1 LIMIT 1")"
+  if [ -n "$tabela" ]; then
+    printf 'BEGIN;\nSET LOCAL ROLE "%s";\nALTER TABLE %s ADD COLUMN _ensaio_da_restauracao int;\nROLLBACK;\n' "$dono" "$tabela" \
+      | docker exec -i "$PG" psql -U postgres -v ON_ERROR_STOP=1 -qAtX -d "$destino" > /dev/null \
+      || parar "o dono '$dono' não conseguiu alterar $tabela em '$destino': o migrate não rodaria."
+  fi
+  contagens="$(dirname "$arquivo")/$(carimbo_do "$arquivo").contagens.tsv"
+  if [ -f "$contagens" ]; then
+    while IFS="$(printf '\t')" read -r tab linhas; do
+      antes="$(awk -F'\t' -v b="$base" -v t="$tab" '$1 == b && $2 == t {print $3}' "$contagens")"
+      if [ "$antes" = "$linhas" ]; then iguais=$((iguais + 1))
+      else diferentes=$((diferentes + 1)); echo "  CONTAGEM-DIFERENTE: $base $tab backup=${antes:-ausente} restaurado=$linhas"; fi
+    done <<EOF
+$(sql -F "$(printf '\t')" -d "$destino" -c "$CONTAR")
+EOF
+    echo "CONFERIDO: $destino dono $dono em tudo; $iguais tabelas com a contagem do backup, $diferentes diferentes"
+  else
+    echo "CONFERIDO: $destino dono $dono em tudo; sem arquivo de contagens ao lado do dump"
+  fi
+}
 
-# --- Quem é a base, e quem é a célula: derivado do NOME, nunca digitado. -----
-NOME_DO_ARQUIVO=$(basename "$ARQUIVO")
-case "$NOME_DO_ARQUIVO" in
-  *.dump) : ;;
-  *) parar "'$NOME_DO_ARQUIVO' nao termina em .dump. Um arquivo .parcial e uma copia que ficou pela metade, e ela nunca e um backup." ;;
-esac
-
-# `<base>-AAAAMMDD-HHMMSSZ.dump` — tira o carimbo e o sufixo, sobra a base.
-BASE=$(printf '%s' "$NOME_DO_ARQUIVO" | sed -E 's/-[0-9]{8}-[0-9]{6}Z\.dump$//')
-if [ "$BASE" = "$NOME_DO_ARQUIVO" ] || [ -z "$BASE" ]; then
-  parar "o nome '$NOME_DO_ARQUIVO' nao esta no formato que o deploy gera (<base>-AAAAMMDD-HHMMSSZ.dump), entao eu nao consigo dizer com certeza a qual banco ele pertence. Restaurar no banco errado e o pior erro possivel aqui, e por isso eu paro em vez de adivinhar."
-fi
-case "$BASE" in
-  *[!A-Za-z0-9_]*) parar "o nome de base '$BASE', lido do arquivo, tem caractere que nao e letra, numero ou sublinhado." ;;
-esac
-CELULA=$(printf '%s' "$BASE" | sed -E 's/_db$//')
-
-# --- A copia existe DE VERDADE, e abre? -------------------------------------
-TAMANHO=$(wc -c < "$ARQUIVO")
-case "$TAMANHO" in ''|*[!0-9]*) parar "nao consegui medir o tamanho de '$ARQUIVO'." ;; esac
-[ "$TAMANHO" -gt 0 ] || parar "o arquivo '$NOME_DO_ARQUIVO' esta VAZIO. Ele nao e um backup."
-
-$COMPOSE exec -T postgres pg_restore -l < "$ARQUIVO" > /dev/null \
-  || parar "o arquivo '$NOME_DO_ARQUIVO' NAO ABRE: esta truncado ou corrompido, ou o Postgres nao esta de pe. Se o Postgres estiver rodando, escolha outra copia da pasta: esta nao serve para nada."
-
-EXISTE_A_BASE=$($COMPOSE exec -T postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$BASE'") \
-  || parar "nao consegui falar com o Postgres. Ele esta de pe? Veja com: $COMPOSE ps postgres"
-[ -n "$EXISTE_A_BASE" ] || parar "a base '$BASE' nao existe neste Postgres. Este arquivo nao pertence a esta maquina."
-
-SERVICOS=$($COMPOSE config --services | grep -E "^${CELULA}(-|\$)" || true)
-
-# --- O ENSAIO: o que vai acontecer, em portugues, antes de acontecer. --------
-echo "== O QUE EU VOU FAZER =="
-echo "  arquivo ............. $NOME_DO_ARQUIVO ($((TAMANHO / 1024)) KB)"
-echo "  banco de destino .... $BASE (a celula '$CELULA')"
-echo "  servicos a parar .... $(printf '%s' "${SERVICOS:-nenhum encontrado no compose}" | tr '
-' ' ')"
-echo "  o arquivo abre ...... sim, conferido agora"
-echo
-echo "  ATENCAO: tudo o que entrou no banco '$BASE' DEPOIS da hora deste arquivo"
-echo "  vai desaparecer. Isso NAO da para desfazer. O site da celula '$CELULA'"
-echo "  fica fora do ar durante a troca."
-echo
-
-if [ "$SO_COPIA_DE_AGORA" -eq 1 ]; then
-  DESTINO="$RAIZ/backups-de-banco"
-  mkdir -p "$DESTINO"
-  CARIMBO=$(date -u +%Y%m%d-%H%M%SZ)
-  ANTES="$DESTINO/$BASE-$CARIMBO.dump"
-  $COMPOSE exec -T postgres pg_dump -U postgres -Fc -d "$BASE" > "$ANTES.parcial" \
-    || { rm -f "$ANTES.parcial"; parar "nao consegui copiar o estado de AGORA de '$BASE'."; }
-  $COMPOSE exec -T postgres pg_restore -l < "$ANTES.parcial" > /dev/null \
-    || { rm -f "$ANTES.parcial"; parar "a copia do estado de agora saiu truncada, e por isso foi descartada."; }
-  mv "$ANTES.parcial" "$ANTES"
-  echo "COPIA DO ESTADO DE AGORA GRAVADA: $ANTES"
-  echo "Nada foi restaurado. Rode de novo sem --copia-de-agora quando quiser voltar no tempo."
+if [ "$MODO" = nova ]; then
+  PAPEIS="$PASTA/papeis-$CARIMBO.sql"
+  [ -f "$PAPEIS" ] || parar "não achei $PAPEIS (os papéis daquele backup)."
+  for papel in $(sed -nE 's/^CREATE ROLE ([a-z0-9_]+);$/\1/p' "$PAPEIS"); do
+    [ -n "$(sql -c "SELECT 1 FROM pg_roles WHERE rolname = '$papel'")" ] && continue
+    grep -E "^(CREATE|ALTER) ROLE $papel( |;)" "$PAPEIS" | sql > /dev/null
+    SENHA="$(cat "$RAIZ"/env/*.env 2>/dev/null | sed -nE "s#^[A-Z_]*DATABASE_URL=postgres(ql)?://$papel:([^@]+)@.*#\2#p" | head -n1)" || SENHA=""
+    if [ -n "$SENHA" ]; then
+      printf "ALTER ROLE \"%s\" PASSWORD '%s';\n" "$papel" "$SENHA" | sql > /dev/null
+      echo "PAPEL: $papel criado, senha tirada de env/"
+    else
+      echo "PAPEL: $papel criado sem senha (ponha a do env/ antes de subir o site)"
+    fi
+  done
+  for f in $ARQUIVOS; do
+    base="$(base_do "$f")"
+    if existe "$base"; then echo "JA-EXISTE: $base ficou como está (para trocar, use --trocar)"; continue; fi
+    restaurar_e_conferir "$f" "$base" "${base%_db}_user"
+  done
+  echo "VPS-NOVA-CONCLUIDA: $CARIMBO"
   exit 0
 fi
 
-if [ "$CONFIRMADO" -ne 1 ]; then
-  echo "ISTO FOI SO UM ENSAIO. Nada foi mudado."
-  echo
-  echo "Se e isso mesmo que voce quer, rode a MESMA linha com a palavra no fim:"
-  echo
-  echo "  bash $0 $ARQUIVO --sim-eu-quero-sobrescrever"
-  echo
-  echo "Se quiser guardar o estado de AGORA antes (recomendado):"
-  echo
-  echo "  bash $0 $ARQUIVO --copia-de-agora"
+if [ "$MODO" = lado ]; then
+  for f in $ARQUIVOS; do
+    base="$(base_do "$f")"
+    restaurar_e_conferir "$f" "${base}__copia_$HORA" "$(dono_de "$base")"
+    echo "LADO-A-LADO-PRONTO: ${base}__copia_$HORA (consulte com: docker exec -it $PG psql -U postgres -d ${base}__copia_$HORA)"
+  done
   exit 0
 fi
 
-# --- A RESTAURACAO DE VERDADE. ----------------------------------------------
-echo "== RESTAURANDO =="
-if [ -n "$SERVICOS" ]; then
-  echo "1) parando a celula '$CELULA' para o banco nao mudar no meio da troca"
-  $COMPOSE stop $SERVICOS || parar "nao consegui parar os servicos da celula '$CELULA'. Como o banco continuaria mudando durante a troca, eu nao restauro."
+# --trocar
+BASES=""
+for f in $ARQUIVOS; do
+  base="$(base_do "$f")"
+  existe "$base" || parar "a base '$base' não existe aqui; para Postgres sem as bases, use --vps-nova."
+  BASES="$BASES $base"
+done
+echo "== VOU TROCAR:$BASES"
+echo "   Tudo o que entrou nessas bases depois da hora do backup sai do site."
+echo "   As bases de agora ficam guardadas como <base>__antes_$HORA (nada é apagado)."
+echo "   O site fica fora do ar por alguns segundos a poucos minutos."
+[ "$PALAVRA" = 1 ] || { echo; echo "ENSAIO: nada foi mudado. Para trocar, repita com --sim-eu-quero-sobrescrever no fim."; exit 0; }
+
+for f in $ARQUIVOS; do
+  base="$(base_do "$f")"
+  restaurar_e_conferir "$f" "${base}__copia_$HORA" "$(dono_de "$base")"
+done
+
+PARADOS=""
+for linha in $(docker ps --filter "label=com.docker.compose.project=$PROJETO" \
+                 --format '{{.ID}}={{.Label "com.docker.compose.service"}}'); do
+  servico="${linha#*=}"
+  [ "$servico" = aplicacao ] && { PARADOS="$PARADOS ${linha%%=*}"; continue; }
+  for base in $BASES; do
+    case "$servico" in "${base%_db}"|"${base%_db}"-*) PARADOS="$PARADOS ${linha%%=*}" ;; esac
+  done
+done
+
+desligar() {
+  [ -z "$PARADOS" ] || docker stop -t 30 $PARADOS > /dev/null
+  local nomes
+  nomes="'$(echo $BASES | sed "s/ /','/g")'"
+  for _ in 1 2 3 4 5; do
+    sql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid()
+            AND datname IN ($nomes)" > /dev/null
+    [ -z "$(sql -c "SELECT 1 FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname IN ($nomes) LIMIT 1")" ] && return 0
+    sleep 2
+  done
+}
+
+renomear() { sql -c "ALTER DATABASE \"$1\" RENAME TO \"$2\"" > /dev/null; }
+
+site_abriu() {
+  local id estado codigo
+  [ -z "$PARADOS" ] || docker start $PARADOS > /dev/null
+  for id in $PARADOS; do
+    for _ in $(seq 1 "${ESPERA_SAUDE:-90}"); do
+      estado="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id")"
+      [ "$estado" = healthy ] || [ "$estado" = running ] && break
+      sleep 2
+    done
+    [ "$estado" = healthy ] || [ "$estado" = running ] || return 1
+  done
+  for _ in $(seq 1 12); do
+    codigo="$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$ENDERECO" || true)"
+    [ "$codigo" = 200 ] && return 0
+    sleep 5
+  done
+  echo "O endereço $ENDERECO respondeu ${codigo:-nada}."
+  return 1
+}
+
+echo "== TROCANDO"
+desligar
+TROCOU=1
+for base in $BASES; do
+  renomear "$base" "${base}__antes_$HORA" && renomear "${base}__copia_$HORA" "$base" || { TROCOU=0; break; }
+done
+if [ "$TROCOU" = 1 ] && site_abriu; then
+  echo "TROCA-CONCLUIDA:$BASES voltaram ao backup; as de antes estão em <base>__antes_$HORA. Site respondeu 200."
+  exit 0
 fi
 
-echo "2) devolvendo o banco '$BASE' ao estado do arquivo"
-# `--clean --if-exists` derruba o que existe antes de recriar; `--exit-on-error`
-# faz o primeiro erro parar tudo, em vez de deixar um banco meio restaurado
-# parecendo pronto. O veredito vem do COMANDO, e nao de um pipe.
-ESTADO_DO_RESTORE=0
-$COMPOSE exec -T postgres pg_restore -U postgres -d "$BASE" --clean --if-exists --exit-on-error --no-owner < "$ARQUIVO" \
-  || ESTADO_DO_RESTORE=$?
-
-if [ -n "$SERVICOS" ]; then
-  echo "3) subindo a celula '$CELULA' de novo"
-  $COMPOSE up -d $SERVICOS || echo "AVISO: nao consegui subir '$CELULA' automaticamente. Suba a mao com: cd $RAIZ && $COMPOSE up -d $SERVICOS"
+echo "== A TROCA NÃO DEU CERTO: DESFAZENDO"
+desligar || true
+for base in $BASES; do
+  existe "${base}__antes_$HORA" || continue
+  if existe "$base"; then renomear "$base" "${base}__falhou_$HORA" || true; fi
+  renomear "${base}__antes_$HORA" "$base" || echo "ATENÇÃO: não consegui devolver o nome de ${base}__antes_$HORA para $base."
+done
+if site_abriu; then
+  parar "a troca foi desfeita e o site voltou como estava. As bases restauradas ficaram em <base>__falhou_$HORA (ou __copia_$HORA) para estudo."
 fi
-
-if [ "$ESTADO_DO_RESTORE" -ne 0 ]; then
-  echo
-  echo "PAROU POR SEGURANCA: a restauracao do banco '$BASE' FALHOU no meio (codigo $ESTADO_DO_RESTORE)."
-  echo "O banco pode ter ficado num estado misto. NAO tente de novo as cegas:"
-  echo "  - a lista de copias esta em $RAIZ/backups-de-banco/"
-  echo "  - a mensagem de erro do Postgres esta logo acima desta linha"
-  echo "Mande essa mensagem para quem estiver ajudando antes de mexer mais."
-  exit 1
-fi
-
-echo
-echo "PRONTO. O banco '$BASE' voltou ao estado de $NOME_DO_ARQUIVO."
-echo "A celula '$CELULA' esta subindo de novo. Confira o site em alguns segundos."
-echo "RESTAURACAO-CONCLUIDA: $BASE de $NOME_DO_ARQUIVO"
+parar "a troca foi desfeita (bases de antes no lugar), mas o site ainda não respondeu 200. Veja: docker ps; docker logs $PARADOS"

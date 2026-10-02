@@ -26,12 +26,14 @@ o cano do `ssh` direto para o `ci/cofre.py guardar` na máquina do mantenedor.
 ## O que ele pode, e o que ele não pode
 
 Pode tudo que tem volta: ler qualquer tela, criar e editar rascunho, arquivar.
-Não pode (403) o gesto sem volta: apagar dado, gastar dinheiro real (o analista
-do fechamento chama a API paga), expor segredo (a senha nova sai na tela) e
-mudar quem administra ou quem entra.
+Tirar item do menu e preparar quem entra ou sai da administração também são
+rascunho, então ele pode. Não pode (403) o gesto sem volta: apagar dado, gastar
+dinheiro real (o analista do fechamento chama a API paga), expor segredo (a
+senha nova sai na tela) e mudar de fato quem administra ou quem entra (o
+`escola_admin_publicar` recusa o robô por conta própria).
 
 A conferência é pelo NOME da rota, por palavra: rota futura que nascer com
-"apagar", "remover", "senha", "link"... no nome já nasce fechada para o robô.
+"apagar", "senha", "link"... no nome já nasce fechada para o robô.
 
 Credencial errada ou revogada recebe o mesmo 404 de um estranho.
 """
@@ -71,11 +73,9 @@ ROBO = {
 #: Palavras que, no nome da rota, fazem dela um gesto sem volta para o robô.
 PALAVRAS_SEM_VOLTA = (
     "apagar",  # apagar dado
-    "remover",  # remover item, remover administrador
     "estorn",  # devolver dinheiro
     "reembols",
     "senha",  # a senha nova sai em texto na tela
-    "promover",  # mudar quem administra
     "associar",  # mudar quem entra no painel da equipe
     "link",  # convite que dá entrada a alguém
     "segredo",
