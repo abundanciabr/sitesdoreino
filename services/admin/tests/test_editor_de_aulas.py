@@ -831,7 +831,7 @@ def test_publicar_chama_a_porta_e_mostra_a_data():
 
 @pytest.mark.django_db
 @respx.mock
-def test_publicar_sem_a_caixa_marcada_nao_chama_a_porta():
+def test_publicar_sem_confirmacao_extra_chama_a_porta():
     _mock_site()
     _mock_aula()
     _mock_instrumentos()
@@ -843,10 +843,9 @@ def test_publicar_sem_a_caixa_marcada_nao_chama_a_porta():
         reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}), {}
     )
 
-    assert resposta.status_code == 400
-    assert publicacao.call_count == 0
-    assert "marque a caixa de confirmação" in _texto(resposta)
-    assert Registro.objects.count() == 0
+    assert resposta.status_code == 302
+    assert publicacao.call_count == 1
+    assert Registro.objects.filter(acao=Registro.PUBLICAR_AULA).count() == 1
 
 
 # ---------------------------------------------------------------------------

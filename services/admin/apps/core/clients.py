@@ -15,6 +15,60 @@ logger = logging.getLogger("admin.porta")
 _cliente: httpx.Client | None = None
 
 
+@dataclass(frozen=True)
+class ResumoDePendencias:
+    quantidade: int | None
+    espera_ha_dias: int | None = None
+    acesso_negado: bool = False
+
+
+class PendenciasClient:
+    """Lê apenas o resumo das filas de outras células, pelo par já configurado."""
+
+    FONTES = {
+        "portfolio": ("PAGES_API_URL", "PAGES_API_TOKEN"),
+        "marcos": ("GAMIFICACAO_API_URL", "TOKEN_GAMIFICACAO"),
+        "checkpoints": ("CURSOS_API_URL", "CURSOS_API_TOKEN"),
+    }
+
+    def resumo(self, fonte: str, site_id: str | None) -> ResumoDePendencias:
+        if fonte not in self.FONTES or not site_id:
+            return ResumoDePendencias(None)
+        chave_url, chave_token = self.FONTES[fonte]
+        base = (os.environ.get(chave_url) or "").strip().rstrip("/")
+        token = (os.environ.get(chave_token) or "").strip()
+        if not base or not token:
+            return ResumoDePendencias(None)
+        try:
+            resposta = http().get(
+                f"{base}/pendencias/{quote(site_id, safe='')}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=2.0,
+            )
+        except httpx.HTTPError as erro:
+            logger.warning("pendências: %s não respondeu: %s", fonte, erro)
+            return ResumoDePendencias(None)
+        if resposta.status_code in (401, 403):
+            return ResumoDePendencias(None, acesso_negado=True)
+        if resposta.status_code != 200:
+            return ResumoDePendencias(None)
+        try:
+            dados = resposta.json()
+        except ValueError:
+            return ResumoDePendencias(None)
+        if not isinstance(dados, dict):
+            return ResumoDePendencias(None)
+        quantidade = dados.get("quantidade")
+        idade = dados.get("espera_ha_dias")
+        if type(quantidade) is not int or quantidade < 0:
+            return ResumoDePendencias(None)
+        if quantidade == 0 and idade is None:
+            return ResumoDePendencias(0)
+        if quantidade > 0 and type(idade) is int and idade >= 0:
+            return ResumoDePendencias(quantidade, idade)
+        return ResumoDePendencias(None)
+
+
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 

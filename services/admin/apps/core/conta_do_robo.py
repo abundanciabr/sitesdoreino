@@ -83,11 +83,6 @@ PALAVRAS_SEM_VOLTA = (
     "token",
 )
 
-#: Rotas que o robô pode LER mas não pode mandar: o POST do fechamento pode
-#: chamar o analista, que é a API paga.
-SO_LEITURA = frozenset({"fechamento"})
-
-
 def impressao(credencial: str) -> str:
     return hashlib.sha256(credencial.encode("utf-8")).hexdigest()
 
@@ -141,7 +136,12 @@ def gesto_sem_volta(request) -> bool:
         return False
     if any(palavra in nome for palavra in PALAVRAS_SEM_VOLTA):
         return True
-    return nome in SO_LEITURA and request.method not in ("GET", "HEAD")
+    # Salvar o fechamento não tem custo; somente o botão do analista chama IA paga.
+    return (
+        nome == "fechamento"
+        and request.method not in ("GET", "HEAD")
+        and request.POST.get("acao") == "analista"
+    )
 
 
 def recusa():

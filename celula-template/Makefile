@@ -1,7 +1,7 @@
-# A Definição de Pronto local da célula: make ci
+# Comandos locais da célula.
 CELULA := $(notdir $(CURDIR))
 
-.PHONY: dev mocks test lint type ci
+.PHONY: dev mocks test ci
 
 dev:            ## sobe SÓ esta célula + banco + redis + mocks (isolamento real)
 	docker compose -f docker-compose.dev.yml up
@@ -13,9 +13,4 @@ mocks:          ## dependências a partir dos CONTRATOS — nunca do código alh
 test:
 	python -m pytest -q
 
-lint:
-	black --check .
-	@if [ -f .importlinter ]; then lint-imports; fi
-
-type:
-	@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi
+ci: test

@@ -346,3 +346,30 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
 def test_painel_de_campanhas_requer_sessao_admin():
     resposta = Client().get(reverse("quiz_campanhas", kwargs={"slug": "campanha"}))
     assert resposta.status_code in (302, 404)
+
+
+@pytest.mark.parametrize("tipo,base,enviado", [
+    ("forum", "http://forum:8000/interno/editor/areas", {"nome": "Nova área", "ordem": "1"}),
+    ("turma", "http://alunos:8000/api/alunos/turmas?site_id=site-teste", {"nome": "Nova turma"}),
+    ("quiz", "http://quiz:8000/interno/editor/quizzes?site_id=site-teste", {"title": "Novo quiz", "total_perguntas": "0", "total_faixas": "0"}),
+])
+@pytest.mark.parametrize("falha", ["salvar", "publicar", None])
+@respx.mock
+def test_salvar_e_publicar_conteudo_em_um_clique(tipo, base, enviado, falha):
+    cliente = _cliente()
+    slug = "novo"
+    salvar = respx.put(base.replace("?site_id=site-teste", "") + f"/{slug}/rascunho" + ("?site_id=site-teste" if tipo != "forum" else "")).mock(
+        return_value=httpx.Response(422 if falha == "salvar" else 200, json={})
+    )
+    publicar = respx.post(base.replace("?site_id=site-teste", "") + f"/{slug}/publicar" + ("?site_id=site-teste" if tipo != "forum" else "")).mock(
+        return_value=httpx.Response(422 if falha == "publicar" else 200, json={})
+    )
+    resposta = cliente.post(reverse("conteudo_salvar", kwargs={"tipo": tipo, "slug": slug}), {**enviado, "acao": "publicar"})
+    assert salvar.call_count == 1
+    assert publicar.call_count == (0 if falha == "salvar" else 1)
+    assert resposta.status_code == (422 if falha == "salvar" else 302)
+    if falha == "salvar":
+        assert (enviado.get("nome") or enviado.get("title")) in resposta.content.decode()
+        assert 'name="acao" value="publicar"' in resposta.content.decode()
+    if falha == "publicar":
+        assert "recado=publicacao_falhou" in resposta["Location"]

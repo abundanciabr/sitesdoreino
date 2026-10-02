@@ -4,8 +4,9 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'conteudos' tipo %}">← {{ nome }}</a>
   <h1>{{ nome }}: {{ slug }}</h1>
+  {% if erro %}<p class="aviso">{{ erro }}</p>{% endif %}
   {% if tipo == 'quiz' %}<p><a href="{% url 'quiz_campanhas' slug %}">Ver campanhas e links deste quiz</a></p>{% endif %}
-  {% if recado %}<p class="aviso">{% if recado == 'publicado' %}Publicado no site.{% else %}Rascunho salvo. O público ainda vê a versão anterior.{% endif %}</p>{% endif %}
+  {% if recado %}<p class="aviso">{% if recado == 'publicado' %}Publicado no site.{% elif recado == 'publicacao_falhou' %}Rascunho salvo, mas não consegui publicar. Corrija e tente de novo.{% else %}Rascunho salvo. O público ainda vê a versão anterior.{% endif %}</p>{% endif %}
   <div class="cartao">
     <h2>{% if tem_rascunho %}Prévia privada do rascunho{% else %}Editar{% endif %}</h2>
     <form method="post" action="{% url 'conteudo_salvar' tipo slug %}">{% csrf_token %}
@@ -61,7 +62,8 @@
         {% endfor %}
         {% endif %}
       {% endif %}
-      <button type="submit">Salvar rascunho</button>
+      <button type="submit" name="acao" value="salvar">Salvar rascunho</button>
+      <button type="submit" name="acao" value="publicar">Salvar e publicar {{ nome|lower }}</button>
     </form>
   </div>
   {% if tem_rascunho %}

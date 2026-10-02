@@ -10,7 +10,7 @@ if [ ! -d "$REPO" ]; then
   git clone --quiet --bare https://github.com/abundanciabr/sitesdoreino.git "$REPO"
 fi
 case "${1:-}" in
-  receber|publicar|operar)
+  receber|publicar)
     git -C "$REPO" fetch --quiet origin +refs/heads/main:refs/heads/main ;;
 esac
 SHA=$(git -C "$REPO" rev-parse refs/heads/main)

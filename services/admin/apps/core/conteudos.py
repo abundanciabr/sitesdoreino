@@ -352,6 +352,53 @@ def _quiz_do_formulario(request):
     return {"title": title, "questions": questions, "bands": bands}
 
 
+def _editor_com_erro(request, tipo, slug, mensagem, status):
+    """Mantém os campos enviados na tela quando a gravação é recusada."""
+    contexto = {
+        "admin": request.admin,
+        "tipo": tipo,
+        "nome": TIPOS[tipo][0],
+        "slug": slug,
+        "erro": mensagem,
+        "tem_rascunho": False,
+    }
+    if tipo in ("forum", "turma"):
+        contexto["conteudo"] = {campo: request.POST.get(campo, "") for campo in (
+            "nome", "descricao", "ordem", "visibilidade", "quem_escreve", "curso_id"
+        )}
+        contexto["conteudo"]["ativa"] = request.POST.get("ativa") == "sim"
+    elif request.POST.get("modo_quiz") == "direcionado":
+        contexto.update(
+            conteudo={}, quiz_direcionado=True,
+            documento_json=request.POST.get("documento_json", ""),
+        )
+    else:
+        contexto["conteudo"] = {"title": request.POST.get("title", "")}
+        try:
+            nq = min(max(int(request.POST.get("total_perguntas") or 0), 0), 255)
+            nf = min(max(int(request.POST.get("total_faixas") or 0), 0), 255)
+        except ValueError:
+            nq = nf = 0
+        contexto["perguntas"] = [
+            {"indice": i, "texto": request.POST.get(f"pergunta_{i}", ""),
+             "opcoes": request.POST.get(f"opcoes_{i}", "")}
+            for i in range(nq)
+        ]
+        contexto["faixas"] = [
+            {"indice": i, "key": request.POST.get(f"faixa_chave_{i}", ""),
+             "title": request.POST.get(f"faixa_titulo_{i}", ""),
+             "description": request.POST.get(f"faixa_descricao_{i}", ""),
+             "min_score": request.POST.get(f"faixa_min_{i}", ""),
+             "max_score": request.POST.get(f"faixa_max_{i}", ""),
+             "botao_destino": request.POST.get(f"faixa_destino_{i}", ""),
+             "botao_rotulo": request.POST.get(f"faixa_rotulo_{i}", "")}
+            for i in range(nf)
+        ]
+        contexto["total_perguntas"] = nq
+        contexto["total_faixas"] = nf
+    return render(request, "admin/conteudo_editar.html", contexto, status=status)
+
+
 @require_POST
 def conteudo_salvar(request, tipo: str, slug: str):
     if tipo not in TIPOS:
@@ -362,7 +409,7 @@ def conteudo_salvar(request, tipo: str, slug: str):
         try:
             ordem = int(request.POST.get("ordem") or 0)
         except ValueError:
-            return _erro(request, tipo, "A ordem precisa ser um número.", 400)
+            return _editor_com_erro(request, tipo, slug, "A ordem precisa ser um número.", 400)
         corpo = {
             "nome": (request.POST.get("nome") or "").strip(),
             "descricao": (request.POST.get("descricao") or "").strip(),
@@ -389,16 +436,28 @@ def conteudo_salvar(request, tipo: str, slug: str):
             else:
                 corpo = _quiz_do_formulario(request)
         except (ValueError, json.JSONDecodeError):
-            return _erro(
-                request, tipo, "Confira o conteúdo ou o JSON da campanha do quiz.", 400
+            return _editor_com_erro(
+                request, tipo, slug, "Confira o conteúdo ou o JSON da campanha do quiz.", 400
             )
     status, _ = _pedir(request, tipo, "PUT", slug, "rascunho", corpo)
     if status not in (200, 201):
-        return _erro(
+        return _editor_com_erro(
             request,
             tipo,
+            slug,
             "Não consegui salvar o rascunho. Confira os campos e tente de novo.",
             422 if status in (400, 422) else 503,
+        )
+    if request.POST.get("acao") == "publicar":
+        publicado, _ = _pedir(request, tipo, "POST", slug, "publicar")
+        if publicado not in (200, 201):
+            return HttpResponseRedirect(
+                reverse("conteudo_editar", kwargs={"tipo": tipo, "slug": slug})
+                + "?recado=publicacao_falhou"
+            )
+        return HttpResponseRedirect(
+            reverse("conteudo_editar", kwargs={"tipo": tipo, "slug": slug})
+            + "?recado=publicado"
         )
     return HttpResponseRedirect(
         reverse("conteudo_editar", kwargs={"tipo": tipo, "slug": slug})

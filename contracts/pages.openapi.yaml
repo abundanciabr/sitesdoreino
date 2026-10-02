@@ -63,9 +63,9 @@ info:
     certa.
 
 
-    Hoje a API expoe uma operacao, consumida pela tela do portfolio. A
+    A API expoe o portfolio do aluno e o resumo da fila de conferencia.
 
-    especificacao OpenAPI correspondente esta em
+    A especificacao OpenAPI correspondente esta em
 
     `contracts/pages.openapi.yaml`.
 
@@ -88,6 +88,23 @@ info:
 
     '
 paths:
+  /pendencias/{site_id}:
+    get:
+      operationId: getPortfolioReviewQueueSummary
+      summary: Resumo Da Fila
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumoDaFila'
   /portfolios/{site_id}/{aluno_id}:
     get:
       operationId: getStudentPortfolio
@@ -138,6 +155,18 @@ paths:
         e-mail, nem nome.'
 components:
   schemas:
+    ResumoDaFila:
+      properties:
+        quantidade:
+          type: integer
+        espera_ha_dias:
+          anyOf:
+          - type: integer
+          - type: 'null'
+      required:
+      - quantidade
+      - espera_ha_dias
+      type: object
     PortfolioDoAluno:
       description: O que sai. Campos seguem o schema publicado pela API.
       properties:

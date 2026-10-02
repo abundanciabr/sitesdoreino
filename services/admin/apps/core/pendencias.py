@@ -1,35 +1,9 @@
 # apps/core/pendencias.py — a Central de Pendências
-"""`/admin/pendencias/` — a portaria: tudo que espera pelo mantenedor, numa tela.
+"""As quatro filas da escola em uma tela, sem duplicar a decisão de cada célula.
 
-Plano aprovado: `documentos/pendencias-e-conferencia-por-pares.md`, degrau 1.
-
-## O problema, medido
-
-Em 06/09/2026 o mantenedor abriu `/conquistas/interno` e disse *"que eu nem
-sabia que isso existia"*. Não era memória fraca: era desenho. O trabalho que
-espera por ele mora em SEIS endereços diferentes, nenhum deles avisa nada, e
-uma fila que alguém precisa lembrar de abrir é uma fila que não existe.
-
-Esta tela não resolve nada por dentro, e isso é a decisão central: cada fila
-continua morando na própria casa, que é onde a regra dela é conferida. Aqui só
-se pergunta *"quantos estão esperando aí, e o mais antigo é de quando?"*, e se
-oferece a porta.
-
-## Uma fonte, com cobertura declarada
-
-Esta célula consulta quem quer entrar na escola. As filas que ela ainda não
-enxerga entram na tela por escrito, em `FILAS_QUE_AINDA_NAO_VEJO`: sem isso,
-"nada esperando você" seria uma frase que a tela não tem como sustentar.
-
-Aqui `Fila.quantidade is None` significa *não consegui perguntar*, e o template
-tem de distinguir os dois casos por listas separadas, nunca por um `{% if %}`
-cru: zero é falso em template, e um zero legítimo cairia no ramo do "não sei".
-
-## Fail-OPEN por linha, e não pela página
-
-A fila que não responde perde a própria linha, e a tela abre do mesmo jeito.
-Uma tela de operação que não abre é inútil justamente no dia em que alguém
-precisa dela.
+Cada célula conta seus próprios pedidos e informa a idade do mais antigo.
+`quantidade=None` significa fonte indisponível; zero é uma fila consultada e
+vazia. A tela continua aberta quando uma fonte falha e identifica qual falhou.
 """
 
 from __future__ import annotations
@@ -40,16 +14,14 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from .clients import AlunosClient
+from .clients import AlunosClient, PendenciasClient
+from .placar import site_de
 
-# As filas que este degrau ainda NÃO enxerga, com o endereço de cada uma. Elas
-# entram na tela por escrito: sem isso, "nada esperando você" seria uma frase
-# que a tela não tem como sustentar. Saem daqui uma a uma no degrau 3, e a
-# lista vazia é o sinal de que a portaria ficou completa.
-FILAS_QUE_AINDA_NAO_VEJO = (
-    ("Portfólios pedindo conferência", "/pages/equipe"),
-    ("Provas de marco enviadas pelos alunos", "/conquistas/interno"),
-    ("Checkpoints de aula esperando laudo", "/cursos/plantao"),
+# Nome, endereço da equipe e descrição de cada fonte consultada.
+OUTRAS_FILAS = (
+    ("portfolio", "Portfólios pedindo conferência", "/pages/equipe", "a fila de portfólios"),
+    ("marcos", "Provas de marco enviadas pelos alunos", "/conquistas/interno", "a fila de marcos"),
+    ("checkpoints", "Checkpoints de aula esperando laudo", "/cursos/plantao", "o plantão de aulas"),
 )
 
 
@@ -59,7 +31,7 @@ class Fila:
 
     `quantidade is None` é *não consegui perguntar*, e nunca zero. `espera_ha`
     é em dias, e só existe quando há alguém esperando de verdade.
-    `acesso_negado` marca a fila muda porque a `alunos` recusou a credencial
+    `acesso_negado` marca a fila muda porque a fonte recusou a credencial
     (401/403): recarregar não conserta, e a tela diz a quem pedir.
     """
 
@@ -96,8 +68,21 @@ def quem_quer_entrar(cliente: AlunosClient) -> Fila:
 
 @require_GET
 def pendencias(request):
-    """A portaria abre mesmo com a `alunos` fora do ar: fila muda é aviso, não zero."""
+    """Cada fonte responde por sua fila; fonte muda nunca vira zero."""
     filas = [quem_quer_entrar(AlunosClient())]
+    site_id = site_de(request)
+    cliente = PendenciasClient()
+    for chave, titulo, href, onde_mora in OUTRAS_FILAS:
+        leitura = cliente.resumo(chave, site_id)
+        filas.append(Fila(
+            titulo=titulo,
+            quantidade=leitura.quantidade,
+            espera_ha=leitura.espera_ha_dias,
+            href=href,
+            o_que_e="Há pedidos aguardando a equipe nesta fila.",
+            onde_mora=onde_mora,
+            acesso_negado=leitura.acesso_negado,
+        ))
     esperando = [f for f in filas if f.quantidade]
     return render(
         request,
@@ -111,6 +96,5 @@ def pendencias(request):
             "vazias": [f for f in filas if f.quantidade == 0],
             "mudas": [f for f in filas if f.quantidade is None],
             "total": sum(f.quantidade for f in esperando),
-            "ainda_nao_vejo": FILAS_QUE_AINDA_NAO_VEJO,
         },
     )

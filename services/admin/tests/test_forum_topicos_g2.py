@@ -171,3 +171,38 @@ def test_sem_sessao_nao_edita_nem_publica_conversas():
     assert cliente.post(
         reverse("forum_topico_publicar", kwargs={"rascunho_id": RASCUNHO_ID})
     ).status_code in (302, 404)
+
+
+@pytest.mark.parametrize("novo", [True, False])
+@pytest.mark.parametrize("falha", ["salvar", "publicar", None])
+@respx.mock
+def test_salvar_e_publicar_conversa_em_um_clique(novo, falha):
+    cliente = _cliente()
+    respx.get(EDITOR + "/areas").mock(
+        return_value=httpx.Response(200, json={"areas": [{"slug": "duvidas", "nome": "Dúvidas"}]})
+    )
+    caminho = (
+        reverse("forum_topico_criar") if novo else
+        reverse("forum_topico_salvar", kwargs={"rascunho_id": RASCUNHO_ID})
+    )
+    salvar = (
+        respx.post(EDITOR + "/topicos/rascunho") if novo else
+        respx.put(EDITOR + f"/topicos/rascunho/{RASCUNHO_ID}")
+    ).mock(return_value=httpx.Response(
+        422 if falha == "salvar" else 201,
+        json={} if falha == "salvar" else {"rascunho_id": RASCUNHO_ID},
+    ))
+    publicar = respx.post(EDITOR + f"/topicos/rascunho/{RASCUNHO_ID}/publicar").mock(
+        return_value=httpx.Response(422 if falha == "publicar" else 200, json={})
+    )
+    resposta = cliente.post(caminho, {
+        "area_slug": "duvidas", "titulo": "Título novo", "texto": "Texto novo", "acao": "publicar",
+    })
+    assert salvar.call_count == 1
+    assert publicar.call_count == (0 if falha == "salvar" else 1)
+    assert resposta.status_code == (422 if falha else 302)
+    if falha:
+        assert "Título novo" in resposta.content.decode()
+        assert "Texto novo" in resposta.content.decode()
+    if falha == "publicar":
+        assert RASCUNHO_ID in resposta.content.decode()

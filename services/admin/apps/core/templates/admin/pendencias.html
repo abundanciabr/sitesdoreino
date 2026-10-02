@@ -3,8 +3,7 @@
 {% block corpo %}
 <div class="envolucro">
   <h1>Pendências</h1>
-  <p class="subtitulo">Decisões que esperam por você, na fonte consultada.
-  Cada linha leva para onde a coisa se resolve. A cobertura ainda é parcial.</p>
+  <p class="subtitulo">O que espera pela equipe nas quatro filas. Cada linha leva para onde se resolve.</p>
   {% comment %}
   O NÚMERO GRANDE só aparece quando há número. Com tudo zerado ele seria um "0"
   de 44 pixels no alto da tela, e um contador zerado todo dia é o que ensina
@@ -14,8 +13,7 @@
     <div class="hero">
       <div class="hero-numero">{{ total }}</div>
       <p class="hero-nota">
-        ocorrências identificadas na fonte consultada.
-        Total parcial: as filas ainda não integradas estão listadas abaixo.
+        ocorrências identificadas.{% if mudas %} Total parcial: algumas filas não responderam.{% endif %}
       </p>
     </div>
 
@@ -54,7 +52,7 @@
         <b>Acesso negado: {{ fila.onde_mora }} recusou a credencial de leitura da Central.</b>
         Então não sei quantas coisas estão esperando você ali, e prefiro dizer
         isso a mostrar um zero.
-        Peça a uma sessão que restaure a credencial de leitura da Central na lista de alunos e recarregue esta página.
+        Confira a credencial de leitura dessa fonte e recarregue esta página.
       </p>
     {% else %}
       <p class="aviso calado">
@@ -76,30 +74,9 @@
 
   {% if not esperando and not mudas %}
     <p class="aviso espaco-20">
-      <b>Nenhuma decisão pendente foi encontrada na fonte consultada.</b>
-      As filas ainda não integradas continuam fora desta conta.
+      <b>Nenhuma decisão pendente foi encontrada nas quatro filas.</b>
     </p>
   {% endif %}
 
-  {% comment %}
-  A CONFISSÃO, e ela é obrigatória enquanto a lista não estiver vazia.
-
-  Esta tela enxerga uma fonte. Uma portaria que enxerga
-  metade e não avisa é pior que portaria nenhuma: ela ensina o mantenedor a
-  ler "nada esperando você" como "não há nada", e no dia em que um portfólio
-  ficar parado ele não vai saber. As três de baixo entram na conta no degrau 3
-  do plano; quando entrarem, este bloco some sozinho, porque
-  `FILAS_QUE_AINDA_NAO_VEJO` fica vazia.
-  {% endcomment %}
-  {% if ainda_nao_vejo %}
-    <h2 class="titulo-de-bloco">O que esta tela ainda não conta</h2>
-    <p class="aviso">
-      Estas filas existem e podem ter coisa esperando, mas ainda não sei
-      perguntar a elas. Enquanto isso, elas se abrem à mão:
-      {% for nome, endereco in ainda_nao_vejo %}
-        <br><a href="{{ endereco }}">{{ nome }}</a>, em <code>{{ endereco }}</code>
-      {% endfor %}
-    </p>
-  {% endif %}
 </div>
 {% endblock %}

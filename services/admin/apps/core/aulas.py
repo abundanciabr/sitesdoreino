@@ -1466,28 +1466,11 @@ def aula_salvar(request, curso: str, numero: str, parte: "str | None" = None):
 
 @require_POST
 def aula_publicar(request, curso: str, numero: str, parte: "str | None" = None):
-    """Abre a encomenda para a sala de aula. Não muda uma letra do texto.
-
-    Exige a confirmação de uma linha (a caixa marcada): publicar é o gesto
-    mais pesado desta tela, e um clique escorregado não pode abrir uma aula
-    pela metade para os alunos.
-    """
+    """Abre a encomenda salva para a sala de aula sem mudar seu texto."""
     site = _site_desta_requisicao(request)
     if site is None:
         return _sem_site(request)
     na_parte = int(parte) if parte else None
-    if request.POST.get("confirmo") != "1":
-        return _desenhar_aula(
-            request,
-            site,
-            curso,
-            numero,
-            na_parte,
-            erro="Para publicar, marque a caixa de confirmação ao lado do botão. "
-            "Nada foi publicado.",
-            status=400,
-        )
-
     desfecho, resposta = CursosClient().publicar_aula(
         site["id"], curso, numero, na_parte
     )

@@ -96,6 +96,18 @@ def forum_topico_criar(request):
             draft=corpo,
             status=422 if status in (400, 422) else 503,
         )
+    if request.POST.get("acao") == "publicar":
+        publicar, _ = _pedir(
+            "POST", f"topicos/rascunho/{dados['rascunho_id']}/publicar"
+        )
+        if publicar not in (200, 201):
+            return _pagina(
+                request,
+                erro="Rascunho salvo, mas não consegui publicar a conversa. Corrija e tente de novo.",
+                draft={**corpo, "rascunho_id": dados["rascunho_id"]},
+                status=422 if publicar in (400, 409, 422) else 503,
+            )
+        return HttpResponseRedirect(reverse("forum_topicos"))
     return HttpResponseRedirect(
         reverse("forum_topico_editar", kwargs={"rascunho_id": dados["rascunho_id"]})
     )
@@ -146,6 +158,16 @@ def forum_topico_salvar(request, rascunho_id: UUID):
             draft={**corpo, "rascunho_id": str(rascunho_id)},
             status=422 if status in (400, 422) else 503,
         )
+    if request.POST.get("acao") == "publicar":
+        publicar, _ = _pedir("POST", f"topicos/rascunho/{rascunho_id}/publicar")
+        if publicar not in (200, 201):
+            return _pagina(
+                request,
+                erro="Rascunho salvo, mas não consegui publicar a conversa. Corrija e tente de novo.",
+                draft={**corpo, "rascunho_id": str(rascunho_id)},
+                status=422 if publicar in (400, 409, 422) else 503,
+            )
+        return HttpResponseRedirect(reverse("forum_topicos"))
     return HttpResponseRedirect(
         reverse("forum_topico_editar", kwargs={"rascunho_id": rascunho_id})
         + "?recado=salvo"

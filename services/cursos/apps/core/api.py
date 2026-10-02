@@ -133,7 +133,7 @@ from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
 from django.db import IntegrityError, transaction
-from django.db.models import F, Q
+from django.db.models import Count, F, Min, Q
 from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Field, Router, Schema
@@ -152,6 +152,26 @@ from apps.cursos.models import Peca as PecaModel
 from apps.cursos.models import TipoDePeca
 
 router = Router()
+
+
+class ResumoDaFila(Schema):
+    quantidade: int
+    espera_ha_dias: int | None
+
+
+@router.get("/pendencias/{site_id}", response=ResumoDaFila, operation_id="getLessonReviewQueueSummary")
+def resumo_da_fila(request, site_id: str):
+    from apps.cursos.envio import fila_de_revisao
+
+    dados = fila_de_revisao(site_id).aggregate(
+        quantidade=Count("pk"), primeira=Min("enviado_em")
+    )
+    primeira = dados["primeira"]
+    return ResumoDaFila(
+        quantidade=dados["quantidade"],
+        espera_ha_dias=max(0, (timezone.localdate() - timezone.localtime(primeira).date()).days)
+        if primeira else None,
+    )
 
 # O nome do componente no contrato é o nome da classe, e o enum de pausa mora
 # aninhado no modelo como `Pausa.Tipo`: sairia como "Tipo", ambíguo ao lado de

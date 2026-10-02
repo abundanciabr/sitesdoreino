@@ -149,6 +149,13 @@ if [ -z "$T_PAGES" ]; then
 fi
 [ ${#T_PAGES} -ge 32 ] || parar "o token do par pages->admin ficou curto demais. Nada foi alterado."
 
+# A Central lê o resumo da fila do portfólio no sentido admin->pages.
+T_ADMIN="$(ler_de "$ENV_PAGES" TOKENS_ACEITOS_ADMIN)"
+if [ -z "$T_ADMIN" ]; then
+  T_ADMIN="$(gerar_segredo)" || parar "não consegui gerar o segredo da leitura da Central. Nada foi alterado."
+fi
+[ ${#T_ADMIN} -ge 32 ] || parar "o segredo da leitura da Central ficou curto. Nada foi alterado."
+
 # TOKEN É POR PAR. Se este valor já estiver servindo a OUTRO par no env da
 # `admin`, a fronteira que os pares existem para criar deixa de existir: girar
 # um derrubaria o outro, sem aviso. Conferido ANTES de escrever.
@@ -222,11 +229,20 @@ garantir "$ENV_ADMIN" TOKENS_ACEITOS_PAGES "$T_PAGES" "par pages->admin: a fila 
 garantir "$ENV_PAGES" ADMIN_API_URL "$ADMIN_URL" "par pages->admin"
 garantir "$ENV_PAGES" ADMIN_API_TOKEN "$T_PAGES" "par pages->admin"
 
+garantir "$ENV_PAGES" TOKENS_ACEITOS_ADMIN "$T_ADMIN" "par admin->pages: resumo da fila na Central"
+garantir "$ENV_ADMIN" PAGES_API_URL "http://pages:8000/interno" "par admin->pages"
+garantir "$ENV_ADMIN" PAGES_API_TOKEN "$T_ADMIN" "par admin->pages"
+
 # -----------------------------------------------------------------------------
 # 4. ESTADO DEPOIS — a conferência que fecha o assunto. Compara SEM imprimir
 #    segredo: o que vai para a tela é "confere / não confere", nunca o valor.
 # -----------------------------------------------------------------------------
 echo "== estado DEPOIS =="
+if [ "$(ler_de "$ENV_PAGES" TOKENS_ACEITOS_ADMIN)" = "$(ler_de "$ENV_ADMIN" PAGES_API_TOKEN)" ]; then
+  echo "  par admin->pages ......... confere dos dois lados"
+else
+  parar "a ligação da Central com o portfólio não ficou igual dos dois lados. Os backups estão preservados."
+fi
 if [ -z "$MEXIDOS" ]; then
   echo "  o que eu fiz ............ nada: já estava tudo ligado"
 else

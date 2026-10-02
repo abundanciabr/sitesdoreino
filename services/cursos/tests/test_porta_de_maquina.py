@@ -933,6 +933,7 @@ def test_export_openapi_traz_as_operacoes_do_editor_e_da_moderacao():
     assert set(ids) == AS_VINTE_OPERACOES | {
         "listLessonComments",
         "setLessonCommentVisibility",
+        "getLessonReviewQueueSummary",
     }
     # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
     # documento inválido que o freeze compara sem reclamar: o caminho novo

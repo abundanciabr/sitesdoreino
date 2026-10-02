@@ -75,7 +75,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
-from django.db.models import Max, Q
+from django.db.models import Count, Max, Min, Q
 from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Router, Schema
@@ -113,6 +113,26 @@ from .sessao import quem_e, site_atual
 logger = logging.getLogger(__name__)
 
 router = Router()
+
+
+class ResumoDaFila(Schema):
+    quantidade: int
+    espera_ha_dias: int | None
+
+
+@router.get("/pendencias/{site_id}", response=ResumoDaFila, operation_id="getAchievementReviewQueueSummary")
+def resumo_da_fila(request, site_id: str):
+    from apps.gamificacao.validacao import fila_da_equipe
+
+    dados = fila_da_equipe(site_id).aggregate(
+        quantidade=Count("pk"), primeira=Min("criado_em")
+    )
+    primeira = dados["primeira"]
+    return ResumoDaFila(
+        quantidade=dados["quantidade"],
+        espera_ha_dias=max(0, (timezone.localdate() - timezone.localtime(primeira).date()).days)
+        if primeira else None,
+    )
 
 # O teto de ids por chamada, escrito no contrato. Pedir mais não é erro: a porta
 # CORTA no teto, como o `limite` da porta do fórum. Consumidor nenhum deve

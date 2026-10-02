@@ -34,7 +34,7 @@ api = NinjaAPI(
         "dele, e no dia em que as duas discordassem ninguem saberia qual esta\n"
         "certa.\n"
         "\n"
-        "Hoje a API expoe uma operacao, consumida pela tela do portfolio.\n"
+        "A API expoe o portfolio do aluno e o resumo da fila de conferencia.\n"
         "A especificacao OpenAPI correspondente esta em\n"
         "`contracts/pages.openapi.yaml`.\n"
         "\n"

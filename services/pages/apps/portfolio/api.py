@@ -11,10 +11,8 @@ dele, e no dia em que as duas discordassem ninguém saberia qual está certa.
 
 A pergunta que essa tela faz é uma só: **onde este aluno está no roteiro, e a
 escola já conferiu?** É ela que esta porta responde. Nada mais entra porque
-nada mais tem consumidor declarado hoje, e o contrato desta casa é ADITIVO:
-crescer é livre (um PR de Rito acrescenta campo), remover exige autorização
-explícita. Nascer largo seria congelar operação que ninguém chama, e depois
-precisar de Rito para tirá-la.
+nada mais tem consumidor declarado hoje. A Central também consulta o resumo
+da fila, com quantidade e tempo de espera, sem dados pessoais.
 
 O QUE NÃO SAI DAQUI, E É DECISÃO
 ---------------------------------
@@ -42,14 +40,35 @@ from __future__ import annotations
 
 from ninja import Router, Schema
 from ninja.errors import HttpError
+from django.db.models import Count, Min
+from django.utils import timezone
 
+from apps.portfolio import conferencia
 from apps.portfolio.models import PRIMEIRA_ETAPA, Portfolio
 
 router = Router()
 
 
+class ResumoDaFila(Schema):
+    quantidade: int
+    espera_ha_dias: int | None
+
+
+@router.get("/pendencias/{site_id}", response=ResumoDaFila, operation_id="getPortfolioReviewQueueSummary")
+def resumo_da_fila(request, site_id: str):
+    dados = conferencia.fila_da_equipe(site_id).aggregate(
+        quantidade=Count("pk"), primeira=Min("criado_em")
+    )
+    primeira = dados["primeira"]
+    return ResumoDaFila(
+        quantidade=dados["quantidade"],
+        espera_ha_dias=max(0, (timezone.localdate() - timezone.localtime(primeira).date()).days)
+        if primeira else None,
+    )
+
+
 class PortfolioDoAluno(Schema):
-    """O que sai. Campo novo aqui e mudanca de contrato (RITOS.md secao 3)."""
+    """O que sai. Campos seguem o schema publicado pela API."""
 
     portfolio_id: str
     etapa_atual: int

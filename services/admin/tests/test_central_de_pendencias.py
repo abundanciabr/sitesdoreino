@@ -45,6 +45,14 @@ IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
 ALUNOS = "http://alunos:8000/api/alunos"
 FILA_DE_ENTRADA = f"{ALUNOS}/pre-matriculas"
+PAGES = "http://pages:8000/interno"
+GAMIFICACAO = "http://gamificacao:8000/api/gamificacao"
+CURSOS = "http://cursos:8000/api/cursos"
+RESUMOS = {
+    "portfolio": f"{PAGES}/pendencias/escola-a",
+    "marcos": f"{GAMIFICACAO}/pendencias/escola-a",
+    "checkpoints": f"{CURSOS}/pendencias/escola-a",
+}
 CAIXA = "http://sugestoes:8000/interno"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
@@ -60,6 +68,13 @@ def ambiente(settings, monkeypatch):
     monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-admin-alunos")
     monkeypatch.setenv("SUGESTOES_API_URL", CAIXA)
     monkeypatch.setenv("SUGESTOES_API_TOKEN", "token-do-par-admin-sugestoes")
+    monkeypatch.setenv("PAGES_API_URL", PAGES)
+    monkeypatch.setenv("PAGES_API_TOKEN", "token-do-par-admin-pages")
+    monkeypatch.setenv("GAMIFICACAO_API_URL", GAMIFICACAO)
+    monkeypatch.setenv("TOKEN_GAMIFICACAO", "token-do-par-admin-gamificacao")
+    monkeypatch.setenv("CURSOS_API_URL", CURSOS)
+    monkeypatch.setenv("CURSOS_API_TOKEN", "token-do-par-admin-cursos")
+    monkeypatch.setattr(central, "site_de", lambda request: "escola-a")
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
 
@@ -111,6 +126,14 @@ def _alunos_responde():
     respx.get(FILA_DE_ENTRADA).mock(
         return_value=httpx.Response(200, json=_quem_espera(9))
     )
+    _outras_respondem()
+
+
+def _outras_respondem():
+    for endereco in RESUMOS.values():
+        respx.get(endereco).mock(
+            return_value=httpx.Response(200, json={"quantidade": 0, "espera_ha_dias": None})
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +164,7 @@ def test_a_fila_de_entrada_aparece_com_quantidade_e_idade():
     assert "9 · Pessoas querendo entrar na escola" in html
     assert "A mais antiga espera há 3 dias." in html
     assert '<div class="hero-numero">9</div>' in html
-    assert "Total parcial" in html
+    assert "ocorrências identificadas" in html
 
 
 @respx.mock
@@ -191,6 +214,7 @@ def test_com_a_alunos_muda_a_tela_diz_isso_e_NAO_mostra_zero():
     que dissesse as duas coisas ao mesmo tempo.
     """
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
+    _outras_respondem()
     html = _texto(_dentro().get(TELA))
 
     assert "Não foi possível consultar a lista de alunos agora." in html
@@ -208,16 +232,14 @@ def test_acesso_negado_pela_alunos_nao_e_queda_nem_fila_vazia(status):
     que manda pedir a uma sessão que restaure a credencial tem de APARECER.
     """
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(status))
+    _outras_respondem()
     html = _texto(_dentro().get(TELA))
 
     assert (
         "Acesso negado: a lista de alunos recusou a credencial de leitura da Central."
         in html
     )
-    assert (
-        "Peça a uma sessão que restaure a credencial de leitura da Central na lista "
-        "de alunos e recarregue esta página."
-    ) in html
+    assert "Confira a credencial de leitura dessa fonte" in html
     assert "Não foi possível consultar" not in html
     assert "0 · Pessoas querendo entrar" not in html
     assert "Nada esperando você em: a lista de alunos" not in html
@@ -228,6 +250,7 @@ def test_acesso_negado_pela_alunos_nao_e_queda_nem_fila_vazia(status):
 def test_sem_o_par_de_tokens_a_tela_tambem_abre(monkeypatch):
     """Enquanto o par não estiver no env da VPS, a área abre e a tela avisa."""
     monkeypatch.delenv("ALUNOS_API_URL", raising=False)
+    _outras_respondem()
 
     resposta = _dentro().get(TELA)
 
@@ -243,6 +266,7 @@ def test_zero_de_verdade_e_uma_frase_DIFERENTE_de_nao_sei():
     casos e ninguém veria: zero é falso em template, exatamente como `None`.
     """
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(200, json=[]))
+    _outras_respondem()
     html = _texto(_dentro().get(TELA))
 
     assert "Nada esperando você em:" in html
@@ -255,28 +279,29 @@ def test_zero_de_verdade_e_uma_frase_DIFERENTE_de_nao_sei():
 # 4. A confissão: a tela diz o que ela ainda NÃO conta
 # ---------------------------------------------------------------------------
 @respx.mock
-def test_a_tela_confessa_as_filas_que_ainda_nao_enxerga():
-    """Portaria que enxerga metade e não avisa é pior que portaria nenhuma."""
+def test_as_quatro_filas_entram_na_conta():
     _alunos_responde()
+    for chave, quantidade, idade in (("portfolio", 2, 4), ("marcos", 3, 1), ("checkpoints", 5, 0)):
+        respx.get(RESUMOS[chave]).mock(return_value=httpx.Response(
+            200, json={"quantidade": quantidade, "espera_ha_dias": idade}
+        ))
     html = _texto(_dentro().get(TELA))
-
-    assert "O que esta tela ainda não conta" in html
-    for nome, endereco in central.FILAS_QUE_AINDA_NAO_VEJO:
+    assert '<div class="hero-numero">19</div>' in html
+    for nome in ("Portfólios pedindo conferência", "Provas de marco enviadas pelos alunos", "Checkpoints de aula esperando laudo"):
         assert nome in html
-        assert endereco in html
+    assert "A mais antiga chegou hoje." in html
 
 
-def test_a_confissao_lista_as_TRES_filas_do_degrau_3_e_nenhuma_outra():
-    """Trava o conteúdo da lista, e não só a existência do bloco.
-
-    Uma lista que ficasse vazia por engano deixaria o guarda de cima verde: o
-    `for` não iteraria, e o bloco sumiria da tela sem nenhum vermelho.
-    """
-    assert [nome for nome, _ in central.FILAS_QUE_AINDA_NAO_VEJO] == [
-        "Portfólios pedindo conferência",
-        "Provas de marco enviadas pelos alunos",
-        "Checkpoints de aula esperando laudo",
-    ]
+@respx.mock
+def test_fonte_caida_e_recusa_de_token_nao_viram_zero():
+    _alunos_responde()
+    respx.get(RESUMOS["portfolio"]).mock(return_value=httpx.Response(503))
+    respx.get(RESUMOS["marcos"]).mock(return_value=httpx.Response(403))
+    html = _texto(_dentro().get(TELA))
+    assert "Não foi possível consultar a fila de portfólios agora" in html
+    assert "Acesso negado: a fila de marcos" in html
+    assert "Nada esperando você em: a fila de portfólios" not in html
+    assert '<div class="hero-numero">9</div>' in html
 
 
 # ---------------------------------------------------------------------------

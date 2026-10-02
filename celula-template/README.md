@@ -1,42 +1,39 @@
-# Template de Célula — cada célula é um projeto Django COMPLETO e autônomo
+# Template de célula
 
-## Árvore canônica
+Ponto de partida para um serviço Django independente. Ajuste a estrutura e as
+integrações ao que a célula realmente precisa.
 
-```
+## Estrutura sugerida
+
+```text
 services/<celula>/
 ├── manage.py
-├── requirements.txt          # dependências pinadas
-├── Makefile                  # a Definição de Pronto local: make ci
+├── requirements.txt
+├── Makefile
 ├── Dockerfile
-├── docker-compose.dev.yml    # SÓ esta célula + banco + redis + MOCKS das dependências
-├── .env.dev                  # dev local (no .gitignore)
-├── config/                   # o projeto Django chama-se SEMPRE config (uniformidade)
-│   ├── settings.py           # SECRET_KEY sem valor ⇒ ImproperlyConfigured (sem fallback)
-│   ├── urls.py               # a célula é dona do próprio prefixo (SCRIPT_NAME)
-│   └── asgi.py
-├── apps/                     # apps de domínio DESTA célula
-├── templates/  static/       # base própria — não existe base.html compartilhado na plataforma
+├── docker-compose.dev.yml
+├── .env.dev
+├── config/
+├── apps/
+├── templates/
+├── static/
 └── tests/
 ```
 
-## Convenções obrigatórias (herdadas + novas)
+## Dicas técnicas
 
-- **Estilo:** Black · imports padronizados (stdlib → Django/terceiros → locais) ·
-  type hints em views e utilitários novos · comentários em PT, identificadores em EN.
-- **Settings fail-hard:** `SECRET_KEY`, `DATABASE_URL` (quando houver banco) sem valor
-  ⇒ `ImproperlyConfigured`. Nunca fallback silencioso.
-- **Prefixo público:** ler `SCRIPT_NAME` do env e aplicar `FORCE_SCRIPT_NAME` — mover a
-  célula de URL é editar o Traefik + este env, nunca cirurgia em urls.
-- **Dinheiro:** `amount_cents` inteiro em models, APIs e eventos. Float é proibido.
-- **Migrations:** Expand-and-Contract (nunca remover coluna/tabela usada por código em
-  produção; remoção só na release seguinte). Nunca deletar/renomear migration aplicada.
-- **API:** Django-Ninja. Toda célula com contrato implementa o management command
-  `export_openapi` (imprime `api.get_openapi_schema()` em YAML) — o freeze depende dele.
-- **Outbox (células emissoras):** tabela `outbox_event(event_id, event, version,
-  payload, published_at NULL)` gravada NA MESMA transação do estado; task Huey
-  (relay) publica no Redis Streams (`XADD eventos.<nome> ...`) e marca `published_at`.
-- **Consumer (células ouvintes):** management command `consume_eventos` com
-  consumer group = nome da célula; deduplicação por `event_id` em tabela própria;
-  roda como processo da célula (mesmo container, supervisionado pelo CMD ou Huey).
-- **Testes:** pytest; smokes marcados (`@pytest.mark.smoke_pix` etc. na fortaleza);
-  todo invariante da célula tem seu teste-guarda referenciado em INVARIANTES.md.
+- Mantenha segredos fora do Git e sem valor padrão silencioso. Django pode
+  recusar a inicialização quando `SECRET_KEY` ou a configuração de banco
+  necessária estiver ausente.
+- Se a célula for publicada sob um prefixo, configure `SCRIPT_NAME` e
+  `FORCE_SCRIPT_NAME` junto da rota no proxy.
+- Represente valores monetários em centavos inteiros nas APIs, modelos e
+  eventos.
+- Ao mudar dados usados pela versão em produção, faça a transição em etapas:
+  primeiro compatibilize o código com os dados existentes e remova o formato
+  antigo depois.
+- Se a célula expõe uma API, um comando de exportação OpenAPI pode ajudar a
+  comparar o contrato publicado.
+- Para eventos entre células, uma outbox transacional e consumidores idempotentes
+  são opções para não perder eventos nem processá-los duas vezes.
+- Os testes da célula ficam em `tests/` e podem ser executados com `make ci`.

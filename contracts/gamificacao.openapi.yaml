@@ -179,6 +179,23 @@ info:
 
     '
 paths:
+  /pendencias/{site_id}:
+    get:
+      operationId: getAchievementReviewQueueSummary
+      summary: Resumo Da Fila
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumoDaFila'
   /perfis:
     get:
       operationId: getPublicProfiles
@@ -623,6 +640,18 @@ paths:
         operador da escola, que ja enxerga o aluno inteiro por outras portas.'
 components:
   schemas:
+    ResumoDaFila:
+      properties:
+        quantidade:
+          type: integer
+        espera_ha_dias:
+          anyOf:
+          - type: integer
+          - type: 'null'
+      required:
+      - quantidade
+      - espera_ha_dias
+      type: object
     PerfilPublico:
       properties:
         nivel:

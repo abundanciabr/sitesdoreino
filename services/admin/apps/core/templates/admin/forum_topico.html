@@ -15,7 +15,8 @@
       </label></p>
       <p><label>Título<br><input name="titulo" maxlength="180" required value="{{ rascunho.titulo|default:'' }}"></label></p>
       <p><label>Texto inicial<br><textarea name="texto" rows="12" required>{{ rascunho.texto|default:'' }}</textarea></label></p>
-      <button type="submit">Salvar rascunho</button>
+      <button type="submit" name="acao" value="salvar">Salvar rascunho</button>
+      <button type="submit" name="acao" value="publicar">Salvar e publicar conversa</button>
     </form>
   </div>
   {% if rascunho.rascunho_id %}

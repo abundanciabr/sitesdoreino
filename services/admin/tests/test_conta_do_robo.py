@@ -1,6 +1,7 @@
 """A conta do robô: entra com a credencial vigente, e só faz o que tem volta."""
 
 import io
+import datetime as dt
 
 import pytest
 from django.core.management import call_command
@@ -8,7 +9,7 @@ from django.core.management.base import CommandError
 from django.test import Client
 
 from apps.auditoria.models import Registro
-from apps.core.models import Administrador, Documento
+from apps.core.models import Administrador, Documento, CartaoDoPlacar, FechamentoDoCiclo
 
 DONO = "dono@exemplo.com"
 
@@ -143,6 +144,41 @@ def test_admin_continua_fechado_a_anonimo():
     criar = Client().post("/documentos/criar", {"titulo": "Anônimo", "nome": "anon"})
     assert criar.status_code == 302
     assert not Documento.objects.filter(nome="anon").exists()
+
+
+def test_robo_salva_fechamento_sem_analista_nem_proxima_meta(monkeypatch):
+    from apps.core import fechamento
+
+    meta = CartaoDoPlacar.objects.get(nome="compras-no-ciclo").dados
+    resultado = {"x": 5, "alvo": meta["alvo"], "ate": meta["ate"]}
+    contexto = {"meta": meta, "placar": resultado, "direcao": None, "recusas": []}
+    dados = {
+        "estado": "correndo", "partida_em": dt.date(2026, 9, 3),
+        "resultado": resultado, "veredito": "perdendo",
+        "previsao": {"veredito": "ainda-nao-da", "porque": "teste"},
+        "fase": {"fase": "provando"},
+    }
+    monkeypatch.setattr(fechamento, "montar_o_placar", lambda *_: contexto)
+    monkeypatch.setattr(fechamento, "montar", lambda **_: dados)
+    monkeypatch.setattr(fechamento, "site_de", lambda _: None)
+    analista_pedido = []
+
+    def analista(**kwargs):
+        analista_pedido.append(kwargs["pediram"])
+        return {"estado": "desligado"}
+
+    monkeypatch.setattr(fechamento.analista_, "para_a_tela", analista)
+    cliente = robo(emitir())
+    for _ in range(2):
+        resposta = cliente.post("/placar/fechamento/", {"por_que": "Resultado conferido"})
+        assert resposta.status_code == 200
+    encerrado = FechamentoDoCiclo.objects.get(partida_em="2026-09-03")
+    assert encerrado.dados["por_que"] == "Resultado conferido"
+    assert encerrado.dados["responsavel"] == "conta-do-robo"
+    assert encerrado.dados["proximo_alvo"] is None
+    assert analista_pedido == [False, False]
+    assert CartaoDoPlacar.objects.get(nome="compras-no-ciclo").dados == meta
+    assert FechamentoDoCiclo.objects.filter(partida_em="2026-09-03").count() == 1
 
 
 def test_a_credencial_recusada_nao_vai_para_o_log(caplog):

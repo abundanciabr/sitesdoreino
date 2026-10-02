@@ -421,8 +421,6 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   {% comment %}
   PUBLICAR é outro formulário, e outro verbo: salvar sobe a versão e não muda
   o que o aluno vê; publicar não muda uma letra e abre a aula. A caixa de
-  confirmação é a "confirmação de uma linha" do desenho: sem script, é o que
-  impede um clique escorregado de abrir uma aula pela metade.
   {% endcomment %}
   <div class="publicar{% if aula.publicada %} ja{% endif %}">
     {% if aula.publicada %}
@@ -434,7 +432,6 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     o que muda é quem vê.
     <form method="post" action="{{ url_de_publicar }}">
       {% csrf_token %}
-      <label class="marcar"><input type="checkbox" name="confirmo" value="1" required> Sim, quero abrir esta encomenda para os alunos.</label>
       <button type="submit">Publicar esta encomenda</button>
     </form>
     {% endif %}

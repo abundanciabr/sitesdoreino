@@ -316,6 +316,23 @@ info:
 
     '
 paths:
+  /pendencias/{site_id}:
+    get:
+      operationId: getLessonReviewQueueSummary
+      summary: Resumo Da Fila
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumoDaFila'
   /aulas-avulsas:
     get:
       operationId: listStandaloneLessons
@@ -1642,6 +1659,18 @@ paths:
       - bearerAdminComentarios: []
 components:
   schemas:
+    ResumoDaFila:
+      properties:
+        quantidade:
+          type: integer
+        espera_ha_dias:
+          anyOf:
+          - type: integer
+          - type: 'null'
+      required:
+      - quantidade
+      - espera_ha_dias
+      type: object
     AulaAvulsaSchema:
       description: 'A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
 
