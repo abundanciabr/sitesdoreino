@@ -7,15 +7,15 @@ PYTHON ?= python
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz:"
 	@echo "  make testes            os testes de ci/ e de infra/ (publicação, recuperação, operação)"
-	@echo "  make celula CELULA=x   testes pytest de services/x"
+	@echo "  make celula CELULA=x   testes pytest de services/x (cria o venv e o Postgres de teste sozinho; ARGS=... vai ao pytest)"
 	@echo "  make esqueleto         o caminho inteiro de ponta a ponta, em compose local"
 
 testes:         ## os testes de ci/ e de infra/, direto no pytest
 	$(PYTHON) -m pytest -q ci/tests infra
 
-celula:         ## make celula CELULA=pagamentos
+celula:         ## make celula CELULA=pagamentos [ARGS="-k nome -x"]
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
-	$(MAKE) -C services/$(CELULA) test
+	$(PYTHON) ci/testar_celula.py $(CELULA) $(ARGS)
 
 esqueleto:      ## sobe o compose de dev do caminho e percorre a transacao inteira via curl
 	bash e2e/esqueleto.sh
