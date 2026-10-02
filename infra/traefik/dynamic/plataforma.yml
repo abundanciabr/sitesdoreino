@@ -15,6 +15,12 @@
 # =============================================================================
 http:
   middlewares:
+    portfolio-aguardar-aplicacao:
+      # Uma troca de versão pode deixar a conexão fechada por alguns segundos.
+      # Aguarda o retorno; uma resposta da aplicação encerra as tentativas.
+      retry:
+        attempts: 60
+        initialInterval: 500ms
     portfolio-tamanho-do-envio:
       buffering:
         maxRequestBodyBytes: 6291456
@@ -381,6 +387,14 @@ http:
       # O serviço é obrigatório para o Traefik, mas o redirectRegex encerra a
       # requisição antes que o funil seja consultado.
       service: funil
+      tls: {}
+
+    portfolio-quiz:
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/portfolio/quiz/`)"
+      priority: 11
+      entryPoints: [websecure]
+      middlewares: [seguranca, portfolio-tamanho-do-envio, portfolio-aguardar-aplicacao]
+      service: pages
       tls: {}
 
     pages:
