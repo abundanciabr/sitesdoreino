@@ -45,3 +45,10 @@ def test_post_em_avisos_nao_e_aceito(dentro):
 @pytest.mark.parametrize("caminho", ["/avisos/1/lido", "/avisos/marcar-tudo"])
 def test_as_rotas_de_marcar_como_lido_nao_existem_mais(dentro, caminho):
     assert dentro.client.post(caminho).status_code == 404
+
+
+def test_head_tambem_e_redirecionado(client):
+    resposta = client.head(reverse("avisos"))
+
+    assert resposta.status_code == 302
+    assert resposta["Location"] == DESTINO

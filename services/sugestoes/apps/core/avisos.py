@@ -3,7 +3,7 @@ A leitura é a página `/notificacoes` do `funil`; `/avisos` só redireciona."""
 
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_safe
 
 from apps.sugestoes.models import Aviso, Comentario, Identidade, Voto
 
@@ -69,7 +69,7 @@ def avisar_os_interessados(
     )
 
 
-@require_GET
+@require_safe
 def ver_avisos(request):
     """Redireciona `/avisos` para a página única `/notificacoes`.
     O caminho é absoluto, fora do prefixo da célula."""
