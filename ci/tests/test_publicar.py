@@ -37,23 +37,40 @@ def test_journals_ativos_trocam_com_a_topologia(tmp_path, monkeypatch, capsys):
     assert publicar.journals_em_uso() == [legado]
 
 
-def test_vigia_recupera_aplicacao_sem_escolher_journal_da_transicao(tmp_path, monkeypatch):
-    publicar = carregar("publicar_vigia_aplicacao", "infra/publicar.py")
+@pytest.fixture
+def vigia(tmp_path, monkeypatch):
+    publicar = carregar("publicar_vigia", "infra/publicar.py")
     monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)
-    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
-    (tmp_path / "aplicacao.json").write_text(json.dumps({"celula": "aplicacao", "atual": "b" * 40,
-                                                         "publicada_em": "2026-10-01T12:00:00+00:00"}))
-    (tmp_path / "admin.json").write_text(json.dumps({"celula": "admin", "atual": "a" * 40,
-                                                      "publicada_em": "2026-10-01T13:00:00+00:00"}))
-    (tmp_path / "aplicacao-transicao.json").write_text(json.dumps({"fase": "aprovada"}))
+    (tmp_path / "aplicacao.json").write_text(json.dumps({"celula": "aplicacao", "atual": "b" * 40}))
     monkeypatch.setattr(publicar, "publicacao_em_andamento", lambda: False)
-    medicoes = iter([(1, "fora"), (1, "fora"), (0, "ok")])
-    monkeypatch.setattr(publicar, "medir_site", lambda: next(medicoes))
     monkeypatch.setattr(publicar, "time", SimpleNamespace(sleep=lambda *_: None))
-    chamados = []
-    monkeypatch.setattr(publicar, "recuperar", lambda celula: chamados.append(celula) or 0)
-    assert publicar.vigiar() == 0
-    assert chamados == ["aplicacao"]
+    feitos = []
+    monkeypatch.setattr(publicar, "religar_aplicacao", lambda: feitos.append("religar"))
+    monkeypatch.setattr(publicar, "recuperar", lambda celula: feitos.append("voltar") or 0)
+    monkeypatch.setattr(publicar, "avisar", lambda *a: feitos.append("avisar"))
+
+    def rodada(*respostas):
+        medidas = iter(respostas)
+        monkeypatch.setattr(publicar, "site_abre", lambda: next(medidas))
+        feitos.clear()
+        return publicar.vigiar_uma_vez(), list(feitos)
+    return rodada
+
+
+def test_vigia_religa_antes_de_voltar_a_versao(vigia):
+    assert vigia(False, False, True) == (0, ["religar"])
+
+
+def test_vigia_volta_a_versao_uma_vez_e_depois_so_religa_e_avisa_uma_vez(vigia, tmp_path):
+    assert vigia(False, False, False, False) == (1, ["religar", "voltar", "avisar"])
+    assert vigia(False, False, False) == (1, ["religar"])
+    assert vigia(True) == (0, [])
+    assert not (tmp_path / "incidente.json").exists()
+    assert vigia(False, False, False, True) == (0, ["religar", "voltar"])
+
+
+def test_vigia_nao_mexe_quando_a_segunda_medida_abre(vigia):
+    assert vigia(False, True) == (0, [])
 
 
 @pytest.fixture
@@ -140,28 +157,6 @@ def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, m
     assert (final / "modules" / "origem").read_text() == str(fonte / "services")
     assert (final / "documentos_embutidos" / "pagina.md").read_text() == "conteúdo"
     assert imagem == "plataforma-aplicacao:base-x"
-
-
-def test_primeira_aplicacao_agrega_compatibilidade_dos_journals_aprovados(tmp_path, monkeypatch):
-    publicar = carregar("publicar_metadados", "infra/publicar.py")
-    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)
-    for modulo in publicar.MODULOS_DA_APLICACAO:
-        (tmp_path / f"{modulo}.json").write_text(json.dumps({
-            "aprovada": {"sha": "a" * 40, "dados": f"dados-{modulo}",
-                         "configuracao": f"config-{modulo}"}}))
-    primeiro = publicar.metadados_da_primeira_aplicacao()
-    assert primeiro["endereco"] == "https://meshcraft.top/"
-    assert primeiro["dados"].startswith("unificada-dados-")
-    assert primeiro["configuracao"].startswith("unificada-configuracao-")
-    assert primeiro == publicar.metadados_da_primeira_aplicacao()
-    estado = json.loads((tmp_path / "quiz.json").read_text())
-    estado["aprovada"]["dados"] = "nova-migracao"
-    (tmp_path / "quiz.json").write_text(json.dumps(estado))
-    assert publicar.metadados_da_primeira_aplicacao()["dados"] != primeiro["dados"]
-    assert publicar.metadados_da_primeira_aplicacao()["configuracao"] == primeiro["configuracao"]
-    (tmp_path / "forum.json").unlink()
-    with pytest.raises(RuntimeError, match="forum:dados"):
-        publicar.metadados_da_primeira_aplicacao()
 
 
 def test_versao_atrasada_nao_substitui_a_mais_recente(repo):
@@ -256,12 +251,11 @@ def receptor(tmp_path, monkeypatch):
         return "sha256:imagem"
 
     monkeypatch.setattr(modulo, "comando", comando)
-    for chave, valor in {"TAG": "a" * 40, "PROVA_IMAGEM_SHA": "a" * 40, "COMPATIBILIDADE_DADOS": "d",
-                         "COMPATIBILIDADE_CONFIGURACAO": "c", "ENDERECO_PROVA": "https://exemplo.test/"}.items():
+    for chave, valor in {"TAG": "a" * 40, "ENDERECO_PROVA": "https://exemplo.test/"}.items():
         monkeypatch.setenv(chave, valor)
-    modulo.executar("inicializar")
+    for acao in ("preparar", "aplicar", "aprovar"):
+        modulo.executar(acao)
     monkeypatch.setenv("TAG", "b" * 40)
-    monkeypatch.setenv("PROVA_IMAGEM_SHA", "b" * 40)
     monkeypatch.setenv("IMAGEM", "plataforma-admin:base-0123")
     monkeypatch.setenv("CODIGO", codigo)
     monkeypatch.setattr(modulo.Path, "is_dir", lambda self: True)
