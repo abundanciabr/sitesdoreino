@@ -76,18 +76,21 @@ SITUACOES = list(Situacao.values)
 DEFINICOES = [
     _ferramenta(
         "consultar_membros",
-        "Lista as pessoas ativas da equipe, com número, nome e área.",
+        "Lista as pessoas ativas da equipe, com número, nome e área. Elas "
+        "já vêm no retrato do painel: só chame se o retrato não estiver lá.",
         {},
     ),
     _ferramenta(
         "consultar_objetivos",
-        "Lista os objetivos da equipe, com quantas tarefas abertas cada um tem.",
+        "Lista os objetivos da equipe, com quantas tarefas abertas cada um tem. "
+        "Os ativos já vêm no retrato do painel: chame para os inativos ou a descrição.",
         {"incluir_inativos": {"type": "boolean"}},
     ),
     _ferramenta(
         "consultar_tarefas",
-        "Procura tarefas do painel da equipe. Sem filtro, traz as tarefas "
-        "abertas de quem fala com você.",
+        "Procura tarefas do painel da equipe. As tarefas abertas de quem fala "
+        "com você já vêm no retrato do painel: não chame para elas. Chame para "
+        "outra pessoa, toda a equipe, tarefas concluídas ou uma busca por texto.",
         {
             "responsavel_id": _inteiro_ou_nulo(
                 "Número da pessoa responsável; nulo para a pessoa que fala com você."
