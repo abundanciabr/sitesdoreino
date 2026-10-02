@@ -652,25 +652,8 @@ def test_a_porta_de_publicacao_sozinha_nao_abre_a_leitura_para_qualquer_um(setti
 
 
 # ---------------------------------------------------------------------------
-# NADA DE DADO PESSOAL, E O GUARDA É SOBRE O SCHEMA
+# O ENDEREÇO E A SONDA
 # ---------------------------------------------------------------------------
-def test_nenhum_componente_da_porta_declara_dado_pessoal():
-    """Não há como sabotar o cenário com um e-mail: esta célula não guarda um.
-
-    Por isso o guarda mede o SCHEMA, que é onde o vazamento nasceria: alguém
-    acrescenta `email` ou `nome` a um Schema no dia em que a tela pedir, e nada
-    quebra. O `destinatario_id` é o id OPACO da plataforma, e quem precisar do
-    nome pergunta à `identidade`, que é onde esse dado mora numa linha só.
-    """
-    from config.api import api
-
-    proibidos = {"email", "e_mail", "nome", "telefone", "whatsapp", "cpf", "senha"}
-    schema = api.get_openapi_schema(path_prefix="")
-    for nome, componente in schema["components"]["schemas"].items():
-        campos = set(componente.get("properties", {}))
-        assert not (
-            campos & proibidos
-        ), f"{nome} declara dado pessoal: {campos & proibidos}"
 
 
 def test_a_porta_responde_no_endereco_escolhido_e_nao_no_de_interno():

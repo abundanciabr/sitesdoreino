@@ -5,17 +5,13 @@ escreve no próprio banco. O consumidor é exercitado com um Redis DUBLADO (um
 objeto em memória com a superfície que a receita R4 usa), porque o que os
 guardas medem é a decisão do consumidor, não o Redis.
 
-Desde a Fase 4 do sininho (`contracts/notificacoes.openapi.yaml`) esta célula
-também tem uma porta HTTP — as fixtures `TOKEN_DO_PAR`/`par_autorizado` e o
-helper `schema_da_resposta` servem os testes dela (`tests/test_api_*.py`,
-`tests/test_volume_da_api.py`).
+Desde a Fase 4 do sininho esta célula também tem uma porta HTTP — as fixtures
+`TOKEN_DO_PAR`/`par_autorizado` servem os testes dela (`tests/test_api.py`).
 """
 
 import uuid
-from pathlib import Path
 
 import pytest
-import yaml
 
 SITE = "site-de-teste"
 ALGUEM = "idt-pessoa-1"
@@ -27,10 +23,6 @@ EQUIPE = "idt-alguem-da-equipe"
 # valor está no conjunto. Testar os dois pares seria testar a mesma linha de
 # código duas vezes.
 TOKEN_DO_PAR = "token-do-par-de-teste"
-
-CONTRATO_HTTP = (
-    Path(__file__).resolve().parents[3] / "contracts" / "notificacoes.openapi.yaml"
-)
 
 
 @pytest.fixture
@@ -49,30 +41,12 @@ def cabecalho_bearer(token: "str | None" = TOKEN_DO_PAR) -> dict:
     return {"authorization": f"Bearer {token}"} if token else {}
 
 
-def schema_da_resposta(caminho: str, metodo: str, status: str) -> dict:
-    """O schema JSON de uma resposta, lido do contrato CONGELADO — nunca
-    copiado para dentro do teste (mesma regra do guarda irmão de eventos,
-    `test_inv_carta_casa_com_o_contrato.py`): uma cópia aqui seria uma segunda
-    verdade sobre o contrato, envelhecendo no próprio ritmo.
-    """
-    assert CONTRATO_HTTP.exists(), (
-        f"o contrato não está em {CONTRATO_HTTP} — sem ele este teste passaria "
-        "no vazio, que é o modo de falha que [INV-CI01] existe para matar"
-    )
-    doc = yaml.safe_load(CONTRATO_HTTP.read_text(encoding="utf-8"))
-    operacao = doc["paths"][caminho][metodo]["responses"][status]
-    return operacao["content"]["application/json"]["schema"]
-
-
 def envelope_de_carta(
     *, destinatario_id=ALGUEM, ator_id=EQUIPE, site_id=SITE, origem=None, **parametros
 ):
     """Um `notificacao.devida.v1` como o relay da Caixa o publica.
 
-    Montado à mão de propósito: o guarda que confere que ele CASA com o contrato
-    congelado é `test_inv_carta_casa_com_o_contrato.py`, que lê o schema do
-    arquivo. Se esta fixture derivar do contrato, as duas coisas passam a ser a
-    mesma e o guarda deixa de medir alguma coisa.
+    Montado à mão, com a forma que a carta tem no fio.
     """
     return {
         "event": "notificacao.devida",

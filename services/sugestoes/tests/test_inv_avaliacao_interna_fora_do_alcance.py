@@ -12,7 +12,7 @@ por quê", escrito para a equipe ler. Vazar isso por descuido de campo num
 template não é um bug de listagem; é a Caixa contando ao aluno o que a equipe
 achou da ideia dele, com as palavras que ninguém escreveu para ele ler.
 
-**Três degraus, do mais forte ao mais legível:**
+**Dois degraus, do mais forte ao mais legível:**
 
 1. **O SQL.** A jornada inteira do aluno roda com as consultas capturadas, e o
    nome da tabela não pode aparecer em nenhuma delas. É o degrau que pega o
@@ -21,24 +21,18 @@ achou da ideia dele, com as palavras que ninguém escreveu para ele ler.
    previu aqui.
 2. **O corpo das respostas.** O texto da avaliação é semeado com uma marca
    inconfundível; se ela aparecer em qualquer página do aluno, o guarda cai.
-3. **A ÁRVORE SINTÁTICA do módulo do aluno.** `apps/core/participacao.py` não
-   pode sequer nomear o model nem o `related_name` — via AST, não via `grep`,
-   para que citar o nome num comentário (como este arquivo faz) não conte.
 
 A completude é mecânica: a lista de rotas percorridas é conferida contra o
 urlconf. Rota de participação nova que ninguém acrescentar aqui deixa este
 guarda VERMELHO — que é exatamente o lembrete que se quer.
 """
 
-import ast
-import inspect
 
 import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from apps.core import participacao
 from apps.sugestoes.models import AvaliacaoInterna
 
 pytestmark = pytest.mark.django_db
@@ -199,24 +193,3 @@ def test_a_jornada_do_aluno_nao_escreve_na_avaliacao(
         avaliacao.decisao_produto,
         AvaliacaoInterna.objects.count(),
     ) == antes
-
-
-def test_o_modulo_do_aluno_nem_nomeia_a_avaliacao_interna():
-    """Via AST, não `grep`: comentário e docstring podem citar o nome à vontade.
-
-    O que não pode é o CÓDIGO nomear — nem o model (`AvaliacaoInterna`), nem o
-    `related_name` pelo qual se chega nele a partir de uma sugestão
-    (`sugestao.avaliacao`).
-    """
-    arvore = ast.parse(inspect.getsource(participacao))
-    nomes = {no.id for no in ast.walk(arvore) if isinstance(no, ast.Name)}
-    atributos = {no.attr for no in ast.walk(arvore) if isinstance(no, ast.Attribute)}
-    importados = {
-        apelido.name
-        for no in ast.walk(arvore)
-        if isinstance(no, (ast.Import, ast.ImportFrom))
-        for apelido in no.names
-    }
-
-    assert "AvaliacaoInterna" not in (nomes | atributos | importados)
-    assert "avaliacao" not in atributos

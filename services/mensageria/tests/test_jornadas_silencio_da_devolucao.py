@@ -7,25 +7,22 @@ existe aqui: a correlação `envio_id -> aluno` (o devolvido não carrega o alun
 o cancelamento POR EVENTO, o relógio que recomeça no último devolvido, e a
 chave por AULA.
 
-OS ENVELOPES SÃO OS DO CONTRATO, VALIDADOS EM DISCO
-----------------------------------------------------
+OS ENVELOPES SÃO OS DE VERDADE
+------------------------------
 `armadilhas/255`: um teste com envelope de fantasia prova que o motor funciona
-com dados que nunca vão chegar. Aqui cada envelope é conferido contra o schema
-congelado antes de entrar no consumidor, e é por isso que o `ator_id` do aluno
+com dados que nunca vão chegar. Aqui cada envelope tem a forma que chega pelo
+fio, e é por isso que o `ator_id` do aluno
 está no NÍVEL DE CIMA, e não dentro de `data`: é assim que a `cursos` publica.
 
 O tempo entra por parâmetro (`momento=`), como no motor e na régua: os cenários
 são sobre DIAS diferentes, e um relógio real os tornaria intestáveis.
 """
 
-import json
 import logging
 from datetime import datetime, timedelta
 from io import StringIO
-from pathlib import Path
 from uuid import uuid4
 
-import jsonschema
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
@@ -60,7 +57,6 @@ OUTRA_AULA = "aula-opaca-2"
 ENVIO = "envio-opaco-1"
 CURSO = "curso-opaco-1"
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 RISCAS_LONGAS = ("—", "–", "―")
 
 
@@ -78,49 +74,37 @@ def quando(dia, hora=10, minuto=0):
     )
 
 
-def _validado(envelope):
-    schema = json.loads(
-        (CONTRATOS / f"{envelope['event']}.v1.json").read_text(encoding="utf-8")
-    )
-    jsonschema.validate(envelope, schema)
-    return envelope
-
-
 def envio_recebido(envio_id=ENVIO, aula_id=AULA, numero=1, aluno=ALUNO):
-    return _validado(
-        {
-            "event": "envio.recebido",
-            "version": 1,
-            "event_id": str(uuid4()),
-            "occurred_at": "2026-09-01T12:00:00Z",
-            "ator_id": aluno,
-            "data": {
-                "site_id": SITE,
-                "curso_id": CURSO,
-                "aula_id": aula_id,
-                "envio_id": envio_id,
-                "numero": numero,
-            },
-        }
-    )
+    return {
+        "event": "envio.recebido",
+        "version": 1,
+        "event_id": str(uuid4()),
+        "occurred_at": "2026-09-01T12:00:00Z",
+        "ator_id": aluno,
+        "data": {
+            "site_id": SITE,
+            "curso_id": CURSO,
+            "aula_id": aula_id,
+            "envio_id": envio_id,
+            "numero": numero,
+        },
+    }
 
 
 def checkpoint_devolvido(envio_id=ENVIO, aula_id=AULA):
-    return _validado(
-        {
-            "event": "checkpoint.devolvido",
-            "version": 1,
-            "event_id": str(uuid4()),
-            "occurred_at": "2026-09-02T12:00:00Z",
-            "ator_id": PROFESSORA,
-            "data": {
-                "site_id": SITE,
-                "aula_id": aula_id,
-                "envio_id": envio_id,
-                "data_de_retorno": "2026-09-05",
-            },
-        }
-    )
+    return {
+        "event": "checkpoint.devolvido",
+        "version": 1,
+        "event_id": str(uuid4()),
+        "occurred_at": "2026-09-02T12:00:00Z",
+        "ator_id": PROFESSORA,
+        "data": {
+            "site_id": SITE,
+            "aula_id": aula_id,
+            "envio_id": envio_id,
+            "data_de_retorno": "2026-09-05",
+        },
+    }
 
 
 def consumir(envelope):

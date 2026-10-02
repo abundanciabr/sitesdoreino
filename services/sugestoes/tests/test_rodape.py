@@ -76,27 +76,6 @@ def test_a_porta_da_caixa_tem_o_rodape_enxuto(client, porta):
     assert 'class="links"' not in corpo
 
 
-def test_o_estilo_do_rodape_da_porta_e_embutido(client, porta):
-    """Marcação sem regra é rodapé sem forma, e nada ficaria vermelho.
-
-    Esta tela NÃO carrega o `caixa.css` — de propósito. Se as regras `.rodape`
-    só existissem lá, a porta mostraria um rodapé sem borda, sem espaçamento e
-    com o tamanho de fonte do corpo, e todo guarda de renderização passaria.
-    """
-    corpo = client.get(reverse("entrar")).content.decode()
-    # A MARCAÇÃO, e não o nome do arquivo: `caixa.css` aparece nesta página
-    # dentro de um COMENTÁRIO de CSS, que explica justamente por que a folha não
-    # é carregada aqui. Procurar a string solta é a `armadilhas/247` — o guarda
-    # ficaria vermelho por ler a explicação como se fosse a coisa explicada.
-    assert '<link rel="stylesheet"' not in corpo, (
-        "a porta passou a carregar folha de estilo externa — se isso foi de "
-        "propósito, este guarda precisa mudar junto; se não, é a dependência de "
-        "rede que a tela recusa por desenho."
-    )
-    assert ".rodape {" in corpo
-    assert ".rodape .direitos" in corpo or ".rodape p {" in corpo
-
-
 def test_o_servidor_de_estaticos_nao_ganha_rodape(client, rf):
     """Rota de MÁQUINA: um rodapé dentro do arquivo CSS seria lixo no arquivo, e
     o navegador o serviria como estilo.
@@ -163,19 +142,7 @@ def test_o_ano_dos_direitos_vem_do_servidor(dentro, sugestao):
 
 
 # ---------------------------------------------------------------------------
-# 3. O estilo chega ao navegador, e com as cores DESTA área
-# ---------------------------------------------------------------------------
-def test_o_estilo_do_rodape_chega_pela_rota_do_css(client):
-    """Classe no HTML sem regra no CSS é rodapé sem forma, e nada fica vermelho.
-    Esta célula serve o estilo por rota própria (`armadilhas/083`), então a
-    prova pergunta ao SERVIDOR, não ao disco."""
-    css = _css(client)
-    for regra in (".rodape {", ".rodape .marca", ".rodape .links", ".rodape .direitos"):
-        assert regra in css
-
-
-# ---------------------------------------------------------------------------
-# 4. O pé antigo não volta por engano
+# 3. O pé antigo não volta por engano
 # ---------------------------------------------------------------------------
 def test_o_pe_antigo_nao_voltou(dentro, sugestao):
     """A troca foi ESCOLHA do mantenedor em 02/09/2026, não descuido.

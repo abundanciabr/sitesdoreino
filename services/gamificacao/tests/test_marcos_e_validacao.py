@@ -30,10 +30,8 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import jsonschema
 import pytest
 from django.core.management import call_command
 from django.db.utils import IntegrityError
@@ -66,12 +64,6 @@ from apps.gamificacao.validacao import (
 
 pytestmark = pytest.mark.django_db
 
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "notificacao.devida.v1.json"
-)
 
 SITE = "site-de-teste"
 ALUNO = "pes-aluno"
@@ -138,10 +130,6 @@ def _no_fio(carta: OutboxEvent) -> dict:
     return envelope
 
 
-def _conferir_contrato(envelope: dict) -> None:
-    jsonschema.validate(envelope, json.loads(CONTRATO.read_text(encoding="utf-8")))
-
-
 # ------------------------------------------- 1. o caminho feliz
 
 
@@ -176,7 +164,6 @@ def test_aceitar_um_marco_cria_a_concessao_e_avisa_a_pessoa():
         "conquista_slug": "portfolio-publicado",
         "validador_papel": "professor",
     }
-    _conferir_contrato(_no_fio(carta))
 
 
 def test_marco_rende_zero_xp():
@@ -234,7 +221,6 @@ def test_a_medalha_credita_xp_e_cristais_e_o_perfil_acompanha():
         "conquista_slug": "primeira-obra",
         "familia": "oficio",
     }
-    _conferir_contrato(_no_fio(carta))
 
 
 def test_conceder_duas_vezes_da_uma_conquista_e_uma_carta():

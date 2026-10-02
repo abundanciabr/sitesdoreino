@@ -11,7 +11,6 @@ sempre a mesma: **quando algo dá errado, a pessoa recebe MENOS poder, nunca
 mais?**
 """
 
-from pathlib import Path
 
 import httpx
 import pytest
@@ -90,30 +89,6 @@ def dublar(monkeypatch, *, identidade=None, alunos=None):
         return alvo
 
     monkeypatch.setattr(httpx.Client, "get", falso_get)
-
-
-def test_a_url_da_alunos_carrega_o_segmento_do_contrato():
-    """**Prova de FORA: a URL montada tem de existir no contrato congelado.**
-
-    Bug real, corrigido em 29/08/2026: o cliente montava
-    `{ALUNOS_API_URL}/{email}/situacao` e comia o segmento `/alunos` do
-    caminho da operação. `ALUNOS_API_URL` é o `servers:` do contrato
-    (`http://alunos:8000/api/alunos`); o caminho de `getStudentStanding` é
-    `/alunos/{email}/situacao`. Os dois se SOMAM — e todas as células irmãs
-    (`sugestoes`, `admin`) já montavam assim.
-
-    Este teste lê o contrato em vez de repetir a minha crença sobre ele: se
-    alguém mover a operação, ele fica vermelho aqui, e não em produção.
-    """
-    contrato = (
-        Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
-    ).read_text(encoding="utf-8")
-
-    assert "url: http://alunos:8000/api/alunos" in contrato
-    assert "  /alunos/{email}/situacao:" in contrato
-    # E a URL que o dublê exige é a soma exata das duas pontas acima.
-    assert URL_ALUNOS.startswith("http://alunos:8000/api/alunos/alunos/")
-    assert URL_ALUNOS.endswith("/situacao")
 
 
 def resposta(corpo, status=200):

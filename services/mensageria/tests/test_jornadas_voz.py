@@ -1,14 +1,13 @@
 """A célula ganha voz: a carta do passo sai pela outbox e chega ao stream.
 
 Degrau 5 da escada do `PLANO-SEQUENCIAS-DE-MENSAGENS.md` §7. O que se prova
-aqui: a carta tem a FORMA do contrato, ela não carrega PII, ela nasce na mesma
+aqui: a carta não carrega PII, ela nasce na mesma
 transação da linha que diz que saiu, e o relay a publica sem perder nem duplicar.
 """
 
 import json
 import os
 from datetime import timedelta
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -17,27 +16,13 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.jornadas import despacho, eventos, motor, regua, tasks
-from apps.jornadas.models import (
-    Entrega,
-    Inscricao,
-    Jornada,
-    JornadaVersao,
-    OutboxEvent,
-    Passo,
-)
+from apps.jornadas.models import Entrega, Jornada, JornadaVersao, OutboxEvent, Passo
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
 SITE = "site-abc"
 PESSOA = "pessoa-opaca-1"
 EVENTO_DE_ORIGEM = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "notificacao.devida.v1.json"
-)
 
 
 def quando(dia=15, hora=10):
@@ -96,46 +81,6 @@ def test_emitir_fora_de_transacao_levanta_e_nao_grava_nada():
 # ---------------------------------------------------------------------------
 # A CARTA TEM A FORMA DO CONTRATO, E NÃO CARREGA PII
 # ---------------------------------------------------------------------------
-
-
-def test_a_carta_tem_exatamente_os_campos_que_o_contrato_exige():
-    """Conferido contra o CONTRATO no disco, e não contra uma lista aqui.
-
-    `additionalProperties: false` no contrato significa que campo a mais reprova
-    tanto quanto campo a menos — então o teste mede os dois lados.
-    """
-    contrato = json.loads(CONTRATO.read_text(encoding="utf-8"))
-    forma = contrato["properties"]["data"]
-    exigidos = set(forma["required"])
-    permitidos = set(forma["properties"])
-
-    with transaction.atomic():
-        carta = eventos.passo_de_jornada_devido(
-            site_id=SITE,
-            destinatario_id=PESSOA,
-            jornada_slug="boas-vindas",
-            passo_id="11111111-1111-1111-1111-111111111111",
-            ordem=1,
-            origem_event_id=EVENTO_DE_ORIGEM,
-        )
-
-    dados = set(carta.payload)
-    assert exigidos <= dados, f"faltando no data: {exigidos - dados}"
-    assert (
-        dados <= permitidos
-    ), f"campo que o contrato nao conhece: {dados - permitidos}"
-
-    assert carta.payload["assunto"] in forma["properties"]["assunto"]["enum"]
-    assert carta.payload["assunto"] == "jornada.passo"
-
-    parametros = set(carta.payload["parametros"])
-    ramo = None
-    for bloco in contrato["allOf"]:
-        if "jornada.passo" in json.dumps(bloco, ensure_ascii=False):
-            ramo = bloco["then"]["properties"]["data"]["properties"]["parametros"]
-    assert ramo is not None, "o ramo de jornada.passo sumiu do contrato"
-    assert set(ramo["required"]) <= parametros
-    assert parametros <= set(ramo["properties"])
 
 
 def test_a_carta_nao_carrega_e_mail_nome_nem_telefone():

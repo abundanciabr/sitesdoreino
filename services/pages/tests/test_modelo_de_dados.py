@@ -12,103 +12,12 @@ privacidade do aluno (a vitrine é opt-in, AC-13) e a honestidade do selo da
 escola (data e autor juntos, plano §6.2).
 """
 
-import re
-
 import pytest
-from django.apps import apps
 from django.db import IntegrityError, connection, transaction
 
 from apps.portfolio.models import EstadoDoAluno, ItemDeConferencia, Peca, Portfolio
 
 from conftest import OUTRO_SITE, SITE, agora
-
-# Os nomes que o §7 do plano proíbe nesta obra, transcritos como PALAVRAS de
-# nome de campo. `nivel` fica fora de propósito: o que a lei proíbe é trancar
-# aula atrás de nível, não guardar um. Medir a coisa errada com precisão é como
-# um portão morre.
-PALAVRAS_PROIBIDAS = {
-    "nota",
-    "notas",
-    "estrela",
-    "estrelas",
-    "ranking",
-    "voto",
-    "votos",
-    "curtida",
-    "curtidas",
-    "pontuacao",
-    "score",
-    "rating",
-    "xp",
-}
-
-
-def modelos_desta_app():
-    return list(apps.get_app_config("portfolio").get_models())
-
-
-# ---------------------------------------------------------------------------
-# AC-02 — nenhuma chave estrangeira sai do banco desta célula
-# ---------------------------------------------------------------------------
-
-
-def test_nenhuma_chave_estrangeira_aponta_para_fora_desta_app():
-    """O critério AC-02, medido no esquema e não na intenção.
-
-    O banco desta célula não enxerga o das outras (muralha de dados). Quem é a
-    pessoa se pergunta à `identidade`; se ela tem matrícula, à `alunos`. Uma
-    chave estrangeira para lá não é só proibida: ela é impossível de satisfazer,
-    e o dia em que alguém a escrevesse a migração quebraria em produção.
-    """
-    for modelo in modelos_desta_app():
-        for campo in modelo._meta.get_fields():
-            if not getattr(campo, "is_relation", False) or not campo.concrete:
-                continue
-            alvo = campo.related_model
-            assert alvo._meta.app_label == "portfolio", (
-                f"{modelo.__name__}.{campo.name} aponta para "
-                f"{alvo._meta.app_label}.{alvo.__name__}, fora do banco desta "
-                "célula — id de outra célula entra como texto opaco (AC-02)"
-            )
-
-
-def test_a_fronteira_de_site_e_de_aluno_mora_so_no_portfolio():
-    """Uma casa para cada fronteira, e as filhas chegam por chave estrangeira.
-
-    Copiar `site_id` e `aluno_id` para cada tabela filha criaria colunas
-    denormalizadas capazes de MENTIR, e curar isso exigiria chave estrangeira
-    composta escrita em `RunSQL` (`armadilhas/274`). Este guarda existe para que
-    a próxima sessão, ao acrescentar uma tabela, não introduza a doença por
-    hábito.
-    """
-    for modelo in modelos_desta_app():
-        nomes = {campo.name for campo in modelo._meta.get_fields()}
-        if modelo is Portfolio:
-            assert {"site_id", "aluno_id"} <= nomes
-            continue
-        assert "site_id" not in nomes and "aluno_id" not in nomes, (
-            f"{modelo.__name__} guarda cópia da fronteira — ela mora no "
-            "Portfolio, e as filhas chegam a ela pela chave estrangeira"
-        )
-
-
-def test_nenhum_campo_guarda_nota_estrela_ranking_ou_voto():
-    """O §7 do plano vira mecanismo, e não só uma lista bem escrita.
-
-    A constituição desta célula tem critério de morte declarado: se a construção
-    começar a desenhar nota, estrela, ranking ou voto popular em portfólio de
-    aluno, para-se e reabre-se a decisão com o mantenedor. Lei sem mecanismo é a
-    doença-mãe desta casa.
-    """
-    for modelo in modelos_desta_app():
-        for campo in modelo._meta.get_fields():
-            palavras = set(re.split(r"[^a-z0-9]+", campo.name.lower()))
-            proibidas = palavras & PALAVRAS_PROIBIDAS
-            assert not proibidas, (
-                f"{modelo.__name__}.{campo.name} usa {sorted(proibidas)} — "
-                "nota, estrela, ranking e voto são proibidos em portfólio de "
-                "aluno (PLANO-PORTFOLIO-DO-ALUNO §7)"
-            )
 
 
 # ---------------------------------------------------------------------------

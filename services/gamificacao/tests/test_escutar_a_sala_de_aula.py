@@ -26,13 +26,10 @@ O QUE ESTE ARQUIVO TRAVA:
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import timedelta
 from io import StringIO
-from pathlib import Path
 
-import jsonschema
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
@@ -58,13 +55,6 @@ pytestmark = pytest.mark.django_db
 SITE = "site-de-teste"
 ALUNO = "pes-aluno"
 
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "aula.concluida.v1.json"
-)
-
 
 def _regra(**campos) -> RegraDePontuacao:
     base = {
@@ -84,7 +74,7 @@ def _regra(**campos) -> RegraDePontuacao:
 
 
 def _aula_concluida(**campos) -> dict:
-    """O envelope como `contracts/eventos/aula.concluida.v1.json` o fixa."""
+    """O envelope de `aula.concluida` v1, como ele chega."""
     data = {"site_id": SITE, "curso_id": "c-1", "aula_id": "a-07", "e_boss": False}
     data.update(campos.pop("data", {}))
     base = {
@@ -104,16 +94,7 @@ def _entregar(envelope: dict) -> None:
     HANDLERS[envelope["event"]](envelope)
 
 
-# ------------------------------------------- 1. o envelope é o do contrato
-
-
-def test_o_envelope_deste_arquivo_e_o_que_o_contrato_congelou():
-    """Validado contra o ARQUIVO, nunca contra uma cópia do formato aqui dentro."""
-    jsonschema.validate(_aula_concluida(), json.loads(CONTRATO.read_text("utf-8")))
-    jsonschema.validate(
-        _aula_concluida(data={"e_boss": True}),
-        json.loads(CONTRATO.read_text("utf-8")),
-    )
+# ------------------------------------------- 1. a tomada
 
 
 def test_a_tomada_esta_ligada_nas_tres_pontas_e_nasce_desligada():

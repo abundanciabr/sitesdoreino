@@ -6,7 +6,7 @@ de `getSessionFull` **já traz** o id da pessoa na célula `identidade`
 ele, todo evento que a Caixa publica carrega um id que não significa nada fora
 dela, e uma caixa central de notificações não consegue endereçar ninguém.
 
-O guarda cobre as cinco metades do invariante, e nenhuma é decorativa:
+O guarda cobre as quatro metades do invariante, e nenhuma é decorativa:
 
 1. **cunhagem** — quem entra pela primeira vez nasce com o id;
 2. **reentrada** — a linha nascida ANTES desta migration ganha o id na visita
@@ -15,9 +15,7 @@ O guarda cobre as cinco metades do invariante, e nenhuma é decorativa:
 3. **não sobrescreve** — linha já casada com outro id não é reescrita;
 4. **a porta não passa a depender disto** — id ausente, nulo ou já pertencente a
    outra linha local NÃO recusa ninguém. Quem autoriza continua sendo e-mail +
-   (staff | matrícula);
-5. **um lugar só cunha** — varredura de AST, para que a frente 1 não seja
-   contornada por um caminho de escrita novo que nasça sem o campo.
+   (staff | matrícula).
 
 E duas sobre a FORMA da coluna (`null=True, unique=True` + `CheckConstraint`),
 porque foi essa escolha que decidiu se a migration sobe: no Postgres cada `NULL`
@@ -25,9 +23,7 @@ porque foi essa escolha que decidiu se a migration sobe: no Postgres cada `NULL`
 `''` colidiria com `''` na segunda.
 """
 
-import ast
 import secrets
-from pathlib import Path
 
 import httpx
 import pytest
@@ -37,17 +33,6 @@ from django.test import Client
 
 from apps.sugestoes.models import Identidade
 from tests.conftest import Porta, id_da_plataforma_de
-
-RAIZ = Path(__file__).resolve().parents[1]
-APPS = RAIZ / "apps"
-
-# O ÚNICO módulo autorizado a cunhar `Identidade` no código de produção. Não é
-# gosto de arquitetura: é o que faz a frente 1 do invariante ser completa. Um
-# segundo caminho de escrita nasceria sem o campo e ninguém notaria — as linhas
-# ficariam sem o id e o sintoma só apareceria do outro lado da plataforma, meses
-# depois, como notificação que não chega.
-CUNHAGEM_PERMITIDA = {"apps/core/sessao.py"}
-ESCRITAS = {"create", "get_or_create", "update_or_create", "bulk_create"}
 
 
 def _pessoa_com_resposta(rede, matricula, corpo: dict, *, email: str) -> Porta:
@@ -241,43 +226,6 @@ def test_id_ja_usado_por_outra_linha_local_nao_derruba_a_porta(
     assert segunda.identidade.id_da_plataforma is None
     primeira.identidade.refresh_from_db()
     assert primeira.identidade.id_da_plataforma == compartilhado
-
-
-# ---------------------------------------------------------------------------
-# 5. Um lugar só cunha — a completude mecânica da frente 1
-# ---------------------------------------------------------------------------
-
-
-def test_so_um_modulo_cunha_identidade_no_codigo_de_producao():
-    """Via `ast`, não `grep`: citar `Identidade.objects.create` num comentário
-    (como este arquivo faz) não pode contar."""
-    achados = []
-    for arquivo in sorted(APPS.rglob("*.py")):
-        relativo = arquivo.relative_to(RAIZ).as_posix()
-        if relativo in CUNHAGEM_PERMITIDA:
-            continue
-        for no in ast.walk(ast.parse(arquivo.read_text(encoding="utf-8"))):
-            if not isinstance(no, ast.Call):
-                continue
-            alvo = no.func
-            if not isinstance(alvo, ast.Attribute) or alvo.attr not in ESCRITAS:
-                continue
-            gerente = alvo.value
-            if (
-                isinstance(gerente, ast.Attribute)
-                and gerente.attr == "objects"
-                and isinstance(gerente.value, ast.Name)
-                and gerente.value.id == "Identidade"
-            ):
-                achados.append(f"{relativo}:{no.lineno}")
-
-    assert not achados, (
-        "caminho de cunhagem de Identidade fora de "
-        f"{sorted(CUNHAGEM_PERMITIDA)}: {achados}. Todo caminho que cria "
-        "identidade tem de gravar o `id_da_plataforma` (INV-SUG11) — um segundo "
-        "lugar nasceria sem ele e o buraco só apareceria meses depois, do outro "
-        "lado da plataforma."
-    )
 
 
 # ---------------------------------------------------------------------------

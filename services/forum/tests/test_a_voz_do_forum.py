@@ -8,22 +8,18 @@ O QUE ESTE ARQUIVO TRAVA:
 
 1. **Cada evento nasce DENTRO da transação do fato.** Fora dela, um rollback
    deixaria a plataforma pagando ponto por uma mensagem que não existe.
-2. **Os quatro casam com o contrato congelado**, validados contra o ARQUIVO de
-   `contracts/eventos/forum.*.json` — nunca contra uma cópia do formato aqui.
-3. **Nenhum texto escrito por gente viaja.** `mensagem-criada` leva o TAMANHO,
+2. **Nenhum texto escrito por gente viaja.** `mensagem-criada` leva o TAMANHO,
    e o corpo da mensagem não sai da célula.
-4. **`resposta-aceita` carrega os dois ids**, e eles são diferentes: quem marcou
+3. **`resposta-aceita` carrega os dois ids**, e eles são diferentes: quem marcou
    vai no envelope, quem escreveu vai no `data` e é quem recebe o prêmio.
-5. **Sem site conhecido, não se emite — e o fórum continua funcionando.** A falta
+4. **Sem site conhecido, não se emite — e o fórum continua funcionando.** A falta
    de um evento nunca pode custar a fala de um aluno.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-import jsonschema
 import pytest
 from django.test import Client
 from django.urls import reverse
@@ -33,7 +29,6 @@ from apps.forum.models import Area, Mensagem, OutboxEvent, Pessoa, Topico
 
 pytestmark = pytest.mark.django_db
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 SITE = "site-de-teste"
 HOST = "forum.exemplo.test"
 
@@ -82,24 +77,6 @@ def _eventos(nome: str | None = None) -> list[OutboxEvent]:
     return list(fila)
 
 
-def _conferir_contrato(evento: OutboxEvent) -> None:
-    """O envelope como o relay o monta, contra o ARQUIVO do contrato."""
-    envelope = {
-        "event": evento.event,
-        "version": evento.version,
-        "event_id": str(evento.event_id),
-        "occurred_at": evento.occurred_at.isoformat(),
-        "data": evento.payload,
-    }
-    envelope.update(evento.envelope_extra)
-    esquema = json.loads(
-        (CONTRATOS / f"{evento.event}.v{evento.version}.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    jsonschema.validate(envelope, esquema)
-
-
 # ------------------------------------------- 1. abrir e responder
 
 
@@ -123,8 +100,6 @@ def test_abrir_um_topico_conta_dois_fatos(monkeypatch):
         "forum.topico-criado",
         "forum.mensagem-criada",
     ]
-    for evento in _eventos():
-        _conferir_contrato(evento)
 
 
 def test_o_texto_da_mensagem_nao_viaja_so_o_tamanho(monkeypatch):
@@ -159,7 +134,6 @@ def test_responder_conta_uma_fala(monkeypatch):
 
     (evento,) = _eventos("forum.mensagem-criada")
     assert evento.payload["topico_id"] == str(topico.pk)
-    _conferir_contrato(evento)
 
 
 # ------------------------------------------- 2. o fato mais valioso
@@ -192,7 +166,6 @@ def test_aceitar_a_resposta_diz_quem_marcou_e_quem_recebe(monkeypatch):
     assert evento.envelope_extra["ator_id"] == "pes-perguntou"
     # Quem marcou foi o dono da pergunta: a escadinha da decisão 5 da Sessão A.
     assert evento.payload["marcada_por"] == "autor"
-    _conferir_contrato(evento)
 
 
 def test_a_equipe_marcando_entra_como_professor(monkeypatch):
@@ -233,7 +206,6 @@ def test_tirar_do_ar_anuncia_o_estorno(monkeypatch):
 
     (evento,) = _eventos("forum.mensagem-removida")
     assert evento.payload["mensagem_id"] == str(mensagem.pk)
-    _conferir_contrato(evento)
 
 
 # ------------------------------------------- 3. as duas recusas

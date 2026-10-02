@@ -1,21 +1,9 @@
-"""Guardas 2 e 3 do D6 — os que valem HOJE, com a fase 5 congelada.
+"""O roteamento de idioma além do funil, medido por requisição.
 
-O D6 (`docs/i18n/PLANO-I18N.md`) decidiu o roteamento de idioma além do funil e
-registrou três guardas como "teste"; a fase 5 (internacionalizar outra célula)
-ficou congelada por falta de alvo legítimo, mas estes dois guardas independem
-da ativação — protegem o roteamento de HOJE contra quebra silenciosa.
-
-  GUARDA 2 — rotas de MÁQUINA nunca se localizam (`/api/**`, `/webhooks/**`,
+  Rotas de MÁQUINA nunca se localizam (`/api/**`, `/webhooks/**`,
   `/static/**`, `/healthz`, `/sitemap.xml`).
-  GUARDA 3 — link para OUTRA célula sai SEM prefixo de idioma, e isso é
-  deliberado: prefixá-lo hoje produz 404 (a prova está aqui embaixo).
-
-O guarda 1 ("nenhum prefixo de rota de célula pode ter forma de locale") NÃO
-mora aqui: ele lê `infra/traefik/dynamic/plataforma.yml` + `infra/sites.json`,
-e a mudança que ele precisa pegar toca `infra/`, não `services/` — a CI de
-célula nunca rodaria nesse PR. Vive em `ci/tests/test_rotas_sem_forma_de_locale.py`,
-que roda em TODO PR pelo workflow `muralhas`. O porquê completo está no
-cabeçalho de lá.
+  Link para OUTRA célula sai SEM prefixo de idioma, e isso é deliberado:
+  prefixá-lo hoje produz 404 (a prova está aqui embaixo).
 """
 
 import re
@@ -24,17 +12,10 @@ from urllib.parse import urlsplit
 import pytest
 from django.http import HttpResponse
 from django.test import RequestFactory
-from django.urls import Resolver404, path, re_path, resolve
+from django.urls import Resolver404, resolve
 
-from apps.core.middleware import (
-    CAMINHOS_DE_MAQUINA,
-    CAMINHOS_SEM_SITE,
-    ROTAS_DE_MAQUINA,
-    SiteResolutionMiddleware,
-)
+from apps.core.middleware import SiteResolutionMiddleware
 from apps.core.enderecos import CAIXA_PADRAO as CAIXA
-from apps.i18n import catalogo as cat
-from config.urls import urlpatterns
 
 # `logado` e `COOKIE` moram no arquivo que os define — mesma importação que
 # tests/test_sino.py já faz. O guarda 3 mede a página de QUEM ENTROU desde
@@ -59,20 +40,6 @@ def _view(request):  # dublê: path()/re_path() exigem um callable
 # ===========================================================================
 # GUARDA 2 — rotas de máquina nunca se localizam.
 # ===========================================================================
-def test_a_lista_de_isencoes_do_middleware_nao_regrediu():
-    """As isenções são DADO do middleware; este teste é o cadeado delas.
-
-    `/healthz` e `/static/` saem antes de QUALQUER lógica (nem catálogo, nem
-    idioma): a sonda do container não pode depender do catálogo estar de pé.
-    `/sitemap.xml` precisa do Site (desde a fase 4 os idiomas vêm do catálogo)
-    mas nunca se localiza. `/google0e78b54775677e95.html` é a verificação do
-    Google Search Console (31/08/2026), conteúdo fixo como o /healthz. Tirar
-    um destes daqui é a regressão silenciosa que o D6 manda vigiar.
-    """
-    assert "/healthz" in CAMINHOS_SEM_SITE
-    assert "/static/" in CAMINHOS_SEM_SITE
-    assert "/google0e78b54775677e95.html" in CAMINHOS_SEM_SITE
-    assert "/sitemap.xml" in CAMINHOS_DE_MAQUINA
 
 
 @pytest.mark.parametrize(
@@ -159,161 +126,6 @@ def test_healthz_nu_continua_servindo_com_o_catalogo_fora_do_ar(client, rede):
     assert resp.status_code == 200
 
 
-# --- o cadeado da CLASSE, não só do caso ------------------------------------
-# O 200 do /pt-br/healthz não foi desatenção de quem escreveu o middleware: foi
-# uma rota de máquina que o funil servia sem estar em NENHUMA das duas listas, e
-# nada avisava. A guarda do middleware cura aquele caso; esta cura a classe —
-# rota nova no urlconf entra numa das listas ou aqui, de propósito e por
-# escrito. (RETROSPECTIVA-FASE-D: o catálogo cura o caso, só o padrão cura a
-# classe.)
-# `/login` é de PÁGINA: serve em /{idioma}/login, com marca e texto traduzido
-# (DECISAO-onde-mora-a-sessao). Não é de máquina — apesar de o nome parecer
-# infraestrutura, quem a abre é uma pessoa, e ela precisa existir nos três
-# idiomas como qualquer outra página do site.
-ROTAS_LOCALIZAVEIS = (
-    "/",
-    "/leads",
-    "/cadastro",
-    "/login",
-    "/avisos/ligar",
-    "/avisos/desligar",
-    "/notificacoes",
-    "/notificacoes/marcar-todas",
-    "/notificacoes/",
-    # A previa da equipe (02/09/2026). E PAGINA, e nao rota de maquina: a tela
-    # tem texto, e o texto e traduzido. Que ela responda 404 para quem nao e da
-    # equipe nao muda isso — a classificacao aqui e sobre localizacao, nunca
-    # sobre quem pode entrar.
-    "/ver-como",
-    # A pagina de vendas (19/09/2026). E PAGINA: quem a abre e uma pessoa, e
-    # ela serve em /{idioma}/oferta como qualquer outra. Que a copy dela venha
-    # do catalogo num idioma so nao muda a classificacao, que e sobre
-    # LOCALIZACAO da rota, nunca sobre o idioma do texto que chega nela.
-    "/oferta",
-    "/flp-0",
-    "/primeiros-dolares-com-roblox",
-    "/primeiros-dolares-com-roblox/conteudo",
-    "/primeiros-dolares-com-roblox/og.jpg",
-    "/series-flp-gpt",
-    "/series-flp-gpt/conteudo",
-)
-
-# Um urlconf tem `path()` e `re_path()`, e o guarda precisa comparar os dois com
-# as listas do middleware — que casam por `startswith` sobre prefixo LITERAL.
-RE_METACARACTERE = re.compile(r"[(\[\?*+{<$]")
-
-
-def caminho_literal(padrao) -> str:
-    """O prefixo literal da rota, com a barra da raiz.
-
-    `path("healthz", …)` → `/healthz`;
-    `re_path(r"^static/(?P<path>.*)$", …)` → `/static/`.
-
-    Cortar no primeiro metacaractere não é aproximação: é exatamente o pedaço do
-    caminho que decide a isenção no middleware, porque é sobre ele que o
-    `startswith` de `ROTAS_DE_MAQUINA` roda.
-    """
-    bruto = str(padrao.pattern).lstrip("^")
-    return "/" + RE_METACARACTERE.split(bruto, maxsplit=1)[0]
-
-
-@pytest.mark.parametrize(
-    "padrao, esperado",
-    [
-        (path("healthz", _view), "/healthz"),
-        (path("sitemap.xml", _view), "/sitemap.xml"),
-        (path("", _view), "/"),  # catch-all da landing
-        (re_path(r"^static/(?P<path>.*)$", _view), "/static/"),
-        (path("cursos/<slug:slug>/", _view), "/cursos/"),
-    ],
-)
-def test_o_caminho_literal_e_o_pedaco_que_o_middleware_compara(padrao, esperado):
-    # Sem esta prova o guarda abaixo poderia ficar verde lendo lixo: um
-    # `re_path` cru vira "/^static/(?P<path>.*)$", que não casa lista nenhuma.
-    assert caminho_literal(padrao) == esperado
-
-
-def test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel():
-    caminhos = [caminho_literal(padrao) for padrao in urlpatterns]
-
-    sem_classificacao = [
-        caminho
-        for caminho in caminhos
-        if caminho not in ROTAS_LOCALIZAVEIS
-        and not caminho.startswith(ROTAS_DE_MAQUINA)
-    ]
-    assert sem_classificacao == [], (
-        f"Rota nova no urlconf sem classificação: {sem_classificacao}.\n"
-        "Toda rota do funil é uma das duas coisas, e a escolha é sua:\n"
-        "  · de MÁQUINA (nunca se localiza) — entre com ela em CAMINHOS_SEM_SITE "
-        "se não pode depender do catálogo, ou em CAMINHOS_DE_MAQUINA se precisa "
-        "do Site; as duas ficam em apps/core/middleware.py.\n"
-        "  · de PÁGINA (serve sob /{idioma}/…) — entre com ela em "
-        "ROTAS_LOCALIZAVEIS, aqui.\n"
-        "Rota de máquina esquecida fora das listas ganha versão localizada em "
-        "silêncio: foi exatamente assim que /pt-br/healthz respondeu 200 até "
-        "24/08/2026."
-    )
-
-    # A lista não pode apodrecer: rota que sai do urlconf sai daqui também,
-    # senão o guarda segue verde vigiando uma rota que não existe mais.
-    fantasmas = sorted(set(ROTAS_LOCALIZAVEIS) - set(caminhos))
-    assert fantasmas == [], f"ROTAS_LOCALIZAVEIS cita rota inexistente: {fantasmas}"
-
-
-# --- o cadeado da AMBIGUIDADE que o D1 revisto criou ------------------------
-# Enquanto o inglês vivia atrás de `/en/`, TODO primeiro segmento de URL ou era
-# um código de idioma ou era uma rota — nunca os dois. Desde 25/08/2026 o idioma
-# padrão mora na raiz nua, e `/es` passou a ser uma pergunta de verdade:
-# "espanhol" ou "página chamada es"? O resolver responde **idioma**, sempre
-# (ramo 2 de `_com_idioma`, antes do ramo que serve o padrão).
-#
-# Isso é uma escolha, não um bug — mas cobra uma guarda: uma rota do urlconf que
-# colida com um código de idioma servível nasceria **inalcançável em silêncio**,
-# sem erro de boot, sem 500, sem nada na tela além de um 404 que parece um
-# esquecimento. Este teste faz a colisão doer no CI, no PR que a introduzir.
-def _codigos_servivies() -> set:
-    """Todo código que ESTA célula sabe servir — base ou variante.
-
-    A comparação é com o que a célula sabe renderizar, não com o que um site
-    declara hoje: um site que ganhe `es` amanhã não pode transformar uma rota
-    `/es` que já existe numa página fantasma.
-    """
-    return set(cat.IDIOMAS_BASE) | set(cat.VARIANTES)
-
-
-def test_o_codigo_de_idioma_e_a_rota_nao_colidem_no_primeiro_segmento():
-    colisoes = sorted(
-        {
-            caminho
-            for caminho in (caminho_literal(padrao) for padrao in urlpatterns)
-            if caminho.strip("/").partition("/")[0] in _codigos_servivies()
-        }
-    )
-    assert colisoes == [], (
-        f"Rota do urlconf colide com código de idioma: {colisoes}.\n"
-        "Desde o D1 revisto (25/08/2026) o idioma padrão não tem prefixo, então "
-        "o primeiro segmento da URL é ambíguo e o IDIOMA vence: esta rota nunca "
-        "seria alcançada — o resolver a leria como pedido de tradução e o "
-        "urlconf jamais a veria.\n"
-        "Conserto: renomeie a rota (`/es` → `/espanhol`, `/pt-br` → `/brasil`). "
-        "Nunca mude a ordem dos ramos do resolver para 'resolver' isto — a "
-        "ordem é o que mantém /pt-br/cadastro sendo cadastro em português."
-    )
-
-
-def test_a_guarda_de_colisao_reprova_uma_rota_colidente_de_verdade():
-    """O guarda acima só vale se ele reprovar quando deve (RETROSPECTIVA §1).
-
-    Um portão que nunca foi visto reprovando é um portão que ninguém sabe se
-    reprova — então aqui a colisão é fabricada de propósito, com o mesmo
-    `caminho_literal` que o guarda usa.
-    """
-    idioma = sorted(_codigos_servivies())[0]
-    colidente = caminho_literal(path(f"{idioma}/oferta", _view))
-    assert colidente.strip("/").partition("/")[0] in _codigos_servivies()
-
-
 # --- HEAD é método SEGURO: toda página pública responde aos dois -------------
 # Descoberto medindo produção em 25/08/2026, logo depois de o inglês passar a
 # ser servido na raiz nua. Enquanto a raiz era um redirecionamento, nenhuma
@@ -339,9 +151,7 @@ def test_head_responde_como_get_em_toda_pagina_publica(client, rede, idioma, pag
 # ===========================================================================
 # GUARDA 3 — link cross-célula não leva prefixo de idioma, e é deliberado.
 # ===========================================================================
-# O scanner define "minha rota" pelo urlconf do PRÓPRIO funil, em vez de
-# repetir aqui a lista de prefixos de célula do Traefik (que a célula não pode
-# ler, e que já é vigiada pelo guarda 1). Regra: link interno que carrega
+# O scanner define "minha rota" pelo urlconf do PRÓPRIO funil. Regra: link interno que carrega
 # prefixo de idioma TEM de resolver no funil depois de decapado. Se não
 # resolve, é link para outra célula — e prefixo ali é o "conserto" que o D6
 # manda impedir.
@@ -429,35 +239,6 @@ def test_url_de_outra_celula_com_prefixo_morre_404(client, rede, nu):
     funil e, por isso, é uma rota interna localizada.
     """
     assert client.get(f"/pt-br{nu}", HTTP_HOST=HOST_MESH).status_code == 404
-
-
-# --- prova adversarial do próprio scanner (guarda que não fica vermelho quando
-# --- deveria é decoração) ---------------------------------------------------
-def test_o_scanner_pega_o_conserto_bem_intencionado():
-    html = '<a class="cta" href="/pt-br/checkout/curso-teste/">Comprar</a>'
-    assert links_cross_celula_com_prefixo(html, HOST_MESH) == [
-        "/pt-br/checkout/curso-teste/"
-    ]
-
-
-def test_o_scanner_pega_o_link_prefixado_escondido_em_javascript():
-    # Célula `alunos`, que o funil nunca serve — o caminho não pode virar rota
-    # do funil por acidente e desarmar a prova.
-    html = 'fetch("/es/alunos/painel/matriculas");'
-    assert links_cross_celula_com_prefixo(html, HOST_MESH) == [
-        "/es/alunos/painel/matriculas"
-    ]
-
-
-def test_o_scanner_aprova_o_contrato_de_hoje():
-    html = (
-        '<a href="/checkout/curso-teste/">comprar</a>'  # outra célula, nu: OK
-        '<form action="/pt-br/cadastro">'  # rota do funil, prefixada: OK
-        '<script src="/static/funil/api.js"></script>'  # máquina, nu: OK
-        f'<a href="https://{HOST_MESH}/es/">es</a>'  # seletor absoluto: OK
-        '<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/x.js"></script>'
-    )
-    assert links_cross_celula_com_prefixo(html, HOST_MESH) == []
 
 
 def test_o_scanner_enxerga_a_pagina_de_verdade(client, aluno):

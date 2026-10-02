@@ -8,9 +8,9 @@ não consegue explicar; teto que não decai transforma o XP em prêmio por volum
 que a lei §8 veta nominalmente; quarentena que não segura deixa o estorno chegar
 depois do orgulho.
 
-O ENVELOPE DOS TESTES É O CONGELADO, não um inventado: `event` e `version`
-separados, `event_id`, `occurred_at` e `data.site_id` — a forma que
-`contracts/eventos/*.json` fixa. Um teste com envelope de fantasia provaria que
+O ENVELOPE DOS TESTES É O DE VERDADE, não um inventado: `event` e `version`
+separados, `event_id`, `occurred_at` e `data.site_id` — a forma que os eventos
+têm no fio. Um teste com envelope de fantasia provaria que
 o motor funciona com dados que nunca vão chegar.
 """
 
@@ -61,7 +61,7 @@ def _regra(**campos) -> RegraDePontuacao:
 
 
 def _envelope(**campos) -> dict:
-    """O envelope como ele CHEGA — a forma que `contracts/eventos/*.json` fixa.
+    """O envelope como ele CHEGA pelo fio.
 
     **`ator_id` mora no ENVELOPE e é o id da PLATAFORMA**; `data.autor_id` é o id
     LOCAL da célula `sugestoes` e não credita ninguém aqui. Até 31/08/2026 estes

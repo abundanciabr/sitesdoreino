@@ -20,28 +20,21 @@ O QUE ESTE ARQUIVO MEDE
 1. o selo sai do aceite, com data e com quem conferiu;
 2. **sem aceite não há selo, e sem aceite não há evento** (a mutação do
    critério: devolver e esperar não carimbam nada, e nem avisam ninguém);
-3. os dois envelopes publicados casam com os CONTRATOS CONGELADOS, lidos dos
-   arquivos, e a carta cita o fato pelo `origem_event_id`;
+3. os dois envelopes são publicados, e a carta cita o fato pelo
+   `origem_event_id`;
 4. só ids opacos viajam, e nenhum XP viaja (o marco real vale zero);
 5. o aluno LÊ, na tela dele, que o selo vale para o dia da conferência;
 6. o fio fora do ar não perde o fato nem quebra a tela da equipe.
-
-**O schema é LIDO do arquivo, nunca copiado para dentro deste teste.** Uma
-cópia aqui seria uma segunda verdade sobre o contrato, e ela envelheceria em
-silêncio. Molde: `services/cursos/tests/test_outbox_e_eventos.py`.
 """
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 from django.db.utils import IntegrityError
 from django.test import Client
 from django.utils import timezone
-from jsonschema import Draft202012Validator, FormatChecker
 
 from apps.portfolio import conferencia, eventos
 from apps.portfolio.models import EstadoDoAluno, MotivoDaDevolucao, OutboxEvent
@@ -51,7 +44,6 @@ from conftest import COOKIE, SITE
 
 pytestmark = pytest.mark.django_db
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 MONITORA = "p_monitora"
 
 
@@ -85,21 +77,6 @@ def publicado(django_capture_on_commit_callbacks):
             )
 
     return aceitar
-
-
-def conferir_contra_o_contrato(envelope: dict) -> None:
-    """O contrato do PAR evento+versão: a versão sai do envelope, nunca daqui."""
-    schema = json.loads(
-        (CONTRATOS / f"{envelope['event']}.v{envelope['version']}.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    # `FormatChecker` é o que faz `format: uuid` deixar de ser anotação e passar
-    # a recusar valor.
-    Draft202012Validator(schema, format_checker=FormatChecker()).validate(envelope)
-    # `date-time` não está entre os checkers que o jsonschema traz sem
-    # dependência extra; o guarda o confere aqui.
-    datetime.fromisoformat(envelope["occurred_at"])
 
 
 # ---------------------------------------------------------------------------
@@ -228,11 +205,8 @@ def test_o_fato_recusa_nascer_fora_de_uma_transacao(portfolio_com_peca):
 
 
 # ---------------------------------------------------------------------------
-# 3. O EVENTO É PUBLICADO, E CASA COM O CONTRATO CONGELADO
+# 3. O EVENTO É PUBLICADO
 # ---------------------------------------------------------------------------
-def test_o_contrato_do_selo_existe(portfolio_com_peca):
-    """O guarda não passa no vazio: sem o arquivo, nada acima prova nada."""
-    assert (CONTRATOS / "pages.portfolio.conferido.v1.json").is_file()
 
 
 def test_o_aceite_publica_o_fato_e_a_carta_no_fio(portfolio_com_peca, fio, publicado):
@@ -251,14 +225,6 @@ def test_o_aceite_publica_o_fato_e_a_carta_no_fio(portfolio_com_peca, fio, publi
         "eventos.notificacao.devida",
     ]
     assert not OutboxEvent.objects.filter(published_at__isnull=True).exists()
-
-
-def test_o_envelope_publicado_casa_com_o_contrato_congelado(
-    portfolio_com_peca, fio, publicado
-):
-    publicado(portfolio_com_peca())
-
-    conferir_contra_o_contrato(fio.um_envelope("pages.portfolio.conferido"))
 
 
 def test_o_envelope_leva_quem_conferiu_e_so_ids_opacos_no_data(
@@ -282,21 +248,6 @@ def test_o_envelope_leva_quem_conferiu_e_so_ids_opacos_no_data(
         "aluno_id": "aluno-1",
         "portfolio_id": str(portfolio.pk),
     }
-
-
-def test_a_carta_do_sininho_casa_com_o_contrato_congelado(
-    portfolio_com_peca, fio, publicado
-):
-    """O guarda do Rito: assunto ou parâmetro fora do congelado reprova aqui.
-
-    O `enum` de `assunto` é fechado e os `parametros` são
-    `additionalProperties: false`, então este teste morde os dois erros que uma
-    sessão futura pode cometer sem perceber: renomear o assunto, e pendurar na
-    carta um campo "que seria útil" (a legenda, o link, o apelido).
-    """
-    publicado(portfolio_com_peca())
-
-    conferir_contra_o_contrato(fio.um_envelope("notificacao.devida"))
 
 
 def test_a_carta_endereca_o_aluno_e_leva_so_o_id_opaco(

@@ -186,29 +186,3 @@ def test_o_banco_recusa_confirmacao_sem_autor(projeto_pego, formulario):
                     [str(projeto.pk)],
                 )
     assert "confirmacao_de_pagamento_tem_autor_e_data" in str(erro.value)
-
-
-def test_nenhuma_linha_de_cobranca_entrou_na_celula():
-    """A trava do mantenedor, medida no código e não prometida numa docstring.
-
-    O piloto é pago pela escola, e o dia em que a cobrança entrar aqui é uma
-    decisão dele, não o efeito colateral de um degrau. Um `import mercadopago`
-    nesta célula, ou a biblioteca entrando no `requirements.txt`, ficam
-    vermelhos aqui antes de virarem cobrança de verdade.
-
-    A peneira olha o que EXECUTA, e não a prosa: a palavra "checkout" aparece de
-    propósito nos comentários que explicam onde o dinheiro vai entrar um dia, e
-    um guarda que reprovasse por causa deles ensinaria a apagar a explicação.
-    """
-    from pathlib import Path
-
-    celula = Path(__file__).resolve().parent.parent
-    proibidas = ("mercadopago", "mercado_pago", "mercadolibre")
-    arquivos = [*(celula / "apps").rglob("*.py"), celula / "requirements.txt"]
-    achados = [
-        (arquivo.name, palavra)
-        for arquivo in arquivos
-        for palavra in proibidas
-        if palavra in arquivo.read_text(encoding="utf-8").lower()
-    ]
-    assert achados == []

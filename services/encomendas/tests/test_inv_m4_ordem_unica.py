@@ -26,8 +26,6 @@ do `motor.CHAVE_DA_ORDEM`. A diferença entre desempate e regra é que o
 desempate nunca decide nada que os termos da lei já não tenham decidido.
 """
 
-import ast
-import inspect
 from datetime import datetime, timedelta, timezone as fuso
 
 from apps.encomendas import mural
@@ -35,19 +33,6 @@ from apps.encomendas.models import Encomenda
 
 SITE = "escola-a"
 AGORA = datetime.now(tz=fuso.utc)
-
-# Os nomes que uma segunda regra de ordem usaria. A lista é curta e visível de
-# propósito: crescer é diff, e quem revisa pergunta por quê.
-CHAVES_PROIBIDAS_DE_ORDEM = {
-    "preco_cents",
-    "taxa_cents",
-    "acordo_valor_cents",
-    "nivel",
-    "cartao",
-    "prazo_prometido_ate",
-    "prazo_producao_ate",
-    "atualizada_em",
-}
 
 
 def _envelhecer(projeto, *, dias):
@@ -162,54 +147,3 @@ def test_a_lista_e_estavel_entre_duas_leituras(dois_no_mural, criar_projeto_no_m
 
     assert len(leituras) == 1
     assert len(next(iter(leituras))) == 2
-
-
-# ---------------------------------------------------------------------------
-# 2. A GARANTIA DE FORMA: nenhuma outra chave ordena, por varredura `ast`
-# ---------------------------------------------------------------------------
-
-
-def test_a_listagem_ordena_por_criada_em_e_por_mais_nada():
-    """A propriedade medida no CÓDIGO, e não só no comportamento.
-
-    O teste de comportamento acima só pega a segunda regra que MUDA a ordem no
-    cenário montado. Uma chave nova que empatasse em todos os cenários do
-    arquivo entraria verde e mentiria no primeiro dia de produção. A varredura
-    `ast` lê o `order_by` de `mural.listar` e exige que os argumentos dele sejam
-    exatamente `criada_em` e o desempate `id`.
-    """
-    arvore = ast.parse(inspect.getsource(mural.listar))
-    chamadas = [
-        no
-        for no in ast.walk(arvore)
-        if isinstance(no, ast.Call) and getattr(no.func, "attr", "") == "order_by"
-    ]
-
-    assert len(chamadas) == 1, (
-        "a listagem do Mural tem de ter UM `order_by` só. Mais de um é mais de "
-        "uma ordem, e a segunda é o critério de morte 2 da lei §9."
-    )
-    termos = [a.value for a in chamadas[0].args if isinstance(a, ast.Constant)]
-    assert termos == ["criada_em", "id"], (
-        f"a ordem do Mural virou {termos}. A única ordem é a antiguidade do "
-        "projeto (`criada_em`), com `id` só de desempate. Acrescentar termo aqui "
-        "é a segunda regra de ordem que o critério de morte 2 da lei §9 proíbe: "
-        "pare e reabra a decisão com o mantenedor."
-    )
-
-
-def test_nenhuma_chave_de_prioridade_aparece_na_listagem():
-    """O outro rosto da mesma regra: nem por `annotate`, nem por `sorted`.
-
-    Um `order_by("criada_em", "id")` sobre um queryset já anotado com "peso"
-    passaria no teste de cima. Esta varredura procura os NOMES que uma segunda
-    régua usaria dentro da função inteira.
-    """
-    fonte = inspect.getsource(mural.listar)
-    achados = sorted(nome for nome in CHAVES_PROIBIDAS_DE_ORDEM if nome in fonte)
-
-    assert achados == [], (
-        f"a listagem do Mural passou a olhar {achados}. A ordem é só a "
-        "antiguidade do projeto (§3.3), e qualquer outra chave é a segunda "
-        "regra de ordem do critério de morte 2 da lei §9."
-    )

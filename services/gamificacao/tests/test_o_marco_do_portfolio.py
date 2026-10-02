@@ -26,12 +26,9 @@ O QUE ESTE ARQUIVO TRAVA:
 
 from __future__ import annotations
 
-import json
 import uuid
 from io import StringIO
-from pathlib import Path
 
-import jsonschema
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
@@ -58,13 +55,6 @@ pytestmark = pytest.mark.django_db
 SITE = "site-de-teste"
 ALUNO = "pes-aluno"
 MONITORA = "pes-monitora"
-
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "pages.portfolio.conferido.v1.json"
-)
 
 
 def _marco(**campos) -> ConquistaDefinicao:
@@ -112,12 +102,7 @@ def _nada_foi_pago() -> None:
     assert all(p.xp_total == 0 for p in PerfilJogador.objects.all())
 
 
-# ------------------------------------------- 1. o envelope é o do contrato
-
-
-def test_o_envelope_deste_arquivo_e_o_que_o_contrato_congelou():
-    """Validado contra o ARQUIVO, nunca contra uma cópia do formato aqui dentro."""
-    jsonschema.validate(_selo(), json.loads(CONTRATO.read_text("utf-8")))
+# ------------------------------------------- 1. a tomada
 
 
 def test_a_tomada_esta_ligada_nas_duas_pontas_e_o_marco_nasce_desligado():

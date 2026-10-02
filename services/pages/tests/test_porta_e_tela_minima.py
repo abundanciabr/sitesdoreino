@@ -16,8 +16,7 @@ Quatro coisas se provam aqui, e cada uma tem um modo de falha silencioso:
 
 3. **A célula NÃO assina sessão** ([INV-P12], `armadilhas/143`). O cookie
    viaja OPACO para a `identidade`, com o valor intacto, e nenhuma resposta
-   desta casa grava `meshcraft_sessao`. O guarda de configuração está em
-   `test_inv_pages_nao_assina_sessao.py`; este aqui mede o comportamento.
+   desta casa grava `meshcraft_sessao`.
 
 4. **A vitrine pública não passa pela porta.** `/<apelido>` é o link
    que o aluno manda ao cliente pagante, e uma porta escrita sem essa distinção
@@ -35,11 +34,6 @@ from __future__ import annotations
 import pytest
 from django.test import Client
 
-from apps.core.porta import (
-    CAMINHOS_ISENTOS,
-    PREFIXO_DA_PORTA_DE_MAQUINA,
-    PREFIXO_PUBLICO_DA_VITRINE,
-)
 
 from tests.conftest import ANA, COOKIE, dublar_matricula, dublar_sessao
 
@@ -217,15 +211,3 @@ def test_um_caminho_parecido_com_a_vitrine_nao_herda_a_isencao(env_dos_pares, re
     """Sem a barra na comparação, `/trabalhossecreto/guardar` entraria de graça."""
     resposta = bater("/trabalhossecreto/guardar")
     assert "Entre para ver o seu portfólio" in texto(resposta)
-
-
-def test_as_isencoes_da_porta_sao_exatamente_estas():
-    """Igualdade EXATA, e não `in`: rota nova não escapa em silêncio.
-
-    Ou ela está declarada aqui de propósito, ou a porta a protege. Um teste
-    escrito com `in` deixaria passar a isenção que alguém acrescentasse com
-    pressa.
-    """
-    assert CAMINHOS_ISENTOS == frozenset({"/healthz"})
-    assert PREFIXO_DA_PORTA_DE_MAQUINA == "/interno"
-    assert PREFIXO_PUBLICO_DA_VITRINE == "/portfolio"

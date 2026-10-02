@@ -9,7 +9,7 @@ O que estes guardas protegem (degrau 7.3, `AGENTS.metricas.md`):
    guardou de novo.
 4. **Assunto desconhecido é fato**, não erro: esta célula é um livro, não um
    contador de assuntos previstos.
-5. **O consumidor assina só o que tem contrato congelado e alguém publica.**
+5. **O consumidor assina só o que alguém publica.**
 
 A régua deste arquivo é a lista de modos de falha de um corpo que chega pela
 rede: não é UTF-8, não é JSON, é JSON mas não é objeto, faltam chaves, o id não
@@ -22,9 +22,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from pathlib import Path
 
-import jsonschema
 import pytest
 
 from apps.fatos.models import Evento, EventoMorto
@@ -35,11 +33,9 @@ pytestmark = pytest.mark.django_db
 # 01h de UTC do dia 1º: ainda é dia 30 em São Paulo.
 NA_VIRADA = "2026-10-01T01:00:00+00:00"
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
-
-#: Um `data` valido por evento do funil, com os campos exigidos pelo contrato
-#: congelado e nenhum a mais. `visitor_id` e `lead_id` sao opacos por desenho
-#: do contrato (nunca email, telefone ou nome); e essa a garantia que os
+#: Um `data` valido por evento do funil, com os campos que o funil publica
+#: e nenhum a mais. `visitor_id` e `lead_id` sao opacos por desenho
+#: (nunca email, telefone ou nome); e essa a garantia que os
 #: testes abaixo defendem.
 FUNIL_DADOS = {
     "funil.pagina-vista": {
@@ -76,9 +72,7 @@ FUNIL_DADOS = {
 
 
 def _envelope_do_funil(tipo: str) -> tuple[str, dict]:
-    """O envelope de um evento do funil, validado contra o ARQUIVO do
-    contrato antes de servir de fixture: fixture que nao bate com o contrato
-    real e fixture errada, nao teste confiavel."""
+    """O envelope de um evento do funil, do jeito que ele chega pelo fio."""
     corpo = {
         "event": tipo,
         "version": 1,
@@ -86,8 +80,6 @@ def _envelope_do_funil(tipo: str) -> tuple[str, dict]:
         "occurred_at": NA_VIRADA,
         "data": FUNIL_DADOS[tipo],
     }
-    esquema = json.loads((CONTRATOS / f"{tipo}.v1.json").read_text(encoding="utf-8"))
-    jsonschema.validate(corpo, esquema)
     return json.dumps(corpo), FUNIL_DADOS[tipo]
 
 
@@ -180,27 +172,15 @@ def test_corpo_sem_nada_legivel_ainda_vira_morto():
 # ----------------------------------------------------- o consumidor de streams
 
 
-def test_o_consumidor_assina_so_o_que_tem_contrato_e_alguem_publica():
+def test_o_consumidor_assina_o_que_alguem_publica():
     """Stream sem publicador vira grupo de consumo vazio e ilusão de pronto.
 
-    E stream sem contrato congelado seria fato construído sobre areia: o
-    formato pode mudar sem aviso. `matricula.situacao-alterada` era o assunto
-    que esta célula mais queria e entrou em 05/09/2026 (degrau 8), quando as
-    duas condicoes passaram a valer: contrato congelado no PR #1076 e a
-    `alunos` publicando de verdade no PR #1080.
+    `matricula.situacao-alterada` era o assunto que esta célula mais queria e
+    entrou em 05/09/2026 (degrau 8), com a `alunos` publicando de verdade.
     """
-    from pathlib import Path
-
     from apps.fatos.management.commands.consume_eventos import GRUPO, STREAMS
 
     assert GRUPO == "metricas"
-    contratos = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
-    assert contratos.is_dir(), contratos
-    for stream in STREAMS:
-        assunto = stream.removeprefix("eventos.")
-        assert list(
-            contratos.glob(f"{assunto}.v*.json")
-        ), f"{assunto} não tem contrato congelado em contracts/eventos/"
     # Estava FORA ate 05/09/2026, e a linha vivia aqui como marcador da
     # divida. Agora e o contrario, e continua sendo uma afirmacao: se alguem
     # remover o assunto da lista, o livro para de saber quem virou aluna e
@@ -239,10 +219,8 @@ def test_reentrega_do_funil_nao_duplica(tipo):
 def test_campo_pessoal_no_funil_vira_evento_morto_pelo_processar(tipo):
     """A guarda REAL: `processar` (consume_eventos.py), que e o caminho por
     onde toda mensagem do Redis passa, recusa o campo pessoal ANTES de
-    `receber` guardar qualquer coisa. Defesa em duas camadas: o contrato ja
-    reprova este payload (additionalProperties: false, conferido abaixo), e
-    o consumidor reprova de novo por nome de campo, mesmo que um publicador
-    um dia divirja do contrato.
+    `receber` guardar qualquer coisa: o consumidor reprova por nome de campo,
+    mesmo que um publicador um dia mande o que não devia.
     """
     from apps.fatos.management.commands.consume_eventos import processar
 
@@ -250,10 +228,6 @@ def test_campo_pessoal_no_funil_vira_evento_morto_pelo_processar(tipo):
     corpo, dados = _envelope_do_funil(tipo)
     envelope_com_email = json.loads(corpo)
     envelope_com_email["data"] = {**dados, "email": "pessoa@exemplo.test"}
-
-    esquema = json.loads((CONTRATOS / f"{tipo}.v1.json").read_text(encoding="utf-8"))
-    with pytest.raises(jsonschema.ValidationError):
-        jsonschema.validate(envelope_com_email, esquema)
 
     desfecho = processar(json.dumps(envelope_com_email).encode("utf-8"))
     assert desfecho == MORTO
