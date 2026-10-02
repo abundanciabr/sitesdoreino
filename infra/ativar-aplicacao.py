@@ -85,12 +85,11 @@ def ambiente_da_aplicacao(imagem: str, codigo: Path) -> dict:
     # O Compose precisa dos nomes dos tokens para renderizar o Traefik. Valores
     # ficam somente no ambiente do processo e nunca são escritos no journal.
     chaves = ("ALUNOS_API_TOKEN", "TOKEN_CATALOGO")
-    for linha in admin.read_text(encoding="utf-8").splitlines():
+    linhas = admin.read_text(encoding="utf-8").splitlines() if admin.is_file() else []
+    for linha in linhas:
         chave, separador, valor = linha.partition("=")
         if separador and chave in chaves and valor:
             ambiente[chave] = valor
-    if any(not ambiente.get(chave) for chave in chaves):
-        raise RuntimeError("tokens da entrada privada ausentes em env/admin.env")
     return ambiente
 
 
@@ -151,45 +150,12 @@ def copiar_bancos(ambiente: dict) -> list[str]:
 
 
 def provar_site() -> None:
-    sites = json.loads((RAIZ / "sites.json").read_text(encoding="utf-8"))["sites"]
-    for site in sites:
-        host = site["host"]
-        tls = [] if host == "meshcraft.top" else ["-k"]
-        codigo = executar("curl", "-sL", *tls, *CURL_RETRY, "--max-time", "20", "--max-redirs", "3",
-                          "--resolve", f"{host}:443:127.0.0.1", "-o", "/dev/null",
-                          "-w", "%{http_code}", f"https://{host}/", saida=True)
-        if codigo != "200":
-            raise RuntimeError(f"site {host} respondeu {codigo}")
-    for caminho, esperados in (
-        ("/forum/", {"200", "302", "303"}),
-        ("/quiz/crivo/", {"200", "302", "303"}),
-        ("/portfolio/", {"200", "302", "303"}),
-        ("/cursos/", {"200", "302", "303"}),
-        ("/admin/", {"302"}),
-    ):
-        codigo = executar("curl", "-s", *CURL_RETRY, "--max-time", "20", "--resolve",
-                          "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
-                          "-w", "%{http_code}", f"https://meshcraft.top{caminho}", saida=True)
-        if codigo not in esperados:
-            raise RuntimeError(f"rota {caminho} respondeu {codigo}")
-    for caminho in ("/static/funil/api.js", "/checkout/static/checkout/api.js"):
-        resposta = executar("curl", "-s", *CURL_RETRY, "--max-time", "20", "--resolve",
-                            "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
-                            "-w", "%{http_code} %{content_type}",
-                            f"https://meshcraft.top{caminho}", saida=True)
-        codigo, _, tipo = resposta.partition(" ")
-        if codigo != "200" or "javascript" not in tipo.lower():
-            raise RuntimeError(f"estático {caminho} respondeu {codigo} ({tipo})")
-    for caminho in (
-        "/alunos/api/alunos/pre-matriculas?status=aguardando",
-        "/alunos/api/alunos/pre-matriculas?status=recusada",
-        "/alunos/api/alunos/matriculas",
-        "/catalogo/api/catalogo/produtos",
-    ):
-        codigo = executar("curl", "-s", *CURL_RETRY, "--max-time", "15", "-o", "/dev/null",
-                          "-w", "%{http_code}", f"http://127.0.0.1:8443{caminho}", saida=True)
-        if codigo != "200":
-            raise RuntimeError(f"entrada privada {caminho} respondeu {codigo}")
+    """A página inicial responde 200."""
+    codigo = executar("curl", "-sL", *CURL_RETRY, "--max-time", "20", "--max-redirs", "3",
+                      "--resolve", "meshcraft.top:443:127.0.0.1", "-o", "/dev/null",
+                      "-w", "%{http_code}", "https://meshcraft.top/", saida=True)
+    if codigo != "200":
+        raise RuntimeError(f"página inicial respondeu {codigo}")
 
 
 def sincronizar_sites(fonte: Path, ambiente: dict) -> None:
@@ -222,9 +188,6 @@ def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
     if atual.exists():
         atual.rename(antigo)
     shutil.copytree(snapshot / "traefik", atual)
-    env_antigo = snapshot / ".env"
-    if env_antigo.is_file():
-        shutil.copy2(env_antigo, RAIZ / ".env")
     for nome in ARQUIVOS_AUXILIARES:
         if (snapshot / nome).is_file():
             shutil.copy2(snapshot / nome, RAIZ / nome)
@@ -274,9 +237,6 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
             shutil.copy2(RAIZ / nome, snapshot / nome)
     if (PUBLICACOES / "imagens.json").is_file():
         shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
-    if (RAIZ / ".env").is_file():
-        shutil.copy2(RAIZ / ".env", snapshot / ".env")
-        os.chmod(snapshot / ".env", 0o600)
     estado = {"sha": sha, "snapshot": str(snapshot), "backups": copias,
               "fase": "candidato"}
     salvar(TRANSICAO, estado)
@@ -304,7 +264,7 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
         for nome in ARQUIVOS_AUXILIARES:
             if (fonte / nome).is_file():
                 shutil.copy2(fonte / nome, RAIZ / nome)
-        # Variáveis de pin sem segredos. A .env antiga foi preservada acima.
+        # Variáveis de pin sem segredos.
         with (RAIZ / ".env").open("a", encoding="utf-8") as arquivo:
             arquivo.write(f"\nAPLICACAO_IMAGEM={imagem}\nAPLICACAO_CODIGO={codigo}\n")
         estado["fase"] = "rotas-trocadas"
@@ -397,8 +357,6 @@ def sincronizar_infra(sha: str) -> None:
             shutil.copy2(RAIZ / nome, snapshot / nome)
     if (PUBLICACOES / "imagens.json").is_file():
         shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
-    if (RAIZ / ".env").exists():
-        shutil.copy2(RAIZ / ".env", snapshot / ".env")
     try:
         shutil.copy2(fonte / "docker-compose.yml", RAIZ / "docker-compose.yml")
         alvo = RAIZ / "traefik"

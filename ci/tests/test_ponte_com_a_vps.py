@@ -27,7 +27,6 @@ import sys
 RAIZ = Path(__file__).resolve().parents[2]
 PROVISIONADOR = RAIZ / "infra" / "provisionar-usuario-ponte.sh"
 INSTALADOR = RAIZ / "infra" / "instalar-provisionador-usuario-ponte.sh"
-SINCRONIZADOR = RAIZ / "infra" / "sincronizar-infra-na-vps.sh"
 
 CAMINHO_CONGELADO = "/usr/local/sbin/provisionar-usuario-ponte"
 
@@ -153,29 +152,6 @@ def test_o_provisionador_mede_o_deploy_antes_de_recarregar():
     )
 
 
-def test_a_ponte_nao_segura_a_sincronizacao_da_infraestrutura():
-    """A queda medida no run 35047777635 não pode voltar."""
-    codigo = so_codigo(SINCRONIZADOR)
-    chamada = re.search(r"^\s*sudo -n .*$", codigo, re.M)
-    assert chamada, "a esteira precisa chamar o provisionador congelado"
-    guarda = re.search(r'^\s*if \[ -e "\$PROVISIONADOR_DA_PONTE" \]; then$', codigo, re.M)
-    assert guarda and guarda.start() < chamada.start(), (
-        "o `sudo -n` tem de estar atrás da guarda de existência: sem a regra de "
-        "sudo instalada ele devolve `sudo: a password is required` e, sob "
-        "`set -eu` e depois da sentinela SINCRONIZACAO-INICIADA, derruba a "
-        "sincronização inteira sem repetição"
-    )
-    assert '! cmp -s "$PROVISIONADOR_DA_PONTE"' in codigo[:chamada.start()], (
-        "copia root divergente precisa falhar antes do sudo e antes de consumir infra.new"
-    )
-    assert "instalar-provisionador-usuario-ponte.sh" in codigo, (
-        "o log tem de dizer a linha exata que liga a ponte"
-    )
-    assert codigo.index("PROVISIONADOR_DA_PONTE=") < codigo.index("docker-compose.yml.new docker-compose.yml"), (
-        "a ponte é reconciliada antes de qualquer troca, quando nada em uso mudou ainda"
-    )
-
-
 def test_o_deploy_so_executa_o_caminho_congelado_que_ele_nao_pode_alterar():
     codigo = so_codigo(INSTALADOR)
     assert f"deploy ALL=(root) NOPASSWD: {CAMINHO_CONGELADO}" in codigo.replace(
@@ -187,9 +163,6 @@ def test_o_deploy_so_executa_o_caminho_congelado_que_ele_nao_pode_alterar():
     )
     assert "install -o root -g root -m 755" in codigo, (
         "o que roda como root não pode ser gravável pelo deploy"
-    )
-    assert CAMINHO_CONGELADO in so_codigo(SINCRONIZADOR), (
-        "a esteira tem de executar a cópia congelada, nunca o arquivo que ela mesma acabou de receber"
     )
 
 
@@ -215,64 +188,6 @@ def linux_isolado(pasta: Path, codigo: str) -> None:
         capture_output=True, text=True, timeout=60,
     )
     assert processo.returncode == 0, (processo.stdout, processo.stderr)
-
-
-def test_sincronizador_recusa_copia_stale_compose_e_staging_trocado(tmp_path):
-    stage = tmp_path / "infra.new"
-    stage.mkdir()
-    (stage / "traefik").mkdir()
-    (stage / "traefik" / "rota.yml").write_text("rota\n", encoding="utf-8")
-    (stage / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
-    (stage / "sites.json").write_text("{}\n", encoding="utf-8")
-    (stage / "sincronizar_sites.py").write_text("pass\n", encoding="utf-8")
-    (stage / "publicacao-local.py").write_text("pass\n", encoding="utf-8")
-    (stage / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
-    (stage / INSTALADOR.name).write_bytes(INSTALADOR.read_bytes())
-    (tmp_path / "env").mkdir()
-    (tmp_path / "env/admin.env").write_text(
-        "ALUNOS_API_TOKEN=teste\nTOKEN_CATALOGO=teste\n", encoding="utf-8"
-    )
-    binarios = tmp_path / "bin"
-    binarios.mkdir()
-    (binarios / "docker").write_text(
-        "#!/bin/bash\n[ ! -e /plataforma/compose-reprova ]\n", encoding="utf-8"
-    )
-    (binarios / "sudo").write_text(
-        "#!/bin/bash\n"
-        "[ ! -e /proc/$$/fd/8 ] || { echo fd8-herdado >&2; exit 88; }\n"
-        "printf sem-fd8 > /plataforma/sudo-prova\n"
-        "printf '{\"trocado\":true}\\n' > /plataforma/infra.new/sites.json\n",
-        encoding="utf-8",
-    )
-    (binarios / "python3").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
-    linux_isolado(tmp_path, r'''
-set -euo pipefail
-export PLATAFORMA_DIR=/plataforma PATH=/plataforma/bin:$PATH
-sed -i 's/\r$//' /plataforma/bin/*
-chmod +x /plataforma/bin/*
-cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
-chmod 755 /usr/local/sbin/provisionar-usuario-ponte
-printf '\n# stale\n' >> /usr/local/sbin/provisionar-usuario-ponte
-# A copia root antiga falha antes de executar sudo ou consumir infra.new.
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-grep -Fq 'copia root da ponte diverge' /plataforma/saida
-test ! -e /plataforma/sudo-prova
-cp /plataforma/infra.new/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
-chmod 755 /usr/local/sbin/provisionar-usuario-ponte
-# Compose inválido recusa antes do provisionador root, que poderia tocar SSH.
-touch /plataforma/compose-reprova
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-grep -Fq 'nenhuma mutacao root' /plataforma/saida
-test ! -e /plataforma/sudo-prova
-rm /plataforma/compose-reprova
-# sudo simula troca concorrente do staging e atesta FD8 fechado.
-if bash /fontes/sincronizar-infra-na-vps.sh > /plataforma/saida 2>&1; then exit 1; fi
-test "$(cat /plataforma/sudo-prova)" = sem-fd8
-grep -Fq 'infra.new mudou durante a fase root' /plataforma/saida
-test -f /plataforma/infra.new/docker-compose.yml
-test ! -e /plataforma/docker-compose.yml.new
-echo rejeicoes-e-ordem-confirmadas
-''')
 
 
 def test_instalador_restaura_kit_e_instala_provisionador(tmp_path):

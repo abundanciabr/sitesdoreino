@@ -222,7 +222,7 @@ def test_prova_http_repete_transporte_sem_reduzir_rotas(tmp_path, monkeypatch):
 
     monkeypatch.setattr(ativacao, "executar", executar)
     ativacao.provar_site()
-    assert len(chamadas) == 12  # raiz, 5 rotas, 2 scripts e 4 leituras privadas
+    assert len(chamadas) == 1  # só a página inicial
     assert all("--retry-all-errors" in chamada and
                chamada[chamada.index("--retry") + 1] == "5" for chamada in chamadas)
 

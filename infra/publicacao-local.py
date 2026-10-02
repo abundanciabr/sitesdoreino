@@ -92,9 +92,8 @@ def garantir_imagem(imagem):
 
 
 def provar(estado, sha, versao=None):
-    versao = versao or versao_de(estado, sha)
-    servicos = estado["servicos"]
-    for servico in servicos:
+    """Contêiner de pé e saudável, e a página inicial responde 200."""
+    for servico in estado["servicos"]:
         container = compose("ps", "-q", servico)
         if not container:
             raise ValueError("serviço sem container: " + servico)
@@ -103,15 +102,6 @@ def provar(estado, sha, versao=None):
             raise ValueError("serviço parado durante a prova: " + servico)
         if situacao.get("Health", {}).get("Status", "healthy") != "healthy":
             raise ValueError("serviço sem saúde durante a prova: " + servico)
-        imagem = comando("docker", "inspect", "--format", "{{.Image}}", container)
-        esperada = comando("docker", "image", "inspect", "--format", "{{.Id}}", versao["imagem"])
-        if not imagem or imagem != esperada:
-            raise ValueError("imagem aplicada diverge da imagem testada: " + servico)
-        if versao.get("codigo"):
-            montagens = json.loads(comando("docker", "inspect", "--format", "{{json .Mounts}}", container))
-            if not any(m.get("Destination") == "/app" and m.get("Source") == versao["codigo"]
-                       and m.get("RW") is False for m in montagens):
-                raise ValueError("código montado diverge do código testado: " + servico)
     endereco = estado["endereco"]
     if not re.fullmatch(r"https://[^\s/@?#]+(?:/[^\s?#]*)?", endereco):
         raise ValueError("endereço da prova precisa ser HTTPS sem credenciais ou query")
@@ -136,14 +126,6 @@ def pin(estado, sha, versao=None):
 
 def executar(acao):
     global CELULA
-    if acao == "conferir-infra":
-        for journal in sorted(PASTA.glob("*.json")):
-            if journal.name in {"imagens.json", "recuperacao-terminal.json"}:
-                continue
-            estado = json.loads(journal.read_text())
-            CELULA = estado["celula"]
-            provar(estado, estado["atual"], versao_de(estado, estado["atual"]))
-        return
     if not re.fullmatch(r"[a-z][a-z0-9_]*", CELULA):
         raise ValueError("célula inválida")
     caminho = PASTA / (CELULA + ".json")

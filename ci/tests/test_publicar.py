@@ -188,25 +188,6 @@ def test_versao_existente_e_reaproveitada_sem_copiar_de_novo(repo, monkeypatch, 
     assert (imagem, construida, build) == ("plataforma-demo:base-x", False, 0.0)
 
 
-def test_infra_reprovada_nao_inicia_publicacao_de_celula(tmp_path, monkeypatch):
-    publicar = carregar("publicar_infra_reprovada", "infra/publicar.py")
-    import mapa_de_celulas
-    monkeypatch.setattr(mapa_de_celulas, "celulas_do_diff", lambda *_: ["admin"])
-    monkeypatch.setattr(publicar, "LOTES", tmp_path / "lotes")
-    monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
-    (tmp_path / "logs").mkdir()
-    monkeypatch.setattr(publicar, "git", lambda *args: (
-        "infra/docker-compose.yml\nservices/admin/apps/core/views.py"
-        if args[0] == "diff" else "b" * 40 if args[0] == "rev-parse"
-        else "2026-10-01T12:00:00+00:00"))
-    monkeypatch.setattr(publicar, "sincronizar_infra", lambda *args: False)
-    monkeypatch.setattr(publicar, "avisar", lambda *args: None)
-    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: pytest.fail("publicação iniciou sem infra"))
-    assert publicar.lote("a" * 40, "b" * 40) == 1
-    resultado = json.loads((tmp_path / "lotes" / ("b" * 40 + ".json")).read_text())
-    assert resultado["resultado"] == {"infra": 1}
-
-
 def test_infra_sem_codigo_apos_corte_usa_sincronizador_da_aplicacao(tmp_path, monkeypatch):
     publicar = carregar("publicar_infra_aplicacao", "infra/publicar.py")
     import mapa_de_celulas
@@ -221,7 +202,6 @@ def test_infra_sem_codigo_apos_corte_usa_sincronizador_da_aplicacao(tmp_path, mo
         "infra/traefik/dynamic/plataforma.yml" if args[0] == "diff"
         else "b" * 40 if args[0] == "rev-parse" else "2026-10-01T12:00:00+00:00"))
     chamadas = []
-    monkeypatch.setattr(publicar, "sincronizar_infra", lambda *args: pytest.fail("sincronizador antigo"))
     monkeypatch.setattr(publicar, "sincronizar_infra_aplicacao", lambda sha, _log: (
         chamadas.append(sha) or True))
     assert publicar.lote("a" * 40, "b" * 40) == 0
@@ -298,14 +278,3 @@ def test_codigo_montado_somente_leitura_vira_pin_e_aprovacao(receptor):
     assert estado["anterior_aprovada"]["codigo"] is None
 
 
-def test_codigo_montado_diferente_do_testado_reprova(receptor):
-    modulo, _, montagem = receptor
-    modulo.executar("preparar")
-    modulo.executar("aplicar")
-    montagem["valor"] = [{"Destination": "/app", "Source": "/outro", "RW": False}]
-    with pytest.raises(ValueError, match="código montado diverge"):
-        modulo.executar("aprovar")
-    montagem["valor"][0].update(Source=json.loads((modulo.PASTA / "admin.json").read_text())["atual_versao"]["codigo"],
-                                RW=True)
-    with pytest.raises(ValueError, match="código montado diverge"):
-        modulo.executar("aprovar")

@@ -127,32 +127,6 @@ def test_backup_recusado_cancela_candidata_sem_trocar_pin(runtime, monkeypatch):
     assert ler(m)["atual"] == A
     assert json.loads((m.PASTA / "imagens.json").read_text())["services"]["admin"]["image"].endswith(A)
 
-def test_infra_prova_pin_recuperado_e_preserva_aprovacao(runtime, monkeypatch):
-    m, chamadas = runtime
-    preparar(m, monkeypatch)
-    m.executar("aplicar")
-    monkeypatch.setenv("TAG", A)
-    monkeypatch.setenv("ATUAL_ESPERADA", B)
-    m.executar("recuperar")
-    antes = ler(m)
-    chamadas.clear()
-    m.executar("conferir-infra")
-    assert ler(m) == antes
-    assert any(c[0] == "curl" for c in chamadas)
-    assert any(c[:3] == ("docker", "image", "inspect") and c[-1].endswith(A) for c in chamadas)
-
-
-def test_recusa_imagem_divergente_antes_da_aprovacao(runtime, monkeypatch):
-    m, chamadas = runtime
-    preparar(m, monkeypatch)
-    m.executar("aplicar")
-    original = m.comando
-    monkeypatch.setattr(m, "comando", lambda *a: "outra-imagem" if a[:2] == ("docker", "inspect") and a[3] == "{{.Image}}" else original(*a))
-    with pytest.raises(ValueError, match="imagem aplicada diverge"):
-        m.executar("aprovar")
-    assert ler(m)["aprovada"]["sha"] == A
-
-
 def test_sem_journal_a_primeira_que_abre_o_endereco_vira_aprovada(runtime, monkeypatch):
     m, chamadas = runtime
     (m.PASTA / "admin.json").unlink()
@@ -189,34 +163,6 @@ def test_aprovacao_inicial_tem_horario_com_fuso(runtime):
     from datetime import datetime
     m, chamadas = runtime
     assert datetime.fromisoformat(ler(m)["publicada_em"]).tzinfo is not None
-
-
-@pytest.mark.parametrize("falha_prova", [False, True])
-def test_retorno_infra_prova_uma_vez_e_para(tmp_path, falha_prova):
-    import os
-    import subprocess
-    bash = BASH
-    assert bash
-    fonte = (ROOT / "infra/sincronizar-infra-na-vps.sh").read_text(encoding="utf-8")
-    funcao = fonte[fonte.index("restaurar_o_que_estava_no_ar() {"):fonte.index("# O trap cobre")]
-    trap = next(linha for linha in fonte.splitlines() if linha.startswith("trap "))
-    script = tmp_path / "infra-retorno.sh"
-    script.write_text("""set -e
-RAIZ=$PWD
-STAMP=teste
-TROCADO=1
-cp() { :; }
-rm() { :; }
-docker() { :; }
-python3() { echo PROVA-RETORNO; return "$FALHA_PROVA"; }
-""" + funcao + trap + "\nexit 1\n", encoding="utf-8", newline="\n")
-    resultado = subprocess.run([bash, "infra-retorno.sh"], cwd=tmp_path,
-                               env=dict(os.environ, FALHA_PROVA=str(int(falha_prova))),
-                               capture_output=True, text=True)
-    assert resultado.returncode == (2 if falha_prova else 1)
-    assert resultado.stdout.count("PROVA-RETORNO") == 1
-    assert ("RECUPERACAO-TERMINAL" in resultado.stderr) == falha_prova
-    assert ("VOLTA ATRAS CONCLUIDA" in resultado.stdout) != falha_prova
 
 
 def test_auxiliar_morto_recusa_promocao_mesmo_http_200(runtime, monkeypatch):

@@ -45,12 +45,8 @@ TRABALHO = PUBLICACOES / "trabalho"
 LOGS = PUBLICACOES / "logs"
 LOTES = PUBLICACOES / "lotes"
 GUARDAR_VERSOES = 3
-ARQUIVOS_DA_INFRA = ("docker-compose.yml", "traefik", "sites.json", "sincronizar_sites.py",
-                     "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
-                     "publicacao-local.py")
 GATILHOS_DA_INFRA = ("infra/docker-compose.yml", "infra/traefik/", "infra/sites.json",
-                     "infra/sincronizar_sites.py", "infra/sincronizar-infra-na-vps.sh",
-                     "infra/provisionar-usuario-ponte.sh",
+                     "infra/sincronizar_sites.py", "infra/provisionar-usuario-ponte.sh",
                      "infra/instalar-provisionador-usuario-ponte.sh",
                      "infra/publicacao-local.py")
 SHA = re.compile(r"[0-9a-f]{40}")
@@ -343,29 +339,6 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
             shutil.rmtree(trabalho, ignore_errors=True)
 
 
-def sincronizar_infra(sha: str, registro) -> bool:
-    if sha != git("rev-parse", "refs/heads/main"):
-        return True
-    identificador = f"infra.new.{sha[:12]}-{os.getpid()}"
-    fonte = TRABALHO / f"{identificador}-fonte"
-    try:
-        extrair(sha, fonte, "infra")
-        envio = RAIZ / identificador
-        envio.mkdir()
-        for nome in ARQUIVOS_DA_INFRA:
-            origem = fonte / "infra" / nome
-            (shutil.copytree if origem.is_dir() else shutil.copy2)(origem, envio / nome)
-        processo = subprocess.run(["bash", str(fonte / "infra/sincronizar-infra-na-vps.sh")], cwd=RAIZ,
-                                  env=ambiente_base() | {"STAGING": identificador}, text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
-        registro.write(processo.stdout)
-        ok = processo.returncode == 0 and "SINCRONIZACAO-CONCLUIDA" in processo.stdout
-        dizer(("INFRA-NO-AR: " if ok else f"INFRA-FALHOU (pasta {envio} preservada): ") + sha[:9])
-        return ok
-    finally:
-        shutil.rmtree(fonte, ignore_errors=True)
-
-
 def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
     """Depois do corte, atualiza Compose e rotas com snapshot e volta própria."""
     if sha != git("rev-parse", "refs/heads/main"):
@@ -419,33 +392,21 @@ def lote(base: str, head: str) -> int:
 
 
 def lote_travado(base: str, head: str) -> int:
-    import mapa_de_celulas  # noqa: PLC0415
-
     if head != git("rev-parse", "refs/heads/main"):
         dizer(f"SUPERADO: lote {head[:9]} não inicia; a versão mais nova publica o que ele trazia")
         return 0
     arquivo_lote = LOTES / f"{head}.json"
     arquivos = arquivos_do_lote(base, head)
-    celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(FERRAMENTAS))
-    if "aplicacao" in celulas:
-        celulas = ["aplicacao"]
+    # A aplicação publica quando muda código, pacote ou conteúdo do site.
+    celulas = ["aplicacao"] if any(a.startswith(("services/", "packages/", "documentos/")) for a in arquivos) else []
     infra = any(a.startswith(GATILHOS_DA_INFRA) for a in arquivos)
-    aplicacao_antes = (journal("aplicacao") or {}).get("atual")
     pedido_em = git("log", "-1", "--format=%cI", head)
     situacao = {"base": base, "head": head, "infra": infra, "celulas": celulas, "inicio": agora(),
                 "resultado": {}, "estado": "publicando"}
     arquivo_lote.write_text(json.dumps(situacao))
     dizer(f"LOTE {base[:9]}..{head[:9]}: infra={infra} celulas={celulas}")
     falhas = 0
-    with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
-        if infra and not aplicacao_antes and "aplicacao" not in celulas and not sincronizar_infra(head, registro):
-            falhas += 1
-            situacao["resultado"]["infra"] = 1
-            avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.",
-                   "infra")
-    # Uma célula que depende do Compose novo não pode avançar com a infra antiga.
-    # A sincronização já tentou sua própria volta e preservou o staging para reparo.
-    if situacao["resultado"].get("infra") != 1 and head == git("rev-parse", "refs/heads/main"):
+    if head == git("rev-parse", "refs/heads/main"):
         processos = {c: subprocess.Popen([sys.executable, __file__, "publicar", c, head, "--pedido-em", pedido_em])
                      for c in celulas}
         for celula, processo in processos.items():
@@ -453,7 +414,7 @@ def lote_travado(base: str, head: str) -> int:
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
     # A infra sincroniza com a versão que ficou no ar; a sincronização volta sozinha se o endereço não abrir.
-    if infra and aplicacao_antes and head == git("rev-parse", "refs/heads/main"):
+    if infra and journal("aplicacao") and head == git("rev-parse", "refs/heads/main"):
         with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
             if not sincronizar_infra_aplicacao(head, registro):
                 falhas += 1
