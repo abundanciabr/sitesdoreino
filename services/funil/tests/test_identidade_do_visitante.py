@@ -156,7 +156,7 @@ def test_o_numero_viaja_no_redirecionamento_da_barra_no_final(client, rede):
 
 
 def test_host_nao_cadastrado_nao_ganha_numero(client, rede):
-    """[INV-P11]: host desconhecido é 404, nunca um site padrão. Um número de
+    """host desconhecido é 404, nunca um site padrão. Um número de
     visitante entregue ali seria identidade gasta com domínio que não é nosso."""
     resposta = client.get("/", HTTP_HOST=HOST_DESCONHECIDO)
 

@@ -71,8 +71,7 @@ def _indexar(pessoas: "list[dict]") -> "tuple[dict, dict, set]":
         chave = chave_de(pessoa.get("whatsapp") or "")
         if not chave:
             continue
-        # Duas fichas com o MESMO número: a primeira fica. Acontece de verdade
-        # (alguém que saiu e voltou tem duas linhas, `DECISAO-a-ficha-nao-se-apaga`),
+        # Duas fichas com o MESMO número: a primeira fica. Acontece de verdade,
         # e a fila vem ordenada por data — a primeira é a mais antiga, que é a
         # que está esperando há mais tempo.
         por_chave.setdefault(chave, pessoa)

@@ -8,8 +8,8 @@ experimentos sem o mantenedor (decisão dele em 27/09/2026). Quem chama é
 ## Um site só, e não um parâmetro
 
 A área administrativa só tem rota em `meshcraft.top` (router `admin` de
-`infra/traefik/dynamic/plataforma.yml`) e `basileiatoutheou.org` está congelado
-(`docs/decisoes/DECISAO-foco-em-meshcraft.md`). Um host escolhido na hora
+`infra/traefik/dynamic/plataforma.yml`) e `basileiatoutheou.org` está congelado.
+Um host escolhido na hora
 apontaria para um site sem tela onde conferir ou encerrar o que foi ligado.
 
 ## A mesma porta das telas, e não um atalho

@@ -47,7 +47,6 @@ SEM_SITE_ID = {"Pessoa"}
 # Não é hipótese: aconteceu em 04/09/2026 às 15h UTC, três horas depois de o
 # arquivo nascer com `AGORA = datetime(2026, 9, 4, 12, 0)`. A `main` já estava
 # com a bomba armada quando o degrau seguinte (o motor, TAR-121) a encontrou.
-# `armadilhas/323`.
 AGORA = datetime.now(tz=fuso.utc)
 SITE = "escola-a"
 
@@ -205,7 +204,7 @@ def test_confirmacao_pelo_plantao_so_para_a_escola(db):
 
 
 def test_confirmacao_do_plantao_exige_autor(db):
-    """[INV-ENC-D13] mede a confirmação REGISTRADA COM AUTOR, não o webhook."""
+    """mede a confirmação REGISTRADA COM AUTOR, não o webhook."""
     with pytest.raises(
         IntegrityError, match="confirmacao_de_pagamento_tem_autor_e_data"
     ):
@@ -311,7 +310,7 @@ def _oferta(encomenda, aluno, **extras):
 
 
 def test_uma_oferta_pendente_por_encomenda(pessoa, perfil):
-    """[INV-ENC-J1], no banco (o invariante e o guarda dele nascem no degrau 2.3).
+    """no banco (o invariante e o guarda dele nascem no degrau 2.3).
 
     A trava é do PostgreSQL porque a corrida que ela impede é entre dois
     processos do motor rodando ao mesmo tempo, e nenhum `if` em Python resolve
@@ -327,7 +326,7 @@ def test_uma_oferta_pendente_por_encomenda(pessoa, perfil):
 
 
 def test_uma_oferta_pendente_por_aluno(perfil):
-    """[INV-ENC-J2], no banco."""
+    """no banco."""
     primeira = cria_encomenda()
     segunda = cria_encomenda()
     _oferta(primeira, perfil)
@@ -387,7 +386,7 @@ def test_oferta_expira_depois_de_oferecida(perfil):
 
 
 def test_o_historico_de_status_nao_se_edita(perfil):
-    """Histórico que pode ser editado não é histórico (`armadilhas/079`).
+    """Histórico que pode ser editado não é histórico.
 
     Quando uma mediação precisar responder "quem mandou esta encomenda de volta
     para a fila, e quando", esta tabela é a resposta.
@@ -435,7 +434,7 @@ def test_os_pares_referenciaveis_continuam_de_pe(db):
     """`uniq_encomenda_id_com_site` e `uniq_perfil_id_com_site` parecem redundantes.
 
     É essa aparência que faz alguém apagá-los um dia, derrubando as quatro
-    chaves estrangeiras compostas sem que nada pareça errado (`armadilhas/274`).
+    chaves estrangeiras compostas sem que nada pareça errado.
     Este teste é o bilhete que explica por que eles existem.
     """
     with connection.cursor() as cursor:

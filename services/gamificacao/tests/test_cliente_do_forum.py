@@ -13,9 +13,9 @@ O QUE ESTE ARQUIVO TRAVA:
    status fora de 200, corpo que não é JSON, corpo que não é lista e tópico sem
    os campos do contrato: os seis devolvem lista vazia. Uma tela sem a lista é
    uma tela; uma tela quebrada não é nada.
-3. **Par ausente desiste SEM TOCAR A REDE** (`armadilhas/097`). O `respx` sem
+3. **Par ausente desiste SEM TOCAR A REDE**. O `respx` sem
    rota registrada é o guarda: qualquer requisição estouraria
-   `AllMockedAssertionError` (`armadilhas/054`).
+   `AllMockedAssertionError`.
 4. **O teto de 50 do contrato é respeitado deste lado também.** Pedir 500 manda
    50, e não 500 — quem já corta não quebra no dia em que a porta passar a
    recusar em vez de cortar.
@@ -137,12 +137,12 @@ def test_o_teto_declarado_e_o_teto_do_contrato_congelado():
 
 
 def test_par_nao_provisionado_nem_tenta_a_rede(monkeypatch):
-    """Env ausente desiste ANTES da rede (`armadilhas/097`).
+    """Env ausente desiste ANTES da rede.
 
     Duas coisas se provam de uma vez, e as duas importam: a lista sai vazia em
     vez de 500, e a espera de 5 s do timeout não é paga para descobrir algo que
     já se sabia. O `respx` sem rota registrada é o guarda da segunda: qualquer
-    requisição estouraria `AllMockedAssertionError` (`armadilhas/054`).
+    requisição estouraria `AllMockedAssertionError`.
     """
     monkeypatch.delenv("FORUM_API_URL", raising=False)
     monkeypatch.delenv("FORUM_API_TOKEN", raising=False)

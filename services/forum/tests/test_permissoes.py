@@ -1,8 +1,7 @@
 """Guardas das permissões — a única pergunta que o fórum responde sozinho.
 
 **Reconhecer não é autorizar.** A `identidade` diz quem é, a `alunos` diz a
-categoria, e QUEM PODE é decidido aqui, fail-CLOSED
-(`DECISAO-forum-da-escola.md` §3).
+categoria, e QUEM PODE é decidido aqui, fail-CLOSED.
 
 Todo teste deste arquivo tem a mesma forma: monta um mundo, e exige que o
 **erro** feche a porta em vez de abri-la.

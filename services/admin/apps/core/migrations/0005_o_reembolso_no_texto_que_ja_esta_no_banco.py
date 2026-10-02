@@ -1,6 +1,6 @@
 """O TEXTO DO REEMBOLSO SAI DOS DOCUMENTOS QUE JÁ ESTÃO NO BANCO.
 
-Decisão do mantenedor em 31/08/2026 (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`):
+Decisão do mantenedor em 31/08/2026:
 o reembolso desfaz a compra e tira o acesso. A lei entrou, o código entrou, e os
 dois `.md` de `documentos/` foram corrigidos no PR #764 — **e a página no ar
 continuou dizendo o contrário.**
@@ -11,7 +11,7 @@ Medido, não suposto: com o `deploy-celula` do #764 já **verde**,
 
 O MOTIVO, e é a armadilha que o `CLAUDE.md` avisa em letras grandes
 ------------------------------------------------------------------
-Desde 31/08/2026 (`DECISAO-o-editor-de-documentos.md`) a fonte de `/docs/…` é o
+Desde 31/08/2026 a fonte de `/docs/…` é o
 **BANCO**, não os arquivos: o mantenedor edita por uma tela, e o disco do
 container é remontado a cada atualização. Os `.md` viraram **semente**, e a
 semeadura é `get_or_create` na migração `0003` — de propósito, para nunca pisar

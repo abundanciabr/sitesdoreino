@@ -33,7 +33,7 @@ separadas, e cada uma pode falhar sozinha: a lista de alunos continua
 completa mesmo se a gamificação estiver fora do ar — só aparece sem pontos,
 com um aviso — e vice-versa. Uma tela que caísse inteira porque uma célula
 vizinha está fora do ar seria o oposto do que a área administrativa serve
-para fazer (`PLANO-AREA-ADMIN.md` §5).
+para fazer.
 """
 
 from __future__ import annotations

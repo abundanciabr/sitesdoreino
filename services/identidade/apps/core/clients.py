@@ -2,8 +2,8 @@
 """O que esta célula fala com o mundo lá fora — o Google, e só ele.
 
 **O Google prova QUEM É. Ninguém aqui decide SE PODE.** A porta do site não
-confere matrícula nem lista nenhuma: reconhecer não é autorizar
-(DECISAO-onde-mora-a-sessao §4), e quem decide acesso é a célula dona do
+confere matrícula nem lista nenhuma: reconhecer não é autorizar,
+e quem decide acesso é a célula dona do
 recurso, na hora do recurso. Há guarda mecânico para isso —
 `tests/test_inv_porta_nao_consulta_ninguem.py` estoura se um salto de rede
 novo aparecer neste fluxo.
@@ -34,7 +34,7 @@ _cliente: httpx.Client | None = None
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
-    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um
+    Não é micro-otimização: `httpx.get()` constrói um
     cliente novo por chamada, e com ele um `ssl.SSLContext` que carrega os
     certificados raiz do sistema — 0,4 s por chamada, medido. São dois saltos
     por login, então seria quase um segundo de espera pura para quem entra.

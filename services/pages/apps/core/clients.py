@@ -17,7 +17,7 @@ congelado, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
 uso: cliente que lê env no `__init__` transforma env ausente em HTTP 500 em
-TODA página, com o deploy verde (`armadilhas/097`). Faltando a variável, quem
+TODA página, com o deploy verde. Faltando a variável, quem
 falha é o CAMINHO que precisa dela, com o nome da variável na mensagem, e a
 porta fecha em vez de abrir.
 
@@ -47,7 +47,7 @@ def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
     `httpx.get()` constrói um cliente novo por chamada, e com ele um
-    `ssl.SSLContext` (`armadilhas/082`). `httpx.Client` é seguro entre threads,
+    `ssl.SSLContext`. `httpx.Client` é seguro entre threads,
     e o `respx` troca o transporte na classe, então o dublê dos testes continua
     valendo.
     """
@@ -111,7 +111,7 @@ class IdentidadeClient:
     do par prova **quem chama**; o cabeçalho `Cookie`, repassado OPACO, prova
     **quem é a pessoa** do outro lado do navegador. O cookie nunca é
     interpretado aqui: esta célula não tem a chave que o assina, e não pode
-    ter ([INV-P12], `armadilhas/143`).
+    ter.
 
     Por que a resposta COMPLETA, e não a `getSession`: a Prancheta precisa do
     **e-mail** para perguntar à `alunos` se a pessoa está matriculada. O degrau
@@ -166,7 +166,7 @@ class AlunosClient:
     contrato (`http://alunos:8000/api/alunos`) e o caminho da operação é
     `/alunos/{email}/situacao`: os dois se SOMAM. Sem o segmento `/alunos` do
     meio a chamada dá 404, o 404 vira `AlunosIndisponivel`, e o fail-closed
-    fecha a Prancheta para TODO MUNDO, com o deploy verde (`armadilhas/111`).
+    fecha a Prancheta para TODO MUNDO, com o deploy verde.
     Por isso o dublê dos testes confere a URL inteira.
     """
 
@@ -210,7 +210,7 @@ class AdminClient:
     Entra e-mail, sai sim ou não. `ADMIN_API_URL` é o `servers:` do contrato
     (`http://admin:8000/interno`) e o caminho da operação é
     `/administradores/consultar`: os dois se SOMAM, e é por isso que o dublê dos
-    testes confere a URL inteira (`armadilhas/111`).
+    testes confere a URL inteira.
 
     **É POST, e não GET, e isso não é gosto:** caminho de URL entra em log de
     servidor, em histórico de proxy e em rastro de erro; corpo, não. E-mail não

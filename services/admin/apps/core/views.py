@@ -78,8 +78,8 @@ def healthz(request):
 
     A isenção é comparada por `request.path_info` (nunca `request.path`) e
     vale para as DUAS formas de entrada, porque as duas existem em produção:
-    `/admin/healthz` pela internet e `/healthz` pelo healthcheck do compose
-    (`armadilhas/029`). Guardas: `tests/test_healthz_script_name.py` e
+    `/admin/healthz` pela internet e `/healthz` pelo healthcheck do compose.
+    Guardas: `tests/test_healthz_script_name.py` e
     `tests/test_inv_porta_fail_closed.py`.
     """
     return JsonResponse({"status": "ok"})
@@ -106,8 +106,8 @@ def visao_geral(request):
 # é uma linha: a pública passa `so_publicos=True` e recusa o que não está no ar;
 # a administrativa serve tudo.
 #
-# Desde 31/08/2026 essa fonte é o BANCO, e não mais os `.md` da pasta
-# (`DECISAO-o-editor-de-documentos.md`): o mantenedor edita por uma tela, e o
+# Desde 31/08/2026 essa fonte é o BANCO, e não mais os `.md` da pasta:
+# o mantenedor edita por uma tela, e o
 # disco do container é remontado a cada atualização da plataforma.
 #
 # **Os endereços são DIFERENTES de propósito, e não por estilo.** Esta célula
@@ -190,7 +190,7 @@ def documentos_admin(request):
     um documento está no ar para o mundo exigiria abrir o repositório. As duas
     pastas na MESMA tela, e não uma rota `/admin/docs` para a fechada, porque
     esse endereço chega à célula como `/docs`, o prefixo público, e a porta não
-    teria como distinguir os dois (`DECISAO-a-area-de-documentos.md` §3).
+    teria como distinguir os dois.
     """
     todos = documentos.listar(so_publicos=False, com_arquivados=True)
     no_ar = [d for d in todos if not d.arquivado]
@@ -270,8 +270,8 @@ class FonteAusente:
     **Correção de 28/08/2026, e ela é a razão de este texto existir:** a
     primeira versão desta tela declarou que a fila de espera "não existe em
     lugar nenhum". Estava errado, e o erro tem nome — foi lido num clone
-    desatualizado da `main`, 75 merges atrás. A fila existe desde 27/08/2026
-    (`docs/decisoes/DECISAO-fila-de-liberacao.md`, PRs #290/#291/#304/#306), o
+    desatualizado da `main`, 75 merges atrás. A fila existe desde 27/08/2026,
+    o
     formulário que enche essa fila já está no ar, e o contrato da `alunos`
     chama `GET /pre-matriculas` de *"a porta do painel administrativo"* — esta
     área é que ainda não a abriu.
@@ -458,8 +458,8 @@ def _sem_acento(texto: str) -> str:
 
 
 #: Os campos em que a busca procura. Lista de PERMISSÃO, e o WhatsApp está FORA
-#: de propósito: ele é o dado mais sensível desta tela
-#: (`DECISAO-fila-de-liberacao.md` §5), e um campo de busca que casa com ele
+#: de propósito: ele é o dado mais sensível desta tela:,
+#e um campo de busca que casa com ele
 #: convida a colar números de telefone numa query string — que vai para
 #: histórico de navegador e log de servidor. Nome, e-mail e turma respondem à
 #: pergunta real ("onde está esta pessoa?") sem esse preço.
@@ -618,8 +618,8 @@ FAIXAS_DA_JORNADA = (
                 ),
             },
             # [REEMBOLSO] Estava em "Dentro da escola" ate 31/08/2026, com
-            # acesso. Mudou de faixa junto com a decisao do mantenedor
-            # (`DECISAO-reembolso-tira-o-acesso.md`): a faixa e a resposta a
+            # acesso. Mudou de faixa junto com a decisao do mantenedor:
+            # a faixa e a resposta a
             # pergunta "entra?", e uma parada na faixa errada e a tela mentindo
             # com o layout mesmo com o texto certo.
             {
@@ -759,18 +759,18 @@ def cursos_para_escolher() -> "tuple[list[dict], bool]":
 def escola_alunos(request):
     """A tela da escola: quem espera, e quem já é aluno.
 
-    Fail-OPEN por tile (`PLANO-AREA-ADMIN.md` §5): a `alunos` fora do ar, ou o
+    Fail-OPEN por tile: a `alunos` fora do ar, ou o
     par de tokens ainda não provisionado, deixa cada lista com um aviso honesto
     e a página abre igual.
 
     **Esta tela é a ÚNICA do projeto que mostra o WhatsApp de alguém**, e isso
-    é decisão escrita (`DECISAO-fila-de-liberacao.md` §5): o número sai por uma
+    é decisão escrita: o número sai por uma
     porta só, a do painel. Quem estiver lendo isto pensando em reusar estes
     dados em outra tela está prestes a quebrar aquela promessa.
     """
     # A leitura da escola mora em UMA função, e não aqui: o mapa da jornada
     # mostra exatamente estes números, e duas contagens à mão divergiriam no
-    # primeiro estado novo (`DECISAO-o-mapa-da-jornada-do-aluno.md` §2).
+    # primeiro estado novo.
     contagens, filas, alunos = contar_a_escola(AlunosClient())
     esperando = filas["aguardando"]
 
@@ -840,7 +840,7 @@ def escola_alunos(request):
             "cursos": cursos,
             "nao_consigo_ver_cursos": sem_catalogo,
             # Quem é administrador NÃO vem da `alunos` — vem da lista desta
-            # célula, lida na hora (`DECISAO-gestao-de-alunos` §4). A tela
+            # célula, lida na hora. A tela
             # MOSTRA; quem muda é o mantenedor, no servidor.
             "administradores": sorted(_emails_autorizados()),
             "rascunhos_de_permissao": RascunhoDeConfiguracao.objects.filter(
@@ -938,8 +938,7 @@ def escola_alunos_liberados(request):
 # peça de novo.
 #
 # Uma porta nova capaz de "des-recusar" seria uma segunda forma de virar aluno,
-# com outras regras — e as duas discordariam na primeira mudança de lei
-# (`DECISAO-cadastrar-alguem-a-mao.md` §2: a mesma razão, o mesmo desenho).
+# com outras regras — e as duas discordariam na primeira mudança de lei.
 #
 # **A falha do meio é SEGURA e VISÍVEL**, também como no cadastro à mão: se a
 # liberação não acontecer, a pessoa fica esperando na fila de `/escola/alunos/`,
@@ -1020,7 +1019,7 @@ def escola_reconsiderar(request):
 
     product_id = (request.POST.get("product_id") or "").strip()
     if not product_id:
-        # [INV-ALU-C1] "Aceitar mesmo assim" também LIBERA, e por isso também
+        # "Aceitar mesmo assim" também LIBERA, e por isso também
         # exige o curso. Sem ele nada é tentado: a pessoa continua entre os
         # recusados, do jeito que estava, em vez de ficar no meio do caminho
         # entre as duas listas.
@@ -1194,7 +1193,7 @@ def escola_prontuario(request):
 def _tela_do_prontuario(request, email: str, **extra):
     """O corpo de `escola_prontuario`, extraído para `escola_resetar_senha`
     também poder renderizar esta MESMA tela depois de agir — nunca um
-    redirect (`DECISAO-login-por-senha.md`): a senha nova não pode viajar
+    redirect: a senha nova não pode viajar
     pela URL (histórico do navegador, log do servidor, cabeçalho Referer).
     `**extra` é o que cada chamador acrescenta ao contexto comum."""
     ficha = AlunosClient().prontuario(email)
@@ -1237,7 +1236,7 @@ def _tela_do_prontuario(request, email: str, **extra):
 
 @require_POST
 def escola_resetar_senha(request):
-    """O reset manual de senha (`DECISAO-login-por-senha.md` §1.4) — para
+    """O reset manual de senha — para
     quando alguém esquece a senha e fala com o mantenedor pelo WhatsApp que
     já deixou no cadastro.
 
@@ -1269,7 +1268,7 @@ def escola_resetar_senha(request):
 
 # ------------------------------------------------- liberar e recusar (escrita)
 #
-# A PRIMEIRA escrita desta área (`DECISAO-fila-de-liberacao` §8, fase 2), e por
+# A PRIMEIRA escrita desta área, e por
 # isso o PR que a traz é o mesmo que traz a auditoria — a regra que o
 # `LICOES.md` desta célula fixou depois de a auditoria ter sido adiada uma vez.
 
@@ -1277,8 +1276,7 @@ def escola_resetar_senha(request):
 #: torna seguro o recado viajar por `?resultado=` na URL: o template só desenha
 #: chaves desta lista, então nada que venha do navegador chega à tela. Recado em
 #: querystring, e não em `messages`, porque `django.contrib.messages` precisa de
-#: sessão — e esta célula não assina sessão nenhuma, de propósito
-#: (`config/settings.py`, INV-P12).
+#: sessão — e esta célula não assina sessão nenhuma, de propósito:.
 RECADOS = {
     "liberado": "Pronto: a pessoa foi liberada e já entra na área de alunos.",
     # [A MAO] Os quatro desfechos do cadastro à mão. O terceiro é o que importa:
@@ -1427,7 +1425,7 @@ def escola_decidir(request):
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-motivo")
 
     if decisao == Registro.LIBERAR and not product_id:
-        # [INV-ALU-C1] Conferido AQUI pelo mesmo motivo do motivo da recusa: a
+        # Conferido AQUI pelo mesmo motivo do motivo da recusa: a
         # `alunos` responderia 422, e a frase que o mantenedor precisa ler é
         # sobre o formulário dele. Sem auditoria: não houve decisão sobre
         # pessoa nenhuma.
@@ -1531,7 +1529,7 @@ CAMPOS_DO_FORMULARIO = ("status", "nome_completo", "whatsapp", "turma", "comprou
 DESFECHO_NA_AUDITORIA = {
     AlunosClient.OK: Registro.OK,
     AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
-    # [INV-ALU-C1] Curso recusado é uma RECUSA da `alunos`, e a auditoria não
+    # Curso recusado é uma RECUSA da `alunos`, e a auditoria não
     # ganha verbo novo por causa dela: para quem reler o registro daqui a meses,
     # o que importa é que a decisão não valeu — e o `detalhe` diz por quê. A
     # separação existe para a TELA, que precisa dizer outro gesto.
@@ -1768,7 +1766,7 @@ def escola_cadastrar(request):
 
     product_id = (request.POST.get("product_id") or "").strip()
     if not product_id:
-        # [INV-ALU-C1] Este formulário cadastra E libera no mesmo clique. Sem
+        # Este formulário cadastra E libera no mesmo clique. Sem
         # curso a liberação daria 422 e a pessoa ficaria na fila sem que ele
         # tivesse pedido isso — então nem entra na fila. Antes da rede, e sem
         # auditoria: nada foi tentado do outro lado.
@@ -2135,7 +2133,7 @@ def escola_turmas_liberar(request):
     if not pedidos:
         return _tela_das_turmas(request, colado=colado, recado="nada-marcado")
 
-    # [INV-ALU-C1] UMA escolha para o lote inteiro, conferida antes da rede:
+    # UMA escolha para o lote inteiro, conferida antes da rede:
     # sem ela as dezenas de chamadas em paralelo voltariam todas 422, e a tela
     # contaria uma falha por pessoa em vez de dizer o que faltou.
     product_id = (request.POST.get("product_id") or "").strip()

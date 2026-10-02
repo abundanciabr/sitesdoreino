@@ -2,8 +2,7 @@
 
 *"O aluno pede a conferência e o pedido aparece na fila da equipe, com prazo,
 aceite e devolução com motivo escrito em português, pelo mesmo molde da tela de
-marcos"* (`CS-PAGES-0001.md`, AC-11). Este é o degrau 11 da escada
-(`PLANO-PORTFOLIO-DO-ALUNO.md` §5).
+marcos"* (`CS-PAGES-0001.md`, AC-11). Este é o degrau 11 da escada.
 
 O QUE ESTE ARQUIVO MEDE, E A ORDEM É A DO CRITÉRIO
 ---------------------------------------------------
@@ -23,7 +22,7 @@ POR QUE AS RESTRIÇÕES SÃO CONFERIDAS À MÃO
 `connection.check_constraints()` dentro do `pytest.raises`. Sem essa chamada,
 uma restrição adiada (ou uma escrita dentro do bloco atômico do teste) só seria
 conferida no `COMMIT` que nunca acontece, e o guarda ficaria verde inclusive com
-a restrição apagada (`armadilhas/358`). É o mesmo cuidado que
+a restrição apagada. É o mesmo cuidado que
 `tests/test_modelo_de_dados.py` já toma nesta casa.
 """
 
@@ -611,7 +610,7 @@ def test_a_admin_que_nao_responde_o_que_promete_nao_abre_a_fila(
 
     **O primeiro caso traz corpo BOM de propósito.** Um erro com corpo vazio
     seria pego pela régua do booleano, e o guarda ficaria verde com a conferência
-    do status apagada: ele provaria a peça errada (`armadilhas/155`). Com
+    do status apagada: ele provaria a peça errada. Com
     `e_administrador: true` dentro de um HTTP 503, só a conferência do status
     fecha a fila, e é ela que a mutação mede. É o caso real de um proxy que
     devolve 503 com o último corpo em cache.
@@ -632,7 +631,7 @@ def test_sem_o_par_da_admin_no_env_a_fila_nao_abre_e_nem_toca_a_rede(
     """O env da VPS de hoje, medido: a fila fecha, e desiste sem gastar timeout.
 
     Esperar o tempo de uma chamada para descobrir que não há endereço atrasaria
-    a recusa sem mudar nada nela (`armadilhas/097`).
+    a recusa sem mudar nada nela.
     """
     dublar_sessao(rede, BIA)
     consulta = dublar_administrador(rede, True)

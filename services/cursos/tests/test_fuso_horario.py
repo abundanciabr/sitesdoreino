@@ -4,8 +4,8 @@ Em toda outra célula, `TIME_ZONE` errado é uma data feia na tela. Nesta, o
 DIA é a unidade da promessa ao aluno: um envio devolvido leva uma data de
 retorno, e ela é "amanhã ou depois" no dia de São Paulo ([INV-CUR-L1],
 `PLANO-CELULA-CURSOS.md` §9); o prazo de 24 horas da fila de revisão é mostrado
-à professora em hora local, e o estouro se registra no dia em que aconteceu
-([INV-CUR-L3]); a Ficha de Série da semana fecha na sexta de São Paulo. Com o
+à professora em hora local, e o estouro se registra no dia em que aconteceu;
+a Ficha de Série da semana fecha na sexta de São Paulo. Com o
 default de fábrica do Django (`America/Chicago`, cinco horas atrás), um laudo
 emitido à 1h da manhã de terça em São Paulo ainda seria "segunda" para o
 sistema, e a data de retorno "terça" passaria como se fosse amanhã — CI verde,

@@ -22,22 +22,20 @@ from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/conquistas`): quem o
 # aplica é `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a
-# célula de endereço é editar Traefik + env, nunca cirurgia aqui
-# (`armadilhas/029`; guarda em `tests/test_healthz_script_name.py`).
+# célula de endereço é editar Traefik + env, nunca cirurgia aqui.
 #
 # Quando as telas nascerem (PR 7 da escada — a Base, o Passaporte, a loja):
 # TODA rota leva `name=`, e nenhum template escreve caminho à mão — é
 # `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
-# endereço. Caminho cravado em string quebra em produção e SÓ lá
-# (`armadilhas/029` e `/081`).
+# endereço. Caminho cravado em string quebra em produção e SÓ lá.
 #
 # E quando houver CSS: a rota `servir_estatico` é obrigatória, com nome próprio
 # (`estatico`), porque com DEBUG=0 o Django não serve estático e não há nginx
-# nem CDN atrás do Traefik — o arquivo vira 404 em produção e SÓ lá
-# (`armadilhas/083`). Sob prefixo, o `<link>` sai de `{% url 'estatico' %}` e
+# nem CDN atrás do Traefik — o arquivo vira 404 em produção e SÓ lá.
+# Sob prefixo, o `<link>` sai de `{% url 'estatico' %}` e
 # **nunca** de `{% static %}`: as duas tags leem prefixos diferentes, e
-# `/static/…` em `meshcraft.top` é endereço do `funil`, não desta célula
-# (`armadilhas/102`). O molde vivo está em `services/forum`.
+# `/static/…` em `meshcraft.top` é endereço do `funil`, não desta célula.
+# O molde vivo está em `services/forum`.
 #
 # A porta de MÁQUINA (PR 16 — `getPublicProfiles`, `getMyStatus`) nasceu aqui
 # embaixo, e o endereço dela NÃO é o que este comentário previa na gênese.
@@ -61,7 +59,7 @@ urlpatterns = [
     path("healthz", healthz),
     path("api/gamificacao/", api.urls),
     # O CSS, servido pela própria célula. Sem esta rota o estilo é 404 em
-    # produção e SÓ lá (`armadilhas/083`): com DEBUG=0 o Django não serve
+    # produção e SÓ lá: com DEBUG=0 o Django não serve
     # estático, e não há nginx nem CDN atrás do Traefik.
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
     # A TRILHA DE MARCOS REAIS (degrau 12/13). Duas telas e dois gestos:

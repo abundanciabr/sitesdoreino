@@ -82,7 +82,7 @@ def em_negociacao(pedido_no_mural, dois_no_mural):
 
 @respx.mock
 def test_ninguem_pode_pegar_e_o_pedido_vai_ao_plantao(client, env, semeado):
-    """[INV-ENC-M5] visto da cadeira do cliente: o pedido não encalha calado.
+    """visto da cadeira do cliente: o pedido não encalha calado.
 
     Nos primeiros meses ninguém terá entrega aprovada, então um pedido
     Intermediário nasce num Mural sem ninguém elegível. A tela do cliente diz
@@ -118,7 +118,7 @@ def test_ninguem_pode_pegar_e_o_pedido_vai_ao_plantao(client, env, semeado):
 def test_cliente_calado_manda_o_pedido_ao_plantao_e_solta_o_aluno(
     client, em_negociacao
 ):
-    """[INV-ENC-N7]: nunca para o próximo aluno. Mandá-lo ao próximo faria cada
+    """nunca para o próximo aluno. Mandá-lo ao próximo faria cada
     aluno da fila gastar a própria vez num cliente fantasma."""
     projeto, ana = em_negociacao
     entrar(client)
@@ -240,7 +240,7 @@ def test_aprovar_duas_vezes_aprova_uma(client, em_negociacao):
 @respx.mock
 def test_nao_ha_como_pular_o_acordo_pela_tela(client, em_negociacao):
     """Não existe rota que leve um pedido em negociação à produção, e o motor
-    recusa a tentativa mesmo vinda de dentro ([INV-ENC-N4])."""
+    recusa a tentativa mesmo vinda de dentro."""
     projeto, _ = em_negociacao
     entrar(client)
 

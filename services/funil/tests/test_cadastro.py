@@ -5,15 +5,15 @@ novidades") e virou o pedido de entrada de quem não tem conta do Google: o
 POST entra DIRETO na fila "Aguardando aprovação" da célula `alunos`
 (`POST /pre-matriculas`, `createPreEnrollment`) — a mesma porta que o
 cadastro à mão do admin e o pedido de entrada da Caixa já usam. Na mesma
-submissão, a pessoa também escolhe a senha do segundo jeito de entrar
-(`DECISAO-login-por-senha.md`), gravada via `IdentidadeClient.definir_senha`
+submissão, a pessoa também escolhe a senha do segundo jeito de entrar,
+gravada via `IdentidadeClient.definir_senha`
 — fail-CLOSED (decisão do mantenedor): se a senha não puder ser gravada, o
 pedido inteiro vira 502, mesmo que o pedido de vaga já tenha ido.
 
 Os 3 idiomas vêm do CATÁLOGO (fase 4: `conftest.SITE_MESH`, no formato do
 contrato) — nada aqui monkeypatcha idioma. O catálogo (célula), a alunos e a
 identidade entram só como contrato mockado (respx), com Host válido
-(ARMADILHAS §4.6) e filtro por endpoint nas asserções de chamada (LICOES: o
+ e filtro por endpoint nas asserções de chamada (LICOES: o
 CONV-SITE sempre bate no catálogo)."""
 
 import json
@@ -102,7 +102,7 @@ def test_post_feliz_entra_na_fila_aguardando_aprovacao(client, alunos_ligada, id
     chamadas = _chamadas_a_pre_matriculas(alunos_ligada)
     assert len(chamadas) == 1
     enviado = json.loads(chamadas[0].request.content)
-    assert enviado["site_id"] == SITE_MESH["id"]  # [INV-P11] do Host, não do payload
+    assert enviado["site_id"] == SITE_MESH["id"]  # do Host, não do payload
     assert enviado["email"] == "aluno@exemplo.com"
     assert enviado["nome_completo"] == "Aluno Teste"
     assert enviado["whatsapp"] == "+5511900000000"
@@ -171,7 +171,7 @@ def test_post_email_invalido_erro_localizado_em_es(client, alunos_ligada):
 
 
 # ---------------------------------------------------------------------------
-# Senha (DECISAO-login-por-senha.md): obrigatória, mínimo 8, as duas batendo.
+# Senha: obrigatória, mínimo 8, as duas batendo.
 # ---------------------------------------------------------------------------
 def test_post_sem_senha_erro_localizado_e_nenhuma_pre_matricula(client, alunos_ligada):
     resp = client.post(
@@ -272,7 +272,7 @@ def test_falha_ao_definir_senha_e_502_mesmo_com_vaga_registrada(client, alunos_l
 
 
 # ---------------------------------------------------------------------------
-# alunos fora do ar: 502 honesto (ARMADILHAS §4.9), mensagem localizada, e o
+# alunos fora do ar: 502 honesto, mensagem localizada, e o
 # que a pessoa digitou continua no formulário.
 # ---------------------------------------------------------------------------
 def test_alunos_fora_do_ar_e_502_localizado_preservando_o_form(client, alunos_ligada):
@@ -375,7 +375,7 @@ def test_pseudo_locale_login_com_mini_form_de_senha_sem_texto_hardcoded(
     catalogo_pseudo, erro
 ):
     """login.html não tinha cobertura de pseudo-locale nenhuma antes do
-    mini-formulário de senha (DECISAO-login-por-senha.md) — exercitado só
+    mini-formulário de senha — exercitado só
     por HTTP real (test_sessao_no_site.py), com os 3 idiomas de verdade,
     nunca com o catálogo trocado por dígitos. `token_de_senha` presente
     para o mini-formulário aparecer; uma amostra das chaves de recusa

@@ -388,8 +388,7 @@ def quatro_ideias() -> list:
     Montadas CONTRA as ordens, e não a favor: com os quatro critérios em
     desacordo, as oito ordens desenham oito listas DIFERENTES. Numa fixture
     "arrumada" — a mais votada sendo também a mais nova — o guarda de "mais
-    novas" ficaria verde ordenando por votos, e nada estaria provado
-    (`armadilhas/261`).
+    novas" ficaria verde ordenando por votos, e nada estaria provado.
 
     Os títulos são letras justamente porque a asserção é sobre ORDEM: nome
     bonito convida a próxima sessão a arrumar os dados e devolver a tautologia.
@@ -532,8 +531,8 @@ def test_a_etapa_mostra_uma_e_esconde_as_outras():
     """Os DOIS lados na mesma cena: quem passa e quem é cortado.
 
     Uma cena só com a ideia que sobrevive ao filtro fica verde mesmo com a regra
-    apagada, porque as duas implementações concordam sobre ela
-    (`armadilhas/267`). Por isso as outras três estão aqui, e por isso a
+    apagada, porque as duas implementações concordam sobre ela.
+    Por isso as outras três estão aqui, e por isso a
     ausência delas é conferida por nome.
     """
     cliente = _dentro()

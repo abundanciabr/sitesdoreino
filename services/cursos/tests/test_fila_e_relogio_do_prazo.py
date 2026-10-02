@@ -18,8 +18,7 @@ O que este arquivo protege:
 
 Os envios aqui nascem com `enviado_em` no PASSADO relativo ao relógio real
 (`timezone.now() - horas`), nunca num instante fixo: `estourado_em` é comparado
-com `prazo_em` no banco, e instante fixo contra relógio real é bomba-relógio
-(`armadilhas/323`).
+com `prazo_em` no banco, e instante fixo contra relógio real é bomba-relógio.
 """
 
 from __future__ import annotations

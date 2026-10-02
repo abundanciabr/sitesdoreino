@@ -4,7 +4,7 @@
 **A igualdade mudou de forma no EVO-42, e o guarda passou a morder na forma nova
 em vez de ser afrouxado para caber nela.** O EVO-21 protegia *"uma linha de
 `HistoricoStatus` ⇒ um `Aviso`"*; a decisão do mantenedor de 25/08/2026
-(`docs/caixa-de-sugestoes/DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md` §2) a
+ a
 transforma em *"⇒ um `Aviso` por interessado DISTINTO"* — autor, quem votou e
 quem comentou. Tudo o que era exigido do aviso único continua exigido do leque
 inteiro: mesma transação, mesmo rollback, mesma recusa fora do `atomic`. E há
@@ -241,7 +241,7 @@ def test_a_pagina_mostra_de_onde_veio_cada_aviso(equipe, dentro, sugestao, plate
     """A tela distingue "sua ideia" de "ideia em que você votou/comentou".
 
     Medido no corpo renderizado, e não no contexto: vazamento e ausência não
-    escolhem a variável que o teste imaginou (armadilhas/087).
+    escolhem a variável que o teste imaginou.
     """
     Voto.objects.create(sugestao=sugestao, autor=dentro.identidade)
     _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO, "vamos fazer")
@@ -425,7 +425,7 @@ def test_os_avisos_nascem_mesmo_sem_redis_nenhum(
     """A independência do fio, medida — não argumentada.
 
     `transaction=True` porque é a única forma de o `on_commit` do relay disparar
-    de verdade (`armadilhas/057`); sem `REDIS_STREAMS_URL`, o relay estoura, o
+    de verdade; sem `REDIS_STREAMS_URL`, o relay estoura, o
     `relay_apos_commit` engole e o evento fica PENDENTE na outbox. Se o leque
     dependesse do fio, ele não existiria — e é isso que se falsifica aqui.
 

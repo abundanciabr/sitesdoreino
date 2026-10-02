@@ -11,7 +11,7 @@ implementa, e cada linha tem teste-guarda em
 | sem sessão                        | —                      | 302 para o login      |
 
 **Por que o inverso é o certo, e não excesso de zelo:** o invariante
-*reconhecer não é autorizar* (`DECISAO-onde-mora-a-sessao.md` §4) tem duas
+*reconhecer não é autorizar* tem duas
 metades, e a segunda é esta. Reconhecimento falha ABERTO porque não conseguir
 saber o nome de alguém não pode derrubar a vitrine. Autorização falha FECHADO
 porque não conseguir saber QUEM é alguém não pode virar permissão.
@@ -54,16 +54,15 @@ _ESTILO_EMBUTIDO = re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNO
 # escapa em silêncio — ou ela está aqui de propósito, ou a porta a protege.
 #
 # Compara-se `request.path_info`, NUNCA `request.path`: pela borda pública o
-# Traefik não remove o prefixo, e `request.path` chega como `/admin/healthz`
-# (`armadilhas/029`, medido ao vivo em duas células). `path_info` é `/healthz`
+# Traefik não remove o prefixo, e `request.path` chega como `/admin/healthz`.
+# `path_info` é `/healthz`
 # nos dois caminhos de entrada.
 #
 # `/healthz` é rota de MÁQUINA, exigida pelo healthcheck do compose, que não
 # tem cookie nenhum para apresentar.
 CAMINHOS_ISENTOS = frozenset({"/healthz"})
 
-#: [DOCUMENTOS] O prefixo público da área de documentos
-#: (`DECISAO-a-area-de-documentos.md`, 29/08/2026).
+#: [DOCUMENTOS] O prefixo público da área de documentos:.
 #:
 #: **Por que aqui é PREFIXO, e não uma lista de endereços.** A decisão de "isto
 #: é público" mora no PRÓPRIO documento (`publico: true` no cabeçalho,
@@ -447,7 +446,7 @@ class PortaAdministrativa:
         enquadramento inclusive de mesma origem, e esta área mostra páginas
         próprias dentro de iframe (o modelo de lançamento, a página visual do
         documento). Este erro já foi cometido uma vez, no papel, e pego na
-        revisão (`armadilhas/109`). O `X-Frame-Options: SAMEORIGIN`
+        revisão. O `X-Frame-Options: SAMEORIGIN`
         correspondente vem do Traefik (`seguranca-admin`) — as duas precisam
         concordar.
 

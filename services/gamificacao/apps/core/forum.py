@@ -26,7 +26,7 @@ quebrada não é nada. O que nunca acontece é exceção subindo daqui.
 **Nada aqui é lido no import.** As duas variáveis do par são buscadas no PONTO
 DE USO, com `.get()`, e a falta delas desiste **sem tocar a rede**: cliente que
 lê env no `__init__` transforma env ausente em HTTP 500 em toda página, com o
-deploy verde (`armadilhas/097`), e esperar o timeout para descobrir que não há
+deploy verde, e esperar o timeout para descobrir que não há
 endereço atrasaria a tela por nada.
 """
 
@@ -69,7 +69,7 @@ _cliente: httpx.Client | None = None
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
-    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um cliente
+    Não é micro-otimização: `httpx.get()` constrói um cliente
     novo por chamada, e com ele um `ssl.SSLContext` que carrega os certificados
     raiz do sistema (0,4 s medidos, com ou sem rede de verdade). `httpx.Client`
     é seguro entre threads, e o `respx` troca o transporte na classe, então o
@@ -84,7 +84,7 @@ def http() -> httpx.Client:
 def _par() -> tuple[str, str] | None:
     """As duas variáveis do par `gamificacao→forum`, ou `None` quando faltam.
 
-    Lidas AQUI, no ponto de uso, com `.get()` (`armadilhas/097`). Quem instala as
+    Lidas AQUI, no ponto de uso, com `.get()`. Quem instala as
     duas na VPS é `infra/provisionar-par-da-gamificacao-com-o-forum.sh`, e
     enquanto ninguém o rodar esta função devolve `None` — que é o caminho de
     desistir sem tocar a rede.

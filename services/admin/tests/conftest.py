@@ -2,8 +2,8 @@
 
 **Por que isto passou a ser necessário em 28/08/2026:** a porta
 (`apps/core/porta.py`) deixou de ler a lista de administradores só do env e
-passou a somá-la com a tabela `Administrador`
-(`DECISAO-administradores-e-apagar` §3.1). Ou seja, **toda requisição
+passou a somá-la com a tabela `Administrador`.
+Ou seja, **toda requisição
 autorizada desta célula toca o banco** — que é exatamente o que acontece em
 produção.
 
@@ -39,7 +39,7 @@ def sem_a_rede_do_sdk(monkeypatch):
     o primeiro teste de tela que fizer `client.post(reverse("fechamento"),
     {"acao": "analista"})` sem repetir o corte faz uma chamada paga de verdade,
     com a chave da máquina de quem rodou. E a chave está na máquina do
-    mantenedor desde 02/09/2026 (`armadilhas/288`). O molde é o
+    mantenedor desde 02/09/2026. O molde é o
     `sem_rede` de `services/forum/tests/conftest.py`.
 
     **É o `httpx2`, e não o `httpx`.** O SDK da Anthropic roda sobre `httpx2`,

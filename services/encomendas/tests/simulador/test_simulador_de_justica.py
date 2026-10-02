@@ -37,7 +37,7 @@ ao motor se o motor acertou mediria a si mesmo. O que prova alguma coisa é a
 SEGUNDA medida, feita por outro caminho, chegando ao mesmo lugar.
 
 A única exceção é `mural.listar`, e ela é o oposto de uma consulta ao juiz: o
-[INV-ENC-M1] e o [INV-ENC-M4] falam sobre A LISTA QUE O ALUNO VÊ, então o guarda
+e o [INV-ENC-M4] falam sobre A LISTA QUE O ALUNO VÊ, então o guarda
 CHAMA a lista de verdade e a compara, projeto por projeto e na ordem, com a lista
 que o oráculo montou por fora.
 
@@ -136,7 +136,7 @@ TITULO_MINIMO = {
 }
 
 # A pista em que cada nível NASCE, da emenda §3.1, regras 2 e 3. É a régua do
-# [INV-ENC-M2]: o Iniciante nasce na fila e só chega ao Mural pela chamada
+# o Iniciante nasce na fila e só chega ao Mural pela chamada
 # aberta, que não é prateleira reservável.
 PISTA_QUE_A_EMENDA_MANDA = {
     Encomenda.Nivel.INICIANTE: Encomenda.Status.NA_FILA,
@@ -192,7 +192,7 @@ ESPERAS = (
 NEGOCIACAO_VIVA = (Encomenda.Status.RESERVADA, Encomenda.Status.EM_NEGOCIACAO)
 
 # Onde um projeto ainda ocupa as mãos de quem está com ele. Serve ao
-# [INV-ENC-N5]: um aluno marcado como "trabalhando" e sem nenhum destes é um
+# um aluno marcado como "trabalhando" e sem nenhum destes é um
 # aluno preso fora da fila por uma negociação que já morreu.
 NAS_MAOS_DO_ALUNO = (
     Encomenda.Status.RESERVADA,
@@ -270,8 +270,8 @@ def elegivel_pela_lei(
 
     Escrita de novo, longe do motor, e na ordem em que a lei está escrita. É a
     régua contra a qual o [INV-ENC-J3], o [INV-ENC-J5] e o [INV-ENC-M1] são
-    medidos. `ja_viram` é a memória da pista: na fila são as ofertas
-    ([INV-ENC-J6]), no Mural são as reservas ([INV-ENC-M3]), e na chamada aberta
+    medidos. `ja_viram` é a memória da pista: na fila são as ofertas,
+    no Mural são as reservas, e na chamada aberta
     é o conjunto VAZIO, porque a chamada aberta é a exceção literal da lei §6.4.
     """
     if perfil.data_entrada_fila is None:
@@ -653,7 +653,7 @@ class Memoria:
 
     Nada aqui é lido do módulo medido: são as ANOTAÇÕES do simulador sobre o que
     ele viu acontecer, no relógio simulado. `entrada_na_fila` e `entrada_no_mural`
-    são a segunda medida do marco das 24 horas ([INV-ENC-J9] e [INV-ENC-M5]) — o
+    são a segunda medida do marco das 24 horas — o
     código de produção o tira de `MudancaDeStatus`, e um guarda que lesse a mesma
     tabela não estaria medindo nada.
     """
@@ -725,7 +725,7 @@ def conferir_os_dez(
     """Os dez invariantes de justiça, neste instante. Reprova no primeiro que cair.
 
     `novas` são as ofertas criadas AGORA: os invariantes que falam do momento da
-    escolha ([INV-ENC-J3], [INV-ENC-J5], [INV-ENC-J6], [INV-ENC-J7]) se medem
+    escolha se medem
     nelas, porque é isso que eles dizem. Uma oferta feita de manhã para quem era
     o primeiro da fila continua correta à tarde, mesmo que outra pessoa tenha
     chegado na frente no meio do dia.
@@ -745,21 +745,21 @@ def conferir_os_dez(
         if projeto.aluno_id is not None and projeto.status in NEGOCIACAO_VIVA
     }
 
-    # [INV-ENC-J1] Uma encomenda nunca tem duas ofertas pendentes.
+    # Uma encomenda nunca tem duas ofertas pendentes.
     encomendas_com_pendente = [o.encomenda_id for o in pendentes]
     assert len(set(encomendas_com_pendente)) == len(encomendas_com_pendente), (
         f"[INV-ENC-J1] quebrado em {agora.isoformat()}: encomenda com duas "
         f"ofertas pendentes ao mesmo tempo ({encomendas_com_pendente})."
     )
 
-    # [INV-ENC-J2] Um aluno nunca tem duas ofertas pendentes.
+    # Um aluno nunca tem duas ofertas pendentes.
     alunos_com_pendente = [o.aluno_id for o in pendentes]
     assert len(set(alunos_com_pendente)) == len(alunos_com_pendente), (
         f"[INV-ENC-J2] quebrado em {agora.isoformat()}: aluno com duas ofertas "
         f"pendentes ao mesmo tempo ({alunos_com_pendente})."
     )
 
-    # [INV-ENC-J4] Passar, expirar, pausar e NEGOCIAR nunca mexem no lugar na fila.
+    # Passar, expirar, pausar e NEGOCIAR nunca mexem no lugar na fila.
     for perfil in perfis:
         assert perfil.data_entrada_fila == povoado.lugar_na_fila[perfil.id], (
             f"[INV-ENC-J4] quebrado em {agora.isoformat()}: o perfil "
@@ -772,7 +772,7 @@ def conferir_os_dez(
         encomenda = retrato.por_pk[oferta.encomenda_id]
         escolhido = por_id[oferta.aluno_id]
 
-        # [INV-ENC-J5] Ninguém recebe encomenda acima do próprio título.
+        # Ninguém recebe encomenda acima do próprio título.
         minimo = TITULO_MINIMO[encomenda.nivel]
         assert TITULOS_EM_ORDEM.index(escolhido.titulo_banca) >= TITULOS_EM_ORDEM.index(
             minimo
@@ -782,7 +782,7 @@ def conferir_os_dez(
             f"{escolhido.titulo_banca!r} (o minimo e {minimo!r})."
         )
 
-        # [INV-ENC-J6] Ninguém vê a mesma encomenda duas vezes.
+        # Ninguém vê a mesma encomenda duas vezes.
         par = (encomenda.pk, escolhido.id)
         assert par not in memoria.pares, (
             f"[INV-ENC-J6] quebrado em {agora.isoformat()}: a encomenda "
@@ -790,7 +790,7 @@ def conferir_os_dez(
         )
         memoria.pares.add(par)
 
-        # [INV-ENC-J7] Quem não está disponível não RECEBE oferta. (Pausar
+        # Quem não está disponível não RECEBE oferta. (Pausar
         # depois de receber é outra coisa, e é permitido: a pausa mantém o
         # lugar, e a oferta na mão simplesmente vence.)
         assert (
@@ -800,7 +800,7 @@ def conferir_os_dez(
             f"o perfil {escolhido.id}, que estava {escolhido.disponibilidade!r}."
         )
 
-        # [INV-ENC-J8] Entre a oferta e o vencimento há exatamente o relógio da
+        # Entre a oferta e o vencimento há exatamente o relógio da
         # lei, contado só dentro da janela. Medido pela função INVERSA da que
         # calculou a expiração: recalcular com a mesma conta não mediria nada.
         nasceu = memoria.nascimento[oferta.pk]
@@ -814,7 +814,7 @@ def conferir_os_dez(
 
         memoria.quem_ja_viu.setdefault(encomenda.pk, set()).add(escolhido.id)
 
-    # [INV-ENC-J3] A rodada INTEIRA foi a que a lei manda. Vem depois dos quatro
+    # A rodada INTEIRA foi a que a lei manda. Vem depois dos quatro
     # de cima de propósito: eles são específicos (título, memória, disponibilidade,
     # relógio) e este é global, e uma sabotagem em qualquer regra de elegibilidade
     # também muda a alocação. Com o global primeiro, o vermelho diria sempre
@@ -855,7 +855,7 @@ def conferir_os_dez(
         )
 
     if depois_do_tique:
-        # [INV-ENC-J9] Nenhuma encomenda continua esperando um aluno da fila
+        # Nenhuma encomenda continua esperando um aluno da fila
         # depois do prazo, uma vez que o relógio rodou. O marco é o do simulador
         # (`entrada_na_fila`), e não `criada_em`: um projeto devolvido pela
         # negociação recomeça a espera, e cobrá-lo desde o nascimento seria
@@ -885,7 +885,7 @@ def conferir_o_mural(
     site = povoado.site_id
 
     for projeto in retrato.projetos:
-        # [INV-ENC-M2] Projeto Iniciante só chega ao Mural pela chamada aberta.
+        # Projeto Iniciante só chega ao Mural pela chamada aberta.
         # Medido no ESTADO, e não só no nascimento: a prateleira reservável é
         # `no_mural` e `reservada`, e um Iniciante em qualquer um dos dois quer
         # dizer que alguém trancou por três horas o que a fila já não colocou em
@@ -898,7 +898,7 @@ def conferir_o_mural(
                 "nao se reserva."
             )
 
-        # [INV-ENC-M3] O Mural não é leilão: uma reserva viva e uma proposta de
+        # O Mural não é leilão: uma reserva viva e uma proposta de
         # pé por projeto.
         vivas = retrato.reservas_vivas_por_projeto.get(projeto.pk, ())
         assert len(vivas) <= 1, (
@@ -912,7 +912,7 @@ def conferir_o_mural(
             "Mural nao e leilao."
         )
 
-    # [INV-ENC-M3], terceira metade: ninguém pega o mesmo projeto duas vezes. A
+    # terceira metade: ninguém pega o mesmo projeto duas vezes. A
     # conta fecha pelo total, como a do [INV-ENC-J6]: cada reserva é um par
     # (projeto, aluno) inédito, então o número de pares tem de ser o número de
     # reservas.
@@ -928,7 +928,7 @@ def conferir_o_mural(
         "vezes, e o projeto giraria sem sair do lugar."
     )
 
-    # [INV-ENC-M1] e [INV-ENC-M4], na lista de verdade. Dois alunos por passo, e
+    # e [INV-ENC-M4], na lista de verdade. Dois alunos por passo, e
     # não os cem: `mural.listar` faz uma peneira por projeto, e cem listas por
     # hora simulada custariam centenas de milhares de consultas para provar o que
     # duas provam. Os dois giram por saltos diferentes, e ao longo dos oito dias
@@ -963,7 +963,7 @@ def conferir_o_mural(
             f"{vista} ao perfil {perfil.id}, e a regra da emenda §3.1, calculada "
             f"por fora, manda {esperada}."
         )
-        # [INV-ENC-M4] A ordem é só a antiguidade, e nenhuma outra chave ordena.
+        # A ordem é só a antiguidade, e nenhuma outra chave ordena.
         # Medida na lista DEVOLVIDA e contra a chegada que o simulador anotou,
         # que é uma segunda fonte: um destaque, um peso ou uma relevância que
         # entrassem no `order_by` apareceriam aqui como uma inversão.
@@ -976,7 +976,7 @@ def conferir_o_mural(
     if not depois_do_tique:
         return
 
-    # [INV-ENC-M5] Nada encalha em silêncio: passado o prazo, ou existe alguém
+    # Nada encalha em silêncio: passado o prazo, ou existe alguém
     # que possa pegar, ou o projeto foi ao plantão. As duas condições são E, e é
     # o que separa espera de encalhe (emenda §3.1, quarta regra).
     for projeto in retrato.projetos:
@@ -1018,7 +1018,7 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
     permitidos = set(povoado.entregaveis)
 
     for proposta in retrato.propostas:
-        # [INV-ENC-N1] Nenhum texto entre cliente e aluno fora dos campos
+        # Nenhum texto entre cliente e aluno fora dos campos
         # estruturados. Os entregáveis saem da lista FECHADA do briefing, e a
         # justificativa cabe no limite do parâmetro: propor um entregável que
         # ninguém pediu é o texto livre com outro nome.
@@ -1037,7 +1037,7 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
     for projeto in retrato.projetos:
         propostas = retrato.propostas_por_projeto.get(projeto.pk, ())
 
-        # [INV-ENC-N2] As rodadas são contadas, e o teto é o do parâmetro. Medido
+        # As rodadas são contadas, e o teto é o do parâmetro. Medido
         # por LADO, porque o parâmetro da emenda §4.2 é "3 por lado".
         for lado in (Proposta.DeQuem.ALUNO, Proposta.DeQuem.CLIENTE):
             do_lado = [p for p in propostas if p.de_quem == lado]
@@ -1050,7 +1050,7 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
         if projeto.acordado_em is None:
             continue
 
-        # [INV-ENC-N3] O Acordo congela, e o congelado não muda mais. A primeira
+        # O Acordo congela, e o congelado não muda mais. A primeira
         # metade compara o combinado com a proposta ACEITA; a segunda guarda o
         # retrato e o compara a cada passo seguinte, que é o que transforma
         # "congelou" em "continua congelado".
@@ -1081,7 +1081,7 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
     for projeto in retrato.projetos:
         if projeto.status not in DEPOIS_DO_CAIXA:
             continue
-        # [INV-ENC-N4] Nenhuma produção começa sem Acordo E confirmação de
+        # Nenhuma produção começa sem Acordo E confirmação de
         # pagamento registrada COM AUTOR. As quatro perguntas são separadas
         # porque mandam o plantão para lugares diferentes.
         assert projeto.acordado_em is not None, (
@@ -1102,7 +1102,7 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
             "e sem autor, e e o autor que o §7 existe para registrar."
         )
 
-        # [INV-ENC-N8] O prazo do Acordo começa na confirmação do pagamento,
+        # O prazo do Acordo começa na confirmação do pagamento,
         # nunca no Acordo. Recalculado por fora, a partir da confirmação, e
         # comparado com o que a célula gravou.
         esperado = projeto.pagamento_confirmado_em + timedelta(
@@ -1123,8 +1123,8 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
             f"projeto {projeto.pk} nao e o de producao mais o dia de revisao."
         )
 
-    # [INV-ENC-N5] Negociar é grátis, nas duas metades. A primeira é o lugar na
-    # fila, e ela vale para todo mundo (o [INV-ENC-J4] a mede antes). A segunda é
+    # Negociar é grátis, nas duas metades. A primeira é o lugar na
+    # fila, e ela vale para todo mundo. A segunda é
     # a que só a negociação pode quebrar: um aluno marcado como "trabalhando" e
     # sem projeto nenhum nas mãos foi cobrado por uma demora que não foi dele,
     # que é a injustiça que a emenda §4.2 descreve com todas as letras.
@@ -1143,7 +1143,7 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
             "ele ficou fora da fila por uma demora que nao foi dele."
         )
 
-    # [INV-ENC-N6] Um aluno nunca tem duas negociações vivas, somando as duas
+    # Um aluno nunca tem duas negociações vivas, somando as duas
     # pistas (emenda §4.2). São DUAS medidas da mesma frase: a proposta de pé,
     # que o índice `uma_proposta_viva_por_aluno` faz valer, e a VEZ nas mãos, que
     # é a régua mais larga da emenda e inclui quem pegou no Mural e ainda não
@@ -1458,7 +1458,7 @@ def _o_caixa_registra_o_pagamento(povoado, agora, placar):
 
 
 def _a_producao_comeca(povoado, agora, placar, entrega_prevista):
-    """[INV-ENC-N4] e [INV-ENC-N8] pelo gesto de verdade, e o cronômetro do aluno.
+    """e [INV-ENC-N8] pelo gesto de verdade, e o cronômetro do aluno.
 
     Roda antes do caixa pela mesma razão que o caixa roda antes da negociação: o
     projeto pago no passo `k` começa a produzir no `k+1`, e a distância entre o
@@ -1555,7 +1555,7 @@ def _o_trabalho_terminou_e_o_cliente_aprovou(povoado, agora, placar, entrega_pre
         perfil.entregas_aprovadas += 1
         perfil.save(update_fields=["entregas_aprovadas", "atualizado_em"])
         # Só quem foi TRANCADO é solto. Quem ganhou o projeto no Mural nunca
-        # ficou "trabalhando" (é o buraco que o [INV-ENC-N6] conta acima), e
+        # ficou "trabalhando", e
         # mandá-lo de `disponivel` para `disponivel` seria uma transição que a
         # máquina de estado recusa.
         if perfil.disponibilidade == PerfilProfissional.Disponibilidade.TRABALHANDO:
@@ -1657,7 +1657,7 @@ def conferir_a_promessa_do_primeiro_dolar(povoado, zerados, memoria, placar, tex
     ficaria sem a primeira vez para sempre.
 
     Quem pausou fica de fora, e a exclusão é a única honesta: um aluno que
-    desligou o interruptor não recebe oferta por regra ([INV-ENC-J7]), e cobrar a
+    desligou o interruptor não recebe oferta por regra, e cobrar a
     fila por isso seria cobrá-la de cumprir uma promessa que o próprio aluno
     dispensou.
     """
@@ -1707,7 +1707,7 @@ def _contar_as_propostas_que_venceram(retrato, batida, placar):
 
 
 def _conferir_que_o_cliente_calado_foi_ao_plantao(retrato, batida, agora):
-    """[INV-ENC-N7]: proposta vencida por silêncio do CLIENTE vai ao plantão.
+    """proposta vencida por silêncio do CLIENTE vai ao plantão.
 
     E nunca para o próximo aluno. Mandá-la ao próximo faria cada aluno da fila
     gastar a própria vez num cliente fantasma, um depois do outro, e nenhum deles
@@ -1777,7 +1777,7 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
         memoria.status_anterior[projeto.pk] = projeto.status
         if projeto.status == Encomenda.Status.NO_MURAL:
             placar.nasceram_no_mural += 1
-        # [INV-ENC-M2] no NASCIMENTO: a pista é a que o nível manda, e ninguém a
+        # no NASCIMENTO: a pista é a que o nível manda, e ninguém a
         # escolhe. Medido aqui, e não no laço, porque é aqui que ela é dada.
         assert projeto.status == PISTA_QUE_A_EMENDA_MANDA[projeto.nivel], (
             f"[INV-ENC-M2] quebrado no nascimento: o projeto {projeto.pk}, de "
@@ -1834,7 +1834,7 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
         _conferir_que_o_cliente_calado_foi_ao_plantao(retrato, batida, agora)
         conferir_que_nada_fica_preso(retrato, agora, memoria, placar, regua)
 
-        # [INV-ENC-J10] Reexecutar sem mudança de estado não cria nada. Conferido
+        # Reexecutar sem mudança de estado não cria nada. Conferido
         # em TODO passo, e não uma vez no fim: a idempotência que só vale num
         # estado é a que quebra no dia do deploy com dois workers de pé. As cinco
         # varreduras do tique entram na conta, e não só a do motor: uma reserva

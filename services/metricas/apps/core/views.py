@@ -1,8 +1,8 @@
 """As views da célula `metricas` (o livro de fatos da plataforma).
 
 Na gênese existe uma só: a sonda. A recepção de eventos e a API de leitura
-nascem nos degraus 7.3 e 7.4 da escada do plano do painel de gestão
-(`docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2), depois da tabela do evento
+nascem nos degraus 7.3 e 7.4 da escada do plano do painel de gestão,
+depois da tabela do evento
 imutável (7.2) — tabelas e motor antes de qualquer porta, como no fórum, na
 gamificação e nas encomendas.
 """

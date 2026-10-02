@@ -10,7 +10,7 @@ da moderação estaria aberta.
 
 **Por que este guarda importa MAIS que o dos avisos.** A §5.2 da
 `DECISAO-notificacoes` exigia fan-out em lote *dentro da célula que recebe*. O
-mantenedor escolheu "uma carta por pessoa" (`DECISAO-fase-2-do-sininho` §1), e
+mantenedor escolheu "uma carta por pessoa", e
 com isso a exigência **mudou de endereço**: o lote acontece aqui, na origem.
 Uma exigência que muda de lugar é uma exigência que fica órfã — a lei velha
 aponta para um lugar onde não há mais nada a medir, e a nova depende de alguém

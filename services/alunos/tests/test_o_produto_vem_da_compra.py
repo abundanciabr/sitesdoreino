@@ -1,9 +1,9 @@
 """A matrícula que nasce de uma COMPRA passa a dizer de qual produto ela é.
 
 Degrau 4 da escada do Rito de Contrato #1209, e o fechamento de
-[INV-ALU-C1] na porta que faltava. A porta da liberação já exigia o produto
+na porta que faltava. A porta da liberação já exigia o produto
 (#1178); esta é a da compra, e a lei
-(`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §4) diz que ela é a
+ diz que ela é a
 PRINCIPAL: é por ela que entra quem paga.
 
 **O caso que decide se este arquivo presta é o segundo**, não o primeiro. Que a
@@ -121,7 +121,7 @@ def test_a_compra_com_produto_nao_deixa_aviso_nenhum(caplog):
 
 
 def test_reentrega_do_mesmo_pedido_nao_duplica_nem_apaga_o_produto():
-    """A fila de eventos entrega pelo menos uma vez ([INV-P5]). A segunda
+    """A fila de eventos entrega pelo menos uma vez. A segunda
     entrega não pode criar matrícula nova nem zerar o produto da primeira."""
     ao_pagamento_aprovado(_aviso_da_compra(pedido="ped-6", produto=PRODUTO))
     ao_pagamento_aprovado(_aviso_da_compra(pedido="ped-6", produto=PRODUTO))

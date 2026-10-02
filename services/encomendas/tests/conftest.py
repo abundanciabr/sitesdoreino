@@ -13,8 +13,7 @@ Duas escolhas com motivo escrito:
 - **O `agora` de cada guarda é o relógio REAL** (`datetime.now(tz=utc)`), nunca
   um instante fixo. `Oferta.oferecida_em` é `auto_now_add`, e a restrição
   `oferta_expira_depois_de_oferecida` compara os dois: com um instante fixo, o
-  arquivo passa até o relógio da máquina ultrapassá-lo e fica vermelho sozinho
-  (`armadilhas/323`, medida nesta célula em 04/09/2026).
+  arquivo passa até o relógio da máquina ultrapassá-lo e fica vermelho sozinho.
 - **Os parâmetros vêm do semeador**, não de linhas escritas à mão. É o mesmo
   caminho que a instalação da célula percorre, e um cenário que grava os
   próprios valores provaria o motor contra números que ninguém usa.
@@ -35,7 +34,7 @@ SITE_PADRAO = "escola-a"
 # (`o_cartao_decide_o_nivel`). A tabela mora aqui, e não dentro de cada fábrica,
 # porque duas fábricas a usam e duas cópias divergiriam no primeiro cartão novo.
 # A LISTA FECHADA DE ENTREGÁVEIS que o briefing declara, e da qual toda proposta
-# marca um subconjunto (`PLANO-AREA-DE-NEGOCIACAO.md` §4.1). Mora aqui porque as
+# marca um subconjunto. Mora aqui porque as
 # duas fábricas a escrevem e os guardas da negociação a leem: uma cópia por
 # arquivo divergiria no primeiro entregável novo, e um teste que propusesse algo
 # fora dela ficaria vermelho por motivo errado.

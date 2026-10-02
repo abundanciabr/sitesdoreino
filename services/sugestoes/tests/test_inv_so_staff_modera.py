@@ -135,7 +135,7 @@ def test_a_equipe_alcanca_as_mesmas_rotas(equipe, sugestao):
 def test_o_cracha_sai_com_a_variavel_de_ambiente(
     equipe, sugestao, monkeypatch, rede, matricula
 ):
-    """O papel é DERIVADO a cada requisição (DECISAO-EVO-01 §4), nunca gravado.
+    """O papel é DERIVADO a cada requisição, nunca gravado.
 
     A promessa da decisão é "editar uma variável no servidor e reiniciar, sem
     migração e sem deploy". Se o papel viajasse no cookie, na linha local ou na

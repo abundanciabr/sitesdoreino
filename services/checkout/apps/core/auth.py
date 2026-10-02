@@ -8,8 +8,7 @@ from ninja.security import HttpBearer
 # a página já faz em nome do visitante anônimo: abrir a sessão, fechar o pedido
 # e ler o status dele. Operação fora desta lista responde 403 ao token público,
 # inclusive a que ainda não existe — quem acrescentar uma rota nova à API
-# acrescenta alcance por decisão escrita, nunca por descuido
-# (docs/consultorias/equipe-especialista/DIAGNOSTICO-TAR-458-bearer-do-checkout.md).
+# acrescenta alcance por decisão escrita, nunca por descuido.
 ALCANCE_DO_TOKEN_PUBLICO = frozenset(
     {
         "createSession",

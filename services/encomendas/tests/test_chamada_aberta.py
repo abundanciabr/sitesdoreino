@@ -7,8 +7,8 @@ Plano §6.4: *"Encomenda há 24h na fila sem aceite (ou sem elegíveis disponív
 vira Aberta: todos os elegíveis são avisados; o primeiro que aceitar leva. O
 nível mínimo continua valendo."*
 
-**A metade que já existia e a metade que nasce aqui.** Virar `aberta` no prazo é
-[INV-ENC-J9], do degrau 2.4, e este arquivo a usa pelo caminho real (o tique) em
+**A metade que já existia e a metade que nasce aqui.** Virar `aberta` no prazo é,
+do degrau 2.4, e este arquivo a usa pelo caminho real (o tique) em
 vez de forçar o estado à mão — um cenário que começa com `status = aberta`
 escrito na marra provaria o aceite e não provaria que alguma encomenda chega
 lá. O que nasce agora é o que a chamada aberta FAZ: quem pode levar, e o que

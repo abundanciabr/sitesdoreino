@@ -37,7 +37,7 @@ AVISOS_LEGADO = "/forms/sugestoes/avisos"
 # mudar de endereço, a mudança do lado do site é esta linha.
 FORUM_PADRAO = "/forum/"
 
-# A BIBLIOTECA PÚBLICA de documentos (`DECISAO-a-area-de-documentos.md`). Mora
+# A BIBLIOTECA PÚBLICA de documentos. Mora
 # na célula `admin`, mas o caminho público NÃO leva o prefixo `/admin`: são
 # dois prefixos de propósito, e só este é isento na porta.
 DOCUMENTOS_PADRAO = "/docs/"
@@ -47,7 +47,7 @@ DOCUMENTOS_PADRAO = "/docs/"
 # tela de "Entrar com Google" seria um clique a mais para dizer a mesma coisa.
 ENTRADA_PADRAO = "/entrar/google"
 
-# O segundo jeito de entrar (`DECISAO-login-por-senha.md`), também da célula
+# O segundo jeito de entrar, também da célula
 # `identidade` — o `action` do mini-formulário de senha em `funil/login.html`.
 ENTRADA_SENHA_PADRAO = "/entrar/senha"
 

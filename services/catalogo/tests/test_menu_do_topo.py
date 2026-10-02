@@ -284,7 +284,7 @@ def test_save_recusa_menu_torto(site):
 
 
 def test_update_do_queryset_tambem_valida(site):
-    """[ARMADILHAS §4.4] `QuerySet.update()` NÃO passa pelo `save()`. Sem o
+    """`QuerySet.update()` NÃO passa pelo `save()`. Sem o
     guarda no queryset, o banco aceitaria um menu torto pela porta dos fundos."""
     with pytest.raises(ValidationError):
         Site.objects.filter(pk=site.pk).update(menu={"versions": "nada disso"})
@@ -432,7 +432,7 @@ def test_as_duas_portas_novas_exigem_cracha(client, site):
 
 
 # ---------------------------------------------------------------------------
-# A plateia de EQUIPE (03/09/2026, PR #890 — Rito de Contrato)
+# A plateia de EQUIPE
 # ---------------------------------------------------------------------------
 def test_a_plateia_de_equipe_e_aceita():
     """`staff` é valor legítimo desde o Rito de Contrato do PR #890.

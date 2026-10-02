@@ -1,6 +1,6 @@
 """Semeia a jornada do silêncio da devolução COMO DADO, versionada, desligada.
 
-Degrau 2.4 da sala de aula (`PLANO-CELULA-CURSOS.md` §3.6): quando a
+Degrau 2.4 da sala de aula: quando a
 professora devolve um checkpoint, o aluno recebe uma data de retorno. Se 14
 dias passam sem um envio novo, a escola manda UMA mensagem fixa; aos 30 dias, a
 segunda; depois, silêncio. O reenvio (`envio.recebido`) cancela a jornada por

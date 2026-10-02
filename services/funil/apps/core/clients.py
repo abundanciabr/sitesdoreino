@@ -98,7 +98,7 @@ class CatalogoClient:
         return {"Authorization": f"Bearer {self.token}"}
 
     def obter_site_por_host(self, host: str) -> dict | None:
-        """[INV-P11] 404 do catálogo é 'site desconhecido', nunca um site padrão."""
+        """404 do catálogo é 'site desconhecido', nunca um site padrão."""
         r = http().get(
             f"{self.base}/sites/by-host/{host}",
             headers=self._headers(),
@@ -342,10 +342,10 @@ class IdentidadeClient:
 
         Existe porque a categoria de uma pessoa é calculada por e-mail: é por
         e-mail que a `alunos` guarda matrícula, e não há outro identificador
-        comum entre as duas células (`DECISAO-categorias-de-usuario` §4).
+        comum entre as duas células.
 
-        **Este é o degrau a mais que a `identidade` cobra por escrito**
-        (`DECISAO-celula-de-identidade` §6.3): além de `TOKENS_ACEITOS_FUNIL`,
+        **Este é o degrau a mais que a `identidade` cobra por escrito**:
+        além de `TOKENS_ACEITOS_FUNIL`,
         o par precisa estar em `TOKENS_COMPLETOS_FUNIL`. Sem o segundo, esta
         chamada volta 403 — e o efeito é a home tratar todo mundo como
         cadastrado, nunca um erro na tela.
@@ -446,8 +446,8 @@ class IdentidadeClient:
         """`setPassword` — grava a senha escolhida no `/cadastro`.
 
         **Fail-CLOSED, ao contrário de `emitir_token_de_senha` acima e de
-        `obter_sessao`/`obter_email`** — decisão do mantenedor
-        (`DECISAO-login-por-senha.md` §1.3): se isto falhar, quem chama
+        `obter_sessao`/`obter_email`** — decisão do mantenedor:
+        se isto falhar, quem chama
         (a view `cadastro`) trata o pedido inteiro como não enviado (502,
         formulário preservado), mesmo que o pedido de vaga em si
         (`AlunosClient.criar_pre_matricula`) já tenha ido. É seguro
@@ -745,7 +745,7 @@ class AlunosClient:
     `IdentidadeClient` acima e pelo mesmo motivo — esta resposta decide o que
     a HOME mostra, nunca o que alguém pode fazer. A Caixa continua conferindo
     matrícula na entrada dela; esconder um botão nunca protegeu nada, e
-    mostrá-lo nunca liberou nada (`DECISAO-categorias-de-usuario` §6).
+    mostrá-lo nunca liberou nada.
 
     `criar_pre_matricula` é diferente por natureza: é uma ESCRITA que a
     página de cadastro precisa ver confirmada, então ela é **fail-CLOSED** —
@@ -758,7 +758,7 @@ class AlunosClient:
     TIMEOUT = 2.0
 
     def _configuracao(self) -> "tuple[str, str] | None":
-        """Endereço e token do par, lidos NO PONTO DE USO (`armadilhas/097`).
+        """Endereço e token do par, lidos NO PONTO DE USO.
 
         Enquanto `infra/provisionar-pares-de-categorias.sh` não rodar na VPS,
         estas variáveis não existem — e este é um caminho NORMAL, não um erro:
@@ -871,7 +871,7 @@ class AlunosClient:
 
 
 # ---------------------------------------------------------------------------
-# O quadrinho de progresso da home (degrau 20 do PLANO-CELULA-GAMIFICACAO)
+# O quadrinho de progresso da home
 # ---------------------------------------------------------------------------
 # Sentinela de "veio um valor que o contrato não descreve". Existe porque `None`
 # já tem significado próprio aqui: no schema `MeuStatus` os números são
@@ -921,8 +921,8 @@ class GamificacaoClient:
     TIMEOUT = 2.0
 
     def _configuracao(self) -> "tuple[str, str] | None":
-        """Ver o comentário gêmeo em `IdentidadeClient._configuracao`
-        (`armadilhas/097`): `.get()`, nunca `os.environ[...]`, lido NO PONTO DE
+        """Ver o comentário gêmeo em `IdentidadeClient._configuracao`:
+        `.get()`, nunca `os.environ[...]`, lido NO PONTO DE
         USO. `KeyError` não é `httpx.HTTPError` e atravessaria intacto o `try`
         abaixo, o middleware e o `{% if request.ator %}` do template — virando
         HTTP 500 em toda página multilíngue para quem carrega um cookie

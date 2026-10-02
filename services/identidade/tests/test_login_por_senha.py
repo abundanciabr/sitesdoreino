@@ -1,5 +1,5 @@
 """O segundo jeito de entrar, para quem não tem conta do Google
-(`DECISAO-login-por-senha.md`) — `POST /entrar/senha`.
+ — `POST /entrar/senha`.
 
 Mesmo espírito de `test_entrada_google.py`: toda recusa VOLTA para a tela de
 login do `funil` com a chave do motivo, esta célula não renderiza página. A
@@ -145,8 +145,8 @@ def test_recusa_fala_o_idioma_do_destino(client, db):
 
 
 def test_recusa_na_raiz_volta_para_login_sem_prefixo_de_idioma(client, db):
-    """O idioma padrão do site mora na raiz, sem prefixo
-    (`DECISAO-raiz-sem-prefixo-do-idioma-padrao`): quem estava em `/` volta
+    """O idioma padrão do site mora na raiz, sem prefixo:
+    quem estava em `/` volta
     para `/login`. Esta célula não sabe qual idioma é o padrão, e não precisa
     saber. O `pt-br` fixo que havia aqui mandava toda recusa do meshcraft
     para `/pt-br/login`, que é 404 desde 27/08/2026."""

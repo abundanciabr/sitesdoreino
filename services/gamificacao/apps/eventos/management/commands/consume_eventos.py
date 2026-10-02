@@ -33,15 +33,15 @@ STREAMS = [
     "eventos.forum.mensagem-criada",
     "eventos.forum.resposta-aceita",
     # A SALA DE AULA (degrau 2.5, 05/09/2026). A célula `cursos` publica este
-    # assunto toda vez que um laudo ABRE a porta de uma aula
-    # (`contracts/eventos/aula.concluida.v1.json`). É a tomada que a lei desta
+    # assunto toda vez que um laudo ABRE a porta de uma aula.
+    # É a tomada que a lei desta
     # célula previa desde o plano ("entregar dá XP, aprovar dá porta"), e a regra
     # `aula-concluida` já estava semeada, desligada, esperando por ele. Só a
     # porta que abre viaja: pausa, quiz da aula e envio não rendem ponto.
     "eventos.aula.concluida",
     # O PORTFÓLIO (degrau 15, 06/09/2026). A célula `pages` publica este assunto
-    # quando alguém da equipe confere o portfólio de um aluno e o selo sai
-    # (`contracts/eventos/pages.portfolio.conferido.v1.json`). É o único assunto
+    # quando alguém da equipe confere o portfólio de um aluno e o selo sai.
+    # É o único assunto
     # que esta célula assina para NÃO pagar nada: ele acende um MARCO REAL, e
     # marco real vale zero XP de propósito. O motivo está declarado em
     # `handlers.NAO_CREDITAM`, ao lado do handler que o cumpre.
@@ -171,7 +171,7 @@ def _mover_para_fila_morta(
 
 
 def reentregar_presas(r: "redis.Redis", stream: str, handlers: dict) -> None:
-    """A peça que faltava (ARMADILHAS-OPERACAO.md §9): `xreadgroup(">")` só entrega
+    """A peça que faltava: `xreadgroup(">")` só entrega
     mensagem NOVA — quem estourava o handler ficava em XPENDING para sempre.
     Roda a cada iteração do loop, ANTES da leitura de mensagens novas:
 

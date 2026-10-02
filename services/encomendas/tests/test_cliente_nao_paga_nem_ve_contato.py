@@ -5,7 +5,7 @@ Definição de pronto da TAR-387, itens 2 e 3.
 1. **Não existe rota de pagar** ([lei §3.4], a pausa financeira de 22/08/2026).
    Uma tela que respondesse "ainda não" seria uma promessa com data; uma rota que
    não existe é 404, e 404 não promete nada.
-2. **Dado de contato não atravessa papel nenhum** ([INV-ENC-S1], [INV-ENC-S3]).
+2. **Dado de contato não atravessa papel nenhum**.
    O `models.Encomenda.briefing` anotava desde a TAR-120 que *"o guarda deles
    nasce na Fase 3"*. É este arquivo.
 3. **A porta é fail-closed duas vezes**: visitante não é ninguém, e quem entrou
@@ -198,7 +198,7 @@ def test_campo_a_mais_no_formulario_nao_vira_campo_a_mais_no_banco(
 
 @respx.mock
 def test_o_cliente_nao_ve_nome_nem_id_do_modelador(client, env, semeado, dois_no_mural):
-    """[INV-ENC-S3]. A tela nomeia "o modelador" e o título de Banca dele, e
+    """A tela nomeia "o modelador" e o título de Banca dele, e
     mais nada: nem nome exibido, nem e-mail, nem o id opaco."""
     from apps.encomendas import mural
 
@@ -220,7 +220,7 @@ def test_o_que_o_cliente_escreve_nao_sai_pela_porta_de_maquina(
     client, env, semeado, settings
 ):
     """O outro lado da fronteira: a porta de peças aprovadas devolve o nome da
-    peça, e nada mais do que o cliente escreveu ([INV-ENC-S3])."""
+    peça, e nada mais do que o cliente escreveu."""
     settings.TOKENS_ACEITOS = frozenset({TOKEN_DE_LEITURA})
     entrar(client)
     assert (

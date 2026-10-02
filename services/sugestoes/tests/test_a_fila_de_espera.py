@@ -295,7 +295,7 @@ def test_o_recibo_e_de_quem_pediu_e_nao_do_navegador(rede, db, quadro):
 )
 def test_pedido_incompleto_e_recusado_sem_chegar_na_alunos(na_porta, campos, esperado):
     """Nada sai para a rede: a fixture `rede` estoura em requisição não
-    registrada (armadilhas/054), e aqui a da fila NÃO foi registrada."""
+    registrada, e aqui a da fila NÃO foi registrada."""
     resposta = pedir(na_porta, **campos)
 
     assert resposta.status_code == 400

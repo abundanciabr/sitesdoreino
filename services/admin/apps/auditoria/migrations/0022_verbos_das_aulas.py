@@ -11,7 +11,7 @@ a contagem de travessoes, nunca uma frase da aula.
 
 Mexe so nas ESCOLHAS do campo, nao nos dados nem no tipo da coluna: nenhuma
 linha existente muda e o Django nao reconstroi a tabela, que e o que mantem de
-pe os gatilhos de append-only (`armadilhas/246`).
+pe os gatilhos de append-only.
 """
 
 from django.db import migrations, models

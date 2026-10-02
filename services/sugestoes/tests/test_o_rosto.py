@@ -14,8 +14,7 @@ Duas amarras deste arquivo merecem leitura antes de mexer nele:
   este despacho existe para não cometer;
 * **o CSS é medido sob `SCRIPT_NAME`**, que é o único regime em que a diferença
   entre `{% static %}` e `{% url 'estatico' %}` aparece. Sem o prefixo ligado,
-  os dois devolvem `/static/…` e o guarda ficaria verde para sempre
-  (armadilhas/029, /081 e /083; a lição inteira em `armadilhas/102`).
+  os dois devolvem `/static/…` e o guarda ficaria verde para sempre.
 """
 
 import re
@@ -377,7 +376,7 @@ def test_o_sino_continua_contando_no_trilho_da_propria_pagina_de_avisos(dentro, 
 
 def test_quem_nao_entrou_nao_alcanca_o_rosto(client, sugestao):
     """O rosto não afrouxou nada: continua valendo que a Caixa é de quem tem
-    matrícula, inclusive para só olhar (`DECISAO-EVO-01` §2)."""
+    matrícula, inclusive para só olhar."""
     for endereco in (
         reverse("quadro"),
         f"{reverse('quadro')}?ordem=novas",

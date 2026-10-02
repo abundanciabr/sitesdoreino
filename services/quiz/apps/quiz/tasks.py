@@ -40,7 +40,7 @@ def relay_outbox() -> int:
 
     Idempotente e segura de chamar a qualquer momento (evento com
     `published_at` preenchido é ignorado pelo filtro). REDIS_STREAMS_URL é
-    lida no PONTO DE USO (ARMADILHAS §5.3): nada fail-hard no import — o web
+    lida no PONTO DE USO: nada fail-hard no import — o web
     importa este módulo (via views e via djhuey) e não pode morrer no boot
     se a variável faltar; faltando, o KeyError estoura só aqui, é engolido
     pelo `relay_apos_commit` e o evento fica pendente, nunca perdido.

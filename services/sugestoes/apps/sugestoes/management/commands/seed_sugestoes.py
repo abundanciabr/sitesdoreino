@@ -13,7 +13,7 @@ from django.db import transaction
 
 from apps.sugestoes.models import Categoria, Quadro
 
-# As categorias do protótipo v2 (`docs/caixa-de-sugestoes/prototipo-v2.html`),
+# As categorias do protótipo v2,
 # que é o desenho aprovado da Caixa. Categoria é configurável POR QUADRO — esta
 # lista é o ponto de partida, não uma lei.
 CATEGORIAS = [

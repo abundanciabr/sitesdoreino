@@ -19,13 +19,13 @@ possíveis sai da letra miúda do cartão. Nenhum dos três é campo de formulá
 NENHUM PREÇO APARECE AQUI, E A AUSÊNCIA É A LEI
 ------------------------------------------------
 Até 04/09/2026 o cardápio tinha preço de tabela. A negociação trocou isso: o
-valor só existe depois do Acordo (`PLANO-AREA-DE-NEGOCIACAO.md` §5), e o piso
+valor só existe depois do Acordo, e o piso
 por nível nasce sem número de propósito. Um preço escrito aqui seria um número
 inventado que a tela defenderia como se fosse decisão do dono.
 
 O QUE "BLINDADO" QUER DIZER, EM CÓDIGO
 ---------------------------------------
-[INV-ENC-S1] proíbe texto livre entre cliente e aluno fora dos campos
+proíbe texto livre entre cliente e aluno fora dos campos
 estruturados, e [INV-ENC-S3] proíbe dado de contato atravessando essa fronteira.
 `models.Encomenda.briefing` já anotava que *"o guarda deles nasce na Fase 3"*.
 Ele nasce aqui, e são duas metades:
@@ -219,7 +219,7 @@ def sem_contato(texto: str) -> bool:
 
     **Peneirar não é adivinhar intenção.** Quem quiser burlar isto com palavras
     consegue, e este arquivo não finge o contrário: quem lê tudo o que os dois
-    lados trocam é o plantão ([INV-ENC-S1], `negociacao.para_o_plantao`). O que
+    lados trocam é o plantão. O que
     a peneira impede é o caso comum e silencioso, o cliente que escreve o
     telefone dele sem saber que não devia.
     """

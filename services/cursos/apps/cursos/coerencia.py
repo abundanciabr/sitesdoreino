@@ -1,6 +1,6 @@
 """O Revisor de coerencia: codigo, nao IA. Ele APONTA, e nunca corrige.
 
-Degrau 3.1 da escada (`docs/decisoes/PLANO-CELULA-CURSOS.md` §10), e o primeiro
+Degrau 3.1 da escada, e o primeiro
 verificador desta celula. A linha "Revisor de coerencia" do §7 lista as seis
 conferencias, e elas sao exatamente as seis funcoes deste arquivo:
 
@@ -47,7 +47,7 @@ e 20 mil triangulos" e uma anotacao legitima para ela; a lei que proibe o numero
 que e o que envelhece na mao do aluno.
 
 Guardas: `tests/test_coerencia.py` (as seis, mais a aula limpa) e
-`tests/test_inv_c1_remissao_quebrada_nao_publica.py` ([INV-CUR-C1]).
+`tests/test_inv_c1_remissao_quebrada_nao_publica.py`.
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ def _textos_das_pecas(aula: Aula) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
-# 1. A REMISSAO QUEBRADA, a unica que impede publicar ([INV-CUR-C1])
+# 1. A REMISSAO QUEBRADA, a unica que impede publicar
 # ---------------------------------------------------------------------------
 # `\d{2,}` e nao `\d{2}`: "E100" e uma remissao quebrada tao real quanto "E99",
 # e um `\d{2}` cravado a deixaria passar calada por nao fechar a borda.

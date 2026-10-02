@@ -41,7 +41,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
-    # i18n da célula (PLANO-I18N fase 1): o AppConfig.ready() valida o
+    # i18n da célula: o AppConfig.ready() valida o
     # catálogo no BOOT (fail-closed) e o congela em memória.
     "apps.i18n",
     "site_errors",
@@ -57,7 +57,7 @@ MIDDLEWARE = [
     # DEPOIS do CONV-SITE, e a ordem é a regra, não estilo: host não cadastrado
     # morre em 404 lá em cima e nunca gasta um número, e o `path_info` já chega
     # aqui sem o prefixo de idioma, que é a forma em que a isenção de rota de
-    # máquina casa (`armadilhas/086`). ANTES do `BarraNoFinal`, para que o
+    # máquina casa. ANTES do `BarraNoFinal`, para que o
     # visitante que pediu `/cadastro/` já leve o número no 302 — as duas ordens
     # têm guarda em `tests/test_identidade_do_visitante.py`. O porquê de cada
     # atributo do cookie está em `apps/core/visitante.py`.
@@ -121,7 +121,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # (CI verde, deploy verde, /healthz 200, data errada na tela). `USE_TZ` vem
 # escrito junto de propósito: no Django 5 ele já é `True` por default, e um
 # guarda que depende de default calado é meio guarda.
-# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+# Guarda: tests/test_fuso_horario.py.
 USE_TZ = True
 TIME_ZONE = "America/Sao_Paulo"
 

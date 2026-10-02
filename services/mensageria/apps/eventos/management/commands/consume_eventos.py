@@ -119,7 +119,7 @@ def processar_envelope(envelope: dict, handler) -> bool:
         para aquele WhatsApp nunca mais ser enviado, com o e-mail já entregue.
 
     (2) A INTERNA é savepoint SÓ em volta do create() — que antes não existia
-        aqui de forma nenhuma (ARMADILHAS.md §4.8 na forma crua). Duas razões:
+        aqui de forma nenhuma. Duas razões:
         sem ele, o IntegrityError do event_id duplicado marca a transação
         inteira como abortada; e o `except` precisa enxergar exclusivamente o
         IntegrityError DESTE create. Com o handler dentro do try, um
@@ -233,7 +233,7 @@ def _mover_para_fila_morta(r, stream, msg_id, campos, entregas) -> None:
 
 
 def _reivindicar_presas(r, stream, handler) -> None:
-    """Reentrega das presas (ARMADILHAS §9): quando o handler estoura, o ack
+    """Reentrega das presas: quando o handler estoura, o ack
     não acontece e a mensagem fica no PEL do grupo — e `xreadgroup ">"` só
     entrega mensagem NOVA, então ela ficava pendente PARA SEMPRE. A cada
     iteração do loop, antes de ler novas, o XAUTOCLAIM transfere para este

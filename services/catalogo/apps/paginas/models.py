@@ -51,7 +51,7 @@ class PageVersionQuerySet(models.QuerySet):
 
     Sem isto, `PageVersion.objects.filter(...).update(...)` passaria direto
     pelo `save()` sobrescrito, porque o ORM não chama `save()` numa atualização
-    de conjunto, e a trava pareceria existir sem existir (`armadilhas/023`).
+    de conjunto, e a trava pareceria existir sem existir.
     """
 
     def update(self, **kwargs):
@@ -217,7 +217,7 @@ RECADO_VARIANTE_CONGELADA = (
 
 
 #: Alfa 0,05 bicaudal e poder 0,8, os da conta que decidiu o primeiro
-#: experimento (docs/decisoes/DECISAO-a-pagina-real-antes-do-experimento.md §3).
+#: experimento.
 Z_ALFA = NormalDist().inv_cdf(1 - 0.05 / 2)
 Z_PODER = NormalDist().inv_cdf(0.80)
 
@@ -239,7 +239,7 @@ def amostra_por_braco(taxa_base: float, mde: float) -> int:
 
 
 class ExperimentoQuerySet(models.QuerySet):
-    """Apagar em conjunto também respeita o que já foi ao ar (`armadilhas/023`)."""
+    """Apagar em conjunto também respeita o que já foi ao ar."""
 
     def delete(self):
         if self.exclude(estado=Experimento.RASCUNHO).exists():
@@ -326,7 +326,7 @@ class VarianteQuerySet(models.QuerySet):
     """O caminho de conjunto também confere o estado do experimento.
 
     Sem isto, `Variante.objects.filter(...).update(...)` passaria direto pelo
-    `save()` sobrescrito (`armadilhas/023`), e a trava pareceria existir sem
+    `save()` sobrescrito, e a trava pareceria existir sem
     existir.
     """
 

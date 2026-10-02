@@ -1,5 +1,5 @@
-# apps/i18n/validador.py — carrega o catálogo de traduções e instala em memória
-# (PLANO-I18N §2 D4). Problema no catálogo vira linha de log, nunca queda do
+# apps/i18n/validador.py — carrega o catálogo de traduções e instala em memória.
+# Problema no catálogo vira linha de log, nunca queda do
 # site: um erro de digitação numa tradução não derruba a partida.
 import html
 import logging

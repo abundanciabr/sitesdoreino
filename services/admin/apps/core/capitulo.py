@@ -8,7 +8,7 @@ capítulo de uma vez, mostra o que reconheceu, e grava.
 
 ## Por que uma TELA, e não um arquivo no repositório
 
-O capítulo é obra NÃO LANÇADA e este repositório é PÚBLICO (`armadilhas/331`).
+O capítulo é obra NÃO LANÇADA e este repositório é PÚBLICO.
 Ele não entra aqui: nem como arquivo, nem como semente, nem dentro de um teste.
 Entra por esta área de colar (ou pelo arquivo `.md`/`.txt` do computador dele),
 e o que fica guardado é o resultado, na `cursos`, nunca o capítulo. **Esta tela
@@ -94,7 +94,7 @@ da encomenda aberta. Capítulo sem essa linha não pode ser conferido: a prévia
 diz isso com todas as letras, e a gravação segue.
 
 Sem uma linha de script: a política de segurança desta área exige hash na CSP
-para cada script embutido (`armadilhas/199`), e um POST por gesto deixa a tela
+para cada script embutido, e um POST por gesto deixa a tela
 mostrando sempre o que está de fato gravado.
 """
 

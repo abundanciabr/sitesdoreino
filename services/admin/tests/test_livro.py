@@ -664,7 +664,7 @@ def sob_o_prefixo_publico():
     """O regime de produção: a área inteira mora sob `/admin`.
 
     Mexe no PREFIXO DE SCRIPT, e não em `settings.FORCE_SCRIPT_NAME`, porque é
-    o prefixo de thread que `reverse()` lê (`armadilhas/081`). O `finally`
+    o prefixo de thread que `reverse()` lê. O `finally`
     restaura o anterior: o prefixo vaza entre testes.
     """
     anterior = get_script_prefix()
@@ -680,7 +680,7 @@ def test_a_visao_geral_oferece_a_porta_do_livro(sob_o_prefixo_publico):
     """Um botão que ninguém encontra é uma funcionalidade que não existe.
 
     E o endereço tem de levar o prefixo público: `href="/livro/"` abriria no PC
-    de quem desenvolve e daria 404 só na tela dele (`armadilhas/081`).
+    de quem desenvolve e daria 404 só na tela dele.
 
     O endereço é medido DENTRO do cartão, e não solto na página: o menu do topo
     também aponta para a Biblioteca, e um `href` procurado na página inteira

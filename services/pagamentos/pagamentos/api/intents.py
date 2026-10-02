@@ -58,7 +58,7 @@ def _falha_de_provedor(exc: FalhaNoProvedor) -> JsonResponse:
     request dele. E por que não deixar estourar 500: 500 é "bug aqui"; isto é uma
     condição prevista, com ação conhecida do outro lado (repetir a mesma chave).
 
-    [ARMADILHAS §4.2] O status NÃO entra como `response={...}` no decorator
+    O status NÃO entra como `response={...}` no decorator
     (qualquer valor não-`None` ali vira `ninja.Schema` dinâmico e pode vazar para
     `components.schemas`, quebrando o freeze). Ele entra pelo `openapi_extra` das
     operações — dict cru, que o exportador copia sem inventar schema nenhum.
@@ -239,7 +239,7 @@ def create_intent(request: HttpRequest) -> JsonResponse:
 
     existente = Intent.objects.filter(idempotency_key=idem_key).first()
     if existente is not None:
-        # [INV-P4] replay: mesma chave, mesma intent, SEM nova tentativa de cobrança.
+        # replay: mesma chave, mesma intent, SEM nova tentativa de cobrança.
         #
         # Exceto quando a intent está INCOMPLETA (o provedor falhou depois de a
         # linha nascer). Reentregá-la calada era o segundo lugar por onde o QR
@@ -282,7 +282,7 @@ def create_intent(request: HttpRequest) -> JsonResponse:
             metadata=payload["metadata"],
         )
     except IntegrityError:
-        # [INV-P4] corrida: outra requisição com a MESMA chave venceu a criação
+        # corrida: outra requisição com a MESMA chave venceu a criação
         # entre o pre-check acima e este `.create()` — devolve a dela, a nossa
         # nunca chegou a existir (criar_intent_pix/card fecha isso num
         # savepoint próprio, então a transação do request atual continua sã).

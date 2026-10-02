@@ -1,4 +1,4 @@
-"""Teste-guarda do H10.1 (ARMADILHAS §4.10): /healthz sob o env de produção.
+"""Teste-guarda do H10.1: /healthz sob o env de produção.
 
 Em produção o quiz sobe atrás do Traefik com SCRIPT_NAME=/quiz
 (FORCE_SCRIPT_NAME) e o Traefik NÃO remove o prefixo: a borda pública chega

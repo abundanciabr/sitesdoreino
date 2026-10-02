@@ -542,7 +542,7 @@ def _caminhos_de_leitura() -> list[str]:
 
     Aqui a medição é do schema VIVO porque o contrato congelado ainda não
     existe: ele nasce no degrau 6d, e a ordem porta-antes-de-contrato é
-    obrigatória (`armadilhas/228`). Quando ele existir, esta função passa a ler
+    obrigatória. Quando ele existir, esta função passa a ler
     o congelado, como a da `gamificacao` faz, porque é contra a PROMESSA que o
     cadeado precisa valer.
     """
@@ -669,7 +669,7 @@ def test_a_porta_responde_no_endereco_escolhido_e_nao_no_de_interno():
 
 def test_o_healthz_continua_aberto_e_sem_cracha():
     """A sonda do compose não passa por Bearer nenhum: é ela que faz o processo
-    auxiliar esperar o `migrate` terminar (ARMADILHAS §3.13)."""
+    auxiliar esperar o `migrate` terminar."""
     assert Client().get("/healthz").status_code == 200
 
 

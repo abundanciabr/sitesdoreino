@@ -46,9 +46,9 @@ urlpatterns = [
     # `{% static %}` do Django seriam duas coisas diferentes com o mesmo nome na
     # mesma linha. **É `{% url %}` e não `{% static %}` porque só o primeiro
     # carrega o prefixo público**: `/static/caixa.css` em `meshcraft.top` é
-    # endereço do `funil`, não da Caixa (`armadilhas/029` e `/081`).
+    # endereço do `funil`, não da Caixa.
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
-    # Superfície de MÁQUINA (DECISAO-onde-mora-a-sessao): o `funil` pergunta
+    # Superfície de MÁQUINA: o `funil` pergunta
     # quem é o dono da sessão. Prefixo `interno/` no nome porque é assim que a
     # fronteira fica legível no urlconf — do mesmo jeito que `moderacao/`
     # deixa visível a fronteira do crachá, e não só no decorador. Não confundir
@@ -57,7 +57,7 @@ urlpatterns = [
     path("interno/", api.urls),
     path("", ver_quadro, name="quadro"),
     path("entrar", entrar, name="entrar"),
-    # A fila de liberacao (DECISAO-fila-de-liberacao.md). POST, e nao GET,
+    # A fila de liberacao. POST, e nao GET,
     # porque cria uma linha na fila do mantenedor: um GET seria disparado por
     # qualquer pre-carregamento de link do navegador. A TELA do formulario nao
     # tem rota propria — ela e a propria porta, no estado SEM_MATRICULA, que e

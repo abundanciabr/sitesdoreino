@@ -1,14 +1,14 @@
 """O ASSISTENTE DE LAUDO: o primeiro agente de IA da sala de aula.
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §7 (a linha do Assistente de laudo
-na tabela dos agentes) e §9 ([INV-CUR-L4]). Degrau 2.3 (TAR-157).
+na tabela dos agentes) e §9. Degrau 2.3 (TAR-157).
 
 **O molde é `services/forum/apps/core/agente.py`, e as regras dele são
 herdadas sem exceção.** Cada uma custou uma rodada nesta casa, e o motivo de
 cada uma está repetido aqui em vez de referenciado, porque quem mexer neste
 arquivo lê este arquivo:
 
-1. **A chave é lida NO PONTO DE USO** (`armadilhas/097`). Sem ela, quem falha é
+1. **A chave é lida NO PONTO DE USO**. Sem ela, quem falha é
    este caminho, com uma frase em português; a sala de aula inteira continua
    igual ao que era antes deste arquivo existir. Chave lida no import
    transformaria env ausente em HTTP 500 em toda página, com o deploy verde.
@@ -29,7 +29,7 @@ arquivo lê este arquivo:
 6. **O que sai da nossa infraestrutura são rótulos.** A pessoa que entregou
    viaja como `Aluno`, e este arquivo nunca lê `envio.pessoa`. O laudo não
    melhora por saber de quem é o trabalho, e comparar pessoas é justamente o
-   que a lei proíbe ([INV-CUR-P1]).
+   que a lei proíbe.
 O QUE ELE NUNCA FAZ, E ISSO É INVARIANTE
 -----------------------------------------
 Decidir, datar, marcar a pergunta de amanhã de manhã, escrever ao aluno, usar
@@ -206,8 +206,8 @@ class AgenteIndisponivel(RuntimeError):
 class Sugestao:
     """O que a IA propôs, e nada além disso.
 
-    **Os três campos que NÃO existem aqui são a metade do desenho**
-    ([INV-CUR-L4]): não há `decisao`, não há `data_de_retorno` e não há
+    **Os três campos que NÃO existem aqui são a metade do desenho**:
+    não há `decisao`, não há `data_de_retorno` e não há
     `sabe_o_que_fazer_amanha`. Um campo a mais neste dataclass seria uma opinião
     da máquina sobre algo que é o produto do trabalho da professora, e a tela
     passaria a mostrá-la marcada.
@@ -320,7 +320,7 @@ observação: o README, a autoavaliação, o Aceito quando, o Guia do Mentor>", 
 def ligado() -> bool:
     """A IA está configurada neste servidor?
 
-    Lido no ponto de uso, toda vez (`armadilhas/097`). É o que decide se o
+    Lido no ponto de uso, toda vez. É o que decide se o
     plantão oferece o botão ou explica que ainda falta a chave, e é a MESMA
     leitura que `rascunhar` faz, para as duas nunca discordarem.
     """

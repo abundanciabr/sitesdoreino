@@ -357,7 +357,7 @@ def test_religar_devolve_o_acesso_na_hora(client, auth):
 
 @pytest.mark.django_db
 def test_encerrar_tira_o_acesso_e_a_linha_continua_existindo(client, auth):
-    """ "Excluir" apaga o ACESSO, não a história (`DECISAO-gestao-de-alunos` §5).
+    """ "Excluir" apaga o ACESSO, não a história.
 
     É a linha que permite desfazer e que dá sentido à auditoria do painel.
     """
@@ -377,8 +377,7 @@ def test_reembolsada_nao_vale_mais_acesso(client, auth):
 
     Até essa data este teste afirmava o CONTRÁRIO, com estas palavras: *"a
     decisão de 24/08 do mantenedor, intacta: quem já foi aluno mantém a voz"*.
-    Ele mesmo reverteu, ao encontrar o texto antigo publicado no site
-    (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`).
+    Ele mesmo reverteu, ao encontrar o texto antigo publicado no site.
 
     O teste é SUBSTITUÍDO, não apagado, e a mudança de lado é o ponto: quem
     "limpar" a lista em qualquer uma das duas direções encontra uma decisão
@@ -402,7 +401,7 @@ def test_reembolsada_nao_vale_mais_acesso(client, auth):
 
 @pytest.mark.django_db
 def test_as_duas_portas_recusam_sem_bearer():
-    """Esta API é alcançável pela internet (`armadilhas/103`), e devolve PII."""
+    """Esta API é alcançável pela internet, e devolve PII."""
     from django.test import Client
 
     anonimo = Client()
@@ -420,7 +419,7 @@ def test_as_duas_portas_recusam_sem_bearer():
 # ------------------------------------------------------------ apagar de vez
 #
 # Os cinco testes que mediam `DELETE /matriculas/{id}` sairam em 29/08/2026: a
-# porta deixou de existir (`DECISAO-a-ficha-nao-se-apaga.md`), e teste de codigo
+# porta deixou de existir, e teste de codigo
 # removido nao fica obsoleto aos poucos — fica obsoleto na hora.
 #
 # O que passou a precisar de guarda e a AUSENCIA, e ela mora em

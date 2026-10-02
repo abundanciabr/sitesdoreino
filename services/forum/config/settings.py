@@ -26,8 +26,8 @@ def env(nome: str) -> str:
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# O fórum serve sob prefixo: meshcraft.top/forum
-# (`DECISAO-forum-da-escola.md` §2). O Traefik NÃO remove o prefixo — quem o
+# O fórum serve sob prefixo: meshcraft.top/forum.
+# O Traefik NÃO remove o prefixo — quem o
 # conhece é esta variável, nunca o `urls.py`. Ver `armadilhas/029` e
 # `tests/test_healthz_script_name.py`.
 #
@@ -67,8 +67,8 @@ INSTALLED_APPS = [
     # A fila intra-célula, que entrou com a VOZ do fórum (degrau 17): é ela que
     # dá o entrypoint canônico `python manage.py run_huey` — o único que faz
     # `django.setup()` + autodiscover de `tasks.py`. Sem esta linha o worker sobe
-    # com o registro VAZIO, não executa nada e não reclama de nada
-    # (`armadilhas/030`), e os eventos ficariam parados na outbox sem ninguém
+    # com o registro VAZIO, não executa nada e não reclama de nada,
+    # e os eventos ficariam parados na outbox sem ninguém
     # acusar.
     "huey.contrib.djhuey",
 ]
@@ -76,8 +76,7 @@ INSTALLED_APPS = [
 # A instância do Huey — importada, não nomeada por string: o djhuey lê
 # `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
 # import, de propósito: o container web importa este módulo por causa da linha
-# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env
-# (`armadilhas/097`).
+# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env.
 from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
@@ -103,7 +102,7 @@ MIDDLEWARE = [
 #
 # Duas células assinando o MESMO cookie com chaves diferentes produzem um
 # cabo-de-guerra invisível: entrar no fórum deslogaria do site, e vice-versa,
-# **sem erro em lugar nenhum, sem log, sem alarme** (`armadilhas/143`).
+# **sem erro em lugar nenhum, sem log, sem alarme**.
 #
 # A tentação concreta que isto mata: quando as permissões por área nascerem, o
 # caminho mais curto para guardar "esta pessoa já foi conferida" é
@@ -225,7 +224,7 @@ USE_TZ = True
 
 # O fuso em que o fórum MOSTRA hora — o armazenamento continua em UTC. Sem esta
 # linha vale o default de fábrica do Django, `America/Chicago`: cinco horas
-# atrás, sem nada indicando a troca (`armadilhas/099`). Num fórum, onde cada
+# atrás, sem nada indicando a troca. Num fórum, onde cada
 # mensagem carrega "há 3 minutos", isso apareceria na primeira tela e seria
 # lido como bug de dado.
 TIME_ZONE = "America/Sao_Paulo"

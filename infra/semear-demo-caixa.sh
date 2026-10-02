@@ -199,7 +199,7 @@ echo
 
 # A TESTEMUNHA, e ela vale para as duas ações: o número de ideias de gente de
 # verdade não pode ter mudado. Se mudou, alguma coisa encostou onde não devia e
-# o "PRONTO." não sai — ausência de erro não é sucesso (INV-CI01).
+# o "PRONTO." não sai — ausência de erro não é sucesso.
 if [ "$REAIS_DEPOIS" != "$REAIS_ANTES" ]; then
   echo "ATENÇÃO: as ideias de gente de verdade eram $REAIS_ANTES e agora são $REAIS_DEPOIS."
   echo "Isto NÃO devia acontecer. Não mexa na Caixa antes de achar a causa e consertar."

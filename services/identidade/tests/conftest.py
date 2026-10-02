@@ -8,7 +8,7 @@ A porta fala com UM serviço de fora: o Google (quem é). Ele é dublado com
 
 A prova disso é mecânica, não promessa: `respx.mock` sem `assert_all_called`
 levanta `AllMockedAssertionError` para QUALQUER requisição que não tenha sido
-registrada (armadilhas/054). Se alguém acrescentar amanhã um salto de rede
+registrada. Se alguém acrescentar amanhã um salto de rede
 novo neste fluxo — uma consulta de matrícula, por exemplo, que a
 DECISAO-celula-de-identidade proíbe NA PORTA — a suíte estoura em vez de sair
 silenciosamente para a internet.
@@ -69,7 +69,7 @@ class Rede:
 
     Cada método diz o que o mundo VAI responder; o teste declara só o que
     importa para o invariante que está provando. O que não for declarado
-    estoura (armadilhas/054) — é assim que um salto de rede novo aparece.
+    estoura — é assim que um salto de rede novo aparece.
     """
 
     def __init__(self, mock: respx.MockRouter) -> None:
@@ -125,8 +125,7 @@ class Porta:
 
         # Nome escrito à mão, e não lido de settings: um teste que lê a mesma
         # variável que o código passaria mesmo com o valor errado. É o MESMO
-        # nome que a Caixa usava — a sessão mudou de casa, não de nome
-        # (DECISAO-celula-de-identidade).
+        # nome que a Caixa usava — a sessão mudou de casa, não de nome.
         cookie = self.client.cookies.get("meshcraft_sessao")
         if cookie is None or not cookie.value:
             return False

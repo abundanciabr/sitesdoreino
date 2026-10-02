@@ -380,7 +380,7 @@ def test_o_banco_recusa_uma_correcao_que_nao_corrige_nada(com_erro, aluno):
 
 def test_o_status_da_ideia_nao_muda_ao_corrigir(com_erro, aluno):
     """`save(update_fields=...)` toca só o que mudou: a fase fica onde estava,
-    e a trava do ChangeSpec ([INV-SUG10]) não é provocada por uma correção."""
+    e a trava do ChangeSpec não é provocada por uma correção."""
     com_erro.status = Sugestao.Status.PLANEJADO
     com_erro.save(update_fields=["status"])
 

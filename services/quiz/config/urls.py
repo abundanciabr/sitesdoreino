@@ -32,7 +32,7 @@ urlpatterns = [
     # defeito que o checkout já corrigiu (services/checkout/config/urls.py);
     # `healthz` e estáticos nunca tiveram prefixo e por isso nunca quebraram.
     # Os `name` não mudam: {% url %} e reverse() prefixam o SCRIPT_NAME sozinhos
-    # quando quem serve é um handler de verdade (armadilhas/081).
+    # quando quem serve é um handler de verdade.
     #
     # A rota do formulário é o CURINGA da célula: ela casa qualquer segmento
     # único, `/healthz/` e `/static/` inclusive — justamente os caminhos que o

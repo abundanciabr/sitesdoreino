@@ -101,7 +101,7 @@ def test_o_aluno_escreve_nas_areas_dele(semeado):
     """O outro lado: o cadeado não pode ter fechado o fórum para o aluno.
 
     Um teste que só provasse "ninguém escreve" ficaria verde num fórum quebrado
-    — é o cenário fraco (`armadilhas/183`). Aqui está a prova positiva.
+    — é o cenário fraco. Aqui está a prova positiva.
     """
     aluno = ator(autenticado=True, aluno=True)
     for slug in ["duvidas", "mostre-seu-trabalho", "sala-dos-alunos"]:

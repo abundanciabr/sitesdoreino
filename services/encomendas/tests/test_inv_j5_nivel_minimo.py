@@ -1,4 +1,4 @@
-"""[INV-ENC-J5] Nenhuma oferta a aluno com título abaixo do nível mínimo da encomenda.
+"""Nenhuma oferta a aluno com título abaixo do nível mínimo da encomenda.
 
 Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça) e §3.6 (quem
 dá o título). Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.1.
@@ -178,7 +178,7 @@ def test_data_de_abandono_ilegivel_conta_como_recente():
     direção da dúvida é não oferecer a encomenda mais difícil da casa a esse
     perfil: o efeito é local (só o nível avançado), o plantão vê a razão
     nomeada, e a lista continua visível para ser consertada. Uma exceção não
-    tratada aqui derrubaria a rodada inteira de TODOS (`armadilhas/264`).
+    tratada aqui derrubaria a rodada inteira de TODOS.
     """
     vaga = motor.Vaga(encomenda_id="v", nivel=Encomenda.Nivel.AVANCADO)
     torto = _candidato(1, titulo="nivel_3", entregas=9, abandonos=("ontem de manhã",))

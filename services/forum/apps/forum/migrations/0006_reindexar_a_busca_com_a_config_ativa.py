@@ -13,7 +13,7 @@ inverso, que vai acontecer de novo: o dia em que a cura for instalada num banco
 que já tinha mensagens escritas com a configuração antiga.
 
 **Ela só faz UPDATE, e isso é o que a torna segura aqui.** Criar extensão exige
-superusuário e por isso mora no provisionamento (`armadilhas/154`); recalcular
+superusuário e por isso mora no provisionamento; recalcular
 uma coluna é escrita comum, dentro do que o papel restrito da célula pode fazer.
 Uma migração que tentasse `CREATE EXTENSION` morreria no boot, na VPS, com o
 deploy verde.

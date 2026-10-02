@@ -4,7 +4,6 @@ Pedido dele em 31/08/2026: *"Crie uma parte no painel do admin para eu
 gerenciar / editar os documentos, tais como este:
 https://meshcraft.top/docs/como-funciona-a-entrada"*.
 
-Lei: `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
 
 ## Um gesto por rota
 
@@ -21,7 +20,7 @@ não cabem no mesmo clique.
 
 Nenhuma ilha, nenhum framework, nenhum estado no navegador. As três razões da
 tela do menu valem inteiras aqui: o que se vê é o que está gravado; a política
-de segurança desta área bloqueia script embutido (`armadilhas/199`), e uma tela
+de segurança desta área bloqueia script embutido, e uma tela
 que é formulário não precisa de nenhum; e o mantenedor é leigo, para quem um
 botão com o nome do gesto escrito nele não tem como ser mal entendido.
 
@@ -425,7 +424,7 @@ def documento_salvar(request, nome):
 # para mandar o envio a esta rota. É o que impede o gesto de destruir o outro:
 # um formulário separado para o arquivo faria o rascunho não salvo do texto
 # desaparecer a cada envio, que é a mesma perda que a recusa do travessão já se
-# recusa a causar (`DECISAO-o-editor-de-documentos` §3).
+# recusa a causar.
 #
 # Por isso esta rota NÃO redireciona: ela devolve a tela inteira, com o
 # rascunho de volta dentro dela. O preço é o aviso de reenvio do navegador ao

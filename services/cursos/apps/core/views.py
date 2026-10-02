@@ -14,9 +14,9 @@ ESTA CÉLULA NÃO ASSINA SESSÃO, E NENHUMA VIEW DAQUI PODE ESQUECER ISSO
 -----------------------------------------------------------------------
 Não há `SessionMiddleware`, não há `request.session`, e a tentação de guardar
 "já viu a cerimônia?" ali dentro é a que desloga a plataforma inteira sem erro
-em lugar nenhum ([INV-P12]; `armadilhas/143`). O estado mora no `Progresso`.
+em lugar nenhum. O estado mora no `Progresso`.
 
-NENHUMA TELA COMPARA ALUNOS ([INV-CUR-P1])
+NENHUMA TELA COMPARA ALUNOS
 -------------------------------------------
 Toda consulta daqui é filtrada pela pessoa da sessão. Não existe rota de
 lista, ranking nem "quem está na sua turma": a sala é da pessoa que a abriu.
@@ -139,7 +139,7 @@ def healthz(request):
 
     Ela responde nas DUAS formas de entrada, porque as duas existem em
     produção: `/cursos/healthz` pela internet (o Traefik **não** remove o
-    prefixo) e `/healthz` pelo healthcheck do compose (`armadilhas/029`).
+    prefixo) e `/healthz` pelo healthcheck do compose.
     Qualquer isenção de middleware compara `request.path_info`, **nunca**
     `request.path`. Guarda: `tests/test_healthz_script_name.py`.
     """
@@ -150,7 +150,7 @@ def healthz(request):
 def servir_estatico(request, caminho: str):
     """O CSS da sala. Rota de MÁQUINA, como o `/healthz`.
 
-    Sem ela o estilo é 404 em produção e **só lá** (`armadilhas/083` e `/102`).
+    Sem ela o estilo é 404 em produção e **só lá**.
     Copiado de `services/gamificacao/apps/core/views.py`, não importado.
     """
     raiz = (Path(settings.BASE_DIR) / "static").resolve()
@@ -198,7 +198,7 @@ def _recusar(request, motivo: str, *, status: int, curso: Curso | None = None, *
 def _recusa_de_curso(ator, curso: Curso) -> str:
     """`""` quando esta pessoa entra NESTE curso; o motivo da recusa quando não.
 
-    A segunda porta da sala (`DECISAO-cursos-matriculas-e-alunos.md` §1): a
+    A segunda porta da sala: a
     primeira pergunta se a pessoa é aluna, esta pergunta **de qual curso**.
     Enquanto havia um curso só, a primeira bastava por coincidência; no dia do
     segundo, todo aluno do primeiro abriria o segundo digitando o endereço.
@@ -427,7 +427,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
 def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     """As três Partes com os doze Blocos e as 34 portas, e a porta em destaque.
 
-    Uma consulta de progresso, filtrada pela PESSOA DA SESSÃO ([INV-CUR-P1]):
+    Uma consulta de progresso, filtrada pela PESSOA DA SESSÃO:
     linha ausente é porta trancada.
     """
     por_aula = {
@@ -920,7 +920,7 @@ def _conclusao(progresso: Progresso, *, pausas_ok: bool) -> dict:
     """O bloco de concluir a aula, SÓ no curso de progressão livre: o botão, ou
     o porquê de ele não estar ali. `feita` se lê pelo carimbo da hora, que o
     banco só deixa existir na porta concluída: esta tela não conhece o valor do
-    estado de propósito ([INV-CUR-P2], "nenhuma view grava")."""
+    estado de propósito."""
     return {
         "feita": progresso.concluida_em is not None,
         "fechado_por": "",
@@ -1367,12 +1367,12 @@ def _criterios_da_regua(copia: VersaoDoInstrumento | None) -> list[dict]:
 
 @require_GET
 def laudo_recebido(request, numero: str):
-    """O laudo do envio mais recente desta aula, para a PESSOA DA SESSÃO
-    ([INV-CUR-P1]). Sem envio ainda, ou envio ainda sem laudo: a tela diz isso,
+    """O laudo do envio mais recente desta aula, para a PESSOA DA SESSÃO.
+    Sem envio ainda, ou envio ainda sem laudo: a tela diz isso,
     nunca um erro. A data aparece ANTES do texto quando devolvido (lei §6).
 
     **Nunca identifica quem assinou.** A célula já não guarda e-mail nem nome
-    de terceiros aqui ([INV-CUR-S1]), e o `avaliador` não sai desta tela por
+    de terceiros aqui, e o `avaliador` não sai desta tela por
     NOME nem por PAPEL: um laudo de Banca (Fase 5) é o veredito da mesa, não a
     opinião de um membro, e mostrar "Banca" não identifica ninguém — mas
     mostrar QUAL membro identificaria, e é isso que [INV-CUR-S2] proíbe. Por
@@ -1560,7 +1560,7 @@ def _formulario_do_laudo(
             "erro": erro,
             "enviado": enviado,
             # A IA aparece na tela em três lugares, e nenhum deles preenche
-            # decisão, data nem a pergunta de amanhã de manhã ([INV-CUR-L4]).
+            # decisão, data nem a pergunta de amanhã de manhã.
             "ia_ligada": assistente.ligado(),
             "sugestao": sugestao,
             "avisos_da_ia": assistente.avisos_de(sugestao) if sugestao else [],

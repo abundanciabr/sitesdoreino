@@ -1,7 +1,7 @@
 # tests/test_backfill_cartas_dos_avisos_existentes.py  # [RECEITA:R5 v1]
 """A migration `0008` reemite os `Aviso` já existentes como cartas
 `notificacao.devida.v1` — a segunda metade da FASE 3 do
-`docs/notificacoes/PLANO-MESTRE.md` (`DECISAO-fase-2-do-sininho.md` §3).
+`docs/notificacoes/PLANO-MESTRE.md`.
 
 Chama a função do `RunPython` DIRETO (não `python manage.py migrate`): é o
 padrão que o próprio despacho pediu, para poder falsificar idempotência e

@@ -14,7 +14,7 @@ TOKEN = "token-do-par-funil-identidade"
 @pytest.fixture
 def par_com_senha(settings):
     """O grau TOKENS_SENHA_* — separado de TOKENS_ACEITOS/TOKENS_COMPLETOS,
-    porque gravar senha é um grau PRÓPRIO (DECISAO-login-por-senha.md §4)."""
+    porque gravar senha é um grau PRÓPRIO."""
     settings.TOKENS_ACEITOS = {TOKEN}
     settings.TOKENS_SENHA = {TOKEN}
     return TOKEN

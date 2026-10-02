@@ -115,7 +115,7 @@ def a_caixa_responde(ideias, **topo):
     corpo.update(topo)
     respx.get(IDEIAS).mock(return_value=httpx.Response(200, json=corpo))
     # As duas conversas que a tela passou a ter em 05/09/2026, quando o botão
-    # de juntar nasceu (`DECISAO-fundir-ideias.md`). Aqui elas respondem VAZIO
+    # de juntar nasceu. Aqui elas respondem VAZIO
     # de propósito: os guardas deste arquivo são sobre a leitura da análise, e
     # o dublê da junção mora em `test_caixa_fusao.py`. Sem estas duas linhas o
     # `respx` estoura em toda abertura de página — o que é ele fazendo o

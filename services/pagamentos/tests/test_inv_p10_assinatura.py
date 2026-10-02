@@ -67,7 +67,7 @@ def _corpo() -> str:
 def test_webhook_sem_assinatura_e_403_banco_intacto_outbox_vazia(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P10] Sem x-signature ⇒ 403, ZERO efeito colateral."""
+    """Sem x-signature ⇒ 403, ZERO efeito colateral."""
     intent = _criar_intent_pix(client, token_valido)
 
     resp = client.post(
@@ -85,7 +85,7 @@ def test_webhook_sem_assinatura_e_403_banco_intacto_outbox_vazia(
 def test_webhook_com_assinatura_errada_e_403_banco_intacto_outbox_vazia(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P10] v1 que não bate com o HMAC esperado ⇒ 403, ZERO efeito
+    """v1 que não bate com o HMAC esperado ⇒ 403, ZERO efeito
     colateral — um webhook forjado que aprovasse pedidos seria matrícula
     grátis em escala."""
     intent = _criar_intent_pix(client, token_valido)

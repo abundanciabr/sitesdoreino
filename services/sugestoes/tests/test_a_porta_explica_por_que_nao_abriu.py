@@ -18,7 +18,7 @@ preencher o pedido de ENTRADA é dizer a ela que nunca pediu nada.
    "está pausado" é a única coisa que a pessoa realmente quer saber.
 
 2. `test_ex_aluno_pode_pedir_para_voltar` — **este item MUDOU DE LADO em
-   29/08/2026** (`DECISAO-a-ficha-nao-se-apaga.md` §3). Até a véspera o teste
+   29/08/2026**. Até a véspera o teste
    se chamava `test_ex_aluno_nao_ve_o_formulario_nem_o_relogio` e travava o
    contrário: nada de formulário para quem saiu. O mantenedor decidiu que a
    escola é um lugar de onde se sai e para onde se volta, e o formulário
@@ -98,7 +98,7 @@ def test_ex_aluno_pode_pedir_para_voltar(rede, db, quadro):
     """O formulário VOLTOU para quem saiu — e a palavra do botão é outra.
 
     Este teste mudou de lado em 29/08/2026: até a véspera ele travava a
-    ausência do formulário. A lei nova (`DECISAO-a-ficha-nao-se-apaga` §3)
+    ausência do formulário. A lei nova
     inverteu a decisão — quem terminou um curso e quer o do semestre seguinte
     não está insistindo contra nada, está se matriculando de novo.
 

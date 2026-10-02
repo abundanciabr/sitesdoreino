@@ -93,7 +93,7 @@ def test_a_leitura_do_contrato_nao_muda_nada_no_banco(
     """Ela CONTA; não decide, não marca, não arruma.
 
     Até 28/08/2026 este guarda media a tela da Mesa, que morava nesta célula.
-    A tela mudou de casa (DECISAO-a-gestao-da-caixa-mora-no-admin), e a
+    A tela mudou de casa, e a
     propriedade seguiu o dado: quem lê agora é a superfície de máquina, e é ela
     que não pode escrever.
 

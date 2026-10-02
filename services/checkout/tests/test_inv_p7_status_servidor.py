@@ -1,5 +1,5 @@
 # tests/test_inv_p7_status_servidor.py  [RECEITA:R5 v1]
-# [INV-P7] Status na UI deriva do servidor: o consumer de eventos é quem move
+# Status na UI deriva do servidor: o consumer de eventos é quem move
 # Order.status.
 import pytest
 
@@ -61,7 +61,7 @@ def test_pix_expirado_move_o_status(api, rede, sessao_a):
 
 
 def test_evento_de_outro_site_nao_move_o_pedido(api, rede, sessao_a):
-    """[INV-P11] site_id do evento tem que bater com o do pedido."""
+    """site_id do evento tem que bater com o do pedido."""
     pedido = _pedido(api, sessao_a)
     order = Order.objects.get(pk=pedido["order_id"])
 

@@ -1,7 +1,7 @@
 # tests/test_porta_publica_do_cartao.py
 # A porta por onde o navegador entrega o cartão tokenizado. O que ela promete,
 # e o que estes testes medem, é que o dinheiro NÃO entra por ela: valor, item e
-# total continuam vindo do snapshot congelado do pedido ([INV-P1]/[INV-P2]),
+# total continuam vindo do snapshot congelado do pedido,
 # e o corpo que tentar carregá-los é recusado em vez de ignorado.
 import json
 
@@ -142,7 +142,7 @@ def test_a_confirmacao_manda_so_token_parcela_e_titular_com_o_email_do_pedido(
         "intent_id": pedido_de_cartao.intent_id,
         "status": "approved",
     }
-    # [INV-P7] o `approved` do provedor não move o pedido: quem move é o evento.
+    # o `approved` do provedor não move o pedido: quem move é o evento.
     assert corpo["status"] == "aguardando_pagamento"
 
 
@@ -295,7 +295,7 @@ def test_pedido_ja_pago_nao_aceita_nova_cobranca(api, rede, pedido_de_cartao):
 
 
 def test_pedido_de_outro_site_e_404_e_nao_vaza_existencia(api, rede, pedido_de_cartao):
-    """[INV-P11] a mesma lei de getOrder: o site vizinho não descobre nem que
+    """a mesma lei de getOrder: o site vizinho não descobre nem que
     o pedido existe."""
     resp = api.post(
         f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao",

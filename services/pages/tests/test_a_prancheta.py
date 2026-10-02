@@ -6,7 +6,7 @@ Os dois critérios que mandam aqui, e o modo de falha silencioso de cada um:
 curto para lembrar de uma marcação é `request.session`, que funciona em dev,
 passa em teste de unidade, reprova este critério (sessão não atravessa
 aparelho) e desloga a plataforma inteira em produção (`armadilhas/143`,
-[INV-P12]). Por isso a prova do segundo aparelho não reusa o cliente do
+). Por isso a prova do segundo aparelho não reusa o cliente do
 primeiro: ela monta um `Client()` novo, sem nada guardado, e manda só o cookie
 de sessão. É a única forma de o teste medir o BANCO em vez de medir a memória
 do próprio teste.
@@ -343,8 +343,7 @@ def test_marcar_nao_escreve_o_cookie_de_sessao_do_site(aluno_ana):
 
     Se esta célula gravasse qualquer coisa em `request.session`, o Django
     reserializaria `meshcraft_sessao` com o conteúdo DAQUI e o aluno seria
-    deslogado da plataforma inteira, sem erro em lugar nenhum
-    (`armadilhas/143`).
+    deslogado da plataforma inteira, sem erro em lugar nenhum.
     """
     resposta = marcar()
 

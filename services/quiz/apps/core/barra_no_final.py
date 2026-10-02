@@ -99,7 +99,7 @@ class BarraNoFinal:
 
         # `path_info` é o caminho SEM o prefixo público (`SCRIPT_NAME`), que é
         # o que o resolver desta célula entende — sob `/quiz` o `request.path`
-        # traria o prefixo e nada resolveria (armadilhas/081).
+        # traria o prefixo e nada resolveria.
         caminho = request.path_info
         if not caminho.endswith("/") or caminho == "/":
             return resposta

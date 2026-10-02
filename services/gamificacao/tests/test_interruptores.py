@@ -278,7 +278,7 @@ def test_evento_sem_o_cracha_da_plataforma_nao_credita_ninguem():
 
     Até 31/08/2026 o motor caía em `data.autor_id` quando o envelope não trazia
     `ator_id` — e aquele campo é o id LOCAL da célula `sugestoes`, cunhado
-    separadamente do id da plataforma ([INV-SUG11]). Como `Pessoa` é chaveada por
+    separadamente do id da plataforma. Como `Pessoa` é chaveada por
     `id_da_plataforma`, o XP ia para uma pessoa que a tela do aluno nunca acharia:
     ledger enchendo, tela em zero, nada dando erro.
 

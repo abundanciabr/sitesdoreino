@@ -1,5 +1,5 @@
 # pagamentos/providers/mercadopago/client.py  # [RECEITA:R1 v1]
-# [INV-P9] O ÚNICO módulo desta célula que fala HTTP com api.mercadopago.com.
+# O ÚNICO módulo desta célula que fala HTTP com api.mercadopago.com.
 # Credencial: settings.MP_ACCESS_TOKEN — em dev/CI/worktrees é sempre TEST- (INV-P8;
 # a credencial de produção APP_USR- só existe na VPS, fora do alcance deste código e
 # guardada mecanicamente por ci/guarda-de-segredos.sh, dona: plataforma/CI).
@@ -71,7 +71,7 @@ class MercadoPagoClient:
     def _headers(self, idempotency_key: str) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self._token}",
-            "X-Idempotency-Key": idempotency_key,  # [INV-P4] toda escrita ao MP leva chave própria
+            "X-Idempotency-Key": idempotency_key,  # toda escrita ao MP leva chave própria
             "Content-Type": "application/json",
         }
 
@@ -138,7 +138,7 @@ class MercadoPagoClient:
         return self._corpo_json_de_2xx(resp, path)
 
     def _corpo_json_de_2xx(self, resp: httpx.Response, path: str) -> dict[str, Any]:
-        """As três muralhas compartilhadas por _post e _get (ARMADILHAS §4.9):
+        """As três muralhas compartilhadas por _post e _get:
         todo não-2xx levanta; corpo não-JSON levanta; corpo que não é objeto
         levanta. Nada sai daqui que não seja um 2xx com um objeto JSON."""
         if not 200 <= resp.status_code < 300:

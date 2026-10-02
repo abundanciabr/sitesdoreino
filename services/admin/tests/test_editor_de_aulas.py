@@ -1,7 +1,7 @@
 """O editor de encomendas do curso: `/admin/escola/<curso>/parte-N/aulas/`.
 
-A `cursos` é dublada pelo `respx` com respostas NO FORMATO DO CONTRATO
-(`contracts/cursos.openapi.yaml`); dois guardas leem o contrato do disco para
+A `cursos` é dublada pelo `respx` com respostas NO FORMATO DO CONTRATO;
+dois guardas leem o contrato do disco para
 que a tela e o contrato não possam divergir em silêncio. O que cada promessa
 custa, se cair:
 

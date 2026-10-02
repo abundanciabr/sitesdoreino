@@ -9,7 +9,7 @@ Contrato de 27/08/2026, emendado no mesmo dia para exigir `site_id` — multiss�
 mora em `apps/core/api.py` — aqui é só a pergunta ao banco.
 
 **Por que `pagina_de_avisos` lê DUAS tabelas.** O arquivamento
-(`DECISAO-notificacoes` §5.2) move o lido-e-velho para fora do caminho quente
+ move o lido-e-velho para fora do caminho quente
 — mas o motivo de existir uma tabela separada, em vez de apagar a linha, é que
 "nada se perde: o histórico continua consultável" (docstring de
 `NotificacaoArquivada` em `models.py`). Esta é a ÚNICA porta de consulta que a

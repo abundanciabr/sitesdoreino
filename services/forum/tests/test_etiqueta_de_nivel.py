@@ -15,8 +15,8 @@ abrir** porque um enfeite não pôde ser desenhado.
    não está no mapa de `apps/core/etiquetas.py` desenha só "Nv 7".
 4. **A escola ganhar nível.** Fala publicada pela instituição não é de uma
    pessoa e nunca recebe etiqueta.
-5. **O estilo não chegar ao navegador.** O fórum serve o CSS por rota própria
-   (`armadilhas/083`), então classe nova no HTML sem regra na folha é um selo
+5. **O estilo não chegar ao navegador.** O fórum serve o CSS por rota própria,
+   então classe nova no HTML sem regra na folha é um selo
    sem forma, e nada fica vermelho.
 
 ## Por que a rede é dublada no TRANSPORTE, com `respx`
@@ -32,7 +32,7 @@ recusa, o que deixaria o `respx` embaixo dele inalcançável. A fixture `porta`
 devolve o método verdadeiro **só para os testes deste arquivo** antes de armar o
 dublê — e o corte continua valendo para o resto da suíte. Nenhuma chamada além
 das registradas passa: `respx` levanta `AllMockedAssertionError` em rota não
-registrada (`armadilhas/054`), o que é exatamente o que se quer aqui, porque
+registrada, o que é exatamente o que se quer aqui, porque
 uma consulta inesperada é um defeito.
 """
 
@@ -46,11 +46,11 @@ from apps.forum.models import Area, Mensagem, Pessoa, Topico
 
 pytestmark = pytest.mark.django_db
 
-# O endereço sai do `servers:` do contrato congelado da gamificação
-# (`contracts/gamificacao.openapi.yaml`), e a URL INTEIRA é conferida no dublê,
+# O endereço sai do `servers:` do contrato congelado da gamificação,
+# e a URL INTEIRA é conferida no dublê,
 # não só o hostname: o segmento errado no meio já foi um bug real desta célula
 # com a `alunos` — 404 silencioso que virou fail-closed para todo mundo, com o
-# deploy verde (`armadilhas/111`, e o comentário em `apps/core/clients.py`).
+# deploy verde.
 GAMIFICACAO = "http://gamificacao:8000/api/gamificacao"
 PERFIS = f"{GAMIFICACAO}/perfis"
 TOKEN = "token-do-par-forum-gamificacao"
@@ -62,7 +62,7 @@ _GET_DE_VERDADE = httpx.Client.get
 
 @pytest.fixture(autouse=True)
 def cache_limpo():
-    """O cache de módulo não pode vazar entre testes (`armadilhas/026`).
+    """O cache de módulo não pode vazar entre testes.
 
     Sem esta limpeza, uma etiqueta que um teste ensinou faria o guarda do teste
     seguinte passar por herança e não por medição — e o guarda do "UMA chamada"
@@ -145,7 +145,7 @@ def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(
     O `sem_rede` do conftest continua valendo neste teste: se algum caminho
     tentasse perguntar, a chamada levantaria e o teste ficaria vermelho. É a
     prova de que a variável ausente é lida no PONTO DE USO e desiste ANTES da
-    rede (`armadilhas/097`), em vez de virar 500 em toda página do fórum.
+    rede, em vez de virar 500 em toda página do fórum.
     """
     corpo = _abrir(client, conversa)
     assert "A dúvida." in corpo
@@ -457,7 +457,7 @@ def test_conversa_so_da_escola_nao_pergunta_nada(client, porta, area_publica):
 
 def test_o_estilo_da_etiqueta_chega_ao_navegador(client):
     """Classe nova no HTML sem regra na folha é um selo sem forma, e nada fica
-    vermelho. O fórum serve o CSS por rota própria (`armadilhas/083`)."""
+    vermelho. O fórum serve o CSS por rota própria."""
     resposta = client.get(reverse("estatico", args=["forum.css"]))
     folha = (
         b"".join(resposta.streaming_content).decode("utf-8")

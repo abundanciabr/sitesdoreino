@@ -1,5 +1,5 @@
 # pagamentos/methods/card/webhook.py  # [RECEITA:R1 v1]
-# [INV-P9] Não importa methods.pix nem providers.* — só core (modelo Intent,
+# Não importa methods.pix nem providers.* — só core (modelo Intent,
 # ledger/outbox, validação de assinatura, gateway). Guardado em
 # check-time por .importlinter.
 #
@@ -30,7 +30,7 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
     core.ledger). Cartão não tem estado "expirado" (isso é
     exclusivo do QR Pix) — status desconhecido é ignorado."""
     if not assinatura_valida(request):
-        raise HttpError(403, "assinatura invalida")  # [INV-P10] zero efeito colateral
+        raise HttpError(403, "assinatura invalida")  # zero efeito colateral
 
     mp_payment_id = request.GET.get("data.id", "")
     if not mp_payment_id:
@@ -76,7 +76,7 @@ def _status_confiavel(request: HttpRequest, mp_payment_id: str) -> tuple[str, st
     try:
         consulta = consultar_status_do_pagamento(payment_id=mp_payment_id)
     except FalhaNoProvedor as exc:
-        # 502 direto (HttpError não toca o documento OpenAPI — ARMADILHAS §4.2).
+        # 502 direto.
         raise HttpError(
             502, "nao foi possivel confirmar o status junto ao provedor"
         ) from exc

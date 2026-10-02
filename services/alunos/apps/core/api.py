@@ -6,7 +6,7 @@
 # não tem. createEnrollment é o reprocesso manual (mesma idempotência do consumer,
 # INV-P5); listEnrollments responde "quem é aluno" (e por isso filtra por status —
 # ver matriculas_que_valem). As três portas de /pre-matriculas são a fila de
-# liberação (docs/decisoes/DECISAO-fila-de-liberacao.md).
+# liberação.
 import base64
 import json
 from datetime import date
@@ -751,8 +751,8 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
         status=status,
         order_id__startswith=Matricula.PREFIXO_DA_FILA,
     ).order_by("enrolled_at")
-    # [CATEGORIAS] `site_id` ausente = TODAS as escolas
-    # (`DECISAO-categorias-de-usuario`, 28/08/2026). O painel do dono é
+    # [CATEGORIAS] `site_id` ausente = TODAS as escolas.
+    # O painel do dono é
     # plataforma-inteira (multissítio: site é dado), e exigir dele o código interno de uma escola
     # para ver quem espera seria pedir que ele guardasse um identificador opaco.
     #
@@ -790,8 +790,8 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
             "criada_em": m.enrolled_at.isoformat(),
             "esperando_ha_dias": max((agora - m.enrolled_at).days, 0),
             "motivo_recusa": m.motivo_recusa or None,
-            # [VOLTAR] O passado desta pessoa nesta plataforma, calculado na hora
-            # (`DECISAO-a-ficha-nao-se-apaga.md`, 29/08/2026). Sem isto o
+            # [VOLTAR] O passado desta pessoa nesta plataforma, calculado na hora.
+            # Sem isto o
             # mantenedor decide sobre um ex-aluno achando que e gente nova — e
             # desde essa lei quem saiu PODE pedir para voltar, entao o caso
             # deixou de ser hipotetico.
@@ -872,7 +872,7 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
         destinatario_id=_para_quem_avisar(id),
     )
     if resultado == "sem-curso":
-        # [INV-ALU-C1] A frase diz o que faltou E o que fazer: quem lê este 422
+        # A frase diz o que faltou E o que fazer: quem lê este 422
         # é a tela de liberar do painel, e o mantenedor precisa entender o que
         # aconteceu sem abrir código. Quem recusa é `decidir_na_fila`, não esta
         # porta — aqui só se traduz a recusa em HTTP.
@@ -1847,8 +1847,8 @@ def update_enrollment(request, id: str):
 
 
 # A operacao `deleteEnrollment` MORREU AQUI em 29/08/2026, junto com o
-# `apagar_matricula` que ela chamava e com a propria operacao no contrato
-# (`DECISAO-a-ficha-nao-se-apaga.md`). O mantenedor decidiu que o cadastro de um
+# `apagar_matricula` que ela chamava e com a propria operacao no contrato.
+# O mantenedor decidiu que o cadastro de um
 # aluno NUNCA e apagado: quem sai vira ex-aluno pelo `PATCH` acima, a ficha fica,
 # e quem quiser voltar pede entrada de novo pela fila.
 #

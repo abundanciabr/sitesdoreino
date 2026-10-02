@@ -213,7 +213,7 @@ def test_a_resposta_e_a_estrutura_no_formato_da_listagem(roblox):
 
 
 def test_as_aulas_nascem_sem_texto_nenhum(roblox):
-    """[INV-CUR-C2]: a estrutura entra pela porta, o texto continua entrando
+    """a estrutura entra pela porta, o texto continua entrando
     só por `putLesson`."""
     gravar(ESTRUTURA)
     assert Peca.objects.filter(aula__curso=roblox).count() == 0

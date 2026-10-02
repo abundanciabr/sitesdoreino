@@ -22,8 +22,8 @@ def test_a_resposta_de_exibicao_nao_tem_email(dentro, settings):
 
 
 def test_senha_hash_nunca_sai_por_sessao_nem_por_sessao_completa(dentro, settings):
-    """[INVARIANTE] O mesmo cinto para o campo novo do login por senha
-    (`DECISAO-login-por-senha.md`): nem `Session` nem `SessionFull` declaram
+    """[INVARIANTE] O mesmo cinto para o campo novo do login por senha:
+    nem `Session` nem `SessionFull` declaram
     `senha_hash` (os dois são `ninja.Schema` com forma fechada), mas este
     guarda prova o comportamento, não confia na forma."""
     from django.contrib.auth.hashers import make_password

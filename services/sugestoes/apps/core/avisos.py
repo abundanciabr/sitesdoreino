@@ -241,8 +241,8 @@ def interessados_em(sugestao) -> dict[str, str]:
 
     **Duas consultas, e não uma por pessoa.** As duas são `values_list` de uma
     coluna só: o que sobe para a memória é uma lista de ids opacos, nunca linhas
-    inteiras de `Voto`/`Comentario` — e nunca a `Identidade`, que carrega e-mail
-    (`DECISAO-EVO-01` §3). O `.distinct()` do comentário existe porque uma
+    inteiras de `Voto`/`Comentario` — e nunca a `Identidade`, que carrega e-mail.
+    O `.distinct()` do comentário existe porque uma
     pessoa comenta várias vezes na mesma ideia; o do voto não existe porque o
     banco já o garante (`voto_unico_por_ator_e_sugestao`).
 
@@ -273,17 +273,17 @@ def interessados_em(sugestao) -> dict[str, str]:
 def ids_de_plataforma(locais) -> dict[str, str]:
     """Id local → id da PLATAFORMA, para quem tiver. UMA consulta, sempre.
 
-    O elo da Fase 1 (INV-SUG11) sendo usado pela primeira vez para falar com o
+    O elo da Fase 1 sendo usado pela primeira vez para falar com o
     resto da plataforma: a carta `notificacao.devida` endereça pelo id que
     qualquer célula entende, nunca pelo id local, que não significa nada fora
-    daqui (PLANO-MESTRE §2).
+    daqui.
 
     **Uma consulta para a plateia inteira, e não uma por pessoa.** É a mesma lei
     do `interessados_em` e do `bulk_create` dos avisos: esta função roda dentro
     da transação que segura o `SELECT … FOR UPDATE` da sugestão, e um `.get()`
     por votante alongaria a trava exatamente nas ideias que deram certo.
     `values_list` de duas colunas — a `Identidade` inteira NÃO sobe para a
-    memória, porque ela carrega e-mail (`DECISAO-EVO-01` §3).
+    memória, porque ela carrega e-mail.
 
     **Quem não tem o id fica de fora do dicionário, e isso é a resposta certa.**
     São pessoas que não voltaram ao site desde a Fase 1 (25/08/2026): a linha
@@ -456,7 +456,7 @@ def _matricula_para_o_template(item: dict, parametros: dict) -> dict:
     Sem link, de propósito: não há para onde levar. A ficha do aluno mora na
     célula `alunos` e a tela dela é a do MANTENEDOR — mandar a pessoa para lá
     seria oferecer uma porta que bate na cara, o defeito que a home já cometeu
-    uma vez (`DECISAO-categorias-de-usuario`).
+    uma vez.
 
     O `matricula_id` chega na carta e **não vai para a tela**: ele existe para
     quem for reconstruir o histórico, e um identificador opaco no cartão de um
@@ -538,7 +538,7 @@ def _destaque_para_o_template(item: dict, parametros: dict) -> dict:
 
     `semana` é a SEGUNDA-FEIRA da semana, e o contrato a manda como DATA e não
     como data-hora exatamente para ninguém converter fuso e exibir a semana
-    errada (`armadilhas/099`). Por isso ela vira `datetime.date`, que o filtro
+    errada. Por isso ela vira `datetime.date`, que o filtro
     `|date:` formata sem conversão nenhuma, e nunca um `datetime` ciente.
 
     Data ausente, vazia ou malformada some do cartão: a frase sem ela continua
@@ -651,7 +651,7 @@ def _item_para_o_template(item: dict, sugestoes: dict[str, dict]) -> dict:
 @exige_sessao
 def ver_avisos(request, ator):
     """A lista dos avisos DESTA pessoa — lida da caixa central desde a Fase
-    3/4 do sininho (`DECISAO-fase-2-do-sininho.md` §3), não mais do `Aviso`
+    3/4 do sininho, não mais do `Aviso`
     local. Ver o bloco acima: fail VISÍVEL.
     """
     destinatario_id = ator.identidade.id_da_plataforma
@@ -659,7 +659,7 @@ def ver_avisos(request, ator):
     itens = (
         _buscar_todos_os_avisos(destinatario_id=destinatario_id, site_id=site_id)
         if destinatario_id
-        # Sem id de plataforma (INV-SUG11), não há por quem perguntar — a
+        # Sem id de plataforma, não há por quem perguntar — a
         # pessoa nunca teve carta nenhuma endereçada a ela. Mesmo tratamento
         # da falha de rede: a tela avisa, nunca finge lista vazia.
         else None
@@ -714,7 +714,7 @@ def _calar_o_sino(ator, escondidos: list[dict]) -> None:
     **Por que isto NÃO é um Rito de Contrato.** O contrato congelado da caixa
     central não tem "retirar", e o registro `20260831-012` concluiu, com razão
     para o que se sabia então, que faltava operação nova. Mas as portas que já
-    existem COMPÕEM o gesto (`armadilhas/293`): `marcarUmaComoLida` é
+    existem COMPÕEM o gesto: `marcarUmaComoLida` é
     idempotente e recebe o id do aviso, que está bem aqui na resposta de
     `listarAvisos`. Marcar o órfão como lido tira o número do sino sem inventar
     verbo nenhum, e sem contrato novo.

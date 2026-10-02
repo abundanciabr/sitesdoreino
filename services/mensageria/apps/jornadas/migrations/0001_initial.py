@@ -36,8 +36,7 @@ from django.db import migrations, models
 # SEM `DEFERRABLE`, de propósito: as chaves estrangeiras que o Django cria são
 # `DEFERRABLE INITIALLY DEFERRED`, e a recusa só apareceria no `COMMIT`, longe
 # da linha que a causou. Imediata, o erro nasce no `INSERT`/`UPDATE` errado — e
-# é assim que a guarda sobrevive, de forma legível, a um `queryset.update()`
-# (`armadilhas/023`).
+# é assim que a guarda sobrevive, de forma legível, a um `queryset.update()`.
 FK_COMPOSTA = """
 ALTER TABLE jornadas_inscricao
     ADD CONSTRAINT inscricao_versao_pertence_a_jornada

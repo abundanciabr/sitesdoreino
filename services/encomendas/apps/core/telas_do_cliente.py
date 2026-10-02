@@ -27,8 +27,8 @@ cliente externo, que é tarefa própria. O dia em que ela chegar, o que muda é
 esta função de quatro linhas, e não a jornada inteira.
 
 NADA DO ALUNO ATRAVESSA ESTA FRONTEIRA ALÉM DO TÍTULO
--------------------------------------------------------
-[INV-ENC-S3]. A tela do pedido nomeia "o modelador" e o título de Banca dele, e
+-------------------------------------------------------.
+A tela do pedido nomeia "o modelador" e o título de Banca dele, e
 mais nada: nem nome exibido, nem e-mail, nem o id opaco. O guarda é
 `tests/test_cliente_nao_paga_nem_ve_contato.py`, que planta um nome de exibição
 no perfil e confere que ele não sai na página.
@@ -448,7 +448,7 @@ def pedido(request, encomenda_id):
                 (valor, cardapio.ENTREGAVEIS.get(valor, valor))
                 for valor in negociacao.entregaveis_do_briefing(projeto)
             ],
-            # O título de Banca do modelador, e nada mais dele ([INV-ENC-S3]).
+            # O título de Banca do modelador, e nada mais dele.
             "titulo_do_modelador": (
                 projeto.aluno.get_titulo_banca_display()
                 if projeto.aluno and projeto.aluno.titulo_banca
@@ -498,7 +498,7 @@ def contrapor(request, encomenda_id, *, quem, site):
 @gesto_do_cliente("desistencia")
 def desistir_da_negociacao(request, encomenda_id, *, quem, site):
     """Sair da negociação antes do acordo. O pedido vai ao plantão, e nunca ao
-    próximo aluno ([INV-ENC-N7])."""
+    próximo aluno."""
     return negociacao.desistir(
         encomenda_id, timezone.now(), site_id=site, de_quem=Proposta.DeQuem.CLIENTE
     )

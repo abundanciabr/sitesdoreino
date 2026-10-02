@@ -414,7 +414,7 @@ def test_o_formulario_atravessa_a_protecao_de_csrf_de_verdade(monkeypatch):
     O crachá vai no POTE de cookies do cliente, nunca em
     `headers={"cookie": ...}` — aquele cabeçalho substitui o pote inteiro e
     apaga o `csrftoken` que a página acabou de plantar, e a resposta vira 403
-    com o token correto dentro do POST (`armadilhas/204`).
+    com o token correto dentro do POST.
     """
     _entrar_como(monkeypatch, ALUNO)
     cliente = Client(enforce_csrf_checks=True)

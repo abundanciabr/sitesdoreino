@@ -36,7 +36,7 @@ _cliente: httpx.Client | None = None
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
-    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um cliente
+    Não é micro-otimização: `httpx.get()` constrói um cliente
     novo por chamada, e com ele um `ssl.SSLContext`. `httpx.Client` é seguro
     entre threads, e o `respx` troca o transporte na classe, então o dublê dos
     testes continua valendo.
@@ -91,7 +91,7 @@ class IdentidadeClient:
     é o erro caro: o `Bearer` do par prova **quem chama**; o cabeçalho `Cookie`,
     repassado OPACO, prova **quem é a pessoa** do outro lado do navegador. O
     cookie nunca é interpretado aqui — esta célula não tem a chave que o assina,
-    e não pode ter ([INV-P12]).
+    e não pode ter.
 
     Por que a resposta COMPLETA, e não a `getSession`: o fórum precisa do
     **e-mail** para perguntar à `alunos` em que categoria a pessoa está. O
@@ -164,7 +164,7 @@ class AlunosClient:
                 # `AlunosIndisponivel`, e o fail-closed devolvia `eh_aluno=False`
                 # para TODO MUNDO, para sempre, com o deploy verde. Fail-closed
                 # por bug é indistinguível de fail-closed por decisão
-                # (`armadilhas/111`) — e é por isso que o dublê dos testes passou
+                # — e é por isso que o dublê dos testes passou
                 # a conferir a URL inteira, não só o hostname.
                 f"{base}/alunos/{quote(email, safe='')}/situacao",
                 headers={"Authorization": f"Bearer {token}"},

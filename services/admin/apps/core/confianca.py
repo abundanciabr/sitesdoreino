@@ -36,7 +36,7 @@ pergunta, ambas com cara de certeza.
 ## O limite desta tela, dito na cara
 
 A cobertura lista **o que já chegou alguma vez**, e não o que deveria chegar. A
-lista do que deveria mora nos contratos de evento (`contracts/eventos/*.json`),
+lista do que deveria mora nos contratos de evento,
 que não viajam para dentro desta imagem; copiá-los para cá poria o mesmo fato
 em dois lugares. Um assunto que nunca chegou nenhuma vez, portanto, não aparece
 aqui — e a tela diz isso em português, em vez de se apresentar como uma

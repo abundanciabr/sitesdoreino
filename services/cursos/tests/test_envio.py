@@ -3,7 +3,7 @@
 O que este arquivo protege, e por que cada coisa:
 
 1. **Entregar exige a porta em produção ou devolvida e TODAS as pausas
-   registradas** ([INV-CUR-P3]): o envio é recusado, e nada fica gravado.
+   registradas**: o envio é recusado, e nada fica gravado.
 2. **Entregar grava o `Envio` 1, muda a porta para `enviada` e enfileira o
    `envio.recebido.v1`** com o `data` do contrato, na mesma transação.
 3. **O reenvio só nasce de `devolvida`, e leva o número 2**: cada volta é um
@@ -16,8 +16,7 @@ O que este arquivo protege, e por que cada coisa:
    certos; entregar pela tela grava e a aula passa a dizer "recebido em,
    revisão até" sem formulário; a recusa volta para o checkpoint com a frase;
    `devolvida` reabre como reenvio; o estouro registrado aparece; a hora é a
-   de São Paulo; e nenhuma resposta reescreve o cookie do site
-   (`armadilhas/143`).
+   de São Paulo; e nenhuma resposta reescreve o cookie do site.
 """
 
 from __future__ import annotations

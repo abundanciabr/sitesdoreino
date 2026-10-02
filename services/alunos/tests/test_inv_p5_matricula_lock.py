@@ -1,5 +1,5 @@
 # tests/test_inv_p5_matricula_lock.py  # [RECEITA:R5 v1]
-# Nome do arquivo = código do invariante (INVARIANTES.md).
+# Nome do arquivo = código do invariante.
 import threading
 
 import pytest

@@ -60,8 +60,8 @@ logger = logging.getLogger("funil.telemetria")
 #: caminho doente.
 TEMPO_LIMITE = 0.3
 
-#: Um cliente por endereço, pelo mesmo motivo do `http()` de `clients.py`
-#: (`armadilhas/082`): construir um cliente por requisição paga a montagem da
+#: Um cliente por endereço, pelo mesmo motivo do `http()` de `clients.py`::
+#construir um cliente por requisição paga a montagem da
 #: conexão em toda página servida.
 _clientes: dict[str, "redis.Redis"] = {}
 

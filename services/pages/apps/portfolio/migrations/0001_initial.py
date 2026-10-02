@@ -9,7 +9,7 @@ etapas, o enunciado de cada item da lista de conferencia) e da escola, e a casa
 dele e o editor de documentos do admin, no degrau 16. Texto semeado por migracao
 nasce numa segunda casa e nunca mais e corrigido, porque `get_or_create` de
 proposito nao altera o que ja existe: e assim que um travessao sobreviveu no
-forum a uma varredura que se declarou completa (CLAUDE.md, secao do travessao).
+forum a uma varredura que se declarou completa.
 
 Todas as restricoes sao vocabulario do ORM, sem um `RunSQL` sequer. Isso e
 consequencia do desenho dos modelos, nao sorte: nenhuma tabela filha guarda copia

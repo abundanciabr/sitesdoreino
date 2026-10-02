@@ -294,7 +294,7 @@ def test_a_auditoria_diz_QUAIS_campos_mudaram_e_nunca_os_valores():
     Esta tabela é append-only por TRIGGER: nem eu nem um comando direto no
     banco editam ou apagam uma linha dela. Enquanto o detalhe guardava
     `nome_completo=Fulano` e `whatsapp=...`, apagar a pessoa era impossível sem
-    furar a própria trava (`DECISAO-administradores-e-apagar` §4).
+    furar a própria trava.
 
     Agora ele guarda os NOMES dos campos tocados. O `status` sai com o valor
     porque não é dado da pessoa: é a decisão do mantenedor, e sem ela a linha
@@ -367,13 +367,13 @@ def test_quem_nao_esta_na_lista_nao_salva_nada():
 
 # ------------------------------------------------------- ex-aluno, na tela
 #
-# O mantenedor clicou em APAGAR querendo "ex-aluno"
-# (`DECISAO-ex-aluno-e-a-porta-que-explica`). Os dois botões existiam lado a
+# O mantenedor clicou em APAGAR querendo "ex-aluno".
+# Os dois botões existiam lado a
 # lado e a tela não dizia que faziam coisas diferentes — a ficha sumiu, e ela
 # não volta.
 #
-# Em 29/08/2026 ele resolveu isso pela raiz: o apagar deixou de existir
-# (`DECISAO-a-ficha-nao-se-apaga.md`). O aviso de "apagar NÃO é o mesmo que
+# Em 29/08/2026 ele resolveu isso pela raiz: o apagar deixou de existir.
+# O aviso de "apagar NÃO é o mesmo que
 # ex-aluno" saiu junto — não há mais dois caminhos para confundir —, e o que
 # ficou tem guarda em `test_poderes.py::test_nao_existe_caminho_para_apagar`.
 

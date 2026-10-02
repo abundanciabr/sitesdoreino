@@ -10,7 +10,7 @@ prova corresponde a uma forma diferente de a entrega dar errado:
 2. **"em algumas não tenha, em outras seja diferente"** — as provas de
    variante. Eles afirmam sobre o CORPO RENDERIZADO, e não sobre a tabela de
    regras: uma tabela certa com um template que ignora a decisão passaria num
-   teste que só lê a tabela (`armadilhas/087`).
+   teste que só lê a tabela.
 3. **os domínios monolíngues seguem intocados** — o rodapé nasce do catálogo de
    tradução, que eles não têm. O golden byte a byte da fase 1 do i18n guarda a
    saída deles; aqui guardamos o motivo, dizendo em voz alta que não há rodapé.

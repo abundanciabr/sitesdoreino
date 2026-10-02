@@ -10,7 +10,7 @@ O que cada grupo de guardas protege, e por que ele existe:
    são coisas diferentes (contrato da `metricas`, regra 7), e cruzá-las com o
    olho é o erro que esta tela existe para tornar impossível.
 3. **O mês sai do dia que a memória já devolveu, sem reconverter fuso.** Ela
-   grava o dia de São Paulo na recepção (`armadilhas/099`); aplicar fuso de
+   grava o dia de São Paulo na recepção; aplicar fuso de
    novo deslocaria o dia uma segunda vez e trocaria o grupo de quem entrou na
    virada do mês.
 4. **A tabela não inventa mês antes do primeiro fato, e não engole buraco

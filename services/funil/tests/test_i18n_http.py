@@ -25,7 +25,7 @@ from tests.conftest import CATALOGO, HOST_A, SITE_A
 HOST_PREVIEW = "preview.exemplo.com"  # resolve para o MESMO Site A (host canônico)
 
 IDIOMAS_TESTE = ("en", "pt-br", "es")
-# Formato do contrato (`contracts/catalogo.openapi.yaml`, schema Site): o
+# Formato do contrato: o
 # catálogo diz o CÓDIGO e o `indexable`; tag BCP 47 e dir a célula deriva.
 SITE_A_MULTILINGUE = {
     **SITE_A,

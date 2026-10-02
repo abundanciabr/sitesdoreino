@@ -3,7 +3,7 @@
 
 Até 06/09/2026 o único `Product` que nascia era o `curso-esqueleto` do
 `seed_esqueleto`, que é peça de teste de ponta a ponta. A tela de liberar aluno
-(`DECISAO-cursos-matriculas-e-alunos.md` §6) precisa oferecer uma lista, e a
+ precisa oferecer uma lista, e a
 lista estaria vazia, ou pior: ofereceria o curso falso, e o aluno abriria a sala
 matriculado nele. Seria o mesmo erro que a lei quis impedir, entrando por outra
 porta.

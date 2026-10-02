@@ -419,8 +419,8 @@ def test_endereco_de_fora_nunca_e_aqui(client, rede):
 # valor novo no catálogo de vazar um atalho durante a janela em que uma das
 # células ainda não subiu com o código novo.
 #
-# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
-# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras:
+# uma tabela certa com um chamador que passa o argumento
 # errado passaria num teste que só lê a tabela.
 MENU_COM_EQUIPE = {
     "default_version": "v",

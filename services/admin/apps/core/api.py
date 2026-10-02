@@ -13,7 +13,7 @@ A RESPOSTA VEM DA MESMA FUNÇÃO QUE A PORTA DE GENTE USA
 `porta._emails_autorizados()` é quem já soma `ADMIN_EMAILS` (o chão do
 servidor) com os administradores ativos da tabela, normalizando `strip()` e
 `lower()` dos dois lados, e é quem já trata falha de banco como "vale só o env"
-em vez de "deixa entrar" (`DECISAO-administradores-e-apagar.md` §3). Um segundo
+em vez de "deixa entrar". Um segundo
 jeito de responder "esta pessoa é administradora?" seria uma segunda resposta
 livre para discordar da primeira, e no dia em que discordassem ninguém saberia
 qual está certa. Por isso aqui não há `filter()` próprio, nem cópia da
@@ -23,7 +23,7 @@ UMA OPERAÇÃO SÓ, E ELA SÓ LÊ
 -----------------------------
 Não há verbo que promova nem que remova administrador:
 o conjunto de tokens desta casa é plano, então todo par que ganha o token para
-ler ganharia junto o poder de escrever (`armadilhas/318`). Nascendo
+ler ganharia junto o poder de escrever. Nascendo
 somente-leitura, essa conta não existe. Uma futura operação de escrita exigiria
 um segundo grau de token.
 

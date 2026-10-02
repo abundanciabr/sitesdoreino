@@ -2,12 +2,12 @@
 
 Três famílias, e as três existem por uma queda medida nesta casa:
 
-1. **401 em TODAS as operações, e com o env ausente** (`armadilhas/186`). Esta
+1. **401 em TODAS as operações, e com o env ausente**. Esta
    célula roda sob `SCRIPT_NAME`, então a porta nasce publicada na internet e a
    topologia não fecha nada. Se alguém remover o `auth=` do `NinjaAPI`, as seis
    operações passam a responder 200 para o mundo inteiro sem uma linha de
    `infra/` mudar.
-2. **403 do par que SÓ LÊ nas três operações que gravam** (`armadilhas/318`).
+2. **403 do par que SÓ LÊ nas três operações que gravam**.
    O guarda de 401 não vê nada disto: ele mede a AUSENCIA de crachá, e o par
    que só lê tem crachá. Sem estes três testes, o segundo grau de token é só um
    comentário dizendo que existe.
@@ -163,7 +163,7 @@ def test_o_interno_e_alcancavel_pela_borda_publica_e_quem_o_fecha_e_o_bearer(
 
 
 # ---------------------------------------------------------------------------
-# 2. Quem grava (`armadilhas/318`)
+# 2. Quem grava
 # ---------------------------------------------------------------------------
 
 
@@ -398,7 +398,7 @@ def test_getqueuestanding_conta_o_mural_e_a_proposta_de_pe(
 def test_getapprovedpieces_so_devolve_o_que_o_cliente_autorizou(
     client, tokens, site, semeado, dois_no_mural
 ):
-    """[INV-ENC-S4] num guarda. A peça sem autorização não sai por esta porta, e
+    """num guarda. A peça sem autorização não sai por esta porta, e
     o briefing inteiro nunca sai: só o nome que o cliente deu à peça."""
     ana = dois_no_mural[0]
     for autorizada, nome in ((True, "capacete"), (False, "espada")):

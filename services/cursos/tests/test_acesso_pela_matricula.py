@@ -153,8 +153,8 @@ def test_a_aula_tambem_fecha_sem_matricula(env_dos_pares, rede, aula_publicada, 
 
 # ------------------------------------------------------- a URL da alunos
 def test_a_url_da_alunos_soma_o_caminho_da_operacao():
-    """`ALUNOS_API_URL` é a base e o caminho da operação se SOMA a ela
-    (`armadilhas/111`); o dublê só responde à soma exata."""
+    """`ALUNOS_API_URL` é a base e o caminho da operação se SOMA a ela;
+    o dublê só responde à soma exata."""
     assert url_das_matriculas("ana@exemplo.com") == (
         "http://alunos:8000/api/alunos/alunos/ana%40exemplo.com/matriculas"
     )

@@ -93,7 +93,7 @@ def healthz(request):
 
     Ela responde nas DUAS formas de entrada, porque as duas existem em
     produção: `/forum/healthz` pela internet (o Traefik **não** remove o
-    prefixo) e `/healthz` pelo healthcheck do compose (`armadilhas/029`).
+    prefixo) e `/healthz` pelo healthcheck do compose.
 
     Quando esta célula ganhar uma porta de autorização, a isenção desta rota
     tem de ser comparada por `request.path_info` — **nunca** `request.path`,
@@ -107,7 +107,7 @@ def healthz(request):
 def servir_estatico(request, caminho: str):
     """O CSS do fórum. Rota de MÁQUINA, como o `/healthz`.
 
-    Sem ela o estilo é 404 em produção e **só lá** (`armadilhas/083` e `/102`):
+    Sem ela o estilo é 404 em produção e **só lá**:
     com `DEBUG=0` o Django não serve estático, e não há nginx nem CDN atrás do
     Traefik. Em dev funciona, e é justamente por isso que passa despercebido.
 
@@ -210,7 +210,7 @@ def _porta_de_entrada(request) -> str:
       referência para consumir a `identidade`.
     * O `next` sai de `request.get_full_path()`, que já carrega o prefixo
       público — em produção ele é `/forum/a/duvidas`, em dev `/a/duvidas`, sem
-      uma string cravada em lugar nenhum (`armadilhas/029` e `/081`).
+      uma string cravada em lugar nenhum.
     """
     porta = (os.environ.get("URL_DE_ENTRADA") or "").strip() or "/entrar/google"
     return f"{porta}?{urlencode({'next': request.get_full_path()})}"
@@ -253,8 +253,8 @@ def contexto_da_home(ator, *, erro_admin="", digitado=None):
     return {
         "ator": ator,
         "areas": areas,
-        # O "salão vazio" é problema conhecido e declarado
-        # (`DECISAO-forum-da-escola.md` §6.1): o fórum nasce sem ninguém. A tela
+        # O "salão vazio" é problema conhecido e declarado:
+        # o fórum nasce sem ninguém. A tela
         # diz isso em voz alta em vez de fingir movimento.
         "vazio": not areas,
         "pode_moderar": pode_moderar(ator),
@@ -363,7 +363,7 @@ def contexto_do_topico(
         # recusar, como no resto desta função).
         #
         # `ia_ligada` é a MESMA leitura de env que `agente.rascunhar`
-        # faz no ponto de uso (`armadilhas/097`): a tela nunca oferece um
+        # faz no ponto de uso: a tela nunca oferece um
         # botão que a view vai recusar, e nunca esconde um que ela
         # aceitaria. Só é perguntada para quem modera; para o resto seria
         # leitura de env que ninguém vai olhar.

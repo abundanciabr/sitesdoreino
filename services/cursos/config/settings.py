@@ -29,14 +29,14 @@ def env(nome: str) -> str:
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# A sala de aula serve sob prefixo: meshcraft.top/cursos
-# (`PLANO-CELULA-CURSOS.md` §6). O Traefik NÃO remove o prefixo — quem o
+# A sala de aula serve sob prefixo: meshcraft.top/cursos.
+# O Traefik NÃO remove o prefixo — quem o
 # conhece é esta variável, nunca o `urls.py`. Ver `armadilhas/029` e
 # `tests/test_healthz_script_name.py`.
 #
 # `/cursos`: seis letras, longe de qualquer forma de código de idioma, e o
 # inventário de rotas (`ci/tests/test_rotas_sem_forma_de_locale.py`) entra no
-# MESMO PR do Traefik (`armadilhas/089`, degrau 1.7 da escada), não neste.
+# MESMO PR do Traefik, não neste.
 # Nome da célula = nome da rota, de propósito: o par `/conquistas` ↔
 # `gamificacao` já custa uma tradução mental a cada leitura. E `/cursos` está
 # livre: o `funil` só o cita num exemplo de teste de roteamento (medido em
@@ -45,7 +45,7 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 # E o prefixo é CAMINHO, não subdomínio, pela mesma razão do fórum: o cookie
 # de sessão do site é de host. Em `cursos.meshcraft.top` ele não viaja, e a
 # célula passaria a exigir um segundo login — que é exatamente o que o
-# [INV-P12] existe para impedir.
+# existe para impedir.
 FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
@@ -64,8 +64,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # `dj_database_url.parse` entrega `CONN_MAX_AGE = 0`, e a ausência do ajuste é
 # uma DECISÃO, não esquecimento: sob ASGI, `conn_max_age > 0` vaza uma conexão
-# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam
-# (`armadilhas/170`). Quando a porta de máquina (degrau 1.3) e o relógio da
+# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam.
+# Quando a porta de máquina (degrau 1.3) e o relógio da
 # fila de revisão (degrau 2.1) chegarem, a resposta certa para reaproveitar
 # conexão é o POOL nativo do Django 5.1 (`OPTIONS["pool"]` +
 # `psycopg[binary,pool]`, o desenho que a `identidade` já roda), nunca
@@ -117,7 +117,7 @@ MIDDLEWARE = [
 #
 # Duas células assinando o MESMO cookie com chaves diferentes produzem um
 # cabo-de-guerra invisível: abrir a aula deslogaria do site, e vice-versa,
-# **sem erro em lugar nenhum, sem log, sem alarme** (`armadilhas/143`).
+# **sem erro em lugar nenhum, sem log, sem alarme**.
 #
 # A tentação concreta que isto mata tem nome aqui, e são duas. A CERIMÔNIA DO
 # BOSS: quando a última aula de um Bloco abre a porta, a tela cheia celebra,
@@ -162,7 +162,7 @@ TEMPLATES = [
                 # e `apps/core/menu.py`). Processadores de contexto, e não uma
                 # inclusão escrita em cada template, porque "em todas as
                 # páginas" não pode depender de alguém lembrar da peça: tela
-                # nova nasce com as duas (`armadilhas/242`), e
+                # nova nasce com as duas, e
                 # `ci/tests/test_pecas_comuns_em_toda_celula_publica.py` mede
                 # esta fiação. Quem desenha é `cursos/moldura.html`.
                 "apps.core.rodape.rodape_do_contexto",
@@ -184,8 +184,8 @@ TEMPLATES = [
 #
 # **Aqui o conjunto vazio é o ÚNICO cadeado**, e isso é diferente da
 # `identidade`: esta célula roda sob `SCRIPT_NAME=/cursos`, e o corte do
-# prefixo é do Django, não do Traefik — a porta é alcançável pela borda pública
-# (`armadilhas/186`). Não há topologia por baixo para segurar o que este
+# prefixo é do Django, não do Traefik — a porta é alcançável pela borda pública.
+# Não há topologia por baixo para segurar o que este
 # conjunto deixar passar.
 TOKENS_ACEITOS = {
     valor
@@ -215,14 +215,13 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # O fuso em que a célula MOSTRA hora; o armazenamento continua em UTC (USE_TZ).
 # Sem esta linha vale o default de fábrica do Django, `America/Chicago`: cinco
-# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum
-# (`armadilhas/099`).
+# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum.
 #
 # Aqui o DIA é a unidade da promessa ao aluno: um envio devolvido leva uma
-# data de retorno, e ela é "amanhã ou depois" no dia de São Paulo
-# ([INV-CUR-L1]); o prazo de 24 horas da fila de revisão é mostrado à
-# professora em hora local, e o estouro se registra no dia em que aconteceu
-# ([INV-CUR-L3]); a Ficha de Série da semana fecha na sexta de São Paulo. Com o
+# data de retorno, e ela é "amanhã ou depois" no dia de São Paulo;
+# o prazo de 24 horas da fila de revisão é mostrado à
+# professora em hora local, e o estouro se registra no dia em que aconteceu;
+# a Ficha de Série da semana fecha na sexta de São Paulo. Com o
 # default de fábrica, um laudo emitido à 1h da manhã de terça em São Paulo
 # ainda seria "segunda" para o sistema, e a data de retorno "terça" passaria
 # como se fosse amanhã, sem ninguém ver. Guarda: `tests/test_fuso_horario.py`.

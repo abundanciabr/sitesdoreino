@@ -1,4 +1,4 @@
-"""[INV-ENC-N7] Proposta vencida por silêncio do CLIENTE vai ao plantão.
+"""Proposta vencida por silêncio do CLIENTE vai ao plantão.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8. **Nunca para outro aluno**, e
 a razão está escrita no plano: mandá-la ao próximo faria cada aluno da fila
@@ -134,7 +134,7 @@ def test_o_projeto_iniciante_volta_para_a_FILA_e_nunca_para_o_mural(
 
 
 def test_a_segunda_passada_do_tique_nao_faz_nada(projeto_pego, formulario):
-    """[INV-ENC-J10] na pista nova: reexecutar é inerte."""
+    """na pista nova: reexecutar é inerte."""
     projeto, _ = projeto_pego
     agora = _agora()
     assert _propor(projeto, Proposta.DeQuem.ALUNO, formulario, agora).feito

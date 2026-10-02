@@ -1,8 +1,8 @@
 """O checkpoint: quem entrega, quando, o que a fila devolve, e o estouro do prazo.
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §3.12 (o checkpoint é por link),
-§4 (`Envio`; "a fila de revisão não é tabela"), §5 (os dois eventos) e §9
-([INV-CUR-L3]). Degrau 2.1 (TAR-155). Este arquivo é o único lugar onde um
+§4 (`Envio`; "a fila de revisão não é tabela"), §5 (os dois eventos) e §9.
+Degrau 2.1 (TAR-155). Este arquivo é o único lugar onde um
 `Envio` nasce e onde um estouro se registra, como `progresso.py` é o único
 lugar onde uma porta muda de estado.
 
@@ -21,7 +21,7 @@ AS TRÊS FUNÇÕES, E O QUE CADA UMA NÃO FAZ
 - `registrar_estouros(agora)` grava `estourado_em` em todo envio da fila cujo
   prazo passou e emite `revisao.prazo-estourado.v1` UMA vez por envio: o
   filtro `estourado_em IS NULL` é o que faz a segunda passada não emitir de
-  novo. Registra; nunca alonga ([INV-CUR-L3]). Quem a chama de minuto em
+  novo. Registra; nunca alonga. Quem a chama de minuto em
   minuto é o tique de `tasks.py`.
 
 O LAUDO NÃO MORA AQUI

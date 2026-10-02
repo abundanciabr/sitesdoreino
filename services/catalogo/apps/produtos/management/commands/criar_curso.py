@@ -10,7 +10,7 @@ class Command(BaseCommand):
     Até 06/09/2026 o único jeito de um `Product` nascer era o `seed_esqueleto`,
     que cria uma peça de teste de ponta a ponta. Não havia caminho nenhum para
     cadastrar um curso de verdade, e por isso a tela de liberar aluno não tinha
-    o que oferecer (`DECISAO-cursos-matriculas-e-alunos.md` §6).
+    o que oferecer.
 
     O **preço fica em zero** e é assim de propósito: quem cobra é a Offer, que
     é por site, e a plataforma ainda não vende. Zero aqui significa "não está à

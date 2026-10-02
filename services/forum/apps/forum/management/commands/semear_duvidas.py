@@ -357,5 +357,5 @@ class Command(BaseCommand):
         self.stdout.write(f"TOPICOS DA ESCOLA: {da_escola}")
         self.stdout.write(f"topicos de alunos: {de_pessoas}")
         # A linha que o pipeline procura. Só existe aqui, no fim do caminho
-        # feliz, e nunca no eco do script (`armadilhas/114`).
+        # feliz, e nunca no eco do script.
         self.stdout.write("SEMEADURA DAS DUVIDAS OK")

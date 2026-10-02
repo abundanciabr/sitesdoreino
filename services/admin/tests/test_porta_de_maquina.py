@@ -4,7 +4,7 @@ Quatro coisas se provam aqui, e cada uma tem um modo de falha silencioso.
 
 1. **O Bearer é o único cadeado.** Esta célula roda sob `SCRIPT_NAME=/admin` e o
    corte do prefixo é do Django, não do Traefik: `/interno` é alcançável pela
-   borda pública em `meshcraft.top/admin/interno/...` (`armadilhas/186`). Se o
+   borda pública em `meshcraft.top/admin/interno/...`. Se o
    401 sumir, nada quebra, nenhuma tela muda, e a lista de quem manda na escola
    passa a responder para a internet inteira. Por isso o guarda cobre o
    sem-token, o token errado E o conjunto de tokens vazio, que é o estado de uma
@@ -85,7 +85,7 @@ def operacoes_da_porta() -> list[tuple[str, str]]:
 def test_a_porta_tem_a_operacao_que_o_contrato_congelou_e_so_ela():
     """Sem esta linha, o guarda de 401 abaixo passaria com ZERO operações.
 
-    Guarda varrendo lista vazia é verde que não mede nada (`armadilhas/351`):
+    Guarda varrendo lista vazia é verde que não mede nada:
     apagar a rota deixaria os testes de cadeado passando por falta de caso.
     """
     assert operacoes_da_porta() == [("post", "/administradores/consultar")]
@@ -161,7 +161,7 @@ def test_quem_a_tela_promoveu_tambem_e_administrador(settings):
 
 
 def test_quem_a_tela_removeu_deixa_de_ser_administrador(settings):
-    """Remover é desativar (`DECISAO-administradores-e-apagar` §3.1), e a porta obedece."""
+    """Remover é desativar, e a porta obedece."""
     from apps.core.models import Administrador
 
     settings.ADMIN_EMAILS = "dono@exemplo.com"
@@ -174,7 +174,7 @@ def test_o_cenario_tem_as_duas_fontes_com_gente_dentro_e_fora(settings):
 
     Aqui existe um administrador que SÓ o env conhece, um que SÓ a tabela
     conhece, um desativado e um estranho: qualquer uma das quatro respostas
-    muda se a soma virar uma parcela (`armadilhas/351`).
+    muda se a soma virar uma parcela.
     """
     from apps.core.models import Administrador
 

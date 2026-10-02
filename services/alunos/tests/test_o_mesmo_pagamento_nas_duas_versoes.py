@@ -263,7 +263,7 @@ OUTRA_ESCOLA = "escola-b"
 
 @pytest.mark.django_db
 def test_mesma_referencia_em_escolas_diferentes_sao_fatos_diferentes():
-    """[INV-P11] O `provider_reference_id` é o id da cobrança NA CONTA DO
+    """O `provider_reference_id` é o id da cobrança NA CONTA DO
     FORNECEDOR, e cada escola tem a sua: duas podem receber a referência
     `12345` no mesmo dia, de compras que nada têm a ver uma com a outra.
 

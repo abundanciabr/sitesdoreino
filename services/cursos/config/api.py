@@ -8,7 +8,7 @@ from apps.core.comentarios_api import router as comentarios_router
 
 # `servers` aponta para a REDE INTERNA do Docker: é o endereço que a célula
 # `admin` (o editor, degrau 1.5) porá no env dela. O valor congela em
-# `contracts/cursos.openapi.yaml` no degrau 1.4 (Rito de Contrato, RITOS.md §3);
+# `contracts/cursos.openapi.yaml` no degrau 1.4;
 # depois disso, mudá-lo é Rito, nunca edição aqui.
 #
 # ATENÇÃO, E AQUI ESTA CÉLULA É COMO O `forum` E A `gamificacao`, E DIFERENTE
@@ -16,8 +16,7 @@ from apps.core.comentarios_api import router as comentarios_router
 # `meshcraft.top/cursos/api/cursos/...`. A célula roda sob `SCRIPT_NAME=/cursos`
 # e o handler ASGI do Django faz `path_info = path.removeprefix(script_name)`;
 # é o mesmo corte que faz `meshcraft.top/cursos/healthz` responder 200 com o
-# `urls.py` declarando `path("healthz", ...)` sem prefixo nenhum
-# (`armadilhas/186`; a premissa está fixada em `tests/test_healthz_script_name.py`).
+# `urls.py` declarando `path("healthz", ...)` sem prefixo nenhum.
 #
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por

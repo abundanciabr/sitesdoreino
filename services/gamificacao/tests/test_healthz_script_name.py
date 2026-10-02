@@ -1,6 +1,6 @@
 """Teste-guarda de `armadilhas/029`: `/healthz` sob prefixo.
 
-Esta célula serve em `meshcraft.top/conquistas` (`DECISAO-gamificacao.md` §4),
+Esta célula serve em `meshcraft.top/conquistas`,
 ou seja **sob SCRIPT_NAME** — a mesma condição que derrubou a sonda do
 `checkout` (PR #65) e do `quiz` (PR #71), e que a `sugestoes`, a `admin` e o
 `forum` já travam do mesmo jeito. Duas coisas quebram nesse regime, e as duas

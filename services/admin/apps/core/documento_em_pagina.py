@@ -131,7 +131,7 @@ def csp_da_pagina(resposta) -> str:
     """O CSP da página de FORA: o da porta, mais o hash do escutador.
 
     A porta manda `script-src 'self'` em toda resposta desta célula, e sob essa
-    regra o escutador da altura não roda (`armadilhas/199`). O jeito da casa é
+    regra o escutador da altura não roda. O jeito da casa é
     o hash, nunca `'unsafe-inline'`: o hash libera exatamente estes bytes, e
     `'unsafe-inline'` liberaria qualquer script injetado.
 

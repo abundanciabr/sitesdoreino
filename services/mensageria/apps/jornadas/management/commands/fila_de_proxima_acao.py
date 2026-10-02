@@ -1,6 +1,5 @@
 """Mostra a fila de proxima acao de um site. NAO manda nada para ninguem.
 
-Lei: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`, degrau 15 do §8.
 
 POR QUE UM COMANDO QUE SO IMPRIME
 ---------------------------------

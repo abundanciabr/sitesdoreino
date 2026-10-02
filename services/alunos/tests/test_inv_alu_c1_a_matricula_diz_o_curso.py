@@ -1,4 +1,4 @@
-"""[INV-ALU-C1] Nenhuma matrícula ativa sem curso.
+"""Nenhuma matrícula ativa sem curso.
 
 Lei: `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` (06/09/2026), nas
 palavras do mantenedor: *"eu preciso que ele seja liberado somente após escolher
@@ -183,7 +183,7 @@ def test_nenhuma_matricula_que_vale_fica_sem_curso_depois_de_liberar():
     )
     assert list(sem_curso) == []
     # Verdade vazia é o modo de falha desta varredura: sem alguém `ativa` no
-    # banco, "ninguém está ativa sem curso" passa sozinho (`armadilhas/266`).
+    # banco, "ninguém está ativa sem curso" passa sozinho.
     assert Matricula.objects.filter(status__in=Matricula.STATUS_QUE_VALEM).count() == 1
 
 
@@ -246,8 +246,8 @@ def test_curso_mandado_junto_de_uma_recusa_nao_e_gravado(client, auth):
 # Os testes daqui para baixo FABRICAM O ESTADO DE PRODUÇÃO antes de medir: uma
 # matrícula que dá acesso com `product_id=""`. É o estado real do banco em
 # 06/09/2026, e ele não nasce mais pela porta da fila (a decisão passou a exigir
-# o curso) — corrigir o código não muda a linha que já está gravada
-# (`armadilhas/253`), e é por isso que o comando existe.
+# o curso) — corrigir o código não muda a linha que já está gravada,
+# e é por isso que o comando existe.
 
 
 def ja_matriculada(email, *, site="site-1", status=Matricula.STATUS_ATIVA, curso=""):
@@ -338,7 +338,7 @@ def test_o_comando_nunca_sobrescreve_um_curso_que_ja_esta_gravado():
 
 @pytest.mark.django_db
 def test_o_comando_nao_atravessa_a_fronteira_de_site():
-    """[INV-P11] A escola de quem roda não é a escola de todo mundo."""
+    """A escola de quem roda não é a escola de todo mundo."""
     de_outra_escola = ja_matriculada("de-outra@example.com", site="site-2")
 
     acertar(site="site-1", curso=CURSO, confirmar=True)

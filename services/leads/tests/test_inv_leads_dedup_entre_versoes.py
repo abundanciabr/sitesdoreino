@@ -223,7 +223,7 @@ def test_aprovado_fatos_diferentes_nao_sao_confundidos():
 
 
 def test_aprovado_site_diferente_e_um_fato_diferente_inv_p11():
-    """[INV-P11] A identidade do fato é escopada pelo site, não só o par
+    """A identidade do fato é escopada pelo site, não só o par
     provider/provider_reference_id. Um aviso com o site ERRADO (bug do
     publicador, ou mensagem injetada) não pode consumir a chave do aviso
     LEGÍTIMO: se consumisse, o aviso certo chegaria depois, bateria na
@@ -338,7 +338,7 @@ def test_recusado_provider_reference_id_igual_nao_junta_pagamentos_diferentes():
 
 
 def test_recusado_site_diferente_e_um_fato_diferente_inv_p11():
-    """[INV-P11] Mesmo `payment_id`, dois `platform_site_id` diferentes são
+    """Mesmo `payment_id`, dois `platform_site_id` diferentes são
     dois fatos. Espelho de `test_aprovado_site_diferente_e_um_fato_diferente_inv_p11`
     para o evento cuja identidade é só `payment_id`."""
     processar_envelope(

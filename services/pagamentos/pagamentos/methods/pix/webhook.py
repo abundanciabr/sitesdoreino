@@ -1,5 +1,5 @@
 # pagamentos/methods/pix/webhook.py  # [RECEITA:R1 v1]
-# [INV-P9] Não importa methods.card nem providers.* — só core (modelo Intent,
+# Não importa methods.card nem providers.* — só core (modelo Intent,
 # ledger/outbox, validação de assinatura, gateway). Guardado em
 # check-time por .importlinter.
 #
@@ -37,7 +37,7 @@ def processar_webhook_pix(request: HttpRequest) -> dict[str, Any]:
     estado → outbox NA MESMA transação [INV-P6] → relay (tudo delegado a
     core.ledger)."""
     if not assinatura_valida(request):
-        raise HttpError(403, "assinatura invalida")  # [INV-P10] zero efeito colateral
+        raise HttpError(403, "assinatura invalida")  # zero efeito colateral
 
     # data.id vem do query param — é o que o manifesto assinado cobre. O corpo
     # (não assinado) NÃO participa da identificação do pagamento.
@@ -140,7 +140,7 @@ def _montar_dados(
         # [TAR-225] `product_id` é OPACO — igual a `recovery_url` abaixo, veio
         # no `metadata` da criação da intent (checkout ecoa o produto que o
         # cliente comprou) e pagamentos só repassa, nunca interpreta. Opcional
-        # no contrato (aditivo, Rito de Contrato): AUSENTE quando o checkout
+        # no contrato: AUSENTE quando o checkout
         # não informou, nunca string vazia — é a mesma semântica que o resto da
         # plataforma usa para "campo opcional sem valor" (ver `nota` em
         # sugestao.status-alterado).

@@ -61,7 +61,7 @@ MARCA_DE_ESPERA = "esperando"
 DEPOIS_DE_LIBERADO = "/"
 
 # [RECIBO] O COOKIE `caixa_pedido_na_fila` MORREU AQUI EM 29/08/2026, junto com
-# a marca opaca que o preenchia (`DECISAO-o-recibo-e-conferido.md`).
+# a marca opaca que o preenchia.
 #
 # Ele existia para que recarregar a página não mostrasse o formulário vazio como
 # se o pedido não tivesse chegado — um conforto de tela, escrito quando esta
@@ -122,7 +122,7 @@ def _para_a_porta_central(request) -> str:
 
     `reverse("entrar")` carrega o prefixo público (`FORCE_SCRIPT_NAME`) — é o
     que faz o `next` sair `/forms/sugestoes/entrar` em produção e `/entrar` em
-    dev, sem uma string cravada em lugar nenhum (armadilhas/029 e /081).
+    dev, sem uma string cravada em lugar nenhum.
     """
     return f"{url_de_entrada_do_site()}?{urlencode({'next': reverse('entrar')})}"
 
@@ -161,8 +161,8 @@ def _tela_da_fila(
     resposta mais rápida para muita gente continua sendo *"entrei com o e-mail
     errado"*.
 
-    `ja_pediu` é um FATO CONFERIDO, e desde 29/08/2026 só isso
-    (`DECISAO-o-recibo-e-conferido.md`). Ele chega `True` de um único lugar: o
+    `ja_pediu` é um FATO CONFERIDO, e desde 29/08/2026 só isso.
+    Ele chega `True` de um único lugar: o
     estado `NA_FILA`, que é a `alunos` dizendo que existe uma linha esperando
     para esta pessoa. Até essa data ele vinha de um cookie do navegador, que não
     sabe nada sobre a fila e continuava afirmando "seu pedido está com a gente"
@@ -181,7 +181,7 @@ def _tela_da_fila(
             "email": email,
             "fila": True,
             # [VOLTAR] Quem está pedindo é um EX-ALUNO, e a tela diz isso em vez
-            # de tratá-lo como gente nova (`DECISAO-a-ficha-nao-se-apaga.md` §3).
+            # de tratá-lo como gente nova.
             # Muda o texto e a palavra do botão; NÃO muda o formulário nem para
             # onde ele posta — é o mesmo pedido, na mesma fila, decidido pela
             # mesma pessoa. Uma segunda rota de "voltar" seria um segundo
@@ -230,8 +230,8 @@ def pedir_entrada(request):
             status=503,
         )
     # [VOLTAR] Lista de PERMISSÃO dos estados que podem enfileirar, e não um
-    # `!= SEM_MATRICULA`. `EX_ALUNO` entrou em 29/08/2026
-    # (`DECISAO-a-ficha-nao-se-apaga.md` §3), no dia em que a tela dele ganhou o
+    # `!= SEM_MATRICULA`. `EX_ALUNO` entrou em 29/08/2026,
+    # no dia em que a tela dele ganhou o
     # formulário de volta — sem isto, o botão "Pedir para voltar" existiria na
     # tela e o clique cairia num redirecionamento mudo, que é a pior forma de
     # não funcionar. `PAUSADO` fica FORA de propósito: quem está pausado volta
@@ -353,13 +353,13 @@ def entrar(request):
     if resolucao.estado == ses.SEM_MATRICULA:
         # [INVARIANTE] Sem matrícula não participa — e a tela NOMEIA o e-mail.
         # Desde 27/08/2026 a recusa tem DESTINO: o formulário da fila de
-        # liberação (`DECISAO-fila-de-liberacao.md`). Continua **403** — quem
+        # liberação. Continua **403** — quem
         # está aqui não entrou —, mas a página deixou de ser um beco.
         return _tela_da_fila(request, email=resolucao.email)
 
     if resolucao.estado == ses.EX_ALUNO:
-        # [VOLTAR] O formulário VOLTOU para o ex-aluno em 29/08/2026
-        # (`DECISAO-a-ficha-nao-se-apaga.md` §3), revertendo a decisão da
+        # [VOLTAR] O formulário VOLTOU para o ex-aluno em 29/08/2026,
+        # revertendo a decisão da
         # véspera de não o oferecer. O argumento do mantenedor é mais forte que
         # o receio original: a escola é um lugar de onde se sai e para onde se
         # volta, e quem terminou um curso e quer o do semestre seguinte não está

@@ -3,7 +3,7 @@
 ci:texto-publicado
 
 A MARCA ACIMA NÃO É ENFEITE. Ela liga o portão do travessão neste arquivo
-inteiro (`ci/travessao.py`, terceira regra de alcance no `CLAUDE.md`), e aqui
+inteiro, e aqui
 ela é obrigatória por dois motivos que se somam: este é texto que o ALUNO lê, e
 ele não está numa `templates/` nem num rótulo de `TextChoices`, que são as duas
 regras que pegam sozinhas. Sem a marca, o texto da escola ficaria fora da régua
@@ -13,8 +13,8 @@ DE ONDE VEM CADA PALAVRA
 ------------------------
 Do guia da escola, que o aluno lê em `meshcraft.top/docs/guia-do-portfolio` e
 que o mantenedor edita em `/admin/documentos/` sem abrir PR. Ele foi escrito
-pela PROFESSORA do curso e repassado pelo mantenedor em 05/09/2026
-(`PLANO-PORTFOLIO-DO-ALUNO.md` §8). **Nada aqui é invenção de robô:** as cinco
+pela PROFESSORA do curso e repassado pelo mantenedor em 05/09/2026.
+**Nada aqui é invenção de robô:** as cinco
 etapas são as cinco seções daquele guia, e os quatro itens de conferência são,
 palavra por palavra, os quatro pontos objetivos que a professora escreveu no
 fecho dele.
@@ -178,8 +178,8 @@ def semear(apps) -> None:
 
     **Atualiza o que já existe**, de propósito. Um `get_or_create` só criaria o
     que falta, e o dia em que a professora corrigisse uma palavra o aluno
-    continuaria lendo a antiga, com a migração verde e ninguém sabendo
-    (`armadilhas/347`). A chave de cada linha é o que NÃO muda: o número da
+    continuaria lendo a antiga, com a migração verde e ninguém sabendo.
+    A chave de cada linha é o que NÃO muda: o número da
     etapa e a chave do item.
     """
     Etapa = apps.get_model("portfolio", "EtapaDoRoteiro")

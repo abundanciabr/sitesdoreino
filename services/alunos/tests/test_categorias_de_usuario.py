@@ -111,13 +111,13 @@ def test_todo_status_que_vale_responde_aluno(client, auth, status):
 
     Até 28/08/2026 esta lista era `[ativa, suspensa, reembolsada]`, escrita à
     mão — e quando `suspensa` deixou de dar acesso
-    (`DECISAO-gestao-de-alunos` §2) o teste reprovou por estar REPETINDO a
+    o teste reprovou por estar REPETINDO a
     regra em vez de a consultar. Derivando, ele mede a regra verdadeira, seja
     qual for ela amanhã.
 
     Em 31/08/2026 a lista encolheu de novo, para `[ativa]`: o mantenedor
-    reverteu a decisão dele de 24/08 e `reembolsada` deixou de valer
-    (`DECISAO-reembolso-tira-o-acesso.md`). Este teste não precisou de uma
+    reverteu a decisão dele de 24/08 e `reembolsada` deixou de valer.
+    Este teste não precisou de uma
     linha — é o que "derivar da constante" compra.
     """
     linha(status=status)
@@ -299,8 +299,8 @@ def test_a_resposta_nao_carrega_nenhum_dado_pessoal(client, auth, status):
 def test_sem_bearer_a_porta_recusa_com_401():
     """Esta API é alcançável pela internet, e o token é a única defesa.
 
-    O Traefik NÃO remove o prefixo das células sob `SCRIPT_NAME`
-    (`armadilhas/103`): `/alunos/api/alunos/...` responde de fora. Medido em
+    O Traefik NÃO remove o prefixo das células sob `SCRIPT_NAME`:
+    `/alunos/api/alunos/...` responde de fora. Medido em
     25/08/2026. Porta nova nasce com este guarda ou nasce aberta.
     """
     from django.test import Client

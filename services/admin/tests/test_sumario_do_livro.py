@@ -1,7 +1,7 @@
 """A tela que cola o sumário do livro: `/admin/escola/<curso>/sumario/`.
 
 NENHUM TRECHO DO LIVRO ENTRA AQUI. O sumário de verdade é obra não lançada do
-mantenedor e este repositório é público (`armadilhas/331`): o que este arquivo
+mantenedor e este repositório é público: o que este arquivo
 usa é um sumário de MENTIRA, escrito para o teste, com a mesma FORMA do de
 verdade (as molduras de bloco, a linha de encomenda com o título entre aspas, a
 promessa recuada, as peças numeradas de 1 a 16, as sub-linhas do "Eu faço", as
@@ -469,7 +469,7 @@ def test_sala_de_aula_fora_do_ar_nao_vira_gravacao():
 @pytest.mark.django_db
 @respx.mock
 def test_o_texto_colado_volta_para_a_caixa_e_nao_fica_guardado_nesta_celula():
-    """A obra do mantenedor não mora aqui (`armadilhas/331`).
+    """A obra do mantenedor não mora aqui.
 
     A prova é dupla: o texto volta na página (para o segundo gesto), e nenhuma
     tabela desta célula ganhou uma linha com ele.

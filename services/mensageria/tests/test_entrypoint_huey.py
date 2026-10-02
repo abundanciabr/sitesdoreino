@@ -1,4 +1,4 @@
-# Teste-guarda do entrypoint oficial do worker (ARMADILHAS §1/H10.2 e §4.11):
+# Teste-guarda do entrypoint oficial do worker:
 # `python manage.py run_huey` só existe com `huey.contrib.djhuey` em INSTALLED_APPS,
 # e só serve as tasks certas se `settings.HUEY` for a MESMA instância de
 # config/huey.py. Sem estas garantias, o worker de produção volta a depender do

@@ -4,8 +4,8 @@ POR QUE ELA EXISTE, E POR QUE TEM UMA OPERAÇÃO SÓ
 --------------------------------------------------
 A lei desta obra diz, com todas as letras, que a peça tem UMA casa: o portfólio
 não guarda cópia de medalha, a gamificação não guarda cópia de peça, e **a tela
-que precisa das duas pergunta por HTTP com falha ABERTA**
-(`PLANO-PORTFOLIO-DO-ALUNO.md` §4). Sem esta porta, aquela frase é promessa sem
+que precisa das duas pergunta por HTTP com falha ABERTA**.
+Sem esta porta, aquela frase é promessa sem
 mecanismo: a primeira tela que precisasse do selo guardaria uma segunda cópia
 dele, e no dia em que as duas discordassem ninguém saberia qual está certa.
 

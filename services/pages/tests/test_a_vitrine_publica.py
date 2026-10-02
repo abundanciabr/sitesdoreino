@@ -31,7 +31,7 @@ from conftest import ANA, OUTRO_SITE, SITE, agora
 # extenso, e nunca montados por `reverse()`: o endereço público da vitrine NÃO
 # leva o prefixo da área do aluno, e um teste que o montasse pela mesma função
 # que o código usa não teria como acusar o dia em que ela passasse a devolver
-# `/portfolio/ana` (`armadilhas/102`, a mesma família).
+# `/portfolio/ana`.
 APELIDO = "ana-3d"
 ENDERECO = "/ana-3d"
 
@@ -333,7 +333,7 @@ def test_o_endereco_que_o_aluno_copia_leva_o_prefixo_uma_so_vez(
     client, aluna, site_declarado
 ):
     """`{% url %}` montaria `/portfolio/ana-3d`, que é um SEGUNDO endereço
-    para a mesma página (`armadilhas/102`, medida na `admin` em 29/08/2026). O
+    para a mesma página. O
     endereço da vitrine é curto de propósito: é o link que vai para o chat de um
     freelancer.
 

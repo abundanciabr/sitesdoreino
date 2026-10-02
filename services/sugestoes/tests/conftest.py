@@ -13,7 +13,7 @@ NADA AQUI TOCA A REDE — e é isto que torna a suíte executável sem internet
 As três conversas são dubladas com `respx`, que troca o transporte do `httpx`
 por um roteador em memória. A prova é mecânica, não promessa: `respx.mock` sem
 `assert_all_called` levanta `AllMockedAssertionError` para QUALQUER requisição
-que não tenha sido registrada (armadilhas/054). Se alguém acrescentar amanhã
+que não tenha sido registrada. Se alguém acrescentar amanhã
 um salto de rede novo, a suíte estoura em vez de sair para a internet.
 
 O dublê da `identidade` responde POR COOKIE: cada pessoa "logada no site" é um
@@ -55,7 +55,7 @@ def id_da_plataforma_de(email: str) -> str:
     """O dublê do `SessionFull.id` — OPACO, como o de verdade.
 
     Até 26/08/2026 este dublê era `f"idt-{email}"`. No primeiro envelope que
-    passou a carregar `ator_id` (Rito de Contrato do sininho), o guarda de
+    passou a carregar `ator_id`, o guarda de
     privacidade `test_nenhum_envelope_carrega_dado_pessoal` acusou um `@`
     vazando no fio — e o vazamento era **do dublê**, não do código: a célula
     `identidade` cunha `secrets.token_urlsafe(16)`, sem nada da pessoa dentro.
@@ -142,7 +142,7 @@ def ambiente(monkeypatch):
     tempo. A lista de staff começa VAZIA de propósito — ninguém é staff por
     acidente; o teste que precisa dela a declara.
 
-    Os caches de sessão/matrícula (armadilhas/026: módulo vaza entre testes)
+    Os caches de sessão/matrícula
     são limpos ANTES e DEPOIS: uma sessão que vazasse faria um guarda de
     "visitante" passar mostrando o nome de alguém que outro teste logou.
     """
@@ -173,7 +173,7 @@ class Rede:
 
     Cada método diz o que o mundo VAI responder; o teste declara só o que
     importa para o invariante que está provando. O que não for declarado
-    estoura (armadilhas/054) — é assim que um salto de rede novo aparece.
+    estoura — é assim que um salto de rede novo aparece.
     """
 
     def __init__(self, mock: respx.MockRouter) -> None:
@@ -223,7 +223,7 @@ class Rede:
         declara opcional e nulável (`anyOf: [string, null]`). É o único jeito
         honesto de encenar "a porta não soube dizer quem é": mexer na coluna
         local direto não serve, porque toda requisição passa pela porta e a
-        porta REGRAVA o id na reentrada (INV-SUG11). Foi assim que o guarda do
+        porta REGRAVA o id na reentrada. Foi assim que o guarda do
         fail-closed do ator nasceu verde por engano, em 26/08/2026, antes de
         alguém notar que ele não estava encenando falha nenhuma.
 
@@ -251,7 +251,7 @@ class Rede:
     # -- alunos -------------------------------------------------------------
     #
     # A porta pergunta a SITUAÇÃO desde 28/08/2026 — antes perguntava "tem
-    # matrícula?", sim ou não (`DECISAO-ex-aluno-e-a-porta-que-explica`). Os
+    # matrícula?", sim ou não. Os
     # nomes dos ajudantes ficaram, porque o que eles significam para quem lê um
     # teste não mudou: `alunos_diz(email, [matricula])` continua sendo "esta
     # pessoa é aluna". O que mudou é a pergunta feita na rede.
@@ -275,7 +275,7 @@ class Rede:
         """[RECIBO] A `alunos` confirma que existe uma linha esperando.
 
         Desde 29/08/2026 é a ÚNICA forma de a porta mostrar o recibo do pedido
-        (`DECISAO-o-recibo-e-conferido.md`) — antes bastava um cookie no
+        — antes bastava um cookie no
         navegador, que continuava afirmando o pedido depois de a linha ter sido
         decidida ou apagada.
         """
@@ -330,7 +330,7 @@ class Rede:
             side_effect=httpx.ReadTimeout("timed out")
         )
 
-    # -- a fila de liberação (DECISAO-fila-de-liberacao.md) ------------------
+    # -- a fila de liberação ------------------
     #
     # A ÚNICA escrita que esta célula faz na `alunos`. O dublê GUARDA o que foi
     # enviado, porque é isso que os guardas de privacidade e de `site_id`
@@ -592,7 +592,7 @@ def entrar_como_staff(rede, lista_da_staff, db, gestao):
     Uma diferença que é prova por si: aqui **não se dubla a `alunos`**. A
     checagem de staff acontece antes da de matrícula (herdada da porta
     antiga), e o `respx` estoura em qualquer requisição não registrada
-    (armadilhas/054) — se alguém inverter a ordem um dia, esta fixture cai com
+    — se alguém inverter a ordem um dia, esta fixture cai com
     `AllMockedAssertionError`, não com um teste verde de mentira.
 
     **`pessoa.gestao` é a jornada de moderação de hoje** (desde 30/08/2026): as
@@ -711,7 +711,7 @@ class Gestao:
         return {
             "por_email": identidade.email,
             "por_nome": identidade.nome_exibido,
-            # [INV-SUG12] sem ele a Caixa recusa COM INSTRUÇÃO — e há guarda
+            # sem ele a Caixa recusa COM INSTRUÇÃO — e há guarda
             # medindo exatamente isso; por isso o dublê o manda quando existe.
             "por_id_da_plataforma": identidade.id_da_plataforma or "",
         }
@@ -899,7 +899,7 @@ def plateia(db):
         local sem o id que atravessa a plataforma. É o estado real de quem não
         voltou ao site desde 25/08/2026, e o que o guarda do pulo das cartas
         precisa para existir. O padrão é `True` porque quem entra hoje ganha o
-        id na porta (INV-SUG11), e uma fixture que não reflete o presente faz
+        id na porta, e uma fixture que não reflete o presente faz
         guardas medirem um mundo que não existe mais."""
 
         def _gente(papel: str, quantos: int) -> list[Identidade]:

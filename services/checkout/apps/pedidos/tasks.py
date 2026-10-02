@@ -4,7 +4,7 @@
 # em produção): publica no stream ANTES de marcar `published_at` — se o
 # processo morrer entre as duas escritas, o pior caso é REPUBLICAR (o
 # transporte é at-least-once de propósito e os consumidores dedupam), nunca
-# perder o evento (ARMADILHAS §4.12: o lado produtor íntegro é este).
+# perder o evento.
 import json
 import logging
 import os

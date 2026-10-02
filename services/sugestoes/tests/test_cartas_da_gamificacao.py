@@ -307,8 +307,8 @@ def test_o_marco_diz_o_PAPEL_de_quem_validou_nunca_um_nome(dentro, rede, quadro)
 
 def test_a_semana_do_destaque_e_DATA_e_nao_converte_fuso(dentro, rede, quadro):
     """`semana` é a segunda-feira, em `America/Sao_Paulo`, e o contrato a manda
-    como DATA justamente para ninguém converter fuso e exibir a semana errada
-    (armadilhas/099). `datetime.date` é imune ao `|date:` do template."""
+    como DATA justamente para ninguém converter fuso e exibir a semana errada.
+    `datetime.date` é imune ao `|date:` do template."""
     item = _item_para_o_template(
         _carta(ASSUNTO_DESTAQUE, {"destaque_id": "d", "semana": "2026-08-25"}), {}
     )

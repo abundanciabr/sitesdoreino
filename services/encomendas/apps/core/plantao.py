@@ -6,8 +6,7 @@ aquele campo é de EXIBIÇÃO. O `papel` responde "esta pessoa é professora na
 plataforma?"; a pergunta desta tela é "esta pessoa pode dar um título de Banca e
 abrir encomenda paga pela escola?". No dia em que a plataforma tiver um segundo
 produto com outros professores, a primeira resposta continuaria "sim" e a
-segunda passaria a ser "não", e ninguém perceberia, porque nada quebraria
-(`DECISAO-onde-mora-a-sessao.md` §4).
+segunda passaria a ser "não", e ninguém perceberia, porque nada quebraria.
 
 **A LISTA VAZIA E NINGUEM**, e é o mesmo desenho de `TOKENS_ACEITOS` ao lado:
 env ausente não derruba o boot, não quebra tela nenhuma e fecha o plantão.
@@ -40,7 +39,7 @@ _ja_avisei_que_a_lista_esta_vazia = False
 def ids_do_plantao() -> frozenset[str]:
     """Os ids de plataforma que podem dar título e abrir encomenda da escola.
 
-    Lida **no ponto de uso**, nunca no import (`armadilhas/097`).
+    Lida **no ponto de uso**, nunca no import.
 
     Separador é vírgula, espaços são ignorados e valor vazio some. Formato
     frouxo na LEITURA e rígido na escrita: quem digita é um humano numa VPS, e um

@@ -102,7 +102,7 @@ def menu_do_contexto(request) -> dict:
     """Processador de contexto: põe `menu_do_topo` em TODA página desta célula.
 
     É processador, e não uma inclusão em cada template, porque "em todas as
-    páginas" não pode depender de alguém lembrar da peça (`armadilhas/242`).
+    páginas" não pode depender de alguém lembrar da peça.
     Tela nova da sala nasce com menu, porque `cursos/moldura.html` desenha.
     """
     casamento = getattr(request, "resolver_match", None)

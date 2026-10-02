@@ -157,7 +157,7 @@ echo "  ideias com conteúdo ....... $COM_DEPOIS"
 echo "  ideias já apagadas ........ $SEM_DEPOIS"
 echo
 
-# A TESTEMUNHA. Ausência de erro não é sucesso (INV-CI01): o "PRONTO." só sai
+# A TESTEMUNHA. Ausência de erro não é sucesso: o "PRONTO." só sai
 # depois de o banco confirmar as DUAS metades — que não sobrou conteúdo, e que
 # as apagadas de antes continuam apagadas mais as de agora.
 if [ "${COM_DEPOIS:-1}" -ne 0 ]; then

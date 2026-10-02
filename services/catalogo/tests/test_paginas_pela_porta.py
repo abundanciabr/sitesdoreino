@@ -204,7 +204,7 @@ def test_slug_e_unico_por_site_e_a_pagina_de_um_site_nao_vaza_para_outro(
         version=1,
         secoes=[{"nome": "cubo", "slots": {"headline": "Do A"}}],
     )
-    # Mesma slug no site B: existir noutro site nao e existir aqui (INV-P11).
+    # Mesma slug no site B: existir noutro site nao e existir aqui.
     pagina_b = Page.objects.create(site=site_b, slug="oferta")
     PageVersion.objects.create(
         page=pagina_b,

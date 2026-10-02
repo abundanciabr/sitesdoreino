@@ -24,7 +24,7 @@ from .placar import diretorio_dos_cartoes, ler_cartao, montar_o_placar, site_de
 #: O rótulo dos encaixes conta TRABALHOS, e não pessoas, porque é isso que o
 #: cartão `encaixes-com-estudio` define ("a mesma aluna em dois trabalhos conta
 #: duas vezes"). O laço mede oportunidades abertas nesta etapa; quem conta
-#: pessoas é a etapa seguinte, a dos resultados (`armadilhas/303`).
+#: pessoas é a etapa seguinte, a dos resultados.
 DIGITADAS = (
     (
         "talentos",
@@ -136,7 +136,7 @@ def montar(
     `total_de_alunos` vem do placar (a célula `alunos` ao vivo) e pode ser
     `None`: a porta não respondeu. `registros` `None` é os registros indisponíveis
     até esta imagem, que é outra coisa de "nenhuma contagem feita", e as duas
-    aparecem diferentes na tela (`armadilhas/271`).
+    aparecem diferentes na tela.
 
     `medidos` é `nome do cartão → valor` do que o placar mediu agora, lido da
     mesma linha `foto` que ele monta. É por ele que os passos de origem
@@ -163,7 +163,7 @@ def montar(
             item["estado"] = "medido" if total_de_alunos is not None else "nao-medi"
             item["valor"] = total_de_alunos
         elif passo["origem"] == "cartao":
-            # Três fatos diferentes, e nenhum deles é zero (`armadilhas/271`):
+            # Três fatos diferentes, e nenhum deles é zero:
             # o placar trouxe o número; o cartão tem fonte e o placar não
             # trouxe nada agora; e o cartão não tem fonte nenhuma, caso em que
             # `sem_fonte_porque` é obrigatório no cartão e é ele quem fala.

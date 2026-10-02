@@ -9,13 +9,13 @@ título ninguém é elegível a nada (`motor.TITULO_MINIMO_DO_NIVEL`), então a 
 o Mural e a negociação estão construídos e parados esperando este formulário.
 Ele também é quem dá uso real a `apps/core/sessao.py`, e é por isso que
 `celulas.yml` pode honestamente passar a `consome: [alunos, identidade]` neste
-mesmo PR (`armadilhas/224`): as duas vizinhas são perguntadas aqui, de verdade.
+mesmo PR: as duas vizinhas são perguntadas aqui, de verdade.
 
 **O que NAO nasce aqui, e o motivo:** abrir encomenda da escola (lei §3.4).
 Aquele gesto precisa do briefing com a lista FECHADA de entregáveis, e essa
 lista é produto da Fase 3 (o briefing blindado do cliente). Uma encomenda criada
-hoje nasceria com a lista vazia, e toda proposta marca um subconjunto dela
-([INV-ENC-N1]): o projeto nasceria impossível de negociar. Ele entra no degrau
+hoje nasceria com a lista vazia, e toda proposta marca um subconjunto dela:
+o projeto nasceria impossível de negociar. Ele entra no degrau
 seguinte, junto com o briefing.
 
 A tela do aluno, o cardápio do cliente e o plantão cheio continuam nas Fases 4,
@@ -60,7 +60,7 @@ def healthz(request):
 
     Ela responde nas DUAS formas de entrada, porque as duas existem em produção:
     `/encomendas/healthz` pela internet (o Traefik **não** remove o prefixo) e
-    `/healthz` pelo healthcheck do compose (`armadilhas/029`).
+    `/healthz` pelo healthcheck do compose.
 
     Guarda: `tests/test_healthz_script_name.py`.
     """

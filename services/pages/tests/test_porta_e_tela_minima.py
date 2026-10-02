@@ -14,7 +14,7 @@ Quatro coisas se provam aqui, e cada uma tem um modo de falha silencioso:
    roda, e é o único caso em que a porta se defende sozinha sem ninguém ter
    configurado nada.
 
-3. **A célula NÃO assina sessão** ([INV-P12], `armadilhas/143`). O cookie
+3. **A célula NÃO assina sessão**. O cookie
    viaja OPACO para a `identidade`, com o valor intacto, e nenhuma resposta
    desta casa grava `meshcraft_sessao`.
 
@@ -172,7 +172,7 @@ def test_nenhuma_resposta_desta_casa_grava_o_cookie_do_site(
     env_dos_pares, rede, db, cenario
 ):
     """Se um dia esta célula assinar sessão, o site inteiro passa a deslogar
-    sozinho, sem erro, sem log e sem alarme (`armadilhas/143`).
+    sozinho, sem erro, sem log e sem alarme.
 
     O `db` entrou no degrau 07: o cenário `aluno` atravessa a porta e desenha a
     Prancheta, que desde então lê o roteiro da escola do banco.

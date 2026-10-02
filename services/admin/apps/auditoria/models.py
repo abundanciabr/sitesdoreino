@@ -18,7 +18,7 @@ FALHARAM. Uma decisão que a `alunos` recusou não deixa rastro nenhum lá (não
 linha para carimbar), e é justamente esse caso que alguém vai querer reconstruir
 quando um aluno disser "eu fui liberado e continuo sem acesso".
 
-**Append-only com MECANISMO, não com disciplina** (`armadilhas/079`): o
+**Append-only com MECANISMO, não com disciplina**: o
 `save()` sobrescrito é contornado por `QuerySet.update()`, por `psql` e por
 qualquer código que não importe esta classe. Quem impede de verdade é o trigger
 da migration `0001` — as três metades (UPDATE, DELETE e TRUNCATE) fechadas no
@@ -44,7 +44,7 @@ class Registro(models.Model):
     DESPROMOVER = "despromover"
     APAGAR = "apagar"
     # [CAIXA] A gestao das ideias dos alunos mudou de casa para esta area em
-    # 28/08/2026 (DECISAO-a-gestao-da-caixa-mora-no-admin). Verbos proprios pelo
+    # 28/08/2026. Verbos proprios pelo
     # mesmo motivo dos de cima — e um deles nao muda a vida de um aluno, muda a
     # de um projeto inteiro: ASSINAR autoriza uma obra a comecar.
     #
@@ -74,7 +74,7 @@ class Registro(models.Model):
     MOVER_IDEIA = "mover_ideia"
     AVALIAR_IDEIA = "avaliar_ideia"
     ASSINAR_OBRA = "assinar_obra"
-    # [ARQUIVAR] 29/08/2026 (`DECISAO-arquivar-ideia.md`). Verbo próprio, e não
+    # [ARQUIVAR] 29/08/2026. Verbo próprio, e não
     # `APAGAR` reaproveitado: aquele já nasceu para a ficha do aluno (e está
     # aposentado desde `DECISAO-a-ficha-nao-se-apaga.md` — o verbo fica no
     # vocabulário só para linhas antigas continuarem legíveis, nenhum caminho
@@ -82,18 +82,18 @@ class Registro(models.Model):
     # precisa distinguir os dois gestos.
     ARQUIVAR_IDEIA = "arquivar_ideia"
     DESARQUIVAR_IDEIA = "desarquivar_ideia"
-    # [APAGAR-IDEIA] 29/08/2026 (`DECISAO-apagar-ideia.md`). De novo um verbo
+    # [APAGAR-IDEIA] 29/08/2026. De novo um verbo
     # PRÓPRIO, e não `APAGAR`: aquele é sobre a ficha do aluno (aposentado,
     # comentário acima) — este é sobre a ideia, é um alvo diferente, e a
     # mesma palavra "apagar" nos dois criaria ambiguidade sobre QUEM sumiu.
     APAGAR_IDEIA = "apagar_ideia"
-    # [FUNDIR] 05/09/2026 (`DECISAO-fundir-ideias.md`). Dois verbos, e não um
+    # [FUNDIR] 05/09/2026. Dois verbos, e não um
     # com um campo dizendo o sentido: juntar e desfazer são gestos com
     # consequências opostas para quem escreveu a ideia absorvida, e quem ler
     # esta tabela em meses precisa distingui-los sem interpretar detalhe.
     FUNDIR_IDEIAS = "fundir_ideias"
     DESFAZER_FUSAO = "desfazer_fusao"
-    # [CORRIGIR-IDEIA] 31/08/2026 (`DECISAO-corrigir-o-texto-de-uma-ideia.md`).
+    # [CORRIGIR-IDEIA] 31/08/2026.
     # Verbo próprio pela razão mais forte da lista: a correção é CALADA para o
     # aluno, por decisão do mantenedor. A Caixa guarda o texto anterior de cada
     # campo; o que ESTA tabela acrescenta, e nenhuma outra tem, é a tentativa
@@ -108,7 +108,7 @@ class Registro(models.Model):
     # linha por gesto, inclusive quando o catalogo recusa.
     EDITAR_MENU = "editar_menu"
     # [DOCUMENTOS] 31/08/2026: o mantenedor passou a escrever os documentos do
-    # site por uma tela (`DECISAO-o-editor-de-documentos.md`). Verbos proprios
+    # site por uma tela. Verbos proprios
     # pelo mesmo motivo dos de cima, e com o agravante do menu: o alvo nao e uma
     # pessoa nem uma ideia — e um texto que qualquer visitante pode ler.
     #
@@ -127,7 +127,7 @@ class Registro(models.Model):
     # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
     # uma edicao esconderia justamente o que aconteceu, e este verbo entra junto
     # com o historico porque ele e metade do que substituiu o `git log` destes
-    # textos (`DECISAO-o-editor-de-documentos.md` §6).
+    # textos.
     RESTAURAR_DOCUMENTO = "restaurar_documento"
     # [LUGAR] 31/08/2026: os tres gestos que mexem no LUGAR do documento, e nao
     # no texto dele. Separados de EDITAR pela mesma razao que ARQUIVAR_IDEIA nao
@@ -158,7 +158,7 @@ class Registro(models.Model):
     # metade e a `vigente_desde` da propria regra, na celula `gamificacao`: la
     # mora DESDE QUANDO a regra vale, aqui mora QUEM mandou e QUANDO pediu. Sao
     # fatos diferentes, e nenhum e copia do outro — e por isso que esta tela
-    # nao guarda copia nenhuma das regras (a lei anti-duplicacao do CLAUDE.md).
+    # nao guarda copia nenhuma das regras.
     LIGAR_REGRA = "ligar_regra"
     DESLIGAR_REGRA = "desligar_regra"
     # [CONQUISTAS] 01/09/2026: ligar uma MEDALHA ou um MARCO. Verbos proprios, e
@@ -175,7 +175,7 @@ class Registro(models.Model):
     # alguem de Oficial?", que nao se responde por nenhum dos outros verbos.
     LIGAR_DEGRAU = "ligar_degrau"
     DESLIGAR_DEGRAU = "desligar_degrau"
-    # [SENHA] 31/08/2026 (`DECISAO-login-por-senha.md`): o reset manual de
+    # [SENHA] 31/08/2026: o reset manual de
     # senha, pelo prontuário de um aluno. Verbo próprio pelo mesmo motivo dos
     # de cima — e com o agravante de que a senha em si NUNCA entra em
     # `detalhe` nem em lugar nenhum desta tabela (só o hash fica do lado da
@@ -188,7 +188,7 @@ class Registro(models.Model):
     # "quantas vezes o mantenedor precisou confirmar o canal?", que nenhum
     # outro verbo responde. Nao muda estado de aluno nenhum: e diagnostico.
     TESTAR_AVISO = "testar_aviso"
-    # [APAGAR-RECUSADO] 03/09/2026 (`DECISAO-apagar-recusado-definitivamente.md`).
+    # [APAGAR-RECUSADO] 03/09/2026.
     # Verbo PROPRIO, e nao o `APAGAR` aposentado em 29/08: aquele era sobre a
     # ficha de um ALUNO (nunca mais acontece, so continua legivel em linha
     # antiga); este e sobre um pedido RECUSADO, que nunca chegou a ser aluno.
@@ -250,7 +250,7 @@ class Registro(models.Model):
     PUBLICAR_AULA = "publicar_aula"
     EDITAR_INSTRUMENTO = "editar_instrumento"
     # [CURSOS] 07/09/2026: a sala passou a servir varios cursos, e criar um
-    # virou gesto da tela (`DECISAO-a-sala-serve-varios-cursos.md`). Dois verbos
+    # virou gesto da tela. Dois verbos
     # proprios, e nao um `editar_aula` reaproveitado: aquele fala do TEXTO de
     # uma encomenda, e estes falam do curso inteiro. Trocar o produto de um
     # curso troca QUEM ENTRA nele, e trocar a regra de avanco muda como a
@@ -289,8 +289,8 @@ class Registro(models.Model):
     # caminho feliz o `detalhe` guarda o numero do PR, que e o unico jeito de
     # ligar esta linha ao trabalho que ela abriu.
     CANCELAR_TAREFA = "cancelar_tarefa"
-    # [PARAMETROS DA FILA] 07/09/2026, a tela `/admin/encomendas/parametros/`
-    # (degrau 2.14 da `DECISAO-fila-do-primeiro-dolar.md`). UM verbo, e nao dois
+    # [PARAMETROS DA FILA] 07/09/2026, a tela `/admin/encomendas/parametros/`.
+    # UM verbo, e nao dois
     # como em `ligar_regra`/`desligar_regra`: la os dois estados sao gestos
     # opostos e a pergunta "desde quando esta regra paga?" so se responde
     # separando-os. Aqui nao ha dois estados, ha um numero, e o gesto e sempre o
@@ -326,8 +326,7 @@ class Registro(models.Model):
     # F9b). DOIS verbos, porque as perguntas são duas: "quem propôs este
     # teste?" e "desde quando parte das visitas vê outro texto, e quem ligou?".
     # Parar é `decidir_experimento`, logo acima. O `detalhe` guarda a página e
-    # o espaço testado, nunca o texto: a copy é obra dele e mora no catálogo
-    # (`armadilhas/331`).
+    # o espaço testado, nunca o texto: a copy é obra dele e mora no catálogo.
     CRIAR_EXPERIMENTO = "criar_experimento"
     INICIAR_EXPERIMENTO = "iniciar_experimento"
     # [CONTA DO ROBÔ] 01/10/2026 (`apps/core/conta_do_robo.py`). A linha de
@@ -425,7 +424,7 @@ class Registro(models.Model):
     # coluna de texto e a metade "expand" do Expand-and-Contract — o codigo
     # anterior continua escrevendo e lendo as mesmas palavras, e nenhuma linha
     # antiga precisa ser tocada. CUIDADO ao mexer aqui: no SQLite isso
-    # reconstroi a tabela e derruba os gatilhos (`armadilhas/246`).
+    # reconstroi a tabela e derruba os gatilhos.
     acao = models.CharField(max_length=32, choices=ACOES)
 
     # SOBRE O QUÊ. `alvo` é o id da linha na `alunos` — um identificador opaco
@@ -440,8 +439,8 @@ class Registro(models.Model):
     desfecho = models.CharField(max_length=20, choices=DESFECHOS)
     # O que o OPERADOR fez e escreveu — nunca o que a PESSOA forneceu.
     #
-    # **A regra vale daqui em diante e tem motivo mecânico**
-    # (`DECISAO-administradores-e-apagar` §4): esta tabela é append-only por
+    # **A regra vale daqui em diante e tem motivo mecânico**:
+    # esta tabela é append-only por
     # trigger, e o painel ganhou um botão que apaga uma pessoa de vez. Se o
     # detalhe guardasse nome ou telefone, apagar seria impossível sem furar a
     # própria trava. Então ele guarda os NOMES dos campos tocados, não os

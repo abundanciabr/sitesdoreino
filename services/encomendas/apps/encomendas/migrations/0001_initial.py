@@ -1,25 +1,25 @@
 """As tabelas da Fila do Primeiro Dolar, e o que o ORM nao sabe escrever.
 
-Degrau 2.2 da escada (`DECISAO-fila-do-primeiro-dolar.md` secao 7, TAR-120).
+Degrau 2.2 da escada.
 Alem das tabelas, tres promessas do plano que NAO viram comentario nem
 disciplina, e sim PostgreSQL, pela Lei 1 do projeto (empurrar a regra escada
 acima ate a impossibilidade fisica):
 
 1. **A maquina de estado da secao 7.2**, num gatilho que compara `OLD.status`
    com `NEW.status`. Sem ele, a maquina viveria so em `Encomenda.mudar_status()`,
-   e `queryset.update()` nao passa por `save()` (`armadilhas/023`), nem passam
+   e `queryset.update()` nao passa por `save()`, nem passam
    uma migracao de dados, uma tela de administracao futura ou um `psql` de
    madrugada.
 2. **O historico e os parametros sao append-only.** `MudancaDeStatus` responde
    "quem mandou esta encomenda de volta para a fila, e quando"; `Parametro`
    responde "quanto valia o relogio da oferta as 14h". Nenhuma das duas responde
-   nada se puder ser reescrita (`armadilhas/079`).
+   nada se puder ser reescrita.
 3. **A coluna `site_id` da `Oferta` nao pode mentir.** Ela existe porque
    `UniqueConstraint` nao atravessa chave estrangeira (as duas travas de oferta
    pendente sao locais dela). Denormalizada, ela pode mentir, e quando mente quem
    cai e a Lei 9: uma oferta de um site apontando para a encomenda de outro
-   passaria por toda consulta filtrada por `site_id` sem aparecer
-   (`armadilhas/274`). Quem impede o par incoerente e a chave estrangeira
+   passaria por toda consulta filtrada por `site_id` sem aparecer.
+   Quem impede o par incoerente e a chave estrangeira
    COMPOSTA, nunca um `save()`.
 
 `RunSQL` recebe uma LISTA de proposito, e nao uma string unica: string unica
@@ -159,7 +159,7 @@ GATILHOS_APPEND_ONLY = [
 # Os indices unicos `uniq_encomenda_id_com_site` e `uniq_perfil_id_com_site` sao
 # o que torna o par referenciavel. Eles parecem redundantes (o `id` ja e unico),
 # e e essa aparencia que faz alguem apaga-los um dia, derrubando esta guarda sem
-# que nada pareca errado (`armadilhas/274`).
+# que nada pareca errado.
 FKS_COMPOSTAS = [
     """
     ALTER TABLE encomendas_oferta

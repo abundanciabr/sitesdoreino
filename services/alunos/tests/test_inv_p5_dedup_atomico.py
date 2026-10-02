@@ -1,5 +1,5 @@
 # tests/test_inv_p5_dedup_atomico.py  # [RECEITA:R4 v1]
-# Nome do arquivo = código do invariante (INVARIANTES.md).
+# Nome do arquivo = código do invariante.
 #
 # INV-P5 tem duas metades. `test_inv_p5_matricula_lock.py` guarda a metade
 # "nunca DUAS matrículas" (evento duplicado/concorrente). Este arquivo guarda a

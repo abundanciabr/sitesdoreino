@@ -4,11 +4,10 @@
 do mantenedor: a parte 2 do painel que ele está montando para quem o contratou
 (a parte 1 é o relatório da fundação) — o catálogo das 78 ferramentas que o
 projeto Meshcraft vai construir para os alunos do próximo curso. A pasta
-`documentos/` é SEMENTE (`DECISAO-o-editor-de-documentos.md`), e a semeadura de
+`documentos/` é SEMENTE, e a semeadura de
 toda a pasta é a migração `0003`, que já rodou em produção antes de este
 arquivo existir: sem migração própria, o documento nasceria só no repositório e
-`meshcraft.top/docs/…` (ou a tela do admin) nunca o encontraria
-(`armadilhas/347`).
+`meshcraft.top/docs/…` (ou a tela do admin) nunca o encontraria.
 
 Nasce PRIVADO (`publico: false` no cabeçalho do arquivo), pelo mesmo motivo da
 parte 1: o mantenedor decidiu manter o controle de quem vê o material antes de

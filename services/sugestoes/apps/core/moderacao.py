@@ -15,8 +15,8 @@ alguém que esqueceu de entrar, é alguém que já entrou e não tem o papel. Ma
 essa pessoa para a tela de login seria dizer "tente de novo" a quem não tem o
 que tentar.
 
-O papel continua **derivado a cada requisição** da `SUGESTOES_STAFF_EMAILS`
-(`apps/core/sessao.py`, `DECISAO-EVO-01` §4). Consequência que vale conhecer:
+O papel continua **derivado a cada requisição** da `SUGESTOES_STAFF_EMAILS`.
+Consequência que vale conhecer:
 tirar alguém da variável e reiniciar a célula tira o crachá **no ato**, mesmo de
 quem já está com a sessão aberta. Há guarda para isso.
 
@@ -190,7 +190,7 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por, resposta=No
             status_novo=status_novo,
             nota=nota,
         )
-        # [EVO-20] [INV-P6] O `sugestao.status-alterado` nasce AQUI DENTRO, na
+        # [EVO-20] O `sugestao.status-alterado` nasce AQUI DENTRO, na
         # outbox, antes do commit — é a letra da DoD do MVP (§11): "publicado
         # antes do commit da transação de status". Uma linha depois do `with`
         # já seria outro desenho: o status mudaria e o aviso do aluno poderia
@@ -205,7 +205,7 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por, resposta=No
         # [Rito de Contrato de 26/08/2026] E as CARTAS ENDEREÇADAS, uma por
         # pessoa, no mesmo `atomic` e no mesmo insert único. Decisão dele contra
         # "uma lista com todos os nomes": a lista de quem votou nunca circula, e
-        # o evento não cresce com a plateia (DECISAO-fase-2-do-sininho §1).
+        # o evento não cresce com a plateia.
         #
         # Os destinatários saem dos avisos que ACABARAM de nascer, e não de uma
         # segunda chamada a `interessados_em()`: seriam duas consultas a mais

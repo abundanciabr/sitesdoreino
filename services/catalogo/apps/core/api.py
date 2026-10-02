@@ -417,7 +417,7 @@ def get_offer(request, site_id: str, slug: str):
             .get(site_id=site_id, slug=slug, site__active=True)
         )
     except (OfferModel.DoesNotExist, ValidationError, ValueError):
-        # [INV-P11] mesma slug pode existir noutro site — a query já filtra por
+        # mesma slug pode existir noutro site — a query já filtra por
         # site_id, então "existe noutro site" cai aqui como 404 igual a "não existe".
         raise HttpError(404, "oferta inexistente/despublicada neste site")
     return {
@@ -473,7 +473,7 @@ def list_products(request):
     # `response=Product` declara a forma do 200. O 201 sai por `JsonResponse`,
     # que o django-ninja devolve como está: a alternativa (`response={200: ...,
     # 201: ...}`) gera Schema dinâmico que pode vazar para `components.schemas`
-    # e quebrar o freeze de contrato (`armadilhas/021`). O corpo do 201 é o
+    # e quebrar o freeze de contrato. O corpo do 201 é o
     # MESMO dicionário do 200, e o teste do 201 confere o conjunto EXATO das
     # chaves, porque nesse caminho não há Schema filtrando nada.
     response=Product,

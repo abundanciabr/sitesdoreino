@@ -15,7 +15,7 @@ congelado, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
 uso: cliente que lê env no `__init__` transforma env ausente em HTTP 500 em
-TODA página, com o deploy verde (`armadilhas/097`). Faltando a variável, quem
+TODA página, com o deploy verde. Faltando a variável, quem
 falha é o CAMINHO que precisa dela, com o nome da variável na mensagem.
 
 Molde: `services/forum/apps/core/clients.py` (os dois primeiros) e
@@ -45,7 +45,7 @@ def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
     `httpx.get()` constrói um cliente novo por chamada, e com ele um
-    `ssl.SSLContext` (`armadilhas/082`). `httpx.Client` é seguro entre threads,
+    `ssl.SSLContext`. `httpx.Client` é seguro entre threads,
     e o `respx` troca o transporte na classe, então o dublê dos testes continua
     valendo.
     """
@@ -95,7 +95,7 @@ class IdentidadeClient:
     do par prova **quem chama**; o cabeçalho `Cookie`, repassado OPACO, prova
     **quem é a pessoa** do outro lado do navegador. O cookie nunca é
     interpretado aqui: esta célula não tem a chave que o assina, e não pode
-    ter ([INV-P12]).
+    ter.
 
     Por que a resposta COMPLETA, e não a `getSession`: a sala precisa do
     **e-mail** para perguntar à `alunos` se a pessoa está matriculada. O
@@ -148,8 +148,8 @@ class AlunosClient:
     **Pergunta as MATRÍCULAS, e não a categoria** (TAR-227). Até 06/09/2026 a
     pergunta era `getStudentStanding`, que responde uma palavra só: a pessoa é
     `aluno`, ou não é. Isso bastava enquanto havia um curso, e virou defeito no
-    dia do segundo: aluno é aluno DE UM PRODUTO
-    (`DECISAO-cursos-matriculas-e-alunos.md` §1), e a palavra não diz de qual.
+    dia do segundo: aluno é aluno DE UM PRODUTO,
+    e a palavra não diz de qual.
     Esta operação diz: uma linha por matrícula, cada uma com `site_id` e
     `product_id`.
 
@@ -163,7 +163,7 @@ class AlunosClient:
     e o caminho da operação é `/alunos/{email}/matriculas`: os dois se SOMAM.
     Sem o segmento `/alunos` do meio a chamada dá 404, e o 404 desta porta
     significa "nenhuma matrícula" — o fail-closed continuaria fechando a sala,
-    mas com a frase errada, e com o deploy verde (`armadilhas/111`). Por isso o
+    mas com a frase errada, e com o deploy verde. Por isso o
     dublê dos testes confere a URL inteira.
     """
 

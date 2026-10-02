@@ -26,12 +26,11 @@ from config.api import api
 #
 # TODA rota leva `name=`, e nenhum template escreve caminho à mão: é
 # `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
-# endereço. Caminho cravado em string quebra em produção e SÓ lá
-# (`armadilhas/029` e `/081`).
+# endereço. Caminho cravado em string quebra em produção e SÓ lá.
 #
 # A porta de MÁQUINA (`/api/cursos/`, degrau 1.3) FICA DEBAIXO do prefixo
 # roteado: `meshcraft.top/cursos/api/cursos/…` é alcançável pela internet, e o
-# corte do prefixo é do Django, não do Traefik (`armadilhas/186`). Quem fecha a
+# corte do prefixo é do Django, não do Traefik. Quem fecha a
 # porta é o Bearer do par (`tests/test_porta_exige_bearer.py`); a topologia não
 # fecha nada aqui.
 #
@@ -45,10 +44,10 @@ urlpatterns = [
     path("healthz", healthz),
     path("api/cursos/", api.urls),
     # O CSS, servido pela própria célula. Sem esta rota o estilo é 404 em
-    # produção e SÓ lá (`armadilhas/083`): com DEBUG=0 o Django não serve
+    # produção e SÓ lá: com DEBUG=0 o Django não serve
     # estático, e não há nginx nem CDN atrás do Traefik. O nome é `estatico`,
     # e o `<link>` sai de `{% url 'estatico' %}`, nunca de `{% static %}`: as
-    # duas tags leem prefixos diferentes (`armadilhas/102`).
+    # duas tags leem prefixos diferentes.
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
     # O PLANTÃO (degrau 2.2). Quem entra: `CURSOS_PROFESSORES` ∪ `ADMIN_EMAILS`,
     # fail-closed (`apps/core/sessao.py::_lista_de_emails`); a `identidade` só
@@ -59,7 +58,7 @@ urlpatterns = [
     path("aulas/<slug:slug>", aula_avulsa, name="aula-avulsa"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da
     # PESSOA DA SESSÃO: nenhuma rota recebe o id de outra pessoa, e nenhuma
-    # lista alunos ([INV-CUR-P1], `tests/test_inv_p1_nenhuma_tela_compara_alunos.py`).
+    # lista alunos.
     #
     # A aula vem DEPOIS de `healthz` e de `static/` de propósito: `<str:numero>`
     # casa qualquer segmento único, e a ordem da lista é o que impede a sonda

@@ -1,6 +1,6 @@
 """Guarda de armadilhas/029, terceira temporada: a VOLTA sob `SCRIPT_NAME`.
 
-O OAuth saiu desta célula (DECISAO-celula-de-identidade) e levou embora o
+O OAuth saiu desta célula e levou embora o
 `redirect_uri` — mas o problema de prefixo NÃO foi embora: o botão de entrar
 manda a pessoa à porta central com `?next=<a porta desta Caixa>`, e esse
 `next` precisa carregar o prefixo público (`/forms/sugestoes/entrar`). Um

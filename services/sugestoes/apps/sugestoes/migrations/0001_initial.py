@@ -4,7 +4,7 @@ import apps.sugestoes.models
 import django.db.models.deletion
 from django.db import migrations, models
 
-# [INV-SUG02] O degrau final do append-only de HistoricoStatus (Lei 1: empurrar
+# O degrau final do append-only de HistoricoStatus (Lei 1: empurrar
 # a regra escada acima até a impossibilidade física). O guarda em Python
 # (`HistoricoStatus.save`/`delete` + `AppendOnlyQuerySet`) protege quem passa
 # pelo ORM; este trigger protege contra `cursor.execute` cru, `psql`, o

@@ -84,7 +84,7 @@ from django.utils import timezone
 # ---------------------------------------------------------------------------
 # `max_length` FOLGADO de propósito em todo campo de vocabulário fechado. O
 # reflexo natural é dimensionar a coluna pela maior palavra existente, e ele
-# custa duas coisas (`armadilhas/226`): quem recusa o valor inventado passa a ser
+# custa duas coisas: quem recusa o valor inventado passa a ser
 # o TAMANHO da coluna (`DataError`, que não diz qual lei foi violada) e, no dia
 # em que uma palavra maior for acrescentada legitimamente, a proibição EVAPORA
 # junto com o alargamento. Aqui quem recusa é sempre a `CheckConstraint`, e o
@@ -144,7 +144,7 @@ def id_do_site() -> models.CharField:
 def id_de_pessoa() -> models.CharField:
     """O id de PLATAFORMA de quem recebe — o que a célula `identidade` emite.
 
-    NUNCA o e-mail, nunca o nome, nunca o telefone (`DECISAO-EVO-01` §3). Quem
+    NUNCA o e-mail, nunca o nome, nunca o telefone. Quem
     precisa falar com a pessoa PERGUNTA à `identidade` na hora do envio; guardar
     o contato aqui seria uma segunda casa de um dado que vive numa linha só.
     """
@@ -633,8 +633,7 @@ class EnvioDeCheckpoint(models.Model):
     `checkpoint.devolvido.v1` NÃO carrega o aluno (o `ator_id` dele é quem
     assinou o laudo). Quem carrega é o `envio.recebido.v1` do MESMO `envio_id`,
     que chega antes, porque o envio existe antes do laudo. Esta tabela guarda
-    essa ponte para que o devolvido saiba QUEM inscrever na jornada do silêncio
-    (degrau 2.4 do `PLANO-CELULA-CURSOS.md`, §3.6).
+    essa ponte para que o devolvido saiba QUEM inscrever na jornada do silêncio.
 
     É PROJEÇÃO, como `EstadoDoAluno`: calculada de eventos, e a autoridade
     sobre o envio continua na célula `cursos`. Nem link, nem texto, nem nome:

@@ -44,7 +44,7 @@ def test_o_nome_do_stream_e_eventos_ponto_evento_e_a_versao_vai_no_envelope(no_f
 
     Pôr a versão no nome do stream faria de toda evolução de contrato uma
     migração de infraestrutura: o `v1` continua sendo emitido até o último
-    consumidor migrar (RITOS §3), e seriam dois streams para o mesmo fato.
+    consumidor migrar, e seriam dois streams para o mesmo fato.
     """
     assert sorted(no_fio.streams) == [
         "eventos.notificacao.devida",

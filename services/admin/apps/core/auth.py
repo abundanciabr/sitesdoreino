@@ -18,8 +18,8 @@ class bearerAuth(HttpBearer):
     gente desta célula (`apps/core/porta.py`). Aqui não chega cookie e não há
     sessão.
 
-    **O conjunto é PLANO, e isso está certo porque esta porta só LÊ**
-    (`armadilhas/318`). Não existe operação que promova nem que remova
+    **O conjunto é PLANO, e isso está certo porque esta porta só LÊ**.
+    Não existe operação que promova nem que remova
     administrador: quem faz isso é o mantenedor, na tela desta casa, com sessão.
     No dia em que uma escrita entrar aqui, o conjunto tem de virar dois graus
     (o desenho `TOKENS_SENHA_*` da `identidade`), porque hoje todo par que ganha

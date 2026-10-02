@@ -300,8 +300,7 @@ def _registrar_a_entrega(envelope: dict) -> EntregaAceita | None:
 
     Idempotente pelo `event_id`: o mesmo fato reentregue pelo relay não vira
     uma segunda linha. Guarda o fato e nunca a aula, pelo invariante 3 da
-    economia. Envelope sem aluno, site ou id não vira linha nem pessoa fantasma
-    (`armadilhas/255`).
+    economia. Envelope sem aluno, site ou id não vira linha nem pessoa fantasma.
     """
     data = envelope.get("data") or {}
     site_id = data.get("site_id")
@@ -391,7 +390,7 @@ def ao_portfolio_conferido(envelope: dict) -> None:
     """A escola conferiu o portfólio de um aluno, e o marco da trilha acende.
 
     **ELE VALE ZERO XP, e isso é o coração do produto**, não economia nem
-    esquecimento (`PLANO-PORTFOLIO-DO-ALUNO.md` §7, decisão 7 da Sessão A). Se
+    esquecimento. Se
     ser conferido pela escola pagasse pontos, o marco viraria mais um item do
     andaime e o aluno aprenderia a perseguir o número em vez da coisa. Por isso
     este handler NÃO chama `_creditar`: ele não passa pelo motor de XP, não toca
@@ -408,7 +407,7 @@ def ao_portfolio_conferido(envelope: dict) -> None:
     **O aluno vem de `data.aluno_id`**, que o contrato descreve como id da
     PLATAFORMA. Nenhum outro campo serve de segunda tentativa: `portfolio_id` é
     id local da célula `pages`, e conceder por ele criaria uma pessoa fantasma
-    que nenhuma sessão jamais resolve (`armadilhas/255`).
+    que nenhuma sessão jamais resolve.
 
     **A peça não vem junto, e não deveria.** Link, legenda e apelido ficam na
     `pages`; a gamificação guarda que o marco aconteceu e nada mais (plano §7:

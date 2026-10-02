@@ -217,8 +217,8 @@ def veredito_do_ciclo(resultado: dict | None, estado: str) -> str | None:
     Isto não reescreve a régua (a conta continua sendo `placar.calcular_placar`,
     e o placar continua dizendo o que diz). É a tela do FECHAMENTO se recusando
     a repetir um elogio vazio: "ganhando" com 0 de 1000, porque a curva ainda
-    pedia 0, é a tela parabenizando quem ainda não foi cobrado de nada
-    (`armadilhas/271`). Esperado zero com compra acontecida continua sendo
+    pedia 0, é a tela parabenizando quem ainda não foi cobrado de nada.
+    Esperado zero com compra acontecida continua sendo
     "ganhando", e aí é ganho de verdade: alguém comprou antes de ser pedido.
     """
     if resultado is None or resultado.get("veredito") is None:

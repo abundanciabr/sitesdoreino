@@ -106,7 +106,7 @@ def _limites_do_dia(momento: datetime) -> tuple[datetime, datetime]:
 
     Calculado explicitamente, e não por `enviado_em__date`: aquele atalho
     delega a conversão de fuso ao banco, e o dia da mensageria é o dia de São
-    Paulo por lei (§3, lei 6; `armadilhas/099`). Com o fuso do Django cru, o
+    Paulo por lei. Com o fuso do Django cru, o
     envio das 22h cai no dia errado e NADA acusa.
     """
     dia = timezone.localdate(momento)

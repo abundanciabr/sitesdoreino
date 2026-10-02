@@ -131,5 +131,5 @@ class Command(BaseCommand):
         total = Area.objects.filter(ativa=True).count()
         self.stdout.write(f"AREAS ATIVAS: {total} ({publicas} publicas)")
         # A linha que o pipeline procura. Só existe aqui, no fim do caminho
-        # feliz — nunca no eco do script (`armadilhas/114`).
+        # feliz — nunca no eco do script.
         self.stdout.write("SEMEADURA DO FORUM OK")

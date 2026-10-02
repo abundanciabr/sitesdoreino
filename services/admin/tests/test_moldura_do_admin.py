@@ -80,7 +80,7 @@ def sob_o_prefixo_publico():
     """O regime de produção: a área inteira mora sob `/admin`.
 
     Mexe no PREFIXO DE SCRIPT, e não em `settings.FORCE_SCRIPT_NAME`, porque é
-    o prefixo de thread que `reverse()` lê (`armadilhas/081`); ajustar só a
+    o prefixo de thread que `reverse()` lê; ajustar só a
     variável deixaria o teste verde sem medir o regime de produção. O `finally`
     restaura o anterior: o prefixo vaza para os testes seguintes, e o vermelho
     apareceria num arquivo sem relação nenhuma.
@@ -229,7 +229,7 @@ def test_o_rodape_do_bastidor_nao_e_a_assinatura_do_site():
 
 
 def test_o_rodape_declara_o_endereco_que_e_de_outra_celula():
-    """Os guardas de prefixo (`armadilhas/029` e `/081`) leem esta declaração.
+    """Os guardas de prefixo leem esta declaração.
 
     Endereço de outra célula escrito à mão precisa sair de quem o declara, e
     não de uma cópia dentro do teste.

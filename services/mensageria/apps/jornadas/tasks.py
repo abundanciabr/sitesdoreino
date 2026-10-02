@@ -40,8 +40,8 @@ def relay_outbox() -> int:
     Idempotente e segura de chamar a qualquer momento: linha com `published_at`
     preenchido é ignorada pelo filtro, então uma segunda passada não republica.
 
-    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import
-    (`armadilhas/097`): o container web importa este módulo pelo autodiscover do
+    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import:
+    o container web importa este módulo pelo autodiscover do
     djhuey e não pode morrer no boot se a variável faltar. Faltando, o `KeyError`
     estoura só aqui, é engolido pelo `relay_apos_commit` e a carta fica pendente
     — nunca perdida.
@@ -110,8 +110,7 @@ def relay_outbox_periodico() -> int:
 
     O worker é `python manage.py run_huey` — entrada canônica, e a única que faz
     `django.setup()` + autodiscover de `tasks.py`. Subir o `huey_consumer` direto
-    dá um worker de pé com o registro VAZIO, que não executa nada e não reclama
-    (`armadilhas/030`).
+    dá um worker de pé com o registro VAZIO, que não executa nada e não reclama.
 
     ATENÇÃO ao nome: esta célula JÁ TEM um `apps/eventos/tasks.py`, com a task de
     envio. Dois `tasks.py` na mesma célula é o esperado pelo autodiscover do

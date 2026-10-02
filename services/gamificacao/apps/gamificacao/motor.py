@@ -79,8 +79,8 @@ logger = logging.getLogger(__name__)
 # vale metade da anterior, com piso de 1 ponto enquanto a regra pagar algo.
 #
 # Por que metade e não zero: zero ensina "parei de ganhar, então parei". A lei
-# quer o oposto — o teto existe para o número não recompensar volume
-# (`DECISAO-gamificacao.md` §8 veta "XP proporcional a volume"), não para punir
+# quer o oposto — o teto existe para o número não recompensar volume,
+# não para punir
 # quem estuda muito num dia. E por que piso de 1: um crédito de 0 seria uma
 # linha no ledger que não muda nada, e o aluno veria "ganhou" sem ganhar.
 FATOR_DE_DECAIMENTO = 2
@@ -156,7 +156,7 @@ def _pessoa_do_credito(regra: RegraDePontuacao, envelope: dict) -> str | None:
     data = envelope.get("data") or {}
     if regra.beneficiario == RegraDePontuacao.Beneficiario.ATOR:
         # O `ator_id` do ENVELOPE é o lugar canônico do id de plataforma desde o
-        # Rito de 26/08/2026 (PLANO-MESTRE das notificações §2).
+        # Rito de 26/08/2026.
         return envelope.get("ator_id") or None
     # AUTOR DO ALVO: quem escreveu a coisa que foi votada, ou respondida. Dois
     # contratos congelados dão dois NOMES ao mesmo papel — a Caixa chama de
@@ -376,7 +376,7 @@ def recalcular(
 
         # SÓ PARA CIMA. Nível que cai não gera aviso nenhum — lei da célula, e a
         # razão é de produto, não de código: notificação de culpa está na lista
-        # das mecânicas proibidas (`DECISAO-gamificacao.md`). Quem perde XP
+        # das mecânicas proibidas. Quem perde XP
         # perdeu por estorno ou moderação, e já vai saber pelo caminho certo.
         subiu = perfil.nivel > nivel_anterior
         if celebrar and subiu:
@@ -422,8 +422,8 @@ def _comemorar_o_nivel(perfil: PerfilJogador, origem_event_id: str | None) -> No
     alunos sem saber que subiu.
 
     O estado da celebração mora no MODELO e não na sessão — esta célula não
-    assina sessão ([INV-P12]), e o caminho curto `request.session[...]`
-    deslogaria a plataforma inteira sem erro em lugar nenhum (`armadilhas/143`).
+    assina sessão, e o caminho curto `request.session[...]`
+    deslogaria a plataforma inteira sem erro em lugar nenhum.
 
     A forma de cada item é a que a porta de máquina já congelou em
     `apps/core/api.py` (`tipo` do vocabulário fechado + `referencia` string).
@@ -471,7 +471,7 @@ def _quando(envelope: dict):
 
     `occurred_at` vem do envelope congelado e é o que manda: uma reentrega horas
     depois não pode mudar o dia a que o ponto pertence, porque é desse dia que
-    sai a Sequência de quem não faltou (`armadilhas/099`).
+    sai a Sequência de quem não faltou.
     """
     from django.utils.dateparse import parse_datetime
 

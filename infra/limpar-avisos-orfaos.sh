@@ -84,7 +84,7 @@ fi
 
 # Fail-closed contra resposta estranha: se o `shell` devolver texto em vez de
 # números, o filtro do outro lado não casaria com nada e a limpeza terminaria
-# "com sucesso" sem ter feito nada. Silêncio não é sucesso (INV-CI01).
+# "com sucesso" sem ter feito nada. Silêncio não é sucesso.
 case "$IDS" in
   *[!0-9,]*) echo "$IDS"; parar "a Caixa respondeu algo que não é uma lista de números." ;;
 esac

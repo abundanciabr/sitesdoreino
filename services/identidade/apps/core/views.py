@@ -6,7 +6,7 @@ matrícula com ninguém.** O passo a passo encolheu para:
 
     botão (no `funil`) → Google → e-mail VERIFICADO → sessão
 
-Desde 31/08/2026 (`DECISAO-login-por-senha.md`) existe um SEGUNDO caminho,
+Desde 31/08/2026 existe um SEGUNDO caminho,
 para quem não tem conta do Google — a senha nasce no `/cadastro` do `funil`
 e o login em si é `entrar_senha`, mais abaixo neste arquivo. Os dois
 terminam no MESMO lugar: `ses.abrir_sessao`, a mesma sessão, o mesmo
@@ -15,7 +15,7 @@ alguém entrou.
 
 Quem decide SE PODE alguma coisa é a célula dona do recurso, na hora do
 recurso — a Caixa confere matrícula e staff quando a pessoa participa, como o
-invariante "reconhecer não é autorizar" manda (DECISAO-onde-mora-a-sessao §4).
+invariante "reconhecer não é autorizar" manda.
 Há guarda mecânico provando que nenhum salto de rede além do Google acontece
 no caminho do Google (`tests/test_inv_porta_nao_consulta_ninguem.py`).
 
@@ -230,7 +230,7 @@ def sair(request):
 @require_POST
 def entrar_senha(request):
     """O segundo jeito de entrar, para quem não tem conta do Google
-    (`DECISAO-login-por-senha.md`) — o POST que o mini-formulário de senha
+    — o POST que o mini-formulário de senha
     de `/login` (no `funil`) manda direto para cá.
 
     `csrf_exempt` por necessidade, como `sair` — mas a defesa NÃO é

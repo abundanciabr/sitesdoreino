@@ -118,8 +118,7 @@ class Area(models.Model):
     entrega de código; como dado, uma área nova é uma linha.
 
     **Reconhecer não é autorizar:** a `identidade` diz quem é a pessoa; QUEM
-    PODE é decidido aqui, fail-closed, conferindo estes campos
-    (`DECISAO-forum-da-escola.md` §3).
+    PODE é decidido aqui, fail-closed, conferindo estes campos.
     """
 
     class Visibilidade(models.TextChoices):
@@ -280,8 +279,7 @@ class MembroDoGrupo(models.Model):
                 name="um_vinculo_ativo_por_pessoa_e_grupo",
             ),
             # Saída sem quem removeu é saída que ninguém consegue explicar
-            # depois. Vale também para o `update()` que fura o `save()`
-            # (`armadilhas/023`).
+            # depois. Vale também para o `update()` que fura o `save()`.
             models.CheckConstraint(
                 condition=models.Q(ate__isnull=True, removido_por__isnull=True)
                 | models.Q(ate__isnull=False, removido_por__isnull=False),
@@ -596,8 +594,8 @@ class ConsentimentoDaGaleria(models.Model):
             #
             # **Por que no BANCO.** É a mesma razão de
             # `pagina_publica_so_a_escola_fala`, acima: um `QuerySet.update()`
-            # fura qualquer guarda escrito em `Model.save()`
-            # (`armadilhas/023`), e uma linha editada à mão no `psql` numa
+            # fura qualquer guarda escrito em `Model.save()`,
+            # e uma linha editada à mão no `psql` numa
             # madrugada de incidente não passa por código nenhum. Aqui a
             # combinação não fica proibida, fica impossível.
             models.CheckConstraint(
@@ -690,8 +688,8 @@ class RegistroDeModeracao(models.Model):
 
     **E nunca muda nem some.** Quem garante é o PostgreSQL, com o gatilho
     `registro_de_moderacao_so_acrescenta` da migração 0010, que recusa UPDATE e
-    DELETE nesta tabela. Guarda em `save()` não bastaria: o `update()` o fura
-    (`armadilhas/023`), e o `psql` numa madrugada de incidente também. Por isso
+    DELETE nesta tabela. Guarda em `save()` não bastaria: o `update()` o fura,
+    e o `psql` numa madrugada de incidente também. Por isso
     toda chave estrangeira daqui é `PROTECT`: um `SET_NULL` seria um UPDATE, e
     o gatilho o recusaria no meio de outra operação.
 

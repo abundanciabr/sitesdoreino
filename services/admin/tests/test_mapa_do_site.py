@@ -171,7 +171,7 @@ def sob_o_prefixo_publico():
     """O regime de producao: a area inteira mora sob `/admin`.
 
     Mexe no PREFIXO DE SCRIPT, e nao em `settings.FORCE_SCRIPT_NAME`, porque e
-    o prefixo de thread que `reverse()` le (`armadilhas/081`). O `finally`
+    o prefixo de thread que `reverse()` le. O `finally`
     restaura o anterior: o prefixo vaza entre testes.
     """
     anterior = get_script_prefix()
@@ -187,7 +187,7 @@ def test_a_visao_geral_oferece_a_porta_do_mapa_do_site(sob_o_prefixo_publico):
     """Um botao que ninguem encontra e uma funcionalidade que nao existe.
 
     E o endereco tem de levar o prefixo publico: `href="/mapa/"` abriria no
-    PC de quem desenvolve e daria 404 so na tela dele (`armadilhas/081`).
+    PC de quem desenvolve e daria 404 so na tela dele.
     """
     html = _dentro().get("/").content.decode()
 
@@ -288,8 +288,8 @@ def test_a_ilha_de_script_entra_no_csp_por_hash_e_nunca_por_unsafe_inline():
 @respx.mock
 def test_o_csp_proprio_desta_pagina_nao_esquece_o_estilo():
     """Esta resposta traz política pronta, então a da porta não se aplica —
-    e sem o hash do estilo a página voltaria a chegar sem desenho nenhum
-    (`armadilhas/199`)."""
+    e sem o hash do estilo a página voltaria a chegar sem desenho nenhum.
+    """
     import base64
     import hashlib
     import re as _re

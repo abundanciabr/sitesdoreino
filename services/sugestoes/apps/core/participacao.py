@@ -19,7 +19,7 @@ conhecê-la. Há guarda mecânico para isso
 metades: nenhuma consulta do aluno toca a tabela, e este módulo nem cita o nome.
 
 **Toda rota daqui exige sessão** (`@exige_sessao`), inclusive a de só olhar o
-quadro. Não é zelo: a Caixa é de quem tem matrícula (`DECISAO-EVO-01` §2), e
+quadro. Não é zelo: a Caixa é de quem tem matrícula, e
 uma lista pública de sugestões seria a única superfície da célula que não
 respeita essa decisão. O guarda
 (`tests/test_inv_sem_sessao_nada.py`) deriva a lista de rotas do próprio
@@ -375,8 +375,8 @@ def calor_de_recencia(agora):
 
     O `.order_by()` vazio antes do `.values("sugestao")` é obrigatório:
     `Meta.ordering` entra no `GROUP BY` sem ninguém escrever `order_by` nenhum, e
-    aí a subconsulta devolveria uma linha por voto em vez de uma por sugestão
-    (`armadilhas/115`). `Voto` hoje não tem `Meta.ordering` — a linha está aqui
+    aí a subconsulta devolveria uma linha por voto em vez de uma por sugestão.
+    `Voto` hoje não tem `Meta.ordering` — a linha está aqui
     para o dia em que tiver.
 
     Sugestão sem voto nenhum não produz linha na subconsulta: o `Coalesce` faz
@@ -431,7 +431,7 @@ def sugestoes_ordenadas(
     O calor só é anotado na aba que ordena por ele: as outras duas não pagam a
     subconsulta para jogar o resultado fora.
 
-    **`incluir_arquivadas` nasce `False` de propósito** (`DECISAO-arquivar-ideia.md`):
+    **`incluir_arquivadas` nasce `False` de propósito**:
     esta função serve tanto o quadro do aluno quanto a fila da equipe
     (`moderacao.ver_fila`), e as duas precisam que uma ideia arquivada suma por
     padrão — o perigo de um parâmetro assim é justamente o call site novo que
@@ -909,7 +909,7 @@ def nova_sugestao(request, ator):
         )
         return render(request, PAGINA_NOVA, contexto, status=429)
 
-    # [INV-P6] A sugestão e o `sugestao.criada` nascem na MESMA transação: o
+    # A sugestão e o `sugestao.criada` nascem na MESMA transação: o
     # evento não pode sobreviver a um rollback, e a sugestão não pode nascer
     # calada. `emitir()` recusa a escrita se este `atomic` sumir um dia.
     with transaction.atomic():
@@ -987,7 +987,7 @@ def votar(request, ator, sugestao_id):
     O `atomic` aninhado é obrigatório: sem o savepoint, a exceção do Postgres
     envenenaria a transação e a resposta morreria depois do `except`.
 
-    [INV-P6] O `sugestao.voto-adicionado` nasce DENTRO desse mesmo `atomic`, e
+    O `sugestao.voto-adicionado` nasce DENTRO desse mesmo `atomic`, e
     **só quando uma linha de voto foi de fato criada**: o segundo clique não
     cria voto e, portanto, não é fato nenhum — emitir ali faria a plataforma
     contar dois votos onde há um. `total_votos` é contado depois do INSERT,
@@ -1031,7 +1031,7 @@ def desvotar(request, ator, sugestao_id):
     (`test_voto_nao_tem_campo_de_desvoto_logico`). Desvotar de novo é um
     `delete()` que não acha nada: zero linhas, zero erro.
 
-    [INV-P6] E zero linhas apagadas é zero eventos. O `delete()` devolve quantas
+    E zero linhas apagadas é zero eventos. O `delete()` devolve quantas
     linhas saíram, e é essa contagem — não o clique — que decide se houve fato.
     Emitir no segundo clique faria a plataforma acreditar que alguém tirou um
     voto que já não existia.

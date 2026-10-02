@@ -11,12 +11,12 @@ Esta migracao mexe SO nas `choices`, o que no Postgres nem gera SQL. **No
 SQLite, porem, todo `AlterField` reconstroi a tabela** — cria uma nova, copia as
 linhas, troca as duas — e **os gatilhos morrem na troca**. O que morreria aqui e
 a trava append-only da auditoria (`0001_initial`), que a lei da casa exige por
-MECANISMO e nao por disciplina (`armadilhas/079`).
+MECANISMO e nao por disciplina.
 
 A `0011` aprendeu isso do jeito caro. A `0012_verbos_da_economia`, que entrou na
 `main` horas antes desta, **nao levou o retoque** — e passou por todos os
-portoes, porque o CI mede em Postgres e la o gatilho sobrevive
-(`armadilhas/256`, medida nesta sessao). Como o `RunPython` abaixo desinstala e
+portoes, porque o CI mede em Postgres e la o gatilho sobrevive.
+Como o `RunPython` abaixo desinstala e
 instala de novo, ele conserta tambem o que a `0012` teria deixado desarmado em
 quem roda SQLite: a trava volta na primeira migracao que a refaz.
 """

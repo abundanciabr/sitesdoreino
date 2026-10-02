@@ -300,7 +300,7 @@ def test_o_painel_nao_paga_consulta_por_ideia(caixa, quadro, categoria):
     não faz é continuar barato quando a pessoa participa de muita coisa.
 
     Aquecimento antes da primeira medição, e as duas leituras pela MESMA pessoa:
-    sessão e matrícula têm cache de módulo com janela própria (armadilhas/026).
+    sessão e matrícula têm cache de módulo com janela própria.
     """
     proximo = iter(range(1000))
 

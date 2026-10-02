@@ -24,7 +24,7 @@ FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
 
-# Atrás do Traefik; mensageria não expõe rota pública (constituicoes/AGENTS.mensageria.md)
+# Atrás do Traefik; mensageria não expõe rota pública
 # — sem middleware CONV-SITE aqui, sem regra de negócio neste esqueleto.
 ALLOWED_HOSTS = ["*"]
 
@@ -110,7 +110,7 @@ USE_TZ = True
 # virada, sem nada acusando a troca. Aqui o estrago não é só tela: o corpo de
 # um e-mail renderizado por template converte `datetime` aware em silêncio.
 # Foi assim que a `sugestoes` foi pega em 24/08/2026 (EVO-21).
-# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+# Guarda: tests/test_fuso_horario.py.
 TIME_ZONE = "America/Sao_Paulo"
 
 # ---------------------------------------------------------------------------

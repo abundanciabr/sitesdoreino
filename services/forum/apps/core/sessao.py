@@ -2,8 +2,7 @@
 
 **A regra que organiza este arquivo inteiro: reconhecer não é autorizar.**
 A `identidade` diz quem é; a `alunos` diz em que categoria está. **Quem decide
-o que pode é o fórum**, aqui, fail-CLOSED, conferindo as listas dele
-(`DECISAO-forum-da-escola.md` §3, e a lei da identidade §4).
+o que pode é o fórum**, aqui, fail-CLOSED, conferindo as listas dele.
 
 Foi exatamente aqui que um consultor externo tropeçou na rodada de 28/08: ele
 propôs carregar papel e matrícula dentro do próprio login, assinados. Isso é
@@ -29,7 +28,7 @@ from .clients import (
 
 logger = logging.getLogger(__name__)
 
-# As categorias que a `alunos` devolve (`DECISAO-categorias-de-usuario.md`).
+# As categorias que a `alunos` devolve.
 # Escritas aqui como dado do fórum, e não importadas de lugar nenhum: o
 # vocabulário vem do contrato, e travá-lo em código local é o que faz um
 # renomeamento silencioso do outro lado aparecer como teste vermelho aqui.
@@ -76,7 +75,7 @@ VISITANTE = Ator(pessoa=None)
 def _lista_de_emails(nome_da_variavel: str) -> set[str]:
     """Uma lista de e-mails do env, normalizada. Vazia ⇒ ninguém.
 
-    Lida no PONTO DE USO e com default inofensivo (`armadilhas/097`): env
+    Lida no PONTO DE USO e com default inofensivo: env
     ausente fecha o poder, mas não derruba o container — o `/healthz` continua
     respondendo e o deploy não entra em crashloop.
 

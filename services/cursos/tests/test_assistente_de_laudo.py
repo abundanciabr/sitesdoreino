@@ -22,21 +22,21 @@ As sete coisas que esta suíte existe para travar, em ordem do que dói mais:
    em texto publicado, e o portão `ci/travessao.py` não enxerga o que já está no
    banco. Aqui a máquina avisa e a pessoa reescreve; ela NUNCA troca o
    caractere sozinha, que é o erro que a própria lei nomeia.
-6. **Força genérica é recusada na origem**, pela regra da casa
-   (`laudo.validar_forcas`, [INV-CUR-L6]), e o rascunho inteiro é descartado.
+6. **Força genérica é recusada na origem**, pela regra da casa,
+   e o rascunho inteiro é descartado.
 7. **A Ficha de Série sai do DADO**, na emissão: quantas forças a professora
    assinou sem editar, e se a mudança sugerida foi a assinada.
 
 **A rede da Anthropic é dublada NO TRANSPORTE, nunca com `patch.object` no
-método do `agente`** (`armadilhas/061`): assim o SDK monta o request de verdade
+método do `agente`**: assim o SDK monta o request de verdade
 e lê a resposta de verdade, e um erro no jeito de chamar aparece aqui em vez de
 aparecer só na primeira conta paga. O corte fail-closed do `httpx2` que impede
-uma chamada REAL mora no `conftest.py` (`sem_anthropic`, `armadilhas/288`).
+uma chamada REAL mora no `conftest.py`.
 
-[INV-CUR-L4] tem arquivo próprio: `tests/test_inv_l4_a_ia_nao_decide.py`.
+tem arquivo próprio: `tests/test_inv_l4_a_ia_nao_decide.py`.
 
 Provados por MUTAÇÃO em 05/09/2026, cada sabotagem com o vermelho caindo na
-ASSERÇÃO (`armadilhas/195`): tirar `validar_forcas` de `agente._forcas`; fazer
+ASSERÇÃO: tirar `validar_forcas` de `agente._forcas`; fazer
 `travessoes_em` devolver lista vazia; trocar a chamada de
 `_medir_a_ficha_de_serie` por `pass` (2 vermelhos); pôr `envio.pessoa.nome_exibido`
 dentro de `_a_entrega`; mandar o cabeçalho do workspace sempre; deixar `_cliente`

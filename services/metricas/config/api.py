@@ -24,7 +24,7 @@ from apps.fatos.api import router as fatos_router
 # rota no Traefik, `metricas:8000` não é alcançável da internet. A topologia
 # AJUDA (como ajuda na `mensageria`), mas não é o guarda: ela é configuração de
 # infra, muda sem passar por este arquivo, e uma porta que dependesse dela
-# ficaria aberta no dia em que alguém a roteasse (`armadilhas/186`). Por isso o
+# ficaria aberta no dia em que alguém a roteasse. Por isso o
 # teste de 401 cobre TODAS as operações, medidas do schema vivo.
 api = NinjaAPI(
     title="Metricas - API de leitura",

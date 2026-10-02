@@ -15,7 +15,7 @@ aluno no primeiro dia.
 O QUE ESTE ARQUIVO NÃO FAZ
 --------------------------
 Não concede XP, não lê evento, não decide se alguém PODE ver a tela. O motor é
-o degrau seguinte da escada (`PLANO-CELULA-GAMIFICACAO.md` §6, passo 8), e quem
+o degrau seguinte da escada, e quem
 responde "pode?" é a `identidade` que já respondeu antes de chegarmos aqui.
 """
 
@@ -122,7 +122,7 @@ def escada_de(perfil: PerfilJogador) -> Escada:
 
     **Sem nível nenhum ativo, a resposta é honesta e não quebra:** nível 1, sem
     título, barra vazia, `degraus=0`. É o mesmo espírito da falha ABERTA da
-    porta de máquina (`contracts/gamificacao.openapi.yaml`): página sem selo,
+    porta de máquina: página sem selo,
     nunca página quebrada.
 
     **`degraus` viaja junto de propósito, e não é enfeite.** É ele que deixa a

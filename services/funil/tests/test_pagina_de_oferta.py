@@ -403,7 +403,7 @@ def test_metodo_nao_permitido_nao_entra_na_pagina(client, rede):
 
 
 def test_outro_site_do_mesmo_servidor_tem_a_propria_pagina(client, rede):
-    """[INV-P11]: o `site_id` da rota é o que impede a página de um vazar no outro."""
+    """o `site_id` da rota é o que impede a página de um vazar no outro."""
     publicar(rede, pagina(SECOES_CHEIAS))  # a página é do SITE_A
     publicar(rede, None, status=404, site_id=SITE_B["id"])
     resp = client.get(CAMINHO, HTTP_HOST=HOST_B)

@@ -639,7 +639,7 @@ def cadastro(request):
 
     O form posta para a PRÓPRIA URL prefixada (decisão da maestro sobre a
     pendência 1 do PR #87): o resolver decapa o prefixo, esta view recebe e
-    repassa à célula alunos server-side, com `site_id` do Host (INV-P11) —
+    repassa à célula alunos server-side, com `site_id` do Host —
     nunca do payload.
 
     Desde o D1 revisto (25/08/2026) o caminho nu `/cadastro` **é** a página em
@@ -668,7 +668,7 @@ def cadastro(request):
             )
         if form.is_valid() and not senhas_diferentes:
             resultado = AlunosClient().criar_pre_matricula(
-                site_id=request.site["id"],  # [INV-P11] do Host, não do payload
+                site_id=request.site["id"],  # do Host, não do payload
                 email=form.cleaned_data["email"],
                 nome_completo=form.cleaned_data["name"],
                 whatsapp=form.cleaned_data["whatsapp"],
@@ -696,13 +696,13 @@ def cadastro(request):
                 else:
                     erro_envio, status = True, 502
             elif resultado == AlunosClient.RESULTADO_JA_TEM_MATRICULA:
-                # Não é erro de envio (ARMADILHAS §4.9 é sobre falha de rede):
+                # Não é erro de envio:
                 # o pedido chegou, só que esta pessoa já está na plataforma. A
                 # tela explica em vez de repetir "cadastro recebido" para
                 # quem talvez precise é só entrar com o Google.
                 ja_matriculado = True
             else:
-                # Falha fechada e honesta (ARMADILHAS §4.9): nada de 200 com
+                # Falha fechada e honesta: nada de 200 com
                 # cara de sucesso — 502 com a página e o que a pessoa digitou.
                 erro_envio, status = True, 502
     else:
@@ -750,7 +750,7 @@ CHAVES_DE_RECUSA = {
     "google-indisponivel",
     "email-nao-verificado",
     # [LOGIN-POR-SENHA] O vocabulário de recusa de /entrar/senha
-    # (DECISAO-login-por-senha.md §6.1) — "senha-invalida" serve tanto para
+    # — "senha-invalida" serve tanto para
     # "e-mail sem conta" quanto para "senha errada", de propósito.
     "senha-invalida",
     "muitas-tentativas",
@@ -807,7 +807,7 @@ def entrar(request):
         {"next": destino, "site": request.site["id"]}
     )
     # [LOGIN-POR-SENHA] O token que defende /entrar/senha de CSRF
-    # (DECISAO-login-por-senha.md §3) — buscado aqui, fail-open na EXIBIÇÃO:
+    # — buscado aqui, fail-open na EXIBIÇÃO:
     # `None` faz o template simplesmente não desenhar o mini-formulário de
     # senha, e o botão do Google continua funcionando sozinho.
     token_de_senha = IdentidadeClient().emitir_token_de_senha()
@@ -1026,7 +1026,7 @@ def manifesto_do_app(request):
 
 
 # Os textos do aviso que aparece na tela do celular, por assunto. A frase nasce
-# na LEITURA, no idioma de quem lê (`DECISAO-notificacoes` §5.1) — e a leitura,
+# na LEITURA, no idioma de quem lê — e a leitura,
 # aqui, acontece no aparelho: por isso os textos viajam para dentro do
 # `/sw.js` em vez de serem escolhidos na hora de enviar. O catálogo é o mesmo
 # de todo texto do site (`traducoes/avisos.yaml`), nunca uma segunda casa.
@@ -1054,7 +1054,7 @@ def manifesto_do_app(request):
 TEXTOS_DO_AVISO = {
     "sugestao.status-alterado": "sugestao",
     "pages.portfolio-conferido": "portfolio",
-    # O aviso de teste (Rito de Contrato de 03/09/2026): a pessoa clicou em
+    # O aviso de teste: a pessoa clicou em
     # "Mandar um aviso de teste para mim" em /admin/avisos/, e este e o texto
     # que a tela do celular mostra. So existe para provar o canal, entao a
     # frase e sempre a mesma, sem parametro nenhum, igual as outras.
@@ -1141,7 +1141,7 @@ TETOS_DA_INSCRICAO = {"endpoint": 2048, "p256dh": 256, "auth": 64}
 def _inscricao_do_corpo(request) -> dict:
     """As três partes que o navegador dá, conferidas antes de sair daqui.
 
-    Os tetos são os do contrato (`contracts/notificacoes.openapi.yaml`).
+    Os tetos são os do contrato.
     Conferir aqui não substitui a cerca do outro lado — ela existe e é a que
     manda; esta evita um salto de rede para mandar algo que já se sabe
     inválido, e transforma lixo em 422 legível em vez de 502 confuso.

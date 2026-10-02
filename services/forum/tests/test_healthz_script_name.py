@@ -1,6 +1,6 @@
 """Teste-guarda de `armadilhas/029`: `/healthz` sob prefixo.
 
-O fórum serve em `meshcraft.top/forum` (`DECISAO-forum-da-escola.md` §2), ou
+O fórum serve em `meshcraft.top/forum`, ou
 seja **sob SCRIPT_NAME** — a mesma condição que derrubou a sonda do `checkout`
 (PR #65) e do `quiz` (PR #71), e que a `sugestoes` e a `admin` já travam do
 mesmo jeito. Duas coisas quebram nesse regime, e as duas estão travadas aqui:

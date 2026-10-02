@@ -4,7 +4,7 @@ Duas metades, e a segunda é a que pagou a mudança de casa do login:
 
 1. Idempotência (EVO-01 §3): dez visitas, uma linha. A garantia é do banco
    (`email` é `unique` + `get_or_create`), não de quem chama.
-2. **Continuidade por e-mail (DECISAO-celula-de-identidade §3):** quem já era
+2. **Continuidade por e-mail:** quem já era
    autor ANTES da virada — sugestões, votos, comentários apontando para a
    linha local — recupera exatamente aquela linha ao entrar pelo site. Foi
    este casamento que fez a migração de dados custar zero.

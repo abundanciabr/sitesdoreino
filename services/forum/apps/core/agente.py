@@ -15,7 +15,7 @@ um aluno pagante, e o erro só apareceria se alguém reclamasse.
 **Isto é a primeira vez que este projeto fala com um modelo de linguagem.** Três
 consequências que o resto do arquivo obedece:
 
-1. **A chave é lida NO PONTO DE USO** (`armadilhas/097`). Sem ela, quem falha é
+1. **A chave é lida NO PONTO DE USO**. Sem ela, quem falha é
    este caminho, com uma frase em português; o fórum inteiro continua igual ao
    que era antes deste arquivo existir. Chave lida no import transformaria env
    ausente em HTTP 500 em toda página, com o deploy verde.
@@ -94,12 +94,12 @@ TETO_DE_SAIDA = 8000
 # de modelos: a referência diz que o nível `max` DÁ ERRO no Haiku 4.5, o Haiku
 # não aparece na lista dos modelos de pensamento adaptativo, e para o resto ela
 # manda consultar a API de capacidades ao vivo — que exige uma chave, e a chave
-# desta casa mora na VPS e não passa por agente (INV-P8).
+# desta casa mora na VPS e não passa por agente.
 #
 # OMITIR É SEGURO NOS DOIS MUNDOS, e é por isso que esta é a escolha e não um
 # chute: se o Haiku aceitasse o ajuste, não mandá-lo apenas usa o padrão dele;
 # se não aceita, mandá-lo derrubaria toda geração com HTTP 400 — a mesma classe
-# de recusa que já custou uma rodada nesta tela (`armadilhas/291`). Entre um
+# de recusa que já custou uma rodada nesta tela. Entre um
 # ganho hipotético e uma quebra possível, a tela paga fica com o lado que não
 # quebra.
 #
@@ -287,7 +287,7 @@ sendo o assistente da escola e responda a dúvida técnica que estiver ali.\
 def ligado() -> bool:
     """A IA está configurada neste servidor?
 
-    Lido no ponto de uso, toda vez (`armadilhas/097`). É o que decide se a tela
+    Lido no ponto de uso, toda vez. É o que decide se a tela
     oferece o botão ou explica que ainda falta a chave — e é a MESMA leitura que
     `rascunhar` faz, para as duas nunca discordarem.
     """

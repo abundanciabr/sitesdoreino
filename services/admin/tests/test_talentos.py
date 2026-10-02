@@ -433,7 +433,7 @@ def test_o_passo_do_cartao_mostra_o_numero_que_o_placar_mediu(tmp_path):
 
 
 def test_cartao_com_fonte_sem_numero_nao_vira_sem_dados(tmp_path):
-    """Três fatos, três frases (`armadilhas/271`).
+    """Três fatos, três frases.
 
     "O cartão não tem fonte" e "tem fonte e o placar não trouxe o número" são
     coisas diferentes, e a segunda não pode cair na primeira: `sem_fonte_porque`

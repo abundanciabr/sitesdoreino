@@ -6,9 +6,7 @@ para cumprir uma promessa escrita no corredor assinado (critério AC-17): a
 gamificação acende o marco do portfólio na trilha quando o selo sai, **sem
 pagar XP**, e ela só ESCUTA. Quem acende é o degrau 15, nunca este arquivo.
 
-O formato do evento está em
-`contracts/eventos/pages.portfolio.conferido.v1.json`. Os campos emitidos aqui
-seguem esse formato para manter a compatibilidade com as células consumidoras.
+Os campos emitidos aqui são os que as células consumidoras leem.
 
 DOIS EVENTOS SAEM DO MESMO SIM, E ELES DIZEM COISAS DIFERENTES
 ---------------------------------------------------------------
@@ -22,9 +20,8 @@ próprio; a carta é genérica e já endereçada a UMA pessoa, com o leque feito
 origem). Uma célula que só publicasse o fato deixaria o aluno esperando na
 frente de uma tela que ele teria de reabrir para descobrir a resposta.
 
-O assunto da carta é `pages.portfolio-conferido`, acrescentado ao enum de
-`contracts/eventos/notificacao.devida.v1.json` no Rito de Contrato de
-06/09/2026, com o mantenedor presente. **No mesmo Rito ele RECUSOU o segundo
+O assunto da carta é `pages.portfolio-conferido`, acrescentado aos assuntos de
+`notificacao.devida` em 06/09/2026. **Na mesma conversa o mantenedor RECUSOU o segundo
 assunto que esta célula pediu** (`pages.peca-quebrada`, o aviso de link que
 parou de responder): o aluno descobre a peça quebrada abrindo a página, e essa
 decisão é dele.
@@ -62,7 +59,7 @@ PORTFOLIO_CONFERIDO = "pages.portfolio.conferido"
 NOTIFICACAO_DEVIDA = "notificacao.devida"
 
 #: O assunto desta célula no enum da carta. Assunto novo entra por Rito de
-#: Contrato (RITOS §3), nunca por uma string escrita aqui: o `enum` do contrato
+#: Contrato, nunca por uma string escrita aqui: o `enum` do contrato
 #: é fechado, e um assunto que ele não conheça viraria aviso mudo na tela de
 #: alguém.
 ASSUNTO_DO_SELO = "pages.portfolio-conferido"

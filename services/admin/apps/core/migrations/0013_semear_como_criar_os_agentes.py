@@ -3,10 +3,10 @@
 `documentos/como-criar-os-agentes-de-ia.md` nasceu em 06/09/2026, a pedido do
 mantenedor: a leitura do documento "Como começar a criar os agentes" comparada,
 linha por linha, com o que a plataforma já tem construído. A pasta `documentos/`
-é SEMENTE (`DECISAO-o-editor-de-documentos.md`), e a semeadura é a migração
+é SEMENTE, e a semeadura é a migração
 `0003`, que roda UMA vez por banco. No banco de produção ela rodou em
 31/08/2026: um arquivo que nasce depois disso não vira página, o
-`deploy-celula` termina verde e a URL responde 404 (`armadilhas/347`).
+`deploy-celula` termina verde e a URL responde 404.
 
 Por isso cada documento novo entra por uma migração própria, que semeia SÓ ele.
 Ela nunca sobrescreve: se o documento já existir, porque o mantenedor o criou

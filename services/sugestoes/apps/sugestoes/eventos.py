@@ -1,9 +1,7 @@
 # apps/sugestoes/eventos.py  # [RECEITA:R3 v1]
 """Os quatro fatos que a Caixa afirma — e o único lugar que monta o `data`.
 
-Os formatos dos eventos estão em `contracts/eventos/sugestao.*.v1.json`.
-Os campos emitidos aqui seguem esses formatos para manter a compatibilidade
-com as células consumidoras.
+Os campos emitidos aqui são os que as células consumidoras leem.
 
 **Por que os construtores moram todos aqui, e não espalhados nas views.** O
 `data` de cada evento é a superfície que as outras células vão ler por anos. Se
@@ -37,7 +35,7 @@ CRIADA = "sugestao.criada"
 VOTO_ADICIONADO = "sugestao.voto-adicionado"
 VOTO_REMOVIDO = "sugestao.voto-removido"
 STATUS_ALTERADO = "sugestao.status-alterado"
-# A CARTA ENDEREÇADA (Rito de Contrato de 26/08/2026): uma pessoa a avisar,
+# A CARTA ENDEREÇADA: uma pessoa a avisar,
 # um evento. Genérico de propósito — matrícula e pagamento publicam o mesmo
 # formato quando chegar a vez deles, sem contrato novo.
 NOTIFICACAO_DEVIDA = "notificacao.devida"
@@ -62,7 +60,7 @@ def emitir(
     version: int = 1,
     envelope_extra: dict[str, Any] | None = None,
 ) -> OutboxEvent:
-    """[INV-P6] Grava o fato na outbox — SEMPRE dentro da transação do fato.
+    """Grava o fato na outbox — SEMPRE dentro da transação do fato.
 
     Não publica nada: publicar é do relay (`apps/sugestoes/tasks.py`), depois
     do commit. Essa separação É a outbox — escrever no Redis aqui dentro
@@ -85,7 +83,7 @@ def emitir(
 
 
 def _site_de(sugestao: Sugestao) -> str:
-    """A chave de roteamento de todo evento desta plataforma (INV-P11).
+    """A chave de roteamento de todo evento desta plataforma.
 
     Vem do quadro, que é a fronteira de contexto da spec §5 — nunca de uma
     variável de ambiente ou de um padrão. Enquanto o CONV-SITE não chega, quem
@@ -112,14 +110,14 @@ def _cracha_da_plataforma(identidade) -> str | None:
 
     **Os dois ids desta casa não são intercambiáveis, e confundi-los já ia sair
     caro.** `Identidade.id` é local desta célula; `Identidade.id_da_plataforma`
-    é o único que atravessa a plataforma ([INV-SUG11]) — cunhados
+    é o único que atravessa a plataforma — cunhados
     separadamente, para a mesma pessoa. Quem consome um evento daqui e precisa
     creditar, endereçar ou casar alguém do lado de fora usa o SEGUNDO.
 
     **`None` é resposta, nunca exceção.** O campo é `null=True` por decisão
     desta célula ("nada disto pode recusar ninguém": a linha nasce sem o id
     quando ele colide, e a frente 2 do `cunhar_ou_recuperar` o grava na
-    reentrada). E estes eventos nascem DENTRO da transação do fato ([INV-P6]):
+    reentrada). E estes eventos nascem DENTRO da transação do fato:
     levantar aqui faria CRIAR UMA SUGESTÃO falhar por causa de um dado que a
     pessoa não tem como resolver. Quem consome trata ausência como "não sei de
     quem é" e não credita — é o que o contrato manda, e é fail-closed.
@@ -146,8 +144,8 @@ def emitir_sugestao_criada(sugestao: Sugestao) -> OutboxEvent:
             "autor_id": sugestao.autor_id,
         },
         # O CRACHÁ QUE ATRAVESSA AS CÉLULAS, no ENVELOPE e não no `data`:
-        # qualquer célula lê "quem fez isto" sem conhecer o formato do assunto
-        # (PLANO-MESTRE das notificações §2). Acrescentado em 31/08/2026, no
+        # qualquer célula lê "quem fez isto" sem conhecer o formato do assunto.
+        # Acrescentado em 31/08/2026, no
         # Rito que ligou a economia da gamificação — sem ele, ligar a regra
         # `sugestao-criada` creditava o id LOCAL e o XP ia para uma Pessoa
         # fantasma, com a tela do aluno marcando zero e nada dando erro.
@@ -213,7 +211,7 @@ class AtorSemIdDaPlataforma(Exception):
     **Fail-closed, e a assimetria com o destinatário é deliberada.** O
     `sugestao.status-alterado.v2` declara `ator_id` OBRIGATÓRIO: um consumidor
     que não pode contar com ele não consegue endereçar ninguém, que é o problema
-    inteiro (PLANO-MESTRE §2). Emitir sem o campo seria publicar um envelope que
+    inteiro. Emitir sem o campo seria publicar um envelope que
     o próprio contrato recusa.
 
     A pessoa que modera **está autenticada nesta requisição**: ela acabou de
@@ -287,7 +285,7 @@ def emitir_status_alterado(
     if nota:
         data["nota"] = nota
     # `ator_id` vai no ENVELOPE, não no `data`: qualquer célula lê "quem fez
-    # isto" sem conhecer o formato do assunto (DECISAO-fase-2-do-sininho §4).
+    # isto" sem conhecer o formato do assunto.
     return emitir(STATUS_ALTERADO, data, version=2, envelope_extra={"ator_id": ator_id})
 
 
@@ -325,8 +323,7 @@ def emitir_cartas_de_notificacao(
     carta (e continua recebendo o `Aviso` local, como sempre). O porquê da
     assimetria com o ator está em `AtorSemIdDaPlataforma`.
 
-    **`vinculos` (Rito de Contrato de 27/08/2026, `contracts/eventos/
-    notificacao.devida.v1.json`, campo `parametros.vinculo`): mapa opcional
+    **`vinculos` (campo `parametros.vinculo` de `notificacao.devida`): mapa opcional
     `destinatario_id da PLATAFORMA → vínculo`.** POR QUE cada pessoa recebeu
     ESTE aviso ("autor" / "comentario" / "voto") — a mesma explicação que
     `Aviso.vinculo` já guarda localmente (EVO-42), agora também na carta, para

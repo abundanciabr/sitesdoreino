@@ -13,8 +13,8 @@ até mesmo para quem a criou"*. Quem a criou é exatamente quem tinha o aviso.
 
 POR QUE O CORTE É NA LEITURA, E NÃO NA ESCRITA
 -----------------------------------------------
-O recado que a pessoa lê hoje NÃO mora nesta célula: mora na caixa central
-(`contracts/notificacoes.openapi.yaml`), e aquele contrato está congelado com
+O recado que a pessoa lê hoje NÃO mora nesta célula: mora na caixa central,
+e aquele contrato está congelado com
 quatro operações — resumo, listar, marcar uma como lida, marcar todas. **Não
 existe retirar.** Enquanto não existir (mudança de contrato é Rito §3), o que
 esta célula consegue fazer sozinha é parar de MOSTRAR, na hora de ler, o

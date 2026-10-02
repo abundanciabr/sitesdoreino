@@ -59,8 +59,8 @@ DONO = "dono@exemplo.com"
 
 TELA = "/escola/alunos/recusados"
 GESTO = "/escola/alunos/reconsiderar"
-# [CURSO] Aceitar mesmo assim LIBERA, e liberar exige o curso desde 06/09/2026
-# ([INV-ALU-C1]). Os testes daqui continuam medindo o gesto de dois passos e a
+# [CURSO] Aceitar mesmo assim LIBERA, e liberar exige o curso desde 06/09/2026.
+# Os testes daqui continuam medindo o gesto de dois passos e a
 # auditoria dele; o que acontece SEM o curso mora em `test_liberar_com_curso.py`.
 CURSO = "prod-primeiros-dolares"
 GESTO_APAGAR = "/escola/alunos/recusados/apagar"

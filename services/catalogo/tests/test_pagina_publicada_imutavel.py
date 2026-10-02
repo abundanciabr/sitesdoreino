@@ -41,7 +41,7 @@ def test_save_numa_versao_publicada_recusa(versao_publicada):
 
 def test_update_de_conjunto_numa_versao_publicada_recusa(versao_publicada):
     # `QuerySet.update()` NAO passa por `save()`: sem este guarda a trava
-    # pareceria existir sem existir (ARMADILHAS 4.4).
+    # pareceria existir sem existir.
     with pytest.raises(VersaoPublicadaImutavel) as erro:
         PageVersion.objects.filter(pk=versao_publicada.pk).update(secoes=[])
 

@@ -24,7 +24,7 @@ por descuido num PR futuro.
 Validar aqui, no provedor, e não em cada tela que escreve: a lista de seções e
 de slots é a forma da página, e forma conferida em dois lugares é forma que
 diverge no primeiro nome novo. A regra é a mesma dupla porta de
-`apps/sites/menu.py`, pelo mesmo motivo (`armadilhas/023`).
+`apps/sites/menu.py`, pelo mesmo motivo.
 """
 
 from django.core.exceptions import ValidationError

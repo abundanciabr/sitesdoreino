@@ -15,7 +15,7 @@ class bearerAuth(HttpBearer):
     **Este token responde "QUEM CHAMA", e nada além disso.** Ele prova que o
     chamador é uma célula da casa, e não diz quem é a pessoa do outro lado do
     navegador. A pergunta "quem é a pessoa" nasce nesta célula no degrau 06, com
-    o cookie repassado à `identidade` ([INV-P12]); a porta deste arquivo é
+    o cookie repassado à `identidade`; a porta deste arquivo é
     máquina para máquina, sem sessão e sem cookie.
 
     E o Bearer é o ÚNICO cadeado desta porta: a célula roda sob

@@ -6,11 +6,11 @@ e a decisão dele mudou depois de o ver no ar. Antes disso ele já tinha
 lembrado a regra da casa: todo documento nasce privado.
 
 **Por que é uma migração, e não uma edição no arquivo.** Desde 31/08/2026 o
-texto dos documentos mora no BANCO, e a pasta `documentos/` é só a semente
-(`DECISAO-o-editor-de-documentos.md`). Trocar `publico: true` por `false` no
+texto dos documentos mora no BANCO, e a pasta `documentos/` é só a semente.
+Trocar `publico: true` por `false` no
 `.md` corrige a semente para uma instalação nova e não encosta na linha que já
-existe em produção: o deploy ficaria verde e a página continuaria aberta
-(`armadilhas/253`). Quem muda o banco que existe é esta migração.
+existe em produção: o deploy ficaria verde e a página continuaria aberta.
+Quem muda o banco que existe é esta migração.
 
 **O que ela faz, e só isto:** fecha o documento (`publico=False`). O texto
 permanece como está: o pedido foi fechar, não reescrever.

@@ -1,11 +1,11 @@
 # apps/pedidos/management/commands/consume_eventos.py  # [RECEITA:R4 v1] adaptado
 # Consome pagamento.aprovado/pagamento.recusado/pix.expirado e move o status do
-# pedido (INV-P7 — o front só lê esse status via GET /pedidos/{id}).
+# pedido.
 #
 # DUAS VERSÕES AO MESMO TEMPO: pagamento.aprovado.v2 e pagamento.recusado.v2
 # tiraram o nome do fornecedor do contrato (saiu `mp_payment_id`, entrou o par
 # `provider` mais `provider_reference_id`; `site_id` virou `platform_site_id`).
-# O v1 continua sendo emitido até o último consumidor migrar (RITOS.md §3),
+# O v1 continua sendo emitido até o último consumidor migrar,
 # então o MESMO pagamento chega aqui nas duas versões, com `event_id`
 # diferente em cada uma.
 #
@@ -23,7 +23,7 @@
 # voltar para outro estado. O que ele nunca soube fazer é distinguir dois fatos
 # do mesmo pedido de um fato só que chegou duas vezes — isso é FatoAplicado.
 #
-# Reentrega do PEL (ARMADILHAS §9): mensagem cujo handler estourou ficava em
+# Reentrega do PEL: mensagem cujo handler estourou ficava em
 # XPENDING do grupo para sempre — xreadgroup ">" só entrega mensagem NOVA, e
 # ninguém chamava XAUTOCLAIM. Agora, a cada iteração do loop e ANTES do ">",
 # reivindicamos as presas (idle >= IDLE_MS_REENTREGA) e as reprocessamos pelo
@@ -59,7 +59,7 @@ MAX_ENTREGAS = 5  # na 5ª entrega não se reprocessa: fila morta
 # O vocabulário desta célula, uma linha por aviso escutado.
 #
 # `chave_entre_versoes` e `no_v1` são transcrição literal de `x-ponte-do-v1`
-# nos schemas v2 (contracts/eventos/): `chave_entre_versoes` são os campos de
+# nos schemas v2: `chave_entre_versoes` são os campos de
 # `data` que, juntos e só juntos, identificam o fato; `no_v1` diz de onde tirar
 # cada um quando o aviso chega na versão 1, como um caminho dentro do evento
 # (`data.<campo>`) ou como o valor literal que o v1 não carregava.
@@ -149,7 +149,7 @@ def normalizar(envelope: dict) -> Aviso:
     site_id = data[CAMPO_DO_SITE[versao]]
     return Aviso(
         evento=evento,
-        # [INV-P11] a identidade nasce escopada pelo site, como tudo nesta
+        # a identidade nasce escopada pelo site, como tudo nesta
         # célula. Sem isso, um aviso com o site errado (bug do publicador, ou
         # mensagem injetada no stream) gravaria a identidade do fato VERDADEIRO
         # sem mover pedido nenhum, e o aviso legítimo que chegasse depois seria
@@ -217,7 +217,7 @@ def aplicar(envelope: dict) -> bool:
             atualizados = (
                 OrderModel.objects.filter(
                     pk=aviso.order_id,
-                    site_id=aviso.site_id,  # [INV-P11] o site do evento tem de bater
+                    site_id=aviso.site_id,  # o site do evento tem de bater
                 )
                 .filter(estados_elegiveis)
                 .update(status=aviso.status)
@@ -254,7 +254,7 @@ def _mover_para_fila_morta(r, stream: str, msg_id, campos, entregas: int) -> Non
         }
     )
     # Publica na .dlq ANTES do ACK — pior caso duplica na fila morta, nunca
-    # perde (mesmo princípio do relay do outbox, ARMADILHAS §4.12).
+    # perde.
     r.xadd(f"{stream}.dlq", campos_dlq)
     r.xack(stream, GRUPO, msg_id)
     logger.error(
@@ -315,7 +315,7 @@ class Command(BaseCommand):
                 pass  # grupo já existe
         while True:
             # ANTES das novas: sem isto, mensagem cujo handler estourou ficava
-            # pendente para sempre (ARMADILHAS §9).
+            # pendente para sempre.
             reivindicar_e_reprocessar_presas(r)
             resp = r.xreadgroup(
                 GRUPO, CONSUMIDOR, {s: ">" for s in STREAMS}, count=10, block=5000

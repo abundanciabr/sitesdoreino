@@ -2,7 +2,7 @@
 
 POR QUE ESTE COMANDO EXISTE, E POR QUE ELE FURA "NUNCA RETROATIVO" DE PROPÓSITO
 --------------------------------------------------------------------------------
-A lei §10.5 (`DECISAO-gamificacao.md`) e o mecanismo de `RegraDePontuacao.vigente_desde`
+A lei §10.5 e o mecanismo de `RegraDePontuacao.vigente_desde`
 (`motor.py::creditos_de`) existem para que ligar uma regra NUNCA pague o passado
 em silêncio — foi assim que o "crédito fantasma" nasceu em 31/08/2026: uma fila
 represada + um clique fariam semanas de atividade virar XP no mesmo segundo, sem

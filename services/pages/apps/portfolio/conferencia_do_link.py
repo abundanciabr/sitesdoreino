@@ -40,7 +40,7 @@ Cinco segundos é o mesmo teto que `apps/core/clients.py` já usa para os saltos
 que ficam no caminho de uma tela.
 
 O CLIENTE É UM SÓ POR PROCESSO, e não `httpx.get()` a cada chamada: cada
-chamada construiria um `ssl.SSLContext` novo (`armadilhas/082`). Ele é próprio,
+chamada construiria um `ssl.SSLContext` novo. Ele é próprio,
 e não o de `apps/core/clients.py`, porque as duas conversas são diferentes: lá
 é a plataforma falando com as células dela, com Bearer e contrato; aqui é a
 internet aberta, sem credencial nenhuma e com redirecionamento seguido.

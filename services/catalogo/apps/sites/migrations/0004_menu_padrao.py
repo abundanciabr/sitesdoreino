@@ -4,7 +4,7 @@
 Por que uma migração de dado, e não um comando que alguém lembra de rodar: o
 deploy já roda as migrações, então o menu nasce no ar sozinho, no mesmo empurrão
 que traz o campo. Um `semear_*` teria de ser executado à mão dentro da VPS, e
-ninguém entra na VPS (Lei 5).
+ninguém entra na VPS.
 
 **Ela só escreve onde não há nada** (`if site.menu: continue`). Isso não é
 delicadeza: a partir do primeiro deploy o dono deste dado é o mantenedor, pela

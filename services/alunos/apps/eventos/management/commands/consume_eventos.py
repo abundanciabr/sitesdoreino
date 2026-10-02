@@ -47,7 +47,7 @@ LOTE_REENTREGA = 10  # quantas presas olhar por iteração (mesmo teto do xreadg
 VERSOES_ACEITAS = (1, 2)
 
 # A ponte entre as duas versões, COPIADA do campo `x-ponte-do-v1` dos contratos
-# v2 (contracts/eventos/). Não é interpretação nossa: o contrato publica a regra
+# v2. Não é interpretação nossa: o contrato publica a regra
 # como DADO justamente para que as células consumidoras derivem a MESMA chave em
 # vez de cada uma inventar a sua. `chave_entre_versoes` são os campos de `data`
 # que, juntos e só juntos, identificam o fato; `no_v1` diz de onde tirar cada um
@@ -83,13 +83,13 @@ PONTE_DO_V1 = {
     # `pagamento.recusado` da mesma família atravessa por outro campo.
     "pagamento.estornado": {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
-        "no_v1": None,  # nasceu na v2 (Rito de Contrato de 20/09/2026)
+        "no_v1": None,  # nasceu na v2
     },
     # [REVERSAO] A mesma chave do estorno, porque os dois avisos apontam o
     # mesmo pagamento: é ela que faz o segundo deles não cortar de novo.
     "pagamento.reversao_confirmada": {
         "chave_entre_versoes": ["provider", "provider_reference_id"],
-        "no_v1": None,  # nasceu na v2 (Rito de Contrato da TAR-755)
+        "no_v1": None,  # nasceu na v2
     },
 }
 
@@ -176,7 +176,7 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
     A tradução mora AQUI, na borda, e não dentro do handler, porque é aqui que
     o número da versão existe. Um handler que decidisse a versão pela presença
     de um campo estaria adivinhando o que o envelope já diz. Quando o v1 parar
-    de ser emitido (RITOS.md §3), some esta função e nada mais muda.
+    de ser emitido, some esta função e nada mais muda.
 
     O que o v2 renomeou, e por quê, está na descrição de
     `contracts/eventos/pagamento.aprovado.v2.json`: `site_id` virou
@@ -185,8 +185,8 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
 
     **Nem todo evento desta célula tem v1.** `VERSOES_ACEITAS` é do CONSUMIDOR,
     não de cada aviso: ele diz quais números esta célula sabe ler, e não que
-    todos os avisos existam nos dois. `pagamento.estornado` nasceu na versão 2
-    (Rito de Contrato de 20/09/2026), e um envelope que se diga v1 dele é aviso
+    todos os avisos existam nos dois. `pagamento.estornado` nasceu na versão 2,
+    e um envelope que se diga v1 dele é aviso
     forjado ou emissor com defeito. Traduzir esse envelope pelas regras do
     `pagamento.aprovado` daria um `platform_site_id` e um par de pagamento
     plausíveis, tirados dos campos errados, e o consumidor cortaria o acesso de
@@ -197,8 +197,8 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
     if versao not in VERSOES_ACEITAS:
         raise VersaoDesconhecida(
             f"{envelope['event']} chegou na versão {versao!r}, e esta célula lê "
-            f"as versões {VERSOES_ACEITAS}. Leia o contrato dessa versão em "
-            "contracts/eventos/ e traduza aqui antes de consumi-la."
+            f"as versões {VERSOES_ACEITAS}. Traduza essa versão aqui antes de "
+            "consumi-la."
         )
     dados = envelope["data"]
     if versao == 2:
@@ -209,8 +209,7 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
         raise VersaoDesconhecida(
             f"{envelope['event']} chegou na versão 1, e esse aviso nasceu na "
             "versão 2: não existe v1 dele para traduzir. Confira quem publicou "
-            "este envelope, porque o contrato em contracts/eventos/ não tem "
-            "versão 1 nenhuma."
+            "este envelope, porque esse aviso não tem versão 1 nenhuma."
         )
     traduzido = {
         chave: valor
@@ -229,7 +228,7 @@ def identidade_do_fato(evento: str, dados: dict) -> str:
     Recebe o `data` JÁ traduzido para o v2, então os campos da chave têm o mesmo
     nome venha o aviso de onde vier.
 
-    [INV-P11] A chave nasce ESCOPADA PELO SITE, e isso não é zelo: o
+    A chave nasce ESCOPADA PELO SITE, e isso não é zelo: o
     `provider_reference_id` é o id da cobrança na conta do fornecedor, e cada
     escola tem a sua. Duas escolas podem receber a referência `12345` no mesmo
     dia, de pagamentos que nada têm a ver um com o outro. Sem o site na chave, a
@@ -347,7 +346,7 @@ def _mover_para_fila_morta(
 
 
 def reentregar_presas(r: "redis.Redis", stream: str, handlers: dict) -> None:
-    """A peça que faltava (ARMADILHAS-OPERACAO.md §9): `xreadgroup(">")` só entrega
+    """A peça que faltava: `xreadgroup(">")` só entrega
     mensagem NOVA — quem estourava o handler ficava em XPENDING para sempre.
     Roda a cada iteração do loop, ANTES da leitura de mensagens novas:
 

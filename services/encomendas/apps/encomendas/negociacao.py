@@ -13,8 +13,7 @@ cliente e aluno fora dos campos estruturados, e todos visíveis ao plantão. Est
 arquivo não enfraquece o invariante; ele parte da percepção que o torna
 desnecessário enfraquecer: **negociar é trocar propostas.** Uma proposta é um
 FORMULÁRIO de seis campos, a contraproposta é o mesmo formulário preenchido
-pelo outro lado, e não existe caixa de mensagem em lugar nenhum
-([INV-ENC-N1]).
+pelo outro lado, e não existe caixa de mensagem em lugar nenhum.
 
 QUEM PROPÕE PRIMEIRO É O ALUNO, E ISSO É DESENHO
 -------------------------------------------------
@@ -141,7 +140,7 @@ def entregaveis_do_briefing(projeto: Encomenda) -> tuple[str, ...]:
     quer dizer isto: nenhuma proposta inventa um entregável que o cliente nunca
     descreveu. Um briefing sem a chave devolve lista vazia, e o lado fechado é o
     certo: propor entregáveis que ninguém pediu é exatamente o texto livre que o
-    [INV-ENC-N1] existe para impedir, com outro nome.
+    existe para impedir, com outro nome.
     """
     return tuple(projeto.briefing.get("entregaveis", ()) or ())
 
@@ -224,7 +223,7 @@ def _soltar_o_aluno(projeto: Encomenda) -> None:
 
     **Nada aqui toca `data_entrada_fila`**, e é isso que faz o [INV-ENC-N5]
     valer: propor, ser recusado, deixar vencer ou desistir custam este projeto e
-    nada mais. Quem perde o lugar na fila é só quem abandona ([INV-ENC-J4]).
+    nada mais. Quem perde o lugar na fila é só quem abandona.
 
     E o aluno volta a `disponivel` porque a negociação acabou. Sem esta linha,
     um cliente que sumisse deixaria o aluno marcado como "trabalhando" para
@@ -363,7 +362,7 @@ def propor(
 
     try:
         # Savepoint próprio: um `IntegrityError` engolido sem ele quebraria a
-        # transação inteira, inclusive o que já foi gravado (`armadilhas/027`).
+        # transação inteira, inclusive o que já foi gravado.
         with transaction.atomic():
             if de_pe is not None:
                 de_pe.responder(Proposta.Resultado.SUPERADA, em=agora)
@@ -408,7 +407,7 @@ def propor(
         ):
             raise
         # O índice `uma_proposta_viva_por_aluno` é a trava que sobra quando a
-        # leitura educada falha ([INV-ENC-N6]): o aluno já tem outra negociação
+        # leitura educada falha: o aluno já tem outra negociação
         # de pé, somando as duas pistas. É a mesma forma de `mural.pegar`, e
         # pela mesma razão: uma frase nomeada em vez de um `IntegrityError`.
         projeto.refresh_from_db(fields=["status"])
@@ -427,7 +426,7 @@ def propor(
 def aceitar_a_proposta(
     encomenda_id, agora: datetime, *, site_id: str, de_quem: str, quem: str
 ) -> Desfecho:
-    """Um lado aceita a proposta do outro, e o combinado vira pedra ([INV-ENC-N3]).
+    """Um lado aceita a proposta do outro, e o combinado vira pedra.
 
     Valor, prazo, entregáveis e correções passam da `Proposta` aceita para as
     colunas `acordo_*` da `Encomenda`, que a TAR-120 criou nulas justamente para
@@ -497,9 +496,9 @@ def desistir(encomenda_id, agora: datetime, *, site_id: str, de_quem: str) -> De
 
     A mesma bifurcação do silêncio (§4.2), e pela mesma razão: o aluno que
     desiste devolve o projeto à pista, para o próximo; o cliente que desiste
-    manda o projeto ao plantão, nunca ao próximo aluno ([INV-ENC-N7]).
+    manda o projeto ao plantão, nunca ao próximo aluno.
 
-    Desistir é gratuito ([INV-ENC-N5]): o aluno perde este projeto, e mais nada.
+    Desistir é gratuito: o aluno perde este projeto, e mais nada.
     A proposta de pé se fecha como `retirada` quando quem sai é quem a escreveu,
     e como `recusada` quando quem sai é o lado que devia respondê-la. As duas
     são pedra, e a diferença entre elas é o que a mediação vai ler depois.
@@ -549,7 +548,7 @@ def mudar_por_mediacao(
     entregaveis=None,
     correcoes_inclusas: int | None = None,
 ) -> Desfecho:
-    """A única porta por onde o combinado muda depois de congelado ([INV-ENC-N3]).
+    """A única porta por onde o combinado muda depois de congelado.
 
     O projeto vai a `em_mediacao` ANTES da escrita, e não por arrumação: é a
     linha de `MudancaDeStatus` dessa transição que guarda o autor e o motivo, e
@@ -607,7 +606,7 @@ def confirmar_pagamento_pela_escola(
     A trava de 22/08/2026 continua de pé e o mantenedor a reafirmou em
     04/09/2026: *"só a escola por enquanto"*. Então não há checkout aqui, não há
     Mercado Pago e não há webhook: o que existe é o registro humano que o
-    [INV-ENC-N4] mede, e o banco já exige que ele venha com autor e data
+    mede, e o banco já exige que ele venha com autor e data
     (`confirmacao_de_pagamento_tem_autor_e_data`) e só para a origem `escola`
     (`confirmacao_pelo_plantao_so_para_a_escola`).
 
@@ -650,13 +649,13 @@ def confirmar_pagamento_pela_escola(
 
 @transaction.atomic
 def comecar_a_producao(encomenda_id, agora: datetime, *, site_id: str) -> Desfecho:
-    """[INV-ENC-N4]: nenhuma produção começa sem Acordo E pagamento confirmado com autor.
+    """nenhuma produção começa sem Acordo E pagamento confirmado com autor.
 
     As duas perguntas são feitas separadas e recusadas com nomes diferentes, de
     propósito: "falta o acordo" e "falta o pagamento" mandam o plantão para
     lugares diferentes, e uma recusa só faria as duas parecerem a mesma coisa.
 
-    **O PRAZO COMEÇA AQUI, E NÃO NO ACORDO** ([INV-ENC-N8]). Entre o Acordo e a
+    **O PRAZO COMEÇA AQUI, E NÃO NO ACORDO**. Entre o Acordo e a
     confirmação há uma espera que não é do aluno: hoje é o plantão registrando
     "pago pela escola", amanhã será o webhook. Se um deles demorasse três dias,
     um prazo negociado de sete viraria quatro, e o aluno seria cobrado por um

@@ -53,8 +53,7 @@ O QUE AINDA NÃO É DESTE DEGRAU
 - **A pausa por três silêncios** e o contador `silencios_consecutivos` são o
   degrau 2.5 inteiro, em um gesto só (ver `tique.py`).
 - **O que a chamada aberta FAZ** (avisar os elegíveis, o primeiro que aceitar
-  leva) é o degrau 2.5. Aqui nasce só a virada de estado no prazo, que é o
-  [INV-ENC-J9].
+  leva) é o degrau 2.5. Aqui nasce só a virada de estado no prazo, que é o.
 - **Os prazos de produção, a extensão, a aprovação tácita e o SLA do revisor**
   são as Fases 3 e 5. Eles vão usar estas mesmas funções puras, e é por isso que
   `somar_horas_uteis` recebe uma `duracao` em vez de ler `relogio_da_oferta` por
@@ -245,7 +244,7 @@ def horas_uteis_entre(inicio: datetime, fim: datetime, janela: Janela) -> timede
     """Quanto tempo de JANELA existe entre dois instantes. A inversa da de cima.
 
     Ela existe por um motivo que vale escrever: é com ela que o guarda do
-    [INV-ENC-J8] mede a promessa inteira numa asserção só — *"entre
+    mede a promessa inteira numa asserção só — *"entre
     `oferecida_em` e `expira_em` há exatamente `relogio_da_oferta` horas de
     janela, não importa a que horas a oferta foi feita"*. Sem ela, o guarda
     teria de recalcular a expiração com a mesma função que ele está medindo, e
@@ -369,7 +368,7 @@ def calcular_validade_da_proposta(agora: datetime, *, site_id: str) -> datetime:
 def limite_para_pedir_extensao(
     prazo_final: datetime, prazo_dias: int, agora: datetime, *, site_id: str
 ) -> datetime:
-    """Ate quando o aluno pode pedir a extensao de um prazo ACORDADO ([INV-ENC-N8]).
+    """Ate quando o aluno pode pedir a extensao de um prazo ACORDADO.
 
     Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3, ultimo paragrafo. A lei da
     metade de baixo (§6.6) da uma extensao pedida *"ate 24h antes do prazo"*, e

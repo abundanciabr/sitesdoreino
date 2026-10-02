@@ -50,7 +50,7 @@ VARIANTE_PADRAO = "completo"
 # Nome da rota (o `name=` do `config/urls.py`) → a variante que ela mostra, ou
 # `None` para "esta página não tem rodapé". Rota que não está aqui usa o padrão,
 # **inclusive rota que nascer amanhã** — é essa a metade que impede a frase "em
-# todas as páginas" de envelhecer em silêncio (`armadilhas/242`).
+# todas as páginas" de envelhecer em silêncio.
 REGRA_POR_ROTA: "dict[str, str | None]" = {
     # A PORTA da Caixa mostra o rodapé ENXUTO — só a linha de direitos.
     #
@@ -136,7 +136,7 @@ def rodape_do_contexto(request) -> dict:
 
     É processador, e não uma inclusão escrita em cada template, porque "em todas
     as páginas" não pode depender de alguém lembrar de incluir a peça: tela nova
-    da Caixa nasce com rodapé sozinha (`armadilhas/242`).
+    da Caixa nasce com rodapé sozinha.
     """
     resolvida = getattr(request, "resolver_match", None)
     variante = variante_da_rota(resolvida.url_name if resolvida else None)

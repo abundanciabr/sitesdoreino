@@ -27,8 +27,7 @@ OUTRO_SITE = "escola-b"
 # Os `servers:` dos contratos congelados mais o caminho de cada operação. Ficam
 # aqui, escritos por extenso, porque o dublê EXIGE exatamente estes endereços:
 # um dublê que aceitasse qualquer caminho testaria metade do cliente, e foi
-# assim que um `/alunos` a menos passou por 39 testes verdes no fórum
-# (`armadilhas/111`).
+# assim que um `/alunos` a menos passou por 39 testes verdes no fórum.
 IDENTIDADE = "http://identidade:8000/interno"
 ALUNOS = "http://alunos:8000/api/alunos"
 ADMIN = "http://admin:8000/interno"
@@ -50,7 +49,7 @@ ANA = {
 
 
 def agora():
-    """O relógio real, nunca um instante escrito à mão (`armadilhas/323`)."""
+    """O relógio real, nunca um instante escrito à mão."""
     return datetime.now(tz=fuso.utc)
 
 
@@ -266,7 +265,7 @@ def sem_o_par_da_admin(monkeypatch):
 
     A linha mora em `infra/`, caminho CODEOWNERS, e o PR que troca a fonte da
     resposta não tem mandato para tocá-la. Enquanto faltar, a casa inteira
-    responde e só a fila da equipe fica indisponível (`armadilhas/097`).
+    responde e só a fila da equipe fica indisponível.
     """
     monkeypatch.delenv("ADMIN_API_URL", raising=False)
     monkeypatch.delenv("ADMIN_API_TOKEN", raising=False)
@@ -309,7 +308,7 @@ def fio(monkeypatch):
     """O relay publicando contra o dublê, com `REDIS_STREAMS_URL` presente.
 
     A variável é montada aqui, e não numa fixture `autouse`, de propósito: o
-    relay a lê NO PONTO DE USO (`armadilhas/097`), e o teste que prova "sem
+    relay a lê NO PONTO DE USO, e o teste que prova "sem
     endereço do fio o evento fica pendente" precisa poder tirá-la.
     """
     monkeypatch.setenv("REDIS_STREAMS_URL", "redis://redis.teste:6379/0")

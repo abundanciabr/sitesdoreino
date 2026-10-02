@@ -289,8 +289,8 @@ def passar(
     existem para que ele signifique alguma coisa. Um botão único de "passar"
     tornaria a reclassificação impossível de calcular.
 
-    **Passar nunca custa o lugar na fila** ([INV-ENC-J4]) e nunca devolve esta
-    encomenda a quem passou ([INV-ENC-J6], memória da própria `Oferta`).
+    **Passar nunca custa o lugar na fila** e nunca devolve esta
+    encomenda a quem passou.
     """
     if motivo not in Oferta.MotivoDoPasse.values:
         return Desfecho(feito=False, razao=MOTIVO_FORA_DOS_QUATRO)
@@ -460,7 +460,7 @@ def religar(perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     """ "Voltar à fila": o aluno religa e volta ao MESMO lugar (plano §6.3).
 
     O lugar continua guardado porque `data_entrada_fila` não é tocada aqui nem em
-    lugar nenhum desta célula ([INV-ENC-J4]) — não há nada a restaurar, e é essa
+    lugar nenhum desta célula — não há nada a restaurar, e é essa
     ausência que faz a promessa da tela ser verdade.
 
     **Nem toda pausa é do aluno.** A que o plantão aplica e a de 30 dias do

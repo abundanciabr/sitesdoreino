@@ -1,7 +1,7 @@
 """A tela que recebe um capítulo inteiro: `/admin/escola/<curso>/aulas/<n>/capitulo/`.
 
 NENHUM TRECHO DO CAPITULO DELE ENTRA AQUI. Os capítulos do curso são obra não
-lançada do mantenedor e este repositório é público (`armadilhas/331`): o que
+lançada do mantenedor e este repositório é público: o que
 este arquivo usa é um capítulo de MENTIRA, sobre uma padaria, escrito para o
 teste. O que ele copia do capítulo de verdade é só a FORMA, e são sete formas,
 todas medidas no capítulo que ele mandou em 06/09/2026:
@@ -342,7 +342,7 @@ def test_os_dois_apelidos_pegam_o_que_a_normalizacao_nao_alcanca():
 
     # A pertinência vem antes do conteúdo de propósito: tirar um apelido da
     # tabela precisa reprovar numa ASSERÇÃO, e não num KeyError montando a
-    # comparação (`armadilhas/195`).
+    # comparação.
     assert "regra_do_padrao" in pecas
     assert "critica_de_atelier" in pecas
     assert pecas["regra_do_padrao"]["titulos"][0].startswith("Regra que entra no")

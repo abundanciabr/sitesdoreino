@@ -13,8 +13,7 @@ duas coisas que ela não pode fazer, e que esta suíte trava:
 **Tudo aqui atravessa a porta pela rede**, como no resto da célula: monta-se o
 mundo, dubla-se a `identidade` e a `alunos`, e pede-se a URL como um navegador
 pediria. E **contra um PostgreSQL de verdade** — com dublê de banco, uma
-afirmação errada sobre a busca entra no repositório como se fosse verdade
-(`armadilhas/154`).
+afirmação errada sobre a busca entra no repositório como se fosse verdade.
 """
 
 from __future__ import annotations

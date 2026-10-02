@@ -44,7 +44,7 @@ O QUE ESTA CÉLULA TEM DE DIFERENTE
 o `config/settings.py` explica por quê). Então `request.path` e
 `request.path_info` são iguais, e a distinção que o código faz abaixo é inócua
 nesta célula. Ela foi mantida de propósito: é a mesma peça da `sugestoes` e do
-`funil`, onde a distinção é o que a faz funcionar (`armadilhas/081`), e uma
+`funil`, onde a distinção é o que a faz funcionar, e uma
 cópia que "simplifica" o que não entende é como se planta a divergência entre
 células que deveriam ser idênticas.
 

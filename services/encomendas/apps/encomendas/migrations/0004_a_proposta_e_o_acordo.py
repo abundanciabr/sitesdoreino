@@ -18,7 +18,7 @@ O QUE ENTRA, E POR QUE CADA COISA E DO BANCO E NAO DE UM `if`
      porque sao elas o historico que a mediacao vai ler.
    - `uma_proposta_viva_por_aluno` (PARCIAL): o [INV-ENC-N6] somando as duas
      pistas. A coluna `aluno` e denormalizada justamente para isto:
-     `UniqueConstraint` nao atravessa chave estrangeira (`armadilhas/274`).
+     `UniqueConstraint` nao atravessa chave estrangeira.
    - `uma_rodada_por_lado_por_projeto` (SEM condicao): o [INV-ENC-N2] no banco.
      O mesmo lado nao escreve duas vezes a mesma rodada, nem por corrida, nem
      por uma tela futura com dois cliques. O TETO e parametro e mora em
@@ -57,7 +57,7 @@ O QUE ENTRA, E POR QUE CADA COISA E DO BANCO E NAO DE UM `if`
    aqui: moram na semente, e os do piso nao existem de proposito (o numero sai
    do piloto de papel, paragrafo 9).
 
-6. **As chaves estrangeiras compostas** (`armadilhas/274`), nas duas tabelas
+6. **As chaves estrangeiras compostas**, nas duas tabelas
    novas. Uma `ForeignKey` comum deixaria uma proposta de um site apontar para
    encomenda ou perfil de OUTRO, e `site_id` denormalizado sem esta trava e uma
    coluna que mente.

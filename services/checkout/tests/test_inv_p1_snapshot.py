@@ -1,5 +1,5 @@
 # tests/test_inv_p1_snapshot.py  # [RECEITA:R5 v1]
-# [INV-P1] Snapshot do pedido é create-only: items, total_cents, customer e
+# Snapshot do pedido é create-only: items, total_cents, customer e
 # site_id são congelados na criação. Correção de pedido = pedido novo +
 # cancelamento do antigo — nunca UPDATE.
 import pytest
@@ -96,7 +96,7 @@ def test_refechar_a_mesma_sessao_devolve_o_pedido_existente_sem_tocar_o_snapshot
 
 def test_status_continua_atualizavel(pedido):
     # O congelamento é do snapshot, não do status: sem isso os eventos de
-    # pagamento nunca conseguiriam mover o pedido (INV-P7 ficaria impossível).
+    # pagamento nunca conseguiriam mover o pedido.
     pedido.status = "pago"
     pedido.save(update_fields=["status"])
     assert Order.objects.get(pk=pedido.pk).status == "pago"

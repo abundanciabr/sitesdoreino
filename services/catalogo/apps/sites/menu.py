@@ -8,7 +8,7 @@ de 60s. Pendurar o menu nessa resposta faz o dado novo chegar às telas sem
 nenhum salto de rede a mais, sem célula nova, e sem ninguém ler o banco de
 ninguém (célula não lê banco de outra).
 
-A forma segue o precedente de `languages` (PLANO-I18N D3): JSON validado por
+A forma segue o precedente de `languages`: JSON validado por
 uma função ÚNICA, chamada pelo `save()` do model e pelo `update()` do
 queryset. Regra escrita duas vezes é regra que diverge, e aqui os dois
 caminhos de escrita existem de verdade (a tela do Admin grava pelo model; uma

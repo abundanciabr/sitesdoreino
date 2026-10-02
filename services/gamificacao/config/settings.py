@@ -26,19 +26,19 @@ def env(nome: str) -> str:
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# A gamificação serve sob prefixo: meshcraft.top/conquistas
-# (`DECISAO-gamificacao.md` §4; `PLANO-CELULA-GAMIFICACAO.md` §5). O Traefik
+# A gamificação serve sob prefixo: meshcraft.top/conquistas.
+# O Traefik
 # NÃO remove o prefixo — quem o conhece é esta variável, nunca o `urls.py`.
 # Ver `armadilhas/029` e `tests/test_healthz_script_name.py`.
 #
 # `/conquistas` e não `/xp`: dez letras, longe de qualquer forma de código de
 # idioma, e o inventário de rotas (`ci/tests/test_rotas_sem_forma_de_locale.py`)
-# entra no MESMO PR do Traefik (`armadilhas/089`), não neste.
+# entra no MESMO PR do Traefik, não neste.
 #
 # E o prefixo é CAMINHO, não subdomínio, pela mesma razão do fórum: o cookie de
 # sessão do site é de host. Em `conquistas.meshcraft.top` ele não viaja, e a
 # célula passaria a exigir um segundo login — que é exatamente o que o
-# [INV-P12] existe para impedir.
+# existe para impedir.
 FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
@@ -57,8 +57,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # `dj_database_url.parse` entrega `CONN_MAX_AGE = 0`, e a ausência do ajuste é
 # uma DECISÃO, não esquecimento: sob ASGI, `conn_max_age > 0` vaza uma conexão
-# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam
-# (`armadilhas/170`). A tentação chega junto com a porta de máquina do §5 do
+# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam.
+# A tentação chega junto com a porta de máquina do §5 do
 # plano — `getPublicProfiles` decora N autores de toda página do fórum, e
 # reaproveitar conexão economiza ~24 ms por chamada. A resposta certa naquele
 # dia é o POOL nativo do Django 5.1 (`OPTIONS["pool"]` + `psycopg[binary,pool]`,
@@ -84,8 +84,8 @@ INSTALLED_APPS = [
     # A fila intra-célula, que entrou com a VOZ desta célula (degrau 9): é ela
     # que dá o entrypoint canônico `python manage.py run_huey` — o único que faz
     # `django.setup()` + autodiscover de `tasks.py`. Sem esta linha o worker
-    # sobe com o registro VAZIO, não executa nada e não reclama de nada
-    # (`armadilhas/030`), e as cartas ficariam paradas na outbox sem ninguém
+    # sobe com o registro VAZIO, não executa nada e não reclama de nada,
+    # e as cartas ficariam paradas na outbox sem ninguém
     # acusar.
     "huey.contrib.djhuey",
 ]
@@ -93,8 +93,7 @@ INSTALLED_APPS = [
 # A instância do Huey — importada, não nomeada por string: o djhuey lê
 # `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
 # import, de propósito: o container web importa este módulo por causa da linha
-# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env
-# (`armadilhas/097`).
+# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env.
 from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
@@ -120,8 +119,7 @@ MIDDLEWARE = [
 #
 # Duas células assinando o MESMO cookie com chaves diferentes produzem um
 # cabo-de-guerra invisível: abrir a página de conquistas deslogaria do site, e
-# vice-versa, **sem erro em lugar nenhum, sem log, sem alarme**
-# (`armadilhas/143`).
+# vice-versa, **sem erro em lugar nenhum, sem log, sem alarme**.
 #
 # A tentação concreta que isto mata é maior aqui do que em qualquer célula
 # anterior, e tem nome: a CELEBRAÇÃO VISCERAL. Quando o aluno sobe de nível ou
@@ -129,7 +127,7 @@ MIDDLEWARE = [
 # — e o caminho mais curto para guardar isso é `request.session[...]`. Funciona
 # em dev, passa em teste de unidade, e desloga a plataforma inteira em
 # produção. Por isso o plano põe `celebracoes_pendentes` no MODELO
-# (`PLANO-CELULA-GAMIFICACAO.md` §3) e não na sessão. Guarda:
+# e não na sessão. Guarda:
 # `tests/test_inv_gamificacao_nao_assina_sessao.py`.
 
 # O cookie de CSRF leva nome próprio: `csrftoken` genérico num domínio que
@@ -168,8 +166,8 @@ TEMPLATES = [
                 # O RODAPÉ em TODA página (`apps/core/rodape.py`), 02/09/2026.
                 # É processador de contexto, e não uma inclusão escrita em cada
                 # template, porque "em todas as páginas" não pode depender de
-                # alguém lembrar da peça: tela nova nasce com rodapé
-                # (`armadilhas/242`). Quem desenha é `gamificacao/moldura.html`.
+                # alguém lembrar da peça: tela nova nasce com rodapé.
+                # Quem desenha é `gamificacao/moldura.html`.
                 "apps.core.rodape.rodape_do_contexto",
                 # O MENU DO TOPO em TODA página (`apps/core/menu.py`),
                 # 02/09/2026. Processador pelo MESMO motivo do rodapé acima. Ele
@@ -193,8 +191,8 @@ TEMPLATES = [
 #
 # **Aqui o conjunto vazio é o ÚNICO cadeado**, e isso é diferente da
 # `identidade`: esta célula roda sob `SCRIPT_NAME=/conquistas`, e o corte do
-# prefixo é do Django, não do Traefik — a porta é alcançável pela borda pública
-# (`armadilhas/186`). Não há topologia por baixo para segurar o que este
+# prefixo é do Django, não do Traefik — a porta é alcançável pela borda pública.
+# Não há topologia por baixo para segurar o que este
 # conjunto deixar passar.
 #
 # Não há `TOKENS_COMPLETOS` aqui, e a ausência é a decisão: aquele degrau existe
@@ -230,13 +228,12 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # O fuso em que a célula MOSTRA hora; o armazenamento continua em UTC (USE_TZ).
 # Sem esta linha vale o default de fábrica do Django, `America/Chicago`: cinco
-# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum
-# (`armadilhas/099`).
+# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum.
 #
 # Em toda outra célula isso seria uma data errada na tela. Aqui é o contrário:
 # o "dia" é a UNIDADE da mecânica. `dia_local` no ledger de XP, o dia ativo da
 # Sequência semanal, a janela das missões diárias e o teto suave de pontos por
-# dia se decidem todos por esta linha (`PLANO-CELULA-GAMIFICACAO.md` §3). Com o
+# dia se decidem todos por esta linha. Com o
 # default de fábrica, o aluno que estuda às 22h de terça em São Paulo teria o
 # esforço contado na terça — e quem estuda às 23h30 veria a Sequência quebrar
 # num dia em que ele não faltou. Guarda: `tests/test_fuso_horario.py`.

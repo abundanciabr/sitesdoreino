@@ -12,13 +12,13 @@ STATUS_RECUSADA = "recusada"
 # `reembolsada`: reembolso e sobre dinheiro devolvido, sair e sobre acesso.
 STATUS_ENCERRADA = "encerrada"
 
-# [GESTAO] `suspensa` SAIU desta lista em 28/08/2026
-# (`docs/decisoes/DECISAO-gestao-de-alunos.md` §2), e a mudanca e deliberada:
+# [GESTAO] `suspensa` SAIU desta lista em 28/08/2026,
+# e a mudanca e deliberada:
 # ela e o "acesso pausado pelo mantenedor", e um pause que deixa a pessoa
 # entrar do mesmo jeito seria decoracao.
 #
-# [REEMBOLSO] `reembolsada` SAIU em 31/08/2026
-# (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`), e isto REVERTE a decisao
+# [REEMBOLSO] `reembolsada` SAIU em 31/08/2026,
+# e isto REVERTE a decisao
 # do mantenedor de 24/08/2026 ("quem ja foi aluno mantem a voz na Caixa"). Ele
 # mesmo reverteu, ao encontrar o texto antigo publicado no site: reembolso
 # passou a significar A COMPRA DESFEITA, e quem recebeu o dinheiro de volta nao
@@ -69,12 +69,12 @@ STATUS_SEM_ACESSO = (
 # bastaria um POST direto na porta para fura-la.
 #
 # `encerrada` fica FORA de proposito: o ex-aluno PODE pedir para voltar desde
-# 29/08 (`DECISAO-a-ficha-nao-se-apaga.md` §3). A diferenca entre ele e o
+# 29/08. A diferenca entre ele e o
 # reembolsado e a decisao, nao um esquecimento.
 STATUS_QUE_BARRAM_A_FILA = STATUS_QUE_VALEM + (STATUS_REEMBOLSADA,)
 
-# [PRONTUARIO] Os estados que provam que esta pessoa JA TEVE ACESSO alguma vez
-# (29/08/2026, `DECISAO-a-ficha-nao-se-apaga.md`). E o que responde "esta pessoa
+# [PRONTUARIO] Os estados que provam que esta pessoa JA TEVE ACESSO alguma vez.
+# E o que responde "esta pessoa
 # ja foi aluna?" quando ela aparece de novo na fila.
 #
 # HOJE ele tem exatamente os mesmos quatro nomes de `STATUS_DE_GESTAO`, e a
@@ -125,7 +125,7 @@ class Pagamento(models.Model):
 
 class Matricula(models.Model):
     """Uma linha por matrícula — e, desde 27/08/2026, também uma linha por pessoa
-    que PEDIU entrada e ainda espera (`docs/decisoes/DECISAO-fila-de-liberacao.md`).
+    que PEDIU entrada e ainda espera.
 
     A fila de liberação é a própria matrícula num status novo, não uma tabela
     paralela: duas tabelas responderiam à mesma pergunta ("quem é aluno?") e
@@ -183,10 +183,10 @@ class Matricula(models.Model):
     PREFIXO_DA_FILA = "pre:"
     PREFIXO_ADMINISTRATIVO = "admin:"
 
-    site_id = models.CharField(max_length=64)  # [INV-P5] guarda o site_id do evento
+    site_id = models.CharField(max_length=64)  # guarda o site_id do evento
     order_id = models.CharField(
         max_length=128, unique=True
-    )  # [INV-P5] chave de idempotência
+    )  # chave de idempotência
     product_id = models.CharField(max_length=64, blank=True, default="")
 
     # [ESTORNO] QUAL PAGAMENTO PAGOU ESTA MATRICULA (20/09/2026).
@@ -283,7 +283,7 @@ class Matricula(models.Model):
             # sem o indice todo estorno varre a escola inteira para cortar uma
             # linha. O site fica de fora do indice de proposito: a referencia do
             # provedor ja e seletiva o bastante, e o filtro por site continua na
-            # consulta, onde ele decide a CORRECAO do casamento ([INV-P11]).
+            # consulta, onde ele decide a CORRECAO do casamento.
             models.Index(fields=["provider", "provider_reference_id"]),
         ]
         constraints = [

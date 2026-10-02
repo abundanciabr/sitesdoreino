@@ -43,7 +43,7 @@ tomada, e o dia em que for, ela vira uma tela nova com o nome disso.
 Toda tela editorial desta área continua sem script, como sempre — mas
 `texto_ler` tem os controles de fonte, tema e "onde você parou", e por isso
 sobrescreve o `Content-Security-Policy` com o hash do `<script>` embutido,
-seguindo o mesmo desenho de `mapa_do_site.py` (`armadilhas/199`).
+seguindo o mesmo desenho de `mapa_do_site.py`.
 """
 
 from __future__ import annotations

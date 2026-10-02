@@ -47,7 +47,7 @@ São as do cabeçalho do contrato, e este arquivo é onde elas ficam mecânicas:
    mesma lição de `contracts/eventos/notificacao.devida.v1.json` ("os dados da
    frase, nunca a frase").
 
-O SOMBREAMENTO QUE ESTA PORTA QUASE COMEU (`armadilhas/020`)
+O SOMBREAMENTO QUE ESTA PORTA QUASE COMEU
 ------------------------------------------------------------
 O contrato nomeia um componente `Sequencia`, e esta célula tem um MODEL
 `Sequencia`. Definir `class Sequencia(Schema)` embaixo de
@@ -155,7 +155,7 @@ TIPOS_DE_CELEBRACAO = frozenset(
 
 
 # ---------------------------------------------------------------------------
-# Esquemas — o que sai. Campo novo aqui é mudança de contrato (RITOS §3).
+# Esquemas — o que sai. Campo novo aqui é mudança de contrato.
 # ---------------------------------------------------------------------------
 class PerfilPublico(Schema):
     nivel: int
@@ -242,7 +242,7 @@ def _janelas_de_hoje() -> tuple[object, object]:
 
     O fuso é regra de negócio nesta célula, não cosmética: `dia_local` no ledger,
     o dia ativo da Sequência e a janela das missões se decidem todos por
-    `TIME_ZONE` (`armadilhas/099`; guarda em `tests/test_fuso_horario.py`).
+    `TIME_ZONE`.
     `localdate()` lê ESSE fuso — `date.today()` leria o do servidor.
     """
     hoje = timezone.localdate()
@@ -362,7 +362,7 @@ def get_my_status(request):
         site_id=site_id, pessoa_id=pessoa_id
     ).first()
     if perfil is None:
-        # Entrou, mas ainda não jogou: a linha de perfil é PREGUIÇOSA (Lei 7),
+        # Entrou, mas ainda não jogou: a linha de perfil é PREGUIÇOSA,
         # nasce no primeiro XP. Não é erro, e não é visitante.
         return MeuStatus(**{**VISITANTE.dict(), "autenticado": True})
 
@@ -435,7 +435,7 @@ def _missoes(site_id: str, pessoa_id: str) -> list[MissaoEmAndamento]:
     o visto ao lado da tarefa feita, e uma missão que sumisse ao ser cumprida
     apagaria justamente a parte que dá o retorno.
 
-    Só linhas de `ProgressoDeMissao` aparecem, e elas são PREGUIÇOSAS (Lei 7):
+    Só linhas de `ProgressoDeMissao` aparecem, e elas são PREGUIÇOSAS:
     nascem no primeiro incremento. Missão da janela em que a pessoa ainda não
     encostou não tem linha, e por isso não aparece aqui — quem monta o cardápio
     do dia é o motor (PR 11 da escada), não esta porta.
@@ -508,7 +508,7 @@ def _celebracoes(perfil) -> list[CelebracaoPendente]:
 # economia é dado" era só uma frase bonita no topo do `motor.py`.
 #
 # QUEM AUTORIZA NÃO É ESTA PORTA, e a distinção é um invariante da plataforma.
-# Esta célula não assina sessão ([INV-P12]) e o `papel` que a `identidade`
+# Esta célula não assina sessão e o `papel` que a `identidade`
 # devolve NUNCA autoriza rota ("reconhecer não é autorizar",
 # `DECISAO-onde-mora-a-sessao` §4). Aqui fecha o Bearer do par, como em todas as
 # operações desta célula; quem confere que é o mantenedor é a célula `admin`,

@@ -9,7 +9,7 @@ análises anteriores não mediram.
 
 Mesma porta de `0007` e `0010`: `semear_documento` semeia SÓ ele, nunca
 sobrescreve o que o mantenedor já tenha escrito pela tela, e sem a pasta na
-imagem não faz nada (`armadilhas/347`).
+imagem não faz nada.
 """
 
 from django.db import migrations

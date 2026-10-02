@@ -243,7 +243,7 @@ def test_sitemap_de_site_monolingue_404(client, rede):
 def test_sitemap_prefixado_404_rota_de_maquina_nunca_se_localiza(client, rede, caminho):
     # Os dois morrem 404, por ramos DIFERENTES do resolver: `/en/…` porque o
     # idioma padrão não tem prefixo (ramo 1), `/pt-br/sitemap.xml` pela guarda
-    # de rota de máquina depois da decapagem (armadilhas/086). Vale exercitar
+    # de rota de máquina depois da decapagem. Vale exercitar
     # os dois — o dia em que um deles regredir, o outro não avisa.
     assert client.get(caminho, HTTP_HOST=HOST_MESH).status_code == 404
 

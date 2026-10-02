@@ -95,7 +95,7 @@ class IdentidadeDoVisitante:
     restrição.
 
     Entra DEPOIS do `SiteResolutionMiddleware`, e a ordem é a regra, não
-    estilo. Host não cadastrado morre em 404 lá em cima ([INV-P11]) e nunca
+    estilo. Host não cadastrado morre em 404 lá em cima e nunca
     chega aqui: nenhum número de visitante é gasto com um domínio que não é
     nosso. E o `path_info` que este middleware lê já veio sem o prefixo de
     idioma, que é a forma em que a isenção de rota de máquina casa

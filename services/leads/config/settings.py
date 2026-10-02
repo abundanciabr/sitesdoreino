@@ -90,8 +90,7 @@ def _comerciais_do_crm() -> dict:
 COMERCIAIS_DO_CRM = _comerciais_do_crm()
 
 # O token da conta comercial também abre a porta: declarar a conta e esquecer
-# de repetir o mesmo token em TOKENS_ACEITOS_* custaria um 401 sem explicação
-# (a lição que a `encomendas` pagou em armadilhas/318).
+# de repetir o mesmo token em TOKENS_ACEITOS_* custaria um 401 sem explicação.
 TOKENS_ACEITOS |= set(COMERCIAIS_DO_CRM)
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}

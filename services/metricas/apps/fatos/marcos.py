@@ -25,8 +25,8 @@ junto: a linhagem tem de apontar para o fato que fixou a data que está lá.
 fato.** Perguntar a outra célula quem é o dono de um fato é proibido nesta
 casa (`AGENTS.metricas.md`, Fronteiras) e transformaria o livro num espelho do
 presente. Por isso `quiz.completado` não gera marco nenhum: ele identifica a
-pessoa por e-mail, e e-mail nunca é identidade de pessoa nesta plataforma
-(DECISAO-EVO-01 §3). Os assuntos da Caixa de Sugestões também ficam de fora:
+pessoa por e-mail, e e-mail nunca é identidade de pessoa nesta plataforma.
+Os assuntos da Caixa de Sugestões também ficam de fora:
 sugerir e votar são participação, e a régua do plano é conquista.
 """
 

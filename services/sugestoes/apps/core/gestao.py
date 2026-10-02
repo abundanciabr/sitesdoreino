@@ -3,7 +3,7 @@
 
 **As três abas do painel viveram aqui entre 28/08/2026 e 28/08/2026** — o mesmo
 dia. Elas nasceram nesta célula e mudaram para `/admin/caixa/` por decisão do
-mantenedor (`docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`): *"não
+mantenedor: *"não
 vamos espalhar painéis ou gestão por aí, tudo será em /admin"*. Os endereços
 antigos agora redirecionam.
 
@@ -11,7 +11,7 @@ O que ficou aqui é o que só esta célula consegue calcular, porque depende de
 dados que não atravessam a fronteira:
 
 * **`plateia_de`** — quantas pessoas DISTINTAS estão atrás de cada ideia. É a
-  mesma definição de `avisos.interessados_em()` ([INV-SUG13]), e o guarda que
+  mesma definição de `avisos.interessados_em()`, e o guarda que
   casa as duas continua de pé.
 * **`silencio_por_pessoa`** e **`noticia_mais_recente`** — há quantos dias cada
   pessoa não ouve nada. Deduplicar quem está atrás de duas ideias exige as
@@ -83,7 +83,7 @@ def plateia_de(sugestoes) -> dict[int, int]:
     mesma sugestão e reprova se divergirem.
 
     Sobe para a memória uma lista de pares de ids opacos, nunca linhas de
-    `Identidade` — que carregam e-mail (`DECISAO-EVO-01` §3).
+    `Identidade` — que carregam e-mail.
     """
     ids = [sugestao.id for sugestao in sugestoes]
     gente: dict[int, set[str]] = {

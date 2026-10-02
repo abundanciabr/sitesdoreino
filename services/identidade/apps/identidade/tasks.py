@@ -16,7 +16,7 @@ silêncio".
 **Nome do stream: `eventos.<nome-do-evento>`, sem versão.** A versão viaja no
 envelope. Pôr `v1` no nome do stream faria de toda evolução de contrato uma
 migração de infraestrutura, e o `v1` continuaria sendo emitido até o último
-consumidor migrar (RITOS §3) — dois streams para o mesmo fato.
+consumidor migrar — dois streams para o mesmo fato.
 """
 
 import logging
@@ -44,8 +44,8 @@ def relay_outbox() -> int:
     `published_at` preenchido é ignorada pelo filtro, então uma segunda passada
     não republica nada.
 
-    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import
-    (`armadilhas/097`): o container web importa este módulo pelo autodiscover
+    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import:
+    o container web importa este módulo pelo autodiscover
     do djhuey e não pode morrer no boot se a variável faltar. Faltando, o
     `KeyError` estoura só aqui, é engolido pelo `relay_apos_commit` e o evento
     fica pendente — nunca perdido.
@@ -83,6 +83,6 @@ def relay_outbox_periodico() -> int:
     O worker é `python manage.py run_huey` — entrada canônica, e a única que
     faz `django.setup()` + autodiscover de `tasks.py`. Subir o `huey_consumer`
     direto dá um worker de pé com o registro VAZIO, que não executa nada e não
-    reclama (`armadilhas/030`). No compose ele é o serviço `identidade-relay`.
+    reclama. No compose ele é o serviço `identidade-relay`.
     """
     return relay_outbox()

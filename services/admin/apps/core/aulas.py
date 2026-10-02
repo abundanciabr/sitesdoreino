@@ -30,12 +30,12 @@ varrem o site inteiro. O guarda disso é
 ## Onde o dado mora, e por que não aqui
 
 Na célula `cursos`, e SÓ lá. Esta tela **não guarda nada**: lê tudo pela porta
-de máquina (`contracts/cursos.openapi.yaml`, as sete operações do editor) e
+de máquina e
 grava pela mesma porta. Guardar uma cópia aqui seria o mesmo fato em dois
-lugares (a lei anti-duplicação do `CLAUDE.md`), e o peso aqui é maior do que na
+lugares, e o peso aqui é maior do que na
 economia ou nas sequências: o texto das aulas é obra NÃO LANÇADA do mantenedor,
 o repositório é público, e o único caminho do texto para dentro do sistema é
-esta tela ([INV-CUR-C2], `armadilhas/331`). Nenhuma frase de aula existe em
+esta tela. Nenhuma frase de aula existe em
 arquivo; nenhuma entra por migração.
 
 ## O TRAVESSÃO NÃO É ASSUNTO DESTA TELA
@@ -115,7 +115,7 @@ sempre: a regra é da outra célula.
 
 Cada gesto é um POST que recarrega a página, pelas três razões de sempre: o
 que se vê é o que está gravado; a política de segurança desta área exige um
-hash na CSP para cada script embutido (`armadilhas/199`), e um formulário não
+hash na CSP para cada script embutido, e um formulário não
 precisa de nenhum; e o mantenedor é leigo, então um botão por gesto, com o
 nome do gesto escrito nele, não tem como ser mal entendido.
 """
@@ -342,7 +342,7 @@ def _endereco(nome: str, curso: str, parte: "int | None", numero: str = "") -> s
     """O endereço de uma tela deste editor, com o curso e (quando há) a Parte.
 
     Um lugar só monta endereço aqui, e é `reverse`: o prefixo `/admin` desta
-    célula mora no env (`armadilhas/029`), e endereço escrito à mão o perderia.
+    célula mora no env, e endereço escrito à mão o perderia.
     """
     argumentos: dict = {"curso": curso}
     if parte:

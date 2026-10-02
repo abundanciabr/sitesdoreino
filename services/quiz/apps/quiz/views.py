@@ -383,7 +383,7 @@ def formulario(request, slug):
             }
             if submissao.context:
                 payload["context"] = submissao.context
-            OutboxEvent.objects.create(  # [RECEITA:R3 v1] [INV-P6] mesma transação do resultado
+            OutboxEvent.objects.create(  # [RECEITA:R3 v1] mesma transação do resultado
                 event="quiz.completado",
                 payload=payload,
             )

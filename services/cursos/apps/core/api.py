@@ -4,13 +4,13 @@ POR QUE ELA EXISTE
 ------------------
 O conteúdo do curso mora no banco desta célula, e só nele (a lei
 anti-duplicação). O editor do Admin (degrau 1.5) lê e grava por aqui, nunca no
-banco e nunca guardando cópia. Este arquivo é o degrau 1.3 da escada
-(`PLANO-CELULA-CURSOS.md` §10, TAR-150): `listLessons`, `getLesson`,
+banco e nunca guardando cópia. Este arquivo é o degrau 1.3 da escada:
+`listLessons`, `getLesson`,
 `putLesson`, `putInstrument` e `publishLesson`; o degrau 1.3b (TAR-161)
 acrescentou `listInstruments` e `getInstrument`, porque o editor gravava a
 escala de um instrumento sem poder lê-la de volta. O contrato congela A PARTIR
-do que `manage.py export_openapi` imprime daqui, nunca de cabeça
-(`armadilhas/243`), e a PROSA daqui congela junto (`armadilhas/324`).
+do que `manage.py export_openapi` imprime daqui, nunca de cabeça,
+e a PROSA daqui congela junto.
 
 O CURSO E A PARTE ENTRARAM NO ENDEREÇO (TAR-203, 05/09/2026)
 -------------------------------------------------------------
@@ -58,7 +58,7 @@ declara, e esta peça vive fora da sequência (`Peca.TIPOS_SOB_DEMANDA`).
 
 A SALA SERVE VÁRIOS CURSOS, E ELES NASCEM POR AQUI (TAR-266, 07/09/2026)
 -------------------------------------------------------------------------
-Decisão do mantenedor (`DECISAO-a-sala-serve-varios-cursos.md`): a sala serve
+Decisão do mantenedor: a sala serve
 quantos cursos a escola vender, cada um com o seu produto, a sua regra de
 avanço e a sua estrutura. Até essa data só o `semear_esqueleto` criava curso,
 e só o do livro. Quatro operações nasceram: `listCourses`, `createCourse`,
@@ -72,7 +72,7 @@ bloco e o título do Boss são ESTRUTURA (as letras são posicionais, e o nome
 viaja com a posição): nulo não mexe, texto grava, vazio apaga. Aula que some
 da estrutura só é apagada se nenhum aluno passou por ela, conferido dentro da
 transação que apaga; se passou, é 422 com os números, e nada é gravado. O
-texto das aulas continua entrando só por `putLesson` ([INV-CUR-C2] intacto).
+texto das aulas continua entrando só por `putLesson`.
 
 O QUE FICA DE FORA, DE PROPÓSITO
 --------------------------------
@@ -99,7 +99,7 @@ para a mesma tela; o que muda é a régua. A razão por extenso está na seção
 operação. A regra mora em `apps/cursos/fidelidade.py`, e continuam sendo TREZE
 operações.
 
-O SOMBREAMENTO QUE ESTA PORTA NÃO PODE COMER (`armadilhas/020`)
+O SOMBREAMENTO QUE ESTA PORTA NÃO PODE COMER
 -----------------------------------------------------------------
 Um `ninja.Schema` com o MESMO nome de um model Django, no mesmo arquivo,
 sombreia o model em silêncio: o import não falha, o lint não vê, e o primeiro
@@ -304,8 +304,8 @@ class DefeitoSchema(Schema):
     nenhuma, mora entre elas. `alvo` é o pedaço de texto em falta, para quem
     for consertar poder procurá-lo.
 
-    `impede_publicar` é verdadeiro só na remissão quebrada, que é o
-    [INV-CUR-C1]. Ele viaja dentro do defeito, e não numa segunda lista de
+    `impede_publicar` é verdadeiro só na remissão quebrada, que é o.
+    Ele viaja dentro do defeito, e não numa segunda lista de
     códigos que vetam, porque uma segunda lista divergiria da recusa de
     `publishLesson` no primeiro dia em que alguém mexesse numa das duas.
     """

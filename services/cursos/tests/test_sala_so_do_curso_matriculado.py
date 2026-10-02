@@ -201,7 +201,7 @@ def test_a_matricula_sem_produto_nao_entra_no_conjunto_de_produtos(env_dos_pares
 def test_matricula_de_outra_escola_nao_abre_a_sala_desta(
     env_dos_pares, rede, esqueleto, client
 ):
-    """[INV-P11]: a fronteira de site vale para a matrícula como vale para o
+    """a fronteira de site vale para a matrícula como vale para o
     curso. O produto é o mesmo; a escola, não."""
     dublar_sessao(rede, ANA)
     dublar_matricula(rede, ANA["email"], site="escola-b")

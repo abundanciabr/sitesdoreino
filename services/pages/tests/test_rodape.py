@@ -7,7 +7,7 @@ Cada prova corresponde a uma forma diferente de esta peça se perder:
    sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras (`armadilhas/087`:
    vazamento não escolhe a tag que você previu).
 2. **O estilo que não chega ao navegador.** Classe nova no HTML sem regra no
-   estilo é um rodapé sem forma, e nada fica vermelho (`armadilhas/083`). Aqui a
+   estilo é um rodapé sem forma, e nada fica vermelho. Aqui a
    folha é embutida na moldura, então a prova é sobre o corpo servido.
 
 E um quarto, que é desta casa e de nenhuma vizinha: **as três telas da porta são
@@ -146,7 +146,7 @@ def test_o_rodape_leva_para_fora_desta_casa_e_para_mais_nada(aluna, settings):
 def test_o_estilo_do_rodape_chega_junto_com_a_pagina(aluna):
     """Esta casa serve o estilo embutido na moldura, então a prova é sobre o
     corpo servido, e não sobre um arquivo em disco que ninguém garante que o
-    navegador alcança (`armadilhas/083`)."""
+    navegador alcança."""
     corpo = texto(bater(cookie=COOKIE))
     for regra in (".rodape {", ".rodape .marca", ".rodape .links", ".rodape .direitos"):
         assert regra in corpo

@@ -44,7 +44,7 @@ def test_mesma_slug_em_outro_site_nao_vaza_pela_fronteira(client, token_valido):
 
     assert resp_a.status_code == 200
     assert resp_a.json()["price_cents"] == 1000
-    assert resp_b.status_code == 404  # [INV-P11] existir noutro site não é existir aqui
+    assert resp_b.status_code == 404  # existir noutro site não é existir aqui
 
 
 def test_site_inativo_e_404_por_host_e_por_oferta(client, token_valido):

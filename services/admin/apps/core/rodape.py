@@ -67,7 +67,7 @@ def enderecos_de_outras_celulas() -> set:
     """Os links que este rodapé traz para FORA desta célula.
 
     Existe pelo mesmo motivo da irmã em `sugestoes`: os guardas de prefixo
-    (`armadilhas/029`/`081`) precisam saber distinguir um endereço desta célula
+    precisam saber distinguir um endereço desta célula
     escrito à mão de um endereço que é de outra por natureza. A lista sai daqui,
     que é quem os declara, e não de uma cópia dentro dos testes.
     """
@@ -92,8 +92,8 @@ def rodape_do_contexto(request) -> dict:
     """Processador de contexto: põe `rodape` nas páginas públicas desta célula.
 
     É processador, e não uma inclusão escrita em cada template, porque "em todas
-    as páginas públicas" não pode depender de alguém lembrar da peça
-    (`armadilhas/242`). Quem desenha é `admin/base_publico.html`.
+    as páginas públicas" não pode depender de alguém lembrar da peça.
+    Quem desenha é `admin/base_publico.html`.
     """
     resolvida = getattr(request, "resolver_match", None)
     variante = variante_da_rota(resolvida.url_name if resolvida else None)

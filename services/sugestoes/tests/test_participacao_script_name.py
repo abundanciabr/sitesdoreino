@@ -38,7 +38,7 @@ from django.urls import clear_script_prefix, reverse, set_script_prefix
 # dependem de `db` — é o mesmo desenho do `test_entrada_script_name.py`.
 PREFIXO = "/forms/sugestoes"
 
-# Escrito à mão: é o endereço que o Traefik serve (DECISAO-EVO-01 §2). Um teste
+# Escrito à mão: é o endereço que o Traefik serve. Um teste
 # que o montasse com o mesmo `reverse()` do código passaria com o prefixo errado.
 LINK_INTERNO = re.compile(r'(?:href|action)="(/[^"]*)"')
 

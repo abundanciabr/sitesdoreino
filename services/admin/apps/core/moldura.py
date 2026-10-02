@@ -21,8 +21,8 @@ copiá-la, e ninguém percebe.
 
 ## Por que isto é processador de contexto, e não uma inclusão por template
 
-Porque "TODAS as páginas" não pode depender de alguém lembrar da peça
-(`armadilhas/242`). É a mesma razão de `apps/core/rodape.py` e de
+Porque "TODAS as páginas" não pode depender de alguém lembrar da peça.
+É a mesma razão de `apps/core/rodape.py` e de
 `apps/core/barra_do_site.py`, e o desenho aqui é o mesmo dos dois: o processador
 DECIDE o que vai na moldura, e `admin/base.html` só DESENHA. Tela nova que
 estenda o molde nasce com menu e rodapé sem escrever uma linha.
@@ -122,7 +122,7 @@ CASA = "visao_geral"
 
 # O endereço do site, cru, porque cada célula é dona do próprio prefixo e esta
 # não monta endereço de ninguém. Mesma razão (e mesma forma) de
-# `apps/core/rodape.py`: os guardas de prefixo (`armadilhas/029` e `/081`)
+# `apps/core/rodape.py`: os guardas de prefixo
 # precisam distinguir um endereço desta célula escrito à mão de um que é de
 # outra por natureza, e a lista sai de quem o declara.
 URL_DO_SITE = "/"

@@ -18,7 +18,7 @@ def _css(client) -> str:
 
     A rota devolve um `FileResponse`, que NÃO tem `.content` — pedir por ele
     levanta `AttributeError` e o teste fica vermelho por instrumento, não por
-    defeito (INV-CI01: não medir não é estar certo).
+    defeito.
     """
     resposta = client.get(
         reverse("estatico", kwargs={"caminho": "sugestoes/caixa.css"})
@@ -81,7 +81,7 @@ def test_o_servidor_de_estaticos_nao_ganha_rodape(client, rf):
     o navegador o serviria como estilo.
 
     **A prova é um PAR**, e não uma afirmação de ausência sobre um `.css` que
-    não teria `<footer>` de jeito nenhum (`armadilhas/266`): a rota de máquina
+    não teria `<footer>` de jeito nenhum: a rota de máquina
     devolve `{}`, a rota de página devolve o rodapé. Arranque `ROTAS_SEM_PAGINA`
     e a primeira cai; arranque `rodape_do_contexto` e cai a segunda.
     """

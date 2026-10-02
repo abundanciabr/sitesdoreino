@@ -1,5 +1,5 @@
 # tests/test_idioma_do_site.py
-# Idioma é DADO do site (PLANO-I18N D3, fase 4): o catálogo guarda e serve.
+# Idioma é DADO do site: o catálogo guarda e serve.
 # Dois eixos aqui: a coerência fail-closed do modelo e a FORMA da resposta —
 # incluindo a regressão que prova que o site monolíngue não mudou nada.
 import pytest
@@ -121,7 +121,7 @@ def test_declaracao_incoerente_nunca_e_salva(padrao, idiomas, pedaco_da_mensagem
 
 
 def test_queryset_update_nao_fura_o_guarda_do_save():
-    # [ARMADILHAS §4.4] update() não passa por save(): sem guarda próprio, este
+    # update() não passa por save(): sem guarda próprio, este
     # seria o caminho de escrita que aceita um site torto pela porta dos fundos.
     site = Site.objects.create(
         host="meshcraft.top",

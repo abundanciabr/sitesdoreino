@@ -21,8 +21,8 @@ FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
 
-# Atrás do Traefik. Quem decide se um Host é legítimo é o middleware CONV-SITE
-# (consulta o catálogo; desconhecido ⇒ 404 — [INV-P11]), não esta lista.
+# Atrás do Traefik. Quem decide se um Host é legítimo é o middleware CONV-SITE,
+# não esta lista.
 ALLOWED_HOSTS = ["*"]
 
 # Tokens estáticos aceitos, um por par consumidor (TOKENS_ACEITOS_CHECKOUT etc.):
@@ -118,5 +118,5 @@ USE_TZ = True
 # virada, sem nada acusando a troca. Aqui o estrago tem nome próprio: prazo de
 # Pix e horário de pedido são hora que o CLIENTE lê para decidir se ainda dá
 # tempo de pagar. Foi assim que a `sugestoes` foi pega em 24/08/2026 (EVO-21).
-# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+# Guarda: tests/test_fuso_horario.py.
 TIME_ZONE = "America/Sao_Paulo"

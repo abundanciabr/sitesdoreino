@@ -11,8 +11,8 @@ a uma forma diferente de isto dar errado:
    silencioso.
 3. **A regra "esta página não tem menu" ser ignorada.** Versão vazia numa
    página precisa VENCER a versão padrão do site.
-4. **O estilo não chegar ao navegador.** O fórum serve o CSS por rota própria
-   (`armadilhas/083`), então classe nova no HTML sem regra no arquivo é um menu
+4. **O estilo não chegar ao navegador.** O fórum serve o CSS por rota própria,
+   então classe nova no HTML sem regra no arquivo é um menu
    sem forma, e nada fica vermelho.
 """
 
@@ -112,7 +112,7 @@ def _corpo(resposta) -> str:
 
     A rota do CSS devolve um `FileResponse`, que NÃO tem `.content` — pedir por
     ele levanta `AttributeError` e o teste fica vermelho por instrumento, não
-    por defeito (INV-CI01: não medir não é estar certo). Mesma peça de
+    por defeito. Mesma peça de
     `test_rodape.py`, pelo mesmo motivo.
     """
     if resposta.streaming:
@@ -278,7 +278,7 @@ def test_rotulo_com_marcacao_sai_escapado(client, monkeypatch):
 
 
 def test_o_estilo_do_menu_chega_ao_navegador(client):
-    """O fórum serve o CSS por rota própria (`armadilhas/083`): classe nova no
+    """O fórum serve o CSS por rota própria: classe nova no
     HTML sem regra no arquivo é um menu sem forma, e nada ficaria vermelho."""
     folha = _corpo(client.get(reverse("estatico", args=["forum.css"])))
     assert ".barra-do-site" in folha
@@ -326,8 +326,8 @@ def test_o_item_inicio_continua_aparecendo_no_forum(client, monkeypatch):
 # valor novo no catálogo de vazar um atalho durante a janela em que uma das
 # células ainda não subiu com o código novo.
 #
-# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
-# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras:
+# uma tabela certa com um chamador que passa o argumento
 # errado passaria num teste que só lê a tabela.
 MENU_COM_EQUIPE = {
     "default_version": "v",

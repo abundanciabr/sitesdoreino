@@ -21,7 +21,7 @@ TOKEN = "token-do-par-admin-sugestoes"
 IDEIAS = "/interno/gestao/ideias"
 MANTENEDOR = "mantenedor@meshcraft.test"
 # O id que atravessa a plataforma — o Admin o tem porque foi com ele que abriu a
-# própria porta ([INV-SUG11]/[INV-SUG12]).
+# própria porta.
 ID_DA_PLATAFORMA = "idt-do-mantenedor"
 
 
@@ -107,7 +107,7 @@ def test_o_email_do_aluno_nao_atravessa(client, db, par_autorizado, sugestao, pl
 def test_a_plateia_que_atravessa_e_a_que_o_sininho_avisa(
     client, db, par_autorizado, sugestao, plateia
 ):
-    """[INV-SUG13] cruzando a fronteira: a promessa e a entrega são a mesma gente."""
+    """cruzando a fronteira: a promessa e a entrega são a mesma gente."""
     montada = plateia(sugestao, votantes=6, comentaristas=3, marca="cruza")
     Sugestao.objects.filter(pk=sugestao.pk).update(titulo=sugestao.titulo)
     assert montada  # cenário montado de verdade
@@ -250,7 +250,7 @@ def test_uma_fase_que_a_equipe_nao_escolhe_e_recusada(
 def test_moderar_sem_o_id_da_plataforma_recusa_com_instrucao(
     client, db, par_autorizado, sugestao
 ):
-    """[INV-SUG12] O fato não se afirma sem quem o afirmou — e a recusa ensina.
+    """O fato não se afirma sem quem o afirmou — e a recusa ensina.
 
     Sem esta tradução, a mesma situação chegaria ao Admin como erro 500: um
     "deu errado" sem caminho, para um problema cuja solução é a pessoa entrar

@@ -16,7 +16,7 @@ As quatro coisas que esta suíte existe para travar:
 3. **A tela e a porta concordam.** O botão aparece exatamente quando a view
    aceita, porque as duas perguntam a mesma função (`pode_moderar`).
 4. **O formulário funciona de verdade**, com CSRF ligado, do jeito que o
-   navegador do mantenedor vai usar (`armadilhas/204`).
+   navegador do mantenedor vai usar.
 
 **Todo teste daqui atravessa a porta pela rede, não pela função** — a mesma
 regra de `test_escrever.py`. Um `Ator` montado à mão prova o que eu acredito,
@@ -781,7 +781,7 @@ def test_o_botao_do_administrador_atravessa_o_csrf_de_verdade(
     env, monkeypatch, conversa
 ):
     """Suíte que só usa o cliente padrão não prova formulário nenhum: ela prova
-    a permissão da view e passa por cima da porta de CSRF (`armadilhas/204`).
+    a permissão da view e passa por cima da porta de CSRF.
 
     O crachá vai no POTE de cookies, e não no cabeçalho: `headers={"cookie":
     ...}` substitui o cabeçalho inteiro e leva junto o `forum_csrf` que a

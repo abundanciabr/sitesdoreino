@@ -80,12 +80,12 @@ def test_o_ator_sem_id_da_plataforma_para_tudo_e_nada_e_escrito(
     """Fail-closed, e o `nada é escrito` é o ponto — não só o evento.
 
     Se o rollback falhasse, o status teria mudado sem o fato existir, que é o
-    modo de falha que a outbox existe para tornar impossível (INV-P6).
+    modo de falha que a outbox existe para tornar impossível.
 
     **A encenação é pela PORTA, e tem de ser.** A primeira versão deste guarda
     zerava a coluna `id_da_plataforma` da equipe e mandava o POST — e passava
     verde sem encenar falha nenhuma: toda requisição atravessa `obter_sessao`,
-    que REGRAVA o id na reentrada (INV-SUG11). O único jeito honesto de a
+    que REGRAVA o id na reentrada. O único jeito honesto de a
     coluna continuar vazia é o site responder sem `id`, que o contrato declara
     opcional e nulável — e é o que `com_id=False` faz.
     """
@@ -126,7 +126,7 @@ def test_a_carta_aponta_para_o_fato_que_a_gerou(caixa, quadro, categoria, platei
 
 
 def test_a_carta_nao_leva_titulo_nem_texto_nem_email(caixa):
-    """A frase nasce na LEITURA (DECISAO-notificacoes §5.1), e o título fica
+    """A frase nasce na LEITURA, e o título fica
     fora por um motivo próprio: ideia renomeada deixaria aviso velho mentindo."""
     sugestao = caixa.publicar()
     caixa.mudar_status(

@@ -10,10 +10,10 @@ prometendo como futuro o que já estava pronto.
 O QUE ESTE ARQUIVO PROTEGE
 --------------------------
 1. **Quem entrou vê os quatro caminhos**, cada um saído de `{% url %}`, que é
-   quem carrega o prefixo público `/conquistas` (`armadilhas/029` e `/081`).
+   quem carrega o prefixo público `/conquistas`.
 2. **A promessa velha não volta.** O corpo é comparado com os espaços
    normalizados, porque a frase do template ocupa várias linhas e um `in` cru
-   deixaria passar a frase de volta sem erro (`armadilhas/394`).
+   deixaria passar a frase de volta sem erro.
 3. **Nenhum link leva a 403 ou 404.** Cada endereço da faixa é seguido por quem
    o vê, e a resposta tem de ser a tela.
 4. **Visitante continua com o convite para entrar**, sem a faixa de quem entrou.

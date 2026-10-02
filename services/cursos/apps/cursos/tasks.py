@@ -27,10 +27,9 @@ Redis. Toda a regra mora em `envio.registrar_estouros(agora)`, que é função d
 
 **Um worker, os dois batimentos.** O serviço auxiliar no compose (degrau 1.7,
 `infra/`) é `python manage.py run_huey`, a entrada canônica e a única que faz
-`django.setup()` + autodiscover deste módulo (`armadilhas/030`). Ele lê
+`django.setup()` + autodiscover deste módulo. Ele lê
 `HUEY_REDIS_URL` (a fila) e `REDIS_STREAMS_URL` (o transporte dos eventos), as
-mesmas duas variáveis das células irmãs, e as duas no PONTO DE USO
-(`armadilhas/097`).
+mesmas duas variáveis das células irmãs, e as duas no PONTO DE USO.
 """
 
 import json
@@ -60,8 +59,8 @@ def relay_outbox() -> int:
     `published_at` preenchido é ignorada pelo filtro, então uma segunda passada
     não republica nada.
 
-    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import
-    (`armadilhas/097`): o container web importa este módulo (via `eventos.py` e
+    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import:
+    o container web importa este módulo (via `eventos.py` e
     via o autodiscover do djhuey) e não pode morrer no boot se a variável
     faltar. Faltando, o `KeyError` estoura só aqui, é engolido pelo
     `relay_apos_commit` e o evento fica pendente, nunca perdido.

@@ -23,7 +23,7 @@ O QUE ELE RECUSA FAZER, e por quê
 - **Escola sem degrau nenhum:** ligar zero linhas e dizer "OK" seria falso-verde
   puro. Para com "PAROU POR SEGURANÇA" e manda semear antes.
 - **Escada de um degrau só:** com um degrau ligado não há para onde subir, e a
-  tela do aluno diz "o degrau seguinte ainda não abriu" (`armadilhas/271`). Quem
+  tela do aluno diz "o degrau seguinte ainda não abriu". Quem
   rodou isto esperando ver uma escada acharia que o comando falhou. Então ele
   exige pelo menos DOIS, e explica.
 
@@ -111,6 +111,5 @@ class Command(BaseCommand):
             )
 
         # A linha que o pipeline procura. Só existe aqui, no fim do caminho
-        # feliz, e nunca no eco do script que chama este comando
-        # (`armadilhas/114`).
+        # feliz, e nunca no eco do script que chama este comando.
         self.stdout.write("ESCADA DE DEGRAUS LIGADA OK")

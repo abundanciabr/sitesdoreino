@@ -70,7 +70,7 @@ def posicao_na_fila(perfil: PerfilProfissional, *, site_id: str) -> int | None:
     quem não está esperando por nenhuma.
 
     Quem se pausou ou está trabalhando CONTINUA tendo lugar: a data de entrada é
-    dela e só o abandono a altera (lei §6.2, [INV-ENC-J4]). Por isso a conta
+    dela e só o abandono a altera. Por isso a conta
     ordena por posse de data, e não por disponibilidade.
     """
     na_fila = [

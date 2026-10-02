@@ -5,7 +5,7 @@ Não há `SessionMiddleware`, não há `SESSION_ENGINE`, e o cookie recebido é
 repassado OPACO: a Fila não tem a chave que o assina e não pode ter ([INV-P12];
 `DECISAO-fila-do-primeiro-dolar.md` §4). Duas células assinando o MESMO cookie
 com chaves diferentes produzem um cabo-de-guerra invisível, sem erro, sem log e
-sem alarme (`armadilhas/143`). Guarda:
+sem alarme. Guarda:
 `tests/test_inv_encomendas_nao_assina_sessao.py`.
 
 **E reconhecer também não é autorizar.** A `identidade` devolve um `papel` junto
@@ -14,8 +14,7 @@ com o id, e ele é de EXIBIÇÃO. Quem decide o que alguém pode fazer aqui é
 
 Molde: `services/gamificacao/apps/core/sessao.py`, copiado e não importado
 (célula não importa código de outra). O que esta célula acrescenta é a terceira pergunta, e são estas três
-que fazem `celulas.yml` passar a `consome: [alunos, identidade]` no MESMO PR
-(`armadilhas/224`):
+que fazem `celulas.yml` passar a `consome: [alunos, identidade]` no MESMO PR:
 
     quem_e()               identidade   quem é o dono do cookie
     pessoa_por_email()     identidade   o id opaco de quem tem este e-mail
@@ -32,7 +31,7 @@ outras duas falham FECHADO, porque quem as chama está prestes a CONCEDER, e "n�
 consegui perguntar" lido como "não é aluna" recusaria em silêncio um título que
 o professor acabou de decidir dar.
 
-**Nada aqui é lido no import** (`armadilhas/097`): env lido no carregamento do
+**Nada aqui é lido no import**: env lido no carregamento do
 módulo transforma variável ausente em HTTP 500 em toda página, com deploy verde.
 """
 
@@ -56,14 +55,14 @@ _NAO_PERGUNTEI = object()
 _cliente: httpx.Client | None = None
 
 # A única categoria que dá acesso à Fila, na palavra da porta das cinco
-# categorias (`DECISAO-categorias-de-usuario.md`). Uma segunda régua aqui seriam
+# categorias. Uma segunda régua aqui seriam
 # duas verdades sobre quem é aluno, e elas divergiriam no primeiro status novo.
 CATEGORIA_DE_ALUNO = "aluno"
 
 
 def http() -> httpx.Client:
     """Um cliente por processo. `httpx.get()` constrói um `SSLContext` por
-    chamada (`armadilhas/082`); o `respx` troca o transporte na classe, então o
+    chamada; o `respx` troca o transporte na classe, então o
     dublê dos testes continua valendo."""
     global _cliente
     if _cliente is None:
@@ -98,7 +97,7 @@ def site_desta_instalacao() -> str:
 
     Env, e não parâmetro: o contrato em papel não tem `site_id` em operação
     nenhuma, e acrescentar um por conta própria seria emendar contrato fora do
-    Rito (`RITOS.md` §3).
+    Rito.
 
     **Falha FECHADO, e aqui é diferente da gamificação**, onde `SITE_ID` ausente
     só tira o selo da página. Parâmetros, fila e peças são todos por site:

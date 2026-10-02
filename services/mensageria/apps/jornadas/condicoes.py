@@ -1,6 +1,5 @@
 """As condições que um passo pode consultar — funções Python num dicionário.
 
-Lei: `docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md` §4.2 e §10.1.
 
 **Isto não é, e nunca pode virar, uma linguagem de fórmulas dentro do banco.**
 Condição nova é um PR pequeno que acrescenta uma função aqui; o `Passo` guarda só

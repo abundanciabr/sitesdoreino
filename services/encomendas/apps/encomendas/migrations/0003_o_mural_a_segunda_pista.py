@@ -34,7 +34,7 @@ O QUE ENTRA, E POR QUE CADA COISA E DO BANCO E NAO DE UM `if`
    de chaves e FECHADO no banco, entao chave nova e sempre uma troca de CHECK,
    e sempre um diff visivel. O VALOR nao mora aqui: mora na semente.
 
-5. **As chaves estrangeiras compostas** (`armadilhas/274`). Uma `ForeignKey`
+5. **As chaves estrangeiras compostas**. Uma `ForeignKey`
    comum deixaria uma reserva de um site apontar para encomenda ou perfil de
    OUTRO, e `site_id` denormalizado sem esta trava e uma coluna que mente. Os
    indices `uniq_encomenda_id_com_site` e `uniq_perfil_id_com_site` da `0001`

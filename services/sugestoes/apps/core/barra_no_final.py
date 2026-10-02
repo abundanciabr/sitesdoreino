@@ -30,7 +30,7 @@ destino de nenhuma URL que já funcionava — só dá destino a uma que não tin
 **302, nunca 301.** O 301 fica cacheado no navegador de forma praticamente
 permanente, e uma rota que ganhe a forma com barra amanhã ficaria inalcançável
 para quem já visitou. É a mesma razão pela qual a matriz de idiomas do `funil`
-escolheu 302 (`PLANO-I18N` D1).
+escolheu 302.
 
 **Só GET e HEAD.** Um 302 num POST vira GET no navegador e o corpo do
 formulário é descartado em silêncio — o pior modo de falha possível numa célula
@@ -72,7 +72,7 @@ class BarraNoFinal:
 
         # `path_info` é o caminho SEM o prefixo público (`SCRIPT_NAME`), que é
         # o que o resolver desta célula entende — sob `/forms/sugestoes` o
-        # `request.path` traria o prefixo e nada resolveria (armadilhas/081).
+        # `request.path` traria o prefixo e nada resolveria.
         caminho = request.path_info
         if not caminho.endswith("/") or caminho == "/":
             return resposta

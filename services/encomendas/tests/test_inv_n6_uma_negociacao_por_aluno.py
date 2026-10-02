@@ -1,7 +1,7 @@
-"""[INV-ENC-N6] Um aluno nunca tem duas negociações vivas, somando as duas pistas.
+"""Um aluno nunca tem duas negociações vivas, somando as duas pistas.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8. É a mesma forma do
-[INV-ENC-J2] (uma oferta pendente por aluno), e precisa ser dita à parte porque
+(uma oferta pendente por aluno), e precisa ser dita à parte porque
 negociar não é o mesmo que estar trabalhando: sem a regra, o aluno fecha cinco
 acordos e descobre que tem cinco encomendas, contra a regra "uma por vez" da lei
 §6.5.
@@ -68,7 +68,7 @@ def test_o_banco_recusa_duas_propostas_vivas_do_mesmo_aluno(
     """A segunda trava, na tabela das propostas, somando as duas pistas.
 
     A `Proposta` guarda o aluno numa coluna própria justamente para isto:
-    `UniqueConstraint` não atravessa chave estrangeira (`armadilhas/274`), e sem
+    `UniqueConstraint` não atravessa chave estrangeira, e sem
     a coluna denormalizada esta regra precisaria de um `if` em Python, que não
     resolve dois cliques no mesmo segundo.
     """

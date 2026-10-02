@@ -94,7 +94,7 @@ class Relatorio:
         """ERROR domina FAIL, que domina PASS/SKIP.
 
         Um relatório VAZIO é ERROR, não PASS: um portão que não mediu nada não
-        provou nada. Este é o coração do INV-CI01.
+        provou nada.
         """
         if not self.resultados:
             return Estado.ERROR

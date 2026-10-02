@@ -15,7 +15,7 @@ O que estes guardas protegem:
 4. **Cada gesto vira linha de auditoria**, inclusive quando a célula recusa. É a
    metade do rastro que só existe aqui: a recusa não escreve nada do outro lado.
 5. **Grau de escrita ausente não vira erro cru.** A tela ABRE, mostra tudo, e o
-   botão responde em português dizendo qual roteiro rodar (`armadilhas/318`).
+   botão responde em português dizendo qual roteiro rodar.
 6. **Par de tokens ausente abre a tela mesmo assim**, dizendo o que falta.
    Fail-OPEN na leitura: uma tela de operação que não abre é inútil justamente
    quando você precisa dela.
@@ -300,7 +300,7 @@ def test_motivo_opcional_chega_a_celula_com_autor(db, motivo):
 
 
 # ---------------------------------------------------------------------------
-# 3. Os dois graus de crachá (`armadilhas/318`)
+# 3. Os dois graus de crachá
 # ---------------------------------------------------------------------------
 
 

@@ -139,7 +139,7 @@ def test_a_pagina_carrega_o_css_por_url_e_nao_por_caminho_cravado(client, area_p
     """`{% url %}` e não caminho à mão — é ele que carrega o prefixo público.
 
     Com `/static/forum.css` escrito na unha, o fórum pediria o CSS ao `funil`
-    em produção (`armadilhas/029` e `/081`).
+    em produção.
     """
     corpo = client.get(reverse("home")).content.decode()
     assert reverse("estatico", args=["forum.css"]) in corpo

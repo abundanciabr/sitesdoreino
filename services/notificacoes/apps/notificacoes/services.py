@@ -303,7 +303,7 @@ def avisar_os_aparelhos(
 
 
 # ---------------------------------------------------------------------------
-# O aviso de teste (Rito de Contrato de 03/09/2026)
+# O aviso de teste
 # ---------------------------------------------------------------------------
 #: O único assunto desta plataforma que não descreve um fato do projeto. Ele
 #: existe para PROVAR O CANAL, e está no `enum` do contrato como todos os
@@ -340,7 +340,7 @@ def enviar_aviso_de_teste(*, site_id: str, destinatario_id: str) -> int:
         destinatario_id=destinatario_id,
         # Quem pede o teste é quem o recebe, e por isso ele é ator e
         # destinatário ao mesmo tempo. Não é redundância: a porta que chama é
-        # obrigada a mandar o id de quem clicou (`contracts/`), e gravar os
+        # obrigada a mandar o id de quem clicou, e gravar os
         # dois iguais é o que registra, no próprio dado, que ninguém disparou
         # aviso no aparelho de outra pessoa.
         ator_id=destinatario_id,

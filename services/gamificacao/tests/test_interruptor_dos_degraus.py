@@ -3,7 +3,7 @@
 POR QUE ELE EXISTE
 ------------------
 Em 01/09/2026 o mantenedor abriu `/conquistas` e leu três frases que se
-contradiziam. O defeito da tela foi corrigido (`armadilhas/271`) e o que sobrou
+contradiziam. O defeito da tela foi corrigido e o que sobrou
 foi a verdade: a escola nunca ligou degrau nenhum. A tela dele tinha botão para
 as regras e para as conquistas; para a escada, nada.
 
@@ -176,7 +176,7 @@ def test_ligar_um_degrau_nao_reescreve_o_nivel_gravado_do_perfil():
 
 def test_avisa_quando_ligar_este_degrau_nao_forma_escada():
     """Um degrau sozinho não é escada: a tela do aluno diz que o seguinte ainda
-    não abriu (`armadilhas/271`). Ele precisa saber disso antes de clicar."""
+    não abriu. Ele precisa saber disso antes de clicar."""
     primeiro = _degrau(1, 0, "Aprendiz")
     _degrau(2, 50, "Aprendiz de Ateliê")
 

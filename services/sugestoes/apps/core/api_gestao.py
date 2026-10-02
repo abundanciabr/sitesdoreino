@@ -94,7 +94,7 @@ class IdeiaEmGestao(Schema):
     comentarios: int
     # A plateia: quantas pessoas DISTINTAS estão atrás desta ideia — autor, quem
     # votou e quem comentou, cada uma contada uma vez. Viaja pronta porque é a
-    # mesma gente que receberá o aviso quando a ideia andar ([INV-SUG13]); uma
+    # mesma gente que receberá o aviso quando a ideia andar; uma
     # segunda contagem do outro lado seria uma segunda verdade.
     pessoas: int
     autor: str
@@ -112,14 +112,14 @@ class IdeiaEmGestao(Schema):
     # redações para o aluno e para a equipe seriam duas verdades sobre a recusa.
     motivo_da_saida: str
     avaliacao: "AvaliacaoDaEquipe | None" = None
-    # O arquivamento (`DECISAO-arquivar-ideia.md`, 29/08/2026). NÃO é status: uma
+    # O arquivamento. NÃO é status: uma
     # ideia arquivada pode estar em qualquer fase do trilho — arquivar é a
     # equipe tirando algo de vista (spam, duplicata, engano), não uma decisão de
     # produto sobre ela. `arquivada_em` vazio é "nunca foi".
     arquivada: bool = False
     arquivada_em: str = ""
     motivo_do_arquivamento: str = ""
-    # O apagamento definitivo (`DECISAO-apagar-ideia.md`, 29/08/2026). Uma
+    # O apagamento definitivo. Uma
     # ideia apagada também é `arquivada` (mesmo carimbo) — `apagada` é o
     # campo que diz à tela que não há mais nada para restaurar: o botão
     # "Restaurar" não aparece, e o conteúdo que viaja aqui já está vazio.
@@ -159,7 +159,7 @@ class LinhaDoHistorico(Schema):
 
 # O nome NÃO é `ChangeSpecAprovado` de propósito: esse é o model, e ele está
 # importado neste módulo — um `ninja.Schema` homônimo sombrearia o import em
-# silêncio (`armadilhas/020`), como o comentário lá em cima já explica.
+# silêncio, como o comentário lá em cima já explica.
 class ChangeSpecAssinado(Schema):
     """Uma assinatura de obra, como ela ficou registrada — a FICHA dela.
 
@@ -241,7 +241,7 @@ class IdeiaComHistorico(IdeiaEmGestao):
     # quebra para quem consome, e `ci/contrato_aditivo.py` reprova (reprovou
     # este PR na primeira volta — o Admin de ontem não espera a chave).
     # `default_factory=list` e não `= []`: `default=` faria o pydantic emitir
-    # uma chave `"default"` no schema exportado (`armadilhas/075`).
+    # uma chave `"default"` no schema exportado.
     changespecs: "list[ChangeSpecAssinado]" = Field(default_factory=list)
     # O rastro das correções de texto (31/08/2026), pela mesma porta e pelas
     # mesmas razões do `changespecs`: opcional, `default_factory`, e só na ideia
@@ -639,7 +639,7 @@ def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
             )
         }
     except AtorSemIdDaPlataforma:
-        # [INV-SUG12] O fato não pode ser afirmado sem quem o afirmou. Recusa
+        # O fato não pode ser afirmado sem quem o afirmou. Recusa
         # legível em vez de 500: o caminho existe e é curto — a pessoa entra uma
         # vez pelo site e a porta grava o id na reentrada.
         return 422, {

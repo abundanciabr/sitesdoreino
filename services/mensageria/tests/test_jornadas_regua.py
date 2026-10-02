@@ -364,7 +364,7 @@ def test_o_teto_e_do_DIA_de_sao_paulo_e_nao_de_24_horas():
 
     Uma mensagem às 23h de segunda e outra às 00h30 de terça são DOIS dias, e
     ambas passam. Com o fuso do Django cru (`America/Chicago`, o padrão de
-    fábrica), o envio das 22h cai no dia errado e nada acusa (`armadilhas/099`).
+    fábrica), o envio das 22h cai no dia errado e nada acusa.
     """
     inscricao, passo = uma_inscricao("boas-vindas")
     outra, outro_passo = uma_inscricao("comemoracao")

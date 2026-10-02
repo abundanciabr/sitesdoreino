@@ -26,7 +26,7 @@ há estado no navegador. Três razões, nesta ordem:
 1. **O que se vê é o que está gravado.** Um editor no cliente teria um botão de
    salvar e uma janela entre o que a tela mostra e o que o site serve.
 2. **A política de segurança desta área é apertada de propósito.** Cada script
-   embutido exige um hash na CSP (`armadilhas/199`), e uma tela que é
+   embutido exige um hash na CSP, e uma tela que é
    formulário não precisa de nenhum.
 3. **O mantenedor é leigo.** Um botão por gesto, com o nome do gesto escrito
    nele, não tem como ser mal entendido.

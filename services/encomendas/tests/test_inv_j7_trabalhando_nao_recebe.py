@@ -1,6 +1,5 @@
-"""[INV-ENC-J7] Aluno "trabalhando" não recebe ofertas.
+"""Aluno "trabalhando" não recebe ofertas.
 
-Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça).
 Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.5 ("uma por vez") e §6.3.
 
 A regra tem uma frase no plano — *"aluno com encomenda da fila ativa não recebe
@@ -101,8 +100,7 @@ def test_o_primeiro_da_fila_trabalhando_cede_a_vez(
     """A prova do efeito, e não só da condição.
 
     Ana está na frente por 90 dias de diferença. Trabalhando, ela cede a vez a
-    Bia — e recupera o lugar depois, porque trabalhar não move `data_entrada_fila`
-    ([INV-ENC-J4]).
+    Bia — e recupera o lugar depois, porque trabalhar não move `data_entrada_fila`.
     """
     ana = criar_perfil(
         "pes-ana",

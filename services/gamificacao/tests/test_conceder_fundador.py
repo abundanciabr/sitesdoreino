@@ -521,7 +521,7 @@ def test_resposta_200_que_nao_e_json_nao_vira_pessoa_inexistente(par_com_a_ident
 
 
 def test_par_nao_provisionado_nao_concede_nada_a_ninguem(monkeypatch):
-    """Env ausente é ERROR, e ele chega antes da rede (`armadilhas/097`).
+    """Env ausente é ERROR, e ele chega antes da rede.
 
     Falha de configuração é mais provável que falha de rede: basta uma variável
     não colada no servidor. Tratá-la como "não encontrei" seria a pior versão do

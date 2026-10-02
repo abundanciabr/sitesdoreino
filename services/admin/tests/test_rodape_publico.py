@@ -14,7 +14,7 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
    rodapé do site em cima da área de administração diriam ao mantenedor "você
    está no site" quando ele está na sala de máquinas.
 3. **A tabela certa e o molde ignorando a decisão.** Toda asserção é sobre o
-   CORPO RENDERIZADO (`armadilhas/087`).
+   CORPO RENDERIZADO.
 4. **O estilo que não chega.** Aqui o CSS é EMBUTIDO no molde — então a prova é
    que a regra está na página servida, não num arquivo à parte.
 """
@@ -41,7 +41,7 @@ def rotas_publicas_pelo_mapa() -> set:
     mapa = arquivo_do_mapa()
     assert mapa is not None, (
         "o mapa do site não existe (`arquivo_do_mapa()` devolveu `None`). Este "
-        "guarda não tem o que medir, e isso não é um OK [INV-CI01]. Devolva o "
+        "guarda não tem o que medir, e isso não é um OK. Devolva o "
         "arquivo ao lugar que `apps/core/mapa_do_site.py` declara."
     )
     dados = json.loads(mapa.read_text(encoding="utf-8"))
@@ -55,7 +55,7 @@ def rotas_publicas_pelo_mapa() -> set:
     }
     assert padroes, (
         "o mapa não declara página pública nenhuma nesta célula — isto é falha "
-        "de medição, não notícia boa ([INV-CI01])."
+        "de medição, não notícia boa."
     )
     nomes = {
         padrao.name
@@ -128,7 +128,7 @@ def test_o_pe_antigo_de_uma_linha_nao_voltou(client):
 
 @pytest.mark.django_db
 def test_o_estilo_das_duas_pecas_vem_junto_com_a_pagina(client):
-    """Aqui o CSS é EMBUTIDO no molde (célula sob prefixo, `armadilhas/083`),
+    """Aqui o CSS é EMBUTIDO no molde,
     então a prova é que a regra está na página servida — classe no HTML sem
     regra no estilo é uma peça sem forma, e nada ficaria vermelho."""
     corpo = client.get(reverse("docs_publicos")).content.decode()
@@ -251,8 +251,7 @@ def test_a_barra_do_site_nao_aparece_no_bastidor(client, rf):
 
     Uma página do bastidor exige a porta fail-closed desta célula, e um teste
     que passasse por ela mediria a porta, não a peça — ficaria verde por
-    redirecionamento, que é uma segunda causa suficiente para o "não tem menu"
-    (`armadilhas/266`).
+    redirecionamento, que é uma segunda causa suficiente para o "não tem menu".
     """
     from apps.core import barra_do_site
 

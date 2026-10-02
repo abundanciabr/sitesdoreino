@@ -229,7 +229,7 @@ def test_a_property_nao_toca_a_rede_para_quem_nao_foi_reconhecido(
     (RETROSPECTIVA-FASE-D §2) dentro do próprio teste que existe para impedi-la.
 
     A rota é registrada de propósito: sem ela, a mutação viraria
-    `AllMockedAssertionError` (`armadilhas/054`) em vez de uma chamada contada,
+    `AllMockedAssertionError` em vez de uma chamada contada,
     e o teste reprovaria pelo motivo errado.
     """
     rede.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
@@ -413,7 +413,7 @@ def test_no_topo_da_escada_mostra_o_degrau_sem_barra_nenhuma(
 def test_no_primeiro_degrau_sem_proximo_o_quadrinho_nao_parabeniza_ninguem(
     client, logado, gamificacao_configurada
 ):
-    """O defeito que o mantenedor leu na tela em 01/09/2026 (`armadilhas/271`).
+    """O defeito que o mantenedor leu na tela em 01/09/2026.
 
     `xp_para_proximo: null` com `nivel: 1` não é topo: é a escada que a escola
     ainda não montou. E este corpo não é hipótese — é o que a porta devolve
@@ -578,7 +578,7 @@ def test_o_cliente_devolve_so_os_tres_campos_que_a_tela_usa(
 
 def test_o_cliente_sem_configuracao_devolve_nao_sei_sem_tocar_a_rede(rede):
     """Sem `respx` registrado para a gamificação, qualquer salto viraria
-    `AllMockedAssertionError` (`armadilhas/054`) — o teste é o próprio guarda."""
+    `AllMockedAssertionError` — o teste é o próprio guarda."""
     assert GamificacaoClient().obter_meu_status(COOKIE) is None
     assert _chamadas_de_progresso(rede) == []
 

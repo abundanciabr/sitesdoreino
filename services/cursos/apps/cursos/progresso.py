@@ -2,7 +2,7 @@
 
 **O checkpoint abre a porta; o calendário, nunca** (a missão da célula). Este
 arquivo é o único lugar onde uma porta muda de estado, e é por isso que os
-três invariantes da porta (`PLANO-CELULA-CURSOS.md` §9) são impostos aqui:
+três invariantes da porta são impostos aqui:
 
 - **[INV-CUR-P2]** a porta seguinte abre por UMA de duas regras, e a regra é
   dado do curso (`Curso.progressao`, escolhida pelo mantenedor no cadastro,
@@ -97,8 +97,7 @@ def abrir(progresso: Progresso) -> Progresso:
 
 
 def concluir(progresso: Progresso, *, laudo) -> Progresso:
-    """No curso por laudo, a porta seguinte abre SÓ por um laudo aberto
-    ([INV-CUR-P2], a regra do livro).
+    """No curso por laudo, a porta seguinte abre SÓ por um laudo aberto.
 
     `laudo` é o único caminho: qualquer objeto cuja `decisao` seja `aberto` ou
     `aberto_com_ajuste`. Não existe parâmetro de data, de XP nem de pagamento,
@@ -119,7 +118,7 @@ def concluir(progresso: Progresso, *, laudo) -> Progresso:
 
 def concluir_por_gesto(progresso: Progresso) -> Progresso:
     """No curso de progressão LIVRE, o próprio aluno conclui a aula, e a
-    seguinte abre ([INV-CUR-P2], a segunda regra).
+    seguinte abre.
 
     Exige o curso ser livre (no curso por laudo esta função
     recusa, e `concluir` é o único caminho) e a porta não trancada. Uma
@@ -186,7 +185,7 @@ def _abrir_a_seguinte(concluido: Progresso) -> None:
 
 
 def pausas_registradas(progresso: Progresso) -> bool:
-    """Todas as pausas da aula têm registro desta pessoa? ([INV-CUR-P3])
+    """Todas as pausas da aula têm registro desta pessoa?
 
     É esta a pergunta que o formulário do checkpoint (degrau 2.1) faz antes de
     abrir. Aula sem pausa responde `True`: não há o que registrar.

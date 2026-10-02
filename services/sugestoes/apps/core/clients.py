@@ -40,7 +40,7 @@ _cliente: httpx.Client | None = None
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
-    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um
+    Não é micro-otimização: `httpx.get()` constrói um
     cliente novo por chamada, e com ele um `ssl.SSLContext` — 0,4 s por
     chamada, medido nesta máquina. `httpx.Client` é seguro entre threads, e o
     `respx` troca o transporte na classe, então o dublê continua valendo.
@@ -167,8 +167,8 @@ class AlunosClient:
     def situacao_de(self, email: str) -> str:
         """Em que categoria esta pessoa está — a pergunta que decide a TELA.
 
-        Substitui `matriculas_de` na porta desde 28/08/2026
-        (`DECISAO-ex-aluno-e-a-porta-que-explica`). A anterior respondia sim ou
+        Substitui `matriculas_de` na porta desde 28/08/2026.
+        A anterior respondia sim ou
         não, e com um "não" a Caixa mostrava sempre a mesma tela: o formulário
         de pedir entrada. Só que há QUATRO jeitos de não ter acesso, e mandar
         quem saiu da escola preencher o formulário de entrada é dizer a ela que
@@ -241,7 +241,7 @@ class AlunosClient:
             )
         return corpo
 
-    # -- a fila de liberação (DECISAO-fila-de-liberacao.md, 27/08/2026) -------
+    # -- a fila de liberação -------
 
     NA_FILA = "na-fila"
     JA_TEM_MATRICULA = "ja-tem-matricula"
@@ -362,7 +362,7 @@ class NotificacoesClient:
         `None` é "não sei" — nunca confundido com `{"itens": [], ...}`
         (página real, zero avisos DE VERDADE). É essa distinção que permite a
         `ver_avisos` mostrar a frase de falha em vez de uma lista vazia
-        disfarçada (Escolha 2, `DECISAO-fase-4-do-sininho.md`).
+        disfarçada.
         """
         config = self._configuracao()
         if config is None:

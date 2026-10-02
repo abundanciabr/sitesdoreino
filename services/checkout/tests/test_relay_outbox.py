@@ -3,7 +3,7 @@
 Antes deste relay o evento era gravado na outbox (emitir.py) e ninguém o
 publicava — quem abandona o carrinho ficava invisível para `leads`. O relay
 espelha o de `pagamentos` (provado em produção): publica no stream ANTES de
-marcar `published_at` (ARMADILHAS §4.12 — pior caso republica, nunca perde),
+marcar `published_at`,
 com `transaction.on_commit` no ponto de emissão + task periódica de segurança.
 
 O Redis é mockado no transporte (`redis.from_url`): o que se prova aqui é o
@@ -66,7 +66,7 @@ def test_relay_publica_envelope_no_stream_antes_de_marcar_published_at():
     assert fake.xadd.call_count == 1
 
 
-# [ARMADILHAS §6.5] transaction=True: o on_commit só dispara com COMMIT real —
+# transaction=True: o on_commit só dispara com COMMIT real —
 # no django_db padrão (rollback) o callback é descartado e o teste mentiria.
 @pytest.mark.django_db(transaction=True)
 def test_pedido_criado_e_publicado_apos_o_commit_do_post(api, rede):

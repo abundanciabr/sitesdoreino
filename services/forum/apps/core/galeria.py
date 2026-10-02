@@ -2,7 +2,7 @@
 
 POR QUE ESTE ARQUIVO EXISTE
 ---------------------------
-O contrato congelado (`contracts/forum.openapi.yaml`) abre UMA exceção na porta
+O contrato congelado abre UMA exceção na porta
 de máquina do fórum: `GET /galeria/candidatas/{pessoa_id}`. É a única operação
 desta célula que fala de área TRANCADA, e o que a torna legítima não é o token
 de quem chama, é o gesto de quem escreveu: o aluno marcou o próprio trabalho

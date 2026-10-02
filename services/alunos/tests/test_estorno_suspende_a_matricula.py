@@ -10,7 +10,7 @@ tem prazo de defesa), e isso não é assunto desta célula.
 **Por que `suspensa` e não `reembolsada`.** Os dois estados existem e os dois
 tiram o acesso, então a escolha é real e precisa estar escrita. `reembolsada`
 carrega uma segunda decisão junto: quem está nela não pede para voltar pela
-fila (`STATUS_QUE_BARRAM_A_FILA`, `DECISAO-reembolso-tira-o-acesso.md`).
+fila.
 `suspensa` é exatamente o que o mantenedor pediu aqui: o acesso fecha, a ficha
 fica inteira e **reabrir é decisão humana** — o painel religa a pessoa com um
 clique. Quem quiser trocar isto por `reembolsada` está mudando a lei do que o
@@ -26,7 +26,7 @@ estorno significa, e isso é decisão dele, não de um despacho.
 5. estorno de um pagamento que não matriculou ninguém não derruba o consumidor.
 
 O §6 fecha os dois modos de falha silenciosa do casamento entre o evento e a
-matrícula: o escopo por site ([INV-P11]) e a referência vazia, que casaria com
+matrícula: o escopo por site e a referência vazia, que casaria com
 toda matrícula nascida antes deste par existir.
 """
 
@@ -390,7 +390,7 @@ def test_estorno_de_pagamento_sem_matricula_nao_derruba_o_consumidor(caplog):
 
 
 def test_o_estorno_nao_alcanca_a_matricula_de_outra_escola():
-    """[INV-P11] O `provider_reference_id` é o id da cobrança NA CONTA do
+    """O `provider_reference_id` é o id da cobrança NA CONTA do
     fornecedor, e cada escola tem a sua: duas escolas podem receber a referência
     `4471230` no mesmo dia, de pagamentos que nada têm a ver um com o outro. Sem
     o site no casamento, o estorno de uma cortaria o acesso do aluno da outra."""

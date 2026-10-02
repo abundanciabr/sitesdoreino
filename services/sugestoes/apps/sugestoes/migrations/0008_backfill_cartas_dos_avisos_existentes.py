@@ -9,7 +9,7 @@ DAQUELE dia em diante — via `emitir_cartas_de_notificacao()`
 `notificacao.devida`, e a caixa central não tem cópia deles.
 `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3 é explícita: *"os avisos que
 já existem mudam de casa junto"*. O caminho é reemitir — o dado atravessa
-pelo fio, sem esta célula ler o banco da `notificacoes` (Lei 2), e sem a
+pelo fio, sem esta célula ler o banco da `notificacoes`, e sem a
 `notificacoes` ler o banco desta célula.
 
 **Por que MIGRATION, e não management command manual.** O
@@ -240,7 +240,7 @@ class Migration(migrations.Migration):
         # Reverso é `RunPython.noop`, de propósito — sem desfazer de verdade:
         # apagar as cartas já publicadas poderia apagar cartas que o relay já
         # entregou ao fio (`published_at` preenchido), e a caixa central já
-        # as tem. Desfazer aqui não desfaz lá (Lei 2), então o reverso mais
+        # as tem. Desfazer aqui não desfaz lá, então o reverso mais
         # honesto é não mexer em nada.
         migrations.RunPython(publicar_cartas_retroativas, migrations.RunPython.noop),
     ]

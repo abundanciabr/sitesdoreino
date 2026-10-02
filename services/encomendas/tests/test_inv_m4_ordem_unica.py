@@ -1,4 +1,4 @@
-"""[INV-ENC-M4] A ordem do Mural é só a antiguidade do projeto.
+"""A ordem do Mural é só a antiguidade do projeto.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.3 e §8. Lei:
 `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §9, critério de morte 2.

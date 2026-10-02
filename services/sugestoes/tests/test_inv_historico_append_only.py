@@ -72,7 +72,7 @@ def test_delete_da_instancia_e_recusado(registro):
 
 
 # --------------------------------------------------------------------------
-# Degrau 2 — o QuerySet (a porta dos fundos da armadilhas/023)
+# Degrau 2 — o QuerySet
 # --------------------------------------------------------------------------
 def test_update_em_massa_e_recusado(registro):
     with pytest.raises(RegistroImutavel):

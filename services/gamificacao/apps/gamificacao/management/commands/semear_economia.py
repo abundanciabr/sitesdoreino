@@ -624,7 +624,7 @@ class Command(BaseCommand):
             self.stdout.write("TUDO DESLIGADO: nenhuma linha ativa neste site.")
 
         # A linha que o pipeline procura. Só existe aqui, no fim do caminho
-        # feliz, e nunca no eco do script (`armadilhas/114`).
+        # feliz, e nunca no eco do script.
         self.stdout.write("SEMEADURA DA ECONOMIA OK")
 
     def _semear(self, modelo, linhas):

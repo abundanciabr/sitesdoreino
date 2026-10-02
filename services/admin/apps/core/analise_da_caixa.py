@@ -4,8 +4,7 @@
 Nasceu em 05/09/2026, de um pedido do mantenedor: *"analise as sugestões dos
 alunos e liste tudo num documento único, da mais votada para a menos votada"*.
 A primeira resposta foi uma página fora do site, e ele respondeu com a regra que
-virou lei: **entrega minha mora no site, nunca num artefato solto**
-(`docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md`).
+virou lei: **entrega minha mora no site, nunca num artefato solto**.
 
 ## A divisão que faz esta tela não envelhecer
 
@@ -17,7 +16,7 @@ virou lei: **entrega minha mora no site, nunca num artefato solto**
                 → mora aqui, em `ANALISE`, escrito por quem analisou
 
 Um documento congelado com "40 votos" escrito dentro mentiria no dia seguinte,
-e seria a lista paralela que a lei anti-duplicação proíbe (`CLAUDE.md`). Aqui a
+e seria a lista paralela que a lei anti-duplicação proíbe. Aqui a
 ordem, os totais, as somas por família e os números dos padrões são todos
 CALCULADOS do que a Caixa responde agora. O que está escrito à mão é o que
 nenhuma máquina saberia: o que a ideia significa.

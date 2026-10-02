@@ -1,4 +1,4 @@
-# apps/i18n/catalogo.py — catálogo de tradução key-major (PLANO-I18N §2 D2/D4).
+# apps/i18n/catalogo.py — catálogo de tradução key-major.
 #
 # Divisão de trabalho do módulo apps.i18n:
 #   catalogo.py  → carregar YAML estrito, achatar, resolver em runtime (t/t_lazy)

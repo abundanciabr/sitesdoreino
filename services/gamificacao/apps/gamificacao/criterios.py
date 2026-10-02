@@ -4,8 +4,8 @@
 O marco real se PEDE (o aluno manda a prova, a equipe confere — `validacao.py`).
 A medalha, não: ela cai quando a conta bate. Este arquivo é quem faz a conta.
 
-**NÃO É UM MOTOR DE REGRAS, e a diferença é o critério de morte nº 1 da lei**
-(`DECISAO-gamificacao.md` §10): *"a célula virar motor de regras genérico ou
+**NÃO É UM MOTOR DE REGRAS, e a diferença é o critério de morte nº 1 da lei**:
+*"a célula virar motor de regras genérico ou
 ganhar uma DSL"* obriga a parar e reabrir a decisão com o mantenedor. Aqui não há
 expressão, não há operador, não há campo livre: há um `dict` de funções, uma por
 palavra de `CRITERIOS_ACEITOS`, e uma palavra que não estiver nele não é

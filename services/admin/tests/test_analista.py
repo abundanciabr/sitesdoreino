@@ -4,10 +4,10 @@ O que estes guardas protegem, e por que cada um existe:
 
 1. **A chave é lida NO PONTO DE USO.** Trocar o env depois do import muda o
    comportamento na chamada seguinte. Chave lida no import seria env ausente
-   virando HTTP 500 em toda página, com o deploy verde (`armadilhas/097`).
+   virando HTTP 500 em toda página, com o deploy verde.
 2. **Chave vazia é estado honesto.** A tela abre, explica em português que o
    robô está desligado e por quê, e nada quebra.
-3. **Cada motivo de recusa tem a frase dele** (`armadilhas/297`). Cada caminho
+3. **Cada motivo de recusa tem a frase dele**. Cada caminho
    triste é coberto um a um, e um guarda extra prova que as frases são
    DIFERENTES entre si: duas falhas com a mesma frase mandam esperar por algo
    que nunca vem.
@@ -20,7 +20,7 @@ O que estes guardas protegem, e por que cada um existe:
    confiança declarada ou sem alternativa é recusada inteira, com a frase do
    formato. Meia análise num painel de gestão tem a mesma cara de certeza e não
    traz a prova.
-5. **Ausência de dado nunca vira zero no dossiê** (`armadilhas/271`). Porta que
+5. **Ausência de dado nunca vira zero no dossiê**. Porta que
    não respondeu vira "não consegui medir", nunca 0.
 6. **A tela do fechamento não escreve nada**, nem no banco nem no livro: a
    análise é só texto na tela, o robô recomenda e a pessoa decide. Pedir a
@@ -31,7 +31,7 @@ aqui o `httpx` com que a `admin` fala com as células vizinhas. O `httpx2` (o
 pacote que vem com o SDK da Anthropic) é cortado em `tests/conftest.py`, para a
 suíte INTEIRA e nos dois transportes: proteção que depende de o próximo autor
 lembrar de copiar o corte para o arquivo dele não é proteção, e a chave da
-Anthropic está na máquina do mantenedor desde 02/09/2026 (`armadilhas/288`).
+Anthropic está na máquina do mantenedor desde 02/09/2026.
 Aqui ficou só o dublê de cada teste, que troca a mesma função por uma resposta
 de mentira.
 """
@@ -209,8 +209,7 @@ def test_a_suite_inteira_esta_sem_a_rede_do_sdk_nos_dois_transportes():
     Este teste não dubla o transporte de propósito: ele é o único da suíte que
     mede o corte de rede em si. Se o corte voltar para dentro deste arquivo, o
     próximo teste da célula que chamar a API paga não terá proteção nenhuma, e
-    ninguém vai perceber, porque a suíte fica verde e a conta é que cresce
-    (`armadilhas/288`).
+    ninguém vai perceber, porque a suíte fica verde e a conta é que cresce.
 
     Os DOIS transportes, e não só o síncrono: no dia em que o analista ganhar
     `AsyncAnthropic` ou streaming, como o fórum já tem, o caminho assíncrono não

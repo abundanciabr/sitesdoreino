@@ -7,7 +7,7 @@ Um arquivo só para as três (`GET /resumo`, `GET /avisos`,
 `POST /marcar-lidas`), em vez de um por rota: as três dividem o mesmo par de
 perguntas — quem CHAMA (Bearer do par, `apps/core/auth.py`) e QUAL PESSOA EM
 QUAL SITE (`destinatario_id` + `site_id`) — e o orçamento de arquivos do PR
-(`armadilhas/035`) soma o que já é grande com o consumer, o modelo e a
+ soma o que já é grande com o consumer, o modelo e a
 migração. Cada seção abaixo (RESUMO, AVISOS, MARCAR-LIDAS, CUSTO) tem seu
 próprio bloco de fixtures locais e é independente das outras.
 

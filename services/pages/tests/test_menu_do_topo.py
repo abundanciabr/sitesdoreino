@@ -204,7 +204,7 @@ def test_o_menu_aparece_tambem_na_tela_da_porta(env_dos_pares, rede):
 
     A porta desenha ANTES de a rota ser resolvida, então não há `route` de onde
     tirar a chave da página. A primeira página que um visitante desta casa vê
-    não pode ser a única do site sem navegação (`armadilhas/286`).
+    não pode ser a única do site sem navegação.
     """
     dublar_catalogo(rede, SITE)
     corpo = texto(abrir(prefixo=True))
@@ -374,7 +374,7 @@ def test_o_que_esta_casa_nao_sabe_dizer_nao_aparece_para_ninguem(aluna, rede, pl
 # ---------------------------------------------------------------------------
 def test_o_estilo_do_menu_chega_junto_com_a_pagina(aluna, rede):
     """Classe nova no HTML sem regra no estilo é um menu sem forma, e nada
-    ficaria vermelho (`armadilhas/083`). Esta casa serve o estilo embutido na
+    ficaria vermelho. Esta casa serve o estilo embutido na
     moldura, então a prova é sobre o corpo servido."""
     dublar_catalogo(rede, SITE)
     corpo = texto(abrir(cookie=COOKIE, prefixo=True))

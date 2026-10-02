@@ -1,7 +1,7 @@
 """Os interruptores da economia: ligar e desligar cada regra, como DADO.
 
-Este módulo existe por causa do critério de morte nº 5 da lei
-(`DECISAO-gamificacao.md` §10.5): *"ajustar a economia passar a exigir PR de
+Este módulo existe por causa do critério de morte nº 5 da lei:
+*"ajustar a economia passar a exigir PR de
 código"* é motivo de parar e reabrir a decisão com o mantenedor. Enquanto ligar
 uma regra dependesse de um agente editar `semear_economia.py` e esperar um
 deploy, a economia era código com aparência de dado. Aqui ela vira dado de
@@ -29,7 +29,7 @@ inflaria sozinha e o histórico contaria mudanças que ninguém fez.
 O QUE ESTE MÓDULO NÃO FAZ: DECIDIR QUEM PODE
 ---------------------------------------------
 Nada aqui pergunta quem está chamando. Esta célula **não assina sessão**
-([INV-P12]) e o `papel` que a `identidade` devolve **nunca autoriza rota** — é o
+ e o `papel` que a `identidade` devolve **nunca autoriza rota** — é o
 invariante "reconhecer não é autorizar" da `DECISAO-onde-mora-a-sessao` §4. Quem
 autoriza é a célula DONA da tela, sobre a lista DELA: a `admin`, que já guarda o
 crachá do mantenedor e já faz isso para `/admin/menu/`. Aqui a porta se fecha no
@@ -311,7 +311,7 @@ def mudar_conquista(
 # Nasceu da tela que se contradizia. Em 01/09/2026 o mantenedor abriu
 # `/conquistas` e leu, uma embaixo da outra, "Nível 1", "você chegou ao último
 # degrau desta escada" e "0 de experiência até aqui". O defeito da TELA foi
-# corrigido (`armadilhas/271`), e o que sobrou foi a verdade: a escola nunca
+# corrigido, e o que sobrou foi a verdade: a escola nunca
 # ligou degrau nenhum, e não havia por onde ligar. A tela dele tinha botão para
 # as regras e para as conquistas; para a escada, nada.
 #
@@ -347,8 +347,7 @@ def impedimentos_do_degrau(degrau, *, ativos_no_site: int) -> list[str]:
 
     # Quantos degraus a escada teria se este estivesse ligado. Menos de dois não
     # é escada: a tela do aluno diz que o degrau seguinte ainda não abriu, e o
-    # mantenedor precisa saber disso ANTES do clique, não depois
-    # (`armadilhas/271`).
+    # mantenedor precisa saber disso ANTES do clique, não depois.
     depois = ativos_no_site if degrau.ativa else ativos_no_site + 1
     if depois < MINIMO_DE_DEGRAUS_PARA_HAVER_ESCADA:
         impedimentos.append("escada-de-um-degrau-so")

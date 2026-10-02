@@ -5,9 +5,7 @@ Até 01/09/2026 ele era MUDO. Tinha gente conversando, dúvidas sendo resolvidas
 e nada disso virava ponto para ninguém: a medalha "Mão amiga" (cinco respostas
 aceitas) não tinha como cair, porque ninguém contava. Este arquivo é a voz.
 
-Os formatos dos quatro assuntos estão em `contracts/eventos/forum.*`.
-Os eventos emitidos aqui seguem esses formatos para manter a compatibilidade
-com as células consumidoras.
+Os campos emitidos aqui são os que as células consumidoras leem.
 
 AS QUATRO REGRAS QUE ESTE ARQUIVO CUMPRE
 -----------------------------------------

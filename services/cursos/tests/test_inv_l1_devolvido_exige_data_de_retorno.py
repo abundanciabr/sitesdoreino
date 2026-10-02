@@ -2,7 +2,7 @@
 amanhã.
 
 Lei: `PLANO-CELULA-CURSOS.md` §9. Dois cadeados, como o prazo do envio
-([INV-CUR-L3]) já ensinou: o BANCO garante a metade "não é nulo" (e a
+ já ensinou: o BANCO garante a metade "não é nulo" (e a
 metade simétrica: nenhuma OUTRA decisão pode ter data), sem consultar
 relógio nenhum; o SERVIÇO garante a metade "amanhã em diante", que depende
 da hora em que a linha é escrita.

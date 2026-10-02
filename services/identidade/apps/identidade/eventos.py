@@ -2,19 +2,14 @@
 
 Até 31/08/2026 ela não afirmava nenhum: cunhava a `Identidade` e ficava calada.
 Ganhou voz para que o pedido mais óbvio do mantenedor — *"após o cadastro,
-mandar uma mensagem de boas-vindas"* — tivesse o que escutar
-(`PLANO-SEQUENCIAS-DE-MENSAGENS` §2, degrau 1).
+mandar uma mensagem de boas-vindas"* — tivesse o que escutar.
 
-O formato do evento está em
-`contracts/eventos/identidade.pessoa-cadastrada.v1.json`. Os campos emitidos
-aqui seguem esse formato para manter a compatibilidade com as células
-consumidoras.
+Os campos emitidos aqui são os que as células consumidoras leem.
 
 **Nenhum `data` carrega PII.** Nem nome, nem e-mail, nem provedor: só o id
 opaco da plataforma e o site. Quem precisar falar com a pessoa PERGUNTA a esta
 célula, sob o token do par, na hora do envio — e é isso que permite este fato
-circular pela plataforma inteira sem espalhar o e-mail de ninguém
-(`DECISAO-EVO-01` §3).
+circular pela plataforma inteira sem espalhar o e-mail de ninguém.
 
 **Este NÃO é a carta.** A carta é `notificacao.devida.v1`, e quem decide se
 este fato merece uma é quem escuta, nunca quem publica.

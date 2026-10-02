@@ -1,5 +1,5 @@
 # pagamentos/methods/pix/service.py  # [RECEITA:R1 v1]
-# [INV-P9] Não importa methods.card nem providers.* — só core (modelo Intent +
+# Não importa methods.card nem providers.* — só core (modelo Intent +
 # core.gateway). Guardado em check-time por .importlinter.
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def criar_intent_pix(
     customer: dict[str, Any],
     metadata: dict[str, Any],
 ) -> Intent:
-    """[INV-P4] A linha nasce (com `idempotency_key` unique) ANTES da chamada ao
+    """A linha nasce (com `idempotency_key` unique) ANTES da chamada ao
     provider — numa corrida, a 2ª tentativa recebe IntegrityError no `.create()`
     e NUNCA chega a chamar o Mercado Pago. `transaction.atomic()` isola essa
     tentativa num savepoint: se falhar, quem chamou (api/intents.py) ainda

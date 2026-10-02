@@ -1,11 +1,11 @@
 # tests/test_ledger_transicao_financeira.py  # [RECEITA:R5 v1]
-"""[INV-P6] O ledger financeiro: mudar o status de dinheiro de uma Intent e
+"""O ledger financeiro: mudar o status de dinheiro de uma Intent e
 gravar o aviso na outbox são o MESMO ato, não dois atos combinados.
 
 Antes deste guarda, a aprovação síncrona do cartão (`POST /intents/{id}/card`)
 gravava `status=approved` direto na linha e NÃO emitia nada. O webhook do
 Mercado Pago que chegava depois encontrava a intent já aprovada, tratava como
-reentrega (INV-P3) e também não emitia: o pagamento do cartão era aprovado e
+reentrega e também não emitia: o pagamento do cartão era aprovado e
 NENHUMA célula ficava sabendo, para sempre. O primeiro teste deste arquivo é o
 retrato exato desse buraco.
 """

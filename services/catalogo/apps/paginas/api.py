@@ -168,7 +168,7 @@ class PaginaPublicada(Schema):
         ),
     )
     # `default_factory` e não `default=`: com `default=` o pydantic emitiria uma
-    # chave "default" no schema que o contrato não tem (`armadilhas/075`). O
+    # chave "default" no schema que o contrato não tem. O
     # contrato não exige este campo, e o handler sempre o preenche.
     offer_slug: str = Field(
         default_factory=str,

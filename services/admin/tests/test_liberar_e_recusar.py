@@ -13,7 +13,7 @@ incluindo falhas, imutabilidade e privacidade dos dados associados.
    não fica em lugar nenhum.
 
 2. `test_a_auditoria_e_append_only_no_BANCO`. O `save()` sobrescrito não
-   impede nada (`armadilhas/079`): `QuerySet.update()` não o chama e `psql`
+   impede nada: `QuerySet.update()` não o chama e `psql`
    não o conhece. O guarda mede o trigger, exercitando o caminho que passaria
    por baixo de qualquer proteção em Python.
 
@@ -95,8 +95,8 @@ def _fila_vazia():
 
 
 def _decidir(client, **campos):
-    # [CURSO] `product_id` é obrigatório para liberar desde 06/09/2026
-    # ([INV-ALU-C1]). Entra aqui, no molde, para estes testes continuarem
+    # [CURSO] `product_id` é obrigatório para liberar desde 06/09/2026.
+    # Entra aqui, no molde, para estes testes continuarem
     # medindo o que sempre mediram — a auditoria e os desfechos. A escolha do
     # curso em si é medida em `test_liberar_com_curso.py`.
     corpo = {"alvo": ALVO, "decisao": "liberar", "product_id": "prod-um"}

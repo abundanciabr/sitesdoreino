@@ -136,7 +136,7 @@ def test_o_despachante_recusa_os_canais_que_ainda_nao_sabe_entregar():
     AGORA"*, e o motor o trata como transitório: o passo continua devendo e a
     passada seguinte tenta de novo. Só que *"esta versão da plataforma não
     entrega por aqui"* nunca deixa de ser verdade sozinha — dizê-lo com `False`
-    prendia a inscrição no passo para sempre (`armadilhas/283`).
+    prendia a inscrição no passo para sempre.
 
     O que este teste continua garantindo, e é o essencial: **nenhuma carta sai**
     por um canal que a plataforma não entrega.

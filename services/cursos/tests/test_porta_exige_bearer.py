@@ -1,7 +1,7 @@
 """O cadeado da porta de máquina: 401 em TODAS as operações, sem exceção.
 
 Nesta célula o Bearer é o ÚNICO cadeado. A célula roda sob `SCRIPT_NAME=/cursos`
-e o corte do prefixo é do Django, não do Traefik (`armadilhas/186`), então
+e o corte do prefixo é do Django, não do Traefik, então
 `meshcraft.top/cursos/api/cursos/aulas` chega aqui pela internet. Se alguém um
 dia remover o `auth=` de uma rota, o texto das aulas (obra não lançada do
 mantenedor) passa a responder 200 para o mundo, sem mudar uma linha de

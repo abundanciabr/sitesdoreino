@@ -1,7 +1,6 @@
 # apps/core/mudou_de_casa.py — os endereços que a gestão deixou para trás
 """As telas de gestão saíram desta célula; os endereços delas continuam vivos.
 
-Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md` (28/08/2026).
 Decisão do mantenedor: *"não vamos espalhar painéis ou gestão por aí, tudo será
 em /admin"*.
 
@@ -12,7 +11,7 @@ parar de perguntar por aqui.
 
 **O destino é um caminho ABSOLUTO cravado, e isso é deliberado.** Todo endereço
 desta célula sai de `reverse()`, porque `FORCE_SCRIPT_NAME` é quem carrega o
-prefixo público (`armadilhas/029` e `/081`). Este é a exceção que confirma a
+prefixo público. Este é a exceção que confirma a
 regra: o destino não pertence a esta célula, e nenhum `reverse()` daqui saberia
 montá-lo. As duas superfícies vivem sob o MESMO host (`meshcraft.top`, roteadas
 pelo mesmo Traefik), então o caminho absoluto basta e nada de host precisa

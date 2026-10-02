@@ -1,5 +1,5 @@
 # pagamentos/core/gateway.py  # [RECEITA:R1 v1]
-# [INV-P9] Única costura entre methods/* e providers/*. methods/pix e methods/card
+# Única costura entre methods/* e providers/*. methods/pix e methods/card
 # chamam SÓ estas funções — nunca importam providers.* direto (garantido em
 # check-time por .importlinter, contrato "metodos-so-falam-com-core"). Os tipos de
 # retorno (ResultadoPix/ResultadoCard) são vocabulário do domínio, definidos aqui —

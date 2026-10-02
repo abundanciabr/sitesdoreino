@@ -23,7 +23,7 @@ nada respondido) fica verde com quase qualquer implementação errada.
 O QUE ESTE ARQUIVO NÃO MEDE, DE PROPÓSITO
 ------------------------------------------
 Qualidade da obra. Não existe nota, estrela, ranking nem voto nesta tela, e a
-ausência é lei escrita (`PLANO-PORTFOLIO-DO-ALUNO.md` §7). O guarda que defende
+ausência é lei escrita. O guarda que defende
 isso pelo lado de dentro é `test_o_semaforo_so_olha_as_respostas_objetivas`: duas
 peças com as mesmas respostas e tudo o mais diferente saem com o mesmo semáforo.
 """

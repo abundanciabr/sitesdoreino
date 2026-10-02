@@ -117,7 +117,7 @@ def test_todo_estatico_que_a_pagina_PEDE_e_realmente_servido(client, rede):
             relativo = url[len(settings.STATIC_URL) :]
             assert corpo(resposta) == (ORIGEM / relativo).read_bytes()
 
-    # Instrumentação (INV-CI01 na escala de um teste): scanner que não acha
+    # Instrumentação: scanner que não acha
     # nada em página NENHUMA passaria como "site limpo" e a prova viraria
     # carimbo.
     assert achados, (

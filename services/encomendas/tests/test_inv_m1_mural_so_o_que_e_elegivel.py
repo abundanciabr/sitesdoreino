@@ -1,4 +1,4 @@
-"""[INV-ENC-M1] O Mural só mostra a um aluno projeto para o qual ele é elegível.
+"""O Mural só mostra a um aluno projeto para o qual ele é elegível.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8. Lei:
 `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §2.1.

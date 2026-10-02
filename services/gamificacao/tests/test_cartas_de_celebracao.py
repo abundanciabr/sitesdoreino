@@ -10,7 +10,7 @@ para não virar barulho:
    aconteceu — o modo de falha mais caro que uma outbox existe para impedir.
 
 2. **Só BOA NOTÍCIA vira carta.** Perder XP não avisa. Não é delicadeza: é lei
-   da célula (`DECISAO-gamificacao.md`), onde notificação de culpa está na lista
+   da célula, onde notificação de culpa está na lista
    das mecânicas proibidas.
 
 3. **Ganhar sem mudar de degrau não avisa.** O aviso é sobre o degrau, não
@@ -24,8 +24,7 @@ para não virar barulho:
 
 5. **A comemoração de tela e a carta são as duas metades da mesma coisa.** A
    celebração visceral alcança quem está com o site aberto; a carta alcança quem
-   não está. E o estado da primeira mora no MODELO, nunca na sessão
-   ([INV-P12], `armadilhas/143`).
+   não está. E o estado da primeira mora no MODELO, nunca na sessão.
 
 6. **Nenhuma PII no fio.** Nem nome, nem e-mail: só ids opacos e números.
 """

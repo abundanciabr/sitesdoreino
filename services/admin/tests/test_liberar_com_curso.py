@@ -1,7 +1,7 @@
 """Liberar alguém passa a exigir ESCOLHER o curso — e a lista vem do catálogo.
 
 `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §6 e §7, e o invariante
-[INV-ALU-C1]: ninguém é aluno do site, todo mundo é aluno de um PRODUTO.
+ninguém é aluno do site, todo mundo é aluno de um PRODUTO.
 
 **Os quatro caminhos desta área que liberam alguém**, e os quatro passam pela
 mesma porta (`decidePreEnrollment`), que desde 06/09/2026 responde 422 sem o
@@ -150,7 +150,7 @@ def _decidir(client, **campos):
 @pytest.mark.django_db
 @respx.mock
 def test_liberar_manda_o_curso_escolhido_para_a_alunos():
-    """[INV-ALU-C1] A matrícula guarda de QUAL produto a pessoa é aluna."""
+    """A matrícula guarda de QUAL produto a pessoa é aluna."""
     _catalogo_com_os_dois_cursos()
     rota = _decisao_responde(httpx.Response(200))
 
@@ -252,7 +252,7 @@ def test_cadastrar_a_mao_sem_curso_nao_cadastra_ninguem():
     )
     # A porta da decisão fica de pé mesmo sem ninguém a chamar: sabotado, o
     # guarda desta view manda o cadastro adiante, e o vermelho precisa cair na
-    # asserção de baixo — nunca num mock faltando (`armadilhas/195`).
+    # asserção de baixo — nunca num mock faltando.
     _decisao_responde(httpx.Response(200))
 
     r = _dentro().post(

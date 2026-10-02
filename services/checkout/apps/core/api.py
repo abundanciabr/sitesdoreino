@@ -67,7 +67,7 @@ def _corpo(request) -> dict:
 
 
 def _itens_do_catalogo(oferta: dict, bump_ids: list) -> list:
-    """[INV-P2] O cliente diz QUAIS bumps marcou; todo valor monetário vem do
+    """O cliente diz QUAIS bumps marcou; todo valor monetário vem do
     catálogo. Nenhum preço/total do payload é lido — nem para conferência."""
     itens = [
         {
@@ -180,7 +180,7 @@ _CREATE_SESSION_OPENAPI = {
     openapi_extra=_CREATE_SESSION_OPENAPI,
 )
 def create_session(request):
-    site = request.site  # [INV-P11] resolvido do Host pelo CONV-SITE, nunca do payload
+    site = request.site  # resolvido do Host pelo CONV-SITE, nunca do payload
     corpo = _corpo(request)
     offer_slug = corpo.get("offer_slug")
     if not isinstance(offer_slug, str) or not offer_slug:
@@ -328,7 +328,7 @@ _PLACE_ORDER_OPENAPI = {
 def place_order(request, session_id: str):
     site = request.site
     try:
-        # [INV-P11] a sessão só existe DENTRO do site do Host — sessão do site A
+        # a sessão só existe DENTRO do site do Host — sessão do site A
         # nunca fecha pedido servindo o site B.
         sessao = SessionModel.objects.get(pk=uuid.UUID(session_id), site_id=site["id"])
     except (SessionModel.DoesNotExist, ValueError):
@@ -363,10 +363,10 @@ def place_order(request, session_id: str):
     existente = OrderModel.objects.filter(session=sessao).first()
     if existente is not None:
         # Idempotência de sessão: devolve o pedido que já foi congelado, sem
-        # recriar intent nem tocar o snapshot ([INV-P1]).
+        # recriar intent nem tocar o snapshot.
         return JsonResponse(_pedido_criado(existente), status=409)
 
-    # [INV-P2] preços relidos do catálogo AGORA, no fechamento — o payload só
+    # preços relidos do catálogo AGORA, no fechamento — o payload só
     # informa quais bumps foram marcados.
     oferta = CatalogoClient().obter_oferta(site["id"], sessao.offer_slug)
     if oferta is None:
@@ -437,7 +437,7 @@ def place_order(request, session_id: str):
             intent_id=str(intent["id"]),
             pix=intent.get("pix") or {},
         )
-        emitir(  # [INV-P6] mesma transação da criação do pedido
+        emitir(  # mesma transação da criação do pedido
             "pedido.criado",
             {
                 "site_id": pedido.site_id,
@@ -579,7 +579,7 @@ def _cartao_em_analise(pedido: OrderModel) -> bool | None:
 def get_order(request, order_id: str):
     site = request.site
     try:
-        # [INV-P11] pedido de outro site é 404 aqui, não "não autorizado":
+        # pedido de outro site é 404 aqui, não "não autorizado":
         # a existência do pedido alheio não vaza nem pelo código de status.
         pedido = OrderModel.objects.get(pk=uuid.UUID(order_id), site_id=site["id"])
     except (OrderModel.DoesNotExist, ValueError):
@@ -587,7 +587,7 @@ def get_order(request, order_id: str):
     corpo = {
         "order_id": str(pedido.id),
         "site_id": pedido.site_id,
-        "status": pedido.status,  # [INV-P7] única fonte de status para o front
+        "status": pedido.status,  # única fonte de status para o front
         "items": pedido.items,
         "total_cents": pedido.total_cents,
         "created_at": pedido.created_at.isoformat(),
@@ -602,7 +602,7 @@ def get_order(request, order_id: str):
 # Confirmação do cartão
 # --------------------------------------------------------------------------
 # O que o navegador manda é o RESULTADO da tokenização e mais nada. Valor,
-# produto, item e total saem do snapshot congelado do pedido ([INV-P1]/[INV-P2]),
+# produto, item e total saem do snapshot congelado do pedido,
 # e é `_CAMPOS_DA_CONFIRMACAO` abaixo que torna isso mecânico: campo que não
 # está na lista é recusado com 422, em vez de ser ignorado em silêncio. Ignorar
 # em silêncio é o modo de falha caro aqui, porque um `total_cents` no corpo
@@ -723,7 +723,7 @@ _CONFIRM_ORDER_CARD_OPENAPI = {
 def confirm_order_card(request, order_id: str):
     site = request.site
     try:
-        # [INV-P11] pedido de outro site é 404, como em getOrder.
+        # pedido de outro site é 404, como em getOrder.
         pedido = OrderModel.objects.get(pk=uuid.UUID(order_id), site_id=site["id"])
     except (OrderModel.DoesNotExist, ValueError):
         raise HttpError(404, "pedido inexistente neste site")
@@ -797,7 +797,7 @@ def confirm_order_card(request, order_id: str):
         {
             "order_id": str(pedido.id),
             "site_id": pedido.site_id,
-            # [INV-P7] relido do banco: quem move o pedido é o evento, não esta
+            # relido do banco: quem move o pedido é o evento, não esta
             # resposta. A tela que mostrar "pago" por causa daqui mente.
             "status": OrderModel.objects.values_list("status", flat=True).get(
                 pk=pedido.id

@@ -16,7 +16,7 @@ seria pior do que não existir: ninguém conseguiria reproduzir o vermelho.
 
 O RELÓGIO COMEÇA ÀS 8h DE SÃO PAULO, E ISSO NÃO É DETALHE
 ----------------------------------------------------------
-`t_zero` é a abertura da janela ([INV-ENC-J8]) do dia seguinte ao de hoje. As
+`t_zero` é a abertura da janela do dia seguinte ao de hoje. As
 duas metades da escolha têm motivo:
 
 - **A HORA é fixa** (a abertura da janela), porque a janela 8h-22h muda o
@@ -24,8 +24,7 @@ duas metades da escolha têm motivo:
   conforme a hora em que a suíte rodasse, e um placar que muda sozinho não pode
   ser conferido contra o piloto de papel.
 - **O DIA é o de amanhã**, e não uma data escrita à mão, porque uma data fixa no
-  futuro fica vermelha sozinha no dia em que o calendário a alcança
-  (`armadilhas/323`, medida nesta célula).
+  futuro fica vermelha sozinha no dia em que o calendário a alcança.
 
 E O RELÓGIO DA MÁQUINA PASSA A SER O RELÓGIO SIMULADO
 ------------------------------------------------------
@@ -41,7 +40,7 @@ Com a negociação, um projeto VOLTA à pista vindo de `em_negociacao`, e essa v
 nasceria um a nove dias no passado do mundo simulado, e todo projeto devolvido
 viraria chamada aberta (ou iria ao plantão) no primeiro tique seguinte, sem
 ninguém ter tido a chance de vê-lo. O mundo inteiro degeneraria em plantão, e o
-[INV-ENC-J9] e o [INV-ENC-M5] ficariam verdes medindo um artefato.
+e o [INV-ENC-M5] ficariam verdes medindo um artefato.
 
 Congelar o relógio é o que faz `Oferta.oferecida_em`, `ReservaDoMural.pegada_em`,
 `Proposta.criada_em` e `MudancaDeStatus.em` contarem a mesma história que o laço
@@ -53,7 +52,7 @@ AS DUAS PISTAS NASCEM PELA PORTA DE VERDADE
 --------------------------------------------
 Os projetos nascem por `mural.nascer`, que é a única porta de nascimento da
 célula e a que a Fase 3 vai chamar. É ela que põe o Iniciante na fila e o
-Intermediário e o Avançado no Mural (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1), e é por
+Intermediário e o Avançado no Mural, e é por
 isso que o simulador não informa pista nenhuma: **ninguém escolhe pista**, nem o
 cliente, nem o aluno, nem este arquivo.
 
@@ -62,7 +61,7 @@ TODO MUNDO COMEÇA DISPONÍVEL, DE PROPÓSITO
 Nenhum perfil nasce `pausado` aqui. Quem pausa, pausa durante a simulação pelo
 gesto de verdade (`gestos.pausar`), e quem volta volta por `gestos.religar` — que
 é o único caminho que grava `modo_da_pausa` do jeito certo e o único que prova
-que o lugar na fila foi mantido ([INV-ENC-J4]). Um perfil pausado escrito à mão
+que o lugar na fila foi mantido. Um perfil pausado escrito à mão
 teria `modo_da_pausa` vazio e nunca mais conseguiria religar.
 """
 
@@ -120,7 +119,7 @@ ONDAS = 4
 CARTAO_DO_NIVEL = {nivel: cartao for cartao, nivel in Encomenda.NIVEL_DO_CARTAO.items()}
 
 # A lista FECHADA de entregáveis que o briefing de cada projeto declara, e da
-# qual toda proposta marca um subconjunto (`PLANO-AREA-DE-NEGOCIACAO.md` §4.1).
+# qual toda proposta marca um subconjunto.
 # Uma proposta que saísse desta lista seria recusada por
 # `entregavel_fora_do_briefing`, e o simulador ficaria vermelho por motivo errado.
 ENTREGAVEIS_DO_BRIEFING = ("modelo_3d", "texturas", "arquivo_fonte")
@@ -306,7 +305,7 @@ def povoado(semeado, criar_perfil, relogio_da_maquina, t_zero):
                 briefing={"entregaveis": list(ENTREGAVEIS_DO_BRIEFING)},
             )
             # A coluna é `auto_now_add`, e é dela que sai o marco das 24h do
-            # [INV-ENC-J9] e do [INV-ENC-M5]. Sem esta linha a onda de amanhã
+            # e do [INV-ENC-M5]. Sem esta linha a onda de amanhã
             # nasceria com dois dias de espera nas costas.
             Encomenda.objects.filter(pk=projeto.pk).update(criada_em=quando)
             projeto.criada_em = quando
@@ -365,7 +364,7 @@ def _entregas_do_titulo(titulo, sorteio):
     decidiria nada.
 
     **É esta função que faz o Mural existir neste mundo.** O Mural só mostra a
-    quem já entregou (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1), então uma turma
+    quem já entregou, então uma turma
     inteira em zero deixaria os quinze projetos Intermediário e Avançado sem
     ninguém para olhá-los, e os cinco guardas do Mural ficariam verdes numa
     prateleira vazia. Os que já entregaram são poucos de propósito: é a escassez

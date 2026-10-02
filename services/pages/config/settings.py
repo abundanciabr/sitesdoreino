@@ -30,11 +30,10 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 # O PREFIXO — e nesta célula ele tem uma pergunta em aberto, escrita na cara
 # ---------------------------------------------------------------------------
 # A casa das Páginas do aluno serve sob prefixo, como as vizinhas: o Traefik
-# NÃO remove o prefixo, e quem o conhece é esta variável, nunca o `urls.py`
-# (`armadilhas/029`, `tests/test_healthz_script_name.py`). Nome da célula =
+# NÃO remove o prefixo, e quem o conhece é esta variável, nunca o `urls.py`.
+# Nome da célula =
 # nome da rota (`/pages`), de propósito: o par `/conquistas` ↔ `gamificacao`
-# já custa uma tradução mental a cada leitura, e não se cria um segundo
-# (`PLANO-PORTFOLIO-DO-ALUNO.md` §4).
+# já custa uma tradução mental a cada leitura, e não se cria um segundo.
 #
 # **A pergunta que esta gênese NÃO responde, e não deve responder.** Esta
 # célula tem DOIS endereços públicos, decisão do mantenedor de 02/09/2026
@@ -76,8 +75,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # `dj_database_url.parse` entrega `CONN_MAX_AGE = 0`, e a ausência do ajuste é
 # uma DECISÃO, não esquecimento: sob ASGI, `conn_max_age > 0` vaza uma conexão
-# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam
-# (`armadilhas/170`). Quando a medição periódica de link quebrado chegar
+# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam.
+# Quando a medição periódica de link quebrado chegar
 # (degrau 08, critério AC-09), ela roda em processo próprio (`run_huey`,
 # síncrono), onde o problema do ASGI não existe. E se um dia for preciso
 # reaproveitar conexão nas telas, a resposta certa é o POOL nativo do Django
@@ -97,7 +96,7 @@ INSTALLED_APPS = [
     "huey.contrib.djhuey",
     "apps.core",
     # O portfólio, a peça, o item de conferência e o estado do aluno, nascidos
-    # no degrau 02 da escada (`PLANO-PORTFOLIO-DO-ALUNO.md` §5, TAR-178), numa
+    # no degrau 02 da escada, numa
     # app própria dentro desta casa. Não há tela, porta de máquina nem evento:
     # eles são os degraus 06, 03 e 12.
     #
@@ -152,7 +151,7 @@ MIDDLEWARE = [
 #
 # Duas células assinando o MESMO cookie com chaves diferentes produzem um
 # cabo-de-guerra invisível: abrir a Prancheta deslogaria do site, e vice-versa,
-# **sem erro em lugar nenhum, sem log, sem alarme** (`armadilhas/143`).
+# **sem erro em lugar nenhum, sem log, sem alarme**.
 #
 # A tentação concreta que isto mata tem nome aqui: a PRANCHETA GUARDA
 # PROGRESSO. O critério AC-06 exige que o aluno marque um item, feche o
@@ -194,7 +193,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 # AS DUAS PEÇAS COMUNS DO SITE, e elas entram aqui, e não como
                 # `{% include %}` por template, porque "em todas as páginas" não
-                # pode depender de alguém lembrar da peça (`armadilhas/242`).
+                # pode depender de alguém lembrar da peça.
                 # Tela nova desta casa nasce com menu e rodapé sem tocar em
                 # nada: quem DECIDE são estes dois módulos, quem DESENHA é
                 # `pages/moldura.html`.
@@ -223,8 +222,8 @@ TEMPLATES = [
 #
 # **Aqui o conjunto vazio é o ÚNICO cadeado.** Esta célula roda sob
 # `SCRIPT_NAME=/pages`, e o corte do prefixo é do Django, não do Traefik: a
-# porta é alcançável pela borda pública em `meshcraft.top/pages/interno/...`
-# (`armadilhas/186`). Não há topologia por baixo para segurar o que este
+# porta é alcançável pela borda pública em `meshcraft.top/pages/interno/...`.
+# Não há topologia por baixo para segurar o que este
 # conjunto deixar passar.
 TOKENS_ACEITOS = {
     valor
@@ -254,8 +253,7 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # O fuso em que a célula MOSTRA hora; o armazenamento continua em UTC (USE_TZ).
 # Sem esta linha vale o default de fábrica do Django, `America/Chicago`: cinco
-# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum
-# (`armadilhas/099`).
+# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum.
 #
 # Aqui a data é o que o aluno e o cliente dele leem: "conferido pela escola em
 # 05/09/2026" no selo do critério AC-12, o prazo do pedido de conferência do

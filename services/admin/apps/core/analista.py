@@ -32,7 +32,7 @@ Quando é trabalho de robô ou da equipe, a tela não avisa nada.
 
 ## A chave, e o que acontece sem ela
 
-`ANTHROPIC_API_KEY` é lida NO PONTO DE USO, toda vez (`armadilhas/097`), como
+`ANTHROPIC_API_KEY` é lida NO PONTO DE USO, toda vez, como
 `services/forum/apps/core/agente.py` e `services/cursos/apps/cursos/agente.py`
 fazem. Ler no import transformaria env ausente em HTTP 500 em toda página, com
 o deploy verde.
@@ -41,7 +41,7 @@ o deploy verde.
 abre exatamente como abria antes deste arquivo existir, com um bloco explicando
 em português que o robô está desligado e o que falta. Nada quebra, nada some.
 
-## Cada motivo de recusa tem a frase dele (`armadilhas/297`)
+## Cada motivo de recusa tem a frase dele
 
 Duas falhas com a mesma frase mandam a pessoa esperar por algo que nunca vem.
 Aqui, chave ausente, chave recusada, conta no limite, demora, resposta vazia e
@@ -439,7 +439,7 @@ def analisar(*, dossie: str) -> Analise:
 
     A escada de recusas vai do mais específico ao mais geral porque cada degrau
     vira uma frase diferente na tela, e "a chave foi recusada" e "a rede do
-    servidor falhou" mandam o mantenedor para lugares opostos (`armadilhas/297`).
+    servidor falhou" mandam o mantenedor para lugares opostos.
     """
     cliente = _cliente()
     try:
@@ -535,7 +535,7 @@ def analisar(*, dossie: str) -> Analise:
 def _numero(valor) -> str:
     """Um valor para o dossiê, e "não consegui medir" quando não há valor.
 
-    É a regra mais dura deste arquivo (`armadilhas/271`): `None` nunca vira 0.
+    É a regra mais dura deste arquivo: `None` nunca vira 0.
     Um zero escrito onde faltou medição faz o robô concluir que a escola não
     vendeu nada, quando o que houve foi uma porta que não respondeu.
     """

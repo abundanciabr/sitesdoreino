@@ -7,8 +7,8 @@ esqueleto que `semear_esqueleto` deixa de propósito vazio.
 
 ## Por que uma TELA, e não um arquivo no repositório
 
-O sumário é obra NÃO LANÇADA do mantenedor e este repositório é PÚBLICO
-([INV-CUR-C2], `armadilhas/331`). Ele não entra aqui: nem como arquivo, nem
+O sumário é obra NÃO LANÇADA do mantenedor e este repositório é PÚBLICO.
+Ele não entra aqui: nem como arquivo, nem
 como semente, nem dentro de um teste. Entra por esta área de colar, e o que
 fica guardado é o resultado (as encomendas, na `cursos`), nunca o texto colado.
 **Esta tela não guarda nada**, nem entre o PREVER e o IMPORTAR: o texto volta
@@ -34,7 +34,7 @@ vai para a porta. IMPORTAR faz a mesma leitura e grava pela porta de máquina
 
 É um formulário simples com dois botões de enviar, e por isso não há uma linha
 de script: a política de segurança desta área exige um hash na CSP para cada
-script embutido (`armadilhas/199`), e um POST por gesto deixa a tela mostrando
+script embutido, e um POST por gesto deixa a tela mostrando
 sempre o que está de fato gravado.
 
 ## As peças se casam pelo NÚMERO, não pelo nome

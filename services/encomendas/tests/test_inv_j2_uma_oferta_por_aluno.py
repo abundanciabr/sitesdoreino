@@ -1,6 +1,5 @@
-"""[INV-ENC-J2] Um aluno nunca tem duas ofertas pendentes.
+"""Um aluno nunca tem duas ofertas pendentes.
 
-Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça).
 Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.3.
 
 O irmão do [INV-ENC-J1], e o mais fácil de perder: uma passada do motor com três

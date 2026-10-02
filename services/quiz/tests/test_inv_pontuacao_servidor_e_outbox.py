@@ -144,7 +144,7 @@ def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
     assert resp.status_code == 302
 
     eventos = OutboxEvent.objects.filter(event="quiz.completado")
-    assert eventos.count() == 1  # [INV-P6]
+    assert eventos.count() == 1  
     submissao = Submission.objects.get()
     dados = eventos.get().payload
     assert dados["site_id"] == submissao.site_id

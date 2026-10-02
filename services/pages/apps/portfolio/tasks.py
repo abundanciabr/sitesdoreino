@@ -78,7 +78,7 @@ def reconferir_os_links() -> dict[str, int]:
     transação que o Django precisa segurar para o cursor existir. Aí cada
     `atomic()` de dentro deixaria de ser transação e viraria um savepoint da de
     fora: uma peça que estourasse abortaria a transação inteira, e a consulta
-    seguinte morreria com `TransactionManagementError` (`armadilhas/027`) em vez
+    seguinte morreria com `TransactionManagementError` em vez
     de a varredura continuar. Nada disso apareceria na suíte, porque o
     `pytest-django` já roda cada teste dentro de uma transação e faz o mesmo
     savepoint nos dois casos. Uma lista de números inteiros de todas as peças
@@ -194,8 +194,8 @@ def relay_outbox() -> int:
     `published_at` preenchido é ignorada pelo filtro, então uma segunda passada
     não republica nada.
 
-    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import
-    (`armadilhas/097`): o container web importa este módulo pelo autodiscover do
+    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import:
+    o container web importa este módulo pelo autodiscover do
     djhuey e não pode morrer no boot se a variável faltar, que é exatamente o
     estado da VPS hoje (`infra/env/pages.env.exemplo` diz, com todas as letras,
     que quem a entrega é o serviço do relay no compose). Faltando, o `KeyError`

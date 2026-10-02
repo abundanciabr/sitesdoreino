@@ -12,7 +12,7 @@ POR QUE UMA MIGRAÇÃO, SE O ARQUIVO JÁ ESTÁ NO REPOSITÓRIO
 ----------------------------------------------------------
 Porque corrigir a receita não muda o bolo já assado. A pasta `documentos/` é
 SEMENTE e a semeadura é `get_or_create`: ela **cria**, nunca atualiza. O texto
-que o mantenedor lê vem do BANCO (`armadilhas/253`, a irmã da `347`). Sem esta
+que o mantenedor lê vem do BANCO. Sem esta
 migração, o arquivo corrigido entra no repositório, o `deploy-celula` termina
 verde, e a página continua afirmando que o Extrator não foi construído, sem
 nada vermelho em lugar nenhum.

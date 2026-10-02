@@ -131,7 +131,7 @@ def test_papel_staff_nao_autoriza_nada():
     """A resposta da identidade NUNCA autoriza — quem decide é `ADMIN_EMAILS`.
 
     Este é o guarda do invariante *reconhecer não é autorizar*
-    (`DECISAO-onde-mora-a-sessao.md` §4) nesta célula: uma pessoa com papel
+    nesta célula: uma pessoa com papel
     `staff` — que dá moderação na Caixa — continua fora daqui se o e-mail dela
     não estiver na lista DESTA célula.
     """
@@ -251,7 +251,7 @@ def test_csp_permite_iframe_de_mesma_origem_e_nao_none():
     `'none'` proíbe enquadramento inclusive de mesma origem, e esta área mostra
     páginas próprias dentro de iframe (o modelo de lançamento, a página visual
     do documento). O erro já foi cometido uma vez, no papel, e pego na revisão
-    (`armadilhas/109`) — este guarda existe para que a próxima vez seja
+    — este guarda existe para que a próxima vez seja
     vermelha em vez de descoberta em produção.
     """
     respx.get(SESSAO).mock(

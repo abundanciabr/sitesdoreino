@@ -1,4 +1,4 @@
-"""[INV-ENC-J9] Nenhuma encomenda passa do prazo em `na_fila`/`oferecida` sem virar aberta.
+"""Nenhuma encomenda passa do prazo em `na_fila`/`oferecida` sem virar aberta.
 
 Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça) e §6
 (`horas_para_virar_aberta`, 24 horas na fila).
@@ -18,7 +18,7 @@ O QUE ESTE DEGRAU FAZ, E O QUE O 2.5 FAZ
 Aqui nasce a VIRADA: no prazo, a encomenda passa para `aberta` e a oferta viva
 (se houver) é cancelada. O que a chamada aberta FAZ depois — avisar todos os
 elegíveis, o primeiro que aceitar leva, o "salvo em chamada aberta" do
-[INV-ENC-J6] — é o degrau 2.5 (TAR-123). A separação é a mesma da lei §7: o
+— é o degrau 2.5 (TAR-123). A separação é a mesma da lei §7: o
 relógio é 2.4, o comportamento é 2.5.
 
 O RELÓGIO DA FILA É DE PAREDE, O DA OFERTA É DE JANELA

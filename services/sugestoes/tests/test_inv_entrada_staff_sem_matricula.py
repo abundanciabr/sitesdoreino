@@ -4,7 +4,7 @@ A checagem de staff vem ANTES da de matrícula (herança da porta antiga, EVO-01
 §4): quem modera a Caixa não pode ser obrigado a comprar o próprio curso, e não
 pode ficar de fora quando a `alunos` estiver fora do ar.
 
-**O mecanismo da prova é o `respx` do conftest** (armadilhas/054): a fixture de
+**O mecanismo da prova é o `respx` do conftest**: a fixture de
 staff NÃO dubla a `alunos` — se a ordem dos portões inverter um dia, estes
 guardas caem com `AllMockedAssertionError`, não com um verde de mentira.
 

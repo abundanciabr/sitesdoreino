@@ -2,16 +2,9 @@
 """Os fatos que a sala de aula afirma ao resto da plataforma, e o único lugar
 que monta o `data` de cada um.
 
-Lei deste arquivo: `contracts/eventos/envio.recebido.v1.json`,
-`contracts/eventos/revisao.prazo-estourado.v1.json` e, desde o degrau 2.2
-(TAR-156), `contracts/eventos/laudo.emitido.v1.json`,
-`contracts/eventos/aula.concluida.v1.json` e
-`contracts/eventos/checkpoint.devolvido.v1.json` — os três do laudo JÁ
-NASCERAM CONGELADOS na gênese da célula, e este arquivo é quem os emite pela
-primeira vez. Congelados pelo Rito de Contrato com o mantenedor presente
-(`PLANO-CELULA-CURSOS.md` §5). Nada aqui inventa campo, renomeia campo ou
-acrescenta campo "que seria útil": divergir do contrato é parar e avisar,
-nunca editar `contracts/`.
+Os eventos daqui: `envio.recebido`, `revisao.prazo-estourado`,
+`laudo.emitido`, `aula.concluida` e `checkpoint.devolvido`. Quem consome lê
+os campos que saem daqui; mudar um campo é mudar também quem o lê.
 
 **Por que os construtores moram todos aqui, e não espalhados no serviço.** O
 `data` de cada evento é a superfície que as outras células vão ler por anos. Um
@@ -64,7 +57,7 @@ def emitir(
     version: int = 1,
     envelope_extra: dict[str, Any] | None = None,
 ) -> OutboxEvent:
-    """[INV-P6] Grava o fato na outbox, SEMPRE dentro da transação do fato.
+    """Grava o fato na outbox, SEMPRE dentro da transação do fato.
 
     Não publica nada: publicar é do relay (`apps/cursos/tasks.py`), depois do
     commit. Essa separação É a outbox: escrever no Redis aqui dentro devolveria
@@ -93,8 +86,7 @@ def emitir_envio_recebido(envio: Envio) -> OutboxEvent:
     `ator_id` é o aluno, no ENVELOPE e não no `data`: é o único lugar em que
     ele viaja, e o contrato diz `type: string`, nunca nulo. É o id da
     PLATAFORMA (`Pessoa.id_da_plataforma`, a chave primária do espelho), e não
-    um id local desta célula: quem consome credita a pessoa certa
-    (`armadilhas/255`).
+    um id local desta célula: quem consome credita a pessoa certa.
     """
     return emitir(
         ENVIO_RECEBIDO,
@@ -133,8 +125,8 @@ def emitir_prazo_estourado(envio: Envio, *, horas_de_atraso: int) -> OutboxEvent
 def emitir_laudo_emitido(laudo: Laudo) -> OutboxEvent:
     """`laudo.emitido.v1`: nasce em `apps/cursos/laudo.py::emitir`, sempre.
 
-    `ator_id` é quem ASSINOU o laudo (`laudo.avaliador_id`), nunca a IA
-    (`PLANO-CELULA-CURSOS.md` §7, [INV-CUR-L4]): o Assistente de laudo só
+    `ator_id` é quem ASSINOU o laudo (`laudo.avaliador_id`), nunca a IA:
+    o Assistente de laudo só
     prepara, e nada que ele produz chega a este envelope.
     """
     envio = laudo.envio
@@ -171,7 +163,7 @@ def emitir_aula_concluida(aula: Aula, *, ator_id: str) -> OutboxEvent:
 def emitir_checkpoint_devolvido(laudo: Laudo) -> OutboxEvent:
     """`checkpoint.devolvido.v1`: nasce em `apps/cursos/laudo.py::emitir`, só
     quando a decisão é `devolvido`. `data_de_retorno` é sempre amanhã ou
-    depois no dia de São Paulo ([INV-CUR-L1]), garantido pelo serviço antes de
+    depois no dia de São Paulo, garantido pelo serviço antes de
     chegar aqui."""
     envio = laudo.envio
     return emitir(

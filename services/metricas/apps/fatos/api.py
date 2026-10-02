@@ -39,7 +39,7 @@ matricula, nunca a pessoa, e nao serve para creditar ninguem fora daqui"
 (`matricula.situacao-alterada.v1`). As duas operações de marco carregam o
 vocabulário em toda linha e nunca oferecem um total que atravesse os dois, para
 que somar maçãs com laranjas exija uma decisão de quem consome, em vez de
-acontecer por acidente (`armadilhas/303`).
+acontecer por acidente.
 
 O QUE NÃO ESTÁ AQUI, E NÃO É ESQUECIMENTO
 -----------------------------------------
@@ -257,8 +257,8 @@ def contagens(
     """Quantos fatos por dia, no intervalo pedido.
 
     O `dia` é o dia de SÃO PAULO, gravado na recepção: contar por UTC poria
-    quem entrou às 22h do dia 30 no mês seguinte, sem erro em lugar nenhum
-    (`armadilhas/099`). É a mesma conta que o placar já faz do outro lado.
+    quem entrou às 22h do dia 30 no mês seguinte, sem erro em lugar nenhum.
+    É a mesma conta que o placar já faz do outro lado.
 
     Dia sem fato NÃO aparece na lista, e isso é decisão: preencher com zero
     seria afirmar "nada aconteceu neste dia", quando a verdade pode ser "a
@@ -296,8 +296,8 @@ def cobertura(request, site_id: str):
     """De cada assunto que JÁ CHEGOU: quantos, e quando foi o último.
 
     O que esta operação não faz, e quem consome precisa saber: ela não conhece
-    a lista de assuntos que DEVERIAM chegar. Essa lista mora nos contratos
-    (`contracts/eventos/*.json`), que não viajam para dentro desta imagem, e
+    a lista de assuntos que DEVERIAM chegar. Essa lista mora nos contratos,
+    que não viajam para dentro desta imagem, e
     copiá-los para cá poria o mesmo fato em dois lugares. Assunto ausente daqui
     é assunto que nunca chegou; quem compara com o esperado é a `admin`, que
     tem o mapa.

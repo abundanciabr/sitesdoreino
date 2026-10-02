@@ -16,7 +16,7 @@ carta (um aviso por carta viraria ruído que ninguém lê).
 
 **O conteúdo vai CIFRADO de ponta a ponta**, com as chaves do próprio aparelho:
 o fabricante (Google, Apple, Mozilla) entrega a mensagem sem conseguir lê-la.
-E o que viaja é DADO, nunca frase pronta (`DECISAO-notificacoes` §5.1): assunto
+E o que viaja é DADO, nunca frase pronta: assunto
 e parâmetros. A frase nasce no aparelho, no idioma de quem lê.
 """
 

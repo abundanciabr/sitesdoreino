@@ -31,7 +31,7 @@ from urllib.parse import parse_qs, urlparse
 from django.test import Client
 
 # Escrito à mão, e não derivado do código: é a string que o mantenedor cadastrou
-# no console do Google (DECISAO-onde-mora-a-sessao §5.2). Um teste que a
+# no console do Google. Um teste que a
 # montasse com os mesmos `reverse()` do código passaria mesmo com tudo errado.
 CADASTRADO_NO_GOOGLE = "https://meshcraft.top/entrar/google/retorno"
 

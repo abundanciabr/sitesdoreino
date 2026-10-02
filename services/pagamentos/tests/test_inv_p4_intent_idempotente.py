@@ -68,7 +68,7 @@ def _post_intent(client: Client, token: str, chave: str) -> Any:
 def test_mesma_chave_devolve_mesma_intent_uma_so_chamada_ao_provider(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P4] POST /intents com a mesma X-Idempotency-Key devolve a MESMA
+    """POST /intents com a mesma X-Idempotency-Key devolve a MESMA
     intent (200 na 2ª vez), sem nova tentativa de cobrança — refresh na página
     de pagamento, retry de rede e double-click são comportamento normal de
     usuário e nenhum deles pode virar dupla cobrança."""
@@ -95,7 +95,7 @@ def test_mesma_chave_devolve_mesma_intent_uma_so_chamada_ao_provider(
 def test_escrita_ao_mp_leva_idempotency_key_propria(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P4] A segunda metade do invariante — a que o mock de método escondia.
+    """A segunda metade do invariante — a que o mock de método escondia.
     Não basta a API ser idempotente para o checkout: a ESCRITA ao Mercado Pago
     precisa levar chave própria, senão a deduplicação do lado do MP não acontece
     e um retry de rede vira cobrança dupla lá fora, onde não há conserto."""

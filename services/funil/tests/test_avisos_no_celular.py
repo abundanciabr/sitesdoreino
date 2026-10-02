@@ -220,7 +220,7 @@ def test_as_rotas_de_aviso_nao_existem_em_site_monolingue(client, rede):
 # ---------------------------------------------------------------------------
 def test_o_sw_leva_os_textos_no_idioma_de_quem_instalou(client, rede):
     """A frase nasce na LEITURA, e a leitura acontece no aparelho: por isso os
-    textos viajam para dentro do `/sw.js` (DECISAO-notificacoes §5.1)."""
+    textos viajam para dentro do `/sw.js`."""
     corpo = client.get("/sw.js?idioma=pt-br", HTTP_HOST=HOST_MESH).content.decode()
 
     configuracao = json.loads(
@@ -447,7 +447,7 @@ def test_o_sw_continua_sem_prefixo_de_idioma_e_com_os_cabecalhos(client, rede):
 
 
 # ---------------------------------------------------------------------------
-# Quando quem recusou foi o NAVEGADOR (02/09/2026, armadilhas/297)
+# Quando quem recusou foi o NAVEGADOR
 # ---------------------------------------------------------------------------
 # Até aqui o cartaz tinha uma frase só para toda falha: "não deu certo agora,
 # tente de novo mais tarde". Ela é honesta quando o NOSSO servidor não
@@ -513,7 +513,7 @@ def test_o_desfecho_do_navegador_nao_promete_que_vai_dar_certo_depois(
 
 
 # ---------------------------------------------------------------------------
-# O aviso de teste (Rito de Contrato de 03/09/2026)
+# O aviso de teste
 # ---------------------------------------------------------------------------
 # O botão "Mandar um aviso de teste para mim" em /admin/avisos/ dispara este
 # assunto. Ele existe para PROVAR O CANAL, não para contar uma novidade — e

@@ -1,4 +1,4 @@
-# [INV-P11] `site_id` entra na IDENTIDADE do fato, não só na leitura da
+# `site_id` entra na IDENTIDADE do fato, não só na leitura da
 # timeline. Sem isso, um aviso com o site errado (bug do publicador, ou
 # mensagem injetada no stream) grava a identidade do fato verdadeiro sem
 # produzir o efeito no site certo, e o aviso legítimo que chegasse depois é

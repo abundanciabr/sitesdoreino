@@ -297,7 +297,7 @@ def test_a_regra_de_cristais_avisa_que_os_cristais_nao_saem():
     """O XP sai; o Cristal não. E a tela diz isso ANTES, não depois.
 
     Mexer no vocabulário de origens de Cristal é decisão do mantenedor, e é a
-    trava que garante que Cristal não se compra ([INV-GAM1]).
+    trava que garante que Cristal não se compra.
     """
     _gamificacao()
 
@@ -630,7 +630,7 @@ def test_um_cristal_sozinho_continua_no_singular():
 # ---------------------------------------------------------------------------
 # Ela nasceu de uma tela que se contradizia. O mantenedor abriu `/conquistas` e
 # leu "Nível 1" e "você chegou ao último degrau desta escada" na mesma tela. O
-# defeito da tela do ALUNO foi corrigido (`armadilhas/271`); o que sobrou foi a
+# defeito da tela do ALUNO foi corrigido; o que sobrou foi a
 # verdade, e a verdade é que a escola nunca ligou degrau nenhum.
 
 
@@ -679,7 +679,7 @@ def test_com_a_escada_desligada_a_tela_diz_o_que_o_aluno_esta_vendo():
 @pytest.mark.django_db
 def test_com_um_degrau_so_a_tela_avisa_que_isso_nao_e_escada():
     """O aviso serve ANTES do clique seguinte, que é a única hora em que ele
-    ajuda: com um degrau não há para onde subir (`armadilhas/271`)."""
+    ajuda: com um degrau não há para onde subir."""
     _gamificacao(
         degraus=[
             _degrau(1, titulo="Aprendiz", ativa=True),

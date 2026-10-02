@@ -29,8 +29,8 @@ class bearerAuth(HttpBearer):
     Em nenhuma das duas o Bearer diz quem é a pessoa. E o Bearer é o ÚNICO
     cadeado desta porta: a célula roda sob `SCRIPT_NAME=/conquistas` e o corte
     do prefixo é do Django, não do Traefik, então `/api/gamificacao/...` é
-    alcançável pela borda pública em `meshcraft.top/conquistas/...`
-    (`armadilhas/186`; guarda em `tests/test_healthz_script_name.py`). Não
+    alcançável pela borda pública em `meshcraft.top/conquistas/...`.
+    Não
     copie daqui a frase "a porta interna não resolve pela borda" — na
     `identidade` ela é verdadeira, aqui não.
     """

@@ -167,7 +167,7 @@ def test_a_task_periodica_esta_registrada_e_bate_a_cada_minuto():
 
     Não basta o decorador estar escrito: o que faz uma task existir é ela estar
     no registro da instância, e o que a põe lá é o autodiscover de `tasks.py`
-    que só o `manage.py run_huey` faz (`armadilhas/030`). Subir o
+    que só o `manage.py run_huey` faz. Subir o
     `huey_consumer` direto dá um worker de pé com o registro VAZIO, que não roda
     nada e não reclama de nada.
     """

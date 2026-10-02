@@ -137,8 +137,7 @@ def test_emitir_fora_de_transacao_e_recusado():
     `atomic`, a função recusa a escrita.
 
     Precisa de `transaction=True` para significar alguma coisa: no `django_db`
-    padrão TODO teste já roda dentro de um atomic, e a recusa nunca dispararia
-    (`armadilhas/057`, §6.5 — a mesma pegadinha, do outro lado).
+    padrão TODO teste já roda dentro de um atomic, e a recusa nunca dispararia.
     """
     with pytest.raises(eventos.EventoForaDaTransacao):
         eventos.emitir(eventos.CRIADA, {"site_id": "x"})

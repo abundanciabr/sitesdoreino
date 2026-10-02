@@ -2,14 +2,14 @@
 
 O QUE ENTRA, E O QUE NAO ENTRA DE PROPOSITO
 --------------------------------------------
-Entra o que o plano (`PLANO-CELULA-CURSOS.md` secao 4) ja diz em publico: um
+Entra o que o plano ja diz em publico: um
 curso (`profissional`, rascunho), os 12 blocos com letra e parte, as 34 aulas so
 com numero, ordem, bloco e titulo exibido, e os 13 instrumentos so com slug,
 nome canonico e numero do cartao.
 
 NAO entra nenhum pedido, nenhum cliente, nenhuma peca, nenhuma pausa, nenhum
 nome de bloco, nenhuma escala de instrumento. Este repositorio e PUBLICO e o
-curso e obra nao lancada do mantenedor (`armadilhas/331`): o texto entra pela
+curso e obra nao lancada do mantenedor: o texto entra pela
 tela do Admin (degrau 1.5) pela porta de maquina (degrau 1.3). A ausencia aqui
 e a decisao, nao esquecimento.
 
@@ -44,7 +44,7 @@ A partir daqui ele reconcilia, e a fronteira e dura:
                             aceito_quando, quiz, video_url, estado, versao,
                             publicada_em, as pecas, as pausas, o nome do bloco
                             e o titulo do Boss. Sao do mantenedor e entram pela
-                            tela (`armadilhas/331`, [INV-CUR-C2]).
+                            tela.
 
 Guarda: `tests/test_semeador_reconcilia_estrutura.py` escreve obra, roda o
 semeador de novo e prova que a obra continua intacta.

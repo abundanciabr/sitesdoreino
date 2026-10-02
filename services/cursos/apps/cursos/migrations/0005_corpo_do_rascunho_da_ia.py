@@ -11,7 +11,7 @@ qual a Ficha de Série não sabe o que está medindo.
 laudo ainda não saiu", zero é "a professora reescreveu as três". As duas só são
 escritas por `apps/cursos/laudo.py::emitir`.
 
-[INV-CUR-C2]: esta migração cria esquema e NÃO roda código.
+esta migração cria esquema e NÃO roda código.
 """
 
 from django.db import migrations, models

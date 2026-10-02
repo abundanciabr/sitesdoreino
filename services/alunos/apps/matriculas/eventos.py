@@ -5,9 +5,7 @@ Até 29/08/2026 ela não afirmava nenhum: só escutava (o consumer de pagamento)
 Ganhou voz para poder cumprir uma promessa — *"você é avisado quando a sua
 situação muda"* —, e o primeiro fato que ela diz é a carta de liberação.
 
-O formato do evento está em `contracts/eventos/notificacao.devida.v1.json`.
-Os campos emitidos aqui seguem esse formato para manter a compatibilidade
-com as células consumidoras.
+Os campos emitidos aqui são os que as células consumidoras leem.
 
 **Por que o construtor mora aqui, e não solto no `services.py`.** O `data` de
 um evento é a superfície que outras células vão ler por anos. Se cada ponto de
@@ -29,7 +27,7 @@ from django.db import transaction
 
 from .models import OutboxEvent
 
-# A CARTA ENDEREÇADA (Rito de Contrato de 26/08/2026): uma pessoa a avisar, um
+# A CARTA ENDEREÇADA: uma pessoa a avisar, um
 # evento. Genérica de propósito — a `sugestoes` publica o mesmo formato desde
 # então, e esta célula entra sem contrato novo, só com um `assunto` a mais.
 NOTIFICACAO_DEVIDA = "notificacao.devida"
@@ -149,9 +147,7 @@ def fato_de_situacao(
 ) -> "OutboxEvent | None":
     """O FATO de a situacao de uma matricula ter mudado. `None` se nao mudou.
 
-    Contrato: `contracts/eventos/matricula.situacao-alterada.v1.json`, congelado
-    no Rito de 05/09/2026 com o mantenedor presente (degrau 8 do painel de
-    gestao).
+    Assunto `matricula.situacao-alterada` (degrau 8 do painel de gestao).
 
     **Por que este fato existe, ao lado da carta.** A carta
     (`carta_de_situacao`) so nasce quando a pessoa GANHA acesso E tem

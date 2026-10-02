@@ -2,8 +2,7 @@
 """[TAR-225] `place_order` passa a informar `metadata.product_id` no `POST
 /intents` que cria a cobrança — é o transporte OPACO que `pagamentos` já usa
 (mesma técnica de `checkout_session_id` e, em `pagamentos`, de `recovery_url`),
-para o evento `pagamento.aprovado` deixar de sair sem produto
-(`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §3, §4).
+para o evento `pagamento.aprovado` deixar de sair sem produto.
 
 `product_id` é sempre o do item PRINCIPAL do pedido (`itens[0]`,
 `_itens_do_catalogo` garante essa posição) — um pedido gera UMA matrícula
@@ -78,7 +77,7 @@ def test_o_checkout_session_id_continua_na_metadata_junto_do_produto(
 
 
 def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
-    """[INV-P11] Confusão de site trocaria o produto de uma escola pelo da
+    """Confusão de site trocaria o produto de uma escola pelo da
     outra — o mesmo vazamento que a fronteira de site já proíbe, visto pelo
     lado do produto."""
     from tests.conftest import HOST_B

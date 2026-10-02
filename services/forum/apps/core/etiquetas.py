@@ -116,7 +116,7 @@ _CACHE: dict[str, tuple[float, "Etiqueta | None"]] = {}
 def limpar_cache() -> None:
     """Esvazia o cache de módulo. Chamada pelas fixtures da suíte.
 
-    Cache de módulo sobrevive entre testes (`armadilhas/026`): sem esta função,
+    Cache de módulo sobrevive entre testes: sem esta função,
     uma etiqueta que um teste ensinou faria o teste seguinte passar por
     herança, e não por medição.
     """
@@ -144,7 +144,7 @@ class Etiqueta:
 def _configuracao() -> tuple[str, str] | None:
     """(endereço, token) do par com a `gamificacao`, ou `None`.
 
-    **Lido no PONTO DE USO, e com `.get()`** (`armadilhas/097`): variável de
+    **Lido no PONTO DE USO, e com `.get()`**: variável de
     ambiente lida no `__init__` de um cliente vira `KeyError`, que não é
     `httpx.RequestError`, que portanto atravessa o `try` do fail-open e sai
     como **HTTP 500 em toda página do fórum** — com o deploy verde e o

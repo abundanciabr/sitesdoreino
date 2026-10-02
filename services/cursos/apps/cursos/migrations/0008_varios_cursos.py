@@ -1,4 +1,4 @@
-# A SALA SERVE VÁRIOS CURSOS (TAR-266, `DECISAO-a-sala-serve-varios-cursos.md`).
+# A SALA SERVE VÁRIOS CURSOS.
 #
 # ESQUEMA E SÓ ESQUEMA. Quatro coisas mudam no banco, e nenhuma linha existente
 # muda de valor:

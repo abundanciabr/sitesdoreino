@@ -17,15 +17,15 @@ from django.db import models
 class Notificacao(models.Model):
     """Um aviso de uma pessoa. DADO, nunca frase pronta.
 
-    **A irreversibilidade que este model existe para respeitar**
-    (`DECISAO-notificacoes` §5.1): guardamos `assunto` + `parametros`, e a frase
+    **A irreversibilidade que este model existe para respeitar**:
+    guardamos `assunto` + `parametros`, e a frase
     nasce na LEITURA, no idioma de quem está lendo. O site serve três idiomas —
     gravar *"Sua ideia mudou para Em desenvolvimento"* congela o idioma de quem
     gravou, e quem lê em espanhol recebe português para sempre. Texto já gravado
     não se traduz depois: por isso é lei, e não recomendação.
 
     `destinatario_id` e `ator_id` são ids da PLATAFORMA — os únicos que
-    atravessam as células. NUNCA e-mail (`DECISAO-EVO-01` §3).
+    atravessam as células. NUNCA e-mail.
     """
 
     site_id = models.CharField(max_length=64)
@@ -39,7 +39,7 @@ class Notificacao(models.Model):
     parametros = models.JSONField()
     # O event_id do FATO que gerou esta carta. As N cartas de uma mesma mudança
     # compartilham este valor — é o que permite reconstruir o leque inteiro e é
-    # a parte "rastreável" da promessa nova (`DECISAO-notificacoes` §2).
+    # a parte "rastreável" da promessa nova.
     origem_event_id = models.UUIDField()
     criado_em = models.DateTimeField(auto_now_add=True)
     lido_em = models.DateTimeField(null=True, blank=True)
@@ -78,7 +78,7 @@ class Notificacao(models.Model):
 class ContadorDeNaoLidos(models.Model):
     """Quantos avisos não lidos uma pessoa tem — em UMA linha, lida em O(1).
 
-    **Por que uma tabela e não `COUNT(*)`** (`DECISAO-notificacoes` §5.2): o sino
+    **Por que uma tabela e não `COUNT(*)`**: o sino
     aparece em TODA página do site. Um `COUNT(*)` numa tabela que cresce para
     sempre fica lento exatamente quando o produto der certo — e o custo apareceria
     na página inicial de todo mundo, não numa tela escondida.
@@ -159,7 +159,7 @@ class NotificacaoArquivada(models.Model):
 class InscricaoPush(models.Model):
     """Um APARELHO que aceitou receber o aviso na tela, mesmo com o site fechado.
 
-    Canal novo da Fase 7 (`docs/notificacoes/PLANO-MESTRE.md`), autorizado pelo
+    Canal novo da Fase 7, autorizado pelo
     mantenedor em 31/08/2026 depois de o site virar app instalável (PR #706).
     No iPhone essa ordem é obrigatória e não tem atalho: só um site instalado na
     tela de início pode receber aviso.
@@ -179,8 +179,7 @@ class InscricaoPush(models.Model):
     O que vive aqui é opaco de propósito: `endpoint` é o endereço do servidor de
     push do fabricante, e as duas chaves são o material que CIFRA o conteúdo do
     aviso de ponta a ponta. Nem esta célula guarda texto de aviso, nem o
-    fabricante consegue ler o que passou por ele. Nada aqui é e-mail
-    (`DECISAO-EVO-01` §3).
+    fabricante consegue ler o que passou por ele. Nada aqui é e-mail.
     """
 
     site_id = models.CharField(max_length=64)

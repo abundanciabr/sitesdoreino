@@ -8,11 +8,11 @@ este arquivo trava é o que já custou caro em outras células:
 - **a ordem do publish** — `xadd` ANTES de marcar `published_at`. Invertida, o
   pior caso deixa de ser "republicar" e passa a ser "perder evento em silêncio"
   (§4.12);
-- **o `on_commit`** — e a pegadinha do `django_db` (`armadilhas/057`, §6.5), que
+- **o `on_commit`** — e a pegadinha do `django_db`, que
   tem aqui um teste dedicado só para explicar por que o de cima precisa de
   `transaction=True`;
 - **o fio do worker** — a task periódica registrada na MESMA instância de Huey
-  que `settings.HUEY` entrega ao djhuey (`armadilhas/030`, §4.11). Sem isso o
+  que `settings.HUEY` entrega ao djhuey. Sem isso o
   `run_huey` sobe de pé e inútil, sem reclamar de nada.
 """
 
@@ -83,7 +83,7 @@ def test_a_segunda_passada_nao_republica_o_que_ja_foi(caixa, fio):
 def test_os_quatro_fatos_chegam_ao_fio_sozinhos_apos_o_commit(caixa, fio):
     """Sem worker, sem chamar o relay na mão: o commit publica.
 
-    `transaction=True` é OBRIGATÓRIO aqui (`armadilhas/057`, §6.5). O
+    `transaction=True` é OBRIGATÓRIO aqui. O
     `django_db` padrão embrulha o teste numa transação que sofre rollback no
     fim — nunca há COMMIT, os callbacks do `on_commit` são descartados e este
     teste passaria sem publicar absolutamente nada. O teste logo abaixo existe
@@ -107,7 +107,7 @@ def test_sem_transaction_true_o_on_commit_nao_dispara_e_o_guarda_mentiria(caixa,
     Ele roda no `django_db` PADRÃO de propósito: o fato acontece, a outbox
     grava — e nada sai no fio, porque o commit nunca chega. Quem tirar o
     `transaction=True` do guarda acima o deixa verde e vazio; é este teste que
-    documenta mecanicamente o porquê (`armadilhas/057`, §6.5).
+    documenta mecanicamente o porquê.
     """
     caixa.publicar()
 

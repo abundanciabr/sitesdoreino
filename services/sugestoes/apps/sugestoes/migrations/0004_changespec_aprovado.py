@@ -6,7 +6,7 @@
 #    registro, na forma exata do trigger que a `0001_initial` criou para o
 #    `HistoricoStatus`. Sem ele, "append-only" seria convenção: o collector do
 #    CASCADE do Django e qualquer `UPDATE` cru passariam por baixo dos degraus
-#    Python (`armadilhas/079`).
+# Python.
 #
 # 2. `sugestoes_exige_changespec` — **a trava**, no degrau mais fundo que ela
 #    alcança. A `ESPECIFICACAO-CELULA.md` §8 pede validação "no `save()` ou no

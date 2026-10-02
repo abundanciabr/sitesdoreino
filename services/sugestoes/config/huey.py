@@ -5,7 +5,7 @@
 `INSTALLED_APPS`: é essa dupla que dá o entrypoint canônico
 `python manage.py run_huey`, o único que faz `django.setup()` e o autodiscover
 de `tasks.py`. Sem ele, o worker sobe com o registro VAZIO, não executa nada e
-não reclama de nada (`armadilhas/030`, §4.11).
+não reclama de nada.
 
 Fila intra-célula = Huey. Comunicação ENTRE células = eventos (R3/R4) — nunca
 uma célula enfileirando task na outra.

@@ -35,7 +35,7 @@ class CatalogoClient:
         return {"Authorization": f"Bearer {self.token}"}
 
     def obter_site_por_host(self, host: str) -> dict | None:
-        """[INV-P11] 404 do catálogo é 'site desconhecido', nunca um site padrão."""
+        """404 do catálogo é 'site desconhecido', nunca um site padrão."""
         r = http().get(
             f"{self.base}/sites/by-host/{host}",
             headers=self._headers(),

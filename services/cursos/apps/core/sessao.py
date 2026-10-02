@@ -3,13 +3,12 @@
 **A regra que organiza este arquivo inteiro: reconhecer não é autorizar.**
 A `identidade` diz quem é; a `alunos` diz em que categoria está. **Quem decide
 se a pessoa vê a aula é esta célula**, aqui, fail-CLOSED: só a matrícula ativa
-abre a sala, e não conseguir perguntar nunca vira "então pode entrar"
-(`DECISAO-celula-de-identidade.md` §6.2; constituição da célula).
+abre a sala, e não conseguir perguntar nunca vira "então pode entrar".
 
-**Esta célula não assina sessão** ([INV-P12]). O cookie recebido é repassado
+**Esta célula não assina sessão**. O cookie recebido é repassado
 OPACO à `identidade`; não há `SessionMiddleware`, não há `request.session`, e
 os dois estados que a tentação poria lá (a cerimônia do Boss e "já leu o
-laudo?") moram no `Progresso` (`armadilhas/143`).
+laudo?") moram no `Progresso`.
 
 Molde: `services/forum/apps/core/sessao.py`, copiado e nunca importado.
 """
@@ -42,8 +41,8 @@ class Ator:
     perguntar": as duas fecham a porta, e a tela diz frases diferentes.
 
     `produtos_matriculados` é o conjunto de produtos em que esta pessoa está
-    matriculada NESTA escola, e é ele que decide QUAL curso a sala serve
-    (`DECISAO-cursos-matriculas-e-alunos.md` §1). `eh_aluno` continua sendo a
+    matriculada NESTA escola, e é ele que decide QUAL curso a sala serve.
+    `eh_aluno` continua sendo a
     primeira porta ("tem alguma matrícula ativa?") e este conjunto é a segunda
     ("tem a DESTE curso?"): as duas fecham, e de novo a tela diz frases
     diferentes — "você não é aluno" e "você não é aluno DESTE curso" mandam a
@@ -90,7 +89,7 @@ VISITANTE = Ator(pessoa=None)
 def _lista_de_emails(nome_da_variavel: str) -> set[str]:
     """Uma lista de e-mails do env, normalizada. Vazia ⇒ ninguém.
 
-    Lida no PONTO DE USO e com default inofensivo (`armadilhas/097`): env
+    Lida no PONTO DE USO e com default inofensivo: env
     ausente fecha o poder, mas não derruba o container. **Fail-closed por
     construção:** variável ausente ou vazia significa *ninguém tem este
     poder*, nunca *todo mundo tem*. Molde: `services/forum/apps/core/sessao.py`.
@@ -117,7 +116,7 @@ def _produtos_deste_site(matriculas: list[dict]) -> frozenset[str]:
 
     Duas peneiras, e cada uma existe por um motivo próprio:
 
-    **A da escola** ([INV-P11], multissítio): matrícula de outra escola não abre a
+    **A da escola**: matrícula de outra escola não abre a
     sala desta. Sem `SITE_ID` no env não há escola para comparar, e o conjunto
     sai vazio — a sala já responde por esse caso antes de chegar aqui, e sair
     vazio é o desfecho fechado de qualquer forma.

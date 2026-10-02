@@ -12,7 +12,7 @@ corresponde a uma forma diferente de isto dar errado:
 3. **A regra "esta página não tem menu" ser ignorada.** Versão vazia numa
    página precisa VENCER a versão padrão do site.
 4. **O estilo não chegar ao navegador.** Esta célula serve o CSS por rota
-   própria (`armadilhas/083`), então classe nova no HTML sem regra no arquivo é
+   própria, então classe nova no HTML sem regra no arquivo é
    um menu sem forma, e nada ficaria vermelho.
 """
 
@@ -116,7 +116,7 @@ def catalogo_de_pe(rede):
     `dentro`) já ABRE uma página, e o processador de contexto do menu roda em
     toda página. Sem isto, a primeira requisição da suíte bateria num catálogo
     não registrado e o `respx` estouraria — vermelho de instrumento, não de
-    defeito (INV-CI01).
+    defeito.
 
     Quem quiser outra resposta a troca com `catalogo_diz`, que limpa o cache
     junto.
@@ -291,7 +291,7 @@ def test_rotulo_com_marcacao_sai_escapado(dentro, rede, quadro):
 
 
 def test_o_estilo_do_menu_chega_ao_navegador(client):
-    """Esta célula serve o CSS por rota própria (`armadilhas/083`): classe nova
+    """Esta célula serve o CSS por rota própria: classe nova
     no HTML sem regra no arquivo é um menu sem forma, e nada ficaria vermelho."""
     resposta = client.get(
         reverse("estatico", kwargs={"caminho": "sugestoes/caixa.css"})
@@ -341,8 +341,8 @@ def test_os_outros_lugares_continuam_no_menu_da_caixa(dentro, rede, quadro):
 # valor novo no catálogo de vazar um atalho durante a janela em que uma das
 # células ainda não subiu com o código novo.
 #
-# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
-# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras:
+# uma tabela certa com um chamador que passa o argumento
 # errado passaria num teste que só lê a tabela.
 MENU_COM_EQUIPE = {
     "default_version": "v",

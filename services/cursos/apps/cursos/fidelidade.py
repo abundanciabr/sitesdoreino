@@ -41,7 +41,7 @@ frases diferentes nao tem o que compartilhar alem disso, e um modulo comum entre
 eles seria uma camada a mais para servir a duas leis que ninguem prometeu manter
 iguais.
 
-1. **A chave e lida NO PONTO DE USO** (`armadilhas/097`): env ausente falha
+1. **A chave e lida NO PONTO DE USO**: env ausente falha
    nesta chamada, com frase em portugues, e nao em toda pagina aberta.
 2. **O `ANTHROPIC_WORKSPACE_ID` so viaja se existir**: chave ligada a identidade
    e recusada com HTTP 400 sem ele, e o SDK nao le a variavel sozinho.
@@ -65,7 +65,7 @@ sugerir a reescrita, mesmo que queira. `impede_publicar` sai falso porque o
 `Defeito` so o liga na remissao quebrada, que nao e um destes sete codigos.
 
 Nada persiste: nenhum modelo, nenhuma escrita, nenhuma versao. E o espirito de
-[INV-CUR-L4]: a IA aponta, a pessoa decide.
+a IA aponta, a pessoa decide.
 
 Guardas: `tests/test_fidelidade.py`.
 """
@@ -331,7 +331,7 @@ ou 'nada'>", "origens": "<de onde veio cada desvio: a fonte, a saída>", \
 def ligado() -> bool:
     """A IA esta configurada neste servidor?
 
-    Lido no ponto de uso, toda vez (`armadilhas/097`), e e a MESMA leitura que
+    Lido no ponto de uso, toda vez, e e a MESMA leitura que
     `conferir` faz, para as duas nunca discordarem.
     """
     return bool(_chave())

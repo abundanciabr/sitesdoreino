@@ -31,7 +31,7 @@ def _corpo(resposta) -> str:
 
     A rota do CSS devolve um `FileResponse`, que NÃO tem `.content` — pedir por
     ele levanta `AttributeError` e o teste fica vermelho por instrumento, não
-    por defeito (INV-CI01: não medir não é estar certo).
+    por defeito.
     """
     if resposta.streaming:
         return b"".join(resposta.streaming_content).decode("utf-8")
@@ -168,7 +168,7 @@ def test_o_link_do_site_sai_do_settings_e_nao_de_uma_segunda_verdade(
 @pytest.mark.django_db
 def test_o_estilo_do_rodape_chega_pela_rota_do_css(client):
     """Classe no HTML sem regra no CSS é rodapé sem forma, e nada fica vermelho.
-    Esta célula serve o estilo por rota própria (`armadilhas/083`), então a
+    Esta célula serve o estilo por rota própria, então a
     prova pergunta ao SERVIDOR, não ao disco."""
     css = _corpo(client.get(reverse("estatico", args=["gamificacao.css"])))
     for regra in (".rodape {", ".rodape .marca", ".rodape .links", ".rodape .direitos"):

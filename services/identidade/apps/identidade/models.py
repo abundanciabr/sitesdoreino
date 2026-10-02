@@ -1,4 +1,4 @@
-# apps/identidade/models.py — a linha da pessoa (DECISAO-celula-de-identidade)
+# apps/identidade/models.py — a linha da pessoa
 """Camada de dados da célula `identidade`.
 
 Uma tabela só, de propósito: esta célula responde "quem é", e mais nada.
@@ -37,7 +37,7 @@ class Identidade(models.Model):
     O Google prova QUEM É (e-mail verificado); nenhuma matrícula é conferida
     NA PORTA do site — quem decide SE PODE alguma coisa é a célula dona do
     recurso, na hora do recurso (a Caixa confere matrícula na participação).
-    Reconhecer não é autorizar (DECISAO-onde-mora-a-sessao §4).
+    Reconhecer não é autorizar.
     """
 
     id = models.CharField(
@@ -83,7 +83,7 @@ class OutboxEvent(models.Model):
     Nasceu em 31/08/2026, junto com a VOZ desta célula: até então ela era muda
     — cunhava a `Identidade` e não contava a ninguém. Por isso o pedido mais
     óbvio do mantenedor, *"após o cadastro, mandar boas-vindas"*, não tinha o
-    que escutar (`PLANO-SEQUENCIAS-DE-MENSAGENS` §2).
+    que escutar.
 
     O padrão é copiado da `alunos` — nunca o arquivo, e nunca por import
     cruzado (cada célula com os próprios arquivos): um relay diferente por célula significaria N modos de

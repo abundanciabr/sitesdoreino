@@ -29,7 +29,7 @@ ALLOWED_HOSTS = ["*"]  # rede Docker interna; célula não tem rota pública dir
 # Tokens estáticos aceitos, um por par consumidor (TOKENS_ACEITOS_FUNIL etc.).
 # Hoje o conjunto nasce VAZIO e isso é o desenho: esta célula ainda não tem
 # superfície de máquina — quem for consumi-la passa pela Fase 4 do
-# `docs/notificacoes/PLANO-MESTRE.md`, que é Rito de Contrato (RITOS §3).
+# `docs/notificacoes/PLANO-MESTRE.md`, que é Rito de Contrato.
 TOKENS_ACEITOS = {
     v for k, v in os.environ.items() if k.startswith("TOKENS_ACEITOS_") and v
 }
@@ -70,7 +70,7 @@ USE_TZ = True
 # Django, `America/Chicago`: cinco horas atrás, e dia virado perto da
 # meia-noite. Esta célula nasce com a linha porque a dívida do fuso fechou em
 # 26/08/2026 nas outras onze — nascer certo é mais barato que ser corrigida
-# depois. Guarda de comportamento: tests/test_fuso_horario.py (armadilhas/099).
+# depois. Guarda de comportamento: tests/test_fuso_horario.py.
 TIME_ZONE = "America/Sao_Paulo"
 
 # Quantos dias uma notificação LIDA continua no caminho quente antes de ser

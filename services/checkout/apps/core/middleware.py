@@ -18,7 +18,7 @@ def limpar_cache_de_sites() -> None:
 
 
 class SiteResolutionMiddleware:
-    """[INV-P11] Resolve Host→Site UMA vez por requisição, via catálogo (com cache).
+    """Resolve Host→Site UMA vez por requisição, via catálogo (com cache).
     Host não cadastrado ⇒ 404 — nunca um site padrão."""
 
     def __init__(self, get_response):

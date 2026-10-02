@@ -7,7 +7,7 @@ organizado com a voz da escola, e a partir daqui quem tem a caneta é o
 mantenedor: ele edita o guia em `/admin/documentos/`, sem abrir PR.
 
 A pasta `documentos/` é SEMENTE e a migração `0003` rodou uma vez, em
-31/08/2026: um arquivo novo não vira página sozinho (`armadilhas/347`). Por isso
+31/08/2026: um arquivo novo não vira página sozinho. Por isso
 este documento entra pela mesma porta dos anteriores (`0007`, `0009`, `0010`):
 `semear_documento`, que semeia SÓ ele, nunca sobrescreve o que o mantenedor já
 tenha escrito pela tela, e sem a pasta na imagem não faz nada.

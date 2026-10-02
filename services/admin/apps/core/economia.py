@@ -6,7 +6,7 @@ inteira da escola nasce DESLIGADA (`semear_economia` cria tudo com
 
 ## Por que esta tela é obrigatória, e não conveniência
 
-A lei da gamificação (`DECISAO-gamificacao.md` §10.5) tem um **critério de
+A lei da gamificação tem um **critério de
 morte** escrito assim: *"ajustar a economia passar a exigir PR de código"* obriga
 a parar e reabrir a decisão com o mantenedor. Enquanto ligar uma regra dependesse
 de um agente editar o semeador e esperar uma publicação, a economia era código
@@ -22,7 +22,7 @@ mostraria uma coisa e o motor pagaria outra.
 
 ## Quem autoriza é ESTA célula
 
-A `gamificacao` não assina sessão ([INV-P12]) e o `papel` que a `identidade`
+A `gamificacao` não assina sessão e o `papel` que a `identidade`
 devolve **nunca autoriza rota** (*"reconhecer não é autorizar"*,
 `DECISAO-onde-mora-a-sessao` §4). O crachá que vale é o desta área, que a porta
 do `/admin/` já exige; o Bearer do par prova só QUEM CHAMA. É o mesmo desenho de
@@ -39,7 +39,7 @@ abaixo, são desta tela — o bastidor do mantenedor, que é só em português.
 
 Cada gesto é um POST que recarrega a página, como em `/admin/menu/`, pelas mesmas
 três razões: o que se vê é o que está gravado; a política de segurança desta área
-exige um hash na CSP para cada script embutido (`armadilhas/199`), e um
+exige um hash na CSP para cada script embutido, e um
 formulário não precisa de nenhum; e o mantenedor é leigo — um botão por gesto,
 com o nome do gesto escrito nele, não tem como ser mal entendido.
 """
@@ -356,7 +356,7 @@ def economia_mudar_conquista(request):
 # Entrou em 02/09/2026, e nasceu de uma tela que se contradizia. O mantenedor
 # abriu `/conquistas` e leu, uma embaixo da outra, "Nível 1", "você chegou ao
 # último degrau desta escada" e "0 de experiência até aqui". O defeito da tela
-# do ALUNO foi corrigido (`armadilhas/271`); o que sobrou foi a verdade, e a
+# do ALUNO foi corrigido; o que sobrou foi a verdade, e a
 # verdade era que a escola nunca tinha ligado degrau nenhum. Havia botão aqui
 # para as regras e para as conquistas; para a escada, nada.
 #

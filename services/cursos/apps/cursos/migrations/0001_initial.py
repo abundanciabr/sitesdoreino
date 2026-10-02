@@ -1,6 +1,6 @@
 """As tabelas de conteudo da celula cursos, e o que o ORM nao sabe escrever.
 
-Degrau 1.2 da escada (`PLANO-CELULA-CURSOS.md` secao 4, TAR-147).
+Degrau 1.2 da escada.
 
 NAO HA SEMEADURA AQUI, e a ausencia e a decisao. Este repositorio e PUBLICO e o
 curso nao esta lancado: o unico caminho do texto das aulas para dentro do sistema
@@ -13,7 +13,7 @@ motivo medido no forum e na gamificacao: migracao de dados entra no banco de
 TODO teste, e semear e conteudo, nao esquema.
 
 O UNICO `RunSQL` e esquema: a chave estrangeira COMPOSTA que impede
-`Aula.curso` de mentir sobre `Aula.bloco.curso` (`armadilhas/274`). `RunSQL`
+`Aula.curso` de mentir sobre `Aula.bloco.curso`. `RunSQL`
 recebe uma LISTA de proposito, e nao uma string unica (o fatiamento por `;` do
 `sqlparse` e comportamento de dependencia transitiva, nao contrato do Django).
 Sem `DEFERRABLE`, de proposito: imediata, a recusa nasce no `INSERT`/`UPDATE`

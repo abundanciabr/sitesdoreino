@@ -8,8 +8,8 @@ Comunidade > XP**. O marco real é a espinha — a primeira obra terminada, o
 primeiro cliente, os primeiros dólares — e ele não tem como ser contado por
 máquina nenhuma: alguém precisa olhar a evidência e dizer sim.
 
-Este arquivo é esse caminho. Ele é o degrau 12 da escada
-(`docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §6), e as tabelas que ele usa
+Este arquivo é esse caminho. Ele é o degrau 12 da escada,
+e as tabelas que ele usa
 existem, vazias, desde 30/08/2026.
 
 AS SEIS TRAVAS QUE ELE CARREGA, E POR QUE CADA UMA
@@ -135,7 +135,7 @@ def prazo_de(tipo: str, a_partir_de=None):
     **Dias úteis contados no fuso da escola**, que é `America/Sao_Paulo` — o
     mesmo `TIME_ZONE` de que sai o dia do ledger e a semana da Sequência. Contar
     em UTC daria um dia diferente para todo pedido feito depois das 21h, e a
-    fila mostraria atraso onde não há (`armadilhas/099`).
+    fila mostraria atraso onde não há.
 
     **Feriado não é considerado, e a ausência é declarada.** Uma tabela de
     feriados é dado que envelhece e que ninguém mantém; o custo de errar aqui é
@@ -244,7 +244,7 @@ def conceder(
 
         # Os Cristais. `conquista` é UMA das cinco origens legítimas de ganho —
         # a moeda desta escola nasce de esforço, e a lista de jeitos de ela
-        # nascer é fechada no BANCO ([INV-GAM1]). É por isso que uma medalha
+        # nascer é fechada no BANCO. É por isso que uma medalha
         # pode pagar Cristal e uma regra de evento não: aquela lista não tem a
         # palavra "regra", e acrescentá-la é decisão do mantenedor.
         if conquista.cristais:

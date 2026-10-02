@@ -2,8 +2,8 @@
 
 ci:texto-publicado
 
-A MARCA ACIMA LIGA O PORTÃO DO TRAVESSÃO neste arquivo inteiro
-(`ci/travessao.py`, terceira regra de alcance no `CLAUDE.md`). Ela é obrigatória
+A MARCA ACIMA LIGA O PORTÃO DO TRAVESSÃO neste arquivo inteiro.
+Ela é obrigatória
 pelo mesmo motivo do `roteiro_da_escola.py`: as frases daqui são lidas pelo
 ALUNO, e não estão numa `templates/` nem num rótulo de `TextChoices`, que são as
 duas regras que pegam sozinhas.

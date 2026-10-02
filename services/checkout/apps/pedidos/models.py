@@ -4,10 +4,10 @@ from django.db import models
 
 
 class SnapshotCongelado(Exception):
-    """[INV-P1] Tentativa de reescrever um snapshot já criado."""
+    """Tentativa de reescrever um snapshot já criado."""
 
 
-# [INV-P1] O que o pedido congela na criação. Correção de pedido = pedido novo +
+# O que o pedido congela na criação. Correção de pedido = pedido novo +
 # cancelamento do antigo, nunca UPDATE nestes campos.
 CAMPOS_CONGELADOS = ("site_id", "items", "total_cents", "customer")
 
@@ -16,7 +16,7 @@ class Session(models.Model):
     """Sessão de checkout: a oferta lida do catálogo NA ABERTURA, por site."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    site_id = models.CharField(max_length=64)  # [INV-P11] vem do Host, nunca do payload
+    site_id = models.CharField(max_length=64)  # vem do Host, nunca do payload
     offer_slug = models.CharField(max_length=200)
     offer = models.JSONField()
     lead_id = models.CharField(max_length=64, blank=True, default="")
@@ -34,7 +34,7 @@ class Session(models.Model):
 
 class OrderQuerySet(models.QuerySet):
     def update(self, **kwargs):
-        # [INV-P1] QuerySet.update() não passa por Model.save() — o guarda precisa
+        # QuerySet.update() não passa por Model.save() — o guarda precisa
         # existir nos dois caminhos, senão a lei vale só pela metade.
         congelados = sorted(set(kwargs) & set(CAMPOS_CONGELADOS))
         if congelados:
@@ -111,7 +111,7 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 class FatoAplicado(models.Model):
     """Um fato de pagamento que esta célula já aplicou, guardado pela
     identidade lógica que o contrato publica no campo `x-ponte-do-v1` dos
-    schemas v2 (`contracts/eventos/pagamento.*.v2.json`).
+    schemas v2.
 
     A chave NÃO é o `event_id`: o mesmo pagamento chega como `pagamento.*.v1` e
     como `pagamento.*.v2` enquanto o v1 não sai do ar, e cada versão traz o seu

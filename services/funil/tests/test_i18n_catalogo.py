@@ -141,7 +141,7 @@ def test_site_sem_languages_e_monolingue(site):
 def test_languages_sem_default_language_nao_elege_um_por_conta(caplog):
     # O contrato manda `languages` conter `default_language`; se vier sem,
     # escolher "o primeiro da lista" seria o site-padrão silencioso que o
-    # [INV-P11] proíbe — e mandaria a raiz redirecionar para um idioma que
+    # proíbe — e mandaria a raiz redirecionar para um idioma que
     # ninguém escolheu. Monolíngue, com ERROR no log.
     assert idi.idiomas_do_site(_site(languages=TRES_IDIOMAS)) is None
     assert "MONOLÍNGUE" in caplog.text
@@ -166,7 +166,7 @@ def test_default_language_fora_dos_idiomas_serve_monolingue(caplog):
         idi.idiomas_do_site(_site(default_language="fr", languages=TRES_IDIOMAS))
         is None
     )
-    assert "MONOLÍNGUE" in caplog.text  # nunca um default silencioso (INV-P11)
+    assert "MONOLÍNGUE" in caplog.text  # nunca um default silencioso
 
 
 def test_idioma_sem_catalogo_na_celula_e_ignorado(caplog):

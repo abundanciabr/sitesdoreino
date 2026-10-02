@@ -15,7 +15,7 @@ class bearerAuth(HttpBearer):
     **Este token responde "QUEM CHAMA", e nada além disso.** Ele prova que o
     chamador é uma célula da casa, hoje só a `admin`. Esta porta não tem sessão
     de pessoa e não resolve visitante nenhum: quem fala com ela é máquina,
-    sempre ([INV-P12]). A pergunta "de quem é este fato?" se responde pelo
+    sempre. A pergunta "de quem é este fato?" se responde pelo
     CORPO do evento, que veio pelo contrato, nunca por quem fez a chamada.
 
     UM CONJUNTO SÓ, E ISSO É DECISÃO: esta porta apenas LÊ. A `mensageria`

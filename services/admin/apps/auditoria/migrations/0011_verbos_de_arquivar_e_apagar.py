@@ -15,7 +15,7 @@ palavras, e nenhuma linha antiga precisa ser tocada.
 **No SQLite, alterar uma coluna RECONSTROI a tabela** — o Django cria uma nova,
 copia as linhas e troca as duas —, e **os gatilhos morrem na troca**. Os desta
 tabela sao a trava append-only da auditoria (`0001_initial`): a lei da casa e
-que ela e append-only por MECANISMO, e nao por disciplina (`armadilhas/079`).
+que ela e append-only por MECANISMO, e nao por disciplina.
 Sem estas duas linhas, esta migracao desarmaria a trava sem erro nenhum e sem
 mudar uma linha de codigo do modelo. Licao completa: `armadilhas/246`.
 

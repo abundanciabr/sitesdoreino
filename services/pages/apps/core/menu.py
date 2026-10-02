@@ -46,7 +46,7 @@ existe: `infra/provisionar-par-do-menu.sh` liga quatro consumidores
 Enquanto a versão do roteiro que também escreve `CATALOGO_API_URL` e
 `TOKEN_CATALOGO` em `env/pages.env` não rodar na VPS, a barra simplesmente não
 aparece: sem erro, sem log por página, sem custo de rede. O env mora só na VPS
-(INV-P8) e é escrito pelo provisionamento lá, e é por isso que este arquivo pode
+ e é escrito pelo provisionamento lá, e é por isso que este arquivo pode
 entrar antes dele.
 """
 
@@ -111,7 +111,7 @@ def _perguntar_ao_catalogo(host: str) -> dict:
 
     O env é lido NO PONTO DE USO, nunca no import: variável lida no `__init__`
     de um cliente transforma env ausente em HTTP 500 em TODA página, com o
-    deploy verde (`armadilhas/097`).
+    deploy verde.
     """
     base = (os.environ.get("CATALOGO_API_URL") or "").strip().rstrip("/")
     token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
@@ -259,7 +259,7 @@ def menu_do_contexto(request) -> dict:
 
     É processador, e não uma inclusão escrita em cada template, pelo mesmo
     motivo do rodapé: "em todas as páginas" não pode depender de alguém lembrar
-    da peça (`armadilhas/242`). Tela nova da Prancheta nasce com menu sozinha,
+    da peça. Tela nova da Prancheta nasce com menu sozinha,
     porque quem desenha é `pages/moldura.html`.
     """
     site = _site(request.get_host().split(":")[0].lower())

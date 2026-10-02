@@ -140,8 +140,8 @@ def test_o_reembolsado_nao_entra_na_fila_pela_porta():
 def test_o_ex_aluno_continua_podendo_pedir_para_voltar():
     """O contraste que torna o teste acima uma DECISÃO, e não um corte.
 
-    `encerrada` está fora de `STATUS_QUE_BARRAM_A_FILA` de propósito
-    (`DECISAO-a-ficha-nao-se-apaga.md` §3): a escola é um lugar de onde se sai e
+    `encerrada` está fora de `STATUS_QUE_BARRAM_A_FILA` de propósito:
+    a escola é um lugar de onde se sai e
     para onde se volta. Sem este teste, alguém poderia "simplificar" a lista
     para *"todo mundo que já teve ficha"* e o ex-aluno perderia o caminho de
     volta sem que nada ficasse vermelho.

@@ -15,7 +15,7 @@ explícita herda o padrão, e isso é visível.
 **Por que os textos ainda saem do catálogo de tradução, e não de um banco.** A
 `funil` é a única célula sem banco (é vitrine pura), então "o mantenedor edita o
 texto no painel" não é uma coluna nova aqui: é a etapa 2, que precisa de um dono
-do dado com API própria e passa pelo Rito de Contrato (RITOS §3). O que esta
+do dado com API própria e passa pelo Rito de Contrato. O que esta
 etapa entrega é a costura pronta para ela: quem constrói o rodapé é ESTA função,
 que devolve um dicionário; no dia em que o painel mandar, o dicionário vem de lá
 e o template não muda uma linha. É de propósito que o template não saiba de onde

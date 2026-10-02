@@ -24,7 +24,7 @@ aqui não havia `FileField` nenhum nesta casa. O que este arquivo trava:
    que houve e o que fazer.
 
 6. **O envio não come o rascunho**, exatamente como a recusa do travessão já
-   não come (`DECISAO-o-editor-de-documentos` §3).
+   não come.
 """
 
 from io import BytesIO

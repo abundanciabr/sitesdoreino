@@ -55,7 +55,7 @@ router = Router()
 # o contrato da Caixa congelou em `contracts/sugestoes.openapi.yaml`: o
 # consumidor troca o endereço, não o vocabulário.
 #
-# **CUIDADO ao editar este arquivo** (`armadilhas/020`): `Session` é um nome
+# **CUIDADO ao editar este arquivo**: `Session` é um nome
 # comum no Django. Um `ninja.Schema` com o mesmo nome de algo importado aqui
 # sombreia o import em SILÊNCIO. Hoje é seguro: `django.contrib.sessions` nem
 # está em INSTALLED_APPS, e o módulo de sessão entra como `ses`.

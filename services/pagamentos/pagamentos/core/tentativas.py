@@ -1,7 +1,7 @@
 # pagamentos/core/tentativas.py
 # A máquina de estados de UMA tentativa de cobrar. Mora em core/ porque é
 # vocabulário de domínio (AGENTS.pagamentos: core/ é dono de "modelos, ledger,
-# outbox"), e methods/card a usa sem enxergar providers.* (INV-P9).
+# outbox"), e methods/card a usa sem enxergar providers.*.
 #
 # O ponto inteiro deste arquivo é que `executar_tentativa` seja o ÚNICO caminho
 # até o provedor. Quem chama entrega a função que fala com a rede; quem grava,

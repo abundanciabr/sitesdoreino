@@ -9,7 +9,7 @@ from apps.sites.menu import normalizar_menu
 
 # BCP 47 na forma que aparece na URL: minúscula, com hífen (en, pt-br, es).
 # A tag canônica (pt-BR, para <html lang>/hreflang) DERIVA desta — guardar as
-# duas seria deixá-las divergir em silêncio (PLANO-I18N D5).
+# duas seria deixá-las divergir em silêncio.
 CODIGO_DE_IDIOMA = re.compile(r"^[a-z]{2}(-[a-z]{2})?$")
 
 
@@ -88,7 +88,7 @@ def normalizar_idiomas(default_language, languages):
 
 
 class SiteQuerySet(models.QuerySet):
-    """[ARMADILHAS §4.4] `QuerySet.update()` NÃO passa por `Model.save()`: sem
+    """`QuerySet.update()` NÃO passa por `Model.save()`: sem
     este guarda a coerência de idioma teria um caminho de escrita sem validação
     nenhuma, e o banco aceitaria um site torto pela porta dos fundos."""
 
@@ -114,7 +114,7 @@ class SiteQuerySet(models.QuerySet):
 
 class Site(models.Model):
     """Registro canônico do multissítio (site é dado). Host não cadastrado nunca
-    resolve para um site — é 404 em quem consome (INV-P11)."""
+    resolve para um site — é 404 em quem consome."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     host = models.CharField(max_length=255, unique=True)
@@ -122,7 +122,7 @@ class Site(models.Model):
     active = models.BooleanField(default=True)
     theme = models.JSONField(default=dict, blank=True)
     default_offer_slug = models.CharField(max_length=255, blank=True, default="")
-    # Idioma é DADO do site (PLANO-I18N D3, CONV-SITE), não arquivo de célula.
+    # Idioma é DADO do site, não arquivo de célula.
     # JSONField pelo mesmo motivo de `theme`: a lista é lida inteira junto com o
     # site e ninguém filtra site POR idioma — assim o décimo idioma é um
     # elemento a mais na lista, nunca uma migration.

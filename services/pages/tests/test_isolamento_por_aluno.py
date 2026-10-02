@@ -11,7 +11,7 @@ sete lembranças. Por isso o isolamento tem UMA porta — o `do_aluno` dos
 gerenciadores de `apps/portfolio/models.py` — e é ela que este arquivo mede. Os
 degraus 07, 08, 10 e 13 leem por ela.
 
-**A prova é por MUTAÇÃO** (`armadilhas/195`): trocar o corpo do `do_aluno` por
+**A prova é por MUTAÇÃO**: trocar o corpo do `do_aluno` por
 `self.all()` deixa estes testes vermelhos na asserção, e não na construção. A
 saída está no corpo do PR.
 

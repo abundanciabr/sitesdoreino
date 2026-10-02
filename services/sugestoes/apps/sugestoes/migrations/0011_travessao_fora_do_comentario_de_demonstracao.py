@@ -1,7 +1,6 @@
 """O TRAVESSÃO SAI DO COMENTÁRIO DE DEMONSTRAÇÃO QUE JÁ ESTÁ NO BANCO.
 
-Mesma causa da `forum/0003`, e mesma decisão do mantenedor em 30/08/2026
-(`CLAUDE.md`, "Nenhum texto publicado sai com travessão").
+Mesma causa da `forum/0003`, e mesma decisão do mantenedor em 30/08/2026.
 
 O `semear_demo` rodou em produção em 29/08/2026 às 23:50 (workflow
 `semear-demo-caixa`, run verde). O texto-fonte foi corrigido no PR #607 — mas o

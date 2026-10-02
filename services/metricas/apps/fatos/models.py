@@ -59,7 +59,7 @@ def dia_em_sao_paulo(instante: dt.datetime) -> dt.date:
 
     É a conversão que decide em qual mês uma pessoa entrou. 01h de UTC ainda é
     o dia anterior aqui; medir por UTC põe quem entrou às 22h do dia 30 no mês
-    seguinte, sem erro em lugar nenhum (`armadilhas/099`).
+    seguinte, sem erro em lugar nenhum.
     """
     if instante.tzinfo is None:
         raise ValueError("instante sem fuso: todo evento traz `occurred_at` com fuso")
@@ -69,7 +69,7 @@ def dia_em_sao_paulo(instante: dt.datetime) -> dt.date:
 class Evento(models.Model):
     """Um fato afirmado por uma célula, guardado como veio.
 
-    O envelope é o canônico da casa (`contracts/eventos/*.json`): `event`,
+    O envelope é o canônico da casa: `event`,
     `version`, `event_id`, `occurred_at`, `ator_id` (nos assuntos que têm
     ator) e `data`. Os campos abaixo são esse envelope aberto em colunas, mais
     `dia`, que é derivado e existe para que contar por dia não custe uma
@@ -203,7 +203,7 @@ class EventoMorto(models.Model):
 
 
 class Marco(models.Model):
-    """Uma conquista com data, derivada dos fatos (`PLANO-PAINEL-DE-GESTAO` §6.4).
+    """Uma conquista com data, derivada dos fatos.
 
     A regra do plano, palavra por palavra: "marco é conquista com data (uma
     pessoa tem vários); dimensão é vista calculada sobre os marcos; marco
@@ -223,7 +223,7 @@ class Marco(models.Model):
     creditar ninguem fora daqui". Guardar esse id numa coluna chamada `pessoa`
     misturaria dois vocabulários de identidade na mesma contagem, e "pessoas
     que viraram alunas" passaria a somar maçãs com laranjas sem erro em lugar
-    nenhum (`armadilhas/303`). O sujeito diz em que vocabulário o id está, e
+    nenhum. O sujeito diz em que vocabulário o id está, e
     contar dentro de um vocabulário é sempre correto.
     """
 

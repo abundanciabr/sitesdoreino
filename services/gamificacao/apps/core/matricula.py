@@ -1,16 +1,16 @@
 """A matrícula de quem pede para assumir tarefa, PERGUNTADA na hora do gesto.
 
 Decisão do mantenedor de 27/09/2026: só quem tem matrícula ativa assume tarefa
-no quadro de contribuições. Quem sabe disso é a célula `alunos`
-(`getStudentStanding`, `contracts/alunos.openapi.yaml`), e ela conhece as
+no quadro de contribuições. Quem sabe disso é a célula `alunos`,
+e ela conhece as
 pessoas por E-MAIL.
 
 **Por que o e-mail vem da identidade, e não do espelho `Pessoa`.** Aqui o
 espelho nasce com `<id>@desconhecido.invalid` em toda visita (`perfil_de`), e
 nada o corrige. Perguntar à `alunos` com esse endereço responderia `visitante`
 para todo aluno de verdade: o quadro fecharia para todos, por defeito, e o
-defeito seria indistinguível da regra (`armadilhas/111`). O e-mail real só a
-`identidade` dá, por `getSessionFull`, com o cookie repassado OPACO ([INV-P12]),
+defeito seria indistinguível da regra. O e-mail real só a
+`identidade` dá, por `getSessionFull`, com o cookie repassado OPACO,
 e só para o par que está também em `TOKENS_COMPLETOS_GAMIFICACAO` no env dela.
 
 **A postura é FECHADA.** Par ausente, célula fora do ar, status fora de 200 ou
@@ -24,7 +24,7 @@ e não vai para a tela nem para o log. Por isso a falha de rede leva ao log só 
 NOME do erro do httpx, nunca o texto dele, que pode trazer a URL, e a URL da
 `alunos` carrega o e-mail.
 
-**Nada aqui é lido no import** (`armadilhas/097`): as quatro variáveis dos dois
+**Nada aqui é lido no import**: as quatro variáveis dos dois
 pares são lidas no ponto de uso, e a falta de qualquer uma desiste sem tocar a
 rede. O molde é `services/forum/apps/core/clients.py`, copiado, não importado
 (célula não importa código de outra).

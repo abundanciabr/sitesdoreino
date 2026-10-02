@@ -41,7 +41,7 @@ VARIANTE_PADRAO = "completo"
 # Nome da rota (o `name=` do `config/urls.py`) → a variante que ela mostra, ou
 # `None` para "esta página não tem rodapé". Rota que não está aqui usa o padrão,
 # **inclusive rota que nascer amanhã** — é essa a metade que impede a frase "em
-# todas as páginas" de envelhecer em silêncio (`armadilhas/242`).
+# todas as páginas" de envelhecer em silêncio.
 REGRA_POR_ROTA: "dict[str, str | None]" = {}
 
 # Rotas de MÁQUINA: não são páginas, e um rodapé dentro delas seria lixo que o
@@ -52,7 +52,7 @@ REGRA_POR_ROTA: "dict[str, str | None]" = {}
 # `name=` nenhum, então não há nome para escrever aqui, e nenhuma das duas
 # renderiza template. A primeira candidata a entrar aqui é a rota do CSS
 # (`estatico`), quando esta casa tiver folha própria em vez do estilo embutido
-# na moldura (`armadilhas/083`).
+# na moldura.
 ROTAS_SEM_PAGINA: "frozenset[str]" = frozenset()
 
 # A biblioteca pública é de outra célula (`admin`), e esta aqui não monta
@@ -97,7 +97,7 @@ def rodape_do_contexto(request) -> dict:
 
     É processador, e não `{% include %}` escrito em cada template, porque "em
     todas as páginas" não pode depender de alguém lembrar de incluir a peça:
-    tela nova da Prancheta nasce com rodapé sozinha (`armadilhas/242`).
+    tela nova da Prancheta nasce com rodapé sozinha.
     """
     resolvida = getattr(request, "resolver_match", None)
     variante = variante_da_rota(resolvida.url_name if resolvida else None)

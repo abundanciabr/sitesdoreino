@@ -6,8 +6,8 @@ coortes D0/D7/D30, os marcos por pessoa. A que dia um instante pertence é,
 portanto, a unidade da medição — não um detalhe de formatação.
 
 Sem `TIME_ZONE` declarado vale o default de fábrica do Django,
-`America/Chicago`: cinco horas atrás de São Paulo em horário padrão
-(`armadilhas/099`). Com ele, uma matrícula liberada às 22h de São Paulo cairia
+`America/Chicago`: cinco horas atrás de São Paulo em horário padrão.
+Com ele, uma matrícula liberada às 22h de São Paulo cairia
 no dia anterior, e no fim do mês uma pessoa entraria no mês errado. Ninguém
 veria erro: o número simplesmente mediria outra coisa.
 

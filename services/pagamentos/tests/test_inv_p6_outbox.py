@@ -65,7 +65,7 @@ def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
     headers = assinar(data_id=_MP_PAYMENT_ID, request_id=request_id)
     # Desde o endurecimento do webhook, a decisão vem da consulta GET à API do
     # MP (o corpo não é assinado) — aqui a API responde o mesmo status do
-    # webhook, o cenário legítimo. Mock no TRANSPORTE (respx, ARMADILHAS §6.9).
+    # webhook, o cenário legítimo. Mock no TRANSPORTE.
     with respx.mock(assert_all_called=True) as mp:
         mp.get(f"https://api.mercadopago.com/v1/payments/{_MP_PAYMENT_ID}").mock(
             return_value=httpx.Response(
@@ -85,7 +85,7 @@ def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
 def test_aprovacao_grava_outbox_na_mesma_transacao_e_relay_publica(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P6] Depois do webhook: a Intent já está "approved" E a linha da
+    """Depois do webhook: a Intent já está "approved" E a linha da
     outbox já existe com o payload certo E o relay (chamado via
     transaction.on_commit) já publicou (published_at preenchido) — as duas
     mudanças (estado + evento) nascem juntas, nunca uma sem a outra.
@@ -112,8 +112,8 @@ def test_aprovacao_grava_outbox_na_mesma_transacao_e_relay_publica(
 def test_falha_do_relay_nao_perde_o_evento_fica_pendente_e_republicavel(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P6] "falha simulada do relay ⇒ evento permanece pendente e é
-    republicado, nunca perdido" (INVARIANTES.md). A transação de estado+outbox
+    """"falha simulada do relay ⇒ evento permanece pendente e é
+    republicado, nunca perdido". A transação de estado+outbox
     já commitou ANTES do relay rodar (on_commit) — um Redis fora do ar não
     derruba a resposta do webhook nem perde o evento. `transaction=True`: ver
     docstring do teste anterior."""
@@ -140,7 +140,7 @@ def test_falha_do_relay_nao_perde_o_evento_fica_pendente_e_republicavel(
 def test_falha_entre_transicao_e_emitir_desfaz_os_dois_estado_sem_evento_impossivel(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P6] "Estado sem evento e evento sem estado são ambos impossíveis."
+    """"Estado sem evento e evento sem estado são ambos impossíveis."
     Prova a atomicidade de verdade: uma falha injetada DEPOIS do
     intent.save(status) mas DENTRO do transaction.atomic() (em emitir()) desfaz
     a transição de status também — nunca fica um pagamento "approved" sem o

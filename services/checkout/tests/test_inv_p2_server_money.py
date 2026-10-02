@@ -1,5 +1,5 @@
 # tests/test_inv_p2_server_money.py  # [RECEITA:R5 v1]
-# [INV-P2] Dinheiro é calculado no servidor. O cliente envia INTENÇÃO; qualquer
+# Dinheiro é calculado no servidor. O cliente envia INTENÇÃO; qualquer
 # valor monetário vindo do navegador é ignorado — nem para conferência é lido.
 import json
 

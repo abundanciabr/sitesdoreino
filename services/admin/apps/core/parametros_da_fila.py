@@ -7,7 +7,7 @@ mantenedor os muda sem esperar ninguém.
 
 ## Por que esta tela é obrigatória, e não conveniência
 
-A lei da célula (`DECISAO-fila-do-primeiro-dolar.md` §3.8) diz que parâmetro é
+A lei da célula diz que parâmetro é
 DADO com histórico, nunca número em código, e o §9 dela chama de **critério de
 morte 5** o dia em que um destes números voltar a viver no motor. Enquanto
 trocar um prazo dependesse de um robô editar o semeador e esperar uma
@@ -27,7 +27,7 @@ o próprio motor usa.
 
 Na `encomendas`, que é a dona da fila. Esta tela **não guarda nada**: lê pela
 porta de máquina, aplica UM gesto, e mostra o que voltou. Guardar uma cópia aqui
-seria o mesmo fato em dois lugares (a lei anti-duplicação do `CLAUDE.md`), e no
+seria o mesmo fato em dois lugares, e no
 dia em que as duas discordassem esta tela mostraria um prazo e o aluno cumpriria
 outro.
 
@@ -41,11 +41,11 @@ esta tela acrescenta é a UNIDADE de cada tipo, que é apresentação, e não da
 
 ## Quem autoriza é ESTA célula
 
-A `encomendas` não assina sessão ([INV-P12]) e o Bearer da porta dela prova só
+A `encomendas` não assina sessão e o Bearer da porta dela prova só
 QUEM CHAMA. O crachá que vale é o desta área, que a porta do `/admin/` já exige.
 É o mesmo desenho de `/admin/economia/` e de `/admin/menu/`.
 
-## Dois graus de crachá, e a tela precisa do alto (`armadilhas/318`)
+## Dois graus de crachá, e a tela precisa do alto
 
 Ler a régua e MUDAR a régua da fila inteira não podem ser o mesmo poder. A porta
 da `encomendas` separa `TOKENS_ACEITOS_ADMIN` (ler) de `TOKENS_ESCRITA_ADMIN`
@@ -58,8 +58,8 @@ diante de um 403.
 
 Cada gesto é um POST que recarrega a página, como em `/admin/economia/` e
 `/admin/menu/`, pelas mesmas três razões: o que se vê é o que está gravado; a
-política de segurança desta área exige um hash na CSP para cada script embutido
-(`armadilhas/199`); e o mantenedor é leigo, e um formulário com o nome do gesto
+política de segurança desta área exige um hash na CSP para cada script embutido;
+e o mantenedor é leigo, e um formulário com o nome do gesto
 escrito no botão não tem como ser mal entendido.
 """
 

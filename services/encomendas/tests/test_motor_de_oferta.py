@@ -237,7 +237,7 @@ def test_a_conta_padrao_do_motor_e_a_de_horas_uteis(
     Até a TAR-121 o padrão de `rodar()` era `expiracao_provisoria`, que contava
     horas de PAREDE. A conta de horas úteis podia nascer inteira, com guarda e
     tudo, e o motor continuar chamando a antiga sem ninguém notar — o guarda do
-    [INV-ENC-J8] mediria a função certa, e a fila usaria a outra. Esta asserção
+    mediria a função certa, e a fila usaria a outra. Esta asserção
     fecha esse buraco pelo caminho REAL: roda o motor sem passar colaborador
     nenhum e confere que o `expira_em` gravado é o que a janela devolve.
     """
@@ -354,7 +354,7 @@ def test_o_motor_de_um_site_nao_enxerga_o_outro(semeado, criar_perfil, criar_enc
 def test_o_motor_da_fila_nao_toca_no_que_esta_no_mural(
     semeado, criar_perfil, criar_encomenda
 ):
-    """A fila e o Mural são pistas separadas (`PLANO-AREA-DE-NEGOCIACAO.md` §3).
+    """A fila e o Mural são pistas separadas.
 
     `no_mural` é status próprio, e o motor varre `na_fila`. A fronteira não
     depende de ninguém lembrar dela — o que é o ponto, porque o Mural nasce em

@@ -1,6 +1,5 @@
-"""[INV-ENC-J1] Uma encomenda nunca tem duas ofertas pendentes.
+"""Uma encomenda nunca tem duas ofertas pendentes.
 
-Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça).
 Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.3 e §7.4.
 
 Duas ofertas pendentes da mesma encomenda são duas pessoas trabalhando de graça
@@ -30,7 +29,7 @@ from apps.encomendas import motor
 from apps.encomendas.models import Encomenda, Oferta
 
 SITE = "escola-a"
-# O relógio REAL, nunca um instante fixo (`armadilhas/323`).
+# O relógio REAL, nunca um instante fixo.
 AGORA = datetime.now(tz=fuso.utc)
 
 

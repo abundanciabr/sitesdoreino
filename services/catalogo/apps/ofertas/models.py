@@ -5,7 +5,7 @@ from django.db import models
 
 
 class Offer(models.Model):
-    """[INV-P11] slug único POR site — nunca globalmente.
+    """slug único POR site — nunca globalmente.
     Publicada não é editada destrutivamente: mudar preço nasce como nova
     version (mecanismo completo de histórico é FORA DE ESCOPO deste despacho)."""
 

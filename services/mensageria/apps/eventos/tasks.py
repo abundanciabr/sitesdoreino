@@ -31,7 +31,7 @@ incidente durar minutos em vez de horas:
 - **`SMTPException`** e parentes — provedor fora do ar, ou credencial inválida.
   Aí sim retentar faz sentido.
 
-**"Sem exceção" NÃO É PROVA DE ENTREGA** (`armadilhas/028`, na sua forma SMTP).
+**"Sem exceção" NÃO É PROVA DE ENTREGA**.
 `send_mail` devolve QUANTAS mensagens saíram, e devolver `0` sem levantar é um
 desfecho real do backend do Django. Ler esse número é o que impede esta função de
 recriar, com transporte de verdade, exatamente a mentira que ela veio apagar.

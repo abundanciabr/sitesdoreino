@@ -9,8 +9,8 @@ Os dois `RunSQL` desta migracao:
    passa por `save()`. O codigo `restrict_violation` faz o Django entregar
    `IntegrityError`, como qualquer outra restricao desta celula.
 2. A copia da regua vigente de cada instrumento que ja existe, e a ligacao de
-   cada laudo emitido com o mesmo numero de versao. Nao e semeadura nem codigo
-   ([INV-CUR-C2]): nenhum texto sai deste arquivo, o SQL so copia o que o banco
+   cada laudo emitido com o mesmo numero de versao. Nao e semeadura nem codigo:
+   nenhum texto sai deste arquivo, o SQL so copia o que o banco
    ja guarda em `cursos_instrumento`, e o banco novo de todo teste nao recebe
    nada. A regua de um numero e a vigente enquanto o numero nao muda, porque
    toda edicao sobe a versao. O laudo cujo numero ja nao e o vigente fica sem

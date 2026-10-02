@@ -120,7 +120,7 @@ def test_meta_semanal_em_zero_nao_vira_as_medidas_previram():
     """As cinco primeiras semanas do ciclo valem 0 de propósito.
 
     Bater uma meta de zero e ver o ciclo "ganhando" é a tela parabenizando quem
-    ainda não foi cobrado de nada (`armadilhas/271`).
+    ainda não foi cobrado de nada.
     """
     direcao_de_semana_zero = {
         "pedidos": {"veredito": "cumprida", "meta": 0, "esta_semana": 0},
@@ -168,7 +168,7 @@ def test_as_medidas_em_dia_com_o_resultado_abaixo_nao_previram():
 
 
 def test_zero_esperado_com_zero_feito_nao_e_ganhando():
-    """A tela não elogia quem ainda não foi cobrado de nada (`armadilhas/271`).
+    """A tela não elogia quem ainda não foi cobrado de nada.
 
     Nas cinco primeiras semanas do ciclo a curva espera 0. O placar, pela régua
     dele, chama isso de "ganhando" (x >= esperado), e está certo dentro da
@@ -362,7 +362,7 @@ def test_a_tela_abre_mesmo_sem_a_alunos_e_nao_chama_ausencia_de_zero():
 
 @respx.mock
 def test_a_tela_abre_sem_o_livro_e_nao_chama_ausencia_de_nenhum_portao(monkeypatch):
-    """Livro que não chegou é "não consegui olhar" (`armadilhas/271`)."""
+    """Livro que não chegou é "não consegui olhar"."""
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
     respx.get(f"{ALUNOS}/pre-matriculas").mock(
         return_value=httpx.Response(200, json=[])

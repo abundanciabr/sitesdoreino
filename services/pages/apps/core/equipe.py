@@ -30,8 +30,8 @@ traduzir no meio custaria um salto de rede a mais e uma segunda forma de a mesma
 pessoa existir.
 
 **NÃO CONSEGUIR PERGUNTAR NÃO É "ENTÃO PODE ENTRAR", E TAMBÉM NÃO DERRUBA A
-CASA.** As duas variáveis do par são lidas no ponto de uso, nunca no import
-(`armadilhas/097`): sem elas, a Prancheta, a estante e o pedido de conferência
+CASA.** As duas variáveis do par são lidas no ponto de uso, nunca no import:
+sem elas, a Prancheta, a estante e o pedido de conferência
 do aluno continuam respondendo normalmente, e só a fila da equipe fica
 indisponível, com 503 e `Retry-After`. Fail-closed sem fail-hard, o mesmo
 desenho de `TOKENS_ACEITOS` em `config/settings.py`.

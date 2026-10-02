@@ -25,8 +25,8 @@ from apps.matriculas.services import (
 
 PRE_MATRICULAS = "/api/alunos/pre-matriculas"
 
-# [INV-ALU-C1] Desde 06/09/2026 liberar exige dizer o produto
-# (`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md`). Aqui vale qualquer
+# Desde 06/09/2026 liberar exige dizer o produto.
+# Aqui vale qualquer
 # texto opaco: o valor de verdade e um id de produto do `catalogo`, e quem prova
 # a exigencia e `tests/test_inv_alu_c1_a_matricula_diz_o_curso.py`.
 CURSO = "produto-do-curso-1"
@@ -142,7 +142,7 @@ def test_status_novo_nasce_sem_acesso(client, auth):
     mais fraco.** Até então eram `STATUS_QUE_VALEM` e `STATUS_DA_FILA`, e os
     dois cobriam o vocabulário inteiro por coincidência: tudo que não dava
     acesso estava na fila. Com `suspensa` deixando de dar acesso sem entrar na
-    fila (`DECISAO-gestao-de-alunos` §2), apareceu um terceiro caso — e a
+    fila, apareceu um terceiro caso — e a
     pergunta que importa nunca foi "está na fila?", e sim "dá acesso?".
     `STATUS_SEM_ACESSO` responde exatamente essa.
     """
@@ -307,8 +307,8 @@ def test_o_reembolsado_nao_entra_e_tambem_nao_pede_para_voltar(client, auth):
 def test_o_ex_aluno_continua_podendo_pedir_para_voltar(client, auth):
     """O outro lado da regra acima, e o que a torna uma decisão e não um corte.
 
-    `encerrada` fica FORA de `STATUS_QUE_BARRAM_A_FILA` de propósito
-    (`DECISAO-a-ficha-nao-se-apaga.md` §3). Sem este teste, alguém poderia
+    `encerrada` fica FORA de `STATUS_QUE_BARRAM_A_FILA` de propósito.
+    Sem este teste, alguém poderia
     "simplificar" a lista para "todo mundo que já teve ficha" e o ex-aluno
     perderia o botão de voltar sem que nada ficasse vermelho.
     """
@@ -412,7 +412,7 @@ def test_a_fila_devolve_whatsapp_e_dias_de_espera(client, auth):
         "criada_em",
         "esperando_ha_dias",
         "motivo_recusa",
-        # [VOLTAR] Os tres de 29/08/2026 (`DECISAO-a-ficha-nao-se-apaga.md`):
+        # [VOLTAR] Os tres de 29/08/2026:
         # o passado da pessoa nesta plataforma, para o painel nao decidir sobre
         # um ex-aluno achando que e gente nova. O conjunto e EXATO de proposito
         # — campo novo nesta porta e PII a mais viajando, e precisa passar por
@@ -500,7 +500,7 @@ def test_a_fila_nao_mostra_matricula_paga(client, auth):
 def test_a_fila_SEM_site_id_deixou_de_ser_erro_por_decisao(client, auth):
     """Este teste afirmava 422 até 28/08/2026, e a mudança é DELIBERADA.
 
-    A `DECISAO-categorias-de-usuario` (Rito de Contrato, mantenedor presente)
+    A `DECISAO-categorias-de-usuario`
     tornou `site_id` opcional: o painel do dono é plataforma-inteira (multissítio: site é dado), e
     exigir dele o código interno de uma escola para ver quem espera seria pedir
     que ele guardasse um identificador opaco.

@@ -15,7 +15,7 @@ uma task precisa ter e uma função pura não pode ter: **quem lê o relógio** 
 de cem alunos (degrau 2.6) rodar cem dias de fila sem Redis, sem worker e sem
 esperar cem minutos.
 
-**Rodar duas vezes no mesmo minuto é seguro** ([INV-ENC-J10]): o tique filtra
+**Rodar duas vezes no mesmo minuto é seguro**: o tique filtra
 pelo que ainda está pendente, e o que já foi fechado não aparece no filtro.
 Importa porque acontece: durante um deploy há dois workers de pé por alguns
 segundos, e a trava por encomenda (`select_for_update`) serializa os dois sem
@@ -68,7 +68,7 @@ def tique_periodico() -> dict[str, tique.Tique]:
     """De minuto em minuto, para sempre. O único agendamento desta célula.
 
     O worker é `python manage.py run_huey` — entrada canônica, e a única que faz
-    `django.setup()` + autodiscover de `tasks.py` (`armadilhas/030`). O serviço
+    `django.setup()` + autodiscover de `tasks.py`. O serviço
     dele no compose nasce no degrau 2.10 (TAR-128), com o resto da célula.
 
     **Um agendamento, e ele não conhece nenhuma oferta.** É a diferença entre

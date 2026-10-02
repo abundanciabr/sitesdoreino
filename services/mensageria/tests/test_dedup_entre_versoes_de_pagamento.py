@@ -178,7 +178,7 @@ def test_identidade_do_fato_aprovado_v2_de_provedor_diferente_nao_e_igual_a_v1()
 
 
 def test_identidade_do_fato_aprovado_mesmo_par_em_sites_diferentes_nao_e_igual():
-    """[INV-P11] A fronteira de site é PARTE da identidade: o mesmo
+    """A fronteira de site é PARTE da identidade: o mesmo
     provider+provider_reference_id em dois sites são DOIS fatos, nunca um."""
     site_a = identidade_do_fato(
         "pagamento.aprovado",
@@ -222,7 +222,7 @@ def test_identidade_do_fato_recusado_ignora_provider_so_o_payment_id_importa():
 
 
 def test_identidade_do_fato_recusado_mesmo_payment_id_em_sites_diferentes_nao_e_igual():
-    """[INV-P11] Mesma fronteira para a ponte do recusado: `payment_id` sozinho
+    """Mesma fronteira para a ponte do recusado: `payment_id` sozinho
     não é a identidade — o site escopa."""
     site_a = identidade_do_fato(
         "pagamento.recusado", 1, {"site_id": "site-a", "payment_id": "pay-9"}
@@ -344,7 +344,7 @@ def test_aprovado_fatos_diferentes_nao_colidem():
 
 
 def test_aprovado_mesmo_fato_em_sites_diferentes_gera_dois_envios():
-    """[INV-P11] `provider_reference_id` é opaco e vem do PROVEDOR: nada
+    """`provider_reference_id` é opaco e vem do PROVEDOR: nada
     garante que ele seja único ENTRE sites (tenants) desta plataforma. Sem o
     site escopando a chave, o segundo site seria descartado como duplicado do
     primeiro — e a pessoa que pagou no site B nunca receberia confirmação."""
@@ -462,7 +462,7 @@ def test_recusado_payment_id_diferente_nao_colide():
 
 
 def test_recusado_mesmo_payment_id_em_sites_diferentes_gera_dois_envios():
-    """[INV-P11] Mesma fronteira de site para a ponte do recusado: um
+    """Mesma fronteira de site para a ponte do recusado: um
     `payment_id` que colidisse entre dois sites não pode calar o segundo
     aviso de recusa."""
     payment_id = f"pay-colisao-{uuid4().hex}"

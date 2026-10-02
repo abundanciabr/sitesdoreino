@@ -1,7 +1,7 @@
 # tests/test_inv_sem_sessao_nada.py  # [RECEITA:R5 v1]
 """INV-SUG05 — sem sessão de aluno, nenhuma rota de participação acontece.
 
-A Caixa é de quem tem matrícula (`DECISAO-EVO-01-identidade.md` §2): o Google
+A Caixa é de quem tem matrícula: o Google
 prova quem é, a `alunos` decide se pode. Se qualquer rota daqui respondesse a
 anônimo, essa decisão inteira viraria enfeite — bastaria pular a porta.
 
@@ -50,7 +50,7 @@ PUBLICAS = {
     None,
 }
 
-# A superfície de MÁQUINA da célula (DECISAO-onde-mora-a-sessao): montada por
+# A superfície de MÁQUINA da célula: montada por
 # `include()`, e por isso um `URLResolver` — não um `URLPattern` com callback.
 # Ela fica fora do porteiro de SESSÃO de propósito, porque responde a uma
 # pergunta diferente: quem CHAMA (Bearer do par), e não quem é a PESSOA.
@@ -162,7 +162,7 @@ def test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila(
 
     A prova de que nada saiu para a rede é mecânica, não uma leitura do código:
     a fixture `rede` é um `respx.mock` e QUALQUER requisição não registrada
-    levanta `AllMockedAssertionError` (armadilhas/054). Se um dia esta view
+    levanta `AllMockedAssertionError`. Se um dia esta view
     passar a chamar a `alunos` antes de conferir a sessão, este teste cai.
     """
     resposta = client.post(

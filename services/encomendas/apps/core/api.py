@@ -1,8 +1,7 @@
 """A porta de máquina da Fila do Primeiro Dólar: a Parte A do anexo do contrato.
 
 Fonte: `docs/decisoes/CONTRATO-encomendas-v1-rascunho.md`, Parte A. O contrato
-congelado nasce do EXPORT deste arquivo, no degrau 2.8, e não o contrário
-(`armadilhas/243`).
+congelado nasce do EXPORT deste arquivo, no degrau 2.8, e não o contrário.
 
 O QUE ATRAVESSA AS SEIS OPERAÇÕES
 ---------------------------------
@@ -10,14 +9,13 @@ O QUE ATRAVESSA AS SEIS OPERAÇÕES
    Por isso nenhuma operação desta superfície aceita, passa, entrega ou aprova
    nada em nome de um aluno ou de um cliente: esses gestos são das TELAS, onde a
    pessoa está atrás do login e `apps/core/sessao.py` a reconhece.
-2. **Dois graus de crachá, e o segundo não é enfeite** (`armadilhas/318`). Ler a
+2. **Dois graus de crachá, e o segundo não é enfeite**. Ler a
    fila de alguém e MUDAR a régua da fila inteira não podem ser o mesmo poder.
    `setParameter`, `confirmPayment` e `reportAudit` exigem
    `TOKENS_ESCRITA_<PAR>`; o resto se contenta com `TOKENS_ACEITOS_<PAR>`. A
    recusa é 403, e a razão está em `apps/core/auth.py`.
-3. **Nada de dado de contato do aluno sai daqui** ([INV-ENC-S3]): id opaco,
-   número, data e slug. E peça só sai com a autorização do cliente registrada
-   ([INV-ENC-S4]).
+3. **Nada de dado de contato do aluno sai daqui**: id opaco,
+   número, data e slug. E peça só sai com a autorização do cliente registrada.
 4. **`/interno` NAO é fechado pela topologia nesta célula.** Ela roda sob
    `SCRIPT_NAME=/encomendas`, e o corte do prefixo é do Django, não do Traefik:
    `meshcraft.top/encomendas/api/encomendas/interno/...` é alcançável pela
@@ -412,8 +410,8 @@ def pecas_aprovadas(request, id: str):
     """A ÚNICA porta por onde uma peça sai desta célula.
 
     Só encomendas `aprovada` ou `concluida` **e** com `autorizacao_portfolio`
-    registrada pelo cliente ([INV-ENC-S4]). Nada de briefing, nada de cliente,
-    nada de contato ([INV-ENC-S3]): sai o nome que o cliente deu à peça, e mais
+    registrada pelo cliente. Nada de briefing, nada de cliente,
+    nada de contato: sai o nome que o cliente deu à peça, e mais
     nada do que ele escreveu.
 
     Lista vazia para quem não tem nada, nunca 404.

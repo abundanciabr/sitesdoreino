@@ -312,7 +312,7 @@ def sob_o_prefixo_publico():
     """O regime de produção: a área inteira mora sob `/admin`.
 
     Mexe no PREFIXO DE SCRIPT, e não em `settings.FORCE_SCRIPT_NAME`, porque é
-    o prefixo de thread que `reverse()` lê (`armadilhas/081`). O `finally`
+    o prefixo de thread que `reverse()` lê. O `finally`
     restaura o anterior: o prefixo vaza entre testes.
     """
     anterior = get_script_prefix()
@@ -328,7 +328,7 @@ def test_a_visao_geral_oferece_a_porta_da_central(sob_o_prefixo_publico):
     """Um botão que ninguém encontra é uma funcionalidade que não existe.
 
     E o endereço tem de levar o prefixo público: `href="/pendencias/"` abriria
-    no PC de quem desenvolve e daria 404 só na tela dele (`armadilhas/081`).
+    no PC de quem desenvolve e daria 404 só na tela dele.
     """
     html = _texto(_dentro().get("/"))
 
@@ -342,7 +342,7 @@ def test_a_central_esta_no_menu_de_toda_tela_da_area(sob_o_prefixo_publico):
     Medido na MOLDURA, que é quem decide o menu de toda página
     (`apps/core/moldura.py`), e com o endereço já sob o prefixo de produção:
     entrar na lista com um `href` sem `/admin` seria um item de menu que dá 404
-    só na tela dele (`armadilhas/081`).
+    só na tela dele.
     """
     itens = moldura.secoes_do_menu("/")
     nossa = [i for i in itens if i["rotulo"] == "Pendências"]

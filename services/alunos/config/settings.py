@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     # A fila intra-célula. Está aqui pelo entrypoint que ela dá
     # (`manage.py run_huey`), o único que faz `django.setup()` + autodiscover de
     # `tasks.py` — sem ele o worker sobe com o registro VAZIO, não executa nada
-    # e não reclama de nada (`armadilhas/030`).
+    # e não reclama de nada.
     "huey.contrib.djhuey",
     "apps.core",
     "apps.eventos",

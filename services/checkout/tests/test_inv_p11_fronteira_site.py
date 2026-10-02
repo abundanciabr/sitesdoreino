@@ -1,5 +1,5 @@
 # tests/test_inv_p11_fronteira_site.py  # [RECEITA:R5 v1]
-# [INV-P11] O site vem do Host (CONV-SITE), nunca do payload. Host desconhecido
+# O site vem do Host (CONV-SITE), nunca do payload. Host desconhecido
 # é 404 — nunca "cai" num site padrão. Sessão, pedido e oferta de um site jamais
 # aparecem em outro.
 import json

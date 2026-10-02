@@ -25,8 +25,8 @@ FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
 
-# Atrás do Traefik. Quem decide se um Host é legítimo é o middleware CONV-SITE
-# (cadastro LOCAL — [INV-P11], ver LICOES.md), não esta lista.
+# Atrás do Traefik. Quem decide se um Host é legítimo é o middleware CONV-SITE,
+# não esta lista.
 ALLOWED_HOSTS = ["*"]
 
 # O TLS termina no Traefik: para o uvicorn a requisição chega em http. Sem esta
@@ -64,7 +64,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # [RECEITA:R8 v1] traz `manage.py run_huey` (o worker de produção sobe com
     # esse comando) e o autodiscover de apps/*/tasks.py — sem isso o worker
-    # subiria com o TaskRegistry VAZIO (ARMADILHAS §4.11).
+    # subiria com o TaskRegistry VAZIO.
     "huey.contrib.djhuey",
     "apps.core",
     "apps.quiz",

@@ -3,7 +3,7 @@
 `documentos/relatorio-da-fundacao.md` nasceu em 05/09/2026, a pedido do
 mantenedor: o relatório para a pessoa que encomendou a plataforma, escrito para
 ser lido por ela e pela IA a quem ela pedir um resumo. A pasta `documentos/` é
-SEMENTE (`DECISAO-o-editor-de-documentos.md`), e a semeadura é a migração
+SEMENTE, e a semeadura é a migração
 `0003`, que roda UMA vez por banco. No banco de produção ela rodou em
 31/08/2026, cinco dias antes de este arquivo existir: um arquivo novo na pasta
 não vira página. O `deploy-celula` termina verde e

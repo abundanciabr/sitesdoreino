@@ -60,8 +60,8 @@ TETO_DE_CONTATO_POR_DIA = Parametro(
     unidade="mensagens por pessoa, por dia",
     dono="o mantenedor",
     porque=(
-        "Lei 4 do §3 do PLANO-SEQUENCIAS-DE-MENSAGENS.md: uma por dia, por "
-        "pessoa. Quem faz valer e a regua, que le este valor."
+        "Uma por dia, por pessoa. Quem faz valer e a regua, que le este "
+        "valor."
     ),
 )
 

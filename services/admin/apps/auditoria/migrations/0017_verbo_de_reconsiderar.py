@@ -9,7 +9,7 @@ lendo os `liberar`, que falam de gente que nunca foi recusada.
 Mexe so nas ESCOLHAS do campo, nao nos dados nem no tipo da coluna: nenhuma
 linha existente muda, e o Django nao reconstroi a tabela por causa disto — e por
 isso esta migracao NAO precisa refazer o gatilho de append-only, ao contrario da
-`0011`, que alargou a coluna de verdade (`armadilhas/246`).
+`0011`, que alargou a coluna de verdade.
 """
 
 from django.db import migrations, models

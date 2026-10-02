@@ -98,7 +98,7 @@ def _assert_nao_apresentou_intent_completa(resp: Any) -> None:
 def test_200_feliz_cria_intent_completa_e_leva_idempotency_key(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P4] Além do caminho feliz, este é o teste que prova que a escrita ao
+    """Além do caminho feliz, este é o teste que prova que a escrita ao
     MP leva `X-Idempotency-Key` própria — só dá para afirmar isso olhando o
     request HTTP de verdade, que é justamente o que o mock de método escondia."""
     chave = "aaaaaaaa-0000-4000-8000-000000000001"
@@ -212,14 +212,14 @@ def test_200_pix_sem_qr_code_nunca_vira_intent_criada(
 
 
 # ---------------------------------------------------------------------------
-# Replay idempotente (INV-P4) sobre intent incompleta
+# Replay idempotente sobre intent incompleta
 # ---------------------------------------------------------------------------
 
 
 def test_replay_de_intent_incompleta_nao_devolve_qr_vazio(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P4] A mesma chave continua resolvendo para a MESMA intent — o que
+    """A mesma chave continua resolvendo para a MESMA intent — o que
     não pode é o replay reentregar o vazio calado. Com o MP de volta, o replay
     completa a MESMA linha, e o request ao MP leva a MESMA `X-Idempotency-Key`
     (o MP deduplica por ela: não há segunda cobrança)."""
@@ -264,7 +264,7 @@ def test_get_de_intent_fantasma_nao_apresenta_qr_vazio(
     client: Client, token_valido: str
 ) -> None:
     """As linhas-fantasma que o bug JÁ criou continuam no banco: intent `pending`
-    com `provider_payment_id` e `pix_qr_code` vazios. O GET de status (INV-P7)
+    com `provider_payment_id` e `pix_qr_code` vazios. O GET de status
     é o caminho por onde elas ainda seriam lidas — e não pode entregar
     `qr_code: ""`, que o front desenha como QR em branco com botão de copiar
     inerte. Sem bloco `pix` não há como confundir "ainda não há Pix" com

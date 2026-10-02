@@ -1,4 +1,4 @@
-"""[INV-ENC-J8] O relógio da oferta não avança fora da janela 8h–22h (São Paulo).
+"""O relógio da oferta não avança fora da janela 8h–22h (São Paulo).
 
 Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça) e §6 (os
 parâmetros `relogio_da_oferta`, `janela_inicio` e `janela_fim`).
@@ -34,7 +34,7 @@ Para medir "uma oferta feita às 23h" é preciso escolher a hora. Mas
 `Oferta.oferecida_em` é `auto_now_add` (o relógio da máquina) e a restrição
 `oferta_expira_depois_de_oferecida` compara as duas colunas: um instante fixo no
 passado deixa a suíte verde de manhã e vermelha à tarde, sem ninguém tocar no
-código (`armadilhas/323`, medida nesta célula em 04/09/2026). A saída é
+código. A saída é
 `proximo_local(hora)`: o próximo instante em que São Paulo marca aquela hora,
 que é sempre depois de agora — a hora do dia é a que o teste escolheu, e a
 ordem das colunas continua válida.

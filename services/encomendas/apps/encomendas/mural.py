@@ -279,7 +279,7 @@ def tem_elegivel_disponivel(
 def listar(perfil_id, agora: datetime, *, site_id: str) -> tuple[Encomenda, ...]:
     """Os projetos que este aluno é elegível a pegar, do mais antigo para o mais novo.
 
-    [INV-ENC-M1] e [INV-ENC-M4] num gesto só, e é bom que sejam o mesmo gesto:
+    e [INV-ENC-M4] num gesto só, e é bom que sejam o mesmo gesto:
     a lista que a tela desenha é a lista que os guardas medem, então não existe
     o caminho "a peneira certa no teste e a consulta solta na tela".
 
@@ -341,7 +341,7 @@ def pegar(encomenda_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho
     nenhum, e travá-lo na fila por três horas porque está lendo um briefing
     seria puni-lo por estar interessado (plano §4.2). O que ele não pode é
     receber uma oferta da fila nem iniciar outra negociação enquanto isso. O
-    [INV-ENC-J2] bloqueia a oferta pendente e o [INV-ENC-N6] bloqueia a
+    bloqueia a oferta pendente e o [INV-ENC-N6] bloqueia a
     negociação viva, inclusive quando ela começou no Mural.
     """
     projeto = (
@@ -382,7 +382,7 @@ def pegar(encomenda_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho
 
     try:
         # Savepoint próprio: um `IntegrityError` engolido sem ele quebraria a
-        # transação inteira, inclusive o que já foi gravado (`armadilhas/027`).
+        # transação inteira, inclusive o que já foi gravado.
         with transaction.atomic():
             ReservaDoMural.objects.create(
                 site_id=site_id,

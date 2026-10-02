@@ -86,7 +86,7 @@ def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
 def test_webhook_reentregue_3x_gera_uma_transicao_e_um_evento(
     client: Client, token_valido: str
 ) -> None:
-    """[INV-P3] O mesmo webhook (mesmo mp_payment_id + status alvo) entregue 3x
+    """O mesmo webhook (mesmo mp_payment_id + status alvo) entregue 3x
     produz UMA transição de estado e UMA linha na outbox — o Mercado Pago
     reentrega webhooks por design (retry, timeout); sem dedup cada reentrega
     duplicaria matrícula, e-mail e linha de ledger."""
@@ -105,4 +105,4 @@ def test_webhook_reentregue_3x_gera_uma_transicao_e_um_evento(
     )
     assert (
         OutboxEvent.objects.filter(event="pagamento.aprovado").count() == 1
-    )  # [INV-P3] uma reentrega não gera evento duplicado
+    )  # uma reentrega não gera evento duplicado

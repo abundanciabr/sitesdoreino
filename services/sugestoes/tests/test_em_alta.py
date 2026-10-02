@@ -274,8 +274,8 @@ def test_a_aba_em_alta_nao_paga_consulta_por_ideia(caixa, quadro, categoria, vot
 
     Duas armadilhas para montar isto nesta célula, as duas pagas aqui: as
     medições têm de ser da MESMA pessoa e depois de uma leitura de AQUECIMENTO —
-    sessão e matrícula têm cache de módulo com janela própria
-    (`apps/core/sessao.py`, armadilhas/026), então um leitor novo entre as
+    sessão e matrícula têm cache de módulo com janela própria,
+    então um leitor novo entre as
     medições traria as consultas de estreia e o guarda acusaria N+1 onde não há.
 
     As ideias entram pelo ORM: publicar 20 pela jornada esbarraria no limite de

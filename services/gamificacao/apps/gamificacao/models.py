@@ -13,7 +13,7 @@ sabe disso: `ConquistaDefinicao` recusa, no BANCO, que um marco real pague XP.
 OS TRÊS INVARIANTES DA ECONOMIA MORAM AQUI, NÃO EM PROSA
 --------------------------------------------------------
 A lei §3 promete três coisas ao aluno e à família dele. Promessa em documento
-apodrece (`docs/decisoes/RETROSPECTIVA-FASE-D.md` §2); por isso cada uma tem um
+apodrece; por isso cada uma tem um
 mecanismo neste arquivo, e um teste que reprova a publicação:
 
 1. **Nada aqui se COMPRA com dinheiro real.** A forma como um Cristal NASCE é
@@ -65,8 +65,7 @@ from django.utils import timezone
 # diário se decidem por `TIME_ZONE = "America/Sao_Paulo"` (`config/settings.py`).
 # Esta função é o único lugar da célula que materializa "que dia foi isto": duas
 # expressões da mesma conta divergem no primeiro dia em que alguém mexer numa
-# delas, e aqui divergir significa quebrar a Sequência de quem não faltou
-# (`armadilhas/099`).
+# delas, e aqui divergir significa quebrar a Sequência de quem não faltou.
 
 
 def dia_local_de(momento) -> "timezone.datetime.date":
@@ -649,7 +648,7 @@ class LancamentoDeXP(models.Model):
     `dia_local` é MATERIALIZADO, e é a coluna de que sai "o aluno esteve ativo
     hoje". Derivá-la na consulta a partir de `occurred_at` daria respostas
     diferentes conforme o fuso de quem pergunta, e a Sequência quebraria para
-    quem estuda tarde da noite (`armadilhas/099`).
+    quem estuda tarde da noite.
 
     `pontos` é assinado: negativo é ESTORNO. Estornar é acrescentar linha, nunca
     apagar — o que aconteceu continua legível, que é o que permite explicar a um
@@ -1231,7 +1230,7 @@ class PedidoDeValidacao(models.Model):
 
 
 class ProgressoDeMissao(models.Model):
-    """Quanto falta nesta missão, nesta janela. Linha PREGUIÇOSA (Lei 7).
+    """Quanto falta nesta missão, nesta janela. Linha PREGUIÇOSA.
 
     A linha nasce no PRIMEIRO incremento, nunca na abertura da janela. Criar
     progresso zerado para toda missão de todo aluno todo dia é escrever milhares

@@ -26,21 +26,21 @@ def env(nome: str) -> str:
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# A Fila do Primeiro Dólar serve sob prefixo: meshcraft.top/encomendas
-# (`DECISAO-fila-do-primeiro-dolar.md` §3.9 e §4). O Traefik NÃO remove o
+# A Fila do Primeiro Dólar serve sob prefixo: meshcraft.top/encomendas.
+# O Traefik NÃO remove o
 # prefixo — quem o conhece é esta variável, nunca o `urls.py`. Ver
 # `armadilhas/029` e `tests/test_healthz_script_name.py`.
 #
 # `/encomendas`: dez letras, longe de qualquer forma de código de idioma, e o
 # inventário de rotas (`ci/tests/test_rotas_sem_forma_de_locale.py`) entra no
-# MESMO PR do Traefik (`armadilhas/089`, degrau 2.10 da escada), não neste.
+# MESMO PR do Traefik, não neste.
 # Nome da célula = nome da rota, de propósito: o par `/conquistas` ↔
 # `gamificacao` já custa uma tradução mental a cada leitura.
 #
 # E o prefixo é CAMINHO, não subdomínio, pela mesma razão do fórum: o cookie
 # de sessão do site é de host. Em `encomendas.meshcraft.top` ele não viaja, e
 # a célula passaria a exigir um segundo login — que é exatamente o que o
-# [INV-P12] existe para impedir.
+# existe para impedir.
 FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
@@ -59,8 +59,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # `dj_database_url.parse` entrega `CONN_MAX_AGE = 0`, e a ausência do ajuste é
 # uma DECISÃO, não esquecimento: sob ASGI, `conn_max_age > 0` vaza uma conexão
-# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam
-# (`armadilhas/170`). O tique de um minuto do degrau 2.4 JÁ CHEGOU, e continua
+# de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam.
+# O tique de um minuto do degrau 2.4 JÁ CHEGOU, e continua
 # sem ajuste aqui: ele roda em processo próprio (`run_huey`, síncrono), onde o
 # problema do ASGI não existe. Quando a porta de máquina (degrau 2.7) chegar, a
 # resposta certa para reaproveitar
@@ -74,19 +74,19 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
     # O perfil profissional, a fila, as ofertas, as encomendas e a tabela de
-    # parâmetros com histórico. Nasceu no degrau 2.2 da escada
-    # (`DECISAO-fila-do-primeiro-dolar.md` §7, TAR-120), com as máquinas de
+    # parâmetros com histórico. Nasceu no degrau 2.2 da escada,
+    # com as máquinas de
     # estado da seção 7.2 do plano em `Encomenda.TRANSICOES` e num gatilho do
     # PostgreSQL que recusa a transição proibida.
     #
     # O MOTOR DE OFERTA entrou no degrau 2.3 (TAR-121), em
     # `apps/encomendas/motor.py`: os sete invariantes de justiça [INV-ENC-J1] a
-    # [INV-ENC-J7] nasceram com ele, cada um com guarda próprio. O miolo é função
+    # nasceram com ele, cada um com guarda próprio. O miolo é função
     # pura de (estado, `agora`) e a passada é reavaliação periódica, nunca timer
     # agendado — sobrevive a reinício, deploy e queda do Redis.
     #
     # OS RELÓGIOS entraram no degrau 2.4 (TAR-122), em `apps/encomendas/relogio.py`
-    # (as horas úteis puras, [INV-ENC-J8]) e `apps/encomendas/tique.py` (a
+    # e `apps/encomendas/tique.py` (a
     # reavaliação de um minuto, [INV-ENC-J9] e [INV-ENC-J10]). O relógio da
     # oferta corre só dentro da janela lida do banco; a encomenda que espera
     # demais na fila vira chamada aberta. **Nenhum timer agendado**: toda a
@@ -107,15 +107,14 @@ INSTALLED_APPS = [
     # carrega trabalho nenhum na fila do Redis: ele chama, de minuto em minuto,
     # uma função que pergunta ao BANCO o que está vencido (`apps/encomendas/tasks.py`).
     # Entra em INSTALLED_APPS pelo autodiscover de `tasks.py`, que só o
-    # `manage.py run_huey` faz (`armadilhas/030`).
+    # `manage.py run_huey` faz.
     "huey.contrib.djhuey",
 ]
 
 # A instância do Huey — importada, não nomeada por string: o djhuey lê
 # `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
 # import, de propósito: o container web importa este módulo por causa da linha
-# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env
-# (`armadilhas/097`).
+# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env.
 from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
@@ -142,7 +141,7 @@ MIDDLEWARE = [
 #
 # Duas células assinando o MESMO cookie com chaves diferentes produzem um
 # cabo-de-guerra invisível: abrir a fila deslogaria do site, e vice-versa,
-# **sem erro em lugar nenhum, sem log, sem alarme** (`armadilhas/143`).
+# **sem erro em lugar nenhum, sem log, sem alarme**.
 #
 # A tentação concreta que isto mata tem nome aqui: a CERIMÔNIA DO PRIMEIRO
 # DÓLAR. Na primeira aprovação a tela cheia diz "Você ganhou seu primeiro
@@ -236,12 +235,11 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # O fuso em que a célula MOSTRA hora; o armazenamento continua em UTC (USE_TZ).
 # Sem esta linha vale o default de fábrica do Django, `America/Chicago`: cinco
-# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum
-# (`armadilhas/099`).
+# horas atrás, capaz de trocar o DIA perto da virada, sem erro nenhum.
 #
 # Aqui a HORA é a unidade da mecânica: o relógio da oferta corre só das 8h às
-# 22h de São Paulo e congela fora da janela (plano §6.3; [INV-ENC-J8]); a
-# encomenda vira aberta em 24h na fila ([INV-ENC-J9]); o prazo de produção,
+# 22h de São Paulo e congela fora da janela; a
+# encomenda vira aberta em 24h na fila; o prazo de produção,
 # a extensão de 48h, a aprovação tácita de 48h e o repasse "no próximo dia
 # útil" contam todos neste fuso. Com o default de fábrica, uma oferta feita às
 # 20h em São Paulo teria o relógio congelado às 17h, e o aluno perderia três

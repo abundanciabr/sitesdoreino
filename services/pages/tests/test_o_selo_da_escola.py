@@ -3,8 +3,7 @@
 *"Aceita a conferência, o portfólio recebe o selo 'conferido pela escola', o
 evento é publicado e o aluno recebe a carta no sininho. O texto do selo diz que
 ele vale para o que o monitor viu no dia da avaliação"*
-(`CS-PAGES-0001.md`, AC-12). Este é o degrau 12 da escada
-(`PLANO-PORTFOLIO-DO-ALUNO.md` §5).
+(`CS-PAGES-0001.md`, AC-12). Este é o degrau 12 da escada.
 
 A CARTA NO SININHO ENTROU EM 06/09/2026, E ELA COMPLETA O CRITÉRIO
 -------------------------------------------------------------------
@@ -197,7 +196,7 @@ def test_o_fato_recusa_nascer_fora_de_uma_transacao(portfolio_com_peca):
     `transaction=True` é o que faz este guarda medir alguma coisa: o
     `pytest-django` normal embrulha cada teste num `atomic`, e dentro dele a
     função nunca teria como recusar nada. É o mesmo cuidado do
-    `check_constraints()` dos guardas de banco desta casa (`armadilhas/358`):
+    `check_constraints()` dos guardas de banco desta casa:
     prova que morre no embrulho do teste não prova a decisão.
     """
     with pytest.raises(eventos.EventoForaDaTransacao):

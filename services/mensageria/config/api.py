@@ -19,7 +19,7 @@ from apps.core.auth import bearerAuth
 # "interno" não distinguiria nada, e o formato majoritário é o que fica.
 #
 # CONGELAR ESTE VALOR É O DEGRAU 6d, e ele é PR à parte, com a etiqueta
-# `contrato` e o mantenedor presente (RITOS.md §3). Este PR NÃO cria
+# `contrato` e o mantenedor presente. Este PR NÃO cria
 # `contracts/mensageria.openapi.yaml` e NÃO mexe em
 # `ci/manifesto-de-contratos.json`: contrato em disco obriga a linha do
 # manifesto a virar `required`, e `required` sem esta porta deixa o `make ci` da

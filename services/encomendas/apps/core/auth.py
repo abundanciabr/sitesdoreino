@@ -16,7 +16,7 @@ encomenda foi paga. Com um conjunto plano, o par que pediu o token para desenhar
 "em que pé está a minha fila" na home ganharia, junto e de graça, o poder de
 mudar a régua da fila inteira e de confirmar dinheiro. Ninguém perceberia: o
 teste de 401 fica verde, o contrato fica verde, e o modo de falha só aparece no
-dia em que alguém usar o poder que ganhou sem pedir (`armadilhas/318`).
+dia em que alguém usar o poder que ganhou sem pedir.
 
 Por isso são DOIS conjuntos, os dois fail-closed, declarados em
 `config/settings.py`:

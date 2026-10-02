@@ -9,7 +9,7 @@ a chave que o assina e não pode ter ([INV-P12];
 
 Duas células assinando o MESMO cookie com chaves diferentes produzem um
 cabo-de-guerra invisível: abrir a página de conquistas deslogaria do site, e
-vice-versa, sem erro em lugar nenhum (`armadilhas/143`).
+vice-versa, sem erro em lugar nenhum.
 
 O molde é `services/forum/apps/core/clients.py`, o consumidor de referência da
 plataforma, copiado e não importado (célula não importa código de outra). Para desenhar as PÁGINAS basta
@@ -44,7 +44,7 @@ barata, porque do outro lado há um humano lendo a tela e podendo rodar de novo.
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
 uso, com falha fechada e o nome da variável na mensagem: cliente que lê env no
 `__init__` transforma env ausente em HTTP 500 em TODA página, com o deploy
-verde (`armadilhas/097`).
+verde.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ _cliente: httpx.Client | None = None
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
-    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um cliente
+    Não é micro-otimização: `httpx.get()` constrói um cliente
     novo por chamada, e com ele um `ssl.SSLContext`. `httpx.Client` é seguro
     entre threads, e o `respx` troca o transporte na classe, então o dublê dos
     testes continua valendo.
@@ -113,9 +113,9 @@ def site_atual() -> str | None:
     """O `site_id` desta instalação, ou `None` quando o env não o declara.
 
     **Por que env, e não parâmetro da chamada:** o contrato congelado
-    (`contracts/gamificacao.openapi.yaml`) não tem `site_id` em nenhuma das duas
+    não tem `site_id` em nenhuma das duas
     operações, e o contrato manda — acrescentar um parâmetro aqui seria emenda
-    de contrato por conta própria, o que o Rito (`RITOS.md` §3) proíbe. E não
+    de contrato por conta própria, o que o Rito proíbe. E não
     dá para resolver o site pelo Host como a `sugestoes` faz: aquele caminho é o
     CONV-SITE, um middleware que pergunta ao `catalogo`, e esta célula ainda não
     tem middleware nenhum — ele nasce com a primeira tela (PR 7 da escada).

@@ -9,8 +9,8 @@ POR QUE UMA MIGRAÇÃO, SE O ARQUIVO JÁ ESTÁ NO REPOSITÓRIO
 ----------------------------------------------------------
 Porque corrigir a receita não muda o bolo já assado. A pasta `documentos/` é
 SEMENTE e a semeadura é `get_or_create`: ela **cria**, nunca atualiza. O texto
-que o mantenedor lê vem do BANCO, e lá está a versão de ontem
-(`armadilhas/253`, a irmã da `347`). Sem esta migração, o arquivo novo entra no
+que o mantenedor lê vem do BANCO, e lá está a versão de ontem.
+Sem esta migração, o arquivo novo entra no
 repositório, o `deploy-celula` termina verde, e a página continua mostrando o
 texto velho, sem nada vermelho em lugar nenhum.
 

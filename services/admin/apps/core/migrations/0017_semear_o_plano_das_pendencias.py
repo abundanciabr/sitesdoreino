@@ -6,7 +6,7 @@ descobrir uma fila que já era dele desde 01/09 (registro `20260901-009`).
 
 Mesma porta de `0007`, `0010` e `0015`: `semear_documento` semeia SÓ ele, nunca
 sobrescreve o que o mantenedor já tenha escrito pela tela, e sem a pasta na
-imagem não faz nada (`armadilhas/347`).
+imagem não faz nada.
 
 Nasce PRIVADO, por ausência de `publico` no cabeçalho: é plano de bastidor, e a
 pasta é fail-closed por desenho (`documentos/LEIA-ME.md`).

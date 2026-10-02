@@ -1,4 +1,4 @@
-# apps/bridge/__init__.py — Lei da Ponte (constituicoes/AGENTS.alunos.md)
+# apps/bridge/__init__.py — Lei da Ponte
 # Nenhuma ponte é implementada na Fase 0 — cada uma entra por brief próprio, atrás de
 # BRIDGE_<SISTEMA>_ENABLED=0 por padrão. O resto da célula conhece SÓ esta interface;
 # nenhum outro arquivo importa nada de dentro de apps/bridge/<sistema>.py diretamente.

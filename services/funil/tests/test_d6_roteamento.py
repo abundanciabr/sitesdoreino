@@ -243,7 +243,7 @@ def test_url_de_outra_celula_com_prefixo_morre_404(client, rede, nu):
 
 def test_o_scanner_enxerga_a_pagina_de_verdade(client, aluno):
     # Instrumentação: sem isto, um scanner que devolvesse [] por não achar
-    # NADA passaria como "página limpa" (INV-CI01 na escala de um teste).
+    # NADA passaria como "página limpa".
     conteudo = client.get(
         "/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()

@@ -61,7 +61,7 @@ class FatoDePagamentoProcessado(models.Model):
     identificam o fato, não a entrega, e a segunda tentativa de gravar a
     mesma linha esbarra na constraint.
 
-    [INV-P11] `site_id` entra na IDENTIDADE, não só na leitura: sem ele, um
+    `site_id` entra na IDENTIDADE, não só na leitura: sem ele, um
     aviso com o site errado (bug do publicador, ou mensagem injetada no
     stream) gravaria a identidade do fato verdadeiro sem produzir efeito
     nenhum de menção nele, e o aviso legítimo que chegasse depois seria

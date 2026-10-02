@@ -17,7 +17,7 @@ ESTA CÉLULA NÃO ASSINA SESSÃO, E NENHUMA VIEW DAQUI PODE ESQUECER ISSO
 Quem diz quem é a pessoa é a `identidade`, por `apps/core/sessao.py::quem_e`.
 Não há `SessionMiddleware`, não há `request.session`, e a tentação de guardar
 "já viu a comemoração?" ali dentro é a que desloga a plataforma inteira sem erro
-em lugar nenhum ([INV-P12]; `armadilhas/143`). O estado dessas coisas mora em
+em lugar nenhum. O estado dessas coisas mora em
 `PerfilJogador.celebracoes_pendentes`, no banco.
 """
 
@@ -104,7 +104,7 @@ def healthz(request):
 
     Ela responde nas DUAS formas de entrada, porque as duas existem em
     produção: `/conquistas/healthz` pela internet (o Traefik **não** remove o
-    prefixo) e `/healthz` pelo healthcheck do compose (`armadilhas/029`).
+    prefixo) e `/healthz` pelo healthcheck do compose.
 
     Quando esta célula ganhar uma porta de autorização, a isenção desta rota
     tem de ser comparada por `request.path_info` — **nunca** `request.path`,
@@ -153,7 +153,7 @@ def base(request):
 def servir_estatico(request, caminho: str):
     """O CSS das conquistas. Rota de MÁQUINA, como o `/healthz`.
 
-    Sem ela o estilo é 404 em produção e **só lá** (`armadilhas/083` e `/102`):
+    Sem ela o estilo é 404 em produção e **só lá**:
     com `DEBUG=0` o Django não serve estático, e não há nginx nem CDN atrás do
     Traefik. Em dev funciona, e é justamente por isso que passa despercebido.
 

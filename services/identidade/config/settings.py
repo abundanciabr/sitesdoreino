@@ -83,7 +83,7 @@ INSTALLED_APPS = [
     # A fila intra-célula. Está aqui, e não só no worker, porque é esta linha
     # que dá o `python manage.py run_huey` com autodiscover de `tasks.py` —
     # subir o `huey_consumer` direto deixa o registro VAZIO, e o worker fica de
-    # pé sem executar nada e sem reclamar de nada (`armadilhas/030`).
+    # pé sem executar nada e sem reclamar de nada.
     "huey.contrib.djhuey",
 ]
 
@@ -101,7 +101,7 @@ MIDDLEWARE = [
 ]
 
 # ---------------------------------------------------------------------------
-# A sessão do SITE (DECISAO-celula-de-identidade — antes era da Caixa)
+# A sessão do SITE
 # ---------------------------------------------------------------------------
 # Cookie assinado, e não tabela: o único conteúdo é um `Identidade.id` opaco que
 # já é reconferido no banco a cada leitura (`apps/core/sessao.py`). A tabela
@@ -165,7 +165,7 @@ TOKENS_COMPLETOS = {
     if chave.startswith("TOKENS_COMPLETOS_") and valor
 }
 
-# O terceiro grau (DECISAO-login-por-senha.md §4): gravar a senha de alguém
+# O terceiro grau: gravar a senha de alguém
 # é mais que perguntar quem é alguém (TOKENS_ACEITOS_*) e mais que ler o
 # e-mail da sessão (TOKENS_COMPLETOS_*) — por isso é um grau PRÓPRIO, não uma
 # reutilização de nenhum dos dois. `setPassword`/`resetPassword` exigem estar
@@ -177,7 +177,7 @@ TOKENS_SENHA = {
 }
 
 # ---------------------------------------------------------------------------
-# Login por senha (DECISAO-login-por-senha.md) — o segundo jeito de entrar.
+# Login por senha — o segundo jeito de entrar.
 # ---------------------------------------------------------------------------
 # `django.contrib.auth.hashers`/`password_validation` funcionam standalone,
 # sem o app `django.contrib.auth` inteiro em INSTALLED_APPS (que traria User,

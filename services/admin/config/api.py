@@ -6,7 +6,7 @@ from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker: é o endereço que outra célula
 # porá no env dela. O valor congela em `contracts/admin.openapi.yaml`; depois
-# disso, mudá-lo é Rito (RITOS.md §3), nunca edição aqui.
+# disso, mudá-lo é Rito, nunca edição aqui.
 #
 # ATENÇÃO, E AQUI ESTA CÉLULA É COMO O `forum`, A `cursos` E A `pages`, E
 # DIFERENTE DA `identidade`: esta porta **é** alcançável pela borda pública, em

@@ -25,8 +25,8 @@ def env(nome: str) -> str:
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# A área administrativa serve sob prefixo: meshcraft.top/admin/
-# (`DECISAO-celula-admin.md` §2). O Traefik NÃO remove o prefixo — quem o
+# A área administrativa serve sob prefixo: meshcraft.top/admin/.
+# O Traefik NÃO remove o prefixo — quem o
 # conhece é esta variável, nunca o `urls.py`. Ver `armadilhas/029` e
 # `tests/test_healthz_script_name.py`.
 FORCE_SCRIPT_NAME = (
@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
-    # A auditoria append-only (DECISAO-celula-admin §3). Entrou junto com a
+    # A auditoria append-only. Entrou junto com a
     # PRIMEIRA escrita desta área — liberar e recusar quem está na fila —, e
     # nunca depois: um botão que muda a vida de alguém sem deixar rastro é o
     # tipo de coisa que ninguém consegue reconstruir mais tarde.
@@ -75,11 +75,11 @@ MIDDLEWARE = [
 # ---------------------------------------------------------------------------
 # As duas variaveis que a PORTA le (apps/core/porta.py)
 # ---------------------------------------------------------------------------
-# Lidas com `.get()` e default inofensivo, NUNCA fail-hard no import
-# (`armadilhas/097`): env ausente fecha a area, mas nao derruba o container —
+# Lidas com `.get()` e default inofensivo, NUNCA fail-hard no import:
+# env ausente fecha a area, mas nao derruba o container —
 # o `/healthz` continua respondendo e o deploy nao entra em crashloop.
 #
-# ADMIN_EMAILS e a UNICA fonte de "pode entrar" (DECISAO-celula-admin par.2).
+# ADMIN_EMAILS e a UNICA fonte de "pode entrar".
 # Vazia ⇒ ninguem entra. Fail-closed por construcao.
 ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
 
@@ -103,12 +103,12 @@ ADMIN_LOCAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 #
 # **Aqui o conjunto vazio e o UNICO cadeado.** Esta celula roda sob
 # `SCRIPT_NAME=/admin`, e o corte do prefixo e do Django, nao do Traefik: a
-# porta e alcancavel pela borda publica em `meshcraft.top/admin/interno/...`
-# (`armadilhas/186`). Nao ha topologia por baixo para segurar o que este
+# porta e alcancavel pela borda publica em `meshcraft.top/admin/interno/...`.
+# Nao ha topologia por baixo para segurar o que este
 # conjunto deixar passar, e o middleware fail-closed de `apps/core/porta.py`
 # isenta `/interno` de proposito (`config/api.py` explica por que).
 #
-# O conjunto e PLANO porque a porta so LE (`armadilhas/318`). Operacao de
+# O conjunto e PLANO porque a porta so LE. Operacao de
 # escrita aqui exigiria um segundo grau de token antes de nascer.
 TOKENS_ACEITOS = {
     valor
@@ -121,8 +121,8 @@ TOKENS_ACEITOS = {
 # ---------------------------------------------------------------------------
 # Não há `SESSION_ENGINE`, não há `django.contrib.sessions` em INSTALLED_APPS,
 # e não há `SessionMiddleware` acima. Isso é lei, não esquecimento: quem assina
-# o cookie `meshcraft_sessao` é a célula `identidade`, e só ela
-# (`DECISAO-celula-de-identidade.md` §6.4). A área admin **repassa** o cookie
+# o cookie `meshcraft_sessao` é a célula `identidade`, e só ela.
+# A área admin **repassa** o cookie
 # recebido para a `identidade` e pergunta quem é — nunca o lê, nunca o escreve.
 #
 # Um `request.session` funcionando aqui seria a porta para a área admin assinar
@@ -151,7 +151,7 @@ TEMPLATES = [
                 # As DUAS peças do site nas páginas PÚBLICAS desta célula
                 # (`/docs/`), 02/09/2026. São processadores, e não inclusões
                 # escritas em cada template, porque "em todas as páginas" não
-                # pode depender de alguém lembrar da peça (`armadilhas/242`).
+                # pode depender de alguém lembrar da peça.
                 #
                 # Aqui a regra é INVERTIDA em relação às outras células: o
                 # padrão é NÃO mostrar, e as duas rotas públicas são a exceção
@@ -193,8 +193,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # em silêncio — o mesmo defeito que tirou o texto dos documentos do disco e o
 # levou para o banco (ver o cabeçalho de `apps/core/models.py`).
 #
-# Lida com `.get()` e default inofensivo, NUNCA fail-hard no import
-# (`armadilhas/097`): na célula isolada, env ausente grava ao lado do código;
+# Lida com `.get()` e default inofensivo, NUNCA fail-hard no import:
+# na célula isolada, env ausente grava ao lado do código;
 # na aplicação unificada, usa o volume já montado fora de `/app:ro`.
 MEDIA_ROOT = os.environ.get("ADMIN_MIDIA_RAIZ") or (
     "/opt/plataforma/admin-midia"
@@ -211,7 +211,7 @@ USE_TZ = True
 
 # O fuso em que a área admin MOSTRA hora — o armazenamento continua em UTC.
 # Sem esta linha vale o default de fábrica do Django, `America/Chicago`: cinco
-# horas atrás, sem nada indicando a troca (`armadilhas/099`). Numa célula cujo
+# horas atrás, sem nada indicando a troca. Numa célula cujo
 # produto inteiro é painel com data — métricas, auditoria, linha do tempo —
 # isso apareceria na primeira tela e seria lido como bug de dado, não de fuso.
 TIME_ZONE = "America/Sao_Paulo"

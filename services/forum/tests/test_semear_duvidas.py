@@ -14,7 +14,7 @@ sabia dizer "quem publicou isto foi a instituição" (todo tópico e toda mensag
 EXIGIAM uma `Pessoa`), então a saída fácil era exatamente a proibida. É por isso
 que a capacidade nasce junto com o conteúdo, e com restrição no BANCO.
 
-O CENÁRIO FRACO QUE ESTES TESTES EVITAM (`armadilhas/183`): uma suíte que só
+O CENÁRIO FRACO QUE ESTES TESTES EVITAM: uma suíte que só
 provasse "nenhuma mensagem tem autor pessoa" ficaria verde num fórum onde nada
 foi semeado. Por isso toda proibição aqui vem acompanhada da prova positiva de
 que o conteúdo existe e chega à tela.
@@ -67,8 +67,8 @@ def aluno_qualquer() -> Ator:
 # ===========================================================================
 # 1. A CAPACIDADE: o fórum precisa SABER publicar em nome da instituição
 # ===========================================================================
-# Estes três testes reprovam na ASSERÇÃO no código anterior à TAR-020
-# (`armadilhas/195`): eles perguntam ao modelo, no vocabulário que ele já
+# Estes três testes reprovam na ASSERÇÃO no código anterior à TAR-020:
+# eles perguntam ao modelo, no vocabulário que ele já
 # tinha, se a escola consegue assinar sem inventar gente.
 
 
@@ -269,7 +269,7 @@ def test_semear_sem_as_areas_para_por_seguranca():
         call_command("semear_duvidas", stdout=StringIO(), stderr=StringIO())
     # A mensagem entra na asserção de propósito: `CommandError` também é o que
     # o Django levanta para comando INEXISTENTE, e um teste que só exigisse a
-    # classe ficaria verde antes de o comando nascer (`armadilhas/195`).
+    # classe ficaria verde antes de o comando nascer.
     assert "PAROU POR SEGURANCA" in str(recusa.value)
     assert Topico.objects.count() == 0
 

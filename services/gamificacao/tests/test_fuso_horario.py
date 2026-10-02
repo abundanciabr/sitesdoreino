@@ -3,7 +3,7 @@
 Em toda outra célula, `TIME_ZONE` errado é uma data feia na tela. Nesta, o
 "dia" é a UNIDADE da mecânica: `dia_local` no ledger de XP, o dia ativo da
 Sequência semanal, a janela das missões diárias e o teto suave de pontos por
-dia se decidem todos por esta linha (`PLANO-CELULA-GAMIFICACAO.md` §3). Com o
+dia se decidem todos por esta linha. Com o
 default de fábrica do Django (`America/Chicago`, cinco horas atrás), o aluno
 que estuda às 22h de terça em São Paulo teria o esforço contado na terça, e
 quem estuda às 23h30 veria a Sequência quebrar num dia em que ele não faltou.

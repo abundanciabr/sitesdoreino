@@ -55,7 +55,7 @@ from django.db import IntegrityError, transaction
 from .marcos import derivar
 from .models import Evento, EventoMorto, dia_em_sao_paulo
 
-#: As chaves do envelope canônico da casa (`contracts/eventos/*.json`).
+#: As chaves do envelope canônico da casa.
 OBRIGATORIAS = ("event", "version", "event_id", "occurred_at", "data")
 
 #: Os desfechos possíveis. `receber` devolve um deles, e o chamador só decide

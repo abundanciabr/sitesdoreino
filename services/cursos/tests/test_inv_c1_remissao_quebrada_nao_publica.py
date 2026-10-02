@@ -1,4 +1,4 @@
-"""[INV-CUR-C1] Nenhuma aula publica com remissao "E[NN]" para aula inexistente.
+"""Nenhuma aula publica com remissao "E[NN]" para aula inexistente.
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §9 (os invariantes do conteudo) e
 §7 (a linha "Revisor de coerencia": "remissao quebrada **recusa publicar**").

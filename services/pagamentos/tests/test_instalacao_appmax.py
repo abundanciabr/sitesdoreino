@@ -181,7 +181,7 @@ def test_client_secret_nao_vai_para_o_banco_nem_para_o_log(
     instalacoes_configuradas: None,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """[INV-P8] O segredo vive só no env da célula. No banco fica no máximo a
+    """O segredo vive só no env da célula. No banco fica no máximo a
     marca de que ele chegou."""
     with caplog.at_level(logging.DEBUG):
         resposta = _postar(_corpo())
@@ -200,7 +200,7 @@ def test_segredo_nao_sobrevive_nas_variaveis_locais_de_uma_excecao(
     instalacoes_configuradas: None,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """[INV-P8] Traceback mostra as variáveis locais do frame, e com DEBUG=1 a
+    """Traceback mostra as variáveis locais do frame, e com DEBUG=1 a
     página de erro do Django as imprime. Se o banco cair no meio, o segredo não
     pode estar lá."""
 

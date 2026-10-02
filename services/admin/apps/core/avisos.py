@@ -10,8 +10,8 @@ SSH nenhum.
 
 ## Onde o dado mora, e por que não aqui
 
-Na célula `notificacoes`, dona da porta `POST /aviso-de-teste`
-(`contracts/notificacoes.openapi.yaml`, Rito de Contrato de 03/09/2026). Esta
+Na célula `notificacoes`, dona da porta `POST /aviso-de-teste`.
+Esta
 tela não guarda nada: pede o teste e mostra o que voltou. Guardar um contador
 aqui seria o mesmo fato em dois lugares — a lei anti-duplicação do
 `CLAUDE.md`.

@@ -104,7 +104,7 @@ def test_o_aluno_ve_o_caminho_da_caixa(client, com_email):
 
 
 def test_o_aluno_ve_o_caminho_da_prancheta(client, com_email):
-    """AC-20 (degrau 18, PLANO-PORTFOLIO-DO-ALUNO): o aluno chega à Prancheta
+    """AC-20: o aluno chega à Prancheta
     sem digitar endereço — o link mora na home, pronto para o clique."""
     _situacao(com_email, "aluno")
     html = _abrir(client)
@@ -152,8 +152,7 @@ def test_o_cadastrado_ve_o_convite_para_pedir_entrada(client, com_email):
     media o contrário: até 29/08/2026 quem entrava e nunca tinha pedido nada
     não via nada sobre a escola. Aquilo era decisão do mantenedor, tomada entre
     três opções; a substituição é decisão do MESMO mantenedor, no dia em que
-    ele caiu no próprio beco com a conta dele
-    (`DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md`).
+    ele caiu no próprio beco com a conta dele.
 
     O que sobreviveu inteiro da regra antiga está logo abaixo, em
     `test_nao_saber_nao_convida_ninguem`: o convite é para quem a `alunos`
@@ -462,8 +461,8 @@ def test_nao_consegui_perguntar_tambem_vale_pouco(client, com_email):
 # voltavam da `alunos` como `cadastrado` e a home não tinha o que dizer — a
 # pessoa saía da escola e a home fingia que ela nunca tinha entrado.
 #
-# EM 29/08/2026 OS DOIS DEIXARAM DE SER IGUAIS AQUI
-# (`DECISAO-a-ficha-nao-se-apaga.md` §3): o ex-aluno ganhou o botão de pedir para
+# EM 29/08/2026 OS DOIS DEIXARAM DE SER IGUAIS AQUI:
+# o ex-aluno ganhou o botão de pedir para
 # voltar, o pausado não. A assimetria é a decisão — pausado volta sozinho, e
 # oferecer um pedido para o que já vai acontecer é ansiedade sem destino.
 

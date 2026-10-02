@@ -4,7 +4,7 @@ eventos que a decisão dispara.
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (`Laudo`), §5 (os três
 eventos), §6 (o plantão), §9 ([INV-CUR-L1], [INV-CUR-L2], [INV-CUR-L5],
-[INV-CUR-L6]). Degrau 2.2 (TAR-156). Molde de forma:
+). Degrau 2.2 (TAR-156). Molde de forma:
 `apps/cursos/envio.py` (as regras fora da view, a recusa como exceção com
 frase para gente, `criterios_de` reutilizada e não duplicada).
 
@@ -13,9 +13,9 @@ A ORDEM DAS VALIDAÇÕES
 `emitir()` valida NESTA ordem, para que o 422 diga a causa MAIS ESPECÍFICA
 primeiro: (1) a rubrica completa, uma nota+frase por critério; (2) as
 forças escritas, sem elogios genéricos; (3) as mudanças escritas, com aula
-válida quando a professora a indicar; (4) a decisão está no vocabulário fechado
-([INV-CUR-L2]); (5) `aberto_com_ajuste` exige o ajuste feito; (6) `devolvido`
-exige data de retorno de amanhã em diante ([INV-CUR-L1]). A pergunta de amanhã
+válida quando a professora a indicar; (4) a decisão está no vocabulário fechado;
+(5) `aberto_com_ajuste` exige o ajuste feito; (6) `devolvido`
+exige data de retorno de amanhã em diante. A pergunta de amanhã
 de manhã é opcional. Só depois de as validações passarem é que qualquer linha
 é gravada.
 
@@ -62,7 +62,7 @@ class LaudoRecusado(Exception):
 
 
 def _validar_rubrica(instrumento, notas: Any) -> dict:
-    """[INV-CUR-L5] Uma nota (dentro da escala) e uma frase por critério, antes
+    """Uma nota (dentro da escala) e uma frase por critério, antes
     de qualquer campo livre. Sem critério nenhum (aula sem instrumento com
     escala), a rubrica é vazia por definição: não há o que exigir."""
     criterios = criterios_de(instrumento)
@@ -192,7 +192,7 @@ def emitir(
 
     `rascunho` é a sugestão do Assistente de laudo (degrau 2.3) quando o laudo
     nasceu de uma. Ele NÃO decide nada aqui: nem a decisão, nem a data, nem a
-    pergunta de amanhã de manhã saem dele ([INV-CUR-L4]) — todos os três chegam
+    pergunta de amanhã de manhã saem dele — todos os três chegam
     pelos parâmetros acima, do formulário que a professora assinou. O que a
     presença dele muda é uma coisa só: a Ficha de Série do agente é medida na
     emissão (`_medir_a_ficha_de_serie`).
@@ -282,8 +282,8 @@ def emitir(
             pessoa_id=envio_travado.pessoa_id, aula_id=envio_travado.aula_id
         )
         if decisao in portas.DECISOES_QUE_ABREM:
-            # `progresso.concluir` é o ÚNICO lugar que grava `concluida`
-            # ([INV-CUR-P2]); esta função consome-o por nome, nunca reimplementa
+            # `progresso.concluir` é o ÚNICO lugar que grava `concluida`;
+            # esta função consome-o por nome, nunca reimplementa
             # a regra.
             portas.concluir(progresso, laudo=laudo)
             eventos.emitir_aula_concluida(

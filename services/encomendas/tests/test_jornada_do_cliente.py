@@ -184,7 +184,7 @@ def test_do_cardapio_a_aprovacao(client, env, semeado, dois_no_mural):
     assert "confirmar o pagamento" in acordado_na_tela.content.decode()
     assert b"Pagar" not in acordado_na_tela.content
 
-    # E A PRODUÇÃO NÃO COMEÇA ANTES DELA ([INV-ENC-N4]). Esta é a asserção que
+    # E A PRODUÇÃO NÃO COMEÇA ANTES DELA. Esta é a asserção que
     # a mutação derruba: sem o guarda, o acordo sozinho já levaria o pedido à
     # produção, e a frase da tela acima viraria mentira.
     recusa = negociacao.comecar_a_producao(projeto.pk, agora(), site_id=SITE_PADRAO)
@@ -199,7 +199,7 @@ def test_do_cardapio_a_aprovacao(client, env, semeado, dois_no_mural):
     assert negociacao.comecar_a_producao(projeto.pk, agora(), site_id=SITE_PADRAO).feito
     projeto.refresh_from_db()
     assert projeto.status == Encomenda.Status.EM_PRODUCAO
-    # O prazo conta do pagamento, e não do acordo ([INV-ENC-N8]).
+    # O prazo conta do pagamento, e não do acordo.
     assert projeto.prazo_producao_ate == projeto.pagamento_confirmado_em + timedelta(
         days=6
     )
@@ -252,7 +252,7 @@ def test_todo_estado_da_maquina_tem_uma_frase_para_o_cliente():
 
 
 def test_a_producao_so_comeca_depois_do_pagamento_confirmado():
-    """[INV-ENC-N4] visto da jornada: o motor tem o guarda, e é ele que faz a
+    """visto da jornada: o motor tem o guarda, e é ele que faz a
     tela poder dizer 'aguardando a confirmação da escola' sem mentir."""
     assert negociacao.SEM_PAGAMENTO_CONFIRMADO
 

@@ -107,7 +107,7 @@ def ao_pedido_criado(event_id: str, data: dict) -> None:
 
 def _site_id_de(data: dict) -> str:
     """v1 chama a coluna `site_id`; v2 renomeia para `platform_site_id` com o
-    mesmo conteúdo (contracts/eventos/pagamento.*.v2.json). Nunca as duas
+    mesmo conteúdo. Nunca as duas
     juntas: cada schema é `additionalProperties: false`."""
     return data.get("platform_site_id", data.get("site_id"))
 
@@ -149,7 +149,7 @@ def _fato_ja_processado(evento: str, site_id: str, chave: str) -> bool:
     mesmo sob corrida (ver test_inv_leads_dedup_entre_versoes.py, teste de
     concorrência com threads e Postgres real).
 
-    [INV-P11] `site_id` entra aqui, na identidade do fato — não só depois, na
+    `site_id` entra aqui, na identidade do fato — não só depois, na
     leitura de `_upsert_lead`. Ver o docstring de `FatoDePagamentoProcessado`
     para o buraco que isso fecha."""
     try:

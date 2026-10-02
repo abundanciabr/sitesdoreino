@@ -38,8 +38,8 @@ FILA = f"{ALUNOS}/pre-matriculas"
 MATRICULAS = f"{ALUNOS}/matriculas"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
-# [CURSO] UMA escolha para o lote inteiro, obrigatória desde 06/09/2026
-# ([INV-ALU-C1]): uma turma é de um curso. Os testes daqui continuam medindo a
+# [CURSO] UMA escolha para o lote inteiro, obrigatória desde 06/09/2026:
+# uma turma é de um curso. Os testes daqui continuam medindo a
 # leva (quem sai, quem não sai, a auditoria por pessoa); o que acontece SEM o
 # curso mora em `test_liberar_com_curso.py`.
 CURSO = "prod-primeiros-dolares"

@@ -83,14 +83,14 @@ def de_fora() -> dict:
 def site_atual() -> str | None:
     """De que escola é esta instalação, ou `None` quando o env não diz.
 
-    **Lida no ponto de uso, nunca no import** (`armadilhas/097`): variável lida
+    **Lida no ponto de uso, nunca no import**: variável lida
     no topo de um módulo transforma env ausente em HTTP 500 em toda página, com
     o deploy verde.
 
     **`None` é o estado real da VPS hoje**, e não uma hipótese:
     `infra/provisionar-pages.sh` não escreve `SITE_ID`, e não escrever
-    configuração que a célula ainda não lia foi decisão consciente da gênese
-    (`armadilhas/224`, dito por extenso em `infra/env/pages.env.exemplo`). O
+    configuração que a célula ainda não lia foi decisão consciente da gênese.
+    O
     degrau 07 é a primeira tela desta casa que precisa da variável, e a linha
     que a escreve mora em `infra/`, caminho CODEOWNERS que este PR não tem
     mandato para tocar. A dívida está no balcão.
@@ -138,7 +138,7 @@ def healthz(request):
 
     Ela responde nas DUAS formas de entrada, porque as duas existem em
     produção: `/pages/healthz` pela internet (o Traefik **não** remove o
-    prefixo) e `/healthz` pelo healthcheck do compose (`armadilhas/029`).
+    prefixo) e `/healthz` pelo healthcheck do compose.
 
     A porta do degrau 06 isenta esta rota comparando `request.path_info`, e
     **nunca** `request.path`, que pela borda pública contém o prefixo
@@ -259,7 +259,7 @@ def marcar(request):
 
     # `redirect` pelo NOME da rota: é `reverse()` que carrega o prefixo público
     # para dentro do endereço, e caminho cravado em string quebra em produção e
-    # só lá (`armadilhas/029` e `/081`).
+    # só lá.
     return redirect("prancheta")
 
 
@@ -399,8 +399,8 @@ def desenhar_estante(
             # **O endereço é montado com `build_absolute_uri`, e nunca com
             # `{% url %}`**: `reverse()` acrescenta o prefixo da área do aluno e
             # devolveria `/pages/estudio/ana`, um SEGUNDO endereço para a mesma
-            # página, que é o erro que a `admin` mediu de fora em 29/08/2026
-            # (`armadilhas/102`). O porquê inteiro está em `apps/portfolio/
+            # página, que é o erro que a `admin` mediu de fora em 29/08/2026.
+            # O porquê inteiro está em `apps/portfolio/
             # vitrine.py`, e o guarda é
             # `test_o_endereco_que_o_aluno_copia_nao_leva_o_prefixo_da_area_dele`.
             "vitrine_publicada": bool(portfolio and portfolio.vitrine_publicada),
@@ -618,8 +618,8 @@ def mudar_peca(request):
 # formulário que as colhe. Ele pergunta o que a professora perguntou, com as
 # palavras dela, e nada além disso.
 #
-# NÃO EXISTE NOTA, ESTRELA NEM CLASSIFICAÇÃO aqui, e a ausência é lei escrita
-# (`PLANO-PORTFOLIO-DO-ALUNO.md` §7). Também não existe nada que tente adivinhar
+# NÃO EXISTE NOTA, ESTRELA NEM CLASSIFICAÇÃO aqui, e a ausência é lei escrita.
+# Também não existe nada que tente adivinhar
 # de onde a peça veio: a única fonte destas colunas é a resposta que a pessoa
 # deu, e a máquina não tem opinião sobre a obra dela.
 

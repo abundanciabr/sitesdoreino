@@ -4,7 +4,7 @@ Decisão do mantenedor em 29/08/2026: o site passa a publicar documentos, uns
 para qualquer pessoa e outros só para quem administra. Lei:
 `docs/decisoes/DECISAO-a-area-de-documentos.md`.
 
-**Onde o texto mora mudou em 31/08/2026** (`DECISAO-o-editor-de-documentos.md`),
+**Onde o texto mora mudou em 31/08/2026**,
 e a mudança é toda por causa de uma frase dele: *"quero gerenciar / editar os
 documentos"*. O disco do container é remontado a cada atualização da
 plataforma, então gravar a edição dele no arquivo embutido a apagaria no deploy
@@ -86,7 +86,7 @@ ORDEM_PADRAO = 1000
 #: todo o resto desta célula.
 #:
 #: A regra da casa é que endereço sai de `{% url %}`, senão o prefixo público
-#: (`/admin`) some em produção (`armadilhas/081`). Aqui a situação é o INVERSO,
+#: (`/admin`) some em produção. Aqui a situação é o INVERSO,
 #: e foi medida de fora em 29/08/2026, logo depois de subir: `{% url %}` monta
 #: `/admin/docs/…` porque `FORCE_SCRIPT_NAME` vale para a célula inteira — e as
 #: páginas públicas não moram sob `/admin`. O link funcionava (aquele endereço
@@ -336,7 +336,7 @@ def semear_documento(modelo, nome: str) -> bool:
     É a porta de todo documento NOVO desde 05/09/2026 (a migração `0007` foi a
     primeira a usá-la). A `0003` já rodou no banco de produção e não roda de
     novo, então um arquivo novo em `documentos/` não vira página sozinho: o
-    deploy termina verde e o endereço responde 404 (`armadilhas/347`). Cada
+    deploy termina verde e o endereço responde 404. Cada
     documento novo entra por uma migração própria, que chama isto com o nome.
 
     Semeia SÓ o pedido. A pasta inteira é da `0003`, que roda uma vez por

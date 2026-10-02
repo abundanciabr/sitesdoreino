@@ -10,7 +10,7 @@ CAMINHOS_SEM_SITE = ("/healthz", "/static/")
 
 
 class SiteResolutionMiddleware:
-    """[INV-P11] Resolve Host→Site UMA vez por requisição.
+    """Resolve Host→Site UMA vez por requisição.
 
     Diferente das demais células públicas, aqui a resolução NÃO chama a API do
     catálogo — é uma consulta ao cadastro local de `apps.quiz.models.Site`

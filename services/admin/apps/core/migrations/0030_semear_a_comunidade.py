@@ -9,7 +9,7 @@ inventada: o acesso é o da matrícula vigente. A partir daqui quem tem a caneta
 o mantenedor, pela tela `/admin/documentos/`, sem PR.
 
 A pasta `documentos/` é SEMENTE e a migração `0003` rodou uma vez, em
-31/08/2026: um arquivo novo não vira página sozinho (`armadilhas/347`). Por isso
+31/08/2026: um arquivo novo não vira página sozinho. Por isso
 este documento entra pela mesma porta dos anteriores (`0007`, `0011`, `0028`):
 `semear_documento`, que semeia SÓ ele, nunca sobrescreve o que o mantenedor já
 tenha escrito pela tela, e sem a pasta na imagem não faz nada.

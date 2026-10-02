@@ -80,7 +80,7 @@ def pedir(caminho: str):
 
 def gravar(caminho: str, corpo, *, deixar_estourar: bool = True):
     """`deixar_estourar=False` faz o cliente devolver o 500 como RESPOSTA em vez
-    de relançar a exceção; só a sabotagem da transação usa (`armadilhas/195`)."""
+    de relançar a exceção; só a sabotagem da transação usa."""
     return Client(raise_request_exception=deixar_estourar).put(
         f"{BASE}{caminho}",
         data=json.dumps(corpo),

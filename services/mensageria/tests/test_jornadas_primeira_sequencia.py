@@ -193,7 +193,7 @@ def test_sem_origem_a_inscricao_entra_mas_a_carta_nao_sai():
     # ancorada no relógio real, então o momento da varredura precisa vir DEPOIS
     # dela E dentro da janela da régua (8h-20h). Com o relógio cru, entre as 20h
     # e as 8h a régua barrava o passo e o teste media `barradas=1` em vez de
-    # `sem_despacho=1`: verde de dia, vermelho à noite (`armadilhas/323`).
+    # `sem_despacho=1`: verde de dia, vermelho à noite.
     amanha_as_10 = (timezone.localtime() + timedelta(days=1)).replace(
         hour=10, minute=0, second=0, microsecond=0
     )

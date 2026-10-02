@@ -46,7 +46,7 @@ def _manifest(*, data_id: str, request_id: str, ts: str) -> str:
 
 
 def assinatura_valida(request: HttpRequest) -> bool:
-    """[INV-P10] Chamar ANTES de qualquer leitura do payload com efeito. Corpo
+    """Chamar ANTES de qualquer leitura do payload com efeito. Corpo
     ausente/assinatura ausente/HMAC que não bate/`ts` fora da janela ⇒ False
     (o handler devolve 403, zero efeito colateral).
 

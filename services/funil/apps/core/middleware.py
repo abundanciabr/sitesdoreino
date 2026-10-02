@@ -1,7 +1,6 @@
-# apps/core/middleware.py  # [RECEITA:CONV-SITE v1] + resolver de idioma
-# (PLANO-I18N §2 D1 — matriz HTTP; site sem idiomas = fluxo de hoje).
+# apps/core/middleware.py  # [RECEITA:CONV-SITE v1] + resolver de idioma.
 #
-# D1 REVISTO em 25/08/2026 (docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md):
+# D1 REVISTO em 25/08/2026:
 # o idioma PADRÃO do site é servido na raiz nua, sem prefixo; `/{padrão}/…` é 404.
 import time
 
@@ -23,7 +22,7 @@ _CACHE: dict = {}
 TTL_SEGUNDOS = 60
 
 # ---------------------------------------------------------------------------
-# Quem é a pessoa desta requisição (DECISAO-onde-mora-a-sessao)
+# Quem é a pessoa desta requisição
 # ---------------------------------------------------------------------------
 # Cache por cabeçalho `Cookie` inteiro, e não pelo cookie de sessão isolado: o
 # `funil` NÃO conhece o nome do cookie da outra célula, e não deve conhecer —
@@ -56,7 +55,7 @@ def _consultar_sessao(cookie: str) -> "dict | None":
 
 
 # ---------------------------------------------------------------------------
-# O sino (Fase 5 de docs/notificacoes/PLANO-MESTRE.md): quantos avisos não
+# O sino: quantos avisos não
 # lidos a pessoa tem. Falha ABERTA, sem exceção — a mesma lei do bloco acima.
 # ---------------------------------------------------------------------------
 # Cache por (destinatario_id, site_id) — um sino em TODA página não pode custar
@@ -93,7 +92,7 @@ def _consultar_avisos(destinatario_id: str, site_id: str) -> "int | None":
 
 
 # ---------------------------------------------------------------------------
-# A CATEGORIA da pessoa (DECISAO-categorias-de-usuario, 28/08/2026): visitante,
+# A CATEGORIA da pessoa: visitante,
 # cadastrado, na fila ou aluno. Falha ABERTA — a mesma lei dos dois blocos
 # acima: não saber a categoria mostra a home de quem ainda não pediu nada, e a
 # vitrine nunca cai porque uma célula de produto caiu.
@@ -165,7 +164,7 @@ def _consultar_categoria(cookie: str, id_da_pessoa: str) -> "dict | None":
 
 
 # ---------------------------------------------------------------------------
-# O QUADRINHO DE PROGRESSO da home (degrau 20 do PLANO-CELULA-GAMIFICACAO).
+# O QUADRINHO DE PROGRESSO da home.
 # Falha ABERTA, como os três blocos acima: a gamificação fora do ar custa o
 # quadrinho, nunca a home.
 # ---------------------------------------------------------------------------
@@ -214,7 +213,7 @@ def _progresso_da_tela(status: "dict | None") -> "dict | None":
         andado até ele.
 
     **`nivel <= 1` sem próximo degrau NÃO é topo, e essa é a correção de
-    01/09/2026** (`armadilhas/271`). O `null` responde a duas perguntas
+    01/09/2026**. O `null` responde a duas perguntas
     opostas: "venceu a escada inteira" e "não existe escada". Com a economia
     desligada — o estado de hoje —, todo aluno que já tivesse aberto
     `/conquistas` uma vez (o que faz a linha de perfil nascer) via na home
@@ -338,8 +337,8 @@ class AtorDaRequisicao:
     @property
     def papel(self) -> str:
         """Para EXIBIÇÃO apenas (mostrar ou não um atalho). Nunca para liberar
-        coisa alguma: autorização é fail-closed, na célula dona do recurso
-        (DECISAO-onde-mora-a-sessao §4)."""
+        coisa alguma: autorização é fail-closed, na célula dona do recurso.
+        """
         return (self._resolver() or {}).get("papel") or ""
 
     @property
@@ -449,8 +448,8 @@ class AtorDaRequisicao:
         """`visitante` · `cadastrado` · `na_fila` · `aluno`.
 
         NUNCA `administrador`: esse crachá não está nesta escada e é calculado
-        pela lista da célula `admin`, na hora, na porta dela
-        (`DECISAO-categorias-de-usuario` §2.1). Se esta property pudesse
+        pela lista da célula `admin`, na hora, na porta dela.
+        Se esta property pudesse
         respondê-lo, a autorização da área administrativa passaria a depender
         da vitrine.
 
@@ -480,8 +479,8 @@ class AtorDaRequisicao:
 
         Existe porque `categoria` colapsa as duas em `cadastrado` (fail-open,
         e a direção continua certa), e desde 29/08/2026 a home OFERECE algo a
-        quem é `cadastrado`: o convite para pedir entrada
-        (`DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md`). Sem esta property,
+        quem é `cadastrado`: o convite para pedir entrada.
+        Sem esta property,
         a `alunos` fora do ar faria a home convidar um aluno a pedir a entrada
         que ele já tem — o mesmo defeito de 28/08 de cabeça para baixo: uma
         tela prometendo o que a outra célula desmente.
@@ -577,7 +576,7 @@ def limpar_cache_de_sites() -> None:
 
 
 class SiteResolutionMiddleware:
-    """[INV-P11] Resolve Host→Site UMA vez por requisição, via catálogo (com cache).
+    """Resolve Host→Site UMA vez por requisição, via catálogo (com cache).
     Host não cadastrado ⇒ 404 — nunca um site padrão. Site que o catálogo serve
     com `languages` ⇒ resolve também o idioma do prefixo (fase 4: a fonte dos
     idiomas é o Site, não mais um arquivo local)."""
@@ -715,8 +714,8 @@ class SiteResolutionMiddleware:
 
         Sem isto, a página de um visitante logado é indistinguível — para um
         proxy — da de qualquer outro: mesma URL, mesmo status, corpo diferente.
-        Há Cloudflare na frente de domínio desta plataforma
-        (`armadilhas/017`), e um cache compartilhado servindo o nome de uma
+        Há Cloudflare na frente de domínio desta plataforma,
+        e um cache compartilhado servindo o nome de uma
         pessoa para outra é o pior bug possível desta entrega.
 
         Marca-se **apenas quando alguém foi RECONHECIDO** — não quando o

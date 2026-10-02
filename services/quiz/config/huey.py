@@ -4,7 +4,7 @@ import os
 from huey import RedisHuey
 
 # HUEY_REDIS_URL lida com os.environ.get + default inofensivo DE PROPÓSITO —
-# NUNCA fail-hard aqui (convenção do lote; ARMADILHAS §5.3): este módulo é
+# NUNCA fail-hard aqui: este módulo é
 # importado pelo container WEB via INSTALLED_APPS (huey.contrib.djhuey →
 # settings.HUEY), e o web não pode morrer no boot se a variável faltar em
 # produção. O default localhost só afeta quem realmente consome a fila — o

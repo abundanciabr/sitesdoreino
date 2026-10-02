@@ -27,7 +27,7 @@ def test_captura_lead_repassa_site_id_resolvido_pelo_conv_site_e_utm(client, red
     enviado = json.loads(rede.calls.last.request.content)
     assert (
         enviado["site_id"] == SITE_A["id"]
-    )  # [INV-P11] site vem do Host, não do payload
+    )  # site vem do Host, não do payload
     assert enviado["email"] == "cliente@exemplo.com"
     assert enviado["utm"] == {"utm_source": "instagram"}
 

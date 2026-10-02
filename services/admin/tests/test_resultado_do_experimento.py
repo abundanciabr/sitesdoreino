@@ -300,7 +300,7 @@ def test_peso_zero_com_gente_dentro_e_alarme():
 
 
 # ---------------------------------------------------------------------------
-# A amostra planejada (DECISAO-a-pagina-real-antes-do-experimento, §3)
+# A amostra planejada
 # ---------------------------------------------------------------------------
 
 

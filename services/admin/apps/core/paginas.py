@@ -7,19 +7,19 @@ Ela é a tela em que ELE faz: escreve o texto e publica.
 ## Onde o dado mora, e por que não aqui
 
 Na `catalogo`, que é o registro canônico do multissítio, pelas operações
-`getPageDraft`, `putPageDraft` e `publishPage` do contrato congelado
-(`contracts/catalogo.openapi.yaml`). Esta célula não guarda cópia: a página
+`getPageDraft`, `putPageDraft` e `publishPage` do contrato congelado.
+Esta célula não guarda cópia: a página
 seria o mesmo fato em dois lugares, e no dia em que discordassem o site
 mostraria uma coisa e esta tela outra.
 
-Qual site? O do domínio pelo qual a requisição chegou, como na tela do menu
-([INV-P11]). Nada de lista para escolher.
+Qual site? O do domínio pelo qual a requisição chegou, como na tela do menu.
+Nada de lista para escolher.
 
 ## Por que a tela é um formulário simples, sem script
 
 Pelas três razões escritas em `apps/core/menu.py`, que valem inteiras aqui: o
 que se vê é o que está gravado, a política de segurança desta área proíbe
-script embutido (`armadilhas/199`), e um botão por gesto não tem como ser mal
+script embutido, e um botão por gesto não tem como ser mal
 entendido por quem não é programador.
 
 ## As palavras da tela são as do despacho, e isso é mecanismo

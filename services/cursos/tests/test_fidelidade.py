@@ -23,11 +23,11 @@ As oito coisas que esta suite existe para travar, em ordem do que doi mais:
 7. **Nada persiste.** A contagem de linhas de TODAS as tabelas da celula e a
    mesma antes e depois de uma conferencia.
 8. **Sem rede no CI.** A fixture `sem_anthropic` do `conftest` corta o
-   transporte do `httpx2` em toda a suite (`armadilhas/288`): sem ela, um teste
+   transporte do `httpx2` em toda a suite: sem ela, um teste
    que esquecesse o duble chamaria a API PAGA com a chave de quem rodou.
 
 **A rede da Anthropic e dublada NO TRANSPORTE, nunca com `patch.object` na
-funcao do modulo** (`armadilhas/061`): assim o SDK monta o request de verdade e
+funcao do modulo**: assim o SDK monta o request de verdade e
 le a resposta de verdade, e um erro no jeito de chamar aparece aqui em vez de
 aparecer so na primeira conta paga.
 """
@@ -363,7 +363,7 @@ def test_modo_que_nao_existe_e_422_do_contrato(uma_derivada_so, com_a_chave):
 
 
 def test_sem_chave_e_503_com_a_frase_que_diz_o_que_falta(uma_derivada_so, monkeypatch):
-    """A chave e lida NO PONTO DE USO (`armadilhas/097`): sem ela falha ESTE
+    """A chave e lida NO PONTO DE USO: sem ela falha ESTE
     caminho, com uma frase, e a sala de aula inteira continua igual."""
     monkeypatch.delenv(agente.VARIAVEL_DA_CHAVE, raising=False)
 
@@ -376,8 +376,8 @@ def test_sem_chave_e_503_com_a_frase_que_diz_o_que_falta(uma_derivada_so, monkey
 def test_a_anthropic_fora_do_ar_vira_frase_e_nao_tela_quebrada(
     uma_derivada_so, com_a_chave, monkeypatch
 ):
-    """A rede do CI ja esta cortada pela fixture `sem_anthropic` do `conftest`
-    (`armadilhas/288`): este teste NAO dubla nada, e mede o que acontece quando
+    """A rede do CI ja esta cortada pela fixture `sem_anthropic` do `conftest`:
+    este teste NAO dubla nada, e mede o que acontece quando
     a chamada nao sai daqui."""
     resposta = conferir("fidelidade")
 
@@ -452,7 +452,7 @@ def test_modo_ausente_e_modo_coerencia_respondem_o_revisor_de_coerencia(
 def test_conferir_a_fidelidade_nao_grava_uma_linha_em_lugar_nenhum(
     uma_derivada_so, com_a_chave, monkeypatch
 ):
-    """A IA aponta, a pessoa decide ([INV-CUR-L4] em espirito). Um agente que
+    """A IA aponta, a pessoa decide. Um agente que
     gravasse o que achou faria a professora ler no dia seguinte o palpite da
     maquina como se fosse a decisao dela."""
     dublar_a_anthropic(monkeypatch, corpo=corpo_da_anthropic(DOIS_DESVIOS))

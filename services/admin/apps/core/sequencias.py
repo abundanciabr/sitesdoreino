@@ -3,7 +3,7 @@ mensagens da escola, sozinho, sem robô e sem publicação de código.
 
 Degrau 7 do `docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md` (§8.3), e ele parou
 em 03/09/2026 antes da primeira linha de código porque entre esta célula e o
-`mensageria_db` não existia caminho nenhum (`armadilhas/311`). Hoje existe: a
+`mensageria_db` não existia caminho nenhum. Hoje existe: a
 porta de máquina da `mensageria` está no ar e o contrato foi congelado no Rito
 de 04/09/2026, com o mantenedor presente (registro `20260904-070`).
 
@@ -66,7 +66,7 @@ CHAMA. Mesmo desenho de `/admin/economia/` e `/admin/menu/`.
 
 Cada gesto é um POST que recarrega a página, como em `/admin/economia/`, pelas
 mesmas três razões: o que se vê é o que está gravado; a política de segurança
-desta área exige um hash na CSP para cada script embutido (`armadilhas/199`), e
+desta área exige um hash na CSP para cada script embutido, e
 um formulário não precisa de nenhum; e o mantenedor é leigo, então um botão por
 gesto, com o nome do gesto escrito nele, não tem como ser mal entendido.
 """
@@ -507,7 +507,7 @@ def _sem_mensageria(request, molde: str, status: int = 200):
 
     Fail-OPEN na leitura, pelo mesmo motivo de `economia.py::_sem_gamificacao`:
     uma tela de operação que não abre é inútil justamente quando você precisa
-    dela. E o que falta é o provisionamento na VPS (INV-P8), então a tela nomeia o
+    dela. E o que falta é o provisionamento na VPS, então a tela nomeia o
     passo em vez de mostrar um erro cru ou, pior, uma lista vazia — que pareceria
     "esta escola não tem sequência nenhuma" e o mandaria procurar no lugar errado.
     """

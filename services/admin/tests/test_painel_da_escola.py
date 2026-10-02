@@ -142,7 +142,7 @@ def sob_o_prefixo_publico():
 
 @respx.mock
 def test_os_enderecos_carregam_o_prefixo_publico(sob_o_prefixo_publico):
-    """`{% url %}` e nunca caminho cravado à mão (`armadilhas/081`).
+    """`{% url %}` e nunca caminho cravado à mão.
 
     Sem prefixo o defeito é invisível: `/escola/` funciona nos testes e dá 404
     em produção, onde a área inteira mora sob `/admin`. Um `href="/escola/"`
@@ -332,7 +332,7 @@ def test_a_tela_nao_diz_que_a_fila_nao_existe():
     """O texto errado, travado pela frase — porque foi a frase que enganou.
 
     O mantenedor leu esta tela e teria concluído que precisava decidir de novo
-    algo que ele já decidiu em 27/08 (`DECISAO-fila-de-liberacao.md`). Custo de
+    algo que ele já decidiu em 27/08. Custo de
     um texto errado numa área de operação: uma decisão retomada do zero.
     """
     html = _texto(_dentro().get("/escola/alunos/"))
@@ -350,7 +350,7 @@ def test_a_tela_nao_diz_que_a_fila_nao_existe():
 # ---------------------------------------------------- 5. a fila, com dado real
 #
 # Acrescentado em 28/08/2026, quando a tela deixou de listar o que falta e
-# passou a PERGUNTAR (`DECISAO-categorias-de-usuario`, fase 2 da lei da fila).
+# passou a PERGUNTAR.
 #
 # O par de tokens `admin→alunos` é ligado por
 # `infra/provisionar-pares-de-categorias.sh`, na VPS. Enquanto ele não roda, as

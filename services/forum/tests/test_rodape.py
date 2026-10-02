@@ -4,10 +4,9 @@ Cópia do PADRÃO da `funil` (cada célula com os próprios arquivos). Cada prov
 corresponde a uma forma diferente de esta peça se perder:
 
 1. **A tabela certa e o template ignorando a decisão.** Por isso toda asserção
-   é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
-   (`armadilhas/087`: vazamento não escolhe a tag que você previu).
+   é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras.
 2. **O estilo que não chega ao navegador.** O fórum serve o CSS por rota
-   própria (`armadilhas/083`), então uma classe nova no HTML sem a regra no
+   própria, então uma classe nova no HTML sem a regra no
    arquivo é um rodapé sem forma, e nada fica vermelho.
 """
 
@@ -35,7 +34,7 @@ def _corpo(resposta) -> str:
 
     A rota do CSS devolve um `FileResponse`, que NÃO tem `.content` — pedir por
     ele levanta `AttributeError` e o teste fica vermelho por instrumento, não
-    por defeito (INV-CI01: não medir não é estar certo).
+    por defeito.
     """
     if resposta.streaming:
         return b"".join(resposta.streaming_content).decode("utf-8")
@@ -119,7 +118,7 @@ def test_o_ano_dos_direitos_vem_do_servidor(client, area_publica):
 # ---------------------------------------------------------------------------
 def test_o_estilo_do_rodape_chega_pela_rota_do_css(client):
     """Classe no HTML sem regra no CSS é rodapé sem forma, e nada fica vermelho.
-    Esta célula serve o estilo por rota própria (`armadilhas/083`), então a
+    Esta célula serve o estilo por rota própria, então a
     prova pergunta ao servidor, não ao disco."""
     css = _corpo(client.get(reverse("estatico", args=["forum.css"])))
     for regra in (".rodape {", ".rodape .marca", ".rodape .links", ".rodape .direitos"):

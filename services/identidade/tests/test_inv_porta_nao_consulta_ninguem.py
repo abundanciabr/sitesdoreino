@@ -5,7 +5,7 @@ decide SE PODE é a célula dona do recurso, na hora do recurso (a Caixa confere
 matrícula na participação; reconhecer não é autorizar —
 DECISAO-onde-mora-a-sessao §4).
 
-O mecanismo da prova é o `respx` do conftest (armadilhas/054): QUALQUER
+O mecanismo da prova é o `respx` do conftest: QUALQUER
 requisição fora das duas URLs do Google registradas estoura
 `AllMockedAssertionError`. Se um dia alguém reintroduzir uma consulta —
 `alunos`, uma lista externa, o que for — este arquivo fica vermelho sem

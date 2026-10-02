@@ -15,7 +15,7 @@ O INVARIANTE TEM DUAS METADES, E ESTE ARQUIVO PROVA AS DUAS
    é recusado em vez de a decisão da IA preencher o buraco.
 
 Provado por MUTAÇÃO em 05/09/2026, e o vermelho de cada uma caiu na ASSERÇÃO,
-nunca na construção do teste (`armadilhas/195`):
+nunca na construção do teste:
 
 * acrescentar `decisao = models.CharField(max_length=17, blank=True,
   default="")` a `RascunhoDaIA`, COM a migração junto, deixa vermelho

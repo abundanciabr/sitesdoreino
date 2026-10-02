@@ -31,8 +31,8 @@ número de fichas:
    contar"*. A lista chegou mas ainda sem o campo ⇒ *"a lista ainda não traz
    a data"*. Ficha sem data ⇒ contada à
    parte e dita na tela, nunca escondida (`RETROSPECTIVA-FASE-D.md`, padrão 1).
-4. **Reembolsada não é compra.** A compra foi desfeita
-   (`DECISAO-reembolso-tira-o-acesso.md`); a tela diz quantas foram.
+4. **Reembolsada não é compra.** A compra foi desfeita;
+   a tela diz quantas foram.
 5. **Quem ficou antes da partida não entra.** A turma liberada em lote pela
    lista de WhatsApp em 02/09/2026 é venda de outros meses (palavras do
    mantenedor: neste mês ainda não houve venda). A partida é 03/09.
@@ -52,8 +52,8 @@ do painel (tipo `decisao`). A meta do mês
 (`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da régua do ciclo que
 cai no mês; ele fixa um número quando quiser.
 
-Desde 04/09/2026 essa régua tem uma peça a mais, `semanas`: a CURVA do ciclo
-(`DECISAO-o-calendario-do-ciclo.md`). Ela reparte a meta semana a semana, quase
+Desde 04/09/2026 essa régua tem uma peça a mais, `semanas`: a CURVA do ciclo.
+Ela reparte a meta semana a semana, quase
 zero no começo e pesada no fim, em vez de em partes iguais. O cartão que não
 declara `semanas` continua medido em linha reta, como antes.
 
@@ -306,7 +306,7 @@ def _o_que_da_para_contar(nome: str, cartao: object) -> tuple[dict | None, list[
 
 
 def dia_em_sao_paulo(texto: object) -> dt.date | None:
-    """O DIA de um instante ISO com fuso, em America/Sao_Paulo (`armadilhas/099`).
+    """O DIA de um instante ISO com fuso, em America/Sao_Paulo.
 
     `None` para nulo, vazio, ilegível ou sem fuso: a tela conta essas fichas à
     parte. Instante sem fuso não diz em que dia caiu, e isso não se adivinha.
@@ -569,7 +569,7 @@ def placar(request):
 def site_de(request) -> str | None:
     """O id do site desta requisição, pelo HOST — `None` se não deu para saber.
 
-    [INV-P11] e o mesmo caminho de `menu.py` e `avisos.py`: o site sai do
+    e o mesmo caminho de `menu.py` e `avisos.py`: o site sai do
     domínio pelo qual a requisição chegou, nunca de um id guardado aqui. Quem
     precisa dele é a memória (a `metricas` conta por site, multissítio: site é dado); o resto do
     placar não precisa, e por isso a falha aqui não estraga a tela — vira a

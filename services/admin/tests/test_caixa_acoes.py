@@ -185,7 +185,7 @@ def test_a_tela_da_ideia_nao_tem_mais_a_assinatura_de_obra():
 
 @respx.mock
 def test_mover_manda_quem_age_junto():
-    """[INV-SUG12]: sem o identificador de quem agiu, a Caixa não afirma o fato."""
+    """sem o identificador de quem agiu, a Caixa não afirma o fato."""
     cliente = _dentro()
     a_caixa_conta()
     escrita = respx.post(f"{IDEIAS}/7/status").mock(

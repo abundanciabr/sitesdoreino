@@ -30,7 +30,7 @@ esquecimento: o contrato da `metricas` diz com todas as letras que a matricula
 *"identifica a matricula, nunca a pessoa, e nao serve para creditar ninguem fora
 daqui"*. Cruzar "quem entrou no site" com "quem virou aluno" nao e possivel hoje
 em nenhum lugar da plataforma, e uma regra que fingisse esse cruzamento estaria
-decidindo sobre uma pessoa que nao existe (`armadilhas/255`).
+decidindo sobre uma pessoa que nao existe.
 
 NADA AQUI MANDA MENSAGEM, E ISSO E DESENHO
 -------------------------------------------

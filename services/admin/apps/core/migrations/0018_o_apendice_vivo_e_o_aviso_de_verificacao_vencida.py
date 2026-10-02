@@ -1,4 +1,4 @@
-"""O cabeçalho de apêndice vivo (TAR-247, `PLANO-CELULA-CURSOS.md` §3.8, degrau 3.3).
+"""O cabeçalho de apêndice vivo.
 
 Só esquema, sem semeadura nenhuma (`armadilhas/347` não se aplica: nenhum
 documento novo nasce aqui, só três campos numa tabela que já existe).

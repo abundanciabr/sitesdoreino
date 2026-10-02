@@ -8,8 +8,8 @@ credita ponto, não mexe em nível e não entra na economia.
 O QUE ESTE ARQUIVO TRAVA:
 
 1. **O envelope do teste é o que o contrato fixa.** Um envelope de fantasia
-   provaria que o handler funciona com dados que nunca vão chegar
-   (`armadilhas/255`): aqui ele é validado contra o ARQUIVO congelado.
+   provaria que o handler funciona com dados que nunca vão chegar:
+   aqui ele é validado contra o ARQUIVO congelado.
 2. **Marco real vale ZERO XP**, de propósito (plano §7, decisão 7 da Sessão A).
    Nenhum lançamento nasce, o perfil não sobe e nenhum Cristal se move.
 3. **O mesmo selo reentregue acende o marco uma vez só**, nas duas camadas: a
@@ -156,7 +156,7 @@ def test_o_aluno_recebe_a_carta_do_marco_uma_vez_so():
 
 
 def test_campo_novo_no_dado_nao_derruba_o_marco():
-    """Campo que o contrato ainda não conhece é a via ADITIVA (RITOS §3.3)."""
+    """Campo que o contrato ainda não conhece é a via ADITIVA."""
     _marco()
 
     _entregar(_selo(data={"conferido_por_equipe": True}))

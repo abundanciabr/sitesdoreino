@@ -25,7 +25,7 @@ SITE = "escola-a"
 # O relógio REAL, como em toda a suíte desta célula: `Oferta.oferecida_em` é
 # `auto_now_add`, e a restrição `oferta_expira_depois_de_oferecida` compara os
 # dois. Um instante fixo passa hoje e fica vermelho sozinho quando o relógio da
-# máquina o ultrapassa (`armadilhas/323`).
+# máquina o ultrapassa.
 AGORA = datetime.now(tz=fuso.utc)
 PAUSADO = PerfilProfissional.Disponibilidade.PAUSADO
 DISPONIVEL = PerfilProfissional.Disponibilidade.DISPONIVEL
@@ -90,7 +90,7 @@ def test_tres_silencios_seguidos_pausam_o_aluno(semeado, criar_perfil, criar_enc
     # Sem prazo: quem religa é o aluno, no botão. É a diferença desta pausa para
     # a de 30 dias do segundo abandono (plano §6.6).
     assert ana.pausa_ate is None
-    # [INV-ENC-J4]: o lugar continua exatamente onde estava.
+    # o lugar continua exatamente onde estava.
     assert ana.data_entrada_fila == entrou
 
 

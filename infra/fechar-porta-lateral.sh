@@ -80,7 +80,7 @@ RESULTADO="$(ufw status verbose)"
 echo "$RESULTADO"
 echo
 
-# INV-CI01: ausencia de erro nao e evidencia de sucesso. Cada linha abaixo le o
+# Ausencia de erro nao e evidencia de sucesso. Cada linha abaixo le o
 # estado publicado pelo ufw; qualquer uma faltando derrubaria algo de verdade.
 echo "$RESULTADO" | grep -q "Status: active"                  || parar "o ufw nao reportou 'active'. Conserte a causa e rode de novo."
 echo "$RESULTADO" | grep -qE "^22(/tcp)?[[:space:]]+ALLOW"    || parar "a regra de SSH (22) NAO aparece no estado final. Se voce sair desta sessao pode perder o acesso. Rode agora: sudo ufw allow 22/tcp, e depois rode este roteiro de novo."

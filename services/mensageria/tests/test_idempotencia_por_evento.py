@@ -1,4 +1,4 @@
-# [RECEITA:R5 v1] reentrega do mesmo evento ⇒ 1 envio (constituicoes/AGENTS.mensageria.md)
+# [RECEITA:R5 v1] reentrega do mesmo evento ⇒ 1 envio
 from unittest.mock import patch
 from uuid import uuid4
 

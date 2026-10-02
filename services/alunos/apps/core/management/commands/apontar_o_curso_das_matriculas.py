@@ -1,6 +1,5 @@
 """As matrículas que já existem passam a dizer de qual curso o aluno é.
 
-Lei: `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §5 (06/09/2026).
 Ninguém é aluno do site: todo mundo é aluno de UM curso. Toda matrícula que
 existe hoje é do curso 1 ("Primeiros Dólares com Roblox"), porque foi ele que
 essas pessoas compraram, e nenhuma delas comprou o segundo.

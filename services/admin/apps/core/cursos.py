@@ -5,7 +5,7 @@ uma constante escrita no código (`CURSO_PADRAO = "profissional"`), e criar o
 segundo curso exigiria um bloco de colar no servidor. O mantenedor decidiu o
 contrário, com estas palavras: *"quero criar uma estrutura que sirva para vários
 cursos e não apenas para um único curso, de modo que seja fácil de criar outros
-cursos depois"* (`docs/decisoes/DECISAO-a-sala-serve-varios-cursos.md`).
+cursos depois"*.
 
 Esta tela é o lugar onde isso acontece. Ela faz três coisas, e nenhuma a mais:
 
@@ -52,7 +52,7 @@ sala para todo mundo, sem nada na tela dizendo por quê.
 ## Formulário normal, POST por gesto, sem uma linha de script
 
 A política de segurança desta área exige um hash na CSP para cada script
-embutido (`armadilhas/199`), e um POST por gesto deixa a tela mostrando sempre o
+embutido, e um POST por gesto deixa a tela mostrando sempre o
 que está de fato gravado. Os gestos redesenham a lista lendo as portas de novo,
 como o importador do sumário faz: o resultado que a pessoa lê é o estado real,
 nunca o que esta tela achou que tinha acontecido.

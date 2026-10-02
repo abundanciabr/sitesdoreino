@@ -3,8 +3,8 @@
 Um curso novo nasce sem uma aula sequer: `createCourse` cria a sala vazia de
 propósito, e sem esta tela encher o esqueleto exigiria um bloco de colar no
 servidor. O mantenedor pediu o contrário, com estas palavras: *"quero criar uma
-estrutura que sirva para vários cursos e não apenas para um único curso"*
-(`docs/decisoes/DECISAO-a-sala-serve-varios-cursos.md` §4). É por aqui que ele
+estrutura que sirva para vários cursos e não apenas para um único curso"*.
+É por aqui que ele
 vai criar as aulas do "Primeiros Dólares com Roblox" para os alunos que já
 estão matriculados.
 
@@ -26,7 +26,7 @@ a estrutura inteira entra, ou nada entra.
 
 É um formulário com dois botões de enviar, e por isso não há uma linha de
 script: a política de segurança desta área exige um hash na CSP para cada
-script embutido (`armadilhas/199`), e um POST por gesto deixa a tela mostrando
+script embutido, e um POST por gesto deixa a tela mostrando
 sempre o que está de fato gravado.
 
 ## O texto colado não fica guardado em lugar nenhum

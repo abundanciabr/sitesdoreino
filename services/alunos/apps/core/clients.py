@@ -4,7 +4,7 @@
 Até 29/08/2026 ela não tinha nenhuma: `celulas.yml` a declarava com
 `consome: []`, e era verdade. Ela ganhou uma porque ganhou voz — e para
 endereçar uma carta é preciso saber o id de plataforma de quem vai recebê-la,
-que só a `identidade` sabe (`findPersonByEmail`, Rito de Contrato do PR #524).
+que só a `identidade` sabe.
 
 **Fail-ABERTO, e a direção é a decisão.** Esta consulta alimenta um AVISO, não
 uma autorização. Se ela falhar, a pessoa deixa de receber uma carta — e
@@ -44,7 +44,7 @@ class IdentidadeClient:
     TIMEOUT = 2.0
 
     def _configuracao(self) -> "tuple[str, str] | None":
-        """Endereço e token do par, lidos NO PONTO DE USO (`armadilhas/097`).
+        """Endereço e token do par, lidos NO PONTO DE USO.
 
         Enquanto o par `alunos→identidade` não estiver provisionado na VPS,
         estas variáveis não existem — e este é um caminho NORMAL, não um erro:

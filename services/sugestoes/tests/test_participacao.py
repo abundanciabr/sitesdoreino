@@ -306,7 +306,7 @@ def test_votar_numa_sugestao_que_nao_existe_e_404(dentro, categoria):
 
 
 # ---------------------------------------------------------------------------
-# O arquivamento (`DECISAO-arquivar-ideia.md`, 29/08/2026) — some do aluno
+# O arquivamento — some do aluno
 # ---------------------------------------------------------------------------
 #
 # A escrita mora do lado da gestão (`api_gestao.arquivar`); aqui só se confere

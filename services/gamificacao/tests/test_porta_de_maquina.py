@@ -16,7 +16,7 @@ para quem tiver o token, o e-mail e o XP dos alunos de uma escola de menores.
 
 E nesta célula há um agravante que a `identidade` não tem: **a porta é
 alcançável pela borda pública**. O `SCRIPT_NAME=/conquistas` é cortado pelo
-Django, não pelo Traefik (`armadilhas/186`), então
+Django, não pelo Traefik, então
 `meshcraft.top/conquistas/api/gamificacao/perfis` chega aqui. O Bearer é o
 único cadeado — por isso os testes de 401 cobrem as DUAS operações, o token
 errado e o conjunto de tokens VAZIO.
@@ -397,7 +397,7 @@ def test_o_proximo_degrau_e_o_primeiro_ACIMA_e_nao_o_numero_seguinte(monkeypatch
 def test_quem_entrou_mas_ainda_nao_jogou_e_autenticado_com_numeros_em_null(
     monkeypatch,
 ):
-    """A linha de perfil é PREGUIÇOSA (Lei 7): nasce no primeiro XP."""
+    """A linha de perfil é PREGUIÇOSA: nasce no primeiro XP."""
     dublar_identidade(monkeypatch, corpo={"autenticado": True, "id": "p_novata"})
     dados = corpo(pedir("/eu", cookie="meshcraft_sessao=abc"))
     assert dados == {**VISITANTE, "autenticado": True}
@@ -591,7 +591,7 @@ def test_conjunto_de_tokens_vazio_recusa_todo_mundo(settings, caminho):
     O modo de falha que isto mata: a célula sobe sem o token no env e a porta
     fica ABERTA porque "não havia nada com que comparar". Nesta célula ele é
     pior que nas vizinhas — sem token válido, `meshcraft.top/conquistas/api/…`
-    seria uma porta aberta na internet (`armadilhas/186`).
+    seria uma porta aberta na internet.
     """
     settings.TOKENS_ACEITOS = set()
     assert pedir(caminho).status_code == 401
@@ -650,7 +650,7 @@ def test_a_porta_responde_no_endereco_do_CONTRATO_e_nao_no_da_genese():
 
 
 # ---------------------------------------------------------------------------
-# O TERCEIRO INTERRUPTOR: os degraus da escada (Rito de Contrato de 02/09/2026)
+# O TERCEIRO INTERRUPTOR: os degraus da escada
 # ---------------------------------------------------------------------------
 def _escada(*, ligados: tuple[int, ...] = ()):
     """Uma escada de três degraus, com os números `ligados` ativos."""
@@ -682,7 +682,7 @@ def test_a_lista_de_degraus_traz_ligados_e_desligados():
 
 def test_a_lista_de_degraus_avisa_que_um_degrau_so_nao_e_escada():
     """O aviso serve antes do clique: com um degrau, a tela do aluno diz que o
-    seguinte ainda não abriu (`armadilhas/271`)."""
+    seguinte ainda não abriu."""
     _escada(ligados=(1,))
 
     dados = corpo(pedir("/economia/degraus"))
@@ -711,7 +711,7 @@ def test_degrau_que_nao_existe_responde_404_e_nao_inventa():
     "token", [None, "token-de-outra-pessoa"], ids=["sem-token", "token-errado"]
 )
 def test_ligar_um_degrau_sem_credencial_e_401(token):
-    """A porta desta célula é alcançável pela internet (`armadilhas/186`), e
+    """A porta desta célula é alcançável pela internet, e
     quem a fecha é o Bearer, só ele. Vale para o terceiro interruptor como vale
     para os dois primeiros."""
     assert (
@@ -733,7 +733,7 @@ def test_sem_SITE_ID_a_lista_de_degraus_fica_vazia_e_ligar_recusa(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# O QUADRO DO BASTIDOR (Rito de Contrato de 03/09/2026): pontos, atividade e
+# O QUADRO DO BASTIDOR: pontos, atividade e
 # conquistas, aluno por aluno — a exceção declarada ao invariante 2
 # ---------------------------------------------------------------------------
 def _lancar_xp(pessoa_id: str, *, pontos: int, occurred_at, status, sufixo: str):
@@ -900,7 +900,7 @@ def test_o_quadro_NAO_traz_titulo_slug_nem_nome_de_conquista():
 
 
 def test_pessoa_sem_perfil_nao_aparece_no_quadro():
-    """`PerfilJogador` é preguiçoso (Lei 7): sem XP nenhum, sem linha — a admin
+    """`PerfilJogador` é preguiçoso: sem XP nenhum, sem linha — a admin
     trata ausência como zero, cruzando com a lista inteira de alunos dela."""
     Pessoa.objects.create(id_da_plataforma="p_sem_perfil", email="s@exemplo.com")
     assert corpo(pedir("/quadro")) == []
@@ -929,5 +929,5 @@ def test_sem_SITE_ID_o_quadro_fica_vazio_e_nao_quebra(monkeypatch):
     "token", [None, "token-de-outra-pessoa"], ids=["sem-token", "token-errado"]
 )
 def test_o_quadro_sem_credencial_e_401(token):
-    """Mesmo cadeado das outras operações — e o único que existe (`armadilhas/186`)."""
+    """Mesmo cadeado das outras operações — e o único que existe."""
     assert pedir("/quadro", token=token).status_code == 401

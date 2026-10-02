@@ -79,7 +79,7 @@ def topicos_publicos():
 
 
 # ---------------------------------------------------------------------------
-# Esquemas — o que sai. Campo novo aqui é mudança de contrato (RITOS §3).
+# Esquemas — o que sai. Campo novo aqui é mudança de contrato.
 # ---------------------------------------------------------------------------
 class AreaPublica(Schema):
     slug: str

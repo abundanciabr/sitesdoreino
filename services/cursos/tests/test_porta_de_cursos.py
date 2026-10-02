@@ -1,7 +1,7 @@
 """As três operações do CURSO na porta de máquina: listar, criar e alterar.
 
-A sala serve vários cursos desde 07/09/2026
-(`DECISAO-a-sala-serve-varios-cursos.md`), e um curso nasce na tela do Admin,
+A sala serve vários cursos desde 07/09/2026,
+e um curso nasce na tela do Admin,
 pela porta, com o apelido, o nome, a regra de avanço e o produto. Este arquivo
 mede cada regra de `listCourses`, `createCourse` e `putCourse`: o que cada uma
 devolve, o que recusa, e o que NÃO toca. A estrutura (blocos e aulas) tem

@@ -2,7 +2,7 @@
 
 O dossiê da Comunidade (documentos/comunidade.md, "Como pedir ajuda") exige que
 todo desafio explique como pedir ajuda. Esta célula não sabe nada de fórum ou
-gamificação (constituicoes/AGENTS.cursos.md): o link é um caminho absoluto
+gamificação: o link é um caminho absoluto
 fixo para outra célula (`/forum/comunidade`), nunca `reverse()`.
 
 O que este arquivo protege:

@@ -2,7 +2,7 @@
 
 O verbo `decidir_experimento` (26/09/2026), envolvido em
 `SeparateDatabaseAndState` porque `AlterField` no SQLite reconstroi a tabela e
-derruba os gatilhos append-only (`armadilhas/246`), e acrescentar uma escolha
+derruba os gatilhos append-only, e acrescentar uma escolha
 nao muda coluna nenhuma.
 """
 

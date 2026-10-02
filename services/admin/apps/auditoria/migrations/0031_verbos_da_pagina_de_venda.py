@@ -1,7 +1,7 @@
 """Escolha de auditoria: so estado do Django, nenhum SQL ou dado alterado.
 
 Envolvida em `SeparateDatabaseAndState` porque `AlterField` no SQLite
-reconstroi a tabela e derruba os gatilhos append-only (`armadilhas/246`), e
+reconstroi a tabela e derruba os gatilhos append-only, e
 acrescentar uma escolha nao muda coluna nenhuma.
 """
 

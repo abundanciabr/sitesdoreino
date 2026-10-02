@@ -14,7 +14,7 @@ guardas. Cada um corresponde a uma forma diferente de isto dar errado:
    precisa VENCER a versão padrão do site: é ela a metade "exceto nas páginas
    que já configuramos para não ter" do pedido do mantenedor.
 4. **O estilo não chegar ao navegador.** Esta célula serve o CSS por rota
-   própria (`armadilhas/083`), então classe nova no HTML sem regra no arquivo é
+   própria, então classe nova no HTML sem regra no arquivo é
    um menu sem forma, e nada fica vermelho.
 5. **A pergunta "entrou?" custar um segundo salto de rede por página.** Os itens
    "Caixa" e "Conquistas" do menu do site nascem com plateia `logged_in`
@@ -127,7 +127,7 @@ def _corpo(resposta) -> str:
 
     A rota do CSS devolve um `FileResponse`, que NÃO tem `.content` — pedir por
     ele levanta `AttributeError` e o teste fica vermelho por instrumento, não
-    por defeito (INV-CI01: não medir não é estar certo).
+    por defeito.
     """
     if resposta.streaming:
         return b"".join(resposta.streaming_content).decode("utf-8")
@@ -217,7 +217,7 @@ def test_o_menu_aparece_na_base_das_conquistas(client):
 def test_o_menu_aparece_tambem_na_trilha_de_marcos(client):
     """ "Em todas as páginas" é processador de contexto e moldura compartilhada,
     nunca uma inclusão que alguém lembra de escrever: tela nova das Conquistas
-    nasce com menu (`armadilhas/242` e `/286`)."""
+    nasce com menu."""
     with respx.mock:
         respx.get(POR_HOST).mock(return_value=httpx.Response(200, json=SITE))
         corpo = client.get(reverse("marcos")).content.decode()
@@ -401,7 +401,7 @@ def test_o_item_inicio_continua_aparecendo(client):
 # ---------------------------------------------------------------------------
 def test_o_estilo_do_menu_chega_pela_rota_do_css(client):
     """Classe nova no HTML sem regra no arquivo é um menu sem forma, e nada
-    ficaria vermelho (`armadilhas/083`)."""
+    ficaria vermelho."""
     folha = _corpo(client.get(reverse("estatico", args=["gamificacao.css"])))
     assert ".barra-do-site" in folha
     assert "position: sticky" in folha
@@ -482,8 +482,8 @@ def test_a_memoria_morre_com_a_requisicao(rf, monkeypatch):
 # valor novo no catálogo de vazar um atalho durante a janela em que uma das
 # células ainda não subiu com o código novo.
 #
-# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
-# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras:
+# uma tabela certa com um chamador que passa o argumento
 # errado passaria num teste que só lê a tabela.
 MENU_COM_EQUIPE = {
     "default_version": "v",

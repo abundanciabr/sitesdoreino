@@ -87,7 +87,7 @@ def crescimento_mes_a_mes(
 #: escrita aqui. Medida no livro real no dia da troca, ela dava **6** — e os
 #: seis eram vereditos de deploy respondendo a registros de entrega, num livro
 #: sem um único experimento. A conta não tinha bug: media a coisa errada com
-#: precisão, que é como um indicador morre (`armadilhas/303`).
+#: precisão, que é como um indicador morre.
 #:
 #: Uma regra só, dois leitores: a tela do laboratório e este número não
 #: conseguem discordar, porque são a mesma função.

@@ -17,7 +17,7 @@ from apps.forum.config_de_busca import SQL_DA_CURA
 def django_db_setup(django_db_setup, django_db_blocker):
     """O banco de teste nasce com a configuração de busca sem acento.
 
-    **Por que aqui, e não numa migração** (`armadilhas/154`): criar extensão
+    **Por que aqui, e não numa migração**: criar extensão
     exige superusuário do PostgreSQL. Na CI o usuário do banco é superusuário e
     a migração passaria; em produção a célula roda com um papel restrito e o
     `migrate` do boot **morreria na VPS**, com o container em crashloop. Verde
@@ -48,13 +48,13 @@ def sem_rede(monkeypatch):
     Anthropic (`apps/core/agente.py`), e o corte antigo não o alcançava: a suíte
     dizia no próprio docstring que não falava com a rede e podia chamar a API
     paga da Anthropic de verdade, com a chave da máquina de quem rodasse os
-    testes (`armadilhas/288`).
+    testes.
 
     O corte do `httpx2` é no TRANSPORTE, e não em `Client.post`, por dois
     motivos: o SDK chama `Client.send`, que `post` não intercepta, e cortar no
     transporte deixa o dublê dos testes do agente trocar essa mesma função por
     uma resposta de mentira — exercitando o SDK de verdade, com o request e a
-    leitura da resposta que a produção usa (`armadilhas/061`).
+    leitura da resposta que a produção usa.
     """
     import httpx
     import httpx2

@@ -1,6 +1,6 @@
 """Teste-guarda dos marcos: o que vira conquista, e o que não vira.
 
-O que estes guardas protegem (degrau 9, `PLANO-PAINEL-DE-GESTAO.md` §6.4):
+O que estes guardas protegem:
 
 1. **A conquista sai do fato**, com o dia de São Paulo e a linhagem do evento.
 2. **Comprar e ser liberado são conquistas DIFERENTES.** É a distinção que o
@@ -35,7 +35,7 @@ from apps.fatos.recepcao import GUARDADO, JA_TINHA, receber
 
 pytestmark = pytest.mark.django_db
 
-# 01h de UTC do dia 1º: ainda é dia 30 em São Paulo (`armadilhas/099`).
+# 01h de UTC do dia 1º: ainda é dia 30 em São Paulo.
 NA_VIRADA = "2026-10-01T01:00:00+00:00"
 DEPOIS = "2026-10-05T15:00:00+00:00"
 

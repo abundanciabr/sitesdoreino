@@ -1,4 +1,4 @@
-"""[INV-SUG11] O id que ATRAVESSA — toda identidade cunhada aqui guarda o dela.
+"""O id que ATRAVESSA — toda identidade cunhada aqui guarda o dela.
 
 Lei: `docs/notificacoes/PLANO-MESTRE.md` §2 (o nó) e a Fase 1 da §6. A resposta
 de `getSessionFull` **já traz** o id da pessoa na célula `identidade`
@@ -90,7 +90,7 @@ def test_o_casamento_por_email_continua_sendo_a_chave(rede, db, matricula, entra
     Se alguém trocar a busca de `get_or_create(email=…)` por
     `get_or_create(id_da_plataforma=…)`, este teste cai: a linha antiga (sem id
     nenhum) nunca seria encontrada, e a pessoa perderia a autoria de tudo que
-    escreveu antes da mudança de casa do login (DECISAO-celula-de-identidade §3).
+    escreveu antes da mudança de casa do login.
     """
     antiga = Identidade.objects.create(
         email="autora@exemplo.test", nome_exibido="Autora"

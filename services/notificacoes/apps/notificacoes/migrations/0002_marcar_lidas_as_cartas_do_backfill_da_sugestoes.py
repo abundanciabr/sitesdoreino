@@ -19,9 +19,9 @@ migration irmã da `sugestoes`: o `services/notificacoes/Dockerfile` roda
 `python manage.py migrate --noinput` no boot, ANTES do servidor subir. Uma
 migration roda automaticamente em TODO deploy, exatamente uma vez (Django
 registra em `django_migrations`) — sem exigir SSH nem passo manual do
-mantenedor na VPS (o agente não tem acesso SSH — Lei 5, CONSTITUICAO.md).
+mantenedor na VPS.
 
-**Como identificar, sem ler o banco da `sugestoes` (Lei 2).** A migration
+**Como identificar, sem ler o banco da `sugestoes`.** A migration
 0008 gerou `origem_event_id` de forma DETERMINÍSTICA:
 `uuid.uuid5(NAMESPACE_BACKFILL_AVISOS, f"aviso-backfill-origem-{aviso.pk}")`,
 com `NAMESPACE_BACKFILL_AVISOS` uma constante UUID fixa. A MESMA constante é
@@ -128,8 +128,8 @@ def _origem_event_id_do_aviso(aviso_pk: int) -> uuid.UUID:
 
 def _origem_event_ids_do_backfill() -> frozenset[uuid.UUID]:
     """O conjunto de `origem_event_id` que QUALQUER carta do backfill da
-    `sugestoes` pode ter — calculado localmente, sem tocar o banco alheio
-    (Lei 2). Ver a docstring do módulo para o raciocínio do limite."""
+    `sugestoes` pode ter — calculado localmente, sem tocar o banco alheio.
+    Ver a docstring do módulo para o raciocínio do limite."""
     return frozenset(
         _origem_event_id_do_aviso(pk) for pk in range(1, MAIOR_PK_DE_AVISO_ESPERADO + 1)
     )

@@ -16,7 +16,7 @@ def env(nome: str) -> str:
 
 
 # Só estas duas são fail-hard no import, e de propósito: são as únicas que o
-# `.github/workflows/ci-celula.yml` fornece a TODA célula (`armadilhas/037`).
+# `.github/workflows/ci-celula.yml` fornece a TODA célula.
 # Toda variável futura desta célula (o token do par que a `admin` vai usar, o
 # endereço do sininho) é lida NO PONTO DE USO, com default inofensivo — a razão
 # está medida em `armadilhas/097`: cliente que lê env no `__init__` transforma
@@ -36,7 +36,7 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 # lido do env porque a rota de máquina precisa responder nas duas formas de
 # entrada (`/healthz` pelo healthcheck do compose e, se um dia houver borda,
 # `/metricas/healthz`), e porque quem conhece o prefixo é a variável, nunca o
-# `urls.py` (`armadilhas/029`; guarda em `tests/test_healthz_script_name.py`).
+# `urls.py`.
 FORCE_SCRIPT_NAME = os.environ.get("SCRIPT_NAME") or None
 
 # Atrás do Traefik. Esta célula responde em qualquer host servido pela
@@ -48,7 +48,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # `dj_database_url.parse` entrega `CONN_MAX_AGE = 0`, e a ausência do ajuste é
 # uma DECISÃO: sob ASGI, `conn_max_age > 0` vaza uma conexão por requisição, e
-# nem a suíte nem o `/healthz` nem o deploy acusam (`armadilhas/170`). Quando o
+# nem a suíte nem o `/healthz` nem o deploy acusam. Quando o
 # volume pedir reaproveitamento, a resposta é o POOL nativo do Django 5.1
 # (`OPTIONS["pool"]`, o desenho que a `identidade` já roda).
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
@@ -72,7 +72,7 @@ MIDDLEWARE = [
     # `/healthz` continua respondendo sem token e sem exceção escrita em lugar
     # nenhum: um guarda de caminho precisaria isentá-lo, e a isenção teria de
     # comparar `request.path_info` e nunca `request.path`, que pela borda
-    # pública traz o prefixo (`armadilhas/029`). Guarda que não existe não erra.
+    # pública traz o prefixo. Guarda que não existe não erra.
 ]
 
 # ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ MIDDLEWARE = [
 # `DECISAO-celula-de-identidade.md` §6.4): quem assina o cookie
 # `meshcraft_sessao` é a célula `identidade`, e só ela. Duas células assinando
 # o MESMO cookie com chaves diferentes produzem um cabo-de-guerra invisível —
-# sem erro, sem log, sem alarme (`armadilhas/143`).
+# sem erro, sem log, sem alarme.
 #
 # Aqui a tentação tem forma própria: esta célula vai guardar fatos SOBRE
 # pessoas (quem se cadastrou, quem completou o quiz, quem escreveu no fórum), e
@@ -148,7 +148,7 @@ USE_TZ = True
 # O armazenamento continua em UTC (USE_TZ); isto é o fuso em que a célula
 # DECIDE a que dia um fato pertence. Sem esta linha vale o default de fábrica
 # do Django, `America/Chicago`: cinco horas atrás, capaz de trocar o DIA perto
-# da virada, sem erro nenhum (`armadilhas/099`).
+# da virada, sem erro nenhum.
 #
 # Aqui isso corromperia a coisa medida, não a exibição. Tudo o que esta célula
 # existe para responder é contagem por DIA de São Paulo: quantas pessoas

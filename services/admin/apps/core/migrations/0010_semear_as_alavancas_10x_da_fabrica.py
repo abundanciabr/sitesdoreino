@@ -2,13 +2,13 @@
 
 `documentos/alavancas-10x-da-fabrica.md` nasceu em 05/09/2026, a pedido do
 mantenedor ("o que pode ser feito nesse projeto que aumentaria em 10x ou mais a
-velocidade de execução das tarefas"). Pela lei de 05/09/2026
-(`DECISAO-onde-mora-o-que-eu-entrego.md`), análise que ele vai reler mora no
+velocidade de execução das tarefas"). Pela lei de 05/09/2026,
+análise que ele vai reler mora no
 site, e como não se apoia em fatos vivos do sistema, mora no editor de
 documentos, só para administradores.
 
 A pasta `documentos/` é SEMENTE e a migração `0003` rodou uma vez, em
-31/08/2026: um arquivo novo não vira página sozinho (`armadilhas/347`). Por isso
+31/08/2026: um arquivo novo não vira página sozinho. Por isso
 este documento entra pela mesma porta do relatório da fundação (`0007`):
 `semear_documento`, que semeia SÓ ele, nunca sobrescreve o que o mantenedor já
 tenha escrito pela tela, e sem a pasta na imagem não faz nada.

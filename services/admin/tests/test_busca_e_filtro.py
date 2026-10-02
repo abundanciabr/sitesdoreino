@@ -153,7 +153,7 @@ def test_a_peneira_ignora_acento_e_caixa():
 
 
 def test_a_peneira_nao_procura_no_whatsapp():
-    """O número fica FORA da busca de propósito (`DECISAO-fila-de-liberacao` §5).
+    """O número fica FORA da busca de propósito.
 
     Ele é o dado mais sensível desta tela, e um campo que casa com ele convida a
     colar telefone numa query string — que vai para histórico de navegador e log

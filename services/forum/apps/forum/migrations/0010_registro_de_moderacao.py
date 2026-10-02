@@ -7,7 +7,7 @@ from django.db import migrations, models
 # O REGISTRO SÓ ACRESCENTA (TAR-847). O gatilho recusa UPDATE e DELETE linha a
 # linha, venha de onde vier: `save()`, `update()`, `delete()` ou `psql`. Criar
 # função em plpgsql pede o mesmo poder que criar tabela no esquema, que o papel
-# da célula já usa em toda migração; não exige superusuário (`armadilhas/154`).
+# da célula já usa em toda migração; não exige superusuário.
 SO_ACRESCENTA = [
     """
     CREATE FUNCTION forum_registro_de_moderacao_so_acrescenta() RETURNS trigger AS $$

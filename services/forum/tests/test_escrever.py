@@ -313,7 +313,7 @@ def test_o_banco_recusa_area_publica_onde_aluno_escreve():
 
 
 def test_o_banco_recusa_ate_pelo_update_que_fura_o_save():
-    """`QuerySet.update()` fura guarda escrito em `Model.save()` (`armadilhas/023`).
+    """`QuerySet.update()` fura guarda escrito em `Model.save()`.
 
     Este é o caminho pelo qual a área pública voltaria a aceitar aluno sem
     ninguém notar — e é justamente o que a restrição do banco alcança.

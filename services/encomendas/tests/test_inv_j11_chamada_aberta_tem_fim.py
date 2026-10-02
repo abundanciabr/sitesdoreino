@@ -1,4 +1,4 @@
-"""[INV-ENC-J11] Chamada aberta sem aceite não fica presa para sempre.
+"""Chamada aberta sem aceite não fica presa para sempre.
 
 Lei: `DECISAO-fila-do-primeiro-dolar.md` §3.8 e §5. A passada seguinte do tique
 escala a chamada aberta ao plantão quando o novo prazo histórico vence.

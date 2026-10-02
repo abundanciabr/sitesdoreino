@@ -50,7 +50,7 @@ licença para reescrever o que essa pessoa colocou lá.
 **Fonte do texto novo.** Lida de `documentos/<nome>.md` no momento do
 `migrate`, exatamente como `semear_documento` já faz — não há um segundo
 texto vivendo dentro desta migração. Sem a pasta ou sem o arquivo na
-imagem, a migração não faz nada (mesma regra de `armadilhas/347`): falhar
+imagem, a migração não faz nada: falhar
 aqui derrubaria a célula inteira no `migrate` por um passo de conteúdo.
 """
 

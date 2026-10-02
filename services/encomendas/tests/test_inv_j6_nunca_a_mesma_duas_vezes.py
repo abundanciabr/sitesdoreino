@@ -1,6 +1,5 @@
-"""[INV-ENC-J6] Nenhum aluno recebe a mesma encomenda duas vezes, salvo em chamada aberta.
+"""Nenhum aluno recebe a mesma encomenda duas vezes, salvo em chamada aberta.
 
-Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça).
 Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.3, §6.4 e §7.4.
 
 O plano escreve a regra numa frase que parece um detalhe: *"o aluno mantém o
@@ -99,7 +98,7 @@ def test_a_encomenda_desce_a_fila_inteira_sem_repetir_ninguem(
 def test_o_silencio_tambem_queima_a_vez_nesta_encomenda(tres_na_fila, criar_encomenda):
     """A memória é de toda oferta, não só das passadas.
 
-    Expirar é "sem punição" para o LUGAR na fila ([INV-ENC-J4]), e isso não muda
+    Expirar é "sem punição" para o LUGAR na fila, e isso não muda
     aqui: quem ficou em silêncio continua na frente para a PRÓXIMA encomenda.
     O que ele não recebe de volta é ESTA.
     """

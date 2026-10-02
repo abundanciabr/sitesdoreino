@@ -1,4 +1,4 @@
-"""[INV-ENC-J3] A oferta vai ao elegível de menor `(entregas_aprovadas, data_entrada_fila)`.
+"""A oferta vai ao elegível de menor `(entregas_aprovadas, data_entrada_fila)`.
 
 Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça) e §9
 (critério de morte 2). Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.2.

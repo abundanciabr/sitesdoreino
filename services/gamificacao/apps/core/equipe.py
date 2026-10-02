@@ -43,7 +43,7 @@ _ja_avisei_que_a_lista_esta_vazia = False
 def ids_da_equipe() -> frozenset[str]:
     """Os ids de plataforma que podem decidir um pedido de validação.
 
-    Lida **no ponto de uso**, nunca no import (`armadilhas/097`): env lido no
+    Lida **no ponto de uso**, nunca no import: env lido no
     carregamento do módulo transforma variável ausente em erro de boot, e uma
     célula inteira sairia do ar por causa de uma lista de nomes.
 

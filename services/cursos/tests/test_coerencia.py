@@ -1,6 +1,5 @@
 """As seis conferencias do Revisor de coerencia, uma a uma, e a AULA LIMPA.
 
-Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §7 (a linha "Revisor de coerencia").
 Degrau 3.1 da escada (TAR-245).
 
 A AULA LIMPA VALE TANTO QUANTO AS SEIS
@@ -14,7 +13,7 @@ tem de devolver zero.
 O cenario e o esqueleto semeado (`conftest.esqueleto`): as 34 encomendas e os
 13 instrumentos com os nomes canonicos que a instalacao grava. Nenhum texto de
 aula viaja neste arquivo alem do minimo que cada medida exige, e nenhum dele e
-do mantenedor: sao frases inventadas para o teste ([INV-CUR-C2]).
+do mantenedor: sao frases inventadas para o teste.
 """
 
 from __future__ import annotations

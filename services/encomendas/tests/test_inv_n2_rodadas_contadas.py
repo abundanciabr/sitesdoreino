@@ -1,4 +1,4 @@
-"""[INV-ENC-N2] As rodadas são contadas, e nunca existe negociação eterna.
+"""As rodadas são contadas, e nunca existe negociação eterna.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8. Três rodadas para cada lado
 (parâmetro `rodadas_de_negociacao`); esgotadas sem acordo, o projeto vai ao

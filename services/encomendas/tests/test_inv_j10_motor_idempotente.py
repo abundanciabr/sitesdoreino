@@ -1,6 +1,5 @@
-"""[INV-ENC-J10] Reexecutar o motor sem mudança de estado não cria oferta nova.
+"""Reexecutar o motor sem mudança de estado não cria oferta nova.
 
-Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (justiça).
 Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §7.4 (*"o motor é função de
 (estado atual, agora); rodar duas vezes seguidas não cria duas ofertas"*), §8.6
 (*"nada agendado individualmente"*) e o **cenário 15 do anexo B**: *"processo cai

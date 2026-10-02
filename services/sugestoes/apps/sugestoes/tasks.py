@@ -16,7 +16,7 @@ silêncio" (`armadilhas/INDICE.md` → §4.12).
 **Nome do stream: `eventos.<nome-do-evento>`, sem versão.** A versão viaja no
 envelope. Pôr `v1` no nome do stream faria de toda evolução de contrato uma
 migração de infraestrutura, e o `v1` continuaria sendo emitido até o último
-consumidor migrar (RITOS.md §3) — dois streams para o mesmo fato.
+consumidor migrar — dois streams para o mesmo fato.
 """
 
 import json
@@ -121,7 +121,7 @@ def relay_outbox_periodico() -> int:
     O worker é `python manage.py run_huey` — entrada canônica, e a única que
     faz `django.setup()` + autodiscover de `tasks.py`. Subir o `huey_consumer`
     direto dá um worker de pé com o registro VAZIO, que não executa nada e não
-    reclama (`armadilhas/030`, §4.11). No compose ele é o serviço
+    reclama. No compose ele é o serviço
     `sugestoes-relay`.
     """
     return relay_outbox()

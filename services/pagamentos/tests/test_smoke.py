@@ -1,7 +1,7 @@
 # [RECEITA:R10 v1]
 # Golden path de cada método vive aqui (não em arquivo próprio) para não somar
 # ao orçamento de arquivos do despacho — cross-smoke (ci/cross-smoke.sh) roda
-# smoke_card quando methods/pix é tocado, e vice-versa (INV-P9). O guarda de
+# smoke_card quando methods/pix é tocado, e vice-versa. O guarda de
 # INV-P4 fica em tests/test_inv_p4_intent_idempotente.py (um arquivo por
 # invariante, RECEITA:R5).
 #
@@ -489,7 +489,7 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
     assert corpo["card"] == {"reason_code": ""}
     assert (
         Intent.objects.get(id=corpo["id"]).provider_payment_id == ""
-    )  # [INV-P9] sem chamada ao MP ainda
+    )  # sem chamada ao MP ainda
 
     with respx.mock(assert_all_called=True) as mp:
         customers, orders, _ = _appmax(mp, statuses=["aprovado"])

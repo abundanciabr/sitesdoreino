@@ -1,4 +1,4 @@
-"""[INV-ENC-M3] Um projeto do Mural fica reservado a um aluno por vez.
+"""Um projeto do Mural fica reservado a um aluno por vez.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.2 e §8.
 

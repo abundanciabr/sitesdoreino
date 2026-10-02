@@ -26,8 +26,8 @@ ela cai numa TABELA, que o painel mostra e sobre a qual há três ações
 quebrado não o conserta; o que conserta é alguém ver.
 
 **4. Dois assuntos por vez sao exceção deliberada: proibem dado pessoal por
-nome de campo, nao por contrato.** `recepcao.receber` nao valida o miolo
-(contracts/ nao viaja para o build da celula, ver o docstring de la). Para os
+nome de campo, nao por contrato.** `recepcao.receber` nao valida o miolo.
+Para os
 assuntos em `ASSUNTOS_SEM_DADO_PESSOAL`, `processar` confere `data` contra
 `CAMPOS_PESSOAIS_PROIBIDOS` ANTES de chamar `receber`: e um segundo guarda,
 que nao depende de nenhum arquivo fora da celula, so de nomes de campo que a
@@ -49,7 +49,7 @@ qual a `gamificacao` deixa `aula.concluida` de fora).
 
 `matricula.situacao-alterada` era o assunto que esta célula mais queria, e
 entrou em 05/09/2026, no degrau 8. Duas coisas precisavam ser verdade, e agora
-sao: o contrato esta congelado (`contracts/eventos/`, PR #1076) e alguem o
+sao: o contrato esta congelado e alguem o
 publica de fato (a `alunos`, PR #1080, nos cinco caminhos que mexem no status).
 
 Vale registrar o que se descobriu ao pagar essa divida, porque o comentario

@@ -177,7 +177,7 @@ def correcoes_restantes(projeto: Encomenda) -> int:
 
     O número vem do ACORDO, e não do parâmetro `correcoes_incluidas`: o
     parâmetro é a régua com que o aluno monta a proposta, e o que vale depois é
-    o que os dois combinaram e o banco congelou ([INV-ENC-N3]).
+    o que os dois combinaram e o banco congelou.
     """
     inclusas = projeto.acordo_correcoes_inclusas or 0
     return max(0, inclusas - correcoes_pedidas(projeto))

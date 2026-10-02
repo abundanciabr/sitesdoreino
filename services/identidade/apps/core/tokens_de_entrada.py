@@ -1,5 +1,5 @@
 # apps/core/tokens_de_entrada.py — a defesa de CSRF do login por senha
-"""`issueLoginToken`/`entrar_senha` (DECISAO-login-por-senha.md §3).
+"""`issueLoginToken`/`entrar_senha`.
 
 Login por senha CRIA sessão, e `services/identidade/LICOES.md` já registra,
 por escrito, que o padrão de `/entrar/sair` (Origin/Referer, `csrf_exempt`)

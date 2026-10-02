@@ -15,7 +15,7 @@ que o resto pôde tratar como verdade:
    `identidade`, quem sabe se ela tem matrícula é a `alunos`, e o banco daqui
    não enxerga o das outras (muralha de dados).
 2. **A marcação da lista de conferência mora no BANCO, por aluno.** Nunca em
-   `request.session` (o [INV-P12] proíbe, e `armadilhas/143` conta o preço) e
+   `request.session` e
    nunca no navegador: o AC-06 exige que a marcação atravesse APARELHOS, e
    sessão não atravessa.
 3. **O isolamento por aluno é uma porta só, e ela é o `do_aluno` destes
@@ -24,14 +24,14 @@ que o resto pôde tratar como verdade:
 
 POR QUE NENHUMA TABELA FILHA GUARDA `site_id` NEM `aluno_id`
 ------------------------------------------------------------
-A fronteira de site (multissítio / [INV-P11]) e a fronteira de aluno moram no
+A fronteira de site e a fronteira de aluno moram no
 `Portfolio`, e SÓ nele. `Peca`, `ItemDeConferencia`, `EstadoDoAluno` e
 `PedidoDeConferencia` chegam às duas pela chave estrangeira local.
 
 A alternativa era copiar as colunas para cada filha, e ela tem preço conhecido:
 coluna denormalizada pode MENTIR, e quando mente derruba justamente a trava que
 existia para impedir o vazamento. Curar isso exigiria chave estrangeira composta
-escrita em `RunSQL`, porque o Django não a sabe escrever (`armadilhas/274`).
+escrita em `RunSQL`, porque o Django não a sabe escrever.
 Aqui a doença nem nasce: não existe segunda cópia para divergir.
 
 O QUE ESTE ARQUIVO NÃO GUARDA, DE PROPÓSITO
@@ -465,7 +465,7 @@ class ItemDeConferencia(models.Model):
     `request.session` funcionaria em dev, passaria em teste de unidade,
     reprovaria o próprio AC-06 (sessão não atravessa aparelho) e deslogaria a
     plataforma inteira em produção, porque quem assina o cookie do site é a
-    `identidade` ([INV-P12], `armadilhas/143`).
+    `identidade`.
 
     **O que mora aqui é a MARCAÇÃO, não o texto do item.** A `chave` é o nome
     estável do item dentro da etapa; o texto que o aluno lê vem do guia da
@@ -525,7 +525,7 @@ class EstadoDoAluno(models.Model):
 
     Um por portfólio, e a chave é o portfólio de propósito: repetir aqui o
     `site_id` e o `aluno_id` criaria uma segunda verdade capaz de divergir do
-    dono da linha (`armadilhas/274`).
+    dono da linha.
 
     **O selo vale para o que o monitor VIU no dia** (plano §6.2), então ele
     guarda data e autor, e o banco exige os dois juntos: selo com data e sem

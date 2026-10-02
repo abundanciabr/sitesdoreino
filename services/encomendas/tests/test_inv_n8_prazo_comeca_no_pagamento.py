@@ -1,4 +1,4 @@
-"""[INV-ENC-N8] O prazo do Acordo começa na confirmação do pagamento.
+"""O prazo do Acordo começa na confirmação do pagamento.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3 e §8. Entre o Acordo e a
 confirmação há uma espera que não é do aluno: hoje é o plantão registrando "pago

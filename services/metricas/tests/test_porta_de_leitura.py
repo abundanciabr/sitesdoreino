@@ -15,7 +15,7 @@ AS SETE COISAS QUE ESTE ARQUIVO PROVA
    deploy, com o erro aparecendo longe da causa.
 3. **O dia é o de São Paulo.** Um fato das 22h30 do dia 30 conta no dia 30, e
    não no dia 1 do mês seguinte. É a conta que decide em que mês uma pessoa
-   entrou, e é a mesma que o placar faz do outro lado (`armadilhas/099`).
+   entrou, e é a mesma que o placar faz do outro lado.
 4. **A fronteira de site fecha (multissítio: site é dado).** Fato de outro site não entra em
    contagem nem em cobertura, nem por engano nem por soma.
 5. **Ausência não vira zero.** Dia sem fato não aparece na contagem, e assunto
@@ -24,7 +24,7 @@ AS SETE COISAS QUE ESTE ARQUIVO PROVA
 6. **A contagem de conquistas não oferece total geral.** `pessoa` e `matricula`
    são vocabulários de identidade diferentes, e a resposta não tem nenhum campo
    que os atravesse. Somar maçãs com laranjas passa a exigir uma decisão de quem
-   consome, em vez de acontecer por acidente (`armadilhas/303`).
+   consome, em vez de acontecer por acidente.
 7. **Sujeito sem conquista é 200 com lista vazia, nunca 404.** Esta célula não
    conhece cadastro nenhum: ela sabe o que os fatos trouxeram, e "não tenho
    marco para este id" não é o mesmo que "este sujeito não existe".
@@ -101,8 +101,8 @@ def operacoes_da_porta() -> list[tuple[str, str]]:
     pytest-django terminar de configurar o Django.
 
     A medição é do schema VIVO porque o contrato congelado ainda não existe: ele
-    nasce pelo `RITOS.md` §3, e a ordem porta-antes-de-contrato é obrigatória
-    (`armadilhas/228`). Quando ele existir, esta função passa a ler o congelado,
+    nasce pelo `RITOS.md` §3, e a ordem porta-antes-de-contrato é obrigatória.
+    Quando ele existir, esta função passa a ler o congelado,
     porque é contra a PROMESSA que o cadeado precisa valer.
     """
     from config.api import api
@@ -194,7 +194,7 @@ def test_o_dia_e_o_de_sao_paulo_e_nao_o_de_utc():
     """22h30 do dia 30 em São Paulo é 01h30 do dia 1 em UTC.
 
     Com o fuso errado esta pessoa cairia no mês seguinte, sem erro em lugar
-    nenhum, e a meta do mantenedor mediria outra coisa (`armadilhas/099`).
+    nenhum, e a meta do mantenedor mediria outra coisa.
     """
     gravar(CADASTRO, dt.datetime(2026, 9, 30, 22, 30, tzinfo=SP))
 
@@ -404,7 +404,7 @@ def test_a_contagem_de_conquistas_nao_oferece_total_geral():
     O guarda olha o CORPO inteiro, e não um campo nomeado, porque a forma de
     esta lei morrer é alguém acrescentar um `total` "por conveniência da tela" e
     ninguém reparar: quem consome somaria dois vocabulários de identidade sem
-    nunca decidir somá-los (`armadilhas/303`).
+    nunca decidir somá-los.
     """
     cenario_de_conquistas()
 

@@ -7,8 +7,7 @@ gravasse os próprios blocos provaria o modelo contra um curso que ninguém usa.
 **A rede é dublada pelo TRANSPORTE (`respx`), nunca pela função**: o cliente de
 verdade monta a URL de verdade, e o dublê só responde às URLs do contrato. Um
 dublê que aceitasse qualquer caminho testaria metade do cliente: foi assim que
-um `/alunos` a menos no caminho passou por 39 testes verdes no fórum
-(`armadilhas/111`).
+um `/alunos` a menos no caminho passou por 39 testes verdes no fórum.
 
 **O que NÃO mora aqui:** nenhuma regra. A fixture monta estado; quem afirma é
 cada teste.
@@ -412,13 +411,13 @@ def sem_anthropic(monkeypatch):
     (`apps/cursos/agente.py`), e nada em `respx` o alcança. Sem este corte, a
     suíte diria no próprio docstring que não fala com a rede e poderia chamar a
     API PAGA de verdade, com a chave da máquina de quem rodasse os testes: foi
-    exatamente o que aconteceu no fórum (`armadilhas/288`).
+    exatamente o que aconteceu no fórum.
 
     O corte é no TRANSPORTE, e não em `Client.post`, por dois motivos: o SDK
     chama `Client.send`, que `post` não intercepta, e cortar no transporte deixa
     `dublar_a_anthropic` trocar esta mesma função por uma resposta de mentira,
     exercitando o SDK de verdade, com o request e a leitura da resposta que a
-    produção usa (`armadilhas/061`).
+    produção usa.
     """
     import httpx2
 

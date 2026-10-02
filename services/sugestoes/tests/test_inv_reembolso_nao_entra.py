@@ -14,8 +14,8 @@ o próximo guarda contra uma dependência, porque a lição não é sobre reembo
 Ele **tinha parado de medir o que dizia medir**, em silêncio, desde 28/08/2026.
 
 Ele chamava `rede.alunos_diz(email, [{..., "status": "reembolsada"}])`. Quando a
-porta migrou de *"tem matrícula?"* para *"em que situação está?"*
-(`DECISAO-ex-aluno-e-a-porta-que-explica.md`), `alunos_diz` virou um atalho
+porta migrou de *"tem matrícula?"* para *"em que situação está?"*,
+`alunos_diz` virou um atalho
 legado que traduz **"lista não-vazia = aluno"** e **joga o status fora**. A
 partir daquele dia o teste mandava a mesma categoria `aluno` nos cinco casos
 parametrizados: ele afirmava que um aluno entra — verdade, e nada a ver com

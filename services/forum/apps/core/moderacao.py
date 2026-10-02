@@ -2,8 +2,8 @@
 
 Mandato do mantenedor em 30/08/2026, com as palavras dele: *"Crie as opções
 (que devem aparecer apenas para o Admin) de editar, deletar, deixar privado, e
-etc; tudo no fórum."* É a condição 6 da lei do fórum
-(`DECISAO-forum-da-escola.md` §4.6), a que fala em moderação de verdade.
+etc; tudo no fórum."* É a condição 6 da lei do fórum,
+a que fala em moderação de verdade.
 
 As cinco regras que este arquivo inteiro obedece, e que não se reabrem aqui:
 
@@ -224,8 +224,7 @@ def _salvar_com_a_rede_do_banco(objeto, *rastro: RegistroDeModeracao) -> str:
     tela do mantenedor; com ele, vira um recado.
 
     **O `atomic` não é enfeite:** `IntegrityError` capturado sem savepoint
-    envenena a transação inteira e o próximo comando estoura longe da causa
-    (`armadilhas/027`).
+    envenena a transação inteira e o próximo comando estoura longe da causa.
 
     **O rastro entra no MESMO `atomic`** (TAR-847): se a linha do registro não
     pode ser gravada, o gesto também não acontece. Um gesto sem rastro é
@@ -326,7 +325,7 @@ def _ler_o_formulario_da_area(request) -> tuple[dict, str]:
     # EM PÁGINA PÚBLICA, SÓ A ESCOLA FALA. A conferência é aqui para o
     # mantenedor receber uma frase em vez de um erro de banco; a garantia de
     # verdade continua sendo a restrição do PostgreSQL, que nem um `update()`
-    # fura (`armadilhas/023`).
+    # fura.
     if (
         campos["visibilidade"] == Area.Visibilidade.PUBLICA
         and campos["quem_escreve"] != Area.QuemEscreve.EQUIPE

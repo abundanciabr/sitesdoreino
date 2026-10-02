@@ -5,7 +5,7 @@
 `INSTALLED_APPS`: é essa dupla que dá o entrypoint canônico
 `python manage.py run_huey`, o único que faz `django.setup()` e o autodiscover
 de `tasks.py`. Sem ele, o worker sobe com o registro VAZIO, não executa nada e
-não reclama de nada (`armadilhas/030`, §4.11).
+não reclama de nada.
 
 Fila intra-célula = Huey. Comunicação ENTRE células = eventos (R3/R4), nunca
 uma célula enfileirando task na outra. Molde: `services/sugestoes/config/huey.py`,
@@ -18,8 +18,8 @@ from huey import RedisHuey
 
 # NUNCA fail-hard no import. O container **web** importa este módulo via
 # INSTALLED_APPS (djhuey) e não pode morrer no boot se `HUEY_REDIS_URL` faltar
-# no env: a sala de aula inteira sairia do ar por causa da fila
-# (`armadilhas/097`). O default é inofensivo: a conexão do Huey é preguiçosa e
+# no env: a sala de aula inteira sairia do ar por causa da fila.
+# O default é inofensivo: a conexão do Huey é preguiçosa e
 # só o worker (`run_huey`) de fato conecta; faltando a variável de verdade,
 # quem falha alto é o worker, no log dele.
 HUEY_REDIS_URL = os.environ.get("HUEY_REDIS_URL", "redis://localhost:6379/1")

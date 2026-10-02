@@ -77,7 +77,7 @@ A_LEI_SECAO_6 = {
 
 # AS CHAVES QUE EXISTEM NO CATALOGO E NAO TEM VALOR, DE PROPOSITO. O piso por
 # nivel sai do piloto de papel, que e onde os primeiros precos reais vao
-# aparecer (§7 e §9 do `PLANO-AREA-DE-NEGOCIACAO.md`); chutar um numero agora
+# aparecer; chutar um numero agora
 # seria inventa-lo para depois defende-lo. A chave existe porque o vocabulario e
 # fechado no banco, e sem ela o mantenedor nao conseguiria gravar o piso nem
 # quando o tivesse.

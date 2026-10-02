@@ -1,7 +1,7 @@
 # tests/test_produto_no_pagamento_aprovado.py  # [RECEITA:R5 v1]
 """[TAR-225] `pagamento.aprovado` passa a levar `product_id` — a porta pela qual
 entra quem PAGA, para a matrícula que ela cria em `alunos` deixar de nascer sem
-produto (`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §3, §4, INV-ALU-C1).
+produto.
 
 `product_id` é OPACO aqui, igual a `site_id` e a `recovery_url`: pagamentos só
 ECOA o que o checkout pôs em `metadata.product_id` na criação da intent — nunca
@@ -152,7 +152,7 @@ def test_montar_dados_ecoa_o_product_id_sem_interpretar(
     metodo: str, modulo: str
 ) -> None:
     """Unitário, sem HTTP: o montador de evento de pix E o de card fazem a MESMA coisa
-    — a duplicação entre os dois é arquitetural (INV-P9), não descuido; os dois
+    — a duplicação entre os dois é arquitetural, não descuido; os dois
     precisam ecoar `product_id` do mesmo jeito."""
     intent = Intent(
         site_id="s1",

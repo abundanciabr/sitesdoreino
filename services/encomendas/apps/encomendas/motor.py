@@ -6,7 +6,7 @@ justiça, §6 os parâmetros, §7 a escada). Produto: `PLANO-MESTRE-FILA-DO-PRIM
 
 Este é o degrau 2.3 da escada, e a promessa que ele guarda cabe numa frase do
 plano: **a plataforma escolhe o aluno, não o cliente.** Sete invariantes de
-justiça ([INV-ENC-J1] a [INV-ENC-J7]) nascem com este arquivo, cada um com o
+justiça nascem com este arquivo, cada um com o
 guarda próprio em `tests/test_inv_j*.py`.
 
 A REGRA DE ORDEM É UMA SÓ, E ELA É O CRITÉRIO DE MORTE 2
@@ -39,10 +39,10 @@ entre dois processos do motor, e nenhum `if` em Python resolve isso.
 O QUE AINDA NÃO É DESTE DEGRAU, E TEM DONO
 -------------------------------------------
 - **O relógio de horas úteis** CHEGOU no degrau 2.4 (`relogio.py`,
-  [INV-ENC-J8]): a costura `calcular_expiracao` continua sendo argumento de
+  ): a costura `calcular_expiracao` continua sendo argumento de
   `rodar()`, e o que ela recebe por padrão deixou de ser a conta de horas
   corridas e passou a ser a conta da janela 8h–22h de São Paulo.
-- **Virar chamada aberta** por 24h na fila ([INV-ENC-J9]) também chegou, e mora
+- **Virar chamada aberta** por 24h na fila também chegou, e mora
   no `tique.py` — não aqui. O motor varre `na_fila` e OFERECE; quem olha o
   relógio é o tique, que roda antes dele a cada minuto. Encomenda sem ninguém
   elegível continua ficando ONDE ESTÁ, com desfecho nomeado, até o prazo da fila
@@ -54,7 +54,7 @@ O QUE AINDA NÃO É DESTE DEGRAU, E TEM DONO
   vazia, que é a exceção "salvo em chamada aberta" escrita como dado.
 - **Os eventos** (`encomenda.oferecida.v1` e irmãos) saem por outbox
   transacional, e a tabela de outbox desta célula ainda não existe.
-- **O Mural** é a outra pista (`PLANO-AREA-DE-NEGOCIACAO.md`, TAR-133): o motor
+- **O Mural** é a outra pista: o motor
   varre `na_fila` e nada mais. `no_mural` é status próprio, e por isso a
   fronteira entre as duas pistas não depende de ninguém lembrar dela.
 
@@ -97,7 +97,7 @@ __all__ = ["ParametroAusente"]
 # O VOCABULÁRIO — dois mapas e cinco desfechos, todos com nome
 # ---------------------------------------------------------------------------
 
-# A hierarquia dos títulos, para "abaixo do nível mínimo" ([INV-ENC-J5]) ser uma
+# A hierarquia dos títulos, para "abaixo do nível mínimo" ser uma
 # comparação e não uma cadeia de `if`. Título vazio é o perfil que ainda não
 # passou pelo professor (lei §3.6): ele fica abaixo de tudo, de propósito.
 ORDEM_DOS_TITULOS = {"": 0, "nivel_1": 1, "nivel_2": 2, "nivel_3": 3}
@@ -131,7 +131,7 @@ ESTADOS_DE_NEGOCIACAO_VIVA = (
 
 # O DESFECHO DE CADA ENCOMENDA NUMA RODADA. São cinco, e estão todos escritos
 # porque o desfecho que ninguém nomeia vira "o que sobra" — e é ele que entope a
-# fila em silêncio (`armadilhas/283`).
+# fila em silêncio.
 OFERECIDA = "oferecida"
 JA_TEM_OFERTA_PENDENTE = "ja_tem_oferta_pendente"
 SEM_ELEGIVEL = "sem_elegivel"
@@ -283,8 +283,7 @@ def abandonou_dentro_da_janela(
     deliberada: entre "dar a encomenda mais difícil da casa a alguém cujo
     histórico está ilegível" e "não dar", a segunda é a que ninguém precisa
     desfazer. O efeito é local (só o nível avançado consulta isto), o plantão vê
-    a razão nomeada, e a lista torta continua visível para ser consertada
-    (`armadilhas/264`: dado torto de fora não pode derrubar o caminho de todos).
+    a razão nomeada, e a lista torta continua visível para ser consertada.
     """
     limite = agora - timedelta(days=regras.janela_sem_abandono_dias)
     for bruto in candidato.abandonos:
@@ -327,22 +326,22 @@ def por_que_nao(
     ):
         return ABANDONO_RECENTE
 
-    # [INV-ENC-J7]: "trabalhando" não recebe. E "pausado" também não — quem
+    # "trabalhando" não recebe. E "pausado" também não — quem
     # desligou o interruptor (ou foi pausado por três silêncios) está fora das
     # ofertas sem perder o lugar, que é o desenho inteiro da pausa (plano §6.3).
     if candidato.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL:
         return NAO_ESTA_DISPONIVEL
 
-    # [INV-ENC-J2]: um aluno, uma oferta pendente.
+    # um aluno, uma oferta pendente.
     if candidato.tem_oferta_pendente:
         return COM_OFERTA_PENDENTE
 
-    # [INV-ENC-N6]: negociar não tira o lugar, mas impede uma segunda
+    # negociar não tira o lugar, mas impede uma segunda
     # negociação viva nas duas pistas.
     if candidato.tem_negociacao_viva:
         return COM_NEGOCIACAO_VIVA
 
-    # [INV-ENC-J6]: ninguém vê a mesma encomenda duas vezes.
+    # ninguém vê a mesma encomenda duas vezes.
     if candidato.perfil_id in vaga.ja_ofertada_a:
         return JA_RECEBEU_ESTA
 
@@ -487,7 +486,7 @@ def rodar(
     `na_fila` ao ser oferecida (então a segunda varredura nem a vê); o
     `select_for_update` serializa duas passadas concorrentes na MESMA encomenda;
     e o índice único parcial do PostgreSQL recusa a segunda oferta pendente,
-    que é a única trava que vale contra dois processos ([INV-ENC-J1]).
+    que é a única trava que vale contra dois processos.
 
     **A expiração é calculada UMA VEZ**, antes de qualquer escrita. Não é
     economia: é o que faz o motor ser função de (estado, `agora`) — duas ofertas
@@ -534,15 +533,14 @@ def rodar(
             escolha = escolher(_vaga_de(encomenda), candidatos, regras, agora)
             if escolha.escolhido is None:
                 # Ninguém elegível. A encomenda FICA na fila, e é o tique do
-                # degrau 2.4 que a vira chamada aberta às 24h ([INV-ENC-J9]).
+                # degrau 2.4 que a vira chamada aberta às 24h.
                 # Ela também não bloqueia as de trás: a varredura continua.
                 desfechos[encomenda_id] = escolha.desfecho
                 continue
 
             try:
                 # Savepoint próprio: um `IntegrityError` engolido sem ele
-                # quebraria a transação inteira, inclusive o que já foi gravado
-                # (`armadilhas/027`).
+                # quebraria a transação inteira, inclusive o que já foi gravado.
                 with transaction.atomic():
                     oferta = Oferta.objects.create(
                         site_id=site_id,

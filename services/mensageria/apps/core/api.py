@@ -7,7 +7,7 @@ POR QUE ELA EXISTE
 degrau 7 (`/admin/escola/jornadas/`, TAR-078) mora na célula `admin`, e os dados
 que ela precisa mostrar moram no `mensageria_db`. Entre as duas não existia
 caminho nenhum, e a TAR-078 parou antes da primeira linha de código por causa
-disso (`armadilhas/311`). Esta porta é o caminho.
+disso. Esta porta é o caminho.
 
 O caminho de baixo continua fechado, e por Postgres e não por regra: o papel
 `admin_user` não enxerga o `mensageria_db` (célula não lê banco de outra). Quem quiser estes
@@ -41,8 +41,8 @@ AS TRÊS INVARIANTES DESTA PORTA
 -------------------------------
 1. **Nunca sai dado pessoal.** Nem e-mail, nem nome, nem telefone. O que sai é
    `destinatario_id`, o id OPACO de plataforma que a `identidade` emite — quem
-   precisar do nome pergunta a ela, que é onde esse dado mora numa linha só
-   (`DECISAO-EVO-01` §3). Esta célula sequer guarda o e-mail: ela o pede na hora
+   precisar do nome pergunta a ela, que é onde esse dado mora numa linha só.
+   Esta célula sequer guarda o e-mail: ela o pede na hora
    do envio.
 2. **Toda operação é escopada por `site_id`.** Multissítio: site é dado. Uma jornada
    de outro site é 404, não uma lista a mais — e a `Inscricao` de outro site é
@@ -54,7 +54,7 @@ AS TRÊS INVARIANTES DESTA PORTA
    justamente porque ligar e desligar não pode reescrever o que já foi
    publicado.
 
-AS DUAS ESCRITAS TÊM O MESMO GRAU, E ISSO É DELIBERADO (`armadilhas/318`)
+AS DUAS ESCRITAS TÊM O MESMO GRAU, E ISSO É DELIBERADO
 -------------------------------------------------------------------------
 `TOKENS_SOMENTE_LEITURA_<PAR>` lê; `TOKENS_PUBLICACAO_<PAR>` escreve, e já
 contém a leitura. O interruptor cai no grau de PUBLICAÇÃO, e a régua é o efeito,
@@ -64,7 +64,7 @@ que só precisa desenhar uma tela de consulta não pode calar as boas-vindas da
 escola, e a operação nova é justamente onde essa premissa se perde: o padrão
 copiado entre células é de leitura, e ele não carrega o aviso.
 
-O SOMBREAMENTO QUE ESTA PORTA EVITA (`armadilhas/020`)
+O SOMBREAMENTO QUE ESTA PORTA EVITA
 ------------------------------------------------------
 Todo model entra aqui com alias `...Model`, inclusive os que hoje não colidem
 com nenhum Schema. `class Passo(Schema)` embaixo de `from ... import Passo`
@@ -276,7 +276,7 @@ def _exige_grau_de_publicacao(request) -> None:
 
     403 e não 401: o crachá é válido, o que falta é o grau. Uma cópia desta
     linha por handler era o que fazia a operação de escrita seguinte nascer sem
-    cadeado (`armadilhas/318`) — aqui esquecê-la é esquecer uma chamada, e o
+    cadeado — aqui esquecê-la é esquecer uma chamada, e o
     guarda de 403 que a suíte mede a partir do schema vivo acusa a ausência.
     """
     if request.auth not in tokens_de_publicacao():

@@ -27,7 +27,7 @@ que esta tela poderia contar — é o falso-verde do padrão 1 da
 
 O estilo é o da própria área (`admin/base.html`), embutido. Célula sob
 `SCRIPT_NAME` que serve estático por tag monta endereço da célula ERRADA
-(`armadilhas/102`) — e uma página que é só texto e links não precisa de nada
+ — e uma página que é só texto e links não precisa de nada
 disso.
 """
 
@@ -478,7 +478,7 @@ def _politica(html: bytes) -> str:
     O `style-src` leva o hash pelo mesmo motivo, e não pode ser esquecido: como
     esta resposta traz a política pronta, a da porta não se aplica (`setdefault`)
     — e sem o hash do estilo a página voltaria a chegar sem desenho nenhum, que
-    é exatamente o defeito medido em 30/08/2026 (`armadilhas/199`).
+    é exatamente o defeito medido em 30/08/2026.
 
     `connect-src 'self'`: a luz só pergunta a este mesmo site, nunca a terceiro.
     """

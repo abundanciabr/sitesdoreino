@@ -1,4 +1,4 @@
-"""[INV-ENC-N3] O Acordo congela valor, prazo, entregáveis e correções.
+"""O Acordo congela valor, prazo, entregáveis e correções.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3, §7 e §8. Aceitar a proposta de pé
 grava os quatro números na encomenda, e depois disso eles não mudam: mexer neles

@@ -15,8 +15,7 @@ O que este arquivo protege, e por que cada coisa:
 6. **O quiz** esconde a resposta-modelo até a autoavaliação ser gravada.
 7. **O checkpoint** tem o formulário de entrega por link, na aula, apontando
    para o gesto do checkpoint (a jornada inteira mora em `test_envio.py`).
-8. **O CSS responde sob o prefixo** e **todo link interno sai com o prefixo**
-   (`armadilhas/083`, `/102`, `/081`).
+8. **O CSS responde sob o prefixo** e **todo link interno sai com o prefixo**.
 9. **O menu do topo** vem do catálogo e falha para "sem menu", nunca tela
    quebrada; **o rodapé** está nas duas telas.
 """
@@ -49,7 +48,7 @@ pytestmark = pytest.mark.django_db
 
 # O prefixo público desta célula. Em produção quem o aplica é
 # `FORCE_SCRIPT_NAME`; aqui ele entra pelo test client, que é o único jeito de
-# medir honestamente o que `{% url %}` gera sob prefixo (`armadilhas/081`).
+# medir honestamente o que `{% url %}` gera sob prefixo.
 PREFIXO = {"SCRIPT_NAME": "/cursos"}
 
 
@@ -614,8 +613,8 @@ def test_o_checkpoint_tem_o_formulario_de_entrega_por_link(aluna, ana_pronta, cl
 @pytest.fixture
 def sob_prefixo(settings):
     """O env da VPS mais o que o servidor faz e o client de teste não faz:
-    `reverse()` lê um prefixo de thread que só o `ASGIHandler` preenche
-    (`armadilhas/081`). Com ele ligado, os caminhos pedidos ao client são o
+    `reverse()` lê um prefixo de thread que só o `ASGIHandler` preenche.
+    Com ele ligado, os caminhos pedidos ao client são o
     `path_info` nu (`/`, `/E00`), como o Django os vê depois do corte."""
     settings.FORCE_SCRIPT_NAME = "/cursos"
     set_script_prefix("/cursos")

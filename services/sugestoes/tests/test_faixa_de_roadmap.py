@@ -301,7 +301,7 @@ def test_a_faixa_nao_vaza_sugestao_de_outro_quadro(quadro, categoria, aluno):
 
 def test_quem_nao_entrou_nao_alcanca_a_faixa(client, povoar):
     """O roadmap é público DENTRO da Caixa: quem tem sessão vê, como no resto da
-    participação (`DECISAO-EVO-01` §2). Uma página anônima mudaria essa lei."""
+    participação. Uma página anônima mudaria essa lei."""
     povoar("Já entrou no plano", Sugestao.Status.PLANEJADO)
 
     resposta = client.get(reverse("quadro"))

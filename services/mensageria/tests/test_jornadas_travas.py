@@ -96,7 +96,7 @@ def test_a_pessoa_que_sumiu_duas_vezes_entra_duas_vezes():
     primeiro = uma_inscricao(versao)
 
     # O episódio termina. `update()` de propósito: é o caminho que a varredura
-    # vai usar, e é o que fura guarda escrita em Python (`armadilhas/023`).
+    # vai usar, e é o que fura guarda escrita em Python.
     Inscricao.objects.filter(pk=primeiro.pk).update(estado="concluida")
 
     segundo = uma_inscricao(versao)

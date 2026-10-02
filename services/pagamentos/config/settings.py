@@ -34,7 +34,7 @@ TOKENS_ACEITOS = {
 
 
 def _instalacoes_appmax(bruto: str) -> dict[str, dict[str, Any]]:
-    """[INV-P8] Lê APPMAX_INSTALACOES do env: quais app_id da Appmax são
+    """Lê APPMAX_INSTALACOES do env: quais app_id da Appmax são
     nossos, com que nome de loja responder a cada um e quais site_id internos
     a instalação está autorizada a cobrar. Formato:
 
@@ -77,12 +77,12 @@ APPMAX_INSTALACOES = _instalacoes_appmax(os.environ.get("APPMAX_INSTALACOES", ""
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
-# [INV-P8] Em dev/CI/worktrees é sempre TEST-... — a credencial de produção
+# Em dev/CI/worktrees é sempre TEST-... — a credencial de produção
 # (APP_USR-...) só existe em /opt/plataforma/env/pagamentos.env na VPS.
 # Ausente não derruba a partida: só o Mercado Pago fica sem credencial.
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 
-# [INV-P10] Segredo do HMAC de x-signature. Vazio não derruba a partida: o
+# Segredo do HMAC de x-signature. Vazio não derruba a partida: o
 # webhook responde 403 a tudo (core/webhook_signature.py) e nada vira "pago".
 MP_WEBHOOK_SECRET = os.environ.get("MP_WEBHOOK_SECRET", "")
 
@@ -144,5 +144,5 @@ USE_TZ = True
 # Aqui isso morde na hora de LER um caso: expiração de Pix e horário de webhook
 # num relatório ou numa investigação de suporte saindo em Chicago fazem duas
 # pessoas conferindo o mesmo pagamento chegarem a conclusões diferentes.
-# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+# Guarda: tests/test_fuso_horario.py.
 TIME_ZONE = "America/Sao_Paulo"

@@ -213,13 +213,12 @@ from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a área
-# administrativa de endereço é editar Traefik + env, nunca cirurgia aqui
-# (`armadilhas/029`; guarda em `tests/test_healthz_script_name.py`).
+# administrativa de endereço é editar Traefik + env, nunca cirurgia aqui.
 #
 # TODA rota desta célula terá `name=`, e nenhum template escreverá caminho à
 # mão: é `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
-# endereço. Caminho cravado em string quebra em produção e SÓ lá
-# (`armadilhas/081`). O `/healthz` é a exceção que confirma a regra — ele não
+# endereço. Caminho cravado em string quebra em produção e SÓ lá.
+# O `/healthz` é a exceção que confirma a regra — ele não
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
@@ -270,7 +269,7 @@ urlpatterns = [
     # `identidade`, a `sugestoes` e a `pages` usam. Nesta celula esse caminho
     # FICA DEBAIXO do prefixo roteado: `meshcraft.top/admin/interno/...` e
     # alcancavel pela internet, porque o corte do prefixo e do Django, e nao do
-    # Traefik (`armadilhas/186`). Quem fecha a porta e o Bearer do par, e o
+    # Traefik. Quem fecha a porta e o Bearer do par, e o
     # guarda que importa e o teste de 401 em TODAS as operacoes
     # (`tests/test_porta_de_maquina.py`); a topologia nao fecha nada aqui, e
     # escrever o contrario neste comentario seria ensinar errado quem chegar
@@ -429,7 +428,7 @@ urlpatterns = [
         economia_mudar_degrau,
         name="economia_mudar_degrau",
     ),
-    # A AREA DE DOCUMENTOS (`DECISAO-a-area-de-documentos.md`, 29/08/2026).
+    # A AREA DE DOCUMENTOS.
     #
     # DOIS prefixos, e a diferenca entre eles nao e estilo: esta celula roda sob
     # SCRIPT_NAME=/admin e o Django TIRA esse prefixo do `path_info`, entao
@@ -518,8 +517,8 @@ urlpatterns = [
         documento_despublicar,
         name="documento_despublicar",
     ),
-    # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
-    # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
+    # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele.
+    # Todos POST: decisao que se
     # aplica por GET e decisao que um pre-carregador de link, um antivirus
     # corporativo ou um crawler autenticado tomam sozinhos — e um deles aqui
     # destroi um texto. Um verbo por rota, como as sete do menu.
@@ -567,7 +566,7 @@ urlpatterns = [
         midia_servir,
         name="midia_servir",
     ),
-    # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
+    # O HISTORICO — o que entrou no
     # lugar do `git log` que os documentos tinham enquanto moravam no
     # repositorio. Ver e LEITURA, e por isso e GET; voltar atras muda o texto
     # de uma pagina publica, e por isso e POST: decisao que se aplica por GET e
@@ -630,10 +629,9 @@ urlpatterns = [
     # A CAIXA DE SUGESTOES — a gestao das ideias dos alunos, que ate 28/08/2026
     # morava nas telas da celula sugestoes. Decisao do mantenedor, na frase
     # dele: "nao vamos espalhar paineis ou gestao por ai, tudo sera em /admin".
-    # Lei: docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
     #
     # Esta celula nao le o banco da Caixa (celula nao le banco de outra): ela pergunta, pelo
-    # contrato congelado (contracts/sugestoes.openapi.yaml).
+    # contrato congelado.
     path("caixa/", mesa, name="caixa"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
@@ -646,8 +644,7 @@ urlpatterns = [
     # A aba "A análise": a leitura das ideias da turma, com os fatos vivos
     # e o julgamento escrito à mão (apps/core/analise_da_caixa.py). Nasceu em
     # 05/09/2026, quando o mantenedor recebeu essa leitura numa página fora do
-    # site e decidiu que entrega dele mora no site
-    # (docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md).
+    # site e decidiu que entrega dele mora no site.
     path("caixa/analise/", analise, name="caixa_analise"),
     # Juntar ideias e desfazer a junção. POST de propósito, como as demais
     # ações da Caixa: mudam coisa, e um GET seria disparado por qualquer
@@ -692,7 +689,7 @@ urlpatterns = [
     # entra como `perpetuo/<coisa>/`, e nunca como uma tela solta noutro canto.
     path("perpetuo/", perpetuo, name="perpetuo"),
     # O PLACAR (`apps/core/placar.py`, 03/09/2026) — o andar zero do painel de
-    # gestão do negócio (`docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`, degrau 0):
+    # gestão do negócio:
     # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
     path("placar/", placar, name="placar"),
     path("placar/editar/", gestao_do_placar, name="gestao_do_placar"),
@@ -785,8 +782,7 @@ urlpatterns = [
     #
     # Aceita GET e POST, e o POST não escreve nada: ele calcula o pedido para o
     # robô e devolve. Por isso a entrada dela no `apps/core/mapa-do-site.json`
-    # é `"gesto": false` — o endereço abre no navegador, e é para abrir mesmo
-    # (`armadilhas/330`).
+    # é `"gesto": false` — o endereço abre no navegador, e é para abrir mesmo.
     path("placar/fechamento/", fechamento, name="fechamento"),
     # A REDE DE TALENTOS (`apps/core/talentos.py`, 07/09/2026) — o laço de
     # talentos do Scale OS desenhado inteiro, e as três contagens que só a
@@ -798,8 +794,8 @@ urlpatterns = [
     # dela no `apps/core/mapa-do-site.json` é `"gesto": false`.
     path("placar/talentos/", talentos, name="talentos"),
     path("escola/", escola, name="escola"),
-    # [JORNADA] O mapa, com os numeros de agora
-    # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
+    # [JORNADA] O mapa, com os numeros de agora.
+    # Vizinho da lista e nao dentro
     # dela: sao perguntas diferentes — "como funciona a escola?" e "quem esta
     # nela?" — e o mapa precisa abrir sem que ninguem role uma lista.
     path("escola/jornada/", escola_jornada, name="escola_jornada"),
@@ -848,7 +844,7 @@ urlpatterns = [
     # mesma gramática: a lista, a encomenda por dentro, e um verbo por rota
     # para cada gesto (salvar, publicar), POST-only e sem barra final. O texto
     # das aulas mora na `cursos` e entra SÓ por aqui, pela porta de máquina
-    # dela ([INV-CUR-C2]): esta célula não guarda cópia de uma linha.
+    # dela: esta célula não guarda cópia de uma linha.
     #
     # O número da aula é curto e fechado ("E00" a "E32" e "EB", vocabulário do
     # contrato); o padrão `[A-Za-z0-9]+` é a cerca desta ponta, e a segunda está
@@ -872,7 +868,7 @@ urlpatterns = [
     # `cursos` continua tendo as telas dele em `escola/cursos/aulas/`.
     #
     # Dois gestos, dois POST, porque script embutido nesta área exige hash na
-    # CSP (`armadilhas/199`). Trocar o produto e trocar a regra de avanço são o
+    # CSP. Trocar o produto e trocar a regra de avanço são o
     # MESMO gesto para a porta (`putCourse`, campo ausente é não mexer), e por
     # isso uma rota só: são dois formulários pequenos, cada um mandando o campo
     # dele.
@@ -940,8 +936,7 @@ urlpatterns = [
     #
     # `parte-N` opcional pelo mesmo motivo das quatro rotas acima: quem chega
     # aqui vem do editor da encomenda, e o endereco de la carrega a Parte.
-    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
-    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio.
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
         r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/$",
@@ -965,8 +960,7 @@ urlpatterns = [
     # `parte-N`: o sumario e do curso INTEIRO, e uma Parte sozinha nele nao
     # existe. Vizinha de `aulas/`, e nao dentro dela: aquela edita UMA
     # encomenda por vez, esta enche todas de uma vez, e sao gestos diferentes.
-    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
-    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio.
     # [ESTRUTURA] 07/09/2026 (TAR-272) A tela que da a um curso a lista dos
     # modulos e das aulas dele, colada num texto simples
     # (`apps/core/estrutura.py`), da `DECISAO-a-sala-serve-varios-cursos.md`
@@ -979,8 +973,7 @@ urlpatterns = [
     # cria o ESQUELETO (modulos e aulas), aquela enche o TEXTO das encomendas
     # que ja existem.
     #
-    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
-    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio.
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
         estrutura,
@@ -1056,7 +1049,7 @@ urlpatterns = [
         escola_apagar_recusado,
         name="escola_apagar_recusado",
     ),
-    # [PRONTUARIO] A historia de UMA pessoa (`DECISAO-a-ficha-nao-se-apaga` §5).
+    # [PRONTUARIO] A historia de UMA pessoa.
     # GET, e o e-mail vem por querystring: esta tela so PERGUNTA, nao decide
     # nada — e um e-mail no caminho da URL exigiria escapar barra e ponto para
     # nada, ja que quem autoriza e a porta, na entrada.
@@ -1070,15 +1063,15 @@ urlpatterns = [
     # A segunda rota de escrita: o formulario de gestao de quem JA e aluno.
     # POST-only pelo mesmo motivo da de cima.
     path("escola/alunos/salvar", escola_aluno_salvar, name="escola_aluno_salvar"),
-    # [SENHA] O reset manual de senha (DECISAO-login-por-senha.md), pelo
+    # [SENHA] O reset manual de senha, pelo
     # botao do prontuario. POST-only pelo mesmo motivo dos de cima.
     path(
         "escola/alunos/resetar-senha",
         escola_resetar_senha,
         name="escola_resetar_senha",
     ),
-    # [A MAO] Por uma pessoa na escola sem esperar que ela peca
-    # (`DECISAO-cadastrar-alguem-a-mao.md`). POST, como todo gesto que muda a
+    # [A MAO] Por uma pessoa na escola sem esperar que ela peca.
+    # POST, como todo gesto que muda a
     # vida de alguem — decisao que se aplica por GET e decisao que um
     # pre-carregador de link toma sozinho.
     path("escola/alunos/cadastrar", escola_cadastrar, name="escola_cadastrar"),

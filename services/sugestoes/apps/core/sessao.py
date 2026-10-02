@@ -4,7 +4,7 @@ Desde a `DECISAO-celula-de-identidade` (25/08/2026) esta célula **não tem mais
 login próprio**: quem prova QUEM É é a célula `identidade` (o cookie
 `meshcraft_sessao` é assinado e resolvido lá). O que continua sendo desta
 célula — e não pode sair dela — é a AUTORIZAÇÃO: a Caixa é de quem tem
-matrícula ou é da equipe (`DECISAO-EVO-01` §2/§4), e essas duas listas são
+matrícula ou é da equipe, e essas duas listas são
 conferidas aqui, sobre o e-mail que a resposta completa do contrato entrega
 (`getSessionFull` — o degrau `TOKENS_COMPLETOS_SUGESTOES` existe para isso).
 
@@ -24,7 +24,7 @@ snapshot guarda também o `id` da resposta** — o identificador da pessoa na
 célula `identidade`, o único que atravessa a plataforma. Ele já vinha em toda
 resposta (`SessionFull.id`, contrato congelado) e era jogado fora nesta função;
 sem ele, uma caixa central de notificações receberia o fato e um id que não
-significa nada fora da Caixa (PLANO-MESTRE §2). **O casamento por e-mail
+significa nada fora da Caixa. **O casamento por e-mail
 continua sendo a chave** — o id novo é dado a mais, não substituto.
 
 **Fail-CLOSED, dos dois lados.** `identidade` fora do ar OU `alunos` fora do
@@ -72,8 +72,8 @@ VISITANTE = "visitante"
 DENTRO = "dentro"
 SEM_MATRICULA = "sem-matricula"
 INDISPONIVEL = "indisponivel"
-# [EX-ALUNO] Dois jeitos de NÃO ter acesso que não são "nunca pediu nada"
-# (`DECISAO-ex-aluno-e-a-porta-que-explica`). Até 28/08/2026 os dois caíam em
+# [EX-ALUNO] Dois jeitos de NÃO ter acesso que não são "nunca pediu nada".
+# Até 28/08/2026 os dois caíam em
 # `SEM_MATRICULA` e recebiam o formulário da fila — mandar quem saiu da escola
 # preencher o pedido de entrada é dizer a ela que nunca pediu nada.
 PAUSADO = "pausado"
@@ -355,8 +355,7 @@ def _situacao(email: str) -> str:
     disso é dela — nunca reescrita aqui. Até 31/08/2026 `reembolsada` estava
     nessa lista (EVO-01 §4.1, *"quem já foi aluno mantém a voz"*); o mantenedor
     reverteu, e a mudança chegou aqui **sozinha**, sem uma linha nesta célula,
-    porque a pergunta é uma só e a resposta mora lá
-    (`DECISAO-reembolso-tira-o-acesso.md`).
+    porque a pergunta é uma só e a resposta mora lá.
     """
     chave = email.strip().lower()
     agora = time.time()
@@ -392,7 +391,7 @@ def resolver(request) -> Resolucao:
     # A memória vive na REQUISIÇÃO, e não em módulo: ela morre com a resposta,
     # e duas pessoas nunca compartilham a mesma. Cache de sessão em variável de
     # processo é exatamente como um guarda de "visitante" passa verde mostrando
-    # o nome de outra pessoa (`armadilhas/026`).
+    # o nome de outra pessoa.
     guardada = getattr(request, "_resolucao_desta_requisicao", None)
     if guardada is not None:
         return guardada
@@ -426,7 +425,7 @@ def _resolver(request) -> Resolucao:
         return Resolucao(INDISPONIVEL)
 
     nome = (dados.get("nome_exibido") or "").strip()
-    # [INV-SUG11] O elo que atravessa a plataforma — e que a porta descartava
+    # O elo que atravessa a plataforma — e que a porta descartava
     # até 25/08/2026. Ausente ou nulo NÃO recusa ninguém: quem autoriza aqui
     # continua sendo e-mail + (staff | matrícula). Ver `_id_da_plataforma`.
     da_plataforma = _id_da_plataforma(dados)
@@ -486,7 +485,7 @@ def ator_da_sessao_legada(request):
     """O leitor do cookie que ESTA célula assinava até 25/08/2026 — e só dele.
 
     Existe por uma razão: a operação congelada `getSession` da API interna
-    desta célula ficou DEPRECADA E INERTE (DECISAO-celula-de-identidade §5) —
+    desta célula ficou DEPRECADA E INERTE —
     o contrato não muda sem Rito §3, então o endpoint continua respondendo,
     mas nenhum cookie novo é assinado por esta célula desde a virada. Este
     leitor responde pela sessão legada (Django `request.session`), que para

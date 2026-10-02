@@ -25,7 +25,7 @@ As seis coisas que esta suíte existe para travar, em ordem do que dói mais:
    mantenedor, nunca uma economia silenciosa dentro de um diff.
 
 **A rede da Anthropic é dublada NO TRANSPORTE, nunca com `patch.object` no
-método do `agente`** (`armadilhas/061`): assim o SDK monta o request de verdade
+método do `agente`**: assim o SDK monta o request de verdade
 e lê a resposta de verdade, e um erro no jeito de chamar aparece aqui em vez de
 aparecer só na primeira conta paga.
 """
@@ -688,7 +688,7 @@ def test_o_botao_atravessa_o_csrf_de_verdade(env, monkeypatch, conversa):
     # todos com `{% csrf_token %}`: uma busca solta acharia o token de um deles,
     # o POST passaria, e o teste ficaria verde com o `{% csrf_token %}` ARRANCADO
     # do formulário da IA. Foi o que aconteceu na primeira versão deste teste, e
-    # é a família de falso-verde que esta casa cataloga (`armadilhas/266`):
+    # é a família de falso-verde que esta casa cataloga:
     # asserção com mais de uma causa suficiente.
     pagina = tela.content.decode()
     marca = 'action="' + reverse("gerar_resposta", args=[conversa.pk]) + '"'
@@ -945,7 +945,7 @@ def test_o_env_da_celula_deixa_o_log_de_apps_sair(settings):
 # O dublê aqui devolve um corpo `text/event-stream` de verdade, com a sequência
 # real de eventos da API. Assim o SDK faz o parsing que faz em produção, e um
 # erro no jeito de consumir o fluxo aparece no teste em vez de aparecer na
-# primeira chamada paga (`armadilhas/061`).
+# primeira chamada paga.
 
 EVENTOS_DO_INICIO = (
     'event: message_start\ndata: {"type":"message_start","message":{"id":"msg_1",'

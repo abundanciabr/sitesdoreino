@@ -1,4 +1,4 @@
-"""[INV-ENC-M2] Projeto de nível Iniciante só chega ao Mural pela chamada aberta.
+"""Projeto de nível Iniciante só chega ao Mural pela chamada aberta.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8.
 

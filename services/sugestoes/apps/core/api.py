@@ -2,7 +2,7 @@
 """A única superfície de máquina desta célula — DEPRECADA E INERTE desde 25/08/2026.
 
 O dia que a `DECISAO-onde-mora-a-sessao` previu chegou: a identidade mudou de
-casa (`DECISAO-celula-de-identidade`), e quem responde "quem é o dono desta
+casa, e quem responde "quem é o dono desta
 sessão?" ao site inteiro é a célula `identidade` — pelo MESMO vocabulário
 (`getSession`/`Session`) que nasceu aqui. Esta operação continua existindo
 porque o contrato dela está CONGELADO e contrato só muda pelo Rito §3 (a
@@ -56,9 +56,9 @@ router = Router()
 # `$ref: '#/components/schemas/Session'`. Por isso ele segue o vocabulário dos
 # contratos da casa (`Site`, `Product`, `Offer`, `Order`, `Intent`: inglês,
 # singular), e não o do código, que é português. Renomear depois custa um Rito
-# de Contrato inteiro (RITOS §3), então nasce certo.
+# de Contrato inteiro, então nasce certo.
 #
-# **CUIDADO ao editar este arquivo** (`armadilhas/020`): `Session` é um nome
+# **CUIDADO ao editar este arquivo**: `Session` é um nome
 # comum no Django. Um `ninja.Schema` com o mesmo nome de algo importado aqui
 # sombreia o import em SILÊNCIO — sem erro de import, sem aviso do lint, e o
 # estouro só aparece rodando os testes, vindo de dentro do pydantic. Hoje é

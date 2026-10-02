@@ -1,6 +1,6 @@
 """A tabela de auditoria e o que a torna append-only DE VERDADE.
 
-O `save()` sobrescrito não impede nada (`armadilhas/079`): `QuerySet.update()`
+O `save()` sobrescrito não impede nada: `QuerySet.update()`
 não o chama, `psql` não o conhece, e qualquer código que não importe a classe
 passa por baixo. Quem fecha as três metades é o BANCO, e é isso que esta
 migration instala.

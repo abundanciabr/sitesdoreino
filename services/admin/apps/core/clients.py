@@ -1,6 +1,6 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
-# Fala SÓ o que está no contrato congelado da identidade
-# (`contracts/identidade.openapi.yaml`). Nunca lê o banco dela (célula não lê banco de outra).
+# Fala SÓ o que está no contrato congelado da identidade.
+# Nunca lê o banco dela (célula não lê banco de outra).
 import datetime as dt
 import logging
 import os
@@ -120,7 +120,7 @@ class IdentidadeClient:
         """Endereço e token do par, ou `None` se o env não os tiver.
 
         Lido NO PONTO DE USO, com `.get()` — nunca `os.environ[...]` no
-        `__init__` (`armadilhas/097`). `KeyError` não é `httpx.HTTPError`:
+        `__init__`. `KeyError` não é `httpx.HTTPError`:
         atravessaria intacto o `try` abaixo e o middleware, virando HTTP 500
         em vez do 503 nomeado — e falha de configuração é MAIS provável que
         falha de rede (basta uma variável não colada no servidor).
@@ -188,7 +188,7 @@ class IdentidadeClient:
 
     # ------------------------------------------------------------------ escrita
     #
-    # O reset manual (DECISAO-login-por-senha.md §1.4, §4): o mantenedor
+    # O reset manual: o mantenedor
     # confirma quem é a pessoa pelo WhatsApp que ela já deixou no cadastro,
     # aciona esta porta, e repassa a senha nova por fora. Exige o grau
     # TOKENS_SENHA_ADMIN, além do par aceito.
@@ -407,8 +407,7 @@ class AlunosClient:
         levanta** — quem chama é uma view, e a página tem de abrir.
 
         `site_id` fica de fora porque o painel do dono é plataforma-inteira
-        (multissítio: site é dado), e cada linha já diz de qual escola veio
-        (`DECISAO-categorias-de-usuario`).
+        (multissítio: site é dado), e cada linha já diz de qual escola veio.
         """
         return self._buscar("/pre-matriculas", {"status": status})
 
@@ -506,8 +505,8 @@ class AlunosClient:
         **Nunca levanta**: quem chama precisa gravar a linha de auditoria
         aconteça o que acontecer.
 
-        `product_id` é OBRIGATÓRIO para liberar desde 06/09/2026
-        ([INV-ALU-C1]): ninguém é aluno do site, todo mundo é aluno de um
+        `product_id` é OBRIGATÓRIO para liberar desde 06/09/2026:
+        ninguém é aluno do site, todo mundo é aluno de um
         produto, e a matrícula é o que diz qual. Na recusa ele nem viaja —
         ninguém vira aluno de nada ao ser recusado.
         """
@@ -816,8 +815,8 @@ class CaixaClient:
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
-        """Endereço e token do par, ou `None` — lido NO PONTO DE USO
-        (`armadilhas/097`). Enquanto o par não estiver no env, a área abre e só
+        """Endereço e token do par, ou `None` — lido NO PONTO DE USO.
+        Enquanto o par não estiver no env, a área abre e só
         a tela da Caixa diz que ainda não consegue perguntar."""
         base = (os.environ.get("SUGESTOES_API_URL") or "").strip().rstrip("/")
         token = (os.environ.get("SUGESTOES_API_TOKEN") or "").strip()
@@ -1060,8 +1059,7 @@ class CatalogoClient:
     tela abre dizendo o que falta, em português, em vez de 500. Uma tela de
     operação que não abre é inútil justamente quando você precisa dela.
 
-    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
-    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`.
     """
 
     TIMEOUT = 4.0
@@ -1190,7 +1188,7 @@ class CatalogoClient:
 
         É a única ESCRITA de catálogo que não é o menu, e ela existe porque
         "fácil de criar um curso" não combina com um bloco de colar no servidor
-        a cada curso novo (`DECISAO-a-sala-serve-varios-cursos.md` §3.5).
+        a cada curso novo.
 
         **A porta é idempotente pelo apelido**, e é isso que torna seguro
         reenviar o formulário: mesmo apelido com o mesmo nome responde 200 com
@@ -1265,7 +1263,7 @@ class CatalogoClient:
         logger.error("menu: a gravação respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "o catálogo respondeu com erro"
 
-    # -- As páginas de venda (Rito de Contrato de 19/09/2026) ---------------
+    # -- As páginas de venda ---------------
     # `getPageDraft`, `putPageDraft` e `publishPage`. É por elas que a tela
     # `/admin/paginas/` escreve o texto da página de oferta, e o contrato diz
     # isso com todas as letras: *"É por aqui que a tela do `admin` salva o que
@@ -1496,7 +1494,7 @@ class GamificacaoClient:
     discordassem, esta tela mostraria uma coisa e o motor pagaria outra.
 
     **É AQUI que a autorização mora, e não do outro lado.** A `gamificacao` não
-    assina sessão ([INV-P12]) e o `papel` que a `identidade` devolve nunca
+    assina sessão e o `papel` que a `identidade` devolve nunca
     autoriza rota ("reconhecer não é autorizar", `DECISAO-onde-mora-a-sessao`
     §4). Quem confere que é o mantenedor é esta célula, sobre a lista DELA — o
     crachá que a porta desta área já exige. O Bearer daqui prova só QUEM CHAMA.
@@ -1509,8 +1507,7 @@ class GamificacaoClient:
     ESCRITA a falha é fechada: dizer "liguei" sem ter ligado seria pior que
     recusar.
 
-    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
-    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`.
     """
 
     TIMEOUT = 4.0
@@ -1561,7 +1558,7 @@ class GamificacaoClient:
         Operação `listStudentStandings`, do Rito de Contrato de 03/09/2026 — a
         primeira que fura o invariante 2 daquela porta (nunca XP de terceiro),
         por exceção declarada: serve só este bastidor. Só quem já tem PerfilJogador
-        aparece (a linha é preguiçosa, Lei 7 da gamificação); quem monta a tela
+        aparece; quem monta a tela
         cruza com `AlunosClient().alunos()` para saber quem falta na lista.
 
         NÃO traz `título` nem `nome` de conquista — só `nível` e `slug`. Quem
@@ -1659,7 +1656,7 @@ class EncomendasClient:
     dependesse de um robô editar o semeador e esperar uma publicação, a régua
     era código com aparência de dado.
 
-    DOIS PARES DE CHAVES, E O SEGUNDO NÃO É ENFEITE (`armadilhas/318`)
+    DOIS PARES DE CHAVES, E O SEGUNDO NÃO É ENFEITE
     -----------------------------------------------------------------
     A porta do outro lado tem dois graus: `TOKENS_ACEITOS_ADMIN` lê e
     `TOKENS_ESCRITA_ADMIN` grava, e o alto contém o baixo. Este cliente guarda
@@ -1673,8 +1670,7 @@ class EncomendasClient:
     inútil justamente quando você precisa dela, e dizer "gravei" sem ter gravado
     é pior que recusar.
 
-    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
-    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`.
     """
 
     TIMEOUT = 4.0
@@ -1710,7 +1706,7 @@ class EncomendasClient:
 
         `None` = não deu para perguntar. Chave que ainda não tem linha nenhuma
         vem com `vigente` nulo, e isso não é falha: o piso de preço por nível
-        nasceu de propósito sem número (`PLANO-AREA-DE-NEGOCIACAO.md` §7 e §9).
+        nasceu de propósito sem número.
         Uma chave sem valor precisa aparecer na tela, ou o mantenedor não tem
         por onde gravar o primeiro.
         """
@@ -1910,7 +1906,7 @@ class MedicaoClient:
     def _configuracao(self) -> "tuple[str, str] | None":
         """Endereço e token do par, ou `None` se o env não os tiver.
 
-        Lido NO PONTO DE USO (`armadilhas/097`): o par nasce vazio e é escrito
+        Lido NO PONTO DE USO: o par nasce vazio e é escrito
         na VPS por `infra/provisionar-par-da-medicao.sh`, depois do deploy. Ler
         no import transformaria a janela entre as duas coisas em HTTP 500 em
         toda abertura do placar.
@@ -2180,8 +2176,7 @@ class MensageriaClient:
     Na escrita a falha é fechada: dizer "publiquei" sem ter publicado mandaria
     o mantenedor embora achando que a correção pegou.
 
-    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
-    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`.
     """
 
     TIMEOUT = 4.0
@@ -2382,8 +2377,8 @@ class CursosClient:
     Nunca lê o `cursos_db` (célula não lê banco de outra), e **nunca guarda uma cópia** de
     nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
     texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
-    e o único lugar em que esse texto existe é o banco da `cursos`
-    ([INV-CUR-C2], `armadilhas/331`). Uma tabela de aulas aqui seria o mesmo
+    e o único lugar em que esse texto existe é o banco da `cursos`.
+    Uma tabela de aulas aqui seria o mesmo
     fato em dois lugares, e no dia em que os dois discordassem o editor
     mostraria um texto e o aluno leria outro.
 
@@ -2393,9 +2388,8 @@ class CursosClient:
     mantenedor resolve de jeitos diferentes, e três delas ele resolve sozinho:
 
     - **`SEM_CONFIGURACAO`**: o par (`CURSOS_API_URL`/`CURSOS_API_TOKEN`) não
-      está no env desta célula. É um passo de provisionamento na VPS (INV-P8), e
-      a tela nomeia o passo. Nenhuma ida à rede acontece neste caso
-      (`armadilhas/097`).
+      está no env desta célula. É um passo de provisionamento na VPS, e
+      a tela nomeia o passo. Nenhuma ida à rede acontece neste caso.
     - **`RECUSOU`** (401/403): o par existe aqui, mas a `cursos` não o aceita.
       De fora é indistinguível de "não há aula nenhuma", e é por isso que tem
       nome próprio: o conserto é conferir `TOKENS_ACEITOS_ADMIN` do outro lado,
@@ -2423,7 +2417,7 @@ class CursosClient:
     operação que não abre é inútil justamente quando você precisa dela; mas
     dizer "salvei" sem ter salvado mandaria a professora embora achando que a
     aula está guardada. As variáveis são lidas no PONTO DE USO, nunca no
-    `__init__` (`armadilhas/097`).
+    `__init__`.
     """
 
     TIMEOUT = 4.0

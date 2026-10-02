@@ -15,7 +15,7 @@
 # `apps.sites.models` — símbolo que só existe na imagem NOVA — e o run morreu em
 # `ImportError`; o portão de deploy então reprovou o `deploy-celula` por causa do
 # irmão vermelho; e a imagem nova, única fonte do símbolo, só chega pelo
-# `deploy-celula`. Impasse fechado (armadilhas/078).
+# `deploy-celula`. Impasse fechado.
 #
 # Daí as duas regras deste arquivo:
 #   1. ZERO import de símbolo recém-criado da célula. Só ORM estável (Site,
@@ -38,7 +38,7 @@
 #     dos workflows). A regra é CÓPIA CONSCIENTE do `normalizar_idiomas` de
 #     `services/catalogo/apps/sites/models.py` — cópia porque importar de lá é
 #     exatamente o que quebrou o canal; e toda cópia consciente exige guarda
-#     mecânica contra deriva (docs/historico/RESOLVIDAS.md §5.11). A guarda é
+# mecânica contra deriva. A guarda é
 #     `ci/tests/test_sincronizar_sites_tolerante.py`, que roda as duas
 #     implementações lado a lado sobre o mesmo corpo de casos: mudou a regra no
 #     modelo, aquele teste fica vermelho até esta cópia acompanhar.
@@ -60,7 +60,7 @@ from apps.ofertas.models import Offer
 from apps.produtos.models import Product
 from apps.sites.models import Site
 
-# Os campos que podem faltar na imagem/banco em execução (PLANO-I18N, fase 4).
+# Os campos que podem faltar na imagem/banco em execução.
 CAMPOS_DE_IDIOMA = ("default_language", "languages")
 
 # BCP 47 na forma que aparece na URL: minúscula, com hífen (en, pt-br, es).
@@ -78,7 +78,7 @@ def normalizar_idiomas(default_language, languages):
     CÓPIA CONSCIENTE de `normalizar_idiomas` em
     `services/catalogo/apps/sites/models.py`, mensagens inclusive. Não é
     esquecimento: importar de lá amarra este script à versão da imagem contra a
-    qual ele roda, e foi assim que o canal de deploy travou (armadilhas/078). A
+    qual ele roda, e foi assim que o canal de deploy travou. A
     deriva entre as duas cópias é impedida por
     `ci/tests/test_sincronizar_sites_tolerante.py`, não por boa vontade.
 
@@ -154,7 +154,7 @@ def idioma_disponivel():
     porque "os idiomas não foram gravados" sem o porquê é o mesmo que silêncio.
 
     Roda ANTES de abrir a transação de propósito: erro de banco capturado
-    DENTRO de um `atomic()` envenena a transação inteira (ARMADILHAS §4.8).
+    DENTRO de um `atomic()` envenena a transação inteira.
 
     São duas perguntas, e elas terminam DIFERENTE — a assimetria é medida, não
     esquecimento:
@@ -233,7 +233,7 @@ with transaction.atomic():
                 f"ERRO: default_offer_slug {padrao!r} de {host} não está nas ofertas {slugs} — a raiz responderia 404."
             )
 
-        # Idioma é dado do site (PLANO-I18N D3). Ausência dos dois campos =
+        # Idioma é dado do site. Ausência dos dois campos =
         # site monolíngue, que é o caso de todo site que não declarou nada.
         # A VALIDAÇÃO roda mesmo em imagem velha: declaração torta no Git é erro
         # do Git, e escondê-la atrás da tolerância seria fingir que passou.

@@ -7,8 +7,8 @@ número que reinicia numa história que se lê de cima a baixo.
 
 ## De onde sai cada número, e por que não sai da `alunos`
 
-Da memória, sempre: `countMilestones` do contrato congelado da `metricas`
-(`contracts/metricas.openapi.yaml`), uma chamada só, sem tabela nova e sem
+Da memória, sempre: `countMilestones` do contrato congelado da `metricas`,
+uma chamada só, sem tabela nova e sem
 porta nova. O placar conta AO VIVO na `alunos`, e é o certo lá: ele responde
 "quantas há agora". Coorte é pergunta sobre o passado, e o passado desta casa
 mora no livro de fatos (plano §2, a linha de 25/08/2026).
@@ -32,7 +32,7 @@ existe, em porta congelada nenhuma, a tradução de um para o outro — e
 fora resolveria.
 
 Somar os dois vocabulários compararia matrículas com pessoas e mediria a coisa
-errada com precisão (`armadilhas/303`). Uma tabela
+errada com precisão. Uma tabela
 que dissesse "a coorte de setembro escreveu 4 vezes no fórum" estaria
 comparando matrículas com pessoas, e ninguém veria o erro, porque o número
 pareceria certo.
@@ -63,7 +63,7 @@ saídas, porque parece medição.
 ## As três regras do cálculo
 
 1. **O mês vem do `dia` que a memória já devolveu, sem reconverter fuso.** Ela
-   grava o dia de São Paulo na recepção (`armadilhas/099`), e o contrato promete
+   grava o dia de São Paulo na recepção, e o contrato promete
    isso na descrição de `countMilestones`. Reaplicar fuso aqui seria deslocar o
    dia uma segunda vez e jogar quem entrou às 22h do dia 30 no mês errado.
 2. **A tabela começa no primeiro mês com conquista, nunca antes.** Mês vazio
@@ -282,8 +282,8 @@ def coortes(request):
     """A tela. Fail-OPEN, como as outras do placar: ela abre e DIZ o que faltou.
 
     A janela é calculada aqui e viaja para o template porque ela é parte da
-    afirmação: um número sem a janela em que foi contado não é um número
-    (`armadilhas/303`). O mesmo vale para o recorte: esta contagem é da
+    afirmação: um número sem a janela em que foi contado não é um número.
+    O mesmo vale para o recorte: esta contagem é da
     plataforma inteira, e não de uma escola, porque a tabela de marcos não
     guarda o site — está escrito no contrato, e a tela repete para quem lê.
     """

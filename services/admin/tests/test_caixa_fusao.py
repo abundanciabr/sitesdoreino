@@ -275,7 +275,7 @@ def test_confirmar_manda_juntar_e_volta_dizendo(db):
     assert corpo["canonica"] == CANONICA
     assert corpo["absorvidas"] == [ABSORVIDA_A, ABSORVIDA_B]
     assert corpo["nota"] == "de uma vez"
-    # E quem agiu viaja junto: sem isso a Caixa recusa a escrita ([INV-SUG12]).
+    # E quem agiu viaja junto: sem isso a Caixa recusa a escrita.
     assert corpo["por_email"] == DONO
     assert Registro.objects.filter(acao=Registro.FUNDIR_IDEIAS).exists()
 

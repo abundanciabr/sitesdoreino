@@ -1,5 +1,4 @@
-"""Os tres verbos da tela das sequencias de mensagens
-(`/admin/escola/jornadas/`, degrau 7 do PLANO-SEQUENCIAS-DE-MENSAGENS.md).
+"""Os tres verbos da tela das sequencias de mensagens.
 
 Tres, e nao um so, porque sao tres perguntas diferentes ao historico: "desde
 quando a escola manda esta sequencia?" (ligar), "desde quando ela parou de

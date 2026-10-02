@@ -44,8 +44,7 @@ Até 05/09/2026 o cartão `aprendizados-validados-no-ciclo` contava "toda
 `medicao` com `responde_a` desde a partida do ciclo". Medido no livro real
 naquele dia: **6**, e os seis eram vereditos de deploy respondendo a registros
 de entrega. Nenhum experimento existia. O número não estava quebrado por bug —
-ele media a coisa errada com precisão, que é como um indicador morre
-(`armadilhas/303`).
+ele media a coisa errada com precisão, que é como um indicador morre.
 
 `doze.aprendizados_validados` passou a chamar `aprendizados_validados` daqui.
 Uma regra só, dois leitores, zero divergência: a tela do laboratório e o 12º do

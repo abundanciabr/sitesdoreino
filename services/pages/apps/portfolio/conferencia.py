@@ -2,8 +2,8 @@
 
 ci:texto-publicado
 
-A MARCA ACIMA LIGA O PORTÃO DO TRAVESSÃO neste arquivo inteiro
-(`ci/travessao.py`, terceira regra de alcance no `CLAUDE.md`), pelo mesmo motivo
+A MARCA ACIMA LIGA O PORTÃO DO TRAVESSÃO neste arquivo inteiro,
+pelo mesmo motivo
 do `semaforo.py` ao lado: as recusas daqui são frases que o ALUNO lê na tela
 dele, e elas não estão numa `templates/` nem num rótulo de `TextChoices`, que
 são as duas regras que pegam sozinhas.
@@ -111,7 +111,7 @@ def prazo_de(a_partir_de=None):
     **Contado no fuso da escola**, que é `America/Sao_Paulo` (o `TIME_ZONE`
     desta célula, com guarda em `tests/test_fuso_horario.py`). Contar em UTC
     daria um dia diferente para todo pedido feito depois das 21h, e a fila
-    mostraria atraso onde não há (`armadilhas/099`).
+    mostraria atraso onde não há.
 
     **Feriado não é considerado, e a ausência é declarada.** Uma tabela de
     feriados é dado que envelhece e que ninguém mantém; o custo de errar aqui é

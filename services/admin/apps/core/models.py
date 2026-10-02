@@ -4,7 +4,7 @@
 
 **Isto reverte, em parte, a `DECISAO-celula-admin` §2**, que dizia *"derivada e
 nunca gravada"*. A reversão é decisão do mantenedor de 28/08/2026, tomada com o
-preço na mesa (`DECISAO-administradores-e-apagar.md` §2): com a lista no banco,
+preço na mesa: com a lista no banco,
 passa a ser possível ganhar acesso de administrador **sem tocar no servidor**.
 
 **A lista efetiva é `ADMIN_EMAILS` (do servidor) ∪ os ativos daqui**, e o env
@@ -27,11 +27,10 @@ edição dele no arquivo embutido a apagaria no deploy seguinte, **em silêncio*
 
 Por isso o texto passa a morar AQUI, e a pasta `documentos/` vira SEMENTE: ela
 é lida uma vez, pela migração que criou estas linhas, e nunca mais. Não são dois
-lugares dizendo a mesma coisa (a lei anti-duplicação do `CLAUDE.md`): depois da
+lugares dizendo a mesma coisa: depois da
 semeadura, quem responde "o que este documento diz" é esta tabela, e só ela.
 Mesmo desenho de `semear_areas` no fórum.
 
-Lei: `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
 
 ## A Biblioteca do Livro — 04/09/2026
 
@@ -287,7 +286,7 @@ class VersaoDoDocumento(models.Model):
     """O retrato de um documento a cada gravacao. Nunca editado, nunca reescrito.
 
     **Por que ele existe, e por que no MESMO PR do editor.** Ao tirar o texto do
-    Git (`DECISAO-o-editor-de-documentos` §6), a plataforma perdeu o `git log`
+    Git, a plataforma perdeu o `git log`
     dos documentos: nao ha mais como ver quem mudou uma frase, nem como voltar
     atras. Esta tabela e o que entra no lugar, e ela entra junto com a primeira
     escrita — a mesma regra que a auditoria desta celula seguiu na dela, porque

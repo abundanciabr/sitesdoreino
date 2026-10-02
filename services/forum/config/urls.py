@@ -33,8 +33,7 @@ from config.api import api
 #
 # TODA rota leva `name=`, e nenhum template escreve caminho à mão: é
 # `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
-# endereço. Caminho cravado em string quebra em produção e SÓ lá
-# (`armadilhas/029` e `/081`).
+# endereço. Caminho cravado em string quebra em produção e SÓ lá.
 urlpatterns = [
     path("healthz", healthz),
     # A superficie de MAQUINA (`/interno/...`): o que outra celula pode
@@ -43,7 +42,7 @@ urlpatterns = [
     # Quem fecha em qualquer topologia futura e o Bearer do par (config/api.py).
     path("interno/", api.urls),
     # O rosto. Rota de MÁQUINA, como o `/healthz`: sem ela o CSS é 404 em
-    # produção e SÓ lá (`armadilhas/083`).
+    # produção e SÓ lá.
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
     path("", home, name="home"),
     path("a/<slug:slug>", ver_area, name="area"),

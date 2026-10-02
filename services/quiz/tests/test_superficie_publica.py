@@ -26,7 +26,7 @@ por isso que os dois defeitos abaixo viveram meses sem nada reclamar.
    escolhidos por quem publicou o formulário, disparando `quiz.completado.v1`
    por lead que nunca existiu.
 
-POR QUE `set_script_prefix` APARECE AQUI (armadilhas/081)
+POR QUE `set_script_prefix` APARECE AQUI
 ---------------------------------------------------------
 `reverse()` não lê `settings.FORCE_SCRIPT_NAME`: ele lê um prefixo de variável
 de THREAD que só o servidor preenche (`WSGIHandler.__call__` e

@@ -3,9 +3,9 @@
 Reformulado em 03/09/2026 à noite (registro `20260903-036`): a meta virou
 "quantas pessoas compraram neste mês", com a meta grande por cima (de 0 para
 500 somadas de 03/09 a 15/12/2026), contadas pela data em que cada pessoa
-virou aluna (`virou_aluno_em`, o campo do Rito de Contrato do PR #933).
+virou aluna.
 
-O que estes guardas protegem (plano: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`):
+O que estes guardas protegem:
 
 1. **Número sem cartão não aparece.** Cartão ausente ⇒ a página abre, diz o
    que faltou, e o número da meta NÃO está no HTML. Cartão com defeito de

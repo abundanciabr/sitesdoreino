@@ -1,5 +1,4 @@
 # [RECEITA:R5 v1] falha de provedor ⇒ retry via Huey; nunca propaga a quem emitiu
-# (constituicoes/AGENTS.mensageria.md)
 from unittest.mock import patch
 
 import pytest

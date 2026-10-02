@@ -167,7 +167,7 @@ class TestOsCasosQueQuebramCruzamento:
         assert len(r["sozinhos"]) == 1
 
     def test_duas_fichas_da_mesma_pessoa_a_mais_antiga_ganha(self):
-        # Quem saiu e voltou tem duas linhas (DECISAO-a-ficha-nao-se-apaga), e a
+        # Quem saiu e voltou tem duas linhas, e a
         # fila chega ordenada por data.
         r = conferir(
             numeros=["11 99999-8888"],

@@ -6,8 +6,7 @@ ciclo inteiro pelas rotas HTTP reais, com a `alunos` dublada por `respx`
 (molde: `tests/conftest.py`), e prova que cada estado da porta fala com o
 membro numa frase própria: trancada, disponível, em produção, enviada (com
 o relógio de 24 horas), devolvida (com a data), concluída, link inválido e
-`alunos` fora do ar. Nenhuma frase de aluno usa a palavra "reprovado"
-([INV-CUR-L2]).
+`alunos` fora do ar. Nenhuma frase de aluno usa a palavra "reprovado".
 
 O roteiro (`RETOMADA-COMUNIDADE.md` §7, frente C4):
 1. membro com matrícula ativa abre o mapa; a porta em destaque é o desafio
@@ -143,7 +142,7 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
     assert "Em andamento" in corpo
 
     # As duas pausas da aula publicada (molde `publicar()`) são pré-condição
-    # do checkpoint ([INV-CUR-P3]): sem elas a entrega é recusada.
+    # do checkpoint: sem elas a entrega é recusada.
     for pausa in e00.pausas.all():
         resposta_pausa = client.post(
             reverse(
@@ -212,7 +211,7 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
 
     # ------------------------------------------------------------------ 4
     # Ela assina o laudo `devolvido`: três forças, uma mudança, data de
-    # retorno de amanhã em diante ([INV-CUR-L1]).
+    # retorno de amanhã em diante.
     amanha = timezone.localdate() + dt.timedelta(days=2)
     resposta_laudo = _emitir_laudo(
         client,
@@ -229,7 +228,7 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
 
     # ------------------------------------------------------------------ 5
     # O membro vê a data ANTES do texto (lei §6), e a aula mostra `devolvida`
-    # com a data. Nenhuma frase de aluno usa "reprovado" ([INV-CUR-L2]).
+    # com a data. Nenhuma frase de aluno usa "reprovado".
     _como(rede, ANA, "aluno")
     resposta = get("laudo-recebido", e00.numero)
     corpo = resposta.content.decode()

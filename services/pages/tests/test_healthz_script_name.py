@@ -1,6 +1,6 @@
 """Teste-guarda de `armadilhas/029`: `/healthz` sob prefixo.
 
-Esta célula serve em `meshcraft.top/portfolio` (`PLANO-PORTFOLIO-DO-ALUNO.md` §4),
+Esta célula serve em `meshcraft.top/portfolio`,
 ou seja **sob SCRIPT_NAME** — a mesma condição que derrubou a sonda do
 `checkout` (PR #65) e do `quiz` (PR #71), e que a `sugestoes`, a `admin`, o
 `forum`, a `gamificacao`, a `encomendas` e a `cursos` já travam do mesmo jeito.

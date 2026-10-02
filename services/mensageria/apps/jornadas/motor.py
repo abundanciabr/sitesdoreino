@@ -66,8 +66,7 @@ class CanalNaoSuportado(Exception):
     """O despachante não sabe entregar por este canal — e isso NÃO é falha.
 
     Existe como exceção própria porque as duas maneiras de "não saiu" pedem
-    coisas opostas do relógio da inscrição, e confundi-las já custou caro uma vez
-    (`armadilhas/283`):
+    coisas opostas do relógio da inscrição, e confundi-las já custou caro uma vez:
 
     - **Devolver `False`** é *"falhei AGORA"* — Redis fora, provedor mudo. É
       transitório: o passo continua devendo e a passada seguinte tenta de novo.
@@ -181,8 +180,7 @@ def inscrever(
     primeiro = versao.passos.order_by("ordem").first()
     try:
         # O savepoint é obrigatório: um `IntegrityError` engolido sem ele
-        # envenena a transação inteira e o erro seguinte fala de outra coisa
-        # (`armadilhas/027` e `armadilhas/120`).
+        # envenena a transação inteira e o erro seguinte fala de outra coisa.
         with transaction.atomic():
             return Inscricao.objects.create(
                 jornada_versao=versao,

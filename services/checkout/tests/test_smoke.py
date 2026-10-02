@@ -58,7 +58,7 @@ def test_pedido_criado_vai_para_a_outbox_na_mesma_transacao(api, rede, sessao_a)
     assert resp.status_code == 201, resp.content
 
     eventos = OutboxEvent.objects.filter(event="pedido.criado")
-    assert eventos.count() == 1  # [INV-P6]
+    assert eventos.count() == 1  
     dados = eventos.get().payload
     pedido = Order.objects.get()
     assert dados["order_id"] == str(pedido.id)

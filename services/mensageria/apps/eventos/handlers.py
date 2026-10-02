@@ -54,7 +54,7 @@ EVENTO_ENVIO_RECEBIDO = "envio.recebido"
 # separa o marco do progresso comum é `ao_aula_concluida`, logo abaixo.
 GATILHO_BLOCO_FECHADO = "aula.concluida"
 
-# Templates versionados dentro da célula (constituicoes/AGENTS.mensageria.md).
+# Templates versionados dentro da célula.
 # TEMPLATES_POR_SITE é o ponto de extensão para override por site_id — vazio
 # hoje porque nenhum site ainda pediu remetente/copy próprios; o fallback é
 # sempre o template padrão da plataforma. [multissítio]
@@ -257,8 +257,8 @@ def ao_envio_recebido(
        varredura reavaliar nada.
 
     O `ator_id` é lido do envelope (`processar_envelope` o repassa ao lado do
-    `data`): é o id de PLATAFORMA do aluno, o único que atravessa células
-    (`armadilhas/255`). Sem ele, este handler não grava nem cancela nada.
+    `data`): é o id de PLATAFORMA do aluno, o único que atravessa células.
+    Sem ele, este handler não grava nem cancela nada.
     """
     site_id = data["site_id"]
     aula_id = data["aula_id"]
@@ -362,7 +362,7 @@ def ao_aula_concluida(
 
     Sem aluno no `ator_id` ninguém é convidado: o contrato diz que ele nunca é
     nulo, e inscrever com destinatário vazio abriria um episódio de ninguém e
-    endereçaria a carta ao nada (`armadilhas/255`).
+    endereçaria a carta ao nada.
 
     Jornada desligada não convida ninguém; quem liga é o mantenedor, na tela
     dele, e quem faz valer é o `motor.inscrever()`.

@@ -3,14 +3,13 @@
 **A regra que organiza este arquivo inteiro: reconhecer não é autorizar.**
 A `identidade` diz quem é; a `alunos` diz em que categoria está; **quem decide
 se a pessoa vê a Prancheta é esta célula**, aqui, e só a matrícula ativa abre.
-Não conseguir perguntar nunca vira "então pode entrar"
-(`DECISAO-celula-de-identidade.md` §6.2; constituição da célula).
+Não conseguir perguntar nunca vira "então pode entrar".
 
-**Esta célula NÃO assina sessão** ([INV-P12]). O cookie recebido é repassado
+**Esta célula NÃO assina sessão**. O cookie recebido é repassado
 OPACO à `identidade`; não há `SessionMiddleware`, não há `request.session`, e o
 progresso da Prancheta mora no MODELO, por aluno. Duas células assinando o
 mesmo cookie produzem um cabo de guerra invisível: abrir a Prancheta deslogaria
-do site inteiro, sem erro, sem log e sem alarme (`armadilhas/143`). Guarda:
+do site inteiro, sem erro, sem log e sem alarme. Guarda:
 `tests/test_inv_pages_nao_assina_sessao.py`.
 
 Cinco respostas, e cada uma diz o que aconteceu E o que fazer:
@@ -73,8 +72,8 @@ from .views import de_fora
 
 logger = logging.getLogger("pages.porta")
 
-# A categoria que a `alunos` devolve para quem tem matrícula ativa
-# (`DECISAO-categorias-de-usuario.md`). Escrita aqui como dado desta célula: um
+# A categoria que a `alunos` devolve para quem tem matrícula ativa.
+# Escrita aqui como dado desta célula: um
 # renomeamento silencioso do outro lado aparece como teste vermelho aqui.
 CATEGORIA_ALUNO = "aluno"
 
@@ -83,8 +82,8 @@ CATEGORIA_ALUNO = "aluno"
 # silêncio — ou ela está aqui de propósito, ou a porta a protege.
 #
 # Compara-se `request.path_info`, NUNCA `request.path`: pela borda pública o
-# Traefik não remove o prefixo, e `request.path` chega como `/pages/healthz`
-# (`armadilhas/029`, medido ao vivo em duas células). `path_info` é `/healthz`
+# Traefik não remove o prefixo, e `request.path` chega como `/pages/healthz`.
+# `path_info` é `/healthz`
 # nos dois caminhos de entrada, e o guarda disso é
 # `tests/test_healthz_script_name.py`, plantado na gênese antes desta porta
 # existir.

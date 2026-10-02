@@ -62,7 +62,7 @@ def matricular(
     provider: str = "",
     provider_reference_id: str = "",
 ) -> tuple[Matricula, bool]:
-    """[INV-P5] Matrícula sob select_for_update() + transaction.atomic(), idempotente
+    """Matrícula sob select_for_update() + transaction.atomic(), idempotente
     por order_id. Chamada tanto pelo consumer do evento (R4) quanto pelo reprocesso
     manual (POST /matriculas) — as duas portas usam a MESMA idempotência.
 
@@ -191,7 +191,7 @@ def suspender_por_estorno(
         pagamento.estornado = True
         pagamento.save(update_fields=["estornado"])
 
-        # [INV-P11] O site entra no casamento: `provider_reference_id` é o id da
+        # O site entra no casamento: `provider_reference_id` é o id da
         # cobrança NA CONTA do fornecedor, e cada escola tem a sua. Duas escolas
         # podem receber a mesma referência no mesmo dia, de pagamentos que nada
         # têm a ver um com o outro, e sem o site o estorno de uma cortaria o
@@ -313,7 +313,7 @@ def entrar_na_fila(
             # Perdeu a corrida contra outra requisição da mesma pessoa: quem
             # decide é a constraint parcial (site_id, email) na fila, não o
             # "já existe?" acima. O savepoint aninhado existe porque um
-            # IntegrityError solto aborta a transação inteira (armadilhas/027).
+            # IntegrityError solto aborta a transação inteira.
             existente = (
                 Matricula.objects.select_for_update()
                 .filter(
@@ -361,7 +361,7 @@ def decidir_na_fila(
     PAGA é `nao-encontrada` aqui de propósito: esta porta não é caminho para
     mexer no status de quem comprou — para isso existiria outra, com outro rito.
 
-    [INV-ALU-C1] LIBERAR EXIGE O CURSO, E A RECUSA MORA AQUI
+    LIBERAR EXIGE O CURSO, E A RECUSA MORA AQUI
     --------------------------------------------------------
     `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` (06/09/2026): ninguém é
     aluno do site, todo mundo é aluno de UM curso, e a matrícula é o que diz
@@ -385,8 +385,8 @@ def decidir_na_fila(
     junto de uma recusa é ignorado, do mesmo jeito que `motivo` numa liberação.
 
     O QUE ESTE GUARDA NÃO ALCANÇA, e está dito na cara: a matrícula que nasce do
-    EVENTO de pagamento. `pagamento.aprovado.v1` não carrega `product_id`
-    (`contracts/eventos/`), então `handlers.py` grava `""` — e essa linha nasce
+    EVENTO de pagamento. `pagamento.aprovado.v1` não carrega `product_id`,
+    então `handlers.py` grava `""` — e essa linha nasce
     `ativa` sem curso sem passar por aqui. O evento precisaria carregar
     `product_id` para preencher esse dado. Ver [INV-ALU-C1] em `INVARIANTES.md`.
     """
@@ -415,7 +415,7 @@ def decidir_na_fila(
         linha.decidido_em = timezone.now()
         linha.decidido_por = decidido_por
         linha.motivo_recusa = "" if liberou else motivo
-        # [INV-ALU-C1] O curso entra JUNTO com o status que dá acesso, na mesma
+        # O curso entra JUNTO com o status que dá acesso, na mesma
         # transação e no mesmo `save`: uma segunda escrita depois abriria uma
         # janela, por menor que fosse, em que a linha está `ativa` sem curso.
         # Recusa não grava curso — quem foi recusado não é aluno de nada.
@@ -491,7 +491,7 @@ def apagar_recusado(*, id_da_linha: str) -> str:
 
 
 # ---------------------------------------------------------------- [CATEGORIAS]
-# As cinco categorias de usuário (`docs/decisoes/DECISAO-categorias-de-usuario.md`)
+# As cinco categorias de usuário
 # — mas só TRÊS delas são calculáveis aqui, e a ausência das outras duas é a
 # decisão, não esquecimento:
 #
@@ -503,16 +503,16 @@ def apagar_recusado(*, id_da_linha: str) -> str:
 CATEGORIA_CADASTRADO = "cadastrado"
 CATEGORIA_NA_FILA = "na_fila"
 CATEGORIA_ALUNO = "aluno"
-# [EX-ALUNO] Acrescentadas em 28/08/2026
-# (`docs/decisoes/DECISAO-ex-aluno-e-a-porta-que-explica.md`). Os ESTADOS já
+# [EX-ALUNO] Acrescentadas em 28/08/2026.
+# Os ESTADOS já
 # existiam e já bloqueavam desde a manhã; o que faltava era o sistema saber
 # DIZÊ-LOS. Até então os dois voltavam como `cadastrado` — mentira sobre a
 # pessoa, e a causa de quem saiu da escola ver o formulário de pedir entrada
 # como se nunca tivesse pedido nada.
 CATEGORIA_PAUSADO = "pausado"
 CATEGORIA_EX_ALUNO = "ex_aluno"
-# [REEMBOLSO] Acrescentada em 31/08/2026
-# (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`), pela MESMA razao das
+# [REEMBOLSO] Acrescentada em 31/08/2026,
+# pela MESMA razao das
 # duas de cima: sem ela o reembolsado voltaria como `cadastrado`, e veria o
 # formulário de pedir entrada como se nunca tivesse tido ficha nenhuma.
 CATEGORIA_REEMBOLSADO = "reembolsado"
@@ -603,7 +603,7 @@ def situacao_de(email: str) -> dict:
 
 
 # ------------------------------------------------------------------- [GESTAO]
-# A gestão de quem JÁ é aluno (`docs/decisoes/DECISAO-gestao-de-alunos.md`).
+# A gestão de quem JÁ é aluno.
 # Até 28/08/2026 não existia, em lugar nenhum, como listar quem é aluno — a
 # célula só sabia responder sobre um e-mail por vez.
 
@@ -760,8 +760,8 @@ def atualizar_matricula(
 # `DELETE /matriculas/{id}` saiu do contrato junto. Guarda:
 # `tests/test_a_ficha_nao_se_apaga.py`.
 #
-# [APAGAR-RECUSADO] Excecao aberta em 03/09/2026
-# (`docs/decisoes/DECISAO-apagar-recusado-definitivamente.md`), que reverte a
+# [APAGAR-RECUSADO] Excecao aberta em 03/09/2026,
+# que reverte a
 # lei acima SO para quem nunca chegou a ser aluno: um pedido RECUSADO pode ser
 # apagado de vez, pela funcao `apagar_recusado` abaixo. `apagar_matricula`
 # continua sem existir — esta e uma funcao NOVA, com fronteira propria.

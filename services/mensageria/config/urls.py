@@ -9,8 +9,8 @@ from config.api import api
 # expõe, e as duas só existem dentro da rede `interna` do Docker.
 #
 # `/healthz` é a sonda do compose (`infra/docker-compose.yml`, x-celula) e o que
-# faz o processo auxiliar esperar o `migrate` do servidor HTTP terminar
-# (ARMADILHAS §3.13). Ela responde sem autenticação nenhuma, de propósito.
+# faz o processo auxiliar esperar o `migrate` do servidor HTTP terminar.
+# Ela responde sem autenticação nenhuma, de propósito.
 #
 # `/api/mensageria/` é a porta de MÁQUINA (degrau 6c do
 # `PLANO-SEQUENCIAS-DE-MENSAGENS.md`): é por ela que a tela do mantenedor, que

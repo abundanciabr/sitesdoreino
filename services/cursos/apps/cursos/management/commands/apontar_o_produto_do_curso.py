@@ -4,8 +4,7 @@
 
 E o outro lado do `criar_curso` do catalogo: la o curso vira produto e ganha um
 id; aqui o curso da sala de aula passa a apontar para esse id. A matricula
-guarda o mesmo id, e e essa igualdade que a sala confere a cada visita
-(`DECISAO-cursos-matriculas-e-alunos.md` secao 1).
+guarda o mesmo id, e e essa igualdade que a sala confere a cada visita.
 
 POR QUE UM COMANDO, E NAO UM CAMPO NA PORTA DE MAQUINA
 -------------------------------------------------------
@@ -22,7 +21,7 @@ caminho, e a troca sera barata: o campo ja existe no modelo.
 
 POR QUE UM COMANDO, E NAO UMA MIGRACAO DE DADOS
 ------------------------------------------------
-[INV-CUR-C2]: nenhuma migracao desta celula roda codigo
+nenhuma migracao desta celula roda codigo
 (`tests/test_inv_c2_conteudo_so_pela_porta.py`). E o id do produto so existe
 depois de o catalogo criar o produto, na maquina, num tempo que nenhuma
 migracao alcanca.

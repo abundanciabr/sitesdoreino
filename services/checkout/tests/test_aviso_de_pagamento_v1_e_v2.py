@@ -323,7 +323,7 @@ def test_efeito_que_estoura_nao_deixa_o_fato_marcado(api, rede, sessao_a, monkey
 
 @pytest.mark.django_db
 def test_aviso_com_o_site_errado_nao_queima_a_identidade_do_fato(api, rede, sessao_a):
-    """[INV-P11] Um aviso cujo site não é o do pedido não move nada, e não pode
+    """Um aviso cujo site não é o do pedido não move nada, e não pode
     levar junto a identidade do fato: o aviso legítimo do mesmo pagamento chega
     depois e tem de pagar o pedido, em vez de ser descartado como duplicado."""
     order = _pedido(api, sessao_a)

@@ -1,5 +1,5 @@
 # pagamentos/methods/card/service.py  # [RECEITA:R1 v1]
-# [INV-P9] Não importa methods.pix nem providers.* — só core (modelo Intent +
+# Não importa methods.pix nem providers.* — só core (modelo Intent +
 # core.gateway). Guardado em check-time por .importlinter.
 from __future__ import annotations
 

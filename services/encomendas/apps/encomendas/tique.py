@@ -1,7 +1,7 @@
 """O tique de um minuto: a reavaliação periódica que faz os relógios andarem.
 
 Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 ([INV-ENC-J9] e
-[INV-ENC-J10]). Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.3, §6.4,
+). Produto: `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` §6.3, §6.4,
 §7.4 (o bloco `tique:` do algoritmo) e §8.6 (*"um tique por minuto reavalia (...)
 nada agendado individualmente"*).
 
@@ -32,7 +32,7 @@ A ORDEM DOS GESTOS É REGRA, NÃO ARRUMAÇÃO
 -----------------------------------------
 1. **Expirar** as ofertas vencidas (a encomenda volta a `na_fila`).
 2. **Escalar** a chamada aberta que venceu sem aceite ao plantão.
-3. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
+3. **Abrir** o que esperou demais na fila.
 4. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
 
 Trocar 1 com 3 mudaria o desfecho de quem estava com o relógio vencido no exato
@@ -86,7 +86,7 @@ from .relogio import (
 )
 
 # OS DOIS ESTADOS EM QUE A ENCOMENDA ESTÁ ESPERANDO UM ALUNO DA FILA. O
-# [INV-ENC-J9] nomeia os dois, e a razão de serem dois é que a encomenda pinga
+# nomeia os dois, e a razão de serem dois é que a encomenda pinga
 # entre eles enquanto desce a fila: `na_fila` → `oferecida` → (silêncio) →
 # `na_fila` → ... Um prazo que zerasse a cada volta nunca chegaria às 24h.
 ESTADOS_DA_ESPERA = frozenset({Encomenda.Status.NA_FILA, Encomenda.Status.OFERECIDA})
@@ -182,7 +182,7 @@ def expirar_ofertas_vencidas(agora: datetime, *, site_id: str) -> tuple[object, 
     `oferecida` sem oferta viva — um estado que nenhuma tela sabe desenhar e que
     o motor trataria como "já tem oferta pendente" para sempre.
 
-    **Silêncio não custa o lugar na fila** ([INV-ENC-J4]): nada aqui escreve em
+    **Silêncio não custa o lugar na fila**: nada aqui escreve em
     `data_entrada_fila`, e o varredor `ast` daquele guarda reprovaria se
     escrevesse. O que ele custa é uma linha no contador de silêncios
     consecutivos, e a pausa automática quando a conta chega ao limite da lei §6
@@ -285,7 +285,7 @@ def expirar_negociacoes_sem_proposta(
 
 
 def abrir_o_que_esperou_demais(agora: datetime, *, site_id: str) -> tuple[object, ...]:
-    """[INV-ENC-J9]: nenhuma encomenda passa do prazo da fila sem virar aberta.
+    """nenhuma encomenda passa do prazo da fila sem virar aberta.
 
     O prazo é lido UMA VEZ, antes da varredura, pela mesma razão que o motor
     calcula a expiração uma vez: a passada tem de ser função de (estado,
@@ -335,8 +335,8 @@ def abrir_o_que_esperou_demais(agora: datetime, *, site_id: str) -> tuple[object
             if viva is not None:
                 viva.responder(Oferta.Resultado.CANCELADA, em=agora)
             # O projeto Iniciante que a fila não colocou em 24h aparece no Mural
-            # para todos os elegíveis, inclusive quem tem zero entregas
-            # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1). O status `aberta` já é a
+            # para todos os elegíveis, inclusive quem tem zero entregas.
+            # O status `aberta` já é a
             # fonte de verdade dessa mudança de rota.
             encomenda.mudar_status(Encomenda.Status.ABERTA, motivo=MOTIVO_DA_ABERTURA)
             abertas.append(encomenda_id)
@@ -423,7 +423,7 @@ def expirar_reservas_vencidas(agora: datetime, *, site_id: str) -> tuple[object,
                 # perdida, e vale aqui a mesma observação de
                 # `expirar_ofertas_vencidas` — esta linha não fica vermelha num
                 # teste de um processo só, e quem dá a idempotência da passada
-                # seguinte é o FILTRO da consulta (`armadilhas/319`).
+                # seguinte é o FILTRO da consulta.
                 continue
             reserva.responder(ReservaDoMural.Resultado.EXPIROU, em=agora)
             if projeto.status == Encomenda.Status.RESERVADA:
@@ -443,12 +443,12 @@ def expirar_propostas_vencidas(agora: datetime, *, site_id: str) -> tuple[object
     ficou calado, e essa distinção não é detalhe:**
 
     - **calou o CLIENTE** (recebeu a proposta do aluno e não respondeu): o
-      projeto vai ao PLANTÃO, nunca para outro aluno ([INV-ENC-N7]). Mandá-lo ao
+      projeto vai ao PLANTÃO, nunca para outro aluno. Mandá-lo ao
       próximo faria cada aluno da fila gastar a própria vez num cliente
       fantasma, um depois do outro, e nenhum deles saberia por quê.
     - **calou o ALUNO** (recebeu a contraproposta e não respondeu): o projeto
       volta à pista de origem, para o próximo. Ele perde este projeto e nada
-      mais: nenhuma linha daqui toca `data_entrada_fila` ([INV-ENC-N5]).
+      mais: nenhuma linha daqui toca `data_entrada_fila`.
 
     `valida_ate <= agora`: o instante exato do vencimento já conta como vencido,
     a mesma convenção de borda da oferta e da reserva. Sem uma convenção única,
@@ -482,8 +482,7 @@ def expirar_propostas_vencidas(agora: datetime, *, site_id: str) -> tuple[object
                 # A outra passada chegou primeiro, ou alguém respondeu entre a
                 # leitura e a trava. Não é erro: é a corrida sendo perdida, e
                 # vale aqui a mesma observação dos dois gestos de cima. Quem dá
-                # a idempotência da passada seguinte é o FILTRO da consulta
-                # (`armadilhas/319`).
+                # a idempotência da passada seguinte é o FILTRO da consulta.
                 continue
             proposta.responder(Proposta.Resultado.EXPIROU, em=agora)
             if projeto.status == Encomenda.Status.EM_NEGOCIACAO:
@@ -502,7 +501,7 @@ def expirar_propostas_vencidas(agora: datetime, *, site_id: str) -> tuple[object
 def mandar_ao_plantao_o_que_ninguem_pode_pegar(
     agora: datetime, *, site_id: str
 ) -> tuple[object, ...]:
-    """[INV-ENC-M5]: nenhum projeto encalha no Mural em silêncio.
+    """nenhum projeto encalha no Mural em silêncio.
 
     A quarta regra do §3.1, e ela fecha o buraco dos primeiros meses: nesse
     período ninguém terá entrega aprovada, então o Mural nasce sem ninguém para
@@ -570,8 +569,8 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     3. **Expirar** as propostas vencidas (o projeto volta à pista, ou vai ao
        plantão, conforme quem ficou calado).
     4. **Escalar** a chamada aberta que venceu sem aceite ao plantão.
-    5. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
-    6. **Mandar ao plantão** o que encalhou no Mural ([INV-ENC-M5]).
+    5. **Abrir** o que esperou demais na fila.
+    6. **Mandar ao plantão** o que encalhou no Mural.
     7. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
 
     O 2 vem antes do 6 pela mesma razão que o 1 vem antes do 5: o projeto cuja
@@ -589,8 +588,8 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     ser oferecido nesta passada, e não na seguinte. O aluno solto por ela também
     volta a `disponivel` a tempo de o motor o enxergar.
 
-    Chamar duas vezes seguidas com o mesmo estado não muda nada na segunda
-    ([INV-ENC-J10]): cada gesto filtra pelo que ainda está pendente, e o que já
+    Chamar duas vezes seguidas com o mesmo estado não muda nada na segunda:
+    cada gesto filtra pelo que ainda está pendente, e o que já
     foi fechado não aparece no filtro. É a mesma propriedade do motor, e é ela
     que faz um worker reiniciado no meio de uma fila cheia não duplicar nada.
     """

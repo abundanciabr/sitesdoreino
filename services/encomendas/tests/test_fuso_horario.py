@@ -2,8 +2,8 @@
 
 Em toda outra célula, `TIME_ZONE` errado é uma data feia na tela. Nesta, a
 HORA é a unidade da mecânica: o relógio da oferta corre só das 8h às 22h de
-São Paulo e congela fora da janela (plano mestre §6.3; [INV-ENC-J8]); a
-encomenda vira aberta em 24h na fila ([INV-ENC-J9]); o prazo de produção, a
+São Paulo e congela fora da janela; a
+encomenda vira aberta em 24h na fila; o prazo de produção, a
 extensão de 48h, a aprovação tácita de 48h e o repasse "no próximo dia útil"
 contam todos neste fuso. Com o default de fábrica do Django
 (`America/Chicago`, cinco horas atrás), uma oferta feita às 20h em São Paulo

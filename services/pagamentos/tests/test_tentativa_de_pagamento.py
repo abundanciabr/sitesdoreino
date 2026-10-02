@@ -172,7 +172,7 @@ def test_envio_dentro_de_transacao_aberta_e_recusado_antes_de_chamar() -> None:
 
 @pytest.mark.smoke_card
 def test_operation_id_e_hash_nao_guardam_o_token_do_cartao() -> None:
-    """[INV-P8] O corpo enviado carrega token e documento do portador. Do corpo
+    """O corpo enviado carrega token e documento do portador. Do corpo
     fica só um hash; nenhum campo da tentativa pode conter o dado cru."""
     intent = _criar_intent()
 

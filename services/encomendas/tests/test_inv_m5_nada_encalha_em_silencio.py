@@ -1,4 +1,4 @@
-"""[INV-ENC-M5] Nenhum projeto encalha no Mural em silêncio.
+"""Nenhum projeto encalha no Mural em silêncio.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 (a quarta regra) e §8. Lei:
 `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §6.4.
@@ -305,7 +305,7 @@ def test_o_tique_expira_a_reserva_antes_de_julgar_o_encalhe(
 
 
 def test_a_segunda_passada_do_tique_nao_mexe_em_nada(semeado, criar_projeto_no_mural):
-    """[INV-ENC-J10] continua valendo com os gestos novos do Mural."""
+    """continua valendo com os gestos novos do Mural."""
     projeto = criar_projeto_no_mural()
     agora = projeto.criada_em + prazo(projeto.criada_em)
 

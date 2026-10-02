@@ -3,7 +3,7 @@
 `docs/decisoes/DECISAO-fase-4-do-sininho.md`.
 
 Esta página É a função dela: se a caixa central de avisos
-(`contracts/notificacoes.openapi.yaml`) não responde, a tela precisa dizer
+ não responde, a tela precisa dizer
 isso, nunca fingir "zero avisos".
 
 Quatro assuntos, cada um com seção própria:
@@ -12,7 +12,7 @@ Quatro assuntos, cada um com seção própria:
    frase da falha NUNCA é a mesma da lista vazia de verdade (a distinção que
    a Escolha 2 exige, byte a byte).
 2. **N+1** — o título de cada sugestão citada é buscado em LOTE, nunca um por
-   aviso (o título não viaja na carta, `DECISAO-fase-2-do-sininho.md` §4).
+   aviso.
 3. **`vinculo` ausente** — uma carta de antes de 27/08/2026 (sem o campo) não
    pode quebrar a tela nem inventar um rótulo que ninguém mandou.
 4. **`marcar_lido`/`marcar_tudo_lido`** — o payload que chega à notificacoes,

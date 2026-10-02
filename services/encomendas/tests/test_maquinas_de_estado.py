@@ -46,7 +46,6 @@ from apps.encomendas.models import (
 # Não é hipótese: aconteceu em 04/09/2026 às 15h UTC, três horas depois de o
 # arquivo nascer com `AGORA = datetime(2026, 9, 4, 12, 0)`. A `main` já estava
 # com a bomba armada quando o degrau seguinte (o motor, TAR-121) a encontrou.
-# `armadilhas/323`.
 AGORA = datetime.now(tz=fuso.utc)
 SITE = "escola-a"
 
@@ -58,9 +57,9 @@ def perfil(db):
 
 
 # O padrão é `NA_FILA` desde 04/09/2026, e a troca acompanha o modelo: a
-# encomenda nasce numa pista, não no caixa (`PLANO-AREA-DE-NEGOCIACAO.md` §5).
+# encomenda nasce numa pista, não no caixa.
 # O cartão decide o nível, e o banco recusa um projeto Iniciante `no_mural` ou
-# `reservada` (`iniciante_nunca_no_mural_reservavel`, [INV-ENC-M2]). A fábrica
+# `reservada`. A fábrica
 # aceita o cartão e deriva o nível, sem repetir uma rota em outra coluna.
 def cria_encomenda(
     status=Encomenda.Status.NA_FILA, cartao=Encomenda.Cartao.ITEM_SIMPLES
@@ -83,8 +82,8 @@ def cria_encomenda(
 def test_os_dezenove_estados_da_secao_7_2_com_a_emenda():
     """A lista da §7.2 do plano MAIS os quatro da emenda, contada.
 
-    Eram 15 até 04/09/2026. O mantenedor liberou a negociação e o mural aberto
-    (`docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`), e quatro estados entraram:
+    Eram 15 até 04/09/2026. O mantenedor liberou a negociação e o mural aberto,
+    e quatro estados entraram:
     `no_mural`, `reservada`, `em_negociacao` e `acordada`. Estado a mais ou a
     menos reprova aqui.
     """
@@ -120,7 +119,7 @@ def test_o_caixa_nao_e_mais_a_porta_de_entrada():
     É a mudança mais fácil de desfazer sem querer, e a mais cara: se alguém
     devolver o caixa para o início, a plataforma volta a pedir dinheiro por um
     valor que ninguém combinou ainda, que é exatamente o que a negociação
-    existe para não fazer (`PLANO-AREA-DE-NEGOCIACAO.md` §5).
+    existe para não fazer.
     """
     from apps.encomendas.models import Encomenda
 
@@ -156,7 +155,7 @@ def test_aceitar_uma_oferta_leva_a_negociar_e_nao_a_produzir():
 
 
 def test_quem_calou_decide_para_onde_a_negociacao_volta():
-    """[INV-ENC-N7]: cliente calado vai ao plantão, nunca ao próximo aluno.
+    """cliente calado vai ao plantão, nunca ao próximo aluno.
 
     O aluno que desiste devolve o projeto à pista dele, e o próximo aluno o
     recebe — isso é justo, porque o projeto continua bom. Mas um cliente que
@@ -209,7 +208,7 @@ def test_a_encomenda_recusa_pular_a_producao(db):
 
     `na_fila -> aprovada` é o atalho que uma tela apressada tentaria: aprovar
     sem ninguém ter produzido, entregue nem revisado. É também o que
-    [INV-ENC-S2] (nenhuma primeira entrega chega ao cliente sem humano olhar)
+    (nenhuma primeira entrega chega ao cliente sem humano olhar)
     depende de ser impossível.
     """
     encomenda = cria_encomenda(Encomenda.Status.NA_FILA)
@@ -228,7 +227,7 @@ def test_a_transicao_proibida_nao_deixa_rastro(db):
 
 
 def test_o_queryset_update_tambem_e_recusado(db):
-    """A guarda que importa: `update()` não passa por `save()` (`armadilhas/023`).
+    """A guarda que importa: `update()` não passa por `save()`.
 
     Este é o caminho de uma varredura periódica, de uma migração de dados e de
     uma tela de administração futura. Se a máquina vivesse só em Python, ela
@@ -309,7 +308,7 @@ def test_a_linha_do_mural_anda_inteira(db):
 
 
 def test_o_cliente_que_some_nao_cai_no_colo_do_proximo_aluno(db):
-    """[INV-ENC-N7] medido no banco, e não só na tabela de transições.
+    """medido no banco, e não só na tabela de transições.
 
     Da negociação se sai para o plantão (cliente calado) ou de volta à pista
     (aluno calado). As duas existem, e a diferença entre elas é a regra.
@@ -365,7 +364,7 @@ def test_o_python_e_o_postgres_concordam_em_todos_os_pares(db):
         # teste mede: aqui a pergunta e "o gatilho e o dicionario concordam?", e
         # so ela. Um projeto Iniciante seria recusado nos pares que chegam a
         # `no_mural` pelo CHECK `iniciante_nunca_no_mural_reservavel`
-        # ([INV-ENC-M2]) e a recusa entraria na conta como divergencia do
+        # e a recusa entraria na conta como divergencia do
         # gatilho, que e outra regra. As duas travas do Mural tem guarda
         # proprio: `tests/test_inv_m2_iniciante_passa_pela_fila.py`.
         encomenda = cria_encomenda(

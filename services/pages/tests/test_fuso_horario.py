@@ -2,11 +2,11 @@
 
 Sem `TIME_ZONE` vale o default de fábrica do Django, `America/Chicago`: cinco
 horas atrás de São Paulo, capaz de trocar o DIA perto da virada, sem erro
-nenhum — CI verde, deploy verde, `/healthz` 200 (`armadilhas/099`).
+nenhum — CI verde, deploy verde, `/healthz` 200.
 
 Aqui a data não é enfeite: ela vai para fora da escola. O selo do critério
 AC-12 diz "conferido pela escola em <data>" e o texto dele vale para o que o
-monitor viu NAQUELE dia (`PLANO-PORTFOLIO-DO-ALUNO.md` §6.2); a vitrine do
+monitor viu NAQUELE dia; a vitrine do
 AC-13 é o link que o aluno manda a um cliente pagante; e o pedido de
 conferência do AC-11 tem prazo, pelo molde da tela de marcos. Um selo emitido
 às 22h de São Paulo levaria a data do dia ANTERIOR na página que o aluno usa

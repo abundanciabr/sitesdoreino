@@ -4,7 +4,7 @@
 mantenedor: uma página de documento para leigos e iniciantes, com figuras,
 tabelas e histórias, ensinando o quiz da casa. A pasta `documentos/` é SEMENTE
 e a migração `0003` rodou uma vez, em 31/08/2026: um arquivo novo não vira
-página sozinho (`armadilhas/347`). Por isso este documento entra pela mesma
+página sozinho. Por isso este documento entra pela mesma
 porta dos anteriores: `semear_documento`, que semeia SÓ ele, nunca sobrescreve
 o que o mantenedor já tenha escrito pela tela, e sem a pasta na imagem não
 faz nada.

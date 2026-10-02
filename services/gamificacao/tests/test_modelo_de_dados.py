@@ -324,7 +324,7 @@ def test_o_dia_do_lancamento_e_o_dia_de_sao_paulo():
 
     Dois instantes, escolhidos para trocar de DIA. Com o fuso errado, o esforço
     da madrugada cairia no dia anterior e a Sequência quebraria para quem não
-    faltou (`armadilhas/099`).
+    faltou.
     """
     # 04:00 UTC é 25/08 01:00 em São Paulo (e 24/08 23:00 em Chicago, o default
     # de fábrica do Django).

@@ -4,7 +4,7 @@ Cada `UniqueConstraint`, cada `CheckConstraint` e a chave estrangeira composta
 de `apps/cursos/models.py` e da migração `0001` existe porque uma regra que vive
 só em código Python é uma promessa: basta um `objects.update()` na tela do
 Admin (degrau 1.5), uma migração de dados ou um `psql` de madrugada para a
-combinação proibida existir sem ninguém saber (`armadilhas/023`, `274`). Este
+combinação proibida existir sem ninguém saber. Este
 arquivo confere que o PostgreSQL recusa.
 
 E mede o semeador pelo caminho da instalação (`call_command`): o esqueleto
@@ -108,7 +108,7 @@ def test_o_curso_nasce_por_laudo(curso):
 
 @pytest.mark.parametrize("progressao", ["por_data", "por_xp", "LIVRE", ""])
 def test_progressao_de_curso_no_vocabulario_fechado(curso, progressao):
-    """Só `por_laudo` e `livre` (`DECISAO-a-sala-serve-varios-cursos.md` §3.2).
+    """Só `por_laudo` e `livre`.
     Uma terceira regra de avanço precisa de decisão nova do mantenedor, e o
     banco é quem impede que ela nasça por um `update()` distraído."""
     with pytest.raises(
@@ -132,8 +132,8 @@ def test_uma_ordem_por_bloco_por_curso(curso, bloco):
     """A restrição é `DEFERRED` (o banco a confere quando a transação fecha, e
     não na linha do `INSERT`), porque `putCourseStructure` reordena blocos em
     lugar e a faixa 1..26 não tem onde estacionar. `connection.check_constraints()`
-    força a conferência aqui dentro: sem ele o teste passaria por engano
-    (`armadilhas/358`)."""
+    força a conferência aqui dentro: sem ele o teste passaria por engano.
+    """
     with pytest.raises(IntegrityError, match="uma_ordem_por_bloco_por_curso"):
         with transaction.atomic():
             cria_bloco(curso, ordem=bloco.ordem, letra="B")
@@ -189,7 +189,7 @@ def test_um_numero_por_aula_por_curso_mesmo_em_blocos_diferentes(curso, bloco, a
     """`Unique(curso, numero)` é por CURSO: a E00 no bloco B ainda é a E00.
 
     A unicidade atravessa a chave estrangeira do bloco, e é por isso que
-    `Aula.curso` existe como coluna própria (`armadilhas/274`).
+    `Aula.curso` existe como coluna própria.
     """
     outro_bloco = cria_bloco(curso, ordem=2, letra="B")
     with pytest.raises(IntegrityError, match="um_numero_por_aula_por_curso"):
@@ -220,7 +220,7 @@ def test_a_aula_nao_aponta_para_bloco_de_outro_curso(curso):
 
 
 def test_a_chave_composta_sobrevive_a_um_queryset_update(aula):
-    """`update()` não passa por `save()` (`armadilhas/023`), e a guarda vale igual."""
+    """`update()` não passa por `save()`, e a guarda vale igual."""
     outro_curso = cria_curso(slug="curso-y")
     with pytest.raises(IntegrityError, match="aula_e_bloco_do_mesmo_curso"):
         Aula.objects.filter(pk=aula.pk).update(curso=outro_curso)
@@ -286,7 +286,7 @@ def test_a_videoaula_em_texto_fica_fora_da_ordem_canonica():
 
     A vídeo-aula em texto é um TERCEIRO caso (`TIPOS_SOB_DEMANDA`): o aluno a vê,
     mas fora da sequência, por um botão embaixo do capítulo. As 16 são a anatomia
-    que a lei da célula declara (`docs/decisoes/PLANO-CELULA-CURSOS.md` §4), e
+    que a lei da célula declara, e
     mudá-la é Rito, não conveniência de quem estiver passando por aqui.
     """
     assert tuple(Peca.TIPOS_SOB_DEMANDA) == AS_SOB_DEMANDA
@@ -387,7 +387,7 @@ def test_cartao_de_instrumento_entre_1_e_13(db, cartao):
 
 
 def test_o_esqueleto_nasce_rascunho_e_sem_nenhum_texto(esqueleto):
-    """A ausência é a decisão (`armadilhas/331`): nome de bloco, título de boss,
+    """A ausência é a decisão: nome de bloco, título de boss,
     pedido, cliente, mínimo, quiz, vídeo e instrumento chegam pela tela."""
     assert (esqueleto.nome, esqueleto.estado, esqueleto.versao) == (
         "Profissional",

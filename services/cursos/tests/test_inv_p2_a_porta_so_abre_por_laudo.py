@@ -149,7 +149,7 @@ def test_a_porta_n_so_sai_de_trancada_quando_a_n_menos_1_conclui(esqueleto, ana)
 
 
 def test_a_cerimonia_fica_pendente_no_modelo_quando_a_aula_e_boss(esqueleto, ana):
-    """O estado que a tentação poria em `request.session` (`armadilhas/143`)."""
+    """O estado que a tentação poria em `request.session`."""
     e02 = aula(esqueleto, "E02")
     e02.e_boss = True
     e02.save(update_fields=["e_boss"])
@@ -341,7 +341,7 @@ def test_o_gesto_deixa_a_cerimonia_pendente_quando_a_aula_e_boss(livre, bia):
 def test_o_gesto_emite_aula_concluida_dentro_da_transacao(livre, bia):
     """Sem a transação do teste por cima, `eventos.emitir` recusa qualquer
     emissão fora de `atomic()`: passar aqui é a prova de que o evento nasce
-    na mesma transação da porta ([INV-P6]). O envelope credita o ALUNO."""
+    na mesma transação da porta. O envelope credita o ALUNO."""
     um = porta(bia, aula(livre, "1"))
     registrar_todas(um)
     portas.concluir_por_gesto(um)

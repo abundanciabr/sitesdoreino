@@ -61,8 +61,8 @@ def _validade_guardada(email: str) -> float:
 def test_o_nao_e_esquecido_depressa_e_o_sim_nao(rede, db, matricula):
     """A correção, medida nos dois lados na mesma prova.
 
-    Desde 28/08/2026 a porta guarda a CATEGORIA em vez de um sim/não
-    (`DECISAO-ex-aluno-e-a-porta-que-explica`), e a assimetria continua a
+    Desde 28/08/2026 a porta guarda a CATEGORIA em vez de um sim/não,
+    e a assimetria continua a
     mesma: só "aluno" pode envelhecer.
 
     Sem a assimetria, este teste é impossível de satisfazer: um TTL só teria de

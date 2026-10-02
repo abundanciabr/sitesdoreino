@@ -305,7 +305,7 @@ def _pontos(valor: float) -> str:
 
 def _dia(valor: object) -> dt.date | None:
     """Data do catálogo. Instante com fuso vira o dia de São Paulo, que é o dia
-    em que a medição conta (`armadilhas/099`)."""
+    em que a medição conta."""
     if not isinstance(valor, str) or not valor:
         return None
     try:

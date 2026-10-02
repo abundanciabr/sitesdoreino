@@ -1,4 +1,4 @@
-"""[INV-ENC-N4] Nenhuma produção começa sem Acordo E pagamento confirmado com autor.
+"""Nenhuma produção começa sem Acordo E pagamento confirmado com autor.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §5 e §8. Substitui o [INV-ENC-D13] na
 ordem dos fatos, e não na substância: a confirmação registrada com autor

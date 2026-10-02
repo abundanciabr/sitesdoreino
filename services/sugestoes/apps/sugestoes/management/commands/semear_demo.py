@@ -19,7 +19,7 @@ bateria no trigger e a demo viraria permanente. Por isso cada ideia nasce JÁ no
 status final, por INSERT.
 
 O INSERT é o caminho permitido de propósito: o trigger `sugestoes_exige_changespec`
-é `BEFORE UPDATE OF status`, e a trava do `save()` (INV-SUG10) só olha
+é `BEFORE UPDATE OF status`, e a trava do `save()` só olha
 `not self._state.adding`. Criar em `em_desenvolvimento` não fura o corredor do
 ChangeSpec — o corredor guarda a TRANSIÇÃO `planejado → em_desenvolvimento`,
 que é onde o risco mora. Nada aqui transiciona.
@@ -34,7 +34,7 @@ real). Remover é achar essas identidades e desmontar de dentro para fora.
 Se o mantenedor tiver mexido no status de uma ideia demo pelo painel, ela
 GANHOU histórico append-only e não pode mais ser apagada. Nesse caso o comando
 **arquiva** em vez de apagar — some do quadro do aluno do mesmo jeito
-(`DECISAO-arquivar-ideia.md`) — e diz na tela quantas caíram nesse caminho.
+ — e diz na tela quantas caíram nesse caminho.
 """
 
 from django.core.management.base import BaseCommand, CommandError

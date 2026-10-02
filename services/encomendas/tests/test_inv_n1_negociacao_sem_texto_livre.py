@@ -1,4 +1,4 @@
-"""[INV-ENC-N1] Nenhum texto entre cliente e aluno fora dos campos estruturados.
+"""Nenhum texto entre cliente e aluno fora dos campos estruturados.
 
 Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.1 e §8. Reforça o [INV-ENC-S1], que
 **não foi revogado**: a negociação não abriu uma exceção no invariante de

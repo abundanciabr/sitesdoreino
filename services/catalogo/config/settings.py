@@ -65,5 +65,5 @@ USE_TZ = True
 # Sem esta linha vale o default de fábrica do Django, `America/Chicago`: cinco
 # horas atrás, capaz de trocar até o DIA perto da virada, sem nada acusando a
 # troca. Foi assim que a `sugestoes` foi pega em 24/08/2026 (EVO-21).
-# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+# Guarda: tests/test_fuso_horario.py.
 TIME_ZONE = "America/Sao_Paulo"

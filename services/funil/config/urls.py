@@ -104,7 +104,7 @@ urlpatterns = [
     # outras paginas da celula: a tarja e os rotulos sao texto de tela, e
     # uma rota crua faria a previa sair sempre no idioma padrao.
     path("ver-como", ver_como_view, name="ver_como"),
-    # A porta de entrada do site (DECISAO-onde-mora-a-sessao). Serve em
+    # A porta de entrada do site. Serve em
     # /{idioma}/login pelo mesmo resolver das outras: o urlconf não conhece o
     # prefixo de idioma. O nome `entrar` é o que a peça `_sessao.html` usa em
     # `{% url_i18n 'entrar' %}` — endereço à mão em template não gera prefixo.

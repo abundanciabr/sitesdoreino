@@ -19,8 +19,8 @@ from apps.i18n.idiomas import caminho_publico, idiomas_do_site
 
 CATALOGO = "http://catalogo.teste/api/catalogo"
 LEADS = "http://leads.teste/api/leads"
-# A Caixa como PROVEDORA de "quem é o dono desta sessão"
-# (contracts/sugestoes.openapi.yaml, operação getSession). Endereço de mentira,
+# A Caixa como PROVEDORA de "quem é o dono desta sessão".
+# Endereço de mentira,
 # como os outros: esta suíte nunca fala com célula de verdade.
 IDENTIDADE = "http://identidade.teste/interno"
 # A caixa central de avisos (contracts/notificacoes.openapi.yaml, Fase 5 do
@@ -32,8 +32,8 @@ IDENTIDADE = "http://identidade.teste/interno"
 # quiser o caminho "configurado e respondendo" (tests/test_sino.py) liga as
 # duas variáveis e registra o mock de `/resumo` explicitamente.
 NOTIFICACOES = "http://notificacoes.teste/api/notificacoes"
-# A célula que sabe em que categoria uma pessoa está
-# (`contracts/alunos.openapi.yaml`, getStudentStanding). Como a NOTIFICACOES e
+# A célula que sabe em que categoria uma pessoa está.
+# Como a NOTIFICACOES e
 # pelo mesmo motivo, `ALUNOS_API_URL/TOKEN` NÃO são ligadas na `ambiente`: sem
 # elas a home trata todo mundo como `cadastrado`, que é o estado real enquanto
 # a VPS não for provisionada — e é assim que a suíte inteira exercita o
@@ -75,7 +75,7 @@ OFERTA_A = {
 # meshcraft.top é o ÚNICO host real aqui, de propósito: é o primeiro site
 # multilíngue da plataforma, e os testes de matriz/cadastro/sitemap o
 # exercitam. Desde a FASE 4 os idiomas dele vêm do CATÁLOGO, exatamente no
-# formato do contrato (`contracts/catalogo.openapi.yaml`, schema Site) — o
+# formato do contrato — o
 # interim `sites_i18n.yaml` foi aposentado, e é este mock que faz o papel do
 # provedor. Nenhum arquivo local declara idioma nesta célula.
 HOST_MESH = "meshcraft.top"
@@ -202,7 +202,7 @@ def rede():
         mock.get(f"{IDENTIDADE}/sessao/completa", name="get_session_full").mock(
             return_value=httpx.Response(200, json={"autenticado": False})
         )
-        # `issueLoginToken` (DECISAO-login-por-senha.md) — a tela /login pede
+        # `issueLoginToken` — a tela /login pede
         # este token TODA vez que renderiza (fail-open na exibição), então
         # precisa de default aqui, como os dois de cima. Nomeada para o
         # teste que simula falha (o mini-formulário de senha some).
@@ -214,7 +214,7 @@ def rede():
             )
         )
         # `setPassword` — o /cadastro chama isto sempre que o pedido de vaga
-        # deu certo (DECISAO-login-por-senha.md). Default sucesso; o teste
+        # deu certo. Default sucesso; o teste
         # de falha (502 fail-closed) troca esta resposta.
         mock.post(f"{IDENTIDADE}/pessoas/definir-senha", name="definir_senha").mock(
             return_value=httpx.Response(

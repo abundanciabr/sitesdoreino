@@ -3,9 +3,9 @@
 # emitir qualquer credencial.
 #
 # Ele é uma view Django simples, registrada em config/urls.py FORA do NinjaAPI,
-# de propósito: `config/api.py` exporta o contrato congelado de pagamentos
-# (`contracts/pagamentos.openapi.yaml`), e acrescentar operação lá é Rito de
-# Contrato (RITOS.md §3), não trabalho de célula. Mesmo caminho já usado por
+# de propósito: `config/api.py` exporta o contrato congelado de pagamentos,
+# e acrescentar operação lá é Rito de
+# Contrato, não trabalho de célula. Mesmo caminho já usado por
 # `simulate_webhook`. Quem consome esta rota é a Appmax, não o checkout: ela
 # nunca entrou no contrato entre as nossas células.
 #
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 def _recusar(detalhe: str, status: int, motivo: str) -> JsonResponse:
     """Recusa fechada. `motivo` é um código fixo deste módulo e `detalhe` é
     texto fixo: nada que veio no corpo entra no log nem na resposta, porque o
-    corpo carrega client_secret, client_key e external_key (INV-P8)."""
+    corpo carrega client_secret, client_key e external_key."""
     logger.warning("instalacao appmax recusada: %s", motivo)
     return JsonResponse({"detail": detalhe}, status=status)
 
@@ -79,7 +79,7 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
     # A partir daqui o corpo não carrega mais segredo nenhum. Não é zelo
     # decorativo: um traceback exibe as variáveis locais do frame, e com
     # DEBUG=1 a página de erro do Django as imprime. Segredo em exceção é tão
-    # proibido quanto segredo em log (INV-P8).
+    # proibido quanto segredo em log.
     for chave in ("client_secret", "client_key", "external_key"):
         corpo.pop(chave, None)
 

@@ -24,7 +24,7 @@ def env(nome: str) -> str:
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# A Caixa serve sob prefixo: meshcraft.top/forms/sugestoes/ (DECISAO-EVO-01 §2).
+# A Caixa serve sob prefixo: meshcraft.top/forms/sugestoes/.
 # O Traefik NÃO remove o prefixo — quem o conhece é esta variável, nunca o
 # urls.py. Ver armadilhas/029 e tests/test_healthz_script_name.py.
 FORCE_SCRIPT_NAME = (
@@ -72,7 +72,7 @@ MIDDLEWARE = [
 ]
 
 # ---------------------------------------------------------------------------
-# Sessão da Caixa (DECISAO-EVO-01 §7: "a sugestoes cuida da própria sessão")
+# Sessão da Caixa
 # ---------------------------------------------------------------------------
 # Cookie assinado, e não tabela: o único conteúdo é um `Identidade.id` opaco que
 # já é reconferido no banco a cada requisição (`apps/core/sessao.py`). A tabela
@@ -86,8 +86,8 @@ SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 # raiz e a Caixa sob /forms/sugestoes. Duas células no MESMO domínio com o mesmo
 # nome de cookie é uma sobrescrevendo a sessão da outra.
 #
-# O nome mudou de `sugestoes_sessao` para `meshcraft_sessao` em 24/08/2026
-# (DECISAO-onde-mora-a-sessao §5.1), e a troca é OBRIGATÓRIA junto com a do
+# O nome mudou de `sugestoes_sessao` para `meshcraft_sessao` em 24/08/2026,
+# e a troca é OBRIGATÓRIA junto com a do
 # PATH logo abaixo — não é cosmética. O navegador guarda cookie por
 # (nome, domínio, **caminho**): publicar o mesmo `sugestoes_sessao` em "/" sem
 # renomear deixaria DOIS cookies de mesmo nome convivendo — o velho ainda em
@@ -165,8 +165,8 @@ TEMPLATES = [
                 # O RODAPÉ em TODA página (`apps/core/rodape.py`), 02/09/2026.
                 # É processador de contexto, e não uma inclusão escrita em cada
                 # template, porque "em todas as páginas" não pode depender de
-                # alguém lembrar da peça: tela nova nasce com rodapé
-                # (`armadilhas/242`). Quem desenha é `sugestoes/base_caixa.html`.
+                # alguém lembrar da peça: tela nova nasce com rodapé.
+                # Quem desenha é `sugestoes/base_caixa.html`.
                 "apps.core.rodape.rodape_do_contexto",
                 # O MENU DO TOPO em TODA página (`apps.core.menu`), 31/08/2026.
                 # Processador pelo MESMO motivo: "em todas as páginas" não pode
@@ -202,7 +202,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Django, mas **nenhum template desta célula o usa**: sob `SCRIPT_NAME`,
 # `{% static %}` devolve `/static/…` — endereço que, em `meshcraft.top`, cai no
 # `funil` e não na Caixa. Quem carrega o prefixo público é `{% url %}`, como em
-# todo o resto da célula (`armadilhas/029` e `/081`).
+# todo o resto da célula.
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 USE_TZ = True

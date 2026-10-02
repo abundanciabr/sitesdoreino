@@ -3,7 +3,7 @@
 Cada gesto da escola sobre uma conversa, uma mensagem ou um grupo deixa UMA
 linha em `RegistroDeModeracao`: quem fez, o quê, em quê, em que grupo, quando e
 por quê. A linha nasce na mesma transação do gesto e ninguém a altera nem apaga
-depois, nem pelo `update()` que fura o `save()` (`armadilhas/023`): quem recusa
+depois, nem pelo `update()` que fura o `save()`: quem recusa
 é o PostgreSQL.
 
 Os gestos que mexem no que outra pessoa vê ou escreveu pedem motivo, e a recusa

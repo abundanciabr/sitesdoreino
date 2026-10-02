@@ -2,9 +2,9 @@
 # O ÚNICO caminho por onde o dinheiro de uma Intent muda de estado. Mora em
 # core/ porque é vocabulário de domínio (AGENTS.pagamentos: "core/ ... modelos,
 # ledger, outbox"), e methods/pix e methods/card o usam sem enxergar
-# providers.* (INV-P9).
+# providers.*.
 #
-# [INV-P6] O ponto inteiro deste arquivo: transição de estado e aviso às outras
+# O ponto inteiro deste arquivo: transição de estado e aviso às outras
 # células são o MESMO ato. Antes dele, a regra existia em prosa ("chame emitir()
 # dentro da mesma transação") e era cumprida por disciplina; a confirmação
 # síncrona do cartão não cumpria, e aprovava pagamento sem avisar ninguém. Aqui
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # `refunded` só existe depois de `approved` (não se devolve dinheiro que não
 # entrou). Estorno e contestação são o MESMO destino, `refunded`, porque o
 # ledger registra que o dinheiro voltou; o que diferencia os dois é o `motivo`
-# do evento (contracts/eventos/pagamento.estornado.v2.json), não o estado.
+# do evento, não o estado.
 ORIGENS_ADMITIDAS: dict[str, frozenset[str]] = {
     "approved": frozenset({"created", "pending"}),
     "rejected": frozenset({"created", "pending"}),
@@ -82,7 +82,7 @@ def registrar_fato(
         if travada is None:
             return False
         if travada.status == novo_status:
-            return False  # [INV-P3] o mesmo fato de novo: o ledger já o tem
+            return False  # o mesmo fato de novo: o ledger já o tem
         if travada.status not in ORIGENS_ADMITIDAS[novo_status]:
             logger.warning(
                 "fato %s ignorado para a intent %s: ela esta em %s, e esse fato "
@@ -128,7 +128,7 @@ def marcar_tentativa_pendente(intent: Intent) -> None:
 def transicionar_e_emitir(
     *, mp_payment_id: str, novo_status: str, evento: str, dados: dict[str, Any]
 ) -> bool:
-    """[INV-P3] [INV-P6] A porta dos webhook handlers de methods/pix e
+    """A porta dos webhook handlers de methods/pix e
     methods/card: acha a intent pelo id do pagamento no provedor e entrega o
     fato ao ledger. Pagamento desconhecido é ignorado sem efeito (um webhook com
     assinatura válida para um id que não é nosso não pode criar nada)."""

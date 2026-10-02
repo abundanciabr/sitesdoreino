@@ -12,7 +12,7 @@ de esta entrega dar errado:
    vitrine. Ela abre mostrando "Entrar" (§4 da decisão).
 2. **Cache compartilhado** — página que mostrou o nome de alguém não pode ser
    guardada por proxy nenhum. Há Cloudflare na frente de domínio desta
-   plataforma (`armadilhas/017`).
+   plataforma.
 3. **Preguiça** — visitante anônimo em página de marketing não paga salto de
    rede nenhum. É a maioria absoluta do tráfego.
 4. **O e-mail não atravessa** — o contrato não o traz, e o site não o mostra.
@@ -214,7 +214,7 @@ def test_a_pagina_de_entrada_leva_ao_google(client, rede, idioma):
     ).content.decode()
 
     volta_para = quote(caminho_mesh(idioma), safe="")  # "/" → %2F; "/es/" → %2Fes%2F
-    # O `site` entrou em 31/08/2026 (degrau 1 do PLANO-SEQUENCIAS-DE-MENSAGENS):
+    # O `site` entrou em 31/08/2026:
     # a `identidade` anuncia o cadastro e o fato precisa dizer de qual site a
     # pessoa veio. Quem resolve Host→Site é ESTA célula, então é ela que manda.
     assert (

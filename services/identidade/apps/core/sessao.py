@@ -20,7 +20,7 @@ E vale o INVARIANTE da DECISAO-onde-mora-a-sessao §4, agora com esta célula
 respondendo: **o papel desta sessão nunca autoriza nada.** A lista de staff da
 Caixa é DELA (`SUGESTOES_STAFF_EMAILS`, conferida lá, sobre o e-mail que a
 resposta completa entrega ao par autorizado); a daqui só decide o que o site
-MOSTRA. Papel novo = lista própria (DECISAO-onde-mora-a-sessao §5.5).
+MOSTRA. Papel novo = lista própria.
 """
 
 import logging
@@ -126,7 +126,7 @@ def cunhar_ou_recuperar(*, email: str, nome: str, site_id: str = "") -> Identida
 def definir_senha(
     *, email: str, senha: str, nome: str = "", site_id: str = "", idioma: str = ""
 ) -> tuple[Identidade, bool]:
-    """`setPassword` — o segundo jeito de provar quem é (DECISAO-login-por-senha.md).
+    """`setPassword` — o segundo jeito de provar quem é.
 
     Mesma forma de `cunhar_ou_recuperar`: idempotente por e-mail
     (`get_or_create`), anuncia `pessoa_cadastrada` só na CUNHAGEM (reentrar
@@ -175,8 +175,8 @@ def definir_senha(
 def verificar_senha(*, email: str, senha: str) -> "Identidade | None":
     """`entrar_senha` confere aqui — devolve a `Identidade` se a senha bate,
     `None` em QUALQUER outro caso (e-mail sem linha, linha sem senha
-    definida, senha errada). Os três casos são indistinguíveis de propósito
-    (`DECISAO-login-por-senha.md` §6.1): a chave de recusa é a mesma, para
+    definida, senha errada). Os três casos são indistinguíveis de propósito:
+    a chave de recusa é a mesma, para
     não virar um jeito de descobrir quais e-mails têm conta.
     """
     identidade = Identidade.objects.filter(email=email.strip().lower()).first()

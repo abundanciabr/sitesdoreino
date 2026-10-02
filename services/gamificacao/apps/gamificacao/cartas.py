@@ -4,17 +4,16 @@
 Até aqui a gamificação só ESCUTAVA. Ela contava pontos, subia níveis e não
 dizia nada a ninguém: ganhar só acontecia se o aluno resolvesse abrir a tela por
 conta própria. Este arquivo é o degrau 9 da escada
-(`docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §6) — a voz.
+ — a voz.
 
-O formato compartilhado está em `contracts/eventos/notificacao.devida.v1.json`
-e inclui os quatro assuntos desta célula. Os campos emitidos aqui seguem esse
-formato para manter a compatibilidade com as células consumidoras.
+A carta é a `notificacao.devida`, com os quatro assuntos desta célula. Os
+campos emitidos aqui são os que as células consumidoras leem.
 
 AS QUATRO REGRAS QUE ESTE ARQUIVO EXISTE PARA CUMPRIR
 ------------------------------------------------------
 1. **Só BOA NOTÍCIA vira carta.** Perder XP, regredir na Sequência ou ter uma
-   marca estornada não gera aviso nenhum. Não é delicadeza: é a lei da célula
-   (`DECISAO-gamificacao.md`), e a notificação de culpa está na lista do §
+   marca estornada não gera aviso nenhum. Não é delicadeza: é a lei da célula,
+   e a notificação de culpa está na lista do §
    "mecânicas proibidas". O mecanismo está no ponto de emissão — `motor.py` só
    chama daqui quando o nível SOBE — e o guarda que o prova é
    `tests/test_cartas_de_celebracao.py::test_perder_xp_nao_gera_carta`.
@@ -26,7 +25,7 @@ AS QUATRO REGRAS QUE ESTE ARQUIVO EXISTE PARA CUMPRIR
 3. **Número e SLUG viajam; a FRASE nunca.** A escola serve três idiomas.
    Gravar "Você chegou ao nível 7, Modelador!" congela o idioma de quem gravou,
    e quem lê em espanhol recebe português para sempre — texto já gravado não se
-   traduz depois (`DECISAO-notificacoes` §5.1). A frase nasce na LEITURA.
+   traduz depois. A frase nasce na LEITURA.
 4. **Assunto fora do contrato não sai.** `carta_de_celebracao` recusa um assunto
    que o contrato não conheça. Um assunto inventado atravessaria o fio, seria
    gravado no sininho e só apareceria como aviso mudo na tela de alguém.
@@ -34,7 +33,7 @@ AS QUATRO REGRAS QUE ESTE ARQUIVO EXISTE PARA CUMPRIR
 O QUE ESTE ARQUIVO **NÃO** DECIDE
 ----------------------------------
 **Quando o aviso é MOSTRADO.** O plano diz, sobre notificações, *"só boas
-notícias, máx 1/dia, nunca >20h"* (§ do `PLANO-CELULA-GAMIFICACAO.md`). A
+notícias, máx 1/dia, nunca >20h"*. A
 primeira metade é regra do FATO e mora aqui. As outras duas são regra da
 ENTREGA — quantas vezes por dia o sininho incomoda, e a que horas — e não podem
 morar na origem: descartar a carta aqui apagaria o fato para sempre, e o aluno
@@ -52,7 +51,7 @@ from django.utils.text import slugify
 
 from .models import OutboxEvent
 
-# A CARTA ENDEREÇADA (Rito de Contrato de 26/08/2026): uma pessoa a avisar, um
+# A CARTA ENDEREÇADA: uma pessoa a avisar, um
 # evento. O leque é feito na ORIGEM — a lista de quem sobe de nível nunca
 # circula pela plataforma, e o tamanho do evento não cresce com a plateia.
 NOTIFICACAO_DEVIDA = "notificacao.devida"

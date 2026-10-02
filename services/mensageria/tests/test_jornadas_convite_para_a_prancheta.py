@@ -2,8 +2,8 @@
 
 `CS-PAGES-0001` AC-19: a sequência dispara por um fato **declarado** e nunca por
 inferência de progresso. Este arquivo prova as duas metades, e a segunda é a que
-importa: a plataforma não serve aula e não sabe sozinha quando alguém terminou
-(`PLANO-PORTFOLIO-DO-ALUNO.md` §3), então adivinhar produziria "monte o seu
+importa: a plataforma não serve aula e não sabe sozinha quando alguém terminou,
+então adivinhar produziria "monte o seu
 portfólio" para quem está na terceira aula.
 
 O FATO DECLARADO ESCOLHIDO, E POR QUE ELE
@@ -195,7 +195,7 @@ def test_o_mesmo_marco_reentregue_nao_convida_duas_vezes():
 
 def test_marco_sem_aluno_no_ator_id_nao_convida_ninguem_e_avisa_no_log(caplog):
     """Fail-closed: inscrever com destinatário vazio abriria um episódio de
-    ninguém, e a carta sairia endereçada ao nada (`armadilhas/255`)."""
+    ninguém, e a carta sairia endereçada ao nada."""
     semear()
     marco = aula_concluida(e_boss=True)
 

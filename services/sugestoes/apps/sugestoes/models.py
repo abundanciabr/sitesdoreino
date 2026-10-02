@@ -15,7 +15,7 @@ escrever código (`AUDITORIA-AS-IS.md`, Q3 e tabela de divergências nº 2):
    uma conversão silenciosa em cada consumidor.
 2. **`tenant_id` chama-se `site_id`.** "Tenant" não existe no vocabulário desta
    plataforma; site existe (multissítio: site é dado), é resolvido do Host uma vez por requisição
-   (CONV-SITE) e viaja nos eventos (INV-P11).
+   (CONV-SITE) e viaja nos eventos.
 
 O que **não** mora aqui, de propósito: endpoint (EVO-12) e fluxo de login
 (EVO-01 decidiu o desenho; o fluxo é despacho próprio). Desde o EVO-20 mora
@@ -72,11 +72,11 @@ class Identidade(models.Model):
     # amanhã por outro provedor — um código, por exemplo — precisa RECUPERAR
     # esta identidade, não cunhar uma segunda (EVO-01 §3).
     email = models.EmailField(unique=True)
-    # [INV-SUG11] O id da MESMA pessoa na célula `identidade` — o único
+    # O id da MESMA pessoa na célula `identidade` — o único
     # identificador que atravessa a plataforma. A resposta de `getSessionFull`
     # já o entrega (`SessionFull.id`, contrato congelado) e a porta o descartava
     # até hoje; guardá-lo é a Fase 1 do plano de notificações, e sem ele nenhuma
-    # caixa central consegue endereçar ninguém (PLANO-MESTRE §2).
+    # caixa central consegue endereçar ninguém.
     #
     # **`null=True`, e a escolha decide se a migration sobe.** Toda linha que já
     # existe em produção nasceu sem este dado, e no Postgres um índice único
@@ -90,7 +90,7 @@ class Identidade(models.Model):
     #
     # NÃO substitui o casamento por e-mail: `cunhar_ou_recuperar` continua
     # buscando por `email`, que é o que preservou a autoria inteira quando o
-    # login mudou de casa (DECISAO-celula-de-identidade §3).
+    # login mudou de casa.
     id_da_plataforma = models.CharField(max_length=64, null=True, unique=True)
     provedor = models.CharField(max_length=20, default="google")
     nome_exibido = models.CharField(max_length=120, blank=True)
@@ -154,7 +154,7 @@ class Categoria(models.Model):
 class SugestaoQuerySet(models.QuerySet):
     def visiveis(self):
         """Sem as arquivadas — o recorte que toda superfície voltada para o
-        aluno usa (`DECISAO-arquivar-ideia.md`).
+        aluno usa.
 
         **Não é status, e por isso não é `Status`.** Arquivar não é uma decisão
         de produto sobre a ideia (isso é o trilho: planejado, não planejado...);
@@ -206,7 +206,7 @@ class Sugestao(models.Model):
         on_delete=models.SET_NULL,
     )
     criado_em = models.DateTimeField(auto_now_add=True)
-    # O arquivamento (`DECISAO-arquivar-ideia.md`, 29/08/2026). `NULL` = ativa —
+    # O arquivamento. `NULL` = ativa —
     # e é o `NULL`, não um booleano ao lado, que decide `visiveis()` acima; um
     # booleano redundante poderia discordar do carimbo no primeiro `update()`
     # que tocasse um campo e esquecesse o outro.
@@ -222,7 +222,7 @@ class Sugestao(models.Model):
     # histórico de status. Vazio é o normal (nem toda arquivada precisa de
     # explicação escrita); a tela só a oferece como campo opcional.
     motivo_do_arquivamento = models.TextField(blank=True, default="")
-    # O apagamento definitivo (`DECISAO-apagar-ideia.md`, 29/08/2026) — a
+    # O apagamento definitivo — a
     # "lousa apagada": irreversível por fora (título, texto, votos e
     # comentários desaparecem para sempre), mas a LINHA fica, porque
     # `HistoricoStatus`/`ChangeSpecAprovado`/`Aviso` são `PROTECT` de
@@ -431,7 +431,7 @@ class ChangeSpecAprovado(RegistroAppendOnly):
 
 
 class CorrecaoDeTexto(RegistroAppendOnly):
-    """O que estava escrito antes de a escola corrigir (`DECISAO-corrigir-o-texto-de-uma-ideia.md`).
+    """O que estava escrito antes de a escola corrigir.
 
     O mantenedor pediu isto em 31/08/2026, com o caso na mão: um aluno escreveu
     "turorial" no nome de duas sugestões e não havia, em lugar nenhum do site,
@@ -673,7 +673,7 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
     # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
     # ao `data`. Nasceu com o `ator_id` do Rito de Contrato de 26/08/2026, que
     # de propósito mora no envelope: qualquer célula lê "quem fez isto" sem
-    # conhecer o formato do assunto (DECISAO-fase-2-do-sininho §4).
+    # conhecer o formato do assunto.
     #
     # POR QUE UM CAMPO GENÉRICO E NÃO UMA COLUNA `ator_id`. O relay monta o
     # envelope para TODOS os eventos, e os contratos são `additionalProperties:
@@ -766,7 +766,7 @@ class IdeiaAbsorvida(models.Model):
     )
     status_anterior = models.CharField(max_length=20)
     # Ids opacos de `Identidade` (a coluna `autor_id` do `Voto`), nunca linhas:
-    # e-mail não sobe para JSON nenhum (`DECISAO-EVO-01` §3).
+    # e-mail não sobe para JSON nenhum.
     votos_movidos = models.JSONField(default=list, blank=True)
     votos_descartados = models.JSONField(default=list, blank=True)
     comentarios_movidos = models.JSONField(default=list, blank=True)

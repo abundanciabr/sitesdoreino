@@ -3,7 +3,7 @@
 
 Até 07/09/2026 um produto só nascia por `manage.py criar_curso`, rodado na VPS
 pelo mantenedor a partir de um bloco de colar. A decisão de 07/09/2026
-(`DECISAO-a-sala-serve-varios-cursos.md`) diz que criar um curso tem de ser
+ diz que criar um curso tem de ser
 fácil e pelo Admin, e a tela do Admin precisa de uma porta para chamar.
 
 O que cada teste protege, e por que existe:

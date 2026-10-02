@@ -20,7 +20,7 @@ from config.api import api
 #                    dia, cobertura de rastreio e a fila de eventos mortos.
 #
 # A porta nasce com o teste de 401 em TODAS as operações, medidas do schema
-# vivo: a topologia não fecha nada (`armadilhas/186`), quem fecha é o Bearer.
+# vivo: a topologia não fecha nada, quem fecha é o Bearer.
 urlpatterns = [
     path("healthz", healthz),
     path("api/metricas/", api.urls),

@@ -2,8 +2,8 @@
 pausas e os instrumentos) e, desde o degrau 1.8, AS PESSOAS E O PROGRESSO
 (`Pessoa`, `Progresso`, `RegistroDePausa`).
 
-Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes
-[INV-CUR-C1], [INV-CUR-C2] e os três da porta, [INV-CUR-P1..P3]). Degraus 1.2
+Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes,
+[INV-CUR-C2] e os três da porta, [INV-CUR-P1..P3]). Degraus 1.2
 (TAR-147) e 1.8 (TAR-154) da escada (§10). Molde de código:
 `services/encomendas/apps/encomendas/models.py` e, para o espelho de pessoa,
 `services/forum/apps/forum/models.py`.
@@ -17,13 +17,13 @@ em `apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto; as do
 envio (quem entrega, quando, e o que a fila devolve) moram em
 `apps/cursos/envio.py`; as do laudo (a validação e os três eventos)
 moram em `apps/cursos/laudo.py`. O que mora AQUI do envio é o que só o modelo
-pode garantir: o prazo que não muda ([INV-CUR-L3]); o que mora AQUI do laudo é
+pode garantir: o prazo que não muda; o que mora AQUI do laudo é
 o que só o modelo pode garantir sozinho: [INV-CUR-L1] (a metade "não é nulo").
 
 O TEXTO DAS AULAS NUNCA ENTRA POR ARQUIVO
 -----------------------------------------
-Este repositório é público e o curso é obra não lançada do mantenedor
-(`armadilhas/331`). Toda tabela daqui nasce VAZIA de texto: a migração cria o
+Este repositório é público e o curso é obra não lançada do mantenedor.
+Toda tabela daqui nasce VAZIA de texto: a migração cria o
 esquema e não roda código ([INV-CUR-C2], guarda em
 `tests/test_inv_c2_conteudo_so_pela_porta.py`), e o `semear_esqueleto` grava só
 o que já está na lei (números, ordens, letras, os nomes canônicos dos
@@ -33,7 +33,7 @@ de máquina (degrau 1.3).
 
 A FRONTEIRA DE SITE MORA NO `Curso`
 ------------------------------------
-`site_id` (multissítio / [INV-P11]) fica no `Curso`, e só nele: bloco, aula, peça e
+`site_id` fica no `Curso`, e só nele: bloco, aula, peça e
 pausa pertencem a um curso, e é por ele que se pergunta de que site são. O
 `Instrumento` é de plataforma inteira, de propósito: os 13 cartões são os mesmos
 em toda escola.
@@ -45,8 +45,8 @@ UNICIDADE QUE ATRAVESSA CHAVE ESTRANGEIRA
 `JOIN`). Coluna redundante pode mentir, e quando mente quem cai é a unicidade
 que ela sustenta. Quem impede o par incoerente é a chave estrangeira COMPOSTA
 `(bloco_id, curso_id) -> cursos_bloco (id, curso_id)`, escrita na migração
-`0001`, que vale para o ORM, para `queryset.update()` e para `psql`
-(`armadilhas/274`). Nunca um `save()`.
+`0001`, que vale para o ORM, para `queryset.update()` e para `psql`.
+Nunca um `save()`.
 """
 
 import uuid
@@ -94,8 +94,8 @@ def id_do_site() -> models.CharField:
 
 
 class Curso(models.Model):
-    """Um curso da sala. Vários por site desde 07/09/2026
-    (`DECISAO-a-sala-serve-varios-cursos.md`), resolvidos sempre pelo par
+    """Um curso da sala. Vários por site desde 07/09/2026,
+    resolvidos sempre pelo par
     site+slug; o do livro tem o slug `profissional`.
 
     `progressao` é a REGRA DE AVANÇO do curso, escolhida pelo mantenedor no
@@ -176,8 +176,7 @@ class Curso(models.Model):
 
 class Bloco(models.Model):
     """Um bloco do curso (o livro tem 12; a sala aceita até 26). `nome` e
-    `boss_titulo` nascem vazios: são conteúdo, e conteúdo entra pela tela
-    (`armadilhas/331`).
+    `boss_titulo` nascem vazios: são conteúdo, e conteúdo entra pela tela.
 
     A UNICIDADE DA ORDEM É ADIADA (`DEFERRED`), E SÓ ELA. `putCourseStructure`
     reordena os blocos em lugar, e uma troca de posições (A vai para 2, B vai
@@ -185,8 +184,8 @@ class Bloco(models.Model):
     A aula resolve isso estacionando a ordem acima do maior valor, porque a
     faixa dela é aberta; a do bloco é fechada em 1..26 e não tem onde
     estacionar. O banco confere no `COMMIT`, e quem prova a recusa em teste
-    força a conferência com `connection.check_constraints()`
-    (`armadilhas/358`). A da letra continua imediata: letra é identidade, não
+    força a conferência com `connection.check_constraints()`.
+    A da letra continua imediata: letra é identidade, não
     posição.
     """
 
@@ -211,7 +210,7 @@ class Bloco(models.Model):
             # O par referenciável pela chave estrangeira composta da `Aula`.
             # Parece redundante (o `id` já é único), e é essa aparência que faz
             # alguém apagá-lo um dia, derrubando a guarda sem que nada pareça
-            # errado (`armadilhas/274`).
+            # errado.
             models.UniqueConstraint(
                 fields=["id", "curso"], name="uniq_bloco_id_com_curso"
             ),
@@ -517,7 +516,7 @@ class Peca(models.Model):
     # não na sequência. Ela é a mesma encomenda contada como numa vídeo-aula, e
     # chega por um botão embaixo do capítulo, num modal (pedido do mantenedor em
     # 06/09/2026). Por isso NÃO entra em `ORDEM_CANONICA`: as 16 são a anatomia
-    # que a lei da célula declara (`docs/decisoes/PLANO-CELULA-CURSOS.md` §4), e
+    # que a lei da célula declara, e
     # fazê-las virar 17 seria mudar a lei sem rito, além de pôr um texto inteiro
     # no meio da leitura de quem só quer a aula. Guarda:
     # `tests/test_modelo_de_conteudo.py::test_a_videoaula_em_texto_fica_fora_da_ordem_canonica`.
@@ -555,7 +554,7 @@ class Pausa(models.Model):
 
     `pede` é o que o aluno registra; `campos` (JSON) são os mínimos do registro.
     O formulário do checkpoint fica fechado até todas as pausas da aula terem
-    registro ([INV-CUR-P3], degrau 1.8).
+    registro.
     """
 
     class Tipo(models.TextChoices):
@@ -596,11 +595,11 @@ class Pausa(models.Model):
 class Pessoa(models.Model):
     """Quem já abriu a sala de aula, pelo id OPACO da plataforma.
 
-    **Nunca e-mail** ([INV-CUR-S1]). A matrícula se pergunta à `alunos` a cada
+    **Nunca e-mail**. A matrícula se pergunta à `alunos` a cada
     requisição, pelo e-mail que a `identidade` devolve e que esta célula usa e
     descarta na hora (`apps/core/sessao.py`); guardá-lo aqui seria o mesmo fato
     em dois lugares, e um deles apodreceria. `nome_exibido` é o único dado de
-    exibição, e a tela só mostra o da própria pessoa ([INV-CUR-P1]).
+    exibição, e a tela só mostra o da própria pessoa.
     """
 
     id_da_plataforma = models.CharField(max_length=64, primary_key=True)
@@ -621,11 +620,11 @@ class Progresso(models.Model):
     Linha ausente é porta `trancada`: só se escreve quando algo acontece (a E00
     nasce `disponivel` na primeira visita; a aula N sai de `trancada` quando a
     N-1 conclui). `concluida` só entra por `progresso.concluir`, que EXIGE um
-    laudo aberto ([INV-CUR-P2]); nenhuma tela nem porta grava esse valor.
+    laudo aberto; nenhuma tela nem porta grava esse valor.
 
     `cerimonia_pendente` e `laudo_lido` são os dois estados que a tentação
-    poria em `request.session`, e que deslogariam a plataforma inteira
-    (`armadilhas/143`, [INV-P12]). Moram aqui, no modelo.
+    poria em `request.session`, e que deslogariam a plataforma inteira.
+    Moram aqui, no modelo.
     """
 
     class Estado(models.TextChoices):
@@ -728,7 +727,7 @@ PRAZO_DE_REVISAO = timedelta(hours=24)
 
 
 class PrazoImutavel(Exception):
-    """[INV-CUR-L3] Alguém tentou mudar `enviado_em` ou `prazo_em` de um envio.
+    """Alguém tentou mudar `enviado_em` ou `prazo_em` de um envio.
 
     A mensagem é para quem programa, não para o aluno: nenhuma tela chega aqui,
     porque nenhuma tela tem campo de prazo. Quem chega é código novo tentando
@@ -780,7 +779,7 @@ class Envio(models.Model):
     quando a aula não tem instrumento com escala), na versão em que começou
     (P04).
 
-    O PRAZO NÃO MUDA, E ISSO TEM TRÊS CADEADOS ([INV-CUR-L3])
+    O PRAZO NÃO MUDA, E ISSO TEM TRÊS CADEADOS
     -------------------------------------------------------
     `prazo_em` é `enviado_em + 24 h`, calculado UMA vez, no `save()` que
     insere. Depois disso: (1) o `save()` recusa qualquer mudança em `enviado_em`
@@ -946,7 +945,7 @@ class RascunhoDaIA(models.Model):
 
     A COLUNA QUE NÃO EXISTE É A LEI DESTA TABELA
     ---------------------------------------------
-    [INV-CUR-L4]: **nenhuma decisão, data ou resposta à pergunta de amanhã de
+    **nenhuma decisão, data ou resposta à pergunta de amanhã de
     manhã vem da IA.** Não há, e não pode haver aqui, um campo `decisao`, um
     `data_de_retorno` ou um `sabe_o_que_fazer_amanha`. O degrau deste agente é
     H, "só prepara": os três são o produto do trabalho da professora, e uma
@@ -1005,9 +1004,9 @@ class Laudo(models.Model):
     laudo; `apps/cursos/laudo.py::emitir` ainda confere antes, para devolver
     uma frase em vez de um `IntegrityError` cru.
 
-    O banco garante sozinho que um laudo devolvido tenha data de retorno
-    ([INV-CUR-L1], a metade "não é nulo"). As demais ([INV-CUR-L5],
-    [INV-CUR-L6], a metade "amanhã ou depois" de L1) precisam do relógio ou da escala do instrumento, e por isso
+    O banco garante sozinho que um laudo devolvido tenha data de retorno.
+    As demais ([INV-CUR-L5],
+    a metade "amanhã ou depois" de L1) precisam do relógio ou da escala do instrumento, e por isso
     são do SERVIÇO, com teste — nunca menos rigorosas por estarem em Python:
     só não CABEM num `CheckConstraint`.
 
@@ -1085,7 +1084,7 @@ class Laudo(models.Model):
                 | models.Q(instrumento_versao__gte=1),
                 name="instrumento_versao_de_laudo_comeca_em_1_ou_nula",
             ),
-            # [INV-CUR-L1], a metade que o banco garante sozinho: devolvido
+            # a metade que o banco garante sozinho: devolvido
             # exige data de retorno, e qualquer OUTRA decisão a mantém nula.
             # O "amanhã ou depois" depende do relógio no instante da escrita:
             # é do serviço, com teste de mutação.

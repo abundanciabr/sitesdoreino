@@ -2,8 +2,8 @@
 
 Os dois verbos do ciclo de um experimento de pagina, criar e iniciar (TAR-771,
 26/09/2026), no molde da 0033: envolvidos em `SeparateDatabaseAndState` porque
-`AlterField` no SQLite reconstroi a tabela e derruba os gatilhos append-only
-(`armadilhas/246`), e acrescentar uma escolha nao muda coluna nenhuma.
+`AlterField` no SQLite reconstroi a tabela e derruba os gatilhos append-only,
+e acrescentar uma escolha nao muda coluna nenhuma.
 """
 
 from django.db import migrations, models

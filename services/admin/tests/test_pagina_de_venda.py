@@ -19,8 +19,7 @@ O que estes guardas protegem:
    mesmo. Um bloqueio poria a máquina decidindo o que ele pode dizer.
 5. **Rascunho e publicado são coisas diferentes na tela.** Salvar não muda o
    site; publicar muda e cria versão nova.
-6. **Toda escrita deixa linha de auditoria**, inclusive a que falhou
-   (`DECISAO-celula-admin.md` §3).
+6. **Toda escrita deixa linha de auditoria**, inclusive a que falhou.
 7. **A porta continua sendo a porta**: sem crachá, nada disto responde.
 """
 

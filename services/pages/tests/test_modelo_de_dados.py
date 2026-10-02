@@ -4,7 +4,7 @@ Cada `CheckConstraint` e cada `UniqueConstraint` de `apps/portfolio/models.py`
 existe porque regra que vive só em Python é promessa: basta um
 `objects.update()` numa tela futura, uma migração de dados ou uma linha editada
 à mão no `psql` numa madrugada de incidente para a combinação proibida existir
-sem ninguém saber (`armadilhas/023`, `RETROSPECTIVA-FASE-D.md` §2). Este arquivo
+sem ninguém saber. Este arquivo
 confere que o PostgreSQL recusa.
 
 Aqui isso protege três coisas concretas: a fronteira entre escolas (multissítio: site é dado), a

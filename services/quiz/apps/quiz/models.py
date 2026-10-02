@@ -152,7 +152,7 @@ class Submission(models.Model):
     session_id = models.UUIDField(null=True, blank=True)
     site_id = models.CharField(
         max_length=64
-    )  # [INV-P11] snapshot do site, não FK cruzada
+    )  # snapshot do site, não FK cruzada
     score = models.IntegerField()
     result_key = models.CharField(max_length=100)
     answers = models.JSONField()  # {question_id: option_id}, para auditoria

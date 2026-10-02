@@ -12,7 +12,7 @@ O QUE ESTE ARQUIVO PROTEGE
 2. **Escola sem degrau não vira "OK".** Ligar zero linhas e sair com sucesso é
    falso-verde, a doença nº 1 do catálogo desta casa.
 3. **Um degrau só também não vira "OK".** Com um degrau não há para onde subir e
-   a tela diz "o degrau seguinte ainda não abriu" (`armadilhas/271`): quem rodou
+   a tela diz "o degrau seguinte ainda não abriu": quem rodou
    isto acharia que falhou.
 4. **A linha de conclusão só sai no caminho feliz** — é ela que o pipeline
    procura, e ela nunca pode aparecer numa saída em que algo deu errado.

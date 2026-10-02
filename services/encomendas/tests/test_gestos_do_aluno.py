@@ -65,7 +65,7 @@ def test_aceitar_leva_a_encomenda_para_a_negociacao_e_mantem_o_aluno_disponivel(
 def test_quem_esta_negociando_nao_recebe_a_encomenda_seguinte(
     tres_na_fila, criar_encomenda
 ):
-    """[INV-ENC-J7] e a regra "uma por vez" (§6.5) saindo do mesmo gesto.
+    """e a regra "uma por vez" (§6.5) saindo do mesmo gesto.
 
     Negociar mantém o aluno disponível para conservar seu lugar, mas o motor
     conhece a negociação viva e não oferece outro projeto a ele.

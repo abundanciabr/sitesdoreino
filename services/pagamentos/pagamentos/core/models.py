@@ -108,7 +108,7 @@ def transicao_do_ledger() -> Iterator[list[str]]:
 
 class Intent(models.Model):
     """Uma linha por intenção de cobrança. `idempotency_key` é o que torna
-    POST /intents idempotente (INV-P4): a MESMA chave sempre resolve para a
+    POST /intents idempotente: a MESMA chave sempre resolve para a
     MESMA linha — nunca uma segunda chamada ao provider."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -171,7 +171,7 @@ class Intent(models.Model):
             self._status_no_banco = self.status
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        """[INV-P6] A tranca do dinheiro, no lugar onde ela não tem como ser
+        """A tranca do dinheiro, no lugar onde ela não tem como ser
         esquecida: gravar `status` financeiro só passa dentro da janela que
         `core/ledger.py` abre, e lá o aviso da outbox nasce junto. Fora dela a
         gravação levanta `TransicaoForaDoLedger` em vez de aprovar em silêncio.
@@ -225,7 +225,7 @@ class PaymentAttempt(models.Model):
     segunda linha para o mesmo Intent. Duplo clique simultâneo, portanto, não
     depende de o código lembrar de checar.
 
-    [INV-P8] Nada de dado do portador aqui: do corpo enviado fica só
+    Nada de dado do portador aqui: do corpo enviado fica só
     `request_hash`, e o motivo do provedor entra sanitizado como código.
     """
 
@@ -319,7 +319,7 @@ class InstalacaoAppmax(models.Model):
     chamada do mesmo `app_id` devolve o MESMO UUID, nunca um novo, que
     derrubaria a instalação já existente.
 
-    [INV-P8] `client_secret`, `client_key` e `external_key` NUNCA são
+    `client_secret`, `client_key` e `external_key` NUNCA são
     persistidos. Do segredo fica no máximo `client_secret_recebido`, a marca de
     que a credencial chegou a ser emitida para esta conta.
     """
@@ -378,7 +378,7 @@ class AppmaxWebhookInbox(models.Model):
 
 class OutboxEvent(models.Model):
     """[RECEITA:R3 v1] Uma linha por evento emitido. `emitir()` grava SEMPRE na
-    MESMA transação da mudança de estado que a justifica (INV-P6) — o relay
+    MESMA transação da mudança de estado que a justifica — o relay
     (`relay_outbox`) publica no Redis Streams depois, marcando `published_at`."""
 
     event_id = models.UUIDField(default=uuid.uuid4, unique=True)
@@ -408,7 +408,7 @@ class OutboxEvent(models.Model):
 
 
 def emitir(event: str, data: dict[str, Any], *, version: int = 1) -> OutboxEvent:
-    """[RECEITA:R3 v1] [INV-P6] Chame SEMPRE dentro da MESMA transaction.atomic()
+    """[RECEITA:R3 v1] Chame SEMPRE dentro da MESMA transaction.atomic()
     da mudança de estado que o justifica — estado sem evento e evento sem estado
     são ambos impossíveis."""
     return OutboxEvent.objects.create(event=event, version=version, payload=data)

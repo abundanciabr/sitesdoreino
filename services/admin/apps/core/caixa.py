@@ -450,7 +450,7 @@ def _quem(request) -> dict:
 
     Os três campos vêm da porta, que já resolveu a pessoa pela `identidade`. O
     `id` é o que atravessa a plataforma, e a Caixa precisa dele para poder
-    AFIRMAR quem moderou ([INV-SUG12]) — sem ele a escrita é recusada com
+    AFIRMAR quem moderou — sem ele a escrita é recusada com
     instrução, e não com erro.
     """
     admin = getattr(request, "admin", None) or {}

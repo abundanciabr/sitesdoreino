@@ -93,7 +93,7 @@ def test_recusa_fala_o_idioma_do_destino(porta):
 def test_o_redirect_uri_e_o_endereco_neutro_cadastrado_no_google(client, rede, db):
     """O retorno é `/entrar/google/retorno` SEM prefixo de célula — o endereço
     que o mantenedor cadastrou no console em 24/08/2026 exatamente para o dia
-    desta célula (DECISAO-onde-mora-a-sessao §5.2)."""
+    desta célula."""
     inicio = client.get("/entrar/google")
     destino = urlparse(inicio["Location"])
     from urllib.parse import parse_qs

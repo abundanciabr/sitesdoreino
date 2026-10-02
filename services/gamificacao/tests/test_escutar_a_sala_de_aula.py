@@ -9,8 +9,8 @@ handler credita, a regra está semeada.
 O QUE ESTE ARQUIVO TRAVA:
 
 1. **O envelope do teste é o que o contrato fixa.** Um envelope de fantasia
-   provaria que o motor funciona com dados que nunca vão chegar
-   (`armadilhas/255`): aqui ele é validado contra o ARQUIVO congelado.
+   provaria que o motor funciona com dados que nunca vão chegar:
+   aqui ele é validado contra o ARQUIVO congelado.
 2. **Regra desligada não paga, e ligar depois não paga o passado.** A data de
    vigência nasce no clique do mantenedor, e o motor recusa fato anterior a ela.
 3. **O mesmo evento paga uma vez só**, nas duas camadas: a do consumidor
@@ -21,7 +21,7 @@ O QUE ESTE ARQUIVO TRAVA:
    acrescentá-la é decisão do mantenedor, não de um handler.
 5. **Envelope torto não credita pela metade.** Sem `ator_id` não há de quem ser
    o ponto: nada é pago, nenhuma pessoa fantasma nasce. E campo NOVO no dado
-   não derruba o crédito: é a via aditiva dos contratos (RITOS §3.3).
+   não derruba o crédito: é a via aditiva dos contratos.
 """
 
 from __future__ import annotations
@@ -256,7 +256,7 @@ def test_sem_aluno_no_envelope_ninguem_e_pago_e_ninguem_nasce(ator_id):
 
     O contrato declara `ator_id` obrigatório e nunca nulo, mas quem consome fato
     de outra célula não confia na promessa. Pagar a um id inventado criaria uma
-    pessoa fantasma que nenhuma sessão jamais resolve (`armadilhas/255`): o
+    pessoa fantasma que nenhuma sessão jamais resolve: o
     ledger enche e a tela de quem entregou continua em zero, sem erro nenhum.
     """
     _regra()
@@ -276,7 +276,7 @@ def test_sem_aluno_no_envelope_ninguem_e_pago_e_ninguem_nasce(ator_id):
 
 def test_campo_novo_no_dado_nao_derruba_o_credito():
     """Um campo que o contrato ainda não conhece é a via ADITIVA do Rito de
-    Contrato (RITOS §3.3): um consumidor que o recusasse transformaria toda
+    Contrato: um consumidor que o recusasse transformaria toda
     emenda retrocompatível em quebra."""
     _regra()
 

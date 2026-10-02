@@ -13,16 +13,15 @@ tratar como verdade:
 1. **A máquina de estado da encomenda não é um `if` espalhado.** As transições da
    §7.2 do plano são DADO (`Encomenda.TRANSICOES`), e o PostgreSQL recusa a
    transição proibida por gatilho — inclusive vinda de `queryset.update()`, de
-   uma migração de dados ou de um `psql` de madrugada (`armadilhas/023`).
+   uma migração de dados ou de um `psql` de madrugada.
 2. **Os parâmetros são DADO, com histórico por linha nova.** `Parametro` é
    append-only NO BANCO: `UPDATE` e `DELETE` são recusados por gatilho. Mudar um
    valor é acrescentar uma linha com `desde`, `motivo` e `quem`; o motor lê o
    valor vigente **em `agora`**, e por isso um parâmetro mudado às 15h não
    reescreve uma oferta feita às 14h (lei §3.8).
-3. **Nenhum dado de um site aparece em outro.** `site_id` em toda entidade
-   (multissítio / [INV-P11]), e a coluna denormalizada não pode mentir: a `Oferta` só
-   aponta para encomenda e perfil DO MESMO SITE, por chave estrangeira composta
-   (`armadilhas/274`).
+3. **Nenhum dado de um site aparece em outro.** `site_id` em toda entidade,
+   e a coluna denormalizada não pode mentir: a `Oferta` só
+   aponta para encomenda e perfil DO MESMO SITE, por chave estrangeira composta.
 
 `site_id` EM TODA ENTIDADE, COM UMA EXCEÇÃO DECLARADA
 -----------------------------------------------------
@@ -108,8 +107,8 @@ class TransicaoProibida(ValidationError):
 #
 # Os 19 estados, na ordem da linha principal — eram 15 até 04/09/2026, quando o
 # mantenedor liberou a negociação e o mural aberto e quatro entraram:
-# `no_mural`, `reservada`, `em_negociacao` e `acordada`
-# (`docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`). `Encomenda.Status` repete os
+# `no_mural`, `reservada`, `em_negociacao` e `acordada`.
+# `Encomenda.Status` repete os
 # mesmos valores porque é ele quem dá o RÓTULO que a tela mostra; que as duas
 # listas nunca divirjam é o que
 # `tests/test_maquinas_de_estado.py::test_os_estados_do_textchoices_sao_os_da_maquina`
@@ -170,8 +169,8 @@ _LINHA_PRINCIPAL = {
     # inicial era `aguardando_pagamento`, e tinha de ser: o preço vinha da
     # tabela, então já se conhecia antes de qualquer aluno ver o pedido. Com a
     # negociação que o mantenedor liberou, o valor só existe DEPOIS do acordo —
-    # e não se cobra um valor que ainda não foi combinado
-    # (`PLANO-AREA-DE-NEGOCIACAO.md` §5). O caixa não sumiu; ele mudou de
+    # e não se cobra um valor que ainda não foi combinado.
+    # O caixa não sumiu; ele mudou de
     # lugar, e agora fica entre `acordada` e `em_producao`.
     "na_fila": {"oferecida", "aberta", "para_reclassificar", "cancelada"},
     # A segunda pista. Quem chega aqui é projeto de nível Intermediário ou
@@ -191,7 +190,7 @@ _LINHA_PRINCIPAL = {
     # Chamada aberta: o primeiro que aceitar leva, e leva PARA A NEGOCIAÇÃO.
     "aberta": {"em_negociacao", "para_reclassificar"},
     # As três saídas da negociação, e a diferença entre elas é quem ficou
-    # calado (`PLANO-AREA-DE-NEGOCIACAO.md` §4.2):
+    # calado:
     #   acordada             -> os dois fecharam;
     #   na_fila / no_mural   -> o ALUNO calou ou desistiu: volta à pista dele,
     #                           e ele não perde o lugar na fila;
@@ -206,7 +205,7 @@ _LINHA_PRINCIPAL = {
     "acordada": {"aguardando_pagamento", "cancelada"},
     # E daqui só se sai para a produção: o prazo do acordo começa a contar na
     # confirmação do pagamento, não no acordo, senão a demora de quem confirma
-    # viraria atraso do aluno ([INV-ENC-N8]).
+    # viraria atraso do aluno.
     "aguardando_pagamento": {"em_producao", "cancelada"},
     "em_producao": {"entregue", "abandonada"},
     # A auditoria automática reprovou: volta ao aluno antes de humano nenhum ver.
@@ -310,8 +309,8 @@ class PerfilProfissional(models.Model):
     primeiro dólar é tela cheia, uma vez só (plano §5.8), e toda tela assim
     precisa responder "esta pessoa já viu?". O caminho curto é
     `request.session[...]`, que funciona em dev, passa em teste de unidade e
-    desloga a plataforma inteira em produção, sem erro em lugar nenhum
-    (`armadilhas/143`). O estado mora AQUI, como a gamificação faz com
+    desloga a plataforma inteira em produção, sem erro em lugar nenhum.
+    O estado mora AQUI, como a gamificação faz com
     `celebracoes_pendentes`.
     """
 
@@ -366,7 +365,7 @@ class PerfilProfissional(models.Model):
         default=Disponibilidade.DISPONIVEL,
     )
     # Quando a pessoa ativou a fila pela PRIMEIRA vez. É o desempate da ordem, e
-    # só o abandono o altera (plano §6.2; [INV-ENC-J4], guarda no degrau 2.3).
+    # só o abandono o altera.
     data_entrada_fila = models.DateTimeField(null=True, blank=True)
     entregas_aprovadas = models.PositiveIntegerField(default=0)
     silencios_consecutivos = models.PositiveSmallIntegerField(default=0)
@@ -420,7 +419,7 @@ class PerfilProfissional(models.Model):
             # O par referenciável pela chave estrangeira composta da `Oferta` e
             # da `Encomenda`. Parece redundante (o `id` já é único) — e é essa
             # aparência que faz alguém apagá-lo um dia, derrubando a guarda de
-            # site sem que nada pareça errado (`armadilhas/274`).
+            # site sem que nada pareça errado.
             models.UniqueConstraint(
                 fields=["id", "site_id"], name="uniq_perfil_id_com_site"
             ),
@@ -507,14 +506,14 @@ class Encomenda(models.Model):
 
     **O `status` só muda por `mudar_status()`, e o PostgreSQL recusa o resto.**
     Uma máquina de estado que vive só em Python é uma promessa: `queryset.update()`
-    não passa por `save()` (`armadilhas/023`), e uma migração de dados, uma tela
+    não passa por `save()`, e uma migração de dados, uma tela
     de administração futura ou um `psql` de madrugada passam por fora dela sem
     ninguém saber. O gatilho `encomendas_transicao_permitida` compara
     `OLD.status` com `NEW.status` contra a mesma tabela de transições, e nega
     dizendo o nome dos dois estados.
 
-    **Dinheiro é inteiro em centavos**, nunca `float` nem `Decimal`
-    (`contracts/README.md`, item 7). E estar aqui não é cobrar: `preco_cents` e
+    **Dinheiro é inteiro em centavos**, nunca `float` nem `Decimal`.
+    E estar aqui não é cobrar: `preco_cents` e
     `taxa_cents` são exigidos pelos eventos `encomenda.paga.v1` e
     `encomenda.aprovada.v1`, que ESTA célula emite. Quem cobra, retém, repassa e
     reembolsa é a `pagamentos` (lei §9, critério de morte 3).
@@ -577,8 +576,8 @@ class Encomenda(models.Model):
     site_id = id_do_site()
 
     origem = models.CharField(max_length=8, choices=Origem.choices)
-    # O nível decide por onde a encomenda chega ao aluno
-    # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1): Iniciante nasce na fila;
+    # O nível decide por onde a encomenda chega ao aluno:
+    # Iniciante nasce na fila;
     # Intermediário e Avançado nascem no Mural. A chamada aberta é o único caso
     # em que um Iniciante fica visível no Mural, e o status `aberta` já carrega
     # essa informação. Uma segunda coluna para repetir a rota criaria duas
@@ -595,8 +594,8 @@ class Encomenda(models.Model):
     # O PREÇO DE REFERÊNCIA, e ele deixou de ser o preço final em 04/09/2026.
     # Com a negociação, a tabela vira régua e não lei: ela dá ao cliente uma
     # ideia de custo, ao aluno um chão para ancorar a proposta, e ao plantão uma
-    # medida para enxergar proposta muito fora da curva
-    # (`PLANO-AREA-DE-NEGOCIACAO.md` §4.4). O valor que vale é
+    # medida para enxergar proposta muito fora da curva.
+    # O valor que vale é
     # `acordo_valor_cents`, e são DUAS colunas de propósito: uma coluna com dois
     # significados dependendo do estado é a forma mais barata de um relatório
     # somar referência com acordo e ninguém perceber.
@@ -605,8 +604,8 @@ class Encomenda(models.Model):
 
     # ── O ACORDO, que congela o combinado ────────────────────────────────────
     # Todos nascem NULOS e só o fechamento do acordo os preenche. Depois disso
-    # não mudam: mexer neles pede mediação com autor e motivo registrados
-    # ([INV-ENC-N3]). É este bloco que torna a disputa julgável — sem ele, uma
+    # não mudam: mexer neles pede mediação com autor e motivo registrados.
+    # É este bloco que torna a disputa julgável — sem ele, uma
     # reclamação de "não é o que eu pedi" é palavra contra palavra.
     #
     # As tabelas `Proposta` e `Acordo` (as rodadas, as contrapropostas, o
@@ -637,7 +636,7 @@ class Encomenda(models.Model):
     )
 
     # A caixa marcada por padrão no checkout (plano §5.6). Sem ela a peça não
-    # sai pela porta de peças aprovadas ([INV-ENC-S4], Fase 6), e o default é
+    # sai pela porta de peças aprovadas, e o default é
     # `False` porque autorização que nasce ligada não é autorização.
     autorizacao_portfolio = models.BooleanField(default=False)
 
@@ -674,11 +673,10 @@ class Encomenda(models.Model):
                 condition=models.Q(origem__in=["fila", "direto", "escola"]),
                 name="origem_no_vocabulario_fechado",
             ),
-            # [INV-ENC-M2] NO BANCO: projeto Iniciante nunca senta no Mural
+            # NO BANCO: projeto Iniciante nunca senta no Mural
             # reservável. Ele nasce na fila, porque é ela que garante o primeiro
             # trabalho de quem nunca entregou, e a única porta dele para o Mural
-            # é a chamada aberta, que é o estado `aberta`
-            # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1).
+            # é a chamada aberta, que é o estado `aberta`.
             #
             # A máquina de estado já ajuda: `na_fila` não tem seta para
             # `no_mural`, e o gatilho do PostgreSQL recusa a transição. Mas
@@ -738,7 +736,7 @@ class Encomenda(models.Model):
             # O prazo prometido é o de produção MAIS o dia de revisão: nunca
             # antes. Prometer ao cliente uma data anterior à do trabalho é o
             # atraso que ninguém consegue explicar depois.
-            # [INV-ENC-N6], a metade que vale ANTES da primeira proposta: um
+            # a metade que vale ANTES da primeira proposta: um
             # aluno nunca tem dois projetos em negociação ao mesmo tempo,
             # somando as duas pistas. A trava gêmea da `Proposta`
             # (`uma_proposta_viva_por_aluno`) só existe depois que alguém
@@ -799,7 +797,7 @@ class MudancaDeStatus(models.Model):
 
     O plano §7.1 pede "histórico de status com autor" numa linha; a razão de ele
     ser append-only por gatilho, e não por disciplina, é a mesma da auditoria da
-    célula `admin` (`armadilhas/079`): histórico que pode ser editado não é
+    célula `admin`: histórico que pode ser editado não é
     histórico. Quando uma mediação precisar responder "quem mandou esta
     encomenda de volta para a fila, e quando", esta tabela é a resposta, e ela
     não pode ter sido reescrita por um `update()` no meio do caminho.
@@ -849,7 +847,7 @@ class Oferta(models.Model):
     ela que se audita se a fila foi justa, é dela que saem os três usos do
     "passar com motivo" (métricas, reclassificação por dois `nao_me_sinto_pronto`
     na mesma encomenda, aviso ao professor por três em 30 dias), e é ela que faz
-    [INV-ENC-J1] e [INV-ENC-J2] serem verificáveis de fora.
+    e [INV-ENC-J2] serem verificáveis de fora.
 
     **As duas travas de uma oferta pendente já são do BANCO**, por índice único
     parcial. Os invariantes J1 e J2 e os guardas deles nascem com o motor, no
@@ -897,7 +895,7 @@ class Oferta(models.Model):
 
     oferecida_em = models.DateTimeField(auto_now_add=True)
     # Calculado com a janela de horas úteis: o relógio corre só das 8h às 22h de
-    # São Paulo e congela fora dela ([INV-ENC-J8], degrau 2.4). A conta é do
+    # São Paulo e congela fora dela. A conta é do
     # relógio; a tabela só guarda o instante que ela devolveu.
     expira_em = models.DateTimeField()
     # Qual rodada de ofertas desta encomenda (campo `rodada` de
@@ -921,7 +919,7 @@ class Oferta(models.Model):
             ),
         ]
         constraints = [
-            # [INV-ENC-J1], no banco: uma encomenda nunca tem duas ofertas
+            # no banco: uma encomenda nunca tem duas ofertas
             # pendentes. Índice único PARCIAL — as ofertas já respondidas se
             # acumulam de propósito, porque são o histórico.
             models.UniqueConstraint(
@@ -929,7 +927,7 @@ class Oferta(models.Model):
                 condition=models.Q(resultado="pendente"),
                 name="uma_oferta_pendente_por_encomenda",
             ),
-            # [INV-ENC-J2], no banco: um aluno nunca tem duas ofertas pendentes.
+            # no banco: um aluno nunca tem duas ofertas pendentes.
             models.UniqueConstraint(
                 fields=["aluno"],
                 condition=models.Q(resultado="pendente"),
@@ -1026,7 +1024,7 @@ class ReservaDoMural(models.Model):
     -------------------------------------
     `Unique(encomenda, aluno)`, sem condição nenhuma: **ninguém pega duas vezes
     o mesmo projeto**, nem depois de a reserva vencer. É a mesma forma do
-    [INV-ENC-J6] na outra pista, e sem ela o projeto giraria sem sair do lugar
+    na outra pista, e sem ela o projeto giraria sem sair do lugar
     (o mesmo aluno pega, deixa vencer, pega de novo). A regra também é lida
     pelo caminho educado, em `mural.vaga_de`, para o aluno receber uma frase em
     vez de um `IntegrityError`; o índice é o que sobra quando alguém esquece.
@@ -1075,7 +1073,7 @@ class ReservaDoMural(models.Model):
     )
 
     pegada_em = models.DateTimeField(auto_now_add=True)
-    # Calculado com a MESMA janela de horas úteis da oferta ([INV-ENC-J8]): o
+    # Calculado com a MESMA janela de horas úteis da oferta: o
     # relógio corre das 8h às 22h de São Paulo e congela fora dela. A conta é do
     # `relogio.calcular_expiracao_da_reserva`; a tabela só guarda o instante que
     # ela devolveu.
@@ -1097,14 +1095,14 @@ class ReservaDoMural(models.Model):
             ),
         ]
         constraints = [
-            # [INV-ENC-M3], primeira metade: o Mural não é leilão. Índice único
+            # primeira metade: o Mural não é leilão. Índice único
             # PARCIAL, porque as reservas mortas se acumulam de propósito.
             models.UniqueConstraint(
                 fields=["encomenda"],
                 condition=models.Q(resultado__in=["pendente", "negociando"]),
                 name="uma_reserva_viva_por_encomenda",
             ),
-            # [INV-ENC-M3], segunda metade: o projeto que voltou ao Mural não
+            # segunda metade: o projeto que voltou ao Mural não
             # volta para quem já o teve. Sem condição: vale para sempre.
             models.UniqueConstraint(
                 fields=["encomenda", "aluno"],
@@ -1255,7 +1253,7 @@ class Proposta(models.Model):
         "valida_ate",
     )
 
-    # Os quatro que o Acordo CONGELA na encomenda ([INV-ENC-N3]). São quatro e
+    # Os quatro que o Acordo CONGELA na encomenda. São quatro e
     # não seis: a justificativa é o porquê da rodada, e não o combinado, e a
     # validade morre no instante em que alguém aceita.
     CAMPOS_QUE_O_ACORDO_CONGELA = (
@@ -1272,8 +1270,8 @@ class Proposta(models.Model):
     )
     # O ALUNO DA NEGOCIAÇÃO, mesmo na proposta preenchida pelo cliente. A coluna
     # é denormalizada de propósito: sem ela, "uma negociação viva por aluno"
-    # ([INV-ENC-N6]) precisaria atravessar a chave estrangeira até a encomenda,
-    # e `UniqueConstraint` não atravessa relação nenhuma (`armadilhas/274`).
+    # precisaria atravessar a chave estrangeira até a encomenda,
+    # e `UniqueConstraint` não atravessa relação nenhuma.
     aluno = models.ForeignKey(
         PerfilProfissional, related_name="propostas", on_delete=models.PROTECT
     )
@@ -1321,14 +1319,14 @@ class Proposta(models.Model):
             models.UniqueConstraint(
                 fields=["id", "site_id"], name="uniq_proposta_id_com_site"
             ),
-            # [INV-ENC-M3] na negociação: nunca duas propostas vivas para o
+            # na negociação: nunca duas propostas vivas para o
             # mesmo projeto. Parcial, porque as mortas são o histórico.
             models.UniqueConstraint(
                 fields=["encomenda"],
                 condition=models.Q(resultado="pendente"),
                 name="uma_proposta_viva_por_encomenda",
             ),
-            # [INV-ENC-N6]: um aluno nunca tem duas negociações vivas, somando
+            # um aluno nunca tem duas negociações vivas, somando
             # as duas pistas. A coluna `aluno` não sabe de que pista o projeto
             # veio, e é isso que faz esta linha valer nas duas.
             models.UniqueConstraint(
@@ -1336,7 +1334,7 @@ class Proposta(models.Model):
                 condition=models.Q(resultado="pendente"),
                 name="uma_proposta_viva_por_aluno",
             ),
-            # [INV-ENC-N2] no banco: o mesmo lado não escreve duas vezes a mesma
+            # no banco: o mesmo lado não escreve duas vezes a mesma
             # rodada. O TETO é parâmetro e mora em `negociacao.propor`; o que o
             # banco garante é que a contagem não pule nem repita.
             models.UniqueConstraint(

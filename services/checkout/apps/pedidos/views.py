@@ -38,7 +38,7 @@ def dados(request, offer_slug: str):
 
 def _pedido_do_site(request, order_id: uuid.UUID, method: str) -> OrderModel:
     try:
-        # [INV-P11] pedido de outro site é 404 aqui, igual ao GET /pedidos/{id}.
+        # pedido de outro site é 404 aqui, igual ao GET /pedidos/{id}.
         pedido = OrderModel.objects.get(pk=order_id, site_id=request.site["id"])
     except OrderModel.DoesNotExist:
         raise Http404("pedido inexistente neste site")
