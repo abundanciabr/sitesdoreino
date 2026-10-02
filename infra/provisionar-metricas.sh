@@ -163,10 +163,10 @@ echo
 echo "=============================================================="
 echo " PRONTO. O banco da medição existe e o env está escrito."
 echo
-echo " O que NÃO aconteceu ainda, e é o próximo passo do agente:"
+echo " O que NÃO aconteceu ainda, e é o próximo passo:"
 echo " esta célula ainda não está no docker-compose.yml, então ela"
-echo " NÃO está rodando. Isso entra num PR próprio, depois desta"
+echo " NÃO está rodando. Isso entra numa mudança própria, depois desta"
 echo " tela (armadilhas/134: o compose de célula nova vai sozinho)."
 echo
-echo " Nada mais depende de você. Pode mandar esta tela ao agente."
+echo " Nada mais precisa ser rodado aqui."
 echo "=============================================================="

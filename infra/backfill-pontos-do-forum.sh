@@ -82,5 +82,5 @@ if [ "$CONFIRMAR" = "sim" ]; then
   echo "PRONTO: o acerto de contas foi gravado. A linha TOTAL acima diz exatamente o quê."
 else
   echo "PRONTO: ensaio concluído, nada foi gravado. A linha TOTAL acima é o que SERIA pago."
-  echo "Para gravar de verdade, dispare o workflow de novo marcando 'confirmar'."
+  echo "Para gravar de verdade, rode de novo: /opt/plataforma/bin/plataforma operar backfill-pontos-do-forum --confirmar"
 fi

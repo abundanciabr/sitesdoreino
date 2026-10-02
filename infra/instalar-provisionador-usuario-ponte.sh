@@ -48,12 +48,12 @@ case "$ORIGEM" in
 esac
 if [ ! -f "$ORIGEM" ] || [ -L "$ORIGEM" ]; then
   echo "PAROU: a fonte oficial $ORIGEM esta ausente ou e link; nada foi alterado." >&2
-  echo "       Reenvie a infraestrutura pelo deploy-infra e repita o mesmo comando." >&2
+  echo "       Publique a infraestrutura de novo (push na main) e repita o mesmo comando." >&2
   exit 1
 fi
 if ! bash -n "$ORIGEM"; then
   echo "PAROU: $ORIGEM nao contem um provisionador shell valido; nada foi alterado." >&2
-  echo "       Corrija o PR, reenvie a infraestrutura e repita o mesmo comando." >&2
+  echo "       Corrija o roteiro, publique a infraestrutura de novo e repita o mesmo comando." >&2
   exit 1
 fi
 cd "$RAIZ"
@@ -140,4 +140,4 @@ visudo -c >/dev/null || {
 PUBLICADO=0
 
 echo "PRONTO: a copia root e a regra sudo foram instaladas e a ponte foi conferida."
-echo "A esteira podera reconciliar a ponte no proximo deploy-infra."
+echo "A sincronizacao da infraestrutura (plataforma receber) reconcilia a ponte a cada publicacao."

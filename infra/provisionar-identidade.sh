@@ -230,12 +230,12 @@ else
 fi
 echo
 
-[ "$faltou" -eq 0 ] || parar "algo acima ficou FALTANDO — me mande esta tela inteira e não mergeie nada ainda."
+[ "$faltou" -eq 0 ] || parar "algo acima ficou FALTANDO — confira a tela acima e corrija antes de publicar."
 
 echo "PRONTO: identidade provisionada."
 echo
 echo "Nenhum segredo apareceu na tela, e você não precisou digitar nada — as"
 echo "credenciais do Google vieram do env da Caixa, que já as tinha."
-echo "Nenhum container foi reiniciado: quem faz isso é o deploy do próximo merge."
+echo "Nenhum container foi reiniciado: quem faz isso é a próxima publicação da célula."
 echo
-echo "AGORA: volte ao chat e diga 'colei'. O agente mergeia a escada e confere."
+echo "AGORA: publique a escada (push na main; a VPS recebe em até 1 minuto) e confira o endereço."

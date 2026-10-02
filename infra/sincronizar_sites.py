@@ -196,8 +196,9 @@ def idioma_disponivel():
             f"subiu e o `migrate` NÃO rodou. Neste estado o catálogo não consegue "
             f"nem LER a tabela de sites (todo SELECT pede as colunas que faltam), "
             f"então NÃO há nada que dê para sincronizar com segurança. Conserto: "
-            f"rode o migrate da célula (o deploy-celula faz isso) e re-rode o "
-            f"deploy-infra. Isto NÃO é o impasse de ordem entre workflows "
+            f"rode o migrate da célula (a publicação da célula faz isso) e "
+            f"sincronize a infra de novo (push na main que toque infra/sites.json). "
+            f"Isto NÃO é o impasse de ordem entre publicações "
             f"(armadilhas/078) — aquele é imagem VELHA, e este script o tolera."
         )
     return True, ""
@@ -312,12 +313,13 @@ if idiomas_pendentes:
     print(f"Sites afetados: {', '.join(idiomas_pendentes)}.")
     print("Nada foi gravado pela metade: o resto do sites.json convergiu inteiro e")
     print("os idiomas ficaram exatamente como já estavam no banco.")
-    print("POR QUE O RUN SEGUE VERDE: a imagem nova só chega pelo deploy-celula, e o")
-    print("portão de deploy reprova o deploy-celula enquanto o deploy-infra estiver")
-    print("vermelho — falhar aqui travaria o canal de deploy inteiro.")
-    print("O QUE FALTA: assim que o deploy-celula publicar a imagem nova e rodar")
-    print("migrate, RE-RODE o deploy-infra; esta mesma sincronização grava os")
-    print("idiomas e este aviso some sozinho.")
+    print("POR QUE A SINCRONIZAÇÃO SEGUE VERDE: a imagem nova só chega com a publicação")
+    print("da célula, e a publicação da infra não espera por ela — falhar aqui")
+    print("travaria a publicação inteira.")
+    print("O QUE FALTA: assim que a célula nova estiver publicada e o migrate tiver")
+    print("rodado, sincronize a infra de novo (um push na main que toque")
+    print("infra/sites.json basta); esta mesma sincronização grava os idiomas e")
+    print("este aviso some sozinho.")
     print("=" * 78)
     print("SINCRONIZAÇÃO DE SITES: concluída COM IDIOMAS PENDENTES (aviso acima).")
 else:

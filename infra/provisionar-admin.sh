@@ -334,12 +334,12 @@ then echo "  token só nos dois envs certos  NÃO (apareceu em outro env)"; falt
 else echo "  token só nos dois envs certos  OK"; fi
 echo
 
-[ "$faltou" -eq 0 ] || parar "algo acima ficou FALTANDO — me mande esta tela inteira e não mergeie nada ainda."
+[ "$faltou" -eq 0 ] || parar "algo acima ficou FALTANDO — confira a tela acima e corrija antes de publicar."
 
 echo "PRONTO: admin provisionada."
 echo
 echo "Nenhum segredo apareceu na tela, e você não precisou digitar nada — a"
 echo "lista de quem entra veio do env da identidade, que já a tinha."
-echo "Nenhum container foi reiniciado: quem faz isso é o deploy do próximo merge."
+echo "Nenhum container foi reiniciado: quem faz isso é a próxima publicação da célula."
 echo
-echo "AGORA: volte ao chat e diga 'colei'. O agente mergeia o PR de infra e confere."
+echo "AGORA: publique a infra (push na main; a VPS recebe em até 1 minuto) e confira o endereço."

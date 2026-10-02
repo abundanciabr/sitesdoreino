@@ -185,7 +185,7 @@ def ler_env(caminho: Path) -> dict[str, str]:
         return canario.ler_env(caminho, escrever=False)
     except OSError:
         raise canario.ParouPorSeguranca(
-            f"{caminho.name} sem leitura para o usuário da esteira; nada foi alterado"
+            f"{caminho.name} sem leitura para o usuário deploy; nada foi alterado"
         ) from None
 
 
@@ -398,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
             dados = evidencia("ERROR", motivo=str(erro), alterou_a_vps=False)
         print(json.dumps(dados, ensure_ascii=False, sort_keys=True))
         return CODIGOS[dados["resultado"]]
-    print("PAROU POR SEGURANÇA: use preparar ou conferir na esteira; executar roda só na VPS")
+    print("PAROU POR SEGURANÇA: modo inválido. Use preparar ou conferir, ou executar (só na VPS: /opt/plataforma/bin/plataforma operar appmax-drill-rollback)")
     return 2
 
 

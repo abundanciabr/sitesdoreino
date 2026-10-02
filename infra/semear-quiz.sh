@@ -109,7 +109,7 @@ for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
     echo "'docker compose' desta plataforma roda. NADA foi alterado: nenhum quiz"
     echo "foi criado e o banco da célula continua como estava."
     echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
-    echo "na VPS, e dispare o semeador de novo. O valor não se descobre daqui, e"
+    echo "na VPS, e rode o semeador de novo. O valor não se descobre daqui, e"
     echo "este script nunca o imprime."
     exit 1
   fi
@@ -232,12 +232,12 @@ HOST_POR_ID=$(printf '%s' "$LOCAL" | cut -f3)
 if [ -n "$ID_POR_HOST" ] && [ "$ID_POR_HOST" != "$SITE_ID" ]; then
   echo "  o quiz conhece $SITE_HOST pelo número .... $ID_POR_HOST"
   echo "  o catálogo diz que o número é ........... $SITE_ID"
-  parar "o quiz já tem um site com este host e com número DIFERENTE do catálogo. Semear assim publicaria um quiz cujos eventos nenhum lead e nenhum checkout correlacionam. Isto é decisão do mantenedor: ou o cadastro local do quiz é corrigido para o número do catálogo, ou o catálogo mudou o número do site e alguém precisa dizer qual dos dois vale. NADA foi alterado."
+  parar "o quiz já tem um site com este host e com número DIFERENTE do catálogo. Semear assim publicaria um quiz cujos eventos nenhum lead e nenhum checkout correlacionam. Confira o catálogo e o cadastro do quiz, corrija o que estiver errado e semeie de novo: ou o cadastro local do quiz é corrigido para o número do catálogo, ou o catálogo mudou o número do site. NADA foi alterado."
 fi
 
 if [ -n "$HOST_POR_ID" ] && [ "$HOST_POR_ID" != "$SITE_HOST" ]; then
   echo "  o número $SITE_ID já está no quiz apontando para .... $HOST_POR_ID"
-  parar "o número que o catálogo dá para $SITE_HOST já está cadastrado no quiz para OUTRO host. Um dos dois cadastros está errado, e escolher qual é decisão do mantenedor. NADA foi alterado."
+  parar "o número que o catálogo dá para $SITE_HOST já está cadastrado no quiz para OUTRO host. Um dos dois cadastros está errado: confira o catálogo e o quiz, corrija o que estiver errado e semeie de novo. NADA foi alterado."
 fi
 
 if [ -n "$ID_POR_HOST" ]; then
@@ -274,7 +274,7 @@ OBRIGATORIOS=$(printf '%s' "$USO" | tr '\n' ' ' | sed 's/\[[^][]*\]//g' | grep -
 for FLAG in $OBRIGATORIOS; do
   case "$CONHECIDOS" in
     *" $FLAG "*) ;;
-    *) parar "o comando seed_quiz passou a exigir '$FLAG', e este script não sabe o que pôr nele. Quem mudou o comando precisa ensinar o valor a infra/semear-quiz.sh no mesmo PR. NADA foi alterado." ;;
+    *) parar "o comando seed_quiz passou a exigir '$FLAG', e este script não sabe o que pôr nele. Quem mudou o comando precisa ensinar o valor a infra/semear-quiz.sh na mesma mudança. NADA foi alterado." ;;
   esac
 done
 for FLAG in --host --site-id --site-name; do

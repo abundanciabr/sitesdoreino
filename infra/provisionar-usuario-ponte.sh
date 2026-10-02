@@ -50,7 +50,7 @@ CHAVES=$LAR/.ssh/authorized_keys
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "ERRO: este provisionador mexe em /etc/ssh e em conta de sistema, entao precisa de root. Nada foi alterado." >&2
-  echo "      Quem o executa e a esteira de infraestrutura, por sudo restrito a este caminho." >&2
+  echo "      Quem o executa e a sincronizacao da infraestrutura (usuario deploy), por sudo restrito a este caminho." >&2
   exit 1
 fi
 
@@ -62,7 +62,7 @@ FONTE_CONFERIDA="$RAIZ/infra.new/provisionar-usuario-ponte.sh"
 [ -f "$FONTE_CONFERIDA" ] || FONTE_CONFERIDA="$RAIZ/provisionar-usuario-ponte.sh"
 if [ ! -f "$FONTE_CONFERIDA" ] || [ -L "$FONTE_CONFERIDA" ] || ! cmp -s "$FONTE_CONFERIDA" /usr/local/sbin/provisionar-usuario-ponte; then
   echo "ERRO: o provisionador root diverge da fonte publicada; nenhuma conta ou regra SSH foi alterada." >&2
-  echo "      Confira o kit e reinstale a copia root pelo console antes de repetir o deploy-infra." >&2
+  echo "      Confira o kit e reinstale a copia root (como root, no console) antes de publicar a infraestrutura de novo." >&2
   exit 1
 fi
 unset FONTE_CONFERIDA
@@ -144,7 +144,7 @@ chown "$USUARIO:$USUARIO" "$CHAVES"
 if ! sshd -t; then
   devolver_o_que_estava
   echo "ERRO: sshd -t reprovou a configuracao nova. NADA foi recarregado e os arquivos anteriores voltaram." >&2
-  echo "      Conserto: corrija o bloco Match em infra/provisionar-usuario-ponte.sh e mande outro PR." >&2
+  echo "      Conserto: corrija o bloco Match em infra/provisionar-usuario-ponte.sh e publique de novo." >&2
   exit 1
 fi
 echo "PROVA 1 — sshd -t antes do reload: verde."

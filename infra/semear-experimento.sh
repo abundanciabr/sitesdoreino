@@ -96,7 +96,7 @@ for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
     echo "'docker compose' desta plataforma roda. NADA foi alterado: nenhum"
     echo "experimento foi criado, iniciado ou encerrado."
     echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
-    echo "na VPS, e dispare o semeador de novo. O valor não se descobre daqui, e"
+    echo "na VPS, e rode o semeador de novo. O valor não se descobre daqui, e"
     echo "este script nunca o imprime."
     exit 1
   fi

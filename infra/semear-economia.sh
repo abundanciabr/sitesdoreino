@@ -88,7 +88,7 @@ for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
     echo "'docker compose' desta plataforma roda. NADA foi alterado: nenhuma"
     echo "linha da economia foi criada e a gamificação continua como estava."
     echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
-    echo "na VPS, e dispare este semeador de novo. O valor não se descobre daqui,"
+    echo "na VPS, e rode este semeador de novo. O valor não se descobre daqui,"
     echo "e este script nunca o imprime."
     exit 1
   fi

@@ -15,14 +15,14 @@ if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
 fi
 
 for ARQUIVO in docker-compose.yml sites.json sincronizar_sites.py publicacao-local.py provisionar-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh; do
-  [ -f "${STAGING}/$ARQUIVO" ] || { echo "ERRO: ${STAGING}/$ARQUIVO ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
+  [ -f "${STAGING}/$ARQUIVO" ] || { echo "ERRO: ${STAGING}/$ARQUIVO ausente; publique a infraestrutura de novo (plataforma receber) antes de repetir." >&2; exit 1; }
 done
-[ -d ${STAGING}/traefik ] || { echo "ERRO: ${STAGING}/traefik ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
+[ -d ${STAGING}/traefik ] || { echo "ERRO: ${STAGING}/traefik ausente; publique a infraestrutura de novo (plataforma receber) antes de repetir." >&2; exit 1; }
 bash -n ${STAGING}/provisionar-usuario-ponte.sh ${STAGING}/instalar-provisionador-usuario-ponte.sh || {
-  echo "ERRO: roteiro da ponte incompleto ou invalido no staging; corrija o PR e reenvie ${STAGING}." >&2; exit 1;
+  echo "ERRO: roteiro da ponte incompleto ou invalido no staging; corrija o roteiro e publique a infraestrutura de novo." >&2; exit 1;
 }
 python3 -m json.tool ${STAGING}/sites.json >/dev/null || {
-  echo "ERRO: sites.json invalido em ${STAGING}; NADA foi trocado. Corrija o PR e reenvie." >&2; exit 1;
+  echo "ERRO: sites.json invalido em ${STAGING}; NADA foi trocado. Corrija o sites.json e publique de novo." >&2; exit 1;
 }
 for CHAVE in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
   VALOR=$(grep -m1 "^$CHAVE=" env/admin.env | cut -d= -f2-) || VALOR=""
@@ -35,7 +35,7 @@ done
 unset VALOR
 
 if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/${STAGING}/docker-compose.yml" config --quiet; then
-  echo "ERRO: compose novo reprovou ainda em ${STAGING}; nenhuma mutacao root ou troca foi iniciada. Corrija o PR e reenvie." >&2
+  echo "ERRO: compose novo reprovou ainda em ${STAGING}; nenhuma mutacao root ou troca foi iniciada. Corrija o compose e publique de novo." >&2
   exit 1
 fi
 STAGING_ANTES=$(tar -C ${STAGING} --sort=name -cf - . | sha256sum | cut -d' ' -f1)
@@ -58,7 +58,7 @@ fi
 
 STAGING_AGORA=$(tar -C ${STAGING} --sort=name -cf - . | sha256sum | cut -d' ' -f1)
 if [ "$STAGING_AGORA" != "$STAGING_ANTES" ]; then
-  echo "ERRO: ${STAGING} mudou durante a fase root; NADA foi consumido. Reenvie o staging pelo deploy-infra." >&2
+  echo "ERRO: ${STAGING} mudou durante a fase root; NADA foi consumido. Publique a infraestrutura de novo." >&2
   exit 1
 fi
 if [ "$PONTE_INSTALADA" = 1 ]; then
@@ -70,7 +70,7 @@ elif [ -e "$PROVISIONADOR_DA_PONTE" ]; then
   exit 1
 fi
 if ! docker compose --project-directory "$RAIZ" -f "$RAIZ/${STAGING}/docker-compose.yml" config --quiet; then
-  echo "ERRO: compose novo reprovou apos a fase root; nenhuma troca de infraestrutura foi iniciada. Confira a ponte e reenvie o staging." >&2
+  echo "ERRO: compose novo reprovou apos a fase root; nenhuma troca de infraestrutura foi iniciada. Confira a ponte e publique a infraestrutura de novo." >&2
   exit 1
 fi
 unset STAGING_ANTES STAGING_AGORA PONTE_INSTALADA

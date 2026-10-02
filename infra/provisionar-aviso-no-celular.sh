@@ -192,5 +192,5 @@ echo
 
 echo "PRONTO. O aviso na tela do celular está ligado."
 echo "A metade privada da chave não apareceu nesta tela, e não deve aparecer em"
-echo "lugar nenhum. Avise a sessão do agente: ela confere de fora que o cartaz"
+echo "lugar nenhum. Próximo passo: conferir de fora que o cartaz"
 echo "de ligar os avisos já aparece para quem entrou no site pelo celular."

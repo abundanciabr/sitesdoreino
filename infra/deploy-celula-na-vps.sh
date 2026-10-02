@@ -25,7 +25,7 @@ for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
     echo "'docker compose' desta plataforma roda. Nada foi tocado: nenhuma imagem"
     echo "subiu e nenhuma migração rodou."
     echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
-    echo "na VPS, e peça um run novo. O valor não se descobre daqui, e este script"
+    echo "na VPS, e publique de novo. O valor não se descobre daqui, e este script"
     echo "nunca o imprime."
     exit 1
   fi
@@ -51,7 +51,7 @@ SERVICOS_DO_COMPOSE=$(docker compose config --services) || {
   echo "ausente em $RAIZ/env/ nesta VPS."
   echo "Nada foi tocado: nenhuma imagem subiu e nenhuma migração rodou."
   echo "O QUE FAZER: escreva na VPS, em $RAIZ/env/, a variável que a reclamação acima"
-  echo "nomeia, e peça um run novo."
+  echo "nomeia, e publique de novo."
   exit 1
 }
 
@@ -61,8 +61,8 @@ if [ -z "$SERVICOS" ]; then
   echo "O compose foi lido sem erro nenhum; a lista de serviços é que não tem nome"
   echo "que comece por '$CELULA'."
   echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
-  echo "O QUE FAZER: confira o nome da célula pedida no run e o nome do serviço no"
-  echo "compose, e peça um run novo com os dois de acordo."
+  echo "O QUE FAZER: confira o nome da célula pedida e o nome do serviço no"
+  echo "compose, e publique de novo com os dois de acordo."
   exit 1
 fi
 echo "Serviços desta célula: $SERVICOS"
@@ -81,7 +81,7 @@ parar_o_deploy() {
   echo "O QUE ESTA NO AR AGORA: nada mudou. A imagem nova NAO subiu e nenhuma"
   echo "migracao rodou, porque este passo vem antes de tudo isso. E por isso que"
   echo "ele para em vez de seguir. O site continua servindo a versao anterior."
-  echo "O QUE FAZER: conserte o que a linha acima aponta e peca um run novo."
+  echo "O QUE FAZER: conserte o que a linha acima aponta e publique de novo."
   echo "Sem copia de seguranca do banco, esta casa nao migra."
   exit 1
 }

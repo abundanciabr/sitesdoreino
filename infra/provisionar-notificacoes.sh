@@ -144,5 +144,5 @@ then echo "  banco notificacoes_db ...... OK"; else echo "  banco notificacoes_d
 echo "  linhas em notificacoes.env . $(wc -l < env/notificacoes.env)  (esperado 5)"
 echo "  dono/modo do env ........... $(stat -c '%U:%G %a' env/notificacoes.env) (igual ao sugestoes.env: $(stat -c '%U:%G %a' env/sugestoes.env))"
 echo
-echo "PRONTO. Agora avise o agente: ele sobe a célula pelo pipeline e confere que"
-echo "ela respondeu. Você NÃO precisa rodar mais nada aqui."
+echo "PRONTO. Próximo passo: publicar a célula (push na main; a VPS recebe em até 1 minuto) e conferir que"
+echo "ela respondeu. Nada mais precisa ser rodado aqui."

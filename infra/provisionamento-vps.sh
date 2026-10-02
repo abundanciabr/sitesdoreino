@@ -8,7 +8,7 @@ set -euo pipefail
 
 DEPLOY_CI_PUBKEY="${DEPLOY_CI_PUBKEY:?Exporte DEPLOY_CI_PUBKEY com a chave pública ed25519 do CI antes de rodar}"
 
-echo "▶ 1) Usuário 'deploy' — a única porta de entrada, e ela pertence ao pipeline"
+echo "▶ 1) Usuário 'deploy' — a única porta de entrada, e ela pertence à publicação"
 id deploy &>/dev/null || adduser --disabled-password --gecos "" deploy
 install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
 printf '%s\n' "$DEPLOY_CI_PUBKEY" > /home/deploy/.ssh/authorized_keys
@@ -53,7 +53,7 @@ cat <<'FIM'
 ✅ Infraestrutura básica provisionada. CONFIGURAÇÃO RESTANTE DO SITE:
 
  1. Copiar infra/docker-compose.yml e infra/traefik/* para /opt/plataforma/
-    (só na primeira vez — depois a sincronização da infraestrutura mantém as cópias)
+    (só na primeira vez — depois 'plataforma receber', na VPS, sincroniza sozinho a cada push na main)
  2. Criar /opt/plataforma/env/*.env a partir de infra/env/*.exemplo
     ⚠ INV-P8: MP_ACCESS_TOKEN de PRODUÇÃO (APP_USR-...) entra SOMENTE em
       /opt/plataforma/env/pagamentos.env. Nunca no repo. Nunca em dev.
@@ -63,6 +63,9 @@ cat <<'FIM'
     sem este passo NENHUM deploy consegue puxar imagem — todo pull morre em
     "unauthorized" (medido em 21/08/2026; ARMADILHAS-OPERACAO.md §1, H13).
  4. Rodar infra/provisionamento-postgres.sql no Postgres (senhas: openssl rand -hex 24)
- 5. Apontar o DNS do domínio novo para esta VPS (ou configurar o Cloudflare na frente)
+ 5. Ligar a publicação pela VPS: o usuário deploy roda 'plataforma receber' (a cada minuto)
+    e 'plataforma vigiar' (a cada 2 minutos); o programa é infra/plataforma.sh, instalado
+    como /opt/plataforma/bin/plataforma
+ 6. Apontar o DNS do domínio novo para esta VPS (ou configurar o Cloudflare na frente)
 ===============================================================================
 FIM

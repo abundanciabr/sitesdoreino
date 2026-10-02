@@ -369,7 +369,7 @@ def test_imagem_velha_nao_grava_torto_nem_finge_que_gravou(monkeypatch, capsys):
     for campo in CAMPOS_DE_IDIOMA:
         assert campo in saida, f"o aviso precisa NOMEAR {campo}"
     assert "imagem anterior à fase 4 do i18n" in saida
-    assert "RE-RODE o deploy-infra" in saida
+    assert "sincronize a infra de novo" in saida
     assert "concluída COM IDIOMAS PENDENTES" in saida
 
 

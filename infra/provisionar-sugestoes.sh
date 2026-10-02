@@ -192,7 +192,7 @@ fi
 
 # `alunos` precisa reler o env para o token novo valer. Segundos, e a célula
 # não tem rota pública direta.
-recarregar_servicos provisionar-sugestoes >/dev/null 2>&1 || echo "  (aviso: não consegui reiniciar a aplicação — avise a sessão do agente)"
+recarregar_servicos provisionar-sugestoes >/dev/null 2>&1 || echo "  (aviso: não consegui reiniciar a aplicação alunos — reinicie-a na VPS para ela reler o env)"
 
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='sugestoes_db'" 2>/dev/null | grep -q 1
@@ -205,5 +205,5 @@ if grep -q '^TOKENS_ACEITOS_SUGESTOES=' env/alunos.env
 then echo "  linha no alunos.env ...... OK"; else echo "  linha no alunos.env ...... FALTANDO"; fi
 echo
 echo "PRONTO. Nenhum segredo apareceu na tela — nem os gerados, nem o do Google"
-echo "e gravadas direto nos arquivos. Avise a sessão do agente para ela mergear"
-echo "o PR da infraestrutura e conferir o deploy."
+echo "e gravadas direto nos arquivos. Próximo passo: publicar a infraestrutura (push na"
+echo "main; a VPS recebe em até 1 minuto) e conferir a publicação."

@@ -182,4 +182,4 @@ echo
 
 echo "PRONTO. O sino ao lado do seu nome e a tela de avisos da Caixa já podem"
 echo "falar com a caixa central de avisos. Nenhum segredo apareceu na tela."
-echo "Avise a sessão do agente — ela confere de fora que o sino está respondendo."
+echo "Próximo passo: conferir de fora que o sino está respondendo."
