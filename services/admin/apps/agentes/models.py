@@ -159,6 +159,23 @@ class Execucao(models.Model):
     def esperando(self) -> bool:
         return self.situacao in self.ESPERANDO
 
+    @property
+    def duracao(self) -> str:
+        """Do pedido ao fim, em palavras curtas ("6 s", "3 min")."""
+        if self.terminada_em is None:
+            return ""
+        return tempo_em_palavras((self.terminada_em - self.criada_em).total_seconds())
+
+
+def tempo_em_palavras(segundos: float) -> str:
+    segundos = max(0, round(segundos))
+    if segundos < 120:
+        return f"{segundos} s"
+    minutos = round(segundos / 60)
+    if minutos < 120:
+        return f"{minutos} min"
+    return f"{minutos // 60} h {minutos % 60} min"
+
 
 class RegistroDaExecucao(models.Model):
     """Cada passo e cada troca de situação, com data e motivo."""

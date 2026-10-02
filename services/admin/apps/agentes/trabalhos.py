@@ -52,6 +52,14 @@ def registrar(execucao: Execucao, texto: str, situacao: str = "") -> None:
     )
 
 
+def _acordar_o_executor() -> None:
+    """Depois que a gravação valer, o executor deste processo busca na hora
+    em vez de esperar a próxima volta."""
+    from . import executor  # o executor importa daqui: import tardio
+
+    transaction.on_commit(executor.acordar)
+
+
 def pedir_resposta(
     robo: RoboPessoal, membro: MembroDaEquipe, texto: str, *, chave: str, autor: str
 ) -> tuple[Mensagem, Execucao]:
@@ -88,6 +96,7 @@ def pedir_resposta(
             mensagem.execucao = execucao
             mensagem.save(update_fields=["execucao"])
             registrar(execucao, "Mensagem recebida; resposta na fila do servidor.")
+            _acordar_o_executor()
             return mensagem, execucao
     except IntegrityError:
         mensagem = Mensagem.objects.get(conversa=conversa, chave_de_envio=chave)
@@ -162,6 +171,7 @@ def delegar_panorama(
             estado={"semana": segunda.isoformat()},
         )
         registrar(execucao, f"Panorama delegado ({origem}), ligado à tarefa nº {tarefa.id}.")
+        _acordar_o_executor()
         return execucao, True
 
 
@@ -184,7 +194,7 @@ def pedir_cancelamento(execucao: Execucao, quem: str) -> None:
         registrar(execucao, execucao.motivo)
 
 
-def retomar(execucao: Execucao, quem: str) -> bool:
+def retomar(execucao: Execucao, quem: str, texto: str = "") -> bool:
     """Põe de volta na fila um trabalho que esperava ou que falhou."""
     with transaction.atomic():
         execucao = Execucao.objects.select_for_update().get(pk=execucao.pk)
@@ -195,7 +205,8 @@ def retomar(execucao: Execucao, quem: str) -> bool:
         execucao.nao_antes_de = None
         execucao.terminada_em = None
         execucao.save()
-        registrar(execucao, f"Retomada pedida por {quem}.")
+        registrar(execucao, texto or f"Retomada pedida por {quem}.")
+        _acordar_o_executor()
         return True
 
 
@@ -203,6 +214,6 @@ def retomar_os_que_esperam(situacoes, motivo: str) -> int:
     """Põe na fila os trabalhos que esperavam uma dependência que voltou."""
     n = 0
     for execucao in Execucao.objects.filter(situacao__in=situacoes):
-        if retomar(execucao, motivo):
+        if retomar(execucao, "servidor", f"Retomada pelo servidor: {motivo}."):
             n += 1
     return n

@@ -31,8 +31,8 @@ from apps.core.documentos import para_html
 from apps.core.equipe import _membro_da_sessao, _nao_existe, _quem
 from apps.core.models import MembroDaEquipe, Tarefa
 
-from . import modelo, segredo, trabalhos
-from .models import Conexao, Entrega, Execucao, Mensagem, RoboPessoal
+from . import ferramentas, modelo, segredo, trabalhos
+from .models import Conexao, Entrega, Execucao, Mensagem, RoboPessoal, tempo_em_palavras
 
 TAMANHO_DA_MENSAGEM = 4000
 
@@ -103,10 +103,25 @@ def _meu_robo(request) -> tuple[MembroDaEquipe | None, RoboPessoal | None]:
 def _marca_de_andamento(robo: RoboPessoal) -> str:
     """Muda sempre que algo que a página mostra muda: é o que a página
     pergunta a cada poucos segundos para saber se recarrega."""
-    execucoes = robo.execucoes.aggregate(m=Max("atualizada_em"))["m"]
+    delegados = (
+        robo.execucoes.exclude(tipo=Execucao.Tipo.CONVERSA).aggregate(m=Max("atualizada_em"))["m"]
+    )
+    # Da conversa em andamento conta só a troca de situação, não cada batida:
+    # a página não pisca a cada segundo enquanto a pessoa espera a resposta.
+    conversas = list(
+        robo.execucoes.filter(tipo=Execucao.Tipo.CONVERSA, situacao__in=Execucao.ABERTAS)
+        .order_by("id")
+        .values_list("id", "situacao")
+    )
     mensagens = Mensagem.objects.filter(conversa__robo=robo).aggregate(m=Max("id"))["m"]
     entregas = robo.entregas.aggregate(m=Max("atualizada_em"))["m"]
-    return f"{execucoes}|{mensagens}|{entregas}"
+    return f"{delegados}|{conversas}|{mensagens}|{entregas}"
+
+
+# De quanto em quanto tempo a página aberta pergunta se mudou algo: depressa
+# enquanto a pessoa espera uma resposta, devagar para trabalho longo.
+INTERVALO_DA_CONVERSA = 1000
+INTERVALO_DO_TRABALHO = 4000
 
 
 def _consumo_do_mes() -> dict:
@@ -141,7 +156,7 @@ def robo_da_pessoa(request):
             {"admin": request.admin, "visao": "robo", "e_admin": _e_admin(request)},
         )
     conversa = trabalhos.conversa_de(robo)
-    mensagens = list(conversa.mensagens.order_by("-id")[:60])[::-1]
+    mensagens = list(conversa.mensagens.select_related("execucao").order_by("-id")[:60])[::-1]
     for mensagem in mensagens:
         if mensagem.papel == Mensagem.Papel.ROBO:
             mensagem.html = para_html(mensagem.texto)
@@ -177,6 +192,11 @@ def robo_da_pessoa(request):
             "planejado": PLANEJADO,
             "chave_de_envio": uuid.uuid4().hex,
             "acompanhar": bool(respondendo) or ativa,
+            "intervalo": (
+                INTERVALO_DA_CONVERSA
+                if respondendo and not respondendo.esperando
+                else INTERVALO_DO_TRABALHO
+            ),
             "marca": _marca_de_andamento(robo),
             "tamanho_da_mensagem": TAMANHO_DA_MENSAGEM,
             "resultado": _resultado(request),
@@ -268,6 +288,12 @@ def execucao_detalhe(request, id: int):
     tarefa = Tarefa.objects.filter(pk=execucao.tarefa_id).first() if execucao.tarefa_id else None
     membro = _membro_da_sessao(request)
     dono = _e_admin(request) or (membro is not None and execucao.robo.membro_id == membro.id)
+    registros = list(execucao.registros.all())
+    for registro in registros:
+        registro.desde = tempo_em_palavras((registro.momento - execucao.criada_em).total_seconds())
+    chamadas = list(execucao.chamadas.all()) if dono else []
+    for chamada in chamadas:
+        chamada.rotulo = ferramentas.ROTULOS.get(chamada.nome, chamada.nome)
     resposta = render(
         request,
         "agentes/execucao.html",
@@ -276,12 +302,17 @@ def execucao_detalhe(request, id: int):
             "visao": "robo",
             "execucao": execucao,
             "tarefa": tarefa,
-            "registros": list(execucao.registros.all()),
-            "chamadas": list(execucao.chamadas.all()) if dono else [],
+            "registros": registros,
+            "chamadas": chamadas,
             "consumos": list(execucao.consumos.all()) if dono else [],
             "entregas": list(execucao.entregas.all()),
             "dono": dono,
             "acompanhar": execucao.situacao in (Execucao.Situacao.NA_FILA, Execucao.Situacao.EXECUTANDO),
+            "intervalo": (
+                INTERVALO_DA_CONVERSA
+                if execucao.tipo == Execucao.Tipo.CONVERSA
+                else INTERVALO_DO_TRABALHO
+            ),
             "marca": _marca_da_execucao(execucao),
             "resultado": _resultado(request),
         },

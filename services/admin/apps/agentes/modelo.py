@@ -202,6 +202,16 @@ def _erro_da_api(resposta: httpx.Response) -> tuple[str, str]:
     return str(erro.get("code") or erro.get("type") or ""), str(erro.get("message") or "")[:300]
 
 
+# Modelos que recusaram a escolha do esforço de raciocínio: o processo
+# lembra e não manda mais para eles.
+_SEM_ESFORCO: set[str] = set()
+
+
+def _recusou_o_esforco(mensagem: str) -> bool:
+    mensagem = mensagem.lower()
+    return "reasoning" in mensagem or "effort" in mensagem
+
+
 def responder(
     *,
     modelo: str,
@@ -209,6 +219,7 @@ def responder(
     itens: list,
     ferramentas: list | None = None,
     max_saida: int = 2000,
+    esforco: str | None = None,
     execucao=None,
     robo=None,
 ) -> Resposta:
@@ -228,6 +239,8 @@ def responder(
     if ferramentas:
         corpo["tools"] = ferramentas
         corpo["parallel_tool_calls"] = False
+    if esforco and modelo not in _SEM_ESFORCO:
+        corpo["reasoning"] = {"effort": esforco}
     reserva = _reservar(modelo, corpo, max_saida, execucao=execucao, robo=robo)
     try:
         resposta = httpx.post(
@@ -251,6 +264,18 @@ def responder(
     if resposta.status_code >= 400:
         reserva.delete()
         codigo, mensagem = _erro_da_api(resposta)
+        if resposta.status_code == 400 and "reasoning" in corpo and _recusou_o_esforco(mensagem):
+            # O modelo não deixa escolher o esforço: pede de novo sem ele.
+            _SEM_ESFORCO.add(modelo)
+            return responder(
+                modelo=modelo,
+                instrucoes=instrucoes,
+                itens=itens,
+                ferramentas=ferramentas,
+                max_saida=max_saida,
+                execucao=execucao,
+                robo=robo,
+            )
         if resposta.status_code == 429 and codigo != "insufficient_quota":
             raise Temporario()
         if resposta.status_code >= 500:

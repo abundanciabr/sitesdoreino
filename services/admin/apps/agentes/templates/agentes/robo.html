@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% block titulo %}{{ robo.nome }}{% endblock %}
 {% block corpo %}
-<div class="envolucro largo"{% if acompanhar %} data-acompanhar="{% url 'andamento_do_robo' %}" data-marca="{{ marca }}"{% endif %}>
+<div class="envolucro largo"{% if acompanhar %} data-acompanhar="{% url 'andamento_do_robo' %}" data-marca="{{ marca }}" data-intervalo="{{ intervalo }}"{% endif %}>
   <div class="equipe-topo">
     <div>
       <h1>{{ robo.nome }}</h1>
@@ -41,13 +41,13 @@
         {% for m in mensagens %}
         <div class="fala {{ m.papel }}">
           {% if m.papel == 'robo' %}<div class="documento">{{ m.html|safe }}</div>{% else %}<p>{{ m.texto|linebreaksbr }}</p>{% endif %}
-          <div class="meta">{% if m.papel == 'membro' %}Você{% elif m.papel == 'robo' %}{{ robo.nome }}{% else %}Aviso{% endif %} &middot; {{ m.criada_em|date:"d/m H:i" }}{% if m.papel == 'robo' and m.execucao_id %} &middot; <a href="{% url 'execucao_do_robo' m.execucao_id %}">o que ele fez</a>{% endif %}</div>
+          <div class="meta">{% if m.papel == 'membro' %}Você{% elif m.papel == 'robo' %}{{ robo.nome }}{% else %}Aviso{% endif %} &middot; {{ m.criada_em|date:"d/m H:i" }}{% if m.papel == 'robo' and m.execucao_id %}{% if m.execucao.duracao %} &middot; respondeu em {{ m.execucao.duracao }}{% endif %} &middot; <a href="{% url 'execucao_do_robo' m.execucao_id %}">o que ele fez</a>{% endif %}</div>
         </div>
         {% empty %}
         <p class="nota">Ainda não há conversa. Peça, por exemplo: "quais são minhas tarefas atrasadas?", "cria uma tarefa para revisar a aula 3 até sexta" ou "faz o panorama da minha semana".</p>
         {% endfor %}
         {% if respondendo %}
-        <p class="pensando">{% if respondendo.esperando %}Sua última mensagem está guardada: {{ respondendo.motivo }}{% else %}{{ robo.nome }} está trabalhando na resposta ({{ respondendo.get_situacao_display|lower }}{% if respondendo.etapa_atual %}: {{ respondendo.etapa_atual }}{% endif %})…{% endif %}</p>
+        <p class="pensando">{% if respondendo.esperando %}Sua última mensagem está guardada: {{ respondendo.motivo }}{% else %}{{ robo.nome }} está respondendo…{% endif %}</p>
         {% endif %}
       </div>
       <form class="forma forma-da-equipe" method="post" action="{% url 'mensagem_ao_robo' %}">

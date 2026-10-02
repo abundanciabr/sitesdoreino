@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.core import equipe_operacoes as operacoes
@@ -241,6 +242,45 @@ def _compromissos_da_semana() -> set[int]:
             "tarefa_id", flat=True
         )
     )
+
+
+RETRATO_MAX_TAREFAS = 40
+
+
+def retrato(membro: MembroDaEquipe) -> dict:
+    """O painel como está quando a mensagem chega: as pessoas, os objetivos
+    ativos e as tarefas abertas da pessoa. Vai junto com as instruções, e o
+    robô responde as perguntas comuns sem gastar uma rodada só para consultar."""
+    hoje = operacoes.hoje()
+    compromissos = _compromissos_da_semana()
+    abertas = (
+        Tarefa.objects.select_related("responsavel", "objetivo")
+        .filter(responsavel=membro)
+        .exclude(situacao=Situacao.CONCLUIDA)
+        .order_by(F("prazo").asc(nulls_last=True), "-criada_em")
+    )
+    tarefas = []
+    for tarefa in abertas[:RETRATO_MAX_TAREFAS]:
+        resumo = _resumo(tarefa, hoje, compromissos)
+        # São todas da pessoa: o responsável não precisa vir em cada uma.
+        del resumo["responsavel"], resumo["responsavel_id"]
+        tarefas.append(resumo)
+    return {
+        "pessoas": [
+            {"id": m.id, "nome": m.nome, "area": m.area, "e_voce": m.id == membro.id}
+            for m in operacoes.membros_ativos()
+        ],
+        "objetivos_ativos": [
+            {"id": o.id, "titulo": o.titulo, "prazo": o.prazo.isoformat() if o.prazo else None}
+            for o in Objetivo.objects.filter(ativo=True)
+        ],
+        "suas_tarefas_abertas": {
+            "total": abertas.count(),
+            "atrasadas": abertas.filter(prazo__lt=hoje).count(),
+            "listadas": len(tarefas),
+            "tarefas": tarefas,
+        },
+    }
 
 
 def consultar_membros(ctx: Contexto, args: dict) -> dict:
@@ -548,6 +588,24 @@ ACOES = {
     "marcar_compromisso": marcar_compromisso,
     "delegar_panorama_semanal": delegar_panorama_semanal,
     "salvar_entrega": salvar_entrega,
+}
+
+
+# Como cada ação aparece para a pessoa no passo a passo e na página da execução.
+ROTULOS = {
+    "consultar_membros": "consultar as pessoas da equipe",
+    "consultar_objetivos": "consultar os objetivos",
+    "consultar_tarefas": "consultar as tarefas",
+    "consultar_tarefa": "abrir uma tarefa",
+    "consultar_compromissos": "consultar os compromissos",
+    "consultar_trabalhos_do_robo": "consultar os próprios trabalhos",
+    "criar_tarefa": "criar uma tarefa",
+    "alterar_tarefa": "alterar uma tarefa",
+    "mudar_situacao_da_tarefa": "mudar a situação de uma tarefa",
+    "comentar_tarefa": "comentar numa tarefa",
+    "marcar_compromisso": "marcar ou tirar um compromisso da semana",
+    "delegar_panorama_semanal": "delegar o panorama semanal",
+    "salvar_entrega": "salvar uma entrega",
 }
 
 

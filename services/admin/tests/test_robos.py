@@ -10,6 +10,8 @@ feita à parte, no site, e registrada como tal.
 from __future__ import annotations
 
 import json
+import threading
+import time
 from datetime import timedelta
 from decimal import Decimal
 
@@ -619,3 +621,173 @@ def test_o_administrador_guarda_a_chave_e_a_conta_e_conferida_sem_custo():
     pagina = cliente.get(reverse("robos_admin")).content.decode()
     assert CHAVE not in pagina and "wxyz" in pagina
     assert not Consumo.objects.exists()
+
+
+# ---------------------------------------------------------------- rapidez
+
+
+def test_mensagem_nova_acorda_o_executor_na_hora(django_capture_on_commit_callbacks):
+    livia = _pessoa("Lívia", LIVIA)
+    robo = trabalhos.robo_de(livia)
+    executor._acordar.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        trabalhos.pedir_resposta(robo, livia, "oi", chave="acordar", autor="Lívia")
+    assert executor._acordar.is_set()
+    executor._acordar.clear()
+
+
+def test_o_laco_sem_trabalho_volta_na_hora_quando_acordado(monkeypatch):
+    """Parado à espera, o laço não espera a volta inteira quando chega trabalho."""
+    voltas = []
+    monkeypatch.setattr(executor, "rodar_uma", lambda trabalhador: voltas.append(trabalhador))
+    monkeypatch.setattr(executor, "reacordar", lambda: 0)
+    monkeypatch.setattr(executor, "close_old_connections", lambda: None)
+    monkeypatch.setattr(executor, "INTERVALO_SEM_TRABALHO", 30.0)
+    parar = threading.Event()
+    laco = threading.Thread(target=executor.rodar_para_sempre, args=(parar,), daemon=True)
+    laco.start()
+    try:
+        limite = time.monotonic() + 5
+        while len(voltas) < 1 and time.monotonic() < limite:
+            time.sleep(0.01)
+        assert len(voltas) == 1
+        executor.acordar()
+        while len(voltas) < 2 and time.monotonic() < limite:
+            time.sleep(0.01)
+        # Sem o aviso, a segunda volta só viria depois de 30 s.
+        assert len(voltas) == 2
+    finally:
+        parar.set()
+        executor.acordar()
+        laco.join(timeout=5)
+        executor._acordar.clear()
+
+
+def test_simulacao_conversa_responde_com_o_retrato_numa_rodada_so():
+    livia = _pessoa("Lívia", LIVIA)
+    _guardar_chave()
+    Tarefa.objects.create(
+        titulo="Gravar a aula 7",
+        responsavel=livia,
+        prazo=operacoes.hoje() - timedelta(days=2),
+        criada_por="teste",
+    )
+    robo = trabalhos.robo_de(livia)
+    _, execucao = trabalhos.pedir_resposta(
+        robo, livia, "tenho tarefa atrasada?", chave="k", autor="Lívia"
+    )
+    with respx.mock as rede:
+        rota = rede.post(RESPOSTAS).mock(
+            return_value=_texto_do_modelo("Sim: **Gravar a aula 7** está atrasada.")
+        )
+        executor.rodar_uma("teste")
+    execucao.refresh_from_db()
+    assert execucao.situacao == S.CONCLUIDA, execucao.motivo
+    # Respondeu numa chamada só: o retrato do painel já foi junto.
+    assert rota.call_count == 1
+    assert not ChamadaDeFerramenta.objects.filter(execucao=execucao).exists()
+    corpo = json.loads(rota.calls[0].request.content)
+    assert corpo["reasoning"] == {"effort": "low"}
+    retrato = json.loads(corpo["instructions"].split("Retrato do painel quando a mensagem chegou (JSON):\n", 1)[1])
+    minhas = retrato["suas_tarefas_abertas"]
+    assert minhas["atrasadas"] >= 1
+    assert any(
+        t["titulo"] == "Gravar a aula 7" and t["atrasada"] and t["versao"] for t in minhas["tarefas"]
+    )
+    assert any(p["nome"] == "Ryan" for p in retrato["pessoas"])
+    # Guardado na execução: a retomada vê o mesmo retrato.
+    assert execucao.estado["retrato"] == retrato
+
+
+def test_simulacao_modelo_que_nao_aceita_esforco_responde_sem_ele():
+    livia = _pessoa("Lívia", LIVIA)
+    _guardar_chave()
+    robo = trabalhos.robo_de(livia)
+    _, execucao = trabalhos.pedir_resposta(robo, livia, "oi", chave="k", autor="Lívia")
+    recusa = httpx.Response(
+        400,
+        json={
+            "error": {
+                "message": "Unsupported parameter: 'reasoning.effort' is not supported with this model.",
+                "type": "invalid_request_error",
+                "param": "reasoning.effort",
+                "code": "unsupported_parameter",
+            }
+        },
+    )
+    try:
+        with respx.mock as rede:
+            rota = rede.post(RESPOSTAS).mock(side_effect=[recusa, _texto_do_modelo("Oi!")])
+            executor.rodar_uma("teste")
+        lembrou = "gpt-6-luna" in modelo._SEM_ESFORCO
+    finally:
+        modelo._SEM_ESFORCO.discard("gpt-6-luna")
+    execucao.refresh_from_db()
+    assert execucao.situacao == S.CONCLUIDA, execucao.motivo
+    assert lembrou
+    assert "reasoning" in json.loads(rota.calls[0].request.content)
+    assert "reasoning" not in json.loads(rota.calls[1].request.content)
+    # A recusa não cobrou: só a resposta conta no gasto, e a conexão segue valendo.
+    assert Consumo.objects.filter(execucao=execucao).count() == 1
+    assert modelo.conexao().situacao == Conexao.Situacao.CONFERIDA
+
+
+def test_a_pagina_da_execucao_resume_em_palavras_e_recolhe_o_passo_a_passo():
+    livia = _pessoa("Lívia", LIVIA)
+    _guardar_chave()
+    robo = trabalhos.robo_de(livia)
+    _, execucao = trabalhos.pedir_resposta(
+        robo, livia, "quais minhas tarefas?", chave="k", autor="Lívia"
+    )
+    with respx.mock:
+        respx.post(RESPOSTAS).mock(
+            side_effect=[
+                _pedido_de_acao(
+                    "consultar_tarefas",
+                    {
+                        "responsavel_id": None,
+                        "toda_a_equipe": False,
+                        "situacao": None,
+                        "objetivo_id": None,
+                        "texto": None,
+                    },
+                ),
+                _texto_do_modelo("Você não tem tarefas abertas."),
+            ]
+        )
+        executor.rodar_uma("teste")
+        cliente = _cliente(LIVIA, "Lívia")
+        pagina = cliente.get(reverse("execucao_do_robo", args=[execucao.id])).content.decode()
+        conversa = cliente.get(reverse("robo_da_pessoa")).content.decode()
+    assert "Concluída em " in pagina
+    # Concluída, não há etapa em andamento para mostrar.
+    assert "Etapa:" not in pagina
+    assert "Consultar as tarefas &middot; feita" in pagina
+    assert "consultar_tarefas" not in pagina
+    # O registro continua inteiro, recolhido.
+    assert '<details class="detalhes-do-robo">' in pagina
+    assert "Fazendo: consultar as tarefas" in pagina
+    assert "respondeu em " in conversa
+
+
+@respx.mock
+def test_enquanto_responde_a_pagina_pergunta_depressa_e_nao_pisca_a_cada_batida():
+    from apps.agentes import views
+
+    livia = _pessoa("Lívia", LIVIA)
+    robo = trabalhos.robo_de(livia)
+    _, execucao = trabalhos.pedir_resposta(robo, livia, "oi", chave="k", autor="Lívia")
+    pagina = _cliente(LIVIA, "Lívia").get(reverse("robo_da_pessoa")).content.decode()
+    assert 'data-intervalo="1000"' in pagina
+    antes = views._marca_de_andamento(robo)
+    Execucao.objects.filter(pk=execucao.pk).update(
+        atualizada_em=timezone.now() + timedelta(seconds=5), etapa_atual="Pensando na resposta"
+    )
+    assert views._marca_de_andamento(robo) == antes
+    Execucao.objects.filter(pk=execucao.pk).update(situacao=S.EXECUTANDO)
+    assert views._marca_de_andamento(robo) != antes
+
+
+def test_cada_acao_tem_um_rotulo_para_a_pessoa():
+    assert set(ferramentas.ROTULOS) == set(ferramentas.ACOES)
+    assert {f["name"] for f in ferramentas.DEFINICOES} == set(ferramentas.ACOES)

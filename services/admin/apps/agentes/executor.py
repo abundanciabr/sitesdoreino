@@ -223,11 +223,20 @@ def reacordar() -> int:
     n = 0
     conexao = modelo.conexao()
     if modelo.tem_chave() and conexao.situacao == Conexao.Situacao.CONFERIDA:
-        n += retomar_os_que_esperam([S.AGUARDANDO_DEPENDENCIA], "o servidor: a conexão voltou")
+        n += retomar_os_que_esperam([S.AGUARDANDO_DEPENDENCIA], "a conexão voltou")
     autorizacao = modelo.autorizacao_ativa()
     if autorizacao and modelo.gasto_do_mes() < autorizacao.teto_mensal_usd:
-        n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "o servidor: há teto de gasto")
+        n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
     return n
+
+
+_acordar = threading.Event()
+
+
+def acordar() -> None:
+    """Entrou trabalho na fila: o laço deste processo vai buscar agora, sem
+    esperar a próxima volta. Outros processos acham pela volta normal."""
+    _acordar.set()
 
 
 def rodar_para_sempre(parar: threading.Event) -> None:
@@ -236,6 +245,9 @@ def rodar_para_sempre(parar: threading.Event) -> None:
     ultimo_reacordar = timezone.now() - INTERVALO_DE_REACORDAR
     log.info("Executor dos robôs ligado: %s", trabalhador)
     while not parar.is_set():
+        # Limpa antes de buscar: um aviso que chegar durante a busca faz a
+        # espera abaixo voltar na hora.
+        _acordar.clear()
         close_old_connections()
         trabalhou = False
         try:
@@ -246,7 +258,7 @@ def rodar_para_sempre(parar: threading.Event) -> None:
         except Exception:  # noqa: BLE001 - o laço não pode morrer
             log.exception("Executor dos robôs: volta falhou")
         if not trabalhou:
-            parar.wait(INTERVALO_SEM_TRABALHO)
+            _acordar.wait(INTERVALO_SEM_TRABALHO)
     close_old_connections()
 
 
@@ -273,5 +285,6 @@ def ligar_em_segundo_plano() -> bool:
 
 def desligar() -> None:
     _parar.set()
+    _acordar.set()
     if _thread is not None:
         _thread.join(timeout=5)

@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% block titulo %}{{ execucao.get_tipo_display }} nº {{ execucao.id }}{% endblock %}
 {% block corpo %}
-<div class="envolucro largo"{% if acompanhar %} data-acompanhar="{% url 'andamento_do_robo' %}?execucao={{ execucao.id }}" data-marca="{{ marca }}"{% endif %}>
+<div class="envolucro largo"{% if acompanhar %} data-acompanhar="{% url 'andamento_do_robo' %}?execucao={{ execucao.id }}" data-marca="{{ marca }}" data-intervalo="{{ intervalo }}"{% endif %}>
   <a class="volta" href="{% url 'robo_da_pessoa' %}#trabalhos">&larr; Página do robô</a>
   <h1>{{ execucao.get_tipo_display }} nº {{ execucao.id }}</h1>
   <p class="subtitulo">{{ execucao.robo.nome }} &middot; pedido por {{ execucao.pedido_por }} em {{ execucao.criada_em|date:"d/m/Y H:i" }}{% if execucao.modelo %} &middot; modelo {{ execucao.modelo }}{% endif %}</p>
@@ -9,9 +9,9 @@
   {% if resultado %}<p class="recado-da-equipe">{{ resultado }}</p>{% endif %}
 
   <article class="trabalho-do-robo {{ execucao.situacao }}{% if execucao.esperando %} esperando{% endif %}">
-    <b>{{ execucao.get_situacao_display }}</b>
+    <b>{{ execucao.get_situacao_display }}{% if execucao.duracao %} em {{ execucao.duracao }}{% endif %}</b>
     {% if execucao.aberta %}<progress max="100" value="{{ execucao.progresso }}">{{ execucao.progresso }}%</progress>{% endif %}
-    {% if execucao.etapa_atual %}<div class="meta">Etapa: {{ execucao.etapa_atual }}</div>{% endif %}
+    {% if execucao.aberta and execucao.etapa_atual %}<div class="meta">Etapa: {{ execucao.etapa_atual }}</div>{% endif %}
     {% if execucao.motivo %}<div class="meta">{{ execucao.motivo }}</div>{% endif %}
     {% if execucao.resultado %}<div class="meta">Resultado: {{ execucao.resultado }}</div>{% endif %}
     {% if tarefa %}<div class="meta">Tarefa: <a href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a> ({{ tarefa.get_situacao_display }})</div>{% endif %}
@@ -30,24 +30,25 @@
   </div>
   {% endif %}
 
-  <h2 class="titulo-de-secao">Passo a passo</h2>
-  <ol class="passos-do-robo">
-    {% for r in registros %}<li><span class="nota">{{ r.momento|date:"d/m H:i:s" }}</span> {{ r.texto }}</li>{% endfor %}
-  </ol>
-
   {% if chamadas %}
   <h2 class="titulo-de-secao">Ações no painel</h2>
   <ul class="passos-do-robo">
-    {% for c in chamadas %}<li><b>{{ c.nome }}</b> &middot; {{ c.get_situacao_display }}{% if c.situacao == 'recusada' and c.resultado.erro %}: {{ c.resultado.erro }}{% endif %}</li>{% endfor %}
+    {% for c in chamadas %}<li>{{ c.rotulo|capfirst }} &middot; {{ c.get_situacao_display|lower }}{% if c.situacao == 'recusada' and c.resultado.erro %}: {{ c.resultado.erro }}{% endif %}</li>{% endfor %}
   </ul>
   {% endif %}
 
-  {% if consumos %}
-  <h2 class="titulo-de-secao">Gasto desta execução</h2>
-  <ul class="passos-do-robo">
-    {% for c in consumos %}<li>{{ c.modelo }}: {{ c.tokens_entrada }} tokens de entrada, {{ c.tokens_saida }} de saída &middot; US$ {{ c.custo_estimado_usd|floatformat:6 }}{% if c.desconhecido %} (resultado desconhecido: contado o pior caso){% endif %}</li>{% endfor %}
-  </ul>
-  {% endif %}
+  {% comment %}O registro de cada passo fica guardado: é o que prova o que o robô fez e de onde ele retoma. Na tela, fica recolhido.{% endcomment %}
+  <details class="detalhes-do-robo"{% if execucao.aberta %} open{% endif %}>
+    <summary>Passo a passo{% if consumos %} e gasto{% endif %}</summary>
+    <ol class="passos-do-robo">
+      {% for r in registros %}<li><span class="nota" title="{{ r.momento|date:"d/m H:i:s" }}">{{ r.desde }}</span> {{ r.texto }}</li>{% endfor %}
+    </ol>
+    {% if consumos %}
+    <ul class="passos-do-robo">
+      {% for c in consumos %}<li>{{ c.modelo }}: {{ c.tokens_entrada }} tokens de entrada, {{ c.tokens_saida }} de saída &middot; US$ {{ c.custo_estimado_usd|floatformat:6 }}{% if c.desconhecido %} (resultado desconhecido: contado o pior caso){% endif %}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </details>
 </div>
 {% include "agentes/_acompanhar.html" %}
 {% endblock %}

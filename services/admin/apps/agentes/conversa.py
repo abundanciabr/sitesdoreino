@@ -10,6 +10,8 @@ de repeti-las.
 
 from __future__ import annotations
 
+import json
+
 from apps.core import equipe_operacoes as operacoes
 from apps.core.models import MembroDaEquipe
 
@@ -20,9 +22,12 @@ from .models import Execucao, Mensagem
 MAX_RODADAS = 8
 HISTORICO = 30
 MAX_SAIDA = 2000
+# Conversa de painel pede resposta rápida: o modelo pensa pouco antes de
+# responder. O panorama (modelo forte) fica com o esforço padrão.
+ESFORCO = "low"
 
 
-def instrucoes(robo, membro) -> str:
+def instrucoes(robo, membro, retrato: dict | None = None) -> str:
     hoje = operacoes.hoje()
     segunda = operacoes.segunda(hoje)
     partes = [
@@ -39,8 +44,11 @@ def instrucoes(robo, membro) -> str:
     partes.append(
         "Como trabalhar:\n"
         "- Responda em português do Brasil, curto e direto, como colega de equipe.\n"
-        "- Para falar de tarefas, objetivos, pessoas e compromissos, consulte "
-        "com as ferramentas. Não invente números nem nomes.\n"
+        "- Para falar de tarefas, objetivos, pessoas e compromissos, use o "
+        "retrato do painel abaixo quando ele bastar: foi tirado agora. Consulte "
+        "com as ferramentas o que não está nele (tarefas de outra pessoa ou "
+        "concluídas, comentários, outra semana, tarefas além das listadas). "
+        "Não invente números nem nomes.\n"
         "- Criar uma tarefa é diferente de executar um trabalho. 'Cria uma "
         "tarefa para...' é criar_tarefa. 'Faz o panorama da semana' é "
         "delegar_panorama_semanal, que roda no servidor.\n"
@@ -49,12 +57,18 @@ def instrucoes(robo, membro) -> str:
         "- Pergunte só quando um nome servir para mais de uma pessoa ou tarefa, "
         "ou quando faltar o título de uma tarefa. No resto, decida pelo óbvio "
         "e diga o que decidiu.\n"
-        "- Antes de alterar uma tarefa existente, consulte-a e passe a versão.\n"
+        "- Ao alterar uma tarefa existente, passe a versão do retrato ou de "
+        "consultar_tarefa. Se a ação recusar por versão, consulte e tente de novo.\n"
         "- Nas ferramentas, datas em AAAA-MM-DD; para a pessoa, DD/MM.\n"
         "- Ainda não existem: lembretes, automações por horário, avisos por "
         "e-mail ou celular, conversa com outros robôs. Se pedirem, diga que "
         "ainda não está disponível, sem fingir que fez."
     )
+    if retrato:
+        partes.append(
+            "Retrato do painel quando a mensagem chegou (JSON):\n"
+            + json.dumps(retrato, ensure_ascii=False, separators=(",", ":"))
+        )
     return "\n\n".join(partes)
 
 
@@ -85,6 +99,9 @@ def executar(execucao: Execucao) -> None:
     if "itens" not in estado:
         estado["itens"] = _historico(execucao)
         estado["rodadas"] = 0
+        # Guardado com os itens: a retomada e a segunda rodada veem o mesmo
+        # retrato, e o começo do pedido fica igual para o cache da OpenAI.
+        estado["retrato"] = ferramentas.retrato(membro)
         execucao.estado = estado
         guardar_estado(execucao)
 
@@ -95,7 +112,8 @@ def executar(execucao: Execucao) -> None:
             # Retomada depois de cair no meio das ações: termina as ações
             # da rodada guardada antes de chamar o modelo de novo.
             for chamada in pendentes:
-                batimento(execucao, f"Fazendo: {chamada.get('name')}")
+                nome = chamada.get("name", "")
+                batimento(execucao, f"Fazendo: {ferramentas.ROTULOS.get(nome, nome)}")
                 saida = ferramentas.executar(
                     ctx, chamada["call_id"], chamada.get("name", ""), chamada.get("arguments", "")
                 )
@@ -116,10 +134,11 @@ def executar(execucao: Execucao) -> None:
         batimento(execucao, "Pensando na resposta", progresso=min(90, 10 + 10 * estado.get("rodadas", 0)))
         resposta = modelo.responder(
             modelo=execucao.modelo,
-            instrucoes=instrucoes(robo, membro),
+            instrucoes=instrucoes(robo, membro, estado.get("retrato")),
             itens=itens,
             ferramentas=ferramentas.DEFINICOES,
             max_saida=MAX_SAIDA,
+            esforco=ESFORCO,
             execucao=execucao,
             robo=robo,
         )
