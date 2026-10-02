@@ -1,34 +1,6 @@
 # tests/test_inv_avaliacao_interna_fora_do_alcance.py  # [RECEITA:R5 v1]
-"""INV-SUG03 — `AvaliacaoInterna` nunca é lida nem escrita por rota de aluno.
-
-Spec §8, e a Definição de Pronto do MVP (§11): *"endpoint de avaliação de
-produto retorna 403 para qualquer ator sem role de staff"*. Enquanto esse
-endpoint não existe (EVO-13), o invariante tem uma forma mais forte e é ela que
-está travada aqui: **nenhuma rota que o aluno alcança encosta na tabela**.
-
-Por que este é o guarda mais importante do despacho: a `AvaliacaoInterna`
-guarda a decisão de produto sobre a ideia de uma pessoa — o "não vamos fazer, e
-por quê", escrito para a equipe ler. Vazar isso por descuido de campo num
-template não é um bug de listagem; é a Caixa contando ao aluno o que a equipe
-achou da ideia dele, com as palavras que ninguém escreveu para ele ler.
-
-**Três degraus, do mais forte ao mais legível:**
-
-1. **O SQL.** A jornada inteira do aluno roda com as consultas capturadas, e o
-   nome da tabela não pode aparecer em nenhuma delas. É o degrau que pega o
-   `select_related` distraído, o `{{ sugestao.avaliacao.notas }}` no template
-   (que consulta na hora de renderizar) e qualquer caminho futuro que ninguém
-   previu aqui.
-2. **O corpo das respostas.** O texto da avaliação é semeado com uma marca
-   inconfundível; se ela aparecer em qualquer página do aluno, o guarda cai.
-3. **A ÁRVORE SINTÁTICA do módulo do aluno.** `apps/core/participacao.py` não
-   pode sequer nomear o model nem o `related_name` — via AST, não via `grep`,
-   para que citar o nome num comentário (como este arquivo faz) não conte.
-
-A completude é mecânica: a lista de rotas percorridas é conferida contra o
-urlconf. Rota de participação nova que ninguém acrescentar aqui deixa este
-guarda VERMELHO — que é exatamente o lembrete que se quer.
-"""
+"""`AvaliacaoInterna` nunca é lida nem escrita por rota de aluno.
+Três degraus: o SQL da jornada, o corpo das respostas e a AST do módulo do aluno."""
 
 import ast
 import inspect
@@ -60,22 +32,7 @@ def avaliacao(sugestao, aluno):
 
 
 def _rotas_de_participacao() -> set[str]:
-    """As rotas que o ALUNO alcança: exigem sessão e NÃO exigem crachá.
-
-    O recorte por `exige_staff` entrou no EVO-13, quando as rotas de moderação
-    nasceram — e ele não afrouxa nada, porque as três varreduras do urlconf
-    juntas continuam cobrindo o urlconf inteiro, sem sobra:
-
-    * rota sem `exige_sessao` e fora da lista pública ⇒ cai em
-      `test_inv_sem_sessao_nada.py::test_toda_rota_nao_publica_carrega_o_porteiro`;
-    * rota com `exige_staff` ⇒ cai em `test_inv_so_staff_modera.py`, que a
-      percorre com uma sessão de ALUNO e exige 403 em todas;
-    * rota com `exige_sessao` e sem `exige_staff` ⇒ é o aluno, e é aqui.
-
-    Sem o recorte, este guarda passaria a exigir que a jornada do aluno
-    percorresse as páginas da equipe — que devolvem 403 exatamente porque ele
-    não pode entrar nelas. Seria medir o contrário do invariante.
-    """
+    """As rotas que o aluno alcança: exigem sessão e não exigem crachá."""
     from config.urls import urlpatterns
 
     return {
@@ -88,11 +45,7 @@ def _rotas_de_participacao() -> set[str]:
 
 def _jornada_completa(cliente, sugestao) -> dict[str, list]:
     """Todo endereço que um aluno com sessão alcança, uma vez cada.
-
-    Rota nova que exige sessão e não exige crachá entra aqui pelo mecanismo, não
-    por lembrança: `test_a_jornada_cobre_TODAS_as_rotas_de_participacao` fica
-    vermelho até ela ser percorrida.
-    """
+    Rota nova entra aqui pelo mecanismo: o teste de cobertura fica vermelho até então."""
     quadro = reverse("quadro")
     nova = reverse("nova_sugestao")
     base = {
@@ -101,11 +54,7 @@ def _jornada_completa(cliente, sugestao) -> dict[str, list]:
         "categoria": "curso",
     }
     return {
-        # As TRÊS abas, e não só a padrão: "Em alta" (V1.2) monta um ranking
-        # próprio, com uma subconsulta que as outras não têm — medir só o
-        # caminho de sempre deixaria o SQL da aba nova fora do degrau 1. O
-        # painel "Meu impacto", que estreou no mesmo despacho, vive dentro desta
-        # mesma página e entra em cada linha desta lista de graça.
+        # As três abas do quadro, pois cada uma monta um SQL próprio.
         "quadro": [
             cliente.get(quadro),
             cliente.get(f"{quadro}?categoria=curso"),
@@ -190,12 +139,7 @@ def test_a_jornada_do_aluno_nao_escreve_na_avaliacao(
 
 
 def test_o_modulo_do_aluno_nem_nomeia_a_avaliacao_interna():
-    """Via AST, não `grep`: comentário e docstring podem citar o nome à vontade.
-
-    O que não pode é o CÓDIGO nomear — nem o model (`AvaliacaoInterna`), nem o
-    `related_name` pelo qual se chega nele a partir de uma sugestão
-    (`sugestao.avaliacao`).
-    """
+    """Via AST, não `grep`: o código não nomeia o model nem o `related_name`."""
     arvore = ast.parse(inspect.getsource(participacao))
     nomes = {no.id for no in ast.walk(arvore) if isinstance(no, ast.Name)}
     atributos = {no.attr for no in ast.walk(arvore) if isinstance(no, ast.Attribute)}

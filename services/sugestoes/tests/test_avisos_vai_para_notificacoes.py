@@ -1,8 +1,5 @@
-"""`/avisos` mudou de casa: redireciona para a página única `/notificacoes`.
-
-O destino é caminho absoluto, fora do prefixo público da célula. As rotas de
-marcar como lido saíram: quem marca é a página `/notificacoes`.
-"""
+"""`/avisos` redireciona para a página única `/notificacoes`.
+O destino é caminho absoluto, e as rotas de marcar como lido não existem mais."""
 
 import pytest
 from asgiref.sync import async_to_sync

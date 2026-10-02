@@ -1,22 +1,5 @@
-"""O ROSTO da Caixa (EVO-30), medido pela borda HTTP — nunca pelo contexto.
-
-O que este arquivo prova é o que o aluno passa a CONSEGUIR FAZER: abrir o
-quadro, trocar de aba, votar e desvotar clicando, ler a história de uma ideia e
-mandar a sua depois de conferir se já existe. Toda asserção olha o HTML que o
-navegador receberia ou o efeito no banco — nenhuma espia `response.context`,
-que continuaria verde no dia em que o template parasse de mostrar a variável.
-
-Duas amarras deste arquivo merecem leitura antes de mexer nele:
-
-* **o voto é disparado pelo `action` que está NA PÁGINA**, extraído do HTML por
-  regex. Um teste que chamasse `reverse("votar")` provaria que a view funciona
-  e continuaria verde com o botão fora da tela — que é exatamente a falha que
-  este despacho existe para não cometer;
-* **o CSS é medido sob `SCRIPT_NAME`**, que é o único regime em que a diferença
-  entre `{% static %}` e `{% url 'estatico' %}` aparece. Sem o prefixo ligado,
-  os dois devolvem `/static/…` e o guarda ficaria verde para sempre
-  (armadilhas/029, /081 e /083; a lição inteira em `armadilhas/102`).
-"""
+"""O rosto da Caixa, medido pela borda HTTP: o HTML recebido e o efeito no banco.
+O voto sai do `action` da página e o CSS é medido sob `SCRIPT_NAME`."""
 
 import re
 
@@ -31,18 +14,13 @@ pytestmark = pytest.mark.django_db
 
 PREFIXO = "/forms/sugestoes"
 
-# O voto, como ele chega ao navegador: para onde o botão aponta e o que ele diz.
-# São dois padrões e não um só porque a página tem OUTROS formulários (o de sair,
-# o de comentar) — um `.*?` do primeiro `<form>` até o primeiro `title=` pegaria
-# o botão errado, e o teste mediria o link do trilho achando que media o voto.
+# Como o voto chega ao navegador: dois padrões, pois a página tem outros formulários.
 ACAO_DO_VOTO = re.compile(r'action="([^"]*/(?:des)?votar)"')
 ROTULO_DO_VOTO = re.compile(r'class="voto[^"]*"\s+title="([^"]*)"')
 CONTAGEM = re.compile(r'<span class="votos">(\d+)</span>')
 TITULO_DE_PECA = re.compile(r'<h3 class="peca-titulo"><a href="[^"]*">([^<]+)</a>')
 
-# A aba, como ela chega ao navegador: a chave que vai na URL, se está acesa, e o
-# que a pessoa lê. Medir as três juntas é o que faz este guarda pegar a troca
-# silenciosa da aba PADRÃO — só o rótulo não distingue "existe" de "está acesa".
+# A aba como chega ao navegador: a chave na URL, se está acesa e o rótulo.
 ABA = re.compile(r'\?ordem=([a-z-]+)"\s+class="([^"]*)">([^<]+)</a>')
 
 
@@ -60,9 +38,7 @@ def _quadro(pessoa, **query) -> str:
     return resposta.content.decode()
 
 
-# ---------------------------------------------------------------------------
-# O quadro: a grade, as três abas, e o que NÃO está aqui
-# ---------------------------------------------------------------------------
+# O quadro: a grade, as abas e o que não está aqui
 
 
 def test_o_quadro_abre_para_o_aluno_logado_e_desenha_a_grade(caixa):
@@ -77,14 +53,7 @@ def test_o_quadro_abre_para_o_aluno_logado_e_desenha_a_grade(caixa):
 
 
 def test_as_abas_sao_quatro_e_a_acesa_continua_sendo_mais_votadas(caixa):
-    """As três do protótipo, na ordem dele — "Em alta" entrou na V1.2 — e
-    "Implementadas" por último, pedida pelo mantenedor em 29/09/2026.
-
-    A ORDEM da fila é a do protótipo; a aba ACESA continua sendo "Mais
-    votadas", que é o ranking que a spec §10 crava para o MVP. As duas coisas
-    são medidas juntas de propósito: quem trocar a aba padrão sem levar isso ao
-    mantenedor encontra este guarda antes do CI.
-    """
+    """As quatro abas, na ordem do protótipo, com "Mais votadas" acesa por padrão."""
     corpo = _quadro(caixa.aluno)
 
     assert ABA.findall(_abas(corpo)) == [
@@ -110,13 +79,7 @@ def test_a_aba_novas_ordena_pela_chegada_e_a_padrao_pelos_votos(caixa, entrar_co
 
 
 def test_uma_aba_inventada_para_a_pagina_em_vez_de_escolher_por_conta(caixa):
-    """Fail-closed, como a categoria inexistente já era: servir a ordem padrão
-    faria a aba mentir — a pessoa pediria uma coisa e receberia outra.
-
-    O exemplo era `?ordem=em-alta` até a V1.2, quando essa aba passou a existir.
-    Trocá-lo por uma chave que continua não existindo é o que mantém o guarda
-    medindo o fail-closed em vez de medir o catálogo de abas de ontem.
-    """
+    """Aba inexistente dá 404: servir a ordem padrão faria a aba mentir."""
     assert (
         caixa.aluno.client.get(f"{reverse('quadro')}?ordem=quentinhas").status_code
         == 404
@@ -134,9 +97,7 @@ def test_a_aba_carrega_o_filtro_e_o_filtro_carrega_a_aba(caixa):
     assert f'href="{reverse("quadro")}?ordem=mais-votadas&amp;categoria=curso"' in corpo
 
 
-# ---------------------------------------------------------------------------
 # O voto, clicando no que está na tela
-# ---------------------------------------------------------------------------
 
 
 def _clicar_no_voto(pessoa, corpo: str):
@@ -167,9 +128,7 @@ def test_votar_e_desvotar_pela_tela_mudam_a_contagem_que_a_pessoa_ve(caixa):
     assert Voto.objects.filter(sugestao=sugestao).count() == 0
 
 
-# ---------------------------------------------------------------------------
 # O detalhe: a conversa e a história da ideia
-# ---------------------------------------------------------------------------
 
 
 def test_a_pagina_da_sugestao_conta_por_onde_a_ideia_andou(caixa):
@@ -191,9 +150,7 @@ def test_a_pagina_da_sugestao_conta_por_onde_a_ideia_andou(caixa):
 
 
 def test_a_historia_mostra_a_decisao_e_nunca_quem_decidiu(caixa):
-    """O `HistoricoStatus` é a auditoria da EQUIPE: `alterado_por` é uma
-    `Identidade`, com e-mail dentro. O recorte é feito na CONSULTA
-    (`.values(...)`), então não há o que um `{{ … }}` distraído alcançar."""
+    """A história mostra a decisão e a nota, nunca a `Identidade` de quem decidiu."""
     sugestao = caixa.publicar("Legendas nas aulas")
     caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="Vale a pena.")
 
@@ -220,9 +177,7 @@ def test_o_comentario_escrito_aparece_na_conversa(caixa):
     assert "Assisto no ônibus." in corpo
 
 
-# ---------------------------------------------------------------------------
-# Nova ideia: a busca de duplicata NA FRENTE
-# ---------------------------------------------------------------------------
+# Nova ideia: a busca de duplicata na frente
 
 
 def test_o_formulario_confere_antes_de_publicar_e_a_conferencia_nao_cria_nada(caixa):
@@ -263,18 +218,13 @@ def test_a_categoria_escolhida_sobrevive_a_conferencia(caixa):
     assert re.search(r'value="curso"\s+checked', corpo), corpo[-1200:]
 
 
-# ---------------------------------------------------------------------------
-# O rosto sob o prefixo público — o regime da VPS
-# ---------------------------------------------------------------------------
+# O rosto sob o prefixo público
 
 
 @pytest.fixture
 def sob_prefixo(settings):
-    """O env da VPS mais o que o SERVIDOR faz e o client de teste não faz.
-
-    O prefixo é de THREAD e o Django não o limpa entre testes: sem o
-    `clear_script_prefix()` na saída, ele vaza para quem rodar depois.
-    """
+    """O env da VPS com `SCRIPT_NAME` ligado, limpo na saída porque o prefixo é de
+    thread."""
     settings.FORCE_SCRIPT_NAME = PREFIXO
     set_script_prefix(PREFIXO)
     yield
@@ -282,12 +232,7 @@ def sob_prefixo(settings):
 
 
 def test_a_folha_de_estilo_sai_com_o_prefixo_publico(dentro, sugestao, sob_prefixo):
-    """O guarda que separa `{% url %}` de `{% static %}`.
-
-    `{% static %}` devolveria `/static/sugestoes/caixa.css` — endereço que, em
-    `meshcraft.top`, o Traefik entrega ao `funil` (catch-all na raiz), não à
-    Caixa. O rosto chegaria sem estilo em produção, e SÓ em produção.
-    """
+    """A folha de estilo sai com o prefixo público (`{% url %}`, não `{% static %}`)."""
     corpo = dentro.client.get("/").content.decode()
 
     assert f'href="{PREFIXO}/static/sugestoes/caixa.css"' in corpo, (
@@ -297,12 +242,8 @@ def test_a_folha_de_estilo_sai_com_o_prefixo_publico(dentro, sugestao, sob_prefi
 
 
 def test_a_borda_publica_entrega_a_folha_de_estilo(sob_prefixo):
-    """A outra metade: o endereço acima RESOLVE quando o Traefik o entrega.
-
-    Pela borda pública a request line chega ao uvicorn COM o prefixo (o Traefik
-    não o remove), e é aí que `armadilhas/083` mora: sem a rota `estatico` no
-    urlconf, isto seria 404 com `DEBUG=0` e todos os settings certos.
-    """
+    """O endereço da folha de estilo resolve quando chega com o prefixo, como pelo
+    Traefik."""
     resposta = async_to_sync(AsyncClient().get)(
         f"{PREFIXO}/static/sugestoes/caixa.css",
         headers={"x-forwarded-proto": "https"},
@@ -313,8 +254,7 @@ def test_a_borda_publica_entrega_a_folha_de_estilo(sob_prefixo):
 
 
 def test_quem_nao_entrou_nao_alcanca_o_rosto(client, sugestao):
-    """O rosto não afrouxou nada: continua valendo que a Caixa é de quem tem
-    matrícula, inclusive para só olhar (`DECISAO-EVO-01` §2)."""
+    """Sem sessão, nenhuma página do rosto abre: o anônimo é mandado para a porta."""
     for endereco in (
         reverse("quadro"),
         f"{reverse('quadro')}?ordem=novas",

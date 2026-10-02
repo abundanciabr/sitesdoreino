@@ -1,47 +1,20 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
-"""O que esta célula fala com o mundo lá fora — e nada além disso.
-
-Duas conversas, e a `DECISAO-celula-de-identidade` (25/08/2026) reorganizou a
-primeira: **a célula `identidade` prova QUEM É; a célula `alunos` decide SE
-PODE.** O Google saiu deste arquivo — a dança do OAuth mudou de casa junto com
-a sessão, e quem a executa hoje é a `identidade`. O que a Caixa faz é
-PERGUNTAR, pelo contrato congelado (`contracts/identidade.openapi.yaml`,
-operação `getSessionFull` — a resposta COM e-mail, que esta célula precisa
-para conferir as listas DELA).
-
-**Célula não lê banco de outra:** a `sugestoes` NUNCA lê banco alheio. Pergunta por HTTP, pelo
-contrato, com Bearer do par e **timeout sempre explícito**.
-
-**Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
-uso, via `exigir()`: o container web não pode morrer no boot porque um token
-ainda não foi colado no servidor. Faltando a variável, quem falha é o CAMINHO
-que precisa dela, fechado e com o nome da variável na mensagem.
-
-Em dev e no CI **nada disto chega à rede**: `tests/conftest.py` dubla as duas
-URLs com `respx`.
-"""
+"""Clientes HTTP das células `identidade` e `alunos`, com Bearer do par.
+A configuração é lida no ponto de uso, nunca no import."""
 
 import os
 from urllib.parse import quote
 
 import httpx
 
-# Timeout SEMPRE explícito (R2). Curto de propósito: estes saltos estão no
-# caminho de uma pessoa esperando uma página abrir, e a resposta certa para
-# "demorou" é falhar fechado depressa, não pendurar a requisição dela.
+# Timeout explícito e curto: falha fechado depressa em vez de pendurar a página.
 TIMEOUT = 5.0
 
 _cliente: httpx.Client | None = None
 
 
 def http() -> httpx.Client:
-    """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
-
-    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um
-    cliente novo por chamada, e com ele um `ssl.SSLContext` — 0,4 s por
-    chamada, medido nesta máquina. `httpx.Client` é seguro entre threads, e o
-    `respx` troca o transporte na classe, então o dublê continua valendo.
-    """
+    """Um `httpx.Client` por processo, reaproveitado entre chamadas."""
     global _cliente
     if _cliente is None:
         _cliente = httpx.Client(timeout=TIMEOUT)
@@ -49,31 +22,17 @@ def http() -> httpx.Client:
 
 
 class ConfiguracaoAusente(RuntimeError):
-    """Falta uma variável de ambiente que ESTE caminho precisa.
-
-    Não é levantada no import — só quando alguém tenta atravessar a porta. A
-    mensagem nomeia a variável porque o leitor do log vai ser o mantenedor.
-    """
+    """Falta uma variável de ambiente que este caminho precisa."""
 
 
 class IdentidadeIndisponivel(RuntimeError):
-    """A célula `identidade` não respondeu, ou respondeu fora do contrato.
-
-    **Isto NUNCA vira "então ninguém entrou".** Para a pergunta "quem é?",
-    "não consegui perguntar" e "perguntei e é visitante" são fatos diferentes:
-    o segundo mostra a porta; o primeiro mostra uma explicação honesta e fecha
-    a participação (fail-closed — a resposta daqui alimenta AUTORIZAÇÃO local,
-    ao contrário do reconhecimento de exibição do `funil`, que falha aberto).
-    """
+    """A `identidade` não respondeu ou respondeu fora do contrato.
+    Fecha a participação; nunca vira "ninguém entrou"."""
 
 
 class AlunosIndisponivel(RuntimeError):
-    """A célula `alunos` não respondeu, ou respondeu fora do contrato.
-
-    **Isto NUNCA pode virar "deixa entrar porque não deu para conferir".** Não
-    conseguir perguntar não é sinônimo de resposta positiva; quem trata esta
-    exceção fecha a porta (ver `apps/core/sessao.py`).
-    """
+    """A `alunos` não respondeu ou respondeu fora do contrato.
+    Quem trata a exceção fecha a porta; nunca vira "deixa entrar"."""
 
 
 def exigir(nome: str) -> str:
@@ -88,29 +47,11 @@ def exigir(nome: str) -> str:
 
 
 class IdentidadeClient:
-    """`contracts/identidade.openapi.yaml`, operação `getSessionFull`.
-
-    Duas credenciais viajam juntas e provam coisas diferentes — confundi-las é
-    o erro caro (a lição veio da outra ponta desta mesma pergunta): o `Bearer`
-    do par prova **quem chama**; o cabeçalho `Cookie`, repassado OPACO, prova
-    **quem é a pessoa** do outro lado do navegador. O cookie nunca é
-    interpretado aqui — esta célula não tem a chave que o assina (muralhas da célula).
-
-    Por que a resposta completa, e não a `getSession` que o `funil` usa: esta
-    célula precisa do **e-mail** para conferir as listas DELA (matrícula na
-    `alunos`, staff no env) — autorização local sobre dado que a resposta de
-    exibição, por desenho, não carrega. O degrau que permite isso é o token do
-    par estar também em `TOKENS_COMPLETOS_SUGESTOES` no env da `identidade`.
-    """
+    """`getSessionFull` da `identidade`: Bearer do par mais o cookie repassado opaco."""
 
     def sessao_completa(self, cookie: str) -> dict:
-        """Quem é a pessoa desta requisição — corpo do contrato, ou exceção.
-
-        200 fora de forma, não-200 e erro de rede viram
-        `IdentidadeIndisponivel`: quem chama precisa distinguir "visitante"
-        (corpo com `autenticado: false`) de "não deu para perguntar" — as duas
-        situações têm telas diferentes na porta.
-        """
+        """Quem é a pessoa desta requisição, ou `IdentidadeIndisponivel`.
+        Visitante é `autenticado: false`; falha de rede ou de contrato é exceção."""
         base = exigir("IDENTIDADE_API_URL").rstrip("/")
         token = exigir("IDENTIDADE_API_TOKEN")
         try:
@@ -134,12 +75,7 @@ class IdentidadeClient:
         try:
             corpo = resposta.json()
         except ValueError as erro:
-            # `200` com corpo que não é JSON — página de erro de um proxy
-            # interposto, resposta truncada, `Content-Length` mentiroso.
-            # `json.JSONDecodeError` é `ValueError`, NÃO é `httpx.RequestError`:
-            # fora deste `try` ela subiria crua até a view e viraria 500, em vez
-            # do 503 que explica. É a família do *2xx não é sucesso*
-            # (RETROSPECTIVA §4), achada pela auditoria de 25/08/2026.
+            # `200` com corpo que não é JSON (proxy, resposta truncada) fecha o caminho.
             raise IdentidadeIndisponivel(
                 f"a célula identidade respondeu fora do contrato: {erro}"
             ) from erro
@@ -152,29 +88,11 @@ class IdentidadeClient:
 
 
 class AlunosClient:
-    """`contracts/alunos.openapi.yaml`, operação `listEnrollments` — leitura pura.
-
-    `ALUNOS_API_URL` aponta para a rede interna do Docker
-    (`http://alunos:8000/api/alunos`, o `servers` do contrato), nunca para a
-    borda pública. O token é o do PAR `sugestoes→alunos`: do outro lado ele
-    entra como mais uma variável `TOKENS_ACEITOS_*` no env da `alunos` (Lote 2),
-    sem uma linha de código lá.
-    """
+    """`listEnrollments` e `createPreEnrollment` da `alunos`, pela rede interna."""
 
     def situacao_de(self, email: str) -> str:
-        """Em que categoria esta pessoa está — a pergunta que decide a TELA.
-
-        Substitui `matriculas_de` na porta desde 28/08/2026
-        (`DECISAO-ex-aluno-e-a-porta-que-explica`). A anterior respondia sim ou
-        não, e com um "não" a Caixa mostrava sempre a mesma tela: o formulário
-        de pedir entrada. Só que há QUATRO jeitos de não ter acesso, e mandar
-        quem saiu da escola preencher o formulário de entrada é dizer a ela que
-        nunca pediu nada.
-
-        **Erro FECHA**, como a anterior: `AlunosIndisponivel` sobe, e a porta
-        traduz em "não conseguimos conferir agora" — nunca em "deixa entrar" e
-        nunca em "você não é aluno".
-        """
+        """Categoria da pessoa na `alunos`, que decide a tela da porta.
+        Qualquer erro sobe como `AlunosIndisponivel`."""
         base = exigir("ALUNOS_API_URL").rstrip("/")
         token = exigir("ALUNOS_API_TOKEN")
         try:
@@ -187,9 +105,7 @@ class AlunosClient:
                 f"não deu para falar com a célula alunos: {erro}"
             ) from erro
 
-        # Sem 404 aqui, e é decisão do contrato: quem a célula não conhece é
-        # `cadastrado`, com 200. Um 404 traduzido em "cadastrado" pelo
-        # consumidor seria cada célula reinventando essa regra.
+        # Sem 404 aqui: quem a `alunos` não conhece volta como `cadastrado`, com 200.
         if resposta.status_code != 200:
             raise AlunosIndisponivel(
                 f"a célula alunos respondeu HTTP {resposta.status_code}"
@@ -203,15 +119,8 @@ class AlunosClient:
         return corpo["categoria"]
 
     def matriculas_de(self, email: str) -> list[dict]:
-        """As matrículas deste e-mail. Lista vazia = não tem. Erro = FECHA.
-
-        O contrato responde **404** para "aluno inexistente" — este é o único
-        não-200 que significa uma resposta, e por isso é o único traduzido para
-        lista vazia. Qualquer outro (401 de token errado, 500, timeout, conexão
-        recusada) sobe como `AlunosIndisponivel`, porque "não consegui
-        perguntar" e "perguntei e não tem" são fatos diferentes e merecem telas
-        diferentes.
-        """
+        """As matrículas deste e-mail; 404 vira lista vazia.
+        Qualquer outro erro sobe como `AlunosIndisponivel`."""
         base = exigir("ALUNOS_API_URL").rstrip("/")
         token = exigir("ALUNOS_API_TOKEN")
         try:
@@ -238,7 +147,7 @@ class AlunosClient:
             )
         return corpo
 
-    # -- a fila de liberação (DECISAO-fila-de-liberacao.md, 27/08/2026) -------
+    # -- a fila de liberação --
 
     NA_FILA = "na-fila"
     JA_TEM_MATRICULA = "ja-tem-matricula"
@@ -253,24 +162,8 @@ class AlunosClient:
         comprou_em: str = "",
         turma: str = "",
     ) -> str:
-        """`createPreEnrollment` — a pessoa pede entrada e fica AGUARDANDO.
-
-        Devolve `NA_FILA` (o contrato responde 201 na primeira vez e 200 no
-        reenvio — para quem está do lado de cá os dois significam a mesma coisa:
-        *seu pedido está registrado*) ou `JA_TEM_MATRICULA` (409: quem já entra
-        não precisa de fila). Qualquer outra resposta FECHA, pelo mesmo motivo
-        de `matriculas_de`: "não consegui registrar" não pode virar "registrei".
-
-        **Escreve**, ao contrário de tudo o mais que esta célula pede à
-        `alunos` — e é por isso que a idempotência importa: o par (site_id,
-        email) é a chave do outro lado, então o duplo-clique de uma pessoa
-        ansiosa não vira duas linhas na fila do mantenedor.
-
-        Os opcionais só viajam quando têm valor: o contrato declara
-        `additionalProperties: false`, e mandar `null` onde a pessoa não
-        escreveu nada seria pedir para depender de um detalhe de aceitação que
-        não precisamos exercitar.
-        """
+        """Pede entrada (`createPreEnrollment`): `NA_FILA` ou `JA_TEM_MATRICULA`.
+        Os opcionais só vão com valor; outra resposta é `AlunosIndisponivel`."""
         base = exigir("ALUNOS_API_URL").rstrip("/")
         token = exigir("ALUNOS_API_TOKEN")
         corpo = {
@@ -299,10 +192,7 @@ class AlunosClient:
             return self.NA_FILA
         if resposta.status_code == 409:
             return self.JA_TEM_MATRICULA
-        # 422 incluído aqui de propósito: a tela valida antes de mandar, então
-        # um payload recusado é desacordo NOSSO com o contrato — problema de
-        # quem escreveu o código, não da pessoa. A tela diz "é problema nosso",
-        # que é a verdade, e nada é dado como registrado.
+        # 422 também é falha nossa: a tela valida antes, e nada é dado como registrado.
         raise AlunosIndisponivel(
             f"a célula alunos respondeu HTTP {resposta.status_code} ao pedido de entrada"
         )

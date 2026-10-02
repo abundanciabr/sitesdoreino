@@ -1,9 +1,6 @@
 # tests/test_inv_aviso_e_so_do_dono.py  # [RECEITA:R5 v1]
-"""INV-SUG09 — o aviso é do dono: só quem interagiu recebe, e só o seu.
-
-Mede a escrita: a linha `Aviso` local e a carta da outbox. Ler e marcar como
-lido é da página `/notificacoes`, na célula `funil`.
-"""
+"""O aviso é do dono: só quem interagiu recebe, e só o seu.
+Mede a escrita: a linha `Aviso` local e a carta da outbox."""
 
 import pytest
 

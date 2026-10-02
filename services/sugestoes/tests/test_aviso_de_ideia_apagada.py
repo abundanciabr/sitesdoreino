@@ -1,9 +1,6 @@
 # tests/test_aviso_de_ideia_apagada.py
 """Apagar a ideia destrói a cópia local dos avisos dela.
-
-O recado que a pessoa lê mora na caixa central e some da tela na página
-`/notificacoes`; aqui só se mede o que esta célula destrói de verdade.
-"""
+O recado lido vive em `/notificacoes`; aqui só se mede a cópia local."""
 
 import pytest
 

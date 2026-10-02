@@ -1,19 +1,5 @@
-"""[INVARIANTE] Quem grava o cookie `meshcraft_sessao` é SÓ a `identidade`.
-
-DECISAO-celula-de-identidade §6.4. Se esta célula voltasse a ESCREVER o cookie
-de sessão (o nome e o `Path=/` são os mesmos — herança da virada de 24/08),
-ela sobrescreveria a sessão do site inteiro com uma assinatura que só ela lê:
-a pessoa "sumiria" de todas as outras páginas no clique seguinte, sem erro em
-lugar nenhum. As três metades:
-
-1. nenhuma página de participação emite `Set-Cookie meshcraft_sessao`;
-2. a ÚNICA exceção é o `/sair`, e só para APAGAR (valor vazio, expirado) —
-   sair da Caixa é sair do site, e apagar é o logout inteiro de uma sessão
-   sem estado;
-3. o par (nome, Path) dos settings continua casando com o da `identidade` —
-   é ele que faz o `flush()` do `/sair` apagar o cookie CERTO. Quem mudar um
-   dos dois lá tem de saber que este guarda existe.
-"""
+"""Só a `identidade` grava o cookie `meshcraft_sessao`: aqui nenhuma página o escreve.
+`/sair` só o apaga, e o par (nome, Path) dos settings casa com o da `identidade`."""
 
 from django.conf import settings
 from django.urls import reverse
