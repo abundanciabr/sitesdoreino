@@ -17,6 +17,8 @@ O que estes guardas protegem (plano: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`):
    à parte e dita na tela. Nenhum "0" inventado.
 4. **A contagem é pela data certa**: `virou_aluno_em` em America/Sao_Paulo,
    nunca `comprou_em`; antes da partida não conta; reembolsada não conta.
+   E **só a venda do nosso site conta** (02/10/2026): quem foi liberado pela
+   sala de espera comprou em outro site e fica de fora.
 5. **A conta do veredito é a que o plano descreve**, e não outra: linha reta
    da partida ao alvo, sem índice. E a barra do mês deriva a meta do mês da
    mesma linha, quando o mantenedor não fixou uma.
@@ -79,8 +81,8 @@ def _dentro() -> Client:
     return c
 
 
-def _ficha(status="ativa", virou_aluno_em="omitido", **extra):
-    ficha = {"status": status, **extra}
+def _ficha(status="ativa", virou_aluno_em="omitido", origem="comprou", **extra):
+    ficha = {"status": status, "origem": origem, **extra}
     if virou_aluno_em != "omitido":
         ficha["virou_aluno_em"] = virou_aluno_em
     return ficha
@@ -246,6 +248,43 @@ def test_reembolsada_nao_e_compra_e_ficha_sem_data_e_dita_a_parte():
     assert r["ciclo"] == 1
     assert r["reembolsadas"] == 1
     assert r["sem_data"] == 1
+
+
+def test_so_conta_venda_feita_pelo_nosso_site():
+    """Correção do mantenedor em 02/10/2026: o placar mostrava 69 alunas num
+    site que nunca vendeu nada. Eram as liberadas pela sala de espera, que
+    compraram em OUTRO site. Liberada e administrativa não são venda do site,
+    nem no ciclo, nem no mês, nem nas reembolsadas, nem nas sem data."""
+    fichas = [
+        _ficha(virou_aluno_em="2026-09-10T12:00:00-03:00"),
+        _ficha(origem="liberado", virou_aluno_em="2026-09-10T12:00:00-03:00"),
+        _ficha(origem="liberado", virou_aluno_em="2026-10-01T12:00:00-03:00"),
+        _ficha(origem="administrativo", virou_aluno_em="2026-09-11T12:00:00-03:00"),
+        _ficha(origem="liberado", status="reembolsada", virou_aluno_em="2026-09-12T12:00:00-03:00"),
+        _ficha(origem="liberado", virou_aluno_em=None),
+        _ficha(origem="origem-que-ainda-nao-existe", virou_aluno_em="2026-09-13T12:00:00-03:00"),
+    ]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] == 1
+    assert r["reembolsadas"] == 0 and r["sem_data"] == 0
+    assert r["total_de_alunos"] == 6, "o total da escola continua sendo todo mundo ativo"
+
+
+def test_so_liberadas_no_ciclo_e_zero_de_verdade():
+    """É o retrato de hoje: ninguém comprou pelo site, então é zero, e não 69."""
+    fichas = [
+        _ficha(origem="liberado", virou_aluno_em="2026-09-10T12:00:00-03:00")
+        for _ in range(69)
+    ]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] == 0 and r["mes"] == 0 and r["campo_ausente"] is False
+
+
+def test_lista_sem_a_origem_nao_vira_zero_nem_soma_tudo():
+    """Sem a origem não se separa o site da sala de espera: não sei, e não 0."""
+    fichas = [{"status": "ativa", "virou_aluno_em": "2026-09-10T12:00:00-03:00"}]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] is None and r["campo_ausente"] is True
 
 
 def test_lista_sem_o_campo_novo_nao_vira_zero():

@@ -60,12 +60,18 @@ def test_as_estrelas_guia_seguram_uma_a_outra():
     assert a["fonte"] is None and b["fonte"] is None, "hoje nenhuma das duas tem fonte"
 
 
+def _venda_do_site(dia: str, status: str = "ativa") -> dict:
+    return {**_aluna(dia, status), "origem": "comprou"}
+
+
 def test_compras_por_mes_so_depois_da_partida():
     alunos = [
-        _aluna("2026-09-02"),
-        _aluna("2026-09-10"),
-        _aluna("2026-10-01"),
-        _aluna("2026-10-02", status="reembolsada"),
+        _venda_do_site("2026-09-02"),
+        _venda_do_site("2026-09-10"),
+        _venda_do_site("2026-10-01"),
+        _venda_do_site("2026-10-02", status="reembolsada"),
+        # Liberada pela sala de espera: comprou em outro site (02/10/2026).
+        _aluna("2026-09-11"),
     ]
     assert doze.compras_por_mes(alunos, PARTIDA) == {(2026, 9): 1, (2026, 10): 1}
     assert doze.compras_por_mes(None, PARTIDA) is None

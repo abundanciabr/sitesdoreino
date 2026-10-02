@@ -23,9 +23,9 @@ número de fichas:
    o número. Guarda: `tests/test_placar.py`.
 2. **X é medido, nunca digitado**, e vem da célula `alunos`, por HTTP e em
    tempo real (decisão do mantenedor de 25/08/2026). A data que conta é
-   `virou_aluno_em` (a liberação pela fila, ou a confirmação do pagamento),
-   campo do Rito de Contrato de 03/09/2026 (PR #933). Nunca `comprou_em`, que
-   é o que a pessoa digita ao pedir entrada.
+   `virou_aluno_em` (a confirmação do pagamento), campo do Rito de Contrato
+   de 03/09/2026 (PR #933). Nunca `comprou_em`, que é o que a pessoa digita
+   ao pedir entrada.
 3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ *"não consigo
    contar"*. A lista chegou mas ainda sem o campo (a célula ainda não subiu o
    PR do rito) ⇒ *"a lista ainda não traz a data"*. Ficha sem data ⇒ contada à
@@ -35,6 +35,13 @@ número de fichas:
 5. **Quem ficou antes da partida não entra.** A turma liberada em lote pela
    lista de WhatsApp em 02/09/2026 é venda de outros meses (palavras do
    mantenedor: neste mês ainda não houve venda). A partida é 03/09.
+6. **Só conta venda feita pelo NOSSO site** (correção do mantenedor em
+   02/10/2026): *"esse painel é só para vendas feitas através do nosso site e
+   não através de outros sites"*. Quem foi liberado pela sala de espera
+   (`origem == "liberado"`) comprou em outro site, e quem entrou por gesto do
+   painel (`administrativo`) não comprou: nenhum dos dois entra. Até essa data
+   o placar somava os liberados, e mostrava 69 alunas num site que ainda não
+   tinha vendido nada.
 
 ## O que mora no cartão e o que NÃO mora
 
@@ -144,6 +151,27 @@ STATUS_QUE_E_ALUNO = "ativa"
 
 #: O campo do Rito de Contrato de 03/09/2026 (PR #933).
 CAMPO_DA_DATA = "virou_aluno_em"
+
+#: COMO a pessoa virou aluna (`Matricula.origem()` na `alunos`), e a única
+#: origem que é venda do nosso site: `comprou`, o checkout. `liberado` é a sala
+#: de espera (comprou em outro site) e `administrativo` é gesto do painel.
+#: Lista de PERMISSÃO de um item só: origem nova nasce fora da conta.
+CAMPO_DA_ORIGEM = "origem"
+ORIGEM_QUE_E_VENDA_DO_SITE = "comprou"
+
+
+def vendeu_pelo_site(ficha: dict) -> bool:
+    """A ficha é uma compra de pé feita pelo checkout do nosso site.
+
+    A regra mora aqui, uma vez, e o ciclo (`ciclo.py`) e os doze (`doze.py`)
+    perguntam a ela: três cópias da mesma condição discordariam na próxima
+    correção, como as três que somavam a sala de espera até 02/10/2026.
+    """
+    return (
+        ficha.get(CAMPO_DA_ORIGEM) == ORIGEM_QUE_E_VENDA_DO_SITE
+        and ficha.get("status") in STATUS_QUE_COMPRARAM
+    )
+
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 
@@ -388,12 +416,17 @@ def dia_em_sao_paulo(texto: object) -> dt.date | None:
 def contar_compras(
     alunos: list[dict] | None, partida_em: dt.date, hoje: dt.date
 ) -> dict:
-    """As fichas que viraram alunas, contadas de UMA lista: o ciclo, o mês,
-    as sem data, as reembolsadas, e o total de alunos de hoje.
+    """As vendas feitas pelo nosso site, contadas de UMA lista: o ciclo, o
+    mês, as sem data, as reembolsadas, e o total de alunos de hoje.
+
+    Só a origem `comprou` entra nas quatro primeiras (`vendeu_pelo_site`); o
+    total de alunos é a escola inteira, por qualquer caminho, porque responde
+    outra pergunta (quantos alunos a plataforma tem), e não a da venda.
 
     `ciclo`/`mes` são `None` quando não dá para contar: lista ausente
-    (`alunos is None`) ou lista sem o campo (`campo_ausente`, a célula ainda
-    não subiu o PR do rito). Zero só quando contou e deu zero.
+    (`alunos is None`) ou lista sem a data ou a origem (`campo_ausente`): sem
+    a origem não se separa a venda do site da sala de espera, e somar as duas
+    foi o erro corrigido em 02/10/2026. Zero só quando contou e deu zero.
     """
     vazio = {
         "ciclo": None,
@@ -406,17 +439,21 @@ def contar_compras(
     if alunos is None:
         return vazio
     total_de_alunos = sum(1 for a in alunos if a.get("status") == STATUS_QUE_E_ALUNO)
-    if alunos and not any(CAMPO_DA_DATA in a for a in alunos):
+    if alunos and not any(
+        CAMPO_DA_DATA in a and CAMPO_DA_ORIGEM in a for a in alunos
+    ):
         return {**vazio, "total_de_alunos": total_de_alunos, "campo_ausente": True}
     inicio_do_mes = hoje.replace(day=1)
     ciclo = mes = sem_data = reembolsadas = 0
     for a in alunos:
+        if a.get(CAMPO_DA_ORIGEM) != ORIGEM_QUE_E_VENDA_DO_SITE:
+            continue
         dia = dia_em_sao_paulo(a.get(CAMPO_DA_DATA))
         if a.get("status") == "reembolsada":
             if dia is not None and partida_em <= dia <= hoje:
                 reembolsadas += 1
             continue
-        if a.get("status") not in STATUS_QUE_COMPRARAM:
+        if not vendeu_pelo_site(a):
             continue
         if dia is None:
             sem_data += 1

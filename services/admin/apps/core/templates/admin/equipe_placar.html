@@ -25,7 +25,7 @@
       {% else %}
         <p class="pergunta">{{ meta.pergunta }}</p>
         {% if placar.veredito == "nao-consigo-contar" %}
-          <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu{% if contagem.campo_ausente %} com a data que conta{% endif %}. Isto não é zero: abra de novo daqui a pouco.</p>
+          <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu{% if contagem.campo_ausente %} com a data e a origem de cada compra{% endif %}. Isto não é zero: abra de novo daqui a pouco.</p>
         {% else %}
           <div class="valor">{{ placar.x }}{% if placar.alvo is not None %} <span>de {{ placar.alvo }} {{ meta.unidade }}</span>{% endif %}</div>
           {% if placar.alvo is not None %}

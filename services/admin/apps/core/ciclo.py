@@ -46,17 +46,17 @@ from django.views.decorators.http import require_GET
 from .clients import AlunosClient
 from .placar import (
     CARTAO_DA_META,
-    STATUS_QUE_COMPRARAM,
     CAMPO_DA_DATA,
     diretorio_dos_cartoes,
     dia_em_sao_paulo,
     ler_cartao,
     semanas_do_ciclo,
+    vendeu_pelo_site,
 )
 
 
 def contar_por_semana(alunos: "list[dict] | None", faixas: list[dict]) -> "list | None":
-    """Quantas pessoas compraram dentro de cada faixa de datas.
+    """Quantas pessoas compraram pelo nosso site dentro de cada faixa de datas.
 
     `None` (a lista inteira) quando não deu para perguntar. Nunca uma lista de
     zeros: zero é uma afirmação, e afirmar sem ter perguntado é o falso-verde.
@@ -65,7 +65,7 @@ def contar_por_semana(alunos: "list[dict] | None", faixas: list[dict]) -> "list 
         return None
     contas = [0] * len(faixas)
     for a in alunos:
-        if a.get("status") not in STATUS_QUE_COMPRARAM:
+        if not vendeu_pelo_site(a):
             continue
         dia = dia_em_sao_paulo(a.get(CAMPO_DA_DATA))
         if dia is None:

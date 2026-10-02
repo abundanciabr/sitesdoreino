@@ -17,7 +17,7 @@ from __future__ import annotations
 import datetime as dt
 
 from . import laboratorio as laboratorio_
-from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo, ler_cartao
+from .placar import dia_em_sao_paulo, ler_cartao, vendeu_pelo_site
 
 #: Os doze, na ordem dos documentos, com o nome do cartão da casa.
 DOZE = (
@@ -44,12 +44,12 @@ def _mes_anterior(mes: dt.date) -> dt.date:
 
 
 def compras_por_mes(alunos: list[dict] | None, partida_em: dt.date) -> dict | None:
-    """`{ (ano, mes): quantas viraram alunas }`, só depois da partida."""
+    """`{ (ano, mes): quantas compraram pelo nosso site }`, só depois da partida."""
     if alunos is None:
         return None
     por_mes: dict = {}
     for a in alunos:
-        if a.get("status") not in STATUS_QUE_COMPRARAM:
+        if not vendeu_pelo_site(a):
             continue
         dia = dia_em_sao_paulo(a.get("virou_aluno_em"))
         if dia is None or dia < partida_em:
