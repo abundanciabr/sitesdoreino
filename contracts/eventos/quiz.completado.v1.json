@@ -33,7 +33,8 @@
             "phone": { "type": "string" }
           }
         },
-        "utm": { "type": "object", "additionalProperties": { "type": "string" } }
+        "utm": { "type": "object", "additionalProperties": { "type": "string" } },
+        "context": { "type": "object", "additionalProperties": { "type": "string" } }
       }
     }
   }

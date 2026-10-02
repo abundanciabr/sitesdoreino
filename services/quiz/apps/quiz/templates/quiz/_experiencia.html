@@ -1,0 +1,52 @@
+{% if experiencia.headline %}<h1>{{ experiencia.headline }}</h1>{% endif %}
+{% if experiencia.subheadline %}<p>{{ experiencia.subheadline }}</p>{% endif %}
+
+{% if experiencia.video_url %}
+  {% if experiencia.video_kind == 'embed' %}
+    <iframe src="{{ experiencia.video_url }}" title="Vídeo da experiência" loading="lazy" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0"></iframe>
+  {% elif experiencia.video_kind == 'file' %}
+    <video controls preload="metadata" style="width:100%;aspect-ratio:16/9"><source src="{{ experiencia.video_url }}">Seu navegador não reproduz este vídeo.</video>
+  {% endif %}
+{% endif %}
+
+{% if experiencia.fmt == 'calc' %}
+  <form id="experiencia-calculadora" action="{{ calculadora_url }}" method="post">
+    {% csrf_token %}
+    {% for input in experiencia.calculator.inputs %}
+      <label for="calc-{{ input.key }}">{{ input.label }}</label>
+      <input id="calc-{{ input.key }}" name="{{ input.key }}" type="number" step="any" value="{{ input.default }}"{% if input.min != None %} min="{{ input.min }}"{% endif %}{% if input.max != None %} max="{{ input.max }}"{% endif %} required>
+    {% endfor %}
+    <button type="submit">Calcular</button>
+    <output id="experiencia-resultado" aria-live="polite"></output>
+  </form>
+  <script>
+    (() => {
+      const form = document.getElementById('experiencia-calculadora');
+      const output = document.getElementById('experiencia-resultado');
+      if (!form || !form.action) return;
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const body = new URLSearchParams(new FormData(form));
+        const attempt = document.querySelector('form.crivo [name="quiz_attempt"]');
+        if (attempt) body.set('quiz_attempt', attempt.value);
+        output.textContent = 'Calculando…';
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value},
+            body
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.erro || 'Não foi possível calcular.');
+          output.textContent = `${data.resultado.result_label}: ${data.resultado.result}`;
+        } catch (error) {
+          output.textContent = error.message || 'Não foi possível calcular.';
+        }
+      });
+    })();
+  </script>
+{% endif %}
+
+{% if experiencia.fmt == 'ai' %}
+  <p role="status">Este recurso está indisponível no momento.</p>
+{% endif %}

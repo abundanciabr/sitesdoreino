@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import re
 from urllib.parse import quote
 
@@ -45,7 +46,13 @@ def _destino(request, tipo: str):
 
 
 def _pedir(
-    request, tipo: str, metodo: str, slug: str = "", gesto: str = "", corpo=None
+    request,
+    tipo: str,
+    metodo: str,
+    slug: str = "",
+    gesto: str = "",
+    corpo=None,
+    params=None,
 ):
     destino = _destino(request, tipo)
     if destino is None:
@@ -55,11 +62,16 @@ def _pedir(
         url += "/" + quote(slug, safe="")
     if gesto:
         url += "/" + gesto
+    query = {"site_id": site_id} if site_id else {}
+    if params:
+        query.update(
+            {chave: valor for chave, valor in params.items() if chave != "site_id"}
+        )
     try:
         resposta = httpx.request(
             metodo,
             url,
-            params={"site_id": site_id} if site_id else None,
+            params=query or None,
             json=corpo,
             headers={"Authorization": f"Bearer {token}"},
             timeout=4.0,
@@ -162,34 +174,135 @@ def conteudo_editar(request, tipo: str, slug: str):
         "recado": request.GET.get("recado", ""),
     }
     if tipo == "quiz":
-        perguntas = list(conteudo.get("questions") or [])
-        faixas = list(conteudo.get("bands") or [])
-        contexto["perguntas"] = [
-            {
-                "indice": i,
-                "texto": p.get("text", ""),
-                "opcoes": "\n".join(
-                    f"{o.get('text', '')} | {o.get('points', 0)}"
-                    for o in p.get("options") or []
-                ),
-            }
-            for i, p in enumerate(perguntas)
-        ] + [{"indice": len(perguntas), "texto": "", "opcoes": ""}]
-        contexto["faixas"] = [{"indice": i, **f} for i, f in enumerate(faixas)] + [
-            {
-                "indice": len(faixas),
-                "key": "",
-                "title": "",
-                "description": "",
-                "min_score": "",
-                "max_score": "",
-                "botao_destino": "",
-                "botao_rotulo": "",
-            }
-        ]
-        contexto["total_perguntas"] = len(contexto["perguntas"])
-        contexto["total_faixas"] = len(contexto["faixas"])
+        dirigido = (
+            conteudo.get("formato") == "quiz-low-ticket/2"
+            or dados.get("directed") is True
+            or (status == 404 and request.GET.get("formato") == "quiz-low-ticket/2")
+        )
+        contexto["quiz_direcionado"] = dirigido
+        if dirigido:
+            contexto["documento_json"] = (
+                json.dumps(conteudo, ensure_ascii=False, indent=2) if conteudo else ""
+            )
+        else:
+            perguntas = list(conteudo.get("questions") or [])
+            faixas = list(conteudo.get("bands") or [])
+            contexto["perguntas"] = [
+                {
+                    "indice": i,
+                    "texto": p.get("text", ""),
+                    "opcoes": "\n".join(
+                        f"{o.get('text', '')} | {o.get('points', 0)}"
+                        for o in p.get("options") or []
+                    ),
+                }
+                for i, p in enumerate(perguntas)
+            ] + [{"indice": len(perguntas), "texto": "", "opcoes": ""}]
+            contexto["faixas"] = [{"indice": i, **f} for i, f in enumerate(faixas)] + [
+                {
+                    "indice": len(faixas),
+                    "key": "",
+                    "title": "",
+                    "description": "",
+                    "min_score": "",
+                    "max_score": "",
+                    "botao_destino": "",
+                    "botao_rotulo": "",
+                }
+            ]
+            contexto["total_perguntas"] = len(contexto["perguntas"])
+            contexto["total_faixas"] = len(contexto["faixas"])
     return render(request, "admin/conteudo_editar.html", contexto)
+
+
+FILTROS_CAMPANHA = (
+    "inicio",
+    "fim",
+    "src",
+    "med",
+    "cpg",
+    "ctv",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+)
+COLUNAS_CAMPANHA = {
+    "src": "src",
+    "med": "med",
+    "cpg": "cpg",
+    "ctv": "ctv",
+    "utm_source": "source",
+    "utm_medium": "medium",
+    "utm_campaign": "campaign",
+    "utm_content": "content",
+}
+
+
+@require_GET
+def quiz_campanhas(request, slug: str):
+    filtros = {
+        nome: request.GET.get(nome, "").strip()[:200] for nome in FILTROS_CAMPANHA
+    }
+    datas = {nome: filtros[nome] for nome in ("inicio", "fim") if filtros[nome]}
+    tags = {
+        nome: valor
+        for nome, valor in filtros.items()
+        if nome not in ("inicio", "fim") and valor
+    }
+    status_relatorio, relatorio = _pedir(
+        request, "quiz", "GET", slug, "campanhas", params=datas
+    )
+    status_links, links = _pedir(request, "quiz", "GET", slug, "links", params=tags)
+    if status_relatorio != 200 or not isinstance(relatorio, dict):
+        mensagem = (
+            relatorio.get("detail")
+            if status_relatorio == 422 and isinstance(relatorio, dict)
+            else None
+        )
+        return _erro(
+            request,
+            "quiz",
+            mensagem or "Não consegui ler as campanhas agora.",
+            422 if status_relatorio == 422 else 503,
+        )
+    if status_links != 200 or not isinstance(links, dict):
+        return _erro(request, "quiz", "Não consegui gerar os links da campanha agora.")
+    if not isinstance(relatorio.get("campanhas"), list) or not isinstance(
+        links.get("links"), list
+    ):
+        return _erro(request, "quiz", "Os dados da campanha vieram incompletos.")
+
+    def filtradas(linhas):
+        return [
+            linha
+            for linha in linhas
+            if isinstance(linha, dict)
+            and all(
+                str(linha.get(COLUNAS_CAMPANHA[nome]) or "") == valor
+                for nome, valor in tags.items()
+                if nome in COLUNAS_CAMPANHA
+            )
+        ]
+
+    linhas = filtradas(relatorio["campanhas"])
+    avulsas = filtradas(relatorio.get("sem_visita_registrada") or [])
+    divergentes = filtradas(relatorio.get("submissoes_sem_correspondencia") or [])
+    return render(
+        request,
+        "admin/quiz_campanhas.html",
+        {
+            "admin": request.admin,
+            "slug": slug,
+            "filtros": filtros,
+            "linhas": linhas,
+            "avulsas": avulsas,
+            "divergentes": divergentes,
+            "links": links["links"],
+            "aviso": relatorio.get("aviso") or "Clique de saída não confirma compra.",
+        },
+    )
 
 
 def _quiz_do_formulario(request):
@@ -266,10 +379,18 @@ def conteudo_salvar(request, tipo: str, slug: str):
         }
     else:
         try:
-            corpo = _quiz_do_formulario(request)
-        except ValueError:
+            if request.POST.get("modo_quiz") == "direcionado":
+                corpo = json.loads(request.POST.get("documento_json") or "")
+                if (
+                    not isinstance(corpo, dict)
+                    or corpo.get("formato") != "quiz-low-ticket/2"
+                ):
+                    raise ValueError("Documento de campanha inválido.")
+            else:
+                corpo = _quiz_do_formulario(request)
+        except (ValueError, json.JSONDecodeError):
             return _erro(
-                request, tipo, "Confira as perguntas, opções e faixas do quiz.", 400
+                request, tipo, "Confira o conteúdo ou o JSON da campanha do quiz.", 400
             )
     status, _ = _pedir(request, tipo, "PUT", slug, "rascunho", corpo)
     if status not in (200, 201):

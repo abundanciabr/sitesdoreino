@@ -5,12 +5,15 @@ from apps.quiz import views as quiz_views
 from apps.quiz.laboratorio import observacao
 from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
 from apps.quiz import portfolio
+from apps.quiz import painel_campanhas
 
 urlpatterns = [
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),
     path("interno/editor/quizzes/<slug:slug>/rascunho", quiz_draft),
     path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
+    path("interno/editor/quizzes/<slug:slug>/campanhas", painel_campanhas.relatorio),
+    path("interno/editor/quizzes/<slug:slug>/links", painel_campanhas.links),
     path("interno/portfolio/catalogo", portfolio.catalogo),
     path("interno/portfolio/exploracoes", portfolio.exploracoes),
     path("interno/portfolio/exploracoes/atual", portfolio.exploracao_atual),
@@ -43,6 +46,9 @@ urlpatterns = [
     path("<slug:slug>/", quiz_views.formulario, name="quiz-formulario"),
     path("<slug:slug>/resultado", quiz_views.resultado, name="quiz-resultado"),
     path("<slug:slug>/refazer", quiz_views.refazer, name="quiz-refazer"),
+    path("<slug:slug>/sair", quiz_views.sair, name="quiz-sair"),
+    path("<slug:slug>/demonstracao", quiz_views.demonstracao, name="quiz-demonstracao"),
+    path("<slug:slug>/calcular", quiz_views.calcular, name="quiz-calcular"),
 ]
 
 handler404 = "site_errors.handlers.page_not_found_shared"

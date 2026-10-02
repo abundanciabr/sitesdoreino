@@ -25,6 +25,7 @@ class Quiz(models.Model):
     slug = models.SlugField(max_length=100)
     title = models.CharField(max_length=200)
     active = models.BooleanField(default=True)
+    directed = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -49,6 +50,7 @@ class QuizVersion(models.Model):
     key = models.SlugField(max_length=100)
     weight = models.PositiveSmallIntegerField(default=100)
     active = models.BooleanField(default=True)
+    experience = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [
@@ -158,6 +160,7 @@ class Submission(models.Model):
     lead_name = models.CharField(max_length=200, blank=True, default="")
     lead_phone = models.CharField(max_length=32, blank=True, default="")
     utm = models.JSONField(default=dict, blank=True)
+    context = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

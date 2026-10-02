@@ -13,6 +13,9 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Option, Question, Quiz, QuizDraft, QuizVersion, ResultBand, Site
 
 
+FORMATO_DIRECIONADO = "quiz-low-ticket/2"
+
+
 def _authorized(request):
     scheme, _, token = request.headers.get("Authorization", "").partition(" ")
     return (
@@ -33,6 +36,24 @@ def _site(request):
 
 
 def _published(quiz):
+    if quiz.directed:
+        versions = list(quiz.versions.order_by("id"))
+        if not versions:
+            return {
+                "formato": FORMATO_DIRECIONADO,
+                "quiz": {"slug": quiz.slug, "title": quiz.title},
+                "ofertas": [],
+                "versoes": [],
+            }
+        documents = [version.experience.get("documento") for version in versions]
+        if not all(isinstance(document, dict) for document in documents):
+            raise ValueError("Campanha publicada sem documento de origem.")
+        return {
+            "formato": FORMATO_DIRECIONADO,
+            "quiz": documents[0]["quiz"],
+            "ofertas": documents[0]["ofertas"],
+            "versoes": [document["versao"] for document in documents],
+        }
     version = quiz.versions.filter(active=True).order_by("-id").first()
     if version is None:
         return {"title": quiz.title, "questions": [], "bands": []}
@@ -61,6 +82,17 @@ def _published(quiz):
             for band in version.bands.all()
         ],
     }
+
+
+def _directed(payload, slug):
+    if not isinstance(payload, dict) or payload.get("formato") != FORMATO_DIRECIONADO:
+        return False
+    from .conteudo import conferir_documento
+
+    conferir_documento(payload)
+    if payload["quiz"]["slug"] != slug:
+        raise ValueError("O slug do documento difere do endereço do quiz.")
+    return True
 
 
 def _validate(payload):
@@ -207,6 +239,7 @@ def quizzes(request):
                     "title": quiz.title,
                     "published": quiz.active,
                     "has_draft": hasattr(quiz, "draft"),
+                    "directed": quiz.directed,
                 }
                 for quiz in Quiz.objects.filter(site=site)
                 .select_related("draft")
@@ -229,24 +262,36 @@ def quiz_draft(request, slug):
     if request.method == "GET":
         if quiz is None:
             return _error("Quiz não encontrado.", 404)
-        content = quiz.draft.content if hasattr(quiz, "draft") else _published(quiz)
+        try:
+            content = quiz.draft.content if hasattr(quiz, "draft") else _published(quiz)
+        except ValueError as exc:
+            return _error(str(exc), 422)
         return JsonResponse(
             {
                 "slug": slug,
                 "published": quiz.active,
                 "has_draft": hasattr(quiz, "draft"),
                 "content": content,
+                "directed": quiz.directed,
             }
         )
     try:
         payload = json.loads(request.body)
-        _validate(payload)
+        directed = _directed(payload, slug)
+        if not directed:
+            _validate(payload)
+        if quiz is not None and quiz.directed != directed:
+            raise ValueError("Este slug pertence a outro tipo de quiz.")
     except (ValueError, UnicodeDecodeError) as exc:
         return _error(str(exc), 422)
     with transaction.atomic():
         if quiz is None:
             quiz = Quiz.objects.create(
-                site=site, slug=slug, title=payload["title"], active=False
+                site=site,
+                slug=slug,
+                title=payload["quiz"]["title"] if directed else payload["title"],
+                active=False,
+                directed=directed,
             )
         QuizDraft.objects.update_or_create(quiz=quiz, defaults={"content": payload})
     return JsonResponse(
@@ -269,9 +314,47 @@ def publish_quiz(request, slug):
             return _error("Rascunho não encontrado.", 404)
         content = quiz.draft.content
         try:
-            _validate(content)
+            directed = _directed(content, slug)
+            if directed != quiz.directed:
+                raise ValueError("Tipo de rascunho incompatível com o quiz.")
+            if not directed:
+                _validate(content)
         except ValueError as exc:
             return _error(str(exc), 422)
+        if directed:
+            from .conteudo import importar_documento
+            from .destinos import conectar_checkouts
+
+            connected = None
+            previous = quiz.versions.order_by("id").first()
+            if previous is not None:
+                offers = previous.experience.get("ofertas", {})
+                if isinstance(offers, dict) and len(offers) == 2:
+                    urls = {
+                        key: value.get("checkout_url") for key, value in offers.items()
+                    }
+                    if all(urls.values()):
+                        connected = urls
+            try:
+                importar_documento(content, site)
+                if connected is not None:
+                    conectar_checkouts(quiz, connected)
+            except ValueError as exc:
+                transaction.set_rollback(True)
+                return _error(str(exc), 422)
+            quiz.active = True
+            quiz.save(update_fields=["active"])
+            quiz.draft.delete()
+            return JsonResponse(
+                {
+                    "slug": slug,
+                    "published": True,
+                    "has_draft": False,
+                    "versions": [version["key"] for version in content["versoes"]],
+                    "content": content,
+                    "directed": True,
+                }
+            )
         version = QuizVersion.objects.create(
             quiz=quiz, key=f"editor-{uuid.uuid4().hex[:12]}", weight=100, active=False
         )

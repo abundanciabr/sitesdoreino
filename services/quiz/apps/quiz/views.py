@@ -1,13 +1,15 @@
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone as datetime_timezone
+from types import SimpleNamespace
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core import signing
 from django.core.validators import validate_email
 from django.db import transaction
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -15,7 +17,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from redis.exceptions import RedisError
 
-from .models import OutboxEvent, Quiz, QuizVersion, Submission
+from .models import OutboxEvent, Quiz, QuizVersion, Submission, TelemetryEvent
+from .direcionadas import entrada_da_tentativa, resolver_direcionada, url_da_experiencia
+from .experiencias import resolver_experiencia, calcular as calcular_experiencia
 from .tasks import TIPOS_DE_EVENTO, publicar_telemetria, relay_apos_commit
 
 COOKIE_SESSAO = "quiz_session"
@@ -112,6 +116,8 @@ def resolver_sessao(request, quiz):
     A UTM é a da chegada. Uma visita seguinte não troca o anúncio de origem
     só porque a query sumiu.
     """
+    if quiz.directed:
+        return resolver_direcionada(request, quiz, _ler_quizzes(request))
     atual = _ler_quizzes(request).get(quiz.slug)
     versao = None
     if _entrada_usavel(atual):
@@ -158,9 +164,29 @@ def _escrever_cookie(response, request, slug, entrada):
         "site_id": entrada["site_id"],
         "utm": entrada.get("utm") or {},
     }
+    if "context" in entrada:
+        quizzes[slug]["context"] = entrada["context"]
+        quizzes[f"{slug}:{entrada['session_id']}"] = quizzes[slug]
+        anteriores = [chave for chave in quizzes if chave.startswith(f"{slug}:")]
+        for chave in anteriores[:-8]:
+            quizzes.pop(chave)
+
+    def assinado():
+        return signing.dumps({"quizzes": quizzes}, salt=SALT_SESSAO, compress=True)
+
+    valor = assinado()
+    # O navegador rejeita cookies grandes. Retire só tentativas antigas;
+    # uma aba retirada recebe indisponibilidade e nunca herda outra campanha.
+    protegidas = {slug, f"{slug}:{entrada['session_id']}"}
+    for chave in list(quizzes):
+        if len(valor) <= 3800:
+            break
+        if chave not in protegidas:
+            quizzes.pop(chave)
+            valor = assinado()
     response.set_cookie(
         COOKIE_SESSAO,
-        signing.dumps({"quizzes": quizzes}, salt=SALT_SESSAO),
+        valor,
         max_age=MAX_AGE_SESSAO,
         httponly=True,
         secure=request.is_secure(),
@@ -191,6 +217,18 @@ def _render_formulario(
         valor = request.POST.get(f"pergunta_{question.id}")
         if valor and any(str(option.id) == valor for option in question.options.all()):
             opcoes_selecionadas.add(int(valor))
+    experiencia = None
+    if quiz.directed:
+        contexto = entrada.get("context") or {}
+        experiencia = resolver_experiencia(
+            versao, contexto.get("fmt"), contexto.get("seg")
+        )
+    endereco_canonico = reverse("quiz-formulario", args=[quiz.slug])
+    if quiz.directed:
+        endereco_canonico = url_da_experiencia(
+            quiz,
+            {"context": {chave: contexto.get(chave) for chave in ("v", "fmt", "seg")}},
+        )
     resposta = render(
         request,
         "quiz/formulario.html",
@@ -204,8 +242,12 @@ def _render_formulario(
             "etapa_inicial": etapa_inicial,
             "etapa_lead_ativa": etapa_inicial >= questions.count(),
             "campo_com_erro": campo_com_erro,
+            "entrada": entrada,
+            "experiencia": experiencia,
+            "calculadora_url": reverse("quiz-calcular", args=[quiz.slug]),
+            "canonical": request.build_absolute_uri(endereco_canonico),
         },
-        status=status,
+        status=503 if experiencia and experiencia["fmt"] == "ai" else status,
     )
     return _escrever_cookie(resposta, request, quiz.slug, entrada)
 
@@ -218,6 +260,8 @@ def _ir_ao_resultado(request, quiz, entrada, submissao):
 
 def formulario(request, slug):
     quiz = _quiz_do_site(request, slug)
+    if quiz.directed and request.method == "GET" and not request.GET.get("v"):
+        return render(request, "quiz/campanha.html", {"quiz": quiz})
     entrada, versao = resolver_sessao(request, quiz)
     questions = versao.questions.prefetch_related("options")
 
@@ -319,6 +363,7 @@ def formulario(request, slug):
                 "lead_name": request.POST.get("nome", "").strip(),
                 "lead_phone": request.POST.get("telefone", "").strip(),
                 "utm": utm,
+                "context": entrada.get("context") or {},
             },
         )
         if criada:
@@ -327,17 +372,20 @@ def formulario(request, slug):
                 lead["name"] = submissao.lead_name
             if submissao.lead_phone:
                 lead["phone"] = submissao.lead_phone
+            payload = {
+                "site_id": submissao.site_id,
+                "quiz_slug": quiz.slug,
+                "result_key": submissao.result_key,
+                "score": submissao.score,
+                "version_key": submissao.version.key,
+                "lead": lead,
+                "utm": submissao.utm,
+            }
+            if submissao.context:
+                payload["context"] = submissao.context
             OutboxEvent.objects.create(  # [RECEITA:R3 v1] [INV-P6] mesma transação do resultado
                 event="quiz.completado",
-                payload={
-                    "site_id": submissao.site_id,
-                    "quiz_slug": quiz.slug,
-                    "result_key": submissao.result_key,
-                    "score": submissao.score,
-                    "version_key": submissao.version.key,
-                    "lead": lead,
-                    "utm": submissao.utm,
-                },
+                payload=payload,
             )
             transaction.on_commit(relay_apos_commit)
 
@@ -353,6 +401,21 @@ def refazer(request, slug):
     de link por GET desfaria a volta ao resultado de quem nem clicou.
     """
     quiz = _quiz_do_site(request, slug)
+    if quiz.directed:
+        quizzes = _ler_quizzes(request)
+        tentativa = request.POST.get("quiz_attempt")
+        if not tentativa:
+            raise Http404("tentativa indisponível")
+        anterior = entrada_da_tentativa(quizzes, quiz.slug, tentativa)
+        if not _entrada_usavel(anterior) or anterior["site_id"] != quiz.site_id:
+            raise Http404("tentativa indisponível")
+        versao = quiz.versions.filter(pk=anterior["version_id"], active=True).first()
+        if not versao:
+            raise Http404("versão indisponível")
+        entrada = {**anterior, "session_id": str(uuid.uuid4())}
+        return _escrever_cookie(
+            redirect(url_da_experiencia(quiz, entrada)), request, quiz.slug, entrada
+        )
     anterior, _ = resolver_sessao(request, quiz)
     session_id = uuid.uuid4()
     versao = escolher_versao(quiz, session_id)
@@ -379,11 +442,175 @@ def resultado(request, slug):
     banda = None
     if submissao.version_id:
         banda = submissao.version.bands.filter(key=submissao.result_key).first()
+    entrada = (
+        entrada_da_tentativa(
+            _ler_quizzes(request), quiz.slug, str(submissao.session_id)
+        )
+        if quiz.directed
+        else _ler_quizzes(request).get(quiz.slug)
+    )
+    propria = (
+        _entrada_usavel(entrada)
+        and entrada["site_id"] == quiz.site_id
+        and str(entrada["session_id"]) == str(submissao.session_id)
+    )
+    oferta = None
+    demonstracao = False
+    if quiz.directed:
+        contexto = submissao.context
+        experiencia = resolver_experiencia(
+            submissao.version, contexto.get("fmt"), contexto.get("seg")
+        )
+        dados = submissao.version.experience
+        oferta_id = dados.get("band_offers", {}).get(submissao.result_key)
+        oferta = dados.get("ofertas", {}).get(oferta_id)
+        demonstracao = bool(oferta and not oferta.get("checkout_url"))
+        if banda:
+            substituicoes = experiencia.get("results", {}).get(banda.key, {})
+            banda = SimpleNamespace(
+                **{
+                    chave: substituicoes.get(chave, getattr(banda, chave))
+                    for chave in (
+                        "title",
+                        "description",
+                        "botao_rotulo",
+                        "botao_destino",
+                    )
+                }
+            )
+            if demonstracao:
+                banda.botao_rotulo = substituicoes.get("botao_rotulo") or next(
+                    (
+                        faixa["botao_rotulo"]
+                        for faixa in dados["documento"]["versao"]["faixas"]
+                        if faixa["key"] == submissao.result_key
+                    ),
+                    "Conhecer a oferta",
+                )
     return render(
         request,
         "quiz/resultado.html",
-        {"quiz": quiz, "submissao": submissao, "banda": banda},
+        {
+            "quiz": quiz,
+            "submissao": submissao,
+            "banda": banda,
+            "entrada": entrada if propria else None,
+            "saida_rastreavel": propria,
+            "demonstracao": demonstracao,
+            "oferta": oferta,
+            "recomecar_url": url_da_experiencia(
+                quiz, {"context": submissao.context, "utm": submissao.utm}
+            ),
+            "canonical": request.build_absolute_uri(
+                reverse("quiz-resultado", args=[quiz.slug]) + f"?lead={submissao.id}"
+            ),
+        },
     )
+
+
+def _submissao_da_sessao(request, quiz):
+    tentativa = request.POST.get("quiz_attempt")
+    if quiz.directed and not tentativa:
+        raise Http404("tentativa indisponível")
+    entrada = (
+        entrada_da_tentativa(_ler_quizzes(request), quiz.slug, tentativa)
+        if quiz.directed
+        else _ler_quizzes(request).get(quiz.slug)
+    )
+    if not _entrada_usavel(entrada) or entrada["site_id"] != quiz.site_id:
+        raise Http404("tentativa indisponível")
+    submissao = get_object_or_404(
+        Submission, quiz=quiz, site_id=quiz.site_id, session_id=entrada["session_id"]
+    )
+    if request.POST.get("resposta") and request.POST["resposta"] != str(submissao.id):
+        raise Http404("resposta indisponível")
+    return submissao, entrada
+
+
+@require_POST
+def sair(request, slug):
+    quiz = _quiz_do_site(request, slug)
+    submissao, entrada = _submissao_da_sessao(request, quiz)
+    banda = get_object_or_404(submissao.version.bands, key=submissao.result_key)
+    destino = banda.botao_destino
+    try:
+        partes = urlsplit(destino)
+        host = partes.hostname
+        partes.port
+    except ValueError:
+        raise Http404("destino indisponível")
+    if (
+        partes.scheme != "https"
+        or not host
+        or partes.username
+        or partes.password
+        or any(ord(c) < 33 for c in destino)
+    ):
+        raise Http404("destino indisponível")
+    existentes = {chave for chave, _ in parse_qsl(partes.query)}
+    parametros = {
+        f"utm_{chave}": valor for chave, valor in submissao.utm.items() if valor
+    }
+    parametros.update(
+        {chave: valor for chave, valor in submissao.context.items() if valor}
+    )
+    adicionais = urlencode(
+        {chave: valor for chave, valor in parametros.items() if chave not in existentes}
+    )
+    consulta = partes.query + ("&" if partes.query and adicionais else "") + adicionais
+    metadados = {"utm": submissao.utm}
+    if submissao.context:
+        metadados["context"] = submissao.context
+    TelemetryEvent.objects.get_or_create(
+        session_id=submissao.session_id,
+        site_id=quiz.site_id,
+        quiz_slug=quiz.slug,
+        version_key=submissao.version.key,
+        event_type="checkout_exit",
+        defaults={
+            "element_id": banda.key,
+            "metadata": metadados,
+            "occurred_at": timezone.now(),
+        },
+    )
+    resposta = redirect(urlunsplit(partes._replace(query=consulta)))
+    resposta["Referrer-Policy"] = "no-referrer"
+    resposta["Cache-Control"] = "no-store"
+    return resposta
+
+
+@require_POST
+def demonstracao(request, slug):
+    quiz = _quiz_do_site(request, slug)
+    submissao, entrada = _submissao_da_sessao(request, quiz)
+    dados = submissao.version.experience
+    oferta = dados.get("ofertas", {}).get(
+        dados.get("band_offers", {}).get(submissao.result_key)
+    )
+    if not quiz.directed or not oferta or oferta.get("checkout_url"):
+        raise Http404("demonstração indisponível")
+    return render(
+        request,
+        "quiz/demonstracao.html",
+        {"quiz": quiz, "oferta": oferta, "submissao": submissao},
+    )
+
+
+@require_POST
+def calcular(request, slug):
+    quiz = _quiz_do_site(request, slug)
+    if not quiz.directed:
+        raise Http404("calculadora indisponível")
+    entrada, versao = resolver_sessao(request, quiz)
+    contexto = entrada.get("context") or {}
+    experiencia = resolver_experiencia(versao, contexto.get("fmt"), contexto.get("seg"))
+    if experiencia["fmt"] != "calc":
+        raise Http404("calculadora indisponível")
+    try:
+        valor = calcular_experiencia(experiencia["calculator"], request.POST)
+    except ValueError as erro:
+        return JsonResponse({"erro": str(erro)}, status=422)
+    return JsonResponse({"resultado": valor})
 
 
 def _quando(valor):
@@ -394,7 +621,7 @@ def _quando(valor):
     except ValueError:
         return timezone.now()
     if timezone.is_naive(instante):
-        instante = timezone.make_aware(instante, timezone.utc)
+        instante = timezone.make_aware(instante, datetime_timezone.utc)
     return instante
 
 
@@ -406,16 +633,16 @@ def telemetria(request):
         return HttpResponse(status=413)
     try:
         corpo = json.loads(request.body)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return HttpResponse(status=400)
     if not isinstance(corpo, dict):
         return HttpResponse(status=400)
     slug = corpo.get("quiz_slug")
-    entrada = _ler_quizzes(request).get(slug)
+    entrada = entrada_da_tentativa(_ler_quizzes(request), slug, corpo.get("session_id"))
     if not isinstance(slug, str) or not _entrada_usavel(entrada):
         return HttpResponse(status=401)
     tipo = corpo.get("event_type")
-    if tipo not in TIPOS_DE_EVENTO:
+    if not isinstance(tipo, str) or tipo not in TIPOS_DE_EVENTO:
         return HttpResponse(status=400)
     element_id = corpo.get("element_id") or ""
     if not isinstance(element_id, str) or len(element_id) > LIMITE_ELEMENTO:
@@ -423,8 +650,14 @@ def telemetria(request):
     metadata = corpo.get("metadata") or {}
     if not isinstance(metadata, dict):
         return HttpResponse(status=400)
-    metadata = {chave: valor for chave, valor in metadata.items() if chave != "utm"}
+    metadata = {
+        chave: valor
+        for chave, valor in metadata.items()
+        if chave not in {"utm", "context"}
+    }
     metadata["utm"] = entrada.get("utm") or {}
+    if entrada.get("context"):
+        metadata["context"] = entrada["context"]
     envelope = {
         "session_id": entrada["session_id"],
         "site_id": entrada["site_id"],

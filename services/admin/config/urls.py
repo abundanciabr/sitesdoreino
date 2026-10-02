@@ -89,6 +89,7 @@ from apps.core.menu import (
 )
 from apps.core.conteudos import (
     conteudos, conteudo_novo, conteudo_editar, conteudo_salvar, conteudo_publicar,
+    quiz_campanhas,
 )
 from apps.core.topicos_do_forum import (
     forum_topicos, forum_topico_novo, forum_topico_criar,
@@ -229,6 +230,7 @@ urlpatterns = [
     path("conteudos/forum/topicos/rascunho/<uuid:rascunho_id>/publicar", forum_topico_publicar, name="forum_topico_publicar"),
     path("conteudos/<slug:tipo>/", conteudos, name="conteudos"),
     path("conteudos/<slug:tipo>/novo", conteudo_novo, name="conteudo_novo"),
+    path("conteudos/quiz/<slug:slug>/campanhas", quiz_campanhas, name="quiz_campanhas"),
     path("conteudos/<slug:tipo>/<slug:slug>/", conteudo_editar, name="conteudo_editar"),
     path("conteudos/<slug:tipo>/<slug:slug>/salvar", conteudo_salvar, name="conteudo_salvar"),
     path("conteudos/<slug:tipo>/<slug:slug>/publicar", conteudo_publicar, name="conteudo_publicar"),

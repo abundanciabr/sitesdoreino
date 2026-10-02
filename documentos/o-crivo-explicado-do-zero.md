@@ -248,7 +248,7 @@ da tela**. Quem está começando e quem está pronto para escalar não recebem o
 mesmo convite. No Crivo inicial, os três botões levavam à oferta padrão do
 site, com palavras diferentes. Nas campanhas novas, cada faixa pode apontar
 para uma das duas ofertas externas previstas. Enquanto os endereços reais não
-forem conectados, o trabalho local prevê uma demonstração, ainda a integrar.
+forem conectados, o código integrado mostra uma demonstração da oferta indicada.
 A palavra e o destino
 precisam combinar com o resultado que a pessoa recebeu.
 
@@ -721,20 +721,22 @@ visita nova começa a investigação do zero.
 
 ## Parte 7. O Crivo de campanhas: o desenho novo e o estado de hoje
 
-**Retrato do código local em 02/10/2026.** Esta data descreve o que foi lido
-nos arquivos, não uma publicação. As 94 provas de 01/10 são históricas; não
-comprovam que a versão atual foi publicada nem que um endereço público abre.
-Há peças novas ainda desencontradas: a migração de experiências adiciona
-`directed`, `experience` e `context`, mas o modelo atual ainda não declara
-esses campos; duas migrações locais têm o número `0006`. As rotas públicas
-atuais ainda não incluem cálculo, saída ou demonstração das campanhas novas.
-Por isso os trechos novos de código não representam, juntos, uma jornada
-funcional já entregue.
+**Retrato da integração local em 02/10/2026.** Modelos, migrações, rotas,
+editor e painel foram integrados. A migração de experiências é agora `0008`,
+depois de `0007_portfolio_journey`, e os modelos declaram `directed`,
+`experience` e `context`. Calculadora, demonstração e saída estão ligados à
+jornada. Passaram **193 testes do quiz e 10 do painel administrativo**.
+No navegador local, B2 levou às duas ofertas de demonstração, Refazer
+conservou versão/origem e a calculadora retornou 50 para 25. A conferência
+do Django não encontrou problema nem migração faltante.
+**O código novo ainda não foi publicado**, pois falta
+acesso à VPS. Os 94 testes de 01/10 são históricos; uma prova local não
+comprova que o endereço novo já abre em produção.
 
 | Parte | Estado observado em 02/10 |
 |---|---|
 | Crivo inicial e editor básico | Presentes no código atual |
-| Campanhas por URL, formatos e duas ofertas | Arquivos locais ainda a integrar |
+| Campanhas por URL, formatos e duas ofertas | Integrados e testados localmente; publicação pendente |
 | IA, compra confirmada e integrações externas | Pendentes |
 | Prova da nova experiência publicada | Ainda não demonstrada |
 
@@ -763,10 +765,10 @@ Um link dirigido pode carregar `v` (versão), `fmt` (formato), `seg`
 além dos parâmetros `utm_*`. Por exemplo,
 `/quiz/crivo/?v=B1&fmt=video&seg=iniciante&src=instagram&cpg=outubro`.
 O gerador local monta esses links com os parâmetros explícitos. O módulo local
-de tentativas dirigidas foi escrito para preservar contexto e UTMs da chegada;
-ele ainda não está ligado à jornada pública, que usa o resolvedor legado. Por
-isso este exemplo mostra **a intenção da campanha**, não comprova que o link
-já funciona na rua.
+de tentativas dirigidas preserva contexto e UTMs da chegada e agora está
+ligado ao formulário, resultado e Refazer no código integrado. Os testes
+locais passaram. **A publicação ainda depende do acesso à VPS**; este exemplo
+não comprova que o novo link já funciona na rua.
 
 ### Formas de conversar e o próximo passo
 
@@ -779,30 +781,30 @@ apresentadas, nunca uma promessa de retorno financeiro. Vídeos aceitos são
 arquivos HTTPS MP4/WebM ou embeds conhecidos do YouTube; não há serviço de
 hospedagem de mídia instalado nesta peça.
 
-O código local já tem módulos para resolver formatos, personalizar segmentos
-e calcular, mas a ligação deles à página pública está pendente. **A IA não
+O código integrado resolve formatos, personaliza segmentos e calcula no
+servidor; esses caminhos passaram nos testes locais. **A IA não
 está pronta**: o comportamento provisório do código local informa
 indisponibilidade (503), sem executar uma conversa; a rota pública de IA ainda não foi
 encontrada. As duas ofertas previstas ficam em links externos, associados às
-faixas. Há uma rotina local para conectar os dois endereços reais, ainda não
-integrada ao fluxo. A demonstração prevista também precisa ser integrada;
-ela não confirma uma venda. O documento de importação tem a identificação
+faixas. A rotina para conectar os dois endereços reais foi integrada, e os
+botões sem endereço abrem uma demonstração da oferta indicada. A demonstração
+passou nos testes locais e não confirma uma venda. O documento de importação tem a identificação
 `quiz-low-ticket/2`.
 
 ### A mesa de trabalho e os números
 
 O estúdio desejado reúne edição, importação, duplicação, prévias isoladas e
 geração de links por versão, formato e segmento. No código local conferido,
-há tela básica de edição no admin, API privada para rascunhos, comando de
-importação e comando de geração de links. **Duplicação e prévias isoladas em
-um estúdio visual não foram encontradas**. Os comandos novos dependem dos
-campos e da integração ainda pendentes; sua presença no repositório não basta
-para operá-los na base atual.
+há importação JSON pelo admin, API privada para rascunhos e publicação, além
+de painel privado de campanhas com geração de links. Publicar uma versão nova
+preserva as anteriores. **Duplicação e prévias isoladas em um estúdio visual
+completo ainda estão pendentes**. Modelos, migrações e rotas foram
+reconciliados; funcionamento público ainda depende da publicação.
 
 As respostas e as UTMs do Crivo inicial são guardadas. Há um módulo local de
 relatório para agrupar primeira visita, conclusão e clique de saída por dia,
-campanha, versão, formato e segmento. Ele depende do contexto novo ainda
-ausente do modelo atual. Quando integrado, ajuda a enxergar perda até a
+campanha, versão, formato e segmento. O contexto novo agora está no modelo,
+e o painel implementado ajuda a enxergar perda até a
 conclusão e conclusões sem clique; um clique de saída ainda não prova compra.
 O trabalho previsto inclui medir
 receita por visitante e valor ao longo do relacionamento (**LTV**), usar essas

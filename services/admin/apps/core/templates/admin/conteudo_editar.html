@@ -4,6 +4,7 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'conteudos' tipo %}">← {{ nome }}</a>
   <h1>{{ nome }}: {{ slug }}</h1>
+  {% if tipo == 'quiz' %}<p><a href="{% url 'quiz_campanhas' slug %}">Ver campanhas e links deste quiz</a></p>{% endif %}
   {% if recado %}<p class="aviso">{% if recado == 'publicado' %}Publicado no site.{% else %}Rascunho salvo. O público ainda vê a versão anterior.{% endif %}</p>{% endif %}
   <div class="cartao">
     <h2>{% if tem_rascunho %}Prévia privada do rascunho{% else %}Editar{% endif %}</h2>
@@ -28,6 +29,12 @@
         <p><label>Nome<br><input name="nome" required maxlength="120" value="{{ conteudo.nome|default:'' }}"></label></p>
         <p><label>Descrição<br><textarea name="descricao" rows="6">{{ conteudo.descricao|default:'' }}</textarea></label></p>
       {% else %}
+        {% if quiz_direcionado %}
+        <input type="hidden" name="modo_quiz" value="direcionado">
+        <p>Campanha direcionada: cole o documento completo <code>quiz-low-ticket/2</code>. O conteúdo, a mídia e os endereços de checkout vêm do documento; versões publicadas não são substituídas.</p>
+        <p><label>Documento JSON<br><textarea name="documento_json" rows="24" style="width:100%" required>{{ documento_json }}</textarea></label></p>
+        {% else %}
+        {% if not conteudo.title %}<p><a href="?formato=quiz-low-ticket/2">Criar campanha direcionada por JSON</a></p>{% endif %}
         <p><label>Título<br><input name="title" required maxlength="200" value="{{ conteudo.title|default:'' }}"></label></p>
         <input type="hidden" name="total_perguntas" value="{{ total_perguntas }}">
         <h3>Perguntas</h3>
@@ -52,6 +59,7 @@
                <label>Texto do botão<br><input name="faixa_rotulo_{{ faixa.indice }}" value="{{ faixa.botao_rotulo }}"></label></p>
           </fieldset>
         {% endfor %}
+        {% endif %}
       {% endif %}
       <button type="submit">Salvar rascunho</button>
     </form>
@@ -59,7 +67,7 @@
   {% if tem_rascunho %}
   <div class="cartao">
     <p>Esta prévia é privada. Quem visita o site continua vendo apenas o conteúdo publicado.</p>
-    {% if tipo == 'quiz' %}<p>Ao publicar, esta versão substitui as versões ativas do quiz. As versões antigas continuam guardadas.</p>{% endif %}
+    {% if tipo == 'quiz' %}{% if quiz_direcionado %}<p>Ao publicar, as novas versões entram na mesma campanha. As versões anteriores e os checkouts já conectados permanecem.</p>{% else %}<p>Ao publicar, esta versão substitui as versões ativas do quiz. As versões antigas continuam guardadas.</p>{% endif %}{% endif %}
     <form method="post" action="{% url 'conteudo_publicar' tipo slug %}">{% csrf_token %}
       <button type="submit">Publicar {{ nome|lower }}</button>
     </form>

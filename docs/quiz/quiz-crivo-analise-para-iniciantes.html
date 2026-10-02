@@ -363,11 +363,11 @@
     <p>Todos os marcadores permanecem contemplados: <code>v, fmt, seg, src, med, cpg, ctv</code> e UTMs de fonte, meio, campanha, conteúdo e termo. Os dois checkouts reais serão fornecidos depois do teste do quiz; no conteúdo inicial, seus endereços ficam <code>null</code>.</p>
     <table><thead><tr><th>Parte</th><th>Estado observado</th></tr></thead><tbody>
       <tr><td>Quiz básico, sessão, pontuação, lead, telemetria e editor com rascunho</td><td>Presentes no código atual; não equivale a prova em produção.</td></tr>
-      <tr><td>Campanhas por URL, formatos, segmentos, saídas e importador JSON</td><td>Arquivos locais ainda a integrar aos modelos, migrações e rotas atuais.</td></tr>
+      <tr><td>Campanhas por URL, formatos, segmentos, saídas e importador JSON</td><td>Integrados aos modelos, migrações, rotas e painel; testes locais aprovados, publicação pendente.</td></tr>
       <tr><td>IA funcional, compras, integrações e receita/LTV</td><td>Pendentes de implementação e acessos correspondentes.</td></tr>
     </tbody></table>
-    <p>A base atual ainda não declara <code>directed, experience, context</code> e há duas migrações locais 0006. Os 94 testes registrados em 01/10 são históricos; não comprovam este checkout ou publicação.</p>
-    <p>Comparação por campanha não prova causalidade automaticamente. O cookie JSON do exemplo será substituído pela sessão assinada existente. Campos de checkout em outro domínio e retorno de compras dependem de integração oferecida pelo provedor. Canonical só deve relacionar páginas equivalentes.</p>
+    <p>A base integrada declara <code>directed, experience, context</code>. A migração de experiências agora é <code>0008_experiencias_direcionadas</code>, depois de <code>0007_portfolio_journey</code>. A prova local passou; a publicação aguarda acesso à VPS. Os 94 testes registrados em 01/10 são históricos.</p>
+    <p>Comparação por campanha não prova causalidade automaticamente. O fluxo usa a sessão assinada existente; Refazer preserva versão e origem e cria outra tentativa. Sem checkout configurado, o botão mostra a oferta em demonstração. Campos em outro domínio e retorno de compras dependem de integração do provedor. Canonical só relaciona páginas equivalentes.</p>
     <p>O <a href="manual-completo-e-didatico-para-criar-publicar-e-operar-quizzes.md">manual atualizado</a> reúne cada recomendação, o formato <code>quiz-low-ticket/2</code> e o pedido para a outra IA. O <a href="RETOMADA-CRIVO.md">registro de retomada</a> conserva o histórico e as pendências.</p>
     <div class="note">As ilustrações seguintes explicam o Crivo inicial. Histórias e recomendações antigas são contexto pedagógico, não novas regras permanentes nem prova das capacidades novas. O documento existente no site fica no banco e tem histórico próprio.</div>
   </div>

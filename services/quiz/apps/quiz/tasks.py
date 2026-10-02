@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone as datetime_timezone
 
 import redis
 from django.utils import timezone
@@ -110,7 +110,7 @@ def _evento_da_mensagem(msg_id, campos) -> TelemetryEvent | None:
     except (KeyError, TypeError, ValueError):
         return None
     if timezone.is_naive(ocorreu):
-        ocorreu = timezone.make_aware(ocorreu, timezone.utc)
+        ocorreu = timezone.make_aware(ocorreu, datetime_timezone.utc)
     site_id = dados.get("site_id")
     quiz_slug = dados.get("quiz_slug")
     version_key = dados.get("version_key")

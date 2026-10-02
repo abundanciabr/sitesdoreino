@@ -29,8 +29,8 @@ publicados: `https://exemplo.com/quiz/<slug>/?v=B2&fmt=text&seg=<segmento>&src=<
 
 Cada faixa indica uma de **duas ofertas externas**. Os endereços de checkout
 ficam `null` no documento inicial e serão fornecidos depois de testar o quiz.
-Enquanto não houver link, a oferta continua visível na configuração e a banda
-fica sem botão ativo. Quando os dois endereços HTTPS forem recebidos, a conexão
+Enquanto não houver link, o botão abre uma demonstração da oferta indicada,
+sem cobrança. Quando os dois endereços HTTPS forem recebidos, a conexão
 atualiza os destinos e recupera os rótulos originais das faixas sem alterar
 perguntas, pontos, títulos nem o documento importado. O Crivo não cobra cartão
 nem cria produto. A escolha de oferta e o resultado pertencem à campanha;
@@ -48,16 +48,19 @@ checkouts sejam conectados depois sem reescrever o documento original.
 | Parte | Evidência no repositório | Estado desta retomada |
 |---|---|---|
 | Crivo legado e Refazer | `services/quiz/apps/quiz/views.py`, rota `refazer` e `tests/test_refazer.py` | Refazer foi concluído no ciclo de 26/09; não é uma decisão pendente. |
-| Links direcionados e contexto | `services/quiz/apps/quiz/direcionadas.py`, `experiencias.py`, `management/commands/gerar_links_quiz.py` | Há implementação e testes no checkout; integração completa ainda precisa ser conferida. |
+| Links direcionados e contexto | `services/quiz/apps/quiz/direcionadas.py`, `experiencias.py`, `management/commands/gerar_links_quiz.py` | Integrados ao formulário, resultado, saída e Refazer; testes locais aprovados. |
 | Conteúdo e duas ofertas | `services/quiz/apps/quiz/conteudo.py`, `destinos.py`, comandos `importar_quiz` e `conectar_checkouts` | Há importação e conexão posterior no checkout; os dois links reais ainda não foram fornecidos. |
-| Editor | `services/quiz/apps/quiz/editor.py`, `QuizDraft` e testes do rascunho | Há API privada de rascunho/publicação no checkout; não representa ainda o estúdio visual completo de campanhas direcionadas. |
-| Medição própria | `services/quiz/apps/quiz/campanhas.py`, `TelemetryEvent`, `Submission`, comando `campanhas` | Há contagens por chegada, versão, formato, segmento e origem no checkout; venda, receita e LTV ainda dependem de junção externa. |
-| Integração de banco | `models.py` e migrações `0006_experiencias_direcionadas.py` e `0006_quizdraft.py` | Na leitura desta data, os campos direcionados ainda não apareciam no modelo vivo e havia duas migrações `0006`; não declarar esse conjunto pronto para publicação até a integração do código resolver isso. |
+| Editor | `services/quiz/apps/quiz/editor.py`, `QuizDraft`, painel e testes | Importação JSON direcionada no site, rascunho e publicação sem substituir versões anteriores; estúdio visual completo pendente. |
+| Medição própria | `services/quiz/apps/quiz/campanhas.py`, `TelemetryEvent`, `Submission`, API e painel | Contagens e links acessíveis no painel implementado; conclusões sem visita são separadas, cliques não comprovam compra. |
+| Integração de banco | `models.py` e migrações `0008_experiencias_direcionadas.py` e `0006_quizdraft.py` | Campos integrados e numeração reconciliada; Django não encontrou problema nem migração faltante. |
 
-A prova de **94 testes em 01/10/2026** é um registro histórico da rodada
-informada naquele dia. Ela não foi repetida nesta atualização e não demonstra
-que o checkout atual, suas migrações ou a produção de 02/10 estejam prontos.
-Também não foi feita aqui uma sonda pública do novo quiz.
+Passaram **193 testes do quiz e 10 do painel administrativo** na integração
+local de 02/10. No navegador local, os dois caminhos de oferta, Refazer com
+versão/origem preservadas e a calculadora funcionaram. A prova de
+**94 testes em 01/10/2026** permanece
+histórica. A integração nova ainda não foi publicada: falta uma conexão
+utilizável com a VPS. Conteúdo real, mídias, contas externas e os dois links
+de checkout também não foram fornecidos. Não há prova pública do quiz novo.
 
 ## Continuação do produto, por etapa
 
@@ -102,8 +105,8 @@ que foi implantado.
 
 Antes de publicar, há backup. Se a prova falhar ou o site cair, o código volta
 sozinho para a última versão aprovada; o banco **não** é restaurado sozinho.
-Isso vem do `AGENTS.md` do projeto. A edição deste arquivo é documental:
-não publicou código nem conectou as plataformas de marketing. O documento
+Isso vem do `AGENTS.md` do projeto. Esta rodada integrou e testou código local,
+sem publicar código nem conectar plataformas de marketing. O documento
 explicativo já existente no site tem edição e histórico próprios no banco;
 atualizar o arquivo de origem não sincroniza automaticamente esse corpo.
 

@@ -1,0 +1,66 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Campanhas · {{ slug }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Editar quiz</a>
+  <h1>Campanhas: {{ slug }}</h1>
+  <p class="subtitulo">Visitas, conclusões e cliques de saída por origem e versão.</p>
+
+  <div class="cartao">
+    <h2>Filtrar</h2>
+    <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
+      <label>De<br><input type="date" name="inicio" value="{{ filtros.inicio }}"></label>
+      <label>Até<br><input type="date" name="fim" value="{{ filtros.fim }}"></label>
+      <label>Origem (src)<br><input name="src" value="{{ filtros.src }}"></label>
+      <label>Meio (med)<br><input name="med" value="{{ filtros.med }}"></label>
+      <label>Campanha (cpg)<br><input name="cpg" value="{{ filtros.cpg }}"></label>
+      <label>Criativo (ctv)<br><input name="ctv" value="{{ filtros.ctv }}"></label>
+      <label>UTM source<br><input name="utm_source" value="{{ filtros.utm_source }}"></label>
+      <label>UTM medium<br><input name="utm_medium" value="{{ filtros.utm_medium }}"></label>
+      <label>UTM campaign<br><input name="utm_campaign" value="{{ filtros.utm_campaign }}"></label>
+      <label>UTM content<br><input name="utm_content" value="{{ filtros.utm_content }}"></label>
+      <label>UTM term<br><input name="utm_term" value="{{ filtros.utm_term }}"></label>
+      <button type="submit">Aplicar filtros</button>
+    </form>
+    {% if filtros.utm_term %}<p class="nota">UTM term entra nos links, mas não compõe o agrupamento do relatório.</p>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Jornada medida</h2>
+    <p class="nota">{{ aviso }} Visitas são a base das contagens. Linhas sem visita registrada aparecem abaixo, sem taxa ou denominador.</p>
+    {% if linhas %}
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;text-align:left">
+          <thead><tr><th>Dia da visita</th><th>Origem / campanha</th><th>Versão / formato / segmento</th><th>Visitas</th><th>Conclusões</th><th>Cliques</th></tr></thead>
+          <tbody>
+            {% for linha in linhas %}
+              <tr>
+                <td>{{ linha.dia_origem }}</td>
+                <td>{% firstof linha.src linha.source "—" %} / {% firstof linha.cpg linha.campaign "—" %}</td>
+                <td>{{ linha.version_key }} / {{ linha.fmt|default:"—" }} / {{ linha.seg|default:"—" }}</td>
+                <td>{{ linha.visitas }}</td><td>{{ linha.submissoes }}</td><td>{{ linha.saidas }}</td>
+              </tr>
+              {% if linha.alertas %}<tr><td colspan="6" class="nota">{{ linha.alertas|join:"; " }}</td></tr>{% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<p>Nenhuma visita encontrada com esses filtros.</p>{% endif %}
+    {% if avulsas or divergentes %}
+      <h3>Conclusões sem denominador de visita</h3>
+      <p class="nota">Estas conclusões não entram em taxa de conversão da visita.</p>
+      {% for linha in avulsas %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} conclusão(ões). {{ linha.observacao }}</p>{% endfor %}
+      {% for linha in divergentes %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} conclusão(ões). {{ linha.observacao }}</p>{% endfor %}
+    {% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Links da campanha</h2>
+    <p class="nota">Os links levam os parâmetros de origem informados acima. Cada formato e segmento usa a mesma página do quiz, com versão explícita.</p>
+    {% for item in links %}
+      <p><strong>{{ item.version_key }} · {{ item.fmt }}{% if item.seg %} · {{ item.seg }}{% endif %}</strong><br>
+        <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></p>
+    {% empty %}<p>Nenhum link disponível para as versões ativas.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

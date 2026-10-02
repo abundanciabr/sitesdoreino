@@ -8,7 +8,7 @@ As indicações de estado significam:
 
 - **Observado na base atual:** encontrado no código versionado; não significa verificado em produção.
 - **Decisão aprovada:** comportamento pedido pelo mantenedor.
-- **Trabalho local a integrar:** arquivos existem, mas ainda não compõem uma experiência comprovada na base atual.
+- **Integrado e testado localmente:** a implementação passou na prova local; ainda precisa de publicação e conferência no endereço público.
 - **Pendente:** falta implementação, conteúdo, acesso ou integração.
 - **Histórico:** registro anterior; não comprova a versão atual.
 
@@ -36,25 +36,25 @@ Versão, formato ou segmento desconhecido não deve ser substituído silenciosam
 
 ## 2. Estado real observado em 02/10
 
-Base versionada consultada: `b5198a4fb`.
+Integração local de 02/10/2026, posterior à revisão documental `94972b4e9`. A publicação do código novo depende do acesso à VPS; não foi comprovada em produção.
 
 | Capacidade | Evidência | Estado |
 |---|---|---|
 | Perguntas, opções, pontos no servidor, faixas, lead | Modelos, views e templates | Observado na base atual |
 | Sessão assinada, versão estável, UTMs, refazer | `views.py` e rotas | Observado na base atual |
 | Telemetria, submissão, outbox e relay | Modelos, views e tarefas | Observado na base atual |
-| Editor pelo site e rascunho separado | `QuizDraft`, `editor.py`, painel `conteudos.py` | Código atual; configuração e funcionamento ao vivo precisam de prova |
-| Direcionamento por `v`, formatos, segmentos, calculadora | `direcionadas.py`, `experiencias.py`, templates locais | Trabalho local a integrar |
-| Saída rastreada, demonstração e conexão dos dois checkouts | `destinos.py` e comandos locais | Trabalho local a integrar |
-| JSON `quiz-low-ticket/2` e gerador de links | Importador e gerador locais | Trabalho local a integrar |
-| Relatório por dia e campanha | `campanhas.py` local | Trabalho local a integrar; sem receita/LTV confirmados |
+| Editor pelo site e rascunho separado | `QuizDraft`, `editor.py`, painel `conteudos.py` | Importação JSON direcionada integrada e testada; estúdio visual completo pendente |
+| Direcionamento por `v`, formatos, segmentos, calculadora | `direcionadas.py`, `experiencias.py`, views e templates | Integrado e testado localmente; mídia real ainda necessária |
+| Saída rastreada, demonstração e conexão dos dois checkouts | `destinos.py`, views e comandos | Integrado e testado localmente; links reais ainda não recebidos |
+| JSON `quiz-low-ticket/2` e gerador de links | Importador, gerador e painel privado | Integrado e testado localmente |
+| Relatório por dia e campanha | `campanhas.py`, API privada e painel administrativo | Integrado e testado localmente; sem receita/LTV confirmados |
 | Conversa por IA, integrações de mídia/CRM/BI e compras externas | Escopo solicitado | Pendente |
 
-Há uma diferença concreta entre os arquivos anteriores e a base atual: `Quiz` não declara `directed`, `QuizVersion` não declara `experience` e `Submission` não declara `context`. As rotas atuais não ligam as novas saídas, a calculadora ou a demonstração. Existem duas migrações locais de número 0006, uma do rascunho e outra de experiências. Esses pontos precisam ser reconciliados antes de tratar os comandos e formatos novos como operacionais.
+Os modelos agora declaram `Quiz.directed`, `QuizVersion.experience` e `Submission.context`. A migração de experiências foi reconciliada como `0008_experiencias_direcionadas`, depois de `0007_portfolio_journey`; o rascunho mantém sua migração `0006_quizdraft`. As rotas ligam calculadora, demonstração, saída e API de campanhas. A conferência local do Django não encontrou problema nem migração faltante.
 
-**Histórico de 01/10:** foram registrados 94 testes locais aprovados para a implementação daquele momento, que não foi publicada. Esse resultado não é prova da base atual. O contrato de conclusão atual também não possui `context`.
+**Prova local de 02/10:** **193 testes do quiz e 10 do painel administrativo passaram**, incluindo versões simultâneas, Refazer, duas ofertas, calculadora, contexto, cookies e relatórios. No navegador local, B2 concluiu os dois caminhos de oferta, Refazer manteve versão/origem e a calculadora retornou 50 para uma entrada de 25. O contrato de conclusão agora aceita `context` opcional, preservando mensagens legadas. Os 94 testes de 01/10 permanecem apenas como registro histórico. A prova local não comprova publicação.
 
-O resolvedor atual ainda escolhe versões por peso no fluxo legado. Isso precisa ser compatibilizado com a decisão de campanhas direcionadas; não é o modo aprovado para os novos quizzes.
+O resolvedor usa `v` nos quizzes direcionados e conserva a seleção por peso apenas no fluxo legado. Nova visita com B2 recebe B2 mesmo quando outra versão tem peso maior.
 
 ## 3. Entender o percurso sem programar
 
@@ -102,7 +102,7 @@ O domínio é ilustrativo.
 
 Parâmetros internos permitem controlar a experiência e organizar relatórios próprios. UTMs permitem comunicar a origem a ferramentas externas **quando houver integração**. Uma URL não instala analytics, não dispara CAPI e não cria tags no CRM sozinha.
 
-O trabalho local prevê usar parâmetros internos quando a UTM equivalente estiver ausente. Valores diferentes enviados em ambas as formas devem continuar identificáveis; não podem ser apagados silenciosamente. Sua preservação ainda precisa de prova após integrar o código.
+O código usa parâmetros internos quando a UTM equivalente está ausente. Valores diferentes enviados em ambas as formas continuam identificáveis; sua preservação passou nos testes locais. Marcadores de entrada são limitados a 200 bytes UTF-8 por valor para caberem na sessão do navegador.
 
 Slugs devem ser legíveis, como `encontre-sua-solucao`, sem expor IDs numéricos como endereço de campanha. Mesmo slug ajuda a organizar URLs, mas estabilidade de sessão e retargeting dependem da implementação. `rel="canonical"` somente aponta entre páginas equivalentes; um redesign diferente não deve apontar automaticamente para a página antiga como se fosse o mesmo conteúdo.
 
@@ -110,11 +110,11 @@ Slugs devem ser legíveis, como `encontre-sua-solucao`, sem expor IDs numéricos
 
 | Formato | URL | Experiência desejada | Estado |
 |---|---|---|---|
-| Texto | `fmt=text` | Headline, subheadline e perguntas sem vídeo | Básico atual; configuração por formato a integrar |
-| Vídeo | `fmt=video` | VSL antes da primeira pergunta | Código local a integrar e mídia real necessária |
-| Híbrido | `fmt=hybrid` | Texto com vídeo curto | Código local a integrar e mídia real necessária |
+| Texto | `fmt=text` | Headline, subheadline e perguntas sem vídeo | Integrado e testado localmente |
+| Vídeo | `fmt=video` | VSL antes da primeira pergunta | Componente integrado; mídia real necessária |
+| Híbrido | `fmt=hybrid` | Texto com vídeo curto | Componente integrado; mídia real necessária |
 | Agente de IA | `fmt=ai` ou `fmt=ai_agent` | Conversa interativa substituindo perguntas fixas | Pendente; alias e aviso não constituem agente funcional |
-| Calculadora | `fmt=calc` | Entradas numéricas e cálculo explicado | Aritmética local; rota/integração pendentes |
+| Calculadora | `fmt=calc` | Entradas numéricas e cálculo explicado | Rota e cálculo no servidor integrados e testados |
 
 VSL de 30–60 segundos e híbrido de 15 segundos são recomendações editoriais do texto fornecido; não são limites técnicos já impostos.
 
@@ -130,13 +130,13 @@ O cookie atual `quiz_session` é assinado pelo Django, dura sete dias e usa `Htt
 
 O exemplo fornecido que escreve JSON diretamente em `document.cookie` não pode substituir esse cookie. A continuidade será feita aproveitando a sessão assinada. Campos ocultos e armazenamento no navegador podem ajudar a tela, mas não passam a decidir versão, pontos ou resultado.
 
-O contexto precisa acompanhar todas as etapas, o resultado, a saída e o retorno de compra quando integrado. O trabalho local separa participações por experiência/campanha; falta ligar isso ao fluxo atual. Refazer já existe e inicia outra participação, preservando as conclusões anteriores; seus parâmetros direcionados ainda precisam ser compatibilizados.
+O contexto acompanha formulário, resultado, saída e evento de conclusão. Participações de campanhas distintas são separadas, inclusive em abas diferentes. Refazer cria nova participação da mesma experiência e origem, preservando as conclusões anteriores. A sessão guarda até oito tentativas por quiz e retira tentativas antigas se atingir o limite de tamanho do cookie; uma tentativa retirada fica indisponível e não herda outra campanha. O retorno de compra ainda depende de integração externa.
 
 ## 7. Duas ofertas e checkout externo
 
 O mantenedor enviará os dois links reais **depois de o quiz estar testado e pronto**. Até lá, cada `checkout_url` fica `null`. Não inventar links nem cobrar alguém em teste.
 
-O código local prevê demonstração das duas ofertas e conexão posterior dos destinos sem reescrever perguntas ou histórico. Essa capacidade precisa ser integrada e provada na base atual.
+O código integrado mostra a demonstração da oferta indicada quando o endereço está `null`. A conexão posterior dos dois destinos preserva perguntas, pontuação, mensagens e histórico. Esses caminhos passaram nos testes locais; não são checkouts reais ativos.
 
 É possível abrir um checkout externo e passar parâmetros aceitos por ele, preservando a consulta que o link original já possua. O trabalho local de saída evita enviar nome, telefone e e-mail pela URL. A compra pode ser correlacionada por uma identificação opaca da tentativa quando o checkout devolver essa informação.
 
@@ -289,11 +289,11 @@ A regra de publicação já dada pelo mantenedor continua: backup antes; se a pr
 
 ## 13. Prova e próximo trabalho
 
-A prova desta revisão documental é conferir conteúdo, referências, exemplo JSON e renderização. Os 94 testes históricos não substituem uma nova prova da integração do quiz.
+A prova documental confere conteúdo, referências, exemplo JSON e renderização. A integração foi submetida à suíte completa do quiz e aos testes correspondentes do painel. O endereço público do código novo ainda depende de publicação.
 
 O Makefile atual tem `test`, `lint` e `type`; `ci` consta em `.PHONY`, mas não possui receita naquele arquivo. Portanto, `make ci` não comprova que toda a suíte executou.
 
-A continuação de produto precisa reconciliar modelos/migrações/rotas/editor, concluir capacidades pendentes, receber conteúdo real e testar da entrada até a demonstração das duas ofertas. Depois o mantenedor entrega os dois links, que serão conectados e verificados. Integrações de compra e medição têm provas próprias.
+A continuação precisa publicar a integração testada, conferir a jornada pública e receber o conteúdo real. Permanecem o estúdio visual completo, a conversa por IA e as conexões externas de marketing, relacionamento e compra. Depois do teste do quiz, o mantenedor entrega os dois links, que serão conectados e verificados. Integrações de compra e medição têm provas próprias.
 
 Entrega pronta do site significa prova automática aprovada e endereço abrindo. Arquivos presentes ou URL antiga respondendo não comprovam a nova experiência.
 
@@ -301,7 +301,7 @@ Entrega pronta do site significa prova automática aprovada e endereço abrindo.
 
 - [Modelos](../../services/quiz/apps/quiz/models.py), [views](../../services/quiz/apps/quiz/views.py), [rotas](../../services/quiz/config/urls.py) e [tarefas](../../services/quiz/apps/quiz/tasks.py).
 - [Editor de quiz](../../services/quiz/apps/quiz/editor.py) e [painel de conteúdos](../../services/admin/apps/core/conteudos.py).
-- [Migração do rascunho](../../services/quiz/apps/quiz/migrations/0006_quizdraft.py) e [migração local de experiências](../../services/quiz/apps/quiz/migrations/0006_experiencias_direcionadas.py).
+- [Migração do rascunho](../../services/quiz/apps/quiz/migrations/0006_quizdraft.py) e [migração de experiências](../../services/quiz/apps/quiz/migrations/0008_experiencias_direcionadas.py).
 - [Direcionamento local](../../services/quiz/apps/quiz/direcionadas.py), [experiências locais](../../services/quiz/apps/quiz/experiencias.py) e [destinos locais](../../services/quiz/apps/quiz/destinos.py).
 - [Importador de conteúdo local](../../services/quiz/apps/quiz/conteudo.py) e [exemplo dos testes](../../services/quiz/tests/test_importar_quiz.py).
 - [Gerador de links local](../../services/quiz/apps/quiz/management/commands/gerar_links_quiz.py), [conexão local de checkouts](../../services/quiz/apps/quiz/management/commands/conectar_checkouts.py), [relatório local](../../services/quiz/apps/quiz/campanhas.py).

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Seu resultado | {{ quiz.title }}</title>
+<link rel="canonical" href="{{ canonical }}">
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; }
   main { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem; text-align: center; }
@@ -31,13 +32,31 @@
      escalar não vão ao mesmo lugar. Faixa sem destino simplesmente não mostra
      botão (o banco garante que destino e rótulo andam juntos), e a pessoa fica
      com o diagnóstico, que é melhor que um botão para lugar nenhum.{% endcomment %}
-  {% if banda.botao_destino %}
+  {% if demonstracao and saida_rastreavel %}
+  <form method="post" action="{% url 'quiz-demonstracao' quiz.slug %}">
+    {% csrf_token %}<input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
+    <button class="botao" type="submit">{{ banda.botao_rotulo }}</button>
+  </form>
+  {% elif banda.botao_destino %}
+  {% if saida_rastreavel and banda.botao_destino|slice:':8' == 'https://' %}
+  <form method="post" action="{% url 'quiz-sair' quiz.slug %}">
+    {% csrf_token %}<input type="hidden" name="resposta" value="{{ submissao.id }}">
+    {% if quiz.directed %}<input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">{% endif %}
+    <button type="submit" class="botao">{{ banda.botao_rotulo }}</button>
+  </form>
+  {% else %}
   <a class="botao" href="{{ banda.botao_destino }}">{{ banda.botao_rotulo }}</a>
   {% endif %}
+  {% endif %}
+  {% if quiz.directed and not entrada %}
+  <a class="botao secundario" href="{{ recomecar_url }}">Responder o quiz</a>
+  {% else %}
   <form method="post" action="{% url 'quiz-refazer' quiz.slug %}">
     {% csrf_token %}
+    {% if quiz.directed %}<input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">{% endif %}
     <button type="submit" class="botao secundario">Refazer o quiz</button>
   </form>
+  {% endif %}
 </main>
 </body>
 </html>

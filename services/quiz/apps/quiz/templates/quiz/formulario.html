@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ quiz.title }}</title>
+<link rel="canonical" href="{{ canonical }}">
 <script>document.documentElement.classList.add("com-passos")</script>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; }
@@ -36,10 +37,11 @@
   <p><a href="/docs/laboratorio-crivo">Guia do laboratório</a> | <a href="{% url 'quiz-observacao' quiz.slug %}" target="_blank" rel="noopener">Observar registros (nova aba)</a></p>
   <p>Use somente o contato sintético indicado no guia. Esta experiência demonstra o quiz e a chegada à oferta de teste.</p>
   {% endif %}
-  <h1>{{ quiz.title }}</h1>
+  {% if experiencia %}{% include 'quiz/_experiencia.html' %}{% else %}<h1>{{ quiz.title }}</h1>{% endif %}
   {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
-  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-telemetria="{% url 'quiz-telemetria' %}" data-etapa-inicial="{{ etapa_inicial }}">
+  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-sessao="{{ entrada.session_id }}" data-telemetria="{% url 'quiz-telemetria' %}" data-etapa-inicial="{{ etapa_inicial }}">
     {% csrf_token %}
+    {% if quiz.directed %}<input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">{% endif %}
     {% for question in questions %}
     <fieldset class="passo{% if forloop.counter0 == etapa_inicial %} ativo{% endif %}" data-pergunta="{{ question.id }}">
       <legend>{{ question.text }}</legend>
@@ -84,6 +86,7 @@
   function emitir(tipo, elementId, metadata) {
     var corpo = JSON.stringify({
       quiz_slug: slug,
+      session_id: form.getAttribute("data-sessao"),
       event_type: tipo,
       element_id: elementId || "",
       occurred_at: new Date().toISOString(),

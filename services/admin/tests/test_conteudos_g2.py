@@ -1,5 +1,7 @@
 """Fórum, quiz e turma: salvar rascunho é separado de publicar."""
 
+import json
+
 import httpx
 import pytest
 import respx
@@ -173,9 +175,174 @@ def test_listas_com_nome_sem_title_abrem(tipo, url, chave):
     respx.get(url).mock(
         return_value=httpx.Response(
             200,
-            json={chave: [{"slug": "primeiro", "nome": "Nome publicado", "has_draft": False}]},
+            json={
+                chave: [
+                    {"slug": "primeiro", "nome": "Nome publicado", "has_draft": False}
+                ]
+            },
         )
     )
     pagina = cliente.get(reverse("conteudos", kwargs={"tipo": tipo}))
     assert pagina.status_code == 200
     assert "Nome publicado" in pagina.content.decode()
+
+
+@respx.mock
+def test_quiz_direcionado_preserva_documento_json_ao_salvar():
+    cliente = _cliente()
+    base = "http://quiz:8000/interno/editor/quizzes/campanha"
+    documento = {
+        "formato": "quiz-low-ticket/2",
+        "quiz": {"slug": "campanha", "title": "Campanha"},
+        "ofertas": [
+            {"id": "curso-a", "nome": "Curso A", "checkout_url": None},
+            {"id": "curso-b", "nome": "Curso B", "checkout_url": None},
+        ],
+        "versoes": [],
+    }
+    respx.get(base + "/rascunho?site_id=site-teste").mock(
+        return_value=httpx.Response(
+            200, json={"content": documento, "has_draft": True, "directed": True}
+        )
+    )
+    salvar = respx.put(base + "/rascunho?site_id=site-teste").mock(
+        return_value=httpx.Response(200, json={"content": documento})
+    )
+    pagina = cliente.get(
+        reverse("conteudo_editar", kwargs={"tipo": "quiz", "slug": "campanha"})
+    )
+    assert pagina.status_code == 200
+    assert "Documento JSON" in pagina.content.decode()
+    assert "substitui as versões ativas" not in pagina.content.decode()
+    resposta = cliente.post(
+        reverse("conteudo_salvar", kwargs={"tipo": "quiz", "slug": "campanha"}),
+        {"modo_quiz": "direcionado", "documento_json": json.dumps(documento)},
+    )
+    assert resposta.status_code == 302
+    assert json.loads(salvar.calls.last.request.content) == documento
+
+
+@respx.mock
+def test_quiz_novo_oferece_campanha_sem_inventar_documento():
+    cliente = _cliente()
+    respx.get(
+        "http://quiz:8000/interno/editor/quizzes/campanha/rascunho?site_id=site-teste"
+    ).mock(return_value=httpx.Response(404, json={"detail": "Quiz não encontrado."}))
+    pagina = cliente.get(
+        reverse("conteudo_editar", kwargs={"tipo": "quiz", "slug": "campanha"})
+        + "?formato=quiz-low-ticket/2"
+    )
+    assert pagina.status_code == 200
+    assert 'name="documento_json"' in pagina.content.decode()
+    assert "checkout_url" not in pagina.content.decode()
+
+
+@respx.mock
+def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
+    cliente = _cliente()
+    base = "http://quiz:8000/interno/editor/quizzes/campanha"
+    relatorio = respx.get(base + "/campanhas").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "aviso": "Saída registra clique; compra depende do checkout.",
+                "campanhas": [
+                    {
+                        "dia_origem": "2026-10-01",
+                        "src": "instagram",
+                        "med": "social",
+                        "cpg": "outubro",
+                        "ctv": "video",
+                        "source": "instagram",
+                        "medium": "social",
+                        "campaign": "outubro",
+                        "content": "video",
+                        "version_key": "B1",
+                        "fmt": "video",
+                        "seg": "novo",
+                        "visitas": 10,
+                        "submissoes": 4,
+                        "saidas": 2,
+                        "alertas": ["6 visitas sem conclusão"],
+                    },
+                    {
+                        "dia_origem": "2026-10-01",
+                        "src": "email",
+                        "med": "email",
+                        "cpg": "outubro",
+                        "ctv": "texto",
+                        "source": "email",
+                        "medium": "email",
+                        "campaign": "outubro",
+                        "content": "texto",
+                        "version_key": "A",
+                        "fmt": "text",
+                        "seg": "",
+                        "visitas": 3,
+                        "submissoes": 1,
+                        "saidas": 0,
+                    },
+                ],
+                "sem_visita_registrada": [
+                    {
+                        "src": "instagram",
+                        "cpg": "outubro",
+                        "version_key": "B1",
+                        "submissoes": 1,
+                        "observacao": "Sem visita registrada.",
+                    }
+                ],
+                "submissoes_sem_correspondencia": [],
+            },
+        )
+    )
+    links = respx.get(base + "/links").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "links": [
+                    {
+                        "version_key": "B1",
+                        "fmt": "video",
+                        "seg": "novo",
+                        "url": "https://testserver/quiz/campanha/?v=B1&fmt=video&src=instagram",
+                    }
+                ],
+            },
+        )
+    )
+    url = reverse("quiz_campanhas", kwargs={"slug": "campanha"})
+    pagina = cliente.get(
+        url,
+        {
+            "inicio": "2026-10-01",
+            "fim": "2026-10-02",
+            "src": "instagram",
+            "utm_term": "lucro",
+        },
+    )
+    assert pagina.status_code == 200
+    texto = pagina.content.decode()
+    assert "10" in texto and "4" in texto and "2" in texto
+    assert "Sem visita registrada" in texto
+    assert "clique; compra depende do checkout" in texto
+    assert "utm_term" in texto
+    assert "https://testserver/quiz/campanha/" in texto
+    assert "3 visitas" not in texto
+    assert "email@" not in texto
+    assert dict(relatorio.calls.last.request.url.params) == {
+        "site_id": "site-teste",
+        "inicio": "2026-10-01",
+        "fim": "2026-10-02",
+    }
+    assert dict(links.calls.last.request.url.params) == {
+        "site_id": "site-teste",
+        "src": "instagram",
+        "utm_term": "lucro",
+    }
+
+
+@respx.mock
+def test_painel_de_campanhas_requer_sessao_admin():
+    resposta = Client().get(reverse("quiz_campanhas", kwargs={"slug": "campanha"}))
+    assert resposta.status_code in (302, 404)
