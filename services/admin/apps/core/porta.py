@@ -154,6 +154,23 @@ def _sob_o_painel_da_equipe(caminho: str) -> bool:
     )
 
 
+def _arquivo_pedido_pelo_admin(request) -> bool:
+    """No ASGI, a URL original distingue o editor dos prefixos públicos."""
+    caminho = getattr(request, "scope", {}).get("path", "")
+    prefixo = settings.FORCE_SCRIPT_NAME or ""
+    return bool(prefixo) and (
+        (
+            request.path_info.startswith(PREFIXO_PUBLICO_DA_MIDIA)
+            and caminho.startswith(prefixo + PREFIXO_PUBLICO_DA_MIDIA)
+        )
+        or (
+            request.path_info.startswith(PREFIXO_PUBLICO_DOS_DOCUMENTOS)
+            and "/arquivo/" in request.path_info
+            and caminho.startswith(prefixo + PREFIXO_PUBLICO_DOS_DOCUMENTOS)
+        )
+    )
+
+
 def _e_da_equipe(email: str) -> bool:
     """Este e-mail é a conta de alguém da equipe? Banco fora ⇒ não."""
     if not email:
@@ -254,10 +271,12 @@ class PortaAdministrativa:
         if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
             return self._com_seguranca(self.get_response(request))
 
-        if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
-            (
-                PREFIXO_PUBLICO_DOS_DOCUMENTOS,
-                PREFIXO_PUBLICO_DA_MIDIA,
+        if not _arquivo_pedido_pelo_admin(request) and (
+            request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
+                (
+                    PREFIXO_PUBLICO_DOS_DOCUMENTOS,
+                    PREFIXO_PUBLICO_DA_MIDIA,
+                )
             )
         ):
             # `/midia/` é público, mas o editor local ainda precisa ver o
