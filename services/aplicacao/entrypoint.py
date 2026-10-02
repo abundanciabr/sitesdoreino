@@ -8,7 +8,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 
 def main() -> None:
-    raise SystemExit("ENSAIO-DA-VOLTA 1: partida quebrada de propósito")
+    raise SystemExit("ENSAIO-DA-VOLTA 2: segunda partida quebrada seguida")
     import django
     import uvicorn
     from django.core.management import call_command
