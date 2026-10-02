@@ -589,6 +589,23 @@ def demonstracao(request, slug):
     )
     if not quiz.directed or not oferta or oferta.get("checkout_url"):
         raise Http404("demonstração indisponível")
+    # A demonstração é a saída enquanto o checkout não chega: conta como
+    # clique de saída, marcado para não se confundir com o checkout real.
+    metadados = {"utm": submissao.utm, "demonstracao": True, "oferta_id": oferta["id"]}
+    if submissao.context:
+        metadados["context"] = submissao.context
+    TelemetryEvent.objects.get_or_create(
+        session_id=submissao.session_id,
+        site_id=quiz.site_id,
+        quiz_slug=quiz.slug,
+        version_key=submissao.version.key,
+        event_type="checkout_exit",
+        defaults={
+            "element_id": submissao.result_key,
+            "metadata": metadados,
+            "occurred_at": timezone.now(),
+        },
+    )
     return render(
         request,
         "quiz/demonstracao.html",

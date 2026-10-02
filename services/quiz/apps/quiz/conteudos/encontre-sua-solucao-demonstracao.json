@@ -1,0 +1,150 @@
+{
+  "formato": "quiz-low-ticket/2",
+  "quiz": {"slug": "encontre-sua-solucao", "title": "Encontre sua solução (demonstração)"},
+  "ofertas": [
+    {
+      "id": "oferta-primeiros-passos",
+      "nome": "Oferta 1 de demonstração: Primeiros passos",
+      "checkout_url": null,
+      "para_quem": "Conteúdo demonstrativo: para quem está começando e precisa de um caminho curto e guiado.",
+      "entrega": "Conteúdo demonstrativo: a oferta real, o preço e o checkout serão definidos pelo mantenedor."
+    },
+    {
+      "id": "oferta-acelerar",
+      "nome": "Oferta 2 de demonstração: Acelerar resultados",
+      "checkout_url": null,
+      "para_quem": "Conteúdo demonstrativo: para quem já pratica e quer método para avançar mais rápido.",
+      "entrega": "Conteúdo demonstrativo: a oferta real, o preço e o checkout serão definidos pelo mantenedor."
+    }
+  ],
+  "versoes": [
+    {
+      "key": "A",
+      "default_format": "text",
+      "formats": {
+        "text": {"headline": "Descubra seu próximo passo", "subheadline": "Três perguntas rápidas. Conteúdo de demonstração."}
+      },
+      "segments": {},
+      "perguntas": [
+        {"id": "momento", "texto": "Em que momento você está?", "opcoes": [
+          {"id": "comecando", "texto": "Estou começando agora", "pontos": 0},
+          {"id": "testando", "texto": "Já testei algumas vezes", "pontos": 1},
+          {"id": "praticando", "texto": "Pratico com frequência", "pontos": 2}
+        ]},
+        {"id": "tempo", "texto": "Quanto tempo por semana você tem?", "opcoes": [
+          {"id": "pouco", "texto": "Menos de 2 horas", "pontos": 0},
+          {"id": "medio", "texto": "De 2 a 5 horas", "pontos": 1},
+          {"id": "muito", "texto": "Mais de 5 horas", "pontos": 2}
+        ]},
+        {"id": "objetivo", "texto": "O que você quer agora?", "opcoes": [
+          {"id": "base", "texto": "Aprender a base", "pontos": 0},
+          {"id": "projeto", "texto": "Terminar um primeiro projeto", "pontos": 1},
+          {"id": "escala", "texto": "Produzir mais e melhor", "pontos": 2}
+        ]}
+      ],
+      "faixas": [
+        {"key": "base", "title": "Comece pela base", "description": "Seu melhor próximo passo é um caminho curto e guiado. (demonstração)", "min_score": 0, "max_score": 2, "oferta_id": "oferta-primeiros-passos", "botao_rotulo": "Ver a oferta Primeiros passos"},
+        {"key": "avanco", "title": "Hora de acelerar", "description": "Você já tem prática; o próximo passo é método para avançar. (demonstração)", "min_score": 3, "max_score": 6, "oferta_id": "oferta-acelerar", "botao_rotulo": "Ver a oferta Acelerar resultados"}
+      ]
+    },
+    {
+      "key": "B1",
+      "default_format": "text",
+      "formats": {
+        "text": {"headline": "Em 1 minuto, saiba por onde seguir", "subheadline": "Mesmas três perguntas da versão A, com chamada mais direta no resultado. Conteúdo de demonstração."}
+      },
+      "segments": {},
+      "perguntas": [
+        {"id": "momento", "texto": "Em que momento você está?", "opcoes": [
+          {"id": "comecando", "texto": "Estou começando agora", "pontos": 0},
+          {"id": "testando", "texto": "Já testei algumas vezes", "pontos": 1},
+          {"id": "praticando", "texto": "Pratico com frequência", "pontos": 2}
+        ]},
+        {"id": "tempo", "texto": "Quanto tempo por semana você tem?", "opcoes": [
+          {"id": "pouco", "texto": "Menos de 2 horas", "pontos": 0},
+          {"id": "medio", "texto": "De 2 a 5 horas", "pontos": 1},
+          {"id": "muito", "texto": "Mais de 5 horas", "pontos": 2}
+        ]},
+        {"id": "objetivo", "texto": "O que você quer agora?", "opcoes": [
+          {"id": "base", "texto": "Aprender a base", "pontos": 0},
+          {"id": "projeto", "texto": "Terminar um primeiro projeto", "pontos": 1},
+          {"id": "escala", "texto": "Produzir mais e melhor", "pontos": 2}
+        ]}
+      ],
+      "faixas": [
+        {"key": "base", "title": "Comece pela base", "description": "Seu melhor próximo passo é um caminho curto e guiado. (demonstração)", "min_score": 0, "max_score": 2, "oferta_id": "oferta-primeiros-passos", "botao_rotulo": "Quero começar pela base"},
+        {"key": "avanco", "title": "Hora de acelerar", "description": "Você já tem prática; o próximo passo é método para avançar. (demonstração)", "min_score": 3, "max_score": 6, "oferta_id": "oferta-acelerar", "botao_rotulo": "Quero acelerar agora"}
+      ]
+    },
+    {
+      "key": "B2",
+      "default_format": "text",
+      "formats": {
+        "text": {"headline": "Encontre a solução certa para o seu momento", "subheadline": "Quatro perguntas e uma indicação entre duas ofertas. Conteúdo de demonstração."},
+        "calc": {
+          "headline": "Calcule suas horas de prática no mês",
+          "subheadline": "Estimativa simples a partir das suas respostas. Não é promessa de resultado. Conteúdo de demonstração.",
+          "calculator": {
+            "inputs": [
+              {"key": "horas_semana", "label": "Horas de prática por semana", "min": 0, "max": 60, "default": 3},
+              {"key": "semanas", "label": "Semanas no mês", "min": 1, "max": 5, "default": 4}
+            ],
+            "expression": "horas_semana * semanas",
+            "result_label": "Horas de prática no mês"
+          }
+        },
+        "ai": {
+          "headline": "Converse e descubra seu próximo passo",
+          "subheadline": "Uma conversa curta que chega às mesmas perguntas. Conteúdo de demonstração.",
+          "instructions": "Você conduz um diagnóstico curto e cordial em português simples. Faça uma pergunta por vez, na ordem das perguntas da versão, explicando as opções com naturalidade. Quando a pessoa responder, identifique qual opção da pergunta corrente corresponde à resposta; se não ficar claro, peça esclarecimento oferecendo as opções. Não indique oferta, preço nem promessa de resultado: a indicação final vem da pontuação calculada pelo servidor. Conteúdo de demonstração."
+        }
+      },
+      "segments": {
+        "iniciante": {
+          "headline": "Comece com segurança, no seu ritmo",
+          "subheadline": "Para quem está dando os primeiros passos. Conteúdo de demonstração.",
+          "video_url": null,
+          "results": {
+            "primeiros-passos": {"title": "Seu caminho começa pela base", "description": "Para quem está começando, um caminho curto e guiado evita dispersão. (demonstração)", "botao_rotulo": "Ver Primeiros passos"},
+            "acelerar": {"title": "Você já pode acelerar", "description": "Mesmo chegando como iniciante, suas respostas mostram prática suficiente para avançar. (demonstração)", "botao_rotulo": "Ver Acelerar resultados"}
+          }
+        },
+        "escalando": {
+          "headline": "Ganhe ritmo e produza mais",
+          "subheadline": "Para quem já pratica e quer avançar. Conteúdo de demonstração.",
+          "video_url": null,
+          "results": {
+            "primeiros-passos": {"title": "Reforce a base antes de escalar", "description": "Suas respostas mostram lacunas de base que vale fechar antes de acelerar. (demonstração)", "botao_rotulo": "Ver Primeiros passos"},
+            "acelerar": {"title": "Pronto para acelerar", "description": "Você tem prática e tempo; método é o próximo passo. (demonstração)", "botao_rotulo": "Ver Acelerar resultados"}
+          }
+        }
+      },
+      "perguntas": [
+        {"id": "momento", "texto": "Em que momento você está?", "opcoes": [
+          {"id": "comecando", "texto": "Estou começando agora", "pontos": 0},
+          {"id": "testando", "texto": "Já testei algumas vezes", "pontos": 2},
+          {"id": "entregando", "texto": "Já entrego trabalhos", "pontos": 3}
+        ]},
+        {"id": "tempo", "texto": "Quanto tempo por semana você tem?", "opcoes": [
+          {"id": "pouco", "texto": "Menos de 2 horas", "pontos": 0},
+          {"id": "medio", "texto": "De 2 a 5 horas", "pontos": 1},
+          {"id": "muito", "texto": "Mais de 5 horas", "pontos": 3}
+        ]},
+        {"id": "objetivo", "texto": "O que você quer agora?", "opcoes": [
+          {"id": "base", "texto": "Aprender a base", "pontos": 0},
+          {"id": "projeto", "texto": "Terminar um primeiro projeto", "pontos": 1},
+          {"id": "escala", "texto": "Produzir mais e melhor", "pontos": 3}
+        ]},
+        {"id": "obstaculo", "texto": "O que mais te trava hoje?", "opcoes": [
+          {"id": "inicio", "texto": "Não sei por onde começar", "pontos": 0},
+          {"id": "metodo", "texto": "Falta um método", "pontos": 1},
+          {"id": "volume", "texto": "Falta ritmo para produzir mais", "pontos": 3}
+        ]}
+      ],
+      "faixas": [
+        {"key": "primeiros-passos", "title": "Comece pela base", "description": "Seu melhor próximo passo é um caminho curto e guiado. (demonstração)", "min_score": 0, "max_score": 6, "oferta_id": "oferta-primeiros-passos", "botao_rotulo": "Ver a oferta Primeiros passos"},
+        {"key": "acelerar", "title": "Hora de acelerar", "description": "Você já tem prática; o próximo passo é método para avançar. (demonstração)", "min_score": 7, "max_score": 12, "oferta_id": "oferta-acelerar", "botao_rotulo": "Ver a oferta Acelerar resultados"}
+      ]
+    }
+  ]
+}

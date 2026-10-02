@@ -1,8 +1,10 @@
 <!doctype html>
 <html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Prévia da oferta | {{ quiz.title }}</title></head>
 <body><main style="max-width:640px;margin:3rem auto;padding:1rem;font-family:system-ui">
-<h1>{{ oferta.nome }}</h1><p>Esta é uma demonstração do encaminhamento para a oferta recomendada. O checkout ainda será conectado.</p>
+<p style="display:inline-block;padding:.2rem .6rem;border-radius:999px;background:#fff3cd;color:#664d03;font-size:.9rem">Demonstração sem cobrança</p>
+<h1 data-oferta="{{ oferta.id }}">{{ oferta.nome }}</h1><p>Esta é uma demonstração do encaminhamento para a oferta recomendada. O checkout ainda será conectado. Nenhuma cobrança foi feita e nenhum dado de pagamento foi pedido.</p>
 {% if oferta.para_quem %}<p>{{ oferta.para_quem }}</p>{% endif %}
 {% if oferta.entrega %}<p>{{ oferta.entrega }}</p>{% endif %}
+<p style="color:#555;font-size:.9rem">Versão {{ submissao.version.key }}{% if submissao.context.fmt %} · formato {{ submissao.context.fmt }}{% endif %}{% if submissao.context.seg %} · segmento {{ submissao.context.seg }}{% endif %}</p>
 <p><a href="{% url 'quiz-resultado' quiz.slug %}?lead={{ submissao.id }}">Voltar ao resultado</a></p>
 </main></body></html>

@@ -9,7 +9,7 @@ from django.core import signing
 from django.test import Client
 
 from apps.quiz.conteudo import importar_documento
-from apps.quiz.models import OutboxEvent, Submission
+from apps.quiz.models import OutboxEvent, Submission, TelemetryEvent
 from apps.quiz.views import COOKIE_SESSAO, SALT_SESSAO
 from tests.test_importar_quiz import documento, site  # noqa: F401
 
@@ -85,6 +85,16 @@ def test_link_escolhe_versao_sem_peso_e_preserva_campanha(client, campanha):
     )
     assert demo.status_code == 200
     assert "Curso inicial" in demo.content.decode()
+    assert "sem cobrança" in demo.content.decode()
+    client.post(
+        f"/{campanha.slug}/demonstracao",
+        {"quiz_attempt": entrada["session_id"]},
+        HTTP_HOST=campanha.site.host,
+    )
+    saida = TelemetryEvent.objects.get(event_type="checkout_exit")
+    assert saida.metadata["demonstracao"] is True
+    assert saida.metadata["context"] == entrada["context"]
+    assert saida.version_key == "B2"
 
 
 def test_tentativas_de_versoes_e_campanhas_distintas_nao_se_misturam(client, campanha):
