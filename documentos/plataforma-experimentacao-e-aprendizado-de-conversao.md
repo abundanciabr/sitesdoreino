@@ -256,10 +256,6 @@ Dados que cruzam células via contrato: ids opacos, versão, site, slug, evento
 e métricas deriváveis. Dados que não devem cruzar para o livro analítico: e-mail,
 telefone, nome e texto de copy. IDs opacos também podem ser dados pessoais quando vinculáveis: precisam de finalidade, retenção e tratamento dos direitos do titular. Não confundir minimização com anonimização.
 
-Uma célula não lê o banco da outra porque a Constituição da plataforma separa
-dados por célula. A comunicação acontece por API interna, conforme
-`contracts/*.openapi.yaml`, ou por evento versionado em `contracts/eventos/`.
-
 ## 6. O que já existe no repositório
 
 | Item | Estado | Onde vive | O que garante | Teste citado |
@@ -588,7 +584,6 @@ A decisão de 19/09, §§6 e 7, distingue ADIADO com gatilho de descartado até 
 - Evento sem versão.
 - Tratar conversão sem vínculo verificável como conversão exposta; o fato de compra continua existindo como não atribuído.
 - Copy duplicada nos eventos.
-- Acesso ao banco de outra célula.
 - Experimento sem métrica principal.
 - Experimento sem MDE.
 - Múltiplos tratamentos com tráfego insuficiente.
@@ -662,7 +657,7 @@ Escolha do desenho (Emenda 1, 26/09/2026): uma página de `meshcraft.top`, um sl
 | Identificação do lead | `leads` | Guarda dados da pessoa e o vínculo autorizado |
 | Entrada no checkout e pedido | `checkout` | Distingue abrir checkout de criar pedido |
 | Aprovação, recusa e devolução financeira | `pagamentos` | Nenhum clique pode afirmar que houve compra |
-| Projeção histórica e cálculo reproduzível | `metricas` | Lê fatos e não consulta bancos alheios |
+| Projeção histórica e cálculo reproduzível | `metricas` | Lê fatos |
 | Formulário, resultado, decisão e aprendizado | `admin`, com persistência da decisão no domínio da página | Uma porta humana, sem segunda verdade da variante |
 
 Essas são propostas concretas deste plano, ainda sem schemas congelados. A futura célula `experimentos` só nasce quando uma segunda superfície comprovar necessidade do mesmo controle. Camadas para dois testes na mesma página não justificam, sozinhas, essa extração.

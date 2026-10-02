@@ -70,13 +70,13 @@ Esta é a seção mais importante do relatório. Cada item diz o que é, por que
 
 A plataforma não é um programa grande. São **17 serviços independentes**, chamados de células: catálogo, funil de vendas, quiz, leads, checkout, pagamentos, alunos, mensageria, identidade (login), sugestões, notificações, administração, fórum, gamificação, encomendas, métricas e cursos. Cada célula tem o próprio processo, o próprio banco de dados, as próprias telas e a própria lei de uma página (a constituição da célula).
 
-**Por que importa para a meta.** É isso que faz "uma falha derruba uma parte, nunca o todo" ser verdade física, e não promessa. O banco de dados de uma célula não consegue ler o de outra: não é proibido, é impossível (a permissão não existe). Uma célula é publicada e revertida sozinha, sem tocar nas demais. Com 50 mil alunos, é isso que permite mudar o fórum numa terça-feira à tarde sem medo de derrubar a matrícula.
+**Por que importa para a meta.** É isso que faz "uma falha derruba uma parte, nunca o todo" ser verdade física, e não promessa. Uma célula é publicada e revertida sozinha, sem tocar nas demais. Com 50 mil alunos, é isso que permite mudar o fórum numa terça-feira à tarde sem medo de derrubar a matrícula.
 
 **Como se prova.** A pasta `services/` do repositório tem uma pasta por célula; a pasta `constituicoes/` tem uma lei por célula; o arquivo `infra/provisionamento-postgres.sql` cria um banco e um usuário de banco por célula. O programa `ci/mapa_de_celulas.py` confere, a cada mudança, que o mapa de quem depende de quem bate com o código.
 
-### 2. Contratos congelados: as células só conversam pelo que está escrito
+### 2. Contratos congelados: as células conversam pelo que está escrito
 
-Células não compartilham código nem banco. Elas conversam de dois jeitos, e só de dois: por chamadas com contrato escrito (**13 contratos** no formato OpenAPI, congelados) e por **eventos versionados** (42 tipos de acontecimento, como "pagamento aprovado" ou "aula concluída", cada um com formato fixo e número de versão).
+As células conversam de dois jeitos: por chamadas com contrato escrito (**13 contratos** no formato OpenAPI, congelados) e por **eventos versionados** (42 tipos de acontecimento, como "pagamento aprovado" ou "aula concluída", cada um com formato fixo e número de versão).
 
 **Por que importa para a meta.** Um contrato congelado é o que permite que duas equipes, ou dois robôs, trabalhem em células diferentes ao mesmo tempo sem se coordenar por conversa. Quem consome um serviço desenvolve contra uma cópia falsa do contrato, nunca contra o código do outro. Mudar um contrato é um rito com o mantenedor presente. É a diferença entre um prédio em que cada andar pode ser reformado em separado e um em que mexer numa parede derruba o vizinho.
 

@@ -38,9 +38,8 @@ api = NinjaAPI(
     version="1.0.0",
     description=(
         "Superficie de MAQUINA das sequencias de mensagens (as jornadas).\n"
-        "Existe para que a tela do mantenedor leia as sequencias pelo CONTRATO\n"
-        "e nunca pelo banco desta celula: o motor por baixo pode mudar sem que\n"
-        "quem consome saiba.\n"
+        "Existe para que a tela do mantenedor leia as sequencias pelo CONTRATO:\n"
+        "o motor por baixo pode mudar sem que quem consome saiba.\n"
         "\n"
         "Lei do assunto: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\n"
         "\n"

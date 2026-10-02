@@ -107,8 +107,8 @@ SESSION_COOKIE_NAME = "meshcraft_sessao"
 #
 # Com "/", o cookie acompanha a pessoa por todo o domínio, e o `funil` pode
 # perguntar "quem é este?" (config/api.py). Quem CONTINUA lendo e assinando o
-# cookie é esta célula, e só ela: o segredo e a tabela `Identidade` não saem
-# daqui (muralha de dados: célula não lê banco de outra). O site nunca lê o cookie — ele pergunta.
+# cookie é esta célula, e só ela: o segredo não sai daqui. O site nunca lê o
+# cookie — ele pergunta.
 #
 # Não é `SESSION_COOKIE_DOMAIN`: alcance de CAMINHO (um host, todas as páginas)
 # é o que o site precisa; alcance de DOMÍNIO espalharia o cookie por

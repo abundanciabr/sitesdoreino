@@ -99,8 +99,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 # Tokens do PAR consumidor→provedor (R1), um por par: TOKENS_ACEITOS_ADMIN
 # ---------------------------------------------------------------------------
 # A `metricas` é provedora a partir do degrau 7.4: a `admin` lê os contadores
-# históricos, a cobertura e a fila de eventos mortos por `/api/metricas/`,
-# porque nenhuma célula lê o banco de outra.
+# históricos, a cobertura e a fila de eventos mortos por `/api/metricas/`.
 #
 # Env ausente ⇒ conjunto VAZIO ⇒ toda chamada é recusada com 401. Fail-closed
 # por construção, e sem derrubar o boot: a célula sobe, o `/healthz` responde, o

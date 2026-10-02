@@ -632,9 +632,6 @@ urlpatterns = [
     # A CAIXA DE SUGESTOES — a gestao das ideias dos alunos, que ate 28/08/2026
     # morava nas telas da celula sugestoes. Decisao do mantenedor, na frase
     # dele: "nao vamos espalhar paineis ou gestao por ai, tudo sera em /admin".
-    #
-    # Esta celula nao le o banco da Caixa (celula nao le banco de outra): ela pergunta, pelo
-    # contrato congelado.
     path("caixa/", mesa, name="caixa"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
