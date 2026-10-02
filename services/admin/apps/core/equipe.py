@@ -32,7 +32,8 @@ não guardá-lo para sempre.
   e o painel filtra por ele. É a base para ligar as tarefas à MCI depois.
   Objetivo não se apaga; desativa.
 * **Compromissos da semana** (`/equipe/semana`): uma tarefa aberta, com
-  responsável, pode ser assumida como compromisso da semana corrente. A visão
+  responsável, pode ser assumida como compromisso da semana corrente, e só por
+  quem responde por ela (02/10/2026: antes qualquer pessoa tirava). A visão
   "Esta semana" mostra, por pessoa, o que foi cumprido (concluído até o
   domingo) e o que ficou. Semana que já passou não se mexe: só se lê.
 * **Comentários**: um texto curto por vez, com quem e quando, na ficha da
@@ -121,6 +122,10 @@ RESULTADOS = {
     "compromisso_sem_responsavel": (
         "Compromisso é de alguém: escolha antes quem responde pela tarefa. "
         "Nada mudou."
+    ),
+    "compromisso_de_outra_pessoa": (
+        "O compromisso da semana é de quem responde pela tarefa: só essa "
+        "pessoa assume ou tira. Nada mudou."
     ),
     "aparelho_conectado": (
         "Pronto: este aparelho ficou conectado a você e continua conectado. "
@@ -487,12 +492,16 @@ def tarefa_compromisso(request, id: int):
     """Assumir a tarefa como compromisso da semana corrente, ou tirá-la.
 
     Só a semana CORRENTE se mexe: o que ficou numa semana que já passou é o
-    registro dela, e tirar dali seria reescrever o resultado.
+    registro dela, e tirar dali seria reescrever o resultado. E só quem
+    responde pela tarefa assume ou tira: o compromisso é dessa pessoa.
     """
     tarefa = get_object_or_404(Tarefa, pk=id)
     destino = _destino_seguro(request, reverse("painel_da_equipe"))
     resultado = operacoes.marcar_compromisso(
-        tarefa, _quem(request), tirar=request.POST.get("acao") == "tirar"
+        tarefa,
+        _quem(request),
+        membro=_membro_da_sessao(request),
+        tirar=request.POST.get("acao") == "tirar",
     )
     return _com_resultado(destino, resultado)
 
