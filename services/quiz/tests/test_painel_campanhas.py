@@ -176,3 +176,12 @@ def test_links_filtram_segmentos_e_geral_e_o_link_sem_segmento(quiz):
     assert sorted(item["seg"] for item in dados["links"]) == ["", "avancado"]
     vazio = links(pedido("/admin/crivo/links?site_id=painel-site&seg=xyz"), quiz.slug)
     assert vazio.status_code == 422
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_conversa_por_ia_vira_link_quando_a_chave_existe(quiz, monkeypatch):
+    sem = json.loads(links(pedido("/admin/crivo/links?site_id=painel-site"), quiz.slug).content)
+    assert "ai" not in {item["fmt"] for item in sem["links"]}
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-de-teste")
+    com = json.loads(links(pedido("/admin/crivo/links?site_id=painel-site"), quiz.slug).content)
+    assert "ai" in {item["fmt"] for item in com["links"]}

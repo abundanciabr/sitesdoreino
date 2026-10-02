@@ -100,6 +100,10 @@ def links(request, slug):
         faltam = sorted(set(chaves) - set(versoes.values_list("key", flat=True)))
         if faltam:
             return _error(f"Versão ativa indisponível: {', '.join(faltam)}.", 422)
+    from .conversa import _chave
+
+    # A conversa por IA só vira link quando a chave do provedor está no servidor.
+    ia_ligada = bool(_chave())
     itens = []
     vistos = set()
     for versao in versoes:
@@ -119,7 +123,7 @@ def links(request, slug):
                     resolvida = resolver_experiencia(versao, formato, segmento or None)
                 except Http404:
                     continue
-                if resolvida["fmt"] == "ai" and not resolvida["ai_disponivel"]:
+                if resolvida["fmt"] == "ai" and not ia_ligada:
                     continue
                 identidade = (versao.key, resolvida["fmt"], segmento)
                 if identidade in vistos:
