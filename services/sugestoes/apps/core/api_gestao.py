@@ -1,48 +1,8 @@
-# apps/core/api_gestao.py — a superfície de MÁQUINA da gestão da Caixa
-"""O que a Caixa responde ao Admin sobre as ideias, e o que ela aceita dele.
+"""API autenticada de gestão das ideias.
 
-Lei do assunto: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`
-(28/08/2026, decisão do mantenedor). A gestão das ideias deixa de morar na
-Caixa e passa a morar em `/admin/caixa/` — porta única, decisão dele: *"não
-vamos espalhar painéis ou gestão por aí, tudo será em /admin"*.
-
-**Por que isto existe em vez de o Admin ler o banco:** Lei 3 — nenhuma célula lê
-o banco de outra. O Admin pergunta, a Caixa responde. É o mesmo desenho que a
-tela de alunos do Admin já usa com a célula `alunos`.
-
-O que esta superfície é, e o que ela não é:
-
-* **É de DOMÍNIO, não de tela.** Ela devolve os fatos de cada ideia — votos,
-  plateia, estado, datas, se tem avaliação, se tem ChangeSpec — e **não** as
-  colunas, os baldes ou a ordem. Quem agrupa é o Admin. Um contrato com forma de
-  tela acoplaria a API a cada ajuste de layout; um contrato com forma de
-  domínio deixa a tela evoluir. A conta que NÃO sai daqui é a plateia: ela é definição desta célula
-  ([INV-SUG13]) e viaja pronta, porque é a mesma gente que o sininho vai avisar.
-* **Ela usa os caminhos existentes.** As três escritas passam pelos MESMOS
-  caminhos que as telas usavam (`moderacao.registrar_mudanca_de_status`,
-  `changespecs.registrar`) — histórico na mesma transação, avisos para a plateia
-  inteira, nota opcional no "não vamos fazer", e o corredor do
-  ChangeSpec nos três degraus. Reimplementar aqui seria abrir uma segunda porta
-  para o mesmo cofre.
-
-**Os dois papéis, e por que só um mudou de dono** (as duas decisões do
-mantenedor em 28/08/2026, e a primeira foi tomada contra a recomendação desta
-sessão, sabendo do custo — ver a lei):
-
-| Papel | Quem decide, depois desta mudança |
-|---|---|
-| **moderar** (mudar fase, escrever avaliação) | o Admin. Quem entra em `ADMIN_EMAILS` modera — lista ÚNICA, e a `sugestoes` confia no Bearer do par. `SUGESTOES_STAFF_EMAILS` deixa de governar estas rotas. |
-| **assinar** (autorizar obra) | continua a `sugestoes`, por `SUGESTOES_APROVADORES`, fail-closed. Não mudou, e mudar de casa a tela não muda isto. |
-
-A consequência aceita da lista única está escrita na lei, por extenso, para
-nenhuma sessão futura "consertar" isto achando que foi descuido: **dar acesso ao
-Admin a alguém passa a dar, no mesmo gesto, o poder de mexer nas ideias dos
-alunos.**
-
-**O e-mail do aluno não sai daqui** (decisão do mantenedor no mesmo dia,
-mantendo a `DECISAO-EVO-01` §3): a resposta carrega o nome exibido de quem
-sugeriu, nunca o endereço. O único e-mail que ATRAVESSA é o de quem AGE — vindo
-do Admin, que já o resolveu pela `identidade` para abrir a própria porta.
+O Admin consulta os dados de domínio e registra ações com responsável
+identificado. O endereço do aluno não entra nas respostas; a contagem da
+plateia é calculada nesta célula.
 """
 
 from datetime import date
@@ -64,7 +24,7 @@ from apps.sugestoes.models import (
 from . import apagamento
 from . import fusoes
 from . import sessao as ses
-from .changespecs import ChangeSpecInvalido, e_aprovador
+from .changespecs import ChangeSpecInvalido
 from .changespecs import registrar as registrar_changespec
 from .correcao import CorrecaoInvalida
 from .correcao import corrigir as corrigir_o_texto
@@ -208,8 +168,8 @@ class ChangeSpecAssinado(Schema):
 
     `tem_changespec` responde "está assinada?"; esta ficha responde "assinada
     por quem, quando, com qual documento?". São perguntas diferentes, e só a
-    segunda permite CONFERIR depois o que foi autorizado — que é a razão de o
-    documento ser um endereço obrigatório desde o EVO-40.
+    segunda permite conferir depois o que foi registrado. Sem documento, a
+    ficha informa isso explicitamente.
 
     Ela viaja só em `IdeiaComHistorico`, pelo mesmo motivo do histórico: a lista
     do quadro não mostra ficha nenhuma, e carregá-la ali multiplicaria a
@@ -224,10 +184,8 @@ class ChangeSpecAssinado(Schema):
     documento: str
     # O NOME de quem aprovou (nunca e-mail: `registrar()` recusa valor com "@").
     aprovado_por: str
-    # A data escrita por quem assinou (AAAA-MM-DD) — é do documento, não do
-    # sistema. Diferente de `registrado_em`, que é o instante em que o fato
-    # entrou na Caixa: um ChangeSpec pode ser aprovado numa terça e registrado
-    # na quinta, e as duas datas contam histórias diferentes.
+    # A data documental pode faltar. `registrado_em` sempre guarda o instante
+    # em que a decisão entrou no histórico da Caixa.
     aprovado_em: str
     registrado_por: str
     registrado_em: str
@@ -300,10 +258,7 @@ class QuadroEmGestao(Schema):
 
     quadro: str
     ideias: "list[IdeiaEmGestao]"
-    # Quem AGE não é quem lê: este campo responde "a pessoa que o Admin informou
-    # pode assinar?" — e é só um espelho de `SUGESTOES_APROVADORES`. Serve para o
-    # Admin não desenhar um botão que a Caixa vai recusar; a recusa de verdade
-    # continua acontecendo aqui, na escrita.
+    # Indica se o pedido de leitura trouxe um responsável identificado.
     pode_assinar: bool
     # Os três números que SÓ esta célula consegue produzir, e por isso viajam
     # prontos: eles contam PESSOAS DISTINTAS entre várias ideias, e quem tem
@@ -333,7 +288,7 @@ class QuemAge(Schema):
     O e-mail é o de quem abriu o Admin — resolvido lá pela `identidade`, que é
     quem tem esse direito. A Caixa o usa para duas coisas e nada mais: achar (ou
     cunhar) a linha local que o histórico exige como autor da mudança, e conferir
-    a lista de aprovadores. Não é o e-mail de nenhum ALUNO: esse continua sem
+    o registro de autoria. Não é o e-mail de nenhum ALUNO: esse continua sem
     sair daqui.
 
     **`por_id_da_plataforma` não é enfeite, e não é opcional na prática.** Toda
@@ -375,10 +330,10 @@ class AvaliacaoEscrita(QuemAge):
 
 
 class ChangeSpecEscrito(QuemAge):
-    change_id: str
-    documento: str
-    aprovado_por: str
-    aprovado_em: date
+    change_id: str = ""
+    documento: str = ""
+    aprovado_por: str = ""
+    aprovado_em: date | None = None
 
 
 class ArquivamentoEscrito(QuemAge):
@@ -555,7 +510,7 @@ def listar_ideias(
 
     return {
         "quadro": quadro.nome,
-        "pode_assinar": bool(por_email) and e_aprovador(por_email),
+        "pode_assinar": bool(por_email and por_email.strip()),
         "pessoas_esperando": len(silencio),
         "silencio_medio_em_dias": (
             round(sum(silencio.values()) / len(silencio)) if silencio else None
@@ -610,7 +565,7 @@ def uma_ideia(request, sugestao_id: int):
             "change_id": cs.change_id,
             "documento": cs.documento,
             "aprovado_por": cs.aprovado_por,
-            "aprovado_em": cs.aprovado_em.isoformat(),
+            "aprovado_em": cs.aprovado_em.isoformat() if cs.aprovado_em else "",
             # Nome exibido, nunca o e-mail — e sem o fallback que a tela antiga
             # tinha (`nome_exibido|default:email`): quem exibe decide o que
             # escrever quando o nome está vazio.
@@ -743,23 +698,16 @@ def avaliar(request, sugestao_id: int, payload: AvaliacaoEscrita):
     "/gestao/ideias/{sugestao_id}/changespec",
     response={200: IdeiaEmGestao, 403: Recusa, 422: Recusa},
     operation_id="registerApprovedChangeSpec",
-    summary="Registra o ChangeSpec aprovado que destrava a obra",
+    summary="Registra uma decisão no histórico da ideia",
     description=(
-        "O SEGUNDO portão da Caixa, e ele NÃO mudou de dono: só quem está em "
-        "SUGESTOES_APROVADORES registra, e a lista vazia recusa todo mundo. "
-        "Estar autorizado no Admin não basta — moderar e autorizar "
-        "desenvolvimento são papéis diferentes."
+        "A API de gestão autenticada registra o responsável identificado. "
+        "CHANGE-ID, documento, nome de aprovação e data são opcionais. "
+        "Os valores fornecidos ficam no histórico imutável."
     ),
 )
 def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito):
-    if not e_aprovador(payload.por_email):
-        return 403, {
-            "erro": (
-                "Só quem está na lista de aprovadores da Caixa autoriza uma "
-                "ideia a entrar em desenvolvimento. Estar no Admin dá o direito "
-                "de moderar, não o de assinar obra."
-            )
-        }
+    if not payload.por_email.strip():
+        return 422, {"erro": "Informe quem está registrando esta decisão."}
     sugestao = _ideia(sugestao_id)
     try:
         registrar_changespec(
@@ -768,7 +716,7 @@ def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito
             change_id=payload.change_id,
             documento=payload.documento,
             aprovado_por=payload.aprovado_por,
-            aprovado_em=payload.aprovado_em.isoformat(),
+            aprovado_em=payload.aprovado_em,
         )
     except ChangeSpecInvalido as recusa:
         return 422, {"erro": " ".join(recusa.args[0])}

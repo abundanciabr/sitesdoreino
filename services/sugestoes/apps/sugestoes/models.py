@@ -394,60 +394,24 @@ class HistoricoStatus(RegistroAppendOnly):
 
 
 class ChangeSpecAprovado(RegistroAppendOnly):
-    """O corredor entre a decisão de produto e a implementação (EVO-40).
+    """Histórico imutável de uma decisão registrada sobre a sugestão.
 
-    Lei: `docs/caixa-de-sugestoes/FORMATO-CHANGESPEC.md` §3/§4/§5 e a última
-    linha da §8 da `ESPECIFICACAO-CELULA.md` — *"`Sugestao.status` só sai de
-    `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec aprovado
-    referenciando aquele `suggestion_id`"*.
-
-    **Isto é um REGISTRO, não o documento.** O ChangeSpec de verdade mora em
-    `docs/changespecs/`, no repositório, e a célula **não lê o repositório em
-    runtime** (decisão do plano mestre). O que fica aqui é o mínimo que a trava
-    precisa para existir sem adivinhar: qual sugestão, qual CHANGE-ID, onde
-    está o documento, quem aprovou e quando — e, separado disto, quem trouxe
-    esse fato para dentro da Caixa.
-
-    **`aprovado_por` e `registrado_por` são coisas diferentes, e as duas
-    importam.** O §1 do formato diz que a aprovação é humana e nominal; o
-    registro é o ato de trazer essa aprovação para dentro do sistema. Hoje o
-    mantenedor decidiu que só quem está em `SUGESTOES_APROVADORES` registra —
-    então na prática são a mesma pessoa. O dado guarda os dois porque um dia
-    pode não ser, e porque um campo só responderia "quem" a duas perguntas
-    diferentes.
-
-    **`aprovado_por` é NOME, nunca e-mail** (`DECISAO-EVO-01` §3: o e-mail vive
-    numa linha só, a `Identidade`). Não é combinado: `registrar()` recusa um
-    valor com `@`, e há guarda. Uma FK para `Identidade` também não serve — a
-    pessoa que assina o documento pode não ter nunca entrado na Caixa.
-
-    **Append-only, e pelo mesmo motivo do `HistoricoStatus`.** O §4 do formato:
-    *"depois de aprovado, um ChangeSpec não é editado. Se o escopo mudar, nasce
-    `CS-…-v2` com um campo `SUBSTITUI` apontando para o anterior"*. Aqui isso é
-    uma linha NOVA, com o `change_id` da v2 — e o `SUBSTITUI` mora no
-    documento, que é a autoridade. Guardar a corrente aqui seria a célula
-    modelando o que ela decidiu não ler.
-
-    Os três degraus, como no `HistoricoStatus`: `save()` e `AppendOnlyQuerySet`
-    de `RegistroAppendOnly`, mais o trigger `BEFORE UPDATE OR DELETE` da
-    migration `0004`.
+    `registrado_por` identifica quem fez o gesto na API autenticada. Documento,
+    nome de aprovação e data são metadados opcionais; quando ausentes, ficam
+    vazios, sem afirmar que uma aprovação documental ocorreu. Linhas antigas
+    conservam os valores já gravados. O registro segue append-only por model,
+    queryset e trigger no banco.
     """
 
-    # `PROTECT` como em toda referência desta célula: a sugestão não some por
-    # baixo do corredor que autorizou o desenvolvimento dela.
+    # `PROTECT` preserva a sugestão referenciada no histórico.
     sugestao = models.ForeignKey(
         Sugestao, related_name="changespecs", on_delete=models.PROTECT
     )
-    # `CS-{celula}-{sequencial}` (formato §3). NÃO é único sozinho: um mesmo
-    # ChangeSpec pode referenciar várias sugestões (§2 — "se nasceu de várias
-    # sugestões mescladas, referencia todas"). O par é que é único.
+    # Um identificador pode aparecer em várias ideias; o par é único.
     change_id = models.CharField(max_length=60)
-    # Onde o documento está: URL ou o caminho dele no repositório. Texto livre
-    # com forma conferida em `registrar()` — link que não leva a lugar nenhum é
-    # um corredor que ninguém consegue auditar.
-    documento = models.CharField(max_length=300)
-    aprovado_por = models.CharField(max_length=120)
-    aprovado_em = models.DateField()
+    documento = models.CharField(max_length=300, blank=True, default="")
+    aprovado_por = models.CharField(max_length=120, blank=True, default="")
+    aprovado_em = models.DateField(null=True, blank=True)
     registrado_por = models.ForeignKey(
         "Identidade", related_name="changespecs_registrados", on_delete=models.PROTECT
     )
@@ -459,19 +423,6 @@ class ChangeSpecAprovado(RegistroAppendOnly):
             models.UniqueConstraint(
                 fields=["sugestao", "change_id"],
                 name="changespec_unico_por_sugestao",
-            ),
-            # O que a trava lê é a EXISTÊNCIA da linha. Estas duas checagens são
-            # o que impede a existência de significar menos do que promete: uma
-            # linha sem quem aprovou, ou sem para onde apontar, seria um
-            # ChangeSpec "aprovado" por ninguém — exatamente o que o §4 do
-            # formato chama de não-pronto.
-            models.CheckConstraint(
-                condition=~models.Q(aprovado_por=""),
-                name="changespec_tem_quem_aprovou",
-            ),
-            models.CheckConstraint(
-                condition=~models.Q(documento=""),
-                name="changespec_tem_documento",
             ),
         ]
 

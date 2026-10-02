@@ -1,26 +1,10 @@
 {% extends "admin/base.html" %}
 {% comment %}
-UMA IDEIA POR DENTRO — e as três coisas que se fazem com ela.
+IDEIA POR DENTRO — detalhes, histórico e ações disponíveis para a ideia.
 
-Esta tela substitui a de moderação que morava na Caixa. O que ela mostra e o que
-ela aceita é o mesmo; o que muda é a casa (decisão do mantenedor, 28/08/2026:
-uma porta só) e o caminho — daqui as ações vão pelo contrato, e as travas
-continuam todas do outro lado.
-
-Três coisas ditas de propósito na tela:
-
-1. **"Não vamos fazer" exige o porquê**, e o campo diz isso. Quem sugeriu vai
-   ler a frase — a recusa sem explicação é a forma mais rápida de ensinar ao
-   aluno que sugerir não adianta.
-2. **A assinatura só aparece para quem assina.** Quem não pode vê a frase que
-   explica por quê, e não um botão desabilitado — botão desabilitado protege a
-   tela, não a regra. Quem recusa de verdade é a Caixa.
-3. **O histórico nunca é editado.** Uma correção é uma linha nova, e a tela diz
-   isso embaixo dele.
-4. **A assinatura mostra a FICHA, não só o carimbo.** Qual documento, quem
-   aprovou, quando, e quem trouxe o fato para dentro — porque "está assinada" e
-   "com base em quê" são perguntas diferentes, e só a segunda serve para
-   auditar. Era a última coisa que ainda só existia nas telas velhas da Caixa.
+Esta tela apresenta os dados da ideia e as opções oferecidas pela Caixa. O
+conteúdo vem do serviço da Caixa; os detalhes visíveis dependem do estado atual
+da ideia.
 {% endcomment %}
 {% block titulo %}{% if ideia %}{{ ideia.titulo }}{% else %}Ideia{% endif %} · Caixa{% endblock %}
 {% block corpo %}

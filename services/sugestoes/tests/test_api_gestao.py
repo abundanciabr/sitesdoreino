@@ -1,22 +1,4 @@
-"""A superfície de gestão que o Admin consome (28/08/2026).
-
-Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`. A gestão das
-ideias saiu das telas desta célula e passou a morar em `/admin/caixa/`; o Admin
-pergunta e escreve por aqui, porque pela Lei 3 nenhuma célula lê o banco de
-outra.
-
-O que estes guardas protegem, em ordem de gravidade:
-
-1. **A porta de máquina continua trancada** — todas as operações, não só a
-   antiga, e a lista é DERIVADA da API para que rota nova nasça medida.
-2. **O e-mail do aluno não atravessa a fronteira** — decisão do mantenedor no
-   mesmo dia, mantendo a `DECISAO-EVO-01` §3.
-3. **As escritas usam o mesmo caminho**: nota opcional,
-   corredor do ChangeSpec e o portão do aprovador continuam recusando — agora
-   pelo contrato, com a MESMA frase que a tela dizia.
-4. **A plateia que atravessa é a mesma que o sininho avisa** ([INV-SUG13] cruzando
-   a fronteira).
-"""
+"""API de gestão: autenticação, privacidade, autoria e histórico das ideias."""
 
 import json
 
@@ -156,13 +138,14 @@ def test_os_fatos_da_ideia_atravessam_inteiros(
     assert corpo["avaliacao"] is None
 
 
-def test_quem_nao_esta_na_lista_de_aprovadores_ve_pode_assinar_falso(
+def test_pode_assinar_reflete_identificacao_sem_lista_especial(
     client, db, par_autorizado, sugestao, lista_de_aprovadores
 ):
     lista_de_aprovadores(MANTENEDOR)
 
-    assert ler(client, por_email="outra.pessoa@meshcraft.test")["pode_assinar"] is False
+    assert ler(client, por_email="outra.pessoa@meshcraft.test")["pode_assinar"] is True
     assert ler(client, por_email=MANTENEDOR)["pode_assinar"] is True
+    assert ler(client)["pode_assinar"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -243,15 +226,10 @@ def test_a_fase_anda_sem_assinatura_pelo_contrato(
     )
 
 
-def test_estar_no_admin_nao_da_o_direito_de_assinar(
+def test_equipe_identificada_registra_sem_lista_especial(
     client, db, par_autorizado, sugestao, lista_de_aprovadores
 ):
-    """O SEGUNDO portão não mudou de dono, e esta é a prova.
-
-    Quem chega aqui já passou pela porta do Admin — o token do par é justamente
-    a afirmação disso. Ainda assim a assinatura é recusada: moderar e autorizar
-    obra continuam sendo papéis diferentes (decisão do mantenedor em 25/08).
-    """
+    """A API autenticada grava a identidade responsável."""
     lista_de_aprovadores(MANTENEDOR)
 
     resposta = escrever(
@@ -267,14 +245,15 @@ def test_estar_no_admin_nao_da_o_direito_de_assinar(
         },
     )
 
-    assert resposta.status_code == 403
-    assert sugestao.changespecs.count() == 0
+    assert resposta.status_code == 200
+    assert sugestao.changespecs.count() == 1
+    assert sugestao.changespecs.get().registrado_por.email == "outra.pessoa@meshcraft.test"
 
 
-def test_a_lista_de_aprovadores_vazia_recusa_todo_mundo(
+def test_a_lista_de_aprovadores_vazia_nao_bloqueia_registro(
     client, db, par_autorizado, sugestao
 ):
-    """Fail-closed: a ausência da lista não vira 'então pode qualquer um'."""
+    """A lista antiga não participa da autorização da API autenticada."""
     resposta = escrever(
         client,
         f"{IDEIAS}/{sugestao.id}/changespec",
@@ -288,7 +267,34 @@ def test_a_lista_de_aprovadores_vazia_recusa_todo_mundo(
         },
     )
 
-    assert resposta.status_code == 403
+    assert resposta.status_code == 200
+
+
+def test_metadados_opcionais_geram_identificador_sem_fabricar_aprovacao(
+    client, db, par_autorizado, sugestao
+):
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/changespec",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert resposta.status_code == 200, resposta.content
+    registro = sugestao.changespecs.get()
+    assert registro.change_id.startswith("CS-SUGESTOES-")
+    assert registro.documento == ""
+    assert registro.aprovado_por == ""
+    assert registro.aprovado_em is None
+    assert registro.registrado_por.email == MANTENEDOR
+    ficha = ler_uma(client, sugestao.id)["changespecs"][0]
+    assert ficha["aprovado_em"] == ""
+
+
+def test_registro_sem_autor_identificado_e_recusado(client, db, par_autorizado, sugestao):
+    resposta = escrever(client, f"{IDEIAS}/{sugestao.id}/changespec", {"por_email": " "})
+
+    assert resposta.status_code == 422
+    assert sugestao.changespecs.count() == 0
 
 
 def test_quem_aprova_registra_e_o_corredor_abre(

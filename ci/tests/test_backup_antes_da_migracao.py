@@ -240,10 +240,10 @@ def test_toda_medicao_do_postgres_trata_a_falha_explicitamente():
 
 
 # ---------------------------------------------------------------------------
-# (c) A SENTINELA CONTINUA SENDO A ÚLTIMA PALAVRA
+# (c) A SENTINELA FINAL DO SCRIPT DE DEPLOY
 # ---------------------------------------------------------------------------
 def test_entrega_concluida_e_a_ultima_linha_do_deploy():
-    """O workflow exige esta linha na saída; sem ela, reprova a entrega.
+    """O script de deploy termina com esta linha para registrar a conclusão.
 
     Ela existe porque um passo que não executa nada devolve 0 (28/08/2026, o
     `script_file` em vez de `script_path`), e ela só vale alguma coisa se for a

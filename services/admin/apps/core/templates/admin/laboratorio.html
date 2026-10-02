@@ -98,15 +98,13 @@ mais aparece.
   {% elif lab.total == 0 %}
   <h2 class="titulo-de-lista espaco-34">Ainda não há nenhum experimento</h2>
   <p class="recado">
-    <b>Um experimento é uma aposta escrita antes da hora.</b> Ele tem cinco
-    partes, e as cinco são obrigatórias: o problema que dói hoje, a hipótese (o
-    que você acredita que vai acontecer), qual número do placar ela quer mover,
-    o guarda (o sinal que manda parar antes da hora) e o prazo. Escrever a
-    aposta antes é o que impede a casa de, semanas depois, lembrar a hipótese do
-    jeito que der mais certo.
+    <b>Um experimento ajuda a acompanhar uma hipótese.</b> Problema, métrica,
+    sinal de observação e prazo também podem ajudar a entender a aposta e o
+    resultado. Uma medição só aparece como experimento quando tem uma hipótese;
+    os outros detalhes são opcionais.
   </p>
   <p class="recado">
-    <b>Como nasce o primeiro:</b> <a href="{% url 'gestao_do_placar' %}">registre a aposta no painel</a> com problema, hipótese, métrica, guarda e prazo. Ela aparece aqui como "rodando".
+    <b>Para acompanhar uma aposta:</b> se quiser, <a href="{% url 'gestao_do_placar' %}">registre uma hipótese no painel</a>. Uma medição com hipótese aparece aqui como "rodando"; problema, métrica, sinal de observação e prazo são detalhes úteis, mas opcionais.
   </p>
   <p class="nota">
     Enquanto nenhum experimento fechar, o número "aprendizados validados no

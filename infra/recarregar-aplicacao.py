@@ -16,7 +16,6 @@ SERVICOS_ANTERIORES = {
     "por-a-chave-da-ia-do-admin.sh": ("admin",),
     "por-a-chave-da-ia-do-forum.sh": ("forum",),
     "provisionar-admin.sh": ("admin",),
-    "provisionar-aprovadores.sh": ("sugestoes", "sugestoes-relay"),
     "provisionar-cursos.sh": ("identidade", "alunos"),
     "provisionar-email.sh": ("mensageria", "mensageria-consumer", "mensageria-huey"),
     "provisionar-encomendas.sh": ("identidade", "alunos", "admin", "encomendas", "encomendas-tique"),

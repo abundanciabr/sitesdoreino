@@ -1296,12 +1296,10 @@ def entregar_checkpoint(
 def concluir_aula(
     request, numero: str, curso: str | None = None, parte: int | None = None
 ):
-    """No curso de progressão LIVRE, o aluno conclui a aula com um gesto e a
-    seguinte abre na hora (`DECISAO-a-sala-serve-varios-cursos.md` §2). Toda
-    regra mora em `progresso.concluir_por_gesto` (o curso é livre, as pausas
-    estão registradas, a porta não está trancada); aqui só se traduz a recusa
-    em frase. POST-redirect-GET de volta ao MAPA, que é onde a porta nova
-    aparece; um F5 ali não conclui nada de novo."""
+    """No curso de progressão livre, o aluno conclui a aula com um gesto e a
+    seguinte abre na hora. `progresso.concluir_por_gesto` aplica o progresso;
+    esta view traduz uma recusa em frase e retorna ao mapa por
+    POST-redirect-GET, para que recarregar a página não conclua outra aula."""
     pessoa, curso, aula, progresso, recusa = _porta_aberta(
         request, numero, slug=curso, parte=parte
     )

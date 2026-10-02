@@ -164,7 +164,7 @@ paths:
   /gestao/ideias/{sugestao_id}/changespec:
     post:
       operationId: registerApprovedChangeSpec
-      summary: Registra o ChangeSpec aprovado que destrava a obra
+      summary: Registra uma decisão no histórico da ideia
       parameters:
       - in: path
         name: sugestao_id
@@ -190,9 +190,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Recusa'
-      description: 'O SEGUNDO portão da Caixa, e ele NÃO mudou de dono: só quem está em SUGESTOES_APROVADORES
-        registra, e a lista vazia recusa todo mundo. Estar autorizado no Admin não basta — moderar e autorizar
-        desenvolvimento são papéis diferentes.'
+      description: 'A API de gestão autenticada registra o responsável identificado. CHANGE-ID, documento,
+        nome de aprovação e data são opcionais. Os valores fornecidos ficam no histórico imutável.'
       requestBody:
         content:
           application/json:
@@ -772,7 +771,7 @@ components:
 
         segunda permite CONFERIR depois o que foi autorizado — que é a razão de o
 
-        documento ser um endereço obrigatório desde o EVO-40.
+        documento ausente ficar vazio na ficha, sem simular aprovação documental.
 
 
         Ela viaja só em `IdeiaComHistorico`, pelo mesmo motivo do histórico: a lista
@@ -910,20 +909,22 @@ components:
           default: ''
           type: string
         change_id:
+          default: ''
           type: string
         documento:
+          default: ''
           type: string
         aprovado_por:
+          default: ''
           type: string
         aprovado_em:
-          format: date
-          type: string
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          default: null
       required:
       - por_email
-      - change_id
-      - documento
-      - aprovado_por
-      - aprovado_em
       type: object
     ArquivamentoEscrito:
       properties:

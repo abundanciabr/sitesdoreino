@@ -1,8 +1,7 @@
 """Liberar e recusar quem está na fila — a PRIMEIRA escrita desta área.
 
-`DECISAO-fila-de-liberacao` §8 fase 2. E, junto com ela, a auditoria que a
-`DECISAO-celula-admin` §3 exige — no MESMO PR, que é a regra que o `LICOES.md`
-desta célula fixou depois de a auditoria ter sido adiada uma vez.
+Este módulo cobre as decisões de liberação/recusa e seus registros de auditoria,
+incluindo falhas, imutabilidade e privacidade dos dados associados.
 
 **Os três testes que carregam o arquivo**, e nenhum deles é "o botão funciona":
 

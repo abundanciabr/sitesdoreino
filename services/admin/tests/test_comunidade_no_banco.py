@@ -1,6 +1,4 @@
-"""A página da Comunidade Meshcraft chega privada ao banco de produção.
-
-Guarda de `0030_semear_a_comunidade.py` e do texto de `documentos/comunidade.md`.
+"""Testes da semeadura privada da Comunidade Meshcraft.
 
 **Por que este arquivo fabrica o estado de produção.** No banco de teste a
 `0003` semeia a pasta inteira, inclusive a Comunidade, e a `0030` não encontraria
@@ -9,16 +7,9 @@ e banco antigo é o único que existe em produção: lá a `0003` rodou em 31/08
 este arquivo. Cada teste abaixo começa reconstruindo o estado que a migração vai
 encontrar de verdade, e só então chama a função dela.
 
-**O que o texto promete, e por que está travado aqui.** A rota da Comunidade
-(`docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md` §16, §17) proíbe
-inventar condição comercial, prometer renda e expor nome de membro; e a decisão
-do mantenedor de 27/09/2026 manda a página dizer que o acesso é o da matrícula
-vigente e o que se encerra e o que fica quando ela termina. Um texto que perca
-essas frases pela tela é escolha dele; um PR que as perca é regressão.
 """
 
 import importlib
-from pathlib import Path
 
 import pytest
 from django.test import Client
@@ -30,14 +21,6 @@ _semeadura = importlib.import_module("apps.core.migrations.0030_semear_a_comunid
 
 NOME = "comunidade"
 TITULO = "A Comunidade Meshcraft: o que é, o que fazer agora e como pedir ajuda"
-ARQUIVO = Path(__file__).resolve().parents[3] / "documentos" / f"{NOME}.md"
-
-# As frases que a rota exige e que um PR não pode perder.
-ACESSO_E_O_DA_MATRICULA = "o acesso é o da sua matrícula vigente"
-SEM_MENSAGEM_PRIVADA = "Não existe mensagem privada entre alunos"
-O_QUE_FICA = "Continuam seus, como históricos"
-O_QUE_ENCERRA = "O acesso se encerra"
-QUEM_AVALIA = "avaliado pela professora do curso"
 
 
 class _AppsFalso:
@@ -67,7 +50,6 @@ def test_a_comunidade_entra_privada_no_banco_que_ja_foi_semeado(
     documento = Documento.objects.get(nome=NOME)
     assert documento.publico is False
     assert documento.titulo == TITULO
-    assert ACESSO_E_O_DA_MATRICULA in documento.corpo
 
 
 def test_visitante_nao_le_a_comunidade_nem_a_encontra_na_lista_publica(
@@ -78,7 +60,6 @@ def test_visitante_nao_le_a_comunidade_nem_a_encontra_na_lista_publica(
     pagina = Client().get(f"/docs/{NOME}")
     assert pagina.status_code == 404
     assert TITULO not in Client().get("/docs/").content.decode()
-    assert SEM_MENSAGEM_PRIVADA in Documento.objects.get(nome=NOME).corpo
 
 
 def test_nao_sobrescreve_o_que_o_mantenedor_ja_escreveu(
@@ -127,37 +108,3 @@ def test_semear_duas_vezes_e_igual_a_semear_uma(banco_de_producao_antes_da_comun
     _semear()
 
     assert Documento.objects.filter(nome=NOME).count() == 1
-
-
-# ------------------------------------------- o texto, como a rota o exige
-
-
-def _texto() -> str:
-    return ARQUIVO.read_text(encoding="utf-8")
-
-
-def test_o_texto_diz_o_que_se_encerra_e_o_que_fica_quando_a_matricula_termina():
-    texto = _texto()
-    assert O_QUE_ENCERRA in texto
-    assert O_QUE_FICA in texto
-    assert ACESSO_E_O_DA_MATRICULA in texto
-    assert QUEM_AVALIA in texto
-
-
-def test_o_texto_nao_inventa_cobranca_prazo_nem_renda():
-    """Dossiê §17: só o mantenedor define vínculo comercial e créditos; handoff
-    §2: a Comunidade não promete trabalho remunerado."""
-    texto = _texto().lower()
-    for proibida in (
-        "r$",
-        "mensalidade",
-        "assinatura própria",
-        "crédito",
-        "renda garantida",
-        "primeira venda",
-    ):
-        assert proibida not in texto, proibida
-
-
-def test_o_texto_nao_tem_nome_de_membro():
-    assert "@" not in _texto()

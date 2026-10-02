@@ -22,7 +22,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # (`openssl rand -hex 32`), gravadas direto nos três arquivos — nada aparece
 # na tela, nada passa por agente, nada entra no Git.
 #
-# NÃO REESCREVE NENHUM ENV. Mesma forma do `provisionar-aprovadores.sh`: os
+# NÃO REESCREVE NENHUM ENV. Os
 # três arquivos (`funil.env`, `sugestoes.env`, `notificacoes.env`) já estão
 # VIVOS, com segredos em uso — refazê-los do zero rotacionaria tudo e
 # derrubaria a sessão de todo mundo. Este script acrescenta ou atualiza SÓ as

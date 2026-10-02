@@ -89,11 +89,8 @@ FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
 # quem sabe gerá-la. "Não sei reproduzir este arquivo" nunca pode virar
 # "então escrevo por cima".
 #
-# A lista abaixo tem de acompanhar o heredoc. Ela é conferida de fora, a cada
-# `make ci`, por `ci/tests/test_provisionamento_nao_perde_variavel.py`: se o
-# heredoc ganhar (ou perder) uma chave e esta lista não acompanhar, o teste
-# reprova. Duplicação consciente é aceitável; duplicação sem guarda é armadilha
-# com data marcada.
+# A lista de chaves geradas acompanha o heredoc. `SUGESTOES_APROVADORES` é
+# uma chave aposentada: envs antigos podem tê-la e ela pode ser descartada.
 # ---------------------------------------------------------------------------
 CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET HUEY_REDIS_URL REDIS_STREAMS_URL SCRIPT_NAME SUGESTOES_STAFF_EMAILS"
 
@@ -101,9 +98,14 @@ if [ -f env/sugestoes.env ]; then
   SOBRANDO=""
   # `grep -oE` pega só o nome da chave; comentários e linhas em branco não casam.
   for CHAVE in $(grep -oE '^[A-Z_][A-Z0-9_]*=' env/sugestoes.env | tr -d '=' | sort -u); do
-    case " $CHAVES_QUE_EU_GERO " in
-      *" $CHAVE "*) : ;;
-      *) SOBRANDO="$SOBRANDO $CHAVE" ;;
+    case "$CHAVE" in
+      SUGESTOES_APROVADORES) : ;;
+      *)
+        case " $CHAVES_QUE_EU_GERO " in
+          *" $CHAVE "*) : ;;
+          *) SOBRANDO="$SOBRANDO $CHAVE" ;;
+        esac
+        ;;
     esac
   done
   if [ -n "$SOBRANDO" ]; then
@@ -113,7 +115,6 @@ if [ -f env/sugestoes.env ]; then
     echo
     echo "NADA foi alterado. O que fazer, conforme o caso:"
     echo "  · IDENTIDADE_API_*  -> é do infra/provisionar-identidade.sh, rode aquele."
-    echo "  · SUGESTOES_APROVADORES -> é do infra/provisionar-aprovadores.sh."
     echo "  · NOTIFICACOES_API_* -> é do infra/provisionar-porta-de-avisos.sh, rode aquele."
     echo "  · outra coisa -> mande esta tela ao agente; o script precisa aprender a chave."
     exit 1

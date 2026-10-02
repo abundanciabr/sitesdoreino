@@ -60,8 +60,7 @@ parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
 # A pasta da plataforma, com o mesmo nome de variável dos roteiros mais novos
 # desta casa. O padrão continua sendo `/opt/plataforma`, e nada muda para quem
-# roda na VPS; o que ela permite é provar este roteiro numa VPS de mentira, que
-# é a evidência que esta casa exige de quem mexe em provisionamento.
+# roda na VPS; o que ela permite é executar este roteiro em uma VPS simulada.
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv…)"
 FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
