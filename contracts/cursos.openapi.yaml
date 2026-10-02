@@ -1794,21 +1794,13 @@ components:
         que o degrau 1.3b teve de curar nos instrumentos, com um PR a mais.
 
 
-        OS DOIS NOVOS CARREGAM DEFAULT, E ISSO NÃO É DESCUIDO NEM ENFEITE: sem
+        Os dois novos têm default para não nascerem em `required` no contrato:
 
-        ele o campo nasce em `required` no documento congelado, e
+        campo obrigatório novo quebraria quem consome pelo contrato anterior. O
 
-        `ci/contrato_aditivo.py` sinaliza a incompatibilidade de um campo obrigatório
+        valor emitido não muda, porque o modelo sempre tem os dois, com
 
-        novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida
-
-        aqui em 06/09/2026). O valor emitido NÃO muda: o modelo sempre tem os
-
-        dois, com `default=""` no banco. Muda só o que o contrato EXIGE de quem
-
-        valida. Os defaults preservam a compatibilidade com consumidores que
-
-        usam o contrato anterior; os outros três campos já tinham default.'
+        `default=""` no banco. Muda só o que o contrato exige de quem valida.'
       properties:
         letra:
           type: string

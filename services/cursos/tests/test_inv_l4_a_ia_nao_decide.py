@@ -92,6 +92,9 @@ CAMPOS_DA_SUGESTAO = {
     "notas",
     "forcas",
     "mudanca",
+    # A lista inteira de mudanças sugeridas (texto e aula de cada uma), com a
+    # primeira repetida em `mudanca`. É o mesmo tipo de sugestão, só que várias.
+    "mudancas",
     "reenvio",
     "bloco",
     "cortado",
@@ -225,7 +228,14 @@ def test_o_rascunho_guardado_nao_leva_a_decisao_da_ia(no_plantao, client, monkey
     _rascunhar(client, no_plantao)
 
     rascunho = RascunhoDaIA.objects.get()
-    assert set(rascunho.conteudo) == {"notas", "forcas", "mudanca", "reenvio", "bloco"}
+    assert set(rascunho.conteudo) == {
+        "notas",
+        "forcas",
+        "mudanca",
+        "mudancas",
+        "reenvio",
+        "bloco",
+    }
     guardado = str(rascunho.conteudo)
     assert "aberto" not in guardado
     assert "2099-12-31" not in guardado

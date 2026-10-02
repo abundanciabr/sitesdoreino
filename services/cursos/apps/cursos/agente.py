@@ -212,6 +212,8 @@ class Sugestao:
     da máquina sobre algo que é o produto do trabalho da professora, e a tela
     passaria a mostrá-la marcada.
 
+    `mudancas` é a lista das mudanças sugeridas, cada uma com texto e aula;
+    `mudanca` é a primeira delas, a que vai para o campo principal da tela.
     `reenvio` é a frase que compara com o laudo anterior (vazia no primeiro
     envio). `bloco` são as cinco chaves de `BLOCO_FINAL`. `cortado` não é
     detalhe técnico: uma sugestão truncada pré-preenchida sem aviso é pior que
