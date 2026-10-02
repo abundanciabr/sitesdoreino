@@ -206,10 +206,8 @@ TIPO_PEDIDO_ATRIBUIDO = "checkout.pedido-atribuido"
 TIPO_PEDIDO_PAGO = "checkout.pedido-pago"
 TIPO_CHECKOUT_INICIADO = "checkout.iniciado"
 
-#: `cta_checkout` é o clique que MIRA no checkout, e não qualquer clique: a
-#: métrica principal do primeiro experimento (decisão do mantenedor,
-#: 26/09/2026) é a entrada no checkout por visitante, e é este prefixo que a
-#: distingue de um clique para outra seção da mesma página.
+#: O clique histórico é preservado; a entrada confirmada vem de
+#: `checkout.iniciado`, emitido ao abrir uma sessão válida no checkout.
 PREFIXO_CHECKOUT = "/checkout/"
 
 
@@ -539,11 +537,10 @@ def _visitantes_por_dia(linhas) -> dict[dt.date, int]:
 
 
 def _passos_do_funil(janela):
-    """As seis consultas do funil, na ORDEM FIXA de `PASSOS_DO_FUNIL`.
+    """Os passos históricos, seguidos da entrada confirmada no checkout.
 
     `cta_checkout` filtra `destino` pelo prefixo `/checkout/`: nem todo clique
-    em botão mira o checkout, e a métrica principal do primeiro experimento
-    (decisão do mantenedor) é justamente a entrada nele.
+    em botão mira o checkout. Esse clique não confirma abertura de sessão.
     """
     return {
         "pagina_vista": janela.filter(tipo=TIPO_PAGINA_VISTA),

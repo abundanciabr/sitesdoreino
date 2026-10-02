@@ -136,6 +136,7 @@ def install_default_database_alias():
     """Make transaction.atomic(), on_commit() and django.db.connection local."""
     from django.db.utils import ConnectionHandler
 
+    _install_contextual_database_cleanup()
     if getattr(ConnectionHandler.__getitem__, "_site_contextual", False):
         return
     original = ConnectionHandler.__getitem__
@@ -147,6 +148,25 @@ def install_default_database_alias():
 
     getitem._site_contextual = True
     ConnectionHandler.__getitem__ = getitem
+
+
+def _close_service_connections(**kwargs):
+    from django.db import close_old_connections, connections
+
+    service = current_service()
+    if service is None:
+        close_old_connections(**kwargs)
+    elif service in connections.settings and hasattr(connections._connections, service):
+        connections[service].close_if_unusable_or_obsolete()
+
+
+def _install_contextual_database_cleanup():
+    from django.core.signals import request_finished, request_started
+    from django.db import close_old_connections
+
+    for signal in (request_started, request_finished):
+        signal.disconnect(close_old_connections)
+        signal.connect(_close_service_connections)
 
 
 class ContextualEnvironment(MutableMapping):

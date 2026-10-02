@@ -201,6 +201,29 @@ class RuntimeTest(unittest.TestCase):
 
         asyncio.run(check())
 
+    def test_internal_request_preserves_caller_transaction(self):
+        import httpx
+        from django.db import connections, transaction
+        from config.runtime import serving
+        from internal import instalar
+
+        instalar()
+        committed = []
+        with serving("admin"):
+            db = connections["admin"]
+            with transaction.atomic():
+                with db.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                transaction.on_commit(lambda: committed.append(True))
+                with httpx.Client(trust_env=False) as client:
+                    response = client.get("http://catalogo:8000/healthz")
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(db.closed_in_transaction)
+                with db.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                    self.assertEqual(cursor.fetchone(), (1,))
+            self.assertEqual(committed, [True])
+
     def test_migration_contenttype_and_permission_copy(self):
         from django.db import connections
         from config.migracoes import adotar_contenttypes_permissoes, adotar_historico

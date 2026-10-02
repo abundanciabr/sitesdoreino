@@ -26,7 +26,7 @@ Três regras governam cada `{% if %}` desta tela:
   {% if tela.experimento %}
   <p class="subtitulo">
     {% if tela.experimento.secao %}Seção <b>{{ tela.experimento.secao }}</b>. {% endif %}
-    {% if tela.experimento.metrica_principal %}Métrica principal: {{ tela.experimento.metrica_principal }}.{% endif %}
+    {% if tela.experimento.metrica_principal == "checkout_iniciado" %}Métrica principal: entrada confirmada no checkout.{% elif tela.experimento.metrica_principal == "cta_checkout" %}Métrica principal: clique para checkout (histórico técnico).{% else %}Métrica principal: {{ tela.experimento.metrica_principal }}.{% endif %}
   </p>
   {% endif %}
 
