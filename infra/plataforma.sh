@@ -16,8 +16,7 @@ esac
 SHA=$(git -C "$REPO" rev-parse refs/heads/main)
 if [ ! -d "$FERRAMENTAS/$SHA" ]; then
   NOVA=$(mktemp -d "$FERRAMENTAS/.nova.XXXXXX")
-  # services/admin/Dockerfile só marca a raiz para ci/_nucleo.py.
-  git -C "$REPO" archive "$SHA" infra ci e2e celulas.yml services/admin/Dockerfile | tar -x -C "$NOVA"
+  git -C "$REPO" archive "$SHA" infra ci e2e | tar -x -C "$NOVA"
   mv -T "$NOVA" "$FERRAMENTAS/$SHA" 2>/dev/null || rm -rf "$NOVA"
   ln -sfn "$SHA" "$FERRAMENTAS/.atual.$$" && mv -T "$FERRAMENTAS/.atual.$$" "$FERRAMENTAS/atual"
   find "$FERRAMENTAS" -mindepth 1 -maxdepth 1 -name '[0-9a-f]*' -mmin +1440 ! -name "$SHA" -exec rm -rf {} +

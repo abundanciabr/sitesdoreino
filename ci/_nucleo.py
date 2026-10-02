@@ -23,7 +23,7 @@ from pathlib import Path
 
 # As marcas que provam que um diretório é a raiz DESTE repositório: sem elas a
 # resolução cairia para "." e mediria outra coisa em silêncio.
-MARCAS_DA_RAIZ = ("ci", "services", "celulas.yml")
+MARCAS_DA_RAIZ = ("ci", "infra")
 
 
 class Estado(enum.Enum):
