@@ -51,12 +51,10 @@ from apps.i18n.idiomas import caminho_publico, direcao, tag_bcp47
 
 logger = logging.getLogger("funil.oferta")
 
-# Ordem fixa: é também a ordem em que a query string do link do checkout é
-# montada — preservar isso torna o teste de UTM determinístico.
+# Ordem fixa: é a ordem da query string do link do checkout.
 CHAVES_UTM = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content")
 
-# Páginas públicas localizadas da célula, para o sitemap (fase 2; a Receita
-# R12 da fase 3 decide se isto vira registro por página).
+# Páginas públicas localizadas do site, listadas no sitemap.
 PAGINAS_PUBLICAS = ("/", "/cadastro")
 
 
@@ -71,11 +69,7 @@ def healthz(request):
 
 @require_safe
 def verificacao_do_google(request):
-    """`/google0e78b54775677e95.html` — verificação de propriedade do Google
-    Search Console para meshcraft.top (31/08/2026). Rota de MÁQUINA como o
-    /healthz: conteúdo fixo, sem Site e sem prefixo de idioma — o Google bate
-    exatamente neste caminho, sem conhecer nem se importar com o catálogo de
-    sites."""
+    """Verificação do Google Search Console: texto fixo, sem prefixo de idioma."""
     return HttpResponse(
         "google-site-verification: google0e78b54775677e95.html",
         content_type="text/plain",
@@ -83,32 +77,7 @@ def verificacao_do_google(request):
 
 
 def servir_estatico(request, path):
-    """Estáticos em produção. Sem esta rota o formulário da landing não existe.
-
-    Com `DEBUG=0` o Django não serve estático por conta própria, e esta célula
-    está SOZINHA atrás do Traefik: não há nginx, CDN nem router `/static` no
-    gateway (o catch-all `PathPrefix(/)` manda tudo para cá). Resultado medido
-    ao vivo em 24/08/2026: `/static/funil/api.js` respondia 404 nos dois
-    domínios, as landings carregavam esse `<script>` mesmo assim, e a ilha
-    Alpine quebrava no `api.post(...)` — em silêncio para o visitante. A célula
-    checkout resolveu o MESMO problema assim em 22/08/2026 e está verde em
-    produção desde então; aqui se copia o padrão, não o arquivo (cada célula com os próprios arquivos).
-
-    Duas escolhas que parecem detalhe e são o fix:
-
-    1. **Serve do diretório-FONTE (`STATICFILES_DIRS[0]`), nunca de
-       `STATIC_ROOT`.** O `collectstatic --noinput || true` do Dockerfile falha
-       em TODO build — não há `DJANGO_SECRET_KEY` em tempo de build e o
-       `settings.py` é fail-hard — e o `|| true` engole o erro: a imagem sobe
-       com `STATIC_ROOT` vazio. Servir de lá (o default do whitenoise, entre
-       outros) manteria o 404 com a suíte inteira verde. O diretório-fonte
-       está na imagem pelo `COPY . .`, e é o mesmo caminho em dev e em prod.
-    2. **É rota de MÁQUINA e nunca se localiza (D6).** O resolver de idioma
-       decapa o prefixo em `path_info` ANTES da resolução de URL, então sem
-       esta guarda `/pt-br/static/funil/api.js` passaria a responder 200 —
-       uma URL de máquina por idioma, conteúdo duplicado para robô e
-       superfície nova para ninguém. Mesma guarda do `sitemap_xml` abaixo.
-    """
+    """Serve os estáticos a partir do diretório-fonte; rota sem prefixo de idioma."""
     if getattr(request, "idioma", None) is not None:
         raise Http404("estático não tem prefixo de idioma")
     return serve_do_django(request, path, document_root=settings.STATICFILES_DIRS[0])
@@ -116,23 +85,8 @@ def servir_estatico(request, path):
 
 @require_safe
 def landing(request):
-    """A raiz do site — duas páginas diferentes, escolhidas pelo regime do site.
-
-    **Site registrado no i18n (meshcraft.top): a HOME.** Decisão do mantenedor
-    em 27/08/2026 — a raiz deixou de ser vitrine de oferta e virou porta: quem
-    entrou vê o aviso de novidade e o caminho para a Caixa; quem não entrou vê
-    o convite para entrar. O conteúdo inteiro sai do catálogo de tradução e da
-    sessão, então **esta página não pergunta oferta nenhuma ao catálogo** — e
-    é isso que a faz abrir num site sem `default_offer_slug`, onde ela
-    respondia 404 até hoje. Um 404 na raiz por causa de um campo que a página
-    não usa mais seria uma falha invisível para quem a abre.
-
-    **Site NÃO registrado (os domínios monolíngues): a vitrine de sempre**
-    ([RECEITA:R6 v1]) — lê a default_offer do site (R2, server-side) e monta o
-    link do checkout preservando UTM na query string. Intocada, byte a byte
-    (golden da fase 1): dois templates e dois caminhos, nunca um `if` dentro
-    de um só.
-    """
+    """A raiz do site: a home nos sites com idioma registrado, e a vitrine da
+    oferta padrão (com UTM no link do checkout) nos demais."""
     if getattr(request, "idioma", None):
         return render(request, "funil/landing_i18n.html")
 
@@ -162,15 +116,11 @@ def landing(request):
     )
 
 
-#: O apelido da página de vendas dentro de cada site. Um nome só, e não uma
-#: configuração: o endereço `/oferta` e o slug `oferta` são a mesma coisa vista
-#: de dois lados, e separá-los num parâmetro criaria um jeito de eles
-#: discordarem.
+#: O apelido da página de vendas dentro de cada site.
 SLUG_DA_PAGINA_DE_OFERTA = "oferta"
 SLUG_DA_FLP = "flp-0"
 
-#: Os slots que esta página desenha num lugar PRÓPRIO, e que por isso não
-#: entram no corpo corrido da seção. O resto vira parágrafo ou lista.
+#: Slots que a página desenha em lugar próprio, fora do corpo corrido da seção.
 SLOTS_COM_LUGAR_PROPRIO = (
     "headline",
     "imagem",
@@ -180,38 +130,19 @@ SLOTS_COM_LUGAR_PROPRIO = (
     "assinatura",
 )
 
-#: Os slots de corpo que ABREM a seção quando existem; os outros parágrafos
-#: saem em ordem alfabética logo atrás. Duas palavras, e não uma segunda cópia
-#: da lista de slots do catálogo: lista repetida é lista que diverge no
-#: primeiro nome novo (duplicar-e-divergir).
+#: Slots de corpo que abrem a seção; os demais parágrafos vêm depois, em
+#: ordem alfabética.
 SLOTS_QUE_ABREM_O_CORPO = ("subheadline", "texto")
 
 
 def _e_item_de_lista(slot: str) -> bool:
-    """`vilao_2` e `recusa_5` são itens de uma lista; `texto` é um parágrafo.
-
-    A forma decide, e não uma lista de nomes: as únicas famílias numeradas do
-    vocabulário são os três vilões e as seis recusas, e as duas existem
-    justamente porque a ferramenta 73 as pede enumeradas. Ler o número do nome
-    também dá a ORDEM de graça, que é o que impede `recusa_10` de aparecer
-    entre a primeira e a segunda.
-    """
+    """`vilao_2` e `recusa_5` são itens de lista (nome_N); `texto` é parágrafo."""
     prefixo, _, sufixo = slot.rpartition("_")
     return bool(prefixo) and sufixo.isdigit()
 
 
 def _bloco_da_secao(secao) -> dict | None:
-    """Uma seção da API virada no que o template desenha, ou `None`.
-
-    Devolve `None` para seção sem NENHUM slot preenchido, e ignora todo slot
-    vazio: é a regra central desta página. Hoje quase toda seção está em
-    branco, porque a copy ainda não foi escrita, e uma moldura vazia na tela
-    seria pior do que a ausência dela.
-
-    O provedor já faz a mesma poda antes de responder. Refazê-la aqui não é
-    desconfiança: quem desenha a tela não pode depender de outra casa para
-    não desenhar um parágrafo em branco.
-    """
+    """Converte uma seção da API no bloco do template; `None` sem slot preenchido."""
     if not isinstance(secao, dict):
         return None
     nome = secao.get("nome")
@@ -256,8 +187,7 @@ def _bloco_da_secao(secao) -> dict | None:
         "assinatura": preenchidos.get("assinatura", ""),
         "paragrafos": [preenchidos[chave] for chave in corridos],
         "itens": [preenchidos[chave] for chave in numerados],
-        # De que slot veio cada parágrafo e cada item, na mesma ordem: é por
-        # aqui que a marca do experimento acha o elemento do slot em teste.
+        # De que slot veio cada parágrafo e cada item, na mesma ordem.
         "slots_dos_paragrafos": corridos,
         "slots_dos_itens": numerados,
         "slots": preenchidos,
@@ -282,29 +212,8 @@ def _bloco_vazio_da_oferta() -> dict:
 
 @require_safe
 def pagina_de_oferta(request):
-    """`/oferta` — a página de vendas que o visitante finalmente vê.
-
-    **A raiz não muda.** Ela continua sendo a HOME, pela decisão de 27/08/2026
-    que a docstring de `landing` explica. Esta é um ENDEREÇO NOVO, e é por isso
-    que nada aqui reverte nada de lá.
-
-    **O conteúdo é do catálogo, o preço é da oferta.** As onze seções vêm de
-    `getPage` e saem na ordem em que a API as manda, que é a ordem canônica da
-    ferramenta 73. O preço não é copy: sai de `price_cents` da oferta, e só
-    cede o lugar quando o mantenedor escreveu um `preco_texto` — nesse caso é o
-    texto dele que aparece, uma vez só, porque a mesma ferramenta manda o preço
-    aparecer uma vez e sem ancoragem. Os dois juntos seriam a âncora de preço
-    que a ferramenta 74 proíbe.
-
-    **Três respostas, e cada uma diz o que fazer.** Página que não existe é
-    404, e é a resposta certa: "ainda não foi publicada" precisa levar a outro
-    lugar, nunca a uma tela em branco servida como se fosse a oferta. Catálogo
-    mudo é 503 com `Retry-After`, desenhando a MESMA página com uma linha
-    honesta: a página não cai por causa dele, e um 200 com o conteúdo ausente
-    convidaria o buscador a guardar a tela vazia como se fosse a oferta.
-    Página publicada sem uma palavra escrita é 200 e mostra o que existe de
-    verdade, que é a própria oferta.
-    """
+    """`/oferta`: seções do catálogo e preço da oferta; 404 se a página não
+    existe e 503 com `Retry-After` se o catálogo não responde."""
     site = request.site
     catalogo = CatalogoClient()
     pagina = catalogo.obter_pagina(site["id"], SLUG_DA_PAGINA_DE_OFERTA)
@@ -316,8 +225,7 @@ def pagina_de_oferta(request):
             {"site": site, "catalogo_mudo": True},
             status=503,
         )
-        # Meio minuto: o bastante para a outra célula voltar, curto o bastante
-        # para quem está esperando tentar de novo sem desistir da página.
+        # Pede nova tentativa em 30 segundos.
         resposta["Retry-After"] = "30"
         return resposta
     if pagina is None:
@@ -342,15 +250,10 @@ def pagina_de_oferta(request):
         try:
             oferta = catalogo.obter_oferta(site["id"], offer_slug)
         except httpx.HTTPError:
-            # A oferta é UM cartão; o resto da página já está em mãos.
-            # Derrubar a tela inteira por causa dele trocaria uma página sem
-            # preço por página nenhuma.
+            # A oferta é só um cartão: sem ela a página segue sem preço.
             oferta = None
 
-    # O cartão da oferta existe SEMPRE que há oferta, mesmo sem uma palavra de
-    # copy escrita: o preço e o botão são dado, não texto. Quando o mantenedor
-    # ainda não escreveu a seção `oferta`, ela entra vazia no fim da página, no
-    # lugar que a ordem canônica lhe dá.
+    # O cartão da oferta aparece sempre que há oferta, mesmo sem copy escrita.
     if oferta and not any(bloco["nome"] == "oferta" for bloco in blocos):
         blocos.append(_bloco_vazio_da_oferta())
 
@@ -392,26 +295,15 @@ def pagina_de_oferta(request):
         },
     )
     if braco:
-        # Um cache compartilhado serviria o braço de uma pessoa a outra, e
-        # quem visse o texto de um braço seria contado no outro.
+        # Cache compartilhado serviria o braço de uma pessoa a outra.
         resposta["Cache-Control"] = "private, no-store"
     _medir_visita(request, pagina, offer_slug, braco)
     return resposta
 
 
 def _braco_na_tela(request, pagina: dict, blocos: list) -> dict:
-    """Sorteia o braço deste visitante e põe o texto dele no slot em teste.
-
-    Devolve `{experimento_id, variante_id}`, que é o par dos eventos, ou `{}`
-    quando não há experimento a medir. O bloco da seção em teste é refeito com
-    o texto da variante e ganha `marca`, que diz ao template qual elemento é o
-    do slot e com quais atributos marcá-lo.
-
-    Experimento que aponta para seção ou slot que esta página não desenha é
-    defeito do catálogo: a página segue como foi publicada, sem par nos
-    eventos, e o log diz qual. Medir um braço que ninguém viu contaria
-    exposição inventada.
-    """
+    """Sorteia o braço do visitante e põe o texto dele no slot em teste.
+    Devolve `{experimento_id, variante_id}`, ou `{}` se não há experimento."""
     experimento = pagina.get("experimento_ativo")
     variante = sorteio.sortear(experimento, getattr(request, "id_do_visitante", ""))
     if variante is None:
@@ -459,25 +351,14 @@ def _posicao(slots: list, slot: str) -> int | None:
 
 
 def _destino_interno(destino: str) -> bool:
-    """Âncora desta página ou caminho deste host. Nunca outro domínio.
-
-    Só o prefixo decide, sem `urlsplit`: um endereço malformado vindo do
-    catálogo não pode derrubar a renderização da página.
-    """
+    """Âncora desta página ou caminho deste host; nunca outro domínio."""
     return destino.startswith("#") or (
         destino.startswith("/") and not destino.startswith(("//", "/\\"))
     )
 
 
 def _cta_medido(bloco: dict, offer_slug: str) -> str:
-    """O destino do botão desta seção que a telemetria mede, ou `""`.
-
-    Espelha o que `oferta.html` desenha: o botão de compra da seção `oferta`
-    leva ao checkout, e o do cubo leva ao destino escrito ou à âncora da
-    oferta. O destino medido é o CAMINHO, sem a UTM da visita, porque o
-    contrato pede o endereço como a página o escreveu. Botão para fora do host
-    não é medido: o endpoint só aceita o que está aqui.
-    """
+    """Destino do botão da seção medido pela telemetria (sem UTM), ou vazio."""
     if bloco["nome"] == "oferta":
         return f"/checkout/{offer_slug}/" if offer_slug else ""
     if bloco["nome"] == "cubo" and bloco["cta_texto"]:
@@ -554,16 +435,10 @@ def pagina_flp(request):
 
 
 def _medir_visita(request, pagina: dict, offer_slug: str, braco: dict) -> None:
-    """Publica `funil.pagina-vista.v1`. Nunca derruba nem segura a página.
-
-    ID e VERSÃO, nunca copy: é `pagina_version` que amarra o fato ao conteúdo
-    exato que esteve na tela, e texto dentro de evento apodrece no livro
-    imutável da `metricas`. Campo sem valor fica AUSENTE em vez de ir vazio —
-    visita direta não inventa um referrer, e navegador que não se identifica
-    não ganha um dispositivo adivinhado.
-    """
+    """Publica `funil.pagina-vista.v1` sem derrubar nem atrasar a página.
+    Leva só ids e versão da página, nunca o texto; campo sem valor fica fora."""
     dados = {
-        # `site_id` DENTRO de `data`: é daqui que a recepção da `metricas` o lê.
+        # `site_id` dentro de `data`: a recepção da `metricas` o lê daqui.
         "site_id": request.site["id"],
         "visitor_id": getattr(request, "id_do_visitante", ""),
         "pagina_slug": pagina["slug"],
@@ -586,31 +461,8 @@ def _medir_visita(request, pagina: dict, offer_slug: str, braco: dict) -> None:
 
 
 class FormularioDeCadastro(forms.Form):
-    """Validação server-side da página de cadastro. As mensagens de erro são
-    as do próprio Django — o activate() do resolver (fase 1) as localiza.
-
-    `whatsapp` é OBRIGATÓRIO — ao contrário do antigo `phone` opcional da
-    versão de captura de lead. Esta página deixou de ser "deixe seu contato
-    para acompanhar novidades" e virou o pedido de entrada de quem não tem
-    conta do Google (decisão do mantenedor, 31/08/2026): sem WhatsApp o
-    mantenedor não tem como avisar a pessoa da decisão, e a porta
-    `POST /pre-matriculas` da célula `alunos` já recusa o pedido por essa
-    mesma razão (`nome_completo e whatsapp são obrigatórios`) — o form aqui só
-    adianta a mesma regra, no idioma da página.
-
-    `senha`/`confirmar_senha` (`DECISAO-login-por-senha.md`, também
-    31/08/2026): a pessoa escolhe a senha JUNTO com o pedido de vaga, não
-    numa etapa separada depois da aprovação — decisão do mantenedor. Mínimo
-    de 8 caracteres, mesma régua que `AUTH_PASSWORD_VALIDATORS` já exige do
-    lado da `identidade`; conferir aqui adianta o erro no idioma da página
-    em vez de um 502 vindo de uma validação que só existe do outro lado.
-
-    **A conferência "as duas senhas batem?" NÃO mora em `clean()`**: a
-    mensagem de erro vem do catálogo de tradução (`apps.i18n.catalogo`, não
-    do gettext do Django, que é o que localiza os erros DE CAMPO acima), e
-    `clean()` não tem `request.idioma`. Quem faz essa conferência é a view
-    `cadastro`, depois de `is_valid()`.
-    """
+    """Valida o pedido de entrada (nome, e-mail, WhatsApp e senha); as duas
+    senhas são conferidas na view `cadastro`."""
 
     name = forms.CharField(max_length=200)
     email = forms.EmailField()
@@ -619,48 +471,17 @@ class FormularioDeCadastro(forms.Form):
     confirmar_senha = forms.CharField(min_length=8, widget=forms.PasswordInput)
 
 
-# HEAD junto com GET, sempre: `require_http_methods` NÃO o inclui de graça (o
-# `require_safe` das views de leitura inclui, e foi por isso que esta escapou do
-# conserto de 25/08). Um HEAD nesta página respondia 405 — e ela está no
-# sitemap, então quem a chama assim é justamente robô de busca e
-# pré-visualizador de link. Medido em produção depois do deploy do PR #158.
+# HEAD junto com GET: `require_http_methods` não o inclui por padrão.
 @require_http_methods(["GET", "HEAD", "POST"])
 def cadastro(request):
-    """O pedido de entrada de quem não tem conta do Google.
-
-    Até 31/08/2026 esta página era captura de lead ("deixe seu nome e e-mail
-    para acompanhar as novidades") — um site de notícias, não uma escola.
-    Decisão do mantenedor nessa data: quem não tem Google (a ÚNICA porta de
-    login do site, `DECISAO-celula-de-identidade.md`) ainda precisa de um
-    jeito de virar aluno, e o jeito é este formulário entrar DIRETO na mesma
-    fila "Aguardando aprovação" que o admin já gerencia em
-    `/admin/escola/alunos/` — a mesma porta `POST /pre-matriculas` que o
-    cadastro à mão do admin e o pedido de entrada da Caixa (para quem já
-    logou com o Google) usam. Nenhum contrato novo: um terceiro consumidor do
-    mesmo endpoint congelado (`AlunosClient.criar_pre_matricula`).
-
-    O form posta para a PRÓPRIA URL prefixada (decisão da maestro sobre a
-    pendência 1 do PR #87): o resolver decapa o prefixo, esta view recebe e
-    repassa à célula alunos server-side, com `site_id` do Host (INV-P11) —
-    nunca do payload.
-
-    Desde o D1 revisto (25/08/2026) o caminho nu `/cadastro` **é** a página em
-    inglês, e o POST dele chega aqui normalmente. Na matriz antiga ele morria
-    404 antes desta view — o caminho nu era um 302 para `/en/cadastro`, e
-    redirecionar um POST converteria o método em GET e descartaria o corpo em
-    silêncio, então recusar era o menos pior. Sem redirecionamento no meio, o
-    problema deixou de existir."""
+    """Pedido de entrada de quem não tem conta do Google: cria a pré-matrícula na
+    célula `alunos` (site do Host) e grava a senha na `identidade`."""
     if getattr(request, "idioma", None) is None:
-        # Site fora do registro i18n não tem cadastro — 404, o mesmo que o
-        # caminho respondia antes desta fase (rota inexistente).
+        # Site fora do registro i18n não tem cadastro.
         raise Http404("cadastro só existe em site registrado no i18n")
 
     sucesso, ja_matriculado, erro_envio, status = False, False, False, 200
-    # [LOGIN-POR-SENHA] Flag própria, não `form.add_error()`: a mensagem sai
-    # do catálogo de tradução via `{% t %}` NO TEMPLATE (mesmo padrão de
-    # `sucesso`/`ja_matriculado`/`erro_envio` logo abaixo) — não em Python,
-    # onde o validador do i18n não veria a chave sendo usada (ela só conta
-    # como "usada" dentro de um `{% t %}` real num arquivo de template).
+    # Flag própria: a mensagem sai do catálogo de tradução, no template.
     senhas_diferentes = False
     if request.method == "POST":
         form = FormularioDeCadastro(request.POST)
@@ -670,19 +491,14 @@ def cadastro(request):
             )
         if form.is_valid() and not senhas_diferentes:
             resultado = AlunosClient().criar_pre_matricula(
-                site_id=request.site["id"],  # [INV-P11] do Host, não do payload
+                site_id=request.site["id"],  # do Host, não do payload
                 email=form.cleaned_data["email"],
                 nome_completo=form.cleaned_data["name"],
                 whatsapp=form.cleaned_data["whatsapp"],
             )
             if resultado == AlunosClient.RESULTADO_NA_FILA:
-                # A senha só é gravada quando o pedido de vaga deu certo — uma
-                # senha "órfã" para um e-mail que nunca entrou na fila não
-                # serviria a ninguém. Fail-CLOSED aqui (decisão do
-                # mantenedor, DECISAO-login-por-senha.md §1.3): se a senha
-                # não puder ser gravada, o pedido inteiro é tratado como não
-                # enviado — reenviar é seguro, `entrar_na_fila` do lado da
-                # alunos é idempotente por e-mail.
+                # A senha só é gravada se o pedido entrou na fila; se falhar,
+                # o pedido conta como não enviado.
                 senha_ok = (
                     IdentidadeClient().definir_senha(
                         email=form.cleaned_data["email"],
@@ -698,14 +514,10 @@ def cadastro(request):
                 else:
                     erro_envio, status = True, 502
             elif resultado == AlunosClient.RESULTADO_JA_TEM_MATRICULA:
-                # Não é erro de envio (ARMADILHAS §4.9 é sobre falha de rede):
-                # o pedido chegou, só que esta pessoa já está na plataforma. A
-                # tela explica em vez de repetir "cadastro recebido" para
-                # quem talvez precise é só entrar com o Google.
+                # O pedido chegou, mas esta pessoa já está na plataforma.
                 ja_matriculado = True
             else:
-                # Falha fechada e honesta (ARMADILHAS §4.9): nada de 200 com
-                # cara de sucesso — 502 com a página e o que a pessoa digitou.
+                # Falha: 502 com a página e o que a pessoa digitou.
                 erro_envio, status = True, 502
     else:
         form = FormularioDeCadastro()
@@ -724,20 +536,8 @@ def cadastro(request):
     )
 
 
-# O vocabulário de recusa da célula `identidade` (LICOES.md dela: "o
-# vocabulário de recusa é CONTRATO com o funil") — toda recusa da porta volta
-# para esta página com `?erro=<chave>`, e cada chave tem tradução própria em
-# `traducoes/login.yaml`. Chave fora desta lista é ignorada em silêncio: query
-# string é entrada de rede, nunca vira chave de catálogo sem passar na cerca.
 def destino_local(cru: str | None, padrao: str) -> str:
-    """Só caminho LOCAL deste site — nunca um endereço de fora.
-
-    O `?next=` chega pela URL, então é entrada de rede. A célula `identidade`
-    sanea de novo do lado dela (`views.destino_seguro`), e é lá que mora a
-    defesa que importa — esta aqui é a segunda camada, para o valor que ESTE
-    site monta no link nunca ser o vetor. `//outro-site` é o clássico: o
-    navegador o lê como endereço absoluto sem esquema.
-    """
+    """Só caminho local deste site; qualquer endereço de fora devolve `padrao`."""
     if not cru or not cru.startswith("/") or cru.startswith("//"):
         return padrao
     if "\\" in cru or any(ord(c) < 0x20 for c in cru):
@@ -745,15 +545,15 @@ def destino_local(cru: str | None, padrao: str) -> str:
     return cru
 
 
+# Chaves de recusa aceitas em `?erro=`; qualquer outra é ignorada.
 CHAVES_DE_RECUSA = {
     "interrompida",
     "nao-confere",
     "nao-configurada",
     "google-indisponivel",
     "email-nao-verificado",
-    # [LOGIN-POR-SENHA] O vocabulário de recusa de /entrar/senha
-    # (DECISAO-login-por-senha.md §6.1) — "senha-invalida" serve tanto para
-    # "e-mail sem conta" quanto para "senha errada", de propósito.
+    # Recusas de /entrar/senha; "senha-invalida" vale para e-mail sem conta e
+    # para senha errada.
     "senha-invalida",
     "muitas-tentativas",
 }
@@ -761,57 +561,23 @@ CHAVES_DE_RECUSA = {
 
 @require_safe
 def entrar(request):
-    """A porta de entrada do site — `/login` em inglês, `/{idioma}/login` nos outros.
-
-    Leis: DECISAO-onde-mora-a-sessao e, desde 25/08/2026,
-    DECISAO-celula-de-identidade. Ela leva ao Google; a sessão nasce do outro
-    lado, na célula `identidade`. **Esta view não abre sessão nenhuma e não lê
-    cookie nenhum** — quem faz isso é quem tem a chave e o banco (muralha de dados: célula não lê banco de outra).
-
-    O `?next=` diz à `identidade` aonde devolver a pessoa depois de entrar —
-    a home do idioma desta página. E o `?erro=` é a volta do vocabulário de
-    recusa: a porta de lá não renderiza página; quem explica a recusa, nos
-    três idiomas, é esta tela.
-
-    Fora do sitemap de propósito: página de entrada não é conteúdo que alguém
-    procure no Google, e indexá-la só a faria concorrer com a própria marca.
-    """
+    """Tela de entrada: botão do Google, formulário de senha e a mensagem de `?erro=`.
+    Não abre sessão; o `?next=` diz à `identidade` aonde devolver a pessoa."""
     if getattr(request, "idioma", None) is None:
-        # Mesmo tratamento do cadastro: site fora do registro i18n não tem esta
-        # página — 404, e não uma página em inglês servida por engano.
+        # Site fora do registro i18n não tem esta página.
         raise Http404("login só existe em site registrado no i18n")
     erro = request.GET.get("erro") or ""
     if erro not in CHAVES_DE_RECUSA:
         erro = ""
-    # A pessoa volta para ONDE ESTAVA, não para a home. O cabeçalho de sessão
-    # de toda página manda o caminho atual no `?next=`; sem isso, quem clicava
-    # "Entrar" no meio de um cadastro meio preenchido voltava para a home e
-    # perdia o que tinha digitado.
-    # O fallback é a home DESTE idioma, e ela sai do caminho_publico como
-    # qualquer outra URL pública. Escrevê-la à mão aqui — f"/{idioma}/" — era a
-    # QUARTA cópia da regra de prefixo, e a que mais doeria: no idioma padrão
-    # ela devolveria a pessoa, depois de entrar, para /en/ — 404 desde o D1
-    # revisto (25/08/2026). Quem não passa `?next=` é justamente quem clicou
-    # "Entrar" na home.
+    # Volta para a página de onde veio (`?next=`); sem ele, para a home do idioma.
     home = caminho_publico(request.i18n, request.idioma, "/")
     destino = destino_local(request.GET.get("next"), home)
-    # `site` viaja junto com o `next` desde 31/08/2026 (degrau 1 do
-    # PLANO-SEQUENCIAS-DE-MENSAGENS): a célula `identidade` cunha a pessoa e
-    # anuncia o fato, e o fato precisa dizer de QUAL site alguém entrou. Ela não
-    # resolve Host→Site (isso é do catálogo, e ela nem fala com ele), então quem
-    # manda o site é quem já o resolveu — esta célula, aqui, com o valor que o
-    # CONV-SITE pôs em `request.site`.
-    #
-    # Do outro lado ele é tratado como entrada de rede: saneado por forma, e
-    # usado só para escolher a quem o cadastro pertence, nunca para autorizar.
-    # Faltando, a pessoa entra igual e o fato não é anunciado.
+    # O `site` viaja junto com o `next`, para a `identidade` anunciar de qual
+    # site a pessoa entrou.
     entrada = f"{url_de_entrada()}?" + urlencode(
         {"next": destino, "site": request.site["id"]}
     )
-    # [LOGIN-POR-SENHA] O token que defende /entrar/senha de CSRF
-    # (DECISAO-login-por-senha.md §3) — buscado aqui, fail-open na EXIBIÇÃO:
-    # `None` faz o template simplesmente não desenhar o mini-formulário de
-    # senha, e o botão do Google continua funcionando sozinho.
+    # Token de CSRF do formulário de senha; sem ele o template não o desenha.
     token_de_senha = IdentidadeClient().emitir_token_de_senha()
     return render(
         request,
@@ -903,14 +669,10 @@ def marcar_todas_notificacoes_lidas(request):
 
 @require_safe
 def sitemap_xml(request):
-    """D6: rota de MÁQUINA — nunca se localiza. Desde a fase 4 ela PRECISA do
-    Site: os idiomas vêm do catálogo, então o CONV-SITE resolve o Host aqui
-    como em qualquer rota (mesmo cache de 60s) e a view lê `request.i18n`. As
-    URLs saem absolutas com o **host canônico do Site** — nunca
-    `request.get_host()` (D5: preview não vaza pro sitemap de produção). Site
-    monolíngue: 404, o comportamento de hoje, intocado."""
+    """Sitemap do site: URLs absolutas no host canônico, só dos idiomas indexáveis;
+    404 em site monolíngue."""
     if getattr(request, "idioma", None) is not None or request.path != "/sitemap.xml":
-        # /en/sitemap.xml e afins: rota de máquina nunca se localiza (D6).
+        # Rota de máquina: sem prefixo de idioma.
         raise Http404("sitemap não tem prefixo de idioma")
     cfg = getattr(request, "i18n", None)
     if cfg is None:
@@ -918,12 +680,10 @@ def sitemap_xml(request):
     host = request.site["host"]
 
     urls = [
-        # O caminho sai do caminho_publico, nunca de uma f-string local: desde o
-        # D1 revisto (25/08/2026) o idioma padrão não leva prefixo, e um sitemap
-        # anunciando /en/ mandaria o Google a 404 nossos.
+        # O caminho sai do caminho_publico, que sabe se o idioma leva prefixo.
         f"https://{host}{caminho_publico(cfg, codigo, pagina)}"
         for codigo, definicao in cfg["idiomas"].items()
-        if definicao["indexavel"]  # D5: es (noindex) fica fora
+        if definicao["indexavel"]  # idiomas noindex ficam fora
         for pagina in PAGINAS_PUBLICAS
     ]
     linhas = "\n".join(f"  <url><loc>{u}</loc></url>" for u in urls)
@@ -936,22 +696,7 @@ def sitemap_xml(request):
     return HttpResponse(corpo, content_type="application/xml")
 
 
-# ---------------------------------------------------------------------------
-# O app instalado na tela do celular (pedido do mantenedor, 31/08/2026)
-# ---------------------------------------------------------------------------
-# As duas rotas de MÁQUINA que fazem um site virar app instalável. Elas moram
-# na raiz e não se localizam, como o /healthz, o /sitemap.xml e o /static/ —
-# mas por motivos diferentes, e vale escrever qual é cada um:
-#
-#   · o manifesto é do SITE, não da página: um por origem, e o navegador o
-#     relê para decidir se oferece a instalação;
-#   · o service worker manda na PASTA de onde foi baixado. Servido de
-#     `/static/funil/sw.js` ele só mandaria em `/static/`, e o app não teria
-#     como abrir sem rede. Por isso ele tem rota própria na raiz.
-#
-# A cor, o fundo e o desenho do ícone são a marca do site nas mãos de quem
-# instalou: o verde é o mesmo do botão principal das páginas, e os PNGs saem
-# do desenho versionado em `tests/test_icones_do_app.py`.
+# O app instalável na tela do celular: manifesto e service worker, na raiz do site.
 COR_DO_APP = "#16a34a"
 FUNDO_DO_APP = "#f7f7f8"
 ICONES_DO_APP = [
@@ -967,9 +712,7 @@ ICONES_DO_APP = [
         "type": "image/png",
         "purpose": "any",
     },
-    # O `maskable` é o mesmo desenho, menor: o Android recorta o ícone na forma
-    # que o aparelho usar, e sem esta variante ele desenha o nosso dentro de um
-    # quadrado branco. São dois arquivos porque são dois usos, não por capricho.
+    # Variante `maskable`, que o Android recorta na forma do aparelho.
     {
         "src": "/static/funil/pwa/icone-maskable-512.png",
         "sizes": "512x512",
@@ -981,20 +724,8 @@ ICONES_DO_APP = [
 
 @require_safe
 def manifesto_do_app(request):
-    """`/manifest.webmanifest` — a ficha de identidade do app instalado.
-
-    Site FORA do registro i18n responde 404, pelo mesmo critério do cadastro e
-    do login: o app é do site da escola, que tem gente entrando e avisos para
-    mandar; os domínios monolíngues são vitrine, e instalar uma vitrine não
-    serve a ninguém.
-
-    **O idioma vem da query string, e é saneado como toda entrada de rede.**
-    O `start_url` é a página que abre quando a pessoa toca no ícone: quem
-    instalou em português tem de abrir em português, e um manifesto só por
-    origem não saberia disso sozinho. Código desconhecido cai no idioma padrão
-    do site em silêncio, como o `?erro=` da página de entrada faz com chave
-    fora da lista — nunca vira caminho.
-    """
+    """`/manifest.webmanifest`: manifesto do app instalado; 404 fora do registro i18n.
+    O `start_url` usa o idioma de `?idioma=`; código desconhecido cai no padrão."""
     if getattr(request, "idioma", None) is not None:
         raise Http404("manifesto não tem prefixo de idioma")
     cfg = getattr(request, "i18n", None)
@@ -1012,9 +743,7 @@ def manifesto_do_app(request):
             "lang": tag_bcp47(codigo),
             "dir": direcao(codigo),
             "start_url": caminho_publico(cfg, codigo, "/"),
-            # O escopo é o site inteiro de propósito: quem instalou e toca num
-            # link do fórum ou da Caixa continua DENTRO do app, em vez de o
-            # celular abrir o navegador por cima.
+            # O escopo é o site inteiro, para links internos abrirem dentro do app.
             "scope": "/",
             "display": "standalone",
             "orientation": "portrait",
@@ -1029,25 +758,12 @@ def manifesto_do_app(request):
 
 @require_safe
 def service_worker(request):
-    """`/sw.js` — o mesmo arquivo de `static/funil/sw.js`, servido da RAIZ.
-
-    Serve para qualquer site, inclusive os monolíngues: só chega aqui quem
-    pede, e quem pede é o `instalar.js`, que só existe nas páginas do site
-    multilíngue. Uma condição a mais aqui seria uma regra a manter sem nenhum
-    comportamento a proteger.
-
-    `Service-Worker-Allowed: /` é cinto e suspensório: o escopo da raiz já vem
-    do endereço, e o cabeçalho mantém a promessa caso este arquivo um dia
-    passe a ser servido de outro lugar. `Cache-Control: no-cache` é o que faz
-    uma correção neste arquivo alcançar quem já instalou: sem ele o navegador
-    pode guardar o service worker por até 24 horas.
-    """
+    """`/sw.js`: o `static/funil/sw.js` servido da raiz, com os textos dos avisos
+    no idioma de `?idioma=`."""
     if getattr(request, "idioma", None) is not None:
         raise Http404("service worker não tem prefixo de idioma")
 
-    # O idioma vem da QUERY porque esta é rota de máquina e não carrega
-    # prefixo: quem o passa é `static/funil/instalar.js`, no registro. Código
-    # desconhecido cai no idioma fonte, como toda entrada de rede desta célula.
+    # O idioma vem da query (rota sem prefixo); código desconhecido usa o idioma fonte.
     idioma = request.GET.get("idioma") or ""
     if idioma not in cat.IDIOMAS_BASE:
         idioma = cat.IDIOMA_FONTE
@@ -1060,9 +776,7 @@ def service_worker(request):
         for assunto, chave in TIPOS_POR_ASSUNTO.items()
     }
     configuracao = {
-        # Para onde o toque na notificação leva. O endereço público é
-        # conhecimento DESTA célula (apps/core/enderecos.py), nunca da
-        # `notificacoes` — é por isso que ele viaja daqui e não do envio.
+        # Página aberta ao tocar na notificação.
         "caminho": url_dos_avisos(),
         "links": links_para_o_celular(),
         "textos": textos,
@@ -1085,25 +799,13 @@ def service_worker(request):
     return resposta
 
 
-# ---------------------------------------------------------------------------
-# Ligar e desligar o aviso na tela do celular (Fase 7, 31/08/2026)
-# ---------------------------------------------------------------------------
-# O navegador entrega a inscrição do aparelho para o JAVASCRIPT da página; ele
-# a manda para cá, e é o SERVIDOR que fala com a `notificacoes`. Nunca o
-# contrário: o token do par funil→notificacoes é segredo de servidor, e uma
-# chamada direta do navegador o entregaria a qualquer pessoa que abrisse o
-# site. É a mesma forma do `/leads` (RECEITA R2).
+# Ligar e desligar os avisos no celular: o navegador manda a inscrição do
+# aparelho para cá e o servidor a repassa à `notificacoes`.
 TETOS_DA_INSCRICAO = {"endpoint": 2048, "p256dh": 256, "auth": 64}
 
 
 def _inscricao_do_corpo(request) -> dict:
-    """As três partes que o navegador dá, conferidas antes de sair daqui.
-
-    Os tetos são os do contrato (`contracts/notificacoes.openapi.yaml`).
-    Conferir aqui não substitui a cerca do outro lado — ela existe e é a que
-    manda; esta evita um salto de rede para mandar algo que já se sabe
-    inválido, e transforma lixo em 422 legível em vez de 502 confuso.
-    """
+    """Lê e confere as três partes da inscrição do aparelho, dentro dos tetos."""
     try:
         corpo = json.loads(request.body or b"{}")
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -1121,13 +823,7 @@ def _inscricao_do_corpo(request) -> dict:
 
 @require_POST
 def ligar_avisos(request):
-    """A pessoa disse sim para o aviso na tela, e o navegador já deu a
-    permissão. Aqui o aparelho dela vira uma linha na `notificacoes`.
-
-    Precisa de gente entrando: um aviso é de alguém, e sem `request.ator` não
-    há a quem endereçar. Fail-CLOSED aqui, ao contrário do sino: o sino some
-    quando não sabe, e esta rota não pode inventar um destinatário.
-    """
+    """Registra o aparelho da pessoa na `notificacoes`; exige login (401 sem ele)."""
     if getattr(request, "idioma", None) is None:
         raise Http404("avisos só existem em site registrado no i18n")
     ator = getattr(request, "ator", None)
@@ -1141,21 +837,13 @@ def ligar_avisos(request):
     ligado = NotificacoesClient().inscrever_aparelho(
         destinatario_id=ator.id, site_id=request.site["id"], inscricao=inscricao
     )
-    # 502 e não 200 quando a caixa não confirmou: a tela precisa poder dizer
-    # "não deu, tente de novo" em vez de prometer avisos que nunca chegariam.
-    # É a lição do "2xx não é sucesso" (RETROSPECTIVA-FASE-D §1).
+    # 502 quando a caixa não confirmou, para a tela poder dizer "tente de novo".
     return JsonResponse({"ligado": ligado}, status=200 if ligado else 502)
 
 
 @require_POST
 def desligar_avisos(request):
-    """A pessoa desligou os avisos deste aparelho.
-
-    NÃO exige sessão, de propósito: desligar acontece justamente quando a
-    pessoa está saindo, e um aparelho que não consegue se desinscrever
-    continuaria recebendo aviso de uma conta que já não usa. O `endpoint` é a
-    prova de posse do aparelho — quem o tem é ele.
-    """
+    """Remove o aparelho (pelo `endpoint`) dos avisos; não exige login."""
     if getattr(request, "idioma", None) is None:
         raise Http404("avisos só existem em site registrado no i18n")
     try:
@@ -1177,8 +865,8 @@ def desligar_avisos(request):
 
 @require_POST
 def capturar_lead(request):
-    """[RECEITA:R2 v1] O formulário nunca fala direto com leads: posta aqui, e o
-    servidor repassa com o site_id resolvido pelo CONV-SITE (nunca do payload)."""
+    """Recebe o formulário e repassa o lead à `leads` com o `site_id` do site,
+    nunca do payload."""
     try:
         corpo = json.loads(request.body)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -1202,13 +890,7 @@ def capturar_lead(request):
 
 
 def _medir_lead(request, token, resultado) -> None:
-    """Publica `funil.lead-capturado` quando o lead nasceu numa página medida.
-
-    Só depois de a `leads` devolver o `lead_id`, que é o que o contrato manda
-    carregar. Sem contexto assinado não há página nem versão a declarar, e o
-    fato não é inventado: a vitrine de `landing.html`, único formulário que
-    posta aqui hoje, não é página do catálogo e não manda contexto.
-    """
+    """Publica `funil.lead-capturado` quando o lead nasceu numa página medida."""
     contexto = telemetria.ler_contexto(token, request.site["id"])
     lead_id = resultado.get("lead_id") if isinstance(resultado, dict) else None
     visitante = id_valido(request.COOKIES.get(COOKIE, ""))
@@ -1231,11 +913,10 @@ def _medir_lead(request, token, resultado) -> None:
     )
 
 
-#: O maior fato que o navegador manda cabe folgado nisto; corpo maior é lixo.
+#: Tamanho máximo, em bytes, do corpo de um fato do navegador.
 TETO_DO_FATO_DO_NAVEGADOR = 2048
 
-#: Os campos de cada fato, e nenhum outro. `visitor_id` fica de fora de
-#: propósito: quem é o visitante o servidor lê do cookie, nunca do corpo.
+#: Campos aceitos em cada fato; o `visitor_id` vem do cookie, não do corpo.
 CAMPOS_DO_FATO = {
     "secao-vista": {"contexto", "evento", "secao"},
     "cta-clicado": {"contexto", "evento", "secao", "slot", "destino"},
@@ -1244,29 +925,8 @@ CAMPOS_DO_FATO = {
 
 @require_POST
 def telemetria_do_navegador(request):
-    """`POST /telemetria`: seção vista e clique no botão, contados pela página.
-
-    Corpo, em JSON (o `sendBeacon` o manda como texto puro, e tanto faz):
-    `{"contexto", "evento": "secao-vista", "secao"}` ou
-    `{"contexto", "evento": "cta-clicado", "secao", "slot", "destino"}`.
-    `contexto` é o texto assinado que a própria página entregou ao script.
-
-    **Fail-open, sempre.** Fato aceito é 204, publicado ou não: sem Redis,
-    com Redis fora ou sem cookie de visitante, a resposta é a mesma e rápida,
-    porque medição pode falhar e a página não. Corpo que não é o que a página
-    assinou é 400. Nenhum caminho aqui chega a 500.
-
-    **CSRF: a defesa é o contexto assinado, não um token de formulário.** O
-    `sendBeacon` não manda cabeçalho, e o que um POST forjado conseguiria é só
-    medir: sem o contexto que o servidor assinou para este site nada é aceito,
-    e o cookie `SameSite=Lax` do visitante não viaja num POST de outro site,
-    então nada é publicado em nome de ninguém.
-
-    Rota de MÁQUINA (`middleware.CAMINHOS_DE_MAQUINA`): resolve o site, nunca
-    se localiza e nunca sorteia visitante. Navegador sem cookie não ganha um
-    número novo aqui, porque um fato de um visitante que nunca viu a página
-    seria um fato inventado.
-    """
+    """`POST /telemetria`: registra seção vista e clique no botão. O corpo JSON
+    traz o `contexto` assinado, o `evento` e seus campos; responde 204 ou 400."""
     if len(request.body) > TETO_DO_FATO_DO_NAVEGADOR:
         return HttpResponseBadRequest("fato grande demais")
     try:
@@ -1316,23 +976,8 @@ def telemetria_do_navegador(request):
 
 @require_http_methods(["GET", "POST"])
 def ver_como_view(request):
-    """A tela de "ver o site como outra pessoa ve" — e a gravacao da escolha.
-
-    Pedido do mantenedor em 02/09/2026, depois do PR #897: a conta dele entra
-    pela porta da EQUIPE e nao tem matricula, entao o site nunca lhe mostrava a
-    tela que um aluno ve — nem para conferir a propria correcao.
-
-    **404 para quem nao e da equipe, e nao 403.** A porta nao confirma que ela
-    existe para quem nao pode usa-la, que e a mesma regra da area
-    administrativa. E a guarda e conferida AQUI, alem de em `ver_como.py`: uma
-    trava so na leitura do cookie deixaria esta rota gravando disfarce para
-    qualquer um — inofensivo hoje, e exatamente o tipo de porta esquecida que
-    alguem encontra depois.
-
-    O que ela grava e um cookie de EXIBICAO, que nao autoriza nada. O que ela
-    NAO faz e mexer em sessao: sair do disfarce e apagar um cookie, nunca um
-    logout — quem se disfarcou continua sendo quem era o tempo inteiro.
-    """
+    """Tela para a equipe ver o site como outro papel; grava a escolha em cookie.
+    404 para quem não é da equipe; o cookie só muda a exibição, não a sessão."""
     if getattr(request, "idioma", None) is None:
         raise Http404("ver-como só existe em site registrado no i18n")
     ator = getattr(request, "ator", None)
@@ -1348,17 +993,13 @@ def ver_como_view(request):
             destino.set_cookie(
                 ver_como.COOKIE,
                 escolha,
-                # Sem `max_age`: o disfarce morre quando o navegador fecha. Uma
-                # previa que sobrevivesse a semana viraria o mantenedor vendo o
-                # site errado dias depois sem lembrar por que.
+                # Sem `max_age`: o disfarce acaba quando o navegador fecha.
                 httponly=True,
                 samesite="Lax",
                 secure=request.is_secure(),
             )
         else:
-            # Valor fora da lista tambem cai aqui, e volta ao normal de
-            # proposito: a unica coisa pior que um disfarce errado e um
-            # disfarce errado do qual nao se sai.
+            # Valor fora da lista também remove o disfarce.
             destino.delete_cookie(ver_como.COOKIE)
         return destino
 

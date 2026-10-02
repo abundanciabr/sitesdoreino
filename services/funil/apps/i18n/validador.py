@@ -1,6 +1,5 @@
-# apps/i18n/validador.py — carrega o catálogo de traduções e instala em memória
-# (PLANO-I18N §2 D4). Problema no catálogo vira linha de log, nunca queda do
-# site: um erro de digitação numa tradução não derruba a partida.
+# apps/i18n/validador.py — carrega o catálogo de traduções e o instala em memória.
+# Problema no catálogo vira linha de log, nunca queda do site.
 import html
 import logging
 import re
@@ -17,18 +16,14 @@ logger = logging.getLogger(__name__)
 DIR_TRADUCOES = "traducoes"
 DIR_TEMPLATES = "templates"
 
-# D8.3 — guarda de razão de comprimento como RELATÓRIO: uma tradução muito
-# maior ou muito menor que o `en` sinaliza truncamento ou alucinação. O piso
-# evita o falso positivo de rótulo curto ("E-mail" → "Correo electrónico" já é
-# 3×, e está certo).
+# Razão de comprimento (relatório): tradução muito maior ou menor que o `en`
+# sinaliza truncamento; o piso evita falso positivo em rótulo curto.
 RAZAO_MAXIMA = 3.0
 RAZAO_MINIMA = 0.3
 MINIMO_PARA_RAZAO = 12
 
 RE_USO_T = re.compile(r"\{%\s*t\s+(.+?)\s*%\}")
-# {% url %} CRU (o \s exclui {% url_i18n %}): não gera prefixo de idioma — em
-# template i18n o link cairia na matriz D1 (GET vira 302 extra; POST vira 404
-# com corpo descartado). O caminho certo é {% url_i18n %}.
+# `{% url %}` cru, sem prefixo de idioma (o `\s` exclui `{% url_i18n %}`).
 RE_URL_CRU = re.compile(r"\{%\s*url\s")
 RE_ON_ATTR = re.compile(r"\bon[a-z]+\s*=", re.I)
 RE_TAG_HTML = re.compile(r"</?\s*([a-zA-Z0-9]+)")
@@ -39,12 +34,12 @@ class Resultado:
     estado: str  # PASS | FAIL
     problemas: "list[str]" = field(default_factory=list)
     chaves: dict = field(default_factory=dict)  # catálogo achatado (p/ instalar)
-    avisos: "list[str]" = field(default_factory=list)  # D8.3: relatório
+    avisos: "list[str]" = field(default_factory=list)  # relatório
 
 
 def validar_celula(raiz: Path, variantes: "dict | None" = None) -> Resultado:
-    """Lê o catálogo da célula e anota o que achar de estranho. Arquivo que
-    não carrega fica de fora; o resto entra."""
+    """Lê o catálogo da célula e anota o que achar de estranho; arquivo que não
+    carrega fica de fora e o resto entra."""
     raiz = Path(raiz)
     problemas: "list[str]" = []
 
@@ -83,7 +78,7 @@ def _arquivos_do_catalogo(raiz: Path) -> "list[Path]":
 
 
 def _conferir_variantes(variantes: dict, problemas: "list[str]") -> None:
-    """D4 — overlay de variante tem MÁXIMO 1 nível: variante → base → en."""
+    """Overlay de variante tem no máximo 1 nível: variante → base → en."""
     for codigo, base in sorted(variantes.items()):
         if codigo in cat.IDIOMAS_BASE:
             problemas.append(
@@ -97,9 +92,7 @@ def _conferir_variantes(variantes: dict, problemas: "list[str]") -> None:
             )
 
 
-# ---------------------------------------------------------------------------
 # Por chave: placeholders, plural CLDR, .html e overlay de variante.
-# ---------------------------------------------------------------------------
 def _checar_chave(chave, spec, variantes, problemas):
     valor_en = spec.get(cat.IDIOMA_FONTE)
     if valor_en is not None:
@@ -146,7 +139,7 @@ def _checar_chave(chave, spec, variantes, problemas):
 
     for codigo, base in variantes.items():
         if codigo not in spec:
-            continue  # ausência em overlay = herda (válido — D4)
+            continue  # ausência em overlay = herda
         if base not in spec:
             problemas.append(
                 f"{chave}: variante `{codigo}` presente sem a base `{base}`"
@@ -162,9 +155,7 @@ def _texto_de(valor) -> str:
     return " ".join(valor.values()) if isinstance(valor, dict) else valor
 
 
-# ---------------------------------------------------------------------------
-# D8.3 — razão de comprimento: relatório (avisos).
-# ---------------------------------------------------------------------------
+# Razão de comprimento: relatório (avisos).
 def _avisos_de_comprimento(chaves: dict) -> "list[str]":
     avisos = []
     for chave, spec in sorted(chaves.items()):
@@ -200,9 +191,7 @@ def _checar_html(chave, idioma, forma, problemas):
         problemas.append(f"{chave}: {idioma}: handler/URI de script")
 
 
-# ---------------------------------------------------------------------------
-# template → catálogo: chave de texto fixo usada precisa existir.
-# ---------------------------------------------------------------------------
+# Template → catálogo: chave de texto fixo usada precisa existir.
 def _checar_templates(raiz: Path, chaves: dict, problemas: "list[str]"):
     usadas = set()
     pasta = raiz / DIR_TEMPLATES
@@ -227,10 +216,8 @@ def _checar_templates(raiz: Path, chaves: dict, problemas: "list[str]"):
         problemas.append(f'{{% t "{chave}" %}} usada e não definida no catálogo')
 
 
-# ---------------------------------------------------------------------------
 # Partida: carrega, anota no log o que achou e instala o catálogo achatado,
 # congelado em memória. Nunca levanta por causa do catálogo.
-# ---------------------------------------------------------------------------
 def validar_e_instalar(raiz) -> None:
     resultado = validar_celula(Path(raiz))
     for problema in resultado.problemas:
@@ -240,10 +227,8 @@ def validar_e_instalar(raiz) -> None:
     cat.instalar_catalogo(resultado.chaves, bases=cat.VARIANTES)
 
 
-# ---------------------------------------------------------------------------
-# Pseudo-locale (D8.4): idioma sintético a partir do en — ~40% maior,
-# acentuado, com marca ⟦…⟧ — e o detector de string hardcoded.
-# ---------------------------------------------------------------------------
+# Pseudo-locale: idioma sintético a partir do en (~40% maior, acentuado, com
+# marca ⟦…⟧) e o detector de string hardcoded.
 PSEUDO_CODIGO = "qps"
 MARCA_INICIO, MARCA_FIM = "⟦", "⟧"
 _PARES = "aá bƃ cç dđ eé fƒ gğ hĥ ií jĵ kķ lł mḿ nñ oó pṕ qɋ rŕ sš tť uú vṽ wŵ xẋ yý zž"
@@ -288,9 +273,8 @@ RE_COMENTARIO = re.compile(r"<!--.*?-->", re.S)
 
 
 def texto_hardcoded(html_renderizado: str) -> "list[str]":
-    """Pedaços de texto VISÍVEL sem a marca do pseudo-locale = string
-    hardcoded no template. Ignora script/style/comentários e o seletor de
-    idiomas (nav translate=\"no\" — códigos de idioma são dado, não copy)."""
+    """Pedaços de texto visível sem a marca do pseudo-locale (string hardcoded no
+    template); ignora script, style, comentários e o seletor de idiomas."""
     encontrado = re.search(r"<body\b[^>]*>(.*)</body>", html_renderizado, re.S | re.I)
     corpo = encontrado.group(1) if encontrado else html_renderizado
     corpo = RE_BLOCO_OPACO.sub(" ", corpo)

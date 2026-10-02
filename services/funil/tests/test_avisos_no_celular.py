@@ -1,17 +1,5 @@
-"""Ligar o aviso na tela do celular — o lado do site (Fase 7, 31/08/2026).
-
-A regra de produto, e é ela que quase todo teste aqui mede de um ângulo:
-**o navegador só pergunta UMA VEZ.** Permissão negada não tem segunda chance,
-então o cartaz só existe para quem já entrou, num site que tem chave
-configurada, e a caixa do sistema só abre depois de um toque. Um cartaz
-mostrado cedo demais gasta a única pergunta que a plataforma tem.
-
-O que dá para medir daqui é o que o SERVIDOR entrega: quem ganha o cartaz, o
-que a rota faz com a inscrição que chega, e os textos do aviso injetados no
-`/sw.js` no idioma certo. A outra metade (o aparelho decidindo mostrar) mora em
-`static/funil/avisos.js` e não tem como ser medida sem um celular — por isso o
-que se mede aqui é que, sem JavaScript, ninguém vê convite nenhum.
-"""
+"""Ligar o aviso na tela do celular, do lado do site: quem ganha o cartaz, a
+rota que liga e desliga, e os textos do aviso injetados no `/sw.js`."""
 
 import json
 import re
@@ -40,8 +28,7 @@ INSCRICAO = {
 
 @pytest.fixture
 def com_chave(monkeypatch):
-    """A chave PÚBLICA do push no ambiente desta célula. Sem ela o cartaz não
-    existe: é o estado de hoje, enquanto o segredo não foi instalado."""
+    """A chave pública do push no ambiente; sem ela o cartaz não existe."""
     monkeypatch.setenv("VAPID_PUBLIC_KEY", CHAVE_PUBLICA)
 
 
@@ -51,9 +38,7 @@ def notificacoes_configurada(monkeypatch):
     monkeypatch.setenv("NOTIFICACOES_API_TOKEN", "token-do-par-funil-notificacoes")
 
 
-# ---------------------------------------------------------------------------
 # Quem ganha o cartaz
-# ---------------------------------------------------------------------------
 def test_quem_entrou_ve_o_cartaz_escondido_esperando_o_aparelho(
     client, rede, com_chave, logado
 ):
@@ -69,16 +54,14 @@ def test_quem_entrou_ve_o_cartaz_escondido_esperando_o_aparelho(
 
 
 def test_visitante_anonimo_nao_ve_o_cartaz(client, rede, com_chave):
-    """Um aviso é de alguém. Perguntar a quem não entrou gastaria a única
-    pergunta que o navegador permite, e não haveria a quem endereçar."""
+    """Quem não entrou não ganha cartaz: o aviso é de alguém."""
     corpo = client.get(caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH).content.decode()
 
     assert "avisos-no-celular" not in corpo
 
 
 def test_sem_chave_configurada_o_cartaz_nao_existe(client, rede, logado):
-    """Fail-CLOSED, ao contrário do sino: sem a chave o navegador não teria
-    como se inscrever, e um botão que não funciona é pior que nenhum botão."""
+    """Sem a chave o navegador não consegue se inscrever, então não há cartaz."""
     corpo = client.get(
         caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()
@@ -105,9 +88,7 @@ def test_o_cartaz_fala_o_idioma_da_pagina(client, rede, com_chave, logado):
     assert "Activar los avisos" in es and 'data-ligar="/es/avisos/ligar"' in es
 
 
-# ---------------------------------------------------------------------------
 # A rota que liga
-# ---------------------------------------------------------------------------
 def _ligar(client, corpo=None, caminho=None):
     return client.post(
         caminho or caminho_mesh("pt-br", "/avisos/ligar"),
@@ -121,9 +102,7 @@ def _ligar(client, corpo=None, caminho=None):
 def test_ligar_repassa_a_inscricao_com_o_id_da_plataforma(
     client, rede, logado, notificacoes_configurada
 ):
-    """O navegador nunca fala com a `notificacoes` direto: o token do par é
-    segredo de servidor. E quem endereça é o id da PLATAFORMA, nunca o
-    e-mail — ele não atravessa esta fronteira."""
+    """A inscrição segue para a `notificacoes` com o id da plataforma, sem e-mail."""
     rota = rede.post(f"{NOTIFICACOES}/inscricoes-push").mock(
         return_value=httpx.Response(200, json={"ja_estava_inscrito": False})
     )
@@ -166,9 +145,7 @@ def test_inscricao_incompleta_e_422_e_nem_chega_na_rede(
 def test_quando_a_caixa_nao_confirma_a_tela_fica_sabendo(
     client, rede, logado, notificacoes_configurada
 ):
-    """ "2xx não é sucesso" (RETROSPECTIVA-FASE-D §1), do lado de cá: se a
-    `notificacoes` não confirmou, esta rota NÃO pode responder 200 — a tela
-    prometeria avisos que nunca chegariam."""
+    """Se a `notificacoes` não confirma, a rota não responde 200 (responde 502)."""
     rede.post(f"{NOTIFICACOES}/inscricoes-push").mock(
         return_value=httpx.Response(500, text="tudo errado")
     )
@@ -190,9 +167,7 @@ def test_notificacoes_fora_do_ar_nao_derruba_a_pagina_nem_mente(
 
 
 def test_desligar_nao_exige_sessao(client, rede, notificacoes_configurada):
-    """Desligar acontece justamente quando a pessoa está saindo. Um aparelho
-    que não consegue se desinscrever continuaria recebendo aviso de uma conta
-    que já não é usada ali."""
+    """Desligar não exige sessão: acontece quando a pessoa está saindo."""
     rota = rede.delete(f"{NOTIFICACOES}/inscricoes-push").mock(
         return_value=httpx.Response(200, json={"existia": True})
     )
@@ -217,12 +192,9 @@ def test_as_rotas_de_aviso_nao_existem_em_site_monolingue(client, rede):
         assert resposta.status_code == 404
 
 
-# ---------------------------------------------------------------------------
 # O texto do aviso, injetado no service worker
-# ---------------------------------------------------------------------------
 def test_o_sw_leva_os_textos_no_idioma_de_quem_instalou(client, rede):
-    """A frase nasce na LEITURA, e a leitura acontece no aparelho: por isso os
-    textos viajam para dentro do `/sw.js` (DECISAO-notificacoes §5.1)."""
+    """Os textos viajam para dentro do `/sw.js`, no idioma de quem instalou."""
     corpo = client.get("/sw.js?idioma=pt-br", HTTP_HOST=HOST_MESH).content.decode()
 
     configuracao = json.loads(
@@ -245,9 +217,7 @@ def test_idioma_desconhecido_no_sw_cai_no_idioma_fonte(client, rede):
 
 
 def test_o_toque_no_aviso_leva_a_pagina_de_avisos(client, rede):
-    """O endereço público é conhecimento DESTA célula
-    (`apps/core/enderecos.py`), nunca da `notificacoes`: é por isso que ele
-    viaja daqui, e não junto do envio."""
+    """O endereço público dos avisos vem desta célula e viaja dentro do `/sw.js`."""
     corpo = client.get("/sw.js", HTTP_HOST=HOST_MESH).content.decode()
 
     configuracao = json.loads(
@@ -258,16 +228,8 @@ def test_o_toque_no_aviso_leva_a_pagina_de_avisos(client, rede):
 
 
 def test_nenhum_pedido_de_permissao_abre_sem_um_toque():
-    """A regra que o incidente de 31/08/2026 tornou inegociável: o pedido de
-    permissão automático ("abre sozinho onde o navegador deixa", registro
-    20260831-075) fez o Malwarebytes Browser Guard bloquear o meshcraft.top
-    INTEIRO como site malicioso, por "excesso de solicitação de notificações",
-    no dia da inauguração (armadilhas/257). Pedir sem gesto, página após
-    página, é a assinatura que as ferramentas de segurança caçam.
-
-    Medido no arquivo servido, que é a única prova possível sem um celular:
-    só existe UM `requestPermission`, e o único lugar que o alcança é o
-    clique no botão do cartaz. Não recrie o caminho automático."""
+    """Só existe um `requestPermission` no `avisos.js`, e só o clique no botão do
+    cartaz o alcança."""
     js = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
     ).read_text(encoding="utf-8")
@@ -282,10 +244,7 @@ def test_nenhum_pedido_de_permissao_abre_sem_um_toque():
 
 
 def test_o_cartaz_com_botao_e_o_unico_caminho_em_todo_navegador():
-    """O convite é um cartaz NOSSO, dentro da página: elemento comum, que
-    nenhuma ferramenta de segurança confunde com a caixa do sistema. A caixa
-    do navegador só nasce do toque no botão, e isso vale para Chrome, Android,
-    iPhone e Firefox por igual."""
+    """O cartaz com botão é o único caminho; a caixa do navegador nasce do toque."""
     js = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
     ).read_text(encoding="utf-8")
@@ -297,10 +256,8 @@ def test_o_cartaz_com_botao_e_o_unico_caminho_em_todo_navegador():
 
 
 def test_o_service_worker_promete_um_aviso_visivel_por_push():
-    """`userVisibleOnly` do lado do site, `showNotification` do lado do worker:
-    a promessa que o navegador cobra. Um push que não vira aviso visível faz o
-    navegador mostrar a mensagem genérica dele e, repetido, tira a permissão do
-    site."""
+    """`userVisibleOnly` no site e `showNotification` no worker: todo push vira
+    aviso visível."""
     sw = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
     ).read_text(encoding="utf-8")
@@ -312,13 +269,8 @@ def test_o_service_worker_promete_um_aviso_visivel_por_push():
     assert "userVisibleOnly: true" in js
 
 
-# ---------------------------------------------------------------------------
-# As quatro cartas da gamificação no aviso do celular (degrau 21b, 01/09/2026)
-# ---------------------------------------------------------------------------
-# Até aqui as quatro caíam no genérico "Você tem um aviso novo": honesto, e sem
-# notícia nenhuma. Estes testes medem o que o SERVIDOR entrega, que é a única
-# metade mensurável sem um celular na mão — o texto certo, no idioma certo,
-# dentro do `/sw.js`.
+# As quatro cartas da gamificação no aviso do celular: o servidor entrega o
+# texto certo, no idioma certo, dentro do `/sw.js`.
 ASSUNTOS_DA_GAMIFICACAO = (
     "gamificacao.nivel-alcancado",
     "gamificacao.conquista-concedida",
@@ -326,9 +278,8 @@ ASSUNTOS_DA_GAMIFICACAO = (
     "gamificacao.destaque-da-semana",
 )
 
-#: O que cada assunto diz, nos três idiomas, palavra por palavra. Escrito à mão
-#: de propósito: um teste que lesse o mesmo YAML da view passaria com o catálogo
-#: inteiro em branco.
+#: O que cada assunto diz, nos três idiomas, escrito à mão (ler o mesmo YAML
+#: da view passaria com o catálogo em branco).
 FRASES_ESPERADAS = {
     "gamificacao.nivel-alcancado": {
         "en": ("You moved up a level", "Tap to see the step you reached."),
@@ -384,9 +335,7 @@ def _configuracao_do_sw(client, idioma=None):
 def test_as_quatro_cartas_da_gamificacao_falam_os_tres_idiomas(
     client, rede, assunto, idioma
 ):
-    """Título e corpo próprios, em cada idioma. A escola serve três, e o aviso
-    do aparelho sai no idioma de quem INSTALOU (o `?idioma=` que o
-    `instalar.js` passa no registro)."""
+    """Título e corpo próprios em cada idioma, o de quem instalou o app."""
     textos = _configuracao_do_sw(client, idioma)["textos"]
     titulo, corpo = FRASES_ESPERADAS[assunto][idioma]
 
@@ -395,9 +344,7 @@ def test_as_quatro_cartas_da_gamificacao_falam_os_tres_idiomas(
 
 @pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
 def test_nenhuma_carta_da_gamificacao_ficou_com_o_texto_generico(client, rede, idioma):
-    """A prova de que o degrau foi de fato subido: se alguém apagar uma linha do
-    mapa, o assunto some dos `textos` e o aparelho volta ao genérico. Para estes
-    quatro isso é falha, e não é o fail-open do assunto que ninguém conhece."""
+    """Nenhuma das quatro cartas cai no texto genérico."""
     configuracao = _configuracao_do_sw(client, idioma)
 
     for assunto in ASSUNTOS_DA_GAMIFICACAO:
@@ -406,11 +353,8 @@ def test_nenhuma_carta_da_gamificacao_ficou_com_o_texto_generico(client, rede, i
 
 
 def test_a_frase_do_celular_nunca_pede_um_parametro(client, rede):
-    """A decisão de desenho, medida em vez de prometida: o `sw.js` usa `titulo`
-    e `corpo` como strings PRONTAS, sem interpolação. Uma frase com `{nivel}`
-    dentro chegaria ao celular com a chave crua na tela, porque não há ninguém
-    do outro lado para trocá-la — e quase todo parâmetro do contrato é
-    opcional, então nem sempre haveria com o que trocar."""
+    """O `sw.js` usa título e corpo como texto pronto, sem interpolação: nenhuma
+    frase do celular pede parâmetro."""
     configuracao = _configuracao_do_sw(client, "pt-br")
 
     frases = [
@@ -425,15 +369,8 @@ def test_a_frase_do_celular_nunca_pede_um_parametro(client, rede):
 
 
 def test_assunto_desconhecido_continua_caindo_no_generico(client, rede):
-    """O fail-ABERTO que não pode ser desfeito: um assunto que esta versão do
-    site não conhece tem de continuar sem entrada nos `textos`, para o `sw.js`
-    escolher `AVISOS.generico` e a pessoa receber um aviso honesto e vago em vez
-    de nenhum.
-
-    E a armadilha específica deste degrau: a forma tentadora de cobrir os quatro
-    de uma vez é `assunto.startswith("gamificacao.")`, que passaria a desenhar
-    com o cartão do nível um quinto assunto que o contrato ganhe amanhã. Um
-    assunto, uma linha, sempre."""
+    """Assunto que o site não conhece fica fora dos `textos`, e o `sw.js` usa
+    `AVISOS.generico`; cada assunto tem a sua linha."""
     configuracao = _configuracao_do_sw(client, "pt-br")
 
     for inventado in (
@@ -447,10 +384,7 @@ def test_assunto_desconhecido_continua_caindo_no_generico(client, rede):
 
 
 def test_o_service_worker_ainda_sabe_cair_no_generico():
-    """A outra metade do fail-aberto mora no arquivo servido, e é uma linha só.
-    Sem ela, um assunto desconhecido viraria `undefined.titulo` e o aviso não
-    apareceria, que é exatamente o desfecho que o genérico existe para
-    impedir."""
+    """O `sw.js` ainda cai em `AVISOS.generico` quando o assunto é desconhecido."""
     sw = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
     ).read_text(encoding="utf-8")
@@ -480,9 +414,7 @@ def test_a_pagina_e_o_celular_usam_a_mesma_tabela_de_assuntos(client, rede):
 
 
 def test_o_aviso_da_sugestao_nao_mudou_uma_virgula(client, rede):
-    """O assunto que já existia antes deste degrau. Acrescentar quatro não pode
-    reescrever o primeiro: quem instalou o app por causa da Caixa de Sugestões
-    continua lendo a mesma frase."""
+    """O aviso de sugestão, que já existia, mantém a mesma frase."""
     configuracao = _configuracao_do_sw(client, "pt-br")
 
     assert configuracao["textos"]["sugestao.status-alterado"] == {
@@ -520,11 +452,8 @@ def test_o_aviso_de_portfolio_diz_o_que_aconteceu_e_onde_ver_a_data(
 
 
 def test_todo_assunto_que_o_site_conhece_existe_no_contrato(client, rede):
-    """A direção segura da cerca: o site nunca inventa um assunto que a
-    plataforma não publica. A direção contrária NÃO se testa, de propósito:
-    assunto do contrato que ainda não tem frase aqui é justamente o caso do
-    genérico, e um teste que o proibisse tornaria impossível acrescentar um
-    assunto ao contrato sem tocar nesta célula no mesmo PR."""
+    """Todo assunto que o site conhece existe no contrato (o contrário não se
+    testa: assunto novo no contrato cai no genérico)."""
     contrato = json.loads(
         (
             Path(__file__).resolve().parents[3]
@@ -541,10 +470,8 @@ def test_todo_assunto_que_o_site_conhece_existe_no_contrato(client, rede):
 
 
 def test_o_sw_continua_sem_prefixo_de_idioma_e_com_os_cabecalhos(client, rede):
-    """`/sw.js` é rota de MÁQUINA: o escopo de um service worker é a pasta de
-    onde ele foi baixado, e `/pt-br/sw.js` mandaria só em `/pt-br/`. O idioma
-    vem da query, nunca do caminho. Os dois cabeçalhos são o que faz uma
-    correção aqui alcançar quem já instalou."""
+    """`/sw.js` não tem prefixo de idioma (o idioma vem da query) e leva os
+    cabeçalhos de escopo e de cache."""
     resposta = client.get("/sw.js?idioma=pt-br", HTTP_HOST=HOST_MESH)
 
     assert resposta.status_code == 200
@@ -555,20 +482,9 @@ def test_o_sw_continua_sem_prefixo_de_idioma_e_com_os_cabecalhos(client, rede):
         assert client.get(f"/{prefixo}/sw.js", HTTP_HOST=HOST_MESH).status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# Quando quem recusou foi o NAVEGADOR (02/09/2026, armadilhas/297)
-# ---------------------------------------------------------------------------
-# Até aqui o cartaz tinha uma frase só para toda falha: "não deu certo agora,
-# tente de novo mais tarde". Ela é honesta quando o NOSSO servidor não
-# confirmou, e é promessa falsa quando o navegador é que não conseguiu
-# registrar o aparelho — nesse caso tentar amanhã dá exatamente no mesmo,
-# porque nada muda sozinho. O mantenedor bateu nisso no próprio site, num
-# navegador que bloqueia mensagens push de fábrica, e só descobriu o motivo
-# lendo o erro no console.
+# Quando quem recusou foi o navegador: frase própria no cartaz
 
-#: A frase nova, palavra por palavra, nos dois idiomas que o site publica hoje.
-#: Escrita à mão de propósito: um teste que lesse o mesmo YAML da view passaria
-#: de olhos fechados com o catálogo errado.
+#: Frase da recusa do navegador, escrita à mão, nos idiomas publicados.
 SEM_SERVICO = {
     "pt-br": (
         "Este navegador não conseguiu ligar os avisos. Alguns bloqueiam "
@@ -604,9 +520,7 @@ def test_o_cartaz_tem_um_desfecho_so_para_o_navegador_que_nao_pode(
 def test_o_desfecho_do_navegador_nao_promete_que_vai_dar_certo_depois(
     client, rede, com_chave, logado
 ):
-    """O ponto todo da mudança, medido no HTML entregue: as duas frases são
-    DIFERENTES, e só a do nosso lado manda esperar. Se alguém um dia colapsar
-    as duas de volta numa chave só, este teste cai."""
+    """A frase do navegador difere da do servidor e não manda tentar mais tarde."""
     corpo = client.get(
         caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()
@@ -616,20 +530,13 @@ def test_o_desfecho_do_navegador_nao_promete_que_vai_dar_certo_depois(
 
     assert do_navegador != do_servidor
     assert "mais tarde" not in do_navegador
-    # E a do nosso lado continua sendo a que manda esperar: esperar ali é
-    # conselho honesto, porque o que falhou foi o servidor.
+    # Só a frase do servidor manda esperar.
     assert "mais tarde" in do_servidor
 
 
 def test_a_recusa_do_navegador_e_a_do_servidor_tem_caminhos_separados():
-    """Medido no arquivo servido, que é a única prova possível sem um aparelho.
-
-    A separação é estrutural, não textual: a recusa do `subscribe` é tratada
-    pelo SEGUNDO argumento do `.then`, que só alcança ela. Um `.catch`
-    pendurado no fim pegaria junto a falha do `fetch` e desfaria a distinção
-    inteira sem mudar uma linha visível — por isso ele é proibido aqui, e por
-    isso este teste mede a forma e não a mensagem do erro (que varia entre
-    navegador e versão, e nunca deve virar régua)."""
+    """No `avisos.js` a recusa do navegador e a falha do servidor têm caminhos
+    separados: `.then` de dois argumentos, sem `.catch` no fim."""
     js = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
     ).read_text(encoding="utf-8")
@@ -640,8 +547,8 @@ def test_a_recusa_do_navegador_e_a_do_servidor_tem_caminhos_separados():
 
     assert "}, aparelhoNaoPode);" in inscrever
     assert ".catch(" not in inscrever
-    # Dentro do `inscrever` só existe o desfecho do NOSSO lado; o do navegador
-    # mora no tratador próprio, logo abaixo.
+    # O `inscrever` só tem o desfecho do servidor; o do navegador mora em
+    # `aparelhoNaoPode`.
     assert 'return "nao-deu";' in inscrever
     assert "sem-servico" not in inscrever
     assert 'return "sem-servico";' in js.split("function aparelhoNaoPode")[1]
@@ -649,13 +556,8 @@ def test_a_recusa_do_navegador_e_a_do_servidor_tem_caminhos_separados():
     assert '"sem-servico"' in js.split("function mostrarSo")[1].split("}")[0]
 
 
-# ---------------------------------------------------------------------------
-# O aviso de teste (Rito de Contrato de 03/09/2026)
-# ---------------------------------------------------------------------------
-# O botão "Mandar um aviso de teste para mim" em /admin/avisos/ dispara este
-# assunto. Ele existe para PROVAR O CANAL, não para contar uma novidade — e
-# ainda assim precisa da mesma coisa que toda carta desta célula: um texto
-# reconhecível na hora, nos três idiomas, sem depender do genérico.
+# Aviso de teste (botão "Mandar um aviso de teste para mim" em /admin/avisos/):
+# texto reconhecível nos três idiomas, sem depender do genérico.
 
 FRASE_DO_TESTE = {
     "en": ("Meshcraft", "It worked. This is the test you asked for."),
@@ -673,10 +575,7 @@ def test_o_aviso_de_teste_fala_os_tres_idiomas(client, rede, idioma):
 
 
 def test_o_aviso_de_teste_nao_ficou_com_o_texto_generico(client, rede):
-    """A mesma prova das quatro cartas da gamificação: se alguém apagar a
-    linha do mapa, o assunto some dos `textos` e o aparelho volta ao
-    genérico — o que é fail-open correto para um assunto desconhecido, e
-    falha real para este, que já é conhecido."""
+    """Se a linha do mapa sumir, o aviso de teste volta ao genérico (falha)."""
     configuracao = _configuracao_do_sw(client, "pt-br")
 
     assert configuracao["textos"]["sistema.teste-de-aviso"] != configuracao["generico"]
