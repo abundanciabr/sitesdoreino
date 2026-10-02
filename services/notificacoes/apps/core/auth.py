@@ -12,12 +12,11 @@ class bearerAuth(HttpBearer):
     exportada seja `bearerAuth`, e o django-ninja usa o nome da classe do
     callback de auth como chave do security scheme.
 
-    Esta célula nasce com DOIS pares:
-    `sugestoes→notificacoes` (a tela de avisos da Caixa) e `funil→notificacoes`
-    (o sininho). `TOKENS_ACEITOS` já nasce genérico — um `set` de todo valor de
-    env que comece com `TOKENS_ACEITOS_` — então um par novo é só uma variável
-    de env nova (`TOKENS_ACEITOS_FUNIL`, `TOKENS_ACEITOS_SUGESTOES`), sem tocar
-    neste arquivo (`config/settings.py`).
+    Os pares são `funil→notificacoes` (o sininho e a página `/notificacoes`) e
+    `admin→notificacoes` (o aviso de teste). `TOKENS_ACEITOS` já nasce
+    genérico — um `set` de todo valor de env que comece com `TOKENS_ACEITOS_` —
+    então um par novo é só uma variável de env nova (`TOKENS_ACEITOS_FUNIL`,
+    `TOKENS_ACEITOS_ADMIN`), sem tocar neste arquivo (`config/settings.py`).
     """
 
     def authenticate(self, request, token: str):

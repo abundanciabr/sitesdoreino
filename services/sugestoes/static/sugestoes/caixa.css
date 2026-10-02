@@ -24,7 +24,7 @@
 
    As classes antigas (.cartao .recado .botao .votos .meta .filtros .papel
    .discreto .sub .topo) continuam vivas e restiladas de propósito: as páginas
-   da equipe (fila, moderar) e a dos avisos as usam, e reescrevê-las seria
+   da equipe (fila, moderar) as usam, e reescrevê-las seria
    mexer em arquivo de outro despacho sem nenhum ganho de comportamento.
    ========================================================================= */
 
@@ -501,54 +501,6 @@ textarea { resize: vertical; min-height: 72px; }
 .impacto-titulo { text-decoration: none; }
 .impacto-titulo:hover { text-decoration: underline; }
 .impacto-votos { font-family: var(--f-mono); font-size: 10px; color: var(--texto-tenue); margin-left: auto; }
-
-/* --- os avisos vestidos (EVO-31 sobre o dado do EVO-21) ------------------ */
-
-.avisos { display: flex; flex-direction: column; gap: 10px; }
-.aviso {
-  background: var(--painel); border: 1px solid var(--linha); border-radius: 10px;
-  padding: 14px 16px;
-}
-/* O não-lido se anuncia por borda, não só pela etiqueta: quem abre a página com
-   dez avisos precisa ver de longe quais são os novos. */
-.aviso.nao-lido { border-color: var(--laranja); background: linear-gradient(var(--laranja-fraco), var(--laranja-fraco)), var(--painel); }
-.aviso form { margin: 0; }
-.aviso-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.aviso-topo .meta { margin-left: auto; font-family: var(--f-mono); }
-.marca-novo {
-  font-family: var(--f-mono); font-size: 10px; font-weight: 600; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--tinta); background: var(--laranja);
-  border-radius: 5px; padding: 2px 6px;
-}
-/* [EVO-42] De onde veio o recado. Discreto de propósito: quem manda no cartão é
-   o selo de status: este aqui só responde "por que isto chegou para mim?", que é
-   a pergunta que faz a Caixa parecer atenta em vez de barulhenta. "Sua ideia"
-   ganha um traço de cor porque é o único vínculo em que a pessoa é dona da
-   conversa — nos outros dois ela é plateia, e a etiqueta é neutra. */
-.aviso-vinculo {
-  font-size: 11px; color: var(--texto-tenue); border: 1px solid var(--linha);
-  border-radius: 5px; padding: 2px 7px;
-}
-.aviso-vinculo.vinculo-autor { color: var(--azul); border-color: var(--azul-fraco); background: var(--azul-fraco); }
-.aviso-titulo { font-family: var(--f-titulo); font-size: 14px; margin: 0 0 6px; }
-.aviso-titulo a { text-decoration: none; }
-.aviso-titulo a:hover { text-decoration: underline; }
-.aviso-mudanca { font-size: 12.5px; color: var(--texto-tenue); margin: 0 0 10px; }
-.aviso-mudanca .para { color: var(--texto-fraco); }
-.aviso-mudanca .seta-mudanca { color: var(--texto-tenue); margin: 0 2px; }
-.aviso .ficha { margin-bottom: 10px; }
-
-/* [GAMIFICAÇÃO] O selo das cartas de celebração (01/09/2026). Um só para todas,
-   e verde para todas: elas são, por lei da célula de origem, sempre boa notícia,
-   porque perder ponto, regredir ou ter uma marca estornada NÃO gera aviso
-   nenhum. Uma cor por assunto prometeria uma distinção que não existe; quem diz
-   qual é a notícia é a palavra dentro do selo ("Nível", "Medalha", "Marco",
-   "Destaque" e, desde 06/09/2026, "Portfólio"), não o tom.
-
-   Discreto de propósito, no mesmo tamanho dos selos de status: a regra de tela
-   da gamificação é que o placar nunca fique maior que a obra, e um aviso é ainda
-   menos que o placar. */
-.selo-celebracao { color: var(--verde); background: var(--verde-fraco); }
 
 /* --- comentários --------------------------------------------------------- */
 

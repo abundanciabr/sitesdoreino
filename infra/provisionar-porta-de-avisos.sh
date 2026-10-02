@@ -6,30 +6,27 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # LIGAR O SINO À CAIXA CENTRAL DE AVISOS — operação da plataforma.
 #
 # Desde 27/08/2026 a porta de consulta da célula `notificacoes` está pronta e
-# no ar (Fase 4/5/6 do sininho), e DUAS células já sabem chamá-la: o `funil`
-# (o sino ao lado do nome, em toda página) e a `sugestoes` (a própria tela de
-# avisos da Caixa). As duas hoje falham ABERTO/VISÍVEL na ausência das
-# credenciais — nada quebra enquanto este script não rodar, o sino só continua
-# invisível e a tela de avisos continua avisando que não consegue buscar.
+# no ar (Fase 4/5/6 do sininho), e o `funil` a chama (o sino ao lado do nome e
+# a página `/notificacoes`). Ele falha ABERTO na ausência da credencial —
+# nada quebra enquanto este script não rodar, o sino só continua invisível.
 #
 # Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-porta-de-avisos.sh -o /tmp/p.sh && bash /tmp/p.sh
 #
-# NENHUM SEGREDO VEM DE FORA. As duas credenciais (o par funil↔notificacoes e
-# o par sugestoes↔notificacoes) são geradas AQUI, dentro da VPS
-# (`openssl rand -hex 32`), gravadas direto nos três arquivos — nada aparece
-# na tela, nada passa por agente, nada entra no Git.
+# NENHUM SEGREDO VEM DE FORA. A credencial do par funil↔notificacoes é gerada
+# AQUI, dentro da VPS (`openssl rand -hex 32`), gravada direto nos dois
+# arquivos — nada aparece na tela, nada passa por agente, nada entra no Git.
 #
 # NÃO REESCREVE NENHUM ENV. Os
-# três arquivos (`funil.env`, `sugestoes.env`, `notificacoes.env`) já estão
+# dois arquivos (`funil.env`, `notificacoes.env`) já estão
 # VIVOS, com segredos em uso — refazê-los do zero rotacionaria tudo e
 # derrubaria a sessão de todo mundo. Este script acrescenta ou atualiza SÓ as
 # chaves que lhe dizem respeito, com `>>` ou `sed`; o resto de cada arquivo
 # continua byte a byte como estava.
 #
-# IDEMPOTENTE, INCLUSIVE PARA OS SEGREDOS: se um par já tem token dos dois
+# IDEMPOTENTE, INCLUSIVE PARA O SEGREDO: se o par já tem token dos dois
 # lados, este script REAPROVEITA o valor que já existe em vez de gerar um
 # novo — gerar de novo sem atualizar os dois lados quebraria o par (um lado
 # fica com o token velho, o outro com o novo, e a chamada volta 401 sem nada
@@ -52,8 +49,8 @@ URL_NOTIFICACOES="http://notificacoes:8000/api/notificacoes"
 
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…)"
 
-for ARQUIVO in env/funil.env env/sugestoes.env env/notificacoes.env; do
-  [ -f "$ARQUIVO" ] || parar "não achei $RAIZ/$ARQUIVO — alguma das três células não parece provisionada nesta máquina. Nada foi alterado."
+for ARQUIVO in env/funil.env env/notificacoes.env; do
+  [ -f "$ARQUIVO" ] || parar "não achei $RAIZ/$ARQUIVO — alguma das duas células não parece provisionada nesta máquina. Nada foi alterado."
   [ -w "$ARQUIVO" ] || parar "não consigo escrever em $RAIZ/$ARQUIVO — rode como root ou como o dono dos outros env. Nada foi alterado."
 done
 
@@ -114,7 +111,7 @@ escrever_chave() {
 }
 
 echo "== estado ANTES =="
-for PAR in "env/funil.env NOTIFICACOES_API_TOKEN" "env/sugestoes.env NOTIFICACOES_API_TOKEN" "env/notificacoes.env TOKENS_ACEITOS_FUNIL" "env/notificacoes.env TOKENS_ACEITOS_SUGESTOES"; do
+for PAR in "env/funil.env NOTIFICACOES_API_TOKEN" "env/notificacoes.env TOKENS_ACEITOS_FUNIL"; do
   set -- $PAR
   V="$(ler_de "$1" "$2")"
   if eh_placeholder "$V"; then echo "  $1 :: $2 ...... ausente"
@@ -123,8 +120,8 @@ done
 echo
 
 # -----------------------------------------------------------------------------
-# OS DOIS PARES — reaproveita o token se JÁ existir dos dois lados; gera um
-# novo só quando o par não existe em lugar nenhum.
+# O PAR — reaproveita o token se JÁ existir; gera um novo só quando o par não
+# existe em lugar nenhum.
 # -----------------------------------------------------------------------------
 TOKEN_FUNIL="$(ler_de env/funil.env NOTIFICACOES_API_TOKEN)"
 eh_placeholder "$TOKEN_FUNIL" && TOKEN_FUNIL=""
@@ -138,27 +135,12 @@ else
   TOKEN_FUNIL="$(openssl rand -hex 32)"
 fi
 
-TOKEN_SUGESTOES="$(ler_de env/sugestoes.env NOTIFICACOES_API_TOKEN)"
-eh_placeholder "$TOKEN_SUGESTOES" && TOKEN_SUGESTOES=""
-DO_LADO_DE_LA2="$(ler_de env/notificacoes.env TOKENS_ACEITOS_SUGESTOES)"
-eh_placeholder "$DO_LADO_DE_LA2" && DO_LADO_DE_LA2=""
-if [ -n "$TOKEN_SUGESTOES" ] && [ "$TOKEN_SUGESTOES" = "$DO_LADO_DE_LA2" ]; then
-  :
-elif [ -n "$TOKEN_SUGESTOES" ]; then
-  :
-else
-  TOKEN_SUGESTOES="$(openssl rand -hex 32)"
-fi
-
-escrever_chave env/funil.env         env/sugestoes.env NOTIFICACOES_API_URL   "$URL_NOTIFICACOES"
-escrever_chave env/funil.env         env/sugestoes.env NOTIFICACOES_API_TOKEN "$TOKEN_FUNIL"
-escrever_chave env/sugestoes.env     env/alunos.env    NOTIFICACOES_API_URL   "$URL_NOTIFICACOES"
-escrever_chave env/sugestoes.env     env/alunos.env    NOTIFICACOES_API_TOKEN "$TOKEN_SUGESTOES"
-escrever_chave env/notificacoes.env  env/sugestoes.env TOKENS_ACEITOS_FUNIL      "$TOKEN_FUNIL"
-escrever_chave env/notificacoes.env  env/sugestoes.env TOKENS_ACEITOS_SUGESTOES  "$TOKEN_SUGESTOES"
+escrever_chave env/funil.env         env/notificacoes.env NOTIFICACOES_API_URL   "$URL_NOTIFICACOES"
+escrever_chave env/funil.env         env/notificacoes.env NOTIFICACOES_API_TOKEN "$TOKEN_FUNIL"
+escrever_chave env/notificacoes.env  env/funil.env        TOKENS_ACEITOS_FUNIL   "$TOKEN_FUNIL"
 
 echo "== estado DEPOIS =="
-for PAR in "env/funil.env NOTIFICACOES_API_URL" "env/funil.env NOTIFICACOES_API_TOKEN" "env/sugestoes.env NOTIFICACOES_API_URL" "env/sugestoes.env NOTIFICACOES_API_TOKEN" "env/notificacoes.env TOKENS_ACEITOS_FUNIL" "env/notificacoes.env TOKENS_ACEITOS_SUGESTOES"; do
+for PAR in "env/funil.env NOTIFICACOES_API_URL" "env/funil.env NOTIFICACOES_API_TOKEN" "env/notificacoes.env TOKENS_ACEITOS_FUNIL"; do
   set -- $PAR
   V="$(ler_de "$1" "$2")"
   if eh_placeholder "$V"; then echo "  $1 :: $2 ...... FALTANDO"; else echo "  $1 :: $2 ...... OK"; fi
@@ -168,18 +150,16 @@ echo
 
 [ "$(ler_de env/funil.env NOTIFICACOES_API_TOKEN)" = "$(ler_de env/notificacoes.env TOKENS_ACEITOS_FUNIL)" ] \
   || parar "o par funil↔notificacoes ficou com valores DIFERENTES nos dois lados. Não prossegui para o recarregamento — conserte a causa e rode de novo."
-[ "$(ler_de env/sugestoes.env NOTIFICACOES_API_TOKEN)" = "$(ler_de env/notificacoes.env TOKENS_ACEITOS_SUGESTOES)" ] \
-  || parar "o par sugestoes↔notificacoes ficou com valores DIFERENTES nos dois lados. Não prossegui para o recarregamento — conserte a causa e rode de novo."
 
 # -----------------------------------------------------------------------------
-# RECARREGAR — só os serviços que leem estes três env, pelo nome. JAMAIS
+# RECARREGAR — só os serviços que leem estes dois env, pelo nome. JAMAIS
 # `docker compose up -d` sem argumento (RITOS §4): isso devolveria TODAS as
 # células à tag :main do compose.
 # -----------------------------------------------------------------------------
-echo "== recarregando as três células para elas relerem o env =="
+echo "== recarregando as duas células para elas relerem o env =="
 recarregar_servicos "provisionar-porta-de-avisos.sh" || parar "os env foram conferidos, mas a aplicacao nao voltou com todas as rotas saudaveis; rode este provisionador novamente depois de corrigir a falha."
 echo
 
-echo "PRONTO. O sino ao lado do seu nome e a tela de avisos da Caixa já podem"
-echo "falar com a caixa central de avisos. Nenhum segredo apareceu na tela."
+echo "PRONTO. O sino ao lado do seu nome já pode falar com a caixa central de"
+echo "avisos. Nenhum segredo apareceu na tela."
 echo "Próximo passo: conferir de fora que o sino está respondendo."

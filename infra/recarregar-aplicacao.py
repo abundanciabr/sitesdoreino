@@ -40,7 +40,7 @@ SERVICOS_ANTERIORES = {
     "provisionar-par-dos-parametros.sh": ("encomendas", "admin"),
     "provisionar-pares-da-sala-de-aula.sh": ("identidade", "alunos", "catalogo", "cursos", "admin"),
     "provisionar-pares-de-categorias.sh": ("alunos", "identidade", "admin", "funil"),
-    "provisionar-porta-de-avisos.sh": ("funil", "sugestoes", "sugestoes-relay", "notificacoes", "notificacoes-consumer"),
+    "provisionar-porta-de-avisos.sh": ("funil", "notificacoes", "notificacoes-consumer"),
     "provisionar-usuario-ponte.sh": (),
 }
 

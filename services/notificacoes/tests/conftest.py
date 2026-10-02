@@ -19,7 +19,7 @@ OUTRA = "idt-pessoa-2"
 EQUIPE = "idt-alguem-da-equipe"
 
 # Um token de par qualquer — a autenticação (`apps/core/auth.py`) não distingue
-# QUAL par (`TOKENS_ACEITOS_FUNIL` vs `TOKENS_ACEITOS_SUGESTOES`), só se o
+# QUAL par (`TOKENS_ACEITOS_FUNIL` vs `TOKENS_ACEITOS_ADMIN`), só se o
 # valor está no conjunto. Testar os dois pares seria testar a mesma linha de
 # código duas vezes.
 TOKEN_DO_PAR = "token-do-par-de-teste"
