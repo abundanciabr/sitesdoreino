@@ -273,6 +273,11 @@ def quiz_draft(request, slug):
                 "has_draft": hasattr(quiz, "draft"),
                 "content": content,
                 "directed": quiz.directed,
+                "publicadas": list(
+                    quiz.versions.order_by("id").values_list("key", flat=True)
+                )
+                if quiz.directed
+                else [],
             }
         )
     try:

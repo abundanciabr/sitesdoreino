@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ quiz.title }}</title>
+<link rel="canonical" href="{{ canonical }}">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; }
+  main { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem; }
+  fieldset { border: none; padding: 0; margin: 0 0 1.5rem; }
+  legend { font-weight: 600; margin-bottom: .5rem; padding: 0; }
+  label { display: block; padding: .6rem .8rem; margin-bottom: .4rem; background: #fff;
+          border-radius: 8px; border: 1px solid #ddd; }
+  input[type="email"], input[type="text"], input[type="tel"], textarea {
+    width: 100%; box-sizing: border-box; padding: .6rem .8rem; margin-bottom: .8rem;
+    border-radius: 8px; border: 1px solid #ddd; font: inherit;
+  }
+  button { width: 100%; padding: .8rem; font-size: 1rem; border-radius: 8px; border: none;
+           background: #111; color: #fff; }
+  .fala { margin: 0 0 .6rem; padding: .6rem .8rem; border-radius: 8px; max-width: 90%; }
+  .fala.a { background: #fff; border: 1px solid #ddd; }
+  .fala.u { background: #111; color: #fff; margin-left: auto; }
+  .erro { color: #b00020; }
+</style>
+</head>
+<body>
+<main>
+  {% if experiencia.headline %}<h1>{{ experiencia.headline }}</h1>{% else %}<h1>{{ quiz.title }}</h1>{% endif %}
+  {% if experiencia.subheadline %}<p>{{ experiencia.subheadline }}</p>{% endif %}
+  {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
+
+  {% if fallback %}
+  <form class="crivo" method="post" action="{{ acao_url }}">
+    {% csrf_token %}
+    <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
+    <input type="hidden" name="estado" value="{{ estado_token }}">
+    <input type="hidden" name="acao" value="concluir">
+    {% for question in questions %}
+    <fieldset>
+      <legend>{{ question.text }}</legend>
+      {% for option in question.options.all %}
+      <label>
+        <input type="radio" name="pergunta_{{ question.id }}" value="{{ option.id }}" required{% if option.id in opcoes_selecionadas %} checked{% endif %}>
+        {{ option.text }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    {% endfor %}
+    <label>
+      E-mail
+      <input type="email" name="email" value="{{ valores.email }}" required{% if campo_com_erro == "email" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
+    </label>
+    <label>
+      Nome
+      <input type="text" name="nome" value="{{ valores.nome }}"{% if campo_com_erro == "nome" %} autofocus aria-invalid="true"{% endif %}>
+    </label>
+    <label>
+      Telefone
+      <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true"{% endif %}>
+    </label>
+    <button type="submit">Ver resultado</button>
+  </form>
+  {% else %}
+  <section aria-live="polite" aria-label="Conversa">
+    {% for papel, texto in turnos %}<p class="fala {{ papel }}">{{ texto }}</p>{% endfor %}
+  </section>
+  {% if completo %}
+  <form class="crivo" method="post" action="{{ acao_url }}">
+    {% csrf_token %}
+    <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
+    <input type="hidden" name="estado" value="{{ estado_token }}">
+    <input type="hidden" name="acao" value="concluir">
+    <label>
+      E-mail
+      <input type="email" name="email" value="{{ valores.email }}" required{% if campo_com_erro == "email" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
+    </label>
+    <label>
+      Nome
+      <input type="text" name="nome" value="{{ valores.nome }}"{% if campo_com_erro == "nome" %} autofocus aria-invalid="true"{% endif %}>
+    </label>
+    <label>
+      Telefone
+      <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true"{% endif %}>
+    </label>
+    <button type="submit">Ver resultado</button>
+  </form>
+  {% else %}
+  <form method="post" action="{{ acao_url }}">
+    {% csrf_token %}
+    <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
+    <input type="hidden" name="estado" value="{{ estado_token }}">
+    <input type="hidden" name="acao" value="mensagem">
+    <label for="mensagem" style="border:none;background:none;padding:0">Sua resposta</label>
+    <textarea id="mensagem" name="mensagem" rows="3" maxlength="{{ limite_mensagem }}" required autofocus></textarea>
+    <button type="submit">Enviar</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</main>
+</body>
+</html>

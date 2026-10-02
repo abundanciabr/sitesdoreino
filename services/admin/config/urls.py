@@ -91,6 +91,7 @@ from apps.core.conteudos import (
     conteudos, conteudo_novo, conteudo_editar, conteudo_salvar, conteudo_publicar,
     quiz_campanhas,
 )
+from apps.core.quiz_evolucao import quiz_evolucao
 from apps.core.topicos_do_forum import (
     forum_topicos, forum_topico_novo, forum_topico_criar,
     forum_topico_abrir_edicao, forum_topico_editar, forum_topico_salvar,
@@ -235,6 +236,7 @@ urlpatterns = [
     path("conteudos/<slug:tipo>/", conteudos, name="conteudos"),
     path("conteudos/<slug:tipo>/novo", conteudo_novo, name="conteudo_novo"),
     path("conteudos/quiz/<slug:slug>/campanhas", quiz_campanhas, name="quiz_campanhas"),
+    path("conteudos/quiz/<slug:slug>/evolucao", quiz_evolucao, name="quiz_evolucao"),
     path("conteudos/<slug:tipo>/<slug:slug>/", conteudo_editar, name="conteudo_editar"),
     path("conteudos/<slug:tipo>/<slug:slug>/salvar", conteudo_salvar, name="conteudo_salvar"),
     path("conteudos/<slug:tipo>/<slug:slug>/publicar", conteudo_publicar, name="conteudo_publicar"),

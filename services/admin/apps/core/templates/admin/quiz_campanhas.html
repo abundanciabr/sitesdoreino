@@ -5,6 +5,7 @@
   <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Editar quiz</a>
   <h1>Campanhas: {{ slug }}</h1>
   <p class="subtitulo">Visitas, conclusões e cliques de saída por origem e versão.</p>
+  <p><a href="{% url 'quiz_evolucao' slug %}">Ver evolução: funil por etapa, gargalos e propostas de nova versão →</a></p>
 
   <div class="cartao">
     <h2>Filtrar</h2>
@@ -22,7 +23,7 @@
       <label>UTM term<br><input name="utm_term" value="{{ filtros.utm_term }}"></label>
       <button type="submit">Aplicar filtros</button>
     </form>
-    {% if filtros.utm_term %}<p class="nota">UTM term entra nos links, mas não compõe o agrupamento do relatório.</p>{% endif %}
+    {% if filtros.utm_term %}<p class="nota">UTM term entra nos links e aparece na coluna de termo do relatório.</p>{% endif %}
   </div>
 
   <div class="cartao">
@@ -31,16 +32,19 @@
     {% if linhas %}
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;text-align:left">
-          <thead><tr><th>Dia da visita</th><th>Origem / campanha</th><th>Versão / formato / segmento</th><th>Visitas</th><th>Conclusões</th><th>Cliques</th></tr></thead>
+          <thead><tr><th>Dia da visita</th><th>Origem / campanha</th><th>Versão / formato / segmento</th><th>Termo (utm_term)</th><th>Visitas</th><th>Conclusões</th><th>Cliques de saída</th><th>Compras e receita</th></tr></thead>
           <tbody>
             {% for linha in linhas %}
               <tr>
                 <td>{{ linha.dia_origem }}</td>
                 <td>{% firstof linha.src linha.source "—" %} / {% firstof linha.cpg linha.campaign "—" %}</td>
                 <td>{{ linha.version_key }} / {{ linha.fmt|default:"—" }} / {{ linha.seg|default:"—" }}</td>
-                <td>{{ linha.visitas }}</td><td>{{ linha.submissoes }}</td><td>{{ linha.saidas }}</td>
+                <td>{{ linha.term|default:"sem termo" }}</td>
+                <td>{{ linha.visitas }}</td><td>{{ linha.submissoes }}</td>
+                <td>{{ linha.saidas }}{% if linha.saidas_demonstracao %} ({{ linha.saidas_reais }} real, {{ linha.saidas_demonstracao }} demonstração){% endif %}</td>
+                <td>sem dados de compra</td>
               </tr>
-              {% if linha.alertas %}<tr><td colspan="6" class="nota">{{ linha.alertas|join:"; " }}</td></tr>{% endif %}
+              {% if linha.alertas %}<tr><td colspan="8" class="nota">{{ linha.alertas|join:"; " }}</td></tr>{% endif %}
             {% endfor %}
           </tbody>
         </table>

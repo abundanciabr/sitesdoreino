@@ -18,7 +18,12 @@ from django.views.decorators.http import require_POST
 from redis.exceptions import RedisError
 
 from .models import OutboxEvent, Quiz, QuizVersion, Submission, TelemetryEvent
-from .direcionadas import entrada_da_tentativa, resolver_direcionada, url_da_experiencia
+from .direcionadas import (
+    PARAMETROS,
+    entrada_da_tentativa,
+    resolver_direcionada,
+    url_da_experiencia,
+)
 from .experiencias import resolver_experiencia, calcular as calcular_experiencia
 from .tasks import TIPOS_DE_EVENTO, publicar_telemetria, relay_apos_commit
 
@@ -263,6 +268,11 @@ def formulario(request, slug):
     if quiz.directed and request.method == "GET" and not request.GET.get("v"):
         return render(request, "quiz/campanha.html", {"quiz": quiz})
     entrada, versao = resolver_sessao(request, quiz)
+    if quiz.directed and (entrada.get("context") or {}).get("fmt") == "ai":
+        # Importado aqui: conversa.py importa este módulo.
+        from .conversa import formulario_ai
+
+        return formulario_ai(request, quiz, versao, entrada)
     questions = versao.questions.prefetch_related("options")
 
     if request.method != "POST":
@@ -552,7 +562,11 @@ def sair(request, slug):
         f"utm_{chave}": valor for chave, valor in submissao.utm.items() if valor
     }
     parametros.update(
-        {chave: valor for chave, valor in submissao.context.items() if valor}
+        {
+            chave: valor
+            for chave, valor in submissao.context.items()
+            if chave in PARAMETROS and isinstance(valor, str) and valor
+        }
     )
     adicionais = urlencode(
         {chave: valor for chave, valor in parametros.items() if chave not in existentes}

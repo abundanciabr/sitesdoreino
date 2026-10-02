@@ -252,3 +252,45 @@ class PortfolioExploration(models.Model):
                 fields=["site", "aluno_id", "-created_at"], name="portfolio_aluno_atual"
             )
         ]
+
+
+class PropostaDeVersao(models.Model):
+    """Ideia de nova versão do quiz, nascida de um gargalo medido.
+
+    Só registra a ideia e a decisão. Nunca altera versão existente: aceitar
+    apenas indica a key nova que o estúdio deve criar.
+    """
+
+    ESTADOS = [
+        ("proposta", "Proposta"),
+        ("aceita", "Aceita"),
+        ("descartada", "Descartada"),
+        ("publicada", "Publicada"),
+        ("medida", "Medida"),
+    ]
+    PRIORIDADES = [("alta", "Alta"), ("media", "Média"), ("baixa", "Baixa")]
+
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="propostas")
+    versao_base = models.SlugField(max_length=100)
+    gargalo = models.CharField(max_length=200, blank=True, default="")
+    hipotese = models.TextField()
+    prioridade = models.CharField(max_length=8, choices=PRIORIDADES, default="media")
+    mudanca = models.TextField()
+    key_sugerida = models.SlugField(max_length=100)
+    estado = models.CharField(max_length=12, choices=ESTADOS, default="proposta")
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+    aceita_em = models.DateTimeField(null=True, blank=True)
+    descartada_em = models.DateTimeField(null=True, blank=True)
+    publicada_em = models.DateTimeField(null=True, blank=True)
+    medida_em = models.DateTimeField(null=True, blank=True)
+    resultado_texto = models.TextField(blank=True, default="")
+    resultado_json = models.JSONField(default=dict, blank=True)
+    decisao_seguinte = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-criada_em", "-id"]
+        indexes = [models.Index(fields=["quiz", "estado"], name="proposta_quiz_estado")]
+
+
+from .integracoes.models import IntegracaoEnvio  # noqa: E402,F401  registra o modelo no app

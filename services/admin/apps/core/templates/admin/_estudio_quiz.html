@@ -1,0 +1,555 @@
+{% comment %}
+Estúdio visual do quiz direcionado (documento quiz-low-ticket/2). Entra DENTRO do
+formulário de conteudo_editar.html. O servidor entrega o documento em JSON; o JS
+monta os campos, mantém o textarea "Documento JSON" sempre atualizado e o envio
+segue o mesmo caminho do rascunho. Sem JS, o modo avançado (textarea) continua
+funcionando. O CSS e o JS ficam aqui dentro pelo mesmo motivo do base.html: zero
+rota de estático. O endereço de checkout não é editado aqui; o que já existe no
+documento é preservado e a conexão é feita depois.
+{% endcomment %}
+<style>
+  .estudio { margin: 12px 0; }
+  .estudio fieldset { border: 1px solid var(--linha); border-radius: 10px; margin: 10px 0; padding: 10px 14px; }
+  .estudio legend { font-weight: 700; padding: 0 6px; }
+  .estudio label { display: block; font-size: 13px; color: var(--texto-2); margin: 6px 0; }
+  .estudio input, .estudio select, .estudio textarea { width: 100%; max-width: 640px; }
+  .estudio .linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .estudio .linha > label { flex: 1 1 140px; margin: 4px 0; }
+  .estudio .linha input[type=number] { max-width: 120px; }
+  .estudio .abas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .estudio .aba { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--linha); background: transparent; color: var(--texto); cursor: pointer; }
+  .estudio .aba.ativa { border-color: var(--azul); color: var(--azul); }
+  .estudio .mini { padding: 2px 8px; font-size: 12px; cursor: pointer; }
+  .estudio .nota { color: var(--texto-3); font-size: 12px; margin: 4px 0; }
+  .estudio .etiqueta { font-size: 11px; color: var(--verde); border: 1px solid var(--verde); border-radius: 6px; padding: 0 6px; margin-left: 6px; }
+  .estudio .erros { border: 1px solid var(--vermelho); border-radius: 10px; padding: 8px 14px; margin: 10px 0; }
+  .estudio .erros li { margin: 4px 0; }
+  .estudio .ok { border: 1px solid var(--verde); border-radius: 10px; padding: 8px 14px; margin: 10px 0; }
+  .estudio .previa { border: 1px dashed var(--azul); border-radius: 10px; padding: 10px 14px; margin: 12px 0; }
+  .estudio .previa .opcao { display: block; margin: 2px 0; font-size: 14px; color: var(--texto); }
+  .estudio .previa .opcao input { width: auto; }
+  .estudio .resultado { border: 1px solid var(--linha); border-radius: 10px; padding: 8px 14px; margin: 8px 0; }
+  .estudio code { font-size: 12px; }
+</style>
+<div class="estudio">
+  <h3>Estúdio da campanha</h3>
+  <p class="nota">Edite pelos campos. As versões já publicadas não mudam: para alterar uma, crie uma cópia com outra chave. O endereço de checkout das ofertas é conectado depois e não aparece aqui. Para gerar links em escala, use <a href="{% url 'quiz_campanhas' slug %}">campanhas e links deste quiz</a>.</p>
+  {% if erros_estudio %}
+  <div class="erros" role="alert">
+    <b>Corrija antes de salvar:</b>
+    <ul>{% for e in erros_estudio %}<li>{{ e.texto }}{% if e.caminho %} <small>(<code>{{ e.caminho }}</code>)</small>{% endif %}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {{ estudio_dados|json_script:"estudio-dados" }}
+  <noscript><p class="aviso">Sem JavaScript o estúdio não abre. Use o modo avançado abaixo (Documento JSON).</p></noscript>
+  <div id="estudio-erros" class="erros" role="alert" hidden></div>
+  <div id="estudio-ok" class="ok" hidden></div>
+  <div id="estudio-app"></div>
+
+  <fieldset>
+    <legend>Duplicar versão</legend>
+    <p class="nota">Cria no rascunho uma cópia da versão escolhida com a chave nova (ex.: B2 vira B3). A original continua intacta e selecionável.</p>
+    <div class="linha">
+      <label>Copiar a versão
+        <select name="versao_origem" id="estudio-origem">
+          {% for v in versoes_estudio %}<option value="{{ v.key }}" data-sugestao="{{ v.sugestao }}">{{ v.key }}{% if v.publicada %} (publicada){% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Chave da cópia
+        <input name="versao_nova" id="estudio-nova" maxlength="100" placeholder="B3" value="{% if versoes_estudio %}{{ versoes_estudio.0.sugestao }}{% endif %}">
+      </label>
+      <button type="submit" name="acao" value="duplicar">Criar cópia no rascunho</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Prévia isolada</legend>
+    <p class="nota">Percorra perguntas, resultado e oferta com o que está na tela, mesmo sem salvar. Nada é gravado: nenhuma resposta, medição ou cookie.</p>
+    <div class="linha">
+      <label>Versão <select id="previa-versao"></select></label>
+      <label>Formato <select id="previa-fmt"></select></label>
+      <label>Segmento <select id="previa-seg"></select></label>
+      <button type="button" id="previa-abrir">Abrir prévia</button>
+      <button type="button" id="estudio-conferir">Conferir documento</button>
+    </div>
+    <div id="previa-corpo"></div>
+  </fieldset>
+
+  <details {% if erros_estudio and not versoes_estudio %}open{% endif %}>
+    <summary>Modo avançado: editar o documento inteiro em JSON</summary>
+    <p class="nota">O estúdio e este campo andam juntos. Ao alterar o texto aqui e sair do campo, o estúdio recarrega.</p>
+    <label>Documento JSON<br><textarea name="documento_json" id="estudio-json" rows="20" style="width:100%">{{ documento_json }}</textarea></label>
+  </details>
+</div>
+{% verbatim %}
+<script>
+(function () {
+  var dados = JSON.parse(document.getElementById('estudio-dados').textContent);
+  var ta = document.getElementById('estudio-json');
+  var app = document.getElementById('estudio-app');
+  var form = ta.form;
+  var CK = 'checkout' + '_url'; // preservado no documento, nunca editado aqui
+  var FORMATOS = [['text', 'Texto'], ['video', 'Vídeo'], ['hybrid', 'Vídeo e texto'], ['calc', 'Calculadora'], ['ai', 'Agente de IA']];
+  var NOME_FORMATO = {}; FORMATOS.forEach(function (f) { NOME_FORMATO[f[0]] = f[1]; });
+  var doc = null;
+  var ativa = 0;
+  var ultimaPrevia = null;
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === 'class') el.className = attrs[k];
+      else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), attrs[k]);
+      else if (attrs[k] !== false && attrs[k] !== null && attrs[k] !== undefined) el.setAttribute(k, attrs[k] === true ? '' : attrs[k]);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c === null || c === undefined || c === false) continue;
+      el.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+    }
+    return el;
+  }
+
+  function novaVersao(chave) {
+    return {
+      key: chave, default_format: 'text',
+      formats: { text: { headline: '', subheadline: '' } },
+      perguntas: [{ id: 'p1', texto: '', opcoes: [{ id: 'o1', texto: '', pontos: 0 }, { id: 'o2', texto: '', pontos: 1 }] }],
+      faixas: [{ key: 'faixa-1', title: '', description: '', min_score: 0, max_score: 1, oferta_id: (doc.ofertas[0] || {}).id, botao_rotulo: '' }],
+      segments: {}
+    };
+  }
+  function normalizar(d) {
+    if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
+    d.formato = 'quiz-low-ticket/2';
+    if (!d.quiz || typeof d.quiz !== 'object') d.quiz = {};
+    if (!d.quiz.slug) d.quiz.slug = dados.slug;
+    if (typeof d.quiz.title !== 'string') d.quiz.title = '';
+    if (!Array.isArray(d.ofertas)) d.ofertas = [];
+    var padrao = ['oferta-a', 'oferta-b'];
+    while (d.ofertas.length < 2) { var o = { id: padrao[d.ofertas.length], nome: '' }; o[CK] = null; d.ofertas.push(o); }
+    d.ofertas.forEach(function (o) {
+      ['nome', 'para_quem', 'entrega'].forEach(function (k) { if (typeof o[k] !== 'string') o[k] = ''; });
+      if (!(CK in o)) o[CK] = null;
+    });
+    if (!Array.isArray(d.versoes)) d.versoes = [];
+    d.versoes.forEach(function (v) {
+      if (!v.formats || typeof v.formats !== 'object') v.formats = {};
+      if (!v.segments || typeof v.segments !== 'object') v.segments = {};
+      if (!Array.isArray(v.perguntas)) v.perguntas = [];
+      if (!Array.isArray(v.faixas)) v.faixas = [];
+    });
+    doc = d;
+    if (!doc.versoes.length) doc.versoes.push(novaVersao('A'));
+    return d;
+  }
+  function sync() {
+    ta.value = JSON.stringify(doc, null, 2);
+    var oculto = form.querySelector('input[name=versao_ativa]');
+    if (oculto && doc.versoes[ativa]) oculto.value = doc.versoes[ativa].key || '';
+  }
+  function publicada(v) { return dados.publicadas.indexOf(v.key) >= 0; }
+  function mover(lista, i, d) {
+    var j = i + d;
+    if (j < 0 || j >= lista.length) return;
+    var t = lista[i]; lista[i] = lista[j]; lista[j] = t;
+  }
+  function proximoId(prefixo, itens) {
+    var usados = {}; itens.forEach(function (x) { usados[x.id] = true; });
+    var n = itens.length + 1;
+    while (usados[prefixo + n]) n++;
+    return prefixo + n;
+  }
+
+  // campos --------------------------------------------------------------
+  function campo(rotulo, obj, chave, o) {
+    o = o || {};
+    var tipo = o.tipo || 'text';
+    var valor = obj[chave];
+    var entrada;
+    if (tipo === 'area') entrada = h('textarea', { rows: o.linhas || 3 });
+    else entrada = h('input', { type: tipo === 'number' ? 'number' : 'text' });
+    entrada.value = valor === null || valor === undefined ? '' : String(valor);
+    if (o.somenteLeitura) entrada.setAttribute('readonly', '');
+    if (o.dica) entrada.setAttribute('placeholder', o.dica);
+    entrada.addEventListener(o.aoSair ? 'change' : 'input', function () {
+      var v = entrada.value;
+      if (tipo === 'number') v = v.trim() === '' ? '' : Number(v);
+      if (o.nuloSeVazio && v === '') v = null;
+      var antigo = obj[chave];
+      obj[chave] = v;
+      if (o.depois) o.depois(v, antigo);
+      sync();
+    });
+    return h('label', {}, rotulo, h('br'), entrada);
+  }
+  function botao(texto, fn, extra) {
+    return h('button', { type: 'button', class: 'mini', onclick: function () { fn(); sync(); desenhar(); }, title: extra || '' }, texto);
+  }
+  function barra(lista, i, aoRemover, rotuloRemover) {
+    return h('span', {},
+      botao('↑', function () { mover(lista, i, -1); }, 'Subir'),
+      botao('↓', function () { mover(lista, i, 1); }, 'Descer'),
+      botao(rotuloRemover || 'Remover', function () { if (aoRemover) aoRemover(); else lista.splice(i, 1); }));
+  }
+
+  // seções --------------------------------------------------------------
+  function secaoQuiz() {
+    return h('fieldset', {}, h('legend', {}, 'Campanha'),
+      campo('Título do quiz', doc.quiz, 'title'),
+      h('p', { class: 'nota' }, 'Endereço: ' + doc.quiz.slug + ' (não muda)'));
+  }
+  function secaoOfertas() {
+    var f = h('fieldset', {}, h('legend', {}, 'As duas ofertas'));
+    doc.ofertas.forEach(function (o, i) {
+      f.appendChild(h('fieldset', {}, h('legend', {}, 'Oferta ' + (i + 1) + ' (' + o.id + ')'),
+        campo('Nome', o, 'nome'),
+        campo('Para quem é', o, 'para_quem', { tipo: 'area' }),
+        campo('O que entrega', o, 'entrega', { tipo: 'area' }),
+        h('p', { class: 'nota' }, o[CK] ? 'Checkout já conectado (não muda aqui).' : 'Checkout ainda não conectado: o botão aparece em modo demonstração até a conexão.')));
+    });
+    return f;
+  }
+  function abas() {
+    var caixa = h('div', { class: 'abas' });
+    doc.versoes.forEach(function (v, i) {
+      caixa.appendChild(h('button', { type: 'button', class: 'aba' + (i === ativa ? ' ativa' : ''), onclick: function () { ativa = i; sync(); desenhar(); } },
+        v.key || '(sem chave)', publicada(v) ? h('span', { class: 'etiqueta' }, 'publicada') : null));
+    });
+    caixa.appendChild(h('button', { type: 'button', class: 'mini', onclick: function () {
+      var existentes = doc.versoes.map(function (v) { return v.key; });
+      var n = doc.versoes.length + 1, chave = 'V' + n;
+      while (existentes.indexOf(chave) >= 0) { n++; chave = 'V' + n; }
+      doc.versoes.push(novaVersao(chave)); ativa = doc.versoes.length - 1; sync(); desenhar();
+    } }, '+ Versão em branco'));
+    return caixa;
+  }
+  function secaoBasico(v) {
+    var bloqueada = publicada(v);
+    var f = h('fieldset', {}, h('legend', {}, 'Versão ' + (v.key || '')),
+      bloqueada ? h('p', { class: 'nota' }, 'Esta versão já está publicada e não pode ser alterada. Para mudar, use Duplicar versão e edite a cópia.') : null,
+      h('div', { class: 'linha' },
+        campo('Chave da versão (ex.: B2)', v, 'key', { aoSair: true, depois: function () { sync(); desenhar(); } })));
+    var sel = h('select', { onchange: function () { v.default_format = sel.value; sync(); } });
+    Object.keys(v.formats).forEach(function (k) { sel.appendChild(h('option', { value: k, selected: v.default_format === k }, NOME_FORMATO[k] || k)); });
+    f.appendChild(h('label', {}, 'Formato que abre primeiro', h('br'), sel));
+    if (!bloqueada) f.appendChild(botao('Remover esta versão', function () {
+      if (doc.versoes.length <= 1) return;
+      if (!confirm('Remover a versão ' + v.key + ' do rascunho?')) return;
+      doc.versoes.splice(ativa, 1); ativa = Math.max(0, ativa - 1);
+    }));
+    return f;
+  }
+  function secaoFormatos(v) {
+    var f = h('fieldset', {}, h('legend', {}, 'Formatos de abertura'));
+    FORMATOS.forEach(function (par) {
+      var k = par[0], d = v.formats[k];
+      var marca = h('input', { type: 'checkbox', checked: !!d, onchange: function () {
+        if (marca.checked) {
+          var novo = { headline: '', subheadline: '' };
+          if (k === 'video' || k === 'hybrid') novo.video_url = '';
+          if (k === 'ai') novo.instructions = '';
+          if (k === 'calc') novo.calculator = { inputs: [{ key: 'valor', label: 'Valor', min: 0, max: 100, default: 10 }], expression: 'valor * 2', result_label: 'Resultado' };
+          v.formats[k] = novo;
+        } else {
+          delete v.formats[k];
+          if (v.default_format === k) v.default_format = Object.keys(v.formats)[0] || '';
+        }
+        sync(); desenhar();
+      } });
+      var bloco = h('fieldset', {}, h('legend', {}, h('label', { style: 'display:inline' }, marca, ' ' + par[1])));
+      if (d) {
+        bloco.appendChild(campo('Título da página', d, 'headline'));
+        bloco.appendChild(campo('Subtítulo', d, 'subheadline', { tipo: 'area' }));
+        if (k === 'video' || k === 'hybrid') bloco.appendChild(campo('Endereço do vídeo (https, YouTube embed ou .mp4/.webm)', d, 'video_url'));
+        if (k === 'ai') bloco.appendChild(campo('Instruções para o agente', d, 'instructions', { tipo: 'area', linhas: 4 }));
+        if (k === 'calc') bloco.appendChild(blocoCalculadora(d.calculator));
+      }
+      f.appendChild(bloco);
+    });
+    return f;
+  }
+  function blocoCalculadora(c) {
+    var caixa = h('div', {}, h('b', {}, 'Calculadora'));
+    c.inputs.forEach(function (e, i) {
+      caixa.appendChild(h('div', { class: 'linha' },
+        campo('Chave (letras, números e _)', e, 'key'),
+        campo('Rótulo', e, 'label'),
+        campo('Mínimo', e, 'min', { tipo: 'number' }),
+        campo('Máximo', e, 'max', { tipo: 'number' }),
+        campo('Valor inicial', e, 'default', { tipo: 'number' }),
+        barra(c.inputs, i)));
+    });
+    caixa.appendChild(botao('+ Entrada', function () { c.inputs.push({ key: 'x' + (c.inputs.length + 1), label: '', min: 0, max: 100, default: 0 }); }));
+    caixa.appendChild(campo('Expressão (use as chaves e + - * /)', c, 'expression'));
+    caixa.appendChild(campo('Rótulo do resultado', c, 'result_label'));
+    return caixa;
+  }
+  function limites(v) {
+    var mn = 0, mx = 0;
+    v.perguntas.forEach(function (p) {
+      var pts = (p.opcoes || []).map(function (o) { return Number(o.pontos) || 0; });
+      if (pts.length) { mn += Math.min.apply(null, pts); mx += Math.max.apply(null, pts); }
+    });
+    return [mn, mx];
+  }
+  function secaoPerguntas(v) {
+    var l = limites(v);
+    var f = h('fieldset', {}, h('legend', {}, 'Perguntas e pontos'),
+      h('p', { class: 'nota' }, 'Pontuação possível nesta versão: de ' + l[0] + ' a ' + l[1] + '. As faixas precisam cobrir todos os valores.'));
+    v.perguntas.forEach(function (p, i) {
+      var c = h('fieldset', {}, h('legend', {}, 'Pergunta ' + (i + 1)),
+        h('div', { class: 'linha' }, campo('Texto da pergunta', p, 'texto'), campo('Identificador', p, 'id'), barra(v.perguntas, i)));
+      p.opcoes.forEach(function (o, j) {
+        c.appendChild(h('div', { class: 'linha' }, campo('Opção ' + (j + 1), o, 'texto'), campo('Pontos', o, 'pontos', { tipo: 'number' }), campo('Identificador', o, 'id'), barra(p.opcoes, j)));
+      });
+      c.appendChild(botao('+ Opção', function () { p.opcoes.push({ id: proximoId('o', p.opcoes), texto: '', pontos: 0 }); }));
+      f.appendChild(c);
+    });
+    f.appendChild(botao('+ Pergunta', function () {
+      v.perguntas.push({ id: proximoId('p', v.perguntas), texto: '', opcoes: [{ id: 'o1', texto: '', pontos: 0 }, { id: 'o2', texto: '', pontos: 1 }] });
+    }));
+    return f;
+  }
+  function renomearFaixa(v, antigo, novo) {
+    Object.keys(v.segments).forEach(function (s) {
+      var r = v.segments[s].results;
+      if (r && antigo in r && antigo !== novo) { r[novo] = r[antigo]; delete r[antigo]; }
+    });
+  }
+  function secaoFaixas(v) {
+    var l = limites(v);
+    var f = h('fieldset', {}, h('legend', {}, 'Faixas de resultado'),
+      h('p', { class: 'nota' }, 'Sem sobreposição e sem buracos entre ' + l[0] + ' e ' + l[1] + ' pontos.'));
+    v.faixas.forEach(function (x, i) {
+      var sel = h('select', { onchange: function () { x.oferta_id = sel.value; sync(); } });
+      doc.ofertas.forEach(function (o) { sel.appendChild(h('option', { value: o.id, selected: x.oferta_id === o.id }, o.nome ? o.nome + ' (' + o.id + ')' : o.id)); });
+      f.appendChild(h('fieldset', {}, h('legend', {}, 'Faixa ' + (i + 1)),
+        h('div', { class: 'linha' },
+          campo('Chave', x, 'key', { aoSair: true, depois: function (n, a) { renomearFaixa(v, a, n); sync(); desenhar(); } }),
+          campo('Título', x, 'title'),
+          campo('De (pontos)', x, 'min_score', { tipo: 'number' }),
+          campo('Até (pontos)', x, 'max_score', { tipo: 'number' }),
+          h('label', {}, 'Oferta', h('br'), sel),
+          campo('Texto do botão', x, 'botao_rotulo'),
+          barra(v.faixas, i, function () {
+            Object.keys(v.segments).forEach(function (s) { if (v.segments[s].results) delete v.segments[s].results[x.key]; });
+            v.faixas.splice(i, 1);
+          })),
+        campo('Descrição', x, 'description', { tipo: 'area' })));
+    });
+    f.appendChild(botao('+ Faixa', function () {
+      var topo = v.faixas.reduce(function (m, x) { return Math.max(m, Number(x.max_score) || 0); }, -1) + 1;
+      var n = v.faixas.length + 1, chave = 'faixa-' + n;
+      while (v.faixas.some(function (x) { return x.key === chave; })) { n++; chave = 'faixa-' + n; }
+      v.faixas.push({ key: chave, title: '', description: '', min_score: topo, max_score: topo, oferta_id: (doc.ofertas[0] || {}).id, botao_rotulo: '' });
+    }));
+    return f;
+  }
+  function secaoSegmentos(v) {
+    var f = h('fieldset', {}, h('legend', {}, 'Segmentos e resultados por segmento'),
+      h('p', { class: 'nota' }, 'Um segmento troca título, subtítulo, vídeo e, se quiser, o texto de cada faixa para quem chega por aquele link.'));
+    Object.keys(v.segments).forEach(function (nome) {
+      var s = v.segments[nome];
+      if (!s.results || typeof s.results !== 'object') s.results = {};
+      var c = h('fieldset', {}, h('legend', {}, 'Segmento ' + nome));
+      c.appendChild(h('div', { class: 'linha' },
+        campo('Nome (letras minúsculas, números e hífen)', { n: nome }, 'n', { aoSair: true, depois: function (novo) {
+          if (!novo || novo === nome || novo in v.segments) { desenhar(); return; }
+          var refeito = {}; Object.keys(v.segments).forEach(function (k) { refeito[k === nome ? novo : k] = v.segments[k]; });
+          v.segments = refeito; sync(); desenhar();
+        } }),
+        botao('Remover segmento', function () { delete v.segments[nome]; })));
+      c.appendChild(campo('Título da página', s, 'headline'));
+      c.appendChild(campo('Subtítulo', s, 'subheadline', { tipo: 'area' }));
+      c.appendChild(campo('Endereço do vídeo (opcional)', s, 'video_url', { nuloSeVazio: true }));
+      v.faixas.forEach(function (x) {
+        var r = s.results[x.key];
+        var marca = h('input', { type: 'checkbox', checked: !!r, onchange: function () {
+          if (marca.checked) s.results[x.key] = { title: x.title, description: x.description, botao_rotulo: x.botao_rotulo };
+          else delete s.results[x.key];
+          sync(); desenhar();
+        } });
+        var bloco = h('fieldset', {}, h('legend', {}, h('label', { style: 'display:inline' }, marca, ' Texto próprio para a faixa ' + x.key)));
+        if (r) {
+          bloco.appendChild(campo('Título do resultado', r, 'title'));
+          bloco.appendChild(campo('Descrição', r, 'description', { tipo: 'area' }));
+          bloco.appendChild(campo('Texto do botão', r, 'botao_rotulo'));
+        }
+        c.appendChild(bloco);
+      });
+      f.appendChild(c);
+    });
+    var nome = h('input', { type: 'text', placeholder: 'novo-segmento', maxlength: '100' });
+    f.appendChild(h('div', { class: 'linha' }, h('label', {}, 'Novo segmento', h('br'), nome), botao('+ Segmento', function () {
+      var n = nome.value.trim().toLowerCase();
+      if (!n || n in v.segments) return;
+      v.segments[n] = { headline: '', subheadline: '', video_url: null, results: {} };
+    })));
+    return f;
+  }
+
+  function desenhar() {
+    var rolagem = window.scrollY;
+    app.textContent = '';
+    if (ativa >= doc.versoes.length) ativa = 0;
+    var v = doc.versoes[ativa];
+    app.appendChild(secaoQuiz());
+    app.appendChild(secaoOfertas());
+    app.appendChild(h('h3', {}, 'Versões'));
+    app.appendChild(abas());
+    app.appendChild(secaoBasico(v));
+    app.appendChild(secaoFormatos(v));
+    app.appendChild(secaoPerguntas(v));
+    app.appendChild(secaoFaixas(v));
+    app.appendChild(secaoSegmentos(v));
+    atualizarSeletoresDaPrevia();
+    var origem = document.getElementById('estudio-origem');
+    if (origem && v.key) { for (var i = 0; i < origem.options.length; i++) if (origem.options[i].value === v.key) origem.selectedIndex = i; atualizarSugestao(); }
+    window.scrollTo(0, rolagem);
+  }
+
+  // duplicar: a sugestão acompanha a versão escolhida -------------------
+  function atualizarSugestao() {
+    var origem = document.getElementById('estudio-origem'), nova = document.getElementById('estudio-nova');
+    if (!origem || !nova || !origem.selectedOptions.length) return;
+    nova.value = origem.selectedOptions[0].getAttribute('data-sugestao') || '';
+  }
+  document.getElementById('estudio-origem').addEventListener('change', atualizarSugestao);
+
+  // prévia e conferência ------------------------------------------------
+  function opcoes(sel, itens, atual) {
+    sel.textContent = '';
+    itens.forEach(function (i) { sel.appendChild(h('option', { value: i[0], selected: i[0] === atual }, i[1])); });
+  }
+  function atualizarSeletoresDaPrevia() {
+    var sv = document.getElementById('previa-versao'), sf = document.getElementById('previa-fmt'), ss = document.getElementById('previa-seg');
+    var anterior = sv.value || (doc.versoes[ativa] || {}).key;
+    opcoes(sv, doc.versoes.map(function (v) { return [v.key, v.key + (publicada(v) ? ' (publicada)' : ' (rascunho)')]; }), anterior);
+    var v = doc.versoes.filter(function (x) { return x.key === sv.value; })[0] || doc.versoes[0];
+    opcoes(sf, Object.keys(v.formats).map(function (k) { return [k, NOME_FORMATO[k] || k]; }), sf.value || v.default_format);
+    opcoes(ss, [['', 'Sem segmento']].concat(Object.keys(v.segments).map(function (k) { return [k, k]; })), ss.value);
+  }
+  document.getElementById('previa-versao').addEventListener('change', function () {
+    document.getElementById('previa-fmt').value = ''; document.getElementById('previa-seg').value = ''; atualizarSeletoresDaPrevia();
+  });
+
+  function pedir(extra) {
+    var corpo = new URLSearchParams();
+    corpo.set('modo_quiz', 'direcionado');
+    corpo.set('documento_json', JSON.stringify(doc));
+    var token = form.querySelector('input[name=csrfmiddlewaretoken]');
+    if (token) corpo.set('csrfmiddlewaretoken', token.value);
+    Object.keys(extra).forEach(function (k) { if (extra[k] !== '' && extra[k] !== undefined) corpo.set(k, extra[k]); });
+    return fetch(form.getAttribute('action'), { method: 'POST', body: corpo, credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, dados: j }; }); })
+      .catch(function () { return { ok: false, dados: { erro: { texto: 'Não consegui falar com o servidor agora.' } } }; });
+  }
+  function mostrarErro(erro) {
+    var caixa = document.getElementById('estudio-erros');
+    document.getElementById('estudio-ok').hidden = true;
+    caixa.textContent = '';
+    if (!erro) { caixa.hidden = true; return; }
+    var item = h('p', {}, h('b', {}, 'Corrija: '), erro.texto || 'Algo não passou na conferência.');
+    if (erro.caminho) item.appendChild(h('small', {}, ' (' + erro.caminho + ')'));
+    if (erro.versao !== null && erro.versao !== undefined && doc.versoes[erro.versao]) {
+      item.appendChild(document.createTextNode(' '));
+      item.appendChild(h('button', { type: 'button', class: 'mini', onclick: function () { ativa = erro.versao; sync(); desenhar(); window.scrollTo(0, 0); } }, 'Ir para a versão ' + (doc.versoes[erro.versao].key || '')));
+    }
+    caixa.appendChild(item);
+    caixa.hidden = false;
+  }
+  function mostrarOk(texto) {
+    mostrarErro(null);
+    var caixa = document.getElementById('estudio-ok');
+    caixa.textContent = texto; caixa.hidden = false;
+  }
+  document.getElementById('estudio-conferir').addEventListener('click', function () {
+    pedir({ acao: 'conferir' }).then(function (r) {
+      if (r.ok) mostrarOk('Tudo certo: o quiz aceitou o documento.');
+      else mostrarErro(r.dados.erro);
+    });
+  });
+
+  function paramsDaPrevia() {
+    return { acao: 'previa', versao: document.getElementById('previa-versao').value, fmt: document.getElementById('previa-fmt').value, seg: document.getElementById('previa-seg').value };
+  }
+  function desenharPrevia(d, respostas, valores) {
+    var corpo = document.getElementById('previa-corpo');
+    corpo.textContent = '';
+    var e = d.experiencia;
+    corpo.appendChild(h('div', { class: 'resultado' }, h('b', {}, e.headline), h('p', {}, e.subheadline),
+      e.video_url ? h('p', { class: 'nota' }, 'Vídeo: ' + e.video_url) : null));
+    var campos = {};
+    if (e.fmt === 'calc' && e.calculator) {
+      var cx = h('div', { class: 'linha' });
+      e.calculator.inputs.forEach(function (i) {
+        var inp = h('input', { type: 'number', min: i.min, max: i.max, value: valores && valores[i.key] !== undefined ? valores[i.key] : i.default });
+        campos[i.key] = inp;
+        cx.appendChild(h('label', {}, i.label, h('br'), inp));
+      });
+      corpo.appendChild(cx);
+    }
+    var radios = {};
+    d.perguntas.forEach(function (p, n) {
+      var bloco = h('fieldset', {}, h('legend', {}, (n + 1) + '. ' + p.texto));
+      p.opcoes.forEach(function (o) {
+        var r = h('input', { type: 'radio', name: 'previa_' + p.id, value: o.id, checked: respostas && respostas[p.id] === o.id });
+        bloco.appendChild(h('label', { class: 'opcao' }, r, ' ' + o.texto));
+      });
+      radios[p.id] = bloco; corpo.appendChild(bloco);
+    });
+    corpo.appendChild(h('button', { type: 'button', onclick: function () {
+      var r = {}, v = {};
+      d.perguntas.forEach(function (p) { var m = radios[p.id].querySelector('input:checked'); if (m) r[p.id] = m.value; });
+      Object.keys(campos).forEach(function (k) { v[k] = Number(campos[k].value); });
+      var extra = paramsDaPrevia(); extra.respostas = JSON.stringify(r);
+      if (Object.keys(v).length) extra.valores = JSON.stringify(v);
+      pedir(extra).then(function (res) {
+        if (!res.ok) { mostrarErro(res.dados.erro); return; }
+        mostrarErro(null); desenharPrevia(res.dados, r, v); mostrarResultado(res.dados);
+      });
+    } }, 'Ver resultado'));
+    corpo.appendChild(h('div', { id: 'previa-resultado' }));
+  }
+  function mostrarResultado(d) {
+    var alvo = document.getElementById('previa-resultado');
+    alvo.textContent = '';
+    if (d.pontuacao === undefined) return;
+    var b = d.faixa, o = d.oferta;
+    alvo.appendChild(h('div', { class: 'resultado' },
+      h('p', { class: 'nota' }, 'Pontuação: ' + d.pontuacao + ' (faixa ' + b.key + ', de ' + b.min_score + ' a ' + b.max_score + ')'),
+      h('b', {}, b.title), h('p', {}, b.description),
+      h('p', {}, 'Botão: ' + b.botao_rotulo + (o.demonstracao ? ' (demonstração: checkout ainda não conectado)' : ' leva a ' + b.botao_destino)),
+      h('p', {}, 'Oferta: ' + o.nome + (o.para_quem ? ' · Para quem: ' + o.para_quem : '') + (o.entrega ? ' · Entrega: ' + o.entrega : '')),
+      d.calculo ? h('p', {}, d.calculo.result_label + ': ' + d.calculo.result) : null));
+  }
+  document.getElementById('previa-abrir').addEventListener('click', function () {
+    pedir(paramsDaPrevia()).then(function (r) {
+      if (!r.ok) { mostrarErro(r.dados.erro); return; }
+      mostrarErro(null); desenharPrevia(r.dados, null, null);
+    });
+  });
+
+  // modo avançado: o texto manda, o estúdio recarrega ---------------------
+  ta.addEventListener('change', function () {
+    try { normalizar(JSON.parse(ta.value)); mostrarErro(null); ativa = 0; sync(); desenhar(); }
+    catch (e) { mostrarErro({ texto: 'O texto do modo avançado não é um JSON válido.' }); }
+  });
+
+  // início ------------------------------------------------------------------
+  var inicial = null;
+  try { inicial = ta.value.trim() ? JSON.parse(ta.value) : null; } catch (e) { inicial = null; }
+  normalizar(inicial || dados.documento || null);
+  if (dados.versao_ativa) {
+    var achada = doc.versoes.findIndex(function (v) { return v.key === dados.versao_ativa; });
+    if (achada >= 0) ativa = achada;
+  }
+  // Quiz novo: o textarea só ganha conteúdo quando a pessoa mexe, para não inventar documento.
+  if (inicial || dados.documento) sync();
+  form.addEventListener('input', function () { if (!ta.value.trim()) sync(); }, true);
+  form.addEventListener('submit', function () { sync(); });
+  desenhar();
+})();
+</script>
+{% endverbatim %}

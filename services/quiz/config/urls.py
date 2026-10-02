@@ -6,6 +6,9 @@ from apps.quiz.laboratorio import observacao
 from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
 from apps.quiz import portfolio
 from apps.quiz import painel_campanhas
+from apps.quiz import conversa as quiz_conversa
+from apps.quiz import evolucao
+from apps.quiz.previa import previa as previa_editor
 
 urlpatterns = [
     path("healthz", healthz),
@@ -14,6 +17,13 @@ urlpatterns = [
     path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
     path("interno/editor/quizzes/<slug:slug>/campanhas", painel_campanhas.relatorio),
     path("interno/editor/quizzes/<slug:slug>/links", painel_campanhas.links),
+    path("interno/editor/quizzes/<slug:slug>/previa", previa_editor),
+    path("interno/editor/quizzes/<slug:slug>/evolucao", evolucao.leitura),
+    path("interno/editor/quizzes/<slug:slug>/propostas", evolucao.propostas),
+    path(
+        "interno/editor/quizzes/<slug:slug>/propostas/<int:proposta_id>",
+        evolucao.proposta,
+    ),
     path("interno/portfolio/catalogo", portfolio.catalogo),
     path("interno/portfolio/exploracoes", portfolio.exploracoes),
     path("interno/portfolio/exploracoes/atual", portfolio.exploracao_atual),
@@ -49,6 +59,7 @@ urlpatterns = [
     path("<slug:slug>/sair", quiz_views.sair, name="quiz-sair"),
     path("<slug:slug>/demonstracao", quiz_views.demonstracao, name="quiz-demonstracao"),
     path("<slug:slug>/calcular", quiz_views.calcular, name="quiz-calcular"),
+    path("<slug:slug>/conversa", quiz_conversa.conversa, name="quiz-conversa"),
 ]
 
 handler404 = "site_errors.handlers.page_not_found_shared"

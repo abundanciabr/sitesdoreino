@@ -1,0 +1,149 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Evolução · {{ slug }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'quiz_campanhas' slug %}">← Campanhas</a>
+  <h1>Evolução: {{ slug }}</h1>
+  <p class="subtitulo">Onde o quiz perde gente e o que testar na próxima versão.</p>
+  {% if recado %}<p class="nota">{{ recado }}</p>{% endif %}
+  {% if falha %}<p class="nota" role="alert">{{ falha }}</p>{% endif %}
+
+  <div class="cartao">
+    <h2>Período</h2>
+    <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
+      <label>De<br><input type="date" name="inicio" value="{{ filtros.inicio }}"></label>
+      <label>Até<br><input type="date" name="fim" value="{{ filtros.fim }}"></label>
+      <button type="submit">Ler período</button>
+    </form>
+    <p class="nota">
+      Período: {{ leitura.periodo.inicio|default:"desde o começo" }} até {{ leitura.periodo.fim|default:"hoje" }}.
+      Fuso: {{ leitura.periodo.fuso }}.
+      Base de cálculo: {{ leitura.denominador }}.
+      Visitas na amostra: {{ leitura.visitas_elegiveis }}.
+      Tráfego de teste fora das taxas: {{ leitura.teste.visitas }} visita(s).
+    </p>
+    <p class="nota">Com menos de {{ leitura.amostra_minima }} sessões a taxa é inconclusiva. Compras, receita e LTV: sem dados de compra.</p>
+  </div>
+
+  <div class="cartao">
+    <h2>Gargalos, do mais importante ao menos</h2>
+    {% for g in gargalos %}
+      <p>
+        <strong>{{ g.prioridade }}</strong> · versão {{ g.version_key }} · {{ g.escopo.nome }}<br>
+        {{ g.evidencia.texto }}
+        {% if g.observacao %}<br><span class="nota">{{ g.observacao }}</span>{% endif %}
+      </p>
+    {% empty %}<p>Nenhum gargalo medido neste período.</p>{% endfor %}
+  </div>
+
+  <div class="cartao">
+    <h2>Funil por etapa e versão</h2>
+    <p class="nota">Cada número é de sessões distintas; atualizar a página não conta de novo. Cada taxa mostra o que foi dividido por quê.</p>
+    {% for v in leitura.funil %}
+      <h3>Versão {{ v.version_key }}{% if not v.ativa %} (inativa){% endif %}</h3>
+      {% if v.visitas_elegiveis %}
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;text-align:left">
+            <thead><tr><th>Etapa</th><th>Viram</th><th>Clicaram numa opção</th><th>Abandonaram aqui</th><th>Seguiram adiante</th><th>Perda na etapa</th></tr></thead>
+            <tbody>
+              {% for e in v.etapas %}
+                <tr>
+                  <td>{{ e.rotulo }}</td>
+                  <td>{% if e.medida %}{{ e.viram }}{% else %}não medido{% endif %}</td>
+                  <td>{% if e.medida %}{{ e.clicaram }}{% else %}sem dado{% endif %}</td>
+                  <td>{{ e.abandonaram }}{% if e.taxa_abandono %} de {{ e.taxa_abandono.denominador }}{% if e.taxa_abandono.inconclusiva %} (inconclusiva){% endif %}{% endif %}</td>
+                  <td>{% if e.avancaram is not None %}{{ e.avancaram }}{% else %}sem dado{% endif %}</td>
+                  <td>{% if e.taxa_perda %}{{ e.perda }} de {{ e.taxa_perda.denominador }}{% if e.taxa_perda.inconclusiva %} (inconclusiva){% endif %}{% else %}sem dado{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Visitas: {{ v.visitas_elegiveis }}.
+          Conclusões: {{ v.conclusoes }} de {{ v.taxa_conclusao.denominador }} visitas{% if v.taxa_conclusao.inconclusiva %} (inconclusiva){% endif %}.
+          Saídas: {{ v.saidas_reais }} para o checkout real e {{ v.saidas_demonstracao }} de demonstração, de {{ v.taxa_saida_total.denominador }} conclusões.
+          Conclusões sem saída: {{ v.conclusoes_sem_saida }}.
+          Compras e receita: sem dados de compra.
+        </p>
+      {% else %}<p>Sem visitas elegíveis no período.</p>{% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="cartao">
+    <h2>Dados que faltam</h2>
+    {% for f in faltantes %}<p>{{ f.texto }}</p>{% empty %}<p>Nada faltando.</p>{% endfor %}
+  </div>
+
+  <div class="cartao">
+    <h2>Por dia da primeira visita</h2>
+    {% for dia in por_dia %}
+      <p><strong>{{ dia.nome }}</strong> · {{ dia.sessoes }} sessão(ões)
+      {% for v in dia.versoes %}<br>Versão {{ v.version_key }}: {{ v.conclusoes }} conclusão(ões) de {{ v.taxa_conclusao.denominador }}{% if v.taxa_conclusao.inconclusiva %} (inconclusiva){% endif %}{% endfor %}
+      {% for g in dia.gargalos|slice:":1" %}<br>Maior gargalo: {{ g.evidencia.texto }}{% endfor %}</p>
+    {% empty %}<p>Sem visitas no período.</p>{% endfor %}
+  </div>
+
+  <div class="cartao">
+    <h2>Por campanha</h2>
+    {% for c in por_campanha %}
+      <p><strong>{{ c.nome }}</strong> · {{ c.sessoes }} sessão(ões)
+      {% for v in c.versoes %}<br>Versão {{ v.version_key }}: {{ v.conclusoes }} conclusão(ões) de {{ v.taxa_conclusao.denominador }}{% if v.taxa_conclusao.inconclusiva %} (inconclusiva){% endif %}{% endfor %}
+      {% for g in c.gargalos|slice:":1" %}<br>Maior gargalo: {{ g.evidencia.texto }}{% endfor %}</p>
+    {% empty %}<p>Sem campanhas no período.</p>{% endfor %}
+    {% if comparacoes.aviso %}<p class="nota">{{ comparacoes.aviso }}</p>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Propostas de nova versão</h2>
+    <p class="nota">Aceitar só registra a decisão e mostra a key nova a criar no estúdio. Nenhuma versão existente é alterada.</p>
+    {% for p in propostas %}
+      <div style="border-top:1px solid var(--linha);padding-top:12px;margin-top:12px">
+        <p><strong>{{ p.key_sugerida }}</strong> a partir da {{ p.versao_base }} · {{ p.estado }} · prioridade {{ p.prioridade }}<br>
+          Gargalo: {{ p.gargalo|default:"não indicado" }}<br>
+          Hipótese: {{ p.hipotese }}<br>
+          Mudança: {{ p.mudanca }}</p>
+        {% if p.criar_no_estudio %}<p class="nota">{{ p.criar_no_estudio.mensagem }}</p>{% endif %}
+        {% if p.resultado_texto %}<p>Resultado observado: {{ p.resultado_texto }}</p>{% endif %}
+        {% if p.decisao_seguinte %}<p>Decisão seguinte: {{ p.decisao_seguinte }}</p>{% endif %}
+        {% if p.estado != "descartada" and p.estado != "medida" %}
+          <form method="post">{% csrf_token %}
+            <input type="hidden" name="acao" value="atualizar">
+            <input type="hidden" name="proposta_id" value="{{ p.id }}">
+            <label>Passar para
+              <select name="estado">
+                <option value="">(manter)</option>
+                {% if p.estado == "proposta" %}<option value="aceita">aceita</option>{% endif %}
+                {% if p.estado == "aceita" %}<option value="publicada">publicada</option>{% endif %}
+                {% if p.estado == "publicada" %}<option value="medida">medida</option>{% endif %}
+                <option value="descartada">descartada</option>
+              </select>
+            </label>
+            <label>Resultado observado<br><textarea name="resultado_texto" rows="2" style="width:100%"></textarea></label>
+            <label>Decisão seguinte<br><textarea name="decisao_seguinte" rows="2" style="width:100%"></textarea></label>
+            <button type="submit">Salvar</button>
+          </form>
+        {% endif %}
+      </div>
+    {% empty %}<p>Nenhuma proposta ainda.</p>{% endfor %}
+  </div>
+
+  <div class="cartao">
+    <h2>Nova proposta</h2>
+    <form method="post" style="display:grid;gap:12px">{% csrf_token %}
+      <input type="hidden" name="acao" value="criar">
+      <label>Versão base<br><input name="versao_base" value="{{ dados.versao_base }}" required></label>
+      <label>Gargalo (copie o id de cima, se quiser)<br><input name="gargalo" value="{{ dados.gargalo }}"></label>
+      <label>Hipótese<br><textarea name="hipotese" rows="3" required style="width:100%">{{ dados.hipotese }}</textarea></label>
+      <label>Prioridade<br>
+        <select name="prioridade">
+          <option value="alta">alta</option><option value="media" selected>media</option><option value="baixa">baixa</option>
+        </select>
+      </label>
+      <label>Mudança proposta<br><textarea name="mudanca" rows="3" required style="width:100%">{{ dados.mudanca }}</textarea></label>
+      <label>Key da nova versão<br><input name="key_sugerida" value="{{ dados.key_sugerida }}" required></label>
+      <button type="submit">Registrar proposta</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import os
 import json
 import re
 from urllib.parse import quote
 
 import httpx
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
@@ -136,6 +137,126 @@ def conteudo_novo(request, tipo: str):
     )
 
 
+FORMATO_DIRECIONADO = "quiz-low-ticket/2"
+CHAVE_VERSAO = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+_NOMES_DO_CAMINHO = {
+    "documento": "documento",
+    "formato": "formato do documento",
+    "quiz": "quiz",
+    "slug": "endereço",
+    "title": "título",
+    "ofertas": "oferta",
+    "nome": "nome",
+    "checkout_url": "endereço de checkout",
+    "versoes": "versão",
+    "versao": "versão",
+    "key": "chave",
+    "id": "identificador",
+    "default_format": "formato inicial",
+    "formats": "formatos",
+    "text": "formato Texto",
+    "video": "formato Vídeo",
+    "hybrid": "formato Vídeo e texto",
+    "calc": "formato Calculadora",
+    "ai": "formato Agente de IA",
+    "headline": "título da página",
+    "subheadline": "subtítulo",
+    "video_url": "endereço do vídeo",
+    "instructions": "instruções",
+    "calculator": "calculadora",
+    "inputs": "entrada",
+    "expression": "expressão",
+    "result_label": "rótulo do resultado",
+    "label": "rótulo",
+    "min": "mínimo",
+    "max": "máximo",
+    "default": "valor inicial",
+    "perguntas": "pergunta",
+    "opcoes": "opção",
+    "texto": "texto",
+    "pontos": "pontos",
+    "faixas": "faixa",
+    "description": "descrição",
+    "min_score": "pontos mínimos",
+    "max_score": "pontos máximos",
+    "oferta_id": "oferta",
+    "botao_rotulo": "texto do botão",
+    "segments": "segmentos",
+    "results": "resultados",
+    "respostas": "respostas",
+    "experiencia": "experiência",
+}
+
+
+def explicar_erro(mensagem, documento=None) -> dict:
+    """Traduz 'versoes[2].faixas: faixas sobrepostas' para uma frase legível."""
+    mensagem = str(mensagem or "").strip()
+    caminho, separador, descricao = mensagem.partition(": ")
+    if not separador or not re.fullmatch(r"[\w\[\].\-]+", caminho):
+        return {"texto": mensagem or "Não foi possível conferir.", "caminho": "", "versao": None}
+    versoes = documento.get("versoes") if isinstance(documento, dict) else None
+    partes = []
+    indice_versao = None
+    anterior = ""
+    for trecho in caminho.split("."):
+        achou = re.fullmatch(r"([A-Za-z_]+)\[(\d+)\]", trecho)
+        nome, numero = (achou.group(1), int(achou.group(2))) if achou else (trecho, None)
+        if anterior == "versoes" and numero is None and nome not in _NOMES_DO_CAMINHO:
+            partes.append(f"chave {nome}")
+        elif nome == "versoes" and numero is not None:
+            indice_versao = numero
+            chave = ""
+            if isinstance(versoes, list) and numero < len(versoes) and isinstance(versoes[numero], dict):
+                chave = versoes[numero].get("key") or ""
+            partes.append(f"Versão {numero + 1}" + (f" ({chave})" if chave else ""))
+        else:
+            rotulo = _NOMES_DO_CAMINHO.get(nome, nome)
+            partes.append(f"{rotulo} {numero + 1}" if numero is not None else rotulo)
+        anterior = nome
+    humano = " › ".join(partes)
+    humano = humano[:1].upper() + humano[1:]
+    return {"texto": f"{humano}: {descricao}", "caminho": caminho, "versao": indice_versao}
+
+
+def _detalhe(dados) -> str:
+    return str(dados.get("detail") or "") if isinstance(dados, dict) else ""
+
+
+def proxima_chave(chave: str, existentes) -> str:
+    """B2 -> B3, A -> A2; pula chaves que já existem."""
+    achou = re.fullmatch(r"(.*?)(\d+)", chave)
+    base, numero = (achou.group(1), int(achou.group(2))) if achou else (chave, 1)
+    while True:
+        numero += 1
+        candidata = f"{base}{numero}"
+        if candidata not in existentes:
+            return candidata
+
+
+def _contexto_estudio(slug, documento, publicadas, versao_ativa=""):
+    versoes = []
+    if isinstance(documento, dict):
+        versoes = [
+            v.get("key")
+            for v in documento.get("versoes") or []
+            if isinstance(v, dict) and isinstance(v.get("key"), str)
+        ]
+    chaves = set(versoes)
+    return {
+        "estudio_dados": {
+            "slug": slug,
+            "documento": documento if isinstance(documento, dict) and documento else None,
+            "publicadas": [k for k in publicadas if isinstance(k, str)],
+            "versao_ativa": versao_ativa,
+            "sugestoes": {k: proxima_chave(k, chaves) for k in versoes},
+        },
+        "versoes_estudio": [
+            {"key": k, "publicada": k in publicadas, "sugestao": proxima_chave(k, chaves)}
+            for k in versoes
+        ],
+    }
+
+
 @require_GET
 def conteudo_editar(request, tipo: str, slug: str):
     if tipo not in TIPOS:
@@ -183,6 +304,15 @@ def conteudo_editar(request, tipo: str, slug: str):
         if dirigido:
             contexto["documento_json"] = (
                 json.dumps(conteudo, ensure_ascii=False, indent=2) if conteudo else ""
+            )
+            publicadas = dados.get("publicadas")
+            contexto.update(
+                _contexto_estudio(
+                    slug,
+                    conteudo,
+                    publicadas if isinstance(publicadas, list) else [],
+                    request.GET.get("versao", ""),
+                )
             )
         else:
             perguntas = list(conteudo.get("questions") or [])
@@ -352,7 +482,7 @@ def _quiz_do_formulario(request):
     return {"title": title, "questions": questions, "bands": bands}
 
 
-def _editor_com_erro(request, tipo, slug, mensagem, status):
+def _editor_com_erro(request, tipo, slug, mensagem, status, erros=None):
     """Mantém os campos enviados na tela quando a gravação é recusada."""
     contexto = {
         "admin": request.admin,
@@ -368,9 +498,15 @@ def _editor_com_erro(request, tipo, slug, mensagem, status):
         )}
         contexto["conteudo"]["ativa"] = request.POST.get("ativa") == "sim"
     elif request.POST.get("modo_quiz") == "direcionado":
+        bruto = request.POST.get("documento_json", "")
+        try:
+            documento = json.loads(bruto)
+        except ValueError:
+            documento = None
         contexto.update(
-            conteudo={}, quiz_direcionado=True,
-            documento_json=request.POST.get("documento_json", ""),
+            conteudo={}, quiz_direcionado=True, documento_json=bruto,
+            erros_estudio=erros or [],
+            **_contexto_estudio(slug, documento, [], request.POST.get("versao_ativa", "")),
         )
     else:
         contexto["conteudo"] = {"title": request.POST.get("title", "")}
@@ -399,12 +535,109 @@ def _editor_com_erro(request, tipo, slug, mensagem, status):
     return render(request, "admin/conteudo_editar.html", contexto, status=status)
 
 
+def _documento_enviado(request, slug):
+    """O documento do estúdio (ou do modo avançado); sem ele, o rascunho atual."""
+    bruto = (request.POST.get("documento_json") or "").strip()
+    if bruto:
+        documento = json.loads(bruto)
+    else:
+        status, dados = _pedir(request, "quiz", "GET", slug, "rascunho")
+        documento = dados.get("content") if status == 200 and isinstance(dados, dict) else None
+    if not isinstance(documento, dict) or documento.get("formato") != FORMATO_DIRECIONADO:
+        raise ValueError("Documento de campanha inválido.")
+    return documento
+
+
+def _previa_ou_conferencia(request, slug):
+    """Prévia isolada e conferência: o quiz calcula sem gravar nada."""
+    try:
+        documento = _documento_enviado(request, slug)
+    except ValueError:
+        return JsonResponse(
+            {"ok": False, "erro": {"texto": "O documento da campanha está incompleto.", "caminho": "", "versao": None}},
+            status=422,
+        )
+    corpo = {"documento": documento}
+    for campo in ("versao", "fmt", "seg"):
+        if request.POST.get(campo):
+            corpo[campo] = request.POST[campo]
+    for campo in ("respostas", "valores"):
+        bruto = request.POST.get(campo)
+        if bruto:
+            try:
+                corpo[campo] = json.loads(bruto)
+            except ValueError:
+                return JsonResponse(
+                    {"ok": False, "erro": {"texto": "As respostas da prévia vieram incompletas.", "caminho": "", "versao": None}},
+                    status=400,
+                )
+    status, dados = _pedir(request, "quiz", "POST", slug, "previa", corpo)
+    if status == 200 and isinstance(dados, dict):
+        return JsonResponse(dados)
+    if status in (400, 413, 422):
+        return JsonResponse(
+            {"ok": False, "erro": explicar_erro(_detalhe(dados), documento)}, status=422
+        )
+    return JsonResponse(
+        {"ok": False, "erro": {"texto": "Não consegui abrir a prévia agora.", "caminho": "", "versao": None}},
+        status=503,
+    )
+
+
+def _duplicar_versao(request, slug):
+    """Copia uma versão no rascunho com chave nova; a original não muda."""
+    try:
+        documento = _documento_enviado(request, slug)
+    except ValueError:
+        return _editor_com_erro(
+            request, "quiz", slug, "O documento da campanha está incompleto.", 400
+        )
+    origem = (request.POST.get("versao_origem") or "").strip()
+    nova = (request.POST.get("versao_nova") or "").strip()
+    versoes = [v for v in documento.get("versoes") or [] if isinstance(v, dict)]
+    chaves = {v.get("key") for v in versoes}
+    problema = ""
+    if origem not in chaves:
+        problema = "Escolha a versão que será copiada."
+    elif not nova or len(nova) > 100 or not CHAVE_VERSAO.fullmatch(nova):
+        problema = "Escreva a chave da cópia com letras, números, hífen ou sublinhado, começando por letra (ex.: B3)."
+    elif nova in chaves:
+        problema = f"A chave {nova} já existe nesta campanha. Escolha outra."
+    if problema:
+        return _editor_com_erro(request, "quiz", slug, problema, 400)
+    copia = copy.deepcopy(next(v for v in versoes if v.get("key") == origem))
+    copia["key"] = nova
+    posicao = next(
+        i for i, v in enumerate(documento["versoes"])
+        if isinstance(v, dict) and v.get("key") == origem
+    )
+    documento["versoes"].insert(posicao + 1, copia)
+    status, dados = _pedir(request, "quiz", "PUT", slug, "rascunho", documento)
+    if status not in (200, 201):
+        erros = [explicar_erro(_detalhe(dados), documento)] if _detalhe(dados) else []
+        return _editor_com_erro(
+            request, "quiz", slug,
+            "Não consegui criar a cópia no rascunho.",
+            422 if status in (400, 422) else 503, erros,
+        )
+    return HttpResponseRedirect(
+        reverse("conteudo_editar", kwargs={"tipo": "quiz", "slug": slug})
+        + f"?recado=duplicada&versao={quote(nova, safe='')}"
+    )
+
+
 @require_POST
 def conteudo_salvar(request, tipo: str, slug: str):
     if tipo not in TIPOS:
         from django.http import Http404
 
         raise Http404
+    if tipo == "quiz" and request.POST.get("modo_quiz") == "direcionado":
+        acao = request.POST.get("acao")
+        if acao in ("previa", "conferir"):
+            return _previa_ou_conferencia(request, slug)
+        if acao == "duplicar":
+            return _duplicar_versao(request, slug)
     if tipo == "forum":
         try:
             ordem = int(request.POST.get("ordem") or 0)
@@ -439,18 +672,31 @@ def conteudo_salvar(request, tipo: str, slug: str):
             return _editor_com_erro(
                 request, tipo, slug, "Confira o conteúdo ou o JSON da campanha do quiz.", 400
             )
-    status, _ = _pedir(request, tipo, "PUT", slug, "rascunho", corpo)
+    status, retorno = _pedir(request, tipo, "PUT", slug, "rascunho", corpo)
+    direcionado = tipo == "quiz" and request.POST.get("modo_quiz") == "direcionado"
     if status not in (200, 201):
+        erros = (
+            [explicar_erro(_detalhe(retorno), corpo)]
+            if direcionado and status in (400, 422) and _detalhe(retorno)
+            else None
+        )
         return _editor_com_erro(
             request,
             tipo,
             slug,
             "Não consegui salvar o rascunho. Confira os campos e tente de novo.",
             422 if status in (400, 422) else 503,
+            erros,
         )
     if request.POST.get("acao") == "publicar":
-        publicado, _ = _pedir(request, tipo, "POST", slug, "publicar")
+        publicado, retorno = _pedir(request, tipo, "POST", slug, "publicar")
         if publicado not in (200, 201):
+            if direcionado and publicado == 422 and _detalhe(retorno):
+                return _editor_com_erro(
+                    request, tipo, slug,
+                    "Rascunho salvo, mas não consegui publicar. Corrija e tente de novo.",
+                    422, [explicar_erro(_detalhe(retorno), corpo)],
+                )
             return HttpResponseRedirect(
                 reverse("conteudo_editar", kwargs={"tipo": tipo, "slug": slug})
                 + "?recado=publicacao_falhou"
@@ -471,12 +717,15 @@ def conteudo_publicar(request, tipo: str, slug: str):
         from django.http import Http404
 
         raise Http404
-    status, _ = _pedir(request, tipo, "POST", slug, "publicar")
+    status, retorno = _pedir(request, tipo, "POST", slug, "publicar")
     if status not in (200, 201):
+        mensagem = "Não consegui publicar. O rascunho permanece guardado."
+        if tipo == "quiz" and status == 422 and _detalhe(retorno):
+            mensagem += " " + explicar_erro(_detalhe(retorno))["texto"]
         return _erro(
             request,
             tipo,
-            "Não consegui publicar. O rascunho permanece guardado.",
+            mensagem,
             422 if status in (400, 409, 422) else 503,
         )
     return HttpResponseRedirect(
