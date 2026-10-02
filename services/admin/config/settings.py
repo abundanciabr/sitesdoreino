@@ -194,9 +194,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # levou para o banco (ver o cabeçalho de `apps/core/models.py`).
 #
 # Lida com `.get()` e default inofensivo, NUNCA fail-hard no import
-# (`armadilhas/097`): env ausente na máquina de quem desenvolve grava numa
-# pasta ao lado do código, e o contêiner continua subindo.
-MEDIA_ROOT = os.environ.get("ADMIN_MIDIA_RAIZ") or str(BASE_DIR / "midia")
+# (`armadilhas/097`): na célula isolada, env ausente grava ao lado do código;
+# na aplicação unificada, usa o volume já montado fora de `/app:ro`.
+MEDIA_ROOT = os.environ.get("ADMIN_MIDIA_RAIZ") or (
+    "/opt/plataforma/admin-midia"
+    if os.environ.get("APLICACAO_ENV_DIR")
+    else str(BASE_DIR / "midia")
+)
 # O prefixo público dos arquivos. Quem monta endereço na tela usa `{% url %}`
 # (`apps/core/midia.py::midia_servir`); esta linha existe porque é ela que
 # responde "onde isto é servido" para quem ler as settings, e porque o Django
