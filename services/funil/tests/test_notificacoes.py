@@ -361,3 +361,34 @@ def test_visitante_e_levado_para_entrar_antes_de_ver_notificacoes(client, rede):
 
     assert resposta.status_code == 302
     assert resposta["Location"].startswith("/pt-br/login?next=%2Fpt-br%2Fnotificacoes")
+
+
+@pytest.mark.parametrize(
+    "situacao, frase",
+    [("ativa", "notificacoes.matricula_ativa"), ("inventada", "notificacoes.matricula_outra")],
+)
+def test_matricula_usa_a_frase_da_situacao(
+    client, logado, rede, notificacoes_configurada, situacao, frase
+):
+    from apps.i18n.catalogo import t
+
+    _resumo(rede)
+    aviso = _aviso()
+    aviso["assunto"] = "matricula.situacao-alterada"
+    aviso["parametros"] = {"situacao_nova": situacao}
+    _lista(rede, aviso)
+
+    corpo = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert t(frase, "pt-br") in corpo
+
+
+def test_chave_por_variavel_e_chave_que_falta_nao_derrubam_a_pagina():
+    from django.template import Context, Template
+
+    modelo = Template('{% load t %}[{% t chave %}][{% t "notificacoes."|add:nome %}][{% t vazia %}]')
+    texto = modelo.render(Context({"chave": "notificacoes.titulo", "nome": "nao_existe", "vazia": ""}))
+
+    assert texto == "[Notifications][notificacoes.nao_existe][]"

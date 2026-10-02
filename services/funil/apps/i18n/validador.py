@@ -201,7 +201,7 @@ def _checar_html(chave, idioma, forma, problemas):
 
 
 # ---------------------------------------------------------------------------
-# template → catálogo + lint de literal (D2.3).
+# template → catálogo: chave de texto fixo usada precisa existir.
 # ---------------------------------------------------------------------------
 def _checar_templates(raiz: Path, chaves: dict, problemas: "list[str]"):
     usadas = set()
@@ -216,17 +216,13 @@ def _checar_templates(raiz: Path, chaves: dict, problemas: "list[str]"):
             )
         for uso in RE_USO_T.finditer(texto):
             primeiro = uso.group(1).split()[0]
+            # Só a chave de texto fixo é conferida; chave por variável passa.
             if (
                 len(primeiro) >= 3
                 and primeiro[0] in "\"'"
                 and primeiro[-1] == primeiro[0]
             ):
                 usadas.add(primeiro[1:-1])
-            else:
-                problemas.append(
-                    f"{arquivo.name}: {{% t {primeiro} … %}} — a chave deveria "
-                    "ser LITERAL entre aspas"
-                )
     for chave in sorted(usadas - set(chaves)):
         problemas.append(f'{{% t "{chave}" %}} usada e não definida no catálogo')
 

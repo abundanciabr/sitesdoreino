@@ -187,6 +187,7 @@ def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
         "lido_em": parse_datetime(item["lido_em"]) if item["lido_em"] else None,
         "criado_em": parse_datetime(item["criado_em"]),
         "tipo": tipo,
+        "cartao": "generica" if tipo == "desconhecido" else tipo,
         "link": link_do_cartao(tipo, sugestao_id),
         "titulo_da_ideia": ideia.get("titulo", ""),
         "passo_titulo": passo.get("titulo", ""),
@@ -202,7 +203,7 @@ def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
         "nivel": (
             nivel if isinstance(nivel, int) and not isinstance(nivel, bool) else None
         ),
-        "situacao_nova": situacao if situacao in SITUACOES_CONHECIDAS else "",
+        "situacao_nova": situacao if situacao in SITUACOES_CONHECIDAS else "outra",
     }
 
 
