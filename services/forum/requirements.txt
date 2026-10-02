@@ -50,10 +50,4 @@ anthropic==1.3.0
 # deixam de ser documentacao e passam a reprovar o CI — o envelope real e
 # validado contra o ARQUIVO, nunca contra uma copia do formato dentro do teste.
 jsonschema==4.23.0
-# Wheel vendorizada (não está no PyPI). O comentário `# sha256:<hex>` na mesma
-# linha dá identidade imutável a ela para o `ci/sessao.py`, sem afrouxar a
-# regra para dependência local sem hash (TAR-815); não é o `--hash=` do pip,
-# que ligaria o --require-hashes global e passaria a exigir hash de toda
-# dependência transitiva. Trocou a wheel, troca o hash: `python -c "import
-# hashlib;print(hashlib.sha256(open('services/forum/vendor/site_errors-0.1.0-py3-none-any.whl','rb').read()).hexdigest())"`.
-services/forum/vendor/site_errors-0.1.0-py3-none-any.whl  # sha256:b4fb450384896d4f1d276792027a9b0692d79e1257a4d0f3b99e6aeb242b0693
+packages/site_errors
