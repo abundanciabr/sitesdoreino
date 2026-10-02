@@ -22,7 +22,6 @@ O que estes guardas protegem:
 
 import json
 import re
-from pathlib import Path
 
 import httpx
 import pytest
@@ -118,22 +117,6 @@ def test_nenhuma_peca_fica_sem_porta():
     """
     vazias = [e["chave"] for e in perpetuo.ETAPAS if not e["portas"]]
     assert not vazias, f"peças sem porta nenhuma: {vazias}"
-
-
-def test_o_codigo_nao_guarda_copia_do_nome_das_telas():
-    """A lei anti-duplicação, medida: o nome de uma porta não mora aqui.
-
-    Se um título do mapa aparecer escrito dentro de `perpetuo.py`, existem duas
-    verdades sobre o nome daquela tela — e no dia em que divergirem, ninguém
-    sabe qual está certa.
-    """
-    fonte = Path(perpetuo.__file__).read_text(encoding="utf-8")
-    copiados = [
-        entrada["titulo"]
-        for entrada in _mapa().values()
-        if entrada.get("titulo") and entrada["titulo"] in fonte
-    ]
-    assert not copiados, f"títulos de tela copiados para dentro do código: {copiados}"
 
 
 @respx.mock

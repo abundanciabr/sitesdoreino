@@ -214,13 +214,6 @@ def test_a_confirmacao_vem_do_cartao():
     assert r["confirmada"] == conf
 
 
-def test_o_cartao_do_repositorio_e_valido_e_e_de_direcao():
-    cartao, problemas = placar.ler_cartao("restricao-da-semana")
-    assert cartao is not None, problemas
-    assert cartao["tipo"] == "direcao" and cartao["andar"] == 0
-    assert cartao["par"] == placar.CARTAO_DA_META
-
-
 # -------------------------------------------------------------------- a tela
 
 

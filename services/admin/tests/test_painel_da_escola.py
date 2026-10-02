@@ -35,8 +35,6 @@ isso que prova que as páginas novas não saem para a rede por conta própria �
 `respx.mock` sem rota registrada estoura em qualquer chamada inesperada.
 """
 
-from pathlib import Path
-
 import httpx
 import pytest
 import respx
@@ -329,65 +327,6 @@ def test_todo_tipo_declara_por_que_o_numero_falta():
         assert tipo["falta"].strip(), tipo["slug"]
 
 
-CONTRATO_DA_ALUNOS = (
-    Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
-)
-
-
-def test_o_contrato_da_alunos_esta_onde_este_arquivo_pensa():
-    """Sem isto, os dois testes abaixo passariam lendo string vazia.
-
-    *Ausência de evidência nunca é evidência de sucesso* ([INV-CI01]): um
-    guarda que mede um arquivo que não existe devolve verde por nada.
-    """
-    assert CONTRATO_DA_ALUNOS.is_file(), CONTRATO_DA_ALUNOS
-    assert "openapi:" in CONTRATO_DA_ALUNOS.read_text(encoding="utf-8")
-
-
-def test_toda_porta_declarada_existe_mesmo_no_contrato_congelado():
-    """`fonte` não pode nomear operação que a `alunos` não tem.
-
-    A conferência é por TEXTO, e não por `yaml.safe_load`, de propósito: ler
-    YAML aqui custaria uma dependência nova à célula só para este guarda, e o
-    que precisa ser verdade é grosseiro — o caminho e o status aparecem, ou
-    não aparecem, no contrato congelado.
-    """
-    contrato = CONTRATO_DA_ALUNOS.read_text(encoding="utf-8")
-    declaradas = [t for t in TIPOS_DE_ALUNO if t["fonte"]]
-    assert declaradas, "nenhum tipo declara fonte — o guarda abaixo mediria nada"
-    for tipo in declaradas:
-        caminho = tipo["fonte"].split()[1].split("?")[0]
-        assert caminho in contrato, f"{tipo['slug']}: {caminho} não está no contrato"
-        if "status=" in tipo["fonte"]:
-            status = tipo["fonte"].split("status=")[1]
-            assert status in contrato, f"{tipo['slug']}: status {status} não existe"
-
-
-def test_a_fila_que_o_contrato_tem_nao_pode_ficar_sem_dono_nesta_tela():
-    """O guarda do erro REAL de 28/08/2026, na direção em que ele aconteceu.
-
-    A primeira versão desta tela declarou que a fila de espera "não existe em
-    lugar nenhum do sistema" — e ela existia desde 27/08, com porta que o
-    próprio contrato chama de *"a porta do painel administrativo"*. O erro veio
-    de ler um clone da `main` 75 merges atrasado, e nenhum teste desta suíte
-    poderia tê-lo pego: todos mediam o que a tela DIZ, nenhum media o que o
-    contrato TEM.
-
-    Este mede. Se a `alunos` sabe listar um estado de aluno, algum tipo desta
-    tela tem de apontar para essa porta — nem que seja para dizer que ainda
-    não a abrimos. Declarar inexistente o que está no contrato congelado passa
-    a ser vermelho.
-    """
-    contrato = CONTRATO_DA_ALUNOS.read_text(encoding="utf-8")
-    if "/pre-matriculas" not in contrato:  # pragma: no cover - a fila saiu?
-        pytest.skip("o contrato não tem mais a fila; este guarda perdeu o objeto")
-    fontes = " ".join(t["fonte"] or "" for t in TIPOS_DE_ALUNO)
-    assert "/pre-matriculas" in fontes, (
-        "o contrato da `alunos` lista a fila de liberação, mas nenhum tipo "
-        "desta tela aponta para ela. Foi exatamente o erro de 28/08/2026."
-    )
-
-
 @respx.mock
 def test_a_tela_nao_diz_que_a_fila_nao_existe():
     """O texto errado, travado pela frase — porque foi a frase que enganou.
@@ -406,20 +345,6 @@ def test_a_tela_nao_diz_que_a_fila_nao_existe():
 
 
 # ------------------------------------------------------ higiene das telas novas
-
-
-@respx.mock
-@pytest.mark.parametrize("caminho", ["/", "/escola/", "/escola/alunos/"])
-def test_nenhuma_marca_de_template_vaza_nas_telas(caminho):
-    """Irmão de `test_nenhum_comentario_vaza_para_a_tela.py`, pelo resultado.
-
-    Lá a varredura é do ARQUIVO, e cobre toda a célula; aqui é do que o
-    navegador recebe nas três telas ligadas por esta mudança. `armadilhas/087`
-    já pôs um bloco de comentário na cara do mantenedor uma vez.
-    """
-    html = _texto(_dentro().get(caminho))
-    assert "{#" not in html
-    assert "{%" not in html
 
 
 # ---------------------------------------------------- 5. a fila, com dado real

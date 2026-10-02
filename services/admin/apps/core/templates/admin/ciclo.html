@@ -15,6 +15,7 @@ o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
   <h1>O calendário do ciclo</h1>
   <p class="subtitulo">As 12 semanas do ciclo, mais a preparação e a recuperação.</p>
 
+  {% if meta %}{% include "admin/_avisos_do_cartao.html" with avisos=recusas %}{% endif %}
   {% if not meta %}
   <p class="aviso borda-vermelha">
     <b>Não achei o cartão da meta.</b>
@@ -90,12 +91,6 @@ o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
       </tbody>
     </table>
   </div>
-
-  <p class="recado-fraco espaco-20">
-    A soma das metas semanais é exatamente a meta grande do ciclo. Não é
-    coincidência nem cuidado meu: o painel se recusa a aceitar o cartão se as
-    duas contas discordarem, então elas nunca vão discordar em silêncio.
-  </p>
 
   <p class="aviso espaco-28">
     <b>A recuperação existe para o caso de a meta não cair no prazo.</b>

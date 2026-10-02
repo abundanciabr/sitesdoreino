@@ -338,7 +338,7 @@ def test_cartao_sem_fonte_diz_por_que_e_fica_fora_da_conta(tmp_path):
 
 
 def test_cartao_torto_e_dito_em_vez_de_sumir(tmp_path):
-    (tmp_path / "torto.json").write_text('{"nome": "torto"}', encoding="utf-8")
+    (tmp_path / "torto.json").write_text('{"nome": "torto"', encoding="utf-8")
 
     frescor = conf.o_frescor(tmp_path, [], HOJE)
 

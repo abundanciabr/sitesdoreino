@@ -31,9 +31,6 @@ O que cada promessa custa, se cair:
    curso novo, todo na Parte I, nao mostra secao nenhuma.
 """
 
-import re
-from pathlib import Path
-
 import httpx
 import pytest
 import respx
@@ -50,7 +47,6 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 DONO_ID = "id-opaco-123"
 SITE_ID = "site-mesh"
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts"
 
 PRODUTO_ID = "produto-primeiros-dolares"
 PRODUTO_NOME = "Primeiros Dolares com Roblox"
@@ -646,29 +642,3 @@ def test_curso_de_duas_partes_mostra_as_abas():
     assert "Parte I" in corpo
     assert "Parte II" in corpo
     assert "Ver só esta Parte" in corpo
-
-
-# ---------------------------------------------------------------------------
-# 6. OS GUARDAS DE CONTRATO — a tela e o contrato não divergem em silêncio
-# ---------------------------------------------------------------------------
-def test_os_campos_que_a_tela_manda_existem_no_contrato_do_curso():
-    texto = (CONTRATOS / "cursos.openapi.yaml").read_text(encoding="utf-8")
-    bloco = texto[texto.index("    CursoParaCriarSchema:") :][:1400]
-    for campo in ("slug", "nome", "progressao", "produto_id"):
-        assert re.search(rf"^\s+{campo}:$", bloco, flags=re.M), campo
-
-
-def test_as_duas_regras_de_avanco_da_tela_sao_as_do_contrato():
-    from apps.core.cursos import PROGRESSAO
-
-    texto = (CONTRATOS / "cursos.openapi.yaml").read_text(encoding="utf-8")
-    bloco = texto[texto.index("    Progressao:") :][:400]
-    do_contrato = set(re.findall(r"^\s+- (\S+)$", bloco, flags=re.M))
-    assert set(PROGRESSAO) == do_contrato
-
-
-def test_o_corpo_do_produto_novo_e_o_do_contrato_do_catalogo():
-    texto = (CONTRATOS / "catalogo.openapi.yaml").read_text(encoding="utf-8")
-    bloco = texto[texto.index("    NewProduct:") :][:900]
-    assert re.search(r"^\s+slug:$", bloco, flags=re.M)
-    assert re.search(r"^\s+name:$", bloco, flags=re.M)

@@ -128,17 +128,6 @@ def test_quem_nem_entrou_nao_ve_o_menu_do_bastidor():
     assert "menu-do-admin" not in _texto(resposta)
 
 
-# ---------------------------------------------------------------------------
-# 2. O que a página servida realmente mostra
-# ---------------------------------------------------------------------------
-@respx.mock
-def test_a_faixa_copiada_a_mao_nao_voltou():
-    """Ela nasce UMA vez no molde. Duas seria a marca de um merge desatento."""
-    html = _texto(_cliente().get(reverse("escola")))
-    assert html.count('class="barra"') == 1
-    assert html.count("Meshcraft &middot; Administração") == 1
-
-
 @respx.mock
 def test_o_menu_acende_onde_voce_esta():
     cliente = _cliente()

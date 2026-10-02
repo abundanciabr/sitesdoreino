@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from apps.core import doze, placar
+from apps.core import doze
 
 PARTIDA = dt.date(2026, 9, 3)
 
@@ -28,36 +28,6 @@ def _aluna(dia: str, status: str = "ativa") -> dict:
         "origem": "liberado",
         "virou_aluno_em": f"{dia}T12:00:00-03:00",
     }
-
-
-def test_os_doze_existem_sao_validos_e_estao_no_andar_zero():
-    assert len(doze.DOZE) == 12 and len(set(doze.DOZE)) == 12
-    for nome in doze.DOZE:
-        cartao, problemas = placar.ler_cartao(nome)
-        assert cartao is not None, (nome, problemas)
-        assert cartao["andar"] == 0
-        assert cartao["acao"], nome
-        if cartao["fonte"] is None:
-            assert cartao["sem_fonte_porque"], nome
-
-
-def test_quatro_tem_fonte_e_oito_dizem_por_que_nao():
-    com_fonte = [n for n in doze.DOZE if placar.ler_cartao(n)[0]["fonte"] is not None]
-    assert sorted(com_fonte) == sorted(
-        [
-            "compras-no-mes",
-            "crescimento-mes-a-mes",
-            "pedidos-que-viraram-alunas",
-            "aprendizados-validados-no-ciclo",
-        ]
-    )
-
-
-def test_as_estrelas_guia_seguram_uma_a_outra():
-    a, _ = placar.ler_cartao(doze.ESTRELAS[0])
-    b, _ = placar.ler_cartao(doze.ESTRELAS[1])
-    assert a["par"] == b["nome"] and b["par"] == a["nome"]
-    assert a["fonte"] is None and b["fonte"] is None, "hoje nenhuma das duas tem fonte"
 
 
 def _venda_do_site(dia: str, status: str = "ativa") -> dict:

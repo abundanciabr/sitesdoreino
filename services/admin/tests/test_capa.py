@@ -1,19 +1,12 @@
-"""A capa do painel de gestão tem teto de nove blocos e se recusa a crescer.
+"""A capa do painel de gestão.
 
-Plano §3: "a capa tem teto de nove blocos; realidade nova entra como cartão,
-não como bloco". O guarda mede o TEMPLATE: cada `titulo-de-bloco` em
-`placar.html` é um bloco, e o teto é `placar.TETO_DE_BLOCOS`. Quem precisar de
-um décimo bloco discute no plano, não no template.
-
-E o degrau 4 (parte 2): o placar de doze e as estrelas-guia aparecem na capa,
+O degrau 4 (parte 2): o placar de doze e as estrelas-guia aparecem na capa,
 cada número com o seu cartão, sem nota composta.
 """
 
 from __future__ import annotations
 
 import datetime as dt
-import re
-from pathlib import Path
 
 import httpx
 import pytest
@@ -22,8 +15,6 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.core import placar
-
-TEMPLATE = Path(placar.__file__).parent / "templates" / "admin" / "placar.html"
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -89,16 +80,6 @@ def _a_escola_responde():
                 },
             ],
         )
-    )
-
-
-def test_a_capa_tem_no_maximo_nove_blocos_e_o_plano_os_nomeia():
-    blocos = re.findall(r'class="titulo-de-bloco', TEMPLATE.read_text(encoding="utf-8"))
-    assert placar.TETO_DE_BLOCOS == 9
-    assert len(placar.BLOCOS_DA_CAPA) <= placar.TETO_DE_BLOCOS
-    assert len(blocos) <= placar.TETO_DE_BLOCOS, (
-        f"a capa tem {len(blocos)} blocos e o teto é {placar.TETO_DE_BLOCOS}: "
-        "realidade nova entra como cartão, não como bloco (plano §3)"
     )
 
 

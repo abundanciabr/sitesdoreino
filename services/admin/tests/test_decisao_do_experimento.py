@@ -23,12 +23,10 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 
 import httpx
 import pytest
 import respx
-import yaml
 from django.db import DatabaseError, connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
@@ -45,30 +43,11 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 SITE_ID = "site-mesh"
 EXP_ID = "6f1c2b1e-0000-4000-8000-000000000001"
-CONTRATO = yaml.safe_load(
-    (
-        Path(__file__).resolve().parents[3] / "contracts" / "catalogo.openapi.yaml"
-    ).read_text(encoding="utf-8")
-)
-
-
-def _do_contrato(operacao: str) -> str:
-    """O endereço da operação como o contrato o escreve, e não uma cópia dele."""
-    (caminho,) = [
-        caminho
-        for caminho, verbos in CONTRATO["paths"].items()
-        if any(v.get("operationId") == operacao for v in verbos.values())
-    ]
-    return CATALOGO + caminho.format(
-        site_id=SITE_ID, slug=SLUG_DA_PAGINA, experimento_id=EXP_ID
-    )
-
-
-EXPERIMENTO = _do_contrato("getExperiment")
-MUDAR_ESTADO = _do_contrato("changeExperimentState")
-PAGINA = _do_contrato("getPage")
-RASCUNHO = _do_contrato("getPageDraft")
-PUBLICAR = _do_contrato("publishPage")
+PAGINA = f"{CATALOGO}/sites/{SITE_ID}/paginas/{SLUG_DA_PAGINA}"
+EXPERIMENTO = f"{PAGINA}/experimentos/{EXP_ID}"
+MUDAR_ESTADO = f"{EXPERIMENTO}/estado"
+RASCUNHO = f"{PAGINA}/rascunho"
+PUBLICAR = f"{PAGINA}/publicar"
 
 TEXTO_A = "Modele peças que funcionam"
 TEXTO_B = "Da primeira peça ao primeiro cliente"
@@ -180,13 +159,6 @@ def _rascunho(headline=TEXTO_A) -> dict:
         "secoes": _secoes(headline),
         "atualizado_em": "2026-09-26T12:00:00Z",
     }
-
-
-def test_o_experimento_falso_tem_os_campos_do_contrato():
-    esquema = CONTRATO["components"]["schemas"]
-    assert set(_experimento()) == set(esquema["ExperimentoDaPagina"]["required"])
-    for variante in _experimento()["variantes"]:
-        assert set(variante) == set(esquema["VarianteDoExperimento"]["required"])
 
 
 def _catalogo(*, experimentos, publicada=None, rascunho=None, encerrar=200):

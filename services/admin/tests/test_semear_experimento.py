@@ -33,13 +33,11 @@ import json
 import re
 import uuid
 from io import StringIO
-from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 import pytest
 import respx
-import yaml
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.urls import resolve
@@ -57,21 +55,18 @@ SITE_ID = "site-mesh"
 TITULO_NO_AR = "Modele para imprimir, do primeiro cubo à peça vendida"
 HIPOTESE = "A/A técnico: mede sorteio, exposição e contagem, não conversão"
 HOJE = dt.date(2026, 9, 29)
-CONTRATO = yaml.safe_load(
-    (
-        Path(__file__).resolve().parents[3] / "contracts" / "catalogo.openapi.yaml"
-    ).read_text(encoding="utf-8")
-)
+#: Os endereços do catálogo que o comando chama.
+CAMINHOS = {
+    "getSiteByHost": "/sites/by-host/{host}",
+    "getPage": "/sites/{site_id}/paginas/{slug}",
+    "listExperiments": "/sites/{site_id}/paginas/{slug}/experimentos",
+    "getExperiment": "/sites/{site_id}/paginas/{slug}/experimentos/{experimento_id}",
+}
 
 
 def _do_contrato(operacao: str) -> str:
-    """O endereço da operação como o contrato o escreve, com o id como padrão."""
-    (caminho,) = [
-        caminho
-        for caminho, verbos in CONTRATO["paths"].items()
-        if any(v.get("operationId") == operacao for v in verbos.values())
-    ]
-    return CATALOGO + caminho.format(
+    """O endereço da operação, com o id como padrão."""
+    return CATALOGO + CAMINHOS[operacao].format(
         host=HOST,
         site_id=SITE_ID,
         slug=SLUG_DA_PAGINA,

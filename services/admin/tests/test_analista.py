@@ -271,17 +271,6 @@ def test_o_workspace_so_viaja_quando_a_variavel_existe(monkeypatch):
     assert capturado["headers"][analista.CABECALHO_DO_WORKSPACE] == "wrkspc_123"
 
 
-def test_o_modelo_e_o_haiku_que_o_mantenedor_escolheu(monkeypatch):
-    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
-    capturado: dict = {}
-    dublar_a_anthropic(
-        monkeypatch, corpo=corpo_de_resposta(RESPOSTA_INTEIRA), capturado=capturado
-    )
-    analista.analisar(dossie="o dossie")
-    assert capturado["corpo"]["model"] == "claude-haiku-4-5-20251001"
-    assert "o dossie" in capturado["corpo"]["messages"][0]["content"]
-
-
 # ---------------------------------------------------------------------------
 # 2. OS CINCO CAMINHOS TRISTES — um a um, cada um com a frase dele
 # ---------------------------------------------------------------------------

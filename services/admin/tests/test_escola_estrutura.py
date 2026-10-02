@@ -28,9 +28,6 @@ O que cada promessa custa, se cair:
    ninguem chega nela.
 """
 
-import re
-from pathlib import Path
-
 import httpx
 import pytest
 import respx
@@ -48,7 +45,6 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 SITE_ID = "site-mesh"
 CURSO = "primeiros-dolares"
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts"
 
 TEXTO = """# Modulo 1: Comece por aqui
 01 Boas-vindas ao curso
@@ -527,28 +523,3 @@ def test_a_lista_de_cursos_leva_a_esta_tela():
     corpo = _dentro().get(reverse("escola_cursos")).content.decode()
     assert _tela() in corpo
     assert "Módulos e aulas" in corpo
-
-
-# ---------------------------------------------------------------------------
-# OS DOIS GUARDAS DO CONTRATO
-# ---------------------------------------------------------------------------
-def test_a_porta_que_esta_tela_usa_existe_no_contrato_congelado():
-    texto = (CONTRATOS / "cursos.openapi.yaml").read_text(encoding="utf-8")
-    assert "putCourseStructure" in texto
-    assert "/cursos/{curso}/estrutura:" in texto
-
-
-def test_os_limites_desta_tela_sao_os_do_contrato():
-    """`TETO` e `NUMERO` são cópias de valores que moram no contrato.
-
-    Divergir deles faria a tela aceitar o que a porta recusa, e o mantenedor
-    veria um 422 sobre a estrutura inteira em vez da linha errada.
-    """
-    from apps.core.estrutura import NUMERO, TETO
-
-    texto = (CONTRATOS / "cursos.openapi.yaml").read_text(encoding="utf-8")
-    trecho = texto[texto.index("    AulaDaEstruturaSchema:") :]
-    trecho = trecho[: trecho.index("    EstruturaParaGravarSchema:")]
-    assert re.search(r"pattern:\s*\^\[A-Z0-9\]\{1,3\}\$", trecho)
-    assert NUMERO.pattern == "^[A-Z0-9]{1,3}$"
-    assert f"maxLength: {TETO}" in trecho

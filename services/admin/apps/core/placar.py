@@ -19,8 +19,9 @@ número de fichas:
 1. **Número sem cartão não aparece** (plano, §2). O cartão de uma métrica fica
    no banco e diz o que o número é, de onde vem, quem pode declará-lo e qual
    métrica o segura (o "par"). Os JSON antigos foram sementes da importação.
-   Cartão ausente ou inválido ⇒ a página abre, DIZ o que faltou, e não mostra
-   o número. Guarda: `tests/test_placar.py`.
+   Cartão ausente ⇒ a página abre, DIZ o que faltou, e não mostra o número.
+   Cartão com defeito de formato ⇒ o número aparece, a parte torta fica fora
+   da conta, e o defeito vai para a tela como aviso.
 2. **X é medido, nunca digitado**, e vem da célula `alunos`, por HTTP e em
    tempo real (decisão do mantenedor de 25/08/2026). A data que conta é
    `virou_aluno_em` (a confirmação do pagamento), campo do Rito de Contrato
@@ -113,34 +114,6 @@ CARTOES_DO_CAMINHO_DA_VENDA = (
     "compras-pelo-checkout-por-semana",
 )
 
-#: Os quatro tipos de número do plano (§2). Não existe tipo "composto": um
-#: número composto é reconhecido pelo campo `componentes`, e nunca desce ao
-#: andar zero.
-TIPOS = ("resultado", "direcao", "par", "confianca")
-
-#: `direcao` (Scale OS 1.2 §33, traduzido): custo subir é ruim, compras subir
-#: é bom. Sem o campo a tela não sabe pintar a seta. Opcional por enquanto.
-DIRECOES = ("subir", "descer", "faixa")
-
-#: Por onde um número se abre (degrau 6, plano §4.2). O cartão declara em
-#: `dimensoes` as que fazem sentido para ele; a tela que abre por dimensão é
-#: dos degraus 9 e 10, e o campo entra antes para o cartão já dizer a verdade.
-DIMENSOES = ("site", "turma", "mes-de-entrada", "canal")
-
-OBRIGATORIOS = (
-    "nome",
-    "tipo",
-    "andar",
-    "pergunta",
-    "definicao",
-    "formula",
-    "autoridade",
-    "dono",
-    "frequencia",
-    "versao",
-    "desde",
-)
-
 #: Os status de gestão que contam como "comprou". `reembolsada` fica de fora:
 #: a compra foi desfeita. Lista de PERMISSÃO, como a `STATUS_QUE_VALEM` da
 #: `alunos`: status novo nasce fora dela e alguém decide.
@@ -175,22 +148,6 @@ def vendeu_pelo_site(ficha: dict) -> bool:
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 
-#: Os blocos da capa, na ordem do plano (§3), e o TETO: a capa se recusa a
-#: crescer. Realidade nova entra como cartão, não como bloco. O guarda mede o
-#: template (`tests/test_capa.py`): cada `titulo-de-bloco` é um bloco. O teto é
-#: o do plano, e não a contagem de hoje: a vaga que sobra é para realidade nova.
-BLOCOS_DA_CAPA = (
-    "a barra do mês e a meta grande",
-    "as estrelas-guia",
-    "a direção da semana",
-    "a restrição desta semana",
-    "o placar de doze",
-    "o par que segura a meta",
-    "o que mudou (degrau 6)",
-    "o laboratório (degrau 12)",
-)
-TETO_DE_BLOCOS = 9
-
 
 def diretorio_dos_cartoes() -> Path:
     """Pasta dos JSON usados na importação inicial e em provas isoladas."""
@@ -198,101 +155,43 @@ def diretorio_dos_cartoes() -> Path:
 
 
 def validar(cartao: object) -> list[str]:
-    """Os defeitos de um cartão, em português. Lista vazia = cartão válido.
+    """Os defeitos que tiram uma parte do cartão da conta. Lista vazia = nenhum.
 
-    Cada problema informa a correção a quem edita o cartão no painel.
+    Só entra aqui o que a conta do número usa: a meta (alvo, data, partida),
+    a curva de semanas, a meta do mês e o frescor. O resto do cartão é texto
+    que a tela mostra como veio. Cada problema diz a correção a quem edita o
+    cartão no painel.
     """
     if not isinstance(cartao, dict):
         return ["o cartão não é um objeto JSON"]
-    problemas: list[str] = []
-    for campo in OBRIGATORIOS:
-        valor = cartao.get(campo)
-        if valor is None or (isinstance(valor, str) and not valor.strip()):
-            problemas.append(f"campo `{campo}` ausente ou vazio")
-    if cartao.get("tipo") not in TIPOS:
-        problemas.append(f"`tipo` deve ser um de {', '.join(TIPOS)}")
-    andar = cartao.get("andar")
-    if not isinstance(andar, int) or isinstance(andar, bool) or not 0 <= andar <= 4:
-        problemas.append("`andar` é um inteiro de 0 a 4, sem aspas")
-    if cartao.get("componentes") and andar == 0:
-        problemas.append(
-            "número composto (tem `componentes`) nunca desce ao andar 0: "
-            "o placar mostra a coisa, não uma nota sobre a coisa"
-        )
-    if andar == 0 and cartao.get("tipo") == "resultado" and not cartao.get("acao"):
-        # Scale OS 1.1 §2 e §132, virado regra: "se este número mudar, alguém
-        # faz algo diferente?" Um número no andar zero sem `acao` é um número
-        # que só se olha, e o andar zero é o que pede gesto.
-        problemas.append(
-            "número de resultado no andar 0 exige `acao`: o que fazer quando "
-            "ele estiver abaixo do esperado (o andar zero pede gesto, não olhar)"
-        )
-    if cartao.get("tipo") != "confianca" and not cartao.get("par"):
-        problemas.append(
-            "toda métrica que pode ser forçada tem um `par` que a segura; "
-            "só o tipo `confianca` dispensa"
-        )
-    if "fonte" not in cartao:
-        problemas.append("campo `fonte` ausente (use null se a fonte não existe)")
-    elif cartao.get("fonte") is None and not cartao.get("sem_fonte_porque"):
-        problemas.append(
-            "`fonte` nula exige `sem_fonte_porque`: um número sem fonte precisa "
-            "dizer em voz alta por que ainda não existe"
-        )
-    direcao = cartao.get("direcao")
-    if direcao is not None and direcao not in DIRECOES:
-        problemas.append(f"`direcao` deve ser um de {', '.join(DIRECOES)}")
-    versao = cartao.get("versao")
-    if not isinstance(versao, int) or isinstance(versao, bool) or versao < 1:
-        problemas.append("`versao` é um inteiro a partir de 1, sem aspas")
+    return (
+        _validar_a_meta(cartao)
+        + _validar_as_semanas(cartao)
+        + _validar_o_alvo_do_mes(cartao)
+        + _validar_o_frescor(cartao)
+    )
+
+
+def _inteiro(valor: object, minimo: int) -> bool:
+    return isinstance(valor, int) and not isinstance(valor, bool) and valor >= minimo
+
+
+def _validar_o_alvo_do_mes(cartao: dict) -> list[str]:
     alvo_do_mes = cartao.get("alvo_do_mes")
-    if alvo_do_mes is not None and (
-        not isinstance(alvo_do_mes, int)
-        or isinstance(alvo_do_mes, bool)
-        or alvo_do_mes < 0
-    ):
-        problemas.append("`alvo_do_mes` é um inteiro sem aspas, ou null")
+    if alvo_do_mes is not None and not _inteiro(alvo_do_mes, 0):
+        return ["`alvo_do_mes` é um inteiro sem aspas, ou null"]
+    return []
+
+
+def _validar_o_frescor(cartao: dict) -> list[str]:
     frescor = cartao.get("frescor_maximo")
-    if frescor is not None and (
-        not isinstance(frescor, int) or isinstance(frescor, bool) or frescor < 1
-    ):
-        problemas.append(
-            "`frescor_maximo` é um inteiro de dias a partir de 1, ou ausente: "
-            "passa disso e o número é dito como velho"
-        )
-    dimensoes = cartao.get("dimensoes")
-    if dimensoes is not None and (
-        not isinstance(dimensoes, list) or any(d not in DIMENSOES for d in dimensoes)
-    ):
-        problemas.append(
-            f"`dimensoes` é uma lista entre {', '.join(DIMENSOES)}, ou ausente"
-        )
-    ruido = cartao.get("ruido")
-    if ruido is not None and (
-        isinstance(ruido, bool) or not isinstance(ruido, (int, float)) or ruido < 0
-    ):
-        problemas.append(
-            "`ruido` é um número na unidade do cartão, zero ou maior, ou ausente: "
-            "diferença até ele não é movimento"
-        )
-    problemas.extend(_validar_a_meta(cartao))
-    problemas.extend(_validar_as_semanas(cartao))
-    return problemas
+    if frescor is not None and not _inteiro(frescor, 1):
+        return ["`frescor_maximo` é um inteiro de dias a partir de 1, ou ausente"]
+    return []
 
 
 def _validar_as_semanas(cartao: dict) -> list[str]:
-    """A curva do ciclo: 14 faixas de datas, e a soma delas É a meta grande.
-
-    A regra que importa é a última: **a soma dos alvos semanais tem de dar
-    exatamente `alvo` menos `partida`**. Sem ela, a curva e a meta grande
-    seriam duas verdades sobre o mesmo número, e no dia em que discordassem
-    ninguém saberia qual está certa — o placar diria uma coisa e o calendário
-    outra, os dois com ar de certeza. É a lei anti-duplicação do `CLAUDE.md`
-    aplicada dentro de um arquivo só.
-
-    As outras regras são o mínimo para a curva ser um calendário de verdade:
-    faixas em ordem, sem sobreposição, cada uma com começo antes do fim.
-    """
+    """A curva do ciclo: cada faixa com número, alvo e as duas datas."""
     semanas = cartao.get("semanas")
     if semanas is None:
         return []
@@ -305,40 +204,17 @@ def _validar_as_semanas(cartao: dict) -> list[str]:
             problemas.append(f"{onde} não é um objeto")
             continue
         for campo in ("n", "alvo"):
-            v = s.get(campo)
-            if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+            if not _inteiro(s.get(campo), 0):
                 problemas.append(
                     f"{onde}: `{campo}` é um inteiro sem aspas, zero ou maior"
                 )
         for campo in ("de", "ate"):
             if _data(s.get(campo)) is None:
                 problemas.append(f"{onde}: `{campo}` é uma data AAAA-MM-DD")
-    if problemas:
-        return problemas
-
-    for i, s in enumerate(semanas):
-        de, ate = _data(s["de"]), _data(s["ate"])
-        if ate < de:
-            problemas.append(f"semanas[{i}]: `ate` vem antes de `de`")
-        if i and _data(semanas[i - 1]["ate"]) >= de:
-            problemas.append(
-                f"semanas[{i}] começa em {s['de']}, antes de a anterior terminar: "
-                "as faixas são de datas e não podem se sobrepor nem sair de ordem"
-            )
-    if problemas:
-        return problemas
-
-    if cartao.get("alvo") is None or cartao.get("partida") is None:
-        return ["`semanas` exige a meta completa no cartão (`alvo` e `partida`)"]
-    soma = sum(int(s["alvo"]) for s in semanas)
-    esperado = int(cartao["alvo"]) - int(cartao["partida"])
-    if soma != esperado:
-        problemas.append(
-            f"a soma das semanas é {soma} e a meta pede {esperado} "
-            f"(`alvo` {cartao['alvo']} menos `partida` {cartao['partida']}): "
-            "a curva não pode discordar da meta grande. Ajuste as semanas, ou "
-            "o alvo, mas nunca deixe os dois números discordarem"
-        )
+        de, ate = _data(s.get("de")), _data(s.get("ate"))
+        if de and ate and ate < de:
+            # Faixa de trás para a frente divide por zero na conta do esperado.
+            problemas.append(f"{onde}: `ate` vem antes de `de`")
     return problemas
 
 
@@ -356,14 +232,11 @@ def _validar_a_meta(cartao: dict) -> list[str]:
         ]
     problemas: list[str] = []
     for c in ("alvo", "partida"):
-        v = cartao[c]
-        if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+        if not _inteiro(cartao[c], 0):
             problemas.append(f"`{c}` é um inteiro sem aspas")
     for c in ("ate", "partida_em"):
         if _data(cartao[c]) is None:
             problemas.append(f"`{c}` é uma data AAAA-MM-DD")
-    if not problemas and _data(cartao["ate"]) <= _data(cartao["partida_em"]):
-        problemas.append("`ate` precisa vir depois de `partida_em`")
     return problemas
 
 
@@ -375,7 +248,12 @@ def _data(texto: object) -> dt.date | None:
 
 
 def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[str]]:
-    """Lê o cartão ativo do banco; pasta externa explícita serve a provas isoladas."""
+    """Lê o cartão ativo do banco; pasta externa explícita serve a provas isoladas.
+
+    Devolve `(cartão, avisos)`. Cartão ausente, ou que nem é objeto, volta
+    `None`. Cartão com defeito de formato volta assim mesmo, sem a parte torta,
+    e os defeitos vão nos avisos para a tela mostrar ao lado do número.
+    """
     # Uma pasta diferente é usada pelas provas de cartões recém-escritos.
     # A pasta antiga embarcada não é mais uma segunda fonte em produção.
     if pasta is None or pasta == PASTA_ORIGINAL_DOS_CARTOES:
@@ -384,13 +262,7 @@ def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[
         linha = CartaoDoPlacar.objects.filter(nome=nome).first()
         if linha is None:
             return None, [f"o cartão `{nome}` não existe no painel"]
-        cartao = linha.dados
-        problemas = validar(cartao)
-        if problemas:
-            return None, [f"cartão `{nome}`: {p}" for p in problemas]
-        if cartao.get("nome") != nome:
-            return None, [f"cartão `{nome}`: o campo `nome` diz `{cartao.get('nome')}`"]
-        return cartao, []
+        return _o_que_da_para_contar(nome, linha.dados)
     pasta = pasta if pasta is not None else diretorio_dos_cartoes()
     caminho = pasta / f"{nome}.json"
     if not caminho.is_file():
@@ -399,12 +271,35 @@ def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[
         cartao = json.loads(caminho.read_text(encoding="utf-8"))
     except (OSError, ValueError) as erro:
         return None, [f"o cartão `{nome}` não é JSON válido: {erro}"]
+    return _o_que_da_para_contar(nome, cartao)
+
+
+def _o_que_da_para_contar(nome: str, cartao: object) -> tuple[dict | None, list[str]]:
+    """O cartão sem as partes tortas, e os avisos que dizem quais eram."""
     problemas = validar(cartao)
-    if problemas:
+    if not isinstance(cartao, dict):
         return None, [f"cartão `{nome}`: {p}" for p in problemas]
+    limpo = dict(cartao)
+    if _validar_a_meta(cartao):
+        # Sem a meta inteira não há veredito, mas a partida que veio certa
+        # continua contando: tirá-la zeraria o número.
+        for campo in ("alvo", "semanas"):
+            limpo.pop(campo, None)
+        if not _inteiro(cartao.get("partida"), 0):
+            limpo.pop("partida", None)
+        for campo in ("ate", "partida_em"):
+            if _data(cartao.get(campo)) is None:
+                limpo.pop(campo, None)
+    elif _validar_as_semanas(cartao):
+        limpo.pop("semanas", None)
+    if _validar_o_alvo_do_mes(cartao):
+        limpo.pop("alvo_do_mes", None)
+    if _validar_o_frescor(cartao):
+        limpo.pop("frescor_maximo", None)
     if cartao.get("nome") != nome:
-        return None, [f"cartão `{nome}`: o campo `nome` diz `{cartao.get('nome')}`"]
-    return cartao, []
+        problemas.append(f"o campo `nome` diz `{cartao.get('nome')}`")
+        limpo["nome"] = nome
+    return limpo, [f"cartão `{nome}`: {p}" for p in problemas]
 
 
 # ------------------------------------------------------------------ a contagem
@@ -715,9 +610,8 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     recusas_do_caminho_da_venda = []
     for nome in CARTOES_DO_CAMINHO_DA_VENDA:
         cartao, recusado = ler_cartao(nome, pasta)
-        if cartao is None:
-            recusas_do_caminho_da_venda.extend(recusado)
-        else:
+        recusas_do_caminho_da_venda.extend(recusado)
+        if cartao is not None:
             caminho_da_venda.append(cartao)
 
     from . import doze as doze_

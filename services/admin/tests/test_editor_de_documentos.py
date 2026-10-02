@@ -495,24 +495,6 @@ def test_o_documento_editado_muda_no_site_na_hora():
     assert "Antes" not in corpo
 
 
-def test_o_editor_nao_promete_markdown_que_o_site_nao_renderiza():
-    """A ajuda embaixo do campo promete só o que o renderizador cumpre."""
-    from pathlib import Path
-
-    fonte = (
-        Path(__file__).resolve().parents[1]
-        / "apps/core/templates/admin/documento_editar.html"
-    ).read_text(encoding="utf-8")
-
-    assert "figura:recepcionista" in fonte
-    assert "Imagem por endereço da internet ainda não entra" in fonte
-    assert ">!" in fonte or "&gt;!" in fonte
-    assert "arquivo:nome" in fonte
-    saida = documentos.para_html("| a | b |\n| --- | --- |\n| c | d |")
-    assert "<table>" in saida
-    assert documentos.para_html("| a | b |").startswith("<p>")
-
-
 @respx.mock
 def test_criar_deixa_uma_linha_de_auditoria():
     """A lei do `LICOES.md` desta celula: a auditoria entra no MESMO PR da

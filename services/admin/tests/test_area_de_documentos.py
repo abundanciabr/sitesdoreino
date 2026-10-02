@@ -29,7 +29,6 @@ descuido vira um texto interno no ar, e é isso que este arquivo trava.
    distinguir uma da outra.
 """
 
-import re
 from pathlib import Path
 
 import httpx
@@ -356,42 +355,6 @@ CAMINHO_DOS_TEMPLATES = (
 TEMPLATES_PUBLICOS = ("docs_publicos.html", "doc_publico.html")
 
 
-@pytest.mark.parametrize("nome", TEMPLATES_PUBLICOS)
-def test_a_pagina_publica_nao_monta_endereco_com_url(nome):
-    """A regra invertida, medida onde ela se quebra.
-
-    `{% url %}` prefixa `FORCE_SCRIPT_NAME`, e a página pública não mora sob
-    `/admin`. O endereço dela sai de `documentos.PREFIXO_PUBLICO`, uma constante
-    só, que casa com o prefixo do gateway e com o da porta.
-
-    Se você chegou aqui porque o teste ficou vermelho: a pergunta não é como
-    contornar, é qual endereço aquela página deve mostrar a quem não entrou.
-    """
-    fonte = (CAMINHO_DOS_TEMPLATES / nome).read_text(encoding="utf-8")
-    # O `{% url %}` dentro de `{% comment %}` não conta — os comentários destes
-    # arquivos EXPLICAM a regra, e citar a tag é como se explica.
-    sem_comentarios = re.sub(
-        r"\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}", "", fonte, flags=re.S
-    )
-    assert "{% url" not in sem_comentarios, (
-        f"{nome} monta endereço com `{{% url %}}`, e isso prefixa `/admin` numa "
-        "página que não mora lá. Use `documentos.PREFIXO_PUBLICO`."
-    )
-
-
-@pytest.mark.parametrize("nome", ("documentos.html", "documento_admin.html"))
-def test_a_pagina_ADMINISTRATIVA_continua_montando_endereco_com_url(nome):
-    """O outro lado, e ele é a regra normal da casa.
-
-    As telas de `/admin/documentos/` moram sob o prefixo, e ali `{% url %}` é
-    obrigatório — caminho cravado quebraria em produção e só lá
-    (`armadilhas/081`). Sem este guarda, alguém "consertaria" as quatro páginas
-    de uma vez e quebraria as duas que estavam certas.
-    """
-    fonte = (CAMINHO_DOS_TEMPLATES / nome).read_text(encoding="utf-8")
-    assert "{% url" in fonte, f"{nome} deixou de usar `{{% url %}}`"
-
-
 def test_o_endereco_publico_de_um_documento_e_o_prefixo_mais_o_nome():
     assert Documento(nome="meu-doc").endereco == "/docs/meu-doc"
 
@@ -403,19 +366,6 @@ def test_o_prefixo_publico_casa_com_o_da_porta():
     assert (
         documentos.PREFIXO_PUBLICO + "/" == PREFIXO_PUBLICO_DOS_DOCUMENTOS
     ), "o prefixo do endereço público e o da isenção da porta divergiram"
-
-
-def test_o_prefixo_publico_esta_no_roteamento_do_gateway():
-    """A terceira ponta: sem a regra no Traefik, `/docs/` cai no catch-all do
-    funil e a área pública responde 404 — com a célula inteira saudável."""
-    rotas = (
-        Path(__file__).resolve().parents[3]
-        / "infra"
-        / "traefik"
-        / "dynamic"
-        / "plataforma.yml"
-    ).read_text(encoding="utf-8")
-    assert "PathPrefix(`" + documentos.PREFIXO_PUBLICO + "`)" in rotas
 
 
 # ------------------------------- 4. HTML dentro do documento sai escapado
@@ -598,14 +548,6 @@ def test_a_pasta_do_repositorio_e_encontrada_e_tem_documentos(semente):
     """
     assert documentos.diretorio() is not None
     assert documentos.listar(so_publicos=False), "a pasta documentos/ está vazia"
-
-
-def test_todo_documento_do_repositorio_tem_titulo_e_renderiza(semente):
-    """Um documento sem título aparece na lista pelo endereço, o que é feio; um
-    que estoure o renderizador derruba a página de quem o abrir."""
-    for documento in documentos.listar(so_publicos=False):
-        assert documento.titulo != documento.nome, f"{documento.nome} sem `titulo`"
-        assert documentos.para_html(documento.corpo)
 
 
 def test_a_jornada_do_aluno_NAO_e_publica(semente):

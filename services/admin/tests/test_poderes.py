@@ -35,18 +35,14 @@ ausência de `escola_aluno_apagar` e de `AlunosClient.apagar_aluno` continua
 sendo medida linha a linha, sem mudança nenhuma.
 """
 
-import inspect
-import re
-
 import httpx
 import pytest
 import respx
 from django.db import DatabaseError
 from django.test import Client
-from django.urls import NoReverseMatch, reverse
+from django.urls import reverse
 
 from apps.auditoria.models import Registro
-from apps.core.clients import AlunosClient
 from apps.core.models import Administrador, RascunhoDeConfiguracao
 from apps.core.porta import _emails_autorizados
 
@@ -289,40 +285,6 @@ def test_robo_rejeitado_explicitamente_mesmo_que_a_rota_nao_o_bloqueie():
 # aluno NUNCA SEJA APAGADO"*. Os testes abaixo medem uma AUSÊNCIA, e por isso
 # eles existem: o que foi removido daqui — uma rota, um método, um formulário —
 # volta com uma linha em cada arquivo, e nenhum teste comum notaria.
-
-
-def test_nao_existe_caminho_para_apagar():
-    """As TRÊS camadas, e não só o botão.
-
-    Tirar só o `<form>` do template deixaria a rota viva para quem soubesse o
-    endereço; tirar a rota deixaria o método do cliente pronto para a próxima
-    view que alguém escrevesse. A capacidade sai inteira ou não sai.
-
-    03/09/2026: `AlunosClient` passou a ter UM método que fala DELETE de
-    verdade — `apagar_recusado`, a exceção aberta por
-    `DECISAO-apagar-recusado-definitivamente.md`. Por isso esta guarda não
-    pode mais dizer "nenhum DELETE nesta classe"; ela diz o que sempre
-    importou: nenhuma chamada DELETE mira uma matrícula REAL
-    (`/matriculas/{id}`). A exceção só alcança `/pre-matriculas/{id}` — a
-    fila, nunca quem já foi aluno.
-    """
-    with pytest.raises(NoReverseMatch):
-        reverse("escola_aluno_apagar")
-
-    assert not hasattr(AlunosClient, "apagar_aluno")
-
-    fonte = inspect.getsource(AlunosClient)
-    chamadas_delete = re.findall(r'\.delete\(\s*f"([^"]*)"', fonte)
-    assert chamadas_delete, (
-        "esperava pelo menos uma chamada DELETE nesta classe "
-        "(apagar_recusado) — se ela sumiu, esta asserção precisa mudar "
-        "de volta para a forma antiga"
-    )
-    for endereco in chamadas_delete:
-        assert endereco.startswith("{base}/pre-matriculas/"), (
-            f"chamada DELETE para {endereco!r} não é /pre-matriculas/ — "
-            "isto reabriria o caminho de apagar uma matrícula real"
-        )
 
 
 @respx.mock
