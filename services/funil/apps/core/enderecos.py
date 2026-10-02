@@ -56,6 +56,9 @@ ENTRADA_SENHA_PADRAO = "/entrar/senha"
 PRANCHETA_PADRAO = "/portfolio/"
 PRANCHETA_LEGADO = "/pages/"
 
+# As conquistas do aluno (nível, medalhas, marcos), célula `gamificacao`.
+CONQUISTAS_PADRAO = "/conquistas/"
+
 
 def _ler(nome: str, padrao: str) -> str:
     return (os.environ.get(nome) or "").strip() or padrao
@@ -72,6 +75,14 @@ def url_dos_avisos(cfg: dict | None = None, idioma: str | None = None) -> str:
     if cfg is not None and idioma is not None:
         return caminho_publico(cfg, idioma, AVISOS_PADRAO)
     return AVISOS_PADRAO
+
+
+def url_da_sugestao(sugestao_id: str) -> str:
+    return f"{url_da_caixa().rstrip('/')}/sugestoes/{sugestao_id}"
+
+
+def url_das_conquistas() -> str:
+    return _ler("URL_DAS_CONQUISTAS", CONQUISTAS_PADRAO)
 
 
 def url_de_entrada() -> str:

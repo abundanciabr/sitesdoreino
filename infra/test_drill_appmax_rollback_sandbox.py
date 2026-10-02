@@ -8,7 +8,6 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -150,8 +149,6 @@ def preparar(
         encoding="utf-8",
     )
     vps = VPS(tmp_path)
-    if os.name == "nt":
-        monkeypatch.setattr(drill.canario, "trava_publicacao", lambda _raiz: nullcontext())
     monkeypatch.setattr(drill.canario, "compose", vps.compose)
     monkeypatch.setattr(drill.canario, "recarregar", vps.recarregar)
     monkeypatch.setattr(drill, "buscar_pagina", vps.buscar_pagina)

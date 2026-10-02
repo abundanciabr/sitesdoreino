@@ -1,3 +1,10 @@
+# Final de linha: o repositório guarda LF e a pasta de trabalho também usa LF,
+# em qualquer máquina. Sem isto, no Windows com core.autocrlf=true a pasta
+# mostra CRLF e uma ferramenta que acrescenta uma linha com LF deixa o arquivo
+# misturado. Esta é a regra geral; as regras abaixo, que vêm depois, prevalecem
+# sobre ela (por exemplo, *.cmd continua em CRLF).
+* text=auto eol=lf
+
 # .sh precisa de LF sempre — CRLF quebra o shebang e heredocs quando o script
 # roda dentro de um container Linux ou é chamado via `bash arquivo.sh` depois
 # de um checkout com core.autocrlf=true (comum em máquina Windows).

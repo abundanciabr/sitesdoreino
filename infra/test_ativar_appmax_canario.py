@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-import os
 import subprocess
-from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -79,8 +77,6 @@ def preparar(
         encoding="utf-8",
     )
     compose = Compose()
-    if os.name == "nt":
-        monkeypatch.setattr(canario, "trava_publicacao", lambda _raiz: nullcontext())
     monkeypatch.setattr(canario, "compose", compose)
     monkeypatch.setattr(canario, "recarregar", compose.recarregar)
     return tmp_path, compose
