@@ -261,15 +261,13 @@ def test_a_tela_diz_que_nao_olhou_quando_o_livro_nao_veio(monkeypatch):
 
 
 @respx.mock
-def test_a_tela_nasce_vazia_explicando_o_que_e_um_experimento(monkeypatch):
+def test_a_tela_vazia_abre_e_oferece_acesso_ao_painel(monkeypatch):
     monkeypatch.setattr(laboratorio, "ler_registros", lambda: [])
     resposta = _dentro().get(reverse("laboratorio"))
     corpo = resposta.content.decode()
-    texto = " ".join(corpo.split())
 
     assert resposta.status_code == 200
     assert "Ainda não há nenhum experimento" in corpo
-    assert "o problema que dói hoje" in corpo and "a hipótese" in corpo
     assert reverse("gestao_do_placar") in corpo
 
 
