@@ -165,3 +165,14 @@ def test_links_recusam_versao_que_nao_existe(quiz):
     resposta = links(pedido("/admin/crivo/links?site_id=painel-site&v=B9"), quiz.slug)
     assert resposta.status_code == 422
     assert "B9" in json.loads(resposta.content)["detail"]
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_links_filtram_segmentos_e_geral_e_o_link_sem_segmento(quiz):
+    request = pedido(
+        "/admin/crivo/links?site_id=painel-site&v=B2&fmt=text&seg=geral,avancado"
+    )
+    dados = json.loads(links(request, quiz.slug).content)
+    assert sorted(item["seg"] for item in dados["links"]) == ["", "avancado"]
+    vazio = links(pedido("/admin/crivo/links?site_id=painel-site&seg=xyz"), quiz.slug)
+    assert vazio.status_code == 422

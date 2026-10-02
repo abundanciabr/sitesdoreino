@@ -312,34 +312,44 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
         )
     )
     url = reverse("quiz_campanhas", kwargs={"slug": "campanha"})
-    pagina = cliente.get(
-        url,
-        {
-            "inicio": "2026-10-01",
-            "fim": "2026-10-02",
-            "src": "instagram",
-            "utm_term": "lucro",
-        },
-    )
+    pagina = cliente.get(url, {"inicio": "2026-10-01", "fim": "2026-10-02"})
     assert pagina.status_code == 200
     texto = pagina.content.decode()
     assert "10" in texto and "4" in texto and "2" in texto
     assert "Sem visita registrada" in texto
     assert "clique; compra depende do checkout" in texto
-    assert "utm_term" in texto
-    assert "https://testserver/quiz/campanha/" in texto
-    assert "3 visitas" not in texto
-    assert "email@" not in texto
+    assert "Criar os links" in texto and 'value="B1"' in texto
+    assert "Vídeo no topo (VSL)" in texto and 'value="novo"' in texto
+    assert "3 visitas" not in texto and "email@" not in texto
+    assert "unsafe-inline" not in pagina["Content-Security-Policy"]
+    assert "'sha256-" in pagina["Content-Security-Policy"]
     assert dict(relatorio.calls.last.request.url.params) == {
         "site_id": "site-teste",
         "inicio": "2026-10-01",
         "fim": "2026-10-02",
     }
-    assert dict(links.calls.last.request.url.params) == {
-        "site_id": "site-teste",
-        "src": "instagram",
-        "utm_term": "lucro",
-    }
+    assert dict(links.calls.last.request.url.params) == {"site_id": "site-teste"}
+
+    gerada = cliente.get(
+        url,
+        {
+            "gerar": "1",
+            "v": ["B1"],
+            "fmt": ["video"],
+            "seg": ["geral", "novo"],
+            "src": "instagram",
+            "ctv": "vsl_47s\nvsl_30s",
+            "utm_term": "lucro",
+        },
+    )
+    texto = gerada.content.decode()
+    enviado = dict(links.calls.last.request.url.params)
+    assert enviado["v"] == "B1" and enviado["fmt"] == "video"
+    assert enviado["seg"] == "geral,novo" and enviado["ctv"] == "vsl_47s,vsl_30s"
+    assert enviado["src"] == "instagram" and enviado["utm_term"] == "lucro"
+    assert enviado["cpg"].startswith("qz_novo_")
+    assert "https://testserver/quiz/campanha/" in texto
+    assert "src=teste" in texto and "Copiar todos os links" in texto
 
 
 @respx.mock

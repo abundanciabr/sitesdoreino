@@ -1,76 +1,214 @@
 {% extends "admin/base.html" %}
-{% block titulo %}Campanhas · {{ slug }}{% endblock %}
+{% block titulo %}Links e números · {{ slug }}{% endblock %}
 {% block corpo %}
-<div class="envolucro">
-  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Editar quiz</a>
-  <h1>Campanhas: {{ slug }}</h1>
-  <p class="subtitulo">Visitas, conclusões e cliques de saída por origem e versão.</p>
-  <p><a href="{% url 'quiz_evolucao' slug %}">Ver evolução: funil por etapa, gargalos e propostas de nova versão →</a></p>
+<style>
+  .camp .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0 4px; }
+  .camp .passo { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
+  .camp .passo b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .camp fieldset { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; margin: 0 0 14px; }
+  .camp legend { font-weight: 700; padding: 0 6px; }
+  .camp .opcoes { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .camp .opcoes label { display: flex; align-items: center; gap: 6px; font-weight: 400; }
+  .camp .opcoes input { width: auto; margin: 0; }
+  .camp .dica { color: #475569; font-size: 14px; margin: 4px 0 8px; }
+  .camp .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .camp .grade label, .camp .campo { display: block; }
+  .camp input[type=text], .camp input[type=date], .camp select, .camp textarea { width: 100%; box-sizing: border-box; }
+  .camp .principal { font-size: 17px; padding: 10px 18px; }
+  .camp .link { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+  .camp .link .rotulo { font-weight: 700; }
+  .camp .link input { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 13px; margin: 6px 0; }
+  .camp .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .camp .acoes a, .camp .acoes button { font-size: 14px; }
+  .camp .alerta { border-left: 4px solid #d97706; background: #fffbeb; padding: 8px 12px; border-radius: 6px; }
+  .camp .certo { border-left: 4px solid #16a34a; background: #f0fdf4; padding: 8px 12px; border-radius: 6px; }
+  .camp table { width: 100%; border-collapse: collapse; text-align: left; }
+  .camp th, .camp td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  .camp .rolagem { overflow-x: auto; }
+  .camp details { margin: 8px 0; }
+  .camp summary { cursor: pointer; font-weight: 700; }
+  .camp dl dt { font-weight: 700; margin-top: 8px; }
+  .camp dl dd { margin: 0 0 0 0; }
+</style>
+<div class="envolucro camp">
+  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
+  <h1>Links dos anúncios e números: {{ slug }}</h1>
+  <p class="subtitulo">Aqui você cria o link certo para cada anúncio e depois vê quantas pessoas cada um trouxe.</p>
+  <div class="passos">
+    <div class="passo"><b>1. Monte</b>Marque as opções abaixo e clique em "Criar os links".</div>
+    <div class="passo"><b>2. Teste e copie</b>Abra o link de teste e depois copie o link verdadeiro para o anúncio.</div>
+    <div class="passo"><b>3. Acompanhe</b>Volte aqui e veja visitas, respostas e cliques por campanha.</div>
+  </div>
+  <p><a href="{% url 'quiz_evolucao' slug %}">Ver onde o quiz perde gente e propostas de nova versão →</a></p>
 
   <div class="cartao">
-    <h2>Filtrar</h2>
-    <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
-      <label>De<br><input type="date" name="inicio" value="{{ filtros.inicio }}"></label>
-      <label>Até<br><input type="date" name="fim" value="{{ filtros.fim }}"></label>
-      <label>Versões (v)<br><input name="v" value="{{ filtros.v }}" placeholder="B2"></label>
-      <label>Formatos (fmt)<br><input name="fmt" value="{{ filtros.fmt }}" placeholder="text,calc"></label>
-      <label>Origem (src)<br><input name="src" value="{{ filtros.src }}"></label>
-      <label>Meio (med)<br><input name="med" value="{{ filtros.med }}"></label>
-      <label>Campanha (cpg)<br><input name="cpg" value="{{ filtros.cpg }}"></label>
-      <label>Criativos (ctv)<br><input name="ctv" value="{{ filtros.ctv }}" placeholder="video_hook1,texto_dor"></label>
-      <label>UTM source<br><input name="utm_source" value="{{ filtros.utm_source }}"></label>
-      <label>UTM medium<br><input name="utm_medium" value="{{ filtros.utm_medium }}"></label>
-      <label>UTM campaign<br><input name="utm_campaign" value="{{ filtros.utm_campaign }}"></label>
-      <label>UTM content<br><input name="utm_content" value="{{ filtros.utm_content }}"></label>
-      <label>UTM term<br><input name="utm_term" value="{{ filtros.utm_term }}"></label>
-      <button type="submit">Aplicar filtros e gerar links</button>
+    <h2>1. Monte os links</h2>
+    <form method="get">
+      <input type="hidden" name="gerar" value="1">
+      <fieldset>
+        <legend>Qual versão do quiz?</legend>
+        <p class="dica">Cada versão tem suas próprias perguntas. Se não souber, deixe só a mais nova marcada.</p>
+        <div class="opcoes">
+          {% for v in versoes %}<label><input type="checkbox" name="v" value="{{ v }}"{% if v in escolha.v or not escolha.v and forloop.last %} checked{% endif %}> {{ v }}</label>{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Como o quiz aparece?</legend>
+        <p class="dica">Use o mesmo jeito do anúncio: anúncio com vídeo → "Vídeo no topo"; anúncio de imagem ou texto → "Texto".</p>
+        <div class="opcoes">
+          {% for chave, nome in formatos %}<label><input type="checkbox" name="fmt" value="{{ chave }}"{% if chave in escolha.fmt or not escolha.fmt and chave == 'text' %} checked{% endif %}> {{ nome }}</label>{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Para quem é o anúncio?</legend>
+        <p class="dica">O público muda o título do quiz e o texto do resultado. "Geral" serve para qualquer pessoa.</p>
+        <div class="opcoes">
+          {% for s in segmentos %}<label><input type="checkbox" name="seg" value="{{ s }}"{% if s in escolha.seg or not escolha.seg and s == 'geral' %} checked{% endif %}> {% if s == 'geral' %}Geral (qualquer pessoa){% else %}{{ s }}{% endif %}</label>{% endfor %}
+        </div>
+      </fieldset>
+      <div class="grade">
+        <label>Onde o anúncio vai rodar?
+          <select name="src">
+            <option value="">Escolha…</option>
+            {% for chave, nome in origens %}<option value="{{ chave }}"{% if escolha.src == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Que tipo de divulgação?
+          <select name="med">
+            <option value="">Escolha…</option>
+            {% for chave, nome in meios %}<option value="{{ chave }}"{% if escolha.med == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Nome da campanha
+          <input type="text" name="cpg" value="{{ escolha.cpg }}" placeholder="{{ nome_exemplo }}" maxlength="200">
+          <span class="dica">Deixe vazio e o site cria um nome sozinho: <code>{{ nome_exemplo }}</code> (quiz, público, mês e ano).</span>
+        </label>
+      </div>
+      <label class="campo">Nome de cada anúncio (criativo), um por linha
+        <textarea name="ctv" rows="4" placeholder="vsl_47s&#10;vsl_30s&#10;imagem_depoimento">{{ criativos_texto }}</textarea>
+        <span class="dica">Use o mesmo nome que está no gerenciador de anúncios. Cada nome vira um link próprio, e assim você sabe qual anúncio trouxe cada pessoa.</span>
+      </label>
+      <details>
+        <summary>Opções avançadas (só se o time de mídia pedir)</summary>
+        <p class="dica">Normalmente ficam vazias: o site repete a origem, o tipo, a campanha e o criativo nos campos <code>utm_*</code>, que o Google Analytics e a Meta leem.</p>
+        <div class="grade">
+          <label>utm_source<input type="text" name="utm_source" value="{{ escolha.utm_source }}" maxlength="200"></label>
+          <label>utm_medium<input type="text" name="utm_medium" value="{{ escolha.utm_medium }}" maxlength="200"></label>
+          <label>utm_campaign<input type="text" name="utm_campaign" value="{{ escolha.utm_campaign }}" maxlength="200"></label>
+          <label>utm_content<input type="text" name="utm_content" value="{{ escolha.utm_content }}" maxlength="200"></label>
+          <label>utm_term (palavra-chave)<input type="text" name="utm_term" value="{{ escolha.utm_term }}" maxlength="200"></label>
+        </div>
+      </details>
+      <p><button type="submit" class="principal">Criar os links</button></p>
     </form>
-    <p class="nota">Versões, formatos e criativos aceitam vários valores separados por vírgula. Cada criativo vira um link para cada formato e segmento que existe: 4 criativos × 2 formatos × 3 segmentos = 24 links por versão. Formato ou versão que não existe não vira link.</p>
-    {% if filtros.utm_term %}<p class="nota">UTM term entra nos links e aparece na coluna de termo do relatório.</p>{% endif %}
   </div>
 
+  {% if gerar %}
+  <div class="cartao" id="links">
+    <h2>2. Teste e copie</h2>
+    {% if aviso_links %}
+      <p class="alerta">{{ aviso_links }} Desmarque a opção que não existe e tente de novo.</p>
+    {% elif links %}
+      <p class="certo"><b>{{ links|length }} link(s) prontos.</b>{% if cpg_sugerido %} Nome da campanha criado pelo site: <code>{{ cpg_sugerido }}</code>.{% endif %}</p>
+      {% if not escolha.src %}<p class="alerta">Você não escolheu onde o anúncio vai rodar. Sem isso, os números não mostram de onde a pessoa veio.</p>{% endif %}
+      {% if not escolha.ctv %}<p class="alerta">Sem o nome do anúncio, não dá para saber qual anúncio trouxe cada pessoa.</p>{% endif %}
+      <p class="dica"><b>Testar</b> abre o mesmo quiz marcado como teste, sem entrar nos números. <b>Copiar</b> pega o link verdadeiro, para colar no anúncio.</p>
+      <p><button type="button" data-copiar-todos>Copiar todos os links</button> <span data-recado role="status"></span></p>
+      <textarea readonly rows="4" data-todos class="dica" aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
+{% endfor %}</textarea>
+      {% for item in links %}
+        <div class="link">
+          <div class="rotulo">{{ item.version_key }} · {{ item.formato_legivel }} · {% if item.seg %}{{ item.seg }}{% else %}geral{% endif %}{% if item.ctv %} · anúncio {{ item.ctv }}{% endif %}</div>
+          <input type="text" readonly value="{{ item.url }}" aria-label="Link do anúncio">
+          <div class="acoes">
+            <button type="button" data-copiar="{{ item.url }}">Copiar</button>
+            <a href="{{ item.teste }}" target="_blank" rel="noopener noreferrer">Testar (não conta nos números)</a>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="alerta">Nenhum link saiu com essas escolhas. Marque pelo menos uma versão, um formato e um público.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="cartao">
-    <h2>Jornada medida</h2>
-    <p class="nota">{{ aviso }} Visitas são a base das contagens. Linhas sem visita registrada aparecem abaixo, sem taxa ou denominador.</p>
+    <h2>3. Acompanhe os números</h2>
+    <form method="get" class="grade">
+      <label>De<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
+      <label>Até<input type="date" name="fim" value="{{ datas.fim }}"></label>
+      <label>Campanha
+        <select name="ver_cpg">
+          <option value="">Todas</option>
+          {% for c in campanhas_vistas %}<option value="{{ c }}"{% if ver_cpg == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>&nbsp;<button type="submit">Ver números</button></label>
+    </form>
+    <p class="dica"><b>Visitas</b>: pessoas que abriram o quiz. <b>Responderam</b>: chegaram ao resultado. <b>Foram para a oferta</b>: clicaram no botão da oferta. O clique não é compra: a venda é confirmada no checkout. Testes da equipe ficam fora.</p>
     {% if linhas %}
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;text-align:left">
-          <thead><tr><th>Dia da visita</th><th>Origem / campanha</th><th>Versão / formato / segmento</th><th>Termo (utm_term)</th><th>Visitas</th><th>Conclusões</th><th>Cliques de saída</th><th>Compras e receita</th></tr></thead>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Dia</th><th>Onde rodou / campanha</th><th>Anúncio</th><th>Versão · formato · público</th><th>Visitas</th><th>Responderam</th><th>Foram para a oferta</th></tr></thead>
           <tbody>
             {% for linha in linhas %}
               <tr>
                 <td>{{ linha.dia_origem }}</td>
                 <td>{% firstof linha.src linha.source "—" %} / {% firstof linha.cpg linha.campaign "—" %}</td>
-                <td>{{ linha.version_key }} / {{ linha.fmt|default:"—" }} / {{ linha.seg|default:"—" }}</td>
-                <td>{{ linha.term|default:"sem termo" }}</td>
+                <td>{% firstof linha.ctv linha.content "—" %}{% if linha.term %}<br><span class="dica">termo: {{ linha.term }}</span>{% endif %}</td>
+                <td>{{ linha.version_key }} · {{ linha.formato_legivel|default:"—" }} · {{ linha.seg|default:"geral" }}</td>
                 <td>{{ linha.visitas }}</td><td>{{ linha.submissoes }}</td>
-                <td>{{ linha.saidas }}{% if linha.saidas_demonstracao %} ({{ linha.saidas_reais }} real, {{ linha.saidas_demonstracao }} demonstração){% endif %}</td>
-                <td>sem dados de compra</td>
+                <td>{{ linha.saidas }}{% if linha.saidas_demonstracao %} ({{ linha.saidas_reais }} reais, {{ linha.saidas_demonstracao }} de demonstração){% endif %}</td>
               </tr>
-              {% if linha.alertas %}<tr><td colspan="8" class="nota">{{ linha.alertas|join:"; " }}</td></tr>{% endif %}
+              {% if linha.alertas %}<tr><td colspan="7" class="dica">{{ linha.alertas|join:"; " }}</td></tr>{% endif %}
             {% endfor %}
           </tbody>
         </table>
       </div>
-    {% else %}<p>Nenhuma visita encontrada com esses filtros.</p>{% endif %}
+    {% else %}<p>Nenhuma visita neste período. Quando um anúncio trouxer gente, ela aparece aqui.</p>{% endif %}
     {% if avulsas or divergentes %}
-      <h3>Conclusões sem denominador de visita</h3>
-      <p class="nota">Estas conclusões não entram em taxa de conversão da visita.</p>
-      {% for linha in avulsas %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} conclusão(ões). {{ linha.observacao }}</p>{% endfor %}
-      {% for linha in divergentes %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} conclusão(ões). {{ linha.observacao }}</p>{% endfor %}
+      <h3>Respostas sem visita registrada</h3>
+      <p class="dica">Pessoas que responderam, mas cuja visita não foi registrada (por exemplo, bloqueador no navegador). Não entram nas porcentagens.</p>
+      {% for linha in avulsas %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
+      {% for linha in divergentes %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
     {% endif %}
+    <p class="dica">{{ aviso }}</p>
   </div>
 
   <div class="cartao">
-    <h2>Links da campanha</h2>
-    <p class="nota">Os links levam os parâmetros de origem informados acima. Cada formato e segmento usa a mesma página do quiz, com versão explícita. Quando o UTM content fica vazio, ele repete o criativo.</p>
-    <p><strong>{{ links|length }} link(s).</strong></p>
-    {% if links %}<label>Todos, um por linha, para copiar<br><textarea readonly rows="6" style="width:100%">{% for item in links %}{{ item.url }}
-{% endfor %}</textarea></label>{% endif %}
-    {% for item in links %}
-      <p><strong>{{ item.version_key }} · {{ item.fmt }}{% if item.seg %} · {{ item.seg }}{% endif %}{% if item.ctv %} · {{ item.ctv }}{% endif %}</strong><br>
-        <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></p>
-    {% empty %}<p>Nenhum link disponível para as versões ativas.</p>{% endfor %}
+    <details>
+      <summary>O que significa cada parte do link?</summary>
+      <dl>
+        <dt>v = versão</dt><dd>Qual quiz a pessoa vê (perguntas e pontos). Ex.: B2.</dd>
+        <dt>fmt = formato</dt><dd>Como o quiz aparece: texto, vídeo, vídeo curto + texto, calculadora ou conversa com IA.</dd>
+        <dt>seg = público</dt><dd>Muda o título e o texto do resultado. Ex.: escalando.</dd>
+        <dt>src = onde rodou</dt><dd>Meta, TikTok, Google, e-mail…</dd>
+        <dt>med = tipo de divulgação</dt><dd>Anúncio pago (cpc), remarketing, orgânico.</dd>
+        <dt>cpg = campanha</dt><dd>O nome da campanha. Padrão: <code>qz_público_mêsano</code>, ex.: <code>qz_escalando_oct26</code>.</dd>
+        <dt>ctv = anúncio</dt><dd>O nome do criativo. Ex.: <code>vsl_47s</code>.</dd>
+        <dt>utm_…</dt><dd>As mesmas informações no padrão que o Google Analytics e a Meta leem. O site preenche sozinho.</dd>
+      </dl>
+      <p class="dica">Se alguém digitar errado a versão, o formato ou o público, o quiz mostra "página não encontrada" em vez de abrir outra coisa. Por isso, crie os links por aqui e teste antes de subir o anúncio.</p>
+    </details>
   </div>
 </div>
+<script>
+(function () {
+  var recado = document.querySelector('[data-recado]');
+  function avisar(texto) { if (recado) { recado.textContent = texto; } }
+  function copiar(texto, botao) {
+    function feito() { var antes = botao.textContent; botao.textContent = 'Copiado!'; setTimeout(function () { botao.textContent = antes; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(feito, function () { avisar('Não consegui copiar. Selecione o link e copie com Ctrl+C.'); });
+    } else { avisar('Selecione o link e copie com Ctrl+C.'); }
+  }
+  document.querySelectorAll('[data-copiar]').forEach(function (b) {
+    b.addEventListener('click', function () { copiar(b.getAttribute('data-copiar'), b); });
+  });
+  var todos = document.querySelector('[data-copiar-todos]');
+  var caixa = document.querySelector('[data-todos]');
+  if (todos && caixa) { todos.addEventListener('click', function () { copiar(caixa.value.trim(), todos); }); }
+  document.querySelectorAll('.link input[readonly]').forEach(function (i) { i.addEventListener('focus', function () { i.select(); }); });
+})();
+</script>
 {% endblock %}

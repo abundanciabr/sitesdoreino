@@ -8,12 +8,13 @@ import hashlib
 import os
 import json
 import re
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 import httpx
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .clients import CatalogoClient
@@ -347,50 +348,63 @@ def conteudo_editar(request, tipo: str, slug: str):
     return _com_csp_do_script(render(request, "admin/conteudo_editar.html", contexto))
 
 
-FILTROS_CAMPANHA = (
-    "inicio",
-    "fim",
-    "v",
-    "fmt",
-    "src",
-    "med",
-    "cpg",
-    "ctv",
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_content",
-    "utm_term",
-)
-COLUNAS_CAMPANHA = {
-    "v": "version_key",
-    "fmt": "fmt",
-    "src": "src",
-    "med": "med",
-    "cpg": "cpg",
-    "ctv": "ctv",
-    "utm_source": "source",
-    "utm_medium": "medium",
-    "utm_campaign": "campaign",
-    "utm_content": "content",
+FORMATOS_LEGIVEIS = {
+    "text": "Texto",
+    "video": "Vídeo no topo (VSL)",
+    "hybrid": "Vídeo curto + texto",
+    "calc": "Calculadora",
+    "ai": "Conversa com IA",
 }
+ORIGENS = (
+    ("meta", "Meta (Facebook e Instagram)"),
+    ("tiktok", "TikTok"),
+    ("google", "Google"),
+    ("youtube", "YouTube"),
+    ("email", "E-mail"),
+    ("whatsapp", "WhatsApp"),
+    ("organico", "Post orgânico (sem pagar)"),
+    ("teste", "Teste da equipe (não entra nos números)"),
+)
+MEIOS = (
+    ("cpc", "Anúncio pago"),
+    ("retargeting", "Anúncio para quem já visitou (remarketing)"),
+    ("organic", "Orgânico"),
+    ("email", "E-mail ou mensagem"),
+)
+MESES = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+
+
+def _lista_do_get(request, nome: str) -> list[str]:
+    """Junta caixas marcadas, vírgulas e linhas num só pedido, sem repetição."""
+    itens = []
+    for valor in request.GET.getlist(nome):
+        itens += re.split(r"[,\n]", valor)
+    return list(dict.fromkeys(i.strip()[:200] for i in itens if i.strip()))
+
+
+def _nome_de_campanha_sugerido(segmentos: list[str]) -> str:
+    hoje = timezone.localdate()
+    seg = next((s for s in segmentos if s and s != "geral"), "geral")
+    return f"qz_{seg}_{MESES[hoje.month - 1]}{hoje.strftime('%y')}"
+
+
+def _link_de_teste(url: str) -> str:
+    """O mesmo link com a origem trocada por `teste`: abre igual e não entra
+    nos números da campanha."""
+    partes = urlsplit(url)
+    consulta = dict(parse_qsl(partes.query, keep_blank_values=True))
+    consulta["src"] = "teste"
+    consulta["utm_source"] = "teste"
+    return urlunsplit(partes._replace(query=urlencode(consulta)))
 
 
 @require_GET
 def quiz_campanhas(request, slug: str):
-    filtros = {
-        nome: request.GET.get(nome, "").strip()[:200] for nome in FILTROS_CAMPANHA
-    }
-    datas = {nome: filtros[nome] for nome in ("inicio", "fim") if filtros[nome]}
-    tags = {
-        nome: valor
-        for nome, valor in filtros.items()
-        if nome not in ("inicio", "fim") and valor
-    }
-    status_relatorio, relatorio = _pedir(
-        request, "quiz", "GET", slug, "campanhas", params=datas
-    )
-    status_links, links = _pedir(request, "quiz", "GET", slug, "links", params=tags)
+    get = request.GET
+    datas = {n: get.get(n, "").strip()[:10] for n in ("inicio", "fim") if get.get(n, "").strip()}
+    ver_cpg = get.get("ver_cpg", "").strip()[:200]
+
+    status_relatorio, relatorio = _pedir(request, "quiz", "GET", slug, "campanhas", params=datas)
     if status_relatorio != 200 or not isinstance(relatorio, dict):
         mensagem = (
             relatorio.get("detail")
@@ -398,50 +412,98 @@ def quiz_campanhas(request, slug: str):
             else None
         )
         return _erro(
-            request,
-            "quiz",
-            mensagem or "Não consegui ler as campanhas agora.",
+            request, "quiz", mensagem or "Não consegui ler as campanhas agora.",
             422 if status_relatorio == 422 else 503,
         )
-    if status_links == 422 and isinstance(links, dict) and links.get("detail"):
-        return _erro(request, "quiz", links["detail"], 422)
-    if status_links != 200 or not isinstance(links, dict):
-        return _erro(request, "quiz", "Não consegui gerar os links da campanha agora.")
-    if not isinstance(relatorio.get("campanhas"), list) or not isinstance(
-        links.get("links"), list
-    ):
+    status_todos, todos = _pedir(request, "quiz", "GET", slug, "links", params={})
+    if status_todos != 200 or not isinstance(todos, dict) or not isinstance(todos.get("links"), list):
+        return _erro(request, "quiz", "Não consegui ler as versões deste quiz agora.")
+    if not isinstance(relatorio.get("campanhas"), list):
         return _erro(request, "quiz", "Os dados da campanha vieram incompletos.")
 
-    def filtradas(linhas):
+    # O que existe de verdade neste quiz, para as caixas de escolha.
+    existentes = [i for i in todos["links"] if isinstance(i, dict)]
+    versoes = sorted({i.get("version_key", "") for i in existentes} - {""})
+    formatos = [f for f in FORMATOS_LEGIVEIS if any(i.get("fmt") == f for i in existentes)]
+    segmentos = ["geral"] + sorted({i.get("seg", "") for i in existentes} - {""})
+
+    escolha = {
+        "v": _lista_do_get(request, "v"),
+        "fmt": _lista_do_get(request, "fmt"),
+        "seg": _lista_do_get(request, "seg"),
+        "src": get.get("src", "").strip()[:200],
+        "med": get.get("med", "").strip()[:200],
+        "cpg": get.get("cpg", "").strip()[:200],
+        "ctv": _lista_do_get(request, "ctv"),
+        **{n: get.get(n, "").strip()[:200] for n in ("utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term")},
+    }
+    gerar = get.get("gerar") == "1"
+    links, aviso_links, cpg_sugerido = [], "", ""
+    if gerar:
+        if not escolha["cpg"]:
+            escolha["cpg"] = cpg_sugerido = _nome_de_campanha_sugerido(escolha["seg"])
+        params = {
+            chave: (",".join(valor) if isinstance(valor, list) else valor)
+            for chave, valor in escolha.items()
+        }
+        params = {chave: valor for chave, valor in params.items() if valor}
+        status_links, resposta = _pedir(request, "quiz", "GET", slug, "links", params=params)
+        if status_links == 422 and isinstance(resposta, dict) and resposta.get("detail"):
+            aviso_links = resposta["detail"]
+        elif status_links != 200 or not isinstance(resposta, dict) or not isinstance(resposta.get("links"), list):
+            return _erro(request, "quiz", "Não consegui gerar os links da campanha agora.")
+        else:
+            links = [
+                {
+                    **item,
+                    "formato_legivel": FORMATOS_LEGIVEIS.get(item.get("fmt"), item.get("fmt")),
+                    "teste": _link_de_teste(item["url"]),
+                }
+                for item in resposta["links"]
+                if isinstance(item, dict) and isinstance(item.get("url"), str)
+            ]
+
+    def da_campanha(linhas):
         return [
-            linha
-            for linha in linhas
+            linha for linha in linhas
             if isinstance(linha, dict)
-            and all(
-                str(linha.get(COLUNAS_CAMPANHA[nome]) or "")
-                in [item.strip() for item in valor.split(",")]
-                for nome, valor in tags.items()
-                if nome in COLUNAS_CAMPANHA
-            )
+            and (not ver_cpg or ver_cpg in (linha.get("cpg"), linha.get("campaign")))
         ]
 
-    linhas = filtradas(relatorio["campanhas"])
-    avulsas = filtradas(relatorio.get("sem_visita_registrada") or [])
-    divergentes = filtradas(relatorio.get("submissoes_sem_correspondencia") or [])
-    return render(
+    linhas = [
+        {**linha, "formato_legivel": FORMATOS_LEGIVEIS.get(linha.get("fmt"), linha.get("fmt"))}
+        for linha in da_campanha(relatorio["campanhas"])
+    ]
+    campanhas_vistas = sorted(
+        {l.get("cpg") or l.get("campaign") for l in relatorio["campanhas"] if isinstance(l, dict)} - {None, ""}
+    )
+    return _com_csp_do_script(render(
         request,
         "admin/quiz_campanhas.html",
         {
             "admin": request.admin,
             "slug": slug,
-            "filtros": filtros,
+            "versoes": versoes,
+            "formatos": [(f, FORMATOS_LEGIVEIS[f]) for f in formatos],
+            "segmentos": segmentos,
+            "origens": ORIGENS,
+            "meios": MEIOS,
+            "escolha": escolha,
+            "criativos_texto": "\n".join(escolha["ctv"]),
+            "gerar": gerar,
+            "links": links,
+            "aviso_links": aviso_links,
+            "cpg_sugerido": cpg_sugerido,
+            "nome_exemplo": _nome_de_campanha_sugerido(escolha["seg"]),
+            "datas": datas,
+            "ver_cpg": ver_cpg,
+            "campanhas_vistas": campanhas_vistas,
             "linhas": linhas,
-            "avulsas": avulsas,
-            "divergentes": divergentes,
-            "links": links["links"],
+            "avulsas": da_campanha(relatorio.get("sem_visita_registrada") or []),
+            "divergentes": da_campanha(relatorio.get("submissoes_sem_correspondencia") or []),
             "aviso": relatorio.get("aviso") or "Clique de saída não confirma compra.",
         },
-    )
+    ))
 
 
 def _quiz_do_formulario(request):

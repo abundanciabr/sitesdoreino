@@ -85,6 +85,10 @@ def links(request, slug):
     content_fixo = request.GET.get("utm_content", "").strip()
     chaves = _lista(request.GET.get("v", ""))
     formatos_pedidos = _lista(request.GET.get("fmt", ""))
+    # "geral" é o link sem segmento.
+    segmentos_pedidos = [
+        "" if item == "geral" else item for item in _lista(request.GET.get("seg", ""))
+    ]
     contexto, utm = parametros_de_entrada(consulta)
     campanha = {
         chave: contexto[chave] for chave in ("src", "med", "cpg") if contexto[chave]
@@ -107,6 +111,8 @@ def links(request, slug):
         opcoes_segmento = [""] + (
             sorted(segmentos) if isinstance(segmentos, dict) else []
         )
+        if segmentos_pedidos:
+            opcoes_segmento = [s for s in opcoes_segmento if s in segmentos_pedidos]
         for formato in formatos_pedidos or sorted(formatos):
             for segmento in opcoes_segmento:
                 try:
@@ -138,8 +144,10 @@ def links(request, slug):
                             "url": f"https://{host}/quiz/{quiz.slug}/?{urlencode(parametros)}",
                         }
                     )
-    if formatos_pedidos and not itens:
-        return _error("Nenhuma experiência existe com esses formatos.", 422)
+    if (formatos_pedidos or segmentos_pedidos) and not itens:
+        return _error(
+            "Nenhuma experiência existe com esses formatos e segmentos.", 422
+        )
     return JsonResponse(
         {
             "site_id": quiz.site_id,
