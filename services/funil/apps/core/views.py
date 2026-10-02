@@ -211,12 +211,12 @@ def _bloco_vazio_da_oferta() -> dict:
 
 
 @require_safe
-def pagina_de_oferta(request):
+def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA):
     """`/oferta`: seções do catálogo e preço da oferta; 404 se a página não
     existe e 503 com `Retry-After` se o catálogo não responde."""
     site = request.site
     catalogo = CatalogoClient()
-    pagina = catalogo.obter_pagina(site["id"], SLUG_DA_PAGINA_DE_OFERTA)
+    pagina = catalogo.obter_pagina(site["id"], slug)
 
     if pagina is SEM_RESPOSTA:
         resposta = render(
@@ -285,7 +285,8 @@ def pagina_de_oferta(request):
             "contexto_telemetria": contexto_telemetria,
             "oferta": oferta,
             "preco_formatado": (
-                f"{oferta['price_cents'] / 100:.2f}".replace(".", ",") if oferta else ""
+                f"{oferta['price_cents'] // 100:,}".replace(",", ".")
+                + f",{oferta['price_cents'] % 100:02d}" if oferta else ""
             ),
             "url_checkout": (
                 f"/checkout/{offer_slug}/" + (f"?{query}" if query else "")
@@ -299,6 +300,14 @@ def pagina_de_oferta(request):
         resposta["Cache-Control"] = "private, no-store"
     _medir_visita(request, pagina, offer_slug, braco)
     return resposta
+
+
+@require_safe
+def pagina_de_oferta_roblox(request, slug):
+    """As ofertas Roblox pertencem ao catálogo do Meshcraft."""
+    if request.get_host().split(":")[0].lower() != "meshcraft.top":
+        raise Http404("página disponível apenas em meshcraft.top")
+    return pagina_de_oferta(request, slug=slug)
 
 
 def _braco_na_tela(request, pagina: dict, blocos: list) -> dict:

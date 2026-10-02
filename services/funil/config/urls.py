@@ -20,6 +20,7 @@ from apps.core.views import (
     manifesto_do_app,
     notificacoes,
     pagina_de_oferta,
+    pagina_de_oferta_roblox,
     service_worker,
     servir_estatico,
     sitemap_xml,
@@ -83,7 +84,21 @@ urlpatterns = [
     # (`ci/tests/test_rotas_sem_forma_de_locale.py`).
     path("oferta", pagina_de_oferta, name="pagina_de_oferta"),
     path("flp-0", redirecionar_flp_antiga, name="pagina_flp_antiga"),
-    path("primeiros-dolares-com-roblox", modelo_flp_publico, name="pagina_flp"),
+    re_path(
+        r"^(?P<slug>desafio-como-ganhar-em-dolar-com-roblox)/?$",
+        pagina_de_oferta_roblox,
+        name="oferta_desafio_roblox",
+    ),
+    re_path(
+        r"^(?P<slug>primeiros-dolares-com-roblox)/?$",
+        pagina_de_oferta_roblox,
+        name="pagina_flp",
+    ),
+    path(
+        "primeiros-dolares-com-roblox/modelo",
+        modelo_flp_publico,
+        name="modelo_roblox_anterior",
+    ),
     path(
         "primeiros-dolares-com-roblox/conteudo",
         modelo_flp_conteudo,

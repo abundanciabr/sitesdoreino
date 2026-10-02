@@ -12,7 +12,7 @@ from tests.conftest import HOST_A, HOST_MESH
 
 
 def test_visitante_anonimo_ve_edicao_encerrada(rede):
-    resposta = Client(HTTP_HOST=HOST_MESH).get("/primeiros-dolares-com-roblox")
+    resposta = Client(HTTP_HOST=HOST_MESH).get("/primeiros-dolares-com-roblox/modelo")
     html = resposta.content.decode()
 
     assert resposta.status_code == 200
