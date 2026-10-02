@@ -37,6 +37,8 @@ from .models import Conexao, Entrega, Execucao, Mensagem, RoboPessoal, tempo_em_
 TAMANHO_DA_MENSAGEM = 4000
 
 RESULTADOS = {
+    "alunos_salvo": "Robô dos alunos salvo.",
+    "alunos_sem_orcamento": "Escolha o orçamento autorizado antes de ativar o robô dos alunos.",
     "enviada": "Mensagem enviada. O robô responde no servidor; pode fechar a página.",
     "vazia": "A mensagem estava vazia. Nada foi enviado.",
     "longa": "A mensagem passou de 4000 letras. Encurte e envie de novo.",
@@ -126,7 +128,7 @@ INTERVALO_DO_TRABALHO = 4000
 
 def _consumo_do_mes() -> dict:
     autorizacao = modelo.autorizacao_ativa()
-    gasto = modelo.gasto_do_mes()
+    gasto = modelo.gasto_do_mes(autorizacao.pk) if autorizacao else 0
     return {
         "gasto": gasto,
         "teto": autorizacao.teto_mensal_usd if autorizacao else None,
@@ -414,6 +416,8 @@ def robos_admin(request):
     if request.method == "POST":
         return _conexao_post(request)
     conexao = modelo.conexao()
+    from .alunos import configuracao
+    robo_alunos = configuracao()
     robos = list(RoboPessoal.objects.select_related("membro").order_by("membro__ordem", "id"))
     for robo in robos:
         robo.abertas = robo.execucoes.filter(situacao__in=Execucao.ABERTAS).count()
@@ -425,6 +429,8 @@ def robos_admin(request):
             "admin": request.admin,
             "conexao": conexao,
             "chave_do_ambiente": bool((os.environ.get("OPENAI_API_KEY") or "").strip()),
+            "robo_alunos": robo_alunos,
+            "gasto_alunos": modelo.gasto_do_mes(robo_alunos.autorizacao_id) if robo_alunos.autorizacao_id else 0,
             "chave_ilegivel": bool(conexao.segredo_cifrado) and segredo.decifrar(conexao.segredo_cifrado) is None,
             "robos": robos,
             "membros_sem_robo": MembroDaEquipe.objects.filter(ativo=True, robo__isnull=True),
@@ -440,6 +446,39 @@ def _conexao_post(request):
     acao = request.POST.get("acao") or ""
     conexao = modelo.conexao()
     quem = _quem(request)
+    if acao == "alunos":
+        from .alunos import configuracao
+        from .models import AutorizacaoDeGasto
+        from decimal import Decimal, InvalidOperation
+        robo = configuracao()
+        robo.nome = (request.POST.get("nome_alunos") or "Robô dos alunos")[:120]
+        robo.modelo = (request.POST.get("modelo_alunos") or robo.modelo).strip()[:60]
+        robo.instrucoes = request.POST.get("instrucoes_alunos", "")[:6000]
+        robo.ativo = request.POST.get("ativo_alunos") == "1"
+        if robo.ativo:
+            if request.POST.get("orcamento_alunos") == "compartilhar":
+                autorizacao = modelo.autorizacao_ativa()
+                if autorizacao is None:
+                    return _volta("robos_admin", "alunos_sem_orcamento", "#alunos")
+                robo.autorizacao = autorizacao
+            else:
+                try:
+                    teto = Decimal(request.POST.get("teto_alunos", "0"))
+                    if not teto.is_finite() or teto <= 0 or teto > 99999999:
+                        raise InvalidOperation
+                except InvalidOperation:
+                    return _volta("robos_admin", "alunos_sem_orcamento", "#alunos")
+                autorizacao, _ = AutorizacaoDeGasto.objects.get_or_create(
+                    destino="alunos",
+                    defaults={"descricao": "Robô dos alunos", "teto_mensal_usd": teto, "fonte": f"Autorizado por {quem} na configuração do robô dos alunos."},
+                )
+                autorizacao.teto_mensal_usd = teto
+                autorizacao.ativa = True
+                autorizacao.fonte = f"Autorizado por {quem} na configuração do robô dos alunos."
+                autorizacao.save()
+                robo.autorizacao = autorizacao
+        robo.save()
+        return _volta("robos_admin", "alunos_salvo", "#alunos")
     if acao == "guardar":
         chave = (request.POST.get("chave") or "").strip()
         if not chave:

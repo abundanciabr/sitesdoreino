@@ -300,6 +300,7 @@ class AutorizacaoDeGasto(models.Model):
     """
 
     descricao = models.CharField(max_length=200)
+    destino = models.CharField(max_length=20, default="equipe")
     teto_mensal_usd = models.DecimalField(max_digits=10, decimal_places=2)
     fonte = models.TextField()
     ativa = models.BooleanField(default=True)
@@ -339,6 +340,7 @@ class Consumo(models.Model):
         related_name="consumos",
     )
     modelo = models.CharField(max_length=60)
+    origem = models.CharField(max_length=20, default="equipe")
     resposta_id = models.CharField(max_length=120, blank=True, default="")
     tokens_entrada = models.PositiveIntegerField(default=0)
     tokens_entrada_em_cache = models.PositiveIntegerField(default=0)
@@ -349,6 +351,19 @@ class Consumo(models.Model):
 
     class Meta:
         ordering = ["-criado_em"]
+
+
+class RoboDosAlunos(models.Model):
+    """Assistente da escola para alunos, independente dos robôs da equipe."""
+
+    nome = models.CharField(max_length=120, default="Robô dos alunos")
+    modelo = models.CharField(max_length=60, default="gpt-6-luna")
+    instrucoes = models.TextField(blank=True, default="")
+    ativo = models.BooleanField(default=False)
+    autorizacao = models.ForeignKey(
+        AutorizacaoDeGasto, null=True, blank=True, on_delete=models.PROTECT
+    )
+    alterado_em = models.DateTimeField(auto_now=True)
 
 
 class Conexao(models.Model):

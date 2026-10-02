@@ -42,6 +42,8 @@ urlpatterns = [
         name="trabalho_contexto",
     ),
     path("apresentacao", jornada.apresentacao_publica, name="apresentacao_publica"),
+    path("apresentacao/gerar-exemplo", jornada.gerar_exemplo, name="gerar_exemplo"),
+    path("apresentacao/robo.js", jornada.script_robo, name="script_robo"),
     path("equipe/quiz", jornada.catalogo_equipe, name="catalogo_equipe"),
     path(
         "equipe/quiz/projetos/<slug:chave>",

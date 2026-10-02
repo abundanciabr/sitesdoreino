@@ -150,15 +150,18 @@ def inicio_do_mes() -> datetime:
     return timezone.make_aware(datetime.combine(hoje.replace(day=1), time.min))
 
 
-def gasto_do_mes() -> Decimal:
-    total = Consumo.objects.filter(criado_em__gte=inicio_do_mes()).aggregate(
+def gasto_do_mes(autorizacao_id=None) -> Decimal:
+    consumos = Consumo.objects.filter(criado_em__gte=inicio_do_mes())
+    if autorizacao_id is not None:
+        consumos = consumos.filter(autorizacao_id=autorizacao_id)
+    total = consumos.aggregate(
         s=Sum("custo_estimado_usd")
     )["s"]
     return total or Decimal("0")
 
 
 def autorizacao_ativa() -> AutorizacaoDeGasto | None:
-    return AutorizacaoDeGasto.objects.filter(ativa=True).first()
+    return AutorizacaoDeGasto.objects.filter(ativa=True, destino="equipe").first()
 
 
 @dataclass
@@ -171,22 +174,27 @@ class Resposta:
     consumo: Consumo
 
 
-def _reservar(modelo: str, corpo: dict, max_saida: int, *, execucao, robo) -> Consumo:
+def _reservar(modelo: str, corpo: dict, max_saida: int, *, execucao, robo,
+              autorizacao_id=None, origem="equipe") -> Consumo:
     entrada_estimada = len(json.dumps(corpo, ensure_ascii=False)) // 3 + 500
     pior_caso = custo(modelo, entrada_estimada, 0, max_saida)
     with transaction.atomic():
+        autorizacoes = AutorizacaoDeGasto.objects.select_for_update().filter(ativa=True)
         autorizacao = (
-            AutorizacaoDeGasto.objects.select_for_update().filter(ativa=True).first()
+            autorizacoes.filter(pk=autorizacao_id).first()
+            if autorizacao_id is not None
+            else autorizacoes.filter(destino="equipe").first()
         )
         if autorizacao is None:
             raise SemAutorizacao()
-        if gasto_do_mes() + pior_caso > autorizacao.teto_mensal_usd:
+        if gasto_do_mes(autorizacao.pk) + pior_caso > autorizacao.teto_mensal_usd:
             raise TetoDeGasto()
         return Consumo.objects.create(
             execucao=execucao,
             robo=robo,
             autorizacao=autorizacao,
             modelo=modelo,
+            origem=origem,
             tokens_entrada=entrada_estimada,
             tokens_saida=max_saida,
             custo_estimado_usd=pior_caso,
@@ -222,6 +230,8 @@ def responder(
     esforco: str | None = None,
     execucao=None,
     robo=None,
+    autorizacao_id=None,
+    origem="equipe",
 ) -> Resposta:
     """Uma rodada da Responses API. Não guarda nada na OpenAI (`store`
     falso): o histórico mora aqui, e a retomada reenvia os itens."""
@@ -241,7 +251,8 @@ def responder(
         corpo["parallel_tool_calls"] = False
     if esforco and modelo not in _SEM_ESFORCO:
         corpo["reasoning"] = {"effort": esforco}
-    reserva = _reservar(modelo, corpo, max_saida, execucao=execucao, robo=robo)
+    reserva = _reservar(modelo, corpo, max_saida, execucao=execucao, robo=robo,
+                       autorizacao_id=autorizacao_id, origem=origem)
     try:
         resposta = httpx.post(
             f"{URL}/responses",
@@ -275,6 +286,8 @@ def responder(
                 max_saida=max_saida,
                 execucao=execucao,
                 robo=robo,
+                autorizacao_id=autorizacao_id,
+                origem=origem,
             )
         if resposta.status_code == 429 and codigo != "insufficient_quota":
             raise Temporario()

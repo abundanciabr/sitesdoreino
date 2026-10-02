@@ -1,21 +1,6 @@
 # tests/test_inv_sem_sessao_nada.py  # [RECEITA:R5 v1]
-"""INV-SUG05 — sem sessão de aluno, nenhuma rota de participação acontece.
-
-A Caixa é de quem tem matrícula: o Google
-prova quem é, a `alunos` decide se pode. Se qualquer rota daqui respondesse a
-anônimo, essa decisão inteira viraria enfeite — bastaria pular a porta.
-
-**O guarda deriva a lista de rotas do próprio urlconf**, e é isso que o torna
-durável: rota de participação nova nasce dentro dele, sem ninguém precisar
-lembrar de cadastrá-la. As rotas públicas são poucas, nomeadas abaixo, e a
-lista é conferida nos dois sentidos — uma rota que SAIA da lista pública sem
-ganhar o decorador também derruba o guarda.
-
-Detalhe que faz este teste medir o que promete: o `Client` do Django não impõe
-CSRF por padrão (`enforce_csrf_checks=False`). Sem isso, todo POST anônimo
-tomaria 403 do `CsrfViewMiddleware` **antes** de chegar à view, e o guarda
-ficaria verde sem nunca ter testado o porteiro.
-"""
+"""Sem sessão de aluno, nenhuma rota de participação acontece.
+A lista de rotas vem do urlconf; as públicas são poucas e declaradas aqui."""
 
 import pytest
 from django.urls import NoReverseMatch, URLPattern, URLResolver, reverse
@@ -24,22 +9,8 @@ from apps.sugestoes.models import Comentario, Sugestao, Voto
 
 pytestmark = pytest.mark.django_db
 
-# A porta e a sonda: tudo que existe para quem ainda não entrou (ou nunca
-# entra, no caso do /healthz, que é máquina falando com máquina).
-#
-# `estatico` (EVO-30) entrou aqui por DECLARAÇÃO, e ela custa a justificativa:
-# a folha de estilo do rosto não é conteúdo de aluno — é a rota de máquina que
-# `armadilhas/083` obriga a existir para o CSS não ser 404 em produção. Como
-# declaração sozinha seria licença para tirar rota da varredura escrevendo um
-# nome nesta lista, `test_a_rota_publica_de_estatico_so_serve_estatico` mede,
-# do lado de fora, o que ela realmente entrega a um anônimo.
-#
-# `pedir_entrada` (a fila de liberação, 27/08/2026) entrou pelo mesmo caminho, e
-# a justificativa é a natureza da rota: ela existe EXATAMENTE para quem não tem
-# sessão de aluno. Pôr `@exige_sessao` nela seria exigir o crachá para pedir o
-# crachá. Quem faz o porteiro ali é a própria view, que reabre `ses.resolver` e
-# só age no estado SEM_MATRICULA — e isso é medido de fora, para um anônimo, em
-# `test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila`.
+# Rotas públicas: porta, sonda, CSS e pedido de entrada servem quem não tem sessão.
+# `avisos` só redireciona para `/notificacoes`, que exige a sessão.
 PUBLICAS = {
     "entrar",
     "entrar_google",
@@ -47,19 +18,12 @@ PUBLICAS = {
     "pedir_entrada",
     "sair",
     "estatico",
+    "avisos",
     None,
 }
 
-# A superfície de MÁQUINA da célula: montada por
-# `include()`, e por isso um `URLResolver` — não um `URLPattern` com callback.
-# Ela fica fora do porteiro de SESSÃO de propósito, porque responde a uma
-# pergunta diferente: quem CHAMA (Bearer do par), e não quem é a PESSOA.
-#
-# **Declarada aqui, nunca inferida.** Se o guarda simplesmente ignorasse todo
-# `URLResolver`, bastaria alguém montar páginas por `include()` para a
-# participação inteira sair da varredura sem ninguém notar — e o guarda
-# continuaria verde. Por isso a lista é conferida por igualdade EXATA abaixo, e
-# a proteção alternativa é medida do lado de fora, não prometida em comentário.
+# Montagens por `include()` são a superfície de máquina (Bearer do par).
+# A lista é conferida por igualdade exata e a proteção é medida de fora.
 MONTAGENS_DE_MAQUINA = {"interno/"}
 
 
@@ -71,17 +35,8 @@ def _rotas():
 
 
 def test_toda_montagem_incluida_e_declarada_e_fechada_por_bearer(client):
-    """O outro lado de `_rotas()`: o que ela filtra não pode ficar sem guarda.
-
-    Duas afirmações, e as duas precisam ser verdade:
-
-    1. **Nada entrou por `include()` sem declaração.** Igualdade exata, não
-       `issubset` — montagem nova derruba este teste e obriga quem a criou a
-       dizer aqui o que ela é e por que está fora do porteiro de sessão.
-    2. **A montagem declarada é mesmo fechada**, medida como qualquer um a
-       veria: sem o Bearer do par, 401. Sem esta metade, o item 1 viraria uma
-       licença para tirar rota da varredura escrevendo o nome dela numa lista.
-    """
+    """Toda montagem por `include()` é declarada aqui e fechada: sem o Bearer do par,
+    401."""
     from config.urls import urlpatterns
 
     incluidas = {
@@ -108,11 +63,7 @@ def _endereco(nome: str, sugestao) -> str:
 
 
 def test_toda_rota_nao_publica_carrega_o_porteiro():
-    """A metade estática: o decorador está lá, em TODAS elas.
-
-    Vale por si — uma rota que perca o `@exige_sessao` numa refatoração cai
-    aqui mesmo que ninguém tenha escrito um teste de comportamento para ela.
-    """
+    """Toda rota fora de `PUBLICAS` carrega `@exige_sessao`."""
     desprotegidas = [
         rota.name
         for rota in _rotas()
@@ -127,17 +78,8 @@ def test_toda_rota_nao_publica_carrega_o_porteiro():
 
 
 def test_a_rota_publica_de_estatico_so_serve_estatico(client):
-    """A outra metade da declaração acima: o que a exceção entrega, medido.
-
-    Sem esta metade, `PUBLICAS` viraria uma lista onde qualquer rota pode ser
-    escondida do porteiro — o mesmo erro que `MONTAGENS_DE_MAQUINA` já não
-    comete. As duas afirmações:
-
-    1. o anônimo **recebe** a folha de estilo (é para isso que a rota existe —
-       sem ela o rosto é 404 em produção, `armadilhas/083`);
-    2. e não recebe mais nada: subir da árvore de estáticos não serve arquivo
-       nenhum desta célula.
-    """
+    """O anônimo recebe a folha de estilo e nada mais: nenhuma fuga da árvore de
+    estáticos."""
     css = client.get(reverse("estatico", kwargs={"caminho": "sugestoes/caixa.css"}))
     assert css.status_code == 200, "o rosto não é servido — em produção seria 404"
     assert b"--laranja" in b"".join(css.streaming_content)
@@ -153,18 +95,7 @@ def test_a_rota_publica_de_estatico_so_serve_estatico(client):
 def test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila(
     client, rede
 ):
-    """A outra metade da declaração de `pedir_entrada` em `PUBLICAS`.
-
-    A rota é pública porque serve quem ainda não é aluno — mas "público" não
-    pode virar "qualquer robô põe linha na fila do mantenedor". Um anônimo sem
-    sessão do site não tem e-mail nenhum a registrar, e a view precisa devolvê-lo
-    à porta ANTES de falar com a `alunos`.
-
-    A prova de que nada saiu para a rede é mecânica, não uma leitura do código:
-    a fixture `rede` é um `respx.mock` e QUALQUER requisição não registrada
-    levanta `AllMockedAssertionError`. Se um dia esta view
-    passar a chamar a `alunos` antes de conferir a sessão, este teste cai.
-    """
+    """Anônimo sem sessão do site volta à porta antes de qualquer chamada à `alunos`."""
     resposta = client.post(
         reverse("pedir_entrada"),
         {"nome_completo": "Robô Anônimo", "whatsapp": "(96) 99999-0000"},
@@ -235,14 +166,7 @@ def test_depois_de_sair_a_pessoa_volta_a_ser_anonima(dentro, sugestao):
 
 
 def test_sessao_revogada_na_identidade_nao_vale_mais_aqui(dentro, sugestao):
-    """A revogação mudou de casa junto com o login (25/08/2026).
-
-    Antes, apagar a linha local derrubava o cookie na hora. Hoje a linha local
-    é SNAPSHOT (renasce do casamento por e-mail — apagar ela não revoga nada);
-    quem revoga é a `identidade`, e o que este guarda prova é que a revogação
-    DE LÁ vale AQUI no request seguinte: sessão que o site não reconhece mais
-    não participa de nada.
-    """
+    """A revogação feita na `identidade` vale aqui no request seguinte."""
     from apps.core import sessao as ses
 
     dentro.rede.sessoes.clear()  # a identidade "esqueceu" esta sessão

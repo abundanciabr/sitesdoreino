@@ -1,22 +1,5 @@
-# traducoes/avisos.yaml — o aviso na tela do celular (Fase 7, 31/08/2026).
-# Formato key-major (D2); `_fonte` é sha256[:6] do valor `en` no momento da
-# tradução (D4). en é a FONTE; Meshcraft nunca se traduz (glossário, D8.1).
-#
-# DUAS FAMÍLIAS DE CHAVE AQUI, e a diferença importa:
-#
-#   · as `cartaz_*` são a tela que PERGUNTA se a pessoa quer receber avisos
-#     (templates/funil/_avisos_no_celular.html);
-#   · as `js.*` são o texto do AVISO em si, o que aparece na tela do celular.
-#     Elas não são usadas em template nenhum: viajam para o service worker,
-#     injetadas pela view que serve o `/sw.js` no idioma de quem instalou. O
-#     validador isenta chave com `.js.` da regra "definida e não usada" —
-#     mesma convenção da ilha Alpine da landing antiga.
-#
-# **Por que o texto do aviso nasce AQUI e não na célula `notificacoes`:** ela
-# guarda dado, nunca frase pronta (`DECISAO-notificacoes` §5.1), e o que viaja
-# no push é assunto + parâmetros. A frase nasce na leitura, no idioma da
-# pessoa, e o catálogo de traduções do site mora nesta célula. Duas casas para
-# a mesma frase seria a Classe 8 do plano mestre dos robôs.
+# traducoes/avisos.yaml — `cartaz_*`: tela que pergunta se a pessoa quer receber avisos;
+# `js.*`: texto do aviso no celular, injetado no service worker (sem uso em template).
 
 cartaz_titulo:
   _fonte: "8a21be"
@@ -25,8 +8,7 @@ cartaz_titulo:
   es: "Recibe los avisos de la escuela en tu pantalla"
 
 cartaz_porque:
-  # O motivo, sem promessa que a gente não vá cumprir: só o que a pessoa
-  # precisa saber, e o limite (ela pode desligar quando quiser).
+  # O motivo e o limite: a pessoa pode desligar quando quiser.
   _fonte: "e68746"
   en: "You get a notice when something you asked about is answered. You can turn this off whenever you want."
   pt-br: "Você recebe um aviso quando algo que você pediu for respondido. Dá para desligar quando quiser."
@@ -45,8 +27,7 @@ cartaz_agora_nao:
   es: "Ahora no"
 
 cartaz_ligado:
-  # O que a tela diz quando deu certo. Confirmar importa: sem isso a pessoa
-  # aperta o botão, nada visível acontece, e ela aperta de novo.
+  # Confirma que deu certo, para a pessoa não apertar o botão de novo.
   _fonte: "1cbc7e"
   en: "Done. The notices will arrive on this device."
   pt-br: "Pronto. Os avisos vão chegar neste aparelho."
@@ -60,38 +41,21 @@ cartaz_nao_deu:
   es: "No funcionó ahora. Puedes intentarlo de nuevo más tarde."
 
 cartaz_sem_servico:
-  # O navegador NÃO conseguiu registrar o aparelho no serviço de push do
-  # fabricante. É diferente de `cartaz_nao_deu` (que é o nosso lado falhando) e
-  # a diferença é a frase: aqui "tente de novo mais tarde" seria promessa
-  # falsa, porque tentar de novo dá no mesmo enquanto ninguém mexer no
-  # navegador. O caso real que criou esta chave é o Brave, que vem de fábrica
-  # com as mensagens push do Google desligadas (armadilhas/297): o mantenedor
-  # bateu nisso em 02/09/2026 e a tela mandou ele esperar para sempre.
-  #
-  # A frase não cita navegador nenhum pelo nome, e isso é desenho: a lista
-  # mudaria sozinha com o tempo, e um texto que nomeia o Brave envelhece no
-  # dia em que outro navegador fizer igual. "Alguns bloqueiam de fábrica"
-  # continua verdade sem manutenção.
+  # O navegador não conseguiu registrar o aparelho no serviço de push; ao contrário de
+  # `cartaz_nao_deu`, tentar de novo não resolve. A frase não cita navegador pelo nome.
   _fonte: "f9fa85"
   en: "This browser could not turn the notices on. Some browsers block push messages by default. Check its privacy settings and try again."
   pt-br: "Este navegador não conseguiu ligar os avisos. Alguns bloqueiam mensagens push de fábrica. Veja os ajustes de privacidade dele e tente de novo."
   es: "Este navegador no pudo activar los avisos. Algunos bloquean los mensajes push de fábrica. Revisa sus ajustes de privacidad y prueba de nuevo."
 
 cartaz_recusado:
-  # A pessoa (ou o aparelho dela) negou a permissão. O navegador só pergunta
-  # uma vez, então o caminho de volta é a configuração do próprio aparelho, e
-  # dizer isso é mais útil que insistir.
+  # O aparelho negou a permissão; o caminho de volta é a configuração dele.
   _fonte: "517d9e"
   en: "Your device blocked the notices. To allow them, change the notification setting for this app on your device."
   pt-br: "Seu aparelho bloqueou os avisos. Para liberar, mude a permissão de notificações deste app nos ajustes do aparelho."
   es: "Tu aparato bloqueó los avisos. Para permitirlos, cambia el permiso de notificaciones de esta app en los ajustes."
 
-# ---------------------------------------------------------------------------
-# O texto do AVISO na tela do celular. Uma dupla por assunto, e o genérico
-# para o assunto que esta versão do site ainda não conhece — o site é
-# atualizado num ritmo, e o aviso pode chegar de uma parte nova antes de o
-# aparelho ter recarregado o service worker.
-# ---------------------------------------------------------------------------
+# O texto do aviso na tela do celular: um par por assunto, mais o genérico.
 js:
   sugestao_titulo:
     _fonte: "00057d"
@@ -124,12 +88,7 @@ js:
     es: "Meshcraft"
 
   teste_corpo:
-    # A frase do aviso de teste (Rito de Contrato de 03/09/2026), disparado
-    # a partir de /admin/avisos/ quando o mantenedor quer saber se o canal
-    # de avisos do celular esta funcionando, sem precisar entrar na VPS. So
-    # existe um assunto, "sistema.teste-de-aviso", entao esta e a UNICA
-    # frase que este aviso pode mostrar - reconhecivel na hora, sem
-    # confundir com nenhuma novidade de verdade da escola.
+    # Aviso de teste, disparado de /admin/avisos/ para conferir o canal do celular.
     _fonte: "c18735"
     en: "It worked. This is the test you asked for."
     pt-br: "Deu certo. Este é o teste que você pediu."
@@ -147,21 +106,8 @@ js:
     pt-br: "Você tem um aviso novo."
     es: "Tienes un aviso nuevo."
 
-  # -------------------------------------------------------------------------
-  # As quatro cartas de celebração da gamificação (degrau 21b, 01/09/2026).
-  #
-  # NENHUMA delas usa parâmetro, e isso é desenho e não esquecimento: o
-  # `sw.js` pega `AVISOS.textos[carta.assunto]` e mostra `titulo` e `corpo`
-  # como strings prontas, sem interpolação nenhuma. A tela do celular é um
-  # CONVITE para abrir o site; a novidade inteira, com o número do nível e o
-  # nome da medalha, já mora no sininho. Por isso cada frase aqui é verdadeira
-  # sozinha, sem depender de dado que talvez não chegue.
-  #
-  # O tom espelha o cartão do sininho de propósito (a mesma notícia dita duas
-  # vezes não pode soar como duas notícias diferentes), e segue a regra do
-  # contrato: só BOA notícia vira carta. Nada aqui envergonha quem deixar o
-  # aparelho na mesa com a tela acesa.
-  # -------------------------------------------------------------------------
+  # Cartas de celebração da gamificação: sem parâmetros, pois o `sw.js` mostra título
+  # e corpo como texto pronto; o número do nível e o nome da medalha ficam no sininho.
   nivel_titulo:
     _fonte: "656c39"
     en: "You moved up a level"
@@ -169,8 +115,7 @@ js:
     es: "Subiste de nivel"
 
   nivel_corpo:
-    # "Degrau" é a palavra do próprio contrato ("o aviso é sobre o degrau
-    # alcançado, não sobre o placar"): o número do nível fica para o sininho.
+    # O número do nível fica para o sininho.
     _fonte: "5a5bee"
     en: "Tap to see the step you reached."
     pt-br: "Toque para ver o degrau que você alcançou."
@@ -183,9 +128,7 @@ js:
     es: "Ganaste una medalla"
 
   conquista_corpo:
-    # O NOME da medalha não aparece: ele mora na célula `gamificacao`, e o
-    # aviso do celular não consulta ninguém. Celebrar o fato e mandar a pessoa
-    # ao próprio perfil é honesto; inventar um nome, não.
+    # O nome da medalha não aparece: o aviso do celular não consulta a `gamificacao`.
     _fonte: "2e8001"
     en: "It is already saved in your profile."
     pt-br: "Ela já está guardada no seu perfil."
@@ -198,10 +141,7 @@ js:
     es: "Tu hito fue aceptado"
 
   marco_corpo:
-    # Quem chega aqui mandou uma prova e ESPEROU numa fila com prazo, então a
-    # frase responde à pergunta que essa pessoa está fazendo há dias. O que ela
-    # enviou nunca aparece (a evidência é privada), e quem validou some: no
-    # aviso do aparelho não cabe nem o papel de quem conferiu.
+    # O que a pessoa enviou e quem validou não aparecem no aviso do aparelho.
     _fonte: "c1c224"
     en: "Someone reviewed what you sent, and the milestone is yours."
     pt-br: "Alguém conferiu o que você enviou, e o marco agora é seu."
@@ -214,8 +154,7 @@ js:
     es: "Tu obra fue destacada"
 
   destaque_corpo:
-    # "Da semana" é o nome da galeria, não a data dela: a semana exata é
-    # parâmetro opcional e fica no sininho, onde há espaço para mostrá-la.
+    # "Da semana" é o nome da galeria; a semana exata fica no sininho.
     _fonte: "c5ff7d"
     en: "A teacher picked your work for the gallery of the week."
     pt-br: "Um professor escolheu o seu trabalho para a galeria da semana."

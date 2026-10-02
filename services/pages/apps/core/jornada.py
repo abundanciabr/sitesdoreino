@@ -3,6 +3,9 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.http import Http404
+from django.http import JsonResponse
+from django.http import HttpResponse
+from pathlib import Path
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
@@ -611,6 +614,28 @@ def contexto_trabalho(request, peca_id):
         update_fields=[*campos, "projeto", "mostrar_na_pagina_publica", "atualizada_em"]
     )
     return redirect("pecas")
+
+
+@require_POST
+def gerar_exemplo(request):
+    from apps.portfolio import robo
+    campo = request.POST.get("campo", "")
+    if campo not in robo.CAMPOS:
+        return JsonResponse({"erro": "Escolha um dos campos da apresentação."}, status=422)
+    try:
+        dados = robo.contexto(dono(request), request.POST)
+        texto = robo.gerar(campo, dados)
+        resposta = JsonResponse({"texto": texto})
+        resposta["Cache-Control"] = "no-store"
+        return resposta
+    except (robo.RoboIndisponivel, QuizIndisponivel) as erro:
+        return JsonResponse({"erro": str(erro)}, status=503)
+
+
+@require_GET
+def script_robo(request):
+    codigo = Path(__file__).parent / "static" / "pages" / "apresentacao-robo.js"
+    return HttpResponse(codigo.read_text(encoding="utf-8"), content_type="application/javascript")
 
 
 @require_http_methods(["GET", "POST"])

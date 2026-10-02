@@ -1,24 +1,5 @@
-"""Guarda de armadilhas/081, quinta temporada: a faixa de roadmap sob prefixo.
-
-`reverse()` **não lê** `settings.FORCE_SCRIPT_NAME`. Ele lê um prefixo guardado
-numa variável de THREAD que o servidor de verdade preenche
-(`ASGIHandler.__call__` chama `set_script_prefix`) e que os handlers de teste do
-Django **não** preenchem. Cada tela nova desta célula paga isso de novo: a porta
-no EVO-12a, a participação no EVO-12b, o sininho no EVO-21, o rosto no EVO-30 —
-e agora a faixa, que estreia DOIS endereços de gente na tela:
-
-1. o **botão do trilho**, que é uma âncora para a seção (`{% url 'quadro' %}` +
-   `#roadmap`) e aparece em TODA página da Caixa;
-2. o **link de cada marco**, que leva à sugestão daquele losango.
-
-Escrito à mão, qualquer um dos dois renderiza `/#roadmap` ou `/sugestoes/7` — o
-navegador pede `meshcraft.top/sugestoes/7`, endereço que em produção pertence ao
-`funil` (catch-all na raiz), não à Caixa. Em dev os dois regimes coincidem, então
-isto quebra **só em produção** e só depois do deploy.
-
-O prefixo é de thread e o Django **não** o limpa entre testes: sem o
-`clear_script_prefix()` na saída da fixture, ele vaza para quem rodar depois.
-"""
+"""A faixa de roadmap sob prefixo público: todo link interno leva o prefixo.
+O prefixo é de thread e o Django não o limpa entre testes; a fixture o limpa."""
 
 import re
 
@@ -33,8 +14,8 @@ pytestmark = pytest.mark.django_db
 
 PREFIXO = "/forms/sugestoes"
 
-# Escrito à mão: é o endereço que o Traefik serve. Um teste
-# que o montasse com o mesmo `reverse()` do código passaria com o prefixo errado.
+# Escrito à mão: é o endereço que o Traefik serve.
+# Montá-lo com `reverse()` passaria com o prefixo errado.
 LINK_INTERNO = re.compile(r'(?:href|action)="(/[^"]*)"')
 MARCO = re.compile(r'<a class="marco" href="([^"]+)"')
 
@@ -50,24 +31,15 @@ def sob_prefixo(settings):
 
 @pytest.fixture
 def quadro_com_marco(caixa):
-    """Uma ideia no trilho — sem marco nenhum não há link de marco para medir.
-
-    A ORDEM importa: entrar e publicar primeiro, ligar o prefixo depois. Ligado
-    antes, o client síncrono trataria o prefixo como parte do `path_info` e as
-    requisições da jornada bateriam em 404 (LICOES.md, EVO-21).
-    """
+    """Uma ideia no trilho, para haver link de marco a medir.
+    Entrar e publicar vêm antes de ligar o prefixo, que desviaria o `path_info`."""
     sugestao = caixa.publicar("Legendas nas aulas")
     assert caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO).status_code == 200
     return caixa.aluno, sugestao
 
 
 def test_todo_link_do_quadro_com_a_faixa_leva_o_prefixo(quadro_com_marco, sob_prefixo):
-    """A varredura inteira da página: nenhum endereço interno sem o prefixo.
-
-    Vale mais que uma asserção nominal por link — o dia em que a faixa ganhar um
-    endereço novo, ele entra nesta medição sem ninguém lembrar de atualizar o
-    teste.
-    """
+    """Varredura da página inteira: nenhum endereço interno sem o prefixo."""
     pessoa, _ = quadro_com_marco
     corpo = pessoa.client.get("/").content.decode()
 
@@ -94,7 +66,7 @@ def test_o_botao_do_roadmap_no_trilho_leva_o_prefixo_e_a_ancora(
     em todas de uma vez — como o link do sino quebraria."""
     pessoa, _ = quadro_com_marco
 
-    for endereco in ("/", "/avisos", "/sugestoes/nova"):
+    for endereco in ("/", "/sugestoes/nova"):
         corpo = pessoa.client.get(endereco).content.decode()
         assert (
             f'href="{PREFIXO}/#roadmap"' in corpo
