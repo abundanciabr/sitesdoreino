@@ -1,6 +1,6 @@
 #!/bin/sh
 # Atalho estável na VPS (/opt/plataforma/bin/plataforma): roda infra/publicar.py da main recebida.
-# Uso: plataforma receber [--esperar] | publicar CELULA SHA | recuperar CELULA | vigiar | estado | operar ...
+# Uso: plataforma receber | publicar CELULA SHA | recuperar CELULA | vigiar | estado | operar ...
 set -eu
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 REPO="$RAIZ/codigo/repo.git"

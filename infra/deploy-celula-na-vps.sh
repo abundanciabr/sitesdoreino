@@ -33,16 +33,6 @@ for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
 done
 unset VALOR_DO_GATEWAY
 
-if [ "${MODO:-publicar}" = "inicializar" ]; then
-  if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
-    export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
-  fi
-  [ -n "${IMAGEM:-}" ] || docker pull "ghcr.io/abundanciabr/plataforma-$CELULA:$TAG"
-  python3 "${PUBLICACAO_LOCAL:-$RAIZ/publicacao-local.py}" inicializar
-  echo "INICIALIZACAO-CONCLUIDA: $CELULA:$TAG"
-  exit 0
-fi
-
 SERVICOS_DO_COMPOSE=$(docker compose config --services) || {
   echo "PAROU POR SEGURANÇA: o 'docker compose config' não conseguiu LER $RAIZ/docker-compose.yml."
   echo "A célula '$CELULA' não tem nada a ver com isto. A reclamação do próprio"
