@@ -63,6 +63,77 @@ def test_a_home_tem_uma_lista_unica_de_notificacoes(
     assert lista.calls[0].request.url.params["site_id"] == "site-mesh"
 
 
+def test_sugestao_implementada_avisa_e_leva_para_a_pagina_da_sugestao(
+    client, logado, rede, notificacoes_configurada
+):
+    _resumo(rede)
+    aviso = _aviso()
+    aviso["parametros"] = {
+        "nota": "Feito! Criamos duas super aulas completas de chapéu.",
+        "vinculo": "voto",
+        "status_novo": "implementado",
+        "suggestion_id": "20",
+        "status_anterior": "implementado",
+    }
+    rede.get(f"{NOTIFICACOES}/avisos").mock(
+        return_value=httpx.Response(200, json={"itens": [aviso], "proximo_cursor": None})
+    )
+
+    resposta = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    )
+
+    corpo = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert "Sugestão implementada" in corpo
+    assert 'href="/forms/sugestoes/sugestoes/20"' in corpo
+    assert "Ver a sugestão" in corpo
+    assert "O status atual é" in corpo
+    assert "O status mudou de" not in corpo
+    assert "Feito! Criamos duas super aulas completas de chapéu." in corpo
+    assert "ainda não sabe mostrar" not in corpo
+
+
+def test_subir_de_nivel_tem_cartao_proprio(
+    client, logado, rede, notificacoes_configurada
+):
+    _resumo(rede)
+    aviso = _aviso()
+    aviso["assunto"] = "gamificacao.nivel-alcancado"
+    aviso["parametros"] = {"nivel": 2, "titulo_slug": "aprendiz-de-atelie"}
+    rede.get(f"{NOTIFICACOES}/avisos").mock(
+        return_value=httpx.Response(200, json={"itens": [aviso], "proximo_cursor": None})
+    )
+
+    resposta = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    )
+
+    corpo = resposta.content.decode()
+    assert "Você subiu de nível" in corpo
+    assert "Agora você está no nível 2." in corpo
+    assert 'href="/conquistas/"' in corpo
+    assert "ainda não sabe mostrar" not in corpo
+
+
+def test_assunto_desconhecido_continua_no_cartao_generico(
+    client, logado, rede, notificacoes_configurada
+):
+    _resumo(rede)
+    aviso = _aviso()
+    aviso["assunto"] = "jornada.passo"
+    aviso["parametros"] = {"jornada_slug": "boas-vindas", "passo_id": "x", "ordem": 1}
+    rede.get(f"{NOTIFICACOES}/avisos").mock(
+        return_value=httpx.Response(200, json={"itens": [aviso], "proximo_cursor": None})
+    )
+
+    resposta = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    )
+
+    assert "Você tem um aviso novo" in resposta.content.decode()
+
+
 def test_lista_vazia_e_diferente_de_falha(
     client, logado, rede, notificacoes_configurada
 ):

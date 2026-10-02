@@ -3,9 +3,28 @@
 from django.utils.dateparse import parse_datetime
 
 from apps.core.clients import NotificacoesClient
+from apps.core.enderecos import (
+    url_da_prancheta,
+    url_da_sugestao,
+    url_das_conquistas,
+)
 
 MAXIMO_DE_PAGINAS = 50
 ASSUNTO_SUGESTAO = "sugestao.status-alterado"
+# Assunto → cartão da página. Assunto fora daqui cai no cartão genérico.
+TIPOS_POR_ASSUNTO = {
+    ASSUNTO_SUGESTAO: "sugestao",
+    "gamificacao.nivel-alcancado": "nivel",
+    "gamificacao.conquista-concedida": "conquista",
+    "gamificacao.marco-validado": "marco",
+    "gamificacao.destaque-da-semana": "destaque",
+    "matricula.situacao-alterada": "matricula",
+    "pages.portfolio-conferido": "portfolio",
+    "sistema.teste-de-aviso": "teste",
+}
+SITUACOES_CONHECIDAS = frozenset(
+    {"ativa", "reembolsada", "suspensa", "encerrada", "aguardando", "recusada"}
+)
 STATUS_CONHECIDOS = frozenset(
     {
         "em_analise",
@@ -54,22 +73,44 @@ def buscar_avisos(destinatario_id: str, site_id: str) -> "list[dict] | None":
     return None
 
 
+def _link(tipo: str, sugestao_id: str) -> str:
+    if tipo == "sugestao":
+        return url_da_sugestao(sugestao_id) if sugestao_id else ""
+    if tipo in {"nivel", "conquista", "marco", "destaque"}:
+        return url_das_conquistas()
+    if tipo == "portfolio":
+        return url_da_prancheta()
+    return ""
+
+
 def aviso_para_tela(item: dict) -> dict:
     parametros = item["parametros"]
+    tipo = TIPOS_POR_ASSUNTO.get(item["assunto"], "desconhecido")
     status_novo = _texto(parametros, "status_novo")
     status_anterior = _texto(parametros, "status_anterior")
     vinculo = _texto(parametros, "vinculo")
+    sugestao_id = str(parametros.get("suggestion_id") or "")
+    sugestao_id = sugestao_id if sugestao_id.isdigit() else ""
+    nivel = parametros.get("nivel")
+    situacao = _texto(parametros, "situacao_nova")
     return {
         "id": item["id"],
         "lido_em": parse_datetime(item["lido_em"]) if item["lido_em"] else None,
         "criado_em": parse_datetime(item["criado_em"]),
-        "tipo": "sugestao" if item["assunto"] == ASSUNTO_SUGESTAO else "desconhecido",
+        "tipo": tipo,
+        "link": _link(tipo, sugestao_id),
         "status_novo": status_novo if status_novo in STATUS_CONHECIDOS else "",
         "status_anterior": (
-            status_anterior if status_anterior in STATUS_CONHECIDOS else ""
+            status_anterior
+            if status_anterior in STATUS_CONHECIDOS and status_anterior != status_novo
+            else ""
         ),
         "vinculo": vinculo if vinculo in VINCULOS_CONHECIDOS else "",
         "nota": _texto(parametros, "nota"),
+        "nivel": (
+            nivel if isinstance(nivel, int) and not isinstance(nivel, bool) else None
+        ),
+        "situacao_nova": situacao if situacao in SITUACOES_CONHECIDAS else "",
     }
 
 
