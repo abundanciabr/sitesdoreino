@@ -1,9 +1,12 @@
 # config/settings.py — padrão fail-hard  # [RECEITA:CONV v1]
+import logging
 import os
 from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -74,7 +77,14 @@ TIME_ZONE = "America/Sao_Paulo"
 # arquivada. O arquivamento existe desde o primeiro dia por exigência da
 # `DECISAO-notificacoes` §5.2: o sino aparece em TODA página, e uma tabela que
 # só cresce fica lenta exatamente quando o produto der certo.
-DIAS_ATE_ARQUIVAR = int(os.environ.get("NOTIFICACOES_DIAS_ATE_ARQUIVAR", "30"))
+try:
+    DIAS_ATE_ARQUIVAR = int(os.environ.get("NOTIFICACOES_DIAS_ATE_ARQUIVAR", "30"))
+except ValueError:
+    logger.warning(
+        "NOTIFICACOES_DIAS_ATE_ARQUIVAR inválido (%r); usando 30",
+        os.environ["NOTIFICACOES_DIAS_ATE_ARQUIVAR"],
+    )
+    DIAS_ATE_ARQUIVAR = 30
 
 # ---------------------------------------------------------------------------
 # O aviso na tela do aparelho (Fase 7 — canal novo, 31/08/2026)

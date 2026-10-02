@@ -1,10 +1,13 @@
 # config/settings.py — padrão fail-hard  # [RECEITA:CONV v1]
 import json
+import logging
 import os
 from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -42,9 +45,8 @@ def _comerciais_do_crm() -> dict:
         COMERCIAIS_DO_CRM='{"<token>": {"titular_id": "com-ana", "site_id": "meshcraft"}}'
 
     Ausente é conjunto VAZIO, e conjunto vazio recusa toda operação de
-    oportunidade com 403 — fail-closed. Malformado é erro de partida, nunca
-    conjunto vazio silencioso: "ninguém autorizado" e "eu não consegui ler quem
-    está autorizado" são coisas diferentes, e só a primeira é uma decisão.
+    oportunidade com 403. Malformado também vira `{}`, com uma linha de log:
+    um erro de digitação aqui fecha o CRM, não derruba o site.
     """
     bruto = os.environ.get("COMERCIAIS_DO_CRM", "").strip()
     if not bruto:
@@ -52,15 +54,19 @@ def _comerciais_do_crm() -> dict:
     try:
         declarado = json.loads(bruto)
     except json.JSONDecodeError as erro:
-        raise ImproperlyConfigured(
-            f"COMERCIAIS_DO_CRM não é JSON válido ({erro}). Esperado um objeto "
-            'como {"<token>": {"titular_id": "...", "site_id": "..."}}.'
-        ) from erro
-    if not isinstance(declarado, dict):
-        raise ImproperlyConfigured(
-            "COMERCIAIS_DO_CRM precisa ser um objeto de token para conta, não "
-            f"{type(declarado).__name__}."
+        logger.warning(
+            "COMERCIAIS_DO_CRM não é JSON válido (%s); seguindo sem contas. "
+            'Esperado {"<token>": {"titular_id": "...", "site_id": "..."}}.',
+            erro,
         )
+        return {}
+    if not isinstance(declarado, dict):
+        logger.warning(
+            "COMERCIAIS_DO_CRM precisa ser um objeto de token para conta, não %s; "
+            "seguindo sem contas.",
+            type(declarado).__name__,
+        )
+        return {}
     contas = {}
     for token, conta in declarado.items():
         if (
@@ -68,10 +74,12 @@ def _comerciais_do_crm() -> dict:
             or not conta.get("titular_id")
             or not conta.get("site_id")
         ):
-            raise ImproperlyConfigured(
-                f"COMERCIAIS_DO_CRM: a conta do token {token[:4]}... precisa de "
-                "titular_id e site_id preenchidos."
+            logger.warning(
+                "COMERCIAIS_DO_CRM: a conta do token %s... precisa de titular_id "
+                "e site_id preenchidos; essa conta fica de fora.",
+                str(token)[:4],
             )
+            continue
         contas[token] = {
             "titular_id": str(conta["titular_id"]),
             "site_id": str(conta["site_id"]),
