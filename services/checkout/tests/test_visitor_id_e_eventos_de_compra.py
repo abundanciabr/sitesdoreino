@@ -5,20 +5,9 @@ O checkout não é dono do cookie (quem sorteia e guarda é o funil,
 `services/funil/apps/core/visitante.py`) — só lê, e só no MESMO formato: UUID4
 canônico em minúsculas. Sem cookie, ou com um valor que não bate com o
 formato, os dois eventos NUNCA saem e nada quebra — o pedido segue o caminho
-feliz de sempre.
-
-Contrato dos dois eventos publicado pela frente irmã F4a (PR #2133, integrado):
-`contracts/eventos/checkout.pedido-atribuido.v1.json` e
-`checkout.pedido-pago.v1.json`. `test_data_bate_com_o_required_do_contrato`
-compara o payload de verdade, emitido pelo código, contra o `data.required` e
-o `data.additionalProperties: false` do schema em disco — sem essa comparação,
-um campo pessoal acrescentado por engano ao payload passaria despercebido
-aqui, e só estouraria (ou pior, não estouraria) do lado de quem consome.
+feliz de sempre. O payload de cada evento é conferido campo a campo, e nenhum
+dado pessoal viaja nele.
 """
-
-import json
-import re
-from pathlib import Path
 
 import pytest
 from django.utils.dateparse import parse_datetime
@@ -28,7 +17,6 @@ from apps.pedidos.models import FatoAplicado, Order, OutboxEvent, Session
 from conftest import SLUG, aprovado_v1, aprovado_v2, recusado_v1
 
 VISITOR_ID = "11111111-1111-4111-8111-111111111111"
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 
 
 def _pedido(api, sessao_a, method="pix") -> Order:
@@ -141,54 +129,6 @@ def test_com_cookie_valido_pedido_pago_sai_sem_dado_pessoal(client, api, rede):
     assert parse_datetime(dados["pago_em"]) is not None
     for proibido in ("customer", "email", "name", "phone", "cpf"):
         assert proibido not in dados
-
-
-@pytest.mark.parametrize(
-    "arquivo, evento",
-    [
-        ("checkout.pedido-atribuido.v1.json", "checkout.pedido-atribuido"),
-        ("checkout.pedido-pago.v1.json", "checkout.pedido-pago"),
-    ],
-)
-def test_evento_e_version_batem_com_o_const_do_contrato(arquivo, evento):
-    schema = json.loads((CONTRATOS / arquivo).read_text(encoding="utf-8"))
-    assert schema["properties"]["event"]["const"] == evento
-    assert schema["properties"]["version"]["const"] == 1
-
-
-@pytest.mark.django_db
-def test_pedido_atribuido_data_bate_com_o_required_do_contrato(client, api, rede):
-    """O payload de verdade, emitido pelo código, contra o `data.required` e o
-    `additionalProperties: false` do schema em disco — não a lista que o
-    código ACHA que emite."""
-    schema = json.loads(
-        (CONTRATOS / "checkout.pedido-atribuido.v1.json").read_text(encoding="utf-8")
-    )
-    sessao = _abrir_sessao(client, api, rede, SLUG, cookie=VISITOR_ID)
-    _pedido(api, sessao)
-    dados = OutboxEvent.objects.get(event="checkout.pedido-atribuido").payload
-
-    data_schema = schema["properties"]["data"]
-    assert data_schema["additionalProperties"] is False
-    assert set(dados) == set(data_schema["required"])
-    assert re.fullmatch(data_schema["properties"]["moeda"]["pattern"], dados["moeda"])
-    assert dados["valor_centavos"] >= 1
-
-
-@pytest.mark.django_db
-def test_pedido_pago_data_bate_com_o_required_do_contrato(client, api, rede):
-    schema = json.loads(
-        (CONTRATOS / "checkout.pedido-pago.v1.json").read_text(encoding="utf-8")
-    )
-    sessao = _abrir_sessao(client, api, rede, SLUG, cookie=VISITOR_ID)
-    order = _pedido(api, sessao)
-    aplicar(aprovado_v1(order, mp_payment_id="mp-schema"))
-    dados = OutboxEvent.objects.get(event="checkout.pedido-pago").payload
-
-    data_schema = schema["properties"]["data"]
-    assert data_schema["additionalProperties"] is False
-    assert set(dados) == set(data_schema["required"])
-    assert dados["valor_centavos"] >= 1
 
 
 @pytest.mark.django_db

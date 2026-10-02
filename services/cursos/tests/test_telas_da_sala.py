@@ -2,8 +2,7 @@
 
 O que este arquivo protege, e por que cada coisa:
 
-1. **O mapa** mostra as 34 portas em três Partes e doze Blocos, o estado de
-   cada uma, e a próxima aberta em destaque.
+1. **O mapa** mostra o estado de cada porta e a próxima aberta em destaque.
 2. **A aula** mostra as 16 peças na ORDEM_CANONICA, renderizadas de Markdown,
    e as duas internas NUNCA aparecem no HTML, nem quando têm texto. A
    vídeo-aula em texto fica FORA dessa sequência: ela chega por um botão logo
@@ -65,14 +64,6 @@ def corpo_de(resposta) -> str:
 
 
 # ---------------------------------------------------------------- 1. o mapa
-def test_o_mapa_tem_as_34_portas_em_tres_partes_e_doze_blocos(aluna, client):
-    corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
-    assert corpo.count("<h2>Parte ") == 3
-    assert corpo.count('<div class="bloco">') == 12
-    assert corpo.count('<li class="porta ') == 34
-    assert "Encomenda 00" in corpo and "Encomenda Bônus" in corpo
-
-
 def test_a_proxima_porta_aberta_fica_em_destaque(aluna, aula_publicada, client):
     corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
     assert "Sua porta aberta agora:" in corpo

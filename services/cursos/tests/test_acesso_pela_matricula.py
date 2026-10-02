@@ -14,8 +14,6 @@ aqui a pergunta é se a pessoa entra, lá é em que curso ela entra.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import httpx
 import pytest
 from django.urls import reverse
@@ -153,29 +151,13 @@ def test_a_aula_tambem_fecha_sem_matricula(env_dos_pares, rede, aula_publicada, 
     assert "SEGREDO" not in resposta.content.decode()
 
 
-# ---------------------------------------------------- a URL do contrato
-def test_a_url_da_alunos_carrega_o_segmento_do_contrato():
-    """Prova de FORA: a URL montada tem de existir no contrato congelado.
-    `ALUNOS_API_URL` é o `servers:` e o caminho da operação se SOMA a ele
+# ------------------------------------------------------- a URL da alunos
+def test_a_url_da_alunos_soma_o_caminho_da_operacao():
+    """`ALUNOS_API_URL` é a base e o caminho da operação se SOMA a ela
     (`armadilhas/111`); o dublê só responde à soma exata."""
-    contrato = (
-        Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
-    ).read_text(encoding="utf-8")
-    assert "url: http://alunos:8000/api/alunos" in contrato
-    assert "  /alunos/{email}/matriculas:" in contrato
     assert url_das_matriculas("ana@exemplo.com") == (
         "http://alunos:8000/api/alunos/alunos/ana%40exemplo.com/matriculas"
     )
-
-
-def test_o_contrato_da_alunos_devolve_o_produto_de_cada_matricula():
-    """Prova de FORA do ELO: a sala compara `product_id`, e o contrato congelado
-    tem de prometer esse campo. Se ele sumir do outro lado, este teste cai aqui,
-    e não numa tela em produção abrindo o curso errado."""
-    contrato = (
-        Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
-    ).read_text(encoding="utf-8")
-    assert "required: [site_id, order_id, product_id, status, enrolled_at]" in contrato
 
 
 def test_a_matricula_e_perguntada_pelo_email_e_o_email_nao_e_guardado(

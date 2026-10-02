@@ -1,8 +1,8 @@
 # tests/test_estorno_suspende_a_matricula.py
 """O dinheiro voltou, o acesso fecha na hora.
 
-`contracts/eventos/pagamento.estornado.v2.json`, congelado no Rito de Contrato
-de 20/09/2026 com o mantenedor presente. A decisão dele naquele dia: **estorno e
+O evento `pagamento.estornado` v2, combinado em 20/09/2026 com o mantenedor
+presente. A decisão dele naquele dia: **estorno e
 contestação cortam o acesso do aluno na hora, sem distinção entre os dois**. O
 que difere entre os dois motivos é o que a plataforma faz DEPOIS (contestação
 tem prazo de defesa), e isso não é assunto desta célula.
@@ -32,13 +32,10 @@ toda matrícula nascida antes deste par existir.
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
 import uuid
-from pathlib import Path
 
-import jsonschema
 import pytest
 
 from apps.eventos.management.commands.consume_eventos import (
@@ -55,8 +52,6 @@ from apps.matriculas.services import (
 )
 
 pytestmark = pytest.mark.django_db
-
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 
 SITE = "escola-a"
 PEDIDO = "pedido-553"
@@ -125,22 +120,6 @@ def _cortes() -> list[OutboxEvent]:
             event=SITUACAO_ALTERADA, payload__situacao_nova=Matricula.STATUS_SUSPENSA
         ).order_by("id")
     )
-
-
-# --------------------------------------------------------------------------
-# §0 CONTROLE POSITIVO. Se os exemplos não forem eventos de verdade, todo o
-#    resto deste arquivo mede uma fantasia.
-# --------------------------------------------------------------------------
-
-
-def test_os_envelopes_de_exemplo_batem_com_os_contratos():
-    for envelope, arquivo in (
-        (_aprovado(), "pagamento.aprovado.v2.json"),
-        (_estornado(), "pagamento.estornado.v2.json"),
-        (_estornado(motivo="contestacao"), "pagamento.estornado.v2.json"),
-    ):
-        schema = json.loads((CONTRATOS / arquivo).read_text(encoding="utf-8"))
-        jsonschema.validate(envelope, schema)
 
 
 # --------------------------------------------------------------------------

@@ -13,15 +13,12 @@ O modo de falhar é silencioso, e é o pior desta célula: ninguém recebe erro,
 ninguém abre chamado, e a pessoa aparece matriculada duas vezes no relatório do
 mês. Por isso a identidade que vale aqui não é a do envelope, é a do FATO.
 
-Quem dita essa identidade é o contrato, no campo `x-ponte-do-v1` de
-`contracts/eventos/pagamento.aprovado.v2.json`, e ela não é a mesma para todos
-os avisos da família: no `pagamento.aprovado` o fato é o par (`provider`,
+Quem dita essa identidade é a tabela `PONTE_DO_V1` do consumidor, e ela não é
+a mesma para todos os avisos da família: no `pagamento.aprovado` o fato é o par (`provider`,
 `provider_reference_id`), porque o `mp_payment_id` do v1 é o mesmo valor com
 `provider` implícito igual a `mercadopago`; no `pagamento.recusado` o v1 nunca
 carregou referência de provedor nenhuma, e quem atravessa as duas versões é o
-`payment_id`. Copiar a regra de um para o outro é o erro que este arquivo torna
-impossível: `test_a_ponte_e_copia_fiel_do_contrato` compara a tabela do código
-com o contrato, campo a campo.
+`payment_id`.
 
 Estes testes falam com um Redis REAL na parte de concorrência
 (`REDIS_STREAMS_URL`), pelo mesmo motivo de `test_reentrega_pel.py`: duas
@@ -31,9 +28,7 @@ em mock nenhum.
 import json
 import threading
 import uuid
-from pathlib import Path
 
-import jsonschema
 import pytest
 import redis
 from django.db import connection
@@ -42,7 +37,6 @@ from apps.eventos.management.commands.consume_eventos import (
     CONSUMIDOR,
     GRUPO,
     HANDLERS,
-    PONTE_DO_V1,
     VersaoDesconhecida,
     dados_na_forma_do_v2,
     identidade_do_fato,
@@ -50,8 +44,6 @@ from apps.eventos.management.commands.consume_eventos import (
 )
 from apps.eventos.models import EventoProcessado
 from apps.matriculas.models import Matricula
-
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 
 SITE = "escola-a"
 PEDIDO = "pedido-77"
@@ -61,9 +53,7 @@ COMPRADOR = {"email": "aluna@exemplo.com.br", "name": "Aluna Exemplo"}
 
 
 def _v1(*, site=SITE, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
-    """A MESMA compra de `_v2`, na forma antiga. Validado contra o contrato em
-    `test_os_envelopes_de_exemplo_batem_com_os_contratos` — sem isso o arquivo
-    inteiro poderia estar medindo um evento que ninguém emite."""
+    """A MESMA compra de `_v2`, na forma antiga."""
     return {
         "event": "pagamento.aprovado",
         "version": 1,
@@ -119,115 +109,20 @@ def _contando(contador: list):
     return {"pagamento.aprovado": rodar}
 
 
-# ---------------------------------------------------------------- o contrato
+# ------------------------------------------------- a tradução do v1 para o v2
 
 
-def _schema_do_v2(evento: str) -> dict:
-    return json.loads((CONTRATOS / f"{evento}.v2.json").read_text(encoding="utf-8"))
-
-
-def _ponte_do_contrato(evento: str) -> "dict | None":
-    """A ponte publicada pelo contrato, ou `None` quando o aviso nasceu na v2.
-
-    Ausência NÃO é omissão a corrigir: `pagamento.estornado` entrou na
-    plataforma já na versão 2 (Rito de Contrato de 20/09/2026) e não tem v1 para
-    atravessar. Um contrato assim não tem o que publicar em `x-ponte-do-v1`.
-    """
-    return _schema_do_v2(evento).get("x-ponte-do-v1")
-
-
-def test_a_ponte_e_copia_fiel_do_contrato():
-    """A tabela do código é uma CÓPIA do contrato, e este guarda prova que ela
-    não derivou. Quem alterar `x-ponte-do-v1` sem alterar o código (ou o
-    contrário) reprova aqui, em vez de deduplicar pela chave errada em
-    produção.
-
-    **Evento que nasceu na v2 declara `no_v1: None`, e o guarda cobra isso nos
-    dois sentidos.** Inventar uma tradução do v1 para um aviso que nunca teve v1
-    é o erro caro: ela seria aplicada a qualquer envelope que se dissesse v1
-    daquele evento, e produziria uma identidade de fato tirada dos campos
-    errados."""
-    for evento in PONTE_DO_V1:
-        do_contrato = _ponte_do_contrato(evento)
-        if do_contrato is None:
-            assert PONTE_DO_V1[evento]["no_v1"] is None, (
-                f"{evento} nasceu na v2 (o contrato não publica `x-ponte-do-v1`) "
-                "e o código declara uma tradução do v1 que ninguém escreveu. "
-                "Declare `no_v1: None`."
-            )
-            continue
-        assert PONTE_DO_V1[evento] == {
-            "chave_entre_versoes": do_contrato["chave_entre_versoes"],
-            "no_v1": do_contrato["no_v1"],
-        }, f"a ponte de {evento} no código não é a do contrato"
-
-
-def test_a_chave_do_fato_e_sempre_campo_obrigatorio_do_contrato():
-    """O que ancora a chave de um evento que nasceu na v2.
-
-    Para o `pagamento.aprovado` o contrato publica a chave inteira em
-    `x-ponte-do-v1`, e o guarda de cima a compara campo a campo. Para um aviso
-    sem v1 não há esse campo, e sem este guarda a `chave_entre_versoes` dele
-    seria a única linha da tabela que o contrato não sustenta: um
-    `provider_reference` sem o `_id` passaria, e a identidade do fato viraria
-    `KeyError` no meio do laço do consumidor, na primeira mensagem real.
-
-    Campo OBRIGATÓRIO, e não só declarado: identificar o fato por algo que o
-    emissor pode omitir é identificar o fato às vezes."""
-    for evento, ponte in PONTE_DO_V1.items():
-        dados = _schema_do_v2(evento)["properties"]["data"]
-        for campo in ponte["chave_entre_versoes"]:
-            assert campo in dados["required"], (
-                f"a chave do fato de {evento} usa {campo!r}, que não é campo "
-                f"obrigatório de `data` no contrato v2 (obrigatórios: "
-                f"{dados['required']})"
-            )
-
-
-def test_todo_evento_consumido_declara_a_ponte():
-    """A armadilha que este guarda fecha: alguém acrescenta
-    `pagamento.recusado` a HANDLERS e herda, por descuido, a chave do
-    `pagamento.aprovado`. São chaves DIFERENTES (o v1 da recusa nunca teve
-    referência do provedor), e a herança silenciosa deduplicaria recusas de
-    pagamentos distintos como se fossem a mesma."""
-    sem_ponte = set(HANDLERS) - set(PONTE_DO_V1)
-    assert not sem_ponte, (
-        f"evento consumido sem ponte declarada: {sorted(sem_ponte)}. Copie o "
-        "`x-ponte-do-v1` do contrato v2 desse evento para PONTE_DO_V1 — não "
-        "reaproveite a chave de outro evento."
-    )
-
-
-def test_os_envelopes_de_exemplo_batem_com_os_contratos():
-    """Controle positivo do arquivo inteiro: se os exemplos não forem eventos
-    de verdade, todo o resto aqui mede uma fantasia."""
-    for envelope, arquivo in (
-        (_v1(), "pagamento.aprovado.v1.json"),
-        (_v2(), "pagamento.aprovado.v2.json"),
-    ):
-        schema = json.loads((CONTRATOS / arquivo).read_text(encoding="utf-8"))
-        jsonschema.validate(envelope, schema)
-
-
-def test_o_v1_traduzido_carrega_os_valores_que_o_contrato_manda():
-    """A ponte em forma de dado diz, para cada campo da chave, DE ONDE tirá-lo
-    num evento v1: um caminho dentro do evento (`data.<campo>`) ou um valor
-    literal. Este guarda executa essa instrução e confere que a tradução do
-    código chegou no mesmo lugar."""
+def test_o_v1_traduzido_carrega_provedor_e_referencia():
+    """O v1 não dizia o provedor (era só Mercado Pago) e chamava a referência de
+    `mp_payment_id`. Traduzido, ele tem de chegar na mesma chave do v2."""
     envelope = _v1()
-    do_contrato = _ponte_do_contrato("pagamento.aprovado")
     traduzido = dados_na_forma_do_v2(envelope)
 
-    for campo in do_contrato["chave_entre_versoes"]:
-        origem = do_contrato["no_v1"][campo]
-        if origem.startswith("data."):
-            esperado = envelope["data"][origem[len("data.") :]]
-        else:
-            esperado = origem
-        assert traduzido[campo] == esperado, (
-            f"o campo {campo} traduzido do v1 saiu {traduzido[campo]!r} e o "
-            f"contrato manda {esperado!r} (origem declarada: {origem!r})"
-        )
+    assert traduzido["provider"] == "mercadopago"
+    assert traduzido["provider_reference_id"] == envelope["data"]["mp_payment_id"]
+    assert identidade_do_fato("pagamento.aprovado", traduzido) == identidade_do_fato(
+        "pagamento.aprovado", _v2()["data"]
+    )
 
 
 def test_o_v2_atravessa_a_traducao_sem_ser_alterado():

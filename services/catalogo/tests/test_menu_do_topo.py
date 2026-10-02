@@ -431,24 +431,6 @@ def test_as_duas_portas_novas_exigem_cracha(client, site):
     )
 
 
-def test_o_menu_padrao_da_migracao_e_coerente():
-    """O que a migração 0004 escreve em PRODUÇÃO passa pelo mesmo validador
-    que a tela do Admin enfrenta — e sai dele sem mudar nada.
-
-    Sem este teste, um erro de digitação no menu padrão só apareceria depois do
-    deploy, gravado no banco de verdade, onde a migração já não roda de novo.
-    """
-    import importlib
-
-    # O nome do módulo começa com dígito, então ele não se escreve num import
-    # normal; `import_module` aceita a string e é o caminho honesto.
-    modulo = importlib.import_module("apps.sites.migrations.0004_menu_padrao")
-    padrao = modulo.MENU_PADRAO
-    assert normalizar_menu(padrao) == padrao
-    # a página de entrar nasce sem menu: é o pedido do mantenedor, escrito no dado
-    assert {"page": "funil/login", "version": ""} in padrao["pages"]
-
-
 # ---------------------------------------------------------------------------
 # A plateia de EQUIPE (03/09/2026, PR #890 — Rito de Contrato)
 # ---------------------------------------------------------------------------

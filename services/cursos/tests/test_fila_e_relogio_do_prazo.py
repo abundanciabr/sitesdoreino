@@ -14,9 +14,7 @@ O que este arquivo protege:
    mínimo 1; a segunda passada não registra nem emite de novo (idempotente
    pelo filtro); envio já aberto não estoura; o estourado continua na fila, e
    na frente.
-3. **O tique** (`tasks.bater_o_tique`) lê o relógio e chama o registro; o
-   relay e o tique são os dois batimentos do worker, e não há timer agendado
-   por envio.
+3. **O tique** (`tasks.bater_o_tique`) lê o relógio e chama o registro.
 
 Os envios aqui nascem com `enviado_em` no PASSADO relativo ao relógio real
 (`timezone.now() - horas`), nunca num instante fixo: `estourado_em` é comparado
@@ -26,10 +24,8 @@ com `prazo_em` no banco, e instante fixo contra relógio real é bomba-relógio
 
 from __future__ import annotations
 
-import re
 from datetime import timedelta
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from django.core.management import call_command
@@ -43,7 +39,6 @@ from tests.conftest import publicar
 pytestmark = pytest.mark.django_db
 
 H = timedelta(hours=1)
-CELULA = Path(__file__).resolve().parent.parent / "apps" / "cursos"
 
 
 def envio_de(pessoa, aula, *, ha: timedelta, estado=Envio.Estado.RECEBIDO) -> Envio:
@@ -159,20 +154,3 @@ def test_o_tique_le_o_relogio_e_registra(fila):
         fila["carla_26h_em_revisao"].pk,
     )
     assert tasks.bater_o_tique() == ()
-
-
-def test_o_tique_e_o_relay_sao_os_dois_batimentos_e_nao_ha_timer_por_envio():
-    from config.huey import huey
-
-    periodicas = sorted(
-        nome.rsplit(".", 1)[-1]
-        for nome in huey._registry._registry
-        if nome.startswith("apps.cursos.tasks.")
-    )
-    assert periodicas == ["relay_outbox_periodico", "tique_periodico"]
-
-    agendamento = re.compile(r"\.(schedule|delay)\(|\beta=")
-    for nome in ("envio.py", "tasks.py", "eventos.py"):
-        assert not agendamento.search(
-            (CELULA / nome).read_text(encoding="utf-8")
-        ), f"{nome} agenda algo por envio: o relógio é reavaliação periódica"

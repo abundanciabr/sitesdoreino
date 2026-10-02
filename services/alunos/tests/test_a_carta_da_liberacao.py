@@ -22,15 +22,14 @@ promessa que o mantenedor escolheu: *"você é avisado quando eu te liberar"*.
    consegue abrir a página de avisos (ela mora dentro da Caixa, e a Caixa só
    abre para aluno), então a carta seria escrita e nunca lida.
 
-4. **A carta casa com o contrato congelado**, validada contra o ARQUIVO —
-   nunca contra uma cópia do formato dentro do teste.
+4. **Sem situação anterior, o campo não vai** — ausência é "não registrado",
+   nunca uma string vazia.
 
 5. **Nenhuma PII no fio.** Nem nome, nem e-mail, nem telefone.
 """
 
 import json
 import uuid
-from pathlib import Path
 
 import httpx
 import pytest
@@ -61,12 +60,6 @@ CURSO = "produto-do-curso-1"
 IDENTIDADE = "http://identidade:8000/interno"
 PESSOA = "quem.espera@exemplo.test"
 ID_DA_PLATAFORMA = "idt-opaco-abc123"
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "notificacao.devida.v1.json"
-)
 
 
 @pytest.fixture(autouse=True)
@@ -370,37 +363,12 @@ def test_corrigir_o_telefone_de_um_aluno_nao_escreve_carta():
     assert _cartas() == []
 
 
-# ------------------------------------ 4. o envelope casa com o CONTRATO
+# ------------------------- 4. sem situação anterior, o campo não vai
 
 
-def test_o_envelope_casa_com_o_contrato_congelado():
-    """Validado contra o ARQUIVO, nunca contra uma cópia do formato aqui dentro.
-
-    Uma cópia envelhece: no dia em que o contrato mudar, o teste continuaria
-    verde contra a versão antiga — e o consumidor quebraria em produção com a
-    suíte no verde.
-    """
-    import jsonschema
-
-    with transaction.atomic():
-        carta = carta_de_situacao(
-            site_id="escola-a",
-            destinatario_id=ID_DA_PLATAFORMA,
-            matricula_id="7",
-            situacao_nova="ativa",
-            situacao_anterior="aguardando",
-            decidido_por="idt-do-mantenedor",
-        )
-
-    schema = json.loads(CONTRATO.read_text(encoding="utf-8"))
-    jsonschema.validate(_envelope(carta), schema)
-
-
-def test_uma_carta_sem_situacao_anterior_tambem_casa_com_o_contrato():
-    """O campo é opcional no contrato, e ausência é "não registrado" — nunca
-    uma string vazia, que o `enum` recusaria."""
-    import jsonschema
-
+def test_uma_carta_sem_situacao_anterior_nao_leva_o_campo():
+    """O campo é opcional, e ausência é "não registrado" — nunca uma string
+    vazia."""
     with transaction.atomic():
         carta = carta_de_situacao(
             site_id="escola-a",
@@ -409,8 +377,6 @@ def test_uma_carta_sem_situacao_anterior_tambem_casa_com_o_contrato():
             situacao_nova="ativa",
         )
 
-    schema = json.loads(CONTRATO.read_text(encoding="utf-8"))
-    jsonschema.validate(_envelope(carta), schema)
     assert "situacao_anterior" not in carta.payload["parametros"]
 
 

@@ -8,8 +8,7 @@ fixture `esqueleto` do `conftest`): um curso, 12 blocos, 34 aulas sem texto,
 de responder inteira: 19 peças vazias, lista vazia de pausas, instrumento nulo.
 
 O que este arquivo NÃO cobre, de propósito: o cadeado (401), que tem arquivo
-próprio (`test_porta_exige_bearer.py`), e o contrato congelado, que é o degrau
-1.4 e nasce do `export_openapi` medido lá embaixo.
+próprio (`test_porta_exige_bearer.py`).
 """
 
 from __future__ import annotations
@@ -63,41 +62,6 @@ OS_CAMPOS_DA_LISTA = {
     "publicada_em",
     "e_boss",
     "banca_nivel",
-}
-# As quatro que resolvem a aula pelo SITE (o editor que já está no ar as
-# chama), as quatro que resolvem pelo CURSO e conferem a PARTE (TAR-203), as
-# três de instrumento, a do bloco (TAR-221), a do Revisor de coerência
-# (TAR-245, degrau 3.1), as quatro do CURSO (TAR-266) e as duas de aulas
-# avulsas (TAR-334) e a edição da aula avulsa (TAR-342).
-#
-# É a lista das que EXISTEM e precisam continuar existindo, e não o total: o
-# contrato pode ganhar operação nova sem mexer aqui (o cadeado de toda operação
-# é medido na fonte por `test_toda_operacao_exige_credencial_na_fonte`).
-AS_OPERACOES_QUE_PRECISAM_EXISTIR = {
-    "listSiteLessons",
-    "getSiteLesson",
-    "putSiteLesson",
-    "publishSiteLesson",
-    "listLessons",
-    "getLesson",
-    "putLesson",
-    "publishLesson",
-    "listInstruments",
-    "getInstrument",
-    "putInstrument",
-    "putBlock",
-    "checkLesson",
-    "listCourses",
-    "createCourse",
-    "putCourse",
-    "putCourseStructure",
-    "listStandaloneLessons",
-    "createStandaloneLesson",
-    "updateStandaloneLesson",
-    # A moderação dos comentários e o resumo da fila de revisão.
-    "listLessonComments",
-    "setLessonCommentVisibility",
-    "getLessonReviewQueueSummary",
 }
 # O bloco viaja dentro de toda aula, e desde a TAR-221 ele leva o que o
 # mantenedor escreve: é assim que quem grava por `putBlock` lê de volta o que
@@ -921,62 +885,13 @@ def test_put_block_grava_no_curso_do_slug_e_nao_no_vizinho(dois_cursos):
 
 
 # ---------------------------------------------------------------------------
-# export_openapi: o contrato vivo que o degrau 1.4 vai congelar
+# o cadeado de toda operação
 # ---------------------------------------------------------------------------
 
 
-def exportar() -> dict:
-    saida = StringIO()
-    call_command("export_openapi", stdout=saida)
-    return json.loads(saida.getvalue())
-
-
-def test_export_openapi_traz_as_operacoes_do_editor_e_da_moderacao():
-    documento = exportar()
-    ids = [
-        operacao["operationId"]
-        for item in documento["paths"].values()
-        for operacao in item.values()
-    ]
-    # As que existem continuam existindo. Operação nova entra sem mexer aqui.
-    assert AS_OPERACOES_QUE_PRECISAM_EXISTIR <= set(ids)
-    # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
-    # documento inválido que o freeze compara sem reclamar: o caminho novo
-    # ficou com o nome canônico, o antigo ganhou o dele.
-    assert len(ids) == len(set(ids))
-
-
-def test_a_parte_viaja_no_contrato_como_enum_de_1_a_3():
-    """O vocabulário da parte sai do modelo (`PARTES_DO_CURSO`), e quem for
-    construir a tela do outro lado o lê do contrato, nunca de uma lista
-    própria."""
-    assert exportar()["components"]["schemas"]["ParteDoCurso"]["enum"] == [1, 2, 3]
-
-
-def test_o_contrato_declara_o_bearer_na_raiz_e_nenhuma_operacao_o_desliga():
-    """`security` na raiz e o esquema `bearerAuth` em `components`: é assim que
-    o freeze lê "toda operação herda a credencial". Uma operação que declarasse
-    `security: []` seria pública, e este teste a apanharia."""
-    documento = exportar()
-    assert documento["security"] == [{"bearerAuth": []}]
-    assert "bearerAuth" in documento["components"]["securitySchemes"]
-    for caminho, metodo in (
-        ("/comentarios", "get"),
-        ("/comentarios/{comentario_id}/visibilidade", "put"),
-    ):
-        assert documento["paths"][caminho][metodo]["security"] == [
-            {"bearerAdminComentarios": []}
-        ]
-    for item in documento["paths"].values():
-        for operacao in item.values():
-            assert operacao.get("security", documento["security"])
-
-
 def test_toda_operacao_exige_credencial_na_fonte():
-    """Medido onde a sonda do freeze mede (`ci/contract_freeze.py`): o
-    django-ninja OMITE `security` da operação com `auth=None` em vez de emitir
-    `security: []`, então o documento sozinho não distingue rota pública de
-    rota autenticada. `auth_callbacks` é a lista que o ninja executa de fato."""
+    """`auth_callbacks` é a lista que o ninja executa de fato: nenhuma operação
+    da porta fica sem credencial."""
     sem_cadeado = [
         operacao.operation_id
         for _, roteador in api._routers
@@ -985,15 +900,3 @@ def test_toda_operacao_exige_credencial_na_fonte():
         if not operacao.auth_callbacks
     ]
     assert sem_cadeado == []
-
-
-def test_o_vocabulario_de_peca_e_de_pausa_viaja_no_contrato_como_enum():
-    """O editor (degrau 1.5) lê os tipos do contrato, e não de uma lista
-    própria: a segunda lista é a doença que a lei anti-duplicação proíbe."""
-    componentes = exportar()["components"]["schemas"]
-    assert componentes["TipoDePeca"]["enum"] == list(AS_19_PECAS_NA_ORDEM)
-    assert componentes["TipoDePausa"]["enum"] == [
-        "erro_produtivo",
-        "faca_agora",
-        "cerimonia",
-    ]

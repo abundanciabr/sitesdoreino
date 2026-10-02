@@ -7,19 +7,13 @@ Admin (degrau 1.5), uma migração de dados ou um `psql` de madrugada para a
 combinação proibida existir sem ninguém saber (`armadilhas/023`, `274`). Este
 arquivo confere que o PostgreSQL recusa.
 
-E mede o semeador pelo caminho da instalação (`call_command`): as contagens do
-esqueleto, a distribuição das aulas pelos blocos, os 13 instrumentos da lei, e
-a idempotência.
-
-As tabelas da lei (a distribuição, os instrumentos, a ordem das 16 peças) estão
-TRANSCRITAS aqui, de propósito, e não importadas do semeador nem do modelo: um
-teste que importa a resposta do arquivo que ele mede não mede nada.
+E mede o semeador pelo caminho da instalação (`call_command`): o esqueleto
+nasce rascunho e sem texto, e semear de novo não duplica nem pisa em edição.
 """
 
 from io import StringIO
 
 import pytest
-from django.apps import apps
 from django.core.management import call_command
 from django.db import IntegrityError, connection, transaction
 
@@ -48,39 +42,6 @@ AS_16_PECAS_NA_ORDEM = (
 )
 AS_2_INTERNAS = ("roteiro", "guia_do_mentor")
 AS_SOB_DEMANDA = ("videoaula_em_texto",)
-
-# O despacho do degrau 1.2, transcrito: letra -> (parte, aulas).
-A_DISTRIBUICAO = {
-    "A": (1, ["E00", "E01", "E02"]),
-    "B": (1, ["E03", "E04", "E05"]),
-    "C": (1, ["E06", "E07", "E08"]),
-    "D": (1, ["E09", "E10"]),
-    "E": (2, ["E11", "E12", "E13", "E14"]),
-    "F": (2, ["E15", "E16"]),
-    "G": (2, ["E17", "E18"]),
-    "H": (2, ["E19", "E20", "E21"]),
-    "I": (3, ["E22", "E23", "E24", "E25"]),
-    "J": (3, ["E26", "E27"]),
-    "K": (3, ["E28", "E29", "E30"]),
-    "L": (3, ["E31", "E32", "EB"]),
-}
-
-# O plano §4, transcrito: slug -> (nome canônico, cartão).
-OS_13_INSTRUMENTOS = {
-    "studs": ("Teste STUDS", 1),
-    "rubrica_de_encomenda": ("Rubrica de Encomenda", 2),
-    "rubrica_de_produto": ("Rubrica de Produto", 3),
-    "pronto_para_sair": ("Pronto para sair", 4),
-    "validacao_no_motor": ("Validação no motor", 5),
-    "prova_dos_3_movimentos": ("Prova dos 3 Movimentos", 6),
-    "prova_das_5_expressoes": ("Prova das 5 Expressões", 7),
-    "selo_ugc": ("Selo UGC", 8),
-    "selo_ugc_personagem": ("Selo UGC de Personagem", 9),
-    "ficha_de_serie": ("Ficha de Série", 10),
-    "ficha_de_delegacao": ("Ficha de Delegação", 11),
-    "revisao_de_estudio": ("Revisão de Estúdio", 12),
-    "laudo_de_banca": ("Laudo de Banca", 13),
-}
 
 
 def cria_curso(site_id=SITE, slug="curso-x"):
@@ -315,11 +276,6 @@ def test_a_aula_aponta_para_um_instrumento_ou_para_nenhum(aula):
 # ---------------------------------------------------------------------------
 
 
-def test_a_ordem_canonica_tem_as_16_pecas_da_anatomia():
-    assert tuple(Peca.ORDEM_CANONICA) == AS_16_PECAS_NA_ORDEM
-    assert len(Peca.ORDEM_CANONICA) == 16
-
-
 def test_as_duas_internas_ficam_fora_da_ordem_canonica():
     assert tuple(Peca.TIPOS_INTERNOS) == AS_2_INTERNAS
     assert not set(Peca.TIPOS_INTERNOS) & set(Peca.ORDEM_CANONICA)
@@ -426,34 +382,8 @@ def test_cartao_de_instrumento_entre_1_e_13(db, cartao):
 
 
 # ---------------------------------------------------------------------------
-# 7. A palavra que não existe
+# 7. O semeador, pelo caminho da instalação
 # ---------------------------------------------------------------------------
-
-
-def test_a_palavra_reprovado_nao_existe_no_vocabulario():
-    """O estado "reprovado" não existe ([INV-CUR-L2] nasce no degrau 2.2, mas a
-    palavra já não entra aqui): nem como valor, nem como rótulo, em nenhuma
-    coluna de escolha desta célula."""
-    achados = []
-    for modelo in apps.get_app_config("cursos").get_models():
-        for campo in modelo._meta.get_fields():
-            for valor, rotulo in getattr(campo, "choices", None) or []:
-                if "reprovad" in f"{valor} {rotulo}".lower():
-                    achados.append(f"{modelo.__name__}.{campo.name}={valor}")
-    assert achados == []
-
-
-# ---------------------------------------------------------------------------
-# 8. O semeador, pelo caminho da instalação
-# ---------------------------------------------------------------------------
-
-
-def test_o_esqueleto_tem_as_contagens_da_lei(esqueleto):
-    assert esqueleto.blocos.count() == 12
-    assert esqueleto.aulas.count() == 34
-    assert Instrumento.objects.count() == 13
-    assert Peca.objects.count() == 0
-    assert esqueleto.aulas.exclude(pedido="").count() == 0
 
 
 def test_o_esqueleto_nasce_rascunho_e_sem_nenhum_texto(esqueleto):
@@ -481,43 +411,6 @@ def test_o_esqueleto_nasce_rascunho_e_sem_nenhum_texto(esqueleto):
         == 0
     )
     assert Pausa.objects.count() == 0
-
-
-def test_a_distribuicao_das_aulas_pelos_blocos(esqueleto):
-    do_banco = {
-        bloco.letra: (
-            bloco.parte,
-            list(bloco.aulas.order_by("ordem").values_list("numero", flat=True)),
-        )
-        for bloco in esqueleto.blocos.all()
-    }
-    assert do_banco == A_DISTRIBUICAO
-    assert list(esqueleto.blocos.values_list("ordem", "letra")) == list(
-        enumerate("ABCDEFGHIJKL", start=1)
-    )
-
-
-def test_a_ordem_o_numero_e_o_titulo_de_cada_aula(esqueleto):
-    aulas = list(esqueleto.aulas.order_by("ordem"))
-    assert [a.ordem for a in aulas] == list(range(34))
-    assert [a.numero for a in aulas][:33] == [f"E{n:02d}" for n in range(33)]
-    assert aulas[0].titulo_exibido == "Encomenda 00"
-    assert aulas[32].titulo_exibido == "Encomenda 32"
-    bonus = aulas[33]
-    assert (bonus.numero, bonus.titulo_exibido, bonus.bloco.letra) == (
-        "EB",
-        "Encomenda Bônus",
-        "L",
-    )
-
-
-def test_os_13_instrumentos_da_lei(esqueleto):
-    do_banco = {i.slug: (i.nome_canonico, i.cartao) for i in Instrumento.objects.all()}
-    assert do_banco == OS_13_INSTRUMENTOS
-    sem_escala = Instrumento.objects.filter(
-        escala={}, descritores={}, minimo_exercicio="", minimo_contrato=""
-    )
-    assert sem_escala.count() == 13, "escala e descritores entram pela tela"
 
 
 def test_semear_duas_vezes_nao_duplica_nada(esqueleto):

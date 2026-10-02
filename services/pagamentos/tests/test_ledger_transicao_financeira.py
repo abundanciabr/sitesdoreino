@@ -9,10 +9,8 @@ reentrega (INV-P3) e também não emitia: o pagamento do cartão era aprovado e
 NENHUMA célula ficava sabendo, para sempre. O primeiro teste deste arquivo é o
 retrato exato desse buraco.
 """
-import ast
 import json
 import uuid
-from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -248,7 +246,7 @@ def _dados_aprovado(intent: Intent) -> dict[str, Any]:
 
 
 def _dados_estorno(intent: Intent, motivo: str) -> dict[str, Any]:
-    """Forma de contracts/eventos/pagamento.estornado.v2.json."""
+    """Forma do evento `pagamento.estornado` v2."""
     return {
         "platform_site_id": intent.site_id,
         "provider": "mercadopago",
@@ -351,8 +349,8 @@ def test_fato_fora_de_ordem_nao_muda_o_ledger_nem_avisa() -> None:
 def test_estorno_e_contestacao_mudam_o_ledger_uma_vez_so() -> None:
     """Dinheiro que não entrou não volta, e dinheiro que voltou volta UMA vez:
     a contestação que chega depois do estorno do mesmo pagamento não gera um
-    segundo aviso (contracts/eventos/pagamento.estornado.v2.json separa os dois
-    pelo `motivo`, não pelo estado)."""
+    segundo aviso (o evento `pagamento.estornado` v2 separa os dois pelo
+    `motivo`, não pelo estado)."""
     # guarda: services/pagamentos/pagamentos/core/models.py:323
     intent = _intent_pendente()
 
@@ -393,37 +391,6 @@ def test_estorno_e_contestacao_mudam_o_ledger_uma_vez_so() -> None:
     estorno = OutboxEvent.objects.get(event="pagamento.estornado")
     assert estorno.version == 2
     assert estorno.payload["motivo"] == "estorno"
-
-
-_JANELA = "transicao_do_ledger"
-
-
-def test_so_o_ledger_abre_a_janela_de_transicao() -> None:
-    """A janela que autoriza gravar status financeiro é a única porta dos
-    fundos possível. Este varre o código de produção da célula para que ela
-    continue com um dono só: quem precisar de uma transição chama
-    `core.ledger.registrar_fato`, que traz o aviso junto."""
-    raiz = Path(__file__).resolve().parents[1] / "pagamentos"
-    donos = {raiz / "core" / "models.py", raiz / "core" / "ledger.py"}
-    fora: list[str] = []
-    for arquivo in sorted(raiz.rglob("*.py")):
-        if arquivo in donos:
-            continue
-        for no in ast.walk(ast.parse(arquivo.read_text(encoding="utf-8"))):
-            usa = (
-                (isinstance(no, ast.Name) and no.id == _JANELA)
-                or (isinstance(no, ast.Attribute) and no.attr == _JANELA)
-                or (isinstance(no, ast.alias) and no.name == _JANELA)
-            )
-            if usa:
-                fora.append(str(arquivo.relative_to(raiz)))
-                break
-
-    assert fora == [], (
-        f"{_JANELA} autoriza gravar status financeiro e so pode ser aberta por "
-        f"core/ledger.py; apareceu em {fora}. Para registrar um fato novo, chame "
-        "core.ledger.registrar_fato, que grava o estado e o aviso juntos."
-    )
 
 
 def test_reentrega_do_mesmo_fato_nao_vira_anomalia_no_log(

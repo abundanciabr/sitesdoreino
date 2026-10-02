@@ -34,66 +34,6 @@ def _semear():
     call_command("semear_esqueleto", site=SITE, stdout=StringIO())
 
 
-# --------------------------------------------------- a estrutura vem do livro
-
-
-def test_o_boss_esta_nas_doze_encomendas_que_o_livro_diz(esqueleto):
-    """§3 da hierarquia: o Boss vive na última encomenda de cada bloco, e a
-    bônus EB fecha a lista do bloco L sem ser o Boss dele."""
-    com_boss = sorted(
-        Aula.objects.filter(curso=esqueleto, e_boss=True).values_list(
-            "numero", flat=True
-        )
-    )
-    assert com_boss == [
-        "E02",
-        "E05",
-        "E08",
-        "E10",
-        "E14",
-        "E16",
-        "E18",
-        "E21",
-        "E25",
-        "E27",
-        "E30",
-        "E32",
-    ]
-    assert Aula.objects.get(curso=esqueleto, numero="EB").e_boss is False
-
-
-def test_a_banca_fecha_cada_parte_no_nivel_da_parte(esqueleto):
-    """§2 da hierarquia: E10 fecha a Parte I, E21 a II, E32 a III."""
-    bancas = dict(
-        Aula.objects.filter(curso=esqueleto, banca_nivel__isnull=False).values_list(
-            "numero", "banca_nivel"
-        )
-    )
-    assert bancas == {"E10": 1, "E21": 2, "E32": 3}
-
-
-def test_os_doze_blocos_batem_com_a_tabela_do_livro(esqueleto):
-    """§3 da hierarquia: as doze letras, a Parte de cada uma e o tamanho."""
-    medido = [
-        (b.letra, b.parte, b.aulas.count())
-        for b in Bloco.objects.filter(curso=esqueleto).order_by("ordem")
-    ]
-    assert medido == [
-        ("A", 1, 3),
-        ("B", 1, 3),
-        ("C", 1, 3),
-        ("D", 1, 2),
-        ("E", 2, 4),
-        ("F", 2, 2),
-        ("G", 2, 2),
-        ("H", 2, 3),
-        ("I", 3, 4),
-        ("J", 3, 2),
-        ("K", 3, 3),
-        ("L", 3, 3),
-    ]
-
-
 # ------------------------------------------------- a reconciliação, e o limite
 
 

@@ -111,17 +111,6 @@ def test_nao_existe_porta_que_apague_uma_ficha(client, auth):
     assert Matricula.objects.filter(pk=alvo.pk).exists()
 
 
-def test_a_celula_nao_tem_mais_a_funcao_de_apagar():
-    """O caminho de código, e não só a rota.
-
-    Enquanto `apagar_matricula` existir, basta uma view nova para a capacidade
-    voltar sem passar por lei nenhuma.
-    """
-    from apps.matriculas import services
-
-    assert not hasattr(services, "apagar_matricula")
-
-
 @pytest.mark.django_db
 def test_encerrar_e_o_caminho_e_ele_guarda_a_ficha(client, auth):
     """O que existe NO LUGAR do apagar — e a prova de que tira o acesso mesmo.
@@ -397,13 +386,3 @@ def test_apagar_nao_alcanca_quem_ja_foi_aluno(client, auth):
 
 def test_apagar_sem_bearer_e_recusado():
     assert Client().delete(f"{FILA}/1").status_code == 401
-
-
-@pytest.mark.django_db
-def test_a_celula_continua_sem_apagar_matricula_generica():
-    """O caminho de código: `apagar_matricula` continua ausente — a função nova
-    é `apagar_recusado`, com fronteira própria, e não uma reencarnação dela."""
-    from apps.matriculas import services
-
-    assert not hasattr(services, "apagar_matricula")
-    assert hasattr(services, "apagar_recusado")

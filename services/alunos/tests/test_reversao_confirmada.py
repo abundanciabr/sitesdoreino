@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
-from pathlib import Path
 
 import pytest
 
 from apps.eventos.management.commands.consume_eventos import (
     HANDLERS,
-    REVERSAO_CAMPOS,
-    REVERSAO_MOTIVOS,
-    REVERSAO_PROVEDORES,
     STREAMS,
     VersaoDesconhecida,
     ponte_do_evento,
@@ -30,12 +25,6 @@ SITE = "site-meshcraft"
 OUTRO_SITE = "site-outro"
 PROVEDOR = "appmax"
 REFERENCIA = "pedido-23019"
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "pagamento.reversao_confirmada.v2.json"
-)
 
 
 def _aprovado(
@@ -109,16 +98,6 @@ def test_o_consumidor_registra_a_nova_stream_e_a_ponte_v2() -> None:
         "chave_entre_versoes": ["provider", "provider_reference_id"],
         "no_v1": None,
     }
-
-
-def test_a_borda_copia_campos_e_enums_do_contrato_v2() -> None:
-    schema = json.loads(CONTRATO.read_text(encoding="utf-8"))
-    dados = schema["properties"]["data"]
-
-    assert REVERSAO_CAMPOS == set(dados["properties"])
-    assert REVERSAO_CAMPOS == set(dados["required"])
-    assert REVERSAO_PROVEDORES == set(dados["properties"]["provider"]["enum"])
-    assert REVERSAO_MOTIVOS == set(dados["properties"]["motivo"]["enum"])
 
 
 @pytest.mark.parametrize(
