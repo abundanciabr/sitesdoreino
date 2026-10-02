@@ -61,6 +61,23 @@
     {% endif %}
   </section>
 
+  <section id="alunos">
+    <h2 class="titulo-de-secao">Robô dos alunos</h2>
+    <p>Um robô distinto, com modelo e instruções próprios. Usa a mesma chave da conexão acima para gerar exemplos nos campos do portfólio.</p>
+    <p>Situação: <b>{% if robo_alunos.ativo %}Ativo{% else %}Ainda não ativado{% endif %}</b>. {% if robo_alunos.autorizacao %}Orçamento: {{ robo_alunos.autorizacao.descricao }}. US$ {{ gasto_alunos|floatformat:4 }} de US$ {{ robo_alunos.autorizacao.teto_mensal_usd|floatformat:2 }} neste mês.{% endif %}</p>
+    <form class="forma" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="alunos">
+      <label><span class="rotulo">Nome do robô dos alunos</span><input name="nome_alunos" maxlength="120" value="{{ robo_alunos.nome }}"></label>
+      <label><span class="rotulo">Modelo do robô dos alunos</span><input name="modelo_alunos" maxlength="60" value="{{ robo_alunos.modelo }}"></label>
+      <label class="largo"><span class="rotulo">Instruções complementares</span><textarea name="instrucoes_alunos" maxlength="6000">{{ robo_alunos.instrucoes }}</textarea></label>
+      <label><span class="rotulo">Orçamento</span><select name="orcamento_alunos"><option value="separado" {% if robo_alunos.autorizacao.destino != "equipe" %}selected{% endif %}>Orçamento separado para os alunos</option><option value="compartilhar" {% if robo_alunos.autorizacao.destino == "equipe" %}selected{% endif %}>Compartilhar o teto existente da equipe</option></select></label>
+      <label><span class="rotulo">Teto mensal separado em US$</span><input type="number" name="teto_alunos" min="0" step="0.01" value="{% if robo_alunos.autorizacao.destino == 'alunos' %}{{ robo_alunos.autorizacao.teto_mensal_usd|stringformat:'.2f' }}{% else %}0{% endif %}"></label>
+      <label><input type="checkbox" name="ativo_alunos" value="1" {% if robo_alunos.ativo %}checked{% endif %}> Ativar a geração para os alunos dentro do orçamento escolhido</label>
+      <button class="botao" type="submit">Salvar robô dos alunos</button>
+    </form>
+  </section>
+
   <section id="robos">
     <h2 class="titulo-de-secao">Os robôs</h2>
     {% for robo in robos %}

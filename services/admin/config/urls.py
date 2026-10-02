@@ -222,7 +222,10 @@ from config.api import api
 # (`armadilhas/081`). O `/healthz` é a exceção que confirma a regra — ele não
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
+from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
+
 urlpatterns = [
+    path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
     path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),
     path("conteudos/forum/topicos/criar", forum_topico_criar, name="forum_topico_criar"),

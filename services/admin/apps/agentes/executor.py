@@ -225,7 +225,7 @@ def reacordar() -> int:
     if modelo.tem_chave() and conexao.situacao == Conexao.Situacao.CONFERIDA:
         n += retomar_os_que_esperam([S.AGUARDANDO_DEPENDENCIA], "a conexão voltou")
     autorizacao = modelo.autorizacao_ativa()
-    if autorizacao and modelo.gasto_do_mes() < autorizacao.teto_mensal_usd:
+    if autorizacao and modelo.gasto_do_mes(autorizacao.pk) < autorizacao.teto_mensal_usd:
         n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
     return n
 

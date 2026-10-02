@@ -1,1 +1,43 @@
-{% extends 'pages/moldura.html' %}{% block titulo %}Minha página pública{% endblock %}{% block faixa %}Meu portfólio{% endblock %}{% block conteudo %}{% include 'pages/_jornada_estilo.html' %}<a href="{% url 'prancheta' %}">Meu portfólio</a><section class="j-hero"><p class="j-kicker">Apresentar o que você sabe fazer</p><h1>Seu trabalho, para possíveis clientes.</h1><p>Escolha o que mostrar e descreva o serviço que você consegue oferecer. As respostas do quiz e o feedback da escola ficam privados.</p></section><form method="post" class="j-form">{% csrf_token %}<label for="bio">Minha apresentação</label><textarea id="bio" name="apresentacao_publica" maxlength="3000" placeholder="Crio objetos e conjuntos de cenário em estilo cartunesco para Roblox.">{{ portfolio.apresentacao_publica }}</textarea><label for="servico">O que alguém pode encomendar de mim</label><textarea id="servico" name="servico_publico" maxlength="3000" placeholder="Descreva o tipo de projeto que você está preparado para entregar.">{{ portfolio.servico_publico }}</textarea><p class="j-muted">Esses dois textos aparecerão na página pública quando você a publicar. Não inclua dados pessoais que não queira compartilhar.</p><button class="j-btn">Salvar apresentação</button></form><section class="j-section"><h2>Trabalhos que você escolheu mostrar</h2><div class="j-grid">{% for trabalho in selecionados %}<article class="j-card"><img src="{{ trabalho.link }}" alt="{{ trabalho.legenda }}" loading="lazy"><h3>{{ trabalho.legenda }}</h3><p>{{ trabalho.uso_pretendido }}</p></article>{% empty %}<p>Ainda não há trabalhos selecionados. Em Meus trabalhos, escolha quais representam o serviço que quer oferecer.</p>{% endfor %}</div><a href="{% url 'pecas' %}">Escolher trabalhos e publicar</a></section><p class="j-note">Publicar é sua decisão. A avaliação da escola ajuda a melhorar e informa o que foi observado; não promete vendas ou contratação.</p>{% endblock %}
+{% extends 'pages/moldura.html' %}
+{% block titulo %}Minha página pública{% endblock %}
+{% block faixa %}Meu portfólio{% endblock %}
+{% block conteudo %}
+{% include 'pages/_jornada_estilo.html' %}
+<a href="{% url 'prancheta' %}">Meu portfólio</a>
+<section class="j-hero">
+  <p class="j-kicker">Apresentar o que você sabe fazer</p>
+  <h1>Seu trabalho, para possíveis clientes.</h1>
+  <p>Escolha o que mostrar e descreva o serviço que você consegue oferecer. As respostas do quiz e o feedback da escola ficam privados.</p>
+</section>
+<form method="post" class="j-form" id="apresentacao" data-gerador="{% url 'gerar_exemplo' %}">
+  {% csrf_token %}
+  <label for="bio">Minha apresentação</label>
+  <textarea id="bio" name="apresentacao_publica" maxlength="3000" placeholder="Crio objetos e conjuntos de cenário em estilo cartunesco para Roblox.">{{ portfolio.apresentacao_publica }}</textarea>
+  <button type="button" class="j-btn j-btn--ghost" data-gerar="bio">Gerar texto de exemplo</button>
+  <p class="j-muted" role="status" aria-live="polite" id="status-bio"></p>
+  <label for="servico">O que alguém pode encomendar de mim</label>
+  <textarea id="servico" name="servico_publico" maxlength="3000" placeholder="Descreva o tipo de projeto que você está preparado para entregar.">{{ portfolio.servico_publico }}</textarea>
+  <button type="button" class="j-btn j-btn--ghost" data-gerar="servico">Gerar texto de exemplo</button>
+  <p class="j-muted" role="status" aria-live="polite" id="status-servico"></p>
+  <p class="j-muted">O robô dos alunos usa seu quiz e seus trabalhos para sugerir um exemplo. Confira e edite para representar o que você realmente consegue oferecer.</p>
+  <p class="j-muted">Esses dois textos aparecerão na página pública quando você a publicar. Não inclua dados pessoais que não queira compartilhar.</p>
+  <button class="j-btn" id="salvar-apresentacao">Salvar apresentação</button>
+</form>
+<section class="j-section">
+  <h2>Trabalhos que você escolheu mostrar</h2>
+  <div class="j-grid">
+    {% for trabalho in selecionados %}
+    <article class="j-card">
+      <img src="{{ trabalho.link }}" alt="{{ trabalho.legenda }}" loading="lazy">
+      <h3>{{ trabalho.legenda }}</h3>
+      <p>{{ trabalho.uso_pretendido }}</p>
+    </article>
+    {% empty %}
+    <p>Ainda não há trabalhos selecionados. Em Meus trabalhos, escolha quais representam o serviço que quer oferecer.</p>
+    {% endfor %}
+  </div>
+  <a href="{% url 'pecas' %}">Escolher trabalhos e publicar</a>
+</section>
+<p class="j-note">Publicar é sua decisão. A avaliação da escola ajuda a melhorar e informa o que foi observado; não promete vendas ou contratação.</p>
+<script src="{% url 'script_robo' %}" defer></script>
+{% endblock %}
