@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Primeiro corte para a aplicação única, com cópia e retorno da topologia anterior.
+"""Sincroniza Compose e rotas da aplicação, com foto da topologia e volta própria.
 
-Chamado pelo publicador depois de construir a imagem.
-O banco é copiado antes do primeiro boot e nunca restaurado automaticamente.
+Chamado pelo publicador quando a infra muda: `ativar-aplicacao.py --sincronizar-infra SHA`.
+O banco nunca é tocado aqui.
 """
 from __future__ import annotations
 
@@ -16,21 +16,14 @@ import subprocess
 import sys
 import tempfile
 from uuid import uuid4
-from datetime import datetime, timezone
 
 
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 PUBLICACOES = RAIZ / "publicacoes"
-TRANSICAO = PUBLICACOES / "aplicacao-transicao.json"
 JOURNAL = PUBLICACOES / "aplicacao.json"
 ARQUIVOS_AUXILIARES = (
     "sites.json", "sincronizar_sites.py", "publicacao-local.py",
     "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
-)
-BASES = (
-    "catalogo", "identidade", "notificacoes", "admin", "quiz", "leads",
-    "checkout", "pagamentos", "alunos", "mensageria", "sugestoes", "forum",
-    "gamificacao", "metricas", "cursos", "pages", "encomendas",
 )
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 CURL_RETRY = ("--retry", "5", "--retry-delay", "1", "--retry-all-errors",
@@ -93,62 +86,6 @@ def ambiente_da_aplicacao(imagem: str, codigo: Path) -> dict:
     return ambiente
 
 
-def conferir_fonte(fonte: Path, codigo: Path, imagem: str) -> None:
-    if not fonte.is_dir() or not (fonte / "docker-compose.yml").is_file():
-        raise RuntimeError("FONTE_INFRA sem Compose")
-    if not (fonte / "traefik" / "dynamic" / "plataforma.yml").is_file():
-        raise RuntimeError("FONTE_INFRA sem rotas")
-    if not codigo.is_dir() or not (codigo / "entrypoint.py").is_file():
-        raise RuntimeError("bundle da aplicação ausente")
-    if not imagem or any(c.isspace() for c in imagem):
-        raise RuntimeError("imagem inválida")
-    if subprocess.run(["docker", "image", "inspect", imagem], capture_output=True).returncode:
-        raise RuntimeError("imagem testada indisponível")
-
-
-def copiar_bancos(ambiente: dict) -> list[str]:
-    destino = RAIZ / "backups-de-banco"
-    destino.mkdir(mode=0o700, exist_ok=True)
-    os.chmod(destino, 0o700)
-    carimbo = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
-    copias = []
-    override = PUBLICACOES / "imagens.json"
-    for base in BASES:
-        nome = base + "_db"
-        presente = compose("exec", "-T", "postgres", "psql", "-U", "postgres",
-                           "-tAc", f"SELECT 1 FROM pg_database WHERE datname = '{nome}'",
-                           arquivo=RAIZ / "docker-compose.yml", override=override, ambiente=ambiente)
-        if presente.strip() != "1":
-            raise RuntimeError(f"base esperada ausente: {nome}")
-        final = destino / f"{nome}-{carimbo}.dump"
-        parcial = final.with_suffix(".dump.parcial")
-        with parcial.open("wb") as arquivo:
-            processo = subprocess.run(
-                ["docker", "compose", "--project-directory", str(RAIZ), "-p", "plataforma",
-                 "-f", str(RAIZ / "docker-compose.yml"),
-                 *([] if not override.is_file() else ["-f", str(override)]),
-                 "exec", "-T", "postgres", "pg_dump", "-U", "postgres", "-Fc", "-d", nome],
-                cwd=RAIZ, env=ambiente, stdout=arquivo, stderr=subprocess.DEVNULL)
-        if processo.returncode or parcial.stat().st_size == 0:
-            parcial.unlink(missing_ok=True)
-            raise RuntimeError(f"backup falhou: {nome}")
-        with parcial.open("rb") as arquivo:
-            prova = subprocess.run(
-                ["docker", "compose", "--project-directory", str(RAIZ), "-p", "plataforma",
-                 "-f", str(RAIZ / "docker-compose.yml"),
-                 *([] if not override.is_file() else ["-f", str(override)]),
-                 "exec", "-T", "postgres", "pg_restore", "-l"],
-                cwd=RAIZ, env=ambiente, stdin=arquivo, stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL)
-        if prova.returncode:
-            parcial.unlink(missing_ok=True)
-            raise RuntimeError(f"backup não abre: {nome}")
-        os.chmod(parcial, 0o600)
-        os.replace(parcial, final)
-        copias.append(str(final))
-    return copias
-
-
 def provar_site() -> None:
     """A página inicial responde 200."""
     codigo = executar("curl", "-sL", *CURL_RETRY, "--max-time", "20", "--max-redirs", "3",
@@ -175,7 +112,7 @@ def sincronizar_sites(fonte: Path, ambiente: dict) -> None:
         raise RuntimeError("sincronização dos sites no catálogo falhou")
 
 
-def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
+def restaurar(snapshot: Path) -> None:
     compose_antigo = snapshot / "docker-compose.yml"
     if not compose_antigo.is_file() or not (snapshot / "traefik").is_dir():
         raise RuntimeError("snapshot da topologia anterior incompleto")
@@ -206,133 +143,6 @@ def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
     compose("up", "-d", "--force-recreate", "traefik", arquivo=compose_antigo,
             override=override, ambiente=ambiente)
     provar_site()
-    if parar_aplicacao:
-        subprocess.run(["docker", "stop", "plataforma-aplicacao-1"], capture_output=True)
-
-
-def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
-    if not SHA.fullmatch(sha):
-        raise RuntimeError("SHA inválido")
-    if JOURNAL.exists():
-        raise RuntimeError("primeira transição já registrada")
-    if TRANSICAO.exists():
-        fase = json.loads(TRANSICAO.read_text(encoding="utf-8")).get("fase")
-        if fase not in {"revertida", "recuperada"}:
-            raise RuntimeError("transição anterior pendente")
-    fonte = Path(os.environ["FONTE_INFRA"]).resolve()
-    codigo = Path(codigo_arg).resolve()
-    conferir_fonte(fonte, codigo, imagem)
-    ambiente = ambiente_da_aplicacao(imagem, codigo)
-    compose("config", "--quiet", arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
-    # O publicador já provou a imagem com dados isolados. Antes do primeiro boot
-    # contra produção, preservamos cada banco e a configuração anterior.
-    copias = copiar_bancos(ambiente)
-    snapshot = PUBLICACOES / "topologias" / id_tentativa(sha)
-    snapshot.mkdir(mode=0o700, parents=True, exist_ok=False)
-    os.chmod(snapshot, 0o700)
-    shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
-    shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
-    for nome in ARQUIVOS_AUXILIARES:
-        if (RAIZ / nome).is_file():
-            shutil.copy2(RAIZ / nome, snapshot / nome)
-    if (PUBLICACOES / "imagens.json").is_file():
-        shutil.copy2(PUBLICACOES / "imagens.json", snapshot / "imagens.json")
-    estado = {"sha": sha, "snapshot": str(snapshot), "backups": copias,
-              "fase": "candidato"}
-    salvar(TRANSICAO, estado)
-    try:
-        # As filas Redis preservam o trabalho enquanto os auxiliares antigos
-        # param. Assim o novo processo nunca compete com outro consumidor.
-        anteriores = compose("config", "--services", arquivo=snapshot / "docker-compose.yml",
-                             override=snapshot / "imagens.json", ambiente=ambiente).splitlines()
-        auxiliares = [servico for servico in anteriores if "-" in servico]
-        if auxiliares:
-            compose("stop", *auxiliares, arquivo=snapshot / "docker-compose.yml",
-                    override=snapshot / "imagens.json", ambiente=ambiente)
-        # Mesmo projeto e redes, porém só a nova aplicação. Traefik ainda
-        # aponta para os serviços antigos enquanto as migrações terminam.
-        compose("up", "-d", "--wait", "--wait-timeout", "240", "aplicacao",
-                arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
-        sincronizar_sites(fonte, ambiente)
-        shutil.copy2(fonte / "docker-compose.yml", RAIZ / "docker-compose.yml")
-        rota_atual = RAIZ / "traefik"
-        rota_anterior = RAIZ / ("traefik.anterior-" + snapshot.name)
-        if rota_anterior.exists():
-            raise RuntimeError("snapshot da rota anterior já existe")
-        rota_atual.rename(rota_anterior)
-        shutil.copytree(fonte / "traefik", rota_atual)
-        for nome in ARQUIVOS_AUXILIARES:
-            if (fonte / nome).is_file():
-                shutil.copy2(fonte / nome, RAIZ / nome)
-        # Variáveis de pin sem segredos.
-        with (RAIZ / ".env").open("a", encoding="utf-8") as arquivo:
-            arquivo.write(f"\nAPLICACAO_IMAGEM={imagem}\nAPLICACAO_CODIGO={codigo}\n")
-        estado["fase"] = "rotas-trocadas"
-        salvar(TRANSICAO, estado)
-        compose("up", "-d", "--force-recreate", "traefik", ambiente=ambiente)
-        provar_site()
-        # Os antigos ficam parados, ainda existentes para recuperação. O novo
-        # Compose põe esses serviços sob profile legado para futuros 'up'.
-        anteriores = [s for s in anteriores if s not in {"traefik", "postgres", "redis"}]
-        compose("stop", *anteriores, arquivo=snapshot / "docker-compose.yml",
-                override=snapshot / "imagens.json", ambiente=ambiente)
-        provar_site()
-        versao = {"imagem": imagem, "codigo": str(codigo)}
-        compatibilidade = {"dados": os.environ.get("COMPATIBILIDADE_DADOS", "existente"),
-                            "configuracao": os.environ.get("COMPATIBILIDADE_CONFIGURACAO", "existente")}
-        salvar(JOURNAL, {"celula": "aplicacao", "atual": sha, "candidata": None,
-                         "aprovada": {"sha": sha, "verificada_em": datetime.now(timezone.utc).isoformat(),
-                                      **compatibilidade, **versao},
-                         "anterior_aprovada": None, "atual_versao": versao,
-                         "compatibilidade": compatibilidade, "servicos": ["aplicacao"],
-                         "endereco": os.environ.get("ENDERECO_PROVA", "https://meshcraft.top/")})
-        estado["fase"] = "aprovada"
-        salvar(TRANSICAO, estado)
-        print(f"APLICACAO-ATIVADA: {sha}", flush=True)
-    except BaseException:
-        try:
-            restaurar(snapshot)
-            if JOURNAL.is_file():
-                os.replace(JOURNAL, snapshot / "aplicacao-journal-falhou.json")
-            estado["fase"] = "revertida"
-            salvar(TRANSICAO, estado)
-        except BaseException as erro:
-            estado["fase"] = "recuperacao-falhou"
-            salvar(TRANSICAO, estado)
-            print(f"RECUPERACAO-TERMINAL: {erro}", file=sys.stderr)
-        raise
-
-
-def recuperar() -> None:
-    estado = json.loads(TRANSICAO.read_text(encoding="utf-8"))
-    if estado["fase"] != "aprovada":
-        raise RuntimeError("transição sem primeira aprovação")
-    esperado = os.environ.get("ATUAL_ESPERADA")
-    if esperado and esperado != estado["sha"]:
-        raise RuntimeError("versão mudou desde o incidente")
-    restaurar(Path(estado["snapshot"]))
-    if JOURNAL.exists():
-        os.replace(JOURNAL, Path(estado["snapshot"]) / "aplicacao-journal-recuperado.json")
-    estado["fase"] = "recuperada"
-    salvar(TRANSICAO, estado)
-    print("APLICACAO-RECUPERADA: topologia anterior no ar; bancos preservados", flush=True)
-
-
-def concluir_recuperacao() -> None:
-    """Repete a volta do código após falha transitória, sem restaurar bancos."""
-    estado = json.loads(TRANSICAO.read_text(encoding="utf-8"))
-    if estado.get("fase") != "recuperacao-falhou":
-        raise RuntimeError("não há recuperação pendente para concluir")
-    esperado = os.environ.get("ATUAL_ESPERADA")
-    if esperado and esperado != estado["sha"]:
-        raise RuntimeError("versão mudou desde o incidente")
-    snapshot = Path(estado["snapshot"])
-    restaurar(snapshot)
-    if JOURNAL.exists():
-        os.replace(JOURNAL, snapshot / "aplicacao-journal-falhou.json")
-    estado["fase"] = "revertida"
-    salvar(TRANSICAO, estado)
-    print("APLICACAO-RECUPERADA: topologia anterior no ar; bancos preservados", flush=True)
 
 
 def sincronizar_infra(sha: str) -> None:
@@ -374,23 +184,17 @@ def sincronizar_infra(sha: str) -> None:
         provar_site()
         print(f"INFRA-APLICACAO-SINCRONIZADA: {sha}", flush=True)
     except BaseException:
-        restaurar(snapshot, parar_aplicacao=False)
+        restaurar(snapshot)
         raise
 
 
 def main(argumentos: list[str]) -> int:
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(InterruptedError("publicação superada")))
     try:
-        if argumentos == ["--recuperar"]:
-            recuperar()
-        elif argumentos == ["--concluir-recuperacao"]:
-            concluir_recuperacao()
-        elif len(argumentos) == 2 and argumentos[0] == "--sincronizar-infra":
+        if len(argumentos) == 2 and argumentos[0] == "--sincronizar-infra":
             sincronizar_infra(argumentos[1])
-        elif len(argumentos) == 3:
-            ativar(*argumentos)
         else:
-            raise RuntimeError("uso: ativar-aplicacao.py SHA IMAGEM CODIGO | --recuperar | --concluir-recuperacao")
+            raise RuntimeError("uso: ativar-aplicacao.py --sincronizar-infra SHA")
         return 0
     except Exception as erro:
         print(f"APLICACAO-FALHOU: {erro}", file=sys.stderr)

@@ -1,6 +1,5 @@
-"""A falha após a troca de rota repõe a topologia e deixa os bancos intactos."""
+"""A falha na sincronização da infra repõe a topologia e deixa os bancos intactos."""
 from importlib.util import module_from_spec, spec_from_file_location
-from datetime import datetime
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,78 +17,12 @@ def carregar():
     return modulo
 
 
-def test_id_da_tentativa_nao_depende_do_relogio(monkeypatch):
+def test_id_da_tentativa_nao_depende_do_relogio():
     ativacao = carregar()
-
-    class RelogioCongelado(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return datetime(2026, 10, 1, 17, 12, 14, 955694, tzinfo=tz)
-
-    monkeypatch.setattr(ativacao, "datetime", RelogioCongelado)
     primeiro = ativacao.id_tentativa("a" * 40)
     segundo = ativacao.id_tentativa("a" * 40)
     assert primeiro != segundo
     assert primeiro.startswith("a" * 40 + "-")
-
-
-def test_primeira_troca_reverte_compose_e_rotas_quando_a_prova_falha(tmp_path, monkeypatch):
-    ativacao = carregar()
-    raiz = tmp_path / "vps"
-    raiz.mkdir()
-    (raiz / "docker-compose.yml").write_text("antigo", encoding="utf-8")
-    (raiz / ".env").write_text("POSTGRES_SUPER_PASSWORD=nao-e-segredo-real\n", encoding="utf-8")
-    (raiz / "traefik").mkdir()
-    (raiz / "traefik" / "rota").write_text("antiga", encoding="utf-8")
-    fonte = tmp_path / "fonte"
-    (fonte / "traefik" / "dynamic").mkdir(parents=True)
-    (fonte / "docker-compose.yml").write_text("novo", encoding="utf-8")
-    (fonte / "traefik" / "dynamic" / "plataforma.yml").write_text("nova", encoding="utf-8")
-    for nome in ativacao.ARQUIVOS_AUXILIARES[2:]:
-        (raiz / nome).write_text("anterior sem mudança", encoding="utf-8")
-        (fonte / nome).write_text("versão nova sem trava", encoding="utf-8")
-    codigo = tmp_path / "codigo"
-    codigo.mkdir()
-    (codigo / "entrypoint.py").write_text("", encoding="utf-8")
-    monkeypatch.setattr(ativacao, "RAIZ", raiz)
-    monkeypatch.setattr(ativacao, "PUBLICACOES", raiz / "publicacoes")
-    monkeypatch.setattr(ativacao, "TRANSICAO", raiz / "publicacoes" / "aplicacao-transicao.json")
-    monkeypatch.setattr(ativacao, "JOURNAL", raiz / "publicacoes" / "aplicacao.json")
-    monkeypatch.setenv("FONTE_INFRA", str(fonte))
-    monkeypatch.setattr(ativacao, "conferir_fonte", lambda *_: None)
-    monkeypatch.setattr(ativacao, "ambiente_da_aplicacao", lambda *_: {})
-    monkeypatch.setattr(ativacao, "copiar_bancos", lambda *_: ["backup-verificado"])
-    chamadas = []
-
-    def compose(*argumentos, **kwargs):
-        chamadas.append(argumentos)
-        if argumentos == ("config", "--services"):
-            return "traefik\npostgres\nredis\nfunil\nadmin\nquiz-relay"
-        return ""
-
-    provas = iter([RuntimeError("endereco fora"), None])
-
-    def provar():
-        falha = next(provas)
-        if falha:
-            raise falha
-
-    monkeypatch.setattr(ativacao, "compose", compose)
-    monkeypatch.setattr(ativacao, "provar_site", provar)
-    monkeypatch.setattr(ativacao.subprocess, "run", lambda *a, **kw: None)
-    with pytest.raises(RuntimeError, match="endereco fora"):
-        ativacao.ativar("a" * 40, "imagem:teste", str(codigo))
-    assert (raiz / "docker-compose.yml").read_text(encoding="utf-8") == "antigo"
-    assert (raiz / "traefik" / "rota").read_text(encoding="utf-8") == "antiga"
-    for nome in ativacao.ARQUIVOS_AUXILIARES[2:]:
-        assert (raiz / nome).read_text(encoding="utf-8") == "anterior sem mudança"
-    assert not ativacao.JOURNAL.exists()
-    assert json.loads(ativacao.TRANSICAO.read_text(encoding="utf-8"))["fase"] == "revertida"
-    assert any(chamada[:2] == ("up", "-d") for chamada in chamadas)
-    assert chamadas.index(("stop", "quiz-relay")) < next(
-        indice for indice, chamada in enumerate(chamadas)
-        if chamada[:2] == ("up", "-d") and "aplicacao" in chamada
-    )
 
 
 def test_retorno_de_infra_reusa_imagem_e_codigo_aprovados(tmp_path, monkeypatch):
@@ -119,7 +52,7 @@ def test_retorno_de_infra_reusa_imagem_e_codigo_aprovados(tmp_path, monkeypatch)
 
     monkeypatch.setattr(ativacao, "compose", compose)
     monkeypatch.setattr(ativacao, "provar_site", lambda: None)
-    ativacao.restaurar(snapshot, parar_aplicacao=False)
+    ativacao.restaurar(snapshot)
     assert all(valor == {"IMAGEM": "imagem-aprovada", "CODIGO": str(Path("/codigo/aprovado"))}
                for valor in usados)
     assert (raiz / "docker-compose.yml").read_text(encoding="utf-8") == "anterior"
@@ -174,34 +107,10 @@ def test_recuperacao_pode_ser_repetida_apos_falha_na_subida(tmp_path, monkeypatc
     monkeypatch.setattr(ativacao, "compose", compose)
     monkeypatch.setattr(ativacao, "provar_site", lambda: None)
     with pytest.raises(RuntimeError, match="subida falhou"):
-        ativacao.restaurar(snapshot, parar_aplicacao=False)
-    ativacao.restaurar(snapshot, parar_aplicacao=False)
+        ativacao.restaurar(snapshot)
+    ativacao.restaurar(snapshot)
     assert chamadas >= 3
     assert (raiz / "traefik" / "rota").read_text(encoding="utf-8") == "antiga"
-
-
-def test_journal_nao_fica_aprovado_se_gravacao_da_recuperacao_falha(tmp_path, monkeypatch):
-    ativacao = carregar()
-    publicacoes = tmp_path / "publicacoes"
-    snapshot = publicacoes / "topologias" / "primeira"
-    snapshot.mkdir(parents=True)
-    transicao = publicacoes / "aplicacao-transicao.json"
-    transicao.write_text(json.dumps({"fase": "aprovada", "sha": "a" * 40,
-                                     "snapshot": str(snapshot)}), encoding="utf-8")
-    journal = publicacoes / "aplicacao.json"
-    journal.write_text("aprovado", encoding="utf-8")
-    monkeypatch.setattr(ativacao, "TRANSICAO", transicao)
-    monkeypatch.setattr(ativacao, "JOURNAL", journal)
-    monkeypatch.setattr(ativacao, "restaurar", lambda *_: None)
-    gravar_real = ativacao.salvar
-    monkeypatch.setattr(ativacao, "salvar", lambda *_: (_ for _ in ()).throw(OSError("disco")))
-    with pytest.raises(OSError, match="disco"):
-        ativacao.recuperar()
-    assert not journal.exists()
-    assert (snapshot / "aplicacao-journal-recuperado.json").read_text(encoding="utf-8") == "aprovado"
-    monkeypatch.setattr(ativacao, "salvar", gravar_real)
-    ativacao.recuperar()
-    assert json.loads(transicao.read_text(encoding="utf-8"))["fase"] == "recuperada"
 
 
 def test_prova_http_repete_transporte_sem_reduzir_rotas(tmp_path, monkeypatch):
@@ -225,25 +134,3 @@ def test_prova_http_repete_transporte_sem_reduzir_rotas(tmp_path, monkeypatch):
     assert len(chamadas) == 1  # só a página inicial
     assert all("--retry-all-errors" in chamada and
                chamada[chamada.index("--retry") + 1] == "5" for chamada in chamadas)
-
-
-def test_concluir_recuperacao_repete_topologia_e_salva_fase(tmp_path, monkeypatch):
-    ativacao = carregar()
-    publicacoes = tmp_path / "publicacoes"
-    snapshot = publicacoes / "topologias" / "primeira"
-    snapshot.mkdir(parents=True)
-    transicao = publicacoes / "aplicacao-transicao.json"
-    transicao.write_text(json.dumps({"fase": "recuperacao-falhou", "sha": "a" * 40,
-                                     "snapshot": str(snapshot)}), encoding="utf-8")
-    journal = publicacoes / "aplicacao.json"
-    journal.write_text("candidata", encoding="utf-8")
-    monkeypatch.setattr(ativacao, "TRANSICAO", transicao)
-    monkeypatch.setattr(ativacao, "JOURNAL", journal)
-    restaurados = []
-    monkeypatch.setattr(ativacao, "restaurar", lambda path: restaurados.append(path))
-    monkeypatch.setattr(ativacao, "copiar_bancos", lambda *_: pytest.fail("banco tocado"))
-    ativacao.concluir_recuperacao()
-    assert restaurados == [snapshot]
-    assert not journal.exists()
-    assert (snapshot / "aplicacao-journal-falhou.json").read_text(encoding="utf-8") == "candidata"
-    assert json.loads(transicao.read_text(encoding="utf-8"))["fase"] == "revertida"

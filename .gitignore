@@ -1,7 +1,6 @@
 arquivos/
 deploy_ci
 infra/env/*.env
-e2e/.env.e2e
 # O playwright dos testes e2e é instalado com --no-save e nunca entra no repositório.
 node_modules/
 
