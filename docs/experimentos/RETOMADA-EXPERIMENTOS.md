@@ -11,6 +11,11 @@ de experimentos de ponta a ponta, o mais rápido possível, com frentes em
 subagente (sonnet ou opus conforme o brief). Toda leitura abaixo existe só para
 o executor não reinvestigar; o que não estiver aqui, meça e siga.
 
+Como publicar hoje: teste no PC (`make testes`, `make celula CELULA=<modulo>`),
+empurre na `main` e em cerca de 1 minuto a VPS publica (`plataforma receber`).
+Não há pull request obrigatório, mandato, fila nem workflow; as partes abaixo
+que falam deles são do desenho antigo e valem só como histórico.
+
 ## Resultado e destino
 
 Resultado, da cadeira do mantenedor: ele abre a administração, cria um
@@ -84,13 +89,13 @@ da copy em `docs/despachos/DESPACHO-COPY-DA-PAGINA-DE-OFERTA.md`.
 | Esquemas dos três eventos faltantes | `secao-vista`: site_id, visitor_id, pagina_slug, pagina_version, secao. `cta-clicado`: mais `slot` e `destino`. `lead-capturado`: mais `lead_id`. Todos `additionalProperties: false`: campo de experimento exige aditivo de contrato | `contracts/eventos/funil.*.v1.json` |
 | Template da oferta | seções com `data-secao`, CTA `.cta` para `url_checkout` (`/checkout/<slug>/` com UTM); sem script no template | `services/funil/templates/funil/oferta.html` |
 | Vocabulário | seções `cubo`, `viloes`, `metodo`, `instrumentos`, `percurso`, `tempo`, `para_quem_nao_serve`, `se_eu_parar`, `oferta`, `carta`, `perguntas`; `cubo` tem `headline`, `subheadline`, `cta_texto`, `cta_destino`, `imagem` | `services/catalogo/apps/paginas/vocabulario.py` |
-| Classificação | `services/checkout/` é Lista A (pagamento e cobrança). `contracts/` é Lista B com etiqueta `contrato` obrigatória. `funil`, `metricas`, `catalogo`, `admin`, `docs/experimentos/` são Lista B | `python ci/mandato_por_faixa.py` em `3626b247` |
+| Classificação | `services/checkout/` e `services/pagamentos/` mexem em pagamento e cobrança: dinheiro real só com a palavra dele. `contracts/` guarda os contratos entre os módulos. `funil`, `metricas`, `catalogo`, `admin`, `docs/experimentos/` andam livres | `celulas.yml`, `contracts/` |
 | Rascunhos #1917 e #2017 | ramos só com o commit "anunciar intenção"; PR #1917 (medir-funil-real) não tem trabalho. A bancada local `C:\Users\davia\abundanciabr\wt-admin-manual-experimentacao-mvp` tem 340 linhas NÃO commitadas reescrevendo o manual, com o capítulo 21 "Plano de execução do MVP" (lotes L0 a L10) | `git -C <bancada> diff --stat` |
-| Manual | `/docs/plataforma-experimentacao-e-aprendizado-de-conversao` 404; `/docs/` lista quatro documentos públicos e o manual não está entre eles; a admin foi implantada depois do #2014 (runs verdes de 24/09 03:57 em diante), então a migração 0028 rodou. Causa possível: linha ausente, privada ou arquivada no banco; não dá para saber de fora | sondas e `gh run list --workflow=deploy-celula.yml` |
-| Ambiente | gh logado (`abundanciabr`, escopos repo e workflow), Python 3.12.14, Docker 29.7.2, Node 24.19.0 | medido na máquina |
+| Manual | `/docs/plataforma-experimentacao-e-aprendizado-de-conversao` 404; `/docs/` lista quatro documentos públicos e o manual não está entre eles; a admin foi implantada depois do #2014 (runs verdes de 24/09 03:57 em diante), então a migração 0028 rodou. Causa possível: linha ausente, privada ou arquivada no banco; não dá para saber de fora | sondas e `plataforma estado` na VPS |
+| Ambiente | gh logado (`abundanciabr`, escopo repo), Python 3.12.14, Docker 29.7.2, Node 24.19.0 | medido na máquina |
 
 NÃO MEDIDO: se o processo consumidor da `metricas` está de pé em produção
-(`gh workflow run operacoes-vps.yml --ref main -f operacao=estado-servico -f servico=metricas`
+(na VPS, `plataforma operar operacoes-vps --operacao estado-servico --servico metricas`
 mede); o estado do banco de documentos da admin (só pela tela autenticada).
 
 ## Escopo e autoridade
@@ -102,22 +107,19 @@ mede); o estado do banco de documentos da admin (só pela tela autenticada).
   fora até o gatilho.
 - O manual `documentos/plataforma-experimentacao-e-aprendizado-de-conversao.md`
   é a especificação publicada; o capítulo 21 do rascunho local é plano, não lei.
-- Lista A: `services/checkout/` só anda com a palavra dele NESTA sessão, na
-  linha `Mandato-do-mantenedor:` citando cada arquivo tocado como token.
-  `contracts/` exige a etiqueta `contrato`, a linha citando a cerca
-  `contracts/` e a autorização dele transcrita. Todo o resto é Lista B.
+- Checkout e contratos: `services/checkout/` mexe em pagamento, então só anda
+  com a palavra dele NESTA sessão. `contracts/` só cresce por aditivo (campo
+  opcional novo). Todo o resto anda livre.
 - Decisões exclusivas dele: autorizar contratos e checkout, a métrica principal
   do primeiro experimento, o conteúdo do braço B, o manual público ou privado.
   Reúna tudo numa pergunta estruturada só. "Não agora" para a parte dependente e
   não repete.
 - Copy real da página é dele (ordem de serviço). O sistema se prova com A/A
   sobre a página atual; não espere a copy para construir.
-- Subagente só com brief compilado por `python ci/economia_da_fabrica.py brief`
-  (`modelo_recomendado` e `esforco_recomendado`; sem isso `despacho` recusa).
-  Modelo `sonnet` ou `opus` declarado na chamada. Workflow é recusado. Subagente
-  não pergunta ao mantenedor nem cria outro. Orçamento de 15 arquivos por PR
-  fora `painel/` e `fila/`; frente que estourar divide por provedor e
-  consumidor. Dependência real vira `Depende-de: #N`.
+- Subagente recebe um brief escrito (célula, alvos, o que é só leitura,
+  evidência esperada), com modelo `sonnet` ou `opus` declarado na chamada.
+  Subagente não pergunta ao mantenedor nem cria outro. Frente grande demais
+  divide por provedor e consumidor; dependência real é dita no brief.
 - Sem travessão em texto publicado e documentos. Fecho no formato da regra 9.
 
 ## Primeira ação
@@ -138,13 +140,12 @@ mede); o estado do banco de documentos da admin (só pela tela autenticada).
 
 ```bash
 gh pr list --state open --limit 100 --json number,title,isDraft,headRefName --jq '.[] | select(.headRefName | test("^agent/(funil|catalogo|contratos|contracts|admin|metricas|checkout|experimentos)/")) | "\(.number) draft=\(.isDraft) \(.headRefName) :: \(.title)"'
-python ci/fila.py listar --ao-vivo | grep -iE "experiment|funil\.|visitante|variante|manual de experimenta"
 curl -s -o /dev/null -w "oferta %{http_code}\n" https://meshcraft.top/oferta
 curl -s -o /dev/null -w "manual %{http_code}\n" https://meshcraft.top/docs/plataforma-experimentacao-e-aprendizado-de-conversao
 curl -s -o /dev/null -w "funil-admin %{http_code}\n" https://meshcraft.top/admin/placar/funil/
 git grep -c "eventos.funil" origin/main -- services/metricas/apps/fatos/management/commands/consume_eventos.py
 git grep -nE "secao-vista|cta-clicado|lead-capturado" origin/main -- services/funil/apps/core/views.py
-gh workflow run operacoes-vps.yml --ref main -f operacao=estado-servico -f servico=metricas
+ssh sitesdoreino-vps /opt/plataforma/bin/plataforma operar operacoes-vps --operacao estado-servico --servico metricas
 ```
 
 ## A pergunta única ao mantenedor
@@ -222,38 +223,21 @@ qualquer evento, e o consumidor tem lista fechada".
 
 Como convocar uma frente:
 
-```bash
-python ci/economia_da_fabrica.py brief --tipo produto --celula funil --objetivo "Emitir funil.secao-vista, funil.cta-clicado e funil.lead-capturado com endpoint fail-open e testes" --alvo services/funil/apps/core/views.py --alvo services/funil/apps/core/telemetria.py --alvo services/funil/templates/funil/oferta.html --saida brief-f3.md
-```
+Escreva o brief no prompt do Agent com célula, alvos, o que é só leitura e a
+evidência esperada. Exemplo da F3: célula `funil`; objetivo "Emitir
+funil.secao-vista, funil.cta-clicado e funil.lead-capturado com endpoint
+fail-open e testes"; alvos `services/funil/apps/core/views.py`,
+`services/funil/apps/core/telemetria.py` e
+`services/funil/templates/funil/oferta.html`.
 
-Cole o brief no prompt do Agent (subagent_type `despacho`, `model` igual ao
-`modelo_recomendado`) com célula, alvos, o que é só leitura, evidência exigida,
-armadilhas, `Depende-de` real e o mandato nominal transcrito quando for Lista A
-ou contrato. Frente sem tarefa na fila: `python ci/fila.py criar` na bancada.
+## Caminho de cada frente até o ar
 
-## Pipeline de cada PR
-
-brief; despacho abre bancada (`ci/sessao.py --celula <c> --tarefa <slug>`; a
-célula `funil`, `catalogo`, `metricas`, `admin` e `checkout` têm serviço, então
-sem `--sem-container`, salvo recusa da armadilha 505); classifica
-(`python ci/mandato_por_faixa.py --arquivos <alvos> --faixa <célula>`); teste
-vermelho→verde; `make pr`; revisor durante os checks; linha de mandato
-conferida com `--corpo-arquivo`; pouso automático; deploy da célula pelo
-`deploy-celula.yml` no merge; `python ci/esperar.py --deploy <sha> --so-desfecho`;
-sonda pública; registro de publicação.
-
-Linhas de mandato:
-
-```
-Lista B comum:   Mandato-do-mantenedor: mandato prévio por faixa <célula> ; docs/decisoes/MANDATO-POR-FAIXA.md ; cerca <cerca de CODEOWNERS se houver> ; sessão de DD/MM/AAAA
-Contratos (F4):  Mandato-do-mantenedor: mandato prévio por faixa contratos ; docs/decisoes/MANDATO-POR-FAIXA.md ; cerca contracts/ ; aditivos autorizados pelo mantenedor na sessão de DD/MM/AAAA
-Checkout (F10):  Mandato-do-mantenedor: <o pedido dele> services/checkout/apps/pedidos/models.py services/checkout/apps/core/api.py <cada arquivo tocado> services/checkout/ ; origem: sessão de DD/MM/AAAA
-```
-
-Na Lista A o classificador exige cada arquivo tocado como token na mesma linha;
-no `contracts/` o pouso exige também a etiqueta `contrato`. UMA linha, tokens
-separados por espaço, documento sem vírgula colada. Rode a conferência antes do
-`gh pr edit` e depois de cada `git merge origin/main`.
+Brief; teste vermelho→verde no PC; `make testes` e `make celula CELULA=<modulo>`;
+push na `main`; a VPS publica em cerca de 1 minuto (`plataforma receber`);
+conferir `publicacoes/logs/lote-<sha12>.log` e `plataforma estado` na VPS
+(`ssh sitesdoreino-vps`); sonda pública no endereço. Se a prova do endereço
+falhar, o código volta sozinho para a última versão aprovada: conserte e
+empurre de novo. O banco não volta sozinho.
 
 ### T4: ensaio L10 em produção
 
@@ -316,8 +300,7 @@ uma vez, no fechamento, por um PR só.
   `clients.py` 1767 a 1830: editor, laboratório, placar e cliente da metricas.
 - `services/checkout/apps/pedidos/models.py` e `core/api.py` 296 a 420: sessão
   e pedido (F10).
-- `docs/decisoes/MANDATO-POR-FAIXA.md`, `ci/mandato_por_faixa.py`,
-  `ci/mergear.py` 850 a 910, `ci/contrato_aditivo.py`: mandato e contrato.
+- `contracts/README.md`: como o contrato cresce por aditivo.
 - `docs/guia-mantenedor.md` ("Decisões", "Operações da VPS pelo agente").
 - `e2e/`: harness de navegador para a prova L10.
 - `armadilhas/505`: bancada com ambiente recusada; se `ci/sessao.py` recusar,
@@ -334,10 +317,9 @@ uma vez, no fechamento, por um PR só.
   `MKSTREAM` é o molde das outras células; provedor antes do consumidor.
 - Evento recusado na recepção (fica em `listDeadLetters`): corrija o emissor,
   nunca afrouxe a recepção.
-- Pouso vermelho: `python ci/mergear.py <N> --conferir`; base BEHIND: `git
-  merge origin/main` na bancada, `node painel/gerar_manifesto.js`, commit, push.
-- Duas tentativas sem mover um critério: `python ci/fila.py checkpoint` e
-  abordagem diferente.
+- Publicação falhou: leia `publicacoes/logs/lote-<sha12>.log` e `plataforma
+  estado` na VPS; o código já voltou sozinho, conserte e empurre de novo.
+- Duas tentativas sem mover um critério: abordagem diferente.
 
 ## Recalcular a rota quando
 
@@ -348,6 +330,5 @@ uma vez, no fechamento, por um PR só.
 - `git show origin/main:CLAUDE.md` ou a decisão de 19/09 mudarem.
 - A página de oferta deixar de responder 200.
 
-Ponto de retomada: este arquivo, `python ci/fila.py listar --ao-vivo` e os
-comandos de "Medir agora". Nada aqui autoriza executar além do que ele
+Ponto de retomada: este arquivo e os comandos de "Medir agora". Nada aqui autoriza executar além do que ele
 respondeu.

@@ -23,9 +23,11 @@ executa `infra/publicar.py`: `plataforma estado` mostra as versões e medições
 e publica as partes tocadas. A consulta somente leitura de `infra/operar.py`
 usa `plataforma operar operacoes-vps --operacao estado-servico --servico admin`.
 `plataforma operar listar` mostra as demais operações disponíveis.
-Antes de publicar, há backup. Se a prova falhar ou o site cair, o código volta
-automaticamente para a última versão aprovada; o banco não volta sozinho.
-Entregue com a prova automática aprovada e o endereço abrindo.
+Um push na `main` vai ao ar em cerca de 1 minuto: o cron da VPS roda
+`plataforma receber`. O publicador não roda testes; rode-os no PC antes.
+Antes de publicar, há backup. Se a prova do endereço falhar ou o site cair, o
+código volta automaticamente para a última versão aprovada; o banco não volta
+sozinho. Entregue funcionando no site: o endereço abre e faz o que foi pedido.
 
 A administração fica em `https://meshcraft.top/admin/`; os documentos, em
 `https://meshcraft.top/admin/documentos/`. Manual, guia, roteiro, texto ou
@@ -34,5 +36,5 @@ arquivo no repositório. Confira a leitura no endereço correspondente.
 
 ## Fechamento
 
-Diga o que mudou, qual prova passou e qual endereço abre. Se restar bloqueio
+Diga o que mudou e qual endereço abre funcionando. Se restar bloqueio
 real, diga o que falta e continue o que estiver ao alcance.
