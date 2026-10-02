@@ -38,7 +38,8 @@ foreach ($pasta in @("backups-de-banco", "admin-midia", "backups-coordenacao")) 
   if ($faltam.Count -gt 0) {
     $lista = Join-Path $env:TEMP "cofre-$pasta.txt"
     [System.IO.File]::WriteAllText($lista, ($faltam -join "`n") + "`n", $utf8)
-    cmd /c "$ssh -o BatchMode=yes $Vps tar cf - -C /opt/plataforma/$pasta -T - < $lista | $tar xf - -C $local"
+    # A leitura passa pelo Docker: a aplicacao grava midia como root com modo 600.
+    cmd /c "$ssh -o BatchMode=yes $Vps docker run --rm -i -v /opt/plataforma/${pasta}:/d:ro postgres:17 tar cf - -C /d -T - < $lista | $tar xf - -C $local"
     if ($LASTEXITCODE -ne 0) { throw "a copia de $pasta falhou no meio; rode de novo" }
     Remove-Item $lista
   }
