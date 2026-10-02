@@ -50,14 +50,15 @@ def test_links_reais_incluem_geral_segmentos_e_preservam_origens(quiz):
     resposta = links(request, quiz.slug)
     assert resposta.status_code == 200
     dados = json.loads(resposta.content)
-    assert dados["total"] == 6
+    # vídeo sem VSL ainda entra (abre com aviso); IA sem chave fica de fora.
+    assert dados["total"] == 9
     assert (
         len(
             {(item["version_key"], item["fmt"], item["seg"]) for item in dados["links"]}
         )
-        == 6
+        == 9
     )
-    assert {item["fmt"] for item in dados["links"]} == {"text", "calc"}
+    assert {item["fmt"] for item in dados["links"]} == {"text", "calc", "video"}
     assert {item["seg"] for item in dados["links"]} == {"", "iniciante", "avancado"}
     assert {item["version_key"] for item in dados["links"]} == {"B2"}
     geral = next(

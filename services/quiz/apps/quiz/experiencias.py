@@ -84,7 +84,12 @@ def resolver_experiencia(versao, fmt=None, seg=None):
             ):
                 resolved[field] = segments[seg][field]
         resolved["results"] = segments[seg].get("results", {})
-    if chosen in {"video", "hybrid"}:
+    if chosen in {"video", "hybrid"} and resolved["video_url"] in (None, ""):
+        # Formato cadastrado com a VSL ainda em produção: a página abre com o
+        # aviso no lugar do vídeo e a medição por formato já funciona.
+        resolved["video_url"] = ""
+        resolved["video_kind"] = "pendente"
+    elif chosen in {"video", "hybrid"}:
         resolved["video_kind"] = _video_url(resolved["video_url"])
     else:
         resolved["video_url"] = ""

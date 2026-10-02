@@ -118,3 +118,11 @@ def test_calculadora_rejeita_expressao_perigosa_ou_invalida(expression):
     config = {"inputs": [{"key": "x", "default": 2}], "expression": expression}
     with pytest.raises(ValueError):
         calcular(config, {})
+
+
+@pytest.mark.parametrize("fmt", ["video", "hybrid"])
+@pytest.mark.parametrize("url", [None, ""])
+def test_video_ainda_em_producao_abre_com_aviso(fmt, url):
+    resolved = resolver_experiencia(versao(formats={fmt: {"video_url": url}}), fmt)
+    assert resolved["fmt"] == fmt
+    assert resolved["video_kind"] == "pendente" and resolved["video_url"] == ""

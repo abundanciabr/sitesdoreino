@@ -244,3 +244,18 @@ def test_documento_ruim_nao_cria_site(tmp_path, documento):
             site_name="Novo",
         )
     assert Site.objects.count() == 0
+
+
+def test_video_com_vsl_em_producao_importa_e_abre_com_aviso(client, site, documento):
+    documento["versoes"][0]["formats"]["video"] = {
+        "headline": "Assista",
+        "subheadline": "Veja",
+        "video_url": None,
+    }
+    quiz = importar_documento(documento, site)
+    chave = quiz.versions.get().key
+    resposta = client.get(
+        f"/{quiz.slug}/?v={chave}&fmt=video&seg=empreendedor", HTTP_HOST=quiz.site.host
+    )
+    assert resposta.status_code == 200
+    assert "está em produção" in resposta.content.decode()

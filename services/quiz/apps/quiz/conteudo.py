@@ -147,7 +147,8 @@ def _conferir_formatos(versao, caminho):
         _texto(dados.get("headline"), f"{base}.headline", 200)
         _texto(dados.get("subheadline"), f"{base}.subheadline", 1000)
         if nome in ("video", "hybrid"):
-            _url(dados.get("video_url"), f"{base}.video_url")
+            # null = VSL ainda em produção; a página mostra o aviso no lugar.
+            _url(dados.get("video_url"), f"{base}.video_url", opcional=True)
         if nome == "ai":
             _texto(dados.get("instructions"), f"{base}.instructions", 4000)
         if nome == "calc":
