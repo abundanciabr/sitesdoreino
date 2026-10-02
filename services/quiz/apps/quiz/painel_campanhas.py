@@ -60,6 +60,10 @@ def relatorio(request, slug):
     return JsonResponse(dados)
 
 
+def _lista(valor):
+    return list(dict.fromkeys(item.strip() for item in valor.split(",") if item.strip()))
+
+
 def links(request, slug):
     if not _authorized(request):
         return _error("Não autorizado.", 401)
@@ -73,16 +77,28 @@ def links(request, slug):
     except ValueError as erro:
         return _error(str(erro), 422)
 
-    contexto, utm = parametros_de_entrada(request.GET)
+    # ctv, v e fmt aceitam listas separadas por vírgula: cada criativo vira um
+    # link para cada experiência existente (4 criativos × 2 formatos × 3
+    # segmentos = 24 links por versão).
+    consulta = request.GET.copy()
+    criativos = _lista(consulta.pop("ctv", [""])[-1]) or [""]
+    content_fixo = request.GET.get("utm_content", "").strip()
+    chaves = _lista(request.GET.get("v", ""))
+    formatos_pedidos = _lista(request.GET.get("fmt", ""))
+    contexto, utm = parametros_de_entrada(consulta)
     campanha = {
-        chave: contexto[chave]
-        for chave in ("src", "med", "cpg", "ctv")
-        if contexto[chave]
+        chave: contexto[chave] for chave in ("src", "med", "cpg") if contexto[chave]
     }
     utms = {f"utm_{chave}": valor for chave, valor in utm.items() if valor}
+    versoes = quiz.versions.filter(active=True).order_by("key")
+    if chaves:
+        versoes = versoes.filter(key__in=chaves)
+        faltam = sorted(set(chaves) - set(versoes.values_list("key", flat=True)))
+        if faltam:
+            return _error(f"Versão ativa indisponível: {', '.join(faltam)}.", 422)
     itens = []
     vistos = set()
-    for versao in quiz.versions.filter(active=True).order_by("key"):
+    for versao in versoes:
         experience = versao.experience if isinstance(versao.experience, dict) else {}
         formatos = experience.get("formats")
         segmentos = experience.get("segments")
@@ -91,7 +107,7 @@ def links(request, slug):
         opcoes_segmento = [""] + (
             sorted(segmentos) if isinstance(segmentos, dict) else []
         )
-        for formato in sorted(formatos):
+        for formato in formatos_pedidos or sorted(formatos):
             for segmento in opcoes_segmento:
                 try:
                     resolvida = resolver_experiencia(versao, formato, segmento or None)
@@ -103,19 +119,27 @@ def links(request, slug):
                 if identidade in vistos:
                     continue
                 vistos.add(identidade)
-                parametros = {"v": versao.key, "fmt": resolvida["fmt"]}
-                if segmento:
-                    parametros["seg"] = segmento
-                parametros.update(campanha)
-                parametros.update(utms)
-                itens.append(
-                    {
-                        "version_key": versao.key,
-                        "fmt": resolvida["fmt"],
-                        "seg": segmento,
-                        "url": f"https://{host}/quiz/{quiz.slug}/?{urlencode(parametros)}",
-                    }
-                )
+                for criativo in criativos:
+                    parametros = {"v": versao.key, "fmt": resolvida["fmt"]}
+                    if segmento:
+                        parametros["seg"] = segmento
+                    parametros.update(campanha)
+                    if criativo:
+                        parametros["ctv"] = criativo
+                    parametros.update(utms)
+                    if criativo and not content_fixo:
+                        parametros["utm_content"] = criativo
+                    itens.append(
+                        {
+                            "version_key": versao.key,
+                            "fmt": resolvida["fmt"],
+                            "seg": segmento,
+                            "ctv": criativo,
+                            "url": f"https://{host}/quiz/{quiz.slug}/?{urlencode(parametros)}",
+                        }
+                    )
+    if formatos_pedidos and not itens:
+        return _error("Nenhuma experiência existe com esses formatos.", 422)
     return JsonResponse(
         {
             "site_id": quiz.site_id,

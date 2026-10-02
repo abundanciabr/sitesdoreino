@@ -350,6 +350,8 @@ def conteudo_editar(request, tipo: str, slug: str):
 FILTROS_CAMPANHA = (
     "inicio",
     "fim",
+    "v",
+    "fmt",
     "src",
     "med",
     "cpg",
@@ -361,6 +363,8 @@ FILTROS_CAMPANHA = (
     "utm_term",
 )
 COLUNAS_CAMPANHA = {
+    "v": "version_key",
+    "fmt": "fmt",
     "src": "src",
     "med": "med",
     "cpg": "cpg",
@@ -399,6 +403,8 @@ def quiz_campanhas(request, slug: str):
             mensagem or "Não consegui ler as campanhas agora.",
             422 if status_relatorio == 422 else 503,
         )
+    if status_links == 422 and isinstance(links, dict) and links.get("detail"):
+        return _erro(request, "quiz", links["detail"], 422)
     if status_links != 200 or not isinstance(links, dict):
         return _erro(request, "quiz", "Não consegui gerar os links da campanha agora.")
     if not isinstance(relatorio.get("campanhas"), list) or not isinstance(
@@ -412,7 +418,8 @@ def quiz_campanhas(request, slug: str):
             for linha in linhas
             if isinstance(linha, dict)
             and all(
-                str(linha.get(COLUNAS_CAMPANHA[nome]) or "") == valor
+                str(linha.get(COLUNAS_CAMPANHA[nome]) or "")
+                in [item.strip() for item in valor.split(",")]
                 for nome, valor in tags.items()
                 if nome in COLUNAS_CAMPANHA
             )

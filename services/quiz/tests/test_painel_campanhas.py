@@ -138,3 +138,29 @@ def test_relatorio_rejeita_data_invalida(quiz):
     resposta = relatorio(request, quiz.slug)
     assert resposta.status_code == 422
     assert "AAAA-MM-DD" in json.loads(resposta.content)["detail"]
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_links_em_escala_4_criativos_2_formatos_3_segmentos(quiz):
+    request = pedido(
+        "/admin/crivo/links?site_id=painel-site&v=B2&fmt=text,calc"
+        "&src=meta&med=paid&cpg=qz_iniciante_out26"
+        "&ctv=video_hook1,video_hook2,calc_resultado,texto_dor&utm_term=quiz"
+    )
+    dados = json.loads(links(request, quiz.slug).content)
+    assert dados["total"] == 24
+    urls = {item["url"] for item in dados["links"]}
+    assert len(urls) == 24
+    for item in dados["links"]:
+        query = {k: v[0] for k, v in parse_qs(urlsplit(item["url"]).query).items()}
+        assert query["v"] == "B2" and query["fmt"] in ("text", "calc")
+        assert query["ctv"] == query["utm_content"] == item["ctv"]
+        assert query["utm_campaign"] == query["cpg"] == "qz_iniciante_out26"
+        assert query["utm_term"] == "quiz"
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_links_recusam_versao_que_nao_existe(quiz):
+    resposta = links(pedido("/admin/crivo/links?site_id=painel-site&v=B9"), quiz.slug)
+    assert resposta.status_code == 422
+    assert "B9" in json.loads(resposta.content)["detail"]

@@ -12,17 +12,20 @@
     <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
       <label>De<br><input type="date" name="inicio" value="{{ filtros.inicio }}"></label>
       <label>Até<br><input type="date" name="fim" value="{{ filtros.fim }}"></label>
+      <label>Versões (v)<br><input name="v" value="{{ filtros.v }}" placeholder="B2"></label>
+      <label>Formatos (fmt)<br><input name="fmt" value="{{ filtros.fmt }}" placeholder="text,calc"></label>
       <label>Origem (src)<br><input name="src" value="{{ filtros.src }}"></label>
       <label>Meio (med)<br><input name="med" value="{{ filtros.med }}"></label>
       <label>Campanha (cpg)<br><input name="cpg" value="{{ filtros.cpg }}"></label>
-      <label>Criativo (ctv)<br><input name="ctv" value="{{ filtros.ctv }}"></label>
+      <label>Criativos (ctv)<br><input name="ctv" value="{{ filtros.ctv }}" placeholder="video_hook1,texto_dor"></label>
       <label>UTM source<br><input name="utm_source" value="{{ filtros.utm_source }}"></label>
       <label>UTM medium<br><input name="utm_medium" value="{{ filtros.utm_medium }}"></label>
       <label>UTM campaign<br><input name="utm_campaign" value="{{ filtros.utm_campaign }}"></label>
       <label>UTM content<br><input name="utm_content" value="{{ filtros.utm_content }}"></label>
       <label>UTM term<br><input name="utm_term" value="{{ filtros.utm_term }}"></label>
-      <button type="submit">Aplicar filtros</button>
+      <button type="submit">Aplicar filtros e gerar links</button>
     </form>
+    <p class="nota">Versões, formatos e criativos aceitam vários valores separados por vírgula. Cada criativo vira um link para cada formato e segmento que existe: 4 criativos × 2 formatos × 3 segmentos = 24 links por versão. Formato ou versão que não existe não vira link.</p>
     {% if filtros.utm_term %}<p class="nota">UTM term entra nos links e aparece na coluna de termo do relatório.</p>{% endif %}
   </div>
 
@@ -60,9 +63,12 @@
 
   <div class="cartao">
     <h2>Links da campanha</h2>
-    <p class="nota">Os links levam os parâmetros de origem informados acima. Cada formato e segmento usa a mesma página do quiz, com versão explícita.</p>
+    <p class="nota">Os links levam os parâmetros de origem informados acima. Cada formato e segmento usa a mesma página do quiz, com versão explícita. Quando o UTM content fica vazio, ele repete o criativo.</p>
+    <p><strong>{{ links|length }} link(s).</strong></p>
+    {% if links %}<label>Todos, um por linha, para copiar<br><textarea readonly rows="6" style="width:100%">{% for item in links %}{{ item.url }}
+{% endfor %}</textarea></label>{% endif %}
     {% for item in links %}
-      <p><strong>{{ item.version_key }} · {{ item.fmt }}{% if item.seg %} · {{ item.seg }}{% endif %}</strong><br>
+      <p><strong>{{ item.version_key }} · {{ item.fmt }}{% if item.seg %} · {{ item.seg }}{% endif %}{% if item.ctv %} · {{ item.ctv }}{% endif %}</strong><br>
         <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></p>
     {% empty %}<p>Nenhum link disponível para as versões ativas.</p>{% endfor %}
   </div>
