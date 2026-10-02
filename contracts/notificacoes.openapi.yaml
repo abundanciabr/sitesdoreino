@@ -44,7 +44,7 @@ paths:
           in: query
           required: true
           schema: { type: string }
-          description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Escopa a contagem — não soma avisos de outros sites.
+          description: Site (tenant) de onde a chamada vem (multissítio, site é dado). Escopa a contagem — não soma avisos de outros sites.
       responses:
         '200':
           description: Resumo calculado
@@ -77,7 +77,7 @@ paths:
           in: query
           required: true
           schema: { type: string }
-          description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Escopa a lista — não mistura avisos de outros sites.
+          description: Site (tenant) de onde a chamada vem (multissítio, site é dado). Escopa a lista — não mistura avisos de outros sites.
         - name: cursor
           in: query
           required: false
@@ -179,7 +179,7 @@ paths:
                 destinatario_id: { type: string }
                 site_id:
                   type: string
-                  description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Marca como lido só o que é daquele site.
+                  description: Site (tenant) de onde a chamada vem (multissítio, site é dado). Marca como lido só o que é daquele site.
       responses:
         '200':
           description: Marcados — devolve quantos avisos foram afetados (0 é uma resposta válida)
@@ -234,7 +234,7 @@ paths:
                 destinatario_id: { type: string }
                 site_id:
                   type: string
-                  description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O aparelho recebe só os avisos daquele site.
+                  description: Site (tenant) de onde a chamada vem (multissítio, site é dado). O aparelho recebe só os avisos daquele site.
                 endpoint:
                   type: string
                   format: uri
@@ -340,7 +340,7 @@ paths:
                 site_id:
                   type: string
                   maxLength: 64
-                  description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O teste nunca atravessa sites.
+                  description: Site (tenant) de onde a chamada vem (multissítio, site é dado). O teste nunca atravessa sites.
                 destinatario_id:
                   type: string
                   maxLength: 64

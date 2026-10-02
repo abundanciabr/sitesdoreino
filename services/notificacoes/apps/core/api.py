@@ -47,15 +47,15 @@ from apps.notificacoes.consultas import (
 router = Router()
 
 _DESCRICAO_SITE_ID_RESUMO = (
-    "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Escopa a "
+    "Site (tenant) de onde a chamada vem (multissítio, site é dado). Escopa a "
     "contagem — não soma avisos de outros sites."
 )
 _DESCRICAO_SITE_ID_AVISOS = (
-    "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Escopa a "
+    "Site (tenant) de onde a chamada vem (multissítio, site é dado). Escopa a "
     "lista — não mistura avisos de outros sites."
 )
 _DESCRICAO_SITE_ID_MARCAR_LIDAS = (
-    "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Marca como "
+    "Site (tenant) de onde a chamada vem (multissítio, site é dado). Marca como "
     "lido só o que é daquele site."
 )
 _DESCRICAO_422 = "destinatario_id ou site_id ausente ou inválido"
@@ -493,7 +493,7 @@ _INSCREVER_OPENAPI = {
                         "destinatario_id": {"type": "string"},
                         "site_id": {
                             "type": "string",
-                            "description": "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O aparelho recebe só os avisos daquele site.",
+                            "description": "Site (tenant) de onde a chamada vem (multissítio, site é dado). O aparelho recebe só os avisos daquele site.",
                         },
                         "endpoint": {
                             "type": "string",
@@ -690,7 +690,7 @@ _TESTE_OPENAPI = {
                         "site_id": {
                             "type": "string",
                             "maxLength": 64,
-                            "description": "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O teste nunca atravessa sites.",
+                            "description": "Site (tenant) de onde a chamada vem (multissítio, site é dado). O teste nunca atravessa sites.",
                         },
                         "destinatario_id": {
                             "type": "string",
