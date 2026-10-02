@@ -76,7 +76,7 @@ def test_isencao_sem_site_roda_antes_do_catalogo_e_sem_idioma(rede, caminho):
         # do funil (priority 1) — e é o funil que precisa dizer 404. É
         # exatamente o que este teste exercita.
         "/pt-br/api/checkout/sessions",
-        "/en/api/checkout/orders",
+        "/es/api/checkout/orders",
         "/es/api/pagamentos/webhooks/mercadopago",
         # /webhooks/**
         "/pt-br/webhooks/mercadopago",

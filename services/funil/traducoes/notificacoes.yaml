@@ -319,3 +319,13 @@ teste_corpo:
   en: "It worked. This is the test you asked for."
   pt-br: "Deu certo. Este é o teste que você pediu."
   es: "Funcionó. Esta es la prueba que pediste."
+
+jornada_titulo:
+  en: "Welcome"
+  pt-br: "Boas-vindas"
+  es: "Bienvenida"
+
+jornada_corpo:
+  en: "We are glad to have you at the school."
+  pt-br: "Que bom ter você na escola."
+  es: "Qué bueno tenerte en la escuela."

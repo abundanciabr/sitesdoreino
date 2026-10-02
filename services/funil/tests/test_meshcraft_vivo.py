@@ -52,13 +52,19 @@ def test_cadastro_nu_serve_o_ingles(client, rede):
     assert b'<html lang="en"' in resp.content
 
 
-def test_prefixo_do_idioma_padrao_e_404(client, rede):
-    # A escolha do mantenedor em 25/08/2026: `/en/…` não redireciona para a
-    # forma nua, deixa de existir. Uma forma canônica por página, sem gêmea —
-    # e nada estava indexado quando a decisão foi tomada.
-    for caminho in ("/en", "/en/", "/en/cadastro", "/en/login"):
+def test_prefixo_do_idioma_padrao_redireciona_para_a_forma_nua(client, rede):
+    # Em 25/08/2026 `/en/…` deixou de existir (404). Em 02/10/2026 passou a
+    # responder 301 para a forma nua: uma forma canônica por página, sem gêmea,
+    # e quem tem o endereço prefixado guardado chega à página certa.
+    for caminho, nu in (
+        ("/en", "/"),
+        ("/en/", "/"),
+        ("/en/cadastro", "/cadastro"),
+        ("/en/login", "/login"),
+    ):
         resp = client.get(caminho, HTTP_HOST=HOST_MESH)
-        assert resp.status_code == 404, f"{caminho} devolveu {resp.status_code}"
+        assert resp.status_code == 301, f"{caminho} devolveu {resp.status_code}"
+        assert resp["Location"] == nu
 
 
 def test_post_no_caminho_nu_chega_a_view_e_entra_na_fila(client, alunos_ligada):
@@ -92,10 +98,21 @@ def test_idioma_nao_habilitado_404(client, rede):
     assert resp.status_code == 404
 
 
-@pytest.mark.parametrize("forma", ["EN", "En", "PT-BR", "pt_br", "Es"])
+@pytest.mark.parametrize("forma", ["PT-BR", "pt_br", "Es"])
 def test_forma_nao_canonica_de_idioma_habilitado_e_404(client, rede, forma):
     # Fail-closed, nunca redirect: nada nunca linkou para essas formas.
     assert client.get(f"/{forma}/", HTTP_HOST=HOST_MESH).status_code == 404
+
+
+@pytest.mark.parametrize("forma", ["EN", "En"])
+def test_forma_nao_canonica_do_idioma_padrao_redireciona_para_a_nua(
+    client, rede, forma
+):
+    # A exceção é o idioma PADRÃO (aqui `en`): como `/en/…` já leva à forma nua,
+    # a caixa errada leva ao mesmo lugar.
+    resp = client.get(f"/{forma}/cadastro", HTTP_HOST=HOST_MESH)
+    assert resp.status_code == 301
+    assert resp["Location"] == "/cadastro"
 
 
 @pytest.mark.parametrize("curto", ["faq", "api", "pro"])

@@ -1,7 +1,5 @@
-# apps/i18n/templatetags/t.py — {% t "chave.literal" var=expr %} (D2.3/D2.5).
-# A tag é CASCA da função t() — e-mails e workers usam a função direto.
-# Só aceita chave LITERAL: chave dinâmica cega a análise estática do validador
-# (template↔catálogo nas duas direções depende disso).
+# apps/i18n/templatetags/t.py — {% t chave var=expr %}: casca da função t().
+# A chave pode ser texto fixo ou variável; chave inexistente mostra a própria chave.
 from django import template
 from django.template import TemplateSyntaxError
 from django.utils.html import conditional_escape
@@ -15,20 +13,14 @@ register = template.Library()
 def tag_t(parser, token):
     partes = token.split_contents()
     if len(partes) < 2:
-        raise TemplateSyntaxError('uso: {% t "chave.literal" [var=expr …] %}')
-    chave = partes[1]
-    if len(chave) < 3 or chave[0] not in "\"'" or chave[-1] != chave[0]:
-        raise TemplateSyntaxError(
-            "{% t %} só aceita chave LITERAL entre aspas (D2.3) — "
-            "chave dinâmica cega a análise estática do catálogo"
-        )
+        raise TemplateSyntaxError('uso: {% t "chave" [var=expr …] %}')
     variaveis = {}
     for parte in partes[2:]:
         nome, separador, expressao = parte.partition("=")
         if not separador or not nome:
             raise TemplateSyntaxError(f"argumento inválido em {{% t %}}: {parte}")
         variaveis[nome] = parser.compile_filter(expressao)
-    return NoT(chave[1:-1], variaveis)
+    return NoT(parser.compile_filter(partes[1]), variaveis)
 
 
 class NoT(template.Node):
@@ -37,6 +29,9 @@ class NoT(template.Node):
         self.variaveis = variaveis
 
     def render(self, context):
+        chave = self.chave.resolve(context)
+        if not chave:
+            return ""
         request = context.get("request")
         idioma = getattr(request, "idioma", None) or IDIOMA_FONTE
         valores = {
@@ -44,11 +39,8 @@ class NoT(template.Node):
             for nome, expressao in self.variaveis.items()
         }
         quantidade = valores.pop("quantidade", None)
-        resultado = t(self.chave, idioma, quantidade=quantidade, **valores)
-        # Escape por padrão (D2): Node.render NÃO passa pelo autoescape do
-        # Django sozinho — o conditional_escape aplica; chaves .html voltam
-        # SafeString de t() (com os valores interpolados já escapados) e
-        # atravessam intactas.
+        resultado = t(str(chave), idioma, quantidade=quantidade, **valores)
+        # Escapa por padrão; chaves .html já voltam seguras de t().
         if context.autoescape:
             return conditional_escape(resultado)
         return resultado

@@ -1,5 +1,10 @@
-"""Leitura da caixa central de notificações para a página do site."""
+"""Avisos da pessoa para a página /notificacoes e para o aviso no celular."""
 
+import logging
+import uuid
+
+from django.apps import apps as registro
+from django.db import DatabaseError
 from django.utils.dateparse import parse_datetime
 
 from apps.core.clients import NotificacoesClient
@@ -8,12 +13,18 @@ from apps.core.enderecos import (
     url_da_sugestao,
     url_das_conquistas,
 )
+from apps.i18n import catalogo as cat
+
+logger = logging.getLogger(__name__)
 
 MAXIMO_DE_PAGINAS = 50
 ASSUNTO_SUGESTAO = "sugestao.status-alterado"
-# Assunto → cartão da página. Assunto fora daqui cai no cartão genérico.
+ASSUNTO_JORNADA = "jornada.passo"
+# Assunto → tipo do cartão, para a página e para o aviso no celular.
+# Assunto fora daqui cai no cartão genérico.
 TIPOS_POR_ASSUNTO = {
     ASSUNTO_SUGESTAO: "sugestao",
+    ASSUNTO_JORNADA: "jornada",
     "gamificacao.nivel-alcancado": "nivel",
     "gamificacao.conquista-concedida": "conquista",
     "gamificacao.marco-validado": "marco",
@@ -36,6 +47,7 @@ STATUS_CONHECIDOS = frozenset(
     }
 )
 VINCULOS_CONHECIDOS = frozenset({"autor", "comentario", "voto"})
+MARCADOR_DA_SUGESTAO = "{suggestion_id}"
 
 
 def _texto(parametros: dict, nome: str) -> str:
@@ -73,7 +85,7 @@ def buscar_avisos(destinatario_id: str, site_id: str) -> "list[dict] | None":
     return None
 
 
-def _link(tipo: str, sugestao_id: str) -> str:
+def link_do_cartao(tipo: str, sugestao_id: str = "") -> str:
     if tipo == "sugestao":
         return url_da_sugestao(sugestao_id) if sugestao_id else ""
     if tipo in {"nivel", "conquista", "marco", "destaque"}:
@@ -83,14 +95,91 @@ def _link(tipo: str, sugestao_id: str) -> str:
     return ""
 
 
-def aviso_para_tela(item: dict) -> dict:
+def links_para_o_celular() -> dict:
+    """Assunto → link do toque no aviso; o celular troca o marcador pelo id."""
+    links = {}
+    for assunto, tipo in TIPOS_POR_ASSUNTO.items():
+        link = link_do_cartao(tipo, MARCADOR_DA_SUGESTAO)
+        if link:
+            links[assunto] = link
+    return links
+
+
+def _modelo(rotulo: str, nome: str):
+    try:
+        return registro.get_model(rotulo, nome)
+    except LookupError:
+        return None
+
+
+def _sugestao_id(item: dict) -> str:
+    valor = str(item["parametros"].get("suggestion_id") or "")
+    return valor if valor.isdigit() else ""
+
+
+def _passo_id(item: dict) -> str:
+    valor = _texto(item["parametros"], "passo_id")
+    try:
+        return str(uuid.UUID(valor))
+    except ValueError:
+        return ""
+
+
+def ideias(ids) -> dict:
+    """Título e apagamento de cada ideia, lidos do banco da sugestoes."""
+    ids = sorted({i for i in ids if i})
+    sugestao = _modelo("sugestoes_sugestoes", "Sugestao")
+    if not ids or sugestao is None:
+        return {}
+    try:
+        linhas = sugestao.objects.filter(pk__in=ids).values_list(
+            "id", "titulo", "apagada_em"
+        )
+        return {
+            str(pk): {"titulo": titulo, "apagada": apagada_em is not None}
+            for pk, titulo, apagada_em in linhas
+        }
+    except DatabaseError:
+        logger.exception("avisos: não deu para ler as ideias %s", ids)
+        return {}
+
+
+def textos_dos_passos(ids, idioma: str) -> dict:
+    """Título e corpo de cada passo de jornada no idioma pedido, lidos da mensageria."""
+    ids = sorted({i for i in ids if i})
+    texto_do_passo = _modelo("mensageria_jornadas", "TextoDoPasso")
+    if not ids or texto_do_passo is None:
+        return {}
+    try:
+        linhas = texto_do_passo.objects.filter(passo_id__in=ids).values_list(
+            "passo_id", "idioma", "assunto_visivel", "corpo"
+        )
+        por_passo = {}
+        for passo_id, lingua, titulo, corpo in linhas:
+            por_passo.setdefault(str(passo_id), {})[lingua] = {
+                "titulo": titulo,
+                "corpo": corpo,
+            }
+    except DatabaseError:
+        logger.exception("avisos: não deu para ler os passos %s", ids)
+        return {}
+    ordem = (idioma, cat.bases_instaladas().get(idioma), cat.IDIOMA_FONTE)
+    escolhidos = {}
+    for passo_id, textos in por_passo.items():
+        lingua = next((i for i in ordem if i in textos), next(iter(sorted(textos))))
+        escolhidos[passo_id] = textos[lingua]
+    return escolhidos
+
+
+def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
     parametros = item["parametros"]
     tipo = TIPOS_POR_ASSUNTO.get(item["assunto"], "desconhecido")
     status_novo = _texto(parametros, "status_novo")
     status_anterior = _texto(parametros, "status_anterior")
     vinculo = _texto(parametros, "vinculo")
-    sugestao_id = str(parametros.get("suggestion_id") or "")
-    sugestao_id = sugestao_id if sugestao_id.isdigit() else ""
+    sugestao_id = _sugestao_id(item)
+    ideia = (ideias_dos_avisos or {}).get(sugestao_id, {})
+    passo = (passos or {}).get(_passo_id(item), {})
     nivel = parametros.get("nivel")
     situacao = _texto(parametros, "situacao_nova")
     return {
@@ -98,7 +187,11 @@ def aviso_para_tela(item: dict) -> dict:
         "lido_em": parse_datetime(item["lido_em"]) if item["lido_em"] else None,
         "criado_em": parse_datetime(item["criado_em"]),
         "tipo": tipo,
-        "link": _link(tipo, sugestao_id),
+        "cartao": "generica" if tipo == "desconhecido" else tipo,
+        "link": link_do_cartao(tipo, sugestao_id),
+        "titulo_da_ideia": ideia.get("titulo", ""),
+        "passo_titulo": passo.get("titulo", ""),
+        "passo_corpo": passo.get("corpo", ""),
         "status_novo": status_novo if status_novo in STATUS_CONHECIDOS else "",
         "status_anterior": (
             status_anterior
@@ -110,8 +203,28 @@ def aviso_para_tela(item: dict) -> dict:
         "nivel": (
             nivel if isinstance(nivel, int) and not isinstance(nivel, bool) else None
         ),
-        "situacao_nova": situacao if situacao in SITUACOES_CONHECIDAS else "",
+        "situacao_nova": situacao if situacao in SITUACOES_CONHECIDAS else "outra",
     }
+
+
+def avisos_para_tela(
+    itens: "list[dict]", destinatario_id: str, site_id: str, idioma: str
+) -> "list[dict]":
+    """Cartões da página; aviso de ideia apagada some e é marcado como lido."""
+    ideias_dos_avisos = ideias(
+        _sugestao_id(i) for i in itens if i["assunto"] == ASSUNTO_SUGESTAO
+    )
+    passos = textos_dos_passos(
+        (_passo_id(i) for i in itens if i["assunto"] == ASSUNTO_JORNADA), idioma
+    )
+    visiveis = []
+    for item in itens:
+        if ideias_dos_avisos.get(_sugestao_id(item), {}).get("apagada"):
+            if not item["lido_em"]:
+                marcar_aviso(destinatario_id, site_id, item["id"])
+            continue
+        visiveis.append(aviso_para_tela(item, ideias_dos_avisos, passos))
+    return visiveis
 
 
 def marcar_aviso(destinatario_id: str, site_id: str, aviso_id: str) -> "bool | None":

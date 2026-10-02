@@ -220,3 +220,23 @@ js:
     en: "A teacher picked your work for the gallery of the week."
     pt-br: "Um professor escolheu o seu trabalho para a galeria da semana."
     es: "Un profesor eligió tu trabajo para la galería de la semana."
+
+  jornada_titulo:
+    en: "Meshcraft"
+    pt-br: "Meshcraft"
+    es: "Meshcraft"
+
+  jornada_corpo:
+    en: "You have a new message from the school."
+    pt-br: "Você tem uma mensagem nova da escola."
+    es: "Tienes un mensaje nuevo de la escuela."
+
+  matricula_titulo:
+    en: "Meshcraft"
+    pt-br: "Meshcraft"
+    es: "Meshcraft"
+
+  matricula_corpo:
+    en: "Your enrollment has an update."
+    pt-br: "Sua matrícula teve uma novidade."
+    es: "Tu matrícula tuvo una novedad."

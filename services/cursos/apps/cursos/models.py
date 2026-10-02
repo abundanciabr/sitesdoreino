@@ -3,7 +3,7 @@ pausas e os instrumentos) e, desde o degrau 1.8, AS PESSOAS E O PROGRESSO
 (`Pessoa`, `Progresso`, `RegistroDePausa`).
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes,
-[INV-CUR-C2] e os três da porta, [INV-CUR-P1..P3]). Degraus 1.2
+e os três da porta, [INV-CUR-P1..P3]). Degraus 1.2
 (TAR-147) e 1.8 (TAR-154) da escada (§10). Molde de código:
 `services/encomendas/apps/encomendas/models.py` e, para o espelho de pessoa,
 `services/forum/apps/forum/models.py`.

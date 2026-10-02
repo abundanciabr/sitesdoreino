@@ -13,6 +13,8 @@
     .notificacao p { margin: .3rem 0; }
     .notificacao-nota { padding: .6rem .75rem; border-left: 3px solid #d4d4d8; color: #3f3f46; }
     .notificacao-link { color: #166534; font-weight: 700; }
+    .notificacao-ideia { font-weight: 700; }
+    .notificacao-ideia a { color: inherit; }
     .notificacao-acao { margin-top: .7rem; border: 0; background: none; padding: 0; color: #166534; text-decoration: underline; cursor: pointer; font: inherit; }
     .notificacoes-falha { border: 1px solid #fecaca; border-radius: .6rem; padding: 1rem; background: #fef2f2; }
 {% endblock %}
@@ -47,71 +49,29 @@
             </div>
             {% if aviso.tipo == "sugestao" %}
               <h2>{% if aviso.status_novo == "implementado" %}{% t "notificacoes.sugestao_implementada_titulo" %}{% else %}{% t "notificacoes.sugestao_titulo" %}{% endif %}</h2>
+              {% if aviso.titulo_da_ideia %}<p class="notificacao-ideia">{% if aviso.link %}<a href="{{ aviso.link }}">{{ aviso.titulo_da_ideia }}</a>{% else %}{{ aviso.titulo_da_ideia }}{% endif %}</p>{% endif %}
               {% if aviso.status_anterior and aviso.status_novo %}
-                <p>{% t "notificacoes.status_mudou_inicio" %}
-                  {% if aviso.status_anterior == "em_analise" %}{% t "notificacoes.status_em_analise" %}
-                  {% elif aviso.status_anterior == "planejado" %}{% t "notificacoes.status_planejado" %}
-                  {% elif aviso.status_anterior == "em_desenvolvimento" %}{% t "notificacoes.status_em_desenvolvimento" %}
-                  {% elif aviso.status_anterior == "implementado" %}{% t "notificacoes.status_implementado" %}
-                  {% elif aviso.status_anterior == "nao_planejado" %}{% t "notificacoes.status_nao_planejado" %}
-                  {% else %}{% t "notificacoes.status_mesclado" %}{% endif %}
-                  {% t "notificacoes.status_mudou_para" %}
-                  {% if aviso.status_novo == "em_analise" %}{% t "notificacoes.status_em_analise" %}
-                  {% elif aviso.status_novo == "planejado" %}{% t "notificacoes.status_planejado" %}
-                  {% elif aviso.status_novo == "em_desenvolvimento" %}{% t "notificacoes.status_em_desenvolvimento" %}
-                  {% elif aviso.status_novo == "implementado" %}{% t "notificacoes.status_implementado" %}
-                  {% elif aviso.status_novo == "nao_planejado" %}{% t "notificacoes.status_nao_planejado" %}
-                  {% else %}{% t "notificacoes.status_mesclado" %}{% endif %}.</p>
+                <p>{% t "notificacoes.status_mudou_inicio" %} {% t "notificacoes.status_"|add:aviso.status_anterior %} {% t "notificacoes.status_mudou_para" %} {% t "notificacoes.status_"|add:aviso.status_novo %}.</p>
               {% elif aviso.status_novo %}
-                <p>{% t "notificacoes.status_atual_inicio" %}
-                  {% if aviso.status_novo == "em_analise" %}{% t "notificacoes.status_em_analise" %}
-                  {% elif aviso.status_novo == "planejado" %}{% t "notificacoes.status_planejado" %}
-                  {% elif aviso.status_novo == "em_desenvolvimento" %}{% t "notificacoes.status_em_desenvolvimento" %}
-                  {% elif aviso.status_novo == "implementado" %}{% t "notificacoes.status_implementado" %}
-                  {% elif aviso.status_novo == "nao_planejado" %}{% t "notificacoes.status_nao_planejado" %}
-                  {% else %}{% t "notificacoes.status_mesclado" %}{% endif %}.</p>
+                <p>{% t "notificacoes.status_atual_inicio" %} {% t "notificacoes.status_"|add:aviso.status_novo %}.</p>
               {% else %}
                 <p>{% t "notificacoes.sugestao_corpo" %}</p>
               {% endif %}
-              {% if aviso.vinculo %}
-                <p>{% t "notificacoes.vinculo" %}
-                  {% if aviso.vinculo == "autor" %}{% t "notificacoes.vinculo_autor" %}
-                  {% elif aviso.vinculo == "comentario" %}{% t "notificacoes.vinculo_comentario" %}
-                  {% else %}{% t "notificacoes.vinculo_voto" %}{% endif %}
-                </p>
-              {% endif %}
+              {% if aviso.vinculo %}<p>{% t "notificacoes.vinculo" %} {% t "notificacoes.vinculo_"|add:aviso.vinculo %}</p>{% endif %}
               {% if aviso.nota %}<p class="notificacao-nota">{{ aviso.nota|linebreaksbr }}</p>{% endif %}
               {% if aviso.link %}<p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_sugestao" %}</a></p>{% endif %}
+            {% elif aviso.tipo == "jornada" and aviso.passo_corpo %}
+              <h2>{{ aviso.passo_titulo }}</h2>
+              <p>{{ aviso.passo_corpo|linebreaksbr }}</p>
             {% elif aviso.tipo == "nivel" %}
               <h2>{% t "notificacoes.nivel_titulo" %}</h2>
               {% if aviso.nivel %}<p>{% t "notificacoes.nivel_corpo" nivel=aviso.nivel %}</p>{% else %}<p>{% t "notificacoes.nivel_corpo_sem_numero" %}</p>{% endif %}
-            {% elif aviso.tipo == "conquista" %}
-              <h2>{% t "notificacoes.conquista_titulo" %}</h2>
-              <p>{% t "notificacoes.conquista_corpo" %}</p>
-            {% elif aviso.tipo == "marco" %}
-              <h2>{% t "notificacoes.marco_titulo" %}</h2>
-              <p>{% t "notificacoes.marco_corpo" %}</p>
-            {% elif aviso.tipo == "destaque" %}
-              <h2>{% t "notificacoes.destaque_titulo" %}</h2>
-              <p>{% t "notificacoes.destaque_corpo" %}</p>
-            {% elif aviso.tipo == "portfolio" %}
-              <h2>{% t "notificacoes.portfolio_titulo" %}</h2>
-              <p>{% t "notificacoes.portfolio_corpo" %}</p>
             {% elif aviso.tipo == "matricula" %}
               <h2>{% t "notificacoes.matricula_titulo" %}</h2>
-              <p>{% if aviso.situacao_nova == "ativa" %}{% t "notificacoes.matricula_ativa" %}
-                {% elif aviso.situacao_nova == "aguardando" %}{% t "notificacoes.matricula_aguardando" %}
-                {% elif aviso.situacao_nova == "suspensa" %}{% t "notificacoes.matricula_suspensa" %}
-                {% elif aviso.situacao_nova == "encerrada" %}{% t "notificacoes.matricula_encerrada" %}
-                {% elif aviso.situacao_nova == "reembolsada" %}{% t "notificacoes.matricula_reembolsada" %}
-                {% elif aviso.situacao_nova == "recusada" %}{% t "notificacoes.matricula_recusada" %}
-                {% else %}{% t "notificacoes.matricula_outra" %}{% endif %}</p>
-            {% elif aviso.tipo == "teste" %}
-              <h2>{% t "notificacoes.teste_titulo" %}</h2>
-              <p>{% t "notificacoes.teste_corpo" %}</p>
+              <p>{% t "notificacoes.matricula_"|add:aviso.situacao_nova %}</p>
             {% else %}
-              <h2>{% t "notificacoes.generica_titulo" %}</h2>
-              <p>{% t "notificacoes.generica_corpo" %}</p>
+              <h2>{% t "notificacoes."|add:aviso.cartao|add:"_titulo" %}</h2>
+              <p>{% t "notificacoes."|add:aviso.cartao|add:"_corpo" %}</p>
             {% endif %}
             {% if aviso.link and aviso.tipo == "portfolio" %}
               <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_portfolio" %}</a></p>

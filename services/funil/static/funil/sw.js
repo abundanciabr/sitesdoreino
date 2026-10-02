@@ -114,6 +114,15 @@ self.addEventListener("push", (evento) => {
     carta = {};
   }
   const texto = AVISOS.textos[carta.assunto] || AVISOS.generico;
+  // O toque leva ao mesmo link do cartão da página; sem link, à lista de avisos.
+  const parametros = carta.parametros || {};
+  const idDaIdeia = String(parametros.suggestion_id || "");
+  let caminho = (AVISOS.links || {})[carta.assunto] || AVISOS.caminho;
+  if (caminho.includes("{suggestion_id}")) {
+    caminho = /^\d+$/.test(idDaIdeia)
+      ? caminho.replace("{suggestion_id}", idDaIdeia)
+      : AVISOS.caminho;
+  }
   evento.waitUntil(
     self.registration.showNotification(texto.titulo, {
       body: texto.corpo,
@@ -123,7 +132,7 @@ self.addEventListener("push", (evento) => {
       // dez cartazes empilhados no celular de quem só queria saber que tem
       // coisa nova. O último substitui o anterior.
       tag: carta.assunto || "meshcraft",
-      data: { caminho: AVISOS.caminho },
+      data: { caminho: caminho },
     })
   );
 });
