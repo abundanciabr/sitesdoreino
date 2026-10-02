@@ -1,3 +1,10 @@
+# Final de linha: o repositório guarda LF e a pasta de trabalho também usa LF,
+# em qualquer máquina. Sem isto, no Windows com core.autocrlf=true a pasta
+# mostra CRLF e uma ferramenta que acrescenta uma linha com LF deixa o arquivo
+# misturado. Esta é a regra geral; as regras abaixo, que vêm depois, prevalecem
+# sobre ela (por exemplo, *.cmd continua em CRLF).
+* text=auto eol=lf
+
 # .sh precisa de LF sempre — CRLF quebra o shebang e heredocs quando o script
 # roda dentro de um container Linux ou é chamado via `bash arquivo.sh` depois
 # de um checkout com core.autocrlf=true (comum em máquina Windows).
@@ -38,3 +45,11 @@ painel/livro-*.js    -merge
 # incompreensível — a mesma família da regra dos .sh acima, e eles não têm
 # extensão para casar com aquela linha.
 .githooks/* text eol=lf
+
+# Quatro registros antigos foram guardados com CRLF no repositório. Ficam
+# exatamente como estão, sem nenhuma conversão, para a troca da regra geral
+# acima não virar um diff do arquivo inteiro.
+docs/consultorias/fase-4-otimizacao/conselho-local/PLACAR.md -text
+docs/consultorias/fase-4-otimizacao/conselho-local/registros/CLAUDE-010-verificacao-antigravity.json -text
+docs/consultorias/fase-4-otimizacao/conselho-local/registros/prova-antigravity-auditoria-pendencias-20260912.txt -text
+docs/consultorias/fase-4-otimizacao/conselho-local/registros/prova-verificacao-antigravity-CLAUDE-010.txt -text
