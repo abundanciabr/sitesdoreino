@@ -10,9 +10,8 @@ guarda, e não a topologia.
 
 Três coisas ficam provadas, para cada uma das vinte operações: sem token é 401,
 com token errado é 401, e com o conjunto de tokens VAZIO (o env ausente) é 401
-mesmo com o token certo. E uma quarta, sobre o próprio guarda: a lista
-percorrida aqui é a lista INTEIRA da porta, medida na fonte; uma operação nova
-que entrasse sem passar por aqui reprovaria.
+mesmo com o token certo. E uma quarta, sobre o próprio guarda: toda operação da
+lista percorrida aqui existe na porta, medida na fonte.
 """
 
 from __future__ import annotations
@@ -254,8 +253,10 @@ def test_o_token_certo_abre_a_porta(esqueleto, operacao, metodo, caminho, corpo)
 
 def test_o_guarda_percorre_todas_as_operacoes_da_porta():
     """Medido na fonte (`api._routers`), como faz a sonda do freeze de contrato:
-    o conjunto de operationIds da porta é EXATAMENTE o que a lista acima
-    percorre. Uma operação nova entra aqui ou não entra."""
+    toda operação que a lista acima percorre continua existindo na porta. A
+    operação nova não precisa entrar na lista para a porta ficar fechada: o
+    cadeado de TODAS é medido na fonte em `test_porta_de_maquina.py`
+    (`test_toda_operacao_exige_credencial_na_fonte`)."""
     na_porta = {
         operacao.operation_id
         for _, roteador in api._routers
@@ -263,4 +264,4 @@ def test_o_guarda_percorre_todas_as_operacoes_da_porta():
         for operacao in view.operations
     }
     # A moderação tem Bearer exclusivo e é exercitada em test_comentarios_aulas.
-    assert na_porta == set(IDS) | {"listLessonComments", "setLessonCommentVisibility"}
+    assert set(IDS) | {"listLessonComments", "setLessonCommentVisibility"} <= na_porta

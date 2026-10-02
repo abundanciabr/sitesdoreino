@@ -650,11 +650,12 @@ class PedidoDeConferencia(models.Model):
     células, nunca o código, e copiar um desenho que gente de verdade
     já usou vale mais que inventar um segundo jeito de fazer a mesma coisa.
 
-    **A DEVOLUÇÃO EXIGE MOTIVO, e essa é metade do critério AC-11.** Devolver
+    **A DEVOLUÇÃO GUARDA UM MOTIVO, e essa é metade do critério AC-11.** Devolver
     sem dizer por quê é o que faz um aluno desistir: ele fica sabendo que não
-    foi, e não fica sabendo o que fazer. O banco recusa a linha devolvida sem
-    motivo, e o motivo é uma das frases que a escola escreveu, nunca texto
-    livre. Texto livre vira crítica pessoal, que é exatamente o que a lista
+    foi, e não fica sabendo o que fazer. A equipe não precisa escolher: sem
+    escolha a regra grava `orientacao` (ver `conferencia.devolver`). O banco
+    recusa a linha devolvida sem motivo, e o motivo é uma das frases que a
+    escola escreveu, nunca texto livre. Texto livre vira crítica pessoal, que é exatamente o que a lista
     fechada existe para impedir.
 
     **O SELO NÃO MORA AQUI.** Aceitar fecha o pedido e nada mais: o selo

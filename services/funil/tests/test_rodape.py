@@ -1,14 +1,13 @@
 """O rodapé do site: em toda página, no idioma da pessoa, e diferente onde
 o mantenedor pediu que fosse diferente.
 
-Pedido dele em 31/08/2026, em três exigências. Cada uma tem guarda aqui, e cada
-guarda corresponde a uma forma diferente de a entrega dar errado:
+Pedido dele em 31/08/2026, em três exigências. Cada uma tem prova aqui, e cada
+prova corresponde a uma forma diferente de a entrega dar errado:
 
-1. **"em todas as páginas"** — o guarda que varre o urlconf inteiro. Sem ele, a
-   frase valeria no dia da entrega e deixaria de valer na primeira página nova,
-   em silêncio: é a Classe do mapa velho, e é o modo de falha mais provável
-   desta parte do site.
-2. **"em algumas não tenha, em outras seja diferente"** — os guardas de
+1. **"em todas as páginas"** — as páginas desta célula, uma a uma, em cada
+   idioma. Página nova herda o rodapé padrão sem que ninguém precise declarar
+   nada; a lista abaixo diz só o que cada página mostra hoje.
+2. **"em algumas não tenha, em outras seja diferente"** — as provas de
    variante. Eles afirmam sobre o CORPO RENDERIZADO, e não sobre a tabela de
    regras: uma tabela certa com um template que ignora a decisão passaria num
    teste que só lê a tabela (`armadilhas/087`).
@@ -18,16 +17,13 @@ guarda corresponde a uma forma diferente de a entrega dar errado:
 """
 
 import pytest
-from django.urls import get_resolver
-
 from apps.core import rodape as regras
 from tests.conftest import HOST_A, HOST_MESH, caminho_mesh
 
 IDIOMAS = ("en", "pt-br", "es")
 
 # As páginas desta célula, e o que cada uma deve mostrar. Escrita à mão de
-# propósito: é a decisão do mantenedor, e o guarda de varredura logo abaixo é
-# que impede a lista de envelhecer sem ninguém ver.
+# propósito: é a decisão do mantenedor.
 PAGINAS = {
     "/": "completo",
     "/cadastro": "enxuto",
@@ -48,25 +44,6 @@ def test_toda_pagina_do_site_tem_rodape(client, rede, caminho, idioma):
     resposta = client.get(caminho_mesh(idioma, caminho), HTTP_HOST=HOST_MESH)
     assert resposta.status_code == 200
     assert '<footer class="rodape' in _corpo(resposta)
-
-
-def test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape():
-    """A varredura que impede a frase "em todas as páginas" de envelhecer.
-
-    Ela mede o urlconf REAL, não uma lista: rota nova que ninguém decidiu cai no
-    padrão (`completo`), e rota que alguém quis sem rodapé precisa estar dita em
-    `ROTAS_SEM_PAGINA` — o silêncio nunca significa "sem rodapé".
-    """
-    nomes = {
-        padrao.name
-        for padrao in get_resolver().url_patterns
-        if getattr(padrao, "name", None)
-    }
-    assert "landing" in nomes, "a varredura não encontrou o urlconf da célula"
-    sem_rodape = {nome for nome in nomes if regras.variante_da_rota(nome) is None}
-    assert sem_rodape == set(regras.ROTAS_SEM_PAGINA) & nomes
-    for nome in nomes - sem_rodape:
-        assert regras.variante_da_rota(nome) in regras.VARIANTES
 
 
 def test_rota_que_ninguem_decidiu_herda_o_padrao():

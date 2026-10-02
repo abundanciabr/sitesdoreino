@@ -377,7 +377,7 @@ def devolver(
     *,
     pedido: PedidoDeConferencia,
     conferido_por: str,
-    motivo: str,
+    motivo: str = "",
     feedback_pontos_fortes: str = "",
     feedback_melhorar: str = "",
     feedback_proximo_passo: str = "",
@@ -386,19 +386,21 @@ def devolver(
 
     **Esta função é metade do critério AC-11.** Devolver sem dizer por quê é o
     que faz um aluno desistir: ele fica sabendo que não foi, e não fica sabendo
-    o que fazer. Por isso o motivo é obrigatório, e por isso ele sai de uma
-    lista fechada que a escola escreveu: texto livre num campo de devolução
-    vira crítica pessoal, e a lista existe para impedir exatamente isso.
+    o que fazer. O motivo é opcional: quem não escolhe um devolve com
+    `orientacao`, a frase que manda o aluno ler o que a equipe escreveu. Se
+    escolher, ele sai de uma lista fechada que a escola escreveu: texto livre
+    num campo de devolução vira crítica pessoal, e a lista existe para impedir
+    exatamente isso.
 
     Relê e trava o pedido antes de conferir, pelo mesmo motivo do `aceitar`:
     uma devolução atrasada não troca por "ainda não" o sim que outra pessoa
     da equipe acabou de dar.
     """
+    motivo = (motivo or "").strip() or MotivoDaDevolucao.ORIENTACAO
     if motivo not in MotivoDaDevolucao.values:
         raise ConferenciaRecusada(
             f"{motivo!r} não é um dos motivos que esta escola aceita: "
-            f"{MotivoDaDevolucao.values}. Devolver sem um deles deixaria o "
-            "aluno sabendo que não foi, e sem saber o que fazer."
+            f"{MotivoDaDevolucao.values}."
         )
 
     with transaction.atomic():

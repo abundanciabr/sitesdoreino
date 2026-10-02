@@ -23,7 +23,14 @@ from django.utils import timezone
 from apps.core import moderacao, views
 from apps.core.permissoes import areas_visiveis, pode_escrever, pode_ler
 from apps.core.sessao import Ator
-from apps.forum.models import Area, MembroDoGrupo, Mensagem, Pessoa, Topico
+from apps.forum.models import (
+    Area,
+    MembroDoGrupo,
+    Mensagem,
+    Pessoa,
+    RegistroDeModeracao,
+    Topico,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -278,6 +285,20 @@ def test_a_equipe_adiciona_membro_e_a_linha_guarda_quem_e_por_que(
     tela = pedir(client, "membros_do_grupo", grupo.slug).content.decode()
     assert "Ana" in tela
     assert "ana@exemplo.com" not in tela
+
+
+def test_o_motivo_da_entrada_e_opcional(
+    client, env, monkeypatch, grupo, ana, professora
+):
+    """Sem motivo a pessoa entra mesmo assim, e o rastro guarda a frase padrão."""
+    como(monkeypatch, professora, categoria="cadastrado")
+    resposta = gerir(client, grupo, acao="adicionar", email=ana.email, motivo="")
+    assert resposta.status_code == 302
+    vinculo = MembroDoGrupo.objects.get(grupo=grupo, pessoa=ana)
+    assert vinculo.ate is None
+    assert vinculo.motivo == moderacao.MOTIVO_DA_ENTRADA_EM_BRANCO
+    linha = RegistroDeModeracao.objects.get(vinculo=vinculo)
+    assert linha.motivo == moderacao.MOTIVO_DA_ENTRADA_EM_BRANCO
 
 
 def test_vaga_cheia_recusa(client, env, monkeypatch, professora, ana, bia):

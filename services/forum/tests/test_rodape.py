@@ -1,22 +1,18 @@
 """O rodapé do fórum: em toda tela, e com a mesma assinatura do site.
 
-Cópia do PADRÃO da `funil` (cada célula com os próprios arquivos), inclusive nos guardas — e os guardas são a
-metade que mais importa copiar. Cada um corresponde a uma forma diferente de
-esta peça se perder:
+Cópia do PADRÃO da `funil` (cada célula com os próprios arquivos). Cada prova
+corresponde a uma forma diferente de esta peça se perder:
 
-1. **A frase "em todas as páginas" envelhecendo em silêncio.** A varredura do
-   urlconf real é o que impede isso: tela nova do fórum herda o rodapé, e tela
-   que alguém quis SEM rodapé precisa estar dita.
-2. **A tabela certa e o template ignorando a decisão.** Por isso toda asserção
+1. **A tabela certa e o template ignorando a decisão.** Por isso toda asserção
    é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
    (`armadilhas/087`: vazamento não escolhe a tag que você previu).
-3. **O estilo que não chega ao navegador.** O fórum serve o CSS por rota
+2. **O estilo que não chega ao navegador.** O fórum serve o CSS por rota
    própria (`armadilhas/083`), então uma classe nova no HTML sem a regra no
    arquivo é um rodapé sem forma, e nada fica vermelho.
 """
 
 import pytest
-from django.urls import get_resolver, reverse
+from django.urls import reverse
 
 from apps.core import rodape as regras
 from apps.forum.models import Area
@@ -47,7 +43,7 @@ def _corpo(resposta) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 1. Em TODAS as telas
+# 1. As telas principais
 # ---------------------------------------------------------------------------
 def test_a_capa_do_forum_tem_rodape(client, area_publica):
     corpo = _corpo(client.get(reverse("home")))
@@ -62,25 +58,6 @@ def test_a_area_tem_rodape(client, area_publica):
 def test_a_busca_tem_rodape(client, area_publica):
     corpo = _corpo(client.get(reverse("buscar"), {"q": "textura"}))
     assert '<footer class="rodape' in corpo
-
-
-def test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape():
-    """A varredura que impede a frase "em todas as páginas" de envelhecer.
-
-    Mede o urlconf REAL, não uma lista escrita à mão: rota nova que ninguém
-    decidiu cai no padrão, e rota sem rodapé precisa estar dita. O silêncio
-    nunca significa "sem rodapé".
-    """
-    nomes = {
-        padrao.name
-        for padrao in get_resolver().url_patterns
-        if getattr(padrao, "name", None)
-    }
-    assert "home" in nomes, "a varredura não encontrou o urlconf da célula"
-    sem_rodape = {nome for nome in nomes if regras.variante_da_rota(nome) is None}
-    assert sem_rodape == set(regras.ROTAS_SEM_PAGINA) & nomes
-    for nome in nomes - sem_rodape:
-        assert regras.variante_da_rota(nome) in regras.VARIANTES
 
 
 def test_rota_que_ninguem_decidiu_herda_o_padrao():

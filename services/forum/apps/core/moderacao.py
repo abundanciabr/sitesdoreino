@@ -135,10 +135,10 @@ ERRO_VAGA_CHEIA = (
     "Todas as vagas do grupo estão ocupadas, então ninguém entrou. Remova alguém "
     "ou aumente as vagas na edição do grupo."
 )
-ERRO_MOTIVO_VAZIO = (
-    "Escreva o motivo da entrada, por exemplo a turma ou o pedido que a pessoa "
-    "fez no fórum."
-)
+# O motivo da ENTRADA no grupo é opcional. O rastro da moderação e o vínculo
+# guardam sempre uma frase (o banco recusa o rastro vazio), então quem entra
+# sem motivo fica com esta.
+MOTIVO_DA_ENTRADA_EM_BRANCO = "Sem motivo informado."
 ERRO_MOTIVO_LONGO = f"O motivo passou de {MOTIVO_MAXIMO} letras. Uma linha basta."
 ERRO_PESSOA_DESCONHECIDA = (
     "Não achei ninguém com esse e-mail no fórum. Confira o e-mail; se estiver "
@@ -573,9 +573,7 @@ def _contexto_do_grupo(ator, grupo, *, erro="", email="", motivo="") -> dict:
 
 def _adicionar_membro(request, ator, grupo) -> str:
     email = (request.POST.get("email") or "").strip().lower()
-    motivo = (request.POST.get("motivo") or "").strip()
-    if not motivo:
-        return ERRO_MOTIVO_VAZIO
+    motivo = (request.POST.get("motivo") or "").strip() or MOTIVO_DA_ENTRADA_EM_BRANCO
     if len(motivo) > MOTIVO_MAXIMO:
         return ERRO_MOTIVO_LONGO
     pessoa = Pessoa.objects.filter(email=email).first() if email else None

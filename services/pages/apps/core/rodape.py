@@ -50,10 +50,9 @@ REGRA_POR_ROTA: "dict[str, str | None]" = {}
 # **Está VAZIO, e o vazio é medido, não esquecimento.** As duas rotas de máquina
 # desta célula hoje (`healthz` e a porta de máquina em `/interno/`) não têm
 # `name=` nenhum, então não há nome para escrever aqui, e nenhuma das duas
-# renderiza template. O guarda de `tests/test_rodape.py` varre o urlconf REAL e
-# reprova no dia em que uma rota nomeada ficar sem decisão. A primeira candidata
-# a entrar aqui é a rota do CSS (`estatico`), quando esta casa tiver folha
-# própria em vez do estilo embutido na moldura (`armadilhas/083`).
+# renderiza template. A primeira candidata a entrar aqui é a rota do CSS
+# (`estatico`), quando esta casa tiver folha própria em vez do estilo embutido
+# na moldura (`armadilhas/083`).
 ROTAS_SEM_PAGINA: "frozenset[str]" = frozenset()
 
 # A biblioteca pública é de outra célula (`admin`), e esta aqui não monta

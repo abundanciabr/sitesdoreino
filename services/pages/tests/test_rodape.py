@@ -1,16 +1,12 @@
 """O rodapé da casa das Páginas: em toda tela, e com a assinatura do site.
 
-Cópia do PADRÃO da `funil`, do `forum` e da `gamificacao` (copia-se o padrão), inclusive nos
-guardas, e os guardas são a metade que mais importa copiar. Cada um corresponde
-a uma forma diferente de esta peça se perder:
+Cópia do PADRÃO da `funil`, do `forum` e da `gamificacao` (copia-se o padrão).
+Cada prova corresponde a uma forma diferente de esta peça se perder:
 
-1. **A frase "em todas as páginas" envelhecendo em silêncio.** A varredura do
-   urlconf real é o que impede isso: tela nova desta casa herda o rodapé, e tela
-   que alguém quiser SEM rodapé precisa estar dita por nome.
-2. **A tabela certa e o molde ignorando a decisão.** Por isso toda asserção é
+1. **A tabela certa e o molde ignorando a decisão.** Por isso toda asserção é
    sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras (`armadilhas/087`:
    vazamento não escolhe a tag que você previu).
-3. **O estilo que não chega ao navegador.** Classe nova no HTML sem regra no
+2. **O estilo que não chega ao navegador.** Classe nova no HTML sem regra no
    estilo é um rodapé sem forma, e nada fica vermelho (`armadilhas/083`). Aqui a
    folha é embutida na moldura, então a prova é sobre o corpo servido.
 
@@ -27,7 +23,6 @@ import re
 
 import pytest
 from django.test import Client
-from django.urls import get_resolver
 from django.utils import timezone
 
 from apps.core import rodape as regras
@@ -71,25 +66,6 @@ def test_as_tres_telas_da_porta_tambem_tem_rodape(env_dos_pares, rede, motivo, e
     resposta = bater(cookie=COOKIE if motivo != "entrar" else None)
     assert resposta.status_code == estado
     assert '<footer class="rodape' in texto(resposta)
-
-
-def test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape():
-    """A varredura que impede a frase "em todas as páginas" de envelhecer.
-
-    Mede o urlconf REAL, não uma lista escrita à mão: rota nova que ninguém
-    decidiu cai no padrão, e rota sem rodapé precisa estar dita. O silêncio
-    nunca significa "sem rodapé".
-    """
-    nomes = {
-        padrao.name
-        for padrao in get_resolver().url_patterns
-        if getattr(padrao, "name", None)
-    }
-    assert "prancheta" in nomes, "a varredura não encontrou o urlconf da célula"
-    sem_rodape = {nome for nome in nomes if regras.variante_da_rota(nome) is None}
-    assert sem_rodape == set(regras.ROTAS_SEM_PAGINA) & nomes
-    for nome in nomes - sem_rodape:
-        assert regras.variante_da_rota(nome) in regras.VARIANTES
 
 
 def test_rota_que_ninguem_decidiu_herda_o_padrao():

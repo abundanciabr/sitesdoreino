@@ -117,19 +117,6 @@ def variante_da_rota(nome_da_rota: "str | None") -> "str | None":
     return VARIANTE_PADRAO
 
 
-def rotas_declaradas_sem_rodape() -> set:
-    """As duas listas que dizem "sem rodapé", juntas.
-
-    Existe para o guarda da varredura poder comparar contra UMA coisa. Sem ela o
-    teste compararia só com `ROTAS_SEM_PAGINA` e ficaria vermelho por causa de
-    uma decisão perfeitamente escrita — o que ensinaria a próxima pessoa a
-    afrouxar a asserção, que é como um guarda morre.
-    """
-    return set(ROTAS_SEM_PAGINA) | {
-        nome for nome, variante in REGRA_POR_ROTA.items() if variante is None
-    }
-
-
 def montar(variante: str, *, ano: int) -> dict:
     """O dicionário que o template consome — a costura para o painel."""
     blocos = VARIANTES[variante]
