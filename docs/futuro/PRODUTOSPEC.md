@@ -2,7 +2,7 @@
 > repositório sitesdoreino já com a Fase 0 completa.
 > **Depende de:** contratos reais e implementados (não 501-stub) em catalogo,
 > funil, quiz, checkout, alunos e mensageria — ou seja, da Fase D concluída.
-> **Decisão de sequência:** arquitetura sólida, alinhada à Lei 3 e à Lei 9 —
+> **Decisão de sequência:** arquitetura sólida, alinhada a "célula não importa código nem lê banco de outra" e a "multissítio: site é dado" —
 > generaliza "site é dado" para "produto/curso é dado". Adiado
 > deliberadamente, não descartado. Na época, previa-se um Portão 0 de um brief formal
 > ("Fase F — ProdutoSpec") depois que a Fase D produzir um curso real

@@ -17,7 +17,7 @@ heredoc daquele script nunca soube delas. Medido no repositório:
 E o efeito não é cosmético: `services/sugestoes/apps/core/clients.py` lê as duas
 com `exigir()` **fora** do bloco que traduz falha em tela amigável. Sem elas, a
 porta da Caixa devolve **HTTP 500 em toda visita** — com o deploy verde, porque
-o pipeline nunca toca env (INV-P8, Lei 5). É a família da `armadilhas/097`.
+o pipeline nunca toca env (INV-P8, segredo fica na VPS). É a família da `armadilhas/097`.
 
 O REMÉDIO, E POR QUE ELE É UMA LISTA E NÃO UMA LEITURA
 ------------------------------------------------------

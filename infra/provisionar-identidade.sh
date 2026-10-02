@@ -26,7 +26,7 @@
 # SEGREDOS: as quatro senhas (banco, Django, token do par do funil, token do
 # par da Caixa) são geradas AQUI, dentro da VPS, e gravadas direto nos
 # arquivos. Nenhuma aparece na tela, nenhuma passa por agente, nenhuma entra no
-# Git (INV-P8, Lei 5).
+# Git (INV-P8, segredo fica na VPS).
 #
 # UM TOKEN POR PAR, NUNCA O MESMO NOS DOIS: o degrau que decide quem pode ver
 # e-mail (`TOKENS_COMPLETOS_*`) compara VALORES de token. Se o funil e a Caixa

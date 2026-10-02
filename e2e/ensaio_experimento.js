@@ -106,7 +106,7 @@ try {
 // ---------------------------------------------------------- o leitor do braço
 
 //: As mensagens exatas que este ensaio usa para dizer o que falta — citadas
-//: aqui uma vez só (Lei 3) para o auto-teste e o ensaio de verdade concordarem
+//: aqui uma vez só (um dono por fato) para o auto-teste e o ensaio de verdade concordarem
 //: palavra por palavra.
 var MSG_SEM_BRACO =
   "o slot não tem data-variante-id: experimento não está ativo ou a F8b não integrou";
@@ -193,7 +193,7 @@ async function provaDoLeitorDoBraco(navegador) {
 // ------------------------------------------------------------------ o ensaio
 
 //: O caminho fixo da telemetria (telemetria.js, services/funil/apps/core/
-//: views.py:telemetria_do_navegador). Citado uma vez (Lei 3) para o filtro de
+//: views.py:telemetria_do_navegador). Citado uma vez (um dono por fato) para o filtro de
 //: rede e as esperas de evento concordarem palavra por palavra.
 var CAMINHO_TELEMETRIA = "/telemetria";
 

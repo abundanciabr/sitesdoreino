@@ -21,7 +21,7 @@
 # DESPACHO — EVO-NN: <título curto, em linguagem de resultado>
 
 > **Copie tudo abaixo da linha e cole para o agente.**
-> Criado em <data> · Lote <N> do PLANO-MESTRE · merge: **pista** (emenda da Lei 4)
+> Criado em <data> · Lote <N> do PLANO-MESTRE · merge: **pista**
 > *— se tocar caminho CODEOWNERS, escreva aqui o mandato e a obrigação de
 > anúncio nominal no relatório final.*
 

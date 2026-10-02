@@ -39,7 +39,7 @@ x-celula: &celula
     start_period: 30s
 
 # Processo auxiliar de célula. Não serve HTTP e não tem rota pública: fica só na
-# rede `interna` (Lei 2, muralha de execução). Sem healthcheck — o que ele tem a
+# rede `interna` (muralha de execução). Sem healthcheck — o que ele tem a
 # provar é que não morreu, e disso o `up -d --wait` do deploy já cuida.
 x-processo: &processo
   restart: unless-stopped

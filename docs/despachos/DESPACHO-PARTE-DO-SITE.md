@@ -88,7 +88,7 @@ Use a tabela do §3 e **confirme lendo a configuração real** (`config/urls.py`
 da célula, o mapa do site, o Traefik se a dúvida for de alcance) — nunca
 afirme viabilidade sem ler a configuração (Retrospectiva §8). Parte que
 atravessa células (ex.: rodapé em todas as páginas de todas as células
-públicas): **replique o padrão em cada célula** (Lei 7 — copie o padrão,
+públicas): **replique o padrão em cada célula** (cada célula com os próprios arquivos — copie o padrão,
 nunca importe o arquivo de outra célula), de preferência um PR por célula, e
 declare a escada de PRs na primeira resposta.
 

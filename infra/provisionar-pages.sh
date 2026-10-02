@@ -56,7 +56,7 @@
 #
 # SEGREDOS: a senha do banco e a chave do Django são geradas AQUI, dentro da
 # VPS, e gravadas direto no arquivo. Nenhuma aparece na tela, nenhuma passa por
-# agente, nenhuma entra no Git (INV-P8, Lei 5).
+# agente, nenhuma entra no Git (INV-P8, segredo fica na VPS).
 #
 # IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só
 # nasce se faltar, o prefixo público é PRESERVADO do arquivo vivo, e o env
@@ -271,7 +271,7 @@ echo
 #    Vem ANTES de criar banco ou escrever arquivo, de propósito: recusar aqui
 #    significa que nada foi criado e não há meia-instalação para desfazer.
 #
-#    POR QUE ELE É OBRIGATÓRIO: a plataforma é multissítio (Lei 9), o
+#    POR QUE ELE É OBRIGATÓRIO: a plataforma é multissítio (site é dado), o
 #    `Portfolio` do aluno nasce amarrado a um `site_id`, e a porta única do
 #    isolamento (`do_aluno`) exige o número. Esta célula não tem middleware para
 #    resolver o site pelo Host, e o único lugar onde a resposta existe é o env.
@@ -340,7 +340,7 @@ echo "  número .... $SITE_ID"
 echo
 
 # -----------------------------------------------------------------------------
-# 4. OS SEGREDOS E O BANCO: par isolado, como manda a Lei 2.
+# 4. OS SEGREDOS E O BANCO: par isolado, como manda a muralha de dados.
 # -----------------------------------------------------------------------------
 echo "== 3/4: banco e senha próprios da célula =="
 
@@ -395,7 +395,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='pages_db'" 2>/dev/null
   || psql_super -c "CREATE DATABASE pages_db OWNER pages_user" >/dev/null \
   || parar "não consegui criar o banco pages_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco.
+# A muralha de dados: nenhuma outra célula enxerga este banco.
 psql_super -c "REVOKE ALL ON DATABASE pages_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 echo "  banco e usuário ........ prontos, fechados ao público"

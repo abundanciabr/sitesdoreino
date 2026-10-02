@@ -1,7 +1,7 @@
 #!/bin/sh
 # e2e/postgres-init.sh — roda uma vez, no primeiro boot do container (via
 # docker-entrypoint-initdb.d). Cria um database por célula, todos sob o mesmo
-# usuário "dev" (Lei 2 exige role por célula em produção; aqui é infra
+# usuário "dev" (a muralha de dados exige role por célula em produção; aqui é infra
 # efêmera de teste local, não produção — ver e2e/esqueleto.sh).
 set -e
 

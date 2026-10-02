@@ -6,7 +6,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # LIGAR O PAINEL NA MEDIÇÃO — operação da plataforma.
 #
 # A célula `metricas` (o livro de fatos) guarda a HISTÓRIA dos números da escola,
-# e a `admin` é quem os MOSTRA. Pela Lei 3 o Admin não lê o banco da medição: ele
+# e a `admin` é quem os MOSTRA. Como célula não lê banco de outra, o Admin não lê o banco da medição: ele
 # PERGUNTA, pela porta de leitura, com o contrato congelado
 # (`contracts/metricas.openapi.yaml`).
 # Este roteiro configura os arquivos env diretamente na VPS.

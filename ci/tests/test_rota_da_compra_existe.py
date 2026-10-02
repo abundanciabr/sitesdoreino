@@ -90,7 +90,7 @@ SERVICE_DA_COMPRA = "checkout"
 ENTRYPOINT_PUBLICO = "websecure"
 
 # Domínio que NÃO aparece em regra nenhuma deste arquivo. Existe porque a
-# plataforma é multissítio (Lei 9) e o cabeçalho do `plataforma.yml` promete
+# plataforma é multissítio (site é dado) e o cabeçalho do `plataforma.yml` promete
 # que "domínio novo Modo A (Cloudflare) NÃO toca este arquivo": se a rota da
 # compra ganhasse uma cláusula `Host(...)`, ela morreria em todo domínio novo
 # — em silêncio, e só na hora de vender.
@@ -648,7 +648,7 @@ def test_reprova_entrypoints_ausente():
 
 
 def test_reprova_compra_amarrada_a_um_unico_dominio():
-    # Multissítio (Lei 9): `Host(...)` na rota da compra mata a venda em todo
+    # Multissítio (site é dado): `Host(...)` na rota da compra mata a venda em todo
     # domínio novo Modo A, que por desenho não toca este arquivo.
     amarrada = {**COMPRA_BOA, "rule": "Host(`meshcraft.top`) && PathPrefix(`/api/checkout`)"}
     achados = problemas(_tabela(amarrada))

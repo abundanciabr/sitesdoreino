@@ -73,7 +73,7 @@ eh_placeholder() {  # $1 = valor — verdadeiro se ainda é o texto de exemplo, 
 
 # -----------------------------------------------------------------------------
 # ESCREVER UMA CHAVE — acrescenta ou atualiza, nunca reescreve o arquivo
-# inteiro. Cópia do padrão de `provisionar-porta-de-avisos.sh` (Lei 7: entre
+# inteiro. Cópia do padrão de `provisionar-porta-de-avisos.sh` (entre
 # scripts de infra copia-se o padrão, e ele já foi endurecido por duas rodadas
 # de uso real). $1 arquivo-alvo, $2 arquivo-de-referência (dono/modo),
 # $3 chave, $4 valor.

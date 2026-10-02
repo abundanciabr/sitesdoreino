@@ -6,7 +6,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # LIGAR A CAIXA DE SUGESTÕES DENTRO DO ADMIN — operação da plataforma.
 #
 # `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md` (28/08/2026) mudou a
-# gestão das ideias para `/admin/caixa/`. Pela Lei 3 o Admin não lê o banco da
+# gestão das ideias para `/admin/caixa/`. Como célula não lê banco de outra, o Admin não lê o banco da
 # Caixa: ele PERGUNTA, pelo contrato congelado.
 # Este roteiro configura os arquivos env diretamente na VPS.
 #

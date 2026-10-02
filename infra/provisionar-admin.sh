@@ -30,7 +30,7 @@
 # SEGREDOS: as três credenciais (senha do banco, chave do Django, token do par)
 # são geradas AQUI, dentro da VPS, e gravadas direto nos arquivos. Nenhuma
 # aparece na tela, nenhuma passa por agente, nenhuma entra no Git (INV-P8,
-# Lei 5, `armadilhas/090`).
+# segredo fica na VPS, `armadilhas/090`).
 #
 # AS DUAS CHAVES DO PAR TÊM O MESMO VALOR, e aqui é o contrário do H20:
 # `TOKENS_ACEITOS_ADMIN` prova QUEM chama; `TOKENS_COMPLETOS_ADMIN` decide se
@@ -202,7 +202,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null
   || psql_super -c "CREATE DATABASE admin_db OWNER admin_user" >/dev/null \
   || parar "não consegui criar o banco admin_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco. Aqui ele
+# A muralha de dados: nenhuma outra célula enxerga este banco. Aqui ele
 # guarda a AUDITORIA — quem mexeu em quê — e é justamente o banco que um
 # invasor gostaria de editar para apagar o próprio rastro.
 psql_super -c "REVOKE ALL ON DATABASE admin_db FROM PUBLIC" >/dev/null \

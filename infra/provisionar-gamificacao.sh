@@ -15,7 +15,7 @@
 #
 # SEGREDOS: a senha do banco, a chave do Django e o token do par são gerados
 # AQUI, dentro da VPS, e gravados direto nos arquivos. Nenhum aparece na tela,
-# nenhum passa por agente, nenhum entra no Git (INV-P8, Lei 5).
+# nenhum passa por agente, nenhum entra no Git (INV-P8, segredo fica na VPS).
 #
 # O CAMPO QUE ESTE SCRIPT SE RECUSA A DEIXAR VAZIO: `SITE_ID`
 # -----------------------------------------------------------
@@ -151,7 +151,7 @@ echo
 #    significa que nada foi criado e não há meia-instalação para desfazer.
 #
 #    A regra do host é a MESMA de `semear-caixa.sh`, e ela existe porque a
-#    plataforma é multissítio (Lei 9): em 27/08/2026 a produção já servia DOIS
+#    plataforma é multissítio (site é dado): em 27/08/2026 a produção já servia DOIS
 #    hosts. Com argumento, usa o pedido e PARA se ele não existir; sem
 #    argumento, só segue se houver exatamente UM site ativo. "O primeiro da
 #    lista" seria o chute que amarra o XP de todo mundo ao site errado.
@@ -214,7 +214,7 @@ echo "  número .... $SITE_ID"
 echo
 
 # -----------------------------------------------------------------------------
-# 4. OS SEGREDOS E O BANCO — par isolado, como manda a Lei 2.
+# 4. OS SEGREDOS E O BANCO — par isolado, como manda a muralha de dados.
 # -----------------------------------------------------------------------------
 echo "== 3/5 — banco e senha próprios da célula =="
 # O token do par é REAPROVEITADO se já existir: gerar um novo quando há um em uso
@@ -234,7 +234,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='gamificacao_db'" 2>/de
   || psql_super -c "CREATE DATABASE gamificacao_db OWNER gamificacao_user" >/dev/null \
   || parar "não consegui criar o banco gamificacao_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco.
+# A muralha de dados: nenhuma outra célula enxerga este banco.
 psql_super -c "REVOKE ALL ON DATABASE gamificacao_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 echo "  banco e usuário ........ prontos, fechados ao público"

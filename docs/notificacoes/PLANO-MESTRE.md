@@ -109,13 +109,13 @@ As três saídas honestas, com o preço de cada uma:
 |---|---|---|
 | **A. Caixa central pura** | a `sugestoes` só publica o evento; o aviso mora na célula nova | perde-se o aviso transacional; a Caixa passa a depender do fio para a própria tela |
 | **B. Local + central (espelho)** | a Caixa mantém o `Aviso` dela (transacional) **e** o fato vai ao fio para a caixa central | duas verdades sobre o mesmo aviso; "lido" num lugar não é "lido" no outro sem trabalho extra |
-| **C. Central com escrita síncrona** | a `sugestoes` chama a célula de notificações por HTTP dentro da transação | acopla duas células no caminho crítico; a célula de notificações fora do ar **impede mudar status**. Contraria a Lei 3 |
+| **C. Central com escrita síncrona** | a `sugestoes` chama a célula de notificações por HTTP dentro da transação | acopla duas células no caminho crítico; a célula de notificações fora do ar **impede mudar status**. Contraria as muralhas da célula |
 
 **Recomendação: A, com a garantia reescrita.** A promessa vira *"a mudança de status
 e o fato notificável nascem na mesma transação; a entrega é em segundos, e é
 rastreável"* — e o guarda muda junto, medindo a outbox em vez da tabela de avisos. **B
 parece o mais seguro e é o mais caro**: duas verdades sobre "lido" é o tipo de dívida
-que só aparece quando o aluno reclama que já tinha lido. **C está fora** — é a Lei 3.
+que só aparece quando o aluno reclama que já tinha lido. **C está fora** — fere as muralhas da célula.
 
 ---
 
@@ -125,7 +125,7 @@ que só aparece quando o aluno reclama que já tinha lido. **C está fora** — 
 |---|---|---|
 | **Cada célula com a sua, e o site agrega** | zero célula nova; nada muda no que existe | o site faria **uma chamada HTTP por célula** só para desenhar um sino, e o custo cresce a cada célula nova. Some com o "uma consulta" e vira latência no caminho de toda página |
 | **Dentro da `identidade`** | ela já tem contrato que o site consome; zero célula nova | contraria a própria lei dela, escrita no contrato: *"A resposta desta API **RECONHECE** uma pessoa; ela nunca AUTORIZA nada"*. Dar a ela estado de domínio a transforma em outra coisa |
-| **Célula `notificacoes` própria** ✅ | um lugar, um contrato, uma consulta; cresce sem tocar em quem publica; banco isolado como manda a Lei 3 | **cria célula nova** — decisão do mantenedor, com gênese, contrato congelado e passo de provisionamento na VPS |
+| **Célula `notificacoes` própria** ✅ | um lugar, um contrato, uma consulta; cresce sem tocar em quem publica; banco isolado (célula não importa código nem lê banco de outra) | **cria célula nova** — decisão do mantenedor, com gênese, contrato congelado e passo de provisionamento na VPS |
 
 **Recomendação: célula `notificacoes` própria.** O argumento decisivo não é elegância,
 é o *"serão muitas"* dele: um sino que o site desenha em toda página tem de custar
@@ -216,7 +216,7 @@ schema (`v2`), com os consumidores migrando em PRs seguintes — nunca no mesmo.
 Os `Aviso` que já existiam antes de 26/08/2026 foram reemitidos como cartas
 `notificacao.devida.v1` por uma migration de dados
 (`0008_backfill_cartas_dos_avisos_existentes.py`) — o dado atravessou pelo
-fio, sem ninguém ler o banco alheio (Lei 2), exatamente como planejado
+fio, sem ninguém ler o banco alheio (muralha de dados), exatamente como planejado
 acima. Decisões que ficaram registradas no PR e em
 `services/sugestoes/LICOES.md`: `ator_id` nasce `null` em toda carta
 retroativa (o `Aviso` não guarda quem moderou); `origem_event_id` é
@@ -280,7 +280,7 @@ pode cair porque a Caixa está reiniciando"*), e vale igual aqui.
 > semanas na tela de avisos da própria Caixa. **O rollout desta fase precisa
 > marcar essas notificações como LIDAS antes (ou no mesmo passo) de expor o
 > sino** — dentro do PRÓPRIO banco da `notificacoes`, sem esta ou qualquer
-> outra célula tocar naquele banco por fora (Lei 2). Isto não é seu para
+> outra célula tocar naquele banco por fora (muralha de dados). Isto não é seu para
 > resolver agora se você está lendo isto fora da Fase 5; é dívida
 > documentada, não esquecimento.
 
@@ -368,7 +368,7 @@ porta segue fechada, e nenhuma sessão futura deve reabri-la por conta própria.
 | Risco | Antídoto |
 |---|---|
 | **Fase 1 sai errada e o id da plataforma some** — todo o resto herda o defeito | teste-guarda de que toda identidade cunhada depois da migração tem o id da plataforma, e relatório do que ficou sem |
-| **A caixa central vira dependência do caminho crítico** e derruba a Caixa | a `sugestoes` publica no fio e segue; **nunca** chama a célula nova por HTTP dentro da transação (é a Lei 3, e é a saída C recusada na §3) |
+| **A caixa central vira dependência do caminho crítico** e derruba a Caixa | a `sugestoes` publica no fio e segue; **nunca** chama a célula nova por HTTP dentro da transação (fere as muralhas da célula, e é a saída C recusada na §3) |
 | **O sino quebra o site** | falha aberta na Fase 5, com guarda que prova a página abrindo com o serviço de notificações fora do ar |
 | **Texto congelado num idioma** | §5.1 — dado, nunca frase. Irreversível se errado |
 | **Contador lento quando o produto der certo** | §5.2 — contador O(1) e teste de volume desde o primeiro PR |
@@ -408,5 +408,5 @@ dela em §6.
 `docs/caixa-de-sugestoes/DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`
 (§2 — a decisão que originou este plano), `DECISAO-EVO-01-identidade.md` §3 (o e-mail
 numa linha só), `DECISAO-celula-de-identidade.md`, `DECISAO-onde-mora-a-sessao.md` §4
-(falha aberta), `CONSTITUICAO.md` Lei 3, `RITOS.md` §3 (Rito de Contrato),
+(falha aberta), a regra "célula não importa código nem lê banco de outra", `RITOS.md` §3 (Rito de Contrato),
 `RUNBOOK-LOTES.md` §7 (o que nunca entra num lote), `armadilhas/115` e `/116`.*

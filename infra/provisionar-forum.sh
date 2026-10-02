@@ -15,7 +15,7 @@
 #
 # SEGREDOS: as senhas e os tokens são gerados AQUI, dentro da VPS, e gravados
 # direto nos arquivos. Nenhum aparece na tela, nenhum passa por agente, nenhum
-# entra no Git (INV-P8, Lei 5).
+# entra no Git (INV-P8, segredo fica na VPS).
 #
 # ELE RECARREGA DUAS CÉLULAS no fim (`identidade` e `alunos`), e precisa: as
 # chaves novas são escritas no ARQUIVO de env, e um container só relê o env dele
@@ -173,7 +173,7 @@ SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 
 # -----------------------------------------------------------------------------
-# 4. O BANCO — par isolado, como manda a Lei 2.
+# 4. O BANCO — par isolado, como manda a muralha de dados.
 # -----------------------------------------------------------------------------
 psql_super -c "ALTER ROLE forum_user LOGIN PASSWORD '$SENHA_DB'" >/dev/null 2>&1 \
   || psql_super -c "CREATE ROLE forum_user LOGIN PASSWORD '$SENHA_DB'" >/dev/null \
@@ -183,7 +183,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='forum_db'" 2>/dev/null
   || psql_super -c "CREATE DATABASE forum_db OWNER forum_user" >/dev/null \
   || parar "não consegui criar o banco forum_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco.
+# A muralha de dados: nenhuma outra célula enxerga este banco.
 psql_super -c "REVOKE ALL ON DATABASE forum_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 

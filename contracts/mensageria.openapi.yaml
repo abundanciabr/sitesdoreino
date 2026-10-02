@@ -34,7 +34,7 @@
 # 1. NÃO SAI DADO PESSOAL. Nem e-mail, nem nome, nem telefone. Só o
 #    `destinatario_id`, que é o id OPACO de plataforma emitido pela `identidade`
 #    (`DECISAO-EVO-01` §3). Esta célula sequer guarda o e-mail de ninguém.
-# 2. TODA OPERAÇÃO É ESCOPADA POR `site_id` (CONSTITUICAO Lei 9). Jornada de
+# 2. TODA OPERAÇÃO É ESCOPADA POR `site_id` (multissítio: site é dado). Jornada de
 #    outro site é 404, e a inscrição de outro site é 404 mesmo com o UUID certo
 #    na mão.
 # 3. FALHA FECHADA. Id desconhecido é 404 e parâmetro faltando é 422 — nunca uma

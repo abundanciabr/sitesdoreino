@@ -21,7 +21,7 @@
 #
 # SEGREDOS: as duas senhas (banco e Django) são geradas AQUI, dentro da VPS, e
 # gravadas direto no arquivo. Nenhuma aparece na tela, nenhuma passa por agente,
-# nenhuma entra no Git (INV-P8, Lei 5).
+# nenhuma entra no Git (INV-P8, segredo fica na VPS).
 #
 # IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só nasce
 # se faltar, e o env antigo vira `.bak-<epoch>` antes de ser reescrito. ATENÇÃO:
@@ -114,7 +114,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='notificacoes_db'" 2>/d
   || psql_super -c "CREATE DATABASE notificacoes_db OWNER notificacoes_user" >/dev/null \
   || parar "não consegui criar o banco notificacoes_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco.
+# A muralha de dados: nenhuma outra célula enxerga este banco.
 psql_super -c "REVOKE ALL ON DATABASE notificacoes_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 

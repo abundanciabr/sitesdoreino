@@ -20,11 +20,11 @@
 #
 # SEGREDOS: a senha do banco, a chave do Django e os tokens dos pares são
 # gerados AQUI, dentro da VPS, e gravados direto nos arquivos. Nenhum aparece na
-# tela, nenhum passa por agente, nenhum entra no Git (INV-P8, Lei 5).
+# tela, nenhum passa por agente, nenhum entra no Git (INV-P8, segredo fica na VPS).
 #
 # O CAMPO QUE ESTE SCRIPT SE RECUSA A DEIXAR VAZIO: `SITE_ID`
 # -----------------------------------------------------------
-# A plataforma é multissítio (Lei 9 / [INV-P11]) e toda entidade desta célula
+# A plataforma é multissítio (site é dado / [INV-P11]) e toda entidade desta célula
 # nasce amarrada a um site. Esta célula não tem middleware para resolver o site
 # pelo Host, e o contrato dela ainda nem congelou — o único lugar onde a
 # resposta existe é o env.
@@ -164,7 +164,7 @@ echo
 #    significa que nada foi criado e não há meia-instalação para desfazer.
 #
 #    A regra do host é a MESMA de `provisionar-gamificacao.sh`, e ela existe
-#    porque a plataforma é multissítio (Lei 9): em 27/08/2026 a produção já
+#    porque a plataforma é multissítio (site é dado): em 27/08/2026 a produção já
 #    servia DOIS hosts. Com argumento, usa o pedido e PARA se ele não existir;
 #    sem argumento, só segue se houver exatamente UM site ativo. "O primeiro da
 #    lista" seria o chute que amarra a fila de todo mundo ao site errado.
@@ -226,7 +226,7 @@ echo "  número .... $SITE_ID"
 echo
 
 # -----------------------------------------------------------------------------
-# 4. OS SEGREDOS E O BANCO — par isolado, como manda a Lei 2.
+# 4. OS SEGREDOS E O BANCO — par isolado, como manda a muralha de dados.
 # -----------------------------------------------------------------------------
 echo "== 3/5 — banco e senha próprios da célula =="
 # Os tokens dos pares são REAPROVEITADOS se já existirem: gerar novos quando há
@@ -265,7 +265,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='encomendas_db'" 2>/dev
   || psql_super -c "CREATE DATABASE encomendas_db OWNER encomendas_user" >/dev/null \
   || parar "não consegui criar o banco encomendas_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco.
+# A muralha de dados: nenhuma outra célula enxerga este banco.
 psql_super -c "REVOKE ALL ON DATABASE encomendas_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 echo "  banco e usuário ........ prontos, fechados ao público"

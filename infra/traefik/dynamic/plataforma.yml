@@ -41,7 +41,7 @@ http:
     # O conserto tentador seria trocar `frameDeny` por `SAMEORIGIN` na cadeia
     # `seguranca` — que é compartilhada por TODAS as células, `checkout` e
     # `pagamentos` inclusive. Afrouxar a proteção da plataforma inteira para
-    # atender uma célula é o oposto do raio de explosão de 1 célula (Lei 2).
+    # atender uma célula é o oposto do raio de explosão de 1 célula (muralhas da célula).
     #
     # A defesa moderna equivalente (CSP `frame-ancestors 'self'`) vem do Django,
     # na própria célula (PR 3). As duas precisam concordar: `X-Frame-Options`
@@ -212,7 +212,7 @@ http:
       # 1 do catch-all do funil.
       # `Host(...)` explicito, ao contrario das outras rotas de pagina: o
       # `redirect_uri` que vai ao Google e montado a partir do Host da
-      # REQUISICAO (Lei 9, multissitio) e o Google so aceita o endereco
+      # REQUISICAO (multissitio: site e dado) e o Google so aceita o endereco
       # cadastrado no console — que hoje existe para `meshcraft.top` e mais
       # nenhum. Sem esta clausula, qualquer dominio apontado para esta VPS
       # serviria a tela de login da plataforma (o login falharia no Google,

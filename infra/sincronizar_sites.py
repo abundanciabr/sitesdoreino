@@ -1,4 +1,4 @@
-# infra/sincronizar_sites.py — a Receita R11 mecanizada (Lei 1: mecanismo > documento).
+# infra/sincronizar_sites.py — a Receita R11 mecanizada (mecanismo, não documento).
 # Roda DENTRO do container do catalogo, invocado pelo deploy-infra assim:
 #   SITES_JSON="$(cat sites.json)" docker compose exec -T -e SITES_JSON \
 #     catalogo python manage.py shell -c "$(cat sincronizar_sites.py)"

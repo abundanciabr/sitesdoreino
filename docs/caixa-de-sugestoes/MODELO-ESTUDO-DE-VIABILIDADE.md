@@ -63,7 +63,7 @@ decide. As perguntas que costumam decidir bem:*
 - *que preocupação nova ela traz? (disco, moderação de conteúdo, dado pessoal,
   dinheiro) — preocupação nova gosta de canto próprio*
 - *que fato ela passa a guardar, e esse fato já mora em algum lugar? (dois
-  donos do mesmo fato é o pecado 3 da Lei 3)*
+  donos do mesmo fato quebra "célula não importa código nem lê banco de outra")*
 
 ## §5 A escada
 

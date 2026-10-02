@@ -21,7 +21,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # POR QUE UM SCRIPT NA VPS, E NÃO UMA MIGRATION AUTOMÁTICA
 # --------------------------------------------------------
 # O quadro é amarrado ao `site_id` — o UUID que a célula `catalogo` cunha para
-# cada host (Lei 9). Esse número só existe no banco da produção: não está em
+# cada host (site é dado). Esse número só existe no banco da produção: não está em
 # `infra/sites.json` (que é declarativo, por host), e a `sugestoes` ainda não
 # resolve Host→Site sozinha (CONV-SITE é despacho próprio; ver a docstring de
 # `quadro_atual`). Uma migration que chutasse o valor amarraria toda a Caixa ao
@@ -30,7 +30,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # COMO EXECUTAR NA VPS (DENTRO da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-caixa.sh -o /tmp/s.sh && bash /tmp/s.sh meshcraft.top
 #
-# O HOST É ARGUMENTO porque a plataforma é multissítio (Lei 9): em 27/08/2026 a
+# O HOST É ARGUMENTO porque a plataforma é multissítio (site é dado): em 27/08/2026 a
 # produção já servia meshcraft.top E basileiatoutheou.org. Sem o argumento, o
 # script só segue se houver exatamente UM site ativo; com dois ou mais ele lista
 # e PARA, em vez de amarrar a Caixa ao site errado em silêncio.
@@ -125,7 +125,7 @@ listar_sites() {
   done
 }
 
-# HOST COMO ARGUMENTO — a plataforma é multissítio (Lei 9) e em 27/08/2026 a
+# HOST COMO ARGUMENTO — a plataforma é multissítio (site é dado) e em 27/08/2026 a
 # produção já tinha DOIS sites ativos: meshcraft.top e basileiatoutheou.org. A
 # primeira versão deste script parou aqui, corretamente, em vez de escolher.
 #

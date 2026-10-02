@@ -24,7 +24,7 @@
 #
 # SEGREDOS: as três senhas (banco, Django, token do par) são geradas AQUI,
 # dentro da VPS, e gravadas direto nos arquivos. Nenhuma aparece na tela,
-# nenhuma passa por agente, nenhuma entra no Git (INV-P8, Lei 5). Os dois
+# nenhuma passa por agente, nenhuma entra no Git (INV-P8, segredo fica na VPS). Os dois
 # valores do Google vêm do mantenedor porque só ele tem acesso ao console de lá
 # (DECISAO-EVO-01 §6).
 #

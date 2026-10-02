@@ -12,7 +12,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # `forum-topico-criado` e `forum-resposta-aceita` têm tabela-espelho DENTRO da
 # gamificação (escrita independente da regra estar ligada), então aquele
 # script só fala com UM serviço. Mensagem não tem espelho: o único lugar onde
-# o fato ainda existe é o `Mensagem` do fórum, célula dona dele (Lei 3). Este
+# o fato ainda existe é o `Mensagem` do fórum, célula dona dele (célula não lê banco de outra). Este
 # script fala com DOIS serviços, no MESMO host, e encadeia a saída de um na
 # entrada do outro — sem porta nova entre as duas células, sem par de tokens
 # novo para provisionar.

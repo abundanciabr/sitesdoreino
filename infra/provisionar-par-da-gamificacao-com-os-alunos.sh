@@ -7,7 +7,7 @@
 # regra do grupo e do desafio. Quem sabe da matrícula é a célula `alunos`, e ela
 # responde por e-mail; o e-mail de quem clicou, só a `identidade` entrega.
 # Falar com outra célula exige credencial, e credencial não viaja por esteira
-# (INV-P8, Lei 5): o segredo nasce AQUI, dentro da VPS, e é gravado direto nos
+# (INV-P8, segredo fica na VPS): o segredo nasce AQUI, dentro da VPS, e é gravado direto nos
 # arquivos. Ele não aparece na tela, não passa por agente nenhum e não entra no
 # Git (`armadilhas/090`).
 #

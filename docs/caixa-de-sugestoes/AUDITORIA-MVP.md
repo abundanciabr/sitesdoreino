@@ -318,7 +318,7 @@ alguém apagar `apps.sugestoes` do `INSTALLED_APPS` — sem isso a varredura
 passaria verde por não ter nada a inspecionar.
 
 Nota de leitura, para quem chegar aqui achando que achou uma violação:
-`Sugestao.autor → Identidade` **é** ForeignKey de verdade e **não** fura a Lei 3.
+`Sugestao.autor → Identidade` **é** ForeignKey de verdade e **não** fura "célula não lê banco de outra".
 `Identidade` mora no mesmo `sugestoes_db`. O que o Postgres não sustenta é
 constraint **entre bancos**; dentro do banco, integridade referencial é de graça.
 

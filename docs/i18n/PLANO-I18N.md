@@ -339,7 +339,7 @@ site (D3) — hoje por `idiomas.dados_seo()`, nunca à mão:
   precisão por site é impossível no gateway e já é o padrão CONV-SITE).
 - **SEM decapar o prefixo no gateway** — path completo até a célula (regime
   real e já pago do repo, ARMADILHAS §4.10); a célula copia o resolver do
-  funil (Lei 7). Rejeitado o contrato `X-Locale`/`X-Language` por strip:
+  funil (cada célula com os próprios arquivos). Rejeitado o contrato `X-Locale`/`X-Language` por strip:
   Traefik stock não injeta header com valor dinâmico do path, e o strip
   criaria dois regimes de path convivendo.
 - **Rotas de máquina nunca se localizam:** `/api/**`, `/webhooks/**`,

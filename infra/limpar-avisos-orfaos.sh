@@ -17,8 +17,8 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # POR QUE PRECISA DE DUAS CÉLULAS
 # --------------------------------
 # Quem sabe QUAIS ideias foram apagadas é a `sugestoes`. Quem guarda os recados
-# de toda a plataforma é a `notificacoes`. Nenhuma alcança o banco da outra
-# (Lei 3), e o contrato entre elas não tem operação de retirada — mudar isso é
+# de toda a plataforma é a `notificacoes`. Nenhuma alcança o banco da outra,
+# e o contrato entre elas não tem operação de retirada — mudar isso é
 # um Rito. Então este script faz o papel de carteiro: pergunta a lista de um
 # lado, entrega do outro.
 #

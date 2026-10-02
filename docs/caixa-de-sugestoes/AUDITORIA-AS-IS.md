@@ -47,7 +47,7 @@
 
 **Consequência:** o pressuposto da spec §3 vale. A restrição "nenhuma FK para
 fora da célula" é estrutural mesmo. `sugestoes_db` + `sugestoes_user` entram no
-provisionamento no Lote 2 (passo do mantenedor, via console — Lei 5).
+provisionamento no Lote 2 (rodado na VPS; o segredo nasce e fica lá).
 
 ## Q2 — Como um aluno se autentica hoje? ❌ NÃO SE AUTENTICA — o maior achado
 

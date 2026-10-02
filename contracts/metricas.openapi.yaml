@@ -41,7 +41,7 @@
 #    gravado na recepção, no fuso em que esta casa decide a que mês uma pessoa
 #    pertence. Um fato das 22h do dia 30 conta no dia 30 (`armadilhas/099`).
 #
-# 5. **`countFacts` e `listCoverage` exigem `site_id` (Lei 9); `countFunnel`
+# 5. **`countFacts` e `listCoverage` exigem `site_id` (multissítio: site é dado); `countFunnel`
 #    aceita `site_id` OPCIONAL.** Duas famílias de operação ficam de fora do
 #    escopo por site, e as duas exceções são honestas. A fila de eventos
 #    mortos NÃO é escopada por site porque um evento morto é um envelope que

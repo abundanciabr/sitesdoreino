@@ -22,7 +22,7 @@
 #
 # SEGREDOS: a senha do banco e a chave do Django são geradas AQUI, dentro da
 # VPS, e gravadas direto no arquivo. Nenhuma aparece na tela, nenhuma passa por
-# agente, nenhuma entra no Git (INV-P8, Lei 5).
+# agente, nenhuma entra no Git (INV-P8, segredo fica na VPS).
 #
 # IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só nasce
 # se faltar, e o env antigo vira `.bak-<epoch>` antes de ser reescrito. ATENÇÃO:
@@ -115,7 +115,7 @@ else echo "  env/metricas.env .... não existe"; fi
 echo
 
 # -----------------------------------------------------------------------------
-# 3. OS SEGREDOS E O BANCO — par isolado, como manda a Lei 2.
+# 3. OS SEGREDOS E O BANCO — par isolado, como manda a muralha de dados.
 # -----------------------------------------------------------------------------
 echo "== 2/3 — banco e senha próprios da célula =="
 SENHA_DB="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
@@ -130,7 +130,7 @@ psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='metricas_db'" 2>/dev/n
   || psql_super -c "CREATE DATABASE metricas_db OWNER metricas_user" >/dev/null \
   || parar "não consegui criar o banco metricas_db."
 
-# A muralha de dados (Lei 2): nenhuma outra célula enxerga este banco.
+# A muralha de dados: nenhuma outra célula enxerga este banco.
 psql_super -c "REVOKE ALL ON DATABASE metricas_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 echo "  banco e usuário ........ prontos, fechados ao público"

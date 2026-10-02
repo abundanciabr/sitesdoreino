@@ -26,7 +26,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # ou `root@srv…`, nunca `PS C:\>`):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-quiz.sh -o /tmp/s.sh && bash /tmp/s.sh meshcraft.top
 #
-# O HOST É ARGUMENTO PORQUE A PLATAFORMA É MULTISSÍTIO (Lei 9). A produção
+# O HOST É ARGUMENTO PORQUE A PLATAFORMA É MULTISSÍTIO (SITE É DADO). A produção
 # serve meshcraft.top E basileiatoutheou.org, e outros virão. Rodar para um site
 # não toca no outro: tudo que este script lê e escreve é filtrado pelo site
 # pedido. Sem host não há palpite: o script lista os ativos e PARA.

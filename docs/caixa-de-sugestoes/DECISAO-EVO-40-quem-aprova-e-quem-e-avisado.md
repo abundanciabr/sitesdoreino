@@ -113,7 +113,7 @@ não uma extensão improvisada da tela de avisos.**
 ## 3. O que isto exige do mantenedor
 
 **Um passo, uma vez:** registrar o e-mail dele em `SUGESTOES_APROVADORES` no
-`env/sugestoes.env` da VPS. Env **nunca** viaja por pipeline (INV-P8, Lei 5 — o
+`env/sugestoes.env` da VPS. Env **nunca** viaja por pipeline (INV-P8, segredo fica na VPS — o
 `deploy-infra.yml` declara que jamais toca `infra/env/` nem
 `/opt/plataforma/env/`), então essa linha só existe se ele a puser lá.
 

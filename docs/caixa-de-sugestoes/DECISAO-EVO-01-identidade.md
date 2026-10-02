@@ -44,7 +44,7 @@ O passo a passo, do clique até estar dentro:
 4. **Tem matrícula** ⇒ a `sugestoes` cunha (ou recupera) a identidade interna dessa
    pessoa e abre a sessão. **Não tem** ⇒ tela explicativa (§5), sem criar nada.
 
-**Lei 3 respeitada:** `sugestoes` NUNCA lê o banco de `alunos`. Pergunta por HTTP, pelo
+**Célula não lê banco de outra, respeitado:** `sugestoes` NUNCA lê o banco de `alunos`. Pergunta por HTTP, pelo
 contrato, como `leads` e `checkout` já fazem (padrão R2, cliente com timeout explícito).
 
 ---
@@ -152,7 +152,7 @@ No **Lote 2** (quando a Caixa for para a VPS), e só nele:
 2. Colar os dois em `/opt/plataforma/env/sugestoes.env`, junto da lista de staff.
 
 Vai chegar como **um bloco único de colar, fail-closed, com a janela rotulada**
-(`CLAUDE.md`). Segredo nunca passa pelo agente (INV-P8, Lei 5).
+(`CLAUDE.md`). Segredo nunca passa pelo agente (INV-P8, segredo fica na VPS).
 
 Até lá, em desenvolvimento e no CI, a entrada pelo Google é **simulada** — o teste não
 chama o Google de verdade. Nenhum despacho fica bloqueado esperando este passo.

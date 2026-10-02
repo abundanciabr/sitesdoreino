@@ -45,7 +45,7 @@ REVOKE ALL ON DATABASE mensageria_db FROM PUBLIC;
 -- sugestoes (a Caixa de Sugestões) -------------------------------------------
 -- Guarda dado pessoal de aluno (e-mail da Identidade — DECISAO-EVO-01 §3), por
 -- isso o par isolado vale dobrado aqui: nem `alunos` lê este banco, nem esta
--- célula lê o de `alunos` (Lei 3 — a matrícula se consulta por HTTP).
+-- célula lê o de `alunos` (célula não lê banco de outra — a matrícula se consulta por HTTP).
 CREATE ROLE sugestoes_user LOGIN PASSWORD 'TROQUE_sugestoes';
 CREATE DATABASE sugestoes_db OWNER sugestoes_user;
 REVOKE ALL ON DATABASE sugestoes_db FROM PUBLIC;
@@ -64,7 +64,7 @@ REVOKE ALL ON DATABASE identidade_db FROM PUBLIC;
 -- valor antes (DECISAO-celula-admin §4). É justamente o banco que alguém com
 -- acesso indevido gostaria de editar para apagar o próprio rastro, então o par
 -- isolado vale dobrado aqui. A área admin também não lê o banco de NINGUÉM:
--- métricas entram por HTTP, com token de leitura (Lei 3).
+-- métricas entram por HTTP, com token de leitura (célula não lê banco de outra).
 CREATE ROLE admin_user LOGIN PASSWORD 'TROQUE_admin';
 CREATE DATABASE admin_db OWNER admin_user;
 REVOKE ALL ON DATABASE admin_db FROM PUBLIC;
