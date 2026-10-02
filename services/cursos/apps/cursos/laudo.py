@@ -12,8 +12,8 @@ A ORDEM DAS VALIDAÇÕES
 ---------------------------------------------
 `emitir()` valida NESTA ordem, para que o 422 diga a causa MAIS ESPECÍFICA
 primeiro: (1) a rubrica completa, uma nota+frase por critério; (2) as
-forças escritas, sem elogios genéricos; (3) as mudanças escritas, com aulas
-que existem no curso; (4) a decisão está no vocabulário fechado
+forças escritas, sem elogios genéricos; (3) as mudanças escritas, com aula
+válida quando a professora a indicar; (4) a decisão está no vocabulário fechado
 ([INV-CUR-L2]); (5) `aberto_com_ajuste` exige o ajuste feito; (6) `devolvido`
 exige data de retorno de amanhã em diante ([INV-CUR-L1]). A pergunta de amanhã
 de manhã é opcional. Só depois de as validações passarem é que qualquer linha
@@ -115,6 +115,9 @@ def _validar_mudanca(curso, mudanca: Any, *, obrigatoria: bool) -> dict | list:
     for item in itens:
         texto = str(item.get("texto") or "").strip()
         aula_id = item.get("aula_id")
+        if aula_id in (None, ""):
+            limpas.append({"texto": texto})
+            continue
         try:
             existe = Aula.objects.filter(pk=aula_id, curso=curso).exists()
         except (TypeError, ValueError):

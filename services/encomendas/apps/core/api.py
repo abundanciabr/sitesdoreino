@@ -42,7 +42,7 @@ from ninja.errors import HttpError
 from apps.core.auth import exigir_grau_de_escrita
 from apps.core.sessao import ConfiguracaoAusente, site_desta_instalacao
 from apps.encomendas import espera, mural
-from apps.encomendas.models import CHAVES_DE_PARAMETRO, TAMANHO_MINIMO_DO_MOTIVO
+from apps.encomendas.models import CHAVES_DE_PARAMETRO
 from apps.encomendas.models import Encomenda as EncomendaModel
 from apps.encomendas.models import MudancaDeStatus as MudancaDeStatusModel
 from apps.encomendas.models import Parametro as ParametroModel
@@ -101,7 +101,7 @@ class MudancaDeParametro(Schema):
     meio."""
 
     valor: str
-    motivo: str
+    motivo: str = ""
     quem: str
 
 
@@ -276,14 +276,14 @@ def listar_parametros(request):
         503: Erro,
     },
     operation_id="setParameter",
-    summary="Muda um parametro acrescentando uma linha nova com motivo",
+    summary="Muda um parametro acrescentando uma linha nova ao historico",
 )
 def mudar_parametro(request, chave: str, dados: MudancaDeParametro):
     """Acrescenta uma linha. **Nunca reescreve a que está valendo.**
 
     O `UPDATE` é recusado pelo PostgreSQL, por gatilho, então "nunca reescreve"
     não é uma promessa deste arquivo. O que este arquivo garante é o resto: o
-    motivo escrito, o autor nomeado e o valor dentro do tipo da chave.
+    autor nomeado, o motivo opcional e o valor dentro do tipo da chave.
 
     Chave desconhecida é 404: o vocabulário é fechado e nasce no código da
     célula, nunca pela porta.
@@ -293,12 +293,6 @@ def mudar_parametro(request, chave: str, dados: MudancaDeParametro):
     if chave not in CHAVES_DE_PARAMETRO:
         raise HttpError(404, f"nao existe parametro chamado {chave!r} nesta celula")
     motivo = dados.motivo.strip()
-    if len(motivo) < TAMANHO_MINIMO_DO_MOTIVO:
-        raise HttpError(
-            400,
-            f"escreva o motivo da mudanca com pelo menos {TAMANHO_MINIMO_DO_MOTIVO} "
-            "caracteres: e o rastro que a proxima pessoa vai ler daqui a seis meses",
-        )
     quem = dados.quem.strip()
     if not quem:
         raise HttpError(400, "diga quem esta mudando: mudanca de parametro tem autor")

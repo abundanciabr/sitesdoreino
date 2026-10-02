@@ -113,17 +113,17 @@ pedindo um rascunho em que a IA tentou responder as três.
 
   <section class="mudanca">
     <h2>Mudança para a próxima entrega{% if sugestao.mudanca.texto %} <span class="sugerido">SUGERIDO pela IA</span>{% endif %}</h2>
-    <p class="miudo">Se for devolver, indique o que mudar e a aula onde se aprende. Se o trabalho está aprovado, não precisa inventar mudanças.</p>
+    <p class="miudo">Se for devolver, indique o que mudar. A aula onde se aprende é opcional. Se o trabalho está aprovado, não precisa inventar mudanças.</p>
     <label>O que muda
       <textarea name="mudanca_texto" rows="3">{{ enviado.mudanca_texto }}</textarea>
     </label>
-    <label>Onde se aprende
+    <label>Onde se aprende (opcional)
       <select name="mudanca_aula">
-        <option value="">Escolha a aula</option>
+        <option value="">Sem aula de referência</option>
         {% for uma_aula in aulas %}<option value="{{ uma_aula.id }}"{% if uma_aula.id|stringformat:"s" == enviado.mudanca_aula %} selected{% endif %}>{{ uma_aula.numero }} · {{ uma_aula.titulo }}</option>{% endfor %}
       </select>
     </label>
-    <label>Outras mudanças (opcional; uma por linha, número da aula | texto)
+    <label>Outras mudanças (opcional; uma por linha; número da aula | texto se houver referência)
       <textarea name="mudancas_adicionais" rows="3" placeholder="E07 | Revisar a escala da peça">{{ enviado.mudancas_adicionais }}</textarea>
     </label>
   </section>

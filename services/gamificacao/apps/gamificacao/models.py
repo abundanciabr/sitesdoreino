@@ -1464,9 +1464,9 @@ class TarefaComunitaria(models.Model):
     automática cai pela própria conta, e dá-la por tarefa desmentiria o critério
     que `/conquistas/medalhas` mostra.
 
-    `responsavel_nome` existe porque esta célula não sabe nome de ninguém: o
-    espelho `Pessoa` guarda o id opaco, e mostrar um id ao aluno não diz quem
-    vai olhar o trabalho dele.
+    `responsavel_nome` congela o texto que o aluno vê: usa o nome de exibição
+    do espelho `Pessoa` quando disponível, ou uma identificação honesta da
+    equipe; quem publica ainda pode escrever um nome para exibição.
     """
 
     site_id = id_do_site()

@@ -281,17 +281,22 @@ def test_a_recusa_da_celula_tambem_deixa_rastro(db):
     assert linha.desfecho == Registro.RECUSADO_PELA_CELULA
 
 
+@pytest.mark.parametrize("motivo", [None, "   ", "ajuste"])
 @respx.mock
-def test_motivo_vazio_nao_chega_a_celula(db):
-    rota = respx.put(f"{PARAMETROS}/rodadas_de_negociacao")
-    respx.get(PARAMETROS).mock(return_value=httpx.Response(200, json=RESPOSTA))
-    resposta = _dentro().post(
-        reverse("parametros_da_fila_mudar"),
-        {"chave": "rodadas_de_negociacao", "valor": "5", "motivo": "   "},
+def test_motivo_opcional_chega_a_celula_com_autor(db, motivo):
+    rota = respx.put(f"{PARAMETROS}/rodadas_de_negociacao").mock(
+        return_value=httpx.Response(200, json=_linha("5"))
     )
-    assert resposta.status_code == 400
-    assert not rota.called
-    assert "escreva por que" in resposta.content.decode()
+    dados = {"chave": "rodadas_de_negociacao", "valor": "5"}
+    if motivo is not None:
+        dados["motivo"] = motivo
+    resposta = _dentro().post(reverse("parametros_da_fila_mudar"), dados)
+    assert resposta.status_code == 302
+    import json as _json
+
+    corpo = _json.loads(rota.calls[0].request.content)
+    assert corpo == {"valor": "5", "motivo": (motivo or "").strip(), "quem": "id-opaco-123"}
+    assert Registro.objects.get().desfecho == Registro.OK
 
 
 # ---------------------------------------------------------------------------

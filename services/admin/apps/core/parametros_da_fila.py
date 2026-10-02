@@ -17,7 +17,7 @@ aquela lei verdade.
 ## Mudar é ACRESCENTAR uma linha, e a tela diz isso na cara
 
 Nada aqui sobrescreve nada. Cada mudança grava uma linha nova, com o valor, o
-motivo escrito e o nome de quem mudou, e ela vale de agora em diante: uma
+motivo, quando informado, e o nome de quem mudou, e ela vale de agora em diante: uma
 proposta feita às 14h continua obedecendo ao número que valia às 14h, mesmo que
 ele mude às 15h. Quem garante isso não é este arquivo, é o banco da `encomendas`
 (gatilho que recusa `UPDATE` e `DELETE`) e a leitura por `vigente_em(agora)` que
@@ -232,13 +232,6 @@ def parametros_da_fila_mudar(request):
         return _voltar_com_erro(
             request, "escreva o valor novo: um campo vazio não muda nada"
         )
-    if not motivo:
-        return _voltar_com_erro(
-            request,
-            "escreva por que você está mudando. É o que a próxima pessoa (ou "
-            "você mesmo daqui a seis meses) vai ler para entender este número.",
-        )
-
     quem = request.admin.get("id") or request.admin.get("email") or ""
     situacao, frase = EncomendasClient().mudar(chave, valor, motivo, quem)
     if situacao == EncomendasClient.OK:

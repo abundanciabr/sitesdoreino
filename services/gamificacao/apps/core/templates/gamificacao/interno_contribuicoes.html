@@ -81,10 +81,10 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
       <textarea id="criterios" name="criterios" rows="4" required></textarea>
       <label for="responsavel_id">Quem responde pela aceitação</label>
       <select id="responsavel_id" name="responsavel_id">
-        {% for id in equipe %}<option value="{{ id }}"{% if id == eu %} selected{% endif %}>{{ id }}{% if id == eu %} (você){% endif %}</option>{% endfor %}
+        {% for membro in equipe %}<option value="{{ membro.id }}"{% if membro.id == eu %} selected{% endif %}>{% if membro.nome %}{{ membro.nome }} ({{ membro.id }}){% else %}{{ membro.id }}{% endif %}{% if membro.id == eu %} (você){% endif %}</option>{% endfor %}
       </select>
-      <label for="responsavel_nome">O nome dessa pessoa, como o aluno vai ler</label>
-      <input type="text" id="responsavel_nome" name="responsavel_nome" maxlength="120" required>
+      <label for="responsavel_nome">Nome para mostrar ao aluno (opcional)</label>
+      <input type="text" id="responsavel_nome" name="responsavel_nome" maxlength="120" placeholder="Usar nome conhecido ou identificação da equipe">
       <label for="vagas">Vagas</label>
       <input type="number" id="vagas" name="vagas" min="1" value="1" required>
       <label for="medalha">Medalha concedida no aceite (opcional)</label>

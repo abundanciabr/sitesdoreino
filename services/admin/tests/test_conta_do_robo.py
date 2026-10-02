@@ -9,7 +9,7 @@ from django.core.management.base import CommandError
 from django.test import Client
 
 from apps.auditoria.models import Registro
-from apps.core.models import Administrador, Documento, CartaoDoPlacar, FechamentoDoCiclo
+from apps.core.models import Administrador, Documento, CartaoDoPlacar, FechamentoDoCiclo, RascunhoDeConfiguracao
 
 DONO = "dono@exemplo.com"
 
@@ -108,6 +108,20 @@ def test_robo_cria_rascunho_invisivel_e_desfaz_arquivando():
     documento.refresh_from_db()
     assert documento.arquivado is True
     assert Client().get("/docs/rascunho-do-robo").status_code == 404
+
+
+@pytest.mark.parametrize("gesto, ativo", [("promover", True), ("remover", False)])
+def test_robo_prepara_permissao_sem_alterar_o_acesso(gesto, ativo):
+    email = "rascunho@exemplo.com"
+    cliente = robo(emitir())
+    resposta = cliente.post(f"/escola/admin/{gesto}", {"email": email})
+    assert resposta.status_code == 302
+    rascunho = RascunhoDeConfiguracao.objects.get(tipo="permissao", alvo=email)
+    assert rascunho.conteudo == {"ativo": ativo}
+    assert not Administrador.objects.filter(email=email).exists()
+    assert cliente.post("/escola/administradores/publicar", {"email": email}).status_code == 403
+    assert RascunhoDeConfiguracao.objects.filter(pk=rascunho.pk).exists()
+    assert not Administrador.objects.filter(email=email).exists()
 
 
 @pytest.mark.parametrize(

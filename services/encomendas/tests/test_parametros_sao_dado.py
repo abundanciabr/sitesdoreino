@@ -267,17 +267,25 @@ def test_a_chave_fora_do_vocabulario_e_recusada(db):
         )
 
 
-def test_mudanca_sem_motivo_escrito_e_recusada(db):
-    """Um histórico com motivo "ajuste" não responde nada seis meses depois."""
-    with pytest.raises(IntegrityError, match="mudanca_de_parametro_tem_motivo_escrito"):
-        Parametro.objects.create(
-            site_id=SITE,
-            chave="relogio_da_oferta",
-            valor="5",
-            desde=AGORA,
-            motivo="ajuste",
-            quem="dono-1",
-        )
+@pytest.mark.parametrize("motivo", ["", "ajuste"])
+def test_mudanca_com_motivo_opcional_preserva_valor_autor_e_historico(db, motivo):
+    semear()
+    Parametro.objects.create(
+        site_id=SITE,
+        chave="relogio_da_oferta",
+        valor="5",
+        desde=AGORA,
+        motivo=motivo,
+        quem="dono-1",
+    )
+    historico = list(
+        Parametro.objects.filter(site_id=SITE, chave="relogio_da_oferta")
+        .order_by("desde")
+        .values_list("valor", "motivo", "quem")
+    )
+    assert len(historico) == 2
+    assert historico[0][0] == "3"
+    assert historico[1] == ("5", motivo, "dono-1")
 
 
 def test_duas_linhas_da_mesma_chave_no_mesmo_instante_sao_recusadas(db):
@@ -335,12 +343,7 @@ CHAMADAS_DE_TEMPO = {"timedelta", "time", "relativedelta"}
 # As constantes de MÓDULO declaradas: números que não são parâmetro da lei §6 e
 # que, por isso, podem viver em código. A lista é curta e visível de propósito;
 # crescer é diff, e cada entrada precisa do motivo escrito ao lado.
-CONSTANTES_DECLARADAS = {
-    # O `minLength` do `MudancaDeParametro` do contrato em papel. Não é regra de
-    # negócio da fila (não está na lei §6, e o mantenedor não a edita numa
-    # tela): é a régua de "escreveu por quê", e ela vale para toda linha nova.
-    "TAMANHO_MINIMO_DO_MOTIVO",
-}
+CONSTANTES_DECLARADAS = set()
 
 
 class _Varredor(ast.NodeVisitor):

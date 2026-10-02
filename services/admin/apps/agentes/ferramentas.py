@@ -139,7 +139,9 @@ DEFINICOES = [
                 "enum": SITUACOES + [None],
                 "description": "Nulo para a_fazer.",
             },
-            "impedimento": _texto_ou_nulo("Obrigatório se a situação for bloqueada."),
+            "impedimento": _texto_ou_nulo(
+                "Descrição opcional do que está bloqueando, se houver."
+            ),
         },
     ),
     _ferramenta(
@@ -168,7 +170,9 @@ DEFINICOES = [
         {
             "tarefa_id": {"type": "integer"},
             "situacao": {"type": "string", "enum": SITUACOES},
-            "impedimento": _texto_ou_nulo("Obrigatório para bloqueada."),
+            "impedimento": _texto_ou_nulo(
+                "Descrição opcional do que está bloqueando, se houver."
+            ),
         },
     ),
     _ferramenta(

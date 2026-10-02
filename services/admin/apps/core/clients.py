@@ -1679,8 +1679,8 @@ class EncomendasClient:
 
     TIMEOUT = 4.0
     OK = "ok"
-    #: A célula respondeu e RECUSOU: valor fora do tipo da chave, motivo curto
-    #: demais, autor vazio, ou chave fora do vocabulário fechado.
+    #: A célula respondeu e RECUSOU: valor fora do tipo da chave, autor vazio,
+    #: ou chave fora do vocabulário fechado.
     RECUSADO = "recusado"
     #: O par tem o crachá de LEITURA e pediu para gravar. Nome próprio, e não um
     #: `RECUSADO` reaproveitado, porque a cura é outra e é um passo do

@@ -41,6 +41,7 @@ from apps.gamificacao.models import (
     Concessao,
     ConquistaDefinicao,
     PedidoDeValidacao,
+    Pessoa,
     TarefaComunitaria,
 )
 from apps.gamificacao.validacao import (
@@ -634,6 +635,12 @@ def interno_contribuicoes(request):
     pessoa_id, site = _pessoa_e_site(request)
     if not e_da_equipe(pessoa_id) or not site:
         return _recusar_quem_nao_e_da_equipe(request)
+    ids = sorted(ids_da_equipe())
+    nomes = dict(
+        Pessoa.objects.filter(pk__in=ids).values_list(
+            "id_da_plataforma", "nome_exibido"
+        )
+    )
 
     return render(
         request,
@@ -642,7 +649,7 @@ def interno_contribuicoes(request):
             "fila": quadro.para_avaliar(site),
             "tarefas": quadro.tarefas_da_escola(site),
             "motivos": CompromissoDeContribuicao.MotivoDaDevolucao.choices,
-            "equipe": sorted(ids_da_equipe()),
+            "equipe": [{"id": id, "nome": nomes.get(id, "")} for id in ids],
             "eu": pessoa_id,
             "medalhas": quadro.medalhas_que_a_tarefa_pode_dar(site),
             "recado": RECADOS.get(request.GET.get("recado", "")),
