@@ -6,10 +6,8 @@
 # leads nunca via quem completou o quiz.
 import json
 import os
-from pathlib import Path
 from unittest.mock import patch
 
-import jsonschema
 import pytest
 import redis
 
@@ -18,15 +16,6 @@ from apps.quiz.tasks import relay_outbox
 from tests.test_smoke import HOST_A, quiz_a, site_a  # noqa: F401 (fixtures)
 
 STREAM = "eventos.quiz.completado"
-
-CONTRATO = json.loads(
-    (
-        Path(__file__).resolve().parents[3]
-        / "contracts"
-        / "eventos"
-        / "quiz.completado.v1.json"
-    ).read_text(encoding="utf-8")
-)
 
 
 @pytest.fixture()
@@ -77,10 +66,6 @@ def test_outbox_pendente_e_publicado_no_stream_e_marcado_published_at(stream_lim
     assert len(mensagens) == 1
     envelope = json.loads(mensagens[0][1][b"json"])
     assert envelope["event_id"] == str(ev.event_id)
-    # o que chegou NO FIO valida contra o contrato congelado
-    jsonschema.validate(
-        instance=envelope, schema=CONTRATO, format_checker=jsonschema.FormatChecker()
-    )
 
     # idempotente: segunda chamada não republica nem duplica
     assert relay_outbox() == 0

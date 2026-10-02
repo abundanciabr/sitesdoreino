@@ -6,7 +6,7 @@ Até a Fase 4 do sininho, a superfície pública inteira desta célula era
 alguém fosse consumir), e este arquivo reprovava qualquer rota nova como
 fronteira fabricada dentro de um despacho.
 
-A Fase 4 (`contracts/notificacoes.openapi.yaml`, Rito de Contrato de
+A Fase 4 (Rito de Contrato de
 27/08/2026, PR #274) MUDOU essa fronteira — e o guarda muda JUNTO, para
 continuar medindo alguma coisa: agora ele prova que a célula publica
 EXATAMENTE o que o Rito autorizou, nem uma rota a mais. Isto não é o guarda

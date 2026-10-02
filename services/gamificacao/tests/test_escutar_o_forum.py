@@ -67,7 +67,7 @@ def _regra(**campos) -> RegraDePontuacao:
 
 
 def _resposta_aceita(**campos) -> dict:
-    """O envelope como `contracts/eventos/forum.resposta-aceita.v1.json` o fixa."""
+    """O envelope de `forum.resposta-aceita` v1, como ele chega."""
     data = {
         "site_id": SITE,
         "topico_id": "7",
@@ -259,7 +259,7 @@ OUTRA_ESCOLA = "site-de-outra-escola"
 
 
 def _topico_criado(**campos) -> dict:
-    """O envelope como `contracts/eventos/forum.topico-criado.v1.json` o fixa."""
+    """O envelope de `forum.topico-criado` v1, como ele chega."""
     data = {"site_id": SITE, "topico_id": "7", "area_id": "1"}
     data.update(campos.pop("data", {}))
     base = {

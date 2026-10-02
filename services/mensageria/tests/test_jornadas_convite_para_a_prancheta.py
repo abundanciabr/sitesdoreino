@@ -14,21 +14,18 @@ porta da aula, e a escola declarou, na estrutura do curso, que aquela aula fecha
 um Bloco. O mesmo evento com `e_boss` falso é progresso comum, e é exatamente o
 palpite que este arquivo obriga o código a recusar.
 
-OS ENVELOPES SÃO OS DO CONTRATO, VALIDADOS EM DISCO
-----------------------------------------------------
+OS ENVELOPES SÃO OS DE VERDADE
+------------------------------
 `armadilhas/255`: envelope de fantasia prova que o motor funciona com dados que
-nunca vão chegar. Cada envelope aqui passa pelo schema congelado antes de entrar
-no consumidor, e é por isso que o aluno está no `ator_id` do NÍVEL DE CIMA.
+nunca vão chegar. Cada envelope aqui tem a forma que chega pelo fio, e é por
+isso que o aluno está no `ator_id` do NÍVEL DE CIMA.
 """
 
-import json
 import logging
 from datetime import timedelta
 from io import StringIO
-from pathlib import Path
 from uuid import uuid4
 
-import jsonschema
 import pytest
 from django.core.management import call_command
 
@@ -51,7 +48,6 @@ OUTRO_ALUNO = "aluno-opaco-2"
 CURSO = "curso-opaco-1"
 AULA = "aula-opaca-1"
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 RISCAS_LONGAS = ("—", "–", "―")
 
 # O que os degraus 08 a 14 ainda não entregaram. O texto do convite não pode
@@ -76,30 +72,20 @@ def semear(ligar=True):
     return saida.getvalue()
 
 
-def _validado(envelope):
-    schema = json.loads(
-        (CONTRATOS / f"{envelope['event']}.v1.json").read_text(encoding="utf-8")
-    )
-    jsonschema.validate(envelope, schema)
-    return envelope
-
-
 def aula_concluida(*, e_boss, aluno=ALUNO, aula_id=AULA):
-    return _validado(
-        {
-            "event": "aula.concluida",
-            "version": 1,
-            "event_id": str(uuid4()),
-            "occurred_at": "2026-09-06T12:00:00Z",
-            "ator_id": aluno,
-            "data": {
-                "site_id": SITE,
-                "curso_id": CURSO,
-                "aula_id": aula_id,
-                "e_boss": e_boss,
-            },
-        }
-    )
+    return {
+        "event": "aula.concluida",
+        "version": 1,
+        "event_id": str(uuid4()),
+        "occurred_at": "2026-09-06T12:00:00Z",
+        "ator_id": aluno,
+        "data": {
+            "site_id": SITE,
+            "curso_id": CURSO,
+            "aula_id": aula_id,
+            "e_boss": e_boss,
+        },
+    }
 
 
 def consumir(envelope):

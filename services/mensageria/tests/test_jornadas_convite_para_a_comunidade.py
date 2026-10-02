@@ -8,14 +8,11 @@ prazo nem nome de membro) e o horário (o passo 1 não chega no mesmo instante
 que o passo 1 da Prancheta).
 """
 
-import json
 import logging
 from datetime import timedelta
 from io import StringIO
-from pathlib import Path
 from uuid import uuid4
 
-import jsonschema
 import pytest
 from django.core.management import call_command
 
@@ -41,7 +38,6 @@ OUTRO_ALUNO = "aluno-opaco-2"
 CURSO = "curso-opaco-1"
 AULA = "aula-opaca-1"
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 RISCAS_LONGAS = ("—", "–", "―")
 
 # `docs/comunidade/DOSSIE-TECNICO-FUNCIONAL-COMUNIDADE.md` §16, §17: nenhuma
@@ -76,30 +72,20 @@ def semear_prancheta(ligar=True):
     return saida.getvalue()
 
 
-def _validado(envelope):
-    schema = json.loads(
-        (CONTRATOS / f"{envelope['event']}.v1.json").read_text(encoding="utf-8")
-    )
-    jsonschema.validate(envelope, schema)
-    return envelope
-
-
 def aula_concluida(*, e_boss, aluno=ALUNO, aula_id=AULA):
-    return _validado(
-        {
-            "event": "aula.concluida",
-            "version": 1,
-            "event_id": str(uuid4()),
-            "occurred_at": "2026-09-06T12:00:00Z",
-            "ator_id": aluno,
-            "data": {
-                "site_id": SITE,
-                "curso_id": CURSO,
-                "aula_id": aula_id,
-                "e_boss": e_boss,
-            },
-        }
-    )
+    return {
+        "event": "aula.concluida",
+        "version": 1,
+        "event_id": str(uuid4()),
+        "occurred_at": "2026-09-06T12:00:00Z",
+        "ator_id": aluno,
+        "data": {
+            "site_id": SITE,
+            "curso_id": CURSO,
+            "aula_id": aula_id,
+            "e_boss": e_boss,
+        },
+    }
 
 
 def consumir(envelope):

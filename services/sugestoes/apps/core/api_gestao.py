@@ -5,7 +5,6 @@ identificado. O endereço do aluno não entra nas respostas; a contagem da
 plateia é calculada nesta célula.
 """
 
-from datetime import date
 
 from django.db.models import Exists, Max, OuterRef
 from django.db.models.functions import Coalesce
@@ -24,8 +23,6 @@ from apps.sugestoes.models import (
 from . import apagamento
 from . import fusoes
 from . import sessao as ses
-from .changespecs import ChangeSpecInvalido
-from .changespecs import registrar as registrar_changespec
 from .correcao import CorrecaoInvalida
 from .correcao import corrigir as corrigir_o_texto
 from .gestao import (
@@ -231,9 +228,8 @@ class IdeiaComHistorico(IdeiaEmGestao):
     existir.
 
     `changespecs` entra pelo mesmo caminho e pelo mesmo motivo, uma emenda
-    depois: era a ÚNICA das cinco telas antigas de `/moderacao` sem paridade
-    nenhuma do lado do Admin — ele deixava ASSINAR e não deixava CONFERIR o que
-    foi assinado. Lista, e não objeto: uma ideia pode ter vários ChangeSpecs
+    depois: as fichas já registradas continuam legíveis aqui, mesmo sem a
+    porta que as escrevia. Lista, e não objeto: uma ideia pode ter vários ChangeSpecs
     (escopo que mudou nasce `-v2`, formato §4), e a tela antiga sempre os
     listou. Ordem: o mais recente primeiro, a mesma do model. Ela entra
     OPCIONAL: ausente é "esta ideia não tem assinatura nenhuma", o mesmo que a
@@ -258,8 +254,6 @@ class QuadroEmGestao(Schema):
 
     quadro: str
     ideias: "list[IdeiaEmGestao]"
-    # Indica se o pedido de leitura trouxe um responsável identificado.
-    pode_assinar: bool
     # Os três números que SÓ esta célula consegue produzir, e por isso viajam
     # prontos: eles contam PESSOAS DISTINTAS entre várias ideias, e quem tem
     # apenas a contagem por ideia não consegue deduplicar quem está atrás de
@@ -327,13 +321,6 @@ class AvaliacaoEscrita(QuemAge):
     esforco_tecnico: int = 0
     notas: str = ""
     decisao_produto: str = ""
-
-
-class ChangeSpecEscrito(QuemAge):
-    change_id: str = ""
-    documento: str = ""
-    aprovado_por: str = ""
-    aprovado_em: date | None = None
 
 
 class ArquivamentoEscrito(QuemAge):
@@ -487,7 +474,6 @@ def _como_fato(ideia, plateias, com_conversa: bool = False) -> dict:
 )
 def listar_ideias(
     request,
-    por_email: str = "",
     incluir_arquivadas: bool = False,
     incluir_conversa: bool = False,
 ):
@@ -510,7 +496,6 @@ def listar_ideias(
 
     return {
         "quadro": quadro.nome,
-        "pode_assinar": bool(por_email and por_email.strip()),
         "pessoas_esperando": len(silencio),
         "silencio_medio_em_dias": (
             round(sum(silencio.values()) / len(silencio)) if silencio else None
@@ -691,35 +676,6 @@ def avaliar(request, sugestao_id: int, payload: AvaliacaoEscrita):
             "avaliado_por": _quem(payload),
         },
     )
-    return _uma_ideia(sugestao_id)
-
-
-@router.post(
-    "/gestao/ideias/{sugestao_id}/changespec",
-    response={200: IdeiaEmGestao, 403: Recusa, 422: Recusa},
-    operation_id="registerApprovedChangeSpec",
-    summary="Registra uma decisão no histórico da ideia",
-    description=(
-        "A API de gestão autenticada registra o responsável identificado. "
-        "CHANGE-ID, documento, nome de aprovação e data são opcionais. "
-        "Os valores fornecidos ficam no histórico imutável."
-    ),
-)
-def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito):
-    if not payload.por_email.strip():
-        return 422, {"erro": "Informe quem está registrando esta decisão."}
-    sugestao = _ideia(sugestao_id)
-    try:
-        registrar_changespec(
-            sugestao=sugestao,
-            por=_quem(payload),
-            change_id=payload.change_id,
-            documento=payload.documento,
-            aprovado_por=payload.aprovado_por,
-            aprovado_em=payload.aprovado_em,
-        )
-    except ChangeSpecInvalido as recusa:
-        return 422, {"erro": " ".join(recusa.args[0])}
     return _uma_ideia(sugestao_id)
 
 

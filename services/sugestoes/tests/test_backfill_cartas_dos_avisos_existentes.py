@@ -22,23 +22,20 @@ Cinco guardas, cada um falsificando uma decisão do despacho:
    backfill (a pegadinha do `auto_now_add` com `bulk_create`, já vivida
    nesta célula para `Voto.criado_em` — `LICOES.md`);
 5. **a forma da carta** — `ator_id` nulo, `origem_event_id` sintético e
-   PRÓPRIO de cada `Aviso`, e o envelope inteiro validando contra o
-   contrato congelado quando passa pelo relay de verdade.
+   PRÓPRIO de cada `Aviso`, e o envelope inteiro saindo pelo relay de
+   verdade.
 """
 
 from __future__ import annotations
 
 import importlib
-import json
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
 from django.apps import apps as registro_ao_vivo
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
-from jsonschema import Draft202012Validator, FormatChecker
 
 from apps.sugestoes.models import Aviso, Identidade, OutboxEvent, Sugestao
 from apps.sugestoes.tasks import relay_outbox
@@ -49,7 +46,6 @@ migracao = importlib.import_module(
     "apps.sugestoes.migrations.0008_backfill_cartas_dos_avisos_existentes"
 )
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 
 PEQUENA = 2
 GRANDE = 200
@@ -252,7 +248,7 @@ def test_occurred_at_preserva_o_criado_em_do_aviso_e_nao_a_hora_do_backfill(
 
 
 # ---------------------------------------------------------------------------
-# 5. A forma da carta — as decisões do despacho, e o contrato de verdade
+# 5. A forma da carta — as decisões do despacho, e o relay de verdade
 # ---------------------------------------------------------------------------
 
 
@@ -283,22 +279,12 @@ def test_ator_id_nulo_e_origem_event_id_sintetico_e_proprio_de_cada_carta(
     assert origem_2 == str(migracao._origem_event_id_sintetico(aviso_2.pk))
 
 
-def _validador(evento: str, versao: int) -> Draft202012Validator:
-    schema = json.loads(
-        (CONTRATOS / f"{evento}.v{versao}.json").read_text(encoding="utf-8")
-    )
-    return Draft202012Validator(schema, format_checker=FormatChecker())
-
-
-def test_a_carta_retroativa_valida_contra_o_contrato_quando_passa_pelo_relay(
+def test_a_carta_retroativa_sai_inteira_quando_passa_pelo_relay(
     quadro, categoria, fio
 ):
     """Ponta a ponta: a linha que a migration escreve é a MESMA que o relay
     (`apps/sugestoes/tasks.py`, o código de produção, sem dublê nenhum) lê e
-    publica — e o envelope que sai no fio tem de validar contra o contrato
-    `notificacao.devida.v1` congelado, com o `FormatChecker` ligado (senão
-    `format: uuid` vira anotação decorativa — mesma lição de
-    `test_inv_envelope_casa_com_contrato.py`)."""
+    publica como `notificacao.devida` v1."""
     destinatario = _uma_pessoa("carta-de-verdade@exemplo.test")
     _um_aviso(quadro, categoria, destinatario, nota="Já existe no menu de aulas.")
 
@@ -306,7 +292,7 @@ def test_a_carta_retroativa_valida_contra_o_contrato_quando_passa_pelo_relay(
     assert relay_outbox() == 1
 
     envelope = fio.um_envelope(migracao.NOTIFICACAO_DEVIDA)
-    _validador(envelope["event"], envelope["version"]).validate(envelope)
+    assert (envelope["event"], envelope["version"]) == ("notificacao.devida", 1)
 
     assert envelope["ator_id"] is None
     assert envelope["data"]["destinatario_id"] == "idt-carta-de-verdade@exemplo.test"

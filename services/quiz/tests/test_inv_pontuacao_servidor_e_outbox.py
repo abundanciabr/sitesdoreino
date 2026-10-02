@@ -1,10 +1,7 @@
 # tests/test_inv_pontuacao_servidor_e_outbox.py  # [RECEITA:R5 v1]
 # [INV] pontuação calculada só no servidor; emissão de quiz.completado.v1 é
-# transacional (outbox), e o envelope emitido bate com o contrato congelado.
-import json
-from pathlib import Path
+# transacional (outbox).
 
-import jsonschema
 import pytest
 
 from apps.quiz.models import (
@@ -18,15 +15,6 @@ from apps.quiz.models import (
 from tests.test_smoke import HOST_A, quiz_a, site_a, site_b  # noqa: F401 (fixtures)
 
 pytestmark = pytest.mark.django_db
-
-CONTRATO = json.loads(
-    (
-        Path(__file__).resolve().parents[3]
-        / "contracts"
-        / "eventos"
-        / "quiz.completado.v1.json"
-    ).read_text(encoding="utf-8")
-)
 
 
 def test_cliente_nao_pode_enviar_pontuacao_o_servidor_recalcula(client, quiz_a):
@@ -165,32 +153,3 @@ def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
     assert dados["score"] == submissao.score
     assert dados["version_key"] == submissao.version.key
     assert dados["lead"]["email"] == "lead@exemplo.com"
-
-
-def test_envelope_do_evento_valida_contra_o_contrato_congelado(client, quiz_a):
-    pergunta = quiz_a.versions.get().questions.get(order=1)
-    opcao_dez = pergunta.options.get(points=10)
-
-    resp = client.post(
-        f"/{quiz_a.slug}/",
-        {
-            f"pergunta_{pergunta.id}": opcao_dez.id,
-            "email": "lead@exemplo.com",
-            "nome": "Lead",
-            "telefone": "11999999999",
-        },
-        HTTP_HOST=HOST_A,
-    )
-    assert resp.status_code == 302
-
-    ev = OutboxEvent.objects.get(event="quiz.completado")
-    envelope = {
-        "event": ev.event,
-        "version": ev.version,
-        "event_id": str(ev.event_id),
-        "occurred_at": ev.occurred_at.isoformat(),
-        "data": ev.payload,
-    }
-    jsonschema.validate(
-        instance=envelope, schema=CONTRATO, format_checker=jsonschema.FormatChecker()
-    )

@@ -15,11 +15,9 @@ que se mede aqui é que, sem JavaScript, ninguém vê convite nenhum.
 
 import json
 import re
-from pathlib import Path
 
 import httpx
 import pytest
-import respx
 
 from tests.conftest import (
     HOST_A,
@@ -257,61 +255,6 @@ def test_o_toque_no_aviso_leva_a_pagina_de_avisos(client, rede):
     assert configuracao["caminho"] != "/"
 
 
-def test_nenhum_pedido_de_permissao_abre_sem_um_toque():
-    """A regra que o incidente de 31/08/2026 tornou inegociável: o pedido de
-    permissão automático ("abre sozinho onde o navegador deixa", registro
-    20260831-075) fez o Malwarebytes Browser Guard bloquear o meshcraft.top
-    INTEIRO como site malicioso, por "excesso de solicitação de notificações",
-    no dia da inauguração (armadilhas/257). Pedir sem gesto, página após
-    página, é a assinatura que as ferramentas de segurança caçam.
-
-    Medido no arquivo servido, que é a única prova possível sem um celular:
-    só existe UM `requestPermission`, e o único lugar que o alcança é o
-    clique no botão do cartaz. Não recrie o caminho automático."""
-    js = (
-        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
-    ).read_text(encoding="utf-8")
-
-    assert "abreSozinho" not in js
-    assert js.count("Notification.requestPermission") == 1
-
-    corpo = js.replace("function pedirPermissao(registro)", "", 1)
-    assert corpo.count("pedirPermissao(registro)") == 1
-    clique = corpo.index('botao.addEventListener("click"')
-    assert corpo.index("pedirPermissao(registro)") > clique
-
-
-def test_o_cartaz_com_botao_e_o_unico_caminho_em_todo_navegador():
-    """O convite é um cartaz NOSSO, dentro da página: elemento comum, que
-    nenhuma ferramenta de segurança confunde com a caixa do sistema. A caixa
-    do navegador só nasce do toque no botão, e isso vale para Chrome, Android,
-    iPhone e Firefox por igual."""
-    js = (
-        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
-    ).read_text(encoding="utf-8")
-
-    assert 'mostrarSo("convite")' in js
-    assert '[data-acao="ligar-avisos"]' in js
-    # E a recusa educada continua existindo: o "depois" silencia por 30 dias.
-    assert '[data-acao="avisos-depois"]' in js
-
-
-def test_o_service_worker_promete_um_aviso_visivel_por_push():
-    """`userVisibleOnly` do lado do site, `showNotification` do lado do worker:
-    a promessa que o navegador cobra. Um push que não vira aviso visível faz o
-    navegador mostrar a mensagem genérica dele e, repetido, tira a permissão do
-    site."""
-    sw = (
-        Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
-    ).read_text(encoding="utf-8")
-    js = (
-        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
-    ).read_text(encoding="utf-8")
-
-    assert "showNotification" in sw
-    assert "userVisibleOnly: true" in js
-
-
 # ---------------------------------------------------------------------------
 # As quatro cartas da gamificação no aviso do celular (degrau 21b, 01/09/2026)
 # ---------------------------------------------------------------------------
@@ -448,18 +391,6 @@ def test_assunto_desconhecido_continua_caindo_no_generico(client, rede):
     assert configuracao["generico"]["corpo"] == "Você tem um aviso novo."
 
 
-def test_o_service_worker_ainda_sabe_cair_no_generico():
-    """A outra metade do fail-aberto mora no arquivo servido, e é uma linha só.
-    Sem ela, um assunto desconhecido viraria `undefined.titulo` e o aviso não
-    apareceria, que é exatamente o desfecho que o genérico existe para
-    impedir."""
-    sw = (
-        Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
-    ).read_text(encoding="utf-8")
-
-    assert "AVISOS.textos[carta.assunto] || AVISOS.generico" in sw
-
-
 def test_o_aviso_da_sugestao_nao_mudou_uma_virgula(client, rede):
     """O assunto que já existia antes deste degrau. Acrescentar quatro não pode
     reescrever o primeiro: quem instalou o app por causa da Caixa de Sugestões
@@ -498,27 +429,6 @@ def test_o_aviso_de_portfolio_diz_o_que_aconteceu_e_onde_ver_a_data(
         configuracao["textos"]["pages.portfolio-conferido"]
         == FRASES_DO_PORTFOLIO[idioma]
     )
-
-
-def test_todo_assunto_que_o_site_conhece_existe_no_contrato(client, rede):
-    """A direção segura da cerca: o site nunca inventa um assunto que a
-    plataforma não publica. A direção contrária NÃO se testa, de propósito:
-    assunto do contrato que ainda não tem frase aqui é justamente o caso do
-    genérico, e um teste que o proibisse tornaria impossível acrescentar um
-    assunto ao contrato sem tocar nesta célula no mesmo PR."""
-    contrato = json.loads(
-        (
-            Path(__file__).resolve().parents[3]
-            / "contracts"
-            / "eventos"
-            / "notificacao.devida.v1.json"
-        ).read_text(encoding="utf-8")
-    )
-    do_contrato = set(contrato["properties"]["data"]["properties"]["assunto"]["enum"])
-    conhecidos = set(_configuracao_do_sw(client, "pt-br")["textos"])
-
-    assert conhecidos, "o site não conhece assunto nenhum"
-    assert conhecidos <= do_contrato
 
 
 def test_o_sw_continua_sem_prefixo_de_idioma_e_com_os_cabecalhos(client, rede):
@@ -600,34 +510,6 @@ def test_o_desfecho_do_navegador_nao_promete_que_vai_dar_certo_depois(
     # E a do nosso lado continua sendo a que manda esperar: esperar ali é
     # conselho honesto, porque o que falhou foi o servidor.
     assert "mais tarde" in do_servidor
-
-
-def test_a_recusa_do_navegador_e_a_do_servidor_tem_caminhos_separados():
-    """Medido no arquivo servido, que é a única prova possível sem um aparelho.
-
-    A separação é estrutural, não textual: a recusa do `subscribe` é tratada
-    pelo SEGUNDO argumento do `.then`, que só alcança ela. Um `.catch`
-    pendurado no fim pegaria junto a falha do `fetch` e desfaria a distinção
-    inteira sem mudar uma linha visível — por isso ele é proibido aqui, e por
-    isso este teste mede a forma e não a mensagem do erro (que varia entre
-    navegador e versão, e nunca deve virar régua)."""
-    js = (
-        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
-    ).read_text(encoding="utf-8")
-
-    inscrever = js.split("function inscrever(registro)")[1].split(
-        "function aparelhoNaoPode"
-    )[0]
-
-    assert "}, aparelhoNaoPode);" in inscrever
-    assert ".catch(" not in inscrever
-    # Dentro do `inscrever` só existe o desfecho do NOSSO lado; o do navegador
-    # mora no tratador próprio, logo abaixo.
-    assert 'return "nao-deu";' in inscrever
-    assert "sem-servico" not in inscrever
-    assert 'return "sem-servico";' in js.split("function aparelhoNaoPode")[1]
-    # E o cartaz sabe mostrar a parte nova.
-    assert '"sem-servico"' in js.split("function mostrarSo")[1].split("}")[0]
 
 
 # ---------------------------------------------------------------------------

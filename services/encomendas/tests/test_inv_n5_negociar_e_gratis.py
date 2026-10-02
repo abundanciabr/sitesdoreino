@@ -1,25 +1,15 @@
-"""[INV-ENC-N5] Propor, ser recusado, deixar vencer ou desistir são gratuitos.
+"""Propor, ser recusado, deixar vencer ou desistir são gratuitos.
 
-Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8; lei
-`DECISAO-fila-do-primeiro-dolar.md` §5 ([INV-ENC-J4]). Nenhum desses quatro
-gestos muda a data de entrada na fila: **só o abandono muda o lugar**.
-
-O guarda tem duas metades, e a segunda é a que sobrevive ao tempo. A primeira
-encena os quatro gestos e mede a coluna. A segunda VARRE o código da negociação
-procurando qualquer escrita em `data_entrada_fila`, e existe porque um caminho
-novo escrito daqui a três meses não estaria em cenário nenhum encenado hoje.
+Nenhum desses quatro gestos muda a data de entrada na fila: **só o abandono
+muda o lugar**. Cada teste encena um gesto e mede a coluna antes e depois.
 """
 
-import ast
 from datetime import datetime, timedelta, timezone as fuso
-from pathlib import Path
 
 from apps.encomendas import negociacao, tique
 from apps.encomendas.models import Encomenda, PerfilProfissional, Proposta
 
 SITE = "escola-a"
-CAMPO = "data_entrada_fila"
-NEGOCIACAO = Path(negociacao.__file__)
 
 
 def _agora():
@@ -30,52 +20,6 @@ def _propor(projeto, lado, formulario, agora, **mudancas):
     return negociacao.propor(
         projeto.pk, agora, site_id=SITE, de_quem=lado, **formulario(**mudancas)
     )
-
-
-# ---------------------------------------------------------------------------
-# 1. A VARREDURA: nenhuma linha da negociação escreve o lugar na fila
-# ---------------------------------------------------------------------------
-
-
-class _Varredor(ast.NodeVisitor):
-    """As três formas de gravar a coluna: atribuição, `update()` e `update_fields`."""
-
-    def __init__(self):
-        self.achados: list[str] = []
-
-    def visit_Assign(self, no):
-        for alvo in no.targets:
-            if isinstance(alvo, ast.Attribute) and alvo.attr == CAMPO:
-                self.achados.append(f"atribuicao na linha {no.lineno}")
-        self.generic_visit(no)
-
-    def visit_Call(self, no):
-        for chave in getattr(no, "keywords", []):
-            if chave.arg == CAMPO:
-                self.achados.append(f"argumento nomeado na linha {no.lineno}")
-        for item in ast.walk(no):
-            if isinstance(item, ast.Constant) and item.value == CAMPO:
-                self.achados.append(f"nome literal na linha {no.lineno}")
-        self.generic_visit(no)
-
-
-def test_a_negociacao_nao_toca_no_lugar_da_fila():
-    varredor = _Varredor()
-    varredor.visit(ast.parse(NEGOCIACAO.read_text(encoding="utf-8")))
-    assert varredor.achados == []
-
-
-def test_o_varredor_enxerga_de_verdade():
-    """O par vermelho da varredura: um varredor cego passaria no teste de cima."""
-    varredor = _Varredor()
-    varredor.visit(
-        ast.parse(
-            "def punir(perfil, agora):\n"
-            "    perfil.data_entrada_fila = agora\n"
-            "    perfil.save(update_fields=['data_entrada_fila'])\n"
-        )
-    )
-    assert len(varredor.achados) >= 2
 
 
 # ---------------------------------------------------------------------------

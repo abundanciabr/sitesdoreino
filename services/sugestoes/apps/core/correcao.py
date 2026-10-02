@@ -59,8 +59,8 @@ class CorrecaoInvalida(Exception):
     """Correção recusada ANTES de qualquer escrita.
 
     Recusa não precisa de rollback, e a mensagem é em português porque quem lê
-    é gente — a mesma forma do `ChangeSpecInvalido`: `args[0]` é uma LISTA de
-    frases, para quem preenche o formulário não descobrir um problema por vez.
+    é gente: `args[0]` é uma LISTA de frases, para quem preenche o formulário
+    não descobrir um problema por vez.
     """
 
 
@@ -146,8 +146,7 @@ def corrigir(*, sugestao, por, **textos) -> list[CorrecaoDeTexto]:
             )
             setattr(sugestao, campo, valor)
         # `update_fields` com só o que mudou: gravar os três sempre faria um
-        # `UPDATE` tocar colunas que ninguém pediu para tocar, e num model cujo
-        # `save()` carrega a trava do ChangeSpec ([INV-SUG10]) é melhor que a
+        # `UPDATE` tocar colunas que ninguém pediu para tocar, e é melhor que a
         # gravação diga exatamente o que ela é.
         sugestao.save(update_fields=list(mudancas))
 

@@ -67,7 +67,7 @@ def _ligar(slug: str) -> None:
 
 
 def _aula_concluida(**campos) -> dict:
-    """O envelope como `contracts/eventos/aula.concluida.v1.json` o fixa."""
+    """O envelope de `aula.concluida` v1, como ele chega."""
     data = {"site_id": SITE, "curso_id": "c-1", "aula_id": "a-01", "e_boss": False}
     data.update(campos.pop("data", {}))
     base = {
@@ -83,7 +83,7 @@ def _aula_concluida(**campos) -> dict:
 
 
 def _resposta_aceita(**campos) -> dict:
-    """O envelope como `contracts/eventos/forum.resposta-aceita.v1.json` o fixa."""
+    """O envelope de `forum.resposta-aceita` v1, como ele chega."""
     data = {
         "site_id": SITE,
         "topico_id": "7",

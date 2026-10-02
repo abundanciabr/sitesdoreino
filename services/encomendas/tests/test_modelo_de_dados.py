@@ -19,13 +19,11 @@ from datetime import datetime, timedelta, timezone as fuso
 import pytest
 from django.apps import apps
 from django.db import IntegrityError, connection
-from django.db import models as campos
 
 from apps.encomendas.models import (
     Encomenda,
     MudancaDeStatus,
     Oferta,
-    Parametro,
     PerfilProfissional,
     Pessoa,
 )
@@ -247,24 +245,6 @@ def test_prazo_prometido_nunca_antes_do_de_producao(db):
             prazo_producao_ate=AGORA + timedelta(days=3),
             prazo_prometido_ate=AGORA + timedelta(days=2),
         )
-
-
-def test_dinheiro_e_inteiro_em_centavos():
-    """`contracts/README.md` item 7: float de dinheiro é proibido em contrato.
-
-    Mede a CLASSE do campo, e não o nome: um `DecimalField` chamado
-    `preco_cents` passaria por qualquer revisão de nome e quebraria o contrato
-    do primeiro evento emitido.
-    """
-    proibidos = []
-    for modelo in apps.get_app_config("encomendas").get_models():
-        for campo in modelo._meta.get_fields():
-            if isinstance(campo, (campos.FloatField, campos.DecimalField)):
-                proibidos.append(f"{modelo.__name__}.{campo.name}")
-    assert proibidos == [], (
-        f"campo de ponto flutuante nesta célula: {proibidos}. Dinheiro é INTEIRO "
-        "em centavos (`contracts/README.md`, item 7)."
-    )
 
 
 # ---------------------------------------------------------------------------

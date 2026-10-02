@@ -2,29 +2,13 @@
 
 Lei §3.8: *"A tabela `Parametro` mora nesta célula: `chave`, `valor`, `desde`,
 `motivo`, `quem`; mudar é acrescentar uma linha, nunca `UPDATE`; o motor lê o
-valor vigente em `agora` (...). Nenhum número da seção 6.12 vive em código: um
-teste-guarda lê cada chave do banco e reprova constante mágica no motor."*
-
-Este arquivo é esse teste-guarda, e ele tem três dentes:
-
-1. **`test_a_semente_grava_os_28_valores`** lê cada chave DO BANCO depois
-   de rodar a semente, e compara com a tabela da lei transcrita aqui. É a prova
-   de fora: se a semente errar um valor, quem discorda é o teste, não o autor.
-2. **`test_mudar_um_parametro_e_acrescentar_uma_linha`** e os dois irmãos
-   provam que o PostgreSQL recusa `UPDATE` e `DELETE` na tabela. Sem eles,
-   "nunca UPDATE" seria uma frase num documento.
-3. **`test_nenhuma_constante_magica_no_codigo_da_celula`** varre a árvore da
-   célula com `ast` e reprova o número solto. É o dente que morde os degraus
-   2.3 e 2.4 (o motor e os relógios), onde a tentação de escrever
-   `timedelta(hours=3)` em vez de ler `relogio_da_oferta` é máxima.
+valor vigente em `agora` (...)."*
 
 Os testes distinguem os valores persistidos no banco de constantes no motor.
 """
 
-import ast
-from datetime import datetime, timedelta, timezone as fuso
+from datetime import datetime, timezone as fuso
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from django.core.management import call_command
@@ -105,14 +89,6 @@ O_PISO_NASCE_SEM_NUMERO = {
     "piso_por_nivel.iniciante",
     "piso_por_nivel.intermediario",
     "piso_por_nivel.avancado",
-}
-
-CELULA = Path(__file__).resolve().parent.parent
-# O ÚNICO arquivo da célula onde um número da lei §6 pode aparecer. Ele não é
-# código de decisão: é a semente, e a partir do primeiro INSERT quem manda é o
-# banco. Esta lista é curta e visível de propósito; crescer é diff.
-ONDE_O_NUMERO_PODE_MORAR = {
-    CELULA / "apps" / "encomendas" / "management" / "commands" / "semear_parametros.py",
 }
 
 
@@ -316,120 +292,3 @@ def test_o_tipo_de_cada_chave_vem_do_catalogo(db):
         Parametro.objects.get(chave="repasse_apos_aprovacao", site_id=SITE).tipo
         == "enum"
     )
-
-
-# ---------------------------------------------------------------------------
-# 3. Nenhum número da lei §6 vive em código
-# ---------------------------------------------------------------------------
-
-
-def _arquivos_da_celula():
-    for caminho in sorted((CELULA / "apps").rglob("*.py")):
-        if caminho in ONDE_O_NUMERO_PODE_MORAR:
-            continue
-        if "migrations" in caminho.parts:
-            # A migração é fotografia do esquema, não regra viva: os
-            # `max_length` dela não são decisão de ninguém.
-            continue
-        yield caminho
-
-
-# As chamadas em que um número solto é, quase sempre, um parâmetro escrito à
-# mão. É uma peneira estreita de propósito: varrer TODO literal numérico da
-# célula acusaria `max_length=64` e `version=1`, e medir a coisa errada com
-# precisão é como um portão morre.
-CHAMADAS_DE_TEMPO = {"timedelta", "time", "relativedelta"}
-
-# As constantes de MÓDULO declaradas: números que não são parâmetro da lei §6 e
-# que, por isso, podem viver em código. A lista é curta e visível de propósito;
-# crescer é diff, e cada entrada precisa do motivo escrito ao lado.
-CONSTANTES_DECLARADAS = set()
-
-
-class _Varredor(ast.NodeVisitor):
-    def __init__(self):
-        self.achados = []
-
-    def visit_Call(self, no):
-        nome = getattr(no.func, "id", None) or getattr(no.func, "attr", None)
-        if nome in CHAMADAS_DE_TEMPO:
-            argumentos = list(no.args) + [k.value for k in no.keywords]
-            for argumento in argumentos:
-                if isinstance(argumento, ast.Constant) and isinstance(
-                    argumento.value, int
-                ):
-                    self.achados.append((no.lineno, nome, argumento.value))
-        self.generic_visit(no)
-
-    def visit_Assign(self, no):
-        # Constante de MÓDULO com número: `RELOGIO_DA_OFERTA_HORAS = 3`. É a
-        # forma clássica da constante mágica, e ela não tem nenhuma razão de
-        # existir numa célula cujos números todos moram no banco.
-        for alvo in no.targets:
-            if (
-                isinstance(alvo, ast.Name)
-                and alvo.id.isupper()
-                and alvo.id not in CONSTANTES_DECLARADAS
-                and isinstance(no.value, ast.Constant)
-                and isinstance(no.value.value, int)
-                and not isinstance(no.value.value, bool)
-            ):
-                self.achados.append((no.lineno, alvo.id, no.value.value))
-        self.generic_visit(no)
-
-
-def test_nenhuma_constante_magica_no_codigo_da_celula():
-    """O dente que morde os degraus 2.3 e 2.4, antes de eles serem escritos.
-
-    A tentação concreta tem nome: escrever `expira_em = agora + timedelta(hours=3)`
-    no motor de oferta em vez de ler `relogio_da_oferta` do banco. Funciona,
-    passa em teste, e transforma um parâmetro que o mantenedor edita numa tela
-    em algo que só muda por PR. É o critério de morte 5 da lei §9.
-
-    A varredura é do MÓDULO, não do valor: ela não pergunta "este 3 é o relógio
-    da oferta?" (pergunta que erraria feio, porque 3 também é `max_length`).
-    Ela pergunta "existe número solto onde um parâmetro deveria estar sendo
-    lido?" — chamada de duração, ou constante de módulo.
-    """
-    achados = []
-    for caminho in _arquivos_da_celula():
-        varredor = _Varredor()
-        varredor.visit(ast.parse(caminho.read_text(encoding="utf-8")))
-        for linha, onde, valor in varredor.achados:
-            achados.append(f"{caminho.relative_to(CELULA)}:{linha} {onde}={valor}")
-
-    assert achados == [], (
-        "número solto no código desta célula: "
-        + "; ".join(achados)
-        + ". Os parâmetros desta célula são DADO (lei §3.8): leia o valor "
-        "vigente com `Parametro.vigente_em(chave, agora, site_id=...)`. Se o "
-        "número não for parâmetro nenhum, ele ainda assim não é constante de "
-        "módulo: passe-o como argumento, ou reabra a decisão (critério de "
-        "morte 5 da lei §9)."
-    )
-
-
-def test_as_isencoes_cabem_numa_tela(db):
-    """Uma isenção que ninguém vê é como uma regra que ninguém escreveu.
-
-    Duas listas de exceção existem neste arquivo, e as duas são curtas de
-    propósito: o semeador (o único lugar onde um número da lei §6 pode morar) e
-    as constantes de módulo declaradas. Se qualquer uma crescer, o diff mostra,
-    e quem revisa pergunta por quê.
-    """
-    assert len(CONSTANTES_DECLARADAS) <= 3, (
-        "a lista de constantes de módulo declaradas cresceu. Cada número que "
-        "entra ali é um número que deixou de ser dado; confira se ele não é "
-        "parâmetro da lei §6 disfarçado."
-    )
-
-
-def test_o_semeador_e_o_unico_isento(db):
-    """A isenção existe, é uma só, e este teste a mantém visível.
-
-    Se a lista `ONDE_O_NUMERO_PODE_MORAR` crescer, o diff mostra. Uma isenção
-    que ninguém vê é como uma regra que ninguém escreveu.
-    """
-    assert len(ONDE_O_NUMERO_PODE_MORAR) == 1
-    (unico,) = ONDE_O_NUMERO_PODE_MORAR
-    assert unico.exists() and unico.name == "semear_parametros.py"

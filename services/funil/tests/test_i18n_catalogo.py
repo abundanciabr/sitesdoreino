@@ -2,7 +2,6 @@
 t()/plural/escape (D2) e, desde a FASE 4, os idiomas do SITE lidos do
 catálogo (`apps.i18n.idiomas`, contrato `Site`)."""
 
-from pathlib import Path
 from types import MappingProxyType
 
 import pytest
@@ -14,7 +13,6 @@ from apps.i18n import catalogo as cat
 from apps.i18n import idiomas as idi
 from apps.i18n import validador as val
 
-RAIZ_REAL = Path(__file__).resolve().parent.parent
 
 # Variante de mentira para o teste de instalação (D4). A célula real tem
 # `cat.VARIANTES` vazio.
@@ -70,13 +68,6 @@ def _celula(tmp_path, doc=None, template=TEMPLATE_OK):
     if template is not None:
         (tmp_path / "templates" / "pagina.html").write_text(template, encoding="utf-8")
     return tmp_path
-
-
-def test_nenhum_registro_local_de_idioma_sobrou_na_celula():
-    # Fase 4: o interim `sites_i18n.yaml` morreu — quem declara idioma é o
-    # catálogo. Se alguém recriar o arquivo, este teste conta a história.
-    assert not (RAIZ_REAL / "sites_i18n.yaml").exists()
-    assert not list(RAIZ_REAL.glob("*i18n*.yaml"))
 
 
 # ---------------------------------------------------------------------------

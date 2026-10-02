@@ -125,7 +125,7 @@ def test_o_limite_e_cortado_para_a_faixa_do_contrato(par_com_o_forum, pedido, es
 
 
 def test_o_teto_declarado_e_o_teto_do_contrato_congelado():
-    """O número 50 sai de `contracts/forum.openapi.yaml`, não de gosto daqui."""
+    """O número 50 é o limite da API do fórum, não gosto daqui."""
     assert LIMITE_MAXIMO == 50
 
 

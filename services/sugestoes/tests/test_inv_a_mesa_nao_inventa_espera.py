@@ -9,8 +9,8 @@ Dois guardas, e cada um fecha uma porta diferente:
    duas implementações divergem no primeiro ajuste que só uma delas receber. Este
    guarda compara as duas na mesma ideia.
 
-2. **Abrir a mesa não muda nada.** Ela não decide: assinar continua sendo do
-   `changespecs.py`, mudar status continua sendo do `moderacao.py`. Uma tela de
+2. **Abrir a mesa não muda nada.** Ela não decide: mudar status continua sendo
+   do `moderacao.py`. Uma tela de
    leitura que escreve é como se descobre, tarde, que um relatório estava
    alterando o que relatava.
 

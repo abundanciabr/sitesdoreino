@@ -21,13 +21,20 @@ delas edita ou apaga uma linha — "corrigir o histórico" continua não existin
 nem pela porta nova.
 """
 
+from datetime import date
+
 import pytest
 from django.db import DatabaseError, connection, models, transaction
 from django.db.models import ProtectedError
 from django.test.utils import CaptureQueriesContext
 from django.urls import NoReverseMatch, reverse
 
-from apps.sugestoes.models import HistoricoStatus, RegistroImutavel, Sugestao
+from apps.sugestoes.models import (
+    ChangeSpecAprovado,
+    HistoricoStatus,
+    RegistroImutavel,
+    Sugestao,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -202,24 +209,9 @@ def _moderacao_completa(equipe, sugestao) -> dict[str, list]:
                 equipe, sugestao, impacto_educacional=4, notas="vale a pena"
             ),
         ],
-        # [EVO-40] O corredor do ChangeSpec. Entra aqui porque a varredura
-        # exige o urlconf INTEIRO — e o que este arquivo mede nele é o que ele
-        # NÃO faz: nenhum caminho da equipe emite UPDATE ou DELETE no
-        # histórico, nem o que autoriza desenvolvimento. Sem mandato de
-        # aprovador a resposta é 403, e isso não enfraquece a medição: o que se
-        # conta são as consultas emitidas, e uma recusa que não escreve nada é
-        # justamente o caso mais fácil de estar certo.
-        "changespecs": [
-            cliente.get(reverse("changespecs", args=[sugestao.id])),
-            gestao.assinar(
-                equipe,
-                sugestao,
-                change_id="CS-SUGESTOES-0009",
-                documento="docs/changespecs/CS-SUGESTOES-0009.md",
-                aprovado_por="Davi (mantenedor)",
-                aprovado_em="2026-08-30",
-            ),
-        ],
+        # [EVO-40] O endereço antigo do ChangeSpec, que hoje só redireciona.
+        # Entra aqui porque a varredura exige o urlconf INTEIRO.
+        "changespecs": [cliente.get(reverse("changespecs", args=[sugestao.id]))],
         # [28/08/2026] A Mesa — a porta do painel de gestão. Ela entra aqui
         # pelo mesmo motivo da `changespecs`: a varredura exige o urlconf
         # INTEIRO. E ela é o caso mais puro do que este arquivo mede — uma
@@ -300,3 +292,50 @@ def test_o_gerente_do_historico_recusa_escrita_e_nao_e_o_padrao_do_django():
     queryset = type(HistoricoStatus.objects.all())
     assert queryset.update is not models.QuerySet.update
     assert queryset.delete is not models.QuerySet.delete
+
+
+# --------------------------------------------------------------------------
+# O registro do ChangeSpec — a porta que registrava saiu, a tabela ficou
+# --------------------------------------------------------------------------
+@pytest.fixture
+def changespec(sugestao, aluno):
+    return ChangeSpecAprovado.objects.create(
+        sugestao=sugestao,
+        registrado_por=aluno,
+        change_id="CS-SUGESTOES-0001",
+        documento="docs/changespecs/CS-SUGESTOES-0001.md",
+        aprovado_por="Davi (mantenedor)",
+        aprovado_em=date(2026, 8, 25),
+    )
+
+
+def test_o_registro_do_changespec_continua_imutavel(changespec):
+    """O que já foi registrado não se edita nem se apaga."""
+    changespec.aprovado_por = "outra pessoa"
+    with pytest.raises(RegistroImutavel):
+        changespec.save()
+
+    with pytest.raises(RegistroImutavel):
+        changespec.delete()
+
+    with pytest.raises(RegistroImutavel):
+        ChangeSpecAprovado.objects.filter(pk=changespec.pk).update(aprovado_por="x")
+
+    assert (
+        ChangeSpecAprovado.objects.get(pk=changespec.pk).aprovado_por
+        == "Davi (mantenedor)"
+    )
+
+
+def test_o_banco_recusa_editar_e_apagar_o_registro_do_changespec(changespec):
+    """O degrau que sobrevive a `psql` — o trigger append-only ficou."""
+    for sql in (
+        "UPDATE sugestoes_changespecaprovado SET aprovado_por = 'x' WHERE id = %s",
+        "DELETE FROM sugestoes_changespecaprovado WHERE id = %s",
+    ):
+        with pytest.raises(DatabaseError, match="INV-SUG10"):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, [changespec.pk])
+
+    assert ChangeSpecAprovado.objects.filter(pk=changespec.pk).exists()

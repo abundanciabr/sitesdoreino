@@ -163,12 +163,6 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("NOTIFICACOES_API_URL", NOTIFICACOES)
     monkeypatch.setenv("NOTIFICACOES_API_TOKEN", "token-do-par-sugestoes-notificacoes")
     monkeypatch.delenv("SUGESTOES_STAFF_EMAILS", raising=False)
-    # [INV-SUG10] A lista de APROVADORES começa ausente pelo mesmo motivo — e
-    # aqui ele é ainda mais duro: sem ela ninguém autoriza desenvolvimento, e é
-    # esse o comportamento CERTO (EVO-40, decisão do mantenedor em 25/08/2026).
-    # Montá-la por conveniência aqui faria a suíte inteira rodar num regime que
-    # a produção não tem, e o guarda de fail-closed nunca reprovaria.
-    monkeypatch.delenv("SUGESTOES_APROVADORES", raising=False)
     ses.limpar_caches()
     yield
     ses.limpar_caches()
@@ -630,67 +624,6 @@ def equipe(entrar_como_staff):
 
 
 # ---------------------------------------------------------------------------
-# O corredor do ChangeSpec (EVO-40) — o segundo papel, e ele NÃO é o crachá
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def lista_de_aprovadores(monkeypatch):
-    """Põe um e-mail em `SUGESTOES_APROVADORES`, acumulando.
-
-    Gêmea da `lista_da_staff`, e separada dela de propósito: moderar é da
-    equipe, autorizar desenvolvimento é do aprovador. Uma fixture que fizesse
-    as duas coisas ao mesmo tempo apagaria da suíte a diferença que o
-    mantenedor decidiu em 25/08/2026 — e o guarda de "staff não basta" ficaria
-    verde sem nunca ter medido nada.
-    """
-    emails: list[str] = []
-
-    def _incluir(email: str) -> None:
-        emails.append(email.strip().lower())
-        monkeypatch.setenv("SUGESTOES_APROVADORES", ",".join(emails))
-
-    return _incluir
-
-
-@pytest.fixture
-def aprovador(entrar_como_staff, lista_de_aprovadores):
-    """Quem pode registrar ChangeSpec: da equipe **e** na lista de aprovadores.
-
-    Os dois papéis, porque a tela mora atrás do crachá e o registro atrás do
-    mandato. Na prática de hoje é uma pessoa só (o mantenedor); no dado e no
-    código são dois portões, porque um dia pode não ser.
-    """
-    email = "mantenedor@meshcraft.test"
-    lista_de_aprovadores(email)
-    return entrar_como_staff(email=email, nome="Mantenedor")
-
-
-@pytest.fixture
-def changespec(aprovador, sugestao):
-    """Um ChangeSpec aprovado já registrado — pelo caminho de escrita real.
-
-    Nunca por `ChangeSpecAprovado.objects.create(...)` à mão: o que os guardas
-    da trava precisam provar é que a JORNADA abre o corredor, e um `create()`
-    continuaria verde no dia em que a porta parasse de conferir qualquer coisa.
-
-    A jornada mudou de porta em 30/08/2026 (a tela de `/moderacao` foi
-    aposentada) e **não mudou de portão**: `SUGESTOES_APROVADORES` continua
-    sendo quem decide, agora conferido no handler do contrato.
-    """
-    resposta = aprovador.gestao.assinar(
-        aprovador,
-        sugestao,
-        change_id="CS-SUGESTOES-0001",
-        documento="docs/changespecs/CS-SUGESTOES-0001.md",
-        aprovado_por="Davi (mantenedor)",
-        aprovado_em="2026-08-25",
-    )
-    assert resposta.status_code == 200, resposta.content
-    return sugestao.changespecs.get()
-
-
-# ---------------------------------------------------------------------------
 # Os eventos (EVO-20) — o fio e os quatro fatos, provocados pela jornada REAL
 # ---------------------------------------------------------------------------
 
@@ -800,11 +733,6 @@ class Gestao:
     def avaliar(self, pessoa, sugestao: Sugestao, **campos):
         return self._post(
             f"{GESTAO}/{sugestao.id}/avaliacao", {**self.quem(pessoa), **campos}
-        )
-
-    def assinar(self, pessoa, sugestao: Sugestao, **campos):
-        return self._post(
-            f"{GESTAO}/{sugestao.id}/changespec", {**self.quem(pessoa), **campos}
         )
 
     def corrigir(self, pessoa, sugestao: Sugestao, **campos):
@@ -945,8 +873,7 @@ def aviso(dentro, sugestao):
 def plateia(db):
     """N pessoas que votaram e M que comentaram numa sugestão.
 
-    **Escrita pelo ORM, e a diferença para a fixture `changespec` — que registra
-    pela jornada real — é deliberada e vale explicar.** O que esta fixture
+    **Escrita pelo ORM, e isso é deliberado e vale explicar.** O que esta fixture
     alimenta são os guardas de VOLUME e de forma do leque: quem eles medem é a
     consulta que o fan-out faz sobre as tabelas `Voto`/`Comentario`, e vinte
     logins de verdade dublados só acrescentariam vinte segundos de suíte à mesma

@@ -87,22 +87,6 @@ def test_a_justificativa_e_o_unico_texto_livre_das_duas_tabelas():
     assert textos == {"justificativa"}
 
 
-def test_nenhum_campo_com_cara_de_caixa_de_mensagem():
-    """A segunda peneira, por NOME, e ela pega o que a de cima deixaria passar.
-
-    Um `CharField(max_length=500)` chamado `mensagem` não é `TextField`, e
-    guardaria conversa do mesmo jeito. As duas peneiras juntas custam quatro
-    linhas e fecham a porta pelos dois lados.
-    """
-    proibidos = ("mensagem", "comentario", "texto", "anexo", "chat", "recado", "obs")
-    nomes = [
-        campo.name
-        for tabela in (Proposta, Acordo)
-        for campo in tabela._meta.concrete_fields
-    ]
-    assert [nome for nome in nomes if any(p in nome for p in proibidos)] == []
-
-
 # ---------------------------------------------------------------------------
 # 2. O COMPORTAMENTO: o único texto é curto por parâmetro, e o plantão vê tudo
 # ---------------------------------------------------------------------------

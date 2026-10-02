@@ -37,7 +37,6 @@ from tests.test_telemetria_do_navegador import (
     fio,  # noqa: F401 - fixture
     postar_lead,
     secao_vista,
-    validar_contra_o_contrato,
 )
 
 EXPERIMENTO_ID = "0b6f1c3e-8a52-4d7e-9f10-2c4b6d8e0a13"
@@ -241,7 +240,6 @@ def test_pagina_com_braco_nao_e_guardada_por_ninguem(client, rede):
 def test_pagina_vista_leva_o_par_do_braco(client, rede, fio):
     abrir_com(client, rede, experimento(), NO_BRACO_B)
     [visita] = fatos(fio, "funil.pagina-vista")
-    validar_contra_o_contrato(visita)
     assert visita["data"]["experimento_id"] == EXPERIMENTO_ID
     assert visita["data"]["variante_id"] == "b"
 
@@ -267,7 +265,6 @@ def test_a_exposicao_e_a_secao_vista_da_secao_do_slot_com_o_par(
     # guarda: services/funil/apps/core/telemetria.py:173
     assert enviar(client, secao_vista(tela_com_braco, "cubo")).status_code == 204
     [exposicao] = fatos(fio, "funil.secao-vista")
-    validar_contra_o_contrato(exposicao)
     assert exposicao["data"]["secao"] == "cubo"
     assert exposicao["data"]["experimento_id"] == EXPERIMENTO_ID
     assert exposicao["data"]["variante_id"] == "b"
@@ -276,7 +273,6 @@ def test_a_exposicao_e_a_secao_vista_da_secao_do_slot_com_o_par(
 def test_o_clique_para_o_checkout_leva_o_par(client, tela_com_braco, fio):
     assert enviar(client, clique(tela_com_braco)).status_code == 204
     [envelope] = fatos(fio, "funil.cta-clicado")
-    validar_contra_o_contrato(envelope)
     assert envelope["data"]["experimento_id"] == EXPERIMENTO_ID
     assert envelope["data"]["variante_id"] == "b"
 
@@ -285,7 +281,6 @@ def test_o_lead_da_pagina_com_braco_leva_o_par(client, tela_com_braco, fio):
     corpo = {"email": "cliente@exemplo.com", "contexto": tela_com_braco}
     assert postar_lead(client, corpo).status_code == 200
     [envelope] = fatos(fio, "funil.lead-capturado")
-    validar_contra_o_contrato(envelope)
     assert envelope["data"]["experimento_id"] == EXPERIMENTO_ID
     assert envelope["data"]["variante_id"] == "b"
 

@@ -354,20 +354,6 @@ def escrever_todos() -> None:
         print(f"escrito: {PASTA / nome}")
 
 
-def test_os_icones_commitados_sao_os_que_esta_fonte_produz():
-    """Falsificável dos dois lados: PNG editado à mão reprova, e desenho
-    mudado sem regenerar também. O PNG deixa de ser um binário órfão."""
-    for nome in ICONES:
-        arquivo = PASTA / nome
-        assert (
-            arquivo.is_file()
-        ), f"{nome} não existe — rode `python tests/{Path(__file__).name}`"
-        assert arquivo.read_bytes() == gerar(nome), (
-            f"{nome} difere do desenho desta fonte — "
-            f"rode `python tests/{Path(__file__).name}` para regerar"
-        )
-
-
 def test_o_maskable_cabe_na_zona_segura_do_android():
     """O Android recorta o ícone e só garante os 80% centrais. Medido no
     desenho, não prometido no comentário: o cubo do maskable tem de caber

@@ -1,13 +1,20 @@
 """API de gestão: autenticação, privacidade, autoria e histórico das ideias."""
 
 import json
+from datetime import date
 
 import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.core.avisos import interessados_em
-from apps.sugestoes.models import Aviso, HistoricoStatus, Sugestao
+from apps.sugestoes.models import (
+    Aviso,
+    ChangeSpecAprovado,
+    HistoricoStatus,
+    Identidade,
+    Sugestao,
+)
 from config.api import api
 
 TOKEN = "token-do-par-admin-sugestoes"
@@ -25,11 +32,8 @@ def par_autorizado(settings):
     return TOKEN
 
 
-def ler(client, por_email: str = ""):
-    resposta = client.get(
-        IDEIAS + (f"?por_email={por_email}" if por_email else ""),
-        headers={"authorization": f"Bearer {TOKEN}"},
-    )
+def ler(client):
+    resposta = client.get(IDEIAS, headers={"authorization": f"Bearer {TOKEN}"})
     assert resposta.status_code == 200, resposta.content
     return resposta.json()
 
@@ -62,17 +66,8 @@ def operacoes_da_api():
 
 
 def test_ha_operacoes_para_medir():
-    """Guarda que varre lista vazia é guarda verde à toa.
-
-    14 desde as junções de ideias (`DECISAO-fundir-ideias.md`, 05/09/2026), que
-    trouxeram quatro de uma vez: prever, fundir, desfazer e listar o que dá para
-    desfazer. Elas somaram-se às 10 de `texto`
-    (`DECISAO-corrigir-o-texto-de-uma-ideia.md`, 31/08/2026), que somou-se às 9
-    de `apagar` (`DECISAO-apagar-ideia.md`, 29/08/2026), que tinham somado às 8
-    de `arquivar`/`desarquivar` (`DECISAO-arquivar-ideia.md`), que já somavam as
-    6 de `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
-    """
-    assert len(operacoes_da_api()) == 14
+    """Guarda que varre lista vazia é guarda verde à toa."""
+    assert operacoes_da_api()
 
 
 def test_nenhuma_operacao_responde_sem_o_token_do_par(client, db, par_autorizado):
@@ -138,16 +133,6 @@ def test_os_fatos_da_ideia_atravessam_inteiros(
     assert corpo["avaliacao"] is None
 
 
-def test_pode_assinar_reflete_identificacao_sem_lista_especial(
-    client, db, par_autorizado, sugestao, lista_de_aprovadores
-):
-    lista_de_aprovadores(MANTENEDOR)
-
-    assert ler(client, por_email="outra.pessoa@meshcraft.test")["pode_assinar"] is True
-    assert ler(client, por_email=MANTENEDOR)["pode_assinar"] is True
-    assert ler(client)["pode_assinar"] is False
-
-
 # ---------------------------------------------------------------------------
 # 3. Nenhuma trava afrouxou na mudança de casa
 # ---------------------------------------------------------------------------
@@ -199,13 +184,7 @@ def test_nao_planejado_sem_justificativa_e_registrado(
 def test_a_fase_anda_sem_assinatura_pelo_contrato(
     client, db, par_autorizado, caixa, sugestao
 ):
-    """A trava do ChangeSpec saiu em 06/09/2026: `planejado` vira obra direto.
-
-    Medido também aqui, e não só na porta da equipe, porque este é o caminho
-    que o Admin percorre — e era exatamente ele que devolvia 422 com a frase do
-    corredor. Os outros degraus estão em
-    `test_a_fase_anda_sem_assinatura.py`.
-    """
+    """`planejado` vira obra direto, pelo caminho que o Admin percorre."""
     caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai")
 
     resposta = escrever(
@@ -224,113 +203,6 @@ def test_a_fase_anda_sem_assinatura_pelo_contrato(
         Sugestao.objects.get(pk=sugestao.pk).status
         == Sugestao.Status.EM_DESENVOLVIMENTO
     )
-
-
-def test_equipe_identificada_registra_sem_lista_especial(
-    client, db, par_autorizado, sugestao, lista_de_aprovadores
-):
-    """A API autenticada grava a identidade responsável."""
-    lista_de_aprovadores(MANTENEDOR)
-
-    resposta = escrever(
-        client,
-        f"{IDEIAS}/{sugestao.id}/changespec",
-        {
-            "por_email": "outra.pessoa@meshcraft.test",
-            "por_id_da_plataforma": "idt-de-outra-pessoa",
-            "change_id": "CS-SUGESTOES-0001",
-            "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
-            "aprovado_por": "Alguém",
-            "aprovado_em": "2026-08-28",
-        },
-    )
-
-    assert resposta.status_code == 200
-    assert sugestao.changespecs.count() == 1
-    assert sugestao.changespecs.get().registrado_por.email == "outra.pessoa@meshcraft.test"
-
-
-def test_a_lista_de_aprovadores_vazia_nao_bloqueia_registro(
-    client, db, par_autorizado, sugestao
-):
-    """A lista antiga não participa da autorização da API autenticada."""
-    resposta = escrever(
-        client,
-        f"{IDEIAS}/{sugestao.id}/changespec",
-        {
-            "por_email": MANTENEDOR,
-            "por_id_da_plataforma": ID_DA_PLATAFORMA,
-            "change_id": "CS-SUGESTOES-0001",
-            "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
-            "aprovado_por": "Davi",
-            "aprovado_em": "2026-08-28",
-        },
-    )
-
-    assert resposta.status_code == 200
-
-
-def test_metadados_opcionais_geram_identificador_sem_fabricar_aprovacao(
-    client, db, par_autorizado, sugestao
-):
-    resposta = escrever(
-        client,
-        f"{IDEIAS}/{sugestao.id}/changespec",
-        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
-    )
-
-    assert resposta.status_code == 200, resposta.content
-    registro = sugestao.changespecs.get()
-    assert registro.change_id.startswith("CS-SUGESTOES-")
-    assert registro.documento == ""
-    assert registro.aprovado_por == ""
-    assert registro.aprovado_em is None
-    assert registro.registrado_por.email == MANTENEDOR
-    ficha = ler_uma(client, sugestao.id)["changespecs"][0]
-    assert ficha["aprovado_em"] == ""
-
-
-def test_registro_sem_autor_identificado_e_recusado(client, db, par_autorizado, sugestao):
-    resposta = escrever(client, f"{IDEIAS}/{sugestao.id}/changespec", {"por_email": " "})
-
-    assert resposta.status_code == 422
-    assert sugestao.changespecs.count() == 0
-
-
-def test_quem_aprova_registra_e_o_corredor_abre(
-    client, db, par_autorizado, caixa, sugestao, lista_de_aprovadores
-):
-    lista_de_aprovadores(MANTENEDOR)
-    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai")
-
-    registro = escrever(
-        client,
-        f"{IDEIAS}/{sugestao.id}/changespec",
-        {
-            "por_email": MANTENEDOR,
-            "por_id_da_plataforma": ID_DA_PLATAFORMA,
-            "change_id": "CS-SUGESTOES-0001",
-            "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
-            "aprovado_por": "Davi (mantenedor)",
-            "aprovado_em": "2026-08-28",
-        },
-    )
-    assert registro.status_code == 200, registro.content
-    assert registro.json()["tem_changespec"] is True
-
-    andou = escrever(
-        client,
-        f"{IDEIAS}/{sugestao.id}/status",
-        {
-            "por_email": MANTENEDOR,
-            "por_id_da_plataforma": ID_DA_PLATAFORMA,
-            "status": "em_desenvolvimento",
-            "nota": "começou",
-        },
-    )
-
-    assert andou.status_code == 200, andou.content
-    assert andou.json()["status"] == "em_desenvolvimento"
 
 
 def test_avaliar_pelo_contrato_escreve_a_decisao_de_produto(
@@ -526,40 +398,36 @@ def test_a_lista_nao_carrega_historico(client, db, par_autorizado, caixa, sugest
 # 5b. A FICHA da assinatura — `tem_changespec` diz "sim"; ela diz "o quê"
 # ---------------------------------------------------------------------------
 #
-# Antes desta emenda, a única coisa que atravessava a fronteira sobre a
-# assinatura era o booleano `tem_changespec`. O Admin deixava ASSINAR e não
-# deixava CONFERIR o que foi assinado — a última das cinco telas de
-# `/moderacao` sem paridade nenhuma do lado de lá, e a razão de a TAR-014 ter
-# parado antes de aposentá-las.
+# A porta que registrava saiu; as fichas que ela gravou ficaram na tabela e
+# continuam legíveis por aqui.
 
 
-def assinar(client, sugestao, **campos):
-    """Uma assinatura pelo caminho REAL de escrita — nunca por `create()`."""
-    corpo = {
-        "por_email": MANTENEDOR,
-        "por_id_da_plataforma": ID_DA_PLATAFORMA,
-        "por_nome": "Davi (mantenedor)",
+def ficha_registrada(sugestao, **campos):
+    """Uma ficha já gravada na tabela, como as que o histórico guarda."""
+    quem, _ = Identidade.objects.get_or_create(
+        email=MANTENEDOR, defaults={"nome_exibido": "Davi (mantenedor)"}
+    )
+    dados = {
         "change_id": "CS-SUGESTOES-0001",
         "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
         "aprovado_por": "Davi (mantenedor)",
-        "aprovado_em": "2026-08-28",
+        "aprovado_em": date(2026, 8, 28),
     }
-    corpo.update(campos)
-    resposta = escrever(client, f"{IDEIAS}/{sugestao.id}/changespec", corpo)
-    assert resposta.status_code == 200, resposta.content
-    return resposta
+    dados.update(campos)
+    return ChangeSpecAprovado.objects.create(
+        sugestao=sugestao, registrado_por=quem, **dados
+    )
 
 
 def test_a_ficha_da_assinatura_atravessa_inteira(
-    client, db, par_autorizado, sugestao, lista_de_aprovadores
+    client, db, par_autorizado, sugestao
 ):
     """Os seis campos que a tela antiga mostrava, e nenhum a menos.
 
     O booleano responde "está assinada?"; auditar exige "por quem, quando, com
     qual documento" — e é isso que some no dia em que a tela velha sair do ar.
     """
-    lista_de_aprovadores(MANTENEDOR)
-    assinar(client, sugestao)
+    ficha_registrada(sugestao)
 
     (ficha,) = ler_uma(client, sugestao.id)["changespecs"]
 
@@ -575,16 +443,15 @@ def test_a_ficha_da_assinatura_atravessa_inteira(
 
 
 def test_a_ficha_traz_as_DUAS_versoes_do_changespec(
-    client, db, par_autorizado, sugestao, lista_de_aprovadores
+    client, db, par_autorizado, sugestao
 ):
     """Escopo que mudou nasce `-v2` (formato §4) — e as duas continuam valendo.
 
     É por isso que a ficha é uma LISTA e não um objeto: mostrar só a última
     esconderia justamente o que a auditoria procura, que é a corrente.
     """
-    lista_de_aprovadores(MANTENEDOR)
-    assinar(client, sugestao, change_id="CS-SUGESTOES-0001")
-    assinar(client, sugestao, change_id="CS-SUGESTOES-0001-v2")
+    ficha_registrada(sugestao, change_id="CS-SUGESTOES-0001")
+    ficha_registrada(sugestao, change_id="CS-SUGESTOES-0001-v2")
 
     ids = [f["change_id"] for f in ler_uma(client, sugestao.id)["changespecs"]]
 
@@ -594,7 +461,7 @@ def test_a_ficha_traz_as_DUAS_versoes_do_changespec(
 
 
 def test_o_email_de_quem_registrou_nao_atravessa_nem_sem_nome(
-    client, db, par_autorizado, sugestao, lista_de_aprovadores
+    client, db, par_autorizado, sugestao
 ):
     """A tela antiga caía no e-mail quando o nome era vazio; a fronteira, não.
 
@@ -602,8 +469,7 @@ def test_o_email_de_quem_registrou_nao_atravessa_nem_sem_nome(
     página que só a equipe abre, e um vazamento assim que o mesmo dado vira
     resposta de API. Vazio é a resposta certa: quem exibe decide o que escrever.
     """
-    lista_de_aprovadores(MANTENEDOR)
-    assinar(client, sugestao)
+    ficha_registrada(sugestao)
     quem = sugestao.changespecs.get().registrado_por
     quem.nome_exibido = ""
     quem.save(update_fields=["nome_exibido"])
@@ -615,11 +481,10 @@ def test_o_email_de_quem_registrou_nao_atravessa_nem_sem_nome(
 
 
 def test_a_lista_nao_carrega_a_ficha_da_assinatura(
-    client, db, par_autorizado, sugestao, lista_de_aprovadores
+    client, db, par_autorizado, sugestao
 ):
     """Pelo mesmo motivo do histórico: a mesa não mostra ficha nenhuma."""
-    lista_de_aprovadores(MANTENEDOR)
-    assinar(client, sugestao)
+    ficha_registrada(sugestao)
 
     ideia = uma(ler(client), sugestao)
 

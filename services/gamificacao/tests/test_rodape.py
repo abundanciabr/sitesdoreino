@@ -174,7 +174,3 @@ def test_o_estilo_do_rodape_chega_pela_rota_do_css(client):
     for regra in (".rodape {", ".rodape .marca", ".rodape .links", ".rodape .direitos"):
         assert regra in css
 
-
-# ---------------------------------------------------------------------------
-# 4. A moldura — a casa onde a peça comum mora
-# ---------------------------------------------------------------------------

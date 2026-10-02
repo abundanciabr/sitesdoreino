@@ -5,9 +5,9 @@
 # com `event_id` diferente, então a dedup existente (unicidade de `event_id`,
 # `EventoProcessado`) não pega essa repetição sozinha.
 #
-# A identidade lógica que atravessa as duas versões vem do contrato congelado
-# (`x-ponte-do-v1` em `contracts/eventos/pagamento.aprovado.v2.json` e
-# `pagamento.recusado.v2.json`), e as DUAS pontes são diferentes de propósito:
+# A identidade lógica que atravessa as duas versões vem da ponte do v1 de cada
+# evento (`pagamento.aprovado` v2 e `pagamento.recusado` v2), e as DUAS pontes
+# são diferentes de propósito:
 #
 # - `pagamento.aprovado`: o par `provider` + `provider_reference_id` (no v1 o
 #   par é sempre implícito `mercadopago` + `mp_payment_id`).

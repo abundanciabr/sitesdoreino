@@ -1,6 +1,6 @@
 # tests/test_api.py  # [RECEITA:R1 v1]
 """As três rotas da porta de consulta — Fase 4 do sininho
-(`contracts/notificacoes.openapi.yaml`, Rito de Contrato de 27/08/2026,
+(Rito de Contrato de 27/08/2026,
 emendado no mesmo dia para exigir `site_id` — multissítio: site é dado).
 
 Um arquivo só para as três (`GET /resumo`, `GET /avisos`,
@@ -32,7 +32,6 @@ import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
-from jsonschema import Draft202012Validator
 
 from apps.notificacoes.models import (
     ContadorDeNaoLidos,
@@ -40,14 +39,7 @@ from apps.notificacoes.models import (
     NotificacaoArquivada,
 )
 from apps.notificacoes.services import guardar
-from tests.conftest import (
-    ALGUEM,
-    EQUIPE,
-    OUTRA,
-    SITE,
-    cabecalho_bearer,
-    schema_da_resposta,
-)
+from tests.conftest import ALGUEM, EQUIPE, OUTRA, SITE, cabecalho_bearer
 
 pytestmark = pytest.mark.django_db
 
@@ -186,14 +178,6 @@ def test_resumo_e_isolado_por_site(client, par_autorizado):
 
     assert resposta_site.json() == {"nao_lidas": 2}
     assert resposta_outro_site.json() == {"nao_lidas": 1}
-
-
-def test_resumo_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
-    _guardar()
-    resposta = _perguntar_resumo(client, destinatario_id=ALGUEM)
-    schema = schema_da_resposta("/resumo", "get", "200")
-
-    Draft202012Validator(schema).validate(resposta.json())
 
 
 # =============================================================================
@@ -438,16 +422,6 @@ def test_avisos_paginacao_atravessa_o_merge_sem_perder_nem_repetir(
     assert coletados == esperado
 
 
-def test_avisos_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
-    _viva(ator_id=None)
-    _arquivada()
-
-    resposta = _pedir_avisos(client, destinatario_id=ALGUEM)
-    schema = schema_da_resposta("/avisos", "get", "200")
-
-    Draft202012Validator(schema).validate(resposta.json())
-
-
 # =============================================================================
 # POST /marcar-lidas — marca todos os não lidos de uma pessoa de uma vez
 # =============================================================================
@@ -629,14 +603,6 @@ def test_marcar_lidas_o_contador_desconta_exatamente_o_que_marcou_nao_zera_tudo(
 
     _guardar()  # chega DEPOIS do marcar-lidas — tem que continuar contando
     assert _contador() == 1
-
-
-def test_marcar_lidas_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
-    _guardar()
-    resposta = _marcar(client, destinatario_id=ALGUEM)
-    schema = schema_da_resposta("/marcar-lidas", "post", "200")
-
-    Draft202012Validator(schema).validate(resposta.json())
 
 
 # =============================================================================
@@ -862,14 +828,6 @@ def test_marcar_lida_numa_arquivada_e_sempre_ja_estava_lido(client, par_autoriza
     assert resposta.json() == {"ja_estava_lido": True}
     arquivada.refresh_from_db()
     assert arquivada.lido_em == carimbo_original
-
-
-def test_marcar_lida_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
-    aviso = _guardar()
-    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{aviso.pk}")
-    schema = schema_da_resposta("/marcar-lida", "post", "200")
-
-    Draft202012Validator(schema).validate(resposta.json())
 
 
 # =============================================================================

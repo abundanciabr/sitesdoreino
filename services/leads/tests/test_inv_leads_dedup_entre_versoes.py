@@ -3,12 +3,12 @@
 # pagamento.aprovado/recusado v1 e depois como v2 (RITOS.md §3, migração em
 # voo), gera UMA única entrada de timeline — não uma por versão.
 #
-# A identidade lógica do fato vem de `x-ponte-do-v1` em cada contrato, NÃO do
+# A identidade lógica do fato vem da ponte do v1 de cada evento, NÃO do
 # brief desta tarefa (que erra para o recusado): pagamento.aprovado.v2 e
 # pagamento.recusado.v2 concordam em ter `provider`/`provider_reference_id`,
 # mas só o aprovado usa esse par para deduplicar. O recusado nunca teve
 # referência do provedor no v1 — ali quem atravessa as duas versões é
-# `payment_id` (contracts/eventos/pagamento.recusado.v2.json, `x-ponte-do-v1`).
+# `payment_id` (evento pagamento.recusado v2).
 import threading
 import uuid
 
@@ -279,7 +279,7 @@ def test_recusado_v2_sozinho_gera_uma_entrada():
 def test_recusado_v1_seguido_de_v2_do_mesmo_fato_gera_uma_unica_entrada():
     """O recusado v1 NUNCA teve referência do provedor (nem como mp_payment_id):
     a chave que atravessa as duas versões é `payment_id`
-    (contracts/eventos/pagamento.recusado.v2.json, `x-ponte-do-v1`) — não o par
+    (evento pagamento.recusado v2) — não o par
     provider/provider_reference_id do aprovado."""
     processar_envelope(_recusado_v1("pay-r3"), ao_pagamento_recusado)
     processar_envelope(_recusado_v2("pay-r3"), ao_pagamento_recusado)

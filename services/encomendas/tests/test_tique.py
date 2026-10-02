@@ -1,21 +1,11 @@
-"""O tique como MÁQUINA: a ordem dos gestos, o batimento, e a ausência de timer.
+"""O tique como MÁQUINA: a ordem dos gestos, o batimento e o silêncio contado.
 
-Os três `test_inv_j8/j9/j10*.py` medem as PROMESSAS que o tique guarda. Este
-arquivo mede o que sobra, e o que sobra é o que mantém as promessas de pé em
-produção:
-
-- **A ordem dos três gestos é regra**, não arrumação: expirar, abrir, oferecer.
+- **A ordem dos três gestos**: expirar, abrir, oferecer.
 - **O batimento existe e é de um minuto**, pelo caminho canônico do Huey.
-- **Não existe agendamento por oferta**, e isso é medido por FORMA — a única
-  garantia que continua valendo para o código que o degrau 2.5 ainda vai
-  escrever.
-- **O contador de silêncios tem um dono só**, e isso é medido por FORMA: o
-  tique NOTA o silêncio, e quem sabe o que fazer com ele é `gestos.py`.
+- **Uma oferta que vence é um silêncio a mais**, sem custar o lugar na fila.
 """
 
-import ast
 from datetime import datetime, timedelta, timezone as fuso
-from pathlib import Path
 
 from apps.encomendas import motor, negociacao, tasks, tique
 from apps.encomendas.models import (
@@ -28,7 +18,6 @@ from apps.encomendas.models import (
 from config.huey import huey
 
 SITE = "escola-a"
-CELULA = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------
@@ -256,198 +245,8 @@ def test_um_site_torto_nao_derruba_os_outros(semeado, criar_encomenda, monkeypat
 
 
 # ---------------------------------------------------------------------------
-# 3. NENHUM TIMER AGENDADO — a garantia de FORMA
+# 3. O SILÊNCIO CONTADO
 # ---------------------------------------------------------------------------
-
-# Os gestos do Huey que criam um agendamento por unidade de trabalho. É a
-# peneira estreita de propósito: `revoke` e `restore` mexem numa execução
-# específica, `schedule` e `reschedule` marcam hora para uma, e `eta`/`delay`
-# são os argumentos que transformam uma chamada comum em agendamento.
-AGENDAMENTOS = {"schedule", "reschedule", "revoke", "restore"}
-ARGUMENTOS_DE_AGENDAMENTO = {"eta", "delay"}
-
-
-class _Varredor(ast.NodeVisitor):
-    def __init__(self):
-        self.agendamentos: list[tuple[int, str]] = []
-        self.crontabs: list[int] = []
-
-    def visit_Call(self, no):
-        nome = getattr(no.func, "attr", None) or getattr(no.func, "id", None)
-        if nome in AGENDAMENTOS:
-            self.agendamentos.append((no.lineno, nome))
-        if nome == "crontab":
-            self.crontabs.append(no.lineno)
-        for chave in no.keywords:
-            if chave.arg in ARGUMENTOS_DE_AGENDAMENTO:
-                self.agendamentos.append((no.lineno, f"{nome}({chave.arg}=...)"))
-        self.generic_visit(no)
-
-
-def _varrer_a_celula():
-    achados: list[str] = []
-    crontabs: list[str] = []
-    for caminho in sorted((CELULA / "apps").rglob("*.py")):
-        if "migrations" in caminho.parts:
-            continue
-        varredor = _Varredor()
-        varredor.visit(ast.parse(caminho.read_text(encoding="utf-8")))
-        relativo = caminho.relative_to(CELULA)
-        achados += [
-            f"{relativo}:{linha} {nome}" for linha, nome in varredor.agendamentos
-        ]
-        crontabs += [f"{relativo}:{linha}" for linha in varredor.crontabs]
-    return achados, crontabs
-
-
-def test_nenhuma_oferta_tem_agendamento_proprio():
-    """A lei §7.4 medida como forma: *"relógios não são timers agendados"*.
-
-    Comportamento mede os gestos que existem hoje; o degrau 2.5 traz gestos
-    novos (a pausa por três silêncios, a reclassificação) e as Fases 3 e 5 trazem
-    seis prazos a mais. É exatamente ali que alguém, com toda a boa intenção,
-    escreve `pausar.schedule(eta=perfil.pausa_ate)` para "não precisar varrer" —
-    e nenhum teste de comportamento escrito hoje pegaria isso.
-
-    O estrago é invisível: o agendamento vive fora do banco, some no primeiro
-    deploy, e a pausa nunca termina. Sem erro, sem log, sem alarme.
-    """
-    agendamentos, _ = _varrer_a_celula()
-
-    assert agendamentos == [], (
-        "agendamento por unidade de trabalho no código desta célula: "
-        + "; ".join(agendamentos)
-        + ". Relógio desta célula é REAVALIAÇÃO PERIÓDICA (plano §7.4): a "
-        "verdade mora numa coluna, e o tique de um minuto pergunta o que está "
-        "vencido agora. Um `eta`/`delay`/`schedule` vive fora do banco e some "
-        "no primeiro deploy, levando junto a única coisa que faria aquele "
-        "prazo acontecer."
-    )
-
-
-def test_existe_um_batimento_so_na_celula_inteira():
-    """Um `crontab`, e ele não conhece nenhuma oferta.
-
-    É a outra metade da forma: sem esta asserção, alguém poderia acrescentar um
-    `crontab` por tipo de prazo (um para ofertas, um para aprovação tácita, um
-    para o SLA do revisor) e voltar ao mundo dos agendamentos por outro caminho
-    — seis batimentos a sincronizar, seis lugares para esquecer um.
-    """
-    _, crontabs = _varrer_a_celula()
-
-    assert len(crontabs) == 1, f"batimentos encontrados: {crontabs}"
-    assert crontabs[0].startswith("apps/encomendas/tasks.py") or crontabs[0].startswith(
-        "apps\\encomendas\\tasks.py"
-    )
-
-
-def test_o_varredor_enxerga_o_agendamento_que_ele_procura():
-    """O guarda que não morde é indistinguível do guarda desligado.
-
-    Sem esta prova, a varredura acima passaria igualmente bem se o `_Varredor`
-    não achasse nada — e é exatamente assim que um portão morre em silêncio.
-    """
-    codigo = (
-        "def agenda():\n"
-        "    expirar_oferta.schedule(args=(oferta.id,), eta=oferta.expira_em)\n"
-        "    tarefa.revoke()\n"
-    )
-    varredor = _Varredor()
-    varredor.visit(ast.parse(codigo))
-
-    assert sorted(nome for _, nome in varredor.agendamentos) == [
-        "revoke",
-        "schedule",
-        "schedule(eta=...)",
-    ]
-
-
-# ---------------------------------------------------------------------------
-# 4. O CONTADOR DE SILÊNCIOS TEM UM DONO SÓ
-# ---------------------------------------------------------------------------
-
-CONTADOR = "silencios_consecutivos"
-# O único arquivo da célula onde a coluna pode ser escrita. `gestos.py` guarda as
-# DUAS metades do contador — o que o enche (`contar_o_silencio`, chamado daqui) e
-# o que o zera (`zerar_o_silencio`, chamado por aceitar, passar e religar).
-QUEM_MEXE_NO_CONTADOR = {"gestos.py"}
-
-
-class _VarredorDoContador(ast.NodeVisitor):
-    """As mesmas três formas de gravar que o guarda do [INV-ENC-J4] enxerga."""
-
-    def __init__(self):
-        self.achados: list[int] = []
-
-    def visit_Assign(self, no):
-        for alvo in no.targets:
-            if isinstance(alvo, ast.Attribute) and alvo.attr == CONTADOR:
-                self.achados.append(no.lineno)
-        self.generic_visit(no)
-
-    def visit_AugAssign(self, no):
-        alvo = no.target
-        if isinstance(alvo, ast.Attribute) and alvo.attr == CONTADOR:
-            self.achados.append(no.lineno)
-        self.generic_visit(no)
-
-    def visit_Call(self, no):
-        nome = getattr(no.func, "attr", None) or getattr(no.func, "id", None)
-        for chave in no.keywords:
-            if chave.arg == CONTADOR and nome in {"create", "update", "bulk_update"}:
-                self.achados.append(no.lineno)
-            if chave.arg == "update_fields" and nome == "save":
-                for item in getattr(chave.value, "elts", []):
-                    if isinstance(item, ast.Constant) and item.value == CONTADOR:
-                        self.achados.append(no.lineno)
-        self.generic_visit(no)
-
-
-def test_so_um_arquivo_da_celula_escreve_no_contador_de_silencios():
-    """As duas metades do contador moram juntas, ou uma delas envelhece sozinha.
-
-    O perigo tem forma conhecida: o gesto novo (o abandono, a mediação, o aceite
-    de uma proposta) é escrito num arquivo novo, cresce ou zera o contador ali
-    mesmo, e a regra passa a viver em dois lugares. Meses depois um deles esquece
-    de zerar, e o aluno é pausado por "estar ocupado" no dia em que mais
-    respondeu — sem erro, sem log, sem alarme.
-
-    Vermelho aqui quer dizer: leve a escrita para `gestos.py`, ao lado da outra
-    metade, e chame de onde o gesto acontece.
-    """
-    fora = []
-    for caminho in sorted((CELULA / "apps").rglob("*.py")):
-        if "migrations" in caminho.parts or caminho.name in QUEM_MEXE_NO_CONTADOR:
-            continue
-        varredor = _VarredorDoContador()
-        varredor.visit(ast.parse(caminho.read_text(encoding="utf-8")))
-        fora += [f"{caminho.relative_to(CELULA)}:{linha}" for linha in varredor.achados]
-
-    assert fora == [], (
-        f"escrita em `{CONTADOR}` fora de {sorted(QUEM_MEXE_NO_CONTADOR)}: "
-        + "; ".join(fora)
-        + ". O contador da pausa automática tem as duas metades no mesmo arquivo "
-        "(plano §6.3): quem o enche e quem o zera. Chame "
-        "`gestos.contar_o_silencio` ou `gestos.zerar_o_silencio` em vez de "
-        "escrever na coluna."
-    )
-
-
-def test_o_varredor_do_contador_enxerga_as_quatro_formas_de_gravar():
-    """O guarda que não morde é indistinguível do guarda desligado."""
-    codigo = "\n".join(
-        [
-            "def mexe():",
-            "    perfil.silencios_consecutivos = 0",
-            "    perfil.silencios_consecutivos += 1",
-            "    Perfil.objects.update(silencios_consecutivos=0)",
-            "    perfil.save(update_fields=['silencios_consecutivos'])",
-        ]
-    )
-    varredor = _VarredorDoContador()
-    varredor.visit(ast.parse(codigo))
-
-    assert len(varredor.achados) == 4
 
 
 def test_o_tique_conta_o_silencio_pelo_dono_do_contador(

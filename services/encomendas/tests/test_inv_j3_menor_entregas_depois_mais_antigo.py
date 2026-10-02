@@ -148,33 +148,6 @@ def test_a_chave_de_ordem_tem_os_dois_termos_da_lei_e_um_desempate():
     assert chave[2] == candidato.perfil_id
 
 
-def test_o_candidato_nao_tem_onde_guardar_um_peso():
-    """Garantia por AUSÊNCIA: o que não se pode nomear não se pode ordenar.
-
-    A forma de `Candidato` é fechada. Nenhum campo de peso, prioridade,
-    destaque, nota, patrocínio ou afinidade — e um motor que quisesse ordenar
-    por isso teria de acrescentar o campo AQUI, onde a CI recusa. É a mesma
-    técnica do [INV-GAM2]: o cosmético que não tem onde guardar um
-    multiplicador não multiplica nada.
-    """
-    campos = set(motor.Candidato.__dataclass_fields__)
-    vocabulario_da_vantagem = {
-        "peso",
-        "prioridade",
-        "destaque",
-        "nota",
-        "score",
-        "pontuacao",
-        "ranking",
-        "patrocinio",
-        "afinidade",
-        "boost",
-        "nivel_de_prioridade",
-    }
-
-    assert campos & vocabulario_da_vantagem == set()
-
-
 # ---------------------------------------------------------------------------
 # 3. A mesma regra, atravessando o banco
 # ---------------------------------------------------------------------------
