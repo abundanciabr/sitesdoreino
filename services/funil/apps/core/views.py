@@ -34,8 +34,10 @@ from apps.core import sorteio, telemetria, ver_como
 from apps.core.middleware import limpar_cache_de_avisos
 from apps.core.visitante import COOKIE, id_valido
 from apps.core.notificacoes import (
+    TIPOS_POR_ASSUNTO,
+    avisos_para_tela,
     buscar_avisos,
-    aviso_para_tela,
+    links_para_o_celular,
     marcar_aviso,
     marcar_todos,
 )
@@ -844,7 +846,7 @@ def notificacoes(request):
             {"falha": True, "avisos": []},
             status=503,
         )
-    avisos = [aviso_para_tela(item) for item in itens]
+    avisos = avisos_para_tela(itens, ator.id, request.site["id"], request.idioma)
     return render(
         request,
         "funil/notificacoes.html",
@@ -1025,51 +1027,6 @@ def manifesto_do_app(request):
     )
 
 
-# Os textos do aviso que aparece na tela do celular, por assunto. A frase nasce
-# na LEITURA, no idioma de quem lê (`DECISAO-notificacoes` §5.1) — e a leitura,
-# aqui, acontece no aparelho: por isso os textos viajam para dentro do
-# `/sw.js` em vez de serem escolhidos na hora de enviar. O catálogo é o mesmo
-# de todo texto do site (`traducoes/avisos.yaml`), nunca uma segunda casa.
-#
-# Assunto que esta versão do site não conhece cai no genérico — e isso não é
-# defeito: o aviso pode chegar de uma parte nova antes de o aparelho ter
-# recarregado o service worker, e um aviso honesto e vago é melhor que
-# nenhum. **Esse ramo só protege enquanto for possível cair nele**: a
-# tentação de escrever `assunto.startswith("gamificacao.")` para "cobrir os
-# quatro de uma vez" é um erro, porque o contrato pode ganhar um quinto
-# assunto amanhã e o prefixo guloso o mostraria com a frase errada em vez de
-# admitir que não o conhece. Um assunto, uma linha, sempre.
-#
-# **NENHUMA destas frases recebe parâmetro, e isso é decisão de desenho.**
-# Repare no `static/funil/sw.js`: ele pega `AVISOS.textos[carta.assunto]` e
-# usa `titulo` e `corpo` como strings PRONTAS, sem interpolação nenhuma. Não é
-# um pedaço que faltou terminar, e "consertar" isso quebraria duas coisas de
-# uma vez. Primeiro, `carta.parametros` nem sempre chega: quase todo parâmetro
-# do contrato é opcional (`familia`, `validador_papel`, `semana`), o push pode
-# vir truncado, e uma frase montada com buraco é pior que uma frase curta e
-# inteira. Segundo, a tela do celular é um CONVITE para abrir o site, não o
-# lugar de contar a novidade toda — a frase completa, com o número do nível e
-# a família da medalha, já existe no sininho (`sugestoes`, degrau 21a). Cada
-# frase daqui é verdadeira sozinha, sem depender de dado que talvez não venha.
-TEXTOS_DO_AVISO = {
-    "sugestao.status-alterado": "sugestao",
-    "pages.portfolio-conferido": "portfolio",
-    # O aviso de teste (Rito de Contrato de 03/09/2026): a pessoa clicou em
-    # "Mandar um aviso de teste para mim" em /admin/avisos/, e este e o texto
-    # que a tela do celular mostra. So existe para provar o canal, entao a
-    # frase e sempre a mesma, sem parametro nenhum, igual as outras.
-    "sistema.teste-de-aviso": "teste",
-    # As quatro cartas de celebração da gamificação (degrau 21b, 01/09/2026),
-    # congeladas em `contracts/eventos/notificacao.devida.v1.json`. Até aqui
-    # as quatro caíam no genérico "Você tem um aviso novo", que é honesto e
-    # não diz nada: quem subiu de nível merece saber disso pela tela.
-    "gamificacao.nivel-alcancado": "nivel",
-    "gamificacao.conquista-concedida": "conquista",
-    "gamificacao.marco-validado": "marco",
-    "gamificacao.destaque-da-semana": "destaque",
-}
-
-
 @require_safe
 def service_worker(request):
     """`/sw.js` — o mesmo arquivo de `static/funil/sw.js`, servido da RAIZ.
@@ -1100,13 +1057,14 @@ def service_worker(request):
             "titulo": cat.t(f"avisos.js.{chave}_titulo", idioma),
             "corpo": cat.t(f"avisos.js.{chave}_corpo", idioma),
         }
-        for assunto, chave in TEXTOS_DO_AVISO.items()
+        for assunto, chave in TIPOS_POR_ASSUNTO.items()
     }
     configuracao = {
         # Para onde o toque na notificação leva. O endereço público é
         # conhecimento DESTA célula (apps/core/enderecos.py), nunca da
         # `notificacoes` — é por isso que ele viaja daqui e não do envio.
         "caminho": url_dos_avisos(),
+        "links": links_para_o_celular(),
         "textos": textos,
         "generico": {
             "titulo": cat.t("avisos.js.generico_titulo", idioma),

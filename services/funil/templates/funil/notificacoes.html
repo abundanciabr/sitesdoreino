@@ -13,6 +13,8 @@
     .notificacao p { margin: .3rem 0; }
     .notificacao-nota { padding: .6rem .75rem; border-left: 3px solid #d4d4d8; color: #3f3f46; }
     .notificacao-link { color: #166534; font-weight: 700; }
+    .notificacao-ideia { font-weight: 700; }
+    .notificacao-ideia a { color: inherit; }
     .notificacao-acao { margin-top: .7rem; border: 0; background: none; padding: 0; color: #166534; text-decoration: underline; cursor: pointer; font: inherit; }
     .notificacoes-falha { border: 1px solid #fecaca; border-radius: .6rem; padding: 1rem; background: #fef2f2; }
 {% endblock %}
@@ -47,6 +49,7 @@
             </div>
             {% if aviso.tipo == "sugestao" %}
               <h2>{% if aviso.status_novo == "implementado" %}{% t "notificacoes.sugestao_implementada_titulo" %}{% else %}{% t "notificacoes.sugestao_titulo" %}{% endif %}</h2>
+              {% if aviso.titulo_da_ideia %}<p class="notificacao-ideia">{% if aviso.link %}<a href="{{ aviso.link }}">{{ aviso.titulo_da_ideia }}</a>{% else %}{{ aviso.titulo_da_ideia }}{% endif %}</p>{% endif %}
               {% if aviso.status_anterior and aviso.status_novo %}
                 <p>{% t "notificacoes.status_mudou_inicio" %}
                   {% if aviso.status_anterior == "em_analise" %}{% t "notificacoes.status_em_analise" %}
@@ -82,6 +85,14 @@
               {% endif %}
               {% if aviso.nota %}<p class="notificacao-nota">{{ aviso.nota|linebreaksbr }}</p>{% endif %}
               {% if aviso.link %}<p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_sugestao" %}</a></p>{% endif %}
+            {% elif aviso.tipo == "jornada" %}
+              {% if aviso.passo_corpo %}
+                <h2>{{ aviso.passo_titulo }}</h2>
+                <p>{{ aviso.passo_corpo|linebreaksbr }}</p>
+              {% else %}
+                <h2>{% t "notificacoes.jornada_titulo" %}</h2>
+                <p>{% t "notificacoes.jornada_corpo" %}</p>
+              {% endif %}
             {% elif aviso.tipo == "nivel" %}
               <h2>{% t "notificacoes.nivel_titulo" %}</h2>
               {% if aviso.nivel %}<p>{% t "notificacoes.nivel_corpo" nivel=aviso.nivel %}</p>{% else %}<p>{% t "notificacoes.nivel_corpo_sem_numero" %}</p>{% endif %}

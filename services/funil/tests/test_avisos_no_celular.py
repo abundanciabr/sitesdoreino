@@ -439,8 +439,6 @@ def test_assunto_desconhecido_continua_caindo_no_generico(client, rede):
     for inventado in (
         "gamificacao.ainda-nao-existe",
         "gamificacao.",
-        "matricula.situacao-alterada",
-        "jornada.passo",
     ):
         assert inventado not in configuracao["textos"]
     # E o genérico continua lá, preenchido: sem ele o fallback não existiria.
@@ -458,6 +456,27 @@ def test_o_service_worker_ainda_sabe_cair_no_generico():
     ).read_text(encoding="utf-8")
 
     assert "AVISOS.textos[carta.assunto] || AVISOS.generico" in sw
+
+
+def test_o_toque_no_aviso_da_sugestao_leva_a_pagina_da_ideia(client, rede):
+    configuracao = _configuracao_do_sw(client, "pt-br")
+
+    assert configuracao["links"]["sugestao.status-alterado"] == (
+        "/forms/sugestoes/sugestoes/{suggestion_id}"
+    )
+    assert configuracao["links"]["gamificacao.nivel-alcancado"] == "/conquistas/"
+    assert "jornada.passo" not in configuracao["links"]
+    sw = (
+        Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
+    ).read_text(encoding="utf-8")
+    assert 'caminho.replace("{suggestion_id}", idDaIdeia)' in sw
+    assert "data: { caminho: caminho }" in sw
+
+
+def test_a_pagina_e_o_celular_usam_a_mesma_tabela_de_assuntos(client, rede):
+    from apps.core.notificacoes import TIPOS_POR_ASSUNTO
+
+    assert set(_configuracao_do_sw(client, "pt-br")["textos"]) == set(TIPOS_POR_ASSUNTO)
 
 
 def test_o_aviso_da_sugestao_nao_mudou_uma_virgula(client, rede):

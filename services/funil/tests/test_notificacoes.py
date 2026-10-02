@@ -3,6 +3,7 @@ import json
 import httpx
 import pytest
 
+from apps.core import notificacoes
 from test_sessao_no_site import COOKIE, logado
 from tests.conftest import HOST_MESH, NOTIFICACOES, caminho_mesh
 
@@ -121,8 +122,8 @@ def test_assunto_desconhecido_continua_no_cartao_generico(
 ):
     _resumo(rede)
     aviso = _aviso()
-    aviso["assunto"] = "jornada.passo"
-    aviso["parametros"] = {"jornada_slug": "boas-vindas", "passo_id": "x", "ordem": 1}
+    aviso["assunto"] = "assunto.inventado"
+    aviso["parametros"] = {}
     rede.get(f"{NOTIFICACOES}/avisos").mock(
         return_value=httpx.Response(200, json={"itens": [aviso], "proximo_cursor": None})
     )
@@ -132,6 +133,158 @@ def test_assunto_desconhecido_continua_no_cartao_generico(
     )
 
     assert "Você tem um aviso novo" in resposta.content.decode()
+
+
+PASSO = "c1fe58bf-0a82-42ce-9ad6-8dd32c343b06"
+
+
+def _boas_vindas():
+    aviso = _aviso()
+    aviso["assunto"] = "jornada.passo"
+    aviso["parametros"] = {"jornada_slug": "boas-vindas", "passo_id": PASSO, "ordem": 1}
+    return aviso
+
+
+def _lista(rede, *avisos):
+    rede.get(f"{NOTIFICACOES}/avisos").mock(
+        return_value=httpx.Response(
+            200, json={"itens": list(avisos), "proximo_cursor": None}
+        )
+    )
+
+
+def test_boas_vindas_mostra_o_texto_do_passo_no_idioma_de_quem_le(
+    client, logado, rede, notificacoes_configurada, monkeypatch
+):
+    pedidos = []
+
+    def textos(ids, idioma):
+        ids = list(ids)
+        pedidos.append((ids, idioma))
+        return {PASSO: {"titulo": "Bem-vindo à Meshcraft Academy", "corpo": "Que bom ter você aqui."}}
+
+    monkeypatch.setattr(notificacoes, "textos_dos_passos", textos)
+    _resumo(rede)
+    _lista(rede, _boas_vindas())
+
+    corpo = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert "Bem-vindo à Meshcraft Academy" in corpo
+    assert "Que bom ter você aqui." in corpo
+    assert "ainda não sabe mostrar" not in corpo
+    assert pedidos == [([PASSO], "pt-br")]
+
+
+def test_boas_vindas_sem_texto_guardado_mostra_a_frase_padrao(
+    client, logado, rede, notificacoes_configurada
+):
+    _resumo(rede)
+    _lista(rede, _boas_vindas())
+
+    corpo = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert "Boas-vindas" in corpo
+    assert "Que bom ter você na escola." in corpo
+    assert "ainda não sabe mostrar" not in corpo
+
+
+def test_sugestao_mostra_o_titulo_da_ideia_com_link(
+    client, logado, rede, notificacoes_configurada, monkeypatch
+):
+    monkeypatch.setattr(
+        notificacoes,
+        "ideias",
+        lambda ids: {"20": {"titulo": "tutorial de chapéu / acessórios", "apagada": False}},
+    )
+    _resumo(rede)
+    aviso = _aviso()
+    aviso["parametros"]["suggestion_id"] = "20"
+    _lista(rede, aviso)
+
+    corpo = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert '<a href="/forms/sugestoes/sugestoes/20">tutorial de chapéu / acessórios</a>' in corpo
+
+
+def test_aviso_de_ideia_apagada_some_e_sai_do_sino(
+    client, logado, rede, notificacoes_configurada, monkeypatch
+):
+    monkeypatch.setattr(
+        notificacoes, "ideias", lambda ids: {"20": {"titulo": "x", "apagada": True}}
+    )
+    _resumo(rede)
+    apagada = _aviso()
+    apagada["id"] = "aviso-apagado"
+    apagada["parametros"]["suggestion_id"] = "20"
+    _lista(rede, apagada, _boas_vindas())
+    marcar = rede.post(f"{NOTIFICACOES}/marcar-lida").mock(
+        return_value=httpx.Response(200, json={"ja_estava_lido": False})
+    )
+
+    corpo = client.get(
+        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert "Sua sugestão teve uma novidade" not in corpo
+    assert "Você tem 1 aviso não lido." in corpo
+    assert json.loads(marcar.calls[0].request.content)["id"] == "aviso-apagado"
+
+
+class _Linhas:
+    def __init__(self, linhas):
+        self.linhas = linhas
+        self.filtro = None
+
+    def filter(self, **filtro):
+        self.filtro = filtro
+        return self
+
+    def values_list(self, *campos):
+        return self.linhas
+
+
+class _Modelo:
+    def __init__(self, linhas):
+        self.objects = _Linhas(linhas)
+
+
+def test_textos_dos_passos_escolhe_o_idioma_e_cai_no_ingles(monkeypatch):
+    modelo = _Modelo(
+        [
+            (PASSO, "pt-br", "Bem-vindo", "Oi"),
+            (PASSO, "en", "Welcome", "Hi"),
+            ("outro", "es", "Bienvenido", "Hola"),
+        ]
+    )
+    monkeypatch.setattr(notificacoes, "_modelo", lambda rotulo, nome: modelo)
+
+    assert notificacoes.textos_dos_passos([PASSO, "outro"], "pt-br") == {
+        PASSO: {"titulo": "Bem-vindo", "corpo": "Oi"},
+        "outro": {"titulo": "Bienvenido", "corpo": "Hola"},
+    }
+    assert notificacoes.textos_dos_passos([PASSO], "es")[PASSO]["titulo"] == "Welcome"
+
+
+def test_ideias_le_titulo_e_apagamento(monkeypatch):
+    modelo = _Modelo([(20, "tutorial de chapéu", None), (21, "sumiu", "2026-10-01")])
+    monkeypatch.setattr(notificacoes, "_modelo", lambda rotulo, nome: modelo)
+
+    assert notificacoes.ideias(["20", "21"]) == {
+        "20": {"titulo": "tutorial de chapéu", "apagada": False},
+        "21": {"titulo": "sumiu", "apagada": True},
+    }
+    assert modelo.objects.filtro == {"pk__in": ["20", "21"]}
+
+
+def test_sem_a_sugestoes_e_a_mensageria_no_processo_nada_quebra():
+    assert notificacoes.ideias(["20"]) == {}
+    assert notificacoes.textos_dos_passos([PASSO], "pt-br") == {}
 
 
 def test_lista_vazia_e_diferente_de_falha(
