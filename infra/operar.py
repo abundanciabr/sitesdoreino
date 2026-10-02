@@ -72,26 +72,6 @@ VARIAVEIS_DE_CONTROLE = frozenset(
         "ACAO_EXPERIMENTO", "CONSERTAR", "AVISAR", "SAIDA",
     }
 )
-CORPO_DO_CADEADO = """O vigia diário mediu o certificado dos sites de fora e algo está errado.
-
-Um dos endereços do projeto está, ou vai ficar, sem cadeado válido. Para o visitante
-isso é a tela vermelha NET::ERR_CERT_AUTHORITY_INVALID.
-
-A medição (host a host):
-{medicao}
-
-Os três motivos possíveis e o que fazer:
-1. TRAEFIK DEFAULT CERT: a emissão do Let's Encrypt falhou e o Traefik voltou ao crachá
-   de fábrica. Ele não tenta de novo a cada acesso, só ao recarregar a configuração: qualquer
-   diff em infra/traefik/** faz o deploy-infra recriar o container e tentar na hora.
-2. Vence em poucos dias: a renovação (o Traefik começa aos 30 dias) não aconteceu. Mesmo
-   conserto; confira depois se o acme.json ainda está no volume letsencrypt.
-3. Não consegui medir: DNS, porta 443 ou servidor fora do ar. O vigia já insistiu 3 vezes.
-
-Para conferir na mão: python3 infra/operar.py vigia-do-cadeado
-"""
-ASSUNTO_DO_CADEADO = "Cadeado vermelho: um endereço do projeto está sem certificado válido"
-REPETE_O_ALARME_DO_CADEADO_HORAS = 72
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +99,6 @@ class Operacao:
     executar: Callable
     params: tuple[Param, ...] = ()
     prazo: int = PRAZO_PADRAO
-    agenda: str | None = None
 
 
 @dataclass
@@ -526,31 +505,6 @@ def op_appmax_sandbox_tela(ctx: Contexto, valores: dict) -> int:
 
 
 # ---------------------------------------------------------------------------
-# vigia-do-cadeado (ci/vigia_do_cadeado.py) e o alarme por aviso
-# ---------------------------------------------------------------------------
-def op_vigia_do_cadeado(ctx: Contexto, valores: dict) -> int:
-    codigo, saida = ctx.processo(
-        [sys.executable, str(ctx.raiz / "ci" / "vigia_do_cadeado.py")],
-        env=ambiente_do_filho(ctx),
-        timeout=PRAZO_PADRAO,
-    )
-    if codigo == 0:
-        return 0
-    corpo = CORPO_DO_CADEADO.format(medicao=saida.strip()[-4000:] or "(sem saída)")
-    try:
-        resultado = ctx.avisar(
-            corpo,
-            ASSUNTO_DO_CADEADO,
-            chave="cadeado-vermelho",
-            a_cada_horas=REPETE_O_ALARME_DO_CADEADO_HORAS,
-        )
-        print(f"operar: alarme do cadeado: {resultado}.")
-    except Exception as erro:  # o alarme falhar não pode esconder a falha da medição
-        print(f"operar: o alarme do cadeado NÃO saiu: {erro}")
-    return codigo
-
-
-# ---------------------------------------------------------------------------
 # provisionar
 # ---------------------------------------------------------------------------
 # O roteiro diz o que recebe na PRÓPRIA linha de uso: a primeira linha de comentário do
@@ -823,13 +777,6 @@ OPERACOES: dict[str, Operacao] = {
             (Param("so_auto_teste", "só o auto-teste, sem rede e sem pedido", booleano=True),),
             prazo=15 * 60,
         ),
-        Operacao(
-            "vigia-do-cadeado",
-            "mede o certificado TLS de cada site e avisa o mantenedor se estiver vermelho",
-            "não: mede; falhando, manda e-mail (infra/avisar.py)",
-            op_vigia_do_cadeado,
-            agenda="0 11 * * *",
-        ),
     )
 }
 
@@ -874,8 +821,6 @@ def listar() -> None:
                 + ("*" if p.obrigatorio else "")
                 for p in op.params
             ))
-        if op.agenda:
-            print(f"      agenda: {op.agenda} (UTC)")
     print("\n* obrigatório. Cada operação aceita --help.")
 
 

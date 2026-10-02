@@ -13,20 +13,6 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-OPERACOES = {
-    "estado-servico",
-    "estado-infra",
-    "espaco-disco",
-    "versao-compose",
-    "appmax-pix",
-    "appmax-pix-pedido",
-    "appmax-pix-aviso",
-    "appmax-inbox-latencia",
-    "appmax-observacao",
-    "appmax-estorno",
-    "appmax-pendentes",
-    "quiz-configuracao",
-}
 OPERACOES_DA_PLATAFORMA = {"estado-infra", "espaco-disco", "versao-compose"}
 ESTADOS = {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
 SAUDES = {"healthy", "unhealthy", "starting", "ausente"}
@@ -402,7 +388,7 @@ class Falha(Exception):
 
 
 def validar(operacao, servico, permitidos, referencia=""):
-    if operacao not in OPERACOES or servico not in permitidos:
+    if servico not in permitidos:
         raise Falha("entrada")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", servico):
         raise Falha("entrada")
