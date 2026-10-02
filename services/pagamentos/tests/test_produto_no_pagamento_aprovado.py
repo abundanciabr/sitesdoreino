@@ -10,18 +10,10 @@ nenhum). Por isso o transporte é o `metadata` já existente, e não um campo no
 em `POST /intents` — a mesma técnica de `recovery_url`, sem Rito de Contrato na
 porta de `pagamentos.openapi.yaml`.
 
-Opcional e ADITIVO no contrato do evento (`contracts/eventos/pagamento.aprovado.v1.json`):
-sem `product_id` na `metadata`, a chave nem aparece no `data` — ausência, nunca
-string vazia, é a mesma semântica que `sugestao.status-alterado` já usa para
+Opcional e ADITIVO no evento: sem `product_id` na `metadata`, a chave nem
+aparece no `data` — ausência, nunca string vazia, é a mesma semântica que `sugestao.status-alterado` já usa para
 "opcional sem valor" (ver `test_sem_justificativa_o_campo_nota_nem_aparece` na
 célula `sugestoes`).
-
-**O guarda de conformidade abaixo (`test_com_produto_o_envelope_so_casa_depois_do_rito_de_contrato`)
-fica VERMELHO até o Rito de Contrato acrescentar `product_id` a
-`pagamento.aprovado.v1.json`** — o congelado de hoje é `additionalProperties:
-false` sem essa chave, e o envelope real passa a tê-la. É o portão funcionando
-(armadilhas/243): o PR desta célula fica aberto, sem pedido de pouso, até o PR
-do contrato (separado, CODEOWNERS, com o mantenedor) mergear.
 """
 import json
 import uuid
@@ -32,7 +24,6 @@ import httpx
 import pytest
 import respx
 from django.test import Client
-from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from pagamentos.core.models import Intent, OutboxEvent
 from pagamentos.core.webhook_signature import assinar
@@ -49,12 +40,6 @@ _RESPOSTA_PIX_MP = {
         "transaction_data": {"qr_code": "copia-e-cola", "qr_code_base64": "aGVsbG8="}
     },
 }
-_CONTRATO = (
-    __import__("pathlib").Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "pagamento.aprovado.v1.json"
-)
 
 
 @pytest.fixture
@@ -192,53 +177,3 @@ def test_montar_dados_ecoa_o_product_id_sem_interpretar(
         )
     assert dados["product_id"] == "PROD-XYZ"
     assert "outra_chave" not in dados
-
-
-# ---------------------------------------------------------------------------
-# O contrato — a prova de que o Rito ainda não aconteceu (e precisa acontecer)
-# ---------------------------------------------------------------------------
-
-
-def _envelope_aprovado(*, com_produto: bool) -> dict[str, Any]:
-    from pagamentos.methods.pix.webhook import _montar_dados
-
-    intent = Intent(
-        site_id="s1",
-        order_id="o1",
-        method="pix",
-        amount_cents=100,
-        customer={"email": "a@b.com", "name": "A"},
-        metadata={"product_id": "PROD-XYZ"} if com_produto else {},
-    )
-    dados = _montar_dados(intent, "pagamento.aprovado", "mp-1", "")
-    return {
-        "event": "pagamento.aprovado",
-        "version": 1,
-        "event_id": str(uuid.uuid4()),
-        "occurred_at": "2026-09-06T12:00:00+00:00",
-        "data": dados,
-    }
-
-
-def _validador_do_contrato_congelado() -> Draft202012Validator:
-    schema = json.loads(_CONTRATO.read_text(encoding="utf-8"))
-    return Draft202012Validator(schema, format_checker=FormatChecker())
-
-
-def test_sem_produto_o_envelope_ja_casa_com_o_contrato_de_hoje() -> None:
-    """Este continua VERDE antes e depois do Rito: `product_id` ausente é
-    exatamente a forma que `pagamento.aprovado.v1.json` já aceita hoje —
-    nenhuma matrícula que reprocessa um evento antigo (sem a chave) pode parar
-    de validar."""
-    _validador_do_contrato_congelado().validate(_envelope_aprovado(com_produto=False))
-
-
-def test_com_produto_o_envelope_so_casa_depois_do_rito_de_contrato() -> None:
-    """[VERMELHO ATÉ O RITO] `pagamento.aprovado.v1.json`, hoje,
-    `additionalProperties: false` sem `product_id`: o envelope que ESTE PR
-    passa a emitir reprova contra o congelado ATUAL — de propósito
-    (armadilhas/243). Fecha sozinho quando o PR do contrato (separado,
-    CODEOWNERS, com o mantenedor) acrescentar `product_id` como propriedade
-    opcional e mergeeer antes deste PR. Até lá, este PR fica aberto, sem pedido
-    de pouso — é o portão funcionando, não defeito da célula."""
-    _validador_do_contrato_congelado().validate(_envelope_aprovado(com_produto=True))

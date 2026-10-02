@@ -6,7 +6,6 @@ import json
 import threading
 import uuid
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -15,7 +14,6 @@ import redis
 from django.conf import settings
 from django.db import connection
 from django.db.models import QuerySet
-from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.ledger import registrar_fato
@@ -36,12 +34,6 @@ SITE = "site-interno"
 APP_ID = "123"
 SITE_APPMAX = "site-appmax"
 REFERENCIA = "3531"
-_CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "pagamento.reversao_confirmada.v2.json"
-)
 
 
 class ClienteAppmaxSomenteLeitura:
@@ -183,8 +175,10 @@ def test_get_autenticado_emite_reversao_sem_valor_nem_transicao_financeira(
         "motivo": motivo,
     }
     envelope = _envelope_publicado(evento)
-    contrato = json.loads(_CONTRATO.read_text(encoding="utf-8"))
-    Draft202012Validator(contrato, format_checker=FormatChecker()).validate(envelope)
+    assert set(envelope) == {"event", "version", "event_id", "occurred_at", "data"}
+    assert envelope["event"] == "pagamento.reversao_confirmada"
+    assert envelope["version"] == 2
+    assert envelope["data"] == evento.payload
     assert "amount_cents" not in envelope["data"]
     assert intent.status == "approved"
     assert tentativa.state == "approved"

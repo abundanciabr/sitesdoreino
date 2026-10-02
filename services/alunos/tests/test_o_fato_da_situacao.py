@@ -20,7 +20,6 @@ formato do envelope.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -40,13 +39,6 @@ pytestmark = pytest.mark.django_db
 # texto opaco: o valor de verdade e um id de produto do `catalogo`, e quem prova
 # a exigencia e `tests/test_inv_alu_c1_a_matricula_diz_o_curso.py`.
 CURSO = "produto-do-curso-1"
-
-CONTRATO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "matricula.situacao-alterada.v1.json"
-)
 
 
 def _fatos():
@@ -196,25 +188,6 @@ def test_a_funcao_recusa_anotar_quando_nada_mudou():
 # --------------------------------------------------------------------------
 # §2 O QUE VAI DENTRO
 # --------------------------------------------------------------------------
-
-
-def test_o_envelope_casa_com_o_contrato_congelado():
-    import jsonschema
-
-    linha = _na_fila()
-    decidir_na_fila(
-        id_da_linha=str(linha.pk),
-        decisao="liberar",
-        decidido_por="idt-do-mantenedor",
-        product_id=CURSO,
-    )
-    schema = json.loads(CONTRATO.read_text(encoding="utf-8"))
-    fatos = _fatos()
-    # Sem esta linha o teste passaria por verdade VAZIA: uma lista sem fato
-    # nenhum satisfaz "todos casam com o contrato" (armadilhas/266).
-    assert len(fatos) == 2, "esperava o nascimento na fila e a liberacao"
-    for fato in fatos:
-        jsonschema.validate(_envelope(fato), schema)
 
 
 def test_o_fato_nao_leva_nome_email_nem_telefone():

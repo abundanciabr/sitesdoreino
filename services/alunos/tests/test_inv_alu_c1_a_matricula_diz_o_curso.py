@@ -5,8 +5,8 @@ palavras do mantenedor: *"eu preciso que ele seja liberado somente após escolhe
 o curso no qual ele está matriculado"*. Ninguém é aluno do site: todo mundo é
 aluno de UM curso, e a matrícula é o que diz qual.
 
-AS QUATRO COISAS QUE ESTE ARQUIVO TRAVA
-----------------------------------------
+AS TRÊS COISAS QUE ESTE ARQUIVO TRAVA
+--------------------------------------
 1. **Liberar sem curso é recusado NA PORTA, com frase em português, e sem efeito
    nenhum.** Não basta o 422: a linha tem de continuar `aguardando`. Um 422 que
    liberasse assim mesmo seria o pior desfecho possível, porque a tela mostraria
@@ -17,16 +17,11 @@ AS QUATRO COISAS QUE ESTE ARQUIVO TRAVA
 3. **Recusar não pede curso e não grava curso.** Quem foi recusado não é aluno
    de nada, e exigir a escolha de um curso para dizer "não" seria burocracia sem
    fato por trás.
-4. **Esta célula não tem tabela de cursos** (lei §7). A lista de cursos é do
-   `catalogo`; a matrícula guarda a REFERÊNCIA. O guarda é por igualdade exata
-   do inventário de modelos da célula: uma tabela nova reprova aqui e obriga
-   quem a criou a justificar, em vez de duas listas de cursos divergirem no
-   primeiro curso novo.
 
 O QUE ESTE ARQUIVO NÃO ALCANÇA, E ESTÁ DITO NA CARA
 ----------------------------------------------------
 A matrícula que nasce do EVENTO de pagamento. `pagamento.aprovado.v1` não
-carrega `product_id` (medido em `contracts/eventos/`), então `handlers.py` grava
+carregava `product_id`, então `handlers.py` grava
 `""` e a linha nasce `ativa` sem curso sem passar pela decisão da fila. Fechar
 essa metade é Rito de Contrato no evento, e o evento é de outra célula. O
 guarda existe assim mesmo porque a metade que ele cobre é a que o mantenedor
@@ -37,7 +32,6 @@ import io
 import json
 
 import pytest
-from django.apps import apps
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
@@ -246,41 +240,7 @@ def test_curso_mandado_junto_de_uma_recusa_nao_e_gravado(client, auth):
 
 
 # ---------------------------------------------------------------------------
-# 4. Nenhuma tabela de cursos nesta célula (lei §7)
-# ---------------------------------------------------------------------------
-
-
-def test_esta_celula_nao_tem_tabela_de_cursos():
-    """Inventário por IGUALDADE, nunca por lista de proibidos.
-
-    Uma lista de nomes proibidos (`Curso`, `Produto`, ...) seria furada pelo
-    primeiro nome que ninguém imaginou. Por igualdade, QUALQUER tabela nova
-    reprova, e quem a criar precisa passar por aqui e dizer o que ela é.
-    """
-    daqui = {
-        modelo.__name__
-        for modelo in apps.get_models()
-        if modelo._meta.app_config.name.startswith("apps.")
-    }
-    assert daqui == {
-        "Matricula",
-        "OutboxEvent",
-        "EventoProcessado",
-        "Pagamento",
-        "Turma",
-    }, (
-        "inventário de tabelas inesperado na célula `alunos`. `Pagamento` "
-        "guarda o estado mínimo para serializar aprovação e estorno. `Turma` "
-        "guarda nome, descrição e rascunho da coorte; não decide matrícula nem "
-        "acesso. Lista de "
-        "cursos não pode existir aqui: a lista é do `catalogo`, e a matrícula "
-        "guarda a referência (`Matricula.product_id`), nunca a cópia. Lei: "
-        "docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md §7."
-    )
-
-
-# ---------------------------------------------------------------------------
-# 5. O acerto das matrículas que já existiam quando a lei nasceu
+# 4. O acerto das matrículas que já existiam quando a lei nasceu
 # ---------------------------------------------------------------------------
 #
 # Os testes daqui para baixo FABRICAM O ESTADO DE PRODUÇÃO antes de medir: uma

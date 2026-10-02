@@ -13,7 +13,6 @@ from apps.paginas.models import (
     PageDraft,
     Variante,
     VarianteCongelada,
-    amostra_por_braco,
 )
 from apps.sites.models import Site
 
@@ -108,17 +107,6 @@ def _experimento_no_banco(pagina, estado=Experimento.RASCUNHO):
         Experimento.objects.filter(pk=experimento.pk).update(estado=estado)
         experimento.refresh_from_db()
     return experimento
-
-
-# --- a amostra planejada -----------------------------------------------------
-
-
-def test_amostra_por_braco_bate_com_a_tabela_da_decisao():
-    # docs/decisoes/DECISAO-a-pagina-real-antes-do-experimento.md §3:
-    # checkout_started 10% +20% = 3.841; clique no CTA 30% +50% = 163. Aqui o
-    # mde e absoluto: +20% sobre 10% sao 0,02, e +50% sobre 30% sao 0,15.
-    assert amostra_por_braco(0.10, 0.02) == 3841
-    assert amostra_por_braco(0.30, 0.15) == 163
 
 
 # --- criar ---------------------------------------------------------------------

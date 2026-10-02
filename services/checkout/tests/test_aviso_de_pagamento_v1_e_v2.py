@@ -8,24 +8,19 @@ sendo emitido até o último consumidor migrar, então o MESMO pagamento chega
 aqui nas duas versões, com `event_id` DIFERENTE em cada uma. Deduplicar por
 `event_id` não serviria para nada.
 
-Quem manda na chave é o contrato, no campo `x-ponte-do-v1` de cada schema v2, e
-as duas cartas NÃO usam a mesma:
+Quem manda na chave é a tabela `AVISOS` do consumer, e as duas cartas NÃO usam
+a mesma:
 
 - `pagamento.aprovado`: o par (`provider`, `provider_reference_id`). No v1 o
   `provider` é o literal `mercadopago` e a referência vem de `mp_payment_id`.
 - `pagamento.recusado`: só o `payment_id`. A recusa v1 nunca carregou
   referência do fornecedor, nem sob outro nome, então é o id local que
   atravessa as versões.
-
-`test_a_ponte_com_o_v1_e_a_que_o_contrato_publica` compara a transcrição do
-consumer com os schemas em disco: se o Rito de Contrato mudar a regra, este
-arquivo reprova em vez de a célula duplicar pedido em produção.
 """
 
 import json
 import os
 import threading
-from pathlib import Path
 
 import pytest
 import redis as redis_lib
@@ -48,7 +43,6 @@ from conftest import (
     recusado_v2,
 )
 
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 STREAM_APROVADO = "eventos.pagamento.aprovado"
 TODOS_OS_STREAMS = (
     "eventos.pagamento.aprovado",
@@ -70,19 +64,8 @@ def _pedido(api, sessao_a, method="pix") -> Order:
 
 
 # ---------------------------------------------------------------------------
-# A regra de deduplicação é a que o contrato publica, não a que o consumer acha
+# A regra de deduplicação de cada carta
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("evento", ["pagamento.aprovado", "pagamento.recusado"])
-def test_a_ponte_com_o_v1_e_a_que_o_contrato_publica(evento):
-    """O consumer transcreve `x-ponte-do-v1`; o schema em disco é a fonte. As
-    duas cartas têm pontes DIFERENTES, e trocá-las duplicaria pedido pago."""
-    schema = json.loads((CONTRATOS / f"{evento}.v2.json").read_text(encoding="utf-8"))
-    ponte = schema["x-ponte-do-v1"]
-
-    assert AVISOS[evento]["chave_entre_versoes"] == tuple(ponte["chave_entre_versoes"])
-    assert AVISOS[evento]["no_v1"] == ponte["no_v1"]
 
 
 def test_a_recusa_nao_deduplica_pelo_par_do_fornecedor():

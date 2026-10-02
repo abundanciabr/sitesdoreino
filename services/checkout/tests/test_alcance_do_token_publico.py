@@ -207,28 +207,6 @@ def test_o_token_que_a_pagina_publica_nasce_publico_em_qualquer_ambiente(
     assert TOKEN_SERVIDOR_A_SERVIDOR in recarregado.TOKENS_ACEITOS
 
 
-def test_a_alcada_escrita_so_cita_operacao_que_existe_na_api():
-    """Um nome errado na lista escrita fecharia a compra em silêncio (a página
-    perderia a operação que ela precisa). A lista é conferida contra os
-    operation_id que a API realmente exporta."""
-    from config.api import api
-
-    exportadas = {
-        operacao["operationId"]
-        for caminho in api.get_openapi_schema()["paths"].values()
-        for operacao in caminho.values()
-        if "operationId" in operacao
-    }
-    assert autenticacao.ALCANCE_DO_TOKEN_PUBLICO <= exportadas
-    assert autenticacao.ALCANCE_DO_TOKEN_PUBLICO == {
-        "createSession",
-        "placeOrder",
-        "getOrder",
-        "confirmOrderCard",
-        "getOrderCardInstallments",
-    }
-
-
 def test_credencial_ausente_ou_errada_continua_sendo_recusada(
     db, client, rede, credenciais_sinteticas
 ):

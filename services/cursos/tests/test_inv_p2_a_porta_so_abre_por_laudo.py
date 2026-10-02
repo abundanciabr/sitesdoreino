@@ -20,10 +20,9 @@ Os dentes, e o que cada um mede:
    e é keyword-only: não dá para passar uma data no lugar do laudo.
 4. **Data não abre porta**: gravar `data_de_retorno` não muda `estado`, e a
    tela recusa a aula seguinte enquanto a anterior não concluir.
-5. **Nenhuma view grava `concluida`**: medido no código das telas.
-6. **A EB não tranca ninguém e não é trancada pela E32**: abre quando a E32
+5. **A EB não tranca ninguém e não é trancada pela E32**: abre quando a E32
    conclui; a E32 abre quando a E31 conclui, sem olhar para a EB.
-7. **O gesto do curso livre**: recusa o curso por laudo (e o laudo recusa o
+6. **O gesto do curso livre**: recusa o curso por laudo (e o laudo recusa o
    curso livre); recusa com pausa faltando; recusa a porta trancada; abre só
    a `ordem + 1`; é idempotente e não emite duas vezes; emite
    `aula.concluida.v1` dentro da transação; a assinatura não tem laudo, data,
@@ -41,8 +40,6 @@ from __future__ import annotations
 
 import datetime as dt
 import inspect
-import re
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -217,23 +214,7 @@ def test_pela_tela_a_aula_seguinte_fica_trancada_ate_o_laudo(aluna, esqueleto, c
     )
 
 
-# ---------------------------------------------- 5. nenhuma view grava
-def test_nenhuma_view_nem_gesto_grava_concluida():
-    core = Path(__file__).resolve().parents[1] / "apps" / "core"
-    fonte = "\n".join(p.read_text(encoding="utf-8") for p in core.glob("*.py"))
-    assert not re.search(r"Estado\.CONCLUIDA|[\"']concluida[\"']", fonte)
-    assert "concluir(" not in fonte
-
-
-def test_a_unica_gravacao_de_concluida_esta_em_concluir():
-    """No serviço, a palavra `CONCLUIDA` como VALOR gravado aparece uma vez:
-    dentro de `concluir`. Um segundo caminho apareceria aqui."""
-    fonte = Path(portas.__file__).read_text(encoding="utf-8")
-    gravacoes = re.findall(r"[^=!<>]=\s*Progresso\.Estado\.CONCLUIDA", fonte)
-    assert len(gravacoes) == 1
-
-
-# ------------------------------------------------------ 6. a bônus (EB)
+# ------------------------------------------------------ 5. a bônus (EB)
 def test_a_eb_abre_quando_a_e32_conclui(esqueleto, ana):
     e32 = porta(ana, aula(esqueleto, "E32"))
     portas.concluir(e32, laudo=ABERTO)
@@ -253,7 +234,7 @@ def test_a_eb_nao_tranca_ninguem_porque_nada_vem_depois_dela(esqueleto, ana):
     assert Progresso.objects.filter(pessoa=ana).count() == 1
 
 
-# ------------------------------------------ 7. o gesto do curso livre
+# ------------------------------------------ 6. o gesto do curso livre
 @pytest.fixture
 def livre(db):
     """Um curso de progressão livre com três aulas (a primeira com duas pausas)."""

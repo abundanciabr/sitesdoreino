@@ -15,11 +15,6 @@
 # banco, para o webhook e para o Mercado Pago é UTC, e tem de continuar sendo. Se
 # alguém "consertar" o fuso mexendo em `USE_TZ`, o remédio vira o bug — e este
 # guarda reprova.
-#
-# Nota de forma: esta celula e a unica com `mypy --strict` (mypy.ini), entao
-# o segundo teste le `django.conf.settings` direto em vez da fixture
-# `settings` do pytest-django — a fixture chegaria sem anotacao e o portao
-# `type` reprovaria. Aqui nao ha diferenca de comportamento: o teste so LE.
 from datetime import datetime, timedelta, timezone as fuso_padrao
 
 from django.conf import settings

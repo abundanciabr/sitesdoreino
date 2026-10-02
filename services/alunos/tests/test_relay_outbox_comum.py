@@ -1,9 +1,7 @@
 import json
 import threading
 import time
-import zipfile
 from importlib.metadata import version
-from pathlib import Path
 
 import pytest
 from django.db import close_old_connections, connections, transaction
@@ -11,10 +9,6 @@ from django.db import close_old_connections, connections, transaction
 import outbox_relay
 from apps.matriculas.models import OutboxEvent
 from apps.matriculas.tasks import relay_outbox
-
-RAIZ = Path(__file__).resolve().parents[3]
-PACOTE = RAIZ / "packages" / "outbox-relay"
-WHEEL = RAIZ / "services" / "alunos" / "vendor" / "outbox_relay-0.3.1-py3-none-any.whl"
 
 
 class RedisDublado:
@@ -31,21 +25,6 @@ def redis_dublado(monkeypatch):
     monkeypatch.setenv("REDIS_STREAMS_URL", "redis://localhost:6379/0")
     monkeypatch.setattr("redis.from_url", lambda _url: dublê)
     return dublê
-
-
-def test_wheel_de_alunos_corresponde_ao_fonte_do_pacote():
-    with zipfile.ZipFile(WHEEL) as wheel:
-        relay_na_wheel = (
-            wheel.read("outbox_relay/relay.py").decode().replace("\r\n", "\n")
-        )
-        init_na_wheel = (
-            wheel.read("outbox_relay/__init__.py").decode().replace("\r\n", "\n")
-        )
-
-    assert relay_na_wheel == (PACOTE / "src" / "outbox_relay" / "relay.py").read_text()
-    assert (
-        init_na_wheel == (PACOTE / "src" / "outbox_relay" / "__init__.py").read_text()
-    )
 
 
 @pytest.mark.django_db

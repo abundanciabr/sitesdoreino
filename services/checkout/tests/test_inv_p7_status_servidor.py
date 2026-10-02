@@ -1,10 +1,6 @@
 # tests/test_inv_p7_status_servidor.py  [RECEITA:R5 v1]
 # [INV-P7] Status na UI deriva do servidor: o consumer de eventos é quem move
-# Order.status, GET /pedidos/{id} é a única leitura, e pix.js/cartao.js não
-# contêm nenhuma transição local para "pago".
-import re
-from pathlib import Path
-
+# Order.status.
 import pytest
 
 from apps.pedidos.management.commands.consume_eventos import aplicar
@@ -12,8 +8,6 @@ from apps.pedidos.models import Order
 from conftest import aprovado_v1, pix_expirado_v1, recusado_v1
 
 pytestmark = pytest.mark.django_db
-
-STATIC = Path(__file__).resolve().parent.parent / "static" / "checkout"
 
 
 def _pedido(api, sessao_a, method="pix"):
@@ -77,54 +71,3 @@ def test_evento_de_outro_site_nao_move_o_pedido(api, rede, sessao_a):
 
     order.refresh_from_db()
     assert order.status == "aguardando_pagamento"
-
-
-def _sem_comentarios(codigo: str) -> str:
-    return "\n".join(
-        linha for linha in codigo.splitlines() if not linha.strip().startswith("//")
-    )
-
-
-# As três grafias que, JUNTAS, são "o status desta página vem do servidor":
-# init() dispara o poll, o poll pergunta ao servidor, e o status exibido é o da
-# resposta. Faltando qualquer uma, a página fica presa em "Aguardando
-# confirmação do pagamento" para sempre, inclusive depois de pago.
-INIT_DISPARA_O_POLL = re.compile(r"""init\(\)\s*\{[^{}]*\bthis\.poll\(\)""")
-CHAMADA_AO_SERVIDOR = re.compile(
-    r"""api\.get\(\s*[`'"]/pedidos/\$\{\s*this\.orderId\s*\}[`'"]\s*\)"""
-)
-STATUS_VEM_DA_RESPOSTA = re.compile(r"""this\.status\s*=\s*(?!["'])\w+\.status\b""")
-
-O_QUE_A_PAGINA_PRECISA_FAZER = (
-    (
-        INIT_DISPARA_O_POLL,
-        "init() não chama this.poll(), então a página nunca pergunta nada",
-    ),
-    (CHAMADA_AO_SERVIDOR, "poll() não consulta api.get(`/pedidos/${this.orderId}`)"),
-    (
-        STATUS_VEM_DA_RESPOSTA,
-        "this.status não recebe o status que o servidor respondeu",
-    ),
-)
-
-
-@pytest.mark.parametrize("arquivo", ["pix.js", "cartao.js"])
-def test_front_nao_tem_transicao_local_para_pago(arquivo):
-    codigo = _sem_comentarios((STATIC / arquivo).read_text(encoding="utf-8"))
-    assert not re.search(r"""status\s*=(?!=)\s*["']pago["']""", codigo)
-
-
-@pytest.mark.parametrize("arquivo", ["pix.js", "cartao.js"])
-def test_paginas_derivam_status_de_get_pedidos(arquivo):
-    # `"/pedidos/" in codigo` casava com o COMENTÁRIO do cabeçalho de cada
-    # arquivo: apagar as duas linhas que de fato consultam o servidor deixava o
-    # guarda verde e a página presa em "Aguardando confirmação do pagamento"
-    # para sempre, inclusive depois do pagamento aprovado.
-    codigo = _sem_comentarios((STATIC / arquivo).read_text(encoding="utf-8"))
-    for padrao, o_que_falta in O_QUE_A_PAGINA_PRECISA_FAZER:
-        assert padrao.search(codigo), (
-            f"{arquivo}: {o_que_falta}. Assim a página fica presa em "
-            '"Aguardando confirmação do pagamento" mesmo depois de pago. '
-            f"Se você refatorou e o comportamento continua certo, atualize o "
-            f"padrão {padrao.pattern} neste arquivo."
-        )

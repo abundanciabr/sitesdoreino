@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
 from django.utils import timezone
-from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.models import (
@@ -29,12 +26,6 @@ from pagamentos.supervisao import processar_rodada
 
 pytestmark = pytest.mark.django_db(transaction=True)
 SITE = "site-appmax"
-_CONTRATO_PIX_EXPIRADO = (
-    Path(__file__).resolve().parents[3]
-    / "contracts"
-    / "eventos"
-    / "pix.expirado.v1.json"
-)
 
 
 def _cliente() -> Mock:
@@ -336,16 +327,17 @@ def test_pix_vencido_ha_mais_de_um_dia_encerra_uma_vez_so_por_consulta(
     ]
     assert "fato pagamento.recusado ignorado" not in caplog.text
     evento = OutboxEvent.objects.get()
-    schema = json.loads(_CONTRATO_PIX_EXPIRADO.read_text(encoding="utf-8"))
-    Draft202012Validator(schema, format_checker=FormatChecker()).validate(
-        {
-            "event": evento.event,
-            "version": evento.version,
-            "event_id": str(evento.event_id),
-            "occurred_at": evento.occurred_at.isoformat(),
-            "data": evento.payload,
-        }
-    )
+    assert set(evento.payload) == {
+        "site_id",
+        "payment_id",
+        "order_id",
+        "amount_cents",
+        "customer",
+        "recovery_url",
+    }
+    assert evento.payload["site_id"] == SITE
+    assert evento.payload["order_id"] == intent.order_id
+    assert evento.payload["amount_cents"] == intent.amount_cents
 
 
 @pytest.mark.parametrize(

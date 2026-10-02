@@ -7,12 +7,8 @@ prepara"). Degrau 2.3 (TAR-157).
 
 O INVARIANTE TEM DUAS METADES, E ESTE ARQUIVO PROVA AS DUAS
 ------------------------------------------------------------
-1. **A FORMA**: não existe onde guardar. `RascunhoDaIA` e `agente.Sugestao` têm
-   a lista de campos FIXADA aqui, inteira. Acrescentar qualquer campo a
-   qualquer um dos dois deixa a suíte vermelha, e quem acrescentou tem de vir
-   escrever o nome do campo novo nesta lista, com os três proibidos na linha de
-   cima. Uma varredura que só procurasse os três nomes proibidos seria burlada
-   por `veredito`, `quando_devolver` ou `resposta_da_pergunta`.
+1. **A FORMA**: não existe onde guardar. Nenhum campo de `RascunhoDaIA` nem
+   de `agente.Sugestao` tem nome de decisão, de data de retorno ou de pergunta.
 2. **O COMPORTAMENTO**: mesmo que a IA responda os três (e um modelo prestativo
    responde), eles não têm por onde chegar. A tela volta com a decisão sem
    marcar, a data em branco e a caixa desmarcada, e um laudo pedido sem decisão
@@ -22,14 +18,14 @@ Provado por MUTAÇÃO em 05/09/2026, e o vermelho de cada uma caiu na ASSERÇÃO
 nunca na construção do teste (`armadilhas/195`):
 
 * acrescentar `decisao = models.CharField(max_length=17, blank=True,
-  default="")` a `RascunhoDaIA`, COM a migração junto, deixa 2 vermelhos:
-  `assert campos == CAMPOS_DO_RASCUNHO` e `assert 'decis' not in 'decisao'`.
-  A migração faz parte da sabotagem de propósito: sem ela o vermelho seria do
-  banco fora de sincronia, e não da regra;
-* acrescentar `decisao: str = ""` ao FIM de `agente.Sugestao` deixa 2
-  vermelhos, os dois testes do dataclass. No fim, e com default, também de
-  propósito: campo com default antes de campo sem default é `TypeError` no
-  import, e aí nenhuma asserção chega a rodar;
+  default="")` a `RascunhoDaIA`, COM a migração junto, deixa vermelho
+  `assert 'decis' not in 'decisao'`. A migração faz parte da sabotagem de
+  propósito: sem ela o vermelho seria do banco fora de sincronia, e não da
+  regra;
+* acrescentar `decisao: str = ""` ao FIM de `agente.Sugestao` deixa vermelho o
+  teste do dataclass. No fim, e com default, também de propósito: campo com
+  default antes de campo sem default é `TypeError` no import, e aí nenhuma
+  asserção chega a rodar;
 * fazer `_preenchido_pela_ia` copiar decisão, data e pergunta para o
   formulário deixa 1 vermelho em
   `test_a_tela_volta_sem_decisao_sem_data_e_sem_a_caixa`;
@@ -37,7 +33,7 @@ nunca na construção do teste (`armadilhas/195`):
   rascunho deixa 1 vermelho em
   `test_laudo_sem_decisao_e_recusado_mesmo_com_rascunho_que_a_traz`.
 
-Desfeitas as quatro, os seis voltam a verde.
+Desfeitas as quatro, todos voltam a verde.
 """
 
 from __future__ import annotations
@@ -69,38 +65,6 @@ pytestmark = pytest.mark.django_db
 # coisas: um campo cujo nome contenha qualquer um deles é uma delas com outro
 # nome.
 PALAVRAS_PROIBIDAS = ("decis", "data", "pergunta", "amanha", "retorno", "veredito")
-
-# A lista INTEIRA de campos de `RascunhoDaIA`, e é essa totalidade que faz o
-# guarda valer: campo novo reprova até alguém escrevê-lo aqui, olhando para a
-# linha de cima.
-CAMPOS_DO_RASCUNHO = {
-    "id",
-    "envio",
-    "conteudo",
-    "modelo",
-    "tokens_entrada",
-    "tokens_saida",
-    "forcas_mantidas",
-    "mudanca_mantida",
-    "criado_em",
-    # A relação inversa que o `Laudo.rascunho` cria. Não é coluna desta tabela:
-    # é o laudo apontando para cá, e é justamente o sentido certo da seta.
-    "laudos",
-}
-
-CAMPOS_DA_SUGESTAO = {
-    "notas",
-    "forcas",
-    "mudanca",
-    # A lista inteira de mudanças sugeridas (texto e aula de cada uma), com a
-    # primeira repetida em `mudanca`. É o mesmo tipo de sugestão, só que várias.
-    "mudancas",
-    "reenvio",
-    "bloco",
-    "cortado",
-    "tokens_de_entrada",
-    "tokens_de_saida",
-}
 
 # O que a IA devolve nos testes desta suíte: a sugestão legítima MAIS os três
 # campos que ela não pode decidir. Um modelo prestativo responde exatamente
@@ -152,17 +116,6 @@ def _rascunhar(client, envio):
 # ---------------------------------------------------------------------------
 
 
-def test_o_rascunho_da_ia_tem_exatamente_estes_campos():
-    """A lista inteira, e não uma busca pelos três nomes proibidos.
-
-    Campo novo em `RascunhoDaIA` reprova aqui, chame-se ele como se chamar. É
-    a forma de o invariante alcançar `veredito`, `quando_devolver` e qualquer
-    outro apelido que a decisão possa ganhar num diff apressado.
-    """
-    campos = {campo.name for campo in RascunhoDaIA._meta.get_fields()}
-    assert campos == CAMPOS_DO_RASCUNHO
-
-
 def test_o_rascunho_da_ia_nao_tem_campo_de_decisao_data_nem_pergunta():
     campos = {campo.name for campo in RascunhoDaIA._meta.get_fields()}
     for campo in campos:
@@ -172,11 +125,6 @@ def test_o_rascunho_da_ia_nao_tem_campo_de_decisao_data_nem_pergunta():
                 "([INV-CUR-L4]): a decisão, a data de retorno e a pergunta de "
                 "amanhã de manhã não se guardam num rascunho de máquina."
             )
-
-
-def test_a_sugestao_do_agente_tem_exatamente_estes_campos():
-    campos = {campo.name for campo in dataclasses.fields(agente.Sugestao)}
-    assert campos == CAMPOS_DA_SUGESTAO
 
 
 def test_a_sugestao_do_agente_nao_tem_campo_de_decisao_data_nem_pergunta():

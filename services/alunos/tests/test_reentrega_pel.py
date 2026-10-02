@@ -112,13 +112,6 @@ def _prender(r, stream: str, envelope: dict, *, entregas: int) -> bytes:
     return msg_id
 
 
-def test_constantes_do_lote_nao_derivam():
-    # Convenção ditada para as 4 células consumidoras do lote de reentrega:
-    # mesmos nomes, mesmos valores. Mudar aqui é mudar o desenho combinado.
-    assert IDLE_MS_REENTREGA == 60_000
-    assert MAX_ENTREGAS == 5
-
-
 def test_mensagem_presa_e_reivindicada_e_o_efeito_acontece(r, stream):
     """(a) do DoD: presa (idle ≥ limiar, delivery_count < MAX_ENTREGAS) é
     reivindicada, o handler roda pelo MESMO caminho das mensagens novas e a

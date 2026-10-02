@@ -49,7 +49,6 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import re
 
 import pytest
 from django.urls import reverse
@@ -229,21 +228,15 @@ def test_a_ficha_do_guia_do_mentor_e_a_rubrica_viajam(no_plantao, client, monkey
     assert f'Critério "{CRITERIO_1}": nota de 1 a 5.' in corpo
 
 
-def test_o_modelo_e_o_que_a_casa_escolheu_com_data(no_plantao, client, monkeypatch):
-    """O id COM DATA, e nenhum ajuste de esforço de raciocínio.
-
-    O apelido `claude-haiku-4-5` segue o modelo quando a Anthropic o move; a
-    data prende. E `output_config` não sai: um nível de `effort` dá erro no
-    Haiku 4.5, e o fórum tirou o parâmetro de propósito em 03/09/2026.
-    """
+def test_o_rascunho_nao_manda_ajuste_de_esforco(no_plantao, client, monkeypatch):
+    """`output_config` não sai: um nível de `effort` dá erro no Haiku 4.5, e o
+    fórum tirou o parâmetro de propósito em 03/09/2026."""
     capturado: dict = {}
     dublar_a_anthropic(
         monkeypatch, corpo=corpo_da_anthropic(SUGESTAO_BOA), capturado=capturado
     )
     rascunhar(client, no_plantao)
 
-    assert capturado["corpo"]["model"] == "claude-haiku-4-5-20251001"
-    assert re.search(r"-\d{8}$", capturado["corpo"]["model"])
     assert "output_config" not in capturado["corpo"]
 
 

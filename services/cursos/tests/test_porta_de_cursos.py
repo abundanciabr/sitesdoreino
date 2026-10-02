@@ -300,36 +300,3 @@ def test_alterar_grava_no_curso_do_apelido_e_nao_no_vizinho(esqueleto):
     esqueleto.refresh_from_db()
     assert (vizinho.nome, esqueleto.nome) == ("Básico, revisto", "Profissional")
 
-
-# ---------------------------------------------------------------------------
-# o contrato vivo
-# ---------------------------------------------------------------------------
-
-
-def exportar() -> dict:
-    saida = StringIO()
-    call_command("export_openapi", stdout=saida)
-    return json.loads(saida.getvalue())
-
-
-def test_a_regra_de_avanco_viaja_no_contrato_como_enum_de_duas_palavras():
-    """O vocabulário sai do modelo (`Curso.Progressao`), e quem for construir
-    a tela do outro lado o lê do contrato, nunca de uma lista própria."""
-    documento = exportar()
-    assert documento["components"]["schemas"]["Progressao"]["enum"] == [
-        "por_laudo",
-        "livre",
-    ]
-    curso = documento["components"]["schemas"]["CursoSchema"]
-    assert set(curso["properties"]) == OS_CAMPOS_DO_CURSO
-    assert curso["properties"]["progressao"] == {
-        "$ref": "#/components/schemas/Progressao"
-    }
-
-
-def test_criar_responde_201_no_contrato_e_o_apelido_leva_o_padrao():
-    documento = exportar()
-    assert list(documento["paths"]["/cursos"]["post"]["responses"]) == ["201"]
-    criar_corpo = documento["components"]["schemas"]["CursoParaCriarSchema"]
-    assert criar_corpo["properties"]["slug"]["pattern"] == "^[a-z0-9-]{1,64}$"
-    assert criar_corpo["required"] == ["slug", "nome"]

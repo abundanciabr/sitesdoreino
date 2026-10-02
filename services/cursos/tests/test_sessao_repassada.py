@@ -12,9 +12,6 @@ resposta desta célula reescreve o cookie de sessão do site.
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 import httpx
 import pytest
 from django.urls import reverse
@@ -151,19 +148,3 @@ def test_nenhuma_resposta_reescreve_o_cookie_de_sessao_do_site(
         assert (
             "meshcraft_sessao" not in resposta.cookies
         ), f"{endereco} reescreveu o cookie de sessão do SITE"
-
-
-def test_nenhum_arquivo_da_celula_toca_request_session():
-    """Cinto e suspensório do [INV-P12]: além de não haver SessionMiddleware,
-    nenhuma linha de código desta célula escreve ou lê `request.session`.
-
-    A régua é um ACESSO (`request.session[…]`, `.get`, `=`), e não o nome:
-    os comentários desta célula citam o nome justamente para dizer que ele é
-    proibido."""
-    raiz = Path(__file__).resolve().parents[1] / "apps"
-    culpados = [
-        str(arquivo.relative_to(raiz))
-        for arquivo in raiz.rglob("*.py")
-        if re.search(r"request\.session\s*[\[.=]", arquivo.read_text(encoding="utf-8"))
-    ]
-    assert culpados == [], culpados

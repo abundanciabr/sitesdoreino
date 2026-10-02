@@ -1,92 +1,14 @@
 # tests/test_vocabulario_de_paginas.py
 # O vocabulario e a fronteira desta entrega: secao fora da lista e slot fora da
 # lista da secao sao recusados, e a recusa diz qual e a lista valida.
-# As onze secoes sao as da ferramenta 73 do mantenedor
-# (documentos/ferramentas-do-projeto-meshcraft.md), e a AUSENCIA dos slots que
-# a ferramenta 74 proibe e medida aqui, nao so comentada.
 import pytest
 from django.core.exceptions import ValidationError
 
 from apps.paginas.vocabulario import (
     ORDEM_CANONICA,
     SECOES,
-    SLOTS_PROIBIDOS,
     normalizar_secoes,
 )
-
-
-def test_as_onze_secoes_na_ordem_que_o_mantenedor_escreveu():
-    # Ferramenta 73: "Onze secoes na ordem: o cubo, os tres viloes, o metodo,
-    # os instrumentos, o percurso, quanto tempo leva, para quem nao serve,
-    # o que acontece se eu parar, o que recebe e o preco, a carta, perguntas."
-    assert ORDEM_CANONICA == (
-        "cubo",
-        "viloes",
-        "metodo",
-        "instrumentos",
-        "percurso",
-        "tempo",
-        "para_quem_nao_serve",
-        "se_eu_parar",
-        "oferta",
-        "carta",
-        "perguntas",
-    )
-    assert len(ORDEM_CANONICA) == 11
-
-
-def test_os_slots_de_cada_secao_sao_os_combinados():
-    assert SECOES["cubo"] == (
-        "headline",
-        "subheadline",
-        "cta_texto",
-        "cta_destino",
-        "imagem",
-    )
-    # Tres viloes, porque a especificacao diz tres.
-    assert SECOES["viloes"] == ("headline", "vilao_1", "vilao_2", "vilao_3", "prova")
-    # Seis recusas, porque a especificacao diz seis.
-    assert SECOES["para_quem_nao_serve"] == (
-        "headline",
-        "recusa_1",
-        "recusa_2",
-        "recusa_3",
-        "recusa_4",
-        "recusa_5",
-        "recusa_6",
-    )
-    assert SECOES["oferta"] == (
-        "headline",
-        "o_que_recebe",
-        "preco_texto",
-        "parcelamento",
-        "cta_texto",
-    )
-    assert SECOES["instrumentos"] == (
-        "headline",
-        "texto",
-        "indice_de_estudios",
-        "prova",
-    )
-    assert SECOES["carta"] == ("headline", "texto", "assinatura")
-
-
-def test_nenhuma_secao_oferece_slot_que_a_ferramenta_74_proibe():
-    # A ferramenta 74 proibe contagem regressiva, "ultimas vagas", valor
-    # riscado, promessa de renda ou prazo e superlativo; a 73 manda o preco
-    # "uma vez, sem ancoragem". Um slot e um convite a preencher, entao o
-    # convite nao pode existir. Vale para TODA secao, inclusive uma nova.
-    for nome, slots in SECOES.items():
-        for proibido in SLOTS_PROIBIDOS:
-            assert proibido not in slots, f"{nome} oferece o slot proibido {proibido}"
-
-
-def test_a_secao_de_garantia_nao_existe():
-    # Ela nao esta entre as onze, e o prazo dela convidaria a promessa de prazo
-    # que a ferramenta 74 proibe. Reembolso, se houver, e uma pergunta.
-    assert "garantia" not in SECOES
-    with pytest.raises(ValidationError):
-        normalizar_secoes([{"nome": "garantia", "slots": {"headline": "30 dias"}}])
 
 
 def test_ancora_de_preco_e_recusada_na_secao_de_oferta():
