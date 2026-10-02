@@ -2086,7 +2086,12 @@ class MedicaoClient:
         }
         if any(type(degraus.get(p)) is not int for p in self.PASSOS_DO_FUNIL):
             return None
-        return {p: degraus[p] for p in self.PASSOS_DO_FUNIL}
+        resultado = {p: degraus[p] for p in self.PASSOS_DO_FUNIL}
+        if "checkout_iniciado" in degraus:
+            if type(degraus["checkout_iniciado"]) is not int or degraus["checkout_iniciado"] < 0:
+                return None
+            resultado["checkout_iniciado"] = degraus["checkout_iniciado"]
+        return resultado
 
     def mortos(self, limite: int = 30) -> "tuple[str, dict | None]":
         """A fila do que chegou e não pôde ser afirmado: o total e o topo dela.

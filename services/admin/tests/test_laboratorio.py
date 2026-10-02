@@ -406,7 +406,7 @@ def test_a_tela_mostra_os_experimentos_da_pagina_lidos_do_catalogo(monkeypatch):
     assert "Hipótese do experimento ativo." in corpo
     assert "Hipótese do experimento encerrado." in corpo
     assert "Ativo" in corpo and "Encerrado" in corpo
-    assert "Entrada no checkout" in corpo, "a métrica sai com o nome, não com a chave"
+    assert "Clique para checkout (histórico técnico)" in corpo, "a métrica sai com o nome, não com a chave"
     for data in ("01/09/2026", "02/09/2026", "23/09/2026", "24/09/2026"):
         assert data in corpo, f"a data {data} do experimento não apareceu"
     assert "Promover" in corpo, "a decisão do encerrado"

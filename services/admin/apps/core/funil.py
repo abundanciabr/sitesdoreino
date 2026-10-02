@@ -53,6 +53,7 @@ PASSOS = (
     ("pagina_vista", "Abriram a página de venda"),
     ("secao_vista", "Chegaram à oferta"),
     ("cta_checkout", "Clicaram para pagar"),
+    ("checkout_iniciado", "Abriram uma sessão no checkout"),
     ("lead_capturado", "Deixaram o contato"),
     ("pedido_atribuido", "Fizeram o pedido"),
     ("pedido_pago", "Pagaram"),
@@ -100,7 +101,7 @@ def _dias(por_dia: list[dict], ate: dt.date) -> list[dict]:
         linhas.append(
             {
                 "dia": dia,
-                "visitantes": [passos[p] if passos else 0 for p, _ in PASSOS],
+                "visitantes": [passos.get(p) if passos else (None if p == "checkout_iniciado" else 0) for p, _ in PASSOS],
             }
         )
         dia -= dt.timedelta(days=1)
@@ -118,13 +119,13 @@ def montar(desfecho: str, resposta: dict | None, ate: dt.date) -> dict:
     escada = []
     anteriores = None
     for passo, nome in PASSOS:
-        visitantes = resposta["passos"][passo]
+        visitantes = resposta["passos"].get(passo)
         escada.append(
             {
                 "passo": passo,
                 "nome": nome,
                 "visitantes": visitantes,
-                "taxa": _taxa(visitantes, anteriores),
+                "taxa": _taxa(visitantes, anteriores) if visitantes is not None else None,
             }
         )
         anteriores = visitantes

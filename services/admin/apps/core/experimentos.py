@@ -74,7 +74,10 @@ ESPACOS = tuple(f"{secao.nome}.{nome}" for secao in SECOES for nome in secao.esp
 
 #: A métrica que decide o experimento. Uma só hoje, porque é a única que a
 #: leitura do funil conta por braço (`convertidos`); a próxima entra aqui.
-METRICAS = {"cta_checkout": "Entrada no checkout"}
+METRICAS = {
+    "checkout_iniciado": "Entrada confirmada no checkout",
+    "cta_checkout": "Clique para checkout (histórico técnico)",
+}
 
 ROTULO_DO_ESTADO = {"rascunho": "Rascunho", "ativo": "Ativo", "encerrado": "Encerrado"}
 

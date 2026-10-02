@@ -264,7 +264,7 @@ def test_o_formulario_mostra_o_texto_no_ar_como_braco_a():
     assert 'name="texto_b"' in corpo
     assert 'value="cubo.headline" selected' in corpo
     assert 'name="parte_b" value="50"' in corpo
-    assert "Entrada no checkout" in corpo
+    assert "Entrada confirmada no checkout" in corpo
 
 
 @respx.mock

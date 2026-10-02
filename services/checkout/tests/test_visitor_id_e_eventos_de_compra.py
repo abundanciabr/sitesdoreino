@@ -48,6 +48,7 @@ def _abrir_sessao(client, api, rede, offer_slug, *, cookie=None):
 def test_sem_cookie_visitor_id_fica_nulo_e_pedido_criado_nao_quebra(client, api, rede):
     sessao = _abrir_sessao(client, api, rede, SLUG)
     assert Session.objects.get(pk=sessao["id"]).visitor_id is None
+    assert not OutboxEvent.objects.filter(event="checkout.iniciado").exists()
 
     resp = api.post(
         f"/api/checkout/sessoes/{sessao['id']}/pedido",
@@ -74,6 +75,47 @@ def test_cookie_invalido_vira_ausencia_nunca_erro(client, api, rede):
         resp = api.post("/api/checkout/sessoes", {"offer_slug": SLUG})
         assert resp.status_code == 201, resp.content
         assert Session.objects.get(pk=resp.json()["id"]).visitor_id is None
+    assert not OutboxEvent.objects.filter(event="checkout.iniciado").exists()
+
+
+@pytest.mark.django_db
+def test_cookie_valido_emite_checkout_iniciado_com_payload_minimo(client, api, rede):
+    sessao = _abrir_sessao(client, api, rede, SLUG, cookie=VISITOR_ID)
+
+    evento = OutboxEvent.objects.get(event="checkout.iniciado")
+    assert evento.version == 1
+    assert evento.payload == {
+        "site_id": sessao["site_id"],
+        "visitor_id": VISITOR_ID,
+        "checkout_session_id": sessao["id"],
+        "produto": SLUG,
+    }
+
+
+@pytest.mark.django_db
+def test_oferta_inexistente_nao_cria_sessao_nem_evento(client, api, rede):
+    client.cookies["meshcraft_visitante"] = VISITOR_ID
+
+    resp = api.post("/api/checkout/sessoes", {"offer_slug": "oferta-inexistente"})
+
+    assert resp.status_code == 404
+    assert not Session.objects.exists()
+    assert not OutboxEvent.objects.filter(event="checkout.iniciado").exists()
+
+
+@pytest.mark.django_db
+def test_falha_ao_emitir_checkout_iniciado_desfaz_sessao(client, api, rede, monkeypatch):
+    def falhar(*args, **kwargs):
+        raise RuntimeError("falha simulada na gravação do evento")
+
+    monkeypatch.setattr("apps.core.api.emitir", falhar)
+    client.cookies["meshcraft_visitante"] = VISITOR_ID
+
+    with pytest.raises(RuntimeError, match="falha simulada"):
+        api.post("/api/checkout/sessoes", {"offer_slug": SLUG})
+
+    assert not Session.objects.exists()
+    assert not OutboxEvent.objects.filter(event="checkout.iniciado").exists()
 
 
 # ---------------------------------------------------------------------------

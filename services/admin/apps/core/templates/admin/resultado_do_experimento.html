@@ -119,7 +119,7 @@ Três regras governam cada `{% if %}` desta tela:
           {% if tela.coletando %}
           <th class="numero">Faltam para a amostra</th>
           {% else %}
-          <th class="numero">Clicaram para comprar</th>
+          <th class="numero">{% if tela.experimento.metrica_principal == "checkout_iniciado" %}Entraram no checkout{% else %}Clicaram para checkout{% endif %}</th>
           <th class="numero">Taxa</th>
           {% endif %}
         </tr>

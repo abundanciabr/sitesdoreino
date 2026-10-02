@@ -195,6 +195,7 @@ PASSOS_DO_FUNIL = (
     "lead_capturado",
     "pedido_atribuido",
     "pedido_pago",
+    "checkout_iniciado",
 )
 
 TIPO_PAGINA_VISTA = "funil.pagina-vista"
@@ -203,6 +204,7 @@ TIPO_CTA_CLICADO = "funil.cta-clicado"
 TIPO_LEAD_CAPTURADO = "funil.lead-capturado"
 TIPO_PEDIDO_ATRIBUIDO = "checkout.pedido-atribuido"
 TIPO_PEDIDO_PAGO = "checkout.pedido-pago"
+TIPO_CHECKOUT_INICIADO = "checkout.iniciado"
 
 #: `cta_checkout` é o clique que MIRA no checkout, e não qualquer clique: a
 #: métrica principal do primeiro experimento (decisão do mantenedor,
@@ -552,6 +554,7 @@ def _passos_do_funil(janela):
         "lead_capturado": janela.filter(tipo=TIPO_LEAD_CAPTURADO),
         "pedido_atribuido": janela.filter(tipo=TIPO_PEDIDO_ATRIBUIDO),
         "pedido_pago": janela.filter(tipo=TIPO_PEDIDO_PAGO),
+        "checkout_iniciado": janela.filter(tipo=TIPO_CHECKOUT_INICIADO),
     }
 
 
@@ -640,6 +643,7 @@ def _variantes_do_funil(
 
     pedidos_atribuidos = _mapa_de_pedidos(TIPO_PEDIDO_ATRIBUIDO)
     pedidos_pagos = _mapa_de_pedidos(TIPO_PEDIDO_PAGO)
+    entradas_checkout = _mapa_de_pedidos(TIPO_CHECKOUT_INICIADO)
 
     def _tem_pedido(visitor_id: str, mapa: dict[str, list[dt.datetime]]) -> bool:
         momentos = mapa.get(visitor_id)
@@ -658,6 +662,9 @@ def _variantes_do_funil(
             1 for v in atribuidos_v if _tem_pedido(v, pedidos_atribuidos)
         )
         pedido_pago_v = sum(1 for v in atribuidos_v if _tem_pedido(v, pedidos_pagos))
+        checkout_iniciado_v = sum(
+            1 for v in expostos_v if _tem_pedido(v, entradas_checkout)
+        )
         variantes.append(
             {
                 "variante_id": variante_id,
@@ -671,6 +678,7 @@ def _variantes_do_funil(
                     {"passo": "lead_capturado", "visitantes": len(leads_v)},
                     {"passo": "pedido_atribuido", "visitantes": pedido_atribuido_v},
                     {"passo": "pedido_pago", "visitantes": pedido_pago_v},
+                    {"passo": "checkout_iniciado", "visitantes": checkout_iniciado_v},
                 ],
             }
         )

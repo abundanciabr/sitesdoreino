@@ -240,6 +240,19 @@ def test_encerrado_antes_do_horizonte_nao_calcula_p():
     assert "antes" in r.motivo
 
 
+def test_encerrado_no_ultimo_dia_da_janela_nao_vira_candidato():
+    """O dia final ainda não terminou quando se encerra nele."""
+    r = _avaliar(
+        _par((1000, 1000, 200), (1000, 1000, 250)),
+        hoje=DEPOIS_DO_FIM,
+        encerrado_em=FIM,
+    )
+
+    assert r.veredito == re_.INCONCLUSIVO
+    assert r.comparacao is None
+    assert "antes do fim" in r.motivo
+
+
 # ---------------------------------------------------------------------------
 # 3. Divisão torta bloqueia a promoção
 # ---------------------------------------------------------------------------
@@ -422,6 +435,50 @@ def _funil(variantes, coleta=True, trocados=0) -> dict:
         ],
         "visitantes_com_bracos_trocados": trocados,
     }
+
+
+def test_contar_checkout_iniciado_usa_o_passo_e_preserva_cta_historico(monkeypatch):
+    funil = _funil([("a", 1000, 1000, 200), ("b", 1000, 1000, 250)])
+    funil["variantes"][0]["passos"] = [{"passo": "checkout_iniciado", "visitantes": 20}]
+    funil["variantes"][1]["passos"] = [{"passo": "checkout_iniciado", "visitantes": 35}]
+    monkeypatch.setattr(
+        re_.MedicaoClient,
+        "funil",
+        lambda self, *args, **kwargs: (re_.MedicaoClient.OK, funil),
+    )
+
+    novo = re_.contar(
+        SITE, _experimento(metrica_principal="checkout_iniciado"), DEPOIS_DO_FIM
+    )
+    historico = re_.contar(
+        SITE, _experimento(metrica_principal="cta_checkout"), DEPOIS_DO_FIM
+    )
+
+    assert novo["estado"] == historico["estado"] == "contado"
+    assert (
+        novo["resultado"].controle.convertidos,
+        novo["resultado"].tratamento.convertidos,
+    ) == (20, 35)
+    assert (
+        historico["resultado"].controle.convertidos,
+        historico["resultado"].tratamento.convertidos,
+    ) == (200, 250)
+
+
+def test_checkout_iniciado_ausente_na_resposta_nao_vira_zero(monkeypatch):
+    funil = _funil([("a", 10, 10, 2), ("b", 10, 10, 3)])
+    monkeypatch.setattr(
+        re_.MedicaoClient,
+        "funil",
+        lambda self, *args, **kwargs: (re_.MedicaoClient.OK, funil),
+    )
+
+    contado = re_.contar(
+        SITE, _experimento(metrica_principal="checkout_iniciado"), DEPOIS_DO_FIM
+    )
+
+    assert contado["estado"] == "fora-do-contrato"
+    assert "checkout_iniciado" in contado["frase"]
 
 
 def _catalogo_responde(corpo, status=200):

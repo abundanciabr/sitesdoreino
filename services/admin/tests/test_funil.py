@@ -348,8 +348,8 @@ def test_por_dia_comeca_no_primeiro_dia_medido_e_o_buraco_depois_e_zero():
         dt.date(2026, 9, 24),
         dt.date(2026, 9, 23),
     ]
-    assert tela["dias"][1]["visitantes"] == [0, 0, 0, 0, 0, 0]
-    assert tela["dias"][3]["visitantes"] == [3, 2, 1, 0, 0, 0]
+    assert tela["dias"][1]["visitantes"] == [0, 0, 0, None, 0, 0, 0]
+    assert tela["dias"][3]["visitantes"] == [3, 2, 1, None, 0, 0, 0]
 
 
 @respx.mock

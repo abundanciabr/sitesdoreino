@@ -48,7 +48,6 @@ from apps.core.decisao_do_experimento import decidir
 from apps.core.experimentos import (
     CAMPOS,
     ESPACO_PADRAO,
-    METRICAS,
     criar_rascunho,
     iniciar_experimento,
     recusas_do_plano,
@@ -74,7 +73,7 @@ PLANO = {
     "espaco": ESPACO_PADRAO,
     "hipotese": HIPOTESE,
     "parte_b": "50",
-    "metrica_principal": next(iter(METRICAS)),
+    "metrica_principal": "cta_checkout",
     "taxa_base": "3",
     "mde": "1",
     "dias_planejados": "7",
@@ -143,7 +142,9 @@ def e_o_aa(experimento: dict) -> bool:
         return False
     if espaco != ESPACO_PADRAO:
         return False
-    if len(variantes) < 2:
+    if len(variantes) != 2:
+        return False
+    if {v.get("variante_id"): v.get("peso") for v in variantes} != {"a": 5000, "b": 5000}:
         return False
     if len(_textos(experimento)) != 1:
         return False

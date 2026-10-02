@@ -119,6 +119,7 @@ STREAMS = [
     # conversões do funil de compra (DESENHO-COMUM.md, sessão de 26/09/2026).
     "eventos.checkout.pedido-atribuido",
     "eventos.checkout.pedido-pago",
+    "eventos.checkout.iniciado",
 ]
 
 #: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
@@ -137,6 +138,7 @@ ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
         # nome, telefone, documento."
         "checkout.pedido-atribuido",
         "checkout.pedido-pago",
+        "checkout.iniciado",
     }
 )
 

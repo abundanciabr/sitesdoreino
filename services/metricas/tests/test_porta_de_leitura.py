@@ -812,6 +812,25 @@ def test_funil_junta_pedidos_por_visitor_id_dentro_da_janela_de_atribuicao():
     assert passo["pedido_pago"] == 1
 
 
+def test_checkout_confirmado_e_distinto_do_clique_e_preserva_braco_original():
+    momento = dt.datetime(2026, 9, 5, 9, 0, tzinfo=SP)
+    for visitante in ("v1", "v2", "v3"):
+        visita(FUNIL_PAGINA_VISTA, visitante, momento, experimento_id="exp-1", variante_id="a")
+        visita(FUNIL_SECAO_VISTA, visitante, momento, experimento_id="exp-1", variante_id="a", secao="cubo")
+    visita(FUNIL_CTA_CLICADO, "v1", momento, experimento_id="exp-1", destino="/checkout/curso/")
+    depois = momento + dt.timedelta(minutes=1)
+    visita("checkout.iniciado", "v2", depois)
+    visita("checkout.iniciado", "v2", depois + dt.timedelta(minutes=1))
+    visita("checkout.iniciado", "v3", momento - dt.timedelta(minutes=1))
+    visita("checkout.iniciado", "v1", depois, site=OUTRO_SITE)
+    corpo = pedir(f"/funil?de=2026-09-01&ate=2026-09-30&site_id={SITE}&experimento_id=exp-1&secao=cubo").json()
+    braco = corpo["variantes"][0]
+    assert braco["variante_id"] == "a"
+    assert braco["convertidos"] == 1
+    assert por_passo(braco)["checkout_iniciado"] == 1
+    assert por_passo(corpo)["checkout_iniciado"] == 2
+
+
 def test_funil_intervalo_invertido_e_recusado():
     resposta = pedir("/funil?de=2026-09-30&ate=2026-09-01")
     assert resposta.status_code == 422

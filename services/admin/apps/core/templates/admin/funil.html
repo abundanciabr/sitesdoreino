@@ -91,7 +91,7 @@ Três regras governam cada `{% if %}` desta tela:
         {% for degrau in tela.escada %}
         <tr>
           <td>{{ degrau.nome }}</td>
-          <td class="numero"><b>{{ degrau.visitantes }}</b></td>
+          <td class="numero"><b>{% if degrau.visitantes is None %}sem coleta{% else %}{{ degrau.visitantes }}{% endif %}</b></td>
           <td class="numero">{% if forloop.first %}{% elif degrau.taxa is None %}sem base{% else %}{{ degrau.taxa }}{% endif %}</td>
         </tr>
         {% endfor %}
@@ -119,13 +119,16 @@ Três regras governam cada `{% if %}` desta tela:
         {% for linha in tela.dias %}
         <tr>
           <td>{{ linha.dia|date:"d/m/Y" }}</td>
-          {% for n in linha.visitantes %}<td class="numero">{{ n }}</td>{% endfor %}
+          {% for n in linha.visitantes %}<td class="numero">{% if n is None %}sem coleta{% else %}{{ n }}{% endif %}</td>{% endfor %}
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   <p class="nota">
+    A entrada confirmada mede a abertura de uma sessão válida no checkout.
+    Essa coleta começou em 02/10/2026; cliques anteriores continuam no degrau de cliques
+    e não são convertidos em entradas confirmadas.
     A tabela começa no primeiro dia com evento: antes dele não dá para saber se
     ninguém veio ou se a medição ainda não escutava. A soma dos dias pode
     passar do total da janela, porque quem volta em dois dias conta uma vez em

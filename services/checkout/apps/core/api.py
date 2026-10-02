@@ -191,14 +191,26 @@ def create_session(request):
         raise HttpError(404, "oferta inexistente ou despublicada neste site")
 
     utm = corpo.get("utm") or {}
-    sessao = SessionModel.objects.create(
-        site_id=site["id"],
-        offer_slug=offer_slug,
-        offer=oferta,
-        lead_id=str(corpo.get("lead_id") or ""),
-        utm={str(k): str(v) for k, v in utm.items()},
-        visitor_id=_visitor_id_do_cookie(request),
-    )
+    with transaction.atomic():
+        sessao = SessionModel.objects.create(
+            site_id=site["id"],
+            offer_slug=offer_slug,
+            offer=oferta,
+            lead_id=str(corpo.get("lead_id") or ""),
+            utm={str(k): str(v) for k, v in utm.items()},
+            visitor_id=_visitor_id_do_cookie(request),
+        )
+        if sessao.visitor_id:
+            emitir(
+                "checkout.iniciado",
+                {
+                    "site_id": sessao.site_id,
+                    "visitor_id": sessao.visitor_id,
+                    "checkout_session_id": str(sessao.id),
+                    "produto": sessao.offer_slug,
+                },
+            )
+            transaction.on_commit(relay_apos_commit)
     return JsonResponse(
         {
             "id": str(sessao.id),

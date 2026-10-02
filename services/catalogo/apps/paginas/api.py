@@ -553,7 +553,7 @@ class NovoExperimento(Schema):
         max_length=100,
         description=(
             "O passo do funil que decide o experimento, com o nome que a leitura do "
-            "funil usa (ex. cta_checkout: entrada no checkout por visitante)."
+            "funil usa (checkout_iniciado: sessão válida no checkout; cta_checkout: clique)."
         ),
     )
     taxa_base: float = Field(

@@ -228,7 +228,9 @@ def avaliar(
             comparacao=comparacao,
         )
 
-    if encerrado_em is not None and encerrado_em < fim:
+    # A janela inclui o dia `fim` inteiro. Encerrar nesse dia ainda corta a
+    # coleta, mesmo quando a tela do resultado só é aberta no dia seguinte.
+    if encerrado_em is not None and encerrado_em <= fim:
         return resultado(
             INCONCLUSIVO,
             f"O experimento foi encerrado em {encerrado_em:%d/%m/%Y}, antes do fim "
@@ -352,7 +354,9 @@ def _ler_experimento(corpo: dict) -> dict | str:
     }
 
 
-def _ler_bracos(corpo: object, pesos: dict) -> tuple[list[Braco], int] | str:
+def _ler_bracos(
+    corpo: object, pesos: dict, metrica_principal: str
+) -> tuple[list[Braco], int] | str:
     """Os dois braços da medição, ou a frase do que veio fora do combinado.
     Braço ausente com coleta é braço sem ninguém ainda, e conta zero."""
     variantes = corpo.get("variantes") if isinstance(corpo, dict) else None
@@ -367,6 +371,20 @@ def _ler_bracos(corpo: object, pesos: dict) -> tuple[list[Braco], int] | str:
         if chave not in pesos:
             return f"a medição contou uma versão que o experimento não tem ({chave})"
         numeros = [linha.get(c) for c in ("atribuidos", "expostos", "convertidos")]
+        if metrica_principal == "checkout_iniciado":
+            passos = linha.get("passos")
+            iniciados = (
+                [
+                    p.get("visitantes")
+                    for p in passos
+                    if isinstance(p, dict) and p.get("passo") == "checkout_iniciado"
+                ]
+                if isinstance(passos, list)
+                else []
+            )
+            if len(iniciados) != 1 or type(iniciados[0]) is not int or iniciados[0] < 0:
+                return f"a versão {chave} veio sem checkout_iniciado válido"
+            numeros[2] = iniciados[0]
         if not all(isinstance(x, int) and x >= 0 for x in numeros):
             return f"a versão {chave} veio com contagem que não é número"
         contagens[chave] = numeros
@@ -457,7 +475,7 @@ def contar(site_id: str, corpo: dict, hoje: dt.date) -> dict:
         return {**base, "estado": "medicao-nao-respondeu", "desfecho": desfecho}
     if funil["coleta"]["primeiro"] is None:
         return {**base, "estado": "sem-coleta"}
-    lidos = _ler_bracos(funil, experimento["pesos"])
+    lidos = _ler_bracos(funil, experimento["pesos"], experimento["metrica_principal"])
     if isinstance(lidos, str):
         return {**base, "estado": "fora-do-contrato", "frase": lidos}
     bracos, trocados = lidos

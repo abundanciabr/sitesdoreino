@@ -387,6 +387,24 @@ def test_aa_de_variante_unica_nao_e_o_aa():
 
 
 @respx.mock
+@pytest.mark.parametrize("forma", ["tres-bracos", "pesos-90-10"])
+def test_mesmo_texto_com_outra_divisao_nao_e_o_aa(forma):
+    catalogo = CatalogoFalso()
+    parecido = catalogo.experimento("ativo")
+    if forma == "tres-bracos":
+        parecido["variantes"] = [
+            {"variante_id": "a", "peso": 4000, "valor": TITULO_NO_AR},
+            {"variante_id": "b", "peso": 3000, "valor": TITULO_NO_AR},
+            {"variante_id": "c", "peso": 3000, "valor": TITULO_NO_AR},
+        ]
+    else:
+        parecido["variantes"][0]["peso"] = 9000
+        parecido["variantes"][1]["peso"] = 1000
+
+    _parecido_com_o_aa_para_sem_tocar(catalogo, parecido)
+
+
+@respx.mock
 def test_titulo_vazio_no_ar_para_com_o_que_fazer_e_nada_nasce():
     # guarda: services/admin/apps/core/management/commands/semear_experimento.py:266
     catalogo = CatalogoFalso(texto_no_ar="   ")
