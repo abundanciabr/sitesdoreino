@@ -139,8 +139,8 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
     for criterio in e00.aceito_quando:
         assert criterio in corpo
     # A primeira abertura já levou `disponivel` a `em_producao` (armadilhas
-    # da própria célula, `progresso.abrir`): o rótulo no cabeçalho prova.
-    assert "Em produção" in corpo
+    # da própria célula, `progresso.abrir`): o rótulo na lista de aulas prova.
+    assert "Em andamento" in corpo
 
     # As duas pausas da aula publicada (molde `publicar()`) são pré-condição
     # do checkpoint ([INV-CUR-P3]): sem elas a entrega é recusada.

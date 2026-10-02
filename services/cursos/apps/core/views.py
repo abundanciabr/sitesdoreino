@@ -400,7 +400,11 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         explicacao = "Conclua a aula anterior para abrir esta porta."
     else:
         estado_visual = Progresso.Estado(estado)
-        rotulo = Progresso.Estado(estado).label
+        rotulo = (
+            "Em andamento"
+            if estado == Progresso.Estado.EM_PRODUCAO
+            else Progresso.Estado(estado).label
+        )
         explicacao = _explicacao_da_porta(estado, progresso)
     return {
         "numero": aula.numero,
