@@ -333,6 +333,24 @@ def _render(
     return _escrever_cookie(resposta, request, quiz.slug, entrada)
 
 
+def _registrar(quiz, entrada, tipo, element_id="", extra=None):
+    """Mesmos eventos do formulário (abertura, pergunta vista, opção), gravados
+    pelo servidor: a conversa não roda o script de telemetria. Repetir a mesma
+    tela não conta de novo."""
+    metadata = {**(extra or {}), "utm": entrada.get("utm") or {}}
+    if entrada.get("context"):
+        metadata["context"] = entrada["context"]
+    TelemetryEvent.objects.get_or_create(
+        session_id=entrada["session_id"],
+        site_id=quiz.site_id,
+        quiz_slug=quiz.slug,
+        version_key=entrada.get("version_key") or "",
+        event_type=tipo,
+        element_id=str(element_id),
+        defaults={"metadata": metadata, "occurred_at": timezone.now()},
+    )
+
+
 def _fallback_para(estado, motivo):
     if not estado["fb"]:
         estado["fb"] = motivo
@@ -355,6 +373,8 @@ def formulario_ai(request, quiz, versao, entrada):
     if request.method == "POST":
         return _processar(request, quiz, versao, entrada, perguntas)
     estado = _estado_novo(entrada)
+    _registrar(quiz, entrada, "view_quiz")
+    _registrar(quiz, entrada, "view_question", perguntas[0].id)
     if not _chave():
         _fallback_para(estado, "sem_chave")
     elif _contagem_do_dia() >= _limite_do_dia():
@@ -419,6 +439,10 @@ def _mensagem(request, quiz, versao, entrada, perguntas, estado):
         fala = f"Não consegui entender qual opção é a sua. {corrente.text} ({opcoes})"
     elif opcao is not None:
         estado["r"][str(corrente.id)] = opcao.id
+        _registrar(quiz, entrada, "click_option", opcao.id, {"question_id": str(corrente.id)})
+        seguinte = _corrente(perguntas, estado)
+        if seguinte is not None:
+            _registrar(quiz, entrada, "view_question", seguinte.id)
     estado["t"].append(["u", mensagem])
     estado["t"].append(["a", fala])
     return mostrar()

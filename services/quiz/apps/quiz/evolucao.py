@@ -138,6 +138,24 @@ def _campanha_da_sessao(sessao):
     return sessao["contexto"].get("cpg") or sessao["utm"].get("campaign") or ""
 
 
+SEM_VALOR = "(sem valor)"
+
+# Cortes da arquitetura de URL: cada um vira um funil por versão, como a
+# leitura por campanha. O parâmetro interno vale primeiro; a UTM correspondente
+# cobre quem chegou só com ela.
+DIMENSOES = (
+    ("formato", "Formato (fmt)", lambda s: s["contexto"].get("fmt")),
+    ("segmento", "Segmento (seg)", lambda s: s["contexto"].get("seg")),
+    ("origem", "Origem (src / utm_source)",
+     lambda s: s["contexto"].get("src") or s["utm"].get("source")),
+    ("meio", "Meio (med / utm_medium)",
+     lambda s: s["contexto"].get("med") or s["utm"].get("medium")),
+    ("criativo", "Criativo (ctv / utm_content)",
+     lambda s: s["contexto"].get("ctv") or s["utm"].get("content")),
+    ("termo", "Termo (utm_term)", lambda s: s["utm"].get("term")),
+)
+
+
 def _sem_origem(sessao):
     return not _campanha_da_sessao(sessao) and not any(
         sessao["utm"].get(campo) for campo in ("source", "medium", "campaign")
@@ -198,6 +216,15 @@ def leitura_diaria(quiz, inicio=None, fim=None):
     por_campanha = _escopos(
         quiz, reais, conhecidas, "campanha", lambda s: _campanha_da_sessao(s) or SEM_CAMPANHA
     )
+
+    por_dimensao = [
+        {
+            "tipo": tipo,
+            "rotulo": rotulo,
+            "escopos": _escopos(quiz, reais, conhecidas, tipo, lambda s, f=valor: f(s) or SEM_VALOR),
+        }
+        for tipo, rotulo, valor in DIMENSOES
+    ]
 
     faltantes = []
     for funil in funis:
@@ -289,6 +316,7 @@ def leitura_diaria(quiz, inicio=None, fim=None):
         "dados_faltantes": faltantes,
         "por_dia": por_dia,
         "por_campanha": por_campanha,
+        "por_dimensao": por_dimensao,
         "comparacoes": comparacoes,
         "funil": funis,
         "avisos": [AVISO_COMPARACAO, AVISO_AMOSTRA],

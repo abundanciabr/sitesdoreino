@@ -94,6 +94,17 @@
     {% if comparacoes.aviso %}<p class="nota">{{ comparacoes.aviso }}</p>{% endif %}
   </div>
 
+  {% for d in por_dimensao %}
+  <div class="cartao">
+    <h2>Por {{ d.rotulo }}</h2>
+    {% for c in d.escopos %}
+      <p><strong>{{ c.nome }}</strong> · {{ c.sessoes }} sessão(ões)
+      {% for v in c.versoes %}<br>Versão {{ v.version_key }}: {{ v.conclusoes }} conclusão(ões) de {{ v.taxa_conclusao.denominador }}{% if v.taxa_conclusao.inconclusiva %} (inconclusiva){% endif %}{% endfor %}
+      {% for g in c.gargalos|slice:":1" %}<br>Maior gargalo: {{ g.evidencia.texto }}{% endfor %}</p>
+    {% empty %}<p>Sem visitas no período.</p>{% endfor %}
+  </div>
+  {% endfor %}
+
   <div class="cartao">
     <h2>Propostas de nova versão</h2>
     <p class="nota">Aceitar só registra a decisão e mostra a key nova a criar no estúdio. Nenhuma versão existente é alterada.</p>

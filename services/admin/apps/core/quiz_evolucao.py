@@ -124,6 +124,7 @@ def quiz_evolucao(request, slug: str):
             "faltantes": leitura.get("dados_faltantes") or [],
             "por_dia": leitura.get("por_dia") or [],
             "por_campanha": leitura.get("por_campanha") or [],
+            "por_dimensao": leitura.get("por_dimensao") or [],
             "comparacoes": leitura.get("comparacoes") or {},
             "propostas": lista,
             "recado": RECADOS.get(request.GET.get("recado", ""), ""),

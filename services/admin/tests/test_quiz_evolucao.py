@@ -130,7 +130,15 @@ PROPOSTA = {
 @respx.mock
 def test_tela_mostra_funil_gargalos_dados_faltantes_e_propostas():
     cliente = _cliente()
-    leitura = respx.get(BASE + "/evolucao").mock(return_value=httpx.Response(200, json=LEITURA))
+    dados = {
+        **LEITURA,
+        "por_dimensao": [
+            {"tipo": "termo", "rotulo": "Termo (utm_term)", "escopos": [
+                {"nome": "teste grátis", "sessoes": 4, "versoes": [], "gargalos": []}
+            ]}
+        ],
+    }
+    leitura = respx.get(BASE + "/evolucao").mock(return_value=httpx.Response(200, json=dados))
     respx.get(BASE + "/propostas").mock(
         return_value=httpx.Response(200, json={"propostas": [PROPOSTA]})
     )
@@ -148,6 +156,7 @@ def test_tela_mostra_funil_gargalos_dados_faltantes_e_propostas():
     assert "não aleatórias" in texto
     assert "Crie a versão B3 no estúdio" in texto
     assert "privado@" not in texto
+    assert "Por Termo (utm_term)" in texto and "teste grátis" in texto
     assert dict(leitura.calls.last.request.url.params) == {
         "site_id": "site-teste",
         "inicio": "2026-10-01",

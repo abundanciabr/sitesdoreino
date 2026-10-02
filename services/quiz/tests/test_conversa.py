@@ -133,6 +133,16 @@ def test_conversa_completa_leva_a_oferta_da_faixa_certa(client, quiz):
     percurso = TelemetryEvent.objects.get(event_type="ai_percurso")
     assert [t[0] for t in percurso.metadata["percurso"]] == ["u", "a", "u", "a"]
     assert CHAVE_FALSA not in str(percurso.metadata)
+    # O funil enxerga a conversa como enxerga o formulário.
+    tipos = list(
+        TelemetryEvent.objects.exclude(event_type="ai_percurso")
+        .order_by("id").values_list("event_type", flat=True)
+    )
+    assert tipos == [
+        "view_quiz", "view_question", "click_option", "view_question", "click_option",
+    ]
+    abertura = TelemetryEvent.objects.get(event_type="view_quiz")
+    assert abertura.metadata["context"]["fmt"] == "ai" and abertura.version_key == "B2"
     pagina = client.get(final["Location"], HTTP_HOST=quiz.site.host).content.decode()
     assert "Curso avançado" in pagina or "Avanço" in pagina
 

@@ -270,3 +270,22 @@ def test_api_da_leitura_diaria(quiz):
     assert dados["periodo"] == {"inicio": "2026-10-01", "fim": "2026-10-02", "fuso": "America/Sao_Paulo"}
     ruim = evolucao.leitura(pedido("/x?site_id=site-evo&inicio=ontem"), "crivo")
     assert ruim.status_code == 422
+
+
+def test_leitura_por_formato_segmento_criativo_e_termo(quiz):
+    p1 = str(quiz.versions.get(key="B2").questions.first().id)
+    for contexto, utm in (
+        ({"fmt": "video", "seg": "frio", "ctv": "vsl_47s"}, {"term": "quiz"}),
+        ({"fmt": "text", "seg": "frio"}, {"content": "anuncio_2", "term": "teste grátis"}),
+        ({}, {}),
+    ):
+        sessao = uuid.uuid4()
+        meta = {"utm": utm, "context": contexto}
+        evento(quiz, sessao, "view_quiz", instante(1), metadata=meta, versao="B2")
+        evento(quiz, sessao, "view_question", instante(1), p1, versao="B2")
+    leitura = evolucao.leitura_diaria(quiz)
+    cortes = {d["tipo"]: {e["nome"]: e["sessoes"] for e in d["escopos"]} for d in leitura["por_dimensao"]}
+    assert cortes["formato"] == {"video": 1, "text": 1, "(sem valor)": 1}
+    assert cortes["segmento"] == {"frio": 2, "(sem valor)": 1}
+    assert cortes["criativo"] == {"vsl_47s": 1, "anuncio_2": 1, "(sem valor)": 1}
+    assert cortes["termo"] == {"quiz": 1, "teste grátis": 1, "(sem valor)": 1}
