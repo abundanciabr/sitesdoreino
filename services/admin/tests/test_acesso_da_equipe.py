@@ -373,7 +373,7 @@ def test_o_perfil_completa_a_entrada_sem_mudar_quem_responde():
     assert ryan.senha and ryan.senha != SENHA
     tarefa.refresh_from_db()
     assert tarefa.responsavel_id == ryan.id
-    ficha = _texto(navegador.get(reverse("tarefa_editar", args=[tarefa.id])))
+    ficha = _texto(navegador.get(reverse("tarefa_ver", args=[tarefa.id])))
     assert "Ryan Teste, " in ficha, "o comentário acompanha a pessoa, não o texto"
     assert navegador.get(reverse(PAINEL)).status_code == 200
 

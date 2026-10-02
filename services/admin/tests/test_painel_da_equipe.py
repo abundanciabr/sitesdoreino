@@ -248,7 +248,9 @@ def test_editar_muda_responsavel_e_registra_quem_alterou():
             "situacao": "em_andamento",
         },
     )
-    assert resposta.status_code == 302
+    assert resposta["Location"] == (
+        reverse("tarefa_ver", args=[tarefa.id]) + "?resultado=salva"
+    )
     cliente = _cliente(nome="Dono")
     tarefa.refresh_from_db()
     assert tarefa.titulo == "TESTE Ligar para os leads quentes"
@@ -477,6 +479,7 @@ def test_quem_nao_e_da_casa_nao_alcanca_as_telas_novas():
         ("objetivo_novo", []),
         ("objetivo_editar", [objetivo.id]),
         ("semana_da_equipe", []),
+        ("tarefa_ver", [tarefa.id]),
     ):
         assert cliente.get(reverse(rota, args=args)).status_code == 404, rota
     for rota, args, dados in (
@@ -489,6 +492,98 @@ def test_quem_nao_e_da_casa_nao_alcanca_as_telas_novas():
     assert not Comentario.objects.exists()
     objetivo.refresh_from_db()
     assert objetivo.ativo
+
+
+# ---- ver a tarefa (02/10/2026)
+
+
+def _fim_do_dia_ms(dia) -> int:
+    fim = timezone.make_aware(datetime.combine(dia + timedelta(days=1), time.min))
+    return int(fim.timestamp() * 1000)
+
+
+@respx.mock
+def test_clicar_na_tarefa_abre_a_ficha_de_ver_com_o_contador_e_o_botao_editar():
+    livia = _livia()
+    hoje = timezone.localdate()
+    tarefa = Tarefa.objects.create(
+        titulo="TESTE Gravar o vídeo",
+        descricao="TESTE Roteiro na pasta.\nLuz da janela.",
+        responsavel=livia,
+        prazo=hoje + timedelta(days=2),
+    )
+    cliente = _cliente(LIVIA, nome="Lívia")
+    ver = reverse("tarefa_ver", args=[tarefa.id])
+    editar = reverse("tarefa_editar", args=[tarefa.id])
+
+    painel = _texto(cliente.get(reverse(PAINEL)))
+    assert f'<a class="titulo" href="{ver}">TESTE Gravar o vídeo</a>' in painel
+    assert f'<a class="titulo" href="{editar}">' not in painel
+
+    resposta = cliente.get(ver)
+    html = _texto(resposta)
+    assert resposta.status_code == 200
+    assert f'<a class="botao" href="{editar}">Editar</a>' in html
+    assert f'data-fim-do-prazo="{_fim_do_dia_ms(tarefa.prazo)}"' in html
+    assert ">Faltam</p>" in html and 'data-parte="dias">2</b>' in html
+    assert "às 23:59 (horário de Brasília)" in html
+    assert "TESTE Roteiro na pasta.<br>Luz da janela." in html
+    assert "Lívia (você)" in html
+    assert ">Assumir na semana</button>" in html
+    assert 'id="comentarios"' in html and 'id="robo"' in html
+
+    # O script do contador entra no CSP pelo hash, nunca por unsafe-inline.
+    politica = resposta["Content-Security-Policy"]
+    assert "script-src 'self' 'sha256-" in politica
+    assert "unsafe-inline" not in politica
+
+    # A página de editar ficou só com o formulário e volta para a ficha.
+    pagina_de_editar = _texto(cliente.get(editar))
+    assert f'href="{ver}">&larr; Ver a tarefa</a>' in pagina_de_editar
+    assert 'id="comentarios"' not in pagina_de_editar
+
+
+@respx.mock
+def test_a_ficha_conta_o_atraso_e_mostra_concluida_e_sem_prazo():
+    cliente = _cliente()
+    hoje = timezone.localdate()
+    atrasada = Tarefa.objects.create(titulo="TESTE Atrasada", prazo=hoje - timedelta(days=2))
+    html = _texto(cliente.get(reverse("tarefa_ver", args=[atrasada.id])))
+    assert ">Atrasada há</p>" in html and "contador-do-prazo atrasado" in html
+    assert 'data-parte="dias">1</b><span>dia</span>' in html
+
+    hoje_vence = Tarefa.objects.create(titulo="TESTE Vence hoje", prazo=hoje)
+    html = _texto(cliente.get(reverse("tarefa_ver", args=[hoje_vence.id])))
+    assert ">Faltam</p>" in html and 'data-parte="dias">0</b>' in html
+
+    feita = Tarefa.objects.create(
+        titulo="TESTE Feita",
+        prazo=hoje,
+        situacao="concluida",
+        concluida_em=timezone.now(),
+    )
+    html = _texto(cliente.get(reverse("tarefa_ver", args=[feita.id])))
+    assert "data-fim-do-prazo" not in html and "<script>" not in html
+    assert ">Concluída em " in html and "Dentro do prazo" in html
+    assert ">Reabrir</button>" in html
+
+    solta = Tarefa.objects.create(titulo="TESTE Sem prazo")
+    html = _texto(cliente.get(reverse("tarefa_ver", args=[solta.id])))
+    assert ">Sem prazo</p>" in html and "data-fim-do-prazo" not in html
+    assert cliente.get(reverse("tarefa_ver", args=[999999])).status_code == 404
+
+
+@respx.mock
+def test_concluir_pela_ficha_volta_para_a_ficha():
+    tarefa = Tarefa.objects.create(titulo="TESTE Concluir daqui")
+    ver = reverse("tarefa_ver", args=[tarefa.id])
+    resposta = _cliente().post(
+        reverse("tarefa_situacao", args=[tarefa.id]),
+        {"situacao": "concluida", "next": ver},
+    )
+    assert resposta["Location"] == ver + "?resultado=concluida"
+    tarefa.refresh_from_db()
+    assert tarefa.situacao == "concluida"
 
 
 # ---- objetivos
@@ -780,7 +875,7 @@ def test_comentar_mostra_texto_quem_e_quando_na_ficha_e_conta_no_cartao():
         reverse("tarefa_comentar", args=[tarefa.id]),
         {"texto": "TESTE Faltam as páginas 3 e 4.\r\nVejo amanhã."},
     )
-    ficha = reverse("tarefa_editar", args=[tarefa.id])
+    ficha = reverse("tarefa_ver", args=[tarefa.id])
     assert resposta["Location"] == ficha + "?resultado=comentado#comentarios"
     comentario = Comentario.objects.get()
     assert comentario.autor == f"Lívia ({LIVIA})"
@@ -809,7 +904,7 @@ def test_comentario_vazio_ou_longo_nao_publica():
     assert "resultado=comentado" in ok["Location"]
     assert Comentario.objects.count() == 1
     assert "Nenhum comentário ainda" not in _texto(
-        cliente.get(reverse("tarefa_editar", args=[tarefa.id]))
+        cliente.get(reverse("tarefa_ver", args=[tarefa.id]))
     )
 
 

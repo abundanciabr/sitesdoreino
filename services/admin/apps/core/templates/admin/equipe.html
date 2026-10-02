@@ -104,14 +104,14 @@
       {% for tarefa in coluna.tarefas %}
       <article class="tarefa{% if tarefa.atrasada %} atrasada{% endif %}">
         {% if tarefa.compromisso_da_semana %}<span class="selo-compromisso">Compromisso desta semana</span>{% endif %}
-        <a class="titulo" href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a>
+        <a class="titulo" href="{% url 'tarefa_ver' tarefa.id %}">{{ tarefa.titulo }}</a>
         <div class="meta">
           {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% else %}Sem responsável{% endif %}
           {% if tarefa.prazo %}
             &middot; <span class="prazo{% if tarefa.atrasada %} atrasado{% endif %}">{% if tarefa.atrasada %}Atrasada: {% elif tarefa.vence_hoje %}Hoje: {% endif %}{{ tarefa.prazo|date:"d/m" }}</span>
           {% endif %}
           {% if tarefa.n_comentarios %}
-            &middot; <a href="{% url 'tarefa_editar' tarefa.id %}#comentarios">{{ tarefa.n_comentarios }} comentário{{ tarefa.n_comentarios|pluralize }}</a>
+            &middot; <a href="{% url 'tarefa_ver' tarefa.id %}#comentarios">{{ tarefa.n_comentarios }} comentário{{ tarefa.n_comentarios|pluralize }}</a>
           {% endif %}
         </div>
         {% if tarefa.objetivo %}

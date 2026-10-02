@@ -511,7 +511,7 @@ def test_panorama_sem_chave_sai_parcial_e_a_pessoa_abre_a_entrega():
     painel = cliente.get(reverse("painel_da_equipe") + "?visao=minhas").content.decode()
     assert "Executor: O robô" in painel
     assert reverse("entrega_do_robo", args=[entrega.id]) in painel
-    ficha = cliente.get(reverse("tarefa_editar", args=[tarefa.id])).content.decode()
+    ficha = cliente.get(reverse("tarefa_ver", args=[tarefa.id])).content.decode()
     assert 'id="robo"' in ficha and entrega.titulo in ficha
     # O comentário aparece como do robô, não como se a pessoa tivesse escrito.
     assert "Robô de Lívia (a pedido de Lívia)," in ficha

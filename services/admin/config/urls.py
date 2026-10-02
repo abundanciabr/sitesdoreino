@@ -118,6 +118,7 @@ from apps.core.equipe import (
     tarefa_editar,
     tarefa_nova,
     tarefa_situacao,
+    tarefa_ver,
 )
 from apps.agentes.views import (
     andamento as andamento_do_robo,
@@ -286,6 +287,7 @@ urlpatterns = [
     # (`porta.py::PREFIXO_DO_PAINEL_DA_EQUIPE`).
     path("equipe/", painel_da_equipe, name="painel_da_equipe"),
     path("equipe/nova", tarefa_nova, name="tarefa_nova"),
+    path("equipe/<int:id>/ver", tarefa_ver, name="tarefa_ver"),
     path("equipe/<int:id>/editar", tarefa_editar, name="tarefa_editar"),
     path("equipe/<int:id>/situacao", tarefa_situacao, name="tarefa_situacao"),
     path("equipe/<int:id>/compromisso", tarefa_compromisso, name="tarefa_compromisso"),

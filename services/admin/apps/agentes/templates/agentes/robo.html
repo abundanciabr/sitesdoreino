@@ -79,7 +79,7 @@
           {% if e.situacao == 'executando' or e.situacao == 'na_fila' %}<progress max="100" value="{{ e.progresso }}">{{ e.progresso }}%</progress>{% endif %}
           {% if e.etapa_atual and e.aberta %}<div class="meta">Etapa: {{ e.etapa_atual }}</div>{% endif %}
           {% if e.motivo %}<div class="meta">{{ e.motivo }}</div>{% endif %}
-          {% if e.tarefa %}<div class="meta">Tarefa: <a href="{% url 'tarefa_editar' e.tarefa.id %}">{{ e.tarefa.titulo }}</a> ({{ e.tarefa.get_situacao_display }})</div>{% endif %}
+          {% if e.tarefa %}<div class="meta">Tarefa: <a href="{% url 'tarefa_ver' e.tarefa.id %}">{{ e.tarefa.titulo }}</a> ({{ e.tarefa.get_situacao_display }})</div>{% endif %}
           {% for en in e.entregas.all %}<div class="meta">Entrega: <a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if en.parcial %} (parcial){% endif %}</div>{% endfor %}
           <div class="meta">Pedido em {{ e.criada_em|date:"d/m H:i" }}{% if e.modelo %} &middot; modelo {{ e.modelo }}{% endif %}</div>
         </article>

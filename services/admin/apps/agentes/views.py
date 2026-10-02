@@ -259,8 +259,12 @@ def delegar(request):
     )
     destino = (request.POST.get("next") or "").strip()
     resultado = "delegado" if nova else "ja_rodando"
-    if tarefa is not None and destino == reverse("tarefa_editar", args=[tarefa.id]):
-        return HttpResponseRedirect(f"{destino}?resultado=robo_{resultado}#robo")
+    if tarefa is not None and destino in (
+        reverse("tarefa_ver", args=[tarefa.id]),
+        reverse("tarefa_editar", args=[tarefa.id]),
+    ):
+        ficha = reverse("tarefa_ver", args=[tarefa.id])
+        return HttpResponseRedirect(f"{ficha}?resultado=robo_{resultado}#robo")
     return _volta("robo_da_pessoa", resultado, "#trabalhos")
 
 

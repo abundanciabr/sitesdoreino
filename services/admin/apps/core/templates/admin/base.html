@@ -922,6 +922,36 @@ primeira versão deste arquivo, e o teste pegou.
     .objetivo.inativo { opacity: .7; }
     @media (min-width: 700px) { .objetivo { grid-template-columns: 1fr auto; align-items: start; } .objetivo .gestos { justify-content: flex-end; max-width: 420px; } }
     .titulo-dos-inativos { font-size: 15px; margin: 18px 0 10px; color: var(--texto-2); }
+    /* A ficha de VER a tarefa (02/10/2026): o prazo em contador e os detalhes.
+       Atrasado é o vermelho e concluído o verde que a casa já tem. */
+    .cabeca-da-tarefa { min-width: 0; }
+    .cabeca-da-tarefa h1 { overflow-wrap: anywhere; }
+    .contador-do-prazo { background: var(--painel); border: 1px solid var(--azul); border-radius: 10px; padding: 14px 16px; margin: 14px 0 18px; }
+    .contador-do-prazo.atrasado { border-color: var(--vermelho); }
+    .contador-do-prazo.concluido { border-color: var(--verde); }
+    .contador-do-prazo.sem-prazo { border-color: var(--linha); }
+    .rotulo-do-contador { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--texto-2); text-transform: uppercase; letter-spacing: .04em; }
+    .contador-do-prazo.atrasado .rotulo-do-contador { color: var(--vermelho); }
+    .contador-do-prazo.concluido .rotulo-do-contador { color: var(--verde); }
+    .partes-do-contador { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 520px; }
+    .partes-do-contador div { background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 4px; text-align: center; }
+    .partes-do-contador b { display: block; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .contador-do-prazo.atrasado .partes-do-contador b { color: var(--vermelho); }
+    .partes-do-contador span { font-size: 12px; color: var(--texto-3); }
+    @media (max-width: 420px) { .partes-do-contador b { font-size: 22px; } }
+    .ficha-da-tarefa { display: grid; gap: 10px; grid-template-columns: 1fr; margin: 0 0 14px; }
+    @media (min-width: 700px) { .ficha-da-tarefa { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .ficha-da-tarefa div { background: var(--painel); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 12px; min-width: 0; }
+    .ficha-da-tarefa dt { font-size: 12px; color: var(--texto-3); }
+    .ficha-da-tarefa dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+    .selo.situacao-em_andamento { color: var(--azul); border-color: var(--azul); }
+    .selo.situacao-bloqueada { color: var(--vermelho); border-color: var(--vermelho); }
+    .selo.situacao-concluida { color: var(--verde); border-color: var(--verde); }
+    .impedimento-da-tarefa { margin: 0 0 14px; padding: 8px 12px; border-left: 2px solid var(--vermelho); color: var(--texto-2); overflow-wrap: anywhere; }
+    .descricao-da-tarefa h2 { font-size: 16px; margin: 0 0 6px; }
+    .descricao-da-tarefa p { margin: 0 0 14px; overflow-wrap: anywhere; }
+    .gestos-da-tarefa { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
+    .gestos-da-tarefa form { display: inline; }
     .comentarios { margin-top: 28px; border-top: 1px solid var(--linha); padding-top: 14px; }
     .comentarios h2 { font-size: 16px; margin: 0 0 10px; }
     .comentario { border-left: 2px solid var(--linha); padding: 4px 0 4px 10px; margin-bottom: 10px; }

@@ -14,7 +14,7 @@
     {% if execucao.aberta and execucao.etapa_atual %}<div class="meta">Etapa: {{ execucao.etapa_atual }}</div>{% endif %}
     {% if execucao.motivo %}<div class="meta">{{ execucao.motivo }}</div>{% endif %}
     {% if execucao.resultado %}<div class="meta">Resultado: {{ execucao.resultado }}</div>{% endif %}
-    {% if tarefa %}<div class="meta">Tarefa: <a href="{% url 'tarefa_editar' tarefa.id %}">{{ tarefa.titulo }}</a> ({{ tarefa.get_situacao_display }})</div>{% endif %}
+    {% if tarefa %}<div class="meta">Tarefa: <a href="{% url 'tarefa_ver' tarefa.id %}">{{ tarefa.titulo }}</a> ({{ tarefa.get_situacao_display }})</div>{% endif %}
     {% if execucao.pedido and execucao.tipo != 'conversa' %}<div class="meta">Pedido: {{ execucao.pedido }}</div>{% endif %}
     {% for en in entregas %}<div class="meta">Entrega: <a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if en.parcial %} (parcial){% endif %}</div>{% endfor %}
   </article>

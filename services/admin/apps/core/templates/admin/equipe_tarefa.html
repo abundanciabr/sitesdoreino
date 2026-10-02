@@ -2,7 +2,11 @@
 {% block titulo %}{% if tarefa %}Editar tarefa{% else %}Nova tarefa{% endif %}{% endblock %}
 {% block corpo %}
 <div class="envolucro">
+  {% if tarefa %}
+  <a class="volta" href="{% url 'tarefa_ver' tarefa.id %}">&larr; Ver a tarefa</a>
+  {% else %}
   <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
+  {% endif %}
   <h1>{% if tarefa %}Editar tarefa{% else %}Nova tarefa{% endif %}</h1>
   <p class="subtitulo">{% if tarefa %}Criada por {{ tarefa.criada_por }} em {{ tarefa.criada_em|date:"d/m/Y H:i" }}.{% if tarefa.alterada_por %} Última alteração: {{ tarefa.alterada_por }}, {{ tarefa.alterada_em|date:"d/m/Y H:i" }}.{% endif %}{% if tarefa.concluida_em %} Concluída em {{ tarefa.concluida_em|date:"d/m/Y H:i" }}.{% endif %}{% else %}Título e responsável bastam; o resto pode vir depois.{% endif %}</p>
 
@@ -67,53 +71,5 @@
     <button class="botao" type="submit">{% if tarefa %}Salvar{% else %}Criar tarefa{% endif %}</button>
   </form>
 
-  {% if tarefa %}
-  <section class="comentarios" id="robo">
-    <h2>Robô</h2>
-    <p class="nota">Executor: {{ tarefa.get_executor_display }}. Quem responde pela tarefa continua sendo {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% else %}ninguém ainda{% endif %}.</p>
-    {% for e in trabalhos_do_robo %}
-    <article class="trabalho-do-robo {{ e.situacao }}{% if e.esperando %} esperando{% endif %}">
-      <a href="{% url 'execucao_do_robo' e.id %}"><b>{{ e.get_tipo_display }}</b></a> &middot; {{ e.get_situacao_display }}
-      {% if e.aberta %}<progress max="100" value="{{ e.progresso }}">{{ e.progresso }}%</progress>{% endif %}
-      {% if e.etapa_atual and e.aberta %}<div class="meta">Etapa: {{ e.etapa_atual }}</div>{% endif %}
-      {% if e.motivo %}<div class="meta">{{ e.motivo }}</div>{% endif %}
-      <div class="meta">{{ e.robo.nome }} &middot; pedido em {{ e.criada_em|date:"d/m H:i" }}</div>
-    </article>
-    {% endfor %}
-    {% for en in entregas_do_robo %}
-    <p class="entrega-do-robo">Entrega: <a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if en.parcial %} <span class="selo-parcial">parcial</span>{% endif %} <span class="nota">versão {{ en.versao }}, {{ en.atualizada_em|date:"d/m H:i" }}</span></p>
-    {% endfor %}
-    {% if not trabalhos_do_robo and not entregas_do_robo %}<p class="nota">Nenhum trabalho do robô nesta tarefa.</p>{% endif %}
-    {% if pode_delegar %}
-    <form method="post" action="{% url 'delegar_ao_robo' %}">
-      {% csrf_token %}
-      <input type="hidden" name="tarefa" value="{{ tarefa.id }}">
-      <input type="hidden" name="next" value="{% url 'tarefa_editar' tarefa.id %}">
-      <input type="hidden" name="chave" value="{{ chave_de_envio }}">
-      <button class="botao-pequeno" type="submit">Delegar ao meu robô: panorama semanal nesta tarefa</button>
-    </form>
-    {% endif %}
-  </section>
-
-  <section class="comentarios" id="comentarios">
-    <h2>Comentários</h2>
-    {% for comentario in comentarios %}
-    <div class="comentario">
-      <p class="texto">{{ comentario.texto|linebreaksbr }}</p>
-      <div class="meta">{% if comentario.autor_membro %}{{ comentario.autor_membro.nome }}{% else %}{{ comentario.autor }}{% endif %}, {{ comentario.criado_em|date:"d/m/Y H:i" }}</div>
-    </div>
-    {% empty %}
-    <p class="nota">Nenhum comentário ainda.</p>
-    {% endfor %}
-    <form class="forma forma-da-equipe novo-comentario" method="post" action="{% url 'tarefa_comentar' tarefa.id %}">
-      {% csrf_token %}
-      <label class="largo">
-        <span class="rotulo">Novo comentário (até {{ tamanho_do_comentario }} letras)</span>
-        <textarea name="texto" rows="3" maxlength="{{ tamanho_do_comentario }}" required></textarea>
-      </label>
-      <button class="botao" type="submit">Publicar comentário</button>
-    </form>
-  </section>
-  {% endif %}
 </div>
 {% endblock %}

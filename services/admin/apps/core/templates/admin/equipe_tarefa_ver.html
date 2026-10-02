@@ -1,0 +1,178 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A ficha da tarefa para LER (02/10/2026). Clicar numa tarefa traz aqui; editar
+é o botão. O contador do prazo é desenhado no servidor (funciona sem script)
+e o script embutido só o faz andar a cada segundo; ele entra no CSP pelo hash
+(`equipe_acesso._com_csp_do_script`).
+{% endcomment %}
+{% block titulo %}{{ tarefa.titulo }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'painel_da_equipe' %}">&larr; Painel da equipe</a>
+
+  <div class="equipe-topo">
+    <div class="cabeca-da-tarefa">
+      {% if compromisso_da_semana %}<span class="selo-compromisso">Compromisso desta semana</span>{% endif %}
+      <h1>{{ tarefa.titulo }}</h1>
+    </div>
+    <a class="botao" href="{% url 'tarefa_editar' tarefa.id %}">Editar</a>
+  </div>
+
+  {% if resultado %}
+  <p class="recado-da-equipe">{{ resultado }}</p>
+  {% endif %}
+
+  {% if contador %}
+  <section class="contador-do-prazo{% if contador.atrasada %} atrasado{% endif %}" data-fim-do-prazo="{{ contador.fim_ms }}" data-agora="{{ contador.agora_ms }}" role="timer" aria-live="off">
+    <p class="rotulo-do-contador" data-rotulo>{% if contador.atrasada %}Atrasada há{% else %}Faltam{% endif %}</p>
+    <div class="partes-do-contador">
+      <div><b data-parte="dias">{{ contador.dias }}</b><span>{{ contador.dias|pluralize:"dia,dias" }}</span></div>
+      <div><b data-parte="horas">{{ contador.horas|stringformat:"02d" }}</b><span>{{ contador.horas|pluralize:"hora,horas" }}</span></div>
+      <div><b data-parte="minutos">{{ contador.minutos|stringformat:"02d" }}</b><span>{{ contador.minutos|pluralize:"minuto,minutos" }}</span></div>
+      <div><b data-parte="segundos">{{ contador.segundos|stringformat:"02d" }}</b><span>{{ contador.segundos|pluralize:"segundo,segundos" }}</span></div>
+    </div>
+    <p class="nota">O prazo vence no fim do dia {{ tarefa.prazo|date:"d/m/Y" }}, às 23:59 (horário de Brasília).</p>
+  </section>
+  {% elif tarefa.situacao == 'concluida' %}
+  <section class="contador-do-prazo concluido">
+    <p class="rotulo-do-contador">Concluída{% if tarefa.concluida_em %} em {{ tarefa.concluida_em|date:"d/m/Y H:i" }}{% endif %}</p>
+    {% if tarefa.prazo %}<p class="nota">{% if concluida_no_prazo %}Dentro do prazo{% elif concluida_no_prazo is False %}Depois do prazo{% else %}Prazo{% endif %}: {{ tarefa.prazo|date:"d/m/Y" }}.</p>{% endif %}
+  </section>
+  {% else %}
+  <section class="contador-do-prazo sem-prazo">
+    <p class="rotulo-do-contador">Sem prazo</p>
+    <p class="nota">Para ter o contador, ponha um prazo em <a href="{% url 'tarefa_editar' tarefa.id %}">Editar</a>.</p>
+  </section>
+  {% endif %}
+
+  <dl class="ficha-da-tarefa">
+    <div><dt>Situação</dt><dd><span class="selo situacao-{{ tarefa.situacao }}">{{ tarefa.get_situacao_display }}</span></dd></div>
+    <div><dt>Responsável</dt><dd>{% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% if e_responsavel %} (você){% endif %}{% else %}Sem responsável{% endif %}</dd></div>
+    <div><dt>Prazo</dt><dd>{% if tarefa.prazo %}{{ dia_do_prazo }}, {{ tarefa.prazo|date:"d/m/Y" }}{% else %}Sem prazo{% endif %}</dd></div>
+    <div><dt>Objetivo</dt><dd>{% if tarefa.objetivo %}<a href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={{ tarefa.objetivo.id }}">{{ tarefa.objetivo.titulo }}</a>{% if tarefa.objetivo.move %} &middot; <a href="{% url 'placar_da_equipe' %}">{{ tarefa.objetivo.o_que_move_curto }}</a>{% endif %}{% else %}Sem objetivo{% endif %}</dd></div>
+  </dl>
+
+  {% if tarefa.situacao == 'bloqueada' %}
+  <p class="impedimento-da-tarefa"><b>Impedimento:</b> {% if tarefa.impedimento %}{{ tarefa.impedimento }}{% else %}não escrito.{% endif %}</p>
+  {% endif %}
+
+  <section class="descricao-da-tarefa">
+    <h2>Descrição</h2>
+    {% if tarefa.descricao %}<p>{{ tarefa.descricao|linebreaksbr }}</p>{% else %}<p class="nota">Sem descrição.</p>{% endif %}
+  </section>
+
+  <div class="gestos-da-tarefa">
+    <form method="post" action="{% url 'tarefa_situacao' tarefa.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ endereco_atual }}">
+      {% if tarefa.situacao == 'concluida' %}
+      <input type="hidden" name="situacao" value="a_fazer">
+      <button class="botao-pequeno" type="submit">Reabrir</button>
+      {% else %}
+      <input type="hidden" name="situacao" value="concluida">
+      <button class="botao-pequeno" type="submit">Concluir</button>
+      {% endif %}
+    </form>
+    {% if e_responsavel and tarefa.situacao != 'concluida' %}
+    <form method="post" action="{% url 'tarefa_compromisso' tarefa.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ endereco_atual }}">
+      {% if compromisso_da_semana %}
+      <input type="hidden" name="acao" value="tirar">
+      <button class="botao-pequeno" type="submit">Tirar da semana</button>
+      {% else %}
+      <input type="hidden" name="acao" value="marcar">
+      <button class="botao-pequeno" type="submit">Assumir na semana</button>
+      {% endif %}
+    </form>
+    {% endif %}
+  </div>
+
+  <p class="nota">Criada{% if tarefa.criada_por %} por {{ tarefa.criada_por }}{% endif %} em {{ tarefa.criada_em|date:"d/m/Y H:i" }}.{% if tarefa.alterada_por %} Última alteração: {{ tarefa.alterada_por }}, {{ tarefa.alterada_em|date:"d/m/Y H:i" }}.{% endif %}</p>
+
+  <section class="comentarios" id="robo">
+    <h2>Robô</h2>
+    <p class="nota">Executor: {{ tarefa.get_executor_display }}. Quem responde pela tarefa continua sendo {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% else %}ninguém ainda{% endif %}.</p>
+    {% for e in trabalhos_do_robo %}
+    <article class="trabalho-do-robo {{ e.situacao }}{% if e.esperando %} esperando{% endif %}">
+      <a href="{% url 'execucao_do_robo' e.id %}"><b>{{ e.get_tipo_display }}</b></a> &middot; {{ e.get_situacao_display }}
+      {% if e.aberta %}<progress max="100" value="{{ e.progresso }}">{{ e.progresso }}%</progress>{% endif %}
+      {% if e.etapa_atual and e.aberta %}<div class="meta">Etapa: {{ e.etapa_atual }}</div>{% endif %}
+      {% if e.motivo %}<div class="meta">{{ e.motivo }}</div>{% endif %}
+      <div class="meta">{{ e.robo.nome }} &middot; pedido em {{ e.criada_em|date:"d/m H:i" }}</div>
+    </article>
+    {% endfor %}
+    {% for en in entregas_do_robo %}
+    <p class="entrega-do-robo">Entrega: <a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if en.parcial %} <span class="selo-parcial">parcial</span>{% endif %} <span class="nota">versão {{ en.versao }}, {{ en.atualizada_em|date:"d/m H:i" }}</span></p>
+    {% endfor %}
+    {% if not trabalhos_do_robo and not entregas_do_robo %}<p class="nota">Nenhum trabalho do robô nesta tarefa.</p>{% endif %}
+    {% if pode_delegar %}
+    <form method="post" action="{% url 'delegar_ao_robo' %}">
+      {% csrf_token %}
+      <input type="hidden" name="tarefa" value="{{ tarefa.id }}">
+      <input type="hidden" name="next" value="{{ endereco_atual }}">
+      <input type="hidden" name="chave" value="{{ chave_de_envio }}">
+      <button class="botao-pequeno" type="submit">Delegar ao meu robô: panorama semanal nesta tarefa</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="comentarios" id="comentarios">
+    <h2>Comentários</h2>
+    {% for comentario in comentarios %}
+    <div class="comentario">
+      <p class="texto">{{ comentario.texto|linebreaksbr }}</p>
+      <div class="meta">{% if comentario.autor_membro %}{{ comentario.autor_membro.nome }}{% else %}{{ comentario.autor }}{% endif %}, {{ comentario.criado_em|date:"d/m/Y H:i" }}</div>
+    </div>
+    {% empty %}
+    <p class="nota">Nenhum comentário ainda.</p>
+    {% endfor %}
+    <form class="forma forma-da-equipe novo-comentario" method="post" action="{% url 'tarefa_comentar' tarefa.id %}">
+      {% csrf_token %}
+      <label class="largo">
+        <span class="rotulo">Novo comentário (até {{ tamanho_do_comentario }} letras)</span>
+        <textarea name="texto" rows="3" maxlength="{{ tamanho_do_comentario }}" required></textarea>
+      </label>
+      <button class="botao" type="submit">Publicar comentário</button>
+    </form>
+  </section>
+</div>
+{% if contador %}
+<script>
+(function () {
+  var caixa = document.querySelector("[data-fim-do-prazo]");
+  if (!caixa) { return; }
+  var fim = Number(caixa.getAttribute("data-fim-do-prazo"));
+  // Conta a partir da hora do servidor: o relógio do aparelho pode estar errado.
+  var desvio = Number(caixa.getAttribute("data-agora")) - Date.now();
+  var rotulo = caixa.querySelector("[data-rotulo]");
+  var nomes = {
+    dias: ["dia", "dias"], horas: ["hora", "horas"],
+    minutos: ["minuto", "minutos"], segundos: ["segundo", "segundos"]
+  };
+  function dois(n) { return n < 10 ? "0" + n : String(n); }
+  function pinta() {
+    var resto = Math.floor((fim - (Date.now() + desvio)) / 1000);
+    var atrasada = resto < 0;
+    if (atrasada) { resto = -resto; }
+    var partes = {
+      dias: Math.floor(resto / 86400),
+      horas: Math.floor((resto % 86400) / 3600),
+      minutos: Math.floor((resto % 3600) / 60),
+      segundos: resto % 60
+    };
+    for (var nome in partes) {
+      var valor = partes[nome];
+      var numero = caixa.querySelector('[data-parte="' + nome + '"]');
+      numero.textContent = nome === "dias" ? String(valor) : dois(valor);
+      numero.nextElementSibling.textContent = nomes[nome][valor === 1 ? 0 : 1];
+    }
+    caixa.classList.toggle("atrasado", atrasada);
+    rotulo.textContent = atrasada ? "Atrasada há" : "Faltam";
+  }
+  pinta();
+  setInterval(pinta, 1000);
+})();
+</script>
+{% endif %}
+{% endblock %}

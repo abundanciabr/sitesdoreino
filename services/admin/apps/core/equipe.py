@@ -49,12 +49,20 @@ não guardá-lo para sempre.
   nunca uma conta nova), e embaixo de cada número o lado da equipe: que
   objetivos dizem movê-lo, quantas tarefas abertas eles têm e quantos
   compromissos desta semana foram cumpridos por ele.
+
+## Ver a tarefa (02/10/2026)
+
+Clicar numa tarefa abre `/equipe/<id>/ver`, a ficha para LER: o prazo como
+contador (dias, horas, minutos e segundos até o fim do dia do prazo, na hora
+de Brasília), os detalhes, o robô e os comentários. Editar é um botão dali,
+e `/equipe/<id>/editar` ficou só com o formulário.
 """
 
 from __future__ import annotations
 
+import math
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -387,15 +395,8 @@ def painel_da_equipe(request):
 
 
 def _tela_do_formulario(request, dados, erros, objetivos, tarefa=None, status=200):
-    membro = _membro_da_sessao(request)
-    trabalhos, entregas = [], []
-    if tarefa is not None:
-        trabalhos = list(
-            Execucao.objects.select_related("robo")
-            .filter(tarefa_id=tarefa.id)
-            .exclude(tipo=Execucao.Tipo.CONVERSA)[:10]
-        )
-        entregas = painel_dos_robos.entregas_das_tarefas([tarefa.id]).get(tarefa.id, [])
+    """O formulário de criar e de editar. O robô e os comentários moram na
+    ficha de ver (`tarefa_ver`), não aqui."""
     return render(
         request,
         "admin/equipe_tarefa.html",
@@ -408,25 +409,96 @@ def _tela_do_formulario(request, dados, erros, objetivos, tarefa=None, status=20
             "objetivos": objetivos,
             "situacoes": Situacao.choices,
             "hoje": _hoje(),
-            "comentarios": (
-                list(tarefa.comentarios.select_related("autor_membro"))
-                if tarefa
-                else []
-            ),
-            "tamanho_do_comentario": TAMANHO_DO_COMENTARIO,
             "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
-            "trabalhos_do_robo": trabalhos,
-            "entregas_do_robo": entregas,
+        },
+        status=status,
+    )
+
+
+DIAS_DA_SEMANA = (
+    "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
+    "sexta-feira", "sábado", "domingo",
+)
+
+
+def _contador_do_prazo(tarefa: Tarefa, agora: datetime) -> dict | None:
+    """O prazo como contador: quanto falta, ou há quanto passou.
+
+    O prazo é um DIA; ele vence no fim desse dia, na hora de Brasília (a
+    mesma conta do cartão, que só chama de atrasada no dia seguinte). Tarefa
+    concluída ou sem prazo não tem contador.
+    """
+    if tarefa.prazo is None or tarefa.situacao == Situacao.CONCLUIDA:
+        return None
+    fim = timezone.make_aware(datetime.combine(tarefa.prazo + timedelta(days=1), time.min))
+    falta = math.floor((fim - agora).total_seconds())
+    resto = abs(falta)
+    dias, resto = divmod(resto, 86400)
+    horas, resto = divmod(resto, 3600)
+    minutos, segundos = divmod(resto, 60)
+    return {
+        "atrasada": falta < 0,
+        "dias": dias,
+        "horas": horas,
+        "minutos": minutos,
+        "segundos": segundos,
+        # Em milissegundos, para o script: ele conta a partir da hora do
+        # servidor, porque o relógio do aparelho pode estar errado.
+        "fim_ms": int(fim.timestamp() * 1000),
+        "agora_ms": int(agora.timestamp() * 1000),
+    }
+
+
+@require_GET
+def tarefa_ver(request, id: int):
+    """A ficha da tarefa para ler: prazo em contador, detalhes, robô e
+    comentários. Editar é um botão daqui."""
+    from .equipe_acesso import _com_csp_do_script
+
+    tarefa = get_object_or_404(
+        Tarefa.objects.select_related("objetivo", "responsavel"), pk=id
+    )
+    membro = _membro_da_sessao(request)
+    hoje = _hoje()
+    concluida_no_prazo = None
+    if tarefa.concluida_em and tarefa.prazo:
+        concluida_no_prazo = timezone.localdate(tarefa.concluida_em) <= tarefa.prazo
+    resposta = render(
+        request,
+        "admin/equipe_tarefa_ver.html",
+        {
+            "admin": request.admin,
+            "membro": membro,
+            "tarefa": tarefa,
+            "hoje": hoje,
+            "contador": _contador_do_prazo(tarefa, timezone.now()),
+            "concluida_no_prazo": concluida_no_prazo,
+            "dia_do_prazo": DIAS_DA_SEMANA[tarefa.prazo.weekday()] if tarefa.prazo else "",
+            "compromisso_da_semana": Compromisso.objects.filter(
+                tarefa=tarefa, semana=_segunda(hoje)
+            ).exists(),
+            "e_responsavel": membro is not None and tarefa.responsavel_id == membro.id,
+            "endereco_atual": reverse("tarefa_ver", args=[tarefa.id]),
+            "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
+            "comentarios": list(tarefa.comentarios.select_related("autor_membro")),
+            "tamanho_do_comentario": TAMANHO_DO_COMENTARIO,
+            "trabalhos_do_robo": list(
+                Execucao.objects.select_related("robo")
+                .filter(tarefa_id=tarefa.id)
+                .exclude(tipo=Execucao.Tipo.CONVERSA)[:10]
+            ),
+            "entregas_do_robo": painel_dos_robos.entregas_das_tarefas([tarefa.id]).get(
+                tarefa.id, []
+            ),
             "pode_delegar": bool(
-                tarefa is not None
-                and membro is not None
+                membro is not None
                 and tarefa.responsavel_id == membro.id
                 and tarefa.situacao != Situacao.CONCLUIDA
             ),
             "chave_de_envio": uuid.uuid4().hex,
         },
-        status=status,
     )
+    return _com_csp_do_script(resposta)
 
 
 @require_http_methods(["GET", "POST"])
@@ -472,7 +544,7 @@ def tarefa_editar(request, id: int):
             request, dados, erros, objetivos, tarefa=tarefa, status=400
         )
     _aplicar(tarefa, dados, membros, objetivos, _quem(request))
-    return _com_resultado(reverse("painel_da_equipe"), "salva")
+    return _com_resultado(reverse("tarefa_ver", args=[tarefa.id]), "salva")
 
 
 @require_POST
@@ -515,7 +587,7 @@ def tarefa_comentar(request, id: int):
         _quem(request),
         _membro_da_sessao(request),
     )
-    ficha = reverse("tarefa_editar", args=[tarefa.id])
+    ficha = reverse("tarefa_ver", args=[tarefa.id])
     return HttpResponseRedirect(f"{ficha}?resultado={resultado}#comentarios")
 
 
