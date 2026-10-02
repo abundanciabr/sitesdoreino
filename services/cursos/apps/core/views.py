@@ -1418,10 +1418,8 @@ def laudo_recebido(request, numero: str):
 # ---------------------------------------------------------------------------
 # O PLANTÃO (degrau 2.2): a tela da professora
 # ---------------------------------------------------------------------------
-# As três forças são sempre três campos fixos no formulário (nunca uma lista
-# dinâmica): é o que garante que a VIEW manda exatamente três strings ao
-# serviço em todo POST normal; o guarda de [INV-CUR-L6] que prova "2 ou 4 é
-# recusado" chama `apps/cursos/laudo.py::emitir` direto, sem passar por aqui.
+# Três campos curtos ficam visíveis de início; forças adicionais podem ser
+# escritas no campo livre, uma por linha.
 NUMERO_DE_FORCAS = 3
 
 # O valor do botão que pede a sugestão da IA. O outro botão do mesmo formulário
@@ -1708,9 +1706,7 @@ def _gravar_laudo(request, envio: Envio, avaliador):
     decisao = request.POST.get("decisao", "")
     data_de_retorno = parse_date(request.POST.get("data_de_retorno") or "")
     ajuste_feito = request.POST.get("ajuste_feito", "")
-    # A pergunta só existe como `true`: a caixa não marcada é OMITIDA do POST
-    # (ela não tem `value` de "não"), e ausência é lida como não respondida,
-    # nunca como `false` (lei §6, [INV-CUR-L7]).
+    # A caixa não marcada é omitida do POST e a resposta permanece opcional.
     sabe_o_que_fazer_amanha = (
         True if request.POST.get("sabe_o_que_fazer_amanha") == "sim" else None
     )
@@ -1744,9 +1740,9 @@ def _gravar_laudo(request, envio: Envio, avaliador):
 
 @require_http_methods(["GET", "POST"])
 def plantao_ficha(request, envio_id: int):
-    """O formulário do laudo: a rubrica completa, as três forças, a mudança, a
+    """O formulário do laudo: a rubrica completa, as forças, as mudanças, a
     decisão, a data de retorno (só quando devolvido) e a pergunta de amanhã de
-    manhã. `GET` desenha; `POST` valida pelas nove regras de `laudo.emitir` e,
+    manhã. `GET` desenha; `POST` valida por `laudo.emitir` e,
     na recusa, RE-DESENHA com o texto digitado preservado e status 422 — ao
     contrário do checkpoint do aluno, este formulário é grande demais para se
     dar ao luxo de um redirect que perde tudo o que a professora escreveu.

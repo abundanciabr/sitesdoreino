@@ -16,9 +16,9 @@ número de fichas:
 
 ## As leis desta tela, e de onde vêm
 
-1. **Número sem cartão não aparece** (plano, §2). O cartão de uma métrica é um
-   arquivo em `apps/core/cartoes/<nome>.json` que diz o que o número é, de onde
-   vem, quem tem o direito de declará-lo e qual métrica o segura (o "par").
+1. **Número sem cartão não aparece** (plano, §2). O cartão de uma métrica fica
+   no banco e diz o que o número é, de onde vem, quem pode declará-lo e qual
+   métrica o segura (o "par"). Os JSON antigos foram sementes da importação.
    Cartão ausente ou inválido ⇒ a página abre, DIZ o que faltou, e não mostra
    o número. Guarda: `tests/test_placar.py`.
 2. **X é medido, nunca digitado**, e vem da célula `alunos`, por HTTP e em
@@ -27,8 +27,8 @@ número de fichas:
    de 03/09/2026 (PR #933). Nunca `comprou_em`, que é o que a pessoa digita
    ao pedir entrada.
 3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ *"não consigo
-   contar"*. A lista chegou mas ainda sem o campo (a célula ainda não subiu o
-   PR do rito) ⇒ *"a lista ainda não traz a data"*. Ficha sem data ⇒ contada à
+   contar"*. A lista chegou mas ainda sem o campo ⇒ *"a lista ainda não traz
+   a data"*. Ficha sem data ⇒ contada à
    parte e dita na tela, nunca escondida (`RETROSPECTIVA-FASE-D.md`, padrão 1).
 4. **Reembolsada não é compra.** A compra foi desfeita
    (`DECISAO-reembolso-tira-o-acesso.md`); a tela diz quantas foram.
@@ -45,9 +45,9 @@ número de fichas:
 
 ## O que mora no cartão e o que NÃO mora
 
-O **alvo** (Y), a **data** e a **partida** moram no cartão, porque são
-parâmetros da régua, versionados por PR. O FATO de que o mantenedor decidiu
-mora no livro de ocorrências (tipo `decisao`). A meta do mês
+O **alvo** (Y), a **data** e a **partida** moram no cartão do banco, com versões
+guardadas a cada edição no painel. A decisão pode ser registrada no histórico
+do painel (tipo `decisao`). A meta do mês
 (`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da régua do ciclo que
 cai no mês; ele fixa um número quando quiser.
 
@@ -80,8 +80,7 @@ from django.views.decorators.http import require_GET
 
 from .clients import AlunosClient, CatalogoClient
 
-#: Onde moram os cartões: `apps/core/cartoes/`, dentro da célula. Viajam para a
-#: imagem junto com o código, então a pasta sempre existe no deploy.
+#: Pasta histórica de sementes JSON; os cartões ativos são lidos do banco.
 PASTA_DOS_CARTOES = "cartoes"
 
 # `apps/core/placar.py` → `apps/core` → `apps` → a raiz da célula.
@@ -100,7 +99,7 @@ CARTAO_DA_RESTRICAO = "restricao-da-semana"
 #: casa move na semana. As duas olham a SALA DE ESPERA, que é a venda feita
 #: fora do site: quem está nela já comprou e aguarda confirmação (correção do
 #: mantenedor em 05/09/2026). O nome do primeiro arquivo é anterior a essa
-#: correção e continua sendo a chave da foto do livro; o cartão explica a dívida.
+#: correção e continua sendo a chave da foto dos registros; o cartão explica a dívida.
 CARTAO_DOS_PEDIDOS = "pedidos-de-entrada-por-semana"
 CARTAO_DAS_48H = "liberacoes-em-48h"
 
@@ -194,15 +193,14 @@ TETO_DE_BLOCOS = 9
 
 
 def diretorio_dos_cartoes() -> Path:
-    """`apps/core/cartoes/`, a pasta dos cartões que a célula carrega consigo."""
+    """Pasta dos JSON usados na importação inicial e em provas isoladas."""
     return RAIZ_DA_CELULA / "apps" / "core" / PASTA_DOS_CARTOES
 
 
 def validar(cartao: object) -> list[str]:
     """Os defeitos de um cartão, em português. Lista vazia = cartão válido.
 
-    Cada regra abaixo é uma linha do plano (§2), e a mensagem diz o conserto:
-    quem vai lê-la é o robô que escreveu o cartão errado.
+    Cada problema informa a correção a quem edita o cartão no painel.
     """
     if not isinstance(cartao, dict):
         return ["o cartão não é um objeto JSON"]
@@ -377,7 +375,7 @@ def _data(texto: object) -> dt.date | None:
 
 
 def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[str]]:
-    """`(cartao, problemas)`. Cartão só volta se for válido; senão, `None` + o porquê."""
+    """Lê o cartão ativo do banco; pasta externa explícita serve a provas isoladas."""
     # Uma pasta diferente é usada pelas provas de cartões recém-escritos.
     # A pasta antiga embarcada não é mais uma segunda fonte em produção.
     if pasta is None or pasta == PASTA_ORIGINAL_DOS_CARTOES:
@@ -735,12 +733,10 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     confianca_dos_doze = None
     mudancas = None
 
-    # FORA do `if meta`, e devolvido no contexto: o livro é caro de ler (uma
-    # varredura de `apps/core/registros/`, com um `read_text` por arquivo) e as
-    # telas que montam o placar E olham o livro pagariam essa conta duas vezes
-    # na mesma requisição. Quem quiser os registros já lidos os pega daqui, e
-    # `None` continua querendo dizer "o livro não chegou até esta imagem" para
-    # todo mundo, nunca "nenhum registro" (`armadilhas/271`).
+    # Fora do `if meta`, e devolvido no contexto: a consulta aos registros do
+    # banco atende também às outras telas desta requisição. `None`, quando
+    # recebido de uma leitura externa, ainda significa indisponibilidade;
+    # nunca equivale a uma lista vazia de registros.
     registros = dir_.ler_registros()
 
     if meta is not None:

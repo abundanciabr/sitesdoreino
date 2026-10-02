@@ -9,11 +9,6 @@ import os
 from pathlib import Path
 import sys
 
-try:
-    import fcntl
-except ImportError:  # testes Windows
-    fcntl = None
-
 
 SERVICOS_ANTERIORES = {
     "abrir-a-sala-de-aula.sh": ("cursos", "cursos-relay"),
@@ -94,15 +89,7 @@ def recarregar(origem: str) -> int:
 
 def main() -> int:
     origem = sys.argv[1] if len(sys.argv) == 2 else ""
-    raiz = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
-    if fcntl is None:
-        return recarregar(origem)
-    trava = raiz / ".publicacao.lock"
-    if trava.exists() and Path("/proc/self/fd/8").exists() and os.path.samefile(trava, "/proc/self/fd/8"):
-        return recarregar(origem)
-    with trava.open("a+b") as arquivo:
-        fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX)
-        return recarregar(origem)
+    return recarregar(origem)
 
 
 if __name__ == "__main__":

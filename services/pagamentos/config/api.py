@@ -11,7 +11,7 @@ api = NinjaAPI(
     description=(
         "Única célula da plataforma com credenciais Mercado Pago (INV-P8).\n"
         "Consumida exclusivamente pelo checkout, via token Bearer dedicado por par.\n"
-        "CONGELÁVEL: após ratificação, qualquer mudança exige o Rito de Contrato (RITOS.md §3).\n"
+        "Especificação das rotas e dos payloads da célula de pagamentos.\n"
         "Rotas públicas via gateway: SOMENTE /webhooks/mp/*. Todo o resto vive na rede interna Docker.\n"
     ),
     servers=[{"url": "http://pagamentos:8000/api/pagamentos"}],

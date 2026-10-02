@@ -87,7 +87,7 @@ CABECALHO_DO_WORKSPACE = "anthropic-workspace-id"
 MODELO = "claude-haiku-4-5-20251001"
 
 # O teto de saída. A sugestão é um JSON pequeno (uma frase por critério, três
-# forças, uma mudança e o bloco final): oito mil é folga larga, e cabe com sobra
+# forças, mudanças e o bloco final): oito mil é folga larga, e cabe com sobra
 # no máximo do Haiku 4.5. Apertar não economiza nada (só se paga o que se usa) e
 # corta o JSON no meio, que é pior: JSON truncado não é texto truncado, é lixo.
 TETO_DE_SAIDA = 8000
@@ -569,17 +569,14 @@ def _notas(objeto: dict, aula) -> dict[str, dict[str, Any]]:
 
 
 def _forcas(objeto: dict) -> list[str]:
-    """As três forças, pela regra da CASA ([INV-CUR-L6]), recusadas na origem.
+    """As forças sugeridas, com elogios genéricos recusados na origem.
 
     `laudo.validar_forcas` é a mesma função que o formulário chama depois: nada
     que a IA proponha pode ser algo que o laudo recusaria, e a professora nunca
     vê a sugestão ruim. Uma segunda lista de genéricos aqui divergiria da
     primeira no dia em que alguém mexesse numa delas.
 
-    A recusa joga fora o rascunho INTEIRO, e não só a força ruim. Entregar duas
-    forças boas e um campo vazio faria a professora escrever a terceira debaixo
-    de duas frases prontas, que é o jeito mais fácil de ela assinar o elogio
-    vazio sem ter tido a ideia dele.
+    A recusa joga fora o rascunho INTEIRO, e não só a força ruim.
     """
     cruas = objeto.get("forcas")
     cruas = cruas if isinstance(cruas, list) else []

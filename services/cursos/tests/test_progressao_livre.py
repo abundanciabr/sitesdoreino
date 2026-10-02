@@ -6,11 +6,11 @@ aluno termina a anterior, sem laudo; o curso do livro continua por laudo. A
 regra mora em `progresso.concluir_por_gesto` (guarda em
 `test_inv_p2_a_porta_so_abre_por_laudo.py`); aqui se prova a TELA e as ROTAS:
 
-1. **O botão "Concluir esta aula" só aparece no curso livre**, com a porta com
-   a pessoa e as pausas registradas; faltando pausa, a frase no lugar dele.
+1. **O botão "Concluir esta aula" só aparece no curso livre**, mesmo quando
+   há pausas ainda sem registro.
 2. **Concluir volta ao mapa com o recado**, a próxima abre, a seguinte à
    próxima continua trancada; na última aula o recado diz que era a última.
-3. **A recusa chega em português** na própria aula (pausa faltando).
+3. **A conclusão sem registrar pausas** abre a aula seguinte.
 4. **O curso livre não tem checkpoint**: a seção não se desenha e a rota de
    entregar recusa, sem gravar envio.
 5. **O mapa** de um curso com uma Parte só não escreve o cabeçalho da Parte;
@@ -137,7 +137,6 @@ def test_com_as_pausas_registradas_o_botao_aparece(aluna_do_roblox, client):
         f'action="{reverse("concluir-aula-do-curso", args=["roblox", 1, "1"])}"'
         in concluir_a_aula
     )
-    assert portas.SO_COM_AS_PAUSAS not in concluir_a_aula
 
 
 def test_a_aula_concluida_mostra_o_selo_e_nao_o_botao(aluna_do_roblox, client):

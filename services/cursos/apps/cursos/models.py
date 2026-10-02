@@ -15,11 +15,10 @@ byte de `services/sugestoes`). Desde o degrau 2.2 (TAR-156) há também O LAUDO
 REGRAS do progresso (que porta abre, e quando) não moram neste arquivo: moram
 em `apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto; as do
 envio (quem entrega, quando, e o que a fila devolve) moram em
-`apps/cursos/envio.py`; as do laudo (as nove regras de 422, os três eventos)
+`apps/cursos/envio.py`; as do laudo (a validação e os três eventos)
 moram em `apps/cursos/laudo.py`. O que mora AQUI do envio é o que só o modelo
 pode garantir: o prazo que não muda ([INV-CUR-L3]); o que mora AQUI do laudo é
-o que só o modelo pode garantir sozinho: [INV-CUR-L1] (a metade "não é nulo")
-e [INV-CUR-L7] (a metade "só true").
+o que só o modelo pode garantir sozinho: [INV-CUR-L1] (a metade "não é nulo").
 
 O TEXTO DAS AULAS NUNCA ENTRA POR ARQUIVO
 -----------------------------------------
@@ -958,18 +957,18 @@ class RascunhoDaIA(models.Model):
     quem acrescentou escrever o nome dela no teste, com a lista dos três
     proibidos na linha de cima.
 
-    `conteudo` é a sugestão como ela veio, inteira (a rubrica, as três forças,
-    a mudança, a frase de reenvio e o bloco final): é dele que a tela
+    `conteudo` é a sugestão como ela veio, inteira (a rubrica, as forças,
+    as mudanças, a frase de reenvio e o bloco final): é dele que a tela
     pré-preenche o formulário, e é dele que a comparação com o `Laudo` sai.
 
     A FICHA DE SÉRIE DO AGENTE SAI DO DADO, NUNCA DE ANOTAÇÃO À MÃO
     ---------------------------------------------------------------
-    `forcas_mantidas` (quantas das três sugestões a professora assinou sem
-    editar uma letra) e `mudanca_mantida` (se a mudança sugerida foi a assinada)
+    `forcas_mantidas` (quantas sugestões a professora assinou sem
+    editar uma letra) e `mudanca_mantida` (se alguma mudança sugerida foi assinada)
     são escritas por `apps/cursos/laudo.py::emitir`, na emissão, comparando
     este rascunho com o laudo que saiu. Ficam NULAS enquanto o laudo não existe,
     e a diferença importa: nula é "ainda não medido", zero é "a professora
-    reescreveu as três". Um contador que nascesse em zero faria as duas coisas
+    reescreveu as sugestões". Um contador que nascesse em zero faria as duas coisas
     parecerem a mesma no dia em que alguém somasse a coluna.
     """
 
@@ -997,8 +996,8 @@ class RascunhoDaIA(models.Model):
 
 
 class Laudo(models.Model):
-    """O laudo que fecha (ou devolve) um `Envio`: o instrumento, três forças,
-    uma mudança nomeada, a decisão, a data de retorno e a pergunta de amanhã de
+    """O laudo que fecha (ou devolve) um `Envio`: o instrumento, as forças,
+    as mudanças, a decisão, a data de retorno e a pergunta de amanhã de
     manhã.
 
     `envio` é UM PARA UM: um envio recebe um laudo, nunca dois. É este campo
@@ -1006,11 +1005,9 @@ class Laudo(models.Model):
     laudo; `apps/cursos/laudo.py::emitir` ainda confere antes, para devolver
     uma frase em vez de um `IntegrityError` cru.
 
-    Das regras da lei (`PLANO-CELULA-CURSOS.md` §9), só DUAS o banco pode
-    garantir sozinho, sem consultar mais nada além da própria linha, e são as
-    duas constraints abaixo ([INV-CUR-L1] a metade "não é nulo";
-    [INV-CUR-L7]). As demais ([INV-CUR-L5], [INV-CUR-L6], a metade "amanhã ou
-    depois" de L1) precisam do relógio ou da escala do instrumento, e por isso
+    O banco garante sozinho que um laudo devolvido tenha data de retorno
+    ([INV-CUR-L1], a metade "não é nulo"). As demais ([INV-CUR-L5],
+    [INV-CUR-L6], a metade "amanhã ou depois" de L1) precisam do relógio ou da escala do instrumento, e por isso
     são do SERVIÇO, com teste — nunca menos rigorosas por estarem em Python:
     só não CABEM num `CheckConstraint`.
 
@@ -1100,10 +1097,6 @@ class Laudo(models.Model):
                 ),
                 name="data_de_retorno_so_e_sempre_com_devolvido",
             ),
-            # [INV-CUR-L7] a pergunta de amanhã de manhã: `false` não se grava.
-            # Não é um `default=True` que o serviço poderia contornar: é a
-            # LINHA INTEIRA que o banco recusa se o valor não for verdadeiro,
-            # mesmo que um código futuro tente gravar a recusa.
         ]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell

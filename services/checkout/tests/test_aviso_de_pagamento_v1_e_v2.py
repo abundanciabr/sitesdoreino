@@ -301,7 +301,8 @@ def test_aviso_de_versao_desconhecida_estoura_com_instrucao(api, rede, sessao_a)
         aplicar(envelope)
 
     assert "pagamento.aprovado v99" in str(erro.value)
-    assert "Rito de Contrato" in str(erro.value)
+    assert "versões disponíveis: pagamento.aprovado v1, pagamento.aprovado v2" in str(erro.value)
+    assert "schema do evento" in str(erro.value)
     order.refresh_from_db()
     assert order.status == "aguardando_pagamento"
 

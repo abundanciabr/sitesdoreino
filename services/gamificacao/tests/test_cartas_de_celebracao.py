@@ -304,13 +304,15 @@ def test_os_quatro_assuntos_da_sessao_b_cabem_na_mesma_porta():
 def test_assunto_fora_do_contrato_e_recusado_na_origem():
     """Fail-closed. Um assunto inventado seria gravado no sininho de alguém e
     apareceria como aviso mudo numa tela, sem ninguém saber de onde veio."""
-    with pytest.raises(AssuntoForaDoContrato):
+    with pytest.raises(AssuntoForaDoContrato) as erro:
         carta_de_celebracao(
             site_id=SITE,
             destinatario_id=ALUNO,
             assunto="gamificacao.subiu-muito",
             parametros={},
         )
+    assert "Assuntos disponíveis:" in str(erro.value)
+    assert "notificacao.devida.v1" in str(erro.value)
     assert _cartas() == []
 
 

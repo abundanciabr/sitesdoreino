@@ -699,18 +699,3 @@ def test_de_ponta_a_ponta_com_bash_de_verdade_o_valor_chega_so_por_ambiente(tmp_
 
     (raiz / "infra" / "semear-caixa.sh").write_text("echo 'PAROU POR SEGURANÇA: x'\n", encoding="utf-8", newline="\n")
     assert operar.main(["semear-caixa"], ctx) == 1
-
-
-# --------------------------------------------------------------------------- trava de vez
-
-
-@pytest.mark.skipif(operar.fcntl is None, reason="trava por flock só no Linux")
-def test_duas_do_mesmo_nome_nao_rodam_juntas(fazer_ctx, tmp_path, capsys):
-    ctx = fazer_ctx(Processos())
-    ctx.estado.mkdir(parents=True)
-    with open(ctx.estado / "ligar-os-degraus.lock", "a+") as ocupada:
-        operar.fcntl.flock(ocupada, operar.fcntl.LOCK_EX | operar.fcntl.LOCK_NB)
-        assert operar.main(["ligar-os-degraus"], ctx) == 1
-        assert "já está rodando" in capsys.readouterr().out
-        assert ctx.processo.chamadas == []
-        assert operar.main(["semear-economia"], ctx) == 0  # outro nome segue

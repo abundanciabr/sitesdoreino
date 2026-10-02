@@ -39,17 +39,15 @@ congelado pela decisão dele de 22/08/2026. Quem os lê e os põe na tela é
 ## Os compromissos da semana
 
 O Scale OS pede "commitments" com dono e um veredito na semana seguinte
-(feito, parcial, não feito). Aqui um compromisso é um **registro do livro**,
+(feito, parcial, não feito). Aqui um compromisso é um **registro no banco**,
 tipo `compromisso`, com `vence_em_dias` (7, normalmente). O veredito é
 CALCULADO, nunca marcado à mão: compromisso com um registro que `responde_a`
 ele é *cumprido*; vencido sem resposta é *não cumprido*; o resto está *em
-aberto*. Sem tabela nova, sem estado em lugar nenhum: o compromisso é escrito
-no livro, e esta tela lê.
+aberto*. O compromisso é salvo pelo painel e esta tela calcula seu estado.
 
-Os registros lidos aqui moram em `apps/core/registros/`, dentro da célula: só
-as medições e os compromissos, que são os únicos tipos que as telas leem. Um
-leitor mínimo em Python extrai só os campos de que esta tela precisa, sem
-validar o registro: quem o valida é quem o escreve.
+Os registros ativos moram em `RegistroDoPlacar`. Os arquivos JS de
+`apps/core/registros/` foram importados uma vez e continuam como acervo
+histórico. Medições e compromissos são editados em `/admin/placar/editar/`.
 """
 
 from __future__ import annotations
@@ -81,8 +79,7 @@ _CAMPO = {
         # Os cinco do laboratório (05/09/2026, degrau 12): um experimento é uma
         # `medicao` que declara a aposta, e o resultado é o registro que a fecha
         # com um `veredito`. Eles entram aqui, e não num leitor próprio de
-        # `laboratorio.py`, porque o livro tem UM leitor nesta célula: dois
-        # leitores do mesmo arquivo divergem no primeiro campo novo.
+        # `laboratorio.py`, porque os registros têm um único leitor nesta célula.
         "problema",
         "hipotese",
         "metrica",
@@ -92,7 +89,7 @@ _CAMPO = {
         # oito portões da fase da escola o registro prova, e os dois seguintes
         # são a PROVA que o plano exige (§6.5). Declarar sem provar não conta,
         # e quem faz essa conta é `fechamento.portoes`. Entram aqui pelo mesmo
-        # motivo dos cinco de cima: o livro tem UM leitor nesta célula.
+        # motivo dos cinco de cima: os registros têm um único leitor.
         "portao",
         "evidencia",
         "verificado_em",
@@ -104,7 +101,7 @@ _CAMPO = {
 
 
 def diretorio_dos_registros() -> Path:
-    """`apps/core/registros/`: as medições e os compromissos que as telas leem."""
+    """Pasta dos JS históricos, usada apenas na importação e em provas isoladas."""
     return Path(__file__).resolve().parent / "registros"
 
 
@@ -122,11 +119,7 @@ def _campo(texto: str, nome: str):
 
 
 def ler_registros(pasta: Path | None = None) -> list[dict] | None:
-    """Os campos de cabeçalho de cada registro; `None` se a pasta sumiu.
-
-    Só cabeçalho: `detalhe` é concatenação de várias linhas e esta tela não o
-    lê. Aqui não se valida o registro, só se lê.
-    """
+    """Lê os registros ativos do banco; pasta externa explícita serve a provas."""
     if pasta is None or pasta == diretorio_dos_registros():
         from .models import RegistroDoPlacar
 
@@ -221,8 +214,8 @@ def medir_pedidos(
     """Chegadas à sala de espera por semana, da atual (índice 0) para trás.
 
     O nome da função e a chave `pedidos` do resultado são anteriores à correção
-    de 05/09/2026 e continuam sendo a chave da foto do livro (`mudancas.py`).
-    Trocá-los é a mesma dívida do nome do arquivo do cartão, declarada lá.
+    de 05/09/2026 e continuam sendo a chave da foto dos registros (`mudancas.py`).
+    Trocá-los também alteraria a chave do cartão já importado.
     """
     if aguardando is None or recusados is None or alunos is None:
         return None

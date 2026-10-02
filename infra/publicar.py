@@ -42,7 +42,10 @@ ARQUIVOS_DA_INFRA = ("docker-compose.yml", "traefik", "sites.json", "sincronizar
                      "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
                      "publicacao-local.py")
 GATILHOS_DA_INFRA = ("infra/docker-compose.yml", "infra/traefik/", "infra/sites.json",
-                     "infra/sincronizar_sites.py", "infra/sincronizar-infra-na-vps.sh")
+                     "infra/sincronizar_sites.py", "infra/sincronizar-infra-na-vps.sh",
+                     "infra/provisionar-usuario-ponte.sh",
+                     "infra/instalar-provisionador-usuario-ponte.sh",
+                     "infra/publicacao-local.py")
 SHA = re.compile(r"[0-9a-f]{40}")
 CELULA = re.compile(r"[a-z][a-z0-9_]*")
 MODULOS_DA_APLICACAO = ("admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",

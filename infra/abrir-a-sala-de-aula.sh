@@ -81,17 +81,6 @@ ler_de() {  # arquivo, chave: devolve o valor limpo, sem comentário nem espaço
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…, nunca PS C:\\>)"
 
-# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
-TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
-command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
-if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
-  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
-    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
-  fi
-  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
-fi
-flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
-unset TRAVA_PUBLICACAO
 
 [ -f docker-compose.yml ] || parar "não achei docker-compose.yml em $RAIZ."
 [ -f "$ENV_CURSOS" ] || parar "não achei $RAIZ/$ENV_CURSOS. A sala de aula ainda não foi provisionada nesta máquina: rode antes o infra/provisionar-cursos.sh. Nada foi alterado."
@@ -215,7 +204,7 @@ fi
 # ele o dono e a permissão que já funcionavam. Um `mv` traria dono e modo do
 # arquivo temporário (root:root, rodando como root) e o usuário `deploy`, que é
 # quem o pipeline usa, deixaria de ler o env (`armadilhas/091`).
-cat "$NOVO" > "$ENV_CURSOS" || { rm -f "$NOVO"; parar "a escrita de $ENV_CURSOS falhou no meio. Há cópia intacta em $ENV_CURSOS.bak-*: recupere-a com cp e mande esta tela ao agente."; }
+cat "$NOVO" > "$ENV_CURSOS" || { rm -f "$NOVO"; parar "a escrita de $ENV_CURSOS falhou no meio. Há cópia intacta em $ENV_CURSOS.bak-*: recupere-a com cp após conferir o erro."; }
 rm -f "$NOVO"
 
 # A conferência do dono, mesmo assim: se o arquivo já estava com dono errado
@@ -247,7 +236,7 @@ echo
 # -----------------------------------------------------------------------------
 echo "== 3/5: recarregando a sala de aula (leva um minuto) =="
 recarregar_servicos abrir-a-sala-de-aula \
-  || parar "não consegui recarregar a sala de aula. As linhas JÁ estão em $ENV_CURSOS e há cópia do anterior em $ENV_CURSOS.bak-*. Rode 'docker compose logs --tail 50 cursos' e mande esta tela ao agente."
+  || parar "não consegui recarregar a sala de aula. As linhas JÁ estão em $ENV_CURSOS e há cópia do anterior em $ENV_CURSOS.bak-*. Confira 'docker compose logs --tail 50 cursos' e corrija a falha."
 echo "  cursos e cursos-relay ..... de pé"
 echo
 
@@ -275,13 +264,13 @@ echo "== 5/5: conferindo =="
 QUANTAS=$(comando_servico cursos shell -c \
   "from apps.cursos.models import Aula; print(Aula.objects.filter(curso__site_id='$SITE_ID').count())" 2>/dev/null | tr -d '\r[:space:]')
 case "$QUANTAS" in
-  ''|*[!0-9]*) parar "semeei, mas não consegui contar as aulas depois para provar. Mande esta tela ao agente." ;;
+  ''|*[!0-9]*) parar "semeei, mas não consegui contar as aulas depois para provar. Confira a saída, corrija a falha e repita." ;;
 esac
 # AO MENOS 34, e não exatamente 34, de propósito: o esqueleto tem 34, mas quem
 # manda nas aulas a partir do primeiro INSERT é o mantenedor, pela tela. Exigir
 # o número exato faria este script recusar no dia em que ele criasse a aula 35,
 # e recusar quem está certo é o pior defeito que um roteiro de colar pode ter.
-[ "$QUANTAS" -ge 34 ] || parar "esperava ao menos as 34 aulas do esqueleto neste site depois de semear, e contei $QUANTAS. Não mexa em nada e mande esta tela ao agente."
+[ "$QUANTAS" -ge 34 ] || parar "esperava ao menos as 34 aulas do esqueleto neste site depois de semear, e contei $QUANTAS. Confira a semeadura e repita."
 echo "  aulas no banco ............ $QUANTAS"
 
 # As duas variáveis, conferidas DENTRO do container. É esta medição que faz o
@@ -290,8 +279,8 @@ echo "  aulas no banco ............ $QUANTAS"
 # O valor da chave nunca aparece: só o tamanho dela.
 LIDOS=$(comando_servico cursos shell -c 'import os; print(len(os.environ.get("ADMIN_EMAILS", "")))' 2>/dev/null | tr -d '\r[:space:]')
 LIDA=$(comando_servico cursos shell -c 'import os; print(len(os.environ.get("ANTHROPIC_API_KEY", "")))' 2>/dev/null | tr -d '\r[:space:]')
-[ "$LIDOS" = "${#ADMINS}" ] || parar "gravei e recarreguei, mas dentro do container o ADMIN_EMAILS chegou com '$LIDOS' caracteres e eu esperava '${#ADMINS}'. O plantão pode não abrir para você. Mande esta tela ao agente."
-[ "$LIDA" = "${#CHAVE_DA_IA}" ] || parar "gravei e recarreguei, mas dentro do container a chave da IA chegou com '$LIDA' caracteres e eu esperava '${#CHAVE_DA_IA}'. Mande esta tela ao agente."
+[ "$LIDOS" = "${#ADMINS}" ] || parar "gravei e recarreguei, mas dentro do container o ADMIN_EMAILS chegou com '$LIDOS' caracteres e eu esperava '${#ADMINS}'. O plantão pode não abrir para você. Confira a saída, corrija a falha e repita."
+[ "$LIDA" = "${#CHAVE_DA_IA}" ] || parar "gravei e recarreguei, mas dentro do container a chave da IA chegou com '$LIDA' caracteres e eu esperava '${#CHAVE_DA_IA}'. Confira a saída, corrija a falha e repita."
 echo "  dentro do container ....... ADMIN_EMAILS e a chave da IA chegaram"
 echo
 

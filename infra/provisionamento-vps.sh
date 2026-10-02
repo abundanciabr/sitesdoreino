@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # ETAPA A — PROVISIONAMENTO DE IMPOSSIBILIDADES (VPS NOVA)
-# Rode VOCÊ MESMO, como root, uma única vez. Agentes de IA NUNCA executam este
-# arquivo e NUNCA recebem chave SSH desta máquina — não é proibição, é inexistência.
+# Provisiona uma VPS nova com privilégios de root e instala a chave pública
+# de deploy recebida em DEPLOY_CI_PUBKEY. A chave privada não entra neste script.
 # =============================================================================
 set -euo pipefail
 
@@ -50,10 +50,10 @@ docker network inspect interna &>/dev/null || docker network create interna
 
 cat <<'FIM'
 ===============================================================================
-✅ Impossibilidades provisionadas. PRÓXIMOS PASSOS MANUAIS (você, não agente):
+✅ Infraestrutura básica provisionada. CONFIGURAÇÃO RESTANTE DO SITE:
 
  1. Copiar infra/docker-compose.yml e infra/traefik/* para /opt/plataforma/
-    (só na primeira vez — depois o workflow deploy-infra sincroniza sozinho)
+    (só na primeira vez — depois a sincronização da infraestrutura mantém as cópias)
  2. Criar /opt/plataforma/env/*.env a partir de infra/env/*.exemplo
     ⚠ INV-P8: MP_ACCESS_TOKEN de PRODUÇÃO (APP_USR-...) entra SOMENTE em
       /opt/plataforma/env/pagamentos.env. Nunca no repo. Nunca em dev.
@@ -63,7 +63,6 @@ cat <<'FIM'
     sem este passo NENHUM deploy consegue puxar imagem — todo pull morre em
     "unauthorized" (medido em 21/08/2026; ARMADILHAS-OPERACAO.md §1, H13).
  4. Rodar infra/provisionamento-postgres.sql no Postgres (senhas: openssl rand -hex 24)
- 5. GitHub → Secrets do repo: VPS_HOST e DEPLOY_SSH_KEY (a chave PRIVADA do par do CI)
- 6. Apontar o DNS do domínio novo para esta VPS (ou configurar o Cloudflare na frente)
+ 5. Apontar o DNS do domínio novo para esta VPS (ou configurar o Cloudflare na frente)
 ===============================================================================
 FIM

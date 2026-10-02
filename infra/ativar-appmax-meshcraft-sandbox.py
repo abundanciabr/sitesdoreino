@@ -7,7 +7,6 @@ import json
 import os
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
@@ -32,80 +31,10 @@ class ParouPorSeguranca(Exception):
 
 
 @contextmanager
-def trava_publicacao(raiz: Path):
+def verificar_plataforma(raiz: Path):
     if not (raiz / "docker-compose.yml").is_file():
-        raise ParouPorSeguranca(
-            "docker-compose.yml ausente; execute na VPS correta; nada foi alterado"
-        )
-    try:
-        import fcntl
-    except ImportError:
-        raise ParouPorSeguranca(
-            "flock do Linux indisponível; execute na VPS Linux antes de alterar a configuração"
-        ) from None
-
-    caminho = raiz / ".publicacao.lock"
-    try:
-        herdado = os.fstat(8)
-    except OSError:
-        herdado = None
-    descritor = None
-    anterior = None
-    proprio = False
-    try:
-        mascara = os.umask(0o022)
-        try:
-            descritor = (
-                os.open(caminho, os.O_RDONLY)
-                if caminho.exists()
-                else os.open(caminho, os.O_RDONLY | os.O_CREAT, 0o644)
-            )
-        finally:
-            os.umask(mascara)
-        atual = os.fstat(descritor)
-        if not stat.S_ISREG(atual.st_mode):
-            os.close(descritor)
-            descritor = None
-            raise ParouPorSeguranca(
-                "a trava comum não é um arquivo regular; corrija o caminho "
-                ".publicacao.lock antes de alterar a configuração"
-            )
-        mesmo_inode = (
-            herdado is not None
-            and (herdado.st_dev, herdado.st_ino) == (atual.st_dev, atual.st_ino)
-        )
-        if mesmo_inode:
-            os.close(descritor)
-            descritor = None
-            fcntl.flock(8, fcntl.LOCK_EX)
-        else:
-            fcntl.flock(descritor, fcntl.LOCK_EX)
-            if herdado is not None:
-                anterior = os.dup(8)
-            if descritor != 8:
-                os.dup2(descritor, 8)
-                os.close(descritor)
-            descritor = None
-            proprio = True
-    except OSError as erro:
-        if descritor is not None:
-            os.close(descritor)
-        if anterior is not None:
-            os.dup2(anterior, 8)
-            os.close(anterior)
-        raise ParouPorSeguranca(
-            f"não consegui obter a trava comum em {caminho}: {erro.strerror}; "
-            "confira as permissões da plataforma e o mutador em andamento"
-        ) from None
-    try:
-        yield
-    finally:
-        if proprio:
-            fcntl.flock(8, fcntl.LOCK_UN)
-            os.close(8)
-            if anterior is not None:
-                os.dup2(anterior, 8)
-                os.close(anterior)
+        raise ParouPorSeguranca("docker-compose.yml ausente; execute na VPS correta; nada foi alterado")
+    yield
 
 
 def ler_env(caminho: Path, *, escrever: bool = True) -> dict[str, str]:
@@ -270,7 +199,7 @@ def consultar_instalacao(raiz: Path, ambiente: dict[str, str], site_id: str) -> 
 
 
 def executar(raiz: Path, ligar: bool) -> None:
-    with trava_publicacao(raiz):
+    with verificar_plataforma(raiz):
         return _executar(raiz, ligar)
 
 

@@ -1,4 +1,9 @@
-"""Fechamento persistente dos ciclos do placar, com histórico no painel."""
+"""Fechamento persistente dos ciclos do placar, com histórico no banco.
+
+A meta ativa vem do cartão editável no painel. Os antigos JSON e JS serviram
+apenas à importação inicial; fechar um ciclo salva seus dados e, se informada,
+a meta seguinte sem editar arquivos ou abrir PR.
+"""
 
 from __future__ import annotations
 

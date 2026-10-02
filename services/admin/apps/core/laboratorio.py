@@ -7,18 +7,15 @@ saber.
 
 ## O desenho, e o que ele recusa
 
-**Um experimento é um REGISTRO do livro, não uma tabela.** É a lei desta casa:
-acontecimento se acrescenta, estado se calcula. O experimento é uma `medicao`
+**Um experimento é um registro no banco.** O experimento é uma `medicao`
 que declara a aposta ANTES de saber o resultado (o problema que dói, a
 hipótese, qual número ela quer mover, o que a faz parar antes da hora, e o
-prazo em `vence_em_dias`). Esta tela lê só o cabeçalho dos
-registros de `apps/core/registros/` e trata como experimento o que declara a
-hipótese.
+prazo em `vence_em_dias`). Esta tela lê os dados de `RegistroDoPlacar`,
+editáveis no painel, e trata como experimento o que declara a hipótese. Os JS
+antigos em `apps/core/registros/` foram importados e não são a fonte corrente.
 
-**O resultado é um registro NOVO que aponta para o experimento** (`responde_a`),
-com o `veredito`. Nunca a edição do experimento — e é justamente por isso que a
-aposta escrita antes vale alguma coisa: ninguém pode reescrever a hipótese
-depois de ver o número.
+**O resultado é um registro que aponta para o experimento** (`responde_a`),
+com o `veredito`. A aposta e o resultado permanecem consultáveis no painel.
 
 **O estado é CALCULADO, nunca digitado.** Nenhum campo `status` em lugar nenhum:
 

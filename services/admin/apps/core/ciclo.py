@@ -9,10 +9,10 @@ funis"*.
 
 ## O que esta tela é, e o que ela NÃO é
 
-Ela é a **leitura** da curva. A curva em si não mora aqui: mora em
-`apps/core/cartoes/compras-no-ciclo.json`, no campo `semanas`, que é onde a régua
-da meta já morava. Mudar a meta de uma semana é editar aquele arquivo, por PR,
-e esta tela mostra o que ele disser no minuto seguinte.
+Ela é a **leitura** da curva. A curva mora no cartão `compras-no-ciclo` do
+banco, no campo `semanas`. A meta de cada semana é editada em
+`/admin/placar/editar/`, e esta tela lê o valor salvo. O JSON antigo foi a
+semente da importação e não participa da leitura corrente.
 
 Isso não é preciosismo de organização, é a única forma de a tela não mentir.
 Se a curva vivesse aqui, o placar (`/admin/placar/`) continuaria julgando

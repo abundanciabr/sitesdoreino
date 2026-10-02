@@ -1,13 +1,12 @@
 {% extends "cursos/moldura.html" %}{% comment %}
 O formulário do laudo: a rubrica primeiro, completa, antes de qualquer campo
-livre; depois as três forças, a mudança, a decisão, a data de retorno (só
+livre; depois as forças, as mudanças, a decisão, a data de retorno (só
 exigida quando "devolvido") e a pergunta de amanhã de manhã.
 
 Na recusa (422), a view RE-DESENHA esta mesma tela com `enviado` (o que a
 professora digitou) e `erro` (a frase de `laudo.py::LaudoRecusado`): nada do
 que foi escrito se perde. Formulário normal com melhoria progressiva: nenhum
-JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
-"não" — ausente é a resposta que o servidor lê como "não respondida".
+JS decide o que aparece, e a caixa da pergunta de amanhã é opcional.
 
 O BOTÃO DA IA E O DE EMITIR SÃO O MESMO FORMULÁRIO, e o campo `gesto` os
 separa. O de rascunhar leva `formnovalidate` porque a tela ainda está vazia
@@ -114,7 +113,7 @@ pedindo um rascunho em que a IA tentou responder as três.
 
   <section class="mudanca">
     <h2>Mudança para a próxima entrega{% if sugestao.mudanca.texto %} <span class="sugerido">SUGERIDO pela IA</span>{% endif %}</h2>
-    <p class="miudo">Se for devolver, indique a mudança e a aula onde se aprende. Se o trabalho está aprovado, não precisa inventar uma mudança.</p>
+    <p class="miudo">Se for devolver, indique o que mudar e a aula onde se aprende. Se o trabalho está aprovado, não precisa inventar mudanças.</p>
     <label>O que muda
       <textarea name="mudanca_texto" rows="3">{{ enviado.mudanca_texto }}</textarea>
     </label>

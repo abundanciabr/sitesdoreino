@@ -4,9 +4,8 @@ from ninja import NinjaAPI
 from apps.core.auth import bearerAuth
 from apps.portfolio.api import router as portfolio_router
 
-# `servers` aponta para a REDE INTERNA do Docker: é o endereço que outra célula
-# porá no env dela. O valor congela em `contracts/pages.openapi.yaml`; depois
-# disso, mudá-lo é Rito (RITOS.md §3), nunca edição aqui.
+# `servers` aponta para a rede interna do Docker, usada pelas outras células.
+# O contrato OpenAPI correspondente fica em `contracts/pages.openapi.yaml`.
 #
 # ATENÇÃO, E AQUI ESTA CÉLULA É COMO O `forum` E A `cursos`, E DIFERENTE DA
 # `identidade`: esta porta **é** alcançável pela borda pública, em
@@ -35,11 +34,9 @@ api = NinjaAPI(
         "dele, e no dia em que as duas discordassem ninguem saberia qual esta\n"
         "certa.\n"
         "\n"
-        "UMA OPERACAO SO, e essa estreiteza foi decidida: nada mais entra\n"
-        "porque nada mais tem consumidor declarado hoje. O contrato desta casa\n"
-        "cresce de graca e encolhe com autorizacao explicita, entao nascer\n"
-        "largo seria congelar operacao que ninguem chama e depois precisar de\n"
-        "um Rito de Contrato para tira-la.\n"
+        "Hoje a API expoe uma operacao, consumida pela tela do portfolio.\n"
+        "A especificacao OpenAPI correspondente esta em\n"
+        "`contracts/pages.openapi.yaml`.\n"
         "\n"
         "O Bearer prova QUEM CHAMA, nunca quem e a pessoa: nao chega cookie\n"
         "aqui, e esta celula nao assina sessao (INV-P12). So id opaco sai:\n"

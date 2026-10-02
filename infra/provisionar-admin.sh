@@ -68,34 +68,10 @@ FONTE_OPERACAO="$RAIZ/codigo/ferramentas/atual/infra/operacao-aplicacao.sh"
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO" || parar "não consegui carregar as operações da aplicação. Nada foi alterado."
 
-# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
-TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
-command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
-if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
-  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
-    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
-  fi
-  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
-fi
-flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
-unset TRAVA_PUBLICACAO
 [ -f docker-compose.yml ]  || parar "não achei docker-compose.yml em $RAIZ."
 [ -f env/identidade.env ]  || parar "não achei env/identidade.env — a identidade precisa estar provisionada antes (é dela que eu herdo a lista de quem entra, e é nela que registro o token do par)."
 
 docker compose ps postgres >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
-ESTADO_PUBLICACAO="$RAIZ/publicacoes-candidatos/admin.json"
-if ! aplicacao_ativa && { [ -e "$ESTADO_PUBLICACAO" ] || [ -L "$ESTADO_PUBLICACAO" ]; }; then
-  [ -f "$ESTADO_PUBLICACAO" ] && [ ! -L "$ESTADO_PUBLICACAO" ] \
-    || parar "registro da publicação admin inválido; reconcilie antes de provisionar."
-  [ -f .env ] || parar "imagem admin não declarada em .env; reconcilie a publicação antes de provisionar."
-  [ "$(grep -c '^ADMIN_IMAGE=' .env || true)" -eq 1 ] \
-    || parar "ADMIN_IMAGE ausente ou duplicada; reconcilie a publicação antes de provisionar."
-  ADMIN_IMAGE_ATUAL="$(grep '^ADMIN_IMAGE=' .env | cut -d= -f2-)"
-  { printf '%s\n' "$ADMIN_IMAGE_ATUAL"; cat "$ESTADO_PUBLICACAO"; } | docker compose exec -T admin python -c \
-    'import json,re,sys; imagem=sys.stdin.readline().strip(); d=json.load(sys.stdin); e=d.get("estado"); h=d.get("digest"); a=d.get("anterior_digest"); assert e in ("publicada","falhou") and (e!="publicada" or d.get("aceite_funcional")=="conferido") and isinstance(h,str) and re.fullmatch("sha256:[0-9a-f]{64}",h) and isinstance(a,str) and re.fullmatch("ghcr.io/abundanciabr/plataforma-admin@sha256:[0-9a-f]{64}",a) and imagem == ("ghcr.io/abundanciabr/plataforma-admin@"+h if e=="publicada" else a)' \
-    >/dev/null 2>&1 \
-    || parar "publicação admin em curso, incerta ou divergente; reconcilie o estado oficial antes de provisionar."
-fi
 psql_super() { docker compose exec -T postgres psql -U postgres "$@"; }
 
 # --- herda da identidade a semente da lista de admins ------------------------

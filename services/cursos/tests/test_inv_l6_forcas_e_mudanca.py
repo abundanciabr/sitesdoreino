@@ -1,17 +1,7 @@
-"""Teste-guarda [INV-CUR-L6]: exatamente três forças, nenhuma da lista de
-genéricos; exatamente uma mudança, com a aula onde se aprende.
+"""Forças e mudanças opcionais em trabalho aprovado, sem quantidade fixa.
 
-Lei: `PLANO-CELULA-CURSOS.md` §9. `apps/cursos/laudo.py::validar_forcas` e
-`::_validar_mudanca`. A lista de genéricos é fixa: "bonito", "legal", "bom
-trabalho", "ficou bom", "parabéns" — comparação por igualdade (strip +
-minúsculo), não substring.
-
-Provado por mutação em 05/09/2026: trocar `len(limpas) != 3` por
-`len(limpas) < 3` em `validar_forcas` deixa 1 vermelho (quatro forças
-passam a ser aceitas); esvaziar `FORCAS_GENERICAS` deixa 1 vermelho (força
-genérica passa a ser aceita); trocar `len(itens) != 1` por `not itens` em
-`_validar_mudanca` deixa 1 vermelho (duas mudanças passam a ser aceitas, e só
-a primeira é gravada em silêncio). Restaurado, os cinco voltam a verde.
+As forças escritas ainda precisam ser específicas; cada mudança escrita
+aponta para uma aula do curso. Laudos antigos com uma mudança seguem legíveis.
 """
 
 from __future__ import annotations

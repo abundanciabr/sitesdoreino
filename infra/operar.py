@@ -11,7 +11,6 @@ chegam por argumento, são validados e entregues por variável de ambiente ou po
 de argumentos: nunca viram texto de shell. Só biblioteca padrão.
 
 O que vale para todas
-  - uma operação de cada nome por vez (trava por nome, como o `concurrency` do workflow);
   - prazo por operação (o `timeout` do workflow);
   - script que sai 0 mas diz "PAROU POR SEGURANÇA" conta como falha (dois deles, os
     semear-convite e semear-experimento, saem 0 ao parar);
@@ -36,11 +35,6 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
-
-try:  # só existe no Linux, que é onde isto roda de verdade
-    import fcntl
-except ImportError:  # pragma: no cover
-    fcntl = None
 
 RAIZ = Path(__file__).resolve().parent.parent
 MARCA_DE_PARADA = "PAROU POR SEGURANÇA"
@@ -200,9 +194,6 @@ def executar_processo(
     stdout (é o que a ssh-action capturava como evidência).
     """
     try:
-        argumentos_de_processo = {}
-        if os.name != "nt" and env.get("TRAVA_COMUM_HERDADA") == "1":
-            argumentos_de_processo["pass_fds"] = (8,)
         processo = subprocess.Popen(
             comando,
             env=env,
@@ -215,7 +206,6 @@ def executar_processo(
             errors="replace",
             bufsize=1,
             start_new_session=hasattr(os, "killpg"),
-            **argumentos_de_processo,
         )
     except OSError as erro:
         print(f"{MARCA_DE_PARADA}: não consegui iniciar {comando[0]} ({erro.__class__.__name__}).")
@@ -597,37 +587,10 @@ def op_provisionar(ctx: Contexto, valores: dict) -> int:
     if len(argumentos) < minimo:
         print(f"{MARCA_DE_PARADA}: {script.name} precisa de {minimo} argumento(s) que ainda não foram informados.")
         return 1
-    if fcntl is None:  # testes Windows; a operação real roda em Linux
-        return _provisionar_sob_trava(ctx, alvo, script, argumentos)
-    trava = Path(ctx.plataforma) / ".publicacao.lock"
-    try:
-        with trava.open("a+b") as arquivo:
-            fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX)
-            try:
-                descritor_anterior = os.dup(8)
-            except OSError:
-                descritor_anterior = None
-            os.dup2(arquivo.fileno(), 8, inheritable=True)
-            valor_anterior = ctx.ambiente.get("TRAVA_COMUM_HERDADA")
-            ctx.ambiente["TRAVA_COMUM_HERDADA"] = "1"
-            try:
-                return _provisionar_sob_trava(ctx, alvo, script, argumentos)
-            finally:
-                if valor_anterior is None:
-                    ctx.ambiente.pop("TRAVA_COMUM_HERDADA", None)
-                else:
-                    ctx.ambiente["TRAVA_COMUM_HERDADA"] = valor_anterior
-                if descritor_anterior is None:
-                    os.close(8)
-                else:
-                    os.dup2(descritor_anterior, 8)
-                    os.close(descritor_anterior)
-    except OSError as erro:
-        print(f"{MARCA_DE_PARADA}: não consegui obter a trava comum ({type(erro).__name__}).")
-        return 1
+    return _provisionar(ctx, alvo, script, argumentos)
 
 
-def _provisionar_sob_trava(ctx: Contexto, alvo: str, script: Path,
+def _provisionar(ctx: Contexto, alvo: str, script: Path,
                           argumentos: list[str] | None = None) -> int:
     ambiente = Path(ctx.plataforma) / "env"
     publicacoes = Path(ctx.plataforma) / "publicacoes"
@@ -882,38 +845,6 @@ def listar() -> None:
     print("\n* obrigatório. Cada operação aceita --help.")
 
 
-class Ocupada(Exception):
-    pass
-
-
-@contextlib.contextmanager
-def da_vez(ctx: Contexto, nome: str):
-    """Uma operação de cada nome por vez (o `concurrency` do workflow)."""
-    if fcntl is None:
-        yield
-        return
-    try:
-        ctx.estado.mkdir(parents=True, exist_ok=True)
-        arquivo = open(ctx.estado / f"{nome}.lock", "a+")
-    except OSError as erro:
-        print(f"operar: aviso: sem trava de vez ({erro.__class__.__name__}); seguindo sem ela.", file=sys.stderr)
-        yield
-        return
-    limite = time.monotonic() + ctx.espera
-    try:
-        while True:
-            try:
-                fcntl.flock(arquivo, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except OSError:
-                if time.monotonic() >= limite:
-                    raise Ocupada(nome) from None
-                time.sleep(1)
-        yield
-    finally:
-        arquivo.close()
-
-
 def main(argv: list[str] | None = None, ctx: Contexto | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
@@ -932,12 +863,7 @@ def main(argv: list[str] | None = None, ctx: Contexto | None = None) -> int:
         return saida.code if isinstance(saida.code, int) else 2
     ctx = ctx or Contexto()
     print(f"== operar {op.nome} ==")
-    try:
-        with da_vez(ctx, op.nome):
-            codigo = op.executar(ctx, vars(argumentos))
-    except Ocupada:
-        print(f"operar: {op.nome} já está rodando e continuou assim por {int(ctx.espera)} s; nada foi feito.")
-        return 1
+    codigo = op.executar(ctx, vars(argumentos))
     print(f"== operar {op.nome}: {'PASS' if codigo == 0 else 'FAIL'} (código {codigo}) ==")
     return codigo
 

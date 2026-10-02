@@ -1,32 +1,29 @@
 """O laudo: a decisão da professora (ou, nas Fases 4/5, do par ou da Banca)
-sobre um envio, as nove regras que o recusam antes de gravar nada, e os três
+sobre um envio, as validações que o recusam antes de gravar nada, e os três
 eventos que a decisão dispara.
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (`Laudo`), §5 (os três
 eventos), §6 (o plantão), §9 ([INV-CUR-L1], [INV-CUR-L2], [INV-CUR-L5],
-[INV-CUR-L6], [INV-CUR-L7]). Degrau 2.2 (TAR-156). Molde de forma:
+[INV-CUR-L6]). Degrau 2.2 (TAR-156). Molde de forma:
 `apps/cursos/envio.py` (as regras fora da view, a recusa como exceção com
 frase para gente, `criterios_de` reutilizada e não duplicada).
 
-A ORDEM DAS NOVE VALIDAÇÕES NÃO É ARBITRÁRIA
+A ORDEM DAS VALIDAÇÕES
 ---------------------------------------------
 `emitir()` valida NESTA ordem, para que o 422 diga a causa MAIS ESPECÍFICA
-primeiro: (1) a rubrica completa, uma nota+frase por critério; (2) exatamente
-três forças, nenhuma genérica; (3) exatamente uma mudança, com aula que existe
-no curso; (4) a decisão está no vocabulário fechado (não existe uma quarta
-decisão negativa, [INV-CUR-L2]); (5) `aberto_com_ajuste` exige o ajuste feito; (6) `devolvido`
-exige data de retorno de amanhã em diante ([INV-CUR-L1]); (7) a pergunta de
-amanhã de manhã só aceita `true` ([INV-CUR-L7]). Só depois de as sete passarem
-é que qualquer linha é gravada.
+primeiro: (1) a rubrica completa, uma nota+frase por critério; (2) as
+forças escritas, sem elogios genéricos; (3) as mudanças escritas, com aulas
+que existem no curso; (4) a decisão está no vocabulário fechado
+([INV-CUR-L2]); (5) `aberto_com_ajuste` exige o ajuste feito; (6) `devolvido`
+exige data de retorno de amanhã em diante ([INV-CUR-L1]). A pergunta de amanhã
+de manhã é opcional. Só depois de as validações passarem é que qualquer linha
+é gravada.
 
 `mudanca` CHEGA COMO LISTA, NUNCA COMO UM DICIONÁRIO SOLTO
 ------------------------------------------------------------
-O modelo grava UM objeto (`Laudo.mudanca`, `{texto, aula_id}`), mas o
-parâmetro desta função recebe uma LISTA: é o que permite ao guarda provar, por
-mutação, que zero ou duas mudanças são recusadas, e não só documentadas — um
-parâmetro que já nasce como dicionário único não teria como testar "e se
-vierem duas". O formulário do plantão (que só tem um campo de mudança) sempre
-manda uma lista de um item.
+Laudos antigos guardam uma mudança em objeto (`{texto, aula_id}`). O serviço
+recebe uma lista e aceita várias; ao gravar uma só, preserva o formato antigo.
+Um laudo aprovado pode não pedir mudança. Uma devolução descreve o que mudar.
 
 O QUE ESTA FUNÇÃO NÃO DECIDE
 ------------------------------
@@ -151,10 +148,8 @@ def _medir_a_ficha_de_serie(
     a IA disse, e reescrevê-lo aqui apagaria a prova contra a qual a medida foi
     feita.
 
-    A contagem varre as forças ASSINADAS, nunca as sugeridas, e é o que mantém a
-    medida dentro da restrição do banco (no máximo três): `validar_forcas` já
-    garantiu que as assinadas são exatamente três, enquanto um `conteudo` com
-    cinco forças escritas à mão faria a varredura da outra ponta contar cinco.
+    A contagem varre as forças ASSINADAS, nunca as sugeridas, e registra
+    quantas sugestões foram mantidas sem edição.
     """
     sugerido = rascunho.conteudo if isinstance(rascunho.conteudo, dict) else {}
     sugeridas = sugerido.get("forcas")
@@ -245,9 +240,6 @@ def emitir(
             )
         data_final = data_de_retorno
 
-    # (7) [INV-CUR-L7] a pergunta de amanhã de manhã: só `true` grava. `None`
-    # (não respondida) e `False` (respondida negativamente) são a MESMA
-    # recusa: não se registra recusa, se conversa antes de enviar o laudo.
     with transaction.atomic():
         # A trava é no ENVIO (a unicidade que o `OneToOneField` de `Laudo`
         # impõe): dois cliques no mesmo segundo serializam aqui, e o segundo

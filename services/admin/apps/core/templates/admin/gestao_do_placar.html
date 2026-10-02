@@ -65,5 +65,11 @@
     <label for="verificado_em">Conferida em</label><input id="verificado_em" name="verificado_em" type="date" value="{{ registro.dados.verificado_em|default:'' }}">
     <button type="submit">Salvar registro</button>
   </form>
+  {% if registro.texto_original %}
+  <details>
+    <summary>Texto original importado deste registro</summary>
+    <pre>{{ registro.texto_original }}</pre>
+  </details>
+  {% endif %}
 </div>
 {% endblock %}

@@ -14,9 +14,8 @@
 # precisasse do selo guardaria uma segunda cópia dele, e no dia em que as duas
 # discordassem ninguém saberia qual está certa.
 #
-# UMA OPERAÇÃO SÓ, e a estreiteza é decisão: nada mais entra porque nada mais
-# tem consumidor declarado hoje. A superfície pequena evita congelar operações
-# sem consumidor.
+# Hoje a API expoe uma operacao, consumida pela tela do portfolio. A
+# especificacao OpenAPI correspondente descreve a operacao disponivel.
 #
 # O QUE NUNCA SAI DAQUI, e é a invariante que atravessa a operação: só id
 # opaco viaja. Nem link, nem legenda, nem apelido, nem e-mail, nem nome. E
@@ -64,15 +63,11 @@ info:
     certa.
 
 
-    UMA OPERACAO SO, e essa estreiteza foi decidida: nada mais entra
+    Hoje a API expoe uma operacao, consumida pela tela do portfolio. A
 
-    porque nada mais tem consumidor declarado hoje. O contrato desta casa
+    especificacao OpenAPI correspondente esta em
 
-    cresce de graca e encolhe com autorizacao explicita, entao nascer
-
-    largo seria congelar operacao que ninguem chama e depois precisar de
-
-    uma mudança incompatível para removê-la.
+    `contracts/pages.openapi.yaml`.
 
 
     O Bearer prova QUEM CHAMA, nunca quem e a pessoa: nao chega cookie

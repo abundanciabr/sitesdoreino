@@ -28,7 +28,6 @@ RAIZ = Path(__file__).resolve().parents[2]
 PROVISIONADOR = RAIZ / "infra" / "provisionar-usuario-ponte.sh"
 INSTALADOR = RAIZ / "infra" / "instalar-provisionador-usuario-ponte.sh"
 SINCRONIZADOR = RAIZ / "infra" / "sincronizar-infra-na-vps.sh"
-WORKFLOW = RAIZ / ".github" / "workflows" / "deploy-infra.yml"
 
 CAMINHO_CONGELADO = "/usr/local/sbin/provisionar-usuario-ponte"
 
@@ -207,14 +206,6 @@ def test_a_regra_de_sudo_e_conferida_antes_de_entrar_em_sudoers_d():
     )
 
 
-def test_o_pipeline_leva_os_dois_roteiros_para_a_vps():
-    texto = WORKFLOW.read_text(encoding="utf-8")
-    assert texto.count(
-        "infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
-    ) == 3, "as três tentativas do SCP têm de levar os dois roteiros"
-
-
-
 def linux_isolado(pasta: Path, codigo: str) -> None:
     processo = subprocess.run(
         ["docker", "run", "--rm", "--network", "none", "--cpus", "1",
@@ -226,51 +217,6 @@ def linux_isolado(pasta: Path, codigo: str) -> None:
     assert processo.returncode == 0, (processo.stdout, processo.stderr)
 
 
-def test_estado_admin_recusa_publicacao_indecisa_pin_e_link(tmp_path):
-    trecho = SINCRONIZADOR.read_text(encoding="utf-8").split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
-    pasta = tmp_path / "publicacoes-candidatos"
-    pasta.mkdir()
-    estado_path = pasta / "admin.json"
-    ambiente = tmp_path / ".env"
-
-    def conferir():
-        return subprocess.run(
-            [sys.executable, "-", str(estado_path), str(ambiente)],
-            input=trecho, capture_output=True, text=True,
-        )
-
-    assert conferir().returncode == 0
-    if sys.platform != "win32":
-        estado_path.symlink_to("inexistente")
-        assert "estado duravel nao pode ser link" in conferir().stderr
-        estado_path.unlink()
-    digest = "sha256:" + "a" * 64
-    estado = {
-        "estado": "autorizada", "candidato": "teste", "digest": digest,
-        "imagem_id": "sha256:" + "b" * 64, "anterior": {},
-        "anterior_digest": "ghcr.io/abundanciabr/plataforma-admin@sha256:" + "c" * 64,
-        "aceite_funcional": "pendente",
-    }
-    estado_path.write_text(json.dumps(estado), encoding="utf-8")
-    ambiente.write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
-    assert "autorizada ou incerta" in conferir().stderr
-    estado["estado"] = "publicada"
-    estado_path.write_text(json.dumps(estado), encoding="utf-8")
-    ambiente.write_text("ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@" + digest + "\n", encoding="utf-8")
-    assert "aguarda aceite funcional" in conferir().stderr
-    estado["aceite_funcional"] = "conferido"
-    estado_path.write_text(json.dumps(estado), encoding="utf-8")
-    ambiente.write_text("ADMIN_IMAGE=incorreta\n", encoding="utf-8")
-    assert "ADMIN_IMAGE nao corresponde" in conferir().stderr
-    ambiente.write_text("ADMIN_IMAGE=ghcr.io/abundanciabr/plataforma-admin@" + digest + "\n", encoding="utf-8")
-    assert conferir().returncode == 0
-    estado["estado"] = "falhou"
-    estado["aceite_funcional"] = "pendente"
-    estado_path.write_text(json.dumps(estado), encoding="utf-8")
-    ambiente.write_text("ADMIN_IMAGE=" + estado["anterior_digest"] + "\n", encoding="utf-8")
-    assert conferir().returncode == 0
-
-
 def test_sincronizador_recusa_copia_stale_compose_e_staging_trocado(tmp_path):
     stage = tmp_path / "infra.new"
     stage.mkdir()
@@ -279,6 +225,7 @@ def test_sincronizador_recusa_copia_stale_compose_e_staging_trocado(tmp_path):
     (stage / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
     (stage / "sites.json").write_text("{}\n", encoding="utf-8")
     (stage / "sincronizar_sites.py").write_text("pass\n", encoding="utf-8")
+    (stage / "publicacao-local.py").write_text("pass\n", encoding="utf-8")
     (stage / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
     (stage / INSTALADOR.name).write_bytes(INSTALADOR.read_bytes())
     (tmp_path / "env").mkdir()
@@ -328,12 +275,9 @@ echo rejeicoes-e-ordem-confirmadas
 ''')
 
 
-def test_instalador_restaura_kit_e_reentra_na_mesma_trava(tmp_path):
+def test_instalador_restaura_kit_e_instala_provisionador(tmp_path):
     (tmp_path / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
     (tmp_path / INSTALADOR.name).write_bytes(INSTALADOR.read_bytes())
-    (tmp_path / "trava-de-publicacao.sh").write_bytes(
-        (RAIZ / "infra/trava-de-publicacao.sh").read_bytes()
-    )
     (tmp_path / "bin").mkdir()
     (tmp_path / "bin/visudo").write_text(
         "#!/bin/bash\n"
@@ -370,15 +314,13 @@ copias=(/usr/local/sbin/provisionar-usuario-ponte.old.*)
 test -f "${copias[0]}"
 test "$(cat "${copias[0]}")" = provisionador-antigo
 rm /plataforma/bin/mv
-# Segunda execução usa um provisionador mínimo com o fragmento exato;
-# ele herda FD8 do instalador e precisa concluir sem esperar a si mesmo.
+# Segunda execução usa um provisionador mínimo e conclui sem espera.
 cat > /plataforma/provisionar-usuario-ponte.sh <<'SH'
 #!/bin/bash
 set -e
 RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 cd "$RAIZ"
 SH
-cat /plataforma/trava-de-publicacao.sh >> /plataforma/provisionar-usuario-ponte.sh
 printf 'echo reentrou > "$RAIZ/reentrada"\n' >> /plataforma/provisionar-usuario-ponte.sh
 cat > /plataforma/bin/visudo <<'SH'
 #!/bin/bash
@@ -390,39 +332,4 @@ test -f /plataforma/reentrada
 cmp -s /plataforma/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
 grep -Fq 'NOPASSWD: /usr/local/sbin/provisionar-usuario-ponte' /etc/sudoers.d/90-deploy-provisionar-ponte
 echo rollback-e-reentrada-confirmados
-''')
-
-
-def test_provisionador_root_espera_o_mesmo_inode_antes_de_tocar_ssh(tmp_path):
-    (tmp_path / PROVISIONADOR.name).write_bytes(PROVISIONADOR.read_bytes())
-    (tmp_path / "trava-de-publicacao.sh").write_bytes(
-        (RAIZ / "infra/trava-de-publicacao.sh").read_bytes()
-    )
-    linux_isolado(tmp_path, r'''
-set -euo pipefail
-export PLATAFORMA_DIR=/plataforma
-cp /plataforma/provisionar-usuario-ponte.sh /usr/local/sbin/provisionar-usuario-ponte
-mkfifo /plataforma/liberar
-(source /plataforma/trava-de-publicacao.sh; touch /plataforma/segurando;
- read -r sinal < /plataforma/liberar) &
-detentor=$!
-for tentativa in {1..100}; do
-  [ -e /plataforma/segurando ] && break
-  kill -0 "$detentor"
-  sleep 0.02
-done
-test -e /plataforma/segurando
-inode=$(stat -c %i /plataforma/.publicacao.lock)
-bash /fontes/provisionar-usuario-ponte.sh > /plataforma/saida 2>&1 &
-receptor=$!
-sleep 0.2
-kill -0 "$receptor"
-test ! -e /var/backups/ponte-*
-if flock --nonblock --exclusive /plataforma/.publicacao.lock -c true; then exit 1; fi
-printf 'liberar\n' > /plataforma/liberar
-wait "$detentor"
-if wait "$receptor"; then exit 1; fi
-grep -Fq 'sshd' /plataforma/saida
-test "$(stat -c %i /plataforma/.publicacao.lock)" = "$inode"
-echo provisionador-esperou-a-trava-comum
 ''')

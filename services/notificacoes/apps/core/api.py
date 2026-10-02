@@ -1,12 +1,10 @@
 # apps/core/api.py  # [RECEITA:R1 v1]
 """A porta de consulta da caixa central de avisos — Fase 4 do sininho.
 
-Espelha `contracts/notificacoes.openapi.yaml` (congelado, Rito de Contrato de
-27/08/2026, emendado no mesmo dia para exigir `site_id` — decisão do
-mantenedor, CONSTITUICAO.md Lei 9: "site_id acompanha toda entidade pública").
-`make contrato-check` (via `apps/core/management/commands/export_openapi.py`)
-compara byte a byte — o que muda aqui só entra depois de mudar lá, e mudar lá
-é Rito à parte (RITOS.md §3).
+O contrato OpenAPI relacionado fica em `contracts/notificacoes.openapi.yaml`.
+`apps/core/management/commands/export_openapi.py` serializa as definições da
+API para esse documento; a comparação usada pelo projeto verifica os arquivos
+serializados byte a byte. O contrato inclui `site_id` nas entidades públicas.
 
 **Handlers recebem `request` puro e devolvem `JsonResponse`, nunca
 `ninja.Schema` tipado nem parâmetro `Query`/`Path`.** Não é estilo: o
@@ -673,7 +671,7 @@ def esquecer_aparelho(request):
 
 
 # ---------------------------------------------------------------------------
-# POST /aviso-de-teste — a porta que prova que o aviso saiu (Rito de 03/09/2026)
+# POST /aviso-de-teste — a porta que prova que o aviso saiu (descrita em 03/09/2026)
 # ---------------------------------------------------------------------------
 # A forma abaixo é o YAML congelado transcrito, e a transcrição saiu do próprio
 # arquivo por script, como as duas de cima. Repare que ela NÃO declara
@@ -735,12 +733,12 @@ _TESTE_OPENAPI = {
     summary="Manda um aviso de teste para os aparelhos de uma pessoa, a pedido dela",
     description=(
         'A porta que responde "o aviso saiu daqui, e para quantos aparelhos".\n'
-        "Rito de Contrato de 03/09/2026, com o mantenedor presente.\n"
+        "Criada em 03/09/2026.\n"
         "\n"
         "**Por que ela existe:** em 02/09/2026 o botão de ligar os avisos\n"
         "falhava no navegador do mantenedor e o servidor estava verde. Não havia\n"
         'como distinguir "o aviso não foi enviado" de "o aviso foi enviado e não\n'
-        'chegou" sem alguém entrar na VPS, e o agente não entra (Lei 5). Um\n'
+        'chegou" sem acesso ao servidor. Um\n'
         "envio que a pessoa dispara na hora, e que devolve um número, encerra\n"
         "essa classe de dúvida sem SSH nenhum.\n"
         "\n"
@@ -751,8 +749,7 @@ _TESTE_OPENAPI = {
         "sucesso não sabe dizer isso. Fora daqui, a regra continua de pé: carta\n"
         "de fato do projeto nasce de evento, sempre.\n"
         "\n"
-        "**Ela cria carta no sininho**, como qualquer outro assunto (escolha do\n"
-        "mantenedor neste rito, contra a alternativa de só piscar na tela).\n"
+        "**Ela cria carta no sininho**, como qualquer outro assunto.\n"
         "Assim um teste prova as DUAS metades de uma vez, e um aviso que não\n"
         "chega ao celular ainda deixa rastro de que saiu daqui — que é\n"
         "exatamente o rastro que faltou no caso que criou esta porta.\n"

@@ -34,11 +34,37 @@ def test_importacao_preserva_todos_e_repetir_nao_sobrescreve():
     assert CartaoDoPlacar.objects.get(nome="compras-no-ciclo").dados["alvo"] == 12345
 
 
+def test_detalhe_historico_concatenado_e_edicoes_preservadas():
+    migracao = importlib.import_module("apps.core.migrations.0042_detalhes_dos_registros")
+    registro = RegistroDoPlacar.objects.get(
+        arquivo="20260904-027-o-deploy-do-que-mudou-terminou-verde"
+    )
+    assert registro.dados["detalhe"].startswith("O PR #957")
+    assert "de segunda. A porta continua fechada" in registro.dados["detalhe"]
+    assert "detalhe:" in registro.texto_original
+    registro.dados = {**registro.dados, "detalhe": "Minha correção"}
+    registro.save(update_fields=["dados"])
+    migracao.preencher_detalhes(apps, SimpleNamespace(connection=connection))
+    registro.refresh_from_db()
+    assert registro.dados["detalhe"] == "Minha correção"
+    registro.dados = {**registro.dados, "detalhe": ""}
+    registro.save(update_fields=["dados"])
+    migracao.preencher_detalhes(apps, SimpleNamespace(connection=connection))
+    registro.refresh_from_db()
+    assert registro.dados["detalhe"] == ""
+
+
 def test_meta_e_registro_sao_editados_no_painel():
     rf = RequestFactory()
     pagina = rf.get("/admin/placar/editar/")
     pagina.admin = {"email": "dono@example.com"}
     assert gestao_do_placar(pagina).status_code == 200
+    historico = rf.get(
+        "/admin/placar/editar/",
+        {"registro": "20260904-027-o-deploy-do-que-mudou-terminou-verde"},
+    )
+    historico.admin = pagina.admin
+    assert "Texto original importado deste registro" in gestao_do_placar(historico).content.decode()
     meta = CartaoDoPlacar.objects.get(nome="compras-no-ciclo")
     invalido = rf.post("/admin/placar/editar/", {
         "acao": "cartao", "nome": meta.nome, "alvo": "duas mil",

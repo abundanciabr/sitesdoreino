@@ -12,7 +12,7 @@ o que mudou foi o negócio ou a medição.
    calado. Um aviso que deixou de sair de uma célula não quebra nada visível:
    os números históricos daquele assunto simplesmente param de crescer, e todo
    gráfico que os usa começa a mentir devagar.
-2. **Frescor.** Cada cartão de `apps/core/cartoes/` declara `frescor_maximo` em
+2. **Frescor.** Cada cartão ativo no banco declara `frescor_maximo` em
    dias. A tela diz quais números foram anotados dentro do prazo e quais
    envelheceram, com quantos dias de atraso.
 3. **O que chegou quebrado.** A fila de eventos mortos à vista, com o motivo de
@@ -55,8 +55,8 @@ diferente de quem lê:
 
 - **nunca anotado** não é "velho": é um número que nenhuma foto pegou ainda.
   Chamá-lo de atrasado mandaria o mantenedor procurar um atraso que não existe.
-- **sem fonte** não é atraso nenhum: é um cartão que declara, no próprio
-  arquivo, que a fonte dele ainda não nasceu. Ele fica de fora da conta.
+- **sem fonte** não é atraso nenhum: é um cartão que declara nos seus dados
+  que a fonte dele ainda não nasceu. Ele fica de fora da conta.
 - **cartão torto** é dito com o defeito, e não escondido. Fail-closed, como o
   placar: número sem cartão válido não aparece em tela nenhuma.
 """

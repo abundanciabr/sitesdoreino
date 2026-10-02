@@ -50,8 +50,7 @@ class Notificacao(models.Model):
             # site, os mais novos primeiro" — e o `-criado_em` faz a página 1
             # sair sem ordenar nada em memória.
             #
-            # **`site_id` E `destinatario_id` lideram JUNTOS, de propósito —
-            # não simplifique para um dos dois.** As três rotas da porta de
+            # `site_id` e `destinatario_id` lideram juntos o índice. As três rotas da porta de
             # consulta (Fase 4) sempre filtram pelos dois juntos: "cada site
             # mostra só os avisos que vieram dele" (decisão do mantenedor,
             # 27/08/2026, CONSTITUICAO.md Lei 9). Um índice liderado só por

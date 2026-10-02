@@ -9,8 +9,8 @@ três invariantes da porta (`PLANO-CELULA-CURSOS.md` §9) são impostos aqui:
   `DECISAO-a-sala-serve-varios-cursos.md` §3): no curso por laudo (o padrão, e
   o do livro), `concluir` EXIGE um laudo com decisão `aberto` ou
   `aberto_com_ajuste`; no curso de progressão livre, `concluir_por_gesto`
-  EXIGE que o curso seja livre e que as pausas estejam registradas. Cada
-  função RECUSA o curso da outra. Em nenhuma das duas há parâmetro de data, de
+  EXIGE que o curso seja livre. As pausas continuam disponíveis para registro.
+  Cada função RECUSA o curso da outra. Em nenhuma das duas há parâmetro de data, de
   XP nem de pagamento, e as duas gravam `concluida` pelo mesmo miolo
   (`_concluir`), que é o único lugar que grava esse valor. Guarda:
   `tests/test_inv_p2_a_porta_so_abre_por_laudo.py`.
@@ -47,7 +47,6 @@ DECISOES_QUE_ABREM = frozenset({"aberto", "aberto_com_ajuste"})
 # aqui, e não em `envio.py`, porque no curso livre não existe checkpoint: a
 # frase do checkpoint ("fica fechado até...") falaria de uma seção que a tela
 # desse curso não tem.
-SO_COM_AS_PAUSAS = "Esta aula só conclui depois de todas as pausas dela terem registro."
 SO_POR_LAUDO = (
     "Neste curso a porta seguinte só abre com o laudo da professora: entregue "
     "o checkpoint."
@@ -122,9 +121,8 @@ def concluir_por_gesto(progresso: Progresso) -> Progresso:
     """No curso de progressão LIVRE, o próprio aluno conclui a aula, e a
     seguinte abre ([INV-CUR-P2], a segunda regra).
 
-    Exige, nesta ordem: o curso ser livre (no curso por laudo esta função
-    recusa, e `concluir` é o único caminho), as pausas registradas
-    ([INV-CUR-P3] vale igual nos dois cursos), e a porta não trancada. Uma
+    Exige o curso ser livre (no curso por laudo esta função
+    recusa, e `concluir` é o único caminho) e a porta não trancada. Uma
     concluída fica concluída, e o segundo gesto não emite evento nenhum.
 
     O evento `aula.concluida.v1` nasce AQUI, dentro da mesma transação da

@@ -135,9 +135,8 @@ def normalizar(envelope: dict) -> Aviso:
     if aviso is None or versao not in aviso["versoes"]:
         raise AvisoDesconhecido(
             f"{evento} v{versao} não está no vocabulário desta célula "
-            f"(escutados hoje: {VOCABULARIO}). Aviso novo, ou versão nova de "
-            "um aviso, entra pelo Rito de Contrato e por uma linha em AVISOS, "
-            "no consumer, nunca por adivinhação a partir do payload."
+            f"(versões disponíveis: {VOCABULARIO}). Confira o schema do evento "
+            "e as versões listadas em AVISOS neste consumer."
         )
     data = envelope["data"]
     if versao == 1:

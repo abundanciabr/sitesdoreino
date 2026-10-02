@@ -156,9 +156,8 @@ def carta_de_celebracao(
     if assunto not in ASSUNTOS:
         raise AssuntoForaDoContrato(
             f"{assunto!r} não é um dos assuntos que esta célula publica. "
-            f"O contrato congelado conhece: {sorted(ASSUNTOS)}. Assunto novo "
-            "entra por Rito de Contrato (RITOS §3), nunca por um dicionário "
-            "aqui."
+            f"Assuntos disponíveis: {sorted(ASSUNTOS)}. Confira o schema de "
+            "notificacao.devida.v1 para ver os campos de cada assunto."
         )
 
     # UM identificador para a CELEBRAÇÃO, usado nos dois lugares quando não há

@@ -44,7 +44,7 @@ DIGITADAS = (
 #:
 #: `origem` diz de onde o número daquele passo vem, e é o que decide o estado:
 #: `ao-vivo` (a célula `alunos` responde agora), `digitada` (a escola conta e o
-#: livro guarda) e `cartao` (quem mede é o placar, e o número chega aqui pela
+#: banco guarda pelo formulário do painel) e `cartao` (quem mede é o placar, e o número chega aqui pela
 #: mesma linha `foto` que o placar acabou de montar). Os dois passos `cartao`
 #: de hoje não têm fonte nenhuma, e aí quem explica o porquê é o próprio
 #: cartão, nunca esta tela.

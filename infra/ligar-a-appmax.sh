@@ -95,17 +95,6 @@ ENV_PAGAMENTOS="env/pagamentos.env"
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…) Nada foi alterado."
 
-# Exclusao comum no receptor; o descritor herdado precisa apontar ao mesmo inode.
-TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
-command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
-if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
-  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
-    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
-  fi
-  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
-fi
-flock --exclusive 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
-unset TRAVA_PUBLICACAO
 
 [ -f docker-compose.yml ] || parar "não achei docker-compose.yml em $RAIZ. Nada foi alterado."
 [ -f "$ENV_PAGAMENTOS" ] || parar "não achei $RAIZ/$ENV_PAGAMENTOS. A célula de pagamentos ainda não foi provisionada nesta máquina: rode antes o infra/provisionamento-vps.sh. Nada foi alterado."
@@ -140,7 +129,7 @@ recarregar_appmax() {
 
 consultar_servicos_rodando() {
   if ! RODANDO="$(ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" servicos_rodando 2>/dev/null)"; then
-    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Não rode diagnóstico no terminal: o agente deve usar operacoes-vps.yml, primeiro versao-compose e depois estado-servico para o serviço necessário. Não envie env nem valores de tokens. Nada foi alterado."
+    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Confira docker compose config --services e docker compose ps para localizar o serviço. Não envie env nem valores de tokens. Nada foi alterado."
   fi
 }
 
@@ -173,7 +162,7 @@ if [ "$MODO" = "oauth-merchant" ]; then
     || parar "a API não está fixada no sandbox. Rode primeiro 'bash /tmp/appmax.sh' para preparar o aplicativo. Nada foi alterado."
   command -v python3 >/dev/null 2>&1 || parar "não achei python3 para validar OAuth sem pôr o segredo na linha de comando. Instale python3 e rode de novo. Nada foi alterado."
   consultar_servicos_rodando
-  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não aparece na lista de serviços em execução. Nada foi alterado. Não rode diagnóstico no terminal: o agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
+  printf '%s\n' "$RODANDO" | grep -qx pagamentos || parar "o serviço pagamentos não aparece na lista de serviços em execução. Nada foi alterado. Confira docker compose ps pagamentos e os logs do serviço."
   printf 'Cole o client_id do MERCHANT sandbox e aperte Enter: '
   read -r -s CLIENT_ID
   echo
@@ -279,7 +268,7 @@ print("OK" if isinstance(products, list) else "API_RESPOSTA_INVALIDA")
   CODIGO_UP=$?
   if [ "$CODIGO_UP" -ne 0 ]; then
     echo "$SAIDA_UP"
-    parar "OAuth sandbox foi validado e as credenciais MERCHANT já estão gravadas. A célula não recarregou; não rode diagnóstico no terminal. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
+    parar "OAuth sandbox foi validado e as credenciais MERCHANT já estão gravadas. A célula não recarregou; não rode diagnóstico no terminal. Confira docker compose ps pagamentos e os logs do serviço. A cópia anterior está em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA."
   fi
   echo "OAuth sandbox e leitura de produtos MERCHANT validados; credenciais gravadas fora do repositório e célula pagamentos recarregada. O token não foi exibido nem armazenado."
   exit 0
@@ -292,15 +281,15 @@ if [ "$MODO" = "preparar-reinstalacao" ]; then
     || parar "a API não está fixada no sandbox. Nada foi alterado."
   consultar_servicos_rodando
   printf '%s\n' "$RODANDO" | grep -qx catalogo \
-    || parar "o catálogo não está em execução. Nada foi alterado. O agente deve usar estado-servico para catalogo em operacoes-vps.yml."
+    || parar "o catálogo não está em execução. Nada foi alterado. Confira docker compose ps catalogo e os logs do serviço."
   printf '%s\n' "$RODANDO" | grep -qx pagamentos \
-    || parar "pagamentos não está em execução. Nada foi alterado. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
+    || parar "pagamentos não está em execução. Nada foi alterado. Confira docker compose ps pagamentos e os logs do serviço."
 
   SITES_ATIVOS="$(comando_appmax catalogo shell -c \
     "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
     print(s.id)" 2>/dev/null)" \
-    || parar "não consegui confirmar os sites ativos no catálogo; nenhuma rotação foi solicitada. O agente deve medir catalogo com estado-servico em operacoes-vps.yml e corrigir por PR."
+    || parar "não consegui confirmar os sites ativos no catálogo; nenhuma rotação foi solicitada. Confira docker compose ps catalogo e os logs do serviço antes de repetir."
   SITES_ATIVOS="$(printf '%s\n' "$SITES_ATIVOS" | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}$' || true)"
   [ -n "$SITES_ATIVOS" ] \
     || parar "o catálogo não confirmou site ativo algum. Nada foi alterado."
@@ -364,9 +353,9 @@ API_ATUAL="$(ler_de APPMAX_API_URL)"
 
 consultar_servicos_rodando
 printf '%s\n' "$RODANDO" | grep -qx catalogo \
-  || parar "o serviço 'catalogo' não aparece na lista de serviços em execução, e é ele quem sabe o número interno do site. Nada foi alterado. O agente deve usar estado-servico para catalogo em operacoes-vps.yml."
+  || parar "o serviço 'catalogo' não aparece na lista de serviços em execução, e é ele quem sabe o número interno do site. Nada foi alterado. Confira docker compose ps catalogo e os logs do serviço."
 printf '%s\n' "$RODANDO" | grep -qx pagamentos \
-  || parar "o serviço 'pagamentos' não aparece na lista de serviços em execução, e é ele quem atende a Appmax. Nada foi alterado. O agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
+  || parar "o serviço 'pagamentos' não aparece na lista de serviços em execução, e é ele quem atende a Appmax. Nada foi alterado. Confira docker compose ps pagamentos e os logs do serviço."
 
 # -----------------------------------------------------------------------------
 # 2. QUAL SITE. Perguntado ao CATÁLOGO, que é onde dado de site mora.
@@ -551,7 +540,7 @@ SAIDA_UP="$(recarregar_appmax 2>&1)"
 CODIGO_UP=$?
 if [ "$CODIGO_UP" -ne 0 ]; then
   echo "$SAIDA_UP"
-  parar "não consegui recarregar a célula de pagamentos, e ela pode ter ficado fora do ar. O env JÁ está gravado e correto, e há cópia do anterior em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA. NÃO cole as credenciais de novo nem rode diagnóstico no terminal: o agente deve usar estado-servico para pagamentos em operacoes-vps.yml."
+  parar "não consegui recarregar a célula de pagamentos, e ela pode ter ficado fora do ar. O env JÁ está gravado e correto, e há cópia do anterior em $RAIZ/$ENV_PAGAMENTOS.bak-$MARCA. NÃO cole as credenciais de novo; confira docker compose ps pagamentos e os logs do serviço."
 fi
 echo "  célula recarregada"
 echo

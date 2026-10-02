@@ -36,7 +36,7 @@
     "data": {
       "type": "object",
       "additionalProperties": false,
-      "$comment": "POR QUE ESTE EVENTO CARREGA MAIS DO QUE OS OUTROS. Com a decisao D, as defesas antifraude do §8 do plano (grafo de pares, deteccao de aneis de reciprocidade, teto diario, quarentena de 24-72h) deixam de ser rede de seguranca e passam a ser a UNICA protecao do maior premio do sistema — nao ha mais o adulto no caminho. Elas nao nascem aqui (sao do motor, PR 8 da escada), mas SEM ESTES DOIS CAMPOS elas sao impossiveis: sem `autor_da_resposta_id` nao ha aresta no grafo de quem premia quem, e sem `marcada_por` o motor nao distingue marca de colega de marca de adulto, e a deteccao de aneis fica cega. NAO REMOVA NENHUM DOS DOIS POR ECONOMIA.",
+      "$comment": "POR QUE ESTE EVENTO CARREGA MAIS DO QUE OS OUTROS. Com a decisao D, as defesas antifraude do §8 do plano (grafo de pares, deteccao de aneis de reciprocidade, teto diario, quarentena de 24-72h) deixam de ser rede de seguranca e passam a ser a UNICA protecao do maior premio do sistema — nao ha mais o adulto no caminho. Elas nao nascem aqui (sao do motor, PR 8 da escada), mas SEM ESTES DOIS CAMPOS elas sao impossiveis: sem `autor_da_resposta_id` nao ha aresta no grafo de quem premia quem, e sem `marcada_por` o motor nao distingue marca de colega de marca de adulto, e a deteccao de aneis fica cega.",
       "required": [
         "site_id",
         "topico_id",

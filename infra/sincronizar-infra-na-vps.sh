@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sincroniza configuração sob trava e preserva pins de imagem, com recuperação provada.
+# Sincroniza configuração e preserva pins de imagem, com recuperação provada.
 
 set -eo pipefail
 
@@ -14,60 +14,7 @@ if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
   export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 fi
 
-conferir_publicacao_admin() {
-  python3 - "$RAIZ/publicacoes-candidatos/admin.json" "$RAIZ/.env" <<'PY'
-import json
-import re
-from pathlib import Path
-import sys
-
-estado, ambiente = map(Path, sys.argv[1:])
-try:
-    estado.lstat()
-except FileNotFoundError:
-    raise SystemExit(0)
-except OSError as erro:
-    print(f"ERRO: nao li o estado duravel da publicacao admin: {erro}. Confira permissoes antes de repetir.", file=sys.stderr)
-    raise SystemExit(1)
-try:
-    if estado.is_symlink():
-        raise ValueError("estado duravel nao pode ser link")
-    dado = json.loads(estado.read_text(encoding="utf-8"))
-    campos = {"estado", "candidato", "digest", "imagem_id", "anterior", "anterior_digest", "aceite_funcional"}
-    if not isinstance(dado, dict) or set(dado) != campos:
-        raise ValueError("estrutura inesperada")
-    if dado["estado"] not in {"autorizada", "incerta", "publicada", "falhou"}:
-        raise ValueError("estado desconhecido")
-    if any(not isinstance(dado[chave], str) or not dado[chave]
-           for chave in ("candidato", "digest", "imagem_id", "anterior_digest")):
-        raise ValueError("identidade de imagem incompleta")
-    if not isinstance(dado["anterior"], dict):
-        raise ValueError("mapa de imagens anteriores invalido")
-    if dado["estado"] in {"autorizada", "incerta"}:
-        raise ValueError("publicacao admin autorizada ou incerta em andamento")
-    if dado["aceite_funcional"] not in {"pendente", "conferido"}:
-        raise ValueError("aceite funcional desconhecido")
-    if dado["estado"] == "publicada" and dado["aceite_funcional"] == "pendente":
-        raise ValueError("publicacao admin aguarda aceite funcional")
-    if not re.fullmatch(r"sha256:[0-9a-f]{64}", dado["digest"]):
-        raise ValueError("digest publicado invalido")
-    prefixo = "ghcr.io/abundanciabr/plataforma-admin@"
-    if not re.fullmatch(re.escape(prefixo) + r"sha256:[0-9a-f]{64}", dado["anterior_digest"]):
-        raise ValueError("digest anterior invalido")
-    pin_esperado = (prefixo + dado["digest"] if dado["estado"] == "publicada"
-                    else dado["anterior_digest"])
-    pinos = [linha.removeprefix("ADMIN_IMAGE=") for linha in ambiente.read_text(encoding="utf-8").splitlines()
-             if linha.startswith("ADMIN_IMAGE=")]
-    if pinos != [pin_esperado]:
-        raise ValueError("ADMIN_IMAGE nao corresponde ao estado duravel")
-except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as erro:
-    print(f"ERRO: publicacao admin nao permite sincronizar: {erro}. Confira o estado duravel e o pin antes de repetir.", file=sys.stderr)
-    raise SystemExit(1)
-PY
-}
-conferir_publicacao_admin
-
-for ARQUIVO in docker-compose.yml sites.json sincronizar_sites.py provisionar-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh; do
+for ARQUIVO in docker-compose.yml sites.json sincronizar_sites.py publicacao-local.py provisionar-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh; do
   [ -f "${STAGING}/$ARQUIVO" ] || { echo "ERRO: ${STAGING}/$ARQUIVO ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
 done
 [ -d ${STAGING}/traefik ] || { echo "ERRO: ${STAGING}/traefik ausente; reenviar o staging pelo deploy-infra antes de repetir." >&2; exit 1; }
@@ -109,7 +56,6 @@ else
   echo "       bash $RAIZ/instalar-provisionador-usuario-ponte.sh $RAIZ/provisionar-usuario-ponte.sh"
 fi
 
-conferir_publicacao_admin
 STAGING_AGORA=$(tar -C ${STAGING} --sort=name -cf - . | sha256sum | cut -d' ' -f1)
 if [ "$STAGING_AGORA" != "$STAGING_ANTES" ]; then
   echo "ERRO: ${STAGING} mudou durante a fase root; NADA foi consumido. Reenvie o staging pelo deploy-infra." >&2
