@@ -180,32 +180,17 @@ def test_a_regua_e_o_200_e_e_dela_que_sai_o_veredito():
     assert julgar("x.top", Resposta(status=RESPOSTA_ESPERADA + 1)) != []
 
 
-def test_saida_aciona_recuperacao_apenas_para_indisponibilidade(monkeypatch, tmp_path):
-    destino = tmp_path / "outputs"
-    monkeypatch.setenv("GITHUB_OUTPUT", str(destino))
+def test_host_fora_do_ar_sai_1_e_instrumento_quebrado_sai_2(monkeypatch):
     monkeypatch.setattr("vigia_do_site.medir", lambda *a, **k: Resposta(status=503))
     assert main(["--host", "exemplo.top"]) == 1
-    assert "estado=indisponivel" in destino.read_text(encoding="utf-8")
-    assert 'hosts_falhos=["exemplo.top"]' in destino.read_text(encoding="utf-8")
-
-
-def test_instrumento_quebrado_nao_aciona_recuperacao(monkeypatch, tmp_path):
-    destino = tmp_path / "outputs"
-    monkeypatch.setenv("GITHUB_OUTPUT", str(destino))
     monkeypatch.setattr("vigia_do_site.a_sondar", lambda *a: ([], []))
     assert main([]) == 2
-    assert "estado=erro" in destino.read_text(encoding="utf-8")
-    assert "indisponivel" not in destino.read_text(encoding="utf-8")
 
 
-def test_nova_sonda_comprova_recuperacao_ou_informa_falha_terminal(monkeypatch, tmp_path):
-    destino = tmp_path / "outputs"
-    monkeypatch.setenv("GITHUB_OUTPUT", str(destino))
+def test_nova_sonda_comprova_recuperacao_ou_informa_falha_terminal(monkeypatch):
     respostas = iter([503, 200, 503, 503])
     monkeypatch.setattr("vigia_do_site.medir", lambda *a, **k: Resposta(status=next(respostas)))
     assert main(["--host", "exemplo.top"]) == 1
     assert main(["--host", "exemplo.top"]) == 0
     assert main(["--host", "exemplo.top"]) == 1
     assert main(["--host", "exemplo.top"]) == 1
-    assert destino.read_text(encoding="utf-8").count("estado=indisponivel") == 3
-    assert destino.read_text(encoding="utf-8").count("estado=disponivel") == 1

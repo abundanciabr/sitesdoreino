@@ -633,7 +633,7 @@ def test_cli_vps_roda_drill_uma_vez_e_confere_evidencia(tmp_path, capsys):
     ctx = operador.Contexto(
         raiz=RAIZ, ambiente={"OPERAR_ESTADO": str(tmp_path / "estado"),
                               "PLATAFORMA_DIR": "/opt/plataforma"},
-        processo=processo, carregar=lambda *_args: drill, espera=0,
+        processo=processo, carregar=lambda *_args: drill,
     )
     assert operador.main(["appmax-drill-rollback", "--site", SITE], ctx) == 2
     assert chamadas == []

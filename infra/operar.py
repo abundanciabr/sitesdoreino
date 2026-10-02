@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""As operações manuais e os vigias do sitesdoreino, executados NA VPS, sem GitHub Actions.
+"""As operações manuais e os vigias do sitesdoreino, executados NA VPS.
 
     python3 infra/operar.py listar
     python3 infra/operar.py <operacao> [--parametro valor ...]
 
 Roda a partir de uma cópia da main (cwd = raiz da cópia) com PLATAFORMA_DIR (padrão
-/opt/plataforma). Cada operação roda o MESMO script ou módulo que o workflow de mesmo
-nome rodava, com o mesmo ambiente e as mesmas conferências de saída. Os parâmetros
+/opt/plataforma). Cada operação roda um script ou módulo do repositório, com o ambiente
+e as conferências de saída de cada uma. Os parâmetros
 chegam por argumento, são validados e entregues por variável de ambiente ou por lista
 de argumentos: nunca viram texto de shell. Só biblioteca padrão.
 
 O que vale para todas
-  - prazo por operação (o `timeout` do workflow);
+  - prazo por operação;
   - script que sai 0 mas diz "PAROU POR SEGURANÇA" conta como falha (dois deles, os
     semear-convite e semear-experimento, saem 0 ao parar);
   - saída 0 = passou, 1 = falhou, 2 = pedido inválido ou medição que não pôde ser feita.
@@ -40,7 +40,6 @@ from typing import Callable
 RAIZ = Path(__file__).resolve().parent.parent
 MARCA_DE_PARADA = "PAROU POR SEGURANÇA"
 PRAZO_PADRAO = 10 * 60
-ESPERA_DA_VEZ = 15 * 60
 IMAGEM_DO_NAVEGADOR = "mcr.microsoft.com/playwright:v1.62.1-noble"
 PACOTE_DO_NAVEGADOR = "playwright@1.62.1"
 REGEX_HOST = r"[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?"
@@ -56,7 +55,6 @@ SERVICOS_PADRAO = {
     "appmax-estorno": "pagamentos",
     "appmax-pendentes": "pagamentos",
     "quiz-configuracao": "quiz",
-    "coordenacao-db": "postgres",
 }
 MODULOS_DA_APLICACAO = frozenset((
     "admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
@@ -134,7 +132,6 @@ class Contexto:
     carregar: Callable | None = None
     avisar: Callable | None = None
     dormir: Callable = time.sleep
-    espera: float = ESPERA_DA_VEZ
 
     def __post_init__(self):
         self.processo = self.processo or executar_processo
@@ -192,7 +189,7 @@ def executar_processo(
     """Roda `comando` (lista, nunca shell) e devolve (código, saída), ecoando ao vivo.
 
     `juntar=False` deixa o stderr correr para o stderr de quem chamou e devolve só o
-    stdout (é o que a ssh-action capturava como evidência).
+    stdout (é a evidência que o `conferir()` do módulo lê).
     """
     try:
         processo = subprocess.Popen(
@@ -269,7 +266,7 @@ def chaves_do_gateway(ctx: Contexto) -> dict:
 
 def rodar_script(ctx: Contexto, script: Path, extra: dict, prazo: int,
                  argumentos: list[str] | None = None) -> int:
-    """O que o workflow fazia: o script existe, passa em `bash -n`, roda, e a saída confere."""
+    """O script existe, passa em `bash -n`, roda, e a saída confere."""
     nome = f"infra/{script.name}"
     if not script.is_file():
         print(f"{MARCA_DE_PARADA}: {nome} não existe nesta cópia.")
@@ -335,7 +332,8 @@ class Conferencia:
 
 
 def conferir_com_resumo(conferir: Callable, saida: str, **ambiente: str) -> Conferencia:
-    """Roda o `conferir()` do módulo como o passo do workflow: SAIDA e o resumo por ambiente."""
+    """Roda o `conferir()` do módulo: a saída chega em SAIDA e o resumo vai para o arquivo apontado
+    por GITHUB_STEP_SUMMARY (o nome que os módulos já leem; é só um caminho de arquivo)."""
     with tempfile.TemporaryDirectory(prefix="operar-") as pasta:
         resumo = Path(pasta) / "resumo.md"
         resumo.write_text("", encoding="utf-8")
@@ -351,7 +349,7 @@ def conferir_com_resumo(conferir: Callable, saida: str, **ambiente: str) -> Conf
 # operacoes-vps (ci/operacoes_vps.py)
 # ---------------------------------------------------------------------------
 def servicos_do_compose(compose: Path) -> list[str]:
-    """Os serviços de infra/docker-compose.yml, como `preparar()` do módulo os lia."""
+    """Os serviços de infra/docker-compose.yml, e nada mais."""
     texto = compose.read_text(encoding="utf-8")
     try:
         import yaml
@@ -387,10 +385,7 @@ def op_operacoes_vps(ctx: Contexto, valores: dict) -> int:
     erro = conferencia.erro
     if erro is not None:
         print(saida, end="")
-        if isinstance(erro, modulo.Falha) and str(erro) in {"banco_ausente", "banco_inacessivel"}:
-            print("ERROR: " + modulo.ACOES[str(erro)])
-        else:
-            print("ERROR: operação ou evidência inválida. Confira o catálogo, o serviço e a saída acima.")
+        print("ERROR: operação ou evidência inválida. Confira o catálogo, o serviço e a saída acima.")
         return 2
     print(conferencia.impresso, end="")
     return 0
@@ -531,7 +526,7 @@ def op_appmax_sandbox_tela(ctx: Contexto, valores: dict) -> int:
 
 
 # ---------------------------------------------------------------------------
-# vigia-do-cadeado (ci/vigia_do_cadeado.py) e o alarme que antes era uma issue
+# vigia-do-cadeado (ci/vigia_do_cadeado.py) e o alarme por aviso
 # ---------------------------------------------------------------------------
 def op_vigia_do_cadeado(ctx: Contexto, valores: dict) -> int:
     codigo, saida = ctx.processo(

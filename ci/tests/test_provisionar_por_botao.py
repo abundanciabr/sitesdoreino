@@ -18,7 +18,6 @@ def _ctx(tmp_path: Path, chamadas: list) -> operar.Contexto:
         raiz=RAIZ,
         ambiente={"PLATAFORMA_DIR": str(tmp_path), "OPERAR_ESTADO": str(tmp_path / "estado")},
         processo=lambda *args, **kwargs: chamadas.append((args, kwargs)) or (0, ""),
-        espera=0,
     )
 
 

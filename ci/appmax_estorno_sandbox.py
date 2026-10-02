@@ -132,7 +132,7 @@ def executar() -> int:
                 {
                     "resultado": "ERROR",
                     "motivo": motivo,
-                    "acao": "Não repita o POST; consulte o pedido no sandbox e confira o marcador na VPS.",
+                    "acao": "Não repita o POST: o marcador de uso único já barra nova tentativa. Consulte o pedido no sandbox da Appmax para ver se o estorno entrou.",
                 },
                 ensure_ascii=True,
             )
@@ -151,23 +151,6 @@ def executar() -> int:
         )
     )
     return 0
-
-
-def preparar():
-    fonte = Path(__file__).read_text(encoding="utf-8").split("\ndef preparar():")[0]
-    destino = Path(os.environ["RUNNER_TEMP"]) / "appmax-estorno-sandbox.sh"
-    destino.write_text(
-        # O ssh-action fecha a saída multilinha com `echo EOF` sob
-        # `bash -e -o pipefail`: saída diferente de zero aqui apaga a evidência.
-        # O veredito vem do JSON, no `conferir` (armadilha do PR #2249/TAR-868).
-        "#!/bin/sh\nset -eu\npython3 - <<'PY_APPMAX_ESTORNO' || true\n"
-        + fonte
-        + "\nraise SystemExit(executar())\nPY_APPMAX_ESTORNO\n",
-        encoding="utf-8",
-        newline="\n",
-    )
-    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as saida:
-        saida.write(f"script={destino}\n")
 
 
 def conferir():
@@ -202,12 +185,10 @@ def conferir():
 
 if __name__ == "__main__":
     try:
-        if sys.argv[1:] == ["preparar"]:
-            preparar()
-        elif sys.argv[1:] == ["conferir"]:
+        if sys.argv[1:] == ["conferir"]:
             conferir()
         else:
             raise Falha("entrada")
     except (Falha, OSError, ValueError, TypeError, KeyError):
-        print("ERROR: ensaio sandbox inválido; consulte o run, sem repetir o POST.")
+        print("ERROR: ensaio sandbox inválido; consulte a saída, sem repetir o POST.")
         sys.exit(2)

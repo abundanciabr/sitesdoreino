@@ -56,7 +56,7 @@ def fazer_ctx(tmp_path):
         base.update(ambiente or {})
         return operar.Contexto(
             raiz=raiz, ambiente=base, processo=processo or Processos(),
-            dormir=lambda segundos: None, espera=0, **resto,
+            dormir=lambda segundos: None, **resto,
         )
 
     return fazer
@@ -532,7 +532,6 @@ def test_operacoes_vps_servico_padrao_por_operacao_mas_combinacao_errada_e_barra
     # appmax-pix sem --servico vira pagamentos; com outro serviço, o validar do módulo barra.
     assert operar.main(["operacoes-vps", "--operacao", "appmax-pix", "--servico", "catalogo"], ctx) == 2
     assert comando.chamadas == []
-    assert operar.SERVICOS_PADRAO["coordenacao-db"] == "postgres"
 
 
 def test_operacoes_vps_medicao_ausente_mostra_o_erro_cru_e_falha(fazer_ctx, capsys):

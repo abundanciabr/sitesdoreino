@@ -63,7 +63,7 @@ def test_a_operacao_so_recebe_acao_por_argv_e_entrega_por_env(tmp_path):
         raiz=RAIZ, ambiente={"PLATAFORMA_DIR": str(tmp_path),
                             "OPERAR_ESTADO": str(tmp_path / "estado"),
                             "ACAO_EXPERIMENTO": "encerrar"},
-        processo=processo, espera=0,
+        processo=processo,
     )
     assert operar.main(["semear-experimento", "--acao", "medir"], ctx) == 0
     assert chamadas[0][0] == ["bash", "-n", str(ROTEIRO)]
@@ -90,7 +90,7 @@ def test_cli_recusa_pedido_invalido_antes_de_chamar_script(argumentos, tmp_path)
     ctx = operar.Contexto(
         raiz=RAIZ,
         ambiente={"PLATAFORMA_DIR": str(tmp_path), "OPERAR_ESTADO": str(tmp_path / "estado")},
-        processo=lambda *args, **kwargs: chamadas.append((args, kwargs)) or (0, ""), espera=0,
+        processo=lambda *args, **kwargs: chamadas.append((args, kwargs)) or (0, ""),
     )
     assert operar.main(["semear-experimento", *argumentos], ctx) == 2
     assert chamadas == []

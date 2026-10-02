@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-from pathlib import Path
 import sys
 import time
 import urllib.error
@@ -131,15 +129,6 @@ def linha_de_estado(host: str, resposta: Resposta) -> str:
 
 
 # ---------------------------------------------------------------------------
-def registrar_estado(estado: str, hosts_falhos: list[str]) -> None:
-    """Entrega ao Actions apenas medição; nunca deduz célula pelo endereço."""
-    destino = os.environ.get("GITHUB_OUTPUT")
-    if destino:
-        with Path(destino).open("a", encoding="utf-8") as arquivo:
-            arquivo.write(f"estado={estado}\n")
-            arquivo.write("hosts_falhos=" + json.dumps(hosts_falhos) + "\n")
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Vigia do site: pergunta de fora se cada host responde."
@@ -159,24 +148,19 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError, AssertionError) as erro:
             print(f"  lista de hosts       ERROR  não consegui montá-la: {erro}")
             print("\nRESULTADO  ERROR — instrumento quebrado, nada foi medido.")
-            registrar_estado("erro", [])
             return 2
 
     if not hosts:
         print("  lista de hosts       ERROR  saiu VAZIA — nada foi medido")
         print("\nRESULTADO  ERROR — instrumento quebrado, nada foi medido.")
-        registrar_estado("erro", [])
         return 2
 
     queixas: list[str] = []
-    hosts_falhos: list[str] = []
     for host in hosts:
         resposta = medir(host, timeout=args.timeout)
         print(linha_de_estado(host, resposta))
         falhas = julgar(host, resposta)
         queixas.extend(falhas)
-        if falhas:
-            hosts_falhos.append(host)
 
     if dispensados:
         print("\n  dispensados de propósito (declarado, não esquecido):")
@@ -188,10 +172,8 @@ def main(argv: list[str] | None = None) -> int:
         for queixa in queixas:
             print(f"  {queixa}")
         print("\nRESULTADO  FAIL")
-        registrar_estado("indisponivel", hosts_falhos)
         return 1
 
-    registrar_estado("disponivel", [])
     print(f"\nRESULTADO  PASS — {len(hosts)} host(s), todos entregando a página.")
     return 0
 
