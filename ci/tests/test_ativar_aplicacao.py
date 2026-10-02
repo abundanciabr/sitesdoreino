@@ -45,6 +45,9 @@ def test_primeira_troca_reverte_compose_e_rotas_quando_a_prova_falha(tmp_path, m
     (fonte / "traefik" / "dynamic").mkdir(parents=True)
     (fonte / "docker-compose.yml").write_text("novo", encoding="utf-8")
     (fonte / "traefik" / "dynamic" / "plataforma.yml").write_text("nova", encoding="utf-8")
+    for nome in ativacao.ARQUIVOS_AUXILIARES[2:]:
+        (raiz / nome).write_text("anterior sem mudança", encoding="utf-8")
+        (fonte / nome).write_text("versão nova sem trava", encoding="utf-8")
     codigo = tmp_path / "codigo"
     codigo.mkdir()
     (codigo / "entrypoint.py").write_text("", encoding="utf-8")
@@ -78,6 +81,8 @@ def test_primeira_troca_reverte_compose_e_rotas_quando_a_prova_falha(tmp_path, m
         ativacao.ativar("a" * 40, "imagem:teste", str(codigo))
     assert (raiz / "docker-compose.yml").read_text(encoding="utf-8") == "antigo"
     assert (raiz / "traefik" / "rota").read_text(encoding="utf-8") == "antiga"
+    for nome in ativacao.ARQUIVOS_AUXILIARES[2:]:
+        assert (raiz / nome).read_text(encoding="utf-8") == "anterior sem mudança"
     assert not ativacao.JOURNAL.exists()
     assert json.loads(ativacao.TRANSICAO.read_text(encoding="utf-8"))["fase"] == "revertida"
     assert any(chamada[:2] == ("up", "-d") for chamada in chamadas)

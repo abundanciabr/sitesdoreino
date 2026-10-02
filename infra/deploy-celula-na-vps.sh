@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publica uma célula sob trava, com backup antes do boot/migrations e prova da imagem.
+# Publica uma célula, com backup antes do boot/migrations e prova do endereço.
 # IMAGEM e CODIGO vêm do publicador da VPS (base local + código montado); sem eles, imagem do registro.
 
 set -eu

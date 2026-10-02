@@ -211,7 +211,7 @@ def executar(acao):
             pin(estado, tag, versao)
         else:
             if estado is None or not estado.get("aprovada"):
-                raise ValueError("inicialize aprovação com testes da imagem atual e prova do endereço antes da primeira troca")
+                raise ValueError("inicialize a versão atual com prova do endereço antes da primeira troca")
             if comp != estado["compatibilidade"]:
                 raise ValueError("candidata incompatível com destino recuperável")
             estado.pop("recuperacao", None)

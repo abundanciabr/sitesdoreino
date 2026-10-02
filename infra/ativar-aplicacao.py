@@ -23,6 +23,10 @@ RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 PUBLICACOES = RAIZ / "publicacoes"
 TRANSICAO = PUBLICACOES / "aplicacao-transicao.json"
 JOURNAL = PUBLICACOES / "aplicacao.json"
+ARQUIVOS_AUXILIARES = (
+    "sites.json", "sincronizar_sites.py", "publicacao-local.py",
+    "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
+)
 BASES = (
     "catalogo", "identidade", "notificacoes", "admin", "quiz", "leads",
     "checkout", "pagamentos", "alunos", "mensageria", "sugestoes", "forum",
@@ -221,7 +225,7 @@ def restaurar(snapshot: Path, parar_aplicacao: bool = True) -> None:
     env_antigo = snapshot / ".env"
     if env_antigo.is_file():
         shutil.copy2(env_antigo, RAIZ / ".env")
-    for nome in ("sites.json", "sincronizar_sites.py"):
+    for nome in ARQUIVOS_AUXILIARES:
         if (snapshot / nome).is_file():
             shutil.copy2(snapshot / nome, RAIZ / nome)
     if (snapshot / "imagens.json").is_file():
@@ -265,7 +269,7 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
     os.chmod(snapshot, 0o700)
     shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
     shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
-    for nome in ("sites.json", "sincronizar_sites.py"):
+    for nome in ARQUIVOS_AUXILIARES:
         if (RAIZ / nome).is_file():
             shutil.copy2(RAIZ / nome, snapshot / nome)
     if (PUBLICACOES / "imagens.json").is_file():
@@ -297,7 +301,7 @@ def ativar(sha: str, imagem: str, codigo_arg: str) -> None:
             raise RuntimeError("snapshot da rota anterior já existe")
         rota_atual.rename(rota_anterior)
         shutil.copytree(fonte / "traefik", rota_atual)
-        for nome in ("sites.json", "sincronizar_sites.py"):
+        for nome in ARQUIVOS_AUXILIARES:
             if (fonte / nome).is_file():
                 shutil.copy2(fonte / nome, RAIZ / nome)
         # Variáveis de pin sem segredos. A .env antiga foi preservada acima.
@@ -388,7 +392,7 @@ def sincronizar_infra(sha: str) -> None:
     snapshot.mkdir(mode=0o700, parents=True, exist_ok=False)
     shutil.copy2(RAIZ / "docker-compose.yml", snapshot / "docker-compose.yml")
     shutil.copytree(RAIZ / "traefik", snapshot / "traefik")
-    for nome in ("sites.json", "sincronizar_sites.py"):
+    for nome in ARQUIVOS_AUXILIARES:
         if (RAIZ / nome).is_file():
             shutil.copy2(RAIZ / nome, snapshot / nome)
     if (PUBLICACOES / "imagens.json").is_file():
@@ -403,7 +407,7 @@ def sincronizar_infra(sha: str) -> None:
             raise RuntimeError("snapshot da rota anterior já existe")
         alvo.rename(anterior)
         shutil.copytree(fonte / "traefik", alvo)
-        for nome in ("sites.json", "sincronizar_sites.py"):
+        for nome in ARQUIVOS_AUXILIARES:
             if (fonte / nome).is_file():
                 shutil.copy2(fonte / nome, RAIZ / nome)
         compose("up", "-d", "--wait", "--wait-timeout", "180", "aplicacao", ambiente=ambiente)
