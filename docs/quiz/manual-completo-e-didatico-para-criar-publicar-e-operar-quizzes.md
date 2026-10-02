@@ -1,5 +1,322 @@
 # Manual completo e didático para criar, publicar e operar um sistema de quizzes
 
+Atualizado em **02/10/2026**. Este manual reúne as decisões do mantenedor, todas as capacidades solicitadas e o estado observado no projeto. A explicação para iniciantes está em [O Crivo explicado do zero](../../documentos/o-crivo-explicado-do-zero.md); a continuidade está em [RETOMADA-CRIVO.md](RETOMADA-CRIVO.md).
+
+Ana é nossa operadora fictícia. Ela quer receber visitantes, entender suas necessidades e indicar uma de duas ofertas low ticket, com checkout externo. **Tema, público, ofertas, mídia e conteúdo reais ainda não foram definidos.** Exemplos neste manual não são conteúdo comercial aprovado.
+
+As indicações de estado significam:
+
+- **Observado na base atual:** encontrado no código versionado; não significa verificado em produção.
+- **Decisão aprovada:** comportamento pedido pelo mantenedor.
+- **Trabalho local a integrar:** arquivos existem, mas ainda não compõem uma experiência comprovada na base atual.
+- **Pendente:** falta implementação, conteúdo, acesso ou integração.
+- **Histórico:** registro anterior; não comprova a versão atual.
+
+Este documento registra o trabalho; não cria regras permanentes, processos ou autorizações adicionais. As instruções vigentes do mantenedor estão em [AGENTS.md](../../AGENTS.md). O manual anterior foi preservado no final como histórico e pode conter descrições já superadas.
+
+## 1. Decisão central: somente campanhas direcionadas
+
+Uma URL estável por quiz. O link escolhe explicitamente a versão:
+
+```text
+/quiz/encontre-sua-solucao/?v=A
+/quiz/encontre-sua-solucao/?v=B1
+/quiz/encontre-sua-solucao/?v=B2
+```
+
+**Novas visitas ao terceiro link recebem B2.** Não haverá sorteio nem divisão automática por peso nesse modo. Um quiz pode atender várias campanhas; campanha e quiz não são sinônimos.
+
+A, B1 e B2 podem mudar CTA, promessa, vídeo, perguntas, ordem e quantidade de etapas. Não é necessário criar outro slug para isso. Outra jornada ou produto independente pode justificar outro slug.
+
+Uma participação mantém sua versão, formato, segmento e origem durante perguntas, resultado e saída. Um novo link explícito para outra experiência não pode misturar respostas com a anterior. Atualizar a página não cria outra conclusão nem outra visita elegível.
+
+Versão, formato ou segmento desconhecido não deve ser substituído silenciosamente por outro. Sem `v`, a entrada pode explicar o quiz sem iniciar uma versão aleatória.
+
+**Comparação direcionada não é um teste aleatório automaticamente confiável.** Públicos, períodos, criativos e verbas diferentes podem explicar diferenças de conversão. Os relatórios devem permitir enxergar esses contextos. A operação continuará direcionada, conforme escolha do mantenedor.
+
+## 2. Estado real observado em 02/10
+
+Base versionada consultada: `b5198a4fb`.
+
+| Capacidade | Evidência | Estado |
+|---|---|---|
+| Perguntas, opções, pontos no servidor, faixas, lead | Modelos, views e templates | Observado na base atual |
+| Sessão assinada, versão estável, UTMs, refazer | `views.py` e rotas | Observado na base atual |
+| Telemetria, submissão, outbox e relay | Modelos, views e tarefas | Observado na base atual |
+| Editor pelo site e rascunho separado | `QuizDraft`, `editor.py`, painel `conteudos.py` | Código atual; configuração e funcionamento ao vivo precisam de prova |
+| Direcionamento por `v`, formatos, segmentos, calculadora | `direcionadas.py`, `experiencias.py`, templates locais | Trabalho local a integrar |
+| Saída rastreada, demonstração e conexão dos dois checkouts | `destinos.py` e comandos locais | Trabalho local a integrar |
+| JSON `quiz-low-ticket/2` e gerador de links | Importador e gerador locais | Trabalho local a integrar |
+| Relatório por dia e campanha | `campanhas.py` local | Trabalho local a integrar; sem receita/LTV confirmados |
+| Conversa por IA, integrações de mídia/CRM/BI e compras externas | Escopo solicitado | Pendente |
+
+Há uma diferença concreta entre os arquivos anteriores e a base atual: `Quiz` não declara `directed`, `QuizVersion` não declara `experience` e `Submission` não declara `context`. As rotas atuais não ligam as novas saídas, a calculadora ou a demonstração. Existem duas migrações locais de número 0006, uma do rascunho e outra de experiências. Esses pontos precisam ser reconciliados antes de tratar os comandos e formatos novos como operacionais.
+
+**Histórico de 01/10:** foram registrados 94 testes locais aprovados para a implementação daquele momento, que não foi publicada. Esse resultado não é prova da base atual. O contrato de conclusão atual também não possui `context`.
+
+O resolvedor atual ainda escolhe versões por peso no fluxo legado. Isso precisa ser compatibilizado com a decisão de campanhas direcionadas; não é o modo aprovado para os novos quizzes.
+
+## 3. Entender o percurso sem programar
+
+O quiz é como uma recepcionista: pergunta, organiza respostas e encaminha. A nota vem das opções no banco, nunca de um número enviado pelo visitante.
+
+```mermaid
+flowchart LR
+    A[Campanha B2] --> B[Perguntas B2]
+    B --> C[Pontuação no servidor]
+    C --> D[Resultado e uma de duas ofertas]
+    D --> E[Checkout externo]
+    E --> F[Retorno de compra pela integração]
+```
+
+A última seta é uma capacidade pretendida e depende do checkout. Abrir o botão não comprova pagamento.
+
+Exemplo didático: escolhas de 5, 10 e 0 pontos somam 15. A faixa correspondente determina resultado, mensagem e oferta. Podem existir várias faixas, mas todas indicam uma das **duas ofertas**. As pontuações possíveis precisam estar cobertas sem sobreposição. O editor atual já verifica cobertura e sobreposição.
+
+O formulário atual exige respostas e e-mail; nome e telefone são opcionais. Entradas incompletas recebem 422 e opções de outra pergunta são recusadas. O fluxo legado pode gerar `sem_faixa` se o cadastro não cobrir a soma.
+
+Lead é um contato; conclusão é um quiz respondido; clique é uma saída; compra é um pedido confirmado. Esses fatos são medidos separadamente.
+
+## 4. Todos os parâmetros do texto original
+
+```text
+https://suaempresa.com/quiz/encontre-sua-solucao/?v=B2&fmt=video&seg=escalando&src=meta&med=cpc&cpg=qz_escalando_oct26&ctv=vsl_47s_cta_comprar&utm_source=meta&utm_medium=cpc&utm_campaign=qz_escalando_oct26&utm_content=vsl_47s_cta_comprar&utm_term=publico_escalando
+```
+
+O domínio é ilustrativo.
+
+| Parâmetro | Função |
+|---|---|
+| `v` | Versão publicada escolhida pelo link |
+| `fmt` | Formato configurado naquela versão |
+| `seg` | Segmento de público cadastrado |
+| `src` | Fonte interna |
+| `med` | Meio interno |
+| `cpg` | Campanha interna |
+| `ctv` | Criativo |
+| `utm_source` | Fonte no padrão de analytics |
+| `utm_medium` | Meio no padrão de analytics |
+| `utm_campaign` | Campanha no padrão de analytics |
+| `utm_content` | Conteúdo/criativo no padrão de analytics |
+| `utm_term` | Termo ou público quando utilizado |
+
+Parâmetros internos permitem controlar a experiência e organizar relatórios próprios. UTMs permitem comunicar a origem a ferramentas externas **quando houver integração**. Uma URL não instala analytics, não dispara CAPI e não cria tags no CRM sozinha.
+
+O trabalho local prevê usar parâmetros internos quando a UTM equivalente estiver ausente. Valores diferentes enviados em ambas as formas devem continuar identificáveis; não podem ser apagados silenciosamente. Sua preservação ainda precisa de prova após integrar o código.
+
+Slugs devem ser legíveis, como `encontre-sua-solucao`, sem expor IDs numéricos como endereço de campanha. Mesmo slug ajuda a organizar URLs, mas estabilidade de sessão e retargeting dependem da implementação. `rel="canonical"` somente aponta entre páginas equivalentes; um redesign diferente não deve apontar automaticamente para a página antiga como se fosse o mesmo conteúdo.
+
+## 5. Formatos e personalização: todos permanecem no escopo
+
+| Formato | URL | Experiência desejada | Estado |
+|---|---|---|---|
+| Texto | `fmt=text` | Headline, subheadline e perguntas sem vídeo | Básico atual; configuração por formato a integrar |
+| Vídeo | `fmt=video` | VSL antes da primeira pergunta | Código local a integrar e mídia real necessária |
+| Híbrido | `fmt=hybrid` | Texto com vídeo curto | Código local a integrar e mídia real necessária |
+| Agente de IA | `fmt=ai` ou `fmt=ai_agent` | Conversa interativa substituindo perguntas fixas | Pendente; alias e aviso não constituem agente funcional |
+| Calculadora | `fmt=calc` | Entradas numéricas e cálculo explicado | Aritmética local; rota/integração pendentes |
+
+VSL de 30–60 segundos e híbrido de 15 segundos são recomendações editoriais do texto fornecido; não são limites técnicos já impostos.
+
+O segmento pode personalizar headline, subheadline, vídeo, título/descrição do resultado e rótulo do botão. As respostas continuam determinando a indicação oficial, e o texto personalizado precisa corresponder à oferta calculada.
+
+A calculadora precisa de fórmula, unidades e hipóteses explícitas. Uma estimativa de ROI não comprova retorno real. O código local aceita somente aritmética limitada sobre entradas declaradas.
+
+O agente de IA precisa conduzir a conversa, concluir a recomendação entre as duas ofertas e registrar o percurso. Avisar indisponibilidade é comportamento provisório, não conclusão dessa capacidade. Provedor, conteúdo e integração estão pendentes. Gastos reais com API dependem da palavra do mantenedor.
+
+## 6. Sessão: preservar o objetivo, corrigir o exemplo
+
+O cookie atual `quiz_session` é assinado pelo Django, dura sete dias e usa `HttpOnly` e `SameSite=Lax`. Guarda sessão, versão, site e UTM por slug. Assinatura inválida não é aceita como conteúdo confiável.
+
+O exemplo fornecido que escreve JSON diretamente em `document.cookie` não pode substituir esse cookie. A continuidade será feita aproveitando a sessão assinada. Campos ocultos e armazenamento no navegador podem ajudar a tela, mas não passam a decidir versão, pontos ou resultado.
+
+O contexto precisa acompanhar todas as etapas, o resultado, a saída e o retorno de compra quando integrado. O trabalho local separa participações por experiência/campanha; falta ligar isso ao fluxo atual. Refazer já existe e inicia outra participação, preservando as conclusões anteriores; seus parâmetros direcionados ainda precisam ser compatibilizados.
+
+## 7. Duas ofertas e checkout externo
+
+O mantenedor enviará os dois links reais **depois de o quiz estar testado e pronto**. Até lá, cada `checkout_url` fica `null`. Não inventar links nem cobrar alguém em teste.
+
+O código local prevê demonstração das duas ofertas e conexão posterior dos destinos sem reescrever perguntas ou histórico. Essa capacidade precisa ser integrada e provada na base atual.
+
+É possível abrir um checkout externo e passar parâmetros aceitos por ele, preservando a consulta que o link original já possua. O trabalho local de saída evita enviar nome, telefone e e-mail pela URL. A compra pode ser correlacionada por uma identificação opaca da tentativa quando o checkout devolver essa informação.
+
+**Limite real:** o quiz não consegue manipular livremente os campos ocultos de um formulário em outro domínio. Preenchimento de campos e retorno de pedidos dependem de parâmetros suportados, API, webhook ou mecanismo equivalente do checkout.
+
+Sem cooperação do checkout, o clique pode ser medido; pagamento, reembolso, cancelamento e compra posterior não podem ser confirmados automaticamente com confiabilidade. Isso depende do provedor escolhido, não de uma mudança no texto do botão.
+
+## 8. Editor existente e formato para a outra IA
+
+O código atual possui painel em `/admin/conteudos/quiz/` e endpoints internos de listar, rascunhar e publicar quizzes. A API privada exige autenticação configurada; não é uma API pública para visitantes.
+
+O rascunho atual usa `{title, questions, bands}`. Publicar cria uma versão `editor-...` e desativa as anteriores. Esse comportamento precisa conviver com versões direcionadas A/B1/B2 ativas simultaneamente; o editor básico **não é o estúdio completo**.
+
+O estúdio desejado inclui versões, formatos, segmentos, duas ofertas, importação, duplicação, prévias isoladas, geração de links e leitura do desempenho pelo site. Essas capacidades continuam no escopo.
+
+### Documento de conteúdo
+
+O importador local usa `quiz-low-ticket/2`, diferente do rascunho simples do editor. Exemplo mínimo completo, apenas didático:
+
+```json
+{
+  "formato": "quiz-low-ticket/2",
+  "quiz": {"slug": "encontre-sua-solucao", "title": "Encontre sua solução"},
+  "ofertas": [
+    {"id": "oferta-inicial", "nome": "Oferta inicial — exemplo", "checkout_url": null},
+    {"id": "oferta-avancada", "nome": "Oferta avançada — exemplo", "checkout_url": null}
+  ],
+  "versoes": [{
+    "key": "B2",
+    "default_format": "text",
+    "formats": {
+      "text": {"headline": "Descubra seu próximo passo", "subheadline": "Responda ao diagnóstico."}
+    },
+    "segments": {
+      "iniciante": {
+        "headline": "Encontre um ponto de partida",
+        "subheadline": "Para quem está começando.",
+        "video_url": null,
+        "results": {
+          "base": {"title": "Comece pela base", "description": "Seu próximo passo.", "botao_rotulo": "Conhecer a oferta inicial"}
+        }
+      }
+    },
+    "perguntas": [{
+      "id": "momento",
+      "texto": "Qual é seu momento?",
+      "opcoes": [
+        {"id": "inicio", "texto": "Estou começando", "pontos": 0},
+        {"id": "avanco", "texto": "Já tenho experiência", "pontos": 2}
+      ]
+    }],
+    "faixas": [
+      {"key": "base", "title": "Comece pela base", "description": "Fortaleça os primeiros passos.", "min_score": 0, "max_score": 1, "oferta_id": "oferta-inicial", "botao_rotulo": "Conhecer a oferta inicial"},
+      {"key": "avanco", "title": "Avance", "description": "Desenvolva o que começou.", "min_score": 2, "max_score": 2, "oferta_id": "oferta-avancada", "botao_rotulo": "Conhecer a oferta avançada"}
+    ]
+  }]
+}
+```
+
+Identificadores são legíveis e sem espaços. A versão aceita A, B1, B2 e equivalentes. No importador local, reimportar documento idêntico não muda conteúdo; alterar perguntas ou mensagens exige nova chave de versão. Conectar os links reais é uma operação separada. Não executar o importador como se já estivesse integrado à base atual.
+
+Para os demais formatos:
+
+- `video` e `hybrid`: headline, subheadline e `video_url` real reproduzível. Roteiros ficam fora do JSON. Sem mídia real, não inventar URL nem ativar esse formato no conteúdo importável.
+- `ai`: headline, subheadline e `instructions` com abordagem, percurso e critérios de conclusão entre as duas ofertas; execução ainda pendente.
+- `calc`: headline, subheadline e `calculator` com `inputs` (`key`, `label`, `default`, `min`, `max`), `expression` e `result_label`. O avaliador local aceita soma, subtração, multiplicação e divisão, sem funções externas.
+- `segments`: alterações dos textos e vídeo; resultados indexados pela chave da faixa. A oferta permanece ligada à pontuação.
+
+### Pedido reutilizável para a outra IA
+
+> Crie conteúdo para um quiz low ticket que indique exatamente uma de duas ofertas externas. Ainda não defini tema, público ou ofertas: proponha três combinações concretas, com público, problema, promessa realista e duas ofertas complementares, e explique sua recomendação e hipóteses. Após definir a combinação, entregue resumo das ofertas e público, roteiro completo e JSON puro no formato quiz-low-ticket/2 mostrado neste manual. Use um slug estável e versões A, B1, B2. Explique fora do JSON o que muda entre versões e qual hipótese cada campanha direcionada compara; não criar sorteio ou percentuais de tráfego. Inclua perguntas, opções com pontos, faixas cobrindo todas as pontuações possíveis e vínculo de cada faixa a uma das duas ofertas. Entregue headline, subheadline, resultado e CTA, personalizados para os segmentos propostos. Prepare roteiros de vídeo e híbrido, instruções de conversa por IA e calculadora com fórmula, unidades e hipóteses quando fizer sentido. Sem arquivo real de vídeo, entregue roteiro fora do JSON; não invente links. Mantenha os dois checkout_url como null. Separe JSON importável, notas, roteiros, sugestões de campanha e dependências. Inclua exemplos de respostas, soma e oferta esperada para conferirmos o comportamento. Não inclua credenciais, dados pessoais ou promessa de retorno garantido.
+
+## 9. Escala, tracking, CRM e BI
+
+Nomes como `qz_escalando_oct26` e `vsl_47s_cta_comprar` são exemplos úteis do texto original. Sua grafia consistente permite agrupar a campanha. Não foi criada uma convenção permanente adicional.
+
+Quatro criativos × dois formatos × três segmentos geram 24 combinações por versão. Gerar URL não cria criativo, campanha ou formato ausente. O gerador local precisa apontar somente para experiências configuradas.
+
+| Camada contemplada | Capacidade pretendida | Dependência |
+|---|---|---|
+| Builder próprio | Resolver versão/formato/segmento e aplicar personalização | Integrar arquivos locais ao runtime e editor |
+| GA4 | UTMs, eventos e dimensões de versão/formato/segmento | Propriedade e configuração de coleta |
+| Meta CAPI | Eventos no servidor e deduplicação | Credenciais, integração e prova de entrega |
+| TikTok Events API | Eventos e contexto de versão/formato/criativo | Credenciais, integração e prova de entrega |
+| Klaviyo / ActiveCampaign | Contatos, tags, origem, resultado e histórico | Contas e conexão; envio explícito |
+| Looker / Metabase | Campanhas, coortes, pedidos, receita e LTV | Fonte de dados e dashboard |
+| Checkout externo | Contexto aceito e retorno dos estados do pedido | Links, provedor e integração |
+| Retargeting | Participantes de B2 que ainda não compraram | Eventos, identidade compatível e exclusão de compradores confirmados |
+
+Nenhuma dessas integrações foi descartada. Credenciais ou conteúdo ausentes são dependências, não impossibilidade. Não é necessário contratar todos os serviços para preparar o quiz, e nenhum segredo deve entrar no documento ou na URL.
+
+Cada ferramenta precisa receber as propriedades explicitamente conforme sua interface. Identificadores permitem deduplicar novas tentativas e, quando aplicável, o mesmo evento enviado pelo navegador e servidor. Preferências e consentimento do produto precisam acompanhar o uso real dos dados; este manual não inventa política jurídica.
+
+### Eventos internos atuais
+
+[quiz.completado.v1](../../contracts/eventos/quiz.completado.v1.json) exige site, slug, faixa, score e lead. O contrato **permite `version_key` opcional**, e a view atual o emite. Também permite `utm`. A antiga afirmação de que não existe `version_key` está superada. O contrato atual **não permite `context`**; integrar o contexto novo requer compatibilizar produtores e consumidores.
+
+Submissão e outbox são gravadas na mesma transação. O relay entrega antes de marcar publicado e mantém tentativas pendentes em caso de falha. Telemetria registra visualização, pergunta, opção e abandono; não substitui a conclusão no banco.
+
+## 10. Melhoria contínua diária e por campanha
+
+O objetivo continua sendo acompanhar a jornada completa e criar versões melhores mantendo a escolha por URL. A análise diária está no escopo; **nenhum novo agendamento foi criado nesta atualização**.
+
+| Medida | Significado | Dependência |
+|---|---|---|
+| Visitas elegíveis | Participações iniciadas sem contar refresh como outra pessoa | Sessão/experiência e identificação de tráfego de teste |
+| Avanço e abandono | Perda em cada etapa | Telemetria |
+| Conclusões / visitas | Conversão do quiz | Conclusão ligada à entrada |
+| Saídas / conclusões | Uso do botão da oferta | Saída rastreada |
+| Compras / visitas | Conversão comercial | Compra confirmada |
+| Receita por visitante | Receita atribuída / visitantes elegíveis | Pedidos, moeda, período e reembolsos |
+| LTV por versão/coorte | Valor acumulado dos clientes daquele grupo | Histórico de compras, identidade e janela de observação |
+
+A análise agrupa dia, versão, formato, segmento, fonte, meio, campanha e criativo. Dia/fuso, denominador e janela de atribuição precisam estar explícitos. O relatório local ainda não recebe receita/LTV automaticamente.
+
+Ana identifica perdas e prepara B3 para uma mudança concreta: headline, CTA, vídeo, ordem ou extensão. Depois observa o desempenho da nova campanha. Não há garantia de melhoria diária nem de resultado financeiro.
+
+Retargeting por “viu B2 e não comprou” depende de conhecer compras. Comparar lances por formato permanece no escopo analítico; executar mudanças que gastem dinheiro real exige a palavra do mantenedor.
+
+## 11. Conferência integral do texto fornecido
+
+| Recomendação original | Tratamento |
+|---|---|
+| Base estável, slug legível, sem ID numérico | Mantida |
+| Mesmo slug para A/B1/B2/C, inclusive quiz mais curto | Mantida; campanhas direcionadas |
+| Todos os parâmetros internos e UTMs | Mantidos, incluindo meio e termo |
+| Duplas de parâmetros e Variable Logic | Mantidas no builder próprio, com envio explícito às ferramentas |
+| Headline, VSL, CTA e resultado por segmento | Mantidos |
+| Contexto pelas etapas, resultado e checkout | Mantido; trecho externo depende do provedor |
+| Cookie/localStorage/hidden fields | Objetivo mantido; exemplo corrigido para sessão assinada |
+| Texto, vídeo, híbrido, AI Agent e calculadora | Todos mantidos |
+| Naming e centenas de combinações | Mantidos como organização e gerador de campanhas |
+| GA4, Meta CAPI e TikTok | Mantidos |
+| Klaviyo, ActiveCampaign, Looker e Metabase | Mantidos |
+| LTV, receita por visitante, retargeting e lances por formato | Mantidos, com dados de compra e autorização para gastar |
+| Redesign exige outro slug com canonical para original | Corrigido: pode ser outra versão; canonical só entre conteúdos equivalentes |
+| `v` sozinho cria A/B confiável | Corrigido: comparação direcionada não prova causalidade |
+| Preencher formulário externo via JS do quiz | Exige mecanismo oferecido pelo checkout |
+| Plataformas comerciais citadas como builder | Capacidades contempladas no Crivo; não significa contratar todas |
+
+Nenhuma capacidade foi omitida só porque exige implementação. Os limites reais são cooperação de serviços externos, diferenças entre ferramentas e ausência de garantia de resultado comercial.
+
+## 12. Documento no projeto e documento no site
+
+Conforme [documentos.py](../../services/admin/apps/core/documentos.py), o site lê os documentos da tabela `Documento`. A pasta `documentos/` é semente de migrações e não sincroniza o texto automaticamente a cada deploy.
+
+Editar o Markdown registra o trabalho no projeto; não comprova atualização do documento existente no site. Esse documento tem editor e histórico próprios em `/admin/documentos/o-crivo-explicado-do-zero`. A revisão deve preservar a versão anterior e a visibilidade existente. O documento observado no painel é **privado para administradores**.
+
+A regra de publicação já dada pelo mantenedor continua: backup antes; se a prova falhar ou o site cair, voltar o código à última versão aprovada, sem restaurar o banco automaticamente.
+
+## 13. Prova e próximo trabalho
+
+A prova desta revisão documental é conferir conteúdo, referências, exemplo JSON e renderização. Os 94 testes históricos não substituem uma nova prova da integração do quiz.
+
+O Makefile atual tem `test`, `lint` e `type`; `ci` consta em `.PHONY`, mas não possui receita naquele arquivo. Portanto, `make ci` não comprova que toda a suíte executou.
+
+A continuação de produto precisa reconciliar modelos/migrações/rotas/editor, concluir capacidades pendentes, receber conteúdo real e testar da entrada até a demonstração das duas ofertas. Depois o mantenedor entrega os dois links, que serão conectados e verificados. Integrações de compra e medição têm provas próprias.
+
+Entrega pronta do site significa prova automática aprovada e endereço abrindo. Arquivos presentes ou URL antiga respondendo não comprovam a nova experiência.
+
+## 14. Fontes atuais
+
+- [Modelos](../../services/quiz/apps/quiz/models.py), [views](../../services/quiz/apps/quiz/views.py), [rotas](../../services/quiz/config/urls.py) e [tarefas](../../services/quiz/apps/quiz/tasks.py).
+- [Editor de quiz](../../services/quiz/apps/quiz/editor.py) e [painel de conteúdos](../../services/admin/apps/core/conteudos.py).
+- [Migração do rascunho](../../services/quiz/apps/quiz/migrations/0006_quizdraft.py) e [migração local de experiências](../../services/quiz/apps/quiz/migrations/0006_experiencias_direcionadas.py).
+- [Direcionamento local](../../services/quiz/apps/quiz/direcionadas.py), [experiências locais](../../services/quiz/apps/quiz/experiencias.py) e [destinos locais](../../services/quiz/apps/quiz/destinos.py).
+- [Importador de conteúdo local](../../services/quiz/apps/quiz/conteudo.py) e [exemplo dos testes](../../services/quiz/tests/test_importar_quiz.py).
+- [Gerador de links local](../../services/quiz/apps/quiz/management/commands/gerar_links_quiz.py), [conexão local de checkouts](../../services/quiz/apps/quiz/management/commands/conectar_checkouts.py), [relatório local](../../services/quiz/apps/quiz/campanhas.py).
+- [Contrato de conclusão](../../contracts/eventos/quiz.completado.v1.json), [Makefile](../../services/quiz/Makefile).
+- [Armazenamento/renderização documental](../../services/admin/apps/core/documentos.py) e [editor de documentos](../../services/admin/apps/core/editor_de_documentos.py).
+
+## Histórico do manual anterior
+
+<details>
+<summary>Texto anterior preservado para consulta histórica; as decisões e o estado de 02/10 acima prevalecem.</summary>
+
+**Atenção histórica:** as seções abaixo descrevem a base anterior, com seleção por peso, seed e afirmações hoje superadas sobre editor e contrato. Não são instruções vigentes para os novos quizzes. Referências antigas removidas do projeto aparecem como nomes de arquivo, sem fingir que ainda são fontes disponíveis.
+
+# Manual completo e didático para criar, publicar e operar um sistema de quizzes
+
 Este manual explica o Crivo, a célula de quizzes deste projeto, para três pessoas:
 
 - quem nunca criou um site e precisa operar um quiz;
@@ -20,7 +337,7 @@ O manual usa Ana como personagem fictícia. Ana representa uma operadora inician
 
 Um quiz é uma página que apresenta perguntas, recebe escolhas, calcula uma pontuação no servidor, encontra uma faixa de resultado, registra uma submissão e pode encaminhar a pessoa para um próximo passo.
 
-**Confirmado no sistema:** o Crivo expõe páginas HTML, não uma API JSON pública. A célula publica páginas em `/quiz/*` segundo [constituicoes/AGENTS.quiz.md](../../constituicoes/AGENTS.quiz.md) e as rotas reais estão em [services/quiz/config/urls.py](../../services/quiz/config/urls.py).
+**Confirmado no sistema:** o Crivo expõe páginas HTML, não uma API JSON pública. A célula publica páginas em `/quiz/*` segundo constituicoes/AGENTS.quiz.md (referência histórica) e as rotas reais estão em [services/quiz/config/urls.py](../../services/quiz/config/urls.py).
 
 **Explicação simplificada:** pense em uma recepcionista. Ela faz perguntas, organiza as respostas, identifica o perfil da pessoa e entrega uma orientação. O Crivo faz isso com regras gravadas no banco.
 
@@ -564,7 +881,7 @@ Pegue uma frase do manual e localize a fonte. Se não encontrar fonte em código
 
 ## 17. Fontes conferidas
 
-- [Constituição da célula quiz](../../constituicoes/AGENTS.quiz.md)
+- Constituição da célula quiz (referência histórica removida)
 - [Modelos do quiz](../../services/quiz/apps/quiz/models.py)
 - [Views do quiz](../../services/quiz/apps/quiz/views.py)
 - [Relay e telemetria](../../services/quiz/apps/quiz/tasks.py)
@@ -575,8 +892,11 @@ Pegue uma frase do manual e localize a fonte. Se não encontrar fonte em código
 - [Testes de telemetria](../../services/quiz/tests/test_telemetria.py)
 - [Testes de superfície pública](../../services/quiz/tests/test_superficie_publica.py)
 - [Testes de pontuação e outbox](../../services/quiz/tests/test_inv_pontuacao_servidor_e_outbox.py)
-- [Lições da célula](../../services/quiz/LICOES.md)
+- Lições da célula (referência histórica removida)
 
 ### Veredito para Ana
 
 Ana agora consegue explicar o caminho inteiro sem atribuir ao quiz o que pertence a outra célula: a pessoa chega, recebe uma versão estável, responde, tem a pontuação calculada pelo servidor, recebe uma faixa, informa o contato, vê o CTA e deixa um evento pendente de entrega confiável. Onde o código não comprova um painel, uma regra legal, uma comparação de versões no evento ou uma venda, o manual diz isso explicitamente.
+
+
+</details>

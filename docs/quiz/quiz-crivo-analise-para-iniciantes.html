@@ -356,6 +356,22 @@
     </div>
   </div>
 
+  <div class="card" id="estado-atual" style="margin-bottom:20px;">
+    <h2>Atualização de 02/10/2026: campanhas direcionadas</h2>
+    <p>Um endereço estável por quiz. O link <code>/quiz/encontre-sua-solucao/?v=B2</code> escolhe B2 para novas visitas, sem sorteio automático. A, B1 e B2 podem ter perguntas e apresentações diferentes no mesmo slug.</p>
+    <p>O escopo inclui texto, vídeo, híbrido, agente de IA, calculadora, personalização por segmento, duas ofertas externas, medição por dia e campanha, GA4, Meta CAPI, TikTok, Klaviyo, ActiveCampaign, Looker, Metabase, retargeting, receita por visitante e LTV.</p>
+    <p>Todos os marcadores permanecem contemplados: <code>v, fmt, seg, src, med, cpg, ctv</code> e UTMs de fonte, meio, campanha, conteúdo e termo. Os dois checkouts reais serão fornecidos depois do teste do quiz; no conteúdo inicial, seus endereços ficam <code>null</code>.</p>
+    <table><thead><tr><th>Parte</th><th>Estado observado</th></tr></thead><tbody>
+      <tr><td>Quiz básico, sessão, pontuação, lead, telemetria e editor com rascunho</td><td>Presentes no código atual; não equivale a prova em produção.</td></tr>
+      <tr><td>Campanhas por URL, formatos, segmentos, saídas e importador JSON</td><td>Arquivos locais ainda a integrar aos modelos, migrações e rotas atuais.</td></tr>
+      <tr><td>IA funcional, compras, integrações e receita/LTV</td><td>Pendentes de implementação e acessos correspondentes.</td></tr>
+    </tbody></table>
+    <p>A base atual ainda não declara <code>directed, experience, context</code> e há duas migrações locais 0006. Os 94 testes registrados em 01/10 são históricos; não comprovam este checkout ou publicação.</p>
+    <p>Comparação por campanha não prova causalidade automaticamente. O cookie JSON do exemplo será substituído pela sessão assinada existente. Campos de checkout em outro domínio e retorno de compras dependem de integração oferecida pelo provedor. Canonical só deve relacionar páginas equivalentes.</p>
+    <p>O <a href="manual-completo-e-didatico-para-criar-publicar-e-operar-quizzes.md">manual atualizado</a> reúne cada recomendação, o formato <code>quiz-low-ticket/2</code> e o pedido para a outra IA. O <a href="RETOMADA-CRIVO.md">registro de retomada</a> conserva o histórico e as pendências.</p>
+    <div class="note">As ilustrações seguintes explicam o Crivo inicial. Histórias e recomendações antigas são contexto pedagógico, não novas regras permanentes nem prova das capacidades novas. O documento existente no site fica no banco e tem histórico próprio.</div>
+  </div>
+
   <div class="grid">
     <div class="card">
       <h2>Como ler esta pagina (para quem esta comecando)</h2>
@@ -392,7 +408,7 @@
         </div>
       </div>
       <p style="margin-top:10px;">
-        Leitura sugerida: <a href="https://github.com/abundanciabr/sitesdoreino/blob/main/constituicoes/AGENTS.quiz.md" target="_blank" rel="noreferrer">constituicoes/AGENTS.quiz.md</a>.
+        Leitura sugerida: <a href="../../AGENTS.md" target="_blank" rel="noreferrer">AGENTS.md</a>.
       </p>
     </div>
   </div>
@@ -753,7 +769,7 @@
     </div>
   </div>
 
-  <div class="section-title">5. Seu quiz nao precisa ser “inteligente”. Precisa ser coerente</div>
+  <div class="section-title">5. Pontuação e recomendação precisam ser coerentes</div>
   <div class="row">
     <div class="card">
       <h2>O que as pessoas tentam fazer (e por que da errado)</h2>
@@ -931,9 +947,9 @@
   <div class="card">
     <h2>Onde conferir detalhes no projeto</h2>
     <ul class="ul">
-      <li><a href="https://github.com/abundanciabr/sitesdoreino/blob/main/constituicoes/AGENTS.quiz.md" target="_blank" rel="noreferrer">constituicoes/AGENTS.quiz.md</a> (missao, fronteiras e invariantes do quiz).</li>
+      <li><a href="../../AGENTS.md" target="_blank" rel="noreferrer">AGENTS.md</a> (instruções vigentes do mantenedor).</li>
       <li><a href="https://github.com/abundanciabr/sitesdoreino/blob/main/services/quiz/apps/quiz/models.py" target="_blank" rel="noreferrer">services/quiz/apps/quiz/models.py</a> (pecas: Site, Quiz, Question, Option, ResultBand, Submission).</li>
-      <li><a href="https://github.com/abundanciabr/sitesdoreino/blob/main/services/quiz/LICOES.md" target="_blank" rel="noreferrer">services/quiz/LICOES.md</a> (historias reais de bugs e decisoes).</li>
+      <li><a href="RETOMADA-CRIVO.md" target="_blank" rel="noreferrer">RETOMADA-CRIVO.md</a> (estado atual e histórico do quiz).</li>
       <li><a href="https://github.com/abundanciabr/sitesdoreino/blob/main/contracts/eventos/quiz.completado.v1.json" target="_blank" rel="noreferrer">contracts/eventos/quiz.completado.v1.json</a> (contrato do evento).</li>
     </ul>
   </div>

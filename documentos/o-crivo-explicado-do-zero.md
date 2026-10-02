@@ -6,6 +6,8 @@ ordem: 12
 
 # O Crivo explicado do zero
 
+>! Atualizado em 02/10/2026. A Parte 7 registra as decisões de campanhas direcionadas e o estado da implementação. As histórias do Crivo inicial são contexto histórico, não novas regras permanentes. Atualizar este arquivo não atualiza automaticamente o documento guardado no site.
+
 Esta página ensina o quiz da Meshcraft para quem nunca construiu um sistema
 desse tipo. Sem jargão pela frente. Quando um termo técnico aparecer, ele chega
 depois da história que o justifica.
@@ -243,10 +245,12 @@ momento de maior atenção dela e não ofereceu nada.
 
 A correção foi pôr um botão. A sutileza da decisão: **o botão é da faixa, não
 da tela**. Quem está começando e quem está pronto para escalar não recebem o
-mesmo convite. Hoje os três levam ao mesmo lugar (a oferta padrão do site), e
-isso é honesto: o site tem uma oferta só. O que muda é a **palavra**, que é o
-que faz a pessoa se reconhecer. É a diferença entre o vendedor que diz "quer
-comprar?" e o que diz "pelo que você me contou, eu começaria por aqui".
+mesmo convite. No Crivo inicial, os três botões levavam à oferta padrão do
+site, com palavras diferentes. Nas campanhas novas, cada faixa pode apontar
+para uma das duas ofertas externas previstas. Enquanto os endereços reais não
+forem conectados, o trabalho local prevê uma demonstração, ainda a integrar.
+A palavra e o destino
+precisam combinar com o resultado que a pessoa recebeu.
 
 **E uma regra de banco de dados que vale ouro.** O sistema recusa gravar uma
 faixa que tenha destino sem rótulo, ou rótulo sem destino. Destino sem rótulo
@@ -715,42 +719,112 @@ visita nova começa a investigação do zero.
 
 ---
 
-## Parte 7. O retrato honesto de hoje
+## Parte 7. O Crivo de campanhas: o desenho novo e o estado de hoje
 
-Quatro coisas para você ter clareza do que está e do que não está pronto. Esta
-página explica o desenho. O estado ao vivo (se a página abre, se o menu aponta
-para ela) mora no site e no painel, não aqui. Documento que copia número vira
-mentira no dia seguinte.
+**Retrato do código local em 02/10/2026.** Esta data descreve o que foi lido
+nos arquivos, não uma publicação. As 94 provas de 01/10 são históricas; não
+comprovam que a versão atual foi publicada nem que um endereço público abre.
+Há peças novas ainda desencontradas: a migração de experiências adiciona
+`directed`, `experience` e `context`, mas o modelo atual ainda não declara
+esses campos; duas migrações locais têm o número `0006`. As rotas públicas
+atuais ainda não incluem cálculo, saída ou demonstração das campanhas novas.
+Por isso os trechos novos de código não representam, juntos, uma jornada
+funcional já entregue.
 
-![Quatro cartões do retrato honesto: um quiz só, respostas sem tela, páginas-ilha, loja fora do mapa.](figura:retrato-hoje)
+| Parte | Estado observado em 02/10 |
+|---|---|
+| Crivo inicial e editor básico | Presentes no código atual |
+| Campanhas por URL, formatos e duas ofertas | Arquivos locais ainda a integrar |
+| IA, compra confirmada e integrações externas | Pendentes |
+| Prova da nova experiência publicada | Ainda não demonstrada |
 
-**1. Existe um único quiz, e ele é o mesmo em todos os sites.** As três
-perguntas, os pontos e as três faixas estão **escritos no código**, não
-cadastrados numa tela. Não existe editor de quiz. Quiz diferente hoje exige um
-programador abrindo um PR.
+### Da ficha única às campanhas direcionadas
 
-Isso não é defeito, é estágio. O caminho normal é exatamente esse: primeiro
-faça funcionar com o conteúdo cravado, depois, quando a necessidade de variar
-aparecer de verdade, construa o editor. Construir o editor antes de saber se
-alguém quer um segundo quiz é gastar semanas para resolver um problema
-hipotético.
+O Crivo inicial, de três perguntas, continua útil para entender pontuação,
+faixas, lead e aviso ao restante do sistema. Mas ele já não descreve sozinho
+todo o produto: o modelo aceita vários quizzes por site e várias versões.
+Há um rascunho no modelo local, uma API privada para listar, salvar e publicar
+quizzes e uma tela de edição básica no admin do site. Também há código local
+para importar campanhas por documento JSON. Isso corrige as antigas frases
+"existe um único quiz" e "não existe editor". A tela e a API existentes ainda
+não são o estúdio completo de campanhas descrito abaixo.
 
-**2. As respostas ficam guardadas e ninguém as lê.** Cada resposta completa
-vira um registro imutável, com as alternativas, a pontuação e as UTMs. Existe
-tudo isso guardado e **nenhuma tela mostra**. Se você quiser saber "quantas
-pessoas caíram na faixa avançado este mês", hoje não há onde ver.
+Pense numa campanha como uma ficha da recepcionista com três edições: `A`,
+`B1` e `B2`. Todas usam o **mesmo endereço do quiz**, identificado pelo
+`slug`; o link escolhe explicitamente a edição com `?v=A`, `?v=B1` ou
+`?v=B2`. Para as campanhas novas, **não há sorteio automático de versão**.
+O código antigo ainda contém uma escolha por pesos para quizzes legados; ela
+não é a direção das novas campanhas. Cada campanha guarda sua própria versão,
+seu formato, seu segmento e sua tentativa, para que um anúncio não troque a
+ficha de uma pessoa no meio da conversa.
 
-**3. As duas páginas não têm o menu nem o rodapé do site.** Elas são HTML
-solto, com o estilo escrito dentro do próprio arquivo. A pessoa que chega no
-quiz está numa ilha, sem barra de navegação para voltar ao site. Isso ficou
-registrado como dívida conhecida quando a página ainda não era alcançável. A
-justificativa da época venceu no dia em que a página passou a ser alcançável.
+Um link dirigido pode carregar `v` (versão), `fmt` (formato), `seg`
+(segmento), `src` (origem), `med` (meio), `cpg` (campanha) e `ctv` (criativo),
+além dos parâmetros `utm_*`. Por exemplo,
+`/quiz/crivo/?v=B1&fmt=video&seg=iniciante&src=instagram&cpg=outubro`.
+O gerador local monta esses links com os parâmetros explícitos. O módulo local
+de tentativas dirigidas foi escrito para preservar contexto e UTMs da chegada;
+ele ainda não está ligado à jornada pública, que usa o resolvedor legado. Por
+isso este exemplo mostra **a intenção da campanha**, não comprova que o link
+já funciona na rua.
 
-**4. A loja pode estar aberta e fora do mapa.** Ter o endereço
-`meshcraft.top/quiz/crivo/` respondendo não é a mesma coisa que ter um link
-no menu. Uma loja iluminada dentro de um shopping onde ela não aparece no
-mapa continua sendo uma loja que quase ninguém encontra. Quem decide o menu
-é a tela `/admin/menu/`, com sessão logada.
+### Formas de conversar e o próximo passo
+
+A mesma ficha pode começar em texto (`text`), vídeo (`video`), texto com vídeo
+(`hybrid`), calculadora (`calc`) ou assistência de IA (`ai`; `ai_agent` é um
+apelido aceito). Título, subtítulo, vídeo e mensagem do resultado podem
+variar por segmento. A calculadora usa apenas entradas declaradas e operações
+aritméticas no servidor. Seus números são estimativas baseadas nas premissas
+apresentadas, nunca uma promessa de retorno financeiro. Vídeos aceitos são
+arquivos HTTPS MP4/WebM ou embeds conhecidos do YouTube; não há serviço de
+hospedagem de mídia instalado nesta peça.
+
+O código local já tem módulos para resolver formatos, personalizar segmentos
+e calcular, mas a ligação deles à página pública está pendente. **A IA não
+está pronta**: o comportamento provisório do código local informa
+indisponibilidade (503), sem executar uma conversa; a rota pública de IA ainda não foi
+encontrada. As duas ofertas previstas ficam em links externos, associados às
+faixas. Há uma rotina local para conectar os dois endereços reais, ainda não
+integrada ao fluxo. A demonstração prevista também precisa ser integrada;
+ela não confirma uma venda. O documento de importação tem a identificação
+`quiz-low-ticket/2`.
+
+### A mesa de trabalho e os números
+
+O estúdio desejado reúne edição, importação, duplicação, prévias isoladas e
+geração de links por versão, formato e segmento. No código local conferido,
+há tela básica de edição no admin, API privada para rascunhos, comando de
+importação e comando de geração de links. **Duplicação e prévias isoladas em
+um estúdio visual não foram encontradas**. Os comandos novos dependem dos
+campos e da integração ainda pendentes; sua presença no repositório não basta
+para operá-los na base atual.
+
+As respostas e as UTMs do Crivo inicial são guardadas. Há um módulo local de
+relatório para agrupar primeira visita, conclusão e clique de saída por dia,
+campanha, versão, formato e segmento. Ele depende do contexto novo ainda
+ausente do modelo atual. Quando integrado, ajuda a enxergar perda até a
+conclusão e conclusões sem clique; um clique de saída ainda não prova compra.
+O trabalho previsto inclui medir
+receita por visitante e valor ao longo do relacionamento (**LTV**), usar essas
+leituras para melhorar campanhas a cada dia e criar versões novas quando o
+conteúdo mudar. Não há prova local, nesta leitura, de receita/LTV fechados
+com os checkouts.
+
+GA4, Meta CAPI, TikTok, Klaviyo, ActiveCampaign, Looker e Metabase fazem parte
+do escopo de integração e análise, junto com públicos de retargeting. Essas
+conexões externas **não estão ativas no código local conferido**. Os dados de
+origem, resultado e saída dão matéria-prima para elas, mas a existência da
+matéria-prima não equivale ao envio para cada serviço.
+
+O Crivo também depende da apresentação do site. Mesmo quando uma página
+responde, o menu e o rodapé podem continuar separados; e um quiz sem link no
+menu pode ficar fora do caminho normal das pessoas. Só uma medição do endereço
+público pode afirmar o estado dessa parte hoje.
+
+O manual completo no repositório,
+`docs/quiz/manual-completo-e-didatico-para-criar-publicar-e-operar-quizzes.md`,
+reúne os campos de importação, o pedido para a outra IA e cada recomendação
+do texto de arquitetura, com seu estado e suas dependências.
 
 ---
 
@@ -810,6 +884,7 @@ Três gestos concretos, na ordem em que esta casa aprendeu doído:
 3. No primeiro teste de segurança, sabote o código de propósito. Se o teste
    continuar verde, você ainda não tem teste.
 
-O Crivo que você acabou de estudar é essa disciplina aplicada a um
-questionário de três perguntas. O tamanho é pequeno de propósito. A disciplina
-é o que escala.
+O Crivo começou com um questionário de três perguntas. Esse exemplo pequeno
+explica a recepcionista; as campanhas direcionadas ampliam suas fichas,
+formatos e caminhos sem mudar a ideia de perguntar, classificar, encaminhar e
+avisar.
