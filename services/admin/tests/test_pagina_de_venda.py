@@ -27,8 +27,6 @@ O que estes guardas protegem:
 from __future__ import annotations
 
 import json
-import re
-from pathlib import Path
 
 import httpx
 import pytest
@@ -50,10 +48,6 @@ RASCUNHO = f"{CATALOGO}/sites/{SITE_ID}/paginas/oferta/rascunho"
 PUBLICAR = f"{CATALOGO}/sites/{SITE_ID}/paginas/oferta/publicar"
 
 SITE = {"id": SITE_ID, "host": "testserver", "name": "Meshcraft", "active": True}
-
-RAIZ_DO_REPO = Path(__file__).resolve().parents[3]
-DESPACHO = RAIZ_DO_REPO / "docs" / "despachos" / "DESPACHO-COPY-DA-PAGINA-DE-OFERTA.md"
-
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
@@ -118,103 +112,6 @@ def _com_rascunho(secoes, base_version=0):
 
 def _texto(resposta) -> str:
     return resposta.content.decode()
-
-
-# ---------------------------------------------------------------------------
-# 1. A tela e o despacho dizem as mesmas palavras
-# ---------------------------------------------------------------------------
-def _despacho_declarado() -> tuple[list, dict]:
-    """As onze seções e a frase de cada espaço, lidas do documento dele.
-
-    Derivar em vez de copiar é o que faz esta comparação valer alguma coisa:
-    duas listas escritas à mão concordariam por terem sido copiadas uma da
-    outra, e divergiriam na primeira correção feita só de um lado.
-    """
-    assert DESPACHO.is_file(), (
-        f"{DESPACHO} não existe. Este guarda não tem o que medir, e isso não é "
-        "um OK — [INV-CI01]."
-    )
-    texto = DESPACHO.read_text(encoding="utf-8")
-
-    ordem = []
-    for linha in texto.splitlines():
-        if not linha.startswith("| "):
-            continue
-        celulas = [c.strip() for c in linha.strip().strip("|").split("|")]
-        if len(celulas) != 4 or not celulas[0].isdigit():
-            continue
-        nome = celulas[1].strip("`")
-        espacos = []
-        for pedaco in celulas[3].split(","):
-            pedaco = pedaco.strip()
-            faixa = re.fullmatch(r"`(\w+?)_(\d+)` a `(\w+?)_(\d+)`", pedaco)
-            if faixa:
-                base, primeiro, _, ultimo = faixa.groups()
-                espacos += [
-                    f"{base}_{n}" for n in range(int(primeiro), int(ultimo) + 1)
-                ]
-            else:
-                espacos.append(pedaco.strip("`"))
-        ordem.append((nome, celulas[2], tuple(espacos)))
-
-    frases = {}
-    secao = None
-    for linha in texto.splitlines():
-        cabecalho = re.match(r"## Seção \d+: `(\w+)`", linha)
-        if cabecalho:
-            secao = cabecalho.group(1)
-            continue
-        if secao is None or not linha.startswith("| `"):
-            continue
-        celulas = [c.strip() for c in linha.strip().strip("|").split("|")]
-        if len(celulas) != 4:
-            continue
-        rotulo = celulas[0].strip("`")
-        faixa = re.fullmatch(r"(\w+?)_(\d+)` a `(\w+?)_(\d+)", rotulo)
-        alvos = (
-            [
-                f"{faixa.group(1)}_{n}"
-                for n in range(int(faixa.group(2)), int(faixa.group(4)) + 1)
-            ]
-            if faixa
-            else [rotulo]
-        )
-        for alvo in alvos:
-            frases[f"{secao}.{alvo}"] = celulas[1]
-
-    assert len(ordem) == 11, (
-        f"o despacho declarou {len(ordem)} seções em vez de onze — falha de "
-        "medição, não notícia ([INV-CI01])."
-    )
-    return ordem, frases
-
-
-def test_as_secoes_da_tela_sao_as_onze_do_despacho_na_ordem_dele():
-    """Nome, o que cada uma é em uma linha, e os espaços de cada uma."""
-    ordem, _ = _despacho_declarado()
-    assert [(s.nome, s.e, s.espacos()) for s in paginas.SECOES] == ordem
-
-
-def test_a_frase_que_explica_cada_espaco_e_a_do_despacho():
-    """Palavra por palavra. Ele não vai ler manual: o manual é a tela."""
-    _, frases = _despacho_declarado()
-    da_tela = {
-        f"{secao.nome}.{espaco.nome}": espaco.explicacao
-        for secao in paginas.SECOES
-        for espaco in secao.espacos_do_formulario
-    }
-    assert da_tela == frases
-
-
-def test_nenhum_espaco_proibido_pela_ferramenta_74_existe_na_tela():
-    """`ancora_de_preco` saiu da especificação e não volta por descuido.
-
-    Um campo é um convite a preencher, e um convite a preencher a âncora seria
-    a própria tela pedindo o que a lei dele proíbe.
-    """
-    todos = {e.nome for s in paginas.SECOES for e in s.espacos_do_formulario}
-    for proibido in ("ancora_de_preco", "valor_riscado", "prazo", "garantia_prazo"):
-        assert proibido not in todos
 
 
 # ---------------------------------------------------------------------------

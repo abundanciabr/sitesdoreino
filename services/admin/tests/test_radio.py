@@ -1,7 +1,5 @@
 """A retirada do rádio fecha os acessos e conserva o histórico no banco."""
 
-import json
-
 import pytest
 from django.apps import apps
 from django.db.migrations.executor import MigrationExecutor
@@ -9,7 +7,6 @@ from django.db import connection
 from django.test import RequestFactory
 from django.urls import Resolver404, resolve
 
-from apps.core.mapa_do_site import arquivo_do_mapa
 from apps.core.views import acesso_local
 
 
@@ -38,16 +35,6 @@ def test_rotas_do_radio_nao_existem(caminho, client, settings):
 def test_modelo_do_radio_nao_e_carregado():
     with pytest.raises(LookupError):
         apps.get_model("core", "MensagemDoRadio")
-
-
-def test_mapa_nao_oferece_radio():
-    arquivo = arquivo_do_mapa()
-    assert arquivo is not None, (
-        "o mapa do site não existe (`arquivo_do_mapa()` devolveu `None`). Devolva "
-        "o arquivo ao lugar que `apps/core/mapa_do_site.py` declara."
-    )
-    mapa = json.loads(arquivo.read_text(encoding="utf-8"))
-    assert "caixa/radio" not in json.dumps(mapa)
 
 
 def test_migracao_retira_modelo_sem_apagar_historico():

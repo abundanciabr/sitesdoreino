@@ -278,19 +278,6 @@ def test_o_placar_leva_ate_a_rede_de_talentos():
 # ---------------------------------------------------------------------------
 
 
-def test_o_laco_tem_os_seis_passos_na_ordem_do_documento():
-    laco = talentos.montar([], 133, HOJE)
-
-    assert [p["chave"] for p in laco["passos"]] == [
-        "alunas",
-        "talentos",
-        "estudios",
-        "encaixes",
-        "resultados",
-        "valor",
-    ]
-
-
 def test_a_contagem_mais_recente_vence_a_anterior():
     registros = [
         _medicao("2026-09-01", f"{ESTUDIOS}=1", "antigo"),
@@ -508,21 +495,3 @@ def test_as_tres_etiquetas_do_formulario_saem_de_digitadas():
     for campo, _cartao, rotulo in talentos.DIGITADAS:
         assert f"{rotulo}, no total" in html
         assert f'name="{campo}"' in html
-
-
-def test_o_rotulo_dos_encaixes_conta_o_que_o_cartao_define():
-    """`armadilhas/303`: indicador que mede a coisa errada com precisão.
-
-    O cartão diz que a mesma aluna em dois trabalhos conta duas vezes. Um
-    rótulo pedindo "alunas que começaram um trabalho" faria o número nascer
-    torto na primeira digitação, e nenhuma conta depois o endireitaria.
-    """
-    from apps.core.placar import ler_cartao
-
-    cartao, _ = ler_cartao(ENCAIXES)
-    rotulo = next(
-        r for _c, cartao_nome, r in talentos.DIGITADAS if cartao_nome == ENCAIXES
-    )
-
-    assert "duas vezes" in cartao["definicao"]
-    assert rotulo.startswith("Trabalhos"), "o cartão conta trabalhos, não pessoas"

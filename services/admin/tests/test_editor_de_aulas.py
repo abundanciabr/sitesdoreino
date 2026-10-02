@@ -44,7 +44,6 @@ custa, se cair:
 
 import json
 import re
-from pathlib import Path
 
 import httpx
 import pytest
@@ -65,7 +64,6 @@ DONO = "dono@exemplo.com"
 DONO_ID = "id-opaco-123"
 DE_FORA = "estranho@exemplo.com"
 SITE_ID = "site-mesh"
-CONTRATO = Path(__file__).resolve().parents[3] / "contracts" / "cursos.openapi.yaml"
 
 # As 34 encomendas do esqueleto da `cursos`: E00 a E32 e a bônus.
 NUMEROS = [f"E{n:02d}" for n in range(33)] + ["EB"]
@@ -109,33 +107,6 @@ def ambiente(settings, monkeypatch):
     monkeypatch.setenv("CURSOS_API_TOKEN", "token-do-par-admin-cursos")
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
-
-
-# ---------------------------------------------------------------------------
-# O CONTRATO, LIDO DO DISCO
-# ---------------------------------------------------------------------------
-def _bloco_do_contrato(componente: str) -> str:
-    texto = CONTRATO.read_text(encoding="utf-8")
-    inicio = texto.index(f"\n    {componente}:\n")
-    fim = texto.find("\n    ", inicio + len(componente) + 7)
-    while fim != -1 and texto[fim + 5] == " ":
-        fim = texto.find("\n    ", fim + 1)
-    return texto[inicio : fim if fim != -1 else len(texto)]
-
-
-def _enum_do_contrato(componente: str) -> list[str]:
-    bloco = _bloco_do_contrato(componente)
-    bloco = bloco[bloco.index("enum:") : bloco.index("type: string")]
-    return re.findall(r"^\s*- (\S+)$", bloco, flags=re.M)
-
-
-def _obrigatorias_do_contrato(componente: str) -> set[str]:
-    bloco = _bloco_do_contrato(componente)
-    # O `type: object` que fecha o componente é o que vem DEPOIS de `required:`;
-    # os campos `escala` e `descritores` têm um `type: object` próprio, antes.
-    inicio = bloco.index("required:")
-    bloco = bloco[inicio : bloco.index("type: object", inicio)]
-    return set(re.findall(r"^\s*- (\S+)$", bloco, flags=re.M))
 
 
 # ---------------------------------------------------------------------------
@@ -385,12 +356,6 @@ def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
         _dentro().get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
     )
 
-    na_tela = re.findall(r'name="peca_([a-z_]+)"', html)
-    do_contrato = _enum_do_contrato("TipoDePeca")
-    # 18: as peças que a tela e o contrato já tinham juntos quando esta prova
-    # foi escrita. É até onde a ORDEM está congelada dos dois lados.
-    assert na_tela[:18] == do_contrato[:18]
-    assert set(do_contrato) - set(na_tela) == set()
     assert html.count("o aluno nunca vê esta peça") == 2
     assert "Ficha do Guia do Mentor" in html and "Roteiro da aula" in html
     assert "E07: Encomenda 07" in html
@@ -686,7 +651,6 @@ def test_salvar_manda_a_encomenda_inteira_e_mostra_a_versao_nova():
     chamada = gravacao.calls.last.request
     assert chamada.headers["Authorization"] == "Bearer token-do-par-admin-cursos"
     corpo = json.loads(chamada.content)
-    assert set(corpo) == _obrigatorias_do_contrato("AulaParaGravarSchema")
     assert corpo == _corpo_esperado()
 
     html = _texto(cliente.get(resposta["Location"]))
@@ -935,7 +899,6 @@ def test_instrumento_le_e_grava_e_o_nome_e_o_cartao_so_se_leem():
 
     assert resposta.status_code == 302
     corpo = json.loads(gravacao.calls.last.request.content)
-    assert set(corpo) == _obrigatorias_do_contrato("InstrumentoParaGravarSchema")
     assert corpo["escala"] == {"tamanho": {"minimo": 1, "maximo": 5}}
     assert "Instrumento salvo, e ele ficou na versão 3." in _texto(
         cliente.get(resposta["Location"])

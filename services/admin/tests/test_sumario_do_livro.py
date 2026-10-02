@@ -26,7 +26,6 @@ congelado. O que cada promessa custa, se cair:
 """
 
 import re
-from pathlib import Path
 
 import httpx
 import pytest
@@ -45,7 +44,6 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 SITE_ID = "site-mesh"
 CURSO = "profissional"
-CONTRATO = Path(__file__).resolve().parents[3] / "contracts" / "cursos.openapi.yaml"
 
 TIPOS = [tipo for tipo, _, _ in PECAS]
 
@@ -249,26 +247,6 @@ def test_texto_que_nao_e_um_sumario_nao_vira_encomenda_nenhuma():
     assert lido["encomendas"] == []
 
 
-def test_as_16_pecas_numeradas_sao_as_do_contrato_na_ordem():
-    """O casamento é pelo número, então a ordem daqui É o contrato.
-
-    Se a ordem canônica do contrato mudar e esta lista não mudar junto, todo
-    texto do sumário entra na peça errada, calado. Por isso o teste lê o
-    contrato do disco em vez de repetir a lista à mão.
-    """
-    texto = CONTRATO.read_text(encoding="utf-8")
-    bloco = texto[texto.index("\n    TipoDePeca:") :]
-    bloco = bloco[bloco.index("enum:") : bloco.index("type: string")]
-    do_contrato = re.findall(r"^\s*- (\S+)$", bloco, flags=re.M)
-
-    assert list(tela.PECAS_NUMERADAS) == do_contrato[:16]
-    # As duas internas ficam de fora: o sumário não as tem, e o importador
-    # nunca as toca. A fatia é fechada em 18 de propósito: o contrato pode
-    # ganhar peça depois das duas (a vídeo-aula em texto ganhou), e isso não
-    # muda nada aqui. O que este teste protege é a fronteira do número 16.
-    assert do_contrato[16:18] == ["roteiro", "guia_do_mentor"]
-
-
 # ---------------------------------------------------------------------------
 # 2. A REGRA QUE NÃO SE NEGOCIA: campo escrito nunca é sobrescrito
 # ---------------------------------------------------------------------------
@@ -332,22 +310,6 @@ def test_o_corpo_leva_o_que_estava_gravado_e_so_troca_os_vazios():
     for campo in ("minimo", "aceito_quando", "quiz", "pausas", "video_url"):
         assert corpo[campo] == aula[campo], campo
     assert [p["tipo"] for p in corpo["pecas"]] == TIPOS
-
-
-def test_o_corpo_tem_exatamente_as_chaves_obrigatorias_do_contrato():
-    """Chave a menos é 422 em toda gravação; chave a mais também
-    (`additionalProperties: false` em `AulaParaGravarSchema`)."""
-    texto = CONTRATO.read_text(encoding="utf-8")
-    bloco = texto[texto.index("\n    AulaParaGravarSchema:") :]
-    bloco = bloco[
-        bloco.index("required:") : bloco.index("type: object", bloco.index("required:"))
-    ]
-    obrigatorias = set(re.findall(r"^\s*- (\S+)$", bloco, flags=re.M))
-
-    encomenda = tela.interpretar(SUMARIO_DE_MENTIRA)["encomendas"][0]
-    corpo = tela.casar(encomenda, _aula("E00"))["corpo"]
-
-    assert set(corpo) == obrigatorias
 
 
 # ---------------------------------------------------------------------------

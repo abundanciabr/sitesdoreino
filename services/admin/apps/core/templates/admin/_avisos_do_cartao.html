@@ -1,0 +1,13 @@
+{% comment %}
+O cartão com defeito de formato: o número aparece assim mesmo, sem a parte
+torta, e o defeito vem aqui ao lado. `avisos` é a lista que `ler_cartao` devolve.
+{% endcomment %}
+{% if avisos %}
+<div class="aviso borda-amarela">
+  <b>O cartão deste número tem defeito de formato.</b>
+  O número aparece assim mesmo, sem a parte torta. Corrija na edição dos cartões.
+  <ul class="notas">
+    {% for aviso in avisos %}<li>{{ aviso }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}

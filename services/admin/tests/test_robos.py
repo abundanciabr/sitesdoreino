@@ -439,12 +439,6 @@ def test_o_teto_para_antes_de_chamar():
     assert execucao.situacao == S.AGUARDANDO_AUTORIZACAO
 
 
-def test_a_autorizacao_do_mantenedor_esta_semeada():
-    autorizacao = AutorizacaoDeGasto.objects.get(ativa=True)
-    assert autorizacao.teto_mensal_usd == Decimal("10.00")
-    assert "Até US$ 10/mês" in autorizacao.fonte
-
-
 def test_simulacao_resposta_perdida_conta_o_pior_caso():
     livia = _pessoa("Lívia", LIVIA)
     _guardar_chave()

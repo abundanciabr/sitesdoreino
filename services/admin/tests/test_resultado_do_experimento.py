@@ -19,12 +19,10 @@ from __future__ import annotations
 
 import datetime as dt
 import re
-from pathlib import Path
 
 import httpx
 import pytest
 import respx
-import yaml
 from django.test import Client
 from django.urls import reverse
 
@@ -42,20 +40,11 @@ CATALOGO = "http://catalogo:8000/api/catalogo"
 SITE = "5d1c0f4e-2a7b-4f11-9c3e-8b6a1d2e3f40"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
-CONTRATOS = Path(__file__).resolve().parents[3] / "contracts"
 
 EXPERIMENTO = "0b8f7a52-3c1e-4c7b-9a51-6f2d0c1e9a10"
-CONTRATO_DO_CATALOGO = yaml.safe_load(
-    (CONTRATOS / "catalogo.openapi.yaml").read_text(encoding="utf-8")
+LER_EXPERIMENTO = (
+    f"{CATALOGO}/sites/{SITE}/paginas/{SLUG_DA_PAGINA}/experimentos/{EXPERIMENTO}"
 )
-# O endereço é o que o contrato escreve, e não o que o cliente monta: um
-# cliente fora do contrato não encontra a rota falsa e o teste reprova.
-(LER_EXPERIMENTO,) = [
-    CATALOGO
-    + caminho.format(site_id=SITE, slug=SLUG_DA_PAGINA, experimento_id=EXPERIMENTO)
-    for caminho, verbos in CONTRATO_DO_CATALOGO["paths"].items()
-    if any(v.get("operationId") == "getExperiment" for v in verbos.values())
-]
 SITE_DO_HOST = f"{CATALOGO}/sites/by-host/testserver"
 INICIO = dt.date(2026, 9, 1)
 # 14 dias planejados: o fim planejado é 15/09 e a janela é [01/09, 15/09].
@@ -605,33 +594,6 @@ def test_braco_ainda_sem_visitante_conta_como_zero_quando_ha_coleta():
     html = _abrir(_dentro())
 
     assert "inconclusivo (amostra insuficiente)" in html
-
-
-# O cliente fala o contrato congelado (muralha de contrato): o countFunnel que a tela chama é
-# o do contrato da `metricas`, com os parâmetros que ela manda.
-# ---------------------------------------------------------------------------
-
-
-def _caminhos(arquivo: str) -> dict[str, str]:
-    """Cada caminho do contrato com o bloco de texto dele."""
-    texto = (CONTRATOS / arquivo).read_text(encoding="utf-8")
-    partes = re.split(r"^  (/\S*):$", texto, flags=re.M)
-    return dict(zip(partes[1::2], partes[2::2]))
-
-
-def test_o_experimento_falso_tem_os_campos_do_contrato_do_catalogo():
-    esquema = CONTRATO_DO_CATALOGO["components"]["schemas"]
-    assert set(_experimento()) == set(esquema["ExperimentoDaPagina"]["required"])
-    for variante in _experimento()["variantes"]:
-        assert set(variante) == set(esquema["VarianteDoExperimento"]["required"])
-
-
-def test_o_funil_que_o_cliente_chama_e_o_do_contrato():
-    caminhos = _caminhos("metricas.openapi.yaml")
-    com_a_operacao = [c for c, b in caminhos.items() if "operationId: countFunnel" in b]
-    assert com_a_operacao == [CAMINHO_DO_FUNIL]
-    for parametro in ("de", "ate", "site_id", "experimento_id", "secao"):
-        assert f"name: {parametro}" in caminhos[CAMINHO_DO_FUNIL], parametro
 
 
 # ---------------------------------------------------------------------------

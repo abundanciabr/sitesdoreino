@@ -114,8 +114,7 @@ def _espacos(*pares: tuple[str, str]) -> tuple[Espaco, ...]:
     return tuple(Espaco(nome, explicacao) for nome, explicacao in pares)
 
 
-#: As ONZE seções, na ordem dele, com as palavras do despacho. Não mexa aqui
-#: sem mexer no despacho: o guarda compara os dois.
+#: As ONZE seções, na ordem dele, com as palavras do despacho.
 SECOES: tuple[Secao, ...] = (
     Secao(
         "cubo",

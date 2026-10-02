@@ -9,9 +9,11 @@ o texto vaza para a tela (armadilhas/087).
 
 O estilo mora em admin/base.html.
 
-O NÚMERO só aparece dentro de `{% if meta %}`: sem cartão válido a tela diz o
-que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
-`test_placar.py::test_sem_cartao_valido_o_numero_nao_aparece` a mede.
+O NÚMERO só aparece dentro de `{% if meta %}`: sem cartão a tela diz o que
+faltou e não desenha número nenhum. Cartão com defeito de formato mostra o
+número e o defeito como aviso. É a lei do plano (§2), e os testes
+`test_placar.py::test_sem_cartao_o_numero_nao_aparece` e
+`test_placar.py::test_cartao_torto_mostra_o_numero_com_aviso` a medem.
 {% endcomment %}
 {% block titulo %}O placar{% endblock %}
 {% block corpo %}
@@ -93,6 +95,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}
   </ul>
   {% else %}
+  {% include "admin/_avisos_do_cartao.html" with avisos=recusas %}
 
   {% if placar.veredito == "nao-consigo-contar" %}
     {% if contagem.campo_ausente %}
@@ -142,6 +145,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% for recusa in recusas_do_mes %}<li>{{ recusa }}</li>{% endfor %}
     </ul>
     {% endif %}
+    {% if mes %}{% include "admin/_avisos_do_cartao.html" with avisos=recusas_do_mes %}{% endif %}
 
     <h2 class="titulo-de-bloco espaco-20">A meta grande, por cima do mês</h2>
     {% comment %}
@@ -239,6 +243,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% elif not direcao %}
     <p class="recado-fraco">Sem a meta válida, a direção não é calculada.</p>
   {% else %}
+    {% include "admin/_avisos_do_cartao.html" with avisos=recusas_da_direcao %}
     <p class="recado">O que a casa move nesta semana. Duas medidas acesas, nunca dez, e ao lado o caminho da venda, ainda desenhado.</p>
 
     <p class="recado">
@@ -314,6 +319,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% elif not restricao %}
     <p class="recado-fraco">Sem a meta válida, a restrição não é calculada.</p>
   {% else %}
+    {% include "admin/_avisos_do_cartao.html" with avisos=recusas_da_restricao %}
     <p class="recado">{{ cartao_da_restricao.pergunta }} Uma só por semana: melhorar o resto é encher um cano furado.</p>
 
     {% if restricao.veredito == "nao-consigo-medir" %}
@@ -399,6 +405,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
         {% elif d.veredito == "sem-cartao" %}<span class="rotulo">cartão inválido</span> {% for p in d.problemas %}{{ p }} {% endfor %}
         {% else %}<span class="rotulo">não medi</span> a fonte existe e não respondeu agora.
         {% endif %}
+        {% if d.cartao and d.problemas %}<span class="rotulo">aviso</span> {% for p in d.problemas %}{{ p }} {% endfor %}{% endif %}
       </li>
     {% endfor %}
   </ul>
@@ -451,6 +458,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
 
   <h2 class="titulo-de-bloco espaco-20">O par que segura a meta</h2>
   {% if par %}
+    {% include "admin/_avisos_do_cartao.html" with avisos=recusas_do_par %}
     <p class="recado">
       <b>{{ par.pergunta }}</b>
       {{ par.definicao }}

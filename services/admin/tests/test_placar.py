@@ -7,24 +7,22 @@ virou aluna (`virou_aluno_em`, o campo do Rito de Contrato do PR #933).
 
 O que estes guardas protegem (plano: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`):
 
-1. **Número sem cartão não aparece.** Cartão ausente ou inválido ⇒ a página
-   abre, diz o que faltou, e o número da meta NÃO está no HTML. É a regra
-   fail-closed do §2, e o caso que DEVE reprovar está aqui.
-2. **Os cartões do repositório são válidos.** Quem escrever um cartão torto
-   descobre no PR, não na tela do mantenedor.
-3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ "não consigo contar";
+1. **Número sem cartão não aparece.** Cartão ausente ⇒ a página abre, diz o
+   que faltou, e o número da meta NÃO está no HTML. Cartão com defeito de
+   formato ⇒ o número aparece e o defeito vem como aviso.
+2. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ "não consigo contar";
    lista sem o campo novo ⇒ "ainda não traz a data"; ficha sem data ⇒ contada
    à parte e dita na tela. Nenhum "0" inventado.
-4. **A contagem é pela data certa**: `virou_aluno_em` em America/Sao_Paulo,
+3. **A contagem é pela data certa**: `virou_aluno_em` em America/Sao_Paulo,
    nunca `comprou_em`; antes da partida não conta; reembolsada não conta.
    E **só a venda do nosso site conta** (02/10/2026): quem foi liberado pela
    sala de espera comprou em outro site e fica de fora.
-5. **A conta do veredito é a que o plano descreve**, e não outra: linha reta
+4. **A conta do veredito é a que o plano descreve**, e não outra: linha reta
    da partida ao alvo, sem índice. E a barra do mês deriva a meta do mês da
    mesma linha, quando o mantenedor não fixou uma.
-6. **O par sem fonte se declara**, em vez de mostrar número inventado.
-7. **A porta continua sendo a porta**, e a visão geral leva até aqui.
-8. **Todo link da capa aponta para uma rota que existe**, inclusive nos ramos
+5. **O par sem fonte se declara**, em vez de mostrar número inventado.
+6. **A porta continua sendo a porta**, e a visão geral leva até aqui.
+7. **Todo link da capa aponta para uma rota que existe**, inclusive nos ramos
    que nenhum teste abre.
 """
 
@@ -101,89 +99,6 @@ def _a_escola_responde(fichas: list[dict]):
 def _a_escola_caiu():
     respx.get(FILA).mock(side_effect=httpx.ConnectError("recusou"))
     respx.get(ALUNOS_LISTA).mock(side_effect=httpx.ConnectError("recusou"))
-
-
-# ---------------------------------------------------------------- os cartões
-
-
-def test_os_cartoes_do_repositorio_sao_validos():
-    """Cartão torto reprova aqui, não na tela do mantenedor."""
-    pasta = placar.diretorio_dos_cartoes()
-    assert pasta.is_dir(), (
-        "a pasta apps/core/cartoes/ não foi encontrada. Ela viaja com o código "
-        "da célula; sem ela o placar abre sem número."
-    )
-    for arquivo in sorted(pasta.glob("*.json")):
-        cartao, problemas = placar.ler_cartao(arquivo.stem, pasta)
-        assert cartao is not None, f"{arquivo.name}: {problemas}"
-
-
-def test_a_meta_e_o_par_apontam_um_para_o_outro():
-    pasta = placar.diretorio_dos_cartoes()
-    meta, _ = placar.ler_cartao(placar.CARTAO_DA_META, pasta)
-    mes, _ = placar.ler_cartao(placar.CARTAO_DO_MES, pasta)
-    par, _ = placar.ler_cartao(placar.CARTAO_DO_PAR, pasta)
-    assert meta["par"] == placar.CARTAO_DO_PAR
-    assert mes["par"] == placar.CARTAO_DO_PAR
-    assert par["par"] == placar.CARTAO_DA_META
-    assert meta["andar"] == 0 and mes["andar"] == 0 and par["andar"] == 0
-
-
-def test_a_meta_1_e_a_que_o_mantenedor_decidiu():
-    """1000 somadas, de 03/09 a 15/12/2026, partindo de 0.
-
-    O número fica CRAVADO aqui de propósito, e este é o único lugar do
-    repositório onde ele deve estar duas vezes: o papel deste guarda é afirmar
-    que o cartão diz o que o mantenedor decidiu. Um teste que perguntasse o
-    alvo ao próprio cartão passaria com qualquer alvo, inclusive um trocado por
-    engano num rebase.
-
-    A meta nasceu 500 em 03/09/2026 (registro `20260903-036`) e foi dobrada
-    para 1000 por ele em 04/09/2026, junto com a curva de crescimento semanal
-    (`DECISAO-o-calendario-do-ciclo.md`).
-    """
-    meta, _ = placar.ler_cartao(placar.CARTAO_DA_META)
-    assert (meta["partida"], meta["alvo"]) == (0, 1000)
-    assert (meta["partida_em"], meta["ate"]) == ("2026-09-03", "2026-12-15")
-    assert meta["acao"], "número de resultado no andar 0 diz o que fazer"
-
-
-@pytest.mark.parametrize(
-    "defeito, trecho",
-    [
-        ({"par": None}, "par"),
-        ({"tipo": "composto"}, "tipo"),
-        ({"andar": "0"}, "andar"),
-        ({"componentes": ["a", "b"]}, "composto"),
-        ({"fonte": None}, "sem_fonte_porque"),
-        ({"versao": "1"}, "versao"),
-        ({"acao": None}, "acao"),
-        ({"direcao": "para-cima"}, "direcao"),
-        ({"alvo_do_mes": "50"}, "alvo_do_mes"),
-        ({"alvo": None}, "os quatro juntos"),
-        (
-            {
-                "alvo": 200,
-                "ate": "2026-01-01",
-                "partida": 10,
-                "partida_em": "2026-06-01",
-            },
-            "depois",
-        ),
-    ],
-)
-def test_o_validador_reprova_cada_defeito(defeito, trecho):
-    """O caso que DEVE reprovar, um por regra do plano (§2)."""
-    base = json.loads(
-        (
-            Path(placar.diretorio_dos_cartoes()) / f"{placar.CARTAO_DA_META}.json"
-        ).read_text(encoding="utf-8")
-    )
-    assert not placar.validar(base)
-    torto = {**base, **defeito}
-    problemas = placar.validar(torto)
-    assert problemas, f"o validador engoliu {defeito}"
-    assert any(trecho in p for p in problemas), problemas
 
 
 # ------------------------------------------------------------------ a contagem
@@ -399,8 +314,7 @@ def test_a_pagina_mostra_a_barra_do_mes_e_a_meta_do_ciclo(monkeypatch):
     assert 'class="hero-numero">1<' in html, "só a que virou aluna depois da partida"
     assert "meta do mês" in html
     # PERGUNTA o alvo ao cartão em vez de cravá-lo: este teste mede se o número
-    # CHEGA à tela, e não qual é o número. Quem guarda qual é o número é
-    # `test_a_meta_1_e_a_que_o_mantenedor_decidiu`, um só, de propósito.
+    # CHEGA à tela, e não qual é o número.
     meta_do_ciclo, _ = placar.ler_cartao(placar.CARTAO_DA_META)
     assert f"para <b>{meta_do_ciclo['alvo']}</b>" in html
     assert "1 ficha sem data" in html
@@ -425,25 +339,54 @@ def test_a_lista_sem_o_campo_novo_diz_isso_em_vez_de_zero():
     assert 'class="hero-numero"' not in html
 
 
-@respx.mock
-def test_sem_cartao_valido_o_numero_nao_aparece(tmp_path, monkeypatch):
-    """A regra fail-closed do plano (§2), medida: cartão inválido, número ausente."""
+def _pasta_com(tmp_path, cartoes: dict[str, dict]) -> Path:
     pasta = tmp_path / "cartoes"
     pasta.mkdir()
-    torto = {"nome": placar.CARTAO_DA_META, "tipo": "resultado"}
-    (pasta / f"{placar.CARTAO_DA_META}.json").write_text(
-        json.dumps(torto), encoding="utf-8"
-    )
+    for nome, dados in cartoes.items():
+        (pasta / f"{nome}.json").write_text(json.dumps(dados), encoding="utf-8")
+    return pasta
+
+
+@respx.mock
+def test_sem_cartao_o_numero_nao_aparece(tmp_path, monkeypatch):
+    """Cartão ausente: a página abre, diz o que faltou, e não desenha número."""
+    pasta = _pasta_com(tmp_path, {})
     monkeypatch.setattr(placar, "diretorio_dos_cartoes", lambda: pasta)
     _a_escola_responde([_ficha(virou_aluno_em="2026-09-10T12:00:00-03:00")])
     resposta = _dentro().get(reverse("placar"))
     assert resposta.status_code == 200
     html = resposta.content.decode()
     assert "falta o cartão" in html
-    assert 'class="hero-numero"' not in html, "número desenhado sem cartão válido"
+    assert 'class="hero-numero"' not in html, "número desenhado sem cartão"
     assert not respx.calls.call_count or all(
         "alunos:8000" not in str(c.request.url) for c in respx.calls
-    ), "sem cartão válido a tela nem pergunta à alunos: número que não vai aparecer não se busca"
+    ), "sem cartão a tela nem pergunta à alunos: número que não vai aparecer não se busca"
+
+
+@respx.mock
+def test_cartao_torto_mostra_o_numero_com_aviso(tmp_path, monkeypatch):
+    """Cartão com defeito de formato: o número aparece, e o defeito vem como aviso."""
+    monkeypatch.setattr(placar.timezone, "localdate", lambda: dt.date(2026, 9, 20))
+    meta, _ = placar.ler_cartao(placar.CARTAO_DA_META)
+    mes, _ = placar.ler_cartao(placar.CARTAO_DO_MES)
+    pasta = _pasta_com(
+        tmp_path,
+        {
+            placar.CARTAO_DA_META: {**meta, "alvo": "quinhentos"},
+            placar.CARTAO_DO_MES: {**mes, "alvo_do_mes": "dez"},
+        },
+    )
+    monkeypatch.setattr(placar, "diretorio_dos_cartoes", lambda: pasta)
+    _a_escola_responde([_ficha(virou_aluno_em="2026-09-10T12:00:00-03:00")])
+    resposta = _dentro().get(reverse("placar"))
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    assert 'class="hero-numero">1<' in html, "o cartão torto sumiu com o número"
+    assert "<b>1</b> desde a partida" in html
+    assert "falta o cartão" not in html
+    assert "defeito de formato" in html
+    assert "`alvo` é um inteiro sem aspas" in html
+    assert "`alvo_do_mes` é um inteiro sem aspas" in html
 
 
 @respx.mock

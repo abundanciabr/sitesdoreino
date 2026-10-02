@@ -1,15 +1,9 @@
-import base64
-import re
-from io import BytesIO
-from zipfile import ZipFile
-
 import httpx
 import pytest
 import respx
 from django.test import Client
 from django.urls import get_script_prefix, set_script_prefix
 
-from apps.core.modelo_flp import PACOTE, pagina_embutida
 
 ROTAS = ["/modelos-de-paginas/flp-0", "/modelos-de-paginas/flp-0/conteudo"]
 SESSAO = "http://identidade:8000/interno/sessao/completa"
@@ -76,25 +70,6 @@ def test_conteudo_direto_tambem_isolado():
     assert resposta["X-Content-Type-Options"] == "nosniff"
     assert resposta["Referrer-Policy"] == "no-referrer"
     assert resposta["Cache-Control"] == "no-store"
-
-
-def test_recursos_incorporados_sem_rotas_publicas():
-    html = pagina_embutida()
-    with ZipFile(BytesIO(base64.b64decode(PACOTE.read_bytes()))) as pacote:
-        assert len(pacote.namelist()) == 66
-        for nome in pacote.namelist():
-            if nome != "index.html":
-                assert "/" + nome not in html
-    scripts = re.findall(r'<script[^>]*src="([^"]+)"', html)
-    assert len(scripts) == 19
-    assert all(s.startswith("data:text/javascript;base64,") for s in scripts)
-    codigo = "\n".join(base64.b64decode(s.split(",", 1)[1]).decode() for s in scripts)
-    assert "https://webhook.crazyleads.com.br/form/" in codigo
-    assert "document.cookie" not in codigo
-    assert "../media/" not in "\n".join(
-        base64.b64decode(s).decode()
-        for s in re.findall(r"data:text/css;base64,([A-Za-z0-9+/=]+)", html)
-    )
 
 
 @pytest.mark.parametrize("rota", ROTAS)

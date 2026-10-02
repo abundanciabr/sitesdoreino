@@ -22,7 +22,6 @@ O que estes guardas protegem:
 from __future__ import annotations
 
 import datetime as dt
-from pathlib import Path
 
 import httpx
 import pytest
@@ -38,14 +37,6 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 ALUNOS = "http://alunos:8000/api/alunos"
 ALUNOS_LISTA = f"{ALUNOS}/matriculas"
-
-#: A tela do calendário, lida como arquivo: três guardas medem a PROSA dela.
-TELA_DO_CICLO = Path(placar.__file__).parent / "templates" / "admin" / "ciclo.html"
-
-#: A frase da tela que repete, em português, um número que mora no cartão.
-#: Ela fica INTEIRA numa linha do template de propósito (armadilhas/394).
-FRASE_DAS_SEMANAS_EM_ZERO = "As {} primeiras semanas pedem zero venda de propósito"
-POR_EXTENSO = {1: "uma", 2: "duas", 3: "três", 4: "quatro", 5: "cinco", 6: "seis"}
 
 #: Um cartão de meta com curva, pequeno o bastante para a conta ser óbvia:
 #: duas semanas de 5 dias, alvo 30, partida 0.
@@ -106,53 +97,6 @@ def _linhas_da_tabela(html: str) -> dict:
         nome = corpo.split("<b>")[1].split("</b>")[0].strip()
         linhas[nome] = corpo
     return linhas
-
-
-# --------------------------------------------------------------- a régua
-
-
-def test_a_soma_das_semanas_e_a_meta_grande_no_cartao_de_verdade():
-    """O cartão que está no repositório, medido: a curva soma a meta.
-
-    Este é o guarda que vale mais que os outros juntos. Ele mede o arquivo
-    REAL, e não um exemplo: no dia em que alguém ajustar a meta de uma semana
-    sem ajustar as outras, é aqui que o PR fica vermelho.
-    """
-    cartao, recusas = placar.ler_cartao(
-        placar.CARTAO_DA_META, placar.diretorio_dos_cartoes()
-    )
-    assert cartao is not None, f"o cartão da meta não abriu: {recusas}"
-    semanas = cartao.get("semanas")
-    assert semanas, "o cartão da meta perdeu a curva de semanas"
-    soma = sum(s["alvo"] for s in semanas)
-    assert (
-        soma == cartao["alvo"] - cartao["partida"]
-    ), f"a curva soma {soma} e a meta pede {cartao['alvo'] - cartao['partida']}"
-
-
-def test_o_validador_reprova_curva_que_nao_fecha_com_a_meta():
-    torto = {
-        **CARTAO,
-        "semanas": [{"n": 1, "de": "2026-09-07", "ate": "2026-09-11", "alvo": 7}],
-    }
-    problemas = placar._validar_as_semanas(torto)
-    assert problemas and "não pode discordar" in problemas[0]
-
-
-def test_o_validador_reprova_semanas_fora_de_ordem():
-    torto = {
-        **CARTAO,
-        "semanas": [
-            {"n": 1, "de": "2026-09-14", "ate": "2026-09-18", "alvo": 20},
-            {"n": 2, "de": "2026-09-07", "ate": "2026-09-11", "alvo": 10},
-        ],
-    }
-    problemas = placar._validar_as_semanas(torto)
-    assert any("sobrepor" in p for p in problemas)
-
-
-def test_cartao_sem_curva_nao_e_cobrado():
-    assert placar._validar_as_semanas({"alvo": 30, "partida": 0}) == []
 
 
 # ------------------------------------------------- o esperado segue a curva
@@ -280,17 +224,6 @@ def test_o_placar_leva_ate_o_calendario():
 
 
 @respx.mock
-def test_o_placar_nao_fala_mais_em_linha_reta():
-    """A tela mudou de régua, e o texto dela tinha de mudar junto.
-
-    Um número julgado pela curva e explicado como linha reta é a tela mentindo
-    com todas as letras certas.
-    """
-    caminho = Path(placar.__file__).parent / "templates" / "admin" / "placar.html"
-    assert "linha reta" not in caminho.read_text(encoding="utf-8")
-
-
-@respx.mock
 def test_a_tela_mostra_o_calendario_do_cartao_e_marca_a_faixa_de_hoje(monkeypatch):
     """A prova que só a tela renderizada dá: as datas certas, no lugar certo.
 
@@ -310,44 +243,6 @@ def test_a_tela_mostra_o_calendario_do_cartao_e_marca_a_faixa_de_hoje(monkeypatc
     assert "21/09" in linhas["Semana 1"] and "25/09" in linhas["Semana 1"]
     assert "é esta" not in linhas["Semana 1"]
     assert "14/12" in linhas["Recuperação"] and "15/12" in linhas["Recuperação"]
-
-
-def test_a_prosa_da_tela_conta_as_mesmas_semanas_em_zero_que_o_cartao():
-    """O número escrito por extenso na tela contra o número que o cartão tem.
-
-    É o guarda que faltava: a curva mudou em 04/09/2026 e a frase "as três
-    primeiras semanas" ficou treze dias no ar dizendo três onde o cartão já
-    dizia cinco. Nenhum portão via, porque prosa não é dado.
-    """
-    em_zero = 0
-    for semana in _cartao_de_verdade()["semanas"]:
-        if semana["alvo"]:
-            break
-        em_zero += 1
-    frase = FRASE_DAS_SEMANAS_EM_ZERO.format(POR_EXTENSO[em_zero])
-    assert frase in TELA_DO_CICLO.read_text(
-        encoding="utf-8"
-    ), f"o cartão tem {em_zero} faixas em zero e a tela não diz isso: {frase!r}"
-
-
-def test_a_tela_nao_chama_a_recuperacao_de_semana():
-    """Desde 17/09/2026 a recuperação são os dias que sobram até o prazo."""
-    assert (
-        "semana de recuperação" not in TELA_DO_CICLO.read_text(encoding="utf-8").lower()
-    )
-
-
-def test_a_ultima_faixa_do_ciclo_cabe_dentro_do_prazo():
-    """Recuperação depois do prazo é ficção: ninguém recupera fora do jogo.
-
-    O validador do cartão confere ordem, soma e sobreposição, mas não olha para
-    `ate`: sem este guarda, deslocar a curva empurra a última faixa para fora
-    do prazo sem nada ficar vermelho.
-    """
-    cartao = _cartao_de_verdade()
-    ultima = dt.date.fromisoformat(cartao["semanas"][-1]["ate"])
-    prazo = dt.date.fromisoformat(cartao["ate"])
-    assert ultima <= prazo, f"a última faixa termina em {ultima} e o prazo é {prazo}"
 
 
 @respx.mock

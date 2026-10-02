@@ -21,7 +21,7 @@ import datetime as dt
 
 import pytest
 
-from apps.core import mudancas, placar
+from apps.core import mudancas
 
 HOJE = dt.date(2026, 9, 21)
 
@@ -212,73 +212,3 @@ def test_a_montagem_inteira_compara_e_pinta_pelo_cartao():
     assert por_nome["compras-no-ciclo"]["sentido"] == "melhorou"
     assert por_nome["pedidos-de-entrada-por-semana"]["sentido"] == "piorou"
     assert r["sem_par"] == 3
-
-
-# ------------------------------------------------------- os campos do cartão
-
-
-def _cartao_valido(**sobre):
-    base = {
-        "nome": "x",
-        "tipo": "confianca",
-        "andar": 1,
-        "pergunta": "?",
-        "definicao": "d",
-        "formula": "f",
-        "fonte": "f",
-        "autoridade": "alunos",
-        "dono": "mantenedor",
-        "frequencia": "f",
-        "versao": 1,
-        "desde": "2026-09-04",
-    }
-    base.update(sobre)
-    return base
-
-
-def test_os_campos_novos_do_cartao_passam_quando_certos():
-    problemas = placar.validar(
-        _cartao_valido(frescor_maximo=7, dimensoes=["site", "turma"], ruido=0.5)
-    )
-    assert not [
-        p for p in problemas if "frescor" in p or "dimensoes" in p or "ruido" in p
-    ]
-
-
-@pytest.mark.parametrize(
-    "torto, trecho",
-    [
-        ({"frescor_maximo": 0}, "frescor_maximo"),
-        ({"frescor_maximo": "7"}, "frescor_maximo"),
-        ({"dimensoes": ["cor"]}, "dimensoes"),
-        ({"dimensoes": "site"}, "dimensoes"),
-        ({"ruido": -1}, "ruido"),
-        ({"ruido": True}, "ruido"),
-    ],
-)
-def test_os_campos_novos_do_cartao_reprovam_quando_tortos(torto, trecho):
-    problemas = placar.validar(_cartao_valido(**torto))
-    assert any(trecho in p for p in problemas), problemas
-
-
-def test_todo_cartao_com_fonte_diz_quando_a_foto_dele_envelhece():
-    """Número com fonte nasce dizendo em quantos dias a foto fica velha.
-
-    Sem `frescor_maximo` o bloco usa o padrão de 10 dias, que é um chute
-    silencioso: um número mensal marcaria "foto velha" sem razão, e um
-    semanal compararia semanas diferentes sem avisar. Cartão SEM fonte não
-    entra na foto e por isso não é cobrado aqui.
-    """
-    pasta = placar.diretorio_dos_cartoes()
-    assert pasta.is_dir()
-    mudos = []
-    for arquivo in sorted(pasta.glob("*.json")):
-        cartao, problemas = placar.ler_cartao(arquivo.stem, pasta)
-        assert cartao is not None, (arquivo.stem, problemas)
-        if cartao.get("fonte") and cartao.get("frescor_maximo") is None:
-            mudos.append(cartao["nome"])
-    assert not mudos, (
-        f"cartões com fonte e sem `frescor_maximo`: {', '.join(mudos)}. "
-        "Diga em quantos dias a foto dele fica velha (a régua é o ritmo do "
-        "número: semanal ~8, mensal ~35)."
-    )

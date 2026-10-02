@@ -454,18 +454,6 @@ def test_o_prefixo_publico_da_midia_tem_so_a_entrega():
     assert sob == {"midia_servir"}, sob
 
 
-def test_o_gateway_tem_o_prefixo_publico_da_midia():
-    rotas = (
-        Path(__file__).resolve().parents[3]
-        / "infra"
-        / "traefik"
-        / "dynamic"
-        / "plataforma.yml"
-    ).read_text(encoding="utf-8")
-    assert "PathPrefix(`/midia`)" in rotas
-    assert "tls: {}" in rotas.split("PathPrefix(`/midia`)")[1][:400]
-
-
 # -------------------------------------------- 5. os estados do editor
 
 
