@@ -115,7 +115,7 @@ echo
 echo "== 5/5 — apagando =="
 SAIDA=$(comando_servico notificacoes retirar_cartas \
   --assunto "$ASSUNTO" --parametro suggestion_id --valores "$IDS" --confirmo 2>&1 | tr -d '\r') \
-  || { echo "$SAIDA"; parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."; }
+  || { echo "$SAIDA"; parar "o comando falhou. A saída acima diz por quê: conserte a causa e rode de novo."; }
 echo "$SAIDA"
 
 printf '%s' "$SAIDA" | grep -q 'RETIRADA OK' \
@@ -132,7 +132,7 @@ echo "  cartas órfãs restantes ...... ${RESTAM:-?}"
 
 if [ "${RESTAM:-1}" -ne 0 ]; then
   echo "ATENÇÃO: ainda restam ${RESTAM:-?} carta(s) órfã(s)."
-  echo "Mande esta tela ao agente."
+  echo "Conserte a causa e rode de novo."
   exit 1
 fi
 

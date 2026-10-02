@@ -231,11 +231,11 @@ echo "  dono/modo do env ..... $(stat -c '%U:%G %a' "$ENV_ALVO" 2>/dev/null) (ig
 echo "  cópia de segurança ... $BACKUP"
 echo
 
-[ "$falhou" -eq 0 ] || parar "alguma linha ficou repetida em $ENV_ALVO, e o Docker Compose usaria só a última. A cópia intacta está em $RAIZ/$BACKUP — me mande esta tela inteira."
-[ "$repetida_senha" -eq 1 ] || parar "a linha SMTP_PASSWORD aparece $repetida_senha vezes em $ENV_ALVO. A cópia intacta está em $RAIZ/$BACKUP — me mande esta tela inteira."
+[ "$falhou" -eq 0 ] || parar "alguma linha ficou repetida em $ENV_ALVO, e o Docker Compose usaria só a última. A cópia intacta está em $RAIZ/$BACKUP — conserte a causa e rode de novo."
+[ "$repetida_senha" -eq 1 ] || parar "a linha SMTP_PASSWORD aparece $repetida_senha vezes em $ENV_ALVO. A cópia intacta está em $RAIZ/$BACKUP — conserte a causa e rode de novo."
 # `wc -c` conta o \n que o `ler_de` já removeu; comparo pelo tamanho para provar
 # que a chave chegou inteira, SEM imprimir o valor.
-[ "$tamanho_gravado" -gt 1 ] || parar "a chave não ficou gravada em $ENV_ALVO. A cópia intacta está em $RAIZ/$BACKUP — me mande esta tela inteira."
+[ "$tamanho_gravado" -gt 1 ] || parar "a chave não ficou gravada em $ENV_ALVO. A cópia intacta está em $RAIZ/$BACKUP — conserte a causa e rode de novo."
 if [ "$(stat -c '%U:%G %a' "$ENV_ALVO" 2>/dev/null)" != "$(stat -c '%U:%G %a' "$ENV_REF" 2>/dev/null)" ]; then
   parar "o dono/permissão de $ENV_ALVO ficou diferente do $ENV_REF, e assim o deploy reprovaria com 'permission denied'. A cópia intacta está em $RAIZ/$BACKUP."
 fi
@@ -274,7 +274,7 @@ print("cartas enviadas:", n)
     echo "  Se a linha acima disser 'cartas enviadas: 1', o Brevo aceitou."
     echo "  AGORA CONFIRA NA CAIXA DE ENTRADA de $TESTE_PARA (e no spam)."
   else
-    echo "  (a carta de teste não saiu — me mande esta tela inteira; o env JÁ está gravado.)"
+    echo "  (a carta de teste não saiu — o env JÁ está gravado: ache por que o e-mail não saiu e rode de novo.)"
   fi
   echo
 fi

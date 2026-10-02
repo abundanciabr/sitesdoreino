@@ -82,15 +82,15 @@ echo
 
 # INV-CI01: ausencia de erro nao e evidencia de sucesso. Cada linha abaixo le o
 # estado publicado pelo ufw; qualquer uma faltando derrubaria algo de verdade.
-echo "$RESULTADO" | grep -q "Status: active"                  || parar "o ufw nao reportou 'active'. Mande esta tela ao agente."
-echo "$RESULTADO" | grep -qE "^22(/tcp)?[[:space:]]+ALLOW"    || parar "a regra de SSH (22) NAO aparece no estado final. Se voce sair desta sessao pode perder o acesso. Rode agora: sudo ufw allow 22/tcp — e mande esta tela ao agente."
+echo "$RESULTADO" | grep -q "Status: active"                  || parar "o ufw nao reportou 'active'. Conserte a causa e rode de novo."
+echo "$RESULTADO" | grep -qE "^22(/tcp)?[[:space:]]+ALLOW"    || parar "a regra de SSH (22) NAO aparece no estado final. Se voce sair desta sessao pode perder o acesso. Rode agora: sudo ufw allow 22/tcp, e depois rode este roteiro de novo."
 echo "$RESULTADO" | grep -qE "^80/tcp[[:space:]]+ALLOW"       || parar "a regra de HTTP (80) NAO aparece no estado final. Rode agora: sudo ufw allow 80/tcp"
 echo "$RESULTADO" | grep -qE "^443/tcp[[:space:]]+ALLOW"      || parar "a regra de HTTPS (443) NAO aparece no estado final. Rode agora: sudo ufw allow 443/tcp"
 
 echo "== conferindo que o site continua respondendo de dentro da VPS =="
 CODIGO="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://meshcraft.top/ || echo 000)"
 echo "  https://meshcraft.top/ respondeu $CODIGO"
-[ "$CODIGO" = "200" ] || parar "o site NAO respondeu 200 (respondeu $CODIGO). Para desfazer AGORA: sudo ufw disable — e mande esta tela ao agente."
+[ "$CODIGO" = "200" ] || parar "o site NAO respondeu 200 (respondeu $CODIGO). Para desfazer AGORA: sudo ufw disable, e depois ache por que o site nao respondeu."
 
 echo
 echo "PRONTO: porta lateral fechada. So 22 (chave), 80 e 443 respondem da internet, e o site segue no ar."

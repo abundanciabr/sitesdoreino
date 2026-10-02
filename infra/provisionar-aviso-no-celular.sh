@@ -113,8 +113,8 @@ escrever_chave() {
 
   GRAVADO="$(ler_de "$ARQ" "$CHAVE")"
   REPETIDA="$(grep -c "^$CHAVE=" "$ARQ")"
-  [ "$GRAVADO" = "$VALOR" ] || parar "$ARQ não ficou com o valor esperado em $CHAVE. A cópia intacta está em $RAIZ/$BK — me mande esta tela inteira."
-  [ "$REPETIDA" -eq 1 ] || parar "a chave $CHAVE aparece $REPETIDA vezes em $ARQ, e o Docker Compose usaria só a última. A cópia intacta está em $RAIZ/$BK — me mande esta tela inteira."
+  [ "$GRAVADO" = "$VALOR" ] || parar "$ARQ não ficou com o valor esperado em $CHAVE. A cópia intacta está em $RAIZ/$BK — conserte a causa e rode de novo."
+  [ "$REPETIDA" -eq 1 ] || parar "a chave $CHAVE aparece $REPETIDA vezes em $ARQ, e o Docker Compose usaria só a última. A cópia intacta está em $RAIZ/$BK — conserte a causa e rode de novo."
 }
 
 echo "== estado ANTES =="
@@ -179,7 +179,7 @@ echo
 # navegador recusa a inscrição com um erro que só aparece no celular da pessoa
 # — e do lado de cá tudo pareceria certo.
 [ "$(ler_de env/funil.env VAPID_PUBLIC_KEY)" = "$(ler_de env/notificacoes.env VAPID_PUBLIC_KEY)" ] \
-  || parar "a metade pública ficou DIFERENTE nos dois arquivos. Não prossegui para o recarregamento — me mande esta tela inteira."
+  || parar "a metade pública ficou DIFERENTE nos dois arquivos. Não prossegui para o recarregamento — conserte a causa e rode de novo."
 
 # -----------------------------------------------------------------------------
 # RECARREGAR — só os serviços que leem estes dois env, pelo nome. JAMAIS

@@ -175,7 +175,7 @@ fi
 # os únicos em vez de comparar par a par: seriam seis comparações à mão, e a
 # esquecida seria justamente a que o guarda existe para pegar.
 DISTINTOS="$(printf '%s\n%s\n%s\n%s\n' "$T_IDENTIDADE" "$T_ALUNOS" "$T_CATALOGO" "$T_ADMIN" | sort -u | wc -l | tr -d '[:space:]')"
-[ "$DISTINTOS" = "4" ] || parar "dois pares da sala de aula estão com o MESMO token nos env desta máquina. Token é por par, e um só faria a rotação de um derrubar o outro sem aviso. Nada foi alterado. Me mande esta tela inteira."
+[ "$DISTINTOS" = "4" ] || parar "dois pares da sala de aula estão com o MESMO token nos env desta máquina. Token é por par, e um só faria a rotação de um derrubar o outro sem aviso. Nada foi alterado. Conserte a causa e rode de novo."
 
 echo "== estado ANTES =="
 printf '  %-22s %s\n' "$ENV_IDENTIDADE" "encontrado ($(wc -l < "$ENV_IDENTIDADE") linhas)"
@@ -271,7 +271,7 @@ conferir_par() {  # nome, valor-esperado, arquivo-a, chave-a, arquivo-b, chave-b
   if [ -n "$a" ] && [ "$a" = "$b" ] && [ "$a" = "$2" ]; then
     printf '  %-22s %s\n' "$1" "confere dos dois lados"
   else
-    parar "o par '$1' NÃO ficou igual nos dois lados ($3/$4 e $5/$6). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS). Me mande esta tela inteira."
+    parar "o par '$1' NÃO ficou igual nos dois lados ($3/$4 e $5/$6). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS). Conserte a causa e rode de novo."
   fi
 }
 conferir_par "par cursos->identidade" "$T_IDENTIDADE" "$ENV_IDENTIDADE" TOKENS_ACEITOS_CURSOS "$ENV_CURSOS" IDENTIDADE_API_TOKEN
@@ -281,7 +281,7 @@ conferir_par "par cursos->catalogo" "$T_CATALOGO" "$ENV_CATALOGO" TOKENS_ACEITOS
 conferir_par "par admin->cursos" "$T_ADMIN" "$ENV_CURSOS" TOKENS_ACEITOS_ADMIN "$ENV_ADMIN" CURSOS_API_TOKEN
 
 conferir_endereco() {  # arquivo, chave, valor-esperado
-  [ "$(ler_de "$1" "$2")" = "$3" ] || parar "$2 não ficou como esperado em $1. As cópias intactas estão em $RAIZ ($BACKUPS). Me mande esta tela inteira."
+  [ "$(ler_de "$1" "$2")" = "$3" ] || parar "$2 não ficou como esperado em $1. As cópias intactas estão em $RAIZ ($BACKUPS). Conserte a causa e rode de novo."
 }
 conferir_endereco "$ENV_CURSOS" IDENTIDADE_API_URL "$IDENTIDADE_URL"
 conferir_endereco "$ENV_CURSOS" ALUNOS_API_URL "$ALUNOS_URL"
@@ -300,7 +300,7 @@ for par in "$ENV_IDENTIDADE:TOKENS_ACEITOS_CURSOS" "$ENV_IDENTIDADE:TOKENS_COMPL
            "$ENV_ADMIN:CURSOS_API_URL" "$ENV_ADMIN:CURSOS_API_TOKEN"; do
   arq="${par%%:*}"; chave="${par##*:}"
   n="$(grep -c "^$chave=" "$arq")"
-  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS). Me mande esta tela inteira."
+  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS). Conserte a causa e rode de novo."
 done
 echo "  chaves repetidas ....... nenhuma (conferido nas 13)"
 echo
@@ -321,4 +321,4 @@ echo "e mostra o MENU do site, e o editor de aulas do Admin consegue gravar na"
 echo "sala. Rodar esta mesma linha de novo é seguro: os segredos que já existem"
 echo "são reusados, nunca trocados."
 echo
-echo "PRONTO: as quatro conversas da sala de aula estão ligadas. Copie esta tela inteira e mande para o robô."
+echo "PRONTO: as quatro conversas da sala de aula estão ligadas. O robô lê esta tela sozinho."

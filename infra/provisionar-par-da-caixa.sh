@@ -197,7 +197,7 @@ B="$(ler_de "$ENV_ADMIN" SUGESTOES_API_TOKEN)"
 if [ -n "$A" ] && [ "$A" = "$B" ] && [ "$A" = "$T_ADMIN" ]; then
   printf '  %-24s %s\n' "par admin→sugestoes" "confere dos dois lados"
 else
-  parar "o par NÃO ficou igual nos dois lados ($ENV_SUGESTOES/TOKENS_ACEITOS_ADMIN e $ENV_ADMIN/SUGESTOES_API_TOKEN). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+  parar "o par NÃO ficou igual nos dois lados ($ENV_SUGESTOES/TOKENS_ACEITOS_ADMIN e $ENV_ADMIN/SUGESTOES_API_TOKEN). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
 fi
 
 U="$(ler_de "$ENV_ADMIN" SUGESTOES_API_URL)"
@@ -209,7 +209,7 @@ printf '  %-24s %s\n' "endereço da Caixa" "confere"
 for par in "$ENV_SUGESTOES:TOKENS_ACEITOS_ADMIN" "$ENV_ADMIN:SUGESTOES_API_TOKEN" "$ENV_ADMIN:SUGESTOES_API_URL"; do
   arq="${par%%:*}"; chave="${par##*:}"
   n="$(grep -c "^$chave=" "$arq")"
-  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
 done
 echo "  chaves repetidas ........ nenhuma (conferido nas 3)"
 echo

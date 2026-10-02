@@ -211,7 +211,7 @@ conferir_par() {  # nome, valor-esperado, arquivo-a, chave-a, arquivo-b, chave-b
   if [ -n "$a" ] && [ "$a" = "$b" ] && [ "$a" = "$2" ]; then
     printf '  %-22s %s\n' "$1" "confere dos dois lados"
   else
-    parar "o par '$1' NÃO ficou igual nos dois lados ($3/$4 e $5/$6). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+    parar "o par '$1' NÃO ficou igual nos dois lados ($3/$4 e $5/$6). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
   fi
 }
 conferir_par "par admin→alunos" "$T_ADMIN" "$ENV_ALUNOS" TOKENS_ACEITOS_ADMIN "$ENV_ADMIN" ALUNOS_API_TOKEN
@@ -225,7 +225,7 @@ for par in "$ENV_ALUNOS:TOKENS_ACEITOS_ADMIN" "$ENV_ALUNOS:TOKENS_ACEITOS_FUNIL"
            "$ENV_ADMIN:ALUNOS_API_URL" "$ENV_FUNIL:ALUNOS_API_TOKEN" "$ENV_FUNIL:ALUNOS_API_URL"; do
   arq="${par%%:*}"; chave="${par##*:}"
   n="$(grep -c "^$chave=" "$arq")"
-  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
 done
 echo "  chaves repetidas ....... nenhuma (conferido nas 7)"
 echo

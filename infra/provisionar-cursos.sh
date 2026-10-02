@@ -136,7 +136,7 @@ if [ -f env/cursos.env ]; then
     echo "NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente."
+    echo "NADA foi alterado. Conserte a causa e rode de novo."
     exit 1
   fi
 fi
@@ -430,7 +430,7 @@ if [ -z "$CHAVE_DA_IA" ]; then
   echo "  infra/abrir-a-sala-de-aula.sh, que a copia do env do fórum."
 fi
 echo
-echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
+echo "== PRONTO. O robô lê esta tela sozinho. =="
 echo "A sala de aula ainda NÃO está no ar: falta a entrega que a põe no"
 echo "docker-compose e no roteador, em /cursos. O robô faz essa parte"
 echo "sozinho, depois desta tela."

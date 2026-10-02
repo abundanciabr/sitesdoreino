@@ -94,7 +94,7 @@ if [ -f env/forum.env ]; then
     echo "sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente."
+    echo "NADA foi alterado. Conserte a causa e rode de novo."
     exit 1
   fi
 fi
@@ -363,9 +363,9 @@ if [ "$PERDI_PROFESSORES" -eq 1 ]; then
   echo "PAROU POR SEGURANÇA: a lista de professores do fórum sumiu nesta execução."
   echo
   echo "Ela está INTACTA na cópia $BAK, e nada mais precisa ser feito às pressas."
-  echo "NÃO rode mais nada nesta janela e mande esta tela inteira ao agente."
+  echo "NÃO rode mais nada: restaure a lista a partir da cópia e rode de novo."
   exit 1
 fi
-echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
+echo "== PRONTO. O robô lê esta tela sozinho. =="
 echo "O fórum ainda NÃO está no ar: falta a entrega que o põe no docker-compose"
 echo "e no roteador. O robô faz essa parte sozinho, depois desta tela."

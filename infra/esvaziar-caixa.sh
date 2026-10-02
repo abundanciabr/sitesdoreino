@@ -145,7 +145,7 @@ echo
 echo "== 5/5 — apagando definitivamente =="
 comando_servico sugestoes esvaziar_caixa \
   --site-id "$SITE_ID" --confirmo "$QUANTAS_ESPERO" \
-  || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
+  || parar "o comando falhou. A saída acima diz por quê: conserte a causa e rode de novo."
 
 DEPOIS=$(contar)
 COM_DEPOIS=$(printf '%s' "$DEPOIS" | cut -f1)
@@ -162,14 +162,14 @@ echo
 # as apagadas de antes continuam apagadas mais as de agora.
 if [ "${COM_DEPOIS:-1}" -ne 0 ]; then
   echo "ATENÇÃO: ainda restam $COM_DEPOIS ideia(s) com conteúdo."
-  echo "Mande esta tela ao agente."
+  echo "Conserte a causa e rode de novo."
   exit 1
 fi
 
 ESPERADO=$((SEM_ANTES + COM_ANTES))
 if [ "${SEM_DEPOIS:-0}" -ne "$ESPERADO" ]; then
   echo "ATENÇÃO: esperava $ESPERADO ideia(s) apagada(s) no total e contei $SEM_DEPOIS."
-  echo "Isto NÃO devia acontecer. Mande esta tela ao agente antes de mexer na Caixa."
+  echo "Isto NÃO devia acontecer. Não mexa na Caixa antes de achar a causa e consertar."
   exit 1
 fi
 

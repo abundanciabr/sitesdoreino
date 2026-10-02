@@ -116,7 +116,7 @@ if [ -f env/sugestoes.env ]; then
     echo "NADA foi alterado. O que fazer, conforme o caso:"
     echo "  · IDENTIDADE_API_*  -> é do infra/provisionar-identidade.sh, rode aquele."
     echo "  · NOTIFICACOES_API_* -> é do infra/provisionar-porta-de-avisos.sh, rode aquele."
-    echo "  · outra coisa -> mande esta tela ao agente; o script precisa aprender a chave."
+    echo "  · outra coisa -> o script precisa aprender a chave: ensine-a e rode de novo."
     exit 1
   fi
 fi

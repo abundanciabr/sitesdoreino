@@ -177,7 +177,7 @@ echo "  categorias .... $(printf '%s' "$ANTES" | cut -f2)"
 echo
 echo "== 4/4 — inaugurando (idempotente: rodar de novo não duplica) =="
 comando_servico sugestoes seed_sugestoes --site-id "$SITE_ID" \
-  || parar "o comando de seed falhou. A tela acima diz por quê — mande-a ao agente."
+  || parar "o comando de seed falhou. A saída acima diz por quê: conserte a causa e rode de novo."
 
 DEPOIS=$(comando_servico sugestoes shell -c \
   "from apps.sugestoes.models import Quadro, Categoria
@@ -192,6 +192,6 @@ if [ "$(printf '%s' "$DEPOIS" | cut -f1)" = "1" ]; then
   echo "PRONTO. Abra https://$SITE_HOST/forms/sugestoes/ e o quadro deve aparecer."
 else
   echo "ATENÇÃO: esperava terminar com 1 quadro e terminei com $(printf '%s' "$DEPOIS" | cut -f1)."
-  echo "Mande esta tela ao agente antes de usar a Caixa."
+  echo "Não use a Caixa antes de achar a causa e consertar."
   exit 1
 fi

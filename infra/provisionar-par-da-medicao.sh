@@ -201,7 +201,7 @@ B="$(ler_de "$ENV_ADMIN" METRICAS_API_TOKEN)"
 if [ -n "$A" ] && [ "$A" = "$B" ] && [ "$A" = "$T_ADMIN" ]; then
   printf '  %-24s %s\n' "par admin→metricas" "confere dos dois lados"
 else
-  parar "o par NÃO ficou igual nos dois lados ($ENV_METRICAS/TOKENS_ACEITOS_ADMIN e $ENV_ADMIN/METRICAS_API_TOKEN). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+  parar "o par NÃO ficou igual nos dois lados ($ENV_METRICAS/TOKENS_ACEITOS_ADMIN e $ENV_ADMIN/METRICAS_API_TOKEN). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
 fi
 echo
 

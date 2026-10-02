@@ -112,7 +112,7 @@ if [ -f env/gamificacao.env ]; then
     echo "NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente."
+    echo "NADA foi alterado. Conserte a causa e rode de novo."
     exit 1
   fi
 fi
@@ -343,7 +343,7 @@ echo "  $ENV_GAMIFICACAO ... escrito, com SITE_ID preenchido"
 echo "  par aberto ............. gamificacao->identidade"
 for arq in $MEXIDOS; do echo "  tocado ................. $arq (cópia em $arq.bak-provisionar-gamificacao)"; done
 echo
-echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
+echo "== PRONTO. O robô lê esta tela sozinho. =="
 echo "A gamificação ainda NÃO está no ar: falta a entrega que a põe no"
 echo "docker-compose e no roteador, em /conquistas. O robô faz essa parte"
 echo "sozinho, depois desta tela."

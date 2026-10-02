@@ -233,7 +233,7 @@ if [ -n "$MEXIDOS" ]; then
     echo "Os arquivos ficaram certos, mas o reinicio das celulas FALHOU."
     echo "Nada foi perdido: os dois lados do par estao gravados e conferidos."
     echo "O site continua no ar, sem o quadrinho, e nada quebrou."
-    echo "Rode a linha abaixo e me mande a saida:"
+    echo "Proximo passo:"
     echo "  rode este mesmo provisionador novamente"
   fi
 else

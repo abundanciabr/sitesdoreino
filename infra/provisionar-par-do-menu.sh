@@ -277,7 +277,7 @@ if [ -n "$MEXIDOS" ]; then
     echo
     echo "Os arquivos ficaram certos, mas o reinicio das celulas FALHOU."
     echo "Nada foi perdido: os dois pares estao gravados e conferidos."
-    echo "Rode a linha abaixo e me mande a saida:"
+    echo "Proximo passo:"
     echo "  rode este mesmo provisionador novamente"
   fi
 else

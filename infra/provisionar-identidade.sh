@@ -99,7 +99,7 @@ if [ -f env/identidade.env ]; then
           echo "     DEPOIS o infra/provisionar-$CELULA.sh, que regrava os dois lados."
           ;;
         *)
-          echo "   · $CHAVE -> não sei de quem é. Mande esta tela ao agente."
+          echo "   · $CHAVE -> não sei de quem é. Ensine esta chave a este roteiro (ou ache o roteiro dono dela) e rode de novo."
           ;;
       esac
     done

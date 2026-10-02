@@ -129,7 +129,7 @@ recarregar_appmax() {
 
 consultar_servicos_rodando() {
   if ! RODANDO="$(ALUNOS_API_TOKEN="$ALUNOS_API_TOKEN" TOKEN_CATALOGO="$TOKEN_CATALOGO" servicos_rodando 2>/dev/null)"; then
-    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. Confira docker compose config --services e docker compose ps para localizar o serviço. Não envie env nem valores de tokens. Nada foi alterado."
+    parar "não consegui consultar os serviços pelo Compose; isso não prova que estejam parados. O próximo passo é conferir o estado: plataforma operar operacoes-vps --operacao versao-compose, e depois plataforma operar operacoes-vps --operacao estado-servico --servico pagamentos. Não imprima env nem valores de tokens. Nada foi alterado."
   fi
 }
 
@@ -395,7 +395,7 @@ fi
 SITE_ID="$(printf '%s' "$LINHA" | cut -f1)"
 SITE_HOST="$(printf '%s' "$LINHA" | cut -f2)"
 SITE_NOME="$(printf '%s' "$LINHA" | cut -f3)"
-[ -n "$SITE_ID" ] && [ -n "$SITE_HOST" ] || parar "o catálogo respondeu num formato que eu não reconheço. Mande esta tela ao agente. Nada foi alterado."
+[ -n "$SITE_ID" ] && [ -n "$SITE_HOST" ] || parar "o catálogo respondeu num formato que eu não reconheço. Conserte a causa e rode de novo. Nada foi alterado."
 
 echo "  site .............. $SITE_HOST"
 echo "  número interno .... $SITE_ID"

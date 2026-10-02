@@ -13,7 +13,6 @@ RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 ENV_EVOLUTION="env/evolution.env"
 ENV_MENSAGERIA="env/mensageria.env"
 ENV_REF="env/identidade.env"
-TRAVA="env/.provisionar-evolution.lock"
 TMP_EVOLUTION=""
 TMP_MENSAGERIA=""
 BACKUP_EVOLUTION=""
@@ -21,7 +20,6 @@ BACKUP_MENSAGERIA=""
 ARQUIVOS_TROCADOS=0
 ROLE_CRIADA=0
 DB_CRIADO=0
-TRAVA_ADQUIRIDA=0
 
 parar() {
   echo
@@ -81,9 +79,6 @@ encerrar() {
   fi
   [ -z "$TMP_EVOLUTION" ] || rm -f "$TMP_EVOLUTION" || FINAL=1
   [ -z "$TMP_MENSAGERIA" ] || rm -f "$TMP_MENSAGERIA" || FINAL=1
-  if [ "$TRAVA_ADQUIRIDA" -eq 1 ]; then
-    rmdir "$TRAVA" || FINAL=1
-  fi
   return "$FINAL"
 }
 
@@ -123,8 +118,6 @@ cd "$RAIZ" 2>/dev/null || parar "nao achei $RAIZ."
 [ -f "$ENV_MENSAGERIA" ] || parar "nao achei $ENV_MENSAGERIA."
 [ -f "$ENV_REF" ] || parar "nao achei $ENV_REF para copiar dono e permissao."
 [ -w "$ENV_MENSAGERIA" ] || parar "nao consigo escrever em $ENV_MENSAGERIA."
-mkdir "$TRAVA" 2>/dev/null || parar "outro provisionamento da Evolution esta em execucao."
-TRAVA_ADQUIRIDA=1
 docker compose ps postgres >/dev/null 2>&1 || parar "nao consegui falar com o PostgreSQL do Compose."
 
 validar_chave_unica "$ENV_MENSAGERIA" WHATSAPP_GATEWAY_URL

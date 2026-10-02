@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # LIGAR A PONTE COM A VPS — o unico passo que e do mantenedor, e ele e uma
-# linha so, colada UMA VEZ no console root da VPS:
+# linha so, rodada UMA VEZ como root na VPS:
 #
 #   bash /opt/plataforma/instalar-provisionador-usuario-ponte.sh /opt/plataforma/provisionar-usuario-ponte.sh
 #
@@ -39,7 +39,7 @@ SUDOERS=/etc/sudoers.d/90-deploy-provisionar-ponte
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "PAROU: este roteiro precisa de root, e voce nao esta como root. Nada foi alterado." >&2
-  echo "       No console da VPS, rode antes: sudo -i" >&2
+  echo "       Na VPS, rode antes: sudo -i" >&2
   exit 1
 fi
 case "$ORIGEM" in
@@ -94,7 +94,7 @@ limpar_ou_restaurar() {
     if [ "$RESTAURACAO_INCERTA" = 0 ]; then
       echo "PONTE: copia root e regra sudo anteriores restauradas apos a falha." >&2
     else
-      echo "ERRO: recuperacao incerta; no console root, confira $DESTINO e $SUDOERS com visudo -c antes de repetir." >&2
+      echo "ERRO: recuperacao incerta; como root, confira $DESTINO e $SUDOERS com visudo -c antes de repetir." >&2
       echo "      Copias anteriores preservadas: ${ANTERIOR_PROVISIONADOR:-nenhuma} ${ANTERIOR_SUDOERS:-nenhuma}" >&2
     fi
   fi

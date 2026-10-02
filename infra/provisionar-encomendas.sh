@@ -125,7 +125,7 @@ if [ -f env/encomendas.env ]; then
     echo "NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente."
+    echo "NADA foi alterado. Conserte a causa e rode de novo."
     exit 1
   fi
 fi
@@ -381,7 +381,7 @@ echo "  $ENV_ENCOMENDAS ... escrito, com SITE_ID preenchido"
 echo "  pares abertos .......... encomendas->identidade, encomendas->alunos"
 for arq in $MEXIDOS; do echo "  tocado ................. $arq (cópia em $arq.bak-provisionar-encomendas)"; done
 echo
-echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
+echo "== PRONTO. O robô lê esta tela sozinho. =="
 echo "As Encomendas ainda NÃO estão no ar: falta a entrega que as põe no"
 echo "docker-compose e no roteador, em /encomendas. O robô faz essa parte"
 echo "sozinho, depois desta tela."

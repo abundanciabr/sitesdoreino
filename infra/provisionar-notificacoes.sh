@@ -83,7 +83,7 @@ if [ -f env/notificacoes.env ]; then
           echo "     aparecer para essas pessoas). Nada mais se perde."
           ;;
         *)
-          echo "   · $CHAVE -> não sei de quem é. Mande esta tela ao agente."
+          echo "   · $CHAVE -> não sei de quem é. Ensine esta chave a este roteiro (ou ache o roteiro dono dela) e rode de novo."
           ;;
       esac
     done

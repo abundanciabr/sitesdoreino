@@ -199,7 +199,7 @@ if [ -f env/pages.env ]; then
     echo "NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente."
+    echo "NADA foi alterado. Conserte a causa e rode de novo."
     exit 1
   fi
 fi
@@ -418,8 +418,8 @@ if [ -n "$VIZINHOS" ]; then
   echo "  ATENÇÃO: o usuário pages_user ainda alcança banco de outra célula:"
   for BANCO in $VIZINHOS; do echo "     - $BANCO"; done
   echo "  Isso NÃO foi causado por este roteiro e nada aqui foi desfeito: aqueles"
-  echo "  bancos estão abertos ao público desde antes. Mande esta tela ao agente,"
-  echo "  que é quem fecha cada um pelo roteiro da célula dona dele."
+  echo "  bancos estão abertos ao público desde antes. O próximo passo é fechar"
+  echo "  cada um pelo roteiro da célula dona dele."
 else
   echo "  isolamento do usuário .. conferido, nenhum outro banco de célula alcançável"
 fi
@@ -486,5 +486,5 @@ echo " perguntar agora. Esta é a linha:"
 echo
 echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-do-portfolio-com-a-admin.sh -o /tmp/a.sh && bash /tmp/a.sh"
 echo
-echo " Pode mandar esta tela ao agente."
+echo " O robô lê esta tela e roda essas duas linhas sozinho."
 echo "=============================================================="

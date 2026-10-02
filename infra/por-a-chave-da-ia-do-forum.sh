@@ -198,7 +198,7 @@ fi
 if recarregar_servicos por-a-chave-da-ia-do-forum >/dev/null 2>&1; then
   echo "  recarreguei o fórum"
 else
-  parar "não consegui recarregar o fórum. A chave JÁ está no arquivo, e há cópia do anterior em $ENV_FORUM.bak-*. Mande esta tela ao agente."
+  parar "não consegui recarregar o fórum. A chave JÁ está no arquivo, e há cópia do anterior em $ENV_FORUM.bak-*. Conserte a causa e rode de novo."
 fi
 
 # A conferência é de PRESENÇA, e o valor nunca aparece: `printenv` imprimiria a
@@ -219,5 +219,5 @@ else
   echo "AVISO: gravei a chave e recarreguei o fórum, mas não consegui confirmar de"
   echo "dentro do container (li '${LIDA}' e esperava '${#CHAVE}')."
   echo "Não é motivo para colar de novo. Abra o fórum numa dúvida e veja se o botão"
-  echo "'Gerar resposta' aparece; se não aparecer, mande esta tela ao agente."
+  echo "'Gerar resposta' aparece; se não aparecer, o fórum não releu o env: recarregue-o e confira de novo."
 fi

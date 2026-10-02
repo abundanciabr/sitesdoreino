@@ -109,8 +109,8 @@ escrever_chave() {
 
   GRAVADO="$(ler_de "$ARQ" "$CHAVE")"
   REPETIDA="$(grep -c "^$CHAVE=" "$ARQ")"
-  [ "$GRAVADO" = "$VALOR" ] || parar "$ARQ não ficou com o valor esperado em $CHAVE. A cópia intacta está em $RAIZ/$BK — me mande esta tela inteira."
-  [ "$REPETIDA" -eq 1 ] || parar "a chave $CHAVE aparece $REPETIDA vezes em $ARQ, e o Docker Compose usaria só a última. A cópia intacta está em $RAIZ/$BK — me mande esta tela inteira."
+  [ "$GRAVADO" = "$VALOR" ] || parar "$ARQ não ficou com o valor esperado em $CHAVE. A cópia intacta está em $RAIZ/$BK — conserte a causa e rode de novo."
+  [ "$REPETIDA" -eq 1 ] || parar "a chave $CHAVE aparece $REPETIDA vezes em $ARQ, e o Docker Compose usaria só a última. A cópia intacta está em $RAIZ/$BK — conserte a causa e rode de novo."
 }
 
 echo "== estado ANTES =="
@@ -167,9 +167,9 @@ echo "  cópias de segurança ..........${BACKUPS:- (nenhuma — nada precisou m
 echo
 
 [ "$(ler_de env/funil.env NOTIFICACOES_API_TOKEN)" = "$(ler_de env/notificacoes.env TOKENS_ACEITOS_FUNIL)" ] \
-  || parar "o par funil↔notificacoes ficou com valores DIFERENTES nos dois lados. Não prossegui para o recarregamento — me mande esta tela inteira."
+  || parar "o par funil↔notificacoes ficou com valores DIFERENTES nos dois lados. Não prossegui para o recarregamento — conserte a causa e rode de novo."
 [ "$(ler_de env/sugestoes.env NOTIFICACOES_API_TOKEN)" = "$(ler_de env/notificacoes.env TOKENS_ACEITOS_SUGESTOES)" ] \
-  || parar "o par sugestoes↔notificacoes ficou com valores DIFERENTES nos dois lados. Não prossegui para o recarregamento — me mande esta tela inteira."
+  || parar "o par sugestoes↔notificacoes ficou com valores DIFERENTES nos dois lados. Não prossegui para o recarregamento — conserte a causa e rode de novo."
 
 # -----------------------------------------------------------------------------
 # RECARREGAR — só os serviços que leem estes três env, pelo nome. JAMAIS

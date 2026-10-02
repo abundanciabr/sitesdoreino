@@ -180,11 +180,11 @@ echo
 if [ "$ACAO" = "criar" ]; then
   echo "== 4/4 — semeando a vitrine =="
   comando_servico sugestoes semear_demo --site-id "$SITE_ID" \
-    || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
+    || parar "o comando falhou. A saída acima diz por quê: conserte a causa e rode de novo."
 else
   echo "== 4/4 — retirando a vitrine =="
   comando_servico sugestoes semear_demo --site-id "$SITE_ID" --remover \
-    || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
+    || parar "o comando falhou. A saída acima diz por quê: conserte a causa e rode de novo."
 fi
 
 DEPOIS=$(contar)
@@ -202,7 +202,7 @@ echo
 # o "PRONTO." não sai — ausência de erro não é sucesso (INV-CI01).
 if [ "$REAIS_DEPOIS" != "$REAIS_ANTES" ]; then
   echo "ATENÇÃO: as ideias de gente de verdade eram $REAIS_ANTES e agora são $REAIS_DEPOIS."
-  echo "Isto NÃO devia acontecer. Mande esta tela ao agente antes de mexer na Caixa."
+  echo "Isto NÃO devia acontecer. Não mexa na Caixa antes de achar a causa e consertar."
   exit 1
 fi
 
@@ -219,7 +219,7 @@ else
     echo "PRONTO. Não sobrou nenhuma ideia de demonstração no quadro."
   else
     echo "ATENÇÃO: ainda restam $DEMO_DEPOIS ideias de demonstração."
-    echo "Mande esta tela ao agente."
+    echo "Conserte a causa e rode de novo."
     exit 1
   fi
 fi

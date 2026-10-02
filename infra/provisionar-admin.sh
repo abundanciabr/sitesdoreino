@@ -146,7 +146,7 @@ if [ -f env/admin.env ]; then
     echo "eu NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente: ou o script aprende a chave,"
+    echo "NADA foi alterado. O próximo passo: ou o script aprende a chave,"
     echo "ou ela pertence a outro script de provisionamento, que é quem deve rodar."
     exit 1
   fi
@@ -286,7 +286,7 @@ if [ -z "$BAK" ]; then
 elif [ -n "$ANTES_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$ANTES_PAGES" ]; then
   echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK (preservada, o mesmo valor que estava em $BAK)"
 else
-  echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO (o valor anterior está intacto em $BAK; NÃO rode mais nada e mande esta tela ao agente)"
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO (o valor anterior está intacto em $BAK; NÃO rode mais nada: restaure o valor a partir da cópia e rode de novo)"
   faltou=1
 fi
 
@@ -304,7 +304,7 @@ for chave in ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID; do
     if [ -n "$ANTES_IA" ]
     then echo "  admin.env / $chave ... OK (preservada, o mesmo valor que estava em $BAK)"
     else echo "  admin.env / $chave ... vazia, como já estava (o robô analista segue desligado)"; fi
-  else echo "  admin.env / $chave ... PERDI O VALOR QUE ESTAVA AQUI (ele está intacto em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
+  else echo "  admin.env / $chave ... PERDI O VALOR QUE ESTAVA AQUI (ele está intacto em $BAK; NÃO rode mais nada: restaure o valor a partir da cópia e rode de novo)"; faltou=1; fi
 done
 
 # nº 2: os dois degraus do par, do lado da identidade.

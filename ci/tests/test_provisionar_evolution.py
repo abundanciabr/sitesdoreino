@@ -173,7 +173,7 @@ def test_banco_existente_com_dono_errado_para_sem_tocar_nos_envs(tmp_path):
     assert not (plataforma / "env" / "evolution.env").exists()
 
 
-def test_falha_sql_restaura_arquivos_remove_recursos_novos_e_libera_trava(tmp_path):
+def test_falha_sql_restaura_arquivos_e_remove_recursos_novos(tmp_path):
     plataforma = _plataforma(tmp_path)
     mensageria = plataforma / "env" / "mensageria.env"
     antes = mensageria.read_text(encoding="utf-8")
@@ -189,20 +189,8 @@ def test_falha_sql_restaura_arquivos_remove_recursos_novos_e_libera_trava(tmp_pa
     assert "os dois envs foram restaurados" in resultado.stdout
     assert mensageria.read_text(encoding="utf-8") == antes
     assert not (plataforma / "env" / "evolution.env").exists()
-    assert not (plataforma / "env" / ".provisionar-evolution.lock").exists()
     log = (plataforma.parent / "docker.log").read_text(encoding="utf-8")
     assert "-v ON_ERROR_STOP=1" in log
     assert "DROP DATABASE evolution_db" in log
     assert "DROP ROLE evolution_user" in log
 
-
-def test_trava_concorrente_nao_e_removida_por_segunda_execucao(tmp_path):
-    plataforma = _plataforma(tmp_path)
-    trava = plataforma / "env" / ".provisionar-evolution.lock"
-    trava.mkdir()
-
-    resultado = _rodar(plataforma)
-
-    assert resultado.returncode != 0
-    assert "outro provisionamento" in resultado.stdout
-    assert trava.is_dir()

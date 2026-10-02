@@ -348,7 +348,7 @@ fi
 
 HOST_DEPOIS=$(printf '%s\n' "$RESUMO" | grep -E '^SITE' | head -n1 | cut -f2)
 [ "$HOST_DEPOIS" = "$SITE_HOST" ] \
-  || parar "depois de semear, o site $SITE_ID no quiz aponta para '$HOST_DEPOIS' e não para '$SITE_HOST'. Não publique nada neste estado: mande esta tela ao agente."
+  || parar "depois de semear, o site $SITE_ID no quiz aponta para '$HOST_DEPOIS' e não para '$SITE_HOST'. Não publique nada neste estado: acerte o site do quiz e rode de novo."
 
 QUIZZES=$(printf '%s\n' "$RESUMO" | grep -cE '^QUIZ' || true)
 [ "${QUIZZES:-0}" -ge 1 ] \

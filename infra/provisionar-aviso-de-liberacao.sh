@@ -186,7 +186,7 @@ conferir_par() {  # nome, arquivo-a, chave-a, arquivo-b, chave-b
   if [ -n "$a" ] && [ "$a" = "$b" ] && [ "$a" = "$TOKEN" ]; then
     printf '  %-24s %s\n' "$1" "confere dos dois lados"
   else
-    parar "o par '$1' NÃO ficou igual nos dois lados ($2/$3 e $4/$5). Isso daria 401 ou 403 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+    parar "o par '$1' NÃO ficou igual nos dois lados ($2/$3 e $4/$5). Isso daria 401 ou 403 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
   fi
 }
 conferir_par "quem pode chamar" "$ENV_IDENTIDADE" TOKENS_ACEITOS_ALUNOS "$ENV_ALUNOS" IDENTIDADE_API_TOKEN
@@ -198,7 +198,7 @@ for par in "$ENV_IDENTIDADE:TOKENS_ACEITOS_ALUNOS" "$ENV_IDENTIDADE:TOKENS_COMPL
            "$ENV_ALUNOS:IDENTIDADE_API_URL" "$ENV_ALUNOS:IDENTIDADE_API_TOKEN"; do
   arq="${par%%:*}"; chave="${par##*:}"
   n="$(grep -c "^$chave=" "$arq")"
-  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS) — me mande esta tela inteira."
+  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS) — conserte a causa e rode de novo."
 done
 echo "  chaves repetidas ........ nenhuma (conferido nas 4)"
 echo

@@ -218,7 +218,7 @@ grep -vE '^(ANTHROPIC_API_KEY|ANTHROPIC_WORKSPACE_ID)=' "$ENV_ADMIN" \
 # ele o dono e a permissao que ja funcionavam. Um `mv` traria dono e modo do
 # arquivo temporario (root:root, rodando como root) e o usuario `deploy`, que e
 # quem o pipeline usa, deixaria de ler o env (`armadilhas/091`).
-cat "$NOVO" > "$ENV_ADMIN" || parar "a escrita de $ENV_ADMIN falhou no meio. Ha copia intacta em $ENV_ADMIN.bak-*: recupere-a com cp e mande esta tela ao agente."
+cat "$NOVO" > "$ENV_ADMIN" || parar "a escrita de $ENV_ADMIN falhou no meio. Ha copia intacta em $ENV_ADMIN.bak-*: recupere-a com cp e rode este roteiro de novo."
 rm -f "$NOVO"
 
 # A conferencia do dono, mesmo assim: se o arquivo ja estava com dono errado
@@ -264,7 +264,7 @@ COLE ESTA LINHA AQUI MESMO, nesta janela da VPS, para levantar de volta:
 
   cd $RAIZ && python3 codigo/ferramentas/atual/infra/recarregar-aplicacao.py por-a-chave-da-ia-do-admin.sh; docker compose ps $SERVICO_ADMIN
 
-Se depois disso ela continuar fora do ar, mande esta tela inteira ao agente."
+Se depois disso ela continuar fora do ar, a saida do docker compose ps diz por que: conserte essa causa e suba a area administrativa de novo."
 
 # `config` falha por muito mais do que servico ausente: basta um `env_file`
 # citado no compose estar faltando. Traduzir QUALQUER falha dele para "o
@@ -279,7 +279,7 @@ A chave JA esta gravada em $RAIZ/$ENV_ADMIN e ha copia do anterior em $RAIZ/$ENV
 O que o docker respondeu:
 $(printf '%s\n' "$SERVICOS" | sed 's/^/    /')
 
-Mande esta tela ao agente."
+Conserte a causa e rode de novo."
 
 if ! printf '%s\n' "$SERVICOS" | grep -qx "$SERVICO_ADMIN"; then
   echo "  (aviso: o servico 'admin' nao esta no docker-compose.yml desta maquina. O arquivo JA esta certo; o proximo deploy da area administrativa rele o env. Avise o agente.)"
@@ -360,7 +360,7 @@ echo "== 4/4: conferindo =="
 # nova sem ninguem perceber. O resumo distingue as duas e continua sem mostrar
 # segredo nenhum, porque doze caracteres de um sha256 nao voltam a ser a chave.
 RESUMO_ESPERADO="$(printf %s "$CHAVE_DA_IA" | sha256sum 2>/dev/null | cut -c1-12)"
-[ -n "$RESUMO_ESPERADO" ] || parar "nao consegui calcular o resumo da chave nesta maquina (faltou o programa sha256sum), e sem ele eu nao tenho como provar que a chave certa chegou ao container. As linhas JA estao gravadas em $RAIZ/$ENV_ADMIN. Mande esta tela ao agente."
+[ -n "$RESUMO_ESPERADO" ] || parar "nao consegui calcular o resumo da chave nesta maquina (faltou o programa sha256sum), e sem ele eu nao tenho como provar que a chave certa chegou ao container. As linhas JA estao gravadas em $RAIZ/$ENV_ADMIN. Conserte a causa e rode de novo."
 MEDIDA_ESPERADA="$RESUMO_ESPERADO:${#CHAVE_DA_IA}"
 
 # O comando que roda LA DENTRO nao carrega valor nenhum, so o NOME da variavel:
@@ -382,17 +382,17 @@ case "$MEDIDA_LIDA" in
 
 O container renasceu quando eu recarreguei? $RENASCEU.
 
-O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente." ;;
+O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode este roteiro de novo por causa dela: ache por que o container nao releu o arquivo e recarregue a area administrativa." ;;
   $DOZE_DO_RESUMO:[1-9]*)
     parar "gravei a chave e a area administrativa voltou de pe, MAS DENTRO DELA HA UMA CHAVE DIFERENTE da que esta no forum. E o que acontece quando o container nao releu o arquivo: ele continua com a chave de antes, que pode ate ter o mesmo tamanho.
 
 O container renasceu quando eu recarreguei? $RENASCEU.
 
-O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente." ;;
+O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode este roteiro de novo por causa dela: ache por que o container nao releu o arquivo e recarregue a area administrativa." ;;
   *)
     parar "gravei a chave e a area administrativa voltou de pe, mas nao consegui perguntar a ela o que leu, entao nao posso dizer que esta pronto.
 
-O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente.
+O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode este roteiro de novo por causa dela: ache por que o container nao releu o arquivo e recarregue a area administrativa.
 
 O que veio de dentro do container:
     $MEDIDA_LIDA" ;;

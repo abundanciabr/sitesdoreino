@@ -162,7 +162,7 @@ fi
 for OUTRA in $(grep -oE '^TOKENS_ACEITOS_[A-Z0-9_]+=' "$ENV_ADMIN" 2>/dev/null | tr -d '=' ); do
   [ "$OUTRA" = "TOKENS_ACEITOS_PAGES" ] && continue
   [ "$(ler_de "$ENV_ADMIN" "$OUTRA")" = "$T_PAGES" ] \
-    && parar "o token deste par é IGUAL ao de $OUTRA em $ENV_ADMIN. Token é por par, e um só faria a rotação de um derrubar o outro sem aviso. Nada foi alterado. Me mande esta tela inteira."
+    && parar "o token deste par é IGUAL ao de $OUTRA em $ENV_ADMIN. Token é por par, e um só faria a rotação de um derrubar o outro sem aviso. Nada foi alterado. Conserte a causa e rode de novo."
 done
 
 echo "== estado ANTES =="
@@ -255,11 +255,11 @@ B="$(ler_de "$ENV_PAGES" ADMIN_API_TOKEN)"
 if [ -n "$A" ] && [ "$A" = "$B" ] && [ "$A" = "$T_PAGES" ]; then
   printf '  %-24s %s\n' "par pages->admin" "confere dos dois lados"
 else
-  parar "o par NÃO ficou igual nos dois lados ($ENV_ADMIN/TOKENS_ACEITOS_PAGES e $ENV_PAGES/ADMIN_API_TOKEN). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS). Me mande esta tela inteira."
+  parar "o par NÃO ficou igual nos dois lados ($ENV_ADMIN/TOKENS_ACEITOS_PAGES e $ENV_PAGES/ADMIN_API_TOKEN). Isso daria 401 silencioso. As cópias intactas estão em $RAIZ ($BACKUPS). Conserte a causa e rode de novo."
 fi
 
 [ "$(ler_de "$ENV_PAGES" ADMIN_API_URL)" = "$ADMIN_URL" ] \
-  || parar "ADMIN_API_URL não ficou como o contrato congelado manda em $ENV_PAGES. As cópias intactas estão em $RAIZ ($BACKUPS). Me mande esta tela inteira."
+  || parar "ADMIN_API_URL não ficou como o contrato congelado manda em $ENV_PAGES. As cópias intactas estão em $RAIZ ($BACKUPS). Conserte a causa e rode de novo."
 printf '  %-24s %s\n' "endereço" "o do contrato congelado da admin"
 
 # Chave repetida é o modo de falha mais traiçoeiro de um env: o Docker Compose
@@ -267,7 +267,7 @@ printf '  %-24s %s\n' "endereço" "o do contrato congelado da admin"
 for par in "$ENV_ADMIN:TOKENS_ACEITOS_PAGES" "$ENV_PAGES:ADMIN_API_URL" "$ENV_PAGES:ADMIN_API_TOKEN"; do
   arq="${par%%:*}"; chave="${par##*:}"
   n="$(grep -c "^$chave=" "$arq")"
-  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS). Me mande esta tela inteira."
+  [ "$n" -eq 1 ] || parar "a chave $chave aparece $n vezes em $arq, e o Docker Compose usaria só a última. As cópias intactas estão em $RAIZ ($BACKUPS). Conserte a causa e rode de novo."
 done
 echo "  chaves repetidas ........ nenhuma (conferido nas 3)"
 echo
